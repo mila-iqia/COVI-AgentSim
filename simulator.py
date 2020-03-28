@@ -727,5 +727,3 @@ def simu(n_stores, n_people, n_parks, n_misc, init_percent_sick=0, store_capacit
     for m in monitors:
       m.dump()
     return monitors
-
-#monitors = simu(n_stores=100, n_parks=50, n_people=100, n_misc=100, init_percent_sick=0.01)
