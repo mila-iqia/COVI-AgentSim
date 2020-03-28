@@ -536,7 +536,10 @@ class EventMonitor(object):
     display.display(pl.gcf())
 
   def dump(self, dest:str=None):
-    print(json.dumps(self.data, indent=1))
+    if dest is None:
+        print(json.dumps(self.data, indent=1))
+    else:
+        json.dump(self.data, open(f"{dest}.json", 'w'),  indent=1)
 
 
 class PlotMonitor(object):
@@ -723,4 +726,4 @@ def simu(n_stores, n_people, n_parks, n_misc, init_percent_sick=0, store_capacit
       m.dump()
     return monitors
 
-monitors = simu(n_stores=100, n_parks=50, n_people=100, n_misc=100, init_percent_sick=0.01)
+#monitors = simu(n_stores=100, n_parks=50, n_people=100, n_misc=100, init_percent_sick=0.01)
