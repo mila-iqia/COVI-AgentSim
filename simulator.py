@@ -21,6 +21,8 @@ import enum
 import numpy as np
 from scipy.stats import truncnorm
 from collections import defaultdict
+import pickle
+import datetime
 # %matplotlib inline
 
 """# Modeling risks of infection in neighborhod
@@ -539,7 +541,7 @@ class EventMonitor(object):
     if dest is None:
         print(json.dumps(self.data, indent=1))
     else:
-        json.dump(self.data, open(f"{dest}.json", 'w'),  indent=1)
+        pickle.dump(self.data, open(f"{dest}.pkl", 'wb'))
 
 
 class PlotMonitor(object):
