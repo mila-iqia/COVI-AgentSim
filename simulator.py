@@ -234,6 +234,7 @@ class Human(object):
       if self.age > 40 or self.age < 12:
         age_modifier = 2
       self.has_cold = np.random.rand() < P_COLD * age_modifier
+      self.has_flu = np.random.rand() < P_FLU * age_modifier
 
       # Indicates whether this person will show severe signs of illness.
       self.infection_timestamp = infection_timestamp
@@ -309,6 +310,7 @@ class Human(object):
 
   @property
   def symptoms(self):
+    # &symptoms
     # probability of being asymptomatic is basically 50%, but a bit less if you're older
     # and a bit more if you're younger
     if self.asymptomatic:
@@ -320,21 +322,40 @@ class Human(object):
         symptoms = []
         if self.really_sick:
           symptoms.append('severe')
-        if np.random.rand() < 0.86:
+        if np.random.rand() < 0.9:
+          symptoms.append('fever')
+        if np.random.rand() < 0.85:
           symptoms.append('cough')
-        if np.random.rand() < 0.5:
-          symptoms.append('trouble_breathing')
-        if np.random.rand() < 0.2:
-          symptoms.append('runny_nose')
+        if np.random.rand() < 0.8:
+          symptoms.append('fatigue')
         if np.random.rand() < 0.7:
+          symptoms.append('trouble_breathing')
+        if np.random.rand() < 0.1:
+          symptoms.append('runny_nose')
+        if np.random.rand() < 0.4:
           symptoms.append('loss_of_taste')
         if np.random.rand() < 0.4:
           symptoms.append('gastro')
-        return symptoms
       if self.has_cold:
-        symptoms = ['cough', 'runny_nose'] 
+        symptoms.append['runny_nose']
+        if np.random.rand() < 0.2:
+          symptoms.append('fever')
+        if np.random.rand() < 0.6:
+          symptoms.append('cough')
+      if self.has_flu:
+        if np.random.rand() < 0.8:
+          symptoms.append('fever')
+        if np.random.rand() < 0.4:
+          symptoms.append('cough')
+        if np.random.rand() < 0.8:
+          symptoms.append('fatigue')
+        if np.random.rand() < 0.8:
+          symptoms.append('aches')
+        if np.random.rand() < 0.5:
+          symptoms.append('gastro')
       else:
         return None
+      return symptoms
   
   @property
   def infectiousness(self):
