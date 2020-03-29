@@ -14,18 +14,23 @@ The simulator is a sub-project of [Peer-to-Peer AI Tracing App](https://mila.que
 ## Dependencies
 Following `python` packages are required (python>=3.6)
 ```
-simpy
-scipy
-numpy
+pip install -r requirements.txt
 ```
 
 ## How to run it using command line?
 Run the simulator as -
 ```
-python simulate.py --n_people 100 --n_stores 100 --n_parks 10 --n_miscs 100 --init_percent_sick 0.01 --outfile data
+python run.py sim --n_people 100 --n_stores 100 --n_parks 10 --n_miscs 100 --init_percent_sick 0.01 --outfile data
 ```
 
 Output will be in `data.pkl`. It is a `list` of `dict`.
+
+
+## How to run tests?
+Run -
+```
+python run.py test
+```
 
 ### Parameters
 
