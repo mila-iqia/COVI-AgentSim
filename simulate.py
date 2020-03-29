@@ -4,7 +4,7 @@ import argparse
 import datetime
 
 def sim(n_stores, n_people, n_parks, n_misc, init_percent_sick=0, store_capacity=30, misc_capacity=30, outfile=None, print_progress=False):
-    env = simpy.Environment()
+    env = Env(start_time)
     city_limit = ((0, 1000), (0, 1000))
     stores = [
               Location(
@@ -60,7 +60,7 @@ def sim(n_stores, n_people, n_parks, n_misc, init_percent_sick=0, store_capacity
 
     humans = [
         Human(
-            i, is_sick= i < n_people * init_percent_sick,
+            i, infection_timestamp=start_time if  i < n_people * init_percent_sick else None,
             household=np.random.choice(households),
             workplace=np.random.choice(workplaces)
             )
@@ -92,7 +92,7 @@ if __name__ == "__main__":
     parser.add_argument( '--init_percent_sick', help='% of population initially sick', type=float, default=0.01)
     parser.add_argument( '--simulation_days', help='number of days to run the simulation for', type=int, default=30)
     parser.add_argument( '--outfile', help='filename of the output (file format: .pkl)', type=str, default="data")
-    parser.add_argument( '--print_progress', help='print the evolution of days', action='store_tree')
+    parser.add_argument( '--print_progress', help='print the evolution of days', action='store_true')
     args = parser.parse_args()
 
     data = sim( n_stores=args.n_stores, n_parks=args.n_parks,
