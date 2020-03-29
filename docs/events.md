@@ -6,7 +6,6 @@ So `human_id` is the app owner (`Human`)'s unique id.
 
 Following events are reported -
 1. `encounter` - When two `Human`s are present at the same `Location` at the same time, this event is recorded for both the `Human`s.
-`duration` is in `seconds` and `distance` is in `cm`s.
 
 ```
 {
@@ -22,7 +21,7 @@ Following events are reported -
  }
 }
 ```
-2. `symptom_start` - When a symptom shows up. It can be COVID or non-COVID symptoms. `covid` says whether it is a covid symptom or not.
+2. `symptom_start` - When a symptom shows up an event is recorded. It can be COVID or non-COVID symptoms.
 
 ```
 {
@@ -35,7 +34,7 @@ Following events are reported -
 }
 ```
 
-3. `contamination` - When a `Human` catches the virus.
+3. `contamination` - When a `Human` catches the virus an event is recorded.
 ```
 {
  "human_id": 999,
@@ -44,7 +43,7 @@ Following events are reported -
  "payload": {}
 }
 ```
-4. `test` - When a `Human` is tested, the event is recored about it's results.
+4. `test` - When a `Human` is tested an event is recored with it's results.
 ```
 {
  "human_id": 999,
