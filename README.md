@@ -7,7 +7,7 @@ The infection spread in this simulator is modeled according to what is know abou
 The assumptions about the spread implemented in the simulator are in [docs/inf_spread_simulator_assumptions.md](docs/inf_spread_simulator_assumptions.md)
 We plan to update the simulator as more about COVID-19 will be known.
 
-Our understanding of COVID-19 spread is documented in [docs/inf_spread_known.md](docs/inf_spread_known.md).
+Our understanding of COVID-19 spread is documented in [docs/inf_spread_known.md](docs/inf_spread_known.md). The document will evolve with time.
 
 The simulator is a sub-project of [Peer-to-Peer AI Tracing App](https://mila.quebec/en/peer-to-peer-ai-tracing-of-covid-19/). Read more about the app in Prof. Bengio's [blog post](https://yoshuabengio.org/2020/03/23/peer-to-peer-ai-tracing-of-covid-19/).
 
@@ -62,17 +62,17 @@ data = sim(n_stores=100, n_parks=50, n_people=100, n_misc=100, init_percent_sick
 `data` is a `list`. Each entry in the `list` is an event represented as a `dict`.
 The detailed information about events is in [docs/events.md](docs/events.md)
 
-## To Do
-- [ ] Improve mobility simulator. [TODOS here](docs/mobility_tasks.md)
-- [ ] Improve infection spread simulator. [TODOS here](docs/infection_spread_tasks.md)
+## TO DO
+- [ ] Improve mobility simulator. [TO DOs here](docs/mobility_tasks.md)
+- [ ] Improve infection spread simulator. [TO DOs here](docs/infection_spread_tasks.md)
 - [ ] Add tests or sanity checks
 
 ## Contributing
 To those who are familiar with the Github, please [follow the guidelines here for contributing](https://gist.github.com/MarcDiethelm/7303312).
 
 There are several ways to engage in the project -
-1. Contribution by Coding: There are several requirements currently listed in [To Do](## To Do)
-2. Contribution by Literature Survey: There is so much that we do not know about how COVID-19 spreads. [docs/inf_spread_known] is where we are collecting this information.
+1. Contribution by Coding: There are several requirements currently listed in [To Do](#todo)
+2. Contribution by Literature Survey: There is so much that we do not know about how COVID-19 spreads. [docs/inf_spread_known](docs/inf_spread_known) is where we are collecting this information. You can open a pull request there or open an issue.
 
 ## Collaborators
 [@marco-gries](https://github.com/marco-gires), [@marie-pellat](https://github.com/mariepellat), [@teganmaharaj](https://github.com/teganmaharaj) [@giancarlok](https://github.com/giancarlok)
