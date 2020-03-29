@@ -71,7 +71,7 @@ The detailed information about events is in [docs/events.md](docs/events.md)
 To those who are familiar with the Github, please [follow the guidelines here for contributing](https://gist.github.com/MarcDiethelm/7303312).
 
 There are several ways to engage in the project -
-1. Contribution by Coding: There are several requirements currently listed in [To Do](#todo)
+1. Contribution by Coding: There are several requirements currently listed in [TO DO section](#todo). Ideas are welcome too.
 2. Contribution by Literature Survey: There is so much that we do not know about how COVID-19 spreads. [docs/inf_spread_known](docs/inf_spread_known) is where we are collecting this information. You can open a pull request there or open an issue.
 
 ## Collaborators
