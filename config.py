@@ -5,11 +5,12 @@ CLOSING_HOUR = 18 # @param
 # DISEASE PARAMETERS
 INCUBATION_DAYS = 14 # @param
 NUM_DAYS_SICK = 10 # @param
-BASELINE_P_ASYMPTOMATIC = 50
+BASELINE_P_ASYMPTOMATIC = 50 # &p-asymptomatic
 P_TEST = 0.5
-P_FALSE_NEGATIVE = 0.1  # 0  1   2    3   4    5   6    7    8
+P_FALSE_NEGATIVE = 0.1 #&false-negative # 0  1   2    3   4    5   6    7    8
 INFECTIOUSNESS_CURVE = [0.05,0.1,0.2,0.3,0.25,0.2,0.15,0.1, 0.05]
-P_COLD = 0.1
+P_COLD = 0.1 # &p-cold
+
 # SIMULATION PARAMETERS
 TICK_MINUTE = 2  # @param increment
 SIMULATION_DAYS = 30  # @param
