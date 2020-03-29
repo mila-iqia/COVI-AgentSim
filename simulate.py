@@ -1,9 +1,10 @@
 from simulator import *
 from utils import _draw_random_discreet_gaussian
 import argparse
+import datetime
 
 def sim(n_stores, n_people, n_parks, n_misc, init_percent_sick=0, store_capacity=30, misc_capacity=30, outfile=None, print_progress=False):
-    env = simpy.Environment()
+    env = Env(start_time)
     city_limit = ((0, 1000), (0, 1000))
     stores = [
               Location(
@@ -59,7 +60,7 @@ def sim(n_stores, n_people, n_parks, n_misc, init_percent_sick=0, store_capacity
 
     humans = [
         Human(
-            i, is_sick= i < n_people * init_percent_sick,
+            i, infection_timestamp=start_time if  i < n_people * init_percent_sick else None,
             household=np.random.choice(households),
             workplace=np.random.choice(workplaces)
             )
@@ -89,10 +90,13 @@ if __name__ == "__main__":
     parser.add_argument( '--n_parks', help='number of parks in the city', type=int, default=20)
     parser.add_argument( '--n_miscs', help='number of non-essential establishments in the city', type=int, default=100)
     parser.add_argument( '--init_percent_sick', help='% of population initially sick', type=float, default=0.01)
+    parser.add_argument( '--simulation_days', help='number of days to run the simulation for', type=int, default=30)
     parser.add_argument( '--outfile', help='filename of the output (file format: .pkl)', type=str, default="data")
-    parser.add_argument( '--print_progress', help='print the evolution of days', action='store_tree')
+    parser.add_argument( '--print_progress', help='print the evolution of days', action='store_true')
     args = parser.parse_args()
 
-    data = sim(n_stores=args.n_stores, n_parks=args.n_parks,
-                    n_people=args.n_people, n_misc=args.n_miscs,
-                    init_percent_sick=args.init_percent_sick, outfile=args.outfile, print_progress=args.print_progress)
+    data = sim( n_stores=args.n_stores, n_parks=args.n_parks,
+                n_people=args.n_people, n_misc=args.n_miscs,
+                init_percent_sick=args.init_percent_sick, start_time = datetime.datetime(2020, 2, 28, 0, 0)
+                simulation_days=args.simulation_days, outfile=args.outfile,
+                print_progress=args.print_progress)
