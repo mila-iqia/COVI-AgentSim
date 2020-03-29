@@ -1,4 +1,5 @@
-- [ ] Incorportae time to travel from one `Location` to the other proportional to distance
+- [ ] Incorporate time to travel from one `Location` to the other proportional to distance
 - [ ] Limit the shopping and exercise times in a week rather than fixing the values
 - [ ] Make `distance` a function of area of `Location` and number of `Human`s there at a time
 - [ ] Add features to `Human` like Age, Gender, Medical Conditions etc.
+- [ ] Mobility in Car vs by foot
