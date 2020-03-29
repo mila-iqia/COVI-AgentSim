@@ -1,0 +1,1 @@
+- [] start of symptom - gaussian distribution around 5 days

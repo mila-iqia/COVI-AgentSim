@@ -1,4 +1,4 @@
-# COVID-19 Spread Simulator
+# COVID-19 Spread Simulator for Tracing App
 
 Simulator is built using [simpy](!https://simpy.readthedocs.io/en/latest/simpy_intro/index.html).
 It simulates human mobility along with infectious disease spread in a city, where city has houses, grocery stores, parks, workplaces, and other non-essential establishments.
@@ -33,8 +33,9 @@ parser.add_argument( '--n_stores', help='number of grocery stores in the city', 
 parser.add_argument( '--n_parks', help='number of parks in the city', type=int, default=20)
 parser.add_argument( '--n_miscs', help='number of non-essential establishments in the city', type=int, default=100)
 parser.add_argument( '--init_percent_sick', help='% of population initially sick', type=float, default=0.01)
-parser.add_argument( '--outfile', help='filename of the output (file format: .pkl)', type=str, default="data")
-parser.add_argument( '--print_progress', help='print the evolution of days', action='store_tree')
+parser.add_argument( '--simulation_days', help='number of days to run the simulation for', type=int, default=30)
+parser.add_argument( '--outfile', help='filename of the output (file format: .pkl)', type=str, default="")
+parser.add_argument( '--print_progress', help='print the evolution of days', action='store_true')
 ```
 
 ### Accessing Simulation Data
@@ -57,26 +58,8 @@ data = sim(n_stores=100, n_parks=50, n_people=100, n_misc=100, init_percent_sick
 
 ## Semantics of Data
 `data` is a `list`. Each entry in the `list` is an event represented as `dict`.
-
-Following events are reported currently -
-1. `encounter` - When two `Human`s are present at the same `Location` at the same time, this event is recorded for both the `Human`s.
-
-```
-{
- "human_id": 0,
- "time": 240.0,
- "event_type": "encounter",
- "payload": {
-  "encounter_human_id": 70,
-  "duration": 8.0,
-  "distance": 627,
-  "lat": 691,
-  "lon": 930
- }
-}
-```
-2. `symptom_start` -
-3. `contamination` -
-4. `test` -
+The detailed information about events is in [docs/events.md](docs/events.md)
 
 ## To Do
+- [] Improve mobility simulator. [TODOS here](docs/mobility_tasks.md)
+- [] Improve infection spread simulator. [TODOS here](docs/infection_spread_tasks.md)

@@ -12,46 +12,43 @@ from collections import defaultdict
 import pickle
 import datetime
 
-from utils import _normalize_scores, _draw_random_discreet_gaussian
+from utils import _normalize_scores, _draw_random_discreet_gaussian, _json_serialize
 from config import * # PARAMETERS
 
-class Clock(object):
-  def __init__(self, env):
-    self.env = env
-
-  def run(self):
-      while True:
-          print(self.time_of_day())
-          yield self.env.timeout(60/TICK_MINUTE)
+class Env(simpy.Environment):
+  def __init__(self, initial_timestamp):
+    super().__init__()
+    self.initial_timestamp = initial_timestamp
 
   def time(self):
-    return self.env.now
+    return self.now
+
+  @property
+  def timestamp(self):
+    return self.initial_timestamp + datetime.timedelta(
+        minutes=self.now * TICK_MINUTE)
 
   def minutes(self):
-    return self.env.now * TICK_MINUTE % 60
+    return self.timestamp.minute
 
   def hour_of_day(self):
-    return int(self.env.now * TICK_MINUTE / 60)  % 24
-
-  def day(self):
-    return int(self.env.now * TICK_MINUTE/(24*60))
+    return self.timestamp.hour
 
   def day_of_week(self):
-    return self.day() % 7
+    return self.timestamp.weekday()
 
   def is_weekend(self):
-      return self.day_of_week in [0,6]
+      return self.day_of_week() in [0, 6]
 
   def time_of_day(self):
-    return "Day {0}, {1}h {2}min".format(int(self.day()), int(self.hour_of_day()), int(self.minutes()))
+    return self.timestamp.isoformat()
 
 class City(object):
 
-  def __init__(self, stores, parks, humans, miscs, clock):
+  def __init__(self, stores, parks, humans, miscs):
     self.stores = stores
     self.parks = parks
     self.humans = humans
-    self.clock = clock
     self.miscs = miscs
     self._compute_preferences()
 
@@ -203,7 +200,7 @@ class Human(object):
       'exercise': 4
   }
 
-  def __init__(self, name, is_sick, household, workplace, rho=0.3, gamma=0.21):
+  def __init__(self, name, infection_timestamp, household, workplace, rho=0.3, gamma=0.21):
       self.events = []
       self.name = name
 
@@ -217,7 +214,7 @@ class Human(object):
       self.visits = Visits()
 
       # Indicates whether this person will show severe signs of illness.
-      self.incubation_time = 0 if is_sick else None
+      self.infection_timestamp = infection_timestamp
       self.really_sick = self.is_sick and random.random() >= 0.9
       self.never_recovers = random.random() >= 0.99
 
@@ -234,7 +231,7 @@ class Human(object):
       self.avg_misc_time = _draw_random_discreet_gaussian(AVG_MISC_MINUTES, SCALE_MISC_MINUTES)
       self.scale_misc_time = _draw_random_discreet_gaussian(AVG_SCALE_MISC_MINUTES, SCALE_SCALE_MISC_MINUTES)
 
-      # TODO: make it variable
+      # TODO: multiple possible days and times & limit these activities in a week
       self.shopping_days = np.random.choice(range(7))
       self.shopping_hours = np.random.choice(range(7, 20))
 
@@ -247,7 +244,7 @@ class Human(object):
     # Assume 2 weeks incubation time ; in 10% of cases person becomes to sick
     # to go shopping after 2 weeks for at least 10 days and in 1% of the cases
     # never goes shopping again.
-    time_since_sick = env.now - self.incubation_time
+    time_since_sick_delta = env.timestamp - self.infection_timestamp
     in_peak_illness_time = (
         time_since_sick >= INCUBATION_DAYS * 24 * 60 and
         time_since_sick <= (INCUBATION_DAYS + NUM_DAYS_SICK) * 24 * 60)
@@ -265,7 +262,7 @@ class Human(object):
 
   @property
   def is_sick(self):
-    return self.incubation_time is not None
+    return self.infection_timestamp is not None
 
   def __repr__(self):
     return f"person:{self.name}, sick:{self.is_sick}"
@@ -278,26 +275,26 @@ class Human(object):
     self.household.humans.add(self)
     while True:
       # Simulate some tests
-      if self.is_sick and env.now - self.incubation_time > (INCUBATION_DAYS * 24 * 60) / TICK_MINUTE:
+      if self.is_sick and env.timestamp - self.infection_timestamp > datetime.timedelta(days=INCUBATION_DAYS):
         # Todo ensure it only happen once
         result = random.random() > 0.8
-        Event.log_test(self, time=env.now, result=result)
+        Event.log_test(self, time=env.timestamp, result=result)
         #Fixme: After a user get tested positive, assume no more activity
         break
 
-      elif city.clock.hour_of_day() == self.work_start_hour and not city.clock.is_weekend() and not WORK_FROM_HOME:
+      elif env.hour_of_day() == self.work_start_hour and not env.is_weekend() and not WORK_FROM_HOME:
         yield env.process(self.go_to_work(env))
 
-      elif city.clock.hour_of_day() == self.shopping_hours and city.clock.day_of_week() == self.shopping_days:
+      elif env.hour_of_day() == self.shopping_hours and env.day_of_week() == self.shopping_days:
         yield env.process(self.shop(env, city))
-      elif city.clock.hour_of_day() == self.exercise_hours and city.clock.day_of_week() == self.exercise_days: ##LIMIT AND VARIABLE
+      elif env.hour_of_day() == self.exercise_hours and env.day_of_week() == self.exercise_days: ##LIMIT AND VARIABLE
         yield env.process(self.exercise(env, city))
-      elif np.random.random() < 0.05 and city.clock.is_weekend():
+      elif np.random.random() < 0.05 and env.is_weekend():
         yield env.process(self.take_a_trip(env, city))
-      elif self.is_sick and env.now - self.incubation_time > (SYMPTOM_DAYS * 24 * 60) / TICK_MINUTE:
+      elif self.is_sick and env.timestamp - self.infection_timestamp > datetime.timedelta(days=SYMPTOM_DAYS):
         # Stay home after symptoms
         # TODO: ensure it only happen once
-        # Event.log_symptom_start(self, time=env.now)
+        # Event.log_symptom_start(self, time=env.timestamp)
         pass
       self.location = self.household
       yield env.process(self.stay_at_home(env))
@@ -318,15 +315,13 @@ class Human(object):
             yield env.process(self.at(self.household, env, 60))
             break
 
-          # print(self.name, "at", self.location)
           loc = self._select_location(type='miscs', city=city)
           S += 1
           p_exp = self.rho * S ** (-self.gamma * self.adjust_gamma)
           with loc.request() as request:
             yield request
             t = _draw_random_discreet_gaussian(self.avg_misc_time, self.scale_misc_time)
-            yield env.process(self.at(loc, env, t)) # LOOSES LOCATION
-            # print(self.name, "to", loc)
+            yield env.process(self.at(loc, env, t))
 
   def shop(self, env, city):
     self.action = Human.actions['shopping']
@@ -366,8 +361,7 @@ class Human(object):
       elif type == "miscs":
           S = self.visits.n_miscs
           self.adjust_gamma = 1.0
-          # print(self.location)
-          pool_pref = [city.compute_distance(self.location, m)**-1 for m in city.miscs if m != self.location]
+          pool_pref = [(city.compute_distance(self.location, m)+1e-1)**-1 for m in city.miscs if m != self.location]
           pool_locs = [m for m in city.miscs if m != self.location]
           locs = city.miscs
           visited_locs = self.visits.miscs
@@ -400,50 +394,27 @@ class Human(object):
       self.start_time = env.now
 
       # Report all the encounters
-      ## TODO: It doesn't report encounters symmetrically
       for h in location.humans:
         if h == self or location.type == 'household':
           continue
         Event.log_encounter( self, h,
             location_type=location.type,
             duration=min(self.leaving_time, h.leaving_time) - max(self.start_time, h.start_time),
-            distance=np.random.randint(50, 1000), # cm TODO: prop to Area and inv. prop to capacity
-            time=env.now,
+            distance=np.random.randint(50, 1000), # cm  #TODO: prop to Area and inv. prop to capacity
+            time=env.timestamp,
             lat=location.lat,
             lon=location.lon
         )
+
       if not self.is_sick:
         if random.random() < location.contamination_proba():
-          self.incubation_time = env.now
-          Event.log_contaminate(self, env.now)
+          self.infection_timestamp = env.timestamp
+          Event.log_contaminate(self, env.timestamp)
       yield env.timeout(duration/TICK_MINUTE)
       location.humans.remove(self)
-      # self.location = None
 
 
-# ##### MONITORING
-# NO BUSINESS LOGIC HERE - SIMPLY dataset manipulation
-
-class StateMonitor(object):
-  def __init__(self, f=None):
-    self.data = []
-    self.f = f or 60
-
-  def run(self, env, city: City):
-    while True:
-      d = {
-          'time': city.clock.time_of_day(),
-          'people': len(city.humans),
-          'sick': sum([int(h.is_sick) for h in city.humans]),
-      }
-      self.data.append(d)
-      print(city.clock.time_of_day())
-      yield env.timeout(self.f/TICK_MINUTE)
-
-  def dump(self, dest:str=None):
-    print(json.dumps(self.data, indent=1))
-
-
+####### MONITORING
 class EventMonitor(object):
   def __init__(self, f=None):
     self.data = []
@@ -469,9 +440,9 @@ class EventMonitor(object):
 
   def dump(self, dest:str=None):
     if dest is None:
-        print(json.dumps(self.data, indent=1))
+        print(json.dumps(self.data, indent=1, default=_json_serialize))
     else:
-        with oopen(f"{dest}.pkl", 'wb') as f:
+        with open(f"{dest}.pkl", 'wb') as f:
             pickle.dump(self.data, f)
 
 class TimeMonitor(object):
@@ -483,104 +454,6 @@ class TimeMonitor(object):
     while True:
       print(env.timestamp)
       yield env.timeout(self.f/TICK_MINUTE)
-
-class PlotMonitor(object):
-  def __init__(self, f=None):
-    self.data = []
-    self.f = f or 60
-
-  def run(self, env, city: City):
-    fig=plt.figure(figsize=(15, 12))
-    while True:
-      d = {
-          'time': city.clock.time(),
-          'htime': city.clock.time_of_day(),
-          'sick': sum([int(h.is_sick) for h in city.humans]),
-      }
-      for k, v in Human.actions.items():
-         d[k] = sum(int(h.action == v) for h in city.humans)
-
-      self.data.append(d)
-      yield env.timeout(self.f/TICK_MINUTE)
-      self.plot()
-
-
-  def plot(self):
-    display.clear_output(wait=True)
-    pl.clf()
-    time_series = [d['time'] for d in self.data]
-    sick_series = [d['sick'] for d in self.data]
-    pl.plot(time_series, sick_series, label='sick')
-    for k, v in Human.actions.items():
-        action_series = [d[k] for d in self.data]
-        pl.plot(time_series, action_series, label=k)
-
-    pl.title(f"City at {self.data[-1]['htime']}")
-    pl.legend()
-    display.display(pl.gcf())
-
-  def dump(self, dest:str=None):
-    pass
-
-
-class LatLonMonitor(object):
-  def __init__(self, f=None):
-    self.data = []
-    self.city_data = {}
-    self.f = f or 60
-
-  def run(self, env, city: City):
-    self.city_data['parks'] = [
-      {'lat': l.lat,
-       'lon': l.lon,} for l in city.parks
-    ]
-    self.city_data['stores'] = [
-      {'lat': l.lat ,
-       'lon': l.lon,} for l in city.stores
-    ]
-    fig=plt.figure(figsize=(18, 16))
-    while True:
-      self.data.extend(
-          {'time': city.clock.time_of_day(),
-           'is_sick': h.is_sick,
-           'lat': h.lat(),
-           'lon': h.lon(),
-           'human_id': h.name,
-           'household_id': h.household.name,
-           'location': h.location.name if h.location else None
-           } for h in city.humans
-      )
-      yield env.timeout(self.f/TICK_MINUTE)
-      self.plot()
-
-
-  def plot(self):
-    display.clear_output(wait=True)
-    pl.clf()
-    # PLOT STORES AND PARKS
-    lat_series = [d['lat'] for d in self.city_data['parks']]
-    lon_series = [d['lon'] for d in self.city_data['parks']]
-    s = 250
-    pl.scatter(lat_series, lon_series, s=s, marker='o', color='green', label='parks')
-
-    # PLOT STORES AND PARKS
-    lat_series = [d['lat'] for d in self.city_data['stores']]
-    lon_series = [d['lon'] for d in self.city_data['stores']]
-    s = 50
-    pl.scatter(lat_series, lon_series, s=s, marker='o', color='black', label='stores')
-
-    lat_series = [d['lat'] for d in self.data]
-    lon_series = [d['lon'] for d in self.data]
-    c = ['red' if d['is_sick'] else 'blue' for d in self.data]
-    s = 5
-    pl.scatter(lat_series, lon_series, s=s, marker='^', color=c, label='human')
-    sicks = sum([d['is_sick'] for d in self.data])
-    pl.title(f"City at {self.data[-1]['time']} - sick:{sicks}")
-    pl.legend()
-    display.display(pl.gcf())
-
-  def dump(self, dest:str=None):
-    pass
 
 def simu(n_stores, n_people, n_parks, n_misc, init_percent_sick=0, store_capacity=30, misc_capacity=30):
     env = simpy.Environment()
