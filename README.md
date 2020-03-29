@@ -75,4 +75,4 @@ There are several ways to engage in the project -
 2. Contribution by Literature Survey: There is so much that we do not know about how COVID-19 spreads. [docs/inf_spread_known](docs/inf_spread_known) is where we are collecting this information. You can open a pull request there or open an issue.
 
 ## Collaborators
-[@marco-gries](https://github.com/marco-gires), [@marie-pellat](https://github.com/mariepellat), [@teganmaharaj](https://github.com/teganmaharaj) [@giancarlok](https://github.com/giancarlok)
+[@marco-gires](https://github.com/marco-gires), [@marie-pellat](https://github.com/mariepellat), [@teganmaharaj](https://github.com/teganmaharaj) [@giancarlok](https://github.com/giancarlok)
