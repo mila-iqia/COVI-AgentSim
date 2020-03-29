@@ -1,4 +1,4 @@
-# Simulator
+# COVID-19 Spread Simulator
 
 Simulator is built using [simpy](!https://simpy.readthedocs.io/en/latest/simpy_intro/index.html).
 It simulates human mobility along with infectious disease spread in a city, where city has houses, grocery stores, parks, workplaces, and other non-essential establishments.
@@ -52,9 +52,15 @@ data = sim(n_stores=100, n_parks=50, n_people=100, n_misc=100, init_percent_sick
 
 `data` is a `list` of `dict`.
 
-## Simulation Data (Semantics)
-Each entry in the `list` is an event. Following events are reported currently -
-1. `encounter` - When two `Human`s are present at the same `Location` at the same time, this event is recorded.
+## Semantics of code
+`Human` class builds people, and `Location` class builds stores, parks, workplaces, households, and non-essential establishments.
+
+## Semantics of Data
+`data` is a `list`. Each entry in the `list` is an event represented as `dict`.
+
+Following events are reported currently -
+1. `encounter` - When two `Human`s are present at the same `Location` at the same time, this event is recorded for both the `Human`s.
+
 ```
 {
  "human_id": 0,
