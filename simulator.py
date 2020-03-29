@@ -12,7 +12,7 @@ from collections import defaultdict
 import pickle
 import datetime
 
-from utils import _normalize_scores, _draw_random_discreet_gaussian, _json_serialize
+from utils import _normalize_scores, _get_random_age, _draw_random_discreet_gaussian, _json_serialize
 from config import * # PARAMETERS
 
 class Env(simpy.Environment):
@@ -210,9 +210,15 @@ class Human(object):
       'exercise': 4
   }
 
-  def __init__(self, name, infection_timestamp, household, workplace, rho=0.3, gamma=0.21, symptoms=None, test_results=None):
+  def __init__(self, name, infection_timestamp, household, workplace, age=35, rho=0.3, gamma=0.21, symptoms=None, test_results=None):
       self.events = []
       self.name = name
+      self.age = _get_random_age()
+
+      # probability of being asymptomatic is basically 50%, but a bit less if you're older
+      # and a bit more if you're younger
+      self.asymptomatic = np.random.rand() > (BASELINE_P_ASYMPTOMATIC - (self.age - 50)*0.5)/100
+
 
       self.household = household
       self.workplace = workplace
@@ -222,12 +228,16 @@ class Human(object):
 
       self.action = Human.actions['at_home']
       self.visits = Visits()
+      self.travelled_recently = np.random.rand() > 0.9
+
+      age_modifier = 1
+      if self.age > 40 or self.age < 12:
+        age_modifier = 2
+      self.has_cold = np.random.rand() < P_COLD * age_modifier
 
       # Indicates whether this person will show severe signs of illness.
       self.infection_timestamp = infection_timestamp
       self.really_sick = self.is_sick and random.random() >= 0.9
-      self.symptoms = symptoms
-      self.test_results = test_results
       self.never_recovers = random.random() >= 0.99
 
       # habits
@@ -252,6 +262,8 @@ class Human(object):
 
       self.work_start_hour = np.random.choice(range(7, 12))
 
+
+
   def to_sick_to_shop(self):
     # Assume 2 weeks incubation time ; in 10% of cases person becomes to sick
     # to go shopping after 2 weeks for at least 10 days and in 1% of the cases
@@ -272,9 +284,72 @@ class Human(object):
   def is_contagious(self):
     return self.is_sick
 
+
+  @property 
+  def test_results(self):
+    if self.symptoms == None:
+      return None
+    else:
+      if self.travelled_recently:
+        tested = np.random.rand() > P_TEST
+        if tested:
+          if self.is_sick:
+            return 'positive'
+          else:
+            if np.random.rand() > P_FALSE_NEGATIVE:
+              return 'negative'
+            else:
+              return 'positive'
+        else:
+          return None
+      else:
+        return None
+
+
+
+  @property
+  def symptoms(self):
+    # probability of being asymptomatic is basically 50%, but a bit less if you're older
+    # and a bit more if you're younger
+    if self.asymptomatic:
+      pass
+    else:
+      time_since_sick = self.infection_timestamp # TODO: env passing! should be: env.timestamp - self.infection_timestamp 
+      symptom_start = self.infection_timestamp  # TODO: env passing! should be: self.infection_timestamp + datetime.timedelta(abs(np.random.normal(SYMPTOM_DAYS,2.5)))
+      if np.random.rand() > 0.5: # elf.infection_timestep # TODO: env passing! should be: time_since_sick >= symptom_start:
+        symptoms = []
+        if self.really_sick:
+          symptoms.append('severe')
+        if np.random.rand() < 0.86:
+          symptoms.append('cough')
+        if np.random.rand() < 0.5:
+          symptoms.append('trouble_breathing')
+        if np.random.rand() < 0.2:
+          symptoms.append('runny_nose')
+        if np.random.rand() < 0.7:
+          symptoms.append('loss_of_taste')
+        if np.random.rand() < 0.4:
+          symptoms.append('gastro')
+        return symptoms
+      if self.has_cold:
+        symptoms = ['cough', 'runny_nose'] 
+      else:
+        return None
+  
+  @property
+  def infectiousness(self):
+    if self.is_sick: 
+      time_since_sick = self.infection_timestamp # TODO: env passing! should be: env.timestamp - self.infection_timestamp 
+      if time_since_sick > datetime.timedelta(len(INFECTIOUSNESS_CURVE)):
+        return 0
+      else:
+        return INFECTIOUSNESS_CURVE[time_since_sick]
+    else:
+      return 0
+
   @property
   def is_sick(self):
-    return self.infection_timestamp is not None
+    return self.infection_timestamp is not None #TODO add recovery
 
   def __repr__(self):
     return f"person:{self.name}, sick:{self.is_sick}"

@@ -28,7 +28,7 @@ def sim(n_stores, n_people, n_parks, n_misc,
                  lon=random.randint(*city_limit[1])
              )
              for i in range(n_parks)
-             ]
+            ]
     households = [
              Location(
                  env, cont_prob=1,

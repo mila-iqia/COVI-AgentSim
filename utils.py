@@ -5,6 +5,15 @@ import datetime
 def _normalize_scores(scores):
     return np.array(scores)/np.sum(scores)
 
+# should be a reasonable approximation for Canadian demographics
+def _get_random_age():
+	draw = np.random.normal(50, 25, 1)
+	if draw < 0:
+		age = round(30 + np.random.normal(0, 4))
+	else:
+		age = round(float(draw))
+	return draw
+
 def _draw_random_discreet_gaussian(avg, scale):
     # https://stackoverflow.com/a/37411711/3413239
     return int(truncnorm(a=-1, b=1, loc=avg, scale=scale).rvs(1).round().astype(int)[0])
