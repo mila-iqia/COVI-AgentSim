@@ -13,7 +13,7 @@ def sim(n_stores, n_people, n_parks, n_misc,
                   env,
                   capacity=_draw_random_discreet_gaussian(store_capacity, int(0.5 * store_capacity)),
                   cont_prob=0.1,
-                  type='store',
+                  location_type='store',
                   name=f'store{i}',
                   lat=random.randint(*city_limit[0]),
                   lon=random.randint(*city_limit[1]),
@@ -23,9 +23,9 @@ def sim(n_stores, n_people, n_parks, n_misc,
              Location(
                  env, cont_prob=0.02,
                  name=f'park{i}',
-                 type='park',
+                 location_type='park',
                  lat=random.randint(*city_limit[0]),
-                  lon=random.randint(*city_limit[1])
+                 lon=random.randint(*city_limit[1])
              )
              for i in range(n_parks)
              ]
@@ -33,9 +33,9 @@ def sim(n_stores, n_people, n_parks, n_misc,
              Location(
                  env, cont_prob=1,
                  name=f'household{i}',
-                 type='household',
-                lat=random.randint(*city_limit[0]),
-                  lon=random.randint(*city_limit[1]),
+                 location_type='household',
+                 lat=random.randint(*city_limit[0]),
+                 lon=random.randint(*city_limit[1]),
             )
              for i in range(int(n_people/2))
              ]
@@ -43,9 +43,9 @@ def sim(n_stores, n_people, n_parks, n_misc,
              Location(
                  env, cont_prob=1,
                  name=f'workplace{i}',
-                 type='workplace',
-                lat=random.randint(*city_limit[0]),
-                  lon=random.randint(*city_limit[1]),
+                 location_type='workplace',
+                 lat=random.randint(*city_limit[0]),
+                 lon=random.randint(*city_limit[1]),
             )
              for i in range(int(n_people/30))
              ]
@@ -54,7 +54,7 @@ def sim(n_stores, n_people, n_parks, n_misc,
             env, cont_prob=1,
             capacity=_draw_random_discreet_gaussian(misc_capacity, int(0.5 * misc_capacity)),
             name=f'misc{i}',
-            type='misc',
+            location_type='misc',
             lat=random.randint(*city_limit[0]),
             lon=random.randint(*city_limit[1])
         ) for i in range(n_misc)

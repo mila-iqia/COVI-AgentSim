@@ -69,20 +69,20 @@ class City(object):
 
 class Location(simpy.Resource):
 
-  def __init__(self, env, capacity=simpy.core.Infinity, name='Safeway', type=None, lat=None, lon=None, cont_prob=None):
+  def __init__(self, env, capacity=simpy.core.Infinity, name='Safeway', location_type='stores', lat=None, lon=None, cont_prob=None):
     super().__init__(env, capacity)
     self.humans = set()
     self.name = name
     self.lat = lat
     self.lon = lon
-    self.type = type
+    self.location_type = location_type
     self.cont_prob = cont_prob
 
   def sick_human(self):
     return any([h.is_sick for h in self.humans])
 
   def __repr__(self):
-    return f"{self.type}:{self.name} - Total number of people in {self.type}:{len(self.humans)} - sick:{self.sick_human()}"
+    return f"{self.location_type}:{self.name} - Total number of people in {self.location_type}:{len(self.humans)} - sick:{self.sick_human()}"
 
   def contamination_proba(self):
     if not self.sick_human():
@@ -104,7 +104,7 @@ class Event:
     return [Event.test, Event.encounter, Event.symptom_start, Event.contamination]
 
   @staticmethod
-  def log_encounter(human1, human2, location_type, duration, distance, time, lat, lon):
+  def log_encounter(human1, human2, location, duration, distance, time):
 
       human1.events.append(
           {
@@ -113,10 +113,15 @@ class Event:
               'event_type': Event.encounter,
               'payload': {
                   'encounter_human_id': human2.name,
+                  'other_human_is_infected': human2.is_sick,
+                  'other_human_symptoms': human2.symptoms,
+                  'other_human_test_results': human2.test_results,
                   'duration': duration,
                   'distance': distance,
-                  'lat': lat,
-                  'lon': lon,
+                  'location_type': location.location_type,
+                  'contamination_prob': location.cont_prob,
+                  'lat': location.lat,
+                  'lon': location.lon,
               }
           }
       )
@@ -128,10 +133,15 @@ class Event:
               'event_type': Event.encounter,
               'payload': {
                   'encounter_human_id': human1.name,
+                  'other_human_is_infected': human1.is_sick,
+                  'other_human_symptoms': human1.symptoms,
+                  'other_human_test_results': human1.test_results,
                   'duration': duration,
                   'distance': distance,
-                  'lat': lat,
-                  'lon': lon,
+                  'location_type': location.location_type,
+                  'contamination_prob': location.cont_prob,
+                  'lat': location.lat,
+                  'lon': location.lon,
               }
           }
       )
@@ -200,7 +210,7 @@ class Human(object):
       'exercise': 4
   }
 
-  def __init__(self, name, infection_timestamp, household, workplace, rho=0.3, gamma=0.21):
+  def __init__(self, name, infection_timestamp, household, workplace, rho=0.3, gamma=0.21, symptoms=None, test_results=None):
       self.events = []
       self.name = name
 
@@ -216,6 +226,8 @@ class Human(object):
       # Indicates whether this person will show severe signs of illness.
       self.infection_timestamp = infection_timestamp
       self.really_sick = self.is_sick and random.random() >= 0.9
+      self.symptoms = symptoms
+      self.test_results = test_results
       self.never_recovers = random.random() >= 0.99
 
       # habits
@@ -315,7 +327,7 @@ class Human(object):
             yield env.process(self.at(self.household, env, 60))
             break
 
-          loc = self._select_location(type='miscs', city=city)
+          loc = self._select_location(location_type='miscs', city=city)
           S += 1
           p_exp = self.rho * S ** (-self.gamma * self.adjust_gamma)
           with loc.request() as request:
@@ -325,7 +337,7 @@ class Human(object):
 
   def shop(self, env, city):
     self.action = Human.actions['shopping']
-    grocery_store = self._select_location(type="stores", city=city) ## MAKE IT EPR
+    grocery_store = self._select_location(location_type="stores", city=city) ## MAKE IT EPR
 
     with grocery_store.request() as request:
       yield request
@@ -334,31 +346,31 @@ class Human(object):
 
   def exercise(self, env, city):
     self.action = Human.actions['exercise']
-    park = self._select_location(type="park", city=city)
+    park = self._select_location(location_type="park", city=city)
     t = _draw_random_discreet_gaussian(self.avg_shopping_time, self.scale_shopping_time)
     yield env.process(self.at(park, env, t))
 
-  def _select_location(self, type, city):
+  def _select_location(self, location_type, city):
       """
       Preferential exploration treatment of visiting places
       rho, gamma are treated in the paper for normal trips
       Here gamma is multiplied by a factor to supress exploration for parks, stores.
       """
-      if type == "park":
+      if location_type == "park":
           S = self.visits.n_parks
           self.adjust_gamma = 1.0
           pool_pref = self.parks_preferences
           locs = city.parks
           visited_locs = self.visits.parks
 
-      elif type == "stores":
+      elif location_type == "stores":
           S = self.visits.n_stores
           self.adjust_gamma = 1.0
           pool_pref = self.stores_preferences
           locs = city.stores
           visited_locs = self.visits.stores
 
-      elif type == "miscs":
+      elif location_type == "miscs":
           S = self.visits.n_miscs
           self.adjust_gamma = 1.0
           pool_pref = [(city.compute_distance(self.location, m)+1e-1)**-1 for m in city.miscs if m != self.location]
@@ -395,15 +407,13 @@ class Human(object):
 
       # Report all the encounters
       for h in location.humans:
-        if h == self or location.type == 'household':
+        if h == self or location.location_type == 'household':
           continue
         Event.log_encounter( self, h,
-            location_type=location.type,
+            location=location,
             duration=min(self.leaving_time, h.leaving_time) - max(self.start_time, h.start_time),
             distance=np.random.randint(50, 1000), # cm  #TODO: prop to Area and inv. prop to capacity
             time=env.timestamp,
-            lat=location.lat,
-            lon=location.lon
         )
 
       if not self.is_sick:
