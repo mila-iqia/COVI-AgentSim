@@ -318,13 +318,14 @@ class Human(object):
         # probability of being asymptomatic is basically 50%, but a bit less if you're older
         # and a bit more if you're younger
         symptoms = None
-        if self.asymptomatic:
+        if self.asymptomatic or self.infection_timestamp is None:
             pass
         else:
-            time_since_sick = self.infection_timestamp # TODO: env passing! should be: env.timestamp - self.infection_timestamp 
-            symptom_start = self.infection_timestamp  # TODO: env passing! should be: self.infection_timestamp + datetime.timedelta(abs(np.random.normal(SYMPTOM_DAYS,2.5)))
-            
-            if np.random.rand() > 0.5: # elf.infection_timestep # TODO: env passing! should be: time_since_sick >= symptom_start:
+            time_since_sick = self.env.timestamp - self.infection_timestamp
+            symptom_start = datetime.timedelta(abs(np.random.normal(SYMPTOM_DAYS,2.5)))
+          #  print (time_since_sick)
+          #  print (symptom_start)
+            if time_since_sick >= symptom_start:
                 symptoms = ['mild']
                 if self.really_sick:
                     symptoms.append('severe')
