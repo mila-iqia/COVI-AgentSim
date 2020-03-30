@@ -14,19 +14,19 @@ def simu():
 @click.option('--n_people', help='population of the city', type=int, default=1000)
 @click.option('--n_stores', help='number of grocery stores in the city', type=int, default=100)
 @click.option('--n_parks', help='number of parks in the city', type=int, default=20)
-@click.option('--n_miscs', help='number of non-essential establishments in the city', type=int, default=100)
+@click.option('--n_misc', help='number of non-essential establishments in the city', type=int, default=100)
 @click.option('--init_percent_sick', help='% of population initially sick', type=float, default=0.01)
 @click.option('--simulation_days', help='number of days to run the simulation for', type=int, default=30)
 @click.option('--outfile', help='filename of the output (file format: .pkl)', type=str, required=False)
 @click.option('--print_progress', is_flag=True, help='print the evolution of days', default=False)
-def sim(n_stores=None, n_people=None, n_parks=None, n_miscs=None,
+def sim(n_stores=None, n_people=None, n_parks=None, n_misc=None,
         init_percent_sick=0, store_capacity=30, misc_capacity=30,
         start_time=datetime.datetime(2020, 2, 28, 0, 0),
         simulation_days=10,
         outfile=None,
         print_progress=False):
     run_simu(
-        n_stores=n_stores, n_people=n_people, n_parks=n_parks, n_miscs=n_miscs,
+        n_stores=n_stores, n_people=n_people, n_parks=n_parks, n_misc=n_misc,
         init_percent_sick=init_percent_sick, store_capacity=store_capacity, misc_capacity=misc_capacity,
         start_time=start_time,
         simulation_days=simulation_days,
@@ -35,7 +35,7 @@ def sim(n_stores=None, n_people=None, n_parks=None, n_miscs=None,
     )
 
 
-def run_simu(n_stores=None, n_people=None, n_parks=None, n_miscs=None,
+def run_simu(n_stores=None, n_people=None, n_parks=None, n_misc=None,
              init_percent_sick=0, store_capacity=30, misc_capacity=30,
              start_time=datetime.datetime(2020, 2, 28, 0, 0),
              simulation_days=10,
@@ -92,7 +92,7 @@ def run_simu(n_stores=None, n_people=None, n_parks=None, n_miscs=None,
             location_type='misc',
             lat=random.randint(*city_limit[0]),
             lon=random.randint(*city_limit[1])
-        ) for i in range(n_miscs)
+        ) for i in range(n_misc)
     ]
 
     humans = [
