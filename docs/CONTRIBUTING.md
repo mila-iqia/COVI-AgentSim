@@ -21,6 +21,7 @@ There are several ways to improve this simulator -
 
 1. **Implementing sanity checks and tests** - As we keep implementing our assumptions in the simulator, we want to make sure that it is realistic and speaks to the data that has been observed in the past.
 Some ways to do this are -
+   - Although we are implementing the assumptions in our simulator, we want to make sure that the disease spread follows the [mathematical models of infectious disease](https://en.wikipedia.org/wiki/Mathematical_modelling_of_infectious_disease) all the time. This can be done by using a dynamical models of epidemic like [SEIRs](https://github.com/ryansmcgee/seirsplus). Thus, fitting the COVID data to above mathematical model and cross-checking the simulators performance will be the most useful thing as of now. 
    - Using the simulator to analyze metrics like time spent in house, average number of trips, or reproducibility number(R) of COVID, just to mention some. If the distribution of these metrics is supported by research, it will help us in validating the simulator.
    - Animation of different scenarios using the simulator to help us communicate the assumptions in the simulator as well as understand the shortcomings of it.
 
