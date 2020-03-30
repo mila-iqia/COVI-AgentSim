@@ -21,8 +21,8 @@ There are several ways to improve this simulator -
 
 1. Implementing sanity checks and tests - As we keep implementing our assumptions in the simulator, we want to make sure that it is realistic and speaks to the data that has been observed in the past.
 Some ways to do this are -
-  - Using the simulator to analyze metrics like time spent in house, average number of trips, or reproducibility number(R) of COVID, just to mention some. If the distribution of these metrics is supported by research, it will help us in validating the simulator.
-  - Animation of different scenarios using the simulator to help us communicate the assumptions in the simulator as well as understand the shortcomings of it.
+   - Using the simulator to analyze metrics like time spent in house, average number of trips, or reproducibility number(R) of COVID, just to mention some. If the distribution of these metrics is supported by research, it will help us in validating the simulator.
+   - Animation of different scenarios using the simulator to help us communicate the assumptions in the simulator as well as understand the shortcomings of it.
 
 2. Improving the mobility simulator - We have current list of desired behaviors in [docs/mobility_tasks.md](mobility_tasks.md). Implementing them will be of great help.
 
