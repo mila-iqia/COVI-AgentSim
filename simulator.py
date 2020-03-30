@@ -307,6 +307,7 @@ class Human(object):
                             return 'positive'
                 else:
                     return None
+
             else:
                 return None
 
@@ -362,8 +363,7 @@ class Human(object):
             if np.random.rand() < 0.8:
                 symptoms.append('aches')
             if np.random.rand() < 0.5:
-                symptoms.append('gastro')
-  
+                symptoms.append('gastro')  
         return symptoms
       
     @property
