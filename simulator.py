@@ -108,41 +108,83 @@ class Event:
     def log_encounter(human1, human2, location, duration, distance, time):
 
         human1.events.append(
-            {
-                'human_id': human1.name,
-                'time': time,
-                'event_type': Event.encounter,
-                'payload': {
-                    'encounter_human_id': human2.name,
-                    'other_human_is_infected': human2.is_sick,
-                    'other_human_symptoms': human2.symptoms,
-                    'other_human_test_results': human2.test_results,
+            {   'encounter': {
+                    'time': time,
+                    'event_type': Event.encounter,
                     'duration': duration,
                     'distance': distance,
                     'location_type': location.location_type,
                     'contamination_prob': location.cont_prob,
                     'lat': location.lat,
                     'lon': location.lon,
+                    'obs_lat': human1.obs_lat,
+                    'obs_lon': human1.obs_lon,
+                  },
+                'human1': {
+                    'human_id': human1.name,
+                    'age': human1.age,
+                    'carefullness': human1.carefullness,
+                    'is_infected': human1.is_sick,
+                    'infection_timestamp': human1.infection_timestamp,
+                    'infectiousness': human1.infectiousness,
+                    'reported_symptoms': human1.reported_symptoms,
+                    'symptoms': human1.symptoms,
+                    'test_results': human1.test_results,
+                    'has_app': human1.has_app,
+                  },
+                'human2': {
+                    'other_human_id': human2.name,
+                    'other_age': human2.age,
+                    'other_carefullness': human2.carefullness,
+                    'other_is_infected': human2.is_sick,
+                    'other_infection_timestamp': human2.infection_timestamp,
+                    'other_infectiousness': human2.infectiousness,
+                    'other_reported_symptoms': human2.reported_symptoms,
+                    'other_symptoms': human2.symptoms,
+                    'other_test_results': human2.test_results,
+                    'other_has_app': human2.has_app,
                 }
             }
         )
 
         human2.events.append(
-            {
-                'human_id': human2.name,
-                'time': time,
-                'event_type': Event.encounter,
-                'payload': {
-                    'encounter_human_id': human1.name,
-                    'other_human_is_infected': human1.is_sick,
-                    'other_human_symptoms': human1.symptoms,
-                    'other_human_test_results': human1.test_results,
+            {   'encounter': {
+                    'time': time,
+                    'event_type': Event.encounter,
                     'duration': duration,
                     'distance': distance,
                     'location_type': location.location_type,
                     'contamination_prob': location.cont_prob,
                     'lat': location.lat,
                     'lon': location.lon,
+                    'obs_lat': human2.obs_lat,
+                    'obs_lon': human2.obs_lon,
+                  },
+                'human1': {
+                    'other_human_id': human1.name,
+                    'other_age': human1.age,
+                    'other_carefullness': human1.carefullness,
+                    'other_wearing_mask': human1.wearing_mask,
+                    'other_is_infected': human1.is_sick,
+                    'other_infection_timestamp': human1.infection_timestamp,
+                    'other_infectiousness': human1.infectiousness,
+                    'other_reported_symptoms': human1.reported_symptoms,
+                    'other_symptoms': human1.symptoms,
+                    'other_test_results': human1.test_results,
+                    'other_has_app': human1.has_app,
+                  },
+                'human2': {
+                    'human_id': human2.name,
+                    'age': human2.age,
+                    'carefullness': human2.carefullness,
+                    'wearing_mask': human2.wearing_mask,
+                    'is_infected': human2.is_sick,
+                    'infection_timestamp': human2.infection_timestamp,
+                    'infectiousness': human2.infectiousness,
+                    'reported_symptoms': human2.reported_symptoms,
+                    'symptoms': human2.symptoms,
+                    'test_results': human2.test_results,
+                    'has_app': human2.has_app,
                 }
             }
         )
@@ -218,6 +260,7 @@ class Human(object):
         self.name = name
         self.age = _get_random_age()
 
+
         # probability of being asymptomatic is basically 50%, but a bit less if you're older
         # and a bit more if you're younger
         self.asymptomatic = np.random.rand() > (BASELINE_P_ASYMPTOMATIC - (self.age - 50)*0.5)/100
@@ -233,12 +276,19 @@ class Human(object):
         self.visits = Visits()
         self.travelled_recently = np.random.rand() > 0.9
 
+
+        # &carefullness
+        if np.random.rand() < P_CAREFUL_PERSON:
+            self.carefullness = rpund(np.random.normal(75, 10))
+        else:
+            self.carefullness = roung(np.random.normal(35, 10))
+
         age_modifier = 1
         if self.age > 40 or self.age < 12:
             age_modifier = 2
         self.has_cold = np.random.rand() < P_COLD * age_modifier
         self.has_flu = np.random.rand() < P_FLU * age_modifier
-
+        self.has_app = np.random.rand() < (P_HAS_APP / age_modifier) + (self.carefullness/2)
 
         # Indicates whether this person will show severe signs of illness.
         self.infection_timestamp = infection_timestamp
@@ -279,15 +329,30 @@ class Human(object):
             time_since_sick <= (INCUBATION_DAYS + NUM_DAYS_SICK) * 24 * 60)
         return (in_peak_illness_time or self.never_recovers) and self.really_sick
 
+    @property
     def lat(self):
         return self.location.lat if self.location else self.household.lat
-
+    @property
     def lon(self):
         return self.location.lon if self.location else self.household.lon
 
     @property
+    def obs_lat(self):
+        if LOCATION_TECH == 'bluetooth':
+            return round(self.lat + np.random.normal(0,2))
+        else:
+            return round(self.lat + np.random.normal(0,10))
+
+    @property
+    def obs_lon(self):
+        if LOCATION_TECH == 'bluetooth':
+            return round(self.lon + np.random.normal(0,2))
+        else:
+            return round(self.lon + np.random.normal(0,10))
+
+    @property
     def is_contagious(self):
-        return self.is_sick
+        return self.infectiousness
 
 
     @property 
@@ -311,7 +376,23 @@ class Human(object):
             else:
                 return None
 
-
+    @property
+    def wearing_mask(self):
+        mask = False
+        if not self.location == self.household: 
+           mask = np.random.rand() < self.carefullness
+        return mask 
+    
+    @property
+    def reported_symptoms(self):
+      if self.symptoms is None or self.test_results is None or not self.has_app:
+          return None
+      else:
+          if np.random.rand() < self.carefullness:
+              return self.symptoms
+          else:
+              return None
+    
 
     @property
     def symptoms(self):
@@ -370,11 +451,12 @@ class Human(object):
     @property
     def infectiousness(self):
         if self.is_sick: 
-            time_since_sick = self.infection_timestamp # TODO: env passing! should be: env.timestamp - self.infection_timestamp 
+            time_since_sick = self.env.timestamp - self.infection_timestamp 
             if time_since_sick > datetime.timedelta(len(INFECTIOUSNESS_CURVE)):
                 return 0
             else:
-                return INFECTIOUSNESS_CURVE[time_since_sick]
+                days_sick = int(str(time_since_sick)[0])
+                return INFECTIOUSNESS_CURVE[days_sick-1]
         else:
             return 0
 
@@ -524,9 +606,11 @@ class Human(object):
         )
         return (in_peak_illness_time or self.never_recovers) and self.really_sick
 
+    @property
     def lat(self):
         return self.location.lat if self.location else self.household.lat
 
+    @property
     def lon(self):
         return self.location.lon if self.location else self.household.lon
 
