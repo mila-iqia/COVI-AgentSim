@@ -385,195 +385,6 @@ class Human(object):
     def __repr__(self):
         return f"person:{self.name}, sick:{self.is_sick}"
 
-    def run(self, env, city):
-        """
-           1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24
-           State  h h h h h h h h h sh sh h  h  h  ac h  h  h  h  h  h  h  h  h
-        """
-        self.household.humans.add(self)
-        while True:
-            # Simulate some tests
-            if self.is_sick and env.timestamp - self.infection_timestamp > datetime.timedelta(days=INCUBATION_DAYS):
-                # Todo ensure it only happen once
-                result = random.random() > 0.8
-                Event.log_test(self, time=env.timestamp, result=result)
-                #Fixme: After a user get tested positive, assume no more activity
-                break
-
-            elif env.hour_of_day() == self.work_start_hour and not env.is_weekend() and not WORK_FROM_HOME:
-                yield env.process(self.go_to_work(env))
-
-            elif env.hour_of_day() == self.shopping_hours and env.day_of_week() == self.shopping_days:
-                yield env.process(self.shop(env, city))
-            elif env.hour_of_day() == self.exercise_hours and env.day_of_week() == self.exercise_days: ##LIMIT AND VARIABLE
-                yield env.process(self.exercise(env, city))
-            elif np.random.random() < 0.05 and env.is_weekend():
-                yield env.process(self.take_a_trip(env, city))
-            elif self.is_sick and env.timestamp - self.infection_timestamp > datetime.timedelta(days=SYMPTOM_DAYS):
-                # Stay home after symptoms
-                # TODO: ensure it only happen once
-                # Event.log_symptom_start(self, time=env.timestamp)
-                pass
-            self.location = self.household
-            yield env.process(self.stay_at_home(env))
-
-    def stay_at_home(self, env):
-        self.action = Human.actions['at_home']
-        yield env.process(self.at(self.household, env, 60))
-
-    def go_to_work(self, env):
-        t = _draw_random_discreet_gaussian(self.avg_working_hours, self.scale_working_hours)
-        yield env.process(self.at(self.workplace, env, t))
-
-    def take_a_trip(self, env, city):
-        S = 0
-        p_exp = 1.0
-        while True:
-            if np.random.random() > p_exp: # return home
-                yield env.process(self.at(self.household, env, 60))
-                break
-
-            loc = self._select_location(location_type='miscs', city=city)
-            S += 1  
-            p_exp = self.rho * S ** (-self.gamma * self.adjust_gamma)
-            with loc.request() as request:
-                yield request
-                t = _draw_random_discreet_gaussian(self.avg_misc_time, self.scale_misc_time)
-                yield env.process(self.at(loc, env, t))
-
-    def shop(self, env, city):
-        self.action = Human.actions['shopping']
-        grocery_store = self._select_location(location_type="stores", city=city) ## MAKE IT EPR
-
-        with grocery_store.request() as request:
-            yield request
-            t = _draw_random_discreet_gaussian(self.avg_shopping_time, self.scale_shopping_time)
-            yield env.process(self.at(grocery_store, env, t))
-
-    def exercise(self, env, city):
-        self.action = Human.actions['exercise']
-        park = self._select_location(location_type="park", city=city)
-        t = _draw_random_discreet_gaussian(self.avg_shopping_time, self.scale_shopping_time)
-        yield env.process(self.at(park, env, t))
-
-    def _select_location(self, location_type, city):
-        """
-        Preferential exploration treatment of visiting places
-        rho, gamma are treated in the paper for normal trips
-        Here gamma is multiplied by a factor to supress exploration for parks, stores.
-        """
-        if location_type == "park":
-            S = self.visits.n_parks
-            self.adjust_gamma = 1.0
-            pool_pref = self.parks_preferences
-            locs = city.parks
-            visited_locs = self.visits.parks
-
-        elif location_type == "stores":
-            S = self.visits.n_stores
-            self.adjust_gamma = 1.0
-            pool_pref = self.stores_preferences
-            locs = city.stores
-            visited_locs = self.visits.stores
-
-        elif location_type == "miscs":
-            S = self.visits.n_miscs
-            self.adjust_gamma = 1.0
-            pool_pref = [(city.compute_distance(self.location, m)+1e-1)**-1 for m in city.miscs if m != self.location]
-            pool_locs = [m for m in city.miscs if m != self.location]
-            locs = city.miscs
-            visited_locs = self.visits.miscs
-
-        else:
-            raise
-
-        if S == 0:
-            p_exp = 1.0
-        else:
-            p_exp = self.rho * S ** (-self.gamma * self.adjust_gamma)
-
-        if np.random.random() < p_exp and S != len(locs):
-            # explore
-            cands = [i for i in locs if i not in visited_locs]
-            cands = [(loc, pool_pref[i]) for i,loc in enumerate(cands)]
-        else:
-            # exploit
-            cands = [(i, count)  for i, count in visited_locs.items()]
-
-        cands, scores = zip(*cands)
-        loc = np.random.choice(cands, p=_normalize_scores(scores))
-        visited_locs[loc] += 1
-        return loc
-
-    def at(self, location, env, duration):
-        self.location = location
-        location.humans.add(self)
-        self.leaving_time = duration + env.now
-        self.start_time = env.now
-
-        # Report all the encounters
-        for h in location.humans:
-            if h == self or location.location_type == 'household':
-              continue
-            Event.log_encounter( self, h,
-                location=location,
-                duration=min(self.leaving_time, h.leaving_time) - max(self.start_time, h.start_time),
-                distance=np.random.randint(50, 1000), 
-                # cm  #TODO: prop to Area and inv. prop to capacity
-                time=env.timestamp,
-        )
-        return (in_peak_illness_time or self.never_recovers) and self.really_sick
-
-    def lat(self):
-        return self.location.lat if self.location else self.household.lat
-
-    def lon(self):
-        return self.location.lon if self.location else self.household.lon
-
-    @property
-    def is_contagious(self):
-        return self.is_sick
-
-    @property
-    def is_sick(self):
-        return self.infection_timestamp is not None  # TODO add recovery
-
-    def __repr__(self):
-        return f"person:{self.name}, sick:{self.is_sick}"
-
-    def run(self, city):
-        """
-           1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24
-           State  h h h h h h h h h sh sh h  h  h  ac h  h  h  h  h  h  h  h  h
-        """
-        self.household.humans.add(self)
-        while True:
-            # Simulate some tests
-            if self.is_sick and self.env.timestamp - self.infection_timestamp > datetime.timedelta(
-                    days=INCUBATION_DAYS):
-                # Todo ensure it only happen once
-                result = random.random() > 0.8
-                Event.log_test(self, time=self.env.timestamp, result=result)
-                # Fixme: After a user get tested positive, assume no more activity
-                break
-
-            elif self.env.hour_of_day() == self.work_start_hour and not self.env.is_weekend() and not WORK_FROM_HOME:
-                yield self.env.process(self.go_to_work())
-
-            elif self.env.hour_of_day() == self.shopping_hours and self.env.day_of_week() == self.shopping_days:
-                yield self.env.process(self.shop(city))
-            elif self.env.hour_of_day() == self.exercise_hours and self.env.day_of_week() == self.exercise_days:  ##LIMIT AND VARIABLE
-                yield self.env.process(self.exercise(city))
-            elif np.random.random() < 0.05 and self.env.is_weekend():
-                yield self.env.process(self.take_a_trip(city))
-            elif self.is_sick and self.env.timestamp - self.infection_timestamp > datetime.timedelta(days=SYMPTOM_DAYS):
-                # Stay home after symptoms
-                # TODO: ensure it only happen once
-                # Event.log_symptom_start(self, time=env.timestamp)
-                pass
-            self.location = self.household
-            yield self.env.process(self.stay_at_home())
-
     def stay_at_home(self):
         self.action = Human.actions['at_home']
         yield self.env.process(self.at(self.household, 60))
@@ -687,3 +498,36 @@ class Human(object):
                 Event.log_contaminate(self, self.env.timestamp)
         yield self.env.timeout(duration / TICK_MINUTE)
         location.humans.remove(self)
+
+    def run(self, city):
+        """
+           1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24
+           State  h h h h h h h h h sh sh h  h  h  ac h  h  h  h  h  h  h  h  h
+        """
+        self.household.humans.add(self)
+        while True:
+            # Simulate some tests
+            if self.is_sick and self.env.timestamp - self.infection_timestamp > datetime.timedelta(
+                    days=INCUBATION_DAYS):
+                # Todo ensure it only happen once
+                result = random.random() > 0.8
+                Event.log_test(self, time=self.env.timestamp, result=result)
+                # Fixme: After a user get tested positive, assume no more activity
+                break
+
+            elif self.env.hour_of_day() == self.work_start_hour and not self.env.is_weekend() and not WORK_FROM_HOME:
+                yield self.env.process(self.go_to_work())
+
+            elif self.env.hour_of_day() == self.shopping_hours and self.env.day_of_week() == self.shopping_days:
+                yield self.env.process(self.shop(city))
+            elif self.env.hour_of_day() == self.exercise_hours and self.env.day_of_week() == self.exercise_days:  ##LIMIT AND VARIABLE
+                yield self.env.process(self.exercise(city))
+            elif np.random.random() < 0.05 and self.env.is_weekend():
+                yield self.env.process(self.take_a_trip(city))
+            elif self.is_sick and self.env.timestamp - self.infection_timestamp > datetime.timedelta(days=SYMPTOM_DAYS):
+                # Stay home after symptoms
+                # TODO: ensure it only happen once
+                # Event.log_symptom_start(self, time=env.timestamp)
+                pass
+            self.location = self.household
+            yield self.env.process(self.stay_at_home())
