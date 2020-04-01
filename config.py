@@ -1,6 +1,6 @@
 
 # NOISE IN SIM PARAMETERS
-LOCATION_TECH = 'gps' # &location-tech 
+LOCATION_TECH = 'gps' # &location-tech
 
 # CITY PARAMETERS
 OPENING_HOUR = 9 # @param
@@ -17,7 +17,7 @@ NUM_DAYS_SICK = 10 # @param
 BASELINE_P_ASYMPTOMATIC = 50 # &p-asymptomatic
 P_TEST = 0.5
 P_FALSE_NEGATIVE = 0.1 #&false-negative # 0  1   2    3   4    5   6    7    8
-INFECTIOUSNESS_CURVE = [0.05,0.1,0.2,0.3,0.25,0.2,0.15,0.1, 0.05]
+INFECTIOUSNESS_CURVE = [0.05, 0.1, 0.2, 0.3, 0.25, 0.2, 0.15, 0.1, 0.05]
 P_COLD = 0.1 # &p-cold
 P_FLU = 0.05 # &p-flu
 

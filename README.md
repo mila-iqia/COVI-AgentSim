@@ -24,7 +24,7 @@ pip install -r requirements.txt
 ## How to run it using command line?
 Run the simulator as -
 ```
-python run.py sim --n_people 100 --n_stores 100 --n_parks 10 --n_miscs 100 --init_percent_sick 0.01 --outfile data
+python run.py sim --n_people 100 --n_stores 100 --n_parks 10 --n_misc 100 --init_percent_sick 0.01 --outfile data
 ```
 
 Output will be in `data.pkl`. It is a `list` of `dict`.
