@@ -11,7 +11,7 @@ def simu():
 
 
 @simu.command()
-@click.option('--n_people', help='population of the city', type=int, default=1000)
+@click.option('--n_people', help='population of the city', type=int, default=100)
 @click.option('--n_stores', help='number of grocery stores in the city', type=int, default=100)
 @click.option('--n_parks', help='number of parks in the city', type=int, default=20)
 @click.option('--n_misc', help='number of non-essential establishments in the city', type=int, default=100)
