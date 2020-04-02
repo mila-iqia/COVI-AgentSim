@@ -12,7 +12,8 @@ P_HAS_APP = 0.5 # &has_app
 P_CAREFUL_PERSON = 0.3 # &carefullness
 
 # DISEASE PARAMETERS
-INCUBATION_DAYS = 14 # @param
+AVERAGE_INCUBATION_DAYS = 5 # &avg-incubation-days
+SCALE_INCUBATION_DAYS = 4
 NUM_DAYS_SICK = 10 # @param
 BASELINE_P_ASYMPTOMATIC = 50 # &p-asymptomatic
 P_TEST = 0.5
