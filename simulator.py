@@ -280,7 +280,7 @@ class Human(object):
                 if dead:
                     yield self.env.timeout(np.inf)
 
-                Event.log_recovery(human, time, dead)
+                Event.log_recovery(self, self.env.timestamp, dead)
 
             # Mobility
             hour = self.env.hour_of_day()
