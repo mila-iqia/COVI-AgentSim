@@ -268,15 +268,19 @@ class Human(object):
                 assert self.has_logged_symptoms is True # FIXME: assumption might not hold
 
             if self.is_infectious and self.env.timestamp - self.infection_timestamp >= datetime.timedelta(days=self.recovery_days):
-                # self.recovered_timestamp = self.env.timestamp
                 if self.never_recovers:
                     self.recovered_timestamp = datetime.datetime.max
+                    dead = True
                 else:
                     self.recovered_timestamp = self.env.timestamp
+                    dead = False
 
                 self.update_r(self.env.timestamp - self.infection_timestamp)
                 self.infection_timestamp = None
-                yield self.env.timeout(np.inf)
+                if dead:
+                    yield self.env.timeout(np.inf)
+
+                Event.log_recovery(human, time, dead)
 
             # Mobility
             hour = self.env.hour_of_day()

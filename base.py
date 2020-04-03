@@ -86,6 +86,7 @@ class Event:
     encounter = 'encounter'
     symptom_start = 'symptom_start'
     contamination = 'contamination'
+    recovered = 'recovered'
 
     @staticmethod
     def members():
@@ -240,6 +241,26 @@ class Event:
                     'observed':{
                     },
                     'unobserved':{
+                      'exposed': True
+                    }
+
+                }
+            }
+        )
+
+    @staticmethod
+    def log_recovery(human, time, death):
+        human.events.append(
+            {
+                'human_id': human.name,
+                'event_type': Event.recovered,
+                'time': time,
+                'payload': {
+                    'observed':{
+                    },
+                    'unobserved':{
+                        'recovered': not death,
+                        'death': death
                     }
                 }
             }
