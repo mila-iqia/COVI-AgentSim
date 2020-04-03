@@ -263,6 +263,9 @@ class Human(object):
         self.events = []
         self.name = name
         self.age = _get_random_age()
+        self.gender = _get_random_gender()
+        self.preexisting_conditions = _get_preexisting_conditions(age, gender)
+
 
         # probability of being asymptomatic is basically 50%, but a bit less if you're older
         # and a bit more if you're younger
@@ -420,9 +423,9 @@ class Human(object):
                     symptoms.append('trouble_breathing')
                 if np.random.rand() < 0.1:
                     symptoms.append('runny_nose')
-                if np.random.rand() < 0.4:
+                if np.random.rand() < 0.6:
                     symptoms.append('loss_of_taste')
-                if np.random.rand() < 0.4:
+                if np.random.rand() < 0.3:
                     symptoms.append('gastro')
         if self.has_cold:
             if symptoms is None:

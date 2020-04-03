@@ -16,6 +16,136 @@ def _get_random_age():
 		age = round(float(draw))
 	return age
 
+# &gender
+def _get_random_gender():
+	p = np.random.rand()
+	if p < .4:
+		return 'female'
+	elif p < .8:
+		return 'male'
+	else:
+		return 'other'
+
+# &preexisting-conditions
+def _get_preexisting_conditions(age, gender):
+	#if np.random.rand() < 0.6 + age/200: 
+	#	conditions = None
+	#else:
+	conditions = []
+
+	# &diabetes
+	if age < 18:
+		if np.random.rand() < .005:
+			conditions.append('diabetes')
+	elif age < 35:
+		if np.random.rand() < .009:
+			conditions.append('diabetes')
+	elif age < 50:
+		if np.random.rand() < .039:
+			conditions.append('diabetes')
+	elif age < 75:
+		if np.random.rand() < .13:
+			conditions.append('diabetes')
+	else:
+		if np.random.rand() < .179:
+			conditions.append('diabetes')
+	
+	# &heart disease
+	if age < 20:
+		if np.random.rand() < .001:
+			conditions.append('heart_disease')
+	elif age < 35:
+		if np.random.rand() < .005:
+			conditions.append('heart_disease')
+	elif age < 50
+		if self.gender.lower().startswith('f'):
+			if np.random.rand() < .013:
+				conditions.append('heart_disease')
+		elif self.gender.lower().startswith('m'):
+			if np.random.rand() < .021:
+				conditions.append('heart_disease')
+		else:
+			if np.random.rand() < .017:
+				conditions.append('heart_disease')
+	elif age < 75:
+		if self.gender.lower().startswith('f'):
+			if np.random.rand() < .13:
+				conditions.append('heart_disease')
+		elif self.gender.lower().startswith('m'):
+			if np.random.rand() < .178:
+				conditions.append('heart_disease')
+		else:
+			if np.random.rand() < .15:
+				conditions.append('heart_disease')
+	else:
+		if self.gender.lower().startswith('f'):
+			if np.random.rand() < .311:
+				conditions.append('heart_disease')
+		elif self.gender.lower().startswith('m'):
+			if np.random.rand() < .44:
+				conditions.append('heart_disease')
+		else:
+			if np.random.rand() < .375:
+				conditions.append('heart_disease')
+
+	# &COPD
+	if age < 35:
+		pass
+	elif age < 50:
+		if np.random.rand() < .015:
+			conditions.append('COPD')
+	elif age < 65:
+		if np.random.rand() < .037:
+			conditions.append('COPD')
+	else:
+		if np.random.rand() < .075:
+			conditions.append('COPD')
+
+	# &asthma 
+	if age < 10:
+		if self.gender.lower().startswith('f'):
+			if np.random.rand() < .07:
+				conditions.append('heart_disease')
+		elif self.gender.lower().startswith('m'):
+			if np.random.rand() < .021:
+				conditions.append('heart_disease')
+		else:
+			if np.random.rand() < .017:
+				conditions.append('heart_disease')
+	elif age < 35:
+		if np.random.rand() < .005:
+			conditions.append('heart_disease')
+	elif age < 50
+		if self.gender.lower().startswith('f'):
+			if np.random.rand() < .013:
+				conditions.append('heart_disease')
+		elif self.gender.lower().startswith('m'):
+			if np.random.rand() < .021:
+				conditions.append('heart_disease')
+		else:
+			if np.random.rand() < .017:
+				conditions.append('heart_disease')
+	elif age < 75:
+		if self.gender.lower().startswith('f'):
+			if np.random.rand() < .13:
+				conditions.append('heart_disease')
+		elif self.gender.lower().startswith('m'):
+			if np.random.rand() < .178:
+				conditions.append('heart_disease')
+		else:
+			if np.random.rand() < .15:
+				conditions.append('heart_disease')
+	else:
+		if self.gender.lower().startswith('f'):
+			if np.random.rand() < .311:
+				conditions.append('heart_disease')
+		elif self.gender.lower().startswith('m'):
+			if np.random.rand() < .44:
+				conditions.append('heart_disease')
+		else:
+			if np.random.rand() < .375:
+				conditions.append('heart_disease')
+
 def _draw_random_discreet_gaussian(avg, scale):
     # https://stackoverflow.com/a/37411711/3413239
     return int(truncnorm(a=-1, b=1, loc=avg, scale=scale).rvs(1).round().astype(int)[0])
