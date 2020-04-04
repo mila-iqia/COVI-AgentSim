@@ -35,7 +35,7 @@ def sim(n_stores=None, n_people=None, n_parks=None, n_misc=None,
     )
 
 
-def run_simu(n_stores=None, n_people=None, n_parks=None, n_misc=None,
+def run_simu(n_stores=None, n_people=None, n_parks=None, n_hospitals=None, n_misc=None,
              init_percent_sick=0, store_capacity=30, misc_capacity=30,
              start_time=datetime.datetime(2020, 2, 28, 0, 0),
              simulation_days=10,
@@ -93,7 +93,7 @@ def run_simu(n_stores=None, n_people=None, n_parks=None, n_misc=None,
             lon=random.randint(*city_limit[1]),
             capacity=200
         )
-        for i in range(int(n_people / 1000))
+        for i in range(n_hospitals)
     ]
     miscs = [
         Location(
@@ -112,7 +112,8 @@ def run_simu(n_stores=None, n_people=None, n_parks=None, n_misc=None,
             name=i,
             infection_timestamp=start_time if i < n_people * init_percent_sick else None,
             household=np.random.choice(households),
-            workplace=np.random.choice(workplaces)
+            workplace=np.random.choice(workplaces),
+            hospital=np.random.choice(hospitals),
         )
         for i in range(n_people)]
 

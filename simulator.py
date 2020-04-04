@@ -263,7 +263,7 @@ class Human(object):
         'exercise': 4
     }
 
-    def __init__(self, env, name, infection_timestamp, household, workplace, age=35, rho=0.3, gamma=0.21, symptoms=None,
+    def __init__(self, env, name, infection_timestamp, household, workplace, hospital, age=35, rho=0.3, gamma=0.21, symptoms=None,
                  test_results=None):
         self.env = env
         self.events = []
@@ -277,6 +277,7 @@ class Human(object):
 
         self.household = household
         self.workplace = workplace
+        self.hospital = hospital
         self.location = household
         self.rho = rho
         self.gamma = gamma
@@ -314,6 +315,9 @@ class Human(object):
 
         self.avg_working_hours = _draw_random_discreet_gaussian(AVG_WORKING_HOURS, SCALE_WORKING_HOURS)
         self.scale_working_hours = _draw_random_discreet_gaussian(AVG_SCALE_WORKING_HOURS, SCALE_SCALE_WORKING_HOURS)
+
+        self.avg_hospital_hours = _draw_random_discreet_gaussian(AVG_HOSPITAL_HOURS, SCALE_HOSPITAL_HOURS)
+        self.scale_hospital_hours = _draw_random_discreet_gaussian(AVG_SCALE_HOSPITAL_HOURS, SCALE_SCALE_HOSPITAL_HOURS)
 
         self.avg_misc_time = _draw_random_discreet_gaussian(AVG_MISC_MINUTES, SCALE_MISC_MINUTES)
         self.scale_misc_time = _draw_random_discreet_gaussian(AVG_SCALE_MISC_MINUTES, SCALE_SCALE_MISC_MINUTES)
@@ -481,6 +485,11 @@ class Human(object):
         t = _draw_random_discreet_gaussian(self.avg_working_hours, self.scale_working_hours)
         yield self.env.process(self.at(self.workplace, t))
 
+    def go_to_hopsital(self):
+        self.action = Human.actions['at_hospital']
+        t = _draw_random_discreet_gaussian(self.avg_hospital_hours, self.scale_hospital_hours)
+        yield self.env.process(self.at(self.hospital, t))
+
     def take_a_trip(self, city):
         S = 0
         p_exp = 1.0
@@ -598,17 +607,17 @@ class Human(object):
         self.household.humans.add(self)
         while True:
             # Simulate some tests
-            if self.is_sick and self.env.timestamp - self.infection_timestamp > datetime.timedelta(
+            if self.really_sick:
+                yield self.env.process(self.go_to_hopsital())
+            elif self.is_sick and self.env.timestamp - self.infection_timestamp > datetime.timedelta(
                     days=self.incubation_days):
                 # Todo ensure it only happen once
                 result = random.random() > 0.8
                 Event.log_test(self, time=self.env.timestamp, result=result)
                 # Fixme: After a user get tested positive, assume no more activity
                 break
-
             elif self.env.hour_of_day() == self.work_start_hour and not self.env.is_weekend() and not WORK_FROM_HOME:
                 yield self.env.process(self.go_to_work())
-
             elif self.env.hour_of_day() == self.shopping_hours and self.env.day_of_week() == self.shopping_days:
                 yield self.env.process(self.shop(city))
             elif self.env.hour_of_day() == self.exercise_hours and self.env.day_of_week() == self.exercise_days:  ##LIMIT AND VARIABLE
@@ -628,4 +637,24 @@ class Hospital(Location):
 
     def __init__(self, env, capacity, name='vgh', location_type='hospital', lat=None, lon=None, cont_prob=None):
         super().__init__(env, capacity, name, location_type, lat, lon, cont_prob)
-        self.vacancy = self.capacity - len(self.humans)
+        self.ventilators_in_use = 0
+        self.total_ventilators = 10
+
+    @property
+    def vacancy(self):
+        return self.capacity - len(self.humans)
+
+    def ventilator_available(self):
+        return self.total_ventilators - self.ventilators_in_use
+
+    def admit(self, human):
+        if self.vacancy > 0:
+            self.humans.add(human)
+            human.location = self
+        else:
+            raise ValueError("hospital full")
+
+    def discharge(self, human):
+        self.humans.remove(human)
+        human.location = human.household
+
