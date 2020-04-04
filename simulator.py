@@ -7,7 +7,7 @@ import numpy as np
 from collections import defaultdict
 import datetime
 
-from utils import _normalize_scores, _get_random_age, _draw_random_discreet_gaussian, _json_serialize
+from utils import _normalize_scores, _get_random_age, _get_random_sex, _get_preexisting_conditions, _draw_random_discreet_gaussian, _json_serialize
 from config import *  # PARAMETERS
 
 
@@ -171,6 +171,7 @@ class Event:
                     'other_carefullness': human1.carefullness,
                     'other_wearing_mask': human1.wearing_mask,
                     'other_is_infected': human1.is_sick,
+                    'preexisting_conditions': human1.preexisting_conditions,
                     'other_infection_timestamp': human1.infection_timestamp,
                     'other_infectiousness': human1.infectiousness,
                     'other_reported_symptoms': human1.reported_symptoms,
@@ -182,6 +183,7 @@ class Event:
                     'human_id': human2.name,
                     'age': human2.age,
                     'carefullness': human2.carefullness,
+                    'preexisting_conditions': human2.preexisting_conditions,
                     'wearing_mask': human2.wearing_mask,
                     'is_infected': human2.is_sick,
                     'infection_timestamp': human2.infection_timestamp,
@@ -263,8 +265,8 @@ class Human(object):
         self.events = []
         self.name = name
         self.age = _get_random_age()
-        self.gender = _get_random_gender()
-        self.preexisting_conditions = _get_preexisting_conditions(age, gender)
+        self.sex = _get_random_sex()
+        self.preexisting_conditions = _get_preexisting_conditions(self.age, self.sex)
 
 
         # probability of being asymptomatic is basically 50%, but a bit less if you're older
