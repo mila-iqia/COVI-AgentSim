@@ -98,6 +98,7 @@ class Event:
     encounter = 'encounter'
     symptom_start = 'symptom_start'
     contamination = 'contamination'
+    recovery = 'recovery'
 
     @staticmethod
     def members():
@@ -232,6 +233,23 @@ class Event:
             }
         )
 
+    @staticmethod
+    def log_recovery(human, time):
+        human.events.append(
+            {
+                'human_id': human.name,
+                'event_type': Event.recovery,
+                'time': time,
+                'payload': {
+                    'observed': {},
+                    'unobserved': {
+                        'recovered': not human.death,
+                        'death': human.death
+                    }
+                }
+            }
+        )
+
 
 class Visits:
     parks = defaultdict(int)
@@ -260,7 +278,8 @@ class Human(object):
     actions = {
         'shopping': 1,
         'at_home': 3,
-        'exercise': 4
+        'exercise': 4,
+        'at_hospital': 5
     }
 
     def __init__(self, env, name, infection_timestamp, household, workplace, hospital, age=35, rho=0.3, gamma=0.21, symptoms=None,
@@ -269,6 +288,7 @@ class Human(object):
         self.events = []
         self.name = name
         self.age = _get_random_age()
+        self.death = False
 
         # probability of being asymptomatic is basically 50%, but a bit less if you're older
         # and a bit more if you're younger
@@ -596,6 +616,11 @@ class Human(object):
             if random.random() < location.contamination_proba():
                 self.infection_timestamp = self.env.timestamp
                 Event.log_contaminate(self, self.env.timestamp)
+        if location.location_type == 'hospital':
+            if random.random() > location.recovery_proba():
+                self.death = True
+            Event.log_recovery(self, self.env.timestamp)
+
         yield self.env.timeout(duration / TICK_MINUTE)
         location.humans.remove(self)
 
@@ -635,10 +660,12 @@ class Human(object):
 
 class Hospital(Location):
 
-    def __init__(self, env, capacity, name='vgh', location_type='hospital', lat=None, lon=None, cont_prob=None):
+    def __init__(self, env, capacity, name='vgh', location_type='hospital', lat=None, lon=None, cont_prob=None,
+                 recovery_prob=0.8):
         super().__init__(env, capacity, name, location_type, lat, lon, cont_prob)
         self.ventilators_in_use = 0
         self.total_ventilators = 10
+        self.recovery_prob = recovery_prob
 
     @property
     def vacancy(self):
@@ -657,4 +684,7 @@ class Hospital(Location):
     def discharge(self, human):
         self.humans.remove(human)
         human.location = human.household
+
+    def recovery_proba(self):
+        return self.recovery_prob
 
