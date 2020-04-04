@@ -77,6 +77,7 @@ class Human(object):
         self.has_logged_symptoms = False
         self.has_logged_test = False
         self.n_infectious_contacts = 0
+        self.last_state = self.state
 
         # habits
         self.avg_shopping_time = _draw_random_discreet_gaussian(AVG_SHOP_TIME_MINUTES, SCALE_SHOP_TIME_MINUTES, self.rng)
@@ -249,6 +250,17 @@ class Human(object):
         timedelta /= datetime.timedelta(days=1) # convert to float days
         self.r0.append(self.n_infectious_contacts/timedelta)
 
+    @property
+    def state(self):
+        return [int(self.is_susceptible), int(self.is_exposed), int(self.is_infectious), int(self.is_removed)]
+
+    def assert_state_changes(self):
+        next_state = {0:1, 1:2, 2:0}
+        assert sum(self.state) == 1, f"invalid compartment for human:{self.name}"
+        if self.last_state != self.state:
+            assert next_state[self.last_state.index(1)] == self.state.index(1), f"invalid compartment transition for human:{self.name}"
+            self.last_state = self.state
+
     def run(self, city):
         """
            1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24
@@ -256,6 +268,7 @@ class Human(object):
         """
         self.household.humans.add(self)
         while True:
+
 
             if self.is_infectious and self.has_logged_symptoms is False:
                 Event.log_symptom_start(self, self.env.timestamp, True)
@@ -282,20 +295,23 @@ class Human(object):
 
                 Event.log_recovery(self, self.env.timestamp, dead)
 
+            self.assert_state_changes()
+
             # Mobility
-            hour = self.env.hour_of_day()
+            hour, day = self.env.hour_of_day(), self.env.day_of_week()
             if not WORK_FROM_HOME and not self.env.is_weekend() and hour == self.work_start_hour:
                 yield self.env.process(self.excursion(city, "work"))
 
-            elif hour == self.shopping_hours and self.env.day_of_week() == self.shopping_days:
+            elif hour == self.shopping_hours and day == self.shopping_days:
                 yield self.env.process(self.excursion(city, "shopping"))
 
-            elif hour == self.exercise_hours and self.env.day_of_week() == self.exercise_days:
+            elif hour == self.exercise_hours and day == self.exercise_days:
                 yield  self.env.process(self.excursion(city, "exercise"))
 
             elif self.rng.random() < 0.05 and self.env.is_weekend():
                 yield  self.env.process(self.excursion(city, "leisure"))
 
+            # start from house all the time
             yield self.env.process(self.at(self.household, 60))
 
     ############################## MOBILITY ##################################
@@ -378,7 +394,7 @@ class Human(object):
             distance = self.rng.randint(50, 1000)
             t_near = min(self.leaving_time, h.leaving_time) - max(self.start_time, h.start_time)
             is_exposed = False
-            if h.is_infectious and distance <= 200 and t_near * TICK_MINUTE > 2 :
+            if h.is_infectious and distance <= 200 and t_near * TICK_MINUTE > 2 and self.rng.random() < location.contamination_probability:
                 if self.is_susceptible:
                     is_exposed = True
                     h.n_infectious_contacts+=1

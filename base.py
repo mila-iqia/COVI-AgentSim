@@ -66,14 +66,15 @@ class Location(simpy.Resource):
         self.location_type = location_type
         self.cont_prob = cont_prob
 
-    def sick_human(self):
-        return any([h.is_sick for h in self.humans])
+    def infectious_human(self):
+        return any([h.is_infectious for h in self.humans])
 
     def __repr__(self):
-        return f"{self.location_type}:{self.name} - Total number of people in {self.location_type}:{len(self.humans)} - sick:{self.sick_human()}"
+        return f"{self.name} - occ:{len(self.humans)}/{self.capacity} - I:{self.infectious_human()}"
 
-    def contamination_proba(self):
-        if not self.sick_human():
+    @property
+    def contamination_probability(self):
+        if not self.infectious_human():
             return 0
         return self.cont_prob
 

@@ -115,11 +115,11 @@ class Human(object):
 
     @property
     def is_exposed(self):
-        return self.infection_timestamp is not None and self.env.timestamp - self.infection_timestamp < datetime.timedelta(days=AVERAGE_INCUBATION_DAYS)
+        return self.infection_timestamp is not None and self.env.timestamp - self.infection_timestamp < datetime.timedelta(days=AVG_INCUBATION_DAYS)
 
     @property
     def is_infectious(self):
-        return self.infection_timestamp is not None and self.env.timestamp - self.infection_timestamp >= datetime.timedelta(days=AVERAGE_INCUBATION_DAYS)
+        return self.infection_timestamp is not None and self.env.timestamp - self.infection_timestamp >= datetime.timedelta(days=AVG_INCUBATION_DAYS)
 
     @property
     def is_removed(self):
@@ -147,7 +147,7 @@ class Human(object):
                 Event.log_test(self, self.env.timestamp, True)
                 assert self.has_logged_symptoms is True
 
-            if self.is_infectious and self.env.timestamp - self.infection_timestamp >= datetime.timedelta(days=RECOVERY_DAYS):
+            if self.is_infectious and self.env.timestamp - self.infection_timestamp >= datetime.timedelta(days=AVG_RECOVERY_DAYS):
                 # self.recovered_timestamp = self.env.timestamp
                 self.recovered_timestamp = datetime.datetime.max
                 self.update_r(self.env.timestamp - self.infection_timestamp)
