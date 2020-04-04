@@ -43,10 +43,11 @@ class Env(simpy.Environment):
 
 class City(object):
 
-    def __init__(self, stores, parks, humans, miscs):
+    def __init__(self, stores, parks, hospitals, humans, miscs):
         self.stores = stores
         self.parks = parks
         self.humans = humans
+        self.hospitals = hospitals
         self.miscs = miscs
         self._compute_preferences()
 
@@ -62,7 +63,7 @@ class City(object):
         """ compute preferred distribution of each human for park, stores, etc."""
         for h in self.humans:
             h.stores_preferences = [(self.compute_distance(h.household, s) + 1e-1) ** -1 for s in self.stores]
-            h.parks_preferences = [(self.compute_distance(h.household, s) + 1e-1) ** -1 for s in self.parks]
+            h.parks_preferences = [(self.compute_distance(h.household, p) + 1e-1) ** -1 for p in self.parks]
 
 
 class Location(simpy.Resource):
@@ -235,6 +236,7 @@ class Event:
 class Visits:
     parks = defaultdict(int)
     stores = defaultdict(int)
+    hospitals = defaultdict(int)
     miscs = defaultdict(int)
 
     @property
@@ -244,6 +246,10 @@ class Visits:
     @property
     def n_stores(self):
         return len(self.stores)
+
+    @property
+    def n_hospitals(self):
+        return len(self.hospitals)
 
     @property
     def n_miscs(self):
@@ -526,6 +532,9 @@ class Human(object):
             locs = city.stores
             visited_locs = self.visits.stores
 
+        elif location_type == "hospital":
+            raise NotImplementedError("hospital location selection not implemented yet")
+
         elif location_type == "miscs":
             S = self.visits.n_miscs
             self.adjust_gamma = 1.0
@@ -613,3 +622,10 @@ class Human(object):
                 pass
             self.location = self.household
             yield self.env.process(self.stay_at_home())
+
+
+class Hospital(Location):
+
+    def __init__(self, env, capacity, name='vgh', location_type='hospital', lat=None, lon=None, cont_prob=None):
+        super().__init__(env, capacity, name, location_type, lat, lon, cont_prob)
+        self.vacancy = self.capacity - len(self.humans)

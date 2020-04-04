@@ -84,6 +84,17 @@ def run_simu(n_stores=None, n_people=None, n_parks=None, n_misc=None,
         )
         for i in range(int(n_people / 30))
     ]
+    hospitals = [
+        Hospital(
+            env, cont_prob=1,
+            name=f'hospital{i}',
+            location_type='hospital',
+            lat=random.randint(*city_limit[0]),
+            lon=random.randint(*city_limit[1]),
+            capacity=200
+        )
+        for i in range(int(n_people / 1000))
+    ]
     miscs = [
         Location(
             env, cont_prob=1,
@@ -105,7 +116,7 @@ def run_simu(n_stores=None, n_people=None, n_parks=None, n_misc=None,
         )
         for i in range(n_people)]
 
-    city = City(stores=stores, parks=parks, humans=humans, miscs=miscs)
+    city = City(stores=stores, parks=parks, hospitals=hospitals, humans=humans, miscs=miscs)
     monitors = [EventMonitor(f=120)]
 
     # run the simulation
