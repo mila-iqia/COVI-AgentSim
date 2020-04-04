@@ -249,6 +249,7 @@ class Human(object):
     def update_r(self, timedelta):
         timedelta /= datetime.timedelta(days=1) # convert to float days
         self.r0.append(self.n_infectious_contacts/timedelta)
+        self.n_infectious_contacts = 0
 
     @property
     def state(self):
