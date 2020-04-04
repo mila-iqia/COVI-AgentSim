@@ -1,10 +1,11 @@
 from config import TICK_MINUTE
-from simulator import City, Human
+from base import City
+from simulator import Human
 from matplotlib import pyplot as plt
 import json
 import pylab as pl
 import pickle
-from IPython import display
+import numpy as np
 
 from utils import _json_serialize
 
@@ -37,6 +38,30 @@ class StateMonitor(BaseMonitor):
     def dump(self, dest: str = None):
         print(json.dumps(self.data, indent=1))
 
+class SEIRMonitor(BaseMonitor):
+
+    def run(self, env, city: City):
+
+        while True:
+            S, E, I, R = 0, 0, 0, 0
+            R0 = []
+            for h in city.humans:
+                S += h.is_susceptible
+                E += h.is_exposed
+                I += h.is_infectious
+                R += h.is_removed
+                R0 += h.r0
+
+            self.data.append({
+                    'time': env.timestamp,
+                    'susceptible': S,
+                    'exposed': E,
+                    'infectious':I,
+                    'removed':R,
+                    'R': np.mean(R0) if R0 else -0.01
+                    })
+            yield env.timeout(self.f / TICK_MINUTE)
+            # self.plot()
 
 class PlotMonitor(BaseMonitor):
 

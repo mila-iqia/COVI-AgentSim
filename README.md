@@ -24,7 +24,7 @@ pip install -r requirements.txt
 ## How to run it using command line?
 Run the simulator as -
 ```
-python run.py sim --n_people 100 --n_stores 100 --n_parks 10 --n_misc 100 --init_percent_sick 0.01 --outfile data
+python run.py sim --n_people 100 --n_stores 100 --n_parks 10 --n_misc 100 --init_percent_sick 0.01 --outfile data --seed 0
 ```
 
 Output will be in `data.pkl`. It is a `list` of `dict`.
@@ -39,14 +39,15 @@ python run.py test
 ### Parameters
 
 ```
-parser.add_argument( '--n_people', help='population of the city', type=int, default=1000)
-parser.add_argument( '--n_stores', help='number of grocery stores in the city', type=int, default=100)
-parser.add_argument( '--n_parks', help='number of parks in the city', type=int, default=20)
-parser.add_argument( '--n_miscs', help='number of non-essential establishments in the city', type=int, default=100)
-parser.add_argument( '--init_percent_sick', help='% of population initially sick', type=float, default=0.01)
-parser.add_argument( '--simulation_days', help='number of days to run the simulation for', type=int, default=30)
-parser.add_argument( '--outfile', help='filename of the output (file format: .pkl)', type=str, default="")
-parser.add_argument( '--print_progress', help='print the evolution of days', action='store_true')
+@click.option('--n_people', help='population of the city', type=int, default=100)
+@click.option('--n_stores', help='number of grocery stores in the city', type=int, default=100)
+@click.option('--n_parks', help='number of parks in the city', type=int, default=20)
+@click.option('--n_misc', help='number of non-essential establishments in the city', type=int, default=100)
+@click.option('--init_percent_sick', help='% of population initially sick', type=float, default=0.01)
+@click.option('--simulation_days', help='number of days to run the simulation for', type=int, default=30)
+@click.option('--outfile', help='filename of the output (file format: .pkl)', type=str, required=False)
+@click.option('--print_progress', is_flag=True, help='print the evolution of days', default=False)
+@click.option('--seed', help='seed for the process', type=int, default=0)
 ```
 
 ### Accessing Simulation Data
@@ -58,11 +59,18 @@ data = pickle.load(open("data.pkl", 'rb'))
 ## How to run it as a function?
 Although not designed with this usage in mind one can still call it like this
 ```
-from simulate import sim
-data = sim(n_stores=100, n_parks=50, n_people=100, n_misc=100, init_percent_sick=0.01, print_progress=False)
+from run import run_simu
+monitors = run_simu(n_stores=100, n_parks=50, n_people=100, n_misc=100, init_percent_sick=0.01, print_progress=False, seed=0)
 ```
 
 `data` is a `list` of `dict`.
+
+## Base SEIR plots
+Following will require `cufflinks` and `plotly`.
+```
+python run.py base --toy_run
+```
+It will open a browser window with the plot of SEIR curves.
 
 ## Semantics of code
 `Human` class builds people, and `Location` class builds stores, parks, workplaces, households, and non-essential establishments.
@@ -74,7 +82,7 @@ The detailed information about events is in [docs/events.md](docs/events.md)
 ## Contributing
 Please get in touch with me at [pgupta@turing.ac.uk](pgupta@turing.ac.uk). There are several people working, so it will be the best use of everyone's time and effort if we all work on different aspects of this project.
 
-Some areas that need work are listed [here](docs/CONTRIBUTING.md).
+Some areas that need work are listed [here](docs/CONTRIBUTING.md). We track and manage our tasks using [Google Sheets](https://docs.google.com/spreadsheets/d/11t1T66AAVeR6P341nZYP1qwLdvhCkU_EwFwUkyLziLQ/edit?usp=sharing).
 
 ## Collaborators
 [@marco-gires](https://github.com/marco-gires), [@marie-pellat](https://github.com/mariepellat), [@teganmaharaj](https://github.com/teganmaharaj) [@giancarlok](https://github.com/giancarlok)
