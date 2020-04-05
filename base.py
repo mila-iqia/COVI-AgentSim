@@ -57,12 +57,13 @@ class City(object):
 class Location(simpy.Resource):
 
     def __init__(self, env, capacity=simpy.core.Infinity, name='Safeway', location_type='stores', lat=None, lon=None,
-                 cont_prob=None):
+                 area=None, cont_prob=None):
         super().__init__(env, capacity)
         self.humans = set()
         self.name = name
         self.lat = lat
         self.lon = lon
+        self.area = area
         self.location_type = location_type
         self.cont_prob = cont_prob
 
