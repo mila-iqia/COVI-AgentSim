@@ -430,7 +430,7 @@ class Human(object):
                                 )
 
         if location.location_type == 'hospital':
-            if random.random() > location.recovery_proba():
+            if location.ventilator_available() == 0 and self.really_sick:
                 self.death = True
             Event.log_recovery(self, self.env.timestamp, self.death)
 
@@ -458,7 +458,12 @@ class Human(object):
             visited_locs = self.visits.stores
 
         elif location_type == "hospital":
-            raise NotImplementedError("hospital location selection not implemented yet")
+            S = self.visits.n_hospitals
+            self.adjust_gamma = 1.0
+            pool_pref = [(compute_distance(self.location, m) + 1e-1) ** -1 for m in city.hospitals if
+                         m != self.location]
+            locs = city.hospitals
+            visited_locs = self.visits.hospitals
 
         elif location_type == "miscs":
             S = self.visits.n_miscs

@@ -181,7 +181,6 @@ def run_simu(n_stores=None, n_people=None, n_parks=None, n_hospitals=None, n_mis
     for m in monitors:
         env.process(m.run(env, city=city))
     env.run(until=simulation_days * 24 * 60 / TICK_MINUTE)
-    monitors[0].dump(outfile)
     return monitors
 
 

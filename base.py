@@ -100,18 +100,13 @@ class Hospital(Location):
         return self.total_ventilators - self.ventilators_in_use
 
     def admit(self, human):
-        if self.vacancy > 0:
-            self.humans.add(human)
-            human.location = self
-        else:
-            raise ValueError("hospital full")
+        total_symptoms = 9
+        severity = len(human.symptoms()) / total_symptoms
+        duration = severity * 60
+        human.at(self, duration)
 
-    def discharge(self, human):
-        self.humans.remove(human)
-        human.location = human.household
-
-    def recovery_proba(self):
-        return self.recovery_prob
+    def discharge(self, human, household):
+        human.at(household, 60)
 
 
 class Event:
