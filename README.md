@@ -8,8 +8,8 @@ It simulates human mobility along with infectious disease (COVID) spreading in a
 
 Human mobility simulation is based on Spatial-EPR model. More details on this model are [here](https://www.nature.com/articles/ncomms9166) and [here](https://www.nature.com/articles/nphys1760).
 
-The infection spread in this simulator is modeled according to what is know about COVID-19.
-The assumptions about the COVID spread and mobility implemented in the simulator are in the [Google Doc](https://docs.google.com/document/d/1jn8dOXgmVRX62Ux-jBSuReayATrzrd5XZS2LJuQ2hLs/edit?usp=sharing).
+The infection spread in this simulator is modeled according to what is known about COVID-19.
+The assumptions about the COVID-19 spread and mobility implemented in the simulator are in the [Google Doc](https://docs.google.com/document/d/1jn8dOXgmVRX62Ux-jBSuReayATrzrd5XZS2LJuQ2hLs/edit?usp=sharing).
 The same document also details our current understanding of COVID-19.
 Our understanding is based on the published research as well as interactions with the epidemiologists.
 We plan to update the simulator as more and more about COVID-19 will be known.
@@ -70,7 +70,7 @@ Following will require `cufflinks` and `plotly`.
 ```
 python run.py base --toy_run
 ```
-It will open a browser window with the plot of SEIR curves.
+It will open a browser window with the plot of [SEIR curves](https://www.idmod.org/docs/hiv/model-seir.html#seir-and-seirs-models).
 
 ## Semantics of code
 `Human` class builds people, and `Location` class builds stores, parks, workplaces, households, and non-essential establishments.
@@ -80,7 +80,7 @@ It will open a browser window with the plot of SEIR curves.
 The detailed information about events is in [docs/events.md](docs/events.md)
 
 ## Contributing
-Please get in touch with me at [pgupta@turing.ac.uk](pgupta@turing.ac.uk). There are several people working, so it will be the best use of everyone's time and effort if we all work on different aspects of this project.
+Please get in touch with me at [pgupta@turing.ac.uk](pgupta@turing.ac.uk). There are several people working on it, so it will be the best use of everyone's time and effort if we all work on different aspects of this project.
 
 Some areas that need work are listed [here](docs/CONTRIBUTING.md). We track and manage our tasks using [Google Sheets](https://docs.google.com/spreadsheets/d/11t1T66AAVeR6P341nZYP1qwLdvhCkU_EwFwUkyLziLQ/edit?usp=sharing).
 
