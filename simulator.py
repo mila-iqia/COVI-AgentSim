@@ -111,15 +111,11 @@ class Human(object):
         self.exercise_hours = self.rng.choice(range(7, 20), self.number_of_exercise_hours)
 
         #Limiting the number of hours spent shopping per week
-        self.avg_max_shop_per_week = _draw_random_discreet_gaussian(AVG_NUM_SHOP_PER_WEEK, SCALE_NUM_SHOP_PER_WEEK, self.rng)
-        self.scale_max_shop_per_week = _draw_random_discreet_gaussian(AVG_SCALE_NUM_SHOP_PER_WEEK, SCALE_SCALE_NUM_SHOP_PER_WEEK, self.rng)
-        self.max_shop_per_week=_draw_random_discreet_gaussian(self.avg_max_shop_per_week, self.scale_max_shop_per_week , self.rng)
+        self.max_shop_per_week = _draw_random_discreet_gaussian(AVG_MAX_NUM_SHOP_PER_WEEK, SCALE_MAX_NUM_SHOP_PER_WEEK, self.rng)
         self.count_shop=0
 
         #Limiting the number of hours spent exercising per week
-        self.avg_max_exercise_per_week = _draw_random_discreet_gaussian(AVG_NUM_EXERCISE_PER_WEEK, SCALE_NUM_EXERCISE_PER_WEEK, self.rng)
-        self.scale_max_exercise_per_week = _draw_random_discreet_gaussian(AVG_SCALE_NUM_EXERCISE_PER_WEEK, SCALE_SCALE_NUM_EXERCISE_PER_WEEK, self.rng)
-        self.max_exercise_per_week=_draw_random_discreet_gaussian(self.avg_max_exercise_per_week, self.scale_max_exercise_per_week , self.rng)
+        self.max_exercise_per_week = _draw_random_discreet_gaussian(AVG_MAX_NUM_EXERCISE_PER_WEEK, SCALE_MAX_NUM_EXERCISE_PER_WEEK, self.rng)
         self.count_exercise=0
         
         self.work_start_hour = self.rng.choice(range(7, 12))
