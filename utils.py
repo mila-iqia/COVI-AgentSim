@@ -16,12 +16,6 @@ def _get_random_age(rng):
 		age = round(float(draw))
 	return age
 
-def _get_random_area(rng, location_type, num, total_area):
-	perc_dist = {"store":0.15, "misc":0.15, "workplace":0.2, "household":0.3, "park":0.5}
-	area = rng.dirichlet(np.ones(num))*(perc_dist[location_type]*total_area/2)
-	area = np.append(area, rng.dirichlet(np.ones(num))*(perc_dist[location_type]*total_area/2))
-	return area
-
 def _draw_random_discreet_gaussian(avg, scale, rng):
     # https://stackoverflow.com/a/37411711/3413239
     return int(truncnorm(a=-1, b=1, loc=avg, scale=scale).rvs(1, random_state=rng).round().astype(int)[0])

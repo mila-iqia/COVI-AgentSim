@@ -1,6 +1,6 @@
 from monitors import EventMonitor, TimeMonitor, SEIRMonitor
 from base import *
-from utils import _draw_random_discreet_gaussian, _get_random_age, _get_random_area
+from utils import _draw_random_discreet_gaussian, _get_random_age
 import datetime
 import click
 from config import TICK_MINUTE
@@ -88,18 +88,11 @@ def run_simu(n_stores=None, n_people=None, n_parks=None, n_misc=None,
              simulation_days=10,
              outfile=None,
              print_progress=False, seed=0, Human=None):
-
     if Human is None:
         from simulator import Human
     rng = np.random.RandomState(seed)
     env = Env(start_time)
     city_limit = ((0, 1000), (0, 1000))
-    total_area = (city_limit[0][1]-city_limit[0][0])*(city_limit[1][1]-city_limit[1][0])
-    area_dict = {'store':_get_random_area(rng, 'store', n_stores, total_area), 
-                 'park':_get_random_area(rng, 'park',n_parks, total_area),
-                 'misc':_get_random_area(rng, 'misc',n_misc, total_area),
-                 'household':_get_random_area(rng, 'household', int(n_people/2), total_area),
-                 'workplace':_get_random_area(rng, 'workplace', int(n_people/30), total_area)}
     stores = [
         Location(
             env,
@@ -107,7 +100,6 @@ def run_simu(n_stores=None, n_people=None, n_parks=None, n_misc=None,
             cont_prob=0.1,
             location_type='store',
             name=f'store{i}',
-            area = area_dict['store'][i],
             lat=rng.randint(*city_limit[0]),
             lon=rng.randint(*city_limit[1]),
         )
@@ -116,7 +108,6 @@ def run_simu(n_stores=None, n_people=None, n_parks=None, n_misc=None,
         Location(
             env, cont_prob=0.02,
             name=f'park{i}',
-            area = area_dict['park'][i],
             location_type='park',
             lat=rng.randint(*city_limit[0]),
             lon=rng.randint(*city_limit[1])
@@ -128,7 +119,6 @@ def run_simu(n_stores=None, n_people=None, n_parks=None, n_misc=None,
             env, cont_prob=1,
             name=f'household{i}',
             location_type='household',
-            area = area_dict['household'][i],
             lat=rng.randint(*city_limit[0]),
             lon=rng.randint(*city_limit[1]),
         )
@@ -139,7 +129,6 @@ def run_simu(n_stores=None, n_people=None, n_parks=None, n_misc=None,
             env, cont_prob=1,
             name=f'workplace{i}',
             location_type='workplace',
-            area = area_dict['workplace'][i],
             lat=rng.randint(*city_limit[0]),
             lon=rng.randint(*city_limit[1]),
         )
@@ -150,7 +139,6 @@ def run_simu(n_stores=None, n_people=None, n_parks=None, n_misc=None,
             env, cont_prob=1,
             capacity=_draw_random_discreet_gaussian(misc_capacity, int(0.5 * misc_capacity), rng),
             name=f'misc{i}',
-            area = area_dict['misc'][i],
             location_type='misc',
             lat=rng.randint(*city_limit[0]),
             lon=rng.randint(*city_limit[1])
@@ -182,6 +170,7 @@ def run_simu(n_stores=None, n_people=None, n_parks=None, n_misc=None,
     for m in monitors:
         env.process(m.run(env, city=city))
     env.run(until=simulation_days * 24 * 60 / TICK_MINUTE)
+
     return monitors
 
 
