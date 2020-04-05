@@ -94,13 +94,30 @@ class Human(object):
         self.avg_misc_time = _draw_random_discreet_gaussian(AVG_MISC_MINUTES, SCALE_MISC_MINUTES, self.rng)
         self.scale_misc_time = _draw_random_discreet_gaussian(AVG_SCALE_MISC_MINUTES, SCALE_SCALE_MISC_MINUTES, self.rng)
 
-        # TODO: multiple possible days and times & limit these activities in a week
-        self.shopping_days = self.rng.choice(range(7))
-        self.shopping_hours = self.rng.choice(range(7, 20))
+        #getting the number of shopping days and hours from a distribution
+        self.number_of_shopping_days = _draw_random_discreet_gaussian(AVG_NUM_SHOPPING_DAYS, SCALE_NUM_SHOPPING_DAYS, self.rng)
+        self.number_of_shopping_hours = _draw_random_discreet_gaussian(AVG_NUM_SHOPPING_HOURS, SCALE_NUM_SHOPPING_HOURS, self.rng)
 
-        self.exercise_days = self.rng.choice(range(7))
-        self.exercise_hours = self.rng.choice(range(7, 20))
+        #getting the number of exercise days and hours from a distribution
+        self.number_of_exercise_days = _draw_random_discreet_gaussian(AVG_NUM_EXERCISE_DAYS, SCALE_NUM_EXERCISE_DAYS, self.rng)
+        self.number_of_exercise_hours = _draw_random_discreet_gaussian(AVG_NUM_EXERCISE_HOURS, SCALE_NUM_EXERCISE_HOURS, self.rng)
 
+        #Multiple shopping days and hours
+        self.shopping_days = self.rng.choice(range(7), self.number_of_shopping_days)
+        self.shopping_hours = self.rng.choice(range(7, 20), self.number_of_shopping_hours)
+
+        #Multiple exercise days and hours
+        self.exercise_days = self.rng.choice(range(7), self.number_of_exercise_days)
+        self.exercise_hours = self.rng.choice(range(7, 20), self.number_of_exercise_hours)
+
+        #Limiting the number of hours spent shopping per week
+        self.max_shop_per_week = _draw_random_discreet_gaussian(AVG_MAX_NUM_SHOP_PER_WEEK, SCALE_MAX_NUM_SHOP_PER_WEEK, self.rng)
+        self.count_shop=0
+
+        #Limiting the number of hours spent exercising per week
+        self.max_exercise_per_week = _draw_random_discreet_gaussian(AVG_MAX_NUM_EXERCISE_PER_WEEK, SCALE_MAX_NUM_EXERCISE_PER_WEEK, self.rng)
+        self.count_exercise=0
+        
         self.work_start_hour = self.rng.choice(range(7, 12))
 
     def __repr__(self):
@@ -298,14 +315,23 @@ class Human(object):
             self.assert_state_changes()
 
             # Mobility
+
             hour, day = self.env.hour_of_day(), self.env.day_of_week()
+            
+            if day==0:
+                self.count_exercise=0
+                self.count_shop=0
+
+
             if not WORK_FROM_HOME and not self.env.is_weekend() and hour == self.work_start_hour:
                 yield self.env.process(self.excursion(city, "work"))
 
-            elif hour == self.shopping_hours and day == self.shopping_days:
+            elif hour in self.shopping_hours and day in self.shopping_days and self.count_shop<=self.max_shop_per_week:
+                self.count_shop+=1
                 yield self.env.process(self.excursion(city, "shopping"))
 
-            elif hour == self.exercise_hours and day == self.exercise_days:
+            elif hour in self.exercise_hours and day in self.exercise_days and self.count_exercise<=self.max_exercise_per_week:
+                self.count_exercise+=1
                 yield  self.env.process(self.excursion(city, "exercise"))
 
             elif self.rng.random() < 0.05 and self.env.is_weekend():
