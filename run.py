@@ -95,11 +95,12 @@ def run_simu(n_stores=None, n_people=None, n_parks=None, n_misc=None,
     env = Env(start_time)
     city_limit = ((0, 1000), (0, 1000))
     total_area = (city_limit[0][1]-city_limit[0][0])*(city_limit[1][1]-city_limit[1][0])
-    area_dict = {'store':_get_random_area(rng, 'store', n_stores, total_area), 
-                 'park':_get_random_area(rng, 'park',n_parks, total_area),
-                 'misc':_get_random_area(rng, 'misc',n_misc, total_area),
-                 'household':_get_random_area(rng, 'household', int(n_people/2), total_area),
-                 'workplace':_get_random_area(rng, 'workplace', int(n_people/30), total_area)}
+    area_dict = {'store':_get_random_area('store', n_stores, total_area, rng), 
+                 'park':_get_random_area('park',n_parks, total_area, rng),
+                 'misc':_get_random_area('misc',n_misc, total_area, rng),
+                 'household':_get_random_area('household', int(n_people/2), total_area, rng),
+                 'workplace':_get_random_area('workplace', int(n_people/30), total_area, rng)}
+    
     stores = [
         Location(
             env,
