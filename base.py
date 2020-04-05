@@ -1,7 +1,7 @@
 import simpy
 import datetime
 import itertools
-from config import TICK_MINUTE
+from config import TICK_MINUTE, MAX_DAYS_CONTAMINATION
 from utils import compute_distance
 
 class Env(simpy.Environment):
@@ -56,15 +56,20 @@ class City(object):
 
 class Location(simpy.Resource):
 
-    def __init__(self, env, capacity=simpy.core.Infinity, name='Safeway', location_type='stores', lat=None, lon=None,
-                 cont_prob=None):
+    def __init__(self, env, rng, capacity=simpy.core.Infinity, name='Safeway', location_type='stores', lat=None, lon=None,
+                 cont_prob=None, surface_prob = [0.2, 0.2, 0.2, 0.2, 0.2]):
         super().__init__(env, capacity)
         self.humans = set()
         self.name = name
+        self.rng = rng
         self.lat = lat
         self.lon = lon
         self.location_type = location_type
-        self.cont_prob = cont_prob
+        self.social_contact_factor = cont_prob
+        self.env = env
+        self.contamination_timestamp = datetime.datetime.min
+        self.contaminated_surface_probability = surface_prob
+        self.max_day_contamination = 0
 
     def infectious_human(self):
         return any([h.is_infectious for h in self.humans])
@@ -72,11 +77,29 @@ class Location(simpy.Resource):
     def __repr__(self):
         return f"{self.name} - occ:{len(self.humans)}/{self.capacity} - I:{self.infectious_human()}"
 
+    def add_human(self, human):
+        self.humans.add(human)
+        if human.is_infectious:
+            self.contamination_timestamp = self.env.timestamp
+            rnd_surface = float(self.rng.choice(a=MAX_DAYS_CONTAMINATION, size=1, p=self.contaminated_surface_probability))
+            self.max_day_contamination = max(self.max_day_contamination, rnd_surface)
+
+    def remove_human(self, human):
+        self.humans.remove(human)
+
+    @property
+    def is_contaminated(self):
+        return self.env.timestamp - self.contamination_timestamp <= datetime.timedelta(days=self.max_day_contamination)
+
+
     @property
     def contamination_probability(self):
-        if not self.infectious_human():
-            return 0
-        return self.cont_prob
+        if self.is_contaminated:
+            lag = (self.env.timestamp - self.contamination_timestamp)
+            lag /= datetime.timedelta(days=1)
+            p_infection = 1 - lag / self.max_day_contamination # linear decay; &envrionmental_contamination
+            return self.social_contact_factor * p_infection
+        return 0.0
 
     def __hash__(self):
         return hash(self.name)
@@ -114,7 +137,7 @@ class Event:
                             'reported_symptoms': human1.reported_symptoms,
                             'test_results': human1.test_results,
                         },
-                        'human2':{ ## FIXME: i don't think human1 can see this information--> should go in unobserved??
+                        'human2':{
                             'obs_lat': human2.obs_lat,
                             'obs_lon': human2.obs_lon,
                             'age': human2.age,
@@ -124,7 +147,9 @@ class Event:
 
                     },
                     'unobserved':{
-                        'contamination_prob': location.cont_prob,
+                        'contamination_prob': location.contamination_probability,
+                        'social_contact_factor':location.social_contact_factor,
+                        'location_p_infecion': location.contamination_probability / location.social_contact_factor,
                         'human1':{
                             'carefullness': human1.carefullness,
                             'is_infected': human1.is_exposed or human1.is_infectious,
@@ -174,7 +199,9 @@ class Event:
 
                     },
                     'unobserved':{
-                        'contamination_prob': location.cont_prob,
+                        'contamination_prob': location.contamination_probability,
+                        'social_contact_factor':location.social_contact_factor,
+                        'location_p_infecion': location.contamination_probability / location.social_contact_factor,
                         'human1':{
                             'carefullness': human2.carefullness,
                             'is_infected': human2.is_exposed or human2.is_infectious,

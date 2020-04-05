@@ -40,7 +40,10 @@ class Human(object):
 
         # probability of being asymptomatic is basically 50%, but a bit less if you're older
         # and a bit more if you're younger
-        self.asymptomatic = self.rng.rand() > (BASELINE_P_ASYMPTOMATIC - (self.age - 50) * 0.5) / 100
+        self.is_asymptomatic = self.rng.rand() > (BASELINE_P_ASYMPTOMATIC - (self.age - 50) * 0.5) / 100
+        self.asymptomatic_infection_ratio = 0.0
+        if self.is_asymptomatic:
+            self.asymptomatic_infection_ratio = ASYMPTOMATIC_INFECTION_RATIO # draw a beta with the distribution in documents
         self.incubation_days = _draw_random_discreet_gaussian(AVG_INCUBATION_DAYS, SCALE_INCUBATION_DAYS, self.rng)
         self.recovery_days = _draw_random_discreet_gaussian(AVG_RECOVERY_DAYS, SCALE_RECOVERY_DAYS, self.rng) # make it IQR &recovery
 
@@ -169,7 +172,7 @@ class Human(object):
         # probability of being asymptomatic is basically 50%, but a bit less if you're older
         # and a bit more if you're younger
         symptoms = None
-        if self.asymptomatic or self.is_susceptible:
+        if self.is_asymptomatic or self.is_susceptible:
             pass
         else:
             time_since_exposed = self.env.timestamp - self.infection_timestamp
@@ -282,7 +285,7 @@ class Human(object):
                 assert self.has_logged_symptoms is True # FIXME: assumption might not hold
 
             if self.is_infectious and self.env.timestamp - self.infection_timestamp >= datetime.timedelta(days=self.recovery_days):
-                if self.never_recovers:
+                if self.never_recovers or True: # re-infection assumed negligble
                     self.recovered_timestamp = datetime.datetime.max
                     dead = True
                 else:
@@ -383,7 +386,7 @@ class Human(object):
             pass
 
         self.location = location
-        location.humans.add(self)
+        location.add_human(self)
         self.leaving_time = duration + self.env.now
         self.start_time = self.env.now
 
@@ -395,7 +398,10 @@ class Human(object):
             distance = self.rng.randint(50, 1000)
             t_near = min(self.leaving_time, h.leaving_time) - max(self.start_time, h.start_time)
             is_exposed = False
-            if h.is_infectious and distance <= 200 and t_near * TICK_MINUTE > 2 and self.rng.random() < location.contamination_probability:
+            p_infection = self.infectiousness * (h.is_asymptomatic  * self.asymptomatic_infection_ratio  + 1.0 * (not h.is_asymptomatic)) # &prob_infectious
+            x_human = distance <= INFECTION_RADIUS and t_near * TICK_MINUTE > INFECTION_DURATION and self.rng.random() < p_infection
+            x_environment = self.rng.random() < location.contamination_probability # &prob_infection
+            if x_human or x_environment:
                 if self.is_susceptible:
                     is_exposed = True
                     h.n_infectious_contacts+=1
@@ -414,7 +420,7 @@ class Human(object):
                                 )
 
         yield self.env.timeout(duration / TICK_MINUTE)
-        location.humans.remove(self)
+        location.remove_human(self)
 
     def _select_location(self, location_type, city):
         """
