@@ -16,6 +16,13 @@ AVG_INCUBATION_DAYS = 5 # &avg-incubation-days
 SCALE_INCUBATION_DAYS = 1
 AVG_RECOVERY_DAYS = 14
 SCALE_RECOVERY_DAYS = 4
+INFECTION_RADIUS = 200 # cms
+INFECTION_DURATION = 2 # minutes
+
+ASYMPTOMATIC_INFECTION_RATIO = 0.1 # &prob_infectious
+
+# aerosol    copper      cardboard       steel       plastic
+MAX_DAYS_CONTAMINATION = [0.125, 1/3, 1, 2, 3] # &envrionmental contamination
 
 NUM_DAYS_SICK = 10 # @param
 BASELINE_P_ASYMPTOMATIC = 50 # &p-asymptomatic
