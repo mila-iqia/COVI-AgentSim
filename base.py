@@ -118,109 +118,41 @@ class Event:
 
     @staticmethod
     def log_encounter(human1, human2, location, duration, distance, time):
-        human1.events.append(
-            {
-                'human_id': human1.name,
-                'event_type': Event.encounter,
-                'time': time,
-                'payload':{
-                    'observed':{
-                        'duration': duration,
-                        'distance': distance,
-                        'location_type': location.location_type,
-                        'lat': location.lat,
-                        'lon': location.lon,
-                        'human1':{
-                            'obs_lat': human1.obs_lat,
-                            'obs_lon': human1.obs_lon,
-                            'age': human1.age,
-                            'reported_symptoms': human1.reported_symptoms,
-                            'test_results': human1.test_results,
-                        },
-                        'human2':{
-                            'obs_lat': human2.obs_lat,
-                            'obs_lon': human2.obs_lon,
-                            'age': human2.age,
-                            'reported_symptoms': human2.reported_symptoms,
-                            'test_results': human2.test_results,
-                        }
+        h_obs_keys = ['obs_lat', 'obs_lon', 'age', 'reported_symptoms', 'test_results', 'has_app']
+        h_unobs_keys = ['carefullness', 'infectiousness', 'symptoms']
+        loc_obs_keys = ['location_type', 'lat', 'lon']
+        loc_unobs_keys = ['contamination_probability', 'social_contact_factor']
 
-                    },
-                    'unobserved':{
-                        'contamination_prob': location.contamination_probability,
-                        'social_contact_factor':location.social_contact_factor,
-                        'location_p_infecion': location.contamination_probability / location.social_contact_factor,
-                        'human1':{
-                            'carefullness': human1.carefullness,
-                            'is_infected': human1.is_exposed or human1.is_infectious,
-                            'infectiousness': human1.infectiousness,
-                            'symptoms': human1.symptoms,
-                            'has_app': human1.has_app,
-                        },
-                        'human2':{
-                            'carefullness': human2.carefullness,
-                            'is_infected': human2.is_exposed or human2.is_infectious,
-                            'infectiousness': human2.infectiousness,
-                            'symptoms': human2.symptoms,
-                            'has_app': human2.has_app,
-                        }
+        obs, unobs = [], []
+        for human in [human1, human2]:
+            o = {key:getattr(human, key) for key in h_obs_keys}
+            obs.append(o)
 
-                    }
-                }
-            }
-        )
+            u = {key:getattr(human, key) for key in h_unobs_keys}
+            u['is_infected'] = human.is_exposed or human.is_infectious
+            unobs.append(u)
 
-        human2.events.append(
-            {
-                'time': time,
-                'event_type': Event.encounter,
-                'human_id': human2.name,
-                'payload':{
-                    'observed':{
-                        'duration': duration,
-                        'distance': distance,
-                        'location_type': location.location_type,
-                        'lat': location.lat,
-                        'lon': location.lon,
-                        'human1':{
-                            'obs_lat': human2.obs_lat,
-                            'obs_lon': human2.obs_lon,
-                            'age': human2.age,
-                            'reported_symptoms': human2.reported_symptoms,
-                            'test_results': human2.test_results,
-                        },
-                        'human2':{ ## FIXME: i don't think human1 can see this information--> should go in unobserved??
-                            'obs_lat': human1.obs_lat,
-                            'obs_lon': human1.obs_lon,
-                            'age': human1.age,
-                            'reported_symptoms': human1.reported_symptoms,
-                            'test_results': human1.test_results,
-                        }
+        loc_obs = {key:getattr(location, key) for key in loc_obs_keys}
+        loc_unobs = {key:getattr(location, key) for key in loc_unobs_keys}
+        loc_unobs['location_p_infection'] = location.contamination_probability / location.social_contact_factor
+        other_obs = {'duration':duration, 'distance':distance}
 
-                    },
-                    'unobserved':{
-                        'contamination_prob': location.contamination_probability,
-                        'social_contact_factor':location.social_contact_factor,
-                        'location_p_infecion': location.contamination_probability / location.social_contact_factor,
-                        'human1':{
-                            'carefullness': human2.carefullness,
-                            'is_infected': human2.is_exposed or human2.is_infectious,
-                            'infectiousness': human2.infectiousness,
-                            'symptoms': human2.symptoms,
-                            'has_app': human2.has_app,
-                        },
-                        'human2':{
-                            'carefullness': human1.carefullness,
-                            'is_infected': human1.is_exposed or human1.is_infectious,
-                            'infectiousness': human1.infectiousness,
-                            'symptoms': human1.symptoms,
-                            'has_app': human1.has_app,
-                        }
+        both_have_app = human1.has_app and human2.has_app
+        for i, human in [(0, human1), (1, human2)]:
+            if both_have_app:
+                obs_payload = {**loc_obs, **other_obs, 'human1':obs[i], 'human2':obs[1-i]}
+                unobs_payload = {**loc_unobs, 'human1':unobs[i], 'human2':unobs[1-i]}
+            else:
+                obs_payload = {}
+                unobs_payload = { **loc_obs, **loc_unobs, **other_obs, 'human1':{**obs[i], **unobs[i]},
+                                    'human2': {**obs[1-i], **unobs[1-i]} }
 
-                    }
-                }
-            }
-        )
+            human.events.append({
+                'human_id':human.name,
+                'event_type':Event.encounter,
+                'time':time,
+                'payload':{ 'observed':obs_payload, 'unobserved':unobs_payload }
+            })
 
     @staticmethod
     def log_test(human, result, time):
