@@ -6,7 +6,8 @@ import numpy as np
 from collections import defaultdict
 import datetime
 
-from utils import _normalize_scores, _get_random_age, _draw_random_discreet_gaussian, _json_serialize
+from utils import _normalize_scores, _get_random_age, _draw_random_discreet_gaussian, _json_serialize,\
+    _sample_viral_load
 from config import *  # PARAMETERS
 from base import *
 
@@ -46,6 +47,7 @@ class Human(object):
             self.asymptomatic_infection_ratio = ASYMPTOMATIC_INFECTION_RATIO # draw a beta with the distribution in documents
         self.incubation_days = _draw_random_discreet_gaussian(AVG_INCUBATION_DAYS, SCALE_INCUBATION_DAYS, self.rng)
         self.recovery_days = _draw_random_discreet_gaussian(AVG_RECOVERY_DAYS, SCALE_RECOVERY_DAYS, self.rng) # make it IQR &recovery
+        self.viral_load_dist = _sample_viral_load()
 
         self.household = household
         self.workplace = workplace
@@ -154,10 +156,6 @@ class Human(object):
         return self.recovered_timestamp == datetime.datetime.max
 
     @property
-    def is_contagious(self):
-        return self.viral_load
-
-    @property
     def test_results(self):
         if self.symptoms == None:
             return None
@@ -240,12 +238,12 @@ class Human(object):
 
     @property
     def viral_load(self):
+        """ Calculates the elapsed time since infection, returning this person's current viral load"""
         if self.is_infectious:
-            days_exposed = (self.env.timestamp - self.infection_timestamp).days
-            if days_exposed > len(VIRAL_LOAD_CURVE):
-                return 0
-            else:
-                return VIRAL_LOAD_CURVE[days_exposed - 1]
+            time_exposed = (self.env.timestamp - self.infection_timestamp)
+            time_exposed_days = time_exposed.days + time_exposed.seconds / 86400 #(seconds in a day)
+            cur_viral_load = self.viral_load_dist.pdf(time_exposed_days)
+            return cur_viral_load
         else:
             return 0
 
@@ -423,7 +421,9 @@ class Human(object):
             distance =  np.sqrt(int(area/len(self.location.humans))) + self.rng.randint(MIN_DIST_ENCOUNTER, MAX_DIST_ENCOUNTER)
             t_near = min(self.leaving_time, h.leaving_time) - max(self.start_time, h.start_time)
             is_exposed = False
-            p_infection = h.viral_load * (h.is_asymptomatic  * h.asymptomatic_infection_ratio  + 1.0 * (not h.is_asymptomatic)) # &prob_infectious
+            # FIXME: This is a hack to take into account the difference between asymptomatic transmission rate and symptomatic transmission rate.
+            # The fix should be handled by better modelling the infectiousness of a person as a function of viral_load
+            p_infection = h.viral_load  * (self.is_asymptomatic * self.asymptomatic_infection_ratio + 1.0 * (not self.is_asymptomatic))
             x_human = distance <= INFECTION_RADIUS and t_near * TICK_MINUTE > INFECTION_DURATION and self.rng.random() < p_infection
             x_environment = self.rng.random() < location.contamination_probability # &prob_infection
             if x_human or x_environment:
