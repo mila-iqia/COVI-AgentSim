@@ -27,7 +27,7 @@ class Event:
         pass
 
     @staticmethod
-    def log_symptom_start(human, time, covid=True):
+    def log_symptom_start(human, covid, time):
         pass
 
     @staticmethod
@@ -140,11 +140,11 @@ class Human(object):
                     self.last_state = self.state
 
             if self.is_infectious and self.has_logged_symptoms is False:
-                Event.log_symptom_start(self, self.env.timestamp, True)
+                Event.log_symptom_start(self, True, self.env.timestamp)
                 self.has_logged_symptoms = True
 
             if self.is_infectious and self.env.timestamp - self.infection_timestamp > datetime.timedelta(days=TEST_DAYS):
-                Event.log_test(self, self.env.timestamp, True)
+                Event.log_test(self, True, self.env.timestamp)
                 assert self.has_logged_symptoms is True
 
             if self.is_infectious and self.env.timestamp - self.infection_timestamp >= datetime.timedelta(days=AVG_RECOVERY_DAYS):
