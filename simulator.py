@@ -462,11 +462,6 @@ class Human(object):
                                 # latent={"infected":self.is_exposed}
                                 )
 
-        if location.location_type == 'hospital':
-            if location.ventilator_available() == 0 and self.really_sick:
-                self.death = True
-            Event.log_recovery(self, self.env.timestamp, self.death)
-
         yield self.env.timeout(duration / TICK_MINUTE)
         location.remove_human(self)
 
