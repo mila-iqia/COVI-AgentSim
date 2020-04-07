@@ -72,6 +72,7 @@ class Location(simpy.Resource):
         self.contamination_timestamp = datetime.datetime.min
         self.contaminated_surface_probability = surface_prob
         self.max_day_contamination = 0
+        self.location_contamination = cont_prob
 
     def infectious_human(self):
         return any([h.is_infectious for h in self.humans])
@@ -112,25 +113,7 @@ class Hospital(Location):
     def __init__(self, env, capacity, name='vgh', location_type='hospital', lat=None, lon=None, cont_prob=None,
                  recovery_prob=0.8):
         super().__init__(env, capacity, name, location_type, lat, lon, cont_prob)
-        self.ventilators_in_use = 0
-        self.total_ventilators = 10
-        self.recovery_prob = recovery_prob
-
-    @property
-    def vacancy(self):
-        return self.capacity - len(self.humans)
-
-    def ventilator_available(self):
-        return self.total_ventilators - self.ventilators_in_use
-
-    def admit(self, human):
-        total_symptoms = 9
-        severity = len(human.symptoms()) / total_symptoms
-        duration = severity * 60
-        human.at(self, duration)
-
-    def discharge(self, human, household):
-        human.at(household, 60)
+        self.location_contamination = 1
 
 
 class Event:

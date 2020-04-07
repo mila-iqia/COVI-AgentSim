@@ -295,7 +295,7 @@ class Human(object):
             self.last_state = self.state
 
     def go_to_hopsital(self):
-        t = _draw_random_discreet_gaussian(self.avg_hospital_hours, self.scale_hospital_hours, self.rng)
+        t = self.infectiousness * 15 * 24 * 60 # TODO based on probability of infectiousness stay in hospital maximum 15 days
         yield self.env.process(self.at(self.hospital, t))
 
     def run(self, city):
@@ -305,7 +305,7 @@ class Human(object):
         """
         self.household.humans.add(self)
         while True:
-            if self.really_sick:
+            if 'severe' in self.symptoms:
                 yield self.env.process(self.go_to_hopsital())
 
             if self.is_infectious and self.has_logged_symptoms is False:
