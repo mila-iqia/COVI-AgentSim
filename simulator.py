@@ -120,7 +120,7 @@ class Human(object):
         #Limiting the number of hours spent exercising per week
         self.max_exercise_per_week = _draw_random_discreet_gaussian(AVG_MAX_NUM_EXERCISE_PER_WEEK, SCALE_MAX_NUM_EXERCISE_PER_WEEK, self.rng)
         self.count_exercise=0
-        
+
         self.work_start_hour = self.rng.choice(range(7, 12))
 
     def __repr__(self):
@@ -290,7 +290,6 @@ class Human(object):
         self.household.humans.add(self)
         while True:
 
-
             if self.is_infectious and self.has_logged_symptoms is False:
                 Event.log_symptom_start(self, self.env.timestamp, True)
                 self.has_logged_symptoms = True
@@ -321,7 +320,7 @@ class Human(object):
             # Mobility
 
             hour, day = self.env.hour_of_day(), self.env.day_of_week()
-            
+
             if day==0:
                 self.count_exercise=0
                 self.count_shop=0
@@ -424,7 +423,7 @@ class Human(object):
             distance =  np.sqrt(int(area/len(self.location.humans))) + self.rng.randint(MIN_DIST_ENCOUNTER, MAX_DIST_ENCOUNTER)
             t_near = min(self.leaving_time, h.leaving_time) - max(self.start_time, h.start_time)
             is_exposed = False
-            p_infection = self.infectiousness * (h.is_asymptomatic  * self.asymptomatic_infection_ratio  + 1.0 * (not h.is_asymptomatic)) # &prob_infectious
+            p_infection = h.infectiousness * (h.is_asymptomatic  * h.asymptomatic_infection_ratio  + 1.0 * (not h.is_asymptomatic)) # &prob_infectious
             x_human = distance <= INFECTION_RADIUS and t_near * TICK_MINUTE > INFECTION_DURATION and self.rng.random() < p_infection
             x_environment = self.rng.random() < location.contamination_probability # &prob_infection
             if x_human or x_environment:
