@@ -16,7 +16,7 @@ class FullUnitTest(unittest.TestCase):
         """
         with NamedTemporaryFile() as f:
             n_people = 100
-            run_simu(
+            monitors = run_simu(
                 n_stores=2,
                 n_people=n_people,
                 n_parks=1,
@@ -27,6 +27,7 @@ class FullUnitTest(unittest.TestCase):
                 simulation_days=30,
                 outfile=f.name
             )
+            monitors[0].dump(f.name)
             f.seek(0)
 
             # Ensure

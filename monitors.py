@@ -58,7 +58,7 @@ class SEIRMonitor(BaseMonitor):
                     'exposed': E,
                     'infectious':I,
                     'removed':R,
-                    'R': np.mean(R0) if R0 else -0.01
+                    'R': np.mean(R0[-20:]) if R0 else -0.01
                     })
             yield env.timeout(self.f / TICK_MINUTE)
             # self.plot()
