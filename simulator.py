@@ -423,7 +423,7 @@ class Human(object):
             is_exposed = False
             # FIXME: This is a hack to take into account the difference between asymptomatic transmission rate and symptomatic transmission rate.
             # The fix should be handled by better modelling the infectiousness of a person as a function of viral_load
-            p_infection = h.viral_load  * (self.is_asymptomatic * self.asymptomatic_infection_ratio + 1.0 * (not self.is_asymptomatic))
+            p_infection = h.viral_load  * (h.is_asymptomatic * h.asymptomatic_infection_ratio + 1.0 * (not h.is_asymptomatic))
             x_human = distance <= INFECTION_RADIUS and t_near * TICK_MINUTE > INFECTION_DURATION and self.rng.random() < p_infection
             x_environment = self.rng.random() < location.contamination_probability # &prob_infection
             if x_human or x_environment:
