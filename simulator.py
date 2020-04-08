@@ -173,16 +173,6 @@ class Human(object):
                 return None
 
     @property
-    def reported_symptoms(self):
-        if self.symptoms is None or self.test_results is None or not self.human.has_app:
-            return None
-        else:
-            if self.rng.rand() < self.carefullness:
-                return self.symptoms
-            else:
-                return None
-
-    @property
     def symptoms(self):
         # probability of being asymptomatic is basically 50%, but a bit less if you're older
         # and a bit more if you're younger
@@ -289,12 +279,12 @@ class Human(object):
         while True:
 
             if self.is_infectious and self.has_logged_symptoms is False:
-                Event.log_symptom_start(self, self.env.timestamp, True)
+                Event.log_symptom_start(self, True, self.env.timestamp)
                 self.has_logged_symptoms = True
 
             if self.is_infectious and self.env.timestamp - self.infection_timestamp > datetime.timedelta(days=TEST_DAYS) and not self.has_logged_test:
                 result = self.rng.random() > 0.8
-                Event.log_test(self, self.env.timestamp, result)
+                Event.log_test(self, result, self.env.timestamp)
                 self.has_logged_test = True
                 assert self.has_logged_symptoms is True # FIXME: assumption might not hold
 

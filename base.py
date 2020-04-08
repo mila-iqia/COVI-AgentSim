@@ -174,7 +174,7 @@ class Event:
         )
 
     @staticmethod
-    def log_symptom_start(human, time, covid=True):
+    def log_symptom_start(human, covid, time):
         human.events.append(
             {
                 'human_id': human.name,
