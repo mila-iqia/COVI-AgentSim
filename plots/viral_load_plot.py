@@ -1,3 +1,6 @@
+import sys
+import os
+sys.path.append(os.getcwd())
 import numpy as np
 from matplotlib import pyplot as plt
 from utils import _sample_viral_load
@@ -6,9 +9,10 @@ from utils import _sample_viral_load
 NUM_DAYS = 11
 viral_loads = []
 x = np.linspace(1, NUM_DAYS, NUM_DAYS)
+rng = np.random.RandomState(1)
 
 for i in range(100):
-    vals = _sample_viral_load().pdf(x)
+    vals = _sample_viral_load(rng).pdf(x)
     viral_loads.append(vals)
 viral_loads = np.array(viral_loads)
 
