@@ -4,10 +4,10 @@ import datetime
 import math
 
 
-def _sample_viral_load(shape_mean=4.5, shape_std=.15, scale_mean=1., scale_std=.15):
+def _sample_viral_load(rng, shape_mean=4.5, shape_std=.15, scale_mean=1., scale_std=.15):
 	""" This function samples the shape and scale of a gamma distribution, then returns it"""
-	shape = np.random.normal(shape_mean, shape_std)
-	scale = np.random.normal(scale_mean, scale_std)
+	shape = rng.normal(shape_mean, shape_std)
+	scale = rng.normal(scale_mean, scale_std)
 	return gamma(shape, scale=scale)
 
 def _normalize_scores(scores):

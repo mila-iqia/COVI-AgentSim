@@ -47,7 +47,7 @@ class Human(object):
             self.asymptomatic_infection_ratio = ASYMPTOMATIC_INFECTION_RATIO # draw a beta with the distribution in documents
         self.incubation_days = _draw_random_discreet_gaussian(AVG_INCUBATION_DAYS, SCALE_INCUBATION_DAYS, self.rng)
         self.recovery_days = _draw_random_discreet_gaussian(AVG_RECOVERY_DAYS, SCALE_RECOVERY_DAYS, self.rng) # make it IQR &recovery
-        self.viral_load_dist = _sample_viral_load()
+        self.viral_load_dist = _sample_viral_load(self.rng)
 
         self.household = household
         self.workplace = workplace
