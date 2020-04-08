@@ -175,16 +175,6 @@ class Human(object):
                 return None
 
     @property
-    def reported_symptoms(self):
-        if self.symptoms is None or self.test_results is None or not self.human.has_app:
-            return None
-        else:
-            if self.rng.rand() < self.carefullness:
-                return self.symptoms
-            else:
-                return None
-
-    @property
     def symptoms(self):
         # probability of being asymptomatic is basically 50%, but a bit less if you're older
         # and a bit more if you're younger
