@@ -5,6 +5,7 @@ import itertools
 import numpy as np
 from collections import defaultdict
 import datetime
+import math
 
 from utils import _normalize_scores, _get_random_age, _draw_random_discreet_gaussian, _json_serialize
 from config import *  # PARAMETERS
@@ -73,7 +74,7 @@ class Human(object):
         self.infection_timestamp = infection_timestamp
         self.recovered_timestamp = datetime.datetime.min
         self.really_sick = self.is_exposed and self.rng.random() >= 0.9
-        self.never_recovers = self.rng.random() >= 0.99
+        self.never_recovers = self.rng.random() <= P_NEVER_RECOVERS[min(math.floor(self.age/10),8)]
 
         # counters and memory
         self.r0 = []
