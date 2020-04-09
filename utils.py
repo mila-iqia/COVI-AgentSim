@@ -11,14 +11,15 @@ def _sample_viral_load_gamma(rng, shape_mean=4.5, shape_std=.15, scale_mean=1., 
 	return gamma(shape, scale=scale)
 
 
-def _sample_viral_load_piecewise(rng):
+def _sample_viral_load_piecewise(rng, age=40):
 	""" This function samples a piece-wise linear viral load model which increases, plateaus, and drops """
 	# https://stackoverflow.com/questions/18441779/how-to-specify-upper-and-lower-limits-when-using-numpy-random-normal
 	plateau_start = truncnorm((PLATEAU_START_CLIP_LOW - PLATEAU_START_MEAN)/PLATEAU_START_STD, (PLATEAU_START_CLIP_HIGH - PLATEAU_START_MEAN) / PLATEAU_START_STD, loc=PLATEAU_START_MEAN, scale=PLATEAU_START_STD).rvs(1, random_state=rng)
 	plateau_end = plateau_start + truncnorm((PLATEAU_DURATION_CLIP_LOW - PLATEAU_DURATION_MEAN)/PLEATEAU_DURATION_STD,
 											(PLATEAU_DURATION_CLIP_HIGH - PLATEAU_DURATION_MEAN) / PLEATEAU_DURATION_STD,
 											loc=PLATEAU_DURATION_MEAN, scale=PLEATEAU_DURATION_STD).rvs(1, random_state=rng)
-	recovered = plateau_end + truncnorm((plateau_end - RECOVERY_MEAN) / RECOVERY_STD,
+	recovered = plateau_end + ((age/10)-1) # age is a determining factor for the recovery time
+	recovered = recovered + truncnorm((plateau_end - RECOVERY_MEAN) / RECOVERY_STD,
 										(RECOVERY_CLIP_HIGH - RECOVERY_MEAN) / RECOVERY_STD,
 										loc=RECOVERY_MEAN, scale=RECOVERY_STD).rvs(1, random_state=rng)
 	plateau_height = rng.uniform(MIN_VIRAL_LOAD, MAX_VIRAL_LOAD)
@@ -54,7 +55,6 @@ def _get_all_symptoms_array(viral_load_plateau_start, viral_load_plateau_end,
 							rng, preexisting_conditions):
         # Before showing symptoms
         symptoms_array = [[] for i in range(incubation_days)]
-
         # Before the plateau
         for day in range(round(viral_load_plateau_start)-1):
             symptoms = []
@@ -102,7 +102,7 @@ def _get_all_symptoms_array(viral_load_plateau_start, viral_load_plateau_end,
             symptoms_array.append(symptoms)
 
         # After the plateau
-        for day in range(round(viral_load_recovered - viral_load_plateau_end + ((age/10)-1)) ): #takes longer to recover the older you are
+        for day in range(round(viral_load_recovered - viral_load_plateau_end)):
             symptoms = []
             if really_sick or extremely_sick:
                 symptoms.append('moderate')           
