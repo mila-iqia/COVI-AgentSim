@@ -6,8 +6,7 @@ import numpy as np
 from collections import defaultdict
 import datetime
 
-from utils import _normalize_scores, _get_random_age, _draw_random_discreet_gaussian, _json_serialize,\
-    _sample_viral_load_piecewise
+from utils import _normalize_scores, _get_random_age, _get_random_sex, _get_preexisting_conditions, _draw_random_discreet_gaussian, _json_serialize, _sample_viral_load_piecewise, _get_random_area
 from config import *  # PARAMETERS
 from base import *
 
@@ -36,8 +35,12 @@ class Human(object):
         self.env = env
         self.events = []
         self.name = name
-        self.age = age
+
+        self.age = _get_random_age(self.rng)
+        self.sex = _get_random_sex(self.rng)
+        self.preexisting_conditions = _get_preexisting_conditions(self.age, self.sex, self.rng)
         self.rng = rng
+
 
         # probability of being asymptomatic is basically 50%, but a bit less if you're older
         # and a bit more if you're younger
@@ -60,9 +63,9 @@ class Human(object):
 
         # &carefullness
         if self.rng.rand() < P_CAREFUL_PERSON:
-            self.carefullness = round(self.rng.normal(75, 10))
+            self.carefullness = round(self.rng.normal(55, 10)) + self.age/2
         else:
-            self.carefullness = round(self.rng.normal(35, 10))
+            self.carefullness = round(self.rng.normal(25, 10)) + self.age/2
 
         age_modifier = 1
         if self.age > 40 or self.age < 12:
