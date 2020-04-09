@@ -10,10 +10,12 @@ from utils import _normalize_scores, _get_random_age, _get_random_sex, _get_pree
 from config import *  # PARAMETERS
 from base import *
 
-class Visits:
-    parks = defaultdict(int)
-    stores = defaultdict(int)
-    miscs = defaultdict(int)
+class Visits(object):
+
+    def __init__(self):
+        self.parks = defaultdict(int)
+        self.stores = defaultdict(int)
+        self.miscs = defaultdict(int)
 
     @property
     def n_parks(self):
