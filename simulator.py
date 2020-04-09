@@ -6,7 +6,7 @@ import numpy as np
 from collections import defaultdict
 import datetime
 
-from utils import _normalize_scores, _get_random_age, _get_random_sex, _get_preexisting_conditions, _draw_random_discreet_gaussian, _json_serialize, _sample_viral_load_piecewise, _get_random_area
+from utils import _normalize_scores, _get_random_age, _get_random_sex, _get_all_symptoms_array, _get_preexisting_conditions, _draw_random_discreet_gaussian, _json_serialize, _sample_viral_load_piecewise, _get_random_area
 from config import *  # PARAMETERS
 from base import *
 
@@ -30,7 +30,7 @@ class Visits:
 
 class Human(object):
 
-    def __init__(self, env, name, age, rng, infection_timestamp, household, workplace, rho=0.3, gamma=0.21, symptoms=None,
+    def __init__(self, env, name, age, rng, infection_timestamp, household, workplace, rho=0.3, gamma=0.21, symptoms=[],
                  test_results=None):
         self.env = env
         self.events = []
@@ -41,18 +41,6 @@ class Human(object):
         self.sex = _get_random_sex(self.rng)
         self.preexisting_conditions = _get_preexisting_conditions(self.age, self.sex, self.rng)
 
-
-
-        # probability of being asymptomatic is basically 50%, but a bit less if you're older
-        # and a bit more if you're younger
-        self.is_asymptomatic = self.rng.rand() > (BASELINE_P_ASYMPTOMATIC - (self.age - 50) * 0.5) / 100
-        self.asymptomatic_infection_ratio = 0.0
-        if self.is_asymptomatic:
-            self.asymptomatic_infection_ratio = ASYMPTOMATIC_INFECTION_RATIO # draw a beta with the distribution in documents
-        self.incubation_days = _draw_random_discreet_gaussian(AVG_INCUBATION_DAYS, SCALE_INCUBATION_DAYS, self.rng)
-        self.recovery_days = _draw_random_discreet_gaussian(AVG_RECOVERY_DAYS, SCALE_RECOVERY_DAYS, self.rng) # make it IQR &recovery
-        self.viral_load_plateau_height, self.viral_load_plateau_start, self.viral_load_plateau_end, self.viral_load_recovered = _sample_viral_load_piecewise(rng)
-
         self.household = household
         self.workplace = workplace
         self.location = household
@@ -61,6 +49,7 @@ class Human(object):
 
         self.visits = Visits()
         self.travelled_recently = self.rng.rand() > 0.9
+
 
         # &carefullness
         if self.rng.rand() < P_CAREFUL_PERSON:
@@ -74,12 +63,30 @@ class Human(object):
         self.has_cold = self.rng.rand() < P_COLD * age_modifier
         self.has_flu = self.rng.rand() < P_FLU * age_modifier
         self.has_app = self.rng.rand() < (P_HAS_APP / age_modifier) + (self.carefullness / 2)
+        self.incubation_days = _draw_random_discreet_gaussian(AVG_INCUBATION_DAYS, SCALE_INCUBATION_DAYS, self.rng)
+
 
         # Indicates whether this person will show severe signs of illness.
         self.infection_timestamp = infection_timestamp
         self.recovered_timestamp = datetime.datetime.min
         self.really_sick = self.is_exposed and self.rng.random() >= 0.9
+        self.extremely_sick = self.really_sick and self.rng.random() >= 0.7 # &severe; 30% of severe cases need ICU
         self.never_recovers = self.rng.random() >= 0.99
+
+        # &symptoms, &viral-load
+        # probability of being asymptomatic is basically 50%, but a bit less if you're older
+        # and a bit more if you're younger
+        self.is_asymptomatic = self.rng.rand() > (BASELINE_P_ASYMPTOMATIC - (self.age - 50) * 0.5) / 100
+        self.asymptomatic_infection_ratio = 0.0
+        if self.is_asymptomatic:
+            self.asymptomatic_infection_ratio = ASYMPTOMATIC_INFECTION_RATIO # draw a beta with the distribution in documents
+        self.recovery_days = _draw_random_discreet_gaussian(AVG_RECOVERY_DAYS, SCALE_RECOVERY_DAYS, self.rng) # make it IQR &recovery
+        self.viral_load_plateau_height, self.viral_load_plateau_start, self.viral_load_plateau_end, self.viral_load_recovered = _sample_viral_load_piecewise(rng)
+        self.all_symptoms_array = _get_all_symptoms_array(
+                          np.ndarray.item(self.viral_load_plateau_start), np.ndarray.item(self.viral_load_plateau_end), 
+                          np.ndarray.item(self.viral_load_recovered), age=self.age, incubation_days=self.incubation_days, 
+                                                          really_sick=self.really_sick, extremely_sick=self.extremely_sick, 
+                          rng=self.rng, preexisting_conditions=self.preexisting_conditions )
 
         # counters and memory
         self.r0 = []
@@ -161,7 +168,7 @@ class Human(object):
 
     @property
     def test_results(self):
-        if self.symptoms == None:
+        if not any(self.symptoms):
             return None
         else:
             tested = self.rng.rand() > P_TEST
@@ -177,35 +184,25 @@ class Human(object):
                 return None
 
     @property
+    def reported_symptoms(self):
+        if any(self.symptoms) or self.test_results is None or not self.human.has_app:
+            return None
+        else:
+            if self.rng.rand() < self.carefullness:
+                return self.symptoms
+            else:
+                return None
+
+    @property
     def symptoms(self):
-        # probability of being asymptomatic is basically 50%, but a bit less if you're older
-        # and a bit more if you're younger
-        symptoms = None
+        symptoms = []
         if self.is_asymptomatic or self.is_susceptible:
             pass
-        else:
-            time_since_exposed = self.env.timestamp - self.infection_timestamp
-            symptom_start = datetime.timedelta(abs(self.rng.normal(SYMPTOM_DAYS, 2.5)))
-            #  print (time_since_sick)
-            #  print (symptom_start)
-            if time_since_exposed >= symptom_start:
-                symptoms = ['mild']
-                if self.really_sick:
-                    symptoms.append('severe')
-                if self.rng.rand() < 0.9:
-                    symptoms.append('fever')
-                if self.rng.rand() < 0.85:
-                    symptoms.append('cough')
-                if self.rng.rand() < 0.8:
-                    symptoms.append('fatigue')
-                if self.rng.rand() < 0.7:
-                    symptoms.append('trouble_breathing')
-                if self.rng.rand() < 0.1:
-                    symptoms.append('runny_nose')
-                if self.rng.rand() < 0.4:
-                    symptoms.append('loss_of_taste')
-                if self.rng.rand() < 0.4:
-                    symptoms.append('gastro')
+        else: 
+            time_exposed = (self.env.timestamp - self.infection_timestamp)
+            time_exposed_days = round(time_exposed.days + time_exposed.seconds / 86400) #(seconds in a day)
+            symptoms = self.all_symptoms_array[time_exposed_days]
+
         if self.has_cold:
             if symptoms is None:
                 symptoms = ['mild', 'runny_nose']
@@ -228,7 +225,11 @@ class Human(object):
                 symptoms.append('aches')
             if self.rng.rand() < 0.5:
                 symptoms.append('gastro')
+
+        print(symptoms)
         return symptoms
+
+
 
     @property
     def viral_load(self):
@@ -253,6 +254,20 @@ class Human(object):
         return cur_viral_load
 
     @property
+    def infectiousness(self):
+        severity_multiplier = 1
+        if self.is_infectious:
+            if self.really_sick:
+              severity_multiplier = 1.25
+            if self.extremely_sick:
+              severity_multiplier = 1.5
+            if 'immuno-compromised' in self.preexisting_conditions:
+              severity_multiplier += 0.2
+            if 'cough' in self.symptoms:
+              severity_multiplier += 0.25
+        return self.viral_load * severity_multiplier
+
+    @property
     def wearing_mask(self):
         mask = False
         if not self.location == self.household:
@@ -261,7 +276,7 @@ class Human(object):
 
     @property
     def reported_symptoms(self):
-        if self.symptoms is None or self.test_results is None or not self.has_app:
+        if any(self.symptoms) or self.test_results is None or not self.has_app:
             return None
         else:
             if self.rng.rand() < self.carefullness:
