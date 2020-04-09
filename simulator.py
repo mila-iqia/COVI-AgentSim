@@ -46,6 +46,7 @@ class Human(object):
         self.location = household
         self.rho = rho
         self.gamma = gamma
+
         self.visits = Visits()
         self.travelled_recently = self.rng.rand() > 0.9
 
@@ -194,10 +195,38 @@ class Human(object):
 
     @property
     def symptoms(self):
-        if not self.infection_timestamp:
-            return []
-        sickness_day = (self.env.timestamp - self.infection_timestamp).days
-        return self.all_symptoms_array[sickness_day]
+        symptoms = []
+        if self.is_asymptomatic or self.is_susceptible:
+            pass
+        else: 
+            time_exposed = (self.env.timestamp - self.infection_timestamp)
+            time_exposed_days = round(time_exposed.days + time_exposed.seconds / 86400) #(seconds in a day)
+            symptoms = self.all_symptoms_array[time_exposed_days]
+
+        if self.has_cold:
+            if symptoms is None:
+                symptoms = ['mild', 'runny_nose']
+            if self.rng.rand() < 0.2:
+                symptoms.append('fever')
+            if self.rng.rand() < 0.6:
+                symptoms.append('cough')
+        if self.has_flu:
+            if symptoms is None:
+                symptoms = ['mild']
+            if self.rng.rand() < 0.2:
+                symptoms.append('severe')
+            if self.rng.rand() < 0.8:
+                symptoms.append('fever')
+            if self.rng.rand() < 0.4:
+                symptoms.append('cough')
+            if self.rng.rand() < 0.8:
+                symptoms.append('fatigue')
+            if self.rng.rand() < 0.8:
+                symptoms.append('aches')
+            if self.rng.rand() < 0.5:
+                symptoms.append('gastro')
+        return symptoms
+
 
 
     @property
@@ -396,6 +425,7 @@ class Human(object):
             # print(self, self.env.timestamp.strftime("%b %d, %H %M"), self.location)
             # print(self.env.timestamp.strftime("%b %d, %H %M"), self.location._name, "-->", location._name, duration)
             pass
+
         self.location = location
         location.add_human(self)
         self.leaving_time = duration + self.env.now
@@ -405,7 +435,8 @@ class Human(object):
         for h in location.humans:
             if h == self or self.location.location_type == 'household':
                 continue
-            distance = np.sqrt(int(area/len(self.location.humans))) + self.rng.randint(MIN_DIST_ENCOUNTER, MAX_DIST_ENCOUNTER)
+
+            distance =  np.sqrt(int(area/len(self.location.humans))) + self.rng.randint(MIN_DIST_ENCOUNTER, MAX_DIST_ENCOUNTER)
             t_near = min(self.leaving_time, h.leaving_time) - max(self.start_time, h.start_time)
             is_exposed = False
             # FIXME: This is a hack to take into account the difference between asymptomatic transmission rate and symptomatic transmission rate.
@@ -428,6 +459,7 @@ class Human(object):
                                 distance=distance,
                                 # cm  #TODO: prop to Area and inv. prop to capacity
                                 time=self.env.timestamp,
+                                # latent={"infected":self.is_exposed}
                                 )
 
         yield self.env.timeout(duration / TICK_MINUTE)
@@ -482,11 +514,3 @@ class Human(object):
         loc = self.rng.choice(cands, p=_normalize_scores(scores))
         visited_locs[loc] += 1
         return loc
-
-    def __hash__(self):
-        return hash(self.name)
-
-    def __eq__(self, other):
-        if not isinstance(other, Human):
-            return NotImplemented
-        return self.name == other.name

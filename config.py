@@ -32,7 +32,7 @@ VIRAL_LOAD_MIN = 0.0001
 P_COLD = 0.1 # &p-cold
 P_FLU = 0.05 # &p-flu
 
-TEST_DAYS = 2
+TEST_DAYS = 2 #
 
 # SIMULATION PARAMETERS
 TICK_MINUTE = 2  # @param increment
