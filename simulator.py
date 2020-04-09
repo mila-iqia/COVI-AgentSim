@@ -35,11 +35,12 @@ class Human(object):
         self.env = env
         self.events = []
         self.name = name
+        self.rng = rng
 
         self.age = _get_random_age(self.rng)
         self.sex = _get_random_sex(self.rng)
         self.preexisting_conditions = _get_preexisting_conditions(self.age, self.sex, self.rng)
-        self.rng = rng
+
 
 
         # probability of being asymptomatic is basically 50%, but a bit less if you're older
