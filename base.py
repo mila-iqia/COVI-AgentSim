@@ -1,6 +1,7 @@
 import simpy
 import datetime
 import itertools
+from orderedset import OrderedSet
 from config import TICK_MINUTE, MAX_DAYS_CONTAMINATION
 from utils import compute_distance
 
@@ -59,7 +60,7 @@ class Location(simpy.Resource):
     def __init__(self, env, rng, capacity=simpy.core.Infinity, name='Safeway', location_type='stores', lat=None,
                  lon=None, area=None, cont_prob=None, surface_prob=[0.2, 0.2, 0.2, 0.2, 0.2]):
         super().__init__(env, capacity)
-        self.humans = set()
+        self.humans = OrderedSet() #OrderedSet instead of set for determinism when iterating
         self.name = name
         self.rng = rng
         self.lat = lat
