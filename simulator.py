@@ -6,7 +6,7 @@ import numpy as np
 from collections import defaultdict
 import datetime
 
-from utils import _normalize_scores, _get_random_age, _get_random_sex, _get_preexisting_conditions, _draw_random_discreet_gaussian, _json_serialize
+from utils import _normalize_scores, _get_random_age, _get_random_sex, _get_preexisting_conditions, _draw_random_discreet_gaussian, _json_serialize, _sample_viral_load_piecewise, _get_random_area
 from config import *  # PARAMETERS
 from base import *
 
@@ -44,9 +44,13 @@ class Human(object):
 
         # probability of being asymptomatic is basically 50%, but a bit less if you're older
         # and a bit more if you're younger
-        self.asymptomatic = self.rng.rand() > (BASELINE_P_ASYMPTOMATIC - (self.age - 50) * 0.5) / 100
+        self.is_asymptomatic = self.rng.rand() > (BASELINE_P_ASYMPTOMATIC - (self.age - 50) * 0.5) / 100
+        self.asymptomatic_infection_ratio = 0.0
+        if self.is_asymptomatic:
+            self.asymptomatic_infection_ratio = ASYMPTOMATIC_INFECTION_RATIO # draw a beta with the distribution in documents
         self.incubation_days = _draw_random_discreet_gaussian(AVG_INCUBATION_DAYS, SCALE_INCUBATION_DAYS, self.rng)
         self.recovery_days = _draw_random_discreet_gaussian(AVG_RECOVERY_DAYS, SCALE_RECOVERY_DAYS, self.rng) # make it IQR &recovery
+        self.viral_load_plateau_height, self.viral_load_plateau_start, self.viral_load_plateau_end, self.viral_load_recovered = _sample_viral_load_piecewise(rng)
 
         self.household = household
         self.workplace = workplace
@@ -98,12 +102,29 @@ class Human(object):
         self.avg_misc_time = _draw_random_discreet_gaussian(AVG_MISC_MINUTES, SCALE_MISC_MINUTES, self.rng)
         self.scale_misc_time = _draw_random_discreet_gaussian(AVG_SCALE_MISC_MINUTES, SCALE_SCALE_MISC_MINUTES, self.rng)
 
-        # TODO: multiple possible days and times & limit these activities in a week
-        self.shopping_days = self.rng.choice(range(7))
-        self.shopping_hours = self.rng.choice(range(7, 20))
+        #getting the number of shopping days and hours from a distribution
+        self.number_of_shopping_days = _draw_random_discreet_gaussian(AVG_NUM_SHOPPING_DAYS, SCALE_NUM_SHOPPING_DAYS, self.rng)
+        self.number_of_shopping_hours = _draw_random_discreet_gaussian(AVG_NUM_SHOPPING_HOURS, SCALE_NUM_SHOPPING_HOURS, self.rng)
 
-        self.exercise_days = self.rng.choice(range(7))
-        self.exercise_hours = self.rng.choice(range(7, 20))
+        #getting the number of exercise days and hours from a distribution
+        self.number_of_exercise_days = _draw_random_discreet_gaussian(AVG_NUM_EXERCISE_DAYS, SCALE_NUM_EXERCISE_DAYS, self.rng)
+        self.number_of_exercise_hours = _draw_random_discreet_gaussian(AVG_NUM_EXERCISE_HOURS, SCALE_NUM_EXERCISE_HOURS, self.rng)
+
+        #Multiple shopping days and hours
+        self.shopping_days = self.rng.choice(range(7), self.number_of_shopping_days)
+        self.shopping_hours = self.rng.choice(range(7, 20), self.number_of_shopping_hours)
+
+        #Multiple exercise days and hours
+        self.exercise_days = self.rng.choice(range(7), self.number_of_exercise_days)
+        self.exercise_hours = self.rng.choice(range(7, 20), self.number_of_exercise_hours)
+
+        #Limiting the number of hours spent shopping per week
+        self.max_shop_per_week = _draw_random_discreet_gaussian(AVG_MAX_NUM_SHOP_PER_WEEK, SCALE_MAX_NUM_SHOP_PER_WEEK, self.rng)
+        self.count_shop=0
+
+        #Limiting the number of hours spent exercising per week
+        self.max_exercise_per_week = _draw_random_discreet_gaussian(AVG_MAX_NUM_EXERCISE_PER_WEEK, SCALE_MAX_NUM_EXERCISE_PER_WEEK, self.rng)
+        self.count_exercise=0
 
         self.work_start_hour = self.rng.choice(range(7, 12))
 
@@ -138,10 +159,6 @@ class Human(object):
         return self.recovered_timestamp == datetime.datetime.max
 
     @property
-    def is_contagious(self):
-        return self.infectiousness
-
-    @property
     def test_results(self):
         if self.symptoms == None:
             return None
@@ -159,21 +176,11 @@ class Human(object):
                 return None
 
     @property
-    def reported_symptoms(self):
-        if self.symptoms is None or self.test_results is None or not self.human.has_app:
-            return None
-        else:
-            if self.rng.rand() < self.carefullness:
-                return self.symptoms
-            else:
-                return None
-
-    @property
     def symptoms(self):
         # probability of being asymptomatic is basically 50%, but a bit less if you're older
         # and a bit more if you're younger
         symptoms = None
-        if self.asymptomatic or self.is_susceptible:
+        if self.is_asymptomatic or self.is_susceptible:
             pass
         else:
             time_since_exposed = self.env.timestamp - self.infection_timestamp
@@ -223,15 +230,26 @@ class Human(object):
         return symptoms
 
     @property
-    def infectiousness(self):
-        if self.is_infectious:
-            days_exposed = (self.env.timestamp - self.infection_timestamp).days
-            if days_exposed > len(INFECTIOUSNESS_CURVE):
-                return 0
-            else:
-                return INFECTIOUSNESS_CURVE[days_exposed - 1]
+    def viral_load(self):
+        """ Calculates the elapsed time since infection, returning this person's current viral load"""
+        if not self.infection_timestamp:
+            return 0.
+        # calculates the time since infection in days
+        time_exposed = (self.env.timestamp - self.infection_timestamp)
+        time_exposed_days = time_exposed.days + time_exposed.seconds / 86400 #(seconds in a day)
+
+        # implements the piecewise linear function
+        if time_exposed_days < self.viral_load_plateau_start:
+            cur_viral_load = self.viral_load_plateau_height * time_exposed_days / self.viral_load_plateau_start
+        elif time_exposed_days < self.viral_load_plateau_end:
+            cur_viral_load = self.viral_load_plateau_height
         else:
-            return 0
+            cur_viral_load = self.viral_load_plateau_height - self.viral_load_plateau_height * (time_exposed_days -self.viral_load_plateau_end) / (self.viral_load_recovered - self.viral_load_plateau_end)
+
+        # the viral load cannot be negative
+        if cur_viral_load < 0:
+            cur_viral_load = 0.
+        return cur_viral_load
 
     @property
     def wearing_mask(self):
@@ -253,6 +271,7 @@ class Human(object):
     def update_r(self, timedelta):
         timedelta /= datetime.timedelta(days=1) # convert to float days
         self.r0.append(self.n_infectious_contacts/timedelta)
+        self.n_infectious_contacts = 0
 
     @property
     def state(self):
@@ -273,19 +292,18 @@ class Human(object):
         self.household.humans.add(self)
         while True:
 
-
             if self.is_infectious and self.has_logged_symptoms is False:
-                Event.log_symptom_start(self, self.env.timestamp, True)
+                Event.log_symptom_start(self, True, self.env.timestamp)
                 self.has_logged_symptoms = True
 
             if self.is_infectious and self.env.timestamp - self.infection_timestamp > datetime.timedelta(days=TEST_DAYS) and not self.has_logged_test:
                 result = self.rng.random() > 0.8
-                Event.log_test(self, self.env.timestamp, result)
+                Event.log_test(self, result, self.env.timestamp)
                 self.has_logged_test = True
                 assert self.has_logged_symptoms is True # FIXME: assumption might not hold
 
             if self.is_infectious and self.env.timestamp - self.infection_timestamp >= datetime.timedelta(days=self.recovery_days):
-                if self.never_recovers:
+                if self.never_recovers or True: # re-infection assumed negligble
                     self.recovered_timestamp = datetime.datetime.max
                     dead = True
                 else:
@@ -302,14 +320,23 @@ class Human(object):
             self.assert_state_changes()
 
             # Mobility
+
             hour, day = self.env.hour_of_day(), self.env.day_of_week()
+
+            if day==0:
+                self.count_exercise=0
+                self.count_shop=0
+
+
             if not WORK_FROM_HOME and not self.env.is_weekend() and hour == self.work_start_hour:
                 yield self.env.process(self.excursion(city, "work"))
 
-            elif hour == self.shopping_hours and day == self.shopping_days:
+            elif hour in self.shopping_hours and day in self.shopping_days and self.count_shop<=self.max_shop_per_week:
+                self.count_shop+=1
                 yield self.env.process(self.excursion(city, "shopping"))
 
-            elif hour == self.exercise_hours and day == self.exercise_days:
+            elif hour in self.exercise_hours and day in self.exercise_days and self.count_exercise<=self.max_exercise_per_week:
+                self.count_exercise+=1
                 yield  self.env.process(self.excursion(city, "exercise"))
 
             elif self.rng.random() < 0.05 and self.env.is_weekend():
@@ -386,19 +413,24 @@ class Human(object):
             pass
 
         self.location = location
-        location.humans.add(self)
+        location.add_human(self)
         self.leaving_time = duration + self.env.now
         self.start_time = self.env.now
-
+        area = self.location.area
         # Report all the encounters
         for h in location.humans:
             if h == self or self.location.location_type == 'household':
                 continue
 
-            distance = self.rng.randint(50, 1000)
+            distance =  np.sqrt(int(area/len(self.location.humans))) + self.rng.randint(MIN_DIST_ENCOUNTER, MAX_DIST_ENCOUNTER)
             t_near = min(self.leaving_time, h.leaving_time) - max(self.start_time, h.start_time)
             is_exposed = False
-            if h.is_infectious and distance <= 200 and t_near * TICK_MINUTE > 2 and self.rng.random() < location.contamination_probability:
+            # FIXME: This is a hack to take into account the difference between asymptomatic transmission rate and symptomatic transmission rate.
+            # The fix should be handled by better modelling the infectiousness of a person as a function of viral_load
+            p_infection = h.viral_load * (h.is_asymptomatic * h.asymptomatic_infection_ratio + 1.0 * (not h.is_asymptomatic))
+            x_human = distance <= INFECTION_RADIUS and t_near * TICK_MINUTE > INFECTION_DURATION and self.rng.random() < p_infection
+            x_environment = self.rng.random() < location.contamination_probability # &prob_infection
+            if x_human or x_environment:
                 if self.is_susceptible:
                     is_exposed = True
                     h.n_infectious_contacts+=1
@@ -417,7 +449,7 @@ class Human(object):
                                 )
 
         yield self.env.timeout(duration / TICK_MINUTE)
-        location.humans.remove(self)
+        location.remove_human(self)
 
     def _select_location(self, location_type, city):
         """
