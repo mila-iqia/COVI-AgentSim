@@ -17,8 +17,8 @@ def _get_random_age(rng):
 	return age
 
 # &sex
-def _get_random_sex():
-	p = np.random.rand()
+def _get_random_sex(rng):
+	p = rng.rand()
 	if p < .4:
 		return 'female'
 	elif p < .8:
@@ -27,120 +27,135 @@ def _get_random_sex():
 		return 'other'
 
 # &preexisting-conditions
-def _get_preexisting_conditions(age, sex):
-	#if np.random.rand() < 0.6 + age/200: 
+def _get_preexisting_conditions(age, sex, rng):
+	#if rng.rand() < 0.6 + age/200: 
 	#	conditions = None
 	#else:
 	conditions = []
 
+	# &immuno-suppressed (3.6% on average)
+	if age < 40:
+		if rng.rand() < 0.005:
+			conditions.append('immuno-suppressed')
+	elif age < 65:
+		if rng.rand() < 0.036:
+			conditions.append('immuno-suppressed')
+	elif age < 85:
+		if rng.rand() < 0.045:
+			conditions.append('immuno-suppressed')
+	else:
+		if rng.rand() < 0.20:
+			conditions.append('immuno-suppressed')
+
 	# &diabetes
 	if age < 18:
-		if np.random.rand() < .005:
+		if rng.rand() < .005:
 			conditions.append('diabetes')
 	elif age < 35:
-		if np.random.rand() < .009:
+		if rng.rand() < .009:
 			conditions.append('diabetes')
 	elif age < 50:
-		if np.random.rand() < .039:
+		if rng.rand() < .039:
 			conditions.append('diabetes')
 	elif age < 75:
-		if np.random.rand() < .13:
+		if rng.rand() < .13:
 			conditions.append('diabetes')
 	else:
-		if np.random.rand() < .179:
+		if rng.rand() < .179:
 			conditions.append('diabetes')
 	
 	# &heart disease
 	if age < 20:
-		if np.random.rand() < .001:
+		if rng.rand() < .001:
 			conditions.append('heart_disease')
 	elif age < 35:
-		if np.random.rand() < .005:
+		if rng.rand() < .005:
 			conditions.append('heart_disease')
 	elif age < 50:
 		if sex.lower().startswith('f'):
-			if np.random.rand() < .013:
+			if rng.rand() < .013:
 				conditions.append('heart_disease')
 		elif sex.lower().startswith('m'):
-			if np.random.rand() < .021:
+			if rng.rand() < .021:
 				conditions.append('heart_disease')
 		else:
-			if np.random.rand() < .017:
+			if rng.rand() < .017:
 				conditions.append('heart_disease')
 	elif age < 75:
 		if sex.lower().startswith('f'):
-			if np.random.rand() < .13:
+			if rng.rand() < .13:
 				conditions.append('heart_disease')
 		elif sex.lower().startswith('m'):
-			if np.random.rand() < .178:
+			if rng.rand() < .178:
 				conditions.append('heart_disease')
 		else:
-			if np.random.rand() < .15:
+			if rng.rand() < .15:
 				conditions.append('heart_disease')
 	else:
 		if sex.lower().startswith('f'):
-			if np.random.rand() < .311:
+			if rng.rand() < .311:
 				conditions.append('heart_disease')
 		elif sex.lower().startswith('m'):
-			if np.random.rand() < .44:
+			if rng.rand() < .44:
 				conditions.append('heart_disease')
 		else:
-			if np.random.rand() < .375:
+			if rng.rand() < .375:
 				conditions.append('heart_disease')
 
 	# &COPD
 	if age < 35:
 		pass
 	elif age < 50:
-		if np.random.rand() < .015:
+		if rng.rand() < .015:
 			conditions.append('COPD')
 	elif age < 65:
-		if np.random.rand() < .037:
+		if rng.rand() < .037:
 			conditions.append('COPD')
 	else:
-		if np.random.rand() < .075:
+		if rng.rand() < .075:
 			conditions.append('COPD')
+
 
 	# &asthma 
 	if age < 10:
 		if sex.lower().startswith('f'):
-			if np.random.rand() < .07:
+			if rng.rand() < .07:
 				conditions.append('asthma')
 		elif sex.lower().startswith('m'):
-			if np.random.rand() < .12:
+			if rng.rand() < .12:
 				conditions.append('asthma')
 		else:
-			if np.random.rand() < .09:
+			if rng.rand() < .09:
 				conditions.append('asthma')
 	elif age < 25:
 		if sex.lower().startswith('f'):
-			if np.random.rand() < .15:
+			if rng.rand() < .15:
 				conditions.append('asthma')
 		elif sex.lower().startswith('m'):
-			if np.random.rand() < .19:
+			if rng.rand() < .19:
 				conditions.append('asthma')
 		else:
-			if np.random.rand() < .17:
+			if rng.rand() < .17:
 				conditions.append('asthma')
 	elif age < 75:
 		if sex.lower().startswith('f'):
-			if np.random.rand() < .11:
+			if rng.rand() < .11:
 				conditions.append('asthma')
 		elif sex.lower().startswith('m'):
-			if np.random.rand() < .06:
+			if rng.rand() < .06:
 				conditions.append('asthma')
 		else:
-			if np.random.rand() < .08:
+			if rng.rand() < .08:
 				conditions.append('asthma')
 	else:
 		if sex.lower().startswith('f'):
-			if np.random.rand() < .12:
+			if rng.rand() < .12:
 				conditions.append('asthma')
 		elif sex.lower().startswith('m'):
-			if np.random.rand() < .08:
+			if rng.rand() < .08:
 				conditions.append('asthma')
 		else:
-			if np.random.rand() < .1:
+			if rng.rand() < .1:
 				conditions.append('asthma')
 
 	return conditions
