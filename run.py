@@ -6,6 +6,7 @@ import click
 from config import TICK_MINUTE
 import numpy as np
 import math
+import json
 
 
 @click.group()
@@ -195,6 +196,12 @@ def run_simu(n_stores=None, n_people=None, n_parks=None, n_misc=None,
     for m in monitors:
         env.process(m.run(env, city=city))
     env.run(until=simulation_days * 24 * 60 / TICK_MINUTE)
+
+    contact_histories = []
+    for human in humans:
+        contact_histories.append(human.A)
+    json.dump(contact_histories, open('contact_histories.json', 'w'))
+
     return monitors
 
 

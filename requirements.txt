@@ -5,3 +5,4 @@ matplotlib==3.2.1
 ipython==7.13.0
 click==7.1.1
 orderedset==2.0.3
+bitarray==1.2.1

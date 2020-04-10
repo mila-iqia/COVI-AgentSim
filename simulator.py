@@ -5,8 +5,10 @@ import itertools
 import numpy as np
 from collections import defaultdict
 import datetime
+from bitarray import bitarray
+import operator
 
-from utils import _normalize_scores, _get_random_age, _get_random_sex, _get_all_symptoms_array, _get_preexisting_conditions, _draw_random_discreet_gaussian, _json_serialize, _sample_viral_load_piecewise, _get_random_area
+from utils import _normalize_scores, _get_random_age, _get_random_sex, _get_all_symptoms_array, _get_preexisting_conditions, _draw_random_discreet_gaussian, _json_serialize, _sample_viral_load_piecewise, _get_random_area, _encode_message, _decode_message
 from config import *  # PARAMETERS
 from base import *
 
@@ -97,6 +99,11 @@ class Human(object):
         self.n_infectious_contacts = 0
         self.last_state = self.state
 
+        # privacy
+        self.M = []
+        self.A = {}
+        self.cur_num_messages = 0
+
         # habits
         self.avg_shopping_time = _draw_random_discreet_gaussian(AVG_SHOP_TIME_MINUTES, SCALE_SHOP_TIME_MINUTES, self.rng)
         self.scale_shopping_time = _draw_random_discreet_gaussian(AVG_SCALE_SHOP_TIME_MINUTES,
@@ -141,6 +148,64 @@ class Human(object):
     def __repr__(self):
         return f"H:{self.name}, SEIR:{int(self.is_susceptible)}{int(self.is_exposed)}{int(self.is_infectious)}{int(self.is_removed)}"
 
+    def handle_message(self, m_i):
+        m_i_enc = _encode_message(m_i)
+        temp_cur_num_messages = self.cur_num_messages
+        # if first message received, it's group 0
+        if self.cur_num_messages == 0:
+            self.A[m_i_enc] = 0
+            self.M.append(m_i_enc)
+            self.cur_num_messages += 1
+            return
+
+        scores = {}
+        for m_enc in self.M:
+            m = _decode_message(m_enc)
+            if m_i[0] == m[0] and m_i[2].day == m[2].day:
+                scores[m_enc] = 3
+            elif m_i[0][:3] == m[0][:3] and m_i[2].day-1 == m[2].day:
+                scores[m_enc] = 2
+            elif m_i[0][:2] == m[0][:2] and m_i[2].day - 2 == m[2].day:
+                scores[m_enc] = 1
+            elif m_i[0][:1] == m[0][:1] and m_i[2].day - 2 == m[2].day:
+                scores[m_enc] = 0
+
+        if scores:
+            max_score_message = max(scores.items(), key=operator.itemgetter(1))[0]
+            self.A[m_i_enc] = self.A[max_score_message]
+            self.cur_num_messages += 1
+            self.M.append(m_i_enc)
+            return
+
+        if temp_cur_num_messages == self.cur_num_messages:
+            self.A[m_i_enc] = max(self.A.values()) + 1
+            self.cur_num_messages += 1
+            self.M.append(m_i_enc)
+            return
+
+    @property
+    def uid(self):
+        return self._uid
+
+    def update_uid(self):
+        try:
+            self._uid.pop()
+            self._uid.extend([self.rng.choice([True, False])])
+        except AttributeError:
+            self._uid = bitarray()
+            self._uid.extend(self.rng.choice([True, False], 4)) # generate a random 4-bit code
+
+    @property
+    def risk(self):
+        # obvi placeholder, it's random
+        self._risk = bitarray()
+        self._risk.extend(self.rng.choice([True, False], 4))
+        return self._risk
+
+    @property
+    def cur_message(self):
+        return (self.uid, self.risk, self.env.timestamp, self.name)
+
     def to_sick_to_move(self):
         # Assume 2 weeks incubation time ; in 10% of cases person becomes to sick
         # to go shopping after 2 weeks for at least 10 days and in 1% of the cases
@@ -154,6 +219,11 @@ class Human(object):
     @property
     def is_susceptible(self):
         return not self.is_exposed and not self.is_infectious and not self.is_removed
+        # return self.infection_timestamp is None and not self.recovered_timestamp == datetime.datetime.max
+
+    @property
+    def message(self):
+        return {self.uid, self.risk, }
         # return self.infection_timestamp is None and not self.recovered_timestamp == datetime.datetime.max
 
     @property
@@ -279,7 +349,6 @@ class Human(object):
         """
         self.household.humans.add(self)
         while True:
-
             if self.is_infectious and self.has_logged_symptoms is False:
                 Event.log_symptom_start(self, True, self.env.timestamp)
                 self.has_logged_symptoms = True
@@ -315,6 +384,8 @@ class Human(object):
                 self.count_exercise=0
                 self.count_shop=0
 
+            if hour == 0:
+                self.update_uid()
 
             if not WORK_FROM_HOME and not self.env.is_weekend() and hour == self.work_start_hour:
                 yield self.env.process(self.excursion(city, "work"))
@@ -427,6 +498,7 @@ class Human(object):
             if self.is_susceptible and is_exposed:
                 self.infection_timestamp = self.env.timestamp
 
+            self.handle_message(h.cur_message)
             Event.log_encounter(self, h,
                                 location=location,
                                 duration=t_near,

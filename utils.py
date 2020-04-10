@@ -2,6 +2,8 @@ import numpy as np
 from scipy.stats import truncnorm, gamma
 import datetime
 import math
+import json
+from bitarray import bitarray
 from config import *
 
 def _sample_viral_load_gamma(rng, shape_mean=4.5, shape_std=.15, scale_mean=1., scale_std=.15):
@@ -279,3 +281,14 @@ def _json_serialize(o):
 
 def compute_distance(loc1, loc2):
     return np.sqrt((loc1.lat - loc2.lat) ** 2 + (loc1.lon - loc2.lon) ** 2)
+
+def _encode_message(message):
+	return str(np.array(message[0].tolist()).astype(int).tolist()) + "_" + str(np.array(message[1].tolist()).astype(int).tolist()) + "_" + str(message[2]) + "_" + str(message[3])
+
+def _decode_message(message):
+	m_i = message.split("_")
+	obs_uid = bitarray(json.loads(m_i[0]))
+	risk = bitarray(json.loads(m_i[1]))
+	date_sent = datetime.datetime.strptime(m_i[2], '%Y-%m-%d %H:%M:%S')
+	unobs_uid = int(m_i[3])
+	return obs_uid, risk, date_sent, unobs_uid
