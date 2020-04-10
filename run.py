@@ -5,6 +5,7 @@ import datetime
 import click
 from config import TICK_MINUTE
 import numpy as np
+import math
 
 
 @click.group()
@@ -99,8 +100,8 @@ def run_simu(n_stores=None, n_people=None, n_parks=None, n_hospitals=None, n_mis
     area_dict = {'store':_get_random_area('store', n_stores, total_area, rng), 
                  'park':_get_random_area('park',n_parks, total_area, rng),
                  'misc':_get_random_area('misc',n_misc, total_area, rng),
-                 'household':_get_random_area('household', int(n_people/2), total_area, rng),
-                 'workplace':_get_random_area('workplace', int(n_people/30), total_area, rng)}
+                 'household':_get_random_area('household', math.ceil(n_people/2), total_area, rng),
+                 'workplace':_get_random_area('workplace', math.ceil(n_people/30), total_area, rng)}
     
     stores = [
         Location(
@@ -140,7 +141,7 @@ def run_simu(n_stores=None, n_people=None, n_parks=None, n_hospitals=None, n_mis
             lon=rng.randint(*city_limit[1]),
             surface_prob=[0.05, 0.05, 0.05, 0.05, 0.8]
         )
-        for i in range(int(n_people / 2))
+        for i in range(math.ceil(n_people / 2))
     ]
     workplaces = [
         Location(
@@ -153,7 +154,7 @@ def run_simu(n_stores=None, n_people=None, n_parks=None, n_hospitals=None, n_mis
             lon=rng.randint(*city_limit[1]),
             surface_prob=[0.1, 0.1, 0.3, 0.2, 0.3]
         )
-        for i in range(int(n_people / 30))
+        for i in range(math.ceil(n_people / 30))
     ]
     hospitals = [
         Hospital(
