@@ -150,6 +150,7 @@ class Human(object):
     def __repr__(self):
         return f"H:{self.name}, SEIR:{int(self.is_susceptible)}{int(self.is_exposed)}{int(self.is_infectious)}{int(self.is_removed)}"
 
+
     def handle_message(self, m_i):
         m_i_enc = _encode_message(m_i)
         temp_cur_num_messages = self.cur_num_messages
@@ -165,7 +166,7 @@ class Human(object):
             m = _decode_message(m_enc)
             if m_i[0] == m[0] and m_i[2].day == m[2].day:
                 scores[m_enc] = 3
-            elif m_i[0][:3] == m[0][:3] and m_i[2].day-1 == m[2].day:
+            elif m_i[0][:3] == m[0][:3] and m_i[2].day - 1 == m[2].day:
                 scores[m_enc] = 2
             elif m_i[0][:2] == m[0][:2] and m_i[2].day - 2 == m[2].day:
                 scores[m_enc] = 1
@@ -204,9 +205,6 @@ class Human(object):
         self._risk.extend(self.rng.choice([True, False], 4))
         return self._risk
 
-    @property
-    def cur_message(self):
-        return (self.uid, self.risk, self.env.timestamp, self.name)
 
     def to_sick_to_move(self):
         # Assume 2 weeks incubation time ; in 10% of cases person becomes to sick
@@ -223,10 +221,6 @@ class Human(object):
         return not self.is_exposed and not self.is_infectious and not self.is_removed
         # return self.infection_timestamp is None and not self.recovered_timestamp == datetime.datetime.max
 
-    @property
-    def message(self):
-        return {self.uid, self.risk, }
-        # return self.infection_timestamp is None and not self.recovered_timestamp == datetime.datetime.max
 
     @property
     def is_exposed(self):
@@ -344,6 +338,13 @@ class Human(object):
             assert next_state[self.last_state.index(1)] == self.state.index(1), f"invalid compartment transition for human:{self.name}"
             self.last_state = self.state
 
+    def cur_message(self, time):
+        return (self.uid, self.risk, time, self.name)
+
+    @property
+    def message(self):
+        return {self.uid, self.risk}
+
     def run(self, city):
         """
            1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24
@@ -385,12 +386,6 @@ class Human(object):
             if day==0:
                 self.count_exercise=0
                 self.count_shop=0
-
-            if self.cur_day != self.env.timestamp.day:
-                self.cur_date = self.env.timestamp.day
-                self.update_uid()
-                for i in range(len(self.pending_messages)):
-                    self.handle_message(self.pending_messages.pop())
 
             if not WORK_FROM_HOME and not self.env.is_weekend() and hour == self.work_start_hour:
                 yield self.env.process(self.excursion(city, "work"))
@@ -503,7 +498,6 @@ class Human(object):
             if self.is_susceptible and is_exposed:
                 self.infection_timestamp = self.env.timestamp
 
-            self.pending_messages.append(h.cur_message)
             Event.log_encounter(self, h,
                                 location=location,
                                 duration=t_near,
@@ -564,3 +558,37 @@ class Human(object):
         loc = self.rng.choice(cands, p=_normalize_scores(scores))
         visited_locs[loc] += 1
         return loc
+
+    def serialize(self):
+        del self.env
+        del self.events
+        del self.rng
+        del self.visits
+        del self.incubation_days
+        del self.recovered_timestamp
+        del self.leaving_time
+        del self.start_time
+        del self.household
+        del self.location
+        del self.workplace
+        del self.viral_load_plateau_start
+        del self.viral_load_plateau_end
+        del self.viral_load_recovered
+        del self.exercise_hours
+        del self.exercise_days
+        del self.shopping_days
+        del self.shopping_hours
+        del self.work_start_hour
+
+        self.infection_timestamp = str(self.infection_timestamp)
+
+        # s['household'] = s['household'].serialize()
+        # s['location'] = s['location'].serialize()
+        # s['workplace'] = s['workplace'].serialize()
+        # if s['name'] == 9:
+        #     for k, v in s.items():
+        #         print(f"{k}: {type(s[k])}")
+        #     print(s.keys())
+        #     import pdb; pdb.set_trace()
+        # print(s['name'])
+        return self

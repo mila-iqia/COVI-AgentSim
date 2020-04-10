@@ -89,9 +89,8 @@ for group_idx, groups in enumerate(all_groups):
         cnt = Counter()
         for idx, uid in enumerate(uids):
             cnt[uid] += 1
-        import pdb; pdb.set_trace()
         for i in range(len(cnt)):
-            if cnt.most_common()[i][0]:
+            # if cnt.most_common()[i][0]: #TODO: write a better grouping mechanism
             new_groups[cnt.most_common()[i][0]] = uids
             break
     all_new_groups.append(new_groups)
