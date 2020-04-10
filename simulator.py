@@ -257,7 +257,7 @@ class Human(object):
 
     @property
     def reported_symptoms(self):
-        if any(self.symptoms) or self.test_results is None or not self.human.has_app:
+        if not any(self.symptoms) or self.test_results is None or not self.human.has_app:
             return None
         else:
             if self.rng.rand() < self.carefullness:
