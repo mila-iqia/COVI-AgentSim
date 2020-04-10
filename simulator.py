@@ -103,6 +103,8 @@ class Human(object):
         self.M = []
         self.A = {}
         self.cur_num_messages = 0
+        self.pending_messages = []
+        self.cur_day = -1
 
         # habits
         self.avg_shopping_time = _draw_random_discreet_gaussian(AVG_SHOP_TIME_MINUTES, SCALE_SHOP_TIME_MINUTES, self.rng)
@@ -384,8 +386,11 @@ class Human(object):
                 self.count_exercise=0
                 self.count_shop=0
 
-            if hour == 0:
+            if self.cur_day != self.env.timestamp.day:
+                self.cur_date = self.env.timestamp.day
                 self.update_uid()
+                for i in range(len(self.pending_messages)):
+                    self.handle_message(self.pending_messages.pop())
 
             if not WORK_FROM_HOME and not self.env.is_weekend() and hour == self.work_start_hour:
                 yield self.env.process(self.excursion(city, "work"))
@@ -498,7 +503,7 @@ class Human(object):
             if self.is_susceptible and is_exposed:
                 self.infection_timestamp = self.env.timestamp
 
-            self.handle_message(h.cur_message)
+            self.pending_messages.append(h.cur_message)
             Event.log_encounter(self, h,
                                 location=location,
                                 duration=t_near,
