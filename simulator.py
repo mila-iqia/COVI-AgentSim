@@ -295,8 +295,8 @@ class Human(object):
         """
         self.household.humans.add(self)
         while True:
-            if 'severe' in self.symptoms:
-                yield self.env.process(self.go_to_hopsital())
+            # if 'severe' in self.symptoms:
+            #     yield self.env.process(self.go_to_hopsital())
 
             if self.is_infectious and self.has_logged_symptoms is False:
                 Event.log_symptom_start(self, True, self.env.timestamp)

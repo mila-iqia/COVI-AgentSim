@@ -111,9 +111,9 @@ class Location(simpy.Resource):
 
 class Hospital(Location):
 
-    def __init__(self, env, capacity, name='vgh', location_type='hospital', lat=None, lon=None, cont_prob=None,
-                 recovery_prob=0.8):
-        super().__init__(env, capacity, name, location_type, lat, lon, cont_prob)
+    def __init__(self, env, rng, capacity=simpy.core.Infinity, name='vgh', location_type='hospital', lat=None,
+                 lon=None, area=None, cont_prob=None, surface_prob=[0.2, 0.2, 0.2, 0.2, 0.2]):
+        super().__init__(env, rng, capacity=capacity, name=name, location_type=location_type, lat=lat, lon=lon, cont_prob=cont_prob)
         self.location_contamination = 1
 
 
