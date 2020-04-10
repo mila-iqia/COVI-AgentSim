@@ -68,7 +68,7 @@ monitors = run_simu(n_stores=100, n_parks=50, n_people=100, n_misc=100, init_per
 ## Base SEIR plots
 Following will require `cufflinks` and `plotly`.
 ```
-python run.py base --toy_run
+python run.py base --toy_human
 ```
 It will open a browser window with the plot of [SEIR curves](https://www.idmod.org/docs/hiv/model-seir.html#seir-and-seirs-models).
 

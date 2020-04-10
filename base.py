@@ -1,6 +1,7 @@
 import simpy
 import datetime
 import itertools
+from orderedset import OrderedSet
 from config import TICK_MINUTE, MAX_DAYS_CONTAMINATION
 from utils import compute_distance
 
@@ -59,7 +60,7 @@ class Location(simpy.Resource):
     def __init__(self, env, rng, capacity=simpy.core.Infinity, name='Safeway', location_type='stores', lat=None,
                  lon=None, area=None, cont_prob=None, surface_prob=[0.2, 0.2, 0.2, 0.2, 0.2]):
         super().__init__(env, capacity)
-        self.humans = set()
+        self.humans = OrderedSet() #OrderedSet instead of set for determinism when iterating
         self.name = name
         self.rng = rng
         self.lat = lat
@@ -120,7 +121,7 @@ class Event:
     @staticmethod
     def log_encounter(human1, human2, location, duration, distance, time):
         h_obs_keys = ['obs_lat', 'obs_lon', 'age', 'reported_symptoms', 'test_results', 'has_app']
-        h_unobs_keys = ['carefullness', 'infectiousness', 'symptoms', 'is_exposed', 'is_infectious']
+        h_unobs_keys = ['carefullness', 'viral_load', 'infectiousness', 'symptoms', 'is_exposed', 'is_infectious']
         loc_obs_keys = ['location_type', 'lat', 'lon']
         loc_unobs_keys = ['contamination_probability', 'social_contact_factor']
 
@@ -133,7 +134,6 @@ class Event:
             u['is_infected'] = human.is_exposed or human.is_infectious
             u['human_id'] = human.name
             unobs.append(u)
-
         loc_obs = {key:getattr(location, key) for key in loc_obs_keys}
         loc_unobs = {key:getattr(location, key) for key in loc_unobs_keys}
         loc_unobs['location_p_infection'] = location.contamination_probability / location.social_contact_factor
