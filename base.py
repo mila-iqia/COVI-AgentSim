@@ -106,6 +106,17 @@ class Location(simpy.Resource):
     def __hash__(self):
         return hash(self.name)
 
+    def serialize(self):
+        s = self.__dict__
+        if s.get('env'):
+            del s['env']
+        if s.get('rng'):
+            del s['rng']
+        if s.get('_env'):
+            del s['_env']
+        if s.get('contamination_timestamp'):
+            del s['contamination_timestamp']
+        return s
 
 class Event:
     test = 'test'
