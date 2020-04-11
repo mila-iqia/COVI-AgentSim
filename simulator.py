@@ -112,7 +112,6 @@ class Human(object):
 
         # risk
         self.risk = 0
-        self.update_initial_risk()
         self.contact_history = {}
 
         # habits
@@ -210,32 +209,30 @@ class Human(object):
             self._uid = bitarray()
             self._uid.extend(self.rng.choice([True, False], 4)) # generate a random 4-bit code
 
-    def update_initial_risk(self):
-        # TODO: ask tegan to check this
-        if self.infection_timestamp:
-            sickness_day = (self.env.timestamp - self.infection_timestamp).days
-            if sickness_day < len(self.all_symptoms_array)-1 and sickness_day > -1:
-                symptoms = self.all_symptoms_array[sickness_day] if RISK_WITH_TRUE_SYMPTOMS else self.reported_symptoms
+    def risk_for_symptoms(self):
+        sickness_day = (self.env.timestamp - self.infection_timestamp).days
+        symptoms = []
+        for day in range(sickness_day + 1):
+            if RISK_WITH_TRUE_SYMPTOMS and self.rng.rand() < self.carefullness:
+                    symptoms.extend(self.all_symptoms_array[day-1])
             else:
-                symptoms = []
-        else:
-            symptoms = []
+                symptoms.extend(self.all_symptoms_array[day-1])
         if self.test_results == 'positive':
-            self.risk += 1
-        elif symptoms == []:
-            self.risk += 0
+            return 1
         elif 'severe' in symptoms:
-            self.risk += 0.75
+            return 0.75
         elif 'moderate' in symptoms:
-            self.risk += 0.5
+            return 0.5
         elif 'mild' in symptoms:
-            self.risk += 0.25
+            return 0.25
         else:
-            raise ValueError(f"Invalid symptom: {symptoms}")
-        if CLIP_RISK:
-            self.risk = min(self.risk, 1.)
+            return 0
+
 
     def update_risk(self, other):
+        if self.infection_timestamp and (self.env.timestamp - self.infection_timestamp).days >= 0 and (self.env.timestamp - self.infection_timestamp).days <= len(self.all_symptoms_array)-1:
+            self.risk = self.risk_for_symptoms()
+
         m_risk = binary_to_float("".join([str(x) for x in np.array(other[1].tolist()).astype(int)]), 0, 4)
         m_uid = other[0]
 

@@ -31,8 +31,8 @@ if __name__ == "__main__":
     hd = {}
     for human in humans:
         try:
-            print(human.name)
             human.infection_timestamp = datetime.datetime.strptime(human.infection_timestamp, '%Y-%m-%d %H:%M:%S')
+            print(human.name)
         except Exception:
             human.infection_timestamp = None
 
@@ -41,6 +41,7 @@ if __name__ == "__main__":
         human.env = env
         human.rng = np.random.RandomState(0)
         human.update_uid()
+
         hd[human.name] = human
 
     i = 0
@@ -60,9 +61,11 @@ if __name__ == "__main__":
         this_human.pending_messages.append(other_human.cur_message(now))
 
         if this_human.cur_day != now.day:
-            this_human.update_initial_risk()
+            # this_human.update_initial_risk()
             this_human.cur_day = now.day
             this_human.update_uid()
+            # if this_human.risk != 0:
+            #     import pdb; pdb.set_trace()
             for j in range(len(this_human.pending_messages)):
                 m_j = this_human.pending_messages.pop()
                 quantized_risk = binary_to_float("".join([str(x) for x in np.array(m_j[1].tolist()).astype(int)]), 0, 4)
