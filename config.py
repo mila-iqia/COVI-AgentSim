@@ -23,7 +23,7 @@ ASYMPTOMATIC_INFECTION_RATIO = 0.1 # &prob_infectious
 
 RISK_TRANSMISSION_PROBA = 0.01
 RISK_MODEL = 'yoshua'   # options: ['yoshua', 'lenka', 'eilif']
-RISK_WITH_TRUE_SYMPTOMS = True
+RISK_WITH_TRUE_SYMPTOMS = False
 CLIP_RISK = True
 UPDATE_RISK_EVERY_DAY = True
 #                   0-9 10-19 20-29  30-39  40-49  50-59 60-69 70-79  80-  # Assuming dath rate to be same for 80 and above

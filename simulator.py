@@ -220,7 +220,6 @@ class Human(object):
                 symptoms = []
         else:
             symptoms = []
-
         if self.is_infectious:
             self.risk += 1
         elif symptoms == []:
@@ -313,14 +312,6 @@ class Human(object):
                 return None
 
     @property
-    def reported_symptoms(self):
-        if not any(self.symptoms) or self.test_results is None or not self.human.has_app:
-            return None
-        if self.rng.rand() < self.carefullness:
-            return self.symptoms
-        return None
-
-    @property
     def symptoms(self):
         if not self.infection_timestamp:
             return []
@@ -373,13 +364,13 @@ class Human(object):
 
     @property
     def reported_symptoms(self):
-        if any(self.symptoms) or self.test_results is None or not self.has_app:
-            return None
+        if not any(self.symptoms) or self.test_results is None or not self.has_app:
+            return []
         else:
             if self.rng.rand() < self.carefullness:
                 return self.symptoms
             else:
-                return None
+                return []
 
     def update_r(self, timedelta):
         timedelta /= datetime.timedelta(days=1) # convert to float days
@@ -432,7 +423,7 @@ class Human(object):
                     dead = False
 
                 self.update_r(self.env.timestamp - self.infection_timestamp)
-                self.infection_timestamp = None
+                self.infection_timestamp = None # indicates they are no longer infected
                 Event.log_recovery(self, self.env.timestamp, dead)
                 if dead:
                     yield self.env.timeout(np.inf)
@@ -558,6 +549,7 @@ class Human(object):
 
             if self.is_susceptible and is_exposed:
                 self.infection_timestamp = self.env.timestamp
+                self.historical_infection_timestamp = self.env.timestamp
 
             Event.log_encounter(self, h,
                                 location=location,
@@ -639,7 +631,9 @@ class Human(object):
         del self.shopping_days
         del self.shopping_hours
         del self.work_start_hour
-        if self.infection_timestamp:
-            print(f"{self.name}, {self.infection_timestamp}")
-        self.infection_timestamp = str(self.infection_timestamp)
+        try:
+            print(f"{self.name}, {self.historical_infection_timestamp}")
+            self.infection_timestamp = str(self.historical_infection_timestamp)
+        except Exception:
+            self.infection_timestamp = None
         return self
