@@ -5,6 +5,7 @@ import itertools
 import numpy as np
 from collections import defaultdict
 import datetime
+import math
 
 from utils import _normalize_scores, _get_random_age, _get_random_sex, _get_all_symptoms_array, _get_preexisting_conditions, _draw_random_discreet_gaussian, _json_serialize, _sample_viral_load_piecewise, _get_random_area
 from config import *  # PARAMETERS
@@ -73,8 +74,8 @@ class Human(object):
         self.recovered_timestamp = datetime.datetime.min
         self.really_sick = self.is_exposed and self.rng.random() >= 0.9
         self.extremely_sick = self.really_sick and self.rng.random() >= 0.7 # &severe; 30% of severe cases need ICU
-        self.never_recovers = self.rng.random() >= 0.99
-
+        self.never_recovers = self.rng.random() <= P_NEVER_RECOVERS[min(math.floor(self.age/10),8)]
+        
         # &symptoms, &viral-load
         # probability of being asymptomatic is basically 50%, but a bit less if you're older
         # and a bit more if you're younger
