@@ -76,10 +76,11 @@ class Human(object):
 
         # Indicates whether this person will show severe signs of illness.
         self.infection_timestamp = infection_timestamp
-        self.recovered_timestamp = datetime.datetime.min
+        self.recovered_timestamp = [datetime.datetime.min]
         self.really_sick = self.is_exposed and self.rng.random() >= 0.9
         self.extremely_sick = self.really_sick and self.rng.random() >= 0.7 # &severe; 30% of severe cases need ICU
-        self.never_recovers = self.rng.random() <= P_NEVER_RECOVERS[min(math.floor(self.age/10),8)]
+        # if P_REINFECTION is 0, then after getting sick
+        self.never_recovers = self.rng.random() <= P_NEVER_RECOVERS[min(math.floor(self.age/10),8)] * REINFECTION_POSSIBLE
         
         # &symptoms, &viral-load
         # probability of being asymptomatic is basically 50%, but a bit less if you're older
@@ -236,7 +237,7 @@ class Human(object):
         return 0.
 
 
-    def update_risk(self, other):
+    def update_risk_encounter(self, other):
         """ This function updates an individual's risk based on their symptoms (reported or true) and their new messages"""
         # TODO: run update_risk when a user enter's their symptoms
         # TODO: get eilif's model to work
@@ -285,17 +286,6 @@ class Human(object):
         if CLIP_RISK:
             self.risk = min(self.risk, 1.)
 
-
-    def to_sick_to_move(self):
-        # Assume 2 weeks incubation time ; in 10% of cases person becomes to sick
-        # to go shopping after 2 weeks for at least 10 days and in 1% of the cases
-        # never goes shopping again.
-        time_since_sick_delta = (env.timestamp - self.infection_timestamp).days
-        in_peak_illness_time = (
-                time_since_sick >= self.incubation_days and
-                time_since_sick <= (self.incubation_days + NUM_DAYS_SICK))
-        return (in_peak_illness_time or self.never_recovers) and self.really_sick
-
     @property
     def is_susceptible(self):
         return not self.is_exposed and not self.is_infectious and not self.is_removed
@@ -312,7 +302,7 @@ class Human(object):
 
     @property
     def is_removed(self):
-        return self.recovered_timestamp != datetime.datetime.min
+        return self.recovered_timestamp[-1] == datetime.datetime.max
 
     @property
     def test_results(self):
@@ -402,10 +392,10 @@ class Human(object):
         return [int(self.is_susceptible), int(self.is_exposed), int(self.is_infectious), int(self.is_removed)]
 
     def assert_state_changes(self):
-        next_state = {0:1, 1:2, 2:3}
+        next_state = {0:[1], 1:[2], 2:[0, 3]}
         assert sum(self.state) == 1, f"invalid compartment for human:{self.name}"
         if self.last_state != self.state:
-            assert next_state[self.last_state.index(1)] == self.state.index(1), f"invalid compartment transition for human:{self.name}"
+            assert self.state.index(1) in next_state[self.last_state.index(1)], f"invalid compartment transition for human:{self.name}"
             self.last_state = self.state
 
     @property
@@ -439,11 +429,13 @@ class Human(object):
                 assert self.has_logged_symptoms is True # FIXME: assumption might not hold
 
             if self.is_infectious and self.env.timestamp - self.infection_timestamp >= datetime.timedelta(days=self.recovery_days):
-                if self.never_recovers: # re-infection assumed negligble
-                    self.recovered_timestamp = datetime.datetime.max
+                if (1 - self.never_recovers): # re-infection assumed negligble
+                    self.recovered_timestamp.append(datetime.datetime.max)
                     dead = True
                 else:
-                    self.recovered_timestamp = self.env.timestamp
+                    self.recovered_timestamp.append(self.env.timestamp)
+                    # we can only get here if REINF
+                    self.never_recovers = self.rng.random() <= P_NEVER_RECOVERS[min(math.floor(self.age/10),8)] * REINFECTION_POSSIBLE
                     dead = False
 
                 self.update_r(self.env.timestamp - self.infection_timestamp)
@@ -665,8 +657,5 @@ class Human(object):
         except Exception:
             self.infection_timestamp = None
 
-        try:
-            self.recovered_timestamp = str(self.recovered_timestamp)
-        except Exception:
-            self.recovered_timestamp = None
+        self.recovered_timestamp = [str(r) for r in self.recovered_timestamp]
         return self

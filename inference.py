@@ -26,7 +26,7 @@ if __name__ == "__main__":
     PATH_TO_PLOT = "plots/infected_dist.png"
 
     # TODO: refactor this so that clustering only happens for risk methods which require message clustering
-    DO_CLUSTER = True
+    DO_CLUSTER = False
 
     # read and filter the pickles
     with open(PATH_TO_DATA, "rb") as f:
@@ -62,6 +62,7 @@ if __name__ == "__main__":
     # TODO: add a way to process only a fraction of the log files (some methods can be slow)
     risks = []
     risk_vs_infected = []
+    # TODO: sort by time and then by human
     for log in tqdm(enc_logs):
         now = log['time']
         unobs = log['payload']['unobserved']
@@ -71,18 +72,28 @@ if __name__ == "__main__":
         other_human = hd[h2]
         this_human.env.timestamp = now
         other_human.env.timestamp = now
-        this_human.pending_messages.append(other_human.cur_message(now))
 
+        # if it's a new day in this log, send this log
         if this_human.cur_day != now.day:
             this_human.cur_day = now.day
             this_human.update_uid()
+
+            # if the person's infected, look at their symptoms and calculate a risk
+            # TODO: model false report of symptoms
+            if this_human.infection_timestamp and (this_human.env.timestamp - this_human.infection_timestamp).days >= 0:
+                this_human.risk = this_human.risk_for_symptoms()
+
+            # update risk based on that day's messages
             for j in range(len(this_human.pending_messages)):
                 m_j = this_human.pending_messages.pop()
                 if DO_CLUSTER:
                     # TODO: when a person's risk changes, we should also call handle_message for each of their previous contacts
                     this_human.handle_message(m_j)
-                this_human.update_risk(m_j)
+                this_human.update_risk_encounter(m_j)
             risk_vs_infected.append((this_human.risk, this_human.is_infectious))
+            # TODO: if risk changed substantially, send update messages for all of my messages in a rolling 14 day window
+
+        this_human.pending_messages.append(other_human.cur_message(now))
 
     # plot the resulting
     dist_plot(risk_vs_infected, PATH_TO_PLOT)
