@@ -637,6 +637,8 @@ class Human(object):
         return loc
 
     def serialize(self):
+        """This function serializes the human object for pickle."""
+        # TODO: I deleted many unserializable attributes, but many of them can (and should) be converted to serializable form.
         del self.env
         del self.events
         del self.rng
@@ -654,6 +656,8 @@ class Human(object):
         del self.shopping_days
         del self.shopping_hours
         del self.work_start_hour
+
+        # Convert timestamps to strings, if they are not None
         try:
             print(f"{self.name}, {self.historical_infection_timestamp}")
             self.infection_timestamp = str(self.historical_infection_timestamp)

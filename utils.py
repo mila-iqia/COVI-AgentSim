@@ -285,9 +285,13 @@ def compute_distance(loc1, loc2):
     return np.sqrt((loc1.lat - loc2.lat) ** 2 + (loc1.lon - loc2.lon) ** 2)
 
 def _encode_message(message):
+	# encode a contact message as a string
+	# TODO: clean up the bitarray => string transformation
 	return str(np.array(message[0].tolist()).astype(int).tolist()) + "_" + str(np.array(message[1].tolist()).astype(int).tolist()) + "_" + str(message[2]) + "_" + str(message[3])
 
 def _decode_message(message):
+	# decode a string-encoded message into a tuple
+	# TODO: make this a namedtuple
 	m_i = message.split("_")
 	obs_uid = bitarray(json.loads(m_i[0]))
 	risk = bitarray(json.loads(m_i[1]))
