@@ -36,13 +36,13 @@ def dist_plot(risk_vs_infected, PATH_TO_PLOT):
     plt.figure()
     sns.distplot(
         [risk for risk, infected in risk_vs_infected if infected],
-        kde=True,
+        kde=False,
         axlabel="infected",
         hist=True,
     )
     sns.distplot(
         [risk for risk, infected in risk_vs_infected if not infected],
-        kde=True,
+        kde=False,
         axlabel="not infected",
         hist=True,
     )

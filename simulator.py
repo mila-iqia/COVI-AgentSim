@@ -167,7 +167,6 @@ class Human(object):
             self.A[m_i_enc] = 0
             self.M.append(m_i_enc)
             self.cur_num_messages += 1
-            self.update_risk(m_i)
             return
 
         scores = {}
@@ -187,14 +186,12 @@ class Human(object):
             self.A[m_i_enc] = self.A[max_score_message]
             self.cur_num_messages += 1
             self.M.append(m_i_enc)
-            self.update_risk(m_i)
             return
 
         if temp_cur_num_messages == self.cur_num_messages:
             self.A[m_i_enc] = max(self.A.values()) + 1
             self.cur_num_messages += 1
             self.M.append(m_i_enc)
-            self.update_risk(m_i)
             return
 
     @property
@@ -232,7 +229,8 @@ class Human(object):
     def update_risk(self, other):
         if self.infection_timestamp and (self.env.timestamp - self.infection_timestamp).days >= 0 and (self.env.timestamp - self.infection_timestamp).days <= len(self.all_symptoms_array)-1:
             self.risk = self.risk_for_symptoms()
-
+        if self.recovered_timestamp and (self.env.timestamp - self.recovered_timestamp).days >= 0:
+            self.risk = 0
         m_risk = binary_to_float("".join([str(x) for x in np.array(other[1].tolist()).astype(int)]), 0, 4)
         m_uid = other[0]
 
@@ -614,7 +612,6 @@ class Human(object):
         del self.events
         del self.rng
         del self.visits
-        del self.recovered_timestamp
         del self.leaving_time
         del self.start_time
         del self.household
@@ -633,4 +630,9 @@ class Human(object):
             self.infection_timestamp = str(self.historical_infection_timestamp)
         except Exception:
             self.infection_timestamp = None
+
+        try:
+            self.recovered_timestamp = str(self.recovered_timestamp)
+        except Exception:
+            self.recovered_timestamp = None
         return self

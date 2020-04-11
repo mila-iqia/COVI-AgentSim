@@ -21,6 +21,7 @@ if __name__ == "__main__":
     PATH_TO_DATA = "data.pkl"
     PATH_TO_HUMANS = "humans.pkl"
     PATH_TO_PLOT = "plots/infected_dist.png"
+    DO_CLUSTER = False
 
     with open(PATH_TO_DATA, "rb") as f:
         logs = pickle.load(f)
@@ -32,9 +33,12 @@ if __name__ == "__main__":
     for human in humans:
         try:
             human.infection_timestamp = datetime.datetime.strptime(human.infection_timestamp, '%Y-%m-%d %H:%M:%S')
-            print(human.name)
         except Exception:
             human.infection_timestamp = None
+        try:
+            human.recovered_timestamp = datetime.datetime.strptime(human.recovered_timestamp, '%Y-%m-%d %H:%M:%S')
+        except Exception:
+            human.recovered_timestamp = None
 
         env = dummy_env()
         env.timestamp = datetime.datetime(2020, 2, 28, 0, 0)
@@ -61,18 +65,14 @@ if __name__ == "__main__":
         this_human.pending_messages.append(other_human.cur_message(now))
 
         if this_human.cur_day != now.day:
-            # this_human.update_initial_risk()
             this_human.cur_day = now.day
             this_human.update_uid()
-            # if this_human.risk != 0:
-            #     import pdb; pdb.set_trace()
             for j in range(len(this_human.pending_messages)):
                 m_j = this_human.pending_messages.pop()
-                quantized_risk = binary_to_float("".join([str(x) for x in np.array(m_j[1].tolist()).astype(int)]), 0, 4)
-                this_human.handle_message(m_j)
+                if DO_CLUSTER:
+                    this_human.handle_message(m_j)
+                this_human.update_risk(m_j)
             risk_vs_infected.append((this_human.risk, this_human.is_infectious))
-
-    # not sure why this is breaking
     dist_plot(risk_vs_infected, PATH_TO_PLOT)
 
     # contact_histories = []
