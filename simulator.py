@@ -167,7 +167,7 @@ class Human(object):
 
     @property
     def is_removed(self):
-        return self.recovered_timestamp == datetime.datetime.max
+        return self.recovered_timestamp != datetime.datetime.min
 
     @property
     def test_results(self):
@@ -267,7 +267,7 @@ class Human(object):
         return [int(self.is_susceptible), int(self.is_exposed), int(self.is_infectious), int(self.is_removed)]
 
     def assert_state_changes(self):
-        next_state = {0:1, 1:2, 2:0}
+        next_state = {0:1, 1:2, 2:3}
         assert sum(self.state) == 1, f"invalid compartment for human:{self.name}"
         if self.last_state != self.state:
             assert next_state[self.last_state.index(1)] == self.state.index(1), f"invalid compartment transition for human:{self.name}"
@@ -292,7 +292,7 @@ class Human(object):
                 assert self.has_logged_symptoms is True # FIXME: assumption might not hold
 
             if self.is_infectious and self.env.timestamp - self.infection_timestamp >= datetime.timedelta(days=self.recovery_days):
-                if self.never_recovers or True: # re-infection assumed negligble
+                if self.never_recovers: # re-infection assumed negligble
                     self.recovered_timestamp = datetime.datetime.max
                     dead = True
                 else:
