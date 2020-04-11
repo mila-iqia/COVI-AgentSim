@@ -7,6 +7,7 @@ from collections import defaultdict
 import datetime
 from bitarray import bitarray
 import operator
+import math
 
 from utils import _normalize_scores, _get_random_age, _get_random_sex, _get_all_symptoms_array, \
     _get_preexisting_conditions, _draw_random_discreet_gaussian, _json_serialize, _sample_viral_load_piecewise, \
@@ -78,8 +79,8 @@ class Human(object):
         self.recovered_timestamp = datetime.datetime.min
         self.really_sick = self.is_exposed and self.rng.random() >= 0.9
         self.extremely_sick = self.really_sick and self.rng.random() >= 0.7 # &severe; 30% of severe cases need ICU
-        self.never_recovers = self.rng.random() >= 0.99
-
+        self.never_recovers = self.rng.random() <= P_NEVER_RECOVERS[min(math.floor(self.age/10),8)]
+        
         # &symptoms, &viral-load
         # probability of being asymptomatic is basically 50%, but a bit less if you're older
         # and a bit more if you're younger
@@ -90,7 +91,7 @@ class Human(object):
         self.recovery_days = _draw_random_discreet_gaussian(AVG_RECOVERY_DAYS, SCALE_RECOVERY_DAYS, self.rng) # make it IQR &recovery
         self.viral_load_plateau_height, self.viral_load_plateau_start, self.viral_load_plateau_end, self.viral_load_recovered = _sample_viral_load_piecewise(rng, age=age)
         self.all_symptoms_array = _get_all_symptoms_array(
-                          np.ndarray.item(self.viral_load_plateau_start), np.ndarray.item(self.viral_load_plateau_end), 
+                          np.ndarray.item(self.viral_load_plateau_start), np.ndarray.item(self.viral_load_plateau_end),
                           np.ndarray.item(self.viral_load_recovered), age=self.age, incubation_days=self.incubation_days, 
                                                           really_sick=self.really_sick, extremely_sick=self.extremely_sick, 
                           rng=self.rng, preexisting_conditions=self.preexisting_conditions)
@@ -292,7 +293,7 @@ class Human(object):
 
     @property
     def is_removed(self):
-        return self.recovered_timestamp == datetime.datetime.max
+        return self.recovered_timestamp != datetime.datetime.min
 
     @property
     def test_results(self):
@@ -390,7 +391,7 @@ class Human(object):
         return [int(self.is_susceptible), int(self.is_exposed), int(self.is_infectious), int(self.is_removed)]
 
     def assert_state_changes(self):
-        next_state = {0:1, 1:2, 2:0}
+        next_state = {0:1, 1:2, 2:3}
         assert sum(self.state) == 1, f"invalid compartment for human:{self.name}"
         if self.last_state != self.state:
             assert next_state[self.last_state.index(1)] == self.state.index(1), f"invalid compartment transition for human:{self.name}"
@@ -423,7 +424,7 @@ class Human(object):
                 assert self.has_logged_symptoms is True # FIXME: assumption might not hold
 
             if self.is_infectious and self.env.timestamp - self.infection_timestamp >= datetime.timedelta(days=self.recovery_days):
-                if self.never_recovers or True: # re-infection assumed negligble
+                if self.never_recovers: # re-infection assumed negligble
                     self.recovered_timestamp = datetime.datetime.max
                     dead = True
                 else:
@@ -432,10 +433,10 @@ class Human(object):
 
                 self.update_r(self.env.timestamp - self.infection_timestamp)
                 self.infection_timestamp = None
+                Event.log_recovery(self, self.env.timestamp, dead)
                 if dead:
                     yield self.env.timeout(np.inf)
 
-                Event.log_recovery(self, self.env.timestamp, dead)
 
             self.assert_state_changes()
 
