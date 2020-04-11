@@ -7,3 +7,5 @@ click==7.1.1
 orderedset==2.0.3
 bitarray==1.2.1
 networkx==2.4
+tqdm==4.45.0
+seaborn==0.10.0

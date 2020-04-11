@@ -8,9 +8,12 @@ import datetime
 from bitarray import bitarray
 import operator
 
-from utils import _normalize_scores, _get_random_age, _get_random_sex, _get_all_symptoms_array, _get_preexisting_conditions, _draw_random_discreet_gaussian, _json_serialize, _sample_viral_load_piecewise, _get_random_area, _encode_message, _decode_message
+from utils import _normalize_scores, _get_random_age, _get_random_sex, _get_all_symptoms_array, \
+    _get_preexisting_conditions, _draw_random_discreet_gaussian, _json_serialize, _sample_viral_load_piecewise, \
+    _get_random_area, _encode_message, _decode_message, float_to_binary, binary_to_float
 from config import *  # PARAMETERS
 from base import *
+
 
 class Visits(object):
 
@@ -90,7 +93,7 @@ class Human(object):
                           np.ndarray.item(self.viral_load_plateau_start), np.ndarray.item(self.viral_load_plateau_end), 
                           np.ndarray.item(self.viral_load_recovered), age=self.age, incubation_days=self.incubation_days, 
                                                           really_sick=self.really_sick, extremely_sick=self.extremely_sick, 
-                          rng=self.rng, preexisting_conditions=self.preexisting_conditions )
+                          rng=self.rng, preexisting_conditions=self.preexisting_conditions)
 
         # counters and memory
         self.r0 = []
@@ -105,6 +108,11 @@ class Human(object):
         self.cur_num_messages = 0
         self.pending_messages = []
         self.cur_day = -1
+
+        # risk
+        self.risk = 0
+        self.update_initial_risk()
+        self.contact_history = {}
 
         # habits
         self.avg_shopping_time = _draw_random_discreet_gaussian(AVG_SHOP_TIME_MINUTES, SCALE_SHOP_TIME_MINUTES, self.rng)
@@ -159,6 +167,7 @@ class Human(object):
             self.A[m_i_enc] = 0
             self.M.append(m_i_enc)
             self.cur_num_messages += 1
+            self.update_risk(m_i)
             return
 
         scores = {}
@@ -178,12 +187,14 @@ class Human(object):
             self.A[m_i_enc] = self.A[max_score_message]
             self.cur_num_messages += 1
             self.M.append(m_i_enc)
+            self.update_risk(m_i)
             return
 
         if temp_cur_num_messages == self.cur_num_messages:
             self.A[m_i_enc] = max(self.A.values()) + 1
             self.cur_num_messages += 1
             self.M.append(m_i_enc)
+            self.update_risk(m_i)
             return
 
     @property
@@ -198,12 +209,61 @@ class Human(object):
             self._uid = bitarray()
             self._uid.extend(self.rng.choice([True, False], 4)) # generate a random 4-bit code
 
-    @property
-    def risk(self):
-        # obvi placeholder, it's random
-        self._risk = bitarray()
-        self._risk.extend(self.rng.choice([True, False], 4))
-        return self._risk
+    def update_initial_risk(self):
+        # TODO: ask tegan to check this
+        if self.infection_timestamp:
+            sickness_day = (self.env.timestamp - self.infection_timestamp).days
+            if sickness_day < len(self.all_symptoms_array)-1 and sickness_day > -1:
+                symptoms = self.all_symptoms_array[sickness_day] if RISK_WITH_TRUE_SYMPTOMS else self.reported_symptoms
+            else:
+                symptoms = []
+        else:
+            symptoms = []
+
+        if self.is_infectious:
+            self.risk += 1
+        elif symptoms == []:
+            self.risk += 0
+        elif 'severe' in symptoms:
+            self.risk += 0.75
+        elif 'moderate' in symptoms:
+            self.risk += 0.5
+        elif 'mild' in symptoms:
+            self.risk += 0.25
+        else:
+            raise ValueError(f"Invalid symptom: {symptoms}")
+        if CLIP_RISK:
+            self.risk = min(self.risk, 1.)
+        print(f"{symptoms}: {self.risk}")
+
+    def update_risk(self, other):
+        m_risk = binary_to_float("".join([str(x) for x in np.array(other[1].tolist()).astype(int)]), 0, 4)
+        m_uid = other[0]
+        if RISK_MODEL == 'yoshua':
+            if self.risk < m_risk:
+                update = (m_risk - m_risk * self.risk) * RISK_TRANSMISSION_PROBA
+            else:
+                update = 0
+        elif RISK_MODEL == 'lenka':
+            update = m_risk * RISK_TRANSMISSION_PROBA
+        elif RISK_MODEL == 'eilif':
+            if other.name not in self.contact_history:
+                # update is delta_risk
+                update = m_risk * RISK_TRANSMISSION_PROBA
+            else:
+                previous_risk = self.contact_history[other.name].previous_risk
+                carry_over_transmission_proba = self.contact_history[other.name].carry_over_transmission_proba
+                update = ((m_risk - previous_risk) * RISK_TRANSMISSION_PROBA +
+                          previous_risk * carry_over_transmission_proba)
+            # Update contact history
+            self.contact_history[m_uid].previous_risk = m_risk
+            self.contact_history[m_uid].carry_over_transmission_proba = \
+                RISK_TRANSMISSION_PROBA * (1 - update)
+        else:
+            update = 0
+        self.risk += update
+        if CLIP_RISK:
+            self.risk = min(self.risk, 1.)
 
 
     def to_sick_to_move(self):
@@ -255,11 +315,9 @@ class Human(object):
     def reported_symptoms(self):
         if not any(self.symptoms) or self.test_results is None or not self.human.has_app:
             return None
-        else:
-            if self.rng.rand() < self.carefullness:
-                return self.symptoms
-            else:
-                return None
+        if self.rng.rand() < self.carefullness:
+            return self.symptoms
+        return None
 
     @property
     def symptoms(self):
@@ -338,12 +396,14 @@ class Human(object):
             assert next_state[self.last_state.index(1)] == self.state.index(1), f"invalid compartment transition for human:{self.name}"
             self.last_state = self.state
 
-    def cur_message(self, time):
-        return (self.uid, self.risk, time, self.name)
-
     @property
-    def message(self):
-        return {self.uid, self.risk}
+    def message_risk(self):
+        if self.risk == 1.0:
+            return bitarray('1111')
+        return bitarray(float_to_binary(self.risk, 0, 4))
+
+    def cur_message(self, time):
+        return (self.uid, self.message_risk, time, self.name)
 
     def run(self, city):
         """
@@ -564,7 +624,6 @@ class Human(object):
         del self.events
         del self.rng
         del self.visits
-        del self.incubation_days
         del self.recovered_timestamp
         del self.leaving_time
         del self.start_time
@@ -579,16 +638,7 @@ class Human(object):
         del self.shopping_days
         del self.shopping_hours
         del self.work_start_hour
-
+        if self.infection_timestamp:
+            print(f"{self.name}, {self.infection_timestamp}")
         self.infection_timestamp = str(self.infection_timestamp)
-
-        # s['household'] = s['household'].serialize()
-        # s['location'] = s['location'].serialize()
-        # s['workplace'] = s['workplace'].serialize()
-        # if s['name'] == 9:
-        #     for k, v in s.items():
-        #         print(f"{k}: {type(s[k])}")
-        #     print(s.keys())
-        #     import pdb; pdb.set_trace()
-        # print(s['name'])
         return self

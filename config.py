@@ -21,6 +21,12 @@ INFECTION_DURATION = 2 # minutes
 
 ASYMPTOMATIC_INFECTION_RATIO = 0.1 # &prob_infectious
 
+RISK_TRANSMISSION_PROBA = 0.01
+RISK_MODEL = 'yoshua'   # options: ['yoshua', 'lenka', 'eilif']
+RISK_WITH_TRUE_SYMPTOMS = True
+CLIP_RISK = True
+UPDATE_RISK_EVERY_DAY = True
+
 # aerosol    copper      cardboard       steel       plastic
 MAX_DAYS_CONTAMINATION = [0.125, 1/3, 1, 2, 3] # &envrionmental contamination
 
