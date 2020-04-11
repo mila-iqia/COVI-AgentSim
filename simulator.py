@@ -112,7 +112,6 @@ class Human(object):
 
         # risk
         self.risk = 0
-        self.contact_history = {}
 
         # habits
         self.avg_shopping_time = _draw_random_discreet_gaussian(AVG_SHOP_TIME_MINUTES, SCALE_SHOP_TIME_MINUTES, self.rng)
@@ -207,40 +206,67 @@ class Human(object):
             self._uid.extend(self.rng.choice([True, False], 4)) # generate a random 4-bit code
 
     def risk_for_symptoms(self):
+        """ This function calculates a risk score based on the person's symptoms."""
         sickness_day = (self.env.timestamp - self.infection_timestamp).days
         symptoms = []
+        # for each day up till today,
         for day in range(sickness_day + 1):
-            if RISK_WITH_TRUE_SYMPTOMS and self.rng.rand() < self.carefullness:
-                    symptoms.extend(self.all_symptoms_array[day-1])
+            # if we use the true symptoms
+            if RISK_WITH_TRUE_SYMPTOMS:
+                # append the day's symptoms
+                symptoms.extend(self.all_symptoms_array[day - 1])
+            # if we use the reported symptoms
+            elif: self.rng.rand() < self.carefullness:
+                # and the person reports their symptoms for that day, add the symptoms
+                # TODO: right now this is a binary call. Either they accurately report all their symptoms, or none
+                symptoms.extend(self.all_symptoms_array[day - 1])
             else:
-                symptoms.extend(self.all_symptoms_array[day-1])
+                # no symptoms reported
+                pass
+
+        # if they have a positive test, they have a risk of 1.
         if self.test_results == 'positive':
-            return 1
-        elif 'severe' in symptoms:
+            return 1.
+
+        # TODO: make a better model. now, if at any point during their illness, they had severe symptoms, we return a high 0.75
+        if 'severe' in symptoms:
             return 0.75
-        elif 'moderate' in symptoms:
+        if 'moderate' in symptoms:
             return 0.5
-        elif 'mild' in symptoms:
+        if 'mild' in symptoms:
             return 0.25
-        else:
-            return 0
+        return 0.
 
 
     def update_risk(self, other):
+        """ This function updates an individual's risk based on their symptoms (reported or true) and their new messages"""
+        # TODO: run update_risk when a user enter's their symptoms
+        # TODO: get eilif's model to work
+        # TODO: refactor this so that we can easily swap contact prediction models (without using the config file)
+
+        # if the person's infected, look at their symptoms and calculate a risk
+        # TODO: model false report of symptoms
         if self.infection_timestamp and (self.env.timestamp - self.infection_timestamp).days >= 0 and (self.env.timestamp - self.infection_timestamp).days <= len(self.all_symptoms_array)-1:
             self.risk = self.risk_for_symptoms()
+
+        # if the person has recovered, their risk is 0
+        # TODO: This leaks information. We should not set their risk to zero just because their symptoms went away and they have "recovered".
         if self.recovered_timestamp and (self.env.timestamp - self.recovered_timestamp).days >= 0:
             self.risk = 0
+
+        # Get the binarized contact risk
         m_risk = binary_to_float("".join([str(x) for x in np.array(other[1].tolist()).astype(int)]), 0, 4)
         m_uid = other[0]
 
+        # select your contact risk prediction model
+        update = 0
         if RISK_MODEL == 'yoshua':
             if self.risk < m_risk:
                 update = (m_risk - m_risk * self.risk) * RISK_TRANSMISSION_PROBA
-            else:
-                update = 0
         elif RISK_MODEL == 'lenka':
             update = m_risk * RISK_TRANSMISSION_PROBA
+
+        # TODO: fix this model
         elif RISK_MODEL == 'eilif':
             if other.name not in self.contact_history:
                 # update is delta_risk
@@ -254,9 +280,10 @@ class Human(object):
             self.contact_history[m_uid].previous_risk = m_risk
             self.contact_history[m_uid].carry_over_transmission_proba = \
                 RISK_TRANSMISSION_PROBA * (1 - update)
-        else:
-            update = 0
+
         self.risk += update
+
+        # some models require us to clip the risk at one (like 'lenka' and 'eilif')
         if CLIP_RISK:
             self.risk = min(self.risk, 1.)
 
