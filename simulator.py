@@ -3,7 +3,7 @@ import simpy
 
 import itertools
 import numpy as np
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 import datetime
 from bitarray import bitarray
 import operator
@@ -390,7 +390,9 @@ class Human(object):
         return bitarray(float_to_binary(self.risk, 0, 4))
 
     def cur_message(self, time):
-        return (self.uid, self.message_risk, time, self.name)
+        Message = namedtuple('message', 'uid risk time unobs_id')
+        message = Message(self.uid, self.message_risk, time, self.name)
+        return message
 
     def run(self, city):
         """

@@ -13,22 +13,34 @@ import datetime
 from tqdm import tqdm
 from plots.validate_risk_parameters import dist_plot
 
-class dummy_env:
-    def __init__(self):
-        return
+
+""" This file contains the core of the side simulation, which is run on the output encounters from the main simulation.
+It's primary functionality is to run the message clustering and risk prediction algorithms.
+"""
 
 if __name__ == "__main__":
+
+    # TODO: put these in args
     PATH_TO_DATA = "data.pkl"
     PATH_TO_HUMANS = "humans.pkl"
     PATH_TO_PLOT = "plots/infected_dist.png"
-    DO_CLUSTER = False
 
+    # TODO: refactor this so that clustering only happens for risk methods which require message clustering
+    DO_CLUSTER = True
+
+    # read and filter the pickles
     with open(PATH_TO_DATA, "rb") as f:
         logs = pickle.load(f)
     with open(PATH_TO_HUMANS, "rb") as f:
         humans = pickle.load(f)
     enc_logs = [l for l in logs if l["event_type"] == Event.encounter]
 
+    # A hack for using the re-inflated human objects
+    class dummy_env:
+        def __init__(self):
+            return
+
+    # re-inflate the humans
     hd = {}
     for human in humans:
         try:
@@ -45,15 +57,12 @@ if __name__ == "__main__":
         human.env = env
         human.rng = np.random.RandomState(0)
         human.update_uid()
-
         hd[human.name] = human
 
-    i = 0
+    # TODO: add a way to process only a fraction of the log files (some methods can be slow)
     risks = []
     risk_vs_infected = []
-
     for log in tqdm(enc_logs):
-        i+=1
         now = log['time']
         unobs = log['payload']['unobserved']
         h1 = unobs['human1']['human_id']
@@ -73,11 +82,15 @@ if __name__ == "__main__":
                     this_human.handle_message(m_j)
                 this_human.update_risk(m_j)
             risk_vs_infected.append((this_human.risk, this_human.is_infectious))
+
+    # plot the resulting
     dist_plot(risk_vs_infected, PATH_TO_PLOT)
 
-    # contact_histories = []
-    # for human in humans:
-    #     contact_histories.append(human.A)
-    # json.dump(contact_histories, open('contact_histories.json', 'w'))
+    # write out the clusters to be processed by privacy_plots
+    if DO_CLUSTER:
+        clusters = []
+        for human in humans:
+            clusters.append(human.A)
+        json.dump(clusters, open('clusters.json', 'w'))
 
 
