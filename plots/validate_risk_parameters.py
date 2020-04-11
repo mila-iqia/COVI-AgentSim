@@ -53,21 +53,3 @@ def dist_plot(risk_vs_infected, PATH_TO_PLOT):
     print("Saving figure...")
     plt.savefig(PATH_TO_PLOT)
     plt.close()
-
-
-if __name__ == "__main__":
-    PATH_TO_DATA = "../data.pkl"
-    PATH_TO_PLOT = "./infected_dist.png"
-
-    with open(PATH_TO_DATA, "rb") as f:
-        logs = pickle.load(f)
-    enc_logs = [l for l in logs if l["event_type"] == Event.encounter]
-    risk_vs_infected = [
-        (
-            l["payload"]["unobserved"]["risk"],
-            l["payload"]["unobserved"]["human1"]["is_infected"],
-        )
-        for l in enc_logs
-    ]
-
-    dist_plot(risk_vs_infected)
