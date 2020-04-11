@@ -159,15 +159,13 @@ class Human(object):
 
 
     def handle_message(self, m_i):
+        """ This function clusters new messages by scoring them against old messages in a sort of naive nearest neighbors approach"""
+        # TODO: include risk level in clustering, currently only uses quantized uid
+        # TODO: refactor to compare multiple clustering schemes
+        # TODO: check for mutually exclusive messages in order to break up a group and re-run nearest neighbors
         m_i_enc = _encode_message(m_i)
-        temp_cur_num_messages = self.cur_num_messages
-        # if first message received, it's group 0
-        if self.cur_num_messages == 0:
-            self.A[m_i_enc] = 0
-            self.M.append(m_i_enc)
-            self.cur_num_messages += 1
-            return
 
+        # otherwise score against previous messages
         scores = {}
         for m_enc in self.M:
             m = _decode_message(m_enc)
@@ -183,15 +181,15 @@ class Human(object):
         if scores:
             max_score_message = max(scores.items(), key=operator.itemgetter(1))[0]
             self.A[m_i_enc] = self.A[max_score_message]
-            self.cur_num_messages += 1
             self.M.append(m_i_enc)
-            return
-
-        if temp_cur_num_messages == self.cur_num_messages:
+        # if it's either the first message
+        elif len(self.A.values()) == 0:
+            self.A[m_i_enc] = 0
+            self.M.append(m_i_enc)
+        # if there was no nearby neighbor
+        else:
             self.A[m_i_enc] = max(self.A.values()) + 1
-            self.cur_num_messages += 1
             self.M.append(m_i_enc)
-            return
 
     @property
     def uid(self):
@@ -216,7 +214,7 @@ class Human(object):
                 # append the day's symptoms
                 symptoms.extend(self.all_symptoms_array[day - 1])
             # if we use the reported symptoms
-            elif: self.rng.rand() < self.carefullness:
+            elif self.rng.rand() < self.carefullness:
                 # and the person reports their symptoms for that day, add the symptoms
                 # TODO: right now this is a binary call. Either they accurately report all their symptoms, or none
                 symptoms.extend(self.all_symptoms_array[day - 1])
@@ -412,11 +410,13 @@ class Human(object):
 
     @property
     def message_risk(self):
+        """quantizes the risk in order to be used in a message"""
         if self.risk == 1.0:
             return bitarray('1111')
         return bitarray(float_to_binary(self.risk, 0, 4))
 
     def cur_message(self, time):
+        """creates the current message for this user"""
         Message = namedtuple('message', 'uid risk time unobs_id')
         message = Message(self.uid, self.message_risk, time, self.name)
         return message
@@ -573,6 +573,7 @@ class Human(object):
 
             if self.is_susceptible and is_exposed:
                 self.infection_timestamp = self.env.timestamp
+                # this was necessary because the side-simulation needs to know about the infection time
                 self.historical_infection_timestamp = self.env.timestamp
 
             Event.log_encounter(self, h,

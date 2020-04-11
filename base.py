@@ -107,6 +107,7 @@ class Location(simpy.Resource):
         return hash(self.name)
 
     def serialize(self):
+        """ This function serializes the location object"""
         s = self.__dict__
         if s.get('env'):
             del s['env']
@@ -131,8 +132,8 @@ class Event:
 
     @staticmethod
     def log_encounter(human1, human2, location, duration, distance, time):
-        h_obs_keys = ['obs_lat', 'obs_lon', 'age', 'reported_symptoms', 'test_results', 'has_app', 'message_risk']
-        h_unobs_keys = ['carefullness', 'viral_load', 'infectiousness', 'symptoms', 'is_exposed', 'is_infectious', 'risk']
+        h_obs_keys = ['obs_lat', 'obs_lon', 'age', 'reported_symptoms', 'test_results', 'has_app']
+        h_unobs_keys = ['carefullness', 'viral_load', 'infectiousness', 'symptoms', 'is_exposed', 'is_infectious']
         loc_obs_keys = ['location_type', 'lat', 'lon']
         loc_unobs_keys = ['contamination_probability', 'social_contact_factor']
 
@@ -212,9 +213,6 @@ class Event:
                 'event_type': Event.contamination,
                 'time': time,
                 'payload': {
-                    'observed':{
-                        'risk': human.risk
-                    },
                     'unobserved':{
                       'exposed': True
                     }

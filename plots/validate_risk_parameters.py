@@ -6,6 +6,8 @@ import seaborn as sns
 
 sns.set()
 
+""" This file plots the predicted risk for infected and uninfected people at one snapshot in time"""
+# TODO: come up with better visualizations for this... time-lapse gif??!?!?!? ♪┏(・o・)┛♪┗ ( ・o・) ┓♪
 
 def hist_plot(risk_vs_infected, PATH_TO_PLOT):
     plt.figure()

@@ -20,7 +20,7 @@ It's primary functionality is to run the message clustering and risk prediction 
 
 if __name__ == "__main__":
 
-    # TODO: put these in args
+    # TODO: add as args that can be called from cmdline
     PATH_TO_DATA = "data.pkl"
     PATH_TO_HUMANS = "humans.pkl"
     PATH_TO_PLOT = "plots/infected_dist.png"
@@ -79,6 +79,7 @@ if __name__ == "__main__":
             for j in range(len(this_human.pending_messages)):
                 m_j = this_human.pending_messages.pop()
                 if DO_CLUSTER:
+                    # TODO: when a person's risk changes, we should also call handle_message for each of their previous contacts
                     this_human.handle_message(m_j)
                 this_human.update_risk(m_j)
             risk_vs_infected.append((this_human.risk, this_human.is_infectious))
