@@ -45,6 +45,8 @@ if __name__ == "__main__":
 
     i = 0
     risks = []
+    risk_vs_infected = []
+
     for log in tqdm(enc_logs):
         i+=1
         now = log['time']
@@ -55,25 +57,17 @@ if __name__ == "__main__":
         other_human = hd[h2]
         this_human.env.timestamp = now
         other_human.env.timestamp = now
+        this_human.pending_messages.append(other_human.cur_message(now))
+
         if this_human.cur_day != now.day:
             this_human.update_initial_risk()
             this_human.cur_day = now.day
             this_human.update_uid()
             for j in range(len(this_human.pending_messages)):
                 m_j = this_human.pending_messages.pop()
-                print(other_human.risk)
-
-                risks.append(binary_to_float("".join([str(x) for x in np.array(m_j[1].tolist()).astype(int)]), 0, 4))
+                quantized_risk = binary_to_float("".join([str(x) for x in np.array(m_j[1].tolist()).astype(int)]), 0, 4)
                 this_human.handle_message(m_j)
-        this_human.pending_messages.append(other_human.cur_message(now))
-        # if i > 25000:
-        #     break
-    risk_vs_infected = []
-    for log in enc_logs:
-        risk_vs_infected.append([0, log["payload"]["unobserved"]["human1"]["is_infected"]])
-    for idx, risk in enumerate(risks):
-        risk_vs_infected[idx][0] = risk
-        risk_vs_infected[idx] = tuple(risk_vs_infected[idx])
+            risk_vs_infected.append((this_human.risk, this_human.is_infectious))
 
     # not sure why this is breaking
     dist_plot(risk_vs_infected, PATH_TO_PLOT)

@@ -220,7 +220,7 @@ class Human(object):
                 symptoms = []
         else:
             symptoms = []
-        if self.is_infectious:
+        if self.test_results == 'positive':
             self.risk += 1
         elif symptoms == []:
             self.risk += 0
@@ -234,11 +234,11 @@ class Human(object):
             raise ValueError(f"Invalid symptom: {symptoms}")
         if CLIP_RISK:
             self.risk = min(self.risk, 1.)
-        print(f"{symptoms}: {self.risk}")
 
     def update_risk(self, other):
         m_risk = binary_to_float("".join([str(x) for x in np.array(other[1].tolist()).astype(int)]), 0, 4)
         m_uid = other[0]
+
         if RISK_MODEL == 'yoshua':
             if self.risk < m_risk:
                 update = (m_risk - m_risk * self.risk) * RISK_TRANSMISSION_PROBA
