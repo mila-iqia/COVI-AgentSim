@@ -85,9 +85,9 @@ class Human(object):
         self.recovery_days = _draw_random_discreet_gaussian(AVG_RECOVERY_DAYS, SCALE_RECOVERY_DAYS, self.rng) # make it IQR &recovery
         self.viral_load_plateau_height, self.viral_load_plateau_start, self.viral_load_plateau_end, self.viral_load_recovered = _sample_viral_load_piecewise(rng, age=age)
         self.all_symptoms_array = _get_all_symptoms_array(
-                          np.ndarray.item(self.viral_load_plateau_start), np.ndarray.item(self.viral_load_plateau_end), 
-                          np.ndarray.item(self.viral_load_recovered), age=self.age, incubation_days=self.incubation_days, 
-                                                          really_sick=self.really_sick, extremely_sick=self.extremely_sick, 
+                          np.ndarray.item(self.viral_load_plateau_start), np.ndarray.item(self.viral_load_plateau_end),
+                          np.ndarray.item(self.viral_load_recovered), age=self.age, incubation_days=self.incubation_days,
+                                                          really_sick=self.really_sick, extremely_sick=self.extremely_sick,
                           rng=self.rng, preexisting_conditions=self.preexisting_conditions )
 
         # counters and memory
@@ -300,10 +300,10 @@ class Human(object):
 
                 self.update_r(self.env.timestamp - self.infection_timestamp)
                 self.infection_timestamp = None
+                Event.log_recovery(self, self.env.timestamp, dead)
                 if dead:
                     yield self.env.timeout(np.inf)
 
-                Event.log_recovery(self, self.env.timestamp, dead)
 
             self.assert_state_changes()
 
