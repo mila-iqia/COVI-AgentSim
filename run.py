@@ -158,7 +158,7 @@ def run_simu(n_stores=None, n_people=None, n_parks=None, n_hospitals=None, n_mis
         for i in range(math.ceil(n_people / 30))
     ]
     hospitals = [
-        Location(
+        Hospital(
             env, rng,
             cont_prob=0.3,
             name=f'hospital{i}',

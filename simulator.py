@@ -83,6 +83,8 @@ class Human(object):
         self.really_sick = self.is_exposed and self.rng.random() >= 0.9
         self.extremely_sick = self.really_sick and self.rng.random() >= 0.7 # &severe; 30% of severe cases need ICU
         self.never_recovers = self.rng.random() >= 0.99
+        self.obs_hospitalized = False
+        self.obs_in_icu = False
 
         # &symptoms, &viral-load
         # probability of being asymptomatic is basically 50%, but a bit less if you're older
@@ -284,10 +286,6 @@ class Human(object):
             assert next_state[self.last_state.index(1)] == self.state.index(1), f"invalid compartment transition for human:{self.name}"
             self.last_state = self.state
 
-    def go_to_hopsital(self):
-        t = self.infectiousness * 15 * 24 * 60 # TODO based on probability of infectiousness stay in hospital maximum 15 days
-        yield self.env.process(self.at(self.hospital, t))
-
     def run(self, city):
         """
            1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24
@@ -295,8 +293,6 @@ class Human(object):
         """
         self.household.humans.add(self)
         while True:
-            # if 'severe' in self.symptoms:
-            #     yield self.env.process(self.go_to_hopsital())
 
             if self.is_infectious and self.has_logged_symptoms is False:
                 Event.log_symptom_start(self, True, self.env.timestamp)
@@ -333,8 +329,12 @@ class Human(object):
                 self.count_exercise=0
                 self.count_shop=0
 
+            if self.extremely_sick:
+                yield self.env.process(self.hospitalize(city, icu_required=True))
+            elif self.really_sick and 'severe' in self.symptoms:
+                yield self.env.process(self.hospitalize(city))
 
-            if not WORK_FROM_HOME and not self.env.is_weekend() and hour == self.work_start_hour:
+            elif not WORK_FROM_HOME and not self.env.is_weekend() and hour == self.work_start_hour:
                 yield self.env.process(self.excursion(city, "work"))
 
             elif hour in self.shopping_hours and day in self.shopping_days and self.count_shop<=self.max_shop_per_week:
@@ -374,6 +374,18 @@ class Human(object):
             return round(self.lon + self.rng.normal(0, 2))
         else:
             return round(self.lon + self.rng.normal(0, 10))
+
+    def hospitalize(self, city, icu_required=False):
+        hospital = self._select_location(location_type="hospital", city=city)
+        if icu_required:
+            if len(self.preexisting_conditions) < 2:
+                extra_time = self.rng.choice([1, 2, 3], p=[0.5, 0.3, 0.2])
+            else:
+                extra_time = self.rng.choice([1, 2, 3], p=[0.2, 0.3, 0.5])
+            t = self.viral_load_plateau_end[0] - self.viral_load_plateau_start[0] + extra_time
+            yield self.env.process(self.at(hospital.icu, t))
+        else:
+            yield self.env.process(self.at(hospital, 5)) # TODO how long in non-ICU section?
 
     def excursion(self, city, type):
 

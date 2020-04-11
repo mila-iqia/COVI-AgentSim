@@ -113,8 +113,36 @@ class Hospital(Location):
 
     def __init__(self, env, rng, capacity=simpy.core.Infinity, name='vgh', location_type='hospital', lat=None,
                  lon=None, area=None, cont_prob=None, surface_prob=[0.2, 0.2, 0.2, 0.2, 0.2]):
-        super().__init__(env, rng, capacity=capacity, name=name, location_type=location_type, lat=lat, lon=lon, cont_prob=cont_prob)
+        super().__init__(env, rng, capacity, name, location_type, lat, lon, cont_prob)
         self.location_contamination = 1
+        self.icu = ICU(env, rng, self, capacity=capacity/50, name=f"{name}_icu", location_type='icu', lat=lat, lon=lon,
+                            area=None, cont_prob=None)
+
+    def add_human(self, human):
+        human.obs_hospitalized = True
+        super().add_human(human)
+
+    def remove_human(self, human):
+        human.obs_hospitalized = False
+        super().remove_human(human)
+
+
+class ICU(Location):
+
+    def __init__(self, env, rng, hospital, capacity=simpy.core.Infinity, name='icu', location_type='icu', lat=None,
+                 lon=None, area=None, cont_prob=None, surface_prob=[0.2, 0.2, 0.2, 0.2, 0.2]):
+        super().__init__(env, rng, capacity, name, location_type, lat, lon, cont_prob)
+        self.hospital = hospital
+
+    def add_human(self, human):
+        human.obs_hospitalized = True
+        human.obs_in_icu = True
+        super().add_human(human)
+
+    def remove_human(self, human):
+        human.obs_hospitalized = False
+        human.obs_in_icu = False
+        super().remove_human(human)
 
 
 class Event:
