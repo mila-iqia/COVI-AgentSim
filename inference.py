@@ -78,7 +78,7 @@ if __name__ == "__main__":
             this_human.cur_day = now.day
             this_human.update_uid()
 
-            # if the person's infected, look at their symptoms and calculate a risk
+            # if the person's infected, look at their symptoms once per day and calculate a risk
             # TODO: model false report of symptoms
             if this_human.infection_timestamp and (this_human.env.timestamp - this_human.infection_timestamp).days >= 0:
                 this_human.risk = this_human.risk_for_symptoms()

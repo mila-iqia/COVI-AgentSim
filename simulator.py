@@ -243,11 +243,6 @@ class Human(object):
         # TODO: get eilif's model to work
         # TODO: refactor this so that we can easily swap contact prediction models (without using the config file)
 
-        # if the person's infected, look at their symptoms and calculate a risk
-        # TODO: model false report of symptoms
-        if self.infection_timestamp and (self.env.timestamp - self.infection_timestamp).days >= 0 and (self.env.timestamp - self.infection_timestamp).days <= len(self.all_symptoms_array)-1:
-            self.risk = self.risk_for_symptoms()
-
         # if the person has recovered, their risk is 0
         # TODO: This leaks information. We should not set their risk to zero just because their symptoms went away and they have "recovered".
         if self.recovered_timestamp and (self.env.timestamp - self.recovered_timestamp).days >= 0:
@@ -323,11 +318,11 @@ class Human(object):
 
     @property
     def symptoms(self):
-        if not self.infection_timestamp:
+        try:
+            sickness_day = (self.env.timestamp - self.infection_timestamp).days
+            return self.all_symptoms_array[sickness_day]
+        except Exception as e:
             return []
-        sickness_day = (self.env.timestamp - self.infection_timestamp).days
-        return self.all_symptoms_array[sickness_day]
-
 
     @property
     def viral_load(self):
