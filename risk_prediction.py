@@ -180,10 +180,7 @@ if __name__ == "__main__":
             this_human.update_uid()
             cur_risk = this_human.risk
             # if the person's infected, look at their symptoms once per day and calculate a risk
-            # TODO: model false report of symptoms
             if this_human.infection_timestamp and (this_human.env.timestamp - this_human.infection_timestamp).days >= 0:
-                # if (this_human.env.timestamp - this_human.infection_timestamp).days > 6:
-                #     import pdb; pdb.set_trace()
                 this_human.risk = risk_for_symptoms(this_human)
             # update risk based on that day's messages
             for j in range(len(this_human.pending_messages)):
