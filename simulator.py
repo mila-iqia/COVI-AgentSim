@@ -72,12 +72,10 @@ class Human(object):
         self.has_flu = self.rng.rand() < P_FLU * age_modifier
         self.has_app = self.rng.rand() < (P_HAS_APP / age_modifier) + (self.carefullness / 2)
         self.incubation_days = _draw_random_discreet_gaussian(AVG_INCUBATION_DAYS, SCALE_INCUBATION_DAYS, self.rng)
-        self.test_results = test_results
 
         # Indicates whether this person will show severe signs of illness.
         self.infection_timestamp = infection_timestamp
         self.recovered_timestamp = datetime.datetime.min
-        self.test_timestamp = datetime.datetime.min
         self.really_sick = self.is_exposed and self.rng.random() >= 0.9
         self.extremely_sick = self.really_sick and self.rng.random() >= 0.7 # &severe; 30% of severe cases need ICU
         # if P_REINFECTION is 0, then after getting sick
@@ -197,8 +195,7 @@ class Human(object):
 
     @property
     def is_exposed(self):
-        return self.infection_timestamp is not None and self.infection_timestamp != datetime.datetime.min and \
-               self.env.timestamp - self.infection_timestamp < datetime.timedelta(days=self.incubation_days)
+        return self.infection_timestamp is not None and self.env.timestamp - self.infection_timestamp < datetime.timedelta(days=self.incubation_days)
 
     @property
     def is_infectious(self):
@@ -209,18 +206,21 @@ class Human(object):
         return self.recovered_timestamp == datetime.datetime.max
 
     @property
-    def is_quarantined(self):
-        return self.test_timestamp is not None and self.env.timestamp - self.test_timestamp >= datetime.timedelta(days=TEST_DAYS) and \
-            self.env.timestamp - self.test_timestamp < datetime.timedelta(days=QUARANTINE_DAYS)
-
-    def sample_get_tested(self):
-        self.test_results = False
-        if any(self.symptoms) and self.rng.rand() > P_TEST:
-            if self.is_infectious or self.rng.rand() > P_FALSE_NEGATIVE:
-                self.test_timestamp = self.env.timestamp
-                self.test_results = True
-                return self.test_results
-        return self.test_results
+    def test_results(self):
+        if not any(self.symptoms):
+            return None
+        else:
+            tested = self.rng.rand() > P_TEST
+            if tested:
+                if self.is_infectious:
+                    return 'positive'
+                else:
+                    if self.rng.rand() > P_FALSE_NEGATIVE:
+                        return 'negative'
+                    else:
+                        return 'positive'
+            else:
+                return None
 
     @property
     def symptoms(self):
@@ -333,7 +333,7 @@ class Human(object):
                 self.has_logged_symptoms = True
 
             if self.is_infectious and self.env.timestamp - self.infection_timestamp > datetime.timedelta(days=TEST_DAYS) and not self.has_logged_test:
-                result = self.sample_get_tested()
+                result = self.rng.random() > 0.8
                 Event.log_test(self, result, self.env.timestamp)
                 self.has_logged_test = True
                 assert self.has_logged_symptoms is True # FIXME: assumption might not hold
@@ -460,16 +460,18 @@ class Human(object):
             # calculate the nature of the contact
             distance = np.sqrt(int(area/len(self.location.humans))) + self.rng.randint(MIN_DIST_ENCOUNTER, MAX_DIST_ENCOUNTER)
             t_near = min(self.leaving_time, h.leaving_time) - max(self.start_time, h.start_time)
+            is_exposed = False
+
             p_infection = h.viral_load * (h.is_asymptomatic * h.asymptomatic_infection_ratio + 1.0 * (not h.is_asymptomatic))
             x_human = distance <= INFECTION_RADIUS and t_near * TICK_MINUTE > INFECTION_DURATION and self.rng.random() < p_infection
             x_environment = self.rng.random() < location.contamination_probability # &prob_infection
-
-            if (x_human or x_environment) and self.is_susceptible:
-                h.n_infectious_contacts += 1
-                Event.log_exposed(self, self.env.timestamp)
+            if x_human or x_environment:
+                if self.is_susceptible:
+                    is_exposed = True
+                    h.n_infectious_contacts+=1
+                    Event.log_exposed(self, self.env.timestamp)
+            if self.is_susceptible and is_exposed:
                 self.infection_timestamp = self.env.timestamp
-                # historical_infection_timestamp is necessary because the side-simulation needs to know about infection times
-                self.historical_infection_timestamp = self.env.timestamp
 
             Event.log_encounter(self, h,
                                 location=location,

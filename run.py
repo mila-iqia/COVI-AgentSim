@@ -31,7 +31,7 @@ def sim(n_stores=None, n_people=None, n_parks=None, n_misc=None,
         simulation_days=10,
         outfile=None, out_humans=None,
         print_progress=False, seed=0):
-    from mobility_simulator import Human
+    from simulator import Human
     monitors = run_simu(
         n_stores=n_stores, n_people=n_people, n_parks=n_parks, n_misc=n_misc,
         init_percent_sick=init_percent_sick, store_capacity=store_capacity, misc_capacity=misc_capacity,
@@ -52,7 +52,7 @@ def base(toy_human):
     if toy_human:
         from toy import Human
     else:
-        from mobility_simulator import Human
+        from simulator import Human
     import pandas as pd
     import cufflinks as cf
     cf.go_offline()
@@ -94,7 +94,7 @@ def run_simu(n_stores=None, n_people=None, n_parks=None, n_misc=None,
              print_progress=False, seed=0, Human=None):
 
     if Human is None:
-        from mobility_simulator import Human
+        from simulator import Human
 
     rng = np.random.RandomState(seed)
     env = Env(start_time)
