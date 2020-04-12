@@ -1,2 +1,6 @@
+plots/*.png
+plots/infected_dist/*.png
+plots/infected_dist/*.gif
+plots/groups/*.png
 *.json
 __pycache__/

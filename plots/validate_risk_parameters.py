@@ -3,11 +3,10 @@ from base import Event
 import config as cfg
 import matplotlib.pyplot as plt
 import seaborn as sns
+""" This file plots the predicted risk for infected and uninfected people at one snapshot in time"""
 
 sns.set()
 
-""" This file plots the predicted risk for infected and uninfected people at one snapshot in time"""
-# TODO: come up with better visualizations for this... time-lapse gif??!?!?!? ♪┏(・o・)┛♪┗ ( ・o・) ┓♪
 
 def hist_plot(risk_vs_infected, PATH_TO_PLOT):
     plt.figure()
@@ -25,7 +24,8 @@ def hist_plot(risk_vs_infected, PATH_TO_PLOT):
         bins=10,
         alpha=0.7,
     )
-
+    plt.xlim(left=-0.1, right=1.1)
+    plt.ylim(bottom=-0.1, top=30)
     plt.xlabel("Risk")
     plt.ylabel("Density")
     plt.legend()

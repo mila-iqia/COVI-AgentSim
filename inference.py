@@ -1,6 +1,7 @@
 import pickle
 import json
 from base import Event
+import subprocess
 import numpy as np
 from config import *
 from utils import binary_to_float
@@ -133,6 +134,10 @@ if __name__ == "__main__":
         log_idx += 1
         if log_idx > LOGS_SUBSET_SIZE:
             break
+
+    # make a gif of the dist output
+    process = subprocess.Popen("convert -delay 50 -loop 0 plots/infected_dist/*.png plots/infected_dist/infected_dist.gif".split(), stdout=subprocess.PIPE)
+    output, error = process.communicate()
 
     # write out the clusters to be processed by privacy_plots
     if METHOD_CLUSTERING_MAP[RISK_MODEL]:
