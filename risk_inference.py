@@ -12,7 +12,7 @@ import operator
 from collections import defaultdict
 import datetime
 from tqdm import tqdm
-from plots.risk_plot import dist_plot, hist_plot
+from plots.plot_risk import dist_plot, hist_plot
 
 
 """ This file contains the core of the side simulation, which is run on the output encounters from the main simulation.
