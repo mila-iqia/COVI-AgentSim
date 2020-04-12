@@ -29,7 +29,7 @@ def hist_plot(risk_vs_infected, PATH_TO_PLOT):
     plt.xlabel("Risk")
     plt.ylabel("Density")
     plt.legend()
-    plt.title(f"Hist of day {PATH_TO_PLOT.split('_')[4].split('.')[0]}, Risk Transmission Proba = {cfg.RISK_TRANSMISSION_PROBA}")
+    plt.title(f"Hist of day {PATH_TO_PLOT}, Risk Transmission Proba = {cfg.RISK_TRANSMISSION_PROBA}")
     plt.savefig(PATH_TO_PLOT)
     plt.close()
 

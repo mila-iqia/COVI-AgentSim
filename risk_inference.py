@@ -12,7 +12,7 @@ import operator
 from collections import defaultdict
 import datetime
 from tqdm import tqdm
-from plots.validate_risk_parameters import dist_plot, hist_plot
+from plots.risk_plot import dist_plot, hist_plot
 
 
 """ This file contains the core of the side simulation, which is run on the output encounters from the main simulation.
@@ -40,9 +40,11 @@ if __name__ == "__main__":
 
     # TODO: add as args that can be called from cmdline
     PLOT_DAILY = True
-    PATH_TO_DATA = "data.pkl"
-    PATH_TO_HUMANS = "humans.pkl"
-    RISK_MODEL = 'yoshua'  # options: ['yoshua', 'lenka', 'eilif']
+    PATH_TO_DATA = "output/data.pkl"
+    PATH_TO_HUMANS = "output/humans.pkl"
+    CLUSTER_PATH = "output/clusters.json"
+    PATH_TO_PLOT = "plots/risk/"
+    RISK_MODEL = 'eilif'  # options: ['yoshua', 'lenka', 'eilif']
     METHOD_CLUSTERING_MAP = {"eilif": True, "yoshua": False, "lenka": False}
     LOGS_SUBSET_SIZE = 10000000
 
@@ -121,7 +123,7 @@ if __name__ == "__main__":
                 plot_num += 1
                 plot_day = now.day
                 # plot the resulting
-                hist_plot(risk_vs_infected, f"plots/infected_dist/infected_dist_day_{str(plot_num).zfill(3)}.png")
+                hist_plot(risk_vs_infected, f"{PATH_TO_PLOT}day_{str(plot_num).zfill(3)}.png")
                 risk_vs_infected = []
             # TODO: if risk changed substantially, send update messages for all of my messages in a rolling 14 day window
             # if cur_risk != this_human.risk:
@@ -136,7 +138,7 @@ if __name__ == "__main__":
             break
 
     # make a gif of the dist output
-    process = subprocess.Popen("convert -delay 50 -loop 0 plots/infected_dist/*.png plots/infected_dist/infected_dist.gif".split(), stdout=subprocess.PIPE)
+    process = subprocess.Popen(f"convert -delay 50 -loop 0 {PATH_TO_PLOT}/*.png {PATH_TO_PLOT}/risk.gif".split(), stdout=subprocess.PIPE)
     output, error = process.communicate()
 
     # write out the clusters to be processed by privacy_plots
@@ -144,6 +146,6 @@ if __name__ == "__main__":
         clusters = []
         for human in humans:
             clusters.append(human.M)
-        json.dump(clusters, open('clusters.json', 'w'))
+        json.dump(clusters, open(CLUSTER_PATH, 'w'))
 
 

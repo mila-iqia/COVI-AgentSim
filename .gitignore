@@ -1,6 +1,6 @@
 plots/*.png
-plots/infected_dist/*.png
-plots/infected_dist/*.gif
-plots/groups/*.png
+plots/risk/*
+plots/clusters/*
+output/
 *.json
 __pycache__/

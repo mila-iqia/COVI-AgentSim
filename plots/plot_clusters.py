@@ -8,11 +8,18 @@ from utils import _decode_message
 from collections import defaultdict, Counter
 import networkx as nx
 np.random.seed(0)
-
 """ Running this file will produce plots of the cluster statistics and sample graph"""
 
+
+CLUSTER_ACC_PATH = "plots/cluster/hist_cluster_accuracies.png"
+CLUSTER_PATH = "output/clusters.json"
+CLUSTER_SIZE_PATH = "plots/cluster/cluster_size_hist.png"
+CLUSTER_NUMBER_PATH = "plots/cluster/cluster_number_freq.png"
+MESSAGE_NUMBER_PATH = "plots/cluster/message_number_freq.png"
+INDIVIDUAL_CLUSTER_PATH = "plots/cluster/"
+
 # load the cluster data
-everyones_clustered_messages = json.load(open('clusters.json', 'r'))
+everyones_clustered_messages = json.load(open(CLUSTER_PATH, 'r'))
 
 # gather some high level statistics about the clusters (how many groups, total and unique contacts)
 all_groups = []
@@ -51,7 +58,7 @@ plt.hist(np.array(all_count_people_in_group).flatten(), 100, label='num_people_i
 plt.xlabel("Number of Messages in a Group")
 plt.ylabel("Frequency Count of Messages")
 plt.title("Histogram of Group Size")
-plt.savefig("plots/group_size_hist.png")
+plt.savefig(CLUSTER_SIZE_PATH)
 
 # plot the number of groups per user
 plt.figure(2)
@@ -61,7 +68,7 @@ plt.legend()
 plt.xlabel("number of contacts")
 plt.ylabel("people with that number of contacts")
 plt.title("Histogram of contacts and grouping frequency")
-plt.savefig("plots/group_number_freq.png")
+plt.savefig(CLUSTER_NUMBER_PATH)
 
 # plot the total number of messages per person as a histogram
 plt.figure(3)
@@ -69,7 +76,7 @@ plt.hist(np.array(all_total_num_contacts).flatten(), 10, label='messages per use
 plt.xlabel("number of messages")
 plt.ylabel("people with that number of messages")
 plt.title("Histogram of person <> message number frequency")
-plt.savefig("plots/message_number_freq.png")
+plt.savefig(MESSAGE_NUMBER_PATH)
 plt.clf()
 
 # helper function to create unique nodes for networkx
@@ -119,7 +126,7 @@ for group_idx, groups in enumerate(all_groups):
             node_color.append(int(node.split("-")[1]))
         pos = nx.spring_layout(G, weight=.3, k=0.5, iterations=50)
         nx.draw(G, pos, with_labels=True, node_color=node_color, cmap=plt.cm.hsv)
-        plt.savefig(f"plots/groups/group_{group_idx}.png", dpi=300)
+        plt.savefig(f"{INDIVIDUAL_CLUSTER_PATH}clusters_{group_idx}.png", dpi=300)
 
 
 # plot a histogram of the population-level accuracy
@@ -129,7 +136,7 @@ plt.hist(np.round(all_group_accuracies, 1), 30, label='group_accuracies')
 plt.xlabel("clustering accuracy")
 plt.ylabel("number of groups with that accuracy")
 plt.title("Histogram of cluster assignment accuracies")
-plt.savefig("plots/hist_group_accuracies.png")
+plt.savefig(CLUSTER_ACC_PATH)
 plt.clf()
 print(f"group_accuracy mean: {np.mean(all_group_accuracies)}")
 print(f"group_accuracy mean: {np.std(all_group_accuracies)}")
