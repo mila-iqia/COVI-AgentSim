@@ -21,8 +21,13 @@ INFECTION_DURATION = 2 # minutes
 
 ASYMPTOMATIC_INFECTION_RATIO = 0.1 # &prob_infectious
 
+RISK_TRANSMISSION_PROBA = 0.01
+RISK_WITH_TRUE_SYMPTOMS = False
+CLIP_RISK = False
+
 #                   0-9 10-19 20-29  30-39  40-49  50-59 60-69 70-79  80-  # Assuming dath rate to be same for 80 and above
 P_NEVER_RECOVERS = [0, 0.002, 0.002, 0.002, 0.004, 0.02, 0.04, 0.08, 0.15] # &never_recovers
+REINFECTION_POSSIBLE = 0 # [0, 1]
 
 # aerosol    copper      cardboard       steel       plastic
 MAX_DAYS_CONTAMINATION = [0.125, 1/3, 1, 2, 3] # &envrionmental contamination
