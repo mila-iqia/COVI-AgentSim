@@ -11,7 +11,7 @@ import operator
 from collections import defaultdict
 import datetime
 from tqdm import tqdm
-from plots.validate_risk_parameters import dist_plot
+from plots.validate_risk_parameters import dist_plot, hist_plot
 
 
 """ This file contains the core of the side simulation, which is run on the output encounters from the main simulation.
@@ -38,13 +38,12 @@ def risk_for_symptoms(human):
 if __name__ == "__main__":
 
     # TODO: add as args that can be called from cmdline
+    PLOT_DAILY = True
     PATH_TO_DATA = "data.pkl"
     PATH_TO_HUMANS = "humans.pkl"
-    PATH_TO_PLOT = "plots/infected_dist.png"
-    RISK_MODEL = 'eilif'  # options: ['yoshua', 'lenka', 'eilif']
-
-    # TODO: refactor this so that clustering only happens for risk methods which require message clustering
-    method_clustering_map = {"eilif": True, "yoshua": False, "lenka": False}
+    RISK_MODEL = 'yoshua'  # options: ['yoshua', 'lenka', 'eilif']
+    METHOD_CLUSTERING_MAP = {"eilif": True, "yoshua": False, "lenka": False}
+    LOGS_SUBSET_SIZE = 10000000
 
     # read and filter the pickles
     with open(PATH_TO_DATA, "rb") as f:
@@ -80,11 +79,15 @@ if __name__ == "__main__":
     # TODO: add a way to process only a fraction of the log files (some methods can be slow)
     risks = []
     risk_vs_infected = []
+
+    # Sort by time and then by human id
     enc_logs = sorted(enc_logs, key=operator.itemgetter('time', 'human_id'))
     enc_logs = sorted(enc_logs, key=lambda k: (k['time'], k['human_id']))
     enc_logs = sorted(enc_logs, key=lambda k: (k['time'], -k['human_id']))
 
-    # TODO: sort by time and then by human
+    log_idx = 0
+    plot_day = enc_logs[0]['time'].day
+    plot_num = 0
     for log in tqdm(enc_logs):
         now = log['time']
         unobs = log['payload']['unobserved']
@@ -109,11 +112,16 @@ if __name__ == "__main__":
             # update risk based on that day's messages
             for j in range(len(this_human.pending_messages)):
                 m_j = this_human.pending_messages.pop()
-                if method_clustering_map[RISK_MODEL]:
+                if METHOD_CLUSTERING_MAP[RISK_MODEL]:
                     this_human.handle_message(m_j)
                 this_human.update_risk_encounter(m_j, RISK_MODEL)
             risk_vs_infected.append((this_human.risk, this_human.is_infectious))
-
+            if PLOT_DAILY and plot_day != now.day:
+                plot_num += 1
+                plot_day = now.day
+                # plot the resulting
+                hist_plot(risk_vs_infected, f"plots/infected_dist/infected_dist_day_{str(plot_num).zfill(3)}.png")
+                risk_vs_infected = []
             # TODO: if risk changed substantially, send update messages for all of my messages in a rolling 14 day window
             # if cur_risk != this_human.risk:
             #     print("should be sending risk update messages")
@@ -121,11 +129,13 @@ if __name__ == "__main__":
 
         this_human.pending_messages.append(other_human.cur_message(now))
 
-    # plot the resulting
-    dist_plot(risk_vs_infected, PATH_TO_PLOT)
+        # sometimes we only want to read a subset of the logs, for development
+        log_idx += 1
+        if log_idx > LOGS_SUBSET_SIZE:
+            break
 
     # write out the clusters to be processed by privacy_plots
-    if method_clustering_map[RISK_MODEL]:
+    if METHOD_CLUSTERING_MAP[RISK_MODEL]:
         clusters = []
         for human in humans:
             clusters.append(human.M)

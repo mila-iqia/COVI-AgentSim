@@ -22,9 +22,9 @@ for someones_clustered_messages in everyones_clustered_messages:
     groups = defaultdict(list)
     unique_people_contacted = set()
     total_num_contacts = 0
-    for message, group in someones_clustered_messages.items():
-        obs_uid, obs_risk, m_sent, unobs_uid = _decode_message(message)
-        groups[group].append(unobs_uid)
+    for m_enc, m_dict in someones_clustered_messages.items():
+        obs_uid, obs_risk, m_sent, unobs_uid = _decode_message(m_enc)
+        groups[m_dict['assignment']].append(unobs_uid)
         unique_people_contacted.add(unobs_uid)
         total_num_contacts += 1
     all_groups.append(dict(groups))

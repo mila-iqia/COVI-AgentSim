@@ -206,7 +206,6 @@ class Human(object):
 
     def update_risk_encounter(self, other, RISK_MODEL):
         """ This function updates an individual's risk based on their symptoms (reported or true) and their new messages"""
-        # TODO: get eilif's model to work
         # TODO: refactor this so that we can easily swap contact prediction models (without using the config file)
 
         # if the person has recovered, their risk is 0
@@ -502,38 +501,31 @@ class Human(object):
 
 
     def at(self, location, duration):
-        if self.name == 1:
-            # print(self, self.env.timestamp.strftime("%b %d, %H %M"), self.location)
-            # print(self.env.timestamp.strftime("%b %d, %H %M"), self.location._name, "-->", location._name, duration)
-            pass
 
+        # add the human to the location
         self.location = location
         location.add_human(self)
         self.leaving_time = duration + self.env.now
         self.start_time = self.env.now
         area = self.location.area
+
         # Report all the encounters
         for h in location.humans:
             if h == self or self.location.location_type == 'household':
                 continue
 
+            # calculate the nature of the contact
             distance = np.sqrt(int(area/len(self.location.humans))) + self.rng.randint(MIN_DIST_ENCOUNTER, MAX_DIST_ENCOUNTER)
             t_near = min(self.leaving_time, h.leaving_time) - max(self.start_time, h.start_time)
-            is_exposed = False
-            # FIXME: This is a hack to take into account the difference between asymptomatic transmission rate and symptomatic transmission rate.
-            # The fix should be handled by better modelling the infectiousness of a person as a function of viral_load
             p_infection = h.viral_load * (h.is_asymptomatic * h.asymptomatic_infection_ratio + 1.0 * (not h.is_asymptomatic))
             x_human = distance <= INFECTION_RADIUS and t_near * TICK_MINUTE > INFECTION_DURATION and self.rng.random() < p_infection
             x_environment = self.rng.random() < location.contamination_probability # &prob_infection
-            if x_human or x_environment:
-                if self.is_susceptible:
-                    is_exposed = True
-                    h.n_infectious_contacts+=1
-                    Event.log_exposed(self, self.env.timestamp)
 
-            if self.is_susceptible and is_exposed:
+            if (x_human or x_environment) and self.is_susceptible:
+                h.n_infectious_contacts += 1
+                Event.log_exposed(self, self.env.timestamp)
                 self.infection_timestamp = self.env.timestamp
-                # this was necessary because the side-simulation needs to know about the infection time
+                # historical_infection_timestamp is necessary because the side-simulation needs to know about infection times
                 self.historical_infection_timestamp = self.env.timestamp
 
             Event.log_encounter(self, h,
