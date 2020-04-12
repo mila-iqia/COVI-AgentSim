@@ -158,39 +158,6 @@ class Human(object):
     def __repr__(self):
         return f"H:{self.name}, SEIR:{int(self.is_susceptible)}{int(self.is_exposed)}{int(self.is_infectious)}{int(self.is_removed)}"
 
-
-    def handle_message(self, m_i):
-        """ This function clusters new messages by scoring them against old messages in a sort of naive nearest neighbors approach"""
-        # TODO: include risk level in clustering, currently only uses quantized uid
-        # TODO: refactor to compare multiple clustering schemes
-        # TODO: check for mutually exclusive messages in order to break up a group and re-run nearest neighbors
-        m_i_enc = _encode_message(m_i)
-        m_risk = binary_to_float("".join([str(x) for x in np.array(m_i[1].tolist()).astype(int)]), 0, 4)
-
-        # otherwise score against previous messages
-        scores = {}
-        for m_enc, _ in self.M.items():
-            m = _decode_message(m_enc)
-            if m_i[0] == m[0] and m_i[2].day == m[2].day:
-                scores[m_enc] = 3
-            elif m_i[0][:3] == m[0][:3] and m_i[2].day - 1 == m[2].day:
-                scores[m_enc] = 2
-            elif m_i[0][:2] == m[0][:2] and m_i[2].day - 2 == m[2].day:
-                scores[m_enc] = 1
-            elif m_i[0][:1] == m[0][:1] and m_i[2].day - 2 == m[2].day:
-                scores[m_enc] = 0
-
-        if scores:
-            max_score_message = max(scores.items(), key=operator.itemgetter(1))[0]
-            self.M[m_i_enc] = {'assignment': self.M[max_score_message]['assignment'], 'previous_risk': m_risk, 'carry_over_transmission_proba': RISK_TRANSMISSION_PROBA}
-        # if it's either the first message
-        elif len(self.M) == 0:
-            self.M[m_i_enc] = {'assignment': 0, 'previous_risk': m_risk, 'carry_over_transmission_proba': RISK_TRANSMISSION_PROBA}
-        # if there was no nearby neighbor
-        else:
-            new_group = max([v['assignment'] for k, v in self.M.items()]) + 1
-            self.M[m_i_enc] = {'assignment': new_group, 'previous_risk': m_risk, 'carry_over_transmission_proba': RISK_TRANSMISSION_PROBA}
-
     @property
     def uid(self):
         return self._uid
@@ -202,47 +169,6 @@ class Human(object):
         except AttributeError:
             self._uid = bitarray()
             self._uid.extend(self.rng.choice([True, False], 4)) # generate a random 4-bit code
-
-
-    def update_risk_encounter(self, other, RISK_MODEL):
-        """ This function updates an individual's risk based on their symptoms (reported or true) and their new messages"""
-        # TODO: refactor this so that we can easily swap contact prediction models (without using the config file)
-
-        # if the person has recovered, their risk is 0
-        # TODO: This leaks information. We should not set their risk to zero just because their symptoms went away and they have "recovered".
-        if self.recovered_timestamp and (self.env.timestamp - self.recovered_timestamp).days >= 0:
-            self.risk = 0
-
-        # Get the binarized contact risk
-        m_risk = binary_to_float("".join([str(x) for x in np.array(other[1].tolist()).astype(int)]), 0, 4)
-
-        # select your contact risk prediction model
-        update = 0
-        if RISK_MODEL == 'yoshua':
-            if self.risk < m_risk:
-                update = (m_risk - m_risk * self.risk) * RISK_TRANSMISSION_PROBA
-        elif RISK_MODEL == 'lenka':
-            update = m_risk * RISK_TRANSMISSION_PROBA
-
-        elif RISK_MODEL == 'eilif':
-            msg_enc = _encode_message(other)
-            if msg_enc not in self.M:
-                # update is delta_risk
-                update = m_risk * RISK_TRANSMISSION_PROBA
-            else:
-                previous_risk = self.M[msg_enc]['previous_risk']
-                carry_over_transmission_proba = self.M[msg_enc]['carry_over_transmission_proba']
-                update = ((m_risk - previous_risk) * RISK_TRANSMISSION_PROBA + previous_risk * carry_over_transmission_proba)
-
-            # Update contact history
-            self.M[msg_enc]['previous_risk'] = m_risk
-            self.M[msg_enc]['carry_over_transmission_proba'] = RISK_TRANSMISSION_PROBA * (1 - update)
-
-        self.risk += update
-
-        # some models require us to clip the risk at one (like 'lenka' and 'eilif')
-        if CLIP_RISK:
-            self.risk = min(self.risk, 1.)
 
     @property
     def is_susceptible(self):

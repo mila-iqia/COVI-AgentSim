@@ -5,7 +5,7 @@ import unittest
 from tempfile import NamedTemporaryFile
 
 from run import run_simu
-from simulator import Event
+from mobility_simulator import Event
 
 
 class FullUnitTest(unittest.TestCase):

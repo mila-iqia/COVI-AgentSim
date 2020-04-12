@@ -36,6 +36,79 @@ def risk_for_symptoms(human):
     return 0.
 
 
+def add_message_to_cluster(human, m_i):
+    """ This function clusters new messages by scoring them against old messages in a sort of naive nearest neighbors approach"""
+    # TODO: include risk level in clustering, currently only uses quantized uid
+    # TODO: refactor to compare multiple clustering schemes
+    # TODO: check for mutually exclusive messages in order to break up a group and re-run nearest neighbors
+    m_i_enc = _encode_message(m_i)
+    m_risk = binary_to_float("".join([str(x) for x in np.array(m_i[1].tolist()).astype(int)]), 0, 4)
+
+    # otherwise score against previous messages
+    scores = {}
+    for m_enc, _ in human.M.items():
+        m = _decode_message(m_enc)
+        if m_i[0] == m[0] and m_i[2].day == m[2].day:
+            scores[m_enc] = 3
+        elif m_i[0][:3] == m[0][:3] and m_i[2].day - 1 == m[2].day:
+            scores[m_enc] = 2
+        elif m_i[0][:2] == m[0][:2] and m_i[2].day - 2 == m[2].day:
+            scores[m_enc] = 1
+        elif m_i[0][:1] == m[0][:1] and m_i[2].day - 2 == m[2].day:
+            scores[m_enc] = 0
+
+    if scores:
+        max_score_message = max(scores.items(), key=operator.itemgetter(1))[0]
+        human.M[m_i_enc] = {'assignment': human.M[max_score_message]['assignment'], 'previous_risk': m_risk, 'carry_over_transmission_proba': RISK_TRANSMISSION_PROBA}
+    # if it's either the first message
+    elif len(human.M) == 0:
+        human.M[m_i_enc] = {'assignment': 0, 'previous_risk': m_risk, 'carry_over_transmission_proba': RISK_TRANSMISSION_PROBA}
+    # if there was no nearby neighbor
+    else:
+        new_group = max([v['assignment'] for k, v in human.M.items()]) + 1
+        human.M[m_i_enc] = {'assignment': new_group, 'previous_risk': m_risk, 'carry_over_transmission_proba': RISK_TRANSMISSION_PROBA}
+
+
+def update_risk_encounter(this_human, message, RISK_MODEL):
+    """ This function updates an individual's risk based on the receipt of a new message"""
+
+    # if the person has recovered, their risk is 0
+    # TODO: This leaks information. We should not set their risk to zero just because their symptoms went away and they have "recovered".
+    if this_human.recovered_timestamp and (this_human.env.timestamp - this_human.recovered_timestamp).days >= 0:
+        this_human.risk = 0
+
+    # Get the binarized contact risk
+    m_risk = binary_to_float("".join([str(x) for x in np.array(message[1].tolist()).astype(int)]), 0, 4)
+
+    # select your contact risk prediction model
+    update = 0
+    if RISK_MODEL == 'yoshua':
+        if this_human.risk < m_risk:
+            update = (m_risk - m_risk * this_human.risk) * RISK_TRANSMISSION_PROBA
+    elif RISK_MODEL == 'lenka':
+        update = m_risk * RISK_TRANSMISSION_PROBA
+
+    elif RISK_MODEL == 'eilif':
+        msg_enc = _encode_message(message)
+        if msg_enc not in this_human.M:
+            # update is delta_risk
+            update = m_risk * RISK_TRANSMISSION_PROBA
+        else:
+            previous_risk = this_human.M[msg_enc]['previous_risk']
+            carry_over_transmission_proba = this_human.M[msg_enc]['carry_over_transmission_proba']
+            update = ((m_risk - previous_risk) * RISK_TRANSMISSION_PROBA + previous_risk * carry_over_transmission_proba)
+
+        # Update contact history
+        this_human.M[msg_enc]['previous_risk'] = m_risk
+        this_human.M[msg_enc]['carry_over_transmission_proba'] = RISK_TRANSMISSION_PROBA * (1 - update)
+
+    this_human.risk += update
+
+    # some models require us to clip the risk at one (like 'lenka' and 'eilif')
+    if CLIP_RISK:
+        this_human.risk = min(this_human.risk, 1.)
+
+
 if __name__ == "__main__":
 
     # TODO: add as args that can be called from cmdline
@@ -116,8 +189,8 @@ if __name__ == "__main__":
             for j in range(len(this_human.pending_messages)):
                 m_j = this_human.pending_messages.pop()
                 if METHOD_CLUSTERING_MAP[RISK_MODEL]:
-                    this_human.handle_message(m_j)
-                this_human.update_risk_encounter(m_j, RISK_MODEL)
+                    add_message_to_cluster(this_human, m_j)
+                update_risk_encounter(this_human, m_j, RISK_MODEL)
             risk_vs_infected.append((this_human.risk, this_human.is_infectious))
             if PLOT_DAILY and plot_day != now.day:
                 plot_num += 1
