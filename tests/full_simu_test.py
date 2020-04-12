@@ -58,7 +58,7 @@ class SeedUnitTest(unittest.TestCase):
         Run two simulations with the same seed and ensure we get the same output
         Note: If this test is failing, it is a good idea to load the data of both files and use DeepDiff to compare
         """
-        with NamedTemporaryFile() as f1, NamedTemporaryFile() as f2:
+        with NamedTemporaryFile() as f1, NamedTemporaryFile() as f2, NamedTemporaryFile() as f3:
             monitors1 = run_simu(
                 n_stores=self.n_stores,
                 n_people=self.n_people,
@@ -68,6 +68,7 @@ class SeedUnitTest(unittest.TestCase):
                 start_time=self.start_time,
                 simulation_days=self.simulation_days,
                 outfile=f1.name,
+                out_humans=f3.name,
                 seed=self.test_seed
             )
             monitors1[0].dump(f1.name)
@@ -82,6 +83,7 @@ class SeedUnitTest(unittest.TestCase):
                 start_time=self.start_time,
                 simulation_days=self.simulation_days,
                 outfile=f2.name,
+                out_humans=f3.name,
                 seed=self.test_seed
             )
             monitors2[0].dump(f2.name)
@@ -96,7 +98,7 @@ class SeedUnitTest(unittest.TestCase):
         Using different seeds should yield different output
         """
 
-        with NamedTemporaryFile() as f1, NamedTemporaryFile() as f2:
+        with NamedTemporaryFile() as f1, NamedTemporaryFile() as f2, NamedTemporaryFile() as f3:
             monitors1 = run_simu(
                 n_stores=self.n_stores,
                 n_people=self.n_people,
@@ -106,6 +108,7 @@ class SeedUnitTest(unittest.TestCase):
                 start_time=self.start_time,
                 simulation_days=self.simulation_days,
                 outfile=f1.name,
+                out_humans=f3.name,
                 seed=self.test_seed
             )
             monitors1[0].dump(f1.name)
@@ -120,6 +123,7 @@ class SeedUnitTest(unittest.TestCase):
                 start_time=self.start_time,
                 simulation_days=self.simulation_days,
                 outfile=f2.name,
+                out_humans=f3.name,
                 seed=self.test_seed+1
             )
             monitors2[0].dump(f2.name)
