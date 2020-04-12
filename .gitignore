@@ -1,6 +1,6 @@
-plots/*.png
-plots/risk/*
-plots/clusters/*
+*.png
+*.pkl
+*.gif
 output/
 *.json
 __pycache__/
