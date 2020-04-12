@@ -6,6 +6,7 @@ from matplotlib import pyplot as plt
 from utils import _sample_viral_load_gamma, _sample_viral_load_piecewise
 """Samples the viral load models functions and outputs charts showing the course of their progression"""
 
+VIRAL_LOAD_PLOT_PATH = "viral_load/viral_load.png"
 NUM_DAYS = 30
 NUM_PEOPLE = 100
 x = np.linspace(1, NUM_DAYS, NUM_DAYS)
@@ -58,7 +59,7 @@ plt.legend()
 plt.xlabel("Days since infection")
 plt.ylabel("Viral load")
 plt.title("Viral Load")
-plt.savefig("plots/viral_load.png")
+plt.savefig(VIRAL_LOAD_PLOT_PATH)
 
 
 # Here, we sample the piecewise linear model for 10 people, and plot them as individuals
@@ -73,5 +74,5 @@ for i in range(viral_loads_piecewise.shape[0]):
 plt.xlabel("Days since infection")
 plt.ylabel("Viral load")
 plt.title("Viral Load (individuals)")
-plt.savefig("plots/viral_load_individuals.png")
+plt.savefig("viral_load/viral_load_individuals.png")
 
