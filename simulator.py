@@ -72,11 +72,11 @@ class Human(object):
         self.has_flu = self.rng.rand() < P_FLU * age_modifier
         self.has_app = self.rng.rand() < (P_HAS_APP / age_modifier) + (self.carefullness / 2)
         self.incubation_days = _draw_random_discreet_gaussian(AVG_INCUBATION_DAYS, SCALE_INCUBATION_DAYS, self.rng)
-
+        self.test_results = test_results
 
         # Indicates whether this person will show severe signs of illness.
         self.infection_timestamp = infection_timestamp
-        self.recovered_timestamp = [datetime.datetime.min]
+        self.recovered_timestamp = datetime.datetime.min
         self.test_timestamp = datetime.datetime.min
         self.really_sick = self.is_exposed and self.rng.random() >= 0.9
         self.extremely_sick = self.really_sick and self.rng.random() >= 0.7 # &severe; 30% of severe cases need ICU
@@ -175,10 +175,10 @@ class Human(object):
         return not self.is_exposed and not self.is_infectious and not self.is_removed
         # return self.infection_timestamp is None and not self.recovered_timestamp == datetime.datetime.max
 
-
     @property
     def is_exposed(self):
-        return self.infection_timestamp is not None and self.env.timestamp - self.infection_timestamp < datetime.timedelta(days=self.incubation_days)
+        return self.infection_timestamp is not None and self.infection_timestamp != datetime.datetime.min and \
+               self.env.timestamp - self.infection_timestamp < datetime.timedelta(days=self.incubation_days)
 
     @property
     def is_infectious(self):
@@ -186,24 +186,21 @@ class Human(object):
 
     @property
     def is_removed(self):
-        return self.recovered_timestamp[-1] == datetime.datetime.max
+        return self.recovered_timestamp == datetime.datetime.max
 
     @property
     def is_quarantined(self):
-        return self.test_timestamp + datetime.timedelta(days=TEST_DAYS) > self.env.timestamp and self.test_timestamp + datetime.timedelta(days=QUARANTINE_DAYS) < self.env.timestamp
+        return self.test_timestamp is not None and self.env.timestamp - self.test_timestamp >= datetime.timedelta(days=TEST_DAYS) and \
+            self.env.timestamp - self.test_timestamp < datetime.timedelta(days=QUARANTINE_DAYS)
 
-    @property
-    def test_results(self):
-        if not any(self.symptoms):
-            return None
-        else:
-            tested = self.rng.rand() > P_TEST
-            if tested:
-                if self.is_infectious:
-                    self.test_timestamp = self.env.timestamp
-                else:
-                    if self.rng.rand() > P_FALSE_NEGATIVE:
-                        self.test_timestamp = self.env.timestamp
+    def sample_get_tested(self):
+        self.test_results = False
+        if any(self.symptoms) and self.rng.rand() > P_TEST:
+            if self.is_infectious or self.rng.rand() > P_FALSE_NEGATIVE:
+                self.test_timestamp = self.env.timestamp
+                self.test_results = True
+                return self.test_results
+        return self.test_results
 
     @property
     def symptoms(self):
@@ -316,17 +313,17 @@ class Human(object):
                 self.has_logged_symptoms = True
 
             if self.is_infectious and self.env.timestamp - self.infection_timestamp > datetime.timedelta(days=TEST_DAYS) and not self.has_logged_test:
-                result = self.rng.random() > 0.8
+                result = self.sample_get_tested()
                 Event.log_test(self, result, self.env.timestamp)
                 self.has_logged_test = True
                 assert self.has_logged_symptoms is True # FIXME: assumption might not hold
 
             if self.is_infectious and self.env.timestamp - self.infection_timestamp >= datetime.timedelta(days=self.recovery_days):
                 if (1 - self.never_recovers): # re-infection assumed negligble
-                    self.recovered_timestamp.append(datetime.datetime.max)
+                    self.recovered_timestamp = datetime.datetime.max
                     dead = True
                 else:
-                    self.recovered_timestamp.append(self.env.timestamp)
+                    self.recovered_timestamp = self.env.timestamp
                     # we can only get here if REINF
                     self.never_recovers = self.rng.random() <= P_NEVER_RECOVERS[min(math.floor(self.age/10),8)] * REINFECTION_POSSIBLE
                     dead = False
@@ -535,13 +532,6 @@ class Human(object):
         del self.shopping_days
         del self.shopping_hours
         del self.work_start_hour
-
-        # Convert timestamps to strings, if they are not None
-        try:
-            self.infection_timestamp = str(self.historical_infection_timestamp)
-        except Exception:
-            self.infection_timestamp = None
-        self.test_timestamp = str(self.test_timestamp)
-
-        self.recovered_timestamp = [str(r) for r in self.recovered_timestamp]
+        del self.infection_timestamp
+        del self.recovered_timestamp
         return self
