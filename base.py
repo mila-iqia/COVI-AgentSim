@@ -132,8 +132,17 @@ class Event:
 
     @staticmethod
     def log_encounter(human1, human2, location, duration, distance, time):
-        h_obs_keys = ['obs_lat', 'obs_lon', 'age', 'reported_symptoms', 'test_results', 'has_app']
-        h_unobs_keys = ['carefullness', 'viral_load', 'infectiousness', 'symptoms', 'is_exposed', 'is_infectious']
+        h_obs_keys   = ['obs_risk', 'obs_human_id', 
+                        'obs_age','has_app', 'obs_preexisting_conditions', 
+                        'obs_symptoms', 'obs_test_result', 'obs_test_type',
+                        'obs_hospitalized', 'obs_ICU', 
+                        'obs_test_validated', 'obs_lat', 'obs_lon']
+
+        h_unobs_keys = ['age', 'carefullness', 'viral_load', 'infectiousness', 
+                        'symptoms', 'is_exposed', 'is_infectious',
+                        'household', 'infection_timestamp', 'really_sick',
+                        'extremely_sick']
+
         loc_obs_keys = ['location_type', 'lat', 'lon']
         loc_unobs_keys = ['contamination_probability', 'social_contact_factor']
 
