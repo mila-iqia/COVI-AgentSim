@@ -18,15 +18,33 @@ from plots.validate_risk_parameters import dist_plot
 It's primary functionality is to run the message clustering and risk prediction algorithms.
 """
 
+
+def risk_for_symptoms(human):
+    """ This function calculates a risk score based on the person's symptoms."""
+    # if they have a positive test, they have a risk of 1.
+    if human.test_results == 'positive':
+        return 1.
+
+    symptoms = human.reported_symptoms_for_sickness()
+    if 'severe' in symptoms:
+        return 0.75
+    if 'moderate' in symptoms:
+        return 0.5
+    if 'mild' in symptoms:
+        return 0.25
+    return 0.
+
+
 if __name__ == "__main__":
 
     # TODO: add as args that can be called from cmdline
     PATH_TO_DATA = "data.pkl"
     PATH_TO_HUMANS = "humans.pkl"
     PATH_TO_PLOT = "plots/infected_dist.png"
+    RISK_MODEL = 'eilif'  # options: ['yoshua', 'lenka', 'eilif']
 
     # TODO: refactor this so that clustering only happens for risk methods which require message clustering
-    DO_CLUSTER = False
+    method_clustering_map = {"eilif": True, "yoshua": False, "lenka": False}
 
     # read and filter the pickles
     with open(PATH_TO_DATA, "rb") as f:
@@ -62,6 +80,10 @@ if __name__ == "__main__":
     # TODO: add a way to process only a fraction of the log files (some methods can be slow)
     risks = []
     risk_vs_infected = []
+    enc_logs = sorted(enc_logs, key=operator.itemgetter('time', 'human_id'))
+    enc_logs = sorted(enc_logs, key=lambda k: (k['time'], k['human_id']))
+    enc_logs = sorted(enc_logs, key=lambda k: (k['time'], -k['human_id']))
+
     # TODO: sort by time and then by human
     for log in tqdm(enc_logs):
         now = log['time']
@@ -77,21 +99,25 @@ if __name__ == "__main__":
         if this_human.cur_day != now.day:
             this_human.cur_day = now.day
             this_human.update_uid()
-
+            cur_risk = this_human.risk
             # if the person's infected, look at their symptoms once per day and calculate a risk
             # TODO: model false report of symptoms
             if this_human.infection_timestamp and (this_human.env.timestamp - this_human.infection_timestamp).days >= 0:
-                this_human.risk = this_human.risk_for_symptoms()
-
+                # if (this_human.env.timestamp - this_human.infection_timestamp).days > 6:
+                #     import pdb; pdb.set_trace()
+                this_human.risk = risk_for_symptoms(this_human)
             # update risk based on that day's messages
             for j in range(len(this_human.pending_messages)):
                 m_j = this_human.pending_messages.pop()
-                if DO_CLUSTER:
-                    # TODO: when a person's risk changes, we should also call handle_message for each of their previous contacts
+                if method_clustering_map[RISK_MODEL]:
                     this_human.handle_message(m_j)
-                this_human.update_risk_encounter(m_j)
+                this_human.update_risk_encounter(m_j, RISK_MODEL)
             risk_vs_infected.append((this_human.risk, this_human.is_infectious))
+
             # TODO: if risk changed substantially, send update messages for all of my messages in a rolling 14 day window
+            # if cur_risk != this_human.risk:
+            #     print("should be sending risk update messages")
+                # import pdb; pdb.set_trace()
 
         this_human.pending_messages.append(other_human.cur_message(now))
 
@@ -99,10 +125,10 @@ if __name__ == "__main__":
     dist_plot(risk_vs_infected, PATH_TO_PLOT)
 
     # write out the clusters to be processed by privacy_plots
-    if DO_CLUSTER:
+    if method_clustering_map[RISK_MODEL]:
         clusters = []
         for human in humans:
-            clusters.append(human.A)
+            clusters.append(human.M)
         json.dump(clusters, open('clusters.json', 'w'))
 
 

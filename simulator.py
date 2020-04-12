@@ -9,9 +9,9 @@ from bitarray import bitarray
 import operator
 import math
 
-from utils import _normalize_scores, _get_random_age, _get_random_sex, _get_all_symptoms_array, \
+from utils import _normalize_scores, _get_random_age, _get_random_sex, _get_all_symptoms, \
     _get_preexisting_conditions, _draw_random_discreet_gaussian, _json_serialize, _sample_viral_load_piecewise, \
-    _get_random_area, _encode_message, _decode_message, float_to_binary, binary_to_float
+    _get_random_area, _encode_message, _decode_message, float_to_binary, binary_to_float, _reported_symptoms
 from config import *  # PARAMETERS
 from base import *
 
@@ -61,9 +61,9 @@ class Human(object):
 
         # &carefullness
         if self.rng.rand() < P_CAREFUL_PERSON:
-            self.carefullness = round(self.rng.normal(55, 10)) + self.age/2
+            self.carefullness = (round(self.rng.normal(55, 10)) + self.age/2) / 100
         else:
-            self.carefullness = round(self.rng.normal(25, 10)) + self.age/2
+            self.carefullness = (round(self.rng.normal(25, 10)) + self.age/2) / 100
 
         age_modifier = 1
         if self.age > 40 or self.age < 12:
@@ -91,11 +91,12 @@ class Human(object):
             self.asymptomatic_infection_ratio = ASYMPTOMATIC_INFECTION_RATIO # draw a beta with the distribution in documents
         self.recovery_days = _draw_random_discreet_gaussian(AVG_RECOVERY_DAYS, SCALE_RECOVERY_DAYS, self.rng) # make it IQR &recovery
         self.viral_load_plateau_height, self.viral_load_plateau_start, self.viral_load_plateau_end, self.viral_load_recovered = _sample_viral_load_piecewise(rng, age=age)
-        self.all_symptoms_array = _get_all_symptoms_array(
+        self.all_symptoms = _get_all_symptoms(
                           np.ndarray.item(self.viral_load_plateau_start), np.ndarray.item(self.viral_load_plateau_end),
                           np.ndarray.item(self.viral_load_recovered), age=self.age, incubation_days=self.incubation_days, 
                                                           really_sick=self.really_sick, extremely_sick=self.extremely_sick, 
                           rng=self.rng, preexisting_conditions=self.preexisting_conditions)
+        self.all_reported_symptoms = _reported_symptoms(self.all_symptoms, self.rng, self.carefullness)
 
         # counters and memory
         self.r0 = []
@@ -105,8 +106,7 @@ class Human(object):
         self.last_state = self.state
 
         # privacy
-        self.M = []
-        self.A = {}
+        self.M = {}
         self.cur_num_messages = 0
         self.pending_messages = []
         self.cur_day = -1
@@ -165,10 +165,11 @@ class Human(object):
         # TODO: refactor to compare multiple clustering schemes
         # TODO: check for mutually exclusive messages in order to break up a group and re-run nearest neighbors
         m_i_enc = _encode_message(m_i)
+        m_risk = binary_to_float("".join([str(x) for x in np.array(m_i[1].tolist()).astype(int)]), 0, 4)
 
         # otherwise score against previous messages
         scores = {}
-        for m_enc in self.M:
+        for m_enc, _ in self.M.items():
             m = _decode_message(m_enc)
             if m_i[0] == m[0] and m_i[2].day == m[2].day:
                 scores[m_enc] = 3
@@ -181,16 +182,14 @@ class Human(object):
 
         if scores:
             max_score_message = max(scores.items(), key=operator.itemgetter(1))[0]
-            self.A[m_i_enc] = self.A[max_score_message]
-            self.M.append(m_i_enc)
+            self.M[m_i_enc] = {'assignment': self.M[max_score_message]['assignment'], 'previous_risk': m_risk, 'carry_over_transmission_proba': RISK_TRANSMISSION_PROBA}
         # if it's either the first message
-        elif len(self.A.values()) == 0:
-            self.A[m_i_enc] = 0
-            self.M.append(m_i_enc)
+        elif len(self.M) == 0:
+            self.M[m_i_enc] = {'assignment': 0, 'previous_risk': m_risk, 'carry_over_transmission_proba': RISK_TRANSMISSION_PROBA}
         # if there was no nearby neighbor
         else:
-            self.A[m_i_enc] = max(self.A.values()) + 1
-            self.M.append(m_i_enc)
+            new_group = max([v['assignment'] for k, v in self.M.items()]) + 1
+            self.M[m_i_enc] = {'assignment': new_group, 'previous_risk': m_risk, 'carry_over_transmission_proba': RISK_TRANSMISSION_PROBA}
 
     @property
     def uid(self):
@@ -204,42 +203,9 @@ class Human(object):
             self._uid = bitarray()
             self._uid.extend(self.rng.choice([True, False], 4)) # generate a random 4-bit code
 
-    def risk_for_symptoms(self):
-        """ This function calculates a risk score based on the person's symptoms."""
-        sickness_day = (self.env.timestamp - self.infection_timestamp).days
-        symptoms = []
-        # for each day up till today,
-        for day in range(sickness_day + 1):
-            # if we use the true symptoms
-            if RISK_WITH_TRUE_SYMPTOMS:
-                # append the day's symptoms
-                symptoms.extend(self.all_symptoms_array[day - 1])
-            # if we use the reported symptoms
-            elif self.rng.rand() < self.carefullness:
-                # and the person reports their symptoms for that day, add the symptoms
-                # TODO: right now this is a binary call. Either they accurately report all their symptoms, or none
-                symptoms.extend(self.all_symptoms_array[day - 1])
-            else:
-                # no symptoms reported
-                pass
 
-        # if they have a positive test, they have a risk of 1.
-        if self.test_results == 'positive':
-            return 1.
-
-        # TODO: make a better model. now, if at any point during their illness, they had severe symptoms, we return a high 0.75
-        if 'severe' in symptoms:
-            return 0.75
-        if 'moderate' in symptoms:
-            return 0.5
-        if 'mild' in symptoms:
-            return 0.25
-        return 0.
-
-
-    def update_risk_encounter(self, other):
+    def update_risk_encounter(self, other, RISK_MODEL):
         """ This function updates an individual's risk based on their symptoms (reported or true) and their new messages"""
-        # TODO: run update_risk when a user enter's their symptoms
         # TODO: get eilif's model to work
         # TODO: refactor this so that we can easily swap contact prediction models (without using the config file)
 
@@ -250,7 +216,6 @@ class Human(object):
 
         # Get the binarized contact risk
         m_risk = binary_to_float("".join([str(x) for x in np.array(other[1].tolist()).astype(int)]), 0, 4)
-        m_uid = other[0]
 
         # select your contact risk prediction model
         update = 0
@@ -260,20 +225,19 @@ class Human(object):
         elif RISK_MODEL == 'lenka':
             update = m_risk * RISK_TRANSMISSION_PROBA
 
-        # TODO: fix this model
         elif RISK_MODEL == 'eilif':
-            if other.name not in self.contact_history:
+            msg_enc = _encode_message(other)
+            if msg_enc not in self.M:
                 # update is delta_risk
                 update = m_risk * RISK_TRANSMISSION_PROBA
             else:
-                previous_risk = self.contact_history[other.name].previous_risk
-                carry_over_transmission_proba = self.contact_history[other.name].carry_over_transmission_proba
-                update = ((m_risk - previous_risk) * RISK_TRANSMISSION_PROBA +
-                          previous_risk * carry_over_transmission_proba)
+                previous_risk = self.M[msg_enc]['previous_risk']
+                carry_over_transmission_proba = self.M[msg_enc]['carry_over_transmission_proba']
+                update = ((m_risk - previous_risk) * RISK_TRANSMISSION_PROBA + previous_risk * carry_over_transmission_proba)
+
             # Update contact history
-            self.contact_history[m_uid].previous_risk = m_risk
-            self.contact_history[m_uid].carry_over_transmission_proba = \
-                RISK_TRANSMISSION_PROBA * (1 - update)
+            self.M[msg_enc]['previous_risk'] = m_risk
+            self.M[msg_enc]['carry_over_transmission_proba'] = RISK_TRANSMISSION_PROBA * (1 - update)
 
         self.risk += update
 
@@ -320,9 +284,28 @@ class Human(object):
     def symptoms(self):
         try:
             sickness_day = (self.env.timestamp - self.infection_timestamp).days
-            return self.all_symptoms_array[sickness_day]
+            return self.all_symptoms[sickness_day]
         except Exception as e:
             return []
+
+    @property
+    def reported_symptoms(self):
+        try:
+            sickness_day = (self.env.timestamp - self.infection_timestamp).days
+            return self.all_reported_symptoms[sickness_day]
+        except Exception as e:
+            return []
+
+    def reported_symptoms_for_sickness(self):
+        try:
+            sickness_day = (self.env.timestamp - self.infection_timestamp).days
+            all_reported_symptoms_till_day = []
+            for day in range(sickness_day+1):
+                all_reported_symptoms_till_day.extend(self.all_reported_symptoms[sickness_day])
+            return all_reported_symptoms_till_day
+        except Exception as e:
+            return []
+
 
     @property
     def viral_load(self):
@@ -366,16 +349,6 @@ class Human(object):
         if not self.location == self.household:
             mask = self.rng.rand() < self.carefullness
         return mask
-
-    @property
-    def reported_symptoms(self):
-        if not any(self.symptoms) or self.test_results is None or not self.has_app:
-            return []
-        else:
-            if self.rng.rand() < self.carefullness:
-                return self.symptoms
-            else:
-                return []
 
     def update_r(self, timedelta):
         timedelta /= datetime.timedelta(days=1) # convert to float days

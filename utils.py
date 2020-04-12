@@ -53,7 +53,7 @@ def _get_random_sex(rng):
 		return 'other'
 
 # 2D Array of symptoms; first axis is days after exposure (infection), second is an array of symptoms
-def _get_all_symptoms_array(viral_load_plateau_start, viral_load_plateau_end, 
+def _get_all_symptoms(viral_load_plateau_start, viral_load_plateau_end,
 	                        viral_load_recovered, age, incubation_days, really_sick, extremely_sick, 
 							rng, preexisting_conditions):
         # Before showing symptoms
@@ -122,8 +122,23 @@ def _get_all_symptoms_array(viral_load_plateau_start, viral_load_plateau_end,
             if rng.rand() < 0.2:
                 symptoms.append('gastro')
             symptoms_array.append(symptoms)
-
         return symptoms_array
+
+def _reported_symptoms(all_symptoms, rng, carefullness):
+	all_reported_symptoms = []
+	for symptoms in all_symptoms:
+		reported_symptoms = []
+		# miss a day of symptoms
+		if rng.rand() < carefullness:
+			continue
+		for symptom in symptoms:
+			if rng.rand() < carefullness:
+				continue
+			reported_symptoms.append(symptom)
+		all_reported_symptoms.append(reported_symptoms)
+	return all_reported_symptoms
+
+
 
 # &preexisting-conditions
 def _get_preexisting_conditions(age, sex, rng):
