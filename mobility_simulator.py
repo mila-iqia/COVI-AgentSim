@@ -110,7 +110,6 @@ class Human(object):
         self.M = {}
         self.cur_num_messages = 0
         self.pending_messages = []
-        self.cur_day = -1
 
         # risk
         self.risk = 0
@@ -184,12 +183,6 @@ class Human(object):
     @property
     def is_infectious(self):
         return self.infection_timestamp is not None and self.env.timestamp - self.infection_timestamp >= datetime.timedelta(days=self.incubation_days)
-
-    @property
-    def is_infected(self):
-        if not self.recovered_timestamp:
-            return False
-        return self.infection_timestamp is not None and self.env.timestamp > self.infection_timestamp and self.env.timestamp - self.infection_timestamp < self.recovered_timestamp
 
     @property
     def is_removed(self):

@@ -75,13 +75,13 @@ def add_message_to_cluster(human, m_i):
         human.M[m_i_enc] = {'assignment': new_group, 'previous_risk': m_risk, 'carry_over_transmission_proba': RISK_TRANSMISSION_PROBA}
 
 
-def update_risk_encounter(this_human, message, RISK_MODEL):
+def update_risk_encounter(human, message, RISK_MODEL):
     """ This function updates an individual's risk based on the receipt of a new message"""
 
     # if the person has recovered, their risk is 0
     # TODO: This leaks information. We should not set their risk to zero just because their symptoms went away and they have "recovered".
-    if this_human.recovered_timestamp and (this_human.env.timestamp - this_human.recovered_timestamp).days >= 0:
-        this_human.risk = 0
+    if human.recovered_timestamp and (human.env.timestamp - human.recovered_timestamp).days >= 0:
+        human.risk = 0
 
     # Get the binarized contact risk
     m_risk = binary_to_float("".join([str(x) for x in np.array(message[1].tolist()).astype(int)]), 0, 4)
@@ -89,31 +89,31 @@ def update_risk_encounter(this_human, message, RISK_MODEL):
     # select your contact risk prediction model
     update = 0
     if RISK_MODEL == 'yoshua':
-        if this_human.risk < m_risk:
+        if human.risk < m_risk:
             pass
-        #     update = (m_risk - m_risk * this_human.risk) * RISK_TRANSMISSION_PROBA
+        #     update = (m_risk - m_risk * human.risk) * RISK_TRANSMISSION_PROBA
     elif RISK_MODEL == 'lenka':
         update = m_risk * RISK_TRANSMISSION_PROBA
 
     elif RISK_MODEL == 'eilif':
         msg_enc = _encode_message(message)
-        if msg_enc not in this_human.M:
+        if msg_enc not in human.M:
             # update is delta_risk
             update = m_risk * RISK_TRANSMISSION_PROBA
         else:
-            previous_risk = this_human.M[msg_enc]['previous_risk']
-            carry_over_transmission_proba = this_human.M[msg_enc]['carry_over_transmission_proba']
+            previous_risk = human.M[msg_enc]['previous_risk']
+            carry_over_transmission_proba = human.M[msg_enc]['carry_over_transmission_proba']
             update = ((m_risk - previous_risk) * RISK_TRANSMISSION_PROBA + previous_risk * carry_over_transmission_proba)
 
         # Update contact history
-        this_human.M[msg_enc]['previous_risk'] = m_risk
-        this_human.M[msg_enc]['carry_over_transmission_proba'] = RISK_TRANSMISSION_PROBA * (1 - update)
+        human.M[msg_enc]['previous_risk'] = m_risk
+        human.M[msg_enc]['carry_over_transmission_proba'] = RISK_TRANSMISSION_PROBA * (1 - update)
 
-    # this_human.risk += update
+    # human.risk += update
 
     # some models require us to clip the risk at one (like 'lenka' and 'eilif')
     if CLIP_RISK:
-        this_human.risk = min(this_human.risk, 1.)
+        human.risk = min(human.risk, 1.)
 
 
 if __name__ == "__main__":
@@ -133,7 +133,18 @@ if __name__ == "__main__":
         logs = pickle.load(f)
     with open(PATH_TO_HUMANS, "rb") as f:
         humans = pickle.load(f)
+
+    # Sort encounter logs by time and then by human id
     enc_logs = [l for l in logs if l["event_type"] == Event.encounter]
+    enc_logs = sorted(enc_logs, key=operator.itemgetter('time'))
+    start = enc_logs[0]['time']
+    logs = defaultdict(list)
+    def hash_id_day(hid, day):
+        return str(hid) + "-" + str(day)
+
+    for log in enc_logs:
+        day_since_epoch = (log['time'] - start).days
+        logs[hash_id_day(log['human_id'], day_since_epoch)].append(log)
 
     # A hack for using the re-inflated human objects
     class dummy_env:
@@ -162,82 +173,48 @@ if __name__ == "__main__":
         human.env = env
         human.rng = np.random.RandomState(0)
         human.update_uid()
+        human.new_messages = []
         hd[human.name] = human
 
     risks = []
-    risk_vs_infected = []
+    days = (enc_logs[-1]['time'] - enc_logs[0]['time']).days
+    for current_day in range(days):
+        for human in humans:
+            human.update_uid()
+            start_risk = human.risk
 
-    # Sort by time and then by human id
-    enc_logs = sorted(enc_logs, key=operator.itemgetter('time', 'human_id'))
-    enc_logs = sorted(enc_logs, key=lambda k: (k['time'], k['human_id']))
-    enc_logs = sorted(enc_logs, key=lambda k: (k['time'], -k['human_id']))
+            # check if you have new reported symptoms
+            human.risk = risk_for_symptoms(human)
 
-    log_idx = 0
-    plot_day = enc_logs[0]['time'].day
-    plot_num = 0
-    for day in range(enc_logs[0]['time'].day + datetime.timedelta(days=100)):
-
-        for log in tqdm(enc_logs):
-            # manage time logic
-            now = log['time']
-            if now.day != day:
-                continue
-
-            # extract variables and update the humans and sim
-            unobs = log['payload']['unobserved']
-            h1 = unobs['human1']['human_id']
-            h2 = unobs['human2']['human_id']
-            this_human = hd[h1]
-            other_human = hd[h2]
-            this_human.env.timestamp = now
-            other_human.env.timestamp = now
-            # handle messaging for that day
-            handle_message_log()
-
-            # if it's a new day in this log, send this log
-            if this_human.cur_day != now.day:
-                this_human.cur_day = now.day
-                this_human.update_uid()
-                cur_risk = this_human.risk
-
-                # if the person's infected, look at their symptoms once per day and calculate a risk
-                this_human.risk = risk_for_symptoms(this_human)
-
+            # read your old messages
+            for m_i in human.new_messages:
                 # update risk based on that day's messages
-                for j in range(len(this_human.pending_messages)):
-                    m_j = this_human.pending_messages.pop()
-                    if METHOD_CLUSTERING_MAP[RISK_MODEL]:
-                        add_message_to_cluster(this_human, m_j)
-                    update_risk_encounter(this_human, m_j, RISK_MODEL)
+                if METHOD_CLUSTERING_MAP[RISK_MODEL]:
+                    add_message_to_cluster(human, m_i)
+                update_risk_encounter(human, m_i, RISK_MODEL)
 
-                # append the updated risk for this person and whether or not they are actually infectious
-                risk_vs_infected.append((this_human.risk, this_human.is_infectious, this_human.is_infected, this_human.is_quarantined, this_human.name))
+            # go about your day and accrue encounters
+            encounters = logs[hash_id_day(human.name, current_day)]
+            for encounter in encounters:
+                # extract variables from log
+                encounter_time = encounter['time']
+                unobs = encounter['payload']['unobserved']
+                encountered_human = hd[unobs['human2']['human_id']]
+                human.env.timestamp = encounter_time
+                encountered_human.env.timestamp = encounter_time
+                human.new_messages.append(encountered_human.cur_message(encounter_time))
 
-                if PLOT_DAILY and plot_day != now.day:
-                    plot_num += 1
-                    print(f"plot_day: {plot_day}, plt_num: {plot_num}, env.time: {this_human.env.timestamp}")
-                    plot_day = now.day
-                    for human in humans:
-                        found = False
-                        for (risk, is_infectious, is_infected, is_quarantined, name) in risk_vs_infected:
-                            if human.name == name:
-                                found = True
-                        if not found:
-                            this_human.risk = risk_for_symptoms(this_human)
-                            risk_vs_infected.append((this_human.risk, this_human.is_infectious, this_human.is_infected, this_human.is_quarantined, this_human.name))
-                    hist_plot(risk_vs_infected, f"{PATH_TO_PLOT}day_{str(plot_num).zfill(3)}.png")
-                    risk_vs_infected = []
-                # TODO: if risk changed substantially, send update messages for all of my messages in a rolling 14 day window
-                # if cur_risk != this_human.risk:
+            # TODO: if risk changed substantially, send update messages for all of my messages in a rolling 14 day window
+                # if cur_risk != human.risk:
                 #     print("should be sending risk update messages")
                     # import pdb; pdb.set_trace()
 
-            this_human.pending_messages.append(other_human.cur_message(now))
+            # append the updated risk for this person and whether or not they are actually infectious
+            risks.append((human.risk, human.is_infectious, human.is_exposed, human.is_quarantined, human.name))
+        print(f"current_day: {current_day}")
+        hist_plot(risks, f"{PATH_TO_PLOT}day_{str(current_day).zfill(3)}.png")
+        risks = []
 
-            # sometimes we only want to read a subset of the logs, for development
-            log_idx += 1
-            if log_idx > LOGS_SUBSET_SIZE:
-                break
 
     # make a gif of the dist output
     process = subprocess.Popen(f"convert -delay 50 -loop 0 {PATH_TO_PLOT}/*.png {PATH_TO_PLOT}/risk.gif".split(), stdout=subprocess.PIPE)

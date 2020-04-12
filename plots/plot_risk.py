@@ -11,18 +11,18 @@ sns.set()
 
 def hist_plot(risks, PATH_TO_PLOT):
     plt.figure()
-    infectious_unquarantined_risks = [risk for risk, is_infectious, is_infected, is_quarantined, name in risks if (is_infectious and not is_quarantined)]
-    print(f"infectious_risks: {np.mean(infectious_unquarantined_risks)}")
-    quarantined_risks = [risk for risk, is_infectious, is_infected, is_quarantined, name in risks if is_quarantined]
-    print(f"is_quarantined risks: {np.mean(quarantined_risks)}")
-    uninfectious_risks = [risk for risk, is_infectious, is_infected, is_quarantined, name in risks if not is_infected]
-    print(f"uninfected_risks: {np.mean(uninfectious_risks)}")
-    infected_risks = [risk for risk, is_infectious, is_infected, is_quarantined, name in risks if is_infected]
-    print(f"infected_risks: {np.mean(uninfectious_risks)}")
+    infectious_unquarantined_risks = [risk for risk, is_infectious, is_exposed, is_quarantined, name in risks if (is_infectious and not is_quarantined)]
+    print(f"num_infectious: {len(infectious_unquarantined_risks)}, mean risk: {np.mean(infectious_unquarantined_risks)}")
+    quarantined_risks = [risk for risk, is_infectious, is_exposed, is_quarantined, name in risks if is_quarantined]
+    print(f"num quarantined: {len(quarantined_risks)}, mean risk: {np.mean(quarantined_risks)}")
+    uninfectious_risks = [risk for risk, is_infectious, is_exposed, is_quarantined, name in risks if not is_infectious]
+    print(f"num uninfected: {len(uninfectious_risks)}, mean risk:  {np.mean(uninfectious_risks)}")
+    exposed_risks = [risk for risk, is_infectious, is_exposed, is_quarantined, name in risks if is_exposed]
+    print(f"num infected: {len(exposed_risks)}, mean risk {np.mean(exposed_risks)}")
 
-    if any(infected_risks):
+    if any(exposed_risks):
         plt.hist(
-            infected_risks,
+            exposed_risks,
             density=True,
             label="Risk-levels of anyone who is infected",
             bins=10,
