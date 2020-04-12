@@ -101,10 +101,30 @@ class Human(object):
 
         # counters and memory
         self.r0 = []
-        self.has_logged_symptoms = False
-        self.has_logged_test = False
-        self.n_infectious_contacts = 0
+        self.has_logged_symptoms = self.has_app and any(self.symptoms) and rng.rand() < 0.5 
+        self.has_logged_test = self.has_app and self.test_results and rng.rand() < 0.5
+        self.has_logged_info = self.has_app and rng.rand() < 0.5
         self.last_state = self.state
+        self.n_infectious_contacts = 0
+
+        # TODO merge with hospitalization
+        self.obs_hospitalized = False
+        self.obs_ICU = False
+
+        # # TODO Martin's implementation
+        # &obs_risk  &obs_human_id
+        self.obs_risk = rng.normal(16) 
+        self.obs_human_id = 1001 
+
+        self.obs_age = self.age if self.has_app and self.has_logged_info else None
+        self.obs_sex = self.sex if self.has_app and self.has_logged_info else None
+        self.obs_preexisting_conditions = self.preexisting_conditions if self.has_app and self.has_logged_info else None
+        self.obs_test_result = self.test_results if self.has_logged_test else None
+        self.obs_test_validated = self.test_results is not None
+        self.obs_test_type = 'lab'
+        self.obs_symptoms = self.symptoms if self.has_logged_symptoms else None
+
+
 
         # privacy
         self.M = {}
