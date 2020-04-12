@@ -77,6 +77,7 @@ class Human(object):
         # Indicates whether this person will show severe signs of illness.
         self.infection_timestamp = infection_timestamp
         self.recovered_timestamp = [datetime.datetime.min]
+        self.test_timestamp = datetime.datetime.min
         self.really_sick = self.is_exposed and self.rng.random() >= 0.9
         self.extremely_sick = self.really_sick and self.rng.random() >= 0.7 # &severe; 30% of severe cases need ICU
         # if P_REINFECTION is 0, then after getting sick
@@ -185,8 +186,18 @@ class Human(object):
         return self.infection_timestamp is not None and self.env.timestamp - self.infection_timestamp >= datetime.timedelta(days=self.incubation_days)
 
     @property
+    def is_infected(self):
+        if not self.recovered_timestamp:
+            return False
+        return self.infection_timestamp is not None and self.env.timestamp > self.infection_timestamp and self.env.timestamp - self.infection_timestamp < self.recovered_timestamp
+
+    @property
     def is_removed(self):
         return self.recovered_timestamp[-1] == datetime.datetime.max
+
+    @property
+    def is_quarantined(self):
+        return self.test_timestamp + datetime.timedelta(days=TEST_DAYS) > self.env.timestamp and self.test_timestamp + datetime.timedelta(days=QUARANTINE_DAYS) < self.env.timestamp
 
     @property
     def test_results(self):
@@ -196,14 +207,10 @@ class Human(object):
             tested = self.rng.rand() > P_TEST
             if tested:
                 if self.is_infectious:
-                    return 'positive'
+                    self.test_timestamp = self.env.timestamp
                 else:
                     if self.rng.rand() > P_FALSE_NEGATIVE:
-                        return 'negative'
-                    else:
-                        return 'positive'
-            else:
-                return None
+                        self.test_timestamp = self.env.timestamp
 
     @property
     def symptoms(self):
@@ -538,10 +545,10 @@ class Human(object):
 
         # Convert timestamps to strings, if they are not None
         try:
-            print(f"{self.name}, {self.historical_infection_timestamp}")
             self.infection_timestamp = str(self.historical_infection_timestamp)
         except Exception:
             self.infection_timestamp = None
+        self.test_timestamp = str(self.test_timestamp)
 
         self.recovered_timestamp = [str(r) for r in self.recovered_timestamp]
         return self

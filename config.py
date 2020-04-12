@@ -41,6 +41,7 @@ P_COLD = 0.1 # &p-cold
 P_FLU = 0.05 # &p-flu
 
 TEST_DAYS = 2 #
+QUARANTINE_DAYS = 14 #
 
 # SIMULATION PARAMETERS
 TICK_MINUTE = 2  # @param increment
