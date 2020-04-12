@@ -22,13 +22,26 @@ pip install -r requirements.txt
 ```
 
 ## How to run it using command line?
-Run the simulator as -
+Run the mobility simulator as -
 ```
 python run.py sim --n_people 100 --n_stores 100 --n_parks 10 --n_misc 100 --init_percent_sick 0.01 --outfile data --seed 0
 ```
 
-Output will be in `data.pkl`. It is a `list` of `dict`.
+The mobility simulator will output a logfile to `output/data.pkl`. It is a `list` of `dict` which contains a log of the mobility activity of a population of humans in `mobility_simulator.py`.
+It also outputs a serialized version of the state of each `Human` object at the end of the simulation to `output/humans.pkl`.
 
+Run the risk prediction algorithms as -
+```
+python risk_prediction.py
+```
+This file reads in the logs and human objects that are output from the mobility simulator, and runs a risk prediction algorithm based on: 
+ 1) The reported symptoms of that individual, given they have the app.
+ 2) The encounters that individual had (which contain quantized user ids and risk levels).
+ 3) The risk update messages that are sent when a previously encountered user's risk level changes significantly.
+ 
+You may select the model which you want to specify, or add your own model in that file. 
+This file also handles clustering of messages (under the currently understood privacy model), which can be useful for risk prediction algorithms which 
+depend on knowing how many contacts happened with one individual.
 
 ## How to run tests?
 Run -
@@ -53,7 +66,7 @@ python run.py test
 ### Accessing Simulation Data
 Load the output of the simulator as following
 ```
-data = pickle.load(open("data.pkl", 'rb'))
+data = pickle.load(open("output/data.pkl", 'rb'))
 ```
 
 ## How to run it as a function?
@@ -85,4 +98,4 @@ Please get in touch with me at [pgupta@turing.ac.uk](pgupta@turing.ac.uk). There
 Some areas that need work are listed [here](docs/CONTRIBUTING.md). We track and manage our tasks using [Google Sheets](https://docs.google.com/spreadsheets/d/11t1T66AAVeR6P341nZYP1qwLdvhCkU_EwFwUkyLziLQ/edit?usp=sharing).
 
 ## Collaborators
-[@marco-gires](https://github.com/marco-gires), [@marie-pellat](https://github.com/mariepellat), [@teganmaharaj](https://github.com/teganmaharaj), [@giancarlok](https://github.com/giancarlok), [@thechange](https://github.com/thechange), [@soundarya98](https://github.com/soundarya98)
+[@marco-gires](https://github.com/marco-gires), [@marie-pellat](https://github.com/mariepellat), [@teganmaharaj](https://github.com/teganmaharaj), [@giancarlok](https://github.com/giancarlok), [@thechange](https://github.com/thechange), [@soundarya98](https://github.com/soundarya98), [@mweiss17](https://github.com/mweiss17)
