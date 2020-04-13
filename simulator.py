@@ -388,6 +388,18 @@ class Human(object):
             mask = self.rng.rand() < self.carefullness
         return mask
 
+    @property
+    def mask_effect(self):
+      if self.wearing_mask:
+          if self.workplace is Hospital: #TODO this is never true
+              efficacy = MASK_EFFICACY_HEALTHWORKER
+          else:
+              efficacy = MASK_EFFICACY_NORMIE
+          return efficacy
+      else:
+        return 1
+    
+
     def update_r(self, timedelta):
         timedelta /= datetime.timedelta(days=1) # convert to float days
         self.r0.append(self.n_infectious_contacts/timedelta)
@@ -574,9 +586,11 @@ class Human(object):
             distance = np.sqrt(int(area/len(self.location.humans))) + self.rng.randint(MIN_DIST_ENCOUNTER, MAX_DIST_ENCOUNTER)
             t_near = min(self.leaving_time, h.leaving_time) - max(self.start_time, h.start_time)
             is_exposed = False
+
             # FIXME: This is a hack to take into account the difference between asymptomatic transmission rate and symptomatic transmission rate.
             # The fix should be handled by better modelling the infectiousness of a person as a function of viral_load
-            p_infection = h.viral_load * (h.is_asymptomatic * h.asymptomatic_infection_ratio + 1.0 * (not h.is_asymptomatic))
+            p_infection = (h.viral_load * (h.is_asymptomatic * h.asymptomatic_infection_ratio 
+                                          + 1.0 * (not h.is_asymptomatic)))*h.mask_effect
             x_human = distance <= INFECTION_RADIUS and t_near * TICK_MINUTE > INFECTION_DURATION and self.rng.random() < p_infection
             x_environment = self.rng.random() < location.contamination_probability # &prob_infection
             if x_human or x_environment:

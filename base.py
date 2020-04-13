@@ -178,7 +178,7 @@ class Event:
 
         h_unobs_keys = ['age', 'carefullness', 'viral_load', 'infectiousness', 
                         'symptoms', 'is_exposed', 'is_infectious',
-                        'household', 'infection_timestamp', 'really_sick',
+                        'household', 'workplace', 'infection_timestamp', 'really_sick',
                         'extremely_sick']
 
         loc_obs_keys = ['location_type', 'lat', 'lon']
@@ -209,7 +209,7 @@ class Event:
                                     'human2': {**obs[1-i], **unobs[1-i]} }
             unobs_payload.update({'risk': human.risk})
 
-            print (unobs_payload)
+            print(unobs_payload)
             human.events.append({
                 'human_id':human.name,
                 'event_type':Event.encounter,
