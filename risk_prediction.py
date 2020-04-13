@@ -6,10 +6,10 @@ import numpy as np
 from config import *
 from utils import binary_to_float
 import matplotlib.pyplot as plt
-from utils import _encode_message, _decode_message
+from utils import _encode_message, _decode_message, float_to_binary, binary_to_float
 from bitarray import bitarray
 import operator
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 import datetime
 from tqdm import tqdm
 from plots.plot_risk import dist_plot, hist_plot
@@ -22,12 +22,19 @@ It's primary functionality is to run the message clustering and risk prediction 
 
 # A utility class for re-inflating human objects with just the stuff we need for message passing / risk prediction
 class dummy_human:
-    def __init__(self, name=None, rng=None):
+    def __init__(self, name=None, timestamp=None, rng=None):
         self.name = name
         self.M = {}
         self.messages = []
         self.risk = 0
         self.rng = rng
+        self.all_reported_symptoms = []
+        self.test_logs = []
+        self.timestamp = timestamp
+        self._uid = None
+        self.is_infectious = False
+        self.is_exposed = False
+        self.is_infected = False
 
     @property
     def message_risk(self):
@@ -53,31 +60,34 @@ class dummy_human:
         except AttributeError:
             self._uid = bitarray()
             self._uid.extend(self.rng.choice([True, False], 4))  # generate a random 4-bit code
-    #
-    # @property
-    # def reported_symptoms(self):
-    #     try:
-    #         sickness_day = (self.env.timestamp - self.infection_timestamp).days
-    #         return self.all_reported_symptoms[sickness_day]
-    #     except Exception as e:
-    #         return []
+
+    def reported_symptoms_for_sickness(self, now):
+        # TODO: pass the infection timestamp event
+        try:
+            symptom_start_time, all_symptoms_array = self.reported_symptoms
+            sickness_day = (symptom_start_time - now).days
+            all_reported_symptoms_till_day = []
+            for day in range(sickness_day+1):
+                all_reported_symptoms_till_day.extend(all_symptoms_array[sickness_day])
+            return all_reported_symptoms_till_day
+        except Exception as e:
+            return []
 
 
-
-def risk_for_symptoms(human):
+def risk_for_symptoms(human, now):
     """ This function calculates a risk score based on the person's symptoms."""
     # if they get tested, it takes TEST_DAYS to get the result, and they are quarantined for QUARANTINE_DAYS.
     # The test_timestamp is set to datetime.min, unless they get a positive test result.
     # Basically, once they know they have a positive test result, they have a risk of 1 until after quarantine days.
-    if human.is_quarantined:
+    if human.test_logs[1] and human.test_logs[0] > now:
         return 1.
 
-    symptoms = human.reported_symptoms_for_sickness()
-    if 'severe' in symptoms:
+    reported_symptoms = human.reported_symptoms_for_sickness(now)
+    if 'severe' in reported_symptoms:
         return 0.75
-    if 'moderate' in symptoms:
+    if 'moderate' in reported_symptoms:
         return 0.5
-    if 'mild' in symptoms:
+    if 'mild' in reported_symptoms:
         return 0.25
     return 0.0
 
@@ -125,6 +135,7 @@ def update_risk_encounter(human, message, RISK_MODEL):
     update = 0
     if RISK_MODEL == 'yoshua':
         if human.risk < m_risk:
+            print(f"{human.name}: {m_risk} : {human.risk}q")
             update = (m_risk - m_risk * human.risk) * RISK_TRANSMISSION_PROBA
     elif RISK_MODEL == 'lenka':
         update = m_risk * RISK_TRANSMISSION_PROBA
@@ -169,19 +180,28 @@ if __name__ == "__main__":
     human_ids = set()
     enc_logs = []
     symp_logs = []
+    test_logs = []
+    recovered_logs = []
+
+    start = logs[0]['time']
     for log in logs:
         human_ids.add(log['human_id'])
         if log['event_type'] == Event.encounter:
             enc_logs.append(log)
-        elif log['event_type'] == Event.symptom_start or log['event_type'] == Event.recovered:
-            print(log['payload'])
+        elif log['event_type'] == Event.symptom_start:
             symp_logs.append(log)
-        else:
-            print(log['event_type'])
+        elif log['event_type'] == Event.recovered:
+            recovered_logs.append(log)
+        elif log['event_type'] == Event.test:
+            test_logs.append(log)
+
+    # create some dummy humans
+    hd = {}
+    for human_id in human_ids:
+        hd[human_id] = dummy_human(name=human_id, timestamp=start, rng=rng)
 
     # Sort encounter logs by time and then by human id
     enc_logs = sorted(enc_logs, key=operator.itemgetter('time'))
-    start = enc_logs[0]['time']
     logs = defaultdict(list)
     def hash_id_day(hid, day):
         return str(hid) + "-" + str(day)
@@ -190,14 +210,17 @@ if __name__ == "__main__":
         day_since_epoch = (log['time'] - start).days
         logs[hash_id_day(log['human_id'], day_since_epoch)].append(log)
 
-    import pdb; pdb.set_trace()
-    symp_logs_proc = defaultdict(list)
+    reported_symptoms = defaultdict(list)
     for log in symp_logs:
-        symp_logs_proc['human_id'].append(log)
-    # re-inflate the humans
-    hd = {}
-    for human_id in human_ids:
-        hd[human_id] = dummy_human(name=human_id, rng=rng)
+        hd[log['human_id']].reported_symptoms = (log['time'], log['payload']['observed']['reported_symptoms'])
+
+    for log in recovered_logs:
+        reported_symptoms[log['human_id']].append((log['time'], 'death'))
+
+    test_logs_proc = {}
+    for log in test_logs:
+        hd[log['human_id']].test_logs = (log['time'], log['payload']['observed']['result'])
+
 
     risks = []
     days = (enc_logs[-1]['time'] - enc_logs[0]['time']).days
@@ -207,9 +230,10 @@ if __name__ == "__main__":
             start_risk = human.risk
 
             # check if you have new reported symptoms
-            human.risk = risk_for_symptoms(human)
+            human.risk = risk_for_symptoms(human, start + datetime.timedelta(days=current_day))
             # read your old messages
             for m_i in human.messages:
+                human.timestamp = m_i[0]
                 # update risk based on that day's messages
                 if METHOD_CLUSTERING_MAP[RISK_MODEL]:
                     add_message_to_cluster(human, m_i)
@@ -222,13 +246,17 @@ if __name__ == "__main__":
                 encounter_time = encounter['time']
                 unobs = encounter['payload']['unobserved']
                 encountered_human = hd[unobs['human2']['human_id']]
+                human.is_infected = unobs['human1']['is_infected']
+                human.is_exposed = unobs['human1']['is_exposed']
+                human.is_infectious = unobs['human1']['is_infectious']
                 human.messages.append(encountered_human.cur_message(encounter_time))
+
 
             # TODO: if risk changed substantially, send update messages for all of my messages in a rolling 14 day window
             if start_risk > human.risk + 0.1 or start_risk < human.risk - 0.1:
                 for m in human.messages:
                     if encounter_time - m.time < datetime.timedelta(days=14):
-                        humans[m.unobs_id].messages.append(human.cur_message(encounter_time))
+                        hd[m.unobs_id].messages.append(human.cur_message(encounter_time))
 
             # append the updated risk for this person and whether or not they are actually infectious
             risks.append((human.risk, human.is_infectious, human.is_exposed, human.name))

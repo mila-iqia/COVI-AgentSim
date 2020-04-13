@@ -11,14 +11,12 @@ sns.set()
 
 def hist_plot(risks, PATH_TO_PLOT):
     plt.figure()
-    uninfected_risks = [risk for risk, is_infectious, is_exposed, is_quarantined, name in risks if not (is_infectious or is_exposed)]
+    uninfected_risks = [risk for risk, is_infectious, is_exposed, name in risks if not (is_infectious or is_exposed)]
     print(f"num uninfected: {len(uninfected_risks)}, mean risk:  {np.mean(uninfected_risks)}")
-    exposed_risks = [risk for risk, is_infectious, is_exposed, is_quarantined, name in risks if is_exposed]
+    exposed_risks = [risk for risk, is_infectious, is_exposed, name in risks if is_exposed]
     print(f"num exposed: {len(exposed_risks)}, mean risk {np.mean(exposed_risks)}")
-    infectious_unquarantined_risks = [risk for risk, is_infectious, is_exposed, is_quarantined, name in risks if (is_infectious and not is_quarantined)]
-    print(f"num_infectious_and_unquarantined: {len(infectious_unquarantined_risks)}, mean risk: {np.mean(infectious_unquarantined_risks)}")
-    quarantined_risks = [risk for risk, is_infectious, is_exposed, is_quarantined, name in risks if is_quarantined]
-    print(f"num quarantined: {len(quarantined_risks)}, mean risk: {np.mean(quarantined_risks)}")
+    infectious_risks = [risk for risk, is_infectious, is_exposed, name in risks if is_infectious]
+    print(f"num infectious: {len(infectious_risks)}, mean risk {np.mean(infectious_risks)}")
 
     if any(exposed_risks):
         plt.hist(
@@ -28,19 +26,11 @@ def hist_plot(risks, PATH_TO_PLOT):
             bins=10,
             alpha=0.7,
         )
-    if any(infectious_unquarantined_risks):
+    if any(infectious_risks):
         plt.hist(
-            infectious_unquarantined_risks,
+            infectious_risks,
             density=True,
             label="infectious and unquarantined",
-            bins=10,
-            alpha=0.7,
-        )
-    if any(quarantined_risks):
-        plt.hist(
-            quarantined_risks,
-            density=True,
-            label="quarantined",
             bins=10,
             alpha=0.7,
         )
