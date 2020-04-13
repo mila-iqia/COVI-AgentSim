@@ -244,7 +244,7 @@ class Event:
                 'time': time,
                 'payload': {
                     'observed':{
-                        "reported_symptoms": human.self.all_reported_symptoms()
+                        "reported_symptoms": human.all_reported_symptoms
                     },
                     'unobserved':{
                         'covid': covid,

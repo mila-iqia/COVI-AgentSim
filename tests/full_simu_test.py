@@ -50,6 +50,7 @@ class SeedUnitTest(unittest.TestCase):
         self.n_people = 100
         self.n_parks = 1
         self.n_misc = 2
+        self.n_hospitals = 2
         self.init_percent_sick = 0.1
         self.start_time = datetime.datetime(2020, 2, 28, 0, 0)
         self.simulation_days = 30
@@ -65,6 +66,7 @@ class SeedUnitTest(unittest.TestCase):
                 n_people=self.n_people,
                 n_parks=self.n_parks,
                 n_misc=self.n_misc,
+                n_hospitals=self.n_hospitals,
                 init_percent_sick=self.init_percent_sick,
                 start_time=self.start_time,
                 simulation_days=self.simulation_days,
@@ -80,6 +82,7 @@ class SeedUnitTest(unittest.TestCase):
                 n_people=self.n_people,
                 n_parks=self.n_parks,
                 n_misc=self.n_misc,
+                n_hospitals=self.n_hospitals,
                 init_percent_sick=self.init_percent_sick,
                 start_time=self.start_time,
                 simulation_days=self.simulation_days,

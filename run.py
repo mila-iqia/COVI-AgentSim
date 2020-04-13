@@ -87,7 +87,7 @@ def test():
 
 
 
-def run_simu(n_stores=None, n_people=None, n_parks=None, n_hospitals=None, n_misc=None,
+def run_simu(n_stores=None, n_people=None, n_parks=None, n_hospitals=2, n_misc=None,
              init_percent_sick=0, store_capacity=30, misc_capacity=30,
              start_time=datetime.datetime(2020, 2, 28, 0, 0),
              simulation_days=10,
