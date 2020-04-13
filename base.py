@@ -194,6 +194,8 @@ class Event:
             u['human_id'] = human.name
             if u['household']:
                 u['household'] = u['household'].serialize()
+            if u['workplace']:
+                u['workplace'] = u['workplace'].serialize()
             unobs.append(u)
         loc_obs = {key:getattr(location, key) for key in loc_obs_keys}
         loc_unobs = {key:getattr(location, key) for key in loc_unobs_keys}
@@ -209,8 +211,6 @@ class Event:
                 obs_payload = {}
                 unobs_payload = { **loc_obs, **loc_unobs, **other_obs, 'human1':{**obs[i], **unobs[i]},
                                     'human2': {**obs[1-i], **unobs[1-i]} }
-            unobs_payload.update({'risk': human.risk})
-
 
             human.events.append({
                 'human_id':human.name,

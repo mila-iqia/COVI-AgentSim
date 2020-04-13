@@ -135,7 +135,6 @@ def update_risk_encounter(human, message, RISK_MODEL):
     update = 0
     if RISK_MODEL == 'yoshua':
         if human.risk < m_risk:
-            print(f"{human.name}: {m_risk} : {human.risk}q")
             update = (m_risk - m_risk * human.risk) * RISK_TRANSMISSION_PROBA
     elif RISK_MODEL == 'lenka':
         update = m_risk * RISK_TRANSMISSION_PROBA
