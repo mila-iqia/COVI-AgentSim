@@ -11,7 +11,6 @@ from bitarray import bitarray
 import operator
 from collections import defaultdict, namedtuple
 import datetime
-from tqdm import tqdm
 from plots.plot_risk import dist_plot, hist_plot
 
 
@@ -33,8 +32,6 @@ class dummy_human:
         self.timestamp = timestamp
         self._uid = None
         self.is_infectious = False
-        self.is_exposed = False
-        self.is_infected = False
 
     @property
     def message_risk(self):
@@ -61,107 +58,118 @@ class dummy_human:
             self._uid = bitarray()
             self._uid.extend(self.rng.choice([True, False], 4))  # generate a random 4-bit code
 
-    def reported_symptoms_for_sickness(self, now):
-        # TODO: pass the infection timestamp event
+    def reported_symptoms_at_time(self, now):
+        # TODO: this is kind of a lossy way to take into account the information currently available
         try:
-            symptom_start_time, all_symptoms_array = self.reported_symptoms
-            sickness_day = (symptom_start_time - now).days
+            sickness_day = (self.symptoms_start - now).days
             all_reported_symptoms_till_day = []
             for day in range(sickness_day+1):
-                all_reported_symptoms_till_day.extend(all_symptoms_array[sickness_day])
+                all_reported_symptoms_till_day.extend(self.all_reported_symptoms[sickness_day])
             return all_reported_symptoms_till_day
         except Exception as e:
             return []
 
+    def update_risk_encounter(self, message, RISK_MODEL):
+        """ This function updates an individual's risk based on the receipt of a new message"""
 
-def risk_for_symptoms(human, now):
-    """ This function calculates a risk score based on the person's symptoms."""
-    # if they get tested, it takes TEST_DAYS to get the result, and they are quarantined for QUARANTINE_DAYS.
-    # The test_timestamp is set to datetime.min, unless they get a positive test result.
-    # Basically, once they know they have a positive test result, they have a risk of 1 until after quarantine days.
-    if human.test_logs[1] and human.test_logs[0] > now:
-        return 1.
+        # Get the binarized contact risk
+        m_risk = binary_to_float("".join([str(x) for x in np.array(message.risk.tolist()).astype(int)]), 0, 4)
 
-    reported_symptoms = human.reported_symptoms_for_sickness(now)
-    if 'severe' in reported_symptoms:
-        return 0.75
-    if 'moderate' in reported_symptoms:
-        return 0.5
-    if 'mild' in reported_symptoms:
-        return 0.25
-    return 0.0
-
-
-def add_message_to_cluster(human, m_i):
-    """ This function clusters new messages by scoring them against old messages in a sort of naive nearest neighbors approach"""
-    # TODO: include risk level in clustering, currently only uses quantized uid
-    # TODO: refactor to compare multiple clustering schemes
-    # TODO: check for mutually exclusive messages in order to break up a group and re-run nearest neighbors
-    m_i_enc = _encode_message(m_i)
-    m_risk = binary_to_float("".join([str(x) for x in np.array(m_i[1].tolist()).astype(int)]), 0, 4)
-
-    # otherwise score against previous messages
-    scores = {}
-    for m_enc, _ in human.M.items():
-        m = _decode_message(m_enc)
-        if m_i[0] == m[0] and m_i[2].day == m[2].day:
-            scores[m_enc] = 3
-        elif m_i[0][:3] == m[0][:3] and m_i[2].day - 1 == m[2].day:
-            scores[m_enc] = 2
-        elif m_i[0][:2] == m[0][:2] and m_i[2].day - 2 == m[2].day:
-            scores[m_enc] = 1
-        elif m_i[0][:1] == m[0][:1] and m_i[2].day - 2 == m[2].day:
-            scores[m_enc] = 0
-
-    if scores:
-        max_score_message = max(scores.items(), key=operator.itemgetter(1))[0]
-        human.M[m_i_enc] = {'assignment': human.M[max_score_message]['assignment'], 'previous_risk': m_risk, 'carry_over_transmission_proba': RISK_TRANSMISSION_PROBA}
-    # if it's either the first message
-    elif len(human.M) == 0:
-        human.M[m_i_enc] = {'assignment': 0, 'previous_risk': m_risk, 'carry_over_transmission_proba': RISK_TRANSMISSION_PROBA}
-    # if there was no nearby neighbor
-    else:
-        new_group = max([v['assignment'] for k, v in human.M.items()]) + 1
-        human.M[m_i_enc] = {'assignment': new_group, 'previous_risk': m_risk, 'carry_over_transmission_proba': RISK_TRANSMISSION_PROBA}
-
-
-def update_risk_encounter(human, message, RISK_MODEL):
-    """ This function updates an individual's risk based on the receipt of a new message"""
-
-    # Get the binarized contact risk
-    m_risk = binary_to_float("".join([str(x) for x in np.array(message[1].tolist()).astype(int)]), 0, 4)
-
-    # select your contact risk prediction model
-    update = 0
-    if RISK_MODEL == 'yoshua':
-        if human.risk < m_risk:
-            update = (m_risk - m_risk * human.risk) * RISK_TRANSMISSION_PROBA
-    elif RISK_MODEL == 'lenka':
-        update = m_risk * RISK_TRANSMISSION_PROBA
-
-    elif RISK_MODEL == 'eilif':
-        msg_enc = _encode_message(message)
-        if msg_enc not in human.M:
-            # update is delta_risk
+        # select your contact risk prediction model
+        update = 0
+        if RISK_MODEL == 'yoshua':
+            if self.risk < m_risk:
+                update = (m_risk - m_risk * self.risk) * RISK_TRANSMISSION_PROBA
+        elif RISK_MODEL == 'lenka':
             update = m_risk * RISK_TRANSMISSION_PROBA
+
+        elif RISK_MODEL == 'eilif':
+            msg_enc = _encode_message(message)
+            if msg_enc not in self.M:
+                # update is delta_risk
+                update = m_risk * RISK_TRANSMISSION_PROBA
+            else:
+                previous_risk = self.M[msg_enc]['previous_risk']
+                carry_over_transmission_proba = self.M[msg_enc]['carry_over_transmission_proba']
+                update = ((m_risk - previous_risk) * RISK_TRANSMISSION_PROBA + previous_risk * carry_over_transmission_proba)
+
+            # Update contact history
+            self.M[msg_enc]['previous_risk'] = m_risk
+            self.M[msg_enc]['carry_over_transmission_proba'] = RISK_TRANSMISSION_PROBA * (1 - update)
+        print(f"self.risk: {self.risk}, m_risk: {m_risk}, update: {update}")
+
+        self.risk += update
+
+        # some models require us to clip the risk at one (like 'lenka' and 'eilif')
+        if CLIP_RISK:
+            self.risk = min(self.risk, 1.)
+
+
+    def update_risk_local(self, now):
+        """ This function calculates a risk score based on the person's symptoms."""
+        # if they get tested, it takes TEST_DAYS to get the result, and they are quarantined for QUARANTINE_DAYS.
+        # The test_timestamp is set to datetime.min, unless they get a positive test result.
+        # Basically, once they know they have a positive test result, they have a risk of 1 until after quarantine days.
+        if self.time_of_recovery < now:
+            return 0.
+        if self.time_of_death < now:
+            return 0.
+        if self.test_logs[1] and self.test_logs[0] < now + datetime.timedelta(days=2):
+            return 1.
+
+        reported_symptoms = self.reported_symptoms_at_time(now)
+        if 'severe' in reported_symptoms:
+            return 0.75
+        if 'moderate' in reported_symptoms:
+            return 0.5
+        if 'mild' in reported_symptoms:
+            return 0.25
+        if len(reported_symptoms) > 3:
+            return 0.25
+        if len(reported_symptoms) > 1:
+            return 0.1
+        if len(reported_symptoms) > 0:
+            return 0.05
+        return 0.0
+
+
+    def add_message_to_cluster(self, m_i):
+        """ This function clusters new messages by scoring them against old messages in a sort of naive nearest neighbors approach"""
+        # TODO: include risk level in clustering, currently only uses quantized uid
+        # TODO: refactor to compare multiple clustering schemes
+        # TODO: check for mutually exclusive messages in order to break up a group and re-run nearest neighbors
+        m_i_enc = _encode_message(m_i)
+        m_risk = binary_to_float("".join([str(x) for x in np.array(m_i[1].tolist()).astype(int)]), 0, 4)
+
+        # otherwise score against previous messages
+        scores = {}
+        for m_enc, _ in self.M.items():
+            m = _decode_message(m_enc)
+            if m_i[0] == m[0] and m_i[2].day == m[2].day:
+                scores[m_enc] = 3
+            elif m_i[0][:3] == m[0][:3] and m_i[2].day - 1 == m[2].day:
+                scores[m_enc] = 2
+            elif m_i[0][:2] == m[0][:2] and m_i[2].day - 2 == m[2].day:
+                scores[m_enc] = 1
+            elif m_i[0][:1] == m[0][:1] and m_i[2].day - 2 == m[2].day:
+                scores[m_enc] = 0
+
+        if scores:
+            max_score_message = max(scores.items(), key=operator.itemgetter(1))[0]
+            self.M[m_i_enc] = {'assignment': self.M[max_score_message]['assignment'], 'previous_risk': m_risk, 'carry_over_transmission_proba': RISK_TRANSMISSION_PROBA}
+        # if it's either the first message
+        elif len(self.M) == 0:
+            self.M[m_i_enc] = {'assignment': 0, 'previous_risk': m_risk, 'carry_over_transmission_proba': RISK_TRANSMISSION_PROBA}
+        # if there was no nearby neighbor
         else:
-            previous_risk = human.M[msg_enc]['previous_risk']
-            carry_over_transmission_proba = human.M[msg_enc]['carry_over_transmission_proba']
-            update = ((m_risk - previous_risk) * RISK_TRANSMISSION_PROBA + previous_risk * carry_over_transmission_proba)
+            new_group = max([v['assignment'] for k, v in self.M.items()]) + 1
+            self.M[m_i_enc] = {'assignment': new_group, 'previous_risk': m_risk, 'carry_over_transmission_proba': RISK_TRANSMISSION_PROBA}
 
-        # Update contact history
-        human.M[msg_enc]['previous_risk'] = m_risk
-        human.M[msg_enc]['carry_over_transmission_proba'] = RISK_TRANSMISSION_PROBA * (1 - update)
 
-    human.risk += update
-
-    # some models require us to clip the risk at one (like 'lenka' and 'eilif')
-    if CLIP_RISK:
-        human.risk = min(human.risk, 1.)
 
 if __name__ == "__main__":
     # TODO: add as args that can be called from cmdline
-    PLOT_DAILY = True
+    PLOT_DAILY = False
     PATH_TO_DATA = "output/data.pkl"
     PATH_TO_HUMANS = "output/humans.pkl"
     CLUSTER_PATH = "output/clusters.json"
@@ -209,34 +217,49 @@ if __name__ == "__main__":
         day_since_epoch = (log['time'] - start).days
         logs[hash_id_day(log['human_id'], day_since_epoch)].append(log)
 
-    reported_symptoms = defaultdict(list)
     for log in symp_logs:
-        hd[log['human_id']].reported_symptoms = (log['time'], log['payload']['observed']['reported_symptoms'])
+        hd[log['human_id']].symptoms_start = log['time']
+        hd[log['human_id']].infectiousness_start = log['time'] - datetime.timedelta(days=3)
+        hd[log['human_id']].all_reported_symptoms = log['payload']['observed']['reported_symptoms']
 
     for log in recovered_logs:
-        reported_symptoms[log['human_id']].append((log['time'], 'death'))
+        if log['payload']['unobserved']['death']:
+            hd[log['human_id']].time_of_death = log['time']
+            hd[log['human_id']].time_of_recovery = datetime.datetime.max
+        else:
+            hd[log['human_id']].time_of_recovery = log['time']
+            hd[log['human_id']].time_of_death = datetime.datetime.max
+
 
     test_logs_proc = {}
     for log in test_logs:
         hd[log['human_id']].test_logs = (log['time'], log['payload']['observed']['result'])
 
-
-    risks = []
+    all_risks = []
+    daily_risks = []
     days = (enc_logs[-1]['time'] - enc_logs[0]['time']).days
     for current_day in range(days):
         for hid, human in hd.items():
-            human.update_uid()
             start_risk = human.risk
+            todays_date = start + datetime.timedelta(days=current_day)
+
+            # update your quantized uid
+            human.update_uid()
 
             # check if you have new reported symptoms
-            human.risk = risk_for_symptoms(human, start + datetime.timedelta(days=current_day))
+            human.risk = human.update_risk_local(todays_date)
+            if todays_date > human.infectiousness_start:
+                human.is_infectious = True
+            if human.time_of_recovery < todays_date or human.time_of_death < todays_date:
+                human.is_infectious = False
+
             # read your old messages
             for m_i in human.messages:
                 human.timestamp = m_i[0]
                 # update risk based on that day's messages
                 if METHOD_CLUSTERING_MAP[RISK_MODEL]:
-                    add_message_to_cluster(human, m_i)
-                update_risk_encounter(human, m_i, RISK_MODEL)
+                    human.add_message_to_cluster(m_i)
+                human.update_risk_encounter(m_i, RISK_MODEL)
 
             # go about your day and accrue encounters
             encounters = logs[hash_id_day(human.name, current_day)]
@@ -245,26 +268,22 @@ if __name__ == "__main__":
                 encounter_time = encounter['time']
                 unobs = encounter['payload']['unobserved']
                 encountered_human = hd[unobs['human2']['human_id']]
-                human.is_infected = unobs['human1']['is_infected']
-                human.is_exposed = unobs['human1']['is_exposed']
-                human.is_infectious = unobs['human1']['is_infectious']
                 human.messages.append(encountered_human.cur_message(encounter_time))
 
 
-            # TODO: if risk changed substantially, send update messages for all of my messages in a rolling 14 day window
             if start_risk > human.risk + 0.1 or start_risk < human.risk - 0.1:
                 for m in human.messages:
-                    if encounter_time - m.time < datetime.timedelta(days=14):
+                    # if the encounter happened within the last 14 days, and your symptoms started at most 3 days after your contact
+                    if todays_date - m.time < datetime.timedelta(days=14) and human.symptoms_start < m.time + datetime.timedelta(days=3):
                         hd[m.unobs_id].messages.append(human.cur_message(encounter_time))
 
             # append the updated risk for this person and whether or not they are actually infectious
-            risks.append((human.risk, human.is_infectious, human.is_exposed, human.name))
-        print([(r[0], r[-1]) for r in risks])
-        print(f"day: {current_day}")
-
-        hist_plot(risks, f"{PATH_TO_PLOT}day_{str(current_day).zfill(3)}.png")
-        risks = []
-
+            daily_risks.append((human.risk, human.is_infectious, human.name))
+        if PLOT_DAILY:
+            hist_plot(daily_risks, f"{PATH_TO_PLOT}day_{str(current_day).zfill(3)}.png")
+        all_risks.extend(daily_risks)
+        daily_risks = []
+    dist_plot(all_risks,  f"{PATH_TO_PLOT}all_risks.png")
 
     # make a gif of the dist output
     process = subprocess.Popen(f"convert -delay 50 -loop 0 {PATH_TO_PLOT}/*.png {PATH_TO_PLOT}/risk.gif".split(), stdout=subprocess.PIPE)

@@ -2,43 +2,37 @@ import pickle
 from base import Event
 import config as cfg
 import matplotlib.pyplot as plt
-import seaborn as sns
 import numpy as np
+import seaborn as sns
 """ This file plots the predicted risk for infected and uninfected people at one snapshot in time"""
-
-sns.set()
 
 
 def hist_plot(risks, PATH_TO_PLOT):
     plt.figure()
-    uninfected_risks = [risk for risk, is_infectious, is_exposed, name in risks if not (is_infectious or is_exposed)]
-    print(f"num uninfected: {len(uninfected_risks)}, mean risk:  {np.mean(uninfected_risks)}")
-    exposed_risks = [risk for risk, is_infectious, is_exposed, name in risks if is_exposed]
-    print(f"num exposed: {len(exposed_risks)}, mean risk {np.mean(exposed_risks)}")
-    infectious_risks = [risk for risk, is_infectious, is_exposed, name in risks if is_infectious]
+    uninfectious_risks = []
+    infectious_risks = []
+    for risk, is_infectious, name in risks:
+        if is_infectious:
+            infectious_risks.append(risk)
+        else:
+            uninfectious_risks.append(risk)
+
+    print(f"num uninfected: {len(uninfectious_risks)}, mean risk:  {np.mean(uninfectious_risks)}")
     print(f"num infectious: {len(infectious_risks)}, mean risk {np.mean(infectious_risks)}")
 
-    if any(exposed_risks):
-        plt.hist(
-            exposed_risks,
-            density=True,
-            label="exposed",
-            bins=10,
-            alpha=0.7,
-        )
     if any(infectious_risks):
         plt.hist(
             infectious_risks,
             density=True,
-            label="infectious and unquarantined",
+            label="infectious",
             bins=10,
             alpha=0.7,
         )
-    if any(uninfected_risks):
+    if any(uninfectious_risks):
         plt.hist(
-            uninfected_risks,
+            uninfectious_risks,
             density=True,
-            label="not infectious or exposed",
+            label="not infectious",
             bins=10,
             alpha=0.7,
         )
@@ -52,23 +46,34 @@ def hist_plot(risks, PATH_TO_PLOT):
     plt.close()
 
 
-def dist_plot(risk_vs_infected, PATH_TO_PLOT):
+def dist_plot(risks, PATH_TO_PLOT):
     plt.figure()
+    uninfectious_risks = []
+    infectious_risks = []
+    for risk, is_infectious, name in risks:
+        if is_infectious:
+            infectious_risks.append(risk)
+        else:
+            uninfectious_risks.append(risk)
+
+    print(f"num uninfected: {len(uninfectious_risks)}, mean risk:  {np.mean(uninfectious_risks)}")
+    print(f"num infectious: {len(infectious_risks)}, mean risk {np.mean(infectious_risks)}")
+
     sns.distplot(
-        [risk for risk, infected in risk_vs_infected if infected],
+        infectious_risks,
         kde=False,
-        axlabel="infected",
+        axlabel="infectious",
         hist=True,
     )
     sns.distplot(
-        [risk for risk, infected in risk_vs_infected if not infected],
+        uninfectious_risks,
         kde=False,
-        axlabel="not infected",
+        axlabel="not infectious",
         hist=True,
     )
     plt.xlabel("Risk")
-    plt.ylabel("Density")
-    plt.legend(['infected', 'not infected'])
+    plt.ylabel("Number of risk readings")
+    plt.legend(['infectious', 'not infectious'])
     plt.title(f"Risk Transmission Proba = {cfg.RISK_TRANSMISSION_PROBA}")
     print("Saving figure...")
     plt.savefig(PATH_TO_PLOT)
