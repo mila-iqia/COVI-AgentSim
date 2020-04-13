@@ -81,10 +81,9 @@ class Human(object):
         self.has_app = self.rng.rand() < (P_HAS_APP / age_modifier) + (self.carefullness / 2)
         self.incubation_days = _draw_random_discreet_gaussian(AVG_INCUBATION_DAYS, SCALE_INCUBATION_DAYS, self.rng)
 
-
         # Indicates whether this person will show severe signs of illness.
         self.infection_timestamp = infection_timestamp
-        self.recovered_timestamp = [datetime.datetime.min]
+        self.recovered_timestamp = datetime.datetime.min
         self.gets_really_sick = self.is_exposed and self.rng.random() >= 0.9
         self.gets_extremely_sick = self.really_sick and self.rng.random() >= 0.7 # &severe; 30% of severe cases need ICU
         self.never_recovers = self.rng.random() <= P_NEVER_RECOVERS[min(math.floor(self.age/10),8)] * REINFECTION_POSSIBLE
@@ -116,11 +115,6 @@ class Human(object):
         self.n_infectious_contacts = 0
 
 
-        # # TODO Martin's implementation
-        # &obs_risk  &obs_human_id
-        self.obs_risk = rng.normal(16) 
-        self.obs_human_id = 1001 
-
         self.obs_age = self.age if self.has_app and self.has_logged_info else None
         self.obs_sex = self.sex if self.has_app and self.has_logged_info else None
         self.obs_preexisting_conditions = self.preexisting_conditions if self.has_app and self.has_logged_info else None
@@ -129,16 +123,6 @@ class Human(object):
         self.obs_test_type = 'lab'
         self.obs_symptoms = self.symptoms if self.has_logged_symptoms else None
 
-
-
-        # privacy
-        self.M = {}
-        self.cur_num_messages = 0
-        self.pending_messages = []
-        self.cur_day = -1
-
-        # risk
-        self.risk = 0
 
         # habits
         self.avg_shopping_time = _draw_random_discreet_gaussian(AVG_SHOP_TIME_MINUTES, SCALE_SHOP_TIME_MINUTES, self.rng)
@@ -187,98 +171,10 @@ class Human(object):
     def __repr__(self):
         return f"H:{self.name}, SEIR:{int(self.is_susceptible)}{int(self.is_exposed)}{int(self.is_infectious)}{int(self.is_removed)}"
 
-
-    def handle_message(self, m_i):
-        """ This function clusters new messages by scoring them against old messages in a sort of naive nearest neighbors approach"""
-        # TODO: include risk level in clustering, currently only uses quantized uid
-        # TODO: refactor to compare multiple clustering schemes
-        # TODO: check for mutually exclusive messages in order to break up a group and re-run nearest neighbors
-        m_i_enc = _encode_message(m_i)
-        m_risk = binary_to_float("".join([str(x) for x in np.array(m_i[1].tolist()).astype(int)]), 0, 4)
-
-        # otherwise score against previous messages
-        scores = {}
-        for m_enc, _ in self.M.items():
-            m = _decode_message(m_enc)
-            if m_i[0] == m[0] and m_i[2].day == m[2].day:
-                scores[m_enc] = 3
-            elif m_i[0][:3] == m[0][:3] and m_i[2].day - 1 == m[2].day:
-                scores[m_enc] = 2
-            elif m_i[0][:2] == m[0][:2] and m_i[2].day - 2 == m[2].day:
-                scores[m_enc] = 1
-            elif m_i[0][:1] == m[0][:1] and m_i[2].day - 2 == m[2].day:
-                scores[m_enc] = 0
-
-        if scores:
-            max_score_message = max(scores.items(), key=operator.itemgetter(1))[0]
-            self.M[m_i_enc] = {'assignment': self.M[max_score_message]['assignment'], 'previous_risk': m_risk, 'carry_over_transmission_proba': RISK_TRANSMISSION_PROBA}
-        # if it's either the first message
-        elif len(self.M) == 0:
-            self.M[m_i_enc] = {'assignment': 0, 'previous_risk': m_risk, 'carry_over_transmission_proba': RISK_TRANSMISSION_PROBA}
-        # if there was no nearby neighbor
-        else:
-            new_group = max([v['assignment'] for k, v in self.M.items()]) + 1
-            self.M[m_i_enc] = {'assignment': new_group, 'previous_risk': m_risk, 'carry_over_transmission_proba': RISK_TRANSMISSION_PROBA}
-
-    @property
-    def uid(self):
-        return self._uid
-
-    def update_uid(self):
-        try:
-            self._uid.pop()
-            self._uid.extend([self.rng.choice([True, False])])
-        except AttributeError:
-            self._uid = bitarray()
-            self._uid.extend(self.rng.choice([True, False], 4)) # generate a random 4-bit code
-
-
-    def update_risk_encounter(self, other, RISK_MODEL):
-        """ This function updates an individual's risk based on their symptoms (reported or true) and their new messages"""
-        # TODO: get eilif's model to work
-        # TODO: refactor this so that we can easily swap contact prediction models (without using the config file)
-
-        # if the person has recovered, their risk is 0
-        # TODO: This leaks information. We should not set their risk to zero just because their symptoms went away and they have "recovered".
-        if self.recovered_timestamp and (self.env.timestamp - self.recovered_timestamp).days >= 0:
-            self.risk = 0
-
-        # Get the binarized contact risk
-        m_risk = binary_to_float("".join([str(x) for x in np.array(other[1].tolist()).astype(int)]), 0, 4)
-
-        # select your contact risk prediction model
-        update = 0
-        if RISK_MODEL == 'yoshua':
-            if self.risk < m_risk:
-                update = (m_risk - m_risk * self.risk) * RISK_TRANSMISSION_PROBA
-        elif RISK_MODEL == 'lenka':
-            update = m_risk * RISK_TRANSMISSION_PROBA
-
-        elif RISK_MODEL == 'eilif':
-            msg_enc = _encode_message(other)
-            if msg_enc not in self.M:
-                # update is delta_risk
-                update = m_risk * RISK_TRANSMISSION_PROBA
-            else:
-                previous_risk = self.M[msg_enc]['previous_risk']
-                carry_over_transmission_proba = self.M[msg_enc]['carry_over_transmission_proba']
-                update = ((m_risk - previous_risk) * RISK_TRANSMISSION_PROBA + previous_risk * carry_over_transmission_proba)
-
-            # Update contact history
-            self.M[msg_enc]['previous_risk'] = m_risk
-            self.M[msg_enc]['carry_over_transmission_proba'] = RISK_TRANSMISSION_PROBA * (1 - update)
-
-        self.risk += update
-
-        # some models require us to clip the risk at one (like 'lenka' and 'eilif')
-        if CLIP_RISK:
-            self.risk = min(self.risk, 1.)
-
     @property
     def is_susceptible(self):
         return not self.is_exposed and not self.is_infectious and not self.is_removed
         # return self.infection_timestamp is None and not self.recovered_timestamp == datetime.datetime.max
-
 
     @property
     def is_exposed(self):
@@ -290,7 +186,7 @@ class Human(object):
 
     @property
     def is_removed(self):
-        return self.recovered_timestamp[-1] == datetime.datetime.max
+        return self.recovered_timestamp == datetime.datetime.max
 
     @property
     def test_results(self):
@@ -325,25 +221,6 @@ class Human(object):
             return self.all_symptoms[sickness_day]
         except Exception as e:
             return []
-
-    @property
-    def reported_symptoms(self):
-        try:
-            sickness_day = (self.env.timestamp - self.infection_timestamp).days
-            return self.all_reported_symptoms[sickness_day]
-        except Exception as e:
-            return []
-
-    def reported_symptoms_for_sickness(self):
-        try:
-            sickness_day = (self.env.timestamp - self.infection_timestamp).days
-            all_reported_symptoms_till_day = []
-            for day in range(sickness_day+1):
-                all_reported_symptoms_till_day.extend(self.all_reported_symptoms[sickness_day])
-            return all_reported_symptoms_till_day
-        except Exception as e:
-            return []
-
 
     @property
     def viral_load(self):
@@ -404,18 +281,6 @@ class Human(object):
             assert self.state.index(1) in next_state[self.last_state.index(1)], f"invalid compartment transition for human:{self.name}"
             self.last_state = self.state
 
-    @property
-    def message_risk(self):
-        """quantizes the risk in order to be used in a message"""
-        if self.risk == 1.0:
-            return bitarray('1111')
-        return bitarray(float_to_binary(self.risk, 0, 4))
-
-    def cur_message(self, time):
-        """creates the current message for this user"""
-        Message = namedtuple('message', 'uid risk time unobs_id')
-        message = Message(self.uid, self.message_risk, time, self.name)
-        return message
 
     def run(self, city):
         """
@@ -436,10 +301,10 @@ class Human(object):
 
             if self.is_infectious and self.env.timestamp - self.infection_timestamp >= datetime.timedelta(days=self.recovery_days):
                 if (1 - self.never_recovers): # re-infection assumed negligble
-                    self.recovered_timestamp.append(datetime.datetime.max)
+                    self.recovered_timestamp = datetime.datetime.max
                     dead = True
                 else:
-                    self.recovered_timestamp.append(self.env.timestamp)
+                    self.recovered_timestamp = self.env.timestamp
                     # we can only get here if REINF
                     self.never_recovers = self.rng.random() <= P_NEVER_RECOVERS[min(math.floor(self.age/10),8)] * REINFECTION_POSSIBLE
                     dead = False
@@ -556,26 +421,24 @@ class Human(object):
 
 
     def at(self, location, duration):
-        if self.name == 1:
-            # print(self, self.env.timestamp.strftime("%b %d, %H %M"), self.location)
-            # print(self.env.timestamp.strftime("%b %d, %H %M"), self.location._name, "-->", location._name, duration)
-            pass
 
+        # add the human to the location
         self.location = location
         location.add_human(self)
         self.leaving_time = duration + self.env.now
         self.start_time = self.env.now
         area = self.location.area
+
         # Report all the encounters
         for h in location.humans:
             if h == self or self.location.location_type == 'household':
                 continue
 
+            # calculate the nature of the contact
             distance = np.sqrt(int(area/len(self.location.humans))) + self.rng.randint(MIN_DIST_ENCOUNTER, MAX_DIST_ENCOUNTER)
             t_near = min(self.leaving_time, h.leaving_time) - max(self.start_time, h.start_time)
             is_exposed = False
-            # FIXME: This is a hack to take into account the difference between asymptomatic transmission rate and symptomatic transmission rate.
-            # The fix should be handled by better modelling the infectiousness of a person as a function of viral_load
+
             p_infection = h.viral_load * (h.is_asymptomatic * h.asymptomatic_infection_ratio + 1.0 * (not h.is_asymptomatic))
             x_human = distance <= INFECTION_RADIUS and t_near * TICK_MINUTE > INFECTION_DURATION and self.rng.random() < p_infection
             x_environment = self.rng.random() < location.contamination_probability # &prob_infection
@@ -584,11 +447,8 @@ class Human(object):
                     is_exposed = True
                     h.n_infectious_contacts+=1
                     Event.log_exposed(self, self.env.timestamp)
-
             if self.is_susceptible and is_exposed:
                 self.infection_timestamp = self.env.timestamp
-                # this was necessary because the side-simulation needs to know about the infection time
-                self.historical_infection_timestamp = self.env.timestamp
 
             Event.log_encounter(self, h,
                                 location=location,
@@ -679,13 +539,6 @@ class Human(object):
         del self.shopping_days
         del self.shopping_hours
         del self.work_start_hour
-
-        # Convert timestamps to strings, if they are not None
-        try:
-            print(f"{self.name}, {self.historical_infection_timestamp}")
-            self.infection_timestamp = str(self.historical_infection_timestamp)
-        except Exception:
-            self.infection_timestamp = None
-
-        self.recovered_timestamp = [str(r) for r in self.recovered_timestamp]
+        del self.infection_timestamp
+        del self.recovered_timestamp
         return self

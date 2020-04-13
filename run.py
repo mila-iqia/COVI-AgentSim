@@ -22,14 +22,15 @@ def simu():
 @click.option('--n_misc', help='number of non-essential establishments in the city', type=int, default=100)
 @click.option('--init_percent_sick', help='% of population initially sick', type=float, default=0.01)
 @click.option('--simulation_days', help='number of days to run the simulation for', type=int, default=30)
-@click.option('--outfile', help='filename of the output (file format: .pkl)', type=str, required=False)
+@click.option('--outfile', help='filename of the output (file format: .pkl)', type=str, default="output/data", required=False)
+@click.option('--out_humans', help='filename of the output (file format: .pkl)', type=str, default="output/humans.pkl", required=False)
 @click.option('--print_progress', is_flag=True, help='print the evolution of days', default=False)
 @click.option('--seed', help='seed for the process', type=int, default=0)
 def sim(n_stores=None, n_people=None, n_parks=None, n_misc=None, n_hospitals=None,
         init_percent_sick=0, store_capacity=30, misc_capacity=30,
         start_time=datetime.datetime(2020, 2, 28, 0, 0),
         simulation_days=10,
-        outfile=None,
+        outfile=None, out_humans=None,
         print_progress=False, seed=0):
     from simulator import Human
     monitors = run_simu(
@@ -38,6 +39,7 @@ def sim(n_stores=None, n_people=None, n_parks=None, n_misc=None, n_hospitals=Non
         start_time=start_time,
         simulation_days=simulation_days,
         outfile=outfile,
+        out_humans=out_humans,
         print_progress=print_progress,
         seed=seed
     )
@@ -85,11 +87,11 @@ def test():
 
 
 
-def run_simu(n_stores=None, n_people=None, n_parks=None, n_hospitals=None, n_misc=None,
+def run_simu(n_stores=None, n_people=None, n_parks=None, n_hospitals=2, n_misc=None,
              init_percent_sick=0, store_capacity=30, misc_capacity=30,
              start_time=datetime.datetime(2020, 2, 28, 0, 0),
              simulation_days=10,
-             outfile=None,
+             outfile=None, out_humans=None,
              print_progress=False, seed=0, Human=None):
 
     if Human is None:
@@ -212,9 +214,6 @@ def run_simu(n_stores=None, n_people=None, n_parks=None, n_hospitals=None, n_mis
     for m in monitors:
         env.process(m.run(env, city=city))
     env.run(until=simulation_days * 24 * 60 / TICK_MINUTE)
-
-    # serialize and write the human
-    pickle.dump([h.serialize() for h in humans], open('humans.pkl', 'wb'))
 
     return monitors
 
