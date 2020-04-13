@@ -20,6 +20,50 @@ It's primary functionality is to run the message clustering and risk prediction 
 """
 
 
+# A utility class for re-inflating human objects with just the stuff we need for message passing / risk prediction
+class dummy_human:
+    def __init__(self, name=None, rng=None):
+        self.name = name
+        self.M = {}
+        self.messages = []
+        self.risk = 0
+        self.rng = rng
+
+    @property
+    def message_risk(self):
+        """quantizes the risk in order to be used in a message"""
+        if self.risk == 1.0:
+            return bitarray('1111')
+        return bitarray(float_to_binary(self.risk, 0, 4))
+
+    def cur_message(self, time):
+        """creates the current message for this user"""
+        Message = namedtuple('message', 'uid risk time unobs_id')
+        message = Message(self.uid, self.message_risk, time, self.name)
+        return message
+
+    @property
+    def uid(self):
+        return self._uid
+
+    def update_uid(self):
+        try:
+            self._uid.pop()
+            self._uid.extend([self.rng.choice([True, False])])
+        except AttributeError:
+            self._uid = bitarray()
+            self._uid.extend(self.rng.choice([True, False], 4))  # generate a random 4-bit code
+    #
+    # @property
+    # def reported_symptoms(self):
+    #     try:
+    #         sickness_day = (self.env.timestamp - self.infection_timestamp).days
+    #         return self.all_reported_symptoms[sickness_day]
+    #     except Exception as e:
+    #         return []
+
+
+
 def risk_for_symptoms(human):
     """ This function calculates a risk score based on the person's symptoms."""
     # if they get tested, it takes TEST_DAYS to get the result, and they are quarantined for QUARANTINE_DAYS.
@@ -106,7 +150,6 @@ def update_risk_encounter(human, message, RISK_MODEL):
         human.risk = min(human.risk, 1.)
 
 if __name__ == "__main__":
-
     # TODO: add as args that can be called from cmdline
     PLOT_DAILY = True
     PATH_TO_DATA = "output/data.pkl"
@@ -116,46 +159,50 @@ if __name__ == "__main__":
     RISK_MODEL = 'yoshua'  # options: ['yoshua', 'lenka', 'eilif']
     METHOD_CLUSTERING_MAP = {"eilif": True, "yoshua": False, "lenka": False}
     LOGS_SUBSET_SIZE = 10000000
+    seed = 0
+
+    rng = np.random.RandomState(seed)
 
     # read and filter the pickles
     with open(PATH_TO_DATA, "rb") as f:
         logs = pickle.load(f)
-    with open(PATH_TO_HUMANS, "rb") as f:
-        humans = pickle.load(f)
+    human_ids = set()
+    enc_logs = []
+    symp_logs = []
+    for log in logs:
+        human_ids.add(log['human_id'])
+        if log['event_type'] == Event.encounter:
+            enc_logs.append(log)
+        elif log['event_type'] == Event.symptom_start or log['event_type'] == Event.recovered:
+            print(log['payload'])
+            symp_logs.append(log)
+        else:
+            print(log['event_type'])
 
     # Sort encounter logs by time and then by human id
-    enc_logs = [l for l in logs if l["event_type"] == Event.encounter]
     enc_logs = sorted(enc_logs, key=operator.itemgetter('time'))
     start = enc_logs[0]['time']
     logs = defaultdict(list)
-
     def hash_id_day(hid, day):
         return str(hid) + "-" + str(day)
-    import pdb; pdb.set_trace()
+
     for log in enc_logs:
         day_since_epoch = (log['time'] - start).days
         logs[hash_id_day(log['human_id'], day_since_epoch)].append(log)
 
-    # A hack for using the re-inflated human objects
-    class dummy_env:
-        def __init__(self):
-            return
-
+    import pdb; pdb.set_trace()
+    symp_logs_proc = defaultdict(list)
+    for log in symp_logs:
+        symp_logs_proc['human_id'].append(log)
     # re-inflate the humans
     hd = {}
-    for human in humans:
-        env = dummy_env()
-        env.timestamp = datetime.datetime(2020, 2, 28, 0, 0)
-        human.env = env
-        human.rng = np.random.RandomState(0)
-        human.update_uid()
-        human.messages = []
-        hd[human.name] = human
+    for human_id in human_ids:
+        hd[human_id] = dummy_human(name=human_id, rng=rng)
 
     risks = []
     days = (enc_logs[-1]['time'] - enc_logs[0]['time']).days
     for current_day in range(days):
-        for human in humans:
+        for hid, human in hd.items():
             human.update_uid()
             start_risk = human.risk
 
@@ -175,18 +222,16 @@ if __name__ == "__main__":
                 encounter_time = encounter['time']
                 unobs = encounter['payload']['unobserved']
                 encountered_human = hd[unobs['human2']['human_id']]
-                human.env.timestamp = encounter_time
-                encountered_human.env.timestamp = encounter_time
                 human.messages.append(encountered_human.cur_message(encounter_time))
 
-            # risk update messages
+            # TODO: if risk changed substantially, send update messages for all of my messages in a rolling 14 day window
             if start_risk > human.risk + 0.1 or start_risk < human.risk - 0.1:
                 for m in human.messages:
-                    if human.env.timestamp - m.time < datetime.timedelta(days=14):
-                        humans[m.unobs_id].messages.append(human.cur_message(human.env.timestamp))
+                    if encounter_time - m.time < datetime.timedelta(days=14):
+                        humans[m.unobs_id].messages.append(human.cur_message(encounter_time))
 
             # append the updated risk for this person and whether or not they are actually infectious
-            risks.append((human.risk, human.is_infectious, human.is_exposed, human.is_quarantined, human.name))
+            risks.append((human.risk, human.is_infectious, human.is_exposed, human.name))
         print([(r[0], r[-1]) for r in risks])
         print(f"day: {current_day}")
 

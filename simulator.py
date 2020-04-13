@@ -109,11 +109,6 @@ class Human(object):
         self.obs_hospitalized = False
         self.obs_ICU = False
 
-        # # TODO Martin's implementation
-        # &obs_risk  &obs_human_id
-        self.obs_risk = rng.normal(16) 
-        self.obs_human_id = 1001 
-
         self.obs_age = self.age if self.has_app and self.has_logged_info else None
         self.obs_sex = self.sex if self.has_app and self.has_logged_info else None
         self.obs_preexisting_conditions = self.preexisting_conditions if self.has_app and self.has_logged_info else None
@@ -122,15 +117,6 @@ class Human(object):
         self.obs_test_type = 'lab'
         self.obs_symptoms = self.symptoms if self.has_logged_symptoms else None
 
-
-
-        # privacy
-        self.M = {}
-        self.cur_num_messages = 0
-        self.pending_messages = []
-
-        # risk
-        self.risk = 0
 
         # habits
         self.avg_shopping_time = _draw_random_discreet_gaussian(AVG_SHOP_TIME_MINUTES, SCALE_SHOP_TIME_MINUTES, self.rng)
@@ -177,18 +163,6 @@ class Human(object):
         return f"H:{self.name}, SEIR:{int(self.is_susceptible)}{int(self.is_exposed)}{int(self.is_infectious)}{int(self.is_removed)}"
 
     @property
-    def uid(self):
-        return self._uid
-
-    def update_uid(self):
-        try:
-            self._uid.pop()
-            self._uid.extend([self.rng.choice([True, False])])
-        except AttributeError:
-            self._uid = bitarray()
-            self._uid.extend(self.rng.choice([True, False], 4)) # generate a random 4-bit code
-
-    @property
     def is_susceptible(self):
         return not self.is_exposed and not self.is_infectious and not self.is_removed
         # return self.infection_timestamp is None and not self.recovered_timestamp == datetime.datetime.max
@@ -229,25 +203,6 @@ class Human(object):
             return self.all_symptoms[sickness_day]
         except Exception as e:
             return []
-
-    @property
-    def reported_symptoms(self):
-        try:
-            sickness_day = (self.env.timestamp - self.infection_timestamp).days
-            return self.all_reported_symptoms[sickness_day]
-        except Exception as e:
-            return []
-
-    def reported_symptoms_for_sickness(self):
-        try:
-            sickness_day = (self.env.timestamp - self.infection_timestamp).days
-            all_reported_symptoms_till_day = []
-            for day in range(sickness_day+1):
-                all_reported_symptoms_till_day.extend(self.all_reported_symptoms[sickness_day])
-            return all_reported_symptoms_till_day
-        except Exception as e:
-            return []
-
 
     @property
     def viral_load(self):
@@ -308,18 +263,6 @@ class Human(object):
             assert self.state.index(1) in next_state[self.last_state.index(1)], f"invalid compartment transition for human:{self.name}"
             self.last_state = self.state
 
-    @property
-    def message_risk(self):
-        """quantizes the risk in order to be used in a message"""
-        if self.risk == 1.0:
-            return bitarray('1111')
-        return bitarray(float_to_binary(self.risk, 0, 4))
-
-    def cur_message(self, time):
-        """creates the current message for this user"""
-        Message = namedtuple('message', 'uid risk time unobs_id')
-        message = Message(self.uid, self.message_risk, time, self.name)
-        return message
 
     def run(self, city):
         """

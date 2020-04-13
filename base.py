@@ -1,4 +1,5 @@
 import simpy
+import copy
 import datetime
 import itertools
 from orderedset import OrderedSet
@@ -108,7 +109,7 @@ class Location(simpy.Resource):
 
     def serialize(self):
         """ This function serializes the location object"""
-        s = self.__dict__
+        s = copy.copy(self.__dict__)
         if s.get('env'):
             del s['env']
         if s.get('rng'):
@@ -117,6 +118,7 @@ class Location(simpy.Resource):
             del s['_env']
         if s.get('contamination_timestamp'):
             del s['contamination_timestamp']
+        del s['humans']
         return s
 
 class Event:
@@ -132,8 +134,7 @@ class Event:
 
     @staticmethod
     def log_encounter(human1, human2, location, duration, distance, time):
-        h_obs_keys   = ['obs_risk', 'obs_human_id', 
-                        'obs_age','has_app', 'obs_preexisting_conditions', 
+        h_obs_keys   = ['obs_age', 'has_app', 'obs_preexisting_conditions',
                         'obs_symptoms', 'obs_test_result', 'obs_test_type',
                         'obs_hospitalized', 'obs_ICU', 
                         'obs_test_validated', 'obs_lat', 'obs_lon']
@@ -150,10 +151,11 @@ class Event:
         for human in [human1, human2]:
             o = {key:getattr(human, key) for key in h_obs_keys}
             obs.append(o)
-
             u = {key:getattr(human, key) for key in h_unobs_keys}
             u['is_infected'] = human.is_exposed or human.is_infectious
             u['human_id'] = human.name
+            if u['household']:
+                u['household'] = u['household'].serialize()
             unobs.append(u)
         loc_obs = {key:getattr(location, key) for key in loc_obs_keys}
         loc_unobs = {key:getattr(location, key) for key in loc_unobs_keys}
@@ -169,8 +171,6 @@ class Event:
                 obs_payload = {}
                 unobs_payload = { **loc_obs, **loc_unobs, **other_obs, 'human1':{**obs[i], **unobs[i]},
                                     'human2': {**obs[1-i], **unobs[1-i]} }
-            unobs_payload.update({'risk': human.risk})
-
             human.events.append({
                 'human_id':human.name,
                 'event_type':Event.encounter,
@@ -205,9 +205,11 @@ class Event:
                 'time': time,
                 'payload': {
                     'observed':{
+                        "reported_symptoms": human.self.all_reported_symptoms()
                     },
                     'unobserved':{
-                        'covid': covid
+                        'covid': covid,
+                        "all_symptoms": human.all_symptoms
                     }
 
                 }

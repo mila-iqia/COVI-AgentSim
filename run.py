@@ -199,10 +199,6 @@ def run_simu(n_stores=None, n_people=None, n_parks=None, n_misc=None,
         env.process(m.run(env, city=city))
     env.run(until=simulation_days * 24 * 60 / TICK_MINUTE)
 
-    # serialize and write the human
-    if out_humans:
-        pickle.dump([h.serialize() for h in humans], open(out_humans, 'wb'))
-
     return monitors
 
 
