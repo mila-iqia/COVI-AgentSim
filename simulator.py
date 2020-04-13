@@ -13,6 +13,7 @@ from utils import _normalize_scores, _get_random_age, _get_random_sex, _get_all_
     _get_preexisting_conditions, _draw_random_discreet_gaussian, _json_serialize, _sample_viral_load_piecewise, \
     _get_random_area, _encode_message, _decode_message, float_to_binary, binary_to_float, _reported_symptoms
 from config import *  # PARAMETERS
+
 from base import *
 
 
@@ -21,6 +22,7 @@ class Visits(object):
     def __init__(self):
         self.parks = defaultdict(int)
         self.stores = defaultdict(int)
+        self.hospitals = defaultdict(int)
         self.miscs = defaultdict(int)
 
     @property
@@ -32,18 +34,23 @@ class Visits(object):
         return len(self.stores)
 
     @property
+    def n_hospitals(self):
+        return len(self.hospitals)
+
+    @property
     def n_miscs(self):
         return len(self.miscs)
 
 
 class Human(object):
 
-    def __init__(self, env, name, age, rng, infection_timestamp, household, workplace, rho=0.3, gamma=0.21, symptoms=[],
+    def __init__(self, env, name, age, rng, infection_timestamp, household, workplace, hospital, rho=0.3, gamma=0.21, symptoms=[],
                  test_results=None):
         self.env = env
         self.events = []
         self.name = name
         self.rng = rng
+        self.death = False
 
         self.age = _get_random_age(self.rng)
         self.sex = _get_random_sex(self.rng)
@@ -51,6 +58,7 @@ class Human(object):
 
         self.household = household
         self.workplace = workplace
+        self.hospital = hospital
         self.location = household
         self.rho = rho
         self.gamma = gamma
@@ -76,11 +84,12 @@ class Human(object):
         # Indicates whether this person will show severe signs of illness.
         self.infection_timestamp = infection_timestamp
         self.recovered_timestamp = datetime.datetime.min
-        self.really_sick = self.is_exposed and self.rng.random() >= 0.9
-        self.extremely_sick = self.really_sick and self.rng.random() >= 0.7 # &severe; 30% of severe cases need ICU
-        # if P_REINFECTION is 0, then after getting sick
+        self.gets_really_sick = self.is_exposed and self.rng.random() >= 0.9
+        self.gets_extremely_sick = self.really_sick and self.rng.random() >= 0.7 # &severe; 30% of severe cases need ICU
         self.never_recovers = self.rng.random() <= P_NEVER_RECOVERS[min(math.floor(self.age/10),8)] * REINFECTION_POSSIBLE
-        
+        self.obs_hospitalized = False
+        self.obs_in_icu = False
+
         # &symptoms, &viral-load
         # probability of being asymptomatic is basically 50%, but a bit less if you're older
         # and a bit more if you're younger
@@ -93,7 +102,7 @@ class Human(object):
         self.all_symptoms = _get_all_symptoms(
                           np.ndarray.item(self.viral_load_plateau_start), np.ndarray.item(self.viral_load_plateau_end),
                           np.ndarray.item(self.viral_load_recovered), age=self.age, incubation_days=self.incubation_days, 
-                                                          really_sick=self.really_sick, extremely_sick=self.extremely_sick, 
+                                                          really_sick=self.gets_really_sick, extremely_sick=self.gets_extremely_sick, 
                           rng=self.rng, preexisting_conditions=self.preexisting_conditions)
         self.all_reported_symptoms = _reported_symptoms(self.all_symptoms, self.rng, self.carefullness)
 
@@ -105,9 +114,6 @@ class Human(object):
         self.last_state = self.state
         self.n_infectious_contacts = 0
 
-        # TODO merge with hospitalization
-        self.obs_hospitalized = False
-        self.obs_ICU = False
 
         self.obs_age = self.age if self.has_app and self.has_logged_info else None
         self.obs_sex = self.sex if self.has_app and self.has_logged_info else None
@@ -129,6 +135,9 @@ class Human(object):
 
         self.avg_working_hours = _draw_random_discreet_gaussian(AVG_WORKING_MINUTES, SCALE_WORKING_MINUTES, self.rng)
         self.scale_working_hours = _draw_random_discreet_gaussian(AVG_SCALE_WORKING_MINUTES, SCALE_SCALE_WORKING_MINUTES, self.rng)
+
+        self.avg_hospital_hours = _draw_random_discreet_gaussian(AVG_HOSPITAL_HOURS, SCALE_HOSPITAL_HOURS, self.rng)
+        self.scale_hospital_hours = _draw_random_discreet_gaussian(AVG_SCALE_HOSPITAL_HOURS, SCALE_SCALE_HOSPITAL_HOURS, self.rng)
 
         self.avg_misc_time = _draw_random_discreet_gaussian(AVG_MISC_MINUTES, SCALE_MISC_MINUTES, self.rng)
         self.scale_misc_time = _draw_random_discreet_gaussian(AVG_SCALE_MISC_MINUTES, SCALE_SCALE_MISC_MINUTES, self.rng)
@@ -197,6 +206,15 @@ class Human(object):
                 return None
 
     @property
+    def really_sick(self):
+        return self.gets_really_sick and 'severe' in self.symptoms
+
+      
+    @property
+    def extremely_sick(self):
+        return self.gets_extremely_sick and 'severe' in self.symptoms 
+    
+    @property
     def symptoms(self):
         try:
             sickness_day = (self.env.timestamp - self.infection_timestamp).days
@@ -230,7 +248,7 @@ class Human(object):
     def infectiousness(self):
         severity_multiplier = 1
         if self.is_infectious:
-            if self.really_sick:
+            if self.gets_really_sick:
               severity_multiplier = 1.25
             if self.extremely_sick:
               severity_multiplier = 1.5
@@ -308,7 +326,11 @@ class Human(object):
                 self.count_exercise=0
                 self.count_shop=0
 
-            if not WORK_FROM_HOME and not self.env.is_weekend() and hour == self.work_start_hour:
+            if self.extremely_sick:
+                yield self.env.process(self.hospitalize(city, icu_required=True))
+            elif self.really_sick:
+                yield self.env.process(self.hospitalize(city))
+            elif not WORK_FROM_HOME and not self.env.is_weekend() and hour == self.work_start_hour:
                 yield self.env.process(self.excursion(city, "work"))
 
             elif hour in self.shopping_hours and day in self.shopping_days and self.count_shop<=self.max_shop_per_week:
@@ -348,6 +370,18 @@ class Human(object):
             return round(self.lon + self.rng.normal(0, 2))
         else:
             return round(self.lon + self.rng.normal(0, 10))
+
+    def hospitalize(self, city, icu_required=False):
+        hospital = self._select_location(location_type="hospital", city=city)
+        if icu_required:
+            if len(self.preexisting_conditions) < 2:
+                extra_time = self.rng.choice([1, 2, 3], p=[0.5, 0.3, 0.2])
+            else:
+                extra_time = self.rng.choice([1, 2, 3], p=[0.2, 0.3, 0.5])
+            t = self.viral_load_plateau_end[0] - self.viral_load_plateau_start[0] + extra_time
+            yield self.env.process(self.at(hospital.icu, t))
+        else:
+            yield self.env.process(self.at(hospital, 5)) # TODO how long in non-ICU section?
 
     def excursion(self, city, type):
 
@@ -446,6 +480,14 @@ class Human(object):
             pool_pref = self.stores_preferences
             locs = city.stores
             visited_locs = self.visits.stores
+
+        elif location_type == "hospital":
+            S = self.visits.n_hospitals
+            self.adjust_gamma = 1.0
+            pool_pref = [(compute_distance(self.location, m) + 1e-1) ** -1 for m in city.hospitals if
+                         m != self.location]
+            locs = city.hospitals
+            visited_locs = self.visits.hospitals
 
         elif location_type == "miscs":
             S = self.visits.n_miscs

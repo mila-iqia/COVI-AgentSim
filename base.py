@@ -38,9 +38,10 @@ class Env(simpy.Environment):
 
 class City(object):
 
-    def __init__(self, stores, parks, humans, miscs):
+    def __init__(self, stores, parks, hospitals, humans, miscs):
         self.stores = stores
         self.parks = parks
+        self.hospitals = hospitals
         self.humans = humans
         self.miscs = miscs
         self._compute_preferences()
@@ -73,6 +74,7 @@ class Location(simpy.Resource):
         self.contamination_timestamp = datetime.datetime.min
         self.contaminated_surface_probability = surface_prob
         self.max_day_contamination = 0
+        self.location_contamination = cont_prob
 
     def infectious_human(self):
         return any([h.is_infectious for h in self.humans])
@@ -121,6 +123,42 @@ class Location(simpy.Resource):
         del s['humans']
         return s
 
+class Hospital(Location):
+
+    def __init__(self, env, rng, capacity=simpy.core.Infinity, name='vgh', location_type='hospital', lat=None,
+                 lon=None, area=None, cont_prob=None, surface_prob=[0.2, 0.2, 0.2, 0.2, 0.2]):
+        super().__init__(env, rng, capacity, name, location_type, lat, lon, cont_prob)
+        self.location_contamination = 1
+        self.icu = ICU(env, rng, self, capacity=capacity/50, name=f"{name}_icu", location_type='icu', lat=lat, lon=lon,
+                            area=None, cont_prob=None)
+
+    def add_human(self, human):
+        human.obs_hospitalized = True
+        super().add_human(human)
+
+    def remove_human(self, human):
+        human.obs_hospitalized = False
+        super().remove_human(human)
+
+
+class ICU(Location):
+
+    def __init__(self, env, rng, hospital, capacity=simpy.core.Infinity, name='icu', location_type='icu', lat=None,
+                 lon=None, area=None, cont_prob=None, surface_prob=[0.2, 0.2, 0.2, 0.2, 0.2]):
+        super().__init__(env, rng, capacity, name, location_type, lat, lon, cont_prob)
+        self.hospital = hospital
+
+    def add_human(self, human):
+        human.obs_hospitalized = True
+        human.obs_in_icu = True
+        super().add_human(human)
+
+    def remove_human(self, human):
+        human.obs_hospitalized = False
+        human.obs_in_icu = False
+        super().remove_human(human)
+
+
 class Event:
     test = 'test'
     encounter = 'encounter'
@@ -136,7 +174,7 @@ class Event:
     def log_encounter(human1, human2, location, duration, distance, time):
         h_obs_keys   = ['obs_age', 'has_app', 'obs_preexisting_conditions',
                         'obs_symptoms', 'obs_test_result', 'obs_test_type',
-                        'obs_hospitalized', 'obs_ICU', 
+                        'obs_hospitalized', 'obs_in_icu', 
                         'obs_test_validated', 'obs_lat', 'obs_lon']
 
         h_unobs_keys = ['age', 'carefullness', 'viral_load', 'infectiousness', 
@@ -177,6 +215,7 @@ class Event:
                 'time':time,
                 'payload':{'observed':obs_payload, 'unobserved':unobs_payload}
             })
+
 
     @staticmethod
     def log_test(human, result, time):

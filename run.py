@@ -18,6 +18,7 @@ def simu():
 @click.option('--n_people', help='population of the city', type=int, default=100)
 @click.option('--n_stores', help='number of grocery stores in the city', type=int, default=100)
 @click.option('--n_parks', help='number of parks in the city', type=int, default=20)
+@click.option('--n_hospitals', help='number of hospitals in the city', type=int, default=2)
 @click.option('--n_misc', help='number of non-essential establishments in the city', type=int, default=100)
 @click.option('--init_percent_sick', help='% of population initially sick', type=float, default=0.01)
 @click.option('--simulation_days', help='number of days to run the simulation for', type=int, default=30)
@@ -25,7 +26,7 @@ def simu():
 @click.option('--out_humans', help='filename of the output (file format: .pkl)', type=str, default="output/humans.pkl", required=False)
 @click.option('--print_progress', is_flag=True, help='print the evolution of days', default=False)
 @click.option('--seed', help='seed for the process', type=int, default=0)
-def sim(n_stores=None, n_people=None, n_parks=None, n_misc=None,
+def sim(n_stores=None, n_people=None, n_parks=None, n_misc=None, n_hospitals=None,
         init_percent_sick=0, store_capacity=30, misc_capacity=30,
         start_time=datetime.datetime(2020, 2, 28, 0, 0),
         simulation_days=10,
@@ -33,7 +34,7 @@ def sim(n_stores=None, n_people=None, n_parks=None, n_misc=None,
         print_progress=False, seed=0):
     from simulator import Human
     monitors = run_simu(
-        n_stores=n_stores, n_people=n_people, n_parks=n_parks, n_misc=n_misc,
+        n_stores=n_stores, n_people=n_people, n_parks=n_parks, n_misc=n_misc, n_hospitals=n_hospitals, 
         init_percent_sick=init_percent_sick, store_capacity=store_capacity, misc_capacity=misc_capacity,
         start_time=start_time,
         simulation_days=simulation_days,
@@ -58,7 +59,7 @@ def base(toy_human):
     cf.go_offline()
 
     monitors = run_simu(
-        n_stores=20, n_people=100, n_parks=10, n_misc=20,
+        n_stores=20, n_people=100, n_parks=10, n_misc=20, n_hospitals=2,
         init_percent_sick=0.01, store_capacity=30, misc_capacity=30,
         start_time=datetime.datetime(2020, 2, 28, 0, 0),
         simulation_days=60,
@@ -86,7 +87,7 @@ def test():
 
 
 
-def run_simu(n_stores=None, n_people=None, n_parks=None, n_misc=None,
+def run_simu(n_stores=None, n_people=None, n_parks=None, n_hospitals=None, n_misc=None,
              init_percent_sick=0, store_capacity=30, misc_capacity=30,
              start_time=datetime.datetime(2020, 2, 28, 0, 0),
              simulation_days=10,
@@ -104,7 +105,8 @@ def run_simu(n_stores=None, n_people=None, n_parks=None, n_misc=None,
                  'park':_get_random_area('park',n_parks, total_area, rng),
                  'misc':_get_random_area('misc',n_misc, total_area, rng),
                  'household':_get_random_area('household', math.ceil(n_people/2), total_area, rng),
-                 'workplace':_get_random_area('workplace', math.ceil(n_people/30), total_area, rng)}
+                 'workplace':_get_random_area('workplace', math.ceil(n_people/30), total_area, rng),
+                 'hospital':_get_random_area('hospital', math.ceil(n_people/1000)+1, total_area, rng)}
     
     stores = [
         Location(
@@ -159,6 +161,20 @@ def run_simu(n_stores=None, n_people=None, n_parks=None, n_misc=None,
         )
         for i in range(math.ceil(n_people / 30))
     ]
+    hospitals = [
+        Hospital(
+            env, rng,
+            cont_prob=0.3,
+            name=f'hospital{i}',
+            location_type='hospital',
+            area=area_dict['hospital'][i],
+            lat=rng.randint(*city_limit[0]),
+            lon=rng.randint(*city_limit[1]),
+            surface_prob=[0.1, 0.1, 0.3, 0.2, 0.3],
+            capacity=200
+        )
+        for i in range(n_hospitals)
+    ]
     miscs = [
         Location(
             env, rng,
@@ -181,13 +197,13 @@ def run_simu(n_stores=None, n_people=None, n_parks=None, n_misc=None,
             age=_get_random_age(rng),
             infection_timestamp=start_time if i < n_people * init_percent_sick else None,
             household=rng.choice(households),
-            workplace=rng.choice(workplaces)
+            workplace=rng.choice(workplaces),
+            hospital=rng.choice(hospitals),
         )
         for i in range(n_people)]
 
-    city = City(stores=stores, parks=parks, humans=humans, miscs=miscs)
+    city = City(stores=stores, parks=parks, hospitals=hospitals, humans=humans, miscs=miscs)
     monitors = [EventMonitor(f=120), SEIRMonitor(f=1440)]
-
     # run the simulation
     if print_progress:
         monitors.append(TimeMonitor(60))
