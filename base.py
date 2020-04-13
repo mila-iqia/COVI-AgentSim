@@ -108,6 +108,18 @@ class Location(simpy.Resource):
     def __hash__(self):
         return hash(self.name)
 
+    def serialize(self):
+        """ This function serializes the location object"""
+        s = self.__dict__
+        if s.get('env'):
+            del s['env']
+        if s.get('rng'):
+            del s['rng']
+        if s.get('_env'):
+            del s['_env']
+        if s.get('contamination_timestamp'):
+            del s['contamination_timestamp']
+        return s
 
 class Hospital(Location):
 
@@ -158,8 +170,17 @@ class Event:
 
     @staticmethod
     def log_encounter(human1, human2, location, duration, distance, time):
-        h_obs_keys = ['obs_lat', 'obs_lon', 'age', 'reported_symptoms', 'test_results', 'has_app']
-        h_unobs_keys = ['carefullness', 'viral_load', 'infectiousness', 'symptoms', 'is_exposed', 'is_infectious']
+        h_obs_keys   = ['obs_risk', 'obs_human_id', 
+                        'obs_age','has_app', 'obs_preexisting_conditions', 
+                        'obs_symptoms', 'obs_test_result', 'obs_test_type',
+                        'obs_hospitalized', 'obs_ICU', 
+                        'obs_test_validated', 'obs_lat', 'obs_lon']
+
+        h_unobs_keys = ['age', 'carefullness', 'viral_load', 'infectiousness', 
+                        'symptoms', 'is_exposed', 'is_infectious',
+                        'household', 'infection_timestamp', 'really_sick',
+                        'extremely_sick']
+
         loc_obs_keys = ['location_type', 'lat', 'lon']
         loc_unobs_keys = ['contamination_probability', 'social_contact_factor']
 
@@ -186,12 +207,13 @@ class Event:
                 obs_payload = {}
                 unobs_payload = { **loc_obs, **loc_unobs, **other_obs, 'human1':{**obs[i], **unobs[i]},
                                     'human2': {**obs[1-i], **unobs[1-i]} }
+            unobs_payload.update({'risk': human.risk})
 
             human.events.append({
                 'human_id':human.name,
                 'event_type':Event.encounter,
                 'time':time,
-                'payload':{ 'observed':obs_payload, 'unobserved':unobs_payload }
+                'payload':{'observed':obs_payload, 'unobserved':unobs_payload}
             })
 
     @staticmethod
@@ -238,8 +260,6 @@ class Event:
                 'event_type': Event.contamination,
                 'time': time,
                 'payload': {
-                    'observed':{
-                    },
                     'unobserved':{
                       'exposed': True
                     }
