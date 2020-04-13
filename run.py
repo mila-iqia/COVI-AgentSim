@@ -18,13 +18,14 @@ def simu():
 @click.option('--n_people', help='population of the city', type=int, default=100)
 @click.option('--n_stores', help='number of grocery stores in the city', type=int, default=100)
 @click.option('--n_parks', help='number of parks in the city', type=int, default=20)
+@click.option('--n_hospitals', help='number of hospitals in the city', type=int, default=2)
 @click.option('--n_misc', help='number of non-essential establishments in the city', type=int, default=100)
 @click.option('--init_percent_sick', help='% of population initially sick', type=float, default=0.01)
 @click.option('--simulation_days', help='number of days to run the simulation for', type=int, default=30)
 @click.option('--outfile', help='filename of the output (file format: .pkl)', type=str, required=False)
 @click.option('--print_progress', is_flag=True, help='print the evolution of days', default=False)
 @click.option('--seed', help='seed for the process', type=int, default=0)
-def sim(n_stores=None, n_people=None, n_parks=None, n_misc=None,
+def sim(n_stores=None, n_people=None, n_parks=None, n_misc=None, n_hospitals=None,
         init_percent_sick=0, store_capacity=30, misc_capacity=30,
         start_time=datetime.datetime(2020, 2, 28, 0, 0),
         simulation_days=10,
@@ -32,7 +33,7 @@ def sim(n_stores=None, n_people=None, n_parks=None, n_misc=None,
         print_progress=False, seed=0):
     from simulator import Human
     monitors = run_simu(
-        n_stores=n_stores, n_people=n_people, n_parks=n_parks, n_misc=n_misc,
+        n_stores=n_stores, n_people=n_people, n_parks=n_parks, n_misc=n_misc, n_hospitals=n_hospitals, 
         init_percent_sick=init_percent_sick, store_capacity=store_capacity, misc_capacity=misc_capacity,
         start_time=start_time,
         simulation_days=simulation_days,
@@ -56,7 +57,7 @@ def base(toy_human):
     cf.go_offline()
 
     monitors = run_simu(
-        n_stores=20, n_people=100, n_parks=10, n_misc=20,
+        n_stores=20, n_people=100, n_parks=10, n_misc=20, n_hospitals=2,
         init_percent_sick=0.01, store_capacity=30, misc_capacity=30,
         start_time=datetime.datetime(2020, 2, 28, 0, 0),
         simulation_days=60,
@@ -103,7 +104,7 @@ def run_simu(n_stores=None, n_people=None, n_parks=None, n_hospitals=None, n_mis
                  'misc':_get_random_area('misc',n_misc, total_area, rng),
                  'household':_get_random_area('household', math.ceil(n_people/2), total_area, rng),
                  'workplace':_get_random_area('workplace', math.ceil(n_people/30), total_area, rng),
-                 'hospital':_get_random_area('hospital', math.ceil(n_people/1000), total_area, rng)}
+                 'hospital':_get_random_area('hospital', math.ceil(n_people/1000)+1, total_area, rng)}
     
     stores = [
         Location(

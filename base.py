@@ -173,7 +173,7 @@ class Event:
         h_obs_keys   = ['obs_risk', 'obs_human_id', 
                         'obs_age','has_app', 'obs_preexisting_conditions', 
                         'obs_symptoms', 'obs_test_result', 'obs_test_type',
-                        'obs_hospitalized', 'obs_ICU', 
+                        'obs_hospitalized', 'obs_in_icu', 
                         'obs_test_validated', 'obs_lat', 'obs_lon']
 
         h_unobs_keys = ['age', 'carefullness', 'viral_load', 'infectiousness', 
@@ -209,12 +209,14 @@ class Event:
                                     'human2': {**obs[1-i], **unobs[1-i]} }
             unobs_payload.update({'risk': human.risk})
 
+            print (unobs_payload)
             human.events.append({
                 'human_id':human.name,
                 'event_type':Event.encounter,
                 'time':time,
                 'payload':{'observed':obs_payload, 'unobserved':unobs_payload}
             })
+
 
     @staticmethod
     def log_test(human, result, time):
