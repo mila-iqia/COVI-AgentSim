@@ -20,6 +20,7 @@ class FullUnitTest(unittest.TestCase):
                 n_stores=2,
                 n_people=n_people,
                 n_parks=1,
+                n_hospitals=1,
                 n_misc=2,
                 init_percent_sick=0.1,
                 start_time=datetime.datetime(2020, 2, 28, 0, 0),

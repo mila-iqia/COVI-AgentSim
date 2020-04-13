@@ -279,7 +279,7 @@ def _get_random_area(location_type, num, total_area, rng):
 	''' Using Dirichlet distribution since it generates a "distribution of probabilities" 
 	which will ensure that the total area allotted to a location type remains conserved 
 	while also maintaining a uniform distribution'''
-	perc_dist = {"store":0.15, "misc":0.15, "workplace":0.2, "household":0.3, "park":0.5}
+	perc_dist = {"store":0.15, "misc":0.15, "workplace":0.2, "household":0.3, "park":0.5, 'hospital': 0.6}
 	
 	# Keeping max at area/2 to ensure no location is allocated more than half of the total area allocated to its location type 
 	area = rng.dirichlet(np.ones(math.ceil(num/2)))*(perc_dist[location_type]*total_area/2)
