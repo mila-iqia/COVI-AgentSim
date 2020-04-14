@@ -145,7 +145,7 @@ class City(object):
                         household=res,
                         workplace=workplace,
                         profession=profession[i],
-                        rho=0.0,
+                        rho=0.3,
                         gamma=0.21,
                         infection_timestamp=self.start_time if self.rng.random() < self.init_percent_sick else None
                         )
@@ -336,7 +336,7 @@ class Event:
     def log_encounter(human1, human2, location, duration, distance, time):
         h_obs_keys   = ['obs_age', 'has_app', 'obs_preexisting_conditions',
                         'obs_symptoms', 'obs_test_result', 'obs_test_type',
-                        'obs_hospitalized', 'obs_in_icu', 
+                        'obs_hospitalized', 'obs_in_icu',
                         'obs_test_validated', 'obs_lat', 'obs_lon']
 
         h_unobs_keys = ['age', 'carefulness', 'viral_load', 'infectiousness',
@@ -452,3 +452,24 @@ class Event:
                 }
             }
         )
+
+class DummyEvent:
+    @staticmethod
+    def log_encounter(*args, **kwargs):
+        pass
+
+    @staticmethod
+    def log_test(*args, **kwargs):
+        pass
+
+    @staticmethod
+    def log_symptom_start(*args, **kwargs):
+        pass
+
+    @staticmethod
+    def log_recovery(*args, **kwargs):
+        pass
+
+    @staticmethod
+    def log_exposed(*args, **kwargs):
+        pass

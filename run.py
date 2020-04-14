@@ -80,7 +80,7 @@ def tune():
     import matplotlib.pyplot as plt
     cf.go_offline()
 
-    monitors, tracker = run_simu(n_people=100, init_percent_sick=0.02,
+    monitors, tracker = run_simu(n_people=1000, init_percent_sick=0.02,
         store_capacity=30, misc_capacity=30,
         start_time=datetime.datetime(2020, 2, 28, 0, 0),
         simulation_days=30,
@@ -92,6 +92,8 @@ def tune():
     fig = x[['susceptible', 'exposed', 'infectious', 'removed']].iplot(asFigure=True, title="SEIR")
     fig.write_image("plots/tune/seir.png")
 
+    tracker.write_metrics()
+    import pdb; pdb.set_trace()
     # fig = x['R'].iplot(asFigure=True, title="R0")
     # fig.write_image("plots/tune/R.png")
     #
@@ -106,7 +108,7 @@ def tune():
     # fig = x.iplot(kind='heatmap', asFigure=True)
     # fig.write_image("plots/tune/human_infection_contacts.png")
     #
-    # tracker.write_metrics(dirname="plots/tune")
+    # tracker.plot_metrics(dirname="plots/tune")
 
 
 @simu.command()

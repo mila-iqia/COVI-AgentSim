@@ -16,6 +16,9 @@ from config import *  # PARAMETERS
 
 from base import *
 
+if COLLECT_LOGS is False:
+    Event = DummyEvent
+
 
 class Visits(object):
 
@@ -99,14 +102,14 @@ class Human(object):
         self.viral_load_plateau_height, self.viral_load_plateau_start, self.viral_load_plateau_end, self.viral_load_recovered = _sample_viral_load_piecewise(rng, age=age)
         self.all_symptoms = _get_all_symptoms(
                           np.ndarray.item(self.viral_load_plateau_start), np.ndarray.item(self.viral_load_plateau_end),
-                          np.ndarray.item(self.viral_load_recovered), age=self.age, incubation_days=self.incubation_days, 
-                                                          really_sick=self.gets_really_sick, extremely_sick=self.gets_extremely_sick, 
+                          np.ndarray.item(self.viral_load_recovered), age=self.age, incubation_days=self.incubation_days,
+                                                          really_sick=self.gets_really_sick, extremely_sick=self.gets_extremely_sick,
                           rng=self.rng, preexisting_conditions=self.preexisting_conditions)
         self.all_reported_symptoms = _reported_symptoms(self.all_symptoms, self.rng, self.carefulness)
 
         # counters and memory
         self.r0 = []
-        self.has_logged_symptoms = self.has_app and any(self.symptoms) and rng.rand() < 0.5 
+        self.has_logged_symptoms = self.has_app and any(self.symptoms) and rng.rand() < 0.5
         self.has_logged_test = self.has_app and self.test_results and rng.rand() < 0.5
         self.has_logged_info = self.has_app and rng.rand() < 0.5
         self.last_state = self.state
@@ -219,11 +222,11 @@ class Human(object):
     def really_sick(self):
         return self.gets_really_sick and 'severe' in self.symptoms
 
-      
+
     @property
     def extremely_sick(self):
-        return self.gets_extremely_sick and 'severe' in self.symptoms 
-    
+        return self.gets_extremely_sick and 'severe' in self.symptoms
+
     @property
     def symptoms(self):
         try:
@@ -302,7 +305,7 @@ class Human(object):
           return efficacy
       else:
         return 1
-    
+
 
     @property
     def state(self):
@@ -339,8 +342,7 @@ class Human(object):
 
             # recover
             if self.is_infectious and self.env.timestamp - self.infection_timestamp >= datetime.timedelta(days=self.recovery_days):
-                city.tracker.track_recovery(self.recovery_days - self.incubation_days + INFECTIOUSNESS_ONSET_DAYS)
-                if (1 - self.never_recovers):
+                    city.tracker.track_recovery(self.n_infectious_contacts, self.recovery_days - self.incubation_days + INFECTIOUSNESS_ONSET_DAYS)                if (1 - self.never_recovers):
                     self.recovered_timestamp = datetime.datetime.max
                     dead = True
                 else:
@@ -369,7 +371,10 @@ class Human(object):
                 yield self.env.process(self.hospitalize(city, icu_required=True))
             elif self.really_sick:
                 yield self.env.process(self.hospitalize(city))
-            elif not WORK_FROM_HOME and not self.env.is_weekend() and hour in self.work_start_hour:
+
+            if (not WORK_FROM_HOME and
+                not self.env.is_weekend() and
+                hour in self.work_start_hour):
                 yield self.env.process(self.excursion(city, "work"))
 
             elif hour in self.shopping_hours and day in self.shopping_days and self.count_shop<=self.max_shop_per_week:

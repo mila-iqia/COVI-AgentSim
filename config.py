@@ -68,7 +68,7 @@ LOCATION_DISTRIBUTION = {
 HOUSE_SIZE_PREFERENCE = [0.30, 0.30, 0.15, 0.15, 0.1]
 HUMAN_DISTRIBUTION = {
     (1,15): {
-        "p":0.10,
+        "p":0.04,
         "residence_preference":{
             "house_size":[0.0, 0.2, 0.3, 0.3, 0.2],
             "senior_residency":0.0
@@ -81,7 +81,7 @@ HUMAN_DISTRIBUTION = {
         }
     },
     (15,20):{
-        "p":0.05,
+        "p":0.01,
         "residence_preference":{
             "house_size":[0.05, 0.05, 0.1, 0.3, 0.5],
             "senior_residency":0.0
@@ -173,7 +173,7 @@ SCALE_INCUBATION_DAYS = 1
 AVG_RECOVERY_DAYS = 14
 SCALE_RECOVERY_DAYS = 4
 INFECTION_RADIUS = 200 # cms
-INFECTION_DURATION = 2 # minutes
+INFECTION_DURATION = 15 # minutes
 
 ASYMPTOMATIC_INFECTION_RATIO = 0.1 # &prob_infectious
 
@@ -205,6 +205,7 @@ MASK_EFFICACY_HEALTHWORKER = 0.98
 TICK_MINUTE = 2  # @param increment
 SIMULATION_DAYS = 30  # @param
 SYMPTOM_DAYS = 5  # @param
+COLLECT_LOGS = False
 
 # LIFESTYLE PARAMETERS
 ## SHOP
@@ -258,10 +259,6 @@ SCALE_SCALE_MISC_MINUTES = 5
 MIN_DIST_ENCOUNTER = 20
 MAX_DIST_ENCOUNTER = 100
 
-# KNOBS
-CONTAGION_KNOB = 1.0
-ENVIRONMENTAL_INFECTION_KNOB = 0.01
-
 # VIRAL LOAD PARAMS
 MIN_VIRAL_LOAD = 0.1
 MAX_VIRAL_LOAD = 0.4
@@ -277,3 +274,7 @@ PLATEAU_DURATION_MEAN=5.5
 PLEATEAU_DURATION_STD=3.
 PLATEAU_DURATION_CLIP_LOW = 3.
 PLATEAU_DURATION_CLIP_HIGH = 9.
+
+# KNOBS
+CONTAGION_KNOB = 0.9
+ENVIRONMENTAL_INFECTION_KNOB = 0.025

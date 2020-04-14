@@ -52,6 +52,10 @@ class SEIRMonitor(BaseMonitor):
                 I += h.is_infectious
                 R += h.is_removed
 
+            print(env.timestamp, "Ro", R0,
+                "G", city.tracker.get_generation_time(),
+                )
+
             self.data.append({
                     'time': env.timestamp,
                     'susceptible': S,
