@@ -2,9 +2,10 @@ import sys
 import os
 sys.path.append(os.getcwd())
 import datetime
-from utils import float_to_binary
+from utils import float_to_binary, binary_to_float
 from bitarray import bitarray
 from collections import namedtuple
+import numpy as np
 
 # A utility class for re-inflating human objects with just the stuff we need for message passing / risk prediction
 class DummyHuman:
@@ -15,27 +16,40 @@ class DummyHuman:
         self.risk = 0
         self.rng = rng
         self.all_reported_symptoms = []
-        self.test_logs = []
         self.timestamp = timestamp
         self._uid = None
         self.is_infectious = False
         self.time_of_recovery = datetime.datetime.max
         self.time_of_death = datetime.datetime.max
-        self.test_logs = [datetime.datetime.max, None]
+        self.test_time = datetime.datetime.max
+        self.test_result = None
         self.infectiousness_start = datetime.datetime.max
+        self.tested_positive_contact_count = 0
 
     @property
     def message_risk(self):
         """quantizes the risk in order to be used in a message"""
         if self.risk == 1.0:
             return bitarray('1111')
-        return bitarray(float_to_binary(self.risk, 0, 4))
+        return bitarray(float_to_binary(float(self.risk), 0, 4))
 
     def cur_message(self, time):
         """creates the current message for this user"""
         Message = namedtuple('message', 'uid risk time unobs_id')
         message = Message(self.uid, self.message_risk, time, self.name)
         return message
+
+    def preprocess_messages(self):
+        """ Gets my current messages ready for writing to dataset"""
+        current_encounter_messages = []
+        for m in self.messages:
+            m_risk = binary_to_float("".join([str(x) for x in np.array(m[0].tolist()).astype(int)]), 0, 4)
+            uid = binary_to_float("".join([str(x) for x in np.array(m[1].tolist()).astype(int)]), 2, 4)
+
+    def purge_messages(self, todays_date):
+        for m in self.messages:
+            if todays_date - m.time > datetime.timedelta(days=14):
+                self.messages.remove(m)
 
     @property
     def uid(self):

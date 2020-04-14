@@ -8,18 +8,21 @@ import subprocess
 import numpy as np
 import operator
 import datetime
+import h5py
 from collections import defaultdict
 from base import Event
 from dummy_human import DummyHuman
-from risk_models import RiskModelYoshua, RiskModelLenka, RiskModelEilif
+from risk_models import RiskModelYoshua, RiskModelLenka, RiskModelEilif, RiskModelTristan
 from plots.plot_risk import dist_plot, hist_plot
+from utils import binary_to_float
 
 parser = argparse.ArgumentParser(description='Run Risk Models and Plot results')
 parser.add_argument('--plot_path', type=str, default="output/plots/risk/")
 parser.add_argument('--data_path', type=str, default="output/data.pkl")
 parser.add_argument('--cluster_path', type=str, default="output/clusters.json")
+parser.add_argument('--output_file', type=str, default='output.hdf5')
 parser.add_argument('--plot_daily', type=bool, default=False)
-parser.add_argument('--risk_model', type=str, default="yoshua", choices=['yoshua', 'lenka', 'eilif'])
+parser.add_argument('--risk_model', type=str, default="tristan", choices=['yoshua', 'lenka', 'eilif', 'tristan'])
 parser.add_argument('--seed', type=int, default="0")
 parser.add_argument('--save_training_data', action="store_true")
 
@@ -32,6 +35,9 @@ def main(args):
     with open(args.data_path, "rb") as f:
         logs = pickle.load(f)
 
+    if args.save_training_data:
+        f = h5py.File(args.output_file, 'w')
+
     # select the risk model
     if args.risk_model == 'yoshua':
         RiskModel = RiskModelYoshua
@@ -39,13 +45,15 @@ def main(args):
         RiskModel = RiskModelLenka
     elif args.risk_model == 'eilif':
         RiskModel = RiskModelEilif
+    elif args.risk_model == 'tristan':
+        RiskModel = RiskModelTristan
 
     human_ids = set()
     enc_logs = []
     symp_logs = []
     test_logs = []
     recovered_logs = []
-
+    contamination_logs = []
     start = logs[0]['time']
     for log in logs:
         human_ids.add(log['human_id'])
@@ -57,12 +65,18 @@ def main(args):
             recovered_logs.append(log)
         elif log['event_type'] == Event.test:
             test_logs.append(log)
+        elif log['event_type'] == Event.contamination:
+            contamination_logs.append(log)
+        else:
+            print(log['event_type'])
+            raise "NotImplemented Log"
 
     # create some dummy humans
     rng = np.random.RandomState(args.seed)
     hd = {}
     for human_id in human_ids:
         hd[human_id] = DummyHuman(name=human_id, timestamp=start, rng=rng)
+        hd[human_id].update_uid()
 
     # Sort encounter logs by time and then by human id
     enc_logs = sorted(enc_logs, key=operator.itemgetter('time'))
@@ -78,6 +92,7 @@ def main(args):
         hd[log['human_id']].symptoms_start = log['time']
         hd[log['human_id']].infectiousness_start = log['time'] - datetime.timedelta(days=3)
         hd[log['human_id']].all_reported_symptoms = log['payload']['observed']['reported_symptoms']
+        hd[log['human_id']].all_symptoms = log['payload']['unobserved']['all_symptoms']
 
     for log in recovered_logs:
         if log['payload']['unobserved']['death']:
@@ -86,7 +101,11 @@ def main(args):
             hd[log['human_id']].time_of_recovery = log['time']
 
     for log in test_logs:
-        hd[log['human_id']].test_logs = (log['time'], log['payload']['observed']['result'])
+        hd[log['human_id']].test_time = log['time']
+        hd[log['human_id']].test_result = log['payload']['observed']['result']
+
+    # for log in contamination_logs:
+    #     hd[log['human_id']].contamination = (log['time'], log['payload']['observed']['result'])
 
     all_risks = []
     daily_risks = []
@@ -130,10 +149,19 @@ def main(args):
 
             # append the updated risk for this person and whether or not they are actually infectious
             daily_risks.append((human.risk, human.is_infectious, human.name))
+            human.purge_messages(todays_date)
+
+            # for each sim day, for each human, save an output training example
+            if args.save_training_data:
+
+                # data to save is current messages + reported symptoms (as pytorch tensor?)
+                reported_symptoms = human.reported_symptoms_at_time(todays_date)
+                # import pdb; pdb.set_trace()
+                # print("s")
+                # want to save observed and latent variables
+
         if args.plot_daily:
             hist_plot(daily_risks, f"{args.plot_path}day_{str(current_day).zfill(3)}.png")
-        if args.save_training_data:
-            import pdb; pdb.set_trace()
         all_risks.extend(daily_risks)
         daily_risks = []
     dist_plot(all_risks,  f"{args.plot_path}all_risks.png")

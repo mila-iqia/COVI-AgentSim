@@ -6,7 +6,7 @@ from config import *
 from utils import _encode_message, _decode_message, binary_to_float
 import operator
 import datetime
-
+from bitarray import bitarray
 
 """ This file contains the core of the side simulation, which is run on the output encounters from the main simulation.
 It's primary functionality is to run the message clustering and risk prediction algorithms.
@@ -26,7 +26,7 @@ class RiskModelBase:
             return 0.
         if human.time_of_death < now:
             return 0.
-        if human.test_logs[1] and human.test_logs[0] < now + datetime.timedelta(days=2):
+        if human.test_result and human.test_time < now + datetime.timedelta(days=2):
             return 1.
 
         reported_symptoms = human.reported_symptoms_at_time(now)
@@ -125,7 +125,40 @@ class RiskModelEilif(RiskModelBase):
         human.M[msg_enc]['carry_over_transmission_proba'] = RISK_TRANSMISSION_PROBA * (1 - update)
 
 
+class RiskModelTristan(RiskModelBase):
+    @classmethod
+    def update_risk_local(cls, human, now):
+        """ This function calculates a risk score based on the person's symptoms."""
+        # if they get tested, it takes TEST_DAYS to get the result, and they are quarantined for QUARANTINE_DAYS.
+        # The test_timestamp is set to datetime.min, unless they get a positive test result.
+        # Basically, once they know they have a positive test result, they have a risk of 1 until after quarantine days.
+        if human.time_of_recovery < now:
+            return 0.
+        if human.time_of_death < now:
+            return 0.
+        if human.test_result and human.test_time < now + datetime.timedelta(days=2):
+            return 1.
+        return 0.
 
+    @classmethod
+    def update_risk_encounter(cls, human, message):
+        """ This function updates an individual's risk based on the receipt of a new message"""
 
+        # if you already have a positive test result, ya risky.
+        if human.risk == 1.:
+            return 1.
 
+        # if they have a positive test result, increment counter
+        if message.risk == bitarray('1111'):
+            human.tested_positive_contact_count += 1
+            print(human.tested_positive_contact_count)
 
+        init_population_level_risk = 0.01
+        expo = (1 - RISK_TRANSMISSION_PROBA) ** human.tested_positive_contact_count
+        tmp = (1. - init_population_level_risk) * (1. - expo)
+        mask = tmp < init_population_level_risk
+
+        if mask:
+            human.risk = np.e ** (np.log(init_population_level_risk) + np.log1p(tmp / init_population_level_risk))
+        else:
+            human.risk = np.e ** (np.log(1. - init_population_level_risk) + np.log1p(-expo) + np.log1p(init_population_level_risk / tmp))
