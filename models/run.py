@@ -14,13 +14,6 @@ from dummy_human import DummyHuman
 from risk_models import RiskModelYoshua, RiskModelLenka, RiskModelEilif
 from plots.plot_risk import dist_plot, hist_plot
 
-parser = argparse.ArgumentParser(description='Run Risk Models and Plot results')
-parser.add_argument('plot_path', type=str, default="plots/risk/")
-parser.add_argument('data_path', type=str, default="output/data.pkl")
-parser.add_argument('cluster_path', type=str, default="output/clusters.json")
-parser.add_argument('plot_daily', type=bool, default=False)
-parser.add_argument('risk_model', type=str, default="yoshua", choices=['yoshua', 'lenka', 'eilif'])
-parser.add_argument('seed', type=int, default="0")
 
 def main(args):
     # Define constants
@@ -57,6 +50,7 @@ def main(args):
             test_logs.append(log)
 
     # create some dummy humans
+    rng = np.random.RandomState(args.seed)
     hd = {}
     for human_id in human_ids:
         hd[human_id] = DummyHuman(name=human_id, timestamp=start, rng=rng)
@@ -148,5 +142,12 @@ def main(args):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Run Risk Models and Plot results')
+    parser.add_argument('--plot_path', type=str, default="plots/risk/")
+    parser.add_argument('--data_path', type=str, default="output/data.pkl")
+    parser.add_argument('--cluster_path', type=str, default="output/clusters.json")
+    parser.add_argument('--plot_daily', type=bool, default=False)
+    parser.add_argument('--risk_model', type=str, default="yoshua", choices=['yoshua', 'lenka', 'eilif'])
+    parser.add_argument('--seed', type=int, default="0")
     args = parser.parse_args()
     main(args)
