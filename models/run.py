@@ -132,8 +132,8 @@ def main(args):
             daily_risks.append((human.risk, human.is_infectious, human.name))
         if args.plot_daily:
             hist_plot(daily_risks, f"{args.plot_path}day_{str(current_day).zfill(3)}.png")
-        if args.generate_training_data:
-
+        if args.save_training_data:
+            import pdb; pdb.set_trace()
         all_risks.extend(daily_risks)
         daily_risks = []
     dist_plot(all_risks,  f"{args.plot_path}all_risks.png")
