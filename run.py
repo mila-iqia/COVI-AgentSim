@@ -80,7 +80,7 @@ def tune():
     import matplotlib.pyplot as plt
     cf.go_offline()
 
-    monitors, tracker = run_simu(n_people=1000, init_percent_sick=0.02,
+    monitors, tracker = run_simu(n_people=100, init_percent_sick=0.02,
         store_capacity=30, misc_capacity=30,
         start_time=datetime.datetime(2020, 2, 28, 0, 0),
         simulation_days=30,
