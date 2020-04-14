@@ -124,15 +124,15 @@ def _get_all_symptoms(viral_load_plateau_start, viral_load_plateau_end,
             symptoms_array.append(symptoms)
         return symptoms_array
 
-def _reported_symptoms(all_symptoms, rng, carefullness):
+def _reported_symptoms(all_symptoms, rng, carefulness):
 	all_reported_symptoms = []
 	for symptoms in all_symptoms:
 		reported_symptoms = []
 		# miss a day of symptoms
-		if rng.rand() < carefullness:
+		if rng.rand() < carefulness:
 			continue
 		for symptom in symptoms:
-			if rng.rand() < carefullness:
+			if rng.rand() < carefulness:
 				continue
 			reported_symptoms.append(symptom)
 		all_reported_symptoms.append(reported_symptoms)
@@ -275,16 +275,34 @@ def _get_preexisting_conditions(age, sex, rng):
 	return conditions
 
 
+# &canadian-demgraphics
+def _get_random_age_multinomial(AGE_DISTRIBUTION, rng):
+    x = list(zip(*AGE_DISTRIBUTION.items()))
+    idx = rng.choice(range(len(x[0])), p=x[1])
+    age_group = x[0][idx]
+    return rng.uniform(age_group[0], age_group[1])
+
+
 def _get_random_area(location_type, num, total_area, rng):
 	''' Using Dirichlet distribution since it generates a "distribution of probabilities" 
 	which will ensure that the total area allotted to a location type remains conserved 
 	while also maintaining a uniform distribution'''
-	perc_dist = {"store":0.15, "misc":0.15, "workplace":0.2, "household":0.3, "park":0.5, 'hospital': 0.6}
-	
+	perc_dist = {"store":0.15, "misc":0.15, "workplace":0.2, "household":0.3, "park":0.05, 'hospital': 0.6, "school":0.05, "senior_residency":0.05}
+
 	# Keeping max at area/2 to ensure no location is allocated more than half of the total area allocated to its location type 
 	area = rng.dirichlet(np.ones(math.ceil(num/2)))*(perc_dist[location_type]*total_area/2)
 	area = np.append(area,rng.dirichlet(np.ones(math.floor(num/2)))*(perc_dist[location_type]*total_area/2))
 	
+	return area
+
+def _get_random_area(num, total_area, rng):
+	''' Using Dirichlet distribution since it generates a "distribution of probabilities"
+	which will ensure that the total area allotted to a location type remains conserved
+	while also maintaining a uniform distribution'''
+
+	# Keeping max at area/2 to ensure no location is allocated more than half of the total area allocated to its location type
+	area = rng.dirichlet(np.ones(math.ceil(num/2)))*(total_area/2)
+	area = np.append(area,rng.dirichlet(np.ones(math.floor(num/2)))*(total_area/2))
 	return area
 
 def _draw_random_discreet_gaussian(avg, scale, rng):
@@ -333,3 +351,4 @@ def float_to_binary(x, m, n):
 def binary_to_float(bstr, m, n):
     """Convert a binary string in the format '00101010100' to its float value."""
     return int(bstr, 2) / 2 ** n
+

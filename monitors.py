@@ -6,6 +6,7 @@ import json
 import pylab as pl
 import pickle
 import numpy as np
+import pandas as pd
 
 from utils import _json_serialize
 
@@ -44,13 +45,12 @@ class SEIRMonitor(BaseMonitor):
 
         while True:
             S, E, I, R = 0, 0, 0, 0
-            R0 = []
+            R0 = city.tracker.get_R0()
             for h in city.humans:
                 S += h.is_susceptible
                 E += h.is_exposed
                 I += h.is_infectious
                 R += h.is_removed
-                R0 += h.r0
 
             self.data.append({
                     'time': env.timestamp,
@@ -58,10 +58,9 @@ class SEIRMonitor(BaseMonitor):
                     'exposed': E,
                     'infectious':I,
                     'removed':R,
-                    'R': np.mean(R0[-20:]) if R0 else -0.01
+                    'R': R0
                     })
             yield env.timeout(self.f / TICK_MINUTE)
-            # self.plot()
 
 class PlotMonitor(BaseMonitor):
 

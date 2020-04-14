@@ -44,22 +44,22 @@ class Visits(object):
 
 class Human(object):
 
-    def __init__(self, env, name, age, rng, infection_timestamp, household, workplace, hospital, rho=0.3, gamma=0.21, symptoms=[],
+    def __init__(self, env, name, age, rng, infection_timestamp, household, workplace, profession, hospital, rho=0.3, gamma=0.21, symptoms=[],
                  test_results=None):
         self.env = env
         self.events = []
         self.name = name
         self.rng = rng
+        self.profession = profession
         self.death = False
 
-        self.age = _get_random_age(self.rng)
+        self.age = age
         self.sex = _get_random_sex(self.rng)
         self.preexisting_conditions = _get_preexisting_conditions(self.age, self.sex, self.rng)
 
-        self.household = household
+        self.assign_household(household)
         self.workplace = workplace
         self.hospital = hospital
-        self.location = household
         self.rho = rho
         self.gamma = gamma
 
@@ -67,18 +67,18 @@ class Human(object):
         self.travelled_recently = self.rng.rand() > 0.9
 
 
-        # &carefullness
+        # &carefulness
         if self.rng.rand() < P_CAREFUL_PERSON:
-            self.carefullness = (round(self.rng.normal(55, 10)) + self.age/2) / 100
+            self.carefulness = (round(self.rng.normal(55, 10)) + self.age/2) / 100
         else:
-            self.carefullness = (round(self.rng.normal(25, 10)) + self.age/2) / 100
+            self.carefulness = (round(self.rng.normal(25, 10)) + self.age/2) / 100
 
         age_modifier = 1
         if self.age > 40 or self.age < 12:
             age_modifier = 2
         self.has_cold = self.rng.rand() < P_COLD * age_modifier
         self.has_flu = self.rng.rand() < P_FLU * age_modifier
-        self.has_app = self.rng.rand() < (P_HAS_APP / age_modifier) + (self.carefullness / 2)
+        self.has_app = self.rng.rand() < (P_HAS_APP / age_modifier) + (self.carefulness / 2)
         self.incubation_days = _draw_random_discreet_gaussian(AVG_INCUBATION_DAYS, SCALE_INCUBATION_DAYS, self.rng)
 
         # Indicates whether this person will show severe signs of illness.
@@ -94,9 +94,8 @@ class Human(object):
         # probability of being asymptomatic is basically 50%, but a bit less if you're older
         # and a bit more if you're younger
         self.is_asymptomatic = self.rng.rand() > (BASELINE_P_ASYMPTOMATIC - (self.age - 50) * 0.5) / 100
-        self.asymptomatic_infection_ratio = 0.0
-        if self.is_asymptomatic:
-            self.asymptomatic_infection_ratio = ASYMPTOMATIC_INFECTION_RATIO # draw a beta with the distribution in documents
+        self.asymptomatic_infection_ratio = ASYMPTOMATIC_INFECTION_RATIO if self.is_asymptomatic else 0.0 # draw a beta with the distribution in documents
+
         self.recovery_days = _draw_random_discreet_gaussian(AVG_RECOVERY_DAYS, SCALE_RECOVERY_DAYS, self.rng) # make it IQR &recovery
         self.viral_load_plateau_height, self.viral_load_plateau_start, self.viral_load_plateau_end, self.viral_load_recovered = _sample_viral_load_piecewise(rng, age=age)
         self.all_symptoms = _get_all_symptoms(
@@ -104,7 +103,7 @@ class Human(object):
                           np.ndarray.item(self.viral_load_recovered), age=self.age, incubation_days=self.incubation_days, 
                                                           really_sick=self.gets_really_sick, extremely_sick=self.gets_extremely_sick, 
                           rng=self.rng, preexisting_conditions=self.preexisting_conditions)
-        self.all_reported_symptoms = _reported_symptoms(self.all_symptoms, self.rng, self.carefullness)
+        self.all_reported_symptoms = _reported_symptoms(self.all_symptoms, self.rng, self.carefulness)
 
         # counters and memory
         self.r0 = []
@@ -113,7 +112,7 @@ class Human(object):
         self.has_logged_info = self.has_app and rng.rand() < 0.5
         self.last_state = self.state
         self.n_infectious_contacts = 0
-
+        self.symptom_start_time = None
 
         self.obs_age = self.age if self.has_app and self.has_logged_info else None
         self.obs_sex = self.sex if self.has_app and self.has_logged_info else None
@@ -262,7 +261,7 @@ class Human(object):
     def wearing_mask(self):
         mask = False
         if not self.location == self.household:
-            mask = self.rng.rand() < self.carefullness
+            mask = self.rng.rand() < self.carefulness
         return mask
 
     @property

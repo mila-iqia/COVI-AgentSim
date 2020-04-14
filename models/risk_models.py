@@ -107,7 +107,7 @@ class RiskModelEilif(RiskModelBase):
     @classmethod
     def update_risk_encounter(cls, human, message):
         """ This function updates an individual's risk based on the receipt of a new message"""
-        cls.add_message_to_cluster(human, m_i)
+        cls.add_message_to_cluster(human, message)
 
         # Get the binarized contact risk
         m_risk = binary_to_float("".join([str(x) for x in np.array(message.risk.tolist()).astype(int)]), 0, 4)
