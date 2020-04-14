@@ -3,34 +3,41 @@ import os
 sys.path.append(os.getcwd())
 import pickle
 import json
-from base import Event
+import argparse
 import subprocess
 import numpy as np
 import operator
+import datetime
 from collections import defaultdict
+from base import Event
 from dummy_human import DummyHuman
 from risk_models import RiskModelYoshua, RiskModelLenka, RiskModelEilif
-import datetime
 from plots.plot_risk import dist_plot, hist_plot
 
-if __name__ == "__main__":
-    # TODO: add as args that can be called from cmdline
-    PLOT_DAILY = False
-    PATH_TO_DATA = "output/data.pkl"
-    PATH_TO_HUMANS = "output/humans.pkl"
-    CLUSTER_PATH = "output/clusters.json"
-    PATH_TO_PLOT = "plots/risk/"
-    RISK_MODEL = 'yoshua'  # options: ['yoshua', 'lenka', 'eilif']
-    if RISK_MODEL == 'yoshua':
-        RiskModel = RiskModelYoshua
-    LOGS_SUBSET_SIZE = 10000000
-    seed = 0
+parser = argparse.ArgumentParser(description='Run Risk Models and Plot results')
+parser.add_argument('plot_path', type=str, default="plots/risk/")
+parser.add_argument('data_path', type=str, default="output/data.pkl")
+parser.add_argument('cluster_path', type=str, default="output/clusters.json")
+parser.add_argument('plot_daily', type=bool, default=False)
+parser.add_argument('risk_model', type=str, default="yoshua", choices=['yoshua', 'lenka', 'eilif'])
+parser.add_argument('seed', type=int, default="0")
 
-    rng = np.random.RandomState(seed)
+def main(args):
+    # Define constants
+    SIGNIFICANT_RISK_LEVEL_CHANGE = 0.1
 
     # read and filter the pickles
-    with open(PATH_TO_DATA, "rb") as f:
+    with open(args.data_path, "rb") as f:
         logs = pickle.load(f)
+
+    # select the risk model
+    if args.risk_model == 'yoshua':
+        RiskModel = RiskModelYoshua
+    elif args.risk_model == 'lenka':
+        RiskModel = RiskModelLenka
+    elif args.risk_model == 'eilif':
+        RiskModel = RiskModelEilif
+
     human_ids = set()
     enc_logs = []
     symp_logs = []
@@ -77,8 +84,6 @@ if __name__ == "__main__":
             hd[log['human_id']].time_of_recovery = log['time']
             hd[log['human_id']].time_of_death = datetime.datetime.max
 
-
-    test_logs_proc = {}
     for log in test_logs:
         hd[log['human_id']].test_logs = (log['time'], log['payload']['observed']['result'])
 
@@ -116,7 +121,7 @@ if __name__ == "__main__":
                 human.messages.append(encountered_human.cur_message(encounter_time))
 
 
-            if start_risk > human.risk + 0.1 or start_risk < human.risk - 0.1:
+            if start_risk > human.risk + SIGNIFICANT_RISK_LEVEL_CHANGE or start_risk < human.risk - SIGNIFICANT_RISK_LEVEL_CHANGE:
                 for m in human.messages:
                     # if the encounter happened within the last 14 days, and your symptoms started at most 3 days after your contact
                     if todays_date - m.time < datetime.timedelta(days=14) and human.symptoms_start < m.time + datetime.timedelta(days=3):
@@ -124,14 +129,14 @@ if __name__ == "__main__":
 
             # append the updated risk for this person and whether or not they are actually infectious
             daily_risks.append((human.risk, human.is_infectious, human.name))
-        if PLOT_DAILY:
-            hist_plot(daily_risks, f"{PATH_TO_PLOT}day_{str(current_day).zfill(3)}.png")
+        if args.plot_daily:
+            hist_plot(daily_risks, f"{args.plot_path}day_{str(current_day).zfill(3)}.png")
         all_risks.extend(daily_risks)
         daily_risks = []
-    dist_plot(all_risks,  f"{PATH_TO_PLOT}all_risks.png")
+    dist_plot(all_risks,  f"{args.plot_path}all_risks.png")
 
     # make a gif of the dist output
-    process = subprocess.Popen(f"convert -delay 50 -loop 0 {PATH_TO_PLOT}/*.png {PATH_TO_PLOT}/risk.gif".split(), stdout=subprocess.PIPE)
+    process = subprocess.Popen(f"convert -delay 50 -loop 0 {args.plot_path}/*.png {args.plot_path}/risk.gif".split(), stdout=subprocess.PIPE)
     output, error = process.communicate()
 
     # write out the clusters to be processed by privacy_plots
@@ -139,5 +144,9 @@ if __name__ == "__main__":
         clusters = []
         for human in hd.values():
             clusters.append(human.M)
-        json.dump(clusters, open(CLUSTER_PATH, 'w'))
+        json.dump(clusters, open(args.cluster_path, 'w'))
 
+
+if __name__ == "__main__":
+    args = parser.parse_args()
+    main(args)
