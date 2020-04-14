@@ -14,6 +14,15 @@ from dummy_human import DummyHuman
 from risk_models import RiskModelYoshua, RiskModelLenka, RiskModelEilif
 from plots.plot_risk import dist_plot, hist_plot
 
+parser = argparse.ArgumentParser(description='Run Risk Models and Plot results')
+parser.add_argument('--plot_path', type=str, default="output/plots/risk/")
+parser.add_argument('--data_path', type=str, default="output/data.pkl")
+parser.add_argument('--cluster_path', type=str, default="output/clusters.json")
+parser.add_argument('--plot_daily', type=bool, default=False)
+parser.add_argument('--risk_model', type=str, default="yoshua", choices=['yoshua', 'lenka', 'eilif'])
+parser.add_argument('--seed', type=int, default="0")
+parser.add_argument('--save_training_data', action="store_true")
+
 
 def main(args):
     # Define constants
@@ -73,10 +82,8 @@ def main(args):
     for log in recovered_logs:
         if log['payload']['unobserved']['death']:
             hd[log['human_id']].time_of_death = log['time']
-            hd[log['human_id']].time_of_recovery = datetime.datetime.max
         else:
             hd[log['human_id']].time_of_recovery = log['time']
-            hd[log['human_id']].time_of_death = datetime.datetime.max
 
     for log in test_logs:
         hd[log['human_id']].test_logs = (log['time'], log['payload']['observed']['result'])
@@ -125,6 +132,8 @@ def main(args):
             daily_risks.append((human.risk, human.is_infectious, human.name))
         if args.plot_daily:
             hist_plot(daily_risks, f"{args.plot_path}day_{str(current_day).zfill(3)}.png")
+        if args.generate_training_data:
+
         all_risks.extend(daily_risks)
         daily_risks = []
     dist_plot(all_risks,  f"{args.plot_path}all_risks.png")
@@ -142,12 +151,5 @@ def main(args):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Run Risk Models and Plot results')
-    parser.add_argument('--plot_path', type=str, default="plots/risk/")
-    parser.add_argument('--data_path', type=str, default="output/data.pkl")
-    parser.add_argument('--cluster_path', type=str, default="output/clusters.json")
-    parser.add_argument('--plot_daily', type=bool, default=False)
-    parser.add_argument('--risk_model', type=str, default="yoshua", choices=['yoshua', 'lenka', 'eilif'])
-    parser.add_argument('--seed', type=int, default="0")
     args = parser.parse_args()
     main(args)

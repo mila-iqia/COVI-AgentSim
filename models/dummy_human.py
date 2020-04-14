@@ -1,6 +1,7 @@
 import sys
 import os
 sys.path.append(os.getcwd())
+import datetime
 from utils import float_to_binary
 from bitarray import bitarray
 from collections import namedtuple
@@ -18,6 +19,10 @@ class DummyHuman:
         self.timestamp = timestamp
         self._uid = None
         self.is_infectious = False
+        self.time_of_recovery = datetime.datetime.max
+        self.time_of_death = datetime.datetime.max
+        self.test_logs = [datetime.datetime.max, None]
+        self.infectiousness_start = datetime.datetime.max
 
     @property
     def message_risk(self):
