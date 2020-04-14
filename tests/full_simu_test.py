@@ -16,12 +16,8 @@ class FullUnitTest(unittest.TestCase):
         """
         with NamedTemporaryFile() as f:
             n_people = 100
-            monitors = run_simu(
-                n_stores=2,
+            monitors, _ = run_simu(
                 n_people=n_people,
-                n_parks=1,
-                n_hospitals=1,
-                n_misc=2,
                 init_percent_sick=0.1,
                 start_time=datetime.datetime(2020, 2, 28, 0, 0),
                 simulation_days=30,
@@ -46,48 +42,34 @@ class SeedUnitTest(unittest.TestCase):
 
     def setUp(self):
         self.test_seed = 136
-        self.n_stores = 2
         self.n_people = 100
-        self.n_parks = 1
-        self.n_misc = 2
-        self.n_hospitals = 2
         self.init_percent_sick = 0.1
         self.start_time = datetime.datetime(2020, 2, 28, 0, 0)
-        self.simulation_days = 30
+        self.simulation_days = 10
 
     def test_sim_same_seed(self):
         """
         Run two simulations with the same seed and ensure we get the same output
         Note: If this test is failing, it is a good idea to load the data of both files and use DeepDiff to compare
         """
-        with NamedTemporaryFile() as f1, NamedTemporaryFile() as f2, NamedTemporaryFile() as f3:
-            monitors1 = run_simu(
-                n_stores=self.n_stores,
+        with NamedTemporaryFile() as f1, NamedTemporaryFile() as f2:
+            monitors1, _ = run_simu(
                 n_people=self.n_people,
-                n_parks=self.n_parks,
-                n_misc=self.n_misc,
-                n_hospitals=self.n_hospitals,
                 init_percent_sick=self.init_percent_sick,
                 start_time=self.start_time,
                 simulation_days=self.simulation_days,
                 outfile=f1.name,
-                out_humans=f3.name,
                 seed=self.test_seed
             )
             monitors1[0].dump(f1.name)
             f1.seek(0)
 
-            monitors2 = run_simu(
-                n_stores=self.n_stores,
+            monitors2, _ = run_simu(
                 n_people=self.n_people,
-                n_parks=self.n_parks,
-                n_misc=self.n_misc,
-                n_hospitals=self.n_hospitals,
                 init_percent_sick=self.init_percent_sick,
                 start_time=self.start_time,
                 simulation_days=self.simulation_days,
                 outfile=f2.name,
-                out_humans=f3.name,
                 seed=self.test_seed
             )
             monitors2[0].dump(f2.name)
@@ -102,32 +84,24 @@ class SeedUnitTest(unittest.TestCase):
         Using different seeds should yield different output
         """
 
-        with NamedTemporaryFile() as f1, NamedTemporaryFile() as f2, NamedTemporaryFile() as f3:
-            monitors1 = run_simu(
-                n_stores=self.n_stores,
+        with NamedTemporaryFile() as f1, NamedTemporaryFile() as f2:
+            monitors1, _ = run_simu(
                 n_people=self.n_people,
-                n_parks=self.n_parks,
-                n_misc=self.n_misc,
                 init_percent_sick=self.init_percent_sick,
                 start_time=self.start_time,
                 simulation_days=self.simulation_days,
                 outfile=f1.name,
-                out_humans=f3.name,
                 seed=self.test_seed
             )
             monitors1[0].dump(f1.name)
             f1.seek(0)
 
-            monitors2 = run_simu(
-                n_stores=self.n_stores,
+            monitors2, _ = run_simu(
                 n_people=self.n_people,
-                n_parks=self.n_parks,
-                n_misc=self.n_misc,
                 init_percent_sick=self.init_percent_sick,
                 start_time=self.start_time,
                 simulation_days=self.simulation_days,
                 outfile=f2.name,
-                out_humans=f3.name,
                 seed=self.test_seed+1
             )
             monitors2[0].dump(f2.name)

@@ -44,7 +44,7 @@ class Visits(object):
 
 class Human(object):
 
-    def __init__(self, env, name, age, rng, infection_timestamp, household, workplace, profession, hospital, rho=0.3, gamma=0.21, symptoms=[],
+    def __init__(self, env, name, age, rng, infection_timestamp, household, workplace, profession, rho=0.3, gamma=0.21, symptoms=[],
                  test_results=None):
         self.env = env
         self.events = []
@@ -59,7 +59,6 @@ class Human(object):
 
         self.assign_household(household)
         self.workplace = workplace
-        self.hospital = hospital
         self.rho = rho
         self.gamma = gamma
 
@@ -165,7 +164,13 @@ class Human(object):
         self.max_exercise_per_week = _draw_random_discreet_gaussian(AVG_MAX_NUM_EXERCISE_PER_WEEK, SCALE_MAX_NUM_EXERCISE_PER_WEEK, self.rng)
         self.count_exercise=0
 
-        self.work_start_hour = self.rng.choice(range(7, 12))
+        self.work_start_hour = self.rng.choice(range(7, 12), 3)
+
+    def assign_household(self, location):
+        self.household = location
+        self.location = location
+        if self.profession == "retired":
+            self.workplace = location
 
     def __repr__(self):
         return f"H:{self.name}, SEIR:{int(self.is_susceptible)}{int(self.is_exposed)}{int(self.is_infectious)}{int(self.is_removed)}"
@@ -177,15 +182,21 @@ class Human(object):
 
     @property
     def is_exposed(self):
-        return self.infection_timestamp is not None and self.env.timestamp - self.infection_timestamp < datetime.timedelta(days=self.incubation_days)
+        return self.infection_timestamp is not None and self.env.timestamp - self.infection_timestamp < datetime.timedelta(days=self.incubation_days - INFECTIOUSNESS_ONSET_DAYS)
 
     @property
     def is_infectious(self):
-        return self.infection_timestamp is not None and self.env.timestamp - self.infection_timestamp >= datetime.timedelta(days=self.incubation_days)
+        return self.infection_timestamp is not None and self.env.timestamp - self.infection_timestamp >= datetime.timedelta(days=self.incubation_days - INFECTIOUSNESS_ONSET_DAYS)
 
     @property
     def is_removed(self):
         return self.recovered_timestamp == datetime.datetime.max
+
+    @property
+    def is_incubated(self):
+        return (not self.is_asymptomatic and
+                self.infection_timestamp is not None and
+                self.env.timestamp - self.infection_timestamp >= datetime.timedelta(days=self.incubation_days))
 
     @property
     def test_results(self):
@@ -218,6 +229,23 @@ class Human(object):
         try:
             sickness_day = (self.env.timestamp - self.infection_timestamp).days
             return self.all_symptoms[sickness_day]
+        except Exception as e:
+            return []
+
+    def reported_symptoms(self):
+        try:
+            sickness_day = (self.env.timestamp - self.infection_timestamp).days
+            return self.all_reported_symptoms[sickness_day]
+        except Exception as e:
+            return []
+
+    def reported_symptoms_for_sickness(self):
+        try:
+            sickness_day = (self.env.timestamp - self.infection_timestamp).days
+            all_reported_symptoms_till_day = []
+            for day in range(sickness_day+1):
+                all_reported_symptoms_till_day.extend(self.all_reported_symptoms[sickness_day])
+            return all_reported_symptoms_till_day
         except Exception as e:
             return []
 
@@ -276,11 +304,6 @@ class Human(object):
         return 1
     
 
-    def update_r(self, timedelta):
-        timedelta /= datetime.timedelta(days=1) # convert to float days
-        self.r0.append(self.n_infectious_contacts/timedelta)
-        self.n_infectious_contacts = 0
-
     @property
     def state(self):
         return [int(self.is_susceptible), int(self.is_exposed), int(self.is_infectious), int(self.is_removed)]
@@ -300,18 +323,24 @@ class Human(object):
         """
         self.household.humans.add(self)
         while True:
-            if self.is_infectious and self.has_logged_symptoms is False:
+            # show symptoms
+            if self.is_incubated and not self.has_logged_symptoms:
+                self.symptom_start_time = self.env.timestamp
+                city.tracker.track_generation_times(self.name) # it doesn't count environmental infection or primary case or asymptomatic/presymptomatic infections; refer the definition
                 Event.log_symptom_start(self, True, self.env.timestamp)
                 self.has_logged_symptoms = True
 
-            if self.is_infectious and self.env.timestamp - self.infection_timestamp > datetime.timedelta(days=TEST_DAYS) and not self.has_logged_test:
-                result = self.rng.random() > 0.8
-                Event.log_test(self, result, self.env.timestamp)
+            # log test
+            if (self.is_incubated and
+                self.env.timestamp - self.symptom_start_time > datetime.timedelta(days=TEST_DAYS) and not self.has_logged_test):
+                Event.log_test(self, self.test_results, self.env.timestamp)
                 self.has_logged_test = True
                 assert self.has_logged_symptoms is True # FIXME: assumption might not hold
 
+            # recover
             if self.is_infectious and self.env.timestamp - self.infection_timestamp >= datetime.timedelta(days=self.recovery_days):
-                if (1 - self.never_recovers): # re-infection assumed negligble
+                city.tracker.track_recovery(self.recovery_days - self.incubation_days + INFECTIOUSNESS_ONSET_DAYS)
+                if (1 - self.never_recovers):
                     self.recovered_timestamp = datetime.datetime.max
                     dead = True
                 else:
@@ -320,7 +349,6 @@ class Human(object):
                     self.never_recovers = self.rng.random() <= P_NEVER_RECOVERS[min(math.floor(self.age/10),8)] * REINFECTION_POSSIBLE
                     dead = False
 
-                self.update_r(self.env.timestamp - self.infection_timestamp)
                 self.infection_timestamp = None # indicates they are no longer infected
                 Event.log_recovery(self, self.env.timestamp, dead)
                 if dead:
@@ -341,7 +369,7 @@ class Human(object):
                 yield self.env.process(self.hospitalize(city, icu_required=True))
             elif self.really_sick:
                 yield self.env.process(self.hospitalize(city))
-            elif not WORK_FROM_HOME and not self.env.is_weekend() and hour == self.work_start_hour:
+            elif not WORK_FROM_HOME and not self.env.is_weekend() and hour in self.work_start_hour:
                 yield self.env.process(self.excursion(city, "work"))
 
             elif hour in self.shopping_hours and day in self.shopping_days and self.count_shop<=self.max_shop_per_week:
@@ -356,7 +384,7 @@ class Human(object):
                 yield  self.env.process(self.excursion(city, "leisure"))
 
             # start from house all the time
-            yield self.env.process(self.at(self.household, 60))
+            yield self.env.process(self.at(self.household, city, 60))
 
     ############################## MOBILITY ##################################
     @property
@@ -390,9 +418,9 @@ class Human(object):
             else:
                 extra_time = self.rng.choice([1, 2, 3], p=[0.2, 0.3, 0.5])
             t = self.viral_load_plateau_end[0] - self.viral_load_plateau_start[0] + extra_time
-            yield self.env.process(self.at(hospital.icu, t))
+            yield self.env.process(self.at(hospital.icu, city, t))
         else:
-            yield self.env.process(self.at(hospital, 5)) # TODO how long in non-ICU section?
+            yield self.env.process(self.at(hospital, city, 5)) # TODO how long in non-ICU section?
 
     def excursion(self, city, type):
 
@@ -401,23 +429,23 @@ class Human(object):
             t = _draw_random_discreet_gaussian(self.avg_shopping_time, self.scale_shopping_time, self.rng)
             with grocery_store.request() as request:
                 yield request
-                yield self.env.process(self.at(grocery_store, t))
+                yield self.env.process(self.at(grocery_store, city, t))
 
         elif type == "exercise":
             park = self._select_location(location_type="park", city=city)
             t = _draw_random_discreet_gaussian(self.avg_exercise_time, self.scale_exercise_time, self.rng)
-            yield self.env.process(self.at(park, t))
+            yield self.env.process(self.at(park, city, t))
 
         elif type == "work":
             t = _draw_random_discreet_gaussian(self.avg_working_hours, self.scale_working_hours, self.rng)
-            yield self.env.process(self.at(self.workplace, t))
+            yield self.env.process(self.at(self.workplace, city, t))
 
         elif type == "leisure":
             S = 0
             p_exp = 1.0
             while True:
                 if self.rng.random() > p_exp:  # return home
-                    yield self.env.process(self.at(self.household, 60))
+                    yield self.env.process(self.at(self.household, city, 60))
                     break
 
                 loc = self._select_location(location_type='miscs', city=city)
@@ -426,12 +454,13 @@ class Human(object):
                 with loc.request() as request:
                     yield request
                     t = _draw_random_discreet_gaussian(self.avg_misc_time, self.scale_misc_time, self.rng)
-                    yield self.env.process(self.at(loc, t))
+                    yield self.env.process(self.at(loc, city, t))
         else:
             raise ValueError(f'Unknown excursion type:{type}')
 
 
-    def at(self, location, duration):
+    def at(self, location, city, duration):
+        city.tracker.track_trip(from_location=self.location.location_type, to_location=location.location_type, age=self.age, hour=self.env.hour_of_day())
 
         # add the human to the location
         self.location = location
@@ -440,41 +469,65 @@ class Human(object):
         self.start_time = self.env.now
         area = self.location.area
 
-        # Report all the encounters
+        # Report all the encounters (epi transmission)
         for h in location.humans:
-            if h == self or self.location.location_type == 'household':
+            if h == self:
                 continue
+            distance =  np.sqrt(int(area/len(self.location.humans))) + self.rng.randint(MIN_DIST_ENCOUNTER, MAX_DIST_ENCOUNTER)
+            t_near = min(self.leaving_time, getattr(h, "leaving_time", 60)) - max(self.start_time, getattr(h, "start_time", 60))
 
-            # calculate the nature of the contact
-            distance = np.sqrt(int(area/len(self.location.humans))) + self.rng.randint(MIN_DIST_ENCOUNTER, MAX_DIST_ENCOUNTER)
-            t_near = min(self.leaving_time, h.leaving_time) - max(self.start_time, h.start_time)
-            is_exposed = False
+            contact_condition = distance <= INFECTION_RADIUS and t_near * TICK_MINUTE > INFECTION_DURATION
+            if contact_condition:
+                city.tracker.track_contact(human1=self, human2=h, location=location)
 
-            # FIXME: This is a hack to take into account the difference between asymptomatic transmission rate and symptomatic transmission rate.
-            # The fix should be handled by better modelling the infectiousness of a person as a function of viral_load
-            p_infection = (h.viral_load * (h.is_asymptomatic * h.asymptomatic_infection_ratio 
-                                          + 1.0 * (not h.is_asymptomatic)))*h.mask_effect
+            if self.is_infectious:
+                ratio = self.asymptomatic_infection_ratio  if self.is_asymptomatic else 1.0
+                p_infection = self.infectiousness * ratio
+                x_human = contact_condition and self.rng.random() < p_infection * CONTAGION_KNOB
 
-            x_human = distance <= INFECTION_RADIUS and t_near * TICK_MINUTE > INFECTION_DURATION and self.rng.random() < p_infection
-            x_environment = self.rng.random() < location.contamination_probability # &prob_infection
-            if x_human or x_environment:
-                if self.is_susceptible:
-                    is_exposed = True
+                if x_human and h.is_susceptible:
+                    h.infection_timestamp = self.env.timestamp
+                    self.n_infectious_contacts+=1
+                    Event.log_exposed(h, self.env.timestamp)
+                    city.tracker.track_infection('human', from_human=self, to_human=h, location=location, timestamp=self.env.timestamp)
+                    # this was necessary because the side-simulation needs to know about the infection time
+                    h.historical_infection_timestamp = self.env.timestamp
+                    # print(f"{self.name} infected {h.name} at {location}")
+
+            elif h.is_infectious:
+                ratio = h.asymptomatic_infection_ratio  if h.is_asymptomatic else 1.0
+                p_infection = h.infectiousness * ratio # &prob_infectious
+                x_human =  contact_condition and self.rng.random() < p_infection * CONTAGION_KNOB
+
+                if x_human and self.is_susceptible:
+                    self.infection_timestamp = self.env.timestamp
                     h.n_infectious_contacts+=1
                     Event.log_exposed(self, self.env.timestamp)
-            if self.is_susceptible and is_exposed:
-                self.infection_timestamp = self.env.timestamp
+                    city.tracker.track_infection('human', from_human=h, to_human=self, location=location, timestamp=self.env.timestamp)
+                    # this was necessary because the side-simulation needs to know about the infection time
+                    self.historical_infection_timestamp = self.env.timestamp
+                    # print(f"{h.name} infected {self.name} at {location}")
 
             Event.log_encounter(self, h,
                                 location=location,
                                 duration=t_near,
                                 distance=distance,
-                                # cm  #TODO: prop to Area and inv. prop to capacity
                                 time=self.env.timestamp,
                                 )
 
         yield self.env.timeout(duration / TICK_MINUTE)
+
+        # environmental transmission
+        x_environment = location.contamination_probability > 0 and self.rng.random() < ENVIRONMENTAL_INFECTION_KNOB * location.contamination_probability # &prob_infection
+        if x_environment and self.is_susceptible:
+            self.infection_timestamp = self.env.timestamp
+            Event.log_exposed(self, self.env.timestamp)
+            city.tracker.track_infection('env', from_human=None, to_human=self, location=location, timestamp=self.env.timestamp)
+            self.historical_infection_timestamp = self.env.timestamp
+            # print(f"{self.name} is enfected at {location}")
+
         location.remove_human(self)
+
 
     def _select_location(self, location_type, city):
         """

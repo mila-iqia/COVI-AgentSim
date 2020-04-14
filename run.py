@@ -16,10 +16,6 @@ def simu():
 
 @simu.command()
 @click.option('--n_people', help='population of the city', type=int, default=100)
-@click.option('--n_stores', help='number of grocery stores in the city', type=int, default=100)
-@click.option('--n_parks', help='number of parks in the city', type=int, default=20)
-@click.option('--n_hospitals', help='number of hospitals in the city', type=int, default=2)
-@click.option('--n_misc', help='number of non-essential establishments in the city', type=int, default=100)
 @click.option('--init_percent_sick', help='% of population initially sick', type=float, default=0.01)
 @click.option('--simulation_days', help='number of days to run the simulation for', type=int, default=30)
 @click.option('--outfile', help='filename of the output (file format: .pkl)', type=str, default="output/data", required=False)

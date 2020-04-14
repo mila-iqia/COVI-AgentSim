@@ -64,6 +64,7 @@ class City(object):
         self.initialize_humans(Human)
 
         self._compute_preferences()
+        self.tracker = Tracker(env, self)
 
     def create_location(self, specs, type, name, area=None):
         _cls = Location
@@ -128,7 +129,7 @@ class City(object):
 
                 # workplace
                 if profession[i] == "healthcare":
-                    workplace = self.rng.choice(self.healthcares + self.senior_residencys)
+                    workplace = self.rng.choice(self.hospitals + self.senior_residencys)
                 elif profession[i] == 'school':
                     workplace = self.rng.choice(self.schools)
                 elif profession[i] == 'others':
@@ -261,33 +262,37 @@ class Location(simpy.Resource):
     def __hash__(self):
         return hash(self.name)
 
-        def serialize(self):
-            """ This function serializes the location object"""
-            s = self.__dict__
-            if s.get('env'):
-                del s['env']
-            if s.get('rng'):
-                del s['rng']
-            if s.get('_env'):
-                del s['_env']
-            if s.get('contamination_timestamp'):
-                del s['contamination_timestamp']
-            return s
+    def serialize(self):
+        """ This function serializes the location object"""
+        s = self.__dict__
+        if s.get('env'):
+            del s['env']
+        if s.get('rng'):
+            del s['rng']
+        if s.get('_env'):
+            del s['_env']
+        if s.get('contamination_timestamp'):
+            del s['contamination_timestamp']
+        if s.get('residents'):
+            del s['residents']
+        if s.get('humans'):
+            del s['humans']
+        return s
 
-    class Household(Location):
-        def __init__(self, **kwargs):
-            super(Household, self).__init__(**kwargs)
-            self.residents = []
+class Household(Location):
+    def __init__(self, **kwargs):
+        super(Household, self).__init__(**kwargs)
+        self.residents = []
 
 
 class Hospital(Location):
 
     def __init__(self, env, rng, capacity=simpy.core.Infinity, name='vgh', location_type='hospital', lat=None,
                  lon=None, area=None, social_contact_factor=None, surface_prob=[0.2, 0.2, 0.2, 0.2, 0.2]):
-        super().__init__(env, rng, capacity, name, location_type, lat, lon, cont_prob)
+        super().__init__(env=env, rng=rng, capacity=capacity, name=name, location_type=location_type, lat=lat, lon=lon, social_contact_factor=social_contact_factor, surface_prob=surface_prob, area=area)
         self.location_contamination = 1
-        self.icu = ICU(env, rng, self, capacity=capacity/50, name=f"{name}_icu", location_type='icu', lat=lat, lon=lon,
-                            area=None, cont_prob=None)
+        self.icu = ICU(env=env, rng=rng, hospital=self, capacity=capacity/50, name=f"{name}_icu", location_type='icu', lat=lat, lon=lon,
+                            area=None, surface_prob=surface_prob, social_contact_factor=social_contact_factor)
 
     def add_human(self, human):
         human.obs_hospitalized = True
@@ -301,8 +306,8 @@ class Hospital(Location):
 class ICU(Location):
 
     def __init__(self, env, rng, hospital, capacity=simpy.core.Infinity, name='icu', location_type='icu', lat=None,
-                 lon=None, area=None, cont_prob=None, surface_prob=[0.2, 0.2, 0.2, 0.2, 0.2]):
-        super().__init__(env, rng, capacity, name, location_type, lat, lon, cont_prob)
+                 lon=None, area=None, social_contact_factor=None, surface_prob=[0.2, 0.2, 0.2, 0.2, 0.2]):
+        super().__init__(env=env, rng=rng, area=area, capacity=capacity, name=name, location_type=location_type, lat=lat, lon=lon, surface_prob=surface_prob, social_contact_factor=social_contact_factor)
         self.hospital = hospital
 
     def add_human(self, human):
@@ -336,7 +341,7 @@ class Event:
 
         h_unobs_keys = ['age', 'carefulness', 'viral_load', 'infectiousness',
                         'symptoms', 'is_exposed', 'is_infectious',
-                        'household', 'workplace', 'infection_timestamp', 'really_sick',
+                        'infection_timestamp', 'really_sick',
                         'extremely_sick']
 
         loc_obs_keys = ['location_type', 'lat', 'lon']
@@ -350,11 +355,6 @@ class Event:
             u['is_infected'] = human.is_exposed or human.is_infectious
             u['human_id'] = human.name
             u['location_is_residence'] = human.household == location
-
-            if u['household']:
-                u['household'] = u['household'].serialize()
-            if u['workplace']:
-                u['workplace'] = u['workplace'].serialize()
             unobs.append(u)
         loc_obs = {key:getattr(location, key) for key in loc_obs_keys}
         loc_unobs = {key:getattr(location, key) for key in loc_unobs_keys}
