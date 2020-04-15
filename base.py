@@ -174,7 +174,7 @@ class Event:
     def log_encounter(human1, human2, location, duration, distance, time):
         h_obs_keys   = ['obs_age', 'has_app', 'obs_preexisting_conditions',
                         'obs_symptoms', 'obs_test_result', 'obs_test_type',
-                        'obs_hospitalized', 'obs_in_icu', 
+                        'obs_hospitalized', 'obs_in_icu', 'wearing_mask',
                         'obs_test_validated', 'obs_lat', 'obs_lon']
 
         h_unobs_keys = ['age', 'carefullness', 'viral_load', 'infectiousness', 
@@ -201,7 +201,6 @@ class Event:
         loc_unobs = {key:getattr(location, key) for key in loc_unobs_keys}
         loc_unobs['location_p_infection'] = location.contamination_probability / location.social_contact_factor
         other_obs = {'duration':duration, 'distance':distance}
-
         both_have_app = human1.has_app and human2.has_app
         for i, human in [(0, human1), (1, human2)]:
             if both_have_app:
@@ -211,7 +210,7 @@ class Event:
                 obs_payload = {}
                 unobs_payload = { **loc_obs, **loc_unobs, **other_obs, 'human1':{**obs[i], **unobs[i]},
                                     'human2': {**obs[1-i], **unobs[1-i]} }
-
+                
             human.events.append({
                 'human_id':human.name,
                 'event_type':Event.encounter,

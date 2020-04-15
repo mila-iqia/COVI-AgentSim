@@ -52,6 +52,10 @@ def _get_random_sex(rng):
 	else:
 		return 'other'
 
+def _get_mask_wearing(carefullness, simulation_days, rng):
+	return [rng.rand() < carefullness*BASELINE_P_MASK for day in range(simulation_days)]
+
+
 # 2D Array of symptoms; first axis is days after exposure (infection), second is an array of symptoms
 def _get_all_symptoms(viral_load_plateau_start, viral_load_plateau_end,
 	                        viral_load_recovered, age, incubation_days, really_sick, extremely_sick, 

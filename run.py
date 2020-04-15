@@ -199,6 +199,7 @@ def run_simu(n_stores=None, n_people=None, n_parks=None, n_hospitals=2, n_misc=N
             household=rng.choice(households),
             workplace=rng.choice(workplaces),
             hospital=rng.choice(hospitals),
+            simulation_days=simulation_days,
         )
         for i in range(n_people)]
 
