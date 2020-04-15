@@ -21,7 +21,7 @@ parser.add_argument('--plot_path', type=str, default="output/plots/risk/")
 parser.add_argument('--data_path', type=str, default="output/data.pkl")
 parser.add_argument('--cluster_path', type=str, default="output/clusters.json")
 parser.add_argument('--output_file', type=str, default='output/output.pkl')
-parser.add_argument('--plot_daily', type=bool, default=False)
+parser.add_argument('--plot_daily', action="store_true")
 parser.add_argument('--risk_model', type=str, default="tristan", choices=['yoshua', 'lenka', 'eilif', 'tristan'])
 parser.add_argument('--seed', type=int, default="0")
 parser.add_argument('--save_training_data', action="store_true")
@@ -119,6 +119,7 @@ def main(args):
 
             # update your quantized uid
             human.update_uid()
+            human.shuffle_messages()
 
             # check if you have new reported symptoms
             human.risk = RiskModel.update_risk_daily(human, todays_date)

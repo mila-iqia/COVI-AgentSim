@@ -53,6 +53,9 @@ class DummyHuman:
             if todays_date - m.day > 14:
                 self.update_messages.remove(m)
 
+    def shuffle_messages(self):
+        self.rng.shuffle(self.messages)
+
     @property
     def uid(self):
         return self._uid
