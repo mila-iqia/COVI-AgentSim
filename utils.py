@@ -333,3 +333,9 @@ def float_to_binary(x, m, n):
 def binary_to_float(bstr, m, n):
     """Convert a binary string in the format '00101010100' to its float value."""
     return int(bstr, 2) / 2 ** n
+
+def quantize_risk(risk):
+	"""quantizes the risk in order to be used in a message"""
+	if risk > 0.9375:
+		return bitarray('1111')
+	return bitarray(float_to_binary(float(risk), 0, 4))

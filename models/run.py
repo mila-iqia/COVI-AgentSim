@@ -14,13 +14,13 @@ from base import Event
 from dummy_human import DummyHuman
 from risk_models import RiskModelYoshua, RiskModelLenka, RiskModelEilif, RiskModelTristan
 from plots.plot_risk import dist_plot, hist_plot
-from utils import binary_to_float
+from helper import messages_to_np, symptoms_to_np
 
 parser = argparse.ArgumentParser(description='Run Risk Models and Plot results')
 parser.add_argument('--plot_path', type=str, default="output/plots/risk/")
 parser.add_argument('--data_path', type=str, default="output/data.pkl")
 parser.add_argument('--cluster_path', type=str, default="output/clusters.json")
-parser.add_argument('--output_file', type=str, default='output.hdf5')
+parser.add_argument('--output_file', type=str, default='output/output.pkl')
 parser.add_argument('--plot_daily', type=bool, default=False)
 parser.add_argument('--risk_model', type=str, default="tristan", choices=['yoshua', 'lenka', 'eilif', 'tristan'])
 parser.add_argument('--seed', type=int, default="0")
@@ -34,9 +34,6 @@ def main(args):
     # read and filter the pickles
     with open(args.data_path, "rb") as f:
         logs = pickle.load(f)
-
-    if args.save_training_data:
-        f = h5py.File(args.output_file, 'w')
 
     # select the risk model
     if args.risk_model == 'yoshua':
@@ -88,11 +85,15 @@ def main(args):
         day_since_epoch = (log['time'] - start).days
         logs[hash_id_day(log['human_id'], day_since_epoch)].append(log)
 
+    all_possible_symptoms = set()
     for log in symp_logs:
         hd[log['human_id']].symptoms_start = log['time']
         hd[log['human_id']].infectiousness_start = log['time'] - datetime.timedelta(days=3)
         hd[log['human_id']].all_reported_symptoms = log['payload']['observed']['reported_symptoms']
         hd[log['human_id']].all_symptoms = log['payload']['unobserved']['all_symptoms']
+        for symptoms in hd[log['human_id']].all_symptoms:
+            for symptom in symptoms:
+                all_possible_symptoms.add(symptom)
 
     for log in recovered_logs:
         if log['payload']['unobserved']['death']:
@@ -104,13 +105,15 @@ def main(args):
         hd[log['human_id']].test_time = log['time']
         hd[log['human_id']].test_result = log['payload']['observed']['result']
 
-    # for log in contamination_logs:
-    #     hd[log['human_id']].contamination = (log['time'], log['payload']['observed']['result'])
+    for log in contamination_logs:
+        hd[log['human_id']].contamination = (log['time'], log['payload']['unobserved']['exposed'])
 
+    all_outputs = []
     all_risks = []
     daily_risks = []
     days = (enc_logs[-1]['time'] - enc_logs[0]['time']).days
     for current_day in range(days):
+        daily_output = {}
         for hid, human in hd.items():
             start_risk = human.risk
             todays_date = start + datetime.timedelta(days=current_day)
@@ -138,32 +141,45 @@ def main(args):
                 encounter_time = encounter['time']
                 unobs = encounter['payload']['unobserved']
                 encountered_human = hd[unobs['human2']['human_id']]
-                human.messages.append(encountered_human.cur_message(encounter_time))
+                human.sent_messages[str(unobs['human2']['human_id']) + "_" + str(encounter_time)] = human.cur_message(current_day)
+                human.messages.append(encountered_human.cur_message(current_day))
 
 
             if start_risk > human.risk + SIGNIFICANT_RISK_LEVEL_CHANGE or start_risk < human.risk - SIGNIFICANT_RISK_LEVEL_CHANGE:
-                for m in human.messages:
+                for k, m in human.sent_messages.items():
                     # if the encounter happened within the last 14 days, and your symptoms started at most 3 days after your contact
-                    if todays_date - m.time < datetime.timedelta(days=14) and human.symptoms_start < m.time + datetime.timedelta(days=3):
-                        hd[m.unobs_id].messages.append(human.cur_message(encounter_time))
+                    if current_day - m.day < 14 and (human.symptoms_start - start).days < m.day + 3:
+                        # if start_risk != m.risk
+                        hd[m.unobs_id].update_messages.append(human.cur_message_risk_update(m.day, m.risk))
 
             # append the updated risk for this person and whether or not they are actually infectious
             daily_risks.append((human.risk, human.is_infectious, human.name))
-            human.purge_messages(todays_date)
+            human.purge_messages(current_day)
 
             # for each sim day, for each human, save an output training example
             if args.save_training_data:
-
                 # data to save is current messages + reported symptoms (as pytorch tensor?)
-                reported_symptoms = human.reported_symptoms_at_time(todays_date)
-                # import pdb; pdb.set_trace()
-                # print("s")
-                # want to save observed and latent variables
+                daily_output[human.name] = {"current_day": current_day,
+                                            "observed":
+                                                {
+                                                    "reported_symptoms": symptoms_to_np(human.reported_symptoms_at_time(todays_date), all_possible_symptoms),
+                                                    "messages": messages_to_np(human.messages),
+                                                    "update_messages": messages_to_np(human.update_messages),
+                                                    "test_results": human.test_result,
+                                                 },
+                                            "unobserved":
+                                                {
+                                                    "true_symptoms": symptoms_to_np(human.symptoms_at_time(todays_date), all_possible_symptoms),
+                                                }
+                                            }
 
         if args.plot_daily:
             hist_plot(daily_risks, f"{args.plot_path}day_{str(current_day).zfill(3)}.png")
         all_risks.extend(daily_risks)
+        all_outputs.append(daily_output)
         daily_risks = []
+    if args.save_training_data:
+        pickle.dump(all_outputs, open(args.output_file, 'wb'))
     dist_plot(all_risks,  f"{args.plot_path}all_risks.png")
 
     # make a gif of the dist output

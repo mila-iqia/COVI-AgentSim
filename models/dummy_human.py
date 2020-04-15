@@ -2,7 +2,7 @@ import sys
 import os
 sys.path.append(os.getcwd())
 import datetime
-from utils import float_to_binary, binary_to_float
+from utils import float_to_binary, binary_to_float, quantize_risk
 from bitarray import bitarray
 from collections import namedtuple
 import numpy as np
@@ -12,44 +12,42 @@ class DummyHuman:
     def __init__(self, name=None, timestamp=None, rng=None):
         self.name = name
         self.M = {}
+        self.sent_messages = {}
         self.messages = []
+        self.update_messages = []
         self.risk = 0
         self.rng = rng
-        self.all_reported_symptoms = []
+        self.all_reported_symptoms = [[]]
+        self.all_symptoms = []
         self.timestamp = timestamp
         self._uid = None
         self.is_infectious = False
         self.time_of_recovery = datetime.datetime.max
         self.time_of_death = datetime.datetime.max
         self.test_time = datetime.datetime.max
+        self.symptoms_start = datetime.datetime.max
         self.test_result = None
         self.infectiousness_start = datetime.datetime.max
         self.tested_positive_contact_count = 0
+        self.Message = namedtuple('message', 'uid risk day unobs_id')
+        self.UpdateMessage = namedtuple('update_message', 'uid risk old_risk day unobs_id')
 
-    @property
-    def message_risk(self):
-        """quantizes the risk in order to be used in a message"""
-        if self.risk == 1.0:
-            return bitarray('1111')
-        return bitarray(float_to_binary(float(self.risk), 0, 4))
 
-    def cur_message(self, time):
+    def cur_message(self, day):
         """creates the current message for this user"""
-        Message = namedtuple('message', 'uid risk time unobs_id')
-        message = Message(self.uid, self.message_risk, time, self.name)
+        message = self.Message(self.uid, quantize_risk(self.risk), day, self.name)
         return message
 
-    def preprocess_messages(self):
-        """ Gets my current messages ready for writing to dataset"""
-        current_encounter_messages = []
-        for m in self.messages:
-            m_risk = binary_to_float("".join([str(x) for x in np.array(m[0].tolist()).astype(int)]), 0, 4)
-            uid = binary_to_float("".join([str(x) for x in np.array(m[1].tolist()).astype(int)]), 2, 4)
+    def cur_message_risk_update(self, day, old_risk):
+        return self.UpdateMessage(self.uid, quantize_risk(self.risk), old_risk, day, self.name)
 
     def purge_messages(self, todays_date):
         for m in self.messages:
-            if todays_date - m.time > datetime.timedelta(days=14):
+            if todays_date - m.day > 14:
                 self.messages.remove(m)
+        for m in self.update_messages:
+            if todays_date - m.day > 14:
+                self.update_messages.remove(m)
 
     @property
     def uid(self):
@@ -64,12 +62,19 @@ class DummyHuman:
             self._uid.extend(self.rng.choice([True, False], 4))  # generate a random 4-bit code
 
     def reported_symptoms_at_time(self, now):
-        # TODO: this is kind of a lossy way to take into account the information currently available
-        try:
-            sickness_day = (self.symptoms_start - now).days
-            all_reported_symptoms_till_day = []
-            for day in range(sickness_day+1):
-                all_reported_symptoms_till_day.extend(self.all_reported_symptoms[sickness_day])
-            return all_reported_symptoms_till_day
-        except Exception as e:
-            return []
+        sickness_day = (now - self.symptoms_start).days
+        all_reported_symptoms_till_day = []
+        for day in range(sickness_day-1):
+            if not self.all_reported_symptoms:
+                return []
+            if sickness_day > len(self.all_reported_symptoms):
+                return self.all_reported_symptoms
+            all_reported_symptoms_till_day.append(self.all_reported_symptoms[day])
+        return all_reported_symptoms_till_day
+
+    def symptoms_at_time(self, now):
+        sickness_day = (now - self.symptoms_start).days
+        all_symptoms_till_day = []
+        for day in range(sickness_day-1):
+            all_symptoms_till_day.append(self.all_symptoms[day])
+        return all_symptoms_till_day

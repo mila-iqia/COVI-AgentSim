@@ -151,7 +151,6 @@ class RiskModelTristan(RiskModelBase):
         # if they have a positive test result, increment counter
         if message.risk == bitarray('1111'):
             human.tested_positive_contact_count += 1
-            print(human.tested_positive_contact_count)
 
         init_population_level_risk = 0.01
         expo = (1 - RISK_TRANSMISSION_PROBA) ** human.tested_positive_contact_count
