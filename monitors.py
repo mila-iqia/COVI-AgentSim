@@ -158,12 +158,15 @@ class EventMonitor(BaseMonitor):
             yield env.timeout(self.f / TICK_MINUTE)
 
     def dump(self, dest: str = None):
-        if dest is None:
+        try:
+            with open(f"{dest}.pkl", 'wb') as f:
+                pickle.dump(self.data, f)
+        except:
+       # if dest is None:
             print(json.dumps(self.data, indent=1, default=_json_serialize))
-            return
+        #    return
 
-        with open(f"{dest}.pkl", 'wb') as f:
-            pickle.dump(self.data, f)
+
 
 
 class TimeMonitor(BaseMonitor):

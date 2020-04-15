@@ -10,7 +10,7 @@ import operator
 import math
 
 from utils import _normalize_scores, _get_random_age, _get_random_sex, _get_all_symptoms, \
-    _get_preexisting_conditions, _draw_random_discreet_gaussian, _json_serialize, _sample_viral_load_piecewise, \
+    _get_preexisting_conditions, _get_mask_wearing, _draw_random_discreet_gaussian, _json_serialize, _sample_viral_load_piecewise, \
     _get_random_area, _encode_message, _decode_message, float_to_binary, binary_to_float, _reported_symptoms
 from config import *  # PARAMETERS
 
@@ -44,8 +44,10 @@ class Visits(object):
 
 class Human(object):
 
-    def __init__(self, env, name, age, rng, infection_timestamp, household, workplace, hospital, rho=0.3, gamma=0.21, symptoms=[],
+    def __init__(self, env, name, age, rng, infection_timestamp, household, workplace, hospital, simulation_days,
+                 rho=0.3, gamma=0.21, symptoms=[],
                  test_results=None):
+        self.beginning_of_time = env.timestamp
         self.env = env
         self.events = []
         self.name = name
@@ -73,6 +75,8 @@ class Human(object):
         else:
             self.carefullness = (round(self.rng.normal(25, 10)) + self.age/2) / 100
 
+        self.mask_wearing = _get_mask_wearing(self.carefullness, simulation_days, self.rng)
+
         age_modifier = 1
         if self.age > 40 or self.age < 12:
             age_modifier = 2
@@ -83,7 +87,7 @@ class Human(object):
         self.sickness_start_day = infection_timestamp 
         self.infection_timestamp = infection_timestamp
         self.recovered_timestamp = datetime.datetime.min
-        self.gets_really_sick = self.rng.random() >= 0.9
+        self.gets_really_sick = self.rng.random() >= 0.8 + (age/100)
         self.gets_extremely_sick = self.gets_really_sick and self.rng.random() >= 0.7 # &severe; 30% of severe cases need ICU
         self.never_recovers = self.rng.random() <= P_NEVER_RECOVERS[min(math.floor(self.age/10),8)] * REINFECTION_POSSIBLE
         self.obs_hospitalized = False
@@ -93,9 +97,7 @@ class Human(object):
         # probability of being asymptomatic is basically 50%, but a bit less if you're older
         # and a bit more if you're younger
         self.is_asymptomatic = self.rng.rand() > (BASELINE_P_ASYMPTOMATIC - (self.age - 50) * 0.5) / 100
-        self.asymptomatic_infection_ratio = 0.0
-        if self.is_asymptomatic:
-            self.asymptomatic_infection_ratio = ASYMPTOMATIC_INFECTION_RATIO # draw a beta with the distribution in documents
+        self.asymptomatic_infection_ratio = ASYMPTOMATIC_INFECTION_RATIO if self.is_asymptomatic else 0.0 # draw a beta with the distribution in documents
         self.recovery_days = _draw_random_discreet_gaussian(AVG_RECOVERY_DAYS, SCALE_RECOVERY_DAYS, self.rng) # make it IQR &recovery
         self.viral_load_plateau_height, self.viral_load_plateau_start, self.viral_load_plateau_end, self.viral_load_recovered = _sample_viral_load_piecewise(rng, age=age)
         
@@ -139,19 +141,18 @@ class Human(object):
 
         # counters and memory
         self.r0 = []
-        self.has_logged_symptoms = self.has_app and any(self.symptoms) and rng.rand() < 0.5 
+        self.test_results = test_results
+        self.test_type = None
         self.has_logged_test = self.has_app and self.test_results and rng.rand() < 0.5
         self.has_logged_info = self.has_app and rng.rand() < 0.5
+        self.has_logged_symptoms = self.has_app and any(self.symptoms) and rng.rand() < 0.5 
         self.last_state = self.state
         self.n_infectious_contacts = 0
 
         self.obs_age = self.age if self.has_app and self.has_logged_info else None
         self.obs_sex = self.sex if self.has_app and self.has_logged_info else None
         self.obs_preexisting_conditions = self.preexisting_conditions if self.has_app and self.has_logged_info else None
-        self.obs_test_result = self.test_results if self.has_logged_test else None
-        self.obs_test_validated = self.test_results is not None
-        self.obs_test_type = 'lab'
-        self.obs_symptoms = self.symptoms if self.has_logged_symptoms else None
+
 
 
         # habits
@@ -218,22 +219,6 @@ class Human(object):
     def is_removed(self):
         return self.recovered_timestamp == datetime.datetime.max
 
-    @property
-    def test_results(self):
-        if not any(self.symptoms):
-            return None
-        else:
-            tested = self.rng.rand() > P_TEST
-            if tested:
-                if self.is_infectious:
-                    return 'positive'
-                else:
-                    if self.rng.rand() > P_FALSE_NEGATIVE:
-                        return 'negative'
-                    else:
-                        return 'positive'
-            else:
-                return None
 
     @property
     def really_sick(self):
@@ -246,10 +231,10 @@ class Human(object):
     
     @property
     def symptoms(self):
-        try:
-            _day = (self.env.timestamp - self.infection_timestamp).days
-            return self.all_symptoms[_day]
-        except Exception as e:
+        if self.is_exposed:
+            days_since_infected = (self.env.timestamp - self.infection_timestamp).days 
+            return self.all_symptoms[days_since_infected]
+        else:
             return []
 
     @property
@@ -289,16 +274,40 @@ class Human(object):
         return self.viral_load * severity_multiplier
 
     @property
-    def wearing_mask(self):
-        mask = False
-        if not self.location == self.household:
-            mask = self.rng.rand() < self.carefullness
+    def obs_test_validated(self):
+        return True if self.has_logged_test else None #TODO change this per test type
+
+    @property
+    def obs_test_result(self):
+        return self.test_results if self.has_logged_test else None
+    
+    @property
+    def obs_test_type(self):
+        return self.test_type if self.has_logged_test else None
+
+    @property
+    def obs_symptoms(self):
+        return self.symptoms if self.has_logged_symptoms else None
+
+    @property
+    def wearing_mask(self): 
+        #TODO there HAS TO BE A BETTER WAY
+        today = (self.env.timestamp-self.beginning_of_time).days
+        if self.location == self.household:
+            mask = False
+        if self.location.location_type == 'store': 
+            if self.carefullness > 60:
+                mask = True
+            else:
+                mask = self.mask_wearing[today]
+        else:
+            mask = self.mask_wearing[today] #baseline p * carefullness
         return mask
 
     @property
     def mask_effect(self):
       if self.wearing_mask:
-          if self.workplace is Hospital: #TODO this is never true
+          if self.workplace.location_type == 'hospital': 
               efficacy = MASK_EFFICACY_HEALTHWORKER
           else:
               efficacy = MASK_EFFICACY_NORMIE
@@ -336,9 +345,19 @@ class Human(object):
                 self.has_logged_symptoms = True
 
             if self.is_infectious and self.env.timestamp - self.infection_timestamp > datetime.timedelta(days=TEST_DAYS) and not self.has_logged_test:
-                result = self.rng.random() > 0.8
-                Event.log_test(self, result, self.env.timestamp)
-                self.has_logged_test = True
+                if any(self.symptoms):
+                    get_tested = self.rng.rand() > P_TEST
+                    if get_tested:
+                        self.test_type = 'lab'
+                        self.obs_test_type = ''
+                        if self.rng.rand() > P_FALSE_NEGATIVE:
+                            self.test_result = 'negative'
+                        else:
+                            self.test_result = 'positive'
+                        Event.log_test(self, self.test_result, self.test_type, self.env.timestamp)
+                        self.has_logged_test = self.rng.rand() <= carefullness
+                        if self.has_logged_test:
+                            self.obs_test_result = self.test_result
                 assert self.has_logged_symptoms is True # FIXME: assumption might not hold
 
             if self.is_infectious and self.env.timestamp - self.infection_timestamp >= datetime.timedelta(days=self.recovery_days):
