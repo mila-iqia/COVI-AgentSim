@@ -122,7 +122,7 @@ def main(args):
             human.update_uid()
 
             # check if you have new reported symptoms
-            human.risk = RiskModel.update_risk_local(human, todays_date)
+            human.risk = RiskModel.update_risk_daily(human, todays_date)
             if todays_date > human.infectiousness_start:
                 human.is_infectious = True
             if human.time_of_recovery < todays_date or human.time_of_death < todays_date:
@@ -133,6 +133,10 @@ def main(args):
                 human.timestamp = m_i[0]
                 # update risk based on that day's messages
                 RiskModel.update_risk_encounter(human, m_i)
+
+            for m_i in human.update_messages:
+                human.timestamp = m_i[0]
+                RiskModel.update_risk_risk_update(human, m_i)
 
             # go about your day and accrue encounters
             encounters = logs[hash_id_day(human.name, current_day)]

@@ -13,11 +13,17 @@ It's primary functionality is to run the message clustering and risk prediction 
 """
 class RiskModelBase:
     @classmethod
-    def update_risk_encounter(self, human, now):
+    def update_risk_encounter(self, human, message):
+        # This function is called for every encounter message
         raise "Unimplemented"
 
     @classmethod
-    def update_risk_local(cls, human, now):
+    def update_risk_risk_update(self, human, update_message):
+        # This function is called for every risk update message
+        raise "Unimplemented"
+
+    @classmethod
+    def update_risk_daily(cls, human, now):
         """ This function calculates a risk score based on the person's symptoms."""
         # if they get tested, it takes TEST_DAYS to get the result, and they are quarantined for QUARANTINE_DAYS.
         # The test_timestamp is set to datetime.min, unless they get a positive test result.
@@ -127,7 +133,7 @@ class RiskModelEilif(RiskModelBase):
 
 class RiskModelTristan(RiskModelBase):
     @classmethod
-    def update_risk_local(cls, human, now):
+    def update_risk_daily(cls, human, now):
         """ This function calculates a risk score based on the person's symptoms."""
         # if they get tested, it takes TEST_DAYS to get the result, and they are quarantined for QUARANTINE_DAYS.
         # The test_timestamp is set to datetime.min, unless they get a positive test result.
@@ -161,3 +167,8 @@ class RiskModelTristan(RiskModelBase):
             human.risk = np.e ** (np.log(init_population_level_risk) + np.log1p(tmp / init_population_level_risk))
         else:
             human.risk = np.e ** (np.log(1. - init_population_level_risk) + np.log1p(-expo) + np.log1p(init_population_level_risk / tmp))
+
+    @classmethod
+    def update_risk_risk_update(cls, human, update_message):
+        # we just treat update messages like normal messages. We might want to change this.
+        cls.update_risk_encounter(human, update_message)

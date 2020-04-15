@@ -4,7 +4,7 @@ There are several ways to involve in the project.
 The simulator is designed with the aim of generating synthetic data to train ML models.
 Specifically, the assumption is that the `Human`s carry bluetooth device with an app that produces data after each event.
 Read more about the events [here](events.md).
-These devices can communicate restricted information with each other.
+These devices can communicate restricted information with each other after a delay of about 1 day (for privacy reasons).
 The data collected from these devices is use to train ML models.
 
 We have designed a state-based simulator, where the state is defined by location of `Human`s and the information related to them.
