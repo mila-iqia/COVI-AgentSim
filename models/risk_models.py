@@ -51,7 +51,25 @@ class RiskModelBase:
         return 0.0
 
     @classmethod
-    def add_message_to_cluster(cls, human, m_i):
+    def score_matches(cls, human, m_i):
+        scores = {}
+        for m_enc, _ in human.M.items():
+            obs_uid, risk, day, unobs_uid = _decode_message(m_enc)
+            m = human.Message(obs_uid, risk, day, unobs_uid)
+            if m_i.uid == m.uid and m_i.day == m.day:
+                scores[m_enc] = 3
+            elif m_i.uid[:3] == m.uid[:3] and m_i.day - 1 == m.day:
+                scores[m_enc] = 2
+            elif m_i.uid[:2] == m.uid[:2] and m_i.day - 2 == m.day:
+                scores[m_enc] = 1
+            elif m_i.uid[:1] == m.uid[:1] and m_i.day - 2 == m.day:
+                scores[m_enc] = 0
+            else:
+                scores[m_enc] = -1
+        return scores
+
+    @classmethod
+    def add_message_to_cluster(cls, human, m_i, rng):
         """ This function clusters new messages by scoring them against old messages in a sort of naive nearest neighbors approach"""
         # TODO: include risk level in clustering, currently only uses quantized uid
         # TODO: refactor to compare multiple clustering schemes
@@ -60,29 +78,19 @@ class RiskModelBase:
         m_risk = binary_to_float("".join([str(x) for x in np.array(m_i[1].tolist()).astype(int)]), 0, 4)
 
         # otherwise score against previous messages
-        scores = {}
-        for m_enc, _ in human.M.items():
-            m = _decode_message(m_enc)
-            if m_i[0] == m[0] and m_i[2].day == m[2].day:
-                scores[m_enc] = 3
-            elif m_i[0][:3] == m[0][:3] and m_i[2].day - 1 == m[2].day:
-                scores[m_enc] = 2
-            elif m_i[0][:2] == m[0][:2] and m_i[2].day - 2 == m[2].day:
-                scores[m_enc] = 1
-            elif m_i[0][:1] == m[0][:1] and m_i[2].day - 2 == m[2].day:
-                scores[m_enc] = 0
+        scores = cls.score_matches(human, m_i)
 
         if scores:
-            max_score_message = max(scores.items(), key=operator.itemgetter(1))[0]
-            human.M[m_i_enc] = {'assignment': human.M[max_score_message]['assignment'], 'previous_risk': m_risk, 'carry_over_transmission_proba': RISK_TRANSMISSION_PROBA}
+            max_score_message = max(scores.items(), key=operator.itemgetter(1))[0] # note, this is not a random selection between ties
+            human.M[m_i_enc] = human.M[max_score_message]
         # if it's either the first message
         elif len(human.M) == 0:
-            human.M[m_i_enc] = {'assignment': 0, 'previous_risk': m_risk, 'carry_over_transmission_proba': RISK_TRANSMISSION_PROBA}
+            human.M[m_i_enc] = 0
         # if there was no nearby neighbor
         else:
-            new_group = max([v['assignment'] for k, v in human.M.items()]) + 1
-            human.M[m_i_enc] = {'assignment': new_group, 'previous_risk': m_risk, 'carry_over_transmission_proba': RISK_TRANSMISSION_PROBA}
-
+            new_group = max([v for k, v in human.M.items()]) + 1
+            human.M[m_i_enc] = new_group
+        return m_i_enc
 
 class RiskModelLenka(RiskModelBase):
     @classmethod
@@ -113,7 +121,7 @@ class RiskModelEilif(RiskModelBase):
     @classmethod
     def update_risk_encounter(cls, human, message):
         """ This function updates an individual's risk based on the receipt of a new message"""
-        cls.add_message_to_cluster(human, m_i)
+        cls.add_message_to_cluster(human, message)
 
         # Get the binarized contact risk
         m_risk = binary_to_float("".join([str(x) for x in np.array(message.risk.tolist()).astype(int)]), 0, 4)
@@ -142,7 +150,7 @@ class RiskModelTristan(RiskModelBase):
             return 0.
         if human.time_of_death < now:
             return 0.
-        if human.test_result and human.test_time < now + datetime.timedelta(days=2):
+        if human.test_time < now + datetime.timedelta(days=2):
             return 1.
         return 0.
 
@@ -169,6 +177,12 @@ class RiskModelTristan(RiskModelBase):
             human.risk = np.e ** (np.log(1. - init_population_level_risk) + np.log1p(-expo) + np.log1p(init_population_level_risk / tmp))
 
     @classmethod
-    def update_risk_risk_update(cls, human, update_message):
-        # we just treat update messages like normal messages. We might want to change this.
-        cls.update_risk_encounter(human, update_message)
+    def update_risk_risk_update(cls, human, update_message, rng):
+        # TODO: update a random message when there are ties in the scoring
+        scores = cls.score_matches(human, update_message)
+        m_enc = max(scores.items(), key=operator.itemgetter(1))[0]
+        assignment = human.M[m_enc]
+        uid, risk, day, unobs_id = _decode_message(m_enc)
+        updated_message = human.Message(uid, update_message.new_risk, day, unobs_id)
+        del human.M[m_enc]
+        human.M[_encode_message(updated_message)] = assignment

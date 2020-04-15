@@ -8,7 +8,7 @@ import subprocess
 import numpy as np
 import operator
 import datetime
-import h5py
+from tqdm import tqdm
 from collections import defaultdict
 from base import Event
 from dummy_human import DummyHuman
@@ -29,7 +29,7 @@ parser.add_argument('--save_training_data', action="store_true")
 
 def main(args):
     # Define constants
-    SIGNIFICANT_RISK_LEVEL_CHANGE = 0.1
+    SIGNIFICANT_RISK_LEVEL_CHANGE = 0.0625
 
     # read and filter the pickles
     with open(args.data_path, "rb") as f:
@@ -103,16 +103,15 @@ def main(args):
 
     for log in test_logs:
         hd[log['human_id']].test_time = log['time']
-        hd[log['human_id']].test_result = log['payload']['observed']['result']
 
     for log in contamination_logs:
-        hd[log['human_id']].contamination = (log['time'], log['payload']['unobserved']['exposed'])
+        hd[log['human_id']].time_of_exposure = log['time']
 
     all_outputs = []
     all_risks = []
     daily_risks = []
     days = (enc_logs[-1]['time'] - enc_logs[0]['time']).days
-    for current_day in range(days):
+    for current_day in tqdm(range(days)):
         daily_output = {}
         for hid, human in hd.items():
             start_risk = human.risk
@@ -136,7 +135,7 @@ def main(args):
 
             for m_i in human.update_messages:
                 human.timestamp = m_i[0]
-                RiskModel.update_risk_risk_update(human, m_i)
+                RiskModel.update_risk_risk_update(human, m_i, rng)
 
             # go about your day and accrue encounters
             encounters = logs[hash_id_day(human.name, current_day)]
@@ -145,14 +144,15 @@ def main(args):
                 encounter_time = encounter['time']
                 unobs = encounter['payload']['unobserved']
                 encountered_human = hd[unobs['human2']['human_id']]
-                human.sent_messages[str(unobs['human2']['human_id']) + "_" + str(encounter_time)] = human.cur_message(current_day)
-                human.messages.append(encountered_human.cur_message(current_day))
+                message = encountered_human.cur_message(current_day)
+                human.sent_messages[str(unobs['human2']['human_id']) + "_" + str(encounter_time)] = message
+                human.messages.append(message)
+                RiskModel.add_message_to_cluster(human, message, rng)
 
-
-            if start_risk > human.risk + SIGNIFICANT_RISK_LEVEL_CHANGE or start_risk < human.risk - SIGNIFICANT_RISK_LEVEL_CHANGE:
+            if start_risk >= human.risk + SIGNIFICANT_RISK_LEVEL_CHANGE or start_risk <= human.risk - SIGNIFICANT_RISK_LEVEL_CHANGE:
                 for k, m in human.sent_messages.items():
                     # if the encounter happened within the last 14 days, and your symptoms started at most 3 days after your contact
-                    if current_day - m.day < 14 and (human.symptoms_start - start).days < m.day + 3:
+                    if current_day - m.day < 14:
                         # if start_risk != m.risk
                         hd[m.unobs_id].update_messages.append(human.cur_message_risk_update(m.day, m.risk))
 
@@ -169,14 +169,14 @@ def main(args):
                                                     "reported_symptoms": symptoms_to_np(human.reported_symptoms_at_time(todays_date), all_possible_symptoms),
                                                     "messages": messages_to_np(human.messages),
                                                     "update_messages": messages_to_np(human.update_messages),
-                                                    "test_results": human.test_result,
+                                                    "test_results": human.get_test_result_array(todays_date),
                                                  },
                                             "unobserved":
                                                 {
                                                     "true_symptoms": symptoms_to_np(human.symptoms_at_time(todays_date), all_possible_symptoms),
+                                                    "state": human.get_state_array(todays_date),
                                                 }
                                             }
-
         if args.plot_daily:
             hist_plot(daily_risks, f"{args.plot_path}day_{str(current_day).zfill(3)}.png")
         all_risks.extend(daily_risks)

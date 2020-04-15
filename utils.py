@@ -307,12 +307,12 @@ def _encode_message(message):
 def _decode_message(message):
 	# decode a string-encoded message into a tuple
 	# TODO: make this a namedtuple
-	m_i = message.split("_")
-	obs_uid = bitarray(json.loads(m_i[0]))
-	risk = bitarray(json.loads(m_i[1]))
-	date_sent = datetime.datetime.strptime(m_i[2], '%Y-%m-%d %H:%M:%S')
-	unobs_uid = int(m_i[3])
-	return obs_uid, risk, date_sent, unobs_uid
+	uid, risk, day, unobs_id = message.split("_")
+	obs_uid = bitarray(json.loads(uid))
+	risk = bitarray(json.loads(risk))
+	day = int(day)
+	unobs_uid = int(unobs_id)
+	return obs_uid, risk, day, unobs_uid
 
 @lru_cache(500)
 def _get_integer_pdf(avg, scale, num_sigmas=2):

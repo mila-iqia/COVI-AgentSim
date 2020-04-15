@@ -25,12 +25,16 @@ class DummyHuman:
         self.time_of_recovery = datetime.datetime.max
         self.time_of_death = datetime.datetime.max
         self.test_time = datetime.datetime.max
+        self.time_of_exposure = datetime.datetime.max
         self.symptoms_start = datetime.datetime.max
-        self.test_result = None
         self.infectiousness_start = datetime.datetime.max
         self.tested_positive_contact_count = 0
         self.Message = namedtuple('message', 'uid risk day unobs_id')
-        self.UpdateMessage = namedtuple('update_message', 'uid risk old_risk day unobs_id')
+        self.UpdateMessage = namedtuple('update_message', 'uid new_risk risk day unobs_id')
+
+        num_days = 14
+        num_states = 4 # Susceptible, exposed, infected, recovered
+        self.state_array = np.zeros((num_days, num_states))
 
 
     def cur_message(self, day):
@@ -78,3 +82,24 @@ class DummyHuman:
         for day in range(sickness_day-1):
             all_symptoms_till_day.append(self.all_symptoms[day])
         return all_symptoms_till_day
+
+    def get_test_result_array(self, date):
+        results = np.zeros(14)
+        result_day = (date - self.test_time).days
+        if result_day >= 0 and result_day < 14:
+            results[result_day] = 1
+        return results
+
+    def get_state_array(self, date):
+        import pdb;pdb.set_trace()
+        exposed_array = self.exposed(date)
+        for day in range(14):
+            print(day)
+        return self.state_array
+
+    def exposed(self, date):
+        exposed = np.zeros(14)
+        exposure_day = (date - self.time_of_exposure).days
+        if exposure_day >= 0 and exposure_day < 14:
+            exposed[exposure_day] = 1
+        return exposed
