@@ -88,7 +88,7 @@ def main(args):
     all_possible_symptoms = set()
     for log in symp_logs:
         hd[log['human_id']].symptoms_start = log['time']
-        hd[log['human_id']].infectiousness_start = log['time'] - datetime.timedelta(days=3)
+        hd[log['human_id']].time_of_infectiousness_start = log['time'] - datetime.timedelta(days=3)
         hd[log['human_id']].all_reported_symptoms = log['payload']['observed']['reported_symptoms']
         hd[log['human_id']].all_symptoms = log['payload']['unobserved']['all_symptoms']
         for symptoms in hd[log['human_id']].all_symptoms:
@@ -123,10 +123,6 @@ def main(args):
 
             # check if you have new reported symptoms
             human.risk = RiskModel.update_risk_daily(human, todays_date)
-            if todays_date > human.infectiousness_start:
-                human.is_infectious = True
-            if human.time_of_recovery < todays_date or human.time_of_death < todays_date:
-                human.is_infectious = False
 
             # read your old messages
             for m_i in human.messages:
@@ -154,7 +150,6 @@ def main(args):
                 for k, m in human.sent_messages.items():
                     # if the encounter happened within the last 14 days, and your symptoms started at most 3 days after your contact
                     if current_day - m.day < 14:
-                        # if start_risk != m.risk
                         hd[m.unobs_id].update_messages.append(human.cur_message_risk_update(m.day, m.risk))
 
             # append the updated risk for this person and whether or not they are actually infectious
@@ -163,19 +158,27 @@ def main(args):
 
             # for each sim day, for each human, save an output training example
             if args.save_training_data:
+                is_exposed, exposure_day = human.is_exposed(todays_date)
+                is_infectious, infectious_day = human.is_infectious(todays_date)
+                is_recovered, recovery_day = human.is_recovered(todays_date)
+
                 # data to save is current messages + reported symptoms (as pytorch tensor?)
                 daily_output[human.name] = {"current_day": current_day,
                                             "observed":
                                                 {
                                                     "reported_symptoms": symptoms_to_np(human.reported_symptoms_at_time(todays_date), all_possible_symptoms),
                                                     "messages": messages_to_np(human.messages),
-                                                    "update_messages": messages_to_np(human.update_messages),
                                                     "test_results": human.get_test_result_array(todays_date),
                                                  },
                                             "unobserved":
                                                 {
                                                     "true_symptoms": symptoms_to_np(human.symptoms_at_time(todays_date), all_possible_symptoms),
-                                                    "state": human.get_state_array(todays_date),
+                                                    "is_exposed": is_exposed,
+                                                    "exposure_day": exposure_day,
+                                                    "is_infectious": is_infectious,
+                                                    "infectious_day": infectious_day,
+                                                    "is_recovered": is_recovered,
+                                                    "recovery_day": recovery_day,
                                                 }
                                             }
         if args.plot_daily:

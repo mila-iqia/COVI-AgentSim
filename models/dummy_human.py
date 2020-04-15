@@ -21,8 +21,8 @@ class DummyHuman:
         self.all_symptoms = []
         self.timestamp = timestamp
         self._uid = None
-        self.is_infectious = False
         self.time_of_recovery = datetime.datetime.max
+        self.time_of_infectiousness_start = datetime.datetime.max
         self.time_of_death = datetime.datetime.max
         self.test_time = datetime.datetime.max
         self.time_of_exposure = datetime.datetime.max
@@ -46,8 +46,10 @@ class DummyHuman:
         return self.UpdateMessage(self.uid, quantize_risk(self.risk), old_risk, day, self.name)
 
     def purge_messages(self, todays_date):
+        num_purged = 0
         for m in self.messages:
             if todays_date - m.day > 14:
+                num_purged += 1
                 self.messages.remove(m)
         for m in self.update_messages:
             if todays_date - m.day > 14:
@@ -93,16 +95,29 @@ class DummyHuman:
             results[result_day] = 1
         return results
 
-    def get_state_array(self, date):
-        import pdb;pdb.set_trace()
-        exposed_array = self.exposed(date)
-        for day in range(14):
-            print(day)
-        return self.state_array
-
-    def exposed(self, date):
-        exposed = np.zeros(14)
+    def is_exposed(self, date):
+        exposed = False
         exposure_day = (date - self.time_of_exposure).days
         if exposure_day >= 0 and exposure_day < 14:
-            exposed[exposure_day] = 1
-        return exposed
+            exposed = True
+        else:
+            exposure_day = None
+        return exposed, exposure_day
+
+    def is_infectious(self, date):
+        is_infectious = False
+        infectious_day = (date - self.time_of_infectiousness_start).days
+        if infectious_day >= 0 and infectious_day < 14:
+            is_infectious = True
+        else:
+            infectious_day = None
+        return is_infectious, infectious_day
+
+    def is_recovered(self, date):
+        is_recovered = False
+        recovery_day = (date - self.time_of_recovery).days
+        if recovery_day >= 0 and recovery_day < 14:
+            is_recovered = True
+        else:
+            recovery_day = None
+        return is_recovered, recovery_day
