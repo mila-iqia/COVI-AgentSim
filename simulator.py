@@ -65,7 +65,7 @@ class Human(object):
 
         self.visits = Visits()
         self.travelled_recently = self.rng.rand() > 0.9
-
+        self.today = env.timestamp # TODO minus beginning of days
 
         # &carefullness
         if self.rng.rand() < P_CAREFUL_PERSON:
@@ -76,12 +76,11 @@ class Human(object):
         age_modifier = 1
         if self.age > 40 or self.age < 12:
             age_modifier = 2
-        self.has_cold = self.rng.rand() < P_COLD * age_modifier
-        self.has_flu = self.rng.rand() < P_FLU * age_modifier
         self.has_app = self.rng.rand() < (P_HAS_APP / age_modifier) + (self.carefullness / 2)
         self.incubation_days = _draw_random_discreet_gaussian(AVG_INCUBATION_DAYS, SCALE_INCUBATION_DAYS, self.rng)
 
         # Indicates whether this person will show severe signs of illness.
+        self.sickness_start_day = infection_timestamp 
         self.infection_timestamp = infection_timestamp
         self.recovered_timestamp = datetime.datetime.min
         self.gets_really_sick = self.rng.random() >= 0.9
@@ -99,12 +98,44 @@ class Human(object):
             self.asymptomatic_infection_ratio = ASYMPTOMATIC_INFECTION_RATIO # draw a beta with the distribution in documents
         self.recovery_days = _draw_random_discreet_gaussian(AVG_RECOVERY_DAYS, SCALE_RECOVERY_DAYS, self.rng) # make it IQR &recovery
         self.viral_load_plateau_height, self.viral_load_plateau_start, self.viral_load_plateau_end, self.viral_load_recovered = _sample_viral_load_piecewise(rng, age=age)
-        self.all_symptoms = _get_all_symptoms(
+        
+        self.cold_progression, self.cold_symptoms_array = _get_cold_symptoms(self.age, self.rng, simulation_days, self.carefullness, self.preexisting_conditions, self.gets_really_sick, self.gets_extremely_sick):
+        self.flu_progression, self.flu_symptoms_array = _get_flu_symptoms(self.age, self.rng, simulation_days, self.carefullness, self.preexisting_conditions, self.gets_really_sick, self.gets_extremely_sick):
+        
+        self.covid_symptoms_array = _get_all_symptoms(
                           np.ndarray.item(self.viral_load_plateau_start), np.ndarray.item(self.viral_load_plateau_end),
                           np.ndarray.item(self.viral_load_recovered), age=self.age, incubation_days=self.incubation_days, 
                                                           really_sick=self.gets_really_sick, extremely_sick=self.gets_extremely_sick, 
                           rng=self.rng, preexisting_conditions=self.preexisting_conditions)
-        self.all_reported_symptoms = _reported_symptoms(self.all_symptoms, self.rng, self.carefullness)
+        
+        @property
+        def all_symptoms(self):
+            all_symp_array = self.cold_symptoms_array
+            for (i, symp_arr) in enumerate(all_symp_array):
+                if i >= sickness_start_day:
+                    sypm_arr.extend(self.flu_symptoms_array[i] + 
+                               self.covid_symptoms_array[i-sickness_start_day])
+                else:
+                    symp_arr.extend(self.flu_symptoms_say[i])
+                if symp_arr.count('mild') > 1:
+                    symp_arr.append('moderate')
+                if symp_arr.count('moderate') > 1:
+                    symp_arr.append('severe')
+                if symp_arr.count('severe') > 1:
+                    symp_arr.append('extremely-severe')
+                symp_arr = set(symp_arr)
+                if 'mild' in symp_arr and 'moderate' in symp_arr:
+                    symp_arr.remove('mild')
+                if 'severe' in symp_arr and 'moderate' in symp_arr:
+                    symp_arr.remove('moderate')
+                if 'extremely-severe' in symp_arr and 'severe' in symp_arr:
+                    symp_arr.remove('severe')
+            return all_symp_array
+
+
+        @property
+        def all_reported_symptoms(self):
+            return _reported_symptoms(self.all_symptoms, self.rng, self.carefullness)
 
         # counters and memory
         self.r0 = []
@@ -113,7 +144,6 @@ class Human(object):
         self.has_logged_info = self.has_app and rng.rand() < 0.5
         self.last_state = self.state
         self.n_infectious_contacts = 0
-
 
         self.obs_age = self.age if self.has_app and self.has_logged_info else None
         self.obs_sex = self.sex if self.has_app and self.has_logged_info else None
@@ -217,8 +247,8 @@ class Human(object):
     @property
     def symptoms(self):
         try:
-            sickness_day = (self.env.timestamp - self.infection_timestamp).days
-            return self.all_symptoms[sickness_day]
+            _day = (self.env.timestamp - self.infection_timestamp).days
+            return self.all_symptoms[_day]
         except Exception as e:
             return []
 
@@ -455,6 +485,15 @@ class Human(object):
             # The fix should be handled by better modelling the infectiousness of a person as a function of viral_load
             p_infection = (h.viral_load * (h.is_asymptomatic * h.asymptomatic_infection_ratio 
                                           + 1.0 * (not h.is_asymptomatic)))*h.mask_effect
+
+            if h.has_cold:
+                if rng.rand() < COLD_CONTAGIOUSNESS * h.mask_effect * self.mask_effect:
+                    for (i,symp_arr) in enumerate(self.cold_progression):
+                        self.cold_symptoms_array[1+i+self.today].extend(symp_arr)
+            if h.has_flu:
+                if rng.rand() < FLU_CONTAGIOUSNESS * h.mask_effect * self.mask_effect:
+                    for (i,symp_arr) in enumerate(self.flu_progression):
+                        self.flu_symptoms_array[1+i+self.today].extend(symp_arr)
 
             x_human = distance <= INFECTION_RADIUS and t_near * TICK_MINUTE > INFECTION_DURATION and self.rng.random() < p_infection
             x_environment = self.rng.random() < location.contamination_probability # &prob_infection
