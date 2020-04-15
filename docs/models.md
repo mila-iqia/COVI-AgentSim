@@ -51,7 +51,7 @@ The `add_message_to_cluster` performs a noisy de-anonymization on the messages, 
 
 ## Model development for V2
 If you wish to write data out from this simulator, use the `--save_training_data` arg. This writes `output/output.pkl`.
-This file contains data in the form: 
+For each person, for each day, this file contains data in the form: 
 
 ```
 {"current_day": current_day,
@@ -68,3 +68,5 @@ This file contains data in the form:
     }
 }
 ```
+
+That data is loaded into a PyTorch dataloader in `models/dataloader.py`.
