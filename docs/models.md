@@ -21,7 +21,8 @@ For each day in the simulation, for each person, we do simulate the workings of 
     * autorotating code is updated 
     * user checks for new received messages and extracts risk levels in a table with (risk level, day) keeping only those of the last 14 days
     * user adds up the risk probabilities (risk levels are converted to probabilities between 0 and 1 by the inverse of the probability encoding table) of last 14 days
-    * this is plugged into a Risk Model (Tristan's formula in app V1) to compute a new risk probability
+    * user clusters their messages, and applies updates based on their new `risk_update` messages
+    * the user's new list of messages are plugged into a Risk Model (Tristan's formula in app V1) to compute a new risk probability for this user
     * this new risk probability is quantized by the probability encoding table to obtain a 4-bit code (0 to F)
     * if the new code is different from the old code, it is broadcast to all the contacts of the past 14 days (with the usual format (old risk, new risk, autorotating code)
     * the user purges messages older than 14 days
@@ -37,17 +38,17 @@ Classes in that file implement several functions and can be added to the args of
 passing algorithm. The performance of these algorithms is then reported at the end of execution, with daily outputs provided if the 
 arg `--plot_daily` is provided.
 
-The `RiskModelBase` class provides three functions, which are called at the appropriate times during the message passing
+The `RiskModelBase` class provides four functions, which are called at the appropriate times during the message passing
 algorithm:
 * `update_risk_daily` is called every day for every human, and implements some of the basic logic (e.g., if they got a positive test result, their risk=1) 
 as well as adding a risk for their reported symptoms.
-* `update_risk_encounter` is called for each encounter message (optional)
-* `update_risk_risk_update` is called for each risk update message the person currently has (optional)
+* `update_risk_encounter` is called for each encounter message
+* `update_risk_risk_update` is called for each risk update message the person currently has 
+* `add_message_to_cluster` is called for each encounter message, which attempts to 'de-anonymize' the sender, thereby enabling us to apply risk update messages
 
-There is one additional function which may be required for some algorithms: `add_message_to_cluster`. 
 Certain algorithms perform better when we can attribute messages to individuals. The intuition is that each encounter with an 
 individual takes some of their risk, and if we update the same amount for encounters with the same individual, we will overestimate the risk.
-The `add_message_to_cluster` performs a noisy de-anonymization on the messages, but currently only has a ~55% accuracy rate. There are many ways in which it may be improved.
+The `add_message_to_cluster` performs a noisy de-anonymization on the messages, but has a relatively low accuracy. There are many ways in which it should be improved.
 
 ## Model development for V2
 If you wish to write data out from this simulator, use the `--save_training_data` arg. This writes `output/output.pkl`.
