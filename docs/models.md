@@ -60,11 +60,12 @@ For each person, for each day, this file contains data in the form:
         "reported_symptoms": np.array((rolling_num_days, num_possible_symptoms)), #rolling_num_days is 14
         "messages": np.array((num_messages, msg_dim)), #msg_dim = 4bit uid + 4bit risk
         "update_messages": np.array((num_messages, update_msg_dim), #update_msg_dim = 4bit uid + 4bit risk + 4bit oldrisk
-        "test_results": np.array((rolling_num_days, 1)), #binary test_results on one of the last 14 days
+        "test_results": np.array(rolling_num_days), # binary test_results on one of the last 14 days
      },
 "unobserved":
     {
         "true_symptoms": np.array((rolling_num_days, num_possible_symptoms)), # this is the same as reported symptoms, but not lossy
+        "state": np.array((rolling_num_days, num_possible_states)), # is_susceptible, is_exposed, is_infectious, is_recovered, is_dead
     }
 }
 ```
