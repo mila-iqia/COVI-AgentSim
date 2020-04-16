@@ -85,7 +85,7 @@ def tune(seed):
     n_people = 1000
     monitors, tracker = run_simu(n_people=n_people, init_percent_sick=0.01,
                 start_time=datetime.datetime(2020, 2, 28, 0, 0),
-                simulation_days=40,
+                simulation_days=60,
                 outfile=None,
                 print_progress=True, seed=seed, Human=Human, other_monitors=[]
             )
@@ -93,7 +93,7 @@ def tune(seed):
     # x = pd.DataFrame.from_dict(stats).set_index('time')
     # fig = x[['susceptible', 'exposed', 'infectious', 'removed']].iplot(asFigure=True, title="SEIR")
     # fig.write_image("plots/tune/seir.png")
-    logfile = os.path.join(f'logs/log_n_{n_people}_seed_{seed}.txt')
+    logfile = os.path.join(f"logs/log_n_{n_people}_seed_{seed}_{datetime.datetime.now().strftime('%Y%m%d-%H%M%S')}.txt")
     tracker.write_metrics(logfile)
     import pdb; pdb.set_trace()
     # fig = x['R'].iplot(asFigure=True, title="R0")
@@ -139,7 +139,7 @@ def run_simu(n_people=None, init_percent_sick=0,
 
     city_x_range = (0,1000)
     city_y_range = (0,1000)
-    city = City(env, n_people, rng, city_x_range, city_y_range, start_time, init_percent_sick, Human)
+    city = City(env, n_people, rng, city_x_range, city_y_range, start_time, init_percent_sick, Human, simulation_days)
 
     monitors = [EventMonitor(f=120), SEIRMonitor(f=1440)]
     # run the simulation
