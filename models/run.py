@@ -57,6 +57,7 @@ def main(args):
     contamination_logs = []
     static_info_logs = []
     visit_logs = []
+    daily_logs = []
     start = logs[0]['time']
     for log in logs:
         human_ids.add(log['human_id'])
@@ -74,6 +75,8 @@ def main(args):
             static_info_logs.append(log)
         elif log['event_type'] == Event.visit:
             visit_logs.append(log)
+        elif log['event_type'] == Event.daily:
+            daily_logs.append(log)
         else:
             print(log['event_type'])
             raise "NotImplemented Log"
@@ -122,6 +125,10 @@ def main(args):
     for log in visit_logs:
         if not hd[log['human_id']].locations_visited.get(log['payload']['observed']['location_name']):
             hd[log['human_id']].locations_visited[log['payload']['observed']['location_name']] = log['time']
+
+    for log in daily_logs:
+        import pdb;
+        pdb.set_trace()
 
     for log in static_info_logs:
         import pdb; pdb.set_trace()
