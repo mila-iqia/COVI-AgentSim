@@ -1,12 +1,13 @@
 from monitors import EventMonitor, TimeMonitor, SEIRMonitor
 from base import *
-from utils import _draw_random_discreet_gaussian, _get_random_age, _get_random_area
+from utils import log, _draw_random_discreet_gaussian, _get_random_age, _get_random_area
 import datetime
 import click
 from config import TICK_MINUTE
 import numpy as np
 import math
 import pickle
+import os
 
 
 @click.group()
@@ -23,7 +24,7 @@ def simu():
 @click.option('--print_progress', is_flag=True, help='print the evolution of days', default=False)
 @click.option('--seed', help='seed for the process', type=int, default=0)
 def sim(n_people=None,
-        init_percent_sick=0, store_capacity=30, misc_capacity=30,
+        init_percent_sick=0,
         start_time=datetime.datetime(2020, 2, 28, 0, 0),
         simulation_days=10,
         outfile=None, out_humans=None,
@@ -31,7 +32,7 @@ def sim(n_people=None,
     from simulator import Human
     monitors, _= run_simu(
         n_people=n_people,
-        init_percent_sick=init_percent_sick, store_capacity=store_capacity, misc_capacity=misc_capacity,
+        init_percent_sick=init_percent_sick,
         start_time=start_time,
         simulation_days=simulation_days,
         outfile=outfile,
@@ -55,8 +56,8 @@ def base(toy_human):
     cf.go_offline()
 
     monitors, tracker = run_simu(
-        n_stores=20, n_people=100, n_parks=10, n_misc=20, n_hospitals=2,
-        init_percent_sick=0.01, store_capacity=30, misc_capacity=30,
+        n_people=100,
+        init_percent_sick=0.01,
         start_time=datetime.datetime(2020, 2, 28, 0, 0),
         simulation_days=30,
         outfile=None,
@@ -72,27 +73,28 @@ def base(toy_human):
 
 
 @simu.command()
-def tune():
+@click.option('--seed', help='seed for the process', type=int, default=0)
+def tune(seed):
     # extra packages required  - plotly-orca psutil networkx glob seaborn
     from simulator import Human
     import pandas as pd
-    import cufflinks as cf
+    # import cufflinks as cf
     import matplotlib.pyplot as plt
-    cf.go_offline()
+    # cf.go_offline()
 
-    monitors, tracker = run_simu(n_people=100, init_percent_sick=0.02,
-        store_capacity=30, misc_capacity=30,
-        start_time=datetime.datetime(2020, 2, 28, 0, 0),
-        simulation_days=30,
-        outfile=None,
-        print_progress=True, seed=0, Human=Human, other_monitors=[]
-    )
-    stats = monitors[1].data
-    x = pd.DataFrame.from_dict(stats).set_index('time')
-    fig = x[['susceptible', 'exposed', 'infectious', 'removed']].iplot(asFigure=True, title="SEIR")
-    fig.write_image("plots/tune/seir.png")
-
-    tracker.write_metrics()
+    n_people = 1000
+    monitors, tracker = run_simu(n_people=n_people, init_percent_sick=0.01,
+                start_time=datetime.datetime(2020, 2, 28, 0, 0),
+                simulation_days=40,
+                outfile=None,
+                print_progress=True, seed=seed, Human=Human, other_monitors=[]
+            )
+    # stats = monitors[1].data
+    # x = pd.DataFrame.from_dict(stats).set_index('time')
+    # fig = x[['susceptible', 'exposed', 'infectious', 'removed']].iplot(asFigure=True, title="SEIR")
+    # fig.write_image("plots/tune/seir.png")
+    logfile = os.path.join(f'logs/log_n_{n_people}_seed_{seed}.txt')
+    tracker.write_metrics(logfile)
     import pdb; pdb.set_trace()
     # fig = x['R'].iplot(asFigure=True, title="R0")
     # fig.write_image("plots/tune/R.png")
@@ -123,7 +125,7 @@ def test():
 
 
 
-def run_simu(n_people=None, init_percent_sick=0, store_capacity=30, misc_capacity=30,
+def run_simu(n_people=None, init_percent_sick=0,
              start_time=datetime.datetime(2020, 2, 28, 0, 0),
              simulation_days=10,
              outfile=None, out_humans=None,

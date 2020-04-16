@@ -1,8 +1,10 @@
 import pandas as pd
 import numpy as np
+import math
 from collections import defaultdict
-from config import HUMAN_DISTRIBUTION, LOCATION_DISTRIBUTION
+from config import HUMAN_DISTRIBUTION, LOCATION_DISTRIBUTION, INFECTION_RADIUS, INFECTION_DURATION
 import networkx as nx
+from utils import log
 
 def get_nested_dict(nesting):
     if nesting == 1:
@@ -17,7 +19,8 @@ def get_nested_dict(nesting):
 class Tracker(object):
     def __init__(self, env, city):
         self.env = env
-        # infection
+
+        # infection & contacts
         self.contacts = {
                 'all':get_nested_dict(2),
                 'location_all': get_nested_dict(3),
@@ -28,9 +31,8 @@ class Tracker(object):
                 }
 
         self.infection_graph = nx.DiGraph()
-        self.transition_probability = get_nested_dict(4)
 
-        self.sar = []
+        # R0 and Generation times
         self.avg_infectious_duration = 0
         self.n_recovery = 0
         self.n_infectious_contacts = 0
@@ -39,36 +41,47 @@ class Tracker(object):
         self.generation_time_book = {}
         self.n_env_infection = 0
 
+        # cumulative incidence
+        self.last_day = self.env.timestamp.strftime("%d %b")
+        self.cumulative_incidence = []
+        self.n_susceptible = sum(h.is_susceptible for h in city.humans)
+        self.cases_per_day = [0]
+        self.r_0 = defaultdict(lambda : {'infection_count':0, 'humans':set()})
+
         # demographics
         self.age_bins = sorted(HUMAN_DISTRIBUTION.keys(), key = lambda x:x[0])
-        self.age_distribution = []
-        self.households_age = []
 
-        self.summarize_population(city)
+        # track encounters
+        self.last_encounter_day = self.env.day_of_week()
+        self.last_encounter_hour = self.env.hour_of_day()
+        self.day_encounters = defaultdict(lambda : [0.,0.,0.])
+        self.hour_encounters = defaultdict(lambda : [0.,0.,0.])
+        self.daily_age_group_encounters = defaultdict(lambda :[0.,0.,0.])
+
+        self.dist_encounters = defaultdict(int)
+        self.time_encounters = defaultdict(int)
+
+
+        # mobility
+        self.transition_probability = get_nested_dict(4)
+
         self.city = city
+        self.summarize_population()
 
-    def summarize_population(self, city):
-        n_infected_init = sum([h.is_exposed for h in city.humans])
-        print(f"initial infection {n_infected_init}")
+    def summarize_population(self):
+        self.n_infected_init = sum([h.is_exposed for h in self.city.humans])
+        print(f"initial infection {self.n_infected_init}")
 
-        age = pd.DataFrame([h.age for h in city.humans])
-        print("age distribution\n", age.describe())
+        self.age_distribution = pd.DataFrame([h.age for h in self.city.humans])
+        print("age distribution\n", self.age_distribution.describe())
 
-        house_age = pd.DataFrame([np.mean([h.age for h in house.residents]) for house in city.households])
-        house_size = pd.DataFrame([len(house.residents) for house in city.households])
-        print("house age distribution\n", house_age.describe())
-        print("house size distribution\n", house_size.describe())
+        self.house_age = pd.DataFrame([np.mean([h.age for h in house.residents]) for house in self.city.households])
+        self.house_size = pd.DataFrame([len(house.residents) for house in self.city.households])
+        print("house age distribution\n", self.house_age.describe())
+        print("house size distribution\n", self.house_size.describe())
 
-    def track_contact(self, human1, human2, location):
-        for i, (l,u) in enumerate(self.age_bins):
-            if l <= human1.age < u:
-                bin1 = i
-            if l <= human2.age < u:
-                bin2 = i
-
-        self.contacts["all"][bin1][bin2] += 1
-        self.contacts["location_all"][location.location_type][bin1][bin2] += 1
-        self.n_contacts += 1
+        self.frac_asymptomatic = sum(h.is_asymptomatic for h in self.city.humans)/len(self.city.humans)
+        print("asymptomatic fraction", self.frac_asymptomatic)
 
     def get_R0(self):
 
@@ -77,11 +90,11 @@ class Tracker(object):
         time_since_start =  (self.env.timestamp - self.env.initial_timestamp).total_seconds() / 86400 # DAYS
         if time_since_start == 0:
             return -1
-        if time_since_start > 60:
+        if time_since_start > 365:
             # tau= self.n_infectious_contacts / self.n_contacts
             # c_bar = self.n_contacts / time_since_start
             tau_times_c_bar = self.n_infectious_contacts / time_since_start
-            d = self.avg_infection_duration
+            d = self.avg_infectious_duration
             return tau_times_c_bar * d
         else:
             x = [h.n_infectious_contacts for h in self.city.humans if h.n_infectious_contacts > 0 ]
@@ -99,6 +112,15 @@ class Tracker(object):
             if l <= to_human.age < u:
                 to_bin = i
 
+        day = self.env.timestamp.strftime("%d %b")
+        if self.last_day != day:
+            self.cumulative_incidence.append(self.cases_per_day[-1] / self.n_susceptible)
+            self.last_day = day
+            self.n_susceptible = sum(h.is_susceptible for h in self.city.humans)
+            self.cases_per_day.append(0)
+        else:
+            self.cases_per_day[-1] += 1
+
         if type == "human":
             self.contacts["human_infection"][from_bin][to_bin] += 1
             self.contacts["location_human_infection"][location.location_type][from_bin][to_bin] += 1
@@ -110,7 +132,22 @@ class Tracker(object):
 
             if from_human.symptom_start_time is not None:
                 self.generation_time_book[to_human.name] = from_human.symptom_start_time
+
+            if from_human.is_asymptomatic:
+                self.r_0['asymptomatic']['infection_count'] += 1
+                self.r_0['asymptomatic']['humans'].add(from_human.name)
+            elif not from_human.is_asymptomatic and not from_human.is_incubated:
+                self.r_0['presymptomatic']['infection_count'] += 1
+                self.r_0['presymptomatic']['humans'].add(from_human.name)
+            else:
+                self.r_0['symptomatic']['infection_count'] += 1
+                self.r_0['symptomatic']['humans'].add(from_human.name)
+
+            self.r_0[location.location_type]['infection_count'] += 1
+            self.r_0[location.location_type]['humans'].add(from_human.name)
+
         else:
+            self.n_env_infection += 1
             self.contacts["env_infection"][to_bin] += 1
             self.contacts["location_env_infection"][location.location_type][to_bin] += 1
             self.infection_graph.add_node(to_human.name, bin=to_bin, time=timestamp)
@@ -122,37 +159,147 @@ class Tracker(object):
 
         generation_time = (self.env.timestamp - self.generation_time_book.pop(human_name)).total_seconds() / 86400 # DAYS
         n, avg_gen_time = self.avg_generation_times
-        self.avg_generation_times = (n+1, (avg_gen_time * n + generation_time)/(n+1))
+        self.avg_generation_times = (n+1, 1.0*(avg_gen_time * n + generation_time)/(n+1))
 
     def track_recovery(self, n_infectious_contacts, duration):
         self.n_infectious_contacts += n_infectious_contacts
         self.avg_infectious_duration = (self.n_recovery * self.avg_infectious_duration + duration) / (self.n_recovery + 1)
         self.n_recovery += 1
 
-    def summarize_contacts(self):
-        x = pd.DataFrame.from_dict(self.contacts['all'])
-        x = x[sorted(x.columns)]
-        fig = x.iplot(kind='heatmap', asFigure=True, title="all_contacts")
-        fig.show()
-
     def track_trip(self, from_location, to_location, age, hour):
         bin = None
         for i, (l,u) in enumerate(self.age_bins):
             if l <= age < u:
                 bin = i
-        if bin is None: import pdb; pdb.set_trace()
+
         self.transition_probability[hour][bin][from_location][to_location] += 1
 
-    def write_metrics(self):
-        print("environmental tranmission ratio", self.n_env_infection/self.n_infectious_contacts)
-        print("Ro", self.get_R0())
-        print("Generation times", self.get_generation_time())
+    def track_encounter_events(self, human1, human2, location, distance, duration):
+        for i, (l,u) in enumerate(self.age_bins):
+            if l <= human1.age < u:
+                bin1 = (i,(l,u))
+            if l <= human2.age < u:
+                bin2 = (i, (l,u))
+
+        self.contacts["all"][bin1[0]][bin2[0]] += 1
+        self.contacts["location_all"][location.location_type][bin1[0]][bin2[0]] += 1
+        self.n_contacts += 1
+
+        # bins of 50
+        dist_bin = math.floor(distance/50) if distance <= INFECTION_RADIUS else math.floor(INFECTION_RADIUS/50)
+
+        # bins of 15 mins
+        time_bin = math.floor(duration/15) if duration <= 60 else 4
+
+        hour = self.env.hour_of_day()
+        day = self.env.day_of_week()
+        if self.last_encounter_day != day:
+            n, avg, last_day_count = self.day_encounters[self.last_encounter_day]
+            self.day_encounters[self.last_encounter_day] = [n+1, (avg * n + last_day_count)/(n + 1), 0]
+
+            # per age bin
+            for bin in self.age_bins:
+                n, avg, last_day_count  = self.daily_age_group_encounters[bin]
+                self.daily_age_group_encounters[bin] = [n+1, (avg * n + last_day_count)/(n+1), 0]
+
+            self.last_encounter_day = day
+
+        if self.last_encounter_hour != hour:
+            n, avg, last_hour_count = self.hour_encounters[self.last_encounter_hour]
+            self.hour_encounters[self.last_encounter_hour] = [n+1, (avg * n + last_hour_count)/(n + 1), 0]
+            self.last_encounter_hour = hour
+
+        self.day_encounters[self.last_encounter_day][-1] += 1
+        self.hour_encounters[self.last_encounter_hour][-1] += 1
+        self.daily_age_group_encounters[bin1[1]][-1] += 1
+        self.daily_age_group_encounters[bin2[1]][-1] += 1
+        self.dist_encounters[dist_bin] += 1
+        self.time_encounters[time_bin] += 1
+
+    def write_metrics(self, logfile):
+        log("######## DEMOGRAPHICS #########", logfile)
+        log(f"age distribution\n {self.age_distribution.describe()}", logfile)
+        log(f"house age distribution\n {self.house_age.describe()}", logfile )
+        log(f"house size distribution\n {self.house_size.describe()}", logfile )
+        log(f"Fraction of asymptomatic {self.frac_asymptomatic}", logfile )
+
+        log("######## COVID SPREAD #########", logfile)
+        x = 1.0*self.n_env_infection/self.n_infectious_contacts
+        log(f"environmental transmission ratio {x}", logfile )
+        log(f"Ro {self.get_R0()}", logfile)
+        log(f"Generation times {self.get_generation_time()} ", logfile)
+        log(f"Cumulative Incidence {self.cumulative_incidence}", logfile )
+
+        log("******** R0 *********", logfile)
+        if self.r_0['asymptomatic']['infection_count'] > 0:
+            x = 1.0 * self.r_0['asymptomatic']['infection_count']/len(self.r_0['asymptomatic']['humans'])
+        else:
+            x = 0.0
+        log(f"Asymptomatic R0 {x}", logfile)
+
+        if self.r_0['presymptomatic']['infection_count'] > 0:
+            x = 1.0 * self.r_0['presymptomatic']['infection_count']/len(self.r_0['presymptomatic']['humans'])
+        else:
+            x = 0.0
+        log(f"Presymptomatic R0 {x}", logfile)
+
+        if self.r_0['symptomatic']['infection_count'] > 0 :
+            x = 1.0 * self.r_0['symptomatic']['infection_count']/len(self.r_0['symptomatic']['humans'])
+        else:
+            x = 0.0
+        log(f"Symptomatic R0 {x}", logfile )
+
+        log("******** R0 LOCATIONS *********", logfile)
+        for loc_type, v in self.r_0.items():
+            if loc_type in ['asymptomatic', 'presymptomatic', 'symptomatic']:
+                continue
+            if v['infection_count']  > 0:
+                x = 1.0 * v['infection_count']/len(v['humans'])
+                log(f"{loc_type} R0 {x}", logfile)
+
+        log("######## MOBILITY #########", logfile)
+        log("Day - ", logfile)
+        total = sum(v[1] for v in self.day_encounters.values())
+        x = ['Mon', "Tue", "Wed", "Thurs", "Fri", "Sat", "Sun"]
+        for c,day in enumerate(x):
+            v = self.day_encounters[c]
+            log(f"{day} #avg: {v[1]} %:{100*v[1]/total:5.2f} ", logfile)
+
+        log("Hour - ", logfile)
+        total = sum(v[1] for v in self.hour_encounters.values())
+        for hour, v in self.hour_encounters.items():
+            log(f"{hour} #avg: {v[1]} %:{100*v[1]/total:5.2f} ", logfile)
+
+        log("Distance (cm) - ", logfile)
+        x = ['0 - 50', "50 - 100", "100 - 150", "150 - 200", ">= 200"]
+        total = sum(self.dist_encounters.values())
+        for c, dist in enumerate(x):
+            v = self.dist_encounters[c]
+            log(f"{dist} #avg: {v} %:{100*v/total:5.2f} ", logfile)
+
+        log("Time (min) ", logfile)
+        x = ['0 - 15', "15 - 30", "30 - 45", "45 - 60", ">= 60"]
+        total = sum(self.time_encounters.values())
+        for c, bin in enumerate(x):
+            v = self.time_encounters[c]
+            log(f"{bin} #avg: {v} %:{100*v/total:5.2f} ", logfile)
+
+        log("Average Daily Contacts ", logfile)
+        total = sum(x[1] for x in self.daily_age_group_encounters.values())
+        for bin in self.age_bins:
+            v = self.daily_age_group_encounters[bin][1]
+            log(f"{bin} #avg: {v} %:{100*v/total:5.2f} ", logfile)
 
     def plot_metrics(self, dirname):
         import matplotlib.pyplot as plt
         import networkx as nx
         import seaborn as sns
         import glob, os
+
+        x = pd.DataFrame.from_dict(self.contacts['all'])
+        x = x[sorted(x.columns)]
+        fig = x.iplot(kind='heatmap', asFigure=True, title="all_contacts")
+        fig.savefig(f"{dirname}/all_contacts.png")
 
         x = self.contacts['env_infection']
         g = self.infection_graph
