@@ -40,7 +40,8 @@ class FullUnitTest(unittest.TestCase):
             # Ensure
             data = []
             with zipfile.ZipFile(f"{f.name}.zip", 'r') as zf:
-                data.extend([pickle.load(zf.open(pkl, 'r')) for pkl in zf.namelist()])
+                for pkl in zf.namelist():
+                    data.extend(pickle.loads(zf.read(pkl)))
 
             self.assertTrue(len(data) > 0)
 
@@ -94,13 +95,13 @@ class SeedUnitTest(unittest.TestCase):
             md5 = hashlib.md5()
             with zipfile.ZipFile(f"{f1.name}.zip", 'r') as zf:
                 for pkl in zf.namelist():
-                    md5.update(zf.open(pkl, 'r'))
+                    md5.update(zf.read(pkl))
             md5sum1 = md5.hexdigest()
 
             md5 = hashlib.md5()
             with zipfile.ZipFile(f"{f2.name}.zip", 'r') as zf:
                 for pkl in zf.namelist():
-                    md5.update(zf.open(pkl, 'r'))
+                    md5.update(zf.read(pkl))
             md5sum2 = md5.hexdigest()
 
             self.assertTrue(md5sum1 == md5sum2,
@@ -142,13 +143,13 @@ class SeedUnitTest(unittest.TestCase):
             md5 = hashlib.md5()
             with zipfile.ZipFile(f"{f1.name}.zip", 'r') as zf:
                 for pkl in zf.namelist():
-                    md5.update(zf.open(pkl, 'r'))
+                    md5.update(zf.read(pkl))
             md5sum1 = md5.hexdigest()
 
             md5 = hashlib.md5()
             with zipfile.ZipFile(f"{f2.name}.zip", 'r') as zf:
                 for pkl in zf.namelist():
-                    md5.update(zf.open(pkl, 'r'))
+                    md5.update(zf.read(pkl))
             md5sum2 = md5.hexdigest()
 
             self.assertFalse(md5sum1 == md5sum2,
