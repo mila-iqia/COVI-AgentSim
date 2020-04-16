@@ -54,6 +54,8 @@ class Human(object):
         self.name = f"human:{name}"
         self.rng = rng
         self.profession = profession
+        self.is_healthcare_worker = True if profession == "healthcare" else False
+        self.obs_is_healthcare_worker = True if self.is_healthcare_worker and rng.random()<0.9 else False # 90% of the time, healthcare workers will declare it
         self.death = False
 
         self.age = age
