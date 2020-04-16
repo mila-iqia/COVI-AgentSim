@@ -7,6 +7,15 @@ from bitarray import bitarray
 from config import *
 from functools import lru_cache
 
+def log(str, logfile=None, timestamp=False):
+	if timestamp:
+		str = f"[{datetime.datetime.now()}] {str}"
+
+	print(str)
+	if logfile is not None:
+		with open(logfile, mode='a') as f:
+			print(str, file=f)
+
 def _sample_viral_load_gamma(rng, shape_mean=4.5, shape_std=.15, scale_mean=1., scale_std=.15):
 	""" This function samples the shape and scale of a gamma distribution, then returns it"""
 	shape = rng.normal(shape_mean, shape_std)
@@ -54,7 +63,7 @@ def _get_random_sex(rng):
 
 # 2D Array of symptoms; first axis is days after exposure (infection), second is an array of symptoms
 def _get_all_symptoms(viral_load_plateau_start, viral_load_plateau_end,
-	                        viral_load_recovered, age, incubation_days, really_sick, extremely_sick, 
+	                        viral_load_recovered, age, incubation_days, really_sick, extremely_sick,
 							rng, preexisting_conditions):
         # Before showing symptoms
         symptoms_array = [[] for i in range(incubation_days)]
@@ -62,7 +71,7 @@ def _get_all_symptoms(viral_load_plateau_start, viral_load_plateau_end,
         for day in range(round(viral_load_plateau_start)-1):
             symptoms = []
             if really_sick or extremely_sick or any(preexisting_conditions):
-                symptoms.append('moderate')           
+                symptoms.append('moderate')
             else :
                 symptoms.append('mild')
             if rng.rand() < 0.9:
@@ -72,7 +81,7 @@ def _get_all_symptoms(viral_load_plateau_start, viral_load_plateau_end,
             if rng.rand() < 0.5:
                 symptoms.append('fatigue')
             if rng.rand() < 0.3:
-                symptoms.append('trouble_breathing') 
+                symptoms.append('trouble_breathing')
             if rng.rand() < 0.4:
                 symptoms.append('gastro')
             symptoms_array.append(symptoms)
@@ -108,8 +117,8 @@ def _get_all_symptoms(viral_load_plateau_start, viral_load_plateau_end,
         for day in range(round(viral_load_recovered - viral_load_plateau_end)):
             symptoms = []
             if really_sick or extremely_sick:
-                symptoms.append('moderate')           
-            else: 
+                symptoms.append('moderate')
+            else:
                 symptoms.append('mild')
             if rng.rand() < 0.3:
                 symptoms.append('cough')
@@ -118,7 +127,7 @@ def _get_all_symptoms(viral_load_plateau_start, viral_load_plateau_end,
             if rng.rand() < 0.5:
                 symptoms.append('aches')
             if rng.rand() < 0.3:
-                symptoms.append('trouble_breathing') 
+                symptoms.append('trouble_breathing')
             if rng.rand() < 0.2:
                 symptoms.append('gastro')
             symptoms_array.append(symptoms)
@@ -138,11 +147,9 @@ def _reported_symptoms(all_symptoms, rng, carefulness):
 		all_reported_symptoms.append(reported_symptoms)
 	return all_reported_symptoms
 
-
-
 # &preexisting-conditions
 def _get_preexisting_conditions(age, sex, rng):
-	#if rng.rand() < 0.6 + age/200: 
+	#if rng.rand() < 0.6 + age/200:
 	#	conditions = None
 	#else:
 	conditions = []
@@ -177,7 +184,7 @@ def _get_preexisting_conditions(age, sex, rng):
 	else:
 		if rng.rand() < .179:
 			conditions.append('diabetes')
-	
+
 	# &heart disease
 	if age < 20:
 		if rng.rand() < .001:
@@ -230,7 +237,7 @@ def _get_preexisting_conditions(age, sex, rng):
 			conditions.append('COPD')
 
 
-	# &asthma 
+	# &asthma
 	if age < 10:
 		if sex.lower().startswith('f'):
 			if rng.rand() < .07:
@@ -284,15 +291,15 @@ def _get_random_age_multinomial(AGE_DISTRIBUTION, rng):
 
 
 def _get_random_area(location_type, num, total_area, rng):
-	''' Using Dirichlet distribution since it generates a "distribution of probabilities" 
-	which will ensure that the total area allotted to a location type remains conserved 
+	''' Using Dirichlet distribution since it generates a "distribution of probabilities"
+	which will ensure that the total area allotted to a location type remains conserved
 	while also maintaining a uniform distribution'''
 	perc_dist = {"store":0.15, "misc":0.15, "workplace":0.2, "household":0.3, "park":0.05, 'hospital': 0.6, "school":0.05, "senior_residency":0.05}
 
-	# Keeping max at area/2 to ensure no location is allocated more than half of the total area allocated to its location type 
+	# Keeping max at area/2 to ensure no location is allocated more than half of the total area allocated to its location type
 	area = rng.dirichlet(np.ones(math.ceil(num/2)))*(perc_dist[location_type]*total_area/2)
 	area = np.append(area,rng.dirichlet(np.ones(math.floor(num/2)))*(perc_dist[location_type]*total_area/2))
-	
+
 	return area
 
 def _get_random_area(num, total_area, rng):
@@ -351,4 +358,3 @@ def float_to_binary(x, m, n):
 def binary_to_float(bstr, m, n):
     """Convert a binary string in the format '00101010100' to its float value."""
     return int(bstr, 2) / 2 ** n
-
