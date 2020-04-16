@@ -364,10 +364,12 @@ class Event:
     symptom_start = 'symptom_start'
     contamination = 'contamination'
     recovered = 'recovered'
+    static_info = 'static_info'
+    visit = 'visit'
 
     @staticmethod
     def members():
-        return [Event.test, Event.encounter, Event.symptom_start, Event.contamination]
+        return [Event.test, Event.encounter, Event.symptom_start, Event.contamination, Event.static_info, Event.visit]
 
     @staticmethod
     def log_encounter(human1, human2, location, duration, distance, infectee, time):
@@ -501,6 +503,23 @@ class Event:
         )
 
     @staticmethod
+    def log_visit(human, time, location):
+        human.events.append(
+            {
+                'human_id': human.name,
+                'event_type': Event.visit,
+                'time': time,
+                'payload': {
+                    'observed':{
+                        'location_name': location.name
+                    },
+                    'unobserved':{
+                    }
+                }
+            }
+        )
+
+    @staticmethod
     def log_static_info(city, human, time):
         h_obs_keys = ['obs_preexisting_conditions',  "obs_age", "obs_sex"]
         h_unobs_keys = ['preexisting_conditions', "age", "sex"]
@@ -519,7 +538,7 @@ class Event:
         city.events.append(
             {
                 'human_id': human.name,
-                'event_type':Event.log_static_info,
+                'event_type':Event.static_info,
                 'time':time,
                 'payload':{
                     'observed': obs_payload,
@@ -548,4 +567,12 @@ class DummyEvent:
 
     @staticmethod
     def log_exposed(*args, **kwargs):
+        pass
+
+    @staticmethod
+    def log_static_info(*args, **kwargs):
+        pass
+
+    @staticmethod
+    def log_visit(*args, **kwargs):
         pass
