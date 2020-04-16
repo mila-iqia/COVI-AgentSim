@@ -120,7 +120,12 @@ def main(args):
         hd[log['human_id']].exposure_source = log['payload']['unobserved']['source']
 
     for log in visit_logs:
+        if not hd[log['human_id']].locations_visited.get(log['payload']['observed']['location_name']):
+            hd[log['human_id']].locations_visited[log['payload']['observed']['location_name']] = log['time']
+
+    for log in static_info_logs:
         import pdb; pdb.set_trace()
+
     all_outputs = []
     all_risks = []
     daily_risks = []

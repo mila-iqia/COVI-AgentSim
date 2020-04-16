@@ -31,6 +31,7 @@ class DummyHuman:
         self.UpdateMessage = namedtuple('update_message', 'uid new_risk risk day unobs_id')
         self.viral_loads = {}
         self.infectiousnesses = {}
+        self.locations_visited = {}
 
         num_days = 14
         num_states = 4 # Susceptible, exposed, infected, recovered
