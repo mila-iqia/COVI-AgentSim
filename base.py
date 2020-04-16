@@ -180,7 +180,7 @@ class Event:
         h_unobs_keys = ['age', 'carefullness', 'viral_load', 'infectiousness', 
                         'symptoms', 'is_exposed', 'is_infectious',
                         'household', 'workplace', 'infection_timestamp', 'really_sick',
-                        'extremely_sick']
+                        'extremely_sick', 'preexisting_conditions']
 
         loc_obs_keys = ['location_type', 'lat', 'lon']
         loc_unobs_keys = ['contamination_probability', 'social_contact_factor']
@@ -220,7 +220,7 @@ class Event:
 
 
     @staticmethod
-    def log_test(human, result, time):
+    def log_test(human, result, test_type, time):
         human.events.append(
             {
                 'human_id': human.name,
@@ -229,6 +229,7 @@ class Event:
                 'payload': {
                     'observed':{
                         'result': result,
+                        'type': test_type
                     },
                     'unobserved':{
                     }
