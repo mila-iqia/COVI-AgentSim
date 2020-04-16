@@ -4,16 +4,12 @@ import copy
 import datetime
 import itertools
 import numpy as np
-
-
-import copy
-from config import TICK_MINUTE, MAX_DAYS_CONTAMINATION, LOCATION_DISTRIBUTION, HUMAN_DISTRIBUTION, MIN_AVG_HOUSE_AGE, HOUSE_SIZE_PREFERENCE
-from utils import compute_distance, _get_random_area
 from collections import defaultdict
 from orderedset import OrderedSet
-from config import TICK_MINUTE, MAX_DAYS_CONTAMINATION, INFECTIOUSNESS_ONSET_DAYS
-from utils import compute_distance
+import copy
 
+from config import *
+from utils import compute_distance, _get_random_area
 from track import Tracker
 
 class Env(simpy.Environment):
@@ -204,6 +200,9 @@ class City(object):
     @property
     def events(self):
         return list(itertools.chain(*[h.events for h in self.humans]))
+
+    def pull_events(self):
+        return list(itertools.chain(*[h.pull_events() for h in self.humans]))
 
     def _compute_preferences(self):
         """ compute preferred distribution of each human for park, stores, etc."""

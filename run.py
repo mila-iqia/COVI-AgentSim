@@ -1,13 +1,16 @@
-from monitors import EventMonitor, TimeMonitor, SEIRMonitor
-from base import *
-from utils import log, _draw_random_discreet_gaussian, _get_random_age, _get_random_area
 import datetime
 import click
-from config import TICK_MINUTE
 import numpy as np
 import math
 import pickle
 import os
+import zipfile
+
+from config import TICK_MINUTE
+from simulator import Human
+from base import *
+from utils import log, _draw_random_discreet_gaussian, _get_random_age, _get_random_area
+from monitors import EventMonitor, TimeMonitor, SEIRMonitor
 
 
 @click.group()
@@ -19,38 +22,50 @@ def simu():
 @click.option('--n_people', help='population of the city', type=int, default=100)
 @click.option('--init_percent_sick', help='% of population initially sick', type=float, default=0.01)
 @click.option('--simulation_days', help='number of days to run the simulation for', type=int, default=30)
-@click.option('--outfile', help='filename of the output (file format: .pkl)', type=str, default="output/data", required=False)
-@click.option('--out_humans', help='filename of the output (file format: .pkl)', type=str, default="output/humans.pkl", required=False)
+@click.option('--out_chunk_size', help='number of events per dump in outfile', type=int, default=2500, required=False)
 @click.option('--print_progress', is_flag=True, help='print the evolution of days', default=False)
 @click.option('--seed', help='seed for the process', type=int, default=0)
 def sim(n_people=None,
         init_percent_sick=0,
         start_time=datetime.datetime(2020, 2, 28, 0, 0),
         simulation_days=10,
-        outfile=None, out_humans=None,
+        outdir=None, out_chunk_size=None,
         print_progress=False, seed=0):
-    from simulator import Human
-    monitors, _= run_simu(
+
+    os.makedirs("output", exist_ok=True)
+
+    outdir = f"output/sim_people-{n_people}_days-{simulation_days}_init-{init_percent_sick}_seed-{seed}_{datetime.datetime.now().strftime('%Y%m%d-%H%M%S')}"
+    os.makedirs(outdir)
+    outfile = os.path.join(outdir, "data")
+
+    monitors, tracker = run_simu(
         n_people=n_people,
         init_percent_sick=init_percent_sick,
         start_time=start_time,
         simulation_days=simulation_days,
-        outfile=outfile,
-        out_humans=out_humans,
+        outfile=outfile, out_chunk_size=out_chunk_size,
         print_progress=print_progress,
         seed=seed
     )
-    monitors[0].dump(outfile)
-    return monitors[0].data
+    monitors[0].dump()
+    monitors[0].join_iothread()
+
+    # write metrics
+    logfile = os.path.join(f"{outdir}/logs.txt")
+    tracker.write_metrics(logfile)
+
+    # unzip
+    print("unpacking the logs to pkl...")
+    data = []
+    with zipfile.ZipFile(f'{outdir}/data.zip', 'r') as zf:
+        for pkl in zf.namelist():
+            data.extend(pickle.load(zf.open(pkl, 'r')))
+
+    pickle.dump(data, open(f"{outdir}/data.pkl", 'wb'))
 
 
 @simu.command()
-@click.option('--toy_human', is_flag=True, help='run the Human from toy.py')
-def base(toy_human):
-    if toy_human:
-        from toy import Human
-    else:
-        from simulator import Human
+def base():
     import pandas as pd
     import cufflinks as cf
     cf.go_offline()
@@ -61,7 +76,7 @@ def base(toy_human):
         start_time=datetime.datetime(2020, 2, 28, 0, 0),
         simulation_days=30,
         outfile=None,
-        print_progress=False, seed=0, Human=Human,
+        print_progress=False, seed=0,
     )
     stats = monitors[1].data
     x = pd.DataFrame.from_dict(stats).set_index('time')
@@ -84,18 +99,18 @@ def tune(seed):
 
     n_people = 1000
     monitors, tracker = run_simu(n_people=n_people, init_percent_sick=0.01,
-                start_time=datetime.datetime(2020, 2, 28, 0, 0),
-                simulation_days=60,
-                outfile=None,
-                print_progress=True, seed=seed, Human=Human, other_monitors=[]
-            )
+                            start_time=datetime.datetime(2020, 2, 28, 0, 0),
+                            simulation_days=60,
+                            outfile=None,
+                            print_progress=True, seed=seed, other_monitors=[]
+                            )
     # stats = monitors[1].data
     # x = pd.DataFrame.from_dict(stats).set_index('time')
     # fig = x[['susceptible', 'exposed', 'infectious', 'removed']].iplot(asFigure=True, title="SEIR")
     # fig.write_image("plots/tune/seir.png")
     logfile = os.path.join(f"logs/log_n_{n_people}_seed_{seed}_{datetime.datetime.now().strftime('%Y%m%d-%H%M%S')}.txt")
     tracker.write_metrics(logfile)
-    import pdb; pdb.set_trace()
+
     # fig = x['R'].iplot(asFigure=True, title="R0")
     # fig.write_image("plots/tune/R.png")
     #
@@ -128,11 +143,8 @@ def test():
 def run_simu(n_people=None, init_percent_sick=0,
              start_time=datetime.datetime(2020, 2, 28, 0, 0),
              simulation_days=10,
-             outfile=None, out_humans=None,
-             print_progress=False, seed=0, Human=None, other_monitors=[]):
-
-    if Human is None:
-        from simulator import Human
+             outfile=None, out_chunk_size=None,
+             print_progress=False, seed=0, other_monitors=[]):
 
     rng = np.random.RandomState(seed)
     env = Env(start_time)
@@ -141,7 +153,7 @@ def run_simu(n_people=None, init_percent_sick=0,
     city_y_range = (0,1000)
     city = City(env, n_people, rng, city_x_range, city_y_range, start_time, init_percent_sick, Human, simulation_days)
 
-    monitors = [EventMonitor(f=120), SEIRMonitor(f=1440)]
+    monitors = [EventMonitor(f=120, dest=outfile, chunk_size=out_chunk_size), SEIRMonitor(f=1440)]
     # run the simulation
     if print_progress:
         monitors.append(TimeMonitor(1440)) # print every day

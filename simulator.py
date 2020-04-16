@@ -50,7 +50,7 @@ class Human(object):
     def __init__(self, env, name, age, rng, infection_timestamp, household, workplace, profession, rho=0.3, gamma=0.21, symptoms=[],
                  test_results=None, sim_days=0):
         self.env = env
-        self.events = []
+        self._events = []
         self.name = f"human:{name}"
         self.rng = rng
         self.profession = profession
@@ -175,6 +175,21 @@ class Human(object):
 
     def __repr__(self):
         return f"H:{self.name}, SEIR:{int(self.is_susceptible)}{int(self.is_exposed)}{int(self.is_infectious)}{int(self.is_removed)}"
+
+    ########### MEMORY OPTIMIZATION ###########
+    @property
+    def events(self):
+        return self._events
+
+    def pull_events(self):
+        if self._events:
+            events = self._events
+            self._events = []
+        else:
+            events = self._events
+        return events
+
+    ########### EPI ###########
 
     @property
     def is_susceptible(self):
@@ -663,6 +678,7 @@ class Human(object):
         # TODO: I deleted many unserializable attributes, but many of them can (and should) be converted to serializable form.
         del self.env
         del self.events
+        del self._events
         del self.rng
         del self.visits
         del self.leaving_time
