@@ -72,6 +72,8 @@ def _get_covid_symptoms(viral_load_plateau_start, viral_load_plateau_end,
             symptoms1.append('fever')
         if rng.rand() < 0.7:
             symptoms1.append('cough')
+        if rng.rand() < 0.1:
+            symptoms1.append('runny_nose')
         if rng.rand() < 0.5:
             symptoms1.append('fatigue')
         if rng.rand() < 0.3:
@@ -80,6 +82,34 @@ def _get_covid_symptoms(viral_load_plateau_start, viral_load_plateau_end,
             symptoms1.append('gastro')
         if rng.rand() < 0.2*(age/3):
             symptoms1.append('unusual')
+
+    #TODO CHECK THESE! PUT IN QUICKLY WITHOUT VERIFYING
+        if rng.rand() < 0.5:
+            symptoms1.append('sneezing')
+        if rng.rand() < 0.3:
+            symptoms1.append('diarrhea')
+        if rng.rand() < 0.2:
+            symptoms1.append('nausea_vomiting')
+        if rng.rand() < 0.5:
+            symptoms1.append('headache') 
+        if rng.rand() < 0.2:
+            symptoms1.append('hard_time_waking_up')
+        if rng.rand() < 0.6:
+            symptoms1.append('sore_throat')
+        if rng.rand() < 0.3:
+            symptoms1.append('chills')
+        if rng.rand() < 0.1:
+            symptoms1.append('severe_chest_pain')
+        if rng.rand() < 0.1:
+            symptoms1.append('confused') 
+        if really_sick or extremely_sick or len(preexisting_conditions)>2:
+            if rng.rand() < 0.6:
+                symptoms1.append('lost_consciousness')
+        if 'mild' and 'trouble_breathing' in symptoms1:
+            symptoms1.append('light_trouble_breathing')
+        if 'moderate' and 'trouble_breathing' in symptoms1:
+            symptoms1.append('moderate_trouble_breathing')
+
         for day in range(round(viral_load_plateau_start)):
             progression.append(symptoms1)
 
@@ -109,6 +139,36 @@ def _get_covid_symptoms(viral_load_plateau_start, viral_load_plateau_end,
             symptoms2.append('gastro')
         if rng.rand() < 0.2*(age/3):
             symptoms2.append('unusual')
+
+    #TODO CHECK THESE! PUT IN QUICKLY WITHOUT VERIFYING
+        if rng.rand() < 0.5:
+            symptoms2.append('sneezing')
+        if rng.rand() < 0.3:
+            symptoms2.append('diarrhea')
+        if rng.rand() < 0.2:
+            symptoms2.append('nausea_vomiting')
+        if rng.rand() < 0.5:
+            symptoms2.append('headache') 
+        if rng.rand() < 0.2:
+            symptoms2.append('hard_time_waking_up')
+        if rng.rand() < 0.6:
+            symptoms2.append('sore_throat')
+        if rng.rand() < 0.3:
+            symptoms2.append('chills')
+        if rng.rand() < 0.1:
+            symptoms2.append('severe_chest_pain')
+        if rng.rand() < 0.1:
+            symptoms2.append('confused') 
+        if really_sick or extremely_sick or len(preexisting_conditions)>2:
+            if rng.rand() < 0.6:
+                symptoms2.append('lost_consciousness')
+        if 'mild' in symptoms2 and 'trouble_breathing' in symptoms2:
+            symptoms2.append('light_trouble_breathing')
+        if 'moderate'in symptoms2 and 'trouble_breathing' in symptoms2:
+            symptoms2.append('moderate_trouble_breathing')
+        if ('severe' in symptoms2 or 'extremely-severe' in symptoms2) and 'trouble_breathing' in symptoms3:
+            symptoms3.append('heavy_trouble_breathing')
+
         for day in range(round(viral_load_plateau_end - viral_load_plateau_start)):
             progression.append(symptoms2)
 
@@ -128,6 +188,35 @@ def _get_covid_symptoms(viral_load_plateau_start, viral_load_plateau_end,
             symptoms3.append('trouble_breathing') 
         if rng.rand() < 0.2:
             symptoms3.append('gastro')
+
+    #TODO CHECK THESE! PUT IN QUICKLY WITHOUT VERIFYING
+        if rng.rand() < 0.5:
+            symptoms3.append('sneezing')
+        if rng.rand() < 0.3:
+            symptoms3.append('diarrhea')
+        if rng.rand() < 0.2:
+            symptoms3.append('nausea_vomiting')
+        if rng.rand() < 0.5:
+            symptoms3.append('headache') 
+        if rng.rand() < 0.2:
+            symptoms3.append('hard_time_waking_up')
+        if rng.rand() < 0.6:
+            symptoms3.append('sore_throat')
+        if rng.rand() < 0.3:
+            symptoms3.append('chills')
+        if rng.rand() < 0.1:
+            symptoms3.append('severe_chest_pain')
+        if rng.rand() < 0.1:
+            symptoms3.append('confused') 
+        if really_sick or extremely_sick or len(preexisting_conditions)>2:
+            if rng.rand() < 0.6:
+                symptoms3.append('lost_consciousness')
+        if 'mild' in symptoms3 and 'trouble_breathing' in symptoms3:
+            symptoms3.append('light_trouble_breathing')
+        if 'moderate' in symptoms3 and 'trouble_breathing' in symptoms3:
+            symptoms3.append('moderate_trouble_breathing')
+        if ('severe' in symptoms3 or 'extremely-severe' in symptoms3) and 'trouble_breathing' in symptoms3:
+            symptoms3.append('heavy_trouble_breathing')
         for day in range(round(viral_load_recovered - viral_load_plateau_end)):
             progression.append(symptoms3)
         return progression
@@ -204,6 +293,8 @@ def _get_cold_symptoms(age, rng, sim_days, carefullness, preexisting_conditions,
             symptoms.append('loss_of_taste')
         if rng.rand() < 0.2:
             symptoms.append('fatigue')
+        if rng.rand() < 0.6:
+            symptoms.append('sneezing')
 
         progression = []
         for day in range(len_cold):
@@ -385,6 +476,7 @@ def _get_preexisting_conditions(age, sex, rng):
             if rng.rand() < .1:
                 conditions.append('asthma')
 
+
     # &stroke
     modifier = len(conditions)
     if age < 20:
@@ -417,6 +509,15 @@ def _get_preexisting_conditions(age, sex, rng):
     else:
         if rng.rand() < modifier * 0.20:
             conditions.append('immuno-suppressed')
+
+    #TODO PUT IN QUICKLY WITHOUT VERIFICATION OF NUMBERS
+    if 'asthma' in conditions or 'COPD' in conditions:
+        conditions.append('lung_disease')
+
+    if sex.lower().startswith('f') and age > 18 and age < 50:
+        p_pregnant = rng.normal(27,5)
+        if rng.rand() < p_pregnant:
+            conditions.append('pregnant')
 
     return conditions
 
