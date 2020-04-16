@@ -677,7 +677,6 @@ class Human(object):
         """This function serializes the human object for pickle."""
         # TODO: I deleted many unserializable attributes, but many of them can (and should) be converted to serializable form.
         del self.env
-        del self.events
         del self._events
         del self.rng
         del self.visits

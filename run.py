@@ -22,7 +22,7 @@ def simu():
 @click.option('--n_people', help='population of the city', type=int, default=100)
 @click.option('--init_percent_sick', help='% of population initially sick', type=float, default=0.01)
 @click.option('--simulation_days', help='number of days to run the simulation for', type=int, default=30)
-@click.option('--out_chunk_size', help='number of events per dump in outfile', type=int, default=2500, required=False)
+@click.option('--out_chunk_size', help='number of events per dump in outfile', type=int, default=25000, required=False)
 @click.option('--print_progress', is_flag=True, help='print the evolution of days', default=False)
 @click.option('--seed', help='seed for the process', type=int, default=0)
 def sim(n_people=None,
@@ -53,15 +53,6 @@ def sim(n_people=None,
     # write metrics
     logfile = os.path.join(f"{outdir}/logs.txt")
     tracker.write_metrics(logfile)
-
-    # unzip
-    print("unpacking the logs to pkl...")
-    data = []
-    with zipfile.ZipFile(f'{outdir}/data.zip', 'r') as zf:
-        for pkl in zf.namelist():
-            data.extend(pickle.load(zf.open(pkl, 'r')))
-
-    pickle.dump(data, open(f"{outdir}/data.pkl", 'wb'))
 
 
 @simu.command()

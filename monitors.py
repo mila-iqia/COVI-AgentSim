@@ -72,7 +72,7 @@ class EventMonitor(BaseMonitor):
 
             yield env.timeout(self.f / TICK_MINUTE)
 
-    def dump(self, dest: str = None):
+    def dump(self):
         if self.dest is None:
             print(json.dumps(self.data, indent=1, default=_json_serialize))
             return
