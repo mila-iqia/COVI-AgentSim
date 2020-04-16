@@ -521,8 +521,8 @@ class Event:
 
     @staticmethod
     def log_static_info(city, human, time):
-        h_obs_keys = ['obs_preexisting_conditions',  "obs_age", "obs_sex"]
-        h_unobs_keys = ['preexisting_conditions', "age", "sex"]
+        h_obs_keys = ['obs_preexisting_conditions',  "obs_age", "obs_sex", "obs_is_healthcare_worker"]
+        h_unobs_keys = ['preexisting_conditions', "age", "sex", "is_healthcare_worker"]
         obs_payload = {key:getattr(human, key) for key in h_obs_keys}
         unobs_payload = {key:getattr(human, key) for key in h_unobs_keys}
 
