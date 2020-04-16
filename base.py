@@ -128,7 +128,6 @@ class City(object):
                 res = None
                 if self.rng.random() < senior_residency_preference:
                     res = self.rng.choice(self.senior_residencys)
-
                 # workplace
                 if profession[i] == "healthcare":
                     workplace = self.rng.choice(self.hospitals + self.senior_residencys)
@@ -203,7 +202,7 @@ class City(object):
 
     def log_static_info(self):
         for h in self.humans:
-            Event.log_human_info(self, h)
+            Event.log_static_info(self, h, self.env.timestamp)
 
     @property
     def events(self):
@@ -365,16 +364,18 @@ class Event:
     symptom_start = 'symptom_start'
     contamination = 'contamination'
     recovered = 'recovered'
+    static_info = 'static_info'
+    visit = 'visit'
+    daily = 'daily'
 
     @staticmethod
     def members():
-        return [Event.test, Event.encounter, Event.symptom_start, Event.contamination]
+        return [Event.test, Event.encounter, Event.symptom_start, Event.contamination, Event.static_info, Event.visit, Event.daily]
 
     @staticmethod
     def log_encounter(human1, human2, location, duration, distance, infectee, time):
 
-        h_obs_keys   = ['has_app', 'has_app', 'obs_preexisting_conditions',
-                        'obs_symptoms',
+        h_obs_keys   = ['has_app',
                         'obs_hospitalized', 'obs_in_icu', 'wearing_mask',
                         'obs_lat', 'obs_lon']
 
@@ -443,6 +444,23 @@ class Event:
         )
 
     @staticmethod
+    def log_daily(human, time):
+        human.events.append(
+            {
+                'human_id': human.name,
+                'event_type': Event.daily,
+                'time': time,
+                'payload': {
+                    'observed':{
+                    },
+                    'unobserved':{
+                        'infectiousness': human.infectiousness,
+                    }
+                }
+            }
+        )
+
+    @staticmethod
     def log_symptom_start(human, covid, time):
         human.events.append(
             {
@@ -503,13 +521,30 @@ class Event:
         )
 
     @staticmethod
-    def log_static_info(city, human, time):
-        h_obs_keys = ['obs_preexisting_conditions',  "obs_age", "obs_sex"]
-        h_unobs_keys = ['preexisting_conditions', "age", "sex"]
-        obs_payload = {key:getattr(human, key) for key in h_obs_keys}
-        unobs_payload = {key:getattr(human, key) in h_unobs_keys}
+    def log_visit(human, time, location):
+        human.events.append(
+            {
+                'human_id': human.name,
+                'event_type': Event.visit,
+                'time': time,
+                'payload': {
+                    'observed':{
+                        'location_name': location.name
+                    },
+                    'unobserved':{
+                    }
+                }
+            }
+        )
 
-        if sum(x in human.workplace.location_type == x in ['healthcare', 'store', 'misc', 'seniro_residency']) > 0:
+    @staticmethod
+    def log_static_info(city, human, time):
+        h_obs_keys = ['obs_preexisting_conditions',  "obs_age", "obs_sex", "obs_is_healthcare_worker"]
+        h_unobs_keys = ['preexisting_conditions', "age", "sex", "is_healthcare_worker"]
+        obs_payload = {key:getattr(human, key) for key in h_obs_keys}
+        unobs_payload = {key:getattr(human, key) for key in h_unobs_keys}
+
+        if human.workplace.location_type in ['healthcare', 'store', 'misc', 'senior_residency']:
             obs_payload['n_people_workplace'] = 'many people'
         elif "workplace" == human.workplace.location_type:
             obs_payload['n_people_workplace'] = 'few people'
@@ -518,10 +553,10 @@ class Event:
 
         obs_payload['household_size'] = len(human.household.residents)
 
-        city.events.append(
+        human.events.append(
             {
                 'human_id': human.name,
-                'event_type':Event.log_info,
+                'event_type':Event.static_info,
                 'time':time,
                 'payload':{
                     'observed': obs_payload,
@@ -550,4 +585,16 @@ class DummyEvent:
 
     @staticmethod
     def log_exposed(*args, **kwargs):
+        pass
+
+    @staticmethod
+    def log_static_info(*args, **kwargs):
+        pass
+
+    @staticmethod
+    def log_visit(*args, **kwargs):
+        pass
+
+    @staticmethod
+    def log_daily(*args, **kwargs):
         pass
