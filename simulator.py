@@ -119,10 +119,11 @@ class Human(object):
 
         # counters and memory
         self.r0 = []
-        self.has_logged_symptoms = self.has_app and any(self.symptoms) and rng.rand() < 0.5
-        self.has_logged_test = self.has_app and self.test_results and rng.rand() < 0.5
+        self.has_logged_symptoms = False
+        self.will_log_symtpoms = self.has_app and any(self.symptoms) and rng.rand() < 0.5
+        self.has_logged_test = False
+        self.will_log_test = self.has_app and self.test_results and rng.rand() < 0.5
         self.has_logged_info = self.has_app and rng.rand() < 0.5
-        self.has_logged_symptoms = self.has_app and any(self.symptoms) and rng.rand() < 0.5
         self.last_state = self.state
         self.n_infectious_contacts = 0
 
