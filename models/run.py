@@ -8,6 +8,7 @@ import subprocess
 import numpy as np
 import operator
 import datetime
+import time
 from tqdm import tqdm
 from collections import defaultdict
 from base import Event
@@ -28,12 +29,15 @@ parser.add_argument('--save_training_data', action="store_true")
 
 
 def main(args):
-    # Define constants
-    SIGNIFICANT_RISK_LEVEL_CHANGE = 0.0625
-
     # read and filter the pickles
-    with open(args.data_path, "rb") as f:
-        logs = pickle.load(f)
+    if os.path.isdir(args.data_path):
+        logs = []
+        for f in os.listdir(args.data_path):
+            with open(os.path.join(args.data_path, f), 'rb') as open_f:
+                logs.extend(pickle.load(open_f))
+    else:
+        with open(args.data_path, "rb") as f:
+            logs = pickle.load(f)
 
     # select the risk model
     if args.risk_model == 'yoshua':
@@ -72,7 +76,7 @@ def main(args):
     rng = np.random.RandomState(args.seed)
     hd = {}
     for human_id in human_ids:
-        hd[human_id] = DummyHuman(name=human_id, timestamp=start, rng=rng)
+        hd[human_id] = DummyHuman(name=human_id, rng=rng)
         hd[human_id].update_uid()
 
     # Sort encounter logs by time and then by human id
@@ -84,6 +88,7 @@ def main(args):
     for log in enc_logs:
         day_since_epoch = (log['time'] - start).days
         logs[hash_id_day(log['human_id'], day_since_epoch)].append(log)
+        # hd[human_id].add_infectiousness_and_viral_load(day_since_epoch, log)
 
     all_possible_symptoms = set()
     for log in symp_logs:
@@ -112,27 +117,24 @@ def main(args):
     daily_risks = []
     days = (enc_logs[-1]['time'] - enc_logs[0]['time']).days
     for current_day in tqdm(range(days)):
+        starttime = time.time()
+
         daily_output = {}
         for hid, human in hd.items():
             start_risk = human.risk
             todays_date = start + datetime.timedelta(days=current_day)
-
             # update your quantized uid and shuffle the messages (following privacy protocol)
             human.update_uid()
-            human.shuffle_messages()
+            # human.shuffle_messages()
 
             # check if you have new reported symptoms
             human.risk = RiskModel.update_risk_daily(human, todays_date)
 
             # read your old messages
             for m_i in human.messages:
-                human.timestamp = m_i[0]
                 # update risk based on that day's messages
                 RiskModel.update_risk_encounter(human, m_i)
 
-            for m_i in human.update_messages:
-                human.timestamp = m_i[0]
-                RiskModel.update_risk_risk_update(human, m_i, rng)
 
             # go about your day and accrue encounters
             encounters = logs[hash_id_day(human.name, current_day)]
@@ -141,19 +143,22 @@ def main(args):
                 encounter_time = encounter['time']
                 unobs = encounter['payload']['unobserved']
                 encountered_human = hd[unobs['human2']['human_id']]
-                message = encountered_human.cur_message(current_day)
-                human.sent_messages[str(unobs['human2']['human_id']) + "_" + str(encounter_time)] = message
+                message = encountered_human.cur_message(current_day, RiskModel)
+                encountered_human.sent_messages[str(unobs['human1']['human_id']) + "_" + str(encounter_time)] = message
                 human.messages.append(message)
                 RiskModel.add_message_to_cluster(human, message, rng)
 
-            if start_risk >= human.risk + SIGNIFICANT_RISK_LEVEL_CHANGE or start_risk <= human.risk - SIGNIFICANT_RISK_LEVEL_CHANGE:
+            if RiskModel.quantize_risk(start_risk) != RiskModel.quantize_risk(human.risk):
                 for k, m in human.sent_messages.items():
                     # if the encounter happened within the last 14 days, and your symptoms started at most 3 days after your contact
                     if current_day - m.day < 14:
-                        hd[m.unobs_id].update_messages.append(human.cur_message_risk_update(m.day, m.risk))
+                        hd[m.unobs_id].update_messages.append(human.cur_message_risk_update(m.day, m.risk, RiskModel))
+
+            for m_i in human.update_messages:
+                RiskModel.update_risk_risk_update(human, m_i, rng)
 
             # append the updated risk for this person and whether or not they are actually infectious
-            daily_risks.append((human.risk, human.is_infectious, human.name))
+            daily_risks.append((np.e ** human.risk, human.is_infectious(todays_date)[0], human.name))
             human.purge_messages(current_day)
 
             # for each sim day, for each human, save an output training example
@@ -166,13 +171,13 @@ def main(args):
                 daily_output[human.name] = {"current_day": current_day,
                                             "observed":
                                                 {
-                                                    "reported_symptoms": symptoms_to_np(human.reported_symptoms_at_time(todays_date), all_possible_symptoms),
+                                                    "reported_symptoms": symptoms_to_np((todays_date - human.symptoms_start).days, human.symptoms_at_time(todays_date,  human.all_reported_symptoms), all_possible_symptoms),
                                                     "messages": messages_to_np(human),
                                                     "test_results": human.get_test_result_array(todays_date),
                                                  },
                                             "unobserved":
                                                 {
-                                                    "true_symptoms": symptoms_to_np(human.symptoms_at_time(todays_date), all_possible_symptoms),
+                                                    "true_symptoms": symptoms_to_np((todays_date - human.symptoms_start).days, human.symptoms_at_time(todays_date, human.all_symptoms), all_possible_symptoms),
                                                     "is_exposed": is_exposed,
                                                     "exposure_day": exposure_day,
                                                     "is_infectious": is_infectious,
@@ -186,6 +191,7 @@ def main(args):
         all_risks.extend(daily_risks)
         all_outputs.append(daily_output)
         daily_risks = []
+        print(f"day: {time.time() - starttime}")
     if args.save_training_data:
         pickle.dump(all_outputs, open(args.output_file, 'wb'))
     dist_plot(all_risks,  f"{args.plot_path}all_risks.png")
@@ -195,11 +201,10 @@ def main(args):
     output, error = process.communicate()
 
     # write out the clusters to be processed by privacy_plots
-    if hd[0].M:
-        clusters = []
-        for human in hd.values():
-            clusters.append(human.M)
-        json.dump(clusters, open(args.cluster_path, 'w'))
+    clusters = []
+    for human in hd.values():
+        clusters.append(human.M)
+    json.dump(clusters, open(args.cluster_path, 'w'))
 
 
 if __name__ == "__main__":

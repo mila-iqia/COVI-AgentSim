@@ -301,17 +301,19 @@ def compute_distance(loc1, loc2):
 
 def _encode_message(message):
 	# encode a contact message as a string
-	# TODO: clean up the bitarray => string transformation
-	return str(np.array(message[0].tolist()).astype(int).tolist()) + "_" + str(np.array(message[1].tolist()).astype(int).tolist()) + "_" + str(message[2]) + "_" + str(message[3])
+	return str(np.array(message.uid.tolist()).astype(int).tolist()) + "_" + str(message.risk) + "_" + str(message.day) + "_" + str(message.unobs_id)
 
 def _decode_message(message):
 	# decode a string-encoded message into a tuple
 	# TODO: make this a namedtuple
 	uid, risk, day, unobs_id = message.split("_")
 	obs_uid = bitarray(json.loads(uid))
-	risk = bitarray(json.loads(risk))
+	risk = int(risk)
 	day = int(day)
-	unobs_uid = int(unobs_id)
+	try:
+		unobs_uid = int(unobs_id)
+	except Exception:
+		unobs_uid = int(unobs_id.split(":")[1])
 	return obs_uid, risk, day, unobs_uid
 
 @lru_cache(500)
@@ -333,9 +335,3 @@ def float_to_binary(x, m, n):
 def binary_to_float(bstr, m, n):
     """Convert a binary string in the format '00101010100' to its float value."""
     return int(bstr, 2) / 2 ** n
-
-def quantize_risk(risk):
-	"""quantizes the risk in order to be used in a message"""
-	if risk > 0.9375:
-		return bitarray('1111')
-	return bitarray(float_to_binary(float(risk), 0, 4))
