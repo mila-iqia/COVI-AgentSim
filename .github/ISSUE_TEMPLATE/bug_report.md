@@ -1,6 +1,14 @@
+---
+name: Bug report
+about: Create a report to help us improve
+title: ''
+labels: ''
+assignees: ''
+---
+
 # Prerequisites
 
-Please answer the following questions for yourself before submitting an issue. **YOU MAY DELETE THE PREREQUISITES SECTION.**
+Please answer the following questions for yourself before submitting an issue.
 
 - [ ] I am running the latest version
 - [ ] I checked the documentation and found no answer
@@ -14,9 +22,9 @@ Please describe the behavior you are expecting
 
 What is the current behavior?
 
-# Failure Information (for bugs)
+# Failure Information
 
-Please help provide information about the failure if this is a bug. If it is not a bug, please remove the rest of this template.
+Please help provide information about the failure.
 
 ## Steps to Reproduce
 
