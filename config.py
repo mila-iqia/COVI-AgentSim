@@ -156,50 +156,35 @@ WORK_FROM_HOME = False
 P_HAS_APP = 0.5 # &has_app
 P_CAREFUL_PERSON = 0.3 # &carefulness
 
-INFECTIOUSNESS_ONSET_DAYS = 2.5 # relative to incubation days
-
-# RISK MODEL PARAMETERS
-RISK_TRANSMISSION_PROBA = 0.01
-RISK_WITH_TRUE_SYMPTOMS = False
-CLIP_RISK = False
-
-#                   0-9 10-19 20-29  30-39  40-49  50-59 60-69 70-79  80-  # Assuming dath rate to be same for 80 and above
-P_NEVER_RECOVERS = [0, 0.002, 0.002, 0.002, 0.004, 0.02, 0.04, 0.08, 0.15] # &never_recovers
-REINFECTION_POSSIBLE = 0 # [0, 1]
-
-
 # DISEASE PARAMETERS
 AVG_INCUBATION_DAYS = 5 # &avg-incubation-days
-SCALE_INCUBATION_DAYS = 1
+SCALE_INCUBATION_DAYS = 0.5
+INFECTIOUSNESS_ONSET_DAYS = 2.5 # relative to incubation days
 AVG_RECOVERY_DAYS = 14
 SCALE_RECOVERY_DAYS = 4
 INFECTION_RADIUS = 200 # cms
 INFECTION_DURATION = 15 # minutes
-
-BASELINE_P_ASYMPTOMATIC = 80 # &p-asymptomatic
-ASYMPTOMATIC_INFECTION_RATIO = 0.1 # &prob_infectious
-
-RISK_TRANSMISSION_PROBA = 0.01
-RISK_WITH_TRUE_SYMPTOMS = False
-CLIP_RISK = True
-
 #                   0-9 10-19 20-29  30-39  40-49  50-59 60-69 70-79  80-  # Assuming dath rate to be same for 80 and above
 P_NEVER_RECOVERS = [0, 0.002, 0.002, 0.002, 0.004, 0.02, 0.04, 0.08, 0.15] # &never_recovers
 REINFECTION_POSSIBLE = 0 # [0, 1]
-
 # aerosol    copper      cardboard       steel       plastic
 MAX_DAYS_CONTAMINATION = [0.125, 1.0/3.0, 1, 2, 3] # &envrionmental contamination
-
+TEST_DAYS = 2
 P_TEST = 0.5
 P_FALSE_NEGATIVE = 0.1 #&false-negative # 0  1   2    3   4    5   6    7    8
 VIRAL_LOAD_MIN = 0.0001
+
+# ASYMTPOMATIC
+BASELINE_P_ASYMPTOMATIC = 80 # &p-asymptomatic
+ASYMPTOMATIC_INFECTION_RATIO = 0.1 # &prob_infectious
+
+# OTHER TRANSMISSIBLE DISEASES
 P_COLD = 0.1 # &p-cold
 P_FLU = 0.05 # &p-flu
 
-TEST_DAYS = 2 #
-
 MASK_EFFICACY_NORMIE = 0.32
 MASK_EFFICACY_HEALTHWORKER = 0.98
+BASELINE_P_MASK = 0.5
 
 # SIMULATION PARAMETERS
 TICK_MINUTE = 2  # @param increment
@@ -275,6 +260,11 @@ PLEATEAU_DURATION_STD=3.
 PLATEAU_DURATION_CLIP_LOW = 3.
 PLATEAU_DURATION_CLIP_HIGH = 9.
 
+# RISK MODEL PARAMETERS
+RISK_TRANSMISSION_PROBA = 0.01
+RISK_WITH_TRUE_SYMPTOMS = False
+CLIP_RISK = False
+
 # KNOBS
-CONTAGION_KNOB = 0.9
+CONTAGION_KNOB = 1.0
 ENVIRONMENTAL_INFECTION_KNOB = 0.01
