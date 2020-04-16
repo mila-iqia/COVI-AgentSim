@@ -127,7 +127,7 @@ def test():
     suite = loader.discover(start_dir, pattern='*_test.py')
 
     runner = unittest.TextTestRunner()
-    runner.run(suite)
+    assert runner.run(suite).wasSuccessful()
 
 
 
