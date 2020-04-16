@@ -593,3 +593,7 @@ class DummyEvent:
     @staticmethod
     def log_visit(*args, **kwargs):
         pass
+
+    @staticmethod
+    def log_daily(*args, **kwargs):
+        pass
