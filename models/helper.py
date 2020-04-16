@@ -12,10 +12,7 @@ def messages_to_np(messages):
             old_risk = np.zeros(4)
 
         m_enc = np.concatenate([uid, risk, old_risk])
-        try:
-            ms_enc[idx] = m_enc
-        except Exception:
-            import pdb; pdb.set_trace()
+        ms_enc[idx] = m_enc
     return ms_enc
 
 def symptoms_to_np(all_symptoms, all_possible_symptoms):
