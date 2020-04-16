@@ -62,6 +62,8 @@ class City(object):
         print("Initializing humans ...")
         self.initialize_humans(Human)
 
+        self.log_static_info()
+
         print("Computing their preferences")
         self._compute_preferences()
         self.tracker = Tracker(env, self)
@@ -133,7 +135,9 @@ class City(object):
                 elif profession[i] == 'school':
                     workplace = self.rng.choice(self.schools)
                 elif profession[i] == 'others':
-                    workplace = self.rng.choice(self.workplaces)
+                    type_of_workplace = self.rng.choice([0,1,2], p=OTHERS_WORKPLACE_CHOICE, size=1).item()
+                    type_of_workplace = [self.workplaces, self.stores, self.miscs][type_of_workplace]
+                    workplace = self.rng.choice(type_of_workplace)
                 else:
                     workplace = res
 
@@ -196,6 +200,10 @@ class City(object):
         area = _get_random_area(len(self.households), LOCATION_DISTRIBUTION['household']['area'] * self.total_area, self.rng)
         for i,house in enumerate(self.households):
             house.area = area[i]
+
+    def log_static_info(self):
+        for h in self.humans:
+            Event.log_human_info(self, h)
 
     @property
     def events(self):
@@ -364,12 +372,13 @@ class Event:
 
     @staticmethod
     def log_encounter(human1, human2, location, duration, distance, infectee, time):
-        h_obs_keys   = ['obs_age', 'has_app', 'obs_preexisting_conditions',
-                        'obs_symptoms', 'obs_test_result', 'obs_test_type',
-                        'obs_hospitalized', 'obs_in_icu', 'wearing_mask',
-                        'obs_lat', 'obs_lon', 'preexisting_conditions']
 
-        h_unobs_keys = ['age', 'carefulness', 'viral_load', 'infectiousness',
+        h_obs_keys   = ['has_app', 'has_app', 'obs_preexisting_conditions',
+                        'obs_symptoms',
+                        'obs_hospitalized', 'obs_in_icu', 'wearing_mask',
+                        'obs_lat', 'obs_lon']
+
+        h_unobs_keys = ['carefulness', 'viral_load', 'infectiousness',
                         'symptoms', 'is_exposed', 'is_infectious',
                         'infection_timestamp', 'really_sick',
                         'extremely_sick', 'sex']
@@ -490,6 +499,35 @@ class Event:
                         'death': death
                     }
                 }
+            }
+        )
+
+    @staticmethod
+    def log_static_info(city, human, time):
+        h_obs_keys = ['obs_preexisting_conditions',  "obs_age", "obs_sex"]
+        h_unobs_keys = ['preexisting_conditions', "age", "sex"]
+        obs_payload = {key:getattr(human, key) for key in h_obs_keys}
+        unobs_payload = {key:getattr(human, key) in h_unobs_keys}
+
+        if sum(x in human.workplace.location_type == x in ['healthcare', 'store', 'misc', 'seniro_residency']) > 0:
+            obs_payload['n_people_workplace'] = 'many people'
+        elif "workplace" == human.workplace.location_type:
+            obs_payload['n_people_workplace'] = 'few people'
+        else:
+            obs_payload['n_people_workplace'] = 'no people outside my household'
+
+        obs_payload['household_size'] = len(human.household.residents)
+
+        city.events.append(
+            {
+                'human_id': human.name,
+                'event_type':Event.log_info,
+                'time':time,
+                'payload':{
+                    'observed': obs_payload,
+                    'unobserved':unobs_payload
+                }
+
             }
         )
 
