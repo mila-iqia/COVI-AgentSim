@@ -57,12 +57,15 @@ class City(object):
         self.n_people = n_people
         self.start_time = start_time
         self.init_percent_sick = init_percent_sick
+        print("Initializing locations ...")
         self.initialize_locations()
 
         self.humans = []
         self.households = OrderedSet()
+        print("Initializing humans ...")
         self.initialize_humans(Human)
 
+        print("Computing their preferences")
         self._compute_preferences()
         self.tracker = Tracker(env, self)
 
@@ -145,7 +148,7 @@ class City(object):
                         household=res,
                         workplace=workplace,
                         profession=profession[i],
-                        rho=0.3,
+                        rho=0.1,
                         gamma=0.21,
                         infection_timestamp=self.start_time if self.rng.random() < self.init_percent_sick else None
                         )
@@ -249,7 +252,6 @@ class Location(simpy.Resource):
     def is_contaminated(self):
         return self.env.timestamp - self.contamination_timestamp <= datetime.timedelta(days=self.max_day_contamination)
 
-
     @property
     def contamination_probability(self):
         if self.is_contaminated:
@@ -286,13 +288,42 @@ class Household(Location):
 
 
 class Hospital(Location):
+    ICU_AREA = 0.10
+    ICU_CAPACITY = 0.10
+    def __init__(self, **kwargs):
+        env = kwargs.get('env')
+        rng = kwargs.get('rng')
+        capacity = kwargs.get('capacity')
+        name = kwargs.get("name")
+        lat = kwargs.get('lat')
+        lon = kwargs.get('lon')
+        area = kwargs.get('area')
+        surface_prob = kwargs.get('surface_prob')
+        social_contact_factor = kwargs.get('social_contact_factor')
 
-    def __init__(self, env, rng, capacity=simpy.core.Infinity, name='vgh', location_type='hospital', lat=None,
-                 lon=None, area=None, social_contact_factor=None, surface_prob=[0.2, 0.2, 0.2, 0.2, 0.2]):
-        super().__init__(env=env, rng=rng, capacity=capacity, name=name, location_type=location_type, lat=lat, lon=lon, social_contact_factor=social_contact_factor, surface_prob=surface_prob, area=area)
+        super(Hospital, self).__init__( env=env,
+                                        rng=rng,
+                                        area=area * (1-self.ICU_AREA),
+                                        name=name,
+                                        location_type="hospital",
+                                        lat=lat,
+                                        lon=lon,
+                                        social_contact_factor=social_contact_factor,
+                                        capacity=int(capacity* (1- self.ICU_CAPACITY)),
+                                        surface_prob=surface_prob,
+                                        )
         self.location_contamination = 1
-        self.icu = ICU(env=env, rng=rng, hospital=self, capacity=capacity/50, name=f"{name}_icu", location_type='icu', lat=lat, lon=lon,
-                            area=None, surface_prob=surface_prob, social_contact_factor=social_contact_factor)
+        self.icu = ICU( env=env,
+                        rng=rng,
+                        area=area * (self.ICU_AREA),
+                        name=f"{name}-icu",
+                        location_type="hospital-icu",
+                        lat=lat,
+                        lon=lon,
+                        social_contact_factor=social_contact_factor,
+                        capacity=int(capacity* (self.ICU_CAPACITY)),
+                        surface_prob=surface_prob,
+                        )
 
     def add_human(self, human):
         human.obs_hospitalized = True
@@ -305,10 +336,8 @@ class Hospital(Location):
 
 class ICU(Location):
 
-    def __init__(self, env, rng, hospital, capacity=simpy.core.Infinity, name='icu', location_type='icu', lat=None,
-                 lon=None, area=None, social_contact_factor=None, surface_prob=[0.2, 0.2, 0.2, 0.2, 0.2]):
-        super().__init__(env=env, rng=rng, area=area, capacity=capacity, name=name, location_type=location_type, lat=lat, lon=lon, surface_prob=surface_prob, social_contact_factor=social_contact_factor)
-        self.hospital = hospital
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
     def add_human(self, human):
         human.obs_hospitalized = True
