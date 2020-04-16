@@ -55,6 +55,8 @@ def main(args):
     test_logs = []
     recovered_logs = []
     contamination_logs = []
+    static_info_logs = []
+    visit_logs = []
     start = logs[0]['time']
     for log in logs:
         human_ids.add(log['human_id'])
@@ -68,6 +70,10 @@ def main(args):
             test_logs.append(log)
         elif log['event_type'] == Event.contamination:
             contamination_logs.append(log)
+        elif log['event_type'] == Event.static_info:
+            static_info_logs.append(log)
+        elif log['event_type'] == Event.visit:
+            visit_logs.append(log)
         else:
             print(log['event_type'])
             raise "NotImplemented Log"
@@ -113,6 +119,8 @@ def main(args):
         hd[log['human_id']].infectiousness_start_time = log['time']
         hd[log['human_id']].exposure_source = log['payload']['unobserved']['source']
 
+    for log in visit_logs:
+        import pdb; pdb.set_trace()
     all_outputs = []
     all_risks = []
     daily_risks = []
