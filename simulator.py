@@ -405,6 +405,9 @@ class Human(object):
                 self.count_exercise=0
                 self.count_shop=0
 
+            if hour == 0:
+                Event.log_daily(self, self.env.timestamp)
+
             # self.how_am_I_feeling = 1.0 (great) --> rest_at_home = False
             # self.how_am_I_feeling = 0.0 (worst) --> rest_at_home = True
             if not self.rest_at_home:

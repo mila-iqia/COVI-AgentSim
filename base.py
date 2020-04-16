@@ -366,15 +366,15 @@ class Event:
     recovered = 'recovered'
     static_info = 'static_info'
     visit = 'visit'
+    daily = 'daily'
 
     @staticmethod
     def members():
-        return [Event.test, Event.encounter, Event.symptom_start, Event.contamination, Event.static_info, Event.visit]
+        return [Event.test, Event.encounter, Event.symptom_start, Event.contamination, Event.static_info, Event.visit, Event.daily]
 
     @staticmethod
     def log_encounter(human1, human2, location, duration, distance, infectee, time):
         h_obs_keys   = ['has_app',
-                        'obs_symptoms',
                         'obs_hospitalized', 'obs_in_icu', 'wearing_mask',
                         'obs_lat', 'obs_lon']
 
@@ -438,6 +438,23 @@ class Event:
                     'unobserved':{
                     }
 
+                }
+            }
+        )
+
+    @staticmethod
+    def log_daily(human, time):
+        human.events.append(
+            {
+                'human_id': human.name,
+                'event_type': Event.daily,
+                'time': time,
+                'payload': {
+                    'observed':{
+                    },
+                    'unobserved':{
+                        'infectiousness': human.infectiousness,
+                    }
                 }
             }
         )
