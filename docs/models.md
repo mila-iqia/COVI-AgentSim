@@ -20,9 +20,8 @@ For each day in the simulation, for each person, we do simulate the workings of 
 * Every day,
     * autorotating code is updated 
     * user checks for new received messages and extracts risk levels in a table with (risk level, day) keeping only those of the last 14 days
-    * user adds up the risk probabilities (risk levels are converted to probabilities between 0 and 1 by the inverse of the probability encoding table) of last 14 days
-    * user clusters their messages, and applies updates based on their new `risk_update` messages
-    * the user's new list of messages are plugged into a Risk Model (Tristan's formula in app V1) to compute a new risk probability for this user
+    * risk levels from the last 14 days are converted to probabilities between 0 and 1 by the inverse of the probability encoding table
+    * user clusters their messages, and applies updates based on their new `risk_update` messages to determine this user's current risk
     * this new risk probability is quantized by the probability encoding table to obtain a 4-bit code (0 to F)
     * if the new code is different from the old code, it is broadcast to all the contacts of the past 14 days (with the usual format (old risk, new risk, autorotating code)
     * the user purges messages older than 14 days
@@ -59,12 +58,12 @@ For each person, for each day, this file contains data in the form:
 "observed":
     {
         "reported_symptoms": np.array((rolling_num_days, num_possible_symptoms)), #rolling_num_days is 14
-        "messages": np.array((num_messages, msg_dim)), #msg_dim = 4bit uid (will be cluster id int soon) + 4bit risk 
+        "messages": np.array((num_messages, msg_dim)), #msg_dim = int cluster id [0, n] + float risk [0., 1.] + int day [0, -13]
         "test_results": np.array(rolling_num_days), # binary test_results on one of the last 14 days
      },
 "unobserved":
     {
-        "true_symptoms": symptoms_to_np(human.symptoms_at_time(todays_date), all_possible_symptoms),
+        "true_symptoms": np.array((rolling_num_days, num_possible_symptoms)),
         "is_exposed": is_exposed, # bool
         "exposure_day": exposure_day, # 0 to -13
         "is_infectious": is_infectious,  # bool
