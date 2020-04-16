@@ -3,6 +3,7 @@ import os
 sys.path.append(os.getcwd())
 import pickle
 import json
+import zipfile
 import argparse
 import subprocess
 import numpy as np
@@ -30,14 +31,14 @@ parser.add_argument('--save_training_data', action="store_true")
 
 def main(args):
     # read and filter the pickles
-    if os.path.isdir(args.data_path):
-        logs = []
-        for f in os.listdir(args.data_path):
-            with open(os.path.join(args.data_path, f), 'rb') as open_f:
-                logs.extend(pickle.load(open_f))
-    else:
-        with open(args.data_path, "rb") as f:
-            logs = pickle.load(f)
+    logs = []
+    with zipfile.ZipFile(args.data_path, 'r') as zf:
+        import pdb; pdb.set_trace()
+        logs.extend([pickle.load(zf.open(pkl, 'r')) for pkl in zf.namelist()])
+
+    # Sort the logs
+    import pdb; pdb.set_trace()
+    logs.sort(key=lambda e: (int(e['human_id'][6:]), e['time']))
 
     # select the risk model
     if args.risk_model == 'yoshua':
@@ -111,6 +112,7 @@ def main(args):
 
     for log in contamination_logs:
         hd[log['human_id']].time_of_exposure = log['time']
+        import pdb; pdb.set_trace()
 
     all_outputs = []
     all_risks = []
