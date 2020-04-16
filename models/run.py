@@ -33,11 +33,10 @@ def main(args):
     # read and filter the pickles
     logs = []
     with zipfile.ZipFile(args.data_path, 'r') as zf:
-        import pdb; pdb.set_trace()
-        logs.extend([pickle.load(zf.open(pkl, 'r')) for pkl in zf.namelist()])
+        for pkl in zf.namelist():
+            logs.extend(pickle.load(zf.open(pkl, 'r')))
 
     # Sort the logs
-    import pdb; pdb.set_trace()
     logs.sort(key=lambda e: (int(e['human_id'][6:]), e['time']))
 
     # select the risk model
@@ -94,7 +93,6 @@ def main(args):
     all_possible_symptoms = set()
     for log in symp_logs:
         hd[log['human_id']].symptoms_start = log['time']
-        hd[log['human_id']].time_of_infectiousness_start = log['time'] - datetime.timedelta(days=3)
         hd[log['human_id']].all_reported_symptoms = log['payload']['observed']['reported_symptoms']
         hd[log['human_id']].all_symptoms = log['payload']['unobserved']['all_symptoms']
         for symptoms in hd[log['human_id']].all_symptoms:
@@ -112,7 +110,8 @@ def main(args):
 
     for log in contamination_logs:
         hd[log['human_id']].time_of_exposure = log['time']
-        import pdb; pdb.set_trace()
+        hd[log['human_id']].infectiousness_start_time = log['time']
+        hd[log['human_id']].exposure_source = log['payload']['unobserved']['source']
 
     all_outputs = []
     all_risks = []

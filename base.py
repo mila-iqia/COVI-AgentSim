@@ -466,8 +466,6 @@ class Event:
                     'unobserved':{
                       'exposed': True,
                       'source':source.name,
-                      'source_is_location': 'human' not in source.name,
-                      'source_is_human': 'human' in source.name,
                       'infectiousness_start_time': human.infection_timestamp + datetime.timedelta(days=human.incubation_days - INFECTIOUSNESS_ONSET_DAYS)
                     }
 
