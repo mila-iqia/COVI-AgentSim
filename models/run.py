@@ -117,7 +117,7 @@ def main(args):
             start_risk = human.risk
             todays_date = start + datetime.timedelta(days=current_day)
 
-            # update your quantized uid
+            # update your quantized uid and shuffle the messages (following privacy protocol)
             human.update_uid()
             human.shuffle_messages()
 
@@ -167,7 +167,7 @@ def main(args):
                                             "observed":
                                                 {
                                                     "reported_symptoms": symptoms_to_np(human.reported_symptoms_at_time(todays_date), all_possible_symptoms),
-                                                    "messages": messages_to_np(human.messages),
+                                                    "messages": messages_to_np(human),
                                                     "test_results": human.get_test_result_array(todays_date),
                                                  },
                                             "unobserved":

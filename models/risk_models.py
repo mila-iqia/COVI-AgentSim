@@ -75,21 +75,20 @@ class RiskModelBase:
         # TODO: refactor to compare multiple clustering schemes
         # TODO: check for mutually exclusive messages in order to break up a group and re-run nearest neighbors
         m_i_enc = _encode_message(m_i)
-        m_risk = binary_to_float("".join([str(x) for x in np.array(m_i[1].tolist()).astype(int)]), 0, 4)
 
         # otherwise score against previous messages
         scores = cls.score_matches(human, m_i)
-
         if scores:
             max_score_message = max(scores.items(), key=operator.itemgetter(1))[0] # note, this is not a random selection between ties
-            human.M[m_i_enc] = human.M[max_score_message]
+            if scores[max_score_message] >= 0:
+                human.M[m_i_enc] = human.M[max_score_message]
+            # if there was no nearby neighbor
+            else:
+                new_group = max([v for k, v in human.M.items()]) + 1
+                human.M[m_i_enc] = new_group
         # if it's either the first message
-        elif len(human.M) == 0:
-            human.M[m_i_enc] = 0
-        # if there was no nearby neighbor
         else:
-            new_group = max([v for k, v in human.M.items()]) + 1
-            human.M[m_i_enc] = new_group
+            human.M[m_i_enc] = 0
         return m_i_enc
 
 class RiskModelLenka(RiskModelBase):
