@@ -128,15 +128,14 @@ class City(object):
                 res = None
                 if self.rng.random() < senior_residency_preference:
                     res = self.rng.choice(self.senior_residencys)
-
                 # workplace
                 if profession[i] == "healthcare":
                     workplace = self.rng.choice(self.hospitals + self.senior_residencys)
                 elif profession[i] == 'school':
                     workplace = self.rng.choice(self.schools)
                 elif profession[i] == 'others':
-                    type_of_workplace = self.rng.choice([0,1,2], p=OTHERS_WORKPLACE_CHOICE, size=1)
-                    type_of_workplace = [self.workplace, self.stores, self.miscs][type_of_workplace]
+                    type_of_workplace = self.rng.choice([0,1,2], p=OTHERS_WORKPLACE_CHOICE, size=1)[0]
+                    type_of_workplace = [self.workplaces, self.stores, self.miscs][type_of_workplace]
                     workplace = self.rng.choice(type_of_workplace)
                 else:
                     workplace = res
@@ -203,7 +202,7 @@ class City(object):
 
     def log_static_info(self):
         for h in self.humans:
-            Event.log_human_info(self, h)
+            Event.log_static_info(self, h, self.env.timestamp)
 
     @property
     def events(self):
@@ -506,9 +505,9 @@ class Event:
         h_obs_keys = ['obs_preexisting_conditions',  "obs_age", "obs_sex"]
         h_unobs_keys = ['preexisting_conditions', "age", "sex"]
         obs_payload = {key:getattr(human, key) for key in h_obs_keys}
-        unobs_payload = {key:getattr(human, key) in h_unobs_keys}
+        unobs_payload = {key:getattr(human, key) for key in h_unobs_keys}
 
-        if sum(x in human.workplace.location_type == x in ['healthcare', 'store', 'misc', 'seniro_residency']) > 0:
+        if human.workplace.location_type in ['healthcare', 'store', 'misc', 'senior_residency']:
             obs_payload['n_people_workplace'] = 'many people'
         elif "workplace" == human.workplace.location_type:
             obs_payload['n_people_workplace'] = 'few people'
@@ -520,7 +519,7 @@ class Event:
         city.events.append(
             {
                 'human_id': human.name,
-                'event_type':Event.log_info,
+                'event_type':Event.log_static_info,
                 'time':time,
                 'payload':{
                     'observed': obs_payload,

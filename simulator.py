@@ -605,7 +605,7 @@ class Human(object):
             city.tracker.track_infection('env', from_human=None, to_human=self, location=location, timestamp=self.env.timestamp)
             self.historical_infection_timestamp = self.env.timestamp
             # print(f"{self.name} is enfected at {location}")
-
+        import pdb; pdb.set_trace()
         location.remove_human(self)
 
 
