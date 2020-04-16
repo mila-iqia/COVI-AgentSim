@@ -161,7 +161,7 @@ class Human(object):
         self.max_shop_per_week = _draw_random_discreet_gaussian(AVG_MAX_NUM_SHOP_PER_WEEK, SCALE_MAX_NUM_SHOP_PER_WEEK, self.rng)
         self.count_shop=0
 
-        #Limiting the number of hours spent exercising per week
+        # Limiting the number of hours spent exercising per week
         self.max_exercise_per_week = _draw_random_discreet_gaussian(AVG_MAX_NUM_EXERCISE_PER_WEEK, SCALE_MAX_NUM_EXERCISE_PER_WEEK, self.rng)
         self.count_exercise=0
 
@@ -594,7 +594,7 @@ class Human(object):
                                     infectee=infectee,
                                     time=self.env.timestamp
                                     )
-
+        Event.log_visit(h, self.env.timestamp, location)
         yield self.env.timeout(duration / TICK_MINUTE)
 
         # environmental transmission

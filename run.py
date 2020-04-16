@@ -22,22 +22,26 @@ def simu():
 @click.option('--n_people', help='population of the city', type=int, default=100)
 @click.option('--init_percent_sick', help='% of population initially sick', type=float, default=0.01)
 @click.option('--simulation_days', help='number of days to run the simulation for', type=int, default=30)
-@click.option('--out_chunk_size', help='number of events per dump in outfile', type=int, default=25000, required=False)
-@click.option('--print_progress', is_flag=True, help='print the evolution of days', default=False)
+@click.option('--out_chunk_size', help='number of events per dump in outfile', type=int, default=2500, required=False)
+@click.option('--outdir', help='the directory to write data to', type=str, default="output", required=False)
+@click.option('--print_progress', is_flag=True, help='print the evolution of days', default=True)
 @click.option('--seed', help='seed for the process', type=int, default=0)
 def sim(n_people=None,
         init_percent_sick=0,
         start_time=datetime.datetime(2020, 2, 28, 0, 0),
         simulation_days=10,
         outdir=None, out_chunk_size=None,
-        print_progress=False, seed=0):
+        print_progress=True, seed=0):
 
-    os.makedirs("output", exist_ok=True)
+    COLLECT_LOGS = True
+    if outdir is None:
+        outdir = "output"
 
-    outdir = f"output/sim_people-{n_people}_days-{simulation_days}_init-{init_percent_sick}_seed-{seed}_{datetime.datetime.now().strftime('%Y%m%d-%H%M%S')}"
+    os.makedirs(f"{outdir}", exist_ok=True)
+    outdir = f"{outdir}/sim_people-{n_people}_days-{simulation_days}_init-{init_percent_sick}_seed-{seed}_{datetime.datetime.now().strftime('%Y%m%d-%H%M%S')}"
     os.makedirs(outdir)
-    outfile = os.path.join(outdir, "data")
 
+    outfile = os.path.join(outdir, "data")
     monitors, tracker = run_simu(
         n_people=n_people,
         init_percent_sick=init_percent_sick,
@@ -53,7 +57,6 @@ def sim(n_people=None,
     # write metrics
     logfile = os.path.join(f"{outdir}/logs.txt")
     tracker.write_metrics(logfile)
-
 
 @simu.command()
 def base():
@@ -81,6 +84,7 @@ def base():
 @simu.command()
 @click.option('--seed', help='seed for the process', type=int, default=0)
 def tune(seed):
+    COLLECT_LOGS=False
     # extra packages required  - plotly-orca psutil networkx glob seaborn
     from simulator import Human
     import pandas as pd
