@@ -535,7 +535,7 @@ class Event:
 
         obs_payload['household_size'] = len(human.household.residents)
 
-        city.events.append(
+        human.events.append(
             {
                 'human_id': human.name,
                 'event_type':Event.static_info,
