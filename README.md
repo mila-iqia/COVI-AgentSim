@@ -27,14 +27,13 @@ Run the simulator as -
 python run.py sim --n_people 100 --n_stores 100 --n_parks 10 --n_misc 100 --init_percent_sick 0.01 --outfile data --seed 0
 ```
 
-The simulator will output a logfile to `output/data.pkl`. It is a `list` of `dict` which contains a log of the mobility activity of a population of humans in `mobility_simulator.py`.
-It also outputs a serialized version of the state of each `Human` object at the end of the simulation to `output/humans.pkl`.
+The simulator will output a logfile to `output/data.pkl`. It is a `list` of `dict` which contains a log of the mobility activity of a population of humans in `simulator.py`.
 
 Run the risk prediction algorithms as -
 ```
 python risk_prediction.py
 ```
-This file reads in the logs and human objects that are output from the simulator, and runs a risk prediction algorithm based on: 
+This file reads in the logs that are output from the simulator, and runs a risk prediction algorithm based on: 
  1) The reported symptoms of that individual, given they have the app.
  2) The encounters that individual had (which contain quantized user ids and risk levels).
  3) The risk update messages that are sent when a previously encountered user's risk level changes significantly.
