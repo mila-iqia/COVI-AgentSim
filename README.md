@@ -24,10 +24,10 @@ pip install -r requirements.txt
 ## How to run it using command line?
 Run the simulator as -
 ```
-python run.py sim --n_people 100 --n_stores 100 --n_parks 10 --n_misc 100 --init_percent_sick 0.01 --outfile data --seed 0
+python run.py sim --n_people 100 --init_percent_sick 0.01 --seed 0
 ```
 
-The simulator will output a logfile to `output/data.pkl`. It is a `list` of `dict` which contains a log of the mobility activity of a population of humans in `simulator.py`.
+The simulator will output a logfile to `output/sim_people-{N_PEOPLE}_days-{SIMULATION_DAYS}_init-{INIT_PERCENT_SICK}_seed-{SEED}_{DATE}-{TIME}/data.zip`. It is a .zip file of `list` of `dict` pickles which contains a log of the mobility activity of a population of humans in `simulator.py`.
 
 Run the risk prediction algorithms as -
 ```
