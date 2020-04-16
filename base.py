@@ -11,7 +11,7 @@ from config import TICK_MINUTE, MAX_DAYS_CONTAMINATION, LOCATION_DISTRIBUTION, H
 from utils import compute_distance, _get_random_area
 from collections import defaultdict
 from orderedset import OrderedSet
-from config import TICK_MINUTE, MAX_DAYS_CONTAMINATION
+from config import TICK_MINUTE, MAX_DAYS_CONTAMINATION, INFECTIOUSNESS_ONSET_DAYS
 from utils import compute_distance
 
 from track import Tracker
@@ -48,7 +48,7 @@ class Env(simpy.Environment):
 
 class City(object):
 
-    def __init__(self, env, n_people, rng, x_range, y_range, start_time, init_percent_sick, Human):
+    def __init__(self, env, n_people, rng, x_range, y_range, start_time, init_percent_sick, Human, sim_days):
         self.env = env
         self.rng = rng
         self.x_range = x_range
@@ -57,6 +57,7 @@ class City(object):
         self.n_people = n_people
         self.start_time = start_time
         self.init_percent_sick = init_percent_sick
+        self.sim_days=sim_days
         print("Initializing locations ...")
         self.initialize_locations()
 
@@ -150,7 +151,8 @@ class City(object):
                         profession=profession[i],
                         rho=0.1,
                         gamma=0.21,
-                        infection_timestamp=self.start_time if self.rng.random() < self.init_percent_sick else None
+                        infection_timestamp=self.start_time if self.rng.random() < self.init_percent_sick else None,
+                        sim_days=self.sim_days
                         )
                     )
 
@@ -362,28 +364,33 @@ class Event:
         return [Event.test, Event.encounter, Event.symptom_start, Event.contamination]
 
     @staticmethod
-    def log_encounter(human1, human2, location, duration, distance, time):
+    def log_encounter(human1, human2, location, duration, distance, infectee, time):
         h_obs_keys   = ['obs_age', 'has_app', 'obs_preexisting_conditions',
-                        'obs_symptoms', 'obs_test_result', 'obs_test_type',
-                        'obs_hospitalized', 'obs_in_icu',
-                        'obs_test_validated', 'obs_lat', 'obs_lon']
+                        'obs_symptoms',
+                        'obs_hospitalized', 'obs_in_icu', 'wearing_mask',
+                        'obs_lat', 'obs_lon', 'preexisting_conditions']
 
         h_unobs_keys = ['age', 'carefulness', 'viral_load', 'infectiousness',
                         'symptoms', 'is_exposed', 'is_infectious',
                         'infection_timestamp', 'really_sick',
-                        'extremely_sick']
+                        'extremely_sick', 'sex']
 
         loc_obs_keys = ['location_type', 'lat', 'lon']
         loc_unobs_keys = ['contamination_probability', 'social_contact_factor']
 
         obs, unobs = [], []
+
+        same_household = (human1.household.name == human2.household.name) & (location.name == human1.household.name)
         for human in [human1, human2]:
             o = {key:getattr(human, key) for key in h_obs_keys}
             obs.append(o)
             u = {key:getattr(human, key) for key in h_unobs_keys}
-            u['is_infected'] = human.is_exposed or human.is_infectious
             u['human_id'] = human.name
             u['location_is_residence'] = human.household == location
+            u['got_exposed'] = infectee == human.name if infectee else False
+            u['exposed_other'] = infectee != human.name if infectee else False
+            u['same_household'] = same_household
+            u['infectiousness_start_time'] = None if not u['got_exposed'] else human.infection_timestamp + datetime.timedelta(days=human.incubation_days - INFECTIOUSNESS_ONSET_DAYS)
             unobs.append(u)
         loc_obs = {key:getattr(location, key) for key in loc_obs_keys}
         loc_unobs = {key:getattr(location, key) for key in loc_unobs_keys}
@@ -409,7 +416,7 @@ class Event:
 
 
     @staticmethod
-    def log_test(human, result, time):
+    def log_test(human, test_result, test_type, time):
         human.events.append(
             {
                 'human_id': human.name,
@@ -417,7 +424,8 @@ class Event:
                 'time': time,
                 'payload': {
                     'observed':{
-                        'result': result,
+                        'result': test_result,
+                        'test_type':test_type
                     },
                     'unobserved':{
                     }
@@ -447,7 +455,7 @@ class Event:
         )
 
     @staticmethod
-    def log_exposed(human, time):
+    def log_exposed(human, source, time):
         human.events.append(
             {
                 'human_id': human.name,
@@ -457,7 +465,11 @@ class Event:
                     'observed':{
                     },
                     'unobserved':{
-                      'exposed': True
+                      'exposed': True,
+                      'source':source.name,
+                      'source_is_location': 'human' not in source.name,
+                      'source_is_human': 'human' in source.name,
+                      'infectiousness_start_time': human.infection_timestamp + datetime.timedelta(days=human.incubation_days - INFECTIOUSNESS_ONSET_DAYS)
                     }
 
                 }
