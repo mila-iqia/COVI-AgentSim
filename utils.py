@@ -16,6 +16,10 @@ def log(str, logfile=None, timestamp=False):
 		with open(logfile, mode='a') as f:
 			print(str, file=f)
 
+def _get_mask_wearing(carefulness, simulation_days, rng):
+	return [rng.rand() < carefulness*BASELINE_P_MASK for day in range(simulation_days)]
+
+
 def _sample_viral_load_gamma(rng, shape_mean=4.5, shape_std=.15, scale_mean=1., scale_std=.15):
 	""" This function samples the shape and scale of a gamma distribution, then returns it"""
 	shape = rng.normal(shape_mean, shape_std)

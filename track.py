@@ -224,7 +224,7 @@ class Tracker(object):
         log(f"Fraction of asymptomatic {self.frac_asymptomatic}", logfile )
 
         log("######## COVID SPREAD #########", logfile)
-        x = 1.0*self.n_env_infection/self.n_infectious_contacts
+        x = 1.0*self.n_env_infection/self.n_infectious_contacts if self.n_infectious_contacts else 0.0
         log(f"environmental transmission ratio {x}", logfile )
         log(f"Ro {self.get_R0()}", logfile)
         log(f"Generation times {self.get_generation_time()} ", logfile)
