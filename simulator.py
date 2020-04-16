@@ -89,7 +89,7 @@ class Human(object):
         self.is_immune = False
         self.recovered_timestamp = datetime.datetime.min
         self.gets_really_sick = self.rng.random() >= 0.8 + (age/100)
-        self.gets_extremely_sick = self.rng.random() >= 0.7 # &severe; 30% of severe cases need ICU
+        self.gets_extremely_sick = self.gets_really_sick and self.rng.random() >= 0.7 # &severe; 30% of severe cases need ICU
         self.never_recovers = self.rng.random() <= P_NEVER_RECOVERS[min(math.floor(self.age/10),8)]
         self.obs_hospitalized = False
         self.obs_in_icu = False
