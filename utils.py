@@ -7,6 +7,19 @@ from bitarray import bitarray
 from config import *
 from functools import lru_cache
 
+def log(str, logfile=None, timestamp=False):
+	if timestamp:
+		str = f"[{datetime.datetime.now()}] {str}"
+
+	print(str)
+	if logfile is not None:
+		with open(logfile, mode='a') as f:
+			print(str, file=f)
+
+def _get_mask_wearing(carefulness, simulation_days, rng):
+	return [rng.rand() < carefulness * BASELINE_P_MASK for day in range(simulation_days)]
+
+
 def _sample_viral_load_gamma(rng, shape_mean=4.5, shape_std=.15, scale_mean=1., scale_std=.15):
     """ This function samples the shape and scale of a gamma distribution, then returns it"""
     shape = rng.normal(shape_mean, shape_std)
@@ -52,22 +65,48 @@ def _get_random_sex(rng):
     else:
         return 'other'
 
+def cold_and_flu_transmission(human1, human2):
+	if human1.has_cold:
+		if human2.rng.random() < COLD_CONTAGIOUSNESS * human1.mask_effect * human2.mask_effect:
+			for (i,symp_arr) in enumerate(human2.cold_progression):
+				if COLD_INCUBATION+i+human2.today < human2.simulation_days:
+					human2.cold_symptoms_array[COLD_INCUBATION+i+human2.today].extend(symp_arr)
+
+	if human1.has_flu:
+		if human2.rng.rand() < FLU_CONTAGIOUSNESS * human1.mask_effect * human2.mask_effect:
+			for (i,symp_arr) in enumerate(human2.flu_progression):
+			    if FLU_INCUBATION+i+human2.today < human2.simulation_days:
+			        human2.flu_symptoms_array[FLU_INCUBATION+i+human2.today]=symp_arr
+
+	if human2.has_cold:
+		if human1.rng.random() < COLD_CONTAGIOUSNESS * human1.mask_effect * human2.mask_effect:
+			for (i,symp_arr) in enumerate(human1.cold_progression):
+				if COLD_INCUBATION+i+human1.today < human1.simulation_days:
+					human1.cold_symptoms_array[COLD_INCUBATION+i+human1.today].extend(symp_arr)
+
+	if human2.has_flu:
+		if human1.rng.random() < FLU_CONTAGIOUSNESS * human1.mask_effect * human2.mask_effect:
+			for (i,symp_arr) in enumerate(human1.flu_progression):
+				if COLD_INCUBATION+i+human1.today < human1.simulation_days:
+					human1.flu_symptoms_array[FLU_INCUBATION+i+human1.today].extend(symp_arr)
+
 def _get_mask_wearing(carefullness, simulation_days, rng):
     return [rng.rand() < carefullness*BASELINE_P_MASK for day in range(simulation_days)]
 
 
 # 2D Array of symptoms; first axis is days after exposure (infection), second is an array of symptoms
 def _get_covid_symptoms(viral_load_plateau_start, viral_load_plateau_end,
-                            viral_load_recovered, age, incubation_days, really_sick, extremely_sick, 
+                            viral_load_recovered, age, incubation_days, really_sick, extremely_sick,
                             rng, preexisting_conditions):
         progression = []
 
         # Before the plateau
         symptoms1 = []
         if really_sick or extremely_sick or len(preexisting_conditions) >2 :
-            symptoms1.append('moderate')           
+            symptoms1.append('moderate')
         else :
             symptoms1.append('mild')
+
         if rng.rand() < 0.9:
             symptoms1.append('fever')
         if rng.rand() < 0.7:
@@ -77,13 +116,13 @@ def _get_covid_symptoms(viral_load_plateau_start, viral_load_plateau_end,
         if rng.rand() < 0.5:
             symptoms1.append('fatigue')
         if rng.rand() < 0.3:
-            symptoms1.append('trouble_breathing') 
+            symptoms1.append('trouble_breathing')
         if rng.rand() < 0.4:
             symptoms1.append('gastro')
         if rng.rand() < 0.2*(age/3):
             symptoms1.append('unusual')
 
-    #TODO CHECK THESE! PUT IN QUICKLY WITHOUT VERIFYING
+    	#TODO CHECK THESE! PUT IN QUICKLY WITHOUT VERIFYING
         if rng.rand() < 0.5:
             symptoms1.append('sneezing')
         if rng.rand() < 0.3:
@@ -91,7 +130,7 @@ def _get_covid_symptoms(viral_load_plateau_start, viral_load_plateau_end,
         if rng.rand() < 0.2:
             symptoms1.append('nausea_vomiting')
         if rng.rand() < 0.5:
-            symptoms1.append('headache') 
+            symptoms1.append('headache')
         if rng.rand() < 0.2:
             symptoms1.append('hard_time_waking_up')
         if rng.rand() < 0.6:
@@ -101,7 +140,7 @@ def _get_covid_symptoms(viral_load_plateau_start, viral_load_plateau_end,
         if rng.rand() < 0.1:
             symptoms1.append('severe_chest_pain')
         if rng.rand() < 0.1:
-            symptoms1.append('confused') 
+            symptoms1.append('confused')
         if really_sick or extremely_sick or len(preexisting_conditions)>2:
             if rng.rand() < 0.6:
                 symptoms1.append('lost_consciousness')
@@ -148,7 +187,7 @@ def _get_covid_symptoms(viral_load_plateau_start, viral_load_plateau_end,
         if rng.rand() < 0.2:
             symptoms2.append('nausea_vomiting')
         if rng.rand() < 0.5:
-            symptoms2.append('headache') 
+            symptoms2.append('headache')
         if rng.rand() < 0.2:
             symptoms2.append('hard_time_waking_up')
         if rng.rand() < 0.6:
@@ -158,7 +197,7 @@ def _get_covid_symptoms(viral_load_plateau_start, viral_load_plateau_end,
         if rng.rand() < 0.1:
             symptoms2.append('severe_chest_pain')
         if rng.rand() < 0.1:
-            symptoms2.append('confused') 
+            symptoms2.append('confused')
         if really_sick or extremely_sick or len(preexisting_conditions)>2:
             if rng.rand() < 0.6:
                 symptoms2.append('lost_consciousness')
@@ -166,8 +205,8 @@ def _get_covid_symptoms(viral_load_plateau_start, viral_load_plateau_end,
             symptoms2.append('light_trouble_breathing')
         if 'moderate'in symptoms2 and 'trouble_breathing' in symptoms2:
             symptoms2.append('moderate_trouble_breathing')
-        if ('severe' in symptoms2 or 'extremely-severe' in symptoms2) and 'trouble_breathing' in symptoms3:
-            symptoms3.append('heavy_trouble_breathing')
+        if ('severe' in symptoms2 or 'extremely-severe' in symptoms2) and 'trouble_breathing' in symptoms2:
+            symptoms2.append('heavy_trouble_breathing')
 
         for day in range(round(viral_load_plateau_end - viral_load_plateau_start)):
             progression.append(symptoms2)
@@ -175,8 +214,8 @@ def _get_covid_symptoms(viral_load_plateau_start, viral_load_plateau_end,
         # After the plateau
         symptoms3 = []
         if really_sick or extremely_sick:
-            symptoms3.append('moderate')           
-        else: 
+            symptoms3.append('moderate')
+        else:
             symptoms3.append('mild')
         if rng.rand() < 0.3:
             symptoms3.append('cough')
@@ -185,7 +224,7 @@ def _get_covid_symptoms(viral_load_plateau_start, viral_load_plateau_end,
         if rng.rand() < 0.5:
             symptoms3.append('aches')
         if rng.rand() < 0.3:
-            symptoms3.append('trouble_breathing') 
+            symptoms3.append('trouble_breathing')
         if rng.rand() < 0.2:
             symptoms3.append('gastro')
 
@@ -197,7 +236,7 @@ def _get_covid_symptoms(viral_load_plateau_start, viral_load_plateau_end,
         if rng.rand() < 0.2:
             symptoms3.append('nausea_vomiting')
         if rng.rand() < 0.5:
-            symptoms3.append('headache') 
+            symptoms3.append('headache')
         if rng.rand() < 0.2:
             symptoms3.append('hard_time_waking_up')
         if rng.rand() < 0.6:
@@ -207,7 +246,7 @@ def _get_covid_symptoms(viral_load_plateau_start, viral_load_plateau_end,
         if rng.rand() < 0.1:
             symptoms3.append('severe_chest_pain')
         if rng.rand() < 0.1:
-            symptoms3.append('confused') 
+            symptoms3.append('confused')
         if really_sick or extremely_sick or len(preexisting_conditions)>2:
             if rng.rand() < 0.6:
                 symptoms3.append('lost_consciousness')
@@ -222,24 +261,24 @@ def _get_covid_symptoms(viral_load_plateau_start, viral_load_plateau_end,
         return progression
 
 def _get_flu_symptoms(age, rng, sim_days, carefullness, preexisting_conditions, really_sick, extremely_sick):
-        
+
         symptoms_array = [[] for i in range(sim_days)]
 
         if age < 12 or age > 40 or any(preexisting_conditions) or really_sick or extremely_sick:
             mean = 5 - round(carefullness)
-        else: 
+        else:
             mean = 3 - round(carefullness)
-        
+
         len_flu = rng.normal(mean,3)
-        if len_flu < 1: 
+        if len_flu < 1:
             len_flu = 1
         else:
             len_flu = round(len_flu)
 
         symptoms = []
         if really_sick or extremely_sick or any(preexisting_conditions):
-            symptoms.append('moderate')           
-        else: 
+            symptoms.append('moderate')
+        else:
             symptoms.append('mild')
         if rng.rand() < 0.8:
             symptoms.append('fever')
@@ -259,29 +298,29 @@ def _get_flu_symptoms(age, rng, sim_days, carefullness, preexisting_conditions, 
             start_day = rng.choice(range(sim_days-len_flu))
             for day in range(len_flu):
                 symptoms_array[start_day+day] = symptoms
-                
+
         return progression, start_day, symptoms_array
 
 
 def _get_cold_symptoms(age, rng, sim_days, carefullness, preexisting_conditions, really_sick, extremely_sick):
-        
+
         symptoms_array = [[] for i in range(sim_days)]
 
         if age < 12 or age > 40 or any(preexisting_conditions) or really_sick or extremely_sick:
             mean = 4 - round(carefullness)
-        else: 
+        else:
             mean = 3 - round(carefullness)
-        
+
         len_cold = rng.normal(mean,3)
-        if len_cold < 1: 
+        if len_cold < 1:
             len_cold = 1
         else:
             len_cold = round(len_cold)
 
         symptoms = []
         if really_sick or extremely_sick or any(preexisting_conditions):
-            symptoms.append('moderate')           
-        else: 
+            symptoms.append('moderate')
+        else:
             symptoms.append('mild')
         if rng.rand() < 0.8:
             symptoms.append('runny_nose')
@@ -310,25 +349,23 @@ def _get_cold_symptoms(age, rng, sim_days, carefullness, preexisting_conditions,
         return progression, start_day, symptoms_array
 
 
-def _reported_symptoms(all_symptoms, rng, carefullness):
+def _reported_symptoms(all_symptoms, rng, carefulness):
     all_reported_symptoms = []
     for symptoms in all_symptoms:
         reported_symptoms = []
         # miss a day of symptoms
-        if rng.rand() < carefullness:
+        if rng.rand() < carefulness:
             continue
         for symptom in symptoms:
-            if rng.rand() < carefullness:
+            if rng.rand() < carefulness:
                 continue
             reported_symptoms.append(symptom)
         all_reported_symptoms.append(reported_symptoms)
     return all_reported_symptoms
 
-
-
 # &preexisting-conditions
 def _get_preexisting_conditions(age, sex, rng):
-    #if rng.rand() < 0.6 + age/200: 
+    #if rng.rand() < 0.6 + age/200:
     #    conditions = None
     #else:
     conditions = []
@@ -362,7 +399,7 @@ def _get_preexisting_conditions(age, sex, rng):
     else:
         if rng.rand() < .179:
             conditions.append('diabetes')
-    
+
     # &heart disease
     if 'diabetes' or 'smoker' in conditions:
         modifier = 2
@@ -434,7 +471,7 @@ def _get_preexisting_conditions(age, sex, rng):
         if rng.rand() < modifier * .075:
             conditions.append('COPD')
 
-    # &asthma 
+    # &asthma
     if age < 10:
         if sex.lower().startswith('f'):
             if rng.rand() < .07:
@@ -521,18 +558,22 @@ def _get_preexisting_conditions(age, sex, rng):
 
     return conditions
 
+# &canadian-demgraphics
+def _get_random_age_multinomial(AGE_DISTRIBUTION, rng):
+    x = list(zip(*AGE_DISTRIBUTION.items()))
+    idx = rng.choice(range(len(x[0])), p=x[1])
+    age_group = x[0][idx]
+    return rng.uniform(age_group[0], age_group[1])
 
-def _get_random_area(location_type, num, total_area, rng):
-    ''' Using Dirichlet distribution since it generates a "distribution of probabilities" 
-    which will ensure that the total area allotted to a location type remains conserved 
-    while also maintaining a uniform distribution'''
-    perc_dist = {"store":0.15, "misc":0.15, "workplace":0.2, "household":0.3, "park":0.5, 'hospital': 0.6}
-    
-    # Keeping max at area/2 to ensure no location is allocated more than half of the total area allocated to its location type 
-    area = rng.dirichlet(np.ones(math.ceil(num/2)))*(perc_dist[location_type]*total_area/2)
-    area = np.append(area,rng.dirichlet(np.ones(math.floor(num/2)))*(perc_dist[location_type]*total_area/2))
-    
-    return area
+def _get_random_area(num, total_area, rng):
+	''' Using Dirichlet distribution since it generates a "distribution of probabilities"
+	which will ensure that the total area allotted to a location type remains conserved
+	while also maintaining a uniform distribution'''
+
+	# Keeping max at area/2 to ensure no location is allocated more than half of the total area allocated to its location type
+	area = rng.dirichlet(np.ones(math.ceil(num/2)))*(total_area/2)
+	area = np.append(area,rng.dirichlet(np.ones(math.floor(num/2)))*(total_area/2))
+	return area
 
 def _draw_random_discreet_gaussian(avg, scale, rng):
     # https://stackoverflow.com/a/37411711/3413239

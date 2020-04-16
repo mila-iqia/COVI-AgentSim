@@ -56,7 +56,7 @@ class Human(object):
 
     def __init__(self, env, rng, name, infection_timestamp, household, workplace, age, rho=0.3, gamma=0.21, symptoms=None, test_results=None):
         self.env = env
-        self.events = []
+        self._events = []
         self.name = name
         self.rng = rng
         self.visits = Visits()
@@ -109,6 +109,10 @@ class Human(object):
         return f"H:{self.name}, SEIR:{int(self.is_susceptible)}{int(self.is_exposed)}{int(self.is_infectious)}{int(self.is_removed)}"
 
     @property
+    def events(self):
+        return self._events
+
+    @property
     def is_susceptible(self):
         return not self.is_exposed and not self.is_infectious and not self.is_removed
         # return self.infection_timestamp is None and not self.recovered_timestamp == datetime.datetime.max
@@ -128,6 +132,14 @@ class Human(object):
     @property
     def state(self):
         return f"{int(self.is_susceptible)}{int(self.is_exposed)}{int(self.is_infectious)}{int(self.is_removed)}"
+
+    def pull_events(self):
+        if self._events:
+            events = self._events
+            self._events = []
+        else:
+            events = self._events
+        return events
 
 
     def run(self, city):
