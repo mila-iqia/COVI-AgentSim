@@ -20,7 +20,7 @@ class DummyHuman:
         self.all_symptoms = []
         self._uid = None
         self.time_of_recovery = datetime.datetime.max
-        self.time_of_infectiousness_start = datetime.datetime.max
+        self.infectiousness_start_time = datetime.datetime.max
         self.time_of_death = datetime.datetime.max
         self.test_time = datetime.datetime.max
         self.time_of_exposure = datetime.datetime.max
@@ -100,7 +100,7 @@ class DummyHuman:
 
     def is_infectious(self, date):
         is_infectious = False
-        infectious_day = (date - self.time_of_infectiousness_start).days
+        infectious_day = (date - self.infectiousness_start_time).days
         if infectious_day >= 0 and infectious_day < 14:
             is_infectious = True
         else:
@@ -115,8 +115,3 @@ class DummyHuman:
         else:
             recovery_day = None
         return is_recovered, recovery_day
-
-    # def add_infectiousness_and_viral_load(self, days_since_epoch, log):
-    #     import pdb; pdb.set_trace()
-    #
-    #     self.infectiousnesses[log['time']]

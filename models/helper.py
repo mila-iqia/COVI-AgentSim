@@ -51,13 +51,19 @@ def group_to_majority_id(all_groups):
         all_new_groups.append(new_groups)
     return all_new_groups
 
-def rolling_infectiousness(date, human):
+def rolling_infectiousness(start, date, human):
     rolling_window = 14
     infectiousness = np.zeros(rolling_window)
-    if human.time_of_infectiousness_start == datetime.datetime.max:
+    if human.infectiousness_start_time == datetime.datetime.max:
         return infectiousness
-    infectious_day = (date - human.time_of_infectiousness_start).days
-
-    import pdb; pdb.set_trace()
-    human.infectiousness
+    infectious_day = (date - human.infectiousness_start_time).days
+    infectious_start_day = (human.infectiousness_start_time - start).days
+    hinf = []
+    for v in human.infectiousness.values():
+        if type(v) == float:
+            hinf.append(v)
+        else:
+            hinf.append(v[0])
+    if infectious_day > 0:
+        infectiousness[infectious_start_day:infectious_day + infectious_start_day] = hinf[infectious_start_day:infectious_day + infectious_start_day]
     return infectiousness

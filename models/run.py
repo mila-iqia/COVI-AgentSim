@@ -181,14 +181,16 @@ def main(args):
             # append the updated risk for this person and whether or not they are actually infectious
             daily_risks.append((np.e ** human.risk, human.is_infectious(todays_date)[0], human.name))
             human.purge_messages(current_day)
-
+            infectiousness = rolling_infectiousness(start, todays_date, human)
+            if human.name == "human:77" and infectiousness.sum()> 0:
+                print(current_day)
+                print(infectiousness)
             # for each sim day, for each human, save an output training example
             if args.save_training_data:
                 is_exposed, exposure_day = human.is_exposed(todays_date)
                 is_infectious, infectious_day = human.is_infectious(todays_date)
                 is_recovered, recovery_day = human.is_recovered(todays_date)
                 candidate_encounters, exposure_encounter, candidate_locs, exposed_locs = candidate_exposures(human, todays_date)
-                infectiousness = rolling_infectiousness(todays_date, human)
                 daily_output[human.name] = {"current_day": current_day,
                                             "observed":
                                                 {
