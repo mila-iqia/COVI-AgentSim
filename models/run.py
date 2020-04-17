@@ -39,8 +39,8 @@ def hash_id_day(hid, day):
 
 def proc_human(params):
     """This function can be parallelized across CPUs. Currently, we only check for messages once per day, so this can be run in parallel"""
-    start, current_day, RiskModel, encounters, hd, rng, all_possible_symptoms, human = params.values()
-    start_risk = human.risk
+    start, current_day, RiskModel, encounters, rng, all_possible_symptoms, human = params.values()
+    human.start_risk = human.risk
     todays_date = start + datetime.timedelta(days=current_day)
 
     # update your quantized uid and shuffle the messages (following privacy protocol)
@@ -53,25 +53,7 @@ def proc_human(params):
     for m_i in human.messages:
         # update risk based on that day's messages
         RiskModel.update_risk_encounter(human, m_i)
-
-    # go about your day accruing encounters and clustering them
-    for idx, encounter in enumerate(encounters):
-        encounter_time = encounter['time']
-        unobs = encounter['payload']['unobserved']
-        encountered_human = hd[unobs['human2']['human_id']]
-        message = encountered_human.cur_message(current_day, RiskModel)
-        encountered_human.sent_messages[str(unobs['human1']['human_id']) + "_" + str(encounter_time)] = message
-        human.messages.append(message)
-        got_exposed = encounter['payload']['unobserved']['human1']['got_exposed']
-        if got_exposed:
-            human.exposure_message = _encode_message(message)
-        RiskModel.add_message_to_cluster(human, message, rng)
-
-    # if the encounter happened within the last 14 days, and your symptoms started at most 3 days after your contact
-    if RiskModel.quantize_risk(start_risk) != RiskModel.quantize_risk(human.risk):
-        for k, m in human.sent_messages.items():
-            if current_day - m.day < 14:
-                hd[m.unobs_id].update_messages.append(human.cur_message_risk_update(m.day, m.risk, RiskModel))
+        RiskModel.add_message_to_cluster(human, m_i, rng)
 
     # check your update messages
     for m_i in human.update_messages:
@@ -81,6 +63,7 @@ def proc_human(params):
     human.purge_messages(current_day)
 
     # for each sim day, for each human, save an output training example
+    daily_output = {}
     if args.save_training_data:
         is_exposed, exposure_day = human.is_exposed(todays_date)
         is_infectious, infectious_day = human.is_infectious(todays_date)
@@ -225,13 +208,31 @@ def main(args):
         start1 = time.time()
         daily_risks = []
 
-        with Parallel(n_jobs=args.n_jobs, verbose=10) as parallel:
+        with Parallel(n_jobs=args.n_jobs, batch_size='auto', verbose=10) as parallel:
             all_params = []
             for human in hd.values():
                 encounters = logs[hash_id_day(human.name, current_day)]
-                all_params.append({"start": start, "current_day": current_day, "RiskModel": RiskModel, "encounters": encounters, "hd": hd, "rng": rng, "all_possible_symptoms": all_possible_symptoms, "human": human})
+                all_params.append({"start": start, "current_day": current_day, "RiskModel": RiskModel, "encounters": encounters, "rng": rng, "all_possible_symptoms": all_possible_symptoms, "human": human})
+                # go about your day accruing encounters and clustering them
+                for idx, encounter in enumerate(encounters):
+                    encounter_time = encounter['time']
+                    unobs = encounter['payload']['unobserved']
+                    encountered_human = hd[unobs['human2']['human_id']]
+                    message = encountered_human.cur_message(current_day, RiskModel)
+                    encountered_human.sent_messages[
+                        str(unobs['human1']['human_id']) + "_" + str(encounter_time)] = message
+                    human.messages.append(message)
+                    got_exposed = encounter['payload']['unobserved']['human1']['got_exposed']
+                    if got_exposed:
+                        human.exposure_message = _encode_message(message)
 
             daily_output = parallel((delayed(proc_human)(params) for params in all_params))
+
+            # if the encounter happened within the last 14 days, and your symptoms started at most 3 days after your contact
+            if RiskModel.quantize_risk(human.start_risk) != RiskModel.quantize_risk(human.risk):
+                for k, m in human.sent_messages.items():
+                    if current_day - m.day < 14:
+                        hd[m.unobs_id].update_messages.append(human.cur_message_risk_update(m.day, m.risk, RiskModel))
 
             for idx, output in enumerate(daily_output):
                 hd[output['human'].name] = output['human']
