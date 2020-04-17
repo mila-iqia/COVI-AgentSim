@@ -25,7 +25,7 @@ def candidate_exposures(human, date):
     if human.exposure_message and human.exposure_message in human.M.keys():
         idx = list(human.M.keys()).index(human.exposure_message)
         exposed_encounters[idx] = 1.
-    return candidate_encounters, exposed_encounters, candidate_locs, exposed_locs
+    return np.array(candidate_encounters), exposed_encounters, candidate_locs, exposed_locs
 
 
 def symptoms_to_np(symptoms_day, all_symptoms, all_possible_symptoms):
