@@ -54,7 +54,7 @@ class RiskModelBase:
     def score_matches(cls, human, m_i):
         scores = {}
         for m_enc, _ in human.M.items():
-            obs_uid, risk, day, encounter_time, unobs_uid = _decode_message(m_enc)
+            obs_uid, risk, day, unobs_uid = _decode_message(m_enc)
             m = human.Message(obs_uid, risk, day, unobs_uid)
             if m_i.uid == m.uid and m_i.day == m.day:
                 scores[m_enc] = 3
@@ -70,13 +70,13 @@ class RiskModelBase:
         return scores
 
     @classmethod
-    def add_message_to_cluster(cls, human, m_i, encounter_time, rng):
+    def add_message_to_cluster(cls, human, m_i, rng):
         """ This function clusters new messages by scoring them against old messages in a sort of naive nearest neighbors approach"""
         # TODO: include risk level in clustering, currently only uses quantized uid
         # TODO: refactor to compare multiple clustering schemes
         # TODO: check for mutually exclusive messages in order to break up a group and re-run nearest neighbors
         # TODO: storing m_i_enc in dict M is a bug, we're overwriting some messages -- we need to make a unique encoding that uses the timestamp
-        m_i_enc = _encode_message(m_i, encounter_time)
+        m_i_enc = _encode_message(m_i)
         # otherwise score against previous messages
         scores = cls.score_matches(human, m_i)
         if scores:
@@ -189,12 +189,12 @@ class RiskModelTristan(RiskModelBase):
             human.risk = np.log(1. - init_population_level_risk) + np.log1p(-expo) + np.log1p(init_population_level_risk / tmp)
 
     @classmethod
-    def update_risk_risk_update(cls, human, update_message, encounter_time, rng):
+    def update_risk_risk_update(cls, human, update_message, rng):
         # TODO: update a random message when there are ties in the scoring
         scores = cls.score_matches(human, update_message)
         m_enc = max(scores.items(), key=operator.itemgetter(1))[0]
         assignment = human.M[m_enc]
-        uid, risk, day, encounter_time, unobs_id = _decode_message(m_enc)
+        uid, risk, day, unobs_id = _decode_message(m_enc)
         updated_message = human.Message(uid, update_message.new_risk, day, unobs_id)
         del human.M[m_enc]
-        human.M[_encode_message(updated_message, encounter_time)] = assignment
+        human.M[_encode_message(updated_message)] = assignment

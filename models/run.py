@@ -118,7 +118,7 @@ def main(args):
 
     for log in contamination_logs:
         hd[log['human_id']].time_of_exposure = log['time']
-        hd[log['human_id']].infectiousness_start_time = log['time']
+        hd[log['human_id']].infectiousness_start_time = log['payload']['unobserved']['infectiousness_start_time']
         hd[log['human_id']].exposure_source = log['payload']['unobserved']['source']
 
     for log in visit_logs:
@@ -166,25 +166,25 @@ def main(args):
                 human.messages.append(message)
                 got_exposed = encounter['payload']['unobserved']['human1']['got_exposed']
                 if got_exposed:
-                    human.exposure_message = _encode_message(message, encounter_time)
-                RiskModel.add_message_to_cluster(human, message, encounter_time, rng)
+                    human.exposure_message = _encode_message(message)
+                RiskModel.add_message_to_cluster(human, message, rng)
 
             if RiskModel.quantize_risk(start_risk) != RiskModel.quantize_risk(human.risk):
                 for k, m in human.sent_messages.items():
                     # if the encounter happened within the last 14 days, and your symptoms started at most 3 days after your contact
                     if current_day - m.day < 14:
-                        hd[m.unobs_id].update_messages.append(human.cur_message_risk_update(m.day, m.risk, encounter_time, RiskModel))
+                        hd[m.unobs_id].update_messages.append(human.cur_message_risk_update(m.day, m.risk, RiskModel))
 
             for m_i in human.update_messages:
-                RiskModel.update_risk_risk_update(human, m_i, encounter_time, rng)
+                RiskModel.update_risk_risk_update(human, m_i, rng)
 
             # append the updated risk for this person and whether or not they are actually infectious
             daily_risks.append((np.e ** human.risk, human.is_infectious(todays_date)[0], human.name))
             human.purge_messages(current_day)
             infectiousness = rolling_infectiousness(start, todays_date, human)
-            if human.name == "human:77" and infectiousness.sum()> 0:
-                print(current_day)
-                print(infectiousness)
+            if human.is_infectious(todays_date)[0]:
+                infectiousness = rolling_infectiousness(start, todays_date, human)
+
             # for each sim day, for each human, save an output training example
             if args.save_training_data:
                 is_exposed, exposure_day = human.is_exposed(todays_date)

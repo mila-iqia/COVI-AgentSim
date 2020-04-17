@@ -7,7 +7,7 @@ def messages_to_np(human):
     ms_enc = np.zeros((len(human.M), 3))
     idx = 0
     for m_enc, assignment in human.M.items():
-        obs_uid, risk, day, encounter_time, unobs_uid = _decode_message(m_enc)
+        obs_uid, risk, day, unobs_uid = _decode_message(m_enc)
         message = human.Message(obs_uid, risk, day, unobs_uid)
 
         m_enc = np.array([assignment, message.risk, day])
@@ -22,7 +22,7 @@ def candidate_exposures(human, date):
         exposed_locs[candidate_locs.index(human.exposure_source)] = 1.
     candidate_encounters = list(messages_to_np(human))
     exposed_encounters = np.zeros(len(candidate_encounters))
-    if human.exposure_message:
+    if human.exposure_message and human.exposure_message in human.M.keys():
         idx = list(human.M.keys()).index(human.exposure_message)
         exposed_encounters[idx] = 1.
     return candidate_encounters, exposed_encounters, candidate_locs, exposed_locs
@@ -53,17 +53,33 @@ def group_to_majority_id(all_groups):
 
 def rolling_infectiousness(start, date, human):
     rolling_window = 14
-    infectiousness = np.zeros(rolling_window)
+    rolling = np.zeros(rolling_window)
     if human.infectiousness_start_time == datetime.datetime.max:
-        return infectiousness
-    infectious_day = (date - human.infectiousness_start_time).days
-    infectious_start_day = (human.infectiousness_start_time - start).days
+        return rolling
+    cur_day = (date - start).days
+
     hinf = []
     for v in human.infectiousness.values():
         if type(v) == float:
             hinf.append(v)
-        else:
+        elif type(v) == np.ndarray:
             hinf.append(v[0])
-    if infectious_day > 0:
-        infectiousness[infectious_start_day:infectious_day + infectious_start_day] = hinf[infectious_start_day:infectious_day + infectious_start_day]
-    return infectiousness
+
+    if not human.infectiousness:
+        return rolling
+
+    rollings = []
+    for end in range(1, len(hinf) + 1):
+        if end - rolling_window > 0:
+            start = end - rolling_window
+            rolling = np.flip(hinf[start:end])
+        else:
+            rolling = np.flip(hinf[:end])
+        rolling = np.pad(rolling, (0, rolling_window - len(rolling)))
+        rollings.append(rolling)
+    human.rolling_infectiousness_array = rollings
+
+    try:
+        return rollings[cur_day]
+    except Exception:
+        return rolling

@@ -34,7 +34,7 @@ for someones_clustered_messages in everyones_clustered_messages:
     unique_people_contacted = set()
     total_num_contacts = 0
     for m_enc, assignment in someones_clustered_messages.items():
-        obs_uid, obs_risk, m_sent, encounter_time, unobs_uid = _decode_message(m_enc)
+        obs_uid, obs_risk, m_sent, unobs_uid = _decode_message(m_enc)
         groups[assignment].append(unobs_uid)
         unique_people_contacted.add(unobs_uid)
         total_num_contacts += 1
