@@ -101,7 +101,9 @@ def proc_human(params):
                                     }
     return {human.name: daily_output, "human": human}
 
-def main(args):
+def main(args=None):
+    args = args || parse_args()
+
     # read and filter the pickles
     logs = []
     with zipfile.ZipFile(args.data_path, 'r') as zf:
@@ -266,5 +268,4 @@ def main(args):
 
 
 if __name__ == "__main__":
-    args = parse_args()
-    main(args)
+    main()
