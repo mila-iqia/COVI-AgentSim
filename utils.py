@@ -90,264 +90,263 @@ def cold_and_flu_transmission(human1, human2):
 				if COLD_INCUBATION+i+human1.today < human1.simulation_days:
 					human1.flu_symptoms_array[FLU_INCUBATION+i+human1.today].extend(symp_arr)
 
-def _get_mask_wearing(carefullness, simulation_days, rng):
-    return [rng.rand() < carefullness*BASELINE_P_MASK for day in range(simulation_days)]
+def _get_mask_wearing(carefulness, simulation_days, rng):
+    return [rng.rand() < carefulness*BASELINE_P_MASK for day in range(simulation_days)]
 
 
 # 2D Array of symptoms; first axis is days after exposure (infection), second is an array of symptoms
 def _get_covid_symptoms(viral_load_plateau_start, viral_load_plateau_end,
                             viral_load_recovered, age, incubation_days, really_sick, extremely_sick,
                             rng, preexisting_conditions):
-        progression = []
+    progression = []
+    # Before the plateau
+    symptoms1 = []
+    if really_sick or extremely_sick or len(preexisting_conditions) >2 :
+        symptoms1.append('moderate')
+    else :
+        symptoms1.append('mild')
 
-        # Before the plateau
-        symptoms1 = []
-        if really_sick or extremely_sick or len(preexisting_conditions) >2 :
-            symptoms1.append('moderate')
-        else :
-            symptoms1.append('mild')
+    if rng.rand() < 0.9:
+        symptoms1.append('fever')
+    if rng.rand() < 0.7:
+        symptoms1.append('cough')
+    if rng.rand() < 0.1:
+        symptoms1.append('runny_nose')
+    if rng.rand() < 0.5:
+        symptoms1.append('fatigue')
+    if rng.rand() < 0.3:
+        symptoms1.append('trouble_breathing')
+    if rng.rand() < 0.4:
+        symptoms1.append('gastro')
+    if rng.rand() < 0.2*(age/3):
+        symptoms1.append('unusual')
 
-        if rng.rand() < 0.9:
-            symptoms1.append('fever')
-        if rng.rand() < 0.7:
-            symptoms1.append('cough')
-        if rng.rand() < 0.1:
-            symptoms1.append('runny_nose')
-        if rng.rand() < 0.5:
-            symptoms1.append('fatigue')
-        if rng.rand() < 0.3:
-            symptoms1.append('trouble_breathing')
-        if rng.rand() < 0.4:
-            symptoms1.append('gastro')
-        if rng.rand() < 0.2*(age/3):
-            symptoms1.append('unusual')
-
-    	#TODO CHECK THESE! PUT IN QUICKLY WITHOUT VERIFYING
-        if rng.rand() < 0.5:
-            symptoms1.append('sneezing')
-        if rng.rand() < 0.3:
-            symptoms1.append('diarrhea')
-        if rng.rand() < 0.2:
-            symptoms1.append('nausea_vomiting')
-        if rng.rand() < 0.5:
-            symptoms1.append('headache')
-        if rng.rand() < 0.2:
-            symptoms1.append('hard_time_waking_up')
+	#TODO CHECK THESE! PUT IN QUICKLY WITHOUT VERIFYING
+    if rng.rand() < 0.5:
+        symptoms1.append('sneezing')
+    if rng.rand() < 0.3:
+        symptoms1.append('diarrhea')
+    if rng.rand() < 0.2:
+        symptoms1.append('nausea_vomiting')
+    if rng.rand() < 0.5:
+        symptoms1.append('headache')
+    if rng.rand() < 0.2:
+        symptoms1.append('hard_time_waking_up')
+    if rng.rand() < 0.6:
+        symptoms1.append('sore_throat')
+    if rng.rand() < 0.3:
+        symptoms1.append('chills')
+    if rng.rand() < 0.1:
+        symptoms1.append('severe_chest_pain')
+    if rng.rand() < 0.1:
+        symptoms1.append('confused')
+    if really_sick or extremely_sick or len(preexisting_conditions)>2:
         if rng.rand() < 0.6:
-            symptoms1.append('sore_throat')
-        if rng.rand() < 0.3:
-            symptoms1.append('chills')
-        if rng.rand() < 0.1:
-            symptoms1.append('severe_chest_pain')
-        if rng.rand() < 0.1:
-            symptoms1.append('confused')
-        if really_sick or extremely_sick or len(preexisting_conditions)>2:
-            if rng.rand() < 0.6:
-                symptoms1.append('lost_consciousness')
-        if 'mild' and 'trouble_breathing' in symptoms1:
-            symptoms1.append('light_trouble_breathing')
-        if 'moderate' and 'trouble_breathing' in symptoms1:
-            symptoms1.append('moderate_trouble_breathing')
+            symptoms1.append('lost_consciousness')
+    if 'mild' and 'trouble_breathing' in symptoms1:
+        symptoms1.append('light_trouble_breathing')
+    if 'moderate' and 'trouble_breathing' in symptoms1:
+        symptoms1.append('moderate_trouble_breathing')
 
-        for day in range(round(viral_load_plateau_start)):
-            progression.append(symptoms1)
+    for day in range(round(viral_load_plateau_start)):
+        progression.append(symptoms1)
 
-        # During the plateau
-        symptoms2 = []
-        if really_sick or len(preexisting_conditions) >2 or 'moderate' in symptoms1:
-            symptoms2.append('severe')
-        elif extremely_sick:
-            symptoms2.append('extremely-severe')
-        elif rng.rand() < 0.1:
-            symptoms2.append('moderate')
-        else:
-            symptoms2.append('mild')
-        if 'fever' in symptoms1 or rng.rand() < 0.9:
-            symptoms2.append('fever')
-        if rng.rand() < 0.85:
-            symptoms2.append('cough')
-        if rng.rand() < 0.8:
-            symptoms2.append('fatigue')
-        if rng.rand() < 0.7:
-            symptoms2.append('trouble_breathing')
-        if rng.rand() < 0.1:
-            symptoms2.append('runny_nose')
-        if rng.rand() < 0.4:
-            symptoms2.append('loss_of_taste')
-        if rng.rand() < 0.1:
-            symptoms2.append('gastro')
-        if rng.rand() < 0.2*(age/3):
-            symptoms2.append('unusual')
+    # During the plateau
+    symptoms2 = []
+    if really_sick or len(preexisting_conditions) >2 or 'moderate' in symptoms1:
+        symptoms2.append('severe')
+    elif extremely_sick:
+        symptoms2.append('extremely-severe')
+    elif rng.rand() < 0.1:
+        symptoms2.append('moderate')
+    else:
+        symptoms2.append('mild')
+    if 'fever' in symptoms1 or rng.rand() < 0.9:
+        symptoms2.append('fever')
+    if rng.rand() < 0.85:
+        symptoms2.append('cough')
+    if rng.rand() < 0.8:
+        symptoms2.append('fatigue')
+    if rng.rand() < 0.7:
+        symptoms2.append('trouble_breathing')
+    if rng.rand() < 0.1:
+        symptoms2.append('runny_nose')
+    if rng.rand() < 0.4:
+        symptoms2.append('loss_of_taste')
+    if rng.rand() < 0.1:
+        symptoms2.append('gastro')
+    if rng.rand() < 0.2*(age/3):
+        symptoms2.append('unusual')
 
-    #TODO CHECK THESE! PUT IN QUICKLY WITHOUT VERIFYING
-        if rng.rand() < 0.5:
-            symptoms2.append('sneezing')
-        if rng.rand() < 0.3:
-            symptoms2.append('diarrhea')
-        if rng.rand() < 0.2:
-            symptoms2.append('nausea_vomiting')
-        if rng.rand() < 0.5:
-            symptoms2.append('headache')
-        if rng.rand() < 0.2:
-            symptoms2.append('hard_time_waking_up')
+	#TODO CHECK THESE! PUT IN QUICKLY WITHOUT VERIFYING
+    if rng.rand() < 0.5:
+        symptoms2.append('sneezing')
+    if rng.rand() < 0.3:
+        symptoms2.append('diarrhea')
+    if rng.rand() < 0.2:
+        symptoms2.append('nausea_vomiting')
+    if rng.rand() < 0.5:
+        symptoms2.append('headache')
+    if rng.rand() < 0.2:
+        symptoms2.append('hard_time_waking_up')
+    if rng.rand() < 0.6:
+        symptoms2.append('sore_throat')
+    if rng.rand() < 0.3:
+        symptoms2.append('chills')
+    if rng.rand() < 0.1:
+        symptoms2.append('severe_chest_pain')
+    if rng.rand() < 0.1:
+        symptoms2.append('confused')
+    if really_sick or extremely_sick or len(preexisting_conditions)>2:
         if rng.rand() < 0.6:
-            symptoms2.append('sore_throat')
-        if rng.rand() < 0.3:
-            symptoms2.append('chills')
-        if rng.rand() < 0.1:
-            symptoms2.append('severe_chest_pain')
-        if rng.rand() < 0.1:
-            symptoms2.append('confused')
-        if really_sick or extremely_sick or len(preexisting_conditions)>2:
-            if rng.rand() < 0.6:
-                symptoms2.append('lost_consciousness')
-        if 'mild' in symptoms2 and 'trouble_breathing' in symptoms2:
-            symptoms2.append('light_trouble_breathing')
-        if 'moderate'in symptoms2 and 'trouble_breathing' in symptoms2:
-            symptoms2.append('moderate_trouble_breathing')
-        if ('severe' in symptoms2 or 'extremely-severe' in symptoms2) and 'trouble_breathing' in symptoms2:
-            symptoms2.append('heavy_trouble_breathing')
+            symptoms2.append('lost_consciousness')
+    if 'mild' in symptoms2 and 'trouble_breathing' in symptoms2:
+        symptoms2.append('light_trouble_breathing')
+    if 'moderate'in symptoms2 and 'trouble_breathing' in symptoms2:
+        symptoms2.append('moderate_trouble_breathing')
+    if ('severe' in symptoms2 or 'extremely-severe' in symptoms2) and 'trouble_breathing' in symptoms2:
+        symptoms2.append('heavy_trouble_breathing')
 
-        for day in range(round(viral_load_plateau_end - viral_load_plateau_start)):
-            progression.append(symptoms2)
+    for day in range(round(viral_load_plateau_end - viral_load_plateau_start)):
+        progression.append(symptoms2)
 
-        # After the plateau
-        symptoms3 = []
-        if really_sick or extremely_sick:
-            symptoms3.append('moderate')
-        else:
-            symptoms3.append('mild')
-        if rng.rand() < 0.3:
-            symptoms3.append('cough')
-        if rng.rand() < 0.8:
-            symptoms3.append('fatigue')
-        if rng.rand() < 0.5:
-            symptoms3.append('aches')
-        if rng.rand() < 0.3:
-            symptoms3.append('trouble_breathing')
-        if rng.rand() < 0.2:
-            symptoms3.append('gastro')
+    # After the plateau
+    symptoms3 = []
+    if really_sick or extremely_sick:
+        symptoms3.append('moderate')
+    else:
+        symptoms3.append('mild')
+    if rng.rand() < 0.3:
+        symptoms3.append('cough')
+    if rng.rand() < 0.8:
+        symptoms3.append('fatigue')
+    if rng.rand() < 0.5:
+        symptoms3.append('aches')
+    if rng.rand() < 0.3:
+        symptoms3.append('trouble_breathing')
+    if rng.rand() < 0.2:
+        symptoms3.append('gastro')
 
-    #TODO CHECK THESE! PUT IN QUICKLY WITHOUT VERIFYING
-        if rng.rand() < 0.5:
-            symptoms3.append('sneezing')
-        if rng.rand() < 0.3:
-            symptoms3.append('diarrhea')
-        if rng.rand() < 0.2:
-            symptoms3.append('nausea_vomiting')
-        if rng.rand() < 0.5:
-            symptoms3.append('headache')
-        if rng.rand() < 0.2:
-            symptoms3.append('hard_time_waking_up')
+	#TODO CHECK THESE! PUT IN QUICKLY WITHOUT VERIFYING
+    if rng.rand() < 0.5:
+        symptoms3.append('sneezing')
+    if rng.rand() < 0.3:
+        symptoms3.append('diarrhea')
+    if rng.rand() < 0.2:
+        symptoms3.append('nausea_vomiting')
+    if rng.rand() < 0.5:
+        symptoms3.append('headache')
+    if rng.rand() < 0.2:
+        symptoms3.append('hard_time_waking_up')
+    if rng.rand() < 0.6:
+        symptoms3.append('sore_throat')
+    if rng.rand() < 0.3:
+        symptoms3.append('chills')
+    if rng.rand() < 0.1:
+        symptoms3.append('severe_chest_pain')
+    if rng.rand() < 0.1:
+        symptoms3.append('confused')
+    if really_sick or extremely_sick or len(preexisting_conditions)>2:
         if rng.rand() < 0.6:
-            symptoms3.append('sore_throat')
-        if rng.rand() < 0.3:
-            symptoms3.append('chills')
-        if rng.rand() < 0.1:
-            symptoms3.append('severe_chest_pain')
-        if rng.rand() < 0.1:
-            symptoms3.append('confused')
-        if really_sick or extremely_sick or len(preexisting_conditions)>2:
-            if rng.rand() < 0.6:
-                symptoms3.append('lost_consciousness')
-        if 'mild' in symptoms3 and 'trouble_breathing' in symptoms3:
-            symptoms3.append('light_trouble_breathing')
-        if 'moderate' in symptoms3 and 'trouble_breathing' in symptoms3:
-            symptoms3.append('moderate_trouble_breathing')
-        if ('severe' in symptoms3 or 'extremely-severe' in symptoms3) and 'trouble_breathing' in symptoms3:
-            symptoms3.append('heavy_trouble_breathing')
-        for day in range(round(viral_load_recovered - viral_load_plateau_end)):
-            progression.append(symptoms3)
-        return progression
+            symptoms3.append('lost_consciousness')
+    if 'mild' in symptoms3 and 'trouble_breathing' in symptoms3:
+        symptoms3.append('light_trouble_breathing')
+    if 'moderate' in symptoms3 and 'trouble_breathing' in symptoms3:
+        symptoms3.append('moderate_trouble_breathing')
+    if ('severe' in symptoms3 or 'extremely-severe' in symptoms3) and 'trouble_breathing' in symptoms3:
+        symptoms3.append('heavy_trouble_breathing')
+    for day in range(round(viral_load_recovered - viral_load_plateau_end)):
+        progression.append(symptoms3)
+    return progression
 
-def _get_flu_symptoms(age, rng, sim_days, carefullness, preexisting_conditions, really_sick, extremely_sick):
+def _get_flu_symptoms(age, rng, sim_days, carefulness, preexisting_conditions, really_sick, extremely_sick):
+    symptoms_array = [[] for i in range(sim_days)]
 
-        symptoms_array = [[] for i in range(sim_days)]
+    if age < 12 or age > 40 or any(preexisting_conditions) or really_sick or extremely_sick:
+        mean = 5 - round(carefulness)
+    else:
+        mean = 3 - round(carefulness)
 
-        if age < 12 or age > 40 or any(preexisting_conditions) or really_sick or extremely_sick:
-            mean = 5 - round(carefullness)
-        else:
-            mean = 3 - round(carefullness)
+    len_flu = rng.normal(mean,3)
+    if len_flu < 1:
+        len_flu = 1
+    else:
+        len_flu = round(len_flu)
 
-        len_flu = rng.normal(mean,3)
-        if len_flu < 1:
-            len_flu = 1
-        else:
-            len_flu = round(len_flu)
+    len_flu = min(len_flu, sim_days-1)
+    symptoms = []
+    if really_sick or extremely_sick or any(preexisting_conditions):
+        symptoms.append('moderate')
+    else:
+        symptoms.append('mild')
+    if rng.rand() < 0.8:
+        symptoms.append('fever')
+    if rng.rand() < 0.6:
+        symptoms.append('gastro')
+    if rng.rand() < 0.6:
+        symptoms.append('aches')
+    if rng.rand() < 0.3:
+        symptoms.append('fatigue')
 
-        symptoms = []
-        if really_sick or extremely_sick or any(preexisting_conditions):
-            symptoms.append('moderate')
-        else:
-            symptoms.append('mild')
-        if rng.rand() < 0.8:
-            symptoms.append('fever')
-        if rng.rand() < 0.6:
-            symptoms.append('gastro')
-        if rng.rand() < 0.6:
-            symptoms.append('aches')
-        if rng.rand() < 0.3:
-            symptoms.append('fatigue')
+    progression = []
+    for day in range(len_flu):
+        progression.append(symptoms)
 
-        progression = []
+    start_day = None
+    if rng.rand() < P_FLU: #gets a cold
+        start_day = rng.choice(range(sim_days-len_flu))
         for day in range(len_flu):
-            progression.append(symptoms)
+            symptoms_array[start_day+day] = symptoms
 
-        start_day = None
-        if rng.rand() < P_FLU: #gets a cold
-            start_day = rng.choice(range(sim_days-len_flu))
-            for day in range(len_flu):
-                symptoms_array[start_day+day] = symptoms
+    return progression, start_day, symptoms_array
 
-        return progression, start_day, symptoms_array
+def _get_cold_symptoms(age, rng, sim_days, carefulness, preexisting_conditions, really_sick, extremely_sick):
 
+    symptoms_array = [[] for i in range(sim_days)]
 
-def _get_cold_symptoms(age, rng, sim_days, carefullness, preexisting_conditions, really_sick, extremely_sick):
+    if age < 12 or age > 40 or any(preexisting_conditions) or really_sick or extremely_sick:
+        mean = 4 - round(carefulness)
+    else:
+        mean = 3 - round(carefulness)
 
-        symptoms_array = [[] for i in range(sim_days)]
+    len_cold = rng.normal(mean,3)
+    if len_cold < 1:
+        len_cold = 1
+    else:
+        len_cold = round(len_cold)
 
-        if age < 12 or age > 40 or any(preexisting_conditions) or really_sick or extremely_sick:
-            mean = 4 - round(carefullness)
-        else:
-            mean = 3 - round(carefullness)
+    len_cold = min(len_cold, sim_days-1)
+    symptoms = []
 
-        len_cold = rng.normal(mean,3)
-        if len_cold < 1:
-            len_cold = 1
-        else:
-            len_cold = round(len_cold)
+    if really_sick or extremely_sick or any(preexisting_conditions):
+        symptoms.append('moderate')
+    else:
+        symptoms.append('mild')
+    if rng.rand() < 0.8:
+        symptoms.append('runny_nose')
+    if rng.rand() < 0.8:
+        symptoms.append('cough')
+    if rng.rand() < 0.1:
+        symptoms.append('trouble_breathing')
+    if rng.rand() < 0.2:
+        symptoms.append('loss_of_taste')
+    if rng.rand() < 0.2:
+        symptoms.append('fatigue')
+    if rng.rand() < 0.6:
+        symptoms.append('sneezing')
 
-        symptoms = []
-        if really_sick or extremely_sick or any(preexisting_conditions):
-            symptoms.append('moderate')
-        else:
-            symptoms.append('mild')
-        if rng.rand() < 0.8:
-            symptoms.append('runny_nose')
-        if rng.rand() < 0.8:
-            symptoms.append('cough')
-        if rng.rand() < 0.1:
-            symptoms.append('trouble_breathing')
-        if rng.rand() < 0.2:
-            symptoms.append('loss_of_taste')
-        if rng.rand() < 0.2:
-            symptoms.append('fatigue')
-        if rng.rand() < 0.6:
-            symptoms.append('sneezing')
+    progression = []
+    for day in range(len_cold):
+        progression.append(symptoms)
 
-        progression = []
+    start_day = None
+    if rng.rand() < P_COLD: #gets a cold
+        start_day = rng.choice(range(sim_days-len_cold))
         for day in range(len_cold):
-            progression.append(symptoms)
-
-        start_day = None
-        if rng.rand() < P_COLD: #gets a cold
-            start_day = rng.choice(range(sim_days-len_cold))
-            for day in range(len_cold):
-                symptoms_array[start_day+day] = symptoms
+            symptoms_array[start_day+day] = symptoms
 
 
-        return progression, start_day, symptoms_array
-
+    return progression, start_day, symptoms_array
 
 def _reported_symptoms(all_symptoms, rng, carefulness):
     all_reported_symptoms = []

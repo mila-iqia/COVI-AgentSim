@@ -24,14 +24,13 @@ def simu():
 @click.option('--simulation_days', help='number of days to run the simulation for', type=int, default=30)
 @click.option('--out_chunk_size', help='number of events per dump in outfile', type=int, default=2500, required=False)
 @click.option('--outdir', help='the directory to write data to', type=str, default="output", required=False)
-@click.option('--print_progress', is_flag=True, help='print the evolution of days', default=True)
 @click.option('--seed', help='seed for the process', type=int, default=0)
 def sim(n_people=None,
         init_percent_sick=0,
         start_time=datetime.datetime(2020, 2, 28, 0, 0),
         simulation_days=10,
         outdir=None, out_chunk_size=None,
-        print_progress=True, seed=0):
+        seed=0):
 
     COLLECT_LOGS = True
     if outdir is None:
@@ -48,7 +47,7 @@ def sim(n_people=None,
         start_time=start_time,
         simulation_days=simulation_days,
         outfile=outfile, out_chunk_size=out_chunk_size,
-        print_progress=print_progress,
+        print_progress=True,
         seed=seed
     )
     monitors[0].dump()
