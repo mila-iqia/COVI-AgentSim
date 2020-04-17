@@ -30,6 +30,7 @@ parser.add_argument('--plot_daily', action="store_true")
 parser.add_argument('--risk_model', type=str, default="tristan", choices=['yoshua', 'lenka', 'eilif', 'tristan'])
 parser.add_argument('--seed', type=int, default="0")
 parser.add_argument('--save_training_data', action="store_true")
+parser.add_argument('--n_jobs', type=int, default=1, help="Default is no parallelism, jobs = 1")
 
 
 def hash_id_day(hid, day):
@@ -221,20 +222,16 @@ def main(args):
     all_risks = []
     days = (enc_logs[-1]['time'] - enc_logs[0]['time']).days
     for current_day in tqdm(range(days)):
-        daily_output = {}
         start1 = time.time()
         daily_risks = []
 
-        with Parallel(n_jobs=10) as parallel:
-            accumulator = 0
+        with Parallel(n_jobs=args.n_jobs, verbose=10) as parallel:
             all_params = []
             for human in hd.values():
                 encounters = logs[hash_id_day(human.name, current_day)]
                 all_params.append({"start": start, "current_day": current_day, "RiskModel": RiskModel, "encounters": encounters, "hd": hd, "rng": rng, "all_possible_symptoms": all_possible_symptoms, "human": human})
 
-            while accumulator < len(hd):
-                daily_output = parallel((delayed(proc_human)(params) for params in all_params))
-                accumulator += len(daily_output)
+            daily_output = parallel((delayed(proc_human)(params) for params in all_params))
 
             for idx, output in enumerate(daily_output):
                 hd[output['human'].name] = output['human']
