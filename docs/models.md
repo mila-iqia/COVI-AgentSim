@@ -92,11 +92,22 @@ get `reported_symptoms`.
 - `true_symptoms` is the same dimensionality as `reported_symptoms`, but contains the complete set of symptoms for the Human's illness observed within the last 14 days.
 `reported_symptoms` and `true_symptoms` are computed using the information in `Log.symptom_start`. We set attributes `all_symptoms`, `reported_symptoms`, and `symptom_start_time` on the Human.
 The first of these contain the entire progression of the illness, starting at `symptom_start_time`.
-
-                        
-                        "reported_symptoms": symptoms_to_np(
-                            (todays_date - human.symptoms_start).days,
-                            human.symptoms_at_time(todays_date, human.all_reported_symptoms),
-                            all_possible_symptoms),
-
+- `candidate_encounters` is a rolling set of messages received by the user containing updated risks, noisily predicted de-anonymized user ids, and the day of receipt. The date of receipt should never be more than 14 days in the past.
+Unlike other rolling arrays, the number of elements in `candidate_encounters` will change often as new messages are appended and old messages are purged.
+- `exposure_encounter` is an array of zeros with the same first dimension as `candidate_encounters`. If the Human was infected by an interaction
+with another Human, there is a specific encounter (message) which was responsible for their infection. This happens in roughly 85% of infections.
+The index of the exposure message, if it is in `candidate_encounters`, is set to 1.
+- `candidate_locs` is a 1-dimensional array containing the ids of every Location the Human has visited. 
+- `exposed_locs` is an array of the same dimensionality as `candidate_locs`, with a similar logic as `exposure_encounter`. I.e., if the 
+Human was exposed to Covid-19 by a contaminated location, then that index of that location is set to 1. Unlike `candidate_locs`, this should not roll.
+- `test_results` is a rolling array of length 14. If the Human receives a positive test result, then the index of that day is set to 1.
+- `is_exposed` is a binary value representing whether the Human has been exposed to the virus, and the virus is incubating within them.
+- `exposure_day` is an integer value between 0 and -13 which represents the day when the exposure took place. 0 represents today.
+- `is_infectious` is a binary value representing whether the Human is infectious. If True, then this human may infect other humans or locations. It cannot be True while `is_exposed` or `is_recovered` are True.
+- `infectious_day`is an integer value between 0 and -13 which represents the day when the person became infectious.
+- `is_recovered` is a binary value indicating whether the Human has had Covid-19 and is now recovered.
+- `recovery_day` is an integer value between 0 and -13 which represents the day when the person recovered. If the person has not recovered, the value is None.
+- `infectiousness` is an array of length 14 which contains floating values between 0 and 1 representing how infectious the person is. 
+If a person becomes infectious, the value is non-zero for every day until it reaches zero again, after which it does not become non-zero. 
+ 
 That data is loaded into a PyTorch dataloader in `models/dataloader.py`.
