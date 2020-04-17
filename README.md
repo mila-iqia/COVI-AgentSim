@@ -52,13 +52,10 @@ python run.py test
 
 ```
 @click.option('--n_people', help='population of the city', type=int, default=100)
-@click.option('--n_stores', help='number of grocery stores in the city', type=int, default=100)
-@click.option('--n_parks', help='number of parks in the city', type=int, default=20)
-@click.option('--n_misc', help='number of non-essential establishments in the city', type=int, default=100)
 @click.option('--init_percent_sick', help='% of population initially sick', type=float, default=0.01)
 @click.option('--simulation_days', help='number of days to run the simulation for', type=int, default=30)
-@click.option('--outfile', help='filename of the output (file format: .pkl)', type=str, required=False)
-@click.option('--print_progress', is_flag=True, help='print the evolution of days', default=False)
+@click.option('--out_chunk_size', help='number of events per dump in outfile', type=int, default=2500, required=False)
+@click.option('--outdir', help='the directory to write data to', type=str, default="output", required=False)
 @click.option('--seed', help='seed for the process', type=int, default=0)
 ```
 
@@ -80,7 +77,7 @@ monitors = run_simu(n_stores=100, n_parks=50, n_people=100, n_misc=100, init_per
 ## Base SEIR plots
 Following will require `cufflinks` and `plotly`.
 ```
-python run.py base --toy_human
+python run.py base
 ```
 It will open a browser window with the plot of [SEIR curves](https://www.idmod.org/docs/hiv/model-seir.html#seir-and-seirs-models).
 
