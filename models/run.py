@@ -225,7 +225,7 @@ def main(args):
         start1 = time.time()
         daily_risks = []
 
-        with Parallel(n_jobs=2) as parallel:
+        with Parallel(n_jobs=10) as parallel:
             accumulator = 0
             all_params = []
             for human in hd.values():
@@ -241,8 +241,6 @@ def main(args):
                 del daily_output[idx]['human']
         all_outputs.append(daily_output)
 
-        if current_day > 10:
-            break
         print(f"mainloop {time.time() - start1}")
 
         # add risks for plotting
