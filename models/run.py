@@ -9,14 +9,14 @@ import subprocess
 import numpy as np
 import operator
 import datetime
-import time
 from tqdm import tqdm
 from collections import defaultdict
 from base import Event
 from dummy_human import DummyHuman
 from risk_models import RiskModelYoshua, RiskModelLenka, RiskModelEilif, RiskModelTristan
 from plots.plot_risk import dist_plot, hist_plot
-from helper import messages_to_np, symptoms_to_np
+from helper import messages_to_np, symptoms_to_np, candidate_exposures, rolling_infectiousness
+from utils import _encode_message
 
 parser = argparse.ArgumentParser(description='Run Risk Models and Plot results')
 parser.add_argument('--plot_path', type=str, default="output/plots/risk/")
@@ -97,7 +97,6 @@ def main(args):
     for log in enc_logs:
         day_since_epoch = (log['time'] - start).days
         logs[hash_id_day(log['human_id'], day_since_epoch)].append(log)
-        # hd[human_id].add_infectiousness_and_viral_load(day_since_epoch, log)
 
     all_possible_symptoms = set()
     for log in symp_logs:
@@ -127,19 +126,17 @@ def main(args):
             hd[log['human_id']].locations_visited[log['payload']['observed']['location_name']] = log['time']
 
     for log in daily_logs:
-        import pdb;
-        pdb.set_trace()
+        hd[log['human_id']].infectiousness[(log['time'] - start).days] = log['payload']['unobserved']['infectiousness']
 
     for log in static_info_logs:
-        import pdb; pdb.set_trace()
+        hd[log['human_id']].obs_preexisting_conditions = log['payload']['observed']['obs_preexisting_conditions']
+        hd[log['human_id']].preexisting_conditions = log['payload']['unobserved']['preexisting_conditions']
 
     all_outputs = []
     all_risks = []
     daily_risks = []
     days = (enc_logs[-1]['time'] - enc_logs[0]['time']).days
     for current_day in tqdm(range(days)):
-        starttime = time.time()
-
         daily_output = {}
         for hid, human in hd.items():
             start_risk = human.risk
@@ -159,7 +156,7 @@ def main(args):
 
             # go about your day and accrue encounters
             encounters = logs[hash_id_day(human.name, current_day)]
-            for encounter in encounters:
+            for idx, encounter in enumerate(encounters):
                 # extract variables from log
                 encounter_time = encounter['time']
                 unobs = encounter['payload']['unobserved']
@@ -167,16 +164,19 @@ def main(args):
                 message = encountered_human.cur_message(current_day, RiskModel)
                 encountered_human.sent_messages[str(unobs['human1']['human_id']) + "_" + str(encounter_time)] = message
                 human.messages.append(message)
-                RiskModel.add_message_to_cluster(human, message, rng)
+                got_exposed = encounter['payload']['unobserved']['human1']['got_exposed']
+                if got_exposed:
+                    human.exposure_message = _encode_message(message, encounter_time)
+                RiskModel.add_message_to_cluster(human, message, encounter_time, rng)
 
             if RiskModel.quantize_risk(start_risk) != RiskModel.quantize_risk(human.risk):
                 for k, m in human.sent_messages.items():
                     # if the encounter happened within the last 14 days, and your symptoms started at most 3 days after your contact
                     if current_day - m.day < 14:
-                        hd[m.unobs_id].update_messages.append(human.cur_message_risk_update(m.day, m.risk, RiskModel))
+                        hd[m.unobs_id].update_messages.append(human.cur_message_risk_update(m.day, m.risk, encounter_time, RiskModel))
 
             for m_i in human.update_messages:
-                RiskModel.update_risk_risk_update(human, m_i, rng)
+                RiskModel.update_risk_risk_update(human, m_i, encounter_time, rng)
 
             # append the updated risk for this person and whether or not they are actually infectious
             daily_risks.append((np.e ** human.risk, human.is_infectious(todays_date)[0], human.name))
@@ -187,13 +187,14 @@ def main(args):
                 is_exposed, exposure_day = human.is_exposed(todays_date)
                 is_infectious, infectious_day = human.is_infectious(todays_date)
                 is_recovered, recovery_day = human.is_recovered(todays_date)
-
-                # data to save is current messages + reported symptoms (as pytorch tensor?)
+                candidate_encounters, exposure_encounter, candidate_locs, exposed_locs = candidate_exposures(human, todays_date)
+                infectiousness = rolling_infectiousness(todays_date, human)
                 daily_output[human.name] = {"current_day": current_day,
                                             "observed":
                                                 {
                                                     "reported_symptoms": symptoms_to_np((todays_date - human.symptoms_start).days, human.symptoms_at_time(todays_date,  human.all_reported_symptoms), all_possible_symptoms),
-                                                    "messages": messages_to_np(human),
+                                                    "candidate_encounters": candidate_encounters,
+                                                    "candidate_locs": candidate_locs,
                                                     "test_results": human.get_test_result_array(todays_date),
                                                  },
                                             "unobserved":
@@ -205,6 +206,9 @@ def main(args):
                                                     "infectious_day": infectious_day,
                                                     "is_recovered": is_recovered,
                                                     "recovery_day": recovery_day,
+                                                    "exposed_locs": exposed_locs,
+                                                    "exposure_encounter": exposure_encounter,
+                                                    "infectiousness": infectiousness,
                                                 }
                                             }
         if args.plot_daily:
@@ -212,7 +216,6 @@ def main(args):
         all_risks.extend(daily_risks)
         all_outputs.append(daily_output)
         daily_risks = []
-        print(f"day: {time.time() - starttime}")
     if args.save_training_data:
         pickle.dump(all_outputs, open(args.output_file, 'wb'))
     dist_plot(all_risks,  f"{args.plot_path}all_risks.png")

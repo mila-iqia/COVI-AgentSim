@@ -328,14 +328,14 @@ def _json_serialize(o):
 def compute_distance(loc1, loc2):
     return np.sqrt((loc1.lat - loc2.lat) ** 2 + (loc1.lon - loc2.lon) ** 2)
 
-def _encode_message(message):
+def _encode_message(message, encounter_time):
 	# encode a contact message as a string
-	return str(np.array(message.uid.tolist()).astype(int).tolist()) + "_" + str(message.risk) + "_" + str(message.day) + "_" + str(message.unobs_id)
+	return str(np.array(message.uid.tolist()).astype(int).tolist()) + "_" + str(message.risk) + "_" + str(message.day) + "_" + str(encounter_time) + "_" + str(message.unobs_id)
 
 def _decode_message(message):
 	# decode a string-encoded message into a tuple
 	# TODO: make this a namedtuple
-	uid, risk, day, unobs_id = message.split("_")
+	uid, risk, day, encounter_time, unobs_id = message.split("_")
 	obs_uid = bitarray(json.loads(uid))
 	risk = int(risk)
 	day = int(day)
@@ -343,7 +343,7 @@ def _decode_message(message):
 		unobs_uid = int(unobs_id)
 	except Exception:
 		unobs_uid = int(unobs_id.split(":")[1])
-	return obs_uid, risk, day, unobs_uid
+	return obs_uid, risk, day, encounter_time, unobs_uid
 
 @lru_cache(500)
 def _get_integer_pdf(avg, scale, num_sigmas=2):

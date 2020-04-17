@@ -25,17 +25,15 @@ class DummyHuman:
         self.test_time = datetime.datetime.max
         self.time_of_exposure = datetime.datetime.max
         self.symptoms_start = datetime.datetime.max
+        self.exposure_source = None
+        self.exposure_message = None
         self.infectiousness_start = datetime.datetime.max
         self.tested_positive_contact_count = 0
         self.Message = namedtuple('message', 'uid risk day unobs_id')
-        self.UpdateMessage = namedtuple('update_message', 'uid new_risk risk day unobs_id')
+        self.UpdateMessage = namedtuple('update_message', 'uid new_risk risk day encounter_time unobs_id')
         self.viral_loads = {}
-        self.infectiousnesses = {}
+        self.infectiousness = {}
         self.locations_visited = {}
-
-        num_days = 14
-        num_states = 4 # Susceptible, exposed, infected, recovered
-        self.state_array = np.zeros((num_days, num_states))
 
 
     def cur_message(self, day, RiskModel):
@@ -43,8 +41,8 @@ class DummyHuman:
         message = self.Message(self.uid, RiskModel.quantize_risk(self.risk), day, self.name)
         return message
 
-    def cur_message_risk_update(self, day, old_risk, RiskModel):
-        return self.UpdateMessage(self.uid, RiskModel.quantize_risk(self.risk), old_risk, day, self.name)
+    def cur_message_risk_update(self, day, old_risk, encounter_time, RiskModel):
+        return self.UpdateMessage(self.uid, RiskModel.quantize_risk(self.risk), old_risk, day, str(encounter_time), self.name)
 
     def purge_messages(self, todays_date):
         num_purged = 0

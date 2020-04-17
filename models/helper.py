@@ -1,4 +1,5 @@
 import numpy as np
+import datetime
 from utils import _decode_message
 from collections import Counter
 
@@ -6,13 +7,26 @@ def messages_to_np(human):
     ms_enc = np.zeros((len(human.M), 3))
     idx = 0
     for m_enc, assignment in human.M.items():
-        obs_uid, risk, day, unobs_uid = _decode_message(m_enc)
+        obs_uid, risk, day, encounter_time, unobs_uid = _decode_message(m_enc)
         message = human.Message(obs_uid, risk, day, unobs_uid)
 
         m_enc = np.array([assignment, message.risk, day])
         ms_enc[idx] = m_enc
         idx += 1
     return ms_enc
+
+def candidate_exposures(human, date):
+    candidate_locs = list(human.locations_visited.keys())
+    exposed_locs = np.zeros(len(candidate_locs))
+    if human.exposure_source in candidate_locs:
+        exposed_locs[candidate_locs.index(human.exposure_source)] = 1.
+    candidate_encounters = list(messages_to_np(human))
+    exposed_encounters = np.zeros(len(candidate_encounters))
+    if human.exposure_message:
+        idx = list(human.M.keys()).index(human.exposure_message)
+        exposed_encounters[idx] = 1.
+    return candidate_encounters, exposed_encounters, candidate_locs, exposed_locs
+
 
 def symptoms_to_np(symptoms_day, all_symptoms, all_possible_symptoms):
     rolling_window = 14
@@ -36,3 +50,14 @@ def group_to_majority_id(all_groups):
                 break
         all_new_groups.append(new_groups)
     return all_new_groups
+
+def rolling_infectiousness(date, human):
+    rolling_window = 14
+    infectiousness = np.zeros(rolling_window)
+    if human.time_of_infectiousness_start == datetime.datetime.max:
+        return infectiousness
+    infectious_day = (date - human.time_of_infectiousness_start).days
+
+    import pdb; pdb.set_trace()
+    human.infectiousness
+    return infectiousness
