@@ -3,27 +3,28 @@
 ## Overview
 This document describes the code in models. By running `python models/run.py`, you will 
 initiate a message passing algorithm which iterates over the logs output by the mobility simulator. We provide more details
-in the message passing section below. Those logs are described more in `events.md`, but briefly there are four kinds: encounters, symptom_start, contamination,
-and recovery. Our goal is to pass messages between people such that each person can accurately predict their own 
+in the message passing section below. Those logs are described more in `events.md`, but briefly there are seven kinds: encounters, symptom_start, contamination, recovery, daily, test_results, and static_info. Our goal is to pass messages between people such that each person can accurately predict their own 
 risk of being infectious while maintaining the highest level of privacy. 
-
+ 
 ## Privacy
 * Risk values are quantized to 4-bit codes such that they can take on one of 16 levels (0-15). 
 * User ids are also quantized to 4-bit codes into and left-shifted each day, with a new random bit appended to the right. 
+* De-anonymized User Ids - the message clustering algorithm attempts to cluster messages by which "real person" sent them. 
+These de-anonymized user ids are integer values. 
 
 ## Message Passing
-When you run `python models/run.py`, we load the logs contained in `output/data.pkl`, then initialize the people in the sim:
+When you run `python models/run.py`, we load the logs contained in `output/data.pkl` (or `--data_path`), then initialize the people in the sim:
 * A User is initialized with either: risk = population level risk, or if they were already diagnosed with COVID (in the initial self-report), with maximum level (15).
 * When user self-reports a positive diagnosis, they update their risk level to 15 and broadcast that information to all their contacts of the past 14 days.
 
 For each day in the simulation, for each person, we do simulate the workings of their contact tracing app.
 * Every day,
-    * autorotating code is updated 
-    * user checks for new received messages and extracts risk levels in a table with (risk level, day) keeping only those of the last 14 days
-    * risk levels from the last 14 days are converted to probabilities between 0 and 1 by the inverse of the probability encoding table
-    * user clusters their messages, and applies updates based on their new `risk_update` messages to determine this user's current risk
+    * the autorotating user id is left shifted by 1 bit and a random bit is appended to the right
+    * user checks for new received messages and clusters them
+    * risk levels from the last 14 days of messages are converted to probabilities between 0 and 1 by the inverse of the probability encoding table in `models/log_risk_mapping.npy` which was constructed by Tristan Delau.
+    * user updates their risk based on their new messages with the `update_risk_encounter` function to determine this user's current risk
     * this new risk probability is quantized by the probability encoding table to obtain a 4-bit code (0 to F)
-    * if the new code is different from the old code, it is broadcast to all the contacts of the past 14 days (with the usual format (old risk, new risk, autorotating code)
+    * if the new code is different from the old code, a new risk is broadcast for each message received over the past 14 days, formatted: (old risk, new risk, current user id)
     * the user purges messages older than 14 days
     
 ## Risk Models
@@ -54,24 +55,48 @@ If you wish to write data out from this simulator, use the `--save_training_data
 For each person, for each day, this file contains data in the form: 
 
 ```
-{"current_day": current_day,
-"observed":
-    {
-        "reported_symptoms": np.array((rolling_num_days, num_possible_symptoms)), #rolling_num_days is 14
-        "messages": np.array((num_messages, msg_dim)), #msg_dim = int cluster id [0, n] + float risk [0., 1.] + int day [0, -13]
-        "test_results": np.array(rolling_num_days), # binary test_results on one of the last 14 days
-     },
-"unobserved":
-    {
-        "true_symptoms": np.array((rolling_num_days, num_possible_symptoms)),
-        "is_exposed": is_exposed, # bool
-        "exposure_day": exposure_day, # 0 to -13
-        "is_infectious": is_infectious,  # bool
-        "infectious_day": infectious_day, # 0 to -13
-        "is_recovered": is_recovered,  # bool
-        "recovery_day": recovery_day, # 0 to -13
-    }
-}
+daily_output = {"current_day": current_day,
+                "observed":
+                    {
+                        "reported_symptoms": symptoms_to_np(
+                            (todays_date - human.symptoms_start).days,
+                            human.symptoms_at_time(todays_date, human.all_reported_symptoms),
+                            all_possible_symptoms),
+                        "candidate_encounters": candidate_encounters,
+                        "candidate_locs": candidate_locs,
+                        "test_results": human.get_test_result_array(todays_date),
+                    },
+                "unobserved":
+                    {
+                        "true_symptoms": symptoms_to_np((todays_date - human.symptoms_start).days,
+                                                        human.symptoms_at_time(todays_date,
+                                                                               human.all_symptoms),
+                                                        all_possible_symptoms),
+                        "is_exposed": is_exposed,
+                        "exposure_day": exposure_day,
+                        "is_infectious": is_infectious,
+                        "infectious_day": infectious_day,
+                        "is_recovered": is_recovered,
+                        "recovery_day": recovery_day,
+                        "exposed_locs": exposed_locs,
+                        "exposure_encounter": exposure_encounter,
+                        "infectiousness": infectiousness,
+                    }
+                }
 ```
+Rolling arrays should always be of the same dimension, with the content shifting over by 1 every day.
+
+- `reported_symptoms` should be a rolling numpy array of dimension 14 (days) by the total number of symptoms observed.
+It should be a strict subset of the data contained in `true_symptoms`. I.e., if you performed dropout on `true_symptoms`, you could
+get `reported_symptoms`.
+- `true_symptoms` is the same dimensionality as `reported_symptoms`, but contains the complete set of symptoms for the Human's illness observed within the last 14 days.
+`reported_symptoms` and `true_symptoms` are computed using the information in `Log.symptom_start`. We set attributes `all_symptoms`, `reported_symptoms`, and `symptom_start_time` on the Human.
+The first of these contain the entire progression of the illness, starting at `symptom_start_time`.
+
+                        
+                        "reported_symptoms": symptoms_to_np(
+                            (todays_date - human.symptoms_start).days,
+                            human.symptoms_at_time(todays_date, human.all_reported_symptoms),
+                            all_possible_symptoms),
 
 That data is loaded into a PyTorch dataloader in `models/dataloader.py`.

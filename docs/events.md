@@ -54,4 +54,6 @@ Following events are reported -
  }
 }
 
+recovery, daily, test_results, and static_info
+
 ```
