@@ -53,7 +53,7 @@ class RiskModelBase:
     @classmethod
     def score_matches(cls, human, m_i):
         scores = {}
-        for m_enc, _ in human.M.items():
+        for m_enc, _ in reversed(human.M.items()):
             obs_uid, risk, day, unobs_uid = _decode_message(m_enc)
             m = human.Message(obs_uid, risk, day, unobs_uid)
             if m_i.uid == m.uid and m_i.day == m.day:

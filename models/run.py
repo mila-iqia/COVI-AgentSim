@@ -138,12 +138,13 @@ def main(args):
     days = (enc_logs[-1]['time'] - enc_logs[0]['time']).days
     for current_day in tqdm(range(days)):
         daily_output = {}
+        import time
+        start1 = time.time()
         for hid, human in hd.items():
             start_risk = human.risk
             todays_date = start + datetime.timedelta(days=current_day)
             # update your quantized uid and shuffle the messages (following privacy protocol)
             human.update_uid()
-            # human.shuffle_messages()
 
             # check if you have new reported symptoms
             human.risk = RiskModel.update_risk_daily(human, todays_date)
@@ -152,7 +153,6 @@ def main(args):
             for m_i in human.messages:
                 # update risk based on that day's messages
                 RiskModel.update_risk_encounter(human, m_i)
-
 
             # go about your day and accrue encounters
             encounters = logs[hash_id_day(human.name, current_day)]
@@ -177,13 +177,9 @@ def main(args):
 
             for m_i in human.update_messages:
                 RiskModel.update_risk_risk_update(human, m_i, rng)
-
             # append the updated risk for this person and whether or not they are actually infectious
             daily_risks.append((np.e ** human.risk, human.is_infectious(todays_date)[0], human.name))
             human.purge_messages(current_day)
-            infectiousness = rolling_infectiousness(start, todays_date, human)
-            if human.is_infectious(todays_date)[0]:
-                infectiousness = rolling_infectiousness(start, todays_date, human)
 
             # for each sim day, for each human, save an output training example
             if args.save_training_data:
@@ -191,6 +187,7 @@ def main(args):
                 is_infectious, infectious_day = human.is_infectious(todays_date)
                 is_recovered, recovery_day = human.is_recovered(todays_date)
                 candidate_encounters, exposure_encounter, candidate_locs, exposed_locs = candidate_exposures(human, todays_date)
+                infectiousness = rolling_infectiousness(start, todays_date, human)
                 daily_output[human.name] = {"current_day": current_day,
                                             "observed":
                                                 {
@@ -213,6 +210,7 @@ def main(args):
                                                     "infectiousness": infectiousness,
                                                 }
                                             }
+        print(f"mainloop {time.time() - start1}")
         if args.plot_daily:
             hist_plot(daily_risks, f"{args.plot_path}day_{str(current_day).zfill(3)}.png")
         all_risks.extend(daily_risks)
