@@ -53,7 +53,7 @@ class RiskModelBase:
     @classmethod
     def score_matches(cls, human, m_i):
         scores = {}
-        for m_enc, _ in reversed(human.M.items()):
+        for m_enc, _ in reversed(list(human.M.items())):
             obs_uid, risk, day, unobs_uid = _decode_message(m_enc)
             m = human.Message(obs_uid, risk, day, unobs_uid)
             if m_i.uid == m.uid and m_i.day == m.day:
@@ -140,7 +140,7 @@ class RiskModelEilif(RiskModelBase):
 
 
 class RiskModelTristan(RiskModelBase):
-    risk_map = np.load("models/log_risk_mapping.npy")
+    risk_map = np.load(f"{os.path.dirname(os.path.realpath(__file__))}/log_risk_mapping.npy")
     risk_map[0] = np.log(0.01)
 
     @classmethod

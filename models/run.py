@@ -13,10 +13,10 @@ import time
 from tqdm import tqdm
 from collections import defaultdict
 from base import Event
-from dummy_human import DummyHuman
-from risk_models import RiskModelYoshua, RiskModelLenka, RiskModelEilif, RiskModelTristan
+from models.dummy_human import DummyHuman
+from models.risk_models import RiskModelYoshua, RiskModelLenka, RiskModelEilif, RiskModelTristan
 from plots.plot_risk import dist_plot, hist_plot
-from helper import messages_to_np, symptoms_to_np, candidate_exposures, rolling_infectiousness
+from models.helper import messages_to_np, symptoms_to_np, candidate_exposures, rolling_infectiousness
 from utils import _encode_message
 from joblib import Parallel, delayed
 
@@ -40,7 +40,7 @@ def hash_id_day(hid, day):
 
 def proc_human(params):
     """This function can be parallelized across CPUs. Currently, we only check for messages once per day, so this can be run in parallel"""
-    start, current_day, RiskModel, encounters, rng, all_possible_symptoms, human = params.values()
+    start, current_day, RiskModel, encounters, rng, all_possible_symptoms, human, save_training_data = params.values()
     human.start_risk = human.risk
     todays_date = start + datetime.timedelta(days=current_day)
 
@@ -65,7 +65,7 @@ def proc_human(params):
 
     # for each sim day, for each human, save an output training example
     daily_output = {}
-    if args.save_training_data:
+    if save_training_data:
         is_exposed, exposure_day = human.is_exposed(todays_date)
         is_infectious, infectious_day = human.is_infectious(todays_date)
         is_recovered, recovery_day = human.is_recovered(todays_date)
@@ -102,7 +102,8 @@ def proc_human(params):
     return {human.name: daily_output, "human": human}
 
 def main(args=None):
-    args = args || parse_args()
+    if not args:
+        args = parse_args()
 
     # read and filter the pickles
     logs = []
@@ -215,7 +216,7 @@ def main(args=None):
             all_params = []
             for human in hd.values():
                 encounters = logs[hash_id_day(human.name, current_day)]
-                all_params.append({"start": start, "current_day": current_day, "RiskModel": RiskModel, "encounters": encounters, "rng": rng, "all_possible_symptoms": all_possible_symptoms, "human": human})
+                all_params.append({"start": start, "current_day": current_day, "RiskModel": RiskModel, "encounters": encounters, "rng": rng, "all_possible_symptoms": all_possible_symptoms, "human": human, "save_training_data": args.save_training_data})
                 # go about your day accruing encounters and clustering them
                 for idx, encounter in enumerate(encounters):
                     encounter_time = encounter['time']
