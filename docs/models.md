@@ -13,7 +13,7 @@ risk of being infectious while maintaining the highest level of privacy.
 These de-anonymized user ids are integer values. 
 
 ## Message Passing
-When you run `python models/run.py`, we load the logs contained in `output/data.pkl` (or `--data_path`), then initialize the people in the sim:
+When you run `python models/run.py`, we load the logs contained in `output/data.zip` (or `--data_path`), then initialize the people in the sim:
 * A User is initialized with either: risk = population level risk, or if they were already diagnosed with COVID (in the initial self-report), with maximum level (15).
 * When user self-reports a positive diagnosis, they update their risk level to 15 and broadcast that information to all their contacts of the past 14 days.
 
