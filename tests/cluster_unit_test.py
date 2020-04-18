@@ -76,7 +76,7 @@ class RiskModelIntegrationTest(unittest.TestCase):
 
     def test_add_message_to_cluster_same_cluster_run(self):
         """
-        Tests messages with mutually exclusive uids on the same day are scored lowly
+        Tests that the add_message_to_cluster function adds messages with the same uid on the same day to the same cluster.
         """
         # make new old message clusters
         old_message = Message(bitarray("0000"), 0, 0, 0)
@@ -94,7 +94,9 @@ class RiskModelIntegrationTest(unittest.TestCase):
 
     def test_mutex_cluster_run(self):
         """
-        Tests messages with mutually exclusive uids on the same day are scored lowly
+        If you get two messages on the same day with the same id and have clustered them together,
+        but get just one update message the same day with that user id, you now have evidence that
+        those two messages should not be clustered together. Therefore, we should break up that cluster.
         """
         # make new old message clusters
         old_message1 = Message(bitarray("0000"), 0, 0, 0)
