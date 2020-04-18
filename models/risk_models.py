@@ -6,6 +6,7 @@ from config import *
 from models.utils import Message, encode_message, decode_message, binary_to_float
 import operator
 import datetime
+from collections import defaultdict
 from bitarray import bitarray
 
 """ This file contains the core of the side simulation, which is run on the output encounters from the main simulation.
@@ -51,23 +52,36 @@ class RiskModelBase:
         return 0.0
 
     @classmethod
-    def score_matches(cls, old_messages:list, m_i):
-        scores = {}
-        for m_enc in old_messages:
-            obs_uid, risk, day, unobs_uid = decode_message(m_enc)
-            m = Message(obs_uid, risk, day, unobs_uid)
-            if m_i.uid == m.uid and m_i.day == m.day:
-                scores[m_enc] = 3
-                break
-            elif m_i.uid[:3] == m.uid[:3] and m_i.day - 1 == m.day:
-                scores[m_enc] = 2
-            elif m_i.uid[:2] == m.uid[:2] and m_i.day - 2 == m.day:
-                scores[m_enc] = 1
-            elif m_i.uid[:1] == m.uid[:1] and m_i.day - 2 == m.day:
-                scores[m_enc] = 0
-            else:
-                scores[m_enc] = -1
-        return scores
+    def score_matches(cls, clusters, m_i):
+        best_cluster = 0
+        best_message = None
+        best_score = -1
+        for cluster_id, messages in clusters.items():
+            for message in messages:
+                obs_uid, risk, day, unobs_uid = decode_message(message)
+                m = Message(obs_uid, risk, day, unobs_uid)
+                if m_i.uid == m.uid and m_i.day == m.day:
+                    best_cluster = cluster_id
+                    best_message = message
+                    best_score = 3
+                    break
+                elif m_i.uid[:3] == m.uid[:3] and m_i.day - 1 == m.day:
+                    best_cluster = cluster_id
+                    best_message = message
+                    best_score = 2
+                elif m_i.uid[:2] == m.uid[:2] and m_i.day - 2 == m.day:
+                    best_cluster = cluster_id
+                    best_message = message
+                    best_score = 1
+                elif m_i.uid[:1] == m.uid[:1] and m_i.day - 2 == m.day:
+                    best_cluster = cluster_id
+                    best_message = message
+                    best_score = 0
+                else:
+                    best_cluster = cluster_id
+                    best_message = message
+                    best_score = -1
+        return best_cluster, decode_message(best_message), best_score
 
     @classmethod
     def add_message_to_cluster(cls, clusters, m_i):
@@ -77,18 +91,13 @@ class RiskModelBase:
         # TODO: storing m_i_enc in dict M is a bug, we're overwriting some messages -- we need to make a unique encoding that uses the timestamp
         m_i_enc = encode_message(m_i)
         # otherwise score against previous messages
-        scores = cls.score_matches(reversed(list(clusters.keys())), m_i)
-        if scores:
-            max_score_message = max(scores.items(), key=operator.itemgetter(1))[0] # note, this is not a random selection between ties
-            if scores[max_score_message] >= 0:
-                clusters[m_i_enc] = clusters[max_score_message]
-            # if there was no nearby neighbor
-            else:
-                new_group = max([v for k, v in clusters.items()]) + 1
-                clusters[m_i_enc] = new_group
-        # if it's either the first message
+        best_cluster, best_message, best_score = cls.score_matches(clusters, m_i)
+        if best_score >= 0:
+            clusters[best_cluster].append(m_i_enc)
+        elif not clusters:
+            clusters[0].append(m_i_enc)
         else:
-            clusters[m_i_enc] = 0
+            clusters[max(clusters.keys()) + 1].append(m_i_enc)
         return clusters
 
 class RiskModelLenka(RiskModelBase):
@@ -188,13 +197,21 @@ class RiskModelTristan(RiskModelBase):
             human.risk = np.log(1. - init_population_level_risk) + np.log1p(-expo) + np.log1p(init_population_level_risk / tmp)
 
     @classmethod
-    def update_risk_risk_update(cls, clusters, update_message):
+    def update_risk_risk_update(cls, clusters, update_messages):
         # TODO: update a random message when there are ties in the scoring
-        scores = cls.score_matches(reversed(list(clusters.keys())), update_message)
-        m_enc = max(scores.items(), key=operator.itemgetter(1))[0]
-        assignment = clusters[m_enc]
-        uid, risk, day, unobs_id = decode_message(m_enc)
-        updated_message = Message(uid, update_message.new_risk, day, unobs_id)
-        del clusters[m_enc]
-        clusters[encode_message(updated_message)] = assignment
+        clustered_update_messages = update_messages
+        for update_message in update_messages:
+            best_cluster, best_message, best_score = cls.score_matches(clusters, update_message)
+            nodes_in_cluster_on_day = []
+            for m, cluster_id in clusters.items():
+                uid, risk, day, unobs_id = decode_message(m)
+                if cluster_id == best_cluster and day == update_message.received_at:
+                    nodes_in_cluster_on_day.append(m)
+
+            uid, risk, day, unobs_id = decode_message(best_message)
+            if len(nodes_in_cluster_on_day) != len(clustered_update_messages):
+                new_group = max([v for k, v in clusters.items()]) + 1
+                updated_message = Message(uid, update_message.new_risk, day, unobs_id)
+                del clusters[best_cluster][best_message]
+                clusters[encode_message(updated_message)] = new_group
         return clusters

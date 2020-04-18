@@ -5,12 +5,13 @@ import datetime
 from bitarray import bitarray
 from models.utils import Message, UpdateMessage
 import numpy as np
+from collections import defaultdict
 
 # A utility class for re-inflating human objects with just the stuff we need for message passing / risk prediction
 class DummyHuman:
     def __init__(self, name=None):
         self.name = name
-        self.M = {}
+        self.M = defaultdict(list)
         self.sent_messages = {}
         self.messages = []
         self.update_messages = []
@@ -40,8 +41,8 @@ class DummyHuman:
         message = Message(self.uid, RiskModel.quantize_risk(self.risk), day, self.name)
         return message
 
-    def cur_message_risk_update(self, day, old_risk, RiskModel):
-        return UpdateMessage(self.uid, RiskModel.quantize_risk(self.risk), old_risk, day, self.name)
+    def cur_message_risk_update(self, day, old_risk, sent_at, RiskModel):
+        return UpdateMessage(self.uid, RiskModel.quantize_risk(self.risk), old_risk, day, sent_at, self.name)
 
     def purge_messages(self, todays_date):
         num_purged = 0

@@ -54,9 +54,7 @@ def proc_human(params):
         RiskModel.update_risk_encounter(human, m_i)
         human.M = RiskModel.add_message_to_cluster(human.M, m_i)
 
-    # check your update messages
-    for m_i in human.update_messages:
-        human.M = RiskModel.update_risk_risk_update(human.M, m_i)
+    human.M = RiskModel.update_risk_risk_update(human.M, human.update_messages)
 
     # append the updated risk for this person and whether or not they are actually infectious
     human.purge_messages(current_day)
@@ -70,33 +68,33 @@ def proc_human(params):
         candidate_encounters, exposure_encounter, candidate_locs, exposed_locs = candidate_exposures(human, todays_date)
         infectiousness = rolling_infectiousness(start, todays_date, human)
         daily_output = {"current_day": current_day,
-                                    "observed":
-                                        {
-                                            "reported_symptoms": symptoms_to_np(
-                                                (todays_date - human.symptoms_start).days,
-                                                human.symptoms_at_time(todays_date, human.all_reported_symptoms),
-                                                all_possible_symptoms),
-                                            "candidate_encounters": candidate_encounters,
-                                            "candidate_locs": candidate_locs,
-                                            "test_results": human.get_test_result_array(todays_date),
-                                        },
-                                    "unobserved":
-                                        {
-                                            "true_symptoms": symptoms_to_np((todays_date - human.symptoms_start).days,
-                                                                            human.symptoms_at_time(todays_date,
-                                                                                                   human.all_symptoms),
-                                                                            all_possible_symptoms),
-                                            "is_exposed": is_exposed,
-                                            "exposure_day": exposure_day,
-                                            "is_infectious": is_infectious,
-                                            "infectious_day": infectious_day,
-                                            "is_recovered": is_recovered,
-                                            "recovery_day": recovery_day,
-                                            "exposed_locs": exposed_locs,
-                                            "exposure_encounter": exposure_encounter,
-                                            "infectiousness": infectiousness,
-                                        }
-                                    }
+                        "observed":
+                            {
+                                "reported_symptoms": symptoms_to_np(
+                                    (todays_date - human.symptoms_start).days,
+                                    human.symptoms_at_time(todays_date, human.all_reported_symptoms),
+                                    all_possible_symptoms),
+                                "candidate_encounters": candidate_encounters,
+                                "candidate_locs": candidate_locs,
+                                "test_results": human.get_test_result_array(todays_date),
+                            },
+                        "unobserved":
+                            {
+                                "true_symptoms": symptoms_to_np((todays_date - human.symptoms_start).days,
+                                                                human.symptoms_at_time(todays_date,
+                                                                                       human.all_symptoms),
+                                                                all_possible_symptoms),
+                                "is_exposed": is_exposed,
+                                "exposure_day": exposure_day,
+                                "is_infectious": is_infectious,
+                                "infectious_day": infectious_day,
+                                "is_recovered": is_recovered,
+                                "recovery_day": recovery_day,
+                                "exposed_locs": exposed_locs,
+                                "exposure_encounter": exposure_encounter,
+                                "infectiousness": infectiousness,
+                            }
+                        }
     return {human.name: daily_output, "human": human}
 
 def main(args=None):
@@ -215,41 +213,46 @@ def main(args=None):
             break
         start1 = time.time()
         daily_risks = []
+        all_params = []
 
-        with Parallel(n_jobs=args.n_jobs, batch_size='auto', verbose=10) as parallel:
-            all_params = []
-            for human in hd.values():
-                # update the uid
-                human._uid = update_uid(human._uid, rng)
+        for human in hd.values():
+            # update the uid
+            human._uid = update_uid(human._uid, rng)
 
-                # get list of encounters for that day
-                encounters = logs[hash_id_day(human.name, current_day)]
+            # get list of encounters for that day
+            encounters = logs[hash_id_day(human.name, current_day)]
 
-                # setup parameters for parallelization
-                all_params.append({"start": start, "current_day": current_day, "RiskModel": RiskModel, "encounters": encounters, "rng": rng, "all_possible_symptoms": all_possible_symptoms, "human": human, "save_training_data": args.save_training_data})
+            # setup parameters for parallelization
+            all_params.append(
+                {"start": start, "current_day": current_day, "RiskModel": RiskModel, "encounters": encounters,
+                 "rng": rng, "all_possible_symptoms": all_possible_symptoms, "human": human,
+                 "save_training_data": args.save_training_data})
 
-                # caluclate the messages to be sent during each encounter
-                # go about your day accruing encounters and clustering them
-                for idx, encounter in enumerate(encounters):
-                    encounter_time = encounter['time']
-                    unobs = encounter['payload']['unobserved']
-                    encountered_human = hd[unobs['human2']['human_id']]
-                    message = encountered_human.cur_message(current_day, RiskModel)
-                    encountered_human.sent_messages[
-                        str(unobs['human1']['human_id']) + "_" + str(encounter_time)] = message
-                    human.messages.append(message)
-                    got_exposed = encounter['payload']['unobserved']['human1']['got_exposed']
-                    if got_exposed:
-                        human.exposure_message = encode_message(message)
+            # caluclate the messages to be sent during each encounter
+            # go about your day accruing encounters and clustering them
+            for idx, encounter in enumerate(encounters):
+                encounter_time = encounter['time']
+                unobs = encounter['payload']['unobserved']
+                encountered_human = hd[unobs['human2']['human_id']]
+                message = encountered_human.cur_message(current_day, RiskModel)
+                encountered_human.sent_messages[
+                    str(unobs['human1']['human_id']) + "_" + str(encounter_time)] = message
+                human.messages.append(message)
+                got_exposed = encounter['payload']['unobserved']['human1']['got_exposed']
+                if got_exposed:
+                    human.exposure_message = encode_message(message)
 
-            # in parallel, cluster received messages and predict risks
-            daily_output = parallel((delayed(proc_human)(params) for params in all_params))
+            with Parallel(n_jobs=args.n_jobs, batch_size='auto', verbose=10) as parallel:
+                # in parallel, cluster received messages and predict risks
+                daily_output = parallel((delayed(proc_human)(params) for params in all_params))
 
             # if the encounter happened within the last 14 days, and your symptoms started at most 3 days after your contact
             if RiskModel.quantize_risk(human.start_risk) != RiskModel.quantize_risk(human.risk):
+                sent_at = start + datetime.timedelta(days=current_day, minutes=rng.randint(low=0, high=1440))
                 for k, m in human.sent_messages.items():
                     if current_day - m.day < 14:
-                        hd[m.unobs_id].update_messages.append(human.cur_message_risk_update(m.day, m.risk, RiskModel))
+                        # using encounter
+                        hd[m.unobs_id].update_messages.append(human.cur_message_risk_update(m.day, m.risk, sent_at, RiskModel))
 
             # handle the output of the parallel processes
             for idx, output in enumerate(daily_output):
