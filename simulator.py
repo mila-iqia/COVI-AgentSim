@@ -11,7 +11,7 @@ import math
 
 from utils import _normalize_scores, _get_random_age, _get_random_sex, _get_all_symptoms, \
     _get_preexisting_conditions, _draw_random_discreet_gaussian, _json_serialize, _sample_viral_load_piecewise, \
-    _get_random_area, _encode_message, _decode_message, float_to_binary, binary_to_float, _reported_symptoms, _get_mask_wearing
+    _get_random_area, _reported_symptoms, _get_mask_wearing
 from config import *  # PARAMETERS
 
 from base import *

@@ -3,7 +3,7 @@ import os
 sys.path.append(os.getcwd())
 import datetime
 from bitarray import bitarray
-from collections import namedtuple
+from models.utils import Message, UpdateMessage
 import numpy as np
 
 # A utility class for re-inflating human objects with just the stuff we need for message passing / risk prediction
@@ -30,8 +30,6 @@ class DummyHuman:
         self.exposure_message = None
         self.infectiousness_start = datetime.datetime.max
         self.tested_positive_contact_count = 0
-        self.Message = namedtuple('message', 'uid risk day unobs_id')
-        self.UpdateMessage = namedtuple('update_message', 'uid new_risk risk day unobs_id')
         self.viral_loads = {}
         self.rolling_infectiousness_array = []
         self.infectiousness = {}
@@ -40,11 +38,11 @@ class DummyHuman:
 
     def cur_message(self, day, RiskModel):
         """creates the current message for this user"""
-        message = self.Message(self.uid, RiskModel.quantize_risk(self.risk), day, self.name)
+        message = Message(self.uid, RiskModel.quantize_risk(self.risk), day, self.name)
         return message
 
     def cur_message_risk_update(self, day, old_risk, RiskModel):
-        return self.UpdateMessage(self.uid, RiskModel.quantize_risk(self.risk), old_risk, day, self.name)
+        return UpdateMessage(self.uid, RiskModel.quantize_risk(self.risk), old_risk, day, self.name)
 
     def purge_messages(self, todays_date):
         num_purged = 0

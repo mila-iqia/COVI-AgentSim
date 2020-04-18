@@ -4,7 +4,7 @@ import os
 sys.path.append(os.getcwd())
 import numpy as np
 from matplotlib import pyplot as plt
-from utils import _decode_message
+from models.utils import decode_message
 from collections import defaultdict, Counter
 import networkx as nx
 from models.helper import group_to_majority_id
@@ -34,7 +34,7 @@ for someones_clustered_messages in everyones_clustered_messages:
     unique_people_contacted = set()
     total_num_contacts = 0
     for m_enc, assignment in someones_clustered_messages.items():
-        obs_uid, obs_risk, m_sent, unobs_uid = _decode_message(m_enc)
+        obs_uid, obs_risk, m_sent, unobs_uid = decode_message(m_enc)
         groups[assignment].append(unobs_uid)
         unique_people_contacted.add(unobs_uid)
         total_num_contacts += 1

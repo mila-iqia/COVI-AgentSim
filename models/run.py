@@ -17,7 +17,7 @@ from models.dummy_human import DummyHuman
 from models.risk_models import RiskModelYoshua, RiskModelLenka, RiskModelEilif, RiskModelTristan
 from plots.plot_risk import dist_plot, hist_plot
 from models.helper import messages_to_np, symptoms_to_np, candidate_exposures, rolling_infectiousness
-from utils import _encode_message
+from models.utils import encode_message
 from joblib import Parallel, delayed
 
 def parse_args():
@@ -228,7 +228,7 @@ def main(args=None):
                     human.messages.append(message)
                     got_exposed = encounter['payload']['unobserved']['human1']['got_exposed']
                     if got_exposed:
-                        human.exposure_message = _encode_message(message)
+                        human.exposure_message = encode_message(message)
 
             daily_output = parallel((delayed(proc_human)(params) for params in all_params))
 

@@ -3,7 +3,7 @@ import os
 sys.path.append(os.getcwd())
 import numpy as np
 from config import *
-from utils import _encode_message, _decode_message, binary_to_float
+from models.utils import Message, encode_message, decode_message, binary_to_float
 import operator
 import datetime
 from bitarray import bitarray
@@ -51,11 +51,11 @@ class RiskModelBase:
         return 0.0
 
     @classmethod
-    def score_matches(cls, human, m_i):
+    def score_matches(cls, old_messages:list, m_i):
         scores = {}
-        for m_enc, _ in reversed(list(human.M.items())):
-            obs_uid, risk, day, unobs_uid = _decode_message(m_enc)
-            m = human.Message(obs_uid, risk, day, unobs_uid)
+        for m_enc in old_messages:
+            obs_uid, risk, day, unobs_uid = decode_message(m_enc)
+            m = Message(obs_uid, risk, day, unobs_uid)
             if m_i.uid == m.uid and m_i.day == m.day:
                 scores[m_enc] = 3
                 break
@@ -76,7 +76,7 @@ class RiskModelBase:
         # TODO: refactor to compare multiple clustering schemes
         # TODO: check for mutually exclusive messages in order to break up a group and re-run nearest neighbors
         # TODO: storing m_i_enc in dict M is a bug, we're overwriting some messages -- we need to make a unique encoding that uses the timestamp
-        m_i_enc = _encode_message(m_i)
+        m_i_enc = encode_message(m_i)
         # otherwise score against previous messages
         scores = cls.score_matches(human, m_i)
         if scores:
@@ -125,7 +125,7 @@ class RiskModelEilif(RiskModelBase):
 
         # Get the binarized contact risk
         m_risk = binary_to_float("".join([str(x) for x in np.array(message.risk.tolist()).astype(int)]), 0, 4)
-        msg_enc = _encode_message(message)
+        msg_enc = encode_message(message)
         if msg_enc not in human.M:
             # update is delta_risk
             update = m_risk * RISK_TRANSMISSION_PROBA
@@ -194,7 +194,7 @@ class RiskModelTristan(RiskModelBase):
         scores = cls.score_matches(human, update_message)
         m_enc = max(scores.items(), key=operator.itemgetter(1))[0]
         assignment = human.M[m_enc]
-        uid, risk, day, unobs_id = _decode_message(m_enc)
-        updated_message = human.Message(uid, update_message.new_risk, day, unobs_id)
+        uid, risk, day, unobs_id = decode_message(m_enc)
+        updated_message = Message(uid, update_message.new_risk, day, unobs_id)
         del human.M[m_enc]
-        human.M[_encode_message(updated_message)] = assignment
+        human.M[encode_message(updated_message)] = assignment

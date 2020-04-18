@@ -1,13 +1,13 @@
 import numpy as np
 import datetime
-from utils import _decode_message
+from utils import decode_message
 from collections import Counter
 
 def messages_to_np(human):
     ms_enc = np.zeros((len(human.M), 3))
     idx = 0
     for m_enc, assignment in human.M.items():
-        obs_uid, risk, day, unobs_uid = _decode_message(m_enc)
+        obs_uid, risk, day, unobs_uid = decode_message(m_enc)
         message = human.Message(obs_uid, risk, day, unobs_uid)
 
         m_enc = np.array([assignment, message.risk, day])
