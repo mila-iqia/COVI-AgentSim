@@ -8,14 +8,13 @@ import numpy as np
 
 # A utility class for re-inflating human objects with just the stuff we need for message passing / risk prediction
 class DummyHuman:
-    def __init__(self, name=None, rng=None):
+    def __init__(self, name=None):
         self.name = name
         self.M = {}
         self.sent_messages = {}
         self.messages = []
         self.update_messages = []
         self.risk = np.log(0.01)
-        self.rng = rng
         self.all_reported_symptoms = [[]]
         self.all_symptoms = []
         self.start_risk = np.log(0.)
@@ -55,20 +54,9 @@ class DummyHuman:
                 break
         self.update_messages = []
 
-    def shuffle_messages(self):
-        self.rng.shuffle(self.messages)
-
     @property
     def uid(self):
         return self._uid
-
-    def update_uid(self):
-        try:
-            self._uid.pop()
-            self._uid.extend([self.rng.choice([True, False])])
-        except AttributeError:
-            self._uid = bitarray()
-            self._uid.extend(self.rng.choice([True, False], 4))  # generate a random 4-bit code
 
     def symptoms_at_time(self, now, symptoms):
         sickness_day = (now - self.symptoms_start).days

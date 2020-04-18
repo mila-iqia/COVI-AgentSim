@@ -36,3 +36,12 @@ def binary_to_float(bstr, m, n):
     """Convert a binary string in the format '00101010100' to its float value."""
     return int(bstr, 2) / 2 ** n
 
+def create_new_uid(rng):
+	_uid = bitarray()
+	_uid.extend(rng.choice([True, False], 4))  # generate a random 4-bit code
+	return _uid
+
+def update_uid(_uid, rng):
+	_uid.pop()
+	_uid.extend([rng.choice([True, False])])
+	return _uid

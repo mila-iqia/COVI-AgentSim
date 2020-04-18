@@ -12,12 +12,12 @@ import datetime
 import time
 from tqdm import tqdm
 from collections import defaultdict
-from base import Event
+from event import Event
 from models.dummy_human import DummyHuman
 from models.risk_models import RiskModelYoshua, RiskModelLenka, RiskModelEilif, RiskModelTristan
 from plots.plot_risk import dist_plot, hist_plot
 from models.helper import messages_to_np, symptoms_to_np, candidate_exposures, rolling_infectiousness
-from models.utils import encode_message
+from models.utils import encode_message, update_uid, create_new_uid
 from joblib import Parallel, delayed
 
 def parse_args():
@@ -44,21 +44,18 @@ def proc_human(params):
     human.start_risk = human.risk
     todays_date = start + datetime.timedelta(days=current_day)
 
-    # update your quantized uid and shuffle the messages (following privacy protocol)
-    human.update_uid()
-
     # check if you have new reported symptoms
     human.risk = RiskModel.update_risk_daily(human, todays_date)
 
     # read your old messages
     for m_i in human.messages:
         # update risk based on that day's messages
-        RiskModel.update_risk_encounter(human, m_i)
-        RiskModel.add_message_to_cluster(human, m_i, rng)
+        human.M = RiskModel.update_risk_encounter(human.M, m_i)
+        human.M = RiskModel.add_message_to_cluster(human.M, m_i)
 
     # check your update messages
     for m_i in human.update_messages:
-        RiskModel.update_risk_risk_update(human, m_i, rng)
+        human.M = RiskModel.update_risk_risk_update(human.M, m_i)
 
     # append the updated risk for this person and whether or not they are actually infectious
     human.purge_messages(current_day)
@@ -160,8 +157,8 @@ def main(args=None):
     rng = np.random.RandomState(args.seed)
     hd = {}
     for human_id in human_ids:
-        hd[human_id] = DummyHuman(name=human_id, rng=rng)
-        hd[human_id].update_uid()
+        hd[human_id] = DummyHuman(name=human_id)
+        hd[human_id]._uid = create_new_uid(rng)
 
     # Sort encounter logs by time and then by human id
     enc_logs = sorted(enc_logs, key=operator.itemgetter('time'))
@@ -215,8 +212,16 @@ def main(args=None):
         with Parallel(n_jobs=args.n_jobs, batch_size='auto', verbose=10) as parallel:
             all_params = []
             for human in hd.values():
+                # update the uid
+                human._uid = update_uid(human._uid, rng)
+
+                # get list of encounters for that day
                 encounters = logs[hash_id_day(human.name, current_day)]
+
+                # setup parameters for parallelization
                 all_params.append({"start": start, "current_day": current_day, "RiskModel": RiskModel, "encounters": encounters, "rng": rng, "all_possible_symptoms": all_possible_symptoms, "human": human, "save_training_data": args.save_training_data})
+
+                # caluclate the messages to be sent during each encounter
                 # go about your day accruing encounters and clustering them
                 for idx, encounter in enumerate(encounters):
                     encounter_time = encounter['time']
@@ -230,6 +235,7 @@ def main(args=None):
                     if got_exposed:
                         human.exposure_message = encode_message(message)
 
+            # in parallel, cluster received messages and predict risks
             daily_output = parallel((delayed(proc_human)(params) for params in all_params))
 
             # if the encounter happened within the last 14 days, and your symptoms started at most 3 days after your contact
@@ -238,6 +244,7 @@ def main(args=None):
                     if current_day - m.day < 14:
                         hd[m.unobs_id].update_messages.append(human.cur_message_risk_update(m.day, m.risk, RiskModel))
 
+            # handle the output of the parallel processes
             for idx, output in enumerate(daily_output):
                 hd[output['human'].name] = output['human']
                 del daily_output[idx]['human']
