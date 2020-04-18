@@ -31,6 +31,7 @@ def parse_args():
     parser.add_argument('--seed', type=int, default="0")
     parser.add_argument('--save_training_data', action="store_true")
     parser.add_argument('--n_jobs', type=int, default=1, help="Default is no parallelism, jobs = 1")
+    parser.add_argument('--max_num_days', type=int, default=10000, help="Default is to run for all days")
     args = parser.parse_args()
     return args
 
@@ -50,7 +51,7 @@ def proc_human(params):
     # read your old messages
     for m_i in human.messages:
         # update risk based on that day's messages
-        human.M = RiskModel.update_risk_encounter(human.M, m_i)
+        RiskModel.update_risk_encounter(human, m_i)
         human.M = RiskModel.add_message_to_cluster(human.M, m_i)
 
     # check your update messages
@@ -101,6 +102,10 @@ def proc_human(params):
 def main(args=None):
     if not args:
         args = parse_args()
+
+    # check that the plot_dir exists:
+    if args.plot_path and not os.path.isdir(args.plot_path):
+        os.mkdir(args.plot_path)
 
     # read and filter the pickles
     logs = []
@@ -206,6 +211,8 @@ def main(args=None):
     all_risks = []
     days = (enc_logs[-1]['time'] - enc_logs[0]['time']).days
     for current_day in tqdm(range(days)):
+        if args.max_num_days < current_day:
+            break
         start1 = time.time()
         daily_risks = []
 
