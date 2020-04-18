@@ -54,6 +54,8 @@ class Human(object):
         self.name = f"human:{name}"
         self.rng = rng
         self.profession = profession
+        self.is_healthcare_worker = True if profession == "healthcare" else False
+        self.obs_is_healthcare_worker = True if self.is_healthcare_worker and rng.random()<0.9 else False # 90% of the time, healthcare workers will declare it
         self.death = False
 
         self.age = age
@@ -161,7 +163,7 @@ class Human(object):
         self.max_shop_per_week = _draw_random_discreet_gaussian(AVG_MAX_NUM_SHOP_PER_WEEK, SCALE_MAX_NUM_SHOP_PER_WEEK, self.rng)
         self.count_shop=0
 
-        #Limiting the number of hours spent exercising per week
+        # Limiting the number of hours spent exercising per week
         self.max_exercise_per_week = _draw_random_discreet_gaussian(AVG_MAX_NUM_EXERCISE_PER_WEEK, SCALE_MAX_NUM_EXERCISE_PER_WEEK, self.rng)
         self.count_exercise=0
 
@@ -403,6 +405,9 @@ class Human(object):
                 self.count_exercise=0
                 self.count_shop=0
 
+            if hour == 0:
+                Event.log_daily(self, self.env.timestamp)
+
             # self.how_am_I_feeling = 1.0 (great) --> rest_at_home = False
             # self.how_am_I_feeling = 0.0 (worst) --> rest_at_home = True
             if not self.rest_at_home:
@@ -594,7 +599,7 @@ class Human(object):
                                     infectee=infectee,
                                     time=self.env.timestamp
                                     )
-
+        Event.log_visit(h, self.env.timestamp, location)
         yield self.env.timeout(duration / TICK_MINUTE)
 
         # environmental transmission

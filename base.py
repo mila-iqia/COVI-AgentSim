@@ -62,6 +62,8 @@ class City(object):
         print("Initializing humans ...")
         self.initialize_humans(Human)
 
+        self.log_static_info()
+
         print("Computing their preferences")
         self._compute_preferences()
         self.tracker = Tracker(env, self)
@@ -126,14 +128,15 @@ class City(object):
                 res = None
                 if self.rng.random() < senior_residency_preference:
                     res = self.rng.choice(self.senior_residencys)
-
                 # workplace
                 if profession[i] == "healthcare":
                     workplace = self.rng.choice(self.hospitals + self.senior_residencys)
                 elif profession[i] == 'school':
                     workplace = self.rng.choice(self.schools)
                 elif profession[i] == 'others':
-                    workplace = self.rng.choice(self.workplaces)
+                    type_of_workplace = self.rng.choice([0,1,2], p=OTHERS_WORKPLACE_CHOICE, size=1)[0]
+                    type_of_workplace = [self.workplaces, self.stores, self.miscs][type_of_workplace]
+                    workplace = self.rng.choice(type_of_workplace)
                 else:
                     workplace = res
 
@@ -196,6 +199,10 @@ class City(object):
         area = _get_random_area(len(self.households), LOCATION_DISTRIBUTION['household']['area'] * self.total_area, self.rng)
         for i,house in enumerate(self.households):
             house.area = area[i]
+
+    def log_static_info(self):
+        for h in self.humans:
+            Event.log_static_info(self, h, self.env.timestamp)
 
     @property
     def events(self):
@@ -357,19 +364,21 @@ class Event:
     symptom_start = 'symptom_start'
     contamination = 'contamination'
     recovered = 'recovered'
+    static_info = 'static_info'
+    visit = 'visit'
+    daily = 'daily'
 
     @staticmethod
     def members():
-        return [Event.test, Event.encounter, Event.symptom_start, Event.contamination]
+        return [Event.test, Event.encounter, Event.symptom_start, Event.contamination, Event.static_info, Event.visit, Event.daily]
 
     @staticmethod
     def log_encounter(human1, human2, location, duration, distance, infectee, time):
-        h_obs_keys   = ['obs_age', 'has_app', 'obs_preexisting_conditions',
-                        'obs_symptoms',
+        h_obs_keys   = ['has_app',
                         'obs_hospitalized', 'obs_in_icu', 'wearing_mask',
-                        'obs_lat', 'obs_lon', 'preexisting_conditions']
+                        'obs_lat', 'obs_lon']
 
-        h_unobs_keys = ['age', 'carefulness', 'viral_load', 'infectiousness',
+        h_unobs_keys = ['carefulness', 'viral_load', 'infectiousness',
                         'symptoms', 'is_exposed', 'is_infectious',
                         'infection_timestamp', 'really_sick',
                         'extremely_sick', 'sex']
@@ -434,6 +443,23 @@ class Event:
         )
 
     @staticmethod
+    def log_daily(human, time):
+        human.events.append(
+            {
+                'human_id': human.name,
+                'event_type': Event.daily,
+                'time': time,
+                'payload': {
+                    'observed':{
+                    },
+                    'unobserved':{
+                        'infectiousness': human.infectiousness,
+                    }
+                }
+            }
+        )
+
+    @staticmethod
     def log_symptom_start(human, covid, time):
         human.events.append(
             {
@@ -466,8 +492,6 @@ class Event:
                     'unobserved':{
                       'exposed': True,
                       'source':source.name,
-                      'source_is_location': 'human' not in source.name,
-                      'source_is_human': 'human' in source.name,
                       'infectiousness_start_time': human.infection_timestamp + datetime.timedelta(days=human.incubation_days - INFECTIOUSNESS_ONSET_DAYS)
                     }
 
@@ -493,6 +517,52 @@ class Event:
             }
         )
 
+    @staticmethod
+    def log_visit(human, time, location):
+        human.events.append(
+            {
+                'human_id': human.name,
+                'event_type': Event.visit,
+                'time': time,
+                'payload': {
+                    'observed':{
+                        'location_name': location.name
+                    },
+                    'unobserved':{
+                    }
+                }
+            }
+        )
+
+    @staticmethod
+    def log_static_info(city, human, time):
+        h_obs_keys = ['obs_preexisting_conditions',  "obs_age", "obs_sex", "obs_is_healthcare_worker"]
+        h_unobs_keys = ['preexisting_conditions', "age", "sex", "is_healthcare_worker"]
+        obs_payload = {key:getattr(human, key) for key in h_obs_keys}
+        unobs_payload = {key:getattr(human, key) for key in h_unobs_keys}
+
+        if human.workplace.location_type in ['healthcare', 'store', 'misc', 'senior_residency']:
+            obs_payload['n_people_workplace'] = 'many people'
+        elif "workplace" == human.workplace.location_type:
+            obs_payload['n_people_workplace'] = 'few people'
+        else:
+            obs_payload['n_people_workplace'] = 'no people outside my household'
+
+        obs_payload['household_size'] = len(human.household.residents)
+
+        human.events.append(
+            {
+                'human_id': human.name,
+                'event_type':Event.static_info,
+                'time':time,
+                'payload':{
+                    'observed': obs_payload,
+                    'unobserved':unobs_payload
+                }
+
+            }
+        )
+
 class DummyEvent:
     @staticmethod
     def log_encounter(*args, **kwargs):
@@ -512,4 +582,12 @@ class DummyEvent:
 
     @staticmethod
     def log_exposed(*args, **kwargs):
+        pass
+
+    @staticmethod
+    def log_static_info(*args, **kwargs):
+        pass
+
+    @staticmethod
+    def log_visit(*args, **kwargs):
         pass

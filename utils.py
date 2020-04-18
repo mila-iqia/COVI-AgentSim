@@ -330,18 +330,20 @@ def compute_distance(loc1, loc2):
 
 def _encode_message(message):
 	# encode a contact message as a string
-	# TODO: clean up the bitarray => string transformation
-	return str(np.array(message[0].tolist()).astype(int).tolist()) + "_" + str(np.array(message[1].tolist()).astype(int).tolist()) + "_" + str(message[2]) + "_" + str(message[3])
+	return str(np.array(message.uid.tolist()).astype(int).tolist()) + "_" + str(message.risk) + "_" + str(message.day) + "_" + str(message.unobs_id)
 
 def _decode_message(message):
 	# decode a string-encoded message into a tuple
 	# TODO: make this a namedtuple
-	m_i = message.split("_")
-	obs_uid = bitarray(json.loads(m_i[0]))
-	risk = bitarray(json.loads(m_i[1]))
-	date_sent = datetime.datetime.strptime(m_i[2], '%Y-%m-%d %H:%M:%S')
-	unobs_uid = int(m_i[3])
-	return obs_uid, risk, date_sent, unobs_uid
+	uid, risk, day, unobs_id = message.split("_")
+	obs_uid = bitarray(json.loads(uid))
+	risk = int(risk)
+	day = int(day)
+	try:
+		unobs_uid = int(unobs_id)
+	except Exception:
+		unobs_uid = int(unobs_id.split(":")[1])
+	return obs_uid, risk, day, unobs_uid
 
 @lru_cache(500)
 def _get_integer_pdf(avg, scale, num_sigmas=2):

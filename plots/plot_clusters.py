@@ -7,6 +7,8 @@ from matplotlib import pyplot as plt
 from utils import _decode_message
 from collections import defaultdict, Counter
 import networkx as nx
+from models.helper import group_to_majority_id
+
 np.random.seed(0)
 """ Running this file will produce plots of the cluster statistics and sample graph"""
 
@@ -17,6 +19,8 @@ CLUSTER_SIZE_PATH = "plots/cluster/cluster_size_hist.png"
 CLUSTER_NUMBER_PATH = "plots/cluster/cluster_number_freq.png"
 MESSAGE_NUMBER_PATH = "plots/cluster/message_number_freq.png"
 INDIVIDUAL_CLUSTER_PATH = "plots/cluster/"
+if not os.path.isdir( INDIVIDUAL_CLUSTER_PATH):
+    os.mkdir(INDIVIDUAL_CLUSTER_PATH)
 
 # load the cluster data
 everyones_clustered_messages = json.load(open(CLUSTER_PATH, 'r'))
@@ -29,9 +33,9 @@ for someones_clustered_messages in everyones_clustered_messages:
     groups = defaultdict(list)
     unique_people_contacted = set()
     total_num_contacts = 0
-    for m_enc, m_dict in someones_clustered_messages.items():
+    for m_enc, assignment in someones_clustered_messages.items():
         obs_uid, obs_risk, m_sent, unobs_uid = _decode_message(m_enc)
-        groups[m_dict['assignment']].append(unobs_uid)
+        groups[assignment].append(unobs_uid)
         unique_people_contacted.add(unobs_uid)
         total_num_contacts += 1
     all_groups.append(dict(groups))
@@ -84,19 +88,7 @@ def hash_uid(group, uid, idx):
     return str(group) + "-" + str(uid) + "-" + str(idx)
 
 # "rename" the groups. We need to figure out which group should be assigned to which true person in order to calculate an accuracy
-all_new_groups = []
-for group_idx, groups in enumerate(all_groups):
-    new_groups = {}
-    for group, uids in groups.items():
-        cnt = Counter()
-        for idx, uid in enumerate(uids):
-            cnt[uid] += 1
-        for i in range(len(cnt)):
-            # if cnt.most_common()[i][0]: #TODO: write a better grouping mechanism
-            new_groups[cnt.most_common()[i][0]] = uids
-            break
-    all_new_groups.append(new_groups)
-all_groups = all_new_groups
+all_groups = group_to_majority_id(all_groups)
 
 # create and plot networkx graphs for the clusterings of individual's contact histories
 all_group_accuracies = []
@@ -139,6 +131,6 @@ plt.title("Histogram of cluster assignment accuracies")
 plt.savefig(CLUSTER_ACC_PATH)
 plt.clf()
 print(f"group_accuracy mean: {np.mean(all_group_accuracies)}")
-print(f"group_accuracy mean: {np.std(all_group_accuracies)}")
+print(f"group_accuracy std: {np.std(all_group_accuracies)}")
 
 
