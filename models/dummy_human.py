@@ -117,3 +117,7 @@ class DummyHuman:
         else:
             recovery_day = None
         return is_recovered, recovery_day
+
+    def merge(self, human):
+        import pdb; pdb.set_trace()
+        print(human)

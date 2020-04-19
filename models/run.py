@@ -101,59 +101,56 @@ def proc_human(params):
                                     }
     return {human.name: daily_output, "human": human}
 
-def init_humans(data_path, rng):
+def init_humans(params):
+    pkl_name = params['pkl_name']
+    start = params['start']
+    data_path = params['data_path']
+    rng = params['rng']
     # read and filter the pickles
     hd = {}
-    start = None
     human_ids = set()
     all_possible_symptoms = set()
     with zipfile.ZipFile(data_path, 'r') as zf:
-        print("initializing humans from logs.")
-        for pkl in tqdm(zf.namelist()):
-            logs = pickle.load(zf.open(pkl, 'r'))
-            for log in logs:
-                if not start:
-                    start = logs[0]['time']
-                end = logs[0]['time']
+        logs = pickle.load(zf.open(pkl_name, 'r'))
+        for log in logs:
+            # check if we have a human object for this log, if not create it
+            human_id = log['human_id']
+            if human_id not in human_ids:
+                human_ids.add(human_id)
+                hd[human_id] = DummyHuman(name=human_id, rng=rng)
+                hd[human_id].update_uid()
 
-                # check if we have a human object for this log, if not create it
-                human_id = log['human_id']
-                if human_id not in human_ids:
-                    human_ids.add(human_id)
-                    hd[human_id] = DummyHuman(name=human_id, rng=rng)
-                    hd[human_id].update_uid()
+            if log['event_type'] == Event.symptom_start:
+                hd[log['human_id']].symptoms_start = log['time']
+                hd[log['human_id']].all_reported_symptoms = log['payload']['observed']['reported_symptoms']
+                hd[log['human_id']].all_symptoms = log['payload']['unobserved']['all_symptoms']
+                for symptoms in hd[log['human_id']].all_symptoms:
+                    for symptom in symptoms:
+                        all_possible_symptoms.add(symptom)
+            elif log['event_type'] == Event.recovered:
+                if log['payload']['unobserved']['death']:
+                    hd[log['human_id']].time_of_death = log['time']
+                else:
+                    hd[log['human_id']].time_of_recovery = log['time']
+            elif log['event_type'] == Event.test:
+                hd[log['human_id']].test_time = log['time']
+            elif log['event_type'] == Event.contamination:
+                hd[log['human_id']].time_of_exposure = log['time']
+                hd[log['human_id']].infectiousness_start_time = log['payload']['unobserved'][
+                    'infectiousness_start_time']
+                hd[log['human_id']].exposure_source = log['payload']['unobserved']['source']
+            elif log['event_type'] == Event.static_info:
+                hd[log['human_id']].obs_preexisting_conditions = log['payload']['observed'][
+                    'obs_preexisting_conditions']
+                hd[log['human_id']].preexisting_conditions = log['payload']['unobserved']['preexisting_conditions']
+            elif log['event_type'] == Event.visit:
+                if not hd[log['human_id']].locations_visited.get(log['payload']['observed']['location_name']):
+                    hd[log['human_id']].locations_visited[log['payload']['observed']['location_name']] = log['time']
+            elif log['event_type'] == Event.daily:
+                hd[log['human_id']].infectiousness[(log['time'] - start).days] = log['payload']['unobserved'][
+                    'infectiousness']
 
-                if log['event_type'] == Event.symptom_start:
-                    hd[log['human_id']].symptoms_start = log['time']
-                    hd[log['human_id']].all_reported_symptoms = log['payload']['observed']['reported_symptoms']
-                    hd[log['human_id']].all_symptoms = log['payload']['unobserved']['all_symptoms']
-                    for symptoms in hd[log['human_id']].all_symptoms:
-                        for symptom in symptoms:
-                            all_possible_symptoms.add(symptom)
-                elif log['event_type'] == Event.recovered:
-                    if log['payload']['unobserved']['death']:
-                        hd[log['human_id']].time_of_death = log['time']
-                    else:
-                        hd[log['human_id']].time_of_recovery = log['time']
-                elif log['event_type'] == Event.test:
-                    hd[log['human_id']].test_time = log['time']
-                elif log['event_type'] == Event.contamination:
-                    hd[log['human_id']].time_of_exposure = log['time']
-                    hd[log['human_id']].infectiousness_start_time = log['payload']['unobserved'][
-                        'infectiousness_start_time']
-                    hd[log['human_id']].exposure_source = log['payload']['unobserved']['source']
-                elif log['event_type'] == Event.static_info:
-                    hd[log['human_id']].obs_preexisting_conditions = log['payload']['observed'][
-                        'obs_preexisting_conditions']
-                    hd[log['human_id']].preexisting_conditions = log['payload']['unobserved']['preexisting_conditions']
-                elif log['event_type'] == Event.visit:
-                    if not hd[log['human_id']].locations_visited.get(log['payload']['observed']['location_name']):
-                        hd[log['human_id']].locations_visited[log['payload']['observed']['location_name']] = log['time']
-                elif log['event_type'] == Event.daily:
-                    hd[log['human_id']].infectiousness[(log['time'] - start).days] = log['payload']['unobserved'][
-                        'infectiousness']
-
-    return hd, start, (end - start).days, all_possible_symptoms
+    return hd, all_possible_symptoms
 
 
 def pick_risk_model(risk_model):
@@ -183,6 +180,11 @@ def get_days_worth_of_logs(data_path, start, cur_day):
                         return to_return
     return to_return
 
+def merge_humans(humans):
+    merged_human = humans[0]
+    for human in humans:
+        merged_human.merge(human)
+    return merged_human
 
 def main(args=None):
     if not args:
@@ -190,7 +192,28 @@ def main(args=None):
     rng = np.random.RandomState(args.seed)
 
     # iterate the logs and init people
-    hd, start, total_days, all_possible_symptoms = init_humans(args.data_path, rng)
+    with zipfile.ZipFile(args.data_path, 'r') as zf:
+        start_logs = pickle.load(zf.open(zf.namelist()[0], 'r'))
+        end_logs = pickle.load(zf.open(zf.namelist()[-1], 'r'))
+        start = start_logs[0]['time']
+        end = end_logs[-1]['time']
+        total_days = (end - start).days
+        all_params = [{"pkl_name": pkl, "start": start, "data_path": args.data_path, "rng": rng} for pkl in zf.namelist()]
+    print("initializing humans from logs.")
+    with Parallel(n_jobs=args.n_jobs, batch_size='auto', verbose=10) as parallel:
+        results = parallel((delayed(init_humans)(params) for params in all_params))
+
+    humans = defaultdict(list)
+    all_possible_symptoms = set()
+    for result in results:
+        for hid, human in result[0].items():
+            humans[hid].append(human)
+        for symps in result[1]:
+            for symp in symps:
+                all_possible_symptoms.add(symp)
+    hd = {}
+    for hid, humans in humans.items():
+        hd[hid] = merge_humans(humans)
 
     # select the risk prediction model to embed in messaging protocol
     RiskModel = pick_risk_model(args.risk_model)
@@ -203,25 +226,25 @@ def main(args=None):
         start1 = time.time()
         daily_risks = []
 
-        with Parallel(n_jobs=args.n_jobs, batch_size='auto', verbose=10) as parallel:
-            all_params = []
-            for human in hd.values():
-                encounters = days_logs[human.name]
-                all_params.append({"start": start, "current_day": current_day, "RiskModel": RiskModel, "encounters": encounters, "rng": rng, "all_possible_symptoms": all_possible_symptoms, "human": human, "save_training_data": args.save_training_data})
-                # go about your day accruing encounters and clustering them
-                for idx, encounter in enumerate(encounters):
-                    encounter_time = encounter['time']
-                    unobs = encounter['payload']['unobserved']
-                    encountered_human = hd[unobs['human2']['human_id']]
-                    message = encountered_human.cur_message(current_day, RiskModel)
-                    encountered_human.sent_messages[
-                        str(unobs['human1']['human_id']) + "_" + str(encounter_time)] = message
-                    human.messages.append(message)
-                    got_exposed = encounter['payload']['unobserved']['human1']['got_exposed']
-                    if got_exposed:
-                        human.exposure_message = _encode_message(message)
+        all_params = []
+        for human in hd.values():
+            encounters = days_logs[human.name]
+            all_params.append({"start": start, "current_day": current_day, "RiskModel": RiskModel, "encounters": encounters, "rng": rng, "all_possible_symptoms": all_possible_symptoms, "human": human, "save_training_data": args.save_training_data})
+            # go about your day accruing encounters and clustering them
+            for idx, encounter in enumerate(encounters):
+                encounter_time = encounter['time']
+                unobs = encounter['payload']['unobserved']
+                encountered_human = hd[unobs['human2']['human_id']]
+                message = encountered_human.cur_message(current_day, RiskModel)
+                encountered_human.sent_messages[
+                    str(unobs['human1']['human_id']) + "_" + str(encounter_time)] = message
+                human.messages.append(message)
+                got_exposed = encounter['payload']['unobserved']['human1']['got_exposed']
+                if got_exposed:
+                    human.exposure_message = _encode_message(message)
 
-            daily_output = parallel((delayed(proc_human)(params) for params in all_params))
+            with Parallel(n_jobs=args.n_jobs, batch_size='auto', verbose=10) as parallel:
+                daily_output = parallel((delayed(proc_human)(params) for params in all_params))
 
             # if the encounter happened within the last 14 days, and your symptoms started at most 3 days after your contact
             if RiskModel.quantize_risk(human.start_risk) != RiskModel.quantize_risk(human.risk):
