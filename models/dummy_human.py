@@ -19,7 +19,7 @@ class DummyHuman:
         self.risk = np.log(0.01)
         self.all_reported_symptoms = [[]]
         self.all_symptoms = []
-        self.start_risk = np.log(0.)
+        self.start_risk = np.log(0.01)
         self._uid = None
         self.time_of_recovery = datetime.datetime.max
         self.infectiousness_start_time = datetime.datetime.max
