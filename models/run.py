@@ -44,20 +44,24 @@ def proc_human(params):
     start, current_day, RiskModel, encounters, rng, all_possible_symptoms, human, save_training_data = params.values()
     human.start_risk = human.risk
     todays_date = start + datetime.timedelta(days=current_day)
-
+    import time
     # check if you have new reported symptoms
     human.risk = RiskModel.update_risk_daily(human, todays_date)
-
+    print(f"len(human.messages): {len(human.messages)}")
+    start1 = time.time()
     # read your old messages
     for m_i in human.messages:
         # update risk based on that day's messages
         RiskModel.update_risk_encounter(human, m_i)
         human.clusters.add_message(m_i)
+    print(f"read old messages and cluster: {time.time()- start1}")
 
+    start2 = time.time()
     human.clusters.update_records(human.update_messages)
-
+    print(f"update records: {time.time()- start2}")
+    start3 = time.time()
     human.clusters.purge(current_day)
-
+    print(f"purge: {time.time() - start3}")
     # for each sim day, for each human, save an output training example
     daily_output = {}
     if save_training_data:
