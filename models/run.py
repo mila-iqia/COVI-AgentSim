@@ -243,18 +243,18 @@ def main(args=None):
                 if got_exposed:
                     human.exposure_message = _encode_message(message)
 
-            with Parallel(n_jobs=args.n_jobs, batch_size='auto', verbose=10) as parallel:
-                daily_output = parallel((delayed(proc_human)(params) for params in all_params))
-
             # if the encounter happened within the last 14 days, and your symptoms started at most 3 days after your contact
             if RiskModel.quantize_risk(human.start_risk) != RiskModel.quantize_risk(human.risk):
                 for k, m in human.sent_messages.items():
                     if current_day - m.day < 14:
                         hd[m.unobs_id].update_messages.append(human.cur_message_risk_update(m.day, m.risk, RiskModel))
 
-            for idx, output in enumerate(daily_output):
-                hd[output['human'].name] = output['human']
-                del daily_output[idx]['human']
+        with Parallel(n_jobs=args.n_jobs, batch_size='auto', verbose=10) as parallel:
+            daily_output = parallel((delayed(proc_human)(params) for params in all_params))
+
+        for idx, output in enumerate(daily_output):
+            hd[output['human'].name] = output['human']
+            del daily_output[idx]['human']
         all_outputs.append(daily_output)
 
         print(f"mainloop {time.time() - start1}")

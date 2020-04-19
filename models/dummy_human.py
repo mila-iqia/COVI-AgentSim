@@ -32,10 +32,10 @@ class DummyHuman:
         self.tested_positive_contact_count = 0
         self.Message = namedtuple('message', 'uid risk day unobs_id')
         self.UpdateMessage = namedtuple('update_message', 'uid new_risk risk day unobs_id')
-        self.viral_loads = {}
         self.rolling_infectiousness_array = []
         self.infectiousness = {}
         self.locations_visited = {}
+        self.preexisting_conditions = set()
 
 
     def cur_message(self, day, RiskModel):
@@ -119,5 +119,37 @@ class DummyHuman:
         return is_recovered, recovery_day
 
     def merge(self, human):
-        import pdb; pdb.set_trace()
-        print(human)
+        for key, val in human.__dict__.items():
+            if key == "time_of_recovery" and val != datetime.datetime.max:
+                self.time_of_recovery = human.time_of_recovery
+            if key == "infectiousness_start_time" and val != datetime.datetime.max:
+                self.infectiousness_start_time = human.infectiousness_start_time
+            if key == "infectiousness_start" and val != datetime.datetime.max:
+                self.infectiousness_start = human.infectiousness_start
+            if key == "time_of_death" and val != datetime.datetime.max:
+                self.time_of_death = human.time_of_death
+            if key == "symptoms_start" and val != datetime.datetime.max:
+                self.symptoms_start = human.symptoms_start
+            if key == "test_time" and val != datetime.datetime.max:
+                self.test_time = human.test_time
+            if key == "obs_preexisting_conditions" and val:
+                self.obs_preexisting_conditions = val
+            if key == "preexisting_conditions" and val:
+                self.preexisting_conditions = val
+            if key == "infectiousness" and val:
+                for k, v in val.items():
+                    self.infectiousness[k] = v
+            if key == 'all_reported_symptoms' and any(val):
+                self.all_reported_symptoms = val
+            if key == 'all_symptoms' and val:
+                self.all_symptoms = val
+            if key == 'exposure_message' and val:
+                self.exposure_message = val
+            if key == 'exposure_source' and val:
+                self.exposure_source = val
+            if key == "locations_visited":
+                for k, v in val.items():
+                    if not self.locations_visited.get(k):
+                        self.locations_visited[k] = v
+                    elif self.locations_visited.get(k) > v:
+                        self.locations_visited[k] = v
