@@ -31,8 +31,9 @@ class DummyHuman:
         self.exposure_message = None
         self.infectiousness_start = datetime.datetime.max
         self.tested_positive_contact_count = 0
-        self.Message = namedtuple('message', 'uid risk day unobs_id')
-        self.UpdateMessage = namedtuple('update_message', 'uid new_risk risk day unobs_id')
+        if not lightweight:
+            self.Message = namedtuple('message', 'uid risk day unobs_id')
+            self.UpdateMessage = namedtuple('update_message', 'uid new_risk risk day unobs_id')
         self.rolling_infectiousness_array = []
         self.infectiousness = {}
         self.locations_visited = {}
