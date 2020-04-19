@@ -51,55 +51,6 @@ class RiskModelBase:
             return 0.05
         return 0.0
 
-    @classmethod
-    def score_matches(cls, clusters, m_i):
-        best_cluster = 0
-        best_message = None
-        best_score = -1
-        for cluster_id, messages in clusters.items():
-            for message in messages:
-                obs_uid, risk, day, unobs_uid = decode_message(message)
-                m = Message(obs_uid, risk, day, unobs_uid)
-                if m_i.uid == m.uid and m_i.day == m.day:
-                    best_cluster = cluster_id
-                    best_message = message
-                    best_score = 3
-                    break
-                elif m_i.uid[:3] == m.uid[:3] and m_i.day - 1 == m.day:
-                    best_cluster = cluster_id
-                    best_message = message
-                    best_score = 2
-                elif m_i.uid[:2] == m.uid[:2] and m_i.day - 2 == m.day:
-                    best_cluster = cluster_id
-                    best_message = message
-                    best_score = 1
-                elif m_i.uid[:1] == m.uid[:1] and m_i.day - 2 == m.day:
-                    best_cluster = cluster_id
-                    best_message = message
-                    best_score = 0
-                else:
-                    best_cluster = cluster_id
-                    best_message = message
-                    best_score = -1
-        return best_cluster, decode_message(best_message), best_score
-
-    @classmethod
-    def add_message_to_cluster(cls, clusters, m_i):
-        """ This function clusters new messages by scoring them against old messages in a sort of naive nearest neighbors approach"""
-        # TODO: include risk level in clustering, currently only uses quantized uid
-        # TODO: check for mutually exclusive messages in order to break up a group and re-run nearest neighbors
-        # TODO: storing m_i_enc in dict M is a bug, we're overwriting some messages -- we need to make a unique encoding that uses the timestamp
-        m_i_enc = encode_message(m_i)
-        # otherwise score against previous messages
-        best_cluster, best_message, best_score = cls.score_matches(clusters, m_i)
-        if best_score >= 0:
-            clusters[best_cluster].append(m_i_enc)
-        elif not clusters:
-            clusters[0].append(m_i_enc)
-        else:
-            clusters[max(clusters.keys()) + 1].append(m_i_enc)
-        return clusters
-
 class RiskModelLenka(RiskModelBase):
     @classmethod
     def update_risk_encounter(cls, human, message):
@@ -127,9 +78,9 @@ class RiskModelYoshua(RiskModelBase):
 
 class RiskModelEilif(RiskModelBase):
     @classmethod
-    def update_risk_encounter(cls, human, message):
+    def update_risk_encounter(cls, clusters, message):
         """ This function updates an individual's risk based on the receipt of a new message"""
-        human.M = cls.add_message_to_cluster(human.M, message)
+        clusters.add_message(message)
 
         # Get the binarized contact risk
         m_risk = binary_to_float("".join([str(x) for x in np.array(message.risk.tolist()).astype(int)]), 0, 4)
@@ -196,22 +147,3 @@ class RiskModelTristan(RiskModelBase):
         else:
             human.risk = np.log(1. - init_population_level_risk) + np.log1p(-expo) + np.log1p(init_population_level_risk / tmp)
 
-    @classmethod
-    def update_risk_risk_update(cls, clusters, update_messages):
-        # TODO: update a random message when there are ties in the scoring
-        clustered_update_messages = update_messages
-        for update_message in update_messages:
-            best_cluster, best_message, best_score = cls.score_matches(clusters, update_message)
-            nodes_in_cluster_on_day = []
-            for m, cluster_id in clusters.items():
-                uid, risk, day, unobs_id = decode_message(m)
-                if cluster_id == best_cluster and day == update_message.received_at:
-                    nodes_in_cluster_on_day.append(m)
-
-            uid, risk, day, unobs_id = decode_message(best_message)
-            if len(nodes_in_cluster_on_day) != len(clustered_update_messages):
-                new_group = max([v for k, v in clusters.items()]) + 1
-                updated_message = Message(uid, update_message.new_risk, day, unobs_id)
-                del clusters[best_cluster][best_message]
-                clusters[encode_message(updated_message)] = new_group
-        return clusters

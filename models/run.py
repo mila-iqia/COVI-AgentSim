@@ -52,12 +52,11 @@ def proc_human(params):
     for m_i in human.messages:
         # update risk based on that day's messages
         RiskModel.update_risk_encounter(human, m_i)
-        human.M = RiskModel.add_message_to_cluster(human.M, m_i)
+        human.clusters.add_message(m_i)
 
-    human.M = RiskModel.update_risk_risk_update(human.M, human.update_messages)
+    human.clusters.update_records(human.update_messages)
 
-    # append the updated risk for this person and whether or not they are actually infectious
-    human.purge_messages(current_day)
+    human.clusters.purge(current_day)
 
     # for each sim day, for each human, save an output training example
     daily_output = {}
@@ -242,10 +241,6 @@ def main(args=None):
                 if got_exposed:
                     human.exposure_message = encode_message(message)
 
-            with Parallel(n_jobs=args.n_jobs, batch_size='auto', verbose=10) as parallel:
-                # in parallel, cluster received messages and predict risks
-                daily_output = parallel((delayed(proc_human)(params) for params in all_params))
-
             # if the encounter happened within the last 14 days, and your symptoms started at most 3 days after your contact
             if RiskModel.quantize_risk(human.start_risk) != RiskModel.quantize_risk(human.risk):
                 sent_at = start + datetime.timedelta(days=current_day, minutes=rng.randint(low=0, high=1440))
@@ -254,10 +249,14 @@ def main(args=None):
                         # using encounter
                         hd[m.unobs_id].update_messages.append(human.cur_message_risk_update(m.day, m.risk, sent_at, RiskModel))
 
-            # handle the output of the parallel processes
-            for idx, output in enumerate(daily_output):
-                hd[output['human'].name] = output['human']
-                del daily_output[idx]['human']
+        with Parallel(n_jobs=args.n_jobs, batch_size='auto', verbose=10) as parallel:
+            # in parallel, cluster received messages and predict risks
+            daily_output = parallel((delayed(proc_human)(params) for params in all_params))
+
+        # handle the output of the parallel processes
+        for idx, output in enumerate(daily_output):
+            hd[output['human'].name] = output['human']
+            del daily_output[idx]['human']
         all_outputs.append(daily_output)
 
         print(f"mainloop {time.time() - start1}")
@@ -281,7 +280,7 @@ def main(args=None):
     # write out the clusters to be processed by privacy_plots
     clusters = []
     for human in hd.values():
-        clusters.append(human.M)
+        clusters.append(human.clusters.clusters)
     json.dump(clusters, open(args.cluster_path, 'w'))
 
 

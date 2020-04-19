@@ -33,11 +33,12 @@ for someones_clustered_messages in everyones_clustered_messages:
     groups = defaultdict(list)
     unique_people_contacted = set()
     total_num_contacts = 0
-    for m_enc, assignment in someones_clustered_messages.items():
-        obs_uid, obs_risk, m_sent, unobs_uid = decode_message(m_enc)
-        groups[assignment].append(unobs_uid)
-        unique_people_contacted.add(unobs_uid)
-        total_num_contacts += 1
+    for assignment, m_encs in someones_clustered_messages.items():
+        for m_enc in m_encs:
+            obs_uid, obs_risk, m_sent, unobs_uid = decode_message(m_enc)
+            groups[assignment].append(unobs_uid)
+            unique_people_contacted.add(unobs_uid)
+            total_num_contacts += 1
     all_groups.append(dict(groups))
     all_unique_people_contacted.append(unique_people_contacted)
     all_total_num_contacts.append(total_num_contacts)
@@ -115,7 +116,7 @@ for group_idx, groups in enumerate(all_groups):
 
         node_color = []
         for node in G.nodes():
-            node_color.append(int(node.split("-")[1]))
+            node_color.append(int(node.split("-")[2]))
         pos = nx.spring_layout(G, weight=.3, k=0.5, iterations=50)
         nx.draw(G, pos, with_labels=True, node_color=node_color, cmap=plt.cm.hsv)
         plt.savefig(f"{INDIVIDUAL_CLUSTER_PATH}clusters_{group_idx}.png", dpi=300)

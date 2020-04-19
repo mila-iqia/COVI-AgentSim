@@ -1,19 +1,19 @@
 import numpy as np
 import datetime
-from utils import decode_message
 from collections import Counter
-from models.utils import Message
+from models.utils import Message, decode_message
 
 def messages_to_np(human):
-    ms_enc = np.zeros((len(human.M), 3))
+    ms_enc = np.zeros((human.clusters.num_messages, 3))
     idx = 0
-    for m_enc, assignment in human.M.items():
-        obs_uid, risk, day, unobs_uid = decode_message(m_enc)
-        message = Message(obs_uid, risk, day, unobs_uid)
+    for assignment, messages in human.clusters:
+        for message in messages:
+            obs_uid, risk, day, unobs_uid = decode_message(message)
+            message = Message(obs_uid, risk, day, unobs_uid)
 
-        m_enc = np.array([assignment, message.risk, day])
-        ms_enc[idx] = m_enc
-        idx += 1
+            m_enc = np.array([assignment, message.risk, day])
+            ms_enc[idx] = m_enc
+            idx += 1
     return ms_enc
 
 def candidate_exposures(human, date):
@@ -23,8 +23,8 @@ def candidate_exposures(human, date):
         exposed_locs[candidate_locs.index(human.exposure_source)] = 1.
     candidate_encounters = list(messages_to_np(human))
     exposed_encounters = np.zeros(len(candidate_encounters))
-    if human.exposure_message and human.exposure_message in human.M.keys():
-        idx = list(human.M.keys()).index(human.exposure_message)
+    if human.exposure_message and human.exposure_message in human.clusters.all_messages:
+        idx = human.clusters.all_messages.index(human.exposure_message)
         exposed_encounters[idx] = 1.
     return np.array(candidate_encounters), exposed_encounters, candidate_locs, exposed_locs
 

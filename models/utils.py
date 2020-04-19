@@ -17,7 +17,7 @@ def decode_message(message):
 	obs_uid = bitarray(json.loads(uid))
 	risk = int(risk)
 	day = int(day)
-	unobs_uid = int(unobs_id)
+	unobs_uid = unobs_id
 	return Message(obs_uid, risk, day, unobs_uid)
 
 # https://stackoverflow.com/questions/51843297/convert-real-numbers-to-binary-and-vice-versa-in-python
