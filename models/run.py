@@ -32,6 +32,7 @@ def parse_args():
     parser.add_argument('--save_training_data', action="store_true")
     parser.add_argument('--n_jobs', type=int, default=1, help="Default is no parallelism, jobs = 1")
     parser.add_argument('--max_pickles', type=int, default=1000000, help="If you don't want to load the whole dataset")
+    parser.add_argument('--mp_backend', type=str, default="multiprocessing", help="which joblib backend to use")
     args = parser.parse_args()
     return args
 
@@ -187,11 +188,6 @@ def get_days_worth_of_logs(data_path, start, start_pkl, cur_day):
                         return to_return, start_pkl
     return to_return, start_pkl
 
-def merge_humans(humans):
-    merged_human = humans[0]
-    for human in humans:
-        merged_human.merge(human)
-    return merged_human
 
 def main(args=None):
     if not args:
@@ -211,9 +207,9 @@ def main(args=None):
                 break
             all_params.append({"pkl_name": pkl, "start": start, "data_path": args.data_path, "rng": rng})
     print("initializing humans from logs.")
-    with Parallel(n_jobs=args.n_jobs, batch_size=10, backend="multiprocessing", verbose=10) as parallel:
+    with Parallel(n_jobs=args.n_jobs, batch_size=10, backend=args.mp_backend, verbose=10) as parallel:
         results = parallel((delayed(init_humans)(params) for params in all_params))
-    import pdb; pdb.set_trace()
+
     humans = defaultdict(list)
     all_possible_symptoms = set()
     for result in results:
@@ -224,8 +220,11 @@ def main(args=None):
 
     hd = {}
     for hid, humans in humans.items():
-        import pdb; pdb.set_trace()
-        hd[hid] = merge_humans(humans)
+        merged_human = DummyHuman(name=humans[0].name, rng=rng)
+        for human in humans:
+            merged_human.merge(human)
+        merged_human.update_uid()
+        hd[hid] = merged_human
 
     # select the risk prediction model to embed in messaging protocol
     RiskModel = pick_risk_model(args.risk_model)
