@@ -166,10 +166,16 @@ def pick_risk_model(risk_model):
     raise "unknown risk model"
 
 
-def get_days_worth_of_logs(data_path, start, cur_day):
+def get_days_worth_of_logs(data_path, start, start_pkl, cur_day):
     to_return = defaultdict(list)
+    started = False
     with zipfile.ZipFile(data_path, 'r') as zf:
         for pkl in zf.namelist():
+            if not started:
+                if pkl != start_pkl:
+                    continue
+            started = True
+            start_pkl = pkl
             logs = pickle.load(zf.open(pkl, 'r'))
             for log in logs:
                 if log['event_type'] == Event.encounter:
@@ -177,8 +183,8 @@ def get_days_worth_of_logs(data_path, start, cur_day):
                     if day_since_epoch == cur_day:
                         to_return[log['human_id']].append(log)
                     elif day_since_epoch > cur_day:
-                        return to_return
-    return to_return
+                        return to_return, start_pkl
+    return to_return, start_pkl
 
 def merge_humans(humans):
     merged_human = humans[0]
@@ -208,9 +214,9 @@ def main(args=None):
     for result in results:
         for hid, human in result[0].items():
             humans[hid].append(human)
-        for symps in result[1]:
-            for symp in symps:
-                all_possible_symptoms.add(symp)
+        for symp in result[1]:
+            all_possible_symptoms.add(symp)
+
     hd = {}
     for hid, humans in humans.items():
         hd[hid] = merge_humans(humans)
@@ -220,9 +226,11 @@ def main(args=None):
 
     all_outputs = []
     all_risks = []
+    with zipfile.ZipFile(args.data_path, 'r') as zf:
+        start_pkl = zf.namelist()[0]
     for current_day in range(total_days):
         print(f"day {current_day} of {total_days}")
-        days_logs = get_days_worth_of_logs(args.data_path, start, current_day)
+        days_logs, start_pkl = get_days_worth_of_logs(args.data_path, start, start_pkl, current_day)
         start1 = time.time()
         daily_risks = []
 
