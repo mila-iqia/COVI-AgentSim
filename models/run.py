@@ -211,7 +211,7 @@ def main(args=None):
                 break
             all_params.append({"pkl_name": pkl, "start": start, "data_path": args.data_path, "rng": rng})
     print("initializing humans from logs.")
-    with Parallel(n_jobs=args.n_jobs, batch_size=10, verbose=10) as parallel:
+    with Parallel(n_jobs=args.n_jobs, batch_size=10, backend="multiprocessing", verbose=10) as parallel:
         results = parallel((delayed(init_humans)(params) for params in all_params))
     import pdb; pdb.set_trace()
     humans = defaultdict(list)
