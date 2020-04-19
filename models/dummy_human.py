@@ -16,7 +16,7 @@ class DummyHuman:
             self.messages = []
             self.update_messages = []
             self.risk = np.log(0.01)
-            self.rng = rng
+        self.rng = rng
         self.all_reported_symptoms = [[]]
         self.all_symptoms = []
         self.start_risk = np.log(0.01)

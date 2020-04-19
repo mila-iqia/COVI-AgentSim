@@ -118,7 +118,7 @@ def init_humans(params):
             human_id = log['human_id']
             if human_id not in human_ids:
                 human_ids.add(human_id)
-                hd[human_id] = DummyHuman(name=human_id, rng=None, lightweight=True)
+                hd[human_id] = DummyHuman(name=human_id, rng=rng, lightweight=True)
                 hd[human_id].update_uid()
 
             if log['event_type'] == Event.symptom_start:
