@@ -33,6 +33,7 @@ def parse_args():
     parser.add_argument('--n_jobs', type=int, default=1, help="Default is no parallelism, jobs = 1")
     parser.add_argument('--max_pickles', type=int, default=1000000, help="If you don't want to load the whole dataset")
     parser.add_argument('--mp_backend', type=str, default="multiprocessing", help="which joblib backend to use")
+    parser.add_argument('--mp_batchsize', type=int, default=-1, help="-1 is converted to auto batchsize, otherwise it's the integer you provide")
     args = parser.parse_args()
     return args
 
@@ -194,6 +195,12 @@ def main(args=None):
         args = parse_args()
     rng = np.random.RandomState(args.seed)
 
+    # joblib sometimes takes a string and sometimes an
+    if args.mp_batchsize == -1:
+        mp_batchsize = "auto"
+    else:
+        mp_batchsize = args.mp_batchsize
+
     # iterate the logs and init people
     with zipfile.ZipFile(args.data_path, 'r') as zf:
         start_logs = pickle.load(zf.open(zf.namelist()[0], 'r'))
@@ -207,7 +214,7 @@ def main(args=None):
                 break
             all_params.append({"pkl_name": pkl, "start": start, "data_path": args.data_path, "rng": rng})
     print("initializing humans from logs.")
-    with Parallel(n_jobs=args.n_jobs, batch_size=10, backend=args.mp_backend, verbose=10) as parallel:
+    with Parallel(n_jobs=args.n_jobs, batch_size=mp_batchsize, backend=args.mp_backend, verbose=10) as parallel:
         results = parallel((delayed(init_humans)(params) for params in all_params))
 
     humans = defaultdict(list)
@@ -262,7 +269,7 @@ def main(args=None):
                     if current_day - m.day < 14:
                         hd[m.unobs_id].update_messages.append(human.cur_message_risk_update(m.day, m.risk, RiskModel))
 
-        with Parallel(n_jobs=args.n_jobs, batch_size='auto', verbose=10) as parallel:
+        with Parallel(n_jobs=args.n_jobs, batch_size=mp_batchsize, backend=args.mp_backend, verbose=10) as parallel:
             daily_output = parallel((delayed(proc_human)(params) for params in all_params))
 
         for idx, output in enumerate(daily_output):
