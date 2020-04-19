@@ -31,6 +31,7 @@ def parse_args():
     parser.add_argument('--seed', type=int, default="0")
     parser.add_argument('--save_training_data', action="store_true")
     parser.add_argument('--n_jobs', type=int, default=1, help="Default is no parallelism, jobs = 1")
+    parser.add_argument('--max_pickles', type=int, default=1000000, help="If you don't want to load the whole dataset")
     args = parser.parse_args()
     return args
 
@@ -204,11 +205,15 @@ def main(args=None):
         start = start_logs[0]['time']
         end = end_logs[-1]['time']
         total_days = (end - start).days
-        all_params = [{"pkl_name": pkl, "start": start, "data_path": args.data_path, "rng": rng} for pkl in zf.namelist()]
+        all_params = []
+        for idx, pkl in enumerate(zf.namelist()):
+            if idx > args.max_pickles:
+                break
+            all_params.append({"pkl_name": pkl, "start": start, "data_path": args.data_path, "rng": rng})
     print("initializing humans from logs.")
     with Parallel(n_jobs=args.n_jobs, batch_size='auto', verbose=10) as parallel:
         results = parallel((delayed(init_humans)(params) for params in all_params))
-
+    import pdb; pdb.set_trace()
     humans = defaultdict(list)
     all_possible_symptoms = set()
     for result in results:
@@ -219,6 +224,7 @@ def main(args=None):
 
     hd = {}
     for hid, humans in humans.items():
+        import pdb; pdb.set_trace()
         hd[hid] = merge_humans(humans)
 
     # select the risk prediction model to embed in messaging protocol
