@@ -153,7 +153,7 @@ def init_humans(params):
                 hd[log['human_id']].infectiousness[(log['time'] - start).days] = log['payload']['unobserved'][
                     'infectiousness']
 
-    return hd, all_possible_symptoms
+    return {}#hd, all_possible_symptoms
 
 
 def pick_risk_model(risk_model):
