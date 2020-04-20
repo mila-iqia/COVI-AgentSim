@@ -43,7 +43,7 @@ def hash_id_day(hid, day):
 
 def proc_human(params):
     """This function can be parallelized across CPUs. Currently, we only check for messages once per day, so this can be run in parallel"""
-    start, current_day, RiskModel, encounters, rng, all_possible_symptoms, human, save_training_data = params.values()
+    start, current_day, RiskModel, encounters, rng, all_possible_symptoms, human, save_training_data, log_file = params.values()
     human.start_risk = human.risk
     todays_date = start + datetime.timedelta(days=current_day)
 
@@ -153,7 +153,7 @@ def init_humans(params):
                 hd[log['human_id']].infectiousness[(log['time'] - start).days] = log['payload']['unobserved'][
                     'infectiousness']
 
-    return {}#hd, all_possible_symptoms
+    return hd, all_possible_symptoms
 
 
 def pick_risk_model(risk_model):
@@ -249,7 +249,11 @@ def main(args=None):
         all_params = []
         for human in hd.values():
             encounters = days_logs[human.name]
-            all_params.append({"start": start, "current_day": current_day, "RiskModel": RiskModel, "encounters": encounters, "rng": rng, "all_possible_symptoms": all_possible_symptoms, "human": human, "save_training_data": args.save_training_data})
+            path = f'outputs/{current_day}/{human.name}.json'
+            if not os.path.isdir(path):
+                os.mkdir(path)
+            log_file = open(path, 'wb')
+            all_params.append({"start": start, "current_day": current_day, "RiskModel": RiskModel, "encounters": encounters, "rng": rng, "all_possible_symptoms": all_possible_symptoms, "human": human, "save_training_data": args.save_training_data, "log_file": log_file})
             # go about your day accruing encounters and clustering them
             for idx, encounter in enumerate(encounters):
                 encounter_time = encounter['time']
@@ -270,36 +274,11 @@ def main(args=None):
                         hd[m.unobs_id].update_messages.append(human.cur_message_risk_update(m.day, m.risk, RiskModel))
 
         with Parallel(n_jobs=args.n_jobs, batch_size=mp_batchsize, backend=args.mp_backend, verbose=10) as parallel:
-            daily_output = parallel((delayed(proc_human)(params) for params in all_params))
+            humans = parallel((delayed(proc_human)(params) for params in all_params))
 
-        for idx, output in enumerate(daily_output):
-            hd[output['human'].name] = output['human']
-            del daily_output[idx]['human']
-        all_outputs.append(daily_output)
-
+        for human in humans:
+            hd[human.name] = human
         print(f"mainloop {time.time() - start1}")
-
-        # add risks for plotting
-        todays_date = start + datetime.timedelta(days=current_day)
-        daily_risks.extend([(np.e ** human.risk, human.is_infectious(todays_date)[0], human.name) for human in hd.values()])
-        if args.plot_daily:
-            hist_plot(daily_risks, f"{args.plot_path}day_{str(current_day).zfill(3)}.png")
-        all_risks.extend(daily_risks)
-    if args.save_training_data:
-        pickle.dump(all_outputs, open(args.output_file, 'wb'))
-
-    dist_plot(all_risks,  f"{args.plot_path}all_risks.png")
-
-    # make a gif of the dist output
-    process = subprocess.Popen(f"convert -delay 50 -loop 0 {args.plot_path}/*.png {args.plot_path}/risk.gif".split(), stdout=subprocess.PIPE)
-    output, error = process.communicate()
-
-    # write out the clusters to be processed by privacy_plots
-    clusters = []
-    for human in hd.values():
-        clusters.append(human.M)
-    json.dump(clusters, open(args.cluster_path, 'w'))
-
 
 if __name__ == "__main__":
     main()
