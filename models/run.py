@@ -232,7 +232,7 @@ def main(args=None):
 
     hd = {}
     for hid, humans in humans.items():
-        merged_human = DummyHuman(name=humans[0].name, rng=rng)
+        merged_human = DummyHuman(name=humans[0].name)
         for human in humans:
             merged_human.merge(human)
         merged_human.update_uid()

@@ -6,7 +6,7 @@ from bitarray import bitarray
 from models.utils import Message, UpdateMessage
 import numpy as np
 from models.clusters import Clusters
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 
 # A utility class for re-inflating human objects with just the stuff we need for message passing / risk prediction
 class DummyHuman:
@@ -19,7 +19,6 @@ class DummyHuman:
             self.update_messages = []
             self.risk = np.log(0.01)
             self.clusters = Clusters()
-        self.rng = rng
         self.all_reported_symptoms = [[]]
         self.all_symptoms = []
         self.start_risk = np.log(0.01)
