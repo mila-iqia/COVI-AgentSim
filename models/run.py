@@ -9,6 +9,7 @@ import subprocess
 import numpy as np
 import operator
 import datetime
+import pathlib
 import time
 from tqdm import tqdm
 from collections import defaultdict
@@ -102,7 +103,8 @@ def proc_human(params):
                                             "infectiousness": infectiousness,
                                         }
                                     }
-    return {human.name: daily_output, "human": human}
+        pickle.dump(daily_output, log_file)
+    return human
 
 def init_humans(params):
     pkl_name = params['pkl_name']
@@ -249,9 +251,10 @@ def main(args=None):
         all_params = []
         for human in hd.values():
             encounters = days_logs[human.name]
-            path = f'outputs/{current_day}/{human.name}.json'
+            path = f'{os.path.dirname(args.data_path)}/daily_outputs/{current_day}/{human.name[6:]}/'
             if not os.path.isdir(path):
-                os.mkdir(path)
+                pathlib.Path(path).mkdir(parents=True, exist_ok=True)
+            path = os.path.join(path, f"daily_human.pkl")
             log_file = open(path, 'wb')
             all_params.append({"start": start, "current_day": current_day, "RiskModel": RiskModel, "encounters": encounters, "rng": rng, "all_possible_symptoms": all_possible_symptoms, "human": human, "save_training_data": args.save_training_data, "log_file": log_file})
             # go about your day accruing encounters and clustering them
