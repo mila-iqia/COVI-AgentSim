@@ -57,6 +57,7 @@ def proc_human(params):
         # update risk based on that day's messages
         RiskModel.update_risk_encounter(human, m_i)
         human.clusters.add_message(m_i)
+    human.messages = []
     print(f"read old messages and cluster: {time.time()- start1}")
 
     start2 = time.time()
