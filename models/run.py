@@ -44,7 +44,7 @@ def hash_id_day(hid, day):
 
 def proc_human(params):
     """This function can be parallelized across CPUs. Currently, we only check for messages once per day, so this can be run in parallel"""
-    start, current_day, encounters, rng, all_possible_symptoms, human_dict, save_training_data, log_file = params.values()
+    start, current_day, encounters, rng, all_possible_symptoms, human_dict, save_training_data, log_path = params.values()
     human = DummyHuman(name=human_dict['name'], rng=rng).merge(human_dict)
     RiskModel = RiskModelTristan
     human.start_risk = human.risk
@@ -70,7 +70,6 @@ def proc_human(params):
     human.purge_messages(current_day)
 
     # for each sim day, for each human, save an output training example
-    daily_output = {}
     if save_training_data:
         is_exposed, exposure_day = human.is_exposed(todays_date)
         is_infectious, infectious_day = human.is_infectious(todays_date)
@@ -105,6 +104,10 @@ def proc_human(params):
                                             "infectiousness": infectiousness,
                                         }
                                     }
+        if not os.path.isdir(log_path):
+            pathlib.Path(log_path).mkdir(parents=True, exist_ok=True)
+        path = os.path.join(log_path, f"daily_human.pkl")
+        log_file = open(path, 'wb')
         pickle.dump(daily_output, log_file)
     return human.__dict__
 
@@ -251,12 +254,8 @@ def main(args=None):
         all_params = []
         for human in hd.values():
             encounters = days_logs[human.name]
-            path = f'{os.path.dirname(args.data_path)}/daily_outputs/{current_day}/{human.name[6:]}/'
-            if not os.path.isdir(path):
-                pathlib.Path(path).mkdir(parents=True, exist_ok=True)
-            path = os.path.join(path, f"daily_human.pkl")
-            log_file = open(path, 'wb')
-            all_params.append({"start": start, "current_day": current_day, "encounters": encounters, "rng": rng, "all_possible_symptoms": all_possible_symptoms, "human": human.__dict__, "save_training_data": args.save_training_data, "log_file": log_file})
+            log_path = f'{os.path.dirname(args.data_path)}/daily_outputs/{current_day}/{human.name[6:]}/'
+            all_params.append({"start": start, "current_day": current_day, "encounters": encounters, "rng": rng, "all_possible_symptoms": all_possible_symptoms, "human": human.__dict__, "save_training_data": args.save_training_data, "log_path": log_path})
             # go about your day accruing encounters and clustering them
             for encounter in encounters:
                 encounter_time = encounter['time']
