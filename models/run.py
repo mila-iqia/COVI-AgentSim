@@ -46,7 +46,7 @@ def hash_id_day(hid, day):
 def proc_human(params):
     """This function can be parallelized across CPUs. Currently, we only check for messages once per day, so this can be run in parallel"""
     start, current_day, encounters, rng, all_possible_symptoms, human_dict, save_training_data, log_path = params.values()
-    human = DummyHuman(name=human_dict['name'], rng=rng).merge(human_dict)
+    human = DummyHuman(name=human_dict['name']).merge(human_dict)
     RiskModel = RiskModelTristan
     human.start_risk = human.risk
     todays_date = start + datetime.timedelta(days=current_day)
@@ -127,8 +127,7 @@ def init_humans(params):
             human_id = log['human_id']
             if human_id not in human_ids:
                 human_ids.add(human_id)
-                hd[human_id] = DummyHuman(name=human_id, rng=rng)
-                hd[human_id].update_uid()
+                hd[human_id] = DummyHuman(name=human_id)
 
             if log['event_type'] == Event.symptom_start:
                 hd[log['human_id']].symptoms_start = log['time']
@@ -240,10 +239,10 @@ def main(args=None):
 
     hd = {}
     for hid, humans in humans.items():
-        merged_human = DummyHuman(name=humans[0].name)
+        merged_human = DummyHuman(name=humans[0]['name'])
         for human in humans:
             merged_human.merge(human)
-        merged_human.update_uid()
+        merged_human._uid = create_new_uid(rng)
         hd[hid] = merged_human
 
     # select the risk prediction model to embed in messaging protocol
@@ -262,6 +261,7 @@ def main(args=None):
         all_params = []
         for human in hd.values():
             encounters = days_logs[human.name]
+            human._uid = update_uid(human._uid, rng)
             log_path = f'{os.path.dirname(args.data_path)}/daily_outputs/{current_day}/{human.name[6:]}/'
             all_params.append({"start": start, "current_day": current_day, "encounters": encounters, "rng": rng, "all_possible_symptoms": all_possible_symptoms, "human": human.__dict__, "save_training_data": args.save_training_data, "log_path": log_path})
             # go about your day accruing encounters and clustering them

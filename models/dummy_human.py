@@ -8,20 +8,17 @@ import numpy as np
 from models.clusters import Clusters
 from collections import defaultdict, namedtuple
 
-Message = namedtuple('message', 'uid risk day unobs_id')
-UpdateMessage = namedtuple('update_message', 'uid new_risk risk day unobs_id')
 
 # A utility class for re-inflating human objects with just the stuff we need for message passing / risk prediction
 class DummyHuman:
 
-    def __init__(self, name=None, rng=None):
+    def __init__(self, name=None):
         self.name = name
         self.M = {}
         self.sent_messages = {}
         self.messages = []
         self.update_messages = []
         self.risk = np.log(0.01)
-        self.rng = rng
         self.clusters = Clusters()
         self.all_reported_symptoms = [[]]
         self.all_symptoms = []
