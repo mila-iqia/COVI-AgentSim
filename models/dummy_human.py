@@ -6,7 +6,6 @@ from bitarray import bitarray
 from models.utils import Message, UpdateMessage
 import numpy as np
 from models.clusters import Clusters
-from collections import defaultdict, namedtuple
 
 
 # A utility class for re-inflating human objects with just the stuff we need for message passing / risk prediction
@@ -23,7 +22,7 @@ class DummyHuman:
         self.all_reported_symptoms = [[]]
         self.all_symptoms = []
         self.start_risk = np.log(0.01)
-        self._uid = None
+        self.uid = None
         self.time_of_recovery = datetime.datetime.max
         self.infectiousness_start_time = datetime.datetime.max
         self.time_of_death = datetime.datetime.max
@@ -47,10 +46,6 @@ class DummyHuman:
 
     def cur_message_risk_update(self, day, old_risk, sent_at, RiskModel):
         return UpdateMessage(self.uid, RiskModel.quantize_risk(self.risk), old_risk, day, sent_at, self.name)
-
-    @property
-    def uid(self):
-        return self._uid
 
     def symptoms_at_time(self, now, symptoms):
         sickness_day = (now - self.symptoms_start).days
@@ -100,8 +95,8 @@ class DummyHuman:
 
     def merge(self, human_dict):
         for key, val in human_dict.items():
-            if key == 'M':
-                self.M = val
+            if key == 'clusters':
+                self.clusters = val
             if key == 'risk':
                 self.risk = val
             if key == 'messages':
@@ -110,8 +105,8 @@ class DummyHuman:
                 self.sent_messages = val
             if key == 'tested_positive_contact_count':
                 self.tested_positive_contact_count = val
-            if key == '_uid':
-                self._uid = val
+            if key == 'uid':
+                self.uid = val
             if key == "time_of_recovery" and val != datetime.datetime.max:
                 self.time_of_recovery = val
             if key == "infectiousness_start_time" and val != datetime.datetime.max:

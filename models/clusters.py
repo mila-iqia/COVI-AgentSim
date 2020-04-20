@@ -18,11 +18,11 @@ class Clusters:
         self.clusters = defaultdict(list)
         self.clusters_by_day = defaultdict(dict)
 
-    def add_to_clusters_by_day(self, cluster, message):
-        if self.clusters_by_day[message.day].get(cluster):
-            self.clusters_by_day[message.day][cluster].append(message)
+    def add_to_clusters_by_day(self, cluster, day, m_i_enc):
+        if self.clusters_by_day[day].get(cluster):
+            self.clusters_by_day[day][cluster].append(m_i_enc)
         else:
-            self.clusters_by_day[message.day][cluster] = [message]
+            self.clusters_by_day[day][cluster] = [m_i_enc]
 
     def add_message(self, message:Message):
         """ This function clusters new messages by scoring them against old messages in a sort of naive nearest neighbors approach"""
@@ -37,7 +37,7 @@ class Clusters:
             cluster_id = self.num_messages + 1
         self.all_messages.append(m_i_enc)
         self.clusters[cluster_id].append(m_i_enc)
-        self.add_to_clusters_by_day(cluster_id, message)
+        self.add_to_clusters_by_day(cluster_id, message.day, m_i_enc)
 
     def score_matches(self, m_i):
         best_cluster = 0
@@ -99,6 +99,7 @@ class Clusters:
 
     def update_records(self, update_messages):
         grouped_update_messages = self.group_by_received_at(update_messages)
+
         for received_at, update_messages in grouped_update_messages.items():
             updated_messages = []
             best_clusters = []
@@ -121,15 +122,16 @@ class Clusters:
     def purge(self, current_day):
         for cluster_id, messages in self.clusters_by_day[current_day - 14].items():
             for message in messages:
-                del self.clusters[cluster_id][self.clusters[cluster_id].index(encode_message(message))]
-                del self.all_messages[self.all_messages.index(encode_message(message))]
+                del self.clusters[cluster_id][self.clusters[cluster_id].index(message)]
+                del self.all_messages[self.all_messages.index(message)]
         to_purge = []
         for cluster_id, messages in self.clusters.items():
             if len(self.clusters[cluster_id]) == 0:
                 to_purge.append(cluster_id)
         for cluster_id in to_purge:
             del self.clusters[cluster_id]
-        del self.clusters_by_day[current_day - 14]
+        if current_day - 14 >= 0:
+            del self.clusters_by_day[current_day - 14]
         self.update_messages = []
 
     def __iter__(self):

@@ -39,6 +39,6 @@ def create_new_uid(rng):
 	return _uid
 
 def update_uid(_uid, rng):
-	_uid.pop()
+	_uid.pop(0)
 	_uid.extend([rng.choice([True, False])])
 	return _uid

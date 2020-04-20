@@ -50,25 +50,20 @@ def proc_human(params):
     RiskModel = RiskModelTristan
     human.start_risk = human.risk
     todays_date = start + datetime.timedelta(days=current_day)
-    import time
+
     # check if you have new reported symptoms
     human.risk = RiskModel.update_risk_daily(human, todays_date)
-    print(f"len(human.messages): {len(human.messages)}")
-    start1 = time.time()
+
     # read your old messages
     for m_i in human.messages:
         # update risk based on that day's messages
         RiskModel.update_risk_encounter(human, m_i)
         human.clusters.add_message(m_i)
     human.messages = []
-    print(f"read old messages and cluster: {time.time()- start1}")
 
-    start2 = time.time()
     human.clusters.update_records(human.update_messages)
-    print(f"update records: {time.time()- start2}")
-    start3 = time.time()
     human.clusters.purge(current_day)
-    print(f"purge: {time.time() - start3}")
+
     # for each sim day, for each human, save an output training example
     if save_training_data:
         is_exposed, exposure_day = human.is_exposed(todays_date)
@@ -115,7 +110,7 @@ def init_humans(params):
     pkl_name = params['pkl_name']
     start = params['start']
     data_path = params['data_path']
-    rng = params['rng']
+
     # read and filter the pickles
     hd = {}
     human_ids = set()
@@ -223,7 +218,7 @@ def main(args=None):
         for idx, pkl in enumerate(zf.namelist()):
             if idx > args.max_pickles:
                 break
-            all_params.append({"pkl_name": pkl, "start": start, "data_path": args.data_path, "rng": rng})
+            all_params.append({"pkl_name": pkl, "start": start, "data_path": args.data_path})
 
     print("initializing humans from logs.")
     with Parallel(n_jobs=args.n_jobs, batch_size=mp_batchsize, backend=args.mp_backend, verbose=10) as parallel:
@@ -242,7 +237,7 @@ def main(args=None):
         merged_human = DummyHuman(name=humans[0]['name'])
         for human in humans:
             merged_human.merge(human)
-        merged_human._uid = create_new_uid(rng)
+        merged_human.uid = create_new_uid(rng)
         hd[hid] = merged_human
 
     # select the risk prediction model to embed in messaging protocol
@@ -261,7 +256,7 @@ def main(args=None):
         all_params = []
         for human in hd.values():
             encounters = days_logs[human.name]
-            human._uid = update_uid(human._uid, rng)
+            human.uid = update_uid(human.uid, rng)
             log_path = f'{os.path.dirname(args.data_path)}/daily_outputs/{current_day}/{human.name[6:]}/'
             all_params.append({"start": start, "current_day": current_day, "encounters": encounters, "rng": rng, "all_possible_symptoms": all_possible_symptoms, "human": human.__dict__, "save_training_data": args.save_training_data, "log_path": log_path})
             # go about your day accruing encounters and clustering them
@@ -291,7 +286,12 @@ def main(args=None):
         for human_dict in human_dicts:
             human = DummyHuman(name=human_dict['name']).merge(human_dict)
             hd[human.name] = human
-        print(f"mainloop {time.time() - start1}")
+
+    # print out the clusters
+    clusters = []
+    for human in hd.values():
+        clusters.append(dict(human.clusters.clusters))
+    json.dump(clusters, open(args.cluster_path, 'w'))
 
 if __name__ == "__main__":
     main()

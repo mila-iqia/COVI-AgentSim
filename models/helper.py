@@ -1,31 +1,34 @@
 import numpy as np
 import datetime
 from collections import Counter
-from models.utils import Message, decode_message
+from models.utils import decode_message
 
 def messages_to_np(human):
-    ms_enc = np.zeros((human.clusters.num_messages, 3))
-    idx = 0
-    for assignment, messages in human.clusters:
-        for message in messages:
-            obs_uid, risk, day, unobs_uid = decode_message(message)
-            message = Message(obs_uid, risk, day, unobs_uid)
-            m_enc = np.array([assignment, message.risk, day])
-            ms_enc[idx] = m_enc
-            idx += 1
-    return ms_enc
+    ms_enc = []
+    for day, clusters in human.clusters.clusters_by_day.items():
+        for cluster_id, messages in clusters.items():
+            # TODO: take an average over the risks for that day
+            ms_enc.append([cluster_id, decode_message(messages[0]).risk, len(messages), day])
+    return np.array(ms_enc)
 
 def candidate_exposures(human, date):
     candidate_locs = list(human.locations_visited.keys())
     exposed_locs = np.zeros(len(candidate_locs))
     if human.exposure_source in candidate_locs:
         exposed_locs[candidate_locs.index(human.exposure_source)] = 1.
-    candidate_encounters = list(messages_to_np(human))
+    candidate_encounters = messages_to_np(human)
     exposed_encounters = np.zeros(len(candidate_encounters))
     if human.exposure_message and human.exposure_message in human.clusters.all_messages:
-        idx = human.clusters.all_messages.index(human.exposure_message)
-        exposed_encounters[idx] = 1.
-    return np.array(candidate_encounters), exposed_encounters, candidate_locs, exposed_locs
+        idx = 0
+        for day, clusters in human.clusters.clusters_by_day.items():
+            for cluster_id, messages in clusters.items():
+                for message in messages:
+                    if message == human.exposure_message:
+                        exposed_encounters[idx] = 1.
+                        break
+                idx += 1
+
+    return candidate_encounters, exposed_encounters, candidate_locs, exposed_locs
 
 
 def symptoms_to_np(symptoms_day, all_symptoms, all_possible_symptoms):
