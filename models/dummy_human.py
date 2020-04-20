@@ -121,6 +121,8 @@ class DummyHuman:
 
     def merge(self, human_dict):
         for key, val in human_dict.items():
+            if key == '_uid':
+                self._uid = val
             if key == "time_of_recovery" and val != datetime.datetime.max:
                 self.time_of_recovery = val
             if key == "infectiousness_start_time" and val != datetime.datetime.max:
@@ -154,3 +156,4 @@ class DummyHuman:
                         self.locations_visited[k] = v
                     elif self.locations_visited.get(k) > v:
                         self.locations_visited[k] = v
+        return self

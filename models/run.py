@@ -44,7 +44,9 @@ def hash_id_day(hid, day):
 
 def proc_human(params):
     """This function can be parallelized across CPUs. Currently, we only check for messages once per day, so this can be run in parallel"""
-    start, current_day, RiskModel, encounters, rng, all_possible_symptoms, human, save_training_data, log_file = params.values()
+    start, current_day, encounters, rng, all_possible_symptoms, human_dict, save_training_data, log_file = params.values()
+    human = DummyHuman(name=human_dict['name'], rng=rng).merge(human_dict)
+    RiskModel = RiskModelTristan
     human.start_risk = human.risk
     todays_date = start + datetime.timedelta(days=current_day)
 
@@ -104,7 +106,7 @@ def proc_human(params):
                                         }
                                     }
         pickle.dump(daily_output, log_file)
-    return human
+    return human.__dict__
 
 def init_humans(params):
     pkl_name = params['pkl_name']
@@ -196,8 +198,8 @@ def main(args=None):
     if not args:
         args = parse_args()
     rng = np.random.RandomState(args.seed)
-    pickle.dump(DummyHuman(), open('test', 'wb'))
-    # joblib sometimes takes a string and sometimes an
+
+    # joblib sometimes takes a string and sometimes an int
     if args.mp_batchsize == -1:
         mp_batchsize = "auto"
     else:
@@ -215,6 +217,7 @@ def main(args=None):
             if idx > args.max_pickles:
                 break
             all_params.append({"pkl_name": pkl, "start": start, "data_path": args.data_path, "rng": rng})
+
     print("initializing humans from logs.")
     with Parallel(n_jobs=args.n_jobs, batch_size=mp_batchsize, backend=args.mp_backend, verbose=10) as parallel:
         results = parallel((delayed(init_humans)(params) for params in all_params))
@@ -238,15 +241,12 @@ def main(args=None):
     # select the risk prediction model to embed in messaging protocol
     RiskModel = pick_risk_model(args.risk_model)
 
-    all_outputs = []
-    all_risks = []
     with zipfile.ZipFile(args.data_path, 'r') as zf:
         start_pkl = zf.namelist()[0]
     for current_day in range(total_days):
         print(f"day {current_day} of {total_days}")
         days_logs, start_pkl = get_days_worth_of_logs(args.data_path, start, start_pkl, current_day)
         start1 = time.time()
-        daily_risks = []
 
         all_params = []
         for human in hd.values():
@@ -256,9 +256,9 @@ def main(args=None):
                 pathlib.Path(path).mkdir(parents=True, exist_ok=True)
             path = os.path.join(path, f"daily_human.pkl")
             log_file = open(path, 'wb')
-            all_params.append({"start": start, "current_day": current_day, "RiskModel": RiskModel, "encounters": encounters, "rng": rng, "all_possible_symptoms": all_possible_symptoms, "human": human, "save_training_data": args.save_training_data, "log_file": log_file})
+            all_params.append({"start": start, "current_day": current_day, "encounters": encounters, "rng": rng, "all_possible_symptoms": all_possible_symptoms, "human": human.__dict__, "save_training_data": args.save_training_data, "log_file": log_file})
             # go about your day accruing encounters and clustering them
-            for idx, encounter in enumerate(encounters):
+            for encounter in encounters:
                 encounter_time = encounter['time']
                 unobs = encounter['payload']['unobserved']
                 encountered_human = hd[unobs['human2']['human_id']]
@@ -277,9 +277,10 @@ def main(args=None):
                         hd[m.unobs_id].update_messages.append(human.cur_message_risk_update(m.day, m.risk, RiskModel))
 
         with Parallel(n_jobs=args.n_jobs, batch_size=mp_batchsize, backend=args.mp_backend, verbose=10) as parallel:
-            humans = parallel((delayed(proc_human)(params) for params in all_params))
+            human_dicts = parallel((delayed(proc_human)(params) for params in all_params))
 
-        for human in humans:
+        for human_dict in human_dicts:
+            human = DummyHuman(name=human_dict['name']).merge(human_dict)
             hd[human.name] = human
         print(f"mainloop {time.time() - start1}")
 
