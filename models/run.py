@@ -154,7 +154,7 @@ def init_humans(params):
             elif log['event_type'] == Event.daily:
                 hd[log['human_id']].infectiousness[(log['time'] - start).days] = log['payload']['unobserved'][
                     'infectiousness']
-
+    hd = [human.__dict__ for human in hd.values()]
     return hd, all_possible_symptoms
 
 
@@ -222,14 +222,14 @@ def main(args=None):
     humans = defaultdict(list)
     all_possible_symptoms = set()
     for result in results:
-        for hid, human in result[0].items():
-            humans[hid].append(human)
+        for human in result[0]:
+            humans[human['name']].append(human)
         for symp in result[1]:
             all_possible_symptoms.add(symp)
 
     hd = {}
     for hid, humans in humans.items():
-        merged_human = DummyHuman(name=humans[0].name, rng=rng)
+        merged_human = DummyHuman(name=humans[0]['name'], rng=rng)
         for human in humans:
             merged_human.merge(human)
         merged_human.update_uid()
