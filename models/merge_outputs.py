@@ -14,8 +14,6 @@ with zipfile.ZipFile(f"{args.data_path}.zip", mode='a', compression=zipfile.ZIP_
         for pkl in os.listdir(data_dir_path):
             with open(os.path.join(data_dir_path, pkl, "daily_human.pkl"), 'rb') as f:
                 data = pickle.load(f)
-                if data['']
-                import pdb; pdb.set_trace()
                 zf.writestr(f"{day_path}-{pkl}.pkl", pickle.dumps(data))
 
 # add risks for plotting
