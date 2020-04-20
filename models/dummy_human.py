@@ -8,17 +8,21 @@ import numpy as np
 from models.clusters import Clusters
 from collections import defaultdict, namedtuple
 
+Message = namedtuple('message', 'uid risk day unobs_id')
+UpdateMessage = namedtuple('update_message', 'uid new_risk risk day unobs_id')
+
 # A utility class for re-inflating human objects with just the stuff we need for message passing / risk prediction
 class DummyHuman:
-    def __init__(self, name=None, lightweight=False):
+
+    def __init__(self, name=None, rng=None):
         self.name = name
-        if not lightweight:
-            self.M = {}
-            self.sent_messages = {}
-            self.messages = []
-            self.update_messages = []
-            self.risk = np.log(0.01)
-            self.clusters = Clusters()
+        self.M = {}
+        self.sent_messages = {}
+        self.messages = []
+        self.update_messages = []
+        self.risk = np.log(0.01)
+        self.rng = rng
+        self.clusters = Clusters()
         self.all_reported_symptoms = [[]]
         self.all_symptoms = []
         self.start_risk = np.log(0.01)
@@ -33,9 +37,6 @@ class DummyHuman:
         self.exposure_message = None
         self.infectiousness_start = datetime.datetime.max
         self.tested_positive_contact_count = 0
-        if not lightweight:
-            self.Message = namedtuple('message', 'uid risk day unobs_id')
-            self.UpdateMessage = namedtuple('update_message', 'uid new_risk risk day unobs_id')
         self.rolling_infectiousness_array = []
         self.infectiousness = {}
         self.locations_visited = {}
@@ -100,20 +101,32 @@ class DummyHuman:
             recovery_day = None
         return is_recovered, recovery_day
 
-    def merge(self, human):
-        for key, val in human.__dict__.items():
+    def merge(self, human_dict):
+        for key, val in human_dict.items():
+            if key == 'M':
+                self.M = val
+            if key == 'risk':
+                self.risk = val
+            if key == 'messages':
+                self.messages = val
+            if key == 'sent_messages':
+                self.sent_messages = val
+            if key == 'tested_positive_contact_count':
+                self.tested_positive_contact_count = val
+            if key == '_uid':
+                self._uid = val
             if key == "time_of_recovery" and val != datetime.datetime.max:
-                self.time_of_recovery = human.time_of_recovery
+                self.time_of_recovery = val
             if key == "infectiousness_start_time" and val != datetime.datetime.max:
-                self.infectiousness_start_time = human.infectiousness_start_time
+                self.infectiousness_start_time = val
             if key == "infectiousness_start" and val != datetime.datetime.max:
-                self.infectiousness_start = human.infectiousness_start
+                self.infectiousness_start = val
             if key == "time_of_death" and val != datetime.datetime.max:
-                self.time_of_death = human.time_of_death
+                self.time_of_death = val
             if key == "symptoms_start" and val != datetime.datetime.max:
-                self.symptoms_start = human.symptoms_start
+                self.symptoms_start = val
             if key == "test_time" and val != datetime.datetime.max:
-                self.test_time = human.test_time
+                self.test_time = val
             if key == "obs_preexisting_conditions" and val:
                 self.obs_preexisting_conditions = val
             if key == "preexisting_conditions" and val:
@@ -135,3 +148,4 @@ class DummyHuman:
                         self.locations_visited[k] = v
                     elif self.locations_visited.get(k) > v:
                         self.locations_visited[k] = v
+        return self

@@ -8,7 +8,7 @@ import operator
 import datetime
 from collections import defaultdict
 from bitarray import bitarray
-
+from models.dummy_human import Message, UpdateMessage
 """ This file contains the core of the side simulation, which is run on the output encounters from the main simulation.
 It's primary functionality is to run the message clustering and risk prediction algorithms.
 """

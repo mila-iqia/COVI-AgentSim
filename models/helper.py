@@ -10,7 +10,6 @@ def messages_to_np(human):
         for message in messages:
             obs_uid, risk, day, unobs_uid = decode_message(message)
             message = Message(obs_uid, risk, day, unobs_uid)
-
             m_enc = np.array([assignment, message.risk, day])
             ms_enc[idx] = m_enc
             idx += 1

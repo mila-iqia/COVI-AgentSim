@@ -9,6 +9,7 @@ import subprocess
 import numpy as np
 import operator
 import datetime
+import pathlib
 import time
 from tqdm import tqdm
 from collections import defaultdict
@@ -33,7 +34,7 @@ def parse_args():
     parser.add_argument('--n_jobs', type=int, default=1, help="Default is no parallelism, jobs = 1")
     parser.add_argument('--max_num_days', type=int, default=10000, help="Default is to run for all days")
     parser.add_argument('--max_pickles', type=int, default=1000000, help="If you don't want to load the whole dataset")
-    parser.add_argument('--mp_backend', type=str, default="multiprocessing", help="which joblib backend to use")
+    parser.add_argument('--mp_backend', type=str, default="loky", help="which joblib backend to use")
     parser.add_argument('--mp_batchsize', type=int, default=-1, help="-1 is converted to auto batchsize, otherwise it's the integer you provide")
     args = parser.parse_args()
     return args
@@ -44,7 +45,9 @@ def hash_id_day(hid, day):
 
 def proc_human(params):
     """This function can be parallelized across CPUs. Currently, we only check for messages once per day, so this can be run in parallel"""
-    start, current_day, RiskModel, encounters, rng, all_possible_symptoms, human, save_training_data = params.values()
+    start, current_day, encounters, rng, all_possible_symptoms, human_dict, save_training_data, log_path = params.values()
+    human = DummyHuman(name=human_dict['name'], rng=rng).merge(human_dict)
+    RiskModel = RiskModelTristan
     human.start_risk = human.risk
     todays_date = start + datetime.timedelta(days=current_day)
     import time
@@ -67,7 +70,6 @@ def proc_human(params):
     human.clusters.purge(current_day)
     print(f"purge: {time.time() - start3}")
     # for each sim day, for each human, save an output training example
-    daily_output = {}
     if save_training_data:
         is_exposed, exposure_day = human.is_exposed(todays_date)
         is_infectious, infectious_day = human.is_infectious(todays_date)
@@ -102,7 +104,12 @@ def proc_human(params):
                                 "infectiousness": infectiousness,
                             }
                         }
-    return {human.name: daily_output, "human": human}
+        if not os.path.isdir(log_path):
+            pathlib.Path(log_path).mkdir(parents=True, exist_ok=True)
+        path = os.path.join(log_path, f"daily_human.pkl")
+        log_file = open(path, 'wb')
+        pickle.dump(daily_output, log_file)
+    return human.__dict__
 
 def init_humans(params):
     pkl_name = params['pkl_name']
@@ -120,7 +127,7 @@ def init_humans(params):
             human_id = log['human_id']
             if human_id not in human_ids:
                 human_ids.add(human_id)
-                hd[human_id] = DummyHuman(name=human_id, rng=rng, lightweight=True)
+                hd[human_id] = DummyHuman(name=human_id, rng=rng)
                 hd[human_id].update_uid()
 
             if log['event_type'] == Event.symptom_start:
@@ -152,7 +159,7 @@ def init_humans(params):
             elif log['event_type'] == Event.daily:
                 hd[log['human_id']].infectiousness[(log['time'] - start).days] = log['payload']['unobserved'][
                     'infectiousness']
-
+    hd = [human.__dict__ for human in hd.values()]
     return hd, all_possible_symptoms
 
 
@@ -200,7 +207,7 @@ def main(args=None):
     if args.plot_path and not os.path.isdir(args.plot_path):
         os.mkdir(args.plot_path)
 
-    # joblib sometimes takes a string and sometimes an
+    # joblib sometimes takes a string and sometimes an int
     if args.mp_batchsize == -1:
         mp_batchsize = "auto"
     else:
@@ -218,6 +225,7 @@ def main(args=None):
             if idx > args.max_pickles:
                 break
             all_params.append({"pkl_name": pkl, "start": start, "data_path": args.data_path, "rng": rng})
+
     print("initializing humans from logs.")
     with Parallel(n_jobs=args.n_jobs, batch_size=mp_batchsize, backend=args.mp_backend, verbose=10) as parallel:
         results = parallel((delayed(init_humans)(params) for params in all_params))
@@ -225,8 +233,8 @@ def main(args=None):
     humans = defaultdict(list)
     all_possible_symptoms = set()
     for result in results:
-        for hid, human in result[0].items():
-            humans[hid].append(human)
+        for human in result[0]:
+            humans[human['name']].append(human)
         for symp in result[1]:
             all_possible_symptoms.add(symp)
 
@@ -241,8 +249,6 @@ def main(args=None):
     # select the risk prediction model to embed in messaging protocol
     RiskModel = pick_risk_model(args.risk_model)
 
-    all_outputs = []
-    all_risks = []
     with zipfile.ZipFile(args.data_path, 'r') as zf:
         start_pkl = zf.namelist()[0]
     for current_day in range(total_days):
@@ -252,21 +258,14 @@ def main(args=None):
         print(f"day {current_day} of {total_days}")
         days_logs, start_pkl = get_days_worth_of_logs(args.data_path, start, start_pkl, current_day)
         start1 = time.time()
-        daily_risks = []
 
         all_params = []
         for human in hd.values():
             encounters = days_logs[human.name]
-            all_params.append({"start": start,
-                               "current_day": current_day,
-                               "RiskModel": RiskModel,
-                               "encounters": encounters,
-                               "rng": rng,
-                               "all_possible_symptoms": all_possible_symptoms,
-                               "human": human,
-                               "save_training_data": args.save_training_data})
+            log_path = f'{os.path.dirname(args.data_path)}/daily_outputs/{current_day}/{human.name[6:]}/'
+            all_params.append({"start": start, "current_day": current_day, "encounters": encounters, "rng": rng, "all_possible_symptoms": all_possible_symptoms, "human": human.__dict__, "save_training_data": args.save_training_data, "log_path": log_path})
             # go about your day accruing encounters and clustering them
-            for idx, encounter in enumerate(encounters):
+            for encounter in encounters:
                 encounter_time = encounter['time']
                 unobs = encounter['payload']['unobserved']
                 encountered_human = hd[unobs['human2']['human_id']]
@@ -286,38 +285,13 @@ def main(args=None):
                         # using encounter
                         hd[m.unobs_id].update_messages.append(human.cur_message_risk_update(m.day, m.risk, sent_at, RiskModel))
 
-
         with Parallel(n_jobs=args.n_jobs, batch_size=mp_batchsize, backend=args.mp_backend, verbose=10) as parallel:
-            daily_output = parallel((delayed(proc_human)(params) for params in all_params))
+            human_dicts = parallel((delayed(proc_human)(params) for params in all_params))
 
-        for idx, output in enumerate(daily_output):
-            hd[output['human'].name] = output['human']
-            del daily_output[idx]['human']
-        all_outputs.append(daily_output)
-
+        for human_dict in human_dicts:
+            human = DummyHuman(name=human_dict['name']).merge(human_dict)
+            hd[human.name] = human
         print(f"mainloop {time.time() - start1}")
-
-        # add risks for plotting
-        todays_date = start + datetime.timedelta(days=current_day)
-        daily_risks.extend([(np.e ** human.risk, human.is_infectious(todays_date)[0], human.name) for human in hd.values()])
-        if args.plot_daily:
-            hist_plot(daily_risks, f"{args.plot_path}day_{str(current_day).zfill(3)}.png")
-        all_risks.extend(daily_risks)
-    if args.save_training_data:
-        pickle.dump(all_outputs, open(args.output_file, 'wb'))
-
-    dist_plot(all_risks,  f"{args.plot_path}all_risks.png")
-
-    # make a gif of the dist output
-    process = subprocess.Popen(f"convert -delay 50 -loop 0 {args.plot_path}/*.png {args.plot_path}/risk.gif".split(), stdout=subprocess.PIPE)
-    output, error = process.communicate()
-
-    # write out the clusters to be processed by privacy_plots
-    clusters = []
-    for human in hd.values():
-        clusters.append(human.clusters.clusters)
-    json.dump(clusters, open(args.cluster_path, 'w'))
-
 
 if __name__ == "__main__":
     main()
