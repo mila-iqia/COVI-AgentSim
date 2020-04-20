@@ -7,7 +7,7 @@ from utils import _encode_message, _decode_message, binary_to_float
 import operator
 import datetime
 from bitarray import bitarray
-
+from models.dummy_human import Message, UpdateMessage
 """ This file contains the core of the side simulation, which is run on the output encounters from the main simulation.
 It's primary functionality is to run the message clustering and risk prediction algorithms.
 """
@@ -55,7 +55,7 @@ class RiskModelBase:
         scores = {}
         for m_enc, _ in reversed(list(human.M.items())):
             obs_uid, risk, day, unobs_uid = _decode_message(m_enc)
-            m = human.Message(obs_uid, risk, day, unobs_uid)
+            m = Message(obs_uid, risk, day, unobs_uid)
             if m_i.uid == m.uid and m_i.day == m.day:
                 scores[m_enc] = 3
                 break
@@ -195,6 +195,6 @@ class RiskModelTristan(RiskModelBase):
         m_enc = max(scores.items(), key=operator.itemgetter(1))[0]
         assignment = human.M[m_enc]
         uid, risk, day, unobs_id = _decode_message(m_enc)
-        updated_message = human.Message(uid, update_message.new_risk, day, unobs_id)
+        updated_message = Message(uid, update_message.new_risk, day, unobs_id)
         del human.M[m_enc]
         human.M[_encode_message(updated_message)] = assignment

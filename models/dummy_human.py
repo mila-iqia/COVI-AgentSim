@@ -6,16 +6,18 @@ from bitarray import bitarray
 from collections import namedtuple
 import numpy as np
 
+Message = namedtuple('message', 'uid risk day unobs_id')
+UpdateMessage = namedtuple('update_message', 'uid new_risk risk day unobs_id')
+
 # A utility class for re-inflating human objects with just the stuff we need for message passing / risk prediction
 class DummyHuman:
-    def __init__(self, name=None, rng=None, lightweight=False):
+    def __init__(self, name=None, rng=None):
         self.name = name
-        if not lightweight:
-            self.M = {}
-            self.sent_messages = {}
-            self.messages = []
-            self.update_messages = []
-            self.risk = np.log(0.01)
+        self.M = {}
+        self.sent_messages = {}
+        self.messages = []
+        self.update_messages = []
+        self.risk = np.log(0.01)
         self.rng = rng
         self.all_reported_symptoms = [[]]
         self.all_symptoms = []
@@ -31,9 +33,6 @@ class DummyHuman:
         self.exposure_message = None
         self.infectiousness_start = datetime.datetime.max
         self.tested_positive_contact_count = 0
-        if not lightweight:
-            self.Message = namedtuple('message', 'uid risk day unobs_id')
-            self.UpdateMessage = namedtuple('update_message', 'uid new_risk risk day unobs_id')
         self.rolling_infectiousness_array = []
         self.infectiousness = {}
         self.locations_visited = {}
@@ -42,11 +41,11 @@ class DummyHuman:
 
     def cur_message(self, day, RiskModel):
         """creates the current message for this user"""
-        message = self.Message(self.uid, RiskModel.quantize_risk(self.risk), day, self.name)
+        message = Message(self.uid, RiskModel.quantize_risk(self.risk), day, self.name)
         return message
 
     def cur_message_risk_update(self, day, old_risk, RiskModel):
-        return self.UpdateMessage(self.uid, RiskModel.quantize_risk(self.risk), old_risk, day, self.name)
+        return UpdateMessage(self.uid, RiskModel.quantize_risk(self.risk), old_risk, day, self.name)
 
     def purge_messages(self, todays_date):
         num_purged = 0
