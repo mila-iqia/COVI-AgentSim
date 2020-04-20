@@ -81,8 +81,9 @@ def base():
 
 
 @simu.command()
+@click.option('--n_people', help='population of the city', type=int, default=1000)
 @click.option('--seed', help='seed for the process', type=int, default=0)
-def tune(seed):
+def tune(n_people, seed):
     COLLECT_LOGS=False
     # extra packages required  - plotly-orca psutil networkx glob seaborn
     from simulator import Human
@@ -90,11 +91,10 @@ def tune(seed):
     # import cufflinks as cf
     import matplotlib.pyplot as plt
     # cf.go_offline()
-
-    n_people = 10
-    monitors, tracker = run_simu(n_people=n_people, init_percent_sick=0.01,
+    n_people = 100
+    monitors, tracker = run_simu(n_people=n_people, init_percent_sick=0.1,
                             start_time=datetime.datetime(2020, 2, 28, 0, 0),
-                            simulation_days=60,
+                            simulation_days=30,
                             outfile=None,
                             print_progress=True, seed=seed, other_monitors=[]
                             )
@@ -103,7 +103,7 @@ def tune(seed):
     # fig = x[['susceptible', 'exposed', 'infectious', 'removed']].iplot(asFigure=True, title="SEIR")
     # fig.write_image("plots/tune/seir.png")
     logfile = os.path.join(f"logs/log_n_{n_people}_seed_{seed}_{datetime.datetime.now().strftime('%Y%m%d-%H%M%S')}.txt")
-    tracker.write_metrics(logfile)
+    tracker.write_metrics(None)
 
     # fig = x['R'].iplot(asFigure=True, title="R0")
     # fig.write_image("plots/tune/R.png")

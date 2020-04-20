@@ -67,6 +67,7 @@ class City(object):
         print("Computing their preferences")
         self._compute_preferences()
         self.tracker = Tracker(env, self)
+        self.tracker.track_initialized_covid_params(self.humans)
 
     def create_location(self, specs, type, name, area=None):
         _cls = Location
@@ -148,7 +149,7 @@ class City(object):
                         household=res,
                         workplace=workplace,
                         profession=profession[i],
-                        rho=0.1,
+                        rho=0.3,
                         gamma=0.21,
                         infection_timestamp=self.start_time if self.rng.random() < self.init_percent_sick else None,
                         sim_days=self.sim_days
@@ -399,7 +400,7 @@ class Event:
             u['got_exposed'] = infectee == human.name if infectee else False
             u['exposed_other'] = infectee != human.name if infectee else False
             u['same_household'] = same_household
-            u['infectiousness_start_time'] = None if not u['got_exposed'] else human.infection_timestamp + datetime.timedelta(days=human.incubation_days - INFECTIOUSNESS_ONSET_DAYS)
+            u['infectiousness_start_time'] = None if not u['got_exposed'] else human.infection_timestamp + datetime.timedelta(days=human.infectiousness_onset_days)
             unobs.append(u)
 
         loc_obs = {key:getattr(location, key) for key in loc_obs_keys}
@@ -495,7 +496,7 @@ class Event:
                       'source':source.name,
                       'source_is_location': 'human' not in source.name,
                       'source_is_human': 'human' in source.name,
-                      'infectiousness_start_time': human.infection_timestamp + datetime.timedelta(days=human.incubation_days - INFECTIOUSNESS_ONSET_DAYS)
+                      'infectiousness_start_time': human.infection_timestamp + datetime.timedelta(days=human.infectiousness_onset_days)
                     }
 
                 }

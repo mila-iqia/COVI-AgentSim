@@ -30,6 +30,7 @@ def _sample_viral_load_gamma(rng, shape_mean=4.5, shape_std=.15, scale_mean=1., 
 def _sample_viral_load_piecewise(rng, age=40):
     """ This function samples a piece-wise linear viral load model which increases, plateaus, and drops """
     # https://stackoverflow.com/questions/18441779/how-to-specify-upper-and-lower-limits-when-using-numpy-random-normal
+	# https://www.thelancet.com/journals/laninf/article/PIIS1473-3099(20)30196-1/fulltext
     plateau_start = truncnorm((PLATEAU_START_CLIP_LOW - PLATEAU_START_MEAN)/PLATEAU_START_STD, (PLATEAU_START_CLIP_HIGH - PLATEAU_START_MEAN) / PLATEAU_START_STD, loc=PLATEAU_START_MEAN, scale=PLATEAU_START_STD).rvs(1, random_state=rng)
     plateau_end = plateau_start + truncnorm((PLATEAU_DURATION_CLIP_LOW - PLATEAU_DURATION_MEAN)/PLEATEAU_DURATION_STD,
                                             (PLATEAU_DURATION_CLIP_HIGH - PLATEAU_DURATION_MEAN) / PLEATEAU_DURATION_STD,
@@ -38,8 +39,9 @@ def _sample_viral_load_piecewise(rng, age=40):
     recovered = recovered + truncnorm((plateau_end - RECOVERY_MEAN) / RECOVERY_STD,
                                         (RECOVERY_CLIP_HIGH - RECOVERY_MEAN) / RECOVERY_STD,
                                         loc=RECOVERY_MEAN, scale=RECOVERY_STD).rvs(1, random_state=rng)
-    plateau_height = rng.uniform(MIN_VIRAL_LOAD, MAX_VIRAL_LOAD)
-    return plateau_height, plateau_start, plateau_end, recovered
+    base = age/200 # peak viral load varies linearly with age
+    plateau_height = rng.uniform(base + MIN_VIRAL_LOAD, base + MAX_VIRAL_LOAD)
+    return plateau_height, plateau_start.item(), plateau_end.item(), recovered.item()
 
 def _normalize_scores(scores):
     return np.array(scores)/np.sum(scores)
@@ -101,7 +103,7 @@ def _get_covid_symptoms(viral_load_plateau_start, viral_load_plateau_end,
     progression = []
     # Before the plateau
     symptoms1 = []
-    if really_sick or extremely_sick or len(preexisting_conditions) >2 :
+    if really_sick or extremely_sick or len(preexisting_conditions) > 2:
         symptoms1.append('moderate')
     else :
         symptoms1.append('mild')
@@ -136,15 +138,18 @@ def _get_covid_symptoms(viral_load_plateau_start, viral_load_plateau_end,
         symptoms1.append('sore_throat')
     if rng.rand() < 0.3:
         symptoms1.append('chills')
-    if rng.rand() < 0.1:
+    if rng.rand() < 0.05:
         symptoms1.append('severe_chest_pain')
     if rng.rand() < 0.1:
         symptoms1.append('confused')
+
     if really_sick or extremely_sick or len(preexisting_conditions)>2:
-        if rng.rand() < 0.6:
+        if rng.rand() < 0.1:
             symptoms1.append('lost_consciousness')
+
     if 'mild' and 'trouble_breathing' in symptoms1:
         symptoms1.append('light_trouble_breathing')
+
     if 'moderate' and 'trouble_breathing' in symptoms1:
         symptoms1.append('moderate_trouble_breathing')
 
@@ -161,6 +166,7 @@ def _get_covid_symptoms(viral_load_plateau_start, viral_load_plateau_end,
         symptoms2.append('moderate')
     else:
         symptoms2.append('mild')
+
     if 'fever' in symptoms1 or rng.rand() < 0.9:
         symptoms2.append('fever')
     if rng.rand() < 0.85:
@@ -249,14 +255,17 @@ def _get_covid_symptoms(viral_load_plateau_start, viral_load_plateau_end,
     if really_sick or extremely_sick or len(preexisting_conditions)>2:
         if rng.rand() < 0.6:
             symptoms3.append('lost_consciousness')
+
     if 'mild' in symptoms3 and 'trouble_breathing' in symptoms3:
         symptoms3.append('light_trouble_breathing')
     if 'moderate' in symptoms3 and 'trouble_breathing' in symptoms3:
         symptoms3.append('moderate_trouble_breathing')
     if ('severe' in symptoms3 or 'extremely-severe' in symptoms3) and 'trouble_breathing' in symptoms3:
         symptoms3.append('heavy_trouble_breathing')
+
     for day in range(round(viral_load_recovered - viral_load_plateau_end)):
         progression.append(symptoms3)
+
     return progression
 
 def _get_flu_symptoms(age, rng, sim_days, carefulness, preexisting_conditions, really_sick, extremely_sick):
@@ -299,6 +308,23 @@ def _get_flu_symptoms(age, rng, sim_days, carefulness, preexisting_conditions, r
             symptoms_array[start_day+day] = symptoms
 
     return progression, start_day, symptoms_array
+
+def _get_flu_symptoms_v2(age, rng, carefulness, preexisting_conditions, really_sick, extremely_sick):
+    symptoms = []
+    if really_sick or extremely_sick or any(preexisting_conditions):
+        symptoms.append('moderate')
+    else:
+        symptoms.append('mild')
+    if rng.rand() < 0.8:
+        symptoms.append('fever')
+    if rng.rand() < 0.6:
+        symptoms.append('gastro')
+    if rng.rand() < 0.6:
+        symptoms.append('aches')
+    if rng.rand() < 0.3:
+        symptoms.append('fatigue')
+
+    return symptoms
 
 def _get_cold_symptoms(age, rng, sim_days, carefulness, preexisting_conditions, really_sick, extremely_sick):
 
@@ -347,6 +373,29 @@ def _get_cold_symptoms(age, rng, sim_days, carefulness, preexisting_conditions, 
 
 
     return progression, start_day, symptoms_array
+
+def _get_cold_symptoms_v2(age, rng, carefulness, preexisting_conditions, really_sick, extremely_sick):
+    symptoms = []
+
+    if really_sick or extremely_sick or any(preexisting_conditions):
+        symptoms.append('moderate')
+    else:
+        symptoms.append('mild')
+
+    if rng.rand() < 0.8:
+        symptoms.append('runny_nose')
+    if rng.rand() < 0.8:
+        symptoms.append('cough')
+    if rng.rand() < 0.1:
+        symptoms.append('trouble_breathing')
+    if rng.rand() < 0.2:
+        symptoms.append('loss_of_taste')
+    if rng.rand() < 0.2:
+        symptoms.append('fatigue')
+    if rng.rand() < 0.6:
+        symptoms.append('sneezing')
+
+    return symptoms
 
 def _reported_symptoms(all_symptoms, rng, carefulness):
     all_reported_symptoms = []

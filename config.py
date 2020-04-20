@@ -65,7 +65,7 @@ LOCATION_DISTRIBUTION = {
 }
 
 # house_size: 1 2 3 4 5
-OTHERS_WORKPLACE_CHOICE=[0.6, 0.2, 0.2]
+OTHERS_WORKPLACE_CHOICE=[1.0, 0.0, 0.0]
 HOUSE_SIZE_PREFERENCE = [0.30, 0.30, 0.15, 0.15, 0.1]
 HUMAN_DISTRIBUTION = {
     (1,15): {
@@ -160,14 +160,14 @@ P_CAREFUL_PERSON = 0.3 # &carefulness
 # DISEASE PARAMETERS
 AVG_INCUBATION_DAYS = 5 # &avg-incubation-days
 SCALE_INCUBATION_DAYS = 0.5
-INFECTIOUSNESS_ONSET_DAYS = 2.5 # relative to incubation days
+INFECTIOUSNESS_ONSET_DAYS_WRT_SYMPTOM_ONSET = 2.5 # relative to incubation days
 AVG_RECOVERY_DAYS = 14
 SCALE_RECOVERY_DAYS = 4
 INFECTION_RADIUS = 200 # cms
 INFECTION_DURATION = 15 # minutes
 #                   0-9 10-19 20-29  30-39  40-49  50-59 60-69 70-79  80-  # Assuming dath rate to be same for 80 and above
 P_NEVER_RECOVERS = [0, 0.002, 0.002, 0.002, 0.004, 0.02, 0.04, 0.08, 0.15] # &never_recovers
-REINFECTION_POSSIBLE = 0 # [0, 1]
+REINFECTION_POSSIBLE = False # [0, 1]
 # aerosol    copper      cardboard       steel       plastic
 MAX_DAYS_CONTAMINATION = [0.125, 1.0/3.0, 1, 2, 3] # &envrionmental contamination
 TEST_DAYS = 2
@@ -175,18 +175,78 @@ P_TEST = 0.5
 P_FALSE_NEGATIVE = 0.1 #&false-negative # 0  1   2    3   4    5   6    7    8
 VIRAL_LOAD_MIN = 0.0001
 
+# SYMPTOMS
+# a = age, p=list of preexisting conditions
+P_SYMPTOMS= {
+    "level_1":{
+        "fever": lambda a,p: 0.85,
+        "cough": lambda a,p: 0.8,
+        "fatigue": lambda a,p: 0.7,
+        "runny_nose": lambda a,p: 0.4,
+        "loss_of_taste": lambda a,p: 0.4,
+        "gastro": lambda a,p: 0.1,
+        "unusual": lambda a,p: 0.2 * a/3,
+        "confused": lambda a,p: 0.1
+    },
+	#TODO CHECK THESE! PUT IN QUICKLY WITHOUT VERIFYING
+    "level_2":{
+        "sneezing": lambda a,p: 0.5,
+        "diarrhea": lambda a,p: 0.3,
+        "nausea_vomitting": lambda a,p: 0.2,
+        "headache": lambda a,p: 0.5,
+        "hard_time_waking_up": lambda a,p: 0.2,
+        "sore_throat": lambda a,p: 0.6,
+        "chills": lambda a,p: 0.3,
+        "severe_chest_pain": lambda a,p: 0.05,
+        "trouble_breathing": lambda a,p: 0.1,
+    }
+}
+
+# VIRAL LOAD PARAMS
+MIN_VIRAL_LOAD = 0.1
+MAX_VIRAL_LOAD = 0.4
+RECOVERY_MEAN = 6
+RECOVERY_STD = 1
+RECOVERY_CLIP_LOW = 2.5
+RECOVERY_CLIP_HIGH = 30
+PLATEAU_START_MEAN=2.0
+PLATEAU_START_STD=0.25
+PLATEAU_START_CLIP_HIGH = 9.
+PLATEAU_START_CLIP_LOW = 0.8
+PLATEAU_DURATION_MEAN=5.5
+PLEATEAU_DURATION_STD=1
+PLATEAU_DURATION_CLIP_LOW = 3.
+PLATEAU_DURATION_CLIP_HIGH = 9.
+
+# INCUBATION PARAMS
+SYMPTOM_ONSET_WRT_VIRAL_LOAD_PEAK_AVG = 0.6 # DAYS
+SYMPTOM_ONSET_WRT_VIRAL_LOAD_PEAK_STD = 0.1
+INFECTIOUSNESS_ONSET_DAYS_AVG = 2.5
+INFECTIOUSNESS_ONSET_DAYS_STD = 0.1
+
 # ASYMTPOMATIC
 BASELINE_P_ASYMPTOMATIC = 80 # &p-asymptomatic
 ASYMPTOMATIC_INFECTION_RATIO = 0.1 # &prob_infectious
 
 # OTHER TRANSMISSIBLE DISEASES
-P_COLD = 0.1 # &p-cold
 P_FLU = 0.05 # &p-flu
-COLD_CONTAGIOUSNESS = 0.25
 FLU_CONTAGIOUSNESS = 0.25
-COLD_INCUBATION = 1
 FLU_INCUBATION = 1
+FLU_RECOVERY_START = 7
+FLU_RECOVERY_DURATION = 14
 
+P_COLD = 0.1 # &p-cold
+COLD_CONTAGIOUSNESS = 0.25
+COLD_INCUBATION = 1
+COLD_RECOVERY_START = 5
+COLD_RECOVERY_DURATION = 10
+
+P_REMOVE_COLD_FLU_SYMPTOMS_DURING_RECOVERY = 0.4
+
+# IMMUNITY (need a way to dynamically induce symptoms)
+IMMUNITY_CONSTANT = 0.05
+
+# MASK
 MASK_EFFICACY_NORMIE = 0.32
 MASK_EFFICACY_HEALTHWORKER = 0.98
 BASELINE_P_MASK = 0.5
@@ -195,7 +255,7 @@ BASELINE_P_MASK = 0.5
 TICK_MINUTE = 2  # @param increment
 SIMULATION_DAYS = 30  # @param
 SYMPTOM_DAYS = 5  # @param
-COLLECT_LOGS = True
+COLLECT_LOGS = False
 
 # LIFESTYLE PARAMETERS
 ## SHOP
@@ -233,7 +293,6 @@ SCALE_SCALE_EXERCISE_MINUTES = 5
 
 AVG_MAX_NUM_EXERCISE_PER_WEEK = 5
 SCALE_MAX_NUM_EXERCISE_PER_WEEK = 2
-
 AVG_NUM_EXERCISE_DAYS = 3
 SCALE_NUM_EXERCISE_DAYS = 1
 AVG_NUM_EXERCISE_HOURS = 3
@@ -249,27 +308,11 @@ SCALE_SCALE_MISC_MINUTES = 5
 MIN_DIST_ENCOUNTER = 20
 MAX_DIST_ENCOUNTER = 400
 
-# VIRAL LOAD PARAMS
-MIN_VIRAL_LOAD = 0.1
-MAX_VIRAL_LOAD = 0.4
-RECOVERY_MEAN = 6
-RECOVERY_STD = 5
-RECOVERY_CLIP_LOW = 2.5
-RECOVERY_CLIP_HIGH = 30
-PLATEAU_START_MEAN=2.
-PLATEAU_START_STD=8.
-PLATEAU_START_CLIP_HIGH = 9.
-PLATEAU_START_CLIP_LOW = 0.8
-PLATEAU_DURATION_MEAN=5.5
-PLEATEAU_DURATION_STD=3.
-PLATEAU_DURATION_CLIP_LOW = 3.
-PLATEAU_DURATION_CLIP_HIGH = 9.
-
 # RISK MODEL PARAMETERS
 RISK_TRANSMISSION_PROBA = 0.01
 RISK_WITH_TRUE_SYMPTOMS = False
 CLIP_RISK = False
 
 # KNOBS
-CONTAGION_KNOB = 0.8
+CONTAGION_KNOB = 0.9
 ENVIRONMENTAL_INFECTION_KNOB = 0.01
