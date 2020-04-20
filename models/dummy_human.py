@@ -121,6 +121,16 @@ class DummyHuman:
 
     def merge(self, human_dict):
         for key, val in human_dict.items():
+            if key == 'M':
+                self.M = val
+            if key == 'risk':
+                self.risk = val
+            if key == 'messages':
+                self.messages = val
+            if key == 'sent_messages':
+                self.sent_messages = val
+            if key == 'tested_positive_contact_count':
+                self.tested_positive_contact_count = val
             if key == '_uid':
                 self._uid = val
             if key == "time_of_recovery" and val != datetime.datetime.max:

@@ -33,7 +33,7 @@ def parse_args():
     parser.add_argument('--save_training_data', action="store_true")
     parser.add_argument('--n_jobs', type=int, default=1, help="Default is no parallelism, jobs = 1")
     parser.add_argument('--max_pickles', type=int, default=1000000, help="If you don't want to load the whole dataset")
-    parser.add_argument('--mp_backend', type=str, default="multiprocessing", help="which joblib backend to use")
+    parser.add_argument('--mp_backend', type=str, default="loky", help="which joblib backend to use")
     parser.add_argument('--mp_batchsize', type=int, default=-1, help="-1 is converted to auto batchsize, otherwise it's the integer you provide")
     args = parser.parse_args()
     return args
@@ -67,6 +67,7 @@ def proc_human(params):
         RiskModel.update_risk_risk_update(human, m_i, rng)
 
     # append the updated risk for this person and whether or not they are actually infectious
+
     human.purge_messages(current_day)
 
     # for each sim day, for each human, save an output training example
@@ -274,7 +275,6 @@ def main(args=None):
                 for k, m in human.sent_messages.items():
                     if current_day - m.day < 14:
                         hd[m.unobs_id].update_messages.append(human.cur_message_risk_update(m.day, m.risk, RiskModel))
-
         with Parallel(n_jobs=args.n_jobs, batch_size=mp_batchsize, backend=args.mp_backend, verbose=10) as parallel:
             human_dicts = parallel((delayed(proc_human)(params) for params in all_params))
 
