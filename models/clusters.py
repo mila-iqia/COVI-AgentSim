@@ -43,6 +43,7 @@ class Clusters:
         self.add_to_clusters_by_day(cluster_id, message.day, m_i_enc)
 
     def score_matches(self, m_i):
+        """ This function checks a new risk message against all previous messages, and assigns to the closest one in a brute force manner"""
         best_cluster = 0
         best_message = None
         best_score = -1
@@ -62,7 +63,7 @@ class Clusters:
                     best_cluster = cluster_id
                     best_message = message
                     best_score = 1
-                elif m_i.uid[:1] == obs_uid[3:] and m_i.day - 2 == day:
+                elif m_i.uid[:1] == obs_uid[3:] and m_i.day - 3 == day:
                     best_cluster = cluster_id
                     best_message = message
                     best_score = 0
@@ -70,29 +71,25 @@ class Clusters:
                     best_cluster = cluster_id
                     best_message = message
                     best_score = -1
+            if best_score == 3:
+                break
+        # print(f"best_cluster: {best_cluster}, m_i: {m_i}, best_score: {best_score}")
+        # print(self.clusters)
+        # import pdb;pdb.set_trace()
 
         if best_message:
             best_message = decode_message(best_message)
         return best_cluster, best_message, best_score
 
     def score_matches_in_cluster(self, update_message, cluster_messages):
+        """ This function takes in a set of messages and returns the best scoring one"""
         best_scores = []
         for m in cluster_messages:
-            obs_uid, risk, day, unobs_uid = decode_message(m)
-            if update_message.uid == obs_uid and update_message.day == day:
-                best_score = 3
-            elif update_message.uid[:3] == obs_uid[1:] and update_message.day - 1 == day:
-                best_score = 2
-            elif update_message.uid[:2] == obs_uid[2:] and update_message.day - 2 == day:
-                best_score = 1
-            elif update_message.uid[:1] == obs_uid[3:] and update_message.day - 2 == day:
-                best_score = 0
-            else:
-                best_score = -1
-            best_scores.append(best_score)
+            best_scores.append(self.score_two_messages(update_message, m))
         return max(best_scores)
 
     def score_two_messages(self, update_message, risk_message):
+        """ This function takes in two messages and scores how well they match"""
         obs_uid, risk, day, unobs_uid = decode_message(risk_message)
         if update_message.uid == obs_uid and update_message.day == day and update_message.risk == risk:
             score = 3
@@ -100,13 +97,14 @@ class Clusters:
             score = 2
         elif update_message.uid[:2] == obs_uid[2:] and update_message.day - 2 == day and update_message.risk == risk:
             score = 1
-        elif update_message.uid[:1] == obs_uid[3:] and update_message.day - 2 == day and update_message.risk == risk:
+        elif update_message.uid[:1] == obs_uid[3:] and update_message.day - 3 == day and update_message.risk == risk:
             score = 0
         else:
             score = -1
         return score
 
     def group_by_received_at(self, update_messages):
+        """ This function takes in a set of update messages received during some time interval and clusters them based on how near in time they were received"""
         TIME_THRESHOLD = datetime.timedelta(minutes=1)
         grouped_messages = defaultdict(list)
         for m1 in update_messages:
@@ -119,6 +117,7 @@ class Clusters:
         return grouped_messages
 
     def update_record(self, old_cluster_id, new_cluster_id, message, updated_message):
+        """ This function updates a message in all of the data structures and can change the cluster that this message is in"""
         old_m_enc = encode_message(message)
         new_m_enc = encode_message(updated_message)
         del self.clusters[old_cluster_id][self.clusters[old_cluster_id].index(old_m_enc)]
@@ -130,6 +129,7 @@ class Clusters:
         self.add_to_clusters_by_day(new_cluster_id, updated_message.day, new_m_enc)
 
     def get_available_cluster(self):
+        """ This function returns the minimum empty cluster_id """
         found = False
         for i in range(max(self.clusters.keys())):
             if len(self.clusters[i]) == 0:
