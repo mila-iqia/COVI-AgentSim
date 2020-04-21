@@ -53,7 +53,8 @@ def proc_human(params):
 
     # check if you have new reported symptoms
     human.risk = RiskModel.update_risk_daily(human, todays_date)
-
+    # if len(human.clusters.clusters.keys()) > 100:
+    #     import pdb; pdb.set_trace()
     # read your old messages
     for m_i in human.messages:
         # update risk based on that day's messages
