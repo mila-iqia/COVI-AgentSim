@@ -43,20 +43,6 @@ def symptoms_to_np(symptoms_day, all_symptoms, all_possible_symptoms):
             symptoms_enc[day, aps.index(symptom)] = 1.
     return symptoms_enc
 
-def group_to_majority_id(all_groups):
-    all_new_groups = []
-    for group_idx, groups in enumerate(all_groups):
-        new_groups = {}
-        for group, uids in groups.items():
-            cnt = Counter()
-            for idx, uid in enumerate(uids):
-                cnt[uid] += 1
-            for i in range(len(cnt)):
-                new_groups[cnt.most_common()[i][0]] = uids
-                break
-        all_new_groups.append(new_groups)
-    return all_new_groups
-
 def rolling_infectiousness(start, date, human):
     rolling_window = 14
     rolling = np.zeros(rolling_window)

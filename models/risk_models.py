@@ -133,9 +133,9 @@ class RiskModelTristan(RiskModelBase):
             human.risk = np.log(1.)
             return
 
-        # if they have a positive test result, increment counter
+        # if the encounter message indicates they had a positive test result, increment counter
         message = decode_message(message)
-        if message.risk == bitarray('1111'):
+        if message.risk == 15:
             human.tested_positive_contact_count += 1
 
         init_population_level_risk = 0.01

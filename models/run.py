@@ -18,7 +18,7 @@ from models.dummy_human import DummyHuman
 from models.risk_models import RiskModelYoshua, RiskModelLenka, RiskModelEilif, RiskModelTristan
 from plots.plot_risk import dist_plot, hist_plot
 from models.helper import messages_to_np, symptoms_to_np, candidate_exposures, rolling_infectiousness
-from models.utils import encode_message, update_uid, create_new_uid, encode_update_message, decode_message
+from models.utils import encode_message, update_uid, create_new_uid, encode_update_message, decode_message, Message, decode_update_message
 from joblib import Parallel, delayed
 
 def parse_args():
@@ -36,6 +36,7 @@ def parse_args():
     parser.add_argument('--max_pickles', type=int, default=1000000, help="If you don't want to load the whole dataset")
     parser.add_argument('--mp_backend', type=str, default="loky", help="which joblib backend to use")
     parser.add_argument('--mp_batchsize', type=int, default=-1, help="-1 is converted to auto batchsize, otherwise it's the integer you provide")
+    parser.add_argument('--random_clusters', action="store_true", help="make random cluster assignments")
     args = parser.parse_args()
     return args
 
@@ -45,24 +46,42 @@ def hash_id_day(hid, day):
 
 def proc_human(params):
     """This function can be parallelized across CPUs. Currently, we only check for messages once per day, so this can be run in parallel"""
-    start, current_day, encounters, rng, all_possible_symptoms, human_dict, save_training_data, log_path = params.values()
+    start, current_day, encounters, rng, all_possible_symptoms, human_dict, save_training_data, log_path, random_clusters = params.values()
     human = DummyHuman(name=human_dict['name']).merge(human_dict)
     RiskModel = RiskModelTristan
     human.start_risk = human.risk
     todays_date = start + datetime.timedelta(days=current_day)
-
     # check if you have new reported symptoms
     human.risk = RiskModel.update_risk_daily(human, todays_date)
     # if len(human.clusters.clusters.keys()) > 100:
     #     import pdb; pdb.set_trace()
     # read your old messages
+
     for m_i in human.messages:
         # update risk based on that day's messages
+        # starttime = time.time()
         RiskModel.update_risk_encounter(human, m_i)
-        human.clusters.add_message(m_i)
-    human.messages = []
+        # print(f"update_risk_messages: {time.time() - starttime}")
 
-    human.clusters.update_records(human.update_messages)
+        human.clusters.add_message(m_i)
+
+    human.messages = []
+    if random_clusters and len(human.update_messages) != 0:
+        assigned = 0
+        for update_message in human.update_messages:
+            update_message = decode_update_message(update_message)
+
+            for cluster, risk_messages in human.clusters.clusters.items():
+                for risk_message in risk_messages:
+                    risk_message = decode_message(risk_message)
+                    if update_message.new_risk != risk_message.risk:
+                        updated_message = Message(risk_message.uid, update_message.new_risk, risk_message.day, risk_message.unobs_id)
+                        human.clusters.update_record(cluster, cluster, risk_message, updated_message)
+                        assigned += 1
+                        break
+    elif not random_clusters:
+        human.clusters.update_records(human.update_messages)
+
     human.update_messages = []
     human.clusters.purge(current_day)
 
@@ -106,6 +125,7 @@ def proc_human(params):
         path = os.path.join(log_path, f"daily_human.pkl")
         log_file = open(path, 'wb')
         pickle.dump(daily_output, log_file)
+
     return human.__dict__
 
 def init_humans(params):
@@ -259,7 +279,7 @@ def main(args=None):
         for human in hd.values():
             encounters = days_logs[human.name]
             log_path = f'{os.path.dirname(args.data_path)}/daily_outputs/{current_day}/{human.name[6:]}/'
-            all_params.append({"start": start, "current_day": current_day, "encounters": encounters, "rng": rng, "all_possible_symptoms": all_possible_symptoms, "human": human.__dict__, "save_training_data": args.save_training_data, "log_path": log_path})
+            all_params.append({"start": start, "current_day": current_day, "encounters": encounters, "rng": rng, "all_possible_symptoms": all_possible_symptoms, "human": human.__dict__, "save_training_data": args.save_training_data, "log_path": log_path, "random_clusters": args.random_clusters})
             # go about your day accruing encounters and clustering them
             for encounter in encounters:
                 encounter_time = encounter['time']
