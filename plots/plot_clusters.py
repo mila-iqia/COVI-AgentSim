@@ -19,7 +19,7 @@ CLUSTER_SIZE_PATH = "plots/cluster/cluster_size_hist.png"
 CLUSTER_NUMBER_PATH = "plots/cluster/cluster_number_freq.png"
 MESSAGE_NUMBER_PATH = "plots/cluster/message_number_freq.png"
 INDIVIDUAL_CLUSTER_PATH = "plots/cluster/"
-if not os.path.isdir( INDIVIDUAL_CLUSTER_PATH):
+if not os.path.isdir(INDIVIDUAL_CLUSTER_PATH):
     os.mkdir(INDIVIDUAL_CLUSTER_PATH)
 
 # load the cluster data
@@ -42,7 +42,6 @@ for someones_clustered_messages in everyones_clustered_messages:
     all_groups.append(dict(groups))
     all_unique_people_contacted.append(unique_people_contacted)
     all_total_num_contacts.append(total_num_contacts)
-
 
 # count the number of people in each group
 all_count_people_in_group = []
@@ -97,6 +96,7 @@ for group_idx, groups in enumerate(all_groups):
     G = nx.Graph()
     group_accuracies = []
     all_uids = set()
+
     for group, uids in groups.items():
         num_right = 0
         for idx, uid in enumerate(uids):
