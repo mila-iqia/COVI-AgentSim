@@ -97,6 +97,8 @@ class DummyHuman:
         for key, val in human_dict.items():
             if key == 'clusters':
                 self.clusters = val
+            if key == 'update_messages':
+                self.update_messages = val
             if key == 'risk':
                 self.risk = val
             if key == 'messages':

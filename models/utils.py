@@ -11,6 +11,10 @@ def encode_message(message):
 	# encode a contact message as a string
 	return str(np.array(message.uid.tolist()).astype(int).tolist()) + "_" + str(message.risk) + "_" + str(message.day)  + "_" + str(message.unobs_id)
 
+def encode_update_message(message):
+	# encode a contact message as a string
+	return str(np.array(message.uid.tolist()).astype(int).tolist()) + "_" + str(message.new_risk) + "_" + str(message.risk) + "_" + str(message.day) + "_" + str(message.received_at) + "_" + str(message.unobs_id)
+
 def decode_message(message):
 	# decode a string-encoded message into a tuple
 	uid, risk, day, unobs_id = message.split("_")
@@ -19,6 +23,17 @@ def decode_message(message):
 	day = int(day)
 	unobs_uid = unobs_id
 	return Message(obs_uid, risk, day, unobs_uid)
+
+def decode_update_message(update_message):
+	# decode a string-encoded message into a tuple
+	uid, new_risk, risk, day, received_at, unobs_id = update_message.split("_")
+	obs_uid = bitarray(json.loads(uid))
+	risk = int(risk)
+	new_risk = int(new_risk)
+	day = int(day)
+	received_at = datetime.datetime.strptime(received_at, "%Y-%m-%d %H:%M:%S")
+	unobs_uid = unobs_id
+	return UpdateMessage(obs_uid, new_risk, risk, day, received_at, unobs_uid)
 
 # https://stackoverflow.com/questions/51843297/convert-real-numbers-to-binary-and-vice-versa-in-python
 def float_to_binary(x, m, n):

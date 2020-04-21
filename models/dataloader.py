@@ -5,11 +5,17 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from torch.utils.data import Dataset, DataLoader
+import zipfile
 
 class PandemicDataset(Dataset):
-    def __init__(self, filepath="output/output.pkl"):
+    def __init__(self, filepath="sim_people-1000_init-0.1_seed_20200420-145254_data.zip"):
         self.filepath = filepath
-        self.data = pickle.load(open(filepath, 'rb'))
+        data = []
+        with zipfile.ZipFile(filepath, 'r') as zf:
+            for pkl in zf.namelist():
+                import pdb; pdb.set_trace()
+                data.append(pickle.load(zf.open(pkl, 'r')))
+        self.data = data
         self.num_days = len(self.data)
         self.num_people = len(self.data[0])
 

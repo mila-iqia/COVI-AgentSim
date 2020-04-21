@@ -134,6 +134,7 @@ class RiskModelTristan(RiskModelBase):
             return
 
         # if they have a positive test result, increment counter
+        message = decode_message(message)
         if message.risk == bitarray('1111'):
             human.tested_positive_contact_count += 1
 

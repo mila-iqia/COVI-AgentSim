@@ -18,7 +18,7 @@ from models.dummy_human import DummyHuman
 from models.risk_models import RiskModelYoshua, RiskModelLenka, RiskModelEilif, RiskModelTristan
 from plots.plot_risk import dist_plot, hist_plot
 from models.helper import messages_to_np, symptoms_to_np, candidate_exposures, rolling_infectiousness
-from models.utils import encode_message, update_uid, create_new_uid
+from models.utils import encode_message, update_uid, create_new_uid, encode_update_message, decode_message
 from joblib import Parallel, delayed
 
 def parse_args():
@@ -62,6 +62,7 @@ def proc_human(params):
     human.messages = []
 
     human.clusters.update_records(human.update_messages)
+    human.update_messages = []
     human.clusters.purge(current_day)
 
     # for each sim day, for each human, save an output training example
@@ -256,7 +257,6 @@ def main(args=None):
         all_params = []
         for human in hd.values():
             encounters = days_logs[human.name]
-            human.uid = update_uid(human.uid, rng)
             log_path = f'{os.path.dirname(args.data_path)}/daily_outputs/{current_day}/{human.name[6:]}/'
             all_params.append({"start": start, "current_day": current_day, "encounters": encounters, "rng": rng, "all_possible_symptoms": all_possible_symptoms, "human": human.__dict__, "save_training_data": args.save_training_data, "log_path": log_path})
             # go about your day accruing encounters and clustering them
@@ -264,21 +264,25 @@ def main(args=None):
                 encounter_time = encounter['time']
                 unobs = encounter['payload']['unobserved']
                 encountered_human = hd[unobs['human2']['human_id']]
-                message = encountered_human.cur_message(current_day, RiskModel)
-                encountered_human.sent_messages[
-                    str(unobs['human1']['human_id']) + "_" + str(encounter_time)] = message
+                message = encode_message(encountered_human.cur_message(current_day, RiskModel))
+                encountered_human.sent_messages[str(unobs['human1']['human_id']) + "_" + str(encounter_time)] = message
                 human.messages.append(message)
+
                 got_exposed = encounter['payload']['unobserved']['human1']['got_exposed']
                 if got_exposed:
-                    human.exposure_message = encode_message(message)
+                    human.exposure_message = message
 
             # if the encounter happened within the last 14 days, and your symptoms started at most 3 days after your contact
             if RiskModel.quantize_risk(human.start_risk) != RiskModel.quantize_risk(human.risk):
                 sent_at = start + datetime.timedelta(days=current_day, minutes=rng.randint(low=0, high=1440))
                 for k, m in human.sent_messages.items():
-                    if current_day - m.day < 14:
-                        # using encounter
-                        hd[m.unobs_id].update_messages.append(human.cur_message_risk_update(m.day, m.risk, sent_at, RiskModel))
+                    message = decode_message(m)
+                    if current_day - message.day < 14:
+                        # add the update message to the receiver's inbox
+                        update_message = encode_update_message(human.cur_message_risk_update(message.day, message.risk, sent_at, RiskModel))
+                        hd[k.split("_")[0]].update_messages.append(update_message)
+                human.sent_messages = {}
+            human.uid = update_uid(human.uid, rng)
 
         with Parallel(n_jobs=args.n_jobs, batch_size=mp_batchsize, backend=args.mp_backend, verbose=10) as parallel:
             human_dicts = parallel((delayed(proc_human)(params) for params in all_params))

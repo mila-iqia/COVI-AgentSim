@@ -8,6 +8,8 @@ def messages_to_np(human):
     for day, clusters in human.clusters.clusters_by_day.items():
         for cluster_id, messages in clusters.items():
             # TODO: take an average over the risks for that day
+            if not any(messages):
+                continue
             ms_enc.append([cluster_id, decode_message(messages[0]).risk, len(messages), day])
     return np.array(ms_enc)
 
@@ -26,7 +28,8 @@ def candidate_exposures(human, date):
                     if message == human.exposure_message:
                         exposed_encounters[idx] = 1.
                         break
-                idx += 1
+                if any(messages):
+                    idx += 1
 
     return candidate_encounters, exposed_encounters, candidate_locs, exposed_locs
 
