@@ -442,6 +442,7 @@ class Human(object):
                 not self.has_logged_test):
                 # make testing a function of age/hospitalization/travel
                 self.test_result, self.test_type = self.test_results()
+                city.tracker.track_tested_results(self, test_result, test_type)
                 Event.log_test(self, self.test_result, self.test_type, self.env.timestamp)
                 self.has_logged_test = True
 
@@ -628,13 +629,15 @@ class Human(object):
             city.tracker.track_social_mixing(self, h, location, distance, t_near)
             contact_condition = distance <= INFECTION_RADIUS and t_near > INFECTION_DURATION
             if contact_condition:
-                proximity_factor = (1 - distance/INFECTION_RADIUS) + min((t_near - INFECTION_DURATION)/INFECTION_DURATION, 1)
+                proximity_factor = 1
+                if INFECTION_DISTANCE_FACTOR or INFECTION_DURATION_FACTOR:
+                    proximity_factor = INFECTION_DISTANCE_FACTOR * (1 - distance/INFECTION_RADIUS) + INFECTION_DURATION_FACTOR * min((t_near - INFECTION_DURATION)/INFECTION_DURATION, 1)
                 mask_efficacy = self.mask_efficacy * h.mask_efficacy
 
                 infectee = None
                 if self.is_infectious:
                     ratio = self.asymptomatic_infection_ratio  if self.is_asymptomatic else 1.0
-                    p_infection = self.infectiousness * ratio * (1-mask_efficacy)
+                    p_infection = self.infectiousness * ratio * (1-mask_efficacy) * proximity_factor
                     x_human = self.rng.random() < p_infection * CONTAGION_KNOB
 
                     if x_human and h.is_susceptible:
@@ -647,7 +650,7 @@ class Human(object):
 
                 elif h.is_infectious:
                     ratio = h.asymptomatic_infection_ratio  if h.is_asymptomatic else 1.0
-                    p_infection = h.infectiousness * ratio * (1-mask_efficacy) # &prob_infectious
+                    p_infection = h.infectiousness * ratio * (1-mask_efficacy) * proximity_factor # &prob_infectious
                     x_human = self.rng.random() < p_infection * CONTAGION_KNOB
 
                     if x_human and self.is_susceptible:

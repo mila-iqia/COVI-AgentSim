@@ -175,6 +175,11 @@ P_TEST = 0.5
 P_FALSE_NEGATIVE = 0.1 #&false-negative # 0  1   2    3   4    5   6    7    8
 VIRAL_LOAD_MIN = 0.0001
 
+
+# convex combination - if it sums to 1
+INFECTION_DISTANCE_FACTOR = 0.5
+INFECTION_DURATION_FACTOR = 0.5
+
 # SYMPTOMS
 # a = age, p=list of preexisting conditions
 P_SYMPTOMS= {

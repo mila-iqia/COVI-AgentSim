@@ -42,13 +42,16 @@ class Tracker(object):
         self.avg_generation_times = (0,0)
         self.generation_time_book = {}
         self.n_env_infection = 0
+        self.recovered_stats = []
 
         # cumulative incidence
-        self.last_day = self.env.timestamp.strftime("%d %b")
+        day = self.env.timestamp.strftime("%d %b")
+        self.last_day = {'track_recovery':day, "track_infection":day}
         self.cumulative_incidence = []
         self.n_susceptible = sum(h.is_susceptible for h in city.humans)
         self.cases_per_day = [0]
         self.r_0 = defaultdict(lambda : {'infection_count':0, 'humans':set()})
+        self.r = []
 
         # demographics
         self.age_bins = sorted(HUMAN_DISTRIBUTION.keys(), key = lambda x:x[0])
@@ -85,7 +88,7 @@ class Tracker(object):
         self.frac_asymptomatic = sum(h.is_asymptomatic for h in self.city.humans)/len(self.city.humans)
         print("asymptomatic fraction", self.frac_asymptomatic)
 
-    def get_R0(self):
+    def get_R(self):
         # https://web.stanford.edu/~jhj1/teachingdocs/Jones-on-R0.pdf; vlaid over a long time horizon
         # average infectious contacts (transmission) * average number of contacts * average duration of infection
         time_since_start =  (self.env.timestamp - self.env.initial_timestamp).total_seconds() / 86400 # DAYS
@@ -98,9 +101,10 @@ class Tracker(object):
             d = self.avg_infectious_duration
             return tau_times_c_bar * d
         else:
-            x = [h.n_infectious_contacts for h in self.city.humans if h.state.index(1) == 3]
-            if x:
-                return np.mean(x)
+            # x = [h.n_infectious_contacts for h in self.city.humans if h.n_infectious_contacts > 0]
+            n, total = zip(*self.recovered_stats)
+            if sum(n):
+                return 1.0 * sum(total)/sum(n)
             return 0
 
     def get_generation_time(self):
@@ -114,9 +118,9 @@ class Tracker(object):
                 to_bin = i
 
         day = self.env.timestamp.strftime("%d %b")
-        if self.last_day != day:
+        if self.last_day['track_infection'] != day:
             self.cumulative_incidence.append(self.cases_per_day[-1] / self.n_susceptible)
-            self.last_day = day
+            self.last_day['track_infection'] = day
             self.n_susceptible = sum(h.is_susceptible for h in self.city.humans)
             self.cases_per_day.append(0)
         else:
@@ -162,10 +166,24 @@ class Tracker(object):
         n, avg_gen_time = self.avg_generation_times
         self.avg_generation_times = (n+1, 1.0*(avg_gen_time * n + generation_time)/(n+1))
 
+    def track_tested_results(self, human, test_result, test_type):
+        pass
+
     def track_recovery(self, n_infectious_contacts, duration):
         self.n_infectious_contacts += n_infectious_contacts
         self.avg_infectious_duration = (self.n_recovery * self.avg_infectious_duration + duration) / (self.n_recovery + 1)
         self.n_recovery += 1
+
+        day = self.env.timestamp.day
+        if self.last_day['track_recovery'] != day:
+            self.last_day['track_recovery'] = day
+            if len(self.recovered_stats) > 10:
+                self.r.append(self.get_R())
+                self.recovered_stats = self.recovered_stats[1:]
+            self.recovered_stats.append([0, 0])
+        else:
+            n, total = self.recovered_stats[-1]
+            self.recovered_stats[-1] = [n+1, total + n_infectious_contacts]
 
     def track_trip(self, from_location, to_location, age, hour):
         bin = None
@@ -245,9 +263,10 @@ class Tracker(object):
         log("######## COVID SPREAD #########", logfile)
         x = 1.0*self.n_env_infection/self.n_infectious_contacts if self.n_infectious_contacts else 0.0
         log(f"environmental transmission ratio {x}", logfile )
-        log(f"Ro {self.get_R0()}", logfile)
+        log(f"Ro {self.r[0]}", logfile)
         log(f"Generation times {self.get_generation_time()} ", logfile)
         log(f"Cumulative Incidence {self.cumulative_incidence}", logfile )
+        log(f"R : {self.r}", logfile)
 
         log("******** R0 *********", logfile)
         if self.r_0['asymptomatic']['infection_count'] > 0:
