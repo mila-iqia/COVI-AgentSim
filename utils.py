@@ -1,3 +1,5 @@
+from collections import namedtuple
+
 import numpy as np
 from scipy.stats import norm, truncnorm, gamma
 import datetime
@@ -6,6 +8,57 @@ import json
 from bitarray import bitarray
 from config import *
 from functools import lru_cache
+
+ConditionProbability = namedtuple('ConditionProbability', ['name', 'id', 'age', 'sex', 'probability'])
+
+PREEXISTING_CONDITIONS = {
+	'immuno-suppressed': [
+		ConditionProbability('immuno-suppressed', 0, 40, 'a', 0.005),
+		ConditionProbability('immuno-suppressed', 0, 65, 'a', 0.036),
+		ConditionProbability('immuno-suppressed', 0, 85, 'a', 0.045),
+		ConditionProbability('immuno-suppressed', 0, 1000, 'a', 0.20)
+	],
+	'diabetes': [
+		ConditionProbability('diabetes', 1, 18, 'a', 0.005),
+		ConditionProbability('diabetes', 1, 35, 'a', 0.009),
+		ConditionProbability('diabetes', 1, 50, 'a', 0.039),
+		ConditionProbability('diabetes', 1, 75, 'a', 0.13),
+		ConditionProbability('diabetes', 1, 1000, 'a', 0.179)
+	],
+	'heart_disease': [
+		ConditionProbability('heart_disease', 2, 20, 'a', 0.001),
+		ConditionProbability('heart_disease', 2, 35, 'a', 0.005),
+		ConditionProbability('heart_disease', 2, 50, 'f', 0.013),
+		ConditionProbability('heart_disease', 2, 50, 'm', 0.021),
+		ConditionProbability('heart_disease', 2, 50, 'a', 0.017),
+		ConditionProbability('heart_disease', 2, 75, 'f', 0.13),
+		ConditionProbability('heart_disease', 2, 75, 'm', 0.178),
+		ConditionProbability('heart_disease', 2, 75, 'a', 0.15),
+		ConditionProbability('heart_disease', 2, 1000, 'f', 0.311),
+		ConditionProbability('heart_disease', 2, 1000, 'm', 0.44),
+		ConditionProbability('heart_disease', 2, 1000, 'a', 0.375)
+	],
+	'COPD': [
+		ConditionProbability('COPD', 3, 35, 'a', 0.0),
+		ConditionProbability('COPD', 3, 50, 'a', 0.015),
+		ConditionProbability('COPD', 3, 65, 'f', 0.037),
+		ConditionProbability('COPD', 3, 1000, 'a', 0.075)
+	],
+	'asthma': [
+		ConditionProbability('asthma', 4, 10, 'f', 0.07),
+		ConditionProbability('asthma', 4, 10, 'm', 0.12),
+		ConditionProbability('asthma', 4, 10, 'a', 0.09),
+		ConditionProbability('asthma', 4, 25, 'f', 0.15),
+		ConditionProbability('asthma', 4, 25, 'm', 0.19),
+		ConditionProbability('asthma', 4, 25, 'a', 0.17),
+		ConditionProbability('asthma', 4, 75, 'f', 0.11),
+		ConditionProbability('asthma', 4, 75, 'm', 0.06),
+		ConditionProbability('asthma', 4, 75, 'a', 0.08),
+		ConditionProbability('asthma', 4, 1000, 'f', 0.12),
+		ConditionProbability('asthma', 4, 1000, 'm', 0.08),
+		ConditionProbability('asthma', 4, 1000, 'a', 0.1)
+	]
+}
 
 def log(str, logfile=None, timestamp=False):
 	if timestamp:
@@ -158,130 +211,14 @@ def _get_preexisting_conditions(age, sex, rng):
 	#else:
 	conditions = []
 
-	# &immuno-suppressed (3.6% on average)
-	if age < 40:
-		if rng.rand() < 0.005:
-			conditions.append('immuno-suppressed')
-	elif age < 65:
-		if rng.rand() < 0.036:
-			conditions.append('immuno-suppressed')
-	elif age < 85:
-		if rng.rand() < 0.045:
-			conditions.append('immuno-suppressed')
-	else:
-		if rng.rand() < 0.20:
-			conditions.append('immuno-suppressed')
-
-	# &diabetes
-	if age < 18:
-		if rng.rand() < .005:
-			conditions.append('diabetes')
-	elif age < 35:
-		if rng.rand() < .009:
-			conditions.append('diabetes')
-	elif age < 50:
-		if rng.rand() < .039:
-			conditions.append('diabetes')
-	elif age < 75:
-		if rng.rand() < .13:
-			conditions.append('diabetes')
-	else:
-		if rng.rand() < .179:
-			conditions.append('diabetes')
-
-	# &heart disease
-	if age < 20:
-		if rng.rand() < .001:
-			conditions.append('heart_disease')
-	elif age < 35:
-		if rng.rand() < .005:
-			conditions.append('heart_disease')
-	elif age < 50:
-		if sex.lower().startswith('f'):
-			if rng.rand() < .013:
-				conditions.append('heart_disease')
-		elif sex.lower().startswith('m'):
-			if rng.rand() < .021:
-				conditions.append('heart_disease')
-		else:
-			if rng.rand() < .017:
-				conditions.append('heart_disease')
-	elif age < 75:
-		if sex.lower().startswith('f'):
-			if rng.rand() < .13:
-				conditions.append('heart_disease')
-		elif sex.lower().startswith('m'):
-			if rng.rand() < .178:
-				conditions.append('heart_disease')
-		else:
-			if rng.rand() < .15:
-				conditions.append('heart_disease')
-	else:
-		if sex.lower().startswith('f'):
-			if rng.rand() < .311:
-				conditions.append('heart_disease')
-		elif sex.lower().startswith('m'):
-			if rng.rand() < .44:
-				conditions.append('heart_disease')
-		else:
-			if rng.rand() < .375:
-				conditions.append('heart_disease')
-
-	# &COPD
-	if age < 35:
-		pass
-	elif age < 50:
-		if rng.rand() < .015:
-			conditions.append('COPD')
-	elif age < 65:
-		if rng.rand() < .037:
-			conditions.append('COPD')
-	else:
-		if rng.rand() < .075:
-			conditions.append('COPD')
-
-
-	# &asthma
-	if age < 10:
-		if sex.lower().startswith('f'):
-			if rng.rand() < .07:
-				conditions.append('asthma')
-		elif sex.lower().startswith('m'):
-			if rng.rand() < .12:
-				conditions.append('asthma')
-		else:
-			if rng.rand() < .09:
-				conditions.append('asthma')
-	elif age < 25:
-		if sex.lower().startswith('f'):
-			if rng.rand() < .15:
-				conditions.append('asthma')
-		elif sex.lower().startswith('m'):
-			if rng.rand() < .19:
-				conditions.append('asthma')
-		else:
-			if rng.rand() < .17:
-				conditions.append('asthma')
-	elif age < 75:
-		if sex.lower().startswith('f'):
-			if rng.rand() < .11:
-				conditions.append('asthma')
-		elif sex.lower().startswith('m'):
-			if rng.rand() < .06:
-				conditions.append('asthma')
-		else:
-			if rng.rand() < .08:
-				conditions.append('asthma')
-	else:
-		if sex.lower().startswith('f'):
-			if rng.rand() < .12:
-				conditions.append('asthma')
-		elif sex.lower().startswith('m'):
-			if rng.rand() < .08:
-				conditions.append('asthma')
-		else:
-			if rng.rand() < .1:
-				conditions.append('asthma')
+	for c_name, c_prob in PREEXISTING_CONDITIONS.items():
+		rand = rng.rand()
+		for p in c_prob:
+			if age < p.age:
+				if p.sex == 'a' or sex.lower().startswith(p.sex):
+					if rand < p.probability:
+						conditions.append(p.name)
+					break
 
 	return conditions
 

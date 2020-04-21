@@ -17,7 +17,8 @@ from event import Event
 from models.dummy_human import DummyHuman
 from models.risk_models import RiskModelYoshua, RiskModelLenka, RiskModelEilif, RiskModelTristan
 from plots.plot_risk import dist_plot, hist_plot
-from models.helper import messages_to_np, symptoms_to_np, candidate_exposures, rolling_infectiousness
+from models.helper import messages_to_np, conditions_to_np, symptoms_to_np, candidate_exposures, rolling_infectiousness, \
+    encode_sex
 from models.utils import encode_message, update_uid, create_new_uid, encode_update_message, decode_message, Message, decode_update_message
 from joblib import Parallel, delayed
 
@@ -102,6 +103,9 @@ def proc_human(params):
                                 "candidate_encounters": candidate_encounters,
                                 "candidate_locs": candidate_locs,
                                 "test_results": human.get_test_result_array(todays_date),
+                                "preexisting_conditions": conditions_to_np(human.obs_preexisting_conditions),
+                                "age": human.obs_age or 0,
+                                "sex": encode_sex(human.obs_sex)
                             },
                         "unobserved":
                             {
@@ -118,6 +122,9 @@ def proc_human(params):
                                 "exposed_locs": exposed_locs,
                                 "exposure_encounter": exposure_encounter,
                                 "infectiousness": infectiousness,
+                                "true_preexisting_conditions": conditions_to_np(human.preexisting_conditions),
+                                "true_age": human.age,
+                                "true_sex": encode_sex(human.sex)
                             }
                         }
         if not os.path.isdir(log_path):
@@ -127,6 +134,7 @@ def proc_human(params):
         pickle.dump(daily_output, log_file)
 
     return human.__dict__
+
 
 def init_humans(params):
     pkl_name = params['pkl_name']
@@ -168,7 +176,11 @@ def init_humans(params):
             elif log['event_type'] == Event.static_info:
                 hd[log['human_id']].obs_preexisting_conditions = log['payload']['observed'][
                     'obs_preexisting_conditions']
+                hd[log['human_id']].obs_age = log['payload']['observed']['obs_age']
+                hd[log['human_id']].obs_sex = log['payload']['observed']['obs_sex']
                 hd[log['human_id']].preexisting_conditions = log['payload']['unobserved']['preexisting_conditions']
+                hd[log['human_id']].age = log['payload']['unobserved']['age']
+                hd[log['human_id']].sex = log['payload']['unobserved']['sex']
             elif log['event_type'] == Event.visit:
                 if not hd[log['human_id']].locations_visited.get(log['payload']['observed']['location_name']):
                     hd[log['human_id']].locations_visited[log['payload']['observed']['location_name']] = log['time']
