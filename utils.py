@@ -36,7 +36,7 @@ def _sample_viral_load_piecewise(rng, age=40):
                                             (PLATEAU_DURATION_CLIP_HIGH - PLATEAU_DURATION_MEAN) / PLEATEAU_DURATION_STD,
                                             loc=PLATEAU_DURATION_MEAN, scale=PLEATEAU_DURATION_STD).rvs(1, random_state=rng)
     recovered = plateau_end + ((age/10)-1) # age is a determining factor for the recovery time
-    recovered = recovered + truncnorm((plateau_end - RECOVERY_MEAN) / RECOVERY_STD,
+    recovered = recovered + truncnorm((RECOVERY_CLIP_LOW - RECOVERY_MEAN) / RECOVERY_STD,
                                         (RECOVERY_CLIP_HIGH - RECOVERY_MEAN) / RECOVERY_STD,
                                         loc=RECOVERY_MEAN, scale=RECOVERY_STD).rvs(1, random_state=rng)
     base = age/200 # peak viral load varies linearly with age
@@ -67,30 +67,6 @@ def _get_random_sex(rng):
     else:
         return 'other'
 
-def cold_and_flu_transmission(human1, human2):
-	if human1.has_cold:
-		if human2.rng.random() < COLD_CONTAGIOUSNESS * human1.mask_effect * human2.mask_effect:
-			for (i,symp_arr) in enumerate(human2.cold_progression):
-				if COLD_INCUBATION+i+human2.today < human2.simulation_days:
-					human2.cold_symptoms_array[COLD_INCUBATION+i+human2.today].extend(symp_arr)
-
-	if human1.has_flu:
-		if human2.rng.rand() < FLU_CONTAGIOUSNESS * human1.mask_effect * human2.mask_effect:
-			for (i,symp_arr) in enumerate(human2.flu_progression):
-			    if FLU_INCUBATION+i+human2.today < human2.simulation_days:
-			        human2.flu_symptoms_array[FLU_INCUBATION+i+human2.today]=symp_arr
-
-	if human2.has_cold:
-		if human1.rng.random() < COLD_CONTAGIOUSNESS * human1.mask_effect * human2.mask_effect:
-			for (i,symp_arr) in enumerate(human1.cold_progression):
-				if COLD_INCUBATION+i+human1.today < human1.simulation_days:
-					human1.cold_symptoms_array[COLD_INCUBATION+i+human1.today].extend(symp_arr)
-
-	if human2.has_flu:
-		if human1.rng.random() < FLU_CONTAGIOUSNESS * human1.mask_effect * human2.mask_effect:
-			for (i,symp_arr) in enumerate(human1.flu_progression):
-				if COLD_INCUBATION+i+human1.today < human1.simulation_days:
-					human1.flu_symptoms_array[FLU_INCUBATION+i+human1.today].extend(symp_arr)
 
 def _get_mask_wearing(carefulness, simulation_days, rng):
     return [rng.rand() < carefulness*BASELINE_P_MASK for day in range(simulation_days)]
@@ -153,7 +129,7 @@ def _get_covid_symptoms(viral_load_plateau_start, viral_load_plateau_end,
     if 'moderate' and 'trouble_breathing' in symptoms1:
         symptoms1.append('moderate_trouble_breathing')
 
-    for day in range(round(viral_load_plateau_start)):
+    for day in range(math.ceil(viral_load_plateau_start)):
         progression.append(symptoms1)
 
     # During the plateau
@@ -213,7 +189,7 @@ def _get_covid_symptoms(viral_load_plateau_start, viral_load_plateau_end,
     if ('severe' in symptoms2 or 'extremely-severe' in symptoms2) and 'trouble_breathing' in symptoms2:
         symptoms2.append('heavy_trouble_breathing')
 
-    for day in range(round(viral_load_plateau_end - viral_load_plateau_start)):
+    for day in range(math.ceil(viral_load_plateau_end - viral_load_plateau_start)):
         progression.append(symptoms2)
 
     # After the plateau
@@ -263,7 +239,7 @@ def _get_covid_symptoms(viral_load_plateau_start, viral_load_plateau_end,
     if ('severe' in symptoms3 or 'extremely-severe' in symptoms3) and 'trouble_breathing' in symptoms3:
         symptoms3.append('heavy_trouble_breathing')
 
-    for day in range(round(viral_load_recovered - viral_load_plateau_end)):
+    for day in range(math.ceil(viral_load_recovered - viral_load_plateau_end)):
         progression.append(symptoms3)
 
     return progression
@@ -310,6 +286,17 @@ def _get_flu_symptoms(age, rng, sim_days, carefulness, preexisting_conditions, r
     return progression, start_day, symptoms_array
 
 def _get_flu_symptoms_v2(age, rng, carefulness, preexisting_conditions, really_sick, extremely_sick):
+    if age < 12 or age > 40 or any(preexisting_conditions) or really_sick or extremely_sick:
+        mean = 4 - round(carefulness)
+    else:
+        mean = 3 - round(carefulness)
+
+    len_cold = rng.normal(mean,3)
+    if len_cold < 1:
+        len_cold = 1
+    else:
+        len_cold = round(len_cold)
+
     symptoms = []
     if really_sick or extremely_sick or any(preexisting_conditions):
         symptoms.append('moderate')
@@ -376,6 +363,17 @@ def _get_cold_symptoms(age, rng, sim_days, carefulness, preexisting_conditions, 
 
 def _get_cold_symptoms_v2(age, rng, carefulness, preexisting_conditions, really_sick, extremely_sick):
     symptoms = []
+
+    if age < 12 or age > 40 or any(preexisting_conditions) or really_sick or extremely_sick:
+        mean = 4 - round(carefulness)
+    else:
+        mean = 3 - round(carefulness)
+
+    len_cold = rng.normal(mean,3)
+    if len_cold < 1:
+        len_cold = 1
+    else:
+        len_cold = round(len_cold)
 
     if really_sick or extremely_sick or any(preexisting_conditions):
         symptoms.append('moderate')
