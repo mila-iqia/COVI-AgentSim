@@ -1,6 +1,9 @@
 import numpy as np
 import datetime
 from collections import Counter
+
+from utils import PREEXISTING_CONDITIONS
+
 from models.utils import decode_message
 
 def messages_to_np(human):
@@ -33,6 +36,11 @@ def candidate_exposures(human, date):
 
     return candidate_encounters, exposed_encounters, candidate_locs, exposed_locs
 
+def conditions_to_np(conditions):
+    conditions_encs = np.zeros((len(PREEXISTING_CONDITIONS),))
+    for condition in conditions:
+        probability = PREEXISTING_CONDITIONS[condition]
+        conditions_encs[probability.id] = 1
 
 def symptoms_to_np(symptoms_day, all_symptoms, all_possible_symptoms):
     rolling_window = 14
@@ -75,3 +83,12 @@ def rolling_infectiousness(start, date, human):
         return rollings[cur_day]
     except Exception:
         return rolling
+
+def encode_sex(sex):
+    sex = sex.lower()
+    if sex.startswith('f'):
+        return 1
+    elif sex.startswith('m'):
+        return 2
+    else:
+        return 0
