@@ -44,7 +44,7 @@ class Env(simpy.Environment):
 
 class City(object):
 
-    def __init__(self, env, n_people, rng, x_range, y_range, start_time, init_percent_sick, Human, sim_days):
+    def __init__(self, env, n_people, rng, x_range, y_range, start_time, init_percent_sick, Human):
         self.env = env
         self.rng = rng
         self.x_range = x_range
@@ -151,8 +151,7 @@ class City(object):
                         profession=profession[i],
                         rho=0.3,
                         gamma=0.21,
-                        infection_timestamp=self.start_time if self.rng.random() < self.init_percent_sick else None,
-                        sim_days=self.sim_days
+                        infection_timestamp=self.start_time if self.rng.random() < self.init_percent_sick else None
                         )
                     )
 

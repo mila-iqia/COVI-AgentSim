@@ -144,7 +144,7 @@ def run_simu(n_people=None, init_percent_sick=0,
     env = Env(start_time)
     city_x_range = (0,1000)
     city_y_range = (0,1000)
-    city = City(env, n_people, rng, city_x_range, city_y_range, start_time, init_percent_sick, Human, simulation_days)
+    city = City(env, n_people, rng, city_x_range, city_y_range, start_time, init_percent_sick, Human)
     monitors = [EventMonitor(f=120, dest=outfile, chunk_size=out_chunk_size), SEIRMonitor(f=1440)]
 
     # run the simulation

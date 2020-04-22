@@ -47,9 +47,8 @@ class Visits(object):
 class Human(object):
 
     def __init__(self, env, name, age, rng, infection_timestamp, household, workplace, profession, rho=0.3, gamma=0.21, symptoms=[],
-                 test_results=None, sim_days=0):
+                 test_results=None):
 
-        self.simulation_days = sim_days
         self.last_date = env.timestamp.date
         self.env = env
         self._events = []
@@ -66,7 +65,6 @@ class Human(object):
         self.sex = _get_random_sex(self.rng)
         self.preexisting_conditions = _get_preexisting_conditions(self.age, self.sex, self.rng)
 
-
         age_modifier = 2 if self.age > 40 or self.age < 12 else 2
         # &carefulness
         if self.rng.rand() < P_CAREFUL_PERSON:
@@ -75,7 +73,6 @@ class Human(object):
             self.carefulness = (round(self.rng.normal(25, 10)) + self.age/2) / 100
 
         self.has_app = self.rng.rand() < (P_HAS_APP / age_modifier) + (self.carefulness / 2)
-
 
         # logged info can be quite different
         self.has_logged_info = self.has_app and self.rng.rand() < 0.5
@@ -88,8 +85,6 @@ class Human(object):
         self.visits = Visits()
         self.travelled_recently = self.rng.rand() > 0.9
 
-        self.mask_wearing = _get_mask_wearing(self.carefulness, sim_days, self.rng)
-
         # &symptoms, &viral-load
         # probability of being asymptomatic is basically 50%, but a bit less if you're older and a bit more if you're younger
         self.is_asymptomatic = self.rng.rand() > (BASELINE_P_ASYMPTOMATIC - (self.age - 50) * 0.5) / 100
@@ -99,11 +94,6 @@ class Human(object):
         self.incubation_days = self.infectiousness_onset_days + self.viral_load_plateau_start + self.rng.normal(loc=SYMPTOM_ONSET_WRT_VIRAL_LOAD_PEAK_AVG, scale=SYMPTOM_ONSET_WRT_VIRAL_LOAD_PEAK_STD)
         self.recovery_days = self.infectiousness_onset_days + self.viral_load_recovered
         self.test_result, self.test_type = None, None
-
-        # self.recovery_days = _draw_random_discreet_gaussian(AVG_RECOVERY_DAYS, SCALE_RECOVERY_DAYS, self.rng) # make it IQR &recovery
-        # self.incubation_days = _draw_random_discreet_gaussian(AVG_INCUBATION_DAYS, SCALE_INCUBATION_DAYS, self.rng)
-        # self.infectiousness_onset_days = self.incubation_days -
-        # self.covid_symptoms_array = [[] for day in range(self.simulation_days)]
 
         # Indicates whether this person will show severe signs of illness.
         self.infection_timestamp = infection_timestamp
