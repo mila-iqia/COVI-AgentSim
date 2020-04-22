@@ -38,9 +38,11 @@ def candidate_exposures(human, date):
 
 def conditions_to_np(conditions):
     conditions_encs = np.zeros((len(PREEXISTING_CONDITIONS),))
+
     for condition in conditions:
-        probability = PREEXISTING_CONDITIONS[condition]
+        probability = PREEXISTING_CONDITIONS[condition][0]
         conditions_encs[probability.id] = 1
+
 
 def symptoms_to_np(symptoms_day, all_symptoms, all_possible_symptoms):
     rolling_window = 14

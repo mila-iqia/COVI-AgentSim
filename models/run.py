@@ -11,7 +11,7 @@ import pathlib
 import time
 from tqdm import tqdm
 from collections import defaultdict
-from event import Event
+from base import Event
 from models.dummy_human import DummyHuman
 from models.risk_models import RiskModelYoshua, RiskModelLenka, RiskModelEilif, RiskModelTristan
 from plots.plot_risk import dist_plot, hist_plot
