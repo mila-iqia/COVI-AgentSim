@@ -19,6 +19,7 @@ def get_nested_dict(nesting):
 class Tracker(object):
     def __init__(self, env, city):
         self.env = env
+        self.city = city
 
         # infection & contacts
         self.contacts = {
@@ -27,7 +28,8 @@ class Tracker(object):
                 'human_infection': get_nested_dict(2),
                 'env_infection':get_nested_dict(1),
                 'location_env_infection': get_nested_dict(2),
-                'location_human_infection': get_nested_dict(3)
+                'location_human_infection': get_nested_dict(3),
+                'duration': defaultdict(lambda : defaultdict(lambda :[0,0]))
                 }
 
         self.infection_graph = nx.DiGraph()
@@ -61,11 +63,11 @@ class Tracker(object):
         self.dist_encounters = defaultdict(int)
         self.time_encounters = defaultdict(int)
 
+        # symptoms
+        self.symptoms = {'covid': defaultdict(int), 'others':defaultdict(int)}
 
         # mobility
         self.transition_probability = get_nested_dict(4)
-
-        self.city = city
         self.summarize_population()
 
     def summarize_population(self):
@@ -84,7 +86,6 @@ class Tracker(object):
         print("asymptomatic fraction", self.frac_asymptomatic)
 
     def get_R0(self):
-
         # https://web.stanford.edu/~jhj1/teachingdocs/Jones-on-R0.pdf; vlaid over a long time horizon
         # average infectious contacts (transmission) * average number of contacts * average duration of infection
         time_since_start =  (self.env.timestamp - self.env.initial_timestamp).total_seconds() / 86400 # DAYS
@@ -97,7 +98,7 @@ class Tracker(object):
             d = self.avg_infectious_duration
             return tau_times_c_bar * d
         else:
-            x = [h.n_infectious_contacts for h in self.city.humans if h.n_infectious_contacts > 0 ]
+            x = [h.n_infectious_contacts for h in self.city.humans if h.state.index(1) == 3]
             if x:
                 return np.mean(x)
             return 0
@@ -174,6 +175,24 @@ class Tracker(object):
 
         self.transition_probability[hour][bin][from_location][to_location] += 1
 
+    def track_initialized_covid_params(self, humans):
+        days = [(h.incubation_days, h.recovery_days, h.infectiousness_onset_days) for h in humans]
+        print("Avg. incubation days", np.mean([x[0] for x in days]))
+        print("Avg. recovery days", np.mean([x[1] for x in days]))
+        print("Avg. infectiousnes onset days", np.mean([x[2] for x in days]))
+
+    def track_symptoms(self, symptoms, covid=True):
+        # called after logging the test
+        self.symptoms['covid']['n'] += 1
+        for s in symptoms:
+            self.symptoms['covid'][s] += 1
+
+    def track_social_mixing(self, human1, human2, location, distance, duration):
+        n, avg = self.contacts['duration'][human1.age][human2.age]
+        self.contacts['duration'][human1.age][human2.age] = (n+1, (avg*n + duration)/(n+1))
+
+        # self.contacts['location_duration'][location.location_type] binning
+
     def track_encounter_events(self, human1, human2, location, distance, duration):
         for i, (l,u) in enumerate(self.age_bins):
             if l <= human1.age < u:
@@ -181,7 +200,7 @@ class Tracker(object):
             if l <= human2.age < u:
                 bin2 = (i, (l,u))
 
-        self.contacts["all"][bin1[0]][bin2[0]] += 1
+        self.contacts["all"][human1.age][human2.age] += 1
         self.contacts["location_all"][location.location_type][bin1[0]][bin2[0]] += 1
         self.n_contacts += 1
 
@@ -256,6 +275,13 @@ class Tracker(object):
             if v['infection_count']  > 0:
                 x = 1.0 * v['infection_count']/len(v['humans'])
                 log(f"{loc_type} R0 {x}", logfile)
+
+        log("######## SYMPTOMS #########", logfile)
+        total = self.symptoms['covid']['n']
+        for s,v in self.symptoms['covid'].items():
+            if s == 'n':
+                continue
+            log(f"{s} {100*v/total:5.2f}%")
 
         log("######## MOBILITY #########", logfile)
         log("Day - ", logfile)
