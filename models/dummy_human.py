@@ -1,6 +1,4 @@
-import sys
 import os
-sys.path.append(os.getcwd())
 import datetime
 from bitarray import bitarray
 from models.utils import Message, UpdateMessage
@@ -36,7 +34,12 @@ class DummyHuman:
         self.rolling_infectiousness_array = []
         self.infectiousness = {}
         self.locations_visited = {}
+        self.obs_preexisting_conditions = set()
+        self.obs_age = 0
+        self.obs_sex = 'other'
         self.preexisting_conditions = set()
+        self.age = 0
+        self.sex = 'other'
 
 
     def cur_message(self, day, RiskModel):
@@ -97,6 +100,8 @@ class DummyHuman:
         for key, val in human_dict.items():
             if key == 'clusters':
                 self.clusters = val
+            if key == 'update_messages':
+                self.update_messages = val
             if key == 'risk':
                 self.risk = val
             if key == 'messages':
@@ -121,8 +126,16 @@ class DummyHuman:
                 self.test_time = val
             if key == "obs_preexisting_conditions" and val:
                 self.obs_preexisting_conditions = val
+            if key == "obs_age" and val:
+                self.obs_age = val
+            if key == "obs_sex" and val:
+                self.obs_sex = val
             if key == "preexisting_conditions" and val:
                 self.preexisting_conditions = val
+            if key == "age" and val:
+                self.age = val
+            if key == "sex" and val:
+                self.sex = val
             if key == "infectiousness" and val:
                 for k, v in val.items():
                     self.infectiousness[k] = v

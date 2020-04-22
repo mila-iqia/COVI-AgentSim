@@ -1,6 +1,4 @@
-import sys
 import os
-sys.path.append(os.getcwd())
 import pickle
 import json
 import zipfile
@@ -13,12 +11,13 @@ import pathlib
 import time
 from tqdm import tqdm
 from collections import defaultdict
-from event import Event
+from base import Event
 from models.dummy_human import DummyHuman
 from models.risk_models import RiskModelYoshua, RiskModelLenka, RiskModelEilif, RiskModelTristan
 from plots.plot_risk import dist_plot, hist_plot
-from models.helper import messages_to_np, symptoms_to_np, candidate_exposures, rolling_infectiousness
-from models.utils import encode_message, update_uid, create_new_uid
+from models.helper import messages_to_np, conditions_to_np, symptoms_to_np, candidate_exposures, rolling_infectiousness, \
+    encode_sex
+from models.utils import encode_message, update_uid, create_new_uid, encode_update_message, decode_message, Message, decode_update_message
 from joblib import Parallel, delayed
 
 def parse_args():
@@ -36,6 +35,7 @@ def parse_args():
     parser.add_argument('--max_pickles', type=int, default=1000000, help="If you don't want to load the whole dataset")
     parser.add_argument('--mp_backend', type=str, default="loky", help="which joblib backend to use")
     parser.add_argument('--mp_batchsize', type=int, default=-1, help="-1 is converted to auto batchsize, otherwise it's the integer you provide")
+    parser.add_argument('--random_clusters', action="store_true", help="make random cluster assignments")
     args = parser.parse_args()
     return args
 
@@ -45,23 +45,43 @@ def hash_id_day(hid, day):
 
 def proc_human(params):
     """This function can be parallelized across CPUs. Currently, we only check for messages once per day, so this can be run in parallel"""
-    start, current_day, encounters, rng, all_possible_symptoms, human_dict, save_training_data, log_path = params.values()
+    start, current_day, encounters, rng, all_possible_symptoms, human_dict, save_training_data, log_path, random_clusters = params.values()
     human = DummyHuman(name=human_dict['name']).merge(human_dict)
     RiskModel = RiskModelTristan
     human.start_risk = human.risk
     todays_date = start + datetime.timedelta(days=current_day)
-
     # check if you have new reported symptoms
     human.risk = RiskModel.update_risk_daily(human, todays_date)
-
+    # if len(human.clusters.clusters.keys()) > 100:
+    #     import pdb; pdb.set_trace()
     # read your old messages
+
     for m_i in human.messages:
         # update risk based on that day's messages
+        # starttime = time.time()
         RiskModel.update_risk_encounter(human, m_i)
-        human.clusters.add_message(m_i)
-    human.messages = []
+        # print(f"update_risk_messages: {time.time() - starttime}")
 
-    human.clusters.update_records(human.update_messages)
+        human.clusters.add_message(m_i, rng)
+
+    human.messages = []
+    if random_clusters and len(human.update_messages) != 0:
+        assigned = 0
+        for update_message in human.update_messages:
+            update_message = decode_update_message(update_message)
+
+            for cluster, risk_messages in human.clusters.clusters.items():
+                for risk_message in risk_messages:
+                    risk_message = decode_message(risk_message)
+                    if update_message.new_risk != risk_message.risk:
+                        updated_message = Message(risk_message.uid, update_message.new_risk, risk_message.day, risk_message.unobs_id)
+                        human.clusters.update_record(cluster, cluster, risk_message, updated_message)
+                        assigned += 1
+                        break
+    elif not random_clusters:
+        human.clusters.update_records(human.update_messages, human)
+
+    human.update_messages = []
     human.clusters.purge(current_day)
 
     # for each sim day, for each human, save an output training example
@@ -81,6 +101,9 @@ def proc_human(params):
                                 "candidate_encounters": candidate_encounters,
                                 "candidate_locs": candidate_locs,
                                 "test_results": human.get_test_result_array(todays_date),
+                                "preexisting_conditions": conditions_to_np(human.obs_preexisting_conditions),
+                                "age": human.obs_age or 0,
+                                "sex": encode_sex(human.obs_sex)
                             },
                         "unobserved":
                             {
@@ -97,6 +120,9 @@ def proc_human(params):
                                 "exposed_locs": exposed_locs,
                                 "exposure_encounter": exposure_encounter,
                                 "infectiousness": infectiousness,
+                                "true_preexisting_conditions": conditions_to_np(human.preexisting_conditions),
+                                "true_age": human.age,
+                                "true_sex": encode_sex(human.sex)
                             }
                         }
         if not os.path.isdir(log_path):
@@ -104,7 +130,9 @@ def proc_human(params):
         path = os.path.join(log_path, f"daily_human.pkl")
         log_file = open(path, 'wb')
         pickle.dump(daily_output, log_file)
+
     return human.__dict__
+
 
 def init_humans(params):
     pkl_name = params['pkl_name']
@@ -146,7 +174,11 @@ def init_humans(params):
             elif log['event_type'] == Event.static_info:
                 hd[log['human_id']].obs_preexisting_conditions = log['payload']['observed'][
                     'obs_preexisting_conditions']
+                hd[log['human_id']].obs_age = log['payload']['observed']['obs_age']
+                hd[log['human_id']].obs_sex = log['payload']['observed']['obs_sex']
                 hd[log['human_id']].preexisting_conditions = log['payload']['unobserved']['preexisting_conditions']
+                hd[log['human_id']].age = log['payload']['unobserved']['age']
+                hd[log['human_id']].sex = log['payload']['unobserved']['sex']
             elif log['event_type'] == Event.visit:
                 if not hd[log['human_id']].locations_visited.get(log['payload']['observed']['location_name']):
                     hd[log['human_id']].locations_visited[log['payload']['observed']['location_name']] = log['time']
@@ -256,29 +288,32 @@ def main(args=None):
         all_params = []
         for human in hd.values():
             encounters = days_logs[human.name]
-            human.uid = update_uid(human.uid, rng)
             log_path = f'{os.path.dirname(args.data_path)}/daily_outputs/{current_day}/{human.name[6:]}/'
-            all_params.append({"start": start, "current_day": current_day, "encounters": encounters, "rng": rng, "all_possible_symptoms": all_possible_symptoms, "human": human.__dict__, "save_training_data": args.save_training_data, "log_path": log_path})
+            all_params.append({"start": start, "current_day": current_day, "encounters": encounters, "rng": rng, "all_possible_symptoms": all_possible_symptoms, "human": human.__dict__, "save_training_data": args.save_training_data, "log_path": log_path, "random_clusters": args.random_clusters})
             # go about your day accruing encounters and clustering them
             for encounter in encounters:
                 encounter_time = encounter['time']
                 unobs = encounter['payload']['unobserved']
                 encountered_human = hd[unobs['human2']['human_id']]
-                message = encountered_human.cur_message(current_day, RiskModel)
-                encountered_human.sent_messages[
-                    str(unobs['human1']['human_id']) + "_" + str(encounter_time)] = message
+                message = encode_message(encountered_human.cur_message(current_day, RiskModel))
+                encountered_human.sent_messages[str(unobs['human1']['human_id']) + "_" + str(encounter_time)] = message
                 human.messages.append(message)
+
                 got_exposed = encounter['payload']['unobserved']['human1']['got_exposed']
                 if got_exposed:
-                    human.exposure_message = encode_message(message)
+                    human.exposure_message = message
 
             # if the encounter happened within the last 14 days, and your symptoms started at most 3 days after your contact
             if RiskModel.quantize_risk(human.start_risk) != RiskModel.quantize_risk(human.risk):
                 sent_at = start + datetime.timedelta(days=current_day, minutes=rng.randint(low=0, high=1440))
                 for k, m in human.sent_messages.items():
-                    if current_day - m.day < 14:
-                        # using encounter
-                        hd[m.unobs_id].update_messages.append(human.cur_message_risk_update(m.day, m.risk, sent_at, RiskModel))
+                    message = decode_message(m)
+                    if current_day - message.day < 14:
+                        # add the update message to the receiver's inbox
+                        update_message = encode_update_message(human.cur_message_risk_update(message.day, message.risk, sent_at, RiskModel))
+                        hd[k.split("_")[0]].update_messages.append(update_message)
+                human.sent_messages = {}
+            human.uid = update_uid(human.uid, rng)
 
         with Parallel(n_jobs=args.n_jobs, batch_size=mp_batchsize, backend=args.mp_backend, verbose=10) as parallel:
             human_dicts = parallel((delayed(proc_human)(params) for params in all_params))

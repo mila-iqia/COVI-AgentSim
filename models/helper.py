@@ -1,6 +1,9 @@
 import numpy as np
 import datetime
 from collections import Counter
+
+from utils import PREEXISTING_CONDITIONS
+
 from models.utils import decode_message
 
 def messages_to_np(human):
@@ -8,6 +11,8 @@ def messages_to_np(human):
     for day, clusters in human.clusters.clusters_by_day.items():
         for cluster_id, messages in clusters.items():
             # TODO: take an average over the risks for that day
+            if not any(messages):
+                continue
             ms_enc.append([cluster_id, decode_message(messages[0]).risk, len(messages), day])
     return np.array(ms_enc)
 
@@ -26,9 +31,17 @@ def candidate_exposures(human, date):
                     if message == human.exposure_message:
                         exposed_encounters[idx] = 1.
                         break
-                idx += 1
+                if any(messages):
+                    idx += 1
 
     return candidate_encounters, exposed_encounters, candidate_locs, exposed_locs
+
+def conditions_to_np(conditions):
+    conditions_encs = np.zeros((len(PREEXISTING_CONDITIONS),))
+
+    for condition in conditions:
+        probability = PREEXISTING_CONDITIONS[condition][0]
+        conditions_encs[probability.id] = 1
 
 
 def symptoms_to_np(symptoms_day, all_symptoms, all_possible_symptoms):
@@ -39,20 +52,6 @@ def symptoms_to_np(symptoms_day, all_symptoms, all_possible_symptoms):
         for symptom in symptoms:
             symptoms_enc[day, aps.index(symptom)] = 1.
     return symptoms_enc
-
-def group_to_majority_id(all_groups):
-    all_new_groups = []
-    for group_idx, groups in enumerate(all_groups):
-        new_groups = {}
-        for group, uids in groups.items():
-            cnt = Counter()
-            for idx, uid in enumerate(uids):
-                cnt[uid] += 1
-            for i in range(len(cnt)):
-                new_groups[cnt.most_common()[i][0]] = uids
-                break
-        all_new_groups.append(new_groups)
-    return all_new_groups
 
 def rolling_infectiousness(start, date, human):
     rolling_window = 14
@@ -86,3 +85,12 @@ def rolling_infectiousness(start, date, human):
         return rollings[cur_day]
     except Exception:
         return rolling
+
+def encode_sex(sex):
+    sex = sex.lower()
+    if sex.startswith('f'):
+        return 1
+    elif sex.startswith('m'):
+        return 2
+    else:
+        return 0

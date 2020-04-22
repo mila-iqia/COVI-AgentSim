@@ -1,6 +1,4 @@
-import sys
 import os
-sys.path.append(os.getcwd())
 import numpy as np
 from config import *
 from models.utils import Message, encode_message, decode_message, binary_to_float
@@ -78,10 +76,8 @@ class RiskModelYoshua(RiskModelBase):
 
 class RiskModelEilif(RiskModelBase):
     @classmethod
-    def update_risk_encounter(cls, clusters, message):
+    def update_risk_encounter(cls, message):
         """ This function updates an individual's risk based on the receipt of a new message"""
-        clusters.add_message(message)
-
         # Get the binarized contact risk
         m_risk = binary_to_float("".join([str(x) for x in np.array(message.risk.tolist()).astype(int)]), 0, 4)
         msg_enc = encode_message(message)
@@ -133,8 +129,9 @@ class RiskModelTristan(RiskModelBase):
             human.risk = np.log(1.)
             return
 
-        # if they have a positive test result, increment counter
-        if message.risk == bitarray('1111'):
+        # if the encounter message indicates they had a positive test result, increment counter
+        message = decode_message(message)
+        if message.risk == 15:
             human.tested_positive_contact_count += 1
 
         init_population_level_risk = 0.01
