@@ -125,7 +125,7 @@ class Human(object):
                                         self.viral_load_recovered, age=self.age, incubation_days=self.incubation_days,
                                                           really_sick=self.can_get_really_sick, extremely_sick=self.can_get_extremely_sick,
                           rng=self.rng, preexisting_conditions=self.preexisting_conditions)
-        self.cold_symptoms, self.flu_symptoms, self.covid_symptoms = [], [], []
+        self.all_symptoms, self.cold_symptoms, self.flu_symptoms, self.covid_symptoms = [], [], [], []
 
         # habits
         self.avg_shopping_time = _draw_random_discreet_gaussian(AVG_SHOP_TIME_MINUTES, SCALE_SHOP_TIME_MINUTES, self.rng)
@@ -608,6 +608,7 @@ class Human(object):
         city.tracker.track_trip(from_location=self.location.location_type, to_location=location.location_type, age=self.age, hour=self.env.hour_of_day())
 
         self.wear_mask()
+        
         # add the human to the location
         self.location = location
         location.add_human(self)
@@ -682,7 +683,7 @@ class Human(object):
                                     infectee=infectee,
                                     time=self.env.timestamp
                                     )
-        Event.log_visit(h, self.env.timestamp, location)
+
         yield self.env.timeout(duration / TICK_MINUTE)
 
         # environmental transmission

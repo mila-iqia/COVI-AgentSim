@@ -32,7 +32,9 @@ def sim(n_people=None,
         outdir=None, out_chunk_size=None,
         seed=0):
 
-    COLLECT_LOGS = True
+    import config
+    config.COLLECT_LOGS = True
+
     if outdir is None:
         outdir = "output"
 
@@ -62,7 +64,8 @@ def base():
     import pandas as pd
     import cufflinks as cf
     cf.go_offline()
-    COLLECT_LOGS=False
+    import config
+    config.COLLECT_LOGS = False
     monitors, tracker = run_simu(
         n_people=100,
         init_percent_sick=0.01,
@@ -84,7 +87,10 @@ def base():
 @click.option('--n_people', help='population of the city', type=int, default=1000)
 @click.option('--seed', help='seed for the process', type=int, default=0)
 def tune(n_people, seed):
-    COLLECT_LOGS=False
+    # Force COLLECT_LOGS=False
+    import config
+    config.COLLECT_LOGS = False
+
     # extra packages required  - plotly-orca psutil networkx glob seaborn
     from simulator import Human
     import pandas as pd

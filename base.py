@@ -53,7 +53,6 @@ class City(object):
         self.n_people = n_people
         self.start_time = start_time
         self.init_percent_sick = init_percent_sick
-        self.sim_days=sim_days
         print("Initializing locations ...")
         self.initialize_locations()
 
@@ -376,13 +375,13 @@ class Event:
     def log_encounter(human1, human2, location, duration, distance, infectee, time):
 
         h_obs_keys   = ['has_app',
-                        'obs_hospitalized', 'obs_in_icu', 'wearing_mask',
+                        'obs_hospitalized', 'obs_in_icu',
                         'obs_lat', 'obs_lon']
 
         h_unobs_keys = ['carefulness', 'viral_load', 'infectiousness',
                         'symptoms', 'is_exposed', 'is_infectious',
-                        'infection_timestamp', 'really_sick',
-                        'extremely_sick', 'sex']
+                        'infection_timestamp', 'is_really_sick',
+                        'is_extremely_sick', 'sex',  'wearing_mask', 'mask_efficacy']
 
         loc_obs_keys = ['location_type', 'lat', 'lon']
         loc_unobs_keys = ['contamination_probability', 'social_contact_factor']
@@ -468,28 +467,6 @@ class Event:
         )
 
     @staticmethod
-    def log_symptom_start(human, symptoms_to_report, time):
-        human.events.append(
-            {
-                'human_id': human.name,
-                'event_type': Event.symptom_start,
-                'time': time,
-                'payload': {
-                    'observed':{
-                        "reported_symptoms": human.all_reported_symptoms
-                    },
-                    'unobserved':{
-                        "all_symptoms": human.all_symptoms,
-                        "covid_symptoms":human.covid_symptoms,
-                        "flu_symptoms":human.flu_symptoms,
-                        "cold_symptoms":human.cold_symptoms
-                    }
-
-                }
-            }
-        )
-
-    @staticmethod
     def log_exposed(human, source, time):
         human.events.append(
             {
@@ -529,24 +506,6 @@ class Event:
             }
         )
 
-    @staticmethod
-    def log_visit(human, time, location):
-        human.events.append(
-            {
-                'human_id': human.name,
-                'event_type': Event.visit,
-                'time': time,
-                'payload': {
-                    'observed':{
-                        'location_name': location.name
-                    },
-                    'unobserved':{
-                        'mask_efficacy': human.mask_effect,
-                        'mask_on': human.wearing_mask
-                    }
-                }
-            }
-        )
 
     @staticmethod
     def log_static_info(city, human, time):
