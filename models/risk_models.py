@@ -1,6 +1,4 @@
-import sys
 import os
-sys.path.append(os.getcwd())
 import numpy as np
 from config import *
 from models.utils import Message, encode_message, decode_message, binary_to_float

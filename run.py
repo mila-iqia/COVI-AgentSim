@@ -4,6 +4,7 @@ import numpy as np
 import math
 import pickle
 import os
+import sys
 import zipfile
 
 from config import TICK_MINUTE
@@ -123,6 +124,12 @@ def tune(seed):
     # tracker.plot_metrics(dirname="plots/tune")
 
 
+def model():
+    from models.run import main as m_main
+    sys.argv = sys.argv[:1] + sys.argv[2:]
+    m_main()
+
+
 @simu.command()
 def test():
     import unittest
@@ -167,4 +174,7 @@ def run_simu(n_people=None, init_percent_sick=0,
 
 
 if __name__ == "__main__":
-    simu()
+    if sys.argv[1] == "model":
+        model()
+    else:
+        simu()
