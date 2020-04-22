@@ -313,21 +313,25 @@ class Human(object):
 
         if self.is_incubated and not self.is_asymptomatic:
             days_since_infectious = math.ceil(self.days_since_exposed - self.infectiousness_onset_days)
-            if days_since_infectious >= len(self.all_covid_symptoms):
-                import pdb; pdb.set_trace()
             self.covid_symptoms = self.all_covid_symptoms[days_since_infectious]
 
-        self.all_symptoms = list(set(self.flu_symptoms + self.cold_symptoms + self.covid_symptoms))
+        all_symptoms = set(self.flu_symptoms + self.cold_symptoms + self.covid_symptoms)
+        # self.new_symptoms = list(all_symptoms - set(self.all_symptoms))
+        self.all_symptoms = list(all_symptoms)
 
     @property
     def symptoms(self):
         if self.last_date_to_check_symptoms != self.env.timestamp.date:
             self.last_date_to_check_symptoms = self.env.timestamp.date
             self.update_symptoms()
+
         return self.all_symptoms
 
     @property
     def all_reported_symptoms(self):
+        if not self.has_app:
+            return []
+
         reported_symptoms = []
         for symptom in self.symptoms:
             if self.rng.random() < self.carefulness:
@@ -350,34 +354,31 @@ class Human(object):
     def obs_symptoms(self):
         return self.symptoms if self.has_logged_symptoms else None
 
-    @property
-    def today(self):
-        #TODO there HAS TO BE A BETTER WAY
-        return (self.env.timestamp - self.env.initial_timestamp).days
+    def wear_mask(self):
+        if not MASK_INTERVENTION:
+            self.wearing_mask, self.mask_efficacy = False, 0
+            return
 
-    @property
-    def wearing_mask(self):
+        self.wearing_mask = False
         if self.location == self.household:
-            mask = False
-        if self.location.location_type == 'store':
-            if self.carefulness > 60:
-                mask = True
-            else:
-                mask = self.mask_wearing[self.today]
-        else:
-            mask = self.mask_wearing[self.today] #baseline p * carefullness
-        return mask
+            self.wearing_mask = False
 
-    @property
-    def mask_effect(self):
-      if self.wearing_mask:
-          if  self.workplace.location_type == 'hospital':
-              efficacy = MASK_EFFICACY_HEALTHWORKER
-          else:
-              efficacy = MASK_EFFICACY_NORMIE
-          return efficacy
-      else:
-        return 1
+        if self.location.location_type == 'store':
+            if self.carefulness > 0.6:
+                self.wearing_mask = True
+            elif self.rng.rand() < self.carefulness * BASELINE_P_MASK:
+                self.wearing_mask = True
+        elif self.rng.rand() < self.carefulness * BASELINE_P_MASK :
+            self.wearing_mask = True
+
+        # efficacy - people do not wear it properly
+        if self.wearing_mask:
+            if  self.workplace.location_type == 'hospital':
+              self.mask_efficacy = MASK_EFFICACY_HEALTHWORKER
+            else:
+              self.mask_efficacy = MASK_EFFICACY_NORMIE
+        else:
+            self.mask_efficacy = 0
 
     def recover_from_cold_and_flu(self):
         if (self.cold_timestamp is not None and
@@ -387,7 +388,6 @@ class Human(object):
         if (self.flu_timestamp is not None and
             (self.env.timestamp - self.flu_timestamp) >= datetime.timedelta(days=len(self.flu_symptoms))):
             self.flu_timestamp = None
-
 
     def how_am_I_feeling(self):
         current_symptoms = self.symptoms
@@ -435,17 +435,16 @@ class Human(object):
 
             date = self.env.timestamp.date
             if self.last_date != date:
-                Event.log_daily(self, self.env.timestamp)
                 self.last_date = date
+                Event.log_daily(self, self.env.timestamp)
 
             # recover health
             self.recover_from_cold_and_flu()
+
             # show symptoms
-            if self.is_incubated and not self.has_logged_symptoms:
+            if self.is_incubated and self.symptom_start_time is None:
                 self.symptom_start_time = self.env.timestamp
                 city.tracker.track_generation_times(self.name) # it doesn't count environmental infection or primary case or asymptomatic/presymptomatic infections; refer the definition
-                Event.log_symptom_start(self, True, self.env.timestamp)
-                self.has_logged_symptoms = True
 
             # log test
             if (self.is_incubated and
@@ -618,6 +617,7 @@ class Human(object):
     def at(self, location, city, duration):
         city.tracker.track_trip(from_location=self.location.location_type, to_location=location.location_type, age=self.age, hour=self.env.hour_of_day())
 
+        self.wear_mask()
         # add the human to the location
         self.location = location
         location.add_human(self)
@@ -638,11 +638,12 @@ class Human(object):
             contact_condition = distance <= INFECTION_RADIUS and t_near > INFECTION_DURATION
             if contact_condition:
                 proximity_factor = (1 - distance/INFECTION_RADIUS) + min((t_near - INFECTION_DURATION)/INFECTION_DURATION, 1)
+                mask_efficacy = self.mask_efficacy * h.mask_efficacy
 
                 infectee = None
                 if self.is_infectious:
                     ratio = self.asymptomatic_infection_ratio  if self.is_asymptomatic else 1.0
-                    p_infection = self.infectiousness * ratio
+                    p_infection = self.infectiousness * ratio * (1-mask_efficacy)
                     x_human = self.rng.random() < p_infection * CONTAGION_KNOB
 
                     if x_human and h.is_susceptible:
@@ -655,7 +656,7 @@ class Human(object):
 
                 elif h.is_infectious:
                     ratio = h.asymptomatic_infection_ratio  if h.is_asymptomatic else 1.0
-                    p_infection = h.infectiousness * ratio # &prob_infectious
+                    p_infection = h.infectiousness * ratio * (1-mask_efficacy) # &prob_infectious
                     x_human = self.rng.random() < p_infection * CONTAGION_KNOB
 
                     if x_human and self.is_susceptible:
@@ -695,7 +696,8 @@ class Human(object):
         yield self.env.timeout(duration / TICK_MINUTE)
 
         # environmental transmission
-        x_environment = location.contamination_probability > 0 and self.rng.random() < ENVIRONMENTAL_INFECTION_KNOB * location.contamination_probability # &prob_infection
+        p_infection = ENVIRONMENTAL_INFECTION_KNOB * location.contamination_probability * (1-self.mask_efficacy) # &prob_infection
+        x_environment = location.contamination_probability > 0 and self.rng.random() < p_infection
         if x_environment and self.is_susceptible:
             self.infection_timestamp = self.env.timestamp
             Event.log_exposed(self, location,  self.env.timestamp)

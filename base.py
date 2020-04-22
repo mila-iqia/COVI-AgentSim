@@ -453,16 +453,23 @@ class Event:
                 'time': time,
                 'payload': {
                     'observed':{
+                        "reported_symptoms": human.all_reported_symptoms
                     },
                     'unobserved':{
                         'infectiousness': human.infectiousness,
+                        "viral_load": human.viral_load,
+                        "all_symptoms": human.all_symptoms,
+                        "covid_symptoms":human.covid_symptoms,
+                        "flu_symptoms":human.flu_symptoms,
+                        "cold_symptoms":human.cold_symptoms
+
                     }
                 }
             }
         )
 
     @staticmethod
-    def log_symptom_start(human, covid, time):
+    def log_symptom_start(human, symptoms_to_report, time):
         human.events.append(
             {
                 'human_id': human.name,
@@ -473,8 +480,10 @@ class Event:
                         "reported_symptoms": human.all_reported_symptoms
                     },
                     'unobserved':{
-                        'covid': covid,
-                        "all_symptoms": human.all_symptoms
+                        "all_symptoms": human.all_symptoms,
+                        "covid_symptoms":human.covid_symptoms,
+                        "flu_symptoms":human.flu_symptoms,
+                        "cold_symptoms":human.cold_symptoms
                     }
 
                 }
@@ -533,6 +542,8 @@ class Event:
                         'location_name': location.name
                     },
                     'unobserved':{
+                        'mask_efficacy': human.mask_effect,
+                        'mask_on': human.wearing_mask
                     }
                 }
             }
