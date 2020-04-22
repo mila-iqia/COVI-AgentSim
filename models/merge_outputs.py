@@ -2,6 +2,7 @@ import os
 import pickle
 import zipfile
 import argparse
+from tqdm import tqdm
 
 parser = argparse.ArgumentParser(description='Run Risk Models and Plot results')
 parser.add_argument('--data_path', type=str, default="output/data.pkl")
@@ -9,7 +10,7 @@ parser.add_argument('--output_path', type=str, default="output/data.pkl")
 args = parser.parse_args()
 all_data_for_day = []
 with zipfile.ZipFile(f"{args.output_path}", mode='a', compression=zipfile.ZIP_STORED) as zf:
-    for day_path in os.listdir(args.data_path):
+    for day_path in tqdm(os.listdir(args.data_path)):
         days_data = []
         data_dir_path = os.path.join(args.data_path, day_path)
         try:
