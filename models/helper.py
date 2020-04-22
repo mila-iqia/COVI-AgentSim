@@ -42,6 +42,7 @@ def conditions_to_np(conditions):
     for condition in conditions:
         probability = PREEXISTING_CONDITIONS[condition][0]
         conditions_encs[probability.id] = 1
+    return conditions_encs
 
 
 def symptoms_to_np(symptoms_day, all_symptoms, all_possible_symptoms):
@@ -83,7 +84,7 @@ def rolling_infectiousness(start, date, human):
 
     try:
         return rollings[cur_day]
-    except Exception:
+    except IndexError:
         return rolling
 
 def encode_sex(sex):

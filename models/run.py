@@ -20,24 +20,22 @@ from models.helper import messages_to_np, conditions_to_np, symptoms_to_np, cand
 from models.utils import encode_message, update_uid, create_new_uid, encode_update_message, decode_message, Message, decode_update_message
 from joblib import Parallel, delayed
 
-def parse_args():
-    parser = argparse.ArgumentParser(description='Run Risk Models and Plot results')
-    parser.add_argument('--plot_path', type=str, default="output/plots/risk/")
-    parser.add_argument('--data_path', type=str, default="output/data.pkl")
-    parser.add_argument('--cluster_path', type=str, default="output/clusters.json")
-    parser.add_argument('--output_file', type=str, default='output/output.pkl')
-    parser.add_argument('--plot_daily', action="store_true")
-    parser.add_argument('--risk_model', type=str, default="tristan", choices=['yoshua', 'lenka', 'eilif', 'tristan'])
-    parser.add_argument('--seed', type=int, default="0")
-    parser.add_argument('--save_training_data', action="store_true")
-    parser.add_argument('--n_jobs', type=int, default=1, help="Default is no parallelism, jobs = 1")
-    parser.add_argument('--max_num_days', type=int, default=10000, help="Default is to run for all days")
-    parser.add_argument('--max_pickles', type=int, default=1000000, help="If you don't want to load the whole dataset")
-    parser.add_argument('--mp_backend', type=str, default="loky", help="which joblib backend to use")
-    parser.add_argument('--mp_batchsize', type=int, default=-1, help="-1 is converted to auto batchsize, otherwise it's the integer you provide")
-    parser.add_argument('--random_clusters', action="store_true", help="make random cluster assignments")
-    args = parser.parse_args()
-    return args
+parser = argparse.ArgumentParser(description='Run Risk Models and Plot results')
+parser.add_argument('--plot_path', type=str, default="output/plots/risk/")
+parser.add_argument('--data_path', type=str, default="output/data.pkl")
+parser.add_argument('--cluster_path', type=str, default="output/clusters.json")
+parser.add_argument('--output_file', type=str, default='output/output.pkl')
+parser.add_argument('--plot_daily', action="store_true")
+parser.add_argument('--risk_model', type=str, default="tristan", choices=['yoshua', 'lenka', 'eilif', 'tristan'])
+parser.add_argument('--seed', type=int, default="0")
+parser.add_argument('--save_training_data', action="store_true")
+parser.add_argument('--n_jobs', type=int, default=1, help="Default is no parallelism, jobs = 1")
+parser.add_argument('--max_num_days', type=int, default=10000, help="Default is to run for all days")
+parser.add_argument('--max_pickles', type=int, default=1000000, help="If you don't want to load the whole dataset")
+parser.add_argument('--mp_backend', type=str, default="loky", help="which joblib backend to use")
+parser.add_argument('--mp_batchsize', type=int, default=-1, help="-1 is converted to auto batchsize, otherwise it's the integer you provide")
+parser.add_argument('--random_clusters', action="store_true", help="make random cluster assignments")
+
 
 def hash_id_day(hid, day):
     return str(hid) + "-" + str(day)
@@ -199,7 +197,7 @@ def pick_risk_model(risk_model):
         return RiskModelEilif
     elif risk_model == 'tristan':
         return RiskModelTristan
-    raise "unknown risk model"
+    raise ValueError("Unknown risk model")
 
 
 def get_days_worth_of_logs(data_path, start, start_pkl, cur_day):
@@ -225,8 +223,8 @@ def get_days_worth_of_logs(data_path, start, start_pkl, cur_day):
 
 
 def main(args=None):
-    if not args:
-        args = parse_args()
+    if args is None:
+        args = parser.parse_args()
     rng = np.random.RandomState(args.seed)
 
     # check that the plot_dir exists:

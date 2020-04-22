@@ -1,4 +1,3 @@
-import os
 import datetime
 from bitarray import bitarray
 from models.utils import Message, UpdateMessage
