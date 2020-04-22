@@ -27,53 +27,60 @@ class Clusters:
         else:
             self.clusters_by_day[day][cluster] = [m_i_enc]
 
-    def add_message(self, m_i_enc):
+    def add_message(self, m_i_enc, rng):
         """ This function clusters new messages by scoring them against old messages in a sort of naive nearest neighbors approach"""
         message = decode_message(m_i_enc)
         # otherwise score against previous messages
-        best_cluster, best_message, best_score = self.score_matches(message)
+        best_cluster, best_message, best_score = self.score_matches(message, rng)
         if best_score >= 0:
             cluster_id = best_cluster
         elif not self:
             cluster_id = 0
         else:
-            cluster_id = self.get_available_cluster()
+            result = 0
+            for b in message.uid.tobytes():
+                result = result + int(b)
+            cluster_id = int(result / 16)
+
         self.all_messages.append(m_i_enc)
         self.clusters[cluster_id].append(m_i_enc)
         self.add_to_clusters_by_day(cluster_id, message.day, m_i_enc)
 
-    def score_matches(self, m_i):
+    def score_matches(self, m_new, rng):
         """ This function checks a new risk message against all previous messages, and assigns to the closest one in a brute force manner"""
-        best_cluster = 0
+        result = 0
+        for b in m_new.uid.tobytes():
+            result = result + int(b)
+        best_cluster = int(result/16)
         best_message = None
         best_score = -1
         for cluster_id, messages in self.clusters.items():
-            for message in messages:
-                obs_uid, risk, day, unobs_uid = decode_message(message)
-                if m_i.uid == obs_uid and m_i.day == day:
+            for m_enc in messages:
+                obs_uid, risk, day, unobs_uid = decode_message(m_enc)
+                if m_new.uid == obs_uid and m_new.day == day:
                     best_cluster = cluster_id
-                    best_message = message
+                    best_message = m_enc
                     best_score = 3
                     break
-                elif m_i.uid[:3] == obs_uid[1:] and m_i.day - 1 == day:
+                elif m_new.uid[:3] == obs_uid[1:] and m_new.day - 1 == day:
                     best_cluster = cluster_id
-                    best_message = message
+                    best_message = m_enc
                     best_score = 2
-                elif m_i.uid[:2] == obs_uid[2:] and m_i.day - 2 == day:
+                elif m_new.uid[:2] == obs_uid[2:] and m_new.day - 2 == day:
                     best_cluster = cluster_id
-                    best_message = message
+                    best_message = m_enc
                     best_score = 1
-                elif m_i.uid[:1] == obs_uid[3:] and m_i.day - 3 == day:
+                elif m_new.uid[:1] == obs_uid[3:] and m_new.day - 3 == day:
                     best_cluster = cluster_id
-                    best_message = message
+                    best_message = m_enc
                     best_score = 0
                 else:
                     best_cluster = cluster_id
-                    best_message = message
+                    best_message = m_enc
                     best_score = -1
             if best_score == 3:
                 break
-        # print(f"best_cluster: {best_cluster}, m_i: {m_i}, best_score: {best_score}")
+        # print(f"best_cluster: {best_cluster}, m_new: {m_new}, best_score: {best_score}")
         # print(self.clusters)
         # import pdb;pdb.set_trace()
 
@@ -128,18 +135,6 @@ class Clusters:
         self.all_messages.append(new_m_enc)
         self.add_to_clusters_by_day(new_cluster_id, updated_message.day, new_m_enc)
 
-    def get_available_cluster(self):
-        """ This function returns the minimum empty cluster_id """
-        found = False
-        for i in range(max(self.clusters.keys())):
-            if len(self.clusters[i]) == 0:
-                found = True
-                new_cluster_id = i
-                break
-        if not found:
-            new_cluster_id = max(self.clusters.keys()) + 1
-        return new_cluster_id
-
     def score_clusters(self, update_messages, possible_clusters):
         scores = {}
         for cluster in possible_clusters:
@@ -148,11 +143,12 @@ class Clusters:
         best_cluster = max(scores.items(), key=operator.itemgetter(1))[0]
         return best_cluster
 
-    def update_records(self, update_messages):
+    def update_records(self, update_messages, human):
         if not update_messages:
             return self
         grouped_update_messages = self.group_by_received_at(update_messages)
         for received_at, update_messages in grouped_update_messages.items():
+
             # num days x num clusters
             cluster_cards = np.zeros((max(self.clusters_by_day.keys())+1,  max(self.clusters.keys())+1))
             update_cards = np.zeros((max(self.clusters_by_day.keys())+1, 1))
@@ -181,7 +177,7 @@ class Clusters:
 
                     # if (and while) the cardinality is not what it should be, as determined by the update_messages
                     while cur_cardinality - target_cardinality != 0:
-                        print(f"day: {day}, cur_cardinality: {cur_cardinality}, target_cardinality: {target_cardinality}")
+                        # print(f"day: {day}, cur_cardinality: {cur_cardinality}, target_cardinality: {target_cardinality}")
                         # if we need to remove messages from this cluster on this day,
                         if cur_cardinality > target_cardinality:
                             best_score = -1
@@ -205,12 +201,17 @@ class Clusters:
                             # if there are no other clusters on that day make a new cluster
                             if not best_message:
                                 best_message = message
-                                new_cluster_id = self.get_available_cluster()
-                            # for the message which best fits another cluster, move it there
+                                message = decode_message(message)
+                                result = 0
+                                for b in message.uid.tobytes():
+                                    result = result + int(b)
+                                new_cluster_id = int(result / 16)
                             best_message = decode_message(best_message)
+
+                            # for the message which best fits another cluster, move it there
                             self.update_record(best_cluster, new_cluster_id, best_message, best_message)
                             cur_cardinality -= 1
-                            print(f"removing from cluster {best_cluster} to cluster {new_cluster_id} on day {day}")
+                            # print(f"removing from cluster {best_cluster} to cluster {new_cluster_id} on day {day}")
 
                         #otherwise we need to add messages to this cluster/day
                         else:
@@ -230,13 +231,11 @@ class Clusters:
 
                             best_message = decode_message(best_message)
                             updated_message = Message(best_message.uid, update_message.new_risk, best_message.day, best_message.unobs_id)
-                            print(f"adding from cluster {old_cluster_id} to cluster {best_cluster} on day {day}")
+                            # print(f"adding from cluster {old_cluster_id} to cluster {best_cluster} on day {day}")
                             self.update_record(old_cluster_id, best_cluster, best_message, updated_message)
                             cur_cardinality += 1
             else:
                 best_cluster = self.score_clusters(update_messages, possible_clusters)
-            assert (len(self.clusters[best_cluster]) == len(update_messages))
-
             for update_message in update_messages:
                 best_score = -1
                 best_message = self.clusters_by_day[update_message.day][best_cluster][0]
@@ -248,7 +247,6 @@ class Clusters:
                 updated_message = Message(best_message.uid, update_message.new_risk, best_message.day, best_message.unobs_id)
                 self.update_record(best_cluster, best_cluster, best_message, updated_message)
         assert([decode_message(message).risk == 15 for message in self.clusters[best_cluster]])
-        print(len(self.all_messages))
         return self
 
     def purge(self, current_day):

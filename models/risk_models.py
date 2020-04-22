@@ -78,10 +78,8 @@ class RiskModelYoshua(RiskModelBase):
 
 class RiskModelEilif(RiskModelBase):
     @classmethod
-    def update_risk_encounter(cls, clusters, message):
+    def update_risk_encounter(cls, message):
         """ This function updates an individual's risk based on the receipt of a new message"""
-        clusters.add_message(message)
-
         # Get the binarized contact risk
         m_risk = binary_to_float("".join([str(x) for x in np.array(message.risk.tolist()).astype(int)]), 0, 4)
         msg_enc = encode_message(message)

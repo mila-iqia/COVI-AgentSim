@@ -63,7 +63,7 @@ def proc_human(params):
         RiskModel.update_risk_encounter(human, m_i)
         # print(f"update_risk_messages: {time.time() - starttime}")
 
-        human.clusters.add_message(m_i)
+        human.clusters.add_message(m_i, rng)
 
     human.messages = []
     if random_clusters and len(human.update_messages) != 0:
@@ -80,7 +80,7 @@ def proc_human(params):
                         assigned += 1
                         break
     elif not random_clusters:
-        human.clusters.update_records(human.update_messages)
+        human.clusters.update_records(human.update_messages, human)
 
     human.update_messages = []
     human.clusters.purge(current_day)
