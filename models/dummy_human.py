@@ -1,5 +1,4 @@
 import datetime
-from bitarray import bitarray
 from models.utils import Message, UpdateMessage
 import numpy as np
 from models.clusters import Clusters
@@ -35,10 +34,10 @@ class DummyHuman:
         self.locations_visited = {}
         self.obs_preexisting_conditions = set()
         self.obs_age = 0
-        self.obs_sex = 'other'
+        self.obs_sex = ''
         self.preexisting_conditions = set()
         self.age = 0
-        self.sex = 'other'
+        self.sex = ''
 
 
     def cur_message(self, day, RiskModel):

@@ -4,8 +4,6 @@ import numpy as np
 from scipy.stats import norm, truncnorm, gamma
 import datetime
 import math
-import json
-from bitarray import bitarray
 from config import *
 from functools import lru_cache
 

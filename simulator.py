@@ -1,17 +1,8 @@
 # -*- coding: utf-8 -*-
-import simpy
 
-import itertools
-import numpy as np
-from collections import defaultdict, namedtuple
-import datetime
-from bitarray import bitarray
-import operator
-import math
-
-from utils import _normalize_scores, _get_random_age, _get_random_sex, _get_all_symptoms, \
-    _get_preexisting_conditions, _draw_random_discreet_gaussian, _json_serialize, _sample_viral_load_piecewise, \
-    _get_random_area, _reported_symptoms, _get_mask_wearing
+from utils import _normalize_scores, _get_random_sex, _get_all_symptoms, \
+    _get_preexisting_conditions, _draw_random_discreet_gaussian, _sample_viral_load_piecewise, \
+    _reported_symptoms, _get_mask_wearing
 from config import *  # PARAMETERS
 
 from base import *
@@ -99,7 +90,7 @@ class Human(object):
         # &symptoms, &viral-load
         # probability of being asymptomatic is basically 50%, but a bit less if you're older
         # and a bit more if you're younger
-        self.is_asymptomatic = self.rng.rand() > (BASELINE_P_ASYMPTOMATIC - (self.age - 50) * 0.5) / 100
+        self.is_asymptomatic = self.rng.rand() < (BASELINE_P_ASYMPTOMATIC - (self.age - 50) * 0.5) / 100
         self.asymptomatic_infection_ratio = ASYMPTOMATIC_INFECTION_RATIO if self.is_asymptomatic else 0.0 # draw a beta with the distribution in documents
 
         self.recovery_days = _draw_random_discreet_gaussian(AVG_RECOVERY_DAYS, SCALE_RECOVERY_DAYS, self.rng) # make it IQR &recovery

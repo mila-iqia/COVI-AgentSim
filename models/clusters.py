@@ -3,12 +3,7 @@ import numpy as np
 import operator
 from collections import defaultdict
 from scipy.stats import wasserstein_distance as dist
-from models.utils import Message, decode_message, encode_message, decode_update_message, encode_update_message
-
-
-# TODO: include risk level in clustering, currently only uses quantized uid
-# TODO: check for mutually exclusive messages in order to break up a group and re-run nearest neighbors
-# TODO: storing m_i_enc in dict M is a bug, we're overwriting some messages -- we need to make a unique encoding that uses the timestamp
+from models.utils import Message, decode_message, encode_message, decode_update_message, encode_update_message, hash_to_cluster, compare_uids
 
 class Clusters:
     """ This class manages the storage and clustering of messages and message updates.
@@ -27,62 +22,57 @@ class Clusters:
         else:
             self.clusters_by_day[day][cluster] = [m_i_enc]
 
-    def add_message(self, m_i_enc, rng):
+    def add_messages(self, messages, current_day, rng=None):
         """ This function clusters new messages by scoring them against old messages in a sort of naive nearest neighbors approach"""
-        message = decode_message(m_i_enc)
-        # otherwise score against previous messages
-        best_cluster, best_message, best_score = self.score_matches(message, rng)
-        if best_score >= 0:
-            cluster_id = best_cluster
-        elif not self:
-            cluster_id = 0
-        else:
-            result = 0
-            for b in message.uid.tobytes():
-                result = result + int(b)
-            cluster_id = int(result / 16)
+        for message in messages:
+            m_dec = decode_message(message)
+            # otherwise score against previous messages
+            best_cluster, best_message, best_score = self.score_matches(m_dec, current_day, rng=rng)
+            if best_score >= 0:
+                cluster_id = best_cluster
+            else:
+                cluster_id = hash_to_cluster(m_dec)
 
-        self.all_messages.append(m_i_enc)
-        self.clusters[cluster_id].append(m_i_enc)
-        self.add_to_clusters_by_day(cluster_id, message.day, m_i_enc)
+            self.all_messages.append(message)
+            self.clusters[cluster_id].append(message)
+            self.add_to_clusters_by_day(cluster_id, m_dec.day, message)
 
-    def score_matches(self, m_new, rng):
+    def score_matches(self, m_new, current_day, rng=None):
         """ This function checks a new risk message against all previous messages, and assigns to the closest one in a brute force manner"""
-        result = 0
-        for b in m_new.uid.tobytes():
-            result = result + int(b)
-        best_cluster = int(result/16)
+        best_cluster = hash_to_cluster(m_new)
         best_message = None
         best_score = -1
-        for cluster_id, messages in self.clusters.items():
-            for m_enc in messages:
-                obs_uid, risk, day, unobs_uid = decode_message(m_enc)
-                if m_new.uid == obs_uid and m_new.day == day:
-                    best_cluster = cluster_id
-                    best_message = m_enc
-                    best_score = 3
+        for i in range(current_day-3, current_day+1):
+            for cluster_id, messages in self.clusters_by_day[i].items():
+                for m_enc in messages:
+                    obs_uid, risk, day, unobs_uid = decode_message(m_enc)
+                    if m_new.uid == obs_uid and m_new.day == day:
+                        best_cluster = cluster_id
+                        best_message = m_enc
+                        best_score = 3
+                        break
+                    elif compare_uids(m_new.uid, obs_uid, 1) and m_new.day - 1 == day and m_new.risk == risk:
+                        best_cluster = cluster_id
+                        best_message = m_enc
+                        best_score = 2
+                    elif compare_uids(m_new.uid, obs_uid, 2) and m_new.day - 2 == day and best_score < 1:
+                        best_cluster = cluster_id
+                        best_message = m_enc
+                        best_score = 1
+                    elif compare_uids(m_new.uid, obs_uid, 3) and m_new.day - 3 == day and best_score < 0:
+                        best_cluster = cluster_id
+                        best_message = m_enc
+                        best_score = 0
+                    else:
+                        best_cluster = cluster_id
+                        best_message = m_enc
+                        best_score = -1
+                if best_score == 3:
                     break
-                elif m_new.uid[:3] == obs_uid[1:] and m_new.day - 1 == day:
-                    best_cluster = cluster_id
-                    best_message = m_enc
-                    best_score = 2
-                elif m_new.uid[:2] == obs_uid[2:] and m_new.day - 2 == day:
-                    best_cluster = cluster_id
-                    best_message = m_enc
-                    best_score = 1
-                elif m_new.uid[:1] == obs_uid[3:] and m_new.day - 3 == day:
-                    best_cluster = cluster_id
-                    best_message = m_enc
-                    best_score = 0
-                else:
-                    best_cluster = cluster_id
-                    best_message = m_enc
-                    best_score = -1
             if best_score == 3:
                 break
         # print(f"best_cluster: {best_cluster}, m_new: {m_new}, best_score: {best_score}")
         # print(self.clusters)
-        # import pdb;pdb.set_trace()
 
         if best_message:
             best_message = decode_message(best_message)
@@ -100,11 +90,11 @@ class Clusters:
         obs_uid, risk, day, unobs_uid = decode_message(risk_message)
         if update_message.uid == obs_uid and update_message.day == day and update_message.risk == risk:
             score = 3
-        elif update_message.uid[:3] == obs_uid[1:] and update_message.day - 1 == day and update_message.risk == risk:
+        elif compare_uids(update_message.uid, obs_uid, 1) and update_message.day - 1 == day and update_message.risk == risk:
             score = 2
-        elif update_message.uid[:2] == obs_uid[2:] and update_message.day - 2 == day and update_message.risk == risk:
+        elif compare_uids(update_message.uid, obs_uid, 2) and update_message.day - 2 == day and update_message.risk == risk:
             score = 1
-        elif update_message.uid[:1] == obs_uid[3:] and update_message.day - 3 == day and update_message.risk == risk:
+        elif compare_uids(update_message.uid, obs_uid, 3) and update_message.day - 3 == day and update_message.risk == risk:
             score = 0
         else:
             score = -1
@@ -112,6 +102,8 @@ class Clusters:
 
     def group_by_received_at(self, update_messages):
         """ This function takes in a set of update messages received during some time interval and clusters them based on how near in time they were received"""
+        # TODO: We need more information about the actual implementation of the message protocol to use this.\
+        # TODO: it is possible that received_at is actually the same for all update messages under the protocol, in which case we can delete this function.
         TIME_THRESHOLD = datetime.timedelta(minutes=1)
         grouped_messages = defaultdict(list)
         for m1 in update_messages:
@@ -162,9 +154,9 @@ class Clusters:
                 update_cards[update_message.day] += 1
 
             # find the nearest cardinality cluster
-            possible_clusters = np.where((cluster_cards == update_cards).all(axis=0))[0]
-            if not any(possible_clusters):
-                # calculate the wasserstein distance between every cluster cardinality
+            perfect_signatures = np.where((cluster_cards == update_cards).all(axis=0))[0]
+            if not any(perfect_signatures):
+                # calculate the wasserstein distance between every signature
                 scores = []
                 for cluster_idx in range(cluster_cards.shape[1]):
                     scores.append(dist(cluster_cards[:, cluster_idx], update_cards.reshape(-1)))
@@ -202,10 +194,7 @@ class Clusters:
                             if not best_message:
                                 best_message = message
                                 message = decode_message(message)
-                                result = 0
-                                for b in message.uid.tobytes():
-                                    result = result + int(b)
-                                new_cluster_id = int(result / 16)
+                                new_cluster_id = hash_to_cluster(message)
                             best_message = decode_message(best_message)
 
                             # for the message which best fits another cluster, move it there
@@ -235,7 +224,7 @@ class Clusters:
                             self.update_record(old_cluster_id, best_cluster, best_message, updated_message)
                             cur_cardinality += 1
             else:
-                best_cluster = self.score_clusters(update_messages, possible_clusters)
+                best_cluster = self.score_clusters(update_messages, perfect_signatures)
             for update_message in update_messages:
                 best_score = -1
                 best_message = self.clusters_by_day[update_message.day][best_cluster][0]

@@ -6,14 +6,20 @@ import numpy as np
 import matplotlib.pyplot as plt
 from torch.utils.data import Dataset, DataLoader
 import zipfile
+import argparse
+
+def parse_args():
+    parser = argparse.ArgumentParser(description='Run Risk Models and Plot results')
+    parser.add_argument('--data_path', type=str, default="output/")
+    args = parser.parse_args()
+    return args
 
 class PandemicDataset(Dataset):
-    def __init__(self, filepath="sim_people-1000_init-0.1_seed_20200420-145254_data.zip"):
-        self.filepath = filepath
+    def __init__(self, args=None):
+        self.filepath = args.data_path
         data = []
-        with zipfile.ZipFile(filepath, 'r') as zf:
+        with zipfile.ZipFile(args.data_path, 'r') as zf:
             for pkl in zf.namelist():
-                import pdb; pdb.set_trace()
                 data.append(pickle.load(zf.open(pkl, 'r')))
         self.data = data
         self.num_days = len(self.data)
@@ -27,8 +33,8 @@ class PandemicDataset(Dataset):
             idx = idx.tolist()
         example = self.data[int(idx/self.num_people)][idx%self.num_people]
         return example['observed'], example['unobserved']
-
-dataset = PandemicDataset()
+args = parse_args()
+dataset = PandemicDataset(args)
 import pdb; pdb.set_trace()
 x, y = dataset.__getitem__(101)
 print(x)
