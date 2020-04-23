@@ -27,12 +27,12 @@ class Clusters:
         else:
             self.clusters_by_day[day][cluster] = [m_i_enc]
 
-    def add_messages(self, messages, current_day, rng):
+    def add_messages(self, messages, current_day, rng=None):
         """ This function clusters new messages by scoring them against old messages in a sort of naive nearest neighbors approach"""
         for message in messages:
             m_dec = decode_message(message)
             # otherwise score against previous messages
-            best_cluster, best_message, best_score = self.score_matches(m_dec, current_day, rng)
+            best_cluster, best_message, best_score = self.score_matches(m_dec, current_day, rng=rng)
             if best_score >= 0:
                 cluster_id = best_cluster
             elif not self:
@@ -47,7 +47,7 @@ class Clusters:
             self.clusters[cluster_id].append(message)
             self.add_to_clusters_by_day(cluster_id, m_dec.day, message)
 
-    def score_matches(self, m_new, current_day, rng):
+    def score_matches(self, m_new, current_day, rng=None):
         """ This function checks a new risk message against all previous messages, and assigns to the closest one in a brute force manner"""
         result = 0
         for b in m_new.uid.tobytes():
@@ -55,7 +55,7 @@ class Clusters:
         best_cluster = int(result/16)
         best_message = None
         best_score = -1
-        for i in range(current_day-4, current_day):
+        for i in range(current_day-3, current_day+1):
             for cluster_id, messages in self.clusters_by_day[i].items():
                 for m_enc in messages:
                     obs_uid, risk, day, unobs_uid = decode_message(m_enc)

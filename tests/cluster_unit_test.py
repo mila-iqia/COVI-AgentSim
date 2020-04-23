@@ -14,11 +14,12 @@ class ScoreMessagesUnitTest(unittest.TestCase):
         Tests messages with mutually exclusive uids on the same day are scored lowly
         """
         # uid, risk, day, time_received, true sender id
-        message1 = Message(bitarray("0000"), 0, 0, "human:0")
-        message2 = Message(bitarray("0001"), 0, 0, "human:1")
+        current_day = 0
+        message1 = Message(bitarray("0000"), 0, current_day, "human:0")
+        message2 = Message(bitarray("0001"), 0, current_day, "human:1")
         clusters = Clusters()
-        clusters.add_message(message1)
-        best_cluster, best_message, best_score = clusters.score_matches(message2, 0)
+        clusters.add_messages([encode_message(message1)], current_day)
+        best_cluster, best_message, best_score = clusters.score_matches(message2, current_day)
         self.assertEqual(best_score, -1)
         self.assertEqual(message1, best_message)
 
@@ -27,26 +28,28 @@ class ScoreMessagesUnitTest(unittest.TestCase):
         Tests messages with the same uids on the same day are scored highly
         """
         # uid, risk, day, true sender id
-        message1 = Message(bitarray("0000"), 0, 0, "human:1")
-        m_enc = encode_message(message1)
-        message2 = Message(bitarray("0000"), 0, 0, "human:1")
+        current_day = 0
+        message1 = Message(bitarray("0000"), 0, current_day, "human:1")
+        message2 = Message(bitarray("0000"), 0, current_day, "human:1")
         clusters = Clusters()
-        clusters.add_message(message1)
-        best_cluster, best_message, best_score = clusters.score_matches(message2, 0)
+        clusters.add_messages([encode_message(message1)], current_day)
+        best_cluster, best_message, best_score = clusters.score_matches(message2, current_day)
         self.assertEqual(best_cluster, 0)
         self.assertEqual(best_message, message1)
         self.assertEqual(best_score, 3)
 
     def test_score_good_match_one_day_run(self):
         """
-        Tests messages with similar uids on the different day are scored lowly
+        Tests messages with similar uids on the different day are scored mediumly
         """
         # uid, risk, day, true sender id
-        message1 = Message(bitarray("0000"), 0, 0, "human:1")
-        message2 = Message(bitarray("0001"), 0, 1, "human:1")
+        current_day = 0
         clusters = Clusters()
-        clusters.add_message(message1)
-        best_cluster, best_message, best_score = clusters.score_matches(message2, 0)
+        message1 = Message(bitarray("0000"), 0, 0, "human:1")
+        clusters.add_messages([encode_message(message1)], current_day)
+        message2 = Message(bitarray("0001"), 0, 1, "human:1")
+
+        best_cluster, best_message, best_score = clusters.score_matches(message2, 1)
         self.assertEqual(best_cluster, 0)
         self.assertEqual(best_message, message1)
         self.assertEqual(best_score, 2)
@@ -59,8 +62,8 @@ class ScoreMessagesUnitTest(unittest.TestCase):
         message1 = Message(bitarray("0000"), 0, 0, "human:1")
         message2 = Message(bitarray("0100"), 0, 1, "human:1")
         clusters = Clusters()
-        clusters.add_message(message1)
-        best_cluster, best_message, best_score = clusters.score_matches(message2, 0)
+        clusters.add_messages([encode_message(message1)], 0)
+        best_cluster, best_message, best_score = clusters.score_matches(message2, 1)
         self.assertEqual(best_cluster, 0)
         self.assertEqual(best_message, message1)
         self.assertEqual(best_score, -1)
@@ -75,13 +78,13 @@ class RiskModelIntegrationTest(unittest.TestCase):
         # make new old message clusters
         message = Message(bitarray("0000"), 0, 0, "human:1")
         clusters = Clusters()
-        clusters.add_message(message)
+        clusters.add_messages([encode_message(message)], 0)
 
         # make new message
         new_message = Message(bitarray("0001"), 0, 0, "human:1")
         # add message to clusters
 
-        clusters.add_message(new_message)
+        clusters.add_messages([encode_message(new_message)], 0)
         num_clusters = len(clusters)
         self.assertEqual(num_clusters, 2)
 
@@ -92,74 +95,38 @@ class RiskModelIntegrationTest(unittest.TestCase):
         # make new old message clusters
         message = Message(bitarray("0000"), 0, 0, "human:1")
         clusters = Clusters()
-        clusters.add_message(message)
+        clusters.add_messages([encode_message(message)], 0)
 
         # make new message
         new_message = Message(bitarray("0000"), 0, 0, "human:1")
         # add message to clusters
-        clusters.add_message(new_message)
+        clusters.add_messages([encode_message(new_message)], 0)
         self.assertEqual(len(clusters), 1)
 
-    # def test_cluster_add_two_identical_messages_one_update_run(self):
+
+    # TODO: fix this once we have a better understanding of the intended behaviour for update_records
+    # def test_cluster_two_identical_messages_two_updates_run(self):
     #     """
     #     If you get two messages on the same day with the same id and have clustered them together,
-    #     but get just one update message the same day with that user id, you now have evidence that
-    #     those two messages should not be clustered together. Therefore, we should break up that cluster.
+    #     then get two update message for that day with that user id, you now have evidence that
+    #     those two messages should be clustered together.
     #     """
     #     received_at = datetime.datetime(2020, 2, 29, 0, 0, 0)
-    #
-    #     message1 = Message(bitarray("0000"), 0, 0, 1)
-    #     clusters = Clusters()
-    #     clusters.add_message(message1)
-    #
-    #     message2 = Message(bitarray("0000"), 0, 0, 1)
-    #     clusters.add_message(message2)
-    #     self.assertEqual(len(clusters), 1)
-    #
-    #     update_messages = [UpdateMessage(bitarray("0000"), 0, 15, 0, received_at, 1)]
-    #     clusters = clusters.update_records(update_messages)
-    #     self.assertEqual(len(clusters), 2)
-
-
-    def test_cluster_two_identical_messages_two_updates_run(self):
-        """
-        If you get two messages on the same day with the same id and have clustered them together,
-        then get two update message for that day with that user id, you now have evidence that
-        those two messages should be clustered together.
-        """
-        received_at = datetime.datetime(2020, 2, 29, 0, 0, 0)
-
-        message1 = Message(bitarray("0000"), 0, 0, "human:0")
-        message2 = Message(bitarray("0000"), 0, 0, "human:0")
-        clusters = Clusters()
-
-        clusters.add_message(message1)
-        clusters.add_message(message2)
-        self.assertEqual(len(clusters), 1)
-
-        update_messages = [UpdateMessage(bitarray("0000"), 15, 0, 15, received_at, "human:1"), UpdateMessage(bitarray("0000"), 15, 0, 15, received_at, "human:1")]
-        clusters.update_records(update_messages)
-        self.assertEqual(len(clusters), 1)
-
-    # def test_cluster_two_messages_two_updates_diff_days_run(self):
-    #     """
-    #     """
-    #     received_at = datetime.datetime(2020, 2, 29, 0, 0, 0)
-    #
-    #     message1 = Message(bitarray("0000"), 0, 0, 0)
-    #     message2 = Message(bitarray("0001"), 0, 1, 0)
+    #     from models.dummy_human import DummyHuman
+    #     from models.utils import encode_update_message
+    #     human = DummyHuman()
+    #     message1 = Message(bitarray("0000"), 0, 0, "human:0")
+    #     message2 = Message(bitarray("0000"), 0, 0, "human:0")
     #     clusters = Clusters()
     #
-    #     clusters.add_message(message1)
-    #     clusters.add_message(message2)
-    #
+    #     clusters.add_messages([encode_message(message1)], 0)
+    #     clusters.add_messages([encode_message(message2)], 0)
     #     self.assertEqual(len(clusters), 1)
     #
-    #     update_messages = [UpdateMessage(bitarray("0001"), 15, 0, 0, received_at, 0), UpdateMessage(bitarray("0001"), 15, 1, 1, received_at, 0)]
+    #     update_messages = [encode_update_message(UpdateMessage(bitarray("0000"), 15, 0, 15, received_at, "human:1")),
+    #                        encode_update_message(UpdateMessage(bitarray("0000"), 15, 0, 15, received_at, "human:1"))]
     #     import pdb; pdb.set_trace()
-    #
-    #     clusters.update_records(update_messages)
-    #
+    #     clusters.update_records(update_messages, human)
     #     self.assertEqual(len(clusters), 1)
 
     def test_purge(self):
@@ -167,8 +134,8 @@ class RiskModelIntegrationTest(unittest.TestCase):
         message1 = Message(bitarray("0000"), 0, 0, "human:0")
         message2 = Message(bitarray("1111"), 0, 1, "human:0")
         clusters = Clusters()
-        clusters.add_message(message1)
-        clusters.add_message(message2)
+        clusters.add_messages([encode_message(message1)], 0)
+        clusters.add_messages([encode_message(message2)], 0)
 
         clusters.purge(13)
         self.assertEqual(len(clusters), 2)
@@ -176,28 +143,3 @@ class RiskModelIntegrationTest(unittest.TestCase):
         self.assertEqual(len(clusters), 1)
         clusters.purge(15)
         self.assertEqual(len(clusters), 0)
-
-    # def test_mutex_cluster_run(self):
-    #     """
-    #     If you get two messages on the same day with the same id and have clustered them together,
-    #     but get just one update message the same day with that user id, you now have evidence that
-    #     those two messages should not be clustered together. Therefore, we should break up that cluster.
-    #     """
-    #     # make new old message clusters
-    #     old_message1 = Message(bitarray("0000"), 0, 0, 0)
-    #     old_message2 = Message(bitarray("0000"), 0, 0, 1)
-    #
-    #     clusters = {encode_message(old_message1): 0, encode_message(old_message2): 0}
-    #     clusters = defaultdict(list)
-    #     clusters[0].append(encode_message(old_message1))
-    #     clusters[0].append(encode_message(old_message2))
-    #
-    #     # make new message
-    #     # uid, new_risk, old_risk, day, received_at, unobs_id
-    #     update_message = UpdateMessage(bitarray("0000"), 15, 0, recieved_at, 1)
-    #
-    #     # add message to clusters
-    #     clusters = RiskModelTristan.add_message_to_cluster(clusters, new_message)
-    #     num_clusters = len(set(clusters.values()))
-    #     self.assertEqual(num_clusters, 1)
-    #
