@@ -5,11 +5,6 @@ from collections import defaultdict
 from scipy.stats import wasserstein_distance as dist
 from models.utils import Message, decode_message, encode_message, decode_update_message, encode_update_message, hash_to_cluster, compare_uids
 
-
-# TODO: include risk level in clustering, currently only uses quantized uid
-# TODO: check for mutually exclusive messages in order to break up a group and re-run nearest neighbors
-# TODO: storing m_i_enc in dict M is a bug, we're overwriting some messages -- we need to make a unique encoding that uses the timestamp
-
 class Clusters:
     """ This class manages the storage and clustering of messages and message updates.
      You can think of each message as database record, with the message updates indicating
