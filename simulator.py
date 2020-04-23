@@ -99,7 +99,7 @@ class Human(object):
         # &symptoms, &viral-load
         # probability of being asymptomatic is basically 50%, but a bit less if you're older
         # and a bit more if you're younger
-        self.is_asymptomatic = self.rng.rand() > (BASELINE_P_ASYMPTOMATIC - (self.age - 50) * 0.5) / 100
+        self.is_asymptomatic = self.rng.rand() < (BASELINE_P_ASYMPTOMATIC - (self.age - 50) * 0.5) / 100
         self.asymptomatic_infection_ratio = ASYMPTOMATIC_INFECTION_RATIO if self.is_asymptomatic else 0.0 # draw a beta with the distribution in documents
 
         self.recovery_days = _draw_random_discreet_gaussian(AVG_RECOVERY_DAYS, SCALE_RECOVERY_DAYS, self.rng) # make it IQR &recovery
