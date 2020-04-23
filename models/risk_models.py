@@ -49,50 +49,6 @@ class RiskModelBase:
             return 0.05
         return 0.0
 
-class RiskModelLenka(RiskModelBase):
-    @classmethod
-    def update_risk_encounter(cls, human, message):
-        # Get the binarized contact risk
-        m_risk = binary_to_float("".join([str(x) for x in np.array(message.risk.tolist()).astype(int)]), 0, 4)
-        human.update = m_risk * RISK_TRANSMISSION_PROBA
-
-
-class RiskModelYoshua(RiskModelBase):
-    @classmethod
-    def update_risk_encounter(cls, human, message):
-        """ This function updates an individual's risk based on the receipt of a new message"""
-
-        # Get the binarized contact risk
-        m_risk = binary_to_float("".join([str(x) for x in np.array(message.risk.tolist()).astype(int)]), 0, 4)
-
-        update = 0
-        if human.risk < m_risk:
-            update = (m_risk - m_risk * human.risk) * RISK_TRANSMISSION_PROBA
-        print(f"human.risk: {human.risk}, m_risk: {m_risk}, update: {update}")
-
-        human.risk += update
-
-
-
-class RiskModelEilif(RiskModelBase):
-    @classmethod
-    def update_risk_encounter(cls, message):
-        """ This function updates an individual's risk based on the receipt of a new message"""
-        # Get the binarized contact risk
-        m_risk = binary_to_float("".join([str(x) for x in np.array(message.risk.tolist()).astype(int)]), 0, 4)
-        msg_enc = encode_message(message)
-        if msg_enc not in human.M:
-            # update is delta_risk
-            update = m_risk * RISK_TRANSMISSION_PROBA
-        else:
-            previous_risk = human.M[msg_enc]['previous_risk']
-            carry_over_transmission_proba = human.M[msg_enc]['carry_over_transmission_proba']
-            update = ((m_risk - previous_risk) * RISK_TRANSMISSION_PROBA + previous_risk * carry_over_transmission_proba)
-
-        # Update contact history
-        human.M[msg_enc]['previous_risk'] = m_risk
-        human.M[msg_enc]['carry_over_transmission_proba'] = RISK_TRANSMISSION_PROBA * (1 - update)
-
 
 class RiskModelTristan(RiskModelBase):
     risk_map = np.load(f"{os.path.dirname(os.path.realpath(__file__))}/log_risk_mapping.npy")
@@ -122,25 +78,26 @@ class RiskModelTristan(RiskModelBase):
         return np.log(0.01)
 
     @classmethod
-    def update_risk_encounter(cls, human, message):
+    def update_risk_encounters(cls, human, messages):
         """ This function updates an individual's risk based on the receipt of a new message"""
-        # if you already have a positive test result, ya risky.
-        if human.risk == np.log(1.):
-            human.risk = np.log(1.)
-            return
+        for message in messages:
+            # if you already have a positive test result, ya risky.
+            if human.risk == np.log(1.):
+                human.risk = np.log(1.)
+                return
 
-        # if the encounter message indicates they had a positive test result, increment counter
-        message = decode_message(message)
-        if message.risk == 15:
-            human.tested_positive_contact_count += 1
+            # if the encounter message indicates they had a positive test result, increment counter
+            message = decode_message(message)
+            if message.risk == 15:
+                human.tested_positive_contact_count += 1
 
-        init_population_level_risk = 0.01
-        expo = (1 - RISK_TRANSMISSION_PROBA) ** human.tested_positive_contact_count
-        tmp = (1. - init_population_level_risk) * (1. - expo)
-        mask = tmp < init_population_level_risk
+            init_population_level_risk = 0.01
+            expo = (1 - RISK_TRANSMISSION_PROBA) ** human.tested_positive_contact_count
+            tmp = (1. - init_population_level_risk) * (1. - expo)
+            mask = tmp < init_population_level_risk
 
-        if mask:
-            human.risk = np.log(init_population_level_risk) + np.log1p(tmp / init_population_level_risk)
-        else:
-            human.risk = np.log(1. - init_population_level_risk) + np.log1p(-expo) + np.log1p(init_population_level_risk / tmp)
+            if mask:
+                human.risk = np.log(init_population_level_risk) + np.log1p(tmp / init_population_level_risk)
+            else:
+                human.risk = np.log(1. - init_population_level_risk) + np.log1p(-expo) + np.log1p(init_population_level_risk / tmp)
 

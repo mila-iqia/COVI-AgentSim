@@ -3,19 +3,15 @@ import pickle
 import json
 import zipfile
 import argparse
-import subprocess
 import numpy as np
-import operator
 import datetime
 import pathlib
 import time
-from tqdm import tqdm
 from collections import defaultdict
 from base import Event
 from models.dummy_human import DummyHuman
-from models.risk_models import RiskModelYoshua, RiskModelLenka, RiskModelEilif, RiskModelTristan
-from plots.plot_risk import dist_plot, hist_plot
-from models.helper import messages_to_np, conditions_to_np, symptoms_to_np, candidate_exposures, rolling_infectiousness, \
+from models.risk_models import RiskModelTristan
+from models.helper import conditions_to_np, symptoms_to_np, candidate_exposures, rolling_infectiousness, \
     encode_sex
 from models.utils import encode_message, update_uid, create_new_uid, encode_update_message, decode_message, Message, decode_update_message
 from joblib import Parallel, delayed
@@ -50,34 +46,17 @@ def proc_human(params):
     todays_date = start + datetime.timedelta(days=current_day)
     # check if you have new reported symptoms
     human.risk = RiskModel.update_risk_daily(human, todays_date)
-    # if len(human.clusters.clusters.keys()) > 100:
-    #     import pdb; pdb.set_trace()
+
     # read your old messages
+    # if current_day > 10:
+    #     import pdb; pdb.set_trace()
 
-    for m_i in human.messages:
-        # update risk based on that day's messages
-        # starttime = time.time()
-        RiskModel.update_risk_encounter(human, m_i)
-        # print(f"update_risk_messages: {time.time() - starttime}")
-
-        human.clusters.add_message(m_i, rng)
+    # update risk based on that day's messages
+    RiskModel.update_risk_encounters(human, human.messages)
+    human.clusters.add_messages(human.messages, current_day, rng)
 
     human.messages = []
-    if random_clusters and len(human.update_messages) != 0:
-        assigned = 0
-        for update_message in human.update_messages:
-            update_message = decode_update_message(update_message)
-
-            for cluster, risk_messages in human.clusters.clusters.items():
-                for risk_message in risk_messages:
-                    risk_message = decode_message(risk_message)
-                    if update_message.new_risk != risk_message.risk:
-                        updated_message = Message(risk_message.uid, update_message.new_risk, risk_message.day, risk_message.unobs_id)
-                        human.clusters.update_record(cluster, cluster, risk_message, updated_message)
-                        assigned += 1
-                        break
-    elif not random_clusters:
-        human.clusters.update_records(human.update_messages, human)
+    # human.clusters.update_records(human.update_messages, human)
 
     human.update_messages = []
     human.clusters.purge(current_day)
