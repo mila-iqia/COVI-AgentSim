@@ -445,7 +445,7 @@ class Human(object):
                 if self.get_tested(city):
                     Event.log_test(self, self.env.timestamp)
                     self.has_logged_test = True
-                    city.tracker.track_tested_results(self, test_result, test_type)
+                    city.tracker.track_tested_results(self, self.test_result, self.test_type)
 
             # recover
             if self.is_infectious and self.env.timestamp - self.infection_timestamp >= datetime.timedelta(days=self.recovery_days):

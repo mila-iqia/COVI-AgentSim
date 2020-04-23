@@ -102,7 +102,10 @@ class Tracker(object):
             return tau_times_c_bar * d
         else:
             # x = [h.n_infectious_contacts for h in self.city.humans if h.n_infectious_contacts > 0]
-            n, total = zip(*self.recovered_stats)
+            if self.recovered_stats:
+                n, total = zip(*self.recovered_stats)
+            else:
+                n, total = [0], [0]
             if sum(n):
                 return 1.0 * sum(total)/sum(n)
             return 0
