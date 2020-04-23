@@ -1,3 +1,4 @@
+
 import simpy
 import math
 import copy
@@ -53,6 +54,9 @@ class City(object):
         self.n_people = n_people
         self.start_time = start_time
         self.init_percent_sick = init_percent_sick
+        self.last_date_to_check_tests = self.env.timestamp.date
+        self.test_count_today = defaultdict(int)
+        self.test_type_preference = list(zip(*sorted(TEST_TYPES.items(), key=lambda x:x[1]['preference'])))[0]
         print("Initializing locations ...")
         self.initialize_locations()
 
@@ -87,6 +91,19 @@ class City(object):
                         capacity= None if not specs['rnd_capacity'] else self.rng.randint(*specs['rnd_capacity']),
                         surface_prob = specs['surface_prob']
                         )
+    @property
+    def tests_available(self):
+        if self.last_date_to_check_tests != self.env.timestamp.date:
+            self.last_date_to_check_tests = self.env.timestamp.date
+            for k in self.test_count_today.keys():
+                self.test_count_today[k] = 0
+        return any(self.test_count_today[test_type] < TEST_TYPES[test_type]['capacity'] for test_type in self.test_type_preference)
+
+    def get_available_test(self):
+        for test_type in self.test_type_preference:
+            if self.test_count_today[test_type] < TEST_TYPES[test_type]['capacity']:
+                self.test_count_today[test_type] += 1
+                return test_type
 
     def initialize_locations(self):
         for location, specs in LOCATION_DISTRIBUTION.items():
@@ -422,9 +439,8 @@ class Event:
                 'payload':{'observed':obs_payload, 'unobserved':unobs_payload}
             })
 
-
     @staticmethod
-    def log_test(human, test_result, test_type, time):
+    def log_test(human, time):
         human.events.append(
             {
                 'human_id': human.name,
@@ -432,10 +448,13 @@ class Event:
                 'time': time,
                 'payload': {
                     'observed':{
-                        'result': test_result,
-                        'test_type':test_type
+                        'result': human.reported_test_result,
+                        'test_type':human.reported_test_type,
+                        'validated_test_result':human.test_result_validated
                     },
                     'unobserved':{
+                        'test_type':human.test_type,
+                        'result': human.test_result
                     }
 
                 }

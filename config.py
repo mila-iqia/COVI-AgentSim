@@ -170,37 +170,21 @@ P_NEVER_RECOVERS = [0, 0.002, 0.002, 0.002, 0.004, 0.02, 0.04, 0.08, 0.15] # &ne
 REINFECTION_POSSIBLE = False # [0, 1]
 # aerosol    copper      cardboard       steel       plastic
 MAX_DAYS_CONTAMINATION = [0.125, 1.0/3.0, 1, 2, 3] # &envrionmental contamination
-TEST_DAYS = 2
-P_TEST = 0.5
-P_FALSE_NEGATIVE = 0.1 #&false-negative # 0  1   2    3   4    5   6    7    8
 VIRAL_LOAD_MIN = 0.0001
 
-# SYMPTOMS
-# a = age, p=list of preexisting conditions
-P_SYMPTOMS= {
-    "level_1":{
-        "fever": lambda a,p: 0.85,
-        "cough": lambda a,p: 0.8,
-        "fatigue": lambda a,p: 0.7,
-        "runny_nose": lambda a,p: 0.4,
-        "loss_of_taste": lambda a,p: 0.4,
-        "gastro": lambda a,p: 0.1,
-        "unusual": lambda a,p: 0.2 * a/3,
-        "confused": lambda a,p: 0.1
-    },
-	#TODO CHECK THESE! PUT IN QUICKLY WITHOUT VERIFYING
-    "level_2":{
-        "sneezing": lambda a,p: 0.5,
-        "diarrhea": lambda a,p: 0.3,
-        "nausea_vomitting": lambda a,p: 0.2,
-        "headache": lambda a,p: 0.5,
-        "hard_time_waking_up": lambda a,p: 0.2,
-        "sore_throat": lambda a,p: 0.6,
-        "chills": lambda a,p: 0.3,
-        "severe_chest_pain": lambda a,p: 0.05,
-        "trouble_breathing": lambda a,p: 0.1,
+
+#TESTING
+# capacity is per day; time_to_result is per day
+TEST_TYPES = {
+    "lab": {
+        "capacity": 100,
+        "time_to_result":2,
+        "P_FALSE_NEGATIVE":0.1, #&false-negative,
+        "preference":1
     }
 }
+P_TEST = 0.5
+TEST_DAYS = 3
 
 # VIRAL LOAD PARAMS
 MIN_VIRAL_LOAD = 0.1
@@ -228,7 +212,7 @@ INFECTIOUSNESS_ONSET_DAYS_AVG = 2.5
 INFECTIOUSNESS_ONSET_DAYS_STD = 0.1
 
 # ASYMTPOMATIC
-BASELINE_P_ASYMPTOMATIC = 80 # &p-asymptomatic
+BASELINE_P_ASYMPTOMATIC = 15 # &p-asymptomatic
 ASYMPTOMATIC_INFECTION_RATIO = 0.1 # &prob_infectious
 
 # OTHER TRANSMISSIBLE DISEASES
@@ -313,5 +297,5 @@ RISK_WITH_TRUE_SYMPTOMS = False
 CLIP_RISK = False
 
 # KNOBS
-CONTAGION_KNOB = 0.9
-ENVIRONMENTAL_INFECTION_KNOB = 0.01
+CONTAGION_KNOB = 1.0
+ENVIRONMENTAL_INFECTION_KNOB = 0.0005

@@ -98,7 +98,7 @@ class Tracker(object):
             d = self.avg_infectious_duration
             return tau_times_c_bar * d
         else:
-            x = [h.n_infectious_contacts for h in self.city.humans if h.state.index(1) == 3]
+            x = [h.n_infectious_contacts for h in self.city.humans if h.n_infectious_contacts > 0]
             if x:
                 return np.mean(x)
             return 0
