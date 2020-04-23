@@ -159,9 +159,9 @@ class Clusters:
                 update_cards[update_message.day] += 1
 
             # find the nearest cardinality cluster
-            possible_clusters = np.where((cluster_cards == update_cards).all(axis=0))[0]
-            if not any(possible_clusters):
-                # calculate the wasserstein distance between every cluster cardinality
+            perfect_signatures = np.where((cluster_cards == update_cards).all(axis=0))[0]
+            if not any(perfect_signatures):
+                # calculate the wasserstein distance between every signature
                 scores = []
                 for cluster_idx in range(cluster_cards.shape[1]):
                     scores.append(dist(cluster_cards[:, cluster_idx], update_cards.reshape(-1)))
@@ -229,7 +229,7 @@ class Clusters:
                             self.update_record(old_cluster_id, best_cluster, best_message, updated_message)
                             cur_cardinality += 1
             else:
-                best_cluster = self.score_clusters(update_messages, possible_clusters)
+                best_cluster = self.score_clusters(update_messages, perfect_signatures)
             for update_message in update_messages:
                 best_score = -1
                 best_message = self.clusters_by_day[update_message.day][best_cluster][0]
