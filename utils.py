@@ -52,6 +52,68 @@ def _get_random_sex(rng):
 	else:
 		return 'other'
 
+_get_get_really_sick(age, sex, rng):
+    if sex.lower().startswith('f'):
+        if age < 10:
+            return rng.rand() < 0.02   
+        if age < 20:
+            return rng.rand() < 0.002
+        if age < 40:
+            return rng.rand() < 0.05
+        if age < 50:
+            return rng.rand() < 0.13
+        if age < 60:
+            return rng.rand() < 0.18
+        if age < 70:
+            return rng.rand() < 0.16
+        if age < 80:
+            return rng.rand() < 0.24
+        if age < 90:
+            return rng.rand() < 0.17
+        else:
+            return rng.rand() < 0.03
+
+    elif sex.lower().startswith('m'):
+        if age < 10:
+            return rng.rand() < 0.002   
+        if age < 20:
+            return rng.rand() < 0.02
+        if age < 30:
+            return rng.rand() < 0.03
+        if age < 40:
+            return rng.rand() < 0.07
+        if age < 50:
+            return rng.rand() < 0.13
+        if age < 60:
+            return rng.rand() < 0.17
+        if age < 80:
+            return rng.rand() < 0.22
+        if age < 90:
+            return rng.rand() < 0.15
+        else:
+            return rng.rand() < 0.03
+
+    else:  
+        if age < 20:
+            return rng.rand() < 0.02
+        if age < 30:
+            return rng.rand() < 0.04
+        if age < 40:
+            return rng.rand() < 0.07
+        if age < 50:
+            return rng.rand() < 0.13
+        if age < 60:
+            return rng.rand() < 0.18
+        if age < 80:
+            return rng.rand() < 0.24
+        if age < 90:
+            return rng.rand() < 0.18
+        else:
+            return rng.rand() < 0.03
+
+
+
+
 # 2D Array of symptoms; first axis is days after exposure (infection), second is an array of symptoms
 def _get_all_symptoms(viral_load_plateau_start, viral_load_plateau_end,
 	                        viral_load_recovered, age, incubation_days, really_sick, extremely_sick, 

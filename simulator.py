@@ -84,7 +84,7 @@ class Human(object):
         # Indicates whether this person will show severe signs of illness.
         self.infection_timestamp = infection_timestamp
         self.recovered_timestamp = datetime.datetime.min
-        self.gets_really_sick = self.rng.random() >= 0.9
+        self.gets_really_sick = _get_get_really_sick(self.age, self.sex)
         self.gets_extremely_sick = self.gets_really_sick and self.rng.random() >= 0.7 # &severe; 30% of severe cases need ICU
         self.never_recovers = self.rng.random() <= P_NEVER_RECOVERS[min(math.floor(self.age/10),8)] * REINFECTION_POSSIBLE
         self.obs_hospitalized = False
