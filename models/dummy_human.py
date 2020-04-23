@@ -33,11 +33,11 @@ class DummyHuman:
         self.infectiousness = {}
         self.locations_visited = {}
         self.obs_preexisting_conditions = set()
-        self.obs_age = 0
-        self.obs_sex = ''
+        self.obs_age = None
+        self.obs_sex = None
         self.preexisting_conditions = set()
-        self.age = 0
-        self.sex = ''
+        self.age = None
+        self.sex = None
 
 
     def cur_message(self, day, RiskModel):
@@ -124,15 +124,15 @@ class DummyHuman:
                 self.test_time = val
             if key == "obs_preexisting_conditions" and val:
                 self.obs_preexisting_conditions = val
-            if key == "obs_age" and val:
+            if key == "obs_age" and val is not None:
                 self.obs_age = val
-            if key == "obs_sex" and val:
+            if key == "obs_sex" and val is not None:
                 self.obs_sex = val
             if key == "preexisting_conditions" and val:
                 self.preexisting_conditions = val
-            if key == "age" and val:
+            if key == "age" and val is not None:
                 self.age = val
-            if key == "sex" and val:
+            if key == "sex" and val is not None:
                 self.sex = val
             if key == "infectiousness" and val:
                 for k, v in val.items():
