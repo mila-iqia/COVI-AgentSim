@@ -39,7 +39,7 @@ def sim(n_people=None,
         outdir = "output"
 
     os.makedirs(f"{outdir}", exist_ok=True)
-    outdir = f"{outdir}/sim_people-{n_people}_days-{simulation_days}_init-{init_percent_sick}_seed-{seed}_{datetime.datetime.now().strftime('%Y%m%d-%H%M%S')}"
+    outdir = f"{outdir}/sim_v2_people-{n_people}_days-{simulation_days}_init-{init_percent_sick}_seed-{seed}_{datetime.datetime.now().strftime('%Y%m%d-%H%M%S')}"
     os.makedirs(outdir)
 
     outfile = os.path.join(outdir, "data")
@@ -97,8 +97,8 @@ def tune(n_people, seed):
     # import cufflinks as cf
     import matplotlib.pyplot as plt
     # cf.go_offline()
-    n_people = 100
-    monitors, tracker = run_simu(n_people=n_people, init_percent_sick=0.1,
+    n_people = 1000
+    monitors, tracker = run_simu(n_people=n_people, init_percent_sick=0.01,
                             start_time=datetime.datetime(2020, 2, 28, 0, 0),
                             simulation_days=30,
                             outfile=None,
