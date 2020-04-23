@@ -242,9 +242,9 @@ def main(args=None):
             all_possible_symptoms.add(symp)
 
     hd = {}
-    for hid, humans in humans.items():
-        merged_human = DummyHuman(name=humans[0]['name'])
-        for human in humans:
+    for hid, human_splits in humans.items():
+        merged_human = DummyHuman(name=human_splits[0]['name'])
+        for human in human_splits:
             merged_human.merge(human)
         merged_human.uid = create_new_uid(rng)
         hd[hid] = merged_human
