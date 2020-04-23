@@ -12,7 +12,7 @@ from run import run_simu
 # Force COLLECT_LOGS=True
 import config
 config.COLLECT_LOGS = True
-from event import Event
+from base import Event
 import simulator
 simulator.Event = Event
 

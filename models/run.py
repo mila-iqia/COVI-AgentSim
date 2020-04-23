@@ -47,16 +47,15 @@ def proc_human(params):
     # check if you have new reported symptoms
     human.risk = RiskModel.update_risk_daily(human, todays_date)
 
-    # read your old messages
-    # if current_day > 10:
-    #     import pdb; pdb.set_trace()
-
     # update risk based on that day's messages
     RiskModel.update_risk_encounters(human, human.messages)
-    human.clusters.add_messages(human.messages, current_day, rng)
 
+
+    # add them to clusters
+    human.clusters.add_messages(human.messages, current_day, rng)
     human.messages = []
-    # human.clusters.update_records(human.update_messages, human)
+
+    human.clusters.update_records(human.update_messages, human)
 
     human.update_messages = []
     human.clusters.purge(current_day)

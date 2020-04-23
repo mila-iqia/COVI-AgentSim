@@ -1,12 +1,8 @@
 import os
 import numpy as np
 from config import *
-from models.utils import Message, encode_message, decode_message, binary_to_float
-import operator
+from models.utils import decode_message
 import datetime
-from collections import defaultdict
-from bitarray import bitarray
-from models.dummy_human import Message, UpdateMessage
 """ This file contains the core of the side simulation, which is run on the output encounters from the main simulation.
 It's primary functionality is to run the message clustering and risk prediction algorithms.
 """

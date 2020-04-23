@@ -1,5 +1,4 @@
 import datetime
-from bitarray import bitarray
 from models.utils import Message, UpdateMessage
 import numpy as np
 from models.clusters import Clusters

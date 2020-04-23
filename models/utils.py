@@ -1,7 +1,5 @@
-import json
 import datetime
 import numpy as np
-from bitarray import bitarray
 from collections import namedtuple
 
 Message = namedtuple('message', 'uid risk day unobs_id')
@@ -9,16 +7,16 @@ UpdateMessage = namedtuple('update_message', 'uid new_risk risk day received_at 
 
 def encode_message(message):
 	# encode a contact message as a string
-	return str(np.array(message.uid.tolist()).astype(int).tolist()) + "_" + str(message.risk) + "_" + str(message.day)  + "_" + str(message.unobs_id)
+	return str(message.uid) + "_" + str(message.risk) + "_" + str(message.day)  + "_" + str(message.unobs_id)
 
 def encode_update_message(message):
 	# encode a contact message as a string
-	return str(np.array(message.uid.tolist()).astype(int).tolist()) + "_" + str(message.new_risk) + "_" + str(message.risk) + "_" + str(message.day) + "_" + str(message.received_at) + "_" + str(message.unobs_id)
+	return str(message.uid) + "_" + str(message.new_risk) + "_" + str(message.risk) + "_" + str(message.day) + "_" + str(message.received_at) + "_" + str(message.unobs_id)
 
 def decode_message(message):
 	# decode a string-encoded message into a tuple
 	uid, risk, day, unobs_id = message.split("_")
-	obs_uid = bitarray(json.loads(uid))
+	obs_uid = int(uid)
 	risk = int(risk)
 	day = int(day)
 	unobs_uid = unobs_id
@@ -27,7 +25,7 @@ def decode_message(message):
 def decode_update_message(update_message):
 	# decode a string-encoded message into a tuple
 	uid, new_risk, risk, day, received_at, unobs_id = update_message.split("_")
-	obs_uid = bitarray(json.loads(uid))
+	obs_uid = int(uid)
 	risk = int(risk)
 	new_risk = int(new_risk)
 	day = int(day)
@@ -35,25 +33,31 @@ def decode_update_message(update_message):
 	unobs_uid = unobs_id
 	return UpdateMessage(obs_uid, new_risk, risk, day, received_at, unobs_uid)
 
-# https://stackoverflow.com/questions/51843297/convert-real-numbers-to-binary-and-vice-versa-in-python
-def float_to_binary(x, m, n):
-    """Convert the float value `x` to a binary string of length `m + n`
-    where the first `m` binary digits are the integer part and the last
-    'n' binary digits are the fractional part of `x`.
-    """
-    x_scaled = round(x * 2 ** n)
-    return '{:0{}b}'.format(x_scaled, m + n)
-
-def binary_to_float(bstr, m, n):
-    """Convert a binary string in the format '00101010100' to its float value."""
-    return int(bstr, 2) / 2 ** n
-
 def create_new_uid(rng):
-	_uid = bitarray()
-	_uid.extend(rng.choice([True, False], 4))  # generate a random 4-bit code
-	return _uid
+	# generate a 4 bit random code
+	return np.random.randint(0, 15)
 
 def update_uid(_uid, rng):
-	_uid.pop(0)
-	_uid.extend([rng.choice([True, False])])
-	return _uid
+	_uid = "{0:b}".format(_uid).zfill(4)[1:]
+	_uid += rng.choice(['1', '0'])
+	return int(_uid, 2)
+
+def compare_uids(uid1, uid2, days_apart):
+	bin_uid1 = "{0:b}".format(uid1).zfill(4)
+	bin_uid2 = "{0:b}".format(uid2).zfill(4)
+	if days_apart == 1 and bin_uid1[:3] == bin_uid2[1:]:
+		return True
+	if days_apart == 2 and bin_uid1[:2] == bin_uid2[2:]:
+		return True
+	if days_apart == 3 and bin_uid1[:1] == bin_uid2[3:]:
+		return True
+	return False
+
+def hash_to_cluster(message):
+	bin_uid = "{0:b}".format(message.uid).zfill(4)
+	bin_risk = "{0:b}".format(message.risk).zfill(4)
+	# bin_day = "{0:b}".format(message.day).zfill(24)
+	binary = "".join([bin_uid, bin_risk])
+	cluster_id = int(binary, 2)
+	# print(f"cluster: {cluster_id}, bin: {binary}")
+	return cluster_id

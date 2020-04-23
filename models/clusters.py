@@ -3,7 +3,7 @@ import numpy as np
 import operator
 from collections import defaultdict
 from scipy.stats import wasserstein_distance as dist
-from models.utils import Message, decode_message, encode_message, decode_update_message, encode_update_message
+from models.utils import Message, decode_message, encode_message, decode_update_message, encode_update_message, hash_to_cluster, compare_uids
 
 
 # TODO: include risk level in clustering, currently only uses quantized uid
@@ -35,13 +35,8 @@ class Clusters:
             best_cluster, best_message, best_score = self.score_matches(m_dec, current_day, rng=rng)
             if best_score >= 0:
                 cluster_id = best_cluster
-            elif not self:
-                cluster_id = 0
             else:
-                result = 0
-                for b in m_dec.uid.tobytes():
-                    result = result + int(b)
-                cluster_id = int(result / 16)
+                cluster_id = hash_to_cluster(m_dec)
 
             self.all_messages.append(message)
             self.clusters[cluster_id].append(message)
@@ -49,10 +44,7 @@ class Clusters:
 
     def score_matches(self, m_new, current_day, rng=None):
         """ This function checks a new risk message against all previous messages, and assigns to the closest one in a brute force manner"""
-        result = 0
-        for b in m_new.uid.tobytes():
-            result = result + int(b)
-        best_cluster = int(result/16)
+        best_cluster = hash_to_cluster(m_new)
         best_message = None
         best_score = -1
         for i in range(current_day-3, current_day+1):
@@ -64,15 +56,15 @@ class Clusters:
                         best_message = m_enc
                         best_score = 3
                         break
-                    elif m_new.uid[:3] == obs_uid[1:] and m_new.day - 1 == day and m_new.risk == risk:
+                    elif compare_uids(m_new.uid, obs_uid, 1) and m_new.day - 1 == day and m_new.risk == risk:
                         best_cluster = cluster_id
                         best_message = m_enc
                         best_score = 2
-                    elif m_new.uid[:2] == obs_uid[2:] and m_new.day - 2 == day and best_score < 1:
+                    elif compare_uids(m_new.uid, obs_uid, 2) and m_new.day - 2 == day and best_score < 1:
                         best_cluster = cluster_id
                         best_message = m_enc
                         best_score = 1
-                    elif m_new.uid[:1] == obs_uid[3:] and m_new.day - 3 == day and best_score < 0:
+                    elif compare_uids(m_new.uid, obs_uid, 3) and m_new.day - 3 == day and best_score < 0:
                         best_cluster = cluster_id
                         best_message = m_enc
                         best_score = 0
@@ -103,11 +95,11 @@ class Clusters:
         obs_uid, risk, day, unobs_uid = decode_message(risk_message)
         if update_message.uid == obs_uid and update_message.day == day and update_message.risk == risk:
             score = 3
-        elif update_message.uid[:3] == obs_uid[1:] and update_message.day - 1 == day and update_message.risk == risk:
+        elif compare_uids(update_message.uid, obs_uid, 1) and update_message.day - 1 == day and update_message.risk == risk:
             score = 2
-        elif update_message.uid[:2] == obs_uid[2:] and update_message.day - 2 == day and update_message.risk == risk:
+        elif compare_uids(update_message.uid, obs_uid, 2) and update_message.day - 2 == day and update_message.risk == risk:
             score = 1
-        elif update_message.uid[:1] == obs_uid[3:] and update_message.day - 3 == day and update_message.risk == risk:
+        elif compare_uids(update_message.uid, obs_uid, 3) and update_message.day - 3 == day and update_message.risk == risk:
             score = 0
         else:
             score = -1
@@ -207,10 +199,7 @@ class Clusters:
                             if not best_message:
                                 best_message = message
                                 message = decode_message(message)
-                                result = 0
-                                for b in message.uid.tobytes():
-                                    result = result + int(b)
-                                new_cluster_id = int(result / 16)
+                                new_cluster_id = hash_to_cluster(message)
                             best_message = decode_message(best_message)
 
                             # for the message which best fits another cluster, move it there
