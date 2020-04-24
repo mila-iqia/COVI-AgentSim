@@ -33,54 +33,23 @@ def candidate_exposures(human, date):
 
 def conditions_to_np(conditions):
     conditions_encs = np.zeros((len(PREEXISTING_CONDITIONS),))
-
     for condition in conditions:
         probability = PREEXISTING_CONDITIONS[condition][0]
         conditions_encs[probability.id] = 1
     return conditions_encs
 
 
-def symptoms_to_np(symptoms_day, all_symptoms, all_possible_symptoms):
+def symptoms_to_np(all_symptoms, all_possible_symptoms):
     rolling_window = 14
     aps = list(all_possible_symptoms)
     symptoms_enc = np.zeros((rolling_window, len(all_possible_symptoms)+1))
-    for day, symptoms in enumerate(all_symptoms[:14]):
-        for symptom in symptoms:
-            symptoms_enc[day, aps.index(symptom)] = 1.
+    for day, symptom in enumerate(all_symptoms[:14]):
+        import pdb;
+        pdb.set_trace()
+
+        symptoms_enc[day, aps.index(symptom)] = 1.
     return symptoms_enc
 
-def rolling_infectiousness(start, date, human):
-    rolling_window = 14
-    rolling = np.zeros(rolling_window)
-    if human.infectiousness_start_time == datetime.datetime.max:
-        return rolling
-    cur_day = (date - start).days
-
-    hinf = []
-    for v in human.infectiousness.values():
-        if type(v) == float:
-            hinf.append(v)
-        elif type(v) == np.ndarray:
-            hinf.append(v[0])
-
-    if not human.infectiousness:
-        return rolling
-
-    rollings = []
-    for end in range(1, len(hinf) + 1):
-        if end - rolling_window > 0:
-            start = end - rolling_window
-            rolling = np.flip(hinf[start:end])
-        else:
-            rolling = np.flip(hinf[:end])
-        rolling = np.pad(rolling, (0, rolling_window - len(rolling)))
-        rollings.append(rolling)
-    human.rolling_infectiousness_array = rollings
-
-    try:
-        return rollings[cur_day]
-    except IndexError:
-        return rolling
 
 def encode_age(age):
     if age is None:

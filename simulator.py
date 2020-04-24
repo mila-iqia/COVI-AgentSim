@@ -2,6 +2,8 @@
 from utils import _normalize_scores, _get_random_sex, _get_covid_symptoms, \
     _get_preexisting_conditions, _draw_random_discreet_gaussian, _sample_viral_load_piecewise, \
     _get_cold_symptoms_v2, _get_flu_symptoms_v2
+from models.clusters import Clusters
+from models.utils import create_new_uid, Message, UpdateMessage
 
 from base import *
 if COLLECT_LOGS is False:
@@ -67,7 +69,7 @@ class Human(object):
         self.obs_is_healthcare_worker = True if self.is_healthcare_worker and rng.random()<0.9 else False # 90% of the time, healthcare workers will declare it
         self.obs_age = self.age if self.has_app and self.has_logged_info else None
         self.obs_sex = self.sex if self.has_app and self.has_logged_info else None
-        self.obs_preexisting_conditions = self.preexisting_conditions if self.has_app and self.has_logged_info else None
+        self.obs_preexisting_conditions = self.preexisting_conditions if self.has_app and self.has_logged_info else []
 
         self.rest_at_home = False # to track mobility due to symptoms
         self.visits = Visits()
@@ -156,6 +158,21 @@ class Human(object):
         self.count_exercise=0
 
         self.work_start_hour = self.rng.choice(range(7, 12), 3)
+
+        # Message Passing and Risk Prediction
+        self.sent_messages = {}
+        self.messages = []
+        self.update_messages = []
+        self.risk = np.log(0.01)
+        self.clusters = Clusters()
+        self.start_risk = np.log(0.01)
+        self.tested_positive_contact_count = 0
+        self.rolling_infectiousness_array = []
+        self.infectiousnesses = []
+        self.uid = create_new_uid(rng)
+        self.exposure_message = None
+        self.exposure_source = None
+        self.test_time = datetime.datetime.max
 
     def assign_household(self, location):
         self.household = location
@@ -414,6 +431,9 @@ class Human(object):
             date = self.env.timestamp.date
             if self.last_date != date:
                 self.last_date = date
+                self.infectiousnesses.append(self.infectiousness)
+                if len(self.infectiousnesses) > 14:
+                    self.infectiousnesses.pop(0)
                 Event.log_daily(self, self.env.timestamp)
 
             # recover health
@@ -432,6 +452,7 @@ class Human(object):
                 # make testing a function of age/hospitalization/travel
                 if self.get_tested(city):
                     Event.log_test(self, self.env.timestamp)
+                    self.test_time = self.env.timestamp
                     self.has_logged_test = True
                     city.tracker.track_tested_results(self, self.test_result, self.test_type)
 
@@ -789,4 +810,113 @@ class Human(object):
         del self.work_start_hour
         del self.infection_timestamp
         del self.recovered_timestamp
+        return self
+
+
+    def cur_message(self, day, RiskModel):
+        """creates the current message for this user"""
+        message = Message(self.uid, RiskModel.quantize_risk(self.risk), day, self.name)
+        return message
+
+    def cur_message_risk_update(self, day, old_risk, sent_at, RiskModel):
+        return UpdateMessage(self.uid, RiskModel.quantize_risk(self.risk), old_risk, day, sent_at, self.name)
+
+    def symptoms_at_time(self, now, symptoms):
+        if not symptoms:
+            return []
+        if not self.symptom_start_time:
+            return []
+        sickness_day = (now - self.symptom_start_time).days
+        if not sickness_day:
+            return []
+        if sickness_day > 14:
+            rolling_all_symptoms_till_day = symptoms[sickness_day-14: sickness_day]
+        else:
+            rolling_all_symptoms_till_day = symptoms[:sickness_day]
+        return rolling_all_symptoms_till_day
+
+    def get_test_result_array(self, date):
+        results = np.zeros(14)
+        result_day = (date - self.test_time).days
+        if result_day >= 0 and result_day < 14:
+            results[result_day] = 1
+        return results
+
+    def exposure_array(self, date):
+        exposed = False
+        exposure_day = None
+        if self.infection_timestamp:
+            exposure_day = (date - self.infection_timestamp).days
+            if exposure_day >= 0 and exposure_day < 14:
+                exposed = True
+            else:
+                exposure_day = None
+        return exposed, exposure_day
+
+    def recovered_array(self, date):
+        is_recovered = False
+        recovery_day = (date - self.recovered_timestamp).days
+        if recovery_day >= 0 and recovery_day < 14:
+            is_recovered = True
+        else:
+            recovery_day = None
+        return is_recovered, recovery_day
+
+    def merge(self, human_dict):
+        for key, val in human_dict.items():
+            if key == 'clusters':
+                self.clusters = val
+            if key == 'update_messages':
+                self.update_messages = val
+            if key == 'risk':
+                self.risk = val
+            if key == 'messages':
+                self.messages = val
+            if key == 'sent_messages':
+                self.sent_messages = val
+            if key == 'tested_positive_contact_count':
+                self.tested_positive_contact_count = val
+            if key == 'uid':
+                self.uid = val
+            if key == "time_of_recovery" and val != datetime.datetime.max:
+                self.time_of_recovery = val
+            if key == "infectiousness_start_time" and val != datetime.datetime.max:
+                self.infectiousness_start_time = val
+            if key == "infectiousness_start" and val != datetime.datetime.max:
+                self.infectiousness_start = val
+            if key == "time_of_death" and val != datetime.datetime.max:
+                self.time_of_death = val
+            if key == "symptoms_start" and val != datetime.datetime.max:
+                self.symptoms_start = val
+            if key == "test_time" and val != datetime.datetime.max:
+                self.test_time = val
+            if key == "obs_preexisting_conditions" and val:
+                self.obs_preexisting_conditions = val
+            if key == "obs_age" and val is not None:
+                self.obs_age = val
+            if key == "obs_sex" and val is not None:
+                self.obs_sex = val
+            if key == "preexisting_conditions" and val:
+                self.preexisting_conditions = val
+            if key == "age" and val is not None:
+                self.age = val
+            if key == "sex" and val is not None:
+                self.sex = val
+            if key == "infectiousness" and val:
+                for k, v in val.items():
+                    self.infectiousness[k] = v
+            if key == 'all_reported_symptoms' and any(val):
+                self.all_reported_symptoms = val
+            if key == 'all_symptoms' and val:
+                self.all_symptoms = val
+            if key == 'exposure_message' and val:
+                self.exposure_message = val
+            if key == 'exposure_source' and val:
+                self.exposure_source = val
+            if key == "locations_visited":
+                for k, v in val.items():
+                    if not self.locations_visited.get(k):
+                        self.locations_visited[k] = v
+                    elif self.locations_visited.get(k) > v:
+                        self.locations_visited[k] = v
         return self

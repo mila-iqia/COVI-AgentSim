@@ -11,6 +11,8 @@ import copy
 from config import *
 from utils import compute_distance, _get_random_area
 from track import Tracker
+from models.run import integrated_risk_pred
+
 
 class Env(simpy.Environment):
 
@@ -42,7 +44,7 @@ class Env(simpy.Environment):
         return self.timestamp.isoformat()
 
 
-class City(object):
+class City(simpy.Environment):
 
     def __init__(self, env, n_people, rng, x_range, y_range, start_time, init_percent_sick, Human):
         self.env = env
@@ -232,6 +234,13 @@ class City(object):
             h.stores_preferences = [(compute_distance(h.household, s) + 1e-1) ** -1 for s in self.stores]
             h.parks_preferences = [(compute_distance(h.household, s) + 1e-1) ** -1 for s in self.parks]
 
+    def run(self, duration, outfile, start_time, all_possible_symptoms):
+        current_day = 0
+        while True:
+            self.humans = integrated_risk_pred(self.humans, outfile, start_time, current_day, all_possible_symptoms)
+            current_day += 1
+            print(self.humans[0].risk)
+            yield self.env.timeout(duration)
 
 class Location(simpy.Resource):
 

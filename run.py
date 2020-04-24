@@ -172,6 +172,18 @@ def run_simu(n_people=None, init_percent_sick=0,
 
     for m in monitors:
         env.process(m.run(env, city=city))
+
+    #intervention study
+    if True:
+        all_possible_symptoms = ['moderate', 'mild', 'severe', 'extremely-severe', 'fever',
+                                 'chills', 'gastro', 'diarrhea', 'nausea_vomiting', 'fatigue',
+                                 'unusual', 'hard_time_waking_up', 'headache', 'confused',
+                                 'lost_consciousness', 'trouble_breathing', 'sneezing',
+                                 'cough', 'runny_nose', 'sore_throat', 'severe_chest_pain',
+                                 'loss_of_taste', 'light_trouble_breathing', 'moderate_trouble_breathing',
+                                 'heavy_trouble_breathing']
+        env.process(city.run(1440, outfile, start_time, all_possible_symptoms))
+
     env.run(until=simulation_days * 24 * 60 / TICK_MINUTE)
 
     return monitors, city.tracker

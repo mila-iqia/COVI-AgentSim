@@ -23,26 +23,24 @@ class RiskModelBase:
         # if they get tested, it takes TEST_DAYS to get the result, and they are quarantined for QUARANTINE_DAYS.
         # The test_timestamp is set to datetime.min, unless they get a positive test result.
         # Basically, once they know they have a positive test result, they have a risk of 1 until after quarantine days.
-        if human.time_of_recovery < now:
+        if human.recovered_timestamp != datetime.datetime.min and human.recovered_timestamp < now:
             return 0.
-        if human.time_of_death < now:
-            return 0.
-        if human.test_result and human.test_time < now + datetime.timedelta(days=2):
+        if human.test_result:
             return 1.
 
-        reported_symptoms = human.reported_symptoms_at_time(now)
-        if 'severe' in reported_symptoms:
-            return 0.75
-        if 'moderate' in reported_symptoms:
-            return 0.5
-        if 'mild' in reported_symptoms:
-            return 0.25
-        if len(reported_symptoms) > 3:
-            return 0.25
-        if len(reported_symptoms) > 1:
-            return 0.1
-        if len(reported_symptoms) > 0:
-            return 0.05
+        # reported_symptoms = human.reported_symptoms_at_time(now)
+        # if 'severe' in reported_symptoms:
+        #     return 0.75
+        # if 'moderate' in reported_symptoms:
+        #     return 0.5
+        # if 'mild' in reported_symptoms:
+        #     return 0.25
+        # if len(reported_symptoms) > 3:
+        #     return 0.25
+        # if len(reported_symptoms) > 1:
+        #     return 0.1
+        # if len(reported_symptoms) > 0:
+        #     return 0.05
         return 0.0
 
 
@@ -65,11 +63,9 @@ class RiskModelTristan(RiskModelBase):
         # if they get tested, it takes TEST_DAYS to get the result, and they are quarantined for QUARANTINE_DAYS.
         # The test_timestamp is set to datetime.min, unless they get a positive test result.
         # Basically, once they know they have a positive test result, they have a risk of 1 until after quarantine days.
-        if human.time_of_recovery < now:
+        if human.recovered_timestamp < now:
             return np.log(0.01)
-        if human.time_of_death < now:
-            return np.log(0.01)
-        if human.test_time < now + datetime.timedelta(days=2):
+        if human.test_result:
             return np.log(1.)
         return np.log(0.01)
 
