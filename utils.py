@@ -1,4 +1,4 @@
-from collections import namedtuple
+from collections import OrderedDict, namedtuple
 
 import numpy as np
 from scipy.stats import norm, truncnorm, gamma
@@ -9,54 +9,79 @@ from functools import lru_cache
 
 ConditionProbability = namedtuple('ConditionProbability', ['name', 'id', 'age', 'sex', 'probability'])
 
-PREEXISTING_CONDITIONS = {
-	'immuno-suppressed': [
-		ConditionProbability('immuno-suppressed', 0, 40, 'a', 0.005),
-		ConditionProbability('immuno-suppressed', 0, 65, 'a', 0.036),
-		ConditionProbability('immuno-suppressed', 0, 85, 'a', 0.045),
-		ConditionProbability('immuno-suppressed', 0, 1000, 'a', 0.20)
-	],
-	'diabetes': [
-		ConditionProbability('diabetes', 1, 18, 'a', 0.005),
-		ConditionProbability('diabetes', 1, 35, 'a', 0.009),
-		ConditionProbability('diabetes', 1, 50, 'a', 0.039),
-		ConditionProbability('diabetes', 1, 75, 'a', 0.13),
-		ConditionProbability('diabetes', 1, 1000, 'a', 0.179)
-	],
-	'heart_disease': [
-		ConditionProbability('heart_disease', 2, 20, 'a', 0.001),
-		ConditionProbability('heart_disease', 2, 35, 'a', 0.005),
-		ConditionProbability('heart_disease', 2, 50, 'f', 0.013),
-		ConditionProbability('heart_disease', 2, 50, 'm', 0.021),
-		ConditionProbability('heart_disease', 2, 50, 'a', 0.017),
-		ConditionProbability('heart_disease', 2, 75, 'f', 0.13),
-		ConditionProbability('heart_disease', 2, 75, 'm', 0.178),
-		ConditionProbability('heart_disease', 2, 75, 'a', 0.15),
-		ConditionProbability('heart_disease', 2, 1000, 'f', 0.311),
-		ConditionProbability('heart_disease', 2, 1000, 'm', 0.44),
-		ConditionProbability('heart_disease', 2, 1000, 'a', 0.375)
-	],
-	'COPD': [
-		ConditionProbability('COPD', 3, 35, 'a', 0.0),
-		ConditionProbability('COPD', 3, 50, 'a', 0.015),
-		ConditionProbability('COPD', 3, 65, 'f', 0.037),
-		ConditionProbability('COPD', 3, 1000, 'a', 0.075)
-	],
-	'asthma': [
-		ConditionProbability('asthma', 4, 10, 'f', 0.07),
-		ConditionProbability('asthma', 4, 10, 'm', 0.12),
-		ConditionProbability('asthma', 4, 10, 'a', 0.09),
-		ConditionProbability('asthma', 4, 25, 'f', 0.15),
-		ConditionProbability('asthma', 4, 25, 'm', 0.19),
-		ConditionProbability('asthma', 4, 25, 'a', 0.17),
-		ConditionProbability('asthma', 4, 75, 'f', 0.11),
-		ConditionProbability('asthma', 4, 75, 'm', 0.06),
-		ConditionProbability('asthma', 4, 75, 'a', 0.08),
-		ConditionProbability('asthma', 4, 1000, 'f', 0.12),
-		ConditionProbability('asthma', 4, 1000, 'm', 0.08),
-		ConditionProbability('asthma', 4, 1000, 'a', 0.1)
-	]
-}
+PREEXISTING_CONDITIONS = OrderedDict([
+    ('smoking', [
+        ConditionProbability('smoking', 5, 12, 'a', 0.0),
+        ConditionProbability('smoking', 5, 18, 'a', 0.03),
+        ConditionProbability('smoking', 5, 65, 'a', 0.185),
+        ConditionProbability('smoking', 5, 1000, 'a', 0.09)
+    ]),
+    ('diabetes', [
+        ConditionProbability('diabetes', 1, 18, 'a', 0.005),
+        ConditionProbability('diabetes', 1, 35, 'a', 0.009),
+        ConditionProbability('diabetes', 1, 50, 'a', 0.039),
+        ConditionProbability('diabetes', 1, 75, 'a', 0.13),
+        ConditionProbability('diabetes', 1, 1000, 'a', 0.179)
+    ]),
+    ('heart_disease', [
+        ConditionProbability('heart_disease', 2, 20, 'a', 0.001),
+        ConditionProbability('heart_disease', 2, 35, 'a', 0.005),
+        ConditionProbability('heart_disease', 2, 50, 'f', 0.013),
+        ConditionProbability('heart_disease', 2, 50, 'm', 0.021),
+        ConditionProbability('heart_disease', 2, 50, 'a', 0.017),
+        ConditionProbability('heart_disease', 2, 75, 'f', 0.13),
+        ConditionProbability('heart_disease', 2, 75, 'm', 0.178),
+        ConditionProbability('heart_disease', 2, 75, 'a', 0.15),
+        ConditionProbability('heart_disease', 2, 1000, 'f', 0.311),
+        ConditionProbability('heart_disease', 2, 1000, 'm', 0.44),
+        ConditionProbability('heart_disease', 2, 1000, 'a', 0.375)
+    ]),
+    ('cancer', [
+        ConditionProbability('cancer', 6, 30, 'a', 0.00029),
+        ConditionProbability('cancer', 6, 60, 'a', 0.0029),
+        ConditionProbability('cancer', 6, 90, 'a', 0.029),
+        ConditionProbability('cancer', 6, 1000, 'a', 0.05)
+    ]),
+    ('COPD', [
+        ConditionProbability('COPD', 3, 35, 'a', 0.0),
+        ConditionProbability('COPD', 3, 50, 'a', 0.015),
+        ConditionProbability('COPD', 3, 65, 'f', 0.037),
+        ConditionProbability('COPD', 3, 1000, 'a', 0.075)
+    ]),
+    ('asthma', [
+        ConditionProbability('asthma', 4, 10, 'f', 0.07),
+        ConditionProbability('asthma', 4, 10, 'm', 0.12),
+        ConditionProbability('asthma', 4, 10, 'a', 0.09),
+        ConditionProbability('asthma', 4, 25, 'f', 0.15),
+        ConditionProbability('asthma', 4, 25, 'm', 0.19),
+        ConditionProbability('asthma', 4, 25, 'a', 0.17),
+        ConditionProbability('asthma', 4, 75, 'f', 0.11),
+        ConditionProbability('asthma', 4, 75, 'm', 0.06),
+        ConditionProbability('asthma', 4, 75, 'a', 0.08),
+        ConditionProbability('asthma', 4, 1000, 'f', 0.12),
+        ConditionProbability('asthma', 4, 1000, 'm', 0.08),
+        ConditionProbability('asthma', 4, 1000, 'a', 0.1)
+    ]),
+    ('stroke', [
+        ConditionProbability('stroke', 7, 20, 'a', 0.0),
+        ConditionProbability('stroke', 7, 40, 'a', 0.01),
+        ConditionProbability('stroke', 7, 60, 'a', 0.03),
+        ConditionProbability('stroke', 7, 80, 'a', 0.04),
+        ConditionProbability('stroke', 7, 1000, 'a', 0.07)
+    ]),
+    ('immuno-suppressed', [  # (3.6% on average)
+        ConditionProbability('immuno-suppressed', 0, 40, 'a', 0.005),
+        ConditionProbability('immuno-suppressed', 0, 65, 'a', 0.036),
+        ConditionProbability('immuno-suppressed', 0, 85, 'a', 0.045),
+        ConditionProbability('immuno-suppressed', 0, 1000, 'a', 0.20)
+    ]),
+    ('lung_disease', [
+        ConditionProbability('lung_disease', 8, 0, 'a', 0.0)
+    ]),
+    ('pregnant', [
+        ConditionProbability('pregnant', 9, 0, 'f', 0.0)
+    ])
+])
 
 def log(str, logfile=None, timestamp=False):
 	if timestamp:
@@ -458,21 +483,50 @@ def _reported_symptoms(all_symptoms, rng, carefulness):
 
 # &preexisting-conditions
 def _get_preexisting_conditions(age, sex, rng):
-	#if rng.rand() < 0.6 + age/200:
-	#	conditions = None
-	#else:
-	conditions = []
+    #if rng.rand() < 0.6 + age/200:
+    #    conditions = None
+    #else:
+    conditions = []
 
-	for c_name, c_prob in PREEXISTING_CONDITIONS.items():
-		rand = rng.rand()
-		for p in c_prob:
-			if age < p.age:
-				if p.sex == 'a' or sex.lower().startswith(p.sex):
-					if rand < p.probability:
-						conditions.append(p.name)
-					break
+    for c_name, c_prob in PREEXISTING_CONDITIONS.items():
+        rand = rng.rand()
+        modifier = 1.
+        if c_name == 'heart_disease':
+            if 'diabetes' or 'smoker' in conditions:
+                modifier = 2
+            else:
+                modifier = 0.5
+        if c_name in ('cancer', 'COPD'):
+            if 'smoker' in conditions:
+                modifier = 1.3
+            else:
+                modifier = 0.95
+        # TODO: This currently excludes immuno-suppressed condiction when
+        #  setting the modifier value. Is That wanted?
+        if c_name == 'stroke':
+            modifier = len(conditions)
+        if c_name == 'immuno-suppressed':
+            if 'cancer' in conditions:
+                modifier = 1.2
+            else:
+                modifier = 0.98
+        for p in c_prob:
+            if age < p.age:
+                if p.sex == 'a' or sex.lower().startswith(p.sex):
+                    if rand < modifier * p.probability:
+                        conditions.append(p.name)
+                    break
 
-	return conditions
+    # TODO PUT IN QUICKLY WITHOUT VERIFICATION OF NUMBERS
+    if 'asthma' in conditions or 'COPD' in conditions:
+        conditions.append('lung_disease')
+
+    if sex.lower().startswith('f') and age > 18 and age < 50:
+        p_pregnant = rng.normal(27, 5)
+        if rng.rand() < p_pregnant:
+            conditions.append('pregnant')
+
+    return conditions
 
 # &canadian-demgraphics
 def _get_random_age_multinomial(AGE_DISTRIBUTION, rng):
