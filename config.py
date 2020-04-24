@@ -33,7 +33,7 @@ REINFECTION_POSSIBLE = 0 # [0, 1]
 MAX_DAYS_CONTAMINATION = [0.125, 1/3, 1, 2, 3] # &envrionmental contamination
 
 NUM_DAYS_SICK = 10 # @param
-BASELINE_P_ASYMPTOMATIC = 50 # &p-asymptomatic
+BASELINE_P_ASYMPTOMATIC = .5 # &p-asymptomatic
 P_TEST = 0.5
 P_FALSE_NEGATIVE = 0.1 #&false-negative # 0  1   2    3   4    5   6    7    8
 VIRAL_LOAD_MIN = 0.0001
