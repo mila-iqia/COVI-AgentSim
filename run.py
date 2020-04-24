@@ -86,7 +86,8 @@ def base():
 @simu.command()
 @click.option('--n_people', help='population of the city', type=int, default=1000)
 @click.option('--seed', help='seed for the process', type=int, default=0)
-def tune(n_people, seed):
+@click.option('--simulation_days', help='number of days to run the simulation for', type=int, default=30)
+def tune(n_people, simulation_days, seed):
     # Force COLLECT_LOGS=False
     import config
     config.COLLECT_LOGS = False
@@ -97,10 +98,10 @@ def tune(n_people, seed):
     # import cufflinks as cf
     import matplotlib.pyplot as plt
     # cf.go_offline()
-    n_people = 1000
+
     monitors, tracker = run_simu(n_people=n_people, init_percent_sick=0.01,
                             start_time=datetime.datetime(2020, 2, 28, 0, 0),
-                            simulation_days=30,
+                            simulation_days=simulation_days,
                             outfile=None,
                             print_progress=True, seed=seed, other_monitors=[]
                             )

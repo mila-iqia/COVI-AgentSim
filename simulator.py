@@ -49,7 +49,6 @@ class Human(object):
     def __init__(self, env, name, age, rng, infection_timestamp, household, workplace, profession, rho=0.3, gamma=0.21, symptoms=[],
                  test_results=None):
 
-        self.last_date = env.timestamp.date
         self.env = env
         self._events = []
         self.name = f"human:{name}"
@@ -110,10 +109,15 @@ class Human(object):
         # counters and memory
         self.r0 = []
         self.has_logged_symptoms = False
-        self.has_logged_test = False
+        self.has_been_tested = False
         self.last_state = self.state
         self.n_infectious_contacts = 0
-        self.last_date_to_check_symptoms = self.env.timestamp.date
+        self.last_date = defaultdict(lambda : self.env.timestamp.date)
+
+        # risk prediction
+        self.risk = 0.01
+        self.past_N_days_contacts = [OrderedSet()]
+        self.n_contacts_tested_positive = 0
 
         # symptoms
         self.symptom_start_time = None
@@ -281,10 +285,9 @@ class Human(object):
 
     @property
     def symptoms(self):
-        if self.last_date_to_check_symptoms != self.env.timestamp.date:
-            self.last_date_to_check_symptoms = self.env.timestamp.date
+        if self.last_date['symptoms'] != self.env.timestamp.date:
+            self.last_date['symptoms'] = self.env.timestamp.date
             self.update_symptoms()
-
         return self.all_symptoms
 
     @property
@@ -320,7 +323,6 @@ class Human(object):
 
         # TODO: get observed data on testing / who gets tested when??
         if any(self.symptoms) and self.rng.rand() > P_TEST:
-
             self.test_type = city.get_available_test()
             if self.rng.rand() > TEST_TYPES[self.test_type]['P_FALSE_NEGATIVE']:
                 self.test_result =  'negative'
@@ -342,7 +344,6 @@ class Human(object):
             return True
 
         return False
-
 
     def wear_mask(self):
         if not MASK_INTERVENTION:
@@ -423,9 +424,8 @@ class Human(object):
                 self.count_exercise=0
                 self.count_shop=0
 
-            date = self.env.timestamp.date
-            if self.last_date != date:
-                self.last_date = date
+            if self.last_date['run'] != self.env.timestamp.date:
+                self.last_date['run'] = self.env.timestamp.date
                 Event.log_daily(self, self.env.timestamp)
 
             # recover health
@@ -439,13 +439,14 @@ class Human(object):
             # log test
             # needs better conditions; log test based on some condition on symptoms
             if (self.is_incubated and
-                not self.has_logged_test and
+                not self.has_been_tested and
                 self.env.timestamp - self.symptom_start_time >= datetime.timedelta(days=TEST_DAYS)):
                 # make testing a function of age/hospitalization/travel
                 if self.get_tested(city):
                     Event.log_test(self, self.env.timestamp)
-                    self.has_logged_test = True
+                    self.has_been_tested = True
                     city.tracker.track_tested_results(self, self.test_result, self.test_type)
+                    self.update_risk()
 
             # recover
             if self.is_infectious and self.env.timestamp - self.infection_timestamp >= datetime.timedelta(days=self.recovery_days):
@@ -606,7 +607,6 @@ class Human(object):
         else:
             raise ValueError(f'Unknown excursion type:{type}')
 
-
     def at(self, location, city, duration):
         city.tracker.track_trip(from_location=self.location.location_type, to_location=location.location_type, age=self.age, hour=self.env.hour_of_day())
 
@@ -640,6 +640,7 @@ class Human(object):
                     proximity_factor = INFECTION_DISTANCE_FACTOR * (1 - distance/INFECTION_RADIUS) + INFECTION_DURATION_FACTOR * min((t_near - INFECTION_DURATION)/INFECTION_DURATION, 1)
                 mask_efficacy = self.mask_efficacy * h.mask_efficacy
 
+                # TODO: merge thw two clauses into one (follow cold and flu)
                 infectee = None
                 if self.is_infectious:
                     ratio = self.asymptomatic_infection_ratio  if self.is_asymptomatic else 1.0
@@ -669,20 +670,20 @@ class Human(object):
 
                 # cold_and_flu_transmission(self, h)
                 if self.cold_timestamp is not None or h.cold_timestamp is not None:
-                    infector, infectee = h, self
+                    cold_infector, cold_infectee = h, self
                     if self.cold_timestamp is not None:
-                        infector, infectee = self, h
+                        cold_infector, cold_infectee = self, h
 
                     if self.rng.random() < COLD_CONTAGIOUSNESS:
-                        infectee.cold_timestamp = self.env.timestamp
+                        cold_infectee.cold_timestamp = self.env.timestamp
 
                 if self.flu_timestamp is not None or h.flu_timestamp is not None:
-                    infector, infectee = h, self
+                    flu_infector, flu_infectee = h, self
                     if self.cold_timestamp is not None:
-                        infector, infectee = self, h
+                        flu_infector, flu_infectee = self, h
 
                     if self.rng.random() < FLU_CONTAGIOUSNESS:
-                        infectee.flu_timestamp = self.env.timestamp
+                        flu_infectee.flu_timestamp = self.env.timestamp
 
                 city.tracker.track_encounter_events(human1=self, human2=h, location=location, distance=distance, duration=t_near)
                 Event.log_encounter(self, h,
@@ -692,6 +693,8 @@ class Human(object):
                                     infectee=infectee,
                                     time=self.env.timestamp
                                     )
+                # risk model
+                self.update_contacts(h)
 
         yield self.env.timeout(duration / TICK_MINUTE)
 
@@ -779,26 +782,25 @@ class Human(object):
         visited_locs[loc] += 1
         return loc
 
-    def serialize(self):
-        """This function serializes the human object for pickle."""
-        # TODO: I deleted many unserializable attributes, but many of them can (and should) be converted to serializable form.
-        del self.env
-        del self._events
-        del self.rng
-        del self.visits
-        del self.leaving_time
-        del self.start_time
-        del self.household
-        del self.location
-        del self.workplace
-        del self.viral_load_plateau_start
-        del self.viral_load_plateau_end
-        del self.viral_load_recovered
-        del self.exercise_hours
-        del self.exercise_days
-        del self.shopping_days
-        del self.shopping_hours
-        del self.work_start_hour
-        del self.infection_timestamp
-        del self.recovered_timestamp
-        return self
+    ############################## RISK PREDICTION #################################
+    def update_contacts(self, human):
+        if self.last_date['update_contacts'] != self.env.timestamp.date:
+            self.last_date['update_contacts'] = self.env.timestamp.date
+            if len(self.past_N_days_contacts) > PAST_N_DAYS_HISTORY:
+                self.past_N_days_contacts = self.past_N_days_contacts[1:] + [OrderedSet()]
+        self.past_N_days_contacts[-1].add(human)
+
+    def update_risk(self):
+        if RISK_MODEL == "contact tracing":
+            if self.test_result == "positive":
+                self.risk = 1.0
+                for daily_contacts in self.past_N_days_contacts:
+                    for human in daily_contacts:
+                        human.update_risk()
+            elif self.test_result == "negative":
+                self.risk = 0.20
+            elif self.test_result is None:
+                self.n_contacts_tested_positive += 1
+                self.risk = 1 - (1 - RISK_TRANSMISSION_PROBA) ** self.n_contacts_tested_positive
+        else:
+            raise
