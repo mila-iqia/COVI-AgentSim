@@ -4,10 +4,9 @@ import os
 sys.path.append(os.getcwd())
 import numpy as np
 from matplotlib import pyplot as plt
-from utils import _decode_message
+from models.utils import decode_message
 from collections import defaultdict, Counter
 import networkx as nx
-from models.helper import group_to_majority_id
 
 np.random.seed(0)
 """ Running this file will produce plots of the cluster statistics and sample graph"""
@@ -19,7 +18,7 @@ CLUSTER_SIZE_PATH = "plots/cluster/cluster_size_hist.png"
 CLUSTER_NUMBER_PATH = "plots/cluster/cluster_number_freq.png"
 MESSAGE_NUMBER_PATH = "plots/cluster/message_number_freq.png"
 INDIVIDUAL_CLUSTER_PATH = "plots/cluster/"
-if not os.path.isdir( INDIVIDUAL_CLUSTER_PATH):
+if not os.path.isdir(INDIVIDUAL_CLUSTER_PATH):
     os.mkdir(INDIVIDUAL_CLUSTER_PATH)
 
 # load the cluster data
@@ -33,15 +32,15 @@ for someones_clustered_messages in everyones_clustered_messages:
     groups = defaultdict(list)
     unique_people_contacted = set()
     total_num_contacts = 0
-    for m_enc, assignment in someones_clustered_messages.items():
-        obs_uid, obs_risk, m_sent, unobs_uid = _decode_message(m_enc)
-        groups[assignment].append(unobs_uid)
-        unique_people_contacted.add(unobs_uid)
-        total_num_contacts += 1
+    for assignment, m_encs in someones_clustered_messages.items():
+        for m_enc in m_encs:
+            obs_uid, obs_risk, m_sent, unobs_uid = decode_message(m_enc)
+            groups[assignment].append(unobs_uid)
+            unique_people_contacted.add(unobs_uid)
+            total_num_contacts += 1
     all_groups.append(dict(groups))
     all_unique_people_contacted.append(unique_people_contacted)
     all_total_num_contacts.append(total_num_contacts)
-
 
 # count the number of people in each group
 all_count_people_in_group = []
@@ -83,12 +82,84 @@ plt.title("Histogram of person <> message number frequency")
 plt.savefig(MESSAGE_NUMBER_PATH)
 plt.clf()
 
+
+# "rename" the groups. We need to figure out which group should be assigned to which true person in order to calculate an accuracy
+def group_to_majority_id(all_groups):
+    all_new_groups = []
+    # we need to calculate this for every person
+    for group_idx, groups in enumerate(all_groups):
+        unique_uids = set()
+
+        # calculate the set of unique persons Alice has had contact with
+        for group, uids in groups.items():
+            for idx, uid in enumerate(uids):
+                unique_uids.add(uid)
+
+        # for each group, what is its majority id?
+        counts = {}
+        for group, uids in groups.items():
+            cnt = Counter()
+            for idx, uid in enumerate(uids):
+                cnt[uid] += 1
+            counts[group] = cnt
+
+        def get_occurence_for_uid(uid, assignments):
+            occurences = {}
+            for a in assignments.values():
+                if a[0] == uid:
+                    occurences[a[1]] = a[0]
+            return occurences
+
+        # for each uid, what is its max group?
+        uid_to_max_group = defaultdict(int)
+        for uid in unique_uids:
+            max_count = 0
+            for group, cs in counts.items():
+                for uid1, c in cs.items():
+                    if c > max_count and uid1 == uid:
+                        max_count = c
+                        uid_to_max_group[uid1] = group
+
+        # for each id, which group contains the most of that id?
+        # assignments = defaultdict(tuple)
+        # not_done = True
+        # while sum([len(v) == 1 for v in assignments.values()]) < len(groups) and not_done:
+        #     for group, cnt in counts.items():
+        #         print(f"group: {group}, cnt: {cnt}, assignments: {assignments}")
+        #         # if the assigned group has the most of that uid
+        #         if group == str(uid_to_max_group[cnt.most_common()[0][0]]):
+        #             assignments[group] = cnt.most_common()[0][0]
+        #             import pdb; pdb.set_trace()
+        #         # if a more prevalent uid is assigned to your desired group, pick your next most desired group
+        #         elif assignments[group] and assignments[group] == max(get_occurence_for_uid(uid, assignments)):
+        #             import pdb; pdb.set_trace()
+        #
+        #             continue
+        #
+        #     # num non-zero elements in assignments
+        #     if sum([len(v) == 1 for v in assignments.values()]) == len(groups):
+        #         print("done")
+        #         import pdb; pdb.set_trace()
+        new_groups = defaultdict(list)
+        for group, uids in groups.items():
+            for uid in unique_uids:
+                if uid_to_max_group[uid] == group:
+                    new_groups[uid.split(":")[1]] = uids
+
+        for group, uids in groups.items():
+            if len(new_groups[group]) == 0:
+                new_groups[group] = uids
+            else:
+                new_groups[len(groups)+1] = uids
+
+        all_new_groups.append(new_groups)
+    return all_new_groups
+
+all_groups = group_to_majority_id(all_groups)
+
 # helper function to create unique nodes for networkx
 def hash_uid(group, uid, idx):
     return str(group) + "-" + str(uid) + "-" + str(idx)
-
-# "rename" the groups. We need to figure out which group should be assigned to which true person in order to calculate an accuracy
-all_groups = group_to_majority_id(all_groups)
 
 # create and plot networkx graphs for the clusterings of individual's contact histories
 all_group_accuracies = []
@@ -96,18 +167,23 @@ for group_idx, groups in enumerate(all_groups):
     G = nx.Graph()
     group_accuracies = []
     all_uids = set()
-    for group, uids in groups.items():
+
+    for group_id, uids in groups.items():
         num_right = 0
         for idx, uid in enumerate(uids):
-            G.add_node(hash_uid(group, uid, idx))
+            uid = uid.split(":")[1]
+            G.add_node(hash_uid(group_id, uid, idx))
             all_uids.add(uid)
         for idx1, uid1 in enumerate(uids):
-            if uid1 == group:
+            uid1 = uid1.split(":")[1]
+            if uid1 == group_id:
                 num_right += 1
             for idx2, uid2 in enumerate(uids):
-                G.add_edge(hash_uid(group, uid1, idx1), hash_uid(group, uid2, idx2))
+                uid2 = uid2.split(":")[1]
+                G.add_edge(hash_uid(group_id, uid1, idx1), hash_uid(group_id, uid2, idx2))
         if len(uids) > 1:
             group_accuracies.append(num_right/len(uids))
+
     all_group_accuracies.extend(group_accuracies)
 
     if group_idx < 10:

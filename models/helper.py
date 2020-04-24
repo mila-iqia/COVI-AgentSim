@@ -1,31 +1,43 @@
 import numpy as np
 import datetime
-from utils import _decode_message
-from collections import Counter
+
+from utils import PREEXISTING_CONDITIONS
+
+from models.utils import decode_message
 
 def messages_to_np(human):
-    ms_enc = np.zeros((len(human.M), 3))
-    idx = 0
-    for m_enc, assignment in human.M.items():
-        obs_uid, risk, day, unobs_uid = _decode_message(m_enc)
-        message = human.Message(obs_uid, risk, day, unobs_uid)
-
-        m_enc = np.array([assignment, message.risk, day])
-        ms_enc[idx] = m_enc
-        idx += 1
-    return ms_enc
+    ms_enc = []
+    for day, clusters in human.clusters.clusters_by_day.items():
+        for cluster_id, messages in clusters.items():
+            # TODO: take an average over the risks for that day
+            if not any(messages):
+                continue
+            ms_enc.append([cluster_id, decode_message(messages[0]).risk, len(messages), day])
+    return np.array(ms_enc)
 
 def candidate_exposures(human, date):
-    candidate_locs = list(human.locations_visited.keys())
-    exposed_locs = np.zeros(len(candidate_locs))
-    if human.exposure_source in candidate_locs:
-        exposed_locs[candidate_locs.index(human.exposure_source)] = 1.
-    candidate_encounters = list(messages_to_np(human))
+    candidate_encounters = messages_to_np(human)
     exposed_encounters = np.zeros(len(candidate_encounters))
-    if human.exposure_message and human.exposure_message in human.M.keys():
-        idx = list(human.M.keys()).index(human.exposure_message)
-        exposed_encounters[idx] = 1.
-    return np.array(candidate_encounters), exposed_encounters, candidate_locs, exposed_locs
+    if human.exposure_message and human.exposure_message in human.clusters.all_messages:
+        idx = 0
+        for day, clusters in human.clusters.clusters_by_day.items():
+            for cluster_id, messages in clusters.items():
+                for message in messages:
+                    if message == human.exposure_message:
+                        exposed_encounters[idx] = 1.
+                        break
+                if any(messages):
+                    idx += 1
+
+    return candidate_encounters, exposed_encounters
+
+def conditions_to_np(conditions):
+    conditions_encs = np.zeros((len(PREEXISTING_CONDITIONS),))
+
+    for condition in conditions:
+        probability = PREEXISTING_CONDITIONS[condition][0]
+        conditions_encs[probability.id] = 1
+    return conditions_encs
 
 
 def symptoms_to_np(symptoms_day, all_symptoms, all_possible_symptoms):
@@ -36,20 +48,6 @@ def symptoms_to_np(symptoms_day, all_symptoms, all_possible_symptoms):
         for symptom in symptoms:
             symptoms_enc[day, aps.index(symptom)] = 1.
     return symptoms_enc
-
-def group_to_majority_id(all_groups):
-    all_new_groups = []
-    for group_idx, groups in enumerate(all_groups):
-        new_groups = {}
-        for group, uids in groups.items():
-            cnt = Counter()
-            for idx, uid in enumerate(uids):
-                cnt[uid] += 1
-            for i in range(len(cnt)):
-                new_groups[cnt.most_common()[i][0]] = uids
-                break
-        all_new_groups.append(new_groups)
-    return all_new_groups
 
 def rolling_infectiousness(start, date, human):
     rolling_window = 14
@@ -81,5 +79,22 @@ def rolling_infectiousness(start, date, human):
 
     try:
         return rollings[cur_day]
-    except Exception:
+    except IndexError:
         return rolling
+
+def encode_age(age):
+    if age is None:
+        return -1
+    else:
+        return age
+
+def encode_sex(sex):
+    if not sex:
+        return -1
+    sex = sex.lower()
+    if sex.startswith('f'):
+        return 1
+    elif sex.startswith('m'):
+        return 2
+    else:
+        return 0
