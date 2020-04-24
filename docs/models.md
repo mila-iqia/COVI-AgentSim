@@ -48,10 +48,11 @@ as well as adding a risk for their reported symptoms.
 
 Certain algorithms perform better when we can attribute messages to individuals. The intuition is that each encounter with an 
 individual takes some of their risk, and if we update the same amount for encounters with the same individual, we will overestimate the risk.
-The `add_message_to_cluster` performs a noisy de-anonymization on the messages, but has a relatively low accuracy. There are many ways in which it should be improved.
+The `add_message_to_cluster` performs a noisy de-anonymization on the messages, but has a relatively low accuracy. It is a work in progress.
 
 ## Model development for V2
-If you wish to write data out from this simulator, use the `--save_training_data` arg. This writes `output/output.pkl`.
+If you wish to write data out from this simulator, use the `--save_training_data` arg. This writes data out to the path provided in `<data_path>/daily_outputs/<day>/<person>/daily_human.pkl`.
+As a post-processing step, we must run `python models/merge_outputs.py --data_path <data_path> --output_path <output_path>` to get the final zip file.
 For each person, for each day, this file contains data in the form: 
 
 ```
@@ -119,4 +120,4 @@ If a person becomes infectious, the value is non-zero for every day until it rea
 - `[true_]age` is an integer valued at -1 for `undefined` or age of the human, 0 included.
 - `[true_]sex` is an integer valued at -1 for `undefined`, 0 for 'other', 1 for 'female' and 2 for 'male'.
  
-That data is loaded into a PyTorch dataloader in `models/dataloader.py`.
+That data is loaded into an absurdly bad PyTorch dataloader in `models/dataloader.py`.
