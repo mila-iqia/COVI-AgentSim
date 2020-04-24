@@ -34,7 +34,7 @@ class SEIRMonitor(BaseMonitor):
 
         while True:
             S, E, I, R = 0, 0, 0, 0
-            R0 = city.tracker.get_R0()
+            R0 = city.tracker.get_R()
             G = city.tracker.get_generation_time()
 
             for h in city.humans:
@@ -44,6 +44,7 @@ class SEIRMonitor(BaseMonitor):
                 R += h.is_removed
 
             print(env.timestamp, f"Ro: {R0:5.2f} G:{G:5.2f} S:{S} E:{E} I:{I} R:{R}")
+            # print(city.tracker.recovered_stats)
             self.data.append({
                     'time': env.timestamp,
                     'susceptible': S,
