@@ -99,17 +99,10 @@ class Human(object):
         self.is_asymptomatic = self.rng.rand() > (BASELINE_P_ASYMPTOMATIC - (self.age - 50) * 0.5) / 100
         self.asymptomatic_infection_ratio = ASYMPTOMATIC_INFECTION_RATIO if self.is_asymptomatic else 0.0 # draw a beta with the distribution in documents
         self.recovery_days = _draw_random_discreet_gaussian(AVG_RECOVERY_DAYS, SCALE_RECOVERY_DAYS, self.rng) # make it IQR &recovery
-        self.viral_load_plateau_height, self.viral_load_plateau_start, self.viral_load_plateau_end, self.viral_load_recovered = _sample_viral_load_piecewise(rng, age=age)
-        
+        self.viral_load_plateau_height, self.viral_load_plateau_start, self.viral_load_plateau_end, self.viral_load_recovered = None,None,None,None
         self.cold_progression, self.cold_start_day, self.cold_symptoms_array= _get_cold_symptoms(self.age, self.rng,self.simulation_days, self.carefullness, self.preexisting_conditions, self.gets_really_sick, self.gets_extremely_sick)
         self.flu_progression, self.flu_start_day, self.flu_symptoms_array= _get_flu_symptoms(self.age, self.rng,self.simulation_days, self.carefullness, self.preexisting_conditions, self.gets_really_sick, self.gets_extremely_sick)
-
-
-        self.covid_progression = _get_covid_symptoms(
-                          np.ndarray.item(self.viral_load_plateau_start), np.ndarray.item(self.viral_load_plateau_end),
-                          np.ndarray.item(self.viral_load_recovered), age=self.age, incubation_days=self.incubation_days, 
-                                                          really_sick=self.gets_really_sick, extremely_sick=self.gets_extremely_sick, 
-                          rng=self.rng, preexisting_conditions=self.preexisting_conditions)
+        self.covid_progression = []
         self.covid_symptoms_array = [[] for day in range(simulation_days)]
 
         # counters and memory
@@ -507,21 +500,23 @@ class Human(object):
         area = self.location.area
 
         # Report all the encounters
+        initial_viral_load = 0
         for h in location.humans:
             if h == self or self.location.location_type == 'household':
                 continue
 
-            # calculate the nature of the contact
+            # Calculate the nature of the contact
             distance = np.sqrt(int(area/len(self.location.humans))) + self.rng.randint(MIN_DIST_ENCOUNTER, MAX_DIST_ENCOUNTER)
             t_near = min(self.leaving_time, h.leaving_time) - max(self.start_time, h.start_time)
             is_exposed = False
-
             close_enough = distance <= INFECTION_RADIUS and t_near * TICK_MINUTE > INFECTION_DURATION
+            
+            # Transmission of cold and flu
             if h.has_cold:
                 if close_enough and self.rng.rand() < COLD_CONTAGIOUSNESS * h.mask_effect * self.mask_effect:
                     for (i,symp_arr) in enumerate(self.cold_progression):
                         if COLD_INCUBATION+i+self.today < self.simulation_days:
-                            self.cold_symptoms_array[COLD_INCUBATION+i+self.today].extend(symp_arr)
+                            self.cold_symptoms_array[COLD_INCUBATION+i+self.today]=symp_arr
             if h.has_flu:
                 if close_enough and self.rng.rand() < FLU_CONTAGIOUSNESS * h.mask_effect * self.mask_effect:
                     for (i,symp_arr) in enumerate(self.flu_progression):
@@ -533,20 +528,39 @@ class Human(object):
             p_infection = (h.infectiousness * (h.is_asymptomatic * h.asymptomatic_infection_ratio 
                                             + 1.0 * (not h.is_asymptomatic)))*h.mask_effect
 
-            x_human = close_enough and self.rng.random() < p_infection
+            # Viral load accumulates
+            initial_viral_load += p_infection
+
+            # Sample transmission of Covid from h or environment
+            x_human = close_enough and self.rng.random() < initial_viral_load
             x_environment = self.rng.random() < location.contamination_probability # &prob_infection
             if x_human or x_environment:
                 if self.is_susceptible:
                     is_exposed = True
-                    for (i,symp_arr) in enumerate(self.covid_progression):
-                        if i+self.today < len(self.covid_symptoms_array):
-                            if not self.is_asymptomatic:
-                                self.covid_symptoms_array[i+self.today] = symp_arr
+
                     h.n_infectious_contacts+=1
                     Event.log_exposed(self, self.env.timestamp)
+
             if self.is_susceptible and is_exposed:
                 self.infection_timestamp = self.env.timestamp
-
+                self.viral_load_plateau_height, \
+                  self.viral_load_plateau_start, \
+                    self.viral_load_plateau_end, \
+                      self.viral_load_recovered = _sample_viral_load_piecewise( 
+                                                     rng=self.rng, age=self.age, 
+                                                     initial_viral_load=initial_viral_load)
+                self.covid_progression = _get_covid_symptoms( 
+                                            np.ndarray.item(self.viral_load_plateau_start), 
+                                            np.ndarray.item(self.viral_load_plateau_end), 
+                                            np.ndarray.item(self.viral_load_recovered), 
+                                            initial_viral_load=initial_viral_load, 
+                                            age=self.age, incubation_days=self.incubation_days, 
+                                            really_sick=self.gets_really_sick, extremely_sick=self.gets_extremely_sick, 
+                                            rng=self.rng, preexisting_conditions=self.preexisting_conditions)
+                for (i,symp_arr) in enumerate(self.covid_progression):
+                    if i+self.today < len(self.covid_symptoms_array):
+                        if not self.is_asymptomatic:
+                            self.covid_symptoms_array[i+self.today] = symp_arr
             Event.log_encounter(self, h,
                                 location=location,
                                 duration=t_near,
