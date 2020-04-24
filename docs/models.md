@@ -64,7 +64,6 @@ daily_output = {"current_day": current_day,
                             human.symptoms_at_time(todays_date, human.all_reported_symptoms),
                             all_possible_symptoms),
                         "candidate_encounters": candidate_encounters,
-                        "candidate_locs": candidate_locs,
                         "test_results": human.get_test_result_array(todays_date),
                         "preexisting_conditions": conditions_to_np(human.obs_preexisting_conditions),
                         "age": encode_age(human.obs_age),
@@ -82,7 +81,6 @@ daily_output = {"current_day": current_day,
                         "infectious_day": infectious_day,
                         "is_recovered": is_recovered,
                         "recovery_day": recovery_day,
-                        "exposed_locs": exposed_locs,
                         "exposure_encounter": exposure_encounter,
                         "infectiousness": infectiousness,
                         "true_preexisting_conditions": conditions_to_np(human.preexisting_conditions),
@@ -104,9 +102,6 @@ Unlike other rolling arrays, the number of elements in `candidate_encounters` wi
 - `exposure_encounter` is an array of zeros with the same first dimension as `candidate_encounters`. If the Human was infected by an interaction
 with another Human, there is a specific encounter (message) which was responsible for their infection. This happens in roughly 85% of infections.
 The index of the exposure message, if it is in `candidate_encounters`, is set to 1.
-- `candidate_locs` is a 1-dimensional array containing the ids of every Location the Human has visited. 
-- `exposed_locs` is an array of the same dimensionality as `candidate_locs`, with a similar logic as `exposure_encounter`. I.e., if the 
-Human was exposed to Covid-19 by a contaminated location, then that index of that location is set to 1. Unlike `candidate_locs`, this should not roll.
 - `test_results` is a rolling array of length 14. If the Human receives a positive test result, then the index of that day is set to 1.
 - `is_exposed` is a binary value representing whether the Human has been exposed to the virus, and the virus is incubating within them.
 - `exposure_day` is an integer value between 0 and -13 which represents the day when the exposure took place. 0 represents today.

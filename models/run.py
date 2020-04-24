@@ -67,7 +67,7 @@ def proc_human(params):
         is_exposed, exposure_day = human.is_exposed(todays_date)
         is_infectious, infectious_day = human.is_infectious(todays_date)
         is_recovered, recovery_day = human.is_recovered(todays_date)
-        candidate_encounters, exposure_encounter, candidate_locs, exposed_locs = candidate_exposures(human, todays_date)
+        candidate_encounters, exposure_encounter = candidate_exposures(human, todays_date)
         infectiousness = rolling_infectiousness(start, todays_date, human)
         daily_output = {"current_day": current_day,
                         "observed":
@@ -77,7 +77,6 @@ def proc_human(params):
                                     human.symptoms_at_time(todays_date, human.all_reported_symptoms),
                                     all_possible_symptoms),
                                 "candidate_encounters": candidate_encounters,
-                                "candidate_locs": candidate_locs,
                                 "test_results": human.get_test_result_array(todays_date),
                                 "preexisting_conditions": conditions_to_np(human.obs_preexisting_conditions),
                                 "age": encode_age(human.obs_age),
@@ -95,8 +94,6 @@ def proc_human(params):
                                 "infectious_day": infectious_day,
                                 "is_recovered": is_recovered,
                                 "recovery_day": recovery_day,
-                                "exposed_locs": exposed_locs,
-                                "exposure_encounter": exposure_encounter,
                                 "infectiousness": infectiousness,
                                 "true_preexisting_conditions": conditions_to_np(human.preexisting_conditions),
                                 "true_age": encode_age(human.age),
@@ -256,7 +253,6 @@ def main(args=None):
 
         print(f"day {current_day} of {total_days}")
         days_logs, start_pkl = get_days_worth_of_logs(args.data_path, start, start_pkl, current_day)
-        start1 = time.time()
 
         all_params = []
         for human in hd.values():
@@ -296,8 +292,6 @@ def main(args=None):
             hd[human.name] = human
         if args.plot_daily:
             daily_risks = [(np.e ** human.risk, human.is_infectious(encounter['time'])[0], human.name) for human in hd.values()]
-            if current_day > 10:
-                import pdb; pdb.set_trace()
             hist_plot(daily_risks, f"{args.plot_path}day_{str(current_day).zfill(3)}.png")
 
     # print out the clusters

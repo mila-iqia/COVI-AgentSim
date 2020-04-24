@@ -16,10 +16,6 @@ def messages_to_np(human):
     return np.array(ms_enc)
 
 def candidate_exposures(human, date):
-    candidate_locs = list(human.locations_visited.keys())
-    exposed_locs = np.zeros(len(candidate_locs))
-    if human.exposure_source in candidate_locs:
-        exposed_locs[candidate_locs.index(human.exposure_source)] = 1.
     candidate_encounters = messages_to_np(human)
     exposed_encounters = np.zeros(len(candidate_encounters))
     if human.exposure_message and human.exposure_message in human.clusters.all_messages:
@@ -33,7 +29,7 @@ def candidate_exposures(human, date):
                 if any(messages):
                     idx += 1
 
-    return candidate_encounters, exposed_encounters, candidate_locs, exposed_locs
+    return candidate_encounters, exposed_encounters
 
 def conditions_to_np(conditions):
     conditions_encs = np.zeros((len(PREEXISTING_CONDITIONS),))

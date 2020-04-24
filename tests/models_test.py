@@ -128,11 +128,6 @@ class ModelsPreprocessingTest(unittest.TestCase):
                         stats['humans'][h_i]['has_recovery_day'] = 1
                         # For how long has been infectious
                         self.assertTrue(0 <= unobserved['recovery_day'] < 14)
-                    # Locations where unobserved['is_exposed'] was true
-                    self.assertTrue(len(unobserved['exposed_locs'].shape) == 1)
-                    self.assertTrue(unobserved['exposed_locs'].min() in (0, 1))
-                    self.assertTrue(unobserved['exposed_locs'].max() in (0, 1))
-                    self.assertTrue(0 <= unobserved['exposed_locs'].sum() <= len(unobserved['exposed_locs']))
                     if len(observed['candidate_encounters']):
                         stats['humans'][h_i]['exposure_encounter_cnt'] += 1
                         # Encounters responsible for exposition. Exposition can occur without being
@@ -153,10 +148,6 @@ class ModelsPreprocessingTest(unittest.TestCase):
                     if unobserved['is_infectious'] or unobserved['is_recovered']:
                         self.assertTrue(unobserved['is_infectious'] != unobserved['is_recovered'])
 
-                    # exposed_locs is the same length as candidate_locs
-                    # TODO: observed['candidate_locs'] should be a tuple (human_readable, id) preferably sorted
-                    self.assertTrue(unobserved['exposed_locs'].shape == (len(observed['candidate_locs']),))
-
                     # exposure_encounter is the same length as candidate_encounters
                     self.assertTrue(unobserved['exposure_encounter'].shape == (observed['candidate_encounters'].shape[0],))
 
@@ -175,5 +166,4 @@ class ModelsPreprocessingTest(unittest.TestCase):
                         if unobserved['is_exposed'] != prev_unobserved['is_exposed']:
                             self.assertTrue(unobserved['is_exposed'])
                             self.assertTrue(unobserved['exposure_day'] == 0)
-                            self.assertTrue(unobserved['exposed_locs'].sum() == prev_unobserved['exposed_locs'].sum() + 1)
                             self.assertTrue(prev_unobserved['infectiousness'][0] == 0)
