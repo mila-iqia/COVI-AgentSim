@@ -65,6 +65,9 @@ daily_output = {"current_day": current_day,
                         "candidate_encounters": candidate_encounters,
                         "candidate_locs": candidate_locs,
                         "test_results": human.get_test_result_array(todays_date),
+                        "preexisting_conditions": conditions_to_np(human.obs_preexisting_conditions),
+                        "age": encode_age(human.obs_age),
+                        "sex": encode_sex(human.obs_sex)
                     },
                 "unobserved":
                     {
@@ -81,6 +84,9 @@ daily_output = {"current_day": current_day,
                         "exposed_locs": exposed_locs,
                         "exposure_encounter": exposure_encounter,
                         "infectiousness": infectiousness,
+                        "true_preexisting_conditions": conditions_to_np(human.preexisting_conditions),
+                        "true_age": encode_age(human.age),
+                        "true_sex": encode_sex(human.sex)
                     }
                 }
 ```
@@ -109,5 +115,8 @@ Human was exposed to Covid-19 by a contaminated location, then that index of tha
 - `recovery_day` is an integer value between 0 and -13 which represents the day when the person recovered. If the person has not recovered, the value is None.
 - `infectiousness` is an array of length 14 which contains floating values between 0 and 1 representing how infectious the person is. 
 If a person becomes infectious, the value is non-zero for every day until it reaches zero again, after which it does not become non-zero. 
+- `[true_]preexisting_conditions` is a numpy array or encoded precondicitons. A present precondition index will have a value of 1. In order or index, preconditions are: immuno-suppressed, diabetes, heart_disease, COPD, asthma.
+- `[true_]age` is an integer valued at -1 for `undefined` or age of the human, 0 included.
+- `[true_]sex` is an integer valued at -1 for `undefined`, 0 for 'other', 1 for 'female' and 2 for 'male'.
  
 That data is loaded into a PyTorch dataloader in `models/dataloader.py`.

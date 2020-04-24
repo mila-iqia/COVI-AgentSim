@@ -13,7 +13,7 @@ from base import Event
 from models.dummy_human import DummyHuman
 from models.risk_models import RiskModelTristan
 from models.helper import conditions_to_np, symptoms_to_np, candidate_exposures, rolling_infectiousness, \
-    encode_sex
+    encode_age, encode_sex
 from models.utils import encode_message, update_uid, create_new_uid, encode_update_message, decode_message, Message, decode_update_message
 from joblib import Parallel, delayed
 
@@ -80,7 +80,7 @@ def proc_human(params):
                                 "candidate_locs": candidate_locs,
                                 "test_results": human.get_test_result_array(todays_date),
                                 "preexisting_conditions": conditions_to_np(human.obs_preexisting_conditions),
-                                "age": human.obs_age or 0,
+                                "age": encode_age(human.obs_age),
                                 "sex": encode_sex(human.obs_sex)
                             },
                         "unobserved":
@@ -99,7 +99,7 @@ def proc_human(params):
                                 "exposure_encounter": exposure_encounter,
                                 "infectiousness": infectiousness,
                                 "true_preexisting_conditions": conditions_to_np(human.preexisting_conditions),
-                                "true_age": human.age,
+                                "true_age": encode_age(human.age),
                                 "true_sex": encode_sex(human.sex)
                             }
                         }

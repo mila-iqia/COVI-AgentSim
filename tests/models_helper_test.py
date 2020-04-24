@@ -2,7 +2,7 @@ import unittest
 
 from utils import PREEXISTING_CONDITIONS
 
-from models.helper import conditions_to_np
+from models.helper import conditions_to_np, encode_age, encode_sex
 
 
 class ModelsHelperTest(unittest.TestCase):
@@ -31,3 +31,25 @@ class ModelsHelperTest(unittest.TestCase):
             self.assertEqual(np_conditions.sum(), 1)
             self.assertEqual(np_conditions.max(), 1)
             self.assertEqual(np_conditions.min(), 0)
+
+    def test_encode_age(self):
+        self.assertEqual(encode_age(0), 0)
+        self.assertEqual(encode_age(10), 10)
+        self.assertEqual(encode_age(-1), -1)
+        self.assertEqual(encode_age(None), -1)
+
+    def test_encode_sex(self):
+        self.assertEqual(encode_sex('F'), 1)
+        self.assertEqual(encode_sex('f'), 1)
+        self.assertEqual(encode_sex('FEMALE'), 1)
+        self.assertEqual(encode_sex('female'), 1)
+        self.assertEqual(encode_sex('M'), 2)
+        self.assertEqual(encode_sex('m'), 2)
+        self.assertEqual(encode_sex('MALE'), 2)
+        self.assertEqual(encode_sex('male'), 2)
+        self.assertEqual(encode_sex('O'), 0)
+        self.assertEqual(encode_sex('o'), 0)
+        self.assertEqual(encode_sex('OTHERS'), 0)
+        self.assertEqual(encode_sex('others'), 0)
+        self.assertEqual(encode_sex(''), -1)
+        self.assertEqual(encode_sex(None), -1)

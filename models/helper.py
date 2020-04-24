@@ -87,7 +87,15 @@ def rolling_infectiousness(start, date, human):
     except IndexError:
         return rolling
 
+def encode_age(age):
+    if age is None:
+        return -1
+    else:
+        return age
+
 def encode_sex(sex):
+    if not sex:
+        return -1
     sex = sex.lower()
     if sex.startswith('f'):
         return 1
