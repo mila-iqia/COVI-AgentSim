@@ -235,7 +235,6 @@ class Clusters:
                 best_message = decode_message(best_message)
                 updated_message = Message(best_message.uid, update_message.new_risk, best_message.day, best_message.unobs_id)
                 self.update_record(best_cluster, best_cluster, best_message, updated_message)
-        assert([decode_message(message).risk == 15 for message in self.clusters[best_cluster]])
         return self
 
     def purge(self, current_day):

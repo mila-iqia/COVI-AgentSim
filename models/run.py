@@ -8,6 +8,7 @@ import datetime
 import pathlib
 import time
 from collections import defaultdict
+from plots.plot_risk import hist_plot
 from base import Event
 from models.dummy_human import DummyHuman
 from models.risk_models import RiskModelTristan
@@ -22,7 +23,7 @@ parser.add_argument('--data_path', type=str, default="output/data.pkl")
 parser.add_argument('--cluster_path', type=str, default="output/clusters.json")
 parser.add_argument('--output_file', type=str, default='output/output.pkl')
 parser.add_argument('--plot_daily', action="store_true")
-parser.add_argument('--risk_model', type=str, default="tristan", choices=['yoshua', 'lenka', 'eilif', 'tristan'])
+parser.add_argument('--risk_model', type=str, default="tristan", choices=[ 'tristan'])
 parser.add_argument('--seed', type=int, default="0")
 parser.add_argument('--save_training_data', action="store_true")
 parser.add_argument('--n_jobs', type=int, default=1, help="Default is no parallelism, jobs = 1")
@@ -44,6 +45,7 @@ def proc_human(params):
     RiskModel = RiskModelTristan
     human.start_risk = human.risk
     todays_date = start + datetime.timedelta(days=current_day)
+
     # check if you have new reported symptoms
     human.risk = RiskModel.update_risk_daily(human, todays_date)
 
@@ -167,13 +169,7 @@ def init_humans(params):
 
 def pick_risk_model(risk_model):
     # select the risk model
-    if risk_model == 'yoshua':
-        return RiskModelYoshua
-    elif risk_model == 'lenka':
-        return RiskModelLenka
-    elif risk_model == 'eilif':
-        return RiskModelEilif
-    elif risk_model == 'tristan':
+    if risk_model == 'tristan':
         return RiskModelTristan
     raise ValueError("Unknown risk model")
 
@@ -249,6 +245,7 @@ def main(args=None):
         hd[hid] = merged_human
 
     # select the risk prediction model to embed in messaging protocol
+
     RiskModel = pick_risk_model(args.risk_model)
 
     with zipfile.ZipFile(args.data_path, 'r') as zf:
@@ -297,6 +294,11 @@ def main(args=None):
         for human_dict in human_dicts:
             human = DummyHuman(name=human_dict['name']).merge(human_dict)
             hd[human.name] = human
+        if args.plot_daily:
+            daily_risks = [(np.e ** human.risk, human.is_infectious(encounter['time'])[0], human.name) for human in hd.values()]
+            if current_day > 10:
+                import pdb; pdb.set_trace()
+            hist_plot(daily_risks, f"{args.plot_path}day_{str(current_day).zfill(3)}.png")
 
     # print out the clusters
     clusters = []
