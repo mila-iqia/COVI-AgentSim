@@ -20,23 +20,3 @@ with zipfile.ZipFile(f"{args.output_path}", mode='a', compression=zipfile.ZIP_ST
         except Exception:
             print(data_dir_path)
             print(os.path.join(data_dir_path, pkl, "daily_human.pkl"))
-# add risks for plotting
-#     todays_date = start + datetime.timedelta(days=current_day)
-#     daily_risks.extend([(np.e ** human.risk, human.is_infectious(todays_date)[0], human.name) for human in hd.values()])
-#     if args.plot_daily:
-#         hist_plot(daily_risks, f"{args.plot_path}day_{str(current_day).zfill(3)}.png")
-#     all_risks.extend(daily_risks)
-# if args.save_training_data:
-#     pickle.dump(all_outputs, open(args.output_file, 'wb'))
-#
-# dist_plot(all_risks,  f"{args.plot_path}all_risks.png")
-#
-# # make a gif of the dist output
-# process = subprocess.Popen(f"convert -delay 50 -loop 0 {args.plot_path}/*.png {args.plot_path}/risk.gif".split(), stdout=subprocess.PIPE)
-# output, error = process.communicate()
-#
-# # write out the clusters to be processed by privacy_plots
-# clusters = []
-# for human in hd.values():
-#     clusters.append(human.M)
-# json.dump(clusters, open(args.cluster_path, 'w'))

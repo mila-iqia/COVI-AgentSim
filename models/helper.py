@@ -1,6 +1,5 @@
 import numpy as np
 import datetime
-from collections import Counter
 
 from utils import PREEXISTING_CONDITIONS
 

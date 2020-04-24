@@ -14,7 +14,7 @@ from models.dummy_human import DummyHuman
 from models.risk_models import RiskModelTristan
 from models.helper import conditions_to_np, symptoms_to_np, candidate_exposures, rolling_infectiousness, \
     encode_age, encode_sex
-from models.utils import encode_message, update_uid, create_new_uid, encode_update_message, decode_message, Message, decode_update_message
+from models.utils import encode_message, update_uid, create_new_uid, encode_update_message, decode_message
 from joblib import Parallel, delayed
 
 parser = argparse.ArgumentParser(description='Run Risk Models and Plot results')

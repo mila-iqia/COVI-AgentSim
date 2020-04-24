@@ -3,7 +3,7 @@ import numpy as np
 import operator
 from collections import defaultdict
 from scipy.stats import wasserstein_distance as dist
-from models.utils import Message, decode_message, encode_message, decode_update_message, encode_update_message, hash_to_cluster, compare_uids
+from models.utils import Message, decode_message, encode_message, decode_update_message, hash_to_cluster, compare_uids
 
 class Clusters:
     """ This class manages the storage and clustering of messages and message updates.
