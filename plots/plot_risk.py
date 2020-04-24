@@ -1,4 +1,7 @@
-import config as cfg
+import os
+import sys
+sys.path.append(os.getcwd())
+from config import RISK_TRANSMISSION_PROBA
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
@@ -39,7 +42,7 @@ def hist_plot(risks, PATH_TO_PLOT):
     plt.xlabel("Risk")
     plt.ylabel("Density")
     plt.legend()
-    plt.title(f"Hist of day {PATH_TO_PLOT}, Risk Transmission Proba = {cfg.RISK_TRANSMISSION_PROBA}")
+    plt.title(f"Hist of day {PATH_TO_PLOT}, Risk Transmission Proba = {RISK_TRANSMISSION_PROBA}")
     plt.savefig(PATH_TO_PLOT)
     plt.close()
 
@@ -72,7 +75,7 @@ def dist_plot(risks, PATH_TO_PLOT):
     plt.xlabel("Risk")
     plt.ylabel("Number of risk readings")
     plt.legend(['infectious', 'not infectious'])
-    plt.title(f"Risk Transmission Proba = {cfg.RISK_TRANSMISSION_PROBA}")
+    plt.title(f"Risk Transmission Proba = {RISK_TRANSMISSION_PROBA}")
     print("Saving figure...")
     plt.savefig(PATH_TO_PLOT)
     plt.close()
