@@ -306,8 +306,11 @@ class Human(object):
             self.flu_symptoms = self.all_flu_symptoms
 
         if self.is_incubated and not self.is_asymptomatic:
-            days_since_infectious = math.floor(self.days_since_exposed - self.infectiousness_onset_days)
-            self.covid_symptoms = self.all_covid_symptoms[days_since_infectious]
+            if self.is_removed: # FIXME: should not happen
+                self.covid_symptoms = []
+            else:
+                days_since_infectious = math.floor(self.days_since_exposed - self.infectiousness_onset_days)
+                self.covid_symptoms = self.all_covid_symptoms[days_since_infectious]
 
         all_symptoms = set(self.flu_symptoms + self.cold_symptoms + self.covid_symptoms)
         # self.new_symptoms = list(all_symptoms - set(self.all_symptoms))
@@ -387,6 +390,9 @@ class Human(object):
         if sum(x in current_symptoms for x in ["severe", "extremely_severe", "trouble_breathing"]) > 0:
             return 0.0
 
+        elif self.test_result == "positive":
+            return 0.1
+
         elif sum(x in current_symptoms for x in ["trouble_breathing"]) > 0:
             return 0.3
 
@@ -464,6 +470,7 @@ class Human(object):
 
                 self.obs_hospitalized = True
                 self.infection_timestamp = None # indicates they are no longer infected
+                self.all_symptoms, self.covid_symptoms = [], []
                 Event.log_recovery(self, self.env.timestamp, self.dead)
                 if self.dead:
                     yield self.env.timeout(np.inf)
