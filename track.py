@@ -29,7 +29,11 @@ class Tracker(object):
                 'env_infection':get_nested_dict(1),
                 'location_env_infection': get_nested_dict(2),
                 'location_human_infection': get_nested_dict(3),
-                'duration': defaultdict(lambda : defaultdict(lambda :[0,0]))
+                'duration': {'avg': (0, np.zeros((150,150))), 'total': np.zeros((150,150)), 'n': np.zeros((150,150))},
+                'histogram_duration': [0],
+                'location_duration':defaultdict(lambda : [0]),
+                'n_contacts': {'avg': (0, np.zeros((150,150))), 'total': np.zeros((150,150))}
+
                 }
 
         self.infection_graph = nx.DiGraph()
@@ -46,7 +50,7 @@ class Tracker(object):
 
         # cumulative incidence
         day = self.env.timestamp.strftime("%d %b")
-        self.last_day = {'track_recovery':day, "track_infection":day}
+        self.last_day = {'track_recovery':day, "track_infection":day, 'social_mixing':day}
         self.cumulative_incidence = []
         self.n_susceptible = sum(h.is_susceptible for h in city.humans)
         self.cases_per_day = [0]
@@ -118,10 +122,7 @@ class Tracker(object):
             return self.r[0]
         else:
             log("not enough data points to estimate r0. Falling back to average")
-            x = [h.n_infectious_contacts for h in self.city.humans if h.state.index(1) >= 2]
-            if x:
-                return np.mean(x)
-            return -1
+            return self.get_R()
 
     def get_generation_time(self):
         return self.avg_generation_times[1]
@@ -232,23 +233,31 @@ class Tracker(object):
         duration = kwargs.get('duration')
         day = kwargs.get('day')
 
-        self.contacts['histogram_duration'][math.ceil(duration/15)] += 1
+        bin = math.floor(duration/15)
+        x = len(self.contacts['histogram_duration'])
+        if bin >= x:
+            self.contacts['histogram_duration'].extend([0 for _ in range(bin - x + 1)])
+        try:
+            self.contacts['histogram_duration'][bin] += 1
+        except:
+            import pdb; pdb.set_trace()
 
-        if self.last_social_mixing_day != day:
+        if self.last_day['social_mixing'] != day:
             # duration
             n, M = self.contacts['duration']['avg']
-            m = self.contacts['duration']['total']/self.contacts['duration']['n']
+            where = self.contacts['duration']['n'] != 0
+            m = np.divide(self.contacts['duration']['total'], self.contacts['duration']['n'], where=where)
             self.contacts['duration']['avg'] = (n+1, (n*M + m)/(n+1))
 
-            self.contacts['duration']['total'] = np.zeros(150,150)
-            self.contacts['duration']['n'] = np.zeros(150,150)
+            self.contacts['duration']['total'] = np.zeros((150,150))
+            self.contacts['duration']['n'] = np.zeros((150,150))
 
             # n_contacts
             n, M = self.contacts['n_contacts']['avg']
             m = self.contacts['n_contacts']['total']
             self.contacts['duration']['avg'] = (n+1, (n*M + m)/(n+1))
 
-            self.contacts['n_contacts']['total'] = np.zeros(150,150)
+            self.contacts['n_contacts']['total'] = np.zeros((150,150))
 
         else:
             human1 = kwargs.get('human1', None)
@@ -265,7 +274,10 @@ class Tracker(object):
 
         location = kwargs.get('location', None)
         if location is not None:
-            self.contacts['location_duration'][location.type][math.ceil(duration/15)] += 1
+            x = len(self.contacts['location_duration'][location.location_type])
+            if bin >= x:
+                self.contacts['location_duration'][location.location_type].extend([0 for _ in range(bin - x + 1)])
+            self.contacts['location_duration'][location.location_type][bin] += 1
 
     def track_encounter_events(self, human1, human2, location, distance, duration):
         for i, (l,u) in enumerate(self.age_bins):

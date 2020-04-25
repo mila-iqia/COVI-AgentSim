@@ -113,6 +113,8 @@ class Human(object):
         self.last_state = self.state
         self.n_infectious_contacts = 0
         self.last_date = defaultdict(lambda : self.env.initial_timestamp.date())
+        self.last_location = self.location
+        self.last_duration = 0
 
         # symptoms
         self.symptom_start_time = None
