@@ -85,8 +85,9 @@ def base():
 
 @simu.command()
 @click.option('--n_people', help='population of the city', type=int, default=1000)
+@click.option('--simulation_days', help='number of days to run the simulation for', type=int, default=30)
 @click.option('--seed', help='seed for the process', type=int, default=0)
-def tune(n_people, seed):
+def tune(n_people, simulation_days, seed):
     # Force COLLECT_LOGS=False
     import config
     config.COLLECT_LOGS = False
@@ -99,7 +100,7 @@ def tune(n_people, seed):
     # cf.go_offline()
     monitors, tracker = run_simu(n_people=n_people, init_percent_sick=0.01,
                             start_time=datetime.datetime(2020, 2, 28, 0, 0),
-                            simulation_days=30,
+                            simulation_days=simulation_days,
                             outfile=None,
                             print_progress=True, seed=seed, other_monitors=[]
                             )
@@ -108,9 +109,6 @@ def tune(n_people, seed):
     # fig = x[['susceptible', 'exposed', 'infectious', 'removed']].iplot(asFigure=True, title="SEIR")
     # fig.write_image("plots/tune/seir.png")
     timenow = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
-    logfile = os.path.join(f"logs/log_n_{n_people}_seed_{seed}_{timenow}.txt")
-    tracker.write_metrics(None)
-
     data = dict()
     data['contacts'] = dict(tracker.contacts)
     data['cases_per_day'] = tracker.cases_per_day
@@ -131,6 +129,10 @@ def tune(n_people, seed):
     import dill
     with open(f"logs/tracker_data_n_{n_people}_seed_{seed}_{timenow}.pkl", 'wb') as f:
         dill.dump(data, f)
+
+    logfile = os.path.join(f"logs/log_n_{n_people}_seed_{seed}_{timenow}.txt")
+    tracker.write_metrics(logfile)
+
 
     # fig = x['R'].iplot(asFigure=True, title="R0")
     # fig.write_image("plots/tune/R.png")
