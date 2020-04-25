@@ -53,7 +53,7 @@ class City(object):
         self.n_people = n_people
         self.start_time = start_time
         self.init_percent_sick = init_percent_sick
-        self.last_date_to_check_tests = self.env.timestamp.date
+        self.last_date_to_check_tests = self.env.timestamp.date()
         self.test_count_today = defaultdict(int)
         self.test_type_preference = list(zip(*sorted(TEST_TYPES.items(), key=lambda x:x[1]['preference'])))[0]
         print("Initializing locations ...")
@@ -92,8 +92,8 @@ class City(object):
                         )
     @property
     def tests_available(self):
-        if self.last_date_to_check_tests != self.env.timestamp.date:
-            self.last_date_to_check_tests = self.env.timestamp.date
+        if self.last_date_to_check_tests != self.env.timestamp.date():
+            self.last_date_to_check_tests = self.env.timestamp.date()
             for k in self.test_count_today.keys():
                 self.test_count_today[k] = 0
         return any(self.test_count_today[test_type] < TEST_TYPES[test_type]['capacity'] for test_type in self.test_type_preference)
