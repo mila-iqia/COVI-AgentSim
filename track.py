@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import math
 from collections import defaultdict
-from config import HUMAN_DISTRIBUTION, LOCATION_DISTRIBUTION, INFECTION_RADIUS, INFECTION_DURATION
+from config import HUMAN_DISTRIBUTION, LOCATION_DISTRIBUTION, INFECTION_RADIUS, INFECTION_DURATION, EFFECTIVE_R_WINDOW
 import networkx as nx
 from utils import log
 
@@ -101,6 +101,7 @@ class Tracker(object):
         time_since_start =  (self.env.timestamp - self.env.initial_timestamp).total_seconds() / 86400 # DAYS
         if time_since_start == 0:
             return -1
+
         if time_since_start > 365:
             # tau= self.n_infectious_contacts / self.n_contacts
             # c_bar = self.n_contacts / time_since_start
@@ -113,6 +114,7 @@ class Tracker(object):
                 n, total = zip(*self.recovered_stats)
             else:
                 n, total = [0], [0]
+
             if sum(n):
                 return 1.0 * sum(total)/sum(n)
             return 0
@@ -191,13 +193,12 @@ class Tracker(object):
         self.avg_infectious_duration = (self.n_recovery * self.avg_infectious_duration + duration) / (self.n_recovery + 1)
         self.n_recovery += 1
 
-        day = self.env.timestamp.day
-        if self.last_day['track_recovery'] != day:
-            self.last_day['track_recovery'] = day
-            if len(self.recovered_stats) > 10:
+        if self.last_day['track_recovery'] != self.env.timestamp.date:
+            self.last_day['track_recovery'] = self.env.timestamp.date
+            if len(self.recovered_stats) > EFFECTIVE_R_WINDOW:
                 self.r.append(self.get_R())
                 self.recovered_stats = self.recovered_stats[1:]
-            self.recovered_stats.append([0, 0])
+            self.recovered_stats.append([1, n_infectious_contacts])
         else:
             n, total = self.recovered_stats[-1]
             self.recovered_stats[-1] = [n+1, total + n_infectious_contacts]
@@ -217,7 +218,6 @@ class Tracker(object):
         print("Avg. infectiousnes onset days", np.mean([x[2] for x in days]))
 
     def track_symptoms(self, human):
-        # called after logging the test
         if human.symptoms:
             if human.covid_symptoms:
                 self.symptoms_set['covid'][human.name].update(human.covid_symptoms)

@@ -9,7 +9,7 @@ from orderedset import OrderedSet
 import copy
 
 from config import *
-from utils import compute_distance, _get_random_area
+from utils import compute_distance, _get_random_area, _draw_random_discreet_gaussian
 from track import Tracker
 
 class Env(simpy.Environment):
@@ -40,7 +40,6 @@ class Env(simpy.Environment):
 
     def time_of_day(self):
         return self.timestamp.isoformat()
-
 
 class City(object):
 
@@ -586,3 +585,58 @@ class DummyEvent:
     @staticmethod
     def log_daily(*args, **kwargs):
         pass
+
+class Contacts(object):
+    def __init__(self, has_app):
+        # human --> [[date, counts], ...]
+        self.book = {}
+        self.has_app = has_app
+
+    def add(self, **kwargs):
+        human = kwargs.get("human")
+        timestamp = kwargs.get("timestamp")
+
+        if human not in self.book:
+            self.book[human] = [[timestamp.date(), 1]]
+            return
+
+        if timestamp.date != self.book[human][-1][0]:
+            self.book[human].append([timestamp.date(), 1])
+        else:
+            self.book[human][-1][1] += 1
+
+        self.update_history(human, timestamp.date())
+
+    def update_history(self, human, timestamp=None):
+        if timestamp is None:
+            timestamp = self.book[human][-1][0] # last contact date
+
+        remove_idx = -1
+        for history in self.book[human]:
+            if (timestamp - history[0]).days > N_DAYS_HISTORY:
+                remove_idx  += 1
+            else:
+                break
+
+        self.book[human] = self.book[human][remove_idx:]
+
+    def send_message(self, owner, RISK_MODEL):
+        if RISK_MODEL == "manual tracing":
+            p_contact = MANUAL_TRACING_NOISE
+            delay = 1
+            app = False
+
+        elif RISK_MODEL in ['digital tracing', 'first order probabilistic tracing']:
+            p_contact = 1
+            delay = 0
+            app = True
+            if not owner.has_app:
+                return
+
+        for human in self.book:
+            if not app or (app and human.has_app):
+                if human.rng.random() < p_contact:
+                    self.update_history(human)
+                    t = delay * _draw_random_discreet_gaussian(MANUAL_TRACING_DELAY_AVG, MANUAL_TRACING_DELAY_STD, human.rng)
+                    total_contacts = sum(map(lambda x:x[1], self.book[human]))
+                    human.update_risk(update_messages={'n':total_contacts, 'delay': t})
