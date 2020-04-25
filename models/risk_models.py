@@ -65,9 +65,7 @@ class RiskModelTristan(RiskModelBase):
         # if they get tested, it takes TEST_DAYS to get the result, and they are quarantined for QUARANTINE_DAYS.
         # The test_timestamp is set to datetime.min, unless they get a positive test result.
         # Basically, once they know they have a positive test result, they have a risk of 1 until after quarantine days.
-        if human.recovered_timestamp < now:
-            return np.log(0.01)
-        if human.test_result:
+        if human.test_result and human.recovered_timestamp < now:
             return np.log(1.)
         return np.log(0.01)
 
