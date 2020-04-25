@@ -802,8 +802,6 @@ class Human(object):
         new_risk_level = _proba_to_risk_level(self.risk)
         if new_risk_level != self.risk_level:
             # print(f"{self} changed to {self.risk_level} to {new_risk_level}")
-            if self.name == "human:11":
-                import pdb; pdb.set_trace()
             # modify behavior
             self.risk_level = new_risk_level
             pass
