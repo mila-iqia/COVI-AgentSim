@@ -342,7 +342,6 @@ class Human(object):
 
         return False
 
-
     def wear_mask(self):
         if not MASK_INTERVENTION:
             self.wearing_mask, self.mask_efficacy = False, 0
@@ -425,6 +424,8 @@ class Human(object):
             if self.last_date['run'] != self.env.timestamp.date():
                 self.last_date['run'] = self.env.timestamp.date()
                 Event.log_daily(self, self.env.timestamp)
+                self.update_symptoms()
+                city.tracker.track_symptoms(self)
 
             # recover health
             self.recover_from_cold_and_flu()
@@ -447,7 +448,6 @@ class Human(object):
 
             # recover
             if self.is_infectious and self.env.timestamp - self.infection_timestamp >= datetime.timedelta(days=self.recovery_days):
-                city.tracker.track_symptoms(self.covid_symptoms, covid=True)
                 city.tracker.track_recovery(self.n_infectious_contacts, self.recovery_days)
                 if self.never_recovers:
                     self.recovered_timestamp = datetime.datetime.max
@@ -464,6 +464,7 @@ class Human(object):
 
                 self.obs_hospitalized = True
                 self.infection_timestamp = None # indicates they are no longer infected
+                self.all_symptoms, self.covid_symptoms = [], []
                 Event.log_recovery(self, self.env.timestamp, self.dead)
                 if self.dead:
                     yield self.env.timeout(np.inf)
@@ -471,7 +472,6 @@ class Human(object):
             self.assert_state_changes()
 
             # Mobility
-
             # self.how_am_I_feeling = 1.0 (great) --> rest_at_home = False
             if not self.rest_at_home:
                 # set it once for the rest of the disease path
@@ -567,7 +567,7 @@ class Human(object):
                 yield self.env.timeout(np.inf)
 
             self.obs_hospitalized = True
-            t = self.recovery_days -(self.env.timestamp - self.infection_timestamp).total_seconds() / 86400 # DAYS
+            t = self.recovery_days - (self.env.timestamp - self.infection_timestamp).total_seconds() / 86400 # DAYS
             yield self.env.process(self.at(hospital, city, t * 24 * 60))
 
         elif type == "hospital-icu":
@@ -617,6 +617,20 @@ class Human(object):
         self.start_time = self.env.now
         area = self.location.area
 
+        # accumulate time at household
+        if location == self.household:
+            if self.last_location != self.household:
+                self.last_duration = duration
+                self.last_location = location
+            else:
+                self.last_duration += duration
+        else:
+            if self.last_location == self.household:
+                city.tracker.track_social_mixing(location=self.household, duration=self.last_duration)
+
+            self.last_location = location
+            city.tracker.track_social_mixing(location=location, duration=self.last_duration)
+
         # Report all the encounters (epi transmission)
         for h in location.humans:
             if h == self:
@@ -630,7 +644,7 @@ class Human(object):
             t_overlap = min(self.leaving_time, getattr(h, "leaving_time", 60)) - max(self.start_time, getattr(h, "start_time", 60))
             t_near = self.rng.random() * t_overlap
 
-            city.tracker.track_social_mixing(self, h, location, distance, t_near)
+            city.tracker.track_social_mixing(human1=self, human2=h, duration=t_near)
             contact_condition = distance <= INFECTION_RADIUS and t_near > INFECTION_DURATION
             if contact_condition:
                 proximity_factor = 1

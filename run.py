@@ -97,7 +97,6 @@ def tune(n_people, seed):
     # import cufflinks as cf
     import matplotlib.pyplot as plt
     # cf.go_offline()
-    n_people = 1000
     monitors, tracker = run_simu(n_people=n_people, init_percent_sick=0.01,
                             start_time=datetime.datetime(2020, 2, 28, 0, 0),
                             simulation_days=30,
