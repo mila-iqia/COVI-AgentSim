@@ -823,7 +823,7 @@ class Human(object):
         if self.has_allergies and self.rng.random() < P_HAS_ALLERGIES_TODAY:
             self.allergy_timestamp = self.env_timestamp
 
-        location.remove_human(self)
+        #location.remove_human(self)
 
 
     def _select_location(self, location_type, city):
