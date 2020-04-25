@@ -9,7 +9,250 @@ from functools import lru_cache
 from interventions import *
 
 # * Age of 1000 means not check on age
+# * Probability of -1 means that it is handled entirely by the code
+# * Probability of None or if the context is not explicitly stated means that it
+#   should be skipped entirely in the context
+# * Implicit context are: 'preexisting_conditions'
+# * Explicit contexts are: 'covid_pre_plateau', 'covid_plateau_1', 'covid_plateau_2',
+#     'covid_post_plateau_1', 'covid_post_plateau_2'
+SymptomProbability = namedtuple('SymptomProbability', ['name', 'id', 'probabilities'])
 ConditionProbability = namedtuple('ConditionProbability', ['name', 'id', 'age', 'sex', 'probability'])
+
+SYMPTOMS_CONTEXTS = {'covid': {0: 'covid_pre_plateau', 1: 'covid_plateau_1', 2: 'covid_plateau_2',
+                               3: 'covid_post_plateau_1', 4: 'covid_post_plateau_2'}}
+
+SYMPTOMS = OrderedDict([
+    # Sickness severity
+    # A lot of symptoms are dependent on the sickness severity so severity
+    # level needs to be first
+    (
+        'mild',
+        SymptomProbability('mild', 0, {'covid_pre_plateau': -1,
+                                       'covid_plateau_1': -1,
+                                       'covid_plateau_2': -1,
+                                       'covid_post_plateau_1': -1,
+                                       'covid_post_plateau_2': -1})
+    ),
+    (
+        'moderate',
+        SymptomProbability('moderate', 1, {'covid_pre_plateau': -1,
+                                           'covid_plateau_1': -1,
+                                           'covid_plateau_2': -1,
+                                           'covid_post_plateau_1': -1,
+                                           'covid_post_plateau_2': -1})
+    ),
+    (
+        'severe',
+        SymptomProbability('severe', 2, {'covid_pre_plateau': 0.0,
+                                         'covid_plateau_1': -1,
+                                         'covid_plateau_2': -1,
+                                         'covid_post_plateau_1': -1,
+                                         'covid_post_plateau_2': 0.0})
+    ),
+    (
+        'extremely-severe',
+        SymptomProbability('extremely-severe', 3, {'covid_pre_plateau': 0.0,
+                                                   'covid_plateau_1': -1,
+                                                   'covid_plateau_2': -1,
+                                                   'covid_post_plateau_1': 0.0,
+                                                   'covid_post_plateau_2': 0.0})
+    ),
+
+    # Symptoms
+
+    (
+        'fever',
+        SymptomProbability('fever', 4, {'covid_pre_plateau': 0.2,
+                                        'covid_plateau_1': 0.3,
+                                        'covid_plateau_2': 0.8,
+                                        'covid_post_plateau_1': 0.0,
+                                        'covid_post_plateau_2': 0.0})
+    ),
+    # 'fever' is a dependency of 'chills' so it needs to be inserted before
+    # this position
+    (
+        'chills',
+        SymptomProbability('chills', 23, {'covid_pre_plateau': 0.8,
+                                          'covid_plateau_1': 0.5,
+                                          'covid_plateau_2': 0.5,
+                                          'covid_post_plateau_1': 0.0,
+                                          'covid_post_plateau_2': 0.0})
+    ),
+
+    (
+        'gastro',
+        SymptomProbability('gastro', 12, {'covid_pre_plateau': -1,
+                                          'covid_plateau_1': -1,
+                                          'covid_plateau_2': -1,
+                                          'covid_post_plateau_1': -1,
+                                          'covid_post_plateau_2': -1})
+    ),
+    # 'gastro' is a dependency of 'diarrhea' so it needs to be inserted before
+    # this position
+    (
+        'diarrhea',
+        SymptomProbability('diarrhea', 18, {'covid_pre_plateau': 0.9,
+                                            'covid_plateau_1': 0.9,
+                                            'covid_plateau_2': 0.9,
+                                            'covid_post_plateau_1': 0.9,
+                                            'covid_post_plateau_2': 0.9})
+    ),
+    # 'gastro' is a dependency of 'nausea_vomiting' so it needs to be inserted
+    # before this position
+    (
+        'nausea_vomiting',
+        SymptomProbability('nausea_vomiting', 19, {'covid_pre_plateau': 0.7,
+                                                   'covid_plateau_1': 0.7,
+                                                   'covid_plateau_2': 0.7,
+                                                   'covid_post_plateau_1': 0.7,
+                                                   'covid_post_plateau_2': 0.7})
+    ),
+
+    # Age based lethargies
+    # 'gastro' is a dependency of so it needs to be inserted before this
+    # position
+    (
+        'fatigue',
+        SymptomProbability('fatigue', 7, {'covid_pre_plateau': -1,
+                                          'covid_plateau_1': -1,
+                                          'covid_plateau_2': -1,
+                                          'covid_post_plateau_1': -1,
+                                          'covid_post_plateau_2': -1})
+    ),
+    (
+        'unusual',
+        SymptomProbability('unusual', 13, {'covid_pre_plateau': 0.2,
+                                           'covid_plateau_1': 0.3,
+                                           'covid_plateau_2': 0.5,
+                                           'covid_post_plateau_1': 0.5,
+                                           'covid_post_plateau_2': 0.5})
+    ),
+    (
+        'hard_time_waking_up',
+        SymptomProbability('hard_time_waking_up', 21, {'covid_pre_plateau': 0.6,
+                                                       'covid_plateau_1': 0.6,
+                                                       'covid_plateau_2': 0.6,
+                                                       'covid_post_plateau_1': 0.6,
+                                                       'covid_post_plateau_2': 0.6})
+    ),
+    (
+        'headache',
+        SymptomProbability('headache', 20, {'covid_pre_plateau': 0.5,
+                                            'covid_plateau_1': 0.5,
+                                            'covid_plateau_2': 0.5,
+                                            'covid_post_plateau_1': 0.5,
+                                            'covid_post_plateau_2': 0.5})
+    ),
+    (
+        'confused',
+        SymptomProbability('confused', 25, {'covid_pre_plateau': 0.1,
+                                            'covid_plateau_1': 0.1,
+                                            'covid_plateau_2': 0.1,
+                                            'covid_post_plateau_1': 0.1,
+                                            'covid_post_plateau_2': 0.1})
+    ),
+    (
+        'lost_consciousness',
+        SymptomProbability('lost_consciousness', 14, {'covid_pre_plateau': 0.1,
+                                                      'covid_plateau_1': 0.1,
+                                                      'covid_plateau_2': 0.1,
+                                                      'covid_post_plateau_1': 0.1,
+                                                      'covid_post_plateau_2': 0.1})
+    ),
+
+    # Respiratory symptoms
+    # 'trouble_breathing' is a dependency of all this category so it should be
+    # inserted before them
+    (
+        'trouble_breathing',
+        SymptomProbability('trouble_breathing', 8, {'covid_pre_plateau': -1,
+                                                    'covid_plateau_1': -1,
+                                                    'covid_plateau_2': -1,
+                                                    'covid_post_plateau_1': -1,
+                                                    'covid_post_plateau_2': -1})
+    ),
+    (
+        'sneezing',
+        SymptomProbability('sneezing', 17, {'covid_pre_plateau': 0.2,
+                                            'covid_plateau_1': 0.3,
+                                            'covid_plateau_2': 0.3,
+                                            'covid_post_plateau_1': 0.3,
+                                            'covid_post_plateau_2': 0.3})
+    ),
+    (
+        'cough',
+        SymptomProbability('cough', 5, {'covid_pre_plateau': 0.6,
+                                        'covid_plateau_1': 0.9,
+                                        'covid_plateau_2': 0.9,
+                                        'covid_post_plateau_1': 0.9,
+                                        'covid_post_plateau_2': 0.9})
+    ),
+    (
+        'runny_nose',
+        SymptomProbability('runny_nose', 6, {'covid_pre_plateau': 0.1,
+                                             'covid_plateau_1': 0.2,
+                                             'covid_plateau_2': 0.2,
+                                             'covid_post_plateau_1': 0.2,
+                                             'covid_post_plateau_2': 0.2})
+    ),
+    (
+        'sore_throat',
+        SymptomProbability('sore_throat', 22, {'covid_pre_plateau': 0.5,
+                                               'covid_plateau_1': 0.8,
+                                               'covid_plateau_2': 0.8,
+                                               'covid_post_plateau_1': 0.8,
+                                               'covid_post_plateau_2': 0.8})
+    ),
+    (
+        'severe_chest_pain',
+        SymptomProbability('severe_chest_pain', 24, {'covid_pre_plateau': 0.4,
+                                                     'covid_plateau_1': 0.5,
+                                                     'covid_plateau_2': 0.5,
+                                                     'covid_post_plateau_1': 0.15,
+                                                     'covid_post_plateau_2': 0.15})
+    ),
+
+    # 'trouble_breathing' is a dependency of any '*_trouble_breathing' so it
+    # needs to be inserted before this position
+    (
+        'light_trouble_breathing',
+        SymptomProbability('light_trouble_breathing', 9, {'covid_pre_plateau': -1,
+                                                          'covid_plateau_1': -1,
+                                                          'covid_plateau_2': -1,
+                                                          'covid_post_plateau_1': -1,
+                                                          'covid_post_plateau_2': -1})
+    ),
+    (
+        'moderate_trouble_breathing',
+        SymptomProbability('moderate_trouble_breathing', 10, {'covid_pre_plateau': -1,
+                                                              'covid_plateau_1': -1,
+                                                              'covid_plateau_2': -1,
+                                                              'covid_post_plateau_1': -1,
+                                                              'covid_post_plateau_2': -1})
+    ),
+    (
+        'heavy_trouble_breathing',
+        SymptomProbability('heavy_trouble_breathing', 11, {'covid_pre_plateau': 0,
+                                                           'covid_plateau_1': -1,
+                                                           'covid_plateau_2': -1,
+                                                           'covid_post_plateau_1': -1,
+                                                           'covid_post_plateau_2': -1})
+    ),
+
+    (
+        'loss_of_taste',
+        SymptomProbability('loss_of_taste', 15, {'covid_pre_plateau': 0.25,
+                                                 'covid_plateau_1': 0.3,
+                                                 'covid_plateau_2': 0.35,
+                                                 'covid_post_plateau_1': 0.0,
+                                                 'covid_post_plateau_2': 0.0})
+    ),
+
+    (
+        'aches',
+        SymptomProbability('aches', 16, {})
+    )
+])
 
 # NOTE: THE PREEXISTING CONDITION NAMES/IDs BELOW MUST MATCH THOSE IN FROZEN/UTILS
 
@@ -292,9 +535,9 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
         if rng.rand() < 0.25:
             symptoms1.append('loss_of_taste')
 
-        if 'mild' and 'trouble_breathing' in symptoms1:
+        if 'mild' in symptoms1 and 'trouble_breathing' in symptoms1:
             symptoms1.append('light_trouble_breathing')
-        if 'moderate' and 'trouble_breathing' in symptoms1:
+        if 'moderate' in symptoms1 and 'trouble_breathing' in symptoms1:
             symptoms1.append('moderate_trouble_breathing')
 
         # same delay in symptom plateau as there was in symptom onset
@@ -306,10 +549,10 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
         # During the plateau of symptoms Part 1
         # ====================================================
         symptoms2 = []
-        if really_sick or len(preexisting_conditions) >2 or 'moderate' in symptoms1 or initial_viral_load > 0.6:
-            symptoms2.append('severe')
-        elif extremely_sick:
+        if extremely_sick:
             symptoms2.append('extremely-severe')
+        elif really_sick or len(preexisting_conditions) >2 or 'moderate' in symptoms1 or initial_viral_load > 0.6:
+            symptoms2.append('severe')
         elif rng.rand() < p_gastro:
             symptoms2.append('moderate')
         else:
@@ -383,7 +626,9 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
         # During the symptoms plateau Part 2 (worst part of the disease)
         # ====================================================
         symptoms3 = []
-        if really_sick or len(preexisting_conditions) >2 or 'severe' in symptoms2 or initial_viral_load > 0.6:
+        if extremely_sick:
+            symptoms3.append('extremely-severe')
+        elif really_sick or len(preexisting_conditions) >2 or 'severe' in symptoms2 or initial_viral_load > 0.6:
             symptoms3.append('severe')
         elif extremely_sick:
             symptoms3.append('extremely-severe')
