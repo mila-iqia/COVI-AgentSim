@@ -44,9 +44,6 @@ def symptoms_to_np(all_symptoms, all_possible_symptoms):
     aps = list(all_possible_symptoms)
     symptoms_enc = np.zeros((rolling_window, len(all_possible_symptoms)+1))
     for day, symptom in enumerate(all_symptoms[:14]):
-        import pdb;
-        pdb.set_trace()
-
         symptoms_enc[day, aps.index(symptom)] = 1.
     return symptoms_enc
 

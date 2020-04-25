@@ -25,8 +25,10 @@ class RiskModelBase:
         # Basically, once they know they have a positive test result, they have a risk of 1 until after quarantine days.
         if human.recovered_timestamp != datetime.datetime.min and human.recovered_timestamp < now:
             return 0.
-        if human.test_result:
+        if human.test_result is "positive":
             return 1.
+        if human.test_result is "negative":
+            return 0.2
 
         # reported_symptoms = human.reported_symptoms_at_time(now)
         # if 'severe' in reported_symptoms:
@@ -41,7 +43,7 @@ class RiskModelBase:
         #     return 0.1
         # if len(reported_symptoms) > 0:
         #     return 0.05
-        return 0.0
+        return 0.01
 
 
 class RiskModelTristan(RiskModelBase):

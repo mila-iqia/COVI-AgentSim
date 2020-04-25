@@ -37,10 +37,10 @@ def create_new_uid(rng):
 	# generate a 4 bit random code
 	return np.random.randint(0, 15)
 
-def update_uid(_uid, rng):
-	_uid = "{0:b}".format(_uid).zfill(4)[1:]
-	_uid += rng.choice(['1', '0'])
-	return int(_uid, 2)
+def update_uid(uid, rng):
+	uid = "{0:b}".format(uid).zfill(4)[1:]
+	uid += rng.choice(['1', '0'])
+	return int(uid, 2)
 
 def compare_uids(uid1, uid2, days_apart):
 	bin_uid1 = "{0:b}".format(uid1).zfill(4)
