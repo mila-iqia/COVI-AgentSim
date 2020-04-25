@@ -41,7 +41,6 @@ class Env(simpy.Environment):
     def time_of_day(self):
         return self.timestamp.isoformat()
 
-
 class City(object):
 
     def __init__(self, env, n_people, rng, x_range, y_range, start_time, init_percent_sick, Human):
@@ -586,3 +585,42 @@ class DummyEvent:
     @staticmethod
     def log_daily(*args, **kwargs):
         pass
+
+class Contacts(object):
+    def __init__(self):
+        # human --> [[date, counts], ...]
+        self.book = {}
+
+    def add(self, **kwargs):
+        human = kwargs.get("human")
+        timestamp = kwargs.get("timestamp")
+
+        if human not in self.book:
+            self.book[human] = [[timestamp.date(), 1]]
+            return
+
+        if timestamp.date != self.book[human][-1][0]:
+            self.book[human].append([timestamp.date(), 1])
+        else:
+            self.book[human][-1][1] += 1
+
+        self.update_history(human, timestamp.date())
+
+    def update_history(self, human, timestamp=None):
+        if timestamp is None:
+            timestamp = self.book[human][-1][0] # last contact date
+
+        remove_idx = -1
+        for history in self.book[human]:
+            if (timestamp - history[0]).days > N_DAYS_HISTORY:
+                remove_idx  += 1
+            else:
+                break
+
+        self.book[human] = self.book[human][remove_idx:]
+
+    def send_message(self):
+        for human in self.book:
+            self.update_history(human)
+            total_contacts = sum(map(lambda x:x[1], self.book[human]))
+            human.update_risk(update_messages={'n':total_contacts})

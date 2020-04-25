@@ -112,12 +112,13 @@ class Human(object):
         self.has_been_tested = False
         self.last_state = self.state
         self.n_infectious_contacts = 0
-        self.last_date = defaultdict(lambda : self.env.timestamp.date)
+        self.last_date = defaultdict(lambda : self.env.initial_timestamp.date())
 
         # risk prediction
-        self.risk = 0.01
+        self.risk = BASELINE_RISK_VALUE
         self.past_N_days_contacts = [OrderedSet()]
         self.n_contacts_tested_positive = 0
+        self.contact_book = Contacts()
 
         # symptoms
         self.symptom_start_time = None
@@ -285,8 +286,8 @@ class Human(object):
 
     @property
     def symptoms(self):
-        if self.last_date['symptoms'] != self.env.timestamp.date:
-            self.last_date['symptoms'] = self.env.timestamp.date
+        if self.last_date['symptoms'] != self.env.timestamp.date():
+            self.last_date['symptoms'] = self.env.timestamp.date()
             self.update_symptoms()
         return self.all_symptoms
 
@@ -424,8 +425,8 @@ class Human(object):
                 self.count_exercise=0
                 self.count_shop=0
 
-            if self.last_date['run'] != self.env.timestamp.date:
-                self.last_date['run'] = self.env.timestamp.date
+            if self.last_date['run'] != self.env.timestamp.date():
+                self.last_date['run'] = self.env.timestamp.date()
                 Event.log_daily(self, self.env.timestamp)
 
             # recover health
@@ -437,16 +438,16 @@ class Human(object):
                 city.tracker.track_generation_times(self.name) # it doesn't count environmental infection or primary case or asymptomatic/presymptomatic infections; refer the definition
 
             # log test
-            # needs better conditions; log test based on some condition on symptoms
+            # TODO: needs better conditions; log test based on some condition on symptoms
             if (self.is_incubated and
-                not self.has_been_tested and
+                self.test_result != "positive" and
                 self.env.timestamp - self.symptom_start_time >= datetime.timedelta(days=TEST_DAYS)):
                 # make testing a function of age/hospitalization/travel
                 if self.get_tested(city):
                     Event.log_test(self, self.env.timestamp)
                     self.has_been_tested = True
                     city.tracker.track_tested_results(self, self.test_result, self.test_type)
-                    self.update_risk()
+                    self.update_risk(test_results=True)
 
             # recover
             if self.is_infectious and self.env.timestamp - self.infection_timestamp >= datetime.timedelta(days=self.recovery_days):
@@ -465,6 +466,7 @@ class Human(object):
                     self.never_recovers = self.rng.random() <= P_NEVER_RECOVERS[min(math.floor(self.age/10),8)]
                     self.dead = False
 
+                self.update_risk(recovery=True)
                 self.obs_hospitalized = True
                 self.infection_timestamp = None # indicates they are no longer infected
                 Event.log_recovery(self, self.env.timestamp, self.dead)
@@ -474,7 +476,6 @@ class Human(object):
             self.assert_state_changes()
 
             # Mobility
-
             # self.how_am_I_feeling = 1.0 (great) --> rest_at_home = False
             if not self.rest_at_home:
                 # set it once for the rest of the disease path
@@ -628,6 +629,11 @@ class Human(object):
             if not self.rng.random() < (0.5 * abs(self.age - h.age) + 1) ** -1:
                 continue
 
+            # risk model
+            # TODO: Add GPS measurements as conditions; refer JF's docs
+            self.contact_book.add(human=h, timestamp=self.env.timestamp)
+            h.contact_book.add(human=self, timestamp=self.env.timestamp)
+
             distance =  np.sqrt(int(area/len(self.location.humans))) + self.rng.randint(MIN_DIST_ENCOUNTER, MAX_DIST_ENCOUNTER)
             t_overlap = min(self.leaving_time, getattr(h, "leaving_time", 60)) - max(self.start_time, getattr(h, "start_time", 60))
             t_near = self.rng.random() * t_overlap
@@ -693,8 +699,6 @@ class Human(object):
                                     infectee=infectee,
                                     time=self.env.timestamp
                                     )
-                # risk model
-                self.update_contacts(h)
 
         yield self.env.timeout(duration / TICK_MINUTE)
 
@@ -783,24 +787,25 @@ class Human(object):
         return loc
 
     ############################## RISK PREDICTION #################################
-    def update_contacts(self, human):
-        if self.last_date['update_contacts'] != self.env.timestamp.date:
-            self.last_date['update_contacts'] = self.env.timestamp.date
-            if len(self.past_N_days_contacts) > PAST_N_DAYS_HISTORY:
-                self.past_N_days_contacts = self.past_N_days_contacts[1:] + [OrderedSet()]
-        self.past_N_days_contacts[-1].add(human)
 
-    def update_risk(self):
-        if RISK_MODEL == "contact tracing":
+    def update_risk(self, recovery=False, test_results=False, update_messages=None):
+        if recovery:
+            if self.is_removed:
+                self.risk = 0.0
+            else:
+                self.risk = BASELINE_RISK_VALUE
+            return
+
+        if test_results:
             if self.test_result == "positive":
                 self.risk = 1.0
-                for daily_contacts in self.past_N_days_contacts:
-                    for human in daily_contacts:
-                        human.update_risk()
+                self.contact_book.send_message()
             elif self.test_result == "negative":
                 self.risk = 0.20
-            elif self.test_result is None:
-                self.n_contacts_tested_positive += 1
-                self.risk = 1 - (1 - RISK_TRANSMISSION_PROBA) ** self.n_contacts_tested_positive
+            return
+
+        if RISK_MODEL == "contact tracing":
+            self.n_contacts_tested_positive += update_messages['n']
+            self.risk = 1 - (1 - RISK_TRANSMISSION_PROBA) ** self.n_contacts_tested_positive
         else:
             raise
