@@ -23,12 +23,12 @@ class Tracker(object):
 
         # infection & contacts
         self.contacts = {
-                'all':get_nested_dict(2),
-                'location_all': get_nested_dict(3),
-                'human_infection': get_nested_dict(2),
+                'all_encounters':np.zeros((150,150)),
+                'location_all_encounters': defaultdict(lambda: np.zeros((150,150))),
+                'human_infection': np.zeros((150,150)),
                 'env_infection':get_nested_dict(1),
                 'location_env_infection': get_nested_dict(2),
-                'location_human_infection': get_nested_dict(3),
+                'location_human_infection': defaultdict(lambda: np.zeros((150,150))),
                 'duration': {'avg': (0, np.zeros((150,150))), 'total': np.zeros((150,150)), 'n': np.zeros((150,150))},
                 'histogram_duration': [0],
                 'location_duration':defaultdict(lambda : [0]),
@@ -146,8 +146,8 @@ class Tracker(object):
             self.cases_per_day[-1] += 1
 
         if type == "human":
-            self.contacts["human_infection"][from_bin][to_bin] += 1
-            self.contacts["location_human_infection"][location.location_type][from_bin][to_bin] += 1
+            self.contacts["human_infection"][from_human.age, to_human.age] += 1
+            self.contacts["location_human_infection"][location.location_type][from_human.age, to_human.age] += 1
 
             delta = timestamp - from_human.infection_timestamp
             self.infection_graph.add_node(from_human.name, bin=from_bin, time=from_human.infection_timestamp)
@@ -218,61 +218,69 @@ class Tracker(object):
         print("Avg. infectiousnes onset days", np.mean([x[2] for x in days]))
 
     def track_symptoms(self, human):
-        if human.symptoms:
-            if human.covid_symptoms:
-                self.symptoms_set['covid'][human.name].update(human.covid_symptoms)
+        if human.covid_symptoms:
+            self.symptoms_set['covid'][human.name].update(human.covid_symptoms)
+        else:
+            if human.name in self.symptoms_set['covid']:
+                self.symptoms['covid']['n'] += 1
+                for s in self.symptoms_set['covid'][human.name]:
+                    self.symptoms['covid'][s] += 1
+                self.symptoms_set['covid'].pop(human.name)
+
+        if human.all_symptoms:
             self.symptoms_set['all'][human.name].update(human.all_symptoms)
         else:
-            for key in ['covid', 'all']:
-                if human.name in self.symptoms[key]:
-                    self.symptoms[key]['n'] += 1
-                    for s in self.symptoms_set['covid'][human.name]:
-                        self.symptoms[key][s] += 1
+            if human.name in self.symptoms_set['all']:
+                self.symptoms['all']['n'] += 1
+                for s in self.symptoms_set['all'][human.name]:
+                    self.symptoms['all'][s] += 1
+                self.symptoms_set['all'].pop(human.name)
 
     def track_social_mixing(self, **kwargs):
         duration = kwargs.get('duration')
-        day = kwargs.get('day')
-
         bin = math.floor(duration/15)
-        x = len(self.contacts['histogram_duration'])
-        if bin >= x:
-            self.contacts['histogram_duration'].extend([0 for _ in range(bin - x + 1)])
-        try:
-            self.contacts['histogram_duration'][bin] += 1
-        except:
-            import pdb; pdb.set_trace()
-
-        if self.last_day['social_mixing'] != day:
-            # duration
-            n, M = self.contacts['duration']['avg']
-            where = self.contacts['duration']['n'] != 0
-            m = np.divide(self.contacts['duration']['total'], self.contacts['duration']['n'], where=where)
-            self.contacts['duration']['avg'] = (n+1, (n*M + m)/(n+1))
-
-            self.contacts['duration']['total'] = np.zeros((150,150))
-            self.contacts['duration']['n'] = np.zeros((150,150))
-
-            # n_contacts
-            n, M = self.contacts['n_contacts']['avg']
-            m = self.contacts['n_contacts']['total']
-            self.contacts['duration']['avg'] = (n+1, (n*M + m)/(n+1))
-
-            self.contacts['n_contacts']['total'] = np.zeros((150,150))
-
-        else:
-            human1 = kwargs.get('human1', None)
-            human2 = kwargs.get('human2', None)
-            if human1 is not None and human2 is not None:
-                self.contacts['duration']['total'][human1.age, human2.age] += duration
-                self.contacts['duration']['n'][human1.age, human2.age] += 1
-
-                self.contacts['duration']['total'][human2.age, human1.age] += duration
-                self.contacts['duration']['n'][human2.age, human1.age] += 1
-
-                self.contacts['n_contacts']['total'][human1.age, human2.age] += 1
-                self.contacts['n_contacts']['total'][human2.age, human1.age] += 1
-
         location = kwargs.get('location', None)
+
+        if location is None:
+            x = len(self.contacts['histogram_duration'])
+            if bin >= x:
+                self.contacts['histogram_duration'].extend([0 for _ in range(bin - x + 1)])
+            self.contacts['histogram_duration'][bin] += 1
+
+            timestamp = kwargs.get('timestamp')
+            day = timestamp.strftime("%d %b")
+
+            if self.last_day['social_mixing'] != day:
+                # duration
+                n, M = self.contacts['duration']['avg']
+                where = self.contacts['duration']['n'] != 0
+                m = np.divide(self.contacts['duration']['total'], self.contacts['duration']['n'], where=where)
+                self.contacts['duration']['avg'] = (n+1, (n*M + m)/(n+1))
+
+                self.contacts['duration']['total'] = np.zeros((150,150))
+                self.contacts['duration']['n'] = np.zeros((150,150))
+
+                # n_contacts
+                n, M = self.contacts['n_contacts']['avg']
+                m = self.contacts['n_contacts']['total']
+                self.contacts['n_contacts']['avg'] = (n+1, (n*M + m)/(n+1))
+
+                self.contacts['n_contacts']['total'] = np.zeros((150,150))
+                self.last_day['social_mixing'] = day
+
+            else:
+                human1 = kwargs.get('human1', None)
+                human2 = kwargs.get('human2', None)
+                if human1 is not None and human2 is not None:
+                    self.contacts['duration']['total'][human1.age, human2.age] += duration
+                    self.contacts['duration']['n'][human1.age, human2.age] += 1
+
+                    self.contacts['duration']['total'][human2.age, human1.age] += duration
+                    self.contacts['duration']['n'][human2.age, human1.age] += 1
+
+                    self.contacts['n_contacts']['total'][human1.age, human2.age] += 1
+                    self.contacts['n_contacts']['total'][human2.age, human1.age] += 1
+
         if location is not None:
             x = len(self.contacts['location_duration'][location.location_type])
             if bin >= x:
@@ -286,8 +294,10 @@ class Tracker(object):
             if l <= human2.age < u:
                 bin2 = (i, (l,u))
 
-        self.contacts["all"][human1.age][human2.age] += 1
-        self.contacts["location_all"][location.location_type][bin1[0]][bin2[0]] += 1
+        self.contacts["all_encounters"][human1.age, human2.age] += 1
+        self.contacts["all_encounters"][human2.age, human1.age] += 1
+        self.contacts["location_all_encounters"][location.location_type][human1.age, human2.age] += 1
+        self.contacts["location_all_encounters"][location.location_type][human2.age, human1.age] += 1
         self.n_contacts += 1
 
         # bins of 50
