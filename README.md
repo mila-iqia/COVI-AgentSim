@@ -24,17 +24,16 @@ pip install -r requirements.txt
 ## How to run it using command line?
 Run the simulator as -
 ```
-python run.py sim --n_people 100 --n_stores 100 --n_parks 10 --n_misc 100 --init_percent_sick 0.01 --outfile data --seed 0
+python run.py sim --n_people 100 --init_percent_sick 0.01 --seed 0
 ```
 
-The simulator will output a logfile to `output/data.pkl`. It is a `list` of `dict` which contains a log of the mobility activity of a population of humans in `mobility_simulator.py`.
-It also outputs a serialized version of the state of each `Human` object at the end of the simulation to `output/humans.pkl`.
+The simulator will output a logfile to `output/sim_people-{N_PEOPLE}_days-{SIMULATION_DAYS}_init-{INIT_PERCENT_SICK}_seed-{SEED}_{DATE}-{TIME}/data.zip`. It is a .zip file of `list` of `dict` pickles which contains a log of the mobility activity of a population of humans in `simulator.py`.
 
 Run the risk prediction algorithms as -
 ```
 python risk_prediction.py
 ```
-This file reads in the logs and human objects that are output from the simulator, and runs a risk prediction algorithm based on: 
+This file reads in the logs that are output from the simulator, and runs a risk prediction algorithm based on: 
  1) The reported symptoms of that individual, given they have the app.
  2) The encounters that individual had (which contain quantized user ids and risk levels).
  3) The risk update messages that are sent when a previously encountered user's risk level changes significantly.
@@ -53,13 +52,10 @@ python run.py test
 
 ```
 @click.option('--n_people', help='population of the city', type=int, default=100)
-@click.option('--n_stores', help='number of grocery stores in the city', type=int, default=100)
-@click.option('--n_parks', help='number of parks in the city', type=int, default=20)
-@click.option('--n_misc', help='number of non-essential establishments in the city', type=int, default=100)
 @click.option('--init_percent_sick', help='% of population initially sick', type=float, default=0.01)
 @click.option('--simulation_days', help='number of days to run the simulation for', type=int, default=30)
-@click.option('--outfile', help='filename of the output (file format: .pkl)', type=str, required=False)
-@click.option('--print_progress', is_flag=True, help='print the evolution of days', default=False)
+@click.option('--out_chunk_size', help='number of events per dump in outfile', type=int, default=2500, required=False)
+@click.option('--outdir', help='the directory to write data to', type=str, default="output", required=False)
 @click.option('--seed', help='seed for the process', type=int, default=0)
 ```
 
@@ -81,7 +77,7 @@ monitors = run_simu(n_stores=100, n_parks=50, n_people=100, n_misc=100, init_per
 ## Base SEIR plots
 Following will require `cufflinks` and `plotly`.
 ```
-python run.py base --toy_human
+python run.py base
 ```
 It will open a browser window with the plot of [SEIR curves](https://www.idmod.org/docs/hiv/model-seir.html#seir-and-seirs-models).
 

@@ -7,6 +7,15 @@ from bitarray import bitarray
 from config import *
 from functools import lru_cache
 
+def log(str, logfile=None, timestamp=False):
+	if timestamp:
+		str = f"[{datetime.datetime.now()}] {str}"
+
+	print(str)
+	if logfile is not None:
+		with open(logfile, mode='a') as f:
+			print(str, file=f)
+
 def _sample_viral_load_gamma(rng, shape_mean=4.5, shape_std=.15, scale_mean=1., scale_std=.15):
     """ This function samples the shape and scale of a gamma distribution, then returns it"""
     shape = rng.normal(shape_mean, shape_std)
@@ -17,16 +26,21 @@ def _sample_viral_load_gamma(rng, shape_mean=4.5, shape_std=.15, scale_mean=1., 
 def _sample_viral_load_piecewise(rng, initial_viral_load, age=40):
     """ This function samples a piece-wise linear viral load model which increases, plateaus, and drops """
     # https://stackoverflow.com/questions/18441779/how-to-specify-upper-and-lower-limits-when-using-numpy-random-normal
+	# https://www.thelancet.com/journals/laninf/article/PIIS1473-3099(20)30196-1/fulltext
     plateau_start = truncnorm((PLATEAU_START_CLIP_LOW - PLATEAU_START_MEAN)/PLATEAU_START_STD, (PLATEAU_START_CLIP_HIGH - PLATEAU_START_MEAN) / PLATEAU_START_STD, loc=PLATEAU_START_MEAN, scale=PLATEAU_START_STD).rvs(1, random_state=rng)
     plateau_end = plateau_start + truncnorm((PLATEAU_DURATION_CLIP_LOW - PLATEAU_DURATION_MEAN)/PLEATEAU_DURATION_STD,
                                             (PLATEAU_DURATION_CLIP_HIGH - PLATEAU_DURATION_MEAN) / PLEATEAU_DURATION_STD,
                                             loc=PLATEAU_DURATION_MEAN, scale=PLEATEAU_DURATION_STD).rvs(1, random_state=rng)
     recovered = plateau_end + ((age/10)-1) # age is a determining factor for the recovery time
-    recovered = recovered + truncnorm((plateau_end - RECOVERY_MEAN) / RECOVERY_STD,
+    recovered = recovered + initial_viral_load * VIRAL_LOAD_RECOVERY_FACTOR \
+                          + truncnorm((RECOVERY_CLIP_LOW - RECOVERY_MEAN) / RECOVERY_STD,
                                         (RECOVERY_CLIP_HIGH - RECOVERY_MEAN) / RECOVERY_STD,
                                         loc=RECOVERY_MEAN, scale=RECOVERY_STD).rvs(1, random_state=rng)
-    plateau_height = initial_viral_load*(MAX_VIRAL_LOAD-MIN_VIRAL_LOAD) + MIN_VIRAL_LOAD #transform to range of IVL #rng.uniform(MIN_VIRAL_LOAD, MAX_VIRAL_LOAD)
-    return plateau_height, plateau_start, plateau_end, recovered
+    base = age/200 # peak viral load varies linearly with age
+    plateau_mean =  initial_viral_load - (base + MIN_VIRAL_LOAD) / (base + MIN_VIRAL_LOAD, base + MAX_VIRAL_LOAD) # transform initial viral load into a range
+    plateau_height = rng.normal(plateau_mean, 1)
+    return plateau_height, plateau_start.item(), plateau_end.item(), recovered.item()
+
 
 def _normalize_scores(scores):
     return np.array(scores)/np.sum(scores)
@@ -52,11 +66,12 @@ def _get_random_sex(rng):
     else:
         return 'other'
 
-def _get_mask_wearing(carefullness, simulation_days, rng):
-    return [rng.rand() < carefullness*BASELINE_P_MASK for day in range(simulation_days)]
+
+def _get_mask_wearing(carefulness, simulation_days, rng):
+    return [rng.rand() < carefulness*BASELINE_P_MASK for day in range(simulation_days)]
 
 
-_get_get_really_sick(age, sex, rng):
+def _get_get_really_sick(age, sex, rng):
     if sex.lower().startswith('f'):
         if age < 10:
             return rng.rand() < 0.02   
@@ -119,9 +134,9 @@ _get_get_really_sick(age, sex, rng):
 
 
 # 2D Array of symptoms; first axis is days after exposure (infection), second is an array of symptoms
-def _get_covid_symptoms(initial_viral_load, viral_load_plateau_start, viral_load_plateau_end,
-                        viral_load_recovered, age, incubation_days, really_sick, extremely_sick, 
-                        rng, preexisting_conditions):
+def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_load_plateau_end,
+                           viral_load_recovered, age, incubation_days, really_sick, extremely_sick, 
+                           rng, preexisting_conditions):
         progression = []
 
         # Before onset of symptoms (incubation)
@@ -129,7 +144,7 @@ def _get_covid_symptoms(initial_viral_load, viral_load_plateau_start, viral_load
         for day in incubation_days:
             progression.append([])
         
-        # Before the plateau
+        # Before the symptom's plateau
         # ====================================================
         symptoms1 = []
         p_fever = 0.2
@@ -157,7 +172,7 @@ def _get_covid_symptoms(initial_viral_load, viral_load_plateau_start, viral_load
         # fatigue and unusual symptoms are more heavily age-related
         # but more likely later, and less if you're careful/taking care
         # of yourself
-        p_lethargy = (age/200) + initial_viral_load*0.6 - carefullness/2
+        p_lethargy = (age/200) + initial_viral_load*0.6 - carefulness/2
         if rng.rand() < p_lethargy:            
             symptoms1.append('fatigue')
             if rng.rand() < 0.2 and age > 75:
@@ -173,7 +188,7 @@ def _get_covid_symptoms(initial_viral_load, viral_load_plateau_start, viral_load
                     symptoms1.append('lost_consciousness')
 
         # respiratory symptoms not so common at this stage
-        p_respiratory = (0.5 * initial_viral_load) - (carefullness * 0.25) # e.g. 0.5*0.5 - 0.7*0.25 = 0.25-0.17
+        p_respiratory = (0.5 * initial_viral_load) - (carefulness * 0.25) # e.g. 0.5*0.5 - 0.7*0.25 = 0.25-0.17
         if 'smoker' in preexisting_conditions or 'lung_disease' in preexisting_conditions:
             p_respiratory = (p_respiratory * 4) + age/200  # e.g. 0.1 * 4 * 45/200 = 0.4 + 0.225
         if rng.rand() < p_respiratory:
@@ -197,11 +212,13 @@ def _get_covid_symptoms(initial_viral_load, viral_load_plateau_start, viral_load
         if 'moderate' and 'trouble_breathing' in symptoms1:
             symptoms1.append('moderate_trouble_breathing')
 
-        for day in range(round(viral_load_plateau_start) - incubation_days):
+        # same delay in symptom plateau as there was in symptom onset
+        symptom_onset_delay = round(viral_load_plateau_start - incubation_days)
+        for day in range(symptom_onset_delay):
             progression.append(symptoms1)
 
 
-        # During the plateau Part 1
+        # During the plateau of symptoms Part 1
         # ====================================================
         symptoms2 = []
         if really_sick or len(preexisting_conditions) >2 or 'moderate' in symptoms1 or initial_viral_load > 0.6:
@@ -246,7 +263,7 @@ def _get_covid_symptoms(initial_viral_load, viral_load_plateau_start, viral_load
                     symptoms2.append('lost_consciousness')
 
         # respiratory symptoms more common at this stage
-        p_respiratory = initial_viral_load - (carefullness * 0.25) # e.g. 0.5 - 0.7*0.25 = 0.5-0.17
+        p_respiratory = initial_viral_load - (carefulness * 0.25) # e.g. 0.5 - 0.7*0.25 = 0.5-0.17
         if 'smoker' in preexisting_conditions or 'lung_disease' in preexisting_conditions:
             p_respiratory = (p_respiratory * 4) + age/200  # e.g. 0.1 * 4 * 45/200 = 0.4 + 0.225
         if rng.rand() < p_respiratory:
@@ -278,7 +295,7 @@ def _get_covid_symptoms(initial_viral_load, viral_load_plateau_start, viral_load
             progression.append(symptoms2)
 
 
-        # During the plateau Part 2 (worst part of the disease)
+        # During the symptoms plateau Part 2 (worst part of the disease)
         # ====================================================
         symptoms3 = []
         if really_sick or len(preexisting_conditions) >2 or 'severe' in symptoms2 or initial_viral_load > 0.6:
@@ -323,7 +340,7 @@ def _get_covid_symptoms(initial_viral_load, viral_load_plateau_start, viral_load
                     symptoms3.append('lost_consciousness')
 
         # respiratory symptoms more common at this stage
-        p_respiratory = 2*(initial_viral_load - (carefullness * 0.25)) # e.g. 2* (0.5 - 0.7*0.25) = 2*(0.5-0.17)
+        p_respiratory = 2*(initial_viral_load - (carefulness * 0.25)) # e.g. 2* (0.5 - 0.7*0.25) = 2*(0.5-0.17)
         if 'smoker' in preexisting_conditions or 'lung_disease' in preexisting_conditions:
             p_respiratory = (p_respiratory * 4) + age/200  # e.g. 0.1 * 4 * 45/200 = 0.4 + 0.225
         if rng.rand() < p_respiratory:
@@ -354,7 +371,6 @@ def _get_covid_symptoms(initial_viral_load, viral_load_plateau_start, viral_load
         plateau_part2 = round(len_plateau - plateau_part1)
         for day in range(plateau_part2):
             progression.append(symptoms3)
-
 
 
         # After the plateau (recovery part 1)
@@ -395,7 +411,7 @@ def _get_covid_symptoms(initial_viral_load, viral_load_plateau_start, viral_load
                     symptoms4.append('lost_consciousness')
 
         # respiratory symptoms more common at this stage but less than plateau
-        p_respiratory = (initial_viral_load - (carefullness * 0.25)) # e.g. 2* (0.5 - 0.7*0.25) = 2*(0.5-0.17)
+        p_respiratory = (initial_viral_load - (carefulness * 0.25)) # e.g. 2* (0.5 - 0.7*0.25) = 2*(0.5-0.17)
         if 'smoker' in preexisting_conditions or 'lung_disease' in preexisting_conditions:
             p_respiratory = (p_respiratory * 4) + age/200  # e.g. 0.1 * 4 * 45/200 = 0.4 + 0.225
         if rng.rand() < p_respiratory:
@@ -418,7 +434,7 @@ def _get_covid_symptoms(initial_viral_load, viral_load_plateau_start, viral_load
         if ('severe' in symptoms4 or 'extremely-severe' in symptoms4) and 'trouble_breathing' in symptoms4:
             symptoms4.append('heavy_trouble_breathing')
 
-        for day in range(2):
+        for day in range(symptom_onset_delay):
             progression.append(symptoms4)   
 
 
@@ -458,7 +474,7 @@ def _get_covid_symptoms(initial_viral_load, viral_load_plateau_start, viral_load
                     symptoms5.append('lost_consciousness')
 
         # respiratory symptoms getting less common
-        p_respiratory = 0.5(initial_viral_load - (carefullness * 0.25)) # e.g. (0.5 - 0.7*0.25) = 0.5*(0.5-0.17)
+        p_respiratory = 0.5(initial_viral_load - (carefulness * 0.25)) # e.g. (0.5 - 0.7*0.25) = 0.5*(0.5-0.17)
         if 'smoker' in preexisting_conditions or 'lung_disease' in preexisting_conditions:
             p_respiratory = (p_respiratory * 4) + age/200  # e.g. 0.1 * 4 * 45/200 = 0.4 + 0.225
         if rng.rand() < p_respiratory:
@@ -486,116 +502,190 @@ def _get_covid_symptoms(initial_viral_load, viral_load_plateau_start, viral_load
 
         return progression
 
+def _get_allergy_progression(rng):
+    symptoms = ['sneezing']
+    if rng.rand() < P_SEVERE_ALLERGIES:
+        symptoms.append('mild_trouble_breathing')
+        # commented out because these are not used elsewhere for now
+        # if rng.rand() < 0.4:
+        #     symptoms.append ('hives')
+        # if rng.rand() < 0.3:
+        #     symptoms.append('swelling')
+    if rng.rand() < 0.3:
+        symptoms.append ('sore_throat')
+    if rng.rand() < 0.2:
+        symptoms.append('fatigue')
+    if rng.rand() < 0.3:
+        symptoms.append('hard_time_waking_up')
+    if rng.rand() < 0.6:
+        symptoms.append('headache')
+    progression = [symptoms]
+    return progression
+
+def _get_flu_progression(age, rng, carefulness, preexisting_conditions, really_sick, extremely_sick):
+    progression = [[] for day in range(FLU_INCUBATION)]
+
+    if age < 12 or age > 40 or any(preexisting_conditions) or really_sick or extremely_sick:
+        mean = AVG_FLU_DURATION + 2 -2*carefulness
+    else:
+        mean = AVG_FLU_DURATION - 2*carefulness
+
+    len_flu = rng.normal(mean,3)
+
+    if len_flu < 2:
+        len_flu = 3
+    else:
+        len_flu = round(len_flu)
+
+    progression = []
+
+    # Day 1 symptoms:
+    symptoms = []
+    symptoms.append('mild')
+    if rng.rand() < 0.4:
+        symptoms.append('fatigue')
+    if rng.rand() < 0.7:
+        symptoms.append('fever')
+    if rng.rand() < 0.3:
+        symptoms.append('aches')
+    if rng.rand() < 0.3:
+        symptoms.append('hard_time_waking_up')
+    if rng.rand() < 0.7:
+        symptoms.append('gastro')
+        if rng.rand() < 0.5:
+            symptoms.append('diarrhea')
+        if rng.rand() < 0.5:
+            symptoms.append('nausea_vomiting')
+    progression.append(symptoms)
+
+    # Day 2-4ish if it's a longer flu, if 2 days long this doesn't get added
+    symptoms2 = []
+    if really_sick or extremely_sick or any(preexisting_conditions):
+        symptoms2.append('moderate')
+    else:
+        symptoms2.append('mild')
+
+    if rng.rand() < 0.8:
+        symptoms.append('fatigue')
+    if rng.rand() < 0.7:
+        symptoms.append('fever')
+    if rng.rand() < 0.5:
+        symptoms.append('aches')
+    if rng.rand() < 0.5:
+        symptoms.append('hard_time_waking_up')
+    if rng.rand() < 0.7:
+        symptoms.append('gastro')
+        if rng.rand() < 0.5:
+            symptoms.append('diarrhea')
+        if rng.rand() < 0.5:
+            symptoms.append('nausea_vomiting')
+
+    for day in range(len_flu - 2):
+        progression.append(symptoms2)
+
+    # Last day
+    symptoms3 = []
+    symptoms3.append('mild')
+    if rng.rand() < 0.8:
+        symptoms.append('fatigue')
+    if rng.rand() < 0.3:
+        symptoms.append('fever')
+    if rng.rand() < 0.8:
+        symptoms.append('aches')
+    if rng.rand() < 0.4:
+        symptoms.append('hard_time_waking_up')
+    if rng.rand() < 0.2:
+        symptoms.append('gastro')
+        if rng.rand() < 0.5:
+            symptoms.append('diarrhea')
+        if rng.rand() < 0.25:
+            symptoms.append('nausea_vomiting')
+    progression.append(symptoms3)
+    return progression
 
 
-def _get_flu_symptoms(age, rng, sim_days, carefullness, preexisting_conditions, really_sick, extremely_sick):
-        
-        symptoms_array = [[] for i in range(sim_days)]
+def _get_cold_progression(age, rng, carefulness, preexisting_conditions, really_sick, extremely_sick):
+    progression = [[] for day in range(COLD_INCUBATION)]
 
-        if age < 12 or age > 40 or any(preexisting_conditions) or really_sick or extremely_sick:
-            mean = 5 - round(carefullness)
-        else: 
-            mean = 3 - round(carefullness)
-        
-        len_flu = rng.normal(mean,3)
-        if len_flu < 1: 
-            len_flu = 1
-        else:
-            len_flu = round(len_flu)
+    if age < 12 or age > 40 or any(preexisting_conditions) or really_sick or extremely_sick:
+        mean = AVG_COLD_DURATION + 2 - 2*carefulness
+    else:
+        mean = AVG_COLD_DURATION - 2*carefulness
 
-        symptoms = []
-        if really_sick or extremely_sick or any(preexisting_conditions):
-            symptoms.append('moderate')           
-        else: 
-            symptoms.append('mild')
-        if rng.rand() < 0.8:
-            symptoms.append('fever')
-        if rng.rand() < 0.6:
-            symptoms.append('gastro')
-        if rng.rand() < 0.6:
-            symptoms.append('aches')
-        if rng.rand() < 0.3:
-            symptoms.append('fatigue')
+    len_cold = rng.normal(mean,3)
+    if len_cold < 2:
+        len_cold = 2
+    else:
+        len_cold = round(len_cold)
 
-        progression = []
-        for day in range(len_flu):
-            progression.append(symptoms)
+    # Day 1 symptoms:
+    symptoms = []
+    symptoms.append('mild')
+    if rng.rand() < 0.6:
+        symptoms.append('fatigue')
+    if rng.rand() < 0.8:
+        symptoms.append('sneezing')
+    if rng.rand() < 0.3:
+        symptoms.append('hard_time_waking_up')
+    progression.append(symptoms)
 
-        start_day = None
-        if rng.rand() < P_FLU: #gets a cold
-            start_day = rng.choice(range(sim_days-len_flu))
-            for day in range(len_flu):
-                symptoms_array[start_day+day] = symptoms
-                
-        return progression, start_day, symptoms_array
+    # Day 2-4ish if it's a longer cold, if 2 days long this doesn't get added
+    symptoms2 = []
+    if really_sick or extremely_sick or any(preexisting_conditions):
+        symptoms2.append('moderate')
+    else:
+        symptoms2.append('mild')
 
+    if rng.rand() < 0.8:
+        symptoms2.append('runny_nose')
+    if rng.rand() < 0.8:
+        symptoms2.append('cough')
+    if rng.rand() < 0.1:
+        symptoms2.append('trouble_breathing')
+    if rng.rand() < 0.2:
+        symptoms2.append('loss_of_taste')
+    if rng.rand() < 0.8:
+        symptoms2.append('fatigue')
+    if rng.rand() < 0.4:
+        symptoms2.append('sneezing')
 
-def _get_cold_symptoms(age, rng, sim_days, carefullness, preexisting_conditions, really_sick, extremely_sick):
-        
-        symptoms_array = [[] for i in range(sim_days)]
+    for day in range(len_cold - 2):
+        progression.append(symptoms2)
 
-        if age < 12 or age > 40 or any(preexisting_conditions) or really_sick or extremely_sick:
-            mean = 4 - round(carefullness)
-        else: 
-            mean = 3 - round(carefullness)
-        
-        len_cold = rng.normal(mean,3)
-        if len_cold < 1: 
-            len_cold = 1
-        else:
-            len_cold = round(len_cold)
+    # Last day
+    symptoms3 = []
+    symptoms3.append('mild')
+    if rng.rand() < 0.8:
+        symptoms3.append('runny_nose')
+    if rng.rand() < 0.8:
+        symptoms3.append('cough')
+    if rng.rand() < 0.8:
+        symptoms3.append('fatigue')
+    if rng.rand() < 0.6:
+        symptoms3.append('sore_throat')
+    progression.append(symptoms3)
 
-        symptoms = []
-        if really_sick or extremely_sick or any(preexisting_conditions):
-            symptoms.append('moderate')           
-        else: 
-            symptoms.append('mild')
-        if rng.rand() < 0.8:
-            symptoms.append('runny_nose')
-        if rng.rand() < 0.8:
-            symptoms.append('cough')
-        if rng.rand() < 0.1:
-            symptoms.append('trouble_breathing')
-        if rng.rand() < 0.2:
-            symptoms.append('loss_of_taste')
-        if rng.rand() < 0.2:
-            symptoms.append('fatigue')
-        if rng.rand() < 0.6:
-            symptoms.append('sneezing')
-
-        progression = []
-        for day in range(len_cold):
-            progression.append(symptoms)
-
-        start_day = None
-        if rng.rand() < P_COLD: #gets a cold
-            start_day = rng.choice(range(sim_days-len_cold))
-            for day in range(len_cold):
-                symptoms_array[start_day+day] = symptoms
+    return progression
 
 
-        return progression, start_day, symptoms_array
 
-
-def _reported_symptoms(all_symptoms, rng, carefullness):
-    all_reported_symptoms = []
-    for symptoms in all_symptoms:
-        reported_symptoms = []
-        # miss a day of symptoms
-        if rng.rand() < carefullness:
-            continue
-        for symptom in symptoms:
-            if rng.rand() < carefullness:
-                continue
-            reported_symptoms.append(symptom)
-        all_reported_symptoms.append(reported_symptoms)
-    return all_reported_symptoms
-
-
+# def _get_obs_symptoms(all_symptoms, rng, carefulness):
+#     all_reported_symptoms = []
+#     for symptoms in all_symptoms:
+#         reported_symptoms = []
+#         # miss a day of symptoms
+#         if rng.rand() < carefulness:
+#             continue
+#         for symptom in symptoms:
+#             if rng.rand() < carefulness:
+#                 continue
+#             reported_symptoms.append(symptom)
+#         all_reported_symptoms.append(reported_symptoms)
+#     return all_reported_symptoms
 
 # &preexisting-conditions
 def _get_preexisting_conditions(age, sex, rng):
-    #if rng.rand() < 0.6 + age/200: 
+    #if rng.rand() < 0.6 + age/200:
     #    conditions = None
     #else:
     conditions = []
@@ -629,7 +719,7 @@ def _get_preexisting_conditions(age, sex, rng):
     else:
         if rng.rand() < .179:
             conditions.append('diabetes')
-    
+
     # &heart disease
     if 'diabetes' or 'smoker' in conditions:
         modifier = 2
@@ -701,7 +791,7 @@ def _get_preexisting_conditions(age, sex, rng):
         if rng.rand() < modifier * .075:
             conditions.append('COPD')
 
-    # &asthma 
+    # &asthma
     if age < 10:
         if sex.lower().startswith('f'):
             if rng.rand() < .07:
@@ -788,18 +878,22 @@ def _get_preexisting_conditions(age, sex, rng):
 
     return conditions
 
+# &canadian-demgraphics
+def _get_random_age_multinomial(AGE_DISTRIBUTION, rng):
+    x = list(zip(*AGE_DISTRIBUTION.items()))
+    idx = rng.choice(range(len(x[0])), p=x[1])
+    age_group = x[0][idx]
+    return rng.uniform(age_group[0], age_group[1])
 
-def _get_random_area(location_type, num, total_area, rng):
-    ''' Using Dirichlet distribution since it generates a "distribution of probabilities" 
-    which will ensure that the total area allotted to a location type remains conserved 
-    while also maintaining a uniform distribution'''
-    perc_dist = {"store":0.15, "misc":0.15, "workplace":0.2, "household":0.3, "park":0.5, 'hospital': 0.6}
-    
-    # Keeping max at area/2 to ensure no location is allocated more than half of the total area allocated to its location type 
-    area = rng.dirichlet(np.ones(math.ceil(num/2)))*(perc_dist[location_type]*total_area/2)
-    area = np.append(area,rng.dirichlet(np.ones(math.floor(num/2)))*(perc_dist[location_type]*total_area/2))
-    
-    return area
+def _get_random_area(num, total_area, rng):
+	''' Using Dirichlet distribution since it generates a "distribution of probabilities"
+	which will ensure that the total area allotted to a location type remains conserved
+	while also maintaining a uniform distribution'''
+
+	# Keeping max at area/2 to ensure no location is allocated more than half of the total area allocated to its location type
+	area = rng.dirichlet(np.ones(math.ceil(num/2)))*(total_area/2)
+	area = np.append(area,rng.dirichlet(np.ones(math.floor(num/2)))*(total_area/2))
+	return area
 
 def _draw_random_discreet_gaussian(avg, scale, rng):
     # https://stackoverflow.com/a/37411711/3413239

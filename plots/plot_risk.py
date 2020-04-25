@@ -1,5 +1,3 @@
-import pickle
-from base import Event
 import config as cfg
 import matplotlib.pyplot as plt
 import numpy as np
