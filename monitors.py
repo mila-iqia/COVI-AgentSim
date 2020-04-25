@@ -5,8 +5,6 @@ from matplotlib import pyplot as plt
 import json
 import pylab as pl
 import pickle
-import numpy as np
-import pandas as pd
 from datetime import datetime
 import threading
 import zipfile

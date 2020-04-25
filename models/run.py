@@ -125,13 +125,6 @@ def get_days_worth_of_logs(data_path, start, cur_day):
 
 def integrated_risk_pred(humans, data_path, start, current_day, all_possible_symptoms, mp_batchsize="auto", mp_backend="loky", n_jobs=1):
     RiskModel = RiskModelTristan
-    done = False
-    while not done:
-        try:
-            zf = zipfile.ZipFile(data_path + ".zip", 'r')
-            done = True
-        except Exception:
-            pass
 
     days_logs, start_pkl = get_days_worth_of_logs(data_path + ".zip", start, current_day)
     all_params = []

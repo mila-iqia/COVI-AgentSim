@@ -183,6 +183,7 @@ def run_simu(n_people=None, init_percent_sick=0,
                                  'loss_of_taste', 'light_trouble_breathing', 'moderate_trouble_breathing',
                                  'heavy_trouble_breathing']
         monitors[0].dump()
+        monitors[0].join_iothread()
         env.process(city.run(1440, outfile, start_time, all_possible_symptoms))
 
     env.run(until=simulation_days * 24 * 60 / TICK_MINUTE)
