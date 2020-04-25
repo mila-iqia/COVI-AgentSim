@@ -91,6 +91,7 @@ class Human(object):
         self.visits = Visits()
         self.travelled_recently = self.rng.rand() > P_TRAVELLED_INTERNATIONALLY_RECENTLY
 
+        
         # &symptoms, &viral-load
         # probability of being asymptomatic is basically 50%, but a bit less if you're older and a bit more if you're younger
         self.is_asymptomatic = self.rng.rand() < (BASELINE_P_ASYMPTOMATIC - (self.age - 50) * 0.5) / 100 # e.g. 70: baseline-0.1, 20: baseline+0.15
@@ -101,10 +102,13 @@ class Human(object):
         self.recovery_days = None #self.infectiousness_onset_days + self.viral_load_recovered
         self.test_result, self.test_type = None, None
 
-        # Indicates whether this person will show severe signs of illness.
+        # possibly initialized as infected
         self.infection_timestamp = infection_timestamp
         self.initial_viral_load = self.rng.rand() if infection_timestamp is not None else 0
+        if self.infection_timestamp is not None:
+            self.compute_covid_properties()
 
+        # Indicates whether this person will show severe signs of illness.
         self.cold_timestamp = self.env.timestamp if self.rng.random() < P_COLD else None
         self.flu_timestamp = self.env.timestamp if self.rng.random() < P_FLU else None # different from asymptomatic
         self.allergy_timestamp = self.env.timestamp if self.rng.random() < P_HAS_ALLERGIES_TODAY else None 
@@ -128,11 +132,6 @@ class Human(object):
         self.symptom_start_time = None
         self.cold_progression = _get_cold_progression(self.age, self.rng, self.carefulness, self.preexisting_conditions, self.can_get_really_sick, self.can_get_extremely_sick)
         self.flu_progression = _get_flu_progression(self.age, self.rng, self.carefulness, self.preexisting_conditions, self.can_get_really_sick, self.can_get_extremely_sick)
-        self.covid_progression = _get_covid_progression(self.initial_viral_load, self.viral_load_plateau_start, self.viral_load_plateau_end,
-                                        self.viral_load_recovered, age=self.age, incubation_days=self.incubation_days,
-                                        really_sick=self.can_get_really_sick, extremely_sick=self.can_get_extremely_sick,
-                                        rng=self.rng, preexisting_conditions=self.preexisting_conditions)
-        self.len_cold, self.len_flu, self.len_covid = len(self.cold_progression), len(self.flu_progression), len(self.covid_progression)
         self.all_symptoms, self.cold_symptoms, self.flu_symptoms, self.covid_symptoms, self.allergy_symptoms = [], [], [], [], []
 
         # habits
@@ -346,6 +345,27 @@ class Human(object):
         # self.new_symptoms = list(all_symptoms - set(self.all_symptoms))
         self.all_symptoms = list(all_symptoms)
 
+    def compute_covid_properties(self):
+        self.viral_load_plateau_height, \
+          self.viral_load_plateau_start, \
+            self.viral_load_plateau_end, \
+              self.viral_load_recovered = _sample_viral_load_piecewise( 
+                                             rng=self.rng, age=self.age, 
+                                             initial_viral_load=self.initial_viral_load)                
+        self.infectiousness_onset_days = 1 + self.rng.normal(loc=INFECTIOUSNESS_ONSET_DAYS_AVG, scale=INFECTIOUSNESS_ONSET_DAYS_STD)
+        self.incubation_days = self.infectiousness_onset_days + self.viral_load_plateau_start + self.rng.normal(loc=SYMPTOM_ONSET_WRT_VIRAL_LOAD_PEAK_AVG, scale=SYMPTOM_ONSET_WRT_VIRAL_LOAD_PEAK_STD)
+        self.recovery_days = self.infectiousness_onset_days + self.viral_load_recovered
+
+        self.covid_progression = _get_covid_symptoms( 
+                            np.ndarray.item(self.viral_load_plateau_start), 
+                            np.ndarray.item(self.viral_load_plateau_end), 
+                            np.ndarray.item(self.viral_load_recovered), 
+                            initial_viral_load=initial_viral_load, 
+                            age=self.age, incubation_days=self.incubation_days, 
+                            really_sick=self.gets_really_sick, extremely_sick=self.gets_extremely_sick, 
+                            rng=self.rng, preexisting_conditions=self.preexisting_conditions)
+        
+
     def get_tested(self, city):
         if not city.tests_available:
             return False
@@ -404,11 +424,11 @@ class Human(object):
 
     def recover_health(self):
         if (self.cold_timestamp is not None and
-            self.days_since_cold >= datetime.timedelta(days=self.len_cold)):
+            self.days_since_cold >= datetime.timedelta(days=len(self.cold_progression))):
             self.cold_timestamp = None
 
         if (self.flu_timestamp is not None and
-            self.days_since_flu >= datetime.timedelta(days=self.len_flu)):
+            self.days_since_flu >= datetime.timedelta(days=len(self.flu_progression))):
             self.flu_timestamp = None
 
         if (self.allergy_timestamp is not None and
@@ -708,28 +728,7 @@ class Human(object):
                             self.initial_viral_load = 1
                         else: 
                             self.initial_viral_load = initial_viral_load / VIRAL_LOAD_NORMALIZATION
-                        
-                        # Computation of Covid-19 properties
-                        self.viral_load_plateau_height, \
-                          self.viral_load_plateau_start, \
-                            self.viral_load_plateau_end, \
-                              self.viral_load_recovered = _sample_viral_load_piecewise( 
-                                                             rng=self.rng, age=self.age, 
-                                                             initial_viral_load=self.initial_viral_load)                
-                        self.infectiousness_onset_days = 1 + self.rng.normal(loc=INFECTIOUSNESS_ONSET_DAYS_AVG, scale=INFECTIOUSNESS_ONSET_DAYS_STD)
-                        self.incubation_days = self.infectiousness_onset_days + self.viral_load_plateau_start + self.rng.normal(loc=SYMPTOM_ONSET_WRT_VIRAL_LOAD_PEAK_AVG, scale=SYMPTOM_ONSET_WRT_VIRAL_LOAD_PEAK_STD)
-                        self.recovery_days = self.infectiousness_onset_days + self.viral_load_recovered
-        
-                        self.covid_progression = _get_covid_symptoms( 
-                                            np.ndarray.item(self.viral_load_plateau_start), 
-                                            np.ndarray.item(self.viral_load_plateau_end), 
-                                            np.ndarray.item(self.viral_load_recovered), 
-                                            initial_viral_load=initial_viral_load, 
-                                            age=self.age, incubation_days=self.incubation_days, 
-                                            really_sick=self.gets_really_sick, extremely_sick=self.gets_extremely_sick, 
-                                            rng=self.rng, preexisting_conditions=self.preexisting_conditions)
-                        
-                        # Log infection
+                        self.compute_covid_properties()
                         h.n_infectious_contacts+=1
                         Event.log_exposed(self, h, self.env.timestamp)
                         city.tracker.track_infection('human', from_human=h, to_human=self, location=location, timestamp=self.env.timestamp)
@@ -784,27 +783,7 @@ class Human(object):
                 self.initial_viral_load = 1
             else: 
                 self.initial_viral_load = initial_viral_load / VIRAL_LOAD_NORMALIZATION
-            
-            # Computation of Covid-19 properties
-            self.viral_load_plateau_height, \
-              self.viral_load_plateau_start, \
-                self.viral_load_plateau_end, \
-                  self.viral_load_recovered = _sample_viral_load_piecewise( 
-                                                 rng=self.rng, age=self.age, 
-                                                 initial_viral_load=self.initial_viral_load)                
-            self.infectiousness_onset_days = 1 + self.rng.normal(loc=INFECTIOUSNESS_ONSET_DAYS_AVG, scale=INFECTIOUSNESS_ONSET_DAYS_STD)
-            self.incubation_days = self.infectiousness_onset_days + self.viral_load_plateau_start + self.rng.normal(loc=SYMPTOM_ONSET_WRT_VIRAL_LOAD_PEAK_AVG, scale=SYMPTOM_ONSET_WRT_VIRAL_LOAD_PEAK_STD)
-            self.recovery_days = self.infectiousness_onset_days + self.viral_load_recovered
-
-            self.covid_progression = _get_covid_symptoms( 
-                                np.ndarray.item(self.viral_load_plateau_start), 
-                                np.ndarray.item(self.viral_load_plateau_end), 
-                                np.ndarray.item(self.viral_load_recovered), 
-                                initial_viral_load=initial_viral_load, 
-                                age=self.age, incubation_days=self.incubation_days, 
-                                really_sick=self.gets_really_sick, extremely_sick=self.gets_extremely_sick, 
-                                rng=self.rng, preexisting_conditions=self.preexisting_conditions)
-
+            self.compute_covid_properties()
             Event.log_exposed(self, location,  self.env.timestamp)
             city.tracker.track_infection('env', from_human=None, to_human=self, location=location, timestamp=self.env.timestamp)
             self.historical_infection_timestamp = self.env.timestamp
