@@ -234,10 +234,10 @@ class City(simpy.Environment):
             h.stores_preferences = [(compute_distance(h.household, s) + 1e-1) ** -1 for s in self.stores]
             h.parks_preferences = [(compute_distance(h.household, s) + 1e-1) ** -1 for s in self.parks]
 
-    def run(self, duration, outfile, start_time, all_possible_symptoms):
+    def run(self, duration, outfile, start_time, all_possible_symptoms, n_jobs):
         current_day = 0
         while True:
-            self.humans = integrated_risk_pred(self.humans, outfile, start_time, current_day, all_possible_symptoms)
+            self.humans = integrated_risk_pred(self.humans, outfile, start_time, current_day, all_possible_symptoms, n_jobs=n_jobs)
             current_day += 1
             print(self.humans[0].risk)
             yield self.env.timeout(duration)

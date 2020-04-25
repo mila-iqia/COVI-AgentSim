@@ -26,12 +26,13 @@ def simu():
 @click.option('--out_chunk_size', help='number of events per dump in outfile', type=int, default=2500, required=False)
 @click.option('--outdir', help='the directory to write data to', type=str, default="output", required=False)
 @click.option('--seed', help='seed for the process', type=int, default=0)
+@click.option('--n_jobs', help='number of parallel procs to run of risk pred', type=int, default=1)
 def sim(n_people=None,
         init_percent_sick=0,
         start_time=datetime.datetime(2020, 2, 28, 0, 0),
         simulation_days=10,
         outdir=None, out_chunk_size=None,
-        seed=0):
+        seed=0, n_jobs=1):
 
     import config
     config.COLLECT_LOGS = True
@@ -51,7 +52,7 @@ def sim(n_people=None,
         simulation_days=simulation_days,
         outfile=outfile, out_chunk_size=out_chunk_size,
         print_progress=True,
-        seed=seed
+        seed=seed, n_jobs=n_jobs
     )
     monitors[0].dump()
     monitors[0].join_iothread()
@@ -151,7 +152,7 @@ def run_simu(n_people=None, init_percent_sick=0,
              start_time=datetime.datetime(2020, 2, 28, 0, 0),
              simulation_days=10,
              outfile=None, out_chunk_size=None,
-             print_progress=False, seed=0, other_monitors=[]):
+             print_progress=False, seed=0, n_jobs=1, other_monitors=[]):
 
     rng = np.random.RandomState(seed)
     env = Env(start_time)
@@ -184,7 +185,7 @@ def run_simu(n_people=None, init_percent_sick=0,
                                  'heavy_trouble_breathing']
         monitors[0].dump()
         monitors[0].join_iothread()
-        env.process(city.run(1440, outfile, start_time, all_possible_symptoms))
+        env.process(city.run(1440, outfile, start_time, all_possible_symptoms, n_jobs))
 
     env.run(until=simulation_days * 24 * 60 / TICK_MINUTE)
 

@@ -6,8 +6,8 @@ import argparse
 import numpy as np
 import datetime
 import pathlib
-import time
 from collections import defaultdict
+import config
 from plots.plot_risk import hist_plot
 from models.risk_models import RiskModelTristan
 from models.helper import conditions_to_np, symptoms_to_np, candidate_exposures, \
@@ -124,7 +124,8 @@ def get_days_worth_of_logs(data_path, start, cur_day):
     return to_return, start_pkl
 
 def integrated_risk_pred(humans, data_path, start, current_day, all_possible_symptoms, mp_batchsize="auto", mp_backend="loky", n_jobs=1):
-    RiskModel = RiskModelTristan
+    if config.RISK_MODEL:
+        RiskModel = RiskModelTristan
 
     days_logs, start_pkl = get_days_worth_of_logs(data_path + ".zip", start, current_day)
     all_params = []
@@ -161,8 +162,7 @@ def integrated_risk_pred(humans, data_path, start, current_day, all_possible_sym
                            "save_training_data": True, "log_path": log_path,
                            "random_clusters": False})
         human.uid = update_uid(human.uid, human.rng)
-    if current_day == 10:
-        import pdb; pdb.set_trace()
+
     with Parallel(n_jobs=n_jobs, batch_size=mp_batchsize, backend=mp_backend, verbose=10) as parallel:
         humans = parallel((delayed(proc_human)(params) for params in all_params))
 
