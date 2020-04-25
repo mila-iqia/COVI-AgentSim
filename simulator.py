@@ -298,7 +298,7 @@ class Human(object):
             return []
 
         reported_symptoms = []
-        for symptom in self.symptoms:
+        for symptom in self.all_symptoms:
             if self.rng.random() < self.carefulness:
                 reported_symptoms.append(symptom)
         return reported_symptoms
@@ -788,9 +788,60 @@ class Human(object):
         visited_locs[loc] += 1
         return loc
 
+    def __getstate__(self):
+        # Copy the object's state from self.__dict__ which contains
+        # all our instance attributes. Always use the dict.copy()
+        # method to avoid modifying the original state.
+        state = self.__dict__.copy()
+        # Remove the unpicklable entries.
+        if state.get("env"):
+            del state['env']
+            del state['_events']
+            del state['visits']
+            del state['household']
+            del state['location']
+            del state['workplace']
+            del state['exercise_hours']
+            del state['exercise_days']
+            del state['shopping_days']
+            del state['shopping_hours']
+            del state['work_start_hour']
+            del state['profession']
+            del state['rho']
+            del state['gamma']
+            del state['rest_at_home']
+            del state['never_recovers']
+            del state['last_state']
+            del state['avg_shopping_time']
+            del state['count_shop']
+        return state
+
+    def __setstate__(self, state):
+        # Restore instance attributes.
+        self.__dict__.update(state)
+
     def serialize(self):
         """This function serializes the human object for pickle."""
-        # TODO: I deleted many unserializable attributes, but many of them can (and should) be converted to serializable form.
+        unserializable_attributes = {}
+        unserializable_attributes['env'] = self.env
+        unserializable_attributes['_events'] = self._events
+        unserializable_attributes['rng'] = self.rng
+        unserializable_attributes['visits'] = self.visits
+        unserializable_attributes['leaving_time'] = self.start_time
+        unserializable_attributes['household'] = self.household
+        unserializable_attributes['location'] = self.location
+        unserializable_attributes['workplace'] = self.workplace
+        unserializable_attributes['viral_load_plateau_start'] = self.viral_load_plateau_start
+        unserializable_attributes['viral_load_plateau_end'] = self.viral_load_plateau_end
+        unserializable_attributes['viral_load_recovered'] = self.viral_load_recovered
+        unserializable_attributes['exercise_hours'] = self.exercise_hours
+        unserializable_attributes['exercise_days'] = self.exercise_days
+        unserializable_attributes['shopping_days'] = self.shopping_days
+        unserializable_attributes['shopping_hours'] = self.shopping_hours
+        unserializable_attributes['work_start_hour'] = self.work_start_hour
+        unserializable_attributes['infection_timestamp'] = self.infection_timestamp
+        unserializable_attributes['recovered_timestamp'] = self.recovered_timestamp
+        unserializable_attributes['leaving_time'] = self.leaving_time
         del self.env
         del self._events
         del self.rng
@@ -810,7 +861,7 @@ class Human(object):
         del self.work_start_hour
         del self.infection_timestamp
         del self.recovered_timestamp
-        return self
+        return unserializable_attributes
 
 
     def cur_message(self, day, RiskModel):

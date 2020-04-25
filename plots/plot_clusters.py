@@ -3,6 +3,7 @@ import sys
 import os
 sys.path.append(os.getcwd())
 import numpy as np
+import matplotlib
 from matplotlib import pyplot as plt
 from models.utils import decode_message
 from collections import defaultdict, Counter
@@ -56,6 +57,8 @@ for group in all_groups:
     all_count_people_in_group.extend(count_people_in_group)
 
 # plot the number of people in each group
+matplotlib.use('Agg')
+
 plt.figure(1)
 plt.hist(np.array(all_count_people_in_group).flatten(), 100, label='num_people_in_group')
 plt.xlabel("Number of Messages in a Group")

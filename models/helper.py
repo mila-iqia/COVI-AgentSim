@@ -1,5 +1,4 @@
 import numpy as np
-import datetime
 
 from utils import PREEXISTING_CONDITIONS
 

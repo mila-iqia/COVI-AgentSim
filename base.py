@@ -8,6 +8,7 @@ import numpy as np
 from collections import defaultdict
 from orderedset import OrderedSet
 import copy
+import zipfile
 from config import *
 from utils import compute_distance, _get_random_area
 from track import Tracker
@@ -236,10 +237,13 @@ class City(simpy.Environment):
 
     def run(self, duration, outfile, start_time, all_possible_symptoms, n_jobs):
         current_day = 0
+        with zipfile.ZipFile(outfile + ".zip", 'r') as zf:
+            start_pkl = zf.namelist()[0]
+
         while True:
-            self.humans = integrated_risk_pred(self.humans, outfile, start_time, current_day, all_possible_symptoms, n_jobs=n_jobs)
+            self.humans, start_pkl = integrated_risk_pred(self.humans, outfile, start_time, current_day, all_possible_symptoms, start_pkl, n_jobs=n_jobs)
             current_day += 1
-            print(self.humans[0].risk)
+            # print([human.risk for human in self.humans])
             yield self.env.timeout(duration)
 
 class Location(simpy.Resource):

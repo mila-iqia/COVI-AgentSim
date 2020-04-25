@@ -246,6 +246,16 @@ COLLECT_LOGS = True
 
 # RISK PREDICTION PARAMETERS
 RISK_MODEL = "naive"
+MP_BATCHSIZE = "auto"
+MP_N_JOBS = "1"
+MP_BACKEND = "loky"
+CLUSTER_MESSAGES = False
+CLUSTER_TYPE = "heuristic" # "random", "graph"
+PLOT_RISK = True
+RISK_PLOT_PATH = "output/plots/risk"
+DUMP_CLUSTERS = True
+CLUSTER_PATH = "output/clusters.json"
+
 
 # LIFESTYLE PARAMETERS
 ## SHOP

@@ -2,11 +2,13 @@ import os
 import sys
 sys.path.append(os.getcwd())
 from config import RISK_TRANSMISSION_PROBA
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 """ This file plots the predicted risk for infected and uninfected people at one snapshot in time"""
 
+matplotlib.use('Agg')
 
 def hist_plot(risks, PATH_TO_PLOT):
     plt.figure()
