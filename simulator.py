@@ -704,10 +704,10 @@ class Human(object):
                     # Infection
                     if x_human and self.is_susceptible:
                         self.infection_timestamp = self.env.timestamp
-                        if initial_viral_load > MAX_VIRAL_LOAD:
+                        if initial_viral_load > VIRAL_LOAD_NORMALIZATION:
                             self.initial_viral_load = 1
                         else: 
-                            self.initial_viral_load = initial_viral_load / MAX_VIRAL_LOAD
+                            self.initial_viral_load = initial_viral_load / VIRAL_LOAD_NORMALIZATION
                         
                         # Computation of Covid-19 properties
                         self.viral_load_plateau_height, \
@@ -779,6 +779,32 @@ class Human(object):
         x_environment = location.contamination_probability > 0 and self.rng.random() < initial_viral_load
         if x_environment and self.is_susceptible:
             self.infection_timestamp = self.env.timestamp
+
+            if initial_viral_load > VIRAL_LOAD_NORMALIZATION:
+                self.initial_viral_load = 1
+            else: 
+                self.initial_viral_load = initial_viral_load / VIRAL_LOAD_NORMALIZATION
+            
+            # Computation of Covid-19 properties
+            self.viral_load_plateau_height, \
+              self.viral_load_plateau_start, \
+                self.viral_load_plateau_end, \
+                  self.viral_load_recovered = _sample_viral_load_piecewise( 
+                                                 rng=self.rng, age=self.age, 
+                                                 initial_viral_load=self.initial_viral_load)                
+            self.infectiousness_onset_days = 1 + self.rng.normal(loc=INFECTIOUSNESS_ONSET_DAYS_AVG, scale=INFECTIOUSNESS_ONSET_DAYS_STD)
+            self.incubation_days = self.infectiousness_onset_days + self.viral_load_plateau_start + self.rng.normal(loc=SYMPTOM_ONSET_WRT_VIRAL_LOAD_PEAK_AVG, scale=SYMPTOM_ONSET_WRT_VIRAL_LOAD_PEAK_STD)
+            self.recovery_days = self.infectiousness_onset_days + self.viral_load_recovered
+
+            self.covid_progression = _get_covid_symptoms( 
+                                np.ndarray.item(self.viral_load_plateau_start), 
+                                np.ndarray.item(self.viral_load_plateau_end), 
+                                np.ndarray.item(self.viral_load_recovered), 
+                                initial_viral_load=initial_viral_load, 
+                                age=self.age, incubation_days=self.incubation_days, 
+                                really_sick=self.gets_really_sick, extremely_sick=self.gets_extremely_sick, 
+                                rng=self.rng, preexisting_conditions=self.preexisting_conditions)
+
             Event.log_exposed(self, location,  self.env.timestamp)
             city.tracker.track_infection('env', from_human=None, to_human=self, location=location, timestamp=self.env.timestamp)
             self.historical_infection_timestamp = self.env.timestamp
