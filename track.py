@@ -217,17 +217,23 @@ class Tracker(object):
         print("Avg. infectiousnes onset days", np.mean([x[2] for x in days]))
 
     def track_symptoms(self, human):
-        if human.symptoms:
-            if human.covid_symptoms:
-                self.symptoms_set['covid'][human.name].update(human.covid_symptoms)
+        if human.covid_symptoms:
+            self.symptoms_set['covid'][human.name].update(human.covid_symptoms)
+        else:
+            if human.name in self.symptoms_set['covid']:
+                self.symptoms['covid']['n'] += 1
+                for s in self.symptoms_set['covid'][human.name]:
+                    self.symptoms['covid'][s] += 1
+                self.symptoms_set['covid'].pop(human.name)
+
+        if human.all_symptoms:
             self.symptoms_set['all'][human.name].update(human.all_symptoms)
         else:
-            for key in ['covid', 'all']:
-                if human.name in self.symptoms_set[key]:
-                    self.symptoms[key]['n'] += 1
-                    for s in self.symptoms_set['covid'][human.name]:
-                        self.symptoms[key][s] += 1
-                    self.symptoms_set[key].pop(human.name)
+            if human.name in self.symptoms_set['all']:
+                self.symptoms['all']['n'] += 1
+                for s in self.symptoms_set['all'][human.name]:
+                    self.symptoms['all'][s] += 1
+                self.symptoms_set['all'].pop(human.name)
 
     def track_social_mixing(self, **kwargs):
         duration = kwargs.get('duration')
