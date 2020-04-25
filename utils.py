@@ -443,7 +443,7 @@ def _get_preexisting_conditions(age, sex, rng):
             conditions.append('diabetes')
 
     # &heart disease
-    if 'diabetes' or 'smoker' in conditions:
+    if 'diabetes' in conditions or 'smoker' in conditions:
         modifier = 2
     else:
         modifier = 0.5
