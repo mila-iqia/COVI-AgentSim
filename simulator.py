@@ -315,7 +315,7 @@ class Human(object):
         if not self.has_app:
             return []
         reported_symptoms = []
-        for symptom in self.symptoms:
+        for symptom in self.all_symptoms:
             if self.rng.random() < self.carefulness:
                 reported_symptoms.append(symptom)
         return reported_symptoms
