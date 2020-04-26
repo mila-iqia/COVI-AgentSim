@@ -5,7 +5,7 @@ sys.path.append(os.getcwd())
 import numpy as np
 import matplotlib
 from matplotlib import pyplot as plt
-from models.utils import decode_message
+from frozen.utils import decode_message
 from collections import defaultdict, Counter
 import networkx as nx
 

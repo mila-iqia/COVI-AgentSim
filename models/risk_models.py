@@ -1,7 +1,7 @@
 import os
 import numpy as np
 from config import *
-from models.utils import decode_message
+from frozen.utils import decode_message
 import datetime
 """ This file contains the core of the side simulation, which is run on the output encounters from the main simulation.
 It's primary functionality is to run the message clustering and risk prediction algorithms.

@@ -2,7 +2,7 @@ import numpy as np
 
 from utils import PREEXISTING_CONDITIONS
 
-from models.utils import decode_message
+from frozen.utils import decode_message
 
 def messages_to_np(human):
     ms_enc = []

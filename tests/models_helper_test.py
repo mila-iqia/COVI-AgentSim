@@ -2,7 +2,7 @@ import unittest
 
 from utils import PREEXISTING_CONDITIONS
 
-from models.helper import conditions_to_np, encode_age, encode_sex
+from frozen.helper import conditions_to_np, encode_age, encode_sex
 
 
 class ModelsHelperTest(unittest.TestCase):

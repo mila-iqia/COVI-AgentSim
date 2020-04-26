@@ -2,8 +2,8 @@
 from utils import _normalize_scores, _get_random_sex, _get_covid_symptoms, \
     _get_preexisting_conditions, _draw_random_discreet_gaussian, _sample_viral_load_piecewise, \
     _get_cold_symptoms_v2, _get_flu_symptoms_v2
-from models.clusters import Clusters
-from models.utils import create_new_uid, Message, UpdateMessage
+from frozen.clusters import Clusters
+from frozen.utils import create_new_uid, Message, UpdateMessage
 
 from base import *
 if COLLECT_LOGS is False:

@@ -1,6 +1,6 @@
 import unittest
-from models.utils import Message, encode_message
-from models.clusters import Clusters
+from frozen.utils import Message, encode_message
+from frozen.clusters import Clusters
 
 class ScoreMessagesUnitTest(unittest.TestCase):
 
