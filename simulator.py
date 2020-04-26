@@ -70,6 +70,7 @@ class Human(object):
             self.carefulness = (round(self.rng.normal(55, 10)) + self.age/2) / 100
         else:
             self.carefulness = (round(self.rng.normal(25, 10)) + self.age/2) / 100
+        self.hygiene = self.carefulness
 
         self.has_app = self.rng.rand() < (P_HAS_APP / age_modifier) + (self.carefulness / 2)
         self.risk = self.rng.rand()
@@ -90,6 +91,8 @@ class Human(object):
         self.rest_at_home = False # to track mobility due to symptoms
         self.visits = Visits()
         self.travelled_recently = self.rng.rand() > 0.9
+        self.maintain_distance = DEFAULT_DISTANCE + (self.carefulness - 0.5)
+        self.mask_intervention = MASK_INTERVENTION
 
         # &symptoms, &viral-load
         # probability of being asymptomatic is basically 50%, but a bit less if you're older and a bit more if you're younger
@@ -279,6 +282,7 @@ class Human(object):
               severity_multiplier += 0.2
             if 'cough' in self.symptoms:
               severity_multiplier += 0.25
+            severity_multiplier += (1-self.hygiene)
         return self.viral_load * severity_multiplier
 
     @property
@@ -354,8 +358,8 @@ class Human(object):
         return False
 
 
-    def wear_mask(self):
-        if not MASK_INTERVENTION:
+    def wear_mask(self, put_on=False):
+        if not self.mask_intervention:
             self.wearing_mask, self.mask_efficacy = False, 0
             return
 
@@ -430,31 +434,31 @@ class Human(object):
                 self.max_misc_per_week = 1
         if 'wash_hands' in self.recommendations:
             if self.rng.rand() < self.how_much_I_follow_recommendations:
-                pass
-                # TODO hygiene
+                self.hygiene = 1
         if 'stand_2m' in self.recommendations:
             if self.rng.rand() < self.how_much_I_follow_recommendations:
-                pass
-                # TODO increase space during encounters
+                self.maintain_distance = 2
         if 'limit_contact' in self.recommendations:
             if self.rng.rand() < self.how_much_I_follow_recommendations:
                 self.max_shop_per_week = 1
                 self.max_exercise_per_week = 1
                 self.max_misc_per_week = 0
-                # TODO increase space even more during encounters
+                self.maintain_distance = 3
         if 'wear_mask' in self.recommendations:
             if self.rng.rand() < self.how_much_I_follow_recommendations:
-                pass
-                # TODO increase masking
+                self.mask_intervention = True
         if 'get_tested' in self.recommendations:
             if self.rng.rand() < self.how_much_I_follow_recommendations:
-                pass
-                # TODO testing
+                self.get_tested = True
         if 'quarantine' in self.recommendations:
             if self.rng.rand() < self.how_much_I_follow_recommendations:
                 self.max_shop_per_week = 0
                 self.max_exercise_per_week = 0
                 self.max_misc_per_week = 0
+                self.mask_intervention = True
+                self.maintain_distance = 4
+
+                #TODO unfollow recommendations!
 
 
 
@@ -485,6 +489,11 @@ class Human(object):
 
             # recover health
             self.recover_from_cold_and_flu()
+
+            # check and follow recommendations
+            if self.has_app:
+                self.get_recommendations()
+                self.follow_recommendations()
 
             # track symptoms
             if self.is_incubated and self.symptom_start_time is None :
@@ -558,6 +567,7 @@ class Human(object):
                 self.count_shop+=1
                 yield self.env.process(self.excursion(city, "shopping"))
 
+
             elif ( hour in self.exercise_hours and
                     day in self.exercise_days and
                     self.count_exercise<=self.max_exercise_per_week and
@@ -567,7 +577,9 @@ class Human(object):
 
             elif (self.env.is_weekend() and
                     self.rng.random() < 0.05 and
-                    not self.rest_at_home):
+                    not self.rest_at_home and 
+                    not self.count_misc<=self.max_misc_per_week):
+                self.count_misc+=1
                 yield  self.env.process(self.excursion(city, "leisure"))
 
             # start from house all the time
@@ -683,7 +695,9 @@ class Human(object):
             if not self.rng.random() < (0.5 * abs(self.age - h.age) + 1) ** -1:
                 continue
 
-            distance =  np.sqrt(int(area/len(self.location.humans))) + self.rng.randint(MIN_DIST_ENCOUNTER, MAX_DIST_ENCOUNTER)
+            distance =  np.sqrt(int(area/len(self.location.humans))) 
+                           + self.rng.randint(MIN_DIST_ENCOUNTER, MAX_DIST_ENCOUNTER)
+                           + self.maintain_distance
             t_overlap = min(self.leaving_time, getattr(h, "leaving_time", 60)) - max(self.start_time, getattr(h, "start_time", 60))
             t_near = self.rng.random() * t_overlap
 
