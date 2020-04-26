@@ -72,6 +72,13 @@ class Human(object):
             self.carefulness = (round(self.rng.normal(25, 10)) + self.age/2) / 100
 
         self.has_app = self.rng.rand() < (P_HAS_APP / age_modifier) + (self.carefulness / 2)
+        self.risk = self.rng.rand()
+        if self.has_app:
+            self.recommendations = self.get_recommendations()
+            self.follow_recommendations = (rng.rand()*PERCENT_FOLLOW + self.carefulness)/100
+        else:
+            self.recommendations = []
+            self.follow_recommendations = 0
 
         # logged info can be quite different
         self.has_logged_info = self.has_app and self.rng.rand() < self.carefulness
@@ -159,12 +166,16 @@ class Human(object):
         self.exercise_hours = self.rng.choice(range(7, 20), self.number_of_exercise_hours)
 
         #Limiting the number of hours spent shopping per week
-        self.max_shop_per_week = _draw_random_discreet_gaussian(AVG_MAX_NUM_SHOP_PER_WEEK, SCALE_MAX_NUM_SHOP_PER_WEEK, self.rng)
-        self.count_shop=0
+        self.max_misc_per_week = _draw_random_discreet_gaussian(AVG_MAX_MISC_PER_WEEK, SCALE_MAX_MISC_PER_WEEK, self.rng)
+        self.count_misc=0
 
         # Limiting the number of hours spent exercising per week
         self.max_exercise_per_week = _draw_random_discreet_gaussian(AVG_MAX_NUM_EXERCISE_PER_WEEK, SCALE_MAX_NUM_EXERCISE_PER_WEEK, self.rng)
         self.count_exercise=0
+
+        #Limiting the number of hours spent shopping per week
+        self.max_shop_per_week = _draw_random_discreet_gaussian(AVG_MAX_NUM_SHOP_PER_WEEK, SCALE_MAX_NUM_SHOP_PER_WEEK, self.rng)
+        self.count_shop=0
 
         self.work_start_hour = self.rng.choice(range(7, 12), 3)
 
@@ -401,6 +412,18 @@ class Human(object):
 
         return 1.0
 
+    def get_recommendations(self):
+        if self.risk <0.25:
+            return ['stay_home', 'wash_hands', 'stand_2m']
+        if self.risk <0.5:
+            return ['stay_home', 'wash_hands', 'stand_2m', 'limit_contact']
+        if self.risk <0.75:
+            return ['stay_home', 'wash_hands', 'stand_2m', 'limit_contact', 'wear_mask', 'monitor_symptoms']
+        else:
+            return ['stay_home', 'wash_hands', 'stand_2m', 'limit_contact', 'wear_mask', 'monitor_symptoms', 'get_tested', 'quarantine']
+
+
+        
     def assert_state_changes(self):
         next_state = {0:[1], 1:[2], 2:[0, 3], 3:[3]}
         assert sum(self.state) == 1, f"invalid compartment for {self.name}: {self.state}"
