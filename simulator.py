@@ -103,7 +103,7 @@ class Human(object):
         self.has_logged_test = False
         self.last_state = self.state
         self.n_infectious_contacts = 0
-        self.last_date_to_check_symptoms = self.env.timestamp.date()
+        self.last_date = defaultdict(lambda : self.env.initial_timestamp.date())
 
         # symptoms
         self.symptom_start_time = None
@@ -286,8 +286,8 @@ class Human(object):
 
     @property
     def symptoms(self):
-        if self.last_date_to_check_symptoms != self.env.timestamp.date():
-            self.last_date_to_check_symptoms = self.env.timestamp.date()
+        if self.last_date['symptoms'] != self.env.timestamp.date():
+            self.last_date['symptoms'] = self.env.timestamp.date()
             self.update_symptoms()
 
         return self.all_symptoms
@@ -428,9 +428,9 @@ class Human(object):
                 self.count_exercise=0
                 self.count_shop=0
 
-            date = self.env.timestamp.date()
-            if self.last_date != date:
-                self.last_date = date
+
+            if self.last_date['run'] != self.env.timestamp.date():
+                self.last_date['run'] = self.env.timestamp.date()
                 self.infectiousnesses.append(self.infectiousness)
                 if len(self.infectiousnesses) > 14:
                     self.infectiousnesses.pop(0)
@@ -678,20 +678,20 @@ class Human(object):
 
                 # cold_and_flu_transmission(self, h)
                 if self.cold_timestamp is not None or h.cold_timestamp is not None:
-                    infector, infectee = h, self
+                    cold_infector, cold_infectee = h, self
                     if self.cold_timestamp is not None:
-                        infector, infectee = self, h
+                        cold_infector, cold_infectee = self, h
 
                     if self.rng.random() < COLD_CONTAGIOUSNESS:
-                        infectee.cold_timestamp = self.env.timestamp
+                        cold_infectee.cold_timestamp = self.env.timestamp
 
                 if self.flu_timestamp is not None or h.flu_timestamp is not None:
-                    infector, infectee = h, self
+                    flu_infector, flu_infectee = h, self
                     if self.cold_timestamp is not None:
-                        infector, infectee = self, h
+                        flu_infector, flu_infectee = self, h
 
                     if self.rng.random() < FLU_CONTAGIOUSNESS:
-                        infectee.flu_timestamp = self.env.timestamp
+                        flu_infectee.flu_timestamp = self.env.timestamp
 
                 city.tracker.track_encounter_events(human1=self, human2=h, location=location, distance=distance, duration=t_near)
                 Event.log_encounter(self, h,
