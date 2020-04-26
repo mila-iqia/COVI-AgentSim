@@ -103,7 +103,7 @@ class Human(object):
         self.has_logged_test = False
         self.last_state = self.state
         self.n_infectious_contacts = 0
-        self.last_date = defaultdict(lambda : self.env.initial_timestamp.date())
+        # self.last_date = defaultdict(lambda : self.env.initial_timestamp.date())
 
         # symptoms
         self.symptom_start_time = None
@@ -819,49 +819,6 @@ class Human(object):
     def __setstate__(self, state):
         # Restore instance attributes.
         self.__dict__.update(state)
-
-    def serialize(self):
-        """This function serializes the human object for pickle."""
-        unserializable_attributes = {}
-        unserializable_attributes['env'] = self.env
-        unserializable_attributes['_events'] = self._events
-        unserializable_attributes['rng'] = self.rng
-        unserializable_attributes['visits'] = self.visits
-        unserializable_attributes['leaving_time'] = self.start_time
-        unserializable_attributes['household'] = self.household
-        unserializable_attributes['location'] = self.location
-        unserializable_attributes['workplace'] = self.workplace
-        unserializable_attributes['viral_load_plateau_start'] = self.viral_load_plateau_start
-        unserializable_attributes['viral_load_plateau_end'] = self.viral_load_plateau_end
-        unserializable_attributes['viral_load_recovered'] = self.viral_load_recovered
-        unserializable_attributes['exercise_hours'] = self.exercise_hours
-        unserializable_attributes['exercise_days'] = self.exercise_days
-        unserializable_attributes['shopping_days'] = self.shopping_days
-        unserializable_attributes['shopping_hours'] = self.shopping_hours
-        unserializable_attributes['work_start_hour'] = self.work_start_hour
-        unserializable_attributes['infection_timestamp'] = self.infection_timestamp
-        unserializable_attributes['recovered_timestamp'] = self.recovered_timestamp
-        unserializable_attributes['leaving_time'] = self.leaving_time
-        del self.env
-        del self._events
-        del self.rng
-        del self.visits
-        del self.leaving_time
-        del self.start_time
-        del self.household
-        del self.location
-        del self.workplace
-        del self.viral_load_plateau_start
-        del self.viral_load_plateau_end
-        del self.viral_load_recovered
-        del self.exercise_hours
-        del self.exercise_days
-        del self.shopping_days
-        del self.shopping_hours
-        del self.work_start_hour
-        del self.infection_timestamp
-        del self.recovered_timestamp
-        return unserializable_attributes
 
 
     def cur_message(self, day, RiskModel):
