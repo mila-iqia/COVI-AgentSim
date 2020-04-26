@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import math
 from collections import defaultdict
-from config import HUMAN_DISTRIBUTION, LOCATION_DISTRIBUTION, INFECTION_RADIUS, INFECTION_DURATION
+from config import HUMAN_DISTRIBUTION, LOCATION_DISTRIBUTION, INFECTION_RADIUS, INFECTION_DURATION, EFFECTIVE_R_WINDOW
 import networkx as nx
 from utils import log
 
@@ -23,13 +23,17 @@ class Tracker(object):
 
         # infection & contacts
         self.contacts = {
-                'all':get_nested_dict(2),
-                'location_all': get_nested_dict(3),
-                'human_infection': get_nested_dict(2),
+                'all_encounters':np.zeros((150,150)),
+                'location_all_encounters': defaultdict(lambda: np.zeros((150,150))),
+                'human_infection': np.zeros((150,150)),
                 'env_infection':get_nested_dict(1),
                 'location_env_infection': get_nested_dict(2),
-                'location_human_infection': get_nested_dict(3),
-                'duration': defaultdict(lambda : defaultdict(lambda :[0,0]))
+                'location_human_infection': defaultdict(lambda: np.zeros((150,150))),
+                'duration': {'avg': (0, np.zeros((150,150))), 'total': np.zeros((150,150)), 'n': np.zeros((150,150))},
+                'histogram_duration': [0],
+                'location_duration':defaultdict(lambda : [0]),
+                'n_contacts': {'avg': (0, np.zeros((150,150))), 'total': np.zeros((150,150))}
+
                 }
 
         self.infection_graph = nx.DiGraph()
@@ -46,7 +50,7 @@ class Tracker(object):
 
         # cumulative incidence
         day = self.env.timestamp.strftime("%d %b")
-        self.last_day = {'track_recovery':day, "track_infection":day}
+        self.last_day = {'track_recovery':day, "track_infection":day, 'social_mixing':day}
         self.cumulative_incidence = []
         self.n_susceptible = sum(h.is_susceptible for h in city.humans)
         self.cases_per_day = [0]
@@ -67,8 +71,8 @@ class Tracker(object):
         self.time_encounters = defaultdict(int)
 
         # symptoms
-        self.symptoms = {'covid': defaultdict(int), 'others':defaultdict(int)}
-
+        self.symptoms = {'covid': defaultdict(int), 'all':defaultdict(int)}
+        self.symptoms_set = {'covid': defaultdict(set), 'all': defaultdict(set)}
         # mobility
         self.transition_probability = get_nested_dict(4)
         self.summarize_population()
@@ -79,6 +83,9 @@ class Tracker(object):
 
         self.age_distribution = pd.DataFrame([h.age for h in self.city.humans])
         print("age distribution\n", self.age_distribution.describe())
+
+        self.sex_distribution = pd.DataFrame([h.sex for h in self.city.humans])
+        # print("gender distribution\n", self.gender_distribution.describe())
 
         self.house_age = pd.DataFrame([np.mean([h.age for h in house.residents]) for house in self.city.households])
         self.house_size = pd.DataFrame([len(house.residents) for house in self.city.households])
@@ -94,6 +101,7 @@ class Tracker(object):
         time_since_start =  (self.env.timestamp - self.env.initial_timestamp).total_seconds() / 86400 # DAYS
         if time_since_start == 0:
             return -1
+
         if time_since_start > 365:
             # tau= self.n_infectious_contacts / self.n_contacts
             # c_bar = self.n_contacts / time_since_start
@@ -106,6 +114,7 @@ class Tracker(object):
                 n, total = zip(*self.recovered_stats)
             else:
                 n, total = [0], [0]
+
             if sum(n):
                 return 1.0 * sum(total)/sum(n)
             return 0
@@ -115,10 +124,7 @@ class Tracker(object):
             return self.r[0]
         else:
             log("not enough data points to estimate r0. Falling back to average")
-            x = [h.n_infectious_contacts for h in self.city.humans if h.state.index(1) >= 2]
-            if x:
-                return np.mean(x)
-            return -1
+            return self.get_R()
 
     def get_generation_time(self):
         return self.avg_generation_times[1]
@@ -140,8 +146,8 @@ class Tracker(object):
             self.cases_per_day[-1] += 1
 
         if type == "human":
-            self.contacts["human_infection"][from_bin][to_bin] += 1
-            self.contacts["location_human_infection"][location.location_type][from_bin][to_bin] += 1
+            self.contacts["human_infection"][from_human.age, to_human.age] += 1
+            self.contacts["location_human_infection"][location.location_type][from_human.age, to_human.age] += 1
 
             delta = timestamp - from_human.infection_timestamp
             self.infection_graph.add_node(from_human.name, bin=from_bin, time=from_human.infection_timestamp)
@@ -187,13 +193,12 @@ class Tracker(object):
         self.avg_infectious_duration = (self.n_recovery * self.avg_infectious_duration + duration) / (self.n_recovery + 1)
         self.n_recovery += 1
 
-        day = self.env.timestamp.day
-        if self.last_day['track_recovery'] != day:
-            self.last_day['track_recovery'] = day
-            if len(self.recovered_stats) > 10:
+        if self.last_day['track_recovery'] != self.env.timestamp.date:
+            self.last_day['track_recovery'] = self.env.timestamp.date
+            if len(self.recovered_stats) > EFFECTIVE_R_WINDOW:
                 self.r.append(self.get_R())
                 self.recovered_stats = self.recovered_stats[1:]
-            self.recovered_stats.append([0, 0])
+            self.recovered_stats.append([1, n_infectious_contacts])
         else:
             n, total = self.recovered_stats[-1]
             self.recovered_stats[-1] = [n+1, total + n_infectious_contacts]
@@ -212,17 +217,75 @@ class Tracker(object):
         print("Avg. recovery days", np.mean([x[1] for x in days]))
         print("Avg. infectiousnes onset days", np.mean([x[2] for x in days]))
 
-    def track_symptoms(self, symptoms, covid=True):
-        # called after logging the test
-        self.symptoms['covid']['n'] += 1
-        for s in symptoms:
-            self.symptoms['covid'][s] += 1
+    def track_symptoms(self, human):
+        if human.covid_symptoms:
+            self.symptoms_set['covid'][human.name].update(human.covid_symptoms)
+        else:
+            if human.name in self.symptoms_set['covid']:
+                self.symptoms['covid']['n'] += 1
+                for s in self.symptoms_set['covid'][human.name]:
+                    self.symptoms['covid'][s] += 1
+                self.symptoms_set['covid'].pop(human.name)
 
-    def track_social_mixing(self, human1, human2, location, distance, duration):
-        n, avg = self.contacts['duration'][human1.age][human2.age]
-        self.contacts['duration'][human1.age][human2.age] = (n+1, (avg*n + duration)/(n+1))
+        if human.all_symptoms:
+            self.symptoms_set['all'][human.name].update(human.all_symptoms)
+        else:
+            if human.name in self.symptoms_set['all']:
+                self.symptoms['all']['n'] += 1
+                for s in self.symptoms_set['all'][human.name]:
+                    self.symptoms['all'][s] += 1
+                self.symptoms_set['all'].pop(human.name)
 
-        # self.contacts['location_duration'][location.location_type] binning
+    def track_social_mixing(self, **kwargs):
+        duration = kwargs.get('duration')
+        bin = math.floor(duration/15)
+        location = kwargs.get('location', None)
+
+        if location is None:
+            x = len(self.contacts['histogram_duration'])
+            if bin >= x:
+                self.contacts['histogram_duration'].extend([0 for _ in range(bin - x + 1)])
+            self.contacts['histogram_duration'][bin] += 1
+
+            timestamp = kwargs.get('timestamp')
+            day = timestamp.strftime("%d %b")
+
+            if self.last_day['social_mixing'] != day:
+                # duration
+                n, M = self.contacts['duration']['avg']
+                where = self.contacts['duration']['n'] != 0
+                m = np.divide(self.contacts['duration']['total'], self.contacts['duration']['n'], where=where)
+                self.contacts['duration']['avg'] = (n+1, (n*M + m)/(n+1))
+
+                self.contacts['duration']['total'] = np.zeros((150,150))
+                self.contacts['duration']['n'] = np.zeros((150,150))
+
+                # n_contacts
+                n, M = self.contacts['n_contacts']['avg']
+                m = self.contacts['n_contacts']['total']
+                self.contacts['n_contacts']['avg'] = (n+1, (n*M + m)/(n+1))
+
+                self.contacts['n_contacts']['total'] = np.zeros((150,150))
+                self.last_day['social_mixing'] = day
+
+            else:
+                human1 = kwargs.get('human1', None)
+                human2 = kwargs.get('human2', None)
+                if human1 is not None and human2 is not None:
+                    self.contacts['duration']['total'][human1.age, human2.age] += duration
+                    self.contacts['duration']['n'][human1.age, human2.age] += 1
+
+                    self.contacts['duration']['total'][human2.age, human1.age] += duration
+                    self.contacts['duration']['n'][human2.age, human1.age] += 1
+
+                    self.contacts['n_contacts']['total'][human1.age, human2.age] += 1
+                    self.contacts['n_contacts']['total'][human2.age, human1.age] += 1
+
+        if location is not None:
+            x = len(self.contacts['location_duration'][location.location_type])
+            if bin >= x:
+                self.contacts['location_duration'][location.location_type].extend([0 for _ in range(bin - x + 1)])
+            self.contacts['location_duration'][location.location_type][bin] += 1
 
     def track_encounter_events(self, human1, human2, location, distance, duration):
         for i, (l,u) in enumerate(self.age_bins):
@@ -231,8 +294,10 @@ class Tracker(object):
             if l <= human2.age < u:
                 bin2 = (i, (l,u))
 
-        self.contacts["all"][human1.age][human2.age] += 1
-        self.contacts["location_all"][location.location_type][bin1[0]][bin2[0]] += 1
+        self.contacts["all_encounters"][human1.age, human2.age] += 1
+        self.contacts["all_encounters"][human2.age, human1.age] += 1
+        self.contacts["location_all_encounters"][location.location_type][human1.age, human2.age] += 1
+        self.contacts["location_all_encounters"][location.location_type][human2.age, human1.age] += 1
         self.n_contacts += 1
 
         # bins of 50
@@ -300,6 +365,19 @@ class Tracker(object):
         else:
             x = 0.0
         log(f"Symptomatic R0 {x}", logfile )
+
+
+        log("******** Transmission Ratios *********", logfile)
+        total = sum(self.r_0[x]['infection_count'] for x in ['symptomatic','presymptomatic', 'asymptomatic'])
+
+        x = self.r_0['asymptomatic']['infection_count']
+        log(f"% asymptomatic transmission {100*x/total :5.2f}%", logfile)
+
+        x = self.r_0['presymptomatic']['infection_count']
+        log(f"% presymptomatic transmission {100*x/total :5.2f}%", logfile)
+
+        x = self.r_0['symptomatic']['infection_count']
+        log(f"% symptomatic transmission {100*x/total :5.2f}%", logfile)
 
         log("******** R0 LOCATIONS *********", logfile)
         for loc_type, v in self.r_0.items():

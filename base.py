@@ -9,8 +9,9 @@ from orderedset import OrderedSet
 import copy
 
 from config import *
-from utils import compute_distance, _get_random_area
+from utils import compute_distance, _get_random_area, _draw_random_discreet_gaussian
 from track import Tracker
+from interventions import *
 
 class Env(simpy.Environment):
 
@@ -41,8 +42,7 @@ class Env(simpy.Environment):
     def time_of_day(self):
         return self.timestamp.isoformat()
 
-
-class City(object):
+class City(simpy.Environment):
 
     def __init__(self, env, n_people, rng, x_range, y_range, start_time, init_percent_sick, Human):
         self.env = env
@@ -70,6 +70,8 @@ class City(object):
         self._compute_preferences()
         self.tracker = Tracker(env, self)
         self.tracker.track_initialized_covid_params(self.humans)
+
+        self.intervention = None
 
     def create_location(self, specs, type, name, area=None):
         _cls = Location
@@ -164,8 +166,8 @@ class City(object):
                         household=res,
                         workplace=workplace,
                         profession=profession[i],
-                        rho=0.3,
-                        gamma=0.21,
+                        rho=RHO,
+                        gamma=GAMMA,
                         infection_timestamp=self.start_time if self.rng.random() < self.init_percent_sick else None
                         )
                     )
@@ -231,6 +233,21 @@ class City(object):
         for h in self.humans:
             h.stores_preferences = [(compute_distance(h.household, s) + 1e-1) ** -1 for s in self.stores]
             h.parks_preferences = [(compute_distance(h.household, s) + 1e-1) ** -1 for s in self.parks]
+
+    def run(self, duration):
+        day = 0
+        while True:
+            day += 1
+
+            if day == 30:
+                # self.intervention = Tracing(RISK_MODEL)
+                # self.intervention = Lockdown()
+                # self.intervention = Quarantine()
+                # self.intervention = SocialDistancing()
+                # self.intervention = WearMask(MASKS_SUPPLY)
+                pass
+
+            yield self.env.timeout(duration / TICK_MINUTE)
 
 
 class Location(simpy.Resource):
@@ -586,3 +603,58 @@ class DummyEvent:
     @staticmethod
     def log_daily(*args, **kwargs):
         pass
+
+class Contacts(object):
+    def __init__(self, has_app):
+        # human --> [[date, counts], ...]
+        self.book = {}
+        self.has_app = has_app
+
+    def add(self, **kwargs):
+        human = kwargs.get("human")
+        timestamp = kwargs.get("timestamp")
+
+        if human not in self.book:
+            self.book[human] = [[timestamp.date(), 1]]
+            return
+
+        if timestamp.date() != self.book[human][-1][0]:
+            self.book[human].append([timestamp.date(), 1])
+        else:
+            self.book[human][-1][1] += 1
+
+        self.update_history(human, timestamp.date())
+
+    def update_history(self, human, date=None):
+        if date is None:
+            date = self.book[human][-1][0] # last contact date
+
+        remove_idx = -1
+        for history in self.book[human]:
+            if (date - history[0]).days > N_DAYS_HISTORY:
+                remove_idx  += 1
+            else:
+                break
+
+        self.book[human] = self.book[human][remove_idx:]
+
+    def send_message(self, owner, RISK_MODEL):
+        if RISK_MODEL == "manual tracing":
+            p_contact = MANUAL_TRACING_NOISE
+            delay = 1
+            app = False
+
+        elif RISK_MODEL in ['digital tracing', 'first order probabilistic tracing']:
+            p_contact = 1
+            delay = 0
+            app = True
+            if not owner.has_app:
+                return
+
+        for human in self.book:
+            if not app or (app and human.has_app):
+                if human.rng.random() < p_contact:
+                    self.update_history(human)
+                    t = delay * _draw_random_discreet_gaussian(MANUAL_TRACING_DELAY_AVG, MANUAL_TRACING_DELAY_STD, human.rng)
+                    total_contacts = sum(map(lambda x:x[1], self.book[human]))
+                    human.update_risk(update_messages={'n':total_contacts, 'delay': t})
