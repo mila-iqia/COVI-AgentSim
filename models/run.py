@@ -4,78 +4,20 @@ import json
 import zipfile
 import numpy as np
 import datetime
-import pathlib
 from collections import defaultdict
 from joblib import Parallel, delayed
 import config
 from plots.plot_risk import hist_plot
 from models.risk_models import RiskModelTristan
-from frozen.helper import conditions_to_np, symptoms_to_np, candidate_exposures, encode_age, encode_sex
+from models.inference_client import InferenceClient
 from frozen.utils import encode_message, update_uid, encode_update_message, decode_message
 
 
-
-def proc_human(params):
-    """This function can be parallelized across CPUs. Currently, we only check for messages once per day, so this can be run in parallel"""
-    start, current_day, encounters, all_possible_symptoms, human, save_training_data, log_path, random_clusters = params.values()
-    todays_date = start + datetime.timedelta(days=current_day)
-
-    # add them to clusters
-    human.clusters.add_messages(human.messages, current_day, human.rng)
-    human.messages = []
-
-    human.clusters.update_records(human.update_messages, human)
-    human.update_messages = []
-    human.clusters.purge(current_day)
-
-    # save an output training example
-    is_exposed, exposure_day = human.exposure_array(todays_date)
-    is_recovered, recovery_day = human.recovered_array(todays_date)
-    candidate_encounters, exposure_encounter = candidate_exposures(human, todays_date)
-    reported_symptoms = symptoms_to_np(human.all_reported_symptoms, all_possible_symptoms)
-    true_symptoms = symptoms_to_np(human.all_symptoms, all_possible_symptoms)
-    daily_output = {"current_day": current_day,
-                    "observed":
-                        {
-                            "reported_symptoms": reported_symptoms,
-                            "candidate_encounters": candidate_encounters,
-                            "test_results": human.get_test_result_array(todays_date),
-                            "preexisting_conditions": conditions_to_np(human.obs_preexisting_conditions),
-                            "age": encode_age(human.obs_age),
-                            "sex": encode_sex(human.obs_sex)
-                        },
-                    "unobserved":
-                        {
-                            "true_symptoms": true_symptoms,
-                            "is_exposed": is_exposed,
-                            "exposure_day": exposure_day,
-                            "is_recovered": is_recovered,
-                            "recovery_day": recovery_day,
-                            "infectiousness": np.array(human.infectiousnesses),
-                            "true_preexisting_conditions": conditions_to_np(human.preexisting_conditions),
-                            "true_age": encode_age(human.age),
-                            "true_sex": encode_sex(human.sex)
-                        }
-                    }
-
-    # TODO: read in the correct risk model here
-    RiskModel = RiskModelTristan
-    human.start_risk = human.risk
-
-    # check if you have new reported symptoms
-    human.risk = RiskModel.update_risk_daily(human, todays_date)
-
-    # update risk based on that day's messages
-    RiskModel.update_risk_encounters(human, human.messages)
-
-    if config.COLLECT_LOGS:
-        if not os.path.isdir(log_path):
-            pathlib.Path(log_path).mkdir(parents=True, exist_ok=True)
-        path = os.path.join(log_path, f"daily_human.pkl")
-        log_file = open(path, 'wb')
-        pickle.dump(daily_output, log_file)
-    return (human.name, human.risk, human.clusters)
-
+def query_inference_server(params):
+    ports = [6000, 6001]
+    client = InferenceClient(ports)
+    results = client.infer(params)
+    return results
 
 def get_days_worth_of_logs(data_path, start, cur_day, start_pkl):
     to_return = defaultdict(list)
@@ -145,8 +87,9 @@ def integrated_risk_pred(humans, data_path, start, current_day, all_possible_sym
                            "save_training_data": True, "log_path": log_path,
                            "random_clusters": False})
         human.uid = update_uid(human.uid, human.rng)
+
     with Parallel(n_jobs=n_jobs, batch_size=config.MP_BATCHSIZE, backend=config.MP_BACKEND, verbose=10) as parallel:
-        results = parallel((delayed(proc_human)(params) for params in all_params))
+        results = parallel((delayed(query_inference_server)(params) for params in all_params))
 
     for name, risk, clusters in results:
         hd[name].risk = risk
