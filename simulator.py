@@ -16,6 +16,7 @@ from utils import _normalize_scores, _get_random_sex, _get_covid_symptoms, \
 
 from config import *
 from base import *
+from interventions import *
 if COLLECT_LOGS is False:
     Event = DummyEvent
 
@@ -119,6 +120,10 @@ class Human(object):
         self.last_location = self.location
         self.last_duration = 0
 
+        # interventions & risk prediction
+        self.tracing = False
+        self.WEAR_MASK = False
+
         # risk prediction
         self.risk = BASELINE_RISK_VALUE
         self.risk_level = _proba_to_risk_level(self.risk)
@@ -148,9 +153,6 @@ class Human(object):
 
         self.avg_working_minutes = _draw_random_discreet_gaussian(AVG_WORKING_MINUTES, SCALE_WORKING_MINUTES, self.rng)
         self.scale_working_minutes = _draw_random_discreet_gaussian(AVG_SCALE_WORKING_MINUTES, SCALE_SCALE_WORKING_MINUTES, self.rng)
-
-        self.avg_hospital_hours = _draw_random_discreet_gaussian(AVG_HOSPITAL_HOURS, SCALE_HOSPITAL_HOURS, self.rng)
-        self.scale_hospital_hours = _draw_random_discreet_gaussian(AVG_SCALE_HOSPITAL_HOURS, SCALE_SCALE_HOSPITAL_HOURS, self.rng)
 
         self.avg_misc_time = _draw_random_discreet_gaussian(AVG_MISC_MINUTES, SCALE_MISC_MINUTES, self.rng)
         self.scale_misc_time = _draw_random_discreet_gaussian(AVG_SCALE_MISC_MINUTES, SCALE_SCALE_MISC_MINUTES, self.rng)
@@ -312,10 +314,18 @@ class Human(object):
     def update_symptoms(self):
         symptoms = []
         if self.cold_timestamp is not None:
-            self.cold_symptoms = self.all_cold_symptoms
+            t = (self.env.timestamp - self.cold_timestamp).days
+            if t >= len(self.all_cold_symptoms):
+                self.cold_symptoms = []
+            else:
+                self.cold_symptoms = self.all_cold_symptoms[t]
 
         if self.flu_timestamp is not None:
-            self.flu_symptoms = self.all_flu_symptoms
+            t = (self.env.timestamp - self.flu_timestamp).days
+            if t >= len(self.all_flu_symptoms):
+                self.flu_symptoms = []
+            else:
+                self.flu_symptoms = self.all_flu_symptoms[t]
 
         if self.is_incubated and not self.is_asymptomatic:
             days_since_infectious = math.floor(self.days_since_exposed - self.infectiousness_onset_days)
@@ -354,7 +364,7 @@ class Human(object):
         return False
 
     def wear_mask(self):
-        if not MASK_INTERVENTION:
+        if not self.WEAR_MASK:
             self.wearing_mask, self.mask_efficacy = False, 0
             return
 
@@ -381,36 +391,34 @@ class Human(object):
 
     def recover_from_cold_and_flu(self):
         if (self.cold_timestamp is not None and
-            (self.env.timestamp - self.cold_timestamp) >= datetime.timedelta(days=len(self.cold_symptoms))):
+            (self.env.timestamp - self.cold_timestamp) >= datetime.timedelta(days=len(self.all_cold_symptoms))):
             self.cold_timestamp = None
+            self.cold_symptoms = []
 
         if (self.flu_timestamp is not None and
-            (self.env.timestamp - self.flu_timestamp) >= datetime.timedelta(days=len(self.flu_symptoms))):
+            (self.env.timestamp - self.flu_timestamp) >= datetime.timedelta(days=len(self.all_flu_symptoms))):
             self.flu_timestamp = None
+            self.flu_symptoms = []
 
     def how_am_I_feeling(self):
         current_symptoms = self.symptoms
-        # if self.name == "human:3" : print(current_symptoms)
         if current_symptoms == []:
             return 1.0
 
-        if sum(x in current_symptoms for x in ["severe", "extremely_severe", "trouble_breathing"]) > 0:
+        if sum(x in current_symptoms for x in ["severe", "extremely_severe"]) > 0:
             return 0.0
 
         elif self.test_result == "positive":
             return 0.05
 
         elif sum(x in current_symptoms for x in ["trouble_breathing"]) > 0:
-            return 0.3
+            return 0.3 * (1 + self.carefulness)
 
         elif sum(x in current_symptoms for x in ["moderate", "mild", "fever"]) > 0:
-            return 0.5
-
-        elif sum(x in current_symptoms for x in ["cough", "fatigue", "gastro", "aches"]) > 0:
-            return 0.7
-
-        elif sum(x in current_symptoms for x in ["runny_nose", "loss_of_taste"]) > 0:
-            return 0.9
+            return self.rng.uniform(0, self.carefulness)
+        #
+        # elif sum(x in current_symptoms for x in ["cough", "fatigue", "gastro", "aches"]) > 0:
+        #     return self.rng.random(0, self.carefulness)
 
         return 1.0
 
@@ -422,6 +430,17 @@ class Human(object):
             if not self.obs_hospitalized:
                 assert self.state.index(1) in next_state[self.last_state.index(1)], f"invalid compartment transition for {self.name}: {self.last_state} to {self.state}"
             self.last_state = self.state
+
+    def notify(self, intervention):
+        if intervention is not None and not self.notified:
+            print(f"Intervention: {intervention}")
+            self.tracing = False
+            if isinstance(intervention, Tracing):
+                self.tracing = True
+                self.tracing_method = intervention
+            else:
+                intervention.modify_behavior(self)
+            self.notified = True
 
     def run(self, city):
         """
@@ -440,9 +459,9 @@ class Human(object):
                 Event.log_daily(self, self.env.timestamp)
                 self.update_symptoms()
                 city.tracker.track_symptoms(self)
-                if self.name == "human:1": print(city.intervention)
+                self.notify(city.intervention)
 
-            if RISK_MODEL is not None and self.message_info['traced']:
+            if self.tracing and self.message_info['traced']:
                 if (self.env.timestamp - self.message_info['receipt']).days > self.message_info['delay']:
                     self.update_risk_level()
 
@@ -496,6 +515,7 @@ class Human(object):
             # Mobility
             # self.how_am_I_feeling = 1.0 (great) ---> rest_at_home = False
             if not self.rest_at_home:
+                # if self.is_infectious : print(f"I am feeling {self.how_am_I_feeling()}")
                 # set it once for the rest of the disease path
                 if self.rng.random() > self.how_am_I_feeling():
                     self.rest_at_home = True
@@ -503,6 +523,8 @@ class Human(object):
             # happens when recovered
             elif self.rest_at_home and self.how_am_I_feeling() == 1.0:
                 self.rest_at_home = False
+
+            # if self.name == "human:69":print(f"{self} rest_at_home: {self.rest_at_home} S:{len(self.symptoms)} flu:{self.has_flu} cold:{self.has_cold}")
 
             if self.is_extremely_sick:
                 yield self.env.process(self.excursion(city, "hospital-icu"))
@@ -531,7 +553,7 @@ class Human(object):
                 yield  self.env.process(self.excursion(city, "exercise"))
 
             elif (self.env.is_weekend() and
-                    self.rng.random() < 0.05 and
+                    self.rng.random() < 0.5 and
                     not self.rest_at_home):
                 yield  self.env.process(self.excursion(city, "leisure"))
 
@@ -629,6 +651,9 @@ class Human(object):
     def at(self, location, city, duration):
         city.tracker.track_trip(from_location=self.location.location_type, to_location=location.location_type, age=self.age, hour=self.env.hour_of_day())
 
+        # if self.name == "human:69":
+        #     print(f"{self} {self.location} --> {location}")
+
         self.wear_mask()
 
         # add the human to the location
@@ -658,13 +683,13 @@ class Human(object):
                 continue
 
             # age mixing
-            if not self.rng.random() < (0.5 * abs(self.age - h.age) + 1) ** -1:
+            if not self.rng.random() < (0.1 * abs(self.age - h.age) + 1) ** -1:
                 continue
 
             distance =  np.sqrt(int(area/len(self.location.humans))) + self.rng.randint(MIN_DIST_ENCOUNTER, MAX_DIST_ENCOUNTER)
             # risk model
             # TODO: Add GPS measurements as conditions; refer JF's docs
-            if RISK_MODEL is not None and MIN_MESSAGE_PASSING_DISTANCE < distance <  MAX_MESSAGE_PASSING_DISTANCE:
+            if self.tracing and MIN_MESSAGE_PASSING_DISTANCE < distance <  MAX_MESSAGE_PASSING_DISTANCE:
                 self.contact_book.add(human=h, timestamp=self.env.timestamp)
                 h.contact_book.add(human=self, timestamp=self.env.timestamp)
 
@@ -754,7 +779,6 @@ class Human(object):
 
         location.remove_human(self)
 
-
     def _select_location(self, location_type, city):
         """
         Preferential exploration treatment to visit places
@@ -827,7 +851,7 @@ class Human(object):
             # print(f"{self} changed to {self.risk_level} to {new_risk_level}")
             # modify behavior
             self.risk_level = new_risk_level
-            pass
+            change = self.tracing_method.modify_behavior(self)
 
     def update_risk(self, recovery=False, test_results=False, update_messages=None):
         if recovery:
@@ -853,14 +877,14 @@ class Human(object):
                                     'delay':min(update_messages['delay'], self.message_info['delay'])
                                 }
 
-            if RISK_MODEL == "first order probabilistic tracing":
+            if self.tracing_method.risk_model == "first order probabilistic tracing":
                 self.n_contacts_tested_positive += update_messages['n']
-                self.risk = 1 - (1 - RISK_TRANSMISSION_PROBA) ** self.n_contacts_tested_positive
-            elif RISK_MODEL == "manual tracing":
+                self.risk = 1.0 - (1.0 - RISK_TRANSMISSION_PROBA) ** self.n_contacts_tested_positive
+            elif self.tracing_method.risk_model == "manual tracing":
                 self.risk = 1.0
-            elif RISK_MODEL == "digital tracing":
+            elif self.tracing_method.risk_model == "digital tracing":
                 self.risk = 1.0
-            elif RISK_MODEL == "smart tracing":
+            elif self.tracing_method.risk_model == "smart tracing":
                 pass # Martin's code
             else:
                 raise

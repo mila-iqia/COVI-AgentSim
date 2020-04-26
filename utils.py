@@ -307,7 +307,11 @@ def _get_flu_symptoms_v2(age, rng, carefulness, preexisting_conditions, really_s
     if rng.rand() < 0.3:
         symptoms.append('fatigue')
 
-    return symptoms
+    progression = []
+    for day in range(len_cold):
+        progression.append(symptoms)
+
+    return progression
 
 def _get_cold_symptoms(age, rng, sim_days, carefulness, preexisting_conditions, really_sick, extremely_sick):
 
@@ -389,7 +393,11 @@ def _get_cold_symptoms_v2(age, rng, carefulness, preexisting_conditions, really_
     if rng.rand() < 0.6:
         symptoms.append('sneezing')
 
-    return symptoms
+    progression = []
+    for day in range(len_cold):
+        progression.append(symptoms)
+
+    return progression
 
 def _reported_symptoms(all_symptoms, rng, carefulness):
     all_reported_symptoms = []

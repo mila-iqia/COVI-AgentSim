@@ -73,6 +73,7 @@ class Tracker(object):
         # symptoms
         self.symptoms = {'covid': defaultdict(int), 'all':defaultdict(int)}
         self.symptoms_set = {'covid': defaultdict(set), 'all': defaultdict(set)}
+
         # mobility
         self.transition_probability = get_nested_dict(4)
         self.summarize_population()
@@ -129,6 +130,28 @@ class Tracker(object):
     def get_generation_time(self):
         return self.avg_generation_times[1]
 
+    def increment_day(self):
+        # cumulative incidence
+        if self.n_susceptible:
+            self.cumulative_incidence += [self.cases_per_day[-1] / self.n_susceptible]
+        else:
+            self.cumulative_incidence.append(0)
+            
+        self.cases_per_day.append(0)
+
+        self.n_susceptible = sum(h.is_susceptible for h in self.city.humans)
+
+        # Rt
+        self.r.append(self.get_R())
+        if self.recovered_stats and self.recovered_stats[-1][0] > 0:
+            print(self.recovered_stats)
+
+        # recovery stats
+        self.recovered_stats.append([0,0])
+        if len(self.recovered_stats) > EFFECTIVE_R_WINDOW:
+            self.recovered_stats = self.recovered_stats[1:]
+
+
     def track_infection(self, type, from_human, to_human, location, timestamp):
         for i, (l,u) in enumerate(self.age_bins):
             if from_human and l <= from_human.age < u:
@@ -136,14 +159,7 @@ class Tracker(object):
             if l <= to_human.age < u:
                 to_bin = i
 
-        day = self.env.timestamp.strftime("%d %b")
-        if self.last_day['track_infection'] != day:
-            self.cumulative_incidence.append(self.cases_per_day[-1] / self.n_susceptible)
-            self.last_day['track_infection'] = day
-            self.n_susceptible = sum(h.is_susceptible for h in self.city.humans)
-            self.cases_per_day.append(0)
-        else:
-            self.cases_per_day[-1] += 1
+        self.cases_per_day[-1] += 1
 
         if type == "human":
             self.contacts["human_infection"][from_human.age, to_human.age] += 1
@@ -193,15 +209,8 @@ class Tracker(object):
         self.avg_infectious_duration = (self.n_recovery * self.avg_infectious_duration + duration) / (self.n_recovery + 1)
         self.n_recovery += 1
 
-        if self.last_day['track_recovery'] != self.env.timestamp.date:
-            self.last_day['track_recovery'] = self.env.timestamp.date
-            if len(self.recovered_stats) > EFFECTIVE_R_WINDOW:
-                self.r.append(self.get_R())
-                self.recovered_stats = self.recovered_stats[1:]
-            self.recovered_stats.append([1, n_infectious_contacts])
-        else:
-            n, total = self.recovered_stats[-1]
-            self.recovered_stats[-1] = [n+1, total + n_infectious_contacts]
+        n, total = self.recovered_stats[-1]
+        self.recovered_stats[-1] = [n+1, total + n_infectious_contacts]
 
     def track_trip(self, from_location, to_location, age, hour):
         bin = None

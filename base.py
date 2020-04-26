@@ -11,6 +11,7 @@ import copy
 from config import *
 from utils import compute_distance, _get_random_area, _draw_random_discreet_gaussian
 from track import Tracker
+from interventions import *
 
 class Env(simpy.Environment):
 
@@ -165,8 +166,8 @@ class City(simpy.Environment):
                         household=res,
                         workplace=workplace,
                         profession=profession[i],
-                        rho=0.3,
-                        gamma=0.21,
+                        rho=RHO,
+                        gamma=GAMMA,
                         infection_timestamp=self.start_time if self.rng.random() < self.init_percent_sick else None
                         )
                     )
@@ -237,9 +238,15 @@ class City(simpy.Environment):
         day = 0
         while True:
             day += 1
-            if day == 3:
-                self.intervention = "manual tracing"
 
+            if day == 30:
+                # self.intervention = Tracing(RISK_MODEL)
+                # self.intervention = Lockdown()
+                # self.intervention = Quarantine()
+                # self.intervention = SocialDistancing()
+                # self.intervention = WearMask(MASKS_SUPPLY)
+                pass
+            self.tracker.increment_day()
             yield self.env.timeout(duration / TICK_MINUTE)
 
 
