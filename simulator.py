@@ -19,7 +19,7 @@ from base import *
 if COLLECT_LOGS is False:
     Event = DummyEvent
 
-_proba_to_risk_level = proba_to_risk_fn(np.load(RISK_MAPPING_FILE))
+_proba_to_risk_level = proba_to_risk_fn(np.exp(np.load(RISK_MAPPING_FILE)))
 
 class Visits(object):
 
@@ -440,6 +440,7 @@ class Human(object):
                 Event.log_daily(self, self.env.timestamp)
                 self.update_symptoms()
                 city.tracker.track_symptoms(self)
+                if self.name == "human:1": print(city.intervention)
 
             if RISK_MODEL is not None and self.message_info['traced']:
                 if (self.env.timestamp - self.message_info['receipt']).days > self.message_info['delay']:

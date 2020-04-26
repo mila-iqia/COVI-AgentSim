@@ -295,8 +295,9 @@ SCALE_SCALE_MISC_MINUTES = 5
 MIN_DIST_ENCOUNTER = 20
 MAX_DIST_ENCOUNTER = 400
 
-# RISK MODEL PARAMETERS
-RISK_MODEL = "first order probabilistic tracing" # None "manual tracing", "digital tracing", "smart tracing"
+# RISK MODEL PARAMETERS (non-ML)
+# "first order probabilistic tracing" None "manual tracing", "digital tracing", "smart tracing"
+RISK_MODEL = None 
 N_DAYS_HISTORY = 14
 BIG_NUMBER = 100000
 MIN_MESSAGE_PASSING_DISTANCE = 0
@@ -305,7 +306,7 @@ MAX_MESSAGE_PASSING_DISTANCE = 1000 #cm GPS; 10 x 10 m grid everyone is a contac
 # first order probabilistic tracing
 RISK_TRANSMISSION_PROBA = 0.03
 BASELINE_RISK_VALUE = 0.01
-RISK_MAPPING_FILE = "_data/risk_mapping.npy"
+RISK_MAPPING_FILE = "_data/log_risk_mapping.npy"
 
 # manual tracing
 MANUAL_TRACING_NOISE = 0.30

@@ -184,11 +184,14 @@ def run_simu(n_people=None, init_percent_sick=0,
     if other_monitors:
         monitors += other_monitors
 
+
     for human in city.humans:
         env.process(human.run(city=city))
 
     for m in monitors:
         env.process(m.run(env, city=city))
+
+    env.process(city.run(1440))
     env.run(until=simulation_days * 24 * 60 / TICK_MINUTE)
 
     return monitors, city.tracker

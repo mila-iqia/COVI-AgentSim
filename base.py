@@ -41,7 +41,7 @@ class Env(simpy.Environment):
     def time_of_day(self):
         return self.timestamp.isoformat()
 
-class City(object):
+class City(simpy.Environment):
 
     def __init__(self, env, n_people, rng, x_range, y_range, start_time, init_percent_sick, Human):
         self.env = env
@@ -69,6 +69,8 @@ class City(object):
         self._compute_preferences()
         self.tracker = Tracker(env, self)
         self.tracker.track_initialized_covid_params(self.humans)
+
+        self.intervention = None
 
     def create_location(self, specs, type, name, area=None):
         _cls = Location
@@ -230,6 +232,15 @@ class City(object):
         for h in self.humans:
             h.stores_preferences = [(compute_distance(h.household, s) + 1e-1) ** -1 for s in self.stores]
             h.parks_preferences = [(compute_distance(h.household, s) + 1e-1) ** -1 for s in self.parks]
+
+    def run(self, duration):
+        day = 0
+        while True:
+            day += 1
+            if day == 3:
+                self.intervention = "manual tracing"
+
+            yield self.env.timeout(duration / TICK_MINUTE)
 
 
 class Location(simpy.Resource):
@@ -600,20 +611,20 @@ class Contacts(object):
             self.book[human] = [[timestamp.date(), 1]]
             return
 
-        if timestamp.date != self.book[human][-1][0]:
+        if timestamp.date() != self.book[human][-1][0]:
             self.book[human].append([timestamp.date(), 1])
         else:
             self.book[human][-1][1] += 1
 
         self.update_history(human, timestamp.date())
 
-    def update_history(self, human, timestamp=None):
-        if timestamp is None:
-            timestamp = self.book[human][-1][0] # last contact date
+    def update_history(self, human, date=None):
+        if date is None:
+            date = self.book[human][-1][0] # last contact date
 
         remove_idx = -1
         for history in self.book[human]:
-            if (timestamp - history[0]).days > N_DAYS_HISTORY:
+            if (date - history[0]).days > N_DAYS_HISTORY:
                 remove_idx  += 1
             else:
                 break
