@@ -69,7 +69,7 @@ class City(simpy.Environment):
         print("Computing their preferences")
         self._compute_preferences()
         self.tracker = Tracker(env, self)
-        self.tracker.track_initialized_covid_params(self.humans)
+        # self.tracker.track_initialized_covid_params(self.humans)
 
         self.intervention = None
 
@@ -486,7 +486,7 @@ class Event:
                 'time': time,
                 'payload': {
                     'observed':{
-                        "reported_symptoms": human.all_reported_symptoms
+                        "reported_symptoms": human.obs_symptoms
                     },
                     'unobserved':{
                         'infectiousness': human.infectiousness,
