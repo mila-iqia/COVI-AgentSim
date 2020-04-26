@@ -88,7 +88,7 @@ def integrated_risk_pred(humans, data_path, start, current_day, all_possible_sym
                            "random_clusters": False})
         human.uid = update_uid(human.uid, human.rng)
 
-    with Parallel(n_jobs=n_jobs, batch_size=config.MP_BATCHSIZE, backend=config.MP_BACKEND, verbose=10) as parallel:
+    with Parallel(n_jobs=n_jobs, batch_size=config.MP_BATCHSIZE, backend=config.MP_BACKEND, verbose=1, prefer="threads") as parallel:
         results = parallel((delayed(query_inference_server)(params) for params in all_params))
 
     for name, risk, clusters in results:
