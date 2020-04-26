@@ -188,6 +188,7 @@ TEST_TYPES = {
         "preference":1
     }
 }
+P_TEST = 0.5
 P_TEST_SYMPTOMATIC = 0.3
 P_TEST_ASYMPTOMATIC = 0.05
 TEST_DAYS = 3
@@ -215,7 +216,7 @@ VIRAL_LOAD_RECOVERY_FACTOR = 3 # higher initial viral load means longer recovery
 # INCUBATION PARAMS
 SYMPTOM_ONSET_WRT_VIRAL_LOAD_PEAK_AVG = 0.6 # DAYS
 SYMPTOM_ONSET_WRT_VIRAL_LOAD_PEAK_STD = 0.1
-INFECTIOUSNESS_ONSET_DAYS_AVG = 1.5 # 1 gets added to this to ensure a minimum 1 day 	
+INFECTIOUSNESS_ONSET_DAYS_AVG = 1.5 # 1 gets added to this to ensure a minimum 1 day
 INFECTIOUSNESS_ONSET_DAYS_STD = 0.1
 
 # ASYMTPOMATIC

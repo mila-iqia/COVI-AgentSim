@@ -36,9 +36,11 @@ def _sample_viral_load_piecewise(rng, initial_viral_load=0, age=40):
                           + truncnorm((RECOVERY_CLIP_LOW - RECOVERY_MEAN) / RECOVERY_STD,
                                         (RECOVERY_CLIP_HIGH - RECOVERY_MEAN) / RECOVERY_STD,
                                         loc=RECOVERY_MEAN, scale=RECOVERY_STD).rvs(1, random_state=rng)
+
     base = age/200 # peak viral load varies linearly with age
-    plateau_mean =  initial_viral_load - (base + MIN_VIRAL_LOAD) / (base + MIN_VIRAL_LOAD, base + MAX_VIRAL_LOAD) # transform initial viral load into a range
-    plateau_height = rng.normal(plateau_mean, 1)
+    # plateau_mean =  initial_viral_load - (base + MIN_VIRAL_LOAD) / (base + MIN_VIRAL_LOAD, base + MAX_VIRAL_LOAD) # transform initial viral load into a range
+    # plateau_height = rng.normal(plateau_mean, 1)
+    plateau_height = rng.uniform(base + MIN_VIRAL_LOAD, base + MAX_VIRAL_LOAD)
     return plateau_height, plateau_start.item(), plateau_end.item(), recovered.item()
 
 
@@ -128,12 +130,12 @@ def _get_get_really_sick(age, sex, rng):
 # 2D Array of symptoms; first axis is days after exposure (infection), second is an array of symptoms
 def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_load_plateau_end,
                            viral_load_recovered, age, incubation_days, really_sick, extremely_sick,
-                           rng, preexisting_conditions):
+                           rng, preexisting_conditions, carefulness):
         progression = []
 
         # Before onset of symptoms (incubation)
         # ====================================================
-        for day in incubation_days:
+        for day in range(math.ceil(incubation_days)):
             progression.append([])
 
         # Before the symptom's plateau
@@ -278,8 +280,8 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
             symptoms2.append('light_trouble_breathing')
         if 'moderate'in symptoms2 and 'trouble_breathing' in symptoms2:
             symptoms2.append('moderate_trouble_breathing')
-        if ('severe' in symptoms2 or 'extremely-severe' in symptoms2) and 'trouble_breathing' in symptoms3:
-            symptoms3.append('heavy_trouble_breathing')
+        if ('severe' in symptoms2 or 'extremely-severe' in symptoms2) and 'trouble_breathing' in symptoms2:
+            symptoms2.append('heavy_trouble_breathing')
 
         len_plateau  = round(viral_load_plateau_end - viral_load_plateau_start)
         plateau_part1 = len_plateau//2
@@ -466,7 +468,7 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
                     symptoms5.append('lost_consciousness')
 
         # respiratory symptoms getting less common
-        p_respiratory = 0.5(initial_viral_load - (carefulness * 0.25)) # e.g. (0.5 - 0.7*0.25) = 0.5*(0.5-0.17)
+        p_respiratory = 0.5 * (initial_viral_load - (carefulness * 0.25)) # e.g. (0.5 - 0.7*0.25) = 0.5*(0.5-0.17)
         if 'smoker' in preexisting_conditions or 'lung_disease' in preexisting_conditions:
             p_respiratory = (p_respiratory * 4) + age/200  # e.g. 0.1 * 4 * 45/200 = 0.4 + 0.225
         if rng.rand() < p_respiratory:
@@ -711,7 +713,7 @@ def _get_preexisting_conditions(age, sex, rng):
             conditions.append('diabetes')
 
     # &heart disease
-    if 'diabetes' or 'smoker' in conditions:
+    if 'diabetes' in conditions or 'smoker' in conditions:
         modifier = 2
     else:
         modifier = 0.5
@@ -931,3 +933,86 @@ def float_to_binary(x, m, n):
 def binary_to_float(bstr, m, n):
     """Convert a binary string in the format '00101010100' to its float value."""
     return int(bstr, 2) / 2 ** n
+
+def probas_to_risk_mapping(probas,
+                           num_bins,
+                           lower_cutoff=None,
+                           upper_cutoff=None):
+    """Create a mapping from probabilities returned by the model to discrete
+    risk levels, with a number of predictions in each bins being approximately
+    equivalent.
+
+    Parameters
+    ----------
+    probas : `np.ndarray` instance
+        The array of probabilities returned by the model.
+
+    num_bins : int
+        The number of bins. For example, `num_bins=16` for risk messages on
+        4 bits.
+
+    lower_cutoff : float, optional
+        Ignore values smaller than `lower_cutoff` in the creation of the bins.
+        This avoids any bias towards values which are too close to 0. If `None`,
+        then do not cut off the small probabilities.
+
+    upper_cutoff : float, optional
+        Ignore values larger than `upper_cutoff` in the creation of the bins.
+        This avoids any bias towards values which are too close to 1. If `None`,
+        then do not cut off the large probabilities.
+
+    Returns
+    -------
+    mapping : `np.ndarray` instance
+        The mapping from probabilities to discrete risk levels. This mapping has
+        size `num_bins + 1`, with the first values always being 0, and the last
+        always being 1.
+    """
+    if (lower_cutoff is not None) and (upper_cutoff is not None):
+        if lower_cutoff >= upper_cutoff:
+            raise ValueError('The lower cutoff must have a value which is '
+                             'smaller than the upper cutoff, got `lower_cutoff='
+                             '{0}` and `upper_cutoff={1}`.'.format(
+                             lower_cutoff, upper_cutoff))
+    mask = np.ones_like(probas, dtype=np.bool_)
+    num_percentiles = num_bins + 1
+    # First value is always 0, last value is always 1
+    cutoffs = np.zeros((num_bins + 1,), dtype=probas.dtype)
+    cutoffs[-1] = 1.
+
+    # Remove probabilities close to 0
+    lower_idx = 1 if (lower_cutoff is None) else None
+    if lower_cutoff is not None:
+        mask = np.logical_and(mask, probas > lower_cutoff)
+        num_percentiles -= 1
+
+    # Remove probabilities close to 1
+    upper_idx = -1 if (upper_cutoff is None) else None
+    if upper_cutoff is not None:
+        mask = np.logical_and(mask, probas <= upper_cutoff)
+        num_percentiles -= 1
+
+    percentiles = np.linspace(0, 100, num_percentiles)
+    cutoffs[1:-1] = np.percentile(probas[mask],
+                                  q=percentiles[lower_idx:upper_idx])
+
+    return cutoffs
+
+def proba_to_risk_fn(mapping):
+    """Create a callable, based on a mapping, that takes probabilities (in
+    [0, 1]) and returns a discrete risk level (in [0, num_bins - 1]).
+
+    Parameters
+    ----------
+    mapping : `np.ndarray` instance
+        The mapping from probabilities to discrete risk levels. See
+        `probas_to_risk_mapping`.
+
+    Returns
+    proba_to_risk : callable
+        Function taking probabilities and returning discrete risk levels.
+    """
+    def _proba_to_risk(probas):
+        return np.maximum(np.searchsorted(mapping, probas, side='left') - 1, 0)
+
+    return _proba_to_risk
