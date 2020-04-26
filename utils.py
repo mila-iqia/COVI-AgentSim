@@ -23,7 +23,7 @@ def _sample_viral_load_gamma(rng, shape_mean=4.5, shape_std=.15, scale_mean=1., 
     return gamma(shape, scale=scale)
 
 
-def _sample_viral_load_piecewise(rng, initial_viral_load, age=40):
+def _sample_viral_load_piecewise(rng, initial_viral_load=0, age=40):
     """ This function samples a piece-wise linear viral load model which increases, plateaus, and drops """
     # https://stackoverflow.com/questions/18441779/how-to-specify-upper-and-lower-limits-when-using-numpy-random-normal
 	# https://www.thelancet.com/journals/laninf/article/PIIS1473-3099(20)30196-1/fulltext
@@ -66,15 +66,10 @@ def _get_random_sex(rng):
     else:
         return 'other'
 
-
-def _get_mask_wearing(carefulness, simulation_days, rng):
-    return [rng.rand() < carefulness*BASELINE_P_MASK for day in range(simulation_days)]
-
-
 def _get_get_really_sick(age, sex, rng):
     if sex.lower().startswith('f'):
         if age < 10:
-            return rng.rand() < 0.02   
+            return rng.rand() < 0.02
         if age < 20:
             return rng.rand() < 0.002
         if age < 40:
@@ -94,7 +89,7 @@ def _get_get_really_sick(age, sex, rng):
 
     elif sex.lower().startswith('m'):
         if age < 10:
-            return rng.rand() < 0.002   
+            return rng.rand() < 0.002
         if age < 20:
             return rng.rand() < 0.02
         if age < 30:
@@ -112,7 +107,7 @@ def _get_get_really_sick(age, sex, rng):
         else:
             return rng.rand() < 0.03
 
-    else:  
+    else:
         if age < 20:
             return rng.rand() < 0.02
         if age < 30:
@@ -130,12 +125,9 @@ def _get_get_really_sick(age, sex, rng):
         else:
             return rng.rand() < 0.03
 
-
-
-
 # 2D Array of symptoms; first axis is days after exposure (infection), second is an array of symptoms
 def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_load_plateau_end,
-                           viral_load_recovered, age, incubation_days, really_sick, extremely_sick, 
+                           viral_load_recovered, age, incubation_days, really_sick, extremely_sick,
                            rng, preexisting_conditions):
         progression = []
 
@@ -143,14 +135,14 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
         # ====================================================
         for day in incubation_days:
             progression.append([])
-        
+
         # Before the symptom's plateau
         # ====================================================
         symptoms1 = []
         p_fever = 0.2
         if really_sick or extremely_sick or len(preexisting_conditions)>2 or initial_viral_load > 0.6:
-            symptoms1.append('moderate') 
-            p_fever = 0.4          
+            symptoms1.append('moderate')
+            p_fever = 0.4
         else :
             symptoms1.append('mild')
         if rng.rand() < p_fever:
@@ -159,11 +151,11 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
                 if rng.rand() < 0.8:
                     symptoms1.append('chills')
 
-        # gastro symptoms are more likely to be earlier and are more 
+        # gastro symptoms are more likely to be earlier and are more
         # likely to show extreme symptoms later
         p_gastro = initial_viral_load - .15
         if rng.rand() < p_gastro:
-            symptoms1.append('gastro')   
+            symptoms1.append('gastro')
             if rng.rand() < 0.9:
                 symptoms1.append('diarrhea')
             if rng.rand() < 0.7:
@@ -173,14 +165,14 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
         # but more likely later, and less if you're careful/taking care
         # of yourself
         p_lethargy = (age/200) + initial_viral_load*0.6 - carefulness/2
-        if rng.rand() < p_lethargy:            
+        if rng.rand() < p_lethargy:
             symptoms1.append('fatigue')
             if rng.rand() < 0.2 and age > 75:
                 symptoms1.append('unusual')
             if rng.rand() < 0.6:
                symptoms1.append('hard_time_waking_up')
             if rng.rand() < 0.5:
-                symptoms1.append('headache') 
+                symptoms1.append('headache')
             if rng.rand() < 0.1:
                 symptoms1.append('confused')
             if really_sick or extremely_sick or len(preexisting_conditions)>2:
@@ -203,7 +195,7 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
                 symptoms1.append('sore_throat')
             if extremely_sick and rng.rand() < 0.4:
                 symptoms1.append('severe_chest_pain')
- 
+
         if rng.rand() < 0.25:
             symptoms1.append('loss_of_taste')
 
@@ -236,10 +228,10 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
                 symptoms2.append('chills')
 
 
-        # gastro symptoms are more likely to be earlier and are more 
+        # gastro symptoms are more likely to be earlier and are more
         # likely to show extreme symptoms later
         if 'gastro' in symptoms1 or rng.rand() < p_gastro *.5:
-            symptoms2.append('gastro')   
+            symptoms2.append('gastro')
             if rng.rand() < 0.9:
                 symptoms2.append('diarrhea')
             if rng.rand() < 0.7:
@@ -248,14 +240,14 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
         # fatigue and unusual symptoms are more heavily age-related
         # but more likely later, and less if you're careful/taking care
         # of yourself
-        if rng.rand() < p_lethargy + (p_gastro/2): #if you had gastro symptoms before more likely to be lethargic now           
+        if rng.rand() < p_lethargy + (p_gastro/2): #if you had gastro symptoms before more likely to be lethargic now
             symptoms2.append('fatigue')
             if rng.rand() < 0.3 and age > 75:
                 symptoms2.append('unusual')
             if rng.rand() < 0.6:
                symptoms2.append('hard_time_waking_up')
             if rng.rand() < 0.5:
-                symptoms2.append('headache') 
+                symptoms2.append('headache')
             if rng.rand() < 0.1:
                 symptoms2.append('confused')
             if really_sick or extremely_sick or len(preexisting_conditions)>2:
@@ -278,10 +270,10 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
                 symptoms2.append('sore_throat')
             if extremely_sick and rng.rand() < 0.5:
                 symptoms2.append('severe_chest_pain')
- 
+
         if 'loss_of_taste' in symptoms1 or rng.rand() < 0.3:
             symptoms2.append('loss_of_taste')
-            
+
         if 'mild' in symptoms2 and 'trouble_breathing' in symptoms2:
             symptoms2.append('light_trouble_breathing')
         if 'moderate'in symptoms2 and 'trouble_breathing' in symptoms2:
@@ -313,10 +305,10 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
                 symptoms3.append('chills')
 
 
-        # gastro symptoms are more likely to be earlier and are more 
+        # gastro symptoms are more likely to be earlier and are more
         # likely to show extreme symptoms later (p gastro reduced compared to part1)
         if 'gastro' in symptoms2 or rng.rand() < p_gastro *.25:
-            symptoms3.append('gastro')   
+            symptoms3.append('gastro')
             if rng.rand() < 0.9:
                 symptoms3.append('diarrhea')
             if rng.rand() < 0.7:
@@ -325,14 +317,14 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
         # fatigue and unusual symptoms are more heavily age-related
         # but more likely later, and less if you're careful/taking care
         # of yourself
-        if rng.rand() < (p_lethargy + p_gastro): #if you had gastro symptoms before more likely to be lethargic now           
+        if rng.rand() < (p_lethargy + p_gastro): #if you had gastro symptoms before more likely to be lethargic now
             symptoms3.append('fatigue')
             if rng.rand() < 0.5 and age > 75:
                 symptoms3.append('unusual')
             if rng.rand() < 0.6:
                symptoms3.append('hard_time_waking_up')
             if rng.rand() < 0.5:
-                symptoms3.append('headache') 
+                symptoms3.append('headache')
             if rng.rand() < 0.1:
                 symptoms3.append('confused')
             if really_sick or extremely_sick or len(preexisting_conditions)>2:
@@ -355,7 +347,7 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
                 symptoms3.append('sore_throat')
             if extremely_sick and rng.rand() < 0.5:
                 symptoms3.append('severe_chest_pain')
- 
+
         if 'mild' in symptoms3 and 'trouble_breathing' in symptoms3:
             symptoms3.append('light_trouble_breathing')
         if 'moderate'in symptoms3 and 'trouble_breathing' in symptoms3:
@@ -378,16 +370,16 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
 
         symptoms4 = []
         if extremely_sick:
-            symptoms4.append('severe') 
+            symptoms4.append('severe')
         elif really_sick:
-            symptoms4.append('moderate')           
-        else: 
+            symptoms4.append('moderate')
+        else:
             symptoms4.append('mild')
 
-        # gastro symptoms are more likely to be earlier and are more 
+        # gastro symptoms are more likely to be earlier and are more
         # likely to show extreme symptoms later (p gastro reduced compared to part1)
         if rng.rand() < p_gastro *.1:
-            symptoms4.append('gastro')   
+            symptoms4.append('gastro')
             if rng.rand() < 0.9:
                 symptoms4.append('diarrhea')
             if rng.rand() < 0.7:
@@ -396,14 +388,14 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
         # fatigue and unusual symptoms are more heavily age-related
         # but more likely later, and less if you're careful/taking care
         # of yourself
-        if rng.rand() < (p_lethargy*1.5 + p_gastro): #if you had gastro symptoms before more likely to be lethargic now           
+        if rng.rand() < (p_lethargy*1.5 + p_gastro): #if you had gastro symptoms before more likely to be lethargic now
             symptoms4.append('fatigue')
             if rng.rand() < 0.5 and age > 75:
                 symptoms4.append('unusual')
             if rng.rand() < 0.6:
                symptoms4.append('hard_time_waking_up')
             if rng.rand() < 0.5:
-                symptoms4.append('headache') 
+                symptoms4.append('headache')
             if rng.rand() < 0.1:
                 symptoms4.append('confused')
             if really_sick or extremely_sick or len(preexisting_conditions)>2:
@@ -435,7 +427,7 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
             symptoms4.append('heavy_trouble_breathing')
 
         for day in range(symptom_onset_delay):
-            progression.append(symptoms4)   
+            progression.append(symptoms4)
 
 
         # After the plateau (recovery part 2)
@@ -443,14 +435,14 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
 
         symptoms5 = []
         if extremely_sick:
-            symptoms5.append('moderate')           
-        else: 
+            symptoms5.append('moderate')
+        else:
             symptoms5.append('mild')
 
-        # gastro symptoms are more likely to be earlier and are more 
+        # gastro symptoms are more likely to be earlier and are more
         # likely to show extreme symptoms later (p gastro reduced compared to part1)
         if 'gastro' in symptoms4 or rng.rand() < p_gastro *.1:
-            symptoms5.append('gastro')   
+            symptoms5.append('gastro')
             if rng.rand() < 0.9:
                 symptoms5.append('diarrhea')
             if rng.rand() < 0.7:
@@ -459,14 +451,14 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
         # fatigue and unusual symptoms are more heavily age-related
         # but more likely later, and less if you're careful/taking care
         # of yourself
-        if rng.rand() < (p_lethargy*2 + p_gastro): #if you had gastro symptoms before more likely to be lethargic now           
+        if rng.rand() < (p_lethargy*2 + p_gastro): #if you had gastro symptoms before more likely to be lethargic now
             symptoms5.append('fatigue')
             if rng.rand() < 0.5 and age > 75:
                 symptoms5.append('unusual')
             if rng.rand() < 0.6:
                symptoms5.append('hard_time_waking_up')
             if rng.rand() < 0.5:
-                symptoms5.append('headache') 
+                symptoms5.append('headache')
             if rng.rand() < 0.1:
                 symptoms5.append('confused')
             if really_sick or extremely_sick or len(preexisting_conditions)>2:
@@ -498,7 +490,7 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
             symptoms5.append('heavy_trouble_breathing')
 
         for day in range(round(viral_load_recovered - viral_load_plateau_end - 2)):
-            progression.append(symptoms5) 
+            progression.append(symptoms5)
 
         return progression
 
@@ -666,8 +658,6 @@ def _get_cold_progression(age, rng, carefulness, preexisting_conditions, really_
     progression.append(symptoms3)
 
     return progression
-
-
 
 # def _get_obs_symptoms(all_symptoms, rng, carefulness):
 #     all_reported_symptoms = []
