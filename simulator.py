@@ -16,6 +16,7 @@ from utils import _normalize_scores, _get_random_sex, _get_covid_symptoms, \
 
 from config import *
 from base import *
+from interventions import *
 if COLLECT_LOGS is False:
     Event = DummyEvent
 
@@ -119,6 +120,10 @@ class Human(object):
         self.last_location = self.location
         self.last_duration = 0
 
+        # interventions & risk prediction
+        self.contact_tracing = False
+        self.WEAR_MASK = False
+
         # risk prediction
         self.risk = BASELINE_RISK_VALUE
         self.risk_level = _proba_to_risk_level(self.risk)
@@ -148,9 +153,6 @@ class Human(object):
 
         self.avg_working_minutes = _draw_random_discreet_gaussian(AVG_WORKING_MINUTES, SCALE_WORKING_MINUTES, self.rng)
         self.scale_working_minutes = _draw_random_discreet_gaussian(AVG_SCALE_WORKING_MINUTES, SCALE_SCALE_WORKING_MINUTES, self.rng)
-
-        self.avg_hospital_hours = _draw_random_discreet_gaussian(AVG_HOSPITAL_HOURS, SCALE_HOSPITAL_HOURS, self.rng)
-        self.scale_hospital_hours = _draw_random_discreet_gaussian(AVG_SCALE_HOSPITAL_HOURS, SCALE_SCALE_HOSPITAL_HOURS, self.rng)
 
         self.avg_misc_time = _draw_random_discreet_gaussian(AVG_MISC_MINUTES, SCALE_MISC_MINUTES, self.rng)
         self.scale_misc_time = _draw_random_discreet_gaussian(AVG_SCALE_MISC_MINUTES, SCALE_SCALE_MISC_MINUTES, self.rng)
@@ -312,10 +314,18 @@ class Human(object):
     def update_symptoms(self):
         symptoms = []
         if self.cold_timestamp is not None:
-            self.cold_symptoms = self.all_cold_symptoms
+            t = (self.env.timestamp - self.cold_timestamp).days
+            if t >= len(self.all_cold_symptoms):
+                self.cold_symptoms = []
+            else:
+                self.cold_symptoms = self.all_cold_symptoms[t]
 
         if self.flu_timestamp is not None:
-            self.flu_symptoms = self.all_flu_symptoms
+            t = (self.env.timestamp - self.flu_timestamp).days
+            if t >= len(self.all_flu_symptoms):
+                self.flu_symptoms = []
+            else:
+                self.flu_symptoms = self.all_flu_symptoms[t]
 
         if self.is_incubated and not self.is_asymptomatic:
             days_since_infectious = math.floor(self.days_since_exposed - self.infectiousness_onset_days)
@@ -354,7 +364,7 @@ class Human(object):
         return False
 
     def wear_mask(self):
-        if not MASK_INTERVENTION:
+        if not self.WEAR_MASK:
             self.wearing_mask, self.mask_efficacy = False, 0
             return
 
@@ -381,11 +391,11 @@ class Human(object):
 
     def recover_from_cold_and_flu(self):
         if (self.cold_timestamp is not None and
-            (self.env.timestamp - self.cold_timestamp) >= datetime.timedelta(days=len(self.cold_symptoms))):
+            (self.env.timestamp - self.cold_timestamp) >= datetime.timedelta(days=len(self.all_cold_symptoms))):
             self.cold_timestamp = None
 
         if (self.flu_timestamp is not None and
-            (self.env.timestamp - self.flu_timestamp) >= datetime.timedelta(days=len(self.flu_symptoms))):
+            (self.env.timestamp - self.flu_timestamp) >= datetime.timedelta(days=len(self.all_flu_symptoms))):
             self.flu_timestamp = None
 
     def how_am_I_feeling(self):
@@ -394,7 +404,7 @@ class Human(object):
         if current_symptoms == []:
             return 1.0
 
-        if sum(x in current_symptoms for x in ["severe", "extremely_severe", "trouble_breathing"]) > 0:
+        if sum(x in current_symptoms for x in ["severe", "extremely_severe"]) > 0:
             return 0.0
 
         elif self.test_result == "positive":
@@ -423,6 +433,16 @@ class Human(object):
                 assert self.state.index(1) in next_state[self.last_state.index(1)], f"invalid compartment transition for {self.name}: {self.last_state} to {self.state}"
             self.last_state = self.state
 
+    def notify(self, intervention):
+        if intervention is not None:
+            print(f"Intervention: {intervention}")
+            self.contact_tracing = False
+            if isinstance(intervention, Tracing):
+                self.contact_tracing = True
+                self._modify_behavior = intervention.modify_behavior
+            else:
+                intervention.modify_behavior(self)
+
     def run(self, city):
         """
            1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24
@@ -440,9 +460,9 @@ class Human(object):
                 Event.log_daily(self, self.env.timestamp)
                 self.update_symptoms()
                 city.tracker.track_symptoms(self)
-                if self.name == "human:1": print(city.intervention)
+                self.notify(city.intervention)
 
-            if RISK_MODEL is not None and self.message_info['traced']:
+            if self.contact_tracing and self.message_info['traced']:
                 if (self.env.timestamp - self.message_info['receipt']).days > self.message_info['delay']:
                     self.update_risk_level()
 
@@ -496,6 +516,7 @@ class Human(object):
             # Mobility
             # self.how_am_I_feeling = 1.0 (great) ---> rest_at_home = False
             if not self.rest_at_home:
+                if self.is_infectious : print(f"I am feeling {self.how_am_I_feeling()}")
                 # set it once for the rest of the disease path
                 if self.rng.random() > self.how_am_I_feeling():
                     self.rest_at_home = True
@@ -646,6 +667,9 @@ class Human(object):
             else:
                 self.last_duration += duration
         else:
+            if self.name == "human:69":
+                print(f"{self} {self.last_location} --> {self.location}")
+
             if self.last_location == self.household:
                 city.tracker.track_social_mixing(location=self.household, duration=self.last_duration)
 
@@ -664,7 +688,7 @@ class Human(object):
             distance =  np.sqrt(int(area/len(self.location.humans))) + self.rng.randint(MIN_DIST_ENCOUNTER, MAX_DIST_ENCOUNTER)
             # risk model
             # TODO: Add GPS measurements as conditions; refer JF's docs
-            if RISK_MODEL is not None and MIN_MESSAGE_PASSING_DISTANCE < distance <  MAX_MESSAGE_PASSING_DISTANCE:
+            if self.contact_tracing and MIN_MESSAGE_PASSING_DISTANCE < distance <  MAX_MESSAGE_PASSING_DISTANCE:
                 self.contact_book.add(human=h, timestamp=self.env.timestamp)
                 h.contact_book.add(human=self, timestamp=self.env.timestamp)
 
@@ -827,7 +851,9 @@ class Human(object):
             # print(f"{self} changed to {self.risk_level} to {new_risk_level}")
             # modify behavior
             self.risk_level = new_risk_level
-            pass
+            change = getattr(self, "_modify_behavior", None)
+            if change is not None:
+                change(self)
 
     def update_risk(self, recovery=False, test_results=False, update_messages=None):
         if recovery:
