@@ -75,7 +75,7 @@ class Human(object):
         self.risk = self.rng.rand()
         if self.has_app:
             self.recommendations = self.get_recommendations()
-            self.follow_recommendations = (rng.rand()*PERCENT_FOLLOW + self.carefulness)/100
+            self.how_much_I_follow_recommendations = (rng.rand()*PERCENT_FOLLOW + self.carefulness)/100
         else:
             self.recommendations = []
             self.follow_recommendations = 0
@@ -422,8 +422,42 @@ class Human(object):
         else:
             return ['stay_home', 'wash_hands', 'stand_2m', 'limit_contact', 'wear_mask', 'monitor_symptoms', 'get_tested', 'quarantine']
 
+    def follow_recommendations(self):
+        if 'stay_home' in self.recommendations:
+            if self.rng.rand() < self.how_much_I_follow_recommendations:
+                self.max_shop_per_week = 1
+                self.max_exercise_per_week = 1
+                self.max_misc_per_week = 1
+        if 'wash_hands' in self.recommendations:
+            if self.rng.rand() < self.how_much_I_follow_recommendations:
+                pass
+                # TODO hygiene
+        if 'stand_2m' in self.recommendations:
+            if self.rng.rand() < self.how_much_I_follow_recommendations:
+                pass
+                # TODO increase space during encounters
+        if 'limit_contact' in self.recommendations:
+            if self.rng.rand() < self.how_much_I_follow_recommendations:
+                self.max_shop_per_week = 1
+                self.max_exercise_per_week = 1
+                self.max_misc_per_week = 0
+                # TODO increase space even more during encounters
+        if 'wear_mask' in self.recommendations:
+            if self.rng.rand() < self.how_much_I_follow_recommendations:
+                pass
+                # TODO increase masking
+        if 'get_tested' in self.recommendations:
+            if self.rng.rand() < self.how_much_I_follow_recommendations:
+                pass
+                # TODO testing
+        if 'quarantine' in self.recommendations:
+            if self.rng.rand() < self.how_much_I_follow_recommendations:
+                self.max_shop_per_week = 0
+                self.max_exercise_per_week = 0
+                self.max_misc_per_week = 0
 
-        
+
+
     def assert_state_changes(self):
         next_state = {0:[1], 1:[2], 2:[0, 3], 3:[3]}
         assert sum(self.state) == 1, f"invalid compartment for {self.name}: {self.state}"
