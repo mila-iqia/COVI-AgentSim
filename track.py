@@ -110,6 +110,16 @@ class Tracker(object):
                 return 1.0 * sum(total)/sum(n)
             return 0
 
+    def get_R0(self, logfile=None):
+        if len(self.r) > 0:
+            return self.r[0]
+        else:
+            log("not enough data points to estimate r0. Falling back to average")
+            x = [h.n_infectious_contacts for h in self.city.humans if h.state.index(1) >= 2]
+            if x:
+                return np.mean(x)
+            return -1
+
     def get_generation_time(self):
         return self.avg_generation_times[1]
 
@@ -266,8 +276,8 @@ class Tracker(object):
         log("######## COVID SPREAD #########", logfile)
         x = 1.0*self.n_env_infection/self.n_infectious_contacts if self.n_infectious_contacts else 0.0
         log(f"environmental transmission ratio {x}", logfile )
-        if len(self.r) > 0:
-            log(f"Ro {self.r[0]}", logfile)
+        r0 = self.get_R0(logfile)
+        log(f"Ro {r0}", logfile)
         log(f"Generation times {self.get_generation_time()} ", logfile)
         log(f"Cumulative Incidence {self.cumulative_incidence}", logfile )
         log(f"R : {self.r}", logfile)

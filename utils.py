@@ -488,36 +488,214 @@ def _get_preexisting_conditions(age, sex, rng):
     #else:
     conditions = []
 
-    for c_name, c_prob in PREEXISTING_CONDITIONS.items():
-        rand = rng.rand()
-        modifier = 1.
-        if c_name == 'heart_disease':
-            if 'diabetes' or 'smoker' in conditions:
-                modifier = 2
-            else:
-                modifier = 0.5
-        if c_name in ('cancer', 'COPD'):
-            if 'smoker' in conditions:
-                modifier = 1.3
-            else:
-                modifier = 0.95
-        # TODO: This currently excludes immuno-suppressed condiction when
-        #  setting the modifier value. Is That wanted?
-        if c_name == 'stroke':
-            modifier = len(conditions)
-        if c_name == 'immuno-suppressed':
-            if 'cancer' in conditions:
-                modifier = 1.2
-            else:
-                modifier = 0.98
-        for p in c_prob:
-            if age < p.age:
-                if p.sex == 'a' or sex.lower().startswith(p.sex):
-                    if rand < modifier * p.probability:
-                        conditions.append(p.name)
-                    break
+    # for c_name, c_prob in PREEXISTING_CONDITIONS.items():
+    #     rand = rng.rand()
+    #     modifier = 1.
+    #     if c_name == 'heart_disease':
+    #         if 'diabetes' or 'smoker' in conditions:
+    #             modifier = 2
+    #         else:
+    #             modifier = 0.5
+    #     if c_name in ('cancer', 'COPD'):
+    #         if 'smoker' in conditions:
+    #             modifier = 1.3
+    #         else:
+    #             modifier = 0.95
+    #     # TODO: This currently excludes immuno-suppressed condiction when
+    #     #  setting the modifier value. Is That wanted?
+    #     if c_name == 'stroke':
+    #         modifier = len(conditions)
+    #     if c_name == 'immuno-suppressed':
+    #         if 'cancer' in conditions:
+    #             modifier = 1.2
+    #         else:
+    #             modifier = 0.98
+    #     for p in c_prob:
+    #         if age < p.age:
+    #             if p.sex == 'a' or sex.lower().startswith(p.sex):
+    #                 if rand < modifier * p.probability:
+    #                     conditions.append(p.name)
+    #                 break
 
     # TODO PUT IN QUICKLY WITHOUT VERIFICATION OF NUMBERS
+    # &smoking
+    if age < 12:
+        pass
+    elif age < 18:
+        if rng.rand() < 0.03:
+            conditions.append('smoker')
+    elif age < 65:
+        if rng.rand() < 0.185:
+            conditions.append('smoker')
+    else:
+        if rng.rand() < 0.09:
+            conditions.append('smoker')
+
+    # &diabetes
+    if age < 18:
+        if rng.rand() < .005:
+            conditions.append('diabetes')
+    elif age < 35:
+        if rng.rand() < .009:
+            conditions.append('diabetes')
+    elif age < 50:
+        if rng.rand() < .039:
+            conditions.append('diabetes')
+    elif age < 75:
+        if rng.rand() < .13:
+            conditions.append('diabetes')
+    else:
+        if rng.rand() < .179:
+            conditions.append('diabetes')
+
+    # &heart disease
+    if 'diabetes' in conditions or 'smoker' in conditions:
+        modifier = 2
+    else:
+        modifier = 0.5
+    if age < 20:
+        if rng.rand() < modifier *.001:
+            conditions.append('heart_disease')
+    elif age < 35:
+        if rng.rand() < modifier * .005:
+            conditions.append('heart_disease')
+    elif age < 50:
+        if sex.lower().startswith('f'):
+            if rng.rand() < modifier * .013:
+                conditions.append('heart_disease')
+        elif sex.lower().startswith('m'):
+            if rng.rand() < modifier * .021:
+                conditions.append('heart_disease')
+        else:
+            if rng.rand() < modifier * .017:
+                conditions.append('heart_disease')
+    elif age < 75:
+        if sex.lower().startswith('f'):
+            if rng.rand() < modifier * .13:
+                conditions.append('heart_disease')
+        elif sex.lower().startswith('m'):
+            if rng.rand() < modifier * .178:
+                conditions.append('heart_disease')
+        else:
+            if rng.rand() < modifier * .15:
+                conditions.append('heart_disease')
+    else:
+        if sex.lower().startswith('f'):
+            if rng.rand() < modifier * .311:
+                conditions.append('heart_disease')
+        elif sex.lower().startswith('m'):
+            if rng.rand() < modifier * .44:
+                conditions.append('heart_disease')
+        else:
+            if rng.rand() < modifier * .375:
+                conditions.append('heart_disease')
+
+    # &cancer
+    modifier = 1.3 if 'smoker' in conditions else 0.95
+    if age < 30:
+        if rng.rand() < modifier * 0.00029:
+            conditions.append('cancer')
+    elif age < 60:
+        if rng.rand() < modifier * 0.0029:
+            conditions.append('cancer')
+    elif age < 90:
+        if rng.rand() < modifier * 0.029:
+            conditions.append('cancer')
+    else:
+        if rng.rand() < modifier * 0.05:
+            conditions.append('cancer')
+
+
+    # &COPD
+    if age < 35:
+        pass
+    elif age < 50:
+        if rng.rand() < modifier * .015:
+            conditions.append('COPD')
+    elif age < 65:
+        if rng.rand() < modifier * .037:
+            conditions.append('COPD')
+    else:
+        if rng.rand() < modifier * .075:
+            conditions.append('COPD')
+
+    # &asthma
+    if age < 10:
+        if sex.lower().startswith('f'):
+            if rng.rand() < .07:
+                conditions.append('asthma')
+        elif sex.lower().startswith('m'):
+            if rng.rand() < .12:
+                conditions.append('asthma')
+        else:
+            if rng.rand() < .09:
+                conditions.append('asthma')
+    elif age < 25:
+        if sex.lower().startswith('f'):
+            if rng.rand() < .15:
+                conditions.append('asthma')
+        elif sex.lower().startswith('m'):
+            if rng.rand() < .19:
+                conditions.append('asthma')
+        else:
+            if rng.rand() < .17:
+                conditions.append('asthma')
+    elif age < 75:
+        if sex.lower().startswith('f'):
+            if rng.rand() < .11:
+                conditions.append('asthma')
+        elif sex.lower().startswith('m'):
+            if rng.rand() < .06:
+                conditions.append('asthma')
+        else:
+            if rng.rand() < .08:
+                conditions.append('asthma')
+    else:
+        if sex.lower().startswith('f'):
+            if rng.rand() < .12:
+                conditions.append('asthma')
+        elif sex.lower().startswith('m'):
+            if rng.rand() < .08:
+                conditions.append('asthma')
+        else:
+            if rng.rand() < .1:
+                conditions.append('asthma')
+
+
+    # &stroke
+    modifier = len(conditions)
+    if age < 20:
+        pass
+    elif age < 40:
+        if rng.rand() < modifier * 0.01:
+            conditions.append('stroke')
+    elif age < 60:
+        if rng.rand() < modifier * 0.03:
+            conditions.append('stroke')
+    elif age < 80:
+        if rng.rand() < modifier * 0.04:
+            conditions.append('stroke')
+    else:
+        if rng.rand() < modifier * 0.07:
+            conditions.append('stroke')
+
+
+    # &immuno-suppressed (3.6% on average)
+    modifier = 1.2 if 'cancer' in conditions else 0.98
+    if age < 40:
+        if rng.rand() < modifier * 0.005:
+            conditions.append('immuno-suppressed')
+    elif age < 65:
+        if rng.rand() < modifier * 0.036:
+            conditions.append('immuno-suppressed')
+    elif age < 85:
+        if rng.rand() < modifier * 0.045:
+            conditions.append('immuno-suppressed')
+    else:
+        if rng.rand() < modifier * 0.20:
+            conditions.append('immuno-suppressed')
+
+    #TODO PUT IN QUICKLY WITHOUT VERIFICATION OF NUMBERS
     if 'asthma' in conditions or 'COPD' in conditions:
         conditions.append('lung_disease')
 

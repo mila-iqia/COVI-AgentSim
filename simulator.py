@@ -39,7 +39,7 @@ class Human(object):
     def __init__(self, env, name, age, rng, infection_timestamp, household, workplace, profession, rho=0.3, gamma=0.21, symptoms=[],
                  test_results=None):
 
-        self.last_date = env.timestamp.date
+        self.last_date = env.timestamp.date()
         self.env = env
         self._events = []
         self.name = f"human:{name}"
@@ -103,7 +103,7 @@ class Human(object):
         self.has_logged_test = False
         self.last_state = self.state
         self.n_infectious_contacts = 0
-        self.last_date_to_check_symptoms = self.env.timestamp.date
+        self.last_date_to_check_symptoms = self.env.timestamp.date()
 
         # symptoms
         self.symptom_start_time = None
@@ -286,8 +286,8 @@ class Human(object):
 
     @property
     def symptoms(self):
-        if self.last_date_to_check_symptoms != self.env.timestamp.date:
-            self.last_date_to_check_symptoms = self.env.timestamp.date
+        if self.last_date_to_check_symptoms != self.env.timestamp.date():
+            self.last_date_to_check_symptoms = self.env.timestamp.date()
             self.update_symptoms()
 
         return self.all_symptoms
@@ -428,7 +428,7 @@ class Human(object):
                 self.count_exercise=0
                 self.count_shop=0
 
-            date = self.env.timestamp.date
+            date = self.env.timestamp.date()
             if self.last_date != date:
                 self.last_date = date
                 self.infectiousnesses.append(self.infectiousness)
