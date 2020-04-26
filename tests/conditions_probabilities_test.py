@@ -18,7 +18,7 @@ class PreexistingConditions(unittest.TestCase):
             for p in c_prob:
                 computed_dist = [_get_preexisting_conditions(p.age-1, p.sex, rng) for _ in range(n_people)]
                 prob = len([cd for cd in computed_dist if p.name in cd]) / n_people
-                self.assertTrue(abs(p.probability - prob) < 0.01,
+                self.assertTrue(abs(p.probability - prob) < 0.1,
                                  msg=f"Computation of the preexisting conditions"
                                  f"yielded a different probability than expected"
                                  f"at {prob} instead of {p.probability}")

@@ -14,14 +14,14 @@ PREEXISTING_CONDITIONS = OrderedDict([
         ConditionProbability('smoker', 5, 12, 'a', 0.0),
         ConditionProbability('smoker', 5, 18, 'a', 0.03),
         ConditionProbability('smoker', 5, 65, 'a', 0.185),
-        ConditionProbability('smoker', 5, 1000, 'a', 0.09)
+        ConditionProbability('smoker', 5, 100, 'a', 0.09)
     ]),
     ('diabetes', [
         ConditionProbability('diabetes', 1, 18, 'a', 0.005),
         ConditionProbability('diabetes', 1, 35, 'a', 0.009),
         ConditionProbability('diabetes', 1, 50, 'a', 0.039),
         ConditionProbability('diabetes', 1, 75, 'a', 0.13),
-        ConditionProbability('diabetes', 1, 1000, 'a', 0.179)
+        ConditionProbability('diabetes', 1, 100, 'a', 0.179)
     ]),
     ('heart_disease', [
         ConditionProbability('heart_disease', 2, 20, 'a', 0.001),
@@ -32,21 +32,21 @@ PREEXISTING_CONDITIONS = OrderedDict([
         ConditionProbability('heart_disease', 2, 75, 'f', 0.13),
         ConditionProbability('heart_disease', 2, 75, 'm', 0.178),
         ConditionProbability('heart_disease', 2, 75, 'a', 0.15),
-        ConditionProbability('heart_disease', 2, 1000, 'f', 0.311),
-        ConditionProbability('heart_disease', 2, 1000, 'm', 0.44),
-        ConditionProbability('heart_disease', 2, 1000, 'a', 0.375)
+        ConditionProbability('heart_disease', 2, 100, 'f', 0.311),
+        ConditionProbability('heart_disease', 2, 100, 'm', 0.44),
+        ConditionProbability('heart_disease', 2, 100, 'a', 0.375)
     ]),
     ('cancer', [
         ConditionProbability('cancer', 6, 30, 'a', 0.00029),
         ConditionProbability('cancer', 6, 60, 'a', 0.0029),
         ConditionProbability('cancer', 6, 90, 'a', 0.029),
-        ConditionProbability('cancer', 6, 1000, 'a', 0.05)
+        ConditionProbability('cancer', 6, 100, 'a', 0.05)
     ]),
     ('COPD', [
         ConditionProbability('COPD', 3, 35, 'a', 0.0),
         ConditionProbability('COPD', 3, 50, 'a', 0.015),
         ConditionProbability('COPD', 3, 65, 'f', 0.037),
-        ConditionProbability('COPD', 3, 1000, 'a', 0.075)
+        ConditionProbability('COPD', 3, 100, 'a', 0.075)
     ]),
     ('asthma', [
         ConditionProbability('asthma', 4, 10, 'f', 0.07),
@@ -58,9 +58,9 @@ PREEXISTING_CONDITIONS = OrderedDict([
         ConditionProbability('asthma', 4, 75, 'f', 0.11),
         ConditionProbability('asthma', 4, 75, 'm', 0.06),
         ConditionProbability('asthma', 4, 75, 'a', 0.08),
-        ConditionProbability('asthma', 4, 1000, 'f', 0.12),
-        ConditionProbability('asthma', 4, 1000, 'm', 0.08),
-        ConditionProbability('asthma', 4, 1000, 'a', 0.1)
+        ConditionProbability('asthma', 4, 100, 'f', 0.12),
+        ConditionProbability('asthma', 4, 100, 'm', 0.08),
+        ConditionProbability('asthma', 4, 100, 'a', 0.1)
     ]),
     ('stroke', [
         ConditionProbability('stroke', 7, 20, 'a', 0.0),
@@ -73,7 +73,7 @@ PREEXISTING_CONDITIONS = OrderedDict([
         ConditionProbability('immuno-suppressed', 0, 40, 'a', 0.005),
         ConditionProbability('immuno-suppressed', 0, 65, 'a', 0.036),
         ConditionProbability('immuno-suppressed', 0, 85, 'a', 0.045),
-        ConditionProbability('immuno-suppressed', 0, 1000, 'a', 0.20)
+        ConditionProbability('immuno-suppressed', 0, 100, 'a', 0.20)
     ]),
     ('lung_disease', [
         ConditionProbability('lung_disease', 8, 0, 'a', 0.0)

@@ -6,7 +6,6 @@ import unittest
 
 import numpy as np
 
-from models.run import parser as m_parser, main as m_main
 from run import run_simu
 
 # Force COLLECT_LOGS=True
@@ -36,13 +35,6 @@ class ModelsPreprocessingTest(unittest.TestCase):
             )
             monitors[0].dump()
             monitors[0].join_iothread()
-
-            args = m_parser.parse_args([f'--data_path={logs_f.name}',
-                                        f'--output_dir={preprocess_d}/',
-                                        '--risk_model=tristan',
-                                        '--seed=0', '--save_training_data',
-                                        '--n_jobs=4'])
-            m_main(args)
 
             preprocess_d = '/Users/satya/travail/MILA/CODE/covid_p2p_simulation/output/tmpn_fpii1d'
 
