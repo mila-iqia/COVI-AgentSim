@@ -69,7 +69,7 @@ class City(simpy.Environment):
         print("Computing their preferences")
         self._compute_preferences()
         self.tracker = Tracker(env, self)
-        self.tracker.track_initialized_covid_params(self.humans)
+        # self.tracker.track_initialized_covid_params(self.humans)
 
         self.intervention = None
 
@@ -235,16 +235,17 @@ class City(simpy.Environment):
             h.parks_preferences = [(compute_distance(h.household, s) + 1e-1) ** -1 for s in self.parks]
 
     def run(self, duration):
-        day = 0
+        day = 1
         while True:
-            day += 1
 
-            if day == INTERVENTION_DAY:
+            if INTERVENTION_DAY > 0 and day == INTERVENTION_DAY:
                 self.intervention = get_intervention(INTERVENTION)
-                pass
-            self.tracker.increment_day()
-            yield self.env.timeout(duration / TICK_MINUTE)
+                print(self.intervention)
 
+            self.tracker.increment_day()
+
+            yield self.env.timeout(duration / TICK_MINUTE)
+            day += 1
 
 class Location(simpy.Resource):
 
@@ -482,7 +483,7 @@ class Event:
                 'time': time,
                 'payload': {
                     'observed':{
-                        "reported_symptoms": human.all_reported_symptoms
+                        "reported_symptoms": human.obs_symptoms
                     },
                     'unobserved':{
                         'infectiousness': human.infectiousness,

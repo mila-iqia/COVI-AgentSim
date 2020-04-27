@@ -136,15 +136,13 @@ class Tracker(object):
             self.cumulative_incidence += [self.cases_per_day[-1] / self.n_susceptible]
         else:
             self.cumulative_incidence.append(0)
-            
+
         self.cases_per_day.append(0)
 
         self.n_susceptible = sum(h.is_susceptible for h in self.city.humans)
 
         # Rt
         self.r.append(self.get_R())
-        if self.recovered_stats and self.recovered_stats[-1][0] > 0:
-            print(self.recovered_stats)
 
         # recovery stats
         self.recovered_stats.append([0,0])
