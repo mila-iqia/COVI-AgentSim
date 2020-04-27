@@ -144,7 +144,7 @@ class WearMask(BehaviorInterventions):
         if self.available is None:
             human.WEAR_MASK = True
 
-        if self.available > 0:
+        elif self.available > 0:
             human.WEAR_MASK = True
             self.available -= 1
 
@@ -192,19 +192,15 @@ class RiskBasedRecommendations(BehaviorInterventions):
 
         self.revert_behavior(human)
         for rec in recommendations:
-            if isinstance(rec, BehaviorInterventions) and human.rng.rand() < human.how_much_I_follow_recommendations:
+            if isinstance(rec, BehaviorInterventions) and human.rng.rand() > human.how_much_I_follow_recommendations:
                 rec.modify_behavior(human)
-                if human.name == "human:93":print(f"{rec}")
                 human.recommendations_to_follow.add(rec)
 
     def revert_behavior(self, human):
         # print(f"chaging back {human}")
-        try:
-            for rec in human.recommendations_to_follow:
-                rec.revert_behavior(human)
-                if human.name == "human:93":print(f"{rec}")
-        except:
-            import pdb; pdb.set_trace()
+        for rec in human.recommendations_to_follow:
+            rec.revert_behavior(human)
+            if human.name == "human:93":print(f"{human.name}:{rec}")
 
 class GetTested(BehaviorInterventions):
     def __init__(self, source):
@@ -224,7 +220,7 @@ class Tracing(object):
         self.risk_model = risk_model
         if risk_model in ['manual tracing', 'digital tracing']:
             self.intervention = Quarantine()
-        elif risk_model == "first order probabilistic tracing":
+        elif risk_model in ["first order probabilistic tracing", "naive", "transformer"]:
             self.intervention = RiskBasedRecommendations()
 
     def modify_behavior(self, human):

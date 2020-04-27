@@ -241,13 +241,14 @@ class City(simpy.Environment):
             start_pkl = zf.namelist()[0]
 
         while True:
-            self.humans, start_pkl = integrated_risk_pred(self.humans, outfile, start_time, current_day, all_possible_symptoms, start_pkl, n_jobs=n_jobs)
-            current_day += 1
+            if RISK_MODEL not in LOCAL_RISK_MODELS:
+                self.humans, start_pkl = integrated_risk_pred(self.humans, outfile, start_time, current_day, all_possible_symptoms, start_pkl, n_jobs=n_jobs)
             if INTERVENTION_DAY > 0 and current_day == INTERVENTION_DAY:
                 self.intervention = get_intervention(INTERVENTION)
                 print(self.intervention)
 
             self.tracker.increment_day()
+            current_day += 1
 
             yield self.env.timeout(duration / TICK_MINUTE)
 

@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 from frozen.clusters import Clusters
 from frozen.utils import create_new_uid, Message, UpdateMessage
-from models.run import quantize_risk
 
 from utils import _normalize_scores, _get_random_sex, _get_covid_progression, \
      _get_preexisting_conditions, _draw_random_discreet_gaussian, _sample_viral_load_piecewise, \
@@ -137,11 +136,25 @@ class Human(object):
 
         # risk prediction
         self.risk = BASELINE_RISK_VALUE
+        self.start_risk = BASELINE_RISK_VALUE
         self.risk_level = _proba_to_risk_level(self.risk)
         self.past_N_days_contacts = [OrderedSet()]
         self.n_contacts_tested_positive = 0
         self.contact_book = Contacts(self.has_app)
         self.message_info = {'traced': False, 'receipt':datetime.datetime.max, 'delay':BIG_NUMBER}
+
+        # Message Passing and Risk Prediction
+        self.sent_messages = {}
+        self.messages = []
+        self.update_messages = []
+        self.clusters = Clusters()
+        self.tested_positive_contact_count = 0
+        self.rolling_infectiousness_array = []
+        self.infectiousnesses = []
+        self.uid = create_new_uid(rng)
+        self.exposure_message = None
+        self.exposure_source = None
+        self.test_time = datetime.datetime.max
 
         # symptoms
         self.symptom_start_time = None
@@ -194,20 +207,7 @@ class Human(object):
 
         self.work_start_hour = self.rng.choice(range(7, 12), 3)
 
-        # Message Passing and Risk Prediction
-        self.sent_messages = {}
-        self.messages = []
-        self.update_messages = []
-        self.risk = np.log(0.01)
-        self.clusters = Clusters()
-        self.start_risk = np.log(0.01)
-        self.tested_positive_contact_count = 0
-        self.rolling_infectiousness_array = []
-        self.infectiousnesses = []
-        self.uid = create_new_uid(rng)
-        self.exposure_message = None
-        self.exposure_source = None
-        self.test_time = datetime.datetime.max
+
 
     def assign_household(self, location):
         self.household = location
@@ -361,6 +361,17 @@ class Human(object):
             self.last_date['symptoms'] = self.env.timestamp.date()
             self.update_symptoms()
         return self.all_symptoms
+
+    @property
+    def all_reported_symptoms(self):
+        if not self.has_app:
+            return []
+
+        reported_symptoms = []
+        for symptom in self.all_symptoms:
+            if self.rng.random() < self.carefulness:
+                reported_symptoms.append(symptom)
+        return reported_symptoms
 
     def update_symptoms(self):
         symptoms = []
@@ -549,7 +560,8 @@ class Human(object):
 
             if self.tracing and self.message_info['traced']:
                 if (self.env.timestamp - self.message_info['receipt']).days > self.message_info['delay']:
-                    self.update_risk_level()
+                    if RISK_MODEL in LOCAL_RISK_MODELS:
+                        self.update_risk_level()
 
             # recover from cold/flu/allergies if it's time
             self.recover_health()
@@ -571,7 +583,8 @@ class Human(object):
                     self.test_time = self.env.timestamp
                     self.has_been_tested = True
                     city.tracker.track_tested_results(self, self.test_result, self.test_type)
-                    self.update_risk(test_results=True)
+                    if RISK_MODEL in LOCAL_RISK_MODELS:
+                        self.update_risk(test_results=True)
 
             # recover
             if self.is_infectious and self.days_since_covid >= self.recovery_days:
@@ -591,7 +604,8 @@ class Human(object):
                     self.dead = False
 
                 self.obs_hospitalized = True
-                self.update_risk(recovery=True)
+                if RISK_MODEL in LOCAL_RISK_MODELS:
+                    self.update_risk(recovery=True)
                 self.infection_timestamp = None # indicates they are no longer infected
                 self.all_symptoms, self.covid_symptoms = [], []
                 Event.log_recovery(self, self.env.timestamp, self.dead)
@@ -976,6 +990,13 @@ class Human(object):
             del state['avg_shopping_time']
             del state['count_shop']
             del state['last_date']
+            del state['contact_book']
+            del state['last_location']
+            del state['recommendations_to_follow']
+            del state['tracing_method']
+            if state.get('_workplace'):
+                del state['_workplace']
+
         # add a stand-in for property
         state["all_reported_symptoms"] = self.all_reported_symptoms
         return state
@@ -987,11 +1008,11 @@ class Human(object):
 
     def cur_message(self, day):
         """creates the current message for this user"""
-        message = Message(self.uid, quantize_risk(self.risk), day, self.name)
+        message = Message(self.uid, _proba_to_risk_level(self.risk), day, self.name)
         return message
 
     def cur_message_risk_update(self, day, old_risk, sent_at):
-        return UpdateMessage(self.uid, quantize_risk(self.risk), old_risk, day, sent_at, self.name)
+        return UpdateMessage(self.uid, _proba_to_risk_level(self.risk), old_risk, day, sent_at, self.name)
 
     def symptoms_at_time(self, now, symptoms):
         if not symptoms:

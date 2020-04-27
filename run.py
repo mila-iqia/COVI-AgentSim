@@ -203,7 +203,7 @@ def run_simu(n_people=None, init_percent_sick=0,
                              'unusual', 'hard_time_waking_up', 'headache', 'confused',
                              'lost_consciousness', 'trouble_breathing', 'sneezing',
                              'cough', 'runny_nose', 'aches', 'sore_throat', 'severe_chest_pain',
-                             'loss_of_taste', 'light_trouble_breathing', 'moderate_trouble_breathing',
+                             'loss_of_taste', 'mild_trouble_breathing', 'light_trouble_breathing', 'moderate_trouble_breathing',
                              'heavy_trouble_breathing']
     monitors[0].dump()
     monitors[0].join_iothread()

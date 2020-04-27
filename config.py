@@ -337,7 +337,9 @@ MASKS_SUPPLY = BIG_NUMBER
 
 # TRACING RISK MODEL PARAMETERS  (non-ML)
 # "first order probabilistic tracing"  "manual tracing", "digital tracing", "smart tracing"
-RISK_MODEL =  "first order probabilistic tracing"
+# if you want to use the inference servers, use "naive" or "transformer"
+LOCAL_RISK_MODELS = ["first order probabilistic tracing",  "manual tracing", "digital tracing", "smart tracing"]
+RISK_MODEL = "first order probabilistic tracing"
 N_DAYS_HISTORY = 14
 MIN_MESSAGE_PASSING_DISTANCE = 0
 MAX_MESSAGE_PASSING_DISTANCE = 1000 #cm GPS; 10 x 10 m grid everyone is a contact

@@ -10,6 +10,8 @@ import config
 from plots.plot_risk import hist_plot
 from models.inference_client import InferenceClient
 from frozen.utils import encode_message, update_uid, encode_update_message, decode_message
+from utils import proba_to_risk_fn
+_proba_to_risk_level = proba_to_risk_fn(np.exp(np.load(config.RISK_MAPPING_FILE)))
 
 # load the risk map (this is ok, since we only do this #days)
 risk_map = np.load(f"{os.path.dirname(os.path.realpath(__file__))}/log_risk_mapping.npy")
@@ -19,7 +21,10 @@ risk_map[0] = np.log(0.01)
 def query_inference_server(params):
     ports = [6688]
     client = InferenceClient(ports)
-    results = client.infer(params)
+    try:
+        results = client.infer(params)
+    except Exception:
+        import pdb; pdb.set_trace()
     return results
 
 def get_days_worth_of_logs(data_path, start, cur_day, start_pkl):
@@ -46,14 +51,6 @@ def get_days_worth_of_logs(data_path, start, cur_day, start_pkl):
     except Exception:
         pass
     return to_return, start_pkl
-
-def quantize_risk(risk):
-    if risk == 0.:
-        return 15
-    # returns the quantized log probability (int 0 to 15)
-    for idx, log_prob in enumerate(risk_map):
-        if risk >= log_prob and risk < risk_map[idx+1]:
-            return idx
 
 
 def integrated_risk_pred(humans, data_path, start, current_day, all_possible_symptoms, start_pkl, n_jobs=1):
@@ -82,7 +79,7 @@ def integrated_risk_pred(humans, data_path, start, current_day, all_possible_sym
                 human.exposure_message = message
 
         # if the encounter happened within the last 14 days, and your symptoms started at most 3 days after your contact
-        if quantize_risk(human.start_risk) != quantize_risk(human.risk):
+        if _proba_to_risk_level(human.start_risk) != _proba_to_risk_level(human.risk):
             sent_at = start + datetime.timedelta(days=current_day, minutes=human.rng.randint(low=0, high=1440))
             for k, m in human.sent_messages.items():
                 message = decode_message(m)
@@ -103,11 +100,12 @@ def integrated_risk_pred(humans, data_path, start, current_day, all_possible_sym
     for result in results:
         if result is not None:
             name, risk, clusters = result
+            hd[name].update_risk_level()
             hd[name].risk = risk
             hd[name].clusters = clusters
 
     if config.PLOT_RISK and config.COLLECT_LOGS:
-        daily_risks = [(np.e ** human.risk, human.is_infectious, human.name) for human in hd.values()]
+        daily_risks = [(human.risk, human.is_infectious, human.name) for human in hd.values()]
         hist_plot(daily_risks, f"{config.RISK_PLOT_PATH}day_{str(current_day).zfill(3)}.png")
 
     # print out the clusters
