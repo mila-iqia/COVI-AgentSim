@@ -814,6 +814,8 @@ class Human(object):
             del state['avg_shopping_time']
             del state['count_shop']
             del state['last_date']
+        # add a stand-in for property
+        state["all_reported_symptoms"] = self.all_reported_symptoms
         return state
 
     def __setstate__(self, state):
