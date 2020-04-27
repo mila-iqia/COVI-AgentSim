@@ -29,7 +29,7 @@ def simu():
 def sim(n_people=None,
         init_percent_sick=0,
         start_time=datetime.datetime(2020, 2, 28, 0, 0),
-        simulation_days=10,
+        simulation_days=30,
         outdir=None, out_chunk_size=None,
         seed=0):
 

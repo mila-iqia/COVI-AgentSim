@@ -488,36 +488,184 @@ def _get_preexisting_conditions(age, sex, rng):
     #else:
     conditions = []
 
-    for c_name, c_prob in PREEXISTING_CONDITIONS.items():
-        rand = rng.rand()
-        modifier = 1.
-        if c_name == 'heart_disease':
-            if 'diabetes' or 'smoker' in conditions:
-                modifier = 2
-            else:
-                modifier = 0.5
-        if c_name in ('cancer', 'COPD'):
-            if 'smoker' in conditions:
-                modifier = 1.3
-            else:
-                modifier = 0.95
-        # TODO: This currently excludes immuno-suppressed condiction when
-        #  setting the modifier value. Is That wanted?
-        if c_name == 'stroke':
-            modifier = len(conditions)
-        if c_name == 'immuno-suppressed':
-            if 'cancer' in conditions:
-                modifier = 1.2
-            else:
-                modifier = 0.98
-        for p in c_prob:
-            if age < p.age:
-                if p.sex == 'a' or sex.lower().startswith(p.sex):
-                    if rand < modifier * p.probability:
-                        conditions.append(p.name)
-                    break
+    # &smoking
+    if age < 12:
+        pass
+    elif age < 18:
+        if rng.rand() < 0.03:
+            conditions.append('smoker')
+    elif age < 65:
+        if rng.rand() < 0.185:
+            conditions.append('smoker')
+    else:
+        if rng.rand() < 0.09:
+            conditions.append('smoker')
 
-    # TODO PUT IN QUICKLY WITHOUT VERIFICATION OF NUMBERS
+    # &diabetes
+    if age < 18:
+        if rng.rand() < .005:
+            conditions.append('diabetes')
+    elif age < 35:
+        if rng.rand() < .009:
+            conditions.append('diabetes')
+    elif age < 50:
+        if rng.rand() < .039:
+            conditions.append('diabetes')
+    elif age < 75:
+        if rng.rand() < .13:
+            conditions.append('diabetes')
+    else:
+        if rng.rand() < .179:
+            conditions.append('diabetes')
+
+    # &heart disease
+    if 'diabetes' in conditions or 'smoker' in conditions:
+        modifier = 2
+    else:
+        modifier = 0.5
+    if age < 20:
+        if rng.rand() < modifier *.001:
+            conditions.append('heart_disease')
+    elif age < 35:
+        if rng.rand() < modifier * .005:
+            conditions.append('heart_disease')
+    elif age < 50:
+        if sex.lower().startswith('f'):
+            if rng.rand() < modifier * .013:
+                conditions.append('heart_disease')
+        elif sex.lower().startswith('m'):
+            if rng.rand() < modifier * .021:
+                conditions.append('heart_disease')
+        else:
+            if rng.rand() < modifier * .017:
+                conditions.append('heart_disease')
+    elif age < 75:
+        if sex.lower().startswith('f'):
+            if rng.rand() < modifier * .13:
+                conditions.append('heart_disease')
+        elif sex.lower().startswith('m'):
+            if rng.rand() < modifier * .178:
+                conditions.append('heart_disease')
+        else:
+            if rng.rand() < modifier * .15:
+                conditions.append('heart_disease')
+    else:
+        if sex.lower().startswith('f'):
+            if rng.rand() < modifier * .311:
+                conditions.append('heart_disease')
+        elif sex.lower().startswith('m'):
+            if rng.rand() < modifier * .44:
+                conditions.append('heart_disease')
+        else:
+            if rng.rand() < modifier * .375:
+                conditions.append('heart_disease')
+
+    # &cancer
+    modifier = 1.3 if 'smoker' in conditions else 0.95
+    if age < 30:
+        if rng.rand() < modifier * 0.00029:
+            conditions.append('cancer')
+    elif age < 60:
+        if rng.rand() < modifier * 0.0029:
+            conditions.append('cancer')
+    elif age < 90:
+        if rng.rand() < modifier * 0.029:
+            conditions.append('cancer')
+    else:
+        if rng.rand() < modifier * 0.05:
+            conditions.append('cancer')
+
+
+    # &COPD
+    if age < 35:
+        pass
+    elif age < 50:
+        if rng.rand() < modifier * .015:
+            conditions.append('COPD')
+    elif age < 65:
+        if rng.rand() < modifier * .037:
+            conditions.append('COPD')
+    else:
+        if rng.rand() < modifier * .075:
+            conditions.append('COPD')
+
+    # &asthma
+    if age < 10:
+        if sex.lower().startswith('f'):
+            if rng.rand() < .07:
+                conditions.append('asthma')
+        elif sex.lower().startswith('m'):
+            if rng.rand() < .12:
+                conditions.append('asthma')
+        else:
+            if rng.rand() < .09:
+                conditions.append('asthma')
+    elif age < 25:
+        if sex.lower().startswith('f'):
+            if rng.rand() < .15:
+                conditions.append('asthma')
+        elif sex.lower().startswith('m'):
+            if rng.rand() < .19:
+                conditions.append('asthma')
+        else:
+            if rng.rand() < .17:
+                conditions.append('asthma')
+    elif age < 75:
+        if sex.lower().startswith('f'):
+            if rng.rand() < .11:
+                conditions.append('asthma')
+        elif sex.lower().startswith('m'):
+            if rng.rand() < .06:
+                conditions.append('asthma')
+        else:
+            if rng.rand() < .08:
+                conditions.append('asthma')
+    else:
+        if sex.lower().startswith('f'):
+            if rng.rand() < .12:
+                conditions.append('asthma')
+        elif sex.lower().startswith('m'):
+            if rng.rand() < .08:
+                conditions.append('asthma')
+        else:
+            if rng.rand() < .1:
+                conditions.append('asthma')
+
+
+    # &stroke
+    modifier = len(conditions)
+    if age < 20:
+        pass
+    elif age < 40:
+        if rng.rand() < modifier * 0.01:
+            conditions.append('stroke')
+    elif age < 60:
+        if rng.rand() < modifier * 0.03:
+            conditions.append('stroke')
+    elif age < 80:
+        if rng.rand() < modifier * 0.04:
+            conditions.append('stroke')
+    else:
+        if rng.rand() < modifier * 0.07:
+            conditions.append('stroke')
+
+
+    # &immuno-suppressed (3.6% on average)
+    modifier = 1.2 if 'cancer' in conditions else 0.98
+    if age < 40:
+        if rng.rand() < modifier * 0.005:
+            conditions.append('immuno-suppressed')
+    elif age < 65:
+        if rng.rand() < modifier * 0.036:
+            conditions.append('immuno-suppressed')
+    elif age < 85:
+        if rng.rand() < modifier * 0.045:
+            conditions.append('immuno-suppressed')
+    else:
+        if rng.rand() < modifier * 0.20:
+            conditions.append('immuno-suppressed')
+
+    #TODO PUT IN QUICKLY WITHOUT VERIFICATION OF NUMBERS
     if 'asthma' in conditions or 'COPD' in conditions:
         conditions.append('lung_disease')
 
@@ -564,3 +712,87 @@ def _get_integer_pdf(avg, scale, num_sigmas=2):
     normal_pdf = norm.pdf(irange - avg)
     normal_pdf /= normal_pdf.sum()
     return irange, normal_pdf
+
+def probas_to_risk_mapping(probas,
+                           num_bins,
+                           lower_cutoff=None,
+                           upper_cutoff=None):
+    """Create a mapping from probabilities returned by the model to discrete
+    risk levels, with a number of predictions in each bins being approximately
+    equivalent.
+
+    Parameters
+    ----------
+    probas : `np.ndarray` instance
+        The array of probabilities returned by the model.
+
+    num_bins : int
+        The number of bins. For example, `num_bins=16` for risk messages on
+        4 bits.
+
+    lower_cutoff : float, optional
+        Ignore values smaller than `lower_cutoff` in the creation of the bins.
+        This avoids any bias towards values which are too close to 0. If `None`,
+        then do not cut off the small probabilities.
+
+    upper_cutoff : float, optional
+        Ignore values larger than `upper_cutoff` in the creation of the bins.
+        This avoids any bias towards values which are too close to 1. If `None`,
+        then do not cut off the large probabilities.
+
+    Returns
+    -------
+    mapping : `np.ndarray` instance
+        The mapping from probabilities to discrete risk levels. This mapping has
+        size `num_bins + 1`, with the first values always being 0, and the last
+        always being 1.
+    """
+    if (lower_cutoff is not None) and (upper_cutoff is not None):
+        if lower_cutoff >= upper_cutoff:
+            raise ValueError('The lower cutoff must have a value which is '
+                             'smaller than the upper cutoff, got `lower_cutoff='
+                             '{0}` and `upper_cutoff={1}`.'.format(
+                             lower_cutoff, upper_cutoff))
+    mask = np.ones_like(probas, dtype=np.bool_)
+    num_percentiles = num_bins + 1
+    # First value is always 0, last value is always 1
+    cutoffs = np.zeros((num_bins + 1,), dtype=probas.dtype)
+    cutoffs[-1] = 1.
+
+    # Remove probabilities close to 0
+    lower_idx = 1 if (lower_cutoff is None) else None
+    if lower_cutoff is not None:
+        mask = np.logical_and(mask, probas > lower_cutoff)
+        num_percentiles -= 1
+
+    # Remove probabilities close to 1
+    upper_idx = -1 if (upper_cutoff is None) else None
+    if upper_cutoff is not None:
+        mask = np.logical_and(mask, probas <= upper_cutoff)
+        num_percentiles -= 1
+
+    percentiles = np.linspace(0, 100, num_percentiles)
+    cutoffs[1:-1] = np.percentile(probas[mask],
+                                  q=percentiles[lower_idx:upper_idx])
+
+    return cutoffs
+
+def proba_to_risk_fn(mapping):
+    """Create a callable, based on a mapping, that takes probabilities (in
+    [0, 1]) and returns a discrete risk level (in [0, num_bins - 1]).
+
+    Parameters
+    ----------
+    mapping : `np.ndarray` instance
+        The mapping from probabilities to discrete risk levels. See
+        `probas_to_risk_mapping`.
+
+    Returns
+    proba_to_risk : callable
+        Function taking probabilities and returning discrete risk levels.
+    """
+    def _proba_to_risk(probas):
+        return np.maximum(np.searchsorted(mapping, probas, side='left') - 1, 0)
+
+    return _proba_to_risk
+>>>>>>> 8f181373846e638c611850681a49cf5fe6574305

@@ -174,8 +174,8 @@ VIRAL_LOAD_MIN = 0.0001
 
 
 # convex combination - if it sums to 1
-INFECTION_DISTANCE_FACTOR = 0.5
-INFECTION_DURATION_FACTOR = 0.5
+INFECTION_DISTANCE_FACTOR = 0.0
+INFECTION_DURATION_FACTOR = 0.0
 
 #TESTING
 # capacity is per day; time_to_result is per day
