@@ -814,6 +814,8 @@ class Human(object):
             del state['avg_shopping_time']
             del state['count_shop']
             del state['last_date']
+        # add a stand-in for property
+        state["all_reported_symptoms"] = self.all_reported_symptoms
         return state
 
     def __setstate__(self, state):
@@ -844,6 +846,7 @@ class Human(object):
         return rolling_all_symptoms_till_day
 
     def get_test_result_array(self, date):
+        # dont change the logic in here, it needs to remain FROZEN
         results = np.zeros(14)
         result_day = (date - self.test_time).days
         if result_day >= 0 and result_day < 14:
@@ -851,6 +854,7 @@ class Human(object):
         return results
 
     def exposure_array(self, date):
+        # dont change the logic in here, it needs to remain FROZEN
         exposed = False
         exposure_day = None
         if self.infection_timestamp:
@@ -862,6 +866,7 @@ class Human(object):
         return exposed, exposure_day
 
     def recovered_array(self, date):
+        # dont change the logic in here, it needs to remain FROZEN
         is_recovered = False
         recovery_day = (date - self.recovered_timestamp).days
         if recovery_day >= 0 and recovery_day < 14:
