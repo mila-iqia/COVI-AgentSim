@@ -247,7 +247,7 @@ SYMPTOM_DAYS = 5  # @param
 COLLECT_LOGS = False
 
 # RISK PREDICTION PARAMETERS
-RISK_MODEL = "naive" #transformer
+# RISK_MODEL = "naive" #transformer
 MP_BATCHSIZE = "auto"
 MP_N_JOBS = "1"
 MP_BACKEND = "loky"
@@ -339,7 +339,7 @@ MASKS_SUPPLY = BIG_NUMBER
 # "first order probabilistic tracing"  "manual tracing", "digital tracing", "smart tracing"
 # if you want to use the inference servers, use "naive" or "transformer"
 LOCAL_RISK_MODELS = ["first order probabilistic tracing",  "manual tracing", "digital tracing", "smart tracing"]
-RISK_MODEL = "first order probabilistic tracing"
+RISK_MODEL = "naive"
 N_DAYS_HISTORY = 14
 MIN_MESSAGE_PASSING_DISTANCE = 0
 MAX_MESSAGE_PASSING_DISTANCE = 1000 #cm GPS; 10 x 10 m grid everyone is a contact
