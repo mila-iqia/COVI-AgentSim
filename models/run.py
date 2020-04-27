@@ -16,9 +16,7 @@ from frozen.utils import encode_message, update_uid, encode_update_message, deco
 def query_inference_server(params):
     ports = [6688]
     client = InferenceClient(ports)
-    print(client)
-    results = client.infer(params)
-    print(results)
+    results = client.infer(pickle.dumps(params))
     return results
 
 def get_days_worth_of_logs(data_path, start, cur_day, start_pkl):
