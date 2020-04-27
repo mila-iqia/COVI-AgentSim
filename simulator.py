@@ -123,6 +123,8 @@ class Human(object):
         # interventions & risk prediction
         self.tracing = False
         self.WEAR_MASK = False
+        self.notified = False
+        self.tracing_method = None
 
         # risk prediction
         self.risk = BASELINE_RISK_VALUE
@@ -433,7 +435,6 @@ class Human(object):
 
     def notify(self, intervention):
         if intervention is not None and not self.notified:
-            print(f"Intervention: {intervention}")
             self.tracing = False
             if isinstance(intervention, Tracing):
                 self.tracing = True

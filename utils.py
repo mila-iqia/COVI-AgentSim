@@ -6,6 +6,7 @@ import json
 from bitarray import bitarray
 from config import *
 from functools import lru_cache
+from interventions import *
 
 def log(str, logfile=None, timestamp=False):
 	if timestamp:
@@ -754,3 +755,15 @@ def proba_to_risk_fn(mapping):
         return np.maximum(np.searchsorted(mapping, probas, side='left') - 1, 0)
 
     return _proba_to_risk
+
+def get_intervention(key):
+	if key == "Lockdown":
+		return Lockdown()
+	elif key == "WearMask":
+		return WearMask(MASKS_SUPPLY)
+	elif key == "SocialDistancing":
+		return SocialDistancing()
+	elif key == "Quarantine":
+		return Quarantine()
+	elif key == "Tracing":
+		return Tracing(RISK_MODEL)

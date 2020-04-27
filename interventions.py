@@ -59,13 +59,13 @@ class Lockdown(BehaviorInterventions):
 
 class SocialDistancing(BehaviorInterventions):
     MIN_DISTANCE_ENCOUNTER = 200 # cm
-    TIME_ENCOUNTER_FACTOR = 0.5
+    TIME_ENCOUNTER_REDUCTION_FACTOR = 0.5
     _RHO = 0.2
     _GAMMA = 0.5
 
     def modify_behavior(self, human):
         human.min_distance_encounter = self.MIN_DISTANCE_ENCOUNTER
-        human.time_encounter_reduction_factor = self.TIME_REDUCTION_FACTOR
+        human.time_encounter_reduction_factor = self.TIME_ENCOUNTER_REDUCTION_FACTOR
         human.rho = self._RHO
         human.gamma = self._GAMMA
 

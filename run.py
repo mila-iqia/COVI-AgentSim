@@ -109,27 +109,32 @@ def tune(n_people, simulation_days, seed):
     # x = pd.DataFrame.from_dict(stats).set_index('time')
     # fig = x[['susceptible', 'exposed', 'infectious', 'removed']].iplot(asFigure=True, title="SEIR")
     # fig.write_image("plots/tune/seir.png")
-    # timenow = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
-    # data = dict()
-    # data['contacts'] = dict(tracker.contacts)
-    # data['cases_per_day'] = tracker.cases_per_day
-    # data['r_0'] = tracker.r_0
-    # data['r'] = tracker.r
-    # data['dist_encounters'] = dict(tracker.dist_encounters)
-    # data['time_encounters'] = dict(tracker.time_encounters)
-    # data['day_encounters'] = dict(tracker.day_encounters)
-    # data['hour_encounters'] = dict(tracker.hour_encounters)
-    # data['daily_age_group_encounters'] = dict(tracker.daily_age_group_encounters)
-    # data['age_distribution'] = tracker.age_distribution
-    # data['sex_distribution'] = tracker.sex_distribution
-    # data['house_size'] = tracker.house_size
-    # data['house_age'] = tracker.house_age
-    # data['symptoms'] = dict(tracker.symptoms)
-    # data['transition_probability'] = dict(tracker.transition_probability)
+    timenow = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
+    data = dict()
+    data['contacts'] = dict(tracker.contacts)
+    data['cases_per_day'] = tracker.cases_per_day
+    data['r_0'] = tracker.r_0
+    data['r'] = tracker.r
+    data['dist_encounters'] = dict(tracker.dist_encounters)
+    data['time_encounters'] = dict(tracker.time_encounters)
+    data['day_encounters'] = dict(tracker.day_encounters)
+    data['hour_encounters'] = dict(tracker.hour_encounters)
+    data['daily_age_group_encounters'] = dict(tracker.daily_age_group_encounters)
+    data['age_distribution'] = tracker.age_distribution
+    data['sex_distribution'] = tracker.sex_distribution
+    data['house_size'] = tracker.house_size
+    data['house_age'] = tracker.house_age
+    data['symptoms'] = dict(tracker.symptoms)
+    data['transition_probability'] = dict(tracker.transition_probability)
     #
-    # import dill
-    # with open(f"logs/tracker_data_n_{n_people}_seed_{seed}_{timenow}.pkl", 'wb') as f:
-    #     dill.dump(data, f)
+    import dill
+    s = config.INTERVENTION
+    if s == "Tracing":
+        s = f"{s}_{config.RISK_MODEL}"
+
+    filename = f"tracker_data_n_{n_people}_seed_{seed}_{timenow}_{s}.pkl"
+    with open(f"logs/{filename}", 'wb') as f:
+        dill.dump(data, f)
 
     # logfile = os.path.join(f"logs/log_n_{n_people}_seed_{seed}_{timenow}.txt")
     tracker.write_metrics(None)

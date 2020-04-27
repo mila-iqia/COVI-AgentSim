@@ -9,7 +9,7 @@ from orderedset import OrderedSet
 import copy
 
 from config import *
-from utils import compute_distance, _get_random_area, _draw_random_discreet_gaussian
+from utils import compute_distance, _get_random_area, _draw_random_discreet_gaussian, get_intervention
 from track import Tracker
 from interventions import *
 
@@ -239,12 +239,8 @@ class City(simpy.Environment):
         while True:
             day += 1
 
-            if day == 30:
-                # self.intervention = Tracing(RISK_MODEL)
-                # self.intervention = Lockdown()
-                # self.intervention = Quarantine()
-                # self.intervention = SocialDistancing()
-                # self.intervention = WearMask(MASKS_SUPPLY)
+            if day == INTERVENTION_DAY:
+                self.intervention = get_intervention(INTERVENTION)
                 pass
             self.tracker.increment_day()
             yield self.env.timeout(duration / TICK_MINUTE)
