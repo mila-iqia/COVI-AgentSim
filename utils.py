@@ -17,15 +17,17 @@ PREEXISTING_CONDITIONS = OrderedDict([
         ConditionProbability('smoker', 5, 12, 'a', 0.0),
         ConditionProbability('smoker', 5, 18, 'a', 0.03),
         ConditionProbability('smoker', 5, 65, 'a', 0.185),
-        ConditionProbability('smoker', 5, 100, 'a', 0.09)
+        ConditionProbability('smoker', 5, 1000, 'a', 0.09)
     ]),
     ('diabetes', [
         ConditionProbability('diabetes', 1, 18, 'a', 0.005),
         ConditionProbability('diabetes', 1, 35, 'a', 0.009),
         ConditionProbability('diabetes', 1, 50, 'a', 0.039),
         ConditionProbability('diabetes', 1, 75, 'a', 0.13),
-        ConditionProbability('diabetes', 1, 100, 'a', 0.179)
+        ConditionProbability('diabetes', 1, 1000, 'a', 0.179)
     ]),
+    # 'smoker' and 'diabetes' are dependencies of 'heart_disease' so they 
+    # need to be inserted before this position
     ('heart_disease', [
         ConditionProbability('heart_disease', 2, 20, 'a', 0.001),
         ConditionProbability('heart_disease', 2, 35, 'a', 0.005),
@@ -37,19 +39,23 @@ PREEXISTING_CONDITIONS = OrderedDict([
         ConditionProbability('heart_disease', 2, 75, 'a', 0.15),
         ConditionProbability('heart_disease', 2, 100, 'f', 0.311),
         ConditionProbability('heart_disease', 2, 100, 'm', 0.44),
-        ConditionProbability('heart_disease', 2, 100, 'a', 0.375)
+        ConditionProbability('heart_disease', 2, 1000, 'a', 0.375)
     ]),
+    # 'smoker' is a dependency of 'cancer' so it needs to be inserted
+    # before this position
     ('cancer', [
         ConditionProbability('cancer', 6, 30, 'a', 0.00029),
         ConditionProbability('cancer', 6, 60, 'a', 0.0029),
         ConditionProbability('cancer', 6, 90, 'a', 0.029),
-        ConditionProbability('cancer', 6, 100, 'a', 0.05)
+        ConditionProbability('cancer', 6, 1000, 'a', 0.05)
     ]),
+    # 'smoker' is a dependency of 'COPD' so it needs to be inserted
+    # before this position
     ('COPD', [
         ConditionProbability('COPD', 3, 35, 'a', 0.0),
         ConditionProbability('COPD', 3, 50, 'a', 0.015),
         ConditionProbability('COPD', 3, 65, 'f', 0.037),
-        ConditionProbability('COPD', 3, 100, 'a', 0.075)
+        ConditionProbability('COPD', 3, 1000, 'a', 0.075)
     ]),
     ('asthma', [
         ConditionProbability('asthma', 4, 10, 'f', 0.07),
@@ -61,10 +67,12 @@ PREEXISTING_CONDITIONS = OrderedDict([
         ConditionProbability('asthma', 4, 75, 'f', 0.11),
         ConditionProbability('asthma', 4, 75, 'm', 0.06),
         ConditionProbability('asthma', 4, 75, 'a', 0.08),
-        ConditionProbability('asthma', 4, 100, 'f', 0.12),
-        ConditionProbability('asthma', 4, 100, 'm', 0.08),
-        ConditionProbability('asthma', 4, 100, 'a', 0.1)
+        ConditionProbability('asthma', 4, 1000, 'f', 0.12),
+        ConditionProbability('asthma', 4, 1000, 'm', 0.08),
+        ConditionProbability('asthma', 4, 1000, 'a', 0.1)
     ]),
+    # All conditions above are dependencies of 'stroke' so they need to be
+    # inserted before this position
     ('stroke', [
         ConditionProbability('stroke', 7, 20, 'a', 0.0),
         ConditionProbability('stroke', 7, 40, 'a', 0.01),
@@ -72,11 +80,13 @@ PREEXISTING_CONDITIONS = OrderedDict([
         ConditionProbability('stroke', 7, 80, 'a', 0.04),
         ConditionProbability('stroke', 7, 1000, 'a', 0.07)
     ]),
+    # 'cancer' is a dependency of 'immuno-suppressed' so it needs to be inserted
+    # before this position
     ('immuno-suppressed', [  # (3.6% on average)
         ConditionProbability('immuno-suppressed', 0, 40, 'a', 0.005),
         ConditionProbability('immuno-suppressed', 0, 65, 'a', 0.036),
         ConditionProbability('immuno-suppressed', 0, 85, 'a', 0.045),
-        ConditionProbability('immuno-suppressed', 0, 100, 'a', 0.20)
+        ConditionProbability('immuno-suppressed', 0, 1000, 'a', 0.20)
     ]),
     ('lung_disease', [
         ConditionProbability('lung_disease', 8, 0, 'a', 0.0)
@@ -751,214 +761,39 @@ def _get_preexisting_conditions(age, sex, rng):
     #else:
     conditions = []
 
-    # for c_name, c_prob in PREEXISTING_CONDITIONS.items():
-    #     rand = rng.rand()
-    #     modifier = 1.
-    #     if c_name == 'heart_disease':
-    #         if 'diabetes' or 'smoker' in conditions:
-    #             modifier = 2
-    #         else:
-    #             modifier = 0.5
-    #     if c_name in ('cancer', 'COPD'):
-    #         if 'smoker' in conditions:
-    #             modifier = 1.3
-    #         else:
-    #             modifier = 0.95
-    #     # TODO: This currently excludes immuno-suppressed condiction when
-    #     #  setting the modifier value. Is That wanted?
-    #     if c_name == 'stroke':
-    #         modifier = len(conditions)
-    #     if c_name == 'immuno-suppressed':
-    #         if 'cancer' in conditions:
-    #             modifier = 1.2
-    #         else:
-    #             modifier = 0.98
-    #     for p in c_prob:
-    #         if age < p.age:
-    #             if p.sex == 'a' or sex.lower().startswith(p.sex):
-    #                 if rand < modifier * p.probability:
-    #                     conditions.append(p.name)
-    #                 break
+    for c_name, c_prob in PREEXISTING_CONDITIONS.items():
+        rand = rng.rand()
+        modifier = 1.
+        # 'diabetes' and 'smoker' are dependencies of 'heart_disease'
+        if c_name == 'heart_disease':
+            if 'diabetes' in conditions or 'smoker' in conditions:
+                modifier = 2
+            else:
+                modifier = 0.5
+        # 'smoker' is a dependencies of 'cancer' and 'COPD' so it's execution
+        # needs to be already done at this point
+        if c_name in ('cancer', 'COPD'):
+            if 'smoker' in conditions:
+                modifier = 1.3
+            else:
+                modifier = 0.95
+        # TODO: 'immuno-suppressed' condiction is currently excluded when
+        #  setting the 'stroke' modifier value. Is that wanted?
+        if c_name == 'stroke':
+            modifier = len(conditions)
+        if c_name == 'immuno-suppressed':
+            if 'cancer' in conditions:
+                modifier = 1.2
+            else:
+                modifier = 0.98
+        for p in c_prob:
+            if age < p.age:
+                if p.sex == 'a' or sex.lower().startswith(p.sex):
+                    if rand < modifier * p.probability:
+                        conditions.append(p.name)
+                    break
 
     # TODO PUT IN QUICKLY WITHOUT VERIFICATION OF NUMBERS
-    # &smoking
-    if age < 12:
-        pass
-    elif age < 18:
-        if rng.rand() < 0.03:
-            conditions.append('smoker')
-    elif age < 65:
-        if rng.rand() < 0.185:
-            conditions.append('smoker')
-    else:
-        if rng.rand() < 0.09:
-            conditions.append('smoker')
-
-    # &diabetes
-    if age < 18:
-        if rng.rand() < .005:
-            conditions.append('diabetes')
-    elif age < 35:
-        if rng.rand() < .009:
-            conditions.append('diabetes')
-    elif age < 50:
-        if rng.rand() < .039:
-            conditions.append('diabetes')
-    elif age < 75:
-        if rng.rand() < .13:
-            conditions.append('diabetes')
-    else:
-        if rng.rand() < .179:
-            conditions.append('diabetes')
-
-    # &heart disease
-    if 'diabetes' in conditions or 'smoker' in conditions:
-        modifier = 2
-    else:
-        modifier = 0.5
-    if age < 20:
-        if rng.rand() < modifier *.001:
-            conditions.append('heart_disease')
-    elif age < 35:
-        if rng.rand() < modifier * .005:
-            conditions.append('heart_disease')
-    elif age < 50:
-        if sex.lower().startswith('f'):
-            if rng.rand() < modifier * .013:
-                conditions.append('heart_disease')
-        elif sex.lower().startswith('m'):
-            if rng.rand() < modifier * .021:
-                conditions.append('heart_disease')
-        else:
-            if rng.rand() < modifier * .017:
-                conditions.append('heart_disease')
-    elif age < 75:
-        if sex.lower().startswith('f'):
-            if rng.rand() < modifier * .13:
-                conditions.append('heart_disease')
-        elif sex.lower().startswith('m'):
-            if rng.rand() < modifier * .178:
-                conditions.append('heart_disease')
-        else:
-            if rng.rand() < modifier * .15:
-                conditions.append('heart_disease')
-    else:
-        if sex.lower().startswith('f'):
-            if rng.rand() < modifier * .311:
-                conditions.append('heart_disease')
-        elif sex.lower().startswith('m'):
-            if rng.rand() < modifier * .44:
-                conditions.append('heart_disease')
-        else:
-            if rng.rand() < modifier * .375:
-                conditions.append('heart_disease')
-
-    # &cancer
-    modifier = 1.3 if 'smoker' in conditions else 0.95
-    if age < 30:
-        if rng.rand() < modifier * 0.00029:
-            conditions.append('cancer')
-    elif age < 60:
-        if rng.rand() < modifier * 0.0029:
-            conditions.append('cancer')
-    elif age < 90:
-        if rng.rand() < modifier * 0.029:
-            conditions.append('cancer')
-    else:
-        if rng.rand() < modifier * 0.05:
-            conditions.append('cancer')
-
-
-    # &COPD
-    if age < 35:
-        pass
-    elif age < 50:
-        if rng.rand() < modifier * .015:
-            conditions.append('COPD')
-    elif age < 65:
-        if rng.rand() < modifier * .037:
-            conditions.append('COPD')
-    else:
-        if rng.rand() < modifier * .075:
-            conditions.append('COPD')
-
-    # &asthma
-    if age < 10:
-        if sex.lower().startswith('f'):
-            if rng.rand() < .07:
-                conditions.append('asthma')
-        elif sex.lower().startswith('m'):
-            if rng.rand() < .12:
-                conditions.append('asthma')
-        else:
-            if rng.rand() < .09:
-                conditions.append('asthma')
-    elif age < 25:
-        if sex.lower().startswith('f'):
-            if rng.rand() < .15:
-                conditions.append('asthma')
-        elif sex.lower().startswith('m'):
-            if rng.rand() < .19:
-                conditions.append('asthma')
-        else:
-            if rng.rand() < .17:
-                conditions.append('asthma')
-    elif age < 75:
-        if sex.lower().startswith('f'):
-            if rng.rand() < .11:
-                conditions.append('asthma')
-        elif sex.lower().startswith('m'):
-            if rng.rand() < .06:
-                conditions.append('asthma')
-        else:
-            if rng.rand() < .08:
-                conditions.append('asthma')
-    else:
-        if sex.lower().startswith('f'):
-            if rng.rand() < .12:
-                conditions.append('asthma')
-        elif sex.lower().startswith('m'):
-            if rng.rand() < .08:
-                conditions.append('asthma')
-        else:
-            if rng.rand() < .1:
-                conditions.append('asthma')
-
-
-    # &stroke
-    modifier = len(conditions)
-    if age < 20:
-        pass
-    elif age < 40:
-        if rng.rand() < modifier * 0.01:
-            conditions.append('stroke')
-    elif age < 60:
-        if rng.rand() < modifier * 0.03:
-            conditions.append('stroke')
-    elif age < 80:
-        if rng.rand() < modifier * 0.04:
-            conditions.append('stroke')
-    else:
-        if rng.rand() < modifier * 0.07:
-            conditions.append('stroke')
-
-
-    # &immuno-suppressed (3.6% on average)
-    modifier = 1.2 if 'cancer' in conditions else 0.98
-    if age < 40:
-        if rng.rand() < modifier * 0.005:
-            conditions.append('immuno-suppressed')
-    elif age < 65:
-        if rng.rand() < modifier * 0.036:
-            conditions.append('immuno-suppressed')
-    elif age < 85:
-        if rng.rand() < modifier * 0.045:
-            conditions.append('immuno-suppressed')
-    else:
-        if rng.rand() < modifier * 0.20:
-            conditions.append('immuno-suppressed')
-
-    #TODO PUT IN QUICKLY WITHOUT VERIFICATION OF NUMBERS
     if 'asthma' in conditions or 'COPD' in conditions:
         conditions.append('lung_disease')
 
