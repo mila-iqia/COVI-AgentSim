@@ -16,7 +16,7 @@ from frozen.utils import encode_message, update_uid, encode_update_message, deco
 def query_inference_server(params):
     ports = [6688]
     client = InferenceClient(ports)
-    results = client.infer(pickle.dumps(params))
+    results = client.infer(params)
     return results
 
 def get_days_worth_of_logs(data_path, start, cur_day, start_pkl):
@@ -83,8 +83,8 @@ def integrated_risk_pred(humans, data_path, start, current_day, all_possible_sym
                     hd[k.split("_")[0]].update_messages.append(update_message)
             human.sent_messages = {}
         all_params.append({"start": start, "current_day": current_day, "encounters": encounters,
-                           "all_possible_symptoms": all_possible_symptoms, "human": human,
-                           "save_training_data": True, "log_path": log_path,
+                           "all_possible_symptoms": all_possible_symptoms, "human": human.__getstate__(),
+                           "save_training_data": config.COLLECT_LOGS, "log_path": log_path,
                            "random_clusters": False})
         human.uid = update_uid(human.uid, human.rng)
 
