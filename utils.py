@@ -9,6 +9,8 @@ from functools import lru_cache
 
 ConditionProbability = namedtuple('ConditionProbability', ['name', 'id', 'age', 'sex', 'probability'])
 
+# NOTE: THE PREEXISTING CONDITION NAMES/IDs BELOW MUST MATCH THOSE IN FROZEN/UTILS
+
 PREEXISTING_CONDITIONS = OrderedDict([
     ('smoker', [
         ConditionProbability('smoker', 5, 12, 'a', 0.0),
