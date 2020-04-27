@@ -235,14 +235,14 @@ class City(simpy.Environment):
             h.stores_preferences = [(compute_distance(h.household, s) + 1e-1) ** -1 for s in self.stores]
             h.parks_preferences = [(compute_distance(h.household, s) + 1e-1) ** -1 for s in self.parks]
 
-    def run(self, duration, outfile, start_time, all_possible_symptoms, n_jobs):
+    def run(self, duration, outfile, start_time, all_possible_symptoms, port, n_jobs):
         current_day = 0
         with zipfile.ZipFile(outfile + ".zip", 'r') as zf:
             start_pkl = zf.namelist()[0]
 
         while True:
             if RISK_MODEL not in LOCAL_RISK_MODELS:
-                self.humans, start_pkl = integrated_risk_pred(self.humans, outfile, start_time, current_day, all_possible_symptoms, start_pkl, n_jobs=n_jobs)
+                self.humans, start_pkl = integrated_risk_pred(self.humans, outfile, start_time, current_day, all_possible_symptoms, start_pkl, port=port, n_jobs=n_jobs)
             if INTERVENTION_DAY > 0 and current_day == INTERVENTION_DAY:
                 self.intervention = get_intervention(INTERVENTION)
                 print(self.intervention)
