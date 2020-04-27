@@ -1,8 +1,21 @@
 import numpy as np
 
-from utils import PREEXISTING_CONDITIONS
-
 from frozen.utils import decode_message
+
+# NOTE: THIS MAP SHOULD ALWAYS MATCH THE NAME/IDS PROVIDED IN UTILS.PY
+PREEXISTING_CONDITIONS_META = {
+    'smoker': 5,
+    'diabetes': 1,
+    'heart_disease': 2,
+    'cancer': 6,
+    'COPD': 3,
+    'asthma': 4,
+    'stroke': 7,
+    'immuno-suppressed': 0,
+    'lung_disease': 8,
+    'pregnant': 9,
+}
+
 
 def messages_to_np(human):
     ms_enc = []
@@ -13,6 +26,7 @@ def messages_to_np(human):
                 continue
             ms_enc.append([cluster_id, decode_message(messages[0]).risk, len(messages), day])
     return np.array(ms_enc)
+
 
 def candidate_exposures(human, date):
     candidate_encounters = messages_to_np(human)
@@ -30,11 +44,11 @@ def candidate_exposures(human, date):
 
     return candidate_encounters, exposed_encounters
 
+
 def conditions_to_np(conditions):
-    conditions_encs = np.zeros((len(PREEXISTING_CONDITIONS),))
+    conditions_encs = np.zeros((len(PREEXISTING_CONDITIONS_META),))
     for condition in conditions:
-        probability = PREEXISTING_CONDITIONS[condition][0]
-        conditions_encs[probability.id] = 1
+        conditions_encs[PREEXISTING_CONDITIONS_META[condition]] = 1
     return conditions_encs
 
 
@@ -52,6 +66,7 @@ def encode_age(age):
         return -1
     else:
         return age
+
 
 def encode_sex(sex):
     if not sex:
