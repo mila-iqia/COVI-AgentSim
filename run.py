@@ -26,7 +26,7 @@ def simu():
 @click.option('--out_chunk_size', help='number of events per dump in outfile', type=int, default=2500, required=False)
 @click.option('--outdir', help='the directory to write data to', type=str, default="output", required=False)
 @click.option('--seed', help='seed for the process', type=int, default=0)
-@click.option('--n_jobs', help='number of parallel procs to run of risk pred', type=int, default=1)
+@click.option('--n_jobs', help='number of parallel procs to query the risk servers with', type=int, default=1)
 @click.option('--port', help='which port should we look for inference servers on', type=int, default=6688)
 def sim(n_people=None,
         init_percent_sick=0,
@@ -53,7 +53,7 @@ def sim(n_people=None,
         simulation_days=simulation_days,
         outfile=outfile, out_chunk_size=out_chunk_size,
         print_progress=True,
-        seed=seed, n_jobs=n_jobs
+        seed=seed, n_jobs=n_jobs, port=port,
     )
     monitors[0].dump()
     monitors[0].join_iothread()
