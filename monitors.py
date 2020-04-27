@@ -5,8 +5,6 @@ from matplotlib import pyplot as plt
 import json
 import pylab as pl
 import pickle
-import numpy as np
-import pandas as pd
 from datetime import datetime
 import threading
 import zipfile
@@ -66,7 +64,6 @@ class EventMonitor(BaseMonitor):
     def run(self, env, city: City):
         while True:
             self.data = city.events
-
             if self.chunk_size and len(self.data) > self.chunk_size:
                 self.data = city.pull_events()
                 self.dump()
