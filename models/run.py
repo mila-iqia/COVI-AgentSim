@@ -8,9 +8,12 @@ from collections import defaultdict
 from joblib import Parallel, delayed
 import config
 from plots.plot_risk import hist_plot
-from models.risk_models import RiskModelTristan
 from models.inference_client import InferenceClient
 from frozen.utils import encode_message, update_uid, encode_update_message, decode_message
+
+# load the risk map (this is ok, since we only do this #days)
+risk_map = np.load(f"{os.path.dirname(os.path.realpath(__file__))}/log_risk_mapping.npy")
+risk_map[0] = np.log(0.01)
 
 
 def query_inference_server(params):
@@ -44,9 +47,16 @@ def get_days_worth_of_logs(data_path, start, cur_day, start_pkl):
         pass
     return to_return, start_pkl
 
+def quantize_risk(risk):
+    if risk == 0.:
+        return 15
+    # returns the quantized log probability (int 0 to 15)
+    for idx, log_prob in enumerate(risk_map):
+        if risk >= log_prob and risk < risk_map[idx+1]:
+            return idx
+
+
 def integrated_risk_pred(humans, data_path, start, current_day, all_possible_symptoms, start_pkl, n_jobs=1):
-    if config.RISK_MODEL:
-        RiskModel = RiskModelTristan
 
     # check that the plot_dir exists:
     if config.PLOT_RISK and not os.path.isdir(config.RISK_PLOT_PATH):
@@ -63,7 +73,7 @@ def integrated_risk_pred(humans, data_path, start, current_day, all_possible_sym
             encounter_time = encounter['time']
             unobs = encounter['payload']['unobserved']
             encountered_human = hd[unobs['human2']['human_id']]
-            message = encode_message(encountered_human.cur_message(current_day, RiskModel))
+            message = encode_message(encountered_human.cur_message(current_day))
             encountered_human.sent_messages[str(unobs['human1']['human_id']) + "_" + str(encounter_time)] = message
             human.messages.append(message)
 
@@ -72,28 +82,29 @@ def integrated_risk_pred(humans, data_path, start, current_day, all_possible_sym
                 human.exposure_message = message
 
         # if the encounter happened within the last 14 days, and your symptoms started at most 3 days after your contact
-        if RiskModel.quantize_risk(human.start_risk) != RiskModel.quantize_risk(human.risk):
+        if quantize_risk(human.start_risk) != quantize_risk(human.risk):
             sent_at = start + datetime.timedelta(days=current_day, minutes=human.rng.randint(low=0, high=1440))
             for k, m in human.sent_messages.items():
                 message = decode_message(m)
                 if current_day - message.day < 14:
                     # add the update message to the receiver's inbox
                     update_message = encode_update_message(
-                        human.cur_message_risk_update(message.day, message.risk, sent_at, RiskModel))
+                        human.cur_message_risk_update(message.day, message.risk, sent_at))
                     hd[k.split("_")[0]].update_messages.append(update_message)
             human.sent_messages = {}
         all_params.append({"start": start, "current_day": current_day, "encounters": encounters,
                            "all_possible_symptoms": all_possible_symptoms, "human": human.__getstate__(),
-                           "save_training_data": config.COLLECT_LOGS, "log_path": log_path,
-                           "random_clusters": False})
+                           "COLLECT_LOGS": config.COLLECT_LOGS, "log_path": log_path, "risk_model": config.RISK_MODEL})
         human.uid = update_uid(human.uid, human.rng)
 
     with Parallel(n_jobs=n_jobs, batch_size=config.MP_BATCHSIZE, backend=config.MP_BACKEND, verbose=1, prefer="threads") as parallel:
         results = parallel((delayed(query_inference_server)(params) for params in all_params))
 
-    for name, risk, clusters in results:
-        hd[name].risk = risk
-        hd[name].clusters = clusters
+    for result in results:
+        if result is not None:
+            name, risk, clusters = result
+            hd[name].risk = risk
+            hd[name].clusters = clusters
 
     if config.PLOT_RISK and config.COLLECT_LOGS:
         daily_risks = [(np.e ** human.risk, human.is_infectious, human.name) for human in hd.values()]
@@ -107,3 +118,4 @@ def integrated_risk_pred(humans, data_path, start, current_day, all_possible_sym
         json.dump(clusters, open(config.CLUSTER_PATH, 'w'))
 
     return humans, start_pkl
+

@@ -4,6 +4,7 @@ from utils import _normalize_scores, _get_random_sex, _get_covid_symptoms, \
     _get_cold_symptoms_v2, _get_flu_symptoms_v2
 from frozen.clusters import Clusters
 from frozen.utils import create_new_uid, Message, UpdateMessage
+from models.run import quantize_risk
 
 from base import *
 if COLLECT_LOGS is False:
@@ -823,13 +824,13 @@ class Human(object):
         self.__dict__.update(state)
 
 
-    def cur_message(self, day, RiskModel):
+    def cur_message(self, day):
         """creates the current message for this user"""
-        message = Message(self.uid, RiskModel.quantize_risk(self.risk), day, self.name)
+        message = Message(self.uid, quantize_risk(self.risk), day, self.name)
         return message
 
-    def cur_message_risk_update(self, day, old_risk, sent_at, RiskModel):
-        return UpdateMessage(self.uid, RiskModel.quantize_risk(self.risk), old_risk, day, sent_at, self.name)
+    def cur_message_risk_update(self, day, old_risk, sent_at):
+        return UpdateMessage(self.uid, quantize_risk(self.risk), old_risk, day, sent_at, self.name)
 
     def symptoms_at_time(self, now, symptoms):
         if not symptoms:
