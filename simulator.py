@@ -5,7 +5,6 @@ from models.run import quantize_risk
 
 from utils import _normalize_scores, _get_random_sex, _get_covid_progression, \
      _get_preexisting_conditions, _draw_random_discreet_gaussian, _sample_viral_load_piecewise, \
-     _encode_message, _decode_message, float_to_binary, binary_to_float, \
      _get_cold_progression, _get_flu_progression, _get_allergy_progression, proba_to_risk_fn, _get_get_really_sick
 
 from base import *

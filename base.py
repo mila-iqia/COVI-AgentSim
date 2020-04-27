@@ -235,7 +235,6 @@ class City(simpy.Environment):
             h.stores_preferences = [(compute_distance(h.household, s) + 1e-1) ** -1 for s in self.stores]
             h.parks_preferences = [(compute_distance(h.household, s) + 1e-1) ** -1 for s in self.parks]
 
-<<<<<<< HEAD
     def run(self, duration, outfile, start_time, all_possible_symptoms, n_jobs):
         current_day = 0
         with zipfile.ZipFile(outfile + ".zip", 'r') as zf:
