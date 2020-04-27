@@ -247,7 +247,7 @@ SYMPTOM_DAYS = 5  # @param
 COLLECT_LOGS = True
 
 # RISK PREDICTION PARAMETERS
-RISK_MODEL = "naive" #transformer
+# RISK_MODEL = "naive" #transformer
 MP_BATCHSIZE = "auto"
 MP_N_JOBS = "1"
 MP_BACKEND = "loky"

@@ -22,11 +22,9 @@ def query_inference_server(params):
     ports = params['port']
     del params['port']
     client = InferenceClient(ports)
-    try:
-        results = client.infer(params)
-    except Exception:
-        import pdb; pdb.set_trace()
+    results = client.infer(params)
     return results
+
 
 def get_days_worth_of_logs(data_path, start, cur_day, start_pkl):
     to_return = defaultdict(list)
@@ -57,8 +55,8 @@ def get_days_worth_of_logs(data_path, start, cur_day, start_pkl):
 def integrated_risk_pred(humans, data_path, start, current_day, all_possible_symptoms, start_pkl, port=6688, n_jobs=1):
 
     # check that the plot_dir exists:
-    if config.PLOT_RISK and not os.path.isdir(config.RISK_PLOT_PATH):
-        os.mkdir(config.RISK_PLOT_PATH)
+    if config.PLOT_RISK:
+        os.makedirs(config.RISK_PLOT_PATH, exist_ok=True)
 
     days_logs, start_pkl = get_days_worth_of_logs(data_path + ".zip", start, current_day, start_pkl)
     all_params = []

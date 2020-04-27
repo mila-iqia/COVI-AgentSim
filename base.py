@@ -394,7 +394,6 @@ class ICU(Location):
 class Event:
     test = 'test'
     encounter = 'encounter'
-    symptom_start = 'symptom_start'
     contamination = 'contamination'
     recovered = 'recovered'
     static_info = 'static_info'
@@ -403,7 +402,7 @@ class Event:
 
     @staticmethod
     def members():
-        return [Event.test, Event.encounter, Event.symptom_start, Event.contamination, Event.static_info, Event.visit, Event.daily]
+        return [Event.test, Event.encounter, Event.contamination, Event.static_info, Event.visit, Event.daily]
 
     @staticmethod
     def log_encounter(human1, human2, location, duration, distance, infectee, time):
@@ -579,10 +578,6 @@ class DummyEvent:
 
     @staticmethod
     def log_test(*args, **kwargs):
-        pass
-
-    @staticmethod
-    def log_symptom_start(*args, **kwargs):
         pass
 
     @staticmethod
