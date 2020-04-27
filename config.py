@@ -244,7 +244,7 @@ AVG_COLD_DURATION = 3
 TICK_MINUTE = 2  # @param increment
 SIMULATION_DAYS = 30  # @param
 SYMPTOM_DAYS = 5  # @param
-COLLECT_LOGS = False
+COLLECT_LOGS = True
 
 # RISK PREDICTION PARAMETERS
 RISK_MODEL = "naive" #transformer
@@ -339,7 +339,7 @@ MASKS_SUPPLY = BIG_NUMBER
 # "first order probabilistic tracing"  "manual tracing", "digital tracing", "smart tracing"
 # if you want to use the inference servers, use "naive" or "transformer"
 LOCAL_RISK_MODELS = ["first order probabilistic tracing",  "manual tracing", "digital tracing", "smart tracing"]
-RISK_MODEL = "first order probabilistic tracing"
+RISK_MODEL = "naive"
 N_DAYS_HISTORY = 14
 MIN_MESSAGE_PASSING_DISTANCE = 0
 MAX_MESSAGE_PASSING_DISTANCE = 1000 #cm GPS; 10 x 10 m grid everyone is a contact

@@ -19,7 +19,8 @@ risk_map[0] = np.log(0.01)
 
 
 def query_inference_server(params):
-    ports = [6688]
+    ports = params['port']
+    del params['port']
     client = InferenceClient(ports)
     try:
         results = client.infer(params)
@@ -53,7 +54,7 @@ def get_days_worth_of_logs(data_path, start, cur_day, start_pkl):
     return to_return, start_pkl
 
 
-def integrated_risk_pred(humans, data_path, start, current_day, all_possible_symptoms, start_pkl, n_jobs=1):
+def integrated_risk_pred(humans, data_path, start, current_day, all_possible_symptoms, start_pkl, port=6688, n_jobs=1):
 
     # check that the plot_dir exists:
     if config.PLOT_RISK and not os.path.isdir(config.RISK_PLOT_PATH):
@@ -91,7 +92,7 @@ def integrated_risk_pred(humans, data_path, start, current_day, all_possible_sym
             human.sent_messages = {}
         all_params.append({"start": start, "current_day": current_day, "encounters": encounters,
                            "all_possible_symptoms": all_possible_symptoms, "human": human.__getstate__(),
-                           "COLLECT_LOGS": config.COLLECT_LOGS, "log_path": log_path, "risk_model": config.RISK_MODEL})
+                           "COLLECT_LOGS": config.COLLECT_LOGS, "log_path": log_path, "risk_model": config.RISK_MODEL, "port": port})
         human.uid = update_uid(human.uid, human.rng)
 
     with Parallel(n_jobs=n_jobs, batch_size=config.MP_BATCHSIZE, backend=config.MP_BACKEND, verbose=1, prefer="threads") as parallel:
