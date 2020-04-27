@@ -19,13 +19,10 @@ risk_map[0] = np.log(0.01)
 
 
 def query_inference_server(params):
-    ports = [6688]
-    client = InferenceClient(ports)
-    try:
-        results = client.infer(params)
-    except Exception:
-        import pdb; pdb.set_trace()
+    client = InferenceClient(6688)
+    results = client.infer(params)
     return results
+
 
 def get_days_worth_of_logs(data_path, start, cur_day, start_pkl):
     to_return = defaultdict(list)
