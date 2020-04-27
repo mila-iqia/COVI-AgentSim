@@ -8,6 +8,7 @@ from config import *
 from functools import lru_cache
 from interventions import *
 
+# * Age of 1000 means not check on age
 ConditionProbability = namedtuple('ConditionProbability', ['name', 'id', 'age', 'sex', 'probability'])
 
 # NOTE: THE PREEXISTING CONDITION NAMES/IDs BELOW MUST MATCH THOSE IN FROZEN/UTILS
@@ -95,6 +96,7 @@ PREEXISTING_CONDITIONS = OrderedDict([
         ConditionProbability('pregnant', 9, 0, 'f', 0.0)
     ])
 ])
+
 
 def log(str, logfile=None, timestamp=False):
 	if timestamp:
