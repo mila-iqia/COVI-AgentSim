@@ -30,7 +30,7 @@ def decode_update_message(update_message):
 	risk = int(risk)
 	new_risk = int(new_risk)
 	day = int(day)
-	received_at = datetime.datetime.strptime(received_at, "%Y-%m-%d %H:%M:%S")
+	received_at = float(received_at) #datetime.datetime.strptime(received_at, "%Y-%m-%d %H:%M:%S")
 	unobs_uid = unobs_id
 	has_app = bool(has_app)
 	return UpdateMessage(obs_uid, new_risk, risk, day, received_at, unobs_uid, has_app)

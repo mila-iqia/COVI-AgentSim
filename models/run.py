@@ -78,7 +78,7 @@ def integrated_risk_pred(humans, data_path, start, current_day, all_possible_sym
 
     query_func = functools.partial(query_inference_server, target_port=port)
 
-    with Parallel(n_jobs=n_jobs, batch_size=config.MP_BATCHSIZE, backend=config.MP_BACKEND, verbose=1, prefer="threads") as parallel:
+    with Parallel(n_jobs=n_jobs, batch_size=config.MP_BATCHSIZE, backend=config.MP_BACKEND, verbose=10, prefer="threads") as parallel:
         batched_results = parallel((delayed(query_func)(params) for params in batched_params))
 
     results = []
