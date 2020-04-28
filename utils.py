@@ -1000,8 +1000,36 @@ def _get_flu_progression(age, rng, carefulness, preexisting_conditions, really_s
 
 
 def _get_cold_progression(age, rng, carefulness, preexisting_conditions, really_sick, extremely_sick):
+    symptoms_contexts = SYMPTOMS_CONTEXTS['cold']
 
     progression = [[]]
+    symptoms_per_phase = [[] for _ in range(len(symptoms_contexts))]
+
+    # Day 2-4ish if it's a longer cold, if 2 days long this doesn't get added
+    phase_i = 0
+    phase = symptoms_contexts[phase_i]
+
+    if really_sick or extremely_sick or any(preexisting_conditions):
+        symptoms_per_phase[phase_i].append('moderate')
+    else:
+        symptoms_per_phase[phase_i].append('mild')
+
+    for symptom in ('runny_nose', 'cough', 'trouble_breathing', 'loss_of_taste', 'fatigue', 'sneezing'):
+        rand = rng.rand()
+        if rand < SYMPTOMS[symptom].probabilities[phase]:
+            symptoms_per_phase[phase_i].append(symptom)
+
+    # Last day
+    phase_i = 1
+    phase = symptoms_contexts[phase_i]
+
+    symptoms_per_phase[phase_i].append('mild')
+
+    for symptom in ('runny_nose', 'cough', 'fatigue', 'sore_throat'):
+        rand = rng.rand()
+        if rand < SYMPTOMS[symptom].probabilities[phase]:
+            symptoms_per_phase[phase_i].append(symptom)
+
     if age < 12 or age > 40 or any(preexisting_conditions) or really_sick or extremely_sick:
         mean = 4 - round(carefulness)
     else:
@@ -1013,42 +1041,11 @@ def _get_cold_progression(age, rng, carefulness, preexisting_conditions, really_
     else:
         len_cold = math.ceil(len_cold)
 
-    # Day 2-4ish if it's a longer cold, if 2 days long this doesn't get added
-    symptoms2 = []
-    if really_sick or extremely_sick or any(preexisting_conditions):
-        symptoms2.append('moderate')
-    else:
-        symptoms2.append('mild')
+    for duration, symptoms in zip((len_cold - 1, 1),
+                                  symptoms_per_phase):
+        for day in range(duration):
+            progression.append(symptoms)
 
-    if rng.rand() < 0.8:
-        symptoms2.append('runny_nose')
-    if rng.rand() < 0.8:
-        symptoms2.append('cough')
-    if rng.rand() < 0.1:
-        symptoms2.append('trouble_breathing')
-    if rng.rand() < 0.2:
-        symptoms2.append('loss_of_taste')
-    if rng.rand() < 0.8:
-        symptoms2.append('fatigue')
-    if rng.rand() < 0.4:
-        symptoms2.append('sneezing')
-
-    for day in range(len_cold - 1):
-        progression.append(symptoms2)
-
-    # Last day
-    symptoms3 = []
-    symptoms3.append('mild')
-    if rng.rand() < 0.8:
-        symptoms3.append('runny_nose')
-    if rng.rand() < 0.8:
-        symptoms3.append('cough')
-    if rng.rand() < 0.8:
-        symptoms3.append('fatigue')
-    if rng.rand() < 0.6:
-        symptoms3.append('sore_throat')
-
-    progression.append(symptoms3)
     return progression
 
 def _reported_symptoms(all_symptoms, rng, carefulness):
