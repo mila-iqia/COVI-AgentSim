@@ -1,5 +1,4 @@
 import datetime
-import filecmp
 import hashlib
 import pickle
 import unittest

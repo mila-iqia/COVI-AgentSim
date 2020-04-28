@@ -2,7 +2,9 @@ import unittest
 
 import numpy as np
 
-from utils import _get_covid_progression, _get_cold_progression, _get_flu_progression, _get_preexisting_conditions, PREEXISTING_CONDITIONS, SYMPTOMS, SYMPTOMS_CONTEXTS
+from frozen.helper import PREEXISTING_CONDITIONS_META, SYMPTOMS_META
+from utils import _get_covid_progression, _get_cold_progression, _get_flu_progression, \
+    _get_preexisting_conditions, PREEXISTING_CONDITIONS, SYMPTOMS, SYMPTOMS_CONTEXTS
 
 
 class Symptoms(unittest.TestCase):
@@ -10,10 +12,14 @@ class Symptoms(unittest.TestCase):
         s_ids = set()
 
         for s_name, s_prob in SYMPTOMS.items():
+            self.assertEqual(s_name, s_prob.name)
+            self.assertEqual(s_prob.id, SYMPTOMS_META[s_name])
+
             self.assertNotIn(s_prob.id, s_ids)
             s_prob_contexts = set(s_prob.probabilities.keys())
-            self.assertTrue([1 for _, symptoms_contexts in SYMPTOMS_CONTEXTS.items()
-                             if set(symptoms_contexts.values()).issubset(s_prob_contexts)])
+            if s_prob_contexts:
+                self.assertTrue([1 for _, symptoms_contexts in SYMPTOMS_CONTEXTS.items()
+                                 if set(symptoms_contexts.values()).issubset(s_prob_contexts)])
             s_ids.add(s_prob.id)
 
 
@@ -503,6 +509,21 @@ class FluSymptoms(unittest.TestCase):
 
 
 class PreexistingConditions(unittest.TestCase):
+    def test_preexisting_conditions_struct(self):
+        c_ids = set()
+
+        for c_name, c_probs in PREEXISTING_CONDITIONS.items():
+            c_id = c_probs[0].id
+
+            self.assertEqual(c_id, PREEXISTING_CONDITIONS_META[c_name])
+
+            self.assertNotIn(c_id, c_ids)
+            c_ids.add(c_id)
+
+            for c_prob in c_probs:
+                self.assertEqual(c_name, c_prob.name)
+                self.assertEqual(c_prob.id, c_id)
+
     def test_preexisting_conditions(self):
         """
             Test the distribution of the preexisting conditions
@@ -520,21 +541,14 @@ class PreexistingConditions(unittest.TestCase):
 
         rng = np.random.RandomState(1234)
 
-        c_ids = set()
-
         for c_name, c_probs in PREEXISTING_CONDITIONS.items():
             c_id = c_probs[0].id
-
-            self.assertNotIn(c_id, c_ids)
-            c_ids.add(c_id)
 
             # TODO: Implement test for stroke and pregnant
             if c_id in (_get_id('stroke'), _get_id('pregnant')):
                 continue
 
             for c_prob in c_probs:
-                self.assertEqual(c_prob.id, c_probs[0].id)
-
                 age, sex = c_prob.age - 1, c_prob.sex
                 expected_prob = c_prob.probability
 
