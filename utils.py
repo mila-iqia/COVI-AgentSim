@@ -918,7 +918,67 @@ def _get_allergy_progression(rng):
     return progression
 
 def _get_flu_progression(age, rng, carefulness, preexisting_conditions, really_sick, extremely_sick):
+    symptoms_contexts = SYMPTOMS_CONTEXTS['flu']
+
     progression = [[] for day in range(FLU_INCUBATION)]
+
+    symptoms_per_phase = [[] for _ in range(len(symptoms_contexts))]
+
+    progression = []
+
+    # Day 1 symptoms:
+    phase_i = 0
+    phase = symptoms_contexts[phase_i]
+
+    symptoms_per_phase[phase_i].append('mild')
+
+    for symptom in ('fatigue', 'fever', 'aches', 'hard_time_waking_up', 'gastro'):
+        rand = rng.rand()
+        if rand < SYMPTOMS[symptom].probabilities[phase]:
+            symptoms_per_phase[phase_i].append(symptom)
+
+            if symptom == 'gastro':
+                for symptom in ('diarrhea', 'nausea_vomiting'):
+                    rand = rng.rand()
+                    if rand < SYMPTOMS[symptom].probabilities[phase]:
+                        symptoms_per_phase[phase_i].append(symptom)
+
+    # Day 2-4ish if it's a longer flu, if 2 days long this doesn't get added
+    phase_i = 1
+    phase = symptoms_contexts[phase_i]
+
+    if really_sick or extremely_sick or any(preexisting_conditions):
+        symptoms_per_phase[phase_i].append('moderate')
+    else:
+        symptoms_per_phase[phase_i].append('mild')
+
+    for symptom in ('fatigue', 'fever', 'aches', 'hard_time_waking_up', 'gastro'):
+        rand = rng.rand()
+        if rand < SYMPTOMS[symptom].probabilities[phase]:
+            symptoms_per_phase[phase_i].append(symptom)
+
+            if symptom == 'gastro':
+                for symptom in ('diarrhea', 'nausea_vomiting'):
+                    rand = rng.rand()
+                    if rand < SYMPTOMS[symptom].probabilities[phase]:
+                        symptoms_per_phase[phase_i].append(symptom)
+
+    # Last day
+    phase_i = 2
+    phase = symptoms_contexts[phase_i]
+
+    symptoms_per_phase[phase_i].append('mild')
+
+    for symptom in ('fatigue', 'fever', 'aches', 'hard_time_waking_up', 'gastro'):
+        rand = rng.rand()
+        if rand < SYMPTOMS[symptom].probabilities[phase]:
+            symptoms_per_phase[phase_i].append(symptom)
+
+            if symptom == 'gastro':
+                for symptom in ('diarrhea', 'nausea_vomiting'):
+                    rand = rng.rand()
+                    if rand < SYMPTOMS[symptom].probabilities[phase]:
+                        symptoms_per_phase[phase_i].append(symptom)
 
     if age < 12 or age > 40 or any(preexisting_conditions) or really_sick or extremely_sick:
         mean = AVG_FLU_DURATION + 2 -2*carefulness
@@ -932,70 +992,11 @@ def _get_flu_progression(age, rng, carefulness, preexisting_conditions, really_s
     else:
         len_flu = round(len_flu)
 
-    progression = []
+    for duration, symptoms in zip((1, len_flu - 2, 1),
+                                  symptoms_per_phase):
+        for day in range(duration):
+            progression.append(symptoms)
 
-    # Day 1 symptoms:
-    symptoms = []
-    symptoms.append('mild')
-    if rng.rand() < 0.4:
-        symptoms.append('fatigue')
-    if rng.rand() < 0.7:
-        symptoms.append('fever')
-    if rng.rand() < 0.3:
-        symptoms.append('aches')
-    if rng.rand() < 0.3:
-        symptoms.append('hard_time_waking_up')
-    if rng.rand() < 0.7:
-        symptoms.append('gastro')
-        if rng.rand() < 0.5:
-            symptoms.append('diarrhea')
-        if rng.rand() < 0.5:
-            symptoms.append('nausea_vomiting')
-    progression.append(symptoms)
-
-    # Day 2-4ish if it's a longer flu, if 2 days long this doesn't get added
-    symptoms2 = []
-    if really_sick or extremely_sick or any(preexisting_conditions):
-        symptoms2.append('moderate')
-    else:
-        symptoms2.append('mild')
-
-    if rng.rand() < 0.8:
-        symptoms2.append('fatigue')
-    if rng.rand() < 0.7:
-        symptoms2.append('fever')
-    if rng.rand() < 0.5:
-        symptoms2.append('aches')
-    if rng.rand() < 0.5:
-        symptoms2.append('hard_time_waking_up')
-    if rng.rand() < 0.7:
-        symptoms2.append('gastro')
-        if rng.rand() < 0.5:
-            symptoms2.append('diarrhea')
-        if rng.rand() < 0.5:
-            symptoms2.append('nausea_vomiting')
-
-    for day in range(len_flu - 2):
-        progression.append(symptoms2)
-
-    # Last day
-    symptoms3 = []
-    symptoms3.append('mild')
-    if rng.rand() < 0.8:
-        symptoms3.append('fatigue')
-    if rng.rand() < 0.3:
-        symptoms3.append('fever')
-    if rng.rand() < 0.8:
-        symptoms3.append('aches')
-    if rng.rand() < 0.4:
-        symptoms3.append('hard_time_waking_up')
-    if rng.rand() < 0.2:
-        symptoms3.append('gastro')
-        if rng.rand() < 0.5:
-            symptoms3.append('diarrhea')
-        if rng.rand() < 0.25:
-            symptoms3.append('nausea_vomiting')
-    progression.append(symptoms3)
     return progression
 
 
