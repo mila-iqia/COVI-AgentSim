@@ -19,7 +19,9 @@ SymptomProbability = namedtuple('SymptomProbability', ['name', 'id', 'probabilit
 ConditionProbability = namedtuple('ConditionProbability', ['name', 'id', 'age', 'sex', 'probability'])
 
 SYMPTOMS_CONTEXTS = {'covid': {0: 'covid_pre_plateau', 1: 'covid_plateau_1', 2: 'covid_plateau_2',
-                               3: 'covid_post_plateau_1', 4: 'covid_post_plateau_2'}}
+                               3: 'covid_post_plateau_1', 4: 'covid_post_plateau_2'},
+                     'cold': {0: 'cold', 1: 'cold_last_day'},
+                     'flu': {0: 'flu_first_day', 1: 'flu', 2: 'flu_last_day'}}
 
 SYMPTOMS = OrderedDict([
     # Sickness severity
@@ -31,7 +33,12 @@ SYMPTOMS = OrderedDict([
                                        'covid_plateau_1': -1,
                                        'covid_plateau_2': -1,
                                        'covid_post_plateau_1': -1,
-                                       'covid_post_plateau_2': -1})
+                                       'covid_post_plateau_2': -1,
+                                       'cold': -1,
+                                       'cold_last_day': 1.0,
+                                       'flu_first_day': 1.0,
+                                       'flu': -1,
+                                       'flu_last_day': 1.0})
     ),
     (
         'moderate',
@@ -39,7 +46,12 @@ SYMPTOMS = OrderedDict([
                                            'covid_plateau_1': -1,
                                            'covid_plateau_2': -1,
                                            'covid_post_plateau_1': -1,
-                                           'covid_post_plateau_2': -1})
+                                           'covid_post_plateau_2': -1,
+                                           'cold': -1,
+                                           'cold_last_day': 0.0,
+                                           'flu_first_day': 0.0,
+                                           'flu': -1,
+                                           'flu_last_day': 0.0})
     ),
     (
         'severe',
@@ -66,7 +78,10 @@ SYMPTOMS = OrderedDict([
                                         'covid_plateau_1': 0.3,
                                         'covid_plateau_2': 0.8,
                                         'covid_post_plateau_1': 0.0,
-                                        'covid_post_plateau_2': 0.0})
+                                        'covid_post_plateau_2': 0.0,
+                                        'flu_first_day': 0.7,
+                                        'flu': 0.7,
+                                        'flu_last_day': 0.3})
     ),
     # 'fever' is a dependency of 'chills' so it needs to be inserted before
     # this position
@@ -85,7 +100,10 @@ SYMPTOMS = OrderedDict([
                                           'covid_plateau_1': -1,
                                           'covid_plateau_2': -1,
                                           'covid_post_plateau_1': -1,
-                                          'covid_post_plateau_2': -1})
+                                          'covid_post_plateau_2': -1,
+                                          'flu_first_day': 0.7,
+                                          'flu': 0.7,
+                                          'flu_last_day': 0.2})
     ),
     # 'gastro' is a dependency of 'diarrhea' so it needs to be inserted before
     # this position
@@ -95,7 +113,10 @@ SYMPTOMS = OrderedDict([
                                             'covid_plateau_1': 0.9,
                                             'covid_plateau_2': 0.9,
                                             'covid_post_plateau_1': 0.9,
-                                            'covid_post_plateau_2': 0.9})
+                                            'covid_post_plateau_2': 0.9,
+                                            'flu_first_day': 0.5,
+                                            'flu': 0.5,
+                                            'flu_last_day': 0.5})
     ),
     # 'gastro' is a dependency of 'nausea_vomiting' so it needs to be inserted
     # before this position
@@ -105,7 +126,10 @@ SYMPTOMS = OrderedDict([
                                                    'covid_plateau_1': 0.7,
                                                    'covid_plateau_2': 0.7,
                                                    'covid_post_plateau_1': 0.7,
-                                                   'covid_post_plateau_2': 0.7})
+                                                   'covid_post_plateau_2': 0.7,
+                                                   'flu_first_day': 0.5,
+                                                   'flu': 0.5,
+                                                   'flu_last_day': 0.25})
     ),
 
     # Age based lethargies
@@ -117,7 +141,12 @@ SYMPTOMS = OrderedDict([
                                           'covid_plateau_1': -1,
                                           'covid_plateau_2': -1,
                                           'covid_post_plateau_1': -1,
-                                          'covid_post_plateau_2': -1})
+                                          'covid_post_plateau_2': -1,
+                                          'cold': 0.8,
+                                          'cold_last_day': 0.8,
+                                          'flu_first_day': 0.4,
+                                          'flu': 0.8,
+                                          'flu_last_day': 0.8})
     ),
     (
         'unusual',
@@ -133,7 +162,10 @@ SYMPTOMS = OrderedDict([
                                                        'covid_plateau_1': 0.6,
                                                        'covid_plateau_2': 0.6,
                                                        'covid_post_plateau_1': 0.6,
-                                                       'covid_post_plateau_2': 0.6})
+                                                       'covid_post_plateau_2': 0.6,
+                                                       'flu_first_day': 0.3,
+                                                       'flu': 0.5,
+                                                       'flu_last_day': 0.4})
     ),
     (
         'headache',
@@ -169,7 +201,9 @@ SYMPTOMS = OrderedDict([
                                                     'covid_plateau_1': -1,
                                                     'covid_plateau_2': -1,
                                                     'covid_post_plateau_1': -1,
-                                                    'covid_post_plateau_2': -1})
+                                                    'covid_post_plateau_2': -1,
+                                                    'cold': 0.1,
+                                                    'cold_last_day': 0.0})
     ),
     (
         'sneezing',
@@ -177,7 +211,9 @@ SYMPTOMS = OrderedDict([
                                             'covid_plateau_1': 0.3,
                                             'covid_plateau_2': 0.3,
                                             'covid_post_plateau_1': 0.3,
-                                            'covid_post_plateau_2': 0.3})
+                                            'covid_post_plateau_2': 0.3,
+                                            'cold': 0.4,
+                                            'cold_last_day': 0.0})
     ),
     (
         'cough',
@@ -185,7 +221,9 @@ SYMPTOMS = OrderedDict([
                                         'covid_plateau_1': 0.9,
                                         'covid_plateau_2': 0.9,
                                         'covid_post_plateau_1': 0.9,
-                                        'covid_post_plateau_2': 0.9})
+                                        'covid_post_plateau_2': 0.9,
+                                        'cold': 0.8,
+                                        'cold_last_day': 0.8})
     ),
     (
         'runny_nose',
@@ -193,7 +231,9 @@ SYMPTOMS = OrderedDict([
                                              'covid_plateau_1': 0.2,
                                              'covid_plateau_2': 0.2,
                                              'covid_post_plateau_1': 0.2,
-                                             'covid_post_plateau_2': 0.2})
+                                             'covid_post_plateau_2': 0.2,
+                                             'cold': 0.8,
+                                             'cold_last_day': 0.8})
     ),
     (
         'sore_throat',
@@ -201,7 +241,9 @@ SYMPTOMS = OrderedDict([
                                                'covid_plateau_1': 0.8,
                                                'covid_plateau_2': 0.8,
                                                'covid_post_plateau_1': 0.8,
-                                               'covid_post_plateau_2': 0.8})
+                                               'covid_post_plateau_2': 0.8,
+                                               'cold': 0.0,
+                                               'cold_last_day': 0.6})
     ),
     (
         'severe_chest_pain',
@@ -245,14 +287,19 @@ SYMPTOMS = OrderedDict([
                                                  'covid_plateau_1': 0.3,
                                                  'covid_plateau_2': 0.35,
                                                  'covid_post_plateau_1': 0.0,
-                                                 'covid_post_plateau_2': 0.0})
+                                                 'covid_post_plateau_2': 0.0,
+                                                 'cold': 0.2,
+                                                 'cold_last_day': 0.0})
     ),
 
     (
         'aches',
-        SymptomProbability('aches', 16, {})
+        SymptomProbability('aches', 16, {'flu_first_day': 0.3,
+                                         'flu': 0.5,
+                                         'flu_last_day': 0.8})
     )
 ])
+
 
 # NOTE: THE PREEXISTING CONDITION NAMES/IDs BELOW MUST MATCH THOSE IN FROZEN/UTILS
 

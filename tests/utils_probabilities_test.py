@@ -2,17 +2,18 @@ import unittest
 
 import numpy as np
 
-from utils import _get_covid_progression, _get_preexisting_conditions, PREEXISTING_CONDITIONS, SYMPTOMS, SYMPTOMS_CONTEXTS
+from utils import _get_covid_progression, _get_cold_progression, _get_preexisting_conditions, PREEXISTING_CONDITIONS, SYMPTOMS, SYMPTOMS_CONTEXTS
 
 
 class Symptoms(unittest.TestCase):
     def test_symptoms_structure(self):
-        symptoms_contexts = set(SYMPTOMS_CONTEXTS['covid'].values())
         s_ids = set()
 
         for s_name, s_prob in SYMPTOMS.items():
             self.assertNotIn(s_prob.id, s_ids)
-            self.assertTrue(set(s_prob.probabilities.keys()).issubset(symptoms_contexts))
+            s_prob_contexts = set(s_prob.probabilities.keys())
+            self.assertTrue([1 for _, symptoms_contexts in SYMPTOMS_CONTEXTS.items()
+                             if set(symptoms_contexts.values()).issubset(s_prob_contexts)])
             s_ids.add(s_prob.id)
 
 
@@ -30,6 +31,15 @@ class CovidProgression(unittest.TestCase):
     extremely_sick_options = (True, False)
     preexisting_conditions_options = (tuple(), ('pre1', 'pre2'), ('pre1', 'pre2', 'pre3'))
     carefulness_options = (0.10, 0.25, 0.50, 0.75)
+
+    def setUp(self):
+        self.out_of_context_symptoms = set()
+        for _, prob in SYMPTOMS.items():
+            for context in prob.probabilities:
+                if context in self.symptoms_contexts.values():
+                    break
+            else:
+                self.out_of_context_symptoms.add(prob.id)
 
     @staticmethod
     def _get_id(symptom):
@@ -277,6 +287,119 @@ class CovidProgression(unittest.TestCase):
                     f"age {age}, really_sick {really_sick}, extremely_sick {extremely_sick}, "
                     f"preexisting_conditions {len(preexisting_conditions)} and "
                     f"carefulness {carefulness} in context {i}:{context}")
+
+            if s_id in self.out_of_context_symptoms:
+                prob = sum(probs[i][s_id] for i in range(len(probs))) / len(probs)
+
+                self.assertEqual(prob, 0.0,
+                                 msg=f"Symptom [{s_name}] should not be present is the "
+                                 f"list of symptoms. initial_viral_load {initial_viral_load}, "
+                                 f"age {age}, really_sick {really_sick}, extremely_sick {extremely_sick}, "
+                                 f"preexisting_conditions {len(preexisting_conditions)} "
+                                 f"and carefulness {carefulness}")
+
+
+class ColdSymptoms(unittest.TestCase):
+    def test_cold_v2_symptoms(self):
+        """
+            Test the distribution of the cold symptoms
+        """
+        symptoms_contexts = SYMPTOMS_CONTEXTS['cold']
+
+        def _get_id(symptom):
+            return SYMPTOMS[symptom].id
+
+        out_of_context_symptoms = set()
+        for _, prob in SYMPTOMS.items():
+            for context in prob.probabilities:
+                if context in symptoms_contexts.values():
+                    break
+            else:
+                out_of_context_symptoms.add(prob.id)
+
+        n_people = 10000
+
+        rng = np.random.RandomState(1234)
+
+        age = 25
+        carefulness = 0.50
+        really_sick_options = (True, False)
+        extremely_sick_options = (True, False)
+        preexisting_conditions_options = (tuple(), ('pre1', 'pre2'))
+
+        s_ids = set()
+
+        for s_name, s_prob in SYMPTOMS.items():
+            self.assertNotIn(s_prob.id, s_ids)
+            s_ids.add(s_prob.id)
+
+        for really_sick in really_sick_options:
+            for extremely_sick in extremely_sick_options if really_sick else (False,):
+                for preexisting_conditions in preexisting_conditions_options:
+                    # To simplify the tests, we expect each stage to last 1 day
+                    computed_dist = [[set(day_symptoms) for day_symptoms in
+                                      _get_cold_progression(age, rng, carefulness, preexisting_conditions,
+                                                            really_sick, extremely_sick)]
+                                     for _ in range(n_people)]
+
+                    probs = [[0] * len(SYMPTOMS) for _ in symptoms_contexts]
+
+                    for human_symptoms in computed_dist:
+                        for day_symptoms in human_symptoms[:1]:
+                            self.assertEqual(len(day_symptoms), 0)
+
+                        for i, day_symptoms in enumerate((human_symptoms[1], human_symptoms[-1])):
+                            self.assertEqual(len([s for s in ('mild', 'moderate') if s in day_symptoms]), 1)
+
+                            for s_name, s_prob in SYMPTOMS.items():
+                                probs[i][s_prob.id] += int(s_name in day_symptoms)
+
+                    for symptoms_probs in probs:
+                        for i in range(len(symptoms_probs)):
+                            symptoms_probs[i] /= n_people
+
+                    for s_name, s_prob in SYMPTOMS.items():
+                        s_id = s_prob.id
+
+                        for i, (context, expected_prob) in enumerate((c, p) for c, p in s_prob.probabilities.items()
+                                                                     if c in symptoms_contexts):
+                            prob = probs[i][s_id]
+
+                            if i == 0:
+                                if really_sick or extremely_sick or any(preexisting_conditions):
+                                    if s_id == _get_id('moderate'):
+                                        expected_prob = 1
+                                    elif s_id == _get_id('mild'):
+                                        expected_prob = 0
+                                elif s_id == _get_id('mild'):
+                                    expected_prob = 1
+                                elif s_id == _get_id('moderate'):
+                                    expected_prob = 0
+
+                            elif i == 1:
+                                if s_id == _get_id('mild'):
+                                    expected_prob = 1
+                                elif s_id == _get_id('moderate'):
+                                    expected_prob = 0
+
+                            self.assertAlmostEqual(prob, expected_prob,
+                                                   delta=0 if expected_prob in (0, 1)
+                                                   else max(0.015, expected_prob * 0.05),
+                                                   msg=f"Computation of the symptom [{s_name}] yielded an "
+                                                   f"unexpected probability for age {age}, really_sick {really_sick}, "
+                                                   f"extremely_sick {extremely_sick}, "
+                                                   f"preexisting_conditions {len(preexisting_conditions)} "
+                                                   f"and carefulness {carefulness} in context {context}")
+
+                        if s_id in out_of_context_symptoms:
+                            prob = sum(probs[i][s_id] for i in range(len(probs))) / len(probs)
+
+                            self.assertEqual(prob, 0.0,
+                                             msg=f"Symptom [{s_name}] should not be present is the "
+                                             f"list of symptoms. age {age}, really_sick {really_sick}, "
+                                             f"extremely_sick {extremely_sick}, "
+                                             f"preexisting_conditions {len(preexisting_conditions)} "
+                                             f"and carefulness {carefulness}")
 
 
 class PreexistingConditions(unittest.TestCase):
