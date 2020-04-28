@@ -1018,7 +1018,17 @@ def get_intervention(key):
 	elif key == "Quarantine":
 		return Quarantine()
 	elif key == "Tracing":
-		return Tracing(RISK_MODEL)
+		return Tracing(RISK_MODEL, TRACING_ORDER, TRACE_SYMPTOMS, TRACE_RISK_UPDATE)
+	elif key == "WashHands":
+		return WashHands()
+	elif key == "Stand2M":
+		return Stand2M()
+	elif key == "StayHome":
+		return StayHome()
+	elif key == "GetTested":
+		raise NotImplementedError
+	else:
+		raise
 
 def get_recommendations(risk_level):
     if risk_level == 0:

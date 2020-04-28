@@ -99,41 +99,43 @@ def tune(n_people, simulation_days, seed):
     import matplotlib.pyplot as plt
     # cf.go_offline()
 
-    monitors, tracker = run_simu(n_people=n_people, init_percent_sick=0.10,
+    monitors, tracker = run_simu(n_people=n_people, init_percent_sick=0.02,
                             start_time=datetime.datetime(2020, 2, 28, 0, 0),
                             simulation_days=simulation_days,
                             outfile=None,
                             print_progress=True, seed=seed, other_monitors=[]
                             )
+
     # stats = monitors[1].data
     # x = pd.DataFrame.from_dict(stats).set_index('time')
     # fig = x[['susceptible', 'exposed', 'infectious', 'removed']].iplot(asFigure=True, title="SEIR")
     # fig.write_image("plots/tune/seir.png")
     timenow = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
     data = dict()
+    data['mobility'] = tracker.mobility
+    data['n_init_infected'] = tracker.n_infected_init
+    data['risk_precision'] = tracker.risk_precision_daily
     data['contacts'] = dict(tracker.contacts)
     data['cases_per_day'] = tracker.cases_per_day
+    data['ei_per_day'] = tracker.ei_per_day
     data['r_0'] = tracker.r_0
     data['r'] = tracker.r
-    data['dist_encounters'] = dict(tracker.dist_encounters)
-    data['time_encounters'] = dict(tracker.time_encounters)
-    data['day_encounters'] = dict(tracker.day_encounters)
-    data['hour_encounters'] = dict(tracker.hour_encounters)
-    data['daily_age_group_encounters'] = dict(tracker.daily_age_group_encounters)
-    data['age_distribution'] = tracker.age_distribution
-    data['sex_distribution'] = tracker.sex_distribution
-    data['house_size'] = tracker.house_size
-    data['house_age'] = tracker.house_age
-    data['symptoms'] = dict(tracker.symptoms)
-    data['transition_probability'] = dict(tracker.transition_probability)
-    #
+    data['n_humans'] = tracker.n_humans
+    # data['dist_encounters'] = dict(tracker.dist_encounters)
+    # data['time_encounters'] = dict(tracker.time_encounters)
+    # data['day_encounters'] = dict(tracker.day_encounters)
+    # data['hour_encounters'] = dict(tracker.hour_encounters)
+    # data['daily_age_group_encounters'] = dict(tracker.daily_age_group_encounters)
+    # data['age_distribution'] = tracker.age_distribution
+    # data['sex_distribution'] = tracker.sex_distribution
+    # data['house_size'] = tracker.house_size
+    # data['house_age'] = tracker.house_age
+    # data['symptoms'] = dict(tracker.symptoms)
+    # data['transition_probability'] = dict(tracker.transition_probability)
+    # #
     import dill
-    s = config.INTERVENTION
-    if s == "Tracing":
-        s = f"{s}_{config.RISK_MODEL}"
-
-    filename = f"tracker_data_n_{n_people}_seed_{seed}_{timenow}_{s}.pkl"
-    with open(f"logs/{filename}", 'wb') as f:
+    filename = f"tracker_data_n_{n_people}_seed_{seed}_{timenow}.pkl"
+    with open(f"logs/compare/{filename}", 'wb') as f:
         dill.dump(data, f)
 
     # logfile = os.path.join(f"logs/log_n_{n_people}_seed_{seed}_{timenow}.txt")
@@ -156,6 +158,40 @@ def tune(n_people, simulation_days, seed):
     #
     # tracker.plot_metrics(dirname="plots/tune")
 
+@simu.command()
+@click.option('--n_people', help='population of the city', type=int, default=1000)
+@click.option('--days', help='number of days to run the simulation for', type=int, default=60)
+@click.option('--tracing', help='which tracing', type=str, default="manual")
+@click.option('--noise', help='noise', type=float, default=0.5)
+def tracing(n_people, days, tracing, noise):
+    import config
+    config.COLLECT_LOGS = False
+    config.INTERVENTION = "Tracing"
+
+    if tracing == "manual":
+        config.MANUAL_TRACING_NOISE = noise
+    elif tracing == "probabilistic":
+        config.P_HAS_APP = noise
+
+    monitors, tracker = run_simu(n_people=n_people, init_percent_sick=0.01,
+                        start_time=datetime.datetime(2020, 2, 28, 0, 0),
+                        simulation_days=days,
+                        outfile=None,
+                        print_progress=True, seed=0, other_monitors=[]
+                        )
+    data = dict()
+    data['cases_per_day'] = tracker.cases_per_day
+    data['r_0'] = tracker.r_0
+    data['r'] = tracker.r
+
+    import dill
+    timenow = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
+    filename = f"tracing_data_n_{n_people}_{timenow}_{tracing}_{noise}.pkl"
+    with open(f"logs/{filename}", 'wb') as f:
+        dill.dump(data, f)
+
+    # logfile = os.path.join(f"logs/log_n_{n_people}_seed_{seed}_{timenow}.txt")
+    tracker.write_metrics(None)
 
 @simu.command()
 def test():

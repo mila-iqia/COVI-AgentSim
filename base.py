@@ -273,7 +273,7 @@ class Location(simpy.Resource):
         return any([h.is_infectious for h in self.humans])
 
     def __repr__(self):
-        return f"{self.name} - occ:{len(self.humans)}/{self.capacity} - I:{self.infectious_human()}"
+        return f"{self.name} - occ:{len(self.humans)}/{self.capacity} - I:{self.is_contaminated}"
 
     def add_human(self, human):
         self.humans.add(human)
@@ -628,30 +628,33 @@ class Contacts(object):
 
         remove_idx = -1
         for history in self.book[human]:
-            if (date - history[0]).days > N_DAYS_HISTORY:
+            if (date - history[0]).days > TRACING_N_DAYS_HISTORY:
                 remove_idx  += 1
             else:
                 break
 
         self.book[human] = self.book[human][remove_idx:]
 
-    def send_message(self, owner, RISK_MODEL):
-        if RISK_MODEL == "manual tracing":
-            p_contact = MANUAL_TRACING_NOISE
-            delay = 1
-            app = False
+    def send_message(self, owner, tracing_method, order=1, reason="test"):
+        p_contact = tracing_method.p_contact
+        delay = tracing_method.delay
+        app = tracing_method.app
 
-        elif RISK_MODEL in ['digital tracing', 'first order probabilistic tracing']:
-            p_contact = 1
-            delay = 0
-            app = True
-            if not owner.has_app:
-                return
+        if app and not owner.has_app:
+            return
 
         for human in self.book:
+            redundant_tracing = human.message_info['traced'] and tracing_method.dont_trace_traced
+            if redundant_tracing: # manual and digital - no effect of new messages
+                continue
+
             if not app or (app and human.has_app):
                 if human.rng.random() < p_contact:
                     self.update_history(human)
-                    t = delay * _draw_random_discreet_gaussian(MANUAL_TRACING_DELAY_AVG, MANUAL_TRACING_DELAY_STD, human.rng)
+                    t = 0
+                    if delay:
+                        t = _draw_random_discreet_gaussian(MANUAL_TRACING_DELAY_AVG, MANUAL_TRACING_DELAY_STD, human.rng)
+                                            
                     total_contacts = sum(map(lambda x:x[1], self.book[human]))
-                    human.update_risk(update_messages={'n':total_contacts, 'delay': t})
+                    # print(f"{RISK_MODEL}: {owner} --> {human} C:{total_contacts} delay:{t}")
+                    human.update_risk(update_messages={'n':total_contacts, 'delay': t, 'order':order, 'reason':reason})
