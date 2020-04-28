@@ -72,7 +72,7 @@ def integrated_risk_pred(humans, data_path, start, current_day, all_possible_sym
     batch_size = 128  # @@@@ TODO: make this a high-level configurable arg?
     batched_params = []
     while batch_start_offset < len(all_params):
-        batch_end_offset = batch_start_offset + min(batch_start_offset + batch_size, len(all_params))
+        batch_end_offset = min(batch_start_offset + batch_size, len(all_params))
         batched_params.append(all_params[batch_start_offset:batch_end_offset])
         batch_start_offset += batch_size
 
