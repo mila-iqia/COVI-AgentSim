@@ -3,7 +3,7 @@ import pickle
 import json
 import zipfile
 import numpy as np
-import datetime
+import functools
 from collections import defaultdict
 from joblib import Parallel, delayed
 import config
@@ -18,10 +18,8 @@ risk_map = np.load(f"{os.path.dirname(os.path.realpath(__file__))}/log_risk_mapp
 risk_map[0] = np.log(0.01)
 
 
-def query_inference_server(params):
-    ports = params['port']
-    del params['port']
-    client = InferenceClient(ports)
+def query_inference_server(params, **inf_client_kwargs):
+    client = InferenceClient(**inf_client_kwargs)
     results = client.infer(params)
     return results
 
@@ -67,11 +65,25 @@ def integrated_risk_pred(humans, data_path, start, current_day, all_possible_sym
 
         all_params.append({"start": start, "current_day": current_day,
                            "all_possible_symptoms": all_possible_symptoms, "human": human.__getstate__(),
-                           "COLLECT_LOGS": config.COLLECT_LOGS, "log_path": log_path, "risk_model": config.RISK_MODEL, "port": port})
+                           "COLLECT_LOGS": config.COLLECT_LOGS, "log_path": log_path, "risk_model": config.RISK_MODEL})
         human.uid = update_uid(human.uid, human.rng)
 
+    batch_start_offset = 0
+    batch_size = 128  # @@@@ TODO: make this a high-level configurable arg?
+    batched_params = []
+    while batch_start_offset < len(all_params):
+        batch_end_offset = batch_start_offset + min(batch_start_offset + batch_size, len(all_params))
+        batched_params.append(all_params[batch_start_offset:batch_end_offset])
+        batch_start_offset += batch_size
+
+    query_func = functools.partial(query_inference_server, target_port=port)
+
     with Parallel(n_jobs=n_jobs, batch_size=config.MP_BATCHSIZE, backend=config.MP_BACKEND, verbose=1, prefer="threads") as parallel:
-        results = parallel((delayed(query_inference_server)(params) for params in all_params))
+        batched_results = parallel((delayed(query_func)(params) for params in batched_params))
+
+    results = []
+    for b in batched_results:
+        results.extend(b)
 
     for result in results:
         if result is not None:
