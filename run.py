@@ -160,19 +160,7 @@ def tune(n_people, simulation_days, seed):
     # tracker.plot_metrics(dirname="plots/tune")
 
 
-@simu.command()
-def test():
-    import unittest
-    loader = unittest.TestLoader()
-    start_dir = 'tests'
-    suite = loader.discover(start_dir, pattern='*_test.py')
-
-    runner = unittest.TextTestRunner()
-    assert runner.run(suite).wasSuccessful()
-
-
-
-def run_simu(n_people=None, init_percent_sick=0,
+def run_simu(n_people=None, init_percent_sick=0.0,
              start_time=datetime.datetime(2020, 2, 28, 0, 0),
              simulation_days=10,
              outfile=None, out_chunk_size=None,
@@ -191,7 +179,6 @@ def run_simu(n_people=None, init_percent_sick=0,
 
     if other_monitors:
         monitors += other_monitors
-
 
     for human in city.humans:
         env.process(human.run(city=city))
