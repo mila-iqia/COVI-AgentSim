@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from frozen.clusters import Clusters
-from frozen.utils import create_new_uid, Message, UpdateMessage
+from frozen.utils import create_new_uid, Message, UpdateMessage, encode_message, encode_update_message
 
 from utils import _normalize_scores, _get_random_sex, _get_covid_progression, \
      _get_preexisting_conditions, _draw_random_discreet_gaussian, _sample_viral_load_piecewise, \
@@ -40,10 +40,10 @@ class Visits(object):
 
 class Human(object):
 
-    def __init__(self, env, name, age, rng, infection_timestamp, household, workplace, profession, rho=0.3, gamma=0.21, symptoms=[],
+    def __init__(self, env, city, name, age, rng, infection_timestamp, household, workplace, profession, rho=0.3, gamma=0.21, symptoms=[],
                  test_results=None):
-
         self.env = env
+        self.city = city
         self._events = []
         self.name = f"human:{name}"
         self.rng = rng
@@ -322,11 +322,8 @@ class Human(object):
             cur_viral_load = self.viral_load_plateau_height - self.viral_load_plateau_height * (days_infectious - self.viral_load_plateau_end) / (self.viral_load_recovered - self.viral_load_plateau_end)
 
         # the viral load cannot be negative
-        try:
-            if cur_viral_load < 0:
-                cur_viral_load = 0.
-        except:
-            import pdb; pdb.set_trace()
+        if cur_viral_load < 0:
+            cur_viral_load = 0.
 
         return cur_viral_load
 
@@ -560,8 +557,7 @@ class Human(object):
 
             if self.tracing and self.message_info['traced']:
                 if (self.env.timestamp - self.message_info['receipt']).days > self.message_info['delay']:
-                    if RISK_MODEL in LOCAL_RISK_MODELS:
-                        self.update_risk_level()
+                    self.update_risk_level()
 
             # recover from cold/flu/allergies if it's time
             self.recover_health()
@@ -583,8 +579,7 @@ class Human(object):
                     self.test_time = self.env.timestamp
                     self.has_been_tested = True
                     city.tracker.track_tested_results(self, self.test_result, self.test_type)
-                    if RISK_MODEL in LOCAL_RISK_MODELS:
-                        self.update_risk(test_results=True)
+                    self.update_risk(test_results=True)
 
             # recover
             if self.is_infectious and self.days_since_covid >= self.recovery_days:
@@ -604,8 +599,7 @@ class Human(object):
                     self.dead = False
 
                 self.obs_hospitalized = True
-                if RISK_MODEL in LOCAL_RISK_MODELS:
-                    self.update_risk(recovery=True)
+                self.update_risk(recovery=True)
                 self.infection_timestamp = None # indicates they are no longer infected
                 self.all_symptoms, self.covid_symptoms = [], []
                 Event.log_recovery(self, self.env.timestamp, self.dead)
@@ -988,8 +982,11 @@ class Human(object):
             del state['never_recovers']
             del state['last_state']
             del state['avg_shopping_time']
+            del state['city']
             del state['count_shop']
             del state['last_date']
+            state['messages'] = [encode_message(message) for message in state['contact_book'].messages]
+            state['update_messages'] = [encode_update_message(update_message) for update_message in state['contact_book'].update_messages]
             del state['contact_book']
             del state['last_location']
             del state['recommendations_to_follow']
@@ -1008,11 +1005,11 @@ class Human(object):
 
     def cur_message(self, day):
         """creates the current message for this user"""
-        message = Message(self.uid, _proba_to_risk_level(self.risk), day, self.name)
+        message = Message(self.uid, _proba_to_risk_level(self.risk), day, self.name, self.has_app)
         return message
 
     def cur_message_risk_update(self, day, old_risk, sent_at):
-        return UpdateMessage(self.uid, _proba_to_risk_level(self.risk), old_risk, day, sent_at, self.name)
+        return UpdateMessage(self.uid, _proba_to_risk_level(self.risk), old_risk, day, sent_at, self.name, self.has_app)
 
     def symptoms_at_time(self, now, symptoms):
         if not symptoms:
@@ -1079,7 +1076,7 @@ class Human(object):
         if test_results:
             if self.test_result == "positive":
                 self.risk = 1.0
-                self.contact_book.send_message(self, RISK_MODEL)
+                self.contact_book.send_message(self, self.city, RISK_MODEL)
             elif self.test_result == "negative":
                 self.risk = 0.20
 
@@ -1100,7 +1097,7 @@ class Human(object):
                 self.risk = 1.0
             elif self.tracing_method.risk_model == "digital tracing":
                 self.risk = 1.0
-            elif self.tracing_method.risk_model == "smart tracing":
+            elif self.tracing_method.risk_model == "transformer":
                 pass # Martin's code
             else:
                 raise

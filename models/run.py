@@ -58,37 +58,14 @@ def integrated_risk_pred(humans, data_path, start, current_day, all_possible_sym
     if config.PLOT_RISK:
         os.makedirs(config.RISK_PLOT_PATH, exist_ok=True)
 
-    days_logs, start_pkl = get_days_worth_of_logs(data_path + ".zip", start, current_day, start_pkl)
+    hd = humans[0].city.hd
     all_params = []
-    hd = {human.name: human for human in humans}
+
+
     for human in humans:
-        encounters = days_logs[human.name]
         log_path = f'{os.path.dirname(data_path)}/daily_outputs/{current_day}/{human.name[6:]}/'
-        # go about your day accruing encounters and clustering them
-        for encounter in encounters:
-            encounter_time = encounter['time']
-            unobs = encounter['payload']['unobserved']
-            encountered_human = hd[unobs['human2']['human_id']]
-            message = encode_message(encountered_human.cur_message(current_day))
-            encountered_human.sent_messages[str(unobs['human1']['human_id']) + "_" + str(encounter_time)] = message
-            human.messages.append(message)
 
-            got_exposed = encounter['payload']['unobserved']['human1']['got_exposed']
-            if got_exposed:
-                human.exposure_message = message
-
-        # if the encounter happened within the last 14 days, and your symptoms started at most 3 days after your contact
-        if _proba_to_risk_level(human.start_risk) != _proba_to_risk_level(human.risk):
-            sent_at = start + datetime.timedelta(days=current_day, minutes=human.rng.randint(low=0, high=1440))
-            for k, m in human.sent_messages.items():
-                message = decode_message(m)
-                if current_day - message.day < 14:
-                    # add the update message to the receiver's inbox
-                    update_message = encode_update_message(
-                        human.cur_message_risk_update(message.day, message.risk, sent_at))
-                    hd[k.split("_")[0]].update_messages.append(update_message)
-            human.sent_messages = {}
-        all_params.append({"start": start, "current_day": current_day, "encounters": encounters,
+        all_params.append({"start": start, "current_day": current_day,
                            "all_possible_symptoms": all_possible_symptoms, "human": human.__getstate__(),
                            "COLLECT_LOGS": config.COLLECT_LOGS, "log_path": log_path, "risk_model": config.RISK_MODEL, "port": port})
         human.uid = update_uid(human.uid, human.rng)
@@ -100,7 +77,8 @@ def integrated_risk_pred(humans, data_path, start, current_day, all_possible_sym
         if result is not None:
             name, risk, clusters = result
             hd[name].update_risk_level()
-            hd[name].risk = risk
+            if config.RISK_MODEL == "transformer":
+                hd[name].risk = risk
             hd[name].clusters = clusters
 
     if config.PLOT_RISK and config.COLLECT_LOGS:
@@ -116,3 +94,31 @@ def integrated_risk_pred(humans, data_path, start, current_day, all_possible_sym
 
     return humans, start_pkl
 
+
+    # for human in humans:
+    #     encounters = days_logs[human.name]
+    #     log_path = f'{os.path.dirname(data_path)}/daily_outputs/{current_day}/{human.name[6:]}/'
+    #     # go about your day accruing encounters and clustering them
+    #     for encounter in encounters:
+    #         encounter_time = encounter['time']
+    #         unobs = encounter['payload']['unobserved']
+    #         encountered_human = hd[unobs['human2']['human_id']]
+    #         message = encode_message(encountered_human.cur_message(current_day))
+    #         encountered_human.sent_messages[str(unobs['human1']['human_id']) + "_" + str(encounter_time)] = message
+    #         human.messages.append(message)
+    #
+    #         got_exposed = encounter['payload']['unobserved']['human1']['got_exposed']
+    #         if got_exposed:
+    #             human.exposure_message = message
+    #
+    #     # if the encounter happened within the last 14 days, and your symptoms started at most 3 days after your contact
+    #     if _proba_to_risk_level(human.start_risk) != _proba_to_risk_level(human.risk):
+    #         sent_at = start + datetime.timedelta(days=current_day, minutes=human.rng.randint(low=0, high=1440))
+    #         for k, m in human.sent_messages.items():
+    #             message = decode_message(m)
+    #             if current_day - message.day < 14:
+    #                 # add the update message to the receiver's inbox
+    #                 update_message = encode_update_message(
+    #                     human.cur_message_risk_update(message.day, message.risk, sent_at))
+    #                 hd[k.split("_")[0]].update_messages.append(update_message)
+    #         human.sent_messages = {}

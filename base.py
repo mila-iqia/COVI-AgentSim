@@ -161,6 +161,7 @@ class City(simpy.Environment):
 
                 self.humans.append(Human(
                         env=self.env,
+                        city=self,
                         rng=self.rng,
                         name=count_humans,
                         age=age,
@@ -218,6 +219,9 @@ class City(simpy.Environment):
         for i,house in enumerate(self.households):
             house.area = area[i]
 
+        # this allows for easy O(1) access of humans for message passing
+        self.hd = {human.name: human for human in self.humans}
+
     def log_static_info(self):
         for h in self.humans:
             Event.log_static_info(self, h, self.env.timestamp)
@@ -241,7 +245,10 @@ class City(simpy.Environment):
             start_pkl = zf.namelist()[0]
 
         while True:
-            if RISK_MODEL not in LOCAL_RISK_MODELS:
+            for human in self.humans:
+                human.contact_book.update_history(current_day)
+
+            if USE_INFERENCE_SERVER:
                 self.humans, start_pkl = integrated_risk_pred(self.humans, outfile, start_time, current_day, all_possible_symptoms, start_pkl, port=port, n_jobs=n_jobs)
             if INTERVENTION_DAY > 0 and current_day == INTERVENTION_DAY:
                 self.intervention = get_intervention(INTERVENTION)
@@ -602,39 +609,27 @@ class DummyEvent:
 
 class Contacts(object):
     def __init__(self, has_app):
-        # human --> [[date, counts], ...]
-        self.book = {}
+        self.messages = []
+        self.update_messages = []
         self.has_app = has_app
 
     def add(self, **kwargs):
         human = kwargs.get("human")
         timestamp = kwargs.get("timestamp")
+        cur_day = (timestamp - human.env.initial_timestamp).days
+        cur_message = human.cur_message(cur_day)
+        self.messages.append(cur_message)
 
-        if human not in self.book:
-            self.book[human] = [[timestamp.date(), 1]]
-            return
-
-        if timestamp.date() != self.book[human][-1][0]:
-            self.book[human].append([timestamp.date(), 1])
-        else:
-            self.book[human][-1][1] += 1
-
-        self.update_history(human, timestamp.date())
-
-    def update_history(self, human, date=None):
-        if date is None:
-            date = self.book[human][-1][0] # last contact date
-
-        remove_idx = -1
-        for history in self.book[human]:
-            if (date - history[0]).days > N_DAYS_HISTORY:
-                remove_idx  += 1
+    def update_history(self, cur_day):
+        remove_idx = 0
+        for historical_message in self.messages:
+            if cur_day - historical_message.day > N_DAYS_HISTORY:
+                remove_idx += 1
             else:
                 break
+        self.messages = self.messages[remove_idx:]
 
-        self.book[human] = self.book[human][remove_idx:]
-
-    def send_message(self, owner, RISK_MODEL):
+    def send_message(self, owner, city, RISK_MODEL):
         if RISK_MODEL == "manual tracing":
             p_contact = MANUAL_TRACING_NOISE
             delay = 1
@@ -647,10 +642,25 @@ class Contacts(object):
             if not owner.has_app:
                 return
 
-        for human in self.book:
-            if not app or (app and human.has_app):
-                if human.rng.random() < p_contact:
-                    self.update_history(human)
-                    t = delay * _draw_random_discreet_gaussian(MANUAL_TRACING_DELAY_AVG, MANUAL_TRACING_DELAY_STD, human.rng)
-                    total_contacts = sum(map(lambda x:x[1], self.book[human]))
-                    human.update_risk(update_messages={'n':total_contacts, 'delay': t})
+        # if each person has the app, increment the contacts for that person
+        contact_count = defaultdict(int)
+        for message in self.messages:
+            if not app or not message.has_app:
+                continue
+            if owner.rng.random() < p_contact:
+                contact_count[message.unobs_id] += 1
+
+        ts = {}
+        # for each unique person contacted, determine when they will receive an update and update their risk
+        for contact_id, num_contacts in contact_count.items():
+            t = delay * _draw_random_discreet_gaussian(MANUAL_TRACING_DELAY_AVG, MANUAL_TRACING_DELAY_STD, owner.rng)
+            ts[contact_id] = t
+            city.hd[contact_id].update_risk(update_messages={'n':num_contacts, 'delay': t})
+
+        # for each message add the message to sent update_messages
+        for message in self.messages:
+            if not app or not message.has_app:
+                continue
+            if owner.rng.random() < p_contact:
+                t = ts[message.unobs_id]
+                self.update_messages.append(city.hd[message.unobs_id].cur_message_risk_update(message.day, message.risk, t))
