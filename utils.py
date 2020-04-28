@@ -465,372 +465,390 @@ def _get_get_really_sick(age, sex, rng):
 def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_load_plateau_end,
                            viral_load_recovered, age, incubation_days, really_sick, extremely_sick,
                            rng, preexisting_conditions, carefulness):
-        progression = []
+    symptoms_contexts = SYMPTOMS_CONTEXTS['covid']
+    progression = []
+    symptoms_per_phase = [[] for i in range(len(symptoms_contexts))]
 
-        # Before onset of symptoms (incubation)
-        # ====================================================
-        for day in range(math.ceil(incubation_days)):
-            progression.append([])
+    # Before onset of symptoms (incubation)
+    # ====================================================
+    for day in range(math.ceil(incubation_days)):
+        progression.append([])
 
-        # Before the symptom's plateau
-        # ====================================================
-        symptoms1 = []
-        p_fever = 0.2
-        if really_sick or extremely_sick or len(preexisting_conditions)>2 or initial_viral_load > 0.6:
-            symptoms1.append('moderate')
-            p_fever = 0.4
-        else :
-            symptoms1.append('mild')
-        if rng.rand() < p_fever:
-            symptoms1.append('fever')
-            if extremely_sick:
-                if rng.rand() < 0.8:
-                    symptoms1.append('chills')
+    # Before the symptom's plateau
+    # ====================================================
+    phase_i = 0
+    phase = symptoms_contexts[phase_i]
 
-        # gastro symptoms are more likely to be earlier and are more
-        # likely to show extreme symptoms later
-        p_gastro = initial_viral_load - .15
-        if rng.rand() < p_gastro:
-            symptoms1.append('gastro')
-            if rng.rand() < 0.9:
-                symptoms1.append('diarrhea')
-            if rng.rand() < 0.7:
-                symptoms1.append('nausea_vomiting')
+    p_fever = SYMPTOMS['fever'].probabilities[phase]
+    if really_sick or extremely_sick or len(preexisting_conditions)>2 or initial_viral_load > 0.6:
+        symptoms_per_phase[phase_i].append('moderate')
+        p_fever = 0.4
+    else:
+        symptoms_per_phase[phase_i].append('mild')
 
-        # fatigue and unusual symptoms are more heavily age-related
-        # but more likely later, and less if you're careful/taking care
-        # of yourself
-        p_lethargy = (age/200) + initial_viral_load*0.6 - carefulness/2
-        if rng.rand() < p_lethargy:
-            symptoms1.append('fatigue')
-            if rng.rand() < 0.2 and age > 75:
-                symptoms1.append('unusual')
-            if rng.rand() < 0.6:
-               symptoms1.append('hard_time_waking_up')
-            if rng.rand() < 0.5:
-                symptoms1.append('headache')
-            if rng.rand() < 0.1:
-                symptoms1.append('confused')
-            if really_sick or extremely_sick or len(preexisting_conditions)>2:
-                if rng.rand() < 0.1:
-                    symptoms1.append('lost_consciousness')
-
-        # respiratory symptoms not so common at this stage
-        p_respiratory = (0.5 * initial_viral_load) - (carefulness * 0.25) # e.g. 0.5*0.5 - 0.7*0.25 = 0.25-0.17
-        if 'smoker' in preexisting_conditions or 'lung_disease' in preexisting_conditions:
-            p_respiratory = (p_respiratory * 4) + age/200  # e.g. 0.1 * 4 * 45/200 = 0.4 + 0.225
-        if rng.rand() < p_respiratory:
-            symptoms1.append('trouble_breathing')
-            if rng.rand() < 0.2 :
-                symptoms1.append('sneezing')
-            if rng.rand() < 0.6:
-                symptoms1.append('cough')
-            if rng.rand() < 0.1:
-                symptoms1.append('runny_nose')
-            if rng.rand() < 0.5:
-                symptoms1.append('sore_throat')
-            if extremely_sick and rng.rand() < 0.4:
-                symptoms1.append('severe_chest_pain')
-
-        if rng.rand() < 0.25:
-            symptoms1.append('loss_of_taste')
-
-        if 'mild' in symptoms1 and 'trouble_breathing' in symptoms1:
-            symptoms1.append('light_trouble_breathing')
-        if 'moderate' in symptoms1 and 'trouble_breathing' in symptoms1:
-            symptoms1.append('moderate_trouble_breathing')
-
-        # same delay in symptom plateau as there was in symptom onset
-        symptom_onset_delay = round(viral_load_plateau_start - incubation_days)
-        for day in range(symptom_onset_delay):
-            progression.append(symptoms1)
-
-
-        # During the plateau of symptoms Part 1
-        # ====================================================
-        symptoms2 = []
+    if rng.rand() < p_fever:
+        symptoms_per_phase[phase_i].append('fever')
         if extremely_sick:
-            symptoms2.append('extremely-severe')
-        elif really_sick or len(preexisting_conditions) >2 or 'moderate' in symptoms1 or initial_viral_load > 0.6:
-            symptoms2.append('severe')
-        elif rng.rand() < p_gastro:
-            symptoms2.append('moderate')
-        else:
-            symptoms2.append('mild')
-
-        if 'fever' in symptoms1 or initial_viral_load > 0.8 or rng.rand() < 0.3:
-            symptoms2.append('fever')
-            if rng.rand() > 0.5:
-                symptoms2.append('chills')
-
-
-        # gastro symptoms are more likely to be earlier and are more
-        # likely to show extreme symptoms later
-        if 'gastro' in symptoms1 or rng.rand() < p_gastro *.5:
-            symptoms2.append('gastro')
-            if rng.rand() < 0.9:
-                symptoms2.append('diarrhea')
-            if rng.rand() < 0.7:
-                symptoms2.append('nausea_vomiting')
-
-        # fatigue and unusual symptoms are more heavily age-related
-        # but more likely later, and less if you're careful/taking care
-        # of yourself
-        if rng.rand() < p_lethargy + (p_gastro/2): #if you had gastro symptoms before more likely to be lethargic now
-            symptoms2.append('fatigue')
-            if rng.rand() < 0.3 and age > 75:
-                symptoms2.append('unusual')
-            if rng.rand() < 0.6:
-               symptoms2.append('hard_time_waking_up')
-            if rng.rand() < 0.5:
-                symptoms2.append('headache')
-            if rng.rand() < 0.1:
-                symptoms2.append('confused')
-            if really_sick or extremely_sick or len(preexisting_conditions)>2:
-                if rng.rand() < 0.1:
-                    symptoms2.append('lost_consciousness')
-
-        # respiratory symptoms more common at this stage
-        p_respiratory = initial_viral_load - (carefulness * 0.25) # e.g. 0.5 - 0.7*0.25 = 0.5-0.17
-        if 'smoker' in preexisting_conditions or 'lung_disease' in preexisting_conditions:
-            p_respiratory = (p_respiratory * 4) + age/200  # e.g. 0.1 * 4 * 45/200 = 0.4 + 0.225
-        if rng.rand() < p_respiratory:
-            symptoms2.append('trouble_breathing')
-            if rng.rand() < 0.3 :
-                symptoms2.append('sneezing')
-            if rng.rand() < 0.9:
-                symptoms2.append('cough')
-            if rng.rand() < 0.2:
-                symptoms2.append('runny_nose')
             if rng.rand() < 0.8:
-                symptoms2.append('sore_throat')
-            if extremely_sick and rng.rand() < 0.5:
-                symptoms2.append('severe_chest_pain')
+                symptoms_per_phase[phase_i].append('chills')
 
-        if 'loss_of_taste' in symptoms1 or rng.rand() < 0.3:
-            symptoms2.append('loss_of_taste')
+    # gastro symptoms are more likely to be earlier and are more
+    # likely to show extreme symptoms later
+    p_gastro = initial_viral_load - .15
+    if rng.rand() < p_gastro:
+        symptoms_per_phase[phase_i].append('gastro')
 
-        if 'mild' in symptoms2 and 'trouble_breathing' in symptoms2:
-            symptoms2.append('light_trouble_breathing')
-        if 'moderate'in symptoms2 and 'trouble_breathing' in symptoms2:
-            symptoms2.append('moderate_trouble_breathing')
-        if ('severe' in symptoms2 or 'extremely-severe' in symptoms2) and 'trouble_breathing' in symptoms2:
-            symptoms2.append('heavy_trouble_breathing')
+        for symptom in ('diarrhea', 'nausea_vomiting'):
+            rand = rng.rand()
+            if rand < SYMPTOMS[symptom].probabilities[phase]:
+                symptoms_per_phase[phase_i].append(symptom)
 
-        len_plateau  = round(viral_load_plateau_end - viral_load_plateau_start)
-        plateau_part1 = len_plateau//2
-        for day in range(plateau_part1):
-            progression.append(symptoms2)
+    # fatigue and unusual symptoms are more heavily age-related
+    # but more likely later, and less if you're careful/taking care
+    # of yourself
+    p_lethargy = (age/200) + initial_viral_load*0.6 - carefulness/2
+    if rng.rand() < p_lethargy:
+        symptoms_per_phase[phase_i].append('fatigue')
 
+        if age > 75 and rng.rand() < SYMPTOMS['unusual'].probabilities[phase]:
+            symptoms_per_phase[phase_i].append('unusual')
+        if really_sick or extremely_sick or len(preexisting_conditions) > 2 and \
+                rng.rand() < SYMPTOMS['lost_consciousness'].probabilities[phase]:
+            symptoms_per_phase[phase_i].append('lost_consciousness')
 
-        # During the symptoms plateau Part 2 (worst part of the disease)
-        # ====================================================
-        symptoms3 = []
-        if extremely_sick:
-            symptoms3.append('extremely-severe')
-        elif really_sick or len(preexisting_conditions) >2 or 'severe' in symptoms2 or initial_viral_load > 0.6:
-            symptoms3.append('severe')
-        elif extremely_sick:
-            symptoms3.append('extremely-severe')
-        elif rng.rand() < p_gastro:
-            symptoms3.append('moderate')
-        else:
-            symptoms3.append('mild')
+        for symptom in ('hard_time_waking_up', 'headache', 'confused'):
+            rand = rng.rand()
+            if rand < SYMPTOMS[symptom].probabilities[phase]:
+                symptoms_per_phase[phase_i].append(symptom)
 
-        if 'fever' in symptoms3 or initial_viral_load > 0.6 or rng.rand() < 0.8:
-            symptoms3.append('fever')
-            if rng.rand() > 0.5:
-                symptoms3.append('chills')
+    # respiratory symptoms not so common at this stage
+    p_respiratory = (0.5 * initial_viral_load) - (carefulness * 0.25) # e.g. 0.5*0.5 - 0.7*0.25 = 0.25-0.17
+    if 'smoker' in preexisting_conditions or 'lung_disease' in preexisting_conditions:
+        p_respiratory = (p_respiratory * 4) + age/200  # e.g. 0.1 * 4 * 45/200 = 0.4 + 0.225
+    if rng.rand() < p_respiratory:
+        symptoms_per_phase[phase_i].append('trouble_breathing')
 
+        if extremely_sick and rng.rand() < SYMPTOMS['severe_chest_pain'].probabilities[phase]:
+            symptoms_per_phase[phase_i].append('severe_chest_pain')
 
-        # gastro symptoms are more likely to be earlier and are more
-        # likely to show extreme symptoms later (p gastro reduced compared to part1)
-        if 'gastro' in symptoms2 or rng.rand() < p_gastro *.25:
-            symptoms3.append('gastro')
-            if rng.rand() < 0.9:
-                symptoms3.append('diarrhea')
-            if rng.rand() < 0.7:
-                symptoms3.append('nausea_vomiting')
+        for symptom in ('sneezing', 'cough', 'runny_nose', 'sore_throat'):
+            rand = rng.rand()
+            if rand < SYMPTOMS[symptom].probabilities[phase]:
+                symptoms_per_phase[phase_i].append(symptom)
 
-        # fatigue and unusual symptoms are more heavily age-related
-        # but more likely later, and less if you're careful/taking care
-        # of yourself
-        if rng.rand() < (p_lethargy + p_gastro): #if you had gastro symptoms before more likely to be lethargic now
-            symptoms3.append('fatigue')
-            if rng.rand() < 0.5 and age > 75:
-                symptoms3.append('unusual')
-            if rng.rand() < 0.6:
-               symptoms3.append('hard_time_waking_up')
-            if rng.rand() < 0.5:
-                symptoms3.append('headache')
-            if rng.rand() < 0.1:
-                symptoms3.append('confused')
-            if really_sick or extremely_sick or len(preexisting_conditions)>2:
-                if rng.rand() < 0.1:
-                    symptoms3.append('lost_consciousness')
+    if rng.rand() < SYMPTOMS['loss_of_taste'].probabilities[phase]:
+        symptoms_per_phase[phase_i].append('loss_of_taste')
 
-        # respiratory symptoms more common at this stage
-        p_respiratory = 2*(initial_viral_load - (carefulness * 0.25)) # e.g. 2* (0.5 - 0.7*0.25) = 2*(0.5-0.17)
-        if 'smoker' in preexisting_conditions or 'lung_disease' in preexisting_conditions:
-            p_respiratory = (p_respiratory * 4) + age/200  # e.g. 0.1 * 4 * 45/200 = 0.4 + 0.225
-        if rng.rand() < p_respiratory:
-            symptoms3.append('trouble_breathing')
-            if rng.rand() < 0.3 :
-                symptoms3.append('sneezing')
-            if rng.rand() < 0.9:
-                symptoms3.append('cough')
-            if rng.rand() < 0.2:
-                symptoms3.append('runny_nose')
-            if rng.rand() < 0.8:
-                symptoms3.append('sore_throat')
-            if extremely_sick and rng.rand() < 0.5:
-                symptoms3.append('severe_chest_pain')
-
-        if 'mild' in symptoms3 and 'trouble_breathing' in symptoms3:
-            symptoms3.append('light_trouble_breathing')
-        if 'moderate'in symptoms3 and 'trouble_breathing' in symptoms3:
-            symptoms3.append('moderate_trouble_breathing')
-        if ('severe' in symptoms3 or 'extremely-severe' in symptoms3) and 'trouble_breathing' in symptoms3:
-            symptoms3.append('heavy_trouble_breathing')
+    if 'mild' in symptoms_per_phase[phase_i] and \
+            'trouble_breathing' in symptoms_per_phase[phase_i]:
+        symptoms_per_phase[phase_i].append('light_trouble_breathing')
+    if 'moderate' in symptoms_per_phase[phase_i] and \
+            'trouble_breathing' in symptoms_per_phase[phase_i]:
+        symptoms_per_phase[phase_i].append('moderate_trouble_breathing')
 
 
-        if 'loss_of_taste' in symptoms2 or rng.rand() < 0.35:
-            symptoms3.append('loss_of_taste')
+    # During the plateau of symptoms Part 1
+    # ====================================================
+    phase_i = 1
+    phase = symptoms_contexts[phase_i]
 
-        len_plateau = viral_load_plateau_end - viral_load_plateau_start
-        plateau_part2 = round(len_plateau - plateau_part1)
-        for day in range(plateau_part2):
-            progression.append(symptoms3)
+    if extremely_sick:
+        symptoms_per_phase[phase_i].append('extremely-severe')
+    elif really_sick or len(preexisting_conditions) >2 or 'moderate' in symptoms_per_phase[phase_i-1] or \
+            initial_viral_load > 0.6:
+        symptoms_per_phase[phase_i].append('severe')
+    elif rng.rand() < p_gastro:
+        symptoms_per_phase[phase_i].append('moderate')
+    else:
+        symptoms_per_phase[phase_i].append('mild')
 
-
-        # After the plateau (recovery part 1)
-        # ====================================================
-
-        symptoms4 = []
-        if extremely_sick:
-            symptoms4.append('severe')
-        elif really_sick:
-            symptoms4.append('moderate')
-        else:
-            symptoms4.append('mild')
-
-        # gastro symptoms are more likely to be earlier and are more
-        # likely to show extreme symptoms later (p gastro reduced compared to part1)
-        if rng.rand() < p_gastro *.1:
-            symptoms4.append('gastro')
-            if rng.rand() < 0.9:
-                symptoms4.append('diarrhea')
-            if rng.rand() < 0.7:
-                symptoms4.append('nausea_vomiting')
-
-        # fatigue and unusual symptoms are more heavily age-related
-        # but more likely later, and less if you're careful/taking care
-        # of yourself
-        if rng.rand() < (p_lethargy*1.5 + p_gastro): #if you had gastro symptoms before more likely to be lethargic now
-            symptoms4.append('fatigue')
-            if rng.rand() < 0.5 and age > 75:
-                symptoms4.append('unusual')
-            if rng.rand() < 0.6:
-               symptoms4.append('hard_time_waking_up')
-            if rng.rand() < 0.5:
-                symptoms4.append('headache')
-            if rng.rand() < 0.1:
-                symptoms4.append('confused')
-            if really_sick or extremely_sick or len(preexisting_conditions)>2:
-                if rng.rand() < 0.1:
-                    symptoms4.append('lost_consciousness')
-
-        # respiratory symptoms more common at this stage but less than plateau
-        p_respiratory = (initial_viral_load - (carefulness * 0.25)) # e.g. 2* (0.5 - 0.7*0.25) = 2*(0.5-0.17)
-        if 'smoker' in preexisting_conditions or 'lung_disease' in preexisting_conditions:
-            p_respiratory = (p_respiratory * 4) + age/200  # e.g. 0.1 * 4 * 45/200 = 0.4 + 0.225
-        if rng.rand() < p_respiratory:
-            symptoms4.append('trouble_breathing')
-            if rng.rand() < 0.3 :
-                symptoms4.append('sneezing')
-            if rng.rand() < 0.9:
-                symptoms4.append('cough')
-            if rng.rand() < 0.2:
-                symptoms4.append('runny_nose')
-            if rng.rand() < 0.8:
-                symptoms4.append('sore_throat')
-            if extremely_sick and rng.rand() < 0.15:
-                symptoms4.append('severe_chest_pain')
-
-        if 'mild' in symptoms4 and 'trouble_breathing' in symptoms4:
-            symptoms4.append('light_trouble_breathing')
-        if 'moderate' in symptoms4 and 'trouble_breathing' in symptoms4:
-            symptoms4.append('moderate_trouble_breathing')
-        if ('severe' in symptoms4 or 'extremely-severe' in symptoms4) and 'trouble_breathing' in symptoms4:
-            symptoms4.append('heavy_trouble_breathing')
-
-        for day in range(symptom_onset_delay):
-            progression.append(symptoms4)
+    if 'fever' in symptoms_per_phase[phase_i-1] or initial_viral_load > 0.8 or \
+            rng.rand() < SYMPTOMS['fever'].probabilities[phase]:
+        symptoms_per_phase[phase_i].append('fever')
+        if rng.rand() < SYMPTOMS['chills'].probabilities[phase]:
+            symptoms_per_phase[phase_i].append('chills')
 
 
-        # After the plateau (recovery part 2)
-        # ====================================================
+    # gastro symptoms are more likely to be earlier and are more
+    # likely to show extreme symptoms later
+    if 'gastro' in symptoms_per_phase[phase_i-1] or rng.rand() < p_gastro *.5:
+        symptoms_per_phase[phase_i].append('gastro')
 
-        symptoms5 = []
-        if extremely_sick:
-            symptoms5.append('moderate')
-        else:
-            symptoms5.append('mild')
+        for symptom in ('diarrhea', 'nausea_vomiting'):
+            rand = rng.rand()
+            if rand < SYMPTOMS[symptom].probabilities[phase]:
+                symptoms_per_phase[phase_i].append(symptom)
 
-        # gastro symptoms are more likely to be earlier and are more
-        # likely to show extreme symptoms later (p gastro reduced compared to part1)
-        if 'gastro' in symptoms4 or rng.rand() < p_gastro *.1:
-            symptoms5.append('gastro')
-            if rng.rand() < 0.9:
-                symptoms5.append('diarrhea')
-            if rng.rand() < 0.7:
-                symptoms5.append('nausea_vomiting')
+    # fatigue and unusual symptoms are more heavily age-related
+    # but more likely later, and less if you're careful/taking care
+    # of yourself
+    if rng.rand() < p_lethargy + (p_gastro/2): #if you had gastro symptoms before more likely to be lethargic now
+        symptoms_per_phase[phase_i].append('fatigue')
 
-        # fatigue and unusual symptoms are more heavily age-related
-        # but more likely later, and less if you're careful/taking care
-        # of yourself
-        if rng.rand() < (p_lethargy*2 + p_gastro): #if you had gastro symptoms before more likely to be lethargic now
-            symptoms5.append('fatigue')
-            if rng.rand() < 0.5 and age > 75:
-                symptoms5.append('unusual')
-            if rng.rand() < 0.6:
-               symptoms5.append('hard_time_waking_up')
-            if rng.rand() < 0.5:
-                symptoms5.append('headache')
-            if rng.rand() < 0.1:
-                symptoms5.append('confused')
-            if really_sick or extremely_sick or len(preexisting_conditions)>2:
-                if rng.rand() < 0.1:
-                    symptoms5.append('lost_consciousness')
+        if age > 75 and rng.rand() < SYMPTOMS['unusual'].probabilities[phase]:
+            symptoms_per_phase[phase_i].append('unusual')
+        if really_sick or extremely_sick or len(preexisting_conditions) > 2 and \
+                rng.rand() < SYMPTOMS['lost_consciousness'].probabilities[phase]:
+            symptoms_per_phase[phase_i].append('lost_consciousness')
 
-        # respiratory symptoms getting less common
-        p_respiratory = 0.5 * (initial_viral_load - (carefulness * 0.25)) # e.g. (0.5 - 0.7*0.25) = 0.5*(0.5-0.17)
-        if 'smoker' in preexisting_conditions or 'lung_disease' in preexisting_conditions:
-            p_respiratory = (p_respiratory * 4) + age/200  # e.g. 0.1 * 4 * 45/200 = 0.4 + 0.225
-        if rng.rand() < p_respiratory:
-            symptoms5.append('trouble_breathing')
-            if rng.rand() < 0.3 :
-                symptoms5.append('sneezing')
-            if rng.rand() < 0.9:
-                symptoms5.append('cough')
-            if rng.rand() < 0.2:
-                symptoms5.append('runny_nose')
-            if rng.rand() < 0.8:
-                symptoms5.append('sore_throat')
-            if extremely_sick and rng.rand() < 0.15:
-                symptoms5.append('severe_chest_pain')
+        for symptom in ('hard_time_waking_up', 'headache', 'confused'):
+            rand = rng.rand()
+            if rand < SYMPTOMS[symptom].probabilities[phase]:
+                symptoms_per_phase[phase_i].append(symptom)
 
-        if 'mild' in symptoms5 and 'trouble_breathing' in symptoms5:
-            symptoms5.append('light_trouble_breathing')
-        if 'moderate' in symptoms5 and 'trouble_breathing' in symptoms5:
-            symptoms5.append('moderate_trouble_breathing')
-        if ('severe' in symptoms5 or 'extremely-severe' in symptoms5) and 'trouble_breathing' in symptoms5:
-            symptoms5.append('heavy_trouble_breathing')
+    # respiratory symptoms more common at this stage
+    p_respiratory = initial_viral_load - (carefulness * 0.25) # e.g. 0.5 - 0.7*0.25 = 0.5-0.17
+    if 'smoker' in preexisting_conditions or 'lung_disease' in preexisting_conditions:
+        p_respiratory = (p_respiratory * 4) + age/200  # e.g. 0.1 * 4 * 45/200 = 0.4 + 0.225
+    if rng.rand() < p_respiratory:
+        symptoms_per_phase[phase_i].append('trouble_breathing')
 
-        for day in range(round(viral_load_recovered - viral_load_plateau_end - 2)):
-            progression.append(symptoms5)
+        if extremely_sick and rng.rand() < SYMPTOMS['severe_chest_pain'].probabilities[phase]:
+            symptoms_per_phase[phase_i].append('severe_chest_pain')
 
-        return progression
+        for symptom in ('sneezing', 'cough', 'runny_nose', 'sore_throat'):
+            rand = rng.rand()
+            if rand < SYMPTOMS[symptom].probabilities[phase]:
+                symptoms_per_phase[phase_i].append(symptom)
+
+    if 'loss_of_taste' in symptoms_per_phase[phase_i-1] or \
+            rng.rand() < SYMPTOMS['loss_of_taste'].probabilities[phase]:
+        symptoms_per_phase[phase_i].append('loss_of_taste')
+
+    if 'mild' in symptoms_per_phase[phase_i] and \
+            'trouble_breathing' in symptoms_per_phase[phase_i]:
+        symptoms_per_phase[phase_i].append('light_trouble_breathing')
+    if 'moderate' in symptoms_per_phase[phase_i] and \
+            'trouble_breathing' in symptoms_per_phase[phase_i]:
+        symptoms_per_phase[phase_i].append('moderate_trouble_breathing')
+    if ('severe' in symptoms_per_phase[phase_i] or 'extremely-severe' in symptoms_per_phase[phase_i]) and \
+            'trouble_breathing' in symptoms_per_phase[phase_i]:
+        symptoms_per_phase[phase_i].append('heavy_trouble_breathing')
+
+
+    # During the symptoms plateau Part 2 (worst part of the disease)
+    # ====================================================
+    phase_i = 2
+    phase = symptoms_contexts[phase_i]
+
+    if extremely_sick:
+        symptoms_per_phase[phase_i].append('extremely-severe')
+    elif really_sick or len(preexisting_conditions) >2 or 'severe' in symptoms_per_phase[phase_i-1] or \
+            initial_viral_load > 0.6:
+        symptoms_per_phase[phase_i].append('severe')
+    elif rng.rand() < p_gastro:
+        symptoms_per_phase[phase_i].append('moderate')
+    else:
+        symptoms_per_phase[phase_i].append('mild')
+
+    if 'fever' in symptoms_per_phase[phase_i-1] or initial_viral_load > 0.6 or \
+            rng.rand() < SYMPTOMS['fever'].probabilities[phase]:
+        symptoms_per_phase[phase_i].append('fever')
+        if rng.rand() < SYMPTOMS['chills'].probabilities[phase]:
+            symptoms_per_phase[phase_i].append('chills')
+
+
+    # gastro symptoms are more likely to be earlier and are more
+    # likely to show extreme symptoms later (p gastro reduced compared to part1)
+    if 'gastro' in symptoms_per_phase[phase_i-1] or rng.rand() < p_gastro *.25:
+        symptoms_per_phase[phase_i].append('gastro')
+
+        for symptom in ('diarrhea', 'nausea_vomiting'):
+            rand = rng.rand()
+            if rand < SYMPTOMS[symptom].probabilities[phase]:
+                symptoms_per_phase[phase_i].append(symptom)
+
+    # fatigue and unusual symptoms are more heavily age-related
+    # but more likely later, and less if you're careful/taking care
+    # of yourself
+    if rng.rand() < (p_lethargy + p_gastro): #if you had gastro symptoms before more likely to be lethargic now
+        symptoms_per_phase[phase_i].append('fatigue')
+
+        if age > 75 and rng.rand() < SYMPTOMS['unusual'].probabilities[phase]:
+            symptoms_per_phase[phase_i].append('unusual')
+        if really_sick or extremely_sick or len(preexisting_conditions) > 2 and \
+                rng.rand() < SYMPTOMS['lost_consciousness'].probabilities[phase]:
+            symptoms_per_phase[phase_i].append('lost_consciousness')
+
+        for symptom in ('hard_time_waking_up', 'headache', 'confused'):
+            rand = rng.rand()
+            if rand < SYMPTOMS[symptom].probabilities[phase]:
+                symptoms_per_phase[phase_i].append(symptom)
+
+    # respiratory symptoms more common at this stage
+    p_respiratory = 2*(initial_viral_load - (carefulness * 0.25)) # e.g. 2* (0.5 - 0.7*0.25) = 2*(0.5-0.17)
+    if 'smoker' in preexisting_conditions or 'lung_disease' in preexisting_conditions:
+        p_respiratory = (p_respiratory * 4) + age/200  # e.g. 0.1 * 4 * 45/200 = 0.4 + 0.225
+    if rng.rand() < p_respiratory:
+        symptoms_per_phase[phase_i].append('trouble_breathing')
+
+        if extremely_sick and rng.rand() < SYMPTOMS['severe_chest_pain'].probabilities[phase]:
+            symptoms_per_phase[phase_i].append('severe_chest_pain')
+
+        for symptom in ('sneezing', 'cough', 'runny_nose', 'sore_throat'):
+            rand = rng.rand()
+            if rand < SYMPTOMS[symptom].probabilities[phase]:
+                symptoms_per_phase[phase_i].append(symptom)
+
+    if 'mild' in symptoms_per_phase[phase_i] and \
+            'trouble_breathing' in symptoms_per_phase[phase_i]:
+        symptoms_per_phase[phase_i].append('light_trouble_breathing')
+    if 'moderate' in symptoms_per_phase[phase_i] and \
+            'trouble_breathing' in symptoms_per_phase[phase_i]:
+        symptoms_per_phase[phase_i].append('moderate_trouble_breathing')
+    if ('severe' in symptoms_per_phase[phase_i] or 'extremely-severe' in symptoms_per_phase[phase_i]) and \
+            'trouble_breathing' in symptoms_per_phase[phase_i]:
+        symptoms_per_phase[phase_i].append('heavy_trouble_breathing')
+
+    if 'loss_of_taste' in symptoms_per_phase[phase_i-1] or \
+            rng.rand() < SYMPTOMS['loss_of_taste'].probabilities[phase]:
+        symptoms_per_phase[phase_i].append('loss_of_taste')
+
+
+    # After the plateau (recovery part 1)
+    # ====================================================
+    phase_i = 3
+    phase = symptoms_contexts[phase_i]
+
+    if extremely_sick:
+        symptoms_per_phase[phase_i].append('severe')
+    elif really_sick:
+        symptoms_per_phase[phase_i].append('moderate')
+    else:
+        symptoms_per_phase[phase_i].append('mild')
+
+    # gastro symptoms are more likely to be earlier and are more
+    # likely to show extreme symptoms later (p gastro reduced compared to part1)
+    if 'gastro' in symptoms_per_phase[phase_i-1] or rng.rand() < p_gastro *.1:
+        symptoms_per_phase[phase_i].append('gastro')
+
+        for symptom in ('diarrhea', 'nausea_vomiting'):
+            rand = rng.rand()
+            if rand < SYMPTOMS[symptom].probabilities[phase]:
+                symptoms_per_phase[phase_i].append(symptom)
+
+    # fatigue and unusual symptoms are more heavily age-related
+    # but more likely later, and less if you're careful/taking care
+    # of yourself
+    if rng.rand() < (p_lethargy*1.5 + p_gastro): #if you had gastro symptoms before more likely to be lethargic now
+        symptoms_per_phase[phase_i].append('fatigue')
+
+        if age > 75 and rng.rand() < SYMPTOMS['unusual'].probabilities[phase]:
+            symptoms_per_phase[phase_i].append('unusual')
+        if really_sick or extremely_sick or len(preexisting_conditions) > 2 and \
+                rng.rand() < SYMPTOMS['lost_consciousness'].probabilities[phase]:
+            symptoms_per_phase[phase_i].append('lost_consciousness')
+
+        for symptom in ('hard_time_waking_up', 'headache', 'confused'):
+            rand = rng.rand()
+            if rand < SYMPTOMS[symptom].probabilities[phase]:
+                symptoms_per_phase[phase_i].append(symptom)
+
+    # respiratory symptoms more common at this stage but less than plateau
+    p_respiratory = (initial_viral_load - (carefulness * 0.25)) # e.g. 2* (0.5 - 0.7*0.25) = 2*(0.5-0.17)
+    if 'smoker' in preexisting_conditions or 'lung_disease' in preexisting_conditions:
+        p_respiratory = (p_respiratory * 4) + age/200  # e.g. 0.1 * 4 * 45/200 = 0.4 + 0.225
+    if rng.rand() < p_respiratory:
+        symptoms_per_phase[phase_i].append('trouble_breathing')
+
+        if extremely_sick and rng.rand() < SYMPTOMS['severe_chest_pain'].probabilities[phase]:
+            symptoms_per_phase[phase_i].append('severe_chest_pain')
+
+        for symptom in ('sneezing', 'cough', 'runny_nose', 'sore_throat'):
+            rand = rng.rand()
+            if rand < SYMPTOMS[symptom].probabilities[phase]:
+                symptoms_per_phase[phase_i].append(symptom)
+
+    if 'mild' in symptoms_per_phase[phase_i] and \
+            'trouble_breathing' in symptoms_per_phase[phase_i]:
+        symptoms_per_phase[phase_i].append('light_trouble_breathing')
+    if 'moderate' in symptoms_per_phase[phase_i] and \
+            'trouble_breathing' in symptoms_per_phase[phase_i]:
+        symptoms_per_phase[phase_i].append('moderate_trouble_breathing')
+    if ('severe' in symptoms_per_phase[phase_i] or 'extremely-severe' in symptoms_per_phase[phase_i]) and \
+            'trouble_breathing' in symptoms_per_phase[phase_i]:
+        symptoms_per_phase[phase_i].append('heavy_trouble_breathing')
+
+
+    # After the plateau (recovery part 2)
+    # ====================================================
+    phase_i = 4
+    phase = symptoms_contexts[phase_i]
+
+    if extremely_sick:
+        symptoms_per_phase[phase_i].append('moderate')
+    else:
+        symptoms_per_phase[phase_i].append('mild')
+
+    # gastro symptoms are more likely to be earlier and are more
+    # likely to show extreme symptoms later (p gastro reduced compared to part1)
+    if 'gastro' in symptoms_per_phase[phase_i-1] or rng.rand() < p_gastro *.1:
+        symptoms_per_phase[phase_i].append('gastro')
+
+        for symptom in ('diarrhea', 'nausea_vomiting'):
+            rand = rng.rand()
+            if rand < SYMPTOMS[symptom].probabilities[phase]:
+                symptoms_per_phase[phase_i].append(symptom)
+
+    # fatigue and unusual symptoms are more heavily age-related
+    # but more likely later, and less if you're careful/taking care
+    # of yourself
+    if rng.rand() < (p_lethargy*2 + p_gastro): #if you had gastro symptoms before more likely to be lethargic now
+        symptoms_per_phase[phase_i].append('fatigue')
+
+        if age > 75 and rng.rand() < SYMPTOMS['unusual'].probabilities[phase]:
+            symptoms_per_phase[phase_i].append('unusual')
+        if really_sick or extremely_sick or len(preexisting_conditions) > 2 and \
+                rng.rand() < SYMPTOMS['lost_consciousness'].probabilities[phase]:
+            symptoms_per_phase[phase_i].append('lost_consciousness')
+
+        for symptom in ('hard_time_waking_up', 'headache', 'confused'):
+            rand = rng.rand()
+            if rand < SYMPTOMS[symptom].probabilities[phase]:
+                symptoms_per_phase[phase_i].append(symptom)
+
+    # respiratory symptoms getting less common
+    p_respiratory = 0.5 * (initial_viral_load - (carefulness * 0.25)) # e.g. (0.5 - 0.7*0.25) = 0.5*(0.5-0.17)
+    if 'smoker' in preexisting_conditions or 'lung_disease' in preexisting_conditions:
+        p_respiratory = (p_respiratory * 4) + age/200  # e.g. 0.1 * 4 * 45/200 = 0.4 + 0.225
+    if rng.rand() < p_respiratory:
+        symptoms_per_phase[phase_i].append('trouble_breathing')
+
+        if extremely_sick and rng.rand() < SYMPTOMS['severe_chest_pain'].probabilities[phase]:
+            symptoms_per_phase[phase_i].append('severe_chest_pain')
+
+        for symptom in ('sneezing', 'cough', 'runny_nose', 'sore_throat'):
+            rand = rng.rand()
+            if rand < SYMPTOMS[symptom].probabilities[phase]:
+                symptoms_per_phase[phase_i].append(symptom)
+
+    if 'mild' in symptoms_per_phase[phase_i] and \
+            'trouble_breathing' in symptoms_per_phase[phase_i]:
+        symptoms_per_phase[phase_i].append('light_trouble_breathing')
+    if 'moderate' in symptoms_per_phase[phase_i] and \
+            'trouble_breathing' in symptoms_per_phase[phase_i]:
+        symptoms_per_phase[phase_i].append('moderate_trouble_breathing')
+    if ('severe' in symptoms_per_phase[phase_i] or 'extremely-severe' in symptoms_per_phase[phase_i]) and \
+            'trouble_breathing' in symptoms_per_phase[phase_i]:
+        symptoms_per_phase[phase_i].append('heavy_trouble_breathing')
+
+    symptom_onset_delay = round(viral_load_plateau_start - incubation_days)
+    plateau_duration = round(viral_load_plateau_end - viral_load_plateau_start)
+
+    # same delay in symptom plateau as there was in symptom onset
+    pre_plateau_duration = symptom_onset_delay
+    plateau_1_duration = plateau_duration // 2
+    plateau_2_duration = plateau_duration - plateau_1_duration
+    post_plateau_1_duration = symptom_onset_delay
+    post_plateau_2_duration = round(viral_load_recovered - viral_load_plateau_end - 2)
+
+    for duration, symptoms in zip((pre_plateau_duration, plateau_1_duration, plateau_2_duration,
+                                   post_plateau_1_duration, post_plateau_2_duration),
+                                  symptoms_per_phase):
+        for day in range(duration):
+            progression.append(symptoms)
+
+    return progression
 
 def _get_allergy_progression(rng):
     symptoms = ['sneezing']
