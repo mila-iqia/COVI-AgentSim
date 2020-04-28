@@ -2,6 +2,7 @@ import os
 import pickle
 import json
 import zipfile
+import time
 import numpy as np
 import functools
 from collections import defaultdict
@@ -51,7 +52,7 @@ def get_days_worth_of_logs(data_path, start, cur_day, start_pkl):
 
 
 def integrated_risk_pred(humans, data_path, start, current_day, all_possible_symptoms, start_pkl, port=6688, n_jobs=1):
-
+    risk_pred_start = time.time()
     # check that the plot_dir exists:
     if config.PLOT_RISK:
         os.makedirs(config.RISK_PLOT_PATH, exist_ok=True)
@@ -69,7 +70,7 @@ def integrated_risk_pred(humans, data_path, start, current_day, all_possible_sym
         human.uid = update_uid(human.uid, human.rng)
 
     batch_start_offset = 0
-    batch_size = 128  # @@@@ TODO: make this a high-level configurable arg?
+    batch_size = 25  # @@@@ TODO: make this a high-level configurable arg?
     batched_params = []
     while batch_start_offset < len(all_params):
         batch_end_offset = min(batch_start_offset + batch_size, len(all_params))
@@ -103,7 +104,7 @@ def integrated_risk_pred(humans, data_path, start, current_day, all_possible_sym
         for human in hd.values():
             clusters.append(dict(human.clusters.clusters))
         json.dump(clusters, open(config.CLUSTER_PATH, 'w'))
-
+    print(f"{current_day} took {time.time() - risk_pred_start}")
     return humans, start_pkl
 
 
