@@ -70,7 +70,7 @@ class Human(object):
         # allergies
         self.has_allergies = self.rng.rand() < P_ALLERGIES
         len_allergies = self.rng.normal(1/self.carefulness, 1)
-        self.len_allergies = 1 if len_allergies < 1 else round(len_allergies)
+        self.len_allergies = 7 if len_allergies > 7 else np.ceil(len_allergies)
         self.allergy_progression = _get_allergy_progression(self.rng)
 
         # logged info can be quite different
