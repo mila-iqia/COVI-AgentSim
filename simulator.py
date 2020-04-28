@@ -61,9 +61,9 @@ class Human(object):
         age_modifier = 2 if self.age > 40 or self.age < 12 else 2
         # &carefulness
         if self.rng.rand() < P_CAREFUL_PERSON:
-            self.carefulness = (round(self.rng.normal(55, 10)) + self.age/2 + 1) / 100
+            self.carefulness = (round(self.rng.normal(55, 10)) + self.age/2) / 100
         else:
-            self.carefulness = (round(self.rng.normal(25, 10)) + self.age/2 + 1) / 100
+            self.carefulness = (round(self.rng.normal(25, 10)) + self.age/2) / 100
 
         self.has_app = self.rng.rand() < (P_HAS_APP / age_modifier) + (self.carefulness / 2)
 
