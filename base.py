@@ -663,4 +663,4 @@ class Contacts(object):
                 continue
             if owner.rng.random() < p_contact:
                 t = ts[message.unobs_id]
-                self.update_messages.append(city.hd[message.unobs_id].cur_message_risk_update(message.day, message.risk, t))
+                self.update_messages.append(city.hd[message.unobs_id].cur_message_risk_update(message.day, message.uid, message.risk, t))

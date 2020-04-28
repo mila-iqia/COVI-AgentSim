@@ -1008,8 +1008,8 @@ class Human(object):
         message = Message(self.uid, _proba_to_risk_level(self.risk), day, self.name, self.has_app)
         return message
 
-    def cur_message_risk_update(self, day, old_risk, sent_at):
-        return UpdateMessage(self.uid, _proba_to_risk_level(self.risk), old_risk, day, sent_at, self.name, self.has_app)
+    def cur_message_risk_update(self, day, old_uid, old_risk, sent_at):
+        return UpdateMessage(old_uid, _proba_to_risk_level(self.risk), old_risk, day, sent_at, self.name, self.has_app)
 
     def symptoms_at_time(self, now, symptoms):
         if not symptoms:
