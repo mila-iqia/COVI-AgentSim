@@ -43,7 +43,7 @@ def get_days_worth_of_logs(data_path, start, cur_day, start_pkl):
                 for log in logs:
                     if log['event_type'] == Event.encounter:
                         day_since_epoch = (log['time'] - start).days
-                        if day_since_epoch == cur_day:
+                        if day_since_epoch == cur_day-1:
                             to_return[log['human_id']].append(log)
                         elif day_since_epoch > cur_day:
                             return to_return, start_pkl
