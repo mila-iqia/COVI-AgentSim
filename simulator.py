@@ -820,6 +820,7 @@ class Human(object):
 
                         self.n_infectious_contacts+=1
                         Event.log_exposed(h, self, self.env.timestamp)
+                        h.exposure_message = encode_message(self.cur_message((self.env.timestamp - self.env.initial_timestamp).days))
                         city.tracker.track_infection('human', from_human=self, to_human=h, location=location, timestamp=self.env.timestamp)
                         # print(f"{self.name} infected {h.name} at {location}")
 

@@ -2,7 +2,6 @@ import numpy as np
 
 from frozen.utils import decode_message
 
-# NOTE: THIS MAP SHOULD ALWAYS MATCH THE NAME/IDS PROVIDED IN utils.py
 PREEXISTING_CONDITIONS_META = {
     'smoker': 5,
     'diabetes': 1,
@@ -14,37 +13,6 @@ PREEXISTING_CONDITIONS_META = {
     'immuno-suppressed': 0,
     'lung_disease': 8,
     'pregnant': 9,
-}
-
-# NOTE: THIS MAP SHOULD ALWAYS MATCH THE NAME/IDS PROVIDED IN utils.py
-SYMPTOMS_META = {
-    'mild': 1,
-    'moderate': 0,
-    'severe': 2,
-    'extremely-severe': 3,
-    'fever': 4,
-    'chills': 5,
-    'gastro': 6,
-    'diarrhea': 7,
-    'nausea_vomiting': 8,
-    'fatigue': 9,
-    'unusual': 10,
-    'hard_time_waking_up': 11,
-    'headache': 12,
-    'confused': 13,
-    'lost_consciousness': 14,
-    'trouble_breathing': 15,
-    'sneezing': 16,
-    'cough': 17,
-    'runny_nose': 18,
-    'sore_throat': 20,
-    'severe_chest_pain': 21,
-    'light_trouble_breathing': 24,
-    'mild_trouble_breathing': 23,
-    'moderate_trouble_breathing': 25,
-    'heavy_trouble_breathing': 26,
-    'loss_of_taste': 22,
-    'aches': 19
 }
 
 
@@ -83,7 +51,7 @@ def get_test_result_array(human_test_time, date):
 
 def messages_to_np(human):
     ms_enc = []
-    for day, clusters in human.clusters.clusters_by_day.items():
+    for day, clusters in human["clusters"].clusters_by_day.items():
         for cluster_id, messages in clusters.items():
             # TODO: take an average over the risks for that day
             if not any(messages):
@@ -95,17 +63,16 @@ def messages_to_np(human):
 def candidate_exposures(human, date):
     candidate_encounters = messages_to_np(human)
     exposed_encounters = np.zeros(len(candidate_encounters))
-    if human.exposure_message and human.exposure_message in human.clusters.all_messages:
+    if human["exposure_message"] and human["exposure_message"] in human["clusters"].all_messages:
         idx = 0
-        for day, clusters in human.clusters.clusters_by_day.items():
+        for day, clusters in human["clusters"].clusters_by_day.items():
             for cluster_id, messages in clusters.items():
                 for message in messages:
-                    if message == human.exposure_message:
+                    if message == human["exposure_message"]:
                         exposed_encounters[idx] = 1.
                         break
                 if any(messages):
                     idx += 1
-
     return candidate_encounters, exposed_encounters
 
 
@@ -119,7 +86,7 @@ def conditions_to_np(conditions):
 def symptoms_to_np(all_symptoms, all_possible_symptoms):
     rolling_window = 14
     aps = list(all_possible_symptoms)
-    symptoms_enc = np.zeros((rolling_window, len(all_possible_symptoms)+1))
+    symptoms_enc = np.zeros((rolling_window, len(all_possible_symptoms) + 1))
     for day, symptom in enumerate(all_symptoms[:14]):
         symptoms_enc[day, aps.index(symptom)] = 1.
     return symptoms_enc
