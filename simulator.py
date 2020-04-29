@@ -7,7 +7,7 @@ from utils import _normalize_scores, _get_random_sex, _get_covid_progression, \
      _get_cold_progression, _get_flu_progression, _get_allergy_progression, proba_to_risk_fn, _get_get_really_sick
 
 from base import *
-from interventions import GetTested
+from interventions import GetTested, RiskBasedRecommendations
 if COLLECT_LOGS is False:
     Event = DummyEvent
 
@@ -86,7 +86,7 @@ class Human(object):
 
         # &symptoms, &viral-load
         # probability of being asymptomatic is basically 50%, but a bit less if you're older and a bit more if you're younger
-        self.is_asymptomatic = self.rng.rand() < (BASELINE_P_ASYMPTOMATIC - (self.age - 50) * 0.5) / 100 # e.g. 70: baseline-0.1, 20: baseline+0.15
+        self.is_asymptomatic = self.rng.rand() < BASELINE_P_ASYMPTOMATIC - (self.age - 50) * 0.5 / 100 # e.g. 70: baseline-0.1, 20: baseline+0.15
         self.asymptomatic_infection_ratio = ASYMPTOMATIC_INFECTION_RATIO if self.is_asymptomatic else 0.0 # draw a beta with the distribution in documents
 
         # Indicates whether this person will show severe signs of illness.
@@ -116,7 +116,6 @@ class Human(object):
         # counters and memory
         self.r0 = []
         self.has_logged_symptoms = False
-        self.has_been_tested = False
         self.last_state = self.state
         self.n_infectious_contacts = 0
         self.last_date = defaultdict(lambda : self.env.initial_timestamp.date())
@@ -128,20 +127,28 @@ class Human(object):
         self.WEAR_MASK =  False
         self.notified = False
         self.tracing_method = None
-        self.maintain_distance = 0
-        self.how_much_I_follow_recommendations = (rng.rand()*PERCENT_FOLLOW + self.carefulness)/100
+        self.maintain_extra_distance = 0
+        self.how_much_I_follow_recommendations = PERCENT_FOLLOW
         self.recommendations_to_follow = OrderedSet()
         self.time_encounter_reduction_factor = 1.0
         self.hygiene = self.carefulness
+        self.test_recommended = False
 
         # risk prediction
         self.risk = BASELINE_RISK_VALUE
         self.start_risk = BASELINE_RISK_VALUE
         self.risk_level = _proba_to_risk_level(self.risk)
+        self.rec_level = -1 # risk-based recommendations
         self.past_N_days_contacts = [OrderedSet()]
-        self.n_contacts_tested_positive = 0
+        self.n_contacts_tested_positive = defaultdict(int)
         self.contact_book = Contacts(self.has_app)
-        self.message_info = {'traced': False, 'receipt':datetime.datetime.max, 'delay':BIG_NUMBER}
+        self.message_info = { 'traced': False, \
+                'receipt':datetime.datetime.max, \
+                'delay':BIG_NUMBER, 'n_contacts_tested_positive': defaultdict(lambda :[0]),
+                "n_contacts_symptoms":defaultdict(lambda :[0]), "n_contacts_risk_updates":defaultdict(lambda :[0]),
+                "n_risk_decreased": defaultdict(lambda :[0]), "n_risk_increased":defaultdict(lambda :[0]),
+                "n_risk_mag_increased":defaultdict(lambda :[0]), "n_risk_mag_decreased":defaultdict(lambda :[0])
+                }
 
         # Message Passing and Risk Prediction
         self.sent_messages = {}
@@ -205,7 +212,7 @@ class Human(object):
         self.max_shop_per_week = _draw_random_discreet_gaussian(AVG_MAX_NUM_SHOP_PER_WEEK, SCALE_MAX_NUM_SHOP_PER_WEEK, self.rng)
         self.count_shop=0
 
-        self.work_start_hour = self.rng.choice(range(7, 12), 3)
+        self.work_start_hour = self.rng.choice(range(7, 17), 3)
 
 
 
@@ -216,7 +223,7 @@ class Human(object):
             self.workplace = location
 
     def __repr__(self):
-        return f"H:{self.name}, SEIR:{int(self.is_susceptible)}{int(self.is_exposed)}{int(self.is_infectious)}{int(self.is_removed)}"
+        return f"H:{self.name} age:{self.age}, SEIR:{int(self.is_susceptible)}{int(self.is_exposed)}{int(self.is_infectious)}{int(self.is_removed)}"
 
     ########### MEMORY OPTIMIZATION ###########
     @property
@@ -332,9 +339,9 @@ class Human(object):
         severity_multiplier = 1
         if self.is_infectious:
             if self.can_get_really_sick:
-              severity_multiplier = 1.25
+              severity_multiplier = 1
             if self.is_extremely_sick:
-              severity_multiplier = 1.5
+              severity_multiplier = 1
             if 'immuno-compromised' in self.preexisting_conditions:
               severity_multiplier += 0.2
             if 'cough' in self.symptoms:
@@ -371,7 +378,6 @@ class Human(object):
         return reported_symptoms
 
     def update_symptoms(self):
-        symptoms = []
         if self.cold_timestamp is not None:
             t = self.days_since_cold
             if t < len(self.cold_progression):
@@ -408,6 +414,7 @@ class Human(object):
                                              rng=self.rng, age=self.age,
                                              initial_viral_load=self.initial_viral_load)
         self.infectiousness_onset_days = 1 + self.rng.normal(loc=INFECTIOUSNESS_ONSET_DAYS_AVG, scale=INFECTIOUSNESS_ONSET_DAYS_STD)
+        # FIXME : Make incubation_days as lognormal
         self.incubation_days = self.infectiousness_onset_days + self.viral_load_plateau_start + self.rng.normal(loc=SYMPTOM_ONSET_WRT_VIRAL_LOAD_PEAK_AVG, scale=SYMPTOM_ONSET_WRT_VIRAL_LOAD_PEAK_STD)
         self.recovery_days = self.infectiousness_onset_days + self.viral_load_recovered
 
@@ -451,17 +458,17 @@ class Human(object):
             self.wearing_mask, self.mask_efficacy = False, 0
             return
 
-        self.wearing_mask = False
+        self.wearing_mask = True
         if self.location == self.household:
             self.wearing_mask = False
 
-        if self.location.location_type == 'store':
-            if self.carefulness > 0.6:
-                self.wearing_mask = True
-            elif self.rng.rand() < self.carefulness * BASELINE_P_MASK:
-                self.wearing_mask = True
-        elif self.rng.rand() < self.carefulness * BASELINE_P_MASK :
-            self.wearing_mask = True
+        # if self.location.location_type == 'store':
+        #     if self.carefulness > 0.6:
+        #         self.wearing_mask = True
+        #     elif self.rng.rand() < self.carefulness * BASELINE_P_MASK:
+        #         self.wearing_mask = True
+        # elif self.rng.rand() < self.carefulness * BASELINE_P_MASK :
+        #     self.wearing_mask = True
 
         # efficacy - people do not wear it properly
         if self.wearing_mask:
@@ -486,11 +493,15 @@ class Human(object):
         if (self.allergy_timestamp is not None and
             self.days_since_allergies >= self.len_allergies):
             self.allergy_timestamp = None
+            self.allergy_symptoms = []
 
     def how_am_I_feeling(self):
         current_symptoms = self.symptoms
         if current_symptoms == []:
             return 1.0
+
+        if getattr(self, "_quarantine", None) and self.rng.random() < self.how_much_I_follow_recommendations:
+            return 0.10
 
         if sum(x in current_symptoms for x in ["severe", "extremely_severe"]) > 0:
             return 0.0
@@ -512,7 +523,6 @@ class Human(object):
 
         return 1.0
 
-
     def assert_state_changes(self):
         next_state = {0:[1], 1:[2], 2:[0, 3], 3:[3]}
         assert sum(self.state) == 1, f"invalid compartment for {self.name}: {self.state}"
@@ -523,11 +533,17 @@ class Human(object):
             self.last_state = self.state
 
     def notify(self, intervention):
-        if intervention is not None and not self.notified:
+        # FIXME: PERCENT_FOLLOW < 1 will throw an error because ot self.notified somewhere
+        if intervention is not None and not self.notified and self.rng.random() < PERCENT_FOLLOW:
             self.tracing = False
             if isinstance(intervention, Tracing):
                 self.tracing = True
                 self.tracing_method = intervention
+                self.rec_level = 0
+                # initiate with basic recommendations
+                # FIXME: Check isinstance of the RiskBasedRecommendations class
+                if intervention.risk_model not in ['manual', 'digital']:
+                    intervention.modify_behavior(self)
             else:
                 intervention.modify_behavior(self)
             self.notified = True
@@ -548,16 +564,27 @@ class Human(object):
             if self.last_date['run'] != self.env.timestamp.date():
                 self.last_date['run'] = self.env.timestamp.date()
                 self.infectiousnesses.append(self.infectiousness)
-                if len(self.infectiousnesses) > 14:
+                if len(self.infectiousnesses) > INFECTIOUSNESS_N_DAYS_HISTORY:
                     self.infectiousnesses.pop(0)
-                Event.log_daily(self, self.env.timestamp)
                 self.update_symptoms()
+                if self.tracing:
+                    self.update_risk(symptoms=self.symptoms)
+                Event.log_daily(self, self.env.timestamp)
                 city.tracker.track_symptoms(self)
-                self.notify(city.intervention)
 
-            if self.tracing and self.message_info['traced']:
-                if (self.env.timestamp - self.message_info['receipt']).days > self.message_info['delay']:
-                    self.update_risk_level()
+                # keep only past N_DAYS contacts
+                if self.tracing:
+                    for type_contacts in ['n_contacts_tested_positive', 'n_contacts_symptoms', \
+                    'n_risk_increased', 'n_risk_decreased', "n_risk_mag_decreased", "n_risk_mag_increased"]:
+                        for order in self.message_info[type_contacts]:
+                            if len(self.message_info[type_contacts][order]) > TRACING_N_DAYS_HISTORY:
+                                self.message_info[type_contacts][order] = self.message_info[type_contacts][order][1:]
+                            self.message_info[type_contacts][order].append(0)
+
+                # if self.tracing and self.message_info['traced']:
+                #     if (self.env.timestamp - self.message_info['receipt']).days >= self.message_info['delay']:
+                #         # print(f"{self.tracing_method}: Traced {self}")
+                #         self.update_risk(value=True)
 
             # recover from cold/flu/allergies if it's time
             self.recover_health()
@@ -569,7 +596,7 @@ class Human(object):
 
             # log test
             # TODO: needs better conditions; log test based on some condition on symptoms
-            if (GetTested in self.recommendations_to_follow) or  \
+            if self.test_recommended or  \
                 (self.is_incubated and
                 self.test_result != "positive" and
                 self.env.timestamp - self.symptom_start_time >= datetime.timedelta(days=TEST_DAYS)):
@@ -577,9 +604,9 @@ class Human(object):
                 if self.get_tested(city):
                     Event.log_test(self, self.env.timestamp)
                     self.test_time = self.env.timestamp
-                    self.has_been_tested = True
                     city.tracker.track_tested_results(self, self.test_result, self.test_type)
-                    self.update_risk(test_results=True)
+                    if self.tracing:
+                        self.update_risk(test_results=True)
 
             # recover
             if self.is_infectious and self.days_since_covid >= self.recovery_days:
@@ -598,7 +625,6 @@ class Human(object):
                     self.never_recovers = self.rng.random() <= P_NEVER_RECOVERS[min(math.floor(self.age/10),8)]
                     self.dead = False
 
-                self.obs_hospitalized = True
                 self.update_risk(recovery=True)
                 self.infection_timestamp = None # indicates they are no longer infected
                 self.all_symptoms, self.covid_symptoms = [], []
@@ -609,6 +635,7 @@ class Human(object):
             self.assert_state_changes()
 
             # Mobility
+
             # self.how_am_I_feeling = 1.0 (great) --> rest_at_home = False
             if not self.rest_at_home:
                 # set it once for the rest of the disease path
@@ -622,13 +649,14 @@ class Human(object):
             # if self.name == "human:69":print(f"{self} rest_at_home: {self.rest_at_home} S:{len(self.symptoms)} flu:{self.has_flu} cold:{self.has_cold}")
 
             if self.is_extremely_sick:
+                city.tracker.track_hospitalization(self, "icu")
                 yield self.env.process(self.excursion(city, "hospital-icu"))
 
             elif self.is_really_sick:
+                city.tracker.track_hospitalization(self)
                 yield self.env.process(self.excursion(city, "hospital"))
 
-            if (not WORK_FROM_HOME and
-                not self.env.is_weekend() and
+            if (not self.env.is_weekend() and
                 hour in self.work_start_hour and
                 not self.rest_at_home):
                 yield self.env.process(self.excursion(city, "work"))
@@ -667,7 +695,6 @@ class Human(object):
     def lon(self):
         return self.location.lon if self.location else self.household.lon
 
-
     @property
     def obs_lat(self):
         if LOCATION_TECH == 'bluetooth':
@@ -701,7 +728,7 @@ class Human(object):
             yield self.env.process(self.at(self.workplace, city, t))
 
         elif type == "hospital":
-            print(f"{self} got hospitalized")
+            # print(f"{self} got hospitalized")
             hospital = self._select_location(location_type=type, city=city)
             if hospital is None: # no more hospitals
                 self.dead = True
@@ -709,11 +736,15 @@ class Human(object):
                 yield self.env.timeout(np.inf)
 
             self.obs_hospitalized = True
-            t = self.recovery_days - (self.env.timestamp - self.infection_timestamp).total_seconds() / 86400 # DAYS
-            yield self.env.process(self.at(hospital, city, t * 24 * 60))
+            if self.infection_timestamp is not None:
+                t = self.recovery_days - (self.env.timestamp - self.infection_timestamp).total_seconds() / 86400 # DAYS
+                t = max(t * 24 * 60,0)
+            else:
+                t = len(self.symptoms)/10 * 60 # FIXME: better model
+            yield self.env.process(self.at(hospital, city, t))
 
         elif type == "hospital-icu":
-            print(f"{self} got icu-ed")
+            # print(f"{self} got icu-ed")
             icu = self._select_location(location_type=type, city=city)
             if icu is None:
                 self.dead = True
@@ -749,11 +780,11 @@ class Human(object):
     def at(self, location, city, duration):
         city.tracker.track_trip(from_location=self.location.location_type, to_location=location.location_type, age=self.age, hour=self.env.hour_of_day())
 
-        self.wear_mask()
-
         # add the human to the location
         self.location = location
         location.add_human(self)
+        self.wear_mask()
+
         self.leaving_time = duration + self.env.now
         self.start_time = self.env.now
         area = self.location.area
@@ -779,17 +810,20 @@ class Human(object):
                 continue
 
             # age mixing #FIXME: find a better way
-            if not self.rng.random() < (0.1 * abs(self.age - h.age) + 1) ** -1:
+            # places other than the household, you mix with everyone
+            if location != self.household and not self.rng.random() < (0.1 * abs(self.age - h.age) + 1) ** -1:
                 continue
 
             distance =  np.sqrt(int(area/len(self.location.humans))) + \
                             self.rng.randint(MIN_DIST_ENCOUNTER, MAX_DIST_ENCOUNTER) + \
-                            self.maintain_distance
+                            self.maintain_extra_distance
             # risk model
             # TODO: Add GPS measurements as conditions; refer JF's docs
-            if self.tracing and MIN_MESSAGE_PASSING_DISTANCE < distance <  MAX_MESSAGE_PASSING_DISTANCE:
-                self.contact_book.add(human=h, timestamp=self.env.timestamp)
-                h.contact_book.add(human=self, timestamp=self.env.timestamp)
+            if MIN_MESSAGE_PASSING_DISTANCE < distance <  MAX_MESSAGE_PASSING_DISTANCE:
+                if self.tracing:
+                    self.contact_book.add(human=h, timestamp=self.env.timestamp)
+                    h.contact_book.add(human=self, timestamp=self.env.timestamp)
+                # FIXME: ideally encounter should be here. this will generate a lot of encounters
 
             t_overlap = min(self.leaving_time, getattr(h, "leaving_time", 60)) - max(self.start_time, getattr(h, "start_time", 60))
             t_near = self.rng.random() * t_overlap * self.time_encounter_reduction_factor
@@ -802,15 +836,18 @@ class Human(object):
                 proximity_factor = 1
                 if INFECTION_DISTANCE_FACTOR or INFECTION_DURATION_FACTOR:
                     proximity_factor = INFECTION_DISTANCE_FACTOR * (1 - distance/INFECTION_RADIUS) + INFECTION_DURATION_FACTOR * min((t_near - INFECTION_DURATION)/INFECTION_DURATION, 1)
-                mask_efficacy = self.mask_efficacy * h.mask_efficacy
+                mask_efficacy = (self.mask_efficacy + h.mask_efficacy)*2
 
-                # TODO: merge thw two clauses into one (follow cold and flu)
+                # TODO: merge the two clauses into one (follow cold and flu)
                 infectee = None
                 if self.is_infectious:
                     ratio = self.asymptomatic_infection_ratio  if self.is_asymptomatic else 1.0
-                    p_infection = self.infectiousness * ratio * (1-mask_efficacy) * proximity_factor
-                    # initial_viral_load += p_infection
-                    x_human = self.rng.random() < p_infection * CONTAGION_KNOB
+                    p_infection = self.infectiousness * ratio * proximity_factor
+                    # FIXME: remove hygiene from severity multiplier; init hygiene = 0; use sum here instead
+                    reduction_factor = CONTAGION_KNOB + sum(getattr(x, "_hygiene", 0) for x in [self, h]) + mask_efficacy
+                    p_infection *= np.exp(-reduction_factor * self.n_infectious_contacts)
+
+                    x_human = self.rng.random() < p_infection
 
                     if x_human and h.is_susceptible:
                         h.infection_timestamp = self.env.timestamp
@@ -826,9 +863,11 @@ class Human(object):
 
                 elif h.is_infectious:
                     ratio = h.asymptomatic_infection_ratio  if h.is_asymptomatic else 1.0
-                    p_infection = h.infectiousness * ratio * (1-mask_efficacy) * proximity_factor # &prob_infectious
-                    # initial_viral_load += p_infection
-                    x_human = self.rng.random() < p_infection * CONTAGION_KNOB
+                    p_infection = h.infectiousness * ratio * proximity_factor # &prob_infectious
+                    # FIXME: remove hygiene from severity multiplier; init hygiene = 0; use sum here instead
+                    reduction_factor = CONTAGION_KNOB + sum(getattr(x, "_hygiene", 0) for x in [self, h]) + mask_efficacy
+                    p_infection *= np.exp(-reduction_factor * h.n_infectious_contacts) # hack to control R0
+                    x_human = self.rng.random() < p_infection
 
                     if x_human and self.is_susceptible:
                         self.infection_timestamp = self.env.timestamp
@@ -872,9 +911,10 @@ class Human(object):
         # environmental transmission
         p_infection = ENVIRONMENTAL_INFECTION_KNOB * location.contamination_probability * (1-self.mask_efficacy) # &prob_infection
         # initial_viral_load += p_infection
-        x_environment = location.contamination_probability > 0 and self.rng.random() < initial_viral_load
+        x_environment = location.contamination_probability > 0 and self.rng.random() < p_infection
         if x_environment and self.is_susceptible:
             self.infection_timestamp = self.env.timestamp
+            self.initial_viral_load = self.rng.random()
             self.compute_covid_properties()
             Event.log_exposed(self, location,  self.env.timestamp)
             city.tracker.track_infection('env', from_human=None, to_human=self, location=location, timestamp=self.env.timestamp)
@@ -1006,11 +1046,11 @@ class Human(object):
 
     def cur_message(self, day):
         """creates the current message for this user"""
-        message = Message(self.uid, _proba_to_risk_level(self.risk), day, self.name, self.has_app)
+        message = Message(self.uid, self.risk_level, day, self.name, self.has_app)
         return message
 
     def cur_message_risk_update(self, day, old_uid, old_risk, sent_at):
-        return UpdateMessage(old_uid, _proba_to_risk_level(self.risk), old_risk, day, sent_at, self.name, self.has_app)
+        return UpdateMessage(old_uid, self.risk_level, old_risk, day, sent_at, self.name, self.has_app)
 
     def symptoms_at_time(self, now, symptoms):
         if not symptoms:
@@ -1059,46 +1099,74 @@ class Human(object):
 
     ############################## RISK PREDICTION #################################
 
+    # FIXME : remove redundant code; probably move to utils
     def update_risk_level(self):
         new_risk_level = _proba_to_risk_level(self.risk)
         if new_risk_level != self.risk_level:
             # print(f"{self} changed to {self.risk_level} to {new_risk_level}")
-            # modify behavior
+            if self.tracing_method.propagate_risk:
+                payload = {'change': new_risk_level > self.risk_level, 'magnitude': abs(new_risk_level - self.risk_level) }
+                self.contact_book.send_message(self, self.tracing_method, order=1, reason="risk_update", payload=payload)
             self.risk_level = new_risk_level
             self.tracing_method.modify_behavior(self)
 
-    def update_risk(self, recovery=False, test_results=False, update_messages=None):
+    def update_risk(self, recovery=False, test_results=False, update_messages=None, symptoms=None, value = False):
         if recovery:
             if self.is_removed:
                 self.risk = 0.0
             else:
                 self.risk = BASELINE_RISK_VALUE
+            self.update_risk_level()
 
         if test_results:
             if self.test_result == "positive":
                 self.risk = 1.0
-                # self.contact_book.send_message(self, self.city, RISK_MODEL)
+                self.contact_book.send_message(self, self.tracing_method, order=1, reason="test")
             elif self.test_result == "negative":
                 self.risk = 0.20
+            self.update_risk_level()
 
+        if symptoms and self.tracing_method.propagate_symptoms:
+            if sum(x in symptoms for x in ['severe', 'trouble_breathing']) > 0 and not self.has_logged_symptoms:
+                self.risk = max(0.8, self.risk)
+                self.update_risk_level()
+                self.contact_book.send_message(self, self.tracing_method, order=1, reason="symptoms")
+                self.has_logged_symptoms = True
+
+        # update risk level because of update messages in run() to avoid redundant updates and cascading of message passing
         if (update_messages and
             not self.is_removed and
             self.test_result != "positive"):
+            # if update_messages['reason'] == "risk_update":
+                # print(f"{self} traced")
+            self.message_info['traced'] = True
+            self.message_info['receipt'] = min(self.env.timestamp, self.message_info['receipt'])
+            self.message_info['delay'] = min(update_messages['delay'], self.message_info['delay'])
+            order = update_messages['order']
+            propagate_further = order < self.tracing_method.max_depth
 
-            self.message_info = {
-                                    'traced': True,
-                                    'receipt':min(self.env.timestamp, self.message_info['receipt']),
-                                    'delay':min(update_messages['delay'], self.message_info['delay'])
-                                }
+            if update_messages['reason'] == "test":
+                self.message_info['n_contacts_tested_positive'][order][-1] += update_messages['n']
 
-            if self.tracing_method.risk_model == "first order probabilistic tracing":
-                self.n_contacts_tested_positive += update_messages['n']
-                self.risk = 1.0 - (1.0 - RISK_TRANSMISSION_PROBA) ** self.n_contacts_tested_positive
-            elif self.tracing_method.risk_model == "manual tracing":
-                self.risk = 1.0
-            elif self.tracing_method.risk_model == "digital tracing":
-                self.risk = 1.0
-            elif self.tracing_method.risk_model == "transformer":
-                pass # Martin's code
-            else:
-                raise
+            elif update_messages['reason'] == "symptoms":
+                self.message_info['n_contacts_symptoms'][order][-1] += update_messages['n']
+
+            elif update_messages['reason'] == "risk_update":
+                self.message_info['n_contacts_risk_updates'][order][-1] += update_messages['n']
+                propagate_further = order < self.tracing_method.propage_risk_max_depth
+
+            if update_messages['payload']:
+                if update_messages['payload']['change']:
+                    self.message_info['n_risk_increased'][order][-1] += 1
+                    self.message_info['n_risk_mag_increased'][order][-1] += update_messages['payload']["magnitude"]
+                else:
+                    self.message_info['n_risk_decreased'][order][-1] += 1
+                    self.message_info['n_risk_mag_decreased'][order][-1] += update_messages['payload']["magnitude"]
+
+            if propagate_further:
+                self.contact_book.send_message(self, self.tracing_method, order=order+1, reason=update_messages['reason'])
+
+        # value updates
+        if value:
+            self.tracing_method.compute_risk(self)
+            self.update_risk_level()

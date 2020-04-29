@@ -37,6 +37,10 @@ class Tracker(object):
                 }
 
         self.infection_graph = nx.DiGraph()
+        self.s_per_day = [sum(h.is_susceptible for h in self.city.humans)]
+        self.e_per_day = [sum(h.is_exposed for h in self.city.humans)]
+        self.i_per_day = [sum(h.is_infectious for h in self.city.humans)]
+        self.r_per_day = [sum(h.is_removed for h in self.city.humans)]
 
         # R0 and Generation times
         self.avg_infectious_duration = 0
@@ -52,13 +56,18 @@ class Tracker(object):
         day = self.env.timestamp.strftime("%d %b")
         self.last_day = {'track_recovery':day, "track_infection":day, 'social_mixing':day}
         self.cumulative_incidence = []
-        self.n_susceptible = sum(h.is_susceptible for h in city.humans)
         self.cases_per_day = [0]
         self.r_0 = defaultdict(lambda : {'infection_count':0, 'humans':set()})
         self.r = []
 
+        # testing & hospitalization
+        self.cases_positive_per_day = [0]
+        self.hospitalization_per_day = [0]
+        self.critical_per_day = [0]
+
         # demographics
         self.age_bins = sorted(HUMAN_DISTRIBUTION.keys(), key = lambda x:x[0])
+        self.n_humans = len(self.city.humans)
 
         # track encounters
         self.last_encounter_day = self.env.day_of_week()
@@ -76,7 +85,14 @@ class Tracker(object):
 
         # mobility
         self.transition_probability = get_nested_dict(4)
+        M, G, B, O, R = self.compute_mobility()
+        self.mobility = [M]
         self.summarize_population()
+
+        # risk models
+        self.risk_precision_daily = [self.compute_risk_precision()]
+        self.recommended_levels_daily = [[G, B, O, R]]
+        self.ei_per_day = []
 
     def summarize_population(self):
         self.n_infected_init = sum([h.is_exposed for h in self.city.humans])
@@ -95,6 +111,9 @@ class Tracker(object):
 
         self.frac_asymptomatic = sum(h.is_asymptomatic for h in self.city.humans)/len(self.city.humans)
         print("asymptomatic fraction", self.frac_asymptomatic)
+
+        self.n_seniors = sum(1 for h in self.city.humans if h.household.location_type == "senior_residency")
+        print("n_seniors", self.n_seniors)
 
     def get_R(self):
         # https://web.stanford.edu/~jhj1/teachingdocs/Jones-on-R0.pdf; vlaid over a long time horizon
@@ -122,7 +141,9 @@ class Tracker(object):
 
     def get_R0(self, logfile=None):
         if len(self.r) > 0:
-            return self.r[0]
+            for x in self.r:
+                if x >0:
+                    return x
         else:
             log("not enough data points to estimate r0. Falling back to average")
             return self.get_R()
@@ -131,15 +152,19 @@ class Tracker(object):
         return self.avg_generation_times[1]
 
     def increment_day(self):
-        # cumulative incidence
-        if self.n_susceptible:
-            self.cumulative_incidence += [self.cases_per_day[-1] / self.n_susceptible]
+        # cumulative incidence (Note: susceptible of prev day is needed here)
+        if self.s_per_day[-1]:
+            self.cumulative_incidence += [self.cases_per_day[-1] / self.s_per_day[-1]]
         else:
             self.cumulative_incidence.append(0)
 
         self.cases_per_day.append(0)
 
-        self.n_susceptible = sum(h.is_susceptible for h in self.city.humans)
+        self.s_per_day.append(sum(h.is_susceptible for h in self.city.humans))
+        self.e_per_day.append(sum(h.is_exposed for h in self.city.humans))
+        self.i_per_day.append(sum(h.is_infectious for h in self.city.humans))
+        self.r_per_day.append(sum(h.is_removed for h in self.city.humans))
+        self.ei_per_day.append(self.e_per_day[-1] + self.i_per_day[-1])
 
         # Rt
         self.r.append(self.get_R())
@@ -149,6 +174,41 @@ class Tracker(object):
         if len(self.recovered_stats) > EFFECTIVE_R_WINDOW:
             self.recovered_stats = self.recovered_stats[1:]
 
+        # test_per_day
+        self.cases_positive_per_day.append(0)
+        self.hospitalization_per_day.append(0)
+        self.critical_per_day.append(0)
+
+        # mobility
+        M, G, B, O, R = self.compute_mobility()
+        self.mobility.append(M)
+
+        #risk models
+        self.risk_precision_daily.append(self.compute_risk_precision())
+        self.recommended_levels_daily.append([G, B, O, R])
+
+    def compute_mobility(self):
+        M, G, B, O, R = 0, 0, 0, 0, 0
+        for h in self.city.humans:
+            G += h.rec_level == 0
+            B += h.rec_level == 1
+            O += h.rec_level == 2
+            R += h.rec_level == 3
+            M +=  1.0 * (h.rec_level == 0) + 0.8 * (h.rec_level == 1) + \
+                    0.20 * (h.rec_level == 2) + 0.05 * (h.rec_level == 3) + 1*(h.rec_level==-1)
+        return M, G, B, O, R
+
+    def compute_risk_precision(self):
+        x = [(h.risk, not h.is_susceptible) for h in self.city.humans if h.test_result != "positive"]
+        x = sorted(x, key=lambda y:-y[0])
+        x = x[:math.ceil(0.01*len(x))]
+        x = 1.0*sum(1 for y in x if (y[0] > 0.5 and y[1]))/len(x)
+        return x
+
+    def track_hospitalization(self, human, type=None):
+        self.hospitalization_per_day[-1] += 1
+        if type == "icu":
+            self.critical_per_day[-1] += 1
 
     def track_infection(self, type, from_human, to_human, location, timestamp):
         for i, (l,u) in enumerate(self.age_bins):
@@ -200,7 +260,8 @@ class Tracker(object):
         self.avg_generation_times = (n+1, 1.0*(avg_gen_time * n + generation_time)/(n+1))
 
     def track_tested_results(self, human, test_result, test_type):
-        pass
+        if test_result == "positive":
+            self.cases_positive_per_day[-1] += 1
 
     def track_recovery(self, n_infectious_contacts, duration):
         self.n_infectious_contacts += n_infectious_contacts
@@ -376,6 +437,7 @@ class Tracker(object):
 
         log("******** Transmission Ratios *********", logfile)
         total = sum(self.r_0[x]['infection_count'] for x in ['symptomatic','presymptomatic', 'asymptomatic'])
+        total += self.n_env_infection
 
         x = self.r_0['asymptomatic']['infection_count']
         log(f"% asymptomatic transmission {100*x/total :5.2f}%", logfile)
@@ -394,46 +456,46 @@ class Tracker(object):
                 x = 1.0 * v['infection_count']/len(v['humans'])
                 log(f"{loc_type} R0 {x}", logfile)
 
-        log("######## SYMPTOMS #########", logfile)
-        total = self.symptoms['covid']['n']
-        for s,v in self.symptoms['covid'].items():
-            if s == 'n':
-                continue
-            log(f"{s} {100*v/total:5.2f}%")
-
-        log("######## MOBILITY #########", logfile)
-        log("Day - ", logfile)
-        total = sum(v[1] for v in self.day_encounters.values())
-        x = ['Mon', "Tue", "Wed", "Thurs", "Fri", "Sat", "Sun"]
-        for c,day in enumerate(x):
-            v = self.day_encounters[c]
-            log(f"{day} #avg: {v[1]} %:{100*v[1]/total:5.2f} ", logfile)
-
-        log("Hour - ", logfile)
-        total = sum(v[1] for v in self.hour_encounters.values())
-        for hour, v in self.hour_encounters.items():
-            log(f"{hour} #avg: {v[1]} %:{100*v[1]/total:5.2f} ", logfile)
-
-        log("Distance (cm) - ", logfile)
-        x = ['0 - 50', "50 - 100", "100 - 150", "150 - 200", ">= 200"]
-        total = sum(self.dist_encounters.values())
-        for c, dist in enumerate(x):
-            v = self.dist_encounters[c]
-            log(f"{dist} #avg: {v} %:{100*v/total:5.2f} ", logfile)
-
-        log("Time (min) ", logfile)
-        x = ['0 - 15', "15 - 30", "30 - 45", "45 - 60", ">= 60"]
-        total = sum(self.time_encounters.values())
-        for c, bin in enumerate(x):
-            v = self.time_encounters[c]
-            log(f"{bin} #avg: {v} %:{100*v/total:5.2f} ", logfile)
-
-        log("Average Daily Contacts ", logfile)
-        total = sum(x[1] for x in self.daily_age_group_encounters.values())
-        for bin in self.age_bins:
-            v = self.daily_age_group_encounters[bin][1]
-            log(f"{bin} #avg: {v} %:{100*v/total:5.2f} ", logfile)
-
+        # log("######## SYMPTOMS #########", logfile)
+        # total = self.symptoms['covid']['n']
+        # for s,v in self.symptoms['covid'].items():
+        #     if s == 'n':
+        #         continue
+        #     log(f"{s} {100*v/total:5.2f}%")
+        #
+        # log("######## MOBILITY #########", logfile)
+        # log("Day - ", logfile)
+        # total = sum(v[1] for v in self.day_encounters.values())
+        # x = ['Mon', "Tue", "Wed", "Thurs", "Fri", "Sat", "Sun"]
+        # for c,day in enumerate(x):
+        #     v = self.day_encounters[c]
+        #     log(f"{day} #avg: {v[1]} %:{100*v[1]/total:5.2f} ", logfile)
+        #
+        # log("Hour - ", logfile)
+        # total = sum(v[1] for v in self.hour_encounters.values())
+        # for hour, v in self.hour_encounters.items():
+        #     log(f"{hour} #avg: {v[1]} %:{100*v[1]/total:5.2f} ", logfile)
+        #
+        # log("Distance (cm) - ", logfile)
+        # x = ['0 - 50', "50 - 100", "100 - 150", "150 - 200", ">= 200"]
+        # total = sum(self.dist_encounters.values())
+        # for c, dist in enumerate(x):
+        #     v = self.dist_encounters[c]
+        #     log(f"{dist} #avg: {v} %:{100*v/total:5.2f} ", logfile)
+        #
+        # log("Time (min) ", logfile)
+        # x = ['0 - 15', "15 - 30", "30 - 45", "45 - 60", ">= 60"]
+        # total = sum(self.time_encounters.values())
+        # for c, bin in enumerate(x):
+        #     v = self.time_encounters[c]
+        #     log(f"{bin} #avg: {v} %:{100*v/total:5.2f} ", logfile)
+        #
+        # log("Average Daily Contacts ", logfile)
+        # total = sum(x[1] for x in self.daily_age_group_encounters.values())
+        # for bin in self.age_bins:
+        #     v = self.daily_age_group_encounters[bin][1]
+        #     log(f"{bin} #avg: {v} %:{100*v/total:5.2f} ", logfile)
+        #
     def plot_metrics(self, dirname):
         import matplotlib.pyplot as plt
         import networkx as nx

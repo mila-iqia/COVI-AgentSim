@@ -60,13 +60,7 @@ def integrated_risk_pred(humans, data_path, start, current_day, all_possible_sym
     hd = humans[0].city.hd
     all_params = []
 
-    # So I think this needs to be done because we're handling the messaging at different speeds in different places
-    current_day -= 1
-
     for human in humans:
-        if human.test_result == "positive":
-            human.contact_book.send_message(human, human.city, config.RISK_MODEL)
-
         log_path = f'{os.path.dirname(data_path)}/daily_outputs/{current_day}/{human.name[6:]}/'
 
         all_params.append({"start": start, "current_day": current_day,
@@ -94,9 +88,10 @@ def integrated_risk_pred(humans, data_path, start, current_day, all_possible_sym
     for result in results:
         if result is not None:
             name, risk, clusters = result
-            hd[name].update_risk_level()
             if config.RISK_MODEL == "transformer":
                 hd[name].risk = risk
+                hd[name].update_risk_level()
+
             hd[name].clusters = clusters
 
     if config.PLOT_RISK and config.COLLECT_LOGS:

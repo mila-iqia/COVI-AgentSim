@@ -244,19 +244,15 @@ AVG_COLD_DURATION = 3
 TICK_MINUTE = 2  # @param increment
 SIMULATION_DAYS = 30  # @param
 SYMPTOM_DAYS = 5  # @param
-COLLECT_LOGS = False
+COLLECT_LOGS = False 
 
 # RISK PREDICTION PARAMETERS
-# RISK_MODEL = "naive" #transformer
-MP_BATCHSIZE = "auto"
-MP_N_JOBS = "1"
-MP_BACKEND = "loky"
-CLUSTER_MESSAGES = False
-CLUSTER_TYPE = "heuristic" # "random", "graph"
-PLOT_RISK = True
-RISK_PLOT_PATH = "output/plots/risk"
-DUMP_CLUSTERS = True
-CLUSTER_PATH = "output/clusters.json"
+RISK_MODEL = "naive" # "naive"  "manual", "digital" "transformer"
+TRACE_SYMPTOMS = True
+TRACE_RISK_UPDATE = True
+TRACING_ORDER = 3
+
+
 
 
 # LIFESTYLE PARAMETERS
@@ -336,11 +332,10 @@ BASELINE_P_MASK = 0.5
 MASKS_SUPPLY = BIG_NUMBER
 
 # TRACING RISK MODEL PARAMETERS  (non-ML)
-# "first order probabilistic tracing"  "manual tracing", "digital tracing", "smart tracing"
-# if you want to use the inference servers, use "naive" or "transformer"
-LOCAL_RISK_MODELS = ["first order probabilistic tracing",  "manual tracing", "digital tracing", "smart tracing"]
+# "first order probabilistic tracing"  "manual tracing", "digital tracing", "transformer"
 RISK_MODEL = "first order probabilistic tracing"
-N_DAYS_HISTORY = 14
+USE_INFERENCE_SERVER = True
+TRACING_N_DAYS_HISTORY = 14
 MIN_MESSAGE_PASSING_DISTANCE = 0
 MAX_MESSAGE_PASSING_DISTANCE = 1000 #cm GPS; 10 x 10 m grid everyone is a contact
 
@@ -353,3 +348,15 @@ RISK_MAPPING_FILE = "_data/log_risk_mapping.npy"
 MANUAL_TRACING_NOISE = 0.30
 MANUAL_TRACING_DELAY_AVG = 3  # days
 MANUAL_TRACING_DELAY_STD = 0.5  # days
+
+# Inference & Training
+INFECTIOUSNESS_N_DAYS_HISTORY = 14
+MP_BATCHSIZE = "auto"
+MP_N_JOBS = "1"
+MP_BACKEND = "loky"
+PLOT_RISK = True
+CLUSTER_MESSAGES = True
+DUMP_CLUSTERS = True
+CLUSTER_TYPE = "heuristic" # "random", "graph"
+RISK_PLOT_PATH = "output/plots/risk"
+CLUSTER_PATH = "output/clusters.json"
