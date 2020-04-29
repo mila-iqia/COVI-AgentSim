@@ -240,6 +240,7 @@ class City(simpy.Environment):
 
             if INTERVENTION_DAY > 0 and day == INTERVENTION_DAY:
                 self.intervention = get_intervention(INTERVENTION)
+                _ = [h.notify(self.intervention) for h in self.humans]
                 print(self.intervention)
 
             self.tracker.increment_day()
@@ -635,7 +636,7 @@ class Contacts(object):
 
         self.book[human] = self.book[human][remove_idx:]
 
-    def send_message(self, owner, tracing_method, order=1, reason="test"):
+    def send_message(self, owner, tracing_method, order=1, reason="test", payload=None):
         p_contact = tracing_method.p_contact
         delay = tracing_method.delay
         app = tracing_method.app
@@ -654,7 +655,7 @@ class Contacts(object):
                     t = 0
                     if delay:
                         t = _draw_random_discreet_gaussian(MANUAL_TRACING_DELAY_AVG, MANUAL_TRACING_DELAY_STD, human.rng)
-                                            
+
                     total_contacts = sum(map(lambda x:x[1], self.book[human]))
                     # print(f"{RISK_MODEL}: {owner} --> {human} C:{total_contacts} delay:{t}")
-                    human.update_risk(update_messages={'n':total_contacts, 'delay': t, 'order':order, 'reason':reason})
+                    human.update_risk(update_messages={'n':total_contacts, 'delay': t, 'order':order, 'reason':reason, 'payload':payload})

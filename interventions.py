@@ -182,15 +182,16 @@ def get_recommendations(level):
     if level == 0:
         return [WashHands()]
     if level == 1:
-        return [WashHands(), SocialDistancing()]
+        return [WashHands(), WearMask()]
     if level == 2:
         return [WashHands(), SocialDistancing(), Stand2M(), WearMask(), 'monitor_symptoms']
+
     return [WashHands(), SocialDistancing(), WearMask(), 'monitor_symptoms', GetTested("recommendations"), Quarantine()]
 
 class RiskBasedRecommendations(BehaviorInterventions):
-    UPPER_GREEN = 1
-    UPPER_BLUE = 4
-    UPPER_ORANGE = 7
+    UPPER_GREEN = 3
+    UPPER_BLUE = 7
+    UPPER_ORANGE = 11
     UPPER_RED = 15
 
     def __init__(self):
@@ -244,13 +245,14 @@ class Tracing(object):
         self.risk_model = risk_model
         if risk_model in ['manual', 'digital']:
             self.intervention = Quarantine()
-        elif risk_model == "tristans":
+        else:
+            # risk based
             self.intervention = RiskBasedRecommendations()
 
         self.max_depth = max_depth
         self.propagate_symptoms = symptoms
         self.propagate_risk = risk
-        self.propagate_psotive_test = True # bare minimum
+        self.propagate_postive_test = True # bare minimum
 
         self.p_contact = 1
         self.delay = 0
@@ -264,7 +266,18 @@ class Tracing(object):
         if risk_model in ["manual", "digital"]:
             self.dont_trace_traced = True
 
+        self.propagate_risk_max_depth = max_depth # too slow
+        if self.propagate_risk:
+            self.propage_risk_max_depth = 3
+
     def modify_behavior(self, human):
+        # FIXME: maybe merge Quarantine in RiskBasedRecommendations with 2 levels
+        if self.risk_model in ["manual", "digital"]:
+            if human.risk == 1.0:
+                human.rec_level = 3 # required for the calculation of mobility
+            else:
+                human.rec_level = 0
+
         return self.intervention.modify_behavior(human)
 
     def process_messages(self, human):
@@ -279,25 +292,43 @@ class Tracing(object):
             for order in human.message_info['n_contacts_symptoms']:
                 s += sum(human.message_info['n_contacts_symptoms'][order]) * np.exp(-2*(order-1))
 
-        r = 0
+        r_up, r_down, v_up, v_down = 0, 0, 0, 0
         if self.propagate_risk:
-            pass
+            for order in human.message_info['n_risk_increased']:
+                xy = zip(human.message_info['n_risk_mag_increased'][order], human.message_info['n_risk_increased'][order])
+                r_up += sum(human.message_info['n_risk_increased'][order])
+                z = [1.0*x/y for x,y in xy if y]
+                if z:
+                    v_up += np.mean(z)
 
-        return t,s,r
+            for order in human.message_info['n_risk_decreased']:
+                xy = zip(human.message_info['n_risk_mag_decreased'][order], human.message_info['n_risk_decreased'][order])
+                r_down += sum(human.message_info['n_risk_decreased'][order])
+                z = [1.0*x/y for x,y in xy if y]
+                if z:
+                    v_down += np.mean(z)
+
+        return t,s,(r_up, v_up, r_down, v_down)
 
     def compute_risk(self, human):
         t,s,r = self.process_messages(human)
 
-        if self.risk_model in ['manual', 'digital'] and t + s + r > 0:
-            human.risk  = 1
-        elif self.risk_model == "tristans":
-            human.risk = 1.0 - (1.0 - RISK_TRANSMISSION_PROBA) ** (t+s+r)
+        if self.risk_model in ['manual', 'digital'] and t + s > 0:
+            human.risk  = 1.0
+
+        elif self.risk_model == "naive":
+            human.risk = 1.0 - (1.0 - RISK_TRANSMISSION_PROBA) ** (t+s)
+
+        elif self.risk_model == "other":
+            r_up, v_up, r_down, v_down = r
+            r_score = 2*v_up - v_down
+            human.risk = 1.0 - (1.0 - RISK_TRANSMISSION_PROBA) ** (t + 0.5*s + r_score)
 
     def compute_tracing_delay(self, human):
         pass # FIXME: circualr imports issue; can't import _draw_random_discreet_gaussian
 
     def __repr__(self):
-        return f"Tracing: {self.risk_model}"
+        return f"Tracing: {self.risk_model} order {self.max_depth} symptoms: {self.propagate_symptoms} risk: {self.propagate_risk}"
 
 class CityInterventions(object):
     def __init__(self):

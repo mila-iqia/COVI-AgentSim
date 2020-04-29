@@ -154,6 +154,8 @@ class Human(object):
                 'receipt':datetime.datetime.max, \
                 'delay':BIG_NUMBER, 'n_contacts_tested_positive': defaultdict(lambda :[0]),
                 "n_contacts_symptoms":defaultdict(lambda :[0]), "n_contacts_risk_updates":defaultdict(lambda :[0]),
+                "n_risk_decreased": defaultdict(lambda :[0]), "n_risk_increased":defaultdict(lambda :[0]),
+                "n_risk_mag_increased":defaultdict(lambda :[0]), "n_risk_mag_decreased":defaultdict(lambda :[0])
                 }
 
         # symptoms
@@ -513,14 +515,16 @@ class Human(object):
             self.last_state = self.state
 
     def notify(self, intervention):
+        # FIXME: PERCENT_FOLLOW < 1 will throw an error because ot self.notified somewhere
         if intervention is not None and not self.notified and self.rng.random() < PERCENT_FOLLOW:
             self.tracing = False
             if isinstance(intervention, Tracing):
                 self.tracing = True
                 self.tracing_method = intervention
+                self.rec_level = 0
                 # initiate with basic recommendations
-                if intervention.risk_model not in ['manual', 'tracing']:
-                    self.rec_level = 0
+                # FIXME: Check isinstance of the RiskBasedRecommendations class
+                if intervention.risk_model not in ['manual', 'digital']:
                     intervention.modify_behavior(self)
             else:
                 intervention.modify_behavior(self)
@@ -540,16 +544,17 @@ class Human(object):
 
             if self.last_date['run'] != self.env.timestamp.date():
                 self.last_date['run'] = self.env.timestamp.date()
-                self.notify(city.intervention)
                 self.update_symptoms()
-                self.update_risk(symptoms = self.symptoms)
+                if self.tracing:
+                    self.update_risk(symptoms = self.symptoms)
 
                 Event.log_daily(self, self.env.timestamp)
                 city.tracker.track_symptoms(self)
 
                 # keep only past N_DAYS contacts
                 if self.tracing:
-                    for type_contacts in ['n_contacts_tested_positive', 'n_contacts_symptoms']:
+                    for type_contacts in ['n_contacts_tested_positive', 'n_contacts_symptoms', \
+                    'n_risk_increased', 'n_risk_decreased', "n_risk_mag_decreased", "n_risk_mag_increased"]:
                         for order in self.message_info[type_contacts]:
                             if len(self.message_info[type_contacts][order]) > TRACING_N_DAYS_HISTORY:
                                 self.message_info[type_contacts][order] = self.message_info[type_contacts][order][1:]
@@ -977,13 +982,10 @@ class Human(object):
     def update_risk_level(self):
         new_risk_level = _proba_to_risk_level(self.risk)
         if new_risk_level != self.risk_level:
-            # if self.name == "human:69":
-            #     import pdb; pdb.set_trace()
-
             # print(f"{self} changed to {self.risk_level} to {new_risk_level}")
-            # send new risk message only non-tristans
-            if self.tracing_method.risk_model in ["probabilistic", "probabilistic-complete"]:
-                self.contact_book.send_message(self, self.tracing_method.risk_model, order=1, reason="risk_update")
+            if self.tracing_method.propagate_risk:
+                payload = {'change': new_risk_level > self.risk_level, 'magnitude': abs(new_risk_level - self.risk_level) }
+                self.contact_book.send_message(self, self.tracing_method, order=1, reason="risk_update", payload=payload)
             self.risk_level = new_risk_level
             self.tracing_method.modify_behavior(self)
 
@@ -1005,7 +1007,7 @@ class Human(object):
 
         if symptoms and self.tracing_method.propagate_symptoms:
             if sum(x in symptoms for x in ['severe', 'trouble_breathing']) > 0:
-                self.risk = 0.8
+                self.risk = max(0.8, self.risk)
                 self.update_risk_level()
                 self.contact_book.send_message(self, self.tracing_method, order=1, reason="symptoms")
 
@@ -1019,46 +1021,30 @@ class Human(object):
             self.message_info['receipt'] = min(self.env.timestamp, self.message_info['receipt'])
             self.message_info['delay'] = min(update_messages['delay'], self.message_info['delay'])
             order = update_messages['order']
+            propage_further = order < self.tracing_method.max_depth
+
             if update_messages['reason'] == "test":
                 self.message_info['n_contacts_tested_positive'][order][-1] += update_messages['n']
+
             elif update_messages['reason'] == "symptoms":
                 self.message_info['n_contacts_symptoms'][order][-1] += update_messages['n']
+
             elif update_messages['reason'] == "risk_update":
                 self.message_info['n_contacts_risk_updates'][order][-1] += update_messages['n']
+                propage_further = order < self.tracing_method.propage_risk_max_depth
 
-            if order < self.tracing_method.max_depth:
+            if update_messages['payload']:
+                if update_messages['payload']['change']:
+                    self.message_info['n_risk_increased'][order][-1] += 1
+                    self.message_info['n_risk_mag_increased'][order][-1] += update_messages['payload']["magnitude"]
+                else:
+                    self.message_info['n_risk_decreased'][order][-1] += 1
+                    self.message_info['n_risk_mag_decreased'][order][-1] += update_messages['payload']["magnitude"]
+
+            if propage_further:
                 self.contact_book.send_message(self, self.tracing_method, order=order+1, reason=update_messages['reason'])
 
         # value updates
         if value:
             self.tracing_method.compute_risk(self)
             self.update_risk_level()
-
-            # # nth order contacts are treated as 1
-            # if self.tracing_method.risk_model in ["manual", "digital"] and n_test_msgs > 0:
-            #         self.risk = 1
-            #
-            # elif self.tracing_method.risk_model == "tristans":
-            #     n = sum(self.message_info['n_contacts_tested_positive'][1]) # only first order
-            #     self.risk = 1.0 - (1.0 - RISK_TRANSMISSION_PROBA) ** n
-            #
-            # elif self.tracing_method.risk_model == "probabilistic":
-            #     if sum(self.message_info['n_contacts_tested_positive'].keys()) > 1:
-            #         import pdb; pdb.set_trace()
-            #     n = 0
-            #     for order in  self.message_info['n_contacts_tested_positive']:
-            #         n += sum(self.message_info['n_contacts_tested_positive'][order])
-            #     self.risk = 1.0 - (1.0 - RISK_TRANSMISSION_PROBA) ** n
-            #
-            # elif self.tracing_method.risk_model in ["probabilistic-complete", "tristans-complete"]:
-            #     n = 0
-            #     for order in  self.message_info['n_contacts_tested_positive']:
-            #         n += sum(self.message_info['n_contacts_tested_positive'][order])
-            #     for order in  self.message_info['n_contacts_symptoms']:
-            #         n += sum(self.message_info['n_contacts_symptoms'][order])
-            #     self.risk = 1.0 - (1.0 - RISK_TRANSMISSION_PROBA) ** n
-            #     # if self.name =="human:69":
-            #     #     print(f"{self}: {self.risk}: {self.rec_level} : {self.recommendations_to_follow}")
-            #         # print(self.message_info)
-            # else:
-            #     raise

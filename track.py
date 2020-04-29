@@ -37,6 +37,10 @@ class Tracker(object):
                 }
 
         self.infection_graph = nx.DiGraph()
+        self.s_per_day = [sum(h.is_susceptible for h in self.city.humans)]
+        self.e_per_day = [sum(h.is_exposed for h in self.city.humans)]
+        self.i_per_day = [sum(h.is_infectious for h in self.city.humans)]
+        self.r_per_day = [sum(h.is_removed for h in self.city.humans)]
 
         # R0 and Generation times
         self.avg_infectious_duration = 0
@@ -52,7 +56,6 @@ class Tracker(object):
         day = self.env.timestamp.strftime("%d %b")
         self.last_day = {'track_recovery':day, "track_infection":day, 'social_mixing':day}
         self.cumulative_incidence = []
-        self.n_susceptible = sum(h.is_susceptible for h in city.humans)
         self.cases_per_day = [0]
         self.r_0 = defaultdict(lambda : {'infection_count':0, 'humans':set()})
         self.r = []
@@ -149,15 +152,19 @@ class Tracker(object):
         return self.avg_generation_times[1]
 
     def increment_day(self):
-        # cumulative incidence
-        if self.n_susceptible:
-            self.cumulative_incidence += [self.cases_per_day[-1] / self.n_susceptible]
+        # cumulative incidence (Note: susceptible of prev day is needed here)
+        if self.s_per_day[-1]:
+            self.cumulative_incidence += [self.cases_per_day[-1] / self.s_per_day[-1]]
         else:
             self.cumulative_incidence.append(0)
 
         self.cases_per_day.append(0)
-        self.ei_per_day.append(sum(h.is_exposed or h.is_infectious for h in self.city.humans))
-        self.n_susceptible = sum(h.is_susceptible for h in self.city.humans)
+
+        self.s_per_day.append(sum(h.is_susceptible for h in self.city.humans))
+        self.e_per_day.append(sum(h.is_exposed for h in self.city.humans))
+        self.i_per_day.append(sum(h.is_infectious for h in self.city.humans))
+        self.r_per_day.append(sum(h.is_removed for h in self.city.humans))
+        self.ei_per_day.append(self.e_per_day[-1] + self.i_per_day[-1])
 
         # Rt
         self.r.append(self.get_R())
@@ -188,8 +195,7 @@ class Tracker(object):
             O += h.rec_level == 2
             R += h.rec_level == 3
             M +=  1.0 * (h.rec_level == 0) + 0.8 * (h.rec_level == 1) + \
-                    0.20 * (h.rec_level == 2) + 0.05 * (h.rec_level == 3)
-
+                    0.20 * (h.rec_level == 2) + 0.05 * (h.rec_level == 3) + 1*(h.rec_level==-1)
         return M, G, B, O, R
 
     def compute_risk_precision(self):

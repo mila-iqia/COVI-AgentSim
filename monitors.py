@@ -46,12 +46,10 @@ class SEIRMonitor(BaseMonitor):
             RiskP = city.tracker.risk_precision_daily[-1]
             green, blue, orange, red = city.tracker.recommended_levels_daily[-1]
 
-            for h in city.humans:
-                S += h.is_susceptible
-                E += h.is_exposed
-                I += h.is_infectious
-                R += h.is_removed
-
+            S = city.tracker.s_per_day[-1]
+            E = city.tracker.e_per_day[-1]
+            I = city.tracker.i_per_day[-1]
+            R = city.tracker.r_per_day[-1]
             T = E + I + R
             # print(env.timestamp, f"Ro: {R0:5.2f} G:{G:5.2f} S:{S} E:{E} I:{I} R:{R} T:{T} P3:{Projected3:5.2f} M:{M:5.2f} +Test:{P} H:{H} C:{C} RiskP:{RiskP:3.2f}")
             print(env.timestamp, f"Ro: {R0:2.2f} S:{S} E:{E} I:{I} T:{T} P3:{Projected3:5.2f} M:{M:5.2f} RiskP:{RiskP:3.2f} G:{green} B:{blue} O:{orange} R:{red} ")

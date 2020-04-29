@@ -307,10 +307,10 @@ EFFECTIVE_R_WINDOW = 10 # days
 
 ## INTERVENTIONS
 BIG_NUMBER = 10000000
-INTERVENTION_DAY = 5 # <0 no interventions
+INTERVENTION_DAY = 10 # <0 no interventions
 INTERVENTION = "Tracing"
 PERCENT_FOLLOW = 1.0
-P_HAS_APP = 1.0 # &has_app
+P_HAS_APP = 0.5 # &has_app
 
 # MASK
 MASK_EFFICACY_NORMIE = 0.50
@@ -319,10 +319,11 @@ BASELINE_P_MASK = 0.5
 MASKS_SUPPLY = BIG_NUMBER
 
 # TRACING RISK MODEL PARAMETERS  (non-ML)
-RISK_MODEL =  "tristans" # "tristans"  "manual", "digital"
-TRACE_SYMPTOMS = False
-TRACE_RISK_UPDATE = False
+RISK_MODEL =  "other" # "naive"  "manual", "digital"
+TRACE_SYMPTOMS = True
+TRACE_RISK_UPDATE = True
 TRACING_ORDER = 3
+
 TRACING_N_DAYS_HISTORY = 14
 MIN_MESSAGE_PASSING_DISTANCE = 0
 MAX_MESSAGE_PASSING_DISTANCE = 1000 #cm GPS; 10 x 10 m grid everyone is a contact
