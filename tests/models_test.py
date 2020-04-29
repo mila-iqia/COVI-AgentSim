@@ -192,10 +192,8 @@ class ModelsTest(unittest.TestCase):
                         # self.assertTrue((unobserved['true_symptoms'][1:] == prev_unobserved['true_symptoms'][:13]).all())
                         # TODO: Test fails with unobserved['infectiousness'] being the same as prev_unobserved['infectiousness']
                         #  (appears to sometimes be not updated)
-                        # TODO: History changed. It's now up to '-13 days ago to today'
-                        #  rather than 'today to -13 days ago'
-                        # self.assertTrue((unobserved['infectiousness'][:-1] ==
-                        #                  prev_unobserved['infectiousness'][-13:]).all())
+                        check = unobserved['infectiousness'][1:] == prev_unobserved['infectiousness'][:13]
+                        self.assertTrue(check if isinstance(check, bool) else check.all())
 
                         if prev_unobserved['is_exposed'] and prev_unobserved['exposure_day'] < 13:
                             self.assertTrue(unobserved['is_exposed'])
