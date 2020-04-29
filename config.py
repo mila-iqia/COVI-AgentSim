@@ -323,7 +323,6 @@ RISK_MODEL =  "other" # "naive"  "manual", "digital", "transformer"
 TRACE_SYMPTOMS = True
 TRACE_RISK_UPDATE = True
 TRACING_ORDER = 3
-USE_INFERENCE_SERVER = True # "transformer" "naive" (to print the dataset)
 
 TRACING_N_DAYS_HISTORY = 14
 MIN_MESSAGE_PASSING_DISTANCE = 0
@@ -340,6 +339,7 @@ MANUAL_TRACING_DELAY_AVG = 3  # days
 MANUAL_TRACING_DELAY_STD = 0.5  # days
 
 # Inference & Training
+USE_INFERENCE_SERVER = True # "transformer" "naive" (to print the dataset)
 INFECTIOUSNESS_N_DAYS_HISTORY = 14
 MP_BATCHSIZE = "auto"
 MP_N_JOBS = "1"

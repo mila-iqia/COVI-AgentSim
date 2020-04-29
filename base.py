@@ -255,10 +255,14 @@ class City(simpy.Environment):
 
             if USE_INFERENCE_SERVER:
                 self.humans, start_pkl = integrated_risk_pred(self.humans, outfile, start_time, current_day, all_possible_symptoms, start_pkl, port=port, n_jobs=n_jobs)
+
             if INTERVENTION_DAY > 0 and current_day == INTERVENTION_DAY:
                 self.intervention = get_intervention(INTERVENTION)
                 _ = [h.notify(self.intervention) for h in self.humans]
                 print(self.intervention)
+
+            if COLLECT_TRAINING_DATA:
+                self.intervention = get_intervention()
 
             self.tracker.increment_day()
             current_day += 1
