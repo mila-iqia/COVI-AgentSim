@@ -126,7 +126,7 @@ HUMAN_DISTRIBUTION = {
         "p":0.24,
         "residence_preference":{
             "house_size":[0.1, 0.4, 0.2, 0.2, 0.1],
-            "senior_residency":0.7
+            "senior_residency":0.1
         },
         "profession_profile": {
                 "healthcare":0.05,
@@ -140,21 +140,19 @@ HUMAN_DISTRIBUTION = {
         "p":0.07,
         "residence_preference":{
             "house_size":[0.05, 0.5, 0.1, 0.25, 0.1],
-            "senior_residency":0.9
+            "senior_residency":0.2
         },
         "profession_profile":{
                 "healthcare":0.0,
                 "school":0.0,
-                "others":0.0,
-                "retired":1.0
+                "others":0.1,
+                "retired":0.9
         },
 
     }
 }
 
 # INDIVIDUAL DIFFERENCES PARAMETERS
-WORK_FROM_HOME = False
-P_HAS_APP = 0.5 # &has_app
 P_CAREFUL_PERSON = 0.3 # &carefulness
 P_TRAVELLED_INTERNATIONALLY_RECENTLY = 0.05
 
@@ -221,21 +219,21 @@ INFECTIOUSNESS_ONSET_DAYS_AVG = 1.5 # 1 gets added to this to ensure a minimum 1
 INFECTIOUSNESS_ONSET_DAYS_STD = 0.1
 
 # ASYMTPOMATIC
-BASELINE_P_ASYMPTOMATIC = 0.5 # &p-asymptomatic
-ASYMPTOMATIC_INFECTION_RATIO = 0.1 # &prob_infectious
+BASELINE_P_ASYMPTOMATIC = 0.20 # &p-asymptomatic
+ASYMPTOMATIC_INFECTION_RATIO = 0.2 # &prob_infectious
 
 # SEASONAL ALLERGIES
-P_ALLERGIES = 0.20
+P_ALLERGIES = 0.00
 P_SEVERE_ALLERGIES = 0.02
-P_HAS_ALLERGIES_TODAY = 0.05
+P_HAS_ALLERGIES_TODAY = 0.0
 
 # OTHER TRANSMISSIBLE DISEASES
-P_FLU = 0.001 # &p-flu
+P_FLU = 0.000 # &p-flu
 FLU_CONTAGIOUSNESS = 0.05
 FLU_INCUBATION = 1
 AVG_FLU_DURATION = 5
 
-P_COLD = 0.001 # &p-cold
+P_COLD = 0.000 # &p-cold
 COLD_CONTAGIOUSNESS = 0.05
 COLD_INCUBATION = 1
 AVG_COLD_DURATION = 3
@@ -244,7 +242,7 @@ AVG_COLD_DURATION = 3
 TICK_MINUTE = 2  # @param increment
 SIMULATION_DAYS = 30  # @param
 SYMPTOM_DAYS = 5  # @param
-COLLECT_LOGS = False 
+COLLECT_LOGS = False
 
 # LIFESTYLE PARAMETERS
 RHO = 0.40
@@ -296,25 +294,16 @@ SCALE_MAX_NUM_MISC_PER_WEEK = 2
 MIN_DIST_ENCOUNTER = 20
 MAX_DIST_ENCOUNTER = 200
 
-## INTERVENTIONS
-BIG_NUMBER = 10000000
-INTERVENTION_DAY = -1 # <0 no interventions
-INTERVENTION = "Tracing"
-PERCENT_FOLLOW = 0.75
-
 # KNOBS
-CONTAGION_KNOB = 1.0
-ENVIRONMENTAL_INFECTION_KNOB = 0.05
-
-# TRACKER
-EFFECTIVE_R_WINDOW = 10 # days
+CONTAGION_KNOB = 1.5
+ENVIRONMENTAL_INFECTION_KNOB = 0.0005
 
 ## INTERVENTIONS
 BIG_NUMBER = 10000000
 HYGIENE_EFFECT = 0.2
 
-# RISK RECOMMENDATIONS
-DEFAULT_DISTANCE = 100 # cms
+# TRACKER
+EFFECTIVE_R_WINDOW = 10 # days
 
 # MASK
 MASK_EFFICACY_NORMIE = 0.32
@@ -322,17 +311,23 @@ MASK_EFFICACY_HEALTHWORKER = 0.98
 BASELINE_P_MASK = 0.5
 MASKS_SUPPLY = BIG_NUMBER
 
-# TRACING RISK MODEL PARAMETERS  (non-ML)
-USE_INFERENCE_SERVER = True
-TRACING_N_DAYS_HISTORY = 14
-MIN_MESSAGE_PASSING_DISTANCE = 0
-MAX_MESSAGE_PASSING_DISTANCE = 1000 #cm GPS; 10 x 10 m grid everyone is a contact
+## INTERVENTIONS
+BIG_NUMBER = 10000000
+INTERVENTION_DAY = -1 # <0 no interventions
+INTERVENTION = "Tracing"
+PERCENT_FOLLOW = 1.0
+P_HAS_APP = 0.5
 
-# RISK PREDICTION PARAMETERS
-RISK_MODEL = "naive" # "naive"  "manual", "digital" "transformer"
+# TRACING RISK MODEL PARAMETERS  (non-ML)
+RISK_MODEL =  "other" # "naive"  "manual", "digital", "transformer"
 TRACE_SYMPTOMS = True
 TRACE_RISK_UPDATE = True
 TRACING_ORDER = 3
+USE_INFERENCE_SERVER = True # "transformer" "naive" (to print the dataset)
+
+TRACING_N_DAYS_HISTORY = 14
+MIN_MESSAGE_PASSING_DISTANCE = 0
+MAX_MESSAGE_PASSING_DISTANCE = 1000 #cm GPS; 10 x 10 m grid everyone is a contact
 
 # first order probabilistic tracing
 RISK_TRANSMISSION_PROBA = 0.03
