@@ -985,8 +985,8 @@ class Human(object):
             del state['city']
             del state['count_shop']
             del state['last_date']
-            state['messages'] = [encode_message(message) for message in state['contact_book'].messages]
-            state['update_messages'] = [encode_update_message(update_message) for update_message in state['contact_book'].update_messages]
+            state['messages'] = [encode_message(message) for message in state['contact_book'].messages if message.day == state['contact_book'].messages[-1].day]
+            state['update_messages'] = [encode_update_message(update_message) for update_message in state['contact_book'].update_messages if update_message.day == state['contact_book'].update_messages[-1].day]
             del state['contact_book']
             del state['last_location']
             del state['recommendations_to_follow']
@@ -1076,7 +1076,7 @@ class Human(object):
         if test_results:
             if self.test_result == "positive":
                 self.risk = 1.0
-                self.contact_book.send_message(self, self.city, RISK_MODEL)
+                # self.contact_book.send_message(self, self.city, RISK_MODEL)
             elif self.test_result == "negative":
                 self.risk = 0.20
 

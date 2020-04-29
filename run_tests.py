@@ -2,7 +2,7 @@
 # Force RISK_MODEL=True
 import config
 config.COLLECT_LOGS = True
-config.RISK_MODEL = "naive"
+config.RISK_MODEL = "first order probabilistic tracing"
 
 
 def test():

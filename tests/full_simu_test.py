@@ -6,7 +6,7 @@ import zipfile
 from tempfile import NamedTemporaryFile
 
 from run import run_simu
-
+from base import Event
 
 class FullUnitTest(unittest.TestCase):
 

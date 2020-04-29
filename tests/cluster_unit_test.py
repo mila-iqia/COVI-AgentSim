@@ -10,8 +10,8 @@ class ScoreMessagesUnitTest(unittest.TestCase):
         """
         # uid, risk, day, time_received, true sender id
         current_day = 0
-        message1 = Message(0, 0, current_day, "human:0")
-        message2 = Message(1, 0, current_day, "human:1")
+        message1 = Message(0, 0, current_day, "human:0", True)
+        message2 = Message(1, 0, current_day, "human:1", True)
         clusters = Clusters()
         clusters.add_messages([encode_message(message1)], current_day)
         best_cluster, best_message, best_score = clusters.score_matches(message2, current_day)
@@ -24,8 +24,8 @@ class ScoreMessagesUnitTest(unittest.TestCase):
         """
         # uid, risk, day, true sender id
         current_day = 0
-        message1 = Message(0, 0, current_day, "human:1")
-        message2 = Message(0, 0, current_day, "human:1")
+        message1 = Message(0, 0, current_day, "human:1", True)
+        message2 = Message(0, 0, current_day, "human:1", True)
         clusters = Clusters()
         clusters.add_messages([encode_message(message1)], current_day)
         best_cluster, best_message, best_score = clusters.score_matches(message2, current_day)
@@ -40,22 +40,22 @@ class ScoreMessagesUnitTest(unittest.TestCase):
         # uid, risk, day, true sender id
         current_day = 0
         clusters = Clusters()
-        message1 = Message(0, 0, 0, "human:1")
+        message1 = Message(0, 0, 0, "human:1", True)
         clusters.add_messages([encode_message(message1)], current_day)
-        message2 = Message(1, 0, 1, "human:1")
+        message2 = Message(1, 0, 1, "human:1", True)
 
         best_cluster, best_message, best_score = clusters.score_matches(message2, 1)
-        self.assertEqual(best_cluster, 0)
+        self.assertEqual(best_cluster, 0, True)
         self.assertEqual(best_message, message1)
-        self.assertEqual(best_score, 2)
+        self.assertEqual(best_score, 2, True)
 
     def test_score_bad_match_one_day_run(self):
         """
         Tests messages with mutually exclusive uids seperated by a day are scored lowly
         """
         # uid, risk, day, true sender id
-        message1 = Message(0, 0, 0, "human:1")
-        message2 = Message(6, 0, 1, "human:1")
+        message1 = Message(0, 0, 0, "human:1", True)
+        message2 = Message(6, 0, 1, "human:1", True)
         clusters = Clusters()
         clusters.add_messages([encode_message(message1)], 0)
         best_cluster, best_message, best_score = clusters.score_matches(message2, 1)
@@ -71,12 +71,12 @@ class RiskModelIntegrationTest(unittest.TestCase):
         Tests messages with mutually exclusive uids on the same day are scored lowly
         """
         # make new old message clusters
-        message = Message(0, 0, 0, "human:1")
+        message = Message(0, 0, 0, "human:1", True)
         clusters = Clusters()
         clusters.add_messages([encode_message(message)], 0)
 
         # make new message
-        new_message = Message(1, 0, 0, "human:1")
+        new_message = Message(1, 0, 0, "human:1", True)
         # add message to clusters
 
         clusters.add_messages([encode_message(new_message)], 0)
@@ -88,12 +88,12 @@ class RiskModelIntegrationTest(unittest.TestCase):
         Tests that the add_message_to_cluster function adds messages with the same uid on the same day to the same cluster.
         """
         # make new old message clusters
-        message = Message(0, 0, 0, "human:1")
+        message = Message(0, 0, 0, "human:1", True)
         clusters = Clusters()
         clusters.add_messages([encode_message(message)], 0)
 
         # make new message
-        new_message = Message(0, 0, 0, "human:1")
+        new_message = Message(0, 0, 0, "human:1", True)
         # add message to clusters
         clusters.add_messages([encode_message(new_message)], 0)
         self.assertEqual(len(clusters), 1)
@@ -126,8 +126,8 @@ class RiskModelIntegrationTest(unittest.TestCase):
 
     def test_purge(self):
         """ Tests the purge functionality"""
-        message1 = Message(0, 0, 0, "human:0")
-        message2 = Message(15, 0, 1, "human:0")
+        message1 = Message(0, 0, 0, "human:0", True)
+        message2 = Message(15, 0, 1, "human:0", True)
         clusters = Clusters()
         clusters.add_messages([encode_message(message1)], 0)
         clusters.add_messages([encode_message(message2)], 0)
