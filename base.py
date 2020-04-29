@@ -247,7 +247,7 @@ class City(simpy.Environment):
         while True:
             # once per day, for each human
             for human in self.humans:
-                human.contact_book.update_history(current_day)
+                # human.contact_book.update_book(human)
                 if human.tracing and human.message_info['traced']:
                     if (human.env.timestamp - human.message_info['receipt']).days >= human.message_info['delay']:
                         # print(f"{self.tracing_method}: Traced {self}")
@@ -643,10 +643,9 @@ class Contacts(object):
             date = self.book[human][-1][0] # last contact date
 
         remove_idx = -1
-
         for history in self.book[human]:
             if (date - history[0]).days > TRACING_N_DAYS_HISTORY:
-                remove_idx  += 1
+                remove_idx += 1
             else:
                 break
         self.book[human] = self.book[human][remove_idx:]
@@ -666,12 +665,11 @@ class Contacts(object):
         p_contact = tracing_method.p_contact
         delay = tracing_method.delay
         app = tracing_method.app
-
+        today = (owner.env.timestamp - owner.env.initial_timestamp).days
         if app and not owner.has_app:
             return
 
         for idx, human in enumerate(self.book):
-            today = (human.env.timestamp - human.env.intial_timestamp).day
 
             redundant_tracing = human.message_info['traced'] and tracing_method.dont_trace_traced
             if redundant_tracing: # manual and digital - no effect of new messages
@@ -690,4 +688,4 @@ class Contacts(object):
                     sent_at = human.env.timestamp + datetime.timedelta(minutes=idx)
                     for i in range(total_contacts):
                         # FIXME when we have messages sent hourly with a bucketed set of users sending messages
-                        human.update_messages.append(owner.cur_message_risk_update(today, self.uid, self.risk, sent_at))
+                        human.update_messages.append(owner.cur_message_risk_update(today, owner.uid, owner.risk, sent_at))

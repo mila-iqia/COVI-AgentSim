@@ -246,15 +246,6 @@ SIMULATION_DAYS = 30  # @param
 SYMPTOM_DAYS = 5  # @param
 COLLECT_LOGS = False 
 
-# RISK PREDICTION PARAMETERS
-RISK_MODEL = "naive" # "naive"  "manual", "digital" "transformer"
-TRACE_SYMPTOMS = True
-TRACE_RISK_UPDATE = True
-TRACING_ORDER = 3
-
-
-
-
 # LIFESTYLE PARAMETERS
 RHO = 0.40
 GAMMA = 0.1
@@ -307,7 +298,7 @@ MAX_DIST_ENCOUNTER = 200
 
 ## INTERVENTIONS
 BIG_NUMBER = 10000000
-INTERVENTION_DAY = 1 # <0 no interventions
+INTERVENTION_DAY = -1 # <0 no interventions
 INTERVENTION = "Tracing"
 PERCENT_FOLLOW = 0.75
 
@@ -332,12 +323,16 @@ BASELINE_P_MASK = 0.5
 MASKS_SUPPLY = BIG_NUMBER
 
 # TRACING RISK MODEL PARAMETERS  (non-ML)
-# "first order probabilistic tracing"  "manual tracing", "digital tracing", "transformer"
-RISK_MODEL = "first order probabilistic tracing"
 USE_INFERENCE_SERVER = True
 TRACING_N_DAYS_HISTORY = 14
 MIN_MESSAGE_PASSING_DISTANCE = 0
 MAX_MESSAGE_PASSING_DISTANCE = 1000 #cm GPS; 10 x 10 m grid everyone is a contact
+
+# RISK PREDICTION PARAMETERS
+RISK_MODEL = "naive" # "naive"  "manual", "digital" "transformer"
+TRACE_SYMPTOMS = True
+TRACE_RISK_UPDATE = True
+TRACING_ORDER = 3
 
 # first order probabilistic tracing
 RISK_TRANSMISSION_PROBA = 0.03
@@ -345,7 +340,7 @@ BASELINE_RISK_VALUE = 0.01
 RISK_MAPPING_FILE = "_data/log_risk_mapping.npy"
 
 # manual tracing
-MANUAL_TRACING_NOISE = 0.30
+MANUAL_TRACING_P_CONTACT = 0.50
 MANUAL_TRACING_DELAY_AVG = 3  # days
 MANUAL_TRACING_DELAY_STD = 0.5  # days
 

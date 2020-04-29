@@ -1026,6 +1026,7 @@ class Human(object):
             del state['city']
             del state['count_shop']
             del state['last_date']
+            del state['message_info']
             state['messages'] = [encode_message(message) for message in state['contact_book'].messages if message.day == state['contact_book'].messages[-1].day]
             state['update_messages'] = [encode_update_message(update_message) for update_message in state['contact_book'].update_messages if update_message.day == state['contact_book'].update_messages[-1].day]
             del state['contact_book']

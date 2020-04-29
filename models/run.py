@@ -1,5 +1,6 @@
 import os
 import pickle
+import dill
 import json
 import zipfile
 import time
@@ -23,32 +24,6 @@ def query_inference_server(params, **inf_client_kwargs):
     client = InferenceClient(**inf_client_kwargs)
     results = client.infer(params)
     return results
-
-
-def get_days_worth_of_logs(data_path, start, cur_day, start_pkl):
-    to_return = defaultdict(list)
-    started = False
-    try:
-        with zipfile.ZipFile(data_path, 'r') as zf:
-            for pkl in zf.namelist():
-                if not started:
-                    if pkl != start_pkl:
-                        continue
-                started = True
-                start_pkl = pkl
-                logs = pickle.load(zf.open(pkl, 'r'))
-                from base import Event
-
-                for log in logs:
-                    if log['event_type'] == Event.encounter:
-                        day_since_epoch = (log['time'] - start).days
-                        if day_since_epoch == cur_day-1:
-                            to_return[log['human_id']].append(log)
-                        elif day_since_epoch > cur_day:
-                            return to_return, start_pkl
-    except Exception:
-        pass
-    return to_return, start_pkl
 
 
 def integrated_risk_pred(humans, data_path, start, current_day, all_possible_symptoms, start_pkl, port=6688, n_jobs=1):
