@@ -230,13 +230,28 @@ class Human(object):
     def events(self):
         return self._events
 
-    def pull_events(self):
-        if self._events:
-            events = self._events
-            self._events = []
-        else:
-            events = self._events
-        return events
+    def events_slice(self, begin, end):
+        end_i = len(self._events)
+        begin_i = end_i
+        for i, event in enumerate(self._events):
+            if i < begin_i and event['time'] >= begin:
+                begin_i = i
+            elif event['time'] > end:
+                end_i = i
+                break
+
+        return self._events[begin_i:end_i]
+
+    def pull_events_slice(self, end):
+        end_i = len(self._events)
+        for i, event in enumerate(self._events):
+            if event['time'] >= end:
+                end_i = i
+                break
+
+        events_slice, self._events = self._events[:end_i], self._events[end_i:]
+
+        return events_slice
 
     ########### EPI ###########
 

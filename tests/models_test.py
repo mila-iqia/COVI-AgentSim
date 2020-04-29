@@ -10,7 +10,7 @@ import numpy as np
 from run import run_simu
 
 
-class ModelsPreprocessingTest(unittest.TestCase):
+class ModelsTest(unittest.TestCase):
     # TODO: Fix this test, it doesn't test anything
     def test_run(self):
         """
@@ -25,8 +25,8 @@ class ModelsPreprocessingTest(unittest.TestCase):
                 start_time=datetime.datetime(2020, 2, 28, 0, 0),
                 simulation_days=n_days,
                 outfile=os.path.join(preprocess_d, "output"),
-                out_chunk_size=0,
-                seed=0, n_jobs=1,
+                out_chunk_size=1,
+                seed=0, n_jobs=4,
                 port=6688
             )
 
