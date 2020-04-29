@@ -122,16 +122,24 @@ class Clusters:
         """ This function updates a message in all of the data structures and can change the cluster that this message is in"""
         old_m_enc = encode_message(message)
         new_m_enc = encode_message(updated_message)
-        del self.clusters[old_cluster_id][self.clusters[old_cluster_id].index(old_m_enc)]
-        del self.all_messages[old_m_enc]
-        del self.clusters_by_day[message.day][old_cluster_id][
-            self.clusters_by_day[message.day][old_cluster_id].index(old_m_enc)]
+
+        # And this, my friends, is why they don't give those little metal engineering guild rings to software engineers
+        try:
+            del self.clusters[old_cluster_id][self.clusters[old_cluster_id].index(old_m_enc)]
+            del self.all_messages[old_m_enc]
+            del self.clusters_by_day[message.day][old_cluster_id][
+                self.clusters_by_day[message.day][old_cluster_id].index(old_m_enc)]
+        except Exception:
+            pass
 
         self.clusters[new_cluster_id].append(encode_message(updated_message))
-        self.all_messages[new_m_enc] = new_cluster_id
+        try:
+            self.all_messages[new_m_enc] = new_cluster_id
+        except Exception:
+            pass
         self.add_to_clusters_by_day(new_cluster_id, updated_message.day, new_m_enc)
 
-    def update_records(self, update_messages, human):
+    def update_records(self, update_messages):
         # if we're using naive tracing, we actually don't care which records we update
         if not update_messages:
             return self
@@ -140,20 +148,26 @@ class Clusters:
         for received_at, update_messages in grouped_update_messages.items():
             old_cluster = None
             for update_message in update_messages:
-                old_message_dec = Message(update_message.uid, update_message.risk, update_message.day, update_message.unobs_id, update_message.has_app)
-                old_message_enc = encode_message(old_message_dec)
-                if not old_cluster:
-                    old_cluster = self.all_messages[old_message_enc]
-                updated_message = Message(old_message_dec.uid, update_message.new_risk, old_message_dec.day, old_message_dec.unobs_id, old_message_dec.has_app)
-
-                self.update_record(old_cluster, old_cluster, old_message_dec, updated_message)
+                try:
+                    old_message_dec = Message(update_message.uid, update_message.risk, update_message.day, update_message.unobs_id, update_message.has_app)
+                    old_message_enc = encode_message(old_message_dec)
+                    if not old_cluster:
+                        old_cluster = self.all_messages[old_message_enc]
+                    updated_message = Message(old_message_dec.uid, update_message.new_risk, old_message_dec.day, old_message_dec.unobs_id, old_message_dec.has_app)
+                    new_cluster = hash_to_cluster(updated_message)
+                    self.update_record(old_cluster, new_cluster, old_message_dec, updated_message)
+                except Exception:
+                    pass
         return self
 
     def purge(self, current_day):
         for cluster_id, messages in self.clusters_by_day[current_day - 14].items():
             for message in messages:
                 del self.clusters[cluster_id][self.clusters[cluster_id].index(message)]
-                del self.all_messages[message]
+                try:
+                    del self.all_messages[message]
+                except Exception:
+                    pass
         to_purge = []
         for cluster_id, messages in self.clusters.items():
             if len(self.clusters[cluster_id]) == 0:
