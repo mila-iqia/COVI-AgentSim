@@ -1,4 +1,4 @@
-import pickle
+import dill as pickle
 import typing
 import zmq
 

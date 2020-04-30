@@ -36,4 +36,4 @@ jobs:
 #         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Test
       run: |
-        python run.py test
+        python run_tests.py

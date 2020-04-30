@@ -126,7 +126,7 @@ HUMAN_DISTRIBUTION = {
         "p":0.24,
         "residence_preference":{
             "house_size":[0.1, 0.4, 0.2, 0.2, 0.1],
-            "senior_residency":0.7
+            "senior_residency":0.1
         },
         "profession_profile": {
                 "healthcare":0.05,
@@ -140,21 +140,19 @@ HUMAN_DISTRIBUTION = {
         "p":0.07,
         "residence_preference":{
             "house_size":[0.05, 0.5, 0.1, 0.25, 0.1],
-            "senior_residency":0.9
+            "senior_residency":0.2
         },
         "profession_profile":{
                 "healthcare":0.0,
                 "school":0.0,
-                "others":0.0,
-                "retired":1.0
+                "others":0.1,
+                "retired":0.9
         },
 
     }
 }
 
 # INDIVIDUAL DIFFERENCES PARAMETERS
-WORK_FROM_HOME = False
-P_HAS_APP = 0.5 # &has_app
 P_CAREFUL_PERSON = 0.3 # &carefulness
 P_TRAVELLED_INTERNATIONALLY_RECENTLY = 0.05
 
@@ -221,21 +219,21 @@ INFECTIOUSNESS_ONSET_DAYS_AVG = 1.5 # 1 gets added to this to ensure a minimum 1
 INFECTIOUSNESS_ONSET_DAYS_STD = 0.1
 
 # ASYMTPOMATIC
-BASELINE_P_ASYMPTOMATIC = 0.5 # &p-asymptomatic
-ASYMPTOMATIC_INFECTION_RATIO = 0.1 # &prob_infectious
+BASELINE_P_ASYMPTOMATIC = 0.20 # &p-asymptomatic
+ASYMPTOMATIC_INFECTION_RATIO = 0.2 # &prob_infectious
 
 # SEASONAL ALLERGIES
-P_ALLERGIES = 0.20
+P_ALLERGIES = 0.00
 P_SEVERE_ALLERGIES = 0.02
-P_HAS_ALLERGIES_TODAY = 0.05
+P_HAS_ALLERGIES_TODAY = 0.0
 
 # OTHER TRANSMISSIBLE DISEASES
-P_FLU = 0.001 # &p-flu
+P_FLU = 0.000 # &p-flu
 FLU_CONTAGIOUSNESS = 0.05
 FLU_INCUBATION = 1
 AVG_FLU_DURATION = 5
 
-P_COLD = 0.001 # &p-cold
+P_COLD = 0.000 # &p-cold
 COLD_CONTAGIOUSNESS = 0.05
 COLD_INCUBATION = 1
 AVG_COLD_DURATION = 3
@@ -245,19 +243,6 @@ TICK_MINUTE = 2  # @param increment
 SIMULATION_DAYS = 30  # @param
 SYMPTOM_DAYS = 5  # @param
 COLLECT_LOGS = False
-
-# RISK PREDICTION PARAMETERS
-# RISK_MODEL = "naive" #transformer
-MP_BATCHSIZE = "auto"
-MP_N_JOBS = "1"
-MP_BACKEND = "loky"
-CLUSTER_MESSAGES = False
-CLUSTER_TYPE = "heuristic" # "random", "graph"
-PLOT_RISK = True
-RISK_PLOT_PATH = "output/plots/risk"
-DUMP_CLUSTERS = True
-CLUSTER_PATH = "output/clusters.json"
-
 
 # LIFESTYLE PARAMETERS
 RHO = 0.40
@@ -309,25 +294,16 @@ SCALE_MAX_NUM_MISC_PER_WEEK = 2
 MIN_DIST_ENCOUNTER = 20
 MAX_DIST_ENCOUNTER = 200
 
-## INTERVENTIONS
-BIG_NUMBER = 10000000
-INTERVENTION_DAY = 1 # <0 no interventions
-INTERVENTION = "Tracing"
-PERCENT_FOLLOW = 0.75
-
 # KNOBS
-CONTAGION_KNOB = 1.0
-ENVIRONMENTAL_INFECTION_KNOB = 0.05
-
-# TRACKER
-EFFECTIVE_R_WINDOW = 10 # days
+CONTAGION_KNOB = 1.5
+ENVIRONMENTAL_INFECTION_KNOB = 0.0005
 
 ## INTERVENTIONS
 BIG_NUMBER = 10000000
 HYGIENE_EFFECT = 0.2
 
-# RISK RECOMMENDATIONS
-DEFAULT_DISTANCE = 100 # cms
+# TRACKER
+EFFECTIVE_R_WINDOW = 10 # days
 
 # MASK
 MASK_EFFICACY_NORMIE = 0.32
@@ -335,12 +311,20 @@ MASK_EFFICACY_HEALTHWORKER = 0.98
 BASELINE_P_MASK = 0.5
 MASKS_SUPPLY = BIG_NUMBER
 
+## INTERVENTIONS
+BIG_NUMBER = 10000000
+INTERVENTION_DAY = -1 # <0 no interventions
+INTERVENTION = "Tracing"
+PERCENT_FOLLOW = 1.0
+P_HAS_APP = 1.0
+
 # TRACING RISK MODEL PARAMETERS  (non-ML)
-# "first order probabilistic tracing"  "manual tracing", "digital tracing", "smart tracing"
-# if you want to use the inference servers, use "naive" or "transformer"
-LOCAL_RISK_MODELS = ["first order probabilistic tracing",  "manual tracing", "digital tracing", "smart tracing"]
-RISK_MODEL = "first order probabilistic tracing"
-N_DAYS_HISTORY = 14
+RISK_MODEL = "naive" # "naive"  "manual", "digital", "transformer"
+TRACE_SYMPTOMS = False
+TRACE_RISK_UPDATE = False
+TRACING_ORDER = 1
+
+TRACING_N_DAYS_HISTORY = 14
 MIN_MESSAGE_PASSING_DISTANCE = 0
 MAX_MESSAGE_PASSING_DISTANCE = 1000 #cm GPS; 10 x 10 m grid everyone is a contact
 
@@ -350,6 +334,20 @@ BASELINE_RISK_VALUE = 0.01
 RISK_MAPPING_FILE = "_data/log_risk_mapping.npy"
 
 # manual tracing
-MANUAL_TRACING_NOISE = 0.30
+MANUAL_TRACING_P_CONTACT = 0.50
 MANUAL_TRACING_DELAY_AVG = 3  # days
 MANUAL_TRACING_DELAY_STD = 0.5  # days
+
+# Inference & Training
+USE_INFERENCE_SERVER = True # "transformer" "naive" (to print the dataset)
+INFECTIOUSNESS_N_DAYS_HISTORY = 14
+MP_BATCHSIZE = "auto"
+MP_N_JOBS = "1"
+MP_BACKEND = "loky"
+PLOT_RISK = True
+CLUSTER_MESSAGES = True
+DUMP_CLUSTERS = False
+CLUSTER_TYPE = "heuristic" # "random", "graph"
+RISK_PLOT_PATH = "output/plots/risk"
+CLUSTER_PATH = "output/clusters.json"
+COLLECT_TRAINING_DATA = True

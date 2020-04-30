@@ -33,7 +33,7 @@ class PlotTracker(object):
                         'ytick.labelsize': fontsize - 2,
                         'axes.titlesize': fontsize + 2,
                         'axes.labelsize': fontsize + 2,
-                        'text.usetex': True,
+                        'text.usetex': False,
                         'lines.linewidth': 1,
                         'lines.markersize': 3,
                         }
@@ -282,6 +282,8 @@ class PlotTracker(object):
         # extract the appropriate data from the dictionary
         if metrics == 'duration' or metrics == 'n_contacts':
             to_plot = contacts[metrics]['avg'][1]
+            if crange:
+                to_plot = to_plot[crange[0]:crange[1], crange[0]:crange[1]]
 
         x = y = np.linspace(start=0, stop=len(to_plot) - 1, num=len(to_plot))
         self._plot_heatmap(x, y, to_plot,

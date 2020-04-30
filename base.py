@@ -161,6 +161,7 @@ class City(simpy.Environment):
 
                 self.humans.append(Human(
                         env=self.env,
+                        city=self,
                         rng=self.rng,
                         name=count_humans,
                         age=age,
@@ -218,6 +219,9 @@ class City(simpy.Environment):
         for i,house in enumerate(self.households):
             house.area = area[i]
 
+        # this allows for easy O(1) access of humans for message passing
+        self.hd = {human.name: human for human in self.humans}
+
     def log_static_info(self):
         for h in self.humans:
             Event.log_static_info(self, h, self.env.timestamp)
@@ -241,11 +245,24 @@ class City(simpy.Environment):
             start_pkl = zf.namelist()[0]
 
         while True:
-            if RISK_MODEL not in LOCAL_RISK_MODELS:
+            # once per day, for each human
+            for human in self.humans:
+                # human.contact_book.update_book(human)
+                if human.tracing and human.message_info['traced']:
+                    if (human.env.timestamp - human.message_info['receipt']).days >= human.message_info['delay']:
+                        # print(f"{self.tracing_method}: Traced {self}")
+                        human.update_risk(value=True)
+
+            if USE_INFERENCE_SERVER:
                 self.humans, start_pkl = integrated_risk_pred(self.humans, outfile, start_time, current_day, all_possible_symptoms, start_pkl, port=port, n_jobs=n_jobs)
+
             if INTERVENTION_DAY > 0 and current_day == INTERVENTION_DAY:
                 self.intervention = get_intervention(INTERVENTION)
+                _ = [h.notify(self.intervention) for h in self.humans]
                 print(self.intervention)
+
+            if COLLECT_TRAINING_DATA and current_day == 0:
+                _ = [h.notify(collect_training_data=True) for h in self.humans]
 
             self.tracker.increment_day()
             current_day += 1
@@ -278,7 +295,7 @@ class Location(simpy.Resource):
         return any([h.is_infectious for h in self.humans])
 
     def __repr__(self):
-        return f"{self.name} - occ:{len(self.humans)}/{self.capacity} - I:{self.infectious_human()}"
+        return f"{self.name} - occ:{len(self.humans)}/{self.capacity} - I:{self.is_contaminated}"
 
     def add_human(self, human):
         self.humans.add(human)
@@ -602,6 +619,8 @@ class DummyEvent:
 
 class Contacts(object):
     def __init__(self, has_app):
+        self.messages = []
+        self.update_messages = []
         # human --> [[date, counts], ...]
         self.book = {}
         self.has_app = has_app
@@ -609,48 +628,68 @@ class Contacts(object):
     def add(self, **kwargs):
         human = kwargs.get("human")
         timestamp = kwargs.get("timestamp")
+        cur_day = (timestamp - human.env.initial_timestamp).days
+        cur_message = human.cur_message(cur_day)
+        self.messages.append(cur_message)
 
         if human not in self.book:
             self.book[human] = [[timestamp.date(), 1]]
             return
-
         if timestamp.date() != self.book[human][-1][0]:
             self.book[human].append([timestamp.date(), 1])
         else:
             self.book[human][-1][1] += 1
+        self.update_book(human, timestamp.date())
 
-        self.update_history(human, timestamp.date())
 
-    def update_history(self, human, date=None):
+    def update_book(self, human, date=None):
         if date is None:
             date = self.book[human][-1][0] # last contact date
 
         remove_idx = -1
         for history in self.book[human]:
-            if (date - history[0]).days > N_DAYS_HISTORY:
-                remove_idx  += 1
+            if (date - history[0]).days > TRACING_N_DAYS_HISTORY:
+                remove_idx += 1
             else:
                 break
-
         self.book[human] = self.book[human][remove_idx:]
 
-    def send_message(self, owner, RISK_MODEL):
-        if RISK_MODEL == "manual tracing":
-            p_contact = MANUAL_TRACING_NOISE
-            delay = 1
-            app = False
+        # TODO: this should contain only todays info; clean up history should happen once per day
+        if False:
+            remove_idx = 0
+            for historical_message in self.messages:
+                if (human.env.timestamp - human.env.initial_timestamp).days - historical_message.day > TRACING_N_DAYS_HISTORY:
+                    remove_idx += 1
+                else:
+                    break
+            self.messages = self.messages[remove_idx:]
 
-        elif RISK_MODEL in ['digital tracing', 'first order probabilistic tracing']:
-            p_contact = 1
-            delay = 0
-            app = True
-            if not owner.has_app:
-                return
 
-        for human in self.book:
+    def send_message(self, owner, tracing_method, order=1, reason="test", payload=None):
+        p_contact = tracing_method.p_contact
+        delay = tracing_method.delay
+        app = tracing_method.app
+        today = (owner.env.timestamp - owner.env.initial_timestamp).days
+        if app and not owner.has_app:
+            return
+
+        for idx, human in enumerate(self.book):
+
+            redundant_tracing = human.message_info['traced'] and tracing_method.dont_trace_traced
+            if redundant_tracing: # manual and digital - no effect of new messages
+                continue
+
             if not app or (app and human.has_app):
                 if human.rng.random() < p_contact:
-                    self.update_history(human)
-                    t = delay * _draw_random_discreet_gaussian(MANUAL_TRACING_DELAY_AVG, MANUAL_TRACING_DELAY_STD, human.rng)
+                    self.update_book(human)
+                    t = 0
+                    if delay:
+                        t = _draw_random_discreet_gaussian(MANUAL_TRACING_DELAY_AVG, MANUAL_TRACING_DELAY_STD, human.rng)
+
                     total_contacts = sum(map(lambda x:x[1], self.book[human]))
-                    human.update_risk(update_messages={'n':total_contacts, 'delay': t})
+                    # print(f"{RISK_MODEL}: {owner} --> {human} C:{total_contacts} delay:{t}")
+                    human.update_risk(update_messages={'n':total_contacts, 'delay': t, 'order':order, 'reason':reason, 'payload':payload})
+                    sent_at = human.env.timestamp + datetime.timedelta(minutes=idx)
+                    for i in range(total_contacts):
+                        # FIXME when we have messages sent hourly with a bucketed set of users sending messages
+                        human.update_messages.append(owner.cur_message_risk_update(today, owner.uid, owner.risk, sent_at))
