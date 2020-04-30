@@ -7,6 +7,7 @@ import os
 import sys
 import zipfile
 
+from frozen.helper import SYMPTOMS_META
 from config import TICK_MINUTE
 from simulator import Human
 from base import *
@@ -260,13 +261,9 @@ def run_simu(n_people=None, init_percent_sick=0.0,
         monitors += other_monitors
 
     # run city
-    all_possible_symptoms = ['moderate', 'mild', 'severe', 'extremely-severe', 'fever',
-                             'chills', 'gastro', 'diarrhea', 'nausea_vomiting', 'fatigue',
-                             'unusual', 'hard_time_waking_up', 'headache', 'confused',
-                             'lost_consciousness', 'trouble_breathing', 'sneezing',
-                             'cough', 'runny_nose', 'aches', 'sore_throat', 'severe_chest_pain',
-                             'loss_of_taste', 'mild_trouble_breathing', 'light_trouble_breathing', 'moderate_trouble_breathing',
-                             'heavy_trouble_breathing']
+    all_possible_symptoms = [""] * len(SYMPTOMS_META)
+    for k, v in SYMPTOMS_META.items():
+        all_possible_symptoms[v] = k
     monitors[0].dump()
     monitors[0].join_iothread()
     env.process(city.run(1440, outfile, start_time, all_possible_symptoms, port, n_jobs))
