@@ -187,9 +187,10 @@ class Tracker(object):
         self.mobility.append(M)
 
         # risk models
-        self.risk_precision_daily.append(self.compute_risk_precision(daily=True)[0])
+        prec, recall = self.compute_risk_precision(daily=True)
+        self.risk_precision_daily.append(prec[1][0]) # FIXME: what to plot
         self.recommended_levels_daily.append([G, B, O, R])
-        self.risk_values += [(h.risk, h.is_exposed or h.is_infectious) for h in self.city.humans if h.test_result is None]
+        self.risk_values += [(h.risk, h.is_exposed or h.is_infectious, h.test_result, len(h.symptoms) == 0) for h in self.city.humans]
 
         #
         self.avg_infectiousness_per_day.append(np.mean([h.infectiousness for h in self.city.humans]))
@@ -205,20 +206,35 @@ class Tracker(object):
                     0.20 * (h.rec_level == 2) + 0.05 * (h.rec_level == 3) + 1*(h.rec_level==-1)
         return M, G, B, O, R
 
-    def compute_risk_precision(self, daily=True):
+    def compute_risk_precision(self, daily=True, threshold=0.5):
         if daily:
-            x = [(h.risk, h.is_exposed or h.is_infectious) for h in self.city.humans if h.test_result != "positive"]
+            all = [(h.risk, h.is_exposed or h.is_infectious) for h in self.city.humans]
+            no_test = [(h.risk, h.is_exposed or h.is_infectious) for h in self.city.humans if h.test_result != "positive"]
+            no_test_symptoms = [(h.risk, h.is_exposed or h.is_infectious) for h in self.city.humans if h.test_result != "positive" and len(h.symptoms) == 0]
             top_k = [0.01]
         else:
-            x = self.risk_values
+            all = [(x[0],x[1]) for x in self.risk_values]
+            no_test = [(x[0], x[1]) for x in self.risk_values if not x[2]]
+            no_test_symptoms = [(x[0], x[1]) for x in self.risk_values if not x[2] and x[3]]
             top_k = [0.01, 0.03, 0.05, 0.10, 0.20, 0.30, 0.50]
 
-        x = sorted(x, key=lambda y:-y[0])
-        top_k_prec = []
-        for k in top_k:
-            xy = x[:math.ceil(k * len(x))]
-            top_k_prec.append(1.0*sum(1 for x,y in xy if y)/len(x))
-        return top_k_prec
+        all = sorted(all, key=lambda y:-y[0])
+        no_test = sorted(no_test, key=lambda y:-y[0])
+        no_test_symptoms = sorted(no_test_symptoms, key = lambda y:-y[0])
+        top_k_prec = [[],[],[]]
+        recall =[]
+        idx = 0
+        for type in [all, no_test, no_test_symptoms]:
+            for k in top_k:
+                xy = type[:math.ceil(k * len(type))]
+                top_k_prec[idx].append(1.0*sum(1 for x,y in xy if y)/len(xy))
+
+            z = sum(1 for x,y in type if y)
+            recall.append(0)
+            if z:
+                recall[-1] = 1.0*sum(1 for x,y in type if y and x > threshold)/z
+            idx += 1
+        return top_k_prec, recall
 
     def track_covid_properties(self, human):
         n, avg = self.covid_properties['incubation_days']
@@ -520,11 +536,20 @@ class Tracker(object):
         #     v = self.daily_age_group_encounters[bin][1]
         #     log(f"{bin} #avg: {v} %:{100*v/total:5.2f} ", logfile)
         #
-        log("******** Risk Precision *********", logfile)
-        risk_precisions = self.compute_risk_precision(daily=False)
+        log("******** Risk Precision/Recall *********", logfile)
+        prec, recall = self.compute_risk_precision(daily=False)
         top_k = [0.01, 0.03, 0.05, 0.10, 0.20, 0.30, 0.50]
-        for value, k in zip(risk_precisions, top_k):
-            log(f"Top-{100*k:2.2f}% precision - {100*value:5.2f}", logfile)
+        type_str = ["all", "no test", "no test and symptoms"]
+        log("*** Precision ***", logfile)
+        idx = 0
+        for k_values in zip(*prec):
+            x,y,z= k_values
+            log(f"Top-{100*top_k[idx]:2.2f}% all: {100*x:5.2f}% no_test:{100*y:5.2f}% no_test_and_symptoms: {100*z:5.2f}%", logfile)
+            idx += 1
+
+        log("*** Recall ***", logfile)
+        x,y,z = recall
+        log(f"all: {100*x:5.2f}% no_test: {100*y:5.2f}% no_test_and_symptoms: {100*z:5.2f}%", logfile)
 
     def plot_metrics(self, dirname):
         import matplotlib.pyplot as plt
