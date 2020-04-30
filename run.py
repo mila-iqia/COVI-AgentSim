@@ -130,6 +130,8 @@ def tune(n_people, simulation_days, seed):
     data['e'] = tracker.e_per_day
     data['i'] = tracker.i_per_day
     data['r'] = tracker.r_per_day
+    data['avg_infectiousness_per_day'] = tracker.avg_infectiousness_per_day
+    data['risk_precision'] = tracker.compute_risk_precision(False)
     # data['dist_encounters'] = dict(tracker.dist_encounters)
     # data['time_encounters'] = dict(tracker.time_encounters)
     # data['day_encounters'] = dict(tracker.day_encounters)
@@ -142,14 +144,14 @@ def tune(n_people, simulation_days, seed):
     # data['symptoms'] = dict(tracker.symptoms)
     # data['transition_probability'] = dict(tracker.transition_probability)
     # #
-    import dill
-    filename = f"tracker_data_n_{n_people}_seed_{seed}_{timenow}.pkl"
-    with open(f"logs/{filename}", 'wb') as f:
-        dill.dump(data, f)
-
-    logfile = os.path.join(f"logs/log_n_{n_people}_seed_{seed}_{timenow}.txt")
-    tracker.write_metrics(logfile)
-
+    # import dill
+    # filename = f"tracker_data_n_{n_people}_seed_{seed}_{timenow}.pkl"
+    # with open(f"logs/{filename}", 'wb') as f:
+    #     dill.dump(data, f)
+    #
+    # logfile = os.path.join(f"logs/log_n_{n_people}_seed_{seed}_{timenow}.txt")
+    # tracker.write_metrics(logfile)
+    tracker.write_metrics(None)
 
     # fig = x['R'].iplot(asFigure=True, title="R0")
     # fig.write_image("plots/tune/R.png")

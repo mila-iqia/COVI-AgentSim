@@ -295,7 +295,7 @@ MIN_DIST_ENCOUNTER = 20
 MAX_DIST_ENCOUNTER = 200
 
 # KNOBS
-CONTAGION_KNOB = 1.5
+CONTAGION_KNOB = 1.3
 ENVIRONMENTAL_INFECTION_KNOB = 0.0005
 
 ## INTERVENTIONS
@@ -316,7 +316,7 @@ BIG_NUMBER = 10000000
 INTERVENTION_DAY = -1 # <0 no interventions
 INTERVENTION = "Tracing"
 PERCENT_FOLLOW = 1.0
-P_HAS_APP = 1.0
+P_HAS_APP = 0.5
 
 # TRACING RISK MODEL PARAMETERS  (non-ML)
 RISK_MODEL = "naive" # "naive"  "manual", "digital", "transformer"
@@ -328,7 +328,7 @@ TRACING_N_DAYS_HISTORY = 14
 MIN_MESSAGE_PASSING_DISTANCE = 0
 MAX_MESSAGE_PASSING_DISTANCE = 1000 #cm GPS; 10 x 10 m grid everyone is a contact
 
-# first order probabilistic tracing
+# naive tracing
 RISK_TRANSMISSION_PROBA = 0.03
 BASELINE_RISK_VALUE = 0.01
 RISK_MAPPING_FILE = "_data/log_risk_mapping.npy"
@@ -339,15 +339,16 @@ MANUAL_TRACING_DELAY_AVG = 3  # days
 MANUAL_TRACING_DELAY_STD = 0.5  # days
 
 # Inference & Training
-USE_INFERENCE_SERVER = True # "transformer" "naive" (to print the dataset)
+NAIVE_RISK_COMPUTATION = True
+USE_INFERENCE_SERVER = False # "transformer" "naive" (to print the dataset)
 INFECTIOUSNESS_N_DAYS_HISTORY = 14
 MP_BATCHSIZE = "auto"
 MP_N_JOBS = "1"
 MP_BACKEND = "loky"
-PLOT_RISK = True
-CLUSTER_MESSAGES = True
+PLOT_RISK = False
+CLUSTER_MESSAGES = False
 DUMP_CLUSTERS = False
 CLUSTER_TYPE = "heuristic" # "random", "graph"
 RISK_PLOT_PATH = "output/plots/risk"
 CLUSTER_PATH = "output/clusters.json"
-COLLECT_TRAINING_DATA = True
+COLLECT_TRAINING_DATA = False

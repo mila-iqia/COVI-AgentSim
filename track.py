@@ -51,6 +51,7 @@ class Tracker(object):
         self.generation_time_book = {}
         self.n_env_infection = 0
         self.recovered_stats = []
+        self.covid_properties = defaultdict(lambda : [0,0])
 
         # cumulative incidence
         day = self.env.timestamp.strftime("%d %b")
@@ -93,6 +94,8 @@ class Tracker(object):
         self.risk_precision_daily = [self.compute_risk_precision()]
         self.recommended_levels_daily = [[G, B, O, R]]
         self.ei_per_day = []
+        self.risk_values = []
+        self.avg_infectiousness_per_day = []
 
     def summarize_population(self):
         self.n_infected_init = sum([h.is_exposed for h in self.city.humans])
@@ -183,9 +186,13 @@ class Tracker(object):
         M, G, B, O, R = self.compute_mobility()
         self.mobility.append(M)
 
-        #risk models
-        self.risk_precision_daily.append(self.compute_risk_precision())
+        # risk models
+        self.risk_precision_daily.append(self.compute_risk_precision(daily=True)[0])
         self.recommended_levels_daily.append([G, B, O, R])
+        self.risk_values += [(h.risk, h.is_exposed or h.is_infectious) for h in self.city.humans if h.test_result is None]
+
+        #
+        self.avg_infectiousness_per_day.append(np.mean([h.infectiousness for h in self.city.humans]))
 
     def compute_mobility(self):
         M, G, B, O, R = 0, 0, 0, 0, 0
@@ -198,12 +205,30 @@ class Tracker(object):
                     0.20 * (h.rec_level == 2) + 0.05 * (h.rec_level == 3) + 1*(h.rec_level==-1)
         return M, G, B, O, R
 
-    def compute_risk_precision(self):
-        x = [(h.risk, not h.is_susceptible) for h in self.city.humans if h.test_result != "positive"]
+    def compute_risk_precision(self, daily=True):
+        if daily:
+            x = [(h.risk, h.is_exposed or h.is_infectious) for h in self.city.humans if h.test_result != "positive"]
+            top_k = [0.01]
+        else:
+            x = self.risk_values
+            top_k = [0.01, 0.03, 0.05, 0.10, 0.20, 0.30, 0.50]
+
         x = sorted(x, key=lambda y:-y[0])
-        x = x[:math.ceil(0.01*len(x))]
-        x = 1.0*sum(1 for y in x if (y[0] > 0.5 and y[1]))/len(x)
-        return x
+        top_k_prec = []
+        for k in top_k:
+            xy = x[:math.ceil(k * len(x))]
+            top_k_prec.append(1.0*sum(1 for x,y in xy if y)/len(x))
+        return top_k_prec
+
+    def track_covid_properties(self, human):
+        n, avg = self.covid_properties['incubation_days']
+        self.covid_properties['incubation_days'] = (n+1, (avg*n + human.incubation_days)/(n+1))
+
+        n, avg = self.covid_properties['recovery_days']
+        self.covid_properties['recovery_days'] = (n+1, (avg*n + human.recovery_days)/(n+1))
+
+        n, avg = self.covid_properties['infectiousness_onset_days']
+        self.covid_properties['infectiousness_onset_days'] = (n+1, (n*avg +human.infectiousness_onset_days)/(n+1))
 
     def track_hospitalization(self, human, type=None):
         self.hospitalization_per_day[-1] += 1
@@ -278,12 +303,6 @@ class Tracker(object):
                 bin = i
 
         self.transition_probability[hour][bin][from_location][to_location] += 1
-
-    def track_initialized_covid_params(self, humans):
-        days = [(h.incubation_days, h.recovery_days, h.infectiousness_onset_days) for h in humans]
-        print("Avg. incubation days", np.mean([x[0] for x in days]))
-        print("Avg. recovery days", np.mean([x[1] for x in days]))
-        print("Avg. infectiousnes onset days", np.mean([x[2] for x in days]))
 
     def track_symptoms(self, human):
         if human.covid_symptoms:
@@ -406,6 +425,11 @@ class Tracker(object):
         log(f"house size distribution\n {self.house_size.describe()}", logfile )
         log(f"Fraction of asymptomatic {self.frac_asymptomatic}", logfile )
 
+        log("######## COVID PROPERTIES #########", logfile)
+        print("Avg. incubation days", self.covid_properties['incubation_days'][1])
+        print("Avg. recovery days", self.covid_properties['recovery_days'][1])
+        print("Avg. infectiousnes onset days", self.covid_properties['infectiousness_onset_days'][1])
+
         log("######## COVID SPREAD #########", logfile)
         x = 1.0*self.n_env_infection/self.n_infectious_contacts if self.n_infectious_contacts else 0.0
         log(f"environmental transmission ratio {x}", logfile )
@@ -496,6 +520,12 @@ class Tracker(object):
         #     v = self.daily_age_group_encounters[bin][1]
         #     log(f"{bin} #avg: {v} %:{100*v/total:5.2f} ", logfile)
         #
+        log("******** Risk Precision *********", logfile)
+        risk_precisions = self.compute_risk_precision(daily=False)
+        top_k = [0.01, 0.03, 0.05, 0.10, 0.20, 0.30, 0.50]
+        for value, k in zip(risk_precisions, top_k):
+            log(f"Top-{100*k:2.2f}% precision - {100*value:5.2f}", logfile)
+
     def plot_metrics(self, dirname):
         import matplotlib.pyplot as plt
         import networkx as nx

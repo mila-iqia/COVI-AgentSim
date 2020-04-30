@@ -241,8 +241,9 @@ class City(simpy.Environment):
 
     def run(self, duration, outfile, start_time, all_possible_symptoms, port, n_jobs):
         current_day = 0
-        with zipfile.ZipFile(outfile + ".zip", 'r') as zf:
-            start_pkl = zf.namelist()[0]
+        if outfile:
+            with zipfile.ZipFile(outfile + ".zip", 'r') as zf:
+                start_pkl = zf.namelist()[0]
 
         while True:
             # once per day, for each human
@@ -261,8 +262,9 @@ class City(simpy.Environment):
                 _ = [h.notify(self.intervention) for h in self.humans]
                 print(self.intervention)
 
-            if COLLECT_TRAINING_DATA and current_day == 0:
+            if (COLLECT_TRAINING_DATA or NAIVE_RISK_COMPUTATION) and current_day == 0:
                 _ = [h.notify(collect_training_data=True) for h in self.humans]
+                print("naive tracing without changing behavior... Humans notified!")
 
             self.tracker.increment_day()
             current_day += 1
