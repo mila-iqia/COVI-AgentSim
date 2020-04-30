@@ -266,10 +266,14 @@ class City(simpy.Environment):
                 _ = [h.notify(collect_training_data=True) for h in self.humans]
                 print("naive tracing without changing behavior... Humans notified!")
 
+            self.log_data()
             self.tracker.increment_day()
             current_day += 1
 
             yield self.env.timeout(duration / TICK_MINUTE)
+
+    def log_data(self):
+        pass
 
 class Location(simpy.Resource):
 
