@@ -226,10 +226,10 @@ class ModelsTest(unittest.TestCase):
                 has_recovery_day += human_stats['has_recovery_day']
                 infectiousness += human_stats['infectiousness']
 
-            # TODO: Fix commented tests
-            # self.assertGreaterEqual(sum(stats['human_enc_ids']), n_people)
-            # self.assertGreaterEqual(candidate_encounters_cnt, n_people)
-            # self.assertGreaterEqual(updated_encounters_cnt, n_people)
+            self.assertGreaterEqual(sum(stats['human_enc_ids']), n_people)
+            self.assertGreaterEqual(candidate_encounters_cnt, n_people)
+            self.assertGreaterEqual(updated_encounters_cnt, n_people)
             self.assertGreaterEqual(has_exposure_day, n_people)
+            # TODO: Is it expected to have no recovery_days?
             # self.assertGreaterEqual(has_recovery_day, n_people)
             self.assertGreaterEqual(infectiousness, n_people)
