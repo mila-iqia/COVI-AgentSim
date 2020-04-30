@@ -40,7 +40,7 @@ def integrated_risk_pred(humans, data_path, start, current_day, all_possible_sym
 
         all_params.append({"start": start, "current_day": current_day,
                            "all_possible_symptoms": all_possible_symptoms, "human": human.__getstate__(),
-                           "COLLECT_LOGS": config.COLLECT_LOGS, "log_path": log_path, "risk_model": config.RISK_MODEL})
+                           "COLLECT_TRAINING_DATA": config.COLLECT_TRAINING_DATA, "log_path": log_path, "risk_model": config.RISK_MODEL})
         human.uid = update_uid(human.uid, human.rng)
 
     batch_start_offset = 0
@@ -69,9 +69,10 @@ def integrated_risk_pred(humans, data_path, start, current_day, all_possible_sym
 
             hd[name].clusters = clusters
 
+    # TODO: @PRATEEK setup similar metrics to those on the Transformer for the Naive method
     if config.PLOT_RISK and config.COLLECT_LOGS:
         daily_risks = [(human.risk, human.is_infectious, human.name) for human in hd.values()]
-        hist_plot(daily_risks, f"{config.RISK_PLOT_PATH}day_{str(current_day).zfill(3)}.png")
+        hist_plot(daily_risks, f"{config.RISK_PLOT_PATH}/day_{str(current_day).zfill(3)}.png")
 
     # print out the clusters
     if config.DUMP_CLUSTERS and config.COLLECT_LOGS:

@@ -532,10 +532,10 @@ class Human(object):
                 assert self.state.index(1) in next_state[self.last_state.index(1)], f"invalid compartment transition for {self.name}: {self.last_state} to {self.state}"
             self.last_state = self.state
 
-    def notify(self, intervention, collect_training_data=False):
+    def notify(self, intervention=None, collect_training_data=False):
         if collect_training_data:
             self.tracing = True
-            self.tracing_method = Tracing(risk_model="naive", max_depth=1, symptoms=False, risk=False, modify_behavior=False)
+            self.tracing_method = Tracing(risk_model="naive", max_depth=1, symptoms=False, risk=False, should_modify_behavior=False)
             return
 
         # FIXME: PERCENT_FOLLOW < 1 will throw an error because ot self.notified somewhere

@@ -261,8 +261,8 @@ class City(simpy.Environment):
                 _ = [h.notify(self.intervention) for h in self.humans]
                 print(self.intervention)
 
-            if COLLECT_TRAINING_DATA:
-                self.intervention = get_intervention()
+            if COLLECT_TRAINING_DATA and current_day == 0:
+                _ = [h.notify(collect_training_data=True) for h in self.humans]
 
             self.tracker.increment_day()
             current_day += 1

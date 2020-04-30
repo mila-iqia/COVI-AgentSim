@@ -316,13 +316,13 @@ BIG_NUMBER = 10000000
 INTERVENTION_DAY = -1 # <0 no interventions
 INTERVENTION = "Tracing"
 PERCENT_FOLLOW = 1.0
-P_HAS_APP = 0.5
+P_HAS_APP = 1.0
 
 # TRACING RISK MODEL PARAMETERS  (non-ML)
-RISK_MODEL =  "other" # "naive"  "manual", "digital", "transformer"
-TRACE_SYMPTOMS = True
-TRACE_RISK_UPDATE = True
-TRACING_ORDER = 3
+RISK_MODEL = "naive" # "naive"  "manual", "digital", "transformer"
+TRACE_SYMPTOMS = False
+TRACE_RISK_UPDATE = False
+TRACING_ORDER = 1
 
 TRACING_N_DAYS_HISTORY = 14
 MIN_MESSAGE_PASSING_DISTANCE = 0
@@ -346,7 +346,8 @@ MP_N_JOBS = "1"
 MP_BACKEND = "loky"
 PLOT_RISK = True
 CLUSTER_MESSAGES = True
-DUMP_CLUSTERS = True
+DUMP_CLUSTERS = False
 CLUSTER_TYPE = "heuristic" # "random", "graph"
 RISK_PLOT_PATH = "output/plots/risk"
 CLUSTER_PATH = "output/clusters.json"
+COLLECT_TRAINING_DATA = True

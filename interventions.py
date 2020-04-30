@@ -241,7 +241,7 @@ class GetTested(BehaviorInterventions):
         return "Get Tested"
 
 class Tracing(object):
-    def __init__(self, risk_model, max_depth = None, symptoms = False, risk = False, modify_behavior=True):
+    def __init__(self, risk_model, max_depth = None, symptoms = False, risk = False, should_modify_behavior=True):
         self.risk_model = risk_model
         if risk_model in ['manual', 'digital']:
             self.intervention = Quarantine()
@@ -253,7 +253,7 @@ class Tracing(object):
         self.propagate_symptoms = symptoms
         self.propagate_risk = risk
         self.propagate_postive_test = True # bare minimum
-        self.modify_behavior = modify_behavior
+        self.should_modify_behavior = should_modify_behavior
 
         self.p_contact = 1
         self.delay = 0
@@ -272,7 +272,7 @@ class Tracing(object):
             self.propage_risk_max_depth = 3
 
     def modify_behavior(self, human):
-        if not self.modify_behavior:
+        if not self.should_modify_behavior:
             return
             
         # FIXME: maybe merge Quarantine in RiskBasedRecommendations with 2 levels
