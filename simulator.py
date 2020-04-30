@@ -423,8 +423,6 @@ class Human(object):
                                         really_sick=self.can_get_really_sick, extremely_sick=self.can_get_extremely_sick,
                                         rng=self.rng, preexisting_conditions=self.preexisting_conditions, carefulness=self.carefulness)
 
-        # city.tracker.track_covid_properties(self)
-
     def get_tested(self, city, source="illness"):
         if not city.tests_available:
             return False
@@ -512,15 +510,15 @@ class Human(object):
         elif sum(x in current_symptoms for x in ["trouble_breathing"]) > 0:
             return 0.3 * (1 + self.carefulness)
 
-        elif sum(x in current_symptoms for x in ["moderate", "mild", "fever"]) > 0:
-            return 0.2
-
-        elif sum(x in current_symptoms for x in ["cough", "fatigue", "gastro", "aches"]) > 0:
-            return 0.2
-
-        elif sum(x in current_symptoms for x in ["runny_nose", "loss_of_taste"]) > 0:
-            return 0.3
-
+        # elif sum(x in current_symptoms for x in ["moderate", "mild", "fever"]) > 0:
+        #     return 0.2
+        #
+        # elif sum(x in current_symptoms for x in ["cough", "fatigue", "gastro", "aches"]) > 0:
+        #     return 0.2
+        #
+        # elif sum(x in current_symptoms for x in ["runny_nose", "loss_of_taste"]) > 0:
+        #     return 0.3
+        #
         return 1.0
 
     def assert_state_changes(self):
@@ -565,7 +563,6 @@ class Human(object):
                 self.count_exercise=0
                 self.count_shop=0
 
-
             if self.last_date['run'] != self.env.timestamp.date():
                 self.last_date['run'] = self.env.timestamp.date()
                 self.infectiousnesses.append(self.infectiousness)
@@ -595,7 +592,7 @@ class Human(object):
             self.recover_health()
 
             # track symptoms
-            if self.is_incubated and self.symptom_start_time is None :
+            if self.is_incubated and self.symptom_start_time is None:
                 self.symptom_start_time = self.env.timestamp
                 city.tracker.track_generation_times(self.name) # it doesn't count environmental infection or primary case or asymptomatic/presymptomatic infections; refer the definition
 
@@ -640,7 +637,6 @@ class Human(object):
             self.assert_state_changes()
 
             # Mobility
-
             # self.how_am_I_feeling = 1.0 (great) --> rest_at_home = False
             if not self.rest_at_home:
                 # set it once for the rest of the disease path
@@ -688,7 +684,6 @@ class Human(object):
                 self.count_misc+=1
                 yield  self.env.process(self.excursion(city, "leisure"))
 
-            # start from house all the time
             yield self.env.process(self.at(self.household, city, 60))
 
     ############################## MOBILITY ##################################
@@ -826,8 +821,8 @@ class Human(object):
             # TODO: Add GPS measurements as conditions; refer JF's docs
             if MIN_MESSAGE_PASSING_DISTANCE < distance <  MAX_MESSAGE_PASSING_DISTANCE:
                 if self.tracing:
-                    self.contact_book.add(human=h, timestamp=self.env.timestamp)
-                    h.contact_book.add(human=self, timestamp=self.env.timestamp)
+                    self.contact_book.add(current_risk=self.risk, human=h, timestamp=self.env.timestamp)
+                    h.contact_book.add(current_risk=h.risk, human=self, timestamp=self.env.timestamp)
                 # FIXME: ideally encounter should be here. this will generate a lot of encounters
 
             t_overlap = min(self.leaving_time, getattr(h, "leaving_time", 60)) - max(self.start_time, getattr(h, "start_time", 60))
@@ -864,6 +859,7 @@ class Human(object):
                         Event.log_exposed(h, self, self.env.timestamp)
                         h.exposure_message = encode_message(self.cur_message((self.env.timestamp - self.env.initial_timestamp).days))
                         city.tracker.track_infection('human', from_human=self, to_human=h, location=location, timestamp=self.env.timestamp)
+                        city.tracker.track_covid_properties(h)
                         # print(f"{self.name} infected {h.name} at {location}")
 
                 elif h.is_infectious:
@@ -883,6 +879,7 @@ class Human(object):
                         h.n_infectious_contacts+=1
                         Event.log_exposed(self, h, self.env.timestamp)
                         city.tracker.track_infection('human', from_human=h, to_human=self, location=location, timestamp=self.env.timestamp)
+                        city.tracker.track_covid_properties(self)
                         # print(f"{h.name} infected {self.name} at {location}")
 
                 # other transmissions
@@ -923,6 +920,7 @@ class Human(object):
             self.compute_covid_properties()
             Event.log_exposed(self, location,  self.env.timestamp)
             city.tracker.track_infection('env', from_human=None, to_human=self, location=location, timestamp=self.env.timestamp)
+            city.tracker.track_covid_properties(self)
             # print(f"{self.name} is infected at {location}")
 
         # Catch a random cold
@@ -1108,6 +1106,7 @@ class Human(object):
     # FIXME : remove redundant code; probably move to utils
     def update_risk_level(self):
         new_risk_level = _proba_to_risk_level(self.risk)
+
         if new_risk_level != self.risk_level:
             # print(f"{self} changed to {self.risk_level} to {new_risk_level}")
             if self.tracing_method.propagate_risk:
