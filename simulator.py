@@ -821,8 +821,8 @@ class Human(object):
             # TODO: Add GPS measurements as conditions; refer JF's docs
             if MIN_MESSAGE_PASSING_DISTANCE < distance <  MAX_MESSAGE_PASSING_DISTANCE:
                 if self.tracing:
-                    self.contact_book.add(human=h, timestamp=self.env.timestamp)
-                    h.contact_book.add(human=self, timestamp=self.env.timestamp)
+                    self.contact_book.add(current_risk=self.risk, human=h, timestamp=self.env.timestamp)
+                    h.contact_book.add(current_risk=h.risk, human=self, timestamp=self.env.timestamp)
                 # FIXME: ideally encounter should be here. this will generate a lot of encounters
 
             t_overlap = min(self.leaving_time, getattr(h, "leaving_time", 60)) - max(self.start_time, getattr(h, "start_time", 60))
@@ -1106,6 +1106,7 @@ class Human(object):
     # FIXME : remove redundant code; probably move to utils
     def update_risk_level(self):
         new_risk_level = _proba_to_risk_level(self.risk)
+
         if new_risk_level != self.risk_level:
             # print(f"{self} changed to {self.risk_level} to {new_risk_level}")
             if self.tracing_method.propagate_risk:

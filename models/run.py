@@ -26,7 +26,7 @@ def query_inference_server(params, **inf_client_kwargs):
     return results
 
 
-def integrated_risk_pred(humans, data_path, start, current_day, all_possible_symptoms, start_pkl, port=6688, n_jobs=1):
+def integrated_risk_pred(humans, start, current_day, all_possible_symptoms, port=6688, n_jobs=1, data_path=None):
     risk_pred_start = time.time()
     # check that the plot_dir exists:
     if config.PLOT_RISK:
@@ -36,7 +36,9 @@ def integrated_risk_pred(humans, data_path, start, current_day, all_possible_sym
     all_params = []
 
     for human in humans:
-        log_path = f'{os.path.dirname(data_path)}/daily_outputs/{current_day}/{human.name[6:]}/'
+        log_path = None
+        if data_path:
+            log_path = f'{os.path.dirname(data_path)}/daily_outputs/{current_day}/{human.name[6:]}/'
 
         all_params.append({"start": start, "current_day": current_day,
                            "all_possible_symptoms": all_possible_symptoms, "human": human.__getstate__(),
@@ -53,7 +55,7 @@ def integrated_risk_pred(humans, data_path, start, current_day, all_possible_sym
 
     query_func = functools.partial(query_inference_server, target_port=port)
 
-    with Parallel(n_jobs=n_jobs, batch_size=config.MP_BATCHSIZE, backend=config.MP_BACKEND, verbose=10, prefer="threads") as parallel:
+    with Parallel(n_jobs=n_jobs, batch_size=config.MP_BATCHSIZE, backend=config.MP_BACKEND, verbose=0, prefer="threads") as parallel:
         batched_results = parallel((delayed(query_func)(params) for params in batched_params))
 
     results = []
@@ -81,5 +83,4 @@ def integrated_risk_pred(humans, data_path, start, current_day, all_possible_sym
             clusters.append(dict(human.clusters.clusters))
         json.dump(clusters, open(config.CLUSTER_PATH, 'w'))
     print(f"{current_day} took {time.time() - risk_pred_start}")
-    return humans, start_pkl
-
+    return humans

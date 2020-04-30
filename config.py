@@ -340,7 +340,8 @@ MANUAL_TRACING_DELAY_AVG = 3  # days
 MANUAL_TRACING_DELAY_STD = 0.5  # days
 
 # Inference & Training
-USE_INFERENCE_SERVER = False # "transformer" "naive" (to print the dataset)
+USE_INFERENCE_SERVER = True # "transformer" "naive" (to print the dataset)
+RISK_MODEL = "transformer" if USE_INFERENCE_SERVER else RISK_MODEL
 INFECTIOUSNESS_N_DAYS_HISTORY = 14
 MP_BATCHSIZE = "auto"
 MP_N_JOBS = "1"
