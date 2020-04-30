@@ -8,15 +8,49 @@ from config import *
 from functools import lru_cache
 from interventions import *
 
-# * Age of 1000 means not check on age
-# * Probability of -1 means that it is handled entirely by the code
-# * Probability of None or if the context is not explicitly stated means that it
-#   should be skipped entirely in the context
-# * Implicit context are: 'preexisting_conditions'
-# * Explicit contexts are: 'covid_pre_plateau', 'covid_plateau_1', 'covid_plateau_2',
-#     'covid_post_plateau_1', 'covid_post_plateau_2'
 SymptomProbability = namedtuple('SymptomProbability', ['name', 'id', 'probabilities'])
+SymptomProbability.__doc__ = '''A symptom probabilities collection given contexts
+
+Attributes
+    ----------
+    name : str
+        name of the symptom
+    id : positive int
+        id of the symptom
+        This attribute should never change once set. It is used to define the
+        position of the symptom in a multi-hot encoding
+    probabilities : dict
+        probabilities of the symptom per context
+        A probability of `-1` is assigned when it is heavily variable given
+        multiple factors and is handled entirely in the code
+        A probability of `None` is assigned when the symptom it can be skipped
+        entirely in the context. The context can also be removed from the dict
+'''
 ConditionProbability = namedtuple('ConditionProbability', ['name', 'id', 'age', 'sex', 'probability'])
+ConditionProbability.__doc__ = '''A pre-condition probability given an age and sex
+
+Attributes
+    ----------
+    name : str
+        name of the condition
+    id : positive int
+        id of the condition
+        This attribute should never change once set. It is used to define the
+        position of the condition in a multi-hot encoding
+    age : int
+        exclusive maximum age for which this probability is effective
+        An age of `1000` is assigned when no check on age is needed
+        An age of `-1` is assigned when it is handled entirely in the code 
+    sex : char
+        single lower case char representing the sex for which this probability
+        is effective. Possible values are: `'f'`, `'m'`, `'a'`
+        An `'f'` sex is assigned when the probability is related to females
+        An `'m'` sex is assigned when the probability is related to males
+        An `'a'` sex is assigned when no check on sex is needed
+    probability : float
+        probability of the condition
+        A probability of `-1` is assigned when it is handled entirely in the code
+'''
 
 SYMPTOMS_CONTEXTS = {'covid': {0: 'covid_pre_plateau', 1: 'covid_plateau_1', 2: 'covid_plateau_2',
                                3: 'covid_post_plateau_1', 4: 'covid_post_plateau_2'},
@@ -384,10 +418,10 @@ PREEXISTING_CONDITIONS = OrderedDict([
         ConditionProbability('immuno-suppressed', 0, 1000, 'a', 0.20)
     ]),
     ('lung_disease', [
-        ConditionProbability('lung_disease', 8, 0, 'a', 0.0)
+        ConditionProbability('lung_disease', 8, -1, 'a', -1)
     ]),
     ('pregnant', [
-        ConditionProbability('pregnant', 9, 0, 'f', 0.0)
+        ConditionProbability('pregnant', 9, -1, 'f', -1)
     ])
 ])
 
@@ -1075,6 +1109,7 @@ def _get_preexisting_conditions(age, sex, rng):
     #else:
     conditions = []
 
+    # Conditions in PREEXISTING_CONDITIONS are ordered to fulfil dependencies
     for c_name, c_prob in PREEXISTING_CONDITIONS.items():
         rand = rng.rand()
         modifier = 1.
