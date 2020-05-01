@@ -1117,13 +1117,16 @@ class Human(object):
                 if old_risk_level_on_day != new_risk_level_on_day:
 
                     self.risk = self.risk_history[day-cur_day+1]
-                    self.risk_level = new_risk_level_on_day
+                    self.risk_level = min(new_risk_level_on_day, 15)
                     for message in self.contact_book.messages_by_day[day-cur_day]:
                         sent_at = int(message.unobs_id[6:])
                         if not self.has_app or not self.city.hd[message.unobs_id].has_app:
                             continue
                         self.city.hd[message.unobs_id].contact_book.update_messages.append(
                             self.cur_message_risk_update(day-cur_day, message.uid, message.risk, sent_at))
+            if cur_day == 18:
+                import pdb;
+                pdb.set_trace()
 
             self.risk = self.risk_history[0]
         else:
