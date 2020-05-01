@@ -320,6 +320,7 @@ PERCENT_FOLLOW = 1.0
 P_HAS_APP = 0.5
 
 # TRACING RISK MODEL PARAMETERS  (non-ML)
+# "transformer" has everything has True
 RISK_MODEL = "naive" # "naive"  "manual", "digital", "transformer"
 TRACE_SYMPTOMS = True
 TRACE_RISK_UPDATE = False
@@ -340,8 +341,11 @@ MANUAL_TRACING_DELAY_AVG = 3  # days
 MANUAL_TRACING_DELAY_STD = 0.5  # days
 
 # Inference & Training
-USE_INFERENCE_SERVER = True # "transformer" "naive" (to print the dataset)
-RISK_MODEL = "transformer" if USE_INFERENCE_SERVER else RISK_MODEL
+# "transformer" "naive" (to print the dataset)
+COLLECT_TRAINING_DATA = False
+if RISK_MODEL == "transformer"  or COLLECT_TRAINING_DATA:
+    USE_INFERENCE_SERVER = True
+
 INFECTIOUSNESS_N_DAYS_HISTORY = 14
 MP_BATCHSIZE = "auto"
 MP_N_JOBS = "1"
@@ -352,4 +356,3 @@ DUMP_CLUSTERS = False
 CLUSTER_TYPE = "heuristic" # "random", "graph"
 RISK_PLOT_PATH = "output/plots/risk"
 CLUSTER_PATH = "output/clusters.json"
-COLLECT_TRAINING_DATA = False

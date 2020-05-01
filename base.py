@@ -244,23 +244,28 @@ class City(simpy.Environment):
 
         while True:
 
-            for human in self.humans:
-                # FIXME: this call looks weird
-                human.update_book(human, risk_level=True) # call it once a day
-                if human.tracing and human.message_info['traced']:
-                    if (human.env.timestamp - human.message_info['receipt']).days >= human.message_info['delay']:
-                        # print(f"{self.tracing_method}: Traced {self}")
-                        human.update_risk(value=True)
+            if (USE_INFERENCE_SERVER and
+                isinstance(self.intervention, Tracing) and
+                self.intervention.risk_model == "transformer"):
 
-            if USE_INFERENCE_SERVER:
-                import pdb; pdb.set_trace()
+                # compute risk using ML models
                 self.humans = integrated_risk_pred(self.humans, start_time, current_day, all_possible_symptoms, port=port, n_jobs=n_jobs, data_path=outfile)
+                for human in self.humans:
+                    human.update_risk_level()
+                    human.contact_book.update_book(human, risk_level=True) # call it once a day
 
-            if INTERVENTION_DAY > 0 and current_day == INTERVENTION_DAY:
+            elif isinstance(self.intervention, Tracing):
+                # compute risk using simple models
+                for human in self.humans:
+                    if (human.env.timestamp - human.message_info['receipt']).days >= human.message_info['delay']:
+                        human.update_risk(value=True)
+            #
+            if INTERVENTION_DAY >= 0 and current_day == INTERVENTION_DAY:
                 self.intervention = get_intervention(INTERVENTION)
                 _ = [h.notify(self.intervention) for h in self.humans]
                 print(self.intervention)
 
+            #
             if (COLLECT_TRAINING_DATA or GET_RISK_PREDICTOR_METRICS) and current_day == 0 and not USE_INFERENCE_SERVER:
                 _ = [h.notify(collect_training_data=True) for h in self.humans]
                 print("naive risk calculation without changing behavior... Humans notified!")
@@ -645,7 +650,7 @@ class Contacts(object):
         self.update_book(human, timestamp.date())
 
     def update_book(self, human, date=None, risk_level = None):
-        # keep the history of risk levels
+        # keep the history of risk levels (transformers)
         if risk_level:
             if len(self.risk_level_history) > TRACING_N_DAYS_HISTORY:
                 self.risk_level_history = self.risk_level_history[1:]
@@ -694,7 +699,6 @@ class Contacts(object):
                         t = _draw_random_discreet_gaussian(MANUAL_TRACING_DELAY_AVG, MANUAL_TRACING_DELAY_STD, human.rng)
 
                     total_contacts = sum(map(lambda x:x[1], self.book[human]))
-                    # print(f"{RISK_MODEL}: {owner} --> {human} C:{total_contacts} delay:{t}")
                     human.update_risk(update_messages={'n':total_contacts, 'delay': t, 'order':order, 'reason':reason, 'payload':payload})
                     sent_at = human.env.timestamp + datetime.timedelta(minutes=idx)
                     for i in range(total_contacts):

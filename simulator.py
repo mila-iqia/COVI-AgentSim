@@ -1103,9 +1103,9 @@ class Human(object):
 
     ############################## RISK PREDICTION #################################
 
-    # FIXME : remove redundant code; probably move to utils
     def update_risk_level(self):
         new_risk_level = _proba_to_risk_level(self.risk)
+        # self.contact_book.update_risk_level(owner=self, tracing_method=self.tracing_method, new_risk_level=new_risk_level)
 
         if new_risk_level != self.risk_level:
             # print(f"{self} changed to {self.risk_level} to {new_risk_level}")
