@@ -822,8 +822,8 @@ class Human(object):
             # TODO: Add GPS measurements as conditions; refer JF's docs
             if MIN_MESSAGE_PASSING_DISTANCE < distance <  MAX_MESSAGE_PASSING_DISTANCE:
                 if self.tracing:
-                    self.contact_book.add(human=h, timestamp=self.env.timestamp)
-                    h.contact_book.add(human=self, timestamp=self.env.timestamp)
+                    self.contact_book.add(human=h, timestamp=self.env.timestamp, self_human=self)
+                    h.contact_book.add(human=self, timestamp=self.env.timestamp, self_human=h)
                 # FIXME: ideally encounter should be here. this will generate a lot of encounters
 
             t_overlap = min(self.leaving_time, getattr(h, "leaving_time", 60)) - max(self.start_time, getattr(h, "start_time", 60))
@@ -1051,11 +1051,11 @@ class Human(object):
 
     def cur_message(self, day):
         """creates the current message for this user"""
-        message = Message(self.uid, self.risk_level, day, self.name, self.has_app)
+        message = Message(self.uid, self.risk_level, day, self.name)
         return message
 
     def cur_message_risk_update(self, day, old_uid, old_risk, sent_at):
-        return UpdateMessage(old_uid, self.risk_level, old_risk, day, sent_at, self.name, self.has_app)
+        return UpdateMessage(old_uid, self.risk_level, old_risk, day, sent_at, self.name)
 
     def symptoms_at_time(self, now, symptoms):
         if not symptoms:
@@ -1109,23 +1109,21 @@ class Human(object):
             assert(self.risk_history is not None)
             cur_day = (self.env.timestamp - self.env.initial_timestamp).days
 
-            for day in range(0, TRACING_N_DAYS_HISTORY-1):
+            for day in range(cur_day, TRACING_N_DAYS_HISTORY + cur_day -1):
                 # TODO: think more about this
-                old_risk_level_on_day = _proba_to_risk_level(self.prev_risk_history[day])
-                new_risk_level_on_day = _proba_to_risk_level(self.risk_history[day+1])
+                old_risk_level_on_day = _proba_to_risk_level(self.prev_risk_history[day-cur_day])
+                new_risk_level_on_day = _proba_to_risk_level(self.risk_history[day-cur_day+1])
                 if old_risk_level_on_day != new_risk_level_on_day:
 
-                    self.risk = self.risk_history[day+1]
-                    # FIXME: this is a hack to get different "sent at" times, so we can group the update messages received on a day
-                    sent_at = self.env.timestamp + datetime.timedelta(minutes=day)
-                    for message in self.contact_book.messages:
-
-                        if message.day == cur_day - day:
-                            sent_at += datetime.timedelta(int(message.unobs_id[6:]))
-                            self.city.hd[message.unobs_id].contact_book.update_messages.append(
-                                self.cur_message_risk_update(cur_day, self.uid, self.risk, sent_at))
-
+                    self.risk = self.risk_history[day-cur_day+1]
                     self.risk_level = new_risk_level_on_day
+                    for message in self.contact_book.messages_by_day[day-cur_day]:
+                        sent_at = int(message.unobs_id[6:])
+                        if not self.has_app or not self.city.hd[message.unobs_id].has_app:
+                            continue
+                        self.city.hd[message.unobs_id].contact_book.update_messages.append(
+                            self.cur_message_risk_update(day-cur_day, message.uid, message.risk, sent_at))
+
             self.risk = self.risk_history[0]
         else:
             new_risk_level = _proba_to_risk_level(self.risk)
