@@ -427,8 +427,7 @@ class Event:
     @staticmethod
     def log_encounter(human1, human2, location, duration, distance, infectee, time):
 
-        h_obs_keys   = ['has_app',
-                        'obs_hospitalized', 'obs_in_icu',
+        h_obs_keys   = ['obs_hospitalized', 'obs_in_icu',
                         'obs_lat', 'obs_lon']
 
         h_unobs_keys = ['carefulness', 'viral_load', 'infectiousness',
@@ -623,6 +622,7 @@ class DummyEvent:
 class Contacts(object):
     def __init__(self, has_app):
         self.messages = []
+        self.messages_by_day = defaultdict(list)
         self.update_messages = []
         # human --> [[date, counts], ...]
         self.book = {}
@@ -631,10 +631,13 @@ class Contacts(object):
 
     def add(self, **kwargs):
         human = kwargs.get("human")
+        self_human = kwargs.get("self_human")
         timestamp = kwargs.get("timestamp")
         cur_day = (timestamp - human.env.initial_timestamp).days
         cur_message = human.cur_message(cur_day)
-        self.messages.append(cur_message)
+        if not human.has_app or not self_human.has_app:
+            self.messages.append(cur_message)
+            self.messages_by_day[cur_day].append(cur_message)
 
         if human not in self.book:
             self.book[human] = [[timestamp.date(), 1]]
