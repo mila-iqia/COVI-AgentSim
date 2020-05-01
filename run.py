@@ -118,6 +118,7 @@ def tune(n_people, simulation_days, seed):
     data['intervention_day'] = config.INTERVENTION_DAY
     data['intervention'] = config.INTERVENTION
 
+    data['expected_mobility'] = tracker.expected_mobility
     data['mobility'] = tracker.mobility
     data['n_init_infected'] = tracker.n_infected_init
     data['risk_precision'] = tracker.risk_precision_daily
@@ -125,7 +126,7 @@ def tune(n_people, simulation_days, seed):
     data['cases_per_day'] = tracker.cases_per_day
     data['ei_per_day'] = tracker.ei_per_day
     data['r_0'] = tracker.r_0
-    data['r'] = tracker.r
+    data['R'] = tracker.r
     data['n_humans'] = tracker.n_humans
     data['s'] = tracker.s_per_day
     data['e'] = tracker.e_per_day
