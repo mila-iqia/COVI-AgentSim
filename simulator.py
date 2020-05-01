@@ -512,15 +512,15 @@ class Human(object):
         elif sum(x in current_symptoms for x in ["trouble_breathing"]) > 0:
             return 0.3 * (1 + self.carefulness)
 
-        # elif sum(x in current_symptoms for x in ["moderate", "mild", "fever"]) > 0:
-        #     return 0.2
-        #
-        # elif sum(x in current_symptoms for x in ["cough", "fatigue", "gastro", "aches"]) > 0:
-        #     return 0.2
-        #
-        # elif sum(x in current_symptoms for x in ["runny_nose", "loss_of_taste"]) > 0:
-        #     return 0.3
-        #
+        elif sum(x in current_symptoms for x in ["moderate", "mild", "fever"]) > 0:
+            return 0.2
+
+        elif sum(x in current_symptoms for x in ["cough", "fatigue", "gastro", "aches"]) > 0:
+            return 0.2
+
+        elif sum(x in current_symptoms for x in ["runny_nose", "loss_of_taste"]) > 0:
+            return 0.3
+
         return 1.0
 
     def assert_state_changes(self):
