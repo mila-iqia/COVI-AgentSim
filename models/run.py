@@ -64,9 +64,13 @@ def integrated_risk_pred(humans, start, current_day, all_possible_symptoms, port
 
     for result in results:
         if result is not None:
-            name, risk, clusters = result
+            name, risk_history, clusters = result
+            print(risk_history)
+
             if config.RISK_MODEL == "transformer":
-                hd[name].risk = risk
+
+                hd[name].prev_risk_history = hd[name].risk_history
+                hd[name].risk_history = risk_history
                 hd[name].update_risk_level()
 
             hd[name].clusters = clusters
@@ -82,5 +86,4 @@ def integrated_risk_pred(humans, start, current_day, all_possible_symptoms, port
         for human in hd.values():
             clusters.append(dict(human.clusters.clusters))
         json.dump(clusters, open(config.CLUSTER_PATH, 'w'))
-    print(f"{current_day} took {time.time() - risk_pred_start}")
     return humans

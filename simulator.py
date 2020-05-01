@@ -112,6 +112,7 @@ class Human(object):
         if self.infection_timestamp is not None:
             self.compute_covid_properties()
             print(f"{self} is infected")
+        self.risk_history = np.repeat(BASELINE_RISK_VALUE, 14)
 
         # counters and memory
         self.r0 = []
@@ -821,8 +822,8 @@ class Human(object):
             # TODO: Add GPS measurements as conditions; refer JF's docs
             if MIN_MESSAGE_PASSING_DISTANCE < distance <  MAX_MESSAGE_PASSING_DISTANCE:
                 if self.tracing:
-                    self.contact_book.add(current_risk=self.risk, human=h, timestamp=self.env.timestamp)
-                    h.contact_book.add(current_risk=h.risk, human=self, timestamp=self.env.timestamp)
+                    self.contact_book.add(human=h, timestamp=self.env.timestamp)
+                    h.contact_book.add(human=self, timestamp=self.env.timestamp)
                 # FIXME: ideally encounter should be here. this will generate a lot of encounters
 
             t_overlap = min(self.leaving_time, getattr(h, "leaving_time", 60)) - max(self.start_time, getattr(h, "start_time", 60))
@@ -1105,73 +1106,100 @@ class Human(object):
 
     # FIXME : remove redundant code; probably move to utils
     def update_risk_level(self):
-        new_risk_level = _proba_to_risk_level(self.risk)
+        if RISK_MODEL == "transformer":
+            assert(self.risk_history is not None)
+            cur_day = (self.env.timestamp - self.env.initial_timestamp).days
 
-        if new_risk_level != self.risk_level:
-            # print(f"{self} changed to {self.risk_level} to {new_risk_level}")
-            if self.tracing_method.propagate_risk:
-                payload = {'change': new_risk_level > self.risk_level, 'magnitude': abs(new_risk_level - self.risk_level) }
-                self.contact_book.send_message(self, self.tracing_method, order=1, reason="risk_update", payload=payload)
-            self.risk_level = new_risk_level
+            for day in range(0, TRACING_N_DAYS_HISTORY-1):
+                # TODO: think more about this
+                old_risk_level_on_day = _proba_to_risk_level(self.prev_risk_history[day])
+                new_risk_level_on_day = _proba_to_risk_level(self.risk_history[day+1])
+                if old_risk_level_on_day != new_risk_level_on_day:
+                    import pdb;
+                    pdb.set_trace()
+
+                    self.risk = self.risk_history[day+1]
+                    # FIXME: this is a hack to get different "sent at" times, so we can group the update messages received on a day
+                    sent_at = self.env.timestamp + datetime.timedelta(minutes=day)
+                    for message in self.messages:
+                        if message.day == cur_day - day:
+                            sent_at += datetime.timedelta(int(message.unobs_id[:6]))
+                            self.hd[message.unobs_id].update_messages.update_messages.append(
+                                self.cur_message_risk_update(cur_day, self.uid, self.risk, sent_at))
+
+                    self.risk_level = new_risk_level_on_day
+            self.risk = self.risk_history[0]
             self.tracing_method.modify_behavior(self)
 
+        else:
+            new_risk_level = _proba_to_risk_level(self.risk)
+
+            if new_risk_level != self.risk_level:
+                # print(f"{self} changed to {self.risk_level} to {new_risk_level}")
+                if self.tracing_method.propagate_risk:
+                    payload = {'change': new_risk_level > self.risk_level, 'magnitude': abs(new_risk_level - self.risk_level) }
+                    self.contact_book.send_message(self, self.tracing_method, order=1, reason="risk_update", payload=payload)
+                self.risk_level = new_risk_level
+                self.tracing_method.modify_behavior(self)
+
     def update_risk(self, recovery=False, test_results=False, update_messages=None, symptoms=None, value = False):
-        if recovery:
-            if self.is_removed:
-                self.risk = 0.0
-            else:
-                self.risk = BASELINE_RISK_VALUE
-            self.update_risk_level()
-
-        if test_results:
-            if self.test_result == "positive":
-                self.risk = 1.0
-                self.contact_book.send_message(self, self.tracing_method, order=1, reason="test")
-            elif self.test_result == "negative":
-                self.risk = 0.20
-            self.update_risk_level()
-
-        if symptoms and self.tracing_method.propagate_symptoms:
-            if sum(x in symptoms for x in ['severe', 'trouble_breathing']) > 0 and not self.has_logged_symptoms:
-                self.risk = max(0.8, self.risk)
-                self.update_risk_level()
-                self.contact_book.send_message(self, self.tracing_method, order=1, reason="symptoms")
-                self.has_logged_symptoms = True
-
-        # update risk level because of update messages in run() to avoid redundant updates and cascading of message passing
-        if (update_messages and
-            not self.is_removed and
-            self.test_result != "positive"):
-            # if update_messages['reason'] == "risk_update":
-                # print(f"{self} traced")
-            self.message_info['traced'] = True
-            self.message_info['receipt'] = min(self.env.timestamp, self.message_info['receipt'])
-            self.message_info['delay'] = min(update_messages['delay'], self.message_info['delay'])
-            order = update_messages['order']
-            propagate_further = order < self.tracing_method.max_depth
-
-            if update_messages['reason'] == "test":
-                self.message_info['n_contacts_tested_positive'][order][-1] += update_messages['n']
-
-            elif update_messages['reason'] == "symptoms":
-                self.message_info['n_contacts_symptoms'][order][-1] += update_messages['n']
-
-            elif update_messages['reason'] == "risk_update":
-                self.message_info['n_contacts_risk_updates'][order][-1] += update_messages['n']
-                propagate_further = order < self.tracing_method.propage_risk_max_depth
-
-            if update_messages['payload']:
-                if update_messages['payload']['change']:
-                    self.message_info['n_risk_increased'][order][-1] += 1
-                    self.message_info['n_risk_mag_increased'][order][-1] += update_messages['payload']["magnitude"]
+        if RISK_MODEL != "transformer":
+            if recovery:
+                if self.is_removed:
+                    self.risk = 0.0
                 else:
-                    self.message_info['n_risk_decreased'][order][-1] += 1
-                    self.message_info['n_risk_mag_decreased'][order][-1] += update_messages['payload']["magnitude"]
+                    self.risk = BASELINE_RISK_VALUE
+                self.update_risk_level()
 
-            if propagate_further:
-                self.contact_book.send_message(self, self.tracing_method, order=order+1, reason=update_messages['reason'])
+            if test_results:
+                if self.test_result == "positive":
+                    self.risk = 1.0
+                    self.contact_book.send_message(self, self.tracing_method, order=1, reason="test")
+                elif self.test_result == "negative":
+                    self.risk = 0.20
+                self.update_risk_level()
 
-        # value updates
-        if value:
-            self.tracing_method.compute_risk(self)
-            self.update_risk_level()
+            if symptoms and self.tracing_method.propagate_symptoms:
+                if sum(x in symptoms for x in ['severe', 'trouble_breathing']) > 0 and not self.has_logged_symptoms:
+                    self.risk = max(0.8, self.risk)
+                    self.update_risk_level()
+                    self.contact_book.send_message(self, self.tracing_method, order=1, reason="symptoms")
+                    self.has_logged_symptoms = True
+
+            # update risk level because of update messages in run() to avoid redundant updates and cascading of message passing
+            if (update_messages and
+                not self.is_removed and
+                self.test_result != "positive"):
+                # if update_messages['reason'] == "risk_update":
+                    # print(f"{self} traced")
+                self.message_info['traced'] = True
+                self.message_info['receipt'] = min(self.env.timestamp, self.message_info['receipt'])
+                self.message_info['delay'] = min(update_messages['delay'], self.message_info['delay'])
+                order = update_messages['order']
+                propagate_further = order < self.tracing_method.max_depth
+
+                if update_messages['reason'] == "test":
+                    self.message_info['n_contacts_tested_positive'][order][-1] += update_messages['n']
+
+                elif update_messages['reason'] == "symptoms":
+                    self.message_info['n_contacts_symptoms'][order][-1] += update_messages['n']
+
+                elif update_messages['reason'] == "risk_update":
+                    self.message_info['n_contacts_risk_updates'][order][-1] += update_messages['n']
+                    propagate_further = order < self.tracing_method.propage_risk_max_depth
+
+                if update_messages['payload']:
+                    if update_messages['payload']['change']:
+                        self.message_info['n_risk_increased'][order][-1] += 1
+                        self.message_info['n_risk_mag_increased'][order][-1] += update_messages['payload']["magnitude"]
+                    else:
+                        self.message_info['n_risk_decreased'][order][-1] += 1
+                        self.message_info['n_risk_mag_decreased'][order][-1] += update_messages['payload']["magnitude"]
+
+                if propagate_further:
+                    self.contact_book.send_message(self, self.tracing_method, order=order+1, reason=update_messages['reason'])
+
+            # value updates
+            if value:
+                self.tracing_method.compute_risk(self)
+                self.update_risk_level()

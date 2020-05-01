@@ -320,7 +320,6 @@ PERCENT_FOLLOW = 1.0
 P_HAS_APP = 0.5
 
 # TRACING RISK MODEL PARAMETERS  (non-ML)
-RISK_MODEL = "naive" # "naive"  "manual", "digital", "transformer"
 TRACE_SYMPTOMS = True
 TRACE_RISK_UPDATE = False
 TRACING_ORDER = 1
@@ -341,6 +340,7 @@ MANUAL_TRACING_DELAY_STD = 0.5  # days
 
 # Inference & Training
 USE_INFERENCE_SERVER = True # "transformer" "naive" (to print the dataset)
+RISK_MODEL = "transformer" # "naive"  "manual", "digital", "transformer"
 RISK_MODEL = "transformer" if USE_INFERENCE_SERVER else RISK_MODEL
 INFECTIOUSNESS_N_DAYS_HISTORY = 14
 MP_BATCHSIZE = "auto"

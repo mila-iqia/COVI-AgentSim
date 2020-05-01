@@ -245,15 +245,17 @@ class City(simpy.Environment):
         while True:
 
             for human in self.humans:
-                # FIXME: this call looks weird
-                human.update_book(human, risk_level=True) # call it once a day
                 if human.tracing and human.message_info['traced']:
                     if (human.env.timestamp - human.message_info['receipt']).days >= human.message_info['delay']:
                         # print(f"{self.tracing_method}: Traced {self}")
                         human.update_risk(value=True)
 
+            # TODO: @Prateek, I moved this above the inference server call
+            if (COLLECT_TRAINING_DATA or GET_RISK_PREDICTOR_METRICS or RISK_MODEL == "transformer") and current_day == 0: #and not USE_INFERENCE_SERVER:
+                _ = [h.notify(collect_training_data=True) for h in self.humans]
+                print("naive risk calculation without changing behavior... Humans notified!")
+
             if USE_INFERENCE_SERVER:
-                import pdb; pdb.set_trace()
                 self.humans = integrated_risk_pred(self.humans, start_time, current_day, all_possible_symptoms, port=port, n_jobs=n_jobs, data_path=outfile)
 
             if INTERVENTION_DAY > 0 and current_day == INTERVENTION_DAY:
@@ -261,9 +263,6 @@ class City(simpy.Environment):
                 _ = [h.notify(self.intervention) for h in self.humans]
                 print(self.intervention)
 
-            if (COLLECT_TRAINING_DATA or GET_RISK_PREDICTOR_METRICS) and current_day == 0 and not USE_INFERENCE_SERVER:
-                _ = [h.notify(collect_training_data=True) for h in self.humans]
-                print("naive risk calculation without changing behavior... Humans notified!")
 
             self.tracker.increment_day()
             current_day += 1
@@ -630,7 +629,6 @@ class Contacts(object):
     def add(self, **kwargs):
         human = kwargs.get("human")
         timestamp = kwargs.get("timestamp")
-        current_risk = kwargs.get("current_risk")
         cur_day = (timestamp - human.env.initial_timestamp).days
         cur_message = human.cur_message(cur_day)
         self.messages.append(cur_message)
@@ -644,12 +642,8 @@ class Contacts(object):
             self.book[human][-1][1] += 1
         self.update_book(human, timestamp.date())
 
-    def update_book(self, human, date=None, risk_level = None):
+    def update_book(self, human, date=None):
         # keep the history of risk levels
-        if risk_level:
-            if len(self.risk_level_history) > TRACING_N_DAYS_HISTORY:
-                self.risk_level_history = self.risk_level_history[1:]
-            self.risk_level_history.append(human.risk_level)
 
         if date is None:
             date = self.book[human][-1][0] # last contact date
