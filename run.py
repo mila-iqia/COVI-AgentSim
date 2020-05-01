@@ -144,10 +144,10 @@ def tune(n_people, simulation_days, seed):
     # data['symptoms'] = dict(tracker.symptoms)
     # data['transition_probability'] = dict(tracker.transition_probability)
     #
-    # import dill
-    # filename = f"tracker_data_n_{n_people}_seed_{seed}_{timenow}.pkl"
-    # with open(f"logs/{filename}", 'wb') as f:
-    #     dill.dump(data, f)
+    import dill
+    filename = f"tracker_data_n_{n_people}_seed_{seed}_{timenow}.pkl"
+    with open(f"logs/{filename}", 'wb') as f:
+        dill.dump(data, f)
     #
     # logfile = os.path.join(f"logs/log_n_{n_people}_seed_{seed}_{timenow}.txt")
     # tracker.write_metrics(logfile)
@@ -184,10 +184,11 @@ def tracing(n_people, days, tracing, order, symptoms, risk, noise):
     # switch off
     config.COLLECT_TRAINING_DATA = False
     config.USE_INFERENCE_SERVER = False
+    config.GET_RISK_PREDICTOR_METRICS = False
 
     if tracing != "":
 
-        config.INTERVENTION_DAY = 25 # approx 512 will be infected by then
+        config.INTERVENTION_DAY = 20 # approx 512 will be infected by then
         config.INTERVENTION = "Tracing"
         config.RISK_MODEL = tracing
 
@@ -197,15 +198,20 @@ def tracing(n_people, days, tracing, order, symptoms, risk, noise):
         else:
             config.P_HAS_APP = noise
 
-        #symptoms
+        #symptoms (not used in risk_model = transformer)
         config.TRACE_SYMPTOMS = symptoms
 
-        #risk
+        #risk (not used in risk_model = transformer)
         config.TRACE_SYMPTOMS = risk
 
-        # order
+        # order (not used in risk_model = transformer)
         config.TRACING_ORDER = order
-        name = f"{tracing}-s{1*symptoms}-r{risk}-o{order}"
+
+        # set filename
+        if tracing != "transformer":
+            name = f"{tracing}-s{1*symptoms}-r{risk}-o{order}"
+        else:
+            name = "transformer"
 
     else:
         # no intervention
