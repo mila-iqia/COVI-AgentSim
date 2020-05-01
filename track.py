@@ -231,7 +231,10 @@ class Tracker(object):
                 xy = type[:math.ceil(k * len(type))]
                 pred = 1.0*sum(1 for x,y in xy if y)
                 top_k_prec[idx].append(pred/len(xy))
-                lift[idx].append(pred/(k*total_infected))
+                if total_infected:
+                    lift[idx].append(pred/(k*total_infected))
+                else:
+                    lift[idx].append(0) # FIXME: it might not be correct definition for Lift
             z = sum(1 for x,y in type if y)
             recall.append(0)
             if z:

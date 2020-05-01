@@ -102,7 +102,7 @@ def tune(n_people, simulation_days, seed):
     import matplotlib.pyplot as plt
     # cf.go_offline()
 
-    monitors, tracker = run_simu(n_people=n_people, init_percent_sick=0.01,
+    monitors, tracker = run_simu(n_people=n_people, init_percent_sick=0.0025,
                             start_time=datetime.datetime(2020, 2, 28, 0, 0),
                             simulation_days=simulation_days,
                             outfile=None,
@@ -116,6 +116,7 @@ def tune(n_people, simulation_days, seed):
     timenow = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
     data = dict()
     data['intervention_day'] = config.INTERVENTION_DAY
+    data['intervention'] = config.INTERVENTION
 
     data['mobility'] = tracker.mobility
     data['n_init_infected'] = tracker.n_infected_init
@@ -146,11 +147,11 @@ def tune(n_people, simulation_days, seed):
     #
     import dill
     filename = f"tracker_data_n_{n_people}_seed_{seed}_{timenow}.pkl"
-    with open(f"logs/{filename}", 'wb') as f:
+    with open(f"logs2/{filename}", 'wb') as f:
         dill.dump(data, f)
     #
-    # logfile = os.path.join(f"logs/log_n_{n_people}_seed_{seed}_{timenow}.txt")
-    # tracker.write_metrics(logfile)
+    logfile = os.path.join(f"logs/log_n_{n_people}_seed_{seed}_{timenow}.txt")
+    tracker.write_metrics(logfile)
     tracker.write_metrics(None)
 
     # fig = x['R'].iplot(asFigure=True, title="R0")

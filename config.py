@@ -314,14 +314,14 @@ MASKS_SUPPLY = BIG_NUMBER
 
 ## INTERVENTIONS
 BIG_NUMBER = 10000000
-INTERVENTION_DAY = 20 # <0 no interventions
+INTERVENTION_DAY = 15 # <0 no interventions
 INTERVENTION = "Tracing"
 PERCENT_FOLLOW = 1.0
 P_HAS_APP = 0.5
 
 # TRACING RISK MODEL PARAMETERS  (non-ML)
 # "transformer" has everything has True
-RISK_MODEL = "digital" # "naive"  "manual", "digital", "transformer"
+RISK_MODEL = "transformer" # "naive"  "manual", "digital", "transformer"
 TRACE_SYMPTOMS = True
 TRACE_RISK_UPDATE = False
 TRACING_ORDER = 1

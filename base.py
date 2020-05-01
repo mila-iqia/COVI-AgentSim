@@ -242,6 +242,7 @@ class City(simpy.Environment):
     def run(self, duration, outfile, start_time, all_possible_symptoms, port, n_jobs):
         self.current_day = 0
 
+        print(f"INTERVENTION_DAY: {INTERVENTION_DAY}")
         while True:
 
             #
