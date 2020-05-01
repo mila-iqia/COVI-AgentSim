@@ -352,3 +352,8 @@ class TestCapacity(CityInterventions):
 
     def revert_city(self, city):
         pass
+
+class TransformerTracing(object):
+    def modify_behavior(self, human):
+        pass
+

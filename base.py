@@ -252,7 +252,10 @@ class City(simpy.Environment):
 
             # TODO: @Prateek, I moved this above the inference server call
             if (COLLECT_TRAINING_DATA or GET_RISK_PREDICTOR_METRICS or RISK_MODEL == "transformer") and current_day == 0: #and not USE_INFERENCE_SERVER:
-                _ = [h.notify(collect_training_data=True) for h in self.humans]
+                #_ = [h.notify(collect_training_data=True) for h in self.humans]
+                for h in self.humans:
+                    h.tracing = True
+                    h.tracing_method = TransformerTracing()
                 print("naive risk calculation without changing behavior... Humans notified!")
 
             if USE_INFERENCE_SERVER:

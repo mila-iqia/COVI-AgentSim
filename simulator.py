@@ -1115,16 +1115,15 @@ class Human(object):
                 old_risk_level_on_day = _proba_to_risk_level(self.prev_risk_history[day])
                 new_risk_level_on_day = _proba_to_risk_level(self.risk_history[day+1])
                 if old_risk_level_on_day != new_risk_level_on_day:
-                    import pdb;
-                    pdb.set_trace()
 
                     self.risk = self.risk_history[day+1]
                     # FIXME: this is a hack to get different "sent at" times, so we can group the update messages received on a day
                     sent_at = self.env.timestamp + datetime.timedelta(minutes=day)
-                    for message in self.messages:
+                    for message in self.contact_book.messages:
+
                         if message.day == cur_day - day:
-                            sent_at += datetime.timedelta(int(message.unobs_id[:6]))
-                            self.hd[message.unobs_id].update_messages.update_messages.append(
+                            sent_at += datetime.timedelta(int(message.unobs_id[6:]))
+                            self.city.hd[message.unobs_id].contact_book.update_messages.append(
                                 self.cur_message_risk_update(cur_day, self.uid, self.risk, sent_at))
 
                     self.risk_level = new_risk_level_on_day
