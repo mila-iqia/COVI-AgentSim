@@ -60,9 +60,9 @@ def integrated_risk_pred(humans, start, current_day, all_possible_symptoms, port
     results = []
     for b in batched_results:
         results.extend(b)
-    print(humans[1].contact_book.messages)
-    print(humans[1].contact_book.update_messages)
-    print(humans[1].risk_history)
+    # print(humans[1].contact_book.messages)
+    # print(humans[1].contact_book.update_messages)
+    # print(humans[1].risk_history)
     for result in results:
         if result is not None:
             name, risk_history, clusters = result

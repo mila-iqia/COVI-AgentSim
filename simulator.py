@@ -1125,23 +1125,13 @@ class Human(object):
                 old_risk_level_on_day = _proba_to_risk_level(self.prev_risk_history[day-cur_day])
                 new_risk_level_on_day = _proba_to_risk_level(self.risk_history[day-cur_day+1])
                 if old_risk_level_on_day != new_risk_level_on_day:
-
                     self.risk = self.risk_history[day-cur_day+1]
                     self.risk_level = min(new_risk_level_on_day, 15)
-                    for message in self.contact_book.messages_by_day[day-cur_day]:
-                        my_old_message = self.contact_book.sent_messages_by_day[day-cur_day][0]
+                    for message in self.contact_book.messages_by_day[day-1]:
+                        my_old_message = self.contact_book.sent_messages_by_day[day-1][0]
                         sent_at = int(my_old_message.unobs_id[6:])
                         self.city.hd[message.unobs_id].contact_book.update_messages.append(
                             encode_update_message(self.cur_message_risk_update(my_old_message.day, my_old_message.uid, old_risk_level_on_day, sent_at)))
-                        print(f"my name: {self.name}")
-                        print(f"my old message: {my_old_message}")
-                        print(f"message.unobs_id: {message.unobs_id}")
-                        print(f"update: {self.cur_message_risk_update(my_old_message.day, my_old_message.uid, old_risk_level_on_day, sent_at)}")
-                        print(f"their update messages: {self.city.hd[message.unobs_id].contact_book.update_messages}")
-                        print(f"my messages by day: {self.contact_book.messages_by_day[day-cur_day]}")
-            if self.contact_book.messages_by_day[day-cur_day]:
-                import pdb; pdb.set_trace()
-            print(self.risk_history)
             self.risk_level = min(_proba_to_risk_level(self.risk_history[0]), 15)
             self.risk = self.risk_history[0]
         else:
