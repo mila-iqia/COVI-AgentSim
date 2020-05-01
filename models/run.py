@@ -27,7 +27,6 @@ def query_inference_server(params, **inf_client_kwargs):
 
 
 def integrated_risk_pred(humans, start, current_day, all_possible_symptoms, port=6688, n_jobs=1, data_path=None):
-    risk_pred_start = time.time()
     # check that the plot_dir exists:
     if config.PLOT_RISK:
         os.makedirs(config.RISK_PLOT_PATH, exist_ok=True)
@@ -61,7 +60,9 @@ def integrated_risk_pred(humans, start, current_day, all_possible_symptoms, port
     results = []
     for b in batched_results:
         results.extend(b)
-
+    print(humans[1].contact_book.messages)
+    print(humans[1].contact_book.update_messages)
+    print(humans[1].risk_history)
     for result in results:
         if result is not None:
             name, risk_history, clusters = result
@@ -74,6 +75,7 @@ def integrated_risk_pred(humans, start, current_day, all_possible_symptoms, port
                 hd[name].update_risk_level()
 
             hd[name].clusters = clusters
+            hd[name].contact_book.update_messages = []
 
     # TODO: @PRATEEK setup similar metrics to those on the Transformer for the Naive method
     if config.PLOT_RISK and config.COLLECT_LOGS:

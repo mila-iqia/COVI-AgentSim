@@ -825,6 +825,17 @@ class Human(object):
                 if self.tracing:
                     self.contact_book.add(human=h, timestamp=self.env.timestamp, self_human=self)
                     h.contact_book.add(human=self, timestamp=self.env.timestamp, self_human=h)
+                    cur_day = (self.env.timestamp - self.env.initial_timestamp).days
+                    if self.has_app and h.has_app and (cur_day >= INTERVENTION_DAY):
+                        self.contact_book.messages.append(h.cur_message(cur_day))
+                        h.contact_book.messages.append(self.cur_message(cur_day))
+                        self.contact_book.messages_by_day[cur_day].append(h.cur_message(cur_day))
+                        h.contact_book.messages_by_day[cur_day].append(self.cur_message(cur_day))
+
+                        h.contact_book.sent_messages_by_day[cur_day].append(h.cur_message(cur_day))
+                        self.contact_book.sent_messages_by_day[cur_day].append(self.cur_message(cur_day))
+
+
                 # FIXME: ideally encounter should be here. this will generate a lot of encounters
 
             t_overlap = min(self.leaving_time, getattr(h, "leaving_time", 60)) - max(self.start_time, getattr(h, "start_time", 60))
@@ -1033,7 +1044,7 @@ class Human(object):
             del state['last_date']
             del state['message_info']
             state['messages'] = [encode_message(message) for message in state['contact_book'].messages if message.day == state['contact_book'].messages[-1].day]
-            state['update_messages'] = [encode_update_message(update_message) for update_message in state['contact_book'].update_messages if update_message.day == state['contact_book'].update_messages[-1].day]
+            state['update_messages'] = state['contact_book'].update_messages
             del state['contact_book']
             del state['last_location']
             del state['recommendations_to_follow']
@@ -1109,7 +1120,6 @@ class Human(object):
         if RISK_MODEL == "transformer":
             assert(self.risk_history is not None)
             cur_day = (self.env.timestamp - self.env.initial_timestamp).days
-
             for day in range(cur_day, TRACING_N_DAYS_HISTORY + cur_day -1):
                 # TODO: think more about this
                 old_risk_level_on_day = _proba_to_risk_level(self.prev_risk_history[day-cur_day])
@@ -1119,15 +1129,20 @@ class Human(object):
                     self.risk = self.risk_history[day-cur_day+1]
                     self.risk_level = min(new_risk_level_on_day, 15)
                     for message in self.contact_book.messages_by_day[day-cur_day]:
-                        sent_at = int(message.unobs_id[6:])
-                        if not self.has_app or not self.city.hd[message.unobs_id].has_app:
-                            continue
+                        my_old_message = self.contact_book.sent_messages_by_day[day-cur_day][0]
+                        sent_at = int(my_old_message.unobs_id[6:])
                         self.city.hd[message.unobs_id].contact_book.update_messages.append(
-                            self.cur_message_risk_update(day-cur_day, message.uid, message.risk, sent_at))
-            if cur_day == 18:
-                import pdb;
-                pdb.set_trace()
-
+                            encode_update_message(self.cur_message_risk_update(my_old_message.day, my_old_message.uid, old_risk_level_on_day, sent_at)))
+                        print(f"my name: {self.name}")
+                        print(f"my old message: {my_old_message}")
+                        print(f"message.unobs_id: {message.unobs_id}")
+                        print(f"update: {self.cur_message_risk_update(my_old_message.day, my_old_message.uid, old_risk_level_on_day, sent_at)}")
+                        print(f"their update messages: {self.city.hd[message.unobs_id].contact_book.update_messages}")
+                        print(f"my messages by day: {self.contact_book.messages_by_day[day-cur_day]}")
+            if self.contact_book.messages_by_day[day-cur_day]:
+                import pdb; pdb.set_trace()
+            print(self.risk_history)
+            self.risk_level = min(_proba_to_risk_level(self.risk_history[0]), 15)
             self.risk = self.risk_history[0]
         else:
             new_risk_level = _proba_to_risk_level(self.risk)

@@ -314,14 +314,14 @@ MASKS_SUPPLY = BIG_NUMBER
 
 ## INTERVENTIONS
 BIG_NUMBER = 10000000
-INTERVENTION_DAY = -1 # <0 no interventions
+INTERVENTION_DAY = 10 # <0 no interventions
 INTERVENTION = "Tracing"
 PERCENT_FOLLOW = 1.0
 P_HAS_APP = 0.5
 
 # TRACING RISK MODEL PARAMETERS  (non-ML)
 # "transformer" has everything has True
-RISK_MODEL = "naive" # "naive"  "manual", "digital", "transformer"
+RISK_MODEL = "transformer" # "naive"  "manual", "digital", "transformer"
 TRACE_SYMPTOMS = True
 TRACE_RISK_UPDATE = False
 TRACING_ORDER = 1
@@ -357,3 +357,13 @@ DUMP_CLUSTERS = False
 CLUSTER_TYPE = "heuristic" # "random", "graph"
 RISK_PLOT_PATH = "output/plots/risk"
 CLUSTER_PATH = "output/clusters.json"
+
+# TODO DELETEME (naive risk run)
+# 2020-03-10 00:00:00 Ro: 0.00 S:828 E:75 I:97 T:172 P3:152.39 RiskP:0.30 M:1000.00 G:0 B:0 O:0 R:0
+# 2020-03-11 00:00:00 Ro: 0.00 S:774 E:101 I:125 T:226 P3:192.00 RiskP:0.40 M:1000.00 G:0 B:0 O:0 R:0
+# 2020-03-12 00:00:00 Ro: 0.00 S:726 E:118 I:156 T:274 P3:241.90 RiskP:0.20 M:1000.00 G:0 B:0 O:0 R:0
+# 2020-03-13 00:00:00 Ro: 0.00 S:670 E:122 I:208 T:330 P3:304.78 RiskP:0.60 M:1000.00 G:0 B:0 O:0 R:0
+# 2020-03-14 00:00:00 Ro: 0.00 S:583 E:163 I:254 T:417 P3:384.00 RiskP:0.60 M:1000.00 G:0 B:0 O:0 R:0
+# 2020-03-15 00:00:00 Ro: 0.00 S:492 E:202 I:306 T:508 P3:483.81 RiskP:0.80 M:1000.00 G:0 B:0 O:0 R:0
+# 2020-03-16 00:00:00 Ro: 0.00 S:426 E:193 I:381 T:574 P3:609.56 RiskP:0.80 M:1000.00 G:0 B:0 O:0 R:0
+# 2020-03-17 00:00:00 Ro: 0.00 S:344 E:183 I:473 T:656 P3:768.00 RiskP:0.80 M:1000.00 G:0 B:0 O:0 R:0
