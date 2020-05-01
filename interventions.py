@@ -211,7 +211,10 @@ class RiskBasedRecommendations(BehaviorInterventions):
             raise
 
     def modify_behavior(self, human):
-        rec_level = self.get_recommendations_level(human.risk_level)
+        try:
+            rec_level = self.get_recommendations_level(human.risk_level)
+        except:
+            import pdb; pdb.set_trace()
         human.rec_level = rec_level # FIXME: Shoudl rec_level be a part of human?
         recommendations = get_recommendations(rec_level)
         # print(f"chaging {human} to {rec_level}")
@@ -347,9 +350,6 @@ class Tracing(object):
             n_jobs = kwargs.get("n_jobs")
             data_path = kwargs.get("data_path")
             city.humans = integrated_risk_pred(city.humans, city.start_time, city.current_day, all_possible_symptoms, port=port, n_jobs=n_jobs, data_path=data_path)
-            print("done ..")
-            # for human in city.humans:
-            #     human.update_risk_level()
         else:
             for human in city.humans:
                 if (human.env.timestamp - human.message_info['receipt']).days >= human.message_info['delay']:

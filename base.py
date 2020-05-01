@@ -250,6 +250,7 @@ class City(simpy.Environment):
                 _ = [h.notify(self.intervention) for h in self.humans]
                 print(self.intervention)
 
+            # update risk every day
             if isinstance(self.intervention, Tracing):
                 self.intervention.update_human_risks(city=self,
                                 symptoms=all_possible_symptoms, port=port,

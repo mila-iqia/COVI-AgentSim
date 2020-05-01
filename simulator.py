@@ -112,7 +112,6 @@ class Human(object):
         if self.infection_timestamp is not None:
             self.compute_covid_properties()
             print(f"{self} is infected")
-        self.risk_history = np.repeat(BASELINE_RISK_VALUE, 14)
 
         # counters and memory
         self.r0 = []
@@ -150,6 +149,8 @@ class Human(object):
                 "n_risk_decreased": defaultdict(lambda :[0]), "n_risk_increased":defaultdict(lambda :[0]),
                 "n_risk_mag_increased":defaultdict(lambda :[0]), "n_risk_mag_decreased":defaultdict(lambda :[0])
                 }
+        self.risk_history = np.repeat(BASELINE_RISK_VALUE, 14)
+
 
         # Message Passing and Risk Prediction
         self.sent_messages = {}

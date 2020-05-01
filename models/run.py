@@ -65,7 +65,7 @@ def integrated_risk_pred(humans, start, current_day, all_possible_symptoms, port
     for result in results:
         if result is not None:
             name, risk_history, clusters = result
-            print(risk_history)
+            # print(risk_history)
 
             if config.RISK_MODEL == "transformer":
 

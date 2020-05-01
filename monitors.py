@@ -49,9 +49,9 @@ class SEIRMonitor(BaseMonitor):
             I = city.tracker.i_per_day[-1]
             R = city.tracker.r_per_day[-1]
             T = E + I + R
-            print(np.mean([h.risk for h in city.humans]))
+            # print(np.mean([h.risk for h in city.humans]))
             # print(env.timestamp, f"Ro: {R0:5.2f} G:{G:5.2f} S:{S} E:{E} I:{I} R:{R} T:{T} P3:{Projected3:5.2f} M:{M:5.2f} +Test:{P} H:{H} C:{C} RiskP:{RiskP:3.2f}") RiskP:{RiskP:3.2f}
-            print(env.timestamp, f"Ro: {R0:2.2f} S:{S} E:{E} I:{I} T:{T} P3:{Projected3:5.2f} RiskP:{prec[1][0]} M:{M:5.2f} G:{green} B:{blue} O:{orange} R:{red} ")
+            print(env.timestamp, f"Ro: {R0:2.2f} S:{S} E:{E} I:{I} T:{T} P3:{Projected3:5.2f} RiskP:{prec[1][0]:3.2f} M:{M:5.2f} G:{green} B:{blue} O:{orange} R:{red} ")
             # print(city.tracker.recovered_stats)
             self.data.append({
                     'time': env.timestamp,
