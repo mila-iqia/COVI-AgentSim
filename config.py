@@ -304,7 +304,7 @@ HYGIENE_EFFECT = 0.2
 
 # TRACKER
 EFFECTIVE_R_WINDOW = 10 # days
-GET_RISK_PREDICTOR_METRICS = True # compute risk but not modify the behavior
+GET_RISK_PREDICTOR_METRICS = False # compute risk but not modify the behavior
 
 # MASK
 MASK_EFFICACY_NORMIE = 0.32
@@ -314,14 +314,14 @@ MASKS_SUPPLY = BIG_NUMBER
 
 ## INTERVENTIONS
 BIG_NUMBER = 10000000
-INTERVENTION_DAY = -1 # <0 no interventions
+INTERVENTION_DAY = 10 # <0 no interventions
 INTERVENTION = "Tracing"
 PERCENT_FOLLOW = 1.0
 P_HAS_APP = 0.5
 
 # TRACING RISK MODEL PARAMETERS  (non-ML)
 # "transformer" has everything has True
-RISK_MODEL = "naive" # "naive"  "manual", "digital", "transformer"
+RISK_MODEL = "transformer" # "naive"  "manual", "digital", "transformer"
 TRACE_SYMPTOMS = True
 TRACE_RISK_UPDATE = False
 TRACING_ORDER = 1

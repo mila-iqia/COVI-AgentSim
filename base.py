@@ -240,38 +240,28 @@ class City(simpy.Environment):
             h.parks_preferences = [(compute_distance(h.household, s) + 1e-1) ** -1 for s in self.parks]
 
     def run(self, duration, outfile, start_time, all_possible_symptoms, port, n_jobs):
-        current_day = 0
+        self.current_day = 0
 
         while True:
 
-            if (USE_INFERENCE_SERVER and
-                isinstance(self.intervention, Tracing) and
-                self.intervention.risk_model == "transformer"):
-
-                # compute risk using ML models
-                self.humans = integrated_risk_pred(self.humans, start_time, current_day, all_possible_symptoms, port=port, n_jobs=n_jobs, data_path=outfile)
-                for human in self.humans:
-                    human.update_risk_level()
-                    human.contact_book.update_book(human, risk_level=True) # call it once a day
-
-            elif isinstance(self.intervention, Tracing):
-                # compute risk using simple models
-                for human in self.humans:
-                    if (human.env.timestamp - human.message_info['receipt']).days >= human.message_info['delay']:
-                        human.update_risk(value=True)
             #
-            if INTERVENTION_DAY >= 0 and current_day == INTERVENTION_DAY:
+            if INTERVENTION_DAY >= 0 and self.current_day == INTERVENTION_DAY:
                 self.intervention = get_intervention(INTERVENTION)
                 _ = [h.notify(self.intervention) for h in self.humans]
                 print(self.intervention)
 
+            if isinstance(self.intervention, Tracing):
+                self.intervention.update_human_risks(city=self,
+                                symptoms=all_possible_symptoms, port=port,
+                                n_jobs=n_jobs, data_path=outfile)
+
             #
-            if (COLLECT_TRAINING_DATA or GET_RISK_PREDICTOR_METRICS) and current_day == 0 and not USE_INFERENCE_SERVER:
+            if (COLLECT_TRAINING_DATA or GET_RISK_PREDICTOR_METRICS) and self.current_day == 0:
                 _ = [h.notify(collect_training_data=True) for h in self.humans]
                 print("naive risk calculation without changing behavior... Humans notified!")
 
             self.tracker.increment_day()
-            current_day += 1
+            self.current_day += 1
 
             yield self.env.timeout(duration / TICK_MINUTE)
 

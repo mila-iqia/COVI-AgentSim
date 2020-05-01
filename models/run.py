@@ -12,8 +12,8 @@ import config
 from plots.plot_risk import hist_plot
 from models.inference_client import InferenceClient
 from frozen.utils import encode_message, update_uid, encode_update_message, decode_message
-from utils import proba_to_risk_fn
-_proba_to_risk_level = proba_to_risk_fn(np.exp(np.load(config.RISK_MAPPING_FILE)))
+# from utils import proba_to_risk_fn
+# _proba_to_risk_level = proba_to_risk_fn(np.exp(np.load(config.RISK_MAPPING_FILE)))
 
 # load the risk map (this is ok, since we only do this #days)
 risk_map = np.load(f"{os.path.dirname(os.path.realpath(__file__))}/log_risk_mapping.npy")
@@ -64,9 +64,13 @@ def integrated_risk_pred(humans, start, current_day, all_possible_symptoms, port
 
     for result in results:
         if result is not None:
-            name, risk, clusters = result
+            name, risk_history, clusters = result
+            print(risk_history)
+
             if config.RISK_MODEL == "transformer":
-                hd[name].risk = risk
+
+                hd[name].prev_risk_history = hd[name].risk_history
+                hd[name].risk_history = risk_history
                 hd[name].update_risk_level()
 
             hd[name].clusters = clusters
@@ -82,5 +86,4 @@ def integrated_risk_pred(humans, start, current_day, all_possible_symptoms, port
         for human in hd.values():
             clusters.append(dict(human.clusters.clusters))
         json.dump(clusters, open(config.CLUSTER_PATH, 'w'))
-    print(f"{current_day} took {time.time() - risk_pred_start}")
     return humans
