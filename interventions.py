@@ -211,10 +211,7 @@ class RiskBasedRecommendations(BehaviorInterventions):
             raise
 
     def modify_behavior(self, human):
-        try:
-            rec_level = self.get_recommendations_level(human.risk_level)
-        except:
-            import pdb; pdb.set_trace()
+        rec_level = self.get_recommendations_level(human.risk_level)
         human.rec_level = rec_level # FIXME: Shoudl rec_level be a part of human?
         recommendations = get_recommendations(rec_level)
         # print(f"chaging {human} to {rec_level}")
