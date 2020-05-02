@@ -86,8 +86,9 @@ class Tracker(object):
 
         # mobility
         self.transition_probability = get_nested_dict(4)
-        M, G, B, O, R = self.compute_mobility()
+        M, G, B, O, R, EM = self.compute_mobility()
         self.mobility = [M]
+        self.expected_mobility = [EM]
         self.summarize_population()
 
         # risk models
@@ -183,8 +184,9 @@ class Tracker(object):
         self.critical_per_day.append(0)
 
         # mobility
-        M, G, B, O, R = self.compute_mobility()
+        M, G, B, O, R, EM = self.compute_mobility()
         self.mobility.append(M)
+        self.expected_mobility.append(EM)
 
         # risk models
         prec, lift, recall = self.compute_risk_precision(daily=True)
@@ -196,7 +198,7 @@ class Tracker(object):
         self.avg_infectiousness_per_day.append(np.mean([h.infectiousness for h in self.city.humans]))
 
     def compute_mobility(self):
-        M, G, B, O, R = 0, 0, 0, 0, 0
+        EM, M, G, B, O, R = 0, 0, 0, 0, 0, 0
         for h in self.city.humans:
             G += h.rec_level == 0
             B += h.rec_level == 1
@@ -204,7 +206,8 @@ class Tracker(object):
             R += h.rec_level == 3
             M +=  1.0 * (h.rec_level == 0) + 0.8 * (h.rec_level == 1) + \
                     0.20 * (h.rec_level == 2) + 0.05 * (h.rec_level == 3) + 1*(h.rec_level==-1)
-        return M, G, B, O, R
+            EM += (1-h.risk) # proxy for mobility
+        return M, G, B, O, R, EM/len(self.city.humans)
 
     def compute_risk_precision(self, daily=True, threshold=0.5, until_days=None):
         if daily:
@@ -231,7 +234,10 @@ class Tracker(object):
                 xy = type[:math.ceil(k * len(type))]
                 pred = 1.0*sum(1 for x,y in xy if y)
                 top_k_prec[idx].append(pred/len(xy))
-                lift[idx].append(pred/(k*total_infected))
+                if total_infected:
+                    lift[idx].append(pred/(k*total_infected))
+                else:
+                    lift[idx].append(0) # FIXME: it might not be correct definition for Lift
             z = sum(1 for x,y in type if y)
             recall.append(0)
             if z:

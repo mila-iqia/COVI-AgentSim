@@ -190,9 +190,9 @@ def get_recommendations(level):
     return [WashHands(), SocialDistancing(), WearMask(), 'monitor_symptoms', GetTested("recommendations"), Quarantine()]
 
 class RiskBasedRecommendations(BehaviorInterventions):
-    UPPER_GREEN = 3
-    UPPER_BLUE = 7
-    UPPER_ORANGE = 11
+    UPPER_GREEN = 1
+    UPPER_BLUE = 3
+    UPPER_ORANGE = 5
     UPPER_RED = 15
 
     def __init__(self):
@@ -214,10 +214,10 @@ class RiskBasedRecommendations(BehaviorInterventions):
         rec_level = self.get_recommendations_level(human.risk_level)
         human.rec_level = rec_level # FIXME: Shoudl rec_level be a part of human?
         recommendations = get_recommendations(rec_level)
-        # print(f"chaging {human} to {rec_level}")
+        # print(f"chaging {human} from {human.rec_level} to {rec_level} {human.risk} {human.risk_level}")
         self.revert_behavior(human)
         for rec in recommendations:
-            if isinstance(rec, BehaviorInterventions) and human.rng.rand() > human.how_much_I_follow_recommendations:
+            if isinstance(rec, BehaviorInterventions) and human.rng.rand() < human.how_much_I_follow_recommendations:
                 rec.modify_behavior(human)
                 human.recommendations_to_follow.add(rec)
 
@@ -347,6 +347,15 @@ class Tracing(object):
             n_jobs = kwargs.get("n_jobs")
             data_path = kwargs.get("data_path")
             city.humans = integrated_risk_pred(city.humans, city.start_time, city.current_day, all_possible_symptoms, port=port, n_jobs=n_jobs, data_path=data_path)
+            for h in city.humans:
+                # same as naive
+                if h.is_removed:
+                    h.risk = 0.0
+                if h.test_result == "positive":
+                    h.risk = 1.0
+                elif h.test_result == "negative":
+                    h.risk = 0.2
+
         else:
             for human in city.humans:
                 if (human.env.timestamp - human.message_info['receipt']).days >= human.message_info['delay']:
@@ -357,7 +366,11 @@ class Tracing(object):
         pass # FIXME: circualr imports issue; can't import _draw_random_discreet_gaussian
 
     def __repr__(self):
+        if self.risk_model == "transformer":
+            return f"Tracing: {self.risk_model}"
+
         return f"Tracing: {self.risk_model} order {self.max_depth} symptoms: {self.propagate_symptoms} risk: {self.propagate_risk}"
+
 
 class CityInterventions(object):
     def __init__(self):

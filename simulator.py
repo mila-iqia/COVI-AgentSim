@@ -260,6 +260,14 @@ class Human(object):
     ########### EPI ###########
 
     @property
+    def tracing(self):
+        return self._tracing
+
+    @tracing.setter
+    def tracing(self, value):
+        self._tracing = value
+
+    @property
     def is_susceptible(self):
         return not self.is_exposed and not self.is_infectious and not self.is_removed and not self.is_immune
 
@@ -584,6 +592,8 @@ class Human(object):
 
             if self.last_date['run'] != self.env.timestamp.date():
                 self.last_date['run'] = self.env.timestamp.date()
+                self.update_symptoms()
+                self.update_risk(symptoms=self.symptoms)
                 self.infectiousnesses.appendleft(self.infectiousness)
                 Event.log_daily(self, self.env.timestamp)
                 city.tracker.track_symptoms(self)
@@ -621,8 +631,7 @@ class Human(object):
                     Event.log_test(self, self.env.timestamp)
                     self.test_time = self.env.timestamp
                     city.tracker.track_tested_results(self, self.test_result, self.test_type)
-                    if self.tracing:
-                        self.update_risk(test_results=True)
+                    self.update_risk(test_results=True)
 
             # recover
             if self.is_infectious and self.days_since_covid >= self.recovery_days:
@@ -1129,7 +1138,7 @@ class Human(object):
     ############################## RISK PREDICTION #################################
 
     def update_risk_level(self):
-        if RISK_MODEL == "transformer":
+        if not self.is_removed and self.tracing_method.risk_model == "transformer":
             assert(self.risk_history is not None)
             cur_day = (self.env.timestamp - self.env.initial_timestamp).days
             for day in range(cur_day, TRACING_N_DAYS_HISTORY + cur_day -1):
@@ -1143,8 +1152,13 @@ class Human(object):
                         sent_at = int(my_old_message.unobs_id[6:])
                         self.city.hd[message.unobs_id].contact_book.update_messages.append(
                             encode_update_message(self.cur_message_risk_update(my_old_message.day, my_old_message.uid, old_risk_level_on_day, sent_at)))
+
             self.risk_level = min(_proba_to_risk_level(self.risk_history[0]), 15)
             self.risk = self.risk_history[0]
+            new_risk_level = min(_proba_to_risk_level(self.risk), 15)
+            if new_risk_level != self.risk_level:
+                self.risk_level = new_risk_level
+                self.tracing_method.modify_behavior(self)
         else:
             new_risk_level = _proba_to_risk_level(self.risk)
             if new_risk_level != self.risk_level:
@@ -1153,10 +1167,13 @@ class Human(object):
                     self.contact_book.send_message(self, self.tracing_method, order=1, reason="risk_update", payload=payload)
                 self.risk_level = new_risk_level
 
-        self.tracing_method.modify_behavior(self)
+                self.tracing_method.modify_behavior(self)
 
     def update_risk(self, recovery=False, test_results=False, update_messages=None, symptoms=None):
-        if RISK_MODEL != "transformer":
+        if not self.tracing:
+            return
+
+        if self.tracing:
             if recovery:
                 if self.is_removed:
                     self.risk = 0.0
@@ -1172,6 +1189,7 @@ class Human(object):
                     self.risk = 0.20
                 self.update_risk_level()
 
+        if self.tracing_method.risk_model != "transformer":
             if symptoms and self.tracing_method.propagate_symptoms:
                 if sum(x in symptoms for x in ['severe', 'trouble_breathing']) > 0 and not self.has_logged_symptoms:
                     self.risk = max(0.8, self.risk)

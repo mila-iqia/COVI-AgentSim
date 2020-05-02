@@ -103,7 +103,7 @@ def tune(n_people, simulation_days, seed):
     import matplotlib.pyplot as plt
     # cf.go_offline()
 
-    monitors, tracker = run_simu(n_people=n_people, init_percent_sick=0.01,
+    monitors, tracker = run_simu(n_people=n_people, init_percent_sick=0.0025,
                             start_time=datetime.datetime(2020, 2, 28, 0, 0),
                             simulation_days=simulation_days,
                             outfile=None,
@@ -117,7 +117,9 @@ def tune(n_people, simulation_days, seed):
     timenow = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
     data = dict()
     data['intervention_day'] = config.INTERVENTION_DAY
+    data['intervention'] = config.INTERVENTION
 
+    data['expected_mobility'] = tracker.expected_mobility
     data['mobility'] = tracker.mobility
     data['n_init_infected'] = tracker.n_infected_init
     data['risk_precision'] = tracker.risk_precision_daily
@@ -125,7 +127,7 @@ def tune(n_people, simulation_days, seed):
     data['cases_per_day'] = tracker.cases_per_day
     data['ei_per_day'] = tracker.ei_per_day
     data['r_0'] = tracker.r_0
-    data['r'] = tracker.r
+    data['R'] = tracker.r
     data['n_humans'] = tracker.n_humans
     data['s'] = tracker.s_per_day
     data['e'] = tracker.e_per_day
@@ -145,13 +147,13 @@ def tune(n_people, simulation_days, seed):
     # data['symptoms'] = dict(tracker.symptoms)
     # data['transition_probability'] = dict(tracker.transition_probability)
     #
-    # import dill
-    # filename = f"tracker_data_n_{n_people}_seed_{seed}_{timenow}.pkl"
-    # with open(f"logs/{filename}", 'wb') as f:
-    #     dill.dump(data, f)
+    import dill
+    filename = f"tracker_data_n_{n_people}_seed_{seed}_{timenow}.pkl"
+    with open(f"logs2/{filename}", 'wb') as f:
+        dill.dump(data, f)
     #
-    # logfile = os.path.join(f"logs/log_n_{n_people}_seed_{seed}_{timenow}.txt")
-    # tracker.write_metrics(logfile)
+    logfile = os.path.join(f"logs/log_n_{n_people}_seed_{seed}_{timenow}.txt")
+    tracker.write_metrics(logfile)
     tracker.write_metrics(None)
 
     # fig = x['R'].iplot(asFigure=True, title="R0")
@@ -185,10 +187,11 @@ def tracing(n_people, days, tracing, order, symptoms, risk, noise):
     # switch off
     config.COLLECT_TRAINING_DATA = False
     config.USE_INFERENCE_SERVER = False
+    config.GET_RISK_PREDICTOR_METRICS = False
 
     if tracing != "":
 
-        config.INTERVENTION_DAY = 25 # approx 512 will be infected by then
+        config.INTERVENTION_DAY = 20 # approx 512 will be infected by then
         config.INTERVENTION = "Tracing"
         config.RISK_MODEL = tracing
 
@@ -198,15 +201,20 @@ def tracing(n_people, days, tracing, order, symptoms, risk, noise):
         else:
             config.P_HAS_APP = noise
 
-        #symptoms
+        #symptoms (not used in risk_model = transformer)
         config.TRACE_SYMPTOMS = symptoms
 
-        #risk
+        #risk (not used in risk_model = transformer)
         config.TRACE_SYMPTOMS = risk
 
-        # order
+        # order (not used in risk_model = transformer)
         config.TRACING_ORDER = order
-        name = f"{tracing}-s{1*symptoms}-r{risk}-o{order}"
+
+        # set filename
+        if tracing != "transformer":
+            name = f"{tracing}-s{1*symptoms}-r{risk}-o{order}"
+        else:
+            name = "transformer"
 
     else:
         # no intervention

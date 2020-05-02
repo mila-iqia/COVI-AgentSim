@@ -245,6 +245,7 @@ class City(simpy.Environment):
     def run(self, duration, outfile, start_time, all_possible_symptoms, port, n_jobs):
         self.current_day = 0
 
+        print(f"INTERVENTION_DAY: {INTERVENTION_DAY}")
         while True:
 
             #
@@ -260,9 +261,9 @@ class City(simpy.Environment):
                                 n_jobs=n_jobs, data_path=outfile)
 
             #
-            if (COLLECT_TRAINING_DATA or GET_RISK_PREDICTOR_METRICS) and self.current_day == 0:
-                _ = [h.notify(collect_training_data=True) for h in self.humans]
-                print("naive risk calculation without changing behavior... Humans notified!")
+            # if (COLLECT_TRAINING_DATA or GET_RISK_PREDICTOR_METRICS) and (self.current_day == 0 and INTERVENTION_DAY < 0):
+            #     _ = [h.notify(collect_training_data=True) for h in self.humans]
+            #     print("naive risk calculation without changing behavior... Humans notified!")
 
             self.tracker.increment_day()
             self.current_day += 1
