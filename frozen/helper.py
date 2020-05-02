@@ -2,6 +2,7 @@ import numpy as np
 
 from frozen.utils import decode_message
 
+# NOTE: THIS MAP SHOULD ALWAYS MATCH THE NAME/IDS PROVIDED IN utils.py
 PREEXISTING_CONDITIONS_META = {
     'smoker': 5,
     'diabetes': 1,
@@ -13,6 +14,37 @@ PREEXISTING_CONDITIONS_META = {
     'immuno-suppressed': 0,
     'lung_disease': 8,
     'pregnant': 9,
+}
+
+# NOTE: THIS MAP SHOULD ALWAYS MATCH THE NAME/IDS PROVIDED IN utils.py
+SYMPTOMS_META = {
+    'mild': 1,
+    'moderate': 0,
+    'severe': 2,
+    'extremely-severe': 3,
+    'fever': 4,
+    'chills': 5,
+    'gastro': 6,
+    'diarrhea': 7,
+    'nausea_vomiting': 8,
+    'fatigue': 9,
+    'unusual': 10,
+    'hard_time_waking_up': 11,
+    'headache': 12,
+    'confused': 13,
+    'lost_consciousness': 14,
+    'trouble_breathing': 15,
+    'sneezing': 16,
+    'cough': 17,
+    'runny_nose': 18,
+    'sore_throat': 20,
+    'severe_chest_pain': 21,
+    'light_trouble_breathing': 24,
+    'mild_trouble_breathing': 23,
+    'moderate_trouble_breathing': 25,
+    'heavy_trouble_breathing': 26,
+    'loss_of_taste': 22,
+    'aches': 19
 }
 
 

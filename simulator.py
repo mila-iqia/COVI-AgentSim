@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from collections import deque
+
 from frozen.clusters import Clusters
 from frozen.utils import create_new_uid, Message, UpdateMessage, encode_message, encode_update_message
 
@@ -56,6 +58,7 @@ class Human(object):
 
         self.age = age
         self.sex = _get_random_sex(self.rng)
+        self.dead = False
         self.preexisting_conditions = _get_preexisting_conditions(self.age, self.sex, self.rng)
 
         age_modifier = 2 if self.age > 40 or self.age < 12 else 2
@@ -156,8 +159,7 @@ class Human(object):
         self.update_messages = []
         self.clusters = Clusters()
         self.tested_positive_contact_count = 0
-        self.rolling_infectiousness_array = []
-        self.infectiousnesses = []
+        self.infectiousnesses = deque([0] * 14, maxlen=14)
         self.uid = create_new_uid(rng)
         self.exposure_message = None
         self.exposure_source = None
@@ -230,13 +232,28 @@ class Human(object):
     def events(self):
         return self._events
 
-    def pull_events(self):
-        if self._events:
-            events = self._events
-            self._events = []
-        else:
-            events = self._events
-        return events
+    def events_slice(self, begin, end):
+        end_i = len(self._events)
+        begin_i = end_i
+        for i, event in enumerate(self._events):
+            if i < begin_i and event['time'] >= begin:
+                begin_i = i
+            elif event['time'] > end:
+                end_i = i
+                break
+
+        return self._events[begin_i:end_i]
+
+    def pull_events_slice(self, end):
+        end_i = len(self._events)
+        for i, event in enumerate(self._events):
+            if event['time'] >= end:
+                end_i = i
+                break
+
+        events_slice, self._events = self._events[:end_i], self._events[end_i:]
+
+        return events_slice
 
     ########### EPI ###########
 
@@ -565,15 +582,9 @@ class Human(object):
                 self.count_exercise=0
                 self.count_shop=0
 
-
             if self.last_date['run'] != self.env.timestamp.date():
                 self.last_date['run'] = self.env.timestamp.date()
-                self.infectiousnesses.append(self.infectiousness)
-                if len(self.infectiousnesses) > INFECTIOUSNESS_N_DAYS_HISTORY:
-                    self.infectiousnesses.pop(0)
-                self.update_symptoms()
-                if self.tracing:
-                    self.update_risk(symptoms=self.symptoms)
+                self.infectiousnesses.appendleft(self.infectiousness)
                 Event.log_daily(self, self.env.timestamp)
                 city.tracker.track_symptoms(self)
 

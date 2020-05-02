@@ -1,6 +1,6 @@
 import os
+from datetime import timedelta
 import pickle
-import dill
 import json
 import zipfile
 import time
@@ -12,8 +12,6 @@ import config
 from plots.plot_risk import hist_plot
 from models.inference_client import InferenceClient
 from frozen.utils import encode_message, update_uid, encode_update_message, decode_message
-from utils import proba_to_risk_fn
-_proba_to_risk_level = proba_to_risk_fn(np.exp(np.load(config.RISK_MAPPING_FILE)))
 
 # load the risk map (this is ok, since we only do this #days)
 risk_map = np.load(f"{os.path.dirname(os.path.realpath(__file__))}/log_risk_mapping.npy")
@@ -35,7 +33,13 @@ def integrated_risk_pred(humans, data_path, start, current_day, all_possible_sym
     hd = humans[0].city.hd
     all_params = []
 
+    current_date = (start + timedelta(days=max(0, current_day-1))).date()
+
     for human in humans:
+        if human.last_date['run'] != current_date:
+            if human.dead or human.obs_hospitalized:
+                human.infectiousnesses.appendleft(0.0)
+
         log_path = f'{os.path.dirname(data_path)}/daily_outputs/{current_day}/{human.name[6:]}/'
 
         all_params.append({"start": start, "current_day": current_day,

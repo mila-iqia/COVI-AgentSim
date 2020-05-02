@@ -7,6 +7,7 @@ import os
 import sys
 import zipfile
 
+from frozen.helper import SYMPTOMS_META
 from config import TICK_MINUTE
 from simulator import Human
 from base import *
@@ -23,7 +24,7 @@ def simu():
 @click.option('--n_people', help='population of the city', type=int, default=100)
 @click.option('--init_percent_sick', help='% of population initially sick', type=float, default=0.01)
 @click.option('--simulation_days', help='number of days to run the simulation for', type=int, default=30)
-@click.option('--out_chunk_size', help='number of events per dump in outfile', type=int, default=2500, required=False)
+@click.option('--out_chunk_size', help='minimum number of events per dump in outfile', type=int, default=1, required=False)
 @click.option('--outdir', help='the directory to write data to', type=str, default="output", required=False)
 @click.option('--seed', help='seed for the process', type=int, default=0)
 @click.option('--n_jobs', help='number of parallel procs to query the risk servers with', type=int, default=1)
@@ -250,7 +251,7 @@ def run_simu(n_people=None, init_percent_sick=0.0,
     city_x_range = (0,1000)
     city_y_range = (0,1000)
     city = City(env, n_people, rng, city_x_range, city_y_range, start_time, init_percent_sick, Human)
-    monitors = [EventMonitor(f=120, dest=outfile, chunk_size=out_chunk_size), SEIRMonitor(f=1440)]
+    monitors = [EventMonitor(f=1800, dest=outfile, chunk_size=out_chunk_size), SEIRMonitor(f=1440)]
 
     # run the simulation
     if print_progress:
@@ -260,13 +261,9 @@ def run_simu(n_people=None, init_percent_sick=0.0,
         monitors += other_monitors
 
     # run city
-    all_possible_symptoms = ['moderate', 'mild', 'severe', 'extremely-severe', 'fever',
-                             'chills', 'gastro', 'diarrhea', 'nausea_vomiting', 'fatigue',
-                             'unusual', 'hard_time_waking_up', 'headache', 'confused',
-                             'lost_consciousness', 'trouble_breathing', 'sneezing',
-                             'cough', 'runny_nose', 'aches', 'sore_throat', 'severe_chest_pain',
-                             'loss_of_taste', 'mild_trouble_breathing', 'light_trouble_breathing', 'moderate_trouble_breathing',
-                             'heavy_trouble_breathing']
+    all_possible_symptoms = [""] * len(SYMPTOMS_META)
+    for k, v in SYMPTOMS_META.items():
+        all_possible_symptoms[v] = k
     monitors[0].dump()
     monitors[0].join_iothread()
     env.process(city.run(1440, outfile, start_time, all_possible_symptoms, port, n_jobs))
