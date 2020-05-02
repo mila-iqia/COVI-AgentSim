@@ -2,51 +2,43 @@ import os
 from datetime import timedelta
 import pickle
 import json
-import zipfile
-import time
 import numpy as np
 import functools
-from collections import defaultdict
 from joblib import Parallel, delayed
 import config
-from plots.plot_risk import hist_plot
 from models.inference_client import InferenceClient
 from frozen.utils import encode_message, update_uid, encode_update_message, decode_message
 
-# load the risk map (this is ok, since we only do this #days)
+# load the risk map
+# TODO: load this from config (?)
 risk_map = np.load(f"{os.path.dirname(os.path.realpath(__file__))}/log_risk_mapping.npy")
 risk_map[0] = np.log(0.01)
 
 
 def query_inference_server(params, **inf_client_kwargs):
+    # Make a request to the server
     client = InferenceClient(**inf_client_kwargs)
     results = client.infer(params)
     return results
 
 
-def integrated_risk_pred(humans, data_path, start, current_day, all_possible_symptoms, start_pkl, port=6688, n_jobs=1):
-    risk_pred_start = time.time()
-    # check that the plot_dir exists:
-    if config.PLOT_RISK:
-        os.makedirs(config.RISK_PLOT_PATH, exist_ok=True)
-
+def integrated_risk_pred(humans, start, current_day, all_possible_symptoms, port=6688, n_jobs=1, data_path=None):
+    """ Setup and make the calls to the server"""
     hd = humans[0].city.hd
     all_params = []
 
-    current_date = (start + timedelta(days=max(0, current_day-1))).date()
-
+    # We're going to send a request to the server for each human
     for human in humans:
-        if human.last_date['run'] != current_date:
-            if human.dead or human.obs_hospitalized:
-                human.infectiousnesses.appendleft(0.0)
-
-        log_path = f'{os.path.dirname(data_path)}/daily_outputs/{current_day}/{human.name[6:]}/'
+        log_path = None
+        if data_path:
+            log_path = f'{os.path.dirname(data_path)}/daily_outputs/{current_day}/{human.name[6:]}/'
 
         all_params.append({"start": start, "current_day": current_day,
                            "all_possible_symptoms": all_possible_symptoms, "human": human.__getstate__(),
                            "COLLECT_TRAINING_DATA": config.COLLECT_TRAINING_DATA, "log_path": log_path, "risk_model": config.RISK_MODEL})
         human.uid = update_uid(human.uid, human.rng)
 
+    # Batch the parameters for the function calls
     batch_start_offset = 0
     batch_size = 25  # @@@@ TODO: make this a high-level configurable arg?
     batched_params = []
@@ -54,36 +46,34 @@ def integrated_risk_pred(humans, data_path, start, current_day, all_possible_sym
         batch_end_offset = min(batch_start_offset + batch_size, len(all_params))
         batched_params.append(all_params[batch_start_offset:batch_end_offset])
         batch_start_offset += batch_size
-
     query_func = functools.partial(query_inference_server, target_port=port)
 
-    with Parallel(n_jobs=n_jobs, batch_size=config.MP_BATCHSIZE, backend=config.MP_BACKEND, verbose=10, prefer="threads") as parallel:
+    # make the batched requests to the server
+    with Parallel(n_jobs=n_jobs, batch_size=config.MP_BATCHSIZE, backend=config.MP_BACKEND, verbose=0, prefer="threads") as parallel:
         batched_results = parallel((delayed(query_func)(params) for params in batched_params))
 
+    # handle the results
     results = []
     for b in batched_results:
         results.extend(b)
 
     for result in results:
         if result is not None:
-            name, risk, clusters = result
+            name, risk_history, clusters = result
+
             if config.RISK_MODEL == "transformer":
-                hd[name].risk = risk
+
+                hd[name].prev_risk_history = hd[name].risk_history
+                hd[name].risk_history = risk_history
                 hd[name].update_risk_level()
 
             hd[name].clusters = clusters
-
-    # TODO: @PRATEEK setup similar metrics to those on the Transformer for the Naive method
-    if config.PLOT_RISK and config.COLLECT_LOGS:
-        daily_risks = [(human.risk, human.is_infectious, human.name) for human in hd.values()]
-        hist_plot(daily_risks, f"{config.RISK_PLOT_PATH}/day_{str(current_day).zfill(3)}.png")
+            hd[name].contact_book.update_messages = []
 
     # print out the clusters
-    if config.DUMP_CLUSTERS and config.COLLECT_LOGS:
+    if config.DUMP_CLUSTERS:
         clusters = []
         for human in hd.values():
             clusters.append(dict(human.clusters.clusters))
         json.dump(clusters, open(config.CLUSTER_PATH, 'w'))
-    print(f"{current_day} took {time.time() - risk_pred_start}")
-    return humans, start_pkl
-
+    return humans

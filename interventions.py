@@ -1,6 +1,7 @@
-from config import RHO, GAMMA, MANUAL_TRACING_P_CONTACT, RISK_TRANSMISSION_PROBA
+from config import RHO, GAMMA, MANUAL_TRACING_P_CONTACT, RISK_TRANSMISSION_PROBA, BIG_NUMBER, USE_INFERENCE_SERVER
 from orderedset import OrderedSet
 import numpy as np
+from models.run import integrated_risk_pred
 
 class BehaviorInterventions(object):
     def __init__(self):
@@ -268,13 +269,18 @@ class Tracing(object):
             self.dont_trace_traced = True
 
         self.propagate_risk_max_depth = max_depth # too slow
-        if self.propagate_risk:
-            self.propage_risk_max_depth = 3
+        if risk_model == "transformer":
+            self.propagate_risk_max_depth = BIG_NUMBER
+            self.propagate_risk = True
+            # self.propagate_symptoms = True
+
+        # if self.propagate_risk:
+        #     self.propage_risk_max_depth = 3
 
     def modify_behavior(self, human):
         if not self.should_modify_behavior:
             return
-            
+
         # FIXME: maybe merge Quarantine in RiskBasedRecommendations with 2 levels
         if self.risk_model in ["manual", "digital"]:
             if human.risk == 1.0:
@@ -328,6 +334,25 @@ class Tracing(object):
             r_score = 2*v_up - v_down
             human.risk = 1.0 - (1.0 - RISK_TRANSMISSION_PROBA) ** (t + 0.5*s + r_score)
 
+        elif self.risk_model == "transformer":
+            pass # risks are computed using the server
+
+    def update_human_risks(self, **kwargs):
+        city = kwargs.get("city")
+
+        if self.risk_model == "transformer":
+            assert USE_INFERENCE_SERVER == True, "can't run transformer without the server..."
+            all_possible_symptoms = kwargs.get("symptoms")
+            port = kwargs.get("port")
+            n_jobs = kwargs.get("n_jobs")
+            data_path = kwargs.get("data_path")
+            city.humans = integrated_risk_pred(city.humans, city.start_time, city.current_day, all_possible_symptoms, port=port, n_jobs=n_jobs, data_path=data_path)
+        else:
+            for human in city.humans:
+                if (human.env.timestamp - human.message_info['receipt']).days >= human.message_info['delay']:
+                    self.compute_risk(human)
+                    human.update_risk_level()
+
     def compute_tracing_delay(self, human):
         pass # FIXME: circualr imports issue; can't import _draw_random_discreet_gaussian
 
@@ -351,4 +376,8 @@ class TestCapacity(CityInterventions):
         pass
 
     def revert_city(self, city):
+        pass
+
+class TransformerTracing(object):
+    def modify_behavior(self, human):
         pass

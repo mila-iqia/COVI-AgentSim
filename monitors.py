@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 import threading
 import zipfile
 from utils import _json_serialize
-
+import numpy as np
 
 class BaseMonitor(object):
 
@@ -41,7 +41,7 @@ class SEIRMonitor(BaseMonitor):
             Projected5 = min(1.0*city.tracker.n_infected_init * 2 ** (n_days/5), len(city.humans))
             Projected10 = min(1.0*city.tracker.n_infected_init * 2 ** (n_days/10), len(city.humans))
             M = city.tracker.mobility[-1]
-            RiskP = city.tracker.risk_precision_daily[-1]
+            prec, _, _ = city.tracker.risk_precision_daily[-1]
             green, blue, orange, red = city.tracker.recommended_levels_daily[-1]
 
             S = city.tracker.s_per_day[-1]
@@ -49,8 +49,9 @@ class SEIRMonitor(BaseMonitor):
             I = city.tracker.i_per_day[-1]
             R = city.tracker.r_per_day[-1]
             T = E + I + R
-            # print(env.timestamp, f"Ro: {R0:5.2f} G:{G:5.2f} S:{S} E:{E} I:{I} R:{R} T:{T} P3:{Projected3:5.2f} M:{M:5.2f} +Test:{P} H:{H} C:{C} RiskP:{RiskP:3.2f}")
-            print(env.timestamp, f"Ro: {R0:2.2f} S:{S} E:{E} I:{I} T:{T} P3:{Projected3:5.2f} M:{M:5.2f} RiskP:{RiskP:3.2f} G:{green} B:{blue} O:{orange} R:{red} ")
+            # print(np.mean([h.risk for h in city.humans]))
+            # print(env.timestamp, f"Ro: {R0:5.2f} G:{G:5.2f} S:{S} E:{E} I:{I} R:{R} T:{T} P3:{Projected3:5.2f} M:{M:5.2f} +Test:{P} H:{H} C:{C} RiskP:{RiskP:3.2f}") RiskP:{RiskP:3.2f}
+            print(env.timestamp, f"Ro: {R0:2.2f} S:{S} E:{E} I:{I} T:{T} P3:{Projected3:5.2f} RiskP:{prec[1][0]:3.2f} M:{M:5.2f} G:{green} B:{blue} O:{orange} R:{red} ")
             # print(city.tracker.recovered_stats)
             self.data.append({
                     'time': env.timestamp,

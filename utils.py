@@ -355,7 +355,7 @@ PREEXISTING_CONDITIONS = OrderedDict([
         ConditionProbability('diabetes', 1, 75, 'a', 0.13),
         ConditionProbability('diabetes', 1, 1000, 'a', 0.179)
     ]),
-    # 'smoker' and 'diabetes' are dependencies of 'heart_disease' so they 
+    # 'smoker' and 'diabetes' are dependencies of 'heart_disease' so they
     # need to be inserted before this position
     ('heart_disease', [
         ConditionProbability('heart_disease', 2, 20, 'a', 0.001),

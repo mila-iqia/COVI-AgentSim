@@ -304,6 +304,7 @@ HYGIENE_EFFECT = 0.2
 
 # TRACKER
 EFFECTIVE_R_WINDOW = 10 # days
+GET_RISK_PREDICTOR_METRICS = True # compute risk but not modify the behavior
 
 # MASK
 MASK_EFFICACY_NORMIE = 0.32
@@ -313,14 +314,15 @@ MASKS_SUPPLY = BIG_NUMBER
 
 ## INTERVENTIONS
 BIG_NUMBER = 10000000
-INTERVENTION_DAY = -1 # <0 no interventions
+INTERVENTION_DAY = 10 # <0 no interventions
 INTERVENTION = "Tracing"
 PERCENT_FOLLOW = 1.0
-P_HAS_APP = 1.0
+P_HAS_APP = 0.5
 
 # TRACING RISK MODEL PARAMETERS  (non-ML)
-RISK_MODEL = "naive" # "naive"  "manual", "digital", "transformer"
-TRACE_SYMPTOMS = False
+# "transformer" has everything has True
+RISK_MODEL = "transformer" # "naive"  "manual", "digital", "transformer"
+TRACE_SYMPTOMS = True
 TRACE_RISK_UPDATE = False
 TRACING_ORDER = 1
 
@@ -328,7 +330,7 @@ TRACING_N_DAYS_HISTORY = 14
 MIN_MESSAGE_PASSING_DISTANCE = 0
 MAX_MESSAGE_PASSING_DISTANCE = 1000 #cm GPS; 10 x 10 m grid everyone is a contact
 
-# first order probabilistic tracing
+# naive tracing
 RISK_TRANSMISSION_PROBA = 0.03
 BASELINE_RISK_VALUE = 0.01
 RISK_MAPPING_FILE = "_data/log_risk_mapping.npy"
@@ -339,15 +341,17 @@ MANUAL_TRACING_DELAY_AVG = 3  # days
 MANUAL_TRACING_DELAY_STD = 0.5  # days
 
 # Inference & Training
-USE_INFERENCE_SERVER = True # "transformer" "naive" (to print the dataset)
+# "transformer" "naive" (to print the dataset)
+COLLECT_TRAINING_DATA = False
+USE_INFERENCE_SERVER = False
+if RISK_MODEL == "transformer" or COLLECT_TRAINING_DATA:
+    USE_INFERENCE_SERVER = True
+
 INFECTIOUSNESS_N_DAYS_HISTORY = 14
 MP_BATCHSIZE = "auto"
 MP_N_JOBS = "1"
 MP_BACKEND = "loky"
-PLOT_RISK = True
-CLUSTER_MESSAGES = True
+CLUSTER_MESSAGES = False
 DUMP_CLUSTERS = False
 CLUSTER_TYPE = "heuristic" # "random", "graph"
-RISK_PLOT_PATH = "output/plots/risk"
 CLUSTER_PATH = "output/clusters.json"
-COLLECT_TRAINING_DATA = True

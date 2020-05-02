@@ -103,7 +103,7 @@ def tune(n_people, simulation_days, seed):
     import matplotlib.pyplot as plt
     # cf.go_offline()
 
-    monitors, tracker = run_simu(n_people=n_people, init_percent_sick=0.02,
+    monitors, tracker = run_simu(n_people=n_people, init_percent_sick=0.01,
                             start_time=datetime.datetime(2020, 2, 28, 0, 0),
                             simulation_days=simulation_days,
                             outfile=None,
@@ -131,6 +131,8 @@ def tune(n_people, simulation_days, seed):
     data['e'] = tracker.e_per_day
     data['i'] = tracker.i_per_day
     data['r'] = tracker.r_per_day
+    data['avg_infectiousness_per_day'] = tracker.avg_infectiousness_per_day
+    data['risk_precision'] = tracker.compute_risk_precision(False)
     # data['dist_encounters'] = dict(tracker.dist_encounters)
     # data['time_encounters'] = dict(tracker.time_encounters)
     # data['day_encounters'] = dict(tracker.day_encounters)
@@ -142,15 +144,15 @@ def tune(n_people, simulation_days, seed):
     # data['house_age'] = tracker.house_age
     # data['symptoms'] = dict(tracker.symptoms)
     # data['transition_probability'] = dict(tracker.transition_probability)
-    # #
-    import dill
-    filename = f"tracker_data_n_{n_people}_seed_{seed}_{timenow}.pkl"
-    with open(f"logs/{filename}", 'wb') as f:
-        dill.dump(data, f)
-
-    logfile = os.path.join(f"logs/log_n_{n_people}_seed_{seed}_{timenow}.txt")
-    tracker.write_metrics(logfile)
-
+    #
+    # import dill
+    # filename = f"tracker_data_n_{n_people}_seed_{seed}_{timenow}.pkl"
+    # with open(f"logs/{filename}", 'wb') as f:
+    #     dill.dump(data, f)
+    #
+    # logfile = os.path.join(f"logs/log_n_{n_people}_seed_{seed}_{timenow}.txt")
+    # tracker.write_metrics(logfile)
+    tracker.write_metrics(None)
 
     # fig = x['R'].iplot(asFigure=True, title="R0")
     # fig.write_image("plots/tune/R.png")
@@ -174,12 +176,18 @@ def tune(n_people, simulation_days, seed):
 @click.option('--tracing', help='which tracing method', type=str, default="")
 @click.option('--order', help='trace to which depth?', type=int, default=1)
 @click.option('--symptoms', help='trace symptoms?', type=bool, default=False)
+@click.option('--risk', help='trace risk updates?', type=bool, default=False)
 @click.option('--noise', help='noise', type=float, default=0.5)
-def tracing(n_people, days, tracing, order, symptoms, noise):
+def tracing(n_people, days, tracing, order, symptoms, risk, noise):
     import config
     config.COLLECT_LOGS = False
 
+    # switch off
+    config.COLLECT_TRAINING_DATA = False
+    config.USE_INFERENCE_SERVER = False
+
     if tracing != "":
+
         config.INTERVENTION_DAY = 25 # approx 512 will be infected by then
         config.INTERVENTION = "Tracing"
         config.RISK_MODEL = tracing
@@ -191,22 +199,25 @@ def tracing(n_people, days, tracing, order, symptoms, noise):
             config.P_HAS_APP = noise
 
         #symptoms
-        config.TRACE_SYMPTOMS = True
+        config.TRACE_SYMPTOMS = symptoms
+
+        #risk
+        config.TRACE_SYMPTOMS = risk
 
         # order
         config.TRACING_ORDER = order
-        name = f"{tracing}-s{1*symptoms}-o{order}"
+        name = f"{tracing}-s{1*symptoms}-r{risk}-o{order}"
 
     else:
         # no intervention
         config.INTERVENTION_DAY = -1
         name = "unmitigated"
 
-    monitors, tracker = run_simu(n_people=n_people, init_percent_sick=0.01,
+    monitors, tracker = run_simu(n_people=n_people, init_percent_sick=0.0025,
                         start_time=datetime.datetime(2020, 2, 28, 0, 0),
                         simulation_days=days,
                         outfile=None,
-                        print_progress=True, seed=0, other_monitors=[]
+                        print_progress=True, seed=1234, other_monitors=[]
                         )
 
     timenow = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
@@ -230,6 +241,8 @@ def tracing(n_people, days, tracing, order, symptoms, noise):
     data['e'] = tracker.e_per_day
     data['i'] = tracker.i_per_day
     data['r'] = tracker.r_per_day
+    data['avg_infectiousness_per_day'] = tracker.avg_infectiousness_per_day
+    data['risk_precision'] = tracker.compute_risk_precision(False)
 
     import dill
     timenow = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')

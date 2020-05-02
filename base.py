@@ -243,32 +243,29 @@ class City(simpy.Environment):
             h.parks_preferences = [(compute_distance(h.household, s) + 1e-1) ** -1 for s in self.parks]
 
     def run(self, duration, outfile, start_time, all_possible_symptoms, port, n_jobs):
-        current_day = 0
-        with zipfile.ZipFile(outfile + ".zip", 'r') as zf:
-            start_pkl = zf.namelist()[0]
+        self.current_day = 0
 
         while True:
-            # once per day, for each human
-            for human in self.humans:
-                # human.contact_book.update_book(human)
-                if human.tracing and human.message_info['traced']:
-                    if (human.env.timestamp - human.message_info['receipt']).days >= human.message_info['delay']:
-                        # print(f"{self.tracing_method}: Traced {self}")
-                        human.update_risk(value=True)
 
-            if USE_INFERENCE_SERVER:
-                self.humans, start_pkl = integrated_risk_pred(self.humans, outfile, start_time, current_day, all_possible_symptoms, start_pkl, port=port, n_jobs=n_jobs)
-
-            if INTERVENTION_DAY > 0 and current_day == INTERVENTION_DAY:
+            #
+            if INTERVENTION_DAY >= 0 and self.current_day == INTERVENTION_DAY:
                 self.intervention = get_intervention(INTERVENTION)
                 _ = [h.notify(self.intervention) for h in self.humans]
                 print(self.intervention)
 
-            if COLLECT_TRAINING_DATA and current_day == 0:
+            # update risk every day
+            if isinstance(self.intervention, Tracing):
+                self.intervention.update_human_risks(city=self,
+                                symptoms=all_possible_symptoms, port=port,
+                                n_jobs=n_jobs, data_path=outfile)
+
+            #
+            if (COLLECT_TRAINING_DATA or GET_RISK_PREDICTOR_METRICS) and self.current_day == 0:
                 _ = [h.notify(collect_training_data=True) for h in self.humans]
+                print("naive risk calculation without changing behavior... Humans notified!")
 
             self.tracker.increment_day()
-            current_day += 1
+            self.current_day += 1
 
             # Let the day pass
             yield self.env.timeout(duration / TICK_MINUTE)
@@ -429,8 +426,7 @@ class Event:
     @staticmethod
     def log_encounter(human1, human2, location, duration, distance, infectee, time):
 
-        h_obs_keys   = ['has_app',
-                        'obs_hospitalized', 'obs_in_icu',
+        h_obs_keys   = ['obs_hospitalized', 'obs_in_icu',
                         'obs_lat', 'obs_lon']
 
         h_unobs_keys = ['carefulness', 'viral_load', 'infectiousness',
@@ -625,6 +621,8 @@ class DummyEvent:
 class Contacts(object):
     def __init__(self, has_app):
         self.messages = []
+        self.sent_messages_by_day = defaultdict(list)
+        self.messages_by_day = defaultdict(list)
         self.update_messages = []
         # human --> [[date, counts], ...]
         self.book = {}
@@ -632,10 +630,8 @@ class Contacts(object):
 
     def add(self, **kwargs):
         human = kwargs.get("human")
+        self_human = kwargs.get("self_human")
         timestamp = kwargs.get("timestamp")
-        cur_day = (timestamp - human.env.initial_timestamp).days
-        cur_message = human.cur_message(cur_day)
-        self.messages.append(cur_message)
 
         if human not in self.book:
             self.book[human] = [[timestamp.date(), 1]]
@@ -646,8 +642,8 @@ class Contacts(object):
             self.book[human][-1][1] += 1
         self.update_book(human, timestamp.date())
 
-
-    def update_book(self, human, date=None):
+    def update_book(self, human, date=None, risk_level = None):
+        # keep the history of risk levels (transformers)
         if date is None:
             date = self.book[human][-1][0] # last contact date
 
@@ -667,8 +663,6 @@ class Contacts(object):
                     remove_idx += 1
                 else:
                     break
-            self.messages = self.messages[remove_idx:]
-
 
     def send_message(self, owner, tracing_method, order=1, reason="test", payload=None):
         p_contact = tracing_method.p_contact
@@ -692,7 +686,6 @@ class Contacts(object):
                         t = _draw_random_discreet_gaussian(MANUAL_TRACING_DELAY_AVG, MANUAL_TRACING_DELAY_STD, human.rng)
 
                     total_contacts = sum(map(lambda x:x[1], self.book[human]))
-                    # print(f"{RISK_MODEL}: {owner} --> {human} C:{total_contacts} delay:{t}")
                     human.update_risk(update_messages={'n':total_contacts, 'delay': t, 'order':order, 'reason':reason, 'payload':payload})
                     sent_at = human.env.timestamp + datetime.timedelta(minutes=idx)
                     for i in range(total_contacts):

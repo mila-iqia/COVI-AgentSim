@@ -51,6 +51,7 @@ class Tracker(object):
         self.generation_time_book = {}
         self.n_env_infection = 0
         self.recovered_stats = []
+        self.covid_properties = defaultdict(lambda : [0,0])
 
         # cumulative incidence
         day = self.env.timestamp.strftime("%d %b")
@@ -93,6 +94,8 @@ class Tracker(object):
         self.risk_precision_daily = [self.compute_risk_precision()]
         self.recommended_levels_daily = [[G, B, O, R]]
         self.ei_per_day = []
+        self.risk_values = []
+        self.avg_infectiousness_per_day = []
 
     def summarize_population(self):
         self.n_infected_init = sum([h.is_exposed for h in self.city.humans])
@@ -183,9 +186,14 @@ class Tracker(object):
         M, G, B, O, R = self.compute_mobility()
         self.mobility.append(M)
 
-        #risk models
-        self.risk_precision_daily.append(self.compute_risk_precision())
+        # risk models
+        prec, lift, recall = self.compute_risk_precision(daily=True)
+        self.risk_precision_daily.append((prec,lift, recall))
         self.recommended_levels_daily.append([G, B, O, R])
+        self.risk_values.append([(h.risk, h.is_exposed or h.is_infectious, h.test_result, len(h.symptoms) == 0) for h in self.city.humans])
+
+        #
+        self.avg_infectiousness_per_day.append(np.mean([h.infectiousness for h in self.city.humans]))
 
     def compute_mobility(self):
         M, G, B, O, R = 0, 0, 0, 0, 0
@@ -198,12 +206,49 @@ class Tracker(object):
                     0.20 * (h.rec_level == 2) + 0.05 * (h.rec_level == 3) + 1*(h.rec_level==-1)
         return M, G, B, O, R
 
-    def compute_risk_precision(self):
-        x = [(h.risk, not h.is_susceptible) for h in self.city.humans if h.test_result != "positive"]
-        x = sorted(x, key=lambda y:-y[0])
-        x = x[:math.ceil(0.01*len(x))]
-        x = 1.0*sum(1 for y in x if (y[0] > 0.5 and y[1]))/len(x)
-        return x
+    def compute_risk_precision(self, daily=True, threshold=0.5, until_days=None):
+        if daily:
+            all = [(h.risk, h.is_exposed or h.is_infectious) for h in self.city.humans]
+            no_test = [(h.risk, h.is_exposed or h.is_infectious) for h in self.city.humans if h.test_result != "positive"]
+            no_test_symptoms = [(h.risk, h.is_exposed or h.is_infectious) for h in self.city.humans if h.test_result != "positive" and len(h.symptoms) == 0]
+        else:
+            all = [(x[0],x[1]) for daily_risk_values in self.risk_values[:until_days] for x in daily_risk_values]
+            no_test = [(x[0], x[1]) for daily_risk_values in self.risk_values[:until_days] for x in daily_risk_values if not x[2]]
+            no_test_symptoms = [(x[0], x[1]) for daily_risk_values in self.risk_values[:until_days] for x in daily_risk_values if not x[2] and x[3]]
+
+        top_k = [0.01, 0.03, 0.05, 0.10]
+        total_infected = 1.0*sum(1 for x,y in all if y)
+        all = sorted(all, key=lambda y:-y[0])
+        no_test = sorted(no_test, key=lambda y:-y[0])
+        no_test_symptoms = sorted(no_test_symptoms, key = lambda y:-y[0])
+
+        lift = [[], [], []]
+        top_k_prec = [[],[],[]]
+        recall =[]
+        idx = 0
+        for type in [all, no_test, no_test_symptoms]:
+            for k in top_k:
+                xy = type[:math.ceil(k * len(type))]
+                pred = 1.0*sum(1 for x,y in xy if y)
+                top_k_prec[idx].append(pred/len(xy))
+                lift[idx].append(pred/(k*total_infected))
+            z = sum(1 for x,y in type if y)
+            recall.append(0)
+            if z:
+                recall[-1] = 1.0*sum(1 for x,y in type if y and x > threshold)/z
+            idx += 1
+
+        return top_k_prec, lift, recall
+
+    def track_covid_properties(self, human):
+        n, avg = self.covid_properties['incubation_days']
+        self.covid_properties['incubation_days'] = (n+1, (avg*n + human.incubation_days)/(n+1))
+
+        n, avg = self.covid_properties['recovery_days']
+        self.covid_properties['recovery_days'] = (n+1, (avg*n + human.recovery_days)/(n+1))
+
+        n, avg = self.covid_properties['infectiousness_onset_days']
+        self.covid_properties['infectiousness_onset_days'] = (n+1, (n*avg +human.infectiousness_onset_days)/(n+1))
 
     def track_hospitalization(self, human, type=None):
         self.hospitalization_per_day[-1] += 1
@@ -278,12 +323,6 @@ class Tracker(object):
                 bin = i
 
         self.transition_probability[hour][bin][from_location][to_location] += 1
-
-    def track_initialized_covid_params(self, humans):
-        days = [(h.incubation_days, h.recovery_days, h.infectiousness_onset_days) for h in humans]
-        print("Avg. incubation days", np.mean([x[0] for x in days]))
-        print("Avg. recovery days", np.mean([x[1] for x in days]))
-        print("Avg. infectiousnes onset days", np.mean([x[2] for x in days]))
 
     def track_symptoms(self, human):
         if human.covid_symptoms:
@@ -406,6 +445,11 @@ class Tracker(object):
         log(f"house size distribution\n {self.house_size.describe()}", logfile )
         log(f"Fraction of asymptomatic {self.frac_asymptomatic}", logfile )
 
+        log("######## COVID PROPERTIES #########", logfile)
+        print("Avg. incubation days", self.covid_properties['incubation_days'][1])
+        print("Avg. recovery days", self.covid_properties['recovery_days'][1])
+        print("Avg. infectiousnes onset days", self.covid_properties['infectiousness_onset_days'][1])
+
         log("######## COVID SPREAD #########", logfile)
         x = 1.0*self.n_env_infection/self.n_infectious_contacts if self.n_infectious_contacts else 0.0
         log(f"environmental transmission ratio {x}", logfile )
@@ -433,7 +477,6 @@ class Tracker(object):
         else:
             x = 0.0
         log(f"Symptomatic R0 {x}", logfile )
-
 
         log("******** Transmission Ratios *********", logfile)
         total = sum(self.r_0[x]['infection_count'] for x in ['symptomatic','presymptomatic', 'asymptomatic'])
@@ -496,6 +539,56 @@ class Tracker(object):
         #     v = self.daily_age_group_encounters[bin][1]
         #     log(f"{bin} #avg: {v} %:{100*v/total:5.2f} ", logfile)
         #
+        for until_days in [30, None]:
+            log("******** Risk Precision/Recall *********", logfile)
+            prec, lift, recall = self.compute_risk_precision(daily=False, until_days=until_days)
+            top_k = [0.01, 0.03, 0.05, 0.10]
+            type_str = ["all", "no test", "no test and symptoms"]
+
+            log(f"*** Precision (until days={until_days}) ***", logfile)
+            idx = 0
+            for k_values in zip(*prec):
+                x,y,z= k_values
+                log(f"Top-{100*top_k[idx]:2.2f}% all: {100*x:5.2f}% no_test:{100*y:5.2f}% no_test_and_symptoms: {100*z:5.2f}%", logfile)
+                idx += 1
+
+            log(f"*** Lift (until days={until_days}) ***", logfile)
+            idx = 0
+            for k_values in zip(*lift):
+                x,y,z = k_values
+                log(f"Top-{100*top_k[idx]:2.2f}% all: {x:5.2f} no_test:{y:5.2f} no_test_and_symptoms: {z:5.2f}", logfile)
+                idx += 1
+
+            log(f"*** Recall (until days={until_days}) ***", logfile)
+            x,y,z = recall
+            log(f"all: {100*x:5.2f}% no_test: {100*y:5.2f}% no_test_and_symptoms: {100*z:5.2f}%", logfile)
+
+        log("*** Avg daily precision ***", logfile)
+        prec = [x[0] for x in self.risk_precision_daily]
+        lift = [x[1] for x in self.risk_precision_daily]
+        recall = [x[2] for x in self.risk_precision_daily]
+
+        all = list(zip(*[x[0] for x in prec]))
+        no_test = list(zip(*[x[1] for x in prec]))
+        no_test_symptoms = list(zip(*[x[2] for x in prec]))
+        idx = 0
+        for k in top_k:
+            log(f"Top-{100*top_k[idx]:2.2f}% all: {100*np.mean(all[idx]):5.2f}% no_test:{100*np.mean(no_test[idx]):5.2f}% no_test_and_symptoms: {100*np.mean(no_test_symptoms[idx]):5.2f}%", logfile)
+            idx += 1
+
+        log("*** Avg daily lift ***", logfile)
+        all = list(zip(*[x[0] for x in lift]))
+        no_test = list(zip(*[x[1] for x in lift]))
+        no_test_symptoms = list(zip(*[x[2] for x in lift]))
+        idx = 0
+        for k in top_k:
+            log(f"Top-{100*top_k[idx]:2.2f}% all: {np.mean(all[idx]):5.2f} no_test:{np.mean(no_test[idx]):5.2f}% no_test_and_symptoms: {np.mean(no_test_symptoms[idx]):5.2f}%", logfile)
+            idx += 1
+
+        log("*** Avg. daily recall ***", logfile)
+        x,y,z = zip(*recall)
+        log(f"all: {100*np.mean(x):5.2f}% no_test: {100*np.mean(y):5.2f} no_test_and_symptoms: {100*np.mean(z):5.2f}", logfile)
+
     def plot_metrics(self, dirname):
         import matplotlib.pyplot as plt
         import networkx as nx
