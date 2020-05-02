@@ -1,7 +1,10 @@
-from config import RHO, GAMMA, MANUAL_TRACING_P_CONTACT, RISK_TRANSMISSION_PROBA, BIG_NUMBER, USE_INFERENCE_SERVER
 from orderedset import OrderedSet
 import numpy as np
-from models.run import integrated_risk_pred
+
+from covid19sim.config import RHO, GAMMA, MANUAL_TRACING_P_CONTACT,\
+    RISK_TRANSMISSION_PROBA, BIG_NUMBER, USE_INFERENCE_SERVER
+from covid19sim.models.run import integrated_risk_pred
+
 
 class BehaviorInterventions(object):
     def __init__(self):
@@ -12,6 +15,7 @@ class BehaviorInterventions(object):
 
     def revert_behavior(self, human):
         pass
+
 
 class StayHome(BehaviorInterventions):
 

@@ -1,12 +1,12 @@
 from collections import OrderedDict, namedtuple
-
-import numpy as np
 from scipy.stats import norm, truncnorm, gamma
+from functools import lru_cache
 import datetime
 import math
-from config import *
-from functools import lru_cache
-from interventions import *
+
+from covid19sim.config import *
+from covid19sim.interventions import *
+
 
 SymptomProbability = namedtuple('SymptomProbability', ['name', 'id', 'probabilities'])
 SymptomProbability.__doc__ = '''A symptom probabilities collection given contexts

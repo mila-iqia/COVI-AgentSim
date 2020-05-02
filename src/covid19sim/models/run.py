@@ -1,13 +1,11 @@
 import os
-from datetime import timedelta
-import pickle
 import json
 import numpy as np
 import functools
 from joblib import Parallel, delayed
-import config
-from frozen.inference_client import InferenceClient
-from frozen.utils import encode_message, update_uid, encode_update_message, decode_message
+
+from covid19sim.frozen.inference_client import InferenceClient
+from covid19sim.frozen.utils import update_uid
 
 # load the risk map
 # TODO: load this from config (?)

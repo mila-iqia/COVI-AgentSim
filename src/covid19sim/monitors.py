@@ -1,6 +1,3 @@
-from config import TICK_MINUTE
-from base import City
-from simulator import Human
 from matplotlib import pyplot as plt
 import json
 import pylab as pl
@@ -8,8 +5,12 @@ import pickle
 from datetime import datetime, timedelta
 import threading
 import zipfile
-from utils import _json_serialize
-import numpy as np
+
+from covid19sim.utils import _json_serialize
+from covid19sim.config import TICK_MINUTE
+from covid19sim.base import City
+from covid19sim.simulator import Human
+
 
 class BaseMonitor(object):
 

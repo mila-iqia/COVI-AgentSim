@@ -1,6 +1,6 @@
 import numpy as np
 
-from frozen.utils import decode_message
+from covid19sim.frozen.utils import decode_message
 
 # NOTE: THIS MAP SHOULD ALWAYS MATCH THE NAME/IDS PROVIDED IN utils.py
 PREEXISTING_CONDITIONS_META = {

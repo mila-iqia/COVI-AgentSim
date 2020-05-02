@@ -1,18 +1,14 @@
 import simpy
 import math
-import copy
 import datetime
 import itertools
-import numpy as np
 from collections import defaultdict
-from orderedset import OrderedSet
-import copy
-import zipfile
-from config import *
-from utils import compute_distance, _get_random_area, _draw_random_discreet_gaussian, get_intervention
-from track import Tracker
-from models.run import integrated_risk_pred
-from interventions import *
+
+from covid19sim.config import *
+from covid19sim.utils import compute_distance, _get_random_area, _draw_random_discreet_gaussian, get_intervention
+from covid19sim.track import Tracker
+from covid19sim.interventions import *
+
 
 class Env(simpy.Environment):
 

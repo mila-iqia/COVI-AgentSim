@@ -2,9 +2,12 @@ import pandas as pd
 import numpy as np
 import math
 from collections import defaultdict
-from config import HUMAN_DISTRIBUTION, LOCATION_DISTRIBUTION, INFECTION_RADIUS, INFECTION_DURATION, EFFECTIVE_R_WINDOW
 import networkx as nx
-from utils import log
+
+from covid19sim.config import HUMAN_DISTRIBUTION, LOCATION_DISTRIBUTION, INFECTION_RADIUS, INFECTION_DURATION, \
+    EFFECTIVE_R_WINDOW
+from covid19sim.utils import log
+
 
 def get_nested_dict(nesting):
     if nesting == 1:

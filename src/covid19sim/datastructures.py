@@ -1,4 +1,4 @@
-from . import constants
+import covid19sim.constants as constants
 
 
 class HumanBase:
