@@ -1121,7 +1121,6 @@ class Human(object):
             assert(self.risk_history is not None)
             cur_day = (self.env.timestamp - self.env.initial_timestamp).days
             for day in range(cur_day, TRACING_N_DAYS_HISTORY + cur_day -1):
-                # TODO: think more about this
                 old_risk_level_on_day = _proba_to_risk_level(self.prev_risk_history[day-cur_day])
                 new_risk_level_on_day = _proba_to_risk_level(self.risk_history[day-cur_day+1])
                 if old_risk_level_on_day != new_risk_level_on_day:
@@ -1137,7 +1136,6 @@ class Human(object):
         else:
             new_risk_level = _proba_to_risk_level(self.risk)
             if new_risk_level != self.risk_level:
-                # print(f"{self} changed to {self.risk_level} to {new_risk_level}")
                 if self.tracing_method.propagate_risk:
                     payload = {'change': new_risk_level > self.risk_level, 'magnitude': abs(new_risk_level - self.risk_level) }
                     self.contact_book.send_message(self, self.tracing_method, order=1, reason="risk_update", payload=payload)
