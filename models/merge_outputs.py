@@ -4,6 +4,8 @@ import zipfile
 import argparse
 from tqdm import tqdm
 
+"""This file should be run on the output of the simulator's risk predictions to merge the output day/human pickle files"""
+
 parser = argparse.ArgumentParser(description='Run Risk Models and Plot results')
 parser.add_argument('--data_path', type=str, default="output/data.pkl")
 parser.add_argument('--output_path', type=str, default="output/data.pkl")

@@ -230,8 +230,11 @@ class City(simpy.Environment):
     def events(self):
         return list(itertools.chain(*[h.events for h in self.humans]))
 
-    def pull_events(self):
-        return list(itertools.chain(*[h.pull_events() for h in self.humans]))
+    def events_slice(self, begin, end):
+        return list(itertools.chain(*[h.events_slice(begin, end) for h in self.humans]))
+
+    def pull_events_slice(self, end):
+        return list(itertools.chain(*[h.pull_events_slice(end) for h in self.humans]))
 
     def _compute_preferences(self):
         """ compute preferred distribution of each human for park, stores, etc."""
@@ -265,7 +268,9 @@ class City(simpy.Environment):
             self.tracker.increment_day()
             self.current_day += 1
 
+            # Let the day pass
             yield self.env.timeout(duration / TICK_MINUTE)
+
 
 class Location(simpy.Resource):
 
@@ -617,23 +622,17 @@ class DummyEvent:
 class Contacts(object):
     def __init__(self, has_app):
         self.messages = []
+        self.sent_messages_by_day = defaultdict(list)
         self.messages_by_day = defaultdict(list)
         self.update_messages = []
         # human --> [[date, counts], ...]
         self.book = {}
         self.has_app = has_app
-        self.risk_level_history = []
 
     def add(self, **kwargs):
         human = kwargs.get("human")
         self_human = kwargs.get("self_human")
         timestamp = kwargs.get("timestamp")
-        current_risk = kwargs.get("current_risk")
-        cur_day = (timestamp - human.env.initial_timestamp).days
-        cur_message = human.cur_message(cur_day)
-        if not human.has_app or not self_human.has_app:
-            self.messages.append(cur_message)
-            self.messages_by_day[cur_day].append(cur_message)
 
         if human not in self.book:
             self.book[human] = [[timestamp.date(), 1]]
@@ -646,11 +645,6 @@ class Contacts(object):
 
     def update_book(self, human, date=None, risk_level = None):
         # keep the history of risk levels (transformers)
-        if risk_level:
-            if len(self.risk_level_history) > TRACING_N_DAYS_HISTORY:
-                self.risk_level_history = self.risk_level_history[1:]
-            self.risk_level_history.append(human.risk_level)
-
         if date is None:
             date = self.book[human][-1][0] # last contact date
 
@@ -670,7 +664,6 @@ class Contacts(object):
                     remove_idx += 1
                 else:
                     break
-            self.messages = self.messages[remove_idx:]
 
     def send_message(self, owner, tracing_method, order=1, reason="test", payload=None):
         p_contact = tracing_method.p_contact

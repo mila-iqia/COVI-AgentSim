@@ -5,7 +5,7 @@ from matplotlib import pyplot as plt
 import json
 import pylab as pl
 import pickle
-from datetime import datetime
+from datetime import datetime, timedelta
 import threading
 import zipfile
 from utils import _json_serialize
@@ -72,12 +72,14 @@ class EventMonitor(BaseMonitor):
         self._iothread = threading.Thread()
         self._iothread.start()
 
-
     def run(self, env, city: City):
         while True:
+            # Keep the last 2 days to make sure all events are sent to the
+            # inference server before getting dumped
             self.data = city.events
-            if self.chunk_size and len(self.data) > self.chunk_size:
-                self.data = city.pull_events()
+            if self.chunk_size and len(city.events_slice(datetime.min,
+                                                         env.timestamp - timedelta(days=2))) > self.chunk_size:
+                self.data = city.pull_events_slice(env.timestamp - timedelta(days=2))
                 self.dump()
 
             yield env.timeout(self.f / TICK_MINUTE)

@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from collections import deque
+
 from frozen.clusters import Clusters
 from frozen.utils import create_new_uid, Message, UpdateMessage, encode_message, encode_update_message
 
@@ -56,6 +58,7 @@ class Human(object):
 
         self.age = age
         self.sex = _get_random_sex(self.rng)
+        self.dead = False
         self.preexisting_conditions = _get_preexisting_conditions(self.age, self.sex, self.rng)
 
         age_modifier = 2 if self.age > 40 or self.age < 12 else 2
@@ -158,8 +161,7 @@ class Human(object):
         self.update_messages = []
         self.clusters = Clusters()
         self.tested_positive_contact_count = 0
-        self.rolling_infectiousness_array = []
-        self.infectiousnesses = []
+        self.infectiousnesses = deque([0] * 14, maxlen=14)
         self.uid = create_new_uid(rng)
         self.exposure_message = None
         self.exposure_source = None
@@ -232,13 +234,28 @@ class Human(object):
     def events(self):
         return self._events
 
-    def pull_events(self):
-        if self._events:
-            events = self._events
-            self._events = []
-        else:
-            events = self._events
-        return events
+    def events_slice(self, begin, end):
+        end_i = len(self._events)
+        begin_i = end_i
+        for i, event in enumerate(self._events):
+            if i < begin_i and event['time'] >= begin:
+                begin_i = i
+            elif event['time'] > end:
+                end_i = i
+                break
+
+        return self._events[begin_i:end_i]
+
+    def pull_events_slice(self, end):
+        end_i = len(self._events)
+        for i, event in enumerate(self._events):
+            if event['time'] >= end:
+                end_i = i
+                break
+
+        events_slice, self._events = self._events[:end_i], self._events[end_i:]
+
+        return events_slice
 
     ########### EPI ###########
 
@@ -520,15 +537,15 @@ class Human(object):
         elif sum(x in current_symptoms for x in ["trouble_breathing"]) > 0:
             return 0.3 * (1 + self.carefulness)
 
-        # elif sum(x in current_symptoms for x in ["moderate", "mild", "fever"]) > 0:
-        #     return 0.2
-        #
-        # elif sum(x in current_symptoms for x in ["cough", "fatigue", "gastro", "aches"]) > 0:
-        #     return 0.2
-        #
-        # elif sum(x in current_symptoms for x in ["runny_nose", "loss_of_taste"]) > 0:
-        #     return 0.3
-        #
+        elif sum(x in current_symptoms for x in ["moderate", "mild", "fever"]) > 0:
+            return 0.2
+
+        elif sum(x in current_symptoms for x in ["cough", "fatigue", "gastro", "aches"]) > 0:
+            return 0.2
+
+        elif sum(x in current_symptoms for x in ["runny_nose", "loss_of_taste"]) > 0:
+            return 0.3
+
         return 1.0
 
     def assert_state_changes(self):
@@ -575,12 +592,9 @@ class Human(object):
 
             if self.last_date['run'] != self.env.timestamp.date():
                 self.last_date['run'] = self.env.timestamp.date()
-                self.infectiousnesses.append(self.infectiousness)
-                if len(self.infectiousnesses) > INFECTIOUSNESS_N_DAYS_HISTORY:
-                    self.infectiousnesses.pop(0)
                 self.update_symptoms()
-
                 self.update_risk(symptoms=self.symptoms)
+                self.infectiousnesses.appendleft(self.infectiousness)
                 Event.log_daily(self, self.env.timestamp)
                 city.tracker.track_symptoms(self)
 
@@ -832,6 +846,17 @@ class Human(object):
                 if self.tracing:
                     self.contact_book.add(human=h, timestamp=self.env.timestamp, self_human=self)
                     h.contact_book.add(human=self, timestamp=self.env.timestamp, self_human=h)
+                    cur_day = (self.env.timestamp - self.env.initial_timestamp).days
+                    if self.has_app and h.has_app and (cur_day >= INTERVENTION_DAY):
+                        self.contact_book.messages.append(h.cur_message(cur_day))
+                        h.contact_book.messages.append(self.cur_message(cur_day))
+                        self.contact_book.messages_by_day[cur_day].append(h.cur_message(cur_day))
+                        h.contact_book.messages_by_day[cur_day].append(self.cur_message(cur_day))
+
+                        h.contact_book.sent_messages_by_day[cur_day].append(h.cur_message(cur_day))
+                        self.contact_book.sent_messages_by_day[cur_day].append(self.cur_message(cur_day))
+
+
                 # FIXME: ideally encounter should be here. this will generate a lot of encounters
 
             t_overlap = min(self.leaving_time, getattr(h, "leaving_time", 60)) - max(self.start_time, getattr(h, "start_time", 60))
@@ -1040,7 +1065,7 @@ class Human(object):
             del state['last_date']
             del state['message_info']
             state['messages'] = [encode_message(message) for message in state['contact_book'].messages if message.day == state['contact_book'].messages[-1].day]
-            state['update_messages'] = [encode_update_message(update_message) for update_message in state['contact_book'].update_messages if update_message.day == state['contact_book'].update_messages[-1].day]
+            state['update_messages'] = state['contact_book'].update_messages
             del state['contact_book']
             del state['last_location']
             del state['recommendations_to_follow']
@@ -1116,22 +1141,19 @@ class Human(object):
         if not self.is_removed and self.tracing_method.risk_model == "transformer":
             assert(self.risk_history is not None)
             cur_day = (self.env.timestamp - self.env.initial_timestamp).days
-
             for day in range(cur_day, TRACING_N_DAYS_HISTORY + cur_day -1):
-                # TODO: think more about this
                 old_risk_level_on_day = _proba_to_risk_level(self.prev_risk_history[day-cur_day])
                 new_risk_level_on_day = _proba_to_risk_level(self.risk_history[day-cur_day+1])
                 if old_risk_level_on_day != new_risk_level_on_day:
-
                     self.risk = self.risk_history[day-cur_day+1]
-                    self.risk_level = min(new_risk_level_on_day,15)
-                    for message in self.contact_book.messages_by_day[day-cur_day]:
-                        sent_at = int(message.unobs_id[6:])
-                        if not self.has_app or not self.city.hd[message.unobs_id].has_app:
-                            continue
+                    self.risk_level = min(new_risk_level_on_day, 15)
+                    for message in self.contact_book.messages_by_day[day-1]:
+                        my_old_message = self.contact_book.sent_messages_by_day[day-1][0]
+                        sent_at = int(my_old_message.unobs_id[6:])
                         self.city.hd[message.unobs_id].contact_book.update_messages.append(
-                            self.cur_message_risk_update(day-cur_day, message.uid, message.risk, sent_at))
+                            encode_update_message(self.cur_message_risk_update(my_old_message.day, my_old_message.uid, old_risk_level_on_day, sent_at)))
 
+            self.risk_level = min(_proba_to_risk_level(self.risk_history[0]), 15)
             self.risk = self.risk_history[0]
             new_risk_level = min(_proba_to_risk_level(self.risk), 15)
             if new_risk_level != self.risk_level:
@@ -1140,7 +1162,6 @@ class Human(object):
         else:
             new_risk_level = _proba_to_risk_level(self.risk)
             if new_risk_level != self.risk_level:
-                # print(f"{self} changed to {self.risk_level} to {new_risk_level}")
                 if self.tracing_method.propagate_risk:
                     payload = {'change': new_risk_level > self.risk_level, 'magnitude': abs(new_risk_level - self.risk_level) }
                     self.contact_book.send_message(self, self.tracing_method, order=1, reason="risk_update", payload=payload)

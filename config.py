@@ -314,7 +314,8 @@ MASKS_SUPPLY = BIG_NUMBER
 
 ## INTERVENTIONS
 BIG_NUMBER = 10000000
-INTERVENTION_DAY = 15 # <0 no interventions
+INTERVENTION_DAY = 10 # <0 no interventions
+>>>>>>> develop
 INTERVENTION = "Tracing"
 PERCENT_FOLLOW = 1.0
 P_HAS_APP = 0.5
@@ -351,9 +352,7 @@ INFECTIOUSNESS_N_DAYS_HISTORY = 14
 MP_BATCHSIZE = "auto"
 MP_N_JOBS = "1"
 MP_BACKEND = "loky"
-PLOT_RISK = False
 CLUSTER_MESSAGES = False
 DUMP_CLUSTERS = False
 CLUSTER_TYPE = "heuristic" # "random", "graph"
-RISK_PLOT_PATH = "output/plots/risk"
 CLUSTER_PATH = "output/clusters.json"
