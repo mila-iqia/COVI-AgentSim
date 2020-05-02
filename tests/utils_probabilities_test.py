@@ -11,9 +11,21 @@ class Symptoms(unittest.TestCase):
     def test_symptoms_structure(self):
         s_ids = set()
 
+        # Legacy all_possible_symptoms
+        all_possible_symptoms = ['moderate', 'mild', 'severe', 'extremely-severe', 'fever',
+                                 'chills', 'gastro', 'diarrhea', 'nausea_vomiting', 'fatigue',
+                                 'unusual', 'hard_time_waking_up', 'headache', 'confused',
+                                 'lost_consciousness', 'trouble_breathing', 'sneezing',
+                                 'cough', 'runny_nose', 'aches', 'sore_throat', 'severe_chest_pain',
+                                 'loss_of_taste', 'mild_trouble_breathing', 'light_trouble_breathing',
+                                 'moderate_trouble_breathing',
+                                 'heavy_trouble_breathing']
+
         for s_name, s_prob in SYMPTOMS.items():
             self.assertEqual(s_name, s_prob.name)
             self.assertEqual(s_prob.id, SYMPTOMS_META[s_name])
+            if s_prob.id < len(all_possible_symptoms):
+                self.assertEqual(s_name, all_possible_symptoms[s_prob.id])
 
             self.assertNotIn(s_prob.id, s_ids)
             s_prob_contexts = set(s_prob.probabilities.keys())

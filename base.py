@@ -230,8 +230,11 @@ class City(simpy.Environment):
     def events(self):
         return list(itertools.chain(*[h.events for h in self.humans]))
 
-    def pull_events(self):
-        return list(itertools.chain(*[h.pull_events() for h in self.humans]))
+    def events_slice(self, begin, end):
+        return list(itertools.chain(*[h.events_slice(begin, end) for h in self.humans]))
+
+    def pull_events_slice(self, end):
+        return list(itertools.chain(*[h.pull_events_slice(end) for h in self.humans]))
 
     def _compute_preferences(self):
         """ compute preferred distribution of each human for park, stores, etc."""
@@ -264,7 +267,9 @@ class City(simpy.Environment):
             self.tracker.increment_day()
             self.current_day += 1
 
+            # Let the day pass
             yield self.env.timeout(duration / TICK_MINUTE)
+
 
 class Location(simpy.Resource):
 
