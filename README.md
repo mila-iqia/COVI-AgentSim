@@ -16,7 +16,7 @@ We plan to update the simulator as more and more about COVID-19 will be known.
 
 
 ## Dependencies
-Following `python` packages are required (python>=3.6)
+Following `python` packages are required (python>=3.7)
 ```
 pip install -r requirements.txt
 ```
