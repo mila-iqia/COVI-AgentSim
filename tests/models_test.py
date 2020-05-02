@@ -7,7 +7,7 @@ import unittest
 
 import numpy as np
 
-from run import run_simu
+from covid19sim.run import run_simu
 
 
 class ModelsTest(unittest.TestCase):

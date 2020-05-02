@@ -31,6 +31,7 @@ jobs:
         wget -q --output-document - \
           https://raw.githubusercontent.com/satyaog/covid_p2p_risk_prediction/inference-server/requirements.txt | \
           xargs pip install --
+        pip install -e .
 #     - name: Lint with flake8
 #       run: |
 #         pip install flake8
@@ -40,4 +41,4 @@ jobs:
 #         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Test
       run: |
-        python run_tests.py
+        python tests/run_tests.py

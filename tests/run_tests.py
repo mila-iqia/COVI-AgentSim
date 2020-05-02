@@ -5,10 +5,9 @@ from tempfile import TemporaryDirectory
 # Force COLLECT_LOGS=True
 # Force RISK_MODEL=True
 # Fix RISK_MAPPING_FILE relative path
-import config
+import covid19sim.config as config
 config.COLLECT_LOGS = True
 config.RISK_MODEL = "first order probabilistic tracing"
-config.RISK_MAPPING_FILE = os.path.join(os.path.dirname(__file__), config.RISK_MAPPING_FILE)
 
 
 def start_inference_server(root_dir=None):

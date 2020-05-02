@@ -5,8 +5,8 @@ import unittest
 import zipfile
 from tempfile import NamedTemporaryFile
 
-from run import run_simu
-from base import Event
+from covid19sim.run import run_simu
+from covid19sim.base import Event
 
 class FullUnitTest(unittest.TestCase):
 

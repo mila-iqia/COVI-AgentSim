@@ -1,9 +1,9 @@
 import numpy as np
 import unittest
 
-from utils import PREEXISTING_CONDITIONS
+from covid19sim.utils import PREEXISTING_CONDITIONS
 
-from frozen.helper import conditions_to_np, encode_age, encode_sex, PREEXISTING_CONDITIONS_META
+from covid19sim.frozen.helper import conditions_to_np, encode_age, encode_sex, PREEXISTING_CONDITIONS_META
 
 
 class ModelsHelperTest(unittest.TestCase):

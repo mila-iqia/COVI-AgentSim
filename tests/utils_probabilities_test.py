@@ -2,8 +2,8 @@ import unittest
 
 import numpy as np
 
-from frozen.helper import PREEXISTING_CONDITIONS_META, SYMPTOMS_META
-from utils import _get_covid_progression, _get_cold_progression, _get_flu_progression, \
+from covid19sim.frozen.helper import PREEXISTING_CONDITIONS_META, SYMPTOMS_META
+from covid19sim.utils import _get_covid_progression, _get_cold_progression, _get_flu_progression, \
     _get_preexisting_conditions, PREEXISTING_CONDITIONS, SYMPTOMS, SYMPTOMS_CONTEXTS
 
 

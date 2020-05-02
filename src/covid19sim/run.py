@@ -1,18 +1,10 @@
-import datetime
 import click
-import numpy as np
-import math
-import pickle
 import os
-import sys
-import zipfile
 
-from frozen.helper import SYMPTOMS_META
-from config import TICK_MINUTE
-from simulator import Human
-from base import *
-from utils import log, _draw_random_discreet_gaussian, _get_random_age, _get_random_area
-from monitors import EventMonitor, TimeMonitor, SEIRMonitor
+from covid19sim.frozen.helper import SYMPTOMS_META
+from covid19sim.simulator import Human
+from covid19sim.base import *
+from covid19sim.monitors import EventMonitor, TimeMonitor, SEIRMonitor
 
 
 @click.group()
