@@ -6,7 +6,7 @@ import numpy as np
 import functools
 from joblib import Parallel, delayed
 import config
-from models.inference_client import InferenceClient
+from frozen.inference_client import InferenceClient
 from frozen.utils import encode_message, update_uid, encode_update_message, decode_message
 
 # load the risk map
