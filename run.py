@@ -4,8 +4,10 @@ import numpy as np
 import math
 import pickle
 import os
+import sys
 import zipfile
 
+from frozen.helper import SYMPTOMS_META
 from config import TICK_MINUTE
 from simulator import Human
 from base import *
@@ -22,15 +24,17 @@ def simu():
 @click.option('--n_people', help='population of the city', type=int, default=100)
 @click.option('--init_percent_sick', help='% of population initially sick', type=float, default=0.01)
 @click.option('--simulation_days', help='number of days to run the simulation for', type=int, default=30)
-@click.option('--out_chunk_size', help='number of events per dump in outfile', type=int, default=2500, required=False)
+@click.option('--out_chunk_size', help='minimum number of events per dump in outfile', type=int, default=1, required=False)
 @click.option('--outdir', help='the directory to write data to', type=str, default="output", required=False)
 @click.option('--seed', help='seed for the process', type=int, default=0)
+@click.option('--n_jobs', help='number of parallel procs to query the risk servers with', type=int, default=1)
+@click.option('--port', help='which port should we look for inference servers on', type=int, default=6688)
 def sim(n_people=None,
         init_percent_sick=0,
         start_time=datetime.datetime(2020, 2, 28, 0, 0),
         simulation_days=30,
         outdir=None, out_chunk_size=None,
-        seed=0):
+        seed=0, n_jobs=1, port=6688):
 
     import config
     config.COLLECT_LOGS = True
@@ -50,7 +54,7 @@ def sim(n_people=None,
         simulation_days=simulation_days,
         outfile=outfile, out_chunk_size=out_chunk_size,
         print_progress=True,
-        seed=seed
+        seed=seed, n_jobs=n_jobs, port=port,
     )
     monitors[0].dump()
     monitors[0].join_iothread()
@@ -85,8 +89,9 @@ def base():
 
 @simu.command()
 @click.option('--n_people', help='population of the city', type=int, default=1000)
+@click.option('--simulation_days', help='number of days to run the simulation for', type=int, default=50)
 @click.option('--seed', help='seed for the process', type=int, default=0)
-def tune(n_people, seed):
+def tune(n_people, simulation_days, seed):
     # Force COLLECT_LOGS=False
     import config
     config.COLLECT_LOGS = False
@@ -97,18 +102,58 @@ def tune(n_people, seed):
     # import cufflinks as cf
     import matplotlib.pyplot as plt
     # cf.go_offline()
-    n_people = 1000
-    monitors, tracker = run_simu(n_people=n_people, init_percent_sick=0.01,
+
+    monitors, tracker = run_simu(n_people=n_people, init_percent_sick=0.0025,
                             start_time=datetime.datetime(2020, 2, 28, 0, 0),
-                            simulation_days=30,
+                            simulation_days=simulation_days,
                             outfile=None,
                             print_progress=True, seed=seed, other_monitors=[]
                             )
+
     # stats = monitors[1].data
     # x = pd.DataFrame.from_dict(stats).set_index('time')
     # fig = x[['susceptible', 'exposed', 'infectious', 'removed']].iplot(asFigure=True, title="SEIR")
     # fig.write_image("plots/tune/seir.png")
-    logfile = os.path.join(f"logs/log_n_{n_people}_seed_{seed}_{datetime.datetime.now().strftime('%Y%m%d-%H%M%S')}.txt")
+    timenow = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
+    data = dict()
+    data['intervention_day'] = config.INTERVENTION_DAY
+    data['intervention'] = config.INTERVENTION
+
+    data['expected_mobility'] = tracker.expected_mobility
+    data['mobility'] = tracker.mobility
+    data['n_init_infected'] = tracker.n_infected_init
+    data['risk_precision'] = tracker.risk_precision_daily
+    data['contacts'] = dict(tracker.contacts)
+    data['cases_per_day'] = tracker.cases_per_day
+    data['ei_per_day'] = tracker.ei_per_day
+    data['r_0'] = tracker.r_0
+    data['R'] = tracker.r
+    data['n_humans'] = tracker.n_humans
+    data['s'] = tracker.s_per_day
+    data['e'] = tracker.e_per_day
+    data['i'] = tracker.i_per_day
+    data['r'] = tracker.r_per_day
+    data['avg_infectiousness_per_day'] = tracker.avg_infectiousness_per_day
+    data['risk_precision'] = tracker.compute_risk_precision(False)
+    # data['dist_encounters'] = dict(tracker.dist_encounters)
+    # data['time_encounters'] = dict(tracker.time_encounters)
+    # data['day_encounters'] = dict(tracker.day_encounters)
+    # data['hour_encounters'] = dict(tracker.hour_encounters)
+    # data['daily_age_group_encounters'] = dict(tracker.daily_age_group_encounters)
+    # data['age_distribution'] = tracker.age_distribution
+    # data['sex_distribution'] = tracker.sex_distribution
+    # data['house_size'] = tracker.house_size
+    # data['house_age'] = tracker.house_age
+    # data['symptoms'] = dict(tracker.symptoms)
+    # data['transition_probability'] = dict(tracker.transition_probability)
+    #
+    import dill
+    filename = f"tracker_data_n_{n_people}_seed_{seed}_{timenow}.pkl"
+    with open(f"logs2/{filename}", 'wb') as f:
+        dill.dump(data, f)
+    #
+    logfile = os.path.join(f"logs/log_n_{n_people}_seed_{seed}_{timenow}.txt")
+    tracker.write_metrics(logfile)
     tracker.write_metrics(None)
 
     # fig = x['R'].iplot(asFigure=True, title="R0")
@@ -127,31 +172,107 @@ def tune(n_people, seed):
     #
     # tracker.plot_metrics(dirname="plots/tune")
 
-
 @simu.command()
-def test():
-    import unittest
-    loader = unittest.TestLoader()
-    start_dir = 'tests'
-    suite = loader.discover(start_dir, pattern='*_test.py')
+@click.option('--n_people', help='population of the city', type=int, default=2000)
+@click.option('--days', help='number of days to run the simulation for', type=int, default=60)
+@click.option('--tracing', help='which tracing method', type=str, default="")
+@click.option('--order', help='trace to which depth?', type=int, default=1)
+@click.option('--symptoms', help='trace symptoms?', type=bool, default=False)
+@click.option('--risk', help='trace risk updates?', type=bool, default=False)
+@click.option('--noise', help='noise', type=float, default=0.5)
+def tracing(n_people, days, tracing, order, symptoms, risk, noise):
+    import config
+    config.COLLECT_LOGS = False
 
-    runner = unittest.TextTestRunner()
-    assert runner.run(suite).wasSuccessful()
+    # switch off
+    config.COLLECT_TRAINING_DATA = False
+    config.USE_INFERENCE_SERVER = False
+    config.GET_RISK_PREDICTOR_METRICS = False
 
+    if tracing != "":
 
+        config.INTERVENTION_DAY = 20 # approx 512 will be infected by then
+        config.INTERVENTION = "Tracing"
+        config.RISK_MODEL = tracing
 
-def run_simu(n_people=None, init_percent_sick=0,
+        # noise
+        if tracing == "manual":
+            config.MANUAL_TRACING_NOISE = noise
+        else:
+            config.P_HAS_APP = noise
+
+        #symptoms (not used in risk_model = transformer)
+        config.TRACE_SYMPTOMS = symptoms
+
+        #risk (not used in risk_model = transformer)
+        config.TRACE_SYMPTOMS = risk
+
+        # order (not used in risk_model = transformer)
+        config.TRACING_ORDER = order
+
+        # set filename
+        if tracing != "transformer":
+            name = f"{tracing}-s{1*symptoms}-r{risk}-o{order}"
+        else:
+            name = "transformer"
+
+    else:
+        # no intervention
+        config.INTERVENTION_DAY = -1
+        name = "unmitigated"
+
+    monitors, tracker = run_simu(n_people=n_people, init_percent_sick=0.0025,
+                        start_time=datetime.datetime(2020, 2, 28, 0, 0),
+                        simulation_days=days,
+                        outfile=None,
+                        print_progress=True, seed=1234, other_monitors=[]
+                        )
+
+    timenow = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
+    data = dict()
+    data['tracing'] = tracing
+    data['symptoms'] = symptoms
+    data['order'] = order
+    data['intervention_day'] = config.INTERVENTION_DAY
+    data['noise'] = noise
+
+    data['mobility'] = tracker.mobility
+    data['n_init_infected'] = tracker.n_infected_init
+    data['risk_precision'] = tracker.risk_precision_daily
+    data['contacts'] = dict(tracker.contacts)
+    data['cases_per_day'] = tracker.cases_per_day
+    data['ei_per_day'] = tracker.ei_per_day
+    data['r_0'] = tracker.r_0
+    data['r'] = tracker.r
+    data['n_humans'] = tracker.n_humans
+    data['s'] = tracker.s_per_day
+    data['e'] = tracker.e_per_day
+    data['i'] = tracker.i_per_day
+    data['r'] = tracker.r_per_day
+    data['avg_infectiousness_per_day'] = tracker.avg_infectiousness_per_day
+    data['risk_precision'] = tracker.compute_risk_precision(False)
+
+    import dill
+    timenow = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
+    filename = f"tracing_data_n_{n_people}_{timenow}_{name}.pkl"
+    with open(f"logs/compare/{filename}", 'wb') as f:
+        dill.dump(data, f)
+
+    # logfile = os.path.join(f"logs/log_n_{n_people}_seed_{seed}_{timenow}.txt")
+    # tracker.write_metrics(None)
+
+def run_simu(n_people=None, init_percent_sick=0.0,
              start_time=datetime.datetime(2020, 2, 28, 0, 0),
              simulation_days=10,
              outfile=None, out_chunk_size=None,
-             print_progress=False, seed=0, other_monitors=[]):
+             print_progress=False, seed=0, port=6688, n_jobs=1, other_monitors=[]):
 
     rng = np.random.RandomState(seed)
     env = Env(start_time)
     city_x_range = (0,1000)
     city_y_range = (0,1000)
     city = City(env, n_people, rng, city_x_range, city_y_range, start_time, init_percent_sick, Human)
-    monitors = [EventMonitor(f=120, dest=outfile, chunk_size=out_chunk_size), SEIRMonitor(f=1440)]
+    monitors = [EventMonitor(f=1800, dest=outfile, chunk_size=out_chunk_size), SEIRMonitor(f=1440)]
 
     # run the simulation
     if print_progress:
@@ -160,11 +281,22 @@ def run_simu(n_people=None, init_percent_sick=0,
     if other_monitors:
         monitors += other_monitors
 
+    # run city
+    all_possible_symptoms = [""] * len(SYMPTOMS_META)
+    for k, v in SYMPTOMS_META.items():
+        all_possible_symptoms[v] = k
+    monitors[0].dump()
+    monitors[0].join_iothread()
+    env.process(city.run(1440, outfile, start_time, all_possible_symptoms, port, n_jobs))
+
+    # run humans
     for human in city.humans:
         env.process(human.run(city=city))
 
+    # run monitors
     for m in monitors:
         env.process(m.run(env, city=city))
+
     env.run(until=simulation_days * 24 * 60 / TICK_MINUTE)
 
     return monitors, city.tracker

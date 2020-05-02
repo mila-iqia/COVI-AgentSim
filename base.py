@@ -7,10 +7,12 @@ import numpy as np
 from collections import defaultdict
 from orderedset import OrderedSet
 import copy
-
+import zipfile
 from config import *
-from utils import compute_distance, _get_random_area
+from utils import compute_distance, _get_random_area, _draw_random_discreet_gaussian, get_intervention
 from track import Tracker
+from models.run import integrated_risk_pred
+from interventions import *
 
 class Env(simpy.Environment):
 
@@ -41,8 +43,7 @@ class Env(simpy.Environment):
     def time_of_day(self):
         return self.timestamp.isoformat()
 
-
-class City(object):
+class City(simpy.Environment):
 
     def __init__(self, env, n_people, rng, x_range, y_range, start_time, init_percent_sick, Human):
         self.env = env
@@ -69,7 +70,9 @@ class City(object):
         print("Computing their preferences")
         self._compute_preferences()
         self.tracker = Tracker(env, self)
-        self.tracker.track_initialized_covid_params(self.humans)
+        # self.tracker.track_initialized_covid_params(self.humans)
+
+        self.intervention = None
 
     def create_location(self, specs, type, name, area=None):
         _cls = Location
@@ -158,14 +161,15 @@ class City(object):
 
                 self.humans.append(Human(
                         env=self.env,
+                        city=self,
                         rng=self.rng,
                         name=count_humans,
                         age=age,
                         household=res,
                         workplace=workplace,
                         profession=profession[i],
-                        rho=0.3,
-                        gamma=0.21,
+                        rho=RHO,
+                        gamma=GAMMA,
                         infection_timestamp=self.start_time if self.rng.random() < self.init_percent_sick else None
                         )
                     )
@@ -215,6 +219,9 @@ class City(object):
         for i,house in enumerate(self.households):
             house.area = area[i]
 
+        # this allows for easy O(1) access of humans for message passing
+        self.hd = {human.name: human for human in self.humans}
+
     def log_static_info(self):
         for h in self.humans:
             Event.log_static_info(self, h, self.env.timestamp)
@@ -223,14 +230,46 @@ class City(object):
     def events(self):
         return list(itertools.chain(*[h.events for h in self.humans]))
 
-    def pull_events(self):
-        return list(itertools.chain(*[h.pull_events() for h in self.humans]))
+    def events_slice(self, begin, end):
+        return list(itertools.chain(*[h.events_slice(begin, end) for h in self.humans]))
+
+    def pull_events_slice(self, end):
+        return list(itertools.chain(*[h.pull_events_slice(end) for h in self.humans]))
 
     def _compute_preferences(self):
         """ compute preferred distribution of each human for park, stores, etc."""
         for h in self.humans:
             h.stores_preferences = [(compute_distance(h.household, s) + 1e-1) ** -1 for s in self.stores]
             h.parks_preferences = [(compute_distance(h.household, s) + 1e-1) ** -1 for s in self.parks]
+
+    def run(self, duration, outfile, start_time, all_possible_symptoms, port, n_jobs):
+        self.current_day = 0
+
+        print(f"INTERVENTION_DAY: {INTERVENTION_DAY}")
+        while True:
+
+            #
+            if INTERVENTION_DAY >= 0 and self.current_day == INTERVENTION_DAY:
+                self.intervention = get_intervention(INTERVENTION)
+                _ = [h.notify(self.intervention) for h in self.humans]
+                print(self.intervention)
+
+            # update risk every day
+            if isinstance(self.intervention, Tracing):
+                self.intervention.update_human_risks(city=self,
+                                symptoms=all_possible_symptoms, port=port,
+                                n_jobs=n_jobs, data_path=outfile)
+
+            #
+            # if (COLLECT_TRAINING_DATA or GET_RISK_PREDICTOR_METRICS) and (self.current_day == 0 and INTERVENTION_DAY < 0):
+            #     _ = [h.notify(collect_training_data=True) for h in self.humans]
+            #     print("naive risk calculation without changing behavior... Humans notified!")
+
+            self.tracker.increment_day()
+            self.current_day += 1
+
+            # Let the day pass
+            yield self.env.timeout(duration / TICK_MINUTE)
 
 
 class Location(simpy.Resource):
@@ -259,7 +298,7 @@ class Location(simpy.Resource):
         return any([h.is_infectious for h in self.humans])
 
     def __repr__(self):
-        return f"{self.name} - occ:{len(self.humans)}/{self.capacity} - I:{self.infectious_human()}"
+        return f"{self.name} - occ:{len(self.humans)}/{self.capacity} - I:{self.is_contaminated}"
 
     def add_human(self, human):
         self.humans.add(human)
@@ -372,11 +411,9 @@ class ICU(Location):
         human.obs_in_icu = False
         super().remove_human(human)
 
-
 class Event:
     test = 'test'
     encounter = 'encounter'
-    symptom_start = 'symptom_start'
     contamination = 'contamination'
     recovered = 'recovered'
     static_info = 'static_info'
@@ -385,13 +422,12 @@ class Event:
 
     @staticmethod
     def members():
-        return [Event.test, Event.encounter, Event.symptom_start, Event.contamination, Event.static_info, Event.visit, Event.daily]
+        return [Event.test, Event.encounter, Event.contamination, Event.static_info, Event.visit, Event.daily]
 
     @staticmethod
     def log_encounter(human1, human2, location, duration, distance, infectee, time):
 
-        h_obs_keys   = ['has_app',
-                        'obs_hospitalized', 'obs_in_icu',
+        h_obs_keys   = ['obs_hospitalized', 'obs_in_icu',
                         'obs_lat', 'obs_lon']
 
         h_unobs_keys = ['carefulness', 'viral_load', 'infectiousness',
@@ -469,7 +505,7 @@ class Event:
                 'time': time,
                 'payload': {
                     'observed':{
-                        "reported_symptoms": human.all_reported_symptoms
+                        "reported_symptoms": human.obs_symptoms
                     },
                     'unobserved':{
                         'infectiousness': human.infectiousness,
@@ -564,10 +600,6 @@ class DummyEvent:
         pass
 
     @staticmethod
-    def log_symptom_start(*args, **kwargs):
-        pass
-
-    @staticmethod
     def log_recovery(*args, **kwargs):
         pass
 
@@ -586,3 +618,77 @@ class DummyEvent:
     @staticmethod
     def log_daily(*args, **kwargs):
         pass
+
+class Contacts(object):
+    def __init__(self, has_app):
+        self.messages = []
+        self.sent_messages_by_day = defaultdict(list)
+        self.messages_by_day = defaultdict(list)
+        self.update_messages = []
+        # human --> [[date, counts], ...]
+        self.book = {}
+        self.has_app = has_app
+
+    def add(self, **kwargs):
+        human = kwargs.get("human")
+        self_human = kwargs.get("self_human")
+        timestamp = kwargs.get("timestamp")
+
+        if human not in self.book:
+            self.book[human] = [[timestamp.date(), 1]]
+            return
+        if timestamp.date() != self.book[human][-1][0]:
+            self.book[human].append([timestamp.date(), 1])
+        else:
+            self.book[human][-1][1] += 1
+        self.update_book(human, timestamp.date())
+
+    def update_book(self, human, date=None, risk_level = None):
+        # keep the history of risk levels (transformers)
+        if date is None:
+            date = self.book[human][-1][0] # last contact date
+
+        remove_idx = -1
+        for history in self.book[human]:
+            if (date - history[0]).days > TRACING_N_DAYS_HISTORY:
+                remove_idx += 1
+            else:
+                break
+        self.book[human] = self.book[human][remove_idx:]
+
+        # TODO: this should contain only todays info; clean up history should happen once per day
+        if False:
+            remove_idx = 0
+            for historical_message in self.messages:
+                if (human.env.timestamp - human.env.initial_timestamp).days - historical_message.day > TRACING_N_DAYS_HISTORY:
+                    remove_idx += 1
+                else:
+                    break
+
+    def send_message(self, owner, tracing_method, order=1, reason="test", payload=None):
+        p_contact = tracing_method.p_contact
+        delay = tracing_method.delay
+        app = tracing_method.app
+        today = (owner.env.timestamp - owner.env.initial_timestamp).days
+        if app and not owner.has_app:
+            return
+
+        for idx, human in enumerate(self.book):
+
+            redundant_tracing = human.message_info['traced'] and tracing_method.dont_trace_traced
+            if redundant_tracing: # manual and digital - no effect of new messages
+                continue
+
+            if not app or (app and human.has_app):
+                if human.rng.random() < p_contact:
+                    self.update_book(human)
+                    t = 0
+                    if delay:
+                        t = _draw_random_discreet_gaussian(MANUAL_TRACING_DELAY_AVG, MANUAL_TRACING_DELAY_STD, human.rng)
+
+                    total_contacts = sum(map(lambda x:x[1], self.book[human]))
+                    human.update_risk(update_messages={'n':total_contacts, 'delay': t, 'order':order, 'reason':reason, 'payload':payload})
+                    sent_at = human.env.timestamp + datetime.timedelta(minutes=idx)
+                    for i in range(total_contacts):
+                        # FIXME when we have messages sent hourly with a bucketed set of users sending messages
+                        human.update_messages.append(owner.cur_message_risk_update(today, owner.uid, owner.risk, sent_at))

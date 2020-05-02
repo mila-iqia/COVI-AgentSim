@@ -57,6 +57,8 @@ python run.py test
 @click.option('--out_chunk_size', help='number of events per dump in outfile', type=int, default=2500, required=False)
 @click.option('--outdir', help='the directory to write data to', type=str, default="output", required=False)
 @click.option('--seed', help='seed for the process', type=int, default=0)
+@click.option('--n_jobs', help='number of parallel procs to query the risk servers with', type=int, default=1)
+@click.option('--port', help='which port should we look for inference servers on', type=int, default=6688)
 ```
 
 ### Accessing Simulation Data
