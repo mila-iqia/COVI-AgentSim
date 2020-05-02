@@ -333,7 +333,6 @@ MAX_MESSAGE_PASSING_DISTANCE = 1000 #cm GPS; 10 x 10 m grid everyone is a contac
 # naive tracing
 RISK_TRANSMISSION_PROBA = 0.03
 BASELINE_RISK_VALUE = 0.01
-RISK_MAPPING_FILE = "_data/log_risk_mapping.npy"
 
 # manual tracing
 MANUAL_TRACING_P_CONTACT = 0.50

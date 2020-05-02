@@ -9,7 +9,7 @@ from covid19sim.frozen.utils import update_uid
 
 # load the risk map
 # TODO: load this from config (?)
-risk_map = np.load(f"{os.path.dirname(os.path.realpath(__file__))}/log_risk_mapping.npy")
+risk_map = np.load(f"{os.path.dirname(os.path.realpath(__file__))}/../frozen/log_risk_mapping.npy")
 risk_map[0] = np.log(0.01)
 
 

@@ -1,4 +1,6 @@
 from collections import deque
+import os
+
 from covid19sim.frozen.clusters import Clusters
 from covid19sim.frozen.utils import create_new_uid, Message, UpdateMessage, encode_message, encode_update_message
 from covid19sim.utils import _normalize_scores, _get_random_sex, _get_covid_progression, \
@@ -9,7 +11,8 @@ from covid19sim.base import *
 if COLLECT_LOGS is False:
     Event = DummyEvent
 
-_proba_to_risk_level = proba_to_risk_fn(np.exp(np.load(RISK_MAPPING_FILE)))
+risk_map_file_path = f"{os.path.dirname(os.path.realpath(__file__))}/frozen/log_risk_mapping.npy"
+_proba_to_risk_level = proba_to_risk_fn(np.exp(np.load(risk_map_file_path)))
 
 
 class Visits(object):
