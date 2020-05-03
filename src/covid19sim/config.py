@@ -333,6 +333,10 @@ MAX_MESSAGE_PASSING_DISTANCE = 1000 #cm GPS; 10 x 10 m grid everyone is a contac
 # naive tracing
 RISK_TRANSMISSION_PROBA = 0.03
 BASELINE_RISK_VALUE = 0.01
+LOG_RISK_MAPPING = [-4.60517019, -4.60517019, -1.60895312, -1.0975033, -0.84903347,
+                    -0.62046373, -0.46766153, -0.32220912, -0.22705862, -0.17339979,
+                    -0.12900192, -0.09965976, -0.07484367, -0.05132908, -0.03026495,
+                    -0.01031892,  0.]
 
 # manual tracing
 MANUAL_TRACING_P_CONTACT = 0.50
@@ -342,7 +346,7 @@ MANUAL_TRACING_DELAY_STD = 0.5  # days
 # Inference & Training
 # "transformer" "naive" (to print the dataset)
 COLLECT_TRAINING_DATA = False
-USE_INFERENCE_SERVER = False
+USE_INFERENCE_SERVER = True
 if RISK_MODEL == "transformer" or COLLECT_TRAINING_DATA:
     USE_INFERENCE_SERVER = True
 

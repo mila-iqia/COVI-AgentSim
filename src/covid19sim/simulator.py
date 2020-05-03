@@ -7,12 +7,13 @@ from covid19sim.utils import _normalize_scores, _get_random_sex, _get_covid_prog
      _get_preexisting_conditions, _draw_random_discreet_gaussian, _sample_viral_load_piecewise, \
      _get_cold_progression, _get_flu_progression, _get_allergy_progression, proba_to_risk_fn, _get_get_really_sick
 from covid19sim.base import *
+from covid19sim.config import LOG_RISK_MAPPING
 
 if COLLECT_LOGS is False:
     Event = DummyEvent
 
-risk_map_file_path = f"{os.path.dirname(os.path.realpath(__file__))}/frozen/log_risk_mapping.npy"
-_proba_to_risk_level = proba_to_risk_fn(np.exp(np.load(risk_map_file_path)))
+
+_proba_to_risk_level = proba_to_risk_fn(np.exp(np.array(LOG_RISK_MAPPING)))
 
 
 class Visits(object):
@@ -161,7 +162,7 @@ class Human(object):
         self.update_messages = []
         self.clusters = Clusters()
         self.tested_positive_contact_count = 0
-        self.infectiousnesses = deque([0] * 14, maxlen=14)
+        self.infectiousnesses = []
         self.uid = create_new_uid(rng)
         self.exposure_message = None
         self.exposure_source = None
@@ -594,7 +595,9 @@ class Human(object):
                 self.last_date['run'] = self.env.timestamp.date()
                 self.update_symptoms()
                 self.update_risk(symptoms=self.symptoms)
-                self.infectiousnesses.appendleft(self.infectiousness)
+                self.infectiousnesses.append(self.infectiousness)
+                if len(self.infectiousnesses) > TRACING_N_DAYS_HISTORY:
+                    self.infectiousnesses.pop(-1)
                 Event.log_daily(self, self.env.timestamp)
                 city.tracker.track_symptoms(self)
 
@@ -1179,7 +1182,8 @@ class Human(object):
                     self.risk = 0.0
                 else:
                     self.risk = BASELINE_RISK_VALUE
-                self.update_risk_level()
+                if self.tracing_method.risk_model != "transformer":
+                    self.update_risk_level()
 
             if test_results:
                 if self.test_result == "positive":
@@ -1187,7 +1191,8 @@ class Human(object):
                     self.contact_book.send_message(self, self.tracing_method, order=1, reason="test")
                 elif self.test_result == "negative":
                     self.risk = 0.20
-                self.update_risk_level()
+                if self.tracing_method.risk_model != "transformer":
+                    self.update_risk_level()
 
         if self.tracing_method.risk_model != "transformer":
             if symptoms and self.tracing_method.propagate_symptoms:
