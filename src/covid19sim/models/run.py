@@ -6,11 +6,10 @@ from joblib import Parallel, delayed
 
 from covid19sim.frozen.inference_client import InferenceClient
 from covid19sim.frozen.utils import update_uid
+import covid19sim.config as config
 
 # load the risk map
-# TODO: load this from config (?)
-risk_map = np.load(f"{os.path.dirname(os.path.realpath(__file__))}/../frozen/log_risk_mapping.npy")
-risk_map[0] = np.log(0.01)
+risk_map = np.array(config.LOG_RISK_MAPPING)
 
 
 def query_inference_server(params, **inf_client_kwargs):
