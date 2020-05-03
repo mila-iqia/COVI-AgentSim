@@ -1145,11 +1145,11 @@ class Human(object):
             assert(self.risk_history is not None)
             cur_day = (self.env.timestamp - self.env.initial_timestamp).days
             for day in range(cur_day, TRACING_N_DAYS_HISTORY + cur_day -1):
-                old_risk_level_on_day = _proba_to_risk_level(self.prev_risk_history[day-cur_day])
-                new_risk_level_on_day = _proba_to_risk_level(self.risk_history[day-cur_day+1])
+                old_risk_level_on_day = min(_proba_to_risk_level(self.prev_risk_history[day-cur_day]), 15)
+                new_risk_level_on_day = min(_proba_to_risk_level(self.risk_history[day-cur_day+1]), 15)
                 if old_risk_level_on_day != new_risk_level_on_day:
                     self.risk = self.risk_history[day-cur_day+1]
-                    self.risk_level = min(new_risk_level_on_day, 15)
+                    self.risk_level = new_risk_level_on_day
                     for message in self.contact_book.messages_by_day[day-1]:
                         my_old_message = self.contact_book.sent_messages_by_day[day-1][0]
                         sent_at = int(my_old_message.unobs_id[6:])
