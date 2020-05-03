@@ -162,7 +162,7 @@ class Human(object):
         self.update_messages = []
         self.clusters = Clusters()
         self.tested_positive_contact_count = 0
-        self.infectiousnesses = deque([0] * 14, maxlen=14)
+        self.infectiousnesses = []
         self.uid = create_new_uid(rng)
         self.exposure_message = None
         self.exposure_source = None
@@ -595,7 +595,9 @@ class Human(object):
                 self.last_date['run'] = self.env.timestamp.date()
                 self.update_symptoms()
                 self.update_risk(symptoms=self.symptoms)
-                self.infectiousnesses.appendleft(self.infectiousness)
+                self.infectiousnesses.append(self.infectiousness)
+                if len(self.infectiousnesses) > TRACING_N_DAYS_HISTORY:
+                    self.infectiousnesses.pop(-1)
                 Event.log_daily(self, self.env.timestamp)
                 city.tracker.track_symptoms(self)
 
@@ -1180,7 +1182,8 @@ class Human(object):
                     self.risk = 0.0
                 else:
                     self.risk = BASELINE_RISK_VALUE
-                self.update_risk_level()
+                if self.tracing_method.risk_model != "transformer":
+                    self.update_risk_level()
 
             if test_results:
                 if self.test_result == "positive":
@@ -1188,7 +1191,8 @@ class Human(object):
                     self.contact_book.send_message(self, self.tracing_method, order=1, reason="test")
                 elif self.test_result == "negative":
                     self.risk = 0.20
-                self.update_risk_level()
+                if self.tracing_method.risk_model != "transformer":
+                    self.update_risk_level()
 
         if self.tracing_method.risk_model != "transformer":
             if symptoms and self.tracing_method.propagate_symptoms:

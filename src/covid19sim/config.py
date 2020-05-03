@@ -346,7 +346,7 @@ MANUAL_TRACING_DELAY_STD = 0.5  # days
 # Inference & Training
 # "transformer" "naive" (to print the dataset)
 COLLECT_TRAINING_DATA = False
-USE_INFERENCE_SERVER = False
+USE_INFERENCE_SERVER = True
 if RISK_MODEL == "transformer" or COLLECT_TRAINING_DATA:
     USE_INFERENCE_SERVER = True
 
