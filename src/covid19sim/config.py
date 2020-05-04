@@ -347,8 +347,8 @@ MANUAL_TRACING_DELAY_STD = 0.5  # days
 # Inference & Training
 # "transformer" "naive" (to print the dataset)
 COLLECT_TRAINING_DATA = True
-USE_INFERENCE_SERVER = True
-TRANSFORMER_EXP_PATH = "../covid19-p2p-inference-server/exp/DEBUG-0"
+USE_INFERENCE_SERVER = False
+TRANSFORMER_EXP_PATH = "/home/martin/code/covid_p2p_risk_prediction/CTT-SHIPMENT-0"
 
 INFECTIOUSNESS_N_DAYS_HISTORY = 14
 MP_BATCHSIZE = "auto"

@@ -2,7 +2,7 @@ from orderedset import OrderedSet
 import numpy as np
 
 from covid19sim.config import RHO, GAMMA, MANUAL_TRACING_P_CONTACT,\
-    RISK_TRANSMISSION_PROBA, BIG_NUMBER, USE_INFERENCE_SERVER
+    RISK_TRANSMISSION_PROBA, BIG_NUMBER, COLLECT_TRAINING_DATA
 from covid19sim.models.run import integrated_risk_pred
 
 
@@ -369,7 +369,7 @@ class Tracing(object):
                     human.risk_history_map[cur_day] = human.risk
                     human.update_risk_level()
                     human.prev_risk_history_map[cur_day] = human.risk
-            if USE_INFERENCE_SERVER:
+            if COLLECT_TRAINING_DATA:
                 city.humans = integrated_risk_pred(city.humans, city.start_time, city.current_day, city.env.timestamp.hour, all_possible_symptoms, port=port, n_jobs=n_jobs, data_path=data_path)
 
 
