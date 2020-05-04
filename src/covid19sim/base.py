@@ -254,15 +254,16 @@ class City(simpy.Environment):
                 _ = [h.notify(self.intervention) for h in self.humans]
                 print(self.intervention)
 
+
             if isinstance(self.intervention, Tracing):
                 self.intervention.update_human_risks(city=self,
                                 symptoms=all_possible_symptoms, port=port,
                                 n_jobs=n_jobs, data_path=outfile)
 
-
             if (COLLECT_TRAINING_DATA or GET_RISK_PREDICTOR_METRICS) and (self.current_day == 0 and INTERVENTION_DAY < 0):
                 _ = [h.notify(collect_training_data=True) for h in self.humans]
                 print("naive risk calculation without changing behavior... Humans notified!")
+                self.intervention = Tracing(risk_model="naive", max_depth=1, symptoms=False, risk=False, should_modify_behavior=False)
 
             if self.env.timestamp.hour == 0 and self.env.timestamp != self.env.initial_timestamp:
                 self.current_day += 1

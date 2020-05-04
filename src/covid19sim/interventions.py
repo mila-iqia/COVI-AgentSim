@@ -325,7 +325,6 @@ class Tracing(object):
         return t,s,(r_up, v_up, r_down, v_down)
 
     def compute_risk(self, t, s, r):
-
         if self.risk_model in ['manual', 'digital'] and t + s > 0:
             risk = 1.0
 

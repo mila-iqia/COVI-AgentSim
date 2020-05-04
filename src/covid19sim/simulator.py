@@ -139,9 +139,6 @@ class Human(object):
         self.test_recommended = False
 
         # risk prediction
-        self.risk = BASELINE_RISK_VALUE
-        self.start_risk = BASELINE_RISK_VALUE
-        self.risk_level = _proba_to_risk_level(self.risk)
         self.rec_level = -1 # risk-based recommendations
         self.past_N_days_contacts = [OrderedSet()]
         self.n_contacts_tested_positive = defaultdict(int)
@@ -1138,6 +1135,23 @@ class Human(object):
 
     ############################## RISK PREDICTION #################################
 
+    @property
+    def risk(self):
+        cur_day = (self.env.timestamp - self.env.initial_timestamp).days
+        if cur_day in self.risk_history_map:
+            return self.risk_history_map[cur_day]
+        else:
+            return BASELINE_RISK_VALUE
+
+    @property
+    def risk_level(self):
+        return min(_proba_to_risk_level(self.risk), 15)
+
+    @risk.setter
+    def risk(self, val):
+        cur_day = (self.env.timestamp - self.env.initial_timestamp).days
+        self.risk_history_map[cur_day] = val
+
     def update_risk_level(self):
         cur_day = (self.env.timestamp - self.env.initial_timestamp).days
         for day in range(cur_day - TRACING_N_DAYS_HISTORY, cur_day + 1):
@@ -1148,29 +1162,24 @@ class Human(object):
             new_risk_level = min(_proba_to_risk_level(self.risk_history_map[day]), 15)
 
             if old_risk_level != new_risk_level:
-
                 if self.tracing_method.propagate_risk:
                     payload = {'change': new_risk_level > old_risk_level,
                                'magnitude': abs(new_risk_level - old_risk_level)}
                     self.contact_book.send_message(self, self.tracing_method, order=1, reason="risk_update",
                                                    payload=payload)
 
-                self.risk = self.risk_history_map[day]
-                self.risk_level = new_risk_level
-
                 for idx, message in enumerate(self.contact_book.messages_by_day[day]):
                     my_old_message = self.contact_book.sent_messages_by_day[day][idx]
                     sent_at = int(my_old_message.unobs_id[6:])
 
-                    update_message = encode_update_message(UpdateMessage(my_old_message.uid, self.risk_level, my_old_message.risk, my_old_message.day, sent_at, self.name))
+                    update_message = encode_update_message(UpdateMessage(my_old_message.uid, new_risk_level, my_old_message.risk, my_old_message.day, sent_at, self.name))
                     self.city.hd[message.unobs_id].contact_book.update_messages.append(update_message)
                     self.contact_book.sent_messages_by_day[day][idx] = Message(my_old_message.uid, new_risk_level, my_old_message.day, my_old_message.unobs_id)
 
         if cur_day in self.prev_risk_history_map.keys():
-            self.risk_level = min(_proba_to_risk_level(self.risk_history_map[cur_day]), 15)
+            new_risk_level = min(_proba_to_risk_level(self.risk_history_map[cur_day]), 15)
             prev_risk_level = min(_proba_to_risk_level(self.prev_risk_history_map[cur_day]), 15)
-            self.risk = self.risk_history_map[cur_day]
-            if prev_risk_level != self.risk_level:
+            if prev_risk_level != new_risk_level:
                 self.tracing_method.modify_behavior(self)
 
 
@@ -1191,8 +1200,9 @@ class Human(object):
                     self.risk = 1.0
                     self.contact_book.send_message(self, self.tracing_method, order=1, reason="test")
                 elif self.test_result == "negative":
-                    self.risk = 0.20
+                    self.risk = .2
                 self.update_risk_level()
+        import pdb; pdb.set_trace()
 
         if symptoms and self.tracing_method.propagate_symptoms:
             if sum(x in symptoms for x in ['severe', 'trouble_breathing']) > 0 and not self.has_logged_symptoms:
@@ -1210,6 +1220,7 @@ class Human(object):
                 self.message_info['traced'] = True
                 self.message_info['receipt'] = min(self.env.timestamp, self.message_info['receipt'])
                 self.message_info['delay'] = min(update_messages['delay'], self.message_info['delay'])
+
                 order = update_messages['order']
                 propagate_further = order < self.tracing_method.max_depth
 
