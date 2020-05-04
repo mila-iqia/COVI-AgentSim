@@ -304,7 +304,7 @@ HYGIENE_EFFECT = 0.2
 
 # TRACKER
 EFFECTIVE_R_WINDOW = 10 # days
-GET_RISK_PREDICTOR_METRICS = True # compute risk but not modify the behavior
+GET_RISK_PREDICTOR_METRICS = False # compute risk but not modify the behavior
 
 # MASK
 MASK_EFFICACY_NORMIE = 0.32
@@ -314,17 +314,18 @@ MASKS_SUPPLY = BIG_NUMBER
 
 ## INTERVENTIONS
 BIG_NUMBER = 10000000
-INTERVENTION_DAY = 10 # <0 no interventions
+INTERVENTION_DAY = -1 # <0 no interventions
 INTERVENTION = "Tracing"
 PERCENT_FOLLOW = 1.0
 P_HAS_APP = 0.5
 
 # TRACING RISK MODEL PARAMETERS  (non-ML)
 # "transformer" has everything has True
-RISK_MODEL = "transformer" # "naive"  "manual", "digital", "transformer"
+RISK_MODEL = "naive" # "naive"  "manual", "digital", "transformer"
 TRACE_SYMPTOMS = True
 TRACE_RISK_UPDATE = False
 TRACING_ORDER = 1
+UPDATES_PER_DAY = 4
 
 TRACING_N_DAYS_HISTORY = 14
 MIN_MESSAGE_PASSING_DISTANCE = 0
@@ -333,10 +334,9 @@ MAX_MESSAGE_PASSING_DISTANCE = 1000 #cm GPS; 10 x 10 m grid everyone is a contac
 # naive tracing
 RISK_TRANSMISSION_PROBA = 0.03
 BASELINE_RISK_VALUE = 0.01
-LOG_RISK_MAPPING = [-4.60517019, -4.60517019, -1.60895312, -1.0975033, -0.84903347,
-                    -0.62046373, -0.46766153, -0.32220912, -0.22705862, -0.17339979,
-                    -0.12900192, -0.09965976, -0.07484367, -0.05132908, -0.03026495,
-                    -0.01031892,  0.]
+RISK_MAPPING =[0., 0.0625, 0.125, 0.1875, 0.25, 0.3125, 0.375, 0.4375,
+               0.5, 0.5625, 0.625, 0.6875, 0.75, 0.8125, 0.875, 0.9375,
+               1.]
 
 # manual tracing
 MANUAL_TRACING_P_CONTACT = 0.50
@@ -345,10 +345,9 @@ MANUAL_TRACING_DELAY_STD = 0.5  # days
 
 # Inference & Training
 # "transformer" "naive" (to print the dataset)
-COLLECT_TRAINING_DATA = False
-USE_INFERENCE_SERVER = True
-if RISK_MODEL == "transformer" or COLLECT_TRAINING_DATA:
-    USE_INFERENCE_SERVER = True
+COLLECT_TRAINING_DATA = True
+USE_INFERENCE_SERVER = False
+TRANSFORMER_EXP_PATH = "/home/martin/code/covid_p2p_risk_prediction/CTT-SHIPMENT-0"
 
 INFECTIOUSNESS_N_DAYS_HISTORY = 14
 MP_BATCHSIZE = "auto"

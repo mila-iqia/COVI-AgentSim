@@ -8,7 +8,7 @@ from covid19sim.config import *
 from covid19sim.utils import compute_distance, _get_random_area, _draw_random_discreet_gaussian, get_intervention
 from covid19sim.track import Tracker
 from covid19sim.interventions import *
-
+from covid19sim.frozen.utils import update_uid
 
 class Env(simpy.Environment):
 
@@ -243,26 +243,31 @@ class City(simpy.Environment):
 
         print(f"INTERVENTION_DAY: {INTERVENTION_DAY}")
         while True:
+            if self.env.timestamp.hour == 0:
+                # TODO: this is an assumption which will break in reality, instead of updating once per day everyone at the same time, it should be throughout the day
+                for human in self.humans:
+                    human.uid = update_uid(human.uid, human.rng)
 
-            #
             if INTERVENTION_DAY >= 0 and self.current_day == INTERVENTION_DAY:
+
                 self.intervention = get_intervention(INTERVENTION)
                 _ = [h.notify(self.intervention) for h in self.humans]
                 print(self.intervention)
 
-            # update risk every day
+
             if isinstance(self.intervention, Tracing):
                 self.intervention.update_human_risks(city=self,
                                 symptoms=all_possible_symptoms, port=port,
                                 n_jobs=n_jobs, data_path=outfile)
 
-            #
-            # if (COLLECT_TRAINING_DATA or GET_RISK_PREDICTOR_METRICS) and (self.current_day == 0 and INTERVENTION_DAY < 0):
-            #     _ = [h.notify(collect_training_data=True) for h in self.humans]
-            #     print("naive risk calculation without changing behavior... Humans notified!")
+            if (COLLECT_TRAINING_DATA or GET_RISK_PREDICTOR_METRICS) and (self.current_day == 0 and INTERVENTION_DAY < 0):
+                _ = [h.notify(collect_training_data=True) for h in self.humans]
+                print("naive risk calculation without changing behavior... Humans notified!")
+                self.intervention = Tracing(risk_model="naive", max_depth=1, symptoms=False, risk=False, should_modify_behavior=False)
 
-            self.tracker.increment_day()
-            self.current_day += 1
+            if self.env.timestamp.hour == 0 and self.env.timestamp != self.env.initial_timestamp:
+                self.current_day += 1
+                self.tracker.increment_day()
 
             # Let the day pass
             yield self.env.timeout(duration / TICK_MINUTE)
@@ -627,7 +632,6 @@ class Contacts(object):
 
     def add(self, **kwargs):
         human = kwargs.get("human")
-        self_human = kwargs.get("self_human")
         timestamp = kwargs.get("timestamp")
 
         if human not in self.book:
@@ -665,7 +669,6 @@ class Contacts(object):
         p_contact = tracing_method.p_contact
         delay = tracing_method.delay
         app = tracing_method.app
-        today = (owner.env.timestamp - owner.env.initial_timestamp).days
         if app and not owner.has_app:
             return
 
@@ -684,7 +687,3 @@ class Contacts(object):
 
                     total_contacts = sum(map(lambda x:x[1], self.book[human]))
                     human.update_risk(update_messages={'n':total_contacts, 'delay': t, 'order':order, 'reason':reason, 'payload':payload})
-                    sent_at = human.env.timestamp + datetime.timedelta(minutes=idx)
-                    for i in range(total_contacts):
-                        # FIXME when we have messages sent hourly with a bucketed set of users sending messages
-                        human.update_messages.append(owner.cur_message_risk_update(today, owner.uid, owner.risk, sent_at))
