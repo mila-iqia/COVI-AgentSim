@@ -133,7 +133,6 @@ class Clusters:
         for day, cluster_ids in to_purge.items():
             for cluster_id in cluster_ids:
                 del self.clusters_by_day[day][cluster_id]
-        self.update_messages = []
 
     def __len__(self):
         return self.num_messages

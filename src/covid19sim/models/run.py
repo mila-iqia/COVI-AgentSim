@@ -26,7 +26,7 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
 
     # We're going to send a request to the server for each human
     for human in humans:
-        if human.time_slot != time_slot:
+        if time_slot in human.time_slots:
             continue
         log_path = None
         if data_path:
@@ -66,10 +66,16 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
         if result is not None:
             name, risk_history, clusters = result
 
-            if config.RISK_MODEL == "transformer" and hd[name].time_slot == time_slot:
-                hd[name].prev_risk_history = hd[name].risk_history
-                hd[name].risk_history = risk_history
+            if config.RISK_MODEL == "transformer":
+                for i in range(config.TRACING_N_DAYS_HISTORY):
+                    hd[name].risk_history_map[current_day - i] = risk_history[i]
+
                 hd[name].update_risk_level()
+
+                for i in range(config.TRACING_N_DAYS_HISTORY):
+                    hd[name].prev_risk_history_map[current_day - i] = risk_history[i]
+
+                hd[name].last_risk_update = current_day
                 hd[name].contact_book.update_messages = []
                 hd[name].contact_book.messages = []
 
