@@ -1,9 +1,12 @@
-git+git://github.com/inferno-pytorch/speedrun.git@p2p_risk_prediction
-git+git://github.com/nasimrahaman/ctt@master
+speedrun @ git+https://github.com/inferno-pytorch/speedrun.git@p2p_risk_prediction#egg=speedrun
+ctt @ git+https://github.com/nasimrahaman/ctt@master#egg=ctt
 addict
+dill
+joblib
+pyzmq
 scipy
-simpy
 numpy
+simpy
 matplotlib
 ipython
 click
@@ -11,6 +14,3 @@ orderedset
 networkx
 tqdm
 seaborn
-joblib
-dill
-pyzmq
