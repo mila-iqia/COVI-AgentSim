@@ -64,12 +64,12 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
         if result is not None:
             name, risk_history, clusters = result
 
-            for i in range(config.TRACING_N_DAYS_HISTORY):
+            for i in range(exp_config['TRACING_N_DAYS_HISTORY']):
                 hd[name].risk_history_map[current_day - i] = risk_history[i]
 
             hd[name].update_risk_level()
 
-            for i in range(config.TRACING_N_DAYS_HISTORY):
+            for i in range(exp_config['TRACING_N_DAYS_HISTORY']):
                 hd[name].prev_risk_history_map[current_day - i] = risk_history[i]
 
             hd[name].clusters = clusters
@@ -78,9 +78,9 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
             hd[name].contact_book.messages = []
 
     # print out the clusters
-    if config.DUMP_CLUSTERS:
+    if exp_config['DUMP_CLUSTERS']:
         clusters = []
         for human in hd.values():
             clusters.append(dict(human.clusters.clusters))
-        json.dump(clusters, open(cconfig.onfig.CLUSTER_PATH, 'w'))
+        json.dump(clusters, open(exp_config['CLUSTER_PATH'], 'w'))
     return humans
