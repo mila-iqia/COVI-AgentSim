@@ -1,11 +1,21 @@
+import numpy as np
 import unittest
 
-from utils import PREEXISTING_CONDITIONS
+from covid19sim.utils import PREEXISTING_CONDITIONS
 
-from models.helper import conditions_to_np, encode_age, encode_sex
+from covid19sim.frozen.helper import conditions_to_np, encode_age, encode_sex, PREEXISTING_CONDITIONS_META
 
 
 class ModelsHelperTest(unittest.TestCase):
+
+    def test_frozen_names_and_ids(self):
+        self.assertEqual(len(PREEXISTING_CONDITIONS_META), len(PREEXISTING_CONDITIONS))
+        self.assertTrue(np.array_equal(np.unique(np.asarray(list(PREEXISTING_CONDITIONS_META.values()))),
+                                       np.arange(len(PREEXISTING_CONDITIONS_META))))
+        for cond_meta, cond in zip(PREEXISTING_CONDITIONS_META.items(), PREEXISTING_CONDITIONS.items()):
+            self.assertEqual(cond_meta[0], cond[0])
+            self.assertEqual(cond_meta[1], cond[1][0].id)
+
     def test_conditions_to_np(self):
         conditions = [(k, v[0].id) for k, v in PREEXISTING_CONDITIONS.items()]
 

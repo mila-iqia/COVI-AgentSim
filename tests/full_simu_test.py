@@ -1,21 +1,12 @@
 import datetime
-import filecmp
 import hashlib
 import pickle
 import unittest
 import zipfile
 from tempfile import NamedTemporaryFile
 
-from run import run_simu
-
-
-# Force COLLECT_LOGS=True
-import config
-config.COLLECT_LOGS = True
-from base import Event
-import simulator
-simulator.Event = Event
-
+from covid19sim.run import run_simu
+from covid19sim.base import Event
 
 class FullUnitTest(unittest.TestCase):
 

@@ -98,7 +98,7 @@ get `reported_symptoms`.
 `reported_symptoms` and `true_symptoms` are computed using the information in `Log.symptom_start`. We set attributes `all_symptoms`, `reported_symptoms`, and `symptom_start_time` on the Human.
 The first of these contain the entire progression of the illness, starting at `symptom_start_time`.
 - `candidate_encounters` is a rolling set of messages received by the user containing updated risks, noisily predicted de-anonymized user ids, and the day of receipt. The date of receipt should never be more than 14 days in the past.
-Unlike other rolling arrays, the number of elements in `candidate_encounters` will change often as new messages are appended and old messages are purged.
+Unlike other rolling arrays, the number of elements in `candidate_encounters` will change often as new messages are appended and old messages are purged. 
 - `exposure_encounter` is an array of zeros with the same first dimension as `candidate_encounters`. If the Human was infected by an interaction
 with another Human, there is a specific encounter (message) which was responsible for their infection. This happens in roughly 85% of infections.
 The index of the exposure message, if it is in `candidate_encounters`, is set to 1.
@@ -109,7 +109,7 @@ The index of the exposure message, if it is in `candidate_encounters`, is set to
 - `infectious_day`is an integer value between 0 and -13 which represents the day when the person became infectious.
 - `is_recovered` is a binary value indicating whether the Human has had Covid-19 and is now recovered.
 - `recovery_day` is an integer value between 0 and -13 which represents the day when the person recovered. If the person has not recovered, the value is None.
-- `infectiousness` is an array of length 14 which contains floating values between 0 and 1 representing how infectious the person is. 
+- `infectiousness` is an array of length 14 which contains floating values between 0 and 1 representing how infectious the person is. The infectiousness for the current day is at index 0. The infectiousness for yesterday is at index 1, and so on.
 If a person becomes infectious, the value is non-zero for every day until it reaches zero again, after which it does not become non-zero. 
 - `[true_]preexisting_conditions` is a numpy array or encoded precondicitons. A present precondition index will have a value of 1. In order or index, preconditions are: immuno-suppressed, diabetes, heart_disease, COPD, asthma.
 - `[true_]age` is an integer valued at -1 for `undefined` or age of the human, 0 included.
