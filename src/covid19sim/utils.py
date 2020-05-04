@@ -4,7 +4,7 @@ from functools import lru_cache
 import datetime
 import math
 
-from covid19sim.config import *
+from covid19sim.configs.config import *
 from covid19sim.interventions import *
 
 

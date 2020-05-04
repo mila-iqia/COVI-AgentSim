@@ -1,9 +1,9 @@
 from orderedset import OrderedSet
 import numpy as np
 
-from covid19sim.config import RHO, GAMMA, MANUAL_TRACING_P_CONTACT,\
+from covid19sim.configs.config import RHO, GAMMA, MANUAL_TRACING_P_CONTACT,\
     RISK_TRANSMISSION_PROBA
-from covid19sim.constants import BIG_NUMBER
+from covid19sim.configs.constants import BIG_NUMBER
 from covid19sim.models.run import integrated_risk_pred
 
 

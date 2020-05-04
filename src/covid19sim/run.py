@@ -6,8 +6,8 @@ from covid19sim.frozen.helper import SYMPTOMS_META
 from covid19sim.simulator import Human
 from covid19sim.base import *
 from covid19sim.monitors import EventMonitor, TimeMonitor, SEIRMonitor
-from covid19sim import config
-from covid19sim.constants import TICK_MINUTE
+from covid19sim.configs import config
+from covid19sim.configs.constants import TICK_MINUTE
 
 @click.group()
 def simu():
@@ -23,13 +23,13 @@ def simu():
 @click.option('--seed', help='seed for the process', type=int, default=0)
 @click.option('--n_jobs', help='number of parallel procs to query the risk servers with', type=int, default=1)
 @click.option('--port', help='which port should we look for inference servers on', type=int, default=6688)
-@click.option('--exp_config_path', help='where is the configuration file for this experiment', type=str, default="exp_config.yml")
+@click.option('--exp_config_path', help='where is the configuration file for this experiment', type=str, default="configs/exp_config.yml")
 def sim(n_people=None,
         init_percent_sick=0,
         start_time=datetime.datetime(2020, 2, 28, 0, 0),
         simulation_days=30,
         outdir=None, out_chunk_size=None,
-        seed=0, n_jobs=1, port=6688, exp_config_path="exp_config.yml"):
+        seed=0, n_jobs=1, port=6688, exp_config_path="configs/exp_config.yml"):
 
     # Load the experimental configuration
     with open(exp_config_path) as file:
@@ -66,7 +66,7 @@ def sim(n_people=None,
 @click.option('--n_people', help='population of the city', type=int, default=1000)
 @click.option('--simulation_days', help='number of days to run the simulation for', type=int, default=50)
 @click.option('--seed', help='seed for the process', type=int, default=0)
-@click.option('--exp_config_path', help='where is the configuration file for this experiment', type=str, default="exp_config.yml")
+@click.option('--exp_config_path', help='where is the configuration file for this experiment', type=str, default="configs/exp_config.yml")
 def tune(n_people, simulation_days, seed, exp_config_path):
 
     # Load the experimental configuration
@@ -159,7 +159,7 @@ def tune(n_people, simulation_days, seed, exp_config_path):
 @click.option('--symptoms', help='trace symptoms?', type=bool, default=False)
 @click.option('--risk', help='trace risk updates?', type=bool, default=False)
 @click.option('--noise', help='noise', type=float, default=0.5)
-@click.option('--exp_config_path', help='where is the configuration file for this experiment', type=str, default="exp_config.yml")
+@click.option('--exp_config_path', help='where is the configuration file for this experiment', type=str, default="configs/exp_config.yml")
 def tracing(n_people, days, tracing, order, symptoms, risk, noise, exp_config_path):
     with open(exp_config_path) as file:
         exp_config = yaml.load(file, Loader=yaml.FullLoader)

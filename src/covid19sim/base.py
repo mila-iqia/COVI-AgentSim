@@ -4,12 +4,12 @@ import datetime
 import itertools
 from collections import defaultdict
 
-from covid19sim.config import *
+from covid19sim.configs.config import *
 from covid19sim.utils import compute_distance, _get_random_area, _draw_random_discreet_gaussian, get_intervention, proba_to_risk_fn
 from covid19sim.track import Tracker
 from covid19sim.interventions import *
 from covid19sim.frozen.utils import update_uid
-from covid19sim.constants import TICK_MINUTE
+from covid19sim.configs.constants import TICK_MINUTE
 
 class Env(simpy.Environment):
 
