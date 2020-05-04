@@ -8,7 +8,7 @@ from covid19sim.config import *
 from covid19sim.utils import compute_distance, _get_random_area, _draw_random_discreet_gaussian, get_intervention
 from covid19sim.track import Tracker
 from covid19sim.interventions import *
-
+from covid19sim.frozen.utils import update_uid
 
 class Env(simpy.Environment):
 
@@ -243,14 +243,19 @@ class City(simpy.Environment):
 
         print(f"INTERVENTION_DAY: {INTERVENTION_DAY}")
         while True:
+            if self.env.timestamp.hour == 0:
+                # TODO: this is an assumption which will break in reality, instead of updating once per day everyone at the same time, it should be throughout the day
+                for human in self.humans:
+                    human.uid = update_uid(human.uid, human.rng)
 
-            #
             if INTERVENTION_DAY >= 0 and self.current_day == INTERVENTION_DAY:
+
                 self.intervention = get_intervention(INTERVENTION)
                 _ = [h.notify(self.intervention) for h in self.humans]
                 print(self.intervention)
 
             # update risk every day
+
             if isinstance(self.intervention, Tracing):
                 self.intervention.update_human_risks(city=self,
                                 symptoms=all_possible_symptoms, port=port,
@@ -260,9 +265,9 @@ class City(simpy.Environment):
             # if (COLLECT_TRAINING_DATA or GET_RISK_PREDICTOR_METRICS) and (self.current_day == 0 and INTERVENTION_DAY < 0):
             #     _ = [h.notify(collect_training_data=True) for h in self.humans]
             #     print("naive risk calculation without changing behavior... Humans notified!")
-
-            self.tracker.increment_day()
-            self.current_day += 1
+            if self.env.timestamp.hour == 0 and self.env.timestamp != self.env.initial_timestamp:
+                self.current_day += 1
+                self.tracker.increment_day()
 
             # Let the day pass
             yield self.env.timeout(duration / TICK_MINUTE)
@@ -621,6 +626,7 @@ class Contacts(object):
         self.sent_messages_by_day = defaultdict(list)
         self.messages_by_day = defaultdict(list)
         self.update_messages = []
+        self.sent_update_messages_by_day = defaultdict(dict)
         # human --> [[date, counts], ...]
         self.book = {}
         self.has_app = has_app

@@ -343,14 +343,13 @@ class Tracing(object):
 
     def update_human_risks(self, **kwargs):
         city = kwargs.get("city")
-
         if self.risk_model == "transformer":
             assert USE_INFERENCE_SERVER == True, "can't run transformer without the server..."
             all_possible_symptoms = kwargs.get("symptoms")
             port = kwargs.get("port")
             n_jobs = kwargs.get("n_jobs")
             data_path = kwargs.get("data_path")
-            city.humans = integrated_risk_pred(city.humans, city.start_time, city.current_day, all_possible_symptoms, port=port, n_jobs=n_jobs, data_path=data_path)
+            city.humans = integrated_risk_pred(city.humans, city.start_time, city.current_day, city.env.timestamp.hour, all_possible_symptoms, port=port, n_jobs=n_jobs, data_path=data_path)
             for h in city.humans:
                 # same as naive
                 if h.is_removed:

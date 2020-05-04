@@ -154,7 +154,7 @@ class Human(object):
                 "n_risk_mag_increased":defaultdict(lambda :[0]), "n_risk_mag_decreased":defaultdict(lambda :[0])
                 }
         self.risk_history = np.repeat(BASELINE_RISK_VALUE, 14)
-
+        self.prev_risk_history = None
 
         # Message Passing and Risk Prediction
         self.sent_messages = {}
@@ -167,6 +167,8 @@ class Human(object):
         self.exposure_message = None
         self.exposure_source = None
         self.test_time = datetime.datetime.max
+        # create 24 timeslots to do your updating
+        self.time_slot = rng.randint(0, 24)
 
         # symptoms
         self.symptom_start_time = None
@@ -855,7 +857,6 @@ class Human(object):
                         h.contact_book.messages.append(self.cur_message(cur_day))
                         self.contact_book.messages_by_day[cur_day].append(h.cur_message(cur_day))
                         h.contact_book.messages_by_day[cur_day].append(self.cur_message(cur_day))
-
                         h.contact_book.sent_messages_by_day[cur_day].append(h.cur_message(cur_day))
                         self.contact_book.sent_messages_by_day[cur_day].append(self.cur_message(cur_day))
 
@@ -1067,7 +1068,7 @@ class Human(object):
             del state['count_shop']
             del state['last_date']
             del state['message_info']
-            state['messages'] = [encode_message(message) for message in state['contact_book'].messages if message.day == state['contact_book'].messages[-1].day]
+            state['messages'] = [encode_message(message) for message in state['contact_book'].messages]
             state['update_messages'] = state['contact_book'].update_messages
             del state['contact_book']
             del state['last_location']
@@ -1144,17 +1145,19 @@ class Human(object):
         if not self.is_removed and self.tracing_method.risk_model == "transformer":
             assert(self.risk_history is not None)
             cur_day = (self.env.timestamp - self.env.initial_timestamp).days
-            for day in range(cur_day, TRACING_N_DAYS_HISTORY + cur_day -1):
-                old_risk_level_on_day = min(_proba_to_risk_level(self.prev_risk_history[day-cur_day]), 15)
-                new_risk_level_on_day = min(_proba_to_risk_level(self.risk_history[day-cur_day+1]), 15)
+            for day in range(cur_day, TRACING_N_DAYS_HISTORY + cur_day - 1):
+                old_risk_level_on_day = min(_proba_to_risk_level(self.prev_risk_history[day - cur_day]), 15)
+                new_risk_level_on_day = min(_proba_to_risk_level(self.risk_history[day - cur_day + 1]), 15)
                 if old_risk_level_on_day != new_risk_level_on_day:
-                    self.risk = self.risk_history[day-cur_day+1]
+                    self.risk = self.risk_history[day - cur_day + 1]
                     self.risk_level = new_risk_level_on_day
-                    for message in self.contact_book.messages_by_day[day-1]:
-                        my_old_message = self.contact_book.sent_messages_by_day[day-1][0]
+
+                    for idx, message in enumerate(self.contact_book.messages_by_day[day - 1]):
+                        my_old_message = self.contact_book.sent_messages_by_day[day - 1][idx]
                         sent_at = int(my_old_message.unobs_id[6:])
-                        self.city.hd[message.unobs_id].contact_book.update_messages.append(
-                            encode_update_message(self.cur_message_risk_update(my_old_message.day, my_old_message.uid, old_risk_level_on_day, sent_at)))
+                        update_message = encode_update_message(self.cur_message_risk_update(my_old_message.day, my_old_message.uid, my_old_message.risk, sent_at))
+                        self.city.hd[message.unobs_id].contact_book.update_messages.append(update_message)
+                        self.contact_book.sent_messages_by_day[day - 1][idx] = Message(my_old_message.uid, new_risk_level_on_day, my_old_message.day, my_old_message.unobs_id)
 
             self.risk_level = min(_proba_to_risk_level(self.risk_history[0]), 15)
             self.risk = self.risk_history[0]
@@ -1173,7 +1176,7 @@ class Human(object):
                 self.tracing_method.modify_behavior(self)
 
     def update_risk(self, recovery=False, test_results=False, update_messages=None, symptoms=None):
-        if not self.tracing:
+        if not self.tracing or self.tracing_method.risk_model == "transformer":
             return
 
         if self.tracing:
@@ -1182,7 +1185,6 @@ class Human(object):
                     self.risk = 0.0
                 else:
                     self.risk = BASELINE_RISK_VALUE
-                if self.tracing_method.risk_model != "transformer":
                     self.update_risk_level()
 
             if test_results:
@@ -1191,16 +1193,14 @@ class Human(object):
                     self.contact_book.send_message(self, self.tracing_method, order=1, reason="test")
                 elif self.test_result == "negative":
                     self.risk = 0.20
-                if self.tracing_method.risk_model != "transformer":
                     self.update_risk_level()
 
-        if self.tracing_method.risk_model != "transformer":
-            if symptoms and self.tracing_method.propagate_symptoms:
-                if sum(x in symptoms for x in ['severe', 'trouble_breathing']) > 0 and not self.has_logged_symptoms:
-                    self.risk = max(0.8, self.risk)
-                    self.update_risk_level()
-                    self.contact_book.send_message(self, self.tracing_method, order=1, reason="symptoms")
-                    self.has_logged_symptoms = True
+        if symptoms and self.tracing_method.propagate_symptoms:
+            if sum(x in symptoms for x in ['severe', 'trouble_breathing']) > 0 and not self.has_logged_symptoms:
+                self.risk = max(0.8, self.risk)
+                self.update_risk_level()
+                self.contact_book.send_message(self, self.tracing_method, order=1, reason="symptoms")
+                self.has_logged_symptoms = True
 
             # update risk level because of update messages in run() to avoid redundant updates and cascading of message passing
             if (update_messages and

@@ -5,7 +5,6 @@ import functools
 from joblib import Parallel, delayed
 
 from covid19sim.frozen.inference_client import InferenceClient
-from covid19sim.frozen.utils import update_uid
 from covid19sim import config
 
 
@@ -20,16 +19,19 @@ def query_inference_server(params, **inf_client_kwargs):
     return results
 
 
-def integrated_risk_pred(humans, start, current_day, all_possible_symptoms, port=6688, n_jobs=1, data_path=None):
+def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_symptoms, port=6688, n_jobs=1, data_path=None):
     """ Setup and make the calls to the server"""
     hd = humans[0].city.hd
     all_params = []
 
     # We're going to send a request to the server for each human
     for human in humans:
+        if human.time_slot != time_slot:
+            continue
         log_path = None
         if data_path:
             log_path = f'{os.path.dirname(data_path)}/daily_outputs/{current_day}/{human.name[6:]}/'
+
 
         all_params.append({
             "start": start,
@@ -40,7 +42,6 @@ def integrated_risk_pred(humans, start, current_day, all_possible_symptoms, port
             "log_path": log_path,
             "risk_model": config.RISK_MODEL,
         })
-        human.uid = update_uid(human.uid, human.rng)
 
     # Batch the parameters for the function calls
     batch_start_offset = 0
@@ -65,14 +66,14 @@ def integrated_risk_pred(humans, start, current_day, all_possible_symptoms, port
         if result is not None:
             name, risk_history, clusters = result
 
-            if config.RISK_MODEL == "transformer":
-
+            if config.RISK_MODEL == "transformer" and hd[name].time_slot == time_slot:
                 hd[name].prev_risk_history = hd[name].risk_history
                 hd[name].risk_history = risk_history
                 hd[name].update_risk_level()
+                hd[name].contact_book.update_messages = []
+                hd[name].contact_book.messages = []
 
             hd[name].clusters = clusters
-            hd[name].contact_book.update_messages = []
 
     # print out the clusters
     if config.DUMP_CLUSTERS:
