@@ -626,7 +626,6 @@ class Contacts(object):
         self.sent_messages_by_day = defaultdict(list)
         self.messages_by_day = defaultdict(list)
         self.update_messages = []
-        self.sent_update_messages_by_day = defaultdict(dict)
         # human --> [[date, counts], ...]
         self.book = {}
         self.has_app = has_app
