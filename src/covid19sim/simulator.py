@@ -454,9 +454,9 @@ class Human(object):
             return False
 
         # TODO: get observed data on testing / who gets tested when??
-        if any(self.symptoms) and self.rng.rand() > P_TEST:
+        if any(self.symptoms) and self.rng.rand() < P_TEST:
             self.test_type = city.get_available_test()
-            if self.rng.rand() > TEST_TYPES[self.test_type]['P_FALSE_NEGATIVE']:
+            if self.rng.rand() < TEST_TYPES[self.test_type]['P_FALSE_NEGATIVE']:
                 self.test_result =  'negative'
             else:
                 self.test_result =  'positive'
