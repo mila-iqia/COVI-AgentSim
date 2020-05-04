@@ -2,7 +2,7 @@ from orderedset import OrderedSet
 import numpy as np
 
 from covid19sim.config import RHO, GAMMA, MANUAL_TRACING_P_CONTACT,\
-    RISK_TRANSMISSION_PROBA, BIG_NUMBER, USE_INFERENCE_SERVER
+    RISK_TRANSMISSION_PROBA, BIG_NUMBER, COLLECT_TRAINING_DATA
 from covid19sim.models.run import integrated_risk_pred
 
 
@@ -275,7 +275,7 @@ class Tracing(object):
         self.propagate_risk_max_depth = max_depth # too slow
         if risk_model == "transformer":
             self.propagate_risk_max_depth = BIG_NUMBER
-            self.propagate_risk = True
+            self.propagate_risk = False
             # self.propagate_symptoms = True
 
         # if self.propagate_risk:
@@ -324,33 +324,33 @@ class Tracing(object):
 
         return t,s,(r_up, v_up, r_down, v_down)
 
-    def compute_risk(self, human):
-        t,s,r = self.process_messages(human)
-
+    def compute_risk(self, t, s, r):
         if self.risk_model in ['manual', 'digital'] and t + s > 0:
-            human.risk  = 1.0
+            risk = 1.0
 
         elif self.risk_model == "naive":
-            human.risk = 1.0 - (1.0 - RISK_TRANSMISSION_PROBA) ** (t+s)
+            risk = 1.0 - (1.0 - RISK_TRANSMISSION_PROBA) ** (t+s)
 
         elif self.risk_model == "other":
             r_up, v_up, r_down, v_down = r
             r_score = 2*v_up - v_down
-            human.risk = 1.0 - (1.0 - RISK_TRANSMISSION_PROBA) ** (t + 0.5*s + r_score)
+            risk = 1.0 - (1.0 - RISK_TRANSMISSION_PROBA) ** (t + 0.5*s + r_score)
 
-        elif self.risk_model == "transformer":
-            pass # risks are computed using the server
+        return risk
 
     def update_human_risks(self, **kwargs):
         city = kwargs.get("city")
+        all_possible_symptoms = kwargs.get("symptoms")
+        port = kwargs.get("port")
+        n_jobs = kwargs.get("n_jobs")
+        data_path = kwargs.get("data_path")
 
         if self.risk_model == "transformer":
-            assert USE_INFERENCE_SERVER == True, "can't run transformer without the server..."
             all_possible_symptoms = kwargs.get("symptoms")
             port = kwargs.get("port")
             n_jobs = kwargs.get("n_jobs")
             data_path = kwargs.get("data_path")
-            city.humans = integrated_risk_pred(city.humans, city.start_time, city.current_day, all_possible_symptoms, port=port, n_jobs=n_jobs, data_path=data_path)
+            city.humans = integrated_risk_pred(city.humans, city.start_time, city.current_day, city.env.timestamp.hour, all_possible_symptoms, port=port, n_jobs=n_jobs, data_path=data_path)
             for h in city.humans:
                 # same as naive
                 if h.is_removed:
@@ -359,12 +359,20 @@ class Tracing(object):
                     h.risk = 1.0
                 elif h.test_result == "negative":
                     h.risk = 0.2
-
         else:
             for human in city.humans:
-                if (human.env.timestamp - human.message_info['receipt']).days >= human.message_info['delay']:
-                    self.compute_risk(human)
+                cur_day = (human.env.timestamp - human.env.initial_timestamp).days
+                if (human.env.timestamp - human.message_info['receipt']).days >= human.message_info['delay'] or self.risk_model != "manual":
+                    t, s, r = self.process_messages(human)
+                    human.risk = self.compute_risk(t, s, r)
+                    human.risk_history_map[cur_day] = human.risk
+
                     human.update_risk_level()
+                    human.prev_risk_history_map[cur_day] = human.risk
+
+            if COLLECT_TRAINING_DATA:
+                city.humans = integrated_risk_pred(city.humans, city.start_time, city.current_day, city.env.timestamp.hour, all_possible_symptoms, port=port, n_jobs=n_jobs, data_path=data_path)
+
 
     def compute_tracing_delay(self, human):
         pass # FIXME: circualr imports issue; can't import _draw_random_discreet_gaussian

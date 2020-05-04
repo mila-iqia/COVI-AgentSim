@@ -5,6 +5,7 @@ from covid19sim.frozen.helper import SYMPTOMS_META
 from covid19sim.simulator import Human
 from covid19sim.base import *
 from covid19sim.monitors import EventMonitor, TimeMonitor, SEIRMonitor
+from covid19sim import config
 
 
 @click.group()
@@ -28,7 +29,6 @@ def sim(n_people=None,
         outdir=None, out_chunk_size=None,
         seed=0, n_jobs=1, port=6688):
 
-    import config
     config.COLLECT_LOGS = True
 
     if outdir is None:
@@ -60,7 +60,6 @@ def base():
     import pandas as pd
     import cufflinks as cf
     cf.go_offline()
-    import config
     config.COLLECT_LOGS = False
     monitors, tracker = run_simu(
         n_people=100,
@@ -85,11 +84,9 @@ def base():
 @click.option('--seed', help='seed for the process', type=int, default=0)
 def tune(n_people, simulation_days, seed):
     # Force COLLECT_LOGS=False
-    import config
     config.COLLECT_LOGS = False
 
     # extra packages required  - plotly-orca psutil networkx glob seaborn
-    from simulator import Human
     import pandas as pd
     # import cufflinks as cf
     import matplotlib.pyplot as plt
@@ -173,7 +170,6 @@ def tune(n_people, simulation_days, seed):
 @click.option('--risk', help='trace risk updates?', type=bool, default=False)
 @click.option('--noise', help='noise', type=float, default=0.5)
 def tracing(n_people, days, tracing, order, symptoms, risk, noise):
-    import config
     config.COLLECT_LOGS = False
 
     # switch off
@@ -279,7 +275,8 @@ def run_simu(n_people=None, init_percent_sick=0.0,
         all_possible_symptoms[v] = k
     monitors[0].dump()
     monitors[0].join_iothread()
-    env.process(city.run(1440, outfile, start_time, all_possible_symptoms, port, n_jobs))
+    # run this every hour
+    env.process(city.run(1440/24, outfile, start_time, all_possible_symptoms, port, n_jobs))
 
     # run humans
     for human in city.humans:
