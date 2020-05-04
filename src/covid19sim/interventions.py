@@ -363,12 +363,16 @@ class Tracing(object):
         else:
             for human in city.humans:
                 cur_day = (human.env.timestamp - human.env.initial_timestamp).days
-                if (human.env.timestamp - human.message_info['receipt']).days >= human.message_info['delay']:
+                if (human.env.timestamp - human.message_info['receipt']).days >= human.message_info['delay'] or self.risk_model != "manual":
                     t, s, r = self.process_messages(human)
                     human.risk = self.compute_risk(t, s, r)
                     human.risk_history_map[cur_day] = human.risk
+                    print(human.risk)
+
                     human.update_risk_level()
                     human.prev_risk_history_map[cur_day] = human.risk
+                    print(human.risk)
+
             if COLLECT_TRAINING_DATA:
                 city.humans = integrated_risk_pred(city.humans, city.start_time, city.current_day, city.env.timestamp.hour, all_possible_symptoms, port=port, n_jobs=n_jobs, data_path=data_path)
 

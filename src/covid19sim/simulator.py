@@ -1146,7 +1146,9 @@ class Human(object):
 
             old_risk_level = min(_proba_to_risk_level(self.prev_risk_history_map[day]), 15)
             new_risk_level = min(_proba_to_risk_level(self.risk_history_map[day]), 15)
+
             if old_risk_level != new_risk_level:
+
                 if self.tracing_method.propagate_risk:
                     payload = {'change': new_risk_level > old_risk_level,
                                'magnitude': abs(new_risk_level - old_risk_level)}
