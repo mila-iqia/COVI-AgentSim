@@ -26,7 +26,7 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
 
     # We're going to send a request to the server for each human
     for human in humans:
-        if time_slot in human.time_slots:
+        if time_slot not in human.time_slots:
             continue
         log_path = None
         if data_path:

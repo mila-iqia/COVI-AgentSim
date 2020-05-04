@@ -153,9 +153,6 @@ class Human(object):
                 "n_risk_decreased": defaultdict(lambda :[0]), "n_risk_increased":defaultdict(lambda :[0]),
                 "n_risk_mag_increased":defaultdict(lambda :[0]), "n_risk_mag_decreased":defaultdict(lambda :[0])
                 }
-        self.risk_history = np.repeat(BASELINE_RISK_VALUE, 14)
-        self.prev_risk_history = None
-        self.last_risk_update = 0
         self.risk_history_map = dict()
         self.prev_risk_history_map = dict()
 
@@ -1147,11 +1144,11 @@ class Human(object):
 
     def update_risk_level(self):
         if not self.is_removed and self.tracing_method.risk_model == "transformer":
-            assert(self.risk_history is not None)
             cur_day = (self.env.timestamp - self.env.initial_timestamp).days
-            for day in range(cur_day - TRACING_N_DAYS_HISTORY, cur_day):
+            for day in range(cur_day - TRACING_N_DAYS_HISTORY, cur_day + 1):
                 if day not in self.prev_risk_history_map.keys():
                     continue
+
                 old_risk_level = min(_proba_to_risk_level(self.prev_risk_history_map[day]), 15)
                 new_risk_level = min(_proba_to_risk_level(self.risk_history_map[day]), 15)
                 if old_risk_level != new_risk_level:
