@@ -26,6 +26,12 @@ setup(
     zip_safe             = False,
     python_requires      = '>=3.7.4',
     install_requires     = [
+        "speedrun @ git+https://github.com/inferno-pytorch/speedrun.git@p2p_risk_prediction#egg=speedrun",
+        "ctt @ git+https://github.com/nasimrahaman/ctt@master#egg=ctt",
+        "addict",
+        "dill",
+        "joblib",
+        "pyzmq",
         "scipy",
         "numpy",
         "simpy",

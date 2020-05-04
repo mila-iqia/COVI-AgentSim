@@ -4,8 +4,9 @@ import numpy as np
 import functools
 from joblib import Parallel, delayed
 
-from covid19sim.frozen.inference_client import InferenceClient
+from covid19sim.server_utils import InferenceClient, InferenceWorker
 from covid19sim import config
+from ctt.inference.infer import InferenceEngine
 
 
 # load the risk map
@@ -31,8 +32,6 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
         log_path = None
         if data_path:
             log_path = f'{os.path.dirname(data_path)}/daily_outputs/{current_day}/{human.name[6:]}/'
-
-
         all_params.append({
             "start": start,
             "current_day": current_day,
@@ -43,24 +42,24 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
             "risk_model": config.RISK_MODEL,
         })
 
-    # Batch the parameters for the function calls
-    batch_start_offset = 0
-    batch_size = 25  # @@@@ TODO: make this a high-level configurable arg?
-    batched_params = []
-    while batch_start_offset < len(all_params):
-        batch_end_offset = min(batch_start_offset + batch_size, len(all_params))
-        batched_params.append(all_params[batch_start_offset:batch_end_offset])
-        batch_start_offset += batch_size
-    query_func = functools.partial(query_inference_server, target_port=port)
-
-    # make the batched requests to the server
-    with Parallel(n_jobs=n_jobs, batch_size=config.MP_BATCHSIZE, backend=config.MP_BACKEND, verbose=0, prefer="threads") as parallel:
-        batched_results = parallel((delayed(query_func)(params) for params in batched_params))
-
-    # handle the results
-    results = []
-    for b in batched_results:
-        results.extend(b)
+    if config.USE_INFERENCE_SERVER:
+        batch_start_offset = 0
+        batch_size = 25  # @@@@ TODO: make this a high-level configurable arg?
+        batched_params = []
+        while batch_start_offset < len(all_params):
+            batch_end_offset = min(batch_start_offset + batch_size, len(all_params))
+            batched_params.append(all_params[batch_start_offset:batch_end_offset])
+            batch_start_offset += batch_size
+        query_func = functools.partial(query_inference_server, target_port=port)
+        with Parallel(n_jobs=n_jobs, batch_size=config.MP_BATCHSIZE, backend=config.MP_BACKEND, verbose=0, prefer="threads") as parallel:
+            batched_results = parallel((delayed(query_func)(params) for params in batched_params))
+        results = []
+        for b in batched_results:
+            results.extend(b)
+    else:
+        # recreating an engine every time should not be too expensive... right?
+        engine = InferenceEngine(config.TRANSFORMER_EXP_PATH)
+        results = InferenceWorker.process_sample(all_params, engine, config.MP_BACKEND, n_jobs)
 
     for result in results:
         if result is not None:

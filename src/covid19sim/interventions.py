@@ -2,7 +2,7 @@ from orderedset import OrderedSet
 import numpy as np
 
 from covid19sim.config import RHO, GAMMA, MANUAL_TRACING_P_CONTACT,\
-    RISK_TRANSMISSION_PROBA, BIG_NUMBER, USE_INFERENCE_SERVER
+    RISK_TRANSMISSION_PROBA, BIG_NUMBER
 from covid19sim.models.run import integrated_risk_pred
 
 
@@ -344,7 +344,6 @@ class Tracing(object):
     def update_human_risks(self, **kwargs):
         city = kwargs.get("city")
         if self.risk_model == "transformer":
-            assert USE_INFERENCE_SERVER == True, "can't run transformer without the server..."
             all_possible_symptoms = kwargs.get("symptoms")
             port = kwargs.get("port")
             n_jobs = kwargs.get("n_jobs")
