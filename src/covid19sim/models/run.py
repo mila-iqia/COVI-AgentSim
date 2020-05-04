@@ -1,16 +1,11 @@
 import os
 import json
-import numpy as np
 import functools
 from joblib import Parallel, delayed
 
 from covid19sim.server_utils import InferenceClient, InferenceWorker
 from covid19sim import config
 from ctt.inference.infer import InferenceEngine
-
-
-# load the risk map
-risk_map = np.array(config.RISK_MAPPING)
 
 
 def query_inference_server(params, **inf_client_kwargs):
@@ -23,6 +18,7 @@ def query_inference_server(params, **inf_client_kwargs):
 def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_symptoms, port=6688, n_jobs=1, data_path=None):
     """ Setup and make the calls to the server"""
     hd = humans[0].city.hd
+    exp_config = humans[0].env.exp_config
     all_params = []
 
     # We're going to send a request to the server for each human
@@ -37,9 +33,9 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
             "current_day": current_day,
             "all_possible_symptoms": all_possible_symptoms,
             "human": human.__getstate__(),
-            "COLLECT_TRAINING_DATA": config.COLLECT_TRAINING_DATA,
+            "COLLECT_TRAINING_DATA": exp_config['COLLECT_TRAINING_DATA'],
             "log_path": log_path,
-            "risk_model": config.RISK_MODEL,
+            "risk_model": exp_config['RISK_MODEL'],
         })
 
     if config.USE_INFERENCE_SERVER:
@@ -51,17 +47,17 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
             batched_params.append(all_params[batch_start_offset:batch_end_offset])
             batch_start_offset += batch_size
         query_func = functools.partial(query_inference_server, target_port=port)
-        with Parallel(n_jobs=n_jobs, batch_size=config.MP_BATCHSIZE, backend=config.MP_BACKEND, verbose=0, prefer="threads") as parallel:
+        with Parallel(n_jobs=n_jobs, batch_size=exp_config['MP_BATCHSIZE'], backend=exp_config['MP_BACKEND'], verbose=0, prefer="threads") as parallel:
             batched_results = parallel((delayed(query_func)(params) for params in batched_params))
         results = []
         for b in batched_results:
             results.extend(b)
     else:
         # recreating an engine every time should not be too expensive... right?
-        engine = InferenceEngine(config.TRANSFORMER_EXP_PATH)
-        results = InferenceWorker.process_sample(all_params, engine, config.MP_BACKEND, n_jobs)
+        engine = InferenceEngine(exp_config['TRANSFORMER_EXP_PATH'])
+        results = InferenceWorker.process_sample(all_params, engine, exp_config['MP_BACKEND'], n_jobs)
 
-    if config.RISK_MODEL != "transformer":
+    if exp_config['RISK_MODEL'] != "transformer":
         return humans
 
     for result in results:
@@ -86,5 +82,5 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
         clusters = []
         for human in hd.values():
             clusters.append(dict(human.clusters.clusters))
-        json.dump(clusters, open(config.CLUSTER_PATH, 'w'))
+        json.dump(clusters, open(cconfig.onfig.CLUSTER_PATH, 'w'))
     return humans

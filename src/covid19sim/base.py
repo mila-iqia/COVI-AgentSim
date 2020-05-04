@@ -5,16 +5,19 @@ import itertools
 from collections import defaultdict
 
 from covid19sim.config import *
-from covid19sim.utils import compute_distance, _get_random_area, _draw_random_discreet_gaussian, get_intervention
+from covid19sim.utils import compute_distance, _get_random_area, _draw_random_discreet_gaussian, get_intervention, proba_to_risk_fn
 from covid19sim.track import Tracker
 from covid19sim.interventions import *
 from covid19sim.frozen.utils import update_uid
+from covid19sim.constants import TICK_MINUTE
 
 class Env(simpy.Environment):
 
-    def __init__(self, initial_timestamp):
+    def __init__(self, initial_timestamp, exp_config):
         super().__init__()
         self.initial_timestamp = initial_timestamp
+        self.exp_config = exp_config
+        self._proba_to_risk_level = proba_to_risk_fn(np.array(exp_config['RISK_MAPPING']))
 
     def time(self):
         return self.now
@@ -240,7 +243,9 @@ class City(simpy.Environment):
 
     def run(self, duration, outfile, start_time, all_possible_symptoms, port, n_jobs):
         self.current_day = 0
-
+        INTERVENTION_DAY = self.env.exp_config['INTERVENTION_DAY']
+        COLLECT_TRAINING_DATA = self.env.exp_config['COLLECT_TRAINING_DATA']
+        GET_RISK_PREDICTOR_METRICS = self.env.exp_config['GET_RISK_PREDICTOR_METRICS']
         print(f"INTERVENTION_DAY: {INTERVENTION_DAY}")
         while True:
             if self.env.timestamp.hour == 0:
@@ -250,7 +255,11 @@ class City(simpy.Environment):
 
             if INTERVENTION_DAY >= 0 and self.current_day == INTERVENTION_DAY:
 
-                self.intervention = get_intervention(INTERVENTION)
+                self.intervention = get_intervention(self.env.exp_config['INTERVENTION'],
+                                                     self.env.exp_config['RISK_MODEL'],
+                                                     self.env.exp_config['TRACING_ORDER'],
+                                                     self.env.exp_config['TRACE_SYMPTOMS'],
+                                                     self.env.exp_config['TRACE_RISK_UPDATE'])
                 _ = [h.notify(self.intervention) for h in self.humans]
                 print(self.intervention)
 
@@ -263,7 +272,7 @@ class City(simpy.Environment):
             if (COLLECT_TRAINING_DATA or GET_RISK_PREDICTOR_METRICS) and (self.current_day == 0 and INTERVENTION_DAY < 0):
                 _ = [h.notify(collect_training_data=True) for h in self.humans]
                 print("naive risk calculation without changing behavior... Humans notified!")
-                self.intervention = Tracing(risk_model="naive", max_depth=1, symptoms=False, risk=False, should_modify_behavior=False)
+                self.intervention = Tracing(risk_model="naive", max_depth=1, symptoms=False, risk=False, should_modify_behavior=False, COLLECT_TRAINING_DATA=COLLECT_TRAINING_DATA)
 
             if self.env.timestamp.hour == 0 and self.env.timestamp != self.env.initial_timestamp:
                 self.current_day += 1

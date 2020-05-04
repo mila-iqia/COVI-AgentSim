@@ -7,7 +7,7 @@ import threading
 import zipfile
 
 from covid19sim.utils import _json_serialize
-from covid19sim.config import TICK_MINUTE
+from covid19sim.constants import TICK_MINUTE
 from covid19sim.base import City
 from covid19sim.simulator import Human
 

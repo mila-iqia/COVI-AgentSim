@@ -1,0 +1,41 @@
+---
+# SIMULATION PARAMETERS
+COLLECT_LOGS : True
+COLLECT_TRAINING_DATA : True
+
+## INTERVENTIONS
+INTERVENTION_DAY : 10
+INTERVENTION : "Tracing"
+PERCENT_FOLLOW : 1.0
+P_HAS_APP : 0.5
+
+USE_INFERENCE_SERVER : True
+GET_RISK_PREDICTOR_METRICS : True
+RISK_MODEL : "naive" # "naive"  "manual", "digital", "transformer"
+MANUAL_TRACING_NOISE : noise
+
+# PATHS
+TRANSFORMER_EXP_PATH : "/home/martin/code/covid_p2p_risk_prediction/CTT-SHIPMENT-0"
+CLUSTER_PATH : "output/clusters.json"
+
+# Inference & Training
+# "transformer" "naive" (to print the dataset)
+INFECTIOUSNESS_N_DAYS_HISTORY : 14
+MP_BATCHSIZE : "auto"
+MP_N_JOBS : "1"
+MP_BACKEND : "loky"
+CLUSTER_MESSAGES : False
+DUMP_CLUSTERS : False
+CLUSTER_TYPE : "heuristic" # "random", "graph"
+
+
+# TRACING RISK MODEL PARAMETERS  (non-ML)
+# "transformer" has everything has True
+TRACE_SYMPTOMS : True
+TRACE_RISK_UPDATE : False
+TRACING_ORDER : 1
+UPDATES_PER_DAY : 4
+
+RISK_MAPPING : [0., 0.0625, 0.125, 0.1875, 0.25, 0.3125, 0.375, 0.4375,
+               0.5, 0.5625, 0.625, 0.6875, 0.75, 0.8125, 0.875, 0.9375,
+               1.]

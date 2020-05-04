@@ -2,7 +2,8 @@ from orderedset import OrderedSet
 import numpy as np
 
 from covid19sim.config import RHO, GAMMA, MANUAL_TRACING_P_CONTACT,\
-    RISK_TRANSMISSION_PROBA, BIG_NUMBER, COLLECT_TRAINING_DATA
+    RISK_TRANSMISSION_PROBA
+from covid19sim.constants import BIG_NUMBER
 from covid19sim.models.run import integrated_risk_pred
 
 
@@ -246,8 +247,9 @@ class GetTested(BehaviorInterventions):
         return "Get Tested"
 
 class Tracing(object):
-    def __init__(self, risk_model, max_depth = None, symptoms = False, risk = False, should_modify_behavior=True):
+    def __init__(self, risk_model, max_depth=None, symptoms=False, risk=False, should_modify_behavior=True, COLLECT_TRAINING_DATA=None):
         self.risk_model = risk_model
+        self.COLLECT_TRAINING_DATA = COLLECT_TRAINING_DATA
         if risk_model in ['manual', 'digital']:
             self.intervention = Quarantine()
         else:
@@ -370,7 +372,7 @@ class Tracing(object):
                     human.update_risk_level()
                     human.prev_risk_history_map[cur_day] = human.risk
 
-            if COLLECT_TRAINING_DATA:
+            if self.COLLECT_TRAINING_DATA:
                 city.humans = integrated_risk_pred(city.humans, city.start_time, city.current_day, city.env.timestamp.hour, all_possible_symptoms, port=port, n_jobs=n_jobs, data_path=data_path)
 
 
