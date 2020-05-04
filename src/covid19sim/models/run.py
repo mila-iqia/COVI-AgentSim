@@ -10,7 +10,7 @@ from ctt.inference.infer import InferenceEngine
 
 
 # load the risk map
-risk_map = np.array(config.LOG_RISK_MAPPING)
+risk_map = np.array(config.RISK_MAPPING)
 
 
 def query_inference_server(params, **inf_client_kwargs):

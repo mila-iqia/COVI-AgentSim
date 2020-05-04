@@ -366,11 +366,9 @@ class Tracing(object):
                     t, s, r = self.process_messages(human)
                     human.risk = self.compute_risk(t, s, r)
                     human.risk_history_map[cur_day] = human.risk
-                    print(human.risk)
 
                     human.update_risk_level()
                     human.prev_risk_history_map[cur_day] = human.risk
-                    print(human.risk)
 
             if COLLECT_TRAINING_DATA:
                 city.humans = integrated_risk_pred(city.humans, city.start_time, city.current_day, city.env.timestamp.hour, all_possible_symptoms, port=port, n_jobs=n_jobs, data_path=data_path)
