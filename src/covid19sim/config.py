@@ -304,7 +304,7 @@ HYGIENE_EFFECT = 0.2
 
 # TRACKER
 EFFECTIVE_R_WINDOW = 10 # days
-GET_RISK_PREDICTOR_METRICS = True # compute risk but not modify the behavior
+GET_RISK_PREDICTOR_METRICS = False # compute risk but not modify the behavior
 
 # MASK
 MASK_EFFICACY_NORMIE = 0.32
@@ -321,7 +321,7 @@ P_HAS_APP = 0.5
 
 # TRACING RISK MODEL PARAMETERS  (non-ML)
 # "transformer" has everything has True
-RISK_MODEL = "transformer" # "naive"  "manual", "digital", "transformer"
+RISK_MODEL = "naive" # "naive"  "manual", "digital", "transformer"
 TRACE_SYMPTOMS = True
 TRACE_RISK_UPDATE = False
 TRACING_ORDER = 1
@@ -346,10 +346,9 @@ MANUAL_TRACING_DELAY_STD = 0.5  # days
 
 # Inference & Training
 # "transformer" "naive" (to print the dataset)
-COLLECT_TRAINING_DATA = False
-USE_INFERENCE_SERVER = False
+COLLECT_TRAINING_DATA = True
+USE_INFERENCE_SERVER = True
 TRANSFORMER_EXP_PATH = "../covid19-p2p-inference-server/exp/DEBUG-0"
-
 
 INFECTIOUSNESS_N_DAYS_HISTORY = 14
 MP_BATCHSIZE = "auto"

@@ -1086,14 +1086,10 @@ class Human(object):
         # Restore instance attributes.
         self.__dict__.update(state)
 
-
     def cur_message(self, day):
         """creates the current message for this user"""
         message = Message(self.uid, self.risk_level, day, self.name)
         return message
-
-    def cur_message_risk_update(self, day, old_uid, old_risk, sent_at):
-        return UpdateMessage(old_uid, self.risk_level, old_risk, day, sent_at, self.name)
 
     def symptoms_at_time(self, now, symptoms):
         if not symptoms:
@@ -1143,40 +1139,38 @@ class Human(object):
     ############################## RISK PREDICTION #################################
 
     def update_risk_level(self):
-        if not self.is_removed and self.tracing_method.risk_model == "transformer":
-            cur_day = (self.env.timestamp - self.env.initial_timestamp).days
-            for day in range(cur_day - TRACING_N_DAYS_HISTORY, cur_day + 1):
-                if day not in self.prev_risk_history_map.keys():
-                    continue
+        cur_day = (self.env.timestamp - self.env.initial_timestamp).days
+        for day in range(cur_day - TRACING_N_DAYS_HISTORY, cur_day + 1):
+            if day not in self.prev_risk_history_map.keys():
+                continue
 
-                old_risk_level = min(_proba_to_risk_level(self.prev_risk_history_map[day]), 15)
-                new_risk_level = min(_proba_to_risk_level(self.risk_history_map[day]), 15)
-                if old_risk_level != new_risk_level:
-                    self.risk = self.risk_history_map[day]
-                    self.risk_level = new_risk_level
-
-                    for idx, message in enumerate(self.contact_book.messages_by_day[day]):
-                        my_old_message = self.contact_book.sent_messages_by_day[day][idx]
-                        sent_at = int(my_old_message.unobs_id[6:])
-                        update_message = encode_update_message(self.cur_message_risk_update(my_old_message.day, my_old_message.uid, my_old_message.risk, sent_at))
-                        self.city.hd[message.unobs_id].contact_book.update_messages.append(update_message)
-                        self.contact_book.sent_messages_by_day[day][idx] = Message(my_old_message.uid, new_risk_level, my_old_message.day, my_old_message.unobs_id)
-
-            if cur_day in self.prev_risk_history_map.keys():
-                self.risk_level = min(_proba_to_risk_level(self.risk_history_map[cur_day]), 15)
-                prev_risk_level = min(_proba_to_risk_level(self.prev_risk_history_map[cur_day]), 15)
-                self.risk = self.risk_history_map[cur_day]
-                if prev_risk_level != self.risk_level:
-                    self.tracing_method.modify_behavior(self)
-        else:
-            new_risk_level = _proba_to_risk_level(self.risk)
-            if new_risk_level != self.risk_level:
+            old_risk_level = min(_proba_to_risk_level(self.prev_risk_history_map[day]), 15)
+            new_risk_level = min(_proba_to_risk_level(self.risk_history_map[day]), 15)
+            if old_risk_level != new_risk_level:
                 if self.tracing_method.propagate_risk:
-                    payload = {'change': new_risk_level > self.risk_level, 'magnitude': abs(new_risk_level - self.risk_level) }
-                    self.contact_book.send_message(self, self.tracing_method, order=1, reason="risk_update", payload=payload)
+                    payload = {'change': new_risk_level > old_risk_level,
+                               'magnitude': abs(new_risk_level - old_risk_level)}
+                    self.contact_book.send_message(self, self.tracing_method, order=1, reason="risk_update",
+                                                   payload=payload)
+
+                self.risk = self.risk_history_map[day]
                 self.risk_level = new_risk_level
 
+                for idx, message in enumerate(self.contact_book.messages_by_day[day]):
+                    my_old_message = self.contact_book.sent_messages_by_day[day][idx]
+                    sent_at = int(my_old_message.unobs_id[6:])
+
+                    update_message = encode_update_message(UpdateMessage(my_old_message.uid, self.risk_level, my_old_message.risk, my_old_message.day, sent_at, self.name))
+                    self.city.hd[message.unobs_id].contact_book.update_messages.append(update_message)
+                    self.contact_book.sent_messages_by_day[day][idx] = Message(my_old_message.uid, new_risk_level, my_old_message.day, my_old_message.unobs_id)
+
+        if cur_day in self.prev_risk_history_map.keys():
+            self.risk_level = min(_proba_to_risk_level(self.risk_history_map[cur_day]), 15)
+            prev_risk_level = min(_proba_to_risk_level(self.prev_risk_history_map[cur_day]), 15)
+            self.risk = self.risk_history_map[cur_day]
+            if prev_risk_level != self.risk_level:
                 self.tracing_method.modify_behavior(self)
+
 
     def update_risk(self, recovery=False, test_results=False, update_messages=None, symptoms=None):
         if not self.tracing or self.tracing_method.risk_model == "transformer":
@@ -1188,7 +1182,7 @@ class Human(object):
                     self.risk = 0.0
                 else:
                     self.risk = BASELINE_RISK_VALUE
-                    self.update_risk_level()
+                self.update_risk_level()
 
             if test_results:
                 if self.test_result == "positive":
@@ -1196,7 +1190,7 @@ class Human(object):
                     self.contact_book.send_message(self, self.tracing_method, order=1, reason="test")
                 elif self.test_result == "negative":
                     self.risk = 0.20
-                    self.update_risk_level()
+                self.update_risk_level()
 
         if symptoms and self.tracing_method.propagate_symptoms:
             if sum(x in symptoms for x in ['severe', 'trouble_breathing']) > 0 and not self.has_logged_symptoms:

@@ -61,24 +61,25 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
         engine = InferenceEngine(config.TRANSFORMER_EXP_PATH)
         results = InferenceWorker.process_sample(all_params, engine, config.MP_BACKEND, n_jobs)
 
+    if config.RISK_MODEL != "transformer":
+        return humans
+
     for result in results:
         if result is not None:
             name, risk_history, clusters = result
 
-            if config.RISK_MODEL == "transformer":
-                for i in range(config.TRACING_N_DAYS_HISTORY):
-                    hd[name].risk_history_map[current_day - i] = risk_history[i]
+            for i in range(config.TRACING_N_DAYS_HISTORY):
+                hd[name].risk_history_map[current_day - i] = risk_history[i]
 
-                hd[name].update_risk_level()
+            hd[name].update_risk_level()
 
-                for i in range(config.TRACING_N_DAYS_HISTORY):
-                    hd[name].prev_risk_history_map[current_day - i] = risk_history[i]
-
-                hd[name].last_risk_update = current_day
-                hd[name].contact_book.update_messages = []
-                hd[name].contact_book.messages = []
+            for i in range(config.TRACING_N_DAYS_HISTORY):
+                hd[name].prev_risk_history_map[current_day - i] = risk_history[i]
 
             hd[name].clusters = clusters
+            hd[name].last_risk_update = current_day
+            hd[name].contact_book.update_messages = []
+            hd[name].contact_book.messages = []
 
     # print out the clusters
     if config.DUMP_CLUSTERS:
