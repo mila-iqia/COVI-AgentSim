@@ -314,7 +314,7 @@ MASKS_SUPPLY = BIG_NUMBER
 
 ## INTERVENTIONS
 BIG_NUMBER = 10000000
-INTERVENTION_DAY = -1 # <0 no interventions
+INTERVENTION_DAY = 5 # <0 no interventions
 INTERVENTION = "Tracing"
 PERCENT_FOLLOW = 1.0
 P_HAS_APP = 0.5
@@ -347,7 +347,7 @@ MANUAL_TRACING_DELAY_STD = 0.5  # days
 # "transformer" "naive" (to print the dataset)
 COLLECT_TRAINING_DATA = True
 USE_INFERENCE_SERVER = False
-TRANSFORMER_EXP_PATH = "/home/martin/code/covid_p2p_risk_prediction/CTT-SHIPMENT-0"
+TRANSFORMER_EXP_PATH = "/Users/nrahaman/Python/ctt/tmp/CTT-SHIPMENT-0"
 
 INFECTIOUSNESS_N_DAYS_HISTORY = 14
 MP_BATCHSIZE = "auto"

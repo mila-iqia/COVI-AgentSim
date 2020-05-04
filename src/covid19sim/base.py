@@ -434,7 +434,8 @@ class Event:
         h_unobs_keys = ['carefulness', 'viral_load', 'infectiousness',
                         'symptoms', 'is_exposed', 'is_infectious',
                         'infection_timestamp', 'is_really_sick',
-                        'is_extremely_sick', 'sex',  'wearing_mask', 'mask_efficacy']
+                        'is_extremely_sick', 'sex',  'wearing_mask', 'mask_efficacy',
+                        'risk', 'risk_level', 'rec_level']
 
         loc_obs_keys = ['location_type', 'lat', 'lon']
         loc_unobs_keys = ['contamination_probability', 'social_contact_factor']
