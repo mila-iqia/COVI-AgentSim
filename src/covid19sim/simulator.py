@@ -135,7 +135,7 @@ class Human(object):
         self.rec_level = -1 # risk-based recommendations
         self.past_N_days_contacts = [OrderedSet()]
         self.n_contacts_tested_positive = defaultdict(int)
-        self.contact_book = Contacts(self.has_app)
+        self.contact_book = Contacts(self.has_app, self.env.exp_config['TRACING_N_DAYS_HISTORY'])
         self.message_info = { 'traced': False, \
                 'receipt':datetime.datetime.max, \
                 'delay':BIG_NUMBER, 'n_contacts_tested_positive': defaultdict(lambda :[0]),
@@ -589,7 +589,7 @@ class Human(object):
                 self.update_symptoms()
                 self.update_risk(symptoms=self.symptoms)
                 self.infectiousnesses.append(self.infectiousness)
-                if len(self.infectiousnesses) > TRACING_N_DAYS_HISTORY:
+                if len(self.infectiousnesses) > self.env.exp_config['TRACING_N_DAYS_HISTORY']:
                     self.infectiousnesses.pop(-1)
                 Event.log_daily(self, self.env.timestamp)
                 city.tracker.track_symptoms(self)
@@ -599,7 +599,7 @@ class Human(object):
                     for type_contacts in ['n_contacts_tested_positive', 'n_contacts_symptoms', \
                     'n_risk_increased', 'n_risk_decreased', "n_risk_mag_decreased", "n_risk_mag_increased"]:
                         for order in self.message_info[type_contacts]:
-                            if len(self.message_info[type_contacts][order]) > TRACING_N_DAYS_HISTORY:
+                            if len(self.message_info[type_contacts][order]) > self.env.exp_config['TRACING_N_DAYS_HISTORY']:
                                 self.message_info[type_contacts][order] = self.message_info[type_contacts][order][1:]
                             self.message_info[type_contacts][order].append(0)
 
@@ -1147,7 +1147,7 @@ class Human(object):
 
     def update_risk_level(self):
         cur_day = (self.env.timestamp - self.env.initial_timestamp).days
-        for day in range(cur_day - TRACING_N_DAYS_HISTORY, cur_day + 1):
+        for day in range(cur_day - self.env.exp_config['TRACING_N_DAYS_HISTORY'], cur_day + 1):
             if day not in self.prev_risk_history_map.keys():
                 continue
 

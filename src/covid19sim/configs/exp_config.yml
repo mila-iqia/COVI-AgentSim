@@ -19,8 +19,8 @@ TRANSFORMER_EXP_PATH : "/home/martin/code/covid_p2p_risk_prediction/CTT-SHIPMENT
 CLUSTER_PATH : "output/clusters.json"
 
 # Inference & Training
-# "transformer" "naive" (to print the dataset)
 INFECTIOUSNESS_N_DAYS_HISTORY : 14
+TRACING_N_DAYS_HISTORY : 14
 MP_BATCHSIZE : "auto"
 MP_N_JOBS : "1"
 MP_BACKEND : "loky"
@@ -30,7 +30,6 @@ CLUSTER_TYPE : "heuristic" # "random", "graph"
 
 
 # TRACING RISK MODEL PARAMETERS  (non-ML)
-# "transformer" has everything has True
 TRACE_SYMPTOMS : True
 TRACE_RISK_UPDATE : False
 TRACING_ORDER : 1
