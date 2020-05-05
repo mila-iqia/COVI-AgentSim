@@ -306,8 +306,15 @@ class NaiveClusterManager(base.ClusterManagerBase):
                     to_keep.append(cluster)
         self.clusters = to_keep
 
-    def add_messages(self, messages: typing.Iterable[mu.GenericMessageType], cleanup: bool = True):
+    def add_messages(
+            self,
+            messages: typing.Iterable[mu.GenericMessageType],
+            cleanup: bool = True,
+            current_timestamp: typing.Optional[np.int64] = None,  # will use internal latest if None
+    ):
         """Dispatches the provided messages to the correct internal 'add' function based on type."""
+        if current_timestamp is not None:
+            self.latest_refresh_timestamp = max(current_timestamp, self.latest_refresh_timestamp)
         for message in messages:
             if isinstance(message, mu.EncounterMessage):
                 self._add_encounter_message(message, cleanup=False)
@@ -315,6 +322,7 @@ class NaiveClusterManager(base.ClusterManagerBase):
                 self._add_update_message(message, cleanup=False)
             else:
                 ValueError("unexpected message type")
+        # this function differs from the base version because we want to merge before cleanup
         self._merge_clusters()  # there's a bit of looping in here, think about batching?
         if cleanup:
             self.cleanup_clusters(self.latest_refresh_timestamp)

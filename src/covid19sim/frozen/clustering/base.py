@@ -44,8 +44,15 @@ class ClusterManagerBase:
                 self.cleanup_clusters(self.latest_refresh_timestamp)
         return outdated
 
-    def add_messages(self, messages: typing.Iterable[mu.GenericMessageType], cleanup: bool = True):
+    def add_messages(
+            self,
+            messages: typing.Iterable[mu.GenericMessageType],
+            cleanup: bool = True,
+            current_timestamp: typing.Optional[np.int64] = None,  # will use internal latest if None
+    ):
         """Dispatches the provided messages to the correct internal 'add' function based on type."""
+        if current_timestamp is not None:
+            self.latest_refresh_timestamp = max(current_timestamp, self.latest_refresh_timestamp)
         for message in messages:
             if isinstance(message, mu.EncounterMessage):
                 self._add_encounter_message(message, cleanup=False)
