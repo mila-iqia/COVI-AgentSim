@@ -271,7 +271,6 @@ class City(simpy.Environment):
             # Let the day pass
             yield self.env.timeout(duration / TICK_MINUTE)
 
-
 class Location(simpy.Resource):
 
     def __init__(self, env, rng, area, name, location_type, lat, lon,
@@ -671,6 +670,9 @@ class Contacts(object):
         app = tracing_method.app
         if app and not owner.has_app:
             return
+
+        if owner.name == "human:84":
+            import pdb; pdb.set_trace()
 
         for idx, human in enumerate(self.book):
 

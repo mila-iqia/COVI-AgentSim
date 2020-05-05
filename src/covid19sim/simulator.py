@@ -113,7 +113,7 @@ class Human(object):
         self.initial_viral_load = self.rng.rand() if infection_timestamp is not None else 0
         if self.infection_timestamp is not None:
             self.compute_covid_properties()
-            print(f"{self} is infected")
+            print(f"{self} is infected. has_app:{self.has_app}")
 
         # counters and memory
         self.r0 = []
@@ -1190,6 +1190,8 @@ class Human(object):
             self.prev_risk_history_map[cur_day] = self.risk_history_map[cur_day]
 
         if test_results:
+            if self.name == "human:8":
+                import pdb; pdb.set_trace()
             if self.test_result == "positive":
                 self.risk = 1.0
                 self.contact_book.send_message(self, self.tracing_method, order=1, reason="test")
