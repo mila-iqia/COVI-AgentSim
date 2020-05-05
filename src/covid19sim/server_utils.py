@@ -275,8 +275,8 @@ def proc_human(params, inference_engine=None, mp_backend=None, mp_threads=0):
         if not isinstance(human["clusters"], covid19sim.frozen.clustering.base.ClusterManagerBase):
             # note: we create the manager to use day-level timestamps only
             human["clusters"] = covid19sim.frozen.clustering.naive.NaiveClusterManager(
-                max_history_ticks_offset=14,
                 ticks_per_uid_roll=1,
+                max_history_ticks_offset=14,
                 add_orphan_updates_as_clusters=False,
             )
         encounter_messages = \

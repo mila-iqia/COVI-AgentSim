@@ -1,58 +1,29 @@
-import dataclasses
 import numpy as np
 import typing
 
 import covid19sim.frozen.message_utils as mu
-import covid19sim.frozen.clustering.base as base
+from covid19sim.frozen.clustering.base import ClusterIDType, TimestampType, TimeOffsetType, \
+    ClusterBase, ClusterManagerBase
 
 
-@dataclasses.dataclass
-class SimpleCluster:
-    """A simple message cluster.
+class SimpleCluster(ClusterBase):
+    """A simple encounter message cluster.
 
     The default implementation of the 'fit' functions for this base class will
     simply attempt to merge new messages and adjust the risk level of the cluster
     to the average of all messages it aggregates.
     """
 
-    uid: np.uint8
-    """Unique Identifier (UID) of the cluster."""
-
-    risk_level: np.uint8
-    """Quantified risk level of the cluster."""
-
-    first_update_time: np.int64
-    """Cluster creation timestamp (i.e. timestamp of first encounter)."""
-
-    latest_update_time: np.int64
-    """Latest cluster update timestamp (i.e. timestamp of latest encounter)."""
-
-    messages: typing.List[mu.EncounterMessage] = dataclasses.field(default_factory=list)
-    """List of encounter messages aggregated into this cluster (in added order)."""
-    # note: messages above might have been updated from their original state!
-
-    ##########################################
-    # private variables (for debugging only!)
-
-    _real_encounter_uids: typing.List[np.uint64] = dataclasses.field(default_factory=list)
-    """Real Unique Identifiers (UIDs) of the clustered user(s)."""
-
-    _real_encounter_times: typing.List[np.uint64] = dataclasses.field(default_factory=list)
-    """Real timestamp of the clustered encounter(s)."""
-
-    _unclustered_messages: typing.List[mu.GenericMessageType] = dataclasses.field(default_factory=list)
-    """List of all messages (encounter+update) messages that were used to update this cluster."""
-
-    def _is_homogenous(self) -> bool:
-        """Returns whether this cluster is truly homogenous (i.e. tied to one user) or not."""
-        return len(np.unique([m._sender_uid for m in self._unclustered_messages])) <= 1
-
     @staticmethod
-    def create_cluster_from_message(message: mu.GenericMessageType) -> "SimpleCluster":
+    def create_cluster_from_message(
+            message: mu.GenericMessageType,
+            cluster_id: typing.Optional[ClusterIDType] = None,  # unused by this base implementation
+    ) -> "SimpleCluster":
         """Creates and returns a new cluster based on a single encounter message."""
+        assert cluster_id is None, "should be left unset"
         return SimpleCluster(
             # app-visible stuff below
-            uid=message.uid,
+            cluster_id=message.uid,
             risk_level=message.risk_level
                 if isinstance(message, mu.EncounterMessage) else message.new_risk_level,
             first_update_time=message.encounter_time,
@@ -106,24 +77,21 @@ class SimpleCluster:
         self._real_encounter_times.append(update_message._real_encounter_time)
         self._unclustered_messages.append(update_message)  # in this list, messages NEVER get updated
 
-    def get_cluster_embedding(self) -> np.ndarray:
+    def get_cluster_embedding(self, include_cluster_id: bool) -> np.ndarray:
         """Returns the 'embeddings' array for this particular cluster."""
-        # note: this returns an array of four 'features', i.e. the cluster UID, the cluster's
+        # note: this returns an array of four 'features', i.e. the cluster ID, the cluster's
         #       average encounter risk level, the number of messages in the cluster, and
         #       the first encounter timestamp of the cluster. This array's type will be returned
         #       as np.int64 to insure that no data is lost w.r.t. message counts or timestamps.
-        return np.asarray([self.uid, self.risk_level,
-                           len(self.messages), self.first_update_time], dtype=np.int64)
-
-    def _get_cluster_exposition_flag(self) -> bool:
-        """Returns whether this particular cluster contains an exposition encounter."""
-        # note: an 'exposition encounter' is an encounter where the user was exposed to the virus;
-        #       this knowledge is UNOBSERVED (hence the underscore prefix in the function name), and
-        #       relies on the flag being properly defined in the clustered messages
-        return any([bool(m._exposition_event) for m in self.messages])
+        if include_cluster_id:
+            return np.asarray([self.cluster_id, self.risk_level,
+                               len(self.messages), self.first_update_time], dtype=np.int64)
+        else:
+            return np.asarray([self.risk_level,
+                               len(self.messages), self.first_update_time], dtype=np.int64)
 
 
-class SimplisticClusterManager(base.ClusterManagerBase):
+class SimplisticClusterManager(ClusterManagerBase):
     """Manages message cluster creation and updates.
 
     This class implements a simplistic clustering strategy where encounters are only combined
@@ -135,16 +103,20 @@ class SimplisticClusterManager(base.ClusterManagerBase):
     """
 
     clusters: typing.List[SimpleCluster]
-    add_orphan_updates_as_clusters: bool
+    clusters_by_timestamp: typing.Dict[TimestampType, typing.Dict[ClusterIDType, SimpleCluster]]
 
     def __init__(
             self,
-            max_history_ticks_offset: int = 24 * 60 * 60 * 14,  # one tick per second, 14 days
+            max_history_ticks_offset: TimeOffsetType = 24 * 60 * 60 * 14,  # one tick per second, 14 days
             add_orphan_updates_as_clusters: bool = False,
+            generate_embeddings_by_timestamp: bool = True,
             rng=np.random,
     ):
-        super().__init__(max_history_ticks_offset=max_history_ticks_offset)
-        self.add_orphan_updates_as_clusters = add_orphan_updates_as_clusters
+        super().__init__(
+            max_history_ticks_offset=max_history_ticks_offset,
+            add_orphan_updates_as_clusters=add_orphan_updates_as_clusters,
+            generate_embeddings_by_timestamp=generate_embeddings_by_timestamp,
+        )
         self.rng = rng
 
     def _add_encounter_message(self, message: mu.EncounterMessage, cleanup: bool = True):
@@ -155,7 +127,7 @@ class SimplisticClusterManager(base.ClusterManagerBase):
         # if one is not found, we create a new cluster
         matched_clusters = []
         for cluster in self.clusters:
-            if cluster.uid == message.uid and \
+            if cluster.cluster_id == message.uid and \
                     cluster.risk_level == message.risk_level and \
                     cluster.first_update_time == message.encounter_time:
                 matched_clusters.append(cluster)
@@ -167,7 +139,9 @@ class SimplisticClusterManager(base.ClusterManagerBase):
             matched_cluster.fit_encounter_message(message)
         else:
             # create a new cluster for this encounter alone
-            self.clusters.append(SimpleCluster.create_cluster_from_message(message))
+            new_cluster = SimpleCluster.create_cluster_from_message(message)
+            self.clusters.append(new_cluster)
+            self.clusters_by_timestamp[message.encounter_time][new_cluster.cluster_id] = new_cluster
 
     def _add_update_message(self, message: mu.UpdateMessage, cleanup: bool = True):
         """Fits an update message to an existing cluster."""
@@ -175,7 +149,7 @@ class SimplisticClusterManager(base.ClusterManagerBase):
             return
         matched_clusters = []
         for cluster in self.clusters:
-            if cluster.uid == message.uid and cluster.first_update_time == message.encounter_time:
+            if cluster.cluster_id == message.uid and cluster.first_update_time == message.encounter_time:
                 # found a potential match based on uid and encounter time; check for actual
                 # encounters in the cluster with the target risk level to update...
                 for encounter in cluster.messages:
@@ -191,6 +165,8 @@ class SimplisticClusterManager(base.ClusterManagerBase):
             matched_cluster.fit_update_message(message)
         else:
             if self.add_orphan_updates_as_clusters:
-                self.clusters.append(SimpleCluster.create_cluster_from_message(message))
+                new_cluster = SimpleCluster.create_cluster_from_message(message)
+                self.clusters.append(new_cluster)
+                self.clusters_by_timestamp[message.encounter_time][new_cluster.cluster_id] = new_cluster
             else:
                 raise AssertionError(f"could not find any proper cluster match for: {message}")

@@ -1,11 +1,12 @@
 import typing
 
 import covid19sim.frozen.message_utils as mu
-import covid19sim.frozen.clustering.base as base
-import covid19sim.frozen.clustering.simple as clu
+from covid19sim.frozen.clustering.base import ClusterIDType, TimestampType, TimeOffsetType, \
+    ClusterManagerBase
+from covid19sim.frozen.clustering.simple import SimpleCluster
 
 
-class PerfectClusterManager(base.ClusterManagerBase):
+class PerfectClusterManager(ClusterManagerBase):
     """Manages message cluster creation and updates.
 
     This class implements a perfect clustering strategy where encounters will be combined
@@ -13,13 +14,21 @@ class PerfectClusterManager(base.ClusterManagerBase):
     be used for experimental evaluation purposes, AND IT CANNOT ACTUALLY WORK IN PRACTICE.
     """
 
-    clusters: typing.List[clu.SimpleCluster]
+    clusters: typing.List[SimpleCluster]
+    clusters_by_timestamp: typing.Dict[TimestampType, typing.Dict[ClusterIDType, SimpleCluster]]
 
     def __init__(
             self,
-            max_history_ticks_offset: int = 24 * 60 * 60 * 14,  # one tick per second, 14 days
+            max_history_ticks_offset: TimeOffsetType = 24 * 60 * 60 * 14,  # one tick per second, 14 days
+            add_orphan_updates_as_clusters: bool = False,
+            generate_embeddings_by_timestamp: bool = True,
     ):
-        super().__init__(max_history_ticks_offset=max_history_ticks_offset)
+        assert not add_orphan_updates_as_clusters, "missing impl; this is... imperfect?"
+        super().__init__(
+            max_history_ticks_offset=max_history_ticks_offset,
+            add_orphan_updates_as_clusters=add_orphan_updates_as_clusters,
+            generate_embeddings_by_timestamp=generate_embeddings_by_timestamp,
+        )
         # note: no RNG here, this impl is deterministic
 
     def _add_encounter_message(self, message: mu.EncounterMessage, cleanup: bool = True):
@@ -39,7 +48,9 @@ class PerfectClusterManager(base.ClusterManagerBase):
             assert len(matched_clusters) == 1
             matched_clusters[0].fit_encounter_message(message)
         else:
-            self.clusters.append(clu.SimpleCluster.create_cluster_from_message(message))
+            new_cluster = SimpleCluster.create_cluster_from_message(message)
+            self.clusters.append(new_cluster)
+            self.clusters_by_timestamp[message.encounter_time][new_cluster.cluster_id] = new_cluster
 
     def _add_update_message(self, message: mu.UpdateMessage, cleanup: bool = True):
         """Fits an update message to an existing cluster."""
