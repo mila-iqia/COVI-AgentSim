@@ -310,7 +310,7 @@ class NaiveClusterManager(base.ClusterManagerBase):
         for cluster in clusters:
             score, encounter_idx = cluster._get_encounter_match_score(message, self.ticks_per_uid_roll)
             # @@@ merge = what min score?
-            if not best_matched_cluster or (score > 0 and best_matched_cluster[1] < score):
+            if score > 0 and (not best_matched_cluster or best_matched_cluster[1] < score):
                 best_matched_cluster = (cluster, score, encounter_idx)
         if best_matched_cluster:
             best_matched_cluster[0]._force_fit_encounter_message(message, best_matched_cluster[2])

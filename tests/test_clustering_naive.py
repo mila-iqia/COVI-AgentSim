@@ -1,7 +1,7 @@
 import numpy as np
 import unittest
 
-import covid19sim.frozen.clustering_naive as clu
+import covid19sim.frozen.clustering.naive as clu
 import covid19sim.frozen.message_utils as mu
 from tests.utils import FakeHuman, generate_received_messages, Visit
 
@@ -44,7 +44,7 @@ class NaiveClusteringTests(unittest.TestCase):
             self.assertEqual(sum([len(msgs) for msgs in h0_messages.values()]), 2)
             self.assertEqual(len(h0_messages[2]), 2)
             h0_messages = [msg for msgs in h0_messages.values() for msg in msgs]
-            cluster_manager = clu.SimplisticClusterManager(max_history_offset=never)
+            cluster_manager = clu.NaiveClusterManager(max_history_ticks_offset=never)
             cluster_manager.add_messages(h0_messages)
             self.assertEqual(len(cluster_manager.clusters), 2)
             self.assertEqual(cluster_manager.latest_refresh_timestamp, 2)
@@ -84,7 +84,7 @@ class NaiveClusteringTests(unittest.TestCase):
         self.assertEqual(len(h0_messages), 1)  # single timestep in book
         self.assertEqual(len(h0_messages[0]), 5)  # all 5 encounter messages in day 0
         h0_messages = [msg for msgs in h0_messages.values() for msg in msgs]
-        cluster_manager = clu.SimplisticClusterManager(max_history_offset=never)
+        cluster_manager = clu.NaiveClusterManager(max_history_ticks_offset=never)
         cluster_manager.add_messages(h0_messages)
         self.assertEqual(len(cluster_manager.clusters), 3)
         self.assertEqual(cluster_manager.latest_refresh_timestamp, 0)
@@ -113,7 +113,7 @@ class NaiveClusteringTests(unittest.TestCase):
         self.assertEqual(len(h0_messages), 1)  # single timestep in book
         self.assertEqual(len(h0_messages[0]), 1)  # single encounter message in day 0
         h0_messages = [msg for msgs in h0_messages.values() for msg in msgs]
-        cluster_manager = clu.SimplisticClusterManager(max_history_offset=never)
+        cluster_manager = clu.NaiveClusterManager(max_history_ticks_offset=never)
         cluster_manager.add_messages(h0_messages)
         self.assertEqual(len(cluster_manager.clusters), 1)
         self.assertEqual(cluster_manager.clusters[0].risk_level, np.uint8(7))
@@ -159,7 +159,7 @@ class NaiveClusteringTests(unittest.TestCase):
         h0_messages = messages[0]["received_messages"]
         self.assertEqual(len(h0_messages), 9)
         h0_messages = [msg for msgs in h0_messages.values() for msg in msgs]
-        cluster_manager = clu.SimplisticClusterManager(max_history_offset=5)
+        cluster_manager = clu.NaiveClusterManager(max_history_ticks_offset=5)
         cluster_manager.add_messages(h0_messages)
         self.assertEqual(len(cluster_manager.clusters), 2)
         self.assertEqual(cluster_manager.clusters[0].first_update_time, np.uint8(5))
@@ -215,7 +215,7 @@ class NaiveClusteringTests(unittest.TestCase):
             ]
             messages = generate_received_messages(humans)  # hopefully this is not too slow
             h0_messages = [msg for msgs in messages[0]["received_messages"].values() for msg in msgs]
-            cluster_manager = clu.SimplisticClusterManager(max_history_offset=never)
+            cluster_manager = clu.NaiveClusterManager(max_history_ticks_offset=never)
             cluster_manager.add_messages(h0_messages)
             self.assertLessEqual(
                 len(cluster_manager.clusters),
