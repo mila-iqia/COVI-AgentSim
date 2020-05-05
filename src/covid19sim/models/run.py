@@ -4,7 +4,6 @@ import functools
 from joblib import Parallel, delayed
 
 from covid19sim.server_utils import InferenceClient, InferenceWorker
-from covid19sim.configs import config
 from ctt.inference.infer import InferenceEngine
 
 
@@ -36,6 +35,7 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
             "COLLECT_TRAINING_DATA": exp_config['COLLECT_TRAINING_DATA'],
             "log_path": log_path,
             "risk_model": exp_config['RISK_MODEL'],
+            "time_slot": time_slot
         })
 
     if exp_config['USE_INFERENCE_SERVER']:
