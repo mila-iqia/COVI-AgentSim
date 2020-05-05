@@ -363,9 +363,10 @@ class Tracing(object):
             for human in city.humans:
                 cur_day = (human.env.timestamp - human.env.initial_timestamp).days
                 if (human.env.timestamp - human.message_info['receipt']).days >= human.message_info['delay'] or self.risk_model != "manual":
-                    if not human.is_removed and human.test_result != "positive"::
+                    if not human.is_removed and human.test_result != "positive":
                         t, s, r = self.process_messages(human)
                         human.risk = self.compute_risk(t, s, r)
+
                     human.risk_history_map[cur_day] = human.risk
 
                     human.update_risk_level()
