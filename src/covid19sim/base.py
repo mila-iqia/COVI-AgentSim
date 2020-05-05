@@ -245,7 +245,6 @@ class City(simpy.Environment):
         self.current_day = 0
         INTERVENTION_DAY = self.env.exp_config['INTERVENTION_DAY']
         COLLECT_TRAINING_DATA = self.env.exp_config['COLLECT_TRAINING_DATA']
-        GET_RISK_PREDICTOR_METRICS = self.env.exp_config['GET_RISK_PREDICTOR_METRICS']
         print(f"INTERVENTION_DAY: {INTERVENTION_DAY}")
         while True:
             if self.env.timestamp.hour == 0:
@@ -263,13 +262,12 @@ class City(simpy.Environment):
                 _ = [h.notify(self.intervention) for h in self.humans]
                 print(self.intervention)
 
-
             if isinstance(self.intervention, Tracing):
                 self.intervention.update_human_risks(city=self,
                                 symptoms=all_possible_symptoms, port=port,
                                 n_jobs=n_jobs, data_path=outfile)
 
-            if (COLLECT_TRAINING_DATA or GET_RISK_PREDICTOR_METRICS) and (self.current_day == 0 and INTERVENTION_DAY < 0):
+            if COLLECT_TRAINING_DATA and (self.current_day == 0 and INTERVENTION_DAY < 0):
                 _ = [h.notify(collect_training_data=True) for h in self.humans]
                 print("naive risk calculation without changing behavior... Humans notified!")
                 self.intervention = Tracing(risk_model="naive", max_depth=1, symptoms=False, risk=False, should_modify_behavior=False, COLLECT_TRAINING_DATA=COLLECT_TRAINING_DATA)
