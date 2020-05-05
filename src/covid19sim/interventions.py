@@ -363,8 +363,9 @@ class Tracing(object):
             for human in city.humans:
                 cur_day = (human.env.timestamp - human.env.initial_timestamp).days
                 if (human.env.timestamp - human.message_info['receipt']).days >= human.message_info['delay'] or self.risk_model != "manual":
-                    t, s, r = self.process_messages(human)
-                    human.risk = self.compute_risk(t, s, r)
+                    if not human.is_removed:
+                        t, s, r = self.process_messages(human)
+                        human.risk = max(self.compute_risk(t, s, r), human.risk)
                     human.risk_history_map[cur_day] = human.risk
 
                     human.update_risk_level()
@@ -381,7 +382,7 @@ class Tracing(object):
         if self.risk_model == "transformer":
             return f"Tracing: {self.risk_model}"
 
-        return f"Tracing: {self.risk_model} order {self.max_depth} symptoms: {self.propagate_symptoms} risk: {self.propagate_risk}"
+        return f"Tracing: {self.risk_model} order {self.max_depth} symptoms: {self.propagate_symptoms} risk: {self.propagate_risk} modify:{self.should_modify_behavior}"
 
 
 class CityInterventions(object):

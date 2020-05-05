@@ -92,7 +92,7 @@ def tune(n_people, simulation_days, seed):
     import matplotlib.pyplot as plt
     # cf.go_offline()
 
-    monitors, tracker = run_simu(n_people=n_people, init_percent_sick=0.0025,
+    monitors, tracker = run_simu(n_people=n_people, init_percent_sick=0.02,
                             start_time=datetime.datetime(2020, 2, 28, 0, 0),
                             simulation_days=simulation_days,
                             outfile=None,
@@ -111,7 +111,6 @@ def tune(n_people, simulation_days, seed):
     data['expected_mobility'] = tracker.expected_mobility
     data['mobility'] = tracker.mobility
     data['n_init_infected'] = tracker.n_infected_init
-    data['risk_precision'] = tracker.risk_precision_daily
     data['contacts'] = dict(tracker.contacts)
     data['cases_per_day'] = tracker.cases_per_day
     data['ei_per_day'] = tracker.ei_per_day
@@ -123,7 +122,10 @@ def tune(n_people, simulation_days, seed):
     data['i'] = tracker.i_per_day
     data['r'] = tracker.r_per_day
     data['avg_infectiousness_per_day'] = tracker.avg_infectiousness_per_day
-    data['risk_precision'] = tracker.compute_risk_precision(False)
+    data['risk_precision_global'] = tracker.compute_risk_precision(False)
+    data['risk_precision'] = tracker.risk_precision_daily
+    data['human_monitor'] = tracker.human_monitor
+    data['infection_monitor'] = tracker.infection_monitor
     # data['dist_encounters'] = dict(tracker.dist_encounters)
     # data['time_encounters'] = dict(tracker.time_encounters)
     # data['day_encounters'] = dict(tracker.day_encounters)
@@ -141,8 +143,8 @@ def tune(n_people, simulation_days, seed):
     with open(f"logs2/{filename}", 'wb') as f:
         dill.dump(data, f)
     #
-    logfile = os.path.join(f"logs/log_n_{n_people}_seed_{seed}_{timenow}.txt")
-    tracker.write_metrics(logfile)
+    logfile = os.path.join(f"logs2/log_n_{n_people}_seed_{seed}_{timenow}.txt")
+    # tracker.write_metrics(logfile)
     tracker.write_metrics(None)
 
     # fig = x['R'].iplot(asFigure=True, title="R0")
@@ -246,8 +248,8 @@ def tracing(n_people, days, tracing, order, symptoms, risk, noise):
     with open(f"logs/compare/{filename}", 'wb') as f:
         dill.dump(data, f)
 
-    # logfile = os.path.join(f"logs/log_n_{n_people}_seed_{seed}_{timenow}.txt")
-    # tracker.write_metrics(None)
+    logfile = os.path.join(f"logs/log_n_{n_people}_seed_{seed}_{timenow}.txt")
+    tracker.write_metrics(None)
 
 def run_simu(n_people=None, init_percent_sick=0.0,
              start_time=datetime.datetime(2020, 2, 28, 0, 0),

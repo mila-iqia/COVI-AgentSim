@@ -556,12 +556,7 @@ class Human(object):
                 assert self.state.index(1) in next_state[self.last_state.index(1)], f"invalid compartment transition for {self.name}: {self.last_state} to {self.state}"
             self.last_state = self.state
 
-    def notify(self, intervention=None, collect_training_data=False):
-        if collect_training_data:
-            self.tracing = True
-            self.tracing_method = Tracing(risk_model="naive", max_depth=1, symptoms=False, risk=False, should_modify_behavior=False)
-            return
-
+    def notify(self, intervention=None):
         # FIXME: PERCENT_FOLLOW < 1 will throw an error because ot self.notified somewhere
         if intervention is not None and not self.notified and self.rng.random() < PERCENT_FOLLOW:
             self.tracing = False
@@ -623,10 +618,9 @@ class Human(object):
 
             # log test
             # TODO: needs better conditions; log test based on some condition on symptoms
-            if self.test_recommended or  \
-                (self.is_incubated and
-                self.test_result != "positive" and
-                self.env.timestamp - self.symptom_start_time >= datetime.timedelta(days=TEST_DAYS)):
+            if (self.test_result != "positive" and
+                (self.test_recommended or
+                (self.is_incubated and self.env.timestamp - self.symptom_start_time >= datetime.timedelta(days=TEST_DAYS)))):
                 # make testing a function of age/hospitalization/travel
                 if self.get_tested(city):
                     Event.log_test(self, self.env.timestamp)
@@ -637,7 +631,10 @@ class Human(object):
             # recover
             if self.is_infectious and self.days_since_covid >= self.recovery_days:
                 city.tracker.track_recovery(self.n_infectious_contacts, self.recovery_days)
-                self.infection_timestamp = None # indicates they are no longer infected
+
+                self.test_result, self.test_result_type = None, None
+                self.infection_timestamp = None
+
                 if self.never_recovers:
                     self.recovered_timestamp = datetime.datetime.max
                     self.dead = True
@@ -652,7 +649,6 @@ class Human(object):
                     self.dead = False
 
                 self.update_risk(recovery=True)
-                self.infection_timestamp = None # indicates they are no longer infected
                 self.all_symptoms, self.covid_symptoms = [], []
                 Event.log_recovery(self, self.env.timestamp, self.dead)
                 if self.dead:
@@ -1131,11 +1127,15 @@ class Human(object):
 
     @property
     def risk(self):
+        if not self.risk_history_map:
+            return BASELINE_RISK_VALUE
+
         cur_day = (self.env.timestamp - self.env.initial_timestamp).days
         if cur_day in self.risk_history_map:
             return self.risk_history_map[cur_day]
         else:
-            return BASELINE_RISK_VALUE
+            last_day = max(self.risk_history_map.keys())
+            return self.risk_history_map[last_day]
 
     @property
     def risk_level(self):
@@ -1176,29 +1176,27 @@ class Human(object):
             if prev_risk_level != new_risk_level:
                 self.tracing_method.modify_behavior(self)
 
-
     def update_risk(self, recovery=False, test_results=False, update_messages=None, symptoms=None):
         if not self.tracing or self.tracing_method.risk_model == "transformer":
             return
         cur_day = (self.env.timestamp - self.env.initial_timestamp).days
 
-        if self.tracing:
-            if recovery:
-                if self.is_removed:
-                    self.risk = 0.0
-                else:
-                    self.risk = BASELINE_RISK_VALUE
-                self.update_risk_level()
-                self.prev_risk_history_map[cur_day] = self.risk_history_map[cur_day]
+        if recovery:
+            if self.is_removed:
+                self.risk = 0.0
+            else:
+                self.risk = BASELINE_RISK_VALUE
+            self.update_risk_level()
+            self.prev_risk_history_map[cur_day] = self.risk_history_map[cur_day]
 
-            if test_results:
-                if self.test_result == "positive":
-                    self.risk = 1.0
-                    self.contact_book.send_message(self, self.tracing_method, order=1, reason="test")
-                elif self.test_result == "negative":
-                    self.risk = .2
-                self.update_risk_level()
-                self.prev_risk_history_map[cur_day] = self.risk_history_map[cur_day]
+        if test_results:
+            if self.test_result == "positive":
+                self.risk = 1.0
+                self.contact_book.send_message(self, self.tracing_method, order=1, reason="test")
+            elif self.test_result == "negative":
+                self.risk = .2
+            self.update_risk_level()
+            self.prev_risk_history_map[cur_day] = self.risk_history_map[cur_day]
 
         if symptoms and self.tracing_method.propagate_symptoms:
             if sum(x in symptoms for x in ['severe', 'trouble_breathing']) > 0 and not self.has_logged_symptoms:
