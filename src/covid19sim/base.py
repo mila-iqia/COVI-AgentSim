@@ -4,17 +4,20 @@ import datetime
 import itertools
 from collections import defaultdict
 
-from covid19sim.config import *
-from covid19sim.utils import compute_distance, _get_random_area, _draw_random_discreet_gaussian, get_intervention
+from covid19sim.configs.config import *
+from covid19sim.utils import compute_distance, _get_random_area, _draw_random_discreet_gaussian, get_intervention, proba_to_risk_fn
 from covid19sim.track import Tracker
 from covid19sim.interventions import *
 from covid19sim.frozen.utils import update_uid
+from covid19sim.configs.constants import TICK_MINUTE
 
 class Env(simpy.Environment):
 
-    def __init__(self, initial_timestamp):
+    def __init__(self, initial_timestamp, exp_config):
         super().__init__()
         self.initial_timestamp = initial_timestamp
+        self.exp_config = exp_config
+        self._proba_to_risk_level = proba_to_risk_fn(np.array(exp_config['RISK_MAPPING']))
 
     def time(self):
         return self.now
@@ -240,7 +243,8 @@ class City(simpy.Environment):
 
     def run(self, duration, outfile, start_time, all_possible_symptoms, port, n_jobs):
         self.current_day = 0
-
+        INTERVENTION_DAY = self.env.exp_config['INTERVENTION_DAY']
+        COLLECT_TRAINING_DATA = self.env.exp_config['COLLECT_TRAINING_DATA']
         print(f"INTERVENTION_DAY: {INTERVENTION_DAY}")
         while True:
             if self.env.timestamp.hour == 0:
@@ -250,20 +254,23 @@ class City(simpy.Environment):
 
             if INTERVENTION_DAY >= 0 and self.current_day == INTERVENTION_DAY:
 
-                self.intervention = get_intervention(INTERVENTION)
+                self.intervention = get_intervention(self.env.exp_config['INTERVENTION'],
+                                                     self.env.exp_config['RISK_MODEL'],
+                                                     self.env.exp_config['TRACING_ORDER'],
+                                                     self.env.exp_config['TRACE_SYMPTOMS'],
+                                                     self.env.exp_config['TRACE_RISK_UPDATE'])
                 _ = [h.notify(self.intervention) for h in self.humans]
                 print(self.intervention)
-
 
             if isinstance(self.intervention, Tracing):
                 self.intervention.update_human_risks(city=self,
                                 symptoms=all_possible_symptoms, port=port,
                                 n_jobs=n_jobs, data_path=outfile)
 
-            if (COLLECT_TRAINING_DATA or GET_RISK_PREDICTOR_METRICS) and (self.current_day == 0 and INTERVENTION_DAY < 0):
+            if COLLECT_TRAINING_DATA and (self.current_day == 0 and INTERVENTION_DAY < 0):
                 _ = [h.notify(collect_training_data=True) for h in self.humans]
                 print("naive risk calculation without changing behavior... Humans notified!")
-                self.intervention = Tracing(risk_model="naive", max_depth=1, symptoms=False, risk=False, should_modify_behavior=False)
+                self.intervention = Tracing(risk_model="naive", max_depth=1, symptoms=False, risk=False, should_modify_behavior=False, COLLECT_TRAINING_DATA=COLLECT_TRAINING_DATA)
 
             if self.env.timestamp.hour == 0 and self.env.timestamp != self.env.initial_timestamp:
                 self.current_day += 1
@@ -621,7 +628,7 @@ class DummyEvent:
         pass
 
 class Contacts(object):
-    def __init__(self, has_app):
+    def __init__(self, has_app, TRACING_N_DAYS_HISTORY):
         self.messages = []
         self.sent_messages_by_day = defaultdict(list)
         self.messages_by_day = defaultdict(list)
@@ -629,6 +636,7 @@ class Contacts(object):
         # human --> [[date, counts], ...]
         self.book = {}
         self.has_app = has_app
+        self.TRACING_N_DAYS_HISTORY = TRACING_N_DAYS_HISTORY
 
     def add(self, **kwargs):
         human = kwargs.get("human")
@@ -650,7 +658,7 @@ class Contacts(object):
 
         remove_idx = -1
         for history in self.book[human]:
-            if (date - history[0]).days > TRACING_N_DAYS_HISTORY:
+            if (date - history[0]).days > self.TRACING_N_DAYS_HISTORY:
                 remove_idx += 1
             else:
                 break
@@ -660,7 +668,7 @@ class Contacts(object):
         if False:
             remove_idx = 0
             for historical_message in self.messages:
-                if (human.env.timestamp - human.env.initial_timestamp).days - historical_message.day > TRACING_N_DAYS_HISTORY:
+                if (human.env.timestamp - human.env.initial_timestamp).days - historical_message.day > self.TRACING_N_DAYS_HISTORY:
                     remove_idx += 1
                 else:
                     break

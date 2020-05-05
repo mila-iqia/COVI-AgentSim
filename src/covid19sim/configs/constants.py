@@ -105,3 +105,6 @@ CONDITION_HYPERTENSION                    = 1 <<  5       # UI-15
 CONDITION_ASTHMA                          = 1 <<  6       # UI-16
 CONDITION_NEUROLOGICAL_DISORDER           = 1 <<  7       # UI-17
 
+"""STUFF THAT WAS IN CONFIG BUT IS ACTUALLY A CONSTANT"""
+BIG_NUMBER = 10000000
+TICK_MINUTE = 2  # @param increment
