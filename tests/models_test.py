@@ -95,24 +95,11 @@ class ModelsTest(unittest.TestCase):
                         self.assertLess(observed['candidate_encounters'][:, 1].max(), 16)
                         self.assertGreaterEqual(observed['candidate_encounters'][:, 2].min(), 0)
                         self.assertLess(observed['candidate_encounters'][:, 2].max(), 10000)
-                        # TODO: Expecting the maximum day to be the current_day index
-                        try:
-                            self.assertLessEqual(observed['candidate_encounters'][:, 3].max(), current_day)
-                        except AssertionError as err:
-                            warnings.warn(f'current_day={current_day}, h_i={h_i}: {str(err)}', RuntimeWarning)
-                        # TODO: Expecting only the last 14 days
-                        try:
-                            self.assertLess(observed['candidate_encounters'][:, 3].max() -
-                                            observed['candidate_encounters'][:, 3].min(), 14)
-                        except AssertionError as err:
-                            warnings.warn(f'current_day={current_day}, h_i={h_i}: {str(err)}', RuntimeWarning)
-                        # TODO: Expecting the messages to be ordered by day and to be
-                        #  in reverse chronological order
-                        try:
-                            self.assertLessEqual(observed['candidate_encounters'][0, 3],
-                                                 observed['candidate_encounters'][-1, 3])
-                        except AssertionError as err:
-                            warnings.warn(f'current_day={current_day}, h_i={h_i}: {str(err)}', RuntimeWarning)
+                        self.assertLessEqual(observed['candidate_encounters'][:, 3].max(), current_day)
+                        self.assertLess(observed['candidate_encounters'][:, 3].max() -
+                                        observed['candidate_encounters'][:, 3].min(), 14)
+                        self.assertLessEqual(observed['candidate_encounters'][0, 3],
+                                             observed['candidate_encounters'][-1, 3])
 
                         for h_enc_id in observed['candidate_encounters'][:, 0]:
                             stats['human_enc_ids'][h_enc_id] += 1
@@ -168,13 +155,8 @@ class ModelsTest(unittest.TestCase):
                     self.assertGreaterEqual(unobserved['true_sex'], -1)
 
                     # observed['reported_symptoms'] is a subset of unobserved['true_symptoms']
-                    # TODO: Test fails with some values of observed['reported_symptoms'] not being in
-                    #  unobserved['true_symptoms'].
-                    try:
-                        self.assertTrue((unobserved['true_symptoms'] == observed['reported_symptoms'])
-                                        [observed['reported_symptoms'].astype(np.bool)].all())
-                    except AssertionError as err:
-                        warnings.warn(f'current_day={current_day}, h_i={h_i}: {str(err)}', RuntimeWarning)
+                    self.assertTrue((unobserved['true_symptoms'] == observed['reported_symptoms'])
+                                    [observed['reported_symptoms'].astype(np.bool)].all())
 
                     if unobserved['is_exposed'] or unobserved['is_recovered']:
                         self.assertNotEqual(unobserved['is_exposed'], unobserved['is_recovered'])
@@ -193,12 +175,7 @@ class ModelsTest(unittest.TestCase):
                     self.assertGreaterEqual(unobserved['true_sex'], observed['sex'])
 
                     if prev_observed:
-                        # TODO: Test fails with values updated in observed['reported_symptoms'][1].
-                        #  Expecting only the first row to be updated
-                        try:
-                            self.assertTrue((observed['reported_symptoms'][1:] == prev_observed['reported_symptoms'][:13]).all())
-                        except AssertionError as err:
-                            warnings.warn(f'current_day={current_day}, h_i={h_i}: {str(err)}', RuntimeWarning)
+                        self.assertTrue((observed['reported_symptoms'][1:] == prev_observed['reported_symptoms'][:13]).all())
                         if observed['candidate_encounters'].size and prev_observed['candidate_encounters'].size:
                             # TODO: Can't validate rolling of the message because of new messages being added
                             current_day_mask = observed['candidate_encounters'][:, 3] < current_day  # Get the last 13 days excluding today
@@ -216,53 +193,28 @@ class ModelsTest(unittest.TestCase):
                                     self.assertFalse(False,
                                                      msg=f"Could not find previous candidate_encounter {prev_masked[i]} "
                                                      f"in current day.")
-                        # TODO: Test fails with observed['test_results'] and prev_observed['test_results'] being the same array
-                        try:
-                            self.assertTrue((observed['test_results'][1:] == prev_observed['test_results'][:13]).all())
-                        except AssertionError as err:
-                            warnings.warn(f'current_day={current_day}, h_i={h_i}: {str(err)}', RuntimeWarning)
+                        self.assertTrue((observed['test_results'][1:] == prev_observed['test_results'][:13]).all())
 
                         self.assertTrue((observed['preexisting_conditions'] ==
                                          prev_observed['preexisting_conditions']).all())
                         self.assertEqual(observed['age'], prev_observed['age'])
                         self.assertEqual(observed['sex'], prev_observed['sex'])
 
-                        # TODO: Test fails with values updated in unobserved['true_symptoms'][1].
-                        #  Expecting only the first row to be updated
-                        try:
-                            self.assertTrue((unobserved['true_symptoms'][1:] == prev_unobserved['true_symptoms'][:13]).all())
-                        except AssertionError as err:
-                            warnings.warn(f'current_day={current_day}, h_i={h_i}: {str(err)}', RuntimeWarning)
-                        # TODO: Test fails with unobserved['infectiousness'] being the same as prev_unobserved['infectiousness']
-                        #  (appears to sometimes be not updated)
-                        try:
-                            check = unobserved['infectiousness'][1:] == prev_unobserved['infectiousness'][:13]
-                            self.assertTrue(check if isinstance(check, bool) else check.all())
-                        except AssertionError as err:
-                            warnings.warn(f'current_day={current_day}, h_i={h_i}: {str(err)}', RuntimeWarning)
+                        self.assertTrue((unobserved['true_symptoms'][1:] == prev_unobserved['true_symptoms'][:13]).all())
+                        check = unobserved['infectiousness'][1:] == prev_unobserved['infectiousness'][:13]
+                        self.assertTrue(check if isinstance(check, bool) else check.all())
 
                         if prev_unobserved['is_exposed'] and prev_unobserved['exposure_day'] < 13:
-                            try:
-                                self.assertTrue(unobserved['is_exposed'])
-                                self.assertEqual(max(0, unobserved['exposure_day'] - 1),
-                                                 prev_unobserved['exposure_day'])
-                            except AssertionError as err:
-                                warnings.warn(f'current_day={current_day}, h_i={h_i}: {str(err)}', RuntimeWarning)
+                            self.assertTrue(unobserved['is_exposed'])
+                            self.assertEqual(max(0, unobserved['exposure_day'] - 1),
+                                             prev_unobserved['exposure_day'])
 
                         if unobserved['is_exposed'] != prev_unobserved['is_exposed']:
                             if unobserved['is_exposed']:
-                                # TODO: Test fails. Expecting the exposure day to be 0 since the human
-                                #  just got exposed
-                                try:
-                                    self.assertEqual(unobserved['exposure_day'], 0)
-                                except AssertionError as err:
-                                    warnings.warn(f'current_day={current_day}, h_i={h_i}: {str(err)}', RuntimeWarning)
+                                self.assertEqual(unobserved['exposure_day'], 0)
                                 self.assertEqual(prev_unobserved['infectiousness'][0], 0)
                             else:
-                                try:
-                                    self.assertEqual(prev_unobserved['exposure_day'], 13)
-                                except AssertionError as err:
-                                    warnings.warn(f'current_day={current_day}, h_i={h_i}: {str(err)}', RuntimeWarning)
+                                self.assertEqual(prev_unobserved['exposure_day'], 13)
                                 self.assertFalse(unobserved['is_exposed'])
                                 self.assertEqual(unobserved['exposure_day'], None)
 
@@ -289,7 +241,7 @@ class ModelsTest(unittest.TestCase):
             self.assertGreaterEqual(has_exposure_day, n_people * 0.5)
             # TODO: Is it expected to have no recovery_days?
             try:
-                self.assertGreaterEqual(has_recovery_day, n_people)
+                self.assertGreaterEqual(has_recovery_day, 1)
             except AssertionError as err:
                 warnings.warn(str(err), RuntimeWarning)
             self.assertGreaterEqual(exposure_encounter_cnt, n_people)
