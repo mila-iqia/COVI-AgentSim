@@ -136,13 +136,20 @@ class NaiveClusteringTests(unittest.TestCase):
         self.assertEqual(len(cluster_manager.clusters), 2)
         self.assertEqual(cluster_manager.clusters[0].risk_level, np.uint8(9))
         self.assertEqual(len(cluster_manager.clusters[0].messages), 2)
-        # update one of the two encounters in the first cluster; average risk should change
+        # update one of the two encounters in the first cluster; it should be split into two parts
+        cluster_manager.add_messages([
+            mu.create_update_message(new_encounter, np.uint8(13), np.uint64(1))
+        ])
+        self.assertEqual(len(cluster_manager.clusters), 3)
+        self.assertTrue(all([c.risk_level in [9, 1, 13] for c in cluster_manager.clusters]))
+        self.assertTrue(all([len(c.messages) == 1 for c in cluster_manager.clusters]))
+        # update the second of the two encounters in the first cluster; we should now be back at two
         cluster_manager.add_messages([
             mu.create_update_message(new_encounter, np.uint8(13), np.uint64(1))
         ])
         self.assertEqual(len(cluster_manager.clusters), 2)
-        self.assertEqual(cluster_manager.clusters[0].risk_level, np.uint8(11))
-        self.assertEqual(len(cluster_manager.clusters[0].messages), 2)
+        self.assertTrue(all([c.risk_level in [1, 13] for c in cluster_manager.clusters]))
+        self.assertTrue(sum([len(c.messages) for c in cluster_manager.clusters]) == 3)
 
     def test_cleanup_outdated_cluster(self):
         # scenario: a new encounter is added that is waaay outdated; it should not create a cluster

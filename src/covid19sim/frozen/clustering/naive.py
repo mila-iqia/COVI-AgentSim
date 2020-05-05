@@ -10,9 +10,12 @@ def check_uids_match(
         uids1: typing.Dict[np.int64, np.uint8],
         uids2: typing.Dict[np.int64, np.uint8],
 ) -> bool:
-    """Returns whether the overlaps in the provided timestamp-to-uid dicts are compatible."""
+    """Returns whether the overlaps in the provided timestamp-to-uid dicts are compatible.
+
+    Note: if there are no overlapping UIDs in the two sets, the function will return `False`.
+    """
     overlapping_timestamps = list(set(uids1.keys()) & set(uids2.keys()))
-    return all([uids1[t] == uids2[t] for t in overlapping_timestamps])
+    return overlapping_timestamps and all([uids1[t] == uids2[t] for t in overlapping_timestamps])
 
 
 class NaiveCluster(clu.SimpleCluster):
@@ -280,6 +283,8 @@ class NaiveClusterManager(base.ClusterManagerBase):
             reserved_idxs_for_merge.extend(matched_cluster_idxs)
         to_keep = []
         for base_cluster_idx, (cluster, target_idxs) in enumerate(zip(self.clusters, cluster_matches)):
+            if base_cluster_idx in reserved_idxs_for_merge:
+                continue
             for target_idx in target_idxs:
                 cluster.fit_cluster(self.clusters[target_idx])
             to_keep.append(cluster)
