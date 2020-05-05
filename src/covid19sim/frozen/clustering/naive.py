@@ -290,6 +290,22 @@ class NaiveClusterManager(base.ClusterManagerBase):
             to_keep.append(cluster)
         self.clusters = to_keep
 
+    def cleanup_clusters(self, current_timestamp: np.int64):
+        """Gets rid of clusters that are too old given the current timestamp, and single encounters
+        inside clusters that are too old as well."""
+        to_keep = []
+        for cluster_idx, cluster in enumerate(self.clusters):
+            cluster_update_offset = int(current_timestamp) - int(cluster.latest_update_time)
+            if cluster_update_offset <= self.max_history_ticks_offset:
+                cluster_messages_to_keep = []
+                for old_encounter in cluster.messages:
+                    message_update_offset = int(current_timestamp) - int(old_encounter.encounter_time)
+                    if message_update_offset <= self.max_history_ticks_offset:
+                        cluster_messages_to_keep.append(old_encounter)
+                if cluster_messages_to_keep:
+                    to_keep.append(cluster)
+        self.clusters = to_keep
+
     def add_messages(self, messages: typing.Iterable[mu.GenericMessageType], cleanup: bool = True):
         """Dispatches the provided messages to the correct internal 'add' function based on type."""
         for message in messages:
