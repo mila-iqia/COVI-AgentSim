@@ -612,6 +612,15 @@ class Human(object):
                 self.count_shop=0
 
             if self.last_date['run'] != self.env.timestamp.date():
+                # Pad missing days
+                missing_days = (self.env.timestamp.date() - self.last_date['run']).days - 1
+                if missing_days:
+                    warnings.warn(f"Missed {missing_days} update days on {self.name}. "
+                                  f"Current day {self.env.timestamp}, "
+                                  f"last_date['run'] {self.last_date['run']}",
+                                  RuntimeWarning)
+                    for day in range(missing_days):
+                        self.infectiousnesses.appendleft(0)
                 self.last_date['run'] = self.env.timestamp.date()
                 self.update_symptoms()
                 self.update_reported_symptoms()
