@@ -13,6 +13,7 @@ import zmq
 from ctt.inference.infer import InferenceEngine
 from ctt.data_loading.loader import InvalidSetSize
 
+import covid19sim.frozen.clustering.base
 import covid19sim.frozen.clustering.naive
 import covid19sim.frozen.clusters
 import covid19sim.frozen.helper
@@ -271,7 +272,7 @@ def proc_human(params, inference_engine=None, mp_backend=None, mp_threads=0):
         human["clusters"].update_records(human["update_messages"])
         human["clusters"].purge(params["current_day"])
     else:
-        if human["clusters"] is None:
+        if not isinstance(human["clusters"], covid19sim.frozen.clustering.base.ClusterManagerBase):
             # note: we create the manager to use day-level timestamps only
             human["clusters"] = covid19sim.frozen.clustering.naive.NaiveClusterManager(
                 max_history_ticks_offset=14,
