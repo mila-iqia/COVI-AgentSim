@@ -26,8 +26,6 @@ setup(
     zip_safe             = False,
     python_requires      = '>=3.7.4',
     install_requires     = [
-        "speedrun @ git+https://github.com/inferno-pytorch/speedrun.git@p2p_risk_prediction#egg=speedrun",
-        "ctt @ git+https://github.com/nasimrahaman/ctt@master#egg=ctt",
         "addict",
         "dill",
         "joblib",
@@ -43,6 +41,12 @@ setup(
         "tqdm",
         "seaborn",
     ],
+    extras_require       = {
+        "ctt": [
+            "ctt @ git+https://github.com/nasimrahaman/ctt@master#egg=ctt",
+            "speedrun @ git+https://github.com/inferno-pytorch/speedrun.git@p2p_risk_prediction#egg=speedrun",
+        ],
+    },
     packages             = find_packages("src"),
     package_dir          = {'': 'src'},
 )
