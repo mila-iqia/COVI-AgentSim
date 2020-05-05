@@ -1,21 +1,18 @@
 ---
-# SIMULATION PARAMETERS
+# EXPERIMENTAL PARAMETERS
 COLLECT_LOGS : True
 COLLECT_TRAINING_DATA : True
+USE_INFERENCE_SERVER : True
+RISK_MODEL : "naive" # "naive"  "manual", "digital", "transformer"
 
 ## INTERVENTIONS
-INTERVENTION_DAY : 10
+INTERVENTION_DAY : -1 # TODO @Prateek: We can't run this with a positive intervention day because base.py line 271 -- why?
 INTERVENTION : "Tracing"
 PERCENT_FOLLOW : 1.0
-P_HAS_APP : 0.5
+P_HAS_APP : 1.0
 
-USE_INFERENCE_SERVER : True
-GET_RISK_PREDICTOR_METRICS : True
-RISK_MODEL : "naive" # "naive"  "manual", "digital", "transformer"
-MANUAL_TRACING_NOISE : noise
 
 # PATHS
-TRANSFORMER_EXP_PATH : "/home/martin/code/covid_p2p_risk_prediction/CTT-SHIPMENT-0"
 CLUSTER_PATH : "output/clusters.json"
 
 # Inference & Training
@@ -24,7 +21,7 @@ TRACING_N_DAYS_HISTORY : 14
 MP_BATCHSIZE : "auto"
 MP_N_JOBS : "1"
 MP_BACKEND : "loky"
-CLUSTER_MESSAGES : False
+CLUSTER_MESSAGES : True
 DUMP_CLUSTERS : False
 CLUSTER_TYPE : "heuristic" # "random", "graph"
 

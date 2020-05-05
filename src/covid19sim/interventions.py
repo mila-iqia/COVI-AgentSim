@@ -368,7 +368,6 @@ class Tracing(object):
                     t, s, r = self.process_messages(human)
                     human.risk = self.compute_risk(t, s, r)
                     human.risk_history_map[cur_day] = human.risk
-
                     human.update_risk_level()
                     human.prev_risk_history_map[cur_day] = human.risk
 

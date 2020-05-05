@@ -59,6 +59,7 @@ python run.py test
 @click.option('--seed', help='seed for the process', type=int, default=0)
 @click.option('--n_jobs', help='number of parallel procs to query the risk servers with', type=int, default=1)
 @click.option('--port', help='which port should we look for inference servers on', type=int, default=6688)
+@click.option('--exp_config_path', help='which experiment would we like to run', type=str, default="configs/naive_config.yml")
 ```
 
 ### Accessing Simulation Data
