@@ -55,6 +55,24 @@ def convert_message_to_new_format(
             )
 
 
+def convert_message_to_old_format(
+        message: new_utils.GenericMessageType,
+) -> typing.Union[Message, UpdateMessage]:
+    """Converts a message (in the new dataclass format) to its old namedtuple format.
+
+    Note that we will not to type conversions or any value adaptation here.
+    """
+    if isinstance(message, new_utils.EncounterMessage):
+        return Message(message.uid, message.risk_level, message.encounter_time, message._sender_uid)
+    elif isinstance(message, new_utils.UpdateMessage):
+        return UpdateMessage(
+            message.uid, message.new_risk_level, message.old_risk_level,
+            message.encounter_time, message.update_time, message._sender_uid,
+        )
+    else:
+        raise AssertionError(f"unexpected old message type: {type(message)}")
+
+
 def encode_message(message):
     # encode a contact message as a list
     return [*message]
