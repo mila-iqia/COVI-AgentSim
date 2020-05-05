@@ -285,7 +285,7 @@ class Human(object):
 
     @property
     def is_removed(self):
-        return self.recovered_timestamp == datetime.datetime.max
+        return self.is_immune or self.recovered_timestamp == datetime.datetime.max
 
     @property
     def is_incubated(self):
@@ -674,7 +674,7 @@ class Human(object):
                     self.dead = True
                 else:
                     if not REINFECTION_POSSIBLE:
-                        self.recovered_timestamp = datetime.datetime.max
+                        self.recovered_timestamp = self.env.timestamp
                         self.is_immune = not REINFECTION_POSSIBLE
                     else:
                         self.recovered_timestamp = self.env.timestamp
