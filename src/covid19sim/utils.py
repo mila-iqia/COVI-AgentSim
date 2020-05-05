@@ -4,7 +4,7 @@ from functools import lru_cache
 import datetime
 import math
 
-from covid19sim.config import *
+from covid19sim.configs.config import *
 from covid19sim.interventions import *
 
 
@@ -1274,7 +1274,7 @@ def proba_to_risk_fn(mapping):
 
     return _proba_to_risk
 
-def get_intervention(key):
+def get_intervention(key, RISK_MODEL=None, TRACING_ORDER=None, TRACE_SYMPTOMS=None, TRACE_RISK_UPDATE=None):
 	if key == "Lockdown":
 		return Lockdown()
 	elif key == "WearMask":

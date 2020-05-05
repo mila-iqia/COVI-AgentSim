@@ -4,8 +4,7 @@ import math
 from collections import defaultdict
 import networkx as nx
 
-from covid19sim.config import HUMAN_DISTRIBUTION, LOCATION_DISTRIBUTION, INFECTION_RADIUS, INFECTION_DURATION, \
-    EFFECTIVE_R_WINDOW
+from covid19sim.configs.config import HUMAN_DISTRIBUTION, LOCATION_DISTRIBUTION, INFECTION_RADIUS, EFFECTIVE_R_WINDOW
 from covid19sim.utils import log
 
 

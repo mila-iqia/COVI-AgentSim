@@ -1,12 +1,13 @@
 import click
 import os
+import yaml
 
 from covid19sim.frozen.helper import SYMPTOMS_META
 from covid19sim.simulator import Human
 from covid19sim.base import *
 from covid19sim.monitors import EventMonitor, TimeMonitor, SEIRMonitor
-from covid19sim import config
-
+from covid19sim.configs import config
+from covid19sim.configs.constants import TICK_MINUTE
 
 @click.group()
 def simu():
@@ -22,14 +23,19 @@ def simu():
 @click.option('--seed', help='seed for the process', type=int, default=0)
 @click.option('--n_jobs', help='number of parallel procs to query the risk servers with', type=int, default=1)
 @click.option('--port', help='which port should we look for inference servers on', type=int, default=6688)
+@click.option('--exp_config_path', help='where is the configuration file for this experiment', type=str, default="configs/naive_config.yml")
 def sim(n_people=None,
         init_percent_sick=0,
         start_time=datetime.datetime(2020, 2, 28, 0, 0),
         simulation_days=30,
         outdir=None, out_chunk_size=None,
-        seed=0, n_jobs=1, port=6688):
+        seed=0, n_jobs=1, port=6688, exp_config_path="configs/naive_config.yml"):
 
-    config.COLLECT_LOGS = True
+    # Load the experimental configuration
+    with open(exp_config_path) as file:
+        exp_config = yaml.load(file, Loader=yaml.FullLoader)
+
+    exp_config['COLLECT_LOGS'] = True
 
     if outdir is None:
         outdir = "output"
@@ -46,7 +52,7 @@ def sim(n_people=None,
         simulation_days=simulation_days,
         outfile=outfile, out_chunk_size=out_chunk_size,
         print_progress=True,
-        seed=seed, n_jobs=n_jobs, port=port,
+        seed=seed, n_jobs=n_jobs, port=port, exp_config=exp_config
     )
     monitors[0].dump()
     monitors[0].join_iothread()
@@ -55,36 +61,20 @@ def sim(n_people=None,
     logfile = os.path.join(f"{outdir}/logs.txt")
     tracker.write_metrics(logfile)
 
-@simu.command()
-def base():
-    import pandas as pd
-    import cufflinks as cf
-    cf.go_offline()
-    config.COLLECT_LOGS = False
-    monitors, tracker = run_simu(
-        n_people=100,
-        init_percent_sick=0.01,
-        start_time=datetime.datetime(2020, 2, 28, 0, 0),
-        simulation_days=30,
-        outfile=None,
-        print_progress=False, seed=0,
-    )
-    stats = monitors[1].data
-    x = pd.DataFrame.from_dict(stats).set_index('time')
-    fig = x[['susceptible', 'exposed', 'infectious', 'removed']].iplot(asFigure=True, title="SEIR")
-    fig.show()
-
-    fig = x['R'].iplot(asFigure=True, title="R0")
-    fig.show()
-
 
 @simu.command()
 @click.option('--n_people', help='population of the city', type=int, default=1000)
 @click.option('--simulation_days', help='number of days to run the simulation for', type=int, default=50)
 @click.option('--seed', help='seed for the process', type=int, default=0)
-def tune(n_people, simulation_days, seed):
+@click.option('--exp_config_path', help='where is the configuration file for this experiment', type=str, default="configs/naive_config.yml")
+def tune(n_people, simulation_days, seed, exp_config_path):
+
+    # Load the experimental configuration
+    with open(exp_config_path) as file:
+        exp_config = yaml.load(file, Loader=yaml.FullLoader)
+
     # Force COLLECT_LOGS=False
-    config.COLLECT_LOGS = False
+    exp_config['COLLECT_LOGS'] = False
 
     # extra packages required  - plotly-orca psutil networkx glob seaborn
     import pandas as pd
@@ -169,34 +159,34 @@ def tune(n_people, simulation_days, seed):
 @click.option('--symptoms', help='trace symptoms?', type=bool, default=False)
 @click.option('--risk', help='trace risk updates?', type=bool, default=False)
 @click.option('--noise', help='noise', type=float, default=0.5)
-def tracing(n_people, days, tracing, order, symptoms, risk, noise):
-    config.COLLECT_LOGS = False
+@click.option('--exp_config_path', help='where is the configuration file for this experiment', type=str, default="configs/naive_config.yml")
+def tracing(n_people, days, tracing, order, symptoms, risk, noise, exp_config_path):
+    with open(exp_config_path) as file:
+        exp_config = yaml.load(file, Loader=yaml.FullLoader)
 
-    # switch off
-    config.COLLECT_TRAINING_DATA = False
-    config.USE_INFERENCE_SERVER = False
-    config.GET_RISK_PREDICTOR_METRICS = False
+    exp_config['COLLECT_LOGS'] = False
+    exp_config['COLLECT_TRAINING_DATA'] = False
+    exp_config['USE_INFERENCE_SERVER'] = False
 
     if tracing != "":
-
-        config.INTERVENTION_DAY = 20 # approx 512 will be infected by then
-        config.INTERVENTION = "Tracing"
-        config.RISK_MODEL = tracing
+        exp_config['INTERVENTION_DAY'] = 20 # approx 512 will be infected by then
+        exp_config['INTERVENTION'] = "Tracing"
+        exp_config['RISK_MODEL'] = tracing
 
         # noise
         if tracing == "manual":
-            config.MANUAL_TRACING_NOISE = noise
+            exp_config['MANUAL_TRACING_NOISE'] = noise
         else:
-            config.P_HAS_APP = noise
+            exp_config['P_HAS_APP'] = noise
 
         #symptoms (not used in risk_model = transformer)
-        config.TRACE_SYMPTOMS = symptoms
+        exp_config['TRACE_SYMPTOMS'] = symptoms
 
         #risk (not used in risk_model = transformer)
-        config.TRACE_SYMPTOMS = risk
+        exp_config['TRACE_RISK_UPDATE'] = risk
 
         # order (not used in risk_model = transformer)
-        config.TRACING_ORDER = order
+        exp_config['TRACING_ORDER'] = order
 
         # set filename
         if tracing != "transformer":
@@ -206,7 +196,7 @@ def tracing(n_people, days, tracing, order, symptoms, risk, noise):
 
     else:
         # no intervention
-        config.INTERVENTION_DAY = -1
+        exp_config['INTERVENTION_DAY'] = -1
         name = "unmitigated"
 
     monitors, tracker = run_simu(n_people=n_people, init_percent_sick=0.0025,
@@ -221,7 +211,7 @@ def tracing(n_people, days, tracing, order, symptoms, risk, noise):
     data['tracing'] = tracing
     data['symptoms'] = symptoms
     data['order'] = order
-    data['intervention_day'] = config.INTERVENTION_DAY
+    data['intervention_day'] = exp_config['INTERVENTION_DAY']
     data['noise'] = noise
 
     data['mobility'] = tracker.mobility
@@ -253,10 +243,10 @@ def run_simu(n_people=None, init_percent_sick=0.0,
              start_time=datetime.datetime(2020, 2, 28, 0, 0),
              simulation_days=10,
              outfile=None, out_chunk_size=None,
-             print_progress=False, seed=0, port=6688, n_jobs=1, other_monitors=[]):
+             print_progress=False, seed=0, port=6688, n_jobs=1, exp_config=None, other_monitors=[]):
 
     rng = np.random.RandomState(seed)
-    env = Env(start_time)
+    env = Env(start_time, exp_config)
     city_x_range = (0,1000)
     city_y_range = (0,1000)
     city = City(env, n_people, rng, city_x_range, city_y_range, start_time, init_percent_sick, Human)

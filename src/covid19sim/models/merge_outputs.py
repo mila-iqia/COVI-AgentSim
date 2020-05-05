@@ -16,10 +16,11 @@ with zipfile.ZipFile(f"{args.output_path}", mode='a', compression=zipfile.ZIP_ST
         days_data = []
         data_dir_path = os.path.join(args.data_path, day_path)
         try:
-            for pkl in os.listdir(data_dir_path):
-                with open(os.path.join(data_dir_path, pkl, "daily_human.pkl"), 'rb') as f:
-                    data = pickle.load(f)
-                    zf.writestr(f"{day_path}-{pkl}.pkl", pickle.dumps(data))
+            for human_path in os.listdir(data_dir_path):
+                for output_file in os.listdir(os.path.join(data_dir_path, human_path)):
+                    with open(os.path.join(data_dir_path, human_path, output_file), 'rb') as f:
+                        data = pickle.load(f)
+                        zf.writestr(f"{day_path}-{human_path}-{output_file}.pkl", pickle.dumps(data))
         except Exception:
             print(data_dir_path)
             print(os.path.join(data_dir_path, pkl, "daily_human.pkl"))
