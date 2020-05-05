@@ -1221,9 +1221,7 @@ class Human(object):
 
             if update_messages['reason'] == "test":
                 self.message_info['n_contacts_tested_positive'][order][-1] += update_messages['n']
-                if self.message_info['n_contacts_tested_positive'][order][-1] > 0:
-                    import pdb
-                    # pdb.set_trace()
+
             elif update_messages['reason'] == "symptoms":
                 self.message_info['n_contacts_symptoms'][order][-1] += update_messages['n']
 
