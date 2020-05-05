@@ -3,6 +3,7 @@ import os
 import warnings
 
 from covid19sim.frozen.clusters import Clusters
+import covid19sim.frozen.helper
 from covid19sim.frozen.utils import create_new_uid, Message, UpdateMessage, encode_message, encode_update_message
 from covid19sim.utils import _normalize_scores, _get_random_sex, _get_covid_progression, \
      _get_preexisting_conditions, _draw_random_discreet_gaussian, _sample_viral_load_piecewise, \
@@ -41,6 +42,45 @@ class Visits(object):
 
 
 class Human(object):
+    _MESSAGE_FIELDS = {
+        # Static fields
+        'name',
+        'age',
+        # TODO: Should be reformatted to int timestamp
+        'sex',
+        'obs_age',
+        # TODO: Should be reformatted to int timestamp
+        'obs_sex',
+        'preexisting_conditions',
+        'obs_preexisting_conditions',
+
+        # Medical fields
+        'infectiousnesses',
+        'infection_timestamp',
+        # TODO: Should be reformatted to int timestamp
+        'recovered_timestamp',
+        # TODO: Should be reformatted to int timestamp
+        'test_time',
+        'rolling_all_symptoms',
+        'rolling_all_reported_symptoms',
+
+        # Risk fields
+        'risk',
+        'clusters',
+        'messages',
+        'exposure_message',
+        'update_messages',
+        'carefulness',
+        'has_app',
+
+        # Misc fields
+        # TODO: Should replaced by a light rng
+        'rng'
+    }
+
+    _ALL_POSSIBLE_SYMPTOMS = [k
+                              for k, v in sorted(list(covid19sim.frozen.helper.SYMPTOMS_META.items()),
+                                                 key=lambda item: item[1])]
 
     def __init__(self, env, city, name, age, rng, infection_timestamp, household, workplace, profession, rho=0.3, gamma=0.21, symptoms=[],
                  test_results=None):
@@ -1063,7 +1103,42 @@ class Human(object):
         visited_locs[loc] += 1
         return loc
 
+    def get_message_dict(self):
+        # Copy the object's state from self.__dict__ which contains
+        # all our instance attributes. Always use the dict.copy()
+        # method to avoid modifying the original state.
+        state = self.__dict__.copy()
+        # Remove the unpicklable entries.
+        if state.get("env"):
+            state['messages'] = [encode_message(message) for message in self.contact_book.messages if
+                                 message.day == self.contact_book.messages[-1].day]
+            state['update_messages'] = [encode_update_message(update_message) for update_message in
+                                        self.contact_book.update_messages if
+                                        update_message.day == self.contact_book.update_messages[-1].day]
+
+            state["rolling_all_symptoms"] = \
+                covid19sim.frozen.helper.symptoms_to_np(self.rolling_all_symptoms,
+                                                        self._ALL_POSSIBLE_SYMPTOMS)
+
+            state["rolling_all_reported_symptoms"] = \
+                covid19sim.frozen.helper.symptoms_to_np(self.rolling_all_reported_symptoms,
+                                                        self._ALL_POSSIBLE_SYMPTOMS)
+
+            state["preexisting_conditions"] = \
+                covid19sim.frozen.helper.conditions_to_np(self.preexisting_conditions)
+
+            state["obs_preexisting_conditions"] = \
+                covid19sim.frozen.helper.conditions_to_np(self.obs_preexisting_conditions)
+
+        for field in list(state.keys()):
+            if field not in Human._MESSAGE_FIELDS:
+                del state[field]
+
+        return state
+
     def __getstate__(self):
+        warnings.warn("This should be not used to send the Human as a message. "
+                      "Deprecated in favor of Human.get_message_dict()", DeprecationWarning)
         # Copy the object's state from self.__dict__ which contains
         # all our instance attributes. Always use the dict.copy()
         # method to avoid modifying the original state.

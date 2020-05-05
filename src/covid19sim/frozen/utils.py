@@ -5,41 +5,26 @@ UpdateMessage = namedtuple('update_message', 'uid new_risk risk day received_at 
 
 
 def encode_message(message):
-    # encode a contact message as a string
-    return str(message.uid) + "_" + str(message.risk) + "_" + str(message.day) + "_" + str(message.unobs_id)
+    # encode a contact message as a list
+    return [*message]
 
 
 def encode_update_message(message):
-    # encode a contact message as a string
-    return str(message.uid) + "_" + str(message.new_risk) + "_" + str(message.risk) + "_" + str(
-        message.day) + "_" + str(message.received_at) + "_" + str(message.unobs_id)
+    # encode a contact message as a list
+    return [*message]
 
 
 def decode_message(message):
-    # decode a string-encoded message into a tuple
-    uid, risk, day, unobs_id = message.split("_")
-    obs_uid = int(uid)
-    risk = int(risk)
-    day = int(day)
-    unobs_uid = unobs_id
-    return Message(obs_uid, risk, day, unobs_uid)
+    return Message(*message)
 
 
 def decode_update_message(update_message):
-    # decode a string-encoded message into a tuple
-    uid, new_risk, risk, day, received_at, unobs_id = update_message.split("_")
-    obs_uid = int(uid)
-    risk = int(risk)
-    new_risk = int(new_risk)
-    day = int(day)
-    received_at = float(received_at)  # datetime.datetime.strptime(received_at, "%Y-%m-%d %H:%M:%S")
-    unobs_uid = unobs_id
-    return UpdateMessage(obs_uid, new_risk, risk, day, received_at, unobs_uid)
+    return UpdateMessage(*update_message)
 
 
 def create_new_uid(rng):
     # generate a 4 bit random code
-    return rng.randint(0, 15)
+    return rng.randint(0, 16)
 
 
 def update_uid(uid, rng):
