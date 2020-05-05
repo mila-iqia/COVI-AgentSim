@@ -255,6 +255,9 @@ class City(simpy.Environment):
                     print("naive risk calculation without changing behavior... Humans notified!")
                 else:
                     self.intervention = get_intervention(INTERVENTION)
+                    if HIDE_RECOMMENDATION_FROM_HUMANS:
+                        print("Hiding recommendation from humans.")
+                    self.intervention.should_modify_behavior = not HIDE_RECOMMENDATION_FROM_HUMANS
 
                 _ = [h.notify(self.intervention) for h in self.humans]
                 print(self.intervention)

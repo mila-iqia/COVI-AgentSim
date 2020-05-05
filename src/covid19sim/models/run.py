@@ -67,7 +67,8 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
     for result in results:
         if result is not None:
             name, risk_history, clusters = result
-
+            if risk_history is None:
+                risk_history = [config.BASELINE_RISK_VALUE] * config.TRACING_N_DAYS_HISTORY
             for i in range(config.TRACING_N_DAYS_HISTORY):
                 hd[name].risk_history_map[current_day - i] = risk_history[i]
 
