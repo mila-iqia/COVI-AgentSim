@@ -239,10 +239,6 @@ class ModelsTest(unittest.TestCase):
             self.assertGreaterEqual(sum(stats['human_enc_ids']), n_people)
             self.assertGreaterEqual(candidate_encounters_cnt, n_people)
             self.assertGreaterEqual(has_exposure_day, n_people * 0.5)
-            # TODO: Is it expected to have no recovery_days?
-            try:
-                self.assertGreaterEqual(has_recovery_day, 1)
-            except AssertionError as err:
-                warnings.warn(str(err), RuntimeWarning)
+            self.assertGreaterEqual(has_recovery_day, n_people * 0.2)
             self.assertGreaterEqual(exposure_encounter_cnt, n_people)
             self.assertGreaterEqual(infectiousness, n_people)
