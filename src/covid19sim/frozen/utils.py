@@ -1,7 +1,58 @@
+import numpy as np
+import typing
 from collections import namedtuple, defaultdict
+
+import covid19sim.frozen.message_utils as new_utils
 
 Message = namedtuple('message', 'uid risk day unobs_id')
 UpdateMessage = namedtuple('update_message', 'uid new_risk risk day received_at unobs_id')
+
+
+def convert_message_to_new_format(
+        message: typing.Union[typing.AnyStr, Message, UpdateMessage],
+) -> new_utils.GenericMessageType:
+    """Converts a message (string or namedtuple) to its new dataclass format.
+
+    Note that this will leave some unobserved attributes (e.g. real receiver UID) empty.
+    """
+    if isinstance(message, Message):
+        return new_utils.EncounterMessage(
+            uid=message.uid,
+            risk_level=message.risk,
+            encounter_time=message.day,
+            _sender_uid=message.unobs_id,
+        )
+    elif isinstance(message, UpdateMessage):
+        return new_utils.UpdateMessage(
+            uid=message.uid,
+            old_risk_level=message.risk,
+            new_risk_level=message.new_risk,
+            encounter_time=message.day,
+            update_time=message.received_at,
+            _sender_uid=message.unobs_id,
+        )
+    else:
+        assert isinstance(message, str) and "_" in message, \
+            f"unexpected old message type: {type(message)}"
+        attribs = message.split("_")
+        assert len(attribs) == 4 or len(attribs) == 6, \
+            f"unexpected string attrib count ({len(attribs)}); should be 4 (encounter) or 6 (update)"
+        if len(attribs) == 4:
+            return new_utils.EncounterMessage(
+                uid=np.uint8(int(attribs[0])),
+                risk_level=np.uint8(int(attribs[1])),
+                encounter_time=np.int64(int(attribs[2])),
+                _sender_uid=np.uint8(int(attribs[3])),
+            )
+        else:
+            return new_utils.UpdateMessage(
+                uid=np.uint8(int(attribs[0])),
+                old_risk_level=np.uint8(int(attribs[2])),
+                new_risk_level=np.uint8(int(attribs[1])),
+                encounter_time=np.int64(int(attribs[3])),
+                update_time=np.int64(int(attribs[4])),
+                _sender_uid=np.uint8(int(attribs[5])),
+            )
 
 
 def encode_message(message):
