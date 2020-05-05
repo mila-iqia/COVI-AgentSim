@@ -13,6 +13,7 @@ import zmq
 from ctt.inference.infer import InferenceEngine
 from ctt.data_loading.loader import InvalidSetSize
 
+import covid19sim.frozen.clustering.naive
 import covid19sim.frozen.clusters
 import covid19sim.frozen.helper
 import covid19sim.frozen.utils
@@ -263,12 +264,30 @@ def proc_human(params, inference_engine=None, mp_backend=None, mp_threads=0):
         "unexpected/broken proc_human input format between simulator and inference service"
 
     # Cluster Messages
+    USE_OLD_IMPLEMENTATION = False
     human = params["human"]
-    human["clusters"].add_messages(human["messages"])
+    if USE_OLD_IMPLEMENTATION:
+        human["clusters"].add_messages(human["messages"])
+        human["clusters"].update_records(human["update_messages"])
+        human["clusters"].purge(params["current_day"])
+    else:
+        if human["clusters"] is None:
+            # note: we create the manager to use day-level timestamps only
+            human["clusters"] = covid19sim.frozen.clustering.naive.NaiveClusterManager(
+                max_history_ticks_offset=14,
+                ticks_per_uid_roll=1,
+                add_orphan_updates_as_clusters=False,
+            )
+        encounter_messages = \
+            [covid19sim.frozen.utils.convert_message_to_new_format(m) for m in human["messages"]]
+        update_messages = \
+            [covid19sim.frozen.utils.convert_message_to_new_format(m) for m in human["update_messages"]]
+        human["clusters"].add_messages(
+            messages=[*encounter_messages, *update_messages],
+            current_timestamp=params["current_day"],
+        )
     human["messages"] = []
-    human["clusters"].update_records(human["update_messages"])
     human["update_messages"] = []
-    human["clusters"].purge(params["current_day"])
 
     # Format for supervised learning / transformer inference
     todays_date = params["start"] + datetime.timedelta(days=params["current_day"])
