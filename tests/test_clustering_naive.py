@@ -10,11 +10,6 @@ never = 9999  # dirty macro to indicate a human will never get infected
 ui = np.uint64  # dirty macro to cast integers to np.uint64
 
 
-# TODO: THERE'S ONLY ONE FUNCTIONAL TEST WE CARE ABOUT: RUN WITH LOTS OF PEOPLE, AND...
-#         - VERIFY THAT THIS IMPL RETURNS FEWER CLUSTERS THAN THE SIMPLISTIC ONE
-#         - VERIFY THAT THIS IMPL HAS LESS 'HETEROGENEOUS' CLUSTERS THAN THE SIMPLISTIC ONE
-
-
 class NaiveClusteringTests(unittest.TestCase):
     # note: we only ever build & test clusters for a single human, assuming it would also work for others
 
