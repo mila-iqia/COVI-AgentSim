@@ -1,4 +1,3 @@
-import numpy as np
 from collections import namedtuple, defaultdict
 
 Message = namedtuple('message', 'uid risk day unobs_id')
@@ -40,7 +39,7 @@ def decode_update_message(update_message):
 
 def create_new_uid(rng):
     # generate a 4 bit random code
-    return np.random.randint(0, 15)
+    return rng.randint(0, 15)
 
 
 def update_uid(uid, rng):
