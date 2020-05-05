@@ -275,8 +275,8 @@ def proc_human(params, inference_engine=None, mp_backend=None, mp_threads=0):
     is_exposed, exposure_day = covid19sim.frozen.helper.exposure_array(human["infection_timestamp"], todays_date)
     is_recovered, recovery_day = covid19sim.frozen.helper.recovered_array(human["recovered_timestamp"], todays_date)
     candidate_encounters, exposure_encounter = covid19sim.frozen.helper.candidate_exposures(human, todays_date)
-    reported_symptoms = covid19sim.frozen.helper.symptoms_to_np(human["all_reported_symptoms"], params["all_possible_symptoms"])
-    true_symptoms = covid19sim.frozen.helper.symptoms_to_np(human["all_symptoms"], params["all_possible_symptoms"])
+    reported_symptoms = covid19sim.frozen.helper.symptoms_to_np(human["rolling_all_reported_symptoms"], params["all_possible_symptoms"])
+    true_symptoms = covid19sim.frozen.helper.symptoms_to_np(human["rolling_all_symptoms"], params["all_possible_symptoms"])
     daily_output = {
         "current_day": params["current_day"],
         "observed": {
