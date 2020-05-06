@@ -18,12 +18,12 @@ We plan to update the simulator as more and more about COVID-19 will be known.
 ## Dependencies
 To install the simulator without `ctt`
 ```
-pip install covid19sim
+pip install .
 ```
 
 To install the simulator with [`ctt`](https://github.com/nasimrahaman/ctt)
 ```
-pip install 'covid19sim[ctt]'
+pip install '.[ctt]'
 ```
 
 Please checkout `setup.py` for external dependencies.
