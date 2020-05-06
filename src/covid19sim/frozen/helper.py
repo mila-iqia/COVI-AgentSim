@@ -1,7 +1,7 @@
 import numpy as np
 
 from covid19sim.frozen.clustering.base import ClusterManagerBase
-from covid19sim.frozen.utils import decode_message
+from covid19sim.frozen.utils import decode_message, convert_message_to_new_format
 
 # NOTE: THIS MAP SHOULD ALWAYS MATCH THE NAME/IDS PROVIDED IN utils.py
 PREEXISTING_CONDITIONS_META = {
