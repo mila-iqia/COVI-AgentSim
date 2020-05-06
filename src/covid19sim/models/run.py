@@ -4,7 +4,6 @@ import functools
 from joblib import Parallel, delayed
 
 from covid19sim.server_utils import InferenceClient, InferenceWorker
-from covid19sim.configs import config
 from ctt.inference.infer import InferenceEngine
 from covid19sim.configs.exp_config import ExpConfig
 

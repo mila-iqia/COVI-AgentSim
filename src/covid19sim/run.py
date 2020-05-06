@@ -24,16 +24,16 @@ def simu():
 @click.option('--seed', help='seed for the process', type=int, default=0)
 @click.option('--n_jobs', help='number of parallel procs to query the risk servers with', type=int, default=1)
 @click.option('--port', help='which port should we look for inference servers on', type=int, default=6688)
-@click.option('--exp_config_path', help='where is the configuration file for this experiment', type=str, default="configs/naive_config.yml")
+@click.option('--config', help='where is the configuration file for this experiment', type=str, default="configs/naive_config.yml")
 def sim(n_people=None,
         init_percent_sick=0,
         start_time=datetime.datetime(2020, 2, 28, 0, 0),
         simulation_days=30,
         outdir=None, out_chunk_size=None,
-        seed=0, n_jobs=1, port=6688, exp_config_path="configs/naive_config.yml"):
+        seed=0, n_jobs=1, port=6688, config="configs/naive_config.yml"):
 
     # Load the experimental configuration
-    ExpConfig.load_config(exp_config_path)
+    ExpConfig.load_config(config)
 
     ExpConfig.config['COLLECT_LOGS'] = True
 
@@ -66,11 +66,11 @@ def sim(n_people=None,
 @click.option('--n_people', help='population of the city', type=int, default=1000)
 @click.option('--simulation_days', help='number of days to run the simulation for', type=int, default=50)
 @click.option('--seed', help='seed for the process', type=int, default=0)
-@click.option('--exp_config_path', help='where is the configuration file for this experiment', type=str, default="configs/naive_config.yml")
-def tune(n_people, simulation_days, seed, exp_config_path):
+@click.option('--config', help='where is the configuration file for this experiment', type=str, default="configs/naive_config.yml")
+def tune(n_people, simulation_days, seed, config):
 
     # Load the experimental configuration
-    ExpConfig.load_config(exp_config_path)
+    ExpConfig.load_config(config)
 
     # Force COLLECT_LOGS=False
     ExpConfig.set('COLLECT_LOGS', False)
@@ -80,7 +80,6 @@ def tune(n_people, simulation_days, seed, exp_config_path):
     # import cufflinks as cf
     import matplotlib.pyplot as plt
     # cf.go_offline()
-
     monitors, tracker = run_simu(n_people=n_people, init_percent_sick=0.0025,
                             start_time=datetime.datetime(2020, 2, 28, 0, 0),
                             simulation_days=simulation_days,
@@ -158,9 +157,9 @@ def tune(n_people, simulation_days, seed, exp_config_path):
 @click.option('--symptoms', help='trace symptoms?', type=bool, default=False)
 @click.option('--risk', help='trace risk updates?', type=bool, default=False)
 @click.option('--noise', help='noise', type=float, default=0.5)
-@click.option('--exp_config_path', help='where is the configuration file for this experiment', type=str, default="configs/naive_config.yml")
-def tracing(n_people, days, tracing, order, symptoms, risk, noise, exp_config_path):
-    ExpConfig.load_config(exp_config_path)
+@click.option('--config', help='where is the configuration file for this experiment', type=str, default="configs/naive_config.yml")
+def tracing(n_people, days, tracing, order, symptoms, risk, noise, config):
+    ExpConfig.load_config(config)
 
     # TODO: we should have a specific config for this and not be setting them manually.
     ExpConfig.set('COLLECT_LOGS', False)
