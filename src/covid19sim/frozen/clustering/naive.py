@@ -7,15 +7,16 @@ from covid19sim.frozen.clustering.base import ClusterIDType, TimestampType, \
 
 
 def check_uids_match(
-        uids1: typing.Dict[TimestampType, np.uint8],
-        uids2: typing.Dict[TimestampType, np.uint8],
+        map1: typing.Dict[TimestampType, mu.EncounterMessage],
+        map2: typing.Dict[TimestampType, mu.EncounterMessage],
 ) -> bool:
     """Returns whether the overlaps in the provided timestamp-to-uid dicts are compatible.
 
     Note: if there are no overlapping UIDs in the two sets, the function will return `False`.
     """
-    overlapping_timestamps = list(set(uids1.keys()) & set(uids2.keys()))
-    return overlapping_timestamps and all([uids1[t] == uids2[t] for t in overlapping_timestamps])
+    overlapping_timestamps = list(set(map1.keys()) & set(map2.keys()))
+    return overlapping_timestamps and \
+        all([map1[t].uid == map2[t].uid for t in overlapping_timestamps])
 
 
 class NaiveCluster(ClusterBase):
@@ -26,21 +27,20 @@ class NaiveCluster(ClusterBase):
     level of the cluster is not uniform for all messages it aggregates.
     """
 
-    uids: typing.Dict[TimestampType, np.uint8]
-    """Timestamp-to-Unique Identifier (UID) mapping of all encounters in this cluster."""
+    messages_by_timestamp: typing.Dict[TimestampType, mu.EncounterMessage]
+    """Timestamp-to-encounter map of all messages owned by this cluster."""
 
     def __init__(
             self,
-            first_update_time: TimestampType,
-            first_encounter_uid: np.uint8,
+            messages: typing.List[mu.EncounterMessage],
             **kwargs,
     ):
         """Creates a naive cluster, forwarding most args to the base class."""
         super().__init__(
-            first_update_time=first_update_time,
+            messages=messages,
             **kwargs,
         )
-        self.uids = {first_update_time: first_encounter_uid}
+        self.messages_by_timestamp = {m.encounter_time: m for m in messages}
 
     @staticmethod
     def create_cluster_from_message(
@@ -51,7 +51,6 @@ class NaiveCluster(ClusterBase):
         return NaiveCluster(
             # app-visible stuff below
             cluster_id=cluster_id,
-            first_encounter_uid=message.uid,
             risk_level=message.risk_level
                 if isinstance(message, mu.EncounterMessage) else message.new_risk_level,
             first_update_time=message.encounter_time,
@@ -87,7 +86,8 @@ class NaiveCluster(ClusterBase):
             # no way to match the two, as the cluster should be updated first to that risk level,
             # or we are looking at different users entirely
             return -1, None
-        if message.encounter_time in self.uids and self.uids[message.encounter_time] != message.uid:
+        if message.encounter_time in self.messages_by_timestamp and \
+                self.messages_by_timestamp[message.encounter_time].uid != message.uid:
             # if we already have a stored uid at the new encounter's timestamp with a different
             # uid, there's no way this message can be merged into this cluster
             return -1, None
@@ -121,8 +121,9 @@ class NaiveCluster(ClusterBase):
         # update the cluster time with the new message's encounter time (if more recent)
         self.latest_update_time = max(message.encounter_time, self.latest_update_time)
         self.messages.append(message)  # in this list, encounters may get updated (and form new clusters)
-        assert message.encounter_time not in self.uids or self.uids[message.encounter_time] == message.uid
-        self.uids[message.encounter_time] = message.uid
+        assert message.encounter_time not in self.messages_by_timestamp or \
+               self.messages_by_timestamp[message.encounter_time].uid == message.uid
+        self.messages_by_timestamp[message.encounter_time] = message
         self._real_encounter_uids.append(message._sender_uid)
         self._real_encounter_times.append(message._real_encounter_time)
         self._unclustered_messages.append(message)  # in this list, messages NEVER get updated
@@ -166,8 +167,8 @@ class NaiveCluster(ClusterBase):
         assert update_message.old_risk_level == self.risk_level, "cluster & update message old risk mismatch"
         # quick-exit: if this cluster does not contain the timestamp for the encounter, or if the
         # cluster contains a different uid for that timestamp, there is no way this message is compatible
-        if update_message.encounter_time not in self.uids or \
-                self.uids[update_message.encounter_time] != update_message.uid:
+        if update_message.encounter_time not in self.messages_by_timestamp or \
+                self.messages_by_timestamp[update_message.encounter_time].uid != update_message.uid:
             # could not find any match for the update message; send it back to the manager
             return update_message
         found_match = None
@@ -211,7 +212,7 @@ class NaiveCluster(ClusterBase):
         WARNING: the cluster provided to this function must be discarded after this call!
         If this is not done, we will have duplicated messages somewhere in the manager...
         """
-        assert check_uids_match(self.uids, cluster.uids)
+        assert check_uids_match(self.messages_by_timestamp, cluster.messages_by_timestamp)
         assert self.risk_level == cluster.risk_level
         self.first_update_time = min(self.first_update_time, cluster.first_update_time)
         self.latest_update_time = max(self.latest_update_time, cluster.latest_update_time)
@@ -256,8 +257,8 @@ class NaiveClusterManager(ClusterManagerBase):
 
     def __init__(
             self,
-            ticks_per_uid_roll: np.int64 = 24 * 60 * 60,  # one tick per second, one roll per day
-            max_history_ticks_offset: np.int64 = 24 * 60 * 60 * 14,  # one tick per second, 14 days
+            ticks_per_uid_roll: TimeOffsetType = 24 * 60 * 60,  # one tick per second, one roll per day
+            max_history_ticks_offset: TimeOffsetType = 24 * 60 * 60 * 14,  # one tick per second, 14 days
             add_orphan_updates_as_clusters: bool = False,
             generate_embeddings_by_timestamp: bool = True,
             max_cluster_id: int = 256,
@@ -283,7 +284,8 @@ class NaiveClusterManager(ClusterManagerBase):
                 if target_cluster_idx in reserved_idxs_for_merge:
                     continue
                 if cluster.risk_level == self.clusters[target_cluster_idx].risk_level and \
-                     check_uids_match(cluster.uids, self.clusters[target_cluster_idx].uids):
+                     check_uids_match(cluster.messages_by_timestamp,
+                                      self.clusters[target_cluster_idx].messages_by_timestamp):
                     matched_cluster_idxs.append(target_cluster_idx)
             cluster_matches.append(matched_cluster_idxs)
             reserved_idxs_for_merge.extend(matched_cluster_idxs)
@@ -409,5 +411,5 @@ class NaiveClusterManager(ClusterManagerBase):
         """Cycles the internal cluster ID index to keep tract of potential collisions."""
         self.next_cluster_id = (self.next_cluster_id + 1) % self.max_cluster_id
         # cycle cluster IDs, but make sure that cluster the next cluster is long gone...
-        assert not any([id for timebucket in self.clusters_by_timestamp for id in
-                        self.clusters_by_timestamp[timebucket]])
+        assert not any([id == self.next_cluster_id for timebucket in self.clusters_by_timestamp
+                        for id in self.clusters_by_timestamp[timebucket]])

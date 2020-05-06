@@ -51,8 +51,7 @@ class NaiveClusteringTests(unittest.TestCase):
             self.assertEqual(len(expositions), 2)
             self.assertEqual(sum(expositions), 0)
             embeddings = cluster_manager.get_embeddings_array()
-            for uid in [h.rolling_uids[2] for h in [humans[1], humans[2]]]:
-                self.assertIn(uid, embeddings[:, 0])
+            self.assertEqual(len(np.unique(embeddings[:, 0])), 2)
             self.assertTrue((embeddings[:, 1] == 0).all())  # risk level
             self.assertTrue((embeddings[:, 2] == 1).all())  # message count
             self.assertTrue((embeddings[:, 3] == 2).all())  # timestamp
@@ -93,8 +92,7 @@ class NaiveClusteringTests(unittest.TestCase):
         expositions = cluster_manager._get_expositions_array()
         self.assertTrue(len(expositions) == 3 and sum(expositions) == 0)
         embeddings = cluster_manager.get_embeddings_array()
-        for uid in [h.rolling_uids[0] for h in humans[1:]]:
-            self.assertIn(uid, embeddings[:, 0])
+        self.assertEqual(len(np.unique(embeddings[:, 0])), 3)
         self.assertTrue((embeddings[:, 1] == 7).all())  # risk level
         self.assertTrue(np.logical_and(embeddings[:, 2] > 0, embeddings[:, 2] < 3).all())
         self.assertTrue((embeddings[:, 3] == 0).all())  # timestamp
