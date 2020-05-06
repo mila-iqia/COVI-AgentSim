@@ -22,7 +22,6 @@ class PerfectClusterManager(SimplisticClusterManager):
             max_history_ticks_offset=max_history_ticks_offset,
             add_orphan_updates_as_clusters=add_orphan_updates_as_clusters,
             generate_embeddings_by_timestamp=generate_embeddings_by_timestamp,
-            rng=None,  # note: no RNG here, this impl is deterministic
         )
 
     def _add_encounter_message(self, message: EncounterMessage, cleanup: bool = True):

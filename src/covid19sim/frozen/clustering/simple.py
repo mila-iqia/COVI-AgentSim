@@ -134,7 +134,7 @@ class SimplisticClusterManager(ClusterManagerBase):
             max_history_ticks_offset: TimeOffsetType = 24 * 60 * 60 * 14,  # one tick per second, 14 days
             add_orphan_updates_as_clusters: bool = False,
             generate_embeddings_by_timestamp: bool = True,
-            rng=np.random,
+            rng=None,  # set to np.random & seed if needed
     ):
         super().__init__(
             max_history_ticks_offset=max_history_ticks_offset,
@@ -155,11 +155,14 @@ class SimplisticClusterManager(ClusterManagerBase):
                     cluster.risk_level == message.risk_level and \
                     cluster.first_update_time == message.encounter_time:
                 matched_clusters.append(cluster)
+                if self.rng is None:
+                    break
         if matched_clusters:
             # the number of matched clusters might be greater than one if update messages caused
             # a cluster signature to drift into another cluster's; we will randomly assign this
             # encounter to one of the two (this is the naive part)
-            matched_cluster = self.rng.choice(matched_clusters)
+            matched_cluster = \
+                self.rng.choice(matched_clusters) if self.rng is not None else matched_clusters[0]
             matched_cluster.fit_encounter_message(message)
         else:
             # create a new cluster for this encounter alone
@@ -180,11 +183,14 @@ class SimplisticClusterManager(ClusterManagerBase):
                         matched_clusters.append(cluster)
                         # one matching encounter is sufficient, we can update that cluster
                         break
+                if matched_clusters and self.rng is None:
+                    break
         if matched_clusters:
             # the number of matched clusters might be greater than one if update messages caused
             # a cluster signature to drift into another cluster's; we will randomly assign this
             # encounter to one of the two (this is the naive part)
-            matched_cluster = self.rng.choice(matched_clusters)
+            matched_cluster = \
+                self.rng.choice(matched_clusters) if self.rng is not None else matched_clusters[0]
             matched_cluster.fit_update_message(message)
         else:
             if self.add_orphan_updates_as_clusters:

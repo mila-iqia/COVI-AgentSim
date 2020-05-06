@@ -359,7 +359,7 @@ class NaiveClusterManager(ClusterManagerBase):
             add_orphan_updates_as_clusters: bool = False,
             generate_embeddings_by_timestamp: bool = True,
             max_cluster_id: int = 1000,  # let's hope no user ever reaches 1000 simultaneous clusters
-            rng=np.random,
+            rng=None,  # set to np.random & seed if needed
     ):
         super().__init__(
             max_history_ticks_offset=max_history_ticks_offset,
@@ -429,7 +429,8 @@ class NaiveClusterManager(ClusterManagerBase):
         # naive clustering = add encounter to any cluster that will accept it, or create a new one
         # ... to keep the clustering stochastic, we will shuffle the clusters for every message
         clusters = [c for c in self.clusters]
-        self.rng.shuffle(clusters)  # ...should be a pretty quick call? right..?
+        if self.rng is not None:
+            self.rng.shuffle(clusters)
         best_matched_cluster = None
         for cluster in clusters:
             score = cluster._get_encounter_match_score(message, self.ticks_per_uid_roll)
@@ -446,7 +447,8 @@ class NaiveClusterManager(ClusterManagerBase):
         if not messages or self._check_if_message_outdated(messages[0], cleanup=False):
             return
         clusters = [c for c in self.clusters]
-        self.rng.shuffle(clusters)  # ...should be a pretty quick call? right..?
+        if self.rng is not None:
+            self.rng.shuffle(clusters)
         best_matched_cluster = None
         for cluster in clusters:
             score = cluster._get_encounter_match_score(messages[0], self.ticks_per_uid_roll)
