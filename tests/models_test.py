@@ -17,7 +17,7 @@ class ModelsTest(unittest.TestCase):
             run one simulation and ensure json files are correctly populated and most of the users have activity
         """
         # Load the experimental configuration
-        ExpConfig.load_config("src/covid19sim/configs/test_config.yml")
+        ExpConfig.load_config(os.path.join(os.path.dirname(__file__), "../src/covid19sim/configs/test_config.yml"))
 
         with TemporaryDirectory() as preprocess_d:
             n_people = 100
@@ -46,13 +46,11 @@ class ModelsTest(unittest.TestCase):
                         day_human = pickle.load(f)
                         day_humans.append(day_human)
                         self.assertEqual(day_human['current_day'], day_humans[0]['current_day'])
-                # TODO: this check is not always true because we do not record data for people who are removed.
-                # self.assertGreaterEqual(len(day_humans), n_people)
+                self.assertGreaterEqual(len(day_humans), n_people)
                 output[day_humans[0]['current_day'] - ExpConfig.get('INTERVENTION_DAY')] = day_humans
 
-            # TODO: this check is not always true because we do not record data for people who are removed.
-            # for i in range(1, len(output)):
-            #     self.assertEqual(len(output[i-1]), len(output[i]))
+            for i in range(1, len(output)):
+                self.assertEqual(len(output[i-1]), len(output[i]))
 
             stats = {'human_enc_ids': [0] * 256,
                      'humans': {}}
@@ -79,12 +77,6 @@ class ModelsTest(unittest.TestCase):
                     else:
                         prev_observed = output[output_day_index - 1][h_i]['observed']
                         prev_unobserved = output[output_day_index - 1][h_i]['unobserved']
-
-                    # TODO: This should be changed because we should always output pickles
-                    if not prev_observed:
-                        break
-                    if output_day_index == 19:
-                        return
 
                     # Multi-hot arrays identifying the reported symptoms in the last 14 days
                     # Symptoms:

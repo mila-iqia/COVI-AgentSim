@@ -274,7 +274,8 @@ def run_simu(n_people=None, init_percent_sick=0.0,
     for m in monitors:
         env.process(m.run(env, city=city))
 
-    env.run(until=simulation_days * 24 * 60 / TICK_MINUTE)
+    # Add 1 hour to allow humans updating their data at hour 0 to send them to the inference server
+    env.run(until=(simulation_days * 24 + 1) * 60 / TICK_MINUTE)
 
     return monitors, city.tracker
 

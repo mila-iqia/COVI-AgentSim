@@ -1,7 +1,16 @@
 import yaml
 
+
 class ExpConfig(object):
     config = None
+
+    @classmethod
+    def __getitem__(cls, key):
+        return cls.config[key]
+
+    @classmethod
+    def __setitem__(cls, key, item):
+        cls.config[key] = item
 
     @classmethod
     def get(cls, key):
@@ -9,7 +18,7 @@ class ExpConfig(object):
 
     @classmethod
     def set(cls, key, val):
-        return cls.config[key]
+        cls.config[key] = val
 
     @classmethod
     def load_config(cls, path):

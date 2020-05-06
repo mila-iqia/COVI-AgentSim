@@ -1,3 +1,4 @@
+from datetime import timedelta
 from orderedset import OrderedSet
 import numpy as np
 
@@ -346,12 +347,21 @@ class Tracing(object):
         n_jobs = kwargs.get("n_jobs")
         data_path = kwargs.get("data_path")
 
+        # Delay by 1h the time of sync of humans to give time to those updating at hour 0
+        # TODO: Once the update of a human data will be done at the same time it is sent to the inference server,
+        #  this will not be needed
+        current_time = city.env.timestamp - timedelta(hours=1)
+        current_day = (current_time - city.start_time).days
+        time_slot = current_time.hour
+        if current_day < ExpConfig.get('INTERVENTION_DAY'):
+            return
+
         if self.risk_model == "transformer":
             all_possible_symptoms = kwargs.get("symptoms")
             port = kwargs.get("port")
             n_jobs = kwargs.get("n_jobs")
             data_path = kwargs.get("data_path")
-            city.humans = integrated_risk_pred(city.humans, city.start_time, city.current_day, city.env.timestamp.hour, all_possible_symptoms, port=port, n_jobs=n_jobs, data_path=data_path)
+            city.humans = integrated_risk_pred(city.humans, city.start_time, current_day, time_slot, all_possible_symptoms, port=port, n_jobs=n_jobs, data_path=data_path)
             for h in city.humans:
                 # same as naive
                 if h.is_removed:
@@ -373,7 +383,7 @@ class Tracing(object):
                     human.prev_risk_history_map[cur_day] = human.risk
 
             if ExpConfig.get('COLLECT_TRAINING_DATA'):
-                city.humans = integrated_risk_pred(city.humans, city.start_time, city.current_day, city.env.timestamp.hour, all_possible_symptoms, port=port, n_jobs=n_jobs, data_path=data_path)
+                city.humans = integrated_risk_pred(city.humans, city.start_time, current_day, time_slot, all_possible_symptoms, port=port, n_jobs=n_jobs, data_path=data_path)
 
 
     def compute_tracing_delay(self, human):
