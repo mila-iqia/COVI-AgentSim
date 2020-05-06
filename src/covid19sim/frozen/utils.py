@@ -15,21 +15,22 @@ def convert_message_to_new_format(
 
     Note that this will leave some unobserved attributes (e.g. real receiver UID) empty.
     """
+    # @@@@@ _exposition_event
     if isinstance(message, Message):
         return new_utils.EncounterMessage(
-            uid=message.uid,
-            risk_level=message.risk,
-            encounter_time=message.day,
-            _sender_uid=message.unobs_id,
+            uid=new_utils.UIDType(message.uid),
+            risk_level=new_utils.RiskLevelType(message.risk),
+            encounter_time=new_utils.TimestampType(message.day),
+            _sender_uid=new_utils.RealUserIDType(message.unobs_id.split(":")[-1]),
         )
     elif isinstance(message, UpdateMessage):
         return new_utils.UpdateMessage(
-            uid=message.uid,
-            old_risk_level=message.risk,
-            new_risk_level=message.new_risk,
-            encounter_time=message.day,
-            update_time=message.received_at,
-            _sender_uid=message.unobs_id,
+            uid=new_utils.UIDType(message.uid),
+            old_risk_level=new_utils.RiskLevelType(message.risk),
+            new_risk_level=new_utils.RiskLevelType(message.new_risk),
+            encounter_time=new_utils.TimestampType(message.day),
+            update_time=new_utils.TimestampType(message.received_at),
+            _sender_uid=new_utils.RealUserIDType(message.unobs_id.split(":")[-1]),
         )
     else:
         assert isinstance(message, str) and "_" in message, \
@@ -39,19 +40,19 @@ def convert_message_to_new_format(
             f"unexpected string attrib count ({len(attribs)}); should be 4 (encounter) or 6 (update)"
         if len(attribs) == 4:
             return new_utils.EncounterMessage(
-                uid=np.uint8(int(attribs[0])),
-                risk_level=np.uint8(int(attribs[1])),
-                encounter_time=np.int64(int(attribs[2])),
-                _sender_uid=np.uint8(int(attribs[3])),
+                uid=new_utils.UIDType(attribs[0]),
+                risk_level=new_utils.RiskLevelType(attribs[1]),
+                encounter_time=new_utils.TimestampType(attribs[2]),
+                _sender_uid=new_utils.RealUserIDType(attribs[3].split(":")[-1]),
             )
         else:
             return new_utils.UpdateMessage(
-                uid=np.uint8(int(attribs[0])),
-                old_risk_level=np.uint8(int(attribs[2])),
-                new_risk_level=np.uint8(int(attribs[1])),
-                encounter_time=np.int64(int(attribs[3])),
-                update_time=np.int64(int(attribs[4])),
-                _sender_uid=np.uint8(int(attribs[5])),
+                uid=new_utils.UIDType(attribs[0]),
+                old_risk_level=new_utils.RiskLevelType(attribs[2]),
+                new_risk_level=new_utils.RiskLevelType(attribs[1]),
+                encounter_time=new_utils.TimestampType(attribs[3]),
+                update_time=new_utils.TimestampType(attribs[4]),
+                _sender_uid=new_utils.RealUserIDType(attribs[5].split(":")[-1]),
             )
 
 
