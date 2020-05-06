@@ -8,6 +8,34 @@ Message = namedtuple('message', 'uid risk day unobs_id')
 UpdateMessage = namedtuple('update_message', 'uid new_risk risk day received_at unobs_id')
 
 
+def convert_messages_to_batched_new_format(
+        messages: typing.List[typing.Union[typing.AnyStr, Message, UpdateMessage]],
+        encoded_exposure_message: typing.Optional[typing.AnyStr] = None,
+) -> typing.List[typing.List[new_utils.GenericMessageType]]:
+    batched_messages_map = {}
+    # we will batch messages based on observable variables only, but return the full messages in lists
+    for message in messages:
+        message = convert_message_to_new_format(message)
+        if isinstance(message, new_utils.EncounterMessage):
+            msg_code = (message.uid, message.risk_level, message.encounter_time)
+        else:
+            msg_code = (message.uid, message.old_risk_level, message.new_risk_level,
+                        message.encounter_time, message.update_time,)
+        if msg_code not in batched_messages_map:
+            batched_messages_map[msg_code] = []
+        batched_messages_map[msg_code].append(message)
+    batched_messages = list(batched_messages_map.values())
+    if encoded_exposure_message:
+        # since the original messages do not carry the 'exposition' flag, we have to set it manually:
+        exposure_message = convert_message_to_new_format(encoded_exposure_message)
+        for batch in batched_messages:
+            # hopefully this will only match the proper messages (based on _real_sender_id comparisons)...
+            for m in batch:
+                if isinstance(m, new_utils.EncounterMessage) and m == exposure_message:
+                    m._exposition_event = True
+    return batched_messages
+
+
 def convert_message_to_new_format(
         message: typing.Union[typing.AnyStr, Message, UpdateMessage],
 ) -> new_utils.GenericMessageType:

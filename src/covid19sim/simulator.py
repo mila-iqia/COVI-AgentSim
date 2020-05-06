@@ -1,4 +1,4 @@
-from collections import deque
+from collections import Counter, deque
 import os
 import warnings
 

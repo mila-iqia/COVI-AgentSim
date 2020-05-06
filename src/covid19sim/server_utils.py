@@ -279,16 +279,10 @@ def proc_human(params, inference_engine=None, mp_backend=None, mp_threads=0):
                 max_history_ticks_offset=14,
                 add_orphan_updates_as_clusters=False,
             )
-        encounter_messages = \
-            [covid19sim.frozen.utils.convert_message_to_new_format(m) for m in human["messages"]]
-        # since the original messages do not carry the 'exposition' flag, we have to set it manually:
-        exposure_message = covid19sim.frozen.utils.convert_message_to_new_format(human["exposure_message"])
-        for m in encounter_messages:
-            # hopefully this will only match the proper messages (based on _real_sender_id comparisons)...
-            if m == exposure_message:
-                m._exposition_event = True
-        update_messages = \
-            [covid19sim.frozen.utils.convert_message_to_new_format(m) for m in human["update_messages"]]
+        encounter_messages = covid19sim.frozen.utils.convert_messages_to_batched_new_format(
+            human["messages"], human["exposure_message"])
+        update_messages = covid19sim.frozen.utils.convert_messages_to_batched_new_format(
+            human["update_messages"])
         human["clusters"].add_messages(
             messages=[*encounter_messages, *update_messages],
             current_timestamp=params["current_day"],

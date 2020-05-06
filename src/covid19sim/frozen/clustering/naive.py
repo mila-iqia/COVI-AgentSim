@@ -3,7 +3,7 @@ import typing
 
 import covid19sim.frozen.message_utils as mu
 from covid19sim.frozen.clustering.base import ClusterIDType, TimestampType, \
-    TimeOffsetType, ClusterBase, ClusterManagerBase
+    TimeOffsetType, ClusterBase, ClusterManagerBase, MessagesArrayType
 
 
 def check_uids_match(
@@ -338,21 +338,12 @@ class NaiveClusterManager(ClusterManagerBase):
 
     def add_messages(
             self,
-            messages: typing.Iterable[mu.GenericMessageType],
+            messages: MessagesArrayType,
             cleanup: bool = True,
             current_timestamp: typing.Optional[TimestampType] = None,  # will use internal latest if None
     ):
         """Dispatches the provided messages to the correct internal 'add' function based on type."""
-        if current_timestamp is not None:
-            self.latest_refresh_timestamp = max(current_timestamp, self.latest_refresh_timestamp)
-        for message in messages:
-            if isinstance(message, mu.EncounterMessage):
-                self._add_encounter_message(message, cleanup=False)
-            elif isinstance(message, mu.UpdateMessage):
-                self._add_update_message(message, cleanup=False)
-            else:
-                ValueError("unexpected message type")
-        # this function differs from the base version because we want to merge before cleanup
+        super().add_messages(messages=messages, cleanup=False)
         self._merge_clusters()  # there's a bit of looping in here, think about batching?
         if cleanup:
             self.cleanup_clusters(self.latest_refresh_timestamp)
@@ -374,6 +365,13 @@ class NaiveClusterManager(ClusterManagerBase):
             best_matched_cluster[0]._force_fit_encounter_message(message)
         else:
             self._add_new_cluster_from_message(message)
+
+    def _add_encounter_message_batch(self, messages: typing.List[mu.EncounterMessage], cleanup: bool = True):
+        """Fits a batch of encounter messages to existing clusters, and forward the remaining to non-batch impl."""
+        for m in messages:
+            self._add_encounter_message(m, cleanup=False)
+        if cleanup:
+            self.cleanup_clusters(self.latest_refresh_timestamp)
 
     def _add_update_message(self, message: mu.UpdateMessage, cleanup: bool = True):
         """Fits an update message to an existing cluster."""
@@ -399,6 +397,13 @@ class NaiveClusterManager(ClusterManagerBase):
             self._add_new_cluster_from_message(message)
         elif not found_adopter:
             raise AssertionError(f"could not find any proper cluster match for: {message}")
+
+    def _add_update_message_batch(self, messages: typing.List[mu.UpdateMessage], cleanup: bool = True):
+        """Fits a batch of update messages to existing clusters, and forwards the remaining to non-batch impl."""
+        for m in messages:
+            self._add_update_message(m, cleanup=False)
+        if cleanup:
+            self.cleanup_clusters(self.latest_refresh_timestamp)
 
     def _add_new_cluster_from_message(self, message: mu.GenericMessageType):
         """Creates and adds a new cluster in the internal structs while cycling the cluster ids."""

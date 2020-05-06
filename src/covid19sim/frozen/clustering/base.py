@@ -7,6 +7,9 @@ from covid19sim.frozen.message_utils import EncounterMessage, GenericMessageType
     TimestampType, TimeOffsetType, RealUserIDType, RiskLevelType
 
 ClusterIDType = int
+MessagesArrayType = typing.Union[typing.Iterable[GenericMessageType],
+                                 typing.Iterable[typing.List[GenericMessageType]]]
+
 
 @dataclasses.dataclass
 class ClusterBase:
@@ -120,7 +123,7 @@ class ClusterManagerBase:
 
     def add_messages(
             self,
-            messages: typing.Iterable[GenericMessageType],
+            messages: MessagesArrayType,
             cleanup: bool = True,
             current_timestamp: typing.Optional[TimestampType] = None,  # will use internal latest if None
     ):
@@ -132,6 +135,15 @@ class ClusterManagerBase:
                 self._add_encounter_message(message, cleanup=False)
             elif isinstance(message, UpdateMessage):
                 self._add_update_message(message, cleanup=False)
+            elif isinstance(message, list):
+                if message:
+                    assert all([isinstance(m, EncounterMessage) for m in message]) or \
+                        all([isinstance(m, EncounterMessage) for m in message]), \
+                        "batched messages should all be the same type"
+                    if isinstance(message[0], EncounterMessage):
+                        self._add_encounter_message_batch(message, cleanup=False)
+                    else:
+                        self._add_update_message_batch(message, cleanup=False)
             else:
                 ValueError("unexpected message type")
         if cleanup:
@@ -141,9 +153,27 @@ class ClusterManagerBase:
         """Fits an encounter message to an existing cluster or creates a new cluster to own it."""
         return NotImplementedError
 
+    def _add_encounter_message_batch(self, messages: typing.List[EncounterMessage], cleanup: bool = True):
+        """Fits a batch of encounter messages to existing clusters, and forward the remaining to non-batch impl."""
+        # by default, just forward everything to the default impl
+        # (only some clustering algos will be advantaged by having a custom impl here)
+        for m in messages:
+            self._add_encounter_message(m, cleanup=False)
+        if cleanup:
+            self.cleanup_clusters(self.latest_refresh_timestamp)
+
     def _add_update_message(self, message: UpdateMessage, cleanup: bool = True):
         """Fits an update message to an existing cluster."""
         return NotImplementedError
+
+    def _add_update_message_batch(self, messages: typing.List[UpdateMessage], cleanup: bool = True):
+        """Fits a batch of update messages to existing clusters, and forwards the remaining to non-batch impl."""
+        # by default, just forward everything to the default impl
+        # (only some clustering algos will be advantaged by having a custom impl here)
+        for m in messages:
+            self._add_update_message(m, cleanup=False)
+        if cleanup:
+            self.cleanup_clusters(self.latest_refresh_timestamp)
 
     def get_embeddings_array(self) -> np.ndarray:
         """Returns the 'embeddings' array for all clusters managed by this object."""

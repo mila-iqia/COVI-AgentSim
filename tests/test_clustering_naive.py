@@ -273,6 +273,10 @@ class NaiveClusteringTests(unittest.TestCase):
                 len(naive_cluster_manager.clusters),
             )
 
+    def test_random_large_scale_batch(self):
+        # TODO : add an actual test for batch-based computation? should results be == reg?
+        pass
+
 
 if __name__ == "__main__":
     unittest.main()
