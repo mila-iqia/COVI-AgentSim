@@ -31,8 +31,10 @@ setup(
     install_requires     = requirements,
     extras_require       = {
         "ctt": [
-            "ctt @ git+https://github.com/nasimrahaman/ctt@master#egg=ctt",
-            "speedrun @ git+https://github.com/inferno-pytorch/speedrun.git@p2p_risk_prediction#egg=speedrun",
+            "ctt @ git+https://github.com/nasimrahaman/ctt@master#egg=ctt"
+        ],
+        "ctt-tf": [
+            "ctt[tensorflow] @ git+https://github.com/nasimrahaman/ctt@master#egg=ctt"
         ],
     },
     packages             = find_packages("src"),
