@@ -157,6 +157,7 @@ class Human(object):
         self.exposure_message = None
         self.exposure_source = None
         self.test_time = datetime.datetime.max
+
         # create 24 timeslots to do your updating
         time_slot = rng.randint(0, 24)
         self.time_slots = [int((time_slot + i*24/self.env.exp_config['UPDATES_PER_DAY']) % 24) for i in range(self.env.exp_config['UPDATES_PER_DAY'])]
@@ -531,14 +532,14 @@ class Human(object):
         elif sum(x in current_symptoms for x in ["trouble_breathing"]) > 0:
             return 0.3 * (1 + self.carefulness)
 
-        elif sum(x in current_symptoms for x in ["moderate", "mild", "fever"]) > 0:
-            return 0.2
-
-        elif sum(x in current_symptoms for x in ["cough", "fatigue", "gastro", "aches"]) > 0:
-            return 0.2
-
-        elif sum(x in current_symptoms for x in ["runny_nose", "loss_of_taste"]) > 0:
-            return 0.3
+        # elif sum(x in current_symptoms for x in ["moderate", "mild", "fever"]) > 0:
+        #     return 0.2
+        #
+        # elif sum(x in current_symptoms for x in ["cough", "fatigue", "gastro", "aches"]) > 0:
+        #     return 0.2
+        #
+        # elif sum(x in current_symptoms for x in ["runny_nose", "loss_of_taste"]) > 0:
+        #     return 0.3
 
         return 1.0
 
@@ -841,14 +842,15 @@ class Human(object):
                 if self.tracing:
                     self.contact_book.add(human=h, timestamp=self.env.timestamp, self_human=self)
                     h.contact_book.add(human=self, timestamp=self.env.timestamp, self_human=h)
-                    cur_day = (self.env.timestamp - self.env.initial_timestamp).days
-                    if self.has_app and h.has_app and (cur_day >= self.env.exp_config['INTERVENTION_DAY']):
-                        self.contact_book.messages.append(h.cur_message(cur_day))
-                        h.contact_book.messages.append(self.cur_message(cur_day))
-                        self.contact_book.messages_by_day[cur_day].append(h.cur_message(cur_day))
-                        h.contact_book.messages_by_day[cur_day].append(self.cur_message(cur_day))
-                        h.contact_book.sent_messages_by_day[cur_day].append(h.cur_message(cur_day))
-                        self.contact_book.sent_messages_by_day[cur_day].append(self.cur_message(cur_day))
+                    if False:
+                        cur_day = (self.env.timestamp - self.env.initial_timestamp).days
+                        if self.has_app and h.has_app and (cur_day >= self.env.exp_config['INTERVENTION_DAY']):
+                            self.contact_book.messages.append(h.cur_message(cur_day))
+                            h.contact_book.messages.append(self.cur_message(cur_day))
+                            self.contact_book.messages_by_day[cur_day].append(h.cur_message(cur_day))
+                            h.contact_book.messages_by_day[cur_day].append(self.cur_message(cur_day))
+                            h.contact_book.sent_messages_by_day[cur_day].append(h.cur_message(cur_day))
+                            self.contact_book.sent_messages_by_day[cur_day].append(self.cur_message(cur_day))
 
             t_overlap = min(self.leaving_time, getattr(h, "leaving_time", 60)) - max(self.start_time, getattr(h, "start_time", 60))
             t_near = self.rng.random() * t_overlap * self.time_encounter_reduction_factor

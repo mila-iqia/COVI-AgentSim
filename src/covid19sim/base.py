@@ -246,31 +246,34 @@ class City(simpy.Environment):
         INTERVENTION_DAY = self.env.exp_config['INTERVENTION_DAY']
         COLLECT_TRAINING_DATA = self.env.exp_config['COLLECT_TRAINING_DATA']
         print(f"INTERVENTION_DAY: {INTERVENTION_DAY}")
+
+        humans_notified = False
         while True:
             if self.env.timestamp.hour == 0:
                 # TODO: this is an assumption which will break in reality, instead of updating once per day everyone at the same time, it should be throughout the day
                 for human in self.humans:
                     human.uid = update_uid(human.uid, human.rng)
 
-            if INTERVENTION_DAY >= 0 and self.current_day == INTERVENTION_DAY:
+            if INTERVENTION_DAY >= 0 and self.current_day == INTERVENTION_DAY and not humans_notified:
 
                 self.intervention = get_intervention(self.env.exp_config['INTERVENTION'],
                                                      self.env.exp_config['RISK_MODEL'],
                                                      self.env.exp_config['TRACING_ORDER'],
                                                      self.env.exp_config['TRACE_SYMPTOMS'],
-                                                     self.env.exp_config['TRACE_RISK_UPDATE'])
+                                                     self.env.exp_config['TRACE_RISK_UPDATE'],
+                                                     self.env.exp_config['SHOULD_MODIFY_BEHAVIOR'],
+                                                     self.env.exp_config['COLLECT_TRAINING_DATA'])
                 _ = [h.notify(self.intervention) for h in self.humans]
+                print(f"Collecting data: {self.env.exp_config['COLLECT_TRAINING_DATA']}")
                 print(self.intervention)
+                humans_notified = True
 
             if isinstance(self.intervention, Tracing):
+                import time; start = time.time()
                 self.intervention.update_human_risks(city=self,
                                 symptoms=all_possible_symptoms, port=port,
                                 n_jobs=n_jobs, data_path=outfile)
-
-            if COLLECT_TRAINING_DATA and (self.current_day == 0 and INTERVENTION_DAY < 0):
-                _ = [h.notify(collect_training_data=True) for h in self.humans]
-                print("naive risk calculation without changing behavior... Humans notified!")
-                self.intervention = Tracing(risk_model="naive", max_depth=1, symptoms=False, risk=False, should_modify_behavior=False, COLLECT_TRAINING_DATA=COLLECT_TRAINING_DATA)
+                print(time.time() - start)
 
             if self.env.timestamp.hour == 0 and self.env.timestamp != self.env.initial_timestamp:
                 self.current_day += 1

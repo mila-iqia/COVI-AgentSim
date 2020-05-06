@@ -40,7 +40,7 @@ Attributes
     age : int
         exclusive maximum age for which this probability is effective
         An age of `1000` is assigned when no check on age is needed
-        An age of `-1` is assigned when it is handled entirely in the code 
+        An age of `-1` is assigned when it is handled entirely in the code
     sex : char
         single lower case char representing the sex for which this probability
         is effective. Possible values are: `'f'`, `'m'`, `'a'`
@@ -1274,7 +1274,7 @@ def proba_to_risk_fn(mapping):
 
     return _proba_to_risk
 
-def get_intervention(key, RISK_MODEL=None, TRACING_ORDER=None, TRACE_SYMPTOMS=None, TRACE_RISK_UPDATE=None):
+def get_intervention(key, RISK_MODEL=None, TRACING_ORDER=None, TRACE_SYMPTOMS=None, TRACE_RISK_UPDATE=None, SHOULD_MODIFY_BEHAVIOR=True, COLLECT_TRAINING_DATA=False):
 	if key == "Lockdown":
 		return Lockdown()
 	elif key == "WearMask":
@@ -1284,7 +1284,7 @@ def get_intervention(key, RISK_MODEL=None, TRACING_ORDER=None, TRACE_SYMPTOMS=No
 	elif key == "Quarantine":
 		return Quarantine()
 	elif key == "Tracing":
-		return Tracing(RISK_MODEL, TRACING_ORDER, TRACE_SYMPTOMS, TRACE_RISK_UPDATE)
+		return Tracing(RISK_MODEL, TRACING_ORDER, TRACE_SYMPTOMS, TRACE_RISK_UPDATE, SHOULD_MODIFY_BEHAVIOR, COLLECT_TRAINING_DATA)
 	elif key == "WashHands":
 		return WashHands()
 	elif key == "Stand2M":

@@ -86,7 +86,7 @@ def tune(n_people, simulation_days, seed, exp_config_path):
                             start_time=datetime.datetime(2020, 2, 28, 0, 0),
                             simulation_days=simulation_days,
                             outfile=None,
-                            print_progress=True, seed=seed, other_monitors=[]
+                            print_progress=True, seed=seed, other_monitors=[], exp_config=exp_config
                             )
 
     # stats = monitors[1].data
@@ -203,7 +203,7 @@ def tracing(n_people, days, tracing, order, symptoms, risk, noise, exp_config_pa
                         start_time=datetime.datetime(2020, 2, 28, 0, 0),
                         simulation_days=days,
                         outfile=None,
-                        print_progress=True, seed=1234, other_monitors=[]
+                        print_progress=True, seed=1234, other_monitors=[], exp_config=exp_config
                         )
 
     timenow = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
