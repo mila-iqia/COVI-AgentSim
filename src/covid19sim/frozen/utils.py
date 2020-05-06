@@ -9,13 +9,16 @@ UpdateMessage = namedtuple('update_message', 'uid new_risk risk day received_at 
 
 
 def convert_messages_to_batched_new_format(
-        messages: typing.List[typing.Union[typing.AnyStr, Message, UpdateMessage]],
-        encoded_exposure_message: typing.Optional[typing.AnyStr] = None,
+        messages: typing.List[typing.Union[typing.AnyStr, Message, UpdateMessage,
+                                           new_utils.EncounterMessage, new_utils.UpdateMessage]],
+        exposure_message: typing.Optional[typing.Union[typing.AnyStr, Message,
+                                                       new_utils.EncounterMessage]] = None,
 ) -> typing.List[typing.List[new_utils.GenericMessageType]]:
     batched_messages_map = {}
     # we will batch messages based on observable variables only, but return the full messages in lists
     for message in messages:
-        message = convert_message_to_new_format(message)
+        if not isinstance(message, (new_utils.EncounterMessage, new_utils.UpdateMessage)):
+            message = convert_message_to_new_format(message)
         if isinstance(message, new_utils.EncounterMessage):
             msg_code = (message.uid, message.risk_level, message.encounter_time)
         else:
@@ -25,9 +28,10 @@ def convert_messages_to_batched_new_format(
             batched_messages_map[msg_code] = []
         batched_messages_map[msg_code].append(message)
     batched_messages = list(batched_messages_map.values())
-    if encoded_exposure_message:
+    if exposure_message:
+        if not isinstance(exposure_message, new_utils.EncounterMessage):
+            exposure_message = convert_message_to_new_format(exposure_message)
         # since the original messages do not carry the 'exposition' flag, we have to set it manually:
-        exposure_message = convert_message_to_new_format(encoded_exposure_message)
         for batch in batched_messages:
             # hopefully this will only match the proper messages (based on _real_sender_id comparisons)...
             for m in batch:

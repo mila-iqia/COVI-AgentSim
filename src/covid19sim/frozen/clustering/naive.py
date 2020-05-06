@@ -68,7 +68,6 @@ class NaiveCluster(ClusterBase):
             self,
             message: mu.EncounterMessage,
             ticks_per_uid_roll: TimeOffsetType = 24 * 60 * 60,  # one tick per second, one roll per day
-            look_forward_too: bool = False,  # unused for now.. but who knows in the future
     ) -> int:
         """Returns the match score between the provided encounter message and this cluster.
 
@@ -81,6 +80,7 @@ class NaiveCluster(ClusterBase):
         Returns:
             The best match score (an integer in `[-1,message_uid_bit_count]`).
         """
+        # IMPORTANT NOTE: >10% OF THE SIMULATION TIME IS SPENT HERE --- KEEP IT LIGHT
         if message.risk_level != self.risk_level:
             # if the cluster's risk level differs from the given encounter's risk level, there is
             # no way to match the two, as the cluster should be updated first to that risk level,
@@ -91,14 +91,12 @@ class NaiveCluster(ClusterBase):
             # if we already have a stored uid at the new encounter's timestamp with a different
             # uid, there's no way this message can be merged into this cluster
             return -1
-        best_match = -1
         assert len(self.messages), "... a cluster cannot exist without past encounters?"
         t_range = range(
             message.encounter_time - TimeOffsetType(mu.message_uid_bit_count) + 1,
-            message.encounter_time + (TimeOffsetType(mu.message_uid_bit_count)
-                                      if look_forward_too else 1)
+            message.encounter_time + 1
         )
-        for timestamp in t_range:
+        for timestamp in reversed(t_range):
             if timestamp in self.messages_by_timestamp:
                 # we can pick one encounter from the list, they should all match the same...?
                 old_encounter = self.messages_by_timestamp[timestamp][0]
@@ -109,9 +107,11 @@ class NaiveCluster(ClusterBase):
                     message,
                     ticks_per_uid_roll,
                 )
-                if match_score > best_match:
-                    best_match = match_score
-        return best_match
+                if match_score > -1:
+                    # since the search is reversed, we will always start with the best potential
+                    # matches and go down in terms of score; returning first hit should be OK
+                    return match_score
+        return -1  # did not find jack
 
     def _force_fit_encounter_message(
             self,
@@ -241,6 +241,7 @@ class NaiveCluster(ClusterBase):
                 self.messages_by_timestamp[update_messages[0].encounter_time][0].uid != update_messages[0].uid:
             # could not find any match for the update message; send it back to the manager
             return update_messages, None
+        ### todo @@@@@@@@@@ use timestamp map to check if we can greedily fit messages without look at all of them
         found_matches = []
         for old_encounter_idx, old_encounter in enumerate(self.messages):
             if len(found_matches) >= len(update_messages):
@@ -295,6 +296,7 @@ class NaiveCluster(ClusterBase):
                         encounter_message=messages_to_transfer[idx], update_message=update_messages[idx],
                     ) for idx in range(len(found_matches))
                 ]
+                # todo: create cluster from message batch
                 new_cluster = self.create_cluster_from_message(updated_messages_to_transfer[0])
                 if len(updated_messages_to_transfer) > 1:
                     new_cluster._force_fit_encounter_message_batch(updated_messages_to_transfer[1:])
@@ -302,7 +304,7 @@ class NaiveCluster(ClusterBase):
                 # note: out of laziness for the debugging stuff, we do not remove anything from unobserved vars
         else:
             # could not find any match for the update message; send it back to the manager
-            return update_messages
+            return update_messages, None
 
     def fit_cluster(
             self,
@@ -370,7 +372,7 @@ class NaiveClusterManager(ClusterManagerBase):
             max_history_ticks_offset: TimeOffsetType = 24 * 60 * 60 * 14,  # one tick per second, 14 days
             add_orphan_updates_as_clusters: bool = False,
             generate_embeddings_by_timestamp: bool = True,
-            max_cluster_id: int = 256,
+            max_cluster_id: int = 1000,  # let's hope no user ever reaches 1000 simultaneous clusters
             rng=np.random,
     ):
         super().__init__(

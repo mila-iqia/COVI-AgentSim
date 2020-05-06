@@ -4,6 +4,7 @@ import unittest
 import covid19sim.frozen.clustering.naive as naive
 import covid19sim.frozen.clustering.simple as simple
 import covid19sim.frozen.message_utils as mu
+import covid19sim.frozen.utils
 from tests.utils import FakeHuman, generate_received_messages, Visit
 
 never = 9999  # dirty macro to indicate a human will never get infected
@@ -216,49 +217,59 @@ class NaiveClusteringTests(unittest.TestCase):
             self.assertEqual(len(cluster_manager.clusters), 1)
             self.assertEqual(cluster_manager.clusters[0].first_update_time, np.uint8(2))
 
+    def _get_random_messages(
+            self,
+            n_humans: int,
+            n_visits: int,
+            n_expositions: int,
+            max_timestamp: int,
+    ):
+        # start by sampling a bunch of non-exposition visits...
+        visits = []
+        for _ in range(n_visits):
+            visitor_real_uid = np.random.randint(n_humans)
+            visited_real_uid = visitor_real_uid
+            while visitor_real_uid == visited_real_uid:
+                visited_real_uid = np.random.randint(n_humans)
+            visits.append(Visit(
+                visitor_real_uid=ui(visitor_real_uid),
+                visited_real_uid=ui(visited_real_uid),
+                exposition=False,
+                timestamp=ui(np.random.randint(max_timestamp + 1)),
+            ))
+        # ...then, had a handful of exposition visits to increase risk levels
+        for _ in range(n_expositions):
+            exposer_real_uid = np.random.randint(n_humans)
+            exposed_real_uid = exposer_real_uid
+            while exposer_real_uid == exposed_real_uid:
+                exposed_real_uid = np.random.randint(n_humans)
+            visits.append(Visit(
+                visitor_real_uid=ui(exposer_real_uid),
+                visited_real_uid=ui(exposed_real_uid),
+                exposition=True,
+                timestamp=ui(np.random.randint(max_timestamp + 1)),
+            ))
+        # now, generate all humans with the spurious thingy tag so we dont have to set expo flags
+        humans = [
+            FakeHuman(
+                real_uid=idx,
+                exposition_timestamp=never,
+                visits_to_adopt=visits,
+                allow_spurious_exposition=True,
+            ) for idx in range(n_humans)
+        ]
+        messages = generate_received_messages(humans)  # hopefully this is not too slow
+        return [msg for msgs in messages[0]["received_messages"].values() for msg in msgs]
+
     def test_random_large_scale(self):
         n_trials = 10
-        n_humans = 100
-        n_visits = 1000
-        n_expositions = 50
-        max_timestamp = 20
         for _ in range(n_trials):
-            # start by sampling a bunch of non-exposition visits...
-            visits = []
-            for _ in range(n_visits):
-                visitor_real_uid = np.random.randint(n_humans)
-                visited_real_uid = visitor_real_uid
-                while visitor_real_uid == visited_real_uid:
-                    visited_real_uid = np.random.randint(n_humans)
-                visits.append(Visit(
-                    visitor_real_uid=ui(visitor_real_uid),
-                    visited_real_uid=ui(visited_real_uid),
-                    exposition=False,
-                    timestamp=ui(np.random.randint(max_timestamp + 1)),
-                ))
-            # ...then, had a handful of exposition visits to increase risk levels
-            for _ in range(n_expositions):
-                exposer_real_uid = np.random.randint(n_humans)
-                exposed_real_uid = exposer_real_uid
-                while exposer_real_uid == exposed_real_uid:
-                    exposed_real_uid = np.random.randint(n_humans)
-                visits.append(Visit(
-                    visitor_real_uid=ui(exposer_real_uid),
-                    visited_real_uid=ui(exposed_real_uid),
-                    exposition=True,
-                    timestamp=ui(np.random.randint(max_timestamp + 1)),
-                ))
-            # now, generate all humans with the spurious thingy tag so we dont have to set expo flags
-            humans = [
-                FakeHuman(
-                    real_uid=idx,
-                    exposition_timestamp=never,
-                    visits_to_adopt=visits,
-                    allow_spurious_exposition=True,
-                ) for idx in range(n_humans)
-            ]
-            messages = generate_received_messages(humans)  # hopefully this is not too slow
-            h0_messages = [msg for msgs in messages[0]["received_messages"].values() for msg in msgs]
+            h0_messages = self._get_random_messages(
+                n_humans=100,
+                n_visits=1000,
+                n_expositions=50,
+                max_timestamp=20,
+            )
             naive_cluster_manager = naive.NaiveClusterManager(
                 ticks_per_uid_roll=1,
                 max_history_ticks_offset=never,
@@ -275,7 +286,32 @@ class NaiveClusteringTests(unittest.TestCase):
 
     def test_random_large_scale_batch(self):
         # TODO : add an actual test for batch-based computation? should results be == reg?
-        pass
+        n_trials = 25
+        for _ in range(n_trials):
+            h0_messages = self._get_random_messages(
+                n_humans=100,
+                n_visits=1000,
+                n_expositions=50,
+                max_timestamp=20,
+            )
+            naive_cluster_manager1 = naive.NaiveClusterManager(
+                ticks_per_uid_roll=1,
+                max_history_ticks_offset=never,
+            )
+            batched_h0_messages = \
+                covid19sim.frozen.utils.convert_messages_to_batched_new_format(h0_messages)
+            np.random.seed(0)
+            naive_cluster_manager1.add_messages(batched_h0_messages)
+            naive_cluster_manager2 = naive.NaiveClusterManager(
+                ticks_per_uid_roll=1,
+                max_history_ticks_offset=never,
+            )
+            np.random.seed(0)
+            naive_cluster_manager2.add_messages(h0_messages)
+            self.assertEqual(
+                len(naive_cluster_manager1.clusters),
+                len(naive_cluster_manager2.clusters),
+            )
 
 
 if __name__ == "__main__":
