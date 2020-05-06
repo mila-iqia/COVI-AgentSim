@@ -171,6 +171,7 @@ class Human(object):
         self.exposure_message = None
         self.exposure_source = None
         self.test_time = datetime.datetime.max
+
         # create 24 timeslots to do your updating
         time_slot = rng.randint(0, 24)
         self.time_slots = [int((time_slot + i*24/ExpConfig.get('UPDATES_PER_DAY')) % 24) for i in range(ExpConfig.get('UPDATES_PER_DAY'))]
@@ -565,14 +566,14 @@ class Human(object):
         elif sum(x in current_symptoms for x in ["trouble_breathing"]) > 0:
             return 0.3 * (1 + self.carefulness)
 
-        elif sum(x in current_symptoms for x in ["moderate", "mild", "fever"]) > 0:
-            return 0.2
-
-        elif sum(x in current_symptoms for x in ["cough", "fatigue", "gastro", "aches"]) > 0:
-            return 0.2
-
-        elif sum(x in current_symptoms for x in ["runny_nose", "loss_of_taste"]) > 0:
-            return 0.3
+        # elif sum(x in current_symptoms for x in ["moderate", "mild", "fever"]) > 0:
+        #     return 0.2
+        #
+        # elif sum(x in current_symptoms for x in ["cough", "fatigue", "gastro", "aches"]) > 0:
+        #     return 0.2
+        #
+        # elif sum(x in current_symptoms for x in ["runny_nose", "loss_of_taste"]) > 0:
+        #     return 0.3
 
         return 1.0
 

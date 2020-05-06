@@ -245,7 +245,8 @@ class City(simpy.Environment):
         self.current_day = 0
         INTERVENTION_DAY = ExpConfig.get('INTERVENTION_DAY')
         COLLECT_TRAINING_DATA = ExpConfig.get('COLLECT_TRAINING_DATA')
-        print(f"INTERVENTION_DAY: {INTERVENTION_DAY}")
+
+        humans_notified = False
         while True:
             if self.env.timestamp.hour == 0:
                 # TODO: this is an assumption which will break in reality, instead of updating once per day everyone at the same time, it should be throughout the day
@@ -256,14 +257,16 @@ class City(simpy.Environment):
                 self.current_day += 1
                 self.tracker.increment_day()
 
-            if INTERVENTION_DAY >= 0 and self.current_day == INTERVENTION_DAY:
+            if INTERVENTION_DAY >= 0 and self.current_day == INTERVENTION_DAY and not humans_notified:
                 self.intervention = get_intervention(ExpConfig.get('INTERVENTION'),
                                                      ExpConfig.get('RISK_MODEL'),
                                                      ExpConfig.get('TRACING_ORDER'),
                                                      ExpConfig.get('TRACE_SYMPTOMS'),
                                                      ExpConfig.get('TRACE_RISK_UPDATE'))
                 _ = [h.notify(self.intervention) for h in self.humans]
+                print(f"Collecting data: {self.env.exp_config['COLLECT_TRAINING_DATA']}")
                 print(self.intervention)
+                humans_notified = True
 
             if isinstance(self.intervention, Tracing):
                 self.intervention.update_human_risks(city=self,
