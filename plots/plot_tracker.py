@@ -85,7 +85,7 @@ class PlotTracker(object):
                     print("Dill load, unexpected error:", sys.exc_info()[0])
                     exit(2)
         else:
-            print('Graphics: Error file: {} does not exist'.format(self._fname))
+            print('Graphics: Error file: {} does not exist'.format(fname))
             sys.exit(3)
         return None
 

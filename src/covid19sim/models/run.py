@@ -1,8 +1,11 @@
+import copy
+from datetime import timedelta
 import os
 import json
 import numpy as np
 import functools
 from joblib import Parallel, delayed
+import warnings
 
 from covid19sim.server_utils import InferenceClient, InferenceWorker
 from covid19sim import config
@@ -25,8 +28,21 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
     hd = humans[0].city.hd
     all_params = []
 
+    current_date = (start + timedelta(days=current_day)).date()
+
     # We're going to send a request to the server for each human
     for human in humans:
+        human_state = human.__getstate__()
+        if human.last_date['run'] != current_date:
+            infectiousnesses = copy.copy(human_state["infectiousnesses"])
+            # Pad missing days
+            for day in range((current_date - human.last_date['run']).days):
+                infectiousnesses.appendleft(0)
+            human_state["infectiousnesses"] = infectiousnesses
+            warnings.warn(f"Human is outdated {human.name}. Current date {current_date}, "
+                          f"last_date['run'] {human.last_date['run']}",
+                          RuntimeWarning)
+                
         if time_slot not in human.time_slots:
             continue
         log_path = None
@@ -36,7 +52,7 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
             "start": start,
             "current_day": current_day,
             "all_possible_symptoms": all_possible_symptoms,
-            "human": human.__getstate__(),
+            "human": human_state,
             "COLLECT_TRAINING_DATA": config.COLLECT_TRAINING_DATA,
             "log_path": log_path,
             "risk_model": config.RISK_MODEL,
@@ -68,13 +84,17 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
         if result is not None:
             name, risk_history, clusters = result
 
-            for i in range(config.TRACING_N_DAYS_HISTORY):
-                hd[name].risk_history_map[current_day - i] = risk_history[i]
+            # TODO: Fix can be None. What should be done in this case
+            if risk_history is not None:
+                for i in range(config.TRACING_N_DAYS_HISTORY):
+                    hd[name].risk_history_map[current_day - i] = risk_history[i]
 
-            hd[name].update_risk_level()
+                hd[name].update_risk_level()
 
-            for i in range(config.TRACING_N_DAYS_HISTORY):
-                hd[name].prev_risk_history_map[current_day - i] = risk_history[i]
+                for i in range(config.TRACING_N_DAYS_HISTORY):
+                    hd[name].prev_risk_history_map[current_day - i] = risk_history[i]
+            else:
+                warnings.warn(f"risk_history is None for human {name}", RuntimeWarning)
 
             hd[name].clusters = clusters
             hd[name].last_risk_update = current_day
