@@ -264,7 +264,7 @@ class City(simpy.Environment):
                                                      ExpConfig.get('TRACE_SYMPTOMS'),
                                                      ExpConfig.get('TRACE_RISK_UPDATE'))
                 _ = [h.notify(self.intervention) for h in self.humans]
-                print(f"Collecting data: {self.env.exp_config['COLLECT_TRAINING_DATA']}")
+                print(f"Collecting data: {ExpConfig.get('COLLECT_TRAINING_DATA')}")
                 print(self.intervention)
                 humans_notified = True
 

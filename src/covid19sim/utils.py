@@ -1284,7 +1284,7 @@ def get_intervention(key, RISK_MODEL=None, TRACING_ORDER=None, TRACE_SYMPTOMS=No
 	elif key == "Quarantine":
 		return Quarantine()
 	elif key == "Tracing":
-		return Tracing(RISK_MODEL, TRACING_ORDER, TRACE_SYMPTOMS, TRACE_RISK_UPDATE, SHOULD_MODIFY_BEHAVIOR, COLLECT_TRAINING_DATA)
+		return Tracing(RISK_MODEL, TRACING_ORDER, TRACE_SYMPTOMS, TRACE_RISK_UPDATE, SHOULD_MODIFY_BEHAVIOR)
 	elif key == "WashHands":
 		return WashHands()
 	elif key == "Stand2M":
