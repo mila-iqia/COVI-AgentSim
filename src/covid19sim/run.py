@@ -160,32 +160,32 @@ def tune(n_people, simulation_days, seed, exp_config_path):
 @click.option('--noise', help='noise', type=float, default=0.5)
 @click.option('--exp_config_path', help='where is the configuration file for this experiment', type=str, default="configs/naive_config.yml")
 def tracing(n_people, days, tracing, order, symptoms, risk, noise, exp_config_path):
-    with open(exp_config_path) as file:
-        exp_config = yaml.load(file, Loader=yaml.FullLoader)
+    ExpConfig.load_config(exp_config_path)
 
-    exp_config['COLLECT_LOGS'] = False
-    exp_config['COLLECT_TRAINING_DATA'] = False
-    exp_config['USE_INFERENCE_SERVER'] = False
+    # TODO: we should have a specific config for this and not be setting them manually.
+    ExpConfig.set('COLLECT_LOGS', False)
+    ExpConfig.set('COLLECT_TRAINING_DATA', False)
+    ExpConfig.set('USE_INFERENCE_SERVER', False)
 
     if tracing != "":
-        exp_config['INTERVENTION_DAY'] = 20 # approx 512 will be infected by then
-        exp_config['INTERVENTION'] = "Tracing"
-        exp_config['RISK_MODEL'] = tracing
+        ExpConfig.set('INTERVENTION_DAY', 20) # approx 512 will be infected by then
+        ExpConfig.set('INTERVENTION', "Tracing")
+        ExpConfig.set('RISK_MODEL', tracing)
 
         # noise
         if tracing == "manual":
-            exp_config['MANUAL_TRACING_NOISE'] = noise
+            ExpConfig.set('MANUAL_TRACING_NOISE', noise)
         else:
-            exp_config['P_HAS_APP'] = noise
+            ExpConfig.set('P_HAS_APP', noise)
 
         #symptoms (not used in risk_model = transformer)
-        exp_config['TRACE_SYMPTOMS'] = symptoms
+        ExpConfig.set('TRACE_SYMPTOMS', symptoms)
 
         #risk (not used in risk_model = transformer)
-        exp_config['TRACE_RISK_UPDATE'] = risk
+        ExpConfig.set('TRACE_RISK_UPDATE', risk)
 
         # order (not used in risk_model = transformer)
-        exp_config['TRACING_ORDER'] = order
+        ExpConfig.set('TRACING_ORDER', order)
 
         # set filename
         if tracing != "transformer":
@@ -195,7 +195,7 @@ def tracing(n_people, days, tracing, order, symptoms, risk, noise, exp_config_pa
 
     else:
         # no intervention
-        exp_config['INTERVENTION_DAY'] = -1
+        ExpConfig.set('INTERVENTION_DAY', -1)
         name = "unmitigated"
 
     monitors, tracker = run_simu(n_people=n_people, init_percent_sick=0.0025,
@@ -210,7 +210,7 @@ def tracing(n_people, days, tracing, order, symptoms, risk, noise, exp_config_pa
     data['tracing'] = tracing
     data['symptoms'] = symptoms
     data['order'] = order
-    data['intervention_day'] = exp_config['INTERVENTION_DAY']
+    data['intervention_day'] = ExpConfig.get['INTERVENTION_DAY']
     data['noise'] = noise
 
     data['mobility'] = tracker.mobility
@@ -242,10 +242,10 @@ def run_simu(n_people=None, init_percent_sick=0.0,
              start_time=datetime.datetime(2020, 2, 28, 0, 0),
              simulation_days=10,
              outfile=None, out_chunk_size=None,
-             print_progress=False, seed=0, port=6688, n_jobs=1, exp_config=None, other_monitors=[]):
+             print_progress=False, seed=0, port=6688, n_jobs=1, other_monitors=[]):
 
     rng = np.random.RandomState(seed)
-    env = Env(start_time, exp_config)
+    env = Env(start_time)
     city_x_range = (0,1000)
     city_y_range = (0,1000)
     city = City(env, n_people, rng, city_x_range, city_y_range, start_time, init_percent_sick, Human)

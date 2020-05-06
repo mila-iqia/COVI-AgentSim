@@ -1,13 +1,21 @@
+import math
+import datetime
+import numpy as np
+from collections import defaultdict
+from orderedset import OrderedSet
+
+from covid19sim.interventions import Tracing
+from covid19sim.utils import compute_distance, proba_to_risk_fn
+from covid19sim.base import Event, Contacts
+from covid19sim.configs.config import *
 from covid19sim.frozen.clusters import Clusters
 from covid19sim.frozen.utils import create_new_uid, Message, UpdateMessage, encode_message, encode_update_message
 from covid19sim.utils import _normalize_scores, _get_random_sex, _get_covid_progression, \
      _get_preexisting_conditions, _draw_random_discreet_gaussian, _sample_viral_load_piecewise, \
      _get_cold_progression, _get_flu_progression, _get_allergy_progression, _get_get_really_sick
-from covid19sim.base import *
 from covid19sim.configs.constants import BIG_NUMBER, TICK_MINUTE
+from covid19sim.configs.exp_config import ExpConfig
 
-# if env.exp_config.COLLECT_LOGS is False:
-#     Event = DummyEvent
 
 class Visits(object):
 
@@ -62,7 +70,7 @@ class Human(object):
         else:
             self.carefulness = (round(self.rng.normal(25, 10)) + self.age/2) / 100
 
-        self.has_app = self.rng.rand() < (self.env.exp_config['P_HAS_APP'] / age_modifier) + (self.carefulness / 2)
+        self.has_app = self.rng.rand() < (ExpConfig.get('P_HAS_APP') / age_modifier) + (self.carefulness / 2)
 
         # allergies
         self.has_allergies = self.rng.rand() < P_ALLERGIES
@@ -125,7 +133,7 @@ class Human(object):
         self.notified = False
         self.tracing_method = None
         self.maintain_extra_distance = 0
-        self.how_much_I_follow_recommendations = self.env.exp_config['PERCENT_FOLLOW']
+        self.how_much_I_follow_recommendations = ExpConfig.get('PERCENT_FOLLOW')
         self.recommendations_to_follow = OrderedSet()
         self.time_encounter_reduction_factor = 1.0
         self.hygiene = self.carefulness
@@ -135,7 +143,7 @@ class Human(object):
         self.rec_level = -1 # risk-based recommendations
         self.past_N_days_contacts = [OrderedSet()]
         self.n_contacts_tested_positive = defaultdict(int)
-        self.contact_book = Contacts(self.has_app, self.env.exp_config['TRACING_N_DAYS_HISTORY'])
+        self.contact_book = Contacts(self.has_app, ExpConfig.get('TRACING_N_DAYS_HISTORY'))
         self.message_info = { 'traced': False, \
                 'receipt':datetime.datetime.max, \
                 'delay':BIG_NUMBER, 'n_contacts_tested_positive': defaultdict(lambda :[0]),
@@ -159,7 +167,7 @@ class Human(object):
         self.test_time = datetime.datetime.max
         # create 24 timeslots to do your updating
         time_slot = rng.randint(0, 24)
-        self.time_slots = [int((time_slot + i*24/self.env.exp_config['UPDATES_PER_DAY']) % 24) for i in range(self.env.exp_config['UPDATES_PER_DAY'])]
+        self.time_slots = [int((time_slot + i*24/ExpConfig.get('UPDATES_PER_DAY')) % 24) for i in range(ExpConfig.get('UPDATES_PER_DAY'))]
 
         # symptoms
         self.symptom_start_time = None
@@ -558,7 +566,7 @@ class Human(object):
             return
 
         # FIXME: PERCENT_FOLLOW < 1 will throw an error because ot self.notified somewhere
-        if intervention is not None and not self.notified and self.rng.random() < self.env.exp_config['PERCENT_FOLLOW']:
+        if intervention is not None and not self.notified and self.rng.random() < ExpConfig.get('PERCENT_FOLLOW'):
             self.tracing = False
             if isinstance(intervention, Tracing):
                 self.tracing = True
@@ -577,6 +585,7 @@ class Human(object):
            1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24
            State  h h h h h h h h h sh sh h  h  h  ac h  h  h  h  h  h  h  h  h
         """
+
         self.household.humans.add(self)
         while True:
             hour, day = self.env.hour_of_day(), self.env.day_of_week()
@@ -589,8 +598,9 @@ class Human(object):
                 self.update_symptoms()
                 self.update_risk(symptoms=self.symptoms)
                 self.infectiousnesses.append(self.infectiousness)
-                if len(self.infectiousnesses) > self.env.exp_config['TRACING_N_DAYS_HISTORY']:
+                if len(self.infectiousnesses) > ExpConfig.get('TRACING_N_DAYS_HISTORY'):
                     self.infectiousnesses.pop(-1)
+
                 Event.log_daily(self, self.env.timestamp)
                 city.tracker.track_symptoms(self)
 
@@ -599,7 +609,7 @@ class Human(object):
                     for type_contacts in ['n_contacts_tested_positive', 'n_contacts_symptoms', \
                     'n_risk_increased', 'n_risk_decreased', "n_risk_mag_decreased", "n_risk_mag_increased"]:
                         for order in self.message_info[type_contacts]:
-                            if len(self.message_info[type_contacts][order]) > self.env.exp_config['TRACING_N_DAYS_HISTORY']:
+                            if len(self.message_info[type_contacts][order]) > ExpConfig.get('TRACING_N_DAYS_HISTORY'):
                                 self.message_info[type_contacts][order] = self.message_info[type_contacts][order][1:]
                             self.message_info[type_contacts][order].append(0)
 
@@ -843,7 +853,7 @@ class Human(object):
                     self.contact_book.add(human=h, timestamp=self.env.timestamp, self_human=self)
                     h.contact_book.add(human=self, timestamp=self.env.timestamp, self_human=h)
                     cur_day = (self.env.timestamp - self.env.initial_timestamp).days
-                    if self.has_app and h.has_app and (cur_day >= self.env.exp_config['INTERVENTION_DAY']):
+                    if self.has_app and h.has_app and (cur_day >= ExpConfig.get('INTERVENTION_DAY')):
                         self.contact_book.messages.append(h.cur_message(cur_day))
                         h.contact_book.messages.append(self.cur_message(cur_day))
                         self.contact_book.messages_by_day[cur_day].append(h.cur_message(cur_day))
@@ -1138,7 +1148,8 @@ class Human(object):
 
     @property
     def risk_level(self):
-        return min(self.env._proba_to_risk_level(self.risk), 15)
+        _proba_to_risk_level = proba_to_risk_fn(np.array(ExpConfig.get('RISK_MAPPING')))
+        return min(_proba_to_risk_level(self.risk), 15)
 
     @risk.setter
     def risk(self, val):
@@ -1147,12 +1158,14 @@ class Human(object):
 
     def update_risk_level(self):
         cur_day = (self.env.timestamp - self.env.initial_timestamp).days
-        for day in range(cur_day - self.env.exp_config['TRACING_N_DAYS_HISTORY'], cur_day + 1):
+        _proba_to_risk_level = proba_to_risk_fn(np.array(ExpConfig.get('RISK_MAPPING')))
+
+        for day in range(cur_day - ExpConfig.get('TRACING_N_DAYS_HISTORY'), cur_day + 1):
             if day not in self.prev_risk_history_map.keys():
                 continue
 
-            old_risk_level = min(self.env._proba_to_risk_level(self.prev_risk_history_map[day]), 15)
-            new_risk_level = min(self.env._proba_to_risk_level(self.risk_history_map[day]), 15)
+            old_risk_level = min(_proba_to_risk_level(self.prev_risk_history_map[day]), 15)
+            new_risk_level = min(_proba_to_risk_level(self.risk_history_map[day]), 15)
 
             if old_risk_level != new_risk_level:
                 if self.tracing_method.propagate_risk:
@@ -1170,8 +1183,8 @@ class Human(object):
                     self.contact_book.sent_messages_by_day[day][idx] = Message(my_old_message.uid, new_risk_level, my_old_message.day, my_old_message.unobs_id)
 
         if cur_day in self.prev_risk_history_map.keys():
-            new_risk_level = min(self.env._proba_to_risk_level(self.risk_history_map[cur_day]), 15)
-            prev_risk_level = min(self.env._proba_to_risk_level(self.prev_risk_history_map[cur_day]), 15)
+            new_risk_level = min(_proba_to_risk_level(self.risk_history_map[cur_day]), 15)
+            prev_risk_level = min(_proba_to_risk_level(self.prev_risk_history_map[cur_day]), 15)
             if prev_risk_level != new_risk_level:
                 self.tracing_method.modify_behavior(self)
 
