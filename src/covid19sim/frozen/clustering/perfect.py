@@ -1,20 +1,15 @@
-import typing
-
 from covid19sim.frozen.message_utils import EncounterMessage, UpdateMessage
-from covid19sim.frozen.clustering.base import ClusterIDType, TimestampType, TimeOffsetType, \
-    ClusterManagerBase
-from covid19sim.frozen.clustering.simple import SimpleCluster
+from covid19sim.frozen.clustering.base import TimeOffsetType
+from covid19sim.frozen.clustering.simple import SimpleCluster, SimplisticClusterManager
 
 
-class PerfectClusterManager(ClusterManagerBase):
+class PerfectClusterManager(SimplisticClusterManager):
     """Manages message cluster creation and updates.
 
     This class implements a perfect clustering strategy where encounters will be combined
     using the UNOBSERVED variables inside messages. This means that this algorithm should only
     be used for experimental evaluation purposes, AND IT CANNOT ACTUALLY WORK IN PRACTICE.
     """
-
-    clusters: typing.List[SimpleCluster]
 
     def __init__(
             self,
@@ -27,8 +22,8 @@ class PerfectClusterManager(ClusterManagerBase):
             max_history_ticks_offset=max_history_ticks_offset,
             add_orphan_updates_as_clusters=add_orphan_updates_as_clusters,
             generate_embeddings_by_timestamp=generate_embeddings_by_timestamp,
+            rng=None,  # note: no RNG here, this impl is deterministic
         )
-        # note: no RNG here, this impl is deterministic
 
     def _add_encounter_message(self, message: EncounterMessage, cleanup: bool = True):
         """Fits an encounter message to an existing cluster or creates a new cluster to own it."""

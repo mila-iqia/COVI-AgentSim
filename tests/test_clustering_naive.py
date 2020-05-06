@@ -91,7 +91,7 @@ class NaiveClusteringTests(unittest.TestCase):
         self.assertEqual(len(cluster_manager.clusters), 3)
         self.assertEqual(cluster_manager.latest_refresh_timestamp, 0)
         expositions = cluster_manager._get_expositions_array()
-        self.assertTrue(len(expositions) == 5 and sum(expositions) == 0)
+        self.assertTrue(len(expositions) == 3 and sum(expositions) == 0)
         embeddings = cluster_manager.get_embeddings_array()
         self.assertEqual(len(np.unique(embeddings[:, 0])), 3)
         self.assertTrue((embeddings[:, 1] == 7).all())  # risk level
@@ -139,21 +139,21 @@ class NaiveClusteringTests(unittest.TestCase):
         cluster_manager.add_messages([new_encounter])
         self.assertEqual(len(cluster_manager.clusters), 2)
         self.assertEqual(cluster_manager.clusters[0].risk_level, np.uint8(9))
-        self.assertEqual(len(cluster_manager.clusters[0].messages), 2)
+        self.assertEqual(cluster_manager.clusters[0].get_encounter_count(), 2)
         # update one of the two encounters in the first cluster; it should be split into two parts
         cluster_manager.add_messages([
             mu.create_update_message(new_encounter, np.uint8(13), np.uint64(1))
         ])
         self.assertEqual(len(cluster_manager.clusters), 3)
         self.assertTrue(all([c.risk_level in [9, 1, 13] for c in cluster_manager.clusters]))
-        self.assertTrue(all([len(c.messages) == 1 for c in cluster_manager.clusters]))
+        self.assertTrue(all([c.get_encounter_count() == 1 for c in cluster_manager.clusters]))
         # update the second of the two encounters in the first cluster; we should now be back at two
         cluster_manager.add_messages([
             mu.create_update_message(new_encounter, np.uint8(13), np.uint64(1))
         ])
         self.assertEqual(len(cluster_manager.clusters), 2)
         self.assertTrue(all([c.risk_level in [1, 13] for c in cluster_manager.clusters]))
-        self.assertTrue(sum([len(c.messages) for c in cluster_manager.clusters]) == 3)
+        self.assertTrue(sum([c.get_encounter_count() for c in cluster_manager.clusters]) == 3)
 
     def test_cleanup_outdated_cluster(self):
         n_trials = 100
@@ -277,8 +277,6 @@ class NaiveClusteringTests(unittest.TestCase):
             naive_cluster_manager.add_messages(h0_messages)
             simple_cluster_manager = simple.SimplisticClusterManager(max_history_ticks_offset=never)
             simple_cluster_manager.add_messages(h0_messages)
-            # if perfect clustering is the ultimate cluster fragmentation, naive should never have
-            # more clusters, as that would imply we split encounters that we should have not...
             self.assertGreaterEqual(
                 len(simple_cluster_manager.clusters),
                 len(naive_cluster_manager.clusters),
@@ -289,28 +287,23 @@ class NaiveClusteringTests(unittest.TestCase):
         n_trials = 25
         for _ in range(n_trials):
             h0_messages = self._get_random_messages(
-                n_humans=100,
+                n_humans=10,
                 n_visits=1000,
-                n_expositions=50,
-                max_timestamp=20,
+                n_expositions=5,
+                max_timestamp=14,
             )
-            naive_cluster_manager1 = naive.NaiveClusterManager(
+            naive_cluster_manager = naive.NaiveClusterManager(
                 ticks_per_uid_roll=1,
                 max_history_ticks_offset=never,
             )
             batched_h0_messages = \
                 covid19sim.frozen.utils.convert_messages_to_batched_new_format(h0_messages)
-            np.random.seed(0)
-            naive_cluster_manager1.add_messages(batched_h0_messages)
-            naive_cluster_manager2 = naive.NaiveClusterManager(
-                ticks_per_uid_roll=1,
-                max_history_ticks_offset=never,
-            )
-            np.random.seed(0)
-            naive_cluster_manager2.add_messages(h0_messages)
-            self.assertEqual(
-                len(naive_cluster_manager1.clusters),
-                len(naive_cluster_manager2.clusters),
+            naive_cluster_manager.add_messages(batched_h0_messages)
+            simple_cluster_manager = simple.SimplisticClusterManager(max_history_ticks_offset=never)
+            simple_cluster_manager.add_messages(h0_messages)
+            self.assertGreaterEqual(
+                len(simple_cluster_manager.clusters),
+                len(naive_cluster_manager.clusters),
             )
 
 

@@ -1,3 +1,4 @@
+import collections
 import numpy as np
 import typing
 
@@ -36,10 +37,7 @@ class NaiveCluster(ClusterBase):
             **kwargs,
     ):
         """Creates a naive cluster, forwarding most args to the base class."""
-        super().__init__(
-            messages=messages,
-            **kwargs,
-        )
+        super().__init__(**kwargs)
         self.messages_by_timestamp = {m.encounter_time: [m] for m in messages}
 
     @staticmethod
@@ -91,14 +89,13 @@ class NaiveCluster(ClusterBase):
             # if we already have a stored uid at the new encounter's timestamp with a different
             # uid, there's no way this message can be merged into this cluster
             return -1
-        assert len(self.messages), "... a cluster cannot exist without past encounters?"
         t_range = range(
             message.encounter_time - TimeOffsetType(mu.message_uid_bit_count) + 1,
             message.encounter_time + 1
         )
         for timestamp in reversed(t_range):
             if timestamp in self.messages_by_timestamp:
-                # we can pick one encounter from the list, they should all match the same...?
+                # we can pick one encounter from the list, they should all match the same way...?
                 old_encounter = self.messages_by_timestamp[timestamp][0]
                 match_score = mu.find_encounter_match_score(
                     # TODO: what happens if the received message is actually late, and we have an
@@ -120,11 +117,11 @@ class NaiveCluster(ClusterBase):
         """Updates the current cluster given a new encounter message."""
         # update the cluster time with the new message's encounter time (if more recent)
         self.latest_update_time = max(message.encounter_time, self.latest_update_time)
-        self.messages.append(message)  # in this list, encounters may get updated (and form new clusters)
         if message.encounter_time not in self.messages_by_timestamp:
             self.messages_by_timestamp[message.encounter_time] = []
         else:
             assert self.messages_by_timestamp[message.encounter_time][0].uid == message.uid
+            assert self.messages_by_timestamp[message.encounter_time][0].encounter_time == message.encounter_time
         self.messages_by_timestamp[message.encounter_time].append(message)
         self._real_encounter_uids.append(message._sender_uid)
         self._real_encounter_times.append(message._real_encounter_time)
@@ -139,11 +136,11 @@ class NaiveCluster(ClusterBase):
             return
         # update the cluster time with the new message's encounter time (if more recent)
         self.latest_update_time = max(messages[0].encounter_time, self.latest_update_time)
-        self.messages.extend(messages)
         if messages[0].encounter_time not in self.messages_by_timestamp:
             self.messages_by_timestamp[messages[0].encounter_time] = []
         else:
             assert self.messages_by_timestamp[messages[0].encounter_time][0].uid == messages[0].uid
+            assert self.messages_by_timestamp[messages[0].encounter_time][0].encounter_time == messages[0].encounter_time
         self.messages_by_timestamp[messages[0].encounter_time].extend(messages)
         self._real_encounter_uids.extend([m._sender_uid for m in messages])
         self._real_encounter_times.extend([m._real_encounter_time for m in messages])
@@ -190,42 +187,35 @@ class NaiveCluster(ClusterBase):
                 self.messages_by_timestamp[update_message.encounter_time][0].uid != update_message.uid:
             # could not find any match for the update message; send it back to the manager
             return update_message
-        found_match = None
-        for old_encounter_idx, old_encounter in enumerate(self.messages):
-            assert update_message.old_risk_level == old_encounter.risk_level
-            if old_encounter.uid == update_message.uid and \
-                    old_encounter.encounter_time == update_message.encounter_time:
-                found_match = old_encounter_idx
-                break
-        if found_match is not None:
-            if len(self.messages) == 1:
-                # we can self-update without splitting; do that
-                assert found_match == 0
-                self.messages[0] = mu.create_updated_encounter_with_message(
-                    encounter_message=self.messages[0], update_message=update_message,
-                )
-                self.messages_by_timestamp = {self.messages[0].encounter_time: [self.messages[0]]}
-                self.risk_level = self.messages[0].risk_level
-                self._real_encounter_uids.append(update_message._sender_uid)
-                self._real_encounter_times.append(update_message._real_encounter_time)
-                self._unclustered_messages.append(update_message)  # in this list, messages NEVER get updated
-                return None
-            else:
-                # we have multiple messages in this cluster, and the update can only apply to one;
-                # ... we need to split the cluster into two, where only the new one will be updated
-                message_to_transfer = self.messages.pop(found_match)
-                message_idx_to_remove = \
-                    self.messages_by_timestamp[message_to_transfer.encounter_time].index(message_to_transfer)
-                del self.messages_by_timestamp[message_to_transfer.encounter_time][message_idx_to_remove]
-                if not self.messages_by_timestamp[message_to_transfer.encounter_time]:
-                    del self.messages_by_timestamp[message_to_transfer.encounter_time]
-                return self.create_cluster_from_message(mu.create_updated_encounter_with_message(
-                    encounter_message=message_to_transfer, update_message=update_message,
-                ))
-                # note: out of laziness for the debugging stuff, we do not remove anything from unobserved vars
+        assert update_message.old_risk_level == \
+               self.messages_by_timestamp[update_message.encounter_time][0].risk_level
+        assert update_message.uid == \
+               self.messages_by_timestamp[update_message.encounter_time][0].uid
+        assert update_message.encounter_time ==\
+               self.messages_by_timestamp[update_message.encounter_time][0].encounter_time
+        if len(self.messages_by_timestamp) == 1 and \
+                len(self.messages_by_timestamp[update_message.encounter_time]) == 1:
+            # we can self-update without splitting; do that
+            old_encounter = self.messages_by_timestamp[update_message.encounter_time][0]
+            new_encounter = mu.create_updated_encounter_with_message(
+                encounter_message=old_encounter, update_message=update_message,
+            )
+            self.messages_by_timestamp = {new_encounter.encounter_time: [new_encounter]}
+            self.risk_level = new_encounter.risk_level
+            self._real_encounter_uids.append(update_message._sender_uid)
+            self._real_encounter_times.append(update_message._real_encounter_time)
+            self._unclustered_messages.append(update_message)  # in this list, messages NEVER get updated
+            return None
         else:
-            # could not find any match for the update message; send it back to the manager
-            return update_message
+            # we have multiple messages in this cluster, and the update can only apply to one;
+            # ... we need to split the cluster into two, where only the new one will be updated
+            message_to_transfer = self.messages_by_timestamp[update_message.encounter_time].pop(0)
+            if not self.messages_by_timestamp[update_message.encounter_time]:
+                del self.messages_by_timestamp[update_message.encounter_time]
+            return self.create_cluster_from_message(mu.create_updated_encounter_with_message(
+                encounter_message=message_to_transfer, update_message=update_message,
+            ))
+            # note: out of laziness for the debugging stuff, we do not remove anything from unobserved vars
 
     def fit_update_message_batch(
             self,
@@ -241,70 +231,55 @@ class NaiveCluster(ClusterBase):
                 self.messages_by_timestamp[update_messages[0].encounter_time][0].uid != update_messages[0].uid:
             # could not find any match for the update message; send it back to the manager
             return update_messages, None
-        ### todo @@@@@@@@@@ use timestamp map to check if we can greedily fit messages without look at all of them
-        found_matches = []
-        for old_encounter_idx, old_encounter in enumerate(self.messages):
-            if len(found_matches) >= len(update_messages):
-                break
-            update_message = update_messages[len(found_matches)]
-            assert update_message.old_risk_level == old_encounter.risk_level
-            if old_encounter.uid == update_message.uid and \
-                    old_encounter.encounter_time == update_message.encounter_time:
-                found_matches.append(old_encounter_idx)
-        if found_matches:
-            if len(self.messages) == 1 and len(found_matches) == 1:
-                # we can self-update without splitting; do that
-                assert found_matches[0] == 0
-                self.messages[0] = mu.create_updated_encounter_with_message(
-                    encounter_message=self.messages[0], update_message=update_messages[0],
-                )
-                self.messages_by_timestamp = {self.messages[0].encounter_time: [self.messages[0]]}
-                self.risk_level = self.messages[0].risk_level
-                self._real_encounter_uids.append(update_messages[0]._sender_uid)
-                self._real_encounter_times.append(update_messages[0]._real_encounter_time)
-                self._unclustered_messages.append(update_messages[0])  # in this list, messages NEVER get updated
-                return update_messages[1:], None
-            elif len(self.messages) == len(found_matches):
-                assert found_matches == list(range(len(self.messages)))
-                # we can apply simultaneous updates to all messages in this cluster and avoid splitting; do that
-                self.messages_by_timestamp = {}
-                for msg_idx in range(len(self.messages)):
-                    self.messages[msg_idx] = mu.create_updated_encounter_with_message(
-                        encounter_message=self.messages[msg_idx], update_message=update_messages[msg_idx],
-                    )
-                    if self.messages[msg_idx].encounter_time not in self.messages_by_timestamp:
-                        self.messages_by_timestamp[self.messages[msg_idx].encounter_time] = []
-                    self.messages_by_timestamp[self.messages[msg_idx].encounter_time].append(self.messages[msg_idx])
-                    self._real_encounter_uids.append(update_messages[msg_idx]._sender_uid)
-                    self._real_encounter_times.append(update_messages[msg_idx]._real_encounter_time)
-                    self._unclustered_messages.append(update_messages[msg_idx])  # in this list, messages NEVER get updated
-                self.risk_level = self.messages[0].risk_level
-                return update_messages[len(found_matches):], None
-            else:
-                # we lack a bunch of update messages, so we still need to split
-                messages_to_transfer = [self.messages[idx] for idx in found_matches]
-                self.messages = [self.messages[idx] for idx in range(len(self.messages))
-                                 if idx not in found_matches]
-                for msg_to_transfer in messages_to_transfer:
-                    message_idx_to_remove = \
-                        self.messages_by_timestamp[msg_to_transfer.encounter_time].index(msg_to_transfer)
-                    del self.messages_by_timestamp[msg_to_transfer.encounter_time][message_idx_to_remove]
-                    if not self.messages_by_timestamp[msg_to_transfer.encounter_time]:
-                        del self.messages_by_timestamp[msg_to_transfer.encounter_time]
-                updated_messages_to_transfer = [
-                    mu.create_updated_encounter_with_message(
-                        encounter_message=messages_to_transfer[idx], update_message=update_messages[idx],
-                    ) for idx in range(len(found_matches))
-                ]
-                # todo: create cluster from message batch
-                new_cluster = self.create_cluster_from_message(updated_messages_to_transfer[0])
-                if len(updated_messages_to_transfer) > 1:
-                    new_cluster._force_fit_encounter_message_batch(updated_messages_to_transfer[1:])
-                return update_messages[len(found_matches):], new_cluster
-                # note: out of laziness for the debugging stuff, we do not remove anything from unobserved vars
+        nb_matches = min(len(update_messages),
+                         len(self.messages_by_timestamp[update_messages[0].encounter_time]))
+        if len(self.messages_by_timestamp) == 1 and \
+                len(self.messages_by_timestamp[update_messages[0].encounter_time]) == 1:
+            # we can trivially self-update without splitting; do that
+            old_encounter = self.messages_by_timestamp[update_messages[0].encounter_time][0]
+            new_encounter = mu.create_updated_encounter_with_message(
+                encounter_message=old_encounter, update_message=update_messages[0],
+            )
+            self.messages_by_timestamp = {new_encounter.encounter_time: [new_encounter]}
+            self.risk_level = new_encounter.risk_level
+            self._real_encounter_uids.append(update_messages[0]._sender_uid)
+            self._real_encounter_times.append(update_messages[0]._real_encounter_time)
+            self._unclustered_messages.append(update_messages[0])  # in this list, messages NEVER get updated
+            return update_messages[1:], None
+        elif len(self.messages_by_timestamp) == 1 and \
+                len(self.messages_by_timestamp[update_messages[0].encounter_time]) == nb_matches:
+            # we can apply simultaneous updates to all messages in this cluster and avoid splitting; do that
+            old_encounters = self.messages_by_timestamp[update_messages[0].encounter_time]
+            new_encounters = []
+            for encounter_idx, old_encounter in enumerate(old_encounters):
+                new_encounters.append(mu.create_updated_encounter_with_message(
+                    encounter_message=old_encounter, update_message=update_messages[encounter_idx],
+                ))
+                self._real_encounter_uids.append(update_messages[encounter_idx]._sender_uid)
+                self._real_encounter_times.append(update_messages[encounter_idx]._real_encounter_time)
+                self._unclustered_messages.append(update_messages[encounter_idx])  # in this list, messages NEVER get updated
+            self.messages_by_timestamp[update_messages[0].encounter_time] = new_encounters
+            self.risk_level = new_encounters[0].risk_level
+            return update_messages[nb_matches:], None
         else:
-            # could not find any match for the update message; send it back to the manager
-            return update_messages, None
+            # we lack a bunch of update messages, so we still need to split
+            messages_to_transfer = self.messages_by_timestamp[update_messages[0].encounter_time][:nb_matches]
+            messages_to_keep = self.messages_by_timestamp[update_messages[0].encounter_time][nb_matches:]
+            updated_messages_to_transfer = [
+                mu.create_updated_encounter_with_message(
+                    encounter_message=messages_to_transfer[idx], update_message=update_messages[idx],
+                ) for idx in range(len(messages_to_transfer))
+            ]
+            if not messages_to_keep:
+                del self.messages_by_timestamp[update_messages[0].encounter_time]
+            else:
+                self.messages_by_timestamp[update_messages[0].encounter_time] = messages_to_keep
+            # todo: create cluster from message batch
+            new_cluster = self.create_cluster_from_message(updated_messages_to_transfer[0])
+            if len(updated_messages_to_transfer) > 1:
+                new_cluster._force_fit_encounter_message_batch(updated_messages_to_transfer[1:])
+            return update_messages[nb_matches:], new_cluster
+            # note: out of laziness for the debugging stuff, we do not remove anything from unobserved vars
 
     def fit_cluster(
             self,
@@ -324,18 +299,19 @@ class NaiveCluster(ClusterBase):
         self.latest_update_time = max(self.latest_update_time, cluster.latest_update_time)
         # note: encounters should NEVER be duplicated! if these get copied here, we expect
         #       that the provided 'cluster' object will get deleted!
-        self.messages.extend(cluster.messages)
-        # we can make sure whoever tries to use the cluster again will have a bad surprise...
-        cluster.messages = None
+        for timestamp, encounters in cluster.messages_by_timestamp.items():
+            if timestamp not in self.messages_by_timestamp:
+                self.messages_by_timestamp[timestamp] = []
+            self.messages_by_timestamp[timestamp].extend(encounters)
+        # we can make sure whoever tries to use the other cluster again will have a bad surprise...
         cluster.messages_by_timestamp = None
-        self.messages_by_timestamp = {}
-        for m in self.messages:
-            if m.encounter_time not in self.messages_by_timestamp:
-                self.messages_by_timestamp[m.encounter_time] = []
-            self.messages_by_timestamp[m.encounter_time].append(m)
         self._real_encounter_uids.extend(cluster._real_encounter_uids)
         self._real_encounter_times.extend(cluster._real_encounter_times)
         self._unclustered_messages.extend(cluster._unclustered_messages)
+
+    def get_encounter_count(self):
+        """Returns the total number of encounters aggregated into this cluster."""
+        return sum([len(m) for m in self.messages_by_timestamp.values()])
 
     def get_cluster_embedding(self, include_cluster_id: bool) -> np.ndarray:
         """Returns the 'embeddings' array for this particular cluster."""
@@ -343,12 +319,22 @@ class NaiveCluster(ClusterBase):
         #       average encounter risk level, the number of messages in the cluster, and
         #       the first encounter timestamp of the cluster. This array's type will be returned
         #       as np.int64 to insure that no data is lost w.r.t. message counts or timestamps.
+        tot_messages = self.get_encounter_count()
         if include_cluster_id:
             return np.asarray([self.cluster_id, self.risk_level,
-                               len(self.messages), self.first_update_time], dtype=np.int64)
+                               tot_messages, self.first_update_time], dtype=np.int64)
         else:
             return np.asarray([self.risk_level,
-                               len(self.messages), self.first_update_time], dtype=np.int64)
+                               tot_messages, self.first_update_time], dtype=np.int64)
+
+    def _get_cluster_exposition_flag(self) -> bool:
+        """Returns whether this particular cluster contains an exposition encounter."""
+        # note: an 'exposition encounter' is an encounter where the user was exposed to the virus;
+        #       this knowledge is UNOBSERVED (hence the underscore prefix in the function name), and
+        #       relies on the flag being properly defined in the clustered messages
+        return any([bool(m._exposition_event)
+                    for messages in self.messages_by_timestamp.values()
+                    for m in messages])
 
 
 class NaiveClusterManager(ClusterManagerBase):
@@ -416,13 +402,11 @@ class NaiveClusterManager(ClusterManagerBase):
         for cluster_idx, cluster in enumerate(self.clusters):
             cluster_update_offset = int(current_timestamp) - int(cluster.latest_update_time)
             if cluster_update_offset <= self.max_history_ticks_offset:
-                cluster_messages_to_keep = []
-                for old_encounter in cluster.messages:
-                    message_update_offset = int(current_timestamp) - int(old_encounter.encounter_time)
-                    if message_update_offset <= self.max_history_ticks_offset:
-                        cluster_messages_to_keep.append(old_encounter)
-                if cluster_messages_to_keep:
-                    cluster.messages = cluster_messages_to_keep
+                for batch_timestamp in list(cluster.messages_by_timestamp.keys()):
+                    message_update_offset = int(current_timestamp) - int(batch_timestamp)
+                    if message_update_offset > self.max_history_ticks_offset:
+                        del cluster.messages_by_timestamp[batch_timestamp]
+                if cluster.messages_by_timestamp:
                     to_keep.append(cluster)
         self.clusters = to_keep
 
@@ -544,3 +528,34 @@ class NaiveClusterManager(ClusterManagerBase):
             new_cluster._force_fit_encounter_message_batch(new_encounters)
         self.next_cluster_id = (self.next_cluster_id + 1) % self.max_cluster_id
         self.clusters.append(new_cluster)
+
+    def get_embeddings_array(self) -> np.ndarray:
+        """Returns the 'embeddings' array for all clusters managed by this object."""
+        if self.generate_embeddings_by_timestamp:
+            cluster_embeds = collections.defaultdict(list)
+            for cluster in self.clusters:
+                embed = cluster.get_cluster_embedding(include_cluster_id=True)
+                for timestamp in cluster.messages_by_timestamp:
+                    cluster_embeds[timestamp].append(embed)
+            flat_output = []
+            for timestamp in sorted(cluster_embeds.keys()):
+                flat_output.extend(cluster_embeds[timestamp])
+            return np.asarray(flat_output)
+        else:
+            return np.asarray([c.get_cluster_embedding(include_cluster_id=False)
+                               for c in self.clusters], dtype=np.int64)
+
+    def _get_expositions_array(self) -> np.ndarray:
+        """Returns the 'expositions' array for all clusters managed by this object."""
+        if self.generate_embeddings_by_timestamp:
+            cluster_flags = collections.defaultdict(list)
+            for cluster in self.clusters:
+                flags = cluster._get_cluster_exposition_flag()
+                for timestamp in cluster.messages_by_timestamp:
+                    cluster_flags[timestamp].append(flags)
+            flat_output = []
+            for timestamp in sorted(cluster_flags.keys()):
+                flat_output.extend(cluster_flags[timestamp])
+            return np.asarray(flat_output)
+        else:
+            return np.asarray([c._get_cluster_exposition_flag() for c in self.clusters], dtype=np.uint8)

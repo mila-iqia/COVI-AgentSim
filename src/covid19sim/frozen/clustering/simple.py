@@ -1,3 +1,5 @@
+import collections
+import dataclasses
 import numpy as np
 import typing
 
@@ -14,6 +16,21 @@ class SimpleCluster(ClusterBase):
     simply attempt to merge new messages and adjust the risk level of the cluster
     to the average of all messages it aggregates.
     """
+
+    messages: typing.List[EncounterMessage] = dataclasses.field(default_factory=list)
+    """List of encounter messages aggregated into this cluster (in added order)."""
+    # note: messages above might have been updated from their original state!
+
+    def __init__(
+            self,
+            messages: typing.List[EncounterMessage],
+            **kwargs,
+    ):
+        """Creates a simple cluster, forwarding most args to the base class."""
+        super().__init__(
+            **kwargs,
+        )
+        self.messages = messages
 
     @staticmethod
     def create_cluster_from_message(
@@ -90,6 +107,13 @@ class SimpleCluster(ClusterBase):
         else:
             return np.asarray([self.risk_level,
                                len(self.messages), self.first_update_time], dtype=np.int64)
+
+    def _get_cluster_exposition_flag(self) -> bool:
+        """Returns whether this particular cluster contains an exposition encounter."""
+        # note: an 'exposition encounter' is an encounter where the user was exposed to the virus;
+        #       this knowledge is UNOBSERVED (hence the underscore prefix in the function name), and
+        #       relies on the flag being properly defined in the clustered messages
+        return any([bool(m._exposition_event) for m in self.messages])
 
 
 class SimplisticClusterManager(ClusterManagerBase):
@@ -168,3 +192,34 @@ class SimplisticClusterManager(ClusterManagerBase):
                 self.clusters.append(new_cluster)
             else:
                 raise AssertionError(f"could not find any proper cluster match for: {message}")
+
+    def get_embeddings_array(self) -> np.ndarray:
+        """Returns the 'embeddings' array for all clusters managed by this object."""
+        if self.generate_embeddings_by_timestamp:
+            cluster_embeds = collections.defaultdict(list)
+            for cluster in self.clusters:
+                embed = cluster.get_cluster_embedding(include_cluster_id=True)
+                for msg in cluster.messages:
+                    cluster_embeds[msg.encounter_time].append(embed)
+            flat_output = []
+            for timestamp in sorted(cluster_embeds.keys()):
+                flat_output.extend(cluster_embeds[timestamp])
+            return np.asarray(flat_output)
+        else:
+            return np.asarray([c.get_cluster_embedding(include_cluster_id=False)
+                               for c in self.clusters], dtype=np.int64)
+
+    def _get_expositions_array(self) -> np.ndarray:
+        """Returns the 'expositions' array for all clusters managed by this object."""
+        if self.generate_embeddings_by_timestamp:
+            cluster_flags = collections.defaultdict(list)
+            for cluster in self.clusters:
+                flags = cluster._get_cluster_exposition_flag()
+                for msg in cluster.messages:
+                    cluster_flags[msg.encounter_time].append(flags)
+            flat_output = []
+            for timestamp in sorted(cluster_flags.keys()):
+                flat_output.extend(cluster_flags[timestamp])
+            return np.asarray(flat_output)
+        else:
+            return np.asarray([c._get_cluster_exposition_flag() for c in self.clusters], dtype=np.uint8)
