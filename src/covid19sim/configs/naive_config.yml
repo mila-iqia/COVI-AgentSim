@@ -22,7 +22,6 @@ TRACING_N_DAYS_HISTORY : 14
 MP_BATCHSIZE : "auto"
 MP_N_JOBS : "1"
 MP_BACKEND : "loky"
-CLUSTER_MESSAGES : True
 DUMP_CLUSTERS : False
 CLUSTER_TYPE : "heuristic" # "random", "graph"
 

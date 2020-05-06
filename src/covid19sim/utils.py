@@ -1274,7 +1274,7 @@ def proba_to_risk_fn(mapping):
 
     return _proba_to_risk
 
-def get_intervention(key, RISK_MODEL=None, TRACING_ORDER=None, TRACE_SYMPTOMS=None, TRACE_RISK_UPDATE=None, SHOULD_MODIFY_BEHAVIOR=True, COLLECT_TRAINING_DATA=False):
+def get_intervention(key, RISK_MODEL=None, TRACING_ORDER=None, TRACE_SYMPTOMS=None, TRACE_RISK_UPDATE=None, SHOULD_MODIFY_BEHAVIOR=True):
 	if key == "Lockdown":
 		return Lockdown()
 	elif key == "WearMask":

@@ -618,7 +618,7 @@ class Event:
 
 
 class Contacts(object):
-    def __init__(self, has_app, TRACING_N_DAYS_HISTORY):
+    def __init__(self, has_app):
         self.messages = []
         self.sent_messages_by_day = defaultdict(list)
         self.messages_by_day = defaultdict(list)
@@ -626,7 +626,6 @@ class Contacts(object):
         # human --> [[date, counts], ...]
         self.book = {}
         self.has_app = has_app
-        self.TRACING_N_DAYS_HISTORY = TRACING_N_DAYS_HISTORY
 
     def add(self, **kwargs):
         human = kwargs.get("human")
@@ -648,7 +647,7 @@ class Contacts(object):
 
         remove_idx = -1
         for history in self.book[human]:
-            if (date - history[0]).days > self.TRACING_N_DAYS_HISTORY:
+            if (date - history[0]).days > ExpConfig.get('TRACING_N_DAYS_HISTORY'):
                 remove_idx += 1
             else:
                 break
@@ -658,7 +657,7 @@ class Contacts(object):
         if False:
             remove_idx = 0
             for historical_message in self.messages:
-                if (human.env.timestamp - human.env.initial_timestamp).days - historical_message.day > self.TRACING_N_DAYS_HISTORY:
+                if (human.env.timestamp - human.env.initial_timestamp).days - historical_message.day > ExpConfig.get('TRACING_N_DAYS_HISTORY'):
                     remove_idx += 1
                 else:
                     break

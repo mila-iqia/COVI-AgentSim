@@ -148,7 +148,7 @@ class Human(object):
         self.rec_level = -1 # risk-based recommendations
         self.past_N_days_contacts = [OrderedSet()]
         self.n_contacts_tested_positive = defaultdict(int)
-        self.contact_book = Contacts(self.has_app, ExpConfig.get('TRACING_N_DAYS_HISTORY'))
+        self.contact_book = Contacts(self.has_app)
         self.message_info = { 'traced': False, \
                 'receipt':datetime.datetime.max, \
                 'delay':BIG_NUMBER, 'n_contacts_tested_positive': defaultdict(lambda :[0]),

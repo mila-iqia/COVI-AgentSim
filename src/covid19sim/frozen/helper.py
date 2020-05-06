@@ -104,8 +104,13 @@ def candidate_exposures(human, date):
                     if message == human["exposure_message"]:
                         exposed_encounters[idx] = 1.
                         break
+                if sum(exposed_encounters) == 1:
+                    break
                 if any(messages):
                     idx += 1
+            if sum(exposed_encounters) == 1:
+                break
+
     return candidate_encounters, exposed_encounters
 
 
