@@ -252,8 +252,11 @@ class City(simpy.Environment):
                 for human in self.humans:
                     human.uid = update_uid(human.uid, human.rng)
 
-            if INTERVENTION_DAY >= 0 and self.current_day == INTERVENTION_DAY:
+            if self.env.timestamp.hour == 0 and self.env.timestamp != self.env.initial_timestamp:
+                self.current_day += 1
+                self.tracker.increment_day()
 
+            if INTERVENTION_DAY >= 0 and self.current_day == INTERVENTION_DAY:
                 self.intervention = get_intervention(ExpConfig.get('INTERVENTION'),
                                                      ExpConfig.get('RISK_MODEL'),
                                                      ExpConfig.get('TRACING_ORDER'),
@@ -272,11 +275,7 @@ class City(simpy.Environment):
                 print("naive risk calculation without changing behavior... Humans notified!")
                 self.intervention = Tracing(risk_model="naive", max_depth=1, symptoms=False, risk=False, should_modify_behavior=False)
 
-            if self.env.timestamp.hour == 0 and self.env.timestamp != self.env.initial_timestamp:
-                self.current_day += 1
-                self.tracker.increment_day()
-
-            # Let the day pass
+            # Let the hour pass
             yield self.env.timeout(duration / TICK_MINUTE)
 
 

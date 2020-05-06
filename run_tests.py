@@ -5,7 +5,8 @@ import covid19sim.server_bootstrap
 from covid19sim.configs.exp_config import ExpConfig
 
 # Load the experimental configuration
-ExpConfig.load_config("src/covid19sim/configs/test_config.yml")
+ExpConfig.load_config(os.path.join(os.path.dirname(__file__), "src/covid19sim/configs/test_config.yml"))
+
 
 def start_inference_server():
     exp_dir = os.path.join(os.path.dirname(__file__), "exp/DEBUG-0")

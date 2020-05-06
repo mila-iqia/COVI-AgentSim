@@ -26,6 +26,9 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
 
     # We're going to send a request to the server for each human
     for human in humans:
+        if time_slot not in human.time_slots:
+            continue
+
         human_state = human.__getstate__()
         if human.last_date['run'] != current_date:
             infectiousnesses = copy.copy(human_state["infectiousnesses"])
@@ -36,9 +39,7 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
             warnings.warn(f"Human is outdated {human.name}. Current date {current_date}, "
                           f"last_date['run'] {human.last_date['run']}",
                           RuntimeWarning)
-                
-        if time_slot not in human.time_slots:
-            continue
+
         log_path = None
         if data_path:
             log_path = f'{os.path.dirname(data_path)}/daily_outputs/{current_day}/{human.name[6:]}/'
