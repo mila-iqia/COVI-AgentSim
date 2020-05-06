@@ -22,7 +22,8 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
     hd = humans[0].city.hd
     all_params = []
 
-    current_date = (start + timedelta(days=current_day)).date()
+    current_time = (start + timedelta(days=current_day, hours=time_slot))
+    current_date = current_time.date()
 
     # We're going to send a request to the server for each human
     for human in humans:
@@ -33,7 +34,10 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
         if human.last_date['run'] != current_date:
             infectiousnesses = copy.copy(human_state["infectiousnesses"])
             # Pad missing days
-            for day in range((current_date - human.last_date['run']).days):
+            # TODO: Reduce the current date by 1 hour since humans with time slot at hour 0
+            #  do not have the time to update their data. Update the human data at the same
+            #  time it is sent to the inference server would properly fix this
+            for day in range(((current_time + timedelta(hours=-1)).date() - human.last_date['run']).days):
                 infectiousnesses.appendleft(0)
             human_state["infectiousnesses"] = infectiousnesses
             warnings.warn(f"Human is outdated {human.name}. Current date {current_date}, "
