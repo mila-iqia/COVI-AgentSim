@@ -116,12 +116,8 @@ class NaiveCluster(ClusterBase):
     def _force_fit_encounter_message(
             self,
             message: mu.EncounterMessage,
-    ) -> typing.Optional[mu.EncounterMessage]:
-        """Updates the current cluster given a new encounter message.
-
-        Same as `fit_encounter_message`, but allows an internal message index to be passed in to
-        avoid an extra `_get_encounter_match_score` call.
-        """
+    ):
+        """Updates the current cluster given a new encounter message."""
         # update the cluster time with the new message's encounter time (if more recent)
         self.latest_update_time = max(message.encounter_time, self.latest_update_time)
         self.messages.append(message)  # in this list, encounters may get updated (and form new clusters)
@@ -133,7 +129,25 @@ class NaiveCluster(ClusterBase):
         self._real_encounter_uids.append(message._sender_uid)
         self._real_encounter_times.append(message._real_encounter_time)
         self._unclustered_messages.append(message)  # in this list, messages NEVER get updated
-        return None  # we merged the message in, so nothing new to return to the manager
+
+    def _force_fit_encounter_message_batch(
+            self,
+            messages: typing.List[mu.EncounterMessage],
+    ):
+        """Updates the current cluster given a batch of new encounter messages."""
+        if not messages:
+            return
+        # update the cluster time with the new message's encounter time (if more recent)
+        self.latest_update_time = max(messages[0].encounter_time, self.latest_update_time)
+        self.messages.extend(messages)
+        if messages[0].encounter_time not in self.messages_by_timestamp:
+            self.messages_by_timestamp[messages[0].encounter_time] = []
+        else:
+            assert self.messages_by_timestamp[messages[0].encounter_time][0].uid == messages[0].uid
+        self.messages_by_timestamp[messages[0].encounter_time].extend(messages)
+        self._real_encounter_uids.extend([m._sender_uid for m in messages])
+        self._real_encounter_times.extend([m._real_encounter_time for m in messages])
+        self._unclustered_messages.extend(messages)
 
     def fit_encounter_message(
             self,
@@ -168,7 +182,6 @@ class NaiveCluster(ClusterBase):
         cluster, it will be returned as-is. Finally, if the update message was applied to the cluster
         without splitting it, the function will return `None`.
         """
-        # TODO: could do a batch-fit-update to avoid splitting and merging a lot of clusters in manager
         # TODO: what will happen when update messages are no longer systematically sent? (assert will break)
         assert update_message.old_risk_level == self.risk_level, "cluster & update message old risk mismatch"
         # quick-exit: if this cluster does not contain the timestamp for the encounter, or if the
@@ -210,10 +223,86 @@ class NaiveCluster(ClusterBase):
                     encounter_message=message_to_transfer, update_message=update_message,
                 ))
                 # note: out of laziness for the debugging stuff, we do not remove anything from unobserved vars
-                # (batch updates should fix this too)
         else:
             # could not find any match for the update message; send it back to the manager
             return update_message
+
+    def fit_update_message_batch(
+            self,
+            update_messages: typing.List[mu.UpdateMessage],
+    ) -> typing.Tuple[typing.List[mu.UpdateMessage], typing.Optional["NaiveCluster"]]:
+        if not update_messages:
+            return [], None
+        # TODO: what will happen when update messages are no longer systematically sent? (assert will break)
+        assert update_messages[0].old_risk_level == self.risk_level
+        # quick-exit: if this cluster does not contain the timestamp for the encounter, or if the
+        # cluster contains a different uid for that timestamp, there is no way this message is compatible
+        if update_messages[0].encounter_time not in self.messages_by_timestamp or \
+                self.messages_by_timestamp[update_messages[0].encounter_time][0].uid != update_messages[0].uid:
+            # could not find any match for the update message; send it back to the manager
+            return update_messages, None
+        found_matches = []
+        for old_encounter_idx, old_encounter in enumerate(self.messages):
+            if len(found_matches) >= len(update_messages):
+                break
+            update_message = update_messages[len(found_matches)]
+            assert update_message.old_risk_level == old_encounter.risk_level
+            if old_encounter.uid == update_message.uid and \
+                    old_encounter.encounter_time == update_message.encounter_time:
+                found_matches.append(old_encounter_idx)
+        if found_matches:
+            if len(self.messages) == 1 and len(found_matches) == 1:
+                # we can self-update without splitting; do that
+                assert found_matches[0] == 0
+                self.messages[0] = mu.create_updated_encounter_with_message(
+                    encounter_message=self.messages[0], update_message=update_messages[0],
+                )
+                self.messages_by_timestamp = {self.messages[0].encounter_time: [self.messages[0]]}
+                self.risk_level = self.messages[0].risk_level
+                self._real_encounter_uids.append(update_messages[0]._sender_uid)
+                self._real_encounter_times.append(update_messages[0]._real_encounter_time)
+                self._unclustered_messages.append(update_messages[0])  # in this list, messages NEVER get updated
+                return update_messages[1:], None
+            elif len(self.messages) == len(found_matches):
+                assert found_matches == list(range(len(self.messages)))
+                # we can apply simultaneous updates to all messages in this cluster and avoid splitting; do that
+                self.messages_by_timestamp = {}
+                for msg_idx in range(len(self.messages)):
+                    self.messages[msg_idx] = mu.create_updated_encounter_with_message(
+                        encounter_message=self.messages[msg_idx], update_message=update_messages[msg_idx],
+                    )
+                    if self.messages[msg_idx].encounter_time not in self.messages_by_timestamp:
+                        self.messages_by_timestamp[self.messages[msg_idx].encounter_time] = []
+                    self.messages_by_timestamp[self.messages[msg_idx].encounter_time].append(self.messages[msg_idx])
+                    self._real_encounter_uids.append(update_messages[msg_idx]._sender_uid)
+                    self._real_encounter_times.append(update_messages[msg_idx]._real_encounter_time)
+                    self._unclustered_messages.append(update_messages[msg_idx])  # in this list, messages NEVER get updated
+                self.risk_level = self.messages[0].risk_level
+                return update_messages[len(found_matches):], None
+            else:
+                # we lack a bunch of update messages, so we still need to split
+                messages_to_transfer = [self.messages[idx] for idx in found_matches]
+                self.messages = [self.messages[idx] for idx in range(len(self.messages))
+                                 if idx not in found_matches]
+                for msg_to_transfer in messages_to_transfer:
+                    message_idx_to_remove = \
+                        self.messages_by_timestamp[msg_to_transfer.encounter_time].index(msg_to_transfer)
+                    del self.messages_by_timestamp[msg_to_transfer.encounter_time][message_idx_to_remove]
+                    if not self.messages_by_timestamp[msg_to_transfer.encounter_time]:
+                        del self.messages_by_timestamp[msg_to_transfer.encounter_time]
+                updated_messages_to_transfer = [
+                    mu.create_updated_encounter_with_message(
+                        encounter_message=messages_to_transfer[idx], update_message=update_messages[idx],
+                    ) for idx in range(len(found_matches))
+                ]
+                new_cluster = self.create_cluster_from_message(updated_messages_to_transfer[0])
+                if len(updated_messages_to_transfer) > 1:
+                    new_cluster._force_fit_encounter_message_batch(updated_messages_to_transfer[1:])
+                return update_messages[len(found_matches):], new_cluster
+                # note: out of laziness for the debugging stuff, we do not remove anything from unobserved vars
+        else:
+            # could not find any match for the update message; send it back to the manager
+            return update_messages
 
     def fit_cluster(
             self,
@@ -296,7 +385,6 @@ class NaiveClusterManager(ClusterManagerBase):
 
     def _merge_clusters(self):
         """Merges clusters that have the exact same signature (because of updates)."""
-        # TODO: could do a batch-fit-update to avoid splitting and merging a lot of clusters every day
         cluster_matches, reserved_idxs_for_merge = [], []
         for base_cluster_idx, cluster in enumerate(self.clusters):
             matched_cluster_idxs = []
@@ -344,7 +432,7 @@ class NaiveClusterManager(ClusterManagerBase):
     ):
         """Dispatches the provided messages to the correct internal 'add' function based on type."""
         super().add_messages(messages=messages, cleanup=False)
-        self._merge_clusters()  # there's a bit of looping in here, think about batching?
+        self._merge_clusters()
         if cleanup:
             self.cleanup_clusters(self.latest_refresh_timestamp)
 
@@ -368,8 +456,20 @@ class NaiveClusterManager(ClusterManagerBase):
 
     def _add_encounter_message_batch(self, messages: typing.List[mu.EncounterMessage], cleanup: bool = True):
         """Fits a batch of encounter messages to existing clusters, and forward the remaining to non-batch impl."""
-        for m in messages:
-            self._add_encounter_message(m, cleanup=False)
+        # for this to work, we assume that all encounters have the same uid/risks/timestamps!
+        if not messages or self._check_if_message_outdated(messages[0], cleanup=False):
+            return
+        clusters = [c for c in self.clusters]
+        self.rng.shuffle(clusters)  # ...should be a pretty quick call? right..?
+        best_matched_cluster = None
+        for cluster in clusters:
+            score = cluster._get_encounter_match_score(messages[0], self.ticks_per_uid_roll)
+            if score > 0 and (not best_matched_cluster or best_matched_cluster[1] < score):
+                best_matched_cluster = (cluster, score)
+        if best_matched_cluster:
+            best_matched_cluster[0]._force_fit_encounter_message_batch(messages)
+        else:
+            self._add_new_cluster_from_message_batch(messages)
         if cleanup:
             self.cleanup_clusters(self.latest_refresh_timestamp)
 
@@ -396,17 +496,49 @@ class NaiveClusterManager(ClusterManagerBase):
         if not found_adopter and self.add_orphan_updates_as_clusters:
             self._add_new_cluster_from_message(message)
         elif not found_adopter:
-            raise AssertionError(f"could not find any proper cluster match for: {message}")
+            raise AssertionError(f"could not find adopter for: {message}")
 
     def _add_update_message_batch(self, messages: typing.List[mu.UpdateMessage], cleanup: bool = True):
         """Fits a batch of update messages to existing clusters, and forwards the remaining to non-batch impl."""
-        for m in messages:
-            self._add_update_message(m, cleanup=False)
+        # for this to work, we assume that all encounters have the same uid/risks/timestamps!
+        if not messages or self._check_if_message_outdated(messages[0], cleanup=False):
+            return
+        for cluster in self.clusters:
+            if cluster.risk_level != messages[0].old_risk_level:
+                # naive clusters should always reflect the risk level of all their encounters; if
+                # we can't match the risk level here, there's no way the update can apply on it
+                continue
+            messages, new_cluster = cluster.fit_update_message_batch(messages)
+            if new_cluster is not None:
+                new_cluster.cluster_id = self.next_cluster_id
+                self.next_cluster_id = (self.next_cluster_id + 1) % self.max_cluster_id
+                self.clusters.append(new_cluster)
+            if not messages:
+                break  # all messages got adopted
+        if messages and self.add_orphan_updates_as_clusters:
+            self._add_new_cluster_from_message_batch(messages)
+        elif messages:
+            raise AssertionError(f"could not find adopters for {len(messages)}x of: {messages[0]}")
         if cleanup:
             self.cleanup_clusters(self.latest_refresh_timestamp)
 
     def _add_new_cluster_from_message(self, message: mu.GenericMessageType):
         """Creates and adds a new cluster in the internal structs while cycling the cluster ids."""
         new_cluster = NaiveCluster.create_cluster_from_message(message, self.next_cluster_id)
+        self.next_cluster_id = (self.next_cluster_id + 1) % self.max_cluster_id
+        self.clusters.append(new_cluster)
+
+    def _add_new_cluster_from_message_batch(self, messages: typing.List[mu.GenericMessageType]):
+        """Creates and adds a new cluster in the internal structs while cycling the cluster ids."""
+        if not messages:
+            return
+        if isinstance(messages[0], mu.EncounterMessage):
+            new_cluster = NaiveCluster.create_cluster_from_message(messages[0], self.next_cluster_id)
+            new_cluster._force_fit_encounter_message_batch(messages[1:])
+        else:
+            assert self.add_orphan_updates_as_clusters
+            new_cluster = NaiveCluster.create_cluster_from_message(messages[0], self.next_cluster_id)
+            new_encounters = [mu.create_encounter_from_update_message(m) for m in messages[1:]]
+            new_cluster._force_fit_encounter_message_batch(new_encounters)
         self.next_cluster_id = (self.next_cluster_id + 1) % self.max_cluster_id
         self.clusters.append(new_cluster)

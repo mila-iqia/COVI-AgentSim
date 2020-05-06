@@ -138,7 +138,7 @@ class ClusterManagerBase:
             elif isinstance(message, list):
                 if message:
                     assert all([isinstance(m, EncounterMessage) for m in message]) or \
-                        all([isinstance(m, EncounterMessage) for m in message]), \
+                        all([isinstance(m, UpdateMessage) for m in message]), \
                         "batched messages should all be the same type"
                     if isinstance(message[0], EncounterMessage):
                         self._add_encounter_message_batch(message, cleanup=False)
