@@ -1,7 +1,10 @@
+import copy
+from datetime import timedelta
 import os
 import json
 import functools
 from joblib import Parallel, delayed
+import warnings
 
 from covid19sim.server_utils import InferenceClient, InferenceWorker
 from ctt.inference.infer import InferenceEngine
@@ -19,8 +22,21 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
     hd = humans[0].city.hd
     all_params = []
 
+    current_date = (start + timedelta(days=current_day)).date()
+
     # We're going to send a request to the server for each human
     for human in humans:
+        human_state = human.__getstate__()
+        if human.last_date['run'] != current_date:
+            infectiousnesses = copy.copy(human_state["infectiousnesses"])
+            # Pad missing days
+            for day in range((current_date - human.last_date['run']).days):
+                infectiousnesses.appendleft(0)
+            human_state["infectiousnesses"] = infectiousnesses
+            warnings.warn(f"Human is outdated {human.name}. Current date {current_date}, "
+                          f"last_date['run'] {human.last_date['run']}",
+                          RuntimeWarning)
+                
         if time_slot not in human.time_slots:
             continue
         log_path = None
@@ -30,8 +46,8 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
             "start": start,
             "current_day": current_day,
             "all_possible_symptoms": all_possible_symptoms,
-            "human": human.__getstate__(),
             "COLLECT_TRAINING_DATA": ExpConfig.get('COLLECT_TRAINING_DATA'),
+            "human": human_state,
             "log_path": log_path,
             "risk_model": ExpConfig.get('RISK_MODEL'),
         })
@@ -70,6 +86,8 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
 
                 for i in range(ExpConfig.get('TRACING_N_DAYS_HISTORY')):
                     hd[name].prev_risk_history_map[current_day - i] = risk_history[i]
+            else:
+                warnings.warn(f"risk_history is None for human {name}", RuntimeWarning)
 
             hd[name].clusters = clusters
             hd[name].last_risk_update = current_day
