@@ -104,7 +104,6 @@ class SimplisticClusterManager(ClusterManagerBase):
     """
 
     clusters: typing.List[SimpleCluster]
-    clusters_by_timestamp: typing.Dict[TimestampType, typing.Dict[ClusterIDType, SimpleCluster]]
 
     def __init__(
             self,
@@ -142,7 +141,6 @@ class SimplisticClusterManager(ClusterManagerBase):
             # create a new cluster for this encounter alone
             new_cluster = SimpleCluster.create_cluster_from_message(message)
             self.clusters.append(new_cluster)
-            self.clusters_by_timestamp[message.encounter_time][new_cluster.cluster_id] = new_cluster
 
     def _add_update_message(self, message: UpdateMessage, cleanup: bool = True):
         """Fits an update message to an existing cluster."""
@@ -168,6 +166,5 @@ class SimplisticClusterManager(ClusterManagerBase):
             if self.add_orphan_updates_as_clusters:
                 new_cluster = SimpleCluster.create_cluster_from_message(message)
                 self.clusters.append(new_cluster)
-                self.clusters_by_timestamp[message.encounter_time][new_cluster.cluster_id] = new_cluster
             else:
                 raise AssertionError(f"could not find any proper cluster match for: {message}")

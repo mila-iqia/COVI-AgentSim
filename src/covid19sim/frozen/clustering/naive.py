@@ -256,7 +256,6 @@ class NaiveClusterManager(ClusterManagerBase):
     """
 
     clusters: typing.List[NaiveCluster]
-    clusters_by_timestamp: typing.Dict[TimestampType, typing.Dict[ClusterIDType, NaiveCluster]]
     ticks_per_uid_roll: TimeOffsetType
 
     def __init__(
@@ -299,13 +298,7 @@ class NaiveClusterManager(ClusterManagerBase):
                 continue
             for target_idx in target_idxs:
                 target_cluster = self.clusters[target_idx]
-                # remove all refs from timestamp map
-                for encounter_message in target_cluster.messages:
-                    del self.clusters_by_timestamp[encounter_message.encounter_time][target_cluster.cluster_id]
                 cluster.fit_cluster(target_cluster)
-                # add new relevant refs to timestamp map
-                for encounter_message in cluster.messages:
-                    self.clusters_by_timestamp[encounter_message.encounter_time][cluster.cluster_id] = cluster
             to_keep.append(cluster)
         self.clusters = to_keep
 
@@ -321,14 +314,9 @@ class NaiveClusterManager(ClusterManagerBase):
                     message_update_offset = int(current_timestamp) - int(old_encounter.encounter_time)
                     if message_update_offset <= self.max_history_ticks_offset:
                         cluster_messages_to_keep.append(old_encounter)
-                    else:
-                        del self.clusters_by_timestamp[old_encounter.encounter_time][cluster.cluster_id]
                 if cluster_messages_to_keep:
                     cluster.messages = cluster_messages_to_keep
                     to_keep.append(cluster)
-            else:
-                for encounter_message in cluster.messages:
-                    del self.clusters_by_timestamp[encounter_message.encounter_time][cluster.cluster_id]
         self.clusters = to_keep
 
     def add_messages(
@@ -367,8 +355,6 @@ class NaiveClusterManager(ClusterManagerBase):
                 best_matched_cluster = (cluster, score)
         if best_matched_cluster:
             best_matched_cluster[0]._force_fit_encounter_message(message)
-            self.clusters_by_timestamp[message.encounter_time][best_matched_cluster[0].cluster_id] = \
-                best_matched_cluster[0]
         else:
             self._add_new_cluster_from_message(message)
 
@@ -387,14 +373,8 @@ class NaiveClusterManager(ClusterManagerBase):
             fit_result = cluster.fit_update_message(message)
             if fit_result is None or isinstance(fit_result, NaiveCluster):
                 if fit_result is not None and isinstance(fit_result, NaiveCluster):
-                    # assign correct cluster uid for this cluster...
                     fit_result.cluster_id = self.next_cluster_id
-                    self._cycle_cluster_id()
-                    # move all necessary cluster refs to new spinoff cluster
-                    for encounter_message in fit_result.messages:
-                        del self.clusters_by_timestamp[encounter_message.encounter_time][cluster.cluster_id]
-                        self.clusters_by_timestamp[encounter_message.encounter_time][fit_result.cluster_id] = fit_result
-                    # add the actual cluster to the real list
+                    self.next_cluster_id = (self.next_cluster_id + 1) % self.max_cluster_id
                     self.clusters.append(fit_result)
                 found_adopter = True
                 break
@@ -406,13 +386,5 @@ class NaiveClusterManager(ClusterManagerBase):
     def _add_new_cluster_from_message(self, message: mu.GenericMessageType):
         """Creates and adds a new cluster in the internal structs while cycling the cluster ids."""
         new_cluster = NaiveCluster.create_cluster_from_message(message, self.next_cluster_id)
-        self._cycle_cluster_id()
-        self.clusters.append(new_cluster)
-        self.clusters_by_timestamp[message.encounter_time][new_cluster.cluster_id] = new_cluster
-
-    def _cycle_cluster_id(self):
-        """Cycles the internal cluster ID index to keep tract of potential collisions."""
         self.next_cluster_id = (self.next_cluster_id + 1) % self.max_cluster_id
-        # cycle cluster IDs, but make sure that cluster the next cluster is long gone...
-        assert not any([id == self.next_cluster_id for timebucket in self.clusters_by_timestamp
-                        for id in self.clusters_by_timestamp[timebucket]])
+        self.clusters.append(new_cluster)

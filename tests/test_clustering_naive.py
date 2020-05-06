@@ -90,7 +90,7 @@ class NaiveClusteringTests(unittest.TestCase):
         self.assertEqual(len(cluster_manager.clusters), 3)
         self.assertEqual(cluster_manager.latest_refresh_timestamp, 0)
         expositions = cluster_manager._get_expositions_array()
-        self.assertTrue(len(expositions) == 3 and sum(expositions) == 0)
+        self.assertTrue(len(expositions) == 5 and sum(expositions) == 0)
         embeddings = cluster_manager.get_embeddings_array()
         self.assertEqual(len(np.unique(embeddings[:, 0])), 3)
         self.assertTrue((embeddings[:, 1] == 7).all())  # risk level

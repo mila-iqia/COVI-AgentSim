@@ -79,7 +79,6 @@ class ClusterManagerBase:
     """
 
     clusters: typing.List[ClusterBase]
-    clusters_by_timestamp: typing.Dict[TimestampType, typing.Dict[ClusterIDType, ClusterBase]]
     latest_refresh_timestamp: TimestampType
     max_history_ticks_offset: TimeOffsetType
     add_orphan_updates_as_clusters: bool
@@ -92,7 +91,6 @@ class ClusterManagerBase:
             generate_embeddings_by_timestamp: bool = True,
     ):
         self.clusters = []
-        self.clusters_by_timestamp = collections.defaultdict(dict)
         self.latest_refresh_timestamp = TimestampType(0)
         self.max_history_ticks_offset = max_history_ticks_offset
         self.add_orphan_updates_as_clusters = add_orphan_updates_as_clusters
@@ -105,9 +103,6 @@ class ClusterManagerBase:
             update_offset = int(current_timestamp) - int(cluster.latest_update_time)
             if update_offset <= self.max_history_ticks_offset:
                 to_keep.append(cluster)
-            else:
-                for encounter_message in cluster.messages:
-                    del self.clusters_by_timestamp[encounter_message.encounter_time][cluster.cluster_id]
         self.clusters = to_keep
 
     def _check_if_message_outdated(self, message: GenericMessageType, cleanup: bool = True) -> bool:
@@ -153,11 +148,15 @@ class ClusterManagerBase:
     def get_embeddings_array(self) -> np.ndarray:
         """Returns the 'embeddings' array for all clusters managed by this object."""
         if self.generate_embeddings_by_timestamp:
-            cluster_embeds = []
-            for _, clusters in self.clusters_by_timestamp.items():
-                for _, cluster in clusters.items():
-                    cluster_embeds.append(cluster.get_cluster_embedding(include_cluster_id=True))
-            return np.asarray(cluster_embeds)
+            cluster_embeds = collections.defaultdict(list)
+            for cluster in self.clusters:
+                embed = cluster.get_cluster_embedding(include_cluster_id=True)
+                for msg in cluster.messages:
+                    cluster_embeds[msg.encounter_time].append(embed)
+            flat_output = []
+            for timestamp in sorted(cluster_embeds.keys()):
+                flat_output.extend(cluster_embeds[timestamp])
+            return np.asarray(flat_output)
         else:
             return np.asarray([c.get_cluster_embedding(include_cluster_id=False)
                                for c in self.clusters], dtype=np.int64)
@@ -165,10 +164,14 @@ class ClusterManagerBase:
     def _get_expositions_array(self) -> np.ndarray:
         """Returns the 'expositions' array for all clusters managed by this object."""
         if self.generate_embeddings_by_timestamp:
-            cluster_exp_flags = []
-            for _, clusters in self.clusters_by_timestamp.items():
-                for _, cluster in clusters.items():
-                    cluster_exp_flags.append(cluster._get_cluster_exposition_flag())
-            return np.asarray(cluster_exp_flags)
+            cluster_flags = collections.defaultdict(list)
+            for cluster in self.clusters:
+                flags = cluster._get_cluster_exposition_flag()
+                for msg in cluster.messages:
+                    cluster_flags[msg.encounter_time].append(flags)
+            flat_output = []
+            for timestamp in sorted(cluster_flags.keys()):
+                flat_output.extend(cluster_flags[timestamp])
+            return np.asarray(flat_output)
         else:
             return np.asarray([c._get_cluster_exposition_flag() for c in self.clusters], dtype=np.uint8)

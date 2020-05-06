@@ -83,7 +83,7 @@ class SimpleClusteringTests(unittest.TestCase):
         self.assertEqual(len(cluster_manager.clusters), 3)
         self.assertEqual(cluster_manager.latest_refresh_timestamp, 0)
         expositions = cluster_manager._get_expositions_array()
-        self.assertTrue(len(expositions) == 3 and sum(expositions) == 0)
+        self.assertTrue(len(expositions) == 5 and sum(expositions) == 0)
         embeddings = cluster_manager.get_embeddings_array()
         for uid in [h.rolling_uids[0] for h in humans[1:]]:
             self.assertIn(uid, embeddings[:, 0])
@@ -181,8 +181,8 @@ class SimpleClusteringTests(unittest.TestCase):
                 while visitor_real_uid == visited_real_uid:
                     visited_real_uid = np.random.randint(n_humans)
                 visits.append(Visit(
-                    visitor_real_uid=ui(visitor_real_uid),
-                    visited_real_uid=ui(visited_real_uid),
+                    visitor_real_uid=visitor_real_uid,
+                    visited_real_uid=visited_real_uid,
                     exposition=False,
                     timestamp=np.random.randint(max_timestamp + 1),
                 ))
@@ -193,8 +193,8 @@ class SimpleClusteringTests(unittest.TestCase):
                 while exposer_real_uid == exposed_real_uid:
                     exposed_real_uid = np.random.randint(n_humans)
                 visits.append(Visit(
-                    visitor_real_uid=ui(exposer_real_uid),
-                    visited_real_uid=ui(exposed_real_uid),
+                    visitor_real_uid=exposer_real_uid,
+                    visited_real_uid=exposed_real_uid,
                     exposition=True,
                     timestamp=np.random.randint(max_timestamp + 1),
                 ))
