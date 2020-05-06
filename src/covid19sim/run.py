@@ -7,6 +7,7 @@ from covid19sim.simulator import Human
 from covid19sim.base import *
 from covid19sim.monitors import EventMonitor, TimeMonitor, SEIRMonitor
 from covid19sim.configs import config
+from covid19sim.configs.exp_config import ExpConfig
 from covid19sim.configs.constants import TICK_MINUTE
 
 @click.group()
@@ -32,10 +33,9 @@ def sim(n_people=None,
         seed=0, n_jobs=1, port=6688, exp_config_path="configs/naive_config.yml"):
 
     # Load the experimental configuration
-    with open(exp_config_path) as file:
-        exp_config = yaml.load(file, Loader=yaml.FullLoader)
+    ExpConfig.load_config(exp_config_path)
 
-    exp_config['COLLECT_LOGS'] = True
+    ExpConfig.config['COLLECT_LOGS'] = True
 
     if outdir is None:
         outdir = "output"
@@ -52,7 +52,7 @@ def sim(n_people=None,
         simulation_days=simulation_days,
         outfile=outfile, out_chunk_size=out_chunk_size,
         print_progress=True,
-        seed=seed, n_jobs=n_jobs, port=port, exp_config=exp_config
+        seed=seed, n_jobs=n_jobs, port=port
     )
     monitors[0].dump()
     monitors[0].join_iothread()
@@ -70,11 +70,10 @@ def sim(n_people=None,
 def tune(n_people, simulation_days, seed, exp_config_path):
 
     # Load the experimental configuration
-    with open(exp_config_path) as file:
-        exp_config = yaml.load(file, Loader=yaml.FullLoader)
+    ExpConfig.load_config(exp_config_path)
 
     # Force COLLECT_LOGS=False
-    exp_config['COLLECT_LOGS'] = False
+    ExpConfig.set('COLLECT_LOGS', False)
 
     # extra packages required  - plotly-orca psutil networkx glob seaborn
     import pandas as pd

@@ -6,7 +6,7 @@ USE_INFERENCE_SERVER : True
 RISK_MODEL : "naive" # "naive"  "manual", "digital", "transformer"
 
 ## INTERVENTIONS
-INTERVENTION_DAY : -1 # TODO @Prateek: We can't run this with a positive intervention day because base.py line 271 -- why?
+INTERVENTION_DAY : -1 # TODO @Prateek: We can't run this with a positive intervention day because base.py line 271 -- why?git c
 INTERVENTION : "Tracing"
 PERCENT_FOLLOW : 1.0
 P_HAS_APP : 1.0
