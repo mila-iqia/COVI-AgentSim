@@ -1048,22 +1048,23 @@ def _get_allergy_progression(rng):
     Returns:
         [type]: [description]
     """
-    symptoms = ['sneezing']
-    if rng.rand() < P_SEVERE_ALLERGIES:
-        symptoms.append('mild_trouble_breathing')
-        # commented out because these are not used elsewhere for now
-        # if rng.rand() < 0.4:
-        #     symptoms.append ('hives')
-        # if rng.rand() < 0.3:
-        #     symptoms.append('swelling')
-    if rng.rand() < 0.3:
-        symptoms.append ('sore_throat')
-    if rng.rand() < 0.2:
-        symptoms.append('fatigue')
-    if rng.rand() < 0.3:
-        symptoms.append('hard_time_waking_up')
-    if rng.rand() < 0.6:
-        symptoms.append('headache')
+    symptoms_contexts = SYMPTOMS_CONTEXTS['allergy']
+    phase_i = 0
+    phase = symptoms_contexts[phase_i]
+
+    symptoms = []
+    for symptom in ('sneezing', 'mild_trouble_breathing', 'sore_throat', 'fatigue',
+                    'hard_time_waking_up', 'headache'):
+        rand = rng.rand()
+        if rand < SYMPTOMS[symptom].probabilities[phase]:
+            symptoms.append(symptom)
+
+            # commented out because these are not used elsewhere for now
+            # if symptom == 'mild_trouble_breathing':
+            #     for symptom in ('hives', 'swelling'):
+            #         rand = rng.rand()
+            #         if rand < SYMPTOMS[symptom].probabilities[phase]:
+            #             symptoms.append(symptom)
     progression = [symptoms]
     return progression
 
