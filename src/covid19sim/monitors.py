@@ -129,7 +129,6 @@ class PlotMonitor(BaseMonitor):
             self.plot()
 
     def plot(self):
-        display.clear_output(wait=True)
         pl.clf()
         time_series = [d['time'] for d in self.data]
         sick_series = [d['sick'] for d in self.data]
@@ -140,7 +139,6 @@ class PlotMonitor(BaseMonitor):
 
         pl.title(f"City at {self.data[-1]['htime']}")
         pl.legend()
-        display.display(pl.gcf())
 
 
 class LatLonMonitor(BaseMonitor):
@@ -173,7 +171,6 @@ class LatLonMonitor(BaseMonitor):
             self.plot()
 
     def plot(self):
-        display.clear_output(wait=True)
         pl.clf()
         # PLOT STORES AND PARKS
         lat_series = [d['lat'] for d in self.city_data['parks']]
@@ -195,7 +192,6 @@ class LatLonMonitor(BaseMonitor):
         sicks = sum([d['is_sick'] for d in self.data])
         pl.title(f"City at {self.data[-1]['time']} - sick:{sicks}")
         pl.legend()
-        display.display(pl.gcf())
 
 class StateMonitor(BaseMonitor):
     def run(self, env, city: City):

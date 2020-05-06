@@ -7,6 +7,7 @@ import pickle
 import threading
 import time
 import typing
+import warnings
 import zmq
 
 from ctt.inference.infer import InferenceEngine
@@ -274,8 +275,8 @@ def proc_human(params, inference_engine=None):
     is_exposed, exposure_day = covid19sim.frozen.helper.exposure_array(human["infection_timestamp"], todays_date)
     is_recovered, recovery_day = covid19sim.frozen.helper.recovered_array(human["recovered_timestamp"], todays_date)
     candidate_encounters, exposure_encounter = covid19sim.frozen.helper.candidate_exposures(human, todays_date)
-    reported_symptoms = covid19sim.frozen.helper.symptoms_to_np(human["all_reported_symptoms"], params["all_possible_symptoms"])
-    true_symptoms = covid19sim.frozen.helper.symptoms_to_np(human["all_symptoms"], params["all_possible_symptoms"])
+    reported_symptoms = covid19sim.frozen.helper.symptoms_to_np(human["rolling_all_reported_symptoms"], params["all_possible_symptoms"])
+    true_symptoms = covid19sim.frozen.helper.symptoms_to_np(human["rolling_all_symptoms"], params["all_possible_symptoms"])
     daily_output = {
         "current_day": params["current_day"],
         "observed": {
@@ -311,6 +312,10 @@ def proc_human(params, inference_engine=None):
             inference_result = inference_engine.infer(daily_output)
         except InvalidSetSize:
             pass  # return None for invalid samples
+        except RuntimeError as error:
+            # TODO: ctt.modules.HealthHistoryEmbedding can fail with :
+            #  size mismatch, m1: [14 x 29], m2: [13 x 128]
+            warnings.warn(str(error), RuntimeWarning)
     human['risk_history'] = None
     if inference_result is not None:
         # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@

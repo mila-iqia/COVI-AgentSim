@@ -1,11 +1,11 @@
 from orderedset import OrderedSet
 import numpy as np
 
-from covid19sim.configs.config import RHO, GAMMA, MANUAL_TRACING_P_CONTACT,\
-    RISK_TRANSMISSION_PROBA
 from covid19sim.configs.constants import BIG_NUMBER
+from covid19sim.configs.config import RHO, GAMMA, MANUAL_TRACING_P_CONTACT,\
+    RISK_TRANSMISSION_PROBA, DEFAULT_DISTANCE
 from covid19sim.models.run import integrated_risk_pred
-
+from covid19sim.configs.exp_config import ExpConfig
 
 class BehaviorInterventions(object):
     def __init__(self):
@@ -247,9 +247,8 @@ class GetTested(BehaviorInterventions):
         return "Get Tested"
 
 class Tracing(object):
-    def __init__(self, risk_model, max_depth=None, symptoms=False, risk=False, should_modify_behavior=True, COLLECT_TRAINING_DATA=None):
+    def __init__(self, risk_model, max_depth=None, symptoms=False, risk=False, should_modify_behavior=True):
         self.risk_model = risk_model
-        self.COLLECT_TRAINING_DATA = COLLECT_TRAINING_DATA
         if risk_model in ['manual', 'digital']:
             self.intervention = Quarantine()
         else:
@@ -365,13 +364,15 @@ class Tracing(object):
             for human in city.humans:
                 cur_day = (human.env.timestamp - human.env.initial_timestamp).days
                 if (human.env.timestamp - human.message_info['receipt']).days >= human.message_info['delay'] or self.risk_model != "manual":
-                    t, s, r = self.process_messages(human)
-                    human.risk = self.compute_risk(t, s, r)
+                    if not human.is_removed and human.test_result != "positive":
+                        t, s, r = self.process_messages(human)
+                        human.risk = self.compute_risk(t, s, r)
+
                     human.risk_history_map[cur_day] = human.risk
                     human.update_risk_level()
                     human.prev_risk_history_map[cur_day] = human.risk
 
-            if self.COLLECT_TRAINING_DATA:
+            if ExpConfig.get('COLLECT_TRAINING_DATA'):
                 city.humans = integrated_risk_pred(city.humans, city.start_time, city.current_day, city.env.timestamp.hour, all_possible_symptoms, port=port, n_jobs=n_jobs, data_path=data_path)
 
 
@@ -382,7 +383,7 @@ class Tracing(object):
         if self.risk_model == "transformer":
             return f"Tracing: {self.risk_model}"
 
-        return f"Tracing: {self.risk_model} order {self.max_depth} symptoms: {self.propagate_symptoms} risk: {self.propagate_risk}"
+        return f"Tracing: {self.risk_model} order {self.max_depth} symptoms: {self.propagate_symptoms} risk: {self.propagate_risk} modify:{self.should_modify_behavior}"
 
 
 class CityInterventions(object):

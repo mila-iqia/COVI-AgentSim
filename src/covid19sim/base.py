@@ -10,14 +10,14 @@ from covid19sim.track import Tracker
 from covid19sim.interventions import *
 from covid19sim.frozen.utils import update_uid
 from covid19sim.configs.constants import TICK_MINUTE
+from covid19sim.configs.exp_config import ExpConfig
+
 
 class Env(simpy.Environment):
 
-    def __init__(self, initial_timestamp, exp_config):
+    def __init__(self, initial_timestamp):
         super().__init__()
         self.initial_timestamp = initial_timestamp
-        self.exp_config = exp_config
-        self._proba_to_risk_level = proba_to_risk_fn(np.array(exp_config['RISK_MAPPING']))
 
     def time(self):
         return self.now
@@ -243,8 +243,8 @@ class City(simpy.Environment):
 
     def run(self, duration, outfile, start_time, all_possible_symptoms, port, n_jobs):
         self.current_day = 0
-        INTERVENTION_DAY = self.env.exp_config['INTERVENTION_DAY']
-        COLLECT_TRAINING_DATA = self.env.exp_config['COLLECT_TRAINING_DATA']
+        INTERVENTION_DAY = ExpConfig.get('INTERVENTION_DAY')
+        COLLECT_TRAINING_DATA = ExpConfig.get('COLLECT_TRAINING_DATA')
         print(f"INTERVENTION_DAY: {INTERVENTION_DAY}")
         while True:
             if self.env.timestamp.hour == 0:
@@ -254,11 +254,11 @@ class City(simpy.Environment):
 
             if INTERVENTION_DAY >= 0 and self.current_day == INTERVENTION_DAY:
 
-                self.intervention = get_intervention(self.env.exp_config['INTERVENTION'],
-                                                     self.env.exp_config['RISK_MODEL'],
-                                                     self.env.exp_config['TRACING_ORDER'],
-                                                     self.env.exp_config['TRACE_SYMPTOMS'],
-                                                     self.env.exp_config['TRACE_RISK_UPDATE'])
+                self.intervention = get_intervention(ExpConfig.get('INTERVENTION'),
+                                                     ExpConfig.get('RISK_MODEL'),
+                                                     ExpConfig.get('TRACING_ORDER'),
+                                                     ExpConfig.get('TRACE_SYMPTOMS'),
+                                                     ExpConfig.get('TRACE_RISK_UPDATE'))
                 _ = [h.notify(self.intervention) for h in self.humans]
                 print(self.intervention)
 
@@ -270,7 +270,7 @@ class City(simpy.Environment):
             if COLLECT_TRAINING_DATA and (self.current_day == 0 and INTERVENTION_DAY < 0):
                 _ = [h.notify(collect_training_data=True) for h in self.humans]
                 print("naive risk calculation without changing behavior... Humans notified!")
-                self.intervention = Tracing(risk_model="naive", max_depth=1, symptoms=False, risk=False, should_modify_behavior=False, COLLECT_TRAINING_DATA=COLLECT_TRAINING_DATA)
+                self.intervention = Tracing(risk_model="naive", max_depth=1, symptoms=False, risk=False, should_modify_behavior=False)
 
             if self.env.timestamp.hour == 0 and self.env.timestamp != self.env.initial_timestamp:
                 self.current_day += 1
@@ -434,6 +434,8 @@ class Event:
 
     @staticmethod
     def log_encounter(human1, human2, location, duration, distance, infectee, time):
+        if ExpConfig.get('COLLECT_LOGS') is False:
+            return
 
         h_obs_keys   = ['obs_hospitalized', 'obs_in_icu',
                         'obs_lat', 'obs_lon']
@@ -484,6 +486,9 @@ class Event:
 
     @staticmethod
     def log_test(human, time):
+        if ExpConfig.get('COLLECT_LOGS') is False:
+            return
+
         human.events.append(
             {
                 'human_id': human.name,
@@ -506,6 +511,9 @@ class Event:
 
     @staticmethod
     def log_daily(human, time):
+        if ExpConfig.get('COLLECT_LOGS') is False:
+            return
+
         human.events.append(
             {
                 'human_id': human.name,
@@ -530,6 +538,9 @@ class Event:
 
     @staticmethod
     def log_exposed(human, source, time):
+        if ExpConfig.get('COLLECT_LOGS') is False:
+            return
+
         human.events.append(
             {
                 'human_id': human.name,
@@ -545,13 +556,15 @@ class Event:
                       'source_is_human': 'human' in source.name,
                       'infectiousness_start_time': human.infection_timestamp + datetime.timedelta(days=human.infectiousness_onset_days)
                     }
-
                 }
             }
         )
 
     @staticmethod
     def log_recovery(human, time, death):
+        if ExpConfig.get('COLLECT_LOGS') is False:
+            return
+
         human.events.append(
             {
                 'human_id': human.name,
@@ -571,6 +584,9 @@ class Event:
 
     @staticmethod
     def log_static_info(city, human, time):
+        if ExpConfig.get('COLLECT_LOGS') is False:
+            return
+
         h_obs_keys = ['obs_preexisting_conditions',  "obs_age", "obs_sex", "obs_is_healthcare_worker"]
         h_unobs_keys = ['preexisting_conditions', "age", "sex", "is_healthcare_worker"]
         obs_payload = {key:getattr(human, key) for key in h_obs_keys}
@@ -598,34 +614,6 @@ class Event:
             }
         )
 
-class DummyEvent:
-    @staticmethod
-    def log_encounter(*args, **kwargs):
-        pass
-
-    @staticmethod
-    def log_test(*args, **kwargs):
-        pass
-
-    @staticmethod
-    def log_recovery(*args, **kwargs):
-        pass
-
-    @staticmethod
-    def log_exposed(*args, **kwargs):
-        pass
-
-    @staticmethod
-    def log_static_info(*args, **kwargs):
-        pass
-
-    @staticmethod
-    def log_visit(*args, **kwargs):
-        pass
-
-    @staticmethod
-    def log_daily(*args, **kwargs):
-        pass
 
 class Contacts(object):
     def __init__(self, has_app, TRACING_N_DAYS_HISTORY):

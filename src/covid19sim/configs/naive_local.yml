@@ -1,16 +1,15 @@
 ---
 # EXPERIMENTAL PARAMETERS
-COLLECT_LOGS : True
-COLLECT_TRAINING_DATA : True
-USE_INFERENCE_SERVER : True
+COLLECT_LOGS : False
+COLLECT_TRAINING_DATA : False
+USE_INFERENCE_SERVER : False
 RISK_MODEL : "naive" # "naive"  "manual", "digital", "transformer"
 
 ## INTERVENTIONS
-INTERVENTION_DAY : -1 # TODO @Prateek: We can't run this with a positive intervention day because base.py line 271 -- why?git c
+INTERVENTION_DAY : -1
 INTERVENTION : "Tracing"
 PERCENT_FOLLOW : 1.0
 P_HAS_APP : 1.0
-
 
 # PATHS
 CLUSTER_PATH : "output/clusters.json"
@@ -25,13 +24,12 @@ CLUSTER_MESSAGES : True
 DUMP_CLUSTERS : False
 CLUSTER_TYPE : "heuristic" # "random", "graph"
 
-
 # TRACING RISK MODEL PARAMETERS  (non-ML)
 TRACE_SYMPTOMS : True
 TRACE_RISK_UPDATE : False
 TRACING_ORDER : 1
 UPDATES_PER_DAY : 4
-
+SHOULD_MODIFY_BEHAVIOR : False
 RISK_MAPPING : [0., 0.0625, 0.125, 0.1875, 0.25, 0.3125, 0.375, 0.4375,
                0.5, 0.5625, 0.625, 0.6875, 0.75, 0.8125, 0.875, 0.9375,
                1.]
