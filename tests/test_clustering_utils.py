@@ -6,8 +6,6 @@ import covid19sim.frozen.message_utils as mu
 from tests.utils import FakeHuman, generate_received_messages, generate_sent_messages, Visit
 
 never = 9999  # dirty macro to indicate a human will never get infected
-i64 = np.int64  # dirty macro to cast integers to np.int64
-u64 = np.uint64  # dirty macro to cast integers to np.uint64
 
 
 class CommonTests(unittest.TestCase):
@@ -31,14 +29,14 @@ class CommonTests(unittest.TestCase):
             encounter_msg = mu.EncounterMessage(
                 uid=mu.create_new_uid(),
                 risk_level=np.uint8(np.random.randint(mu.risk_level_mask + 1)),
-                encounter_time=i64(fake_encounter_time.timestamp()),
+                encounter_time=int(fake_encounter_time.timestamp()),
             )
             fake_update_time = fake_encounter_time + \
                                datetime.timedelta(seconds=np.random.randint(1, 10))
             update_msg = mu.create_update_message(
                 encounter_message=encounter_msg,
                 new_risk_level=np.uint8(np.random.randint(mu.risk_level_mask + 1)),
-                current_time=i64(fake_update_time.timestamp()),
+                current_time=int(fake_update_time.timestamp()),
             )
             self.assertEqual(update_msg.uid, encounter_msg.uid)
             self.assertEqual(update_msg.old_risk_level, encounter_msg.risk_level)
@@ -63,7 +61,7 @@ class CommonTests(unittest.TestCase):
             encounter_msg = mu.EncounterMessage(
                 uid=uid,
                 risk_level=init_risk,
-                encounter_time=i64(fake_encounter_time.timestamp()),
+                encounter_time=int(fake_encounter_time.timestamp()),
             )
             fake_update_time = fake_encounter_time + \
                                datetime.timedelta(seconds=np.random.randint(1000))
@@ -71,8 +69,8 @@ class CommonTests(unittest.TestCase):
                 uid=uid,
                 old_risk_level=init_risk,
                 new_risk_level=np.uint8(np.random.randint(mu.risk_level_mask + 1)),
-                encounter_time=i64(fake_encounter_time.timestamp()),
-                update_time=i64(fake_update_time.timestamp()),
+                encounter_time=int(fake_encounter_time.timestamp()),
+                update_time=int(fake_update_time.timestamp()),
             )
             new_encounter_msg = mu.create_updated_encounter_with_message(encounter_msg, update_msg)
             self.assertEqual(encounter_msg.uid, new_encounter_msg.uid)
@@ -87,14 +85,14 @@ class CommonTests(unittest.TestCase):
             old_encounter_msg = mu.EncounterMessage(
                 uid=mu.create_new_uid(),
                 risk_level=np.uint8(np.random.randint(mu.risk_level_mask + 1)),
-                encounter_time=i64(old_encounter_time.timestamp()),
+                encounter_time=int(old_encounter_time.timestamp()),
             )
             new_encounter_time = old_encounter_time + \
                                  datetime.timedelta(hours=np.random.randint(1, 150))
             new_encounter_msg = mu.EncounterMessage(
                 uid=mu.create_new_uid(),
                 risk_level=np.uint8(np.random.randint(mu.risk_level_mask + 1)),
-                encounter_time=i64(new_encounter_time.timestamp()),
+                encounter_time=int(new_encounter_time.timestamp()),
             )
             score = mu.find_encounter_match_score(
                 old_encounter_msg,
@@ -111,7 +109,7 @@ class CommonTests(unittest.TestCase):
             old_encounter_msg = mu.EncounterMessage(
                 uid=mu.create_new_uid(),
                 risk_level=np.uint8(np.random.randint(mu.risk_level_mask + 1)),
-                encounter_time=i64(old_encounter_time.timestamp()),
+                encounter_time=int(old_encounter_time.timestamp()),
             )
             new_uid = old_encounter_msg.uid
             for day_offset in range(0, mu.message_uid_bit_count * 2):
@@ -121,7 +119,7 @@ class CommonTests(unittest.TestCase):
                 new_encounter_msg = mu.EncounterMessage(
                     uid=new_uid,
                     risk_level=np.uint8(np.random.randint(mu.risk_level_mask + 1)),
-                    encounter_time=i64(new_encounter_time.timestamp()),
+                    encounter_time=int(new_encounter_time.timestamp()),
                 )
                 score = mu.find_encounter_match_score(
                     old_encounter_msg,
@@ -142,7 +140,7 @@ class CommonTests(unittest.TestCase):
             old_encounter_msg = mu.EncounterMessage(
                 uid=mu.create_new_uid(),
                 risk_level=np.uint8(np.random.randint(mu.risk_level_mask + 1)),
-                encounter_time=i64(old_encounter_time.timestamp()),
+                encounter_time=int(old_encounter_time.timestamp()),
             )
             legit_new_uid = old_encounter_msg.uid
             for day_offset in range(0, mu.message_uid_bit_count):
@@ -154,7 +152,7 @@ class CommonTests(unittest.TestCase):
                 new_encounter_msg = mu.EncounterMessage(
                     uid=new_uid,
                     risk_level=np.uint8(np.random.randint(mu.risk_level_mask + 1)),
-                    encounter_time=i64(new_encounter_time.timestamp()),
+                    encounter_time=int(new_encounter_time.timestamp()),
                 )
                 score = mu.find_encounter_match_score(
                     old_encounter_msg,
@@ -169,7 +167,7 @@ class MessageTests(unittest.TestCase):
 
     def test_simple_negative_encounter(self):
         visits = [
-            Visit(visitor_real_uid=u64(1), visited_real_uid=u64(0), exposition=False, timestamp=i64(3)),
+            Visit(visitor_real_uid=1, visited_real_uid=0, exposition=False, timestamp=3),
         ]
         humans = [
             FakeHuman(real_uid=0, exposition_timestamp=never, visits_to_adopt=visits),
@@ -205,7 +203,7 @@ class MessageTests(unittest.TestCase):
 
     def test_simple_positive_encounter(self):
         visits = [
-            Visit(visitor_real_uid=u64(1), visited_real_uid=u64(0), exposition=True, timestamp=i64(3)),
+            Visit(visitor_real_uid=1, visited_real_uid=0, exposition=True, timestamp=3),
         ]
         humans = [
             FakeHuman(real_uid=0, exposition_timestamp=2, visits_to_adopt=visits),
@@ -239,9 +237,9 @@ class MessageTests(unittest.TestCase):
 
     def test_simple_update(self):
         visits = [
-            Visit(visitor_real_uid=u64(0), visited_real_uid=u64(1), exposition=True, timestamp=i64(4)),
+            Visit(visitor_real_uid=0, visited_real_uid=1, exposition=True, timestamp=4),
             # 2nd visit used to make sure we populate the message tree beyond the 5-day mark
-            Visit(visitor_real_uid=u64(0), visited_real_uid=u64(1), exposition=False, timestamp=i64(6)),
+            Visit(visitor_real_uid=0, visited_real_uid=1, exposition=False, timestamp=6),
         ]
         humans = [
             FakeHuman(real_uid=0, exposition_timestamp=1, visits_to_adopt=visits),  # starts off sick
@@ -276,13 +274,13 @@ class MessageTests(unittest.TestCase):
 
     def test_chain_updates(self):
         visits = [
-            Visit(visitor_real_uid=u64(1), visited_real_uid=u64(0), exposition=False, timestamp=i64(0)),
-            Visit(visitor_real_uid=u64(0), visited_real_uid=u64(1), exposition=False, timestamp=i64(2)),
-            Visit(visitor_real_uid=u64(0), visited_real_uid=u64(1), exposition=False, timestamp=i64(2)),
-            Visit(visitor_real_uid=u64(1), visited_real_uid=u64(0), exposition=True, timestamp=i64(4)),
-            Visit(visitor_real_uid=u64(1), visited_real_uid=u64(0), exposition=False, timestamp=i64(7)),
-            Visit(visitor_real_uid=u64(1), visited_real_uid=u64(0), exposition=False, timestamp=i64(8)),
-            Visit(visitor_real_uid=u64(1), visited_real_uid=u64(0), exposition=False, timestamp=i64(12)),
+            Visit(visitor_real_uid=1, visited_real_uid=0, exposition=False, timestamp=0),
+            Visit(visitor_real_uid=0, visited_real_uid=1, exposition=False, timestamp=2),
+            Visit(visitor_real_uid=0, visited_real_uid=1, exposition=False, timestamp=2),
+            Visit(visitor_real_uid=1, visited_real_uid=0, exposition=True, timestamp=4),
+            Visit(visitor_real_uid=1, visited_real_uid=0, exposition=False, timestamp=7),
+            Visit(visitor_real_uid=1, visited_real_uid=0, exposition=False, timestamp=8),
+            Visit(visitor_real_uid=1, visited_real_uid=0, exposition=False, timestamp=12),
         ]
         humans = [
             FakeHuman(real_uid=0, exposition_timestamp=4, visits_to_adopt=visits),  # sick on day 4 (transmission)
@@ -318,10 +316,10 @@ class MessageTests(unittest.TestCase):
 
     def test_multiple_encounters(self):
         visits = [
-            Visit(visitor_real_uid=u64(1), visited_real_uid=u64(0), exposition=False, timestamp=i64(3)),
-            Visit(visitor_real_uid=u64(0), visited_real_uid=u64(2), exposition=False, timestamp=i64(3)),
-            Visit(visitor_real_uid=u64(2), visited_real_uid=u64(1), exposition=False, timestamp=i64(3)),
-            Visit(visitor_real_uid=u64(3), visited_real_uid=u64(0), exposition=False, timestamp=i64(3)),
+            Visit(visitor_real_uid=1, visited_real_uid=0, exposition=False, timestamp=3),
+            Visit(visitor_real_uid=0, visited_real_uid=2, exposition=False, timestamp=3),
+            Visit(visitor_real_uid=2, visited_real_uid=1, exposition=False, timestamp=3),
+            Visit(visitor_real_uid=3, visited_real_uid=0, exposition=False, timestamp=3),
         ]
         humans = [
             FakeHuman(real_uid=0, exposition_timestamp=never, visits_to_adopt=visits),
@@ -340,12 +338,12 @@ class MessageTests(unittest.TestCase):
 
     def test_gen_received_messages(self):
         visits = [
-            Visit(visitor_real_uid=u64(1), visited_real_uid=u64(0), exposition=False, timestamp=i64(0)),
-            Visit(visitor_real_uid=u64(1), visited_real_uid=u64(0), exposition=True, timestamp=i64(4)),
-            Visit(visitor_real_uid=u64(0), visited_real_uid=u64(2), exposition=False, timestamp=i64(6)),
-            Visit(visitor_real_uid=u64(1), visited_real_uid=u64(0), exposition=False, timestamp=i64(7)),
-            Visit(visitor_real_uid=u64(1), visited_real_uid=u64(0), exposition=False, timestamp=i64(8)),
-            Visit(visitor_real_uid=u64(0), visited_real_uid=u64(2), exposition=False, timestamp=i64(9)),
+            Visit(visitor_real_uid=1, visited_real_uid=0, exposition=False, timestamp=0),
+            Visit(visitor_real_uid=1, visited_real_uid=0, exposition=True, timestamp=4),
+            Visit(visitor_real_uid=0, visited_real_uid=2, exposition=False, timestamp=6),
+            Visit(visitor_real_uid=1, visited_real_uid=0, exposition=False, timestamp=7),
+            Visit(visitor_real_uid=1, visited_real_uid=0, exposition=False, timestamp=8),
+            Visit(visitor_real_uid=0, visited_real_uid=2, exposition=False, timestamp=9),
         ]
         humans = [
             FakeHuman(real_uid=0, exposition_timestamp=4, visits_to_adopt=visits),  # sick on day 4 (transmission)

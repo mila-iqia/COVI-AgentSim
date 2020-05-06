@@ -3,12 +3,10 @@ import dataclasses
 import numpy as np
 import typing
 
-import covid19sim.frozen.message_utils as mu
+from covid19sim.frozen.message_utils import EncounterMessage, GenericMessageType, UpdateMessage, \
+    TimestampType, TimeOffsetType, RealUserIDType, RiskLevelType
 
-TimestampType = np.int64
-TimeOffsetType = np.int64
-ClusterIDType = np.int64  # was 8 bit in initial implementation? ...go back?
-
+ClusterIDType = int
 
 @dataclasses.dataclass
 class ClusterBase:
@@ -17,7 +15,7 @@ class ClusterBase:
     cluster_id: ClusterIDType
     """Unique Identifier (UID) of the cluster."""
 
-    risk_level: np.uint8
+    risk_level: RiskLevelType
     """Quantified risk level of the cluster."""
 
     first_update_time: TimestampType
@@ -26,20 +24,20 @@ class ClusterBase:
     latest_update_time: TimestampType
     """Latest cluster update timestamp (i.e. timestamp of latest encounter)."""
 
-    messages: typing.List[mu.EncounterMessage] = dataclasses.field(default_factory=list)
+    messages: typing.List[EncounterMessage] = dataclasses.field(default_factory=list)
     """List of encounter messages aggregated into this cluster (in added order)."""
     # note: messages above might have been updated from their original state!
 
     ##########################################
     # private variables (for debugging only!)
 
-    _real_encounter_uids: typing.List[np.uint64] = dataclasses.field(default_factory=list)
+    _real_encounter_uids: typing.List[RealUserIDType] = dataclasses.field(default_factory=list)
     """Real Unique Identifiers (UIDs) of the clustered user(s)."""
 
     _real_encounter_times: typing.List[TimestampType] = dataclasses.field(default_factory=list)
     """Real timestamp of the clustered encounter(s)."""
 
-    _unclustered_messages: typing.List[mu.GenericMessageType] = dataclasses.field(default_factory=list)
+    _unclustered_messages: typing.List[GenericMessageType] = dataclasses.field(default_factory=list)
     """List of all messages (encounter+update) messages that were used to update this cluster."""
 
     def _is_homogenous(self) -> bool:
@@ -48,17 +46,17 @@ class ClusterBase:
 
     @staticmethod
     def create_cluster_from_message(
-            message: mu.GenericMessageType,
+            message: GenericMessageType,
             cluster_id: typing.Optional[ClusterIDType] = None,  # unused by this base implementation
     ):
         """Creates and returns a new cluster based on a single encounter message."""
         raise NotImplementedError
 
-    def fit_encounter_message(self, message: mu.EncounterMessage):
+    def fit_encounter_message(self, message: EncounterMessage):
         """Updates the current cluster given a new encounter message."""
         raise NotImplementedError
 
-    def fit_update_message(self, update_message: mu.UpdateMessage):
+    def fit_update_message(self, update_message: UpdateMessage):
         """Updates an encounter in the current cluster given a new update message."""
         raise NotImplementedError
 
@@ -112,7 +110,7 @@ class ClusterManagerBase:
                     del self.clusters_by_timestamp[encounter_message.encounter_time][cluster.cluster_id]
         self.clusters = to_keep
 
-    def _check_if_message_outdated(self, message: mu.GenericMessageType, cleanup: bool = True) -> bool:
+    def _check_if_message_outdated(self, message: GenericMessageType, cleanup: bool = True) -> bool:
         """Returns whether a message is outdated or not. Will also refresh the internal check timestamp."""
         self.latest_refresh_timestamp = max(message.encounter_time, self.latest_refresh_timestamp)
         outdated = False
@@ -127,7 +125,7 @@ class ClusterManagerBase:
 
     def add_messages(
             self,
-            messages: typing.Iterable[mu.GenericMessageType],
+            messages: typing.Iterable[GenericMessageType],
             cleanup: bool = True,
             current_timestamp: typing.Optional[TimestampType] = None,  # will use internal latest if None
     ):
@@ -135,20 +133,20 @@ class ClusterManagerBase:
         if current_timestamp is not None:
             self.latest_refresh_timestamp = max(current_timestamp, self.latest_refresh_timestamp)
         for message in messages:
-            if isinstance(message, mu.EncounterMessage):
+            if isinstance(message, EncounterMessage):
                 self._add_encounter_message(message, cleanup=False)
-            elif isinstance(message, mu.UpdateMessage):
+            elif isinstance(message, UpdateMessage):
                 self._add_update_message(message, cleanup=False)
             else:
                 ValueError("unexpected message type")
         if cleanup:
             self.cleanup_clusters(self.latest_refresh_timestamp)
 
-    def _add_encounter_message(self, message: mu.EncounterMessage, cleanup: bool = True):
+    def _add_encounter_message(self, message: EncounterMessage, cleanup: bool = True):
         """Fits an encounter message to an existing cluster or creates a new cluster to own it."""
         return NotImplementedError
 
-    def _add_update_message(self, message: mu.UpdateMessage, cleanup: bool = True):
+    def _add_update_message(self, message: UpdateMessage, cleanup: bool = True):
         """Fits an update message to an existing cluster."""
         return NotImplementedError
 

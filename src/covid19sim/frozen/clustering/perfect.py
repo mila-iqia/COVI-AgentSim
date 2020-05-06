@@ -1,6 +1,6 @@
 import typing
 
-import covid19sim.frozen.message_utils as mu
+from covid19sim.frozen.message_utils import EncounterMessage, UpdateMessage
 from covid19sim.frozen.clustering.base import ClusterIDType, TimestampType, TimeOffsetType, \
     ClusterManagerBase
 from covid19sim.frozen.clustering.simple import SimpleCluster
@@ -31,7 +31,7 @@ class PerfectClusterManager(ClusterManagerBase):
         )
         # note: no RNG here, this impl is deterministic
 
-    def _add_encounter_message(self, message: mu.EncounterMessage, cleanup: bool = True):
+    def _add_encounter_message(self, message: EncounterMessage, cleanup: bool = True):
         """Fits an encounter message to an existing cluster or creates a new cluster to own it."""
         if self._check_if_message_outdated(message, cleanup):
             return
@@ -52,7 +52,7 @@ class PerfectClusterManager(ClusterManagerBase):
             self.clusters.append(new_cluster)
             self.clusters_by_timestamp[message.encounter_time][new_cluster.cluster_id] = new_cluster
 
-    def _add_update_message(self, message: mu.UpdateMessage, cleanup: bool = True):
+    def _add_update_message(self, message: UpdateMessage, cleanup: bool = True):
         """Fits an update message to an existing cluster."""
         if self._check_if_message_outdated(message, cleanup):
             return

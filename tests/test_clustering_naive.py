@@ -18,8 +18,8 @@ class NaiveClusteringTests(unittest.TestCase):
         for _ in range(n_trials):
             # scenario: single day visits, 1 cluster per visit, not enough visits to overlap the clusters
             visits = [
-                Visit(visitor_real_uid=ui(1), visited_real_uid=ui(0), exposition=False, timestamp=ui(2)),
-                Visit(visitor_real_uid=ui(2), visited_real_uid=ui(0), exposition=False, timestamp=ui(2)),
+                Visit(visitor_real_uid=1, visited_real_uid=0, exposition=False, timestamp=2),
+                Visit(visitor_real_uid=2, visited_real_uid=0, exposition=False, timestamp=2),
             ]
             # we will cheat and hard-code some initial 4-bit uids to make sure there is no overlap
             humans = [
@@ -59,11 +59,11 @@ class NaiveClusteringTests(unittest.TestCase):
     def test_same_day_visit_clusters_overlap(self):
         # scenario: single day visits, and some visits will share the same cluster
         visits = [
-            Visit(visitor_real_uid=ui(1), visited_real_uid=ui(0), exposition=False, timestamp=ui(0)),
-            Visit(visitor_real_uid=ui(2), visited_real_uid=ui(0), exposition=False, timestamp=ui(0)),
-            Visit(visitor_real_uid=ui(3), visited_real_uid=ui(0), exposition=False, timestamp=ui(0)),
-            Visit(visitor_real_uid=ui(4), visited_real_uid=ui(0), exposition=False, timestamp=ui(0)),
-            Visit(visitor_real_uid=ui(5), visited_real_uid=ui(0), exposition=False, timestamp=ui(0)),
+            Visit(visitor_real_uid=1, visited_real_uid=0, exposition=False, timestamp=0),
+            Visit(visitor_real_uid=2, visited_real_uid=0, exposition=False, timestamp=0),
+            Visit(visitor_real_uid=3, visited_real_uid=0, exposition=False, timestamp=0),
+            Visit(visitor_real_uid=4, visited_real_uid=0, exposition=False, timestamp=0),
+            Visit(visitor_real_uid=5, visited_real_uid=0, exposition=False, timestamp=0),
         ]
         # we will cheat and hard-code some initial 4-bit uids to make sure there is overlap
         humans = [
@@ -100,7 +100,7 @@ class NaiveClusteringTests(unittest.TestCase):
     def test_cluster_risk_update(self):
         # scenario: single day visits, and some visits will share the same cluster
         visits = [
-            Visit(visitor_real_uid=ui(1), visited_real_uid=ui(0), exposition=False, timestamp=ui(0)),
+            Visit(visitor_real_uid=1, visited_real_uid=0, exposition=False, timestamp=0),
         ]
         humans = [
             FakeHuman(real_uid=0, exposition_timestamp=never, visits_to_adopt=visits,
@@ -128,13 +128,13 @@ class NaiveClusteringTests(unittest.TestCase):
         self.assertEqual(cluster_manager.clusters[0].risk_level, np.uint8(9))
         # add a new encounter: it should not match the existing cluster due to diff risk
         cluster_manager.add_messages([
-            mu.EncounterMessage(humans[1].rolling_uids[0], risk_level=np.uint8(1), encounter_time=ui(0))
+            mu.EncounterMessage(humans[1].rolling_uids[0], risk_level=np.uint8(1), encounter_time=0)
         ])
         self.assertEqual(len(cluster_manager.clusters), 2)
         self.assertEqual(cluster_manager.clusters[1].risk_level, np.uint8(1))
         # add a new encounter: it should match the existing cluster due to same risk
         new_encounter = \
-            mu.EncounterMessage(humans[1].rolling_uids[0], risk_level=np.uint8(9), encounter_time=ui(0))
+            mu.EncounterMessage(humans[1].rolling_uids[0], risk_level=np.uint8(9), encounter_time=0)
         cluster_manager.add_messages([new_encounter])
         self.assertEqual(len(cluster_manager.clusters), 2)
         self.assertEqual(cluster_manager.clusters[0].risk_level, np.uint8(9))
@@ -159,8 +159,8 @@ class NaiveClusteringTests(unittest.TestCase):
         for _ in range(n_trials):
             # scenario: a new encounter is added that is waaay outdated; it should not create a cluster
             visits = [
-                Visit(visitor_real_uid=ui(1), visited_real_uid=ui(0), exposition=False, timestamp=ui(2)),
-                Visit(visitor_real_uid=ui(1), visited_real_uid=ui(0), exposition=False, timestamp=ui(8)),
+                Visit(visitor_real_uid=1, visited_real_uid=0, exposition=False, timestamp=2),
+                Visit(visitor_real_uid=1, visited_real_uid=0, exposition=False, timestamp=8),
             ]
             humans = [
                 FakeHuman(real_uid=0, exposition_timestamp=never, visits_to_adopt=visits),
@@ -178,7 +178,7 @@ class NaiveClusteringTests(unittest.TestCase):
             self.assertEqual(cluster_manager.clusters[0].first_update_time, np.uint8(8))
             # new manually added encounters that are outdated should also be ignored
             cluster_manager.add_messages([
-                mu.EncounterMessage(humans[1].rolling_uids[0], risk_level=np.uint8(1), encounter_time=ui(0))
+                mu.EncounterMessage(humans[1].rolling_uids[0], risk_level=np.uint8(1), encounter_time=0)
             ])
             self.assertEqual(len(cluster_manager.clusters), 1)
             self.assertEqual(cluster_manager.clusters[0].first_update_time, np.uint8(8))
@@ -189,11 +189,11 @@ class NaiveClusteringTests(unittest.TestCase):
             # scenario: the early encounters are beyond the max history offset from the later encounters,
             # but these should all be clustered and kept due to the partial uid matching strategy
             visits = [
-                Visit(visitor_real_uid=ui(1), visited_real_uid=ui(0), exposition=False, timestamp=ui(2)),
-                Visit(visitor_real_uid=ui(1), visited_real_uid=ui(0), exposition=False, timestamp=ui(4)),
-                Visit(visitor_real_uid=ui(1), visited_real_uid=ui(0), exposition=False, timestamp=ui(7)),
-                Visit(visitor_real_uid=ui(1), visited_real_uid=ui(0), exposition=False, timestamp=ui(8)),
-                Visit(visitor_real_uid=ui(1), visited_real_uid=ui(0), exposition=False, timestamp=ui(10)),
+                Visit(visitor_real_uid=1, visited_real_uid=0, exposition=False, timestamp=2),
+                Visit(visitor_real_uid=1, visited_real_uid=0, exposition=False, timestamp=4),
+                Visit(visitor_real_uid=1, visited_real_uid=0, exposition=False, timestamp=7),
+                Visit(visitor_real_uid=1, visited_real_uid=0, exposition=False, timestamp=8),
+                Visit(visitor_real_uid=1, visited_real_uid=0, exposition=False, timestamp=10),
             ]
             humans = [
                 FakeHuman(real_uid=0, exposition_timestamp=never, visits_to_adopt=visits),
@@ -211,7 +211,7 @@ class NaiveClusteringTests(unittest.TestCase):
             self.assertEqual(cluster_manager.clusters[0].first_update_time, np.uint8(2))
             # new manually added encounters that are outdated should be ignored
             cluster_manager.add_messages([
-                mu.EncounterMessage(humans[1].rolling_uids[0], risk_level=np.uint8(1), encounter_time=ui(0))
+                mu.EncounterMessage(humans[1].rolling_uids[0], risk_level=np.uint8(1), encounter_time=0)
             ])
             self.assertEqual(len(cluster_manager.clusters), 1)
             self.assertEqual(cluster_manager.clusters[0].first_update_time, np.uint8(2))

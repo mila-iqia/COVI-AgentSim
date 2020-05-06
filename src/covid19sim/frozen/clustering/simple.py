@@ -1,7 +1,8 @@
 import numpy as np
 import typing
 
-import covid19sim.frozen.message_utils as mu
+from covid19sim.frozen.message_utils import EncounterMessage, GenericMessageType, UpdateMessage, \
+    RiskLevelType, create_encounter_from_update_message, create_updated_encounter_with_message
 from covid19sim.frozen.clustering.base import ClusterIDType, TimestampType, TimeOffsetType, \
     ClusterBase, ClusterManagerBase
 
@@ -16,7 +17,7 @@ class SimpleCluster(ClusterBase):
 
     @staticmethod
     def create_cluster_from_message(
-            message: mu.GenericMessageType,
+            message: GenericMessageType,
             cluster_id: typing.Optional[ClusterIDType] = None,  # unused by this base implementation
     ) -> "SimpleCluster":
         """Creates and returns a new cluster based on a single encounter message."""
@@ -25,30 +26,30 @@ class SimpleCluster(ClusterBase):
             # app-visible stuff below
             cluster_id=message.uid,
             risk_level=message.risk_level
-                if isinstance(message, mu.EncounterMessage) else message.new_risk_level,
+                if isinstance(message, EncounterMessage) else message.new_risk_level,
             first_update_time=message.encounter_time,
             latest_update_time=message.encounter_time
-                if isinstance(message, mu.EncounterMessage) else message.update_time,
-            messages=[message] if isinstance(message, mu.EncounterMessage)
-                else mu.create_encounter_from_update_message(message),
+                if isinstance(message, EncounterMessage) else message.update_time,
+            messages=[message] if isinstance(message, EncounterMessage)
+                else create_encounter_from_update_message(message),
             # debug-only stuff below
             _real_encounter_uids=[message._sender_uid],
             _real_encounter_times=[message._real_encounter_time],
             _unclustered_messages=[message],  # once added, messages here should never be removed
         )
 
-    def fit_encounter_message(self, message: mu.EncounterMessage):
+    def fit_encounter_message(self, message: EncounterMessage):
         """Updates the current cluster given a new encounter message."""
         # note: this simplistic implementation will throw if UIDs dont perfectly match;
         # the added message will automatically be used to adjust the cluster's risk level
         self.latest_update_time = max(message.encounter_time, self.latest_update_time)
         self.messages.append(message)  # in this list, encounters may get updated
-        self.risk_level = np.uint8(np.round(np.mean([m.risk_level for m in self.messages])))
+        self.risk_level = RiskLevelType(np.round(np.mean([m.risk_level for m in self.messages])))
         self._real_encounter_uids.append(message._sender_uid)
         self._real_encounter_times.append(message._real_encounter_time)
         self._unclustered_messages.append(message)  # in this list, messages NEVER get updated
 
-    def fit_update_message(self, update_message: mu.UpdateMessage):
+    def fit_update_message(self, update_message: UpdateMessage):
         """Updates an encounter in the current cluster given a new update message.
 
         If the update message cannot be applied to any encounter in this cluster, it will be
@@ -67,12 +68,12 @@ class SimpleCluster(ClusterBase):
                 break
         if found_match is None:
             return update_message
-        self.messages[found_match[0]] = mu.create_updated_encounter_with_message(
+        self.messages[found_match[0]] = create_updated_encounter_with_message(
             encounter_message=found_match[1], update_message=update_message,
         )
         # note: the 'cluster update time' is still encounter-message-based, not update-message-based
         self.latest_update_time = max(update_message.encounter_time, self.latest_update_time)
-        self.risk_level = np.uint8(np.round(np.mean([m.risk_level for m in self.messages])))
+        self.risk_level = RiskLevelType(np.round(np.mean([m.risk_level for m in self.messages])))
         self._real_encounter_uids.append(update_message._sender_uid)
         self._real_encounter_times.append(update_message._real_encounter_time)
         self._unclustered_messages.append(update_message)  # in this list, messages NEVER get updated
@@ -119,7 +120,7 @@ class SimplisticClusterManager(ClusterManagerBase):
         )
         self.rng = rng
 
-    def _add_encounter_message(self, message: mu.EncounterMessage, cleanup: bool = True):
+    def _add_encounter_message(self, message: EncounterMessage, cleanup: bool = True):
         """Fits an encounter message to an existing cluster or creates a new cluster to own it."""
         if self._check_if_message_outdated(message, cleanup):
             return
@@ -143,7 +144,7 @@ class SimplisticClusterManager(ClusterManagerBase):
             self.clusters.append(new_cluster)
             self.clusters_by_timestamp[message.encounter_time][new_cluster.cluster_id] = new_cluster
 
-    def _add_update_message(self, message: mu.UpdateMessage, cleanup: bool = True):
+    def _add_update_message(self, message: UpdateMessage, cleanup: bool = True):
         """Fits an update message to an existing cluster."""
         if self._check_if_message_outdated(message, cleanup):
             return

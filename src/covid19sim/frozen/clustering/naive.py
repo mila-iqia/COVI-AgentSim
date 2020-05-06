@@ -68,7 +68,8 @@ class NaiveCluster(ClusterBase):
             self,
             message: mu.EncounterMessage,
             ticks_per_uid_roll: TimeOffsetType = 24 * 60 * 60,  # one tick per second, one roll per day
-    ) -> typing.Tuple[int, typing.Optional[int]]:
+            look_forward_too: bool = False,  # unused for now.. but who knows in the future
+    ) -> int:
         """Returns the match score between the provided encounter message and this cluster.
 
         A negative return value means the message & cluster cannot correspond to the same person. A
@@ -78,46 +79,49 @@ class NaiveCluster(ClusterBase):
         `message_uid_bit_count`, the match is perfect.
 
         Returns:
-            A tuple of the best match score (an integer in `[-1,message_uid_bit_count]`) and of
-            the matched encounter index (for internal use).
+            The best match score (an integer in `[-1,message_uid_bit_count]`).
         """
         if message.risk_level != self.risk_level:
             # if the cluster's risk level differs from the given encounter's risk level, there is
             # no way to match the two, as the cluster should be updated first to that risk level,
             # or we are looking at different users entirely
-            return -1, None
+            return -1
         if message.encounter_time in self.messages_by_timestamp and \
                 self.messages_by_timestamp[message.encounter_time].uid != message.uid:
             # if we already have a stored uid at the new encounter's timestamp with a different
             # uid, there's no way this message can be merged into this cluster
-            return -1, None
-        best_match = (-1, None)
+            return -1
+        best_match = -1
         # @@@ adopt the hash thing function instead of loop over all messages @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
         assert len(self.messages), "... a cluster cannot exist without past encounters?"
-        for encounter_idx, old_encounter in enumerate(self.messages):
-            match_score = mu.find_encounter_match_score(
-                # TODO: what happens if the received message is actually late, and we have an
-                #       'old message' that is more recent? (match scorer will throw)
-                old_encounter,
-                message,
-                ticks_per_uid_roll,
-            )
-            if match_score > best_match[0]:
-                best_match = (match_score, encounter_idx)
+        t_range = range(
+            message.encounter_time - TimeOffsetType(mu.message_uid_bit_count) + 1,
+            message.encounter_time + (TimeOffsetType(mu.message_uid_bit_count)
+                                      if look_forward_too else 1)
+        )
+        for timestamp in t_range:
+            if timestamp in self.messages_by_timestamp:
+                old_encounter = self.messages_by_timestamp[timestamp]
+                match_score = mu.find_encounter_match_score(
+                    # TODO: what happens if the received message is actually late, and we have an
+                    #       'old message' that is more recent? (match scorer will throw)
+                    old_encounter,
+                    message,
+                    ticks_per_uid_roll,
+                )
+                if match_score > best_match:
+                    best_match = match_score
         return best_match
 
     def _force_fit_encounter_message(
             self,
             message: mu.EncounterMessage,
-            internal_encounter_idx: int,
     ) -> typing.Optional[mu.EncounterMessage]:
         """Updates the current cluster given a new encounter message.
 
         Same as `fit_encounter_message`, but allows an internal message index to be passed in to
         avoid an extra `_get_encounter_match_score` call.
         """
-        # do something with internal_encounter_idx? (we don't actually need it in this version)
-        assert internal_encounter_idx < len(self.messages)
         # update the cluster time with the new message's encounter time (if more recent)
         self.latest_update_time = max(message.encounter_time, self.latest_update_time)
         self.messages.append(message)  # in this list, encounters may get updated (and form new clusters)
@@ -142,14 +146,14 @@ class NaiveCluster(ClusterBase):
         the cluster, and the function will return `None`.
         """
         assert message.risk_level == self.risk_level, "cluster and new encounter message risks mismatch"
-        best_match_score, best_match_idx = self._get_encounter_match_score(
+        best_match_score = self._get_encounter_match_score(
             message=message,
             ticks_per_uid_roll=ticks_per_uid_roll,
         )
         if best_match_score < minimum_match_score:
             # ask the manager to add the message as a new cluster instead of merging it in
             return message
-        return self._force_fit_encounter_message(message=message, internal_encounter_idx=best_match_idx)
+        return self._force_fit_encounter_message(message=message)
 
     def fit_update_message(
             self,
@@ -305,7 +309,7 @@ class NaiveClusterManager(ClusterManagerBase):
             to_keep.append(cluster)
         self.clusters = to_keep
 
-    def cleanup_clusters(self, current_timestamp: np.int64):
+    def cleanup_clusters(self, current_timestamp: TimestampType):
         """Gets rid of clusters that are too old given the current timestamp, and single encounters
         inside clusters that are too old as well."""
         to_keep = []
@@ -331,7 +335,7 @@ class NaiveClusterManager(ClusterManagerBase):
             self,
             messages: typing.Iterable[mu.GenericMessageType],
             cleanup: bool = True,
-            current_timestamp: typing.Optional[np.int64] = None,  # will use internal latest if None
+            current_timestamp: typing.Optional[TimestampType] = None,  # will use internal latest if None
     ):
         """Dispatches the provided messages to the correct internal 'add' function based on type."""
         if current_timestamp is not None:
@@ -358,12 +362,11 @@ class NaiveClusterManager(ClusterManagerBase):
         self.rng.shuffle(clusters)  # ...should be a pretty quick call? right..?
         best_matched_cluster = None
         for cluster in clusters:
-            score, encounter_idx = cluster._get_encounter_match_score(message, self.ticks_per_uid_roll)
-            # @@@ merge = what min score?
+            score = cluster._get_encounter_match_score(message, self.ticks_per_uid_roll)
             if score > 0 and (not best_matched_cluster or best_matched_cluster[1] < score):
-                best_matched_cluster = (cluster, score, encounter_idx)
+                best_matched_cluster = (cluster, score)
         if best_matched_cluster:
-            best_matched_cluster[0]._force_fit_encounter_message(message, best_matched_cluster[2])
+            best_matched_cluster[0]._force_fit_encounter_message(message)
             self.clusters_by_timestamp[message.encounter_time][best_matched_cluster[0].cluster_id] = \
                 best_matched_cluster[0]
         else:

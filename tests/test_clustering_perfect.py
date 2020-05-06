@@ -2,6 +2,7 @@ import numpy as np
 import unittest
 
 import covid19sim.frozen.clustering.perfect as clu
+import covid19sim.frozen.message_utils as mu
 from tests.utils import FakeHuman, generate_received_messages, Visit
 
 never = 9999  # dirty macro to indicate a human will never get infected
@@ -25,10 +26,10 @@ class PerfectClusteringTests(unittest.TestCase):
                 while visitor_real_uid == visited_real_uid:
                     visited_real_uid = np.random.randint(n_humans)
                 visits.append(Visit(
-                    visitor_real_uid=np.uint64(visitor_real_uid),
-                    visited_real_uid=np.uint64(visited_real_uid),
+                    visitor_real_uid=mu.RealUserIDType(visitor_real_uid),
+                    visited_real_uid=mu.RealUserIDType(visited_real_uid),
                     exposition=False,
-                    timestamp=np.int64(np.random.randint(max_timestamp + 1)),
+                    timestamp=mu.TimestampType(np.random.randint(max_timestamp + 1)),
                 ))
             # ...then, had a handful of exposition visits to increase risk levels
             for _ in range(n_expositions):
@@ -37,10 +38,10 @@ class PerfectClusteringTests(unittest.TestCase):
                 while exposer_real_uid == exposed_real_uid:
                     exposed_real_uid = np.random.randint(n_humans)
                 visits.append(Visit(
-                    visitor_real_uid=np.uint64(exposer_real_uid),
-                    visited_real_uid=np.uint64(exposed_real_uid),
+                    visitor_real_uid=mu.RealUserIDType(exposer_real_uid),
+                    visited_real_uid=mu.RealUserIDType(exposed_real_uid),
                     exposition=True,
-                    timestamp=np.int64(np.random.randint(max_timestamp + 1)),
+                    timestamp=mu.TimestampType(np.random.randint(max_timestamp + 1)),
                 ))
             # now, generate all humans with the spurious thingy tag so we dont have to set expo flags
             humans = [

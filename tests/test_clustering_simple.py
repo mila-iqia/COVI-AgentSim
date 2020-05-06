@@ -6,7 +6,6 @@ import covid19sim.frozen.message_utils as mu
 from tests.utils import FakeHuman, generate_received_messages, Visit
 
 never = 9999  # dirty macro to indicate a human will never get infected
-ui = np.uint64  # dirty macro to cast integers to np.uint64
 
 
 class SimpleClusteringTests(unittest.TestCase):
@@ -17,8 +16,8 @@ class SimpleClusteringTests(unittest.TestCase):
         for _ in range(n_trials):
             # scenario: single day visits, 1 cluster per visit, not enough visits to overlap the clusters
             visits = [
-                Visit(visitor_real_uid=ui(1), visited_real_uid=ui(0), exposition=False, timestamp=2),
-                Visit(visitor_real_uid=ui(2), visited_real_uid=ui(0), exposition=False, timestamp=2),
+                Visit(visitor_real_uid=1, visited_real_uid=0, exposition=False, timestamp=2),
+                Visit(visitor_real_uid=2, visited_real_uid=0, exposition=False, timestamp=2),
             ]
             # we will cheat and hard-code some initial 4-bit uids to make sure there is no overlap
             humans = [
@@ -56,11 +55,11 @@ class SimpleClusteringTests(unittest.TestCase):
     def test_same_day_visit_clusters_overlap(self):
         # scenario: single day visits, and some visits will share the same cluster
         visits = [
-            Visit(visitor_real_uid=ui(1), visited_real_uid=ui(0), exposition=False, timestamp=0),
-            Visit(visitor_real_uid=ui(2), visited_real_uid=ui(0), exposition=False, timestamp=0),
-            Visit(visitor_real_uid=ui(3), visited_real_uid=ui(0), exposition=False, timestamp=0),
-            Visit(visitor_real_uid=ui(4), visited_real_uid=ui(0), exposition=False, timestamp=0),
-            Visit(visitor_real_uid=ui(5), visited_real_uid=ui(0), exposition=False, timestamp=0),
+            Visit(visitor_real_uid=1, visited_real_uid=0, exposition=False, timestamp=0),
+            Visit(visitor_real_uid=2, visited_real_uid=0, exposition=False, timestamp=0),
+            Visit(visitor_real_uid=3, visited_real_uid=0, exposition=False, timestamp=0),
+            Visit(visitor_real_uid=4, visited_real_uid=0, exposition=False, timestamp=0),
+            Visit(visitor_real_uid=5, visited_real_uid=0, exposition=False, timestamp=0),
         ]
         # we will cheat and hard-code some initial 4-bit uids to make sure there is overlap
         humans = [
@@ -95,7 +94,7 @@ class SimpleClusteringTests(unittest.TestCase):
     def test_cluster_risk_update(self):
         # scenario: single day visits, and some visits will share the same cluster
         visits = [
-            Visit(visitor_real_uid=ui(1), visited_real_uid=ui(0), exposition=False, timestamp=0),
+            Visit(visitor_real_uid=1, visited_real_uid=0, exposition=False, timestamp=0),
         ]
         humans = [
             FakeHuman(real_uid=0, exposition_timestamp=never, visits_to_adopt=visits,
@@ -142,9 +141,9 @@ class SimpleClusteringTests(unittest.TestCase):
     def test_cleanup_outdated_cluster(self):
         # scenario: a new encounter is added that is waaay outdated; it should not create a cluster
         visits = [
-            Visit(visitor_real_uid=ui(1), visited_real_uid=ui(0), exposition=False, timestamp=2),
-            Visit(visitor_real_uid=ui(1), visited_real_uid=ui(0), exposition=False, timestamp=5),
-            Visit(visitor_real_uid=ui(1), visited_real_uid=ui(0), exposition=False, timestamp=8),
+            Visit(visitor_real_uid=1, visited_real_uid=0, exposition=False, timestamp=2),
+            Visit(visitor_real_uid=1, visited_real_uid=0, exposition=False, timestamp=5),
+            Visit(visitor_real_uid=1, visited_real_uid=0, exposition=False, timestamp=8),
         ]
         humans = [
             FakeHuman(real_uid=0, exposition_timestamp=never, visits_to_adopt=visits),

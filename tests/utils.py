@@ -7,10 +7,10 @@ import covid19sim.frozen.message_utils as mu
 
 @dataclasses.dataclass
 class Visit:
-    visitor_real_uid: np.uint64
-    visited_real_uid: np.uint64
+    visitor_real_uid: mu.RealUserIDType
+    visited_real_uid: mu.RealUserIDType
     exposition: bool
-    timestamp: np.uint64
+    timestamp: mu.TimestampType
     visitor_uid: typing.Optional[mu.UIDType] = None
     visited_uid: typing.Optional[mu.UIDType] = None
     visitor: typing.Optional["FakeHuman"] = None
@@ -25,11 +25,11 @@ class FakeHuman:
             real_uid: int,
             exposition_timestamp: int,
             visits_to_adopt: typing.List[Visit],
-            force_init_uid: typing.Optional[np.uint8] = None,
-            force_init_risk: typing.Optional[np.uint8] = None,
+            force_init_uid: typing.Optional[mu.UIDType] = None,
+            force_init_risk: typing.Optional[mu.RiskLevelType] = None,
             allow_spurious_exposition: bool = False,
     ):
-        self.real_uid = np.uint64(real_uid)
+        self.real_uid = real_uid
         self.made_visit_to = [v for v in visits_to_adopt if v.visitor_real_uid == real_uid]
         self.got_visit_from = [v for v in visits_to_adopt if v.visited_real_uid == real_uid]
         self.visits = [v for v in visits_to_adopt
@@ -37,7 +37,7 @@ class FakeHuman:
         if force_init_uid is None:
             force_init_uid = mu.create_new_uid()
         if force_init_risk is None:
-            force_init_risk = np.uint8(not exposition_timestamp)
+            force_init_risk = mu.RiskLevelType(not exposition_timestamp)
         self.rolling_uids = np.asarray([force_init_uid])
         self.rolling_exposed = np.asarray([exposition_timestamp == 0])
         self.rolling_risk = np.asarray([force_init_risk])
@@ -96,10 +96,10 @@ def generate_sent_messages(
                 encounter_message = mu.EncounterMessage(
                     uid=human.rolling_uids[timestamp],
                     risk_level=risk_level,
-                    encounter_time=np.uint64(timestamp),
+                    encounter_time=int(timestamp),
                     _sender_uid=human.real_uid,
                     _receiver_uid=opposite_human.real_uid,
-                    _real_encounter_time=np.uint64(timestamp),
+                    _real_encounter_time=int(timestamp),
                     _exposition_event=visit.exposition and is_visited,
                 )
                 sent_encounter_messages[timestamp].append(encounter_message)
@@ -114,13 +114,13 @@ def generate_sent_messages(
                             update_message = mu.UpdateMessage(
                                 uid=message.uid,
                                 old_risk_level=human.rolling_risk[prev_timestamp],
-                                new_risk_level=np.uint8(maximum_risk_level_for_saturaton),
+                                new_risk_level=mu.RiskLevelType(maximum_risk_level_for_saturaton),
                                 encounter_time=message.encounter_time,
-                                update_time=np.uint64(timestamp),
+                                update_time=int(timestamp),
                                 _sender_uid=message._sender_uid,
                                 _receiver_uid=message._receiver_uid,
                                 _real_encounter_time=message._real_encounter_time,
-                                _real_update_time=np.uint64(timestamp),
+                                _real_update_time=int(timestamp),
                                 _update_reason="positive_test",
                             )
                             sent_update_messages[timestamp].append(update_message)
@@ -135,7 +135,7 @@ def generate_sent_messages(
                             update_message = mu.create_update_message(
                                 encounter_message=message,
                                 new_risk_level=human.rolling_risk[prev_timestamp],
-                                current_time=np.uint64(timestamp),
+                                current_time=int(timestamp),
                                 update_reason="symptoms",
                             )
                             sent_update_messages[timestamp].append(update_message)

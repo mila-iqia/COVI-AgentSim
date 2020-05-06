@@ -2,6 +2,10 @@ import dataclasses
 import numpy as np
 import typing
 
+TimestampType = int
+TimeOffsetType = int
+RealUserIDType = int
+
 message_uid_bit_count = 4
 message_uid_mask = np.uint8((1 << message_uid_bit_count) - 1)
 UIDType = np.uint8
@@ -19,19 +23,19 @@ RiskLevelType = np.uint8
 # TODO: change naive code below to support the rotating day-of-month timestamp in updates
 
 
-def create_new_uid(rng=None) -> np.uint8:
+def create_new_uid(rng=None) -> UIDType:
     """Returns a randomly initialized uid."""
     if rng is None:
         rng = np.random
-    return np.uint8(rng.randint(0, 1 << message_uid_bit_count))
+    return UIDType(rng.randint(0, 1 << message_uid_bit_count))
 
 
-def update_uid(uid: np.uint8, rng=None) -> np.uint8:
+def update_uid(uid: UIDType, rng=None) -> UIDType:
     """Updates a provided uid by left-shifting it and adding a random bit."""
     if rng is None:
         rng = np.random
     assert 0 <= uid <= message_uid_mask
-    return np.uint8(((uid << 1) + rng.randint(0, 2)) & message_uid_mask)
+    return UIDType(((uid << 1) + rng.randint(0, 2)) & message_uid_mask)
 
 
 @dataclasses.dataclass
@@ -41,25 +45,25 @@ class EncounterMessage:
     #####################
     # observed variables
 
-    uid: np.uint8
+    uid: UIDType
     """Unique Identifier (UID) of the encountered user."""
 
-    risk_level: np.uint8
+    risk_level: RiskLevelType
     """Quantified risk level of the encountered user."""
 
-    encounter_time: np.int64
+    encounter_time: TimestampType
     """Discretized encounter timestamp."""
 
     #############################################
     # unobserved variables (for debugging only!)
 
-    _sender_uid: typing.Optional[np.uint64] = None
+    _sender_uid: typing.Optional[RealUserIDType] = None
     """Real Unique Identifier (UID) of the encountered user."""
 
-    _receiver_uid: typing.Optional[np.uint64] = None
+    _receiver_uid: typing.Optional[RealUserIDType] = None
     """Real Unique Identifier (UID) of the user receiving the message."""
 
-    _real_encounter_time: typing.Optional[np.int64] = None
+    _real_encounter_time: typing.Optional[TimestampType] = None
     """Real encounter timestamp."""
 
     _exposition_event: typing.Optional[bool] = None
@@ -73,34 +77,34 @@ class UpdateMessage:
     #####################
     # observed variables
 
-    uid: np.uint8
+    uid: UIDType
     """Unique Identifier (UID) of the updater at the time of the encounter."""
 
-    old_risk_level: np.uint8
+    old_risk_level: RiskLevelType
     """Previous quantified risk level of the updater."""
 
-    new_risk_level: np.uint8
+    new_risk_level: RiskLevelType
     """New quantified risk level of the updater."""
 
-    encounter_time: np.int64
+    encounter_time: TimestampType
     """Discretized encounter timestamp."""
 
-    update_time: np.int64
+    update_time: TimestampType
     """Update generation timestamp."""  # TODO: this might be a 1-31 rotating day id?
 
     #############################################
     # unobserved variables (for debugging only!)
 
-    _sender_uid: typing.Optional[np.uint64] = None
+    _sender_uid: typing.Optional[RealUserIDType] = None
     """Real Unique Identifier (UID) of the updater."""
 
-    _receiver_uid: typing.Optional[np.uint64] = None
+    _receiver_uid: typing.Optional[RealUserIDType] = None
     """Real Unique Identifier (UID) of the user receiving the message."""
 
-    _real_encounter_time: typing.Optional[np.int64] = None
+    _real_encounter_time: typing.Optional[TimestampType] = None
     """Real encounter timestamp."""
 
-    _real_update_time: typing.Optional[np.int64] = None
+    _real_update_time: typing.Optional[TimestampType] = None
     """Real update generation timestamp."""
 
     _update_reason: typing.Optional[str] = None
@@ -109,8 +113,8 @@ class UpdateMessage:
 
 def create_update_message(
         encounter_message: EncounterMessage,
-        new_risk_level: np.uint8,
-        current_time: np.int64,
+        new_risk_level: RiskLevelType,
+        current_time: TimestampType,
         update_reason: typing.Optional[str] = None,
 ) -> UpdateMessage:
     """Creates and returns an update message for a given encounter.
@@ -201,7 +205,7 @@ def create_updated_encounter_with_message(
 def find_encounter_match_score(
         msg_old: EncounterMessage,
         msg_new: EncounterMessage,
-        ticks_per_uid_roll: np.int64 = 24 * 60 * 60,  # one tick per second, one roll per day
+        ticks_per_uid_roll: TimeOffsetType = 24 * 60 * 60,  # one tick per second, one roll per day
 ):
     """Returns a 'match score' between two encounter messages.
 
