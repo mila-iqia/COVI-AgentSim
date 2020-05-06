@@ -92,7 +92,6 @@ class NaiveCluster(ClusterBase):
             # uid, there's no way this message can be merged into this cluster
             return -1
         best_match = -1
-        # @@@ adopt the hash thing function instead of loop over all messages @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
         assert len(self.messages), "... a cluster cannot exist without past encounters?"
         t_range = range(
             message.encounter_time - TimeOffsetType(mu.message_uid_bit_count) + 1,
@@ -211,6 +210,7 @@ class NaiveCluster(ClusterBase):
                     encounter_message=message_to_transfer, update_message=update_message,
                 ))
                 # note: out of laziness for the debugging stuff, we do not remove anything from unobserved vars
+                # (batch updates should fix this too)
         else:
             # could not find any match for the update message; send it back to the manager
             return update_message
