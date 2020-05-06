@@ -1,9 +1,10 @@
 import datetime
 import hashlib
+import os
 import pickle
 import unittest
 import zipfile
-from tempfile import NamedTemporaryFile
+from tempfile import TemporaryDirectory
 
 from covid19sim.run import run_simu
 from covid19sim.base import Event
@@ -14,23 +15,23 @@ class FullUnitTest(unittest.TestCase):
         """
             run one simulation and ensure json files are correctly populated and most of the users have activity
         """
-        with NamedTemporaryFile() as f:
+        with TemporaryDirectory() as d:
+            outfile = os.path.join(d, "data")
             n_people = 100
             monitors, _ = run_simu(
                 n_people=n_people,
                 init_percent_sick=0.1,
                 start_time=datetime.datetime(2020, 2, 28, 0, 0),
                 simulation_days=30,
-                outfile=f.name,
+                outfile=outfile,
                 out_chunk_size=500
             )
             monitors[0].dump()
             monitors[0].join_iothread()
-            f.seek(0)
 
             # Ensure
             data = []
-            with zipfile.ZipFile(f"{f.name}.zip", 'r') as zf:
+            with zipfile.ZipFile(f"{outfile}.zip", 'r') as zf:
                 for pkl in zf.namelist():
                     data.extend(pickle.loads(zf.read(pkl)))
 
@@ -56,41 +57,41 @@ class SeedUnitTest(unittest.TestCase):
         Run two simulations with the same seed and ensure we get the same output
         Note: If this test is failing, it is a good idea to load the data of both files and use DeepDiff to compare
         """
-        with NamedTemporaryFile() as f1, NamedTemporaryFile() as f2:
+        with TemporaryDirectory() as d1, TemporaryDirectory() as d2:
+            of1 = os.path.join(d1, "data")
+            of2 = os.path.join(d2, "data")
             monitors1, _ = run_simu(
                 n_people=self.n_people,
                 init_percent_sick=self.init_percent_sick,
                 start_time=self.start_time,
                 simulation_days=self.simulation_days,
-                outfile=f1.name,
+                outfile=of1,
                 out_chunk_size=0,
                 seed=self.test_seed
             )
             monitors1[0].dump()
             monitors1[0].join_iothread()
-            f1.seek(0)
 
             monitors2, _ = run_simu(
                 n_people=self.n_people,
                 init_percent_sick=self.init_percent_sick,
                 start_time=self.start_time,
                 simulation_days=self.simulation_days,
-                outfile=f2.name,
+                outfile=of2,
                 out_chunk_size=0,
                 seed=self.test_seed
             )
             monitors2[0].dump()
             monitors2[0].join_iothread()
-            f2.seek(0)
 
             md5 = hashlib.md5()
-            with zipfile.ZipFile(f"{f1.name}.zip", 'r') as zf:
+            with zipfile.ZipFile(f"{of1}.zip", 'r') as zf:
                 for pkl in zf.namelist():
                     md5.update(zf.read(pkl))
             md5sum1 = md5.hexdigest()
 
             md5 = hashlib.md5()
-            with zipfile.ZipFile(f"{f2.name}.zip", 'r') as zf:
+            with zipfile.ZipFile(f"{of2}.zip", 'r') as zf:
                 for pkl in zf.namelist():
                     md5.update(zf.read(pkl))
             md5sum2 = md5.hexdigest()
@@ -104,41 +105,41 @@ class SeedUnitTest(unittest.TestCase):
         Using different seeds should yield different output
         """
 
-        with NamedTemporaryFile() as f1, NamedTemporaryFile() as f2:
+        with TemporaryDirectory() as d1, TemporaryDirectory() as d2:
+            of1 = os.path.join(d1, "data")
+            of2 = os.path.join(d2, "data")
             monitors1, _ = run_simu(
                 n_people=self.n_people,
                 init_percent_sick=self.init_percent_sick,
                 start_time=self.start_time,
                 simulation_days=self.simulation_days,
-                outfile=f1.name,
+                outfile=of1,
                 out_chunk_size=0,
                 seed=self.test_seed
             )
             monitors1[0].dump()
             monitors1[0].join_iothread()
-            f1.seek(0)
 
             monitors2, _ = run_simu(
                 n_people=self.n_people,
                 init_percent_sick=self.init_percent_sick,
                 start_time=self.start_time,
                 simulation_days=self.simulation_days,
-                outfile=f2.name,
+                outfile=of2,
                 out_chunk_size=0,
                 seed=self.test_seed+1
             )
             monitors2[0].dump()
             monitors2[0].join_iothread()
-            f2.seek(0)
 
             md5 = hashlib.md5()
-            with zipfile.ZipFile(f"{f1.name}.zip", 'r') as zf:
+            with zipfile.ZipFile(f"{of1}.zip", 'r') as zf:
                 for pkl in zf.namelist():
                     md5.update(zf.read(pkl))
             md5sum1 = md5.hexdigest()
 
             md5 = hashlib.md5()
-            with zipfile.ZipFile(f"{f2.name}.zip", 'r') as zf:
+            with zipfile.ZipFile(f"{of2}.zip", 'r') as zf:
                 for pkl in zf.namelist():
                     md5.update(zf.read(pkl))
             md5sum2 = md5.hexdigest()
