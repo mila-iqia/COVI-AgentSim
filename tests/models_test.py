@@ -17,7 +17,7 @@ class ModelsTest(unittest.TestCase):
             run one simulation and ensure json files are correctly populated and most of the users have activity
         """
         # Load the experimental configuration
-        ExpConfig.load_config("src/covid19sim/configs/run_tests_config.yml")
+        ExpConfig.load_config("src/covid19sim/configs/test_config.yml")
 
         with TemporaryDirectory() as preprocess_d:
             n_people = 100
