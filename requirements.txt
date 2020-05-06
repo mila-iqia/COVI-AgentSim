@@ -17,4 +17,4 @@ orderedset
 networkx
 tqdm
 seaborn
-yaml
+pyyaml
