@@ -246,7 +246,8 @@ class City(simpy.Environment):
         INTERVENTION_DAY = self.env.exp_config['INTERVENTION_DAY']
         COLLECT_TRAINING_DATA = self.env.exp_config['COLLECT_TRAINING_DATA']
         print(f"INTERVENTION_DAY: {INTERVENTION_DAY}")
-
+        import time
+        start = time.time()
         humans_notified = False
         while True:
             if self.env.timestamp.hour == 0:
@@ -276,6 +277,9 @@ class City(simpy.Environment):
                 print(time.time() - start)
 
             if self.env.timestamp.hour == 0 and self.env.timestamp != self.env.initial_timestamp:
+                print(f"elapsed:{time.time() - start}")
+                start = time.time()
+
                 self.current_day += 1
                 self.tracker.increment_day()
 
