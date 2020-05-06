@@ -7,8 +7,8 @@ from covid19sim.frozen.clustering.base import ClusterIDType, TimestampType, \
 
 
 def check_uids_match(
-        map1: typing.Dict[TimestampType, mu.EncounterMessage],
-        map2: typing.Dict[TimestampType, mu.EncounterMessage],
+        map1: typing.Dict[TimestampType, typing.List[mu.EncounterMessage]],
+        map2: typing.Dict[TimestampType, typing.List[mu.EncounterMessage]],
 ) -> bool:
     """Returns whether the overlaps in the provided timestamp-to-uid dicts are compatible.
 
@@ -16,7 +16,7 @@ def check_uids_match(
     """
     overlapping_timestamps = list(set(map1.keys()) & set(map2.keys()))
     return overlapping_timestamps and \
-        all([map1[t].uid == map2[t].uid for t in overlapping_timestamps])
+        all([map1[t][0].uid == map2[t][0].uid for t in overlapping_timestamps])
 
 
 class NaiveCluster(ClusterBase):
@@ -27,7 +27,7 @@ class NaiveCluster(ClusterBase):
     level of the cluster is not uniform for all messages it aggregates.
     """
 
-    messages_by_timestamp: typing.Dict[TimestampType, mu.EncounterMessage]
+    messages_by_timestamp: typing.Dict[TimestampType, typing.List[mu.EncounterMessage]]
     """Timestamp-to-encounter map of all messages owned by this cluster."""
 
     def __init__(
@@ -40,7 +40,7 @@ class NaiveCluster(ClusterBase):
             messages=messages,
             **kwargs,
         )
-        self.messages_by_timestamp = {m.encounter_time: m for m in messages}
+        self.messages_by_timestamp = {m.encounter_time: [m] for m in messages}
 
     @staticmethod
     def create_cluster_from_message(
@@ -87,7 +87,7 @@ class NaiveCluster(ClusterBase):
             # or we are looking at different users entirely
             return -1
         if message.encounter_time in self.messages_by_timestamp and \
-                self.messages_by_timestamp[message.encounter_time].uid != message.uid:
+                self.messages_by_timestamp[message.encounter_time][0].uid != message.uid:
             # if we already have a stored uid at the new encounter's timestamp with a different
             # uid, there's no way this message can be merged into this cluster
             return -1
@@ -101,7 +101,8 @@ class NaiveCluster(ClusterBase):
         )
         for timestamp in t_range:
             if timestamp in self.messages_by_timestamp:
-                old_encounter = self.messages_by_timestamp[timestamp]
+                # we can pick one encounter from the list, they should all match the same...?
+                old_encounter = self.messages_by_timestamp[timestamp][0]
                 match_score = mu.find_encounter_match_score(
                     # TODO: what happens if the received message is actually late, and we have an
                     #       'old message' that is more recent? (match scorer will throw)
@@ -125,9 +126,11 @@ class NaiveCluster(ClusterBase):
         # update the cluster time with the new message's encounter time (if more recent)
         self.latest_update_time = max(message.encounter_time, self.latest_update_time)
         self.messages.append(message)  # in this list, encounters may get updated (and form new clusters)
-        assert message.encounter_time not in self.messages_by_timestamp or \
-               self.messages_by_timestamp[message.encounter_time].uid == message.uid
-        self.messages_by_timestamp[message.encounter_time] = message
+        if message.encounter_time not in self.messages_by_timestamp:
+            self.messages_by_timestamp[message.encounter_time] = []
+        else:
+            assert self.messages_by_timestamp[message.encounter_time][0].uid == message.uid
+        self.messages_by_timestamp[message.encounter_time].append(message)
         self._real_encounter_uids.append(message._sender_uid)
         self._real_encounter_times.append(message._real_encounter_time)
         self._unclustered_messages.append(message)  # in this list, messages NEVER get updated
@@ -172,7 +175,7 @@ class NaiveCluster(ClusterBase):
         # quick-exit: if this cluster does not contain the timestamp for the encounter, or if the
         # cluster contains a different uid for that timestamp, there is no way this message is compatible
         if update_message.encounter_time not in self.messages_by_timestamp or \
-                self.messages_by_timestamp[update_message.encounter_time].uid != update_message.uid:
+                self.messages_by_timestamp[update_message.encounter_time][0].uid != update_message.uid:
             # could not find any match for the update message; send it back to the manager
             return update_message
         found_match = None
@@ -180,15 +183,16 @@ class NaiveCluster(ClusterBase):
             assert update_message.old_risk_level == old_encounter.risk_level
             if old_encounter.uid == update_message.uid and \
                     old_encounter.encounter_time == update_message.encounter_time:
-                found_match = (old_encounter_idx, old_encounter)
+                found_match = old_encounter_idx
                 break
         if found_match is not None:
             if len(self.messages) == 1:
                 # we can self-update without splitting; do that
-                assert found_match[0] == 0
+                assert found_match == 0
                 self.messages[0] = mu.create_updated_encounter_with_message(
                     encounter_message=self.messages[0], update_message=update_message,
                 )
+                self.messages_by_timestamp = {self.messages[0].encounter_time: [self.messages[0]]}
                 self.risk_level = self.messages[0].risk_level
                 self._real_encounter_uids.append(update_message._sender_uid)
                 self._real_encounter_times.append(update_message._real_encounter_time)
@@ -197,8 +201,14 @@ class NaiveCluster(ClusterBase):
             else:
                 # we have multiple messages in this cluster, and the update can only apply to one;
                 # ... we need to split the cluster into two, where only the new one will be updated
+                message_to_transfer = self.messages.pop(found_match)
+                message_idx_to_remove = \
+                    self.messages_by_timestamp[message_to_transfer.encounter_time].index(message_to_transfer)
+                del self.messages_by_timestamp[message_to_transfer.encounter_time][message_idx_to_remove]
+                if not self.messages_by_timestamp[message_to_transfer.encounter_time]:
+                    del self.messages_by_timestamp[message_to_transfer.encounter_time]
                 return self.create_cluster_from_message(mu.create_updated_encounter_with_message(
-                    encounter_message=self.messages.pop(found_match[0]), update_message=update_message,
+                    encounter_message=message_to_transfer, update_message=update_message,
                 ))
                 # note: out of laziness for the debugging stuff, we do not remove anything from unobserved vars
         else:
@@ -216,6 +226,7 @@ class NaiveCluster(ClusterBase):
         WARNING: the cluster provided to this function must be discarded after this call!
         If this is not done, we will have duplicated messages somewhere in the manager...
         """
+        # @@@@ TODO: batch-fit clusters? (will avoid multi loop+extend below)
         assert check_uids_match(self.messages_by_timestamp, cluster.messages_by_timestamp)
         assert self.risk_level == cluster.risk_level
         self.first_update_time = min(self.first_update_time, cluster.first_update_time)
@@ -225,6 +236,12 @@ class NaiveCluster(ClusterBase):
         self.messages.extend(cluster.messages)
         # we can make sure whoever tries to use the cluster again will have a bad surprise...
         cluster.messages = None
+        cluster.messages_by_timestamp = None
+        self.messages_by_timestamp = {}
+        for m in self.messages:
+            if m.encounter_time not in self.messages_by_timestamp:
+                self.messages_by_timestamp[m.encounter_time] = []
+            self.messages_by_timestamp[m.encounter_time].append(m)
         self._real_encounter_uids.extend(cluster._real_encounter_uids)
         self._real_encounter_times.extend(cluster._real_encounter_times)
         self._unclustered_messages.extend(cluster._unclustered_messages)
