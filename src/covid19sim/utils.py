@@ -57,6 +57,7 @@ Attributes
 
 SYMPTOMS_CONTEXTS = {'covid': {0: 'covid_pre_plateau', 1: 'covid_plateau_1', 2: 'covid_plateau_2',
                                3: 'covid_post_plateau_1', 4: 'covid_post_plateau_2'},
+                     'allergy': {0: 'allergy'},
                      'cold': {0: 'cold', 1: 'cold_last_day'},
                      'flu': {0: 'flu_first_day', 1: 'flu', 2: 'flu_last_day'}}
 
@@ -179,6 +180,7 @@ SYMPTOMS = OrderedDict([
                                           'covid_plateau_2': -1,
                                           'covid_post_plateau_1': -1,
                                           'covid_post_plateau_2': -1,
+                                          'allergy': 0.2,
                                           'cold': 0.8,
                                           'cold_last_day': 0.8,
                                           'flu_first_day': 0.4,
@@ -200,6 +202,7 @@ SYMPTOMS = OrderedDict([
                                                        'covid_plateau_2': 0.6,
                                                        'covid_post_plateau_1': 0.6,
                                                        'covid_post_plateau_2': 0.6,
+                                                       'allergy': 0.3,
                                                        'flu_first_day': 0.3,
                                                        'flu': 0.5,
                                                        'flu_last_day': 0.4})
@@ -210,7 +213,8 @@ SYMPTOMS = OrderedDict([
                                             'covid_plateau_1': 0.5,
                                             'covid_plateau_2': 0.5,
                                             'covid_post_plateau_1': 0.5,
-                                            'covid_post_plateau_2': 0.5})
+                                            'covid_post_plateau_2': 0.5,
+                                            'allergy': 0.6})
     ),
     (
         'confused',
@@ -249,6 +253,7 @@ SYMPTOMS = OrderedDict([
                                             'covid_plateau_2': 0.3,
                                             'covid_post_plateau_1': 0.3,
                                             'covid_post_plateau_2': 0.3,
+                                            'allergy': 1.0,
                                             'cold': 0.4,
                                             'cold_last_day': 0.0})
     ),
@@ -279,6 +284,7 @@ SYMPTOMS = OrderedDict([
                                                'covid_plateau_2': 0.8,
                                                'covid_post_plateau_1': 0.8,
                                                'covid_post_plateau_2': 0.8,
+                                               'allergy': 0.3,
                                                'cold': 0.0,
                                                'cold_last_day': 0.6})
     ),
@@ -296,14 +302,14 @@ SYMPTOMS = OrderedDict([
     (
         'light_trouble_breathing',
         SymptomProbability('light_trouble_breathing', 24, {'covid_pre_plateau': -1,
-                                                          'covid_plateau_1': -1,
-                                                          'covid_plateau_2': -1,
-                                                          'covid_post_plateau_1': -1,
-                                                          'covid_post_plateau_2': -1})
+                                                           'covid_plateau_1': -1,
+                                                           'covid_plateau_2': -1,
+                                                           'covid_post_plateau_1': -1,
+                                                           'covid_post_plateau_2': -1})
     ),
     (
         'mild_trouble_breathing',
-        SymptomProbability('mild_trouble_breathing', 23, {})
+        SymptomProbability('mild_trouble_breathing', 23, {'allergy': P_SEVERE_ALLERGIES})
     ),
     (
         'moderate_trouble_breathing',
@@ -339,6 +345,16 @@ SYMPTOMS = OrderedDict([
                                          'flu': 0.5,
                                          'flu_last_day': 0.8})
     )
+
+    # commented out because these are not used elsewhere for now
+    # (
+    #     'hives',
+    #     SymptomProbability('hives', __, {'allergy': 0.4})
+    # ),
+    # (
+    #     'swelling',
+    #     SymptomProbability('swelling', __, {'allergy': 0.3})
+    # )
 ])
 
 
