@@ -49,7 +49,7 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
             "COLLECT_TRAINING_DATA": ExpConfig.get('COLLECT_TRAINING_DATA'),
             "human": human_state,
             "log_path": log_path,
-            "time_slot": time_slot
+            "time_slot": time_slot,
             "risk_model": ExpConfig.get('RISK_MODEL'),
         })
 
