@@ -72,8 +72,10 @@ class Human(object):
             self.carefulness = (round(self.rng.normal(55, 10)) + self.age/2) / 100
         else:
             self.carefulness = (round(self.rng.normal(25, 10)) + self.age/2) / 100
-
-        self.has_app = self.rng.rand() < (ExpConfig.get('P_HAS_APP') / age_modifier) + (self.carefulness / 2)
+        if ExpConfig.get('ABSOLUTE_P_HAS_APP'):
+            self.has_app = ExpConfig.get('P_HAS_APP')
+        else:
+            self.has_app = self.rng.rand() < (ExpConfig.get('P_HAS_APP') / age_modifier) + (self.carefulness / 2)
 
         # allergies
         self.has_allergies = self.rng.rand() < P_ALLERGIES
@@ -633,7 +635,7 @@ class Human(object):
                 self.update_risk(symptoms=self.symptoms)
                 self.infectiousnesses.appendleft(self.infectiousness)
                 if len(self.infectiousnesses) > ExpConfig.get('TRACING_N_DAYS_HISTORY'):
-                    self.infectiousnesses.pop(-1)
+                    self.infectiousnesses.pop()
 
                 Event.log_daily(self, self.env.timestamp)
                 city.tracker.track_symptoms(self)

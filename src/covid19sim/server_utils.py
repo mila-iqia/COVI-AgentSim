@@ -277,6 +277,8 @@ def proc_human(params, inference_engine=None):
     candidate_encounters, exposure_encounter = covid19sim.frozen.helper.candidate_exposures(human, todays_date)
     reported_symptoms = covid19sim.frozen.helper.symptoms_to_np(human["rolling_all_reported_symptoms"], params["all_possible_symptoms"])
     true_symptoms = covid19sim.frozen.helper.symptoms_to_np(human["rolling_all_symptoms"], params["all_possible_symptoms"])
+    # if not candidate_encounters.any() and params['current_day'] > 3:
+    #     import pdb; pdb.set_trace()
     daily_output = {
         "current_day": params["current_day"],
         "observed": {

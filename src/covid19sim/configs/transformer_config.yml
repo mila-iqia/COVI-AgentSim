@@ -11,6 +11,7 @@ INTERVENTION_DAY : 10
 INTERVENTION : "Tracing"
 PERCENT_FOLLOW : 1.0
 P_HAS_APP : 1.0
+ABSOLUTE_P_HAS_APP : True # If False, we modulate P_HAS_APP with carefulness and age
 
 
 # PATHS

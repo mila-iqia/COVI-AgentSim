@@ -73,6 +73,13 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
         results = InferenceWorker.process_sample(all_params, engine, ExpConfig.get('MP_BACKEND'), n_jobs)
 
     if ExpConfig.get('RISK_MODEL') != "transformer":
+        for result in results:
+            if result is not None:
+                name, risk_history, clusters = result
+                hd[name].clusters = clusters
+                hd[name].contact_book.update_messages = []
+                hd[name].contact_book.messages = []
+
         return humans
 
     for result in results:
