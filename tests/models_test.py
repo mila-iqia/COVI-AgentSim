@@ -38,7 +38,7 @@ class ModelsTest(unittest.TestCase):
             output = [[]] * len(days_output)
 
             for day_output in days_output:
-                pkls = glob.glob(f"{day_output}*/daily_human.pkl")
+                pkls = glob.glob(f"{day_output}*/daily_human-*.pkl")
                 pkls.sort(key=lambda p: (int(p.split(os.path.sep)[-3]), int(p.split(os.path.sep)[-2])))
                 day_humans = []
                 for pkl in pkls:
