@@ -25,22 +25,7 @@ setup(
     ],
     zip_safe             = False,
     python_requires      = '>=3.7.4',
-    install_requires     = [
-        "addict",
-        "dill",
-        "joblib",
-        "pyzmq",
-        "scipy",
-        "numpy",
-        "simpy",
-        "matplotlib",
-        "ipython",
-        "click",
-        "orderedset",
-        "networkx",
-        "tqdm",
-        "seaborn",
-    ],
+    install_requires     = requirements,
     extras_require       = {
         "ctt": [
             "ctt @ git+https://github.com/nasimrahaman/ctt@master#egg=ctt",
