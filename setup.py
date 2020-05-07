@@ -29,6 +29,14 @@ setup(
     zip_safe             = False,
     python_requires      = '>=3.7.4',
     install_requires     = requirements,
+    extras_require       = {
+        "ctt": [
+            "ctt @ git+https://github.com/nasimrahaman/ctt@master#egg=ctt"
+        ],
+        "ctt-tf": [
+            "ctt[tensorflow] @ git+https://github.com/nasimrahaman/ctt@master#egg=ctt"
+        ],
+    },
     packages             = find_packages("src"),
     package_dir          = {'': 'src'},
 )

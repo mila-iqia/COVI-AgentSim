@@ -5,11 +5,14 @@ sys.path.append(os.getcwd())
 import numpy as np
 import matplotlib
 from matplotlib import pyplot as plt
-from frozen.utils import decode_message
+from covid19sim.frozen.utils import decode_message
 from collections import defaultdict, Counter
 import networkx as nx
 import plotly.graph_objects as go
+<<<<<<< HEAD
 from collections import namedtuple
+=======
+>>>>>>> 121f20ebf72f08fda5353bf838ae60e3bb00f170
 
 
 np.random.seed(0)
@@ -39,8 +42,12 @@ for someones_clustered_messages in everyones_clustered_messages:
     for assignment, m_encs in someones_clustered_messages.items():
         for m_enc in m_encs:
             obs_uid, obs_risk, m_sent, unobs_uid = decode_message(m_enc)
+<<<<<<< HEAD
             DebugMessage = namedtuple("DebugMessage", "obs_uid obs_risk m_sent unobs_id assignment")
             groups[assignment].append(DebugMessage(obs_uid, obs_risk, m_sent, unobs_uid, assignment))
+=======
+            groups[assignment].append(decode_message(m_enc))
+>>>>>>> 121f20ebf72f08fda5353bf838ae60e3bb00f170
             unique_people_contacted.add(unobs_uid)
             total_num_contacts += 1
     all_groups.append(dict(groups))
@@ -89,9 +96,7 @@ plt.title("Histogram of person <> message number frequency")
 plt.savefig(MESSAGE_NUMBER_PATH)
 plt.clf()
 
-
 # create and plot networkx graphs for the clusterings of individual's contact histories
-all_group_accuracies = []
 for group_idx, groups in enumerate(all_groups):
     G = nx.Graph()
 
@@ -109,13 +114,25 @@ for group_idx, groups in enumerate(all_groups):
     if group_idx < 3:
         plt.figure(4+group_idx, figsize=(12,12))
 
+        # Add all the edges
+        for idx1, message1 in enumerate(messages):
+            uid1 = message1.unobs_id.split(":")[1]
+            for idx2, message2 in enumerate(messages):
+                uid2 = message2.unobs_id.split(":")[1]
+                G.add_edge(message1, message2)
+
+    if group_idx < 3:
+        plt.figure(4+group_idx, figsize=(12,12))
         node_color = []
         for node in G.nodes():
             node_color.append(int(node.unobs_id.split(":")[1]))
         pos = nx.spring_layout(G, weight=.3, k=0.5, iterations=50)
-
+        # nx.draw(G, pos, with_labels=True, node_color=node_color, cmap=plt.cm.hsv)
         edge_x = []
         edge_y = []
+        import pdb;
+
+        pdb.set_trace()
 
 
         for edge in G.edges():
@@ -165,8 +182,9 @@ for group_idx, groups in enumerate(all_groups):
 
         node_adjacencies = []
         node_text = []
-        for node in enumerate(G.nodes):
-            node_text.append(node)
+        for node, adjacencies in enumerate(G.adjacency()):
+            node_adjacencies.append(len(adjacencies[1]))
+            node_text.append('# of connections: ' + str(len(adjacencies[1])))
 
         node_trace.marker.color = node_color
         node_trace.text = node_text
@@ -189,7 +207,3 @@ for group_idx, groups in enumerate(all_groups):
 
         # plt.savefig(f"{INDIVIDUAL_CLUSTER_PATH}clusters_{group_idx}.png", dpi=300)
 
-
-import plotly.graph_objects as go
-fig = go.FigureWidget(data=go.Bar(y=[2, 3, 1]))
-fig.show()
