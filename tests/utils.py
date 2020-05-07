@@ -25,8 +25,8 @@ class FakeHuman:
             real_uid: int,
             exposition_timestamp: int,
             visits_to_adopt: typing.List[Visit],
-            force_init_uid: typing.Optional[mu.UIDType] = None,
-            force_init_risk: typing.Optional[mu.RiskLevelType] = None,
+            force_init_uid: typing.Optional[typing.Union[mu.UIDType, typing.List[mu.UIDType]]] = None,
+            force_init_risk: typing.Optional[typing.Union[mu.RiskLevelType, typing.List[mu.RiskLevelType]]] = None,
             allow_spurious_exposition: bool = False,
     ):
         self.real_uid = real_uid
@@ -36,20 +36,28 @@ class FakeHuman:
                        if v.visitor_real_uid == real_uid or v.visited_real_uid == real_uid]
         if force_init_uid is None:
             force_init_uid = mu.create_new_uid()
+        if not isinstance(force_init_uid, list):
+            force_init_uid = [force_init_uid]
         if force_init_risk is None:
             force_init_risk = mu.RiskLevelType(not exposition_timestamp)
-        self.rolling_uids = np.asarray([force_init_uid])
+        if not isinstance(force_init_risk, list):
+            force_init_risk = [force_init_risk]
+        self.rolling_uids = np.asarray(force_init_uid)
         self.rolling_exposed = np.asarray([exposition_timestamp == 0])
-        self.rolling_risk = np.asarray([force_init_risk])
+        self.rolling_risk = np.asarray(force_init_risk)
         self.rolling_visits = [[v for v in self.visits if v.timestamp == 0]]
         max_timestamp = max([v.timestamp for v in self.visits]) if self.visits else 1
         for timestamp in range(1, int(max_timestamp) + 1):
-            self.rolling_uids = np.append(self.rolling_uids, mu.update_uid(self.rolling_uids[-1]))
+            if len(self.rolling_uids) <= timestamp:
+                self.rolling_uids = np.append(self.rolling_uids, mu.update_uid(self.rolling_uids[-1]))
+            elif len(self.rolling_uids) >= 2:
+                assert ((self.rolling_uids[-1] >> 1) << 1) == ((self.rolling_uids[-2] << 1) & mu.message_uid_mask)
             self.rolling_exposed = np.append(self.rolling_exposed, timestamp >= exposition_timestamp)
             # we gradually increase risk level from time of exposition time (just faking things)
-            self.rolling_risk = np.append(self.rolling_risk,
-                                          self.rolling_risk[-1] + 1 if timestamp >= exposition_timestamp
-                                          else force_init_risk)
+            if len(self.rolling_risk) <= timestamp:
+                self.rolling_risk = np.append(self.rolling_risk,
+                                              self.rolling_risk[-1] + 1 if timestamp >= exposition_timestamp
+                                              else self.rolling_risk[-1])
             self.rolling_visits.append([v for v in self.visits if v.timestamp == timestamp])
         for v in self.visits:
             # note: under the current logic, only the visitor can infect the visited
