@@ -1170,6 +1170,8 @@ class Human(object):
                     self.city.hd[message.unobs_id].contact_book.update_messages.append(update_message)
                     self.contact_book.sent_messages_by_day[day][idx] = Message(my_old_message.uid, new_risk_level, my_old_message.day, my_old_message.unobs_id)
 
+                    self.city.tracker.track_update_messages(self, self.city.hd[message.unobs_id], new_risk_level)
+
         if cur_day in self.prev_risk_history_map.keys():
             new_risk_level = min(_proba_to_risk_level(self.risk_history_map[cur_day]), 15)
             prev_risk_level = min(_proba_to_risk_level(self.prev_risk_history_map[cur_day]), 15)
@@ -1179,8 +1181,8 @@ class Human(object):
     def update_risk(self, recovery=False, test_results=False, update_messages=None, symptoms=None):
         if not self.tracing or self.tracing_method.risk_model == "transformer":
             return
-        cur_day = (self.env.timestamp - self.env.initial_timestamp).days
 
+        cur_day = (self.env.timestamp - self.env.initial_timestamp).days
         if recovery:
             if self.is_removed:
                 self.risk = 0.0
@@ -1190,8 +1192,6 @@ class Human(object):
             self.prev_risk_history_map[cur_day] = self.risk_history_map[cur_day]
 
         if test_results:
-            if self.name == "human:8":
-                import pdb; pdb.set_trace()
             if self.test_result == "positive":
                 self.risk = 1.0
                 self.contact_book.send_message(self, self.tracing_method, order=1, reason="test")

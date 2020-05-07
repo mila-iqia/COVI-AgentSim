@@ -92,7 +92,7 @@ def tune(n_people, simulation_days, seed):
     import matplotlib.pyplot as plt
     # cf.go_offline()
 
-    monitors, tracker = run_simu(n_people=n_people, init_percent_sick=0.02,
+    monitors, tracker = run_simu(n_people=n_people, init_percent_sick=0.05,
                             start_time=datetime.datetime(2020, 2, 28, 0, 0),
                             simulation_days=simulation_days,
                             outfile=None,
@@ -126,6 +126,7 @@ def tune(n_people, simulation_days, seed):
     data['risk_precision'] = tracker.risk_precision_daily
     data['human_monitor'] = tracker.human_monitor
     data['infection_monitor'] = tracker.infection_monitor
+    data['infector_infectee_update_messages'] = tracker.infector_infectee_update_messages
     # data['dist_encounters'] = dict(tracker.dist_encounters)
     # data['time_encounters'] = dict(tracker.time_encounters)
     # data['day_encounters'] = dict(tracker.day_encounters)

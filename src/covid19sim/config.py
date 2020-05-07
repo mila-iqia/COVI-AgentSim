@@ -316,7 +316,7 @@ BIG_NUMBER = 10000000
 INTERVENTION_DAY = 0 # <0 no interventions
 INTERVENTION = "Tracing"
 PERCENT_FOLLOW = 1.0
-P_HAS_APP = 0.5
+P_HAS_APP = 5
 
 # TRACING RISK MODEL PARAMETERS  (non-ML)
 # "transformer" has everything has True

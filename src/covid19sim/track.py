@@ -3,6 +3,7 @@ import numpy as np
 import math
 from collections import defaultdict
 import networkx as nx
+import datetime
 
 from covid19sim.config import HUMAN_DISTRIBUTION, LOCATION_DISTRIBUTION, INFECTION_RADIUS, INFECTION_DURATION, \
     EFFECTIVE_R_WINDOW
@@ -104,6 +105,9 @@ class Tracker(object):
         # monitors
         self.human_monitor = {}
         self.infection_monitor = []
+
+        # update messages
+        self.infector_infectee_update_messages = defaultdict(lambda :defaultdict(dict))
 
     def summarize_population(self):
         self.n_infected_init = sum([h.is_exposed for h in self.city.humans])
@@ -212,7 +216,7 @@ class Tracker(object):
                   "n_symptoms": len(h.symptoms)
                  }
             row.append(x)
-        self.human_monitor[self.env.timestamp.date()] = row
+        self.human_monitor[self.env.timestamp.date()-datetime.timedelta(days=1)] = row
 
         #
         self.avg_infectiousness_per_day.append(np.mean([h.infectiousness for h in self.city.humans]))
@@ -325,6 +329,9 @@ class Tracker(object):
             self.infection_graph.add_edge(-1, to_human.name,  timedelta="")
             self.infection_monitor.append([None, to_human.name, timestamp.date()])
 
+    def track_update_messages(self, from_human, to_human, new_risk_level):
+        if self.infection_graph.has_edge(from_human.name, to_human.name):
+            self.infector_infectee_update_messages[from_human.name][to_human.name][self.env.timestamp] = new_risk_level
 
     def track_generation_times(self, human_name):
         if human_name not in self.generation_time_book:

@@ -267,6 +267,8 @@ class City(simpy.Environment):
             if self.env.timestamp.hour == 0 and self.env.timestamp != self.env.initial_timestamp:
                 self.current_day += 1
                 self.tracker.increment_day()
+                # pd.DataFrame([(h.risk, h.is_infectious or h.is_exposed) for h in self.city.humans]).to_csv("risk_histogram.csv")
+                # import pdb; pdb.set_trace()
 
             # Let the day pass
             yield self.env.timeout(duration / TICK_MINUTE)
@@ -670,9 +672,6 @@ class Contacts(object):
         app = tracing_method.app
         if app and not owner.has_app:
             return
-
-        if owner.name == "human:84":
-            import pdb; pdb.set_trace()
 
         for idx, human in enumerate(self.book):
 
