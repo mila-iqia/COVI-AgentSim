@@ -118,10 +118,10 @@ def conditions_to_np(conditions):
 
 def symptoms_to_np(all_symptoms, all_possible_symptoms):
     rolling_window = 14
-    aps = list(all_possible_symptoms)
     symptoms_enc = np.zeros((rolling_window, len(all_possible_symptoms) + 1))
-    for day, symptom in enumerate(all_symptoms[:14]):
-        symptoms_enc[day, aps.index(symptom)] = 1.
+    for day, symptoms in zip(range(rolling_window), all_symptoms):
+        for symptom in symptoms:
+            symptoms_enc[day, all_possible_symptoms.index(symptom)] = 1.
     return symptoms_enc
 
 
