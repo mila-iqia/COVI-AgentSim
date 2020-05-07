@@ -9,10 +9,7 @@ from covid19sim.frozen.utils import decode_message
 from collections import defaultdict, Counter
 import networkx as nx
 import plotly.graph_objects as go
-<<<<<<< HEAD
 from collections import namedtuple
-=======
->>>>>>> 121f20ebf72f08fda5353bf838ae60e3bb00f170
 
 
 np.random.seed(0)
@@ -42,12 +39,8 @@ for someones_clustered_messages in everyones_clustered_messages:
     for assignment, m_encs in someones_clustered_messages.items():
         for m_enc in m_encs:
             obs_uid, obs_risk, m_sent, unobs_uid = decode_message(m_enc)
-<<<<<<< HEAD
             DebugMessage = namedtuple("DebugMessage", "obs_uid obs_risk m_sent unobs_id assignment")
             groups[assignment].append(DebugMessage(obs_uid, obs_risk, m_sent, unobs_uid, assignment))
-=======
-            groups[assignment].append(decode_message(m_enc))
->>>>>>> 121f20ebf72f08fda5353bf838ae60e3bb00f170
             unique_people_contacted.add(unobs_uid)
             total_num_contacts += 1
     all_groups.append(dict(groups))
