@@ -3,6 +3,7 @@ import json
 import numpy as np
 import functools
 from joblib import Parallel, delayed
+import warnings
 
 from covid19sim.server_utils import InferenceClient, InferenceWorker
 from covid19sim import config
@@ -68,13 +69,16 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
         if result is not None:
             name, risk_history, clusters = result
 
-            for i in range(config.TRACING_N_DAYS_HISTORY):
-                hd[name].risk_history_map[current_day - i] = risk_history[i]
+            if risk_history is not None:
+                for i in range(config.TRACING_N_DAYS_HISTORY):
+                    hd[name].risk_history_map[current_day - i] = risk_history[i]
 
-            hd[name].update_risk_level()
+                hd[name].update_risk_level()
 
-            for i in range(config.TRACING_N_DAYS_HISTORY):
-                hd[name].prev_risk_history_map[current_day - i] = risk_history[i]
+                for i in range(config.TRACING_N_DAYS_HISTORY):
+                    hd[name].prev_risk_history_map[current_day - i] = risk_history[i]
+            else:
+                warnings.warn(f"risk history is none for human:{name}", RuntimeWarning)
 
             hd[name].clusters = clusters
             hd[name].last_risk_update = current_day

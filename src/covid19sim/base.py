@@ -248,16 +248,16 @@ class City(simpy.Environment):
                 for human in self.humans:
                     human.uid = update_uid(human.uid, human.rng)
 
-            if INTERVENTION_DAY >= 0 and self.current_day == INTERVENTION_DAY:
-                # first iteration of ML (collect data without modifying behavior)
-                if COLLECT_TRAINING_DATA:
-                    self.intervention = Tracing(risk_model="naive", max_depth=1, symptoms=False, risk=False, should_modify_behavior=False)
-                    print("naive risk calculation without changing behavior... Humans notified!")
-                else:
-                    self.intervention = get_intervention(INTERVENTION)
+                if INTERVENTION_DAY >= 0 and self.current_day == INTERVENTION_DAY:
+                    # first iteration of ML (collect data without modifying behavior)
+                    if COLLECT_TRAINING_DATA:
+                        self.intervention = Tracing(risk_model="naive", max_depth=1, symptoms=False, risk=False, should_modify_behavior=False)
+                        print("naive risk calculation without changing behavior... Humans notified!")
+                    else:
+                        self.intervention = get_intervention(INTERVENTION)
 
-                _ = [h.notify(self.intervention) for h in self.humans]
-                print(self.intervention)
+                    _ = [h.notify(self.intervention) for h in self.humans]
+                    print(self.intervention)
 
             if isinstance(self.intervention, Tracing):
                 self.intervention.update_human_risks(city=self,

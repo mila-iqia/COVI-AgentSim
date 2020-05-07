@@ -313,14 +313,14 @@ MASKS_SUPPLY = BIG_NUMBER
 
 ## INTERVENTIONS
 BIG_NUMBER = 10000000
-INTERVENTION_DAY = 0 # <0 no interventions
+INTERVENTION_DAY = 10 # <0 no interventions
 INTERVENTION = "Tracing"
 PERCENT_FOLLOW = 1.0
 P_HAS_APP = 5
 
 # TRACING RISK MODEL PARAMETERS  (non-ML)
-# "transformer" has everything has True
-RISK_MODEL = "naive" # "naive"  "manual", "digital", "transformer"
+# "transformer" has everything as True; no need to specify anything here
+RISK_MODEL = "transformer" # "naive"  "manual", "digital", "transformer"
 TRACE_SYMPTOMS = False
 TRACE_RISK_UPDATE = False
 TRACING_ORDER = 1
@@ -345,8 +345,8 @@ MANUAL_TRACING_DELAY_STD = 0.5  # days
 # Inference & Training
 # "transformer" "naive" (to print the dataset)
 COLLECT_TRAINING_DATA = False
-USE_INFERENCE_SERVER = False
-TRANSFORMER_EXP_PATH = "/Users/nrahaman/Python/ctt/tmp/CTT-SHIPMENT-0"
+USE_INFERENCE_SERVER = True
+TRANSFORMER_EXP_PATH = "/network/home/guptapra/covid_p2p_risk_prediction/models/CTT-SHIPMENT-0/"
 
 INFECTIOUSNESS_N_DAYS_HISTORY = 14
 MP_BATCHSIZE = "auto"
