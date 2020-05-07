@@ -5,9 +5,11 @@ sys.path.append(os.getcwd())
 import numpy as np
 import matplotlib
 from matplotlib import pyplot as plt
-from frozen.utils import decode_message
+from covid19sim.frozen.utils import decode_message
 from collections import defaultdict, Counter
 import networkx as nx
+import plotly.graph_objects as go
+
 
 np.random.seed(0)
 """ Running this file will produce plots of the cluster statistics and sample graph"""
@@ -36,7 +38,7 @@ for someones_clustered_messages in everyones_clustered_messages:
     for assignment, m_encs in someones_clustered_messages.items():
         for m_enc in m_encs:
             obs_uid, obs_risk, m_sent, unobs_uid = decode_message(m_enc)
-            groups[assignment].append(unobs_uid)
+            groups[assignment].append(decode_message(m_enc))
             unique_people_contacted.add(unobs_uid)
             total_num_contacts += 1
     all_groups.append(dict(groups))
@@ -86,130 +88,121 @@ plt.savefig(MESSAGE_NUMBER_PATH)
 plt.clf()
 
 
-# "rename" the groups. We need to figure out which group should be assigned to which true person in order to calculate an accuracy
-def group_to_majority_id(all_groups):
-    all_new_groups = []
-    # we need to calculate this for every person
-    for group_idx, groups in enumerate(all_groups):
-        unique_uids = set()
-
-        # calculate the set of unique persons Alice has had contact with
-        for group, uids in groups.items():
-            for idx, uid in enumerate(uids):
-                unique_uids.add(uid)
-
-        # for each group, what is its majority id?
-        counts = {}
-        for group, uids in groups.items():
-            cnt = Counter()
-            for idx, uid in enumerate(uids):
-                cnt[uid] += 1
-            counts[group] = cnt
-
-        def get_occurence_for_uid(uid, assignments):
-            occurences = {}
-            for a in assignments.values():
-                if a[0] == uid:
-                    occurences[a[1]] = a[0]
-            return occurences
-
-        # for each uid, what is its max group?
-        uid_to_max_group = defaultdict(int)
-        for uid in unique_uids:
-            max_count = 0
-            for group, cs in counts.items():
-                for uid1, c in cs.items():
-                    if c > max_count and uid1 == uid:
-                        max_count = c
-                        uid_to_max_group[uid1] = group
-
-        # for each id, which group contains the most of that id?
-        # assignments = defaultdict(tuple)
-        # not_done = True
-        # while sum([len(v) == 1 for v in assignments.values()]) < len(groups) and not_done:
-        #     for group, cnt in counts.items():
-        #         print(f"group: {group}, cnt: {cnt}, assignments: {assignments}")
-        #         # if the assigned group has the most of that uid
-        #         if group == str(uid_to_max_group[cnt.most_common()[0][0]]):
-        #             assignments[group] = cnt.most_common()[0][0]
-        #             import pdb; pdb.set_trace()
-        #         # if a more prevalent uid is assigned to your desired group, pick your next most desired group
-        #         elif assignments[group] and assignments[group] == max(get_occurence_for_uid(uid, assignments)):
-        #             import pdb; pdb.set_trace()
-        #
-        #             continue
-        #
-        #     # num non-zero elements in assignments
-        #     if sum([len(v) == 1 for v in assignments.values()]) == len(groups):
-        #         print("done")
-        #         import pdb; pdb.set_trace()
-        new_groups = defaultdict(list)
-        for group, uids in groups.items():
-            for uid in unique_uids:
-                if uid_to_max_group[uid] == group:
-                    new_groups[uid.split(":")[1]] = uids
-
-        for group, uids in groups.items():
-            if len(new_groups[group]) == 0:
-                new_groups[group] = uids
-            else:
-                new_groups[len(groups)+1] = uids
-
-        all_new_groups.append(new_groups)
-    return all_new_groups
-
-all_groups = group_to_majority_id(all_groups)
-
 # helper function to create unique nodes for networkx
 def hash_uid(group, uid, idx):
     return str(group) + "-" + str(uid) + "-" + str(idx)
 
 # create and plot networkx graphs for the clusterings of individual's contact histories
-all_group_accuracies = []
 for group_idx, groups in enumerate(all_groups):
     G = nx.Graph()
     group_accuracies = []
     all_uids = set()
 
-    for group_id, uids in groups.items():
+    for group_id, messages in groups.items():
         num_right = 0
-        for idx, uid in enumerate(uids):
-            uid = uid.split(":")[1]
-            G.add_node(hash_uid(group_id, uid, idx))
+        # Add all the nodes
+        for idx, message in enumerate(messages):
+            uid = message.unobs_id.split(":")[1]
+            G.add_node(message)
             all_uids.add(uid)
-        for idx1, uid1 in enumerate(uids):
-            uid1 = uid1.split(":")[1]
-            if uid1 == group_id:
-                num_right += 1
-            for idx2, uid2 in enumerate(uids):
-                uid2 = uid2.split(":")[1]
-                G.add_edge(hash_uid(group_id, uid1, idx1), hash_uid(group_id, uid2, idx2))
-        if len(uids) > 1:
-            group_accuracies.append(num_right/len(uids))
 
-    all_group_accuracies.extend(group_accuracies)
+        # Add all the edges
+        for idx1, message1 in enumerate(messages):
+            uid1 = message1.unobs_id.split(":")[1]
+            for idx2, message2 in enumerate(messages):
+                uid2 = message2.unobs_id.split(":")[1]
+                G.add_edge(message1, message2)
 
-    if group_idx < 10:
+    if group_idx < 3:
         plt.figure(4+group_idx, figsize=(12,12))
-
         node_color = []
         for node in G.nodes():
-            node_color.append(int(node.split("-")[1]))
+            node_color.append(int(node.unobs_id.split(":")[1]))
         pos = nx.spring_layout(G, weight=.3, k=0.5, iterations=50)
-        nx.draw(G, pos, with_labels=True, node_color=node_color, cmap=plt.cm.hsv)
-        plt.savefig(f"{INDIVIDUAL_CLUSTER_PATH}clusters_{group_idx}.png", dpi=300)
+        # nx.draw(G, pos, with_labels=True, node_color=node_color, cmap=plt.cm.hsv)
+        edge_x = []
+        edge_y = []
+        import pdb;
+
+        pdb.set_trace()
 
 
-# plot a histogram of the population-level accuracy
-plt.clf()
-plt.figure(1000)
-plt.hist(np.round(all_group_accuracies, 1), 30, label='group_accuracies')
-plt.xlabel("clustering accuracy")
-plt.ylabel("number of groups with that accuracy")
-plt.title("Histogram of cluster assignment accuracies")
-plt.savefig(CLUSTER_ACC_PATH)
-plt.clf()
-print(f"group_accuracy mean: {np.mean(all_group_accuracies)}")
-print(f"group_accuracy std: {np.std(all_group_accuracies)}")
+        for edge in G.edges():
+            x0, y0 = pos[edge[0]]
+            x1, y1 = pos[edge[1]]
+            edge_x.append(x0)
+            edge_x.append(x1)
+            edge_x.append(None)
+            edge_y.append(y0)
+            edge_y.append(y1)
+            edge_y.append(None)
+
+        edge_trace = go.Scatter(
+            x=edge_x, y=edge_y,
+            line=dict(width=0.5, color='#888'),
+            hoverinfo='none',
+            mode='lines')
+
+        node_x = []
+        node_y = []
+        for node in G.nodes():
+            x, y = pos[node]
+            node_x.append(x)
+            node_y.append(y)
+
+        node_trace = go.Scatter(
+            x=node_x, y=node_y,
+            mode='markers',
+            hoverinfo='text',
+            marker=dict(
+                showscale=True,
+                # colorscale options
+                # 'Greys' | 'YlGnBu' | 'Greens' | 'YlOrRd' | 'Bluered' | 'RdBu' |
+                # 'Reds' | 'Blues' | 'Picnic' | 'Rainbow' | 'Portland' | 'Jet' |
+                # 'Hot' | 'Blackbody' | 'Earth' | 'Electric' | 'Viridis' |
+                colorscale='YlGnBu',
+                reversescale=True,
+                color=[],
+                size=10,
+                colorbar=dict(
+                    thickness=15,
+                    title='Node Connections',
+                    xanchor='left',
+                    titleside='right'
+                ),
+                line_width=2))
+
+        node_adjacencies = []
+        node_text = []
+        for node, adjacencies in enumerate(G.adjacency()):
+            node_adjacencies.append(len(adjacencies[1]))
+            node_text.append('# of connections: ' + str(len(adjacencies[1])))
+
+        node_trace.marker.color = node_color
+        node_trace.text = node_text
+        fig = go.Figure(data=[edge_trace, node_trace],
+                        layout=go.Layout(
+                            title='<br>Network graph made with Python',
+                            titlefont_size=16,
+                            showlegend=False,
+                            hovermode='closest',
+                            margin=dict(b=20, l=5, r=5, t=40),
+                            annotations=[dict(
+                                text="Python code: <a href='https://plotly.com/ipython-notebooks/network-graphs/'> https://plotly.com/ipython-notebooks/network-graphs/</a>",
+                                showarrow=False,
+                                xref="paper", yref="paper",
+                                x=0.005, y=-0.002)],
+                            xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+                            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False))
+                        )
+        fig.show()
+
+        # plt.savefig(f"{INDIVIDUAL_CLUSTER_PATH}clusters_{group_idx}.png", dpi=300)
+
+
+import plotly.graph_objects as go
+fig = go.FigureWidget(data=go.Bar(y=[2, 3, 1]))
+fig.show()
+
 
 
