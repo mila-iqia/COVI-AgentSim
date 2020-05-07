@@ -1,19 +1,24 @@
-from collections import deque
-import os
+import math
+import datetime
+import numpy as np
 import warnings
+from collections import defaultdict
+from orderedset import OrderedSet
+
+from covid19sim.interventions import Tracing
+from covid19sim.utils import compute_distance, proba_to_risk_fn
+from covid19sim.base import Event, Contacts
+from covid19sim.configs.config import *
+from collections import deque
 
 from covid19sim.frozen.clusters import Clusters
 from covid19sim.frozen.utils import create_new_uid, Message, UpdateMessage, encode_message, encode_update_message
 from covid19sim.utils import _normalize_scores, _get_random_sex, _get_covid_progression, \
      _get_preexisting_conditions, _draw_random_discreet_gaussian, _sample_viral_load_piecewise, \
-     _get_cold_progression, _get_flu_progression, _get_allergy_progression, proba_to_risk_fn, _get_get_really_sick
-from covid19sim.base import *
-from covid19sim.config import RISK_MAPPING
+     _get_cold_progression, _get_flu_progression, _get_allergy_progression, _get_get_really_sick
+from covid19sim.configs.constants import BIG_NUMBER, TICK_MINUTE
+from covid19sim.configs.exp_config import ExpConfig
 
-if COLLECT_LOGS is False:
-    Event = DummyEvent
-
-_proba_to_risk_level = proba_to_risk_fn(np.array(RISK_MAPPING))
 
 class Visits(object):
 
@@ -67,8 +72,10 @@ class Human(object):
             self.carefulness = (round(self.rng.normal(55, 10)) + self.age/2) / 100
         else:
             self.carefulness = (round(self.rng.normal(25, 10)) + self.age/2) / 100
-
-        self.has_app = self.rng.rand() < (P_HAS_APP / age_modifier) + (self.carefulness / 2)
+        if ExpConfig.get('ABSOLUTE_P_HAS_APP'):
+            self.has_app = ExpConfig.get('P_HAS_APP')
+        else:
+            self.has_app = self.rng.rand() < (ExpConfig.get('P_HAS_APP') / age_modifier) + (self.carefulness / 2)
 
         # allergies
         self.has_allergies = self.rng.rand() < P_ALLERGIES
@@ -131,7 +138,7 @@ class Human(object):
         self.notified = False
         self.tracing_method = None
         self.maintain_extra_distance = 0
-        self.how_much_I_follow_recommendations = PERCENT_FOLLOW
+        self.how_much_I_follow_recommendations = ExpConfig.get('PERCENT_FOLLOW')
         self.recommendations_to_follow = OrderedSet()
         self.time_encounter_reduction_factor = 1.0
         self.hygiene = self.carefulness
@@ -159,14 +166,15 @@ class Human(object):
         self.clusters = Clusters()
         self.tested_positive_contact_count = 0
         # Padding the array
-        self.infectiousnesses = deque([0] * TRACING_N_DAYS_HISTORY, maxlen=TRACING_N_DAYS_HISTORY)
+        self.infectiousnesses = deque([0] * ExpConfig.get('TRACING_N_DAYS_HISTORY'), maxlen=ExpConfig.get('TRACING_N_DAYS_HISTORY'))
         self.uid = create_new_uid(rng)
         self.exposure_message = None
         self.exposure_source = None
         self.test_time = datetime.datetime.max
+
         # create 24 timeslots to do your updating
         time_slot = rng.randint(0, 24)
-        self.time_slots = [int((time_slot + i*24/UPDATES_PER_DAY) % 24) for i in range(UPDATES_PER_DAY)]
+        self.time_slots = [int((time_slot + i*24/ExpConfig.get('UPDATES_PER_DAY')) % 24) for i in range(ExpConfig.get('UPDATES_PER_DAY'))]
 
         # symptoms
         self.symptom_start_time = None
@@ -174,8 +182,8 @@ class Human(object):
         self.flu_progression = _get_flu_progression(self.age, self.rng, self.carefulness, self.preexisting_conditions, self.can_get_really_sick, self.can_get_extremely_sick)
         self.all_symptoms, self.cold_symptoms, self.flu_symptoms, self.covid_symptoms, self.allergy_symptoms = [], [], [], [], []
         # Padding the array
-        self.rolling_all_symptoms = deque([tuple()] * TRACING_N_DAYS_HISTORY, maxlen=TRACING_N_DAYS_HISTORY)
-        self.rolling_all_reported_symptoms = deque([tuple()] * TRACING_N_DAYS_HISTORY, maxlen=TRACING_N_DAYS_HISTORY)
+        self.rolling_all_symptoms = deque([tuple()] * ExpConfig.get('TRACING_N_DAYS_HISTORY'), maxlen=ExpConfig.get('TRACING_N_DAYS_HISTORY'))
+        self.rolling_all_reported_symptoms = deque([tuple()] * ExpConfig.get('TRACING_N_DAYS_HISTORY'), maxlen=ExpConfig.get('TRACING_N_DAYS_HISTORY'))
 
         # habits
         self.avg_shopping_time = _draw_random_discreet_gaussian(AVG_SHOP_TIME_MINUTES, SCALE_SHOP_TIME_MINUTES, self.rng)
@@ -558,14 +566,14 @@ class Human(object):
         elif sum(x in current_symptoms for x in ["trouble_breathing"]) > 0:
             return 0.3 * (1 + self.carefulness)
 
-        elif sum(x in current_symptoms for x in ["moderate", "mild", "fever"]) > 0:
-            return 0.2
-
-        elif sum(x in current_symptoms for x in ["cough", "fatigue", "gastro", "aches"]) > 0:
-            return 0.2
-
-        elif sum(x in current_symptoms for x in ["runny_nose", "loss_of_taste"]) > 0:
-            return 0.3
+        # elif sum(x in current_symptoms for x in ["moderate", "mild", "fever"]) > 0:
+        #     return 0.2
+        #
+        # elif sum(x in current_symptoms for x in ["cough", "fatigue", "gastro", "aches"]) > 0:
+        #     return 0.2
+        #
+        # elif sum(x in current_symptoms for x in ["runny_nose", "loss_of_taste"]) > 0:
+        #     return 0.3
 
         return 1.0
 
@@ -585,7 +593,7 @@ class Human(object):
             return
 
         # FIXME: PERCENT_FOLLOW < 1 will throw an error because ot self.notified somewhere
-        if intervention is not None and not self.notified and self.rng.random() < PERCENT_FOLLOW:
+        if intervention is not None and not self.notified and self.rng.random() < ExpConfig.get('PERCENT_FOLLOW'):
             self.tracing = False
             if isinstance(intervention, Tracing):
                 self.tracing = True
@@ -604,6 +612,7 @@ class Human(object):
            1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24
            State  h h h h h h h h h sh sh h  h  h  ac h  h  h  h  h  h  h  h  h
         """
+
         self.household.humans.add(self)
         while True:
             hour, day = self.env.hour_of_day(), self.env.day_of_week()
@@ -612,6 +621,8 @@ class Human(object):
                 self.count_shop=0
 
             if self.last_date['run'] != self.env.timestamp.date():
+                # TODO: Update of data should be done right before and at the same time slot
+                #  as the data gets sent to the inference server
                 # Pad missing days
                 missing_days = (self.env.timestamp.date() - self.last_date['run']).days - 1
                 if missing_days:
@@ -626,6 +637,9 @@ class Human(object):
                 self.update_reported_symptoms()
                 self.update_risk(symptoms=self.symptoms)
                 self.infectiousnesses.appendleft(self.infectiousness)
+                if len(self.infectiousnesses) > ExpConfig.get('TRACING_N_DAYS_HISTORY'):
+                    self.infectiousnesses.pop()
+
                 Event.log_daily(self, self.env.timestamp)
                 city.tracker.track_symptoms(self)
 
@@ -634,7 +648,7 @@ class Human(object):
                     for type_contacts in ['n_contacts_tested_positive', 'n_contacts_symptoms', \
                     'n_risk_increased', 'n_risk_decreased', "n_risk_mag_decreased", "n_risk_mag_increased"]:
                         for order in self.message_info[type_contacts]:
-                            if len(self.message_info[type_contacts][order]) > TRACING_N_DAYS_HISTORY:
+                            if len(self.message_info[type_contacts][order]) > ExpConfig.get('TRACING_N_DAYS_HISTORY'):
                                 self.message_info[type_contacts][order] = self.message_info[type_contacts][order][1:]
                             self.message_info[type_contacts][order].append(0)
 
@@ -877,7 +891,7 @@ class Human(object):
                     self.contact_book.add(human=h, timestamp=self.env.timestamp, self_human=self)
                     h.contact_book.add(human=self, timestamp=self.env.timestamp, self_human=h)
                     cur_day = (self.env.timestamp - self.env.initial_timestamp).days
-                    if self.has_app and h.has_app and (cur_day >= INTERVENTION_DAY):
+                    if self.has_app and h.has_app and (cur_day >= ExpConfig.get('INTERVENTION_DAY')):
                         self.contact_book.messages.append(h.cur_message(cur_day))
                         h.contact_book.messages.append(self.cur_message(cur_day))
                         self.contact_book.messages_by_day[cur_day].append(h.cur_message(cur_day))
@@ -1173,6 +1187,7 @@ class Human(object):
 
     @property
     def risk_level(self):
+        _proba_to_risk_level = proba_to_risk_fn(np.array(ExpConfig.get('RISK_MAPPING')))
         return min(_proba_to_risk_level(self.risk), 15)
 
     @risk.setter
@@ -1182,7 +1197,9 @@ class Human(object):
 
     def update_risk_level(self):
         cur_day = (self.env.timestamp - self.env.initial_timestamp).days
-        for day in range(cur_day - TRACING_N_DAYS_HISTORY, cur_day + 1):
+        _proba_to_risk_level = proba_to_risk_fn(np.array(ExpConfig.get('RISK_MAPPING')))
+
+        for day in range(cur_day - ExpConfig.get('TRACING_N_DAYS_HISTORY'), cur_day + 1):
             if day not in self.prev_risk_history_map.keys():
                 continue
 
@@ -1256,8 +1273,7 @@ class Human(object):
 
             if update_messages['reason'] == "test":
                 self.message_info['n_contacts_tested_positive'][order][-1] += update_messages['n']
-                if self.message_info['n_contacts_tested_positive'][order][-1] > 0:
-                    import pdb;pdb.set_trace()
+
             elif update_messages['reason'] == "symptoms":
                 self.message_info['n_contacts_symptoms'][order][-1] += update_messages['n']
 

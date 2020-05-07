@@ -4,11 +4,14 @@ import datetime
 import itertools
 from collections import defaultdict
 
-from covid19sim.config import *
-from covid19sim.utils import compute_distance, _get_random_area, _draw_random_discreet_gaussian, get_intervention
+from covid19sim.configs.config import *
+from covid19sim.utils import compute_distance, _get_random_area, _draw_random_discreet_gaussian, get_intervention, proba_to_risk_fn
 from covid19sim.track import Tracker
 from covid19sim.interventions import *
 from covid19sim.frozen.utils import update_uid
+from covid19sim.configs.constants import TICK_MINUTE
+from covid19sim.configs.exp_config import ExpConfig
+
 
 class Env(simpy.Environment):
 
@@ -240,35 +243,42 @@ class City(simpy.Environment):
 
     def run(self, duration, outfile, start_time, all_possible_symptoms, port, n_jobs):
         self.current_day = 0
+        INTERVENTION_DAY = ExpConfig.get('INTERVENTION_DAY')
+        COLLECT_TRAINING_DATA = ExpConfig.get('COLLECT_TRAINING_DATA')
 
-        print(f"INTERVENTION_DAY: {INTERVENTION_DAY}")
+        humans_notified = False
         while True:
             if self.env.timestamp.hour == 0:
                 # TODO: this is an assumption which will break in reality, instead of updating once per day everyone at the same time, it should be throughout the day
                 for human in self.humans:
                     human.uid = update_uid(human.uid, human.rng)
 
-            if INTERVENTION_DAY >= 0 and self.current_day == INTERVENTION_DAY:
+            if self.env.timestamp.hour == 0 and self.env.timestamp != self.env.initial_timestamp:
+                self.current_day += 1
+                self.tracker.increment_day()
 
-                self.intervention = get_intervention(INTERVENTION)
+            if INTERVENTION_DAY >= 0 and self.current_day == INTERVENTION_DAY and not humans_notified:
+                self.intervention = get_intervention(ExpConfig.get('INTERVENTION'),
+                                                     ExpConfig.get('RISK_MODEL'),
+                                                     ExpConfig.get('TRACING_ORDER'),
+                                                     ExpConfig.get('TRACE_SYMPTOMS'),
+                                                     ExpConfig.get('TRACE_RISK_UPDATE'))
                 _ = [h.notify(self.intervention) for h in self.humans]
+                print(f"Collecting data: {ExpConfig.get('COLLECT_TRAINING_DATA')}")
                 print(self.intervention)
+                humans_notified = True
 
             if isinstance(self.intervention, Tracing):
                 self.intervention.update_human_risks(city=self,
                                 symptoms=all_possible_symptoms, port=port,
                                 n_jobs=n_jobs, data_path=outfile)
 
-            if (COLLECT_TRAINING_DATA or GET_RISK_PREDICTOR_METRICS) and (self.current_day == 0 and INTERVENTION_DAY < 0):
+            if COLLECT_TRAINING_DATA and (self.current_day == 0 and INTERVENTION_DAY < 0):
                 _ = [h.notify(collect_training_data=True) for h in self.humans]
                 print("naive risk calculation without changing behavior... Humans notified!")
                 self.intervention = Tracing(risk_model="naive", max_depth=1, symptoms=False, risk=False, should_modify_behavior=False)
 
-            if self.env.timestamp.hour == 0 and self.env.timestamp != self.env.initial_timestamp:
-                self.current_day += 1
-                self.tracker.increment_day()
-
-            # Let the day pass
+            # Let the hour pass
             yield self.env.timeout(duration / TICK_MINUTE)
 
 
@@ -426,6 +436,8 @@ class Event:
 
     @staticmethod
     def log_encounter(human1, human2, location, duration, distance, infectee, time):
+        if ExpConfig.get('COLLECT_LOGS') is False:
+            return
 
         h_obs_keys   = ['obs_hospitalized', 'obs_in_icu',
                         'obs_lat', 'obs_lon']
@@ -476,6 +488,9 @@ class Event:
 
     @staticmethod
     def log_test(human, time):
+        if ExpConfig.get('COLLECT_LOGS') is False:
+            return
+
         human.events.append(
             {
                 'human_id': human.name,
@@ -498,6 +513,9 @@ class Event:
 
     @staticmethod
     def log_daily(human, time):
+        if ExpConfig.get('COLLECT_LOGS') is False:
+            return
+
         human.events.append(
             {
                 'human_id': human.name,
@@ -522,6 +540,9 @@ class Event:
 
     @staticmethod
     def log_exposed(human, source, time):
+        if ExpConfig.get('COLLECT_LOGS') is False:
+            return
+
         human.events.append(
             {
                 'human_id': human.name,
@@ -537,13 +558,15 @@ class Event:
                       'source_is_human': 'human' in source.name,
                       'infectiousness_start_time': human.infection_timestamp + datetime.timedelta(days=human.infectiousness_onset_days)
                     }
-
                 }
             }
         )
 
     @staticmethod
     def log_recovery(human, time, death):
+        if ExpConfig.get('COLLECT_LOGS') is False:
+            return
+
         human.events.append(
             {
                 'human_id': human.name,
@@ -563,6 +586,9 @@ class Event:
 
     @staticmethod
     def log_static_info(city, human, time):
+        if ExpConfig.get('COLLECT_LOGS') is False:
+            return
+
         h_obs_keys = ['obs_preexisting_conditions',  "obs_age", "obs_sex", "obs_is_healthcare_worker"]
         h_unobs_keys = ['preexisting_conditions', "age", "sex", "is_healthcare_worker"]
         obs_payload = {key:getattr(human, key) for key in h_obs_keys}
@@ -590,34 +616,6 @@ class Event:
             }
         )
 
-class DummyEvent:
-    @staticmethod
-    def log_encounter(*args, **kwargs):
-        pass
-
-    @staticmethod
-    def log_test(*args, **kwargs):
-        pass
-
-    @staticmethod
-    def log_recovery(*args, **kwargs):
-        pass
-
-    @staticmethod
-    def log_exposed(*args, **kwargs):
-        pass
-
-    @staticmethod
-    def log_static_info(*args, **kwargs):
-        pass
-
-    @staticmethod
-    def log_visit(*args, **kwargs):
-        pass
-
-    @staticmethod
-    def log_daily(*args, **kwargs):
-        pass
 
 class Contacts(object):
     def __init__(self, has_app):
@@ -649,7 +647,7 @@ class Contacts(object):
 
         remove_idx = -1
         for history in self.book[human]:
-            if (date - history[0]).days > TRACING_N_DAYS_HISTORY:
+            if (date - history[0]).days > ExpConfig.get('TRACING_N_DAYS_HISTORY'):
                 remove_idx += 1
             else:
                 break
@@ -659,7 +657,7 @@ class Contacts(object):
         if False:
             remove_idx = 0
             for historical_message in self.messages:
-                if (human.env.timestamp - human.env.initial_timestamp).days - historical_message.day > TRACING_N_DAYS_HISTORY:
+                if (human.env.timestamp - human.env.initial_timestamp).days - historical_message.day > ExpConfig.get('TRACING_N_DAYS_HISTORY'):
                     remove_idx += 1
                 else:
                     break
