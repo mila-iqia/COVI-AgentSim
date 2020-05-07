@@ -14,7 +14,7 @@ ABSOLUTE_P_HAS_APP : True # If False, we modulate P_HAS_APP with carefulness and
 
 
 # PATHS
-CLUSTER_PATH : "output/clusters.json"
+CLUSTER_PATH : "output/"
 
 # Inference & Training
 INFECTIOUSNESS_N_DAYS_HISTORY : 14
@@ -22,7 +22,7 @@ TRACING_N_DAYS_HISTORY : 14
 MP_BATCHSIZE : "auto"
 MP_N_JOBS : "1"
 MP_BACKEND : "loky"
-DUMP_CLUSTERS : False
+DUMP_CLUSTERS : True
 CLUSTER_TYPE : "heuristic" # "random", "graph"
 
 

@@ -77,6 +77,13 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
         engine = InferenceEngine(ExpConfig.get('TRANSFORMER_EXP_PATH'))
         results = InferenceWorker.process_sample(all_params, engine, ExpConfig.get('MP_BACKEND'), n_jobs)
 
+    # print out the clusters
+    if ExpConfig.get('DUMP_CLUSTERS'):
+        clusters = []
+        for human in hd.values():
+            clusters.append(dict(human.clusters.clusters))
+        json.dump(clusters, open(os.path.join(ExpConfig.get('CLUSTER_PATH'), f"{current_day}_cluster.json"), 'w'))
+
     if ExpConfig.get('RISK_MODEL') != "transformer":
         for result in results:
             if result is not None:
@@ -107,10 +114,4 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
             hd[name].contact_book.update_messages = []
             hd[name].contact_book.messages = []
 
-    # print out the clusters
-    if ExpConfig.get('DUMP_CLUSTERS'):
-        clusters = []
-        for human in hd.values():
-            clusters.append(dict(human.clusters.clusters))
-        json.dump(clusters, open(ExpConfig.get('CLUSTER_PATH'), 'w'))
     return humans
