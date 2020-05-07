@@ -4,6 +4,8 @@ COLLECT_LOGS : True
 COLLECT_TRAINING_DATA : True
 USE_INFERENCE_SERVER : True
 RISK_MODEL : "naive" # "naive"  "manual", "digital", "transformer"
+INIT_PERCENT_SICK : 0.0025
+SHOULD_MODIFY_BEHAVIOR : True
 
 ## INTERVENTIONS
 INTERVENTION_DAY : -1 # TODO @Prateek: We can't run this with a positive intervention day because base.py line 271 -- why?git c
@@ -35,4 +37,3 @@ RISK_MAPPING : [0., 0.01, 0.20009698, 0.3337032 , 0.42782824,
                 0.53769504, 0.62646553, 0.72454666, 0.79687407, 0.8408014,
                 0.87897228, 0.90514533, 0.92788853, 0.94996601, 0.97018845,
                 0.98973414, 1.]
-SHOULD_MODIFY_BEHAVIOR : False

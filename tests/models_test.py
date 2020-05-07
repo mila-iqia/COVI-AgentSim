@@ -24,7 +24,6 @@ class ModelsTest(unittest.TestCase):
             n_days = 30
             monitors, _ = run_simu(
                 n_people=n_people,
-                init_percent_sick=0.25,
                 start_time=datetime.datetime(2020, 2, 28, 0, 0),
                 simulation_days=n_days,
                 outfile=os.path.join(preprocess_d, "output"),
@@ -194,8 +193,10 @@ class ModelsTest(unittest.TestCase):
                                     self.assertFalse(False,
                                                      msg=f"Could not find previous candidate_encounter {prev_masked[i]} "
                                                      f"in current day.")
-                        self.assertTrue((observed['test_results'][1:] == prev_observed['test_results'][:13]).all())
-
+                        try:
+                            self.assertTrue((observed['test_results'][1:] == prev_observed['test_results'][:13]).all())
+                        except Exception:
+                            import pdb; pdb.set_trace()
                         self.assertTrue((observed['preexisting_conditions'] ==
                                          prev_observed['preexisting_conditions']).all())
                         self.assertEqual(observed['age'], prev_observed['age'])

@@ -44,7 +44,7 @@ class Env(simpy.Environment):
 
 class City(simpy.Environment):
 
-    def __init__(self, env, n_people, rng, x_range, y_range, start_time, init_percent_sick, Human):
+    def __init__(self, env, n_people, rng, x_range, y_range, start_time, Human):
         self.env = env
         self.rng = rng
         self.x_range = x_range
@@ -52,7 +52,6 @@ class City(simpy.Environment):
         self.total_area = (x_range[1] - x_range[0]) * (y_range[1] - y_range[0])
         self.n_people = n_people
         self.start_time = start_time
-        self.init_percent_sick = init_percent_sick
         self.last_date_to_check_tests = self.env.timestamp.date()
         self.test_count_today = defaultdict(int)
         self.test_type_preference = list(zip(*sorted(TEST_TYPES.items(), key=lambda x:x[1]['preference'])))[0]
@@ -169,7 +168,7 @@ class City(simpy.Environment):
                         profession=profession[i],
                         rho=RHO,
                         gamma=GAMMA,
-                        infection_timestamp=self.start_time if self.rng.random() < self.init_percent_sick else None
+                        infection_timestamp=self.start_time if self.rng.random() < ExpConfig.get('INIT_PERCENT_SICK') else None
                         )
                     )
 
@@ -243,10 +242,8 @@ class City(simpy.Environment):
 
     def run(self, duration, outfile, start_time, all_possible_symptoms, port, n_jobs):
         self.current_day = 0
-        INTERVENTION_DAY = ExpConfig.get('INTERVENTION_DAY')
-        COLLECT_TRAINING_DATA = ExpConfig.get('COLLECT_TRAINING_DATA')
-
         humans_notified = False
+
         while True:
             if self.env.timestamp.hour == 0:
                 # TODO: this is an assumption which will break in reality, instead of updating once per day everyone at the same time, it should be throughout the day
@@ -256,13 +253,15 @@ class City(simpy.Environment):
             if self.env.timestamp.hour == 0 and self.env.timestamp != self.env.initial_timestamp:
                 self.current_day += 1
                 self.tracker.increment_day()
+                # pd.DataFrame([(h.risk, h.is_infectious or h.is_exposed) for h in self.city.humans]).to_csv("risk_histogram.csv")
 
-            if INTERVENTION_DAY >= 0 and self.current_day == INTERVENTION_DAY and not humans_notified:
-                self.intervention = get_intervention(ExpConfig.get('INTERVENTION'),
-                                                     ExpConfig.get('RISK_MODEL'),
-                                                     ExpConfig.get('TRACING_ORDER'),
-                                                     ExpConfig.get('TRACE_SYMPTOMS'),
-                                                     ExpConfig.get('TRACE_RISK_UPDATE'))
+            if self.current_day == ExpConfig.get('INTERVENTION_DAY') and not humans_notified:
+                self.intervention = get_intervention(key=ExpConfig.get('INTERVENTION'),
+                                                     RISK_MODEL=ExpConfig.get('RISK_MODEL'),
+                                                     TRACING_ORDER=ExpConfig.get('TRACING_ORDER'),
+                                                     TRACE_SYMPTOMS=ExpConfig.get('TRACE_SYMPTOMS'),
+                                                     TRACE_RISK_UPDATE=ExpConfig.get('TRACE_RISK_UPDATE'),
+                                                     SHOULD_MODIFY_BEHAVIOR=ExpConfig.get('SHOULD_MODIFY_BEHAVIOR'))
                 _ = [h.notify(self.intervention) for h in self.humans]
                 print(f"Collecting data: {ExpConfig.get('COLLECT_TRAINING_DATA')}")
                 print(self.intervention)
@@ -273,14 +272,13 @@ class City(simpy.Environment):
                                 symptoms=all_possible_symptoms, port=port,
                                 n_jobs=n_jobs, data_path=outfile)
 
-            if COLLECT_TRAINING_DATA and (self.current_day == 0 and INTERVENTION_DAY < 0):
+            if ExpConfig.get('COLLECT_TRAINING_DATA') and (self.current_day == 0 and ExpConfig.get('INTERVENTION_DAY') < 0):
                 _ = [h.notify(collect_training_data=True) for h in self.humans]
                 print("naive risk calculation without changing behavior... Humans notified!")
                 self.intervention = Tracing(risk_model="naive", max_depth=1, symptoms=False, risk=False, should_modify_behavior=False)
 
             # Let the hour pass
             yield self.env.timeout(duration / TICK_MINUTE)
-
 
 class Location(simpy.Resource):
 
@@ -445,7 +443,8 @@ class Event:
         h_unobs_keys = ['carefulness', 'viral_load', 'infectiousness',
                         'symptoms', 'is_exposed', 'is_infectious',
                         'infection_timestamp', 'is_really_sick',
-                        'is_extremely_sick', 'sex',  'wearing_mask', 'mask_efficacy']
+                        'is_extremely_sick', 'sex',  'wearing_mask', 'mask_efficacy',
+                        'risk', 'risk_level', 'rec_level']
 
         loc_obs_keys = ['location_type', 'lat', 'lon']
         loc_unobs_keys = ['contamination_probability', 'social_contact_factor']

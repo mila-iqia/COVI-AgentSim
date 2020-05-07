@@ -20,7 +20,6 @@ class FullUnitTest(unittest.TestCase):
             n_people = 100
             monitors, _ = run_simu(
                 n_people=n_people,
-                init_percent_sick=0.1,
                 start_time=datetime.datetime(2020, 2, 28, 0, 0),
                 simulation_days=30,
                 outfile=outfile,
@@ -48,7 +47,6 @@ class SeedUnitTest(unittest.TestCase):
     def setUp(self):
         self.test_seed = 136
         self.n_people = 100
-        self.init_percent_sick = 0.1
         self.start_time = datetime.datetime(2020, 2, 28, 0, 0)
         self.simulation_days = 10
 
@@ -62,7 +60,6 @@ class SeedUnitTest(unittest.TestCase):
             of2 = os.path.join(d2, "data")
             monitors1, _ = run_simu(
                 n_people=self.n_people,
-                init_percent_sick=self.init_percent_sick,
                 start_time=self.start_time,
                 simulation_days=self.simulation_days,
                 outfile=of1,
@@ -74,7 +71,6 @@ class SeedUnitTest(unittest.TestCase):
 
             monitors2, _ = run_simu(
                 n_people=self.n_people,
-                init_percent_sick=self.init_percent_sick,
                 start_time=self.start_time,
                 simulation_days=self.simulation_days,
                 outfile=of2,
@@ -110,7 +106,6 @@ class SeedUnitTest(unittest.TestCase):
             of2 = os.path.join(d2, "data")
             monitors1, _ = run_simu(
                 n_people=self.n_people,
-                init_percent_sick=self.init_percent_sick,
                 start_time=self.start_time,
                 simulation_days=self.simulation_days,
                 outfile=of1,
@@ -122,7 +117,6 @@ class SeedUnitTest(unittest.TestCase):
 
             monitors2, _ = run_simu(
                 n_people=self.n_people,
-                init_percent_sick=self.init_percent_sick,
                 start_time=self.start_time,
                 simulation_days=self.simulation_days,
                 outfile=of2,

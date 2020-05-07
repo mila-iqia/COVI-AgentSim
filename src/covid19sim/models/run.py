@@ -92,6 +92,15 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
                 hd[name].contact_book.update_messages = []
                 hd[name].contact_book.messages = []
 
+    if ExpConfig.get('RISK_MODEL') != "transformer":
+        for result in results:
+            if result is not None:
+                name, risk_history, clusters = result
+                hd[name].clusters = clusters
+                hd[name].last_risk_update = current_day
+                hd[name].contact_book.update_messages = []
+                hd[name].contact_book.messages = []
+
         return humans
 
     for result in results:
@@ -107,7 +116,7 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
                 for i in range(ExpConfig.get('TRACING_N_DAYS_HISTORY')):
                     hd[name].prev_risk_history_map[current_day - i] = risk_history[i]
             else:
-                warnings.warn(f"risk_history is None for human {name}", RuntimeWarning)
+                warnings.warn(f"risk history is none for human:{name}", RuntimeWarning)
 
             hd[name].clusters = clusters
             hd[name].last_risk_update = current_day
