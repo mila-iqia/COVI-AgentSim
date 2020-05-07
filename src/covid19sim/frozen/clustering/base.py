@@ -179,3 +179,25 @@ class ClusterManagerBase:
     def _get_expositions_array(self) -> np.ndarray:
         """Returns the 'expositions' array for all clusters managed by this object."""
         raise NotImplementedError
+
+    def _get_homogeneity_scores(self) -> typing.Dict[RealUserIDType, float]:
+        """Returns the homogeneity score for all users present in the clusters.
+
+        The homogeneity score for a user is defined as the number of true encounters involving that
+        user divided by the total number of encounters attributed to that user (via clustering).
+
+        Computing this score requires the use of the "real" user IDs, meaning this is only
+        possible with simulator data.
+        """
+        raise NotImplementedError
+
+    def _get_concentration_scores(self) -> typing.Dict[RealUserIDType, float]:
+        """Returns the concentration score for all users present in the clusters.
+
+        The concentration score of a user is defined as one minus the number of clusters that
+        contain that user divided by the total number of clusters proposed by the algorithm.
+
+        Computing this score requires the use of the "real" user IDs, meaning this is only
+        possible with simulator data.
+        """
+        raise NotImplementedError

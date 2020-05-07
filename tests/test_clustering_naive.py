@@ -259,12 +259,12 @@ class NaiveClusteringTests(unittest.TestCase):
             ) for idx in range(n_humans)
         ]
         messages = generate_received_messages(humans)  # hopefully this is not too slow
-        return [msg for msgs in messages[0]["received_messages"].values() for msg in msgs]
+        return [msg for msgs in messages[0]["received_messages"].values() for msg in msgs], visits
 
     def test_random_large_scale(self):
         n_trials = 10
         for _ in range(n_trials):
-            h0_messages = self._get_random_messages(
+            h0_messages, visits = self._get_random_messages(
                 n_humans=100,
                 n_visits=1000,
                 n_expositions=50,
@@ -281,12 +281,25 @@ class NaiveClusteringTests(unittest.TestCase):
                 len(simple_cluster_manager.clusters),
                 len(naive_cluster_manager.clusters),
             )
+            naive_homogeneity_scores = naive_cluster_manager._get_homogeneity_scores()
+            naive_concentration_scores = naive_cluster_manager._get_concentration_scores()
+            self.assertTrue(all([id in naive_homogeneity_scores for id in naive_concentration_scores]))
+            self.assertTrue(all([id in naive_concentration_scores for id in naive_homogeneity_scores]))
+            for id in naive_homogeneity_scores:
+                self.assertLessEqual(naive_homogeneity_scores[id], 1.0)
+                expected_user_encounters = \
+                    sum([v.visited_real_uid == 0 and v.visitor_real_uid == id for v in visits])
+                min_homogeneity = expected_user_encounters / sum([v.visited_real_uid == 0 for v in visits])
+                self.assertLessEqual(min_homogeneity, naive_homogeneity_scores[id])
+                self.assertLessEqual(0, naive_concentration_scores[id])
+                max_concentration = 1 - (1 / len(naive_cluster_manager.clusters))
+                self.assertLessEqual(naive_concentration_scores[id], max_concentration)
 
     def test_random_large_scale_batch(self):
         # TODO : add an actual test for batch-based computation? should results be == reg?
         n_trials = 25
         for _ in range(n_trials):
-            h0_messages = self._get_random_messages(
+            h0_messages, visits = self._get_random_messages(
                 n_humans=10,
                 n_visits=1000,
                 n_expositions=5,

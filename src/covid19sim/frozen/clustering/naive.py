@@ -4,7 +4,7 @@ import typing
 
 import covid19sim.frozen.message_utils as mu
 from covid19sim.frozen.clustering.base import ClusterIDType, TimestampType, \
-    TimeOffsetType, ClusterBase, ClusterManagerBase, MessagesArrayType
+    TimeOffsetType, ClusterBase, ClusterManagerBase, MessagesArrayType, RealUserIDType
 
 
 def check_uids_match(
@@ -561,3 +561,47 @@ class NaiveClusterManager(ClusterManagerBase):
             return np.asarray(flat_output)
         else:
             return np.asarray([c._get_cluster_exposition_flag() for c in self.clusters], dtype=np.uint8)
+
+    def _get_homogeneity_scores(self) -> typing.Dict[RealUserIDType, float]:
+        """Returns the homogeneity score for all users present in the clusters.
+
+        The homogeneity score for a user is defined as the number of true encounters involving that
+        user divided by the total number of encounters attributed to that user (via clustering).
+
+        Computing this score requires the use of the "real" user IDs, meaning this is only
+        possible with simulator data.
+        """
+        user_true_encounter_counts = collections.defaultdict(int)
+        user_total_encounter_count = collections.defaultdict(int)
+        for cluster in self.clusters:
+            cluster_users = set()
+            tot_message_cout = 0
+            for _, msgs in cluster.messages_by_timestamp.items():
+                for msg in msgs:
+                    user_true_encounter_counts[msg._sender_uid] += 1
+                    cluster_users.add(msg._sender_uid)
+                    tot_message_cout += 1
+            for user in cluster_users:
+                user_total_encounter_count[user] += tot_message_cout
+        return {user: user_true_encounter_counts[user] / user_total_encounter_count[user]
+                for user in user_true_encounter_counts}
+
+    def _get_concentration_scores(self) -> typing.Dict[RealUserIDType, float]:
+        """Returns the concentration score for all users present in the clusters.
+
+        The concentration score of a user is defined as one minus the number of clusters that
+        contain that user divided by the total number of clusters proposed by the algorithm.
+
+        Computing this score requires the use of the "real" user IDs, meaning this is only
+        possible with simulator data.
+        """
+        user_cluster_counts = collections.defaultdict(int)
+        for cluster in self.clusters:
+            cluster_users = set()
+            for _, msgs in cluster.messages_by_timestamp.items():
+                for msg in msgs:
+                    cluster_users.add(msg._sender_uid)
+            for user in cluster_users:
+                user_cluster_counts[user] += 1
+        return {user: 1 - (user_cluster_counts[user] / len(self.clusters))
+                for user in user_cluster_counts}

@@ -168,10 +168,10 @@ class SimpleClusteringTests(unittest.TestCase):
 
     def test_random_large_scale(self):
         n_trials = 10
-        n_humans = 100
-        n_visits = 1000
-        n_expositions = 50
-        max_timestamp = 20
+        n_humans = 50
+        n_visits = 2000
+        n_expositions = 15
+        max_timestamp = 10
         for _ in range(n_trials):
             # start by sampling a bunch of non-exposition visits...
             visits = []
@@ -215,6 +215,19 @@ class SimpleClusteringTests(unittest.TestCase):
                 len(cluster_manager.clusters),
                 (mu.message_uid_mask + 1) * (mu.risk_level_mask + 1) * (max_timestamp + 1)
             )
+            homogeneity_scores = cluster_manager._get_homogeneity_scores()
+            concentration_scores = cluster_manager._get_concentration_scores()
+            self.assertTrue(all([id in concentration_scores for id in homogeneity_scores]))
+            self.assertTrue(all([id in homogeneity_scores for id in concentration_scores]))
+            for id in homogeneity_scores:
+                self.assertLessEqual(homogeneity_scores[id], 1.0)
+                expected_user_encounters = \
+                    sum([v.visited_real_uid == 0 and v.visitor_real_uid == id for v in visits])
+                min_homogeneity = expected_user_encounters / sum([v.visited_real_uid == 0 for v in visits])
+                self.assertLessEqual(min_homogeneity, homogeneity_scores[id])
+                self.assertLessEqual(0, concentration_scores[id])
+                max_concentration = 1 - (1 / len(cluster_manager.clusters))
+                self.assertLessEqual(concentration_scores[id], max_concentration)
 
 
 if __name__ == "__main__":
