@@ -264,12 +264,12 @@ class City(simpy.Environment):
                 print("naive risk calculation without changing behavior... Humans notified!")
                 self.intervention = Tracing(risk_model="naive", max_depth=1, symptoms=False, risk=False, should_modify_behavior=False)
 
+            # Let the hour pass
+            yield self.env.timeout(duration / TICK_MINUTE)
+
             if self.env.timestamp.hour == 0 and self.env.timestamp != self.env.initial_timestamp:
                 self.current_day += 1
                 self.tracker.increment_day()
-
-            # Let the day pass
-            yield self.env.timeout(duration / TICK_MINUTE)
 
 
 class Location(simpy.Resource):

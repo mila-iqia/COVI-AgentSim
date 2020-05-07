@@ -612,6 +612,8 @@ class Human(object):
                 self.count_shop=0
 
             if self.last_date['run'] != self.env.timestamp.date():
+                # TODO: Update of data should be done right before and at the same time slot
+                #  as the data gets sent to the inference server
                 # Pad missing days
                 missing_days = (self.env.timestamp.date() - self.last_date['run']).days - 1
                 if missing_days:

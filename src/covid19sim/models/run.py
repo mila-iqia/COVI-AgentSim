@@ -28,23 +28,29 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
     hd = humans[0].city.hd
     all_params = []
 
-    current_date = (start + timedelta(days=current_day)).date()
+    current_time = (start + timedelta(days=current_day, hours=time_slot))
+    current_date = current_time.date()
 
     # We're going to send a request to the server for each human
     for human in humans:
+        if time_slot not in human.time_slots:
+            continue
+
         human_state = human.__getstate__()
         if human.last_date['run'] != current_date:
             infectiousnesses = copy.copy(human_state["infectiousnesses"])
             # Pad missing days
-            for day in range((current_date - human.last_date['run']).days):
+            # TODO: Reduce the current date by 1 hour since human with time slot at hour 0
+            #  did not had the time to update. Update the human data at the same time it is
+            #  sent to the inference server would properly fix this
+            pad_count = ((current_time + timedelta(hours=-1)).date() - human.last_date['run']).days
+            for day in range(pad_count):
                 infectiousnesses.appendleft(0)
             human_state["infectiousnesses"] = infectiousnesses
-            warnings.warn(f"Human is outdated {human.name}. Current date {current_date}, "
-                          f"last_date['run'] {human.last_date['run']}",
+            warnings.warn(f"{human.name} is outdated. Padding infectiousnesses array with {pad_count} zeros. "
+                          f"Current time {current_time}, last_date['run'] {human.last_date['run']}",
                           RuntimeWarning)
-                
-        if time_slot not in human.time_slots:
-            continue
+
         log_path = None
         if data_path:
             log_path = f'{os.path.dirname(data_path)}/daily_outputs/{current_day}/{human.name[6:]}/'
@@ -55,6 +61,7 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
             "human": human_state,
             "COLLECT_TRAINING_DATA": config.COLLECT_TRAINING_DATA,
             "log_path": log_path,
+            "time_slot": time_slot,
             "risk_model": config.RISK_MODEL,
         })
 

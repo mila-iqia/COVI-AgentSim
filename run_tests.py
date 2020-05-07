@@ -4,14 +4,13 @@ from multiprocessing import Process
 import covid19sim.config as config
 import covid19sim.server_bootstrap
 
-# Force COLLECT_LOGS=True
-# Force RISK_MODEL=True
-# Fix RISK_MAPPING_FILE relative path
+# Force test config value
 config.COLLECT_LOGS = True
 config.USE_INFERENCE_SERVER = True
 config.COLLECT_TRAINING_DATA = True
 config.INTERVENTION_DAY = 10
 config.RISK_MODEL = "transformer"
+config.UPDATES_PER_DAY = 1
 
 
 def start_inference_server():
