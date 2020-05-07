@@ -2,7 +2,7 @@ from orderedset import OrderedSet
 import numpy as np
 
 from covid19sim.config import RHO, GAMMA, MANUAL_TRACING_P_CONTACT,\
-    RISK_TRANSMISSION_PROBA, BIG_NUMBER, COLLECT_TRAINING_DATA
+    RISK_TRANSMISSION_PROBA, BIG_NUMBER, COLLECT_TRAINING_DATA, DEFAULT_DISTANCE
 from covid19sim.models.run import integrated_risk_pred
 
 

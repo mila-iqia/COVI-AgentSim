@@ -1,6 +1,9 @@
 from setuptools import setup, find_packages
 
 
+with open('requirements.txt', 'r') as f:
+    requirements = [line.strip() for line in f.readlines() if not line.startswith("#")]
+
 setup(
     name                 = "covid19sim",
     version              = "0.0.0.dev0",
@@ -25,24 +28,15 @@ setup(
     ],
     zip_safe             = False,
     python_requires      = '>=3.7.4',
-    install_requires     = [
-        "speedrun @ git+https://github.com/inferno-pytorch/speedrun.git@p2p_risk_prediction#egg=speedrun",
-        "ctt @ git+https://github.com/nasimrahaman/ctt@master#egg=ctt",
-        "addict",
-        "dill",
-        "joblib",
-        "pyzmq",
-        "scipy",
-        "numpy",
-        "simpy",
-        "matplotlib",
-        "ipython",
-        "click",
-        "orderedset",
-        "networkx",
-        "tqdm",
-        "seaborn",
-    ],
+    install_requires     = requirements,
+    extras_require       = {
+        "ctt": [
+            "ctt @ git+https://github.com/nasimrahaman/ctt@master#egg=ctt"
+        ],
+        "ctt-tf": [
+            "ctt[tensorflow] @ git+https://github.com/nasimrahaman/ctt@master#egg=ctt"
+        ],
+    },
     packages             = find_packages("src"),
     package_dir          = {'': 'src'},
 )
