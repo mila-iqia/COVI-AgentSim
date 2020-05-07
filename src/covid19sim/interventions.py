@@ -286,13 +286,6 @@ class Tracing(object):
         if not self.should_modify_behavior:
             return
 
-        # FIXME: maybe merge Quarantine in RiskBasedRecommendations with 2 levels
-        if self.risk_model in ["manual", "digital"]:
-            if human.risk == 1.0:
-                human.rec_level = 3 # required for the calculation of mobility
-            else:
-                human.rec_level = 0
-
         return self.intervention.modify_behavior(human)
 
     def process_messages(self, human):

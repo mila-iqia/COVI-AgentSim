@@ -1184,7 +1184,14 @@ class Human(object):
     @property
     def rec_level(self):
         if isinstance(self.tracing_method, Tracing):
-            return self.tracing_method.intervention.get_recommendations_level(self.risk)
+            # FIXME: maybe merge Quarantine in RiskBasedRecommendations with 2 levels
+            if self.tracing_method.risk_model in ["manual", "digital"]:
+                if self.risk == 1.0:
+                    return 3
+                else:
+                    return 0
+
+            return self.tracing_method.intervention.get_recommendations_level(self.risk_level)
         return -1
 
     def update_risk_level(self):
