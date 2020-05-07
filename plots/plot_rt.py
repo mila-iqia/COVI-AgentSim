@@ -38,7 +38,7 @@ class PlotRt:
         r_t_range = np.linspace(0, self.R_T_MAX, self.R_T_MAX*100+1)
 
         # (1) Calculate Lambda
-        lam = sr[:-1].values * np.exp(self.GAMMA * (r_t_range[:, None] - 1))
+        lam = sr[:-1].values * np.exp(self.GAMMA * (r_t_range[:, None] - 1)) + 1e-8
 
         # (2) Calculate each day's likelihood
         likelihoods = pd.DataFrame(
@@ -55,9 +55,8 @@ class PlotRt:
         # (4) Calculate the initial prior
         #prior0 = sps.gamma(a=4).pdf(r_t_range)
         prior0 = np.ones_like(r_t_range)/len(r_t_range)
-        for k in range(len(r_t_range)):
-            if 0.4 < float(k) / len(r_t_range) < 0.6:
-                prior0[k] = 10
+        for k in range(int(1.5/self.R_T_MAX*len(r_t_range)), int(2.5/self.R_T_MAX*len(r_t_range))):
+            prior0[k] = 10
         prior0 /= prior0.sum()
 
         # Create a DataFrame that will hold our posteriors for each day
@@ -107,9 +106,6 @@ class PlotRt:
 
     @staticmethod
     def plot(cases_per_day, true_R=None):
-        for k in range(len(cases_per_day)):
-            if cases_per_day[k] == 0:
-                cases_per_day[k] = 1
         plotrt = PlotRt(R_T_MAX=4, sigma=0.25)
         most_likely, hdis = plotrt.compute(cases_per_day)
         index = np.array(list(range(most_likely.shape[0])))
