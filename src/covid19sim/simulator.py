@@ -138,7 +138,7 @@ class Human(object):
         self.test_recommended = False
 
         # risk prediction
-        self.rec_level = -1 # risk-based recommendations
+        # self.rec_level = -1 # risk-based recommendations
         self.past_N_days_contacts = [OrderedSet()]
         self.n_contacts_tested_positive = defaultdict(int)
         self.contact_book = Contacts(self.has_app)
@@ -559,13 +559,10 @@ class Human(object):
             return 0.3 * (1 + self.carefulness)
 
         elif sum(x in current_symptoms for x in ["moderate", "mild", "fever"]) > 0:
-            return 0.2
+            return 0.5
 
         elif sum(x in current_symptoms for x in ["cough", "fatigue", "gastro", "aches"]) > 0:
-            return 0.2
-
-        elif sum(x in current_symptoms for x in ["runny_nose", "loss_of_taste"]) > 0:
-            return 0.3
+            return 0.5
 
         return 1.0
 
@@ -585,7 +582,7 @@ class Human(object):
             if isinstance(intervention, Tracing):
                 self.tracing = True
                 self.tracing_method = intervention
-                self.rec_level = 0
+                self.risk = 0
                 # initiate with basic recommendations
                 # FIXME: Check isinstance of the RiskBasedRecommendations class
                 if intervention.risk_model not in ['manual', 'digital']:
@@ -1161,6 +1158,14 @@ class Human(object):
             return BASELINE_RISK_VALUE
 
         cur_day = (self.env.timestamp - self.env.initial_timestamp).days
+        if self.is_removed:
+            self.risk_history_map[cur_day] = 0.0
+        if self.test_result == "positive":
+            self.risk_history_map[cur_day] = 1.0
+        elif self.test_result == "negative":
+            # TODO:  Risk because of negaitve results should not go down to 0.20. It should be max(o.2, current_risk). It should also depend on the test_type
+            self.risk_history_map[cur_day] = 0.2
+
         if cur_day in self.risk_history_map:
             return self.risk_history_map[cur_day]
         else:
@@ -1175,6 +1180,12 @@ class Human(object):
     def risk(self, val):
         cur_day = (self.env.timestamp - self.env.initial_timestamp).days
         self.risk_history_map[cur_day] = val
+
+    @property
+    def rec_level(self):
+        if isinstance(self.tracing_method, Tracing):
+            return self.tracing_method.intervention.get_recommendations_level(self.risk)
+        return -1
 
     def update_risk_level(self):
         cur_day = (self.env.timestamp - self.env.initial_timestamp).days
@@ -1203,9 +1214,8 @@ class Human(object):
                     self.city.tracker.track_update_messages(self, self.city.hd[message.unobs_id], new_risk_level)
 
         if cur_day in self.prev_risk_history_map.keys():
-            new_risk_level = min(_proba_to_risk_level(self.risk_history_map[cur_day]), 15)
             prev_risk_level = min(_proba_to_risk_level(self.prev_risk_history_map[cur_day]), 15)
-            if prev_risk_level != new_risk_level:
+            if prev_risk_level != self.risk_level:
                 self.tracing_method.modify_behavior(self)
 
     def update_risk(self, recovery=False, test_results=False, update_messages=None, symptoms=None):

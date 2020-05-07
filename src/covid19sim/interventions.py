@@ -202,22 +202,23 @@ class RiskBasedRecommendations(BehaviorInterventions):
     def __init__(self):
         super(RiskBasedRecommendations, self).__init__()
 
-    def get_recommendations_level(self, risk_level):
-        if risk_level <= self.UPPER_GREEN:
+    @staticmethod
+    def get_recommendations_level(risk_level):
+        if risk_level <= RiskBasedRecommendations.UPPER_GREEN:
             return 0
-        elif self.UPPER_GREEN < risk_level <= self.UPPER_BLUE:
+        elif RiskBasedRecommendations.UPPER_GREEN < risk_level <= RiskBasedRecommendations.UPPER_BLUE:
             return 1
-        elif self.UPPER_BLUE < risk_level <= self.UPPER_ORANGE:
+        elif RiskBasedRecommendations.UPPER_BLUE < risk_level <= RiskBasedRecommendations.UPPER_ORANGE:
             return 2
-        elif self.UPPER_ORANGE < risk_level <= self.UPPER_RED:
+        elif RiskBasedRecommendations.UPPER_ORANGE < risk_level <= RiskBasedRecommendations.UPPER_RED:
             return 3
         else:
             raise
 
     def modify_behavior(self, human):
-        rec_level = self.get_recommendations_level(human.risk_level)
-        human.rec_level = rec_level # FIXME: Shoudl rec_level be a part of human?
-        recommendations = get_recommendations(rec_level)
+        # rec_level = self.get_recommendations_level(human.risk_level)
+        # human.rec_level = rec_level # FIXME: Shoudl rec_level be a part of human?
+        recommendations = get_recommendations(human.rec_level)
         # print(f"chaging {human} from {human.rec_level} to {rec_level} {human.risk} {human.risk_level}")
         self.revert_behavior(human)
         for rec in recommendations:
@@ -351,14 +352,6 @@ class Tracing(object):
             n_jobs = kwargs.get("n_jobs")
             data_path = kwargs.get("data_path")
             city.humans = integrated_risk_pred(city.humans, city.start_time, city.current_day, city.env.timestamp.hour, all_possible_symptoms, port=port, n_jobs=n_jobs, data_path=data_path)
-            for h in city.humans:
-                # same as naive
-                if h.is_removed:
-                    h.risk = 0.0
-                if h.test_result == "positive":
-                    h.risk = 1.0
-                elif h.test_result == "negative":
-                    h.risk = 0.2
         else:
             for human in city.humans:
                 cur_day = (human.env.timestamp - human.env.initial_timestamp).days
@@ -368,7 +361,6 @@ class Tracing(object):
                         human.risk = self.compute_risk(t, s, r)
 
                     human.risk_history_map[cur_day] = human.risk
-
                     human.update_risk_level()
                     human.prev_risk_history_map[cur_day] = human.risk
 
