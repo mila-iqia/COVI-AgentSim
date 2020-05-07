@@ -106,12 +106,12 @@ class PlotRt:
         return most_likely, hdis
 
     @staticmethod
-    def plot(predicted_R, true_R=None):
-        for k in range(len(predicted_R)):
-            if predicted_R[k] == 0:
-                predicted_R[k] = 1
+    def plot(cases_per_day, true_R=None):
+        for k in range(len(cases_per_day)):
+            if cases_per_day[k] == 0:
+                cases_per_day[k] = 1
         plotrt = PlotRt(R_T_MAX=4, sigma=0.25)
-        most_likely, hdis = plotrt.compute(predicted_R)
+        most_likely, hdis = plotrt.compute(cases_per_day)
         index = np.array(list(range(most_likely.shape[0])))
         plt.figure()
         plt.plot(index, np.ones(most_likely.shape[0]), label="Rt=1", color='green')
@@ -134,5 +134,5 @@ class PlotRt:
 # unit tests for the current class
 if __name__ == '__main__':
     true_R = [2.0, 1.6666666666666667, 1.6666666666666667, 1.8, 1.8, 1.8333333333333333, 1.7142857142857142, 1.75]
-    predicted_R = [0, 0, 2, 2, 1, 1, 4, 2, 2, 6, 4, 6, 6, 7, 11, 7, 7, 18, 19, 11, 23, 34, 28, 29, 38, 60, 50, 56, 82, 81]
-    PlotRt.plot(predicted_R, true_R)
+    cases_per_day = [0, 0, 2, 2, 1, 1, 4, 2, 2, 6, 4, 6, 6, 7, 11, 7, 7, 18, 19, 11, 23, 34, 28, 29, 38, 60, 50, 56, 82, 81]
+    PlotRt.plot(cases_per_day, true_R)
