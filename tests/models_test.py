@@ -4,11 +4,9 @@ import os
 import pickle
 from tempfile import TemporaryDirectory
 import unittest
-import warnings
 
 import numpy as np
 
-from covid19sim.run import run_simu
 from covid19sim import config
 
 
@@ -17,6 +15,8 @@ class ModelsTest(unittest.TestCase):
         """
             run one simulation and ensure json files are correctly populated and most of the users have activity
         """
+        from covid19sim.run import run_simu
+
         with TemporaryDirectory() as preprocess_d:
             n_people = 100
             n_days = 30
@@ -37,7 +37,7 @@ class ModelsTest(unittest.TestCase):
             output = [[]] * len(days_output)
 
             for day_output in days_output:
-                pkls = glob.glob(f"{day_output}*/daily_human.pkl")
+                pkls = glob.glob(f"{day_output}*/daily_human-*.pkl")
                 pkls.sort(key=lambda p: (int(p.split(os.path.sep)[-3]), int(p.split(os.path.sep)[-2])))
                 day_humans = []
                 for pkl in pkls:
