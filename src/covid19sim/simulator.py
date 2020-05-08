@@ -16,7 +16,6 @@ from covid19sim.configs.config import *
 from collections import deque
 
 from covid19sim.frozen.clusters import Clusters
-import covid19sim.frozen.helper
 from covid19sim.frozen.utils import create_new_uid, Message, UpdateMessage, encode_message, encode_update_message
 from covid19sim.utils import _normalize_scores, _get_random_sex, _get_covid_progression, \
      _get_preexisting_conditions, _draw_random_discreet_gaussian, _sample_viral_load_piecewise, \
@@ -84,46 +83,6 @@ class Human(object):
     """
     [summary]
     """
-
-    _MESSAGE_FIELDS = {
-        # Static fields
-        'name',
-        'age',
-        # TODO: Should be reformatted to int timestamp
-        'sex',
-        'obs_age',
-        # TODO: Should be reformatted to int timestamp
-        'obs_sex',
-        'preexisting_conditions',
-        'obs_preexisting_conditions',
-
-        # Medical fields
-        'infectiousnesses',
-        'infection_timestamp',
-        # TODO: Should be reformatted to int timestamp
-        'recovered_timestamp',
-        # TODO: Should be reformatted to int timestamp
-        'test_time',
-        'rolling_all_symptoms',
-        'rolling_all_reported_symptoms',
-
-        # Risk fields
-        'risk',
-        'clusters',
-        'messages',
-        'exposure_message',
-        'update_messages',
-        'carefulness',
-        'has_app',
-
-        # Misc fields
-        # TODO: Should replaced by a light rng
-        'rng'
-    }
-
-    _ALL_POSSIBLE_SYMPTOMS = [k
-                              for k, v in sorted(list(covid19sim.frozen.helper.SYMPTOMS_META.items()),
-                                                 key=lambda item: item[1])]
 
     def __init__(self, env, city, name, age, rng, has_app, infection_timestamp, household, workplace, profession, rho=0.3, gamma=0.21, symptoms=[], test_results=None):
         """
@@ -252,8 +211,6 @@ class Human(object):
 
         # Message Passing and Risk Prediction
         self.sent_messages = {}
-        self.messages = []
-        self.update_messages = []
         self.clusters = Clusters()
         self.tested_positive_contact_count = 0
         # Padding the array
@@ -1406,52 +1363,6 @@ class Human(object):
         visited_locs[loc] += 1
         return loc
 
-    def get_message_dict(self):
-        """
-        Copy the object's state from self.__dict__ which contains
-        all our instance attributes. Always use the dict.copy()
-        method to avoid modifying the original state.
-
-        Returns:
-            [type]: [description]
-        """
-        state = self.__dict__.copy()
-        # Remove the unpicklable entries.
-        if state.get("env"):
-            state['messages'] = [encode_message(message) for message in self.contact_book.messages if
-                                 # match day; ugly till refactor
-                                 message[2] == self.contact_book.messages[-1][2]]
-            state['update_messages'] = [encode_update_message(update_message) for update_message in
-                                        self.contact_book.update_messages if
-                                        # match day; ugly till refactor
-                                        update_message[3] == self.contact_book.update_messages[-1][3]]
-
-            state["rolling_all_symptoms"] = \
-                covid19sim.frozen.helper.symptoms_to_np(self.rolling_all_symptoms,
-                                                        self._ALL_POSSIBLE_SYMPTOMS)
-
-            state["rolling_all_reported_symptoms"] = \
-                covid19sim.frozen.helper.symptoms_to_np(self.rolling_all_reported_symptoms,
-                                                        self._ALL_POSSIBLE_SYMPTOMS)
-
-            state["preexisting_conditions"] = \
-                covid19sim.frozen.helper.conditions_to_np(self.preexisting_conditions)
-
-            state["obs_preexisting_conditions"] = \
-                covid19sim.frozen.helper.conditions_to_np(self.obs_preexisting_conditions)
-
-            # Inference server is expecting test_time to be the time of a positive test
-            # TODO: move this logic out in a structure that will be used to send the data
-            #  to the server
-            if state['test_result'] == "negative":
-                state['test_time'] = datetime.datetime.max
-
-        for field in list(state.keys()):
-            if field not in Human._MESSAGE_FIELDS:
-                del state[field]
-
-        return state
-
     def __getstate__(self):
         """
         Copy the object's state from self.__dict__ which contains
@@ -1462,7 +1373,7 @@ class Human(object):
             [type]: [description]
         """
         warnings.warn("This should be not used to send the Human as a message. "
-                      "Deprecated in favor of Human.get_message_dict()", DeprecationWarning)
+                      "Deprecated in favor of models.run.HumanAsMessage", DeprecationWarning)
         state = self.__dict__.copy()
         # Remove the unpicklable entries.
         if state.get("env"):

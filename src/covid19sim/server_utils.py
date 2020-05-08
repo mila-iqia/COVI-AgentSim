@@ -201,14 +201,14 @@ class InferenceWorker(threading.Thread):
                         batch_size="auto",
                         prefer="threads") as parallel:
                     results = parallel((joblib.delayed(proc_human)(human, engine) for human in sample))
-                return [(r['name'], r['risk_history'], r['clusters']) for r in results]
+                return [(h.name, risk_history, h.clusters) for h, risk_history in results]
             else:
                 return [InferenceWorker.process_sample(human, engine, mp_backend, mp_threads) for human in sample]
         else:
             assert isinstance(sample, dict), "unexpected input data format"
-            results = proc_human(sample, engine, mp_backend, mp_threads)
-            if results is not None:
-                return (results['name'], results['risk_history'], results['clusters'])
+            result_human, risk_history = proc_human(sample, engine, mp_backend, mp_threads)
+            if result_human is not None:
+                return (result_human.name, risk_history, result_human.clusters)
             return None
 
 
@@ -385,19 +385,19 @@ def proc_human(params, inference_engine=None):
     # TODO: put algo type def above in config file
     human = params["human"]
     if CLUSTER_ALGO_TYPE == "old":
-        human["clusters"].add_messages(human["messages"])
-        human["clusters"].update_records(human["update_messages"])
-        human["clusters"].purge(params["current_day"])
+        human.clusters.add_messages(human.messages)
+        human.clusters.update_records(human.update_messages)
+        human.clusters.purge(params["current_day"])
     else:
         # note: this arg should only be true if the sim keeps sending old messages every iteration
         REBUILD_CLUSTERS_FROM_SCRATCH = False  # TODO: put in config file
         if REBUILD_CLUSTERS_FROM_SCRATCH or \
-                not isinstance(human["clusters"], covid19sim.frozen.clustering.base.ClusterManagerBase):
+                not isinstance(human.clusters, covid19sim.frozen.clustering.base.ClusterManagerBase):
             clustering_type = covid19sim.frozen.clustering.base.get_cluster_manager_type(CLUSTER_ALGO_TYPE)
             if CLUSTER_ALGO_TYPE == "naive":
                 clustering_type = functools.partial(clustering_type, ticks_per_uid_roll=1)
             # note: we create the manager to use day-level timestamps only
-            human["clusters"] = clustering_type(
+            human.clusters = clustering_type(
                 max_history_ticks_offset=ExpConfig.get('TRACING_N_DAYS_HISTORY'),
                 # note: the simulator should be able to match all update messages to encounters, but
                 # since the time slot update voodoo, I (PLSC) have not been able to make no-adopt
@@ -407,55 +407,55 @@ def proc_human(params, inference_engine=None):
                 generate_backw_compat_embeddings=True,
             )
         # set the current day as the refresh timestamp to auto-purge outdated messages in advance
-        human["clusters"].set_current_timestamp(params["current_day"])
+        human.clusters.set_current_timestamp(params["current_day"])
         USE_MESSAGE_BATCHING = True  # TODO: put in config file
         if USE_MESSAGE_BATCHING:
             encounter_messages = covid19sim.frozen.utils.convert_messages_to_batched_new_format(
-                human["messages"], human["exposure_message"])
+                human.messages, human.exposure_message)
             update_messages = covid19sim.frozen.utils.convert_messages_to_batched_new_format(
-                human["update_messages"])
+                human.update_messages)
             earliest_new_encounter_message = encounter_messages[0][0] if len(encounter_messages) else None
         else:
             encounter_messages = \
-                [covid19sim.frozen.utils.convert_message_to_new_format(m) for m in human["messages"]]
+                [covid19sim.frozen.utils.convert_message_to_new_format(m) for m in human.messages]
             exposure_message = \
-                covid19sim.frozen.utils.convert_message_to_new_format(human["exposure_message"]) \
-                if human["exposure_message"] else None
+                covid19sim.frozen.utils.convert_message_to_new_format(human.exposure_message) \
+                if human.exposure_message else None
             # since the original messages do not carry the 'exposition' flag, we have to set it manually:
             # hopefully this will only match the proper messages (based on _real_sender_id comparisons)...
             if exposure_message is not None:
                 for m in encounter_messages:
                     m._exposition_event = m == exposure_message
             update_messages = \
-                [covid19sim.frozen.utils.convert_message_to_new_format(m) for m in human["update_messages"]]
+                [covid19sim.frozen.utils.convert_message_to_new_format(m) for m in human.update_messages]
             earliest_new_encounter_message = encounter_messages[0] if len(encounter_messages) else None
         if earliest_new_encounter_message is not None:
             # quick verification: even with a 1-day buffer for timeslot craziness, we should not be
             # getting old encounters here; the simulator should not keep & transfer those every call
             assert REBUILD_CLUSTERS_FROM_SCRATCH or \
                    earliest_new_encounter_message.encounter_time + 1 >= params["current_day"]
-        human["clusters"].add_messages(
+        human.clusters.add_messages(
             messages=[*encounter_messages, *update_messages],
             current_timestamp=params["current_day"],
         )
 
     # Format for supervised learning / transformer inference
     todays_date = params["start"] + datetime.timedelta(days=params["current_day"])
-    is_exposed, exposure_day = covid19sim.frozen.helper.exposure_array(human["infection_timestamp"], todays_date)
-    is_recovered, recovery_day = covid19sim.frozen.helper.recovered_array(human["recovered_timestamp"], todays_date)
+    is_exposed, exposure_day = covid19sim.frozen.helper.exposure_array(human.infection_timestamp, todays_date)
+    is_recovered, recovery_day = covid19sim.frozen.helper.recovered_array(human.recovered_timestamp, todays_date)
     candidate_encounters, exposure_encounter = covid19sim.frozen.helper.candidate_exposures(human, todays_date)
-    reported_symptoms = human["rolling_all_reported_symptoms"]
-    true_symptoms = human["rolling_all_symptoms"]
+    reported_symptoms = human.rolling_all_reported_symptoms
+    true_symptoms = human.rolling_all_symptoms
 
     daily_output = {
         "current_day": params["current_day"],
         "observed": {
             "reported_symptoms": reported_symptoms,
             "candidate_encounters": candidate_encounters,
-            "test_results": covid19sim.frozen.helper.get_test_result_array(human["test_time"], todays_date),
-            "preexisting_conditions": human["obs_preexisting_conditions"],
-            "age": covid19sim.frozen.helper.encode_age(human["obs_age"]),
-            "sex": covid19sim.frozen.helper.encode_sex(human["obs_sex"])
+            "test_results": covid19sim.frozen.helper.get_test_result_array(human.test_time, todays_date),
+            "preexisting_conditions": human.obs_preexisting_conditions,
+            "age": human.obs_age,
+            "sex": human.obs_sex
         },
         "unobserved": {
             "true_symptoms": true_symptoms,
@@ -464,10 +464,10 @@ def proc_human(params, inference_engine=None):
             "exposure_day": exposure_day,
             "is_recovered": is_recovered,
             "recovery_day": recovery_day,
-            "infectiousness": np.array(human["infectiousnesses"]),
-            "true_preexisting_conditions": human["preexisting_conditions"],
-            "true_age": covid19sim.frozen.helper.encode_age(human["age"]),
-            "true_sex": covid19sim.frozen.helper.encode_sex(human["sex"])
+            "infectiousness": np.array(human.infectiousnesses),
+            "true_preexisting_conditions": human.preexisting_conditions,
+            "true_age": human.age,
+            "true_sex": human.sex
         }
     }
 
@@ -490,15 +490,15 @@ def proc_human(params, inference_engine=None):
             # TODO: ctt.modules.HealthHistoryEmbedding can fail with :
             #  size mismatch, m1: [14 x 29], m2: [13 x 128]
             warnings.warn(str(error), RuntimeWarning)
-    human['risk_history'] = None
+    risk_history = None
     if inference_result is not None:
         # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
         # ... TODO: apply the inference results to the human's risk before returning it
         #           (it will depend on the output format used by Nasim)
         # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-        human['risk_history'] = inference_result['infectiousness']
+        risk_history = inference_result['infectiousness']
 
     # clear all messages for next time we update
-    human["messages"] = []
-    human["update_messages"] = []
-    return human
+    human.messages = []
+    human.update_messages = []
+    return human, risk_history

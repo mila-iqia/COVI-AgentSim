@@ -7,6 +7,7 @@ import unittest
 
 import numpy as np
 
+from covid19sim.frozen.helper import conditions_to_np, encode_age, encode_sex
 from covid19sim.configs.exp_config import ExpConfig
 
 
@@ -229,6 +230,75 @@ class ModelsTest(unittest.TestCase):
             self.assertGreaterEqual(has_recovery_day, n_people * 0.2)
             self.assertGreaterEqual(exposure_encounter_cnt, n_people)
             self.assertGreaterEqual(infectiousness, n_people)
+
+
+class HumanAsMessageTest(unittest.TestCase):
+    class EnvMock:
+        def __init__(self, timestamp):
+            self.timestamp = timestamp
+    
+    def test_human_as_message(self):
+        from covid19sim.simulator import Human
+        from covid19sim.models.run import make_human_as_message
+
+        rng = np.random.RandomState(1234)
+
+        today = datetime.datetime.today()
+
+        env = self.EnvMock(today)
+
+        human = Human(env=env, city={'city': 'city'}, name=1, age=25, rng=rng, has_app=True,
+                      infection_timestamp=today, household={'household': 'household'},
+                      workplace={'workplace': 'workplace'}, profession="profession", rho=0.3,
+                      gamma=0.21, symptoms=[], test_results=None)
+
+        message = make_human_as_message(human)
+
+        for k in message.__dict__.keys():
+            if k in ('messages', 'update_messages'):
+                self.assertIn(k, human.contact_book.__dict__)
+            else:
+                self.assertIn(k, human.__dict__)
+
+        self.assertEqual(message.name, human.name)
+        self.assertEqual(message.age, encode_age(human.age))
+        self.assertEqual(message.sex, encode_sex(human.sex))
+        self.assertEqual(message.obs_age, encode_age(human.obs_age))
+        self.assertEqual(message.obs_sex, encode_sex(human.obs_sex))
+
+        self.assertEqual(message.infectiousnesses, human.infectiousnesses)
+        self.assertEqual(message.infection_timestamp, human.infection_timestamp)
+        self.assertEqual(message.recovered_timestamp, human.recovered_timestamp)
+        self.assertEqual(message.test_time, human.test_time)
+
+        self.assertEqual(message.clusters, human.clusters)
+        self.assertEqual(message.exposure_message, human.exposure_message)
+        self.assertEqual(message.carefulness, human.carefulness)
+        self.assertEqual(message.has_app, human.has_app)
+
+        self.assertEqual(message.preexisting_conditions.sum(), len(human.preexisting_conditions))
+        self.assertTrue((message.preexisting_conditions ==
+                         conditions_to_np(human.preexisting_conditions)).all())
+        self.assertEqual(message.obs_preexisting_conditions.sum(),
+                         len(human.obs_preexisting_conditions))
+        self.assertTrue((message.obs_preexisting_conditions ==
+                         conditions_to_np(human.obs_preexisting_conditions)).all())
+
+        self.assertEqual(message.rolling_all_symptoms.shape[0], len(human.rolling_all_symptoms))
+        for m_rolling_all_symptoms, h_rolling_all_symptoms in \
+                zip(message.rolling_all_symptoms, human.rolling_all_symptoms):
+            self.assertEqual(m_rolling_all_symptoms.sum(), len(h_rolling_all_symptoms))
+        self.assertEqual(message.rolling_all_reported_symptoms.shape[0],
+                         len(human.rolling_all_reported_symptoms))
+        for m_rolling_all_reported_symptoms, h_rolling_all_reported_symptomsin in \
+                zip(message.rolling_all_reported_symptoms, human.rolling_all_reported_symptoms):
+            self.assertEqual(m_rolling_all_reported_symptoms.sum(), len(h_rolling_all_reported_symptomsin))
+
+        self.assertEqual(len(message.messages), len([m for m in human.contact_book.messages
+                                                     if m.day == human.contact_book.messages[-1].day]))
+        self.assertEqual(len(message.update_messages),
+                         len([u_m for u_m in human.contact_book.update_messages
+                              if u_m.day == human.contact_book.update_messages[-1].day]))
 
 
 if __name__ == "__main__":

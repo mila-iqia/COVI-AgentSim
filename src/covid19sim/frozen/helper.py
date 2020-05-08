@@ -84,11 +84,11 @@ def get_test_result_array(human_test_time, date):
 
 
 def messages_to_np(human):
-    if isinstance(human["clusters"], ClusterManagerBase):
-        return human["clusters"].get_embeddings_array()
+    if isinstance(human.clusters, ClusterManagerBase):
+        return human.clusters.get_embeddings_array()
     else:
         ms_enc = []
-        for day, clusters in human["clusters"].clusters_by_day.items():
+        for day, clusters in human.clusters.clusters_by_day.items():
             for cluster_id, messages in clusters.items():
                 # TODO: take an average over the risks for that day
                 if not any(messages):
@@ -99,16 +99,16 @@ def messages_to_np(human):
 
 def candidate_exposures(human, date):
     candidate_encounters = messages_to_np(human)
-    if isinstance(human["clusters"], ClusterManagerBase):
-        exposed_encounters = human["clusters"]._get_expositions_array()
+    if isinstance(human.clusters, ClusterManagerBase):
+        exposed_encounters = human.clusters._get_expositions_array()
     else:
         exposed_encounters = np.zeros(len(candidate_encounters))
-        if human["exposure_message"]:
+        if human.exposure_message:
             idx = 0
-            for day, clusters in human["clusters"].clusters_by_day.items():
+            for day, clusters in human.clusters.clusters_by_day.items():
                 for cluster_id, messages in clusters.items():
                     for message in messages:
-                        if message == human["exposure_message"]:
+                        if message == human.exposure_message:
                             exposed_encounters[idx] = 1.
                             break
                     if sum(exposed_encounters) == 1:
@@ -128,12 +128,13 @@ def conditions_to_np(conditions):
     return conditions_encs
 
 
+# TODO: track and remove all_possible_symptoms as SYMPTOMS_META is used instead
 def symptoms_to_np(all_symptoms, all_possible_symptoms):
     rolling_window = 14
-    symptoms_enc = np.zeros((rolling_window, len(all_possible_symptoms) + 1))
+    symptoms_enc = np.zeros((rolling_window, len(SYMPTOMS_META) + 1))
     for day, symptoms in zip(range(rolling_window), all_symptoms):
         for symptom in symptoms:
-            symptoms_enc[day, all_possible_symptoms.index(symptom)] = 1.
+            symptoms_enc[day, SYMPTOMS_META[symptom]] = 1.
     return symptoms_enc
 
 

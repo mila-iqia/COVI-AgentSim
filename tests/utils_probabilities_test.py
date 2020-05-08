@@ -2,37 +2,19 @@ import unittest
 
 import numpy as np
 
-from covid19sim.frozen.helper import PREEXISTING_CONDITIONS_META, SYMPTOMS_META
 from covid19sim.utils import _get_covid_progression, _get_cold_progression, _get_flu_progression, \
     _get_preexisting_conditions, PREEXISTING_CONDITIONS, SYMPTOMS, SYMPTOMS_CONTEXTS
 
 
 class Symptoms(unittest.TestCase):
     def test_symptoms_structure(self):
-        s_ids = set()
-
-        # Legacy all_possible_symptoms
-        all_possible_symptoms = ['moderate', 'mild', 'severe', 'extremely-severe', 'fever',
-                                 'chills', 'gastro', 'diarrhea', 'nausea_vomiting', 'fatigue',
-                                 'unusual', 'hard_time_waking_up', 'headache', 'confused',
-                                 'lost_consciousness', 'trouble_breathing', 'sneezing',
-                                 'cough', 'runny_nose', 'aches', 'sore_throat', 'severe_chest_pain',
-                                 'loss_of_taste', 'mild_trouble_breathing', 'light_trouble_breathing',
-                                 'moderate_trouble_breathing',
-                                 'heavy_trouble_breathing']
-
         for s_name, s_prob in SYMPTOMS.items():
             self.assertEqual(s_name, s_prob.name)
-            self.assertEqual(s_prob.id, SYMPTOMS_META[s_name])
-            if s_prob.id < len(all_possible_symptoms):
-                self.assertEqual(s_name, all_possible_symptoms[s_prob.id])
 
-            self.assertNotIn(s_prob.id, s_ids)
             s_prob_contexts = set(s_prob.probabilities.keys())
             if s_prob_contexts:
                 self.assertTrue([1 for _, symptoms_contexts in SYMPTOMS_CONTEXTS.items()
                                  if set(symptoms_contexts.values()).issubset(s_prob_contexts)])
-            s_ids.add(s_prob.id)
 
 
 class CovidProgression(unittest.TestCase):
@@ -522,15 +504,8 @@ class FluSymptoms(unittest.TestCase):
 
 class PreexistingConditions(unittest.TestCase):
     def test_preexisting_conditions_struct(self):
-        c_ids = set()
-
         for c_name, c_probs in PREEXISTING_CONDITIONS.items():
             c_id = c_probs[0].id
-
-            self.assertEqual(c_id, PREEXISTING_CONDITIONS_META[c_name])
-
-            self.assertNotIn(c_id, c_ids)
-            c_ids.add(c_id)
 
             for c_prob in c_probs:
                 self.assertEqual(c_name, c_prob.name)
