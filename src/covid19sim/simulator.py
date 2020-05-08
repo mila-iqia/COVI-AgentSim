@@ -1098,6 +1098,11 @@ class Human(object):
             del state['tracing_method']
             if state.get('_workplace'):
                 del state['_workplace']
+            # Inference server is expecting test_time to be the time of a positive test
+            # TODO: move this logic out in a structure that will be used to send the data
+            #  to the server
+            if state['test_result'] == "negative":
+                state['test_time'] = datetime.datetime.max
 
         # add a stand-in for property
         # state["all_reported_symptoms"] = self.all_reported_symptoms
