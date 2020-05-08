@@ -246,6 +246,23 @@ class City(simpy.Environment):
 
         while True:
 
+            # Notify humans to follow interventions on intervention day
+            if self.current_day == ExpConfig.get('INTERVENTION_DAY') and not humans_notified:
+                self.intervention = get_intervention(key=ExpConfig.get('INTERVENTION'),
+                                                     RISK_MODEL=ExpConfig.get('RISK_MODEL'),
+                                                     TRACING_ORDER=ExpConfig.get('TRACING_ORDER'),
+                                                     TRACE_SYMPTOMS=ExpConfig.get('TRACE_SYMPTOMS'),
+                                                     TRACE_RISK_UPDATE=ExpConfig.get('TRACE_RISK_UPDATE'),
+                                                     SHOULD_MODIFY_BEHAVIOR=ExpConfig.get('SHOULD_MODIFY_BEHAVIOR'))
+                _ = [h.notify(self.intervention) for h in self.humans]
+                print(self.intervention)
+                humans_notified = True
+            # If we're collecting data and running an unmitigated simulation (behaviour not changing due to intervention)
+            elif ExpConfig.get('COLLECT_TRAINING_DATA') and (self.current_day == 0 and ExpConfig.get('INTERVENTION_DAY') < 0):
+                print("naive risk calculation without changing behavior... Humans notified!")
+                self.intervention = Tracing(risk_model="naive", max_depth=1, symptoms=False, risk=False, should_modify_behavior=False)
+                _ = [h.notify(self.intervention) for h in self.humans]
+
             # iterate over humans, and if it's their timeslot, then update their infectionsness, symptoms, and message info
             for human in self.humans:
                 if self.env.timestamp.hour in human.time_slots:
@@ -270,37 +287,19 @@ class City(simpy.Environment):
                                     human.message_info[type_contacts][order] = human.message_info[type_contacts][order][1:]
                                 human.message_info[type_contacts][order].append(0)
 
-            if self.env.timestamp.hour == 0:
-                # TODO: this is an assumption which will break in reality, instead of updating once per day everyone at the same time, it should be throughout the day
-                for human in self.humans:
-                    human.uid = update_uid(human.uid, human.rng)
-
-            if self.env.timestamp.hour == 0 and self.env.timestamp != self.env.initial_timestamp:
-                self.current_day += 1
-                self.tracker.increment_day()
-                # pd.DataFrame([(h.risk, h.is_infectious or h.is_exposed) for h in self.city.humans]).to_csv("risk_histogram.csv")
-
-            if self.current_day == ExpConfig.get('INTERVENTION_DAY') and not humans_notified:
-                self.intervention = get_intervention(key=ExpConfig.get('INTERVENTION'),
-                                                     RISK_MODEL=ExpConfig.get('RISK_MODEL'),
-                                                     TRACING_ORDER=ExpConfig.get('TRACING_ORDER'),
-                                                     TRACE_SYMPTOMS=ExpConfig.get('TRACE_SYMPTOMS'),
-                                                     TRACE_RISK_UPDATE=ExpConfig.get('TRACE_RISK_UPDATE'),
-                                                     SHOULD_MODIFY_BEHAVIOR=ExpConfig.get('SHOULD_MODIFY_BEHAVIOR'))
-                _ = [h.notify(self.intervention) for h in self.humans]
-                print(f"Collecting data: {ExpConfig.get('COLLECT_TRAINING_DATA')}")
-                print(self.intervention)
-                humans_notified = True
-
             if isinstance(self.intervention, Tracing):
                 self.intervention.update_human_risks(city=self,
                                 symptoms=all_possible_symptoms, port=port,
                                 n_jobs=n_jobs, data_path=outfile)
 
-            if ExpConfig.get('COLLECT_TRAINING_DATA') and (self.current_day == 0 and ExpConfig.get('INTERVENTION_DAY') < 0):
-                print("naive risk calculation without changing behavior... Humans notified!")
-                self.intervention = Tracing(risk_model="naive", max_depth=1, symptoms=False, risk=False, should_modify_behavior=False)
-                _ = [h.notify(self.intervention) for h in self.humans]
+            # increment the day / update uids if we just ran all the people in timeslot 23 (last hour of the day == done)
+            if self.env.timestamp.hour == 23 and self.env.timestamp != self.env.initial_timestamp:
+                # TODO: this is an assumption which will break in reality, instead of updating once per day everyone at the same time, it should be throughout the day
+                for human in self.humans:
+                    human.uid = update_uid(human.uid, human.rng)
+                self.current_day += 1
+                self.tracker.increment_day()
+                # pd.DataFrame([(h.risk, h.is_infectious or h.is_exposed) for h in self.city.humans]).to_csv("risk_histogram.csv")
 
             # Let the hour pass
             yield self.env.timeout(duration / TICK_MINUTE)

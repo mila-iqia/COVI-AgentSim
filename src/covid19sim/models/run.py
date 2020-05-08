@@ -22,9 +22,6 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
     hd = humans[0].city.hd
     all_params = []
 
-    current_time = (start + timedelta(days=current_day, hours=time_slot))
-    current_date = current_time.date()
-
     # We're going to send a request to the server for each human
     for human in humans:
         if time_slot not in human.time_slots:
@@ -93,7 +90,8 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
 
                     for i in range(ExpConfig.get('TRACING_N_DAYS_HISTORY')):
                         hd[name].prev_risk_history_map[current_day - i] = risk_history[i]
-                else:
+
+                elif risk_history is None and current_day != ExpConfig.get('INTERVENTION_DAY'):
                     warnings.warn(f"risk history is none for human:{name}", RuntimeWarning)
 
                 hd[name].clusters = clusters
