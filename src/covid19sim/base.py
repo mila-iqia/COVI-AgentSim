@@ -142,7 +142,8 @@ class City(simpy.Environment):
             "area": (float) locations' typical area,
             "social_contact_factor": (float(0:1)) how much people are close to each other
                 see contamination_probability(),
-            "surface_prob": [0.1, 0.1, 0.3, 0.2, 0.3], TODO
+            "surface_prob": [0.1, 0.1, 0.3, 0.2, 0.3], distribution over types of surfaces
+                in that location
             "rnd_capacity": (tuple, optional) Either None or a tuple of ints (min, max)
             describing the args of np.random.randint,
         }
@@ -438,9 +439,33 @@ class City(simpy.Environment):
 
 
 class Location(simpy.Resource):
+    """
+    Class representing generic locations used in the simulator
+    """
 
     def __init__(self, env, rng, area, name, location_type, lat, lon,
             social_contact_factor, capacity, surface_prob):
+        """
+        Locations are created with city.create_location(), not instantiated directly
+
+        Args:
+            env (covid19sim.Env): Shared environment
+            rng (np.random.RandomState): Random number generator
+            area (float): Area of the location
+            name (str): The location's name
+            location_type (str): Location's type, see
+            lat (float): Location's latitude
+            lon (float): Location's longitude
+            social_contact_factor (float): how much people are close to each other
+                see contamination_probability() (this scales the contamination pbty)
+            capacity (int): Daily intake capacity for the location (infinity if None).
+            surface_prob (float): distribution of surface types in the Location. As
+                different surface types have different contamination probabilities
+                and virus "survival" durations, this will influence the contamination
+                of humans at this location.
+                Surfaces: aerosol, copper, cardboard, steel, plastic
+        """
+
 
         if capacity is None:
             capacity = simpy.core.Infinity
@@ -460,12 +485,31 @@ class Location(simpy.Resource):
         self.max_day_contamination = 0
 
     def infectious_human(self):
+        """
+        Returns:
+            bool: Is there an infectious human currently at that location
+        """
         return any([h.is_infectious for h in self.humans])
 
     def __repr__(self):
+        """
+        Returns:
+            str: Representation of the Location
+        """
         return f"{self.name} - occ:{len(self.humans)}/{self.capacity} - I:{self.is_contaminated}"
 
     def add_human(self, human):
+        """
+        Adds a human instance to the OrderedSet of humans at the location.
+        If they are infectious, then location.contamination_timestamp is set to the
+        env's timestamp and the duration of this contamination is set
+        (location.max_day_contamination) according to the distribution of surfaces
+        (location.contaminated_surface_probability) and the survival of the virus
+        per surface type (MAX_DAYS_CONTAMINATION)
+
+        Args:
+            human (covid19sim.simulator.Human): The human to add.
+        """
         self.humans.add(human)
         if human.is_infectious:
             self.contamination_timestamp = self.env.timestamp
@@ -473,14 +517,39 @@ class Location(simpy.Resource):
             self.max_day_contamination = max(self.max_day_contamination, rnd_surface)
 
     def remove_human(self, human):
+        """
+        Remove a given human from location.human
+        /!\ Human is not returned
+
+        Args:
+            human (covid19sim.simulator.Human): The human to remove
+        """
         self.humans.remove(human)
 
     @property
     def is_contaminated(self):
+        """
+        Is the location currently contaminated? This depends on the moment
+        when it got contaminated (see add_human()), current time and the
+        duration of the contamination (location.max_day_contamination)
+
+        Returns:
+            bool: Is the place currently contaminating?
+        """
         return self.env.timestamp - self.contamination_timestamp <= datetime.timedelta(days=self.max_day_contamination)
 
     @property
     def contamination_probability(self):
+        """
+        Contamination depends on the time the virus has been sitting on a given surface
+        (location.max_day_contamination) and is linearly decayed over time.
+        Then it is scaled by location.social_contact_factor
+
+        If not location.is_contaminated, return 0.0
+
+        Returns:
+            float: probability that a human is contaminated when going to this location.
+        """
         if self.is_contaminated:
             lag = (self.env.timestamp - self.contamination_timestamp)
             lag /= datetime.timedelta(days=1)
@@ -489,10 +558,22 @@ class Location(simpy.Resource):
         return 0.0
 
     def __hash__(self):
+        """
+        Hash of the location is the hash of its name
+
+        Returns:
+            int: hash
+        """
         return hash(self.name)
 
     def serialize(self):
-        """ This function serializes the location object"""
+        """
+        This function serializes the location object by deleting
+        non-serializable keys
+
+        Returns:
+            dict: serialized location
+        """
         s = self.__dict__
         if s.get('env'):
             del s['env']
@@ -509,15 +590,31 @@ class Location(simpy.Resource):
         return s
 
 class Household(Location):
+    """
+    Household location class, inheriting from covid19sim.base.Location
+    """
     def __init__(self, **kwargs):
+        """
+        Args:
+            kwargs (dict): all the args necessary for a Location's init
+        """
         super(Household, self).__init__(**kwargs)
         self.residents = []
 
 
 class Hospital(Location):
+    """
+    Hospital location class, inheriting from covid19sim.base.Location
+    """
     ICU_AREA = 0.10
     ICU_CAPACITY = 0.10
     def __init__(self, **kwargs):
+        """
+        Create the Hospital and its ICU
+
+        Args:
+            kwargs (dict): all the args necessary for a Location's init
+        """
         env = kwargs.get('env')
         rng = kwargs.get('rng')
         capacity = kwargs.get('capacity')
@@ -553,25 +650,65 @@ class Hospital(Location):
                         )
 
     def add_human(self, human):
+        """
+        Add a human to the Hospital's OrderedSet through the Location's
+        default add_human() method + set the human's obs_hospitalized attribute
+        is set to True
+
+        Args:
+            human (covid19sim.simulator.Human): human to add
+        """
         human.obs_hospitalized = True
         super().add_human(human)
 
     def remove_human(self, human):
+        """
+        Remove a human from the Hospital's Ordered set.
+        On top of Location.remove_human(), the human's obs_hospitalized attribute is
+        set to False
+
+        Args:
+            human (covid19sim.simulator.Human): human to remove
+        """
         human.obs_hospitalized = False
         super().remove_human(human)
 
 
 class ICU(Location):
-
+    """
+    Hospital location class, inheriting from covid19sim.base.Location
+    """
     def __init__(self, **kwargs):
+        """
+        Create a Hospital's ICU Location
+
+        Args:
+            kwargs (dict): all the args necessary for a Location's init
+        """
         super().__init__(**kwargs)
 
     def add_human(self, human):
+        """
+        Add a human to the ICU's OrderedSet through the Location's
+        default add_human() method + set the human's obs_hospitalized and
+        obs_in_icu attributes are set to True
+
+        Args:
+            human (covid19sim.simulator.Human): human to add
+        """
         human.obs_hospitalized = True
         human.obs_in_icu = True
         super().add_human(human)
 
     def remove_human(self, human):
+        """
+        Remove a human from the ICU's Ordered set.
+        On top of Location.remove_human(), the human's obs_hospitalized and
+        obs_in_icu attributes are set to False
+
+        Args:
+            human (covid19sim.simulator.Human): human to remove
+        """
         human.obs_hospitalized = False
         human.obs_in_icu = False
         super().remove_human(human)
