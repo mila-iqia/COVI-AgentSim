@@ -31,18 +31,6 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
             continue
 
         human_state = human.__getstate__()
-        if human.last_date['run'] != current_date:
-            infectiousnesses = copy.copy(human_state["infectiousnesses"])
-            # Pad missing days
-            # TODO: Reduce the current date by 1 hour since humans with time slot at hour 0
-            #  do not have the time to update their data. Update the human data at the same
-            #  time it is sent to the inference server would properly fix this
-            for day in range(((current_time + timedelta(hours=-1)).date() - human.last_date['run']).days):
-                infectiousnesses.appendleft(0)
-            human_state["infectiousnesses"] = infectiousnesses
-            warnings.warn(f"Human is outdated {human.name}. Current date {current_date}, "
-                          f"last_date['run'] {human.last_date['run']}",
-                          RuntimeWarning)
 
         log_path = None
         if data_path:
@@ -89,38 +77,28 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
             if result is not None:
                 name, risk_history, clusters = result
                 hd[name].clusters = clusters
+                hd[name].last_risk_update = current_day
                 hd[name].contact_book.update_messages = []
                 hd[name].contact_book.messages = []
-
-    if ExpConfig.get('RISK_MODEL') != "transformer":
+    else:
         for result in results:
             if result is not None:
                 name, risk_history, clusters = result
+
+                if risk_history is not None:
+                    for i in range(ExpConfig.get('TRACING_N_DAYS_HISTORY')):
+                        hd[name].risk_history_map[current_day - i] = risk_history[i]
+
+                    hd[name].update_risk_level()
+
+                    for i in range(ExpConfig.get('TRACING_N_DAYS_HISTORY')):
+                        hd[name].prev_risk_history_map[current_day - i] = risk_history[i]
+                else:
+                    warnings.warn(f"risk history is none for human:{name}", RuntimeWarning)
+
                 hd[name].clusters = clusters
                 hd[name].last_risk_update = current_day
                 hd[name].contact_book.update_messages = []
                 hd[name].contact_book.messages = []
-
-        return humans
-
-    for result in results:
-        if result is not None:
-            name, risk_history, clusters = result
-
-            if risk_history is not None:
-                for i in range(ExpConfig.get('TRACING_N_DAYS_HISTORY')):
-                    hd[name].risk_history_map[current_day - i] = risk_history[i]
-
-                hd[name].update_risk_level()
-
-                for i in range(ExpConfig.get('TRACING_N_DAYS_HISTORY')):
-                    hd[name].prev_risk_history_map[current_day - i] = risk_history[i]
-            else:
-                warnings.warn(f"risk history is none for human:{name}", RuntimeWarning)
-
-            hd[name].clusters = clusters
-            hd[name].last_risk_update = current_day
-            hd[name].contact_book.update_messages = []
-            hd[name].contact_book.messages = []
 
     return humans
