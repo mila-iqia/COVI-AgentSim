@@ -2,6 +2,7 @@ import datetime
 import numpy as np
 import unittest
 
+import covid19sim.frozen.utils
 import covid19sim.frozen.message_utils as mu
 from tests.utils import FakeHuman, generate_received_messages, generate_sent_messages, Visit
 
@@ -370,6 +371,51 @@ class MessageTests(unittest.TestCase):
         self.assertEqual(update_from_0_to_2_on_day_8.uid, humans[0].rolling_uids[6])
         self.assertEqual(update_from_0_to_2_on_day_8.old_risk_level, 0)
         self.assertEqual(update_from_0_to_2_on_day_8.new_risk_level, 3)
+
+    def test_parse_json_messages(self):
+        # example is from v1.5 data spec
+        contacts = [
+            {
+                "accuracy": "70.5739974975586",
+                "griddate": "2020-04-07",
+                "risks": {
+                    "04": [{"0": "00000F000700"}, {"0": "00000B0F0900"}],
+                    "02": [{"0": "000005000800"}, {"0": "000009050900"}],
+                    "0F": [{"0": "000002000800"}],
+                    "0C": [{"0": "000007000700"}],
+                    "0B": [{"0": "000004000700"}],
+                },
+            },
+            {
+                "accuracy": "70.5739974975586",
+                "griddate": "2020-04-07",
+                "risks": {
+                    "04": [{"0": "00000F000700"}, {"0": "00000B0F0900"}],
+                    "02": [{"0": "000005000800"}, {"0": "000009050900"}],
+                    "0F": [{"0": "000002000800"}],
+                    "0C": [{"0": "000007000700"}],
+                    "0B": [{"0": "000004000700"}]
+                }
+            }
+        ]
+        messages = covid19sim.frozen.utils.convert_json_to_new_format(
+            contacts, extract_self_reported_risks=True)
+        self.assertEqual(len(messages), 14)
+        self.assertTrue(all([isinstance(m, mu.UpdateMessage) for m in messages]))
+        self.assertTrue(
+            (messages[0].uid == 4) and
+            (messages[0].old_risk_level == 0) and
+            (messages[0].new_risk_level == 15) and
+            (messages[0].encounter_time == 18359) and
+            (messages[0].update_time == 18359)
+        )
+        self.assertTrue(
+            (messages[1].uid == 4) and
+            (messages[1].old_risk_level == 15) and
+            (messages[1].new_risk_level == 11) and
+            (messages[1].encounter_time == 18359) and
+            (messages[1].update_time == 18361)
+        )
 
 
 if __name__ == "__main__":

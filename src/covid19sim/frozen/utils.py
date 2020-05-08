@@ -1,4 +1,5 @@
-import numpy as np
+import datetime
+import time
 import typing
 from collections import namedtuple, defaultdict
 
@@ -104,6 +105,89 @@ def convert_message_to_old_format(
         )
     else:
         raise AssertionError(f"unexpected old message type: {type(message)}")
+
+
+def convert_json_to_new_format(
+        block: typing.Union[typing.List[typing.Dict], typing.Dict],
+        extract_self_reported_risks: bool,  # TODO: what should we use by default...?
+        timestamp_offset: typing.Optional[datetime.datetime] = None,  # default = offset from epoch
+        ticks_per_step: typing.Optional[new_utils.TimeOffsetType] = 24 * 60 * 60,
+
+) -> typing.List[new_utils.GenericMessageType]:
+    """Converts a JSON contact block (as defined in the data spec) into a list of
+    messages that can be ingested by the clustering algorithm.
+
+    A data block defines a set of update messages received by Alice for encounters
+    on a specific (past) day at a specific geospatial location. The attributes in a
+    contact block include the accuracy of the geospatial region and the griddate.
+
+    If an update message has the same value for its old and new risk levels, it is
+    assumed to be a fresh encounter with a new user at the block's griddate.
+    """
+    if isinstance(block, list):
+        return [m for b in block for m in convert_json_to_new_format(
+            block=b, extract_self_reported_risks=extract_self_reported_risks,
+            timestamp_offset=timestamp_offset, ticks_per_step=ticks_per_step,
+        )]
+    assert isinstance(block, dict), f"unexpected contact block type: {type(block)}"
+    assert all([isinstance(k, str) for k in block.keys()]), \
+        "unexpected block key types; these should all be strings!"
+    expected_block_keys = ["accuracy", "griddate", "risks"]
+    assert all([k in block for k in expected_block_keys]), \
+        f"a mandatory key is missing from the data block; it should have: {expected_block_keys}"
+    # TODO: this function needs to contain the logic to convert the day-of-month integer
+    #       for the update time to an actual date (currently, we parse it as-is)
+    encounter_date = datetime.datetime.strptime(block["griddate"], "%Y-%m-%d")
+    encounter_timestamp = new_utils.TimestampType(encounter_date.timestamp())
+    if timestamp_offset is not None:
+        encounter_timestamp -= timestamp_offset
+    if ticks_per_step is not None:
+        encounter_timestamp //= ticks_per_step
+    encounter_messages, update_messages = [], []
+    assert isinstance(block["risks"], dict)
+    for sender_uid, messages in block["risks"].items():
+        assert isinstance(sender_uid, str) and len(sender_uid) == 2
+        sender_uid = new_utils.UIDType(int(sender_uid, 16))
+        for message in messages:
+            assert isinstance(message, dict) and len(message) == 1
+            assert "0" in message and len(message["0"]) == 12
+            bitstring = message["0"]
+            if extract_self_reported_risks:
+                new_risk_level = new_utils.RiskLevelType(int(bitstring[4:6], 16))
+                old_risk_level = new_utils.RiskLevelType(int(bitstring[6:8], 16))
+            else:  # otherwise, use test result risk levels
+                new_risk_level = new_utils.RiskLevelType(int(bitstring[0:2], 16))
+                old_risk_level = new_utils.RiskLevelType(int(bitstring[2:4], 16))
+            if new_risk_level == old_risk_level:
+                # special case used to identify new encounters
+                encounter_messages.append(new_utils.EncounterMessage(
+                    uid=sender_uid,
+                    risk_level=new_risk_level,
+                    encounter_time=encounter_timestamp
+                ))
+                continue
+            update_day_of_month = int(bitstring[8:10], 16)
+            if update_day_of_month < encounter_date.day:
+                # just assume it was done last month, and loop the datetime
+                lookback = encounter_date - datetime.timedelta(days=encounter_date.day)
+                update_date = datetime.datetime(
+                    year=lookback.year, month=lookback.month, day=update_day_of_month)
+            else:
+                update_date = datetime.datetime(
+                    year=encounter_date.year, month=encounter_date.month, day=update_day_of_month)
+            update_timestamp = new_utils.TimestampType(update_date.timestamp())
+            if timestamp_offset is not None:
+                update_timestamp -= timestamp_offset
+            if ticks_per_step is not None:
+                update_timestamp //= ticks_per_step
+            update_messages.append(new_utils.UpdateMessage(
+                uid=sender_uid,
+                old_risk_level=old_risk_level,
+                new_risk_level=new_risk_level,
+                encounter_time=encounter_timestamp,
+                update_time=update_timestamp,
+            ))
+    return [*encounter_messages, *update_messages]
 
 
 def encode_message(message):
