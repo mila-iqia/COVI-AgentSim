@@ -82,7 +82,8 @@ def base():
 @click.option('--n_people', help='population of the city', type=int, default=1000)
 @click.option('--simulation_days', help='number of days to run the simulation for', type=int, default=50)
 @click.option('--seed', help='seed for the process', type=int, default=0)
-def tune(n_people, simulation_days, seed):
+@click.option('--init_percent_sick', help='percentage of sick people in the beginning', type=float, default=0.01)
+def tune(n_people, simulation_days, seed, init_percent_sick):
     # Force COLLECT_LOGS=False
     config.COLLECT_LOGS = False
 
@@ -92,7 +93,7 @@ def tune(n_people, simulation_days, seed):
     import matplotlib.pyplot as plt
     # cf.go_offline()
 
-    monitors, tracker = run_simu(n_people=n_people, init_percent_sick=0.02,
+    monitors, tracker = run_simu(n_people=n_people, init_percent_sick=init_percent_sick,
                             start_time=datetime.datetime(2020, 2, 28, 0, 0),
                             simulation_days=simulation_days,
                             outfile=None,
@@ -126,6 +127,7 @@ def tune(n_people, simulation_days, seed):
     data['risk_precision'] = tracker.risk_precision_daily
     data['human_monitor'] = tracker.human_monitor
     data['infection_monitor'] = tracker.infection_monitor
+    data['infector_infectee_update_messages'] = tracker.infector_infectee_update_messages
     # data['dist_encounters'] = dict(tracker.dist_encounters)
     # data['time_encounters'] = dict(tracker.time_encounters)
     # data['day_encounters'] = dict(tracker.day_encounters)

@@ -114,7 +114,7 @@ class Human(object):
         self.initial_viral_load = self.rng.rand() if infection_timestamp is not None else 0
         if self.infection_timestamp is not None:
             self.compute_covid_properties()
-            print(f"{self} is infected")
+            print(f"{self} is infected. has_app:{self.has_app}")
 
         # counters and memory
         self.r0 = []
@@ -138,7 +138,7 @@ class Human(object):
         self.test_recommended = False
 
         # risk prediction
-        self.rec_level = -1 # risk-based recommendations
+        # self.rec_level = -1 # risk-based recommendations
         self.past_N_days_contacts = [OrderedSet()]
         self.n_contacts_tested_positive = defaultdict(int)
         self.contact_book = Contacts(self.has_app)
@@ -559,13 +559,10 @@ class Human(object):
             return 0.3 * (1 + self.carefulness)
 
         elif sum(x in current_symptoms for x in ["moderate", "mild", "fever"]) > 0:
-            return 0.2
+            return 0.5
 
         elif sum(x in current_symptoms for x in ["cough", "fatigue", "gastro", "aches"]) > 0:
-            return 0.2
-
-        elif sum(x in current_symptoms for x in ["runny_nose", "loss_of_taste"]) > 0:
-            return 0.3
+            return 0.5
 
         return 1.0
 
@@ -578,19 +575,14 @@ class Human(object):
                 assert self.state.index(1) in next_state[self.last_state.index(1)], f"invalid compartment transition for {self.name}: {self.last_state} to {self.state}"
             self.last_state = self.state
 
-    def notify(self, intervention=None, collect_training_data=False):
-        if collect_training_data:
-            self.tracing = True
-            self.tracing_method = Tracing(risk_model="naive", max_depth=1, symptoms=False, risk=False, should_modify_behavior=False)
-            return
-
+    def notify(self, intervention=None):
         # FIXME: PERCENT_FOLLOW < 1 will throw an error because ot self.notified somewhere
         if intervention is not None and not self.notified and self.rng.random() < PERCENT_FOLLOW:
             self.tracing = False
             if isinstance(intervention, Tracing):
                 self.tracing = True
                 self.tracing_method = intervention
-                self.rec_level = 0
+                self.risk = 0
                 # initiate with basic recommendations
                 # FIXME: Check isinstance of the RiskBasedRecommendations class
                 if intervention.risk_model not in ['manual', 'digital']:
@@ -652,6 +644,7 @@ class Human(object):
                 city.tracker.track_generation_times(self.name) # it doesn't count environmental infection or primary case or asymptomatic/presymptomatic infections; refer the definition
 
             # log test
+            # TODO: needs better conditions; log test based on some condition on symptoms
             if (self.test_result != "positive" and
                 (self.test_recommended or
                 (self.is_incubated and self.env.timestamp - self.symptom_start_time >= datetime.timedelta(days=TEST_DAYS)))):
@@ -1165,6 +1158,14 @@ class Human(object):
             return BASELINE_RISK_VALUE
 
         cur_day = (self.env.timestamp - self.env.initial_timestamp).days
+        if self.is_removed:
+            self.risk_history_map[cur_day] = 0.0
+        if self.test_result == "positive":
+            self.risk_history_map[cur_day] = 1.0
+        elif self.test_result == "negative":
+            # TODO:  Risk because of negaitve results should not go down to 0.20. It should be max(o.2, current_risk). It should also depend on the test_type
+            self.risk_history_map[cur_day] = 0.2
+
         if cur_day in self.risk_history_map:
             return self.risk_history_map[cur_day]
         else:
@@ -1179,6 +1180,19 @@ class Human(object):
     def risk(self, val):
         cur_day = (self.env.timestamp - self.env.initial_timestamp).days
         self.risk_history_map[cur_day] = val
+
+    @property
+    def rec_level(self):
+        if isinstance(self.tracing_method, Tracing):
+            # FIXME: maybe merge Quarantine in RiskBasedRecommendations with 2 levels
+            if self.tracing_method.risk_model in ["manual", "digital"]:
+                if self.risk == 1.0:
+                    return 3
+                else:
+                    return 0
+
+            return self.tracing_method.intervention.get_recommendations_level(self.risk_level)
+        return -1
 
     def update_risk_level(self):
         cur_day = (self.env.timestamp - self.env.initial_timestamp).days
@@ -1204,18 +1218,18 @@ class Human(object):
                     self.city.hd[message.unobs_id].contact_book.update_messages.append(update_message)
                     self.contact_book.sent_messages_by_day[day][idx] = Message(my_old_message.uid, new_risk_level, my_old_message.day, my_old_message.unobs_id)
 
-        if cur_day in self.prev_risk_history_map.keys():
-            new_risk_level = min(_proba_to_risk_level(self.risk_history_map[cur_day]), 15)
-            prev_risk_level = min(_proba_to_risk_level(self.prev_risk_history_map[cur_day]), 15)
-            if prev_risk_level != new_risk_level:
-                self.tracing_method.modify_behavior(self)
+                    self.city.tracker.track_update_messages(self, self.city.hd[message.unobs_id], new_risk_level)
 
+        if cur_day in self.prev_risk_history_map.keys():
+            prev_risk_level = min(_proba_to_risk_level(self.prev_risk_history_map[cur_day]), 15)
+            if prev_risk_level != self.risk_level:
+                self.tracing_method.modify_behavior(self)
 
     def update_risk(self, recovery=False, test_results=False, update_messages=None, symptoms=None):
         if not self.tracing or self.tracing_method.risk_model == "transformer":
             return
-        cur_day = (self.env.timestamp - self.env.initial_timestamp).days
 
+        cur_day = (self.env.timestamp - self.env.initial_timestamp).days
         if recovery:
             if self.is_removed:
                 self.risk = 0.0

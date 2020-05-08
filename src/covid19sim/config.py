@@ -323,7 +323,7 @@ P_HAS_APP = 1.0
 HIDE_RECOMMENDATION_FROM_HUMANS = True
 
 # TRACING RISK MODEL PARAMETERS  (non-ML)
-# "transformer" has everything has True
+# "transformer" has everything as True; no need to specify anything here
 RISK_MODEL = "transformer" # "naive"  "manual", "digital", "transformer"
 TRACE_SYMPTOMS = False
 TRACE_RISK_UPDATE = False

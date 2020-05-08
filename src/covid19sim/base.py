@@ -248,19 +248,19 @@ class City(simpy.Environment):
                 for human in self.humans:
                     human.uid = update_uid(human.uid, human.rng)
 
-            if INTERVENTION_DAY >= 0 and self.current_day == INTERVENTION_DAY:
-                # first iteration of ML (collect data without modifying behavior)
-                if COLLECT_TRAINING_DATA:
-                    self.intervention = Tracing(risk_model="naive", max_depth=1, symptoms=False, risk=False, should_modify_behavior=False)
-                    print("naive risk calculation without changing behavior... Humans notified!")
-                else:
-                    self.intervention = get_intervention(INTERVENTION)
-                    if HIDE_RECOMMENDATION_FROM_HUMANS:
-                        print("Hiding recommendation from humans.")
-                    self.intervention.should_modify_behavior = not HIDE_RECOMMENDATION_FROM_HUMANS
+                if INTERVENTION_DAY >= 0 and self.current_day == INTERVENTION_DAY:
+                    # first iteration of ML (collect data without modifying behavior)
+                    if COLLECT_TRAINING_DATA:
+                        self.intervention = Tracing(risk_model="naive", max_depth=1, symptoms=False, risk=False, should_modify_behavior=False)
+                        print("naive risk calculation without changing behavior... Humans notified!")
+                    else:
+                        self.intervention = get_intervention(INTERVENTION)
+                        if HIDE_RECOMMENDATION_FROM_HUMANS:
+                            print("Hiding recommendation from humans.")
+                        self.intervention.should_modify_behavior = not HIDE_RECOMMENDATION_FROM_HUMANS
 
-                _ = [h.notify(self.intervention) for h in self.humans]
-                print(self.intervention)
+                    _ = [h.notify(self.intervention) for h in self.humans]
+                    print(self.intervention)
 
             if isinstance(self.intervention, Tracing):
                 self.intervention.update_human_risks(city=self,
@@ -270,10 +270,11 @@ class City(simpy.Environment):
             if self.env.timestamp.hour == 0 and self.env.timestamp != self.env.initial_timestamp:
                 self.current_day += 1
                 self.tracker.increment_day()
+                # pd.DataFrame([(h.risk, h.is_infectious or h.is_exposed) for h in self.city.humans]).to_csv("risk_histogram.csv")
+                # import pdb; pdb.set_trace()
 
             # Let the day pass
             yield self.env.timeout(duration / TICK_MINUTE)
-
 
 class Location(simpy.Resource):
 
