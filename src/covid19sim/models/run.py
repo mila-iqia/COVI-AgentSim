@@ -36,7 +36,7 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
         if time_slot not in human.time_slots:
             continue
 
-        human_state = human.__getstate__()
+        human_state = human.get_message_dict()
         if human.last_date['run'] != current_date:
             infectiousnesses = copy.copy(human_state["infectiousnesses"])
             # Pad missing days
