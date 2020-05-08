@@ -31,16 +31,14 @@ def sim(n_people=None,
     # Load the experimental configuration
     ExpConfig.load_config(config)
 
-    ExpConfig.config['COLLECT_LOGS'] = True
-
     if outdir is None:
         outdir = "output"
 
     os.makedirs(f"{outdir}", exist_ok=True)
-    outdir = f"{outdir}/sim_v2_people-{n_people}_days-{simulation_days}_init-{ExpConfig['INIT_PERCENT_SICK']}_seed-{seed}_{datetime.datetime.now().strftime('%Y%m%d-%H%M%S')}"
+    outdir = f"{outdir}/sim_v2_people-{n_people}_days-{simulation_days}_init-{ExpConfig.get('INIT_PERCENT_SICK')}_seed-{seed}_{datetime.datetime.now().strftime('%Y%m%d-%H%M%S')}"
     os.makedirs(outdir)
-
     outfile = os.path.join(outdir, "data")
+
     monitors, tracker = run_simu(
         n_people=n_people,
         start_time=start_time,
@@ -61,14 +59,21 @@ def sim(n_people=None,
 @click.option('--n_people', help='population of the city', type=int, default=1000)
 @click.option('--simulation_days', help='number of days to run the simulation for', type=int, default=50)
 @click.option('--seed', help='seed for the process', type=int, default=0)
+@click.option('--outdir', help='the directory to write data to', type=str, default="output", required=False)
 @click.option('--config', help='where is the configuration file for this experiment', type=str, default="configs/naive_config.yml")
-def tune(n_people, simulation_days, seed, config="configs/naive_config.yml"):
+@click.option('--n_jobs', help='number of parallel procs to query the risk servers with', type=int, default=1)
+def tune(n_people, simulation_days, n_jobs, seed, outdir, config="configs/naive_config.yml"):
 
     # Load the experimental configuration
     ExpConfig.load_config(config)
 
-    # Force COLLECT_LOGS=False
-    ExpConfig.set('COLLECT_LOGS', False)
+    if outdir is None:
+        outdir = "output"
+
+    os.makedirs(f"{outdir}", exist_ok=True)
+    outdir = f"{outdir}/sim_v2_people-{n_people}_days-{simulation_days}_init-{ExpConfig.get('INIT_PERCENT_SICK')}_seed-{seed}_{datetime.datetime.now().strftime('%Y%m%d-%H%M%S')}"
+    os.makedirs(outdir)
+    outfile = os.path.join(outdir, "data")
 
     # extra packages required  - plotly-orca psutil networkx glob seaborn
     import pandas as pd
@@ -78,8 +83,8 @@ def tune(n_people, simulation_days, seed, config="configs/naive_config.yml"):
     monitors, tracker = run_simu(n_people=n_people,
                             start_time=datetime.datetime(2020, 2, 28, 0, 0),
                             simulation_days=simulation_days,
-                            outfile=None,
-                            print_progress=True, seed=seed, other_monitors=[]
+                            outfile=outfile,
+                            print_progress=True, n_jobs=n_jobs, seed=seed, other_monitors=[],
                             )
 
     # stats = monitors[1].data
@@ -88,8 +93,8 @@ def tune(n_people, simulation_days, seed, config="configs/naive_config.yml"):
     # fig.write_image("plots/tune/seir.png")
     timenow = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
     data = dict()
-    data['intervention_day'] = config.INTERVENTION_DAY
-    data['intervention'] = config.INTERVENTION
+    data['intervention_day'] = ExpConfig.get('INTERVENTION_DAY')
+    data['intervention'] = ExpConfig.get('INTERVENTION')
 
     data['expected_mobility'] = tracker.expected_mobility
     data['mobility'] = tracker.mobility

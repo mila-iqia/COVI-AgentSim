@@ -273,9 +273,9 @@ class City(simpy.Environment):
                                 n_jobs=n_jobs, data_path=outfile)
 
             if ExpConfig.get('COLLECT_TRAINING_DATA') and (self.current_day == 0 and ExpConfig.get('INTERVENTION_DAY') < 0):
-                _ = [h.notify(collect_training_data=True) for h in self.humans]
                 print("naive risk calculation without changing behavior... Humans notified!")
                 self.intervention = Tracing(risk_model="naive", max_depth=1, symptoms=False, risk=False, should_modify_behavior=False)
+                _ = [h.notify(self.intervention) for h in self.humans]
 
             # Let the hour pass
             yield self.env.timeout(duration / TICK_MINUTE)
