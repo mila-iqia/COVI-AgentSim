@@ -351,31 +351,26 @@ class NaiveClusteringTests(unittest.TestCase):
                 len(naive_cluster_manager.clusters),
             )
             naive_homogeneity_scores = naive_cluster_manager._get_homogeneity_scores()
-            naive_concentration_scores = naive_cluster_manager._get_concentration_scores()
-            self.assertTrue(all([id in naive_homogeneity_scores for id in naive_concentration_scores]))
-            self.assertTrue(all([id in naive_concentration_scores for id in naive_homogeneity_scores]))
             for id in naive_homogeneity_scores:
                 self.assertLessEqual(naive_homogeneity_scores[id], 1.0)
                 expected_user_encounters = \
                     sum([v.visited_real_uid == 0 and v.visitor_real_uid == id for v in visits])
                 min_homogeneity = expected_user_encounters / sum([v.visited_real_uid == 0 for v in visits])
                 self.assertLessEqual(min_homogeneity, naive_homogeneity_scores[id])
-                self.assertLessEqual(0, naive_concentration_scores[id])
-                max_concentration = 1 - (1 / len(naive_cluster_manager.clusters))
-                self.assertLessEqual(naive_concentration_scores[id], max_concentration)
             simple_homogeneity_scores = simple_cluster_manager._get_homogeneity_scores()
-            simple_concentration_scores = simple_cluster_manager._get_concentration_scores()
+
             print(f"---- iter#{iter_idx + 1} ----")
             print(f"\tsimplistic clustr average homogeneity = {np.mean(list(simple_homogeneity_scores.values()))}")
-            print(f"\tsimplistic clustr average concentration = {np.mean(list(simple_concentration_scores.values()))}")
+            print(f"\tsimplistic clustr count error = {simple_cluster_manager._get_cluster_count_error()}")
             print(f"\tsimplistic clustr count = {len(simple_cluster_manager.clusters)}")
             print(f"\tnaive clustr average homogeneity = {np.mean(list(naive_homogeneity_scores.values()))}")
-            print(f"\tnaive clustr average concentration = {np.mean(list(naive_concentration_scores.values()))}")
+            print(f"\tnaive clustr count error = {naive_cluster_manager._get_cluster_count_error()}")
             print(f"\tnaive clustr count = {len(naive_cluster_manager.clusters)}")
 
     def test_random_large_scale_batch(self):
         # TODO : add an actual test for batch-based computation? should results be == reg?
         n_trials = 25
+        np.random.seed(0)
         for _ in range(n_trials):
             h0_messages, visits = self._get_random_messages(
                 n_humans=10,
@@ -383,18 +378,52 @@ class NaiveClusteringTests(unittest.TestCase):
                 n_expositions=5,
                 max_timestamp=14,
             )
+            encounter_messages = [m for m in h0_messages if isinstance(m, mu.EncounterMessage)]
+            update_messages = [m for m in h0_messages if isinstance(m, mu.UpdateMessage)]
+            batched_encounter_messages = \
+                covid19sim.frozen.utils.convert_messages_to_batched_new_format(encounter_messages)
+            batched_update_messages = \
+                covid19sim.frozen.utils.convert_messages_to_batched_new_format(update_messages)
+            batched_naive_cluster_manager = naive.NaiveClusterManager(
+                ticks_per_uid_roll=1,
+                max_history_ticks_offset=never,
+            )
             naive_cluster_manager = naive.NaiveClusterManager(
                 ticks_per_uid_roll=1,
                 max_history_ticks_offset=never,
             )
-            batched_h0_messages = \
-                covid19sim.frozen.utils.convert_messages_to_batched_new_format(h0_messages)
-            naive_cluster_manager.add_messages(batched_h0_messages)
+            batched_naive_cluster_manager.add_messages(batched_encounter_messages)
+            naive_cluster_manager.add_messages(encounter_messages)
+            self.assertEqual(
+                batched_naive_cluster_manager.clusters,
+                naive_cluster_manager.clusters,
+            )
+            batched_naive_cluster_manager.add_messages(batched_update_messages)
+            naive_cluster_manager.add_messages(update_messages)
+            self.assertEqual(
+                len(batched_naive_cluster_manager.clusters),
+                len(naive_cluster_manager.clusters),
+            )
+            for c_idx, (c1, c2) in \
+                    enumerate(zip(batched_naive_cluster_manager.clusters,
+                                  naive_cluster_manager.clusters)):
+                # note: the only thing we can't match is the cluster id
+                self.assertEqual(c1.risk_level, c2.risk_level)
+                self.assertEqual(c1.first_update_time, c2.first_update_time)
+                self.assertEqual(c1.latest_update_time, c2.latest_update_time)
+                self.assertEqual(c1.messages_by_timestamp.keys(),
+                                 c2.messages_by_timestamp.keys())
+                for t in c1.messages_by_timestamp:
+                    c1_msgs = c1.messages_by_timestamp[t]
+                    c2_msgs = c1.messages_by_timestamp[t]
+                    self.assertEqual(len(c1_msgs), len(c2_msgs))
+                    for m1, m2 in zip(c1_msgs, c2_msgs):
+                        self.assertEqual(m1, m2)
             simple_cluster_manager = simple.SimplisticClusterManager(max_history_ticks_offset=never)
             simple_cluster_manager.add_messages(h0_messages)
             self.assertGreaterEqual(
                 len(simple_cluster_manager.clusters),
-                len(naive_cluster_manager.clusters),
+                len(batched_naive_cluster_manager.clusters),
             )
 
 

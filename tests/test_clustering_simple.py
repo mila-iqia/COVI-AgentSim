@@ -216,18 +216,12 @@ class SimpleClusteringTests(unittest.TestCase):
                 (mu.message_uid_mask + 1) * (mu.risk_level_mask + 1) * (max_timestamp + 1)
             )
             homogeneity_scores = cluster_manager._get_homogeneity_scores()
-            concentration_scores = cluster_manager._get_concentration_scores()
-            self.assertTrue(all([id in concentration_scores for id in homogeneity_scores]))
-            self.assertTrue(all([id in homogeneity_scores for id in concentration_scores]))
             for id in homogeneity_scores:
                 self.assertLessEqual(homogeneity_scores[id], 1.0)
                 expected_user_encounters = \
                     sum([v.visited_real_uid == 0 and v.visitor_real_uid == id for v in visits])
                 min_homogeneity = expected_user_encounters / sum([v.visited_real_uid == 0 for v in visits])
                 self.assertLessEqual(min_homogeneity, homogeneity_scores[id])
-                self.assertLessEqual(0, concentration_scores[id])
-                max_concentration = 1 - (1 / len(cluster_manager.clusters))
-                self.assertLessEqual(concentration_scores[id], max_concentration)
 
 
 if __name__ == "__main__":

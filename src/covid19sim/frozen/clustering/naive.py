@@ -468,7 +468,7 @@ class NaiveClusterManager(ClusterManagerBase):
         # update-message-to-encounter-message-matching should not be uncertain; we will
         # go through all clusters and fit the update message to the first instance that will take it
         found_adopter = False
-        for cluster in self.clusters:
+        for cluster_idx, cluster in enumerate(self.clusters):
             if cluster.risk_level != message.old_risk_level:
                 # naive clusters should always reflect the risk level of all their encounters; if
                 # we can't match the risk level here, there's no way the update can apply on it
@@ -478,7 +478,8 @@ class NaiveClusterManager(ClusterManagerBase):
                 if fit_result is not None and isinstance(fit_result, NaiveCluster):
                     fit_result.cluster_id = self.next_cluster_id
                     self.next_cluster_id = (self.next_cluster_id + 1) % self.max_cluster_id
-                    self.clusters.append(fit_result)
+                    # to keep the results identical with/without batching, insert at curr index + 1
+                    self.clusters.insert(cluster_idx + 1, fit_result)
                 found_adopter = True
                 break
         if not found_adopter and self.add_orphan_updates_as_clusters:
@@ -491,18 +492,24 @@ class NaiveClusterManager(ClusterManagerBase):
         # for this to work, we assume that all encounters have the same uid/risks/timestamps!
         if not messages or self._check_if_message_outdated(messages[0], cleanup=False):
             return
-        for cluster in self.clusters:
+        cluster_idx = 0
+        while cluster_idx < len(self.clusters):
+            cluster = self.clusters[cluster_idx]
             if cluster.risk_level != messages[0].old_risk_level:
                 # naive clusters should always reflect the risk level of all their encounters; if
                 # we can't match the risk level here, there's no way the update can apply on it
+                cluster_idx += 1
                 continue
             messages, new_cluster = cluster.fit_update_message_batch(messages)
             if new_cluster is not None:
                 new_cluster.cluster_id = self.next_cluster_id
                 self.next_cluster_id = (self.next_cluster_id + 1) % self.max_cluster_id
-                self.clusters.append(new_cluster)
+                # to keep the results identical with/without batching, insert at curr index + 1
+                self.clusters.insert(cluster_idx + 1, new_cluster)
+                cluster_idx += 1  # skip that cluster if there are still updates to apply
             if not messages:
                 break  # all messages got adopted
+            cluster_idx += 1
         if messages and self.add_orphan_updates_as_clusters:
             self._add_new_cluster_from_message_batch(messages)
         elif messages:
@@ -563,10 +570,17 @@ class NaiveClusterManager(ClusterManagerBase):
             return np.asarray([c._get_cluster_exposition_flag() for c in self.clusters], dtype=np.uint8)
 
     def _get_homogeneity_scores(self) -> typing.Dict[RealUserIDType, float]:
-        """Returns the homogeneity score for all users present in the clusters.
+        """Returns the homogeneity score for all real users in the clusters.
 
         The homogeneity score for a user is defined as the number of true encounters involving that
-        user divided by the total number of encounters attributed to that user (via clustering).
+        user divided by the total number of encounters attributed to that user (via clustering). It
+        expresses how well the clustering algorithm managed to isolate that user's encounters from
+        the encounters of other users. In other words, it expresses how commonly a user was confused
+        for other users.
+
+        A homogeneity score of 1 means that the user was only ever assigned to clusters that only
+        contained its own encounters. The homogeneity does not reflect how many extra (unnecessary)
+        clusters were created by the algorithm.
 
         Computing this score requires the use of the "real" user IDs, meaning this is only
         possible with simulator data.
@@ -586,22 +600,24 @@ class NaiveClusterManager(ClusterManagerBase):
         return {user: user_true_encounter_counts[user] / user_total_encounter_count[user]
                 for user in user_true_encounter_counts}
 
-    def _get_concentration_scores(self) -> typing.Dict[RealUserIDType, float]:
-        """Returns the concentration score for all users present in the clusters.
+    def _get_cluster_count_error(self) -> int:
+        """Returns the difference between the number of clusters and the number of unique users.
 
-        The concentration score of a user is defined as one minus the number of clusters that
-        contain that user divided by the total number of clusters proposed by the algorithm.
+        Since the number of clusters should correspond to the number of unique users that the
+        clustering method can detect, we can compare this value with the actual number of
+        unique users that it saw. The absolute difference between the two can inform us on
+        how well the clustering method fragmented the encounters.
+
+        Note that an absolute error of 0 does not mean that the clusters were properly matched
+        to the right users. It only means that the clustering resulted in the right number of
+        users.
 
         Computing this score requires the use of the "real" user IDs, meaning this is only
         possible with simulator data.
         """
-        user_cluster_counts = collections.defaultdict(int)
+        encountered_users = set()
         for cluster in self.clusters:
-            cluster_users = set()
-            for _, msgs in cluster.messages_by_timestamp.items():
+            for msgs in cluster.messages_by_timestamp.values():
                 for msg in msgs:
-                    cluster_users.add(msg._sender_uid)
-            for user in cluster_users:
-                user_cluster_counts[user] += 1
-        return {user: 1 - (user_cluster_counts[user] / len(self.clusters))
-                for user in user_cluster_counts}
+                    encountered_users.add(msg._sender_uid)
+        return abs(len(encountered_users) - len(self.clusters))
