@@ -245,7 +245,6 @@ class City(simpy.Environment):
         humans_notified = False
 
         while True:
-
             # Notify humans to follow interventions on intervention day
             if self.current_day == ExpConfig.get('INTERVENTION_DAY') and not humans_notified:
                 self.intervention = get_intervention(key=ExpConfig.get('INTERVENTION'),
@@ -266,26 +265,27 @@ class City(simpy.Environment):
             # iterate over humans, and if it's their timeslot, then update their infectionsness, symptoms, and message info
             for human in self.humans:
                 if self.env.timestamp.hour in human.time_slots:
-                    human.last_date['run'] = self.env.timestamp.date()
-                    human.update_symptoms()
-                    human.update_reported_symptoms()
-                    human.update_risk(symptoms=human.symptoms)
-                    human.infectiousnesses.appendleft(human.infectiousness)
-                    if len(human.infectiousnesses) > ExpConfig.get('TRACING_N_DAYS_HISTORY'):
-                        human.infectiousnesses.pop()
+                    if human.last_date['run'] != self.env.timestamp.date():
+                        human.last_date['run'] = self.env.timestamp.date()
+                        human.update_symptoms()
+                        human.update_reported_symptoms()
+                        human.update_risk(symptoms=human.symptoms)
+                        human.infectiousnesses.appendleft(human.infectiousness)
+                        if len(human.infectiousnesses) > ExpConfig.get('TRACING_N_DAYS_HISTORY'):
+                            human.infectiousnesses.pop()
 
-                    Event.log_daily(human, human.env.timestamp)
-                    self.tracker.track_symptoms(human)
+                        Event.log_daily(human, human.env.timestamp)
+                        self.tracker.track_symptoms(human)
 
-                    # keep only past N_DAYS contacts
-                    if human.tracing:
-                        for type_contacts in ['n_contacts_tested_positive', 'n_contacts_symptoms', \
-                                              'n_risk_increased', 'n_risk_decreased', "n_risk_mag_decreased",
-                                              "n_risk_mag_increased"]:
-                            for order in human.message_info[type_contacts]:
-                                if len(human.message_info[type_contacts][order]) > ExpConfig.get('TRACING_N_DAYS_HISTORY'):
-                                    human.message_info[type_contacts][order] = human.message_info[type_contacts][order][1:]
-                                human.message_info[type_contacts][order].append(0)
+                        # keep only past N_DAYS contacts
+                        if human.tracing:
+                            for type_contacts in ['n_contacts_tested_positive', 'n_contacts_symptoms', \
+                                                  'n_risk_increased', 'n_risk_decreased', "n_risk_mag_decreased",
+                                                  "n_risk_mag_increased"]:
+                                for order in human.message_info[type_contacts]:
+                                    if len(human.message_info[type_contacts][order]) > ExpConfig.get('TRACING_N_DAYS_HISTORY'):
+                                        human.message_info[type_contacts][order] = human.message_info[type_contacts][order][1:]
+                                    human.message_info[type_contacts][order].append(0)
 
             if isinstance(self.intervention, Tracing):
                 self.intervention.update_human_risks(city=self,
