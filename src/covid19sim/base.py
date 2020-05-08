@@ -1,3 +1,6 @@
+"""
+[summary]
+"""
 import simpy
 import math
 import datetime
@@ -14,37 +17,93 @@ from covid19sim.configs.exp_config import ExpConfig
 
 
 class Env(simpy.Environment):
+    """
+    Custom simpy.Environment
+    """
 
     def __init__(self, initial_timestamp):
+        """
+        Args:
+            initial_timestamp (datetime.datetime): The environment's initial timestamp
+        """
         super().__init__()
         self.initial_timestamp = initial_timestamp
 
     def time(self):
+        """
+        Alias for simpy-defined `now` attribute
+
+        Returns:
+            datetime.datetime: current time in the environment
+        """
         return self.now
 
     @property
     def timestamp(self):
+        """
+        Returns:
+            datetime.datetime: current date (initial timestamp shifted by
+                env.now * TICK_MINUTE minutes)
+        """
         return self.initial_timestamp + datetime.timedelta(
             minutes=self.now * TICK_MINUTE)
 
     def minutes(self):
+        """
+        Returns:
+            int: current timestamp minute
+        """
         return self.timestamp.minute
 
     def hour_of_day(self):
+        """
+        Returns:
+            int: current timestamp hour
+        """
         return self.timestamp.hour
 
     def day_of_week(self):
+        """
+        Returns:
+            int: current timestamp day of the week
+        """
         return self.timestamp.weekday()
 
     def is_weekend(self):
+        """
+        Returns:
+            bool: current timestamp day is a weekend day
+        """
         return self.day_of_week() in [0, 6]
 
     def time_of_day(self):
+        """
+        Time of day in iso format
+        datetime(2020, 2, 28, 0, 0) => '2020-02-28T00:00:00'
+
+        Returns:
+            str: iso string representing current timestamp
+    """
         return self.timestamp.isoformat()
 
 class City(simpy.Environment):
+    """
+    City environment
+    """
 
     def __init__(self, env, n_people, rng, x_range, y_range, start_time, init_percent_sick, Human):
+        """
+
+        Args:
+            env (simpy.Environment): [description]
+            n_people (int): Number of people in the city
+            rng (np.random.RandomState): Random number generator
+            x_range (tuple): (min_x, max_x)
+            y_range (tuple): (min_y, max_y)
+            start_time (datetime.datetime): City's initial datetime
+            init_percent_sick (float): % of humans sick at the start of the simulation
+            Human (covid19.simulator.Human): Class for the city's human instances
+        """
         self.env = env
         self.rng = rng
         self.x_range = x_range
@@ -74,6 +133,30 @@ class City(simpy.Environment):
         self.intervention = None
 
     def create_location(self, specs, type, name, area=None):
+        """
+        Create a location instance based on `type`
+
+        Specs is a dict like:
+        {
+            "n" : (int) number of such locations,
+            "area": (float) locations' typical area,
+            "social_contact_factor": (float(0:1)) how much people are close to each other
+                see contamination_probability(),
+            "surface_prob": [0.1, 0.1, 0.3, 0.2, 0.3], TODO
+            "rnd_capacity": (tuple, optional) Either None or a tuple of ints (min, max)
+            describing the args of np.random.randint,
+        }
+
+        Args:
+            specs (dict): location's parameters
+            type (str): "household" and "senior_residency" create a Household instance,
+                "hospital" creates a Hospital, other strings create a generic Location
+            name (str): Location's name, created as `type:name`
+            area (float, optional): Location's area. Defaults to None.
+
+        Returns:
+            Location | Household | Hospital: new location instance
+        """
         _cls = Location
         if type in ['household', 'senior_residency']:
             _cls = Household
@@ -92,8 +175,13 @@ class City(simpy.Environment):
                         capacity= None if not specs['rnd_capacity'] else self.rng.randint(*specs['rnd_capacity']),
                         surface_prob = specs['surface_prob']
                         )
+
     @property
     def tests_available(self):
+        """
+        Returns:
+            bool: tests are available
+        """
         if self.last_date_to_check_tests != self.env.timestamp.date():
             self.last_date_to_check_tests = self.env.timestamp.date()
             for k in self.test_count_today.keys():
@@ -101,12 +189,25 @@ class City(simpy.Environment):
         return any(self.test_count_today[test_type] < TEST_TYPES[test_type]['capacity'] for test_type in self.test_type_preference)
 
     def get_available_test(self):
+        """
+        Returns a test_type: the first type that is available according to preference
+        hierarchy (TEST_TYPES[test_type]['preference']).
+
+        See TEST_TYPES in config.py
+
+        Returns:
+            str: available test_type
+        """
         for test_type in self.test_type_preference:
             if self.test_count_today[test_type] < TEST_TYPES[test_type]['capacity']:
                 self.test_count_today[test_type] += 1
                 return test_type
 
     def initialize_locations(self):
+        """
+        Create locations according to config.py / LOCATION_DISTRIBUTION.
+        The City instance will have attributes <location_type>s = list(location(*args))
+        """
         for location, specs in LOCATION_DISTRIBUTION.items():
             if location in ['household']:
                 continue
@@ -117,12 +218,18 @@ class City(simpy.Environment):
             setattr(self, f"{location}s", locs)
 
     def initialize_humans(self, Human):
-        # allocate humans to houses such that (unsolved)
-        # 1. average number of residents in a house is (approx.) 2.6
-        # 2. not all residents are below 15 years of age
-        # 3. age occupancy distribution follows HUMAN_DSITRIBUTION.residence_preference.house_size
+        """
+        allocate humans to houses such that (unsolved)
+        1. average number of residents in a house is (approx.) 2.6
+        2. not all residents are below 15 years of age
+        3. age occupancy distribution follows HUMAN_DSITRIBUTION.residence_preference.house_size
 
-        # current implementation is an approximate heuristic
+        current implementation is an approximate heuristic
+
+        Args:
+            Human (Class): Class for the city's human instances
+        """
+
 
         # make humans
         count_humans = 0
@@ -222,26 +329,74 @@ class City(simpy.Environment):
         self.hd = {human.name: human for human in self.humans}
 
     def log_static_info(self):
+        """
+        Logs events for all humans in the city
+        """
         for h in self.humans:
             Event.log_static_info(self, h, self.env.timestamp)
 
     @property
     def events(self):
+        """
+        Get all events of all humans in the city
+
+        Returns:
+            list: all of everyone's events
+        """
         return list(itertools.chain(*[h.events for h in self.humans]))
 
     def events_slice(self, begin, end):
+        """
+        Get all sliced events of all humans in the city
+
+        Args:
+            begin (datetime.datetime): minimum time of events
+            end (int): maximum time of events
+
+        Returns:
+            list: The list each human's events, restricted to a slice
+        """
         return list(itertools.chain(*[h.events_slice(begin, end) for h in self.humans]))
 
     def pull_events_slice(self, end):
+        """
+        Get the list of all human's events before `end`.
+        /!\ Modifies each human's events
+
+        Args:
+            end (datetime.datetime): maximum time of pulled events
+
+        Returns:
+            list: All the events which occured before `end`
+        """
         return list(itertools.chain(*[h.pull_events_slice(end) for h in self.humans]))
 
     def _compute_preferences(self):
-        """ compute preferred distribution of each human for park, stores, etc."""
+        """
+        Compute preferred distribution of each human for park, stores, etc.
+        /!\ Modifies each human's stores_preferences and parks_preferences
+        """
         for h in self.humans:
             h.stores_preferences = [(compute_distance(h.household, s) + 1e-1) ** -1 for s in self.stores]
             h.parks_preferences = [(compute_distance(h.household, s) + 1e-1) ** -1 for s in self.parks]
 
     def run(self, duration, outfile, start_time, all_possible_symptoms, port, n_jobs):
+        """
+        Run the City DOCTODO(improve this)
+
+        Args:
+            duration (int): duration of a step (env.timeout(duration / TICK_MINUTE))
+            outfile (str): may be None, the run's output file to write to
+            start_time (datetime.datetime): useless arg << FIXME
+            all_possible_symptoms (dict): copy of SYMPTOMS_META (config.py)
+            port (int): the port for integrated_risk_pred when updating the humans'
+                risk
+            n_jobs (int): the number of jobs for integrated_risk_pred when updating
+                the humans' risk
+
+        Yields:
+            simpy.Timeout
+        """
         self.current_day = 0
         INTERVENTION_DAY = ExpConfig.get('INTERVENTION_DAY')
         COLLECT_TRAINING_DATA = ExpConfig.get('COLLECT_TRAINING_DATA')
