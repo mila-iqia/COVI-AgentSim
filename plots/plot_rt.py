@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import math
 
 from matplotlib import pyplot as plt
 from matplotlib.dates import date2num, num2date
@@ -91,44 +92,65 @@ class PlotRt:
     
         return posteriors, log_likelihood
 
+    def _smooth_cases(self, cases):
+        smoothed = list()
+        for k in range(len(cases)):
+            if k == 0:
+                smoothed.append(math.ceil(2.0/3.0*cases[0]+1.0/3.0*cases[1]))
+            elif k == len(cases) - 1:
+                smoothed.append(math.ceil(2.0/3.0*cases[-1]+1.0/3.0*cases[-2]))
+            else:
+                smoothed.append(math.ceil(1.0/3.0*cases[k-1]+1.0/3.0*cases[k]+1.0/3.0*cases[k+1]))
+        return smoothed
+
     def compute(self, data):
+        data = self._smooth_cases(data)
         data = pd.Series(data, index=list(range(len(data))))
         posteriors, log_likelihood = self._get_posteriors(data)
         # Note that this takes a while to execute - it's not the most efficient algorithm
-        hdis = self._highest_density_interval(posteriors, p=.9)
+        hdis = self._highest_density_interval(posteriors, p=.5)
         most_likely = posteriors.idxmax().rename('ML')
 
         most_likely = np.array(most_likely)
         hdis = np.array(hdis)
-        #hdis = 0
 
         return most_likely, hdis
 
     @staticmethod
-    def plot(cases_per_day, true_R=None):
+    def plot(ax, cases_per_day, color, marker, marker_size):
         plotrt = PlotRt(R_T_MAX=4, sigma=0.25)
         most_likely, hdis = plotrt.compute(cases_per_day)
         index = np.array(list(range(most_likely.shape[0])))
-        plt.figure()
-        plt.plot(index, np.ones(most_likely.shape[0]), label="Rt=1", color='green')
-        plt.plot(index, most_likely, label="Rt Estimation", c='blue')
-        #plt.scatter(index, most_likely, s=40, lw=.5, c='red', edgecolors='k', zorder=2)
-        #plt.plot(index, hdis[:, 0], label="Rt Lower", color='cornflowerblue')
-        #plt.plot(index, hdis[:, 1], label="Rt Upper", color='darkblue')
+        ax.plot(index, most_likely, color=color, marker=marker, linestyle=":", alpha=0.5, ms=marker_size)
         lowfn = interp1d(index, hdis[:, 0], bounds_error=False, fill_value='extrapolate')
         highfn = interp1d(index, hdis[:, 1], bounds_error=False, fill_value='extrapolate')
-        plt.fill_between(index, lowfn(index), highfn(index), color='k', alpha=.1, lw=0, zorder=3)
-        if true_R != None:
-            plt.plot(np.array(list(range(len(true_R)))), np.array(true_R), label="True Rt", color='red')
-        plt.xlabel("Date")
-        plt.ylabel("R")
-        plt.title("Plot of Rt")
-        plt.legend()
-        plt.show()
-        #plt.savefig('Rt', dpi=500)
+        ax.fill_between(index, lowfn(index), highfn(index), color=color, alpha=.05, lw=0, zorder=3)
+        return ax
 
 # unit tests for the current class
 if __name__ == '__main__':
-    true_R = [2.0, 1.6666666666666667, 1.6666666666666667, 1.8, 1.8, 1.8333333333333333, 1.7142857142857142, 1.75]
-    cases_per_day = [0, 0, 2, 2, 1, 1, 4, 2, 2, 6, 4, 6, 6, 7, 11, 7, 7, 18, 19, 11, 23, 34, 28, 29, 38, 60, 50, 56, 82, 81]
-    PlotRt.plot(cases_per_day, true_R)
+    colormap = ['red', 'orange', 'blue', 'green', 'gray']
+    end_day = 60
+    R_marker = "P"
+    R_marker_size = 10
+    intervention_day = 10
+
+    f, ax = plt.subplots(figsize=(20,10))
+
+    line = ax.axhline(y=1.0, linestyle="-.", linewidth=3, color="green", alpha=0.5)
+    ax.annotate("R = 1.0", xy=(intervention_day, 1.0), xytext=(intervention_day-10, 1.10), size=30, rotation="horizontal")
+
+    a = [0, 0, 1, 3, 1, 1, 2, 2, 2, 3, 4, 11, 8, 9, 18, 19, 8, 22, 50, 35, 43, 71, 88, 55, 69, 150, 80, 66, 56, 46, 22, 10, 7, 9, 5, 2, 0, 0, 0, 0, 0, 2, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    b = [0, 0, 1, 3, 1, 1, 2, 2, 2, 3, 4, 11, 8, 9, 18, 19, 8, 16, 37, 24, 25, 42, 38, 38, 39, 72, 45, 43, 77, 61, 39, 51, 47, 22, 16, 16, 13, 13, 8, 5, 4, 4, 4, 1, 1, 3, 0, 0, 2, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    c = [0, 0, 1, 3, 1, 1, 2, 2, 2, 3, 4, 11, 8, 9, 18, 19, 8, 14, 10, 3, 10, 6, 9, 6, 3, 5, 3, 0, 2, 2, 2, 2, 2, 0, 4, 2, 2, 2, 1, 1, 2, 2, 0, 0, 1, 1, 3, 0, 0, 0, 2, 1, 0, 0, 2, 1, 1, 1, 1, 1, 0, 1, 1, 0, 0, 3, 1, 0, 1, 3, 1, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+    all_data = [a, b, c]
+
+    for i, data in enumerate(all_data):
+        ax = PlotRt.plot(ax, data[:end_day], color=colormap[i], marker=R_marker, marker_size=R_marker_size)
+
+    ax.set_ylabel('Rt', fontsize=30, rotation=0, labelpad=25)
+    ax.set_ylim(0, 4)
+    ax.tick_params(labelsize=25)
+    plt.xlabel("Days since outbreak", fontsize=30)
+    plt.savefig("Rt", dpi=500)
