@@ -15,8 +15,11 @@ def convert_messages_to_batched_new_format(
         exposure_message: typing.Optional[typing.Union[typing.AnyStr, Message,
                                                        new_utils.EncounterMessage]] = None,
 ) -> typing.List[typing.List[new_utils.GenericMessageType]]:
-    batched_messages_map = {}
     # we will batch messages based on observable variables only, but return the full messages in lists
+    # note: try to keep batches sequential instead of reshuffling them for backwards compat
+    batched_messages = []
+    latest_msg_code = None
+    latest_msg_batch = []
     for message in messages:
         if not isinstance(message, (new_utils.EncounterMessage, new_utils.UpdateMessage)):
             message = convert_message_to_new_format(message)
@@ -25,10 +28,15 @@ def convert_messages_to_batched_new_format(
         else:
             msg_code = (message.uid, message.old_risk_level, message.new_risk_level,
                         message.encounter_time, message.update_time,)
-        if msg_code not in batched_messages_map:
-            batched_messages_map[msg_code] = []
-        batched_messages_map[msg_code].append(message)
-    batched_messages = list(batched_messages_map.values())
+        if latest_msg_code and msg_code == latest_msg_code:
+            latest_msg_batch.append(message)
+        else:
+            if latest_msg_code:
+                batched_messages.append(latest_msg_batch)
+            latest_msg_code = msg_code
+            latest_msg_batch = [message]
+    if latest_msg_code:
+        batched_messages.append(latest_msg_batch)
     if exposure_message:
         if not isinstance(exposure_message, new_utils.EncounterMessage):
             exposure_message = convert_message_to_new_format(exposure_message)
