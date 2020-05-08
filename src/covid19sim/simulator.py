@@ -606,48 +606,12 @@ class Human(object):
         """
 
         self.household.humans.add(self)
+
         while True:
             hour, day = self.env.hour_of_day(), self.env.day_of_week()
             if day==0:
                 self.count_exercise=0
                 self.count_shop=0
-
-            if self.last_date['run'] != self.env.timestamp.date():
-                # TODO: Update of data should be done right before and at the same time slot
-                #  as the data gets sent to the inference server
-                # Pad missing days
-                missing_days = (self.env.timestamp.date() - self.last_date['run']).days - 1
-                if missing_days:
-                    warnings.warn(f"Missed {missing_days} update days on {self.name}. "
-                                  f"Current day {self.env.timestamp}, "
-                                  f"last_date['run'] {self.last_date['run']}",
-                                  RuntimeWarning)
-                    for day in range(missing_days):
-                        self.infectiousnesses.appendleft(0)
-                self.last_date['run'] = self.env.timestamp.date()
-                self.update_symptoms()
-                self.update_reported_symptoms()
-                self.update_risk(symptoms=self.symptoms)
-                self.infectiousnesses.appendleft(self.infectiousness)
-                if len(self.infectiousnesses) > ExpConfig.get('TRACING_N_DAYS_HISTORY'):
-                    self.infectiousnesses.pop()
-
-                Event.log_daily(self, self.env.timestamp)
-                city.tracker.track_symptoms(self)
-
-                # keep only past N_DAYS contacts
-                if self.tracing:
-                    for type_contacts in ['n_contacts_tested_positive', 'n_contacts_symptoms', \
-                    'n_risk_increased', 'n_risk_decreased', "n_risk_mag_decreased", "n_risk_mag_increased"]:
-                        for order in self.message_info[type_contacts]:
-                            if len(self.message_info[type_contacts][order]) > ExpConfig.get('TRACING_N_DAYS_HISTORY'):
-                                self.message_info[type_contacts][order] = self.message_info[type_contacts][order][1:]
-                            self.message_info[type_contacts][order].append(0)
-
-                # if self.tracing and self.message_info['traced']:
-                #     if (self.env.timestamp - self.message_info['receipt']).days >= self.message_info['delay']:
-                #         # print(f"{self.tracing_method}: Traced {self}")
-                #         self.update_risk(value=True)
 
             # recover from cold/flu/allergies if it's time
             self.recover_health()

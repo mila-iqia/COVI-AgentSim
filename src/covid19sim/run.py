@@ -37,7 +37,7 @@ def sim(n_people=None,
         outdir = "output"
 
     os.makedirs(f"{outdir}", exist_ok=True)
-    outdir = f"{outdir}/sim_v2_people-{n_people}_days-{simulation_days}_init-{ExpConfig['INIT_PERCENT_SICK']}_seed-{seed}_{datetime.datetime.now().strftime('%Y%m%d-%H%M%S')}"
+    outdir = f"{outdir}/sim_v2_people-{n_people}_days-{simulation_days}_init-{ExpConfig.get('INIT_PERCENT_SICK')}_seed-{seed}_{datetime.datetime.now().strftime('%Y%m%d-%H%M%S')}"
     os.makedirs(outdir)
 
     outfile = os.path.join(outdir, "data")
