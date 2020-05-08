@@ -714,6 +714,9 @@ class ICU(Location):
         super().remove_human(human)
 
 class Event:
+    """
+    [summary]
+    """
     test = 'test'
     encounter = 'encounter'
     contamination = 'contamination'
@@ -724,10 +727,28 @@ class Event:
 
     @staticmethod
     def members():
+        """
+        [summary]
+
+        Returns:
+            [type]: [description]
+        """
         return [Event.test, Event.encounter, Event.contamination, Event.static_info, Event.visit, Event.daily]
 
     @staticmethod
     def log_encounter(human1, human2, location, duration, distance, infectee, time):
+        """
+        [summary]
+
+        Args:
+            human1 ([type]): [description]
+            human2 ([type]): [description]
+            location ([type]): [description]
+            duration ([type]): [description]
+            distance ([type]): [description]
+            infectee ([type]): [description]
+            time ([type]): [description]
+        """
         if ExpConfig.get('COLLECT_LOGS') is False:
             return
 
@@ -780,6 +801,13 @@ class Event:
 
     @staticmethod
     def log_test(human, time):
+        """
+        [summary]
+
+        Args:
+            human ([type]): [description]
+            time ([type]): [description]
+        """
         if ExpConfig.get('COLLECT_LOGS') is False:
             return
 
@@ -805,6 +833,13 @@ class Event:
 
     @staticmethod
     def log_daily(human, time):
+        """
+        [summary]
+
+        Args:
+            human ([type]): [description]
+            time ([type]): [description]
+        """
         if ExpConfig.get('COLLECT_LOGS') is False:
             return
 
@@ -832,6 +867,14 @@ class Event:
 
     @staticmethod
     def log_exposed(human, source, time):
+        """
+        [summary]
+
+        Args:
+            human ([type]): [description]
+            source ([type]): [description]
+            time ([type]): [description]
+        """
         if ExpConfig.get('COLLECT_LOGS') is False:
             return
 
@@ -856,6 +899,14 @@ class Event:
 
     @staticmethod
     def log_recovery(human, time, death):
+        """
+        [summary]
+
+        Args:
+            human ([type]): [description]
+            time ([type]): [description]
+            death ([type]): [description]
+        """
         if ExpConfig.get('COLLECT_LOGS') is False:
             return
 
@@ -878,6 +929,14 @@ class Event:
 
     @staticmethod
     def log_static_info(city, human, time):
+        """
+        [summary]
+
+        Args:
+            city ([type]): [description]
+            human ([type]): [description]
+            time ([type]): [description]
+        """
         if ExpConfig.get('COLLECT_LOGS') is False:
             return
 
@@ -910,7 +969,16 @@ class Event:
 
 
 class Contacts(object):
+    """
+    [summary]
+    """
     def __init__(self, has_app):
+        """
+        [summary]
+
+        Args:
+            has_app (bool): [description]
+        """
         self.messages = []
         self.sent_messages_by_day = defaultdict(list)
         self.messages_by_day = defaultdict(list)
@@ -920,6 +988,9 @@ class Contacts(object):
         self.has_app = has_app
 
     def add(self, **kwargs):
+        """
+        [summary]
+        """
         human = kwargs.get("human")
         timestamp = kwargs.get("timestamp")
 
@@ -933,6 +1004,14 @@ class Contacts(object):
         self.update_book(human, timestamp.date())
 
     def update_book(self, human, date=None, risk_level = None):
+        """
+        [summary]
+
+        Args:
+            human ([type]): [description]
+            date ([type], optional): [description]. Defaults to None.
+            risk_level ([type], optional): [description]. Defaults to None.
+        """
         # keep the history of risk levels (transformers)
         if date is None:
             date = self.book[human][-1][0] # last contact date
@@ -955,6 +1034,16 @@ class Contacts(object):
                     break
 
     def send_message(self, owner, tracing_method, order=1, reason="test", payload=None):
+        """
+        [summary]
+
+        Args:
+            owner ([type]): [description]
+            tracing_method ([type]): [description]
+            order (int, optional): [description]. Defaults to 1.
+            reason (str, optional): [description]. Defaults to "test".
+            payload ([type], optional): [description]. Defaults to None.
+        """
         p_contact = tracing_method.p_contact
         delay = tracing_method.delay
         app = tracing_method.app
