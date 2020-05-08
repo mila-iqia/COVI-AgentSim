@@ -265,26 +265,32 @@ def proc_human(params, inference_engine=None, mp_backend=None, mp_threads=0):
         "unexpected/broken proc_human input format between simulator and inference service"
 
     # Cluster Messages
-    USE_OLD_IMPLEMENTATION = False
+    USE_OLD_IMPLEMENTATION = False  # TODO: put in config file
     human = params["human"]
     if USE_OLD_IMPLEMENTATION:
         human["clusters"].add_messages(human["messages"])
         human["clusters"].update_records(human["update_messages"])
         human["clusters"].purge(params["current_day"])
     else:
-        if not isinstance(human["clusters"], covid19sim.frozen.clustering.base.ClusterManagerBase):
+        # note: this arg should only be true if the sim keeps sending old messages every iteration
+        REBUILD_CLUSTERS_FROM_SCRATCH = False  # TODO: put in config file
+        if REBUILD_CLUSTERS_FROM_SCRATCH or \
+                not isinstance(human["clusters"], covid19sim.frozen.clustering.base.ClusterManagerBase):
             # note: we create the manager to use day-level timestamps only
             human["clusters"] = covid19sim.frozen.clustering.naive.NaiveClusterManager(
                 ticks_per_uid_roll=1,
                 max_history_ticks_offset=14,
                 add_orphan_updates_as_clusters=False,
             )
-        USE_MESSAGE_BATCHING = False
+        # set the current day as the refresh timestamp to auto-purge outdated messages in advance
+        human["clusters"].latest_refresh_timestamp = params["current_day"]
+        USE_MESSAGE_BATCHING = True  # TODO: put in config file
         if USE_MESSAGE_BATCHING:
             encounter_messages = covid19sim.frozen.utils.convert_messages_to_batched_new_format(
                 human["messages"], human["exposure_message"])
             update_messages = covid19sim.frozen.utils.convert_messages_to_batched_new_format(
                 human["update_messages"])
+            earliest_new_encounter_message = encounter_messages[0][0] if len(encounter_messages) else None
         else:
             encounter_messages = \
                 [covid19sim.frozen.utils.convert_message_to_new_format(m) for m in human["messages"]]
@@ -298,6 +304,12 @@ def proc_human(params, inference_engine=None, mp_backend=None, mp_threads=0):
                     m._exposition_event = m == exposure_message
             update_messages = \
                 [covid19sim.frozen.utils.convert_message_to_new_format(m) for m in human["update_messages"]]
+            earliest_new_encounter_message = encounter_messages[0] if len(encounter_messages) else None
+        if earliest_new_encounter_message is not None:
+            # quick verification: even with a 1-day buffer for timeslot craziness, we should not be
+            # getting old encounters here; the simulator should not keep & transfer those every call
+            assert REBUILD_CLUSTERS_FROM_SCRATCH or \
+                   earliest_new_encounter_message.encounter_time + 1 >= params["current_day"]
         human["clusters"].add_messages(
             messages=[*encounter_messages, *update_messages],
             current_timestamp=params["current_day"],

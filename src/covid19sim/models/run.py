@@ -64,6 +64,8 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
             "time_slot": time_slot,
             "risk_model": config.RISK_MODEL,
         })
+        human.contact_book.update_messages = []
+        human.contact_book.messages = []
 
     if config.USE_INFERENCE_SERVER:
         batch_start_offset = 0
@@ -84,29 +86,22 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
         engine = InferenceEngine(config.TRANSFORMER_EXP_PATH)
         results = InferenceWorker.process_sample(all_params, engine, config.MP_BACKEND, n_jobs)
 
-    if config.RISK_MODEL != "transformer":
-        return humans
-
     for result in results:
         if result is not None:
             name, risk_history, clusters = result
-
-            # TODO: Fix can be None. What should be done in this case
-            if risk_history is not None:
-                for i in range(config.TRACING_N_DAYS_HISTORY):
-                    hd[name].risk_history_map[current_day - i] = risk_history[i]
-
-                hd[name].update_risk_level()
-
-                for i in range(config.TRACING_N_DAYS_HISTORY):
-                    hd[name].prev_risk_history_map[current_day - i] = risk_history[i]
-            else:
-                warnings.warn(f"risk_history is None for human {name}", RuntimeWarning)
-
-            hd[name].clusters = clusters
-            hd[name].last_risk_update = current_day
-            hd[name].contact_book.update_messages = []
-            hd[name].contact_book.messages = []
+            human = hd[name]
+            if config.RISK_MODEL == "transformer":
+                # TODO: Fix can be None. What should be done in this case
+                if risk_history is not None:
+                    for i in range(len(risk_history)):
+                        human.risk_history_map[current_day - i] = risk_history[i]
+                    human.update_risk_level()
+                    for i in range(len(risk_history)):
+                        human.prev_risk_history_map[current_day - i] = risk_history[i]
+                else:
+                    warnings.warn(f"risk_history is None for human {name}", RuntimeWarning)
+                human.last_risk_update = current_day
+            human.clusters = clusters
 
     # print out the clusters
     if config.DUMP_CLUSTERS:
