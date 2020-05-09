@@ -15,7 +15,6 @@ from ctt.inference.infer import InferenceEngine
 from ctt.data_loading.loader import InvalidSetSize
 
 import covid19sim.frozen.clustering.base
-import covid19sim.frozen.clustering.naive
 import covid19sim.frozen.clusters
 import covid19sim.frozen.helper
 import covid19sim.frozen.utils

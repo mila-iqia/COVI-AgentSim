@@ -359,4 +359,4 @@ MP_BACKEND = "loky"
 CLUSTER_MESSAGES = False
 DUMP_CLUSTERS = False
 CLUSTER_TYPE = "heuristic" # "random", "graph"
-CLUSTER_PATH = "output/clusters.json"
+CLUSTER_PATH = "output/clusters"

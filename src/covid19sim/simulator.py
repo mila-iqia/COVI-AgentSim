@@ -207,6 +207,9 @@ class Human(object):
         # create 24 timeslots to do your updating
         time_slot = rng.randint(0, 24)
         self.time_slots = [int((time_slot + i*24/UPDATES_PER_DAY) % 24) for i in range(UPDATES_PER_DAY)]
+        # keep track of when the risk/clusters were last updated (i.e. latest timeslot date)
+        self.last_cluster_update = None
+        self.last_risk_update = None
 
         # symptoms
         self.symptom_start_time = None

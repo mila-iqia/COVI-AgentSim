@@ -1,7 +1,7 @@
 import copy
 from datetime import timedelta
 import os
-import json
+import pickle
 import numpy as np
 import functools
 from joblib import Parallel, delayed
@@ -100,13 +100,17 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
                         human.prev_risk_history_map[current_day - i] = risk_history[i]
                 else:
                     warnings.warn(f"risk_history is None for human {name}", RuntimeWarning)
-                human.last_risk_update = current_day
+                human.last_risk_update = current_date
+            human.last_cluster_update = current_date
             human.clusters = clusters
 
     # print out the clusters
     if config.DUMP_CLUSTERS:
-        clusters = []
-        for human in hd.values():
-            clusters.append(dict(human.clusters.clusters))
-        json.dump(clusters, open(config.CLUSTER_PATH, 'w'))
+        os.makedirs(config.CLUSTER_PATH, exist_ok=True)
+        curr_date_str = current_date.strftime("%Y%m%d-%H%M%S")
+        curr_dump_path = os.path.join(config.CLUSTER_PATH, curr_date_str + ".pkl")
+        to_dump = {human_id: human.clusters for human_id, human in hd.items()
+                   if human.last_cluster_update == current_date}
+        with open(curr_dump_path, "wb") as fd:
+            pickle.dump(to_dump, fd)
     return humans
