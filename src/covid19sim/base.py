@@ -728,22 +728,21 @@ class Event:
     @staticmethod
     def members():
         """
-        [summary]
-
-        Returns:
-            [type]: [description]
+        DEPRECATED
         """
         return [Event.test, Event.encounter, Event.contamination, Event.static_info, Event.visit, Event.daily]
 
     @staticmethod
     def log_encounter(human1, human2, location, duration, distance, infectee, time):
         """
-        [summary]
+        Logs the encounter between `human1` and `human2` at `location` for `duration`
+        while staying at `distance` from each other. If infectee is not None, it is
+        either human1.name or human2.name.
 
         Args:
-            human1 ([type]): [description]
-            human2 ([type]): [description]
-            location ([type]): [description]
+            human1 (covid19sim.simulator.Human): One of the encounter's 2 humans
+            human2 (covid19sim.simulator.Human): One of the encounter's 2 humans
+            location (covid19sim.base.Location): Where the encounter happened
             duration ([type]): [description]
             distance ([type]): [description]
             infectee ([type]): [description]

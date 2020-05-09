@@ -1299,6 +1299,7 @@ class Human(object):
                         flu_infectee.flu_timestamp = self.env.timestamp
 
                 city.tracker.track_encounter_events(human1=self, human2=h, location=location, distance=distance, duration=t_near)
+                import pdb; pdb.set_trace()
                 Event.log_encounter(self, h,
                                     location=location,
                                     duration=t_near,
@@ -1457,7 +1458,7 @@ class Human(object):
         # state["all_reported_symptoms"] = self.all_reported_symptoms
         return state
 
-    def __setstate__(self, state)
+    def __setstate__(self, state):
         """
         Restore instance attributes.
         """
