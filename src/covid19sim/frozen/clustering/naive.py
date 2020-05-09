@@ -55,7 +55,7 @@ class NaiveCluster(ClusterBase):
             latest_update_time=message.encounter_time
                 if isinstance(message, mu.EncounterMessage) else message.update_time,
             messages=[message] if isinstance(message, mu.EncounterMessage)
-                else mu.create_encounter_from_update_message(message),
+                else [mu.create_encounter_from_update_message(message)],
             # debug-only stuff below
             _real_encounter_uids=[message._sender_uid],
             _real_encounter_times=[message._real_encounter_time],
