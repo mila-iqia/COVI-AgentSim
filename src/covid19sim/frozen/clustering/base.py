@@ -83,6 +83,7 @@ class ClusterManagerBase:
     max_history_ticks_offset: TimeOffsetType
     add_orphan_updates_as_clusters: bool
     generate_embeddings_by_timestamp: bool
+    generate_backw_compat_embeddings: bool
     max_cluster_id: int
 
     def __init__(
@@ -231,3 +232,21 @@ class ClusterManagerBase:
         possible with simulator data.
         """
         raise NotImplementedError
+
+
+def get_cluster_manager_type(algo_name: str):
+    """Returns the type of cluster manager to instantiate based on algo name."""
+    assert algo_name in ["blind", "naive", "perfect", "simple"], \
+        f"invalid clustering algo name: {algo_name}"
+    if algo_name == "blind":
+        import covid19sim.frozen.clustering.blind
+        return covid19sim.frozen.clustering.blind.BlindClusterManager
+    if algo_name == "naive":
+        import covid19sim.frozen.clustering.naive
+        return covid19sim.frozen.clustering.naive.NaiveClusterManager
+    if algo_name == "perfect":
+        import covid19sim.frozen.clustering.perfect
+        return covid19sim.frozen.clustering.perfect.PerfectClusterManager
+    if algo_name == "simple":
+        import covid19sim.frozen.clustering.simple
+        return covid19sim.frozen.clustering.simple.SimplisticClusterManager

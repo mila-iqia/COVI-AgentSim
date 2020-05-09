@@ -1,6 +1,7 @@
 """Contains utility classes for remote inference inside the simulation."""
 
 import datetime
+import functools
 import numpy as np
 import os
 import pickle
@@ -266,9 +267,10 @@ def proc_human(params, inference_engine=None, mp_backend=None, mp_threads=0):
         "unexpected/broken proc_human input format between simulator and inference service"
 
     # Cluster Messages
-    USE_OLD_IMPLEMENTATION = False  # TODO: put in config file
+    CLUSTER_ALGO_TYPE = "naive"  # should be in ["old", "blind", "naive", "perfect", "simple"]
+    # TODO: put algo type def above in config file
     human = params["human"]
-    if USE_OLD_IMPLEMENTATION:
+    if CLUSTER_ALGO_TYPE == "old":
         human["clusters"].add_messages(human["messages"])
         human["clusters"].update_records(human["update_messages"])
         human["clusters"].purge(params["current_day"])
@@ -277,14 +279,18 @@ def proc_human(params, inference_engine=None, mp_backend=None, mp_threads=0):
         REBUILD_CLUSTERS_FROM_SCRATCH = False  # TODO: put in config file
         if REBUILD_CLUSTERS_FROM_SCRATCH or \
                 not isinstance(human["clusters"], covid19sim.frozen.clustering.base.ClusterManagerBase):
+            clustering_type = covid19sim.frozen.clustering.base.get_cluster_manager_type(CLUSTER_ALGO_TYPE)
+            if CLUSTER_ALGO_TYPE == "naive":
+                clustering_type = functools.partial(clustering_type, ticks_per_uid_roll=1)
             # note: we create the manager to use day-level timestamps only
-            human["clusters"] = covid19sim.frozen.clustering.naive.NaiveClusterManager(
-                ticks_per_uid_roll=1,
+            human["clusters"] = clustering_type(
                 max_history_ticks_offset=covid19sim.config.TRACING_N_DAYS_HISTORY,
                 # note: the simulator should be able to match all update messages to encounters, but
                 # since the time slot update voodoo, I (PLSC) have not been able to make no-adopt
                 # version of the naive implementation work (both with and without batching)
                 add_orphan_updates_as_clusters=True,
+                generate_embeddings_by_timestamp=True,
+                generate_backw_compat_embeddings=True,
             )
         # set the current day as the refresh timestamp to auto-purge outdated messages in advance
         human["clusters"].set_current_timestamp(params["current_day"])
