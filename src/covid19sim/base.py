@@ -263,12 +263,11 @@ class City(simpy.Environment):
                 self.intervention.update_human_risks(city=self,
                                 symptoms=all_possible_symptoms, port=port,
                                 n_jobs=n_jobs, data_path=outfile)
+                self.tracker.track_risk_attributes(self.humans)
 
             if self.env.timestamp.hour == 0 and self.env.timestamp != self.env.initial_timestamp:
                 self.current_day += 1
                 self.tracker.increment_day()
-                # pd.DataFrame([(h.risk, h.is_infectious or h.is_exposed) for h in self.city.humans]).to_csv("risk_histogram.csv")
-                # import pdb; pdb.set_trace()
 
             # Let the day pass
             yield self.env.timeout(duration / TICK_MINUTE)
@@ -657,6 +656,10 @@ class Contacts(object):
                 break
         self.book[human] = self.book[human][remove_idx:]
 
+        # remove that human from the book
+        if len(self.book[human]) == 0:
+            self.book.pop(human)
+
         # TODO: this should contain only todays info; clean up history should happen once per day
         if False:
             remove_idx = 0
@@ -688,3 +691,4 @@ class Contacts(object):
 
                     total_contacts = sum(map(lambda x:x[1], self.book[human]))
                     human.update_risk(update_messages={'n':total_contacts, 'delay': t, 'order':order, 'reason':reason, 'payload':payload})
+                    owner.city.tracker.track_update_messages(owner, human, {'reason':reason})

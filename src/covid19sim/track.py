@@ -4,9 +4,11 @@ import math
 from collections import defaultdict
 import networkx as nx
 import datetime
+import dill
+import copy
 
 from covid19sim.config import HUMAN_DISTRIBUTION, LOCATION_DISTRIBUTION, INFECTION_RADIUS, INFECTION_DURATION, \
-    EFFECTIVE_R_WINDOW
+    EFFECTIVE_R_WINDOW, INTERVENTION_DAY, INTERVENTION, RISK_MODEL
 from covid19sim.utils import log
 
 
@@ -24,6 +26,12 @@ class Tracker(object):
     def __init__(self, env, city):
         self.env = env
         self.city = city
+        timenow = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
+        if INTERVENTION_DAY == -1:
+            name = "unmitigated"
+        else:
+            name = RISK_MODEL
+        self.filename = f"tracker_data_n_{len(city.humans)}_{timenow}_{name}.pkl"
 
         # infection & contacts
         self.contacts = {
@@ -101,6 +109,7 @@ class Tracker(object):
         self.ei_per_day = []
         self.risk_values = []
         self.avg_infectiousness_per_day = []
+        self.risk_attributes = []
 
         # monitors
         self.human_monitor = {}
@@ -213,13 +222,18 @@ class Tracker(object):
                   "rec_level": h.rec_level,
                   "state": h.state.index(1),
                   "test_result": h.test_result,
-                  "n_symptoms": len(h.symptoms)
+                  "n_symptoms": len(h.symptoms),
+                  "test_orders":copy.deepcopy(h.message_info['n_contacts_tested_positive']),
+                  "symptom_orders":copy.deepcopy(h.message_info['n_contacts_symptoms']),
                  }
             row.append(x)
+
         self.human_monitor[self.env.timestamp.date()-datetime.timedelta(days=1)] = row
 
         #
         self.avg_infectiousness_per_day.append(np.mean([h.infectiousness for h in self.city.humans]))
+
+        self.dump_metrics()
 
     def compute_mobility(self):
         EM, M, G, B, O, R = 0, 0, 0, 0, 0, 0
@@ -233,7 +247,7 @@ class Tracker(object):
             EM += (1-h.risk) # proxy for mobility
         return M, G, B, O, R, EM/len(self.city.humans)
 
-    def compute_risk_precision(self, daily=True, threshold=0.5, until_days=None):
+    def compute_risk_precision(self, daily=True, until_days=None):
         if daily:
             all = [(h.risk, h.is_exposed or h.is_infectious) for h in self.city.humans]
             no_test = [(h.risk, h.is_exposed or h.is_infectious) for h in self.city.humans if h.test_result != "positive"]
@@ -265,10 +279,43 @@ class Tracker(object):
             z = sum(1 for x,y in type if y)
             recall.append(0)
             if z:
-                recall[-1] = 1.0*sum(1 for x,y in type if y and x > threshold)/z
+                recall[-1] = 1.0*sum(1 for x,y in type if y)/z
             idx += 1
 
         return top_k_prec, lift, recall
+
+    def track_risk_attributes(self, humans):
+        for h in humans:
+            _tmp = {
+                "risk": h.risk,
+                "risk_level": h.risk_level,
+                "rec_level": h.rec_level,
+                "exposed": h.is_exposed,
+                "infectious": h.is_infectious,
+                "symptoms": len(h.symptoms),
+                "test": h.test_result,
+                "recovered": h.is_removed,
+            }
+
+            order_1_is_exposed = False
+            order_1_is_infectious = False
+            order_1_is_presymptomatic = False
+            order_1_is_symptomatic = False
+            order_1_is_tested = False
+            for order_1_human in h.contact_book.book:
+                order_1_is_exposed = order_1_is_exposed or order_1_human.is_exposed
+                order_1_is_infectious = order_1_is_infectious or order_1_human.is_infectious
+                order_1_is_presymptomatic = order_1_is_presymptomatic or (order_1_human.is_infectious and len(order_1_human.symptoms) == 0)
+                order_1_is_symptomatic = order_1_is_symptomatic or (order_1_human.is_infectious and len(order_1_human.symptoms) > 0)
+                order_1_is_tested = order_1_is_tested or order_1_human.test_result == "positive"
+
+            _tmp["order_1_is_exposed"] = order_1_is_exposed
+            _tmp["order_1_is_presymptomatic"] = order_1_is_presymptomatic
+            _tmp["order_1_is_infectious"] = order_1_is_infectious
+            _tmp["order_1_is_symptomatic"] = order_1_is_symptomatic
+            _tmp["order_1_is_tested"] = order_1_is_tested
+
+            self.risk_attributes.append(_tmp)
 
     def track_covid_properties(self, human):
         n, avg = self.covid_properties['incubation_days']
@@ -303,7 +350,7 @@ class Tracker(object):
             self.infection_graph.add_node(to_human.name, bin=to_bin, time=timestamp)
             self.infection_graph.add_edge(from_human.name, to_human.name,  timedelta=delta)
 
-            self.infection_monitor.append([from_human.name, to_human.name, timestamp.date()])
+            self.infection_monitor.append([from_human.name, from_human.risk, from_human.risk_level, from_human.rec_level, to_human.name, to_human.risk, to_human.risk_level, to_human.rec_level, timestamp.date()])
 
             if from_human.symptom_start_time is not None:
                 self.generation_time_book[to_human.name] = from_human.symptom_start_time
@@ -329,9 +376,22 @@ class Tracker(object):
             self.infection_graph.add_edge(-1, to_human.name,  timedelta="")
             self.infection_monitor.append([None, to_human.name, timestamp.date()])
 
-    def track_update_messages(self, from_human, to_human, new_risk_level):
+    def track_update_messages(self, from_human, to_human, payload):
         if self.infection_graph.has_edge(from_human.name, to_human.name):
-            self.infector_infectee_update_messages[from_human.name][to_human.name][self.env.timestamp] = new_risk_level
+            reason = payload['reason']
+            model = self.city.intervention.risk_model
+            if  model == "transformer":
+                if  reason != "risk_update":
+                    return # transformer only sends risks
+                x = {'method':model, 'reason':payload['reason'], 'new_risk_level':payload['new_risk_level']}
+                self.infector_infectee_update_messages[from_human.name][to_human.name][self.env.timestamp] = x
+            else:
+                if not self.city.intervention.propagate_risk and reason == "risk_update":
+                    return
+                if not self.city.intervention.propagate_symptoms and reason == "symptoms":
+                    return
+                x = {'method':model, 'reason':payload['reason']}
+                self.infector_infectee_update_messages[from_human.name][to_human.name][self.env.timestamp] = x
 
     def track_generation_times(self, human_name):
         if human_name not in self.generation_time_book:
@@ -663,3 +723,32 @@ class Tracker(object):
 
             fig.suptitle(f"Hour {hour}", fontsize=16)
             fig.savefig(f"{dirname}/contact_stats/hour_{hour}.png")
+
+    def dump_metrics(self):
+        data = dict()
+        data['intervention_day'] = INTERVENTION_DAY
+        data['intervention'] = INTERVENTION
+        data['RISK_MODEL'] = RISK_MODEL
+
+        data['expected_mobility'] = self.expected_mobility
+        data['mobility'] = self.mobility
+        data['n_init_infected'] = self.n_infected_init
+        data['contacts'] = dict(self.contacts)
+        data['cases_per_day'] = self.cases_per_day
+        data['ei_per_day'] = self.ei_per_day
+        data['r_0'] = self.r_0
+        data['R'] = self.r
+        data['n_humans'] = self.n_humans
+        data['s'] = self.s_per_day
+        data['e'] = self.e_per_day
+        data['i'] = self.i_per_day
+        data['r'] = self.r_per_day
+        data['avg_infectiousness_per_day'] = self.avg_infectiousness_per_day
+        data['risk_precision_global'] = self.compute_risk_precision(False)
+        data['risk_precision'] = self.risk_precision_daily
+        data['human_monitor'] = self.human_monitor
+        data['infection_monitor'] = self.infection_monitor
+        data['infector_infectee_update_messages'] = self.infector_infectee_update_messages
+
+        with open(f"logs3/{self.filename}", 'wb') as f:
+            dill.dump(data, f)

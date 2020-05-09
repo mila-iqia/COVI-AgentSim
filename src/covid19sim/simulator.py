@@ -1196,6 +1196,8 @@ class Human(object):
 
     def update_risk_level(self):
         cur_day = (self.env.timestamp - self.env.initial_timestamp).days
+        # if self.name == "human:77" and self.risk_level in [4, 6]:
+        #     import pdb; pdb.set_trace()
         for day in range(cur_day - TRACING_N_DAYS_HISTORY, cur_day + 1):
             if day not in self.prev_risk_history_map.keys():
                 continue
@@ -1218,7 +1220,7 @@ class Human(object):
                     self.city.hd[message.unobs_id].contact_book.update_messages.append(update_message)
                     self.contact_book.sent_messages_by_day[day][idx] = Message(my_old_message.uid, new_risk_level, my_old_message.day, my_old_message.unobs_id)
 
-                    self.city.tracker.track_update_messages(self, self.city.hd[message.unobs_id], new_risk_level)
+                    self.city.tracker.track_update_messages(self, self.city.hd[message.unobs_id], {'reason':"risk_update", "new_risk_level":new_risk_level})
 
         if cur_day in self.prev_risk_history_map.keys():
             prev_risk_level = min(_proba_to_risk_level(self.prev_risk_history_map[cur_day]), 15)
@@ -1270,7 +1272,6 @@ class Human(object):
 
             if update_messages['reason'] == "test":
                 self.message_info['n_contacts_tested_positive'][order][-1] += update_messages['n']
-
             elif update_messages['reason'] == "symptoms":
                 self.message_info['n_contacts_symptoms'][order][-1] += update_messages['n']
 
