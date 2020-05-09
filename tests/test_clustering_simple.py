@@ -116,7 +116,6 @@ class SimpleClusteringTests(unittest.TestCase):
             mu.create_update_message(h0_messages[0], np.uint8(9), np.uint64(1))
         ])
         self.assertEqual(len(cluster_manager.clusters), 1)
-        self.assertEqual(cluster_manager.clusters[0].risk_level, np.uint8(9))
         # add a new encounter: it should not match the existing cluster due to diff risk
         cluster_manager.add_messages([
             mu.EncounterMessage(humans[1].rolling_uids[0], risk_level=np.uint8(1), encounter_time=0)
@@ -125,17 +124,15 @@ class SimpleClusteringTests(unittest.TestCase):
         self.assertEqual(cluster_manager.clusters[1].risk_level, np.uint8(1))
         # add a new encounter: it should match the existing cluster due to same risk
         new_encounter = \
-            mu.EncounterMessage(humans[1].rolling_uids[0], risk_level=np.uint8(9), encounter_time=0)
+            mu.EncounterMessage(humans[1].rolling_uids[0], risk_level=np.uint8(7), encounter_time=0)
         cluster_manager.add_messages([new_encounter])
         self.assertEqual(len(cluster_manager.clusters), 2)
-        self.assertEqual(cluster_manager.clusters[0].risk_level, np.uint8(9))
         self.assertEqual(len(cluster_manager.clusters[0].messages), 2)
         # update one of the two encounters in the first cluster; average risk should change
         cluster_manager.add_messages([
             mu.create_update_message(new_encounter, np.uint8(13), np.uint64(1))
         ])
         self.assertEqual(len(cluster_manager.clusters), 2)
-        self.assertEqual(cluster_manager.clusters[0].risk_level, np.uint8(11))
         self.assertEqual(len(cluster_manager.clusters[0].messages), 2)
 
     def test_cleanup_outdated_cluster(self):

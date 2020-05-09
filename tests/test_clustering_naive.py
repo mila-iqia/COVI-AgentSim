@@ -2,6 +2,7 @@ import numpy as np
 import unittest
 
 import covid19sim.frozen.clustering.naive as naive
+import covid19sim.frozen.clustering.perfect as perfect
 import covid19sim.frozen.clustering.simple as simple
 import covid19sim.frozen.message_utils as mu
 import covid19sim.frozen.utils
@@ -300,6 +301,8 @@ class NaiveClusteringTests(unittest.TestCase):
                 max_history_ticks_offset=never,
             )
             naive_cluster_manager.add_messages(h0_messages)
+            perfect_cluster_manager = perfect.PerfectClusterManager(max_history_ticks_offset=never)
+            perfect_cluster_manager.add_messages(h0_messages)
             simple_cluster_manager = simple.SimplisticClusterManager(max_history_ticks_offset=never)
             simple_cluster_manager.add_messages(h0_messages)
             self.assertGreaterEqual(
@@ -307,18 +310,24 @@ class NaiveClusteringTests(unittest.TestCase):
                 len(naive_cluster_manager.clusters),
             )
             naive_homogeneity_scores = naive_cluster_manager._get_homogeneity_scores()
+            perfect_homogeneity_scores = perfect_cluster_manager._get_homogeneity_scores()
+            simple_homogeneity_scores = simple_cluster_manager._get_homogeneity_scores()
             for id in naive_homogeneity_scores:
                 self.assertLessEqual(naive_homogeneity_scores[id], 1.0)
                 expected_user_encounters = \
                     sum([v.visited_real_uid == 0 and v.visitor_real_uid == id for v in visits])
                 min_homogeneity = expected_user_encounters / sum([v.visited_real_uid == 0 for v in visits])
                 self.assertLessEqual(min_homogeneity, naive_homogeneity_scores[id])
-            simple_homogeneity_scores = simple_cluster_manager._get_homogeneity_scores()
+                if id in perfect_homogeneity_scores:
+                    self.assertEqual(perfect_homogeneity_scores[id], 1.0)
 
             print(f"---- iter#{iter_idx + 1} ----")
             print(f"\tsimplistic clustr average homogeneity = {np.mean(list(simple_homogeneity_scores.values()))}")
             print(f"\tsimplistic clustr count error = {simple_cluster_manager._get_cluster_count_error()}")
             print(f"\tsimplistic clustr count = {len(simple_cluster_manager.clusters)}")
+            print(f"\tperfect clustr average homogeneity = {np.mean(list(perfect_homogeneity_scores.values()))}")
+            print(f"\tperfect clustr count error = {perfect_cluster_manager._get_cluster_count_error()}")
+            print(f"\tperfect clustr count = {len(perfect_cluster_manager.clusters)}")
             print(f"\tnaive clustr average homogeneity = {np.mean(list(naive_homogeneity_scores.values()))}")
             print(f"\tnaive clustr count error = {naive_cluster_manager._get_cluster_count_error()}")
             print(f"\tnaive clustr count = {len(naive_cluster_manager.clusters)}")

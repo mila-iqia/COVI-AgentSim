@@ -28,18 +28,18 @@ class PerfectClusterManager(SimplisticClusterManager):
         """Fits an encounter message to an existing cluster or creates a new cluster to own it."""
         if self._check_if_message_outdated(message, cleanup):
             return
-        # perfect clustering = we are looking for an exact timestamp/realuid/risk level match;
+        # perfect clustering = we are looking for an exact real-user-id match;
         # if one is not found, we create a new cluster
         assert message._sender_uid is not None
-        matched_clusters = []
+        matched_cluster = None
         for cluster in self.clusters:
             # note: all 'real' uids in the cluster should be the same, we just pick the first
             if cluster._real_encounter_uids[0] == message._sender_uid:
-                matched_clusters.append(cluster)
-        if matched_clusters:
-            # this is perfect clustering; there should always be a single cluster per user?
-            assert len(matched_clusters) == 1
-            matched_clusters[0].fit_encounter_message(message)
+                matched_cluster = cluster
+                break
+        if matched_cluster is not None:
+            matched_cluster.skip_homogeneity_checks = True  # ensure the fit won't throw
+            matched_cluster.fit_encounter_message(message)
         else:
             new_cluster = SimpleCluster.create_cluster_from_message(message)
             self.clusters.append(new_cluster)
@@ -51,16 +51,11 @@ class PerfectClusterManager(SimplisticClusterManager):
         # perfect clustering = we will update the encounters in the user's cluster one
         # update message at a time, and hope that no update messages will be missing
         assert message._sender_uid is not None
-        matched_clusters = []
         for cluster in self.clusters:
             # note: all 'real' uids in the cluster should be the same, we just pick the first
             if cluster._real_encounter_uids[0] == message._sender_uid:
-                assert any([m.risk_level == message.old_risk_level for m in cluster.messages])
-                matched_clusters.append(cluster)
-        if matched_clusters:
-            # this is perfect clustering; there should always be a single cluster per user?
-            assert len(matched_clusters) == 1
-            res = matched_clusters[0].fit_update_message(message)
-            assert res is None
-        else:
-            raise AssertionError(f"could not find any proper cluster match for: {message}")
+                cluster.skip_homogeneity_checks = True  # ensure the fit won't throw
+                res = cluster.fit_update_message(message)
+                assert res is None
+                return
+        raise AssertionError(f"could not find any proper cluster match for: {message}")

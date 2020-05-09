@@ -61,7 +61,8 @@ class ClusterBase:
     def get_cluster_embedding(
             self,
             current_timestamp: TimestampType,
-            include_cluster_id: bool
+            include_cluster_id: bool,
+            old_compat_mode: bool = False,
     ) -> np.ndarray:
         """Returns the 'embeddings' array for this particular cluster."""
         raise NotImplementedError
@@ -88,12 +89,15 @@ class ClusterManagerBase:
             max_history_ticks_offset: TimeOffsetType = 24 * 60 * 60 * 14,  # one tick per second, 14 days
             add_orphan_updates_as_clusters: bool = False,
             generate_embeddings_by_timestamp: bool = True,
+            generate_backw_compat_embeddings: bool = False,
     ):
         self.clusters = []
         self.latest_refresh_timestamp = TimestampType(0)
         self.max_history_ticks_offset = max_history_ticks_offset
         self.add_orphan_updates_as_clusters = add_orphan_updates_as_clusters
         self.generate_embeddings_by_timestamp = generate_embeddings_by_timestamp
+        self.generate_backw_compat_embeddings = generate_backw_compat_embeddings
+        assert not self.generate_backw_compat_embeddings or self.generate_embeddings_by_timestamp
 
     def cleanup_clusters(self, current_timestamp: TimestampType):
         """Gets rid of clusters that are too old given the current timestamp."""
