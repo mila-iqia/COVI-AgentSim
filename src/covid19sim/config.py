@@ -242,7 +242,7 @@ AVG_COLD_DURATION = 3
 TICK_MINUTE = 2  # @param increment
 SIMULATION_DAYS = 30  # @param
 SYMPTOM_DAYS = 5  # @param
-COLLECT_LOGS = True
+COLLECT_LOGS = False
 
 # LIFESTYLE PARAMETERS
 RHO = 0.40
@@ -316,18 +316,19 @@ MASKS_SUPPLY = BIG_NUMBER
 
 ## INTERVENTIONS
 BIG_NUMBER = 10000000
-INTERVENTION_DAY = 10 # <0 no interventions
+INTERVENTION_DAY = 0 # <0 no interventions
 INTERVENTION = "Tracing"
 PERCENT_FOLLOW = 1.0
 P_HAS_APP = 5
 
 # TRACING RISK MODEL PARAMETERS  (non-ML)
 # "transformer" has everything as True; no need to specify anything here
-RISK_MODEL = "transformer" # "naive"  "manual", "digital", "transformer"
+RISK_MODEL = "naive" # "naive"  "manual", "digital", "transformer"
 TRACE_SYMPTOMS = False
 TRACE_RISK_UPDATE = False
 TRACING_ORDER = 1
 UPDATES_PER_DAY = 4
+SHOULD_MODIFY_BEHAVIOR = False
 
 TRACING_N_DAYS_HISTORY = 14
 MIN_MESSAGE_PASSING_DISTANCE = 0
@@ -336,9 +337,10 @@ MAX_MESSAGE_PASSING_DISTANCE = 1000 #cm GPS; 10 x 10 m grid everyone is a contac
 # naive tracing
 RISK_TRANSMISSION_PROBA = 0.03
 BASELINE_RISK_VALUE = 0.01
-RISK_MAPPING =[0., 0.0625, 0.125, 0.1875, 0.25, 0.3125, 0.375, 0.4375,
-               0.5, 0.5625, 0.625, 0.6875, 0.75, 0.8125, 0.875, 0.9375,
-               1.]
+RISK_MAPPING = [0., 0.01, 0.20009698, 0.3337032 , 0.42782824,
+                0.53769504, 0.62646553, 0.72454666, 0.79687407, 0.8408014,
+                0.87897228, 0.90514533, 0.92788853, 0.94996601, 0.97018845,
+                0.98973414, 1.]
 
 # manual tracing
 MANUAL_TRACING_P_CONTACT = 0.50
@@ -348,7 +350,7 @@ MANUAL_TRACING_DELAY_STD = 0.5  # days
 # Inference & Training
 # "transformer" "naive" (to print the dataset)
 COLLECT_TRAINING_DATA = False
-USE_INFERENCE_SERVER = True
+USE_INFERENCE_SERVER = False
 TRANSFORMER_EXP_PATH = "/network/home/guptapra/covid_p2p_risk_prediction/models/CTT-SHIPMENT-0/"
 
 INFECTIOUSNESS_N_DAYS_HISTORY = 14

@@ -83,7 +83,8 @@ def base():
 @click.option('--simulation_days', help='number of days to run the simulation for', type=int, default=50)
 @click.option('--seed', help='seed for the process', type=int, default=0)
 @click.option('--init_percent_sick', help='percentage of sick people in the beginning', type=float, default=0.01)
-def tune(n_people, simulation_days, seed, init_percent_sick):
+@click.option('--name', help='name to append to the output', type=str, default="")
+def tune(n_people, simulation_days, seed, init_percent_sick, name):
     # Force COLLECT_LOGS=False
     config.COLLECT_LOGS = False
 
@@ -91,6 +92,8 @@ def tune(n_people, simulation_days, seed, init_percent_sick):
     import pandas as pd
     # import cufflinks as cf
     import matplotlib.pyplot as plt
+    import warnings
+    warnings.filterwarnings("ignore")
     # cf.go_offline()
 
     monitors, tracker = run_simu(n_people=n_people, init_percent_sick=init_percent_sick,
@@ -108,6 +111,7 @@ def tune(n_people, simulation_days, seed, init_percent_sick):
     data = dict()
     data['intervention_day'] = config.INTERVENTION_DAY
     data['intervention'] = config.INTERVENTION
+    data['risk_model'] = config.RISK_MODEL
 
     data['expected_mobility'] = tracker.expected_mobility
     data['mobility'] = tracker.mobility
@@ -128,6 +132,7 @@ def tune(n_people, simulation_days, seed, init_percent_sick):
     data['human_monitor'] = tracker.human_monitor
     data['infection_monitor'] = tracker.infection_monitor
     data['infector_infectee_update_messages'] = tracker.infector_infectee_update_messages
+    data['risk_attributes'] = tracker.risk_attributes
     # data['dist_encounters'] = dict(tracker.dist_encounters)
     # data['time_encounters'] = dict(tracker.time_encounters)
     # data['day_encounters'] = dict(tracker.day_encounters)
@@ -141,13 +146,13 @@ def tune(n_people, simulation_days, seed, init_percent_sick):
     # data['transition_probability'] = dict(tracker.transition_probability)
     #
     import dill
-    filename = f"tracker_data_n_{n_people}_seed_{seed}_{timenow}.pkl"
-    with open(f"logs2/{filename}", 'wb') as f:
+    filename = f"tracker_data_n_{n_people}_seed_{seed}_{timenow}_{name}.pkl"
+    with open(f"logs4/{filename}", 'wb') as f:
         dill.dump(data, f)
     #
-    logfile = os.path.join(f"logs2/log_n_{n_people}_seed_{seed}_{timenow}.txt")
+    # logfile = os.path.join(f"logs3/log_n_{n_people}_seed_{seed}_{timenow}_{name}.txt")
     # tracker.write_metrics(logfile)
-    tracker.write_metrics(None)
+    # tracker.write_metrics(None)
 
     # fig = x['R'].iplot(asFigure=True, title="R0")
     # fig.write_image("plots/tune/R.png")

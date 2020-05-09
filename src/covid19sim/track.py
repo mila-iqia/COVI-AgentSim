@@ -233,7 +233,7 @@ class Tracker(object):
         #
         self.avg_infectiousness_per_day.append(np.mean([h.infectiousness for h in self.city.humans]))
 
-        self.dump_metrics()
+        # self.dump_metrics()
 
     def compute_mobility(self):
         EM, M, G, B, O, R = 0, 0, 0, 0, 0, 0
@@ -286,6 +286,9 @@ class Tracker(object):
 
     def track_risk_attributes(self, humans):
         for h in humans:
+            if h.is_removed:
+                continue
+
             _tmp = {
                 "risk": h.risk,
                 "risk_level": h.risk_level,
@@ -308,6 +311,9 @@ class Tracker(object):
                 order_1_is_presymptomatic = order_1_is_presymptomatic or (order_1_human.is_infectious and len(order_1_human.symptoms) == 0)
                 order_1_is_symptomatic = order_1_is_symptomatic or (order_1_human.is_infectious and len(order_1_human.symptoms) > 0)
                 order_1_is_tested = order_1_is_tested or order_1_human.test_result == "positive"
+
+                if h.name == "human:8" and order_1_human.test_result == "positive":
+                    import pdb; pdb.set_trace()
 
             _tmp["order_1_is_exposed"] = order_1_is_exposed
             _tmp["order_1_is_presymptomatic"] = order_1_is_presymptomatic

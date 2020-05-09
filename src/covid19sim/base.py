@@ -257,6 +257,7 @@ class City(simpy.Environment):
                         self.intervention = get_intervention(INTERVENTION)
 
                     _ = [h.notify(self.intervention) for h in self.humans]
+                    print("again .. .")
                     print(self.intervention)
 
             if isinstance(self.intervention, Tracing):
@@ -637,6 +638,7 @@ class Contacts(object):
         if human not in self.book:
             self.book[human] = [[timestamp.date(), 1]]
             return
+
         if timestamp.date() != self.book[human][-1][0]:
             self.book[human].append([timestamp.date(), 1])
         else:
@@ -659,15 +661,6 @@ class Contacts(object):
         # remove that human from the book
         if len(self.book[human]) == 0:
             self.book.pop(human)
-
-        # TODO: this should contain only todays info; clean up history should happen once per day
-        if False:
-            remove_idx = 0
-            for historical_message in self.messages:
-                if (human.env.timestamp - human.env.initial_timestamp).days - historical_message.day > TRACING_N_DAYS_HISTORY:
-                    remove_idx += 1
-                else:
-                    break
 
     def send_message(self, owner, tracing_method, order=1, reason="test", payload=None):
         p_contact = tracing_method.p_contact

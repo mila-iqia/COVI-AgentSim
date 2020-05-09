@@ -1272,6 +1272,7 @@ class Human(object):
 
             if update_messages['reason'] == "test":
                 self.message_info['n_contacts_tested_positive'][order][-1] += update_messages['n']
+                
             elif update_messages['reason'] == "symptoms":
                 self.message_info['n_contacts_symptoms'][order][-1] += update_messages['n']
 
