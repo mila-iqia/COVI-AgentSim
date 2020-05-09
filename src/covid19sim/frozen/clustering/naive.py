@@ -43,7 +43,7 @@ class NaiveCluster(ClusterBase):
     @staticmethod
     def create_cluster_from_message(
             message: mu.GenericMessageType,
-            cluster_id: typing.Optional[ClusterIDType] = None,  # used in the output embeddings
+            cluster_id: ClusterIDType,
     ) -> "NaiveCluster":
         """Creates and returns a new cluster based on a single encounter message."""
         return NaiveCluster(
@@ -121,6 +121,7 @@ class NaiveCluster(ClusterBase):
             self.messages_by_timestamp[message.encounter_time] = []
         else:
             assert self.messages_by_timestamp[message.encounter_time][0].uid == message.uid
+            assert self.messages_by_timestamp[message.encounter_time][0].risk_level == message.risk_level
             assert self.messages_by_timestamp[message.encounter_time][0].encounter_time == message.encounter_time
         self.messages_by_timestamp[message.encounter_time].append(message)
         self._real_encounter_uids.append(message._sender_uid)
@@ -140,6 +141,7 @@ class NaiveCluster(ClusterBase):
             self.messages_by_timestamp[messages[0].encounter_time] = []
         else:
             assert self.messages_by_timestamp[messages[0].encounter_time][0].uid == messages[0].uid
+            assert self.messages_by_timestamp[messages[0].encounter_time][0].risk_level == messages[0].risk_level
             assert self.messages_by_timestamp[messages[0].encounter_time][0].encounter_time == messages[0].encounter_time
         self.messages_by_timestamp[messages[0].encounter_time].extend(messages)
         self._real_encounter_uids.extend([m._sender_uid for m in messages])
@@ -214,13 +216,20 @@ class NaiveCluster(ClusterBase):
                 del self.messages_by_timestamp[update_message.encounter_time]
             return self.create_cluster_from_message(mu.create_updated_encounter_with_message(
                 encounter_message=message_to_transfer, update_message=update_message,
-            ))
+            ), cluster_id=None)  # cluster id will be assigned properly in manager
             # note: out of laziness for the debugging stuff, we do not remove anything from unobserved vars
 
     def fit_update_message_batch(
             self,
             update_messages: typing.List[mu.UpdateMessage],
     ) -> typing.Tuple[typing.List[mu.UpdateMessage], typing.Optional["NaiveCluster"]]:
+        """Updates encounters in the current cluster given a list of new update messages.
+
+        If this cluster gets split as a result of the update, the function will return the newly
+        created cluster. Otherwise, if the update messages cannot be applied to any encounter in this
+        cluster, they will be returned as-is. Finally, if any update message was applied to the cluster
+        without splitting it, the function will return the remaining updates.
+        """
         if not update_messages:
             return [], None
         # TODO: what will happen when update messages are no longer systematically sent? (assert will break)
@@ -255,9 +264,9 @@ class NaiveCluster(ClusterBase):
                 new_encounters.append(mu.create_updated_encounter_with_message(
                     encounter_message=old_encounter, update_message=update_messages[encounter_idx],
                 ))
-                self._real_encounter_uids.append(update_messages[encounter_idx]._sender_uid)
-                self._real_encounter_times.append(update_messages[encounter_idx]._real_encounter_time)
-                self._unclustered_messages.append(update_messages[encounter_idx])  # in this list, messages NEVER get updated
+            self._real_encounter_uids.extend([m._sender_uid for m in update_messages[:nb_matches]])
+            self._real_encounter_times.extend([m._real_encounter_time for m in update_messages[:nb_matches]])
+            self._unclustered_messages.extend(update_messages[:nb_matches])
             self.messages_by_timestamp[update_messages[0].encounter_time] = new_encounters
             self.risk_level = new_encounters[0].risk_level
             return update_messages[nb_matches:], None
@@ -275,7 +284,10 @@ class NaiveCluster(ClusterBase):
             else:
                 self.messages_by_timestamp[update_messages[0].encounter_time] = messages_to_keep
             # todo: create cluster from message batch
-            new_cluster = self.create_cluster_from_message(updated_messages_to_transfer[0])
+            new_cluster = self.create_cluster_from_message(
+                updated_messages_to_transfer[0],
+                cluster_id=None,  # cluster id will be assigned properly in manager
+            )
             if len(updated_messages_to_transfer) > 1:
                 new_cluster._force_fit_encounter_message_batch(updated_messages_to_transfer[1:])
             return update_messages[nb_matches:], new_cluster
@@ -382,11 +394,10 @@ class NaiveClusterManager(ClusterManagerBase):
             add_orphan_updates_as_clusters=add_orphan_updates_as_clusters,
             generate_embeddings_by_timestamp=generate_embeddings_by_timestamp,
             generate_backw_compat_embeddings=generate_backw_compat_embeddings,
+            max_cluster_id=max_cluster_id,
         )
         self.ticks_per_uid_roll = ticks_per_uid_roll
         self.rng = rng
-        self.max_cluster_id = max_cluster_id
-        self.next_cluster_id = 0
 
     def _merge_clusters(self):
         """Merges clusters that have the exact same signature (because of updates)."""

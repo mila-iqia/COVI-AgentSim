@@ -1,6 +1,7 @@
 import numpy as np
 import unittest
 
+import covid19sim.frozen.clustering.blind as blind
 import covid19sim.frozen.clustering.naive as naive
 import covid19sim.frozen.clustering.perfect as perfect
 import covid19sim.frozen.clustering.simple as simple
@@ -53,7 +54,7 @@ class NaiveClusteringTests(unittest.TestCase):
             self.assertEqual(len(expositions), 2)
             self.assertEqual(sum(expositions), 0)
             embeddings = cluster_manager.get_embeddings_array()
-            self.assertEqual(len(np.unique(embeddings[:, 0])), 2)
+            self.assertEqual(len(np.unique(embeddings[:, 0])), 2)  # unique cluster ids
             self.assertTrue((embeddings[:, 1] == 0).all())  # risk level
             self.assertTrue((embeddings[:, 2] == 1).all())  # message count
             self.assertTrue((embeddings[:, 3] == 0).all())  # timestamp offset
@@ -94,7 +95,7 @@ class NaiveClusteringTests(unittest.TestCase):
         expositions = cluster_manager._get_expositions_array()
         self.assertTrue(len(expositions) == 3 and sum(expositions) == 0)
         embeddings = cluster_manager.get_embeddings_array()
-        self.assertEqual(len(np.unique(embeddings[:, 0])), 3)
+        self.assertEqual(len(np.unique(embeddings[:, 0])), 3)  # unique cluster ids
         self.assertTrue((embeddings[:, 1] == 7).all())  # risk level
         self.assertTrue(np.logical_and(embeddings[:, 2] > 0, embeddings[:, 2] < 3).all())
         self.assertTrue((embeddings[:, 3] == 0).all())  # timestamp
@@ -296,10 +297,10 @@ class NaiveClusteringTests(unittest.TestCase):
                 n_expositions=25,
                 max_timestamp=14,
             )
-            naive_cluster_manager = naive.NaiveClusterManager(
-                ticks_per_uid_roll=1,
-                max_history_ticks_offset=never,
-            )
+            blind_cluster_manager = blind.BlindClusterManager(max_history_ticks_offset=never)
+            blind_cluster_manager.add_messages(h0_messages)
+            naive_cluster_manager = naive.NaiveClusterManager(ticks_per_uid_roll=1,
+                                                              max_history_ticks_offset=never)
             naive_cluster_manager.add_messages(h0_messages)
             perfect_cluster_manager = perfect.PerfectClusterManager(max_history_ticks_offset=never)
             perfect_cluster_manager.add_messages(h0_messages)
@@ -309,6 +310,7 @@ class NaiveClusteringTests(unittest.TestCase):
                 len(simple_cluster_manager.clusters),
                 len(naive_cluster_manager.clusters),
             )
+            blind_homogeneity_scores = blind_cluster_manager._get_homogeneity_scores()
             naive_homogeneity_scores = naive_cluster_manager._get_homogeneity_scores()
             perfect_homogeneity_scores = perfect_cluster_manager._get_homogeneity_scores()
             simple_homogeneity_scores = simple_cluster_manager._get_homogeneity_scores()
@@ -331,6 +333,9 @@ class NaiveClusteringTests(unittest.TestCase):
             print(f"\tnaive clustr average homogeneity = {np.mean(list(naive_homogeneity_scores.values()))}")
             print(f"\tnaive clustr count error = {naive_cluster_manager._get_cluster_count_error()}")
             print(f"\tnaive clustr count = {len(naive_cluster_manager.clusters)}")
+            print(f"\tblind clustr average homogeneity = {np.mean(list(blind_homogeneity_scores.values()))}")
+            print(f"\tblind clustr count error = {blind_cluster_manager._get_cluster_count_error()}")
+            print(f"\tblind clustr count = {len(blind_cluster_manager.clusters)}")
 
     def test_random_large_scale_batch(self):
         n_trials = 25

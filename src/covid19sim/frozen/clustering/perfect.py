@@ -16,12 +16,14 @@ class PerfectClusterManager(SimplisticClusterManager):
             max_history_ticks_offset: TimeOffsetType = 24 * 60 * 60 * 14,  # one tick per second, 14 days
             add_orphan_updates_as_clusters: bool = False,
             generate_embeddings_by_timestamp: bool = True,
+            max_cluster_id: int = 1000,  # let's hope no user ever reaches 1000 simultaneous clusters
     ):
         assert not add_orphan_updates_as_clusters, "missing impl; this is... imperfect?"
         super().__init__(
             max_history_ticks_offset=max_history_ticks_offset,
             add_orphan_updates_as_clusters=add_orphan_updates_as_clusters,
             generate_embeddings_by_timestamp=generate_embeddings_by_timestamp,
+            max_cluster_id=max_cluster_id,
         )
 
     def _add_encounter_message(self, message: EncounterMessage, cleanup: bool = True):
@@ -41,7 +43,8 @@ class PerfectClusterManager(SimplisticClusterManager):
             matched_cluster.skip_homogeneity_checks = True  # ensure the fit won't throw
             matched_cluster.fit_encounter_message(message)
         else:
-            new_cluster = SimpleCluster.create_cluster_from_message(message)
+            new_cluster = SimpleCluster.create_cluster_from_message(message, self.next_cluster_id)
+            self.next_cluster_id = (self.next_cluster_id + 1) % self.max_cluster_id
             self.clusters.append(new_cluster)
 
     def _add_update_message(self, message: UpdateMessage, cleanup: bool = True):
@@ -58,4 +61,9 @@ class PerfectClusterManager(SimplisticClusterManager):
                 res = cluster.fit_update_message(message)
                 assert res is None
                 return
-        raise AssertionError(f"could not find any proper cluster match for: {message}")
+        if self.add_orphan_updates_as_clusters:
+            new_cluster = SimpleCluster.create_cluster_from_message(message, self.next_cluster_id)
+            self.next_cluster_id = (self.next_cluster_id + 1) % self.max_cluster_id
+            self.clusters.append(new_cluster)
+        else:
+            raise AssertionError(f"could not find any proper cluster match for: {message}")

@@ -39,13 +39,12 @@ class SimpleCluster(ClusterBase):
     @staticmethod
     def create_cluster_from_message(
             message: GenericMessageType,
-            cluster_id: typing.Optional[ClusterIDType] = None,  # unused by this implementation
+            cluster_id: ClusterIDType,
     ) -> "SimpleCluster":
         """Creates and returns a new cluster based on a single encounter message."""
-        assert cluster_id is None, "should be left unset"
         return SimpleCluster(
             # app-visible stuff below
-            cluster_id=message.uid,  # might still be output in embeddings, but is essentially garbo
+            cluster_id=cluster_id,
             risk_level=message.risk_level
                 if isinstance(message, EncounterMessage) else message.new_risk_level,
             first_update_time=message.encounter_time,
@@ -78,7 +77,7 @@ class SimpleCluster(ClusterBase):
         will return `None`.
         """
         if not self.skip_homogeneity_checks:
-            assert self.cluster_id == update_message.uid
+            assert self.messages[0].uid == update_message.uid
             assert self.latest_update_time == update_message.encounter_time
             assert self.first_update_time == update_message.encounter_time
         found_match_idx = None
@@ -151,12 +150,14 @@ class SimplisticClusterManager(ClusterManagerBase):
             add_orphan_updates_as_clusters: bool = False,
             generate_embeddings_by_timestamp: bool = True,
             generate_backw_compat_embeddings: bool = False,
+            max_cluster_id: int = 1000,  # let's hope no user ever reaches 1000 simultaneous clusters
     ):
         super().__init__(
             max_history_ticks_offset=max_history_ticks_offset,
             add_orphan_updates_as_clusters=add_orphan_updates_as_clusters,
             generate_embeddings_by_timestamp=generate_embeddings_by_timestamp,
             generate_backw_compat_embeddings=generate_backw_compat_embeddings,
+            max_cluster_id=max_cluster_id,
         )
 
     def _add_encounter_message(self, message: EncounterMessage, cleanup: bool = True):
@@ -166,7 +167,7 @@ class SimplisticClusterManager(ClusterManagerBase):
         # simplistic clustering = we are looking for an exact timestamp/uid/risk level match
         matched_cluster = None
         for cluster in self.clusters:
-            if cluster.cluster_id == message.uid and \
+            if cluster.messages[0].uid == message.uid and \
                     cluster.risk_level == message.risk_level and \
                     cluster.first_update_time == message.encounter_time:
                 matched_cluster = cluster
@@ -174,7 +175,8 @@ class SimplisticClusterManager(ClusterManagerBase):
         if matched_cluster is not None:
             matched_cluster.fit_encounter_message(message)
         else:
-            new_cluster = SimpleCluster.create_cluster_from_message(message)
+            new_cluster = SimpleCluster.create_cluster_from_message(message, self.next_cluster_id)
+            self.next_cluster_id = (self.next_cluster_id + 1) % self.max_cluster_id
             self.clusters.append(new_cluster)
 
     def _add_update_message(self, message: UpdateMessage, cleanup: bool = True):
@@ -183,11 +185,13 @@ class SimplisticClusterManager(ClusterManagerBase):
             return
         matched_cluster = None
         for cluster in self.clusters:
-            if cluster.cluster_id == message.uid and \
+            # all cluster encounters should have the same uid; just check the first
+            if cluster.messages[0].uid == message.uid and \
                     cluster.first_update_time == message.encounter_time:
                 # found a potential match based on uid and encounter time; check for actual
                 # encounters in the cluster with the target risk level to update...
                 for encounter in cluster.messages:
+                    assert encounter.uid == message.uid
                     if encounter.risk_level == message.old_risk_level:
                         matched_cluster = cluster
                         # one matching encounter is sufficient, we can update that cluster
@@ -198,7 +202,8 @@ class SimplisticClusterManager(ClusterManagerBase):
             matched_cluster.fit_update_message(message)
         else:
             if self.add_orphan_updates_as_clusters:
-                new_cluster = SimpleCluster.create_cluster_from_message(message)
+                new_cluster = SimpleCluster.create_cluster_from_message(message, self.next_cluster_id)
+                self.next_cluster_id = (self.next_cluster_id + 1) % self.max_cluster_id
                 self.clusters.append(new_cluster)
             else:
                 raise AssertionError(f"could not find any proper cluster match for: {message}")

@@ -8,7 +8,7 @@ from tests.utils import FakeHuman, generate_received_messages, generate_random_m
 never = 9999  # dirty macro to indicate a human will never get infected
 
 
-class SimpleClusteringTests(unittest.TestCase):
+class BlindClusteringTests(unittest.TestCase):
     # note: we only ever build & test clusters for a single human, assuming it would also work for others
 
     def test_same_day_visit_clusters(self):
@@ -27,13 +27,11 @@ class SimpleClusteringTests(unittest.TestCase):
             cluster_manager.add_messages(h0_messages)
             self.assertEqual(len(cluster_manager.clusters), 1)
             self.assertEqual(cluster_manager.latest_refresh_timestamp, 2)
-            expositions = cluster_manager._get_expositions_array()
-            self.assertTrue(len(expositions) == 1 and sum(expositions) == 0)
             embeddings = cluster_manager.get_embeddings_array()
             self.assertEqual(len(embeddings), 1)
-            self.assertTrue((embeddings[:, 0] == 0).all())  # risk level
-            self.assertTrue((embeddings[:, 1] == 2).all())  # message count
-            self.assertTrue((embeddings[:, 2] == 0).all())  # timestamp offset
+            self.assertTrue((embeddings[:, 1] == 0).all())  # risk level
+            self.assertTrue((embeddings[:, 2] == 2).all())  # message count
+            self.assertTrue((embeddings[:, 3] == 0).all())  # timestamp offset
             # 2nd scenario: single day visits, diff risk for both visitors, should give 2 cluster
             humans = [FakeHuman(real_uid=idx, exposition_timestamp=never,
                                 visits_to_adopt=visits, force_init_risk=mu.RiskLevelType(idx))
@@ -48,9 +46,9 @@ class SimpleClusteringTests(unittest.TestCase):
             self.assertTrue(len(expositions) == 2 and sum(expositions) == 0)
             embeddings = cluster_manager.get_embeddings_array()
             self.assertEqual(len(embeddings), 2)
-            self.assertTrue((embeddings[:, 0] > 0).all())  # risk level
-            self.assertTrue((embeddings[:, 1] == 1).all())  # message count
-            self.assertTrue((embeddings[:, 2] == 0).all())  # timestamp offset
+            self.assertTrue((embeddings[:, 1] > 0).all())  # risk level
+            self.assertTrue((embeddings[:, 2] == 1).all())  # message count
+            self.assertTrue((embeddings[:, 3] == 0).all())  # timestamp offset
 
     def test_cluster_risk_update(self):
         # scenario: single encounter that gets updated (should remain at 1 cluster)

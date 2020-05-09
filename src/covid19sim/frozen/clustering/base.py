@@ -45,7 +45,7 @@ class ClusterBase:
     @staticmethod
     def create_cluster_from_message(
             message: GenericMessageType,
-            cluster_id: typing.Optional[ClusterIDType] = None,  # unused by this base implementation
+            cluster_id: ClusterIDType,
     ):
         """Creates and returns a new cluster based on a single encounter message."""
         raise NotImplementedError
@@ -83,6 +83,7 @@ class ClusterManagerBase:
     max_history_ticks_offset: TimeOffsetType
     add_orphan_updates_as_clusters: bool
     generate_embeddings_by_timestamp: bool
+    max_cluster_id: int
 
     def __init__(
             self,
@@ -90,8 +91,11 @@ class ClusterManagerBase:
             add_orphan_updates_as_clusters: bool = False,
             generate_embeddings_by_timestamp: bool = True,
             generate_backw_compat_embeddings: bool = False,
+            max_cluster_id: int = 1000,
     ):
         self.clusters = []
+        self.max_cluster_id = max_cluster_id
+        self.next_cluster_id = 0
         self.latest_refresh_timestamp = TimestampType(0)
         self.max_history_ticks_offset = max_history_ticks_offset
         self.add_orphan_updates_as_clusters = add_orphan_updates_as_clusters
