@@ -1,3 +1,7 @@
+"""
+[summary]
+"""
+
 import math
 import datetime
 import numpy as np
@@ -21,8 +25,14 @@ from covid19sim.configs.exp_config import ExpConfig
 
 
 class Visits(object):
+    """
+    [summary]
+    """
 
     def __init__(self):
+        """
+        [summary]
+        """
         self.parks = defaultdict(int)
         self.stores = defaultdict(int)
         self.hospitals = defaultdict(int)
@@ -30,25 +40,69 @@ class Visits(object):
 
     @property
     def n_parks(self):
+        """
+        [summary]
+
+        Returns:
+            [type]: [description]
+        """
         return len(self.parks)
 
     @property
     def n_stores(self):
+        """
+        [summary]
+
+        Returns:
+            [type]: [description]
+        """
         return len(self.stores)
 
     @property
     def n_hospitals(self):
+        """
+        [summary]
+
+        Returns:
+            [type]: [description]
+        """
         return len(self.hospitals)
 
     @property
     def n_miscs(self):
+        """
+        [summary]
+
+        Returns:
+            [type]: [description]
+        """
         return len(self.miscs)
 
 
 class Human(object):
+    """
+    [summary]
+    """
 
-    def __init__(self, env, city, name, age, rng, infection_timestamp, household, workplace, profession, rho=0.3, gamma=0.21, symptoms=[],
-                 test_results=None):
+    def __init__(self, env, city, name, age, rng, infection_timestamp, household, workplace, profession, rho=0.3, gamma=0.21, symptoms=[], test_results=None):
+        """
+        [summary]
+
+        Args:
+            env ([type]): [description]
+            city ([type]): [description]
+            name ([type]): [description]
+            age ([type]): [description]
+            rng ([type]): [description]
+            infection_timestamp ([type]): [description]
+            household ([type]): [description]
+            workplace ([type]): [description]
+            profession ([type]): [description]
+            rho (float, optional): [description]. Defaults to 0.3.
+            gamma (float, optional): [description]. Defaults to 0.21.
+            symptoms (list, optional): [description]. Defaults to [].
+            test_results ([type], optional): [description]. Defaults to None.
+        """
         self.env = env
         self.city = city
         self._events = []
@@ -233,20 +287,48 @@ class Human(object):
 
 
     def assign_household(self, location):
+        """
+        [summary]
+
+        Args:
+            location ([type]): [description]
+        """
         self.household = location
         self.location = location
         if self.profession == "retired":
             self.workplace = location
 
     def __repr__(self):
+        """
+        [summary]
+
+        Returns:
+            [type]: [description]
+        """
         return f"H:{self.name} age:{self.age}, SEIR:{int(self.is_susceptible)}{int(self.is_exposed)}{int(self.is_infectious)}{int(self.is_removed)}"
 
     ########### MEMORY OPTIMIZATION ###########
     @property
     def events(self):
+        """
+        [summary]
+
+        Returns:
+            [type]: [description]
+        """
         return self._events
 
     def events_slice(self, begin, end):
+        """
+        [summary]
+
+        Args:
+            begin ([type]): [description]
+            end ([type]): [description]
+
+        Returns:
+            [type]: [description]
+        """
         end_i = len(self._events)
         begin_i = end_i
         for i, event in enumerate(self._events):
@@ -259,6 +341,15 @@ class Human(object):
         return self._events[begin_i:end_i]
 
     def pull_events_slice(self, end):
+        """
+        [summary]
+
+        Args:
+            end ([type]): [description]
+
+        Returns:
+            [type]: [description]
+        """
         end_i = len(self._events)
         for i, event in enumerate(self._events):
             if event['time'] >= end:
@@ -273,84 +364,191 @@ class Human(object):
 
     @property
     def tracing(self):
+        """
+        [summary]
+
+        Returns:
+            [type]: [description]
+        """
         return self._tracing
 
     @tracing.setter
     def tracing(self, value):
+        """
+        [summary]
+
+        Args:
+            value ([type]): [description]
+        """
         self._tracing = value
 
     @property
     def is_susceptible(self):
+        """
+        [summary]
+
+        Returns:
+            [type]: [description]
+        """
         return not self.is_exposed and not self.is_infectious and not self.is_removed and not self.is_immune
 
     @property
     def is_exposed(self):
+        """
+        [summary]
+
+        Returns:
+            [type]: [description]
+        """
         return self.infection_timestamp is not None and self.env.timestamp - self.infection_timestamp < datetime.timedelta(days=self.infectiousness_onset_days)
 
     @property
     def is_infectious(self):
+        """
+        [summary]
+
+        Returns:
+            [type]: [description]
+        """
         return self.infection_timestamp is not None and self.env.timestamp - self.infection_timestamp >= datetime.timedelta(days=self.infectiousness_onset_days)
 
     @property
     def is_removed(self):
+        """
+        [summary]
+
+        Returns:
+            [type]: [description]
+        """
         return self.is_immune or self.recovered_timestamp == datetime.datetime.max
 
     @property
     def is_incubated(self):
+        """
+        [summary]
+
+        Returns:
+            [type]: [description]
+        """
         return (not self.is_asymptomatic and self.infection_timestamp is not None and
                 self.env.timestamp - self.infection_timestamp >= datetime.timedelta(days=self.incubation_days))
 
     @property
     def state(self):
+        """
+        [summary]
+
+        Returns:
+            [type]: [description]
+        """
         return [int(self.is_susceptible), int(self.is_exposed), int(self.is_infectious), int(self.is_removed)]
 
     @property
     def has_cold(self):
+        """
+        [summary]
+
+        Returns:
+            [type]: [description]
+        """
         return self.cold_timestamp is not None
 
     @property
     def has_flu(self):
+        """
+        [summary]
+
+        Returns:
+            [type]: [description]
+        """
         return self.flu_timestamp is not None
 
     @property
     def has_allergy_symptoms(self):
+        """
+        [summary]
+
+        Returns:
+            [type]: [description]
+        """
         return self.allergy_timestamp is not None
 
     @property
     def days_since_covid(self):
+        """
+        [summary]
+
+        Returns:
+            [type]: [description]
+        """
         if self.infection_timestamp is None:
             return
         return (self.env.timestamp-self.infection_timestamp).days
 
     @property
     def days_since_cold(self):
+        """
+        [summary]
+
+        Returns:
+            [type]: [description]
+        """
         if self.cold_timestamp is None:
             return
         return (self.env.timestamp-self.cold_timestamp).days
 
     @property
     def days_since_flu(self):
+        """
+        [summary]
+
+        Returns:
+            [type]: [description]
+        """
         if self.flu_timestamp is None:
             return
         return (self.env.timestamp-self.flu_timestamp).days
 
     @property
     def days_since_allergies(self):
+        """
+        [summary]
+
+        Returns:
+            [type]: [description]
+        """
         if self.allergy_timestamp is None:
             return
         return (self.env.timestamp-self.allergy_timestamp).days
 
     @property
     def is_really_sick(self):
+        """
+        [summary]
+
+        Returns:
+            [type]: [description]
+        """
         return self.can_get_really_sick and 'severe' in self.symptoms
 
     @property
     def is_extremely_sick(self):
+        """
+        [summary]
+
+        Returns:
+            [type]: [description]
+        """
         return self.can_get_extremely_sick and 'severe' in self.symptoms
 
     @property
     def viral_load(self):
-        """ Calculates the elapsed time since infection, returning this person's current viral load"""
+        """
+        Calculates the elapsed time since infection, returning this person's current viral load
+
+        Returns:
+            [type]: [description]
+        """
         if not self.infection_timestamp:
             return 0.
         # calculates the time since infection in days
@@ -375,6 +573,12 @@ class Human(object):
 
     @property
     def infectiousness(self):
+        """
+        [summary]
+
+        Returns:
+            [type]: [description]
+        """
         severity_multiplier = 1
         if self.is_infectious:
             if self.can_get_really_sick:
@@ -390,11 +594,23 @@ class Human(object):
 
     @property
     def obs_symptoms(self):
+        """
+        [summary]
+
+        Returns:
+            [type]: [description]
+        """
         warnings.warn("Deprecated in favor of Human.all_reported_symptoms()", DeprecationWarning)
         return self.all_reported_symptoms
 
     @property
     def symptoms(self):
+        """
+        [summary]
+
+        Returns:
+            [type]: [description]
+        """
         # TODO: symptoms should not be updated here.
         #  Explicit call to Human.update_symptoms() should be required
         self.update_symptoms()
@@ -402,6 +618,12 @@ class Human(object):
 
     @property
     def all_reported_symptoms(self):
+        """
+        [summary]
+
+        Returns:
+            [type]: [description]
+        """
         if not self.has_app:
             return []
 
@@ -411,6 +633,9 @@ class Human(object):
         return self.rolling_all_reported_symptoms[0]
 
     def update_symptoms(self):
+        """
+        [summary]
+        """
         if self.last_date['symptoms'] == self.env.timestamp.date():
             return
 
@@ -452,6 +677,9 @@ class Human(object):
         self.update_reported_symptoms()
 
     def update_reported_symptoms(self):
+        """
+        [summary]
+        """
         self.update_symptoms()
 
         if self.last_date['reported_symptoms'] == self.env.timestamp.date():
@@ -463,6 +691,9 @@ class Human(object):
         self.rolling_all_reported_symptoms.appendleft(reported_symptoms)
 
     def compute_covid_properties(self):
+        """
+        [summary]
+        """
         self.viral_load_plateau_height, \
           self.viral_load_plateau_start, \
             self.viral_load_plateau_end, \
@@ -480,6 +711,16 @@ class Human(object):
                                         rng=self.rng, preexisting_conditions=self.preexisting_conditions, carefulness=self.carefulness)
 
     def get_tested(self, city, source="illness"):
+        """
+        [summary]
+
+        Args:
+            city ([type]): [description]
+            source (str, optional): [description]. Defaults to "illness".
+
+        Returns:
+            [type]: [description]
+        """
         if not city.tests_available:
             return False
 
@@ -508,6 +749,12 @@ class Human(object):
         return False
 
     def wear_mask(self, put_on=False):
+        """
+        [summary]
+
+        Args:
+            put_on (bool, optional): [description]. Defaults to False.
+        """
         if not self.WEAR_MASK:
             self.wearing_mask, self.mask_efficacy = False, 0
             return
@@ -534,6 +781,9 @@ class Human(object):
             self.mask_efficacy = 0
 
     def recover_health(self):
+        """
+        [summary]
+        """
         if (self.cold_timestamp is not None and
             self.days_since_cold >= len(self.cold_progression)):
             self.cold_timestamp = None
@@ -550,6 +800,12 @@ class Human(object):
             self.allergy_symptoms = []
 
     def how_am_I_feeling(self):
+        """
+        [summary]
+
+        Returns:
+            [type]: [description]
+        """
         current_symptoms = self.symptoms
         if current_symptoms == []:
             return 1.0
@@ -578,6 +834,9 @@ class Human(object):
         return 1.0
 
     def assert_state_changes(self):
+        """
+        [summary]
+        """
         next_state = {0:[1], 1:[2], 2:[0, 3], 3:[3]}
         assert sum(self.state) == 1, f"invalid compartment for {self.name}: {self.state}"
         if self.last_state != self.state:
@@ -587,6 +846,13 @@ class Human(object):
             self.last_state = self.state
 
     def notify(self, intervention=None, collect_training_data=False):
+        """
+        [summary]
+
+        Args:
+            intervention ([type], optional): [description]. Defaults to None.
+            collect_training_data (bool, optional): [description]. Defaults to False.
+        """
         if collect_training_data:
             self.tracing = True
             self.tracing_method = Tracing(risk_model="naive", max_depth=1, symptoms=False, risk=False, should_modify_behavior=False)
@@ -608,6 +874,15 @@ class Human(object):
             self.notified = True
 
     def run(self, city):
+        """
+        [summary]
+
+        Args:
+            city ([type]): [description]
+
+        Yields:
+            [type]: [description]
+        """
         """
            1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24
            State  h h h h h h h h h sh sh h  h  h  ac h  h  h  h  h  h  h  h  h
@@ -757,14 +1032,32 @@ class Human(object):
     ############################## MOBILITY ##################################
     @property
     def lat(self):
+        """
+        [summary]
+
+        Returns:
+            [type]: [description]
+        """
         return self.location.lat if self.location else self.household.lat
 
     @property
     def lon(self):
+        """
+        [summary]
+
+        Returns:
+            [type]: [description]
+        """
         return self.location.lon if self.location else self.household.lon
 
     @property
     def obs_lat(self):
+        """
+        [summary]
+
+        Returns:
+            [type]: [description]
+        """
         if LOCATION_TECH == 'bluetooth':
             return round(self.lat + self.rng.normal(0, 2))
         else:
@@ -772,13 +1065,34 @@ class Human(object):
 
     @property
     def obs_lon(self):
+        """
+        [summary]
+
+        Returns:
+            [type]: [description]
+        """
         if LOCATION_TECH == 'bluetooth':
             return round(self.lon + self.rng.normal(0, 2))
         else:
             return round(self.lon + self.rng.normal(0, 10))
 
     def excursion(self, city, type):
+        """
+        [summary]
 
+        Args:
+            city ([type]): [description]
+            type ([type]): [description]
+
+        Raises:
+            ValueError: [description]
+
+        Returns:
+            [type]: [description]
+
+        Yields:
+            [type]: [description]
+        """
         if type == "shopping":
             grocery_store = self._select_location(location_type="stores", city=city)
             t = _draw_random_discreet_gaussian(self.avg_shopping_time, self.scale_shopping_time, self.rng)
@@ -846,6 +1160,17 @@ class Human(object):
             raise ValueError(f'Unknown excursion type:{type}')
 
     def at(self, location, city, duration):
+        """
+        [summary]
+
+        Args:
+            location ([type]): [description]
+            city ([type]): [description]
+            duration ([type]): [description]
+
+        Yields:
+            [type]: [description]
+        """
         city.tracker.track_trip(from_location=self.location.location_type, to_location=location.location_type, age=self.age, hour=self.env.hour_of_day())
 
         # add the human to the location
@@ -974,6 +1299,7 @@ class Human(object):
                         flu_infectee.flu_timestamp = self.env.timestamp
 
                 city.tracker.track_encounter_events(human1=self, human2=h, location=location, distance=distance, duration=t_near)
+                import pdb; pdb.set_trace()
                 Event.log_encounter(self, h,
                                     location=location,
                                     duration=t_near,
@@ -1016,6 +1342,16 @@ class Human(object):
         Preferential exploration treatment to visit places
         rho, gamma are treated in the paper for normal trips
         Here gamma is multiplied by a factor to supress exploration for parks, stores.
+
+        Args:
+            location_type ([type]): [description]
+            city ([type]): [description]
+
+        Raises:
+            ValueError: [description]
+
+        Returns:
+            [type]: [description]
         """
         if location_type == "park":
             S = self.visits.n_parks
@@ -1076,9 +1412,14 @@ class Human(object):
         return loc
 
     def __getstate__(self):
-        # Copy the object's state from self.__dict__ which contains
-        # all our instance attributes. Always use the dict.copy()
-        # method to avoid modifying the original state.
+        """
+        Copy the object's state from self.__dict__ which contains
+        all our instance attributes. Always use the dict.copy()
+        method to avoid modifying the original state.
+
+        Returns:
+            [type]: [description]
+        """
         state = self.__dict__.copy()
         # Remove the unpicklable entries.
         if state.get("env"):
@@ -1118,15 +1459,35 @@ class Human(object):
         return state
 
     def __setstate__(self, state):
-        # Restore instance attributes.
+        """
+        Restore instance attributes.
+        """
         self.__dict__.update(state)
 
     def cur_message(self, day):
-        """creates the current message for this user"""
+        """
+        Creates the current message for this user
+
+        Args:
+            day ([type]): [description]
+
+        Returns:
+            [type]: [description]
+        """
         message = Message(self.uid, self.risk_level, day, self.name)
         return message
 
     def symptoms_at_time(self, now, symptoms):
+        """
+        [summary]
+
+        Args:
+            now ([type]): [description]
+            symptoms ([type]): [description]
+
+        Returns:
+            [type]: [description]
+        """
         if not symptoms:
             return []
         if not self.symptom_start_time:
@@ -1141,6 +1502,15 @@ class Human(object):
         return rolling_all_symptoms_till_day
 
     def get_test_result_array(self, date):
+        """
+        [summary]
+
+        Args:
+            date ([type]): [description]
+
+        Returns:
+            [type]: [description]
+        """
         # dont change the logic in here, it needs to remain FROZEN
         results = np.zeros(14)
         result_day = (date - self.test_time).days
@@ -1149,6 +1519,15 @@ class Human(object):
         return results
 
     def exposure_array(self, date):
+        """
+        [summary]
+
+        Args:
+            date ([type]): [description]
+
+        Returns:
+            [type]: [description]
+        """
         # dont change the logic in here, it needs to remain FROZEN
         exposed = False
         exposure_day = None
@@ -1161,6 +1540,15 @@ class Human(object):
         return exposed, exposure_day
 
     def recovered_array(self, date):
+        """
+        [summary]
+
+        Args:
+            date ([type]): [description]
+
+        Returns:
+            [type]: [description]
+        """
         # dont change the logic in here, it needs to remain FROZEN
         is_recovered = False
         recovery_day = (date - self.recovered_timestamp).days
@@ -1175,6 +1563,12 @@ class Human(object):
 
     @property
     def risk(self):
+        """
+        [summary]
+
+        Returns:
+            [type]: [description]
+        """
         if not self.risk_history_map:
             return BASELINE_RISK_VALUE
 
@@ -1187,15 +1581,30 @@ class Human(object):
 
     @property
     def risk_level(self):
+        """
+        [summary]
+
+        Returns:
+            [type]: [description]
+        """
         _proba_to_risk_level = proba_to_risk_fn(np.array(ExpConfig.get('RISK_MAPPING')))
         return min(_proba_to_risk_level(self.risk), 15)
 
     @risk.setter
     def risk(self, val):
+        """
+        [summary]
+
+        Args:
+            val ([type]): [description]
+        """
         cur_day = (self.env.timestamp - self.env.initial_timestamp).days
         self.risk_history_map[cur_day] = val
 
     def update_risk_level(self):
+        """
+        [summary]
+        """
         cur_day = (self.env.timestamp - self.env.initial_timestamp).days
         _proba_to_risk_level = proba_to_risk_fn(np.array(ExpConfig.get('RISK_MAPPING')))
 
@@ -1229,6 +1638,15 @@ class Human(object):
 
 
     def update_risk(self, recovery=False, test_results=False, update_messages=None, symptoms=None):
+        """
+        [summary]
+
+        Args:
+            recovery (bool, optional): [description]. Defaults to False.
+            test_results (bool, optional): [description]. Defaults to False.
+            update_messages ([type], optional): [description]. Defaults to None.
+            symptoms ([type], optional): [description]. Defaults to None.
+        """
         if not self.tracing or self.tracing_method.risk_model == "transformer":
             return
         cur_day = (self.env.timestamp - self.env.initial_timestamp).days

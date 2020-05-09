@@ -1,19 +1,23 @@
+"""
+[summary]
+"""
+
 #
 # Time.
 #
 # Time is a complicated business.
-# 
+#
 # - Everyone agrees what a second, a minute and an hour mean.
-# 
+#
 # - People will define a day variously:
-# 
+#
 #     - "The time it takes for the Earth to rotate 360 degrees" (sidereal day)
 #     - "The time between consecutive local noons of the Sun"   (mean solar day)
 #         NB: This is not the same as the sidereal day because the Earth,
 #             having advanced along its orbit of the Sun, must rotate a tiny
 #             bit more for the Sun to achieve local noon again.
 #     - "24 hours"                                              (ephemeris day)
-# 
+#
 #   However, if pressed to give an exact duration, most people will agree that
 #   a day is exactly 24 hours, or 86400 seconds (ephemeris day). The definition
 #   of the second makes the mean solar day currently 86400.002 seconds long,
@@ -22,19 +26,19 @@
 # - Everyone agrees that a week lasts 7 days, but don't agree on the first day
 #   of the week. Python thinks the zeroth day of the week is Monday; C
 #   specifies the zeroth day of the week as Sunday.
-# 
+#
 # - The definition of a year is most confusing. Some people will say:
-# 
+#
 #     - "The time taken to orbit the Sun once"          (sidereal year)
 #     - "The time between consecutive summer solstices" (tropical year)
 #         NB: This is not the same as the sidereal year because of the
 #             precession of the equinoxes.
 #     - "365 days except on leap years, when there are 366 days."
-# 
+#
 #   The Gregorian calendar leap-year rule (365 + 1/4 - 3/400 ephemeris days)
 #   attempts to approximate the tropical year (because the Paschal computus
 #   is based on the vernal equinox). Most people use the Gregorian calendar.
-# 
+#
 #   Therefore, for very-many-year durations (e.g. a person's age), most people
 #   mean tropical years, but for one year people generally "mean" 365 or 366
 #   ephemeris days.
