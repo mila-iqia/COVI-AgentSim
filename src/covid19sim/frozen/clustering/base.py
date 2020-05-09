@@ -172,6 +172,11 @@ class ClusterManagerBase:
         if cleanup:
             self.cleanup_clusters(self.latest_refresh_timestamp)
 
+    def set_current_timestamp(self, timestamp: TimestampType):
+        """Sets the timestamp used internally to invalidate outdated messages/clusters."""
+        assert timestamp >= self.latest_refresh_timestamp, "how could we have received future messages?"
+        self.latest_refresh_timestamp = timestamp
+
     def get_embeddings_array(self) -> np.ndarray:
         """Returns the 'embeddings' array for all clusters managed by this object."""
         raise NotImplementedError

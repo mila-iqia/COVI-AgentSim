@@ -283,7 +283,7 @@ def proc_human(params, inference_engine=None, mp_backend=None, mp_threads=0):
                 add_orphan_updates_as_clusters=False,
             )
         # set the current day as the refresh timestamp to auto-purge outdated messages in advance
-        human["clusters"].latest_refresh_timestamp = params["current_day"]
+        human["clusters"].set_current_timestamp(params["current_day"])
         USE_MESSAGE_BATCHING = True  # TODO: put in config file
         if USE_MESSAGE_BATCHING:
             encounter_messages = covid19sim.frozen.utils.convert_messages_to_batched_new_format(
