@@ -1,3 +1,7 @@
+"""
+Handles querying the inference server with serialized humans and their messages.
+"""
+
 import os
 import json
 import functools
@@ -9,6 +13,15 @@ from ctt.inference.infer import InferenceEngine
 from covid19sim.configs.exp_config import ExpConfig
 
 def query_inference_server(params, **inf_client_kwargs):
+    """
+    [summary]
+
+    Args:
+        params ([type]): [description]
+
+    Returns:
+        [type]: [description]
+    """
     # Make a request to the server
     client = InferenceClient(**inf_client_kwargs)
     results = client.infer(params)
@@ -16,7 +29,23 @@ def query_inference_server(params, **inf_client_kwargs):
 
 
 def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_symptoms, port=6688, n_jobs=1, data_path=None):
-    """ Setup and make the calls to the server"""
+    """
+    [summary]
+    Setup and make the calls to the server
+
+    Args:
+        humans ([type]): [description]
+        start ([type]): [description]
+        current_day ([type]): [description]
+        time_slot ([type]): [description]
+        all_possible_symptoms ([type]): [description]
+        port (int, optional): [description]. Defaults to 6688.
+        n_jobs (int, optional): [description]. Defaults to 1.
+        data_path ([type], optional): [description]. Defaults to None.
+
+    Returns:
+        [type]: [description]
+    """
     hd = humans[0].city.hd
     all_params = []
 

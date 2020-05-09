@@ -1,8 +1,11 @@
-# Graphics class definition
-# Bogdan Hlevca, Markham, Ontario, Canada
-# April 2020
-#
-# Graphics class that handles visualizations for track.py
+"""
+Graphics class definition
+Bogdan Hlevca, Markham, Ontario, Canada
+April 2020
+
+Graphics class that handles visualizations for track.py
+"""
+
 
 import numpy as np
 import pandas as pd
@@ -23,6 +26,15 @@ class PlotTracker(object):
     """
 
     def __init__(self, data, fontsize=14, dateformat=None):
+        """
+        [summary]
+
+        Args:
+            data ([type]): [description]
+            fontsize (int, optional): [description]. Defaults to 14.
+            dateformat ([type], optional): [description]. Defaults to None.
+        """
+
         """
         PEP8 initialize here
         """
@@ -64,11 +76,14 @@ class PlotTracker(object):
     @staticmethod
     def load_data(fname):
         """
-        PARAMETERS
-            file_name (string) :
-                the file name containing data for display
-        """
+        [summary]
 
+        Args:
+            fname (str): the file name containing data for display
+
+        Returns:
+            [type]: [description]
+        """
         import dill, os, sys
 
         if os.path.exists(fname):
@@ -92,6 +107,12 @@ class PlotTracker(object):
 
 
     def get_data(self):
+        """
+        [summary]
+
+        Returns:
+            [type]: [description]
+        """
         return self._data
 
 
@@ -105,52 +126,59 @@ class PlotTracker(object):
         Plots the the heatmap on x,y coordinates for the vals matrix  of
         function.
 
-        PARAMETERS
-            xarr (array like) :
-                the coordinates on the x-axis
-            yarr (array like) :
-                the coordinates on the x-axis
-            vals (matrix like of size x*y - can be pandas.DataFrame)
-                the values to be represented by color
-            xyscale (string) :
-                scale for axes , one of 'linear', 'log'
-            xlabel (string):
-                label on the x axis
-            ylabel (string):
-                label on the y axis
-            title (string):
-                title of the graph
-            x_type (string) :
-                None, 'date'
-            invert_y (boolean):
-                True if Y axis needs to be inverted
-            numticks_x: (int):
-                Will divide the X axis in numticks_x intervals
-            numticks_y: (int):
-                Will divide the X axis in numticks_x intervals
-            crange (touple min, max values)
-                Define the levels that are going to be contoured and ticks on the cbar
-            extend {'neither', 'both', 'min', 'max'}, optional, default: 'neither'
-                Determines the contourf-coloring of values that are outside the levels range.
-                If 'neither', values outside the levels range are not colored. If 'min', 'max' or 'both', color
-                    the values below, above or below and above the levels range.
-                Values below min(levels) and above max(levels) are mapped to the under/over values of the Colormap.
-                Note, that most colormaps do not have dedicated colors for these by default, so that the over and
-                    under values are the edge values of the colormap. You may want to set these values explicitly
-                    using Colormap.set_under and Colormap.set_over.
-            cscale (string) :
-                scale for values, one of 'linear', 'loglog', 'semilog'
-            cnum (int):
-                number of different color levels. if cnum>20 ticks on the colorbar will be reduced to 10
-            cmap (string):
-                colormap for the plot
-            cdecimals (int):
-                the number of decimals to be printed on th cbar
-        RETURNS
-            A list with the figure and axis objects for the plot.
+        Args:
+            xarr (array-like): the coordinates on the x-axis
+            yarr (array-like): the coordinates on the y-axis
+            vals ((matrix like of size x*y - can be pandas.DataFrame): the values to be
+                represented by color
+            xyscale (str, optional): scale for axes , one of 'linear', 'log'.
+                Defaults to "linear".
+            xlabel (str, optional): label on the x axis. Defaults to "".
+            ylabel (str, optional): label on the y axis. Defaults to "".
+            title (str, optional): title of the graph. Defaults to "".
+            x_type ([type], optional): [description]. Defaults to None.
+            invert_y (bool, optional): True if Y axis needs to be inverted.
+                Defaults to False.
+            numticks_x (int, optional): Will divide the X axis in numticks_x intervals.
+                Defaults to None.
+            numticks_y (int, optional): Will divide the Y axis in numticks_y intervals.
+                Defaults to None.
+            crange (tuple, optional): (min, max), define the levels that are going to
+                be contoured and ticks on the cbar. Defaults to None.
+            extend (str, optional): One of {'neither', 'both', 'min', 'max'}.
+                Determines the contour-coloring of values that are
+                outside the levels range. If 'neither', values outside the levels range
+                are not colored. If 'min', 'max' or 'both', color the values below,
+                above or below and above the levels range.
+                Values below min(levels) and above max(levels) are mapped to the
+                under/over values of the Colormap.
+                Note, that most colormaps do not have dedicated colors for these by
+                default, so that the over and under values are the edge values of the
+                colormap. You may want to set these values explicitly using
+                Colormap.set_under and Colormap.set_over.Defaults to None.
+            cscale (str, optional): scale for values, one of 'linear', 'loglog',
+                'semilog'. Defaults to "linear".
+            cnum (int, optional): number of different color levels.
+                If cnum > 20 ticks on the colorbar will be reduced to 10. Defaults to 7.
+            cmap (str, optional): colormap for the plot. Defaults to 'jet'.
+            cdecimals (int, optional): the number of decimals to be printed on th cbar.
+                Defaults to 2.
+
+        Returns:
+            list: A list with the figure and axis objects for the plot.
         """
 
         def downsample(array, npts):
+            """
+            Downsampling utility
+
+            Args:
+                array (array-like): Array to downsample
+                npts (int): number of points for the interpolation
+
+            Returns:
+                array-like: downsampled array
+            """
             from scipy.interpolate import interp1d
             interpolated = interp1d(np.arange(len(array)), array, axis=0, fill_value='extrapolate')
             downsampled = interpolated(np.linspace(0, len(array), npts))
@@ -239,22 +267,18 @@ class PlotTracker(object):
 
     def _plot_histogram(self, x, height, xlabel='', ylabel='', title='', color='red'):
         """
-        Args:
-            x (array like):
-                bar categories
-            height (array like):
-                height of each category
-            xlabel (string):
-                label of the x axis
-            ylabel (string):
-                label of the y axis
-            title (string):
-                title of plot
-            color (string):
-                color of the histogram bars: 'red', 'blue', 'yellow', etc.
-        Returns:
+        [summary]
 
+        Args:
+            x (array-like): bar categories
+            height (array-like): height of each category
+            xlabel (str, optional): label of the x axis. Defaults to ''.
+            ylabel (str, optional): label of the y axis. Defaults to ''.
+            title (str, optional): title of plot. Defaults to ''.
+            color (str, optional): color of the histogram bars: 'red', 'blue',
+                'yellow', etc. Defaults to 'red'.
         """
+
         plt.figure(figsize=(13, 7))
         plt.title(title)
         plt.bar(x, height, color=color, edgecolor='k')
@@ -269,14 +293,14 @@ class PlotTracker(object):
     def plot_heatmap(self, metrics, crange=None):
         """
         Prepares data from the dictionary to be plotted
+
         Args:
-            metrics (string):
-                one of 'all_encounters', 'location_all_encounters', 'human_infection', 'env_infection'
-                        'location_env_infection', 'location_human_infection', 'duration', 'histogram_duration',
-                        'location_duration', 'n_contacts':
-            crange (list of 2):
-                [min max] to be represented on the cbar of the heatmap. values > max will have the same colour
-        Returns:
+            metrics (str): one of 'all_encounters', 'location_all_encounters',
+                'human_infection', 'env_infection' 'location_env_infection',
+                'location_human_infection', 'duration', 'histogram_duration',
+                'location_duration', 'n_contacts'
+            crange (tuple, optional): (min, max) to be represented on the cbar of the
+                heatmap. values > max will have the same colour. Defaults to None.
         """
         contacts = self.get_data()['contacts']
         # extract the appropriate data from the dictionary
@@ -295,14 +319,14 @@ class PlotTracker(object):
     def plot_histogram(self, metrics, color='red'):
         """
         Prepares data from the dictionary to be plotted
+
         Args:
-            metrics (string):
-                one of 'all_encounters', 'location_all_encounters', 'human_infection', 'env_infection'
-                        'location_env_infection', 'location_human_infection', 'duration', 'histogram_duration',
-                        'location_duration', 'n_contacts':
-            color (string):
-                color of the histogram bars: 'red', 'blue', 'yellow', etc.
-        Returns:
+            metrics (str): one of 'all_encounters', 'location_all_encounters',
+                'human_infection', 'env_infection' 'location_env_infection',
+                'location_human_infection', 'duration', 'histogram_duration',
+                'location_duration', 'n_contacts'
+            color (str, optional): color of the histogram bars: 'red', 'blue',
+                'yellow', etc. Defaults to 'red'.
         """
         contacts = self.get_data()['contacts']
         # extract the appropriate data from the dictionary
@@ -322,70 +346,62 @@ class PlotTracker(object):
                             )
 
     @staticmethod
-    def plot_heatmap_fromdata(metrics, data, crange,  fontsize=14, dateformat=None):
+    def plot_heatmap_fromdata(metrics, data, crange,  fontsize=14, dateformat='%Y-%m-%d'):
         """
-        Convenince method to avoid knowing too much about the PlotTracker class
+        Convenience method to avoid knowing too much about the PlotTracker class
+
         Args:
-            metrics (string):
-                one of 'all_encounters', 'location_all_encounters', 'human_infection', 'env_infection'
-                        'location_env_infection', 'location_human_infection', 'duration', 'histogram_duration',
-                        'location_duration', 'n_contacts'
-            data (dictionary):
-                containing 'contacts'
-            crange (list of 2):
-                [min max] to be represented on the cbar of the heatmap. values > max will have the same colour
-            fontsize (int):
-                font size used in the labeds and ticks and title
-            dateformat (string):
-                default '%Y-%m-%d'
-        Returns:
+            metrics (str): one of 'all_encounters', 'location_all_encounters',
+                'human_infection', 'env_infection' 'location_env_infection',
+                'location_human_infection', 'duration', 'histogram_duration',
+                'location_duration', 'n_contacts'
+            data (dict): Dictionnary containing 'contacts'
+            crange (tuple, optional): (min, max) to be represented on the cbar of the
+                heatmap. values > max will have the same colour. Defaults to None.
+            fontsize (int, optional): font size used in the labels and ticks and title.
+                Defaults to 14.
+            dateformat (str, optional): default '%Y-%m-%d'. Defaults to '%Y-%m-%d'.
         """
         gr = PlotTracker(data, fontsize, fontsize, dateformat)
         gr.plot_heatmap(metrics, crange)
 
 
     @staticmethod
-    def plot_heatmap_fromfile(metrics, fname, crange=None, fontsize=14, dateformat=None):
+    def plot_heatmap_fromfile(metrics, fname, crange=None, fontsize=14, dateformat='%Y-%m-%d'):
         """
-        Convenince method to avoid knowing too much about the PlotTracker class
-        Args:
-            metrics (string):
-                one of 'all_encounters', 'location_all_encounters', 'human_infection', 'env_infection'
-                        'location_env_infection', 'location_human_infection', 'duration', 'histogram_duration',
-                        'location_duration', 'n_contacts':
-            fname (string):
-                name of the file that holds pickled data
-            crange (list of 2):
-                [min max] to be represented on the cbar of the heatmap. values > max will have the same colour
-            fontsize (int):
-                font size used in the labeds and ticks and title
+        Convenience method to avoid knowing too much about the PlotTracker class
 
-            dateformat (string):
-                default '%Y-%m-%d'
-        Returns:
+        Args:
+            metrics (str): one of 'all_encounters', 'location_all_encounters',
+                'human_infection', 'env_infection' 'location_env_infection',
+                'location_human_infection', 'duration', 'histogram_duration',
+                'location_duration', 'n_contacts'
+            fname (str): name of the file that holds pickled data
+            crange (tuple, optional): (min, max) to be represented on the cbar of the
+                heatmap. values > max will have the same colour. Defaults to None.
+            fontsize (int, optional): font size used in the labels and ticks and title.
+                Defaults to 14.
+            dateformat (str, optional): default '%Y-%m-%d'. Defaults to '%Y-%m-%d'.
         """
         gr = PlotTracker(PlotTracker.load_data(fname), fontsize, dateformat)
         gr.plot_heatmap(metrics, crange)
 
     @staticmethod
-    def plot_histogram_fromfile(metrics, fname, color='red', fontsize=14, dateformat=None):
-        """
-        Convenince method to avoid knowing too much about the PlotTracker class
-        Args:
-            metrics (string):
-                one of 'all_encounters', 'location_all_encounters', 'human_infection', 'env_infection'
-                        'location_env_infection', 'location_human_infection', 'duration', 'histogram_duration',
-                        'location_duration', 'n_contacts':
-            fname (string):
-                name of the file that holds pickled data
-            color (string):
-                color of the histogram bars: 'red', 'blue', 'yellow', etc.
-            fontsize (int):
-                font size used in the labeds and ticks and title
+    def plot_histogram_fromfile(metrics, fname, color='red', fontsize=14, dateformat='%Y-%m-%d'):
+                """
+        Convenience method to avoid knowing too much about the PlotTracker class
 
-            dateformat (string):
-                default '%Y-%m-%d'
-        Returns:
+        Args:
+            metrics (str): one of 'all_encounters', 'location_all_encounters',
+                'human_infection', 'env_infection' 'location_env_infection',
+                'location_human_infection', 'duration', 'histogram_duration',
+                'location_duration', 'n_contacts'
+            fname (str): name of the file that holds pickled data
+            color (str, optional): color of the histogram bars: 'red', 'blue',
+                'yellow', etc. Defaults to 'red'.
+            fontsize (int, optional): font size used in the labels and ticks and title.
+                Defaults to 14.
+            dateformat (str, optional): default '%Y-%m-%d'. Defaults to '%Y-%m-%d'.
         """
         gr = PlotTracker(PlotTracker.load_data(fname), fontsize, dateformat)
         gr.plot_histogram(metrics, color)
@@ -394,7 +410,7 @@ class PlotTracker(object):
     @staticmethod
     def test_graphics():
         """
-        test the varius Graphics methods
+        test the various Graphics methods
         """
         origin = 'lower'
         delta = 0.025
@@ -411,8 +427,8 @@ class PlotTracker(object):
                            cnum=100, cdecimals=2)
 
 
-# unit tests for the current class
 if __name__ == '__main__':
+    # unit tests for the current class
     PlotTracker.test_graphics()
     PlotTracker.plot_heatmap_fromfile("duration", "tracker_data_n_1000_seed_0_test.pkl", [0,41])
     PlotTracker.plot_heatmap_fromfile("n_contacts", "tracker_data_n_1000_seed_0_test.pkl")
