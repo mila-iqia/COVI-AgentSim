@@ -89,17 +89,11 @@ class ModelsTest(unittest.TestCase):
                         # candidate_encounters[:, 2] is the length of the encounter
                         # candidate_encounters[:, 3] is the number of days since the encounter
                         self.assertEqual(observed['candidate_encounters'].shape[1], 4)
-                        self.assertGreaterEqual(observed['candidate_encounters'][:, 0].min(), 0)
-                        self.assertLess(observed['candidate_encounters'][:, 0].max(), 256)
-                        self.assertGreaterEqual(observed['candidate_encounters'][:, 1].min(), 0)
-                        self.assertLess(observed['candidate_encounters'][:, 1].max(), 16)
-                        self.assertGreaterEqual(observed['candidate_encounters'][:, 2].min(), 0)
-                        self.assertLess(observed['candidate_encounters'][:, 2].max(), 10000)
-                        self.assertLessEqual(observed['candidate_encounters'][:, 3].max(),
-                                             config.TRACING_N_DAYS_HISTORY)
-
-                        for h_enc_id in observed['candidate_encounters'][:, 0]:
-                            stats['human_enc_ids'][h_enc_id] += 1
+                        self.assertGreaterEqual(observed['candidate_encounters'][:, 0].min(), 0)  # cluster id
+                        self.assertGreaterEqual(observed['candidate_encounters'][:, 1].min(), 0)  # risk level
+                        self.assertLess(observed['candidate_encounters'][:, 1].max(), 16)  # risk level
+                        self.assertGreaterEqual(observed['candidate_encounters'][:, 2].min(), 0)  # encounters
+                        self.assertGreaterEqual(observed['candidate_encounters'][:, 3].min(), 0)  # day idx
 
                     # Has received a positive test result [index] days before today
                     self.assertEqual(observed['test_results'].shape, (14,))
@@ -232,7 +226,6 @@ class ModelsTest(unittest.TestCase):
                 infectiousness += human_stats['infectiousness']
 
             # TODO: Validate the values to check against
-            self.assertGreaterEqual(sum(stats['human_enc_ids']), n_people)
             self.assertGreaterEqual(candidate_encounters_cnt, n_people)
             self.assertGreaterEqual(has_exposure_day, n_people * 0.5)
             self.assertGreaterEqual(has_recovery_day, n_people * 0.2)
