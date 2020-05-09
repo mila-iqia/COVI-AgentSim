@@ -1111,10 +1111,12 @@ class Human(object):
         # Remove the unpicklable entries.
         if state.get("env"):
             state['messages'] = [encode_message(message) for message in self.contact_book.messages if
-                                 message.day == self.contact_book.messages[-1].day]
+                                 # match day; ugly till refactor
+                                 message[2] == self.contact_book.messages[-1][2]]
             state['update_messages'] = [encode_update_message(update_message) for update_message in
                                         self.contact_book.update_messages if
-                                        update_message.day == self.contact_book.update_messages[-1].day]
+                                        # match day; ugly till refactor
+                                        update_message[3] == self.contact_book.update_messages[-1][3]]
 
             state["rolling_all_symptoms"] = \
                 covid19sim.frozen.helper.symptoms_to_np(self.rolling_all_symptoms,

@@ -281,7 +281,10 @@ def proc_human(params, inference_engine=None, mp_backend=None, mp_threads=0):
             human["clusters"] = covid19sim.frozen.clustering.naive.NaiveClusterManager(
                 ticks_per_uid_roll=1,
                 max_history_ticks_offset=covid19sim.config.TRACING_N_DAYS_HISTORY,
-                add_orphan_updates_as_clusters=False,
+                # note: the simulator should be able to match all update messages to encounters, but
+                # since the time slot update voodoo, I (PLSC) have not been able to make no-adopt
+                # version of the naive implementation work (both with and without batching)
+                add_orphan_updates_as_clusters=True,
             )
         # set the current day as the refresh timestamp to auto-purge outdated messages in advance
         human["clusters"].set_current_timestamp(params["current_day"])
