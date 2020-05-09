@@ -739,14 +739,32 @@ class Event:
         while staying at `distance` from each other. If infectee is not None, it is
         either human1.name or human2.name.
 
+        Each of the two humans gets its `events` attribute appended whit a dictionnary
+        describing the encounter:
+
+        human.events.append({
+                'human_id':human.name,
+                'event_type':Event.encounter,
+                'time':time,
+                'payload':{
+                    'observed': obs_payload,  # None if one of the humans does not have
+                                              # the app. Otherwise contains the observed
+                                              # data: lat, lon, location_type
+                    'unobserved':unobs_payload  # unobserved data, see loc_unobs_keys and
+                                                # h_unobs_keys
+                }
+        })
+
+
         Args:
             human1 (covid19sim.simulator.Human): One of the encounter's 2 humans
             human2 (covid19sim.simulator.Human): One of the encounter's 2 humans
             location (covid19sim.base.Location): Where the encounter happened
-            duration ([type]): [description]
-            distance ([type]): [description]
-            infectee ([type]): [description]
-            time ([type]): [description]
+            duration (int): duration of encounter
+            distance (float): distance between people (TODO: meters? cm?)
+            infectee (str | None): name of the human which is infected, if any.
+                None otherwise
+            time (datetime.datetime): timestamp of encounter
         """
         if ExpConfig.get('COLLECT_LOGS') is False:
             return
@@ -801,11 +819,14 @@ class Event:
     @staticmethod
     def log_test(human, time):
         """
-        [summary]
+        Adds an event to a human's `events` list if COLLECT_LOGS is True.
+        Events contains the test resuts time, reported_test_result,
+        reported_test_type, test_result_validated, test_type, test_result
+        split across observed and unobserved data.
 
         Args:
-            human ([type]): [description]
-            time ([type]): [description]
+            human (covid19sim.simulator.Human): Human whose test should be logged
+            time (datetime.datetime): Event's time
         """
         if ExpConfig.get('COLLECT_LOGS') is False:
             return
@@ -833,11 +854,12 @@ class Event:
     @staticmethod
     def log_daily(human, time):
         """
-        [summary]
+        Adds an event to a human's `events` list containing daily health information
+        like symptoms, infectiousness and viral_load.
 
         Args:
-            human ([type]): [description]
-            time ([type]): [description]
+            human (covid19sim.simulator.Human): Human who's health should be logged
+            time (datetime.datetime): Event time
         """
         if ExpConfig.get('COLLECT_LOGS') is False:
             return
@@ -858,7 +880,6 @@ class Event:
                         "covid_symptoms":human.covid_symptoms,
                         "flu_symptoms":human.flu_symptoms,
                         "cold_symptoms":human.cold_symptoms
-
                     }
                 }
             }
