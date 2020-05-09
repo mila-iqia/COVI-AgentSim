@@ -206,3 +206,48 @@ def generate_received_messages(
                 recv_map["received_messages"][timestamp].extend(
                     recv_map["received_update_messages"][timestamp])
     return received_messages
+
+
+def generate_random_messages(
+        n_humans: int,
+        n_visits: int,
+        n_expositions: int,
+        max_timestamp: int,
+):
+    """Returns a set of random encounter/update messages + their associated visits."""
+    # start by sampling a bunch of non-exposition visits...
+    visits = []
+    for _ in range(n_visits):
+        visitor_real_uid = np.random.randint(n_humans)
+        visited_real_uid = visitor_real_uid
+        while visitor_real_uid == visited_real_uid:
+            visited_real_uid = np.random.randint(n_humans)
+        visits.append(Visit(
+            visitor_real_uid=visitor_real_uid,
+            visited_real_uid=visited_real_uid,
+            exposition=False,
+            timestamp=np.random.randint(max_timestamp + 1),
+        ))
+    # ...then, had a handful of exposition visits to increase risk levels
+    for _ in range(n_expositions):
+        exposer_real_uid = np.random.randint(n_humans)
+        exposed_real_uid = exposer_real_uid
+        while exposer_real_uid == exposed_real_uid:
+            exposed_real_uid = np.random.randint(n_humans)
+        visits.append(Visit(
+            visitor_real_uid=exposer_real_uid,
+            visited_real_uid=exposed_real_uid,
+            exposition=True,
+            timestamp=np.random.randint(max_timestamp + 1),
+        ))
+    # now, generate all humans with the spurious thingy tag so we dont have to set expo flags
+    humans = [
+        FakeHuman(
+            real_uid=idx,
+            exposition_timestamp=999999999,  # never
+            visits_to_adopt=visits,
+            allow_spurious_exposition=True,
+        ) for idx in range(n_humans)
+    ]
+    messages = generate_received_messages(humans)  # hopefully this is not too slow
+    return [msg for msgs in messages[0]["received_messages"].values() for msg in msgs], visits

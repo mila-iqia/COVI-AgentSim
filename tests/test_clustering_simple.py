@@ -3,7 +3,7 @@ import unittest
 
 import covid19sim.frozen.clustering.simple as clu
 import covid19sim.frozen.message_utils as mu
-from tests.utils import FakeHuman, generate_received_messages, Visit
+from tests.utils import FakeHuman, generate_received_messages, generate_random_messages, Visit
 
 never = 9999  # dirty macro to indicate a human will never get infected
 
@@ -50,7 +50,7 @@ class SimpleClusteringTests(unittest.TestCase):
                 self.assertIn(uid, embeddings[:, 0])
             self.assertTrue((embeddings[:, 1] == 0).all())  # risk level
             self.assertTrue((embeddings[:, 2] == 1).all())  # message count
-            self.assertTrue((embeddings[:, 3] == 2).all())  # timestamp
+            self.assertTrue((embeddings[:, 3] == 0).all())  # timestamp offset
 
     def test_same_day_visit_clusters_overlap(self):
         # scenario: single day visits, and some visits will share the same cluster
@@ -173,42 +173,12 @@ class SimpleClusteringTests(unittest.TestCase):
         n_expositions = 15
         max_timestamp = 10
         for _ in range(n_trials):
-            # start by sampling a bunch of non-exposition visits...
-            visits = []
-            for _ in range(n_visits):
-                visitor_real_uid = np.random.randint(n_humans)
-                visited_real_uid = visitor_real_uid
-                while visitor_real_uid == visited_real_uid:
-                    visited_real_uid = np.random.randint(n_humans)
-                visits.append(Visit(
-                    visitor_real_uid=visitor_real_uid,
-                    visited_real_uid=visited_real_uid,
-                    exposition=False,
-                    timestamp=np.random.randint(max_timestamp + 1),
-                ))
-            # ...then, had a handful of exposition visits to increase risk levels
-            for _ in range(n_expositions):
-                exposer_real_uid = np.random.randint(n_humans)
-                exposed_real_uid = exposer_real_uid
-                while exposer_real_uid == exposed_real_uid:
-                    exposed_real_uid = np.random.randint(n_humans)
-                visits.append(Visit(
-                    visitor_real_uid=exposer_real_uid,
-                    visited_real_uid=exposed_real_uid,
-                    exposition=True,
-                    timestamp=np.random.randint(max_timestamp + 1),
-                ))
-            # now, generate all humans with the spurious thingy tag so we dont have to set expo flags
-            humans = [
-                FakeHuman(
-                    real_uid=idx,
-                    exposition_timestamp=never,
-                    visits_to_adopt=visits,
-                    allow_spurious_exposition=True,
-                ) for idx in range(n_humans)
-            ]
-            messages = generate_received_messages(humans)  # hopefully this is not too slow
-            h0_messages = [msg for msgs in messages[0]["received_messages"].values() for msg in msgs]
+            h0_messages, visits = generate_random_messages(
+                n_humans=n_humans,
+                n_visits=n_visits,
+                n_expositions=n_expositions,
+                max_timestamp=max_timestamp,
+            )
             cluster_manager = clu.SimplisticClusterManager(max_history_ticks_offset=never)
             cluster_manager.add_messages(h0_messages)
             self.assertLessEqual(

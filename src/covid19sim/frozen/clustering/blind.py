@@ -85,6 +85,7 @@ class BlindCluster(ClusterBase):
             # we can self-update without splitting; do that
             self.messages[0] = create_updated_encounter_with_message(
                 encounter_message=self.messages[0], update_message=update_message,
+                blind_update=True,
             )
             self.risk_level = update_message.new_risk_level
             self._real_encounter_uids.append(update_message._sender_uid)
@@ -96,6 +97,7 @@ class BlindCluster(ClusterBase):
             # ... we need to split the cluster into two, where only the new one will be updated
             return self.create_cluster_from_message(create_updated_encounter_with_message(
                 encounter_message=self.messages.pop(0), update_message=update_message,
+                blind_update=True,
             ))
             # note: out of laziness for the debugging stuff, we do not remove anything from unobserved vars
 
@@ -233,14 +235,17 @@ class BlindClusterManager(ClusterManagerBase):
         """Fits an update message to an existing cluster."""
         if self._check_if_message_outdated(message, cleanup):
             return
-        matched_cluster = None
-        for cluster in self.clusters:
+        matched_cluster_idx = None
+        for cluster_idx, cluster in enumerate(self.clusters):
             if cluster.risk_level == message.old_risk_level and \
                     cluster.first_update_time == message.encounter_time:
-                matched_cluster = cluster
+                matched_cluster_idx = cluster_idx
                 break
-        if matched_cluster is not None:
-            matched_cluster.fit_update_message(message)
+        if matched_cluster_idx is not None:
+            fit_result = self.clusters[matched_cluster_idx].fit_update_message(message)
+            if fit_result is not None:
+                assert isinstance(fit_result, BlindCluster)
+                self.clusters.insert(matched_cluster_idx + 1, fit_result)
         else:
             if self.add_orphan_updates_as_clusters:
                 new_cluster = BlindCluster.create_cluster_from_message(message)

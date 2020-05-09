@@ -172,6 +172,7 @@ def create_encounter_from_update_message(
 def create_updated_encounter_with_message(
         encounter_message: EncounterMessage,
         update_message: UpdateMessage,
+        blind_update: bool = False
 ) -> EncounterMessage:
     """Creates and returns a new encounter message based on the update of the provided one.
 
@@ -185,7 +186,7 @@ def create_updated_encounter_with_message(
     Returns:
         A newly instantiated encounter message with the updated attributes.
     """
-    assert encounter_message.uid == update_message.uid
+    assert blind_update or encounter_message.uid == update_message.uid
     assert encounter_message.risk_level == update_message.old_risk_level
     assert encounter_message.encounter_time == update_message.encounter_time
     return EncounterMessage(

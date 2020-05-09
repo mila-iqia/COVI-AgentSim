@@ -326,11 +326,17 @@ class NaiveCluster(ClusterBase):
         #       counts or timestamps.
         tot_messages = self.get_encounter_count()
         if include_cluster_id:
-            return np.asarray([self.cluster_id, self.risk_level, tot_messages,
-                               current_timestamp - self.first_update_time], dtype=np.int64)
+            return np.asarray([
+                self.cluster_id, self.risk_level, tot_messages,
+                current_timestamp - self.first_update_time,
+                current_timestamp - self.latest_update_time,
+            ], dtype=np.int64)
         else:
-            return np.asarray([self.risk_level, tot_messages,
-                               current_timestamp - self.first_update_time], dtype=np.int64)
+            return np.asarray([
+                self.risk_level, tot_messages,
+                current_timestamp - self.first_update_time,
+                current_timestamp - self.latest_update_time,
+            ], dtype=np.int64)
 
     def _get_cluster_exposition_flag(self) -> bool:
         """Returns whether this particular cluster contains an exposition encounter."""
@@ -402,7 +408,7 @@ class NaiveClusterManager(ClusterManagerBase):
         inside clusters that are too old as well."""
         to_keep = []
         for cluster_idx, cluster in enumerate(self.clusters):
-            cluster_update_offset = int(current_timestamp) - int(cluster.first_update_time)
+            cluster_update_offset = int(current_timestamp) - int(cluster.latest_update_time)
             if cluster_update_offset < self.max_history_ticks_offset:
                 for batch_timestamp in list(cluster.messages_by_timestamp.keys()):
                     message_update_offset = int(current_timestamp) - int(batch_timestamp)
