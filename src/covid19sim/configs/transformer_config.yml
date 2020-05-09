@@ -4,11 +4,12 @@ COLLECT_LOGS : True
 COLLECT_TRAINING_DATA : False
 USE_INFERENCE_SERVER : True
 RISK_MODEL : "transformer" # "naive"  "manual", "digital", "transformer"
-INIT_PERCENT_SICK : 0.0025
+INIT_PERCENT_SICK : 0.025
 SHOULD_MODIFY_BEHAVIOR : False
+USE_ORACLE: False
 
 ## INTERVENTIONS
-INTERVENTION_DAY : 10
+INTERVENTION_DAY : 0
 INTERVENTION : "Tracing"
 PERCENT_FOLLOW : 1.0
 P_HAS_APP : 1.0
@@ -16,7 +17,7 @@ ABSOLUTE_P_HAS_APP : True # If False, we modulate P_HAS_APP with carefulness and
 
 
 # PATHS
-TRANSFORMER_EXP_PATH : "CTT-SHIPMENT-0"
+TRANSFORMER_EXP_PATH : "" #"CTT-SHIPMENT-0"
 CLUSTER_PATH : "output/clusters.json"
 
 # Inference & Training

@@ -1,5 +1,3 @@
-import copy
-from datetime import timedelta
 import os
 import json
 import functools
@@ -41,6 +39,7 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
             "log_path": log_path,
             "time_slot": time_slot,
             "risk_model": ExpConfig.get('RISK_MODEL'),
+            "oracle": ExpConfig.get("USE_ORACLE")
         })
 
     if ExpConfig.get('USE_INFERENCE_SERVER'):
@@ -81,7 +80,6 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
         for result in results:
             if result is not None:
                 name, risk_history, clusters = result
-
                 if risk_history is not None:
                     for i in range(ExpConfig.get('TRACING_N_DAYS_HISTORY')):
                         hd[name].risk_history_map[current_day - i] = risk_history[i]

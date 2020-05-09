@@ -20,7 +20,7 @@ import covid19sim.frozen.utils
 
 expected_raw_packet_param_names = [
     "start", "current_day", "all_possible_symptoms", "human",
-    "COLLECT_TRAINING_DATA", "log_path", "risk_model", 'time_slot'
+    "COLLECT_TRAINING_DATA", "log_path", "risk_model", 'time_slot', "oracle"
 ]
 
 expected_processed_packet_param_names = [
@@ -307,28 +307,25 @@ def proc_human(params, inference_engine=None):
         with open(os.path.join(params["log_path"], f"daily_human-{params['time_slot']}.pkl"), 'wb') as fd:
             pickle.dump(daily_output, fd)
 
-    # This is garbage
-    human['risk_history'] = human['infectiousnesses']
-    # if sum(human['infectiousnesses']) > 0:
-    #     import pdb;
-    #     pdb.set_trace()
-
+    # Return ground truth infectiousnesses
+    if params.get('oracle', None):
+        human['risk_history'] = human['infectiousnesses']
+        return human
+    inference_result = None
+    if params['risk_model'] == "transformer":
+        try:
+            inference_result = inference_engine.infer(daily_output)
+        except InvalidSetSize:
+            pass  # return None for invalid samples
+        except RuntimeError as error:
+            # TODO: ctt.modules.HealthHistoryEmbedding can fail with :
+            #  size mismatch, m1: [14 x 29], m2: [13 x 128]
+            warnings.warn(str(error), RuntimeWarning)
+    human['risk_history'] = None
+    if inference_result is not None:
+        # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+        # ... TODO: apply the inference results to the human's risk before returning it
+        #           (it will depend on the output format used by Nasim)
+        # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+        human['risk_history'] = inference_result['infectiousness']
     return human
-    # inference_result = None
-    # if params['risk_model'] == "transformer":
-    #     try:
-    #         inference_result = inference_engine.infer(daily_output)
-    #     except InvalidSetSize:
-    #         pass  # return None for invalid samples
-    #     except RuntimeError as error:
-    #         # TODO: ctt.modules.HealthHistoryEmbedding can fail with :
-    #         #  size mismatch, m1: [14 x 29], m2: [13 x 128]
-    #         warnings.warn(str(error), RuntimeWarning)
-    # human['risk_history'] = None
-    # if inference_result is not None:
-    #     # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-    #     # ... TODO: apply the inference results to the human's risk before returning it
-    #     #           (it will depend on the output format used by Nasim)
-    #     # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-    #     human['risk_history'] = inference_result['infectiousness']
-    # return human
