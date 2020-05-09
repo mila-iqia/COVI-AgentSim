@@ -349,9 +349,6 @@ class NaiveClusterManager(ClusterManagerBase):
     timestamps as long as their UIDs partly match and as long as their risk levels are the same.
     Update messages can also split clusters into two parts, where only one part will receive an
     update. Merging of identical clusters will happen periodically to keep the overall count low.
-
-    THE UPDATE ALGORITHM IS NON-DETERMINISTIC. Make sure to seed your experiments if you want
-    to see reproducible behavior.
     """
 
     clusters: typing.List[NaiveCluster]

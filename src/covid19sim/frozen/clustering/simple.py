@@ -107,11 +107,11 @@ class SimpleCluster(ClusterBase):
         #       will be returned as np.int64 to insure that no data is lost w.r.t. message
         #       counts or timestamps.
         if include_cluster_id:
-            return np.asarray([self.cluster_id, self.risk_level,
-                               len(self.messages), self.first_update_time], dtype=np.int64)
+            return np.asarray([self.cluster_id, self.risk_level, len(self.messages),
+                               current_timestamp - self.first_update_time], dtype=np.int64)
         else:
-            return np.asarray([self.risk_level,
-                               len(self.messages), self.first_update_time], dtype=np.int64)
+            return np.asarray([self.risk_level, len(self.messages),
+                               current_timestamp - self.first_update_time], dtype=np.int64)
 
     def _get_cluster_exposition_flag(self) -> bool:
         """Returns whether this particular cluster contains an exposition encounter."""
@@ -127,9 +127,6 @@ class SimplisticClusterManager(ClusterManagerBase):
     This class implements a simplistic clustering strategy where encounters are only combined
     on a timestamp-level basis. This means clusters cannot contain messages with different
     timestamps. The update messages can also never split a cluster into different parts.
-
-    THE UPDATE ALGORITHM IS NON-DETERMINISTIC. Make sure to seed your experiments if you want
-    to see reproducible behavior.
     """
 
     clusters: typing.List[SimpleCluster]
