@@ -147,7 +147,7 @@ def tune(n_people, simulation_days, seed, init_percent_sick, name):
     #
     import dill
     filename = f"tracker_data_n_{n_people}_seed_{seed}_{timenow}_{name}.pkl"
-    with open(f"logs4/{filename}", 'wb') as f:
+    with open(f"logs5/{filename}", 'wb') as f:
         dill.dump(data, f)
     #
     # logfile = os.path.join(f"logs3/log_n_{n_people}_seed_{seed}_{timenow}_{name}.txt")
