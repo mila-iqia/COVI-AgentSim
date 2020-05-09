@@ -55,7 +55,7 @@ class NaiveClusteringTests(unittest.TestCase):
             self.assertEqual(len(np.unique(embeddings[:, 0])), 2)
             self.assertTrue((embeddings[:, 1] == 0).all())  # risk level
             self.assertTrue((embeddings[:, 2] == 1).all())  # message count
-            self.assertTrue((embeddings[:, 3] == 2).all())  # timestamp
+            self.assertTrue((embeddings[:, 3] == 0).all())  # timestamp offset
 
     def test_same_day_visit_clusters_overlap(self):
         # scenario: single day visits, and some visits will share the same cluster

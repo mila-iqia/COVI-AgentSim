@@ -4,7 +4,7 @@ import numpy as np
 import typing
 
 from covid19sim.frozen.message_utils import EncounterMessage, GenericMessageType, UpdateMessage, \
-    RiskLevelType, create_encounter_from_update_message, create_updated_encounter_with_message
+    TimestampType, RiskLevelType, create_encounter_from_update_message, create_updated_encounter_with_message
 from covid19sim.frozen.clustering.base import ClusterIDType, RealUserIDType, TimeOffsetType, \
     ClusterBase, ClusterManagerBase
 
@@ -95,12 +95,17 @@ class SimpleCluster(ClusterBase):
         self._real_encounter_times.append(update_message._real_encounter_time)
         self._unclustered_messages.append(update_message)  # in this list, messages NEVER get updated
 
-    def get_cluster_embedding(self, include_cluster_id: bool) -> np.ndarray:
+    def get_cluster_embedding(
+            self,
+            current_timestamp: TimestampType,
+            include_cluster_id: bool
+    ) -> np.ndarray:
         """Returns the 'embeddings' array for this particular cluster."""
         # note: this returns an array of four 'features', i.e. the cluster ID, the cluster's
         #       average encounter risk level, the number of messages in the cluster, and
-        #       the first encounter timestamp of the cluster. This array's type will be returned
-        #       as np.int64 to insure that no data is lost w.r.t. message counts or timestamps.
+        #       the offset to the first encounter timestamp of the cluster. This array's type
+        #       will be returned as np.int64 to insure that no data is lost w.r.t. message
+        #       counts or timestamps.
         if include_cluster_id:
             return np.asarray([self.cluster_id, self.risk_level,
                                len(self.messages), self.first_update_time], dtype=np.int64)
@@ -204,7 +209,10 @@ class SimplisticClusterManager(ClusterManagerBase):
         if self.generate_embeddings_by_timestamp:
             cluster_embeds = collections.defaultdict(list)
             for cluster in self.clusters:
-                embed = cluster.get_cluster_embedding(include_cluster_id=True)
+                embed = cluster.get_cluster_embedding(
+                    current_timestamp=self.latest_refresh_timestamp,
+                    include_cluster_id=True,
+                )
                 for msg in cluster.messages:
                     cluster_embeds[msg.encounter_time].append(embed)
             flat_output = []
@@ -212,8 +220,11 @@ class SimplisticClusterManager(ClusterManagerBase):
                 flat_output.extend(cluster_embeds[timestamp])
             return np.asarray(flat_output)
         else:
-            return np.asarray([c.get_cluster_embedding(include_cluster_id=False)
-                               for c in self.clusters], dtype=np.int64)
+            return np.asarray([
+                c.get_cluster_embedding(
+                    current_timestamp=self.latest_refresh_timestamp,
+                    include_cluster_id=False,
+                ) for c in self.clusters], dtype=np.int64)
 
     def _get_expositions_array(self) -> np.ndarray:
         """Returns the 'expositions' array for all clusters managed by this object."""

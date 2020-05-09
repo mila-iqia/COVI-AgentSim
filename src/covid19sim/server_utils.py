@@ -18,6 +18,7 @@ import covid19sim.frozen.clustering.naive
 import covid19sim.frozen.clusters
 import covid19sim.frozen.helper
 import covid19sim.frozen.utils
+import covid19sim.config
 
 
 expected_raw_packet_param_names = [
@@ -279,7 +280,7 @@ def proc_human(params, inference_engine=None, mp_backend=None, mp_threads=0):
             # note: we create the manager to use day-level timestamps only
             human["clusters"] = covid19sim.frozen.clustering.naive.NaiveClusterManager(
                 ticks_per_uid_roll=1,
-                max_history_ticks_offset=14,
+                max_history_ticks_offset=covid19sim.config.TRACING_N_DAYS_HISTORY,
                 add_orphan_updates_as_clusters=False,
             )
         # set the current day as the refresh timestamp to auto-purge outdated messages in advance

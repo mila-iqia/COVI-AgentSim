@@ -313,19 +313,24 @@ class NaiveCluster(ClusterBase):
         """Returns the total number of encounters aggregated into this cluster."""
         return sum([len(m) for m in self.messages_by_timestamp.values()])
 
-    def get_cluster_embedding(self, include_cluster_id: bool) -> np.ndarray:
+    def get_cluster_embedding(
+            self,
+            current_timestamp: TimestampType,
+            include_cluster_id: bool
+    ) -> np.ndarray:
         """Returns the 'embeddings' array for this particular cluster."""
         # note: this returns an array of four 'features', i.e. the cluster ID, the cluster's
         #       average encounter risk level, the number of messages in the cluster, and
-        #       the first encounter timestamp of the cluster. This array's type will be returned
-        #       as np.int64 to insure that no data is lost w.r.t. message counts or timestamps.
+        #       the offset to the first encounter timestamp of the cluster. This array's type
+        #       will be returned as np.int64 to insure that no data is lost w.r.t. message
+        #       counts or timestamps.
         tot_messages = self.get_encounter_count()
         if include_cluster_id:
-            return np.asarray([self.cluster_id, self.risk_level,
-                               tot_messages, self.first_update_time], dtype=np.int64)
+            return np.asarray([self.cluster_id, self.risk_level, tot_messages,
+                               current_timestamp - self.first_update_time], dtype=np.int64)
         else:
-            return np.asarray([self.risk_level,
-                               tot_messages, self.first_update_time], dtype=np.int64)
+            return np.asarray([self.risk_level, tot_messages,
+                               current_timestamp - self.first_update_time], dtype=np.int64)
 
     def _get_cluster_exposition_flag(self) -> bool:
         """Returns whether this particular cluster contains an exposition encounter."""
@@ -400,11 +405,11 @@ class NaiveClusterManager(ClusterManagerBase):
         inside clusters that are too old as well."""
         to_keep = []
         for cluster_idx, cluster in enumerate(self.clusters):
-            cluster_update_offset = int(current_timestamp) - int(cluster.latest_update_time)
-            if cluster_update_offset <= self.max_history_ticks_offset:
+            cluster_update_offset = int(current_timestamp) - int(cluster.first_update_time)
+            if cluster_update_offset < self.max_history_ticks_offset:
                 for batch_timestamp in list(cluster.messages_by_timestamp.keys()):
                     message_update_offset = int(current_timestamp) - int(batch_timestamp)
-                    if message_update_offset > self.max_history_ticks_offset:
+                    if message_update_offset >= self.max_history_ticks_offset:
                         del cluster.messages_by_timestamp[batch_timestamp]
                 if cluster.messages_by_timestamp:
                     to_keep.append(cluster)
@@ -543,7 +548,10 @@ class NaiveClusterManager(ClusterManagerBase):
         if self.generate_embeddings_by_timestamp:
             cluster_embeds = collections.defaultdict(list)
             for cluster in self.clusters:
-                embed = cluster.get_cluster_embedding(include_cluster_id=True)
+                embed = cluster.get_cluster_embedding(
+                    current_timestamp=self.latest_refresh_timestamp,
+                    include_cluster_id=True,
+                )
                 for timestamp in cluster.messages_by_timestamp:
                     cluster_embeds[timestamp].append(embed)
             flat_output = []
@@ -551,8 +559,11 @@ class NaiveClusterManager(ClusterManagerBase):
                 flat_output.extend(cluster_embeds[timestamp])
             return np.asarray(flat_output)
         else:
-            return np.asarray([c.get_cluster_embedding(include_cluster_id=False)
-                               for c in self.clusters], dtype=np.int64)
+            return np.asarray([
+                c.get_cluster_embedding(
+                    current_timestamp=self.latest_refresh_timestamp,
+                    include_cluster_id=False,
+                ) for c in self.clusters], dtype=np.int64)
 
     def _get_expositions_array(self) -> np.ndarray:
         """Returns the 'expositions' array for all clusters managed by this object."""

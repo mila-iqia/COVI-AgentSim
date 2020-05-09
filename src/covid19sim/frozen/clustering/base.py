@@ -58,7 +58,11 @@ class ClusterBase:
         """Updates an encounter in the current cluster given a new update message."""
         raise NotImplementedError
 
-    def get_cluster_embedding(self, include_cluster_id: bool) -> np.ndarray:
+    def get_cluster_embedding(
+            self,
+            current_timestamp: TimestampType,
+            include_cluster_id: bool
+    ) -> np.ndarray:
         """Returns the 'embeddings' array for this particular cluster."""
         raise NotImplementedError
 
@@ -95,8 +99,8 @@ class ClusterManagerBase:
         """Gets rid of clusters that are too old given the current timestamp."""
         to_keep = []
         for cluster in self.clusters:
-            update_offset = int(current_timestamp) - int(cluster.latest_update_time)
-            if update_offset <= self.max_history_ticks_offset:
+            update_offset = int(current_timestamp) - int(cluster.first_update_time)
+            if update_offset < self.max_history_ticks_offset:
                 to_keep.append(cluster)
         self.clusters = to_keep
 

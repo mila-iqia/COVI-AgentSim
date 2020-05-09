@@ -74,26 +74,23 @@ def convert_message_to_new_format(
             _sender_uid=new_utils.RealUserIDType(message.unobs_id.split(":")[-1]),
         )
     else:
-        assert isinstance(message, str) and "_" in message, \
-            f"unexpected old message type: {type(message)}"
-        attribs = message.split("_")
-        assert len(attribs) == 4 or len(attribs) == 6, \
-            f"unexpected string attrib count ({len(attribs)}); should be 4 (encounter) or 6 (update)"
-        if len(attribs) == 4:
+        assert isinstance(message, list) and (len(message) == 4 or len(message) == 6), \
+            f"unexpected old message type: {message}"
+        if len(message) == 4:
             return new_utils.EncounterMessage(
-                uid=new_utils.UIDType(attribs[0]),
-                risk_level=new_utils.RiskLevelType(attribs[1]),
-                encounter_time=new_utils.TimestampType(attribs[2]),
-                _sender_uid=new_utils.RealUserIDType(attribs[3].split(":")[-1]),
+                uid=new_utils.UIDType(message[0]),
+                risk_level=new_utils.RiskLevelType(message[1]),
+                encounter_time=new_utils.TimestampType(message[2]),
+                _sender_uid=new_utils.RealUserIDType(message[3].split(":")[-1]),
             )
         else:
             return new_utils.UpdateMessage(
-                uid=new_utils.UIDType(attribs[0]),
-                old_risk_level=new_utils.RiskLevelType(attribs[2]),
-                new_risk_level=new_utils.RiskLevelType(attribs[1]),
-                encounter_time=new_utils.TimestampType(attribs[3]),
-                update_time=new_utils.TimestampType(attribs[4]),
-                _sender_uid=new_utils.RealUserIDType(attribs[5].split(":")[-1]),
+                uid=new_utils.UIDType(message[0]),
+                old_risk_level=new_utils.RiskLevelType(message[2]),
+                new_risk_level=new_utils.RiskLevelType(message[1]),
+                encounter_time=new_utils.TimestampType(message[3]),
+                update_time=new_utils.TimestampType(message[4]),
+                _sender_uid=new_utils.RealUserIDType(message[5].split(":")[-1]),
             )
 
 

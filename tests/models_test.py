@@ -95,11 +95,8 @@ class ModelsTest(unittest.TestCase):
                         self.assertLess(observed['candidate_encounters'][:, 1].max(), 16)
                         self.assertGreaterEqual(observed['candidate_encounters'][:, 2].min(), 0)
                         self.assertLess(observed['candidate_encounters'][:, 2].max(), 10000)
-                        self.assertLessEqual(observed['candidate_encounters'][:, 3].max(), current_day)
-                        self.assertLess(observed['candidate_encounters'][:, 3].max() -
-                                        observed['candidate_encounters'][:, 3].min(), 14)
-                        self.assertLessEqual(observed['candidate_encounters'][0, 3],
-                                             observed['candidate_encounters'][-1, 3])
+                        self.assertLessEqual(observed['candidate_encounters'][:, 3].max(),
+                                             config.TRACING_N_DAYS_HISTORY)
 
                         for h_enc_id in observed['candidate_encounters'][:, 0]:
                             stats['human_enc_ids'][h_enc_id] += 1
@@ -140,7 +137,6 @@ class ModelsTest(unittest.TestCase):
                         self.assertTrue(len(unobserved['exposure_encounter'].shape) == 1)
                         self.assertTrue(unobserved['exposure_encounter'].min() in (0, 1))
                         self.assertTrue(unobserved['exposure_encounter'].max() in (0, 1))
-                        self.assertTrue(unobserved['exposure_encounter'].sum() in (0, 1))
                     if unobserved['infectiousness'].size:
                         stats['humans'][h_i]['infectiousness'] += 1
                         # Level of infectiousness / day
