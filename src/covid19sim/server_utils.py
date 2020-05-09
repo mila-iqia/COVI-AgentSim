@@ -20,7 +20,7 @@ import covid19sim.frozen.utils
 
 expected_raw_packet_param_names = [
     "start", "current_day", "all_possible_symptoms", "human",
-    "COLLECT_TRAINING_DATA", "log_path", "risk_model"
+    "COLLECT_TRAINING_DATA", "log_path", "risk_model", 'time_slot', "oracle"
 ]
 
 expected_processed_packet_param_names = [
@@ -253,7 +253,7 @@ class InferenceClient:
         return pickle.loads(self.socket.recv())
 
 
-def proc_human(params, inference_engine=None, mp_backend=None, mp_threads=0):
+def proc_human(params, inference_engine=None):
     """(Pre-)Processes the received simulator data for a single human."""
     if all([p in params for p in expected_processed_packet_param_names]):
         return params, None  # probably fetching data from data loader; skip stuff below
@@ -277,6 +277,7 @@ def proc_human(params, inference_engine=None, mp_backend=None, mp_threads=0):
     candidate_encounters, exposure_encounter = covid19sim.frozen.helper.candidate_exposures(human, todays_date)
     reported_symptoms = covid19sim.frozen.helper.symptoms_to_np(human["rolling_all_reported_symptoms"], params["all_possible_symptoms"])
     true_symptoms = covid19sim.frozen.helper.symptoms_to_np(human["rolling_all_symptoms"], params["all_possible_symptoms"])
+
     daily_output = {
         "current_day": params["current_day"],
         "observed": {
@@ -303,9 +304,13 @@ def proc_human(params, inference_engine=None, mp_backend=None, mp_threads=0):
 
     if params["COLLECT_TRAINING_DATA"]:
         os.makedirs(params["log_path"], exist_ok=True)
-        with open(os.path.join(params["log_path"], f"daily_human.pkl"), 'wb') as fd:
+        with open(os.path.join(params["log_path"], f"daily_human-{params['time_slot']}.pkl"), 'wb') as fd:
             pickle.dump(daily_output, fd)
 
+    # Return ground truth infectiousnesses
+    if params.get('oracle', None):
+        human['risk_history'] = human['infectiousnesses']
+        return human
     inference_result = None
     if params['risk_model'] == "transformer":
         try:

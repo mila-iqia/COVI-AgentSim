@@ -5,8 +5,8 @@ from covid19sim.frozen.helper import SYMPTOMS_META
 from covid19sim.simulator import Human
 from covid19sim.base import *
 from covid19sim.monitors import EventMonitor, TimeMonitor, SEIRMonitor
-from covid19sim import config
-
+from covid19sim.configs.exp_config import ExpConfig
+from covid19sim.configs.constants import TICK_MINUTE
 
 @click.group()
 def simu():
@@ -15,38 +15,37 @@ def simu():
 
 @simu.command()
 @click.option('--n_people', help='population of the city', type=int, default=100)
-@click.option('--init_percent_sick', help='% of population initially sick', type=float, default=0.01)
 @click.option('--simulation_days', help='number of days to run the simulation for', type=int, default=30)
 @click.option('--out_chunk_size', help='minimum number of events per dump in outfile', type=int, default=1, required=False)
 @click.option('--outdir', help='the directory to write data to', type=str, default="output", required=False)
 @click.option('--seed', help='seed for the process', type=int, default=0)
 @click.option('--n_jobs', help='number of parallel procs to query the risk servers with', type=int, default=1)
 @click.option('--port', help='which port should we look for inference servers on', type=int, default=6688)
+@click.option('--config', help='where is the configuration file for this experiment', type=str, default="configs/naive_config.yml")
 def sim(n_people=None,
-        init_percent_sick=0,
         start_time=datetime.datetime(2020, 2, 28, 0, 0),
         simulation_days=30,
         outdir=None, out_chunk_size=None,
-        seed=0, n_jobs=1, port=6688):
+        seed=0, n_jobs=1, port=6688, config="configs/naive_config.yml"):
 
-    config.COLLECT_LOGS = True
+    # Load the experimental configuration
+    ExpConfig.load_config(config)
 
     if outdir is None:
         outdir = "output"
 
     os.makedirs(f"{outdir}", exist_ok=True)
-    outdir = f"{outdir}/sim_v2_people-{n_people}_days-{simulation_days}_init-{init_percent_sick}_seed-{seed}_{datetime.datetime.now().strftime('%Y%m%d-%H%M%S')}"
+    outdir = f"{outdir}/sim_v2_people-{n_people}_days-{simulation_days}_init-{ExpConfig.get('INIT_PERCENT_SICK')}_seed-{seed}_{datetime.datetime.now().strftime('%Y%m%d-%H%M%S')}"
     os.makedirs(outdir)
-
     outfile = os.path.join(outdir, "data")
+
     monitors, tracker = run_simu(
         n_people=n_people,
-        init_percent_sick=init_percent_sick,
         start_time=start_time,
         simulation_days=simulation_days,
         outfile=outfile, out_chunk_size=out_chunk_size,
         print_progress=True,
-        seed=seed, n_jobs=n_jobs, port=port,
+        seed=seed, n_jobs=n_jobs, port=port
     )
     monitors[0].dump()
     monitors[0].join_iothread()
@@ -55,38 +54,26 @@ def sim(n_people=None,
     logfile = os.path.join(f"{outdir}/logs.txt")
     tracker.write_metrics(logfile)
 
-@simu.command()
-def base():
-    import pandas as pd
-    import cufflinks as cf
-    cf.go_offline()
-    config.COLLECT_LOGS = False
-    monitors, tracker = run_simu(
-        n_people=100,
-        init_percent_sick=0.01,
-        start_time=datetime.datetime(2020, 2, 28, 0, 0),
-        simulation_days=30,
-        outfile=None,
-        print_progress=False, seed=0,
-    )
-    stats = monitors[1].data
-    x = pd.DataFrame.from_dict(stats).set_index('time')
-    fig = x[['susceptible', 'exposed', 'infectious', 'removed']].iplot(asFigure=True, title="SEIR")
-    fig.show()
-
-    fig = x['R'].iplot(asFigure=True, title="R0")
-    fig.show()
-
 
 @simu.command()
 @click.option('--n_people', help='population of the city', type=int, default=1000)
 @click.option('--simulation_days', help='number of days to run the simulation for', type=int, default=50)
 @click.option('--seed', help='seed for the process', type=int, default=0)
-@click.option('--init_percent_sick', help='percentage of sick people in the beginning', type=float, default=0.01)
-@click.option('--name', help='name to append to the output', type=str, default="")
-def tune(n_people, simulation_days, seed, init_percent_sick, name):
-    # Force COLLECT_LOGS=False
-    config.COLLECT_LOGS = False
+@click.option('--outdir', help='the directory to write data to', type=str, default="output", required=False)
+@click.option('--config', help='where is the configuration file for this experiment', type=str, default="configs/naive_config.yml")
+@click.option('--n_jobs', help='number of parallel procs to query the risk servers with', type=int, default=1)
+def tune(n_people, simulation_days, n_jobs, seed, outdir, config="configs/naive_config.yml"):
+
+    # Load the experimental configuration
+    ExpConfig.load_config(config)
+
+    if outdir is None:
+        outdir = "output"
+
+    os.makedirs(f"{outdir}", exist_ok=True)
+    outdir = f"{outdir}/sim_v2_people-{n_people}_days-{simulation_days}_init-{ExpConfig.get('INIT_PERCENT_SICK')}_seed-{seed}_{datetime.datetime.now().strftime('%Y%m%d-%H%M%S')}"
+    os.makedirs(outdir)
+    outfile = os.path.join(outdir, "data")
 
     # extra packages required  - plotly-orca psutil networkx glob seaborn
     import pandas as pd
@@ -95,12 +82,11 @@ def tune(n_people, simulation_days, seed, init_percent_sick, name):
     import warnings
     warnings.filterwarnings("ignore")
     # cf.go_offline()
-
-    monitors, tracker = run_simu(n_people=n_people, init_percent_sick=init_percent_sick,
+    monitors, tracker = run_simu(n_people=n_people,
                             start_time=datetime.datetime(2020, 2, 28, 0, 0),
                             simulation_days=simulation_days,
-                            outfile=None,
-                            print_progress=True, seed=seed, other_monitors=[]
+                            outfile=outfile,
+                            print_progress=True, n_jobs=n_jobs, seed=seed, other_monitors=[],
                             )
 
     # stats = monitors[1].data
@@ -109,9 +95,9 @@ def tune(n_people, simulation_days, seed, init_percent_sick, name):
     # fig.write_image("plots/tune/seir.png")
     timenow = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
     data = dict()
-    data['intervention_day'] = config.INTERVENTION_DAY
-    data['intervention'] = config.INTERVENTION
-    data['risk_model'] = config.RISK_MODEL
+    data['intervention_day'] = ExpConfig.get('INTERVENTION_DAY')
+    data['intervention'] = ExpConfig.get('INTERVENTION')
+    data['risk_model'] = ExpConfig.get('RISK_MODEL')
 
     data['expected_mobility'] = tracker.expected_mobility
     data['mobility'] = tracker.mobility
@@ -178,34 +164,34 @@ def tune(n_people, simulation_days, seed, init_percent_sick, name):
 @click.option('--symptoms', help='trace symptoms?', type=bool, default=False)
 @click.option('--risk', help='trace risk updates?', type=bool, default=False)
 @click.option('--noise', help='noise', type=float, default=0.5)
-def tracing(n_people, days, tracing, order, symptoms, risk, noise):
-    config.COLLECT_LOGS = False
+@click.option('--config', help='where is the configuration file for this experiment', type=str, default="configs/naive_config.yml")
+def tracing(n_people, days, tracing, order, symptoms, risk, noise, config):
+    ExpConfig.load_config(config)
 
-    # switch off
-    config.COLLECT_TRAINING_DATA = False
-    config.USE_INFERENCE_SERVER = False
-    config.GET_RISK_PREDICTOR_METRICS = False
+    # TODO: we should have a specific config for this and not be setting them manually.
+    ExpConfig.set('COLLECT_LOGS', False)
+    ExpConfig.set('COLLECT_TRAINING_DATA', False)
+    ExpConfig.set('USE_INFERENCE_SERVER', False)
 
     if tracing != "":
-
-        config.INTERVENTION_DAY = 20 # approx 512 will be infected by then
-        config.INTERVENTION = "Tracing"
-        config.RISK_MODEL = tracing
+        ExpConfig.set('INTERVENTION_DAY', 20) # approx 512 will be infected by then
+        ExpConfig.set('INTERVENTION', "Tracing")
+        ExpConfig.set('RISK_MODEL', tracing)
 
         # noise
         if tracing == "manual":
-            config.MANUAL_TRACING_NOISE = noise
+            ExpConfig.set('MANUAL_TRACING_NOISE', noise)
         else:
-            config.P_HAS_APP = noise
+            ExpConfig.set('P_HAS_APP', noise)
 
         #symptoms (not used in risk_model = transformer)
-        config.TRACE_SYMPTOMS = symptoms
+        ExpConfig.set('TRACE_SYMPTOMS', symptoms)
 
         #risk (not used in risk_model = transformer)
-        config.TRACE_SYMPTOMS = risk
+        ExpConfig.set('TRACE_RISK_UPDATE', risk)
 
         # order (not used in risk_model = transformer)
-        config.TRACING_ORDER = order
+        ExpConfig.set('TRACING_ORDER', order)
 
         # set filename
         if tracing != "transformer":
@@ -215,10 +201,10 @@ def tracing(n_people, days, tracing, order, symptoms, risk, noise):
 
     else:
         # no intervention
-        config.INTERVENTION_DAY = -1
+        ExpConfig.set('INTERVENTION_DAY', -1)
         name = "unmitigated"
 
-    monitors, tracker = run_simu(n_people=n_people, init_percent_sick=0.0025,
+    monitors, tracker = run_simu(n_people=n_people,
                         start_time=datetime.datetime(2020, 2, 28, 0, 0),
                         simulation_days=days,
                         outfile=None,
@@ -230,7 +216,7 @@ def tracing(n_people, days, tracing, order, symptoms, risk, noise):
     data['tracing'] = tracing
     data['symptoms'] = symptoms
     data['order'] = order
-    data['intervention_day'] = config.INTERVENTION_DAY
+    data['intervention_day'] = ExpConfig.get['INTERVENTION_DAY']
     data['noise'] = noise
 
     data['mobility'] = tracker.mobility
@@ -258,7 +244,7 @@ def tracing(n_people, days, tracing, order, symptoms, risk, noise):
     logfile = os.path.join(f"logs/log_n_{n_people}_seed_{seed}_{timenow}.txt")
     tracker.write_metrics(None)
 
-def run_simu(n_people=None, init_percent_sick=0.0,
+def run_simu(n_people=None,
              start_time=datetime.datetime(2020, 2, 28, 0, 0),
              simulation_days=10,
              outfile=None, out_chunk_size=None,
@@ -268,7 +254,7 @@ def run_simu(n_people=None, init_percent_sick=0.0,
     env = Env(start_time)
     city_x_range = (0,1000)
     city_y_range = (0,1000)
-    city = City(env, n_people, rng, city_x_range, city_y_range, start_time, init_percent_sick, Human)
+    city = City(env, n_people, rng, city_x_range, city_y_range, start_time, Human)
     monitors = [EventMonitor(f=1800, dest=outfile, chunk_size=out_chunk_size), SEIRMonitor(f=1440)]
 
     # run the simulation

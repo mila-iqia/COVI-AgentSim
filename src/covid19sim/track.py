@@ -7,8 +7,7 @@ import datetime
 import dill
 import copy
 
-from covid19sim.config import HUMAN_DISTRIBUTION, LOCATION_DISTRIBUTION, INFECTION_RADIUS, INFECTION_DURATION, \
-    EFFECTIVE_R_WINDOW, INTERVENTION_DAY, INTERVENTION, RISK_MODEL
+from covid19sim.configs.config import HUMAN_DISTRIBUTION, LOCATION_DISTRIBUTION, INFECTION_RADIUS, EFFECTIVE_R_WINDOW
 from covid19sim.utils import log
 
 
@@ -271,6 +270,7 @@ class Tracker(object):
             for k in top_k:
                 xy = type[:math.ceil(k * len(type))]
                 pred = 1.0*sum(1 for x,y in xy if y)
+
                 top_k_prec[idx].append(pred/len(xy))
                 if total_infected:
                     lift[idx].append(pred/(k*total_infected))
@@ -281,7 +281,6 @@ class Tracker(object):
             if z:
                 recall[-1] = 1.0*sum(1 for x,y in type if y)/z
             idx += 1
-
         return top_k_prec, lift, recall
 
     def track_risk_attributes(self, humans):

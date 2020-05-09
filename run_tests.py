@@ -1,17 +1,11 @@
 import os
 from multiprocessing import Process
 
-import covid19sim.config as config
 import covid19sim.server_bootstrap
+from covid19sim.configs.exp_config import ExpConfig
 
-# Force COLLECT_LOGS=True
-# Force RISK_MODEL=True
-# Fix RISK_MAPPING_FILE relative path
-config.COLLECT_LOGS = True
-config.USE_INFERENCE_SERVER = True
-config.COLLECT_TRAINING_DATA = True
-config.INTERVENTION_DAY = 10
-config.RISK_MODEL = "transformer"
+# Load the experimental configuration
+ExpConfig.load_config(os.path.join(os.path.dirname(__file__), "src/covid19sim/configs/test_config.yml"))
 
 
 def start_inference_server():
