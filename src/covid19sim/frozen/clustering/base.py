@@ -216,6 +216,14 @@ class ClusterManagerBase:
         """
         raise NotImplementedError
 
+    def _get_average_homogeneity(self) -> float:
+        """Returns the average homogeneity score across all encountered users."""
+        return float(np.mean(list(self._get_homogeneity_scores().values())))
+
+    def get_cluster_count(self) -> int:
+        """Returns the active cluster count in this object."""
+        return len(self.clusters)
+
     def _get_cluster_count_error(self) -> int:
         """Returns the difference between the number of clusters and the number of unique users.
 
