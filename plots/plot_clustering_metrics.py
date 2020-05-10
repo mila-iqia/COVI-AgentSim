@@ -23,6 +23,7 @@ metrics_data = {}
 # first, extract the raw metrics for all humans/timeslots
 for algo_name, dir_path in cluster_data_paths:
     pickle_paths = [os.path.join(dir_path, p) for p in os.listdir(dir_path)]
+    pickle_paths.sort()
     data_tracks = collections.defaultdict(list)  # one track = one human; these will evolve
     for pickle_path in pickle_paths:
         with open(pickle_path, "rb") as fd:

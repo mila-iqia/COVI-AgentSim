@@ -132,6 +132,10 @@ class SimpleCluster(ClusterBase):
         #       relies on the flag being properly defined in the clustered messages
         return any([bool(m._exposition_event) for m in self.messages])
 
+    def get_timestamps(self) -> typing.List[TimestampType]:
+        """Returns the list of timestamps for which this cluster possesses at least one encounter."""
+        return [self.first_update_time]  # this impl's clusters always only cover a single timestamp
+
 
 class SimplisticClusterManager(ClusterManagerBase):
     """Manages message cluster creation and updates.
@@ -274,6 +278,10 @@ class SimplisticClusterManager(ClusterManagerBase):
                 user_total_encounter_count[user] += len(cluster.messages)
         return {user: user_true_encounter_counts[user] / user_total_encounter_count[user]
                 for user in user_true_encounter_counts}
+
+    def get_encounters_cluster_mapping(self) -> typing.List[typing.Tuple[EncounterMessage, ClusterIDType]]:
+        """Returns a flattened list of encounters mapped to their cluster ids."""
+        return [(encounter, c.cluster_id) for c in self.clusters for encounter in c.messages]
 
     def _get_cluster_count_error(self) -> int:
         """Returns the difference between the number of clusters and the number of unique users.

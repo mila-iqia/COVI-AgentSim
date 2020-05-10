@@ -365,6 +365,10 @@ class NaiveCluster(ClusterBase):
                     for messages in self.messages_by_timestamp.values()
                     for m in messages])
 
+    def get_timestamps(self) -> typing.List[TimestampType]:
+        """Returns the list of timestamps for which this cluster possesses at least one encounter."""
+        return list(self.messages_by_timestamp.keys())
+
 
 class NaiveClusterManager(ClusterManagerBase):
     """Manages message cluster creation and updates.
@@ -635,6 +639,15 @@ class NaiveClusterManager(ClusterManagerBase):
                 user_total_encounter_count[user] += tot_message_cout
         return {user: user_true_encounter_counts[user] / user_total_encounter_count[user]
                 for user in user_true_encounter_counts}
+
+    def get_encounters_cluster_mapping(self) -> typing.List[typing.Tuple[mu.EncounterMessage, ClusterIDType]]:
+        """Returns a flattened list of encounters mapped to their cluster ids."""
+        return [
+            (encounter, c.cluster_id)
+            for c in self.clusters
+            for encounters in c.messages_by_timestamp.values()
+            for encounter in encounters
+        ]
 
     def _get_cluster_count_error(self) -> int:
         """Returns the difference between the number of clusters and the number of unique users.

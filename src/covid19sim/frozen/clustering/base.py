@@ -71,6 +71,10 @@ class ClusterBase:
         """Returns whether this particular cluster contains an exposition encounter."""
         raise NotImplementedError
 
+    def get_timestamps(self) -> typing.List[TimestampType]:
+        """Returns the list of timestamps for which this cluster possesses at least one encounter."""
+        raise NotImplementedError
+
 
 class ClusterManagerBase:
     """Manages message cluster creation and updates.
@@ -223,6 +227,10 @@ class ClusterManagerBase:
     def get_cluster_count(self) -> int:
         """Returns the active cluster count in this object."""
         return len(self.clusters)
+
+    def get_encounters_cluster_mapping(self) -> typing.List[typing.Tuple[EncounterMessage, ClusterIDType]]:
+        """Returns a flattened list of encounters mapped to their cluster ids."""
+        raise NotImplementedError
 
     def _get_cluster_count_error(self) -> int:
         """Returns the difference between the number of clusters and the number of unique users.
