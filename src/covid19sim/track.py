@@ -9,6 +9,7 @@ import copy
 
 from covid19sim.configs.config import HUMAN_DISTRIBUTION, LOCATION_DISTRIBUTION, INFECTION_RADIUS, EFFECTIVE_R_WINDOW
 from covid19sim.utils import log
+from covid19sim.configs.exp_config import ExpConfig
 
 
 def get_nested_dict(nesting):
@@ -25,11 +26,12 @@ class Tracker(object):
     def __init__(self, env, city):
         self.env = env
         self.city = city
+        # filename to store intermediate results; useful for bigger simulations;
         timenow = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
-        if INTERVENTION_DAY == -1:
+        if ExpConfig.get('INTERVENTION_DAY') == -1:
             name = "unmitigated"
         else:
-            name = RISK_MODEL
+            name = ExpConfig.get('RISK_MODEL')
         self.filename = f"tracker_data_n_{len(city.humans)}_{timenow}_{name}.pkl"
 
         # infection & contacts
@@ -232,7 +234,8 @@ class Tracker(object):
         #
         self.avg_infectiousness_per_day.append(np.mean([h.infectiousness for h in self.city.humans]))
 
-        # self.dump_metrics()
+        if len(self.city.humans) > 5000:
+            self.dump_metrics()
 
     def compute_mobility(self):
         EM, M, G, B, O, R = 0, 0, 0, 0, 0, 0
@@ -310,9 +313,6 @@ class Tracker(object):
                 order_1_is_presymptomatic = order_1_is_presymptomatic or (order_1_human.is_infectious and len(order_1_human.symptoms) == 0)
                 order_1_is_symptomatic = order_1_is_symptomatic or (order_1_human.is_infectious and len(order_1_human.symptoms) > 0)
                 order_1_is_tested = order_1_is_tested or order_1_human.test_result == "positive"
-
-                if h.name == "human:8" and order_1_human.test_result == "positive":
-                    import pdb; pdb.set_trace()
 
             _tmp["order_1_is_exposed"] = order_1_is_exposed
             _tmp["order_1_is_presymptomatic"] = order_1_is_presymptomatic

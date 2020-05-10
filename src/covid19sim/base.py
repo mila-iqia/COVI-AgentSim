@@ -44,13 +44,14 @@ class Env(simpy.Environment):
 
 class City(simpy.Environment):
 
-    def __init__(self, env, n_people, rng, x_range, y_range, start_time, Human):
+    def __init__(self, env, n_people, init_percent_sick, rng, x_range, y_range, start_time, Human):
         self.env = env
         self.rng = rng
         self.x_range = x_range
         self.y_range = y_range
         self.total_area = (x_range[1] - x_range[0]) * (y_range[1] - y_range[0])
         self.n_people = n_people
+        self.init_percent_sick = init_percent_sick
         self.start_time = start_time
         self.last_date_to_check_tests = self.env.timestamp.date()
         self.test_count_today = defaultdict(int)
@@ -168,7 +169,7 @@ class City(simpy.Environment):
                         profession=profession[i],
                         rho=RHO,
                         gamma=GAMMA,
-                        infection_timestamp=self.start_time if self.rng.random() < ExpConfig.get('INIT_PERCENT_SICK') else None
+                        infection_timestamp=self.start_time if self.rng.random() < self.init_percent_sick else None
                         )
                     )
 

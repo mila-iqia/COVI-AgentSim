@@ -898,7 +898,7 @@ class Human(object):
                     p_infection = h.infectiousness * ratio * proximity_factor # &prob_infectious
                     # FIXME: remove hygiene from severity multiplier; init hygiene = 0; use sum here instead
                     reduction_factor = CONTAGION_KNOB + sum(getattr(x, "_hygiene", 0) for x in [self, h]) + mask_efficacy
-                    p_infection *= np.exp(-reduction_factor * h.n_infectious_contacts) # hack to control R0
+                    p_infection *= np.exp(-reduction_factor * h.n_infectious_contacts) # to control R0
 
                     x_human = self.rng.random() < p_infection
 
@@ -1174,7 +1174,7 @@ class Human(object):
     def update_risk_level(self):
         cur_day = (self.env.timestamp - self.env.initial_timestamp).days
         _proba_to_risk_level = proba_to_risk_fn(np.array(ExpConfig.get('RISK_MAPPING')))
-        
+
         for day in range(cur_day - ExpConfig.get('TRACING_N_DAYS_HISTORY'), cur_day + 1):
             if day not in self.prev_risk_history_map.keys():
                 continue
