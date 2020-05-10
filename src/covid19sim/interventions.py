@@ -320,8 +320,11 @@ class Tracing(object):
         return t,s,(r_up, v_up, r_down, v_down)
 
     def compute_risk(self, t, s, r):
-        if self.risk_model in ['manual', 'digital'] and t + s > 0:
-            risk = 1.0
+        if self.risk_model in ['manual', 'digital']:
+            if t + s > 0:
+                risk = 1.0
+            else:
+                risk = 0.0
 
         elif self.risk_model == "naive":
             risk = 1.0 - (1.0 - RISK_TRANSMISSION_PROBA) ** (t+s)
