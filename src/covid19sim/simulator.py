@@ -1,4 +1,4 @@
-from collections import deque
+from collections import Counter, deque
 import os
 import warnings
 
@@ -207,6 +207,9 @@ class Human(object):
         # create 24 timeslots to do your updating
         time_slot = rng.randint(0, 24)
         self.time_slots = [int((time_slot + i*24/UPDATES_PER_DAY) % 24) for i in range(UPDATES_PER_DAY)]
+        # keep track of when the risk/clusters were last updated (i.e. latest timeslot date)
+        self.last_cluster_update = None
+        self.last_risk_update = None
 
         # symptoms
         self.symptom_start_time = None
@@ -1111,10 +1114,12 @@ class Human(object):
         # Remove the unpicklable entries.
         if state.get("env"):
             state['messages'] = [encode_message(message) for message in self.contact_book.messages if
-                                 message.day == self.contact_book.messages[-1].day]
+                                 # match day; ugly till refactor
+                                 message[2] == self.contact_book.messages[-1][2]]
             state['update_messages'] = [encode_update_message(update_message) for update_message in
                                         self.contact_book.update_messages if
-                                        update_message.day == self.contact_book.update_messages[-1].day]
+                                        # match day; ugly till refactor
+                                        update_message[3] == self.contact_book.update_messages[-1][3]]
 
             state["rolling_all_symptoms"] = \
                 covid19sim.frozen.helper.symptoms_to_np(self.rolling_all_symptoms,
