@@ -1,4 +1,6 @@
-"""Contains utility classes for remote inference inside the simulation."""
+"""
+Contains utility classes for remote inference inside the simulation.
+"""
 
 import datetime
 import numpy as np
@@ -20,7 +22,7 @@ import covid19sim.frozen.utils
 
 expected_raw_packet_param_names = [
     "start", "current_day", "all_possible_symptoms", "human",
-    "COLLECT_TRAINING_DATA", "log_path", "risk_model"
+    "COLLECT_TRAINING_DATA", "log_path", "risk_model", 'time_slot', "oracle"
 ]
 
 expected_processed_packet_param_names = [
@@ -31,24 +33,48 @@ default_poll_delay_ms = 500
 
 
 class AtomicCounter(object):
-    """Implements an atomic & thread-safe counter."""
+    """
+    Implements an atomic & thread-safe counter.
+    """
 
     def __init__(self, init=0):
+        """
+        [summary]
+
+        Args:
+            init (int, optional): [description]. Defaults to 0.
+        """
         self._count = init
         self._lock = threading.Lock()
 
     def increment(self, delta=1):
+        """
+        [summary]
+
+        Args:
+            delta (int, optional): [description]. Defaults to 1.
+
+        Returns:
+            [type]: [description]
+        """
         with self._lock:
             self._count += delta
             return self._count
 
     @property
     def count(self):
+        """
+        [summary]
+
+        Returns:
+            [type]: [description]
+        """
         return self._count
 
 
 class InferenceWorker(threading.Thread):
-    """Spawns a single inference worker instance.
+    """
+    Spawns a single inference worker instance.
 
     These workers are managed by the InferenceBroker class. They
     communicate with the broker using a backend connection.
@@ -62,6 +88,17 @@ class InferenceWorker(threading.Thread):
             mp_threads: int,
             context: typing.Optional[zmq.Context] = None,
     ):
+        """
+        [summary]
+
+        Args:
+            experiment_directory (typing.AnyStr): [description]
+            identifier (typing.Any): [description]
+            mp_backend (typing.AnyStr): [description]
+            mp_threads (int): [description]
+            context (typing.Optional[zmq.Context], optional): [description]. Defaults to None.
+        """
+
         threading.Thread.__init__(self)
         self.experiment_directory = experiment_directory
         self.identifier = identifier
@@ -76,6 +113,9 @@ class InferenceWorker(threading.Thread):
         self.init_time = None
 
     def run(self):
+        """
+        [summary]
+        """
         engine = InferenceEngine(self.experiment_directory)
         socket = self.context.socket(zmq.REQ)
         socket.identity = str(self.identifier).encode("ascii")
@@ -99,27 +139,56 @@ class InferenceWorker(threading.Thread):
         socket.close()
 
     def get_processed_count(self):
-        """Returns the total number of processed requests by this inference server."""
+        """
+        Returns the total number of processed requests by this inference server.
+
+        Returns:
+            [type]: [description]
+        """
         return self.packet_counter.count
 
     def get_averge_processing_delay(self):
-        """Returns the average sample processing time between reception & response (in seconds)."""
+        """
+        Returns the average sample processing time between reception & response (in seconds).
+
+        Returns:
+            [type]: [description]
+        """
         tot_delay, tot_packet_count = self.time_counter.count, self.packet_counter.count
         if not tot_packet_count:
             return float("nan")
         return tot_delay / self.packet_counter.count
 
     def get_processing_uptime(self):
-        """Returns the fraction of total uptime that the server spends processing requests."""
+        """
+        Returns the fraction of total uptime that the server spends processing requests.
+
+        Returns:
+            [type]: [description]
+        """
         tot_process_time, tot_time = self.time_counter.count, time.time() - self.init_time
         return tot_process_time / tot_time
 
     def stop(self):
-        """Stops the infinite data reception loop, allowing a clean shutdown."""
+        """
+        Stops the infinite data reception loop, allowing a clean shutdown.
+        """
         self.stop_flag.set()
 
     @staticmethod
     def process_sample(sample, engine, mp_backend=None, mp_threads=0):
+        """
+        [summary]
+
+        Args:
+            sample ([type]): [description]
+            engine ([type]): [description]
+            mp_backend ([type], optional): [description]. Defaults to None.
+            mp_threads (int, optional): [description]. Defaults to 0.
+
+        Returns:
+            [type]: [description]
+        """
         if isinstance(sample, list):
             if mp_threads > 0:
                 import joblib
@@ -141,7 +210,9 @@ class InferenceWorker(threading.Thread):
 
 
 class InferenceBroker(threading.Thread):
-    """Manages inference workers through a backend connection for load balancing."""
+    """
+    Manages inference workers through a backend connection for load balancing.
+    """
 
     def __init__(
             self,
@@ -154,6 +225,19 @@ class InferenceBroker(threading.Thread):
             verbose_print_delay: float = 5.,
             context: typing.Optional[zmq.Context] = None,
     ):
+        """
+        [summary]
+
+        Args:
+            model_exp_path (typing.AnyStr): [description]
+            workers (int): [description]
+            mp_backend (typing.AnyStr): [description]
+            mp_threads (int): [description]
+            port (int): [description]
+            verbose (bool, optional): [description]. Defaults to False.
+            verbose_print_delay (float, optional): [description]. Defaults to 5..
+            context (typing.Optional[zmq.Context], optional): [description]. Defaults to None.
+        """
         threading.Thread.__init__(self)
         if context is None:
             context = zmq.Context()
@@ -168,6 +252,9 @@ class InferenceBroker(threading.Thread):
         self.verbose_print_delay = verbose_print_delay
 
     def run(self):
+        """
+        [summary]
+        """
         print(f"Initializing {self.workers} worker(s) from directory: {self.model_exp_path}")
         frontend = self.context.socket(zmq.ROUTER)
         frontend.bind(f"tcp://*:{self.port}")
@@ -216,12 +303,15 @@ class InferenceBroker(threading.Thread):
             w.join()
 
     def stop(self):
-        """Stops the infinite data reception loop, allowing a clean shutdown."""
+        """
+        Stops the infinite data reception loop, allowing a clean shutdown.
+        """
         self.stop_flag.set()
 
 
 class InferenceClient:
-    """Creates a client through which data samples can be sent for inference.
+    """
+    Creates a client through which data samples can be sent for inference.
 
     This object will automatically be able to pick a proper remote inference
     engine. This object should be fairly lightweight and low-cost, so creating
@@ -234,6 +324,14 @@ class InferenceClient:
             target_addr: typing.Union[str, typing.List[str]] = "localhost",
             context: typing.Optional[zmq.Context] = None,
     ):
+        """
+        [summary]
+
+        Args:
+            target_port (typing.Union[int, typing.List[int]]): [description]
+            target_addr (typing.Union[str, typing.List[str]], optional): [description]. Defaults to "localhost".
+            context (typing.Optional[zmq.Context], optional): [description]. Defaults to None.
+        """
         self.target_ports = [target_port] if isinstance(target_port, int) else target_port
         self.target_addrs = [target_addr] if isinstance(target_addr, str) else target_addr
         if len(self.target_ports) != len(self.target_addrs):
@@ -248,13 +346,30 @@ class InferenceClient:
             self.socket.connect(f"tcp://{addr}:{port}")
 
     def infer(self, sample):
-        """Forwards a data sample for the inference engine using pickle."""
+        """
+        Forwards a data sample for the inference engine using pickle.
+
+        Args:
+            sample ([type]): [description]
+
+        Returns:
+            [type]: [description]
+        """
         self.socket.send(pickle.dumps(sample))
         return pickle.loads(self.socket.recv())
 
 
-def proc_human(params, inference_engine=None, mp_backend=None, mp_threads=0):
-    """(Pre-)Processes the received simulator data for a single human."""
+def proc_human(params, inference_engine=None):
+    """
+    (Pre-)Processes the received simulator data for a single human.
+
+    Args:
+        params ([type]): [description]
+        inference_engine ([type], optional): [description]. Defaults to None.
+
+    Returns:
+        [type]: [description]
+    """
     if all([p in params for p in expected_processed_packet_param_names]):
         return params, None  # probably fetching data from data loader; skip stuff below
 
@@ -277,6 +392,7 @@ def proc_human(params, inference_engine=None, mp_backend=None, mp_threads=0):
     candidate_encounters, exposure_encounter = covid19sim.frozen.helper.candidate_exposures(human, todays_date)
     reported_symptoms = covid19sim.frozen.helper.symptoms_to_np(human["rolling_all_reported_symptoms"], params["all_possible_symptoms"])
     true_symptoms = covid19sim.frozen.helper.symptoms_to_np(human["rolling_all_symptoms"], params["all_possible_symptoms"])
+
     daily_output = {
         "current_day": params["current_day"],
         "observed": {
@@ -303,9 +419,13 @@ def proc_human(params, inference_engine=None, mp_backend=None, mp_threads=0):
 
     if params["COLLECT_TRAINING_DATA"]:
         os.makedirs(params["log_path"], exist_ok=True)
-        with open(os.path.join(params["log_path"], f"daily_human.pkl"), 'wb') as fd:
+        with open(os.path.join(params["log_path"], f"daily_human-{params['time_slot']}.pkl"), 'wb') as fd:
             pickle.dump(daily_output, fd)
 
+    # Return ground truth infectiousnesses
+    if params.get('oracle', None):
+        human['risk_history'] = human['infectiousnesses']
+        return human
     inference_result = None
     if params['risk_model'] == "transformer":
         try:

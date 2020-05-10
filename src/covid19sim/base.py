@@ -1,47 +1,109 @@
+"""
+[summary]
+"""
 import simpy
 import math
 import datetime
 import itertools
 from collections import defaultdict
 
-from covid19sim.config import *
-from covid19sim.utils import compute_distance, _get_random_area, _draw_random_discreet_gaussian, get_intervention
+from covid19sim.configs.config import *
+from covid19sim.utils import compute_distance, _get_random_area, _draw_random_discreet_gaussian, get_intervention, calculate_average_infectiousness
 from covid19sim.track import Tracker
 from covid19sim.interventions import *
 from covid19sim.frozen.utils import update_uid
+from covid19sim.configs.constants import TICK_MINUTE
+from covid19sim.configs.exp_config import ExpConfig
+
 
 class Env(simpy.Environment):
+    """
+    Custom simpy.Environment
+    """
 
     def __init__(self, initial_timestamp):
+        """
+        Args:
+            initial_timestamp (datetime.datetime): The environment's initial timestamp
+        """
         super().__init__()
         self.initial_timestamp = initial_timestamp
 
     def time(self):
+        """
+        Alias for simpy-defined `now` attribute
+
+        Returns:
+            datetime.datetime: current time in the environment
+        """
         return self.now
 
     @property
     def timestamp(self):
+        """
+        Returns:
+            datetime.datetime: current date (initial timestamp shifted by
+                env.now * TICK_MINUTE minutes)
+        """
         return self.initial_timestamp + datetime.timedelta(
             minutes=self.now * TICK_MINUTE)
 
     def minutes(self):
+        """
+        Returns:
+            int: current timestamp minute
+        """
         return self.timestamp.minute
 
     def hour_of_day(self):
+        """
+        Returns:
+            int: current timestamp hour
+        """
         return self.timestamp.hour
 
     def day_of_week(self):
+        """
+        Returns:
+            int: current timestamp day of the week
+        """
         return self.timestamp.weekday()
 
     def is_weekend(self):
+        """
+        Returns:
+            bool: current timestamp day is a weekend day
+        """
         return self.day_of_week() in [0, 6]
 
     def time_of_day(self):
+        """
+        Time of day in iso format
+        datetime(2020, 2, 28, 0, 0) => '2020-02-28T00:00:00'
+
+        Returns:
+            str: iso string representing current timestamp
+    """
         return self.timestamp.isoformat()
 
 class City(simpy.Environment):
+    """
+    City environment
+    """
 
-    def __init__(self, env, n_people, rng, x_range, y_range, start_time, init_percent_sick, Human):
+    def __init__(self, env, n_people, rng, x_range, y_range, start_time, Human):
+        """
+
+        Args:
+            env (simpy.Environment): [description]
+            n_people (int): Number of people in the city
+            rng (np.random.RandomState): Random number generator
+            x_range (tuple): (min_x, max_x)
+            y_range (tuple): (min_y, max_y)
+            start_time (datetime.datetime): City's initial datetime
+            init_percent_sick (float): % of humans sick at the start of the simulation
+            Human (covid19.simulator.Human): Class for the city's human instances
+        """
         self.env = env
         self.rng = rng
         self.x_range = x_range
@@ -49,7 +111,6 @@ class City(simpy.Environment):
         self.total_area = (x_range[1] - x_range[0]) * (y_range[1] - y_range[0])
         self.n_people = n_people
         self.start_time = start_time
-        self.init_percent_sick = init_percent_sick
         self.last_date_to_check_tests = self.env.timestamp.date()
         self.test_count_today = defaultdict(int)
         self.test_type_preference = list(zip(*sorted(TEST_TYPES.items(), key=lambda x:x[1]['preference'])))[0]
@@ -71,6 +132,31 @@ class City(simpy.Environment):
         self.intervention = None
 
     def create_location(self, specs, type, name, area=None):
+        """
+        Create a location instance based on `type`
+
+        Specs is a dict like:
+        {
+            "n" : (int) number of such locations,
+            "area": (float) locations' typical area,
+            "social_contact_factor": (float(0:1)) how much people are close to each other
+                see contamination_probability(),
+            "surface_prob": [0.1, 0.1, 0.3, 0.2, 0.3], distribution over types of surfaces
+                in that location
+            "rnd_capacity": (tuple, optional) Either None or a tuple of ints (min, max)
+            describing the args of np.random.randint,
+        }
+
+        Args:
+            specs (dict): location's parameters
+            type (str): "household" and "senior_residency" create a Household instance,
+                "hospital" creates a Hospital, other strings create a generic Location
+            name (str): Location's name, created as `type:name`
+            area (float, optional): Location's area. Defaults to None.
+
+        Returns:
+            Location | Household | Hospital: new location instance
+        """
         _cls = Location
         if type in ['household', 'senior_residency']:
             _cls = Household
@@ -89,8 +175,13 @@ class City(simpy.Environment):
                         capacity= None if not specs['rnd_capacity'] else self.rng.randint(*specs['rnd_capacity']),
                         surface_prob = specs['surface_prob']
                         )
+
     @property
     def tests_available(self):
+        """
+        Returns:
+            bool: tests are available
+        """
         if self.last_date_to_check_tests != self.env.timestamp.date():
             self.last_date_to_check_tests = self.env.timestamp.date()
             for k in self.test_count_today.keys():
@@ -98,12 +189,25 @@ class City(simpy.Environment):
         return any(self.test_count_today[test_type] < TEST_TYPES[test_type]['capacity'] for test_type in self.test_type_preference)
 
     def get_available_test(self):
+        """
+        Returns a test_type: the first type that is available according to preference
+        hierarchy (TEST_TYPES[test_type]['preference']).
+
+        See TEST_TYPES in config.py
+
+        Returns:
+            str: available test_type
+        """
         for test_type in self.test_type_preference:
             if self.test_count_today[test_type] < TEST_TYPES[test_type]['capacity']:
                 self.test_count_today[test_type] += 1
                 return test_type
 
     def initialize_locations(self):
+        """
+        Create locations according to config.py / LOCATION_DISTRIBUTION.
+        The City instance will have attributes <location_type>s = list(location(*args))
+        """
         for location, specs in LOCATION_DISTRIBUTION.items():
             if location in ['household']:
                 continue
@@ -114,12 +218,18 @@ class City(simpy.Environment):
             setattr(self, f"{location}s", locs)
 
     def initialize_humans(self, Human):
-        # allocate humans to houses such that (unsolved)
-        # 1. average number of residents in a house is (approx.) 2.6
-        # 2. not all residents are below 15 years of age
-        # 3. age occupancy distribution follows HUMAN_DSITRIBUTION.residence_preference.house_size
+        """
+        allocate humans to houses such that (unsolved)
+        1. average number of residents in a house is (approx.) 2.6
+        2. not all residents are below 15 years of age
+        3. age occupancy distribution follows HUMAN_DSITRIBUTION.residence_preference.house_size
 
-        # current implementation is an approximate heuristic
+        current implementation is an approximate heuristic
+
+        Args:
+            Human (Class): Class for the city's human instances
+        """
+
 
         # make humans
         count_humans = 0
@@ -166,7 +276,7 @@ class City(simpy.Environment):
                         profession=profession[i],
                         rho=RHO,
                         gamma=GAMMA,
-                        infection_timestamp=self.start_time if self.rng.random() < self.init_percent_sick else None
+                        infection_timestamp=self.start_time if self.rng.random() < ExpConfig.get('INIT_PERCENT_SICK') else None
                         )
                     )
 
@@ -219,46 +329,123 @@ class City(simpy.Environment):
         self.hd = {human.name: human for human in self.humans}
 
     def log_static_info(self):
+        """
+        Logs events for all humans in the city
+        """
         for h in self.humans:
             Event.log_static_info(self, h, self.env.timestamp)
 
     @property
     def events(self):
+        """
+        Get all events of all humans in the city
+
+        Returns:
+            list: all of everyone's events
+        """
         return list(itertools.chain(*[h.events for h in self.humans]))
 
     def events_slice(self, begin, end):
+        """
+        Get all sliced events of all humans in the city
+
+        Args:
+            begin (datetime.datetime): minimum time of events
+            end (int): maximum time of events
+
+        Returns:
+            list: The list each human's events, restricted to a slice
+        """
         return list(itertools.chain(*[h.events_slice(begin, end) for h in self.humans]))
 
     def pull_events_slice(self, end):
+        """
+        Get the list of all human's events before `end`.
+        /!\ Modifies each human's events
+
+        Args:
+            end (datetime.datetime): maximum time of pulled events
+
+        Returns:
+            list: All the events which occured before `end`
+        """
         return list(itertools.chain(*[h.pull_events_slice(end) for h in self.humans]))
 
     def _compute_preferences(self):
-        """ compute preferred distribution of each human for park, stores, etc."""
+        """
+        Compute preferred distribution of each human for park, stores, etc.
+        /!\ Modifies each human's stores_preferences and parks_preferences
+        """
         for h in self.humans:
             h.stores_preferences = [(compute_distance(h.household, s) + 1e-1) ** -1 for s in self.stores]
             h.parks_preferences = [(compute_distance(h.household, s) + 1e-1) ** -1 for s in self.parks]
 
     def run(self, duration, outfile, start_time, all_possible_symptoms, port, n_jobs):
+        """
+        Run the City DOCTODO(improve this)
+
+        Args:
+            duration (int): duration of a step (env.timeout(duration / TICK_MINUTE))
+            outfile (str): may be None, the run's output file to write to
+            start_time (datetime.datetime): useless arg << FIXME
+            all_possible_symptoms (dict): copy of SYMPTOMS_META (config.py)
+            port (int): the port for integrated_risk_pred when updating the humans'
+                risk
+            n_jobs (int): the number of jobs for integrated_risk_pred when updating
+                the humans' risk
+
+        Yields:
+            simpy.Timeout
+        """
         self.current_day = 0
+        humans_notified = False
 
-        print(f"INTERVENTION_DAY: {INTERVENTION_DAY}")
         while True:
-            if self.env.timestamp.hour == 0:
-                # TODO: this is an assumption which will break in reality, instead of updating once per day everyone at the same time, it should be throughout the day
-                for human in self.humans:
-                    human.uid = update_uid(human.uid, human.rng)
+            # Notify humans to follow interventions on intervention day
+            if self.current_day == ExpConfig.get('INTERVENTION_DAY') and not humans_notified:
+                self.intervention = get_intervention(key=ExpConfig.get('INTERVENTION'),
+                                                     RISK_MODEL=ExpConfig.get('RISK_MODEL'),
+                                                     TRACING_ORDER=ExpConfig.get('TRACING_ORDER'),
+                                                     TRACE_SYMPTOMS=ExpConfig.get('TRACE_SYMPTOMS'),
+                                                     TRACE_RISK_UPDATE=ExpConfig.get('TRACE_RISK_UPDATE'),
+                                                     SHOULD_MODIFY_BEHAVIOR=ExpConfig.get('SHOULD_MODIFY_BEHAVIOR'))
 
-                if INTERVENTION_DAY >= 0 and self.current_day == INTERVENTION_DAY:
-                    # first iteration of ML (collect data without modifying behavior)
-                    if COLLECT_TRAINING_DATA:
-                        self.intervention = Tracing(risk_model="naive", max_depth=1, symptoms=False, risk=False, should_modify_behavior=False)
-                        print("naive risk calculation without changing behavior... Humans notified!")
-                    else:
-                        self.intervention = get_intervention(INTERVENTION)
+                if ExpConfig.get('COLLECT_TRAINING_DATA'):
+                    print("naive risk calculation without changing behavior... Humans notified!")
+                    self.intervention = Tracing(risk_model="naive", max_depth=1, symptoms=False, risk=False, should_modify_behavior=False)
 
-                    _ = [h.notify(self.intervention) for h in self.humans]
-                    print("again .. .")
-                    print(self.intervention)
+                _ = [h.notify(self.intervention) for h in self.humans]
+                print(self.intervention)
+                humans_notified = True
+
+            # iterate over humans, and if it's their timeslot, then update their infectionsness, symptoms, and message info
+            for human in self.humans:
+                # if it's your time to update,
+                if self.env.timestamp.hour not in human.time_slots:
+                    continue
+
+                # And you haven't updated today
+                if human.last_date.get('symptoms_updated') == self.env.timestamp.date():
+                    continue
+
+                human.last_date['symptoms_updated'] = self.env.timestamp.date()
+                human.update_symptoms()
+                human.update_reported_symptoms()
+                human.update_risk(symptoms=human.symptoms)
+                human.infectiousnesses.appendleft(calculate_average_infectiousness(human))
+
+                Event.log_daily(human, human.env.timestamp)
+                self.tracker.track_symptoms(human)
+
+                # keep only past N_DAYS contacts
+                if human.tracing:
+                    for type_contacts in ['n_contacts_tested_positive', 'n_contacts_symptoms', \
+                                          'n_risk_increased', 'n_risk_decreased', "n_risk_mag_decreased",
+                                          "n_risk_mag_increased"]:
+                        for order in human.message_info[type_contacts]:
+                            if len(human.message_info[type_contacts][order]) > ExpConfig.get('TRACING_N_DAYS_HISTORY'):
+                                human.message_info[type_contacts][order] = human.message_info[type_contacts][order][1:]
+                            human.message_info[type_contacts][order].append(0)
 
             if isinstance(self.intervention, Tracing):
                 self.intervention.update_human_risks(city=self,
@@ -266,17 +453,45 @@ class City(simpy.Environment):
                                 n_jobs=n_jobs, data_path=outfile)
                 self.tracker.track_risk_attributes(self.humans)
 
-            if self.env.timestamp.hour == 0 and self.env.timestamp != self.env.initial_timestamp:
+            # increment the day / update uids if we just ran all the people in timeslot 23 (last hour of the day == done)
+            if self.env.timestamp.hour == 23 and self.env.timestamp != self.env.initial_timestamp:
+                # TODO: this is an assumption which will break in reality, instead of updating once per day everyone at the same time, it should be throughout the day
+                for human in self.humans:
+                    human.uid = update_uid(human.uid, human.rng)
                 self.current_day += 1
                 self.tracker.increment_day()
 
-            # Let the day pass
+            # Let the hour pass
             yield self.env.timeout(duration / TICK_MINUTE)
 
 class Location(simpy.Resource):
+    """
+    Class representing generic locations used in the simulator
+    """
 
     def __init__(self, env, rng, area, name, location_type, lat, lon,
             social_contact_factor, capacity, surface_prob):
+        """
+        Locations are created with city.create_location(), not instantiated directly
+
+        Args:
+            env (covid19sim.Env): Shared environment
+            rng (np.random.RandomState): Random number generator
+            area (float): Area of the location
+            name (str): The location's name
+            location_type (str): Location's type, see
+            lat (float): Location's latitude
+            lon (float): Location's longitude
+            social_contact_factor (float): how much people are close to each other
+                see contamination_probability() (this scales the contamination pbty)
+            capacity (int): Daily intake capacity for the location (infinity if None).
+            surface_prob (float): distribution of surface types in the Location. As
+                different surface types have different contamination probabilities
+                and virus "survival" durations, this will influence the contamination
+                of humans at this location.
+                Surfaces: aerosol, copper, cardboard, steel, plastic
+        """
+
 
         if capacity is None:
             capacity = simpy.core.Infinity
@@ -296,12 +511,31 @@ class Location(simpy.Resource):
         self.max_day_contamination = 0
 
     def infectious_human(self):
+        """
+        Returns:
+            bool: Is there an infectious human currently at that location
+        """
         return any([h.is_infectious for h in self.humans])
 
     def __repr__(self):
+        """
+        Returns:
+            str: Representation of the Location
+        """
         return f"{self.name} - occ:{len(self.humans)}/{self.capacity} - I:{self.is_contaminated}"
 
     def add_human(self, human):
+        """
+        Adds a human instance to the OrderedSet of humans at the location.
+        If they are infectious, then location.contamination_timestamp is set to the
+        env's timestamp and the duration of this contamination is set
+        (location.max_day_contamination) according to the distribution of surfaces
+        (location.contaminated_surface_probability) and the survival of the virus
+        per surface type (MAX_DAYS_CONTAMINATION)
+
+        Args:
+            human (covid19sim.simulator.Human): The human to add.
+        """
         self.humans.add(human)
         if human.is_infectious:
             self.contamination_timestamp = self.env.timestamp
@@ -309,14 +543,39 @@ class Location(simpy.Resource):
             self.max_day_contamination = max(self.max_day_contamination, rnd_surface)
 
     def remove_human(self, human):
+        """
+        Remove a given human from location.human
+        /!\ Human is not returned
+
+        Args:
+            human (covid19sim.simulator.Human): The human to remove
+        """
         self.humans.remove(human)
 
     @property
     def is_contaminated(self):
+        """
+        Is the location currently contaminated? This depends on the moment
+        when it got contaminated (see add_human()), current time and the
+        duration of the contamination (location.max_day_contamination)
+
+        Returns:
+            bool: Is the place currently contaminating?
+        """
         return self.env.timestamp - self.contamination_timestamp <= datetime.timedelta(days=self.max_day_contamination)
 
     @property
     def contamination_probability(self):
+        """
+        Contamination depends on the time the virus has been sitting on a given surface
+        (location.max_day_contamination) and is linearly decayed over time.
+        Then it is scaled by location.social_contact_factor
+
+        If not location.is_contaminated, return 0.0
+
+        Returns:
+            float: probability that a human is contaminated when going to this location.
+        """
         if self.is_contaminated:
             lag = (self.env.timestamp - self.contamination_timestamp)
             lag /= datetime.timedelta(days=1)
@@ -325,10 +584,22 @@ class Location(simpy.Resource):
         return 0.0
 
     def __hash__(self):
+        """
+        Hash of the location is the hash of its name
+
+        Returns:
+            int: hash
+        """
         return hash(self.name)
 
     def serialize(self):
-        """ This function serializes the location object"""
+        """
+        This function serializes the location object by deleting
+        non-serializable keys
+
+        Returns:
+            dict: serialized location
+        """
         s = self.__dict__
         if s.get('env'):
             del s['env']
@@ -345,15 +616,31 @@ class Location(simpy.Resource):
         return s
 
 class Household(Location):
+    """
+    Household location class, inheriting from covid19sim.base.Location
+    """
     def __init__(self, **kwargs):
+        """
+        Args:
+            kwargs (dict): all the args necessary for a Location's init
+        """
         super(Household, self).__init__(**kwargs)
         self.residents = []
 
 
 class Hospital(Location):
+    """
+    Hospital location class, inheriting from covid19sim.base.Location
+    """
     ICU_AREA = 0.10
     ICU_CAPACITY = 0.10
     def __init__(self, **kwargs):
+        """
+        Create the Hospital and its ICU
+
+        Args:
+            kwargs (dict): all the args necessary for a Location's init
+        """
         env = kwargs.get('env')
         rng = kwargs.get('rng')
         capacity = kwargs.get('capacity')
@@ -389,30 +676,73 @@ class Hospital(Location):
                         )
 
     def add_human(self, human):
+        """
+        Add a human to the Hospital's OrderedSet through the Location's
+        default add_human() method + set the human's obs_hospitalized attribute
+        is set to True
+
+        Args:
+            human (covid19sim.simulator.Human): human to add
+        """
         human.obs_hospitalized = True
         super().add_human(human)
 
     def remove_human(self, human):
+        """
+        Remove a human from the Hospital's Ordered set.
+        On top of Location.remove_human(), the human's obs_hospitalized attribute is
+        set to False
+
+        Args:
+            human (covid19sim.simulator.Human): human to remove
+        """
         human.obs_hospitalized = False
         super().remove_human(human)
 
 
 class ICU(Location):
-
+    """
+    Hospital location class, inheriting from covid19sim.base.Location
+    """
     def __init__(self, **kwargs):
+        """
+        Create a Hospital's ICU Location
+
+        Args:
+            kwargs (dict): all the args necessary for a Location's init
+        """
         super().__init__(**kwargs)
 
     def add_human(self, human):
+        """
+        Add a human to the ICU's OrderedSet through the Location's
+        default add_human() method + set the human's obs_hospitalized and
+        obs_in_icu attributes are set to True
+
+        Args:
+            human (covid19sim.simulator.Human): human to add
+        """
         human.obs_hospitalized = True
         human.obs_in_icu = True
         super().add_human(human)
 
     def remove_human(self, human):
+        """
+        Remove a human from the ICU's Ordered set.
+        On top of Location.remove_human(), the human's obs_hospitalized and
+        obs_in_icu attributes are set to False
+
+        Args:
+            human (covid19sim.simulator.Human): human to remove
+        """
         human.obs_hospitalized = False
         human.obs_in_icu = False
         super().remove_human(human)
 
 class Event:
+    """
+    [summary]
+    """
     test = 'test'
     encounter = 'encounter'
     contamination = 'contamination'
@@ -423,10 +753,47 @@ class Event:
 
     @staticmethod
     def members():
+        """
+        DEPRECATED
+        """
         return [Event.test, Event.encounter, Event.contamination, Event.static_info, Event.visit, Event.daily]
 
     @staticmethod
     def log_encounter(human1, human2, location, duration, distance, infectee, time):
+        """
+        Logs the encounter between `human1` and `human2` at `location` for `duration`
+        while staying at `distance` from each other. If infectee is not None, it is
+        either human1.name or human2.name.
+
+        Each of the two humans gets its `events` attribute appended whit a dictionnary
+        describing the encounter:
+
+        human.events.append({
+                'human_id':human.name,
+                'event_type':Event.encounter,
+                'time':time,
+                'payload':{
+                    'observed': obs_payload,  # None if one of the humans does not have
+                                              # the app. Otherwise contains the observed
+                                              # data: lat, lon, location_type
+                    'unobserved':unobs_payload  # unobserved data, see loc_unobs_keys and
+                                                # h_unobs_keys
+                }
+        })
+
+
+        Args:
+            human1 (covid19sim.simulator.Human): One of the encounter's 2 humans
+            human2 (covid19sim.simulator.Human): One of the encounter's 2 humans
+            location (covid19sim.base.Location): Where the encounter happened
+            duration (int): duration of encounter
+            distance (float): distance between people (TODO: meters? cm?)
+            infectee (str | None): name of the human which is infected, if any.
+                None otherwise
+            time (datetime.datetime): timestamp of encounter
+        """
+        if ExpConfig.get('COLLECT_LOGS') is False:
+            return
 
         h_obs_keys   = ['obs_hospitalized', 'obs_in_icu',
                         'obs_lat', 'obs_lon']
@@ -478,6 +845,19 @@ class Event:
 
     @staticmethod
     def log_test(human, time):
+        """
+        Adds an event to a human's `events` list if COLLECT_LOGS is True.
+        Events contains the test resuts time, reported_test_result,
+        reported_test_type, test_result_validated, test_type, test_result
+        split across observed and unobserved data.
+
+        Args:
+            human (covid19sim.simulator.Human): Human whose test should be logged
+            time (datetime.datetime): Event's time
+        """
+        if ExpConfig.get('COLLECT_LOGS') is False:
+            return
+
         human.events.append(
             {
                 'human_id': human.name,
@@ -500,6 +880,17 @@ class Event:
 
     @staticmethod
     def log_daily(human, time):
+        """
+        Adds an event to a human's `events` list containing daily health information
+        like symptoms, infectiousness and viral_load.
+
+        Args:
+            human (covid19sim.simulator.Human): Human who's health should be logged
+            time (datetime.datetime): Event time
+        """
+        if ExpConfig.get('COLLECT_LOGS') is False:
+            return
+
         human.events.append(
             {
                 'human_id': human.name,
@@ -516,7 +907,6 @@ class Event:
                         "covid_symptoms":human.covid_symptoms,
                         "flu_symptoms":human.flu_symptoms,
                         "cold_symptoms":human.cold_symptoms
-
                     }
                 }
             }
@@ -524,6 +914,17 @@ class Event:
 
     @staticmethod
     def log_exposed(human, source, time):
+        """
+        [summary]
+
+        Args:
+            human ([type]): [description]
+            source ([type]): [description]
+            time ([type]): [description]
+        """
+        if ExpConfig.get('COLLECT_LOGS') is False:
+            return
+
         human.events.append(
             {
                 'human_id': human.name,
@@ -539,13 +940,23 @@ class Event:
                       'source_is_human': 'human' in source.name,
                       'infectiousness_start_time': human.infection_timestamp + datetime.timedelta(days=human.infectiousness_onset_days)
                     }
-
                 }
             }
         )
 
     @staticmethod
     def log_recovery(human, time, death):
+        """
+        [summary]
+
+        Args:
+            human ([type]): [description]
+            time ([type]): [description]
+            death ([type]): [description]
+        """
+        if ExpConfig.get('COLLECT_LOGS') is False:
+            return
+
         human.events.append(
             {
                 'human_id': human.name,
@@ -565,6 +976,17 @@ class Event:
 
     @staticmethod
     def log_static_info(city, human, time):
+        """
+        [summary]
+
+        Args:
+            city ([type]): [description]
+            human ([type]): [description]
+            time ([type]): [description]
+        """
+        if ExpConfig.get('COLLECT_LOGS') is False:
+            return
+
         h_obs_keys = ['obs_preexisting_conditions',  "obs_age", "obs_sex", "obs_is_healthcare_worker"]
         h_unobs_keys = ['preexisting_conditions', "age", "sex", "is_healthcare_worker"]
         obs_payload = {key:getattr(human, key) for key in h_obs_keys}
@@ -592,37 +1014,18 @@ class Event:
             }
         )
 
-class DummyEvent:
-    @staticmethod
-    def log_encounter(*args, **kwargs):
-        pass
-
-    @staticmethod
-    def log_test(*args, **kwargs):
-        pass
-
-    @staticmethod
-    def log_recovery(*args, **kwargs):
-        pass
-
-    @staticmethod
-    def log_exposed(*args, **kwargs):
-        pass
-
-    @staticmethod
-    def log_static_info(*args, **kwargs):
-        pass
-
-    @staticmethod
-    def log_visit(*args, **kwargs):
-        pass
-
-    @staticmethod
-    def log_daily(*args, **kwargs):
-        pass
 
 class Contacts(object):
+    """
+    [summary]
+    """
     def __init__(self, has_app):
+        """
+        [summary]
+
+        Args:
+            has_app (bool): [description]
+        """
         self.messages = []
         self.sent_messages_by_day = defaultdict(list)
         self.messages_by_day = defaultdict(list)
@@ -632,6 +1035,9 @@ class Contacts(object):
         self.has_app = has_app
 
     def add(self, **kwargs):
+        """
+        [summary]
+        """
         human = kwargs.get("human")
         timestamp = kwargs.get("timestamp")
 
@@ -646,13 +1052,21 @@ class Contacts(object):
         self.update_book(human, timestamp.date())
 
     def update_book(self, human, date=None, risk_level = None):
+        """
+        [summary]
+
+        Args:
+            human ([type]): [description]
+            date ([type], optional): [description]. Defaults to None.
+            risk_level ([type], optional): [description]. Defaults to None.
+        """
         # keep the history of risk levels (transformers)
         if date is None:
             date = self.book[human][-1][0] # last contact date
 
         remove_idx = -1
         for history in self.book[human]:
-            if (date - history[0]).days > TRACING_N_DAYS_HISTORY:
+            if (date - history[0]).days > ExpConfig.get('TRACING_N_DAYS_HISTORY'):
                 remove_idx += 1
             else:
                 break
@@ -663,6 +1077,16 @@ class Contacts(object):
             self.book.pop(human)
 
     def send_message(self, owner, tracing_method, order=1, reason="test", payload=None):
+        """
+        [summary]
+
+        Args:
+            owner ([type]): [description]
+            tracing_method ([type]): [description]
+            order (int, optional): [description]. Defaults to 1.
+            reason (str, optional): [description]. Defaults to "test".
+            payload ([type], optional): [description]. Defaults to None.
+        """
         p_contact = tracing_method.p_contact
         delay = tracing_method.delay
         app = tracing_method.app
