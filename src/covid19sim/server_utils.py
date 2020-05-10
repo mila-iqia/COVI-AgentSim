@@ -22,7 +22,7 @@ import covid19sim.frozen.utils
 
 expected_raw_packet_param_names = [
     "start", "current_day", "all_possible_symptoms", "human",
-    "COLLECT_TRAINING_DATA", "log_path", "risk_model", 'time_slot'
+    "COLLECT_TRAINING_DATA", "log_path", "risk_model", 'time_slot', "oracle"
 ]
 
 expected_processed_packet_param_names = [
@@ -422,6 +422,10 @@ def proc_human(params, inference_engine=None):
         with open(os.path.join(params["log_path"], f"daily_human-{params['time_slot']}.pkl"), 'wb') as fd:
             pickle.dump(daily_output, fd)
 
+    # Return ground truth infectiousnesses
+    if params.get('oracle', None):
+        human['risk_history'] = human['infectiousnesses']
+        return human
     inference_result = None
     if params['risk_model'] == "transformer":
         try:

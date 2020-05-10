@@ -7,6 +7,7 @@ import numpy as np
 import math
 from collections import defaultdict
 import networkx as nx
+import datetime
 
 from covid19sim.configs.config import HUMAN_DISTRIBUTION, LOCATION_DISTRIBUTION, INFECTION_RADIUS, EFFECTIVE_R_WINDOW
 from covid19sim.utils import log
@@ -123,6 +124,13 @@ class Tracker(object):
         self.ei_per_day = []
         self.risk_values = []
         self.avg_infectiousness_per_day = []
+
+        # monitors
+        self.human_monitor = {}
+        self.infection_monitor = []
+
+        # update messages
+        self.infector_infectee_update_messages = defaultdict(lambda :defaultdict(dict))
 
     def summarize_population(self):
         """
@@ -246,6 +254,19 @@ class Tracker(object):
         self.risk_precision_daily.append((prec,lift, recall))
         self.recommended_levels_daily.append([G, B, O, R])
         self.risk_values.append([(h.risk, h.is_exposed or h.is_infectious, h.test_result, len(h.symptoms) == 0) for h in self.city.humans])
+        row = []
+        for h in self.city.humans:
+            x = { "infection_timestamp": h.infection_timestamp,
+                  "n_infectious_contacts": h.n_infectious_contacts,
+                  "risk": h.risk,
+                  "risk_level": h.risk_level,
+                  "rec_level": h.rec_level,
+                  "state": h.state.index(1),
+                  "test_result": h.test_result,
+                  "n_symptoms": len(h.symptoms)
+                 }
+            row.append(x)
+        self.human_monitor[self.env.timestamp.date()-datetime.timedelta(days=1)] = row
 
         #
         self.avg_infectiousness_per_day.append(np.mean([h.infectiousness for h in self.city.humans]))
@@ -303,6 +324,7 @@ class Tracker(object):
             for k in top_k:
                 xy = type[:math.ceil(k * len(type))]
                 pred = 1.0*sum(1 for x,y in xy if y)
+
                 top_k_prec[idx].append(pred/len(xy))
                 if total_infected:
                     lift[idx].append(pred/(k*total_infected))
@@ -313,7 +335,6 @@ class Tracker(object):
             if z:
                 recall[-1] = 1.0*sum(1 for x,y in type if y and x > threshold)/z
             idx += 1
-
         return top_k_prec, lift, recall
 
     def track_covid_properties(self, human):
@@ -372,6 +393,8 @@ class Tracker(object):
             self.infection_graph.add_node(to_human.name, bin=to_bin, time=timestamp)
             self.infection_graph.add_edge(from_human.name, to_human.name,  timedelta=delta)
 
+            self.infection_monitor.append([from_human.name, to_human.name, timestamp.date()])
+
             if from_human.symptom_start_time is not None:
                 self.generation_time_book[to_human.name] = from_human.symptom_start_time
 
@@ -394,6 +417,11 @@ class Tracker(object):
             self.contacts["location_env_infection"][location.location_type][to_bin] += 1
             self.infection_graph.add_node(to_human.name, bin=to_bin, time=timestamp)
             self.infection_graph.add_edge(-1, to_human.name,  timedelta="")
+            self.infection_monitor.append([None, to_human.name, timestamp.date()])
+
+    def track_update_messages(self, from_human, to_human, new_risk_level):
+        if self.infection_graph.has_edge(from_human.name, to_human.name):
+            self.infector_infectee_update_messages[from_human.name][to_human.name][self.env.timestamp] = new_risk_level
 
     def track_generation_times(self, human_name):
         """
@@ -736,7 +764,7 @@ class Tracker(object):
         no_test_symptoms = list(zip(*[x[2] for x in lift]))
         idx = 0
         for k in top_k:
-            log(f"Top-{100*top_k[idx]:2.2f}% all: {np.mean(all[idx]):5.2f} no_test:{np.mean(no_test[idx]):5.2f}% no_test_and_symptoms: {np.mean(no_test_symptoms[idx]):5.2f}%", logfile)
+            log(f"Top-{100*top_k[idx]:2.2f}% all: {np.mean(all[idx]):5.2f} no_test:{np.mean(no_test[idx]):5.2f} no_test_and_symptoms: {np.mean(no_test_symptoms[idx]):5.2f}", logfile)
             idx += 1
 
         log("*** Avg. daily recall ***", logfile)

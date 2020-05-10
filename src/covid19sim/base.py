@@ -8,7 +8,7 @@ import itertools
 from collections import defaultdict
 
 from covid19sim.configs.config import *
-from covid19sim.utils import compute_distance, _get_random_area, _draw_random_discreet_gaussian, get_intervention, proba_to_risk_fn
+from covid19sim.utils import compute_distance, _get_random_area, _draw_random_discreet_gaussian, get_intervention, calculate_average_infectiousness
 from covid19sim.track import Tracker
 from covid19sim.interventions import *
 from covid19sim.frozen.utils import update_uid
@@ -91,7 +91,7 @@ class City(simpy.Environment):
     City environment
     """
 
-    def __init__(self, env, n_people, rng, x_range, y_range, start_time, init_percent_sick, Human):
+    def __init__(self, env, n_people, rng, x_range, y_range, start_time, Human):
         """
 
         Args:
@@ -111,7 +111,6 @@ class City(simpy.Environment):
         self.total_area = (x_range[1] - x_range[0]) * (y_range[1] - y_range[0])
         self.n_people = n_people
         self.start_time = start_time
-        self.init_percent_sick = init_percent_sick
         self.last_date_to_check_tests = self.env.timestamp.date()
         self.test_count_today = defaultdict(int)
         self.test_type_preference = list(zip(*sorted(TEST_TYPES.items(), key=lambda x:x[1]['preference'])))[0]
@@ -277,7 +276,7 @@ class City(simpy.Environment):
                         profession=profession[i],
                         rho=RHO,
                         gamma=GAMMA,
-                        infection_timestamp=self.start_time if self.rng.random() < self.init_percent_sick else None
+                        infection_timestamp=self.start_time if self.rng.random() < ExpConfig.get('INIT_PERCENT_SICK') else None
                         )
                     )
 
@@ -399,44 +398,71 @@ class City(simpy.Environment):
             simpy.Timeout
         """
         self.current_day = 0
-        INTERVENTION_DAY = ExpConfig.get('INTERVENTION_DAY')
-        COLLECT_TRAINING_DATA = ExpConfig.get('COLLECT_TRAINING_DATA')
-
         humans_notified = False
+
         while True:
-            if self.env.timestamp.hour == 0:
-                # TODO: this is an assumption which will break in reality, instead of updating once per day everyone at the same time, it should be throughout the day
-                for human in self.humans:
-                    human.uid = update_uid(human.uid, human.rng)
-
-            if self.env.timestamp.hour == 0 and self.env.timestamp != self.env.initial_timestamp:
-                self.current_day += 1
-                self.tracker.increment_day()
-
-            if INTERVENTION_DAY >= 0 and self.current_day == INTERVENTION_DAY and not humans_notified:
-                self.intervention = get_intervention(ExpConfig.get('INTERVENTION'),
-                                                     ExpConfig.get('RISK_MODEL'),
-                                                     ExpConfig.get('TRACING_ORDER'),
-                                                     ExpConfig.get('TRACE_SYMPTOMS'),
-                                                     ExpConfig.get('TRACE_RISK_UPDATE'))
+            # Notify humans to follow interventions on intervention day
+            if self.current_day == ExpConfig.get('INTERVENTION_DAY') and not humans_notified:
+                self.intervention = get_intervention(key=ExpConfig.get('INTERVENTION'),
+                                                     RISK_MODEL=ExpConfig.get('RISK_MODEL'),
+                                                     TRACING_ORDER=ExpConfig.get('TRACING_ORDER'),
+                                                     TRACE_SYMPTOMS=ExpConfig.get('TRACE_SYMPTOMS'),
+                                                     TRACE_RISK_UPDATE=ExpConfig.get('TRACE_RISK_UPDATE'),
+                                                     SHOULD_MODIFY_BEHAVIOR=ExpConfig.get('SHOULD_MODIFY_BEHAVIOR'))
                 _ = [h.notify(self.intervention) for h in self.humans]
-                print(f"Collecting data: {ExpConfig.get('COLLECT_TRAINING_DATA')}")
                 print(self.intervention)
                 humans_notified = True
+            # If we're collecting data and running an unmitigated simulation (behaviour not changing due to intervention)
+            elif ExpConfig.get('COLLECT_TRAINING_DATA') and (self.current_day == 0 and ExpConfig.get('INTERVENTION_DAY') < 0):
+                print("naive risk calculation without changing behavior... Humans notified!")
+                self.intervention = Tracing(risk_model="naive", max_depth=1, symptoms=False, risk=False, should_modify_behavior=False)
+                _ = [h.notify(self.intervention) for h in self.humans]
+
+            # iterate over humans, and if it's their timeslot, then update their infectionsness, symptoms, and message info
+            for human in self.humans:
+                # if it's your time to update,
+                if self.env.timestamp.hour not in human.time_slots:
+                    continue
+
+                # And you haven't updated today
+                if human.last_date.get('symptoms_updated') == self.env.timestamp.date():
+                    continue
+
+                human.last_date['symptoms_updated'] = self.env.timestamp.date()
+                human.update_symptoms()
+                human.update_reported_symptoms()
+                human.update_risk(symptoms=human.symptoms)
+                human.infectiousnesses.appendleft(calculate_average_infectiousness(human))
+
+                Event.log_daily(human, human.env.timestamp)
+                self.tracker.track_symptoms(human)
+
+                # keep only past N_DAYS contacts
+                if human.tracing:
+                    for type_contacts in ['n_contacts_tested_positive', 'n_contacts_symptoms', \
+                                          'n_risk_increased', 'n_risk_decreased', "n_risk_mag_decreased",
+                                          "n_risk_mag_increased"]:
+                        for order in human.message_info[type_contacts]:
+                            if len(human.message_info[type_contacts][order]) > ExpConfig.get('TRACING_N_DAYS_HISTORY'):
+                                human.message_info[type_contacts][order] = human.message_info[type_contacts][order][1:]
+                            human.message_info[type_contacts][order].append(0)
 
             if isinstance(self.intervention, Tracing):
                 self.intervention.update_human_risks(city=self,
                                 symptoms=all_possible_symptoms, port=port,
                                 n_jobs=n_jobs, data_path=outfile)
 
-            if COLLECT_TRAINING_DATA and (self.current_day == 0 and INTERVENTION_DAY < 0):
-                _ = [h.notify(collect_training_data=True) for h in self.humans]
-                print("naive risk calculation without changing behavior... Humans notified!")
-                self.intervention = Tracing(risk_model="naive", max_depth=1, symptoms=False, risk=False, should_modify_behavior=False)
+            # increment the day / update uids if we just ran all the people in timeslot 23 (last hour of the day == done)
+            if self.env.timestamp.hour == 23 and self.env.timestamp != self.env.initial_timestamp:
+                # TODO: this is an assumption which will break in reality, instead of updating once per day everyone at the same time, it should be throughout the day
+                for human in self.humans:
+                    human.uid = update_uid(human.uid, human.rng)
+                self.current_day += 1
+                self.tracker.increment_day()
+                # pd.DataFrame([(h.risk, h.is_infectious or h.is_exposed) for h in self.city.humans]).to_csv("risk_histogram.csv")
 
             # Let the hour pass
             yield self.env.timeout(duration / TICK_MINUTE)
-
 
 class Location(simpy.Resource):
     """
@@ -775,7 +801,8 @@ class Event:
         h_unobs_keys = ['carefulness', 'viral_load', 'infectiousness',
                         'symptoms', 'is_exposed', 'is_infectious',
                         'infection_timestamp', 'is_really_sick',
-                        'is_extremely_sick', 'sex',  'wearing_mask', 'mask_efficacy']
+                        'is_extremely_sick', 'sex',  'wearing_mask', 'mask_efficacy',
+                        'risk', 'risk_level', 'rec_level']
 
         loc_obs_keys = ['location_type', 'lat', 'lon']
         loc_unobs_keys = ['contamination_probability', 'social_contact_factor']

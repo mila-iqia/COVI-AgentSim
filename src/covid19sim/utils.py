@@ -1520,3 +1520,10 @@ def get_recommendations(risk_level):
         return ['stay_home', 'wash_hands', 'stand_2m', 'limit_contact', 'wear_mask', 'monitor_symptoms']
     else:
         return ['stay_home', 'wash_hands', 'stand_2m', 'limit_contact', 'wear_mask', 'monitor_symptoms', 'get_tested', 'quarantine']
+
+def calculate_average_infectiousness(human):
+    cur_infectiousness = human.get_infectiousness_for_day(human.env.timestamp, human.is_infectious)
+    is_infectious_tomorrow = True if human.infection_timestamp and human.env.timestamp - human.infection_timestamp + datetime.timedelta(days=1) >= datetime.timedelta(days=human.infectiousness_onset_days) else False
+    tomorrows_infectiousness = human.get_infectiousness_for_day(human.env.timestamp + datetime.timedelta(days=1),
+                                                                is_infectious_tomorrow)
+    return (cur_infectiousness + tomorrows_infectiousness) / 2

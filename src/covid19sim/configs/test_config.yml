@@ -4,6 +4,8 @@ COLLECT_LOGS : True
 COLLECT_TRAINING_DATA : True
 USE_INFERENCE_SERVER : True
 RISK_MODEL : "transformer" # "naive"  "manual", "digital", "transformer"
+INIT_PERCENT_SICK : 0.1
+SHOULD_MODIFY_BEHAVIOR : True
 
 ## INTERVENTIONS
 INTERVENTION_DAY : 10
@@ -11,6 +13,7 @@ INTERVENTION : "Tracing"
 PERCENT_FOLLOW : 1.0
 P_HAS_APP : 0.5
 ABSOLUTE_P_HAS_APP : False # If False, we modulate P_HAS_APP with carefulness and age
+USE_ORACLE: False
 
 
 # PATHS

@@ -1,3 +1,6 @@
+# html files
+*.html
+
 # images and data files
 *.png
 *.gif

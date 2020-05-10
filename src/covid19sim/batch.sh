@@ -6,7 +6,6 @@ outzip_name="1k_app_1.zip"
 config_dir="configs"
 config_file="naive_config.yml"
 n_people=1000
-init_percent_sick=0.003
 simulation_days=30
 n_jobs=10
 num_seeds=10
@@ -19,7 +18,7 @@ for (( i=0; i<$num_seeds; i++ ))
     mkdir "${root_path}/${batch_path}/${i}"
 
     # Run the simulations
-    python run.py sim --n_people $n_people --init_percent_sick $init_percent_sick --seed $i --outdir "$root_path/$batch_path/$i" --simulation_days $simulation_days --n_jobs $n_jobs --config $config_dir/$config_file &
+    python run.py sim --n_people $n_people --seed $i --outdir "$root_path/$batch_path/$i" --simulation_days $simulation_days --n_jobs $n_jobs --config $config_dir/$config_file &
   done
 
 wait
