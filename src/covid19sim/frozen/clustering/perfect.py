@@ -16,13 +16,14 @@ class PerfectClusterManager(SimplisticClusterManager):
             max_history_ticks_offset: TimeOffsetType = 24 * 60 * 60 * 14,  # one tick per second, 14 days
             add_orphan_updates_as_clusters: bool = False,
             generate_embeddings_by_timestamp: bool = True,
+            generate_backw_compat_embeddings: bool = False,
             max_cluster_id: int = 1000,  # let's hope no user ever reaches 1000 simultaneous clusters
     ):
-        assert not add_orphan_updates_as_clusters, "missing impl; this is... imperfect?"
         super().__init__(
             max_history_ticks_offset=max_history_ticks_offset,
             add_orphan_updates_as_clusters=add_orphan_updates_as_clusters,
             generate_embeddings_by_timestamp=generate_embeddings_by_timestamp,
+            generate_backw_compat_embeddings=generate_backw_compat_embeddings,
             max_cluster_id=max_cluster_id,
         )
 
@@ -58,9 +59,9 @@ class PerfectClusterManager(SimplisticClusterManager):
             # note: all 'real' uids in the cluster should be the same, we just pick the first
             if cluster._real_encounter_uids[0] == message._sender_uid:
                 cluster.skip_homogeneity_checks = True  # ensure the fit won't throw
-                res = cluster.fit_update_message(message)
-                assert res is None
-                return
+                message = cluster.fit_update_message(message)
+                if message is None:
+                    return
         if self.add_orphan_updates_as_clusters:
             new_cluster = SimpleCluster.create_cluster_from_message(message, self.next_cluster_id)
             self.next_cluster_id = (self.next_cluster_id + 1) % self.max_cluster_id

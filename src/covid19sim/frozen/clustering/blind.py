@@ -47,8 +47,7 @@ class BlindCluster(ClusterBase):
             risk_level=message.risk_level
                 if isinstance(message, EncounterMessage) else message.new_risk_level,
             first_update_time=message.encounter_time,
-            latest_update_time=message.encounter_time
-                if isinstance(message, EncounterMessage) else message.update_time,
+            latest_update_time=message.encounter_time,
             messages=[message] if isinstance(message, EncounterMessage)
                 else [create_encounter_from_update_message(message)],
             # debug-only stuff below
