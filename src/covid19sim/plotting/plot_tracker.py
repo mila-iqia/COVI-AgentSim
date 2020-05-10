@@ -8,16 +8,12 @@ Graphics class that handles visualizations for track.py
 
 
 import numpy as np
-import pandas as pd
 import matplotlib
 import matplotlib.pyplot as plt
-import matplotlib.cm as cm
 from matplotlib.dates import MONDAY
-from datetime import date, datetime, timedelta
 import sys
 # config is needed by dill.load
 sys.path.append('../')
-import config
 
 # --------------------------------------------------------------------------------------------------------------
 class PlotTracker(object):
@@ -388,7 +384,7 @@ class PlotTracker(object):
 
     @staticmethod
     def plot_histogram_fromfile(metrics, fname, color='red', fontsize=14, dateformat='%Y-%m-%d'):
-                """
+        """
         Convenience method to avoid knowing too much about the PlotTracker class
 
         Args:
