@@ -1,3 +1,6 @@
+"""
+[summary]
+"""
 import os
 from multiprocessing import Process
 
@@ -9,6 +12,12 @@ ExpConfig.load_config(os.path.join(os.path.dirname(__file__), "src/covid19sim/co
 
 
 def start_inference_server():
+    """
+    [summary]
+
+    Returns:
+        [type]: [description]
+    """
     exp_dir = os.path.join(os.path.dirname(__file__), "exp/DEBUG-0")
     p = Process(target=covid19sim.server_bootstrap.main, args=([f"-e{exp_dir}"],), daemon=True)
     p.start()
@@ -16,6 +25,9 @@ def start_inference_server():
 
 
 def test():
+    """
+    [summary]
+    """
     import unittest
 
     loader = unittest.TestLoader()

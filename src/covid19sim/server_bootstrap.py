@@ -1,4 +1,6 @@
-"""Entrypoint that can be used to start many inference workers on a single node."""
+"""
+Entrypoint that can be used to start many inference workers on a single node.
+"""
 
 import argparse
 import functools
@@ -17,6 +19,15 @@ default_mp_backend = "loky"
 
 
 def parse_args(args=None):
+    """
+    [summary]
+
+    Args:
+        args ([type], optional): [description]. Defaults to None.
+
+    Returns:
+        [type]: [description]
+    """
     argparser = argparse.ArgumentParser(
         description="COVID19-P2P-Transformer Inference Server Spawner",
     )
@@ -39,6 +50,20 @@ def parse_args(args=None):
 
 
 def validate_args(port, exp_path, workers, verbose, mp_backend, mp_threads):
+    """
+    [summary]
+
+    Args:
+        port ([type]): [description]
+        exp_path ([type]): [description]
+        workers ([type]): [description]
+        verbose ([type]): [description]
+        mp_backend ([type]): [description]
+        mp_threads ([type]): [description]
+
+    Returns:
+        [type]: [description]
+    """
     if port is None:
         port = default_port
     else:
@@ -57,6 +82,14 @@ def validate_args(port, exp_path, workers, verbose, mp_backend, mp_threads):
 
 
 def interrupt_handler(signal, frame, broker):
+    """
+    [summary]
+
+    Args:
+        signal ([type]): [description]
+        frame ([type]): [description]
+        broker ([type]): [description]
+    """
     print("Received SIGINT; shutting down inference worker(s) gracefully...")
     broker.stop()
     broker.join()
@@ -65,6 +98,12 @@ def interrupt_handler(signal, frame, broker):
 
 
 def main(args=None):
+    """
+    [summary]
+
+    Args:
+        args ([type], optional): [description]. Defaults to None.
+    """
     port, exp_path, workers, verbose, mp_backend, mp_threads = \
         validate_args(*parse_args(args))
     broker = covid19sim.server_utils.InferenceBroker(

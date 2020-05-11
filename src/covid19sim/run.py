@@ -1,3 +1,6 @@
+"""
+[summary]
+"""
 import click
 import os
 
@@ -10,6 +13,9 @@ from covid19sim.configs.constants import TICK_MINUTE
 
 @click.group()
 def simu():
+    """
+    [summary]
+    """
     pass
 
 
@@ -29,6 +35,21 @@ def sim(n_people=None,
         simulation_days=30,
         outdir=None, out_chunk_size=None,
         seed=0, n_jobs=1, port=6688, config="configs/naive_config.yml"):
+    """
+    [summary]
+
+    Args:
+        n_people ([type], optional): [description]. Defaults to None.
+        init_percent_sick (int, optional): [description]. Defaults to 0.
+        start_time ([type], optional): [description]. Defaults to datetime.datetime(2020, 2, 28, 0, 0).
+        simulation_days (int, optional): [description]. Defaults to 30.
+        outdir ([type], optional): [description]. Defaults to None.
+        out_chunk_size ([type], optional): [description]. Defaults to None.
+        seed (int, optional): [description]. Defaults to 0.
+        n_jobs (int, optional): [description]. Defaults to 1.
+        port (int, optional): [description]. Defaults to 6688.
+        config (str, optional): [description]. Defaults to "configs/naive_config.yml".
+    """
 
     # Load the experimental configuration
     ExpConfig.load_config(config)
@@ -68,6 +89,15 @@ def sim(n_people=None,
 @click.option('--n_jobs', help='number of parallel procs to query the risk servers with', type=int, default=1)
 @click.option('--name', help='name of the file to append metrics file', type=str, default="")
 def tune(n_people, init_percent_sick, simulation_days, n_jobs, seed, outdir, config, name):
+    """
+    [summary]
+
+    Args:
+        n_people ([type]): [description]
+        simulation_days ([type]): [description]
+        seed ([type]): [description]
+        config ([type]): [description]
+    """
 
     # Load the experimental configuration
     ExpConfig.load_config(config)
@@ -161,7 +191,25 @@ def run_simu(n_people=None,
              simulation_days=10,
              outfile=None, out_chunk_size=None,
              print_progress=False, seed=0, port=6688, n_jobs=1, other_monitors=[]):
+    """
+    [summary]
 
+    Args:
+        n_people ([type], optional): [description]. Defaults to None.
+        init_percent_sick (float, optional): [description]. Defaults to 0.0.
+        start_time ([type], optional): [description]. Defaults to datetime.datetime(2020, 2, 28, 0, 0).
+        simulation_days (int, optional): [description]. Defaults to 10.
+        outfile (str, optional): [description]. Defaults to None.
+        out_chunk_size ([type], optional): [description]. Defaults to None.
+        print_progress (bool, optional): [description]. Defaults to False.
+        seed (int, optional): [description]. Defaults to 0.
+        port (int, optional): [description]. Defaults to 6688.
+        n_jobs (int, optional): [description]. Defaults to 1.
+        other_monitors (list, optional): [description]. Defaults to [].
+
+    Returns:
+        [type]: [description]
+    """
     rng = np.random.RandomState(seed)
     env = Env(start_time)
     city_x_range = (0,1000)

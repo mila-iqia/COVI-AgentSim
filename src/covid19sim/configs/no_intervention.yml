@@ -4,14 +4,14 @@ COLLECT_LOGS : False
 COLLECT_TRAINING_DATA : False
 USE_INFERENCE_SERVER : False
 # NOTE: RISK_MODEL is only valid when INTERVENTION = "Tracing"
-RISK_MODEL : "naive" # "naive"  "manual", "digital", "transformer"
-SHOULD_MODIFY_BEHAVIOR : True
+RISK_MODEL : "" # "naive"  "manual", "digital", "transformer"
+SHOULD_MODIFY_BEHAVIOR : False
 USE_ORACLE: False
 
 ## INTERVENTIONS
 INTERVENTION_DAY : -1
 # NOTE: INTERVENTION is only valid if INTERVENTION_DAY >= 0
-INTERVENTION : "Tracing"
+INTERVENTION : ""
 PERCENT_FOLLOW : 1.0
 P_HAS_APP : 1.0
 ABSOLUTE_P_HAS_APP : True # If False, we modulate P_HAS_APP with carefulness and age
@@ -29,7 +29,7 @@ DUMP_CLUSTERS : False
 CLUSTER_TYPE : "heuristic" # "random", "graph"
 
 # TRACING RISK MODEL PARAMETERS  (non-ML)
-TRACE_SYMPTOMS : True
+TRACE_SYMPTOMS : False
 TRACE_RISK_UPDATE : False
 TRACING_ORDER : 1
 UPDATES_PER_DAY : 4

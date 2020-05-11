@@ -1,3 +1,7 @@
+"""
+Running this file will produce plots of the cluster statistics and sample graph
+"""
+
 import json
 import sys
 import os
@@ -13,8 +17,6 @@ from collections import namedtuple
 
 
 np.random.seed(0)
-""" Running this file will produce plots of the cluster statistics and sample graph"""
-
 
 CLUSTER_ACC_PATH = "plots/cluster/hist_cluster_accuracies.png"
 CLUSTER_PATH = "output/clusters.json"
@@ -22,6 +24,7 @@ CLUSTER_SIZE_PATH = "plots/cluster/cluster_size_hist.png"
 CLUSTER_NUMBER_PATH = "plots/cluster/cluster_number_freq.png"
 MESSAGE_NUMBER_PATH = "plots/cluster/message_number_freq.png"
 INDIVIDUAL_CLUSTER_PATH = "plots/cluster/"
+
 if not os.path.isdir(INDIVIDUAL_CLUSTER_PATH):
     os.mkdir(INDIVIDUAL_CLUSTER_PATH)
 
@@ -123,10 +126,6 @@ for group_idx, groups in enumerate(all_groups):
         # nx.draw(G, pos, with_labels=True, node_color=node_color, cmap=plt.cm.hsv)
         edge_x = []
         edge_y = []
-        import pdb;
-
-        pdb.set_trace()
-
 
         for edge in G.edges():
             x0, y0 = pos[edge[0]]
@@ -199,4 +198,3 @@ for group_idx, groups in enumerate(all_groups):
         fig.show()
 
         # plt.savefig(f"{INDIVIDUAL_CLUSTER_PATH}clusters_{group_idx}.png", dpi=300)
-

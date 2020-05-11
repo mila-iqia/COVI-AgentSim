@@ -1,14 +1,17 @@
+"""
+[summary]
+"""
 import covid19sim.constants as constants
 
 
 class HumanBase:
     """
     Human Base Class
-    
+
     Includes several "slots" for extremely commonly-used attributes which need
     not indirect via the __dict__.
     """
-    
+
     __slots__ = [
         #
         # App-Recorded Information
@@ -23,7 +26,7 @@ class HumanBase:
         'flags_symptoms',          # [SY-2 to SY-18]
         'flags_psych',             # [PS-1, PS-2, PS-3]
         'ts_test'                  # [DIG-4] POSIX timestamp of test.
-        
+
         #
         # Latent Simulation Information
         # This includes the user's mobility, disease progression and "fate".
@@ -36,19 +39,31 @@ class HumanBase:
         'ts_dead',                 # Timestamp of death
         'viral_plateau_height',    # Viral plateau height
         'flags_status',            # SEIR Status + Immune + Dead flags.
-        
+
         # Python Attributes
         '__dict__',                # Delete to prevent new attributes being added.
         '__weakref__',
     ]
-    
-    
+
+
     @property
     def symptom_severity(self):
+        """
+        [summary]
+
+        Returns:
+            [type]: [description]
+        """
         return (self.flags_symptoms & constants.SYMPTOMS_SEVERITY_MASK) >> 0
-    
+
     @symptom_severity.setter
     def symptom_severity(self, v):
+        """
+        [summary]
+
+        Args:
+            v ([type]): [description]
+        """
         v <<=  0
         v  &=  constants.SYMPTOMS_SEVERITY_MASK
         v  |= ~constants.SYMPTOMS_SEVERITY_MASK & self.flags_symptoms
