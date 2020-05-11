@@ -79,8 +79,8 @@ max_contact_count = max(max([
 heatmap_data = np.zeros((max_contact_count, max_contact_count), dtype=np.int32)
 for p in data_points.values():
     heatmap_data[
-        p["pred_contact_occurrences"] - 1,
         p["real_contact_occurrences"] - 1,
+        p["pred_contact_occurrences"] - 1,
     ] += 1
 
 fig = px.imshow(
