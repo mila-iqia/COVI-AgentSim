@@ -23,6 +23,7 @@ class FullUnitTest(unittest.TestCase):
                 start_time=datetime.datetime(2020, 2, 28, 0, 0),
                 simulation_days=30,
                 outfile=outfile,
+                init_percent_sick=0.1,
                 out_chunk_size=500
             )
             monitors[0].dump()
@@ -64,6 +65,7 @@ class SeedUnitTest(unittest.TestCase):
                 simulation_days=self.simulation_days,
                 outfile=of1,
                 out_chunk_size=0,
+                init_percent_sick=0.1,
                 seed=self.test_seed
             )
             monitors1[0].dump()
@@ -75,6 +77,7 @@ class SeedUnitTest(unittest.TestCase):
                 simulation_days=self.simulation_days,
                 outfile=of2,
                 out_chunk_size=0,
+                init_percent_sick=0.1,
                 seed=self.test_seed
             )
             monitors2[0].dump()
@@ -110,6 +113,7 @@ class SeedUnitTest(unittest.TestCase):
                 simulation_days=self.simulation_days,
                 outfile=of1,
                 out_chunk_size=0,
+                init_percent_sick=0.1,
                 seed=self.test_seed
             )
             monitors1[0].dump()
@@ -121,6 +125,7 @@ class SeedUnitTest(unittest.TestCase):
                 simulation_days=self.simulation_days,
                 outfile=of2,
                 out_chunk_size=0,
+                init_percent_sick=0.1,
                 seed=self.test_seed+1
             )
             monitors2[0].dump()

@@ -26,6 +26,7 @@ class ModelsTest(unittest.TestCase):
                 n_people=n_people,
                 start_time=datetime.datetime(2020, 2, 28, 0, 0),
                 simulation_days=n_days,
+                init_percent_sick=0.1,
                 outfile=os.path.join(preprocess_d, "output"),
                 out_chunk_size=1,
                 seed=0, n_jobs=4,
