@@ -123,10 +123,12 @@ class Tracker(object):
 
         # mobility
         self.transition_probability = get_nested_dict(4)
-        M, G, B, O, R, EM = self.compute_mobility()
+        M, G, B, O, R, EM, F = self.compute_mobility()
         self.mobility = [M]
         self.expected_mobility = [EM]
         self.summarize_population()
+        self.feelings = [F]
+        self.rec_feelings = []
 
         # risk models
         self.risk_precision_daily = [self.compute_risk_precision()]
@@ -256,9 +258,11 @@ class Tracker(object):
         self.critical_per_day.append(0)
 
         # mobility
-        M, G, B, O, R, EM = self.compute_mobility()
+        M, G, B, O, R, EM, F = self.compute_mobility()
         self.mobility.append(M)
         self.expected_mobility.append(EM)
+        self.feelings.append(F)
+        self.rec_feelings.extend([(h.rec_level, h.how_am_I_feeling()) for h in self.city.humans])
 
         # risk models
         prec, lift, recall = self.compute_risk_precision(daily=True)
@@ -295,7 +299,7 @@ class Tracker(object):
         Returns:
             [type]: [description]
         """
-        EM, M, G, B, O, R = 0, 0, 0, 0, 0, 0
+        EM, M, G, B, O, R, F = 0, 0, 0, 0, 0, 0, 0
         for h in self.city.humans:
             G += h.rec_level == 0
             B += h.rec_level == 1
@@ -303,8 +307,10 @@ class Tracker(object):
             R += h.rec_level == 3
             M +=  1.0 * (h.rec_level == 0) + 0.8 * (h.rec_level == 1) + \
                     0.20 * (h.rec_level == 2) + 0.05 * (h.rec_level == 3) + 1*(h.rec_level==-1)
+            F += h.how_am_I_feeling()
+
             EM += (1-h.risk) # proxy for mobility
-        return M, G, B, O, R, EM/len(self.city.humans)
+        return M, G, B, O, R, EM/len(self.city.humans), F/len(self.city.humans)
 
     def compute_risk_precision(self, daily=True, threshold=0.5, until_days=None):
         """

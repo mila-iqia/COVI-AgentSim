@@ -88,7 +88,7 @@ def sim(n_people=None,
 @click.option('--config', help='where is the configuration file for this experiment', type=str, default="configs/no_intervention.yml")
 @click.option('--n_jobs', help='number of parallel procs to query the risk servers with', type=int, default=1)
 @click.option('--name', help='name of the file to append metrics file', type=str, default="")
-def tune(n_people, init_percent_sick, simulation_days, n_jobs, seed, outdir, config, name):
+def tune(n_people, init_percent_sick, simulation_days, seed, outdir, config, n_jobs, name):
     """
     [summary]
 
@@ -147,6 +147,8 @@ def tune(n_people, init_percent_sick, simulation_days, n_jobs, seed, outdir, con
     data['infection_monitor'] = tracker.infection_monitor
     data['infector_infectee_update_messages'] = tracker.infector_infectee_update_messages
     data['risk_attributes'] = tracker.risk_attributes
+    data['feelings'] = tracker.feelings
+    data['label_feelings'] = tracker.rec_feelings
     # data['dist_encounters'] = dict(tracker.dist_encounters)
     # data['time_encounters'] = dict(tracker.time_encounters)
     # data['day_encounters'] = dict(tracker.day_encounters)
