@@ -883,9 +883,9 @@ class Tracker(object):
 
     def dump_metrics(self):
         data = dict()
-        data['intervention_day'] = INTERVENTION_DAY
-        data['intervention'] = INTERVENTION
-        data['RISK_MODEL'] = RISK_MODEL
+        data['intervention_day'] = ExpConfig.get('INTERVENTION_DAY')
+        data['intervention'] = ExpConfig.get('INTERVENTION')
+        data['risk_model'] = ExpConfig.get('RISK_MODEL')
 
         data['expected_mobility'] = self.expected_mobility
         data['mobility'] = self.mobility
