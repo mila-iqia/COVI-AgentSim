@@ -368,6 +368,7 @@ class Tracker(object):
                 "symptoms": len(h.symptoms),
                 "test": h.test_result,
                 "recovered": h.is_removed,
+                "timestamp": self.env.timestamp
             }
 
             order_1_is_exposed = False
