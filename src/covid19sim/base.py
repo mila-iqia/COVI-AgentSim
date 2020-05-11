@@ -405,11 +405,7 @@ class City(simpy.Environment):
         while True:
             # Notify humans to follow interventions on intervention day
             if self.current_day == ExpConfig.get('INTERVENTION_DAY') and not humans_notified:
-                if ExpConfig.get('COLLECT_TRAINING_DATA'):
-                    self.intervention = Tracing(risk_model="naive", max_depth=1, symptoms=False, risk=False, should_modify_behavior=False)
-                    print("naive risk calculation without changing behavior... Humans notified!")
-                else:
-                    self.intervention = get_intervention(key=ExpConfig.get('INTERVENTION'),
+                self.intervention = get_intervention(key=ExpConfig.get('INTERVENTION'),
                                                      RISK_MODEL=ExpConfig.get('RISK_MODEL'),
                                                      TRACING_ORDER=ExpConfig.get('TRACING_ORDER'),
                                                      TRACE_SYMPTOMS=ExpConfig.get('TRACE_SYMPTOMS'),
@@ -418,6 +414,9 @@ class City(simpy.Environment):
 
                 _ = [h.notify(self.intervention) for h in self.humans]
                 print(self.intervention)
+                if ExpConfig.get('COLLECT_TRAINING_DATA'):
+                    print("naive risk calculation without changing behavior... Humans notified!")
+
                 humans_notified = True
 
             # iterate over humans, and if it's their timeslot, then update their infectionsness, symptoms, and message info
