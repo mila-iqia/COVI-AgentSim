@@ -2,6 +2,7 @@ import datetime
 import glob
 import os
 import pickle
+from collections import defaultdict
 from tempfile import TemporaryDirectory
 import unittest
 
@@ -11,7 +12,98 @@ from covid19sim.frozen.helper import conditions_to_np, encode_age, encode_sex
 from covid19sim.configs.exp_config import ExpConfig
 
 
+class MakeHumanAsMessageProxy:
+    def __init__(self, test_case: unittest.TestCase):
+        self.humans_logs = defaultdict(dict)
+        self.test_case = test_case
+
+    def make_human_as_message(self, human):
+        tc = self.test_case
+
+        message = ModelsTest.make_human_as_message(human)
+
+        now = human.env.timestamp
+        today = now.date()
+
+        with tc.subTest(name=human.name, now=now):
+            tc.assertEqual(human.last_date['symptoms_updated'], today)
+            tc.assertIsInstance(human.name, str)
+            tc.assertIsInstance(human.age, (int, np.integer))
+            tc.assertGreaterEqual(human.age, 0)
+            tc.assertIsInstance(human.sex, str)
+            tc.assertIn(human.sex.lower()[0], {'f', 'm', 'o'})
+
+            if human.obs_age is not None:
+                tc.assertIsInstance(human.obs_age, (int, np.integer))
+                tc.assertGreaterEqual(human.obs_age, 0)
+            if human.obs_sex is not None:
+                tc.assertIsInstance(human.obs_sex, str)
+                tc.assertIn(human.obs_sex.lower()[0], {'f', 'm', 'o'})
+
+            validate_human_message(tc, message, human)
+
+        return message
+
+
+def validate_human_message(test_case, human_as_message, human):
+    test_case.assertEqual(human_as_message.name, human.name)
+    test_case.assertEqual(human_as_message.age, encode_age(human.age))
+    test_case.assertEqual(human_as_message.sex, encode_sex(human.sex))
+    test_case.assertEqual(human_as_message.obs_age, encode_age(human.obs_age))
+    test_case.assertEqual(human_as_message.obs_sex, encode_sex(human.obs_sex))
+
+    test_case.assertEqual(human_as_message.infectiousnesses, human.infectiousnesses)
+    test_case.assertEqual(human_as_message.infection_timestamp, human.infection_timestamp)
+    test_case.assertEqual(human_as_message.recovered_timestamp, human.recovered_timestamp)
+
+    test_case.assertEqual(human_as_message.clusters, human.clusters)
+    test_case.assertEqual(human_as_message.exposure_message, human.exposure_message)
+    test_case.assertEqual(human_as_message.carefulness, human.carefulness)
+    test_case.assertEqual(human_as_message.has_app, human.has_app)
+
+    test_case.assertEqual(human_as_message.preexisting_conditions.sum(), len(human.preexisting_conditions))
+    test_case.assertTrue((human_as_message.preexisting_conditions ==
+                          conditions_to_np(human.preexisting_conditions)).all())
+    test_case.assertEqual(human_as_message.obs_preexisting_conditions.sum(),
+                          len(human.obs_preexisting_conditions))
+    test_case.assertTrue((human_as_message.obs_preexisting_conditions ==
+                          conditions_to_np(human.obs_preexisting_conditions)).all())
+
+    test_case.assertEqual(human_as_message.rolling_all_symptoms.shape[0], len(human.rolling_all_symptoms))
+    for m_rolling_all_symptoms, h_rolling_all_symptoms in \
+            zip(human_as_message.rolling_all_symptoms, human.rolling_all_symptoms):
+        test_case.assertEqual(m_rolling_all_symptoms.sum(), len(h_rolling_all_symptoms))
+    test_case.assertEqual(human_as_message.rolling_all_reported_symptoms.shape[0],
+                          len(human.rolling_all_reported_symptoms))
+    for m_rolling_all_reported_symptoms, h_rolling_all_reported_symptomsin in \
+            zip(human_as_message.rolling_all_reported_symptoms, human.rolling_all_reported_symptoms):
+        test_case.assertEqual(m_rolling_all_reported_symptoms.sum(), len(h_rolling_all_reported_symptomsin))
+
+    test_case.assertEqual(len(human_as_message.test_results), len(human.test_results))
+
+    test_case.assertEqual(len(human_as_message.messages), len([m for m in human.contact_book.messages
+                                                               if m.day == human.contact_book.messages[-1].day]))
+    test_case.assertEqual(len(human_as_message.update_messages),
+                          len([u_m for u_m in human.contact_book.update_messages
+                               if u_m.day == human.contact_book.update_messages[-1].day]))
+
+
 class ModelsTest(unittest.TestCase):
+    from covid19sim.models.run import make_human_as_message
+    make_human_as_message_proxy = None
+
+    def setUp(self):
+        from covid19sim.models import run
+
+        proxy = MakeHumanAsMessageProxy(self)
+        ModelsTest.make_human_as_message_proxy = proxy
+        run.make_human_as_message = proxy.make_human_as_message
+
+    def tearDown(self):
+        from covid19sim.models import run
+
+        run.make_human_as_message = self.make_human_as_message
+
     def test_run(self):
         """
             run one simulation and ensure json files are correctly populated and most of the users have activity
@@ -260,46 +352,7 @@ class HumanAsMessageTest(unittest.TestCase):
             else:
                 self.assertIn(k, human.__dict__)
 
-        self.assertEqual(message.name, human.name)
-        self.assertEqual(message.age, encode_age(human.age))
-        self.assertEqual(message.sex, encode_sex(human.sex))
-        self.assertEqual(message.obs_age, encode_age(human.obs_age))
-        self.assertEqual(message.obs_sex, encode_sex(human.obs_sex))
-
-        self.assertEqual(message.infectiousnesses, human.infectiousnesses)
-        self.assertEqual(message.infection_timestamp, human.infection_timestamp)
-        self.assertEqual(message.recovered_timestamp, human.recovered_timestamp)
-
-        self.assertEqual(message.clusters, human.clusters)
-        self.assertEqual(message.exposure_message, human.exposure_message)
-        self.assertEqual(message.carefulness, human.carefulness)
-        self.assertEqual(message.has_app, human.has_app)
-
-        self.assertEqual(message.preexisting_conditions.sum(), len(human.preexisting_conditions))
-        self.assertTrue((message.preexisting_conditions ==
-                         conditions_to_np(human.preexisting_conditions)).all())
-        self.assertEqual(message.obs_preexisting_conditions.sum(),
-                         len(human.obs_preexisting_conditions))
-        self.assertTrue((message.obs_preexisting_conditions ==
-                         conditions_to_np(human.obs_preexisting_conditions)).all())
-
-        self.assertEqual(message.rolling_all_symptoms.shape[0], len(human.rolling_all_symptoms))
-        for m_rolling_all_symptoms, h_rolling_all_symptoms in \
-                zip(message.rolling_all_symptoms, human.rolling_all_symptoms):
-            self.assertEqual(m_rolling_all_symptoms.sum(), len(h_rolling_all_symptoms))
-        self.assertEqual(message.rolling_all_reported_symptoms.shape[0],
-                         len(human.rolling_all_reported_symptoms))
-        for m_rolling_all_reported_symptoms, h_rolling_all_reported_symptomsin in \
-                zip(message.rolling_all_reported_symptoms, human.rolling_all_reported_symptoms):
-            self.assertEqual(m_rolling_all_reported_symptoms.sum(), len(h_rolling_all_reported_symptomsin))
-
-        self.assertEqual(len(message.test_results), len(human.test_results))
-
-        self.assertEqual(len(message.messages), len([m for m in human.contact_book.messages
-                                                     if m.day == human.contact_book.messages[-1].day]))
-        self.assertEqual(len(message.update_messages),
-                         len([u_m for u_m in human.contact_book.update_messages
-                              if u_m.day == human.contact_book.update_messages[-1].day]))
+        validate_human_message(self, message, human)
 
 
 if __name__ == "__main__":
