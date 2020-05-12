@@ -881,11 +881,6 @@ class Human(object):
         Yields:
             [type]: [description]
         """
-        """
-           1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24
-           State  h h h h h h h h h sh sh h  h  h  ac h  h  h  h  h  h  h  h  h
-        """
-
         self.household.humans.add(self)
 
         while True:
@@ -946,7 +941,11 @@ class Human(object):
             # self.how_am_I_feeling = 1.0 (great) --> rest_at_home = False
             if not self.rest_at_home:
                 # set it once for the rest of the disease path
-                if self.rng.random() > self.how_am_I_feeling():
+                i_feel = self.how_am_I_feeling()
+                # If you are in the GREEN level, modulate the mobility using FEELING_KNOB
+                if self.rec_level == 0:
+                    i_feel = GREEN_FEELING_KNOB * i_feel
+                if self.rng.random() > i_feel:
                     self.rest_at_home = True
 
             # happens when recovered

@@ -122,6 +122,7 @@ class Tracker(object):
         self.symptoms_set = {'covid': defaultdict(set), 'all': defaultdict(set)}
 
         # mobility
+        self.n_outside_daily_contacts = 0
         self.transition_probability = get_nested_dict(4)
         M, G, B, O, R, EM, F = self.compute_mobility()
         self.mobility = [M]
@@ -129,6 +130,7 @@ class Tracker(object):
         self.summarize_population()
         self.feelings = [F]
         self.rec_feelings = []
+        self.outside_daily_contacts = []
 
         # risk models
         self.risk_precision_daily = [self.compute_risk_precision()]
@@ -263,6 +265,7 @@ class Tracker(object):
         self.expected_mobility.append(EM)
         self.feelings.append(F)
         self.rec_feelings.extend([(h.rec_level, h.how_am_I_feeling()) for h in self.city.humans])
+        self.outside_daily_contacts.append(self.n_outside_daily_contacts/len(self.city.humans))
 
         # risk models
         prec, lift, recall = self.compute_risk_precision(daily=True)
@@ -374,7 +377,9 @@ class Tracker(object):
                 "symptoms": len(h.symptoms),
                 "test": h.test_result,
                 "recovered": h.is_removed,
-                "timestamp": self.env.timestamp
+                "timestamp": self.env.timestamp,
+                "test_recommended": h.test_recommended,
+                "name":h.name
             }
 
             order_1_is_exposed = False
@@ -612,6 +617,8 @@ class Tracker(object):
                 self.contacts['n_contacts']['avg'] = (n+1, (n*M + m)/(n+1))
 
                 self.contacts['n_contacts']['total'] = np.zeros((150,150))
+
+                self.n_outside_daily_contacts = 0
                 self.last_day['social_mixing'] = day
 
             else:
@@ -626,6 +633,8 @@ class Tracker(object):
 
                     self.contacts['n_contacts']['total'][human1.age, human2.age] += 1
                     self.contacts['n_contacts']['total'][human2.age, human1.age] += 1
+                    if human1.location != human1.household:
+                        self.n_outside_daily_contacts += 1
 
         if location is not None:
             x = len(self.contacts['location_duration'][location.location_type])

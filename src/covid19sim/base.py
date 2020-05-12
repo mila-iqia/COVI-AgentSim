@@ -74,7 +74,7 @@ class Env(simpy.Environment):
         Returns:
             bool: current timestamp day is a weekend day
         """
-        return self.day_of_week() in [0, 6]
+        return self.day_of_week() >= 5
 
     def time_of_day(self):
         """
@@ -237,6 +237,10 @@ class City(simpy.Environment):
         count_humans = 0
         house_allocations = {2:[], 3:[], 4:[], 5:[]}
         n_houses = 0
+        init_infected = math.ceil(self.init_percent_sick * self.n_people)
+        chosen_infected = set(np.random.choice(self.n_people, init_infected, replace=False).tolist())
+        # x = np.zeros(self.n_people)
+        # x[np.permutation(len(x))[:init_infected]] = 1
         for age_bin, specs in HUMAN_DISTRIBUTION.items():
             n = math.ceil(specs['p'] * self.n_people)
             ages = self.rng.randint(*age_bin, size=n)
@@ -278,7 +282,7 @@ class City(simpy.Environment):
                         profession=profession[i],
                         rho=RHO,
                         gamma=GAMMA,
-                        infection_timestamp=self.start_time if self.rng.random() < self.init_percent_sick else None
+                        infection_timestamp=self.start_time if count_humans - 1 in chosen_infected else None
                         )
                     )
 
