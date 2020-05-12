@@ -128,6 +128,7 @@ def tune(n_people, init_percent_sick, simulation_days, seed, outdir, config, n_j
     data['risk_model'] = ExpConfig.get('RISK_MODEL')
 
     data['expected_mobility'] = tracker.expected_mobility
+    data['serial_interval'] = tracker.get_generation_time()
     data['mobility'] = tracker.mobility
     data['n_init_infected'] = tracker.n_infected_init
     data['contacts'] = dict(tracker.contacts)
@@ -148,7 +149,8 @@ def tune(n_people, init_percent_sick, simulation_days, seed, outdir, config, n_j
     data['infector_infectee_update_messages'] = tracker.infector_infectee_update_messages
     data['risk_attributes'] = tracker.risk_attributes
     data['feelings'] = tracker.feelings
-    data['label_feelings'] = tracker.rec_feelings
+    data['rec_feelings'] = tracker.rec_feelings
+    data['outside_daily_contacts'] = tracker.outside_daily_contacts
     # data['dist_encounters'] = dict(tracker.dist_encounters)
     # data['time_encounters'] = dict(tracker.time_encounters)
     # data['day_encounters'] = dict(tracker.day_encounters)
