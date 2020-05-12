@@ -9,10 +9,15 @@ class ExpConfig(object):
     """
     [summary]
     """
-    config = None
+    _instance = None
 
-    @classmethod
-    def __getitem__(cls, key):
+    def __new__(cls, *args, **kwargs):
+        if not isinstance(cls._instance, cls):
+            cls._instance = object.__new__(cls, *args, **kwargs)
+            cls._instance._config = {}
+        return cls._instance
+
+    def __getitem__(self, key):
         """
         [summary]
 
@@ -22,10 +27,9 @@ class ExpConfig(object):
         Returns:
             [type]: [description]
         """
-        return cls.config[key]
+        return self._config[key]
 
-    @classmethod
-    def __setitem__(cls, key, item):
+    def __setitem__(self, key, item):
         """
         [summary]
 
@@ -33,7 +37,10 @@ class ExpConfig(object):
             key ([type]): [description]
             item ([type]): [description]
         """
-        cls.config[key] = item
+        self._config[key] = item
+
+    def is_empty(self):
+        return not len(self._config)
 
     @classmethod
     def get(cls, key):
@@ -46,7 +53,7 @@ class ExpConfig(object):
         Returns:
             [type]: [description]
         """
-        return cls.config[key]
+        return ExpConfig()[key]
 
     @classmethod
     def set(cls, key, val):
@@ -57,7 +64,7 @@ class ExpConfig(object):
             key ([type]): [description]
             val ([type]): [description]
         """
-        cls.config[key] = val
+        ExpConfig()[key] = val
 
     @classmethod
     def load_config(cls, path):
@@ -67,5 +74,6 @@ class ExpConfig(object):
         Args:
             path ([type]): [description]
         """
+        config = ExpConfig()
         with open(path) as file:
-            ExpConfig.config = yaml.load(file, Loader=yaml.FullLoader)
+            config._config = yaml.load(file, Loader=yaml.FullLoader)
