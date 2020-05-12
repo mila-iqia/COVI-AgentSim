@@ -17,7 +17,7 @@ ABSOLUTE_P_HAS_APP : False # If False, we modulate P_HAS_APP with carefulness an
 
 
 # PATHS
-CLUSTER_PATH : "output/clusters.json"
+CLUSTER_PATH : "output/clusters"
 TRANSFORMER_EXP_PATH : "../src/covid19sim/CTT-SHIPMENT-0"
 
 # Inference & Training

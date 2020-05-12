@@ -16,7 +16,7 @@ PERCENT_FOLLOW : 1.0
 P_HAS_APP : -1.0 # add 10% of the target adoption rate
 
 # PATHS
-CLUSTER_PATH : "output/clusters.json"
+CLUSTER_PATH : "output/clusters"
 
 # Inference & Training
 INFECTIOUSNESS_N_DAYS_HISTORY : 14

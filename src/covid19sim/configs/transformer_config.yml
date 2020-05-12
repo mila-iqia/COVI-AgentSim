@@ -18,7 +18,7 @@ P_HAS_APP : -1.0
 
 # PATHS
 TRANSFORMER_EXP_PATH : "" #"CTT-SHIPMENT-0"
-CLUSTER_PATH : "output/clusters.json"
+CLUSTER_PATH : "output/clusters"
 
 # Inference & Training
 INFECTIOUSNESS_N_DAYS_HISTORY : 14

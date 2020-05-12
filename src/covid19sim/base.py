@@ -481,16 +481,17 @@ class City(simpy.Environment):
                                 n_jobs=n_jobs, data_path=outfile)
                 self.tracker.track_risk_attributes(self.humans)
 
-            # increment the day / update uids if we just ran all the people in timeslot 23 (last hour of the day == done)
-            if self.env.timestamp.hour == 23 and self.env.timestamp != self.env.initial_timestamp:
+            # Let the hour pass
+            yield self.env.timeout(duration / TICK_MINUTE)
+
+            # increment the day / update uids if we start the timeslot 0
+            if self.env.timestamp.hour == 0 and self.env.timestamp != self.env.initial_timestamp:
                 # TODO: this is an assumption which will break in reality, instead of updating once per day everyone at the same time, it should be throughout the day
                 for human in self.humans:
                     human.uid = update_uid(human.uid, human.rng)
                 self.current_day += 1
                 self.tracker.increment_day()
 
-            # Let the hour pass
-            yield self.env.timeout(duration / TICK_MINUTE)
 
 class Location(simpy.Resource):
     """
