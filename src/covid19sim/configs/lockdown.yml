@@ -15,7 +15,6 @@ INTERVENTION : "Lockdown"
 PERCENT_FOLLOW : 1.0
 # NOTE: HAS_APP params are only used when an app based INTERVENTION = "Tracing" is used
 P_HAS_APP : -1.0
-ABSOLUTE_P_HAS_APP : True # If False, we modulate P_HAS_APP with carefulness and age
 
 # PATHS
 CLUSTER_PATH : "output/"

@@ -1,18 +1,19 @@
 ---
 # EXPERIMENTAL PARAMETERS
-COLLECT_LOGS : True
+COLLECT_LOGS : False
 COLLECT_TRAINING_DATA : False
 USE_INFERENCE_SERVER : True
 RISK_MODEL : "transformer" # "naive"  "manual", "digital", "transformer"
-SHOULD_MODIFY_BEHAVIOR : False
+SHOULD_MODIFY_BEHAVIOR : True
 USE_ORACLE: False
 
 ## INTERVENTIONS
-INTERVENTION_DAY : 0
+INTERVENTION_DAY : 5
+# NOTE: INTERVENTION is only valid if INTERVENTION_DAY >= 0
 INTERVENTION : "Tracing"
 PERCENT_FOLLOW : 1.0
-P_HAS_APP : 1.0
-ABSOLUTE_P_HAS_APP : True # If False, we modulate P_HAS_APP with carefulness and age
+# NOTE: HAS_APP params are only used when an app based INTERVENTION = "Tracing" is used
+P_HAS_APP : -1.0
 
 
 # PATHS
