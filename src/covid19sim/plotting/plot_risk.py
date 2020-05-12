@@ -1,3 +1,7 @@
+"""
+[summary]
+"""
+
 import os
 import sys
 sys.path.append(os.getcwd())
@@ -10,7 +14,14 @@ import seaborn as sns
 
 matplotlib.use('Agg')
 
-def hist_plot(risks, PATH_TO_PLOT):
+def hist_plot(risks, path_to_plot):
+    """
+    [summary]
+
+    Args:
+        risks ([type]): [description]
+        path_to_plot ([type]): [description]
+    """
     plt.figure()
     uninfectious_risks = []
     infectious_risks = []
@@ -44,12 +55,19 @@ def hist_plot(risks, PATH_TO_PLOT):
     plt.xlabel("Risk")
     plt.ylabel("Density")
     plt.legend()
-    plt.title(f"Hist of day {PATH_TO_PLOT}, Risk Transmission Proba = {RISK_TRANSMISSION_PROBA}")
-    plt.savefig(PATH_TO_PLOT)
+    plt.title(f"Hist of day {path_to_plot}, Risk Transmission Proba = {RISK_TRANSMISSION_PROBA}")
+    plt.savefig(path_to_plot)
     plt.close()
 
 
-def dist_plot(risks, PATH_TO_PLOT):
+def dist_plot(risks, path_to_plot):
+    """
+    [summary]
+
+    Args:
+        risks ([type]): [description]
+        path_to_plot ([type]): [description]
+    """
     plt.figure()
     uninfectious_risks = []
     infectious_risks = []
@@ -79,5 +97,5 @@ def dist_plot(risks, PATH_TO_PLOT):
     plt.legend(['infectious', 'not infectious'])
     plt.title(f"Risk Transmission Proba = {RISK_TRANSMISSION_PROBA}")
     print("Saving figure...")
-    plt.savefig(PATH_TO_PLOT)
+    plt.savefig(path_to_plot)
     plt.close()

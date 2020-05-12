@@ -1,14 +1,19 @@
+# html files
+*.html
+
 # images and data files
 *.png
 *.gif
 *.pkl
 *.json
-
+*.DS_Store
 # output files
 output/
+CTT-SHIPMENT-0
 
 # Pycharm stuff
 .idea/
+.vscode
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

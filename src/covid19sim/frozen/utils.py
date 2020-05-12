@@ -242,20 +242,20 @@ def hash_to_cluster_day(message):
     for days_apart in range(1, 4):
         if days_apart == 1:
             for possibility in ["0", "1"]:
-                bin_uid = "{0:b}".format(int(possibility + bin_uid[:3], 2)).zfill(4)
-                binary = "".join([bin_uid, bin_risk])
+                binary = "".join(["{0:b}".format(int(possibility + bin_uid[:3], 2)).zfill(4),
+                                  bin_risk])
                 cluster_id = int(binary, 2)
                 clusters[days_apart].append(cluster_id)
         if days_apart == 2:
             for possibility in ["00", "01", "10", "11"]:
-                bin_uid = "{0:b}".format(int(possibility + bin_uid[:2], 2)).zfill(4)
-                binary = "".join([bin_uid, bin_risk])
+                binary = "".join(["{0:b}".format(int(possibility + bin_uid[:2], 2)).zfill(4),
+                                  bin_risk])
                 cluster_id = int(binary, 2)
                 clusters[days_apart].append(cluster_id)
         if days_apart == 3:
             for possibility in ["000", "001", "011", "010", "100", "101", "110", "111"]:
-                bin_uid = "{0:b}".format(int(possibility + bin_uid[:1], 2)).zfill(4)
-                binary = "".join([bin_uid, bin_risk])
+                binary = "".join(["{0:b}".format(int(possibility + bin_uid[:1], 2)).zfill(4),
+                                  bin_risk])
                 cluster_id = int(binary, 2)
                 clusters[days_apart].append(cluster_id)
     return clusters
