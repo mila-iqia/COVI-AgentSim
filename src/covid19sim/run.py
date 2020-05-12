@@ -4,7 +4,7 @@
 import click
 import os
 
-from covid19sim.frozen.helper import SYMPTOMS_META
+from covid19sim.frozen.helper import SYMPTOMS_META, SYMPTOMS_META_IDMAP
 from covid19sim.simulator import Human
 from covid19sim.base import *
 from covid19sim.monitors import EventMonitor, TimeMonitor, SEIRMonitor
@@ -322,13 +322,10 @@ def run_simu(n_people=None,
         monitors += other_monitors
 
     # run city
-    all_possible_symptoms = [""] * len(SYMPTOMS_META)
-    for k, v in SYMPTOMS_META.items():
-        all_possible_symptoms[v] = k
     monitors[0].dump()
     monitors[0].join_iothread()
     # run this every hour
-    env.process(city.run(1440/24, outfile, start_time, all_possible_symptoms, port, n_jobs))
+    env.process(city.run(1440/24, outfile, start_time, SYMPTOMS_META_IDMAP, port, n_jobs))
 
     # run humans
     for human in city.humans:

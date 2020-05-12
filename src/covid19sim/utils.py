@@ -1527,3 +1527,8 @@ def calculate_average_infectiousness(human):
     tomorrows_infectiousness = human.get_infectiousness_for_day(human.env.timestamp + datetime.timedelta(days=1),
                                                                 is_infectious_tomorrow)
     return (cur_infectiousness + tomorrows_infectiousness) / 2
+
+
+def filter_open(locations):
+    """Given an iterable of locations, will return a list of those that are open"""
+    return [loc for loc in locations if loc.is_open]

@@ -6,6 +6,7 @@ import math
 import datetime
 import itertools
 from collections import defaultdict
+from functools import cached_property
 
 from covid19sim.configs.config import *
 from covid19sim.utils import compute_distance, _get_random_area, _draw_random_discreet_gaussian, get_intervention, calculate_average_infectiousness
@@ -101,7 +102,6 @@ class City(simpy.Environment):
             x_range (tuple): (min_x, max_x)
             y_range (tuple): (min_y, max_y)
             start_time (datetime.datetime): City's initial datetime
-            init_percent_sick (float): % of humans sick at the start of the simulation
             Human (covid19.simulator.Human): Class for the city's human instances
         """
         self.env = env
@@ -325,8 +325,10 @@ class City(simpy.Environment):
         for i,house in enumerate(self.households):
             house.area = area[i]
 
-        # this allows for easy O(1) access of humans for message passing
-        self.hd = {human.name: human for human in self.humans}
+    @cached_property
+    def hd(self):
+        """This lazy cached_property allows for easy O(1) access of humans for message passing"""
+        return {human.name: human for human in self.humans}
 
     def log_static_info(self):
         """
@@ -509,6 +511,7 @@ class Location(simpy.Resource):
         self.contamination_timestamp = datetime.datetime.min
         self.contaminated_surface_probability = surface_prob
         self.max_day_contamination = 0
+        self.is_open = True
 
     def infectious_human(self):
         """
