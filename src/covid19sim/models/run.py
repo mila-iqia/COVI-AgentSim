@@ -9,13 +9,13 @@ import os
 import pickle
 import functools
 from joblib import Parallel, delayed
-from typing import List
+from typing import Deque, List
 import warnings
 import numpy as np
 
 from covid19sim.frozen.clusters import Clusters
 from covid19sim.frozen.helper import SYMPTOMS_META, conditions_to_np, encode_age, encode_sex, \
-    symptoms_to_np
+    encode_test_result, symptoms_to_np
 from covid19sim.frozen.utils import Message, UpdateMessage, encode_message, encode_update_message
 from covid19sim.server_utils import InferenceClient, InferenceWorker
 from ctt.inference.infer import InferenceEngine
@@ -29,6 +29,9 @@ def make_human_as_message(human):
     preexisting_conditions = conditions_to_np(human.preexisting_conditions)
 
     obs_preexisting_conditions = conditions_to_np(human.obs_preexisting_conditions)
+
+    test_results = deque(((encode_test_result(result), timestamp)
+                          for result, timestamp in human.test_results))
 
     rolling_all_symptoms = symptoms_to_np(human.rolling_all_symptoms, ALL_POSSIBLE_SYMPTOMS)
 
@@ -44,12 +47,6 @@ def make_human_as_message(human):
                        # match day; ugly till refactor
                        if update_message[3] == human.contact_book.update_messages[-1][3]]
 
-    # Inference server is expecting test_time to be the time of a positive test
-    if human.test_result == "negative":
-        test_time = datetime.max
-    else:
-        test_time = human.test_time
-
     return HumanAsMessage(name=human.name,
                           age=encode_age(human.age),
                           sex=encode_sex(human.sex),
@@ -61,7 +58,7 @@ def make_human_as_message(human):
                           infectiousnesses=human.infectiousnesses,
                           infection_timestamp=human.infection_timestamp,
                           recovered_timestamp=human.recovered_timestamp,
-                          test_time=test_time,
+                          test_results=test_results,
                           rolling_all_symptoms=rolling_all_symptoms,
                           rolling_all_reported_symptoms=rolling_all_reported_symptoms,
 
@@ -90,8 +87,8 @@ class HumanAsMessage:
     infection_timestamp: datetime
     # TODO: Should be reformatted to int timestamp
     recovered_timestamp: datetime
-    # TODO: Should be reformatted to int timestamp
-    test_time: datetime
+    # TODO: Should be reformatted to deque of (int, int timestamp)
+    test_results: Deque[tuple]
     rolling_all_symptoms: np.array
     rolling_all_reported_symptoms: np.array
 

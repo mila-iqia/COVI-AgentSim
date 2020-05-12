@@ -168,6 +168,7 @@ class Human(object):
         self.incubation_days = None # self.infectiousness_onset_days + self.viral_load_plateau_start + self.rng.normal(loc=SYMPTOM_ONSET_WRT_VIRAL_LOAD_PEAK_AVG, scale=SYMPTOM_ONSET_WRT_VIRAL_LOAD_PEAK_STD)
         self.recovery_days = None # self.infectiousness_onset_days + self.viral_load_recovered
         self.test_result, self.test_type = None, None
+        self.test_results = deque(((None, datetime.datetime.max),))
         self.infection_timestamp = infection_timestamp
         self.initial_viral_load = self.rng.rand() if infection_timestamp is not None else 0
         if self.infection_timestamp is not None:
@@ -218,8 +219,6 @@ class Human(object):
         self.uid = create_new_uid(rng)
         self.exposure_message = None
         self.exposure_source = None
-        self.test_time = datetime.datetime.max
-
         # create 24 timeslots to do your updating
         time_slot = rng.randint(0, 24)
         self.time_slots = [int((time_slot + i*24/ExpConfig.get('UPDATES_PER_DAY')) % 24) for i in range(ExpConfig.get('UPDATES_PER_DAY'))]
@@ -731,9 +730,9 @@ class Human(object):
         if any(self.symptoms) and self.rng.rand() < P_TEST:
             self.test_type = city.get_available_test()
             if self.rng.rand() < TEST_TYPES[self.test_type]['P_FALSE_NEGATIVE']:
-                self.test_result =  'negative'
+                self.test_result = 'negative'
             else:
-                self.test_result =  'positive'
+                self.test_result = 'positive'
 
             if self.test_type == "lab":
                 self.test_result_validated = True
@@ -899,10 +898,15 @@ class Human(object):
             if (self.test_result != "positive" and
                 (self.test_recommended or
                 (self.is_incubated and self.env.timestamp - self.symptom_start_time >= datetime.timedelta(days=TEST_DAYS)))):
+                if (self.env.timestamp - self.test_results[0][1]).days == 0:
+                    warnings.warn(f"{self.name}'s last test time is less than a day. Will not retest human today. "
+                                  f"Current day {self.env.timestamp}, "
+                                  f"Last test time {self.test_results[0][1]}",
+                                  RuntimeWarning)
                 # make testing a function of age/hospitalization/travel
-                if self.get_tested(city):
+                elif self.get_tested(city):
                     Event.log_test(self, self.env.timestamp)
-                    self.test_time = self.env.timestamp
+                    self.test_results.appendleft((self.test_result, self.env.timestamp))
                     city.tracker.track_tested_results(self, self.test_result, self.test_type)
                     self.update_risk(test_results=True)
 
@@ -1470,6 +1474,7 @@ class Human(object):
         Returns:
             [type]: [description]
         """
+        warnings.warn("Deprecated in favor of frozen.helper.get_test_result_array()", DeprecationWarning)
         # dont change the logic in here, it needs to remain FROZEN
         results = np.zeros(14)
         result_day = (date - self.test_time).days

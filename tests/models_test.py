@@ -97,9 +97,9 @@ class ModelsTest(unittest.TestCase):
 
                     # Has received a positive test result [index] days before today
                     self.assertEqual(observed['test_results'].shape, (14,))
-                    self.assertIn(observed['test_results'].min(), (0, 1))
-                    self.assertIn(observed['test_results'].max(), (0, 1))
-                    self.assertIn(observed['test_results'].sum(), (0, 1))
+                    self.assertIn(observed['test_results'].min(), (-1, 0, 1))
+                    self.assertIn(observed['test_results'].max(), (-1, 0, 1))
+                    self.assertIn(observed['test_results'][observed['test_results'] == 1].sum(), (0, 1))
 
                     # Multihot encoding
                     self.assertIn(observed['preexisting_conditions'].min(), (0, 1))
@@ -269,7 +269,6 @@ class HumanAsMessageTest(unittest.TestCase):
         self.assertEqual(message.infectiousnesses, human.infectiousnesses)
         self.assertEqual(message.infection_timestamp, human.infection_timestamp)
         self.assertEqual(message.recovered_timestamp, human.recovered_timestamp)
-        self.assertEqual(message.test_time, human.test_time)
 
         self.assertEqual(message.clusters, human.clusters)
         self.assertEqual(message.exposure_message, human.exposure_message)
@@ -293,6 +292,8 @@ class HumanAsMessageTest(unittest.TestCase):
         for m_rolling_all_reported_symptoms, h_rolling_all_reported_symptomsin in \
                 zip(message.rolling_all_reported_symptoms, human.rolling_all_reported_symptoms):
             self.assertEqual(m_rolling_all_reported_symptoms.sum(), len(h_rolling_all_reported_symptomsin))
+
+        self.assertEqual(len(message.test_results), len(human.test_results))
 
         self.assertEqual(len(message.messages), len([m for m in human.contact_book.messages
                                                      if m.day == human.contact_book.messages[-1].day]))
