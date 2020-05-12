@@ -13,7 +13,7 @@ INTERVENTION_DAY : -1
 # NOTE: INTERVENTION is only valid if INTERVENTION_DAY >= 0
 INTERVENTION : ""
 PERCENT_FOLLOW : 1.0
-P_HAS_APP : 1.0
+P_HAS_APP : -1.0 # add 10% of the target adoption rate
 ABSOLUTE_P_HAS_APP : True # If False, we modulate P_HAS_APP with carefulness and age
 
 # PATHS

@@ -84,7 +84,7 @@ class Human(object):
     [summary]
     """
 
-    def __init__(self, env, city, name, age, rng, infection_timestamp, household, workplace, profession, rho=0.3, gamma=0.21, symptoms=[], test_results=None):
+    def __init__(self, env, city, name, age, rng, has_app, infection_timestamp, household, workplace, profession, rho=0.3, gamma=0.21, symptoms=[], test_results=None):
         """
         [summary]
 
@@ -108,6 +108,7 @@ class Human(object):
         self._events = []
         self.name = f"human:{name}"
         self.rng = rng
+        self.has_app = has_app
         self.profession = profession
         self.is_healthcare_worker = True if profession == "healthcare" else False
         self.assign_household(household)
@@ -126,10 +127,6 @@ class Human(object):
             self.carefulness = (round(self.rng.normal(55, 10)) + self.age/2) / 100
         else:
             self.carefulness = (round(self.rng.normal(25, 10)) + self.age/2) / 100
-        if ExpConfig.get('ABSOLUTE_P_HAS_APP'):
-            self.has_app = ExpConfig.get('P_HAS_APP')
-        else:
-            self.has_app = self.rng.rand() < (ExpConfig.get('P_HAS_APP') / age_modifier) + (self.carefulness / 2)
 
         # allergies
         self.has_allergies = self.rng.rand() < P_ALLERGIES

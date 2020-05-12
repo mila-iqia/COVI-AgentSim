@@ -237,10 +237,16 @@ class City(simpy.Environment):
         count_humans = 0
         house_allocations = {2:[], 3:[], 4:[], 5:[]}
         n_houses = 0
+
+        # initial infections
         init_infected = math.ceil(self.init_percent_sick * self.n_people)
         chosen_infected = set(np.random.choice(self.n_people, init_infected, replace=False).tolist())
-        # x = np.zeros(self.n_people)
-        # x[np.permutation(len(x))[:init_infected]] = 1
+
+        # app users
+        all_has_app =  ExpConfig.get('P_HAS_APP') < 0
+        n_apps = ExpConfig.get('P_HAS_APP') * self.n_people if ExpConfig.get('P_HAS_APP') > 0 else self.n_people
+        n_apps_per_age = {k:math.ceil(v * n_apps) for k,v in APP_USERS_FRACTION_BY_AGE.items()}
+
         for age_bin, specs in HUMAN_DISTRIBUTION.items():
             n = math.ceil(specs['p'] * self.n_people)
             ages = self.rng.randint(*age_bin, size=n)
@@ -251,9 +257,25 @@ class City(simpy.Environment):
             p = [specs['profession_profile'][x] for x in professions]
             profession = self.rng.choice(professions, p=p, size=n)
 
+            # select who should have app based on APP_USERS_FRACTION_BY_AGE
+            chosen_app_user_bin = []
+            for my_age in ages:
+                for x, frac in APP_USERS_FRACTION_BY_AGE.items():
+                    if x[0] <= my_age <= x[1]:
+                        chosen_app_user_bin.append(x)
+                        break
+
             for i in range(n):
                 count_humans += 1
                 age = ages[i]
+
+                # should the person has an app?
+                current_app_bin = chosen_app_user_bin[i]
+                if n_apps_per_age[current_app_bin] > 0:
+                    has_app = True
+                    n_apps_per_age[current_app_bin] -= 1
+                else:
+                    has_app = False
 
                 # residence
                 res = None
@@ -275,6 +297,7 @@ class City(simpy.Environment):
                         env=self.env,
                         city=self,
                         rng=self.rng,
+                        has_app=has_app or all_has_app,
                         name=count_humans,
                         age=age,
                         household=res,
