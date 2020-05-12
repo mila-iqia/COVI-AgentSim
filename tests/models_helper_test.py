@@ -5,7 +5,7 @@ import warnings
 from covid19sim.utils import PREEXISTING_CONDITIONS, SYMPTOMS
 
 from covid19sim.frozen.helper import conditions_to_np, symptoms_to_np, \
-    encode_age, encode_sex, PREEXISTING_CONDITIONS_META, \
+    encode_age, encode_sex, encode_test_result, PREEXISTING_CONDITIONS_META, \
     SYMPTOMS_META
 
 
@@ -138,3 +138,10 @@ class ModelsHelperTest(unittest.TestCase):
         self.assertEqual(encode_sex('others'), 0)
         self.assertEqual(encode_sex(''), -1)
         self.assertEqual(encode_sex(None), -1)
+
+    def test_encode_test_result(self):
+        self.assertEqual(encode_test_result('positive'), 1)
+        self.assertEqual(encode_test_result('negative'), -1)
+        self.assertEqual(encode_test_result('POSITIVE'), 1)
+        self.assertEqual(encode_test_result('NEGATIVE'), -1)
+        self.assertEqual(encode_test_result(None), 0)

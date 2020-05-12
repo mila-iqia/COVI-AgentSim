@@ -83,6 +83,16 @@ def get_test_result_array(human_test_time, date):
     return results
 
 
+# TODO: negative should probably return 0 and None return -1 to be consistent with encoded age and sex
+def encode_test_result(test_result):
+    if test_result is None:
+        return 0
+    if test_result.lower() == 'positive':
+        return 1
+    elif test_result.lower() == 'negative':
+        return -1
+
+
 def messages_to_np(human):
     if isinstance(human.clusters, ClusterManagerBase):
         return human.clusters.get_embeddings_array()
