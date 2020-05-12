@@ -410,14 +410,13 @@ class City:
             h.stores_preferences = [(compute_distance(h.household, s) + 1e-1) ** -1 for s in self.stores]
             h.parks_preferences = [(compute_distance(h.household, s) + 1e-1) ** -1 for s in self.parks]
 
-    def run(self, duration, outfile, all_possible_symptoms, port, n_jobs):
+    def run(self, duration, outfile, port, n_jobs):
         """
         Run the City DOCTODO(improve this)
 
         Args:
             duration (int): duration of a step, in seconds.
             outfile (str): may be None, the run's output file to write to
-            all_possible_symptoms (dict): copy of SYMPTOMS_META (config.py)
             port (int): the port for integrated_risk_pred when updating the humans'
                 risk
             n_jobs (int): the number of jobs for integrated_risk_pred when updating
@@ -476,8 +475,7 @@ class City:
                             human.message_info[type_contacts][order].append(0)
 
             if isinstance(self.intervention, Tracing):
-                self.intervention.update_human_risks(city=self,
-                                symptoms=all_possible_symptoms, port=port,
+                self.intervention.update_human_risks(city=self, port=port,
                                 n_jobs=n_jobs, data_path=outfile)
                 self.tracker.track_risk_attributes(self.humans)
 

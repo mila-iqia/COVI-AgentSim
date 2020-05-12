@@ -24,8 +24,8 @@ from covid19sim.configs.exp_config import ExpConfig
 
 
 expected_raw_packet_param_names = [
-    "start", "current_day", "all_possible_symptoms", "human",
-    "COLLECT_TRAINING_DATA", "log_path", "risk_model", 'time_slot', "oracle"
+    "start", "current_day", "human", "COLLECT_TRAINING_DATA", "log_path",
+    "risk_model", 'time_slot', "oracle"
 ]
 
 expected_processed_packet_param_names = [

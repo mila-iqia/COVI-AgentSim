@@ -69,7 +69,7 @@ class ModelsHelperTest(unittest.TestCase):
             self.assertEqual(np_conditions.min(), 0)
 
     def test_symptoms_to_np(self):
-        np_symptoms = symptoms_to_np([[s for s in SYMPTOMS_META]] * 14, [])
+        np_symptoms = symptoms_to_np([[s for s in SYMPTOMS_META]] * 14)
 
         warnings.warn("Lenght of the output of covid19sim.frozen.helper.symptoms_to_np() is "
                       "len(SYMPTOMS_META) + 1. This doesn't look right.")
@@ -78,7 +78,7 @@ class ModelsHelperTest(unittest.TestCase):
         self.assertEqual(np_symptoms.max(), 1)
         self.assertEqual(np_symptoms.min(), 0)
 
-        np_symptoms = symptoms_to_np([[]] * 14, [])
+        np_symptoms = symptoms_to_np([[]] * 14)
 
         self.assertEqual(np_symptoms.shape, (14, len(SYMPTOMS_META) + 1))
         self.assertEqual(np_symptoms.sum(), 0)
@@ -86,7 +86,7 @@ class ModelsHelperTest(unittest.TestCase):
         self.assertEqual(np_symptoms.min(), 0)
 
         for symptom, s_id in SYMPTOMS_META.items():
-            np_symptoms = symptoms_to_np([[symptom]] * 14, [])
+            np_symptoms = symptoms_to_np([[symptom]] * 14)
 
             self.assertEqual(np_symptoms.shape, (14, len(SYMPTOMS_META) + 1))
 
@@ -103,7 +103,7 @@ class ModelsHelperTest(unittest.TestCase):
         for i, symptom in zip(range(len(raw_symptoms)), SYMPTOMS_META):
             raw_symptoms[i].append(symptom)
 
-        np_symptoms = symptoms_to_np(raw_symptoms, [])
+        np_symptoms = symptoms_to_np(raw_symptoms)
 
         self.assertEqual(np_symptoms.shape, (14, len(SYMPTOMS_META) + 1))
         self.assertEqual(np_symptoms.sum(), 14)

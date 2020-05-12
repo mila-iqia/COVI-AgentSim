@@ -138,8 +138,7 @@ def conditions_to_np(conditions):
     return conditions_encs
 
 
-# TODO: track and remove all_possible_symptoms as SYMPTOMS_META is used instead
-def symptoms_to_np(all_symptoms, all_possible_symptoms):
+def symptoms_to_np(all_symptoms):
     rolling_window = 14
     symptoms_enc = np.zeros((rolling_window, len(SYMPTOMS_META) + 1))
     for day, symptoms in zip(range(rolling_window), all_symptoms):

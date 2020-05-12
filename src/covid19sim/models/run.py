@@ -14,15 +14,12 @@ import warnings
 import numpy as np
 
 from covid19sim.frozen.clusters import Clusters
-from covid19sim.frozen.helper import SYMPTOMS_META, conditions_to_np, encode_age, encode_sex, \
+from covid19sim.frozen.helper import conditions_to_np, encode_age, encode_sex, \
     encode_test_result, symptoms_to_np
 from covid19sim.frozen.utils import Message, UpdateMessage, encode_message, encode_update_message
 from covid19sim.server_utils import InferenceClient, InferenceWorker
 from ctt.inference.infer import InferenceEngine
 from covid19sim.configs.exp_config import ExpConfig
-
-
-ALL_POSSIBLE_SYMPTOMS = [k for k, v in sorted(list(SYMPTOMS_META.items()), key=lambda item: item[1])]
 
 
 def make_human_as_message(human):
@@ -33,10 +30,9 @@ def make_human_as_message(human):
     test_results = deque(((encode_test_result(result), timestamp)
                           for result, timestamp in human.test_results))
 
-    rolling_all_symptoms = symptoms_to_np(human.rolling_all_symptoms, ALL_POSSIBLE_SYMPTOMS)
+    rolling_all_symptoms = symptoms_to_np(human.rolling_all_symptoms)
 
-    rolling_all_reported_symptoms = symptoms_to_np(human.rolling_all_reported_symptoms,
-                                                   ALL_POSSIBLE_SYMPTOMS)
+    rolling_all_reported_symptoms = symptoms_to_np(human.rolling_all_reported_symptoms)
 
     messages = [encode_message(message) for message in human.contact_book.messages
                 # match day; ugly till refactor
@@ -117,7 +113,7 @@ def query_inference_server(params, **inf_client_kwargs):
     return results
 
 
-def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_symptoms, port=6688, n_jobs=1, data_path=None):
+def integrated_risk_pred(humans, start, current_day, time_slot, port=6688, n_jobs=1, data_path=None):
     """
     [summary]
     Setup and make the calls to the server
@@ -127,7 +123,6 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
         start ([type]): [description]
         current_day ([type]): [description]
         time_slot ([type]): [description]
-        all_possible_symptoms ([type]): [description]
         port (int, optional): [description]. Defaults to 6688.
         n_jobs (int, optional): [description]. Defaults to 1.
         data_path ([type], optional): [description]. Defaults to None.
@@ -153,7 +148,6 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
         all_params.append({
             "start": start,
             "current_day": current_day,
-            "all_possible_symptoms": all_possible_symptoms,
             "COLLECT_TRAINING_DATA": ExpConfig.get('COLLECT_TRAINING_DATA'),
             "human": human_message,
             "log_path": log_path,
