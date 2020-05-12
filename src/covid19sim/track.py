@@ -1,15 +1,31 @@
+
+"""
+[summary]
+"""
 import pandas as pd
 import numpy as np
 import math
 from collections import defaultdict
 import networkx as nx
+import datetime
+import dill
+import copy
 
-from covid19sim.config import HUMAN_DISTRIBUTION, LOCATION_DISTRIBUTION, INFECTION_RADIUS, INFECTION_DURATION, \
-    EFFECTIVE_R_WINDOW
+from covid19sim.configs.config import HUMAN_DISTRIBUTION, LOCATION_DISTRIBUTION, INFECTION_RADIUS, EFFECTIVE_R_WINDOW
 from covid19sim.utils import log
+from covid19sim.configs.exp_config import ExpConfig
 
 
 def get_nested_dict(nesting):
+    """
+    [summary]
+
+    Args:
+        nesting ([type]): [description]
+
+    Returns:
+        [type]: [description]
+    """
     if nesting == 1:
         return defaultdict(int)
     elif nesting == 2:
@@ -20,9 +36,27 @@ def get_nested_dict(nesting):
         return defaultdict(lambda : defaultdict(lambda : defaultdict(lambda : defaultdict(int))))
 
 class Tracker(object):
+    """
+    [summary]
+    """
     def __init__(self, env, city):
+        """
+        [summary]
+
+        Args:
+            object ([type]): [description]
+            env ([type]): [description]
+            city ([type]): [description]
+        """
         self.env = env
         self.city = city
+        # filename to store intermediate results; useful for bigger simulations;
+        timenow = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
+        if ExpConfig.get('INTERVENTION_DAY') == -1:
+            name = "unmitigated"
+        else:
+            name = ExpConfig.get('RISK_MODEL')
+        self.filename = f"tracker_data_n_{len(city.humans)}_{timenow}_{name}.pkl"
 
         # infection & contacts
         self.contacts = {
@@ -88,11 +122,15 @@ class Tracker(object):
         self.symptoms_set = {'covid': defaultdict(set), 'all': defaultdict(set)}
 
         # mobility
+        self.n_outside_daily_contacts = 0
         self.transition_probability = get_nested_dict(4)
-        M, G, B, O, R, EM = self.compute_mobility()
+        M, G, B, O, R, EM, F = self.compute_mobility()
         self.mobility = [M]
         self.expected_mobility = [EM]
         self.summarize_population()
+        self.feelings = [F]
+        self.rec_feelings = []
+        self.outside_daily_contacts = []
 
         # risk models
         self.risk_precision_daily = [self.compute_risk_precision()]
@@ -100,8 +138,19 @@ class Tracker(object):
         self.ei_per_day = []
         self.risk_values = []
         self.avg_infectiousness_per_day = []
+        self.risk_attributes = []
+
+        # monitors
+        self.human_monitor = {}
+        self.infection_monitor = []
+
+        # update messages
+        self.infector_infectee_update_messages = defaultdict(lambda :defaultdict(dict))
 
     def summarize_population(self):
+        """
+        [summary]
+        """
         self.n_infected_init = sum([h.is_exposed for h in self.city.humans])
         print(f"initial infection {self.n_infected_init}")
 
@@ -123,6 +172,12 @@ class Tracker(object):
         print("n_seniors", self.n_seniors)
 
     def get_R(self):
+        """
+        [summary]
+
+        Returns:
+            [type]: [description]
+        """
         # https://web.stanford.edu/~jhj1/teachingdocs/Jones-on-R0.pdf; vlaid over a long time horizon
         # average infectious contacts (transmission) * average number of contacts * average duration of infection
         time_since_start =  (self.env.timestamp - self.env.initial_timestamp).total_seconds() / 86400 # DAYS
@@ -147,6 +202,15 @@ class Tracker(object):
             return 0
 
     def get_R0(self, logfile=None):
+        """
+        [summary]
+
+        Args:
+            logfile ([type], optional): [description]. Defaults to None.
+
+        Returns:
+            [type]: [description]
+        """
         if len(self.r) > 0:
             for x in self.r:
                 if x >0:
@@ -156,9 +220,18 @@ class Tracker(object):
             return self.get_R()
 
     def get_generation_time(self):
+        """
+        [summary]
+
+        Returns:
+            [type]: [description]
+        """
         return self.avg_generation_times[1]
 
     def increment_day(self):
+        """
+        [summary]
+        """
         # cumulative incidence (Note: susceptible of prev day is needed here)
         if self.s_per_day[-1]:
             self.cumulative_incidence += [self.cases_per_day[-1] / self.s_per_day[-1]]
@@ -187,21 +260,49 @@ class Tracker(object):
         self.critical_per_day.append(0)
 
         # mobility
-        M, G, B, O, R, EM = self.compute_mobility()
+        M, G, B, O, R, EM, F = self.compute_mobility()
         self.mobility.append(M)
         self.expected_mobility.append(EM)
+        self.feelings.append(F)
+        self.rec_feelings.extend([(h.rec_level, h.how_am_I_feeling()) for h in self.city.humans])
+        self.outside_daily_contacts.append(self.n_outside_daily_contacts/len(self.city.humans))
 
         # risk models
         prec, lift, recall = self.compute_risk_precision(daily=True)
         self.risk_precision_daily.append((prec,lift, recall))
         self.recommended_levels_daily.append([G, B, O, R])
         self.risk_values.append([(h.risk, h.is_exposed or h.is_infectious, h.test_result, len(h.symptoms) == 0) for h in self.city.humans])
+        row = []
+        for h in self.city.humans:
+            x = { "infection_timestamp": h.infection_timestamp,
+                  "n_infectious_contacts": h.n_infectious_contacts,
+                  "risk": h.risk,
+                  "risk_level": h.risk_level,
+                  "rec_level": h.rec_level,
+                  "state": h.state.index(1),
+                  "test_result": h.test_result,
+                  "n_symptoms": len(h.symptoms),
+                  "test_orders":copy.deepcopy(h.message_info['n_contacts_tested_positive']),
+                  "symptom_orders":copy.deepcopy(h.message_info['n_contacts_symptoms']),
+                 }
+            row.append(x)
+
+        self.human_monitor[self.env.timestamp.date()-datetime.timedelta(days=1)] = row
 
         #
         self.avg_infectiousness_per_day.append(np.mean([h.infectiousness for h in self.city.humans]))
 
+        if len(self.city.humans) > 5000:
+            self.dump_metrics()
+
     def compute_mobility(self):
-        EM, M, G, B, O, R = 0, 0, 0, 0, 0, 0
+        """
+        [summary]
+
+        Returns:
+            [type]: [description]
+        """
+        EM, M, G, B, O, R, F = 0, 0, 0, 0, 0, 0, 0
         for h in self.city.humans:
             G += h.rec_level == 0
             B += h.rec_level == 1
@@ -209,10 +310,23 @@ class Tracker(object):
             R += h.rec_level == 3
             M +=  1.0 * (h.rec_level == 0) + 0.8 * (h.rec_level == 1) + \
                     0.20 * (h.rec_level == 2) + 0.05 * (h.rec_level == 3) + 1*(h.rec_level==-1)
+            F += h.how_am_I_feeling()
+
             EM += (1-h.risk) # proxy for mobility
-        return M, G, B, O, R, EM/len(self.city.humans)
+        return M, G, B, O, R, EM/len(self.city.humans), F/len(self.city.humans)
 
     def compute_risk_precision(self, daily=True, threshold=0.5, until_days=None):
+        """
+        [summary]
+
+        Args:
+            daily (bool, optional): [description]. Defaults to True.
+            threshold (float, optional): [description]. Defaults to 0.5.
+            until_days ([type], optional): [description]. Defaults to None.
+
+        Returns:
+            [type]: [description]
+        """
         if daily:
             all = [(h.risk, h.is_exposed or h.is_infectious) for h in self.city.humans]
             no_test = [(h.risk, h.is_exposed or h.is_infectious) for h in self.city.humans if h.test_result != "positive"]
@@ -236,6 +350,7 @@ class Tracker(object):
             for k in top_k:
                 xy = type[:math.ceil(k * len(type))]
                 pred = 1.0*sum(1 for x,y in xy if y)
+
                 top_k_prec[idx].append(pred/len(xy))
                 if total_infected:
                     lift[idx].append(pred/(k*total_infected))
@@ -244,12 +359,56 @@ class Tracker(object):
             z = sum(1 for x,y in type if y)
             recall.append(0)
             if z:
-                recall[-1] = 1.0*sum(1 for x,y in type if y and x > threshold)/z
+                recall[-1] = 1.0*sum(1 for x,y in type if y)/z
             idx += 1
-
         return top_k_prec, lift, recall
 
+    def track_risk_attributes(self, humans):
+        for h in humans:
+            if h.is_removed:
+                continue
+
+            _tmp = {
+                "risk": h.risk,
+                "risk_level": h.risk_level,
+                "rec_level": h.rec_level,
+                "exposed": h.is_exposed,
+                "infectious": h.is_infectious,
+                "symptoms": len(h.symptoms),
+                "test": h.test_result,
+                "recovered": h.is_removed,
+                "timestamp": self.env.timestamp,
+                "test_recommended": h.test_recommended,
+                "name":h.name
+            }
+
+            order_1_is_exposed = False
+            order_1_is_infectious = False
+            order_1_is_presymptomatic = False
+            order_1_is_symptomatic = False
+            order_1_is_tested = False
+            for order_1_human in h.contact_book.book:
+                order_1_is_exposed = order_1_is_exposed or order_1_human.is_exposed
+                order_1_is_infectious = order_1_is_infectious or order_1_human.is_infectious
+                order_1_is_presymptomatic = order_1_is_presymptomatic or (order_1_human.is_infectious and len(order_1_human.symptoms) == 0)
+                order_1_is_symptomatic = order_1_is_symptomatic or (order_1_human.is_infectious and len(order_1_human.symptoms) > 0)
+                order_1_is_tested = order_1_is_tested or order_1_human.test_result == "positive"
+
+            _tmp["order_1_is_exposed"] = order_1_is_exposed
+            _tmp["order_1_is_presymptomatic"] = order_1_is_presymptomatic
+            _tmp["order_1_is_infectious"] = order_1_is_infectious
+            _tmp["order_1_is_symptomatic"] = order_1_is_symptomatic
+            _tmp["order_1_is_tested"] = order_1_is_tested
+
+            self.risk_attributes.append(_tmp)
+
     def track_covid_properties(self, human):
+        """
+        [summary]
+
+        Args:
+            human ([type]): [description]
+        """
         n, avg = self.covid_properties['incubation_days']
         self.covid_properties['incubation_days'] = (n+1, (avg*n + human.incubation_days)/(n+1))
 
@@ -260,11 +419,28 @@ class Tracker(object):
         self.covid_properties['infectiousness_onset_days'] = (n+1, (n*avg +human.infectiousness_onset_days)/(n+1))
 
     def track_hospitalization(self, human, type=None):
+        """
+        [summary]
+
+        Args:
+            human ([type]): [description]
+            type ([type], optional): [description]. Defaults to None.
+        """
         self.hospitalization_per_day[-1] += 1
         if type == "icu":
             self.critical_per_day[-1] += 1
 
     def track_infection(self, type, from_human, to_human, location, timestamp):
+        """
+        [summary]
+
+        Args:
+            type ([type]): [description]
+            from_human ([type]): [description]
+            to_human ([type]): [description]
+            location ([type]): [description]
+            timestamp ([type]): [description]
+        """
         for i, (l,u) in enumerate(self.age_bins):
             if from_human and l <= from_human.age < u:
                 from_bin = i
@@ -281,6 +457,8 @@ class Tracker(object):
             self.infection_graph.add_node(from_human.name, bin=from_bin, time=from_human.infection_timestamp)
             self.infection_graph.add_node(to_human.name, bin=to_bin, time=timestamp)
             self.infection_graph.add_edge(from_human.name, to_human.name,  timedelta=delta)
+
+            self.infection_monitor.append([from_human.name, from_human.risk, from_human.risk_level, from_human.rec_level, to_human.name, to_human.risk, to_human.risk_level, to_human.rec_level, timestamp.date()])
 
             if from_human.symptom_start_time is not None:
                 self.generation_time_book[to_human.name] = from_human.symptom_start_time
@@ -304,8 +482,32 @@ class Tracker(object):
             self.contacts["location_env_infection"][location.location_type][to_bin] += 1
             self.infection_graph.add_node(to_human.name, bin=to_bin, time=timestamp)
             self.infection_graph.add_edge(-1, to_human.name,  timedelta="")
+            self.infection_monitor.append([None, to_human.name, timestamp.date()])
+
+    def track_update_messages(self, from_human, to_human, payload):
+        if self.infection_graph.has_edge(from_human.name, to_human.name):
+            reason = payload['reason']
+            model = self.city.intervention.risk_model
+            if  model == "transformer":
+                if  reason != "risk_update":
+                    return # transformer only sends risks
+                x = {'method':model, 'reason':payload['reason'], 'new_risk_level':payload['new_risk_level']}
+                self.infector_infectee_update_messages[from_human.name][to_human.name][self.env.timestamp] = x
+            else:
+                if not self.city.intervention.propagate_risk and reason == "risk_update":
+                    return
+                if not self.city.intervention.propagate_symptoms and reason == "symptoms":
+                    return
+                x = {'method':model, 'reason':payload['reason']}
+                self.infector_infectee_update_messages[from_human.name][to_human.name][self.env.timestamp] = x
 
     def track_generation_times(self, human_name):
+        """
+        [summary]
+
+        Args:
+            human_name ([type]): [description]
+        """
         if human_name not in self.generation_time_book:
             return
 
@@ -314,10 +516,25 @@ class Tracker(object):
         self.avg_generation_times = (n+1, 1.0*(avg_gen_time * n + generation_time)/(n+1))
 
     def track_tested_results(self, human, test_result, test_type):
+        """
+        [summary]
+
+        Args:
+            human ([type]): [description]
+            test_result ([type]): [description]
+            test_type ([type]): [description]
+        """
         if test_result == "positive":
             self.cases_positive_per_day[-1] += 1
 
     def track_recovery(self, n_infectious_contacts, duration):
+        """
+        [summary]
+
+        Args:
+            n_infectious_contacts ([type]): [description]
+            duration ([type]): [description]
+        """
         self.n_infectious_contacts += n_infectious_contacts
         self.avg_infectious_duration = (self.n_recovery * self.avg_infectious_duration + duration) / (self.n_recovery + 1)
         self.n_recovery += 1
@@ -326,6 +543,15 @@ class Tracker(object):
         self.recovered_stats[-1] = [n+1, total + n_infectious_contacts]
 
     def track_trip(self, from_location, to_location, age, hour):
+        """
+        [summary]
+
+        Args:
+            from_location ([type]): [description]
+            to_location ([type]): [description]
+            age ([type]): [description]
+            hour ([type]): [description]
+        """
         bin = None
         for i, (l,u) in enumerate(self.age_bins):
             if l <= age < u:
@@ -334,6 +560,12 @@ class Tracker(object):
         self.transition_probability[hour][bin][from_location][to_location] += 1
 
     def track_symptoms(self, human):
+        """
+        [summary]
+
+        Args:
+            human ([type]): [description]
+        """
         if human.covid_symptoms:
             self.symptoms_set['covid'][human.name].update(human.covid_symptoms)
         else:
@@ -353,6 +585,9 @@ class Tracker(object):
                 self.symptoms_set['all'].pop(human.name)
 
     def track_social_mixing(self, **kwargs):
+        """
+        [summary]
+        """
         duration = kwargs.get('duration')
         bin = math.floor(duration/15)
         location = kwargs.get('location', None)
@@ -382,6 +617,8 @@ class Tracker(object):
                 self.contacts['n_contacts']['avg'] = (n+1, (n*M + m)/(n+1))
 
                 self.contacts['n_contacts']['total'] = np.zeros((150,150))
+
+                self.n_outside_daily_contacts = 0
                 self.last_day['social_mixing'] = day
 
             else:
@@ -396,6 +633,8 @@ class Tracker(object):
 
                     self.contacts['n_contacts']['total'][human1.age, human2.age] += 1
                     self.contacts['n_contacts']['total'][human2.age, human1.age] += 1
+                    if human1.location != human1.household:
+                        self.n_outside_daily_contacts += 1
 
         if location is not None:
             x = len(self.contacts['location_duration'][location.location_type])
@@ -404,6 +643,16 @@ class Tracker(object):
             self.contacts['location_duration'][location.location_type][bin] += 1
 
     def track_encounter_events(self, human1, human2, location, distance, duration):
+        """
+        [summary]
+
+        Args:
+            human1 ([type]): [description]
+            human2 ([type]): [description]
+            location ([type]): [description]
+            distance ([type]): [description]
+            duration ([type]): [description]
+        """
         for i, (l,u) in enumerate(self.age_bins):
             if l <= human1.age < u:
                 bin1 = (i,(l,u))
@@ -448,6 +697,12 @@ class Tracker(object):
         self.time_encounters[time_bin] += 1
 
     def write_metrics(self, logfile):
+        """
+        [summary]
+
+        Args:
+            logfile ([type]): [description]
+        """
         log("######## DEMOGRAPHICS #########", logfile)
         log(f"age distribution\n {self.age_distribution.describe()}", logfile)
         log(f"house age distribution\n {self.house_age.describe()}", logfile )
@@ -591,7 +846,7 @@ class Tracker(object):
         no_test_symptoms = list(zip(*[x[2] for x in lift]))
         idx = 0
         for k in top_k:
-            log(f"Top-{100*top_k[idx]:2.2f}% all: {np.mean(all[idx]):5.2f} no_test:{np.mean(no_test[idx]):5.2f}% no_test_and_symptoms: {np.mean(no_test_symptoms[idx]):5.2f}%", logfile)
+            log(f"Top-{100*top_k[idx]:2.2f}% all: {np.mean(all[idx]):5.2f} no_test:{np.mean(no_test[idx]):5.2f} no_test_and_symptoms: {np.mean(no_test_symptoms[idx]):5.2f}", logfile)
             idx += 1
 
         log("*** Avg. daily recall ***", logfile)
@@ -599,6 +854,12 @@ class Tracker(object):
         log(f"all: {100*np.mean(x):5.2f}% no_test: {100*np.mean(y):5.2f} no_test_and_symptoms: {100*np.mean(z):5.2f}", logfile)
 
     def plot_metrics(self, dirname):
+        """
+        [summary]
+
+        Args:
+            dirname ([type]): [description]
+        """
         import matplotlib.pyplot as plt
         import networkx as nx
         import seaborn as sns
@@ -635,3 +896,32 @@ class Tracker(object):
 
             fig.suptitle(f"Hour {hour}", fontsize=16)
             fig.savefig(f"{dirname}/contact_stats/hour_{hour}.png")
+
+    def dump_metrics(self):
+        data = dict()
+        data['intervention_day'] = ExpConfig.get('INTERVENTION_DAY')
+        data['intervention'] = ExpConfig.get('INTERVENTION')
+        data['risk_model'] = ExpConfig.get('RISK_MODEL')
+
+        data['expected_mobility'] = self.expected_mobility
+        data['mobility'] = self.mobility
+        data['n_init_infected'] = self.n_infected_init
+        data['contacts'] = dict(self.contacts)
+        data['cases_per_day'] = self.cases_per_day
+        data['ei_per_day'] = self.ei_per_day
+        data['r_0'] = self.r_0
+        data['R'] = self.r
+        data['n_humans'] = self.n_humans
+        data['s'] = self.s_per_day
+        data['e'] = self.e_per_day
+        data['i'] = self.i_per_day
+        data['r'] = self.r_per_day
+        data['avg_infectiousness_per_day'] = self.avg_infectiousness_per_day
+        data['risk_precision_global'] = self.compute_risk_precision(False)
+        data['risk_precision'] = self.risk_precision_daily
+        data['human_monitor'] = self.human_monitor
+        data['infection_monitor'] = self.infection_monitor
+        data['infector_infectee_update_messages'] = self.infector_infectee_update_messages
+
+        with open(f"logs3/{self.filename}", 'wb') as f:
+            dill.dump(data, f)

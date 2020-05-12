@@ -1,3 +1,6 @@
+"""
+[summary]
+"""
 from matplotlib import pyplot as plt
 import json
 import pylab as pl
@@ -7,29 +10,66 @@ import threading
 import zipfile
 
 from covid19sim.utils import _json_serialize
-from covid19sim.config import TICK_MINUTE
+from covid19sim.configs.constants import TICK_MINUTE
 from covid19sim.base import City
 from covid19sim.simulator import Human
 
 
 class BaseMonitor(object):
+    """
+    [summary]
+    """
 
     def __init__(self, f=None, dest: str = None, chunk_size: int = None):
+        """
+        [summary]
+
+        Args:
+            f ([type], optional): [description]. Defaults to None.
+            dest (str, optional): [description]. Defaults to None.
+            chunk_size (int, optional): [description]. Defaults to None.
+        """
         self.data = []
         self.f = f or 60
         self.dest = dest
         self.chunk_size = chunk_size if self.dest and chunk_size else 0
 
     def run(self, env, city: City):
+        """
+        [summary]
+
+        Args:
+            env ([type]): [description]
+            city (City): [description]
+
+        Raises:
+            NotImplementedError: [description]
+        """
         raise NotImplementedError
 
     def dump(self):
+        """
+        [summary]
+        """
         pass
 
 
 class SEIRMonitor(BaseMonitor):
+    """
+    [summary]
+    """
 
     def run(self, env, city: City):
+        """
+        [summary]
+
+        Args:
+            env ([type]): [description]
+            city (City): [description]
+
+        Yields:
+            [type]: [description]
+        """
         n_days = 0
         while True:
             S, E, I, R = 0, 0, 0, 0
@@ -41,8 +81,8 @@ class SEIRMonitor(BaseMonitor):
             Projected3 = min(1.0*city.tracker.n_infected_init * 2 ** (n_days/3), len(city.humans))
             Projected5 = min(1.0*city.tracker.n_infected_init * 2 ** (n_days/5), len(city.humans))
             Projected10 = min(1.0*city.tracker.n_infected_init * 2 ** (n_days/10), len(city.humans))
-            M = city.tracker.mobility[-1]
             EM = city.tracker.expected_mobility[-1]
+            F = city.tracker.feelings[-1]
             prec, _, _ = city.tracker.risk_precision_daily[-1]
             green, blue, orange, red = city.tracker.recommended_levels_daily[-1]
 
@@ -53,7 +93,7 @@ class SEIRMonitor(BaseMonitor):
             T = E + I + R
             # print(np.mean([h.risk for h in city.humans]))
             # print(env.timestamp, f"Ro: {R0:5.2f} G:{G:5.2f} S:{S} E:{E} I:{I} R:{R} T:{T} P3:{Projected3:5.2f} M:{M:5.2f} +Test:{P} H:{H} C:{C} RiskP:{RiskP:3.2f}") RiskP:{RiskP:3.2f}
-            print(env.timestamp, f"Ro: {R0:2.2f} S:{S} E:{E} I:{I} T:{T} P3:{Projected3:5.2f} RiskP:{prec[1][0]:3.2f} M:{M:5.2f} EM:{EM:5.2f} G:{green} B:{blue} O:{orange} R:{red} ")
+            print(env.timestamp, f"Ro: {R0:2.2f} S:{S} E:{E} I:{I} T:{T} P3:{Projected3:5.2f} RiskP:{prec[1][0]:3.2f} F:{F:3.2f} EM:{EM:3.2f} G:{green} B:{blue} O:{orange} R:{red} ")
             # print(city.tracker.recovered_stats)
             self.data.append({
                     'time': env.timestamp,
@@ -67,13 +107,34 @@ class SEIRMonitor(BaseMonitor):
             n_days += 1
 
 class EventMonitor(BaseMonitor):
+    """
+    [summary]
+    """
 
     def __init__(self, f=None, dest: str = None, chunk_size: int = None):
+        """
+        [summary]
+
+        Args:
+            f ([type], optional): [description]. Defaults to None.
+            dest (str, optional): [description]. Defaults to None.
+            chunk_size (int, optional): [description]. Defaults to None.
+        """
         super().__init__(f, dest, chunk_size)
         self._iothread = threading.Thread()
         self._iothread.start()
 
     def run(self, env, city: City):
+        """
+        [summary]
+
+        Args:
+            env ([type]): [description]
+            city (City): [description]
+
+        Yields:
+            [type]: [description]
+        """
         while True:
             # Keep the last 2 days to make sure all events are sent to the
             # inference server before getting dumped
@@ -86,6 +147,9 @@ class EventMonitor(BaseMonitor):
             yield env.timeout(self.f / TICK_MINUTE)
 
     def dump(self):
+        """
+        [summary]
+        """
         if self.dest is None:
             print(json.dumps(self.data, indent=1, default=_json_serialize))
             return
@@ -95,25 +159,61 @@ class EventMonitor(BaseMonitor):
         self._iothread.start()
 
     def join_iothread(self):
+        """
+        [summary]
+        """
         self._iothread.join()
 
     @staticmethod
     def dump_chunk(data, dest):
+        """
+        [summary]
+
+        Args:
+            data ([type]): [description]
+            dest ([type]): [description]
+        """
         timestamp = datetime.utcnow().timestamp()
         with zipfile.ZipFile(f"{dest}.zip", mode='a', compression=zipfile.ZIP_STORED) as zf:
             zf.writestr(f"{timestamp}.pkl", pickle.dumps(data))
 
 class TimeMonitor(BaseMonitor):
+    """
+    [summary]
+    """
 
     def run(self, env, city: City):
+        """
+        [summary]
+
+        Args:
+            env ([type]): [description]
+            city (City): [description]
+
+        Yields:
+            [type]: [description]
+        """
         while True:
             # print(env.timestamp)
             yield env.timeout(self.f / TICK_MINUTE)
 
 
 class PlotMonitor(BaseMonitor):
+    """
+    [summary]
+    """
 
     def run(self, env, city: City):
+        """
+        [summary]
+
+        Args:
+            env ([type]): [description]
+            city (City): [description]
+
+        Yields:
+            [type]: [description]
+        """
         fig = plt.figure(figsize=(15, 12))
         while True:
             d = {
@@ -129,6 +229,9 @@ class PlotMonitor(BaseMonitor):
             self.plot()
 
     def plot(self):
+        """
+        [summary]
+        """
         pl.clf()
         time_series = [d['time'] for d in self.data]
         sick_series = [d['sick'] for d in self.data]
@@ -142,11 +245,31 @@ class PlotMonitor(BaseMonitor):
 
 
 class LatLonMonitor(BaseMonitor):
+    """
+    [summary]
+    """
+
     def __init__(self, f=None):
+        """
+        [summary]
+
+        Args:
+            f ([type], optional): [description]. Defaults to None.
+        """
         super().__init__(f)
         self.city_data = {}
 
     def run(self, env, city: City):
+        """
+        [summary]
+
+        Args:
+            env ([type]): [description]
+            city (City): [description]
+
+        Yields:
+            [type]: [description]
+        """
         self.city_data['parks'] = [
             {'lat': l.lat,
              'lon': l.lon, } for l in city.parks
@@ -171,6 +294,9 @@ class LatLonMonitor(BaseMonitor):
             self.plot()
 
     def plot(self):
+        """
+        [summary]
+        """
         pl.clf()
         # PLOT STORES AND PARKS
         lat_series = [d['lat'] for d in self.city_data['parks']]
@@ -194,7 +320,21 @@ class LatLonMonitor(BaseMonitor):
         pl.legend()
 
 class StateMonitor(BaseMonitor):
+    """
+    [summary]
+    """
+
     def run(self, env, city: City):
+        """
+        [summary]
+
+        Args:
+            env ([type]): [description]
+            city (City): [description]
+
+        Yields:
+            [type]: [description]
+        """
         while True:
             d = {
                 'time': city.time_of_day(),
@@ -206,4 +346,7 @@ class StateMonitor(BaseMonitor):
             yield env.timeout(self.f / TICK_MINUTE)
 
     def dump(self):
+        """
+        [summary]
+        """
         print(json.dumps(self.data, indent=1))

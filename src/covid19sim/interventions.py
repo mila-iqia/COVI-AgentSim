@@ -1,28 +1,64 @@
+"""
+[summary]
+"""
 from orderedset import OrderedSet
 import numpy as np
 
-from covid19sim.config import RHO, GAMMA, MANUAL_TRACING_P_CONTACT,\
-    RISK_TRANSMISSION_PROBA, BIG_NUMBER, COLLECT_TRAINING_DATA, DEFAULT_DISTANCE
+from covid19sim.configs.constants import BIG_NUMBER
+from covid19sim.configs.config import RHO, GAMMA, MANUAL_TRACING_P_CONTACT,\
+    RISK_TRANSMISSION_PROBA, DEFAULT_DISTANCE
 from covid19sim.models.run import integrated_risk_pred
-
+from covid19sim.configs.exp_config import ExpConfig
 
 class BehaviorInterventions(object):
+    """
+    [summary]
+
+    Args:
+        object ([type]): [description]
+    """
     def __init__(self):
+        """
+        [summary]
+        """
         pass
 
     def modify_behavior(self, human):
+        """
+        [summary]
+
+        Args:
+            human ([type]): [description]
+        """
         pass
 
     def revert_behavior(self, human):
+        """
+        [summary]
+
+        Args:
+            human ([type]): [description]
+        """
         pass
 
 
 class StayHome(BehaviorInterventions):
-
+    """
+    [summary]
+    """
     def __init__(self):
+        """
+        [summary]
+        """
         pass
 
     def modify_behavior(self, human):
+        """
+        [summary]
+
+        Args:
+            human ([type]): [description]
+        """
         human._max_misc_per_week = human.max_misc_per_week
         human._max_shop_per_week = human.max_shop_per_week
 
@@ -30,17 +66,34 @@ class StayHome(BehaviorInterventions):
         human.max_shop_per_week = 1
 
     def revert_behavior(self, human):
+        """
+        [summary]
+
+        Args:
+            human ([type]): [description]
+        """
         human.max_misc_per_week = human._max_misc_per_week
         human.max_shop_per_week = human._max_shop_per_week
         delattr(human, "_max_misc_per_week")
         delattr(human, "_max_shop_per_week")
 
 class LimitContact (BehaviorInterventions):
-
+    """
+    [summary]
+    """
     def __init__(self):
+        """
+        [summary]
+        """
         pass
 
     def modify_behavior(self, human):
+        """
+        [summary]
+
+        Args:
+            human ([type]): [description]
+        """
         human._maintain_distance = human.maintain_distance
         human._max_misc_per_week = human.max_misc_per_week
         human._max_shop_per_week = human.max_shop_per_week
@@ -50,6 +103,12 @@ class LimitContact (BehaviorInterventions):
         human.max_shop_per_week = 1
 
     def revert_behavior(self, human):
+        """
+        [summary]
+
+        Args:
+            human ([type]): [description]
+        """
         human.maintain_distance = human._maintain_distance
         human.max_misc_per_week = human._max_misc_per_week
         human.max_shop_per_week = human._max_shop_per_week
@@ -57,40 +116,90 @@ class LimitContact (BehaviorInterventions):
         delattr(human, "_max_misc_per_week")
         delattr(human, "_max_shop_per_week")
 
-class Stand2M (BehaviorInterventions):
-
+class Stand2M(BehaviorInterventions):
+    """
+    [summary]
+    """
     def __init__(self):
+        """
+        [summary]
+        """
         pass
 
     def modify_behavior(self, human):
+        """
+        [summary]
+
+        Args:
+            human ([type]): [description]
+        """
         # FIXME : Social distancing also has this parameter
         human._maintain_extra_distance_2m = human.maintain_extra_distance
         human.maintain_extra_distance = 100 # cms
 
     def revert_behavior(self, human):
+        """
+        [summary]
+
+        Args:
+            human ([type]): [description]
+        """
         human.maintain_extra_distance = human._maintain_extra_distance_2m
         delattr(human, "_maintain_extra_distance_2m")
 
     def __repr__(self):
+        """
+        [summary]
+
+        Returns:
+            [type]: [description]
+        """
         return "Stand 2M"
 
 class WashHands(BehaviorInterventions):
+    """
+    [summary]
+    """
 
     def __init__(self):
+        """
+        [summary]
+        """
         pass
 
     def modify_behavior(self, human):
+        """
+        [summary]
+
+        Args:
+            human ([type]): [description]
+        """
         human._hygiene = human.hygiene
         human.hygiene = human.rng.uniform(human.carefulness, 1)
 
     def revert_behavior(self, human):
+        """
+        [summary]
+
+        Args:
+            human ([type]): [description]
+        """
         human.hygiene = human._hygiene
         delattr(human, "_hygiene")
 
     def __repr__(self):
+        """
+        [summary]
+
+        Returns:
+            [type]: [description]
+        """
         return "Wash Hands"
 
 class Quarantine(BehaviorInterventions):
+    """
+    [summary]
+    """
     _RHO = 0.1
     _GAMMA = 1
 
@@ -98,6 +207,12 @@ class Quarantine(BehaviorInterventions):
         pass
 
     def modify_behavior(self, human):
+        """
+        [summary]
+
+        Args:
+            human ([type]): [description]
+        """
         human._workplace = human.workplace
         human.workplace = human.household
         human.rho = self._RHO
@@ -107,6 +222,12 @@ class Quarantine(BehaviorInterventions):
         # print(f"{human} quarantined {human.tracing_method}")
 
     def revert_behavior(self, human):
+        """
+        [summary]
+
+        Args:
+            human ([type]): [description]
+        """
         human.workplace = human._workplace
         human.rho = RHO
         human.gamma = GAMMA
@@ -118,31 +239,61 @@ class Quarantine(BehaviorInterventions):
         return f"Quarantine"
 
 class Lockdown(BehaviorInterventions):
+    """
+    [summary]
+    """
     _RHO = 0.1
     _GAMMA = 1
 
     def modify_behavior(self, human):
+        """
+        [summary]
+
+        Args:
+            human ([type]): [description]
+        """
         human._workplace = human.workplace
         human.workplace = human.household
         human.rho = self._RHO
         human.gamma = self._GAMMA
 
     def revert_behavior(self, human):
+        """
+        [summary]
+
+        Args:
+            human ([type]): [description]
+        """
         human.workplace = human._workplace
         human.rho = RHO
         human.gamma = GAMMA
         delattr(human, "_workplace")
 
     def __repr__(self):
+        """
+        [summary]
+
+        Returns:
+            [type]: [description]
+        """
         return f"Lockdown"
 
 class SocialDistancing(BehaviorInterventions):
+    """
+    [summary]
+    """
     DEFAULT_SOCIAL_DISTANCE = 100 # cm
     TIME_ENCOUNTER_REDUCTION_FACTOR = 0.5
     _RHO = 0.2
     _GAMMA = 0.5
 
     def modify_behavior(self, human):
+        """
+        [summary]
+
+        Args:
+            human ([type]): [description]
+        """
         human._maintain_extra_distance = human.maintain_extra_distance
         human._time_encounter_reduction_factor = human.time_encounter_reduction_factor
 
@@ -152,6 +303,12 @@ class SocialDistancing(BehaviorInterventions):
         human.gamma = self._GAMMA
 
     def revert_behavior(self, human):
+        """
+        [summary]
+
+        Args:
+            human ([type]): [description]
+        """
         human.maintain_extra_distance = human._maintain_extra_distance
         human.time_encounter_reduction_factor = human._time_encounter_reduction_factor
         human.rho = RHO
@@ -160,15 +317,33 @@ class SocialDistancing(BehaviorInterventions):
         delattr(human, "_time_encounter_reduction_factor")
 
     def __repr__(self):
+        """
+        [summary]
+        """
         return f"Social Distancing"
 
 class WearMask(BehaviorInterventions):
+    """
+    [summary]
+    """
 
     def __init__(self, available=None):
+        """
+        [summary]
+
+        Args:
+            available ([type], optional): [description]. Defaults to None.
+        """
         super(WearMask, self).__init__()
         self.available = available
 
     def modify_behavior(self, human):
+        """
+        [summary]
+
+        Args:
+            human ([type]): [description]
+        """
         if self.available is None:
             human.WEAR_MASK = True
             return
@@ -178,12 +353,33 @@ class WearMask(BehaviorInterventions):
             self.available -= 1
 
     def revert_behavior(self, human):
+        """
+        [summary]
+
+        Args:
+            human ([type]): [description]
+        """
         human.WEAR_MASK = False
 
     def __repr__(self):
+        """
+        [summary]
+
+        Returns:
+            [type]: [description]
+        """
         return f"Wear Mask"
 
 def get_recommendations(level):
+    """
+    [summary]
+
+    Args:
+        level ([type]): [description]
+
+    Returns:
+        [type]: [description]
+    """
     if level == 0:
         return [WashHands()]
     if level == 1:
@@ -194,31 +390,50 @@ def get_recommendations(level):
     return [WashHands(), SocialDistancing(), WearMask(), 'monitor_symptoms', GetTested("recommendations"), Quarantine()]
 
 class RiskBasedRecommendations(BehaviorInterventions):
+    """
+    [summary]
+    """
     UPPER_GREEN = 1
     UPPER_BLUE = 3
     UPPER_ORANGE = 5
     UPPER_RED = 15
 
     def __init__(self):
+        """
+        [summary]
+        """
         super(RiskBasedRecommendations, self).__init__()
 
-    def get_recommendations_level(self, risk_level):
-        if risk_level <= self.UPPER_GREEN:
+    @staticmethod
+    def get_recommendations_level(risk_level):
+        """
+        [summary]
+
+        Args:
+            risk_level (int): quantized risk level of range 0-15. sent in encounter messages and update messages.
+
+        Returns:
+            recommendation level (int): App recommendation level which takes on a range of 0-3 and may impact mobility.
+        """
+        if risk_level <= RiskBasedRecommendations.UPPER_GREEN:
             return 0
-        elif self.UPPER_GREEN < risk_level <= self.UPPER_BLUE:
+        elif RiskBasedRecommendations.UPPER_GREEN < risk_level <= RiskBasedRecommendations.UPPER_BLUE:
             return 1
-        elif self.UPPER_BLUE < risk_level <= self.UPPER_ORANGE:
+        elif RiskBasedRecommendations.UPPER_BLUE < risk_level <= RiskBasedRecommendations.UPPER_ORANGE:
             return 2
-        elif self.UPPER_ORANGE < risk_level <= self.UPPER_RED:
+        elif RiskBasedRecommendations.UPPER_ORANGE < risk_level <= RiskBasedRecommendations.UPPER_RED:
             return 3
         else:
             raise
 
     def modify_behavior(self, human):
-        rec_level = self.get_recommendations_level(human.risk_level)
-        human.rec_level = rec_level # FIXME: Shoudl rec_level be a part of human?
-        recommendations = get_recommendations(rec_level)
-        # print(f"chaging {human} from {human.rec_level} to {rec_level} {human.risk} {human.risk_level}")
+        """
+        [summary]
+
+        Args:
+            human ([type]): [description]
+        """
+        recommendations = get_recommendations(human.rec_level)
         self.revert_behavior(human)
         for rec in recommendations:
             if isinstance(rec, BehaviorInterventions) and human.rng.rand() < human.how_much_I_follow_recommendations:
@@ -226,27 +441,74 @@ class RiskBasedRecommendations(BehaviorInterventions):
                 human.recommendations_to_follow.add(rec)
 
     def revert_behavior(self, human):
+        """
+        [summary]
+
+        Args:
+            human ([type]): [description]
+        """
         # print(f"chaging back {human}")
         for rec in human.recommendations_to_follow:
             rec.revert_behavior(human)
         human.recommendations_to_follow = OrderedSet()
 
 class GetTested(BehaviorInterventions):
+    """
+    [summary]
+    """
     # FIXME: can't be called as a stand alone class. Needs human.recommendations_to_follow to work
     def __init__(self, source):
+        """
+        [summary]
+
+        Args:
+            source ([type]): [description]
+        """
         self.source = source
 
     def modify_behavior(self, human):
+        """
+        [summary]
+
+        Args:
+            human ([type]): [description]
+        """
         human.test_recommended  = True
 
     def revert_behavior(self, human):
+        """
+        [summary]
+
+        Args:
+            human ([type]): [description]
+        """
         human.test_recommended  = False
 
     def __repr__(self):
+        """
+        [summary]
+
+        Returns:
+            [type]: [description]
+        """
         return "Get Tested"
 
 class Tracing(object):
-    def __init__(self, risk_model, max_depth = None, symptoms = False, risk = False, should_modify_behavior=True):
+    """
+    [summary]
+    """
+    def __init__(self, risk_model, max_depth=None, symptoms=False, risk=False, should_modify_behavior=True):
+        """
+        [summary]
+
+        Args:
+            object ([type]): [description]
+            risk_model ([type]): [description]
+            max_depth ([type], optional): [description]. Defaults to None.
+            symptoms (bool, optional): [description]. Defaults to False.
+            risk (bool, optional): [description]. Defaults to False.
+            should_modify_behavior (bool, optional): [description]. Defaults to True.
+        """
         self.risk_model = risk_model
         if risk_model in ['manual', 'digital']:
             self.intervention = Quarantine()
@@ -282,19 +544,30 @@ class Tracing(object):
         #     self.propage_risk_max_depth = 3
 
     def modify_behavior(self, human):
+        """
+        [summary]
+
+        Args:
+            human ([type]): [description]
+
+        Returns:
+            [type]: [description]
+        """
         if not self.should_modify_behavior:
             return
-
-        # FIXME: maybe merge Quarantine in RiskBasedRecommendations with 2 levels
-        if self.risk_model in ["manual", "digital"]:
-            if human.risk == 1.0:
-                human.rec_level = 3 # required for the calculation of mobility
-            else:
-                human.rec_level = 0
 
         return self.intervention.modify_behavior(human)
 
     def process_messages(self, human):
+        """
+        [summary]
+
+        Args:
+            human ([type]): [description]
+
+        Returns:
+            [type]: [description]
+        """
         # total test messages
         t = 0
         for order in human.message_info['n_contacts_tested_positive']:
@@ -325,8 +598,22 @@ class Tracing(object):
         return t,s,(r_up, v_up, r_down, v_down)
 
     def compute_risk(self, t, s, r):
-        if self.risk_model in ['manual', 'digital'] and t + s > 0:
-            risk = 1.0
+        """
+        [summary]
+
+        Args:
+            t ([type]): [description]
+            s ([type]): [description]
+            r ([type]): [description]
+
+        Returns:
+            [type]: [description]
+        """
+        if self.risk_model in ['manual', 'digital']:
+            if t + s > 0:
+                risk = 1.0
+            else:
+                risk = 0.0
 
         elif self.risk_model == "naive":
             risk = 1.0 - (1.0 - RISK_TRANSMISSION_PROBA) ** (t+s)
@@ -339,6 +626,9 @@ class Tracing(object):
         return risk
 
     def update_human_risks(self, **kwargs):
+        """
+        [summary]
+        """
         city = kwargs.get("city")
         all_possible_symptoms = kwargs.get("symptoms")
         port = kwargs.get("port")
@@ -351,35 +641,42 @@ class Tracing(object):
             n_jobs = kwargs.get("n_jobs")
             data_path = kwargs.get("data_path")
             city.humans = integrated_risk_pred(city.humans, city.start_time, city.current_day, city.env.timestamp.hour, all_possible_symptoms, port=port, n_jobs=n_jobs, data_path=data_path)
-            for h in city.humans:
-                # same as naive
-                if h.is_removed:
-                    h.risk = 0.0
-                if h.test_result == "positive":
-                    h.risk = 1.0
-                elif h.test_result == "negative":
-                    h.risk = 0.2
         else:
             for human in city.humans:
                 cur_day = (human.env.timestamp - human.env.initial_timestamp).days
                 if (human.env.timestamp - human.message_info['receipt']).days >= human.message_info['delay'] or self.risk_model != "manual":
+                    old_risk = human.risk
                     if not human.is_removed and human.test_result != "positive":
                         t, s, r = self.process_messages(human)
                         human.risk = self.compute_risk(t, s, r)
 
+                    if human.risk != old_risk:
+                        self.modify_behavior(human)
+
                     human.risk_history_map[cur_day] = human.risk
+                    # human.update_risk_level()
+                    # human.prev_risk_history_map[cur_day] = human.risk
 
-                    human.update_risk_level()
-                    human.prev_risk_history_map[cur_day] = human.risk
-
-            if COLLECT_TRAINING_DATA:
+            if ExpConfig.get('COLLECT_TRAINING_DATA'):
                 city.humans = integrated_risk_pred(city.humans, city.start_time, city.current_day, city.env.timestamp.hour, all_possible_symptoms, port=port, n_jobs=n_jobs, data_path=data_path)
 
 
     def compute_tracing_delay(self, human):
+        """
+        [summary]
+
+        Args:
+            human ([type]): [description]
+        """
         pass # FIXME: circualr imports issue; can't import _draw_random_discreet_gaussian
 
     def __repr__(self):
+        """
+        [summary]
+
+        Returns:
+            [type]: [description]
+        """
         if self.risk_model == "transformer":
             return f"Tracing: {self.risk_model}"
 
@@ -387,24 +684,53 @@ class Tracing(object):
 
 
 class CityInterventions(object):
+    """
+    [summary]
+    """
     def __init__(self):
+        """
+        [summary]
+        """
         pass
 
     def modify_city(self, city):
+        """
+        [summary]
+
+        Args:
+            city ([type]): [description]
+        """
         pass
 
     def revert_city(self, city):
+        """
+        [summary]
+
+        Args:
+            city ([type]): [description]
+        """
         pass
 
 
 class TestCapacity(CityInterventions):
+    """
+    [summary]
+    """
 
     def modify_city(self, city):
+        """
+        [summary]
+
+        Args:
+            city ([type]): [description]
+        """
         pass
 
     def revert_city(self, city):
-        pass
+        """
+        [summary]
 
-class TransformerTracing(object):
-    def modify_behavior(self, human):
+        Args:
+            city ([type]): [description]
+        """
         pass

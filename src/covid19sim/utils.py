@@ -1,10 +1,13 @@
+"""
+[summary]
+"""
 from collections import OrderedDict, namedtuple
 from scipy.stats import norm, truncnorm, gamma
 from functools import lru_cache
 import datetime
 import math
 
-from covid19sim.config import *
+from covid19sim.configs.config import *
 from covid19sim.interventions import *
 
 
@@ -40,7 +43,7 @@ Attributes
     age : int
         exclusive maximum age for which this probability is effective
         An age of `1000` is assigned when no check on age is needed
-        An age of `-1` is assigned when it is handled entirely in the code 
+        An age of `-1` is assigned when it is handled entirely in the code
     sex : char
         single lower case char representing the sex for which this probability
         is effective. Possible values are: `'f'`, `'m'`, `'a'`
@@ -427,6 +430,14 @@ PREEXISTING_CONDITIONS = OrderedDict([
 
 
 def log(str, logfile=None, timestamp=False):
+	"""
+    [summary]
+
+    Args:
+        str ([type]): [description]
+        logfile ([type], optional): [description]. Defaults to None.
+        timestamp (bool, optional): [description]. Defaults to False.
+    """
 	if timestamp:
 		str = f"[{datetime.datetime.now()}] {str}"
 
@@ -436,14 +447,33 @@ def log(str, logfile=None, timestamp=False):
 			print(str, file=f)
 
 def _sample_viral_load_gamma(rng, shape_mean=4.5, shape_std=.15, scale_mean=1., scale_std=.15):
-    """ This function samples the shape and scale of a gamma distribution, then returns it"""
+    """
+    This function samples the shape and scale of a gamma distribution, then returns it
+
+    Args:
+        rng ([type]): [description]
+        shape_mean (float, optional): [description]. Defaults to 4.5.
+        shape_std (float, optional): [description]. Defaults to .15.
+        scale_mean ([type], optional): [description]. Defaults to 1..
+        scale_std (float, optional): [description]. Defaults to .15.
+
+    Returns:
+        [type]: [description]
+    """
     shape = rng.normal(shape_mean, shape_std)
     scale = rng.normal(scale_mean, scale_std)
     return gamma(shape, scale=scale)
 
 
 def _sample_viral_load_piecewise(rng, initial_viral_load=0, age=40):
-    """ This function samples a piece-wise linear viral load model which increases, plateaus, and drops """
+    """
+    This function samples a piece-wise linear viral load model which increases, plateaus, and drops
+
+    Args:
+        rng ([type]): [description]
+        initial_viral_load (int, optional): [description]. Defaults to 0.
+        age (int, optional): [description]. Defaults to 40.
+    """
     # https://stackoverflow.com/questions/18441779/how-to-specify-upper-and-lower-limits-when-using-numpy-random-normal
 	# https://www.thelancet.com/journals/laninf/article/PIIS1473-3099(20)30196-1/fulltext
     plateau_start = truncnorm((PLATEAU_START_CLIP_LOW - PLATEAU_START_MEAN)/PLATEAU_START_STD, (PLATEAU_START_CLIP_HIGH - PLATEAU_START_MEAN) / PLATEAU_START_STD, loc=PLATEAU_START_MEAN, scale=PLATEAU_START_STD).rvs(1, random_state=rng)
@@ -464,10 +494,28 @@ def _sample_viral_load_piecewise(rng, initial_viral_load=0, age=40):
 
 
 def _normalize_scores(scores):
+    """
+    [summary]
+
+    Args:
+        scores ([type]): [description]
+
+    Returns:
+        [type]: [description]
+    """
     return np.array(scores)/np.sum(scores)
 
 # &canadian-demgraphics
 def _get_random_age(rng):
+    """
+    [summary]
+
+    Args:
+        rng ([type]): [description]
+
+    Returns:
+        [type]: [description]
+    """
     # random normal centered on 50 with stdev 25
     draw = rng.normal(50, 25, 1)
     if draw < 0:
@@ -479,6 +527,15 @@ def _get_random_age(rng):
 
 # &sex
 def _get_random_sex(rng):
+    """
+    [summary]
+
+    Args:
+        rng ([type]): [description]
+
+    Returns:
+        [type]: [description]
+    """
     p = rng.rand()
     if p < .4:
         return 'female'
@@ -488,6 +545,17 @@ def _get_random_sex(rng):
         return 'other'
 
 def _get_get_really_sick(age, sex, rng):
+    """
+    [summary]
+
+    Args:
+        age ([type]): [description]
+        sex ([type]): [description]
+        rng ([type]): [description]
+
+    Returns:
+        [type]: [description]
+    """
     if sex.lower().startswith('f'):
         if age < 10:
             return rng.rand() < 0.02
@@ -550,6 +618,25 @@ def _get_get_really_sick(age, sex, rng):
 def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_load_plateau_end,
                            viral_load_recovered, age, incubation_days, really_sick, extremely_sick,
                            rng, preexisting_conditions, carefulness):
+    """
+    [summary]
+
+    Args:
+        initial_viral_load ([type]): [description]
+        viral_load_plateau_start ([type]): [description]
+        viral_load_plateau_end ([type]): [description]
+        viral_load_recovered ([type]): [description]
+        age ([type]): [description]
+        incubation_days ([type]): [description]
+        really_sick ([type]): [description]
+        extremely_sick ([type]): [description]
+        rng ([type]): [description]
+        preexisting_conditions ([type]): [description]
+        carefulness ([type]): [description]
+
+    Returns:
+        [type]: [description]
+    """
     symptoms_contexts = SYMPTOMS_CONTEXTS['covid']
     progression = []
     symptoms_per_phase = [[] for i in range(len(symptoms_contexts))]
@@ -936,6 +1023,15 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
     return progression
 
 def _get_allergy_progression(rng):
+    """
+    [summary]
+
+    Args:
+        rng ([type]): [description]
+
+    Returns:
+        [type]: [description]
+    """
     symptoms = ['sneezing']
     if rng.rand() < P_SEVERE_ALLERGIES:
         symptoms.append('mild_trouble_breathing')
@@ -956,6 +1052,20 @@ def _get_allergy_progression(rng):
     return progression
 
 def _get_flu_progression(age, rng, carefulness, preexisting_conditions, really_sick, extremely_sick):
+    """
+    [summary]
+
+    Args:
+        age ([type]): [description]
+        rng ([type]): [description]
+        carefulness ([type]): [description]
+        preexisting_conditions ([type]): [description]
+        really_sick ([type]): [description]
+        extremely_sick ([type]): [description]
+
+    Returns:
+        [type]: [description]
+    """
     symptoms_contexts = SYMPTOMS_CONTEXTS['flu']
 
     progression = [[] for day in range(FLU_INCUBATION)]
@@ -1039,6 +1149,20 @@ def _get_flu_progression(age, rng, carefulness, preexisting_conditions, really_s
 
 
 def _get_cold_progression(age, rng, carefulness, preexisting_conditions, really_sick, extremely_sick):
+    """
+    [summary]
+
+    Args:
+        age ([type]): [description]
+        rng ([type]): [description]
+        carefulness ([type]): [description]
+        preexisting_conditions ([type]): [description]
+        really_sick ([type]): [description]
+        extremely_sick ([type]): [description]
+
+    Returns:
+        [type]: [description]
+    """
     symptoms_contexts = SYMPTOMS_CONTEXTS['cold']
 
     progression = [[]]
@@ -1104,6 +1228,17 @@ def _reported_symptoms(all_symptoms, rng, carefulness):
 
 # &preexisting-conditions
 def _get_preexisting_conditions(age, sex, rng):
+    """
+    [summary]
+
+    Args:
+        age ([type]): [description]
+        sex ([type]): [description]
+        rng ([type]): [description]
+
+    Returns:
+        [type]: [description]
+    """
     #if rng.rand() < 0.6 + age/200:
     #    conditions = None
     #else:
@@ -1155,36 +1290,96 @@ def _get_preexisting_conditions(age, sex, rng):
 
 # &canadian-demgraphics
 def _get_random_age_multinomial(AGE_DISTRIBUTION, rng):
+    """
+    [summary]
+
+    Args:
+        AGE_DISTRIBUTION ([type]): [description]
+        rng ([type]): [description]
+
+    Returns:
+        [type]: [description]
+    """
     x = list(zip(*AGE_DISTRIBUTION.items()))
     idx = rng.choice(range(len(x[0])), p=x[1])
     age_group = x[0][idx]
     return rng.uniform(age_group[0], age_group[1])
 
 def _get_random_area(num, total_area, rng):
-	''' Using Dirichlet distribution since it generates a "distribution of probabilities"
+	"""
+    Using Dirichlet distribution since it generates a "distribution of probabilities"
 	which will ensure that the total area allotted to a location type remains conserved
-	while also maintaining a uniform distribution'''
+	while also maintaining a uniform distribution
 
+    Args:
+        num ([type]): [description]
+        total_area ([type]): [description]
+        rng ([type]): [description]
+
+    Returns:
+        [type]: [description]
+    """
 	# Keeping max at area/2 to ensure no location is allocated more than half of the total area allocated to its location type
 	area = rng.dirichlet(np.ones(math.ceil(num/2)))*(total_area/2)
 	area = np.append(area,rng.dirichlet(np.ones(math.floor(num/2)))*(total_area/2))
 	return area
 
 def _draw_random_discreet_gaussian(avg, scale, rng):
+    """
+    [summary]
+
+    Args:
+        avg ([type]): [description]
+        scale ([type]): [description]
+        rng ([type]): [description]
+
+    Returns:
+        [type]: [description]
+    """
     # https://stackoverflow.com/a/37411711/3413239
     irange, normal_pdf = _get_integer_pdf(avg, scale, 2)
     return int(rng.choice(irange, size=1, p=normal_pdf))
 
 def _json_serialize(o):
+    """
+    [summary]
+
+    Args:
+        o ([type]): [description]
+
+    Returns:
+        [type]: [description]
+    """
     if isinstance(o, datetime.datetime):
         return o.__str__()
 
 def compute_distance(loc1, loc2):
+    """
+    [summary]
+
+    Args:
+        loc1 ([type]): [description]
+        loc2 ([type]): [description]
+
+    Returns:
+        [type]: [description]
+    """
     return np.sqrt((loc1.lat - loc2.lat) ** 2 + (loc1.lon - loc2.lon) ** 2)
 
 
 @lru_cache(500)
 def _get_integer_pdf(avg, scale, num_sigmas=2):
+    """
+    [summary]
+
+    Args:
+        avg ([type]): [description]
+        scale ([type]): [description]
+        num_sigmas (int, optional): [description]. Defaults to 2.
+
+    Returns:
+        [type]: [description]
+    """
     irange = np.arange(avg - num_sigmas * scale, avg + num_sigmas * scale + 1)
     normal_pdf = norm.pdf(irange - avg)
     normal_pdf /= normal_pdf.sum()
@@ -1195,33 +1390,29 @@ def probas_to_risk_mapping(probas,
                            num_bins,
                            lower_cutoff=None,
                            upper_cutoff=None):
-    """Create a mapping from probabilities returned by the model to discrete
+    """
+    Create a mapping from probabilities returned by the model to discrete
     risk levels, with a number of predictions in each bins being approximately
     equivalent.
 
-    Parameters
-    ----------
-    probas : `np.ndarray` instance
-        The array of probabilities returned by the model.
+    Args:
+        probas (np.ndarray): The array of probabilities returned by the model.
+        num_bins (int): The number of bins. For example, `num_bins=16` for risk
+            messages on 4 bits.
+        lower_cutoff (float, optional): Ignore values smaller than `lower_cutoff`
+            in the creation of the bins. This avoids any bias towards values which
+            are too close to 0. If `None`, then do not cut off the small probabilities.
+            Defaults to None.
+        upper_cutoff (float, optional): Ignore values larger than `upper_cutoff` in the
+            creation of the bins. This avoids any bias towards values which are too
+            close to 1. If `None`, then do not cut off the large probabilities.
+            Defaults to None.
 
-    num_bins : int
-        The number of bins. For example, `num_bins=16` for risk messages on
-        4 bits.
+    Raises:
+        ValueError: [description]
 
-    lower_cutoff : float, optional
-        Ignore values smaller than `lower_cutoff` in the creation of the bins.
-        This avoids any bias towards values which are too close to 0. If `None`,
-        then do not cut off the small probabilities.
-
-    upper_cutoff : float, optional
-        Ignore values larger than `upper_cutoff` in the creation of the bins.
-        This avoids any bias towards values which are too close to 1. If `None`,
-        then do not cut off the large probabilities.
-
-    Returns
-    -------
-    mapping : `np.ndarray` instance
-        The mapping from probabilities to discrete risk levels. This mapping has
+    Returns:
+        np.ndarray: The mapping from probabilities to discrete risk levels. This mapping has
         size `num_bins + 1`, with the first values always being 0, and the last
         always being 1.
     """
@@ -1256,25 +1447,40 @@ def probas_to_risk_mapping(probas,
     return cutoffs
 
 def proba_to_risk_fn(mapping):
-    """Create a callable, based on a mapping, that takes probabilities (in
+    """
+    Create a callable, based on a mapping, that takes probabilities (in
     [0, 1]) and returns a discrete risk level (in [0, num_bins - 1]).
 
-    Parameters
-    ----------
-    mapping : `np.ndarray` instance
-        The mapping from probabilities to discrete risk levels. See
-        `probas_to_risk_mapping`.
+    Args:
+        mapping (np.ndarray): The mapping from probabilities to discrete risk levels.
+        See `probas_to_risk_mapping`.
 
-    Returns
-    proba_to_risk : callable
-        Function taking probabilities and returning discrete risk levels.
+    Returns:
+        callable: Function taking probabilities and returning discrete risk levels.
     """
     def _proba_to_risk(probas):
         return np.maximum(np.searchsorted(mapping, probas, side='left') - 1, 0)
 
     return _proba_to_risk
 
-def get_intervention(key):
+def get_intervention(key, RISK_MODEL=None, TRACING_ORDER=None, TRACE_SYMPTOMS=None, TRACE_RISK_UPDATE=None, SHOULD_MODIFY_BEHAVIOR=True):
+	"""
+    [summary]
+
+    Args:
+        key ([type]): [description]
+        RISK_MODEL ([type], optional): [description]. Defaults to None.
+        TRACING_ORDER ([type], optional): [description]. Defaults to None.
+        TRACE_SYMPTOMS ([type], optional): [description]. Defaults to None.
+        TRACE_RISK_UPDATE ([type], optional): [description]. Defaults to None.
+        SHOULD_MODIFY_BEHAVIOR (bool, optional): [description]. Defaults to True.
+
+    Raises:
+        NotImplementedError: [description]
+
+    Returns:
+        [type]: [description]
+    """
 	if key == "Lockdown":
 		return Lockdown()
 	elif key == "WearMask":
@@ -1284,7 +1490,7 @@ def get_intervention(key):
 	elif key == "Quarantine":
 		return Quarantine()
 	elif key == "Tracing":
-		return Tracing(RISK_MODEL, TRACING_ORDER, TRACE_SYMPTOMS, TRACE_RISK_UPDATE)
+		return Tracing(RISK_MODEL, TRACING_ORDER, TRACE_SYMPTOMS, TRACE_RISK_UPDATE, SHOULD_MODIFY_BEHAVIOR)
 	elif key == "WashHands":
 		return WashHands()
 	elif key == "Stand2M":
@@ -1297,6 +1503,15 @@ def get_intervention(key):
 		raise
 
 def get_recommendations(risk_level):
+    """
+    [summary]
+
+    Args:
+        risk_level ([type]): [description]
+
+    Returns:
+        [type]: [description]
+    """
     if risk_level == 0:
         return ['stay_home', 'wash_hands', 'stand_2m']
     if risk_level == 1:
@@ -1305,3 +1520,10 @@ def get_recommendations(risk_level):
         return ['stay_home', 'wash_hands', 'stand_2m', 'limit_contact', 'wear_mask', 'monitor_symptoms']
     else:
         return ['stay_home', 'wash_hands', 'stand_2m', 'limit_contact', 'wear_mask', 'monitor_symptoms', 'get_tested', 'quarantine']
+
+def calculate_average_infectiousness(human):
+    cur_infectiousness = human.get_infectiousness_for_day(human.env.timestamp, human.is_infectious)
+    is_infectious_tomorrow = True if human.infection_timestamp and human.env.timestamp - human.infection_timestamp + datetime.timedelta(days=1) >= datetime.timedelta(days=human.infectiousness_onset_days) else False
+    tomorrows_infectiousness = human.get_infectiousness_for_day(human.env.timestamp + datetime.timedelta(days=1),
+                                                                is_infectious_tomorrow)
+    return (cur_infectiousness + tomorrows_infectiousness) / 2

@@ -1,0 +1,58 @@
+---
+# EXPERIMENTAL PARAMETERS
+COLLECT_LOGS : True
+COLLECT_TRAINING_DATA : False
+USE_INFERENCE_SERVER : True
+RISK_MODEL : "transformer" # "naive"  "manual", "digital", "transformer"
+INIT_PERCENT_SICK : 0.03
+SHOULD_MODIFY_BEHAVIOR : False
+USE_ORACLE: True
+
+## INTERVENTIONS
+INTERVENTION_DAY : 0
+INTERVENTION : "Tracing"
+PERCENT_FOLLOW : 1.0
+P_HAS_APP : 1.0
+ABSOLUTE_P_HAS_APP : True # If False, we modulate P_HAS_APP with carefulness and age
+
+
+# PATHS
+TRANSFORMER_EXP_PATH : "" #"CTT-SHIPMENT-0"
+CLUSTER_PATH : "output/clusters"
+
+# Inference & Training
+INFECTIOUSNESS_N_DAYS_HISTORY : 14
+TRACING_N_DAYS_HISTORY : 14
+MP_BATCHSIZE : "auto"
+MP_N_JOBS : "1"
+MP_BACKEND : "loky"
+DUMP_CLUSTERS : False
+CLUSTER_TYPE : "heuristic" # "random", "graph"
+
+
+# TRACING RISK MODEL PARAMETERS  (non-ML)
+TRACE_SYMPTOMS : False
+TRACE_RISK_UPDATE : False
+TRACING_ORDER : 1
+UPDATES_PER_DAY : 4
+
+RISK_MAPPING : [0.0,
+                0.0001,
+                0.02790058831805188,
+                0.056507214366051786,
+                0.09964329702354373,
+                0.12181110126553577,
+                0.18458727162787497,
+                0.28600519445013506,
+                0.3628629063698628,
+                0.44121387005841506,
+                0.4954098649943365,
+                0.5819137774823899,
+                0.6232547997952577,
+                0.7266351205574721,
+                0.8874807435526698,
+                1.0,
+                1.065126768029105]
+
+
+
