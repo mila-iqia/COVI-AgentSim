@@ -240,7 +240,7 @@ class City(simpy.Environment):
 
         # initial infections
         init_infected = math.ceil(self.init_percent_sick * self.n_people)
-        chosen_infected = set(np.random.choice(self.n_people, init_infected, replace=False).tolist())
+        chosen_infected = set(self.rng.choice(self.n_people, init_infected, replace=False).tolist())
 
         # app users
         all_has_app =  ExpConfig.get('P_HAS_APP') < 0
