@@ -243,7 +243,7 @@ class City(simpy.Environment):
         chosen_infected = set(self.rng.choice(self.n_people, init_infected, replace=False).tolist())
 
         # app users
-        all_has_app =  ExpConfig.get('P_HAS_APP') < 0
+        all_has_app = ExpConfig.get('P_HAS_APP') < 0
         n_apps = ExpConfig.get('P_HAS_APP') * self.n_people if ExpConfig.get('P_HAS_APP') > 0 else self.n_people
         n_apps_per_age = {k:math.ceil(v * n_apps) for k,v in APP_USERS_FRACTION_BY_AGE.items()}
 
