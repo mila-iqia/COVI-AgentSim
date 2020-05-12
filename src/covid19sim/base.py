@@ -74,7 +74,7 @@ class Env(simpy.Environment):
         Returns:
             bool: current timestamp day is a weekend day
         """
-        return self.day_of_week() in [0, 6]
+        return self.day_of_week() >= 5
 
     def time_of_day(self):
         """
@@ -91,12 +91,13 @@ class City(simpy.Environment):
     City environment
     """
 
-    def __init__(self, env, n_people, rng, x_range, y_range, start_time, Human):
+    def __init__(self, env, n_people, init_percent_sick, rng, x_range, y_range, start_time, Human):
         """
 
         Args:
             env (simpy.Environment): [description]
             n_people (int): Number of people in the city
+            init_percent_sick: % of population to be infected on day 0
             rng (np.random.RandomState): Random number generator
             x_range (tuple): (min_x, max_x)
             y_range (tuple): (min_y, max_y)
@@ -110,6 +111,7 @@ class City(simpy.Environment):
         self.y_range = y_range
         self.total_area = (x_range[1] - x_range[0]) * (y_range[1] - y_range[0])
         self.n_people = n_people
+        self.init_percent_sick = init_percent_sick
         self.start_time = start_time
         self.last_date_to_check_tests = self.env.timestamp.date()
         self.test_count_today = defaultdict(int)
@@ -235,6 +237,16 @@ class City(simpy.Environment):
         count_humans = 0
         house_allocations = {2:[], 3:[], 4:[], 5:[]}
         n_houses = 0
+
+        # initial infections
+        init_infected = math.ceil(self.init_percent_sick * self.n_people)
+        chosen_infected = set(self.rng.choice(self.n_people, init_infected, replace=False).tolist())
+
+        # app users
+        all_has_app = ExpConfig.get('P_HAS_APP') < 0
+        n_apps = ExpConfig.get('P_HAS_APP') * self.n_people if ExpConfig.get('P_HAS_APP') > 0 else self.n_people
+        n_apps_per_age = {k:math.ceil(v * n_apps) for k,v in APP_USERS_FRACTION_BY_AGE.items()}
+
         for age_bin, specs in HUMAN_DISTRIBUTION.items():
             n = math.ceil(specs['p'] * self.n_people)
             ages = self.rng.randint(*age_bin, size=n)
@@ -245,9 +257,25 @@ class City(simpy.Environment):
             p = [specs['profession_profile'][x] for x in professions]
             profession = self.rng.choice(professions, p=p, size=n)
 
+            # select who should have app based on APP_USERS_FRACTION_BY_AGE
+            chosen_app_user_bin = []
+            for my_age in ages:
+                for x, frac in APP_USERS_FRACTION_BY_AGE.items():
+                    if x[0] <= my_age <= x[1]:
+                        chosen_app_user_bin.append(x)
+                        break
+
             for i in range(n):
                 count_humans += 1
                 age = ages[i]
+
+                # should the person has an app?
+                current_app_bin = chosen_app_user_bin[i]
+                if n_apps_per_age[current_app_bin] > 0:
+                    has_app = True
+                    n_apps_per_age[current_app_bin] -= 1
+                else:
+                    has_app = False
 
                 # residence
                 res = None
@@ -269,6 +297,7 @@ class City(simpy.Environment):
                         env=self.env,
                         city=self,
                         rng=self.rng,
+                        has_app=has_app or all_has_app,
                         name=count_humans,
                         age=age,
                         household=res,
@@ -276,7 +305,7 @@ class City(simpy.Environment):
                         profession=profession[i],
                         rho=RHO,
                         gamma=GAMMA,
-                        infection_timestamp=self.start_time if self.rng.random() < ExpConfig.get('INIT_PERCENT_SICK') else None
+                        infection_timestamp=self.start_time if count_humans - 1 in chosen_infected else None
                         )
                     )
 
@@ -409,14 +438,13 @@ class City(simpy.Environment):
                                                      TRACE_SYMPTOMS=ExpConfig.get('TRACE_SYMPTOMS'),
                                                      TRACE_RISK_UPDATE=ExpConfig.get('TRACE_RISK_UPDATE'),
                                                      SHOULD_MODIFY_BEHAVIOR=ExpConfig.get('SHOULD_MODIFY_BEHAVIOR'))
+
                 _ = [h.notify(self.intervention) for h in self.humans]
                 print(self.intervention)
+                if ExpConfig.get('COLLECT_TRAINING_DATA'):
+                    print("naive risk calculation without changing behavior... Humans notified!")
+
                 humans_notified = True
-            # If we're collecting data and running an unmitigated simulation (behaviour not changing due to intervention)
-            elif ExpConfig.get('COLLECT_TRAINING_DATA') and (self.current_day == 0 and ExpConfig.get('INTERVENTION_DAY') < 0):
-                print("naive risk calculation without changing behavior... Humans notified!")
-                self.intervention = Tracing(risk_model="naive", max_depth=1, symptoms=False, risk=False, should_modify_behavior=False)
-                _ = [h.notify(self.intervention) for h in self.humans]
 
             # iterate over humans, and if it's their timeslot, then update their infectionsness, symptoms, and message info
             for human in self.humans:
@@ -451,6 +479,7 @@ class City(simpy.Environment):
                 self.intervention.update_human_risks(city=self,
                                 symptoms=all_possible_symptoms, port=port,
                                 n_jobs=n_jobs, data_path=outfile)
+                self.tracker.track_risk_attributes(self.humans)
 
             # increment the day / update uids if we just ran all the people in timeslot 23 (last hour of the day == done)
             if self.env.timestamp.hour == 23 and self.env.timestamp != self.env.initial_timestamp:
@@ -459,7 +488,6 @@ class City(simpy.Environment):
                     human.uid = update_uid(human.uid, human.rng)
                 self.current_day += 1
                 self.tracker.increment_day()
-                # pd.DataFrame([(h.risk, h.is_infectious or h.is_exposed) for h in self.city.humans]).to_csv("risk_histogram.csv")
 
             # Let the hour pass
             yield self.env.timeout(duration / TICK_MINUTE)
@@ -1044,6 +1072,7 @@ class Contacts(object):
         if human not in self.book:
             self.book[human] = [[timestamp.date(), 1]]
             return
+
         if timestamp.date() != self.book[human][-1][0]:
             self.book[human].append([timestamp.date(), 1])
         else:
@@ -1071,14 +1100,9 @@ class Contacts(object):
                 break
         self.book[human] = self.book[human][remove_idx:]
 
-        # TODO: this should contain only todays info; clean up history should happen once per day
-        if False:
-            remove_idx = 0
-            for historical_message in self.messages:
-                if (human.env.timestamp - human.env.initial_timestamp).days - historical_message.day > ExpConfig.get('TRACING_N_DAYS_HISTORY'):
-                    remove_idx += 1
-                else:
-                    break
+        # remove that human from the book
+        if len(self.book[human]) == 0:
+            self.book.pop(human)
 
     def send_message(self, owner, tracing_method, order=1, reason="test", payload=None):
         """
@@ -1112,3 +1136,4 @@ class Contacts(object):
 
                     total_contacts = sum(map(lambda x:x[1], self.book[human]))
                     human.update_risk(update_messages={'n':total_contacts, 'delay': t, 'order':order, 'reason':reason, 'payload':payload})
+                    owner.city.tracker.track_update_messages(owner, human, {'reason':reason})

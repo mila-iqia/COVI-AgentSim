@@ -7,6 +7,7 @@ import json
 import functools
 from joblib import Parallel, delayed
 import warnings
+import numpy as np
 
 from covid19sim.server_utils import InferenceClient, InferenceWorker
 from ctt.inference.infer import InferenceEngine
@@ -73,7 +74,7 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
 
     if ExpConfig.get('USE_INFERENCE_SERVER'):
         batch_start_offset = 0
-        batch_size = 25  # @@@@ TODO: make this a high-level configurable arg?
+        batch_size = 300  # @@@@ TODO: make this a high-level configurable arg?
         batched_params = []
         while batch_start_offset < len(all_params):
             batch_end_offset = min(batch_start_offset + batch_size, len(all_params))
@@ -110,6 +111,7 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
             if result is not None:
                 name, risk_history, clusters = result
                 if risk_history is not None:
+                    # risk_history = np.clip(risk_history, 0., 1.)
                     for i in range(ExpConfig.get('TRACING_N_DAYS_HISTORY')):
                         hd[name].risk_history_map[current_day - i] = risk_history[i]
 

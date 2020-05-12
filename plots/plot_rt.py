@@ -35,7 +35,7 @@ class PlotRt:
         high = pmf.index[highs[best]]
         return pd.Series([low, high], index=[f'Low_{p*100:.0f}', f'High_{p*100:.0f}'])
 
-    def _get_posteriors(self, sr):
+    def _get_posteriors(self, sr, r0_estimate=None):
         r_t_range = np.linspace(0, self.R_T_MAX, self.R_T_MAX*100+1)
 
         # (1) Calculate Lambda
@@ -46,18 +46,21 @@ class PlotRt:
         data = sps.poisson.pmf(sr[1:].values, lam),
         index = r_t_range,
         columns = sr.index[1:])
-    
+
         # (3) Create the Gaussian Matrix
         process_matrix = sps.norm(loc=r_t_range, scale=self.sigma).pdf(r_t_range[:, None])
 
         # (3a) Normalize all rows to sum to 1
         process_matrix /= process_matrix.sum(axis=0)
-    
+
         # (4) Calculate the initial prior
-        #prior0 = sps.gamma(a=4).pdf(r_t_range)
+        # prior0 = sps.gamma(a=4).pdf(r_t_range)
         prior0 = np.ones_like(r_t_range)/len(r_t_range)
-        for k in range(int(1.5/self.R_T_MAX*len(r_t_range)), int(2.5/self.R_T_MAX*len(r_t_range))):
-            prior0[k] = 10
+        if r0_estimate:
+            prior0[int(r0_estimate/self.R_T_MAX*len(r_t_range))] += 1e-8
+        else:
+            for k in range(int(1.0/self.R_T_MAX*len(r_t_range)), int(4.0/self.R_T_MAX*len(r_t_range))):
+                prior0[k] = 10
         prior0 /= prior0.sum()
 
         # Create a DataFrame that will hold our posteriors for each day
@@ -67,7 +70,7 @@ class PlotRt:
             columns=sr.index,
             data={sr.index[0]: prior0}
         )
-    
+
         # We said we'd keep track of the sum of the log of the probability
         # of the data for maximum likelihood calculation.
         log_likelihood = 0.0
@@ -77,19 +80,19 @@ class PlotRt:
 
             #(5a) Calculate the new prior
             current_prior = process_matrix @ posteriors[previous_day]
-        
+
             #(5b) Calculate the numerator of Bayes' Rule: P(k|R_t)P(R_t)
             numerator = likelihoods[current_day] * current_prior
-        
+
             #(5c) Calcluate the denominator of Bayes' Rule P(k)
             denominator = np.sum(numerator)
-        
+
             # Execute full Bayes' Rule
             posteriors[current_day] = numerator/denominator
-        
+
             # Add to the running sum of log likelihoods
             log_likelihood += np.log(denominator)
-    
+
         return posteriors, log_likelihood
 
     def _smooth_cases(self, cases):
@@ -103,10 +106,10 @@ class PlotRt:
                 smoothed.append(math.ceil(1.0/3.0*cases[k-1]+1.0/3.0*cases[k]+1.0/3.0*cases[k+1]))
         return smoothed
 
-    def compute(self, data):
+    def compute(self, data, r0_estimate=None):
         data = self._smooth_cases(data)
         data = pd.Series(data, index=list(range(len(data))))
-        posteriors, log_likelihood = self._get_posteriors(data)
+        posteriors, log_likelihood = self._get_posteriors(data, r0_estimate)
         # Note that this takes a while to execute - it's not the most efficient algorithm
         hdis = self._highest_density_interval(posteriors, p=.5)
         most_likely = posteriors.idxmax().rename('ML')

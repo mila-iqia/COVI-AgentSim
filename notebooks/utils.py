@@ -73,6 +73,7 @@ def hierarchy_pos(G, root=None, width=1., vert_gap = 0.2, vert_loc = 0, xcenter 
     return _hierarchy_pos(G, root, width, vert_gap, vert_loc, xcenter)
 
 def plot_intervention(filenames, title, percent_threshold=1.0, end_day=None, colormap=None, ax=None):
+    from matplotlib.axes import Subplot
     cases_data, mobility_data, labels, mobility_label = [], [], [], []
 
     if type(filenames[0]) == list:
@@ -151,20 +152,23 @@ def plot_intervention(filenames, title, percent_threshold=1.0, end_day=None, col
     y_vals = [1.0*min(n_init_infected * pow(2, y/3), n_humans)/n_humans for y in range(0, len(data))]
 
     # plot
-    ax = data.plot(figsize=(20,10), color = color, linewidth=2, ax=ax)
+    _ax = ax is None
+    ax = data.plot(color = color, linewidth=2, ax=ax)
     mobility.plot(linestyle='--', color = color[1:], ax = ax, alpha=0.3, linewidth=2)
-    if intervention_day >= 0:
+    if intervention_day >= 0 and _ax:
         line = ax.axvline(x=intervention_day, linestyle="-.", linewidth=3)
         ax.annotate("Intervention", xy=(intervention_day, 0.5), xytext=(intervention_day-1.5, 0.6), size=30, rotation="vertical")
-    plt.plot(range(1, len(y_vals)+1), y_vals, '-.', color="gray", alpha=0.3)
+    ax.plot(range(1, len(y_vals)+1), y_vals, '-.', color="gray", alpha=0.3)
 
-    ax.set_title(title, size=25)
+    if title:
+        ax.set_title(title, size=25)
     ax.grid(True, axis='x', alpha=0.3)
     ax.grid(True, axis='y', alpha=0.3)
 
-    plt.tick_params(labelsize=25)
-    plt.xlabel("Days since outbreak", fontsize=30)
-    plt.ylabel("% Infected / Mobile", fontsize=30, labelpad=20)
+    ax.tick_params(labelsize=25)
+    if not isinstance(ax, Subplot):
+        ax.xlabel("Days since outbreak", fontsize=30)
+    ax.set_ylabel("% Infected / Mobile", fontsize=30, labelpad=20)
 
     # legend
     legends = ax.get_legend_handles_labels()
@@ -172,6 +176,7 @@ def plot_intervention(filenames, title, percent_threshold=1.0, end_day=None, col
     line1 = Line2D([0], [0], color="black", linewidth=2, linestyle='--', label="mobility")
     line2 = Line2D([0], [0], color="black", linewidth=2, linestyle='-', label="% infected")
     legends = (legends + [line1, line2], legend_labels + ["mobility", "% infected"])
-    # plt.legend(legends + [line1, line2], legend_labels + ["mobility", "% infected"], prop={"size":20}, loc="upper left")
+    if _ax:
+        ax.legend(legends[0], legends[1], prop={"size":20}, loc="upper left")
 
     return (ax,legends), (data, mobility, labels)

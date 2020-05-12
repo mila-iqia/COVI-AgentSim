@@ -84,7 +84,7 @@ class Human(object):
     [summary]
     """
 
-    def __init__(self, env, city, name, age, rng, infection_timestamp, household, workplace, profession, rho=0.3, gamma=0.21, symptoms=[], test_results=None):
+    def __init__(self, env, city, name, age, rng, has_app, infection_timestamp, household, workplace, profession, rho=0.3, gamma=0.21, symptoms=[], test_results=None):
         """
         [summary]
 
@@ -108,6 +108,7 @@ class Human(object):
         self._events = []
         self.name = f"human:{name}"
         self.rng = rng
+        self.has_app = has_app
         self.profession = profession
         self.is_healthcare_worker = True if profession == "healthcare" else False
         self.assign_household(household)
@@ -126,10 +127,6 @@ class Human(object):
             self.carefulness = (round(self.rng.normal(55, 10)) + self.age/2) / 100
         else:
             self.carefulness = (round(self.rng.normal(25, 10)) + self.age/2) / 100
-        if ExpConfig.get('ABSOLUTE_P_HAS_APP'):
-            self.has_app = ExpConfig.get('P_HAS_APP')
-        else:
-            self.has_app = self.rng.rand() < (ExpConfig.get('P_HAS_APP') / age_modifier) + (self.carefulness / 2)
 
         # allergies
         self.has_allergies = self.rng.rand() < P_ALLERGIES
@@ -139,7 +136,7 @@ class Human(object):
 
         # logged info can be quite different
         self.has_logged_info = self.has_app and self.rng.rand() < self.carefulness
-        self.obs_is_healthcare_worker = True if self.is_healthcare_worker and rng.random()<0.9 else False # 90% of the time, healthcare workers will declare it
+        self.obs_is_healthcare_worker = True if self.is_healthcare_worker and self.rng.random()<0.9 else False # 90% of the time, healthcare workers will declare it
         self.obs_age = self.age if self.has_app and self.has_logged_info else None
         self.obs_sex = self.sex if self.has_app and self.has_logged_info else None
         self.obs_preexisting_conditions = self.preexisting_conditions if self.has_app and self.has_logged_info else []
@@ -282,7 +279,6 @@ class Human(object):
         self.count_shop=0
 
         self.work_start_hour = self.rng.choice(range(7, 17), 3)
-
 
 
     def assign_household(self, location):
@@ -881,11 +877,6 @@ class Human(object):
         Yields:
             [type]: [description]
         """
-        """
-           1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24
-           State  h h h h h h h h h sh sh h  h  h  ac h  h  h  h  h  h  h  h  h
-        """
-
         self.household.humans.add(self)
 
         while True:
@@ -946,7 +937,11 @@ class Human(object):
             # self.how_am_I_feeling = 1.0 (great) --> rest_at_home = False
             if not self.rest_at_home:
                 # set it once for the rest of the disease path
-                if self.rng.random() > self.how_am_I_feeling():
+                i_feel = self.how_am_I_feeling()
+                # If you are in the GREEN level, modulate the mobility using FEELING_KNOB
+                if self.rec_level == 0:
+                    i_feel = GREEN_FEELING_KNOB * i_feel
+                if self.rng.random() > i_feel:
                     self.rest_at_home = True
 
             # happens when recovered
@@ -1224,7 +1219,7 @@ class Human(object):
                     p_infection = h.infectiousness * ratio * proximity_factor # &prob_infectious
                     # FIXME: remove hygiene from severity multiplier; init hygiene = 0; use sum here instead
                     reduction_factor = CONTAGION_KNOB + sum(getattr(x, "_hygiene", 0) for x in [self, h]) + mask_efficacy
-                    p_infection *= np.exp(-reduction_factor * h.n_infectious_contacts) # hack to control R0
+                    p_infection *= np.exp(-reduction_factor * h.n_infectious_contacts) # to control R0
 
                     x_human = self.rng.random() < p_infection
 
@@ -1606,7 +1601,7 @@ class Human(object):
                     self.city.hd[message.unobs_id].contact_book.update_messages.append(update_message)
                     self.contact_book.sent_messages_by_day[day][idx] = Message(my_old_message.uid, new_risk_level, my_old_message.day, my_old_message.unobs_id)
 
-                    self.city.tracker.track_update_messages(self, self.city.hd[message.unobs_id], new_risk_level)
+                    self.city.tracker.track_update_messages(self, self.city.hd[message.unobs_id], {'reason':"risk_update", "new_risk_level":new_risk_level})
 
         if cur_day in self.prev_risk_history_map.keys():
             prev_risk_level = min(_proba_to_risk_level(self.prev_risk_history_map[cur_day]), 15)
