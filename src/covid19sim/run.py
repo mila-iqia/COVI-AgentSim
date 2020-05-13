@@ -9,7 +9,7 @@ from covid19sim.simulator import Human
 from covid19sim.base import *
 from covid19sim.monitors import EventMonitor, TimeMonitor, SEIRMonitor
 from covid19sim.configs.exp_config import ExpConfig
-from covid19sim.configs.constants import TICK_MINUTE
+from covid19sim.configs.constants import *
 
 @click.group()
 def simu():
@@ -245,7 +245,7 @@ def run_simu(n_people=None,
     for m in monitors:
         env.process(m.run(env, city=city))
 
-    env.run(until=simulation_days * 24 * 60 / TICK_MINUTE)
+    env.run(until=env.ts_initial + simulation_days*SECONDS_PER_DAY/60/TICK_MINUTE)
 
     return monitors, city.tracker
 

@@ -12,7 +12,7 @@ from covid19sim.utils import compute_distance, _get_random_area, _draw_random_di
 from covid19sim.track import Tracker
 from covid19sim.interventions import *
 from covid19sim.frozen.utils import update_uid
-from covid19sim.configs.constants import TICK_MINUTE
+from covid19sim.configs.constants import *
 from covid19sim.configs.exp_config import ExpConfig
 
 
@@ -26,7 +26,10 @@ class Env(simpy.Environment):
         Args:
             initial_timestamp (datetime.datetime): The environment's initial timestamp
         """
-        super().__init__()
+        initial_timestamp = datetime.datetime.combine(initial_timestamp.date(),
+                                                      datetime.time())
+        self.ts_initial = 0
+        super().__init__(self.ts_initial)
         self.initial_timestamp = initial_timestamp
 
     def time(self):
@@ -46,7 +49,7 @@ class Env(simpy.Environment):
                 env.now * TICK_MINUTE minutes)
         """
         return self.initial_timestamp + datetime.timedelta(
-            minutes=self.now * TICK_MINUTE)
+            minutes=(self.now-self.ts_initial) * TICK_MINUTE)
 
     def minutes(self):
         """
