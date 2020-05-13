@@ -7,7 +7,6 @@ import unittest
 
 import numpy as np
 
-from covid19sim.run import run_simu
 from covid19sim.configs.exp_config import ExpConfig
 
 
@@ -16,6 +15,8 @@ class ModelsTest(unittest.TestCase):
         """
             run one simulation and ensure json files are correctly populated and most of the users have activity
         """
+        from covid19sim.run import run_simu
+
         # Load the experimental configuration
         ExpConfig.load_config(os.path.join(os.path.dirname(__file__), "../src/covid19sim/configs/test_config.yml"))
 
@@ -26,6 +27,7 @@ class ModelsTest(unittest.TestCase):
                 n_people=n_people,
                 start_time=datetime.datetime(2020, 2, 28, 0, 0),
                 simulation_days=n_days,
+                init_percent_sick=0.1,
                 outfile=os.path.join(preprocess_d, "output"),
                 out_chunk_size=1,
                 seed=0, n_jobs=4,
@@ -89,20 +91,11 @@ class ModelsTest(unittest.TestCase):
                         # candidate_encounters[:, 2] is the length of the encounter
                         # candidate_encounters[:, 3] is the number of days since the encounter
                         self.assertEqual(observed['candidate_encounters'].shape[1], 4)
-                        self.assertGreaterEqual(observed['candidate_encounters'][:, 0].min(), 0)
-                        self.assertLess(observed['candidate_encounters'][:, 0].max(), 256)
-                        self.assertGreaterEqual(observed['candidate_encounters'][:, 1].min(), 0)
-                        self.assertLess(observed['candidate_encounters'][:, 1].max(), 16)
-                        self.assertGreaterEqual(observed['candidate_encounters'][:, 2].min(), 0)
-                        self.assertLess(observed['candidate_encounters'][:, 2].max(), 10000)
-                        self.assertLessEqual(observed['candidate_encounters'][:, 3].max(), current_day)
-                        self.assertLess(observed['candidate_encounters'][:, 3].max() -
-                                        observed['candidate_encounters'][:, 3].min(), 14)
-                        self.assertLessEqual(observed['candidate_encounters'][0, 3],
-                                             observed['candidate_encounters'][-1, 3])
-
-                        for h_enc_id in observed['candidate_encounters'][:, 0]:
-                            stats['human_enc_ids'][h_enc_id] += 1
+                        self.assertGreaterEqual(observed['candidate_encounters'][:, 0].min(), 0)  # cluster id
+                        self.assertGreaterEqual(observed['candidate_encounters'][:, 1].min(), 0)  # risk level
+                        self.assertLess(observed['candidate_encounters'][:, 1].max(), 16)  # risk level
+                        self.assertGreaterEqual(observed['candidate_encounters'][:, 2].min(), 0)  # encounters
+                        self.assertGreaterEqual(observed['candidate_encounters'][:, 3].min(), 0)  # day idx
 
                     # Has received a positive test result [index] days before today
                     self.assertEqual(observed['test_results'].shape, (14,))
@@ -140,7 +133,6 @@ class ModelsTest(unittest.TestCase):
                         self.assertTrue(len(unobserved['exposure_encounter'].shape) == 1)
                         self.assertTrue(unobserved['exposure_encounter'].min() in (0, 1))
                         self.assertTrue(unobserved['exposure_encounter'].max() in (0, 1))
-                        self.assertTrue(unobserved['exposure_encounter'].sum() in (0, 1))
                     if unobserved['infectiousness'].size:
                         stats['humans'][h_i]['infectiousness'] += 1
                         # Level of infectiousness / day
@@ -235,7 +227,6 @@ class ModelsTest(unittest.TestCase):
                 infectiousness += human_stats['infectiousness']
 
             # TODO: Validate the values to check against
-            self.assertGreaterEqual(sum(stats['human_enc_ids']), n_people)
             self.assertGreaterEqual(candidate_encounters_cnt, n_people)
             self.assertGreaterEqual(has_exposure_day, n_people * 0.5)
             self.assertGreaterEqual(has_recovery_day, n_people * 0.2)

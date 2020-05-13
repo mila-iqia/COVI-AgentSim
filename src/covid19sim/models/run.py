@@ -2,11 +2,13 @@
 Handles querying the inference server with serialized humans and their messages.
 """
 
+from datetime import timedelta
 import os
-import json
+import pickle
 import functools
 from joblib import Parallel, delayed
 import warnings
+import numpy as np
 
 from covid19sim.server_utils import InferenceClient, InferenceWorker
 from ctt.inference.infer import InferenceEngine
@@ -49,12 +51,14 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
     hd = humans[0].city.hd
     all_params = []
 
+    current_time = (start + timedelta(days=current_day, hours=time_slot))
+
     # We're going to send a request to the server for each human
     for human in humans:
         if time_slot not in human.time_slots:
             continue
 
-        human_state = human.__getstate__()
+        human_state = human.get_message_dict()
 
         log_path = None
         if data_path:
@@ -70,10 +74,12 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
             "risk_model": ExpConfig.get('RISK_MODEL'),
             "oracle": ExpConfig.get("USE_ORACLE")
         })
+        human.contact_book.update_messages = []
+        human.contact_book.messages = []
 
     if ExpConfig.get('USE_INFERENCE_SERVER'):
         batch_start_offset = 0
-        batch_size = 25  # @@@@ TODO: make this a high-level configurable arg?
+        batch_size = 300  # @@@@ TODO: make this a high-level configurable arg?
         batched_params = []
         while batch_start_offset < len(all_params):
             batch_end_offset = min(batch_start_offset + batch_size, len(all_params))
@@ -90,40 +96,32 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
         engine = InferenceEngine(ExpConfig.get('TRANSFORMER_EXP_PATH'))
         results = InferenceWorker.process_sample(all_params, engine, ExpConfig.get('MP_BACKEND'), n_jobs)
 
+    for result in results:
+        if result is not None:
+            name, risk_history, clusters = result
+            if ExpConfig.get('RISK_MODEL') == "transformer":
+                # TODO: Fix can be None. What should be done in this case
+                if risk_history is not None:
+                    # risk_history = np.clip(risk_history, 0., 1.)
+                    for i in range(len(risk_history)):
+                        hd[name].risk_history_map[current_day - i] = risk_history[i]
+                    hd[name].update_risk_level()
+                    for i in range(len(risk_history)):
+                        hd[name].prev_risk_history_map[current_day - i] = risk_history[i]
+                elif current_day != ExpConfig.get('INTERVENTION_DAY'):
+                    warnings.warn(f"risk history is none for human:{name}", RuntimeWarning)
+                hd[name].last_risk_update = current_time
+            hd[name].clusters = clusters
+            hd[name].last_cluster_update = current_time
+
     # print out the clusters
     if ExpConfig.get('DUMP_CLUSTERS'):
-        clusters = []
-        for human in hd.values():
-            clusters.append(dict(human.clusters.clusters))
-        json.dump(clusters, open(os.path.join(ExpConfig.get('CLUSTER_PATH'), f"{current_day}_cluster.json"), 'w'))
-
-    if ExpConfig.get('RISK_MODEL') != "transformer":
-        for result in results:
-            if result is not None:
-                name, risk_history, clusters = result
-                hd[name].clusters = clusters
-                hd[name].last_risk_update = current_day
-                hd[name].contact_book.update_messages = []
-                hd[name].contact_book.messages = []
-    else:
-        for result in results:
-            if result is not None:
-                name, risk_history, clusters = result
-                if risk_history is not None:
-                    for i in range(ExpConfig.get('TRACING_N_DAYS_HISTORY')):
-                        hd[name].risk_history_map[current_day - i] = risk_history[i]
-
-                    hd[name].update_risk_level()
-
-                    for i in range(ExpConfig.get('TRACING_N_DAYS_HISTORY')):
-                        hd[name].prev_risk_history_map[current_day - i] = risk_history[i]
-
-                elif risk_history is None and current_day != ExpConfig.get('INTERVENTION_DAY'):
-                    warnings.warn(f"risk history is none for human:{name}", RuntimeWarning)
-
-                hd[name].clusters = clusters
-                hd[name].last_risk_update = current_day
-                hd[name].contact_book.update_messages = []
-                hd[name].contact_book.messages = []
+        os.makedirs(ExpConfig.get('DUMP_CLUSTERS'), exist_ok=True)
+        curr_date_str = current_time.strftime("%Y%m%d-%H%M%S")
+        curr_dump_path = os.path.join(ExpConfig.get('DUMP_CLUSTERS'), curr_date_str + ".pkl")
+        to_dump = {human_id: human.clusters for human_id, human in hd.items()
+                   if human.last_cluster_update == current_time}
+        with open(curr_dump_path, "wb") as fd:
+            pickle.dump(to_dump, fd)
 
     return humans
