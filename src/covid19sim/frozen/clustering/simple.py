@@ -223,12 +223,12 @@ class SimplisticClusterManager(ClusterManagerBase):
             cluster_embeds = collections.defaultdict(list)
             for cluster in self.clusters:
                 embed = cluster.get_cluster_embedding(
-                    current_timestamp=self.latest_refresh_timestamp,
+                    current_timestamp=cluster.latest_update_time if self.generate_backw_compat_embeddings
+                    else self.latest_refresh_timestamp,
                     include_cluster_id=True,
                     old_compat_mode=self.generate_backw_compat_embeddings,
                 )
-                for msg in cluster.messages:
-                    cluster_embeds[msg.encounter_time].append([*embed, cluster.latest_update_time])
+                cluster_embeds[cluster.latest_update_time].append([*embed, cluster.latest_update_time])
             flat_output = []
             for timestamp in sorted(cluster_embeds.keys()):
                 flat_output.extend(cluster_embeds[timestamp])

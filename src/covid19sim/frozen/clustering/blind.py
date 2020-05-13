@@ -357,7 +357,8 @@ class BlindClusterManager(ClusterManagerBase):
             cluster_embeds = collections.defaultdict(list)
             for cluster in self.clusters:
                 embed = cluster.get_cluster_embedding(
-                    current_timestamp=self.latest_refresh_timestamp,
+                    current_timestamp=cluster.latest_update_time if self.generate_backw_compat_embeddings
+                    else self.latest_refresh_timestamp,
                     include_cluster_id=True,
                     old_compat_mode=self.generate_backw_compat_embeddings,
                 )
