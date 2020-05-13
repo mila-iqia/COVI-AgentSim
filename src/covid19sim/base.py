@@ -28,7 +28,7 @@ class Env(simpy.Environment):
         """
         initial_timestamp = datetime.datetime.combine(initial_timestamp.date(),
                                                       datetime.time())
-        self.ts_initial = 0
+        self.ts_initial = int(initial_timestamp.timestamp())
         super().__init__(self.ts_initial)
         self.initial_timestamp = initial_timestamp
 
