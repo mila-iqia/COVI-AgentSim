@@ -320,10 +320,6 @@ class NaiveCluster(ClusterBase):
         self._real_encounter_times.extend(cluster._real_encounter_times)
         self._unclustered_messages.extend(cluster._unclustered_messages)
 
-    def get_encounter_count(self):
-        """Returns the total number of encounters aggregated into this cluster."""
-        return sum([len(m) for m in self.messages_by_timestamp.values()])
-
     def get_cluster_embedding(
             self,
             current_timestamp: TimestampType,
@@ -368,6 +364,10 @@ class NaiveCluster(ClusterBase):
     def get_timestamps(self) -> typing.List[TimestampType]:
         """Returns the list of timestamps for which this cluster possesses at least one encounter."""
         return list(self.messages_by_timestamp.keys())
+
+    def get_encounter_count(self) -> int:
+        """Returns the number of encounters aggregated inside this cluster."""
+        return sum([len(msgs) for msgs in self.messages_by_timestamp.values()])
 
 
 class NaiveClusterManager(ClusterManagerBase):

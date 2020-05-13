@@ -136,6 +136,10 @@ class SimpleCluster(ClusterBase):
         """Returns the list of timestamps for which this cluster possesses at least one encounter."""
         return [self.first_update_time]  # this impl's clusters always only cover a single timestamp
 
+    def get_encounter_count(self) -> int:
+        """Returns the number of encounters aggregated inside this cluster."""
+        return len(self.messages)
+
 
 class SimplisticClusterManager(ClusterManagerBase):
     """Manages message cluster creation and updates.
