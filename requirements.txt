@@ -16,3 +16,4 @@ networkx
 tqdm
 seaborn
 pyyaml
+coverage
