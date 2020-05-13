@@ -511,7 +511,7 @@ class Location(simpy.Resource):
         self.contamination_timestamp = datetime.datetime.min
         self.contaminated_surface_probability = surface_prob
         self.max_day_contamination = 0
-        self.is_open = True
+        self.is_open_for_business = True
 
     def infectious_human(self):
         """

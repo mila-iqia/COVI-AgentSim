@@ -26,7 +26,9 @@ def test_functional_seniors_residence():
         city_x_range = (0,1000)
         city_y_range = (0,1000)
 
-        ExpConfig.load_config("functional_configs/naive_local.yml")
+        path = os.path.dirname(__file__)
+
+        ExpConfig.load_config(os.path.join(path,"functional_configs", "naive_local.yml"))
 
         env = Env(start_time)
         city = ExternalBuildCity(env, rng, city_x_range, city_y_range, start_time)
@@ -76,15 +78,14 @@ def test_functional_seniors_residence():
 
         env.run(until=simulation_days * 24 * 60 / TICK_MINUTE)
 
-
         # Check dead humans are removed from the residence
-        assert sum([h.dead for h in city.humans])==N-len(sr.humans)
+        assert sum([h.is_dead for h in city.humans])==N-len(sr.humans)
 
         # Check there are no humans that are infectious
         assert not any([h.is_infectious for h in city.humans])
 
         # Check there are some dead
-        assert sum([h.dead for h in city.humans])>0
+        assert sum([h.is_dead for h in city.humans])>0
 
         # Check some stats on number dead
         #len([h for h in city.humans if h.dead])/len(city.humans)

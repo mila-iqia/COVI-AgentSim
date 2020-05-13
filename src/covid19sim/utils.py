@@ -1528,7 +1528,11 @@ def calculate_average_infectiousness(human):
                                                                 is_infectious_tomorrow)
     return (cur_infectiousness + tomorrows_infectiousness) / 2
 
-
 def filter_open(locations):
-    """Given an iterable of locations, will return a list of those that are open"""
-    return [loc for loc in locations if loc.is_open]
+    """Given an iterable of locations, will return a list of those that are open for business"""
+    return [loc for loc in locations if loc.is_open_for_business]
+
+def filter_open_and_short_queue(locations):
+    """Given an iterable of locations, will return a list of those that are open for business
+    and with queues that are not too long"""
+    return [loc for loc in locations if loc.is_open_for_business and len(loc.queue<=MAX_STORE_QUEUE_LENGTH)]

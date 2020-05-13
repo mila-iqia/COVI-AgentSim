@@ -119,7 +119,6 @@ class Human(object):
 
         self.age = age
         self.sex = _get_random_sex(self.rng)
-        self.dead = False
         self.preexisting_conditions = _get_preexisting_conditions(self.age, self.sex, self.rng)
 
         age_modifier = 2 if self.age > 40 or self.age < 12 else 2
@@ -421,7 +420,11 @@ class Human(object):
         Returns:
             [type]: [description]
         """
-        return self.is_immune or self.recovered_timestamp == datetime.datetime.max or self.dead
+        return self.is_immune or self.is_dead
+
+    @property
+    def is_dead(self):
+        return self.recovered_timestamp == datetime.datetime.max
 
     @property
     def is_incubated(self):
@@ -839,15 +842,12 @@ class Human(object):
         return 1.0
 
     def expire(self):
-        """ This function will cause the human to expire """
-
+        """ This function will cause the human to expire, after which self.is_dead==True """
         self.recovered_timestamp = datetime.datetime.max
-        self.dead = True
         self.update_risk(recovery=True)
         self.all_symptoms, self.covid_symptoms = [], []
-        Event.log_recovery(self, self.env.timestamp, self.dead)
+        Event.log_recovery(self, self.env.timestamp, death=True)
         yield self.env.timeout(np.inf)
-
 
     def assert_state_changes(self):
         """
@@ -944,11 +944,9 @@ class Human(object):
                     # TODO - EM - What is this code for? Seems odd.
                     # Is this to "resample" the chance to never recover for a possible section infection?
                     self.never_recovers = self.rng.random() <= P_NEVER_RECOVERS[min(math.floor(self.age/10),8)]
-                    self.dead = False
-
                     self.update_risk(recovery=True)
                     self.all_symptoms, self.covid_symptoms = [], []
-                    Event.log_recovery(self, self.env.timestamp, self.dead)
+                    Event.log_recovery(self, self.env.timestamp, death=False)
                 else:
                     yield self.env.process(self.expire())
 
@@ -1075,8 +1073,8 @@ class Human(object):
         """
         if location_type == "shopping":
             grocery_store = self._select_location(location_type="stores", city=city)
-            if grocery_store is None or len(grocery_store.queue) > MAX_STORE_QUEUE_LENGTH:
-                # Either grocery stores are not open, or queue is too long, so return
+            if grocery_store is None:
+                # Either grocery stores are not open, or all queues are too long, so return
                 return
             t = _draw_random_discreet_gaussian(self.avg_shopping_time, self.scale_shopping_time, self.rng)
             with grocery_store.request() as request:
@@ -1096,7 +1094,7 @@ class Human(object):
 
         elif location_type == "work":
             t = _draw_random_discreet_gaussian(self.avg_working_minutes, self.scale_working_minutes, self.rng)
-            if self.workplace.is_open:
+            if self.workplace.is_open_for_business:
                 yield self.env.process(self.at(self.workplace, city, t))
             else: 
                 # work from home
@@ -1141,7 +1139,7 @@ class Human(object):
 
                 loc = self._select_location(location_type='miscs', city=city)
                 if loc is None:
-                    # No leisure spots are open, so return
+                    # No leisure spots are open, or without long queues, so return
                     return
                 S += 1
                 p_exp = self.rho * S ** (-self.gamma * self.adjust_gamma)
@@ -1239,7 +1237,7 @@ class Human(object):
                     p_infection = self.infectiousness * ratio * proximity_factor
                     # FIXME: remove hygiene from severity multiplier; init hygiene = 0; use sum here instead
                     reduction_factor = CONTAGION_KNOB + sum(getattr(x, "_hygiene", 0) for x in [self, h]) + mask_efficacy
-                    p_infection *= np.exp(-reduction_factor )
+                    p_infection *= np.exp(-reduction_factor)
 
                     x_human = self.rng.random() < p_infection
 
@@ -1260,7 +1258,7 @@ class Human(object):
                     p_infection = h.infectiousness * ratio * proximity_factor # &prob_infectious
                     # FIXME: remove hygiene from severity multiplier; init hygiene = 0; use sum here instead
                     reduction_factor = CONTAGION_KNOB + sum(getattr(x, "_hygiene", 0) for x in [self, h]) + mask_efficacy
-                    p_infection *= np.exp(-reduction_factor) # hack to control R0
+                    p_infection *= np.exp(-reduction_factor)
 
                     x_human = self.rng.random() < p_infection
 
@@ -1360,19 +1358,20 @@ class Human(object):
             S = self.visits.n_stores
             self.adjust_gamma = 1.0
             pool_pref = self.stores_preferences
-            locs = filter_open(city.stores)
+            # Only consider locations open for business and not too long queues
+            locs = filter_open_and_short_queue(city.stores)
             visited_locs = self.visits.stores
 
         elif location_type == "hospital":
             hospital = None
-            for hospital in sorted(city.hospitals, key=lambda x:compute_distance(self.location, x)):
+            for hospital in sorted(filter_open(city.hospitals), key=lambda x:compute_distance(self.location, x)):
                 if len(hospital.humans) < hospital.capacity:
                     return hospital
             return None
 
         elif location_type == "hospital-icu":
             icu = None
-            for hospital in sorted(city.hospitals, key=lambda x:compute_distance(self.location, x)):
+            for hospital in sorted(filter_open(city.hospitals), key=lambda x:compute_distance(self.location, x)):
                 if len(hospital.icu.humans) < hospital.icu.capacity:
                     return hospital.icu
             return None
@@ -1383,7 +1382,8 @@ class Human(object):
             pool_pref = [(compute_distance(self.location, m) + 1e-1) ** -1 for m in city.miscs if
                          m != self.location]
             pool_locs = [m for m in city.miscs if m != self.location]
-            locs = filter_open(city.miscs)
+            # Only consider locations open for business and not too long queues
+            locs = filter_open_and_short_queue(city.miscs)
             visited_locs = self.visits.miscs
 
         else:
@@ -1400,7 +1400,8 @@ class Human(object):
             cands = [(loc, pool_pref[i]) for i, loc in enumerate(cands)]
         else:
             # exploit, but can only return to locs that are open
-            cands = [(i, count) for i, count in visited_locs.items() if i in locs]
+            cands = [(i, count) for i, count in visited_locs.items() \
+                        if i.is_open_for_business and len(i.queue<=MAX_STORE_QUEUE_LENGTH)]
 
         if cands:
             cands, scores = zip(*cands)
