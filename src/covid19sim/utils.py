@@ -1535,4 +1535,4 @@ def filter_open(locations):
 def filter_open_and_short_queue(locations):
     """Given an iterable of locations, will return a list of those that are open for business
     and with queues that are not too long"""
-    return [loc for loc in locations if loc.is_open_for_business and len(loc.queue<=MAX_STORE_QUEUE_LENGTH)]
+    return [loc for loc in locations if loc.is_open_for_business and len(loc.queue)<=MAX_STORE_QUEUE_LENGTH]

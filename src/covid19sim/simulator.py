@@ -21,7 +21,7 @@ from covid19sim.frozen.utils import create_new_uid, Message, UpdateMessage, enco
 from covid19sim.utils import _normalize_scores, _get_random_sex, _get_covid_progression, \
     _get_preexisting_conditions, _draw_random_discreet_gaussian, _sample_viral_load_piecewise, \
     _get_cold_progression, _get_flu_progression, _get_allergy_progression, _get_get_really_sick, \
-    filter_open
+    filter_open, filter_open_and_short_queue
 from covid19sim.configs.constants import BIG_NUMBER, TICK_MINUTE
 from covid19sim.configs.exp_config import ExpConfig
 
@@ -1401,7 +1401,7 @@ class Human(object):
         else:
             # exploit, but can only return to locs that are open
             cands = [(i, count) for i, count in visited_locs.items() \
-                        if i.is_open_for_business and len(i.queue<=MAX_STORE_QUEUE_LENGTH)]
+                        if i.is_open_for_business and len(i.queue)<=MAX_STORE_QUEUE_LENGTH]
 
         if cands:
             cands, scores = zip(*cands)
