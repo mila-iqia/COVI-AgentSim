@@ -22,7 +22,7 @@ class ModelsTest(unittest.TestCase):
 
         with TemporaryDirectory() as preprocess_d:
             n_people = 100
-            n_days = 30
+            n_days = 10
             monitors, _ = run_simu(
                 n_people=n_people,
                 start_time=datetime.datetime(2020, 2, 28, 0, 0),
