@@ -32,15 +32,6 @@ class Env(simpy.Environment):
         super().__init__(self.ts_initial)
         self.initial_timestamp = initial_timestamp
 
-    def time(self):
-        """
-        Alias for simpy-defined `now` attribute
-
-        Returns:
-            datetime.datetime: current time in the environment
-        """
-        return self.now
-
     @property
     def timestamp(self):
         """
