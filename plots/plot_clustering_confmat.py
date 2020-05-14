@@ -56,14 +56,13 @@ for time_step, (ref_pickle_path, pred_pickle_path) in \
                 continue
             # we will now create a set of all encounters for this bob (across all clusters)
             real_contacts = [e[0] for e in ref_encounters if e[0]._sender_uid == uid]
-            real_contact_timestamps = set([e.encounter_time for e in real_contacts])
             # the length of the set is the first quantity we need for the metric
             # (i.e. how many recent encounters 'bob' has truly had with alice)
-            real_contact_occurrences = len(real_contact_timestamps)
+            real_contact_occurrences = len(real_contacts)
             # now let's find out how many times the clustering algo though we met that bob
             pred_cluster = next((c for c in pred_cluster_mgr.clusters if c.cluster_id == cluster_id), None)
             assert pred_cluster is not None
-            pred_contact_occurrences = len(pred_cluster.get_timestamps())
+            pred_contact_occurrences = pred_cluster.get_encounter_count()
             data_hash = data_hash_base + f"+encounter:{encounter_idx}"
             data_points[data_hash] = {
                 "real_contact_occurrences": real_contact_occurrences,
@@ -86,8 +85,8 @@ for p in data_points.values():
 fig = px.imshow(
     heatmap_data,
     labels=dict(
-        x=f"Predicted number of days encountered over past {max_contact_count} days",
-        y=f"Real number of days encountered over past {max_contact_count} days",
+        x=f"Predicted number of contacts over past {max_contact_count} days",
+        y=f"Real number of contacts over past {max_contact_count} days",
         color="Count"
     ),
     x=[str(n) for n in range(1, max_contact_count + 1)],
