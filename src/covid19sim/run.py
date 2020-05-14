@@ -218,35 +218,41 @@ def run_simu(n_people=None,
     env = Env(start_time)
     city_x_range = (0,1000)
     city_y_range = (0,1000)
-    city = City(env, n_people, init_percent_sick, rng, city_x_range, city_y_range, Human)
-    monitors = [EventMonitor(f=1800, dest=outfile, chunk_size=out_chunk_size), SEIRMonitor(f=1440)]
+    city = City(env, n_people, init_percent_sick, rng,
+                city_x_range, city_y_range, Human)
 
-    # run the simulation
+    # Add monitors
+    monitors = [
+        EventMonitor(f=1800, dest=outfile, chunk_size=out_chunk_size),
+        SEIRMonitor (f=1440),
+    ]
     if print_progress:
         monitors.append(TimeMonitor(1440)) # print every day
-
     if other_monitors:
         monitors += other_monitors
 
-    # run city
+    # Kickstart EventMonitor
+    monitors[0].dump()
+    monitors[0].join_iothread()
+
+    # Initiate city process, which runs every hour
     all_possible_symptoms = [""] * len(SYMPTOMS_META)
     for k, v in SYMPTOMS_META.items():
         all_possible_symptoms[v] = k
-    monitors[0].dump()
-    monitors[0].join_iothread()
-    # run this every hour
     env.process(city.run(1440/24, outfile, all_possible_symptoms, port, n_jobs))
 
-    # run humans
+    # Initiate human processes
     for human in city.humans:
         env.process(human.run(city=city))
 
-    # run monitors
+    # Initiate monitor processes
     for m in monitors:
         env.process(m.run(env, city=city))
 
+    # Run simulation until termination
     env.run(until=env.ts_initial + simulation_days*SECONDS_PER_DAY)
 
+    # Return
     return monitors, city.tracker
 
 
