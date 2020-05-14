@@ -15,7 +15,7 @@ except ImportError:
     from cached_property import cached_property
 
 from covid19sim.configs.config import *
-from covid19sim.utils import compute_distance, _get_random_area, _draw_random_discreet_gaussian, get_intervention, calculate_average_infectiousness
+from covid19sim.utils import compute_distance, _get_random_area, _draw_random_discreet_gaussian, calculate_average_infectiousness
 from covid19sim.track import Tracker
 from covid19sim.interventions import *
 from covid19sim.frozen.utils import update_uid
