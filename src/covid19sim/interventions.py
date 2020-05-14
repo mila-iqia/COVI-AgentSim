@@ -609,8 +609,11 @@ class Tracing(object):
         Returns:
             [type]: [description]
         """
-        if self.risk_model in ['manual', 'digital'] and t + s > 0:
-            risk = 1.0
+        if self.risk_model in ['manual', 'digital']:
+            if t + s > 0:
+                risk = 1.0
+            else:
+                risk = 0.0
 
         elif self.risk_model == "naive":
             risk = 1.0 - (1.0 - RISK_TRANSMISSION_PROBA) ** (t+s)
@@ -642,13 +645,17 @@ class Tracing(object):
             for human in city.humans:
                 cur_day = (human.env.timestamp - human.env.initial_timestamp).days
                 if (human.env.timestamp - human.message_info['receipt']).days >= human.message_info['delay'] or self.risk_model != "manual":
+                    old_risk = human.risk
                     if not human.is_removed and human.test_result != "positive":
                         t, s, r = self.process_messages(human)
                         human.risk = self.compute_risk(t, s, r)
 
+                    if human.risk != old_risk:
+                        self.modify_behavior(human)
+
                     human.risk_history_map[cur_day] = human.risk
-                    human.update_risk_level()
-                    human.prev_risk_history_map[cur_day] = human.risk
+                    # human.update_risk_level()
+                    # human.prev_risk_history_map[cur_day] = human.risk
 
             if ExpConfig.get('COLLECT_TRAINING_DATA'):
                 city.humans = integrated_risk_pred(city.humans, city.start_time, city.current_day, city.env.timestamp.hour, all_possible_symptoms, port=port, n_jobs=n_jobs, data_path=data_path)
@@ -725,19 +732,5 @@ class TestCapacity(CityInterventions):
 
         Args:
             city ([type]): [description]
-        """
-        pass
-
-class TransformerTracing(object):
-    """
-    [summary]
-    """
-    def modify_behavior(self, human):
-        """
-        [summary]
-
-        Args:
-            object ([type]): [description]
-            human ([type]): [description]
         """
         pass

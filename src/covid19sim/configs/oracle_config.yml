@@ -18,7 +18,7 @@ ABSOLUTE_P_HAS_APP : True # If False, we modulate P_HAS_APP with carefulness and
 
 # PATHS
 TRANSFORMER_EXP_PATH : "" #"CTT-SHIPMENT-0"
-CLUSTER_PATH : "output/clusters.json"
+CLUSTER_PATH : "output/clusters"
 
 # Inference & Training
 INFECTIOUSNESS_N_DAYS_HISTORY : 14

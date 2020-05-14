@@ -16,8 +16,9 @@ from covid19sim.configs.config import *
 from collections import deque
 
 from covid19sim.frozen.clusters import Clusters
-from covid19sim.frozen.utils import create_new_uid, Message, UpdateMessage, encode_message, \
-    encode_update_message
+import covid19sim.frozen.helper
+from covid19sim.frozen.utils import create_new_uid, Message, UpdateMessage, encode_message, encode_update_message
+
 from covid19sim.utils import _normalize_scores, _get_random_sex, _get_covid_progression, \
     _get_preexisting_conditions, _draw_random_discreet_gaussian, _sample_viral_load_piecewise, \
     _get_cold_progression, _get_flu_progression, _get_allergy_progression, _get_get_really_sick, \
@@ -86,7 +87,47 @@ class Human(object):
     [summary]
     """
 
-    def __init__(self, env, city, name, age, rng, infection_timestamp, household, workplace, profession, rho=0.3, gamma=0.21, symptoms=[], test_results=None):
+    _MESSAGE_FIELDS = {
+        # Static fields
+        'name',
+        'age',
+        # TODO: Should be reformatted to int timestamp
+        'sex',
+        'obs_age',
+        # TODO: Should be reformatted to int timestamp
+        'obs_sex',
+        'preexisting_conditions',
+        'obs_preexisting_conditions',
+
+        # Medical fields
+        'infectiousnesses',
+        'infection_timestamp',
+        # TODO: Should be reformatted to int timestamp
+        'recovered_timestamp',
+        # TODO: Should be reformatted to int timestamp
+        'test_time',
+        'rolling_all_symptoms',
+        'rolling_all_reported_symptoms',
+
+        # Risk fields
+        'risk',
+        'clusters',
+        'messages',
+        'exposure_message',
+        'update_messages',
+        'carefulness',
+        'has_app',
+
+        # Misc fields
+        # TODO: Should replaced by a light rng
+        'rng'
+    }
+
+    _ALL_POSSIBLE_SYMPTOMS = [k
+                              for k, v in sorted(list(covid19sim.frozen.helper.SYMPTOMS_META.items()),
+                                                 key=lambda item: item[1])]
+
+    def __init__(self, env, city, name, age, rng, has_app, infection_timestamp, household, workplace, profession, rho=0.3, gamma=0.21, symptoms=[], test_results=None):
         """
         [summary]
 
@@ -110,6 +151,7 @@ class Human(object):
         self._events = []
         self.name = f"human:{name}"
         self.rng = rng
+        self.has_app = has_app
         self.profession = profession
         self.is_healthcare_worker = True if profession == "healthcare" else False
         self.assign_household(household)
@@ -127,10 +169,6 @@ class Human(object):
             self.carefulness = (round(self.rng.normal(55, 10)) + self.age/2) / 100
         else:
             self.carefulness = (round(self.rng.normal(25, 10)) + self.age/2) / 100
-        if ExpConfig.get('ABSOLUTE_P_HAS_APP'):
-            self.has_app = ExpConfig.get('P_HAS_APP')
-        else:
-            self.has_app = self.rng.rand() < (ExpConfig.get('P_HAS_APP') / age_modifier) + (self.carefulness / 2)
 
         # allergies
         self.has_allergies = self.rng.rand() < P_ALLERGIES
@@ -140,7 +178,7 @@ class Human(object):
 
         # logged info can be quite different
         self.has_logged_info = self.has_app and self.rng.rand() < self.carefulness
-        self.obs_is_healthcare_worker = True if self.is_healthcare_worker and rng.random()<0.9 else False # 90% of the time, healthcare workers will declare it
+        self.obs_is_healthcare_worker = True if self.is_healthcare_worker and self.rng.random()<0.9 else False # 90% of the time, healthcare workers will declare it
         self.obs_age = self.age if self.has_app and self.has_logged_info else None
         self.obs_sex = self.sex if self.has_app and self.has_logged_info else None
         self.obs_preexisting_conditions = self.preexisting_conditions if self.has_app and self.has_logged_info else []
@@ -229,6 +267,9 @@ class Human(object):
         # create 24 timeslots to do your updating
         time_slot = rng.randint(0, 24)
         self.time_slots = [int((time_slot + i*24/ExpConfig.get('UPDATES_PER_DAY')) % 24) for i in range(ExpConfig.get('UPDATES_PER_DAY'))]
+        # keep track of when the risk/clusters were last updated (i.e. latest timeslot date)
+        self.last_cluster_update = None
+        self.last_risk_update = None
 
         # symptoms
         self.symptom_start_time = None
@@ -283,7 +324,6 @@ class Human(object):
         self.count_shop=0
 
         self.work_start_hour = self.rng.choice(range(7, 17), 3)
-
 
 
     def assign_household(self, location):
@@ -907,11 +947,6 @@ class Human(object):
         Yields:
             [type]: [description]
         """
-        """
-           1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24
-           State  h h h h h h h h h sh sh h  h  h  ac h  h  h  h  h  h  h  h  h
-        """
-
         self.household.humans.add(self)
 
         while True:
@@ -970,7 +1005,11 @@ class Human(object):
             # self.how_am_I_feeling = 1.0 (great) --> rest_at_home = False
             if not self.rest_at_home:
                 # set it once for the rest of the disease path
-                if self.rng.random() > self.how_am_I_feeling():
+                i_feel = self.how_am_I_feeling()
+                # If you are in the GREEN level, modulate the mobility using FEELING_KNOB
+                if self.rec_level == 0:
+                    i_feel = GREEN_FEELING_KNOB * i_feel
+                if self.rng.random() > i_feel:
                     self.rest_at_home = True
 
             # happens when recovered
@@ -1422,6 +1461,52 @@ class Human(object):
             return None
         
 
+    def get_message_dict(self):
+        """
+        Copy the object's state from self.__dict__ which contains
+        all our instance attributes. Always use the dict.copy()
+        method to avoid modifying the original state.
+
+        Returns:
+            [type]: [description]
+        """
+        state = self.__dict__.copy()
+        # Remove the unpicklable entries.
+        if state.get("env"):
+            state['messages'] = [encode_message(message) for message in self.contact_book.messages if
+                                 # match day; ugly till refactor
+                                 message[2] == self.contact_book.messages[-1][2]]
+            state['update_messages'] = [encode_update_message(update_message) for update_message in
+                                        self.contact_book.update_messages if
+                                        # match day; ugly till refactor
+                                        update_message[3] == self.contact_book.update_messages[-1][3]]
+
+            state["rolling_all_symptoms"] = \
+                covid19sim.frozen.helper.symptoms_to_np(self.rolling_all_symptoms,
+                                                        self._ALL_POSSIBLE_SYMPTOMS)
+
+            state["rolling_all_reported_symptoms"] = \
+                covid19sim.frozen.helper.symptoms_to_np(self.rolling_all_reported_symptoms,
+                                                        self._ALL_POSSIBLE_SYMPTOMS)
+
+            state["preexisting_conditions"] = \
+                covid19sim.frozen.helper.conditions_to_np(self.preexisting_conditions)
+
+            state["obs_preexisting_conditions"] = \
+                covid19sim.frozen.helper.conditions_to_np(self.obs_preexisting_conditions)
+
+            # Inference server is expecting test_time to be the time of a positive test
+            # TODO: move this logic out in a structure that will be used to send the data
+            #  to the server
+            if state['test_result'] == "negative":
+                state['test_time'] = datetime.datetime.max
+
+        for field in list(state.keys()):
+            if field not in Human._MESSAGE_FIELDS:
+                del state[field]
+
+        return state
+
     def __getstate__(self):
         """
         Copy the object's state from self.__dict__ which contains
@@ -1431,6 +1516,8 @@ class Human(object):
         Returns:
             [type]: [description]
         """
+        warnings.warn("This should be not used to send the Human as a message. "
+                      "Deprecated in favor of Human.get_message_dict()", DeprecationWarning)
         state = self.__dict__.copy()
         # Remove the unpicklable entries.
         if state.get("env"):
@@ -1464,6 +1551,11 @@ class Human(object):
             del state['tracing_method']
             if state.get('_workplace'):
                 del state['_workplace']
+            # Inference server is expecting test_time to be the time of a positive test
+            # TODO: move this logic out in a structure that will be used to send the data
+            #  to the server
+            if state['test_result'] == "negative":
+                state['test_time'] = datetime.datetime.max
 
         # add a stand-in for property
         # state["all_reported_symptoms"] = self.all_reported_symptoms
@@ -1662,7 +1754,7 @@ class Human(object):
                     self.city.hd[message.unobs_id].contact_book.update_messages.append(update_message)
                     self.contact_book.sent_messages_by_day[day][idx] = Message(my_old_message.uid, new_risk_level, my_old_message.day, my_old_message.unobs_id)
 
-                    self.city.tracker.track_update_messages(self, self.city.hd[message.unobs_id], new_risk_level)
+                    self.city.tracker.track_update_messages(self, self.city.hd[message.unobs_id], {'reason':"risk_update", "new_risk_level":new_risk_level})
 
         if cur_day in self.prev_risk_history_map.keys():
             prev_risk_level = min(_proba_to_risk_level(self.prev_risk_history_map[cur_day]), 15)

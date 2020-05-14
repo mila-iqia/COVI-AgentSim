@@ -9,7 +9,7 @@ SHOULD_MODIFY_BEHAVIOR : True
 USE_ORACLE: False
 
 ## INTERVENTIONS
-INTERVENTION_DAY : -1 # TODO @Prateek: We can't run this with a positive intervention day because base.py line 271 -- why?git c
+INTERVENTION_DAY : -1
 INTERVENTION : "Tracing"
 PERCENT_FOLLOW : 1.0
 P_HAS_APP : 1.0
@@ -17,7 +17,7 @@ ABSOLUTE_P_HAS_APP : True # If False, we modulate P_HAS_APP with carefulness and
 
 
 # PATHS
-CLUSTER_PATH : "output/"
+CLUSTER_PATH : "output/clusters"
 
 # Inference & Training
 INFECTIOUSNESS_N_DAYS_HISTORY : 14

@@ -6,6 +6,7 @@ USE_INFERENCE_SERVER : True
 RISK_MODEL : "transformer" # "naive"  "manual", "digital", "transformer"
 INIT_PERCENT_SICK : 0.1
 SHOULD_MODIFY_BEHAVIOR : True
+USE_ORACLE: False
 
 ## INTERVENTIONS
 INTERVENTION_DAY : 10
@@ -13,11 +14,10 @@ INTERVENTION : "Tracing"
 PERCENT_FOLLOW : 1.0
 P_HAS_APP : 0.5
 ABSOLUTE_P_HAS_APP : False # If False, we modulate P_HAS_APP with carefulness and age
-USE_ORACLE: False
 
 
 # PATHS
-CLUSTER_PATH : "output/clusters.json"
+CLUSTER_PATH : "output/clusters"
 TRANSFORMER_EXP_PATH : "../src/covid19sim/CTT-SHIPMENT-0"
 
 # Inference & Training
@@ -31,10 +31,10 @@ CLUSTER_TYPE : "heuristic" # "random", "graph"
 
 
 # TRACING RISK MODEL PARAMETERS  (non-ML)
-TRACE_SYMPTOMS : True
+TRACE_SYMPTOMS : False
 TRACE_RISK_UPDATE : False
 TRACING_ORDER : 1
-UPDATES_PER_DAY : 1
+UPDATES_PER_DAY : 4
 
 RISK_MAPPING : [0., 0.01, 0.20009698, 0.3337032 , 0.42782824,
                 0.53769504, 0.62646553, 0.72454666, 0.79687407, 0.8408014,
