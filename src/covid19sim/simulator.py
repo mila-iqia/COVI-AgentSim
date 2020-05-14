@@ -21,7 +21,7 @@ from covid19sim.frozen.utils import create_new_uid, Message, UpdateMessage, enco
 from covid19sim.utils import _normalize_scores, _get_random_sex, _get_covid_progression, \
     _get_preexisting_conditions, _draw_random_discreet_gaussian, _sample_viral_load_piecewise, \
     _get_cold_progression, _get_flu_progression, _get_allergy_progression, _get_get_really_sick, \
-    filter_open, filter_open_and_short_queue
+    filter_open, filter_queue_max
 from covid19sim.configs.constants import BIG_NUMBER, TICK_MINUTE
 from covid19sim.configs.exp_config import ExpConfig
 
@@ -424,6 +424,12 @@ class Human(object):
 
     @property
     def is_dead(self):
+        """
+        Returns True if the human is dead, otherwise False.
+
+        Returns:
+            bool: True if dead, False if not.
+        """
         return self.recovered_timestamp == datetime.datetime.max
 
     @property
@@ -842,7 +848,14 @@ class Human(object):
         return 1.0
 
     def expire(self):
-        """ This function will cause the human to expire, after which self.is_dead==True """
+        """ 
+        This function (generator) will cause the human to expire, after which self.is_dead==True.
+        Yields self.env.timeout(np.inf), which when passed to env.procces will inactivate self
+        for the remainder of the simulation.
+        
+        Yields:
+            generator
+        """
         self.recovered_timestamp = datetime.datetime.max
         self.update_risk(recovery=True)
         self.all_symptoms, self.covid_symptoms = [], []
@@ -987,22 +1000,19 @@ class Human(object):
             elif ( hour in self.shopping_hours and
                    day in self.shopping_days and
                    self.count_shop<=self.max_shop_per_week and
-                   not self.rest_at_home and 
-                   filter_open(city.stores)!=[]):
+                   not self.rest_at_home):
                 yield self.env.process(self.excursion(city, "shopping"))
 
             elif ( hour in self.exercise_hours and
                     day in self.exercise_days and
                     self.count_exercise<=self.max_exercise_per_week and
-                    not self.rest_at_home and 
-                    filter_open(city.parks)!=[]):
+                    not self.rest_at_home):
                 yield  self.env.process(self.excursion(city, "exercise"))
 
             elif ( self.env.is_weekend() and
                     self.rng.random() < 0.5 and
                     not self.rest_at_home and
-                    not self.count_misc<=self.max_misc_per_week
-                    and filter_open(city.misc)!=[]):
+                    not self.count_misc<=self.max_misc_per_week):
                 yield  self.env.process(self.excursion(city, "leisure"))
 
             yield self.env.process(self.at(self.household, city, 60))
@@ -1237,7 +1247,7 @@ class Human(object):
                     p_infection = self.infectiousness * ratio * proximity_factor
                     # FIXME: remove hygiene from severity multiplier; init hygiene = 0; use sum here instead
                     reduction_factor = CONTAGION_KNOB + sum(getattr(x, "_hygiene", 0) for x in [self, h]) + mask_efficacy
-                    p_infection *= np.exp(-reduction_factor)
+                    p_infection *= np.exp(-reduction_factor * h.n_infectious_contacts)
 
                     x_human = self.rng.random() < p_infection
 
@@ -1258,7 +1268,7 @@ class Human(object):
                     p_infection = h.infectiousness * ratio * proximity_factor # &prob_infectious
                     # FIXME: remove hygiene from severity multiplier; init hygiene = 0; use sum here instead
                     reduction_factor = CONTAGION_KNOB + sum(getattr(x, "_hygiene", 0) for x in [self, h]) + mask_efficacy
-                    p_infection *= np.exp(-reduction_factor)
+                    p_infection *= np.exp(-reduction_factor * h.n_infectious_contacts)
 
                     x_human = self.rng.random() < p_infection
 
@@ -1359,7 +1369,7 @@ class Human(object):
             self.adjust_gamma = 1.0
             pool_pref = self.stores_preferences
             # Only consider locations open for business and not too long queues
-            locs = filter_open_and_short_queue(city.stores)
+            locs = filter_queue_max(filter_open(city.stores))
             visited_locs = self.visits.stores
 
         elif location_type == "hospital":
@@ -1383,7 +1393,7 @@ class Human(object):
                          m != self.location]
             pool_locs = [m for m in city.miscs if m != self.location]
             # Only consider locations open for business and not too long queues
-            locs = filter_open_and_short_queue(city.miscs)
+            locs = filter_queue_max(filter_open(city.miscs))
             visited_locs = self.visits.miscs
 
         else:

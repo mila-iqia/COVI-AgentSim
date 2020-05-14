@@ -4,14 +4,14 @@ import os
 import numpy as np
 
 from covid19sim.simulator import Human
-from covid19sim.base import City, Env
-from covid19sim.cities import ExternalBuildCity
+from covid19sim.base import City, Env, EmptyCity
 from covid19sim.monitors import EventMonitor, TimeMonitor, SEIRMonitor
 from covid19sim.configs.exp_config import ExpConfig
 from covid19sim.configs import config
 from covid19sim.frozen.helper import SYMPTOMS_META, SYMPTOMS_META_IDMAP
 from covid19sim.configs.constants import TICK_MINUTE
 import datetime
+from pathlib import Path
 
 def test_functional_seniors_residence():
     """ Run a simulation of 1 infection in a seniors residence, and perform some sanity checks """
@@ -26,12 +26,12 @@ def test_functional_seniors_residence():
         city_x_range = (0,1000)
         city_y_range = (0,1000)
 
-        path = os.path.dirname(__file__)
-
-        ExpConfig.load_config(os.path.join(path,"functional_configs", "naive_local.yml"))
+        # Find the test_configs directory, and load the required config yaml
+        path = Path(__file__).parent
+        ExpConfig.load_config(path/"test_configs"/"naive_local.yml")
 
         env = Env(start_time)
-        city = ExternalBuildCity(env, rng, city_x_range, city_y_range, start_time)
+        city = EmptyCity(env, rng, city_x_range, city_y_range, start_time)
 
         sr = city.create_location(config.LOCATION_DISTRIBUTION['senior_residency'], 'senior_residency', 0, area=1000)
         city.senior_residencys.append(sr)
