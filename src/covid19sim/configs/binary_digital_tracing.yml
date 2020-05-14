@@ -25,7 +25,7 @@ MP_BATCHSIZE : "auto"
 MP_N_JOBS : "1"
 MP_BACKEND : "loky"
 DUMP_CLUSTERS : True
-CLUSTER_TYPE : "heuristic" # "random", "graph"
+CLUSTER_ALGO_TYPE : "blind" # should be in ["old", "blind", "naive", "perfect", "simple"]
 
 
 # TRACING RISK MODEL PARAMETERS  (non-ML)

@@ -72,7 +72,8 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
             "log_path": log_path,
             "time_slot": time_slot,
             "risk_model": ExpConfig.get('RISK_MODEL'),
-            "oracle": ExpConfig.get("USE_ORACLE")
+            "oracle": ExpConfig.get("USE_ORACLE"),
+            "CLUSTER_ALGO_TYPE": ExpConfig.get("CLUSTER_ALGO_TYPE")
         })
         human.contact_book.update_messages = []
         human.contact_book.messages = []
