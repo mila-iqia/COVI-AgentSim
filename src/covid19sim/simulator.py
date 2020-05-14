@@ -1224,7 +1224,7 @@ class Human(object):
 
     def at(self, location, city, duration):
         """
-        Enter/Exit human to a `location` for some `duration`.
+        Enter/Exit human to/from a `location` for some `duration`.
         Once human is at a location, encounters are sampled.
         During the stay, human is likely to be infected either by a contagion or
         through environmental transmission.
