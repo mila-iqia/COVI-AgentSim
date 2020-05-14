@@ -362,7 +362,8 @@ class BlindClusterManager(ClusterManagerBase):
                     include_cluster_id=True,
                     old_compat_mode=self.generate_backw_compat_embeddings,
                 )
-                cluster_embeds[cluster.latest_update_time].append([*embed, cluster.latest_update_time])
+                cluster_embeds[cluster.latest_update_time].append(
+                    [*embed, cluster.latest_update_time])
             flat_output = []
             for timestamp in sorted(cluster_embeds.keys()):
                 flat_output.extend(cluster_embeds[timestamp])
@@ -379,9 +380,8 @@ class BlindClusterManager(ClusterManagerBase):
         if self.generate_embeddings_by_timestamp:
             cluster_flags = collections.defaultdict(list)
             for cluster in self.clusters:
-                flags = cluster._get_cluster_exposition_flag()
-                for msg in cluster.messages:
-                    cluster_flags[msg.encounter_time].append(flags)
+                cluster_flags[cluster.latest_update_time].append(
+                    cluster._get_cluster_exposition_flag())
             flat_output = []
             for timestamp in sorted(cluster_flags.keys()):
                 flat_output.extend(cluster_flags[timestamp])
