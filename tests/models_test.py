@@ -346,11 +346,10 @@ class ModelsTest(unittest.TestCase):
                                                      prev_observed['test_results'][:13]).all())
                                 except AssertionError as error:
                                     # If a human is tested exactly at the time of his time slot, the result will only be
-                                    # recorded the next day for the previous day because inference event happens before
-                                    # human events
+                                    # recorded the next day since inference event happens before human events
                                     if last_test_time + datetime.timedelta(days=1) == current_datetime:
                                         warnings.warn(f"Human {h_i + 1} got tested exactly 1 day ago "
-                                                      f"and only reported today. "
+                                                      f"which is only reported today. "
                                                       f"current_datetime {str(current_datetime)}, "
                                                       f"current_day {current_day}, "
                                                       f"hour {hour}: {str(error)}")
@@ -373,7 +372,20 @@ class ModelsTest(unittest.TestCase):
 
                                 if unobserved['is_exposed'] != prev_unobserved['is_exposed']:
                                     if unobserved['is_exposed']:
-                                        self.assertEqual(unobserved['exposure_day'], 0)
+                                        try:
+                                            self.assertEqual(unobserved['exposure_day'], 0)
+                                        except AssertionError as error:
+                                            # If a human is exposed exactly at the time of his time slot, the result will only be
+                                            # recorded the next day since inference event happens before human events
+                                            if human_hour_log['infection_timestamp'] + datetime.timedelta(days=1) == \
+                                                    current_datetime:
+                                                warnings.warn(f"Human {h_i + 1} got exposed exactly 1 day ago "
+                                                              f"which is only reported today. "
+                                                              f"current_datetime {str(current_datetime)}, "
+                                                              f"current_day {current_day}, "
+                                                              f"hour {hour}: {str(error)}")
+                                            else:
+                                                raise
                                         self.assertEqual(prev_unobserved['infectiousness'][0], 0)
                                     else:
                                         self.assertEqual(prev_unobserved['exposure_day'], 13)
