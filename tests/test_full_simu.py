@@ -9,7 +9,6 @@ from tempfile import TemporaryDirectory
 from covid19sim.run import run_simu
 from covid19sim.base import Event
 from covid19sim.configs.exp_config import ExpConfig
-from tests.utils import start_inference_server
 
 class FullUnitTest(unittest.TestCase):
 
@@ -17,9 +16,7 @@ class FullUnitTest(unittest.TestCase):
         """
             run one simulation and ensure json files are correctly populated and most of the users have activity
         """
-        ExpConfig.load_config(os.path.join(os.path.dirname(__file__), "../src/covid19sim/configs/test_config.yml"))
-        server_process = start_inference_server()
-        assert server_process.is_alive()
+        ExpConfig.load_config(os.path.join(os.path.dirname(__file__), "../src/covid19sim/configs/naive_config.yml"))
 
         with TemporaryDirectory() as d:
             outfile = os.path.join(d, "data")
@@ -27,7 +24,7 @@ class FullUnitTest(unittest.TestCase):
             monitors, _ = run_simu(
                 n_people=n_people,
                 start_time=datetime.datetime(2020, 2, 28, 0, 0),
-                simulation_days=10,
+                simulation_days=20,
                 outfile=outfile,
                 init_percent_sick=0.1,
                 out_chunk_size=500
@@ -40,8 +37,6 @@ class FullUnitTest(unittest.TestCase):
             with zipfile.ZipFile(f"{outfile}.zip", 'r') as zf:
                 for pkl in zf.namelist():
                     data.extend(pickle.loads(zf.read(pkl)))
-
-        server_process.kill()
 
         self.assertTrue(len(data) > 0)
 
@@ -62,10 +57,8 @@ class SeedUnitTest(unittest.TestCase):
         self.test_seed = 136
         self.n_people = 100
         self.start_time = datetime.datetime(2020, 2, 28, 0, 0)
-        self.simulation_days = 10
-        ExpConfig.load_config(os.path.join(os.path.dirname(__file__), "../src/covid19sim/configs/test_config.yml"))
-        server_process = start_inference_server()
-        assert server_process.is_alive()
+        self.simulation_days = 20
+        ExpConfig.load_config(os.path.join(os.path.dirname(__file__), "../src/covid19sim/configs/naive_config.yml"))
 
         with TemporaryDirectory() as d1, TemporaryDirectory() as d2:
             of1 = os.path.join(d1, "data")
@@ -109,7 +102,6 @@ class SeedUnitTest(unittest.TestCase):
             self.assertTrue(md5sum1 == md5sum2,
                             msg=f"Two simulations run with the same seed "
                             f"({self.test_seed}) yielded different results")
-        server_process.kill()
 
     def test_sim_diff_seed(self):
         """
@@ -118,10 +110,8 @@ class SeedUnitTest(unittest.TestCase):
         self.test_seed = 136
         self.n_people = 100
         self.start_time = datetime.datetime(2020, 2, 28, 0, 0)
-        self.simulation_days = 10
-        ExpConfig.load_config(os.path.join(os.path.dirname(__file__), "../src/covid19sim/configs/test_config.yml"))
-        server_process = start_inference_server()
-        assert server_process.is_alive()
+        self.simulation_days = 20
+        ExpConfig.load_config(os.path.join(os.path.dirname(__file__), "../src/covid19sim/configs/naive_config.yml"))
 
         with TemporaryDirectory() as d1, TemporaryDirectory() as d2:
             of1 = os.path.join(d1, "data")
@@ -166,4 +156,3 @@ class SeedUnitTest(unittest.TestCase):
                              msg=f"Two simulations run with different seeds "
                              f"({self.test_seed},{self.test_seed+1}) yielded "
                              f"the same result")
-        server_process.kill()

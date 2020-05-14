@@ -19,13 +19,11 @@ class ModelsTest(unittest.TestCase):
         """
 
         # Load the experimental configuration
-        ExpConfig.load_config(os.path.join(os.path.dirname(__file__), "../src/covid19sim/configs/test_config.yml"))
-        server_process = start_inference_server()
-        assert server_process.is_alive()
+        ExpConfig.load_config(os.path.join(os.path.dirname(__file__), "../src/covid19sim/configs/naive_config.yml"))
 
         with TemporaryDirectory() as d:
             n_people = 100
-            n_days = 10
+            n_days = 20
 
             monitors, _ = run_simu(
                 n_people=n_people,
@@ -40,8 +38,6 @@ class ModelsTest(unittest.TestCase):
             days_output = glob.glob(f"{d}/daily_outputs/*/")
             days_output.sort(key=lambda p: int(p.split(os.path.sep)[-2]))
             self.assertEqual(len(days_output), n_days - ExpConfig.get('INTERVENTION_DAY'))
-
-            server_process.kill()
 
             output = [[]] * len(days_output)
 
