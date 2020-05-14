@@ -1527,3 +1527,20 @@ def calculate_average_infectiousness(human):
     tomorrows_infectiousness = human.get_infectiousness_for_day(human.env.timestamp + datetime.timedelta(days=1),
                                                                 is_infectious_tomorrow)
     return (cur_infectiousness + tomorrows_infectiousness) / 2
+
+def filter_open(locations):
+    """Given an iterable of locations, returns a list of those that are open for business.
+    
+    Yields:
+        list
+    """
+    return [loc for loc in locations if loc.is_open_for_business]
+
+def filter_queue_max(locations):
+    """Given an iterable of locations, will return a list of those
+    with queues that are not too long.
+    
+    Yields:
+        list
+    """
+    return [loc for loc in locations if len(loc.queue)<=MAX_STORE_QUEUE_LENGTH]

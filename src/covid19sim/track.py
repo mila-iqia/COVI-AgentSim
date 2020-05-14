@@ -160,10 +160,11 @@ class Tracker(object):
         self.sex_distribution = pd.DataFrame([h.sex for h in self.city.humans])
         # print("gender distribution\n", self.gender_distribution.describe())
 
-        self.house_age = pd.DataFrame([np.mean([h.age for h in house.residents]) for house in self.city.households])
-        self.house_size = pd.DataFrame([len(house.residents) for house in self.city.households])
-        print("house age distribution\n", self.house_age.describe())
-        print("house size distribution\n", self.house_size.describe())
+        if self.city.households:
+            self.house_age = pd.DataFrame([np.mean([h.age for h in house.residents]) for house in self.city.households])
+            self.house_size = pd.DataFrame([len(house.residents) for house in self.city.households])
+            print("house age distribution\n", self.house_age.describe())
+            print("house size distribution\n", self.house_size.describe())
 
         self.frac_asymptomatic = sum(h.is_asymptomatic for h in self.city.humans)/len(self.city.humans)
         print("asymptomatic fraction", self.frac_asymptomatic)
