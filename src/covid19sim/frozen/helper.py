@@ -48,6 +48,10 @@ SYMPTOMS_META = {
     'aches': 19
 }
 
+# Index SYMPTOMS_META by ID
+SYMPTOMS_META_IDMAP = [""] * len(SYMPTOMS_META)
+for k, v in SYMPTOMS_META.items():
+    SYMPTOMS_META_IDMAP[v] = k
 
 def exposure_array(human_infection_timestamp, date):
     # identical to human.exposure_array
