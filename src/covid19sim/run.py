@@ -218,7 +218,7 @@ def run_simu(n_people=None,
     env = Env(start_time)
     city_x_range = (0,1000)
     city_y_range = (0,1000)
-    city = City(env, n_people, init_percent_sick, rng, city_x_range, city_y_range, start_time, Human)
+    city = City(env, n_people, init_percent_sick, rng, city_x_range, city_y_range, Human)
     monitors = [EventMonitor(f=1800, dest=outfile, chunk_size=out_chunk_size), SEIRMonitor(f=1440)]
 
     # run the simulation
@@ -235,7 +235,7 @@ def run_simu(n_people=None,
     monitors[0].dump()
     monitors[0].join_iothread()
     # run this every hour
-    env.process(city.run(1440/24, outfile, start_time, all_possible_symptoms, port, n_jobs))
+    env.process(city.run(1440/24, outfile, all_possible_symptoms, port, n_jobs))
 
     # run humans
     for human in city.humans:

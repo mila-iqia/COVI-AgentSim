@@ -93,7 +93,7 @@ class City(simpy.Environment):
     City environment
     """
 
-    def __init__(self, env, n_people, init_percent_sick, rng, x_range, y_range, start_time, Human):
+    def __init__(self, env, n_people, init_percent_sick, rng, x_range, y_range, Human):
         """
 
         Args:
@@ -103,7 +103,6 @@ class City(simpy.Environment):
             rng (np.random.RandomState): Random number generator
             x_range (tuple): (min_x, max_x)
             y_range (tuple): (min_y, max_y)
-            start_time (datetime.datetime): City's initial datetime
             init_percent_sick (float): % of humans sick at the start of the simulation
             Human (covid19.simulator.Human): Class for the city's human instances
         """
@@ -114,7 +113,6 @@ class City(simpy.Environment):
         self.total_area = (x_range[1] - x_range[0]) * (y_range[1] - y_range[0])
         self.n_people = n_people
         self.init_percent_sick = init_percent_sick
-        self.start_time = start_time
         self.last_date_to_check_tests = self.env.timestamp.date()
         self.test_count_today = defaultdict(int)
         self.test_type_preference = list(zip(*sorted(TEST_TYPES.items(), key=lambda x:x[1]['preference'])))[0]
@@ -134,6 +132,10 @@ class City(simpy.Environment):
         # self.tracker.track_initialized_covid_params(self.humans)
 
         self.intervention = None
+
+    @property
+    def start_time(self):
+        return datetime.datetime.fromtimestamp(self.env.ts_initial)
 
     def create_location(self, specs, type, name, area=None):
         """
@@ -411,14 +413,13 @@ class City(simpy.Environment):
             h.stores_preferences = [(compute_distance(h.household, s) + 1e-1) ** -1 for s in self.stores]
             h.parks_preferences = [(compute_distance(h.household, s) + 1e-1) ** -1 for s in self.parks]
 
-    def run(self, duration, outfile, start_time, all_possible_symptoms, port, n_jobs):
+    def run(self, duration, outfile, all_possible_symptoms, port, n_jobs):
         """
         Run the City DOCTODO(improve this)
 
         Args:
             duration (int): duration of a step, in minutes.
             outfile (str): may be None, the run's output file to write to
-            start_time (datetime.datetime): useless arg << FIXME
             all_possible_symptoms (dict): copy of SYMPTOMS_META (config.py)
             port (int): the port for integrated_risk_pred when updating the humans'
                 risk
