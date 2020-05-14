@@ -141,7 +141,7 @@ class ModelsHelperTest(unittest.TestCase):
 
     def test_encode_test_result(self):
         self.assertEqual(encode_test_result('positive'), 1)
-        self.assertEqual(encode_test_result('negative'), -1)
         self.assertEqual(encode_test_result('POSITIVE'), 1)
+        self.assertEqual(encode_test_result('negative'), -1)
         self.assertEqual(encode_test_result('NEGATIVE'), -1)
         self.assertEqual(encode_test_result(None), 0)

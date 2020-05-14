@@ -440,7 +440,7 @@ def proc_human(params, inference_engine=None):
         )
 
     # Format for supervised learning / transformer inference
-    todays_date = params["start"] + datetime.timedelta(days=params["current_day"])
+    todays_date = params["start"] + datetime.timedelta(days=params["current_day"], hours=params["time_slot"])
     is_exposed, exposure_day = covid19sim.frozen.helper.exposure_array(human.infection_timestamp, todays_date)
     is_recovered, recovery_day = covid19sim.frozen.helper.recovered_array(human.recovered_timestamp, todays_date)
     candidate_encounters, exposure_encounter = covid19sim.frozen.helper.candidate_exposures(human, todays_date)

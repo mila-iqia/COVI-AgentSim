@@ -76,7 +76,7 @@ def recovered_array(human_recovered_timestamp, date):
 def get_test_result_array(test_results, date):
     # identical to human.get_test_result_array
     results = np.zeros(14)
-    for test_result, test_time in reversed(test_results):
+    for test_result, test_time in test_results:
         result_day = (date - test_time).days
         if result_day >= 0 and result_day < 14:
             results[result_day] = test_result
