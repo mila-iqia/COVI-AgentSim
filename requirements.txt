@@ -16,4 +16,4 @@ networkx
 tqdm
 seaborn
 pyyaml
-coverage
+pytest-cov==2.8.1
