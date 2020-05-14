@@ -16,3 +16,5 @@ networkx
 tqdm
 seaborn
 pyyaml
+omegaconf
+hydra-core
