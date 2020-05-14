@@ -17,7 +17,7 @@ ABSOLUTE_P_HAS_APP : True # If False, we modulate P_HAS_APP with carefulness and
 
 
 # PATHS
-TRANSFORMER_EXP_PATH : "" #"CTT-SHIPMENT-0"
+TRANSFORMER_EXP_PATH : "https://drive.google.com/file/d/1Z7g3gKh2kWFSmK2Yr19MQq0blOWS5st0"
 CLUSTER_PATH : "output/clusters"
 
 # Inference & Training

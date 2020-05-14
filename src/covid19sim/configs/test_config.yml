@@ -18,7 +18,7 @@ ABSOLUTE_P_HAS_APP : False # If False, we modulate P_HAS_APP with carefulness an
 
 # PATHS
 CLUSTER_PATH : "output/clusters"
-TRANSFORMER_EXP_PATH : "../src/covid19sim/CTT-SHIPMENT-0"
+TRANSFORMER_EXP_PATH : "https://drive.google.com/file/d/1Z7g3gKh2kWFSmK2Yr19MQq0blOWS5st0"
 
 # Inference & Training
 INFECTIOUSNESS_N_DAYS_HISTORY : 14
