@@ -6,6 +6,8 @@ from scipy.stats import norm, truncnorm, gamma
 from functools import lru_cache
 import datetime
 import math
+import dill
+import pathlib
 
 from covid19sim.configs.config import *
 from covid19sim.interventions import *
@@ -1528,10 +1530,14 @@ def calculate_average_infectiousness(human):
                                                                 is_infectious_tomorrow)
     return (cur_infectiousness + tomorrows_infectiousness) / 2
 
+
 def filter_open(locations):
     """Given an iterable of locations, returns a list of those that are open for business.
-    
-    Yields:
+
+    Args:
+        locations (iterable): a list of objects inheriting from the covid19sim.base.Location class
+
+    Returns:
         list
     """
     return [loc for loc in locations if loc.is_open_for_business]
@@ -1539,8 +1545,83 @@ def filter_open(locations):
 def filter_queue_max(locations):
     """Given an iterable of locations, will return a list of those
     with queues that are not too long.
-    
-    Yields:
+
+    Args:
+        locations (iterable): a list of objects inheriting from the covid19sim.base.Location class
+
+    Returns:
         list
     """
     return [loc for loc in locations if len(loc.queue)<=MAX_STORE_QUEUE_LENGTH]
+
+def extract_tracker_data(tracker, ExpConfig):
+    """
+    Get a dictionnary collecting interesting fields of the tracker and experimental settings from ExpConfig
+
+    Args:
+        tracker (covid19sim.track.Tracker): Tracker toring simulation data
+        ExpConfig (dict): Experimental Configuration
+
+    returns:
+        dict: the extracted data
+    """
+    timenow = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
+    data = dict()
+    data['intervention_day'] = ExpConfig.get('INTERVENTION_DAY')
+    data['intervention'] = ExpConfig.get('INTERVENTION')
+    data['risk_model'] = ExpConfig.get('RISK_MODEL')
+    data['expected_mobility'] = tracker.expected_mobility
+    data['serial_interval'] = tracker.get_generation_time()
+    data['mobility'] = tracker.mobility
+    data['n_init_infected'] = tracker.n_infected_init
+    data['contacts'] = dict(tracker.contacts)
+    data['cases_per_day'] = tracker.cases_per_day
+    data['ei_per_day'] = tracker.ei_per_day
+    data['r_0'] = tracker.r_0
+    data['R'] = tracker.r
+    data['n_humans'] = tracker.n_humans
+    data['s'] = tracker.s_per_day
+    data['e'] = tracker.e_per_day
+    data['i'] = tracker.i_per_day
+    data['r'] = tracker.r_per_day
+    data['avg_infectiousness_per_day'] = tracker.avg_infectiousness_per_day
+    data['risk_precision_global'] = tracker.compute_risk_precision(False)
+    data['risk_precision'] = tracker.risk_precision_daily
+    data['human_monitor'] = tracker.human_monitor
+    data['infection_monitor'] = tracker.infection_monitor
+    data['infector_infectee_update_messages'] = tracker.infector_infectee_update_messages
+    data['risk_attributes'] = tracker.risk_attributes
+    data['feelings'] = tracker.feelings
+    data['rec_feelings'] = tracker.rec_feelings
+    data['outside_daily_contacts'] = tracker.outside_daily_contacts
+    # data['dist_encounters'] = dict(tracker.dist_encounters)
+    # data['time_encounters'] = dict(tracker.time_encounters)
+    # data['day_encounters'] = dict(tracker.day_encounters)
+    # data['hour_encounters'] = dict(tracker.hour_encounters)
+    # data['daily_age_group_encounters'] = dict(tracker.daily_age_group_encounters)
+    # data['age_distribution'] = tracker.age_distribution
+    # data['sex_distribution'] = tracker.sex_distribution
+    # data['house_size'] = tracker.house_size
+    # data['house_age'] = tracker.house_age
+    # data['symptoms'] = dict(tracker.symptoms)
+    # data['transition_probability'] = dict(tracker.transition_probability)
+    return data
+
+
+def dump_tracker_data(data, outdir, name):
+    """
+    Writes the tracker's extracted data to outdir/name using dill.
+
+    /!\ there are know incompatibility issues between python 3.7 and 3.8 regarding the dump/loading of data with dill/pickle
+
+    Creates the outputdir if need be, including potential missing parents.
+
+    Args:
+        data (dict): tracker's extracted data
+        outdir (str): dicrectory where to dump the file
+        name (str): the dump file's name
+    """
+    outdir = pathlib.Path(outdir)
+    outdir.mkdir(exist_ok=True, parents=True)
+    with open(outdir / name, 'wb') as f:
+        dill.dump(data, f)

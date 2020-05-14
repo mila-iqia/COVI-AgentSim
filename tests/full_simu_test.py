@@ -21,7 +21,7 @@ class FullUnitTest(unittest.TestCase):
             monitors, _ = run_simu(
                 n_people=n_people,
                 start_time=datetime.datetime(2020, 2, 28, 0, 0),
-                simulation_days=30,
+                simulation_days=10,
                 outfile=outfile,
                 init_percent_sick=0.1,
                 out_chunk_size=500
