@@ -10,7 +10,7 @@ import threading
 import zipfile
 
 from covid19sim.utils import _json_serialize
-from covid19sim.configs.constants import TICK_MINUTE
+from covid19sim.configs.constants import *
 from covid19sim.base import City
 from covid19sim.simulator import Human
 
@@ -103,7 +103,7 @@ class SEIRMonitor(BaseMonitor):
                     'removed':R,
                     'R': R0
                     })
-            yield env.timeout(self.f / TICK_MINUTE)
+            yield env.timeout(self.f * SECONDS_PER_MINUTE)
             n_days += 1
 
 class EventMonitor(BaseMonitor):
@@ -144,7 +144,7 @@ class EventMonitor(BaseMonitor):
                 self.data = city.pull_events_slice(env.timestamp - timedelta(days=2))
                 self.dump()
 
-            yield env.timeout(self.f / TICK_MINUTE)
+            yield env.timeout(self.f * SECONDS_PER_MINUTE)
 
     def dump(self):
         """
@@ -195,7 +195,7 @@ class TimeMonitor(BaseMonitor):
         """
         while True:
             # print(env.timestamp)
-            yield env.timeout(self.f / TICK_MINUTE)
+            yield env.timeout(self.f * SECONDS_PER_MINUTE)
 
 
 class PlotMonitor(BaseMonitor):
@@ -225,7 +225,7 @@ class PlotMonitor(BaseMonitor):
                 d[k] = sum(int(h.action == v) for h in city.humans)
 
             self.data.append(d)
-            yield env.timeout(self.f / TICK_MINUTE)
+            yield env.timeout(self.f * SECONDS_PER_MINUTE)
             self.plot()
 
     def plot(self):
@@ -290,7 +290,7 @@ class LatLonMonitor(BaseMonitor):
                  'location': h.location.name if h.location else None
                  } for h in city.humans
             )
-            yield env.timeout(self.f / TICK_MINUTE)
+            yield env.timeout(self.f * SECONDS_PER_MINUTE)
             self.plot()
 
     def plot(self):
@@ -343,7 +343,7 @@ class StateMonitor(BaseMonitor):
             }
             self.data.append(d)
             print(city.clock.time_of_day())
-            yield env.timeout(self.f / TICK_MINUTE)
+            yield env.timeout(self.f * SECONDS_PER_MINUTE)
 
     def dump(self):
         """

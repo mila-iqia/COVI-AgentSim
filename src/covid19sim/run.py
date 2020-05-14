@@ -245,7 +245,7 @@ def run_simu(n_people=None,
     for m in monitors:
         env.process(m.run(env, city=city))
 
-    env.run(until=env.ts_initial + simulation_days*SECONDS_PER_DAY/60/TICK_MINUTE)
+    env.run(until=env.ts_initial + simulation_days*SECONDS_PER_DAY)
 
     return monitors, city.tracker
 

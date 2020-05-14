@@ -45,11 +45,10 @@ class Env(simpy.Environment):
     def timestamp(self):
         """
         Returns:
-            datetime.datetime: current date (initial timestamp shifted by
-                env.now * TICK_MINUTE minutes)
+            datetime.datetime: Current date.
         """
         return self.initial_timestamp + datetime.timedelta(
-            minutes=(self.now-self.ts_initial) * TICK_MINUTE)
+            seconds=self.now-self.ts_initial)
 
     def minutes(self):
         """
@@ -417,7 +416,7 @@ class City(simpy.Environment):
         Run the City DOCTODO(improve this)
 
         Args:
-            duration (int): duration of a step (env.timeout(duration / TICK_MINUTE))
+            duration (int): duration of a step, in minutes.
             outfile (str): may be None, the run's output file to write to
             start_time (datetime.datetime): useless arg << FIXME
             all_possible_symptoms (dict): copy of SYMPTOMS_META (config.py)
@@ -485,7 +484,7 @@ class City(simpy.Environment):
                 self.tracker.track_risk_attributes(self.humans)
 
             # Let the hour pass
-            yield self.env.timeout(duration / TICK_MINUTE)
+            yield self.env.timeout(duration * SECONDS_PER_MINUTE)
 
             # increment the day / update uids if we start the timeslot 0
             if self.env.timestamp.hour == 0 and self.env.timestamp != self.env.initial_timestamp:

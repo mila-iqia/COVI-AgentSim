@@ -1177,7 +1177,7 @@ class Human(object):
         self.wear_mask()
 
         self.start_time   = (self.env.now-self.env.ts_initial)
-        self.leaving_time = self.start_time + duration
+        self.leaving_time = self.start_time + duration*SECONDS_PER_MINUTE*TICK_MINUTE
         area = self.location.area
         initial_viral_load = 0
 
@@ -1222,8 +1222,8 @@ class Human(object):
                         h.contact_book.sent_messages_by_day[cur_day].append(h.cur_message(cur_day))
                         self.contact_book.sent_messages_by_day[cur_day].append(self.cur_message(cur_day))
 
-            t_overlap = (min(self.env.ts_initial+self.leaving_time, self.env.ts_initial+getattr(h, "leaving_time", 60)) -
-                         max(self.env.ts_initial+self.start_time,   self.env.ts_initial+getattr(h, "start_time",   60)))
+            t_overlap = (min(self.env.ts_initial+self.leaving_time, self.env.ts_initial+getattr(h, "leaving_time", SECONDS_PER_MINUTE*TICK_MINUTE*60)) -
+                         max(self.env.ts_initial+self.start_time,   self.env.ts_initial+getattr(h, "start_time",   SECONDS_PER_MINUTE*TICK_MINUTE*60)))/(SECONDS_PER_MINUTE*TICK_MINUTE)
             t_near = self.rng.random() * t_overlap * self.time_encounter_reduction_factor
 
             city.tracker.track_social_mixing(human1=self, human2=h, duration=t_near, timestamp = self.env.timestamp)
@@ -1304,7 +1304,7 @@ class Human(object):
                                     time=self.env.timestamp
                                     )
 
-        yield self.env.timeout(duration / TICK_MINUTE)
+        yield self.env.timeout(duration * SECONDS_PER_MINUTE)
 
         # environmental transmission
         p_infection = ENVIRONMENTAL_INFECTION_KNOB * location.contamination_probability * (1-self.mask_efficacy) # &prob_infection
