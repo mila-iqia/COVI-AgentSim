@@ -1164,7 +1164,7 @@ class Human(object):
         Args:
             location ([type]): [description]
             city ([type]): [description]
-            duration ([type]): [description]
+            duration (int): Duration of stay, in minutes, at this location.
 
         Yields:
             [type]: [description]
@@ -1177,7 +1177,7 @@ class Human(object):
         self.wear_mask()
 
         self.start_time   = self.env.now
-        self.leaving_time = self.start_time + duration*SECONDS_PER_MINUTE*TICK_MINUTE
+        self.leaving_time = self.start_time + duration*SECONDS_PER_MINUTE
         area = self.location.area
         initial_viral_load = 0
 
@@ -1222,8 +1222,8 @@ class Human(object):
                         h.contact_book.sent_messages_by_day[cur_day].append(h.cur_message(cur_day))
                         self.contact_book.sent_messages_by_day[cur_day].append(self.cur_message(cur_day))
 
-            t_overlap = (min(self.leaving_time, getattr(h, "leaving_time", self.env.ts_initial+SECONDS_PER_HOUR*TICK_MINUTE)) -
-                         max(self.start_time,   getattr(h, "start_time",   self.env.ts_initial+SECONDS_PER_HOUR*TICK_MINUTE)))/(SECONDS_PER_MINUTE*TICK_MINUTE)
+            t_overlap = (min(self.leaving_time, getattr(h, "leaving_time", self.env.ts_initial+SECONDS_PER_HOUR)) -
+                         max(self.start_time,   getattr(h, "start_time",   self.env.ts_initial+SECONDS_PER_HOUR))) / SECONDS_PER_MINUTE
             t_near = self.rng.random() * t_overlap * self.time_encounter_reduction_factor
 
             city.tracker.track_social_mixing(human1=self, human2=h, duration=t_near, timestamp = self.env.timestamp)
