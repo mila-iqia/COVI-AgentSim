@@ -223,11 +223,11 @@ def run_simu(n_people=None,
 
     # Add monitors
     monitors = [
-        EventMonitor(f=1800, dest=outfile, chunk_size=out_chunk_size),
-        SEIRMonitor (f=1440),
+        EventMonitor(f=SECONDS_PER_HOUR*30, dest=outfile, chunk_size=out_chunk_size),
+        SEIRMonitor (f=SECONDS_PER_DAY),
     ]
     if print_progress:
-        monitors.append(TimeMonitor(1440)) # print every day
+        monitors.append(TimeMonitor(SECONDS_PER_DAY))
     if other_monitors:
         monitors += other_monitors
 
@@ -250,7 +250,7 @@ def run_simu(n_people=None,
         env.process(m.run(env, city=city))
 
     # Run simulation until termination
-    env.run(until=env.ts_initial + simulation_days*SECONDS_PER_DAY)
+    env.run(until=env.ts_initial+simulation_days*SECONDS_PER_DAY)
 
     # Return
     return monitors, city.tracker

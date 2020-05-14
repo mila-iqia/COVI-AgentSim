@@ -30,7 +30,7 @@ class BaseMonitor(object):
             chunk_size (int, optional): [description]. Defaults to None.
         """
         self.data = []
-        self.f = f or 60
+        self.f = f or SECONDS_PER_HOUR
         self.dest = dest
         self.chunk_size = chunk_size if self.dest and chunk_size else 0
 
@@ -103,7 +103,7 @@ class SEIRMonitor(BaseMonitor):
                     'removed':R,
                     'R': R0
                     })
-            yield env.timeout(self.f * SECONDS_PER_MINUTE)
+            yield env.timeout(self.f)
             n_days += 1
 
 class EventMonitor(BaseMonitor):
@@ -144,7 +144,7 @@ class EventMonitor(BaseMonitor):
                 self.data = city.pull_events_slice(env.timestamp - timedelta(days=2))
                 self.dump()
 
-            yield env.timeout(self.f * SECONDS_PER_MINUTE)
+            yield env.timeout(self.f)
 
     def dump(self):
         """
@@ -195,7 +195,7 @@ class TimeMonitor(BaseMonitor):
         """
         while True:
             # print(env.timestamp)
-            yield env.timeout(self.f * SECONDS_PER_MINUTE)
+            yield env.timeout(self.f)
 
 
 class PlotMonitor(BaseMonitor):
@@ -225,7 +225,7 @@ class PlotMonitor(BaseMonitor):
                 d[k] = sum(int(h.action == v) for h in city.humans)
 
             self.data.append(d)
-            yield env.timeout(self.f * SECONDS_PER_MINUTE)
+            yield env.timeout(self.f)
             self.plot()
 
     def plot(self):
@@ -290,7 +290,7 @@ class LatLonMonitor(BaseMonitor):
                  'location': h.location.name if h.location else None
                  } for h in city.humans
             )
-            yield env.timeout(self.f * SECONDS_PER_MINUTE)
+            yield env.timeout(self.f)
             self.plot()
 
     def plot(self):
@@ -343,7 +343,7 @@ class StateMonitor(BaseMonitor):
             }
             self.data.append(d)
             print(city.clock.time_of_day())
-            yield env.timeout(self.f * SECONDS_PER_MINUTE)
+            yield env.timeout(self.f)
 
     def dump(self):
         """
