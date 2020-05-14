@@ -1618,7 +1618,7 @@ def dump_tracker_data(data, outdir, name):
 
     Args:
         data (dict): tracker's extracted data
-        outdir (str): dicrectory where to dump the file
+        outdir (str): directory where to dump the file
         name (str): the dump file's name
     """
     outdir = pathlib.Path(outdir)
