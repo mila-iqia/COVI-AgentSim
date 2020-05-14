@@ -18,9 +18,11 @@ from collections import deque
 from covid19sim.frozen.clusters import Clusters
 import covid19sim.frozen.helper
 from covid19sim.frozen.utils import create_new_uid, Message, UpdateMessage, encode_message, encode_update_message
+
 from covid19sim.utils import _normalize_scores, _get_random_sex, _get_covid_progression, \
-     _get_preexisting_conditions, _draw_random_discreet_gaussian, _sample_viral_load_piecewise, \
-     _get_cold_progression, _get_flu_progression, _get_allergy_progression, _get_get_really_sick
+    _get_preexisting_conditions, _draw_random_discreet_gaussian, _sample_viral_load_piecewise, \
+    _get_cold_progression, _get_flu_progression, _get_allergy_progression, _get_get_really_sick, \
+    filter_open, filter_queue_max
 from covid19sim.configs.constants import BIG_NUMBER, TICK_MINUTE
 from covid19sim.configs.exp_config import ExpConfig
 
@@ -159,7 +161,6 @@ class Human(object):
 
         self.age = age
         self.sex = _get_random_sex(self.rng)
-        self.dead = False
         self.preexisting_conditions = _get_preexisting_conditions(self.age, self.sex, self.rng)
 
         age_modifier = 2 if self.age > 40 or self.age < 12 else 2
@@ -429,7 +430,7 @@ class Human(object):
         Returns:
             [type]: [description]
         """
-        return not self.is_exposed and not self.is_infectious and not self.is_removed and not self.is_immune
+        return not self.is_exposed and not self.is_infectious and not self.is_removed
 
     @property
     def is_exposed(self):
@@ -449,7 +450,7 @@ class Human(object):
         Returns:
             [type]: [description]
         """
-        return self.infection_timestamp is not None and self.env.timestamp - self.infection_timestamp >= datetime.timedelta(days=self.infectiousness_onset_days)
+        return not self.is_removed and self.infection_timestamp is not None and self.env.timestamp - self.infection_timestamp >= datetime.timedelta(days=self.infectiousness_onset_days)
 
     @property
     def is_removed(self):
@@ -459,7 +460,17 @@ class Human(object):
         Returns:
             [type]: [description]
         """
-        return self.is_immune or self.recovered_timestamp == datetime.datetime.max
+        return self.is_immune or self.is_dead
+
+    @property
+    def is_dead(self):
+        """
+        Returns True if the human is dead, otherwise False.
+
+        Returns:
+            bool: True if dead, False if not.
+        """
+        return self.recovered_timestamp == datetime.datetime.max
 
     @property
     def is_incubated(self):
@@ -876,6 +887,21 @@ class Human(object):
 
         return 1.0
 
+    def expire(self):
+        """ 
+        This function (generator) will cause the human to expire, after which self.is_dead==True.
+        Yields self.env.timeout(np.inf), which when passed to env.procces will inactivate self
+        for the remainder of the simulation.
+        
+        Yields:
+            generator
+        """
+        self.recovered_timestamp = datetime.datetime.max
+        self.update_risk(recovery=True)
+        self.all_symptoms, self.covid_symptoms = [], []
+        Event.log_recovery(self, self.env.timestamp, death=True)
+        yield self.env.timeout(np.inf)
+
     def assert_state_changes(self):
         """
         [summary]
@@ -956,24 +982,22 @@ class Human(object):
                 self.test_result, self.test_result_type = None, None
                 self.infection_timestamp = None
 
-                if self.never_recovers:
-                    self.recovered_timestamp = datetime.datetime.max
-                    self.dead = True
-                else:
+                if not self.never_recovers:
                     if not REINFECTION_POSSIBLE:
                         self.recovered_timestamp = self.env.timestamp
                         self.is_immune = not REINFECTION_POSSIBLE
                     else:
                         self.recovered_timestamp = self.env.timestamp
                         self.test_result, self.test_type = None, None
+                    # TODO - EM - What is this code for? Seems odd.
+                    # Is this to "resample" the chance to never recover for a possible section infection?
                     self.never_recovers = self.rng.random() <= P_NEVER_RECOVERS[min(math.floor(self.age/10),8)]
-                    self.dead = False
+                    self.update_risk(recovery=True)
+                    self.all_symptoms, self.covid_symptoms = [], []
+                    Event.log_recovery(self, self.env.timestamp, death=False)
+                else:
+                    yield self.env.process(self.expire())
 
-                self.update_risk(recovery=True)
-                self.all_symptoms, self.covid_symptoms = [], []
-                Event.log_recovery(self, self.env.timestamp, self.dead)
-                if self.dead:
-                    yield self.env.timeout(np.inf)
 
             self.assert_state_changes()
 
@@ -992,6 +1016,7 @@ class Human(object):
             elif self.rest_at_home and self.how_am_I_feeling() == 1.0:
                 self.rest_at_home = False
 
+            # Behavioral imperatives
             if self.is_extremely_sick:
                 city.tracker.track_hospitalization(self, "icu")
                 yield self.env.process(self.excursion(city, "hospital-icu"))
@@ -1000,31 +1025,33 @@ class Human(object):
                 city.tracker.track_hospitalization(self)
                 yield self.env.process(self.excursion(city, "hospital"))
 
-            if (not self.env.is_weekend() and
+            # Work is a partial imperitive
+            if (not self.profession=="retired" and 
+                not self.env.is_weekend() and
                 hour in self.work_start_hour and
                 not self.rest_at_home):
                 yield self.env.process(self.excursion(city, "work"))
+                
+            # TODO (EM) These optional and erratic behaviours should be more probabalistic,
+            # with probs depending on state of lockdown of city
+            # Lockdown should also close a fraction of the shops
 
             elif ( hour in self.shopping_hours and
                    day in self.shopping_days and
                    self.count_shop<=self.max_shop_per_week and
                    not self.rest_at_home):
-                self.count_shop+=1
                 yield self.env.process(self.excursion(city, "shopping"))
-
 
             elif ( hour in self.exercise_hours and
                     day in self.exercise_days and
                     self.count_exercise<=self.max_exercise_per_week and
                     not self.rest_at_home):
-                self.count_exercise+=1
                 yield  self.env.process(self.excursion(city, "exercise"))
 
-            elif (self.env.is_weekend() and
+            elif ( self.env.is_weekend() and
                     self.rng.random() < 0.5 and
                     not self.rest_at_home and
                     not self.count_misc<=self.max_misc_per_week):
-                self.count_misc+=1
                 yield  self.env.process(self.excursion(city, "leisure"))
 
             yield self.env.process(self.at(self.household, city, 60))
@@ -1076,7 +1103,7 @@ class Human(object):
         else:
             return round(self.lon + self.rng.normal(0, 10))
 
-    def excursion(self, city, type):
+    def excursion(self, city, location_type):
         """
         [summary]
 
@@ -1093,28 +1120,40 @@ class Human(object):
         Yields:
             [type]: [description]
         """
-        if type == "shopping":
+        if location_type == "shopping":
             grocery_store = self._select_location(location_type="stores", city=city)
+            if grocery_store is None:
+                # Either grocery stores are not open, or all queues are too long, so return
+                return
             t = _draw_random_discreet_gaussian(self.avg_shopping_time, self.scale_shopping_time, self.rng)
             with grocery_store.request() as request:
                 yield request
+                # If we make it here, it counts as a visit to the shop
+                self.count_shop+=1
                 yield self.env.process(self.at(grocery_store, city, t))
-
-        elif type == "exercise":
+        
+        elif location_type == "exercise":
             park = self._select_location(location_type="park", city=city)
+            if park is None:
+                # No parks are open, so return
+                return
+            self.count_exercise+=1
             t = _draw_random_discreet_gaussian(self.avg_exercise_time, self.scale_exercise_time, self.rng)
             yield self.env.process(self.at(park, city, t))
 
-        elif type == "work":
+        elif location_type == "work":
             t = _draw_random_discreet_gaussian(self.avg_working_minutes, self.scale_working_minutes, self.rng)
-            yield self.env.process(self.at(self.workplace, city, t))
+            if self.workplace.is_open_for_business:
+                yield self.env.process(self.at(self.workplace, city, t))
+            else: 
+                # work from home
+                yield self.env.process(self.at(self.household, city, t))
 
-        elif type == "hospital":
-            hospital = self._select_location(location_type=type, city=city)
+        elif location_type == "hospital":
+            hospital = self._select_location(location_type=location_type, city=city)
             if hospital is None: # no more hospitals
-                self.dead = True
-                self.recovered_timestamp = datetime.datetime.max
-                yield self.env.timeout(np.inf)
+                # The patient dies
+                yield self.env.process(self.expire())
 
             self.obs_hospitalized = True
             if self.infection_timestamp is not None:
@@ -1124,12 +1163,11 @@ class Human(object):
                 t = len(self.symptoms)/10 * 60 # FIXME: better model
             yield self.env.process(self.at(hospital, city, t))
 
-        elif type == "hospital-icu":
-            icu = self._select_location(location_type=type, city=city)
+        elif location_type == "hospital-icu":
+            icu = self._select_location(location_type=location_type, city=city)
             if icu is None:
-                self.dead = True
-                self.recovered_timestamp = datetime.datetime.max
-                yield self.env.timeout(np.inf)
+                # The patient dies
+                yield self.env.process(self.expire())
 
             if len(self.preexisting_conditions) < 2:
                 extra_time = self.rng.choice([1, 2, 3], p=[0.5, 0.3, 0.2])
@@ -1139,23 +1177,29 @@ class Human(object):
 
             yield self.env.process(self.at(icu, city, t * 24 * 60))
 
-        elif type == "leisure":
+        elif location_type == "leisure":
             S = 0
             p_exp = 1.0
+            leisure_count = 0
             while True:
                 if self.rng.random() > p_exp:  # return home
                     yield self.env.process(self.at(self.household, city, 60))
                     break
 
                 loc = self._select_location(location_type='miscs', city=city)
+                if loc is None:
+                    # No leisure spots are open, or without long queues, so return
+                    return
                 S += 1
                 p_exp = self.rho * S ** (-self.gamma * self.adjust_gamma)
                 with loc.request() as request:
                     yield request
+                    leisure_count=1 # If we make it here, it counts as a leisure visit
                     t = _draw_random_discreet_gaussian(self.avg_misc_time, self.scale_misc_time, self.rng)
                     yield self.env.process(self.at(loc, city, t))
+            self.count_misc+=leisure_count
         else:
-            raise ValueError(f'Unknown excursion type:{type}')
+            raise ValueError(f'Unknown excursion type:{location_type}')
 
     def at(self, location, city, duration):
         """
@@ -1242,7 +1286,7 @@ class Human(object):
                     p_infection = self.infectiousness * ratio * proximity_factor
                     # FIXME: remove hygiene from severity multiplier; init hygiene = 0; use sum here instead
                     reduction_factor = CONTAGION_KNOB + sum(getattr(x, "_hygiene", 0) for x in [self, h]) + mask_efficacy
-                    p_infection *= np.exp(-reduction_factor * self.n_infectious_contacts)
+                    p_infection *= np.exp(-reduction_factor * h.n_infectious_contacts)
 
                     x_human = self.rng.random() < p_infection
 
@@ -1263,7 +1307,7 @@ class Human(object):
                     p_infection = h.infectiousness * ratio * proximity_factor # &prob_infectious
                     # FIXME: remove hygiene from severity multiplier; init hygiene = 0; use sum here instead
                     reduction_factor = CONTAGION_KNOB + sum(getattr(x, "_hygiene", 0) for x in [self, h]) + mask_efficacy
-                    p_infection *= np.exp(-reduction_factor * h.n_infectious_contacts) # to control R0
+                    p_infection *= np.exp(-reduction_factor * h.n_infectious_contacts)
 
                     x_human = self.rng.random() < p_infection
 
@@ -1278,18 +1322,23 @@ class Human(object):
                         city.tracker.track_covid_properties(self)
 
                 # other transmissions
+                # if either are infected
                 if self.cold_timestamp is not None or h.cold_timestamp is not None:
                     cold_infector, cold_infectee = h, self
                     if self.cold_timestamp is not None:
                         cold_infector, cold_infectee = self, h
+
+                    # TODO - bug - in case when both had the cold, one has chance to have timestamp updated.
 
                     if self.rng.random() < COLD_CONTAGIOUSNESS:
                         cold_infectee.cold_timestamp = self.env.timestamp
 
                 if self.flu_timestamp is not None or h.flu_timestamp is not None:
                     flu_infector, flu_infectee = h, self
-                    if self.cold_timestamp is not None:
+                    if self.flu_timestamp is not None:
                         flu_infector, flu_infectee = self, h
+
+                    # TODO - bug - in case when both had the flu, one has chance to have timestamp updated.
 
                     if self.rng.random() < FLU_CONTAGIOUSNESS:
                         flu_infectee.flu_timestamp = self.env.timestamp
@@ -1351,26 +1400,27 @@ class Human(object):
             S = self.visits.n_parks
             self.adjust_gamma = 1.0
             pool_pref = self.parks_preferences
-            locs = city.parks
+            locs = filter_open(city.parks)
             visited_locs = self.visits.parks
 
         elif location_type == "stores":
             S = self.visits.n_stores
             self.adjust_gamma = 1.0
             pool_pref = self.stores_preferences
-            locs = city.stores
+            # Only consider locations open for business and not too long queues
+            locs = filter_queue_max(filter_open(city.stores))
             visited_locs = self.visits.stores
 
         elif location_type == "hospital":
             hospital = None
-            for hospital in sorted(city.hospitals, key=lambda x:compute_distance(self.location, x)):
+            for hospital in sorted(filter_open(city.hospitals), key=lambda x:compute_distance(self.location, x)):
                 if len(hospital.humans) < hospital.capacity:
                     return hospital
             return None
 
         elif location_type == "hospital-icu":
             icu = None
-            for hospital in sorted(city.hospitals, key=lambda x:compute_distance(self.location, x)):
+            for hospital in sorted(filter_open(city.hospitals), key=lambda x:compute_distance(self.location, x)):
                 if len(hospital.icu.humans) < hospital.icu.capacity:
                     return hospital.icu
             return None
@@ -1381,7 +1431,8 @@ class Human(object):
             pool_pref = [(compute_distance(self.location, m) + 1e-1) ** -1 for m in city.miscs if
                          m != self.location]
             pool_locs = [m for m in city.miscs if m != self.location]
-            locs = city.miscs
+            # Only consider locations open for business and not too long queues
+            locs = filter_queue_max(filter_open(city.miscs))
             visited_locs = self.visits.miscs
 
         else:
@@ -1397,13 +1448,18 @@ class Human(object):
             cands = [i for i in locs if i not in visited_locs]
             cands = [(loc, pool_pref[i]) for i, loc in enumerate(cands)]
         else:
-            # exploit
-            cands = [(i, count) for i, count in visited_locs.items()]
+            # exploit, but can only return to locs that are open
+            cands = [(i, count) for i, count in visited_locs.items() \
+                        if i.is_open_for_business and len(i.queue)<=MAX_STORE_QUEUE_LENGTH]
 
-        cands, scores = zip(*cands)
-        loc = self.rng.choice(cands, p=_normalize_scores(scores))
-        visited_locs[loc] += 1
-        return loc
+        if cands:
+            cands, scores = zip(*cands)
+            loc = self.rng.choice(cands, p=_normalize_scores(scores))
+            visited_locs[loc] += 1
+            return loc
+        else:
+            return None
+        
 
     def get_message_dict(self):
         """
@@ -1622,7 +1678,7 @@ class Human(object):
         cur_day = (self.env.timestamp - self.env.initial_timestamp).days
         if self.is_removed:
             self.risk_history_map[cur_day] = 0.0
-        if self.test_result == "positive":
+        elif self.test_result == "positive":
             self.risk_history_map[cur_day] = 1.0
         elif self.test_result == "negative":
             # TODO:  Risk because of negaitve results should not go down to 0.20. It should be max(o.2, current_risk). It should also depend on the test_type

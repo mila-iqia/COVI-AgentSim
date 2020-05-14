@@ -18,3 +18,4 @@ seaborn
 pyyaml
 omegaconf
 hydra-core
+cached_property
