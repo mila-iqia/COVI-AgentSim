@@ -15,7 +15,7 @@ class ModelsTest(unittest.TestCase):
         """
             run one simulation and ensure json files are correctly populated and most of the users have activity
         """
-        from covid19sim.run import run_simu
+        from covid19sim.run import simulate
 
         # Load the experimental configuration
         ExpConfig.load_config(os.path.join(os.path.dirname(__file__), "../src/covid19sim/configs/test_config.yml"))
@@ -23,7 +23,7 @@ class ModelsTest(unittest.TestCase):
         with TemporaryDirectory() as preprocess_d:
             n_people = 100
             n_days = 30
-            monitors, _ = run_simu(
+            monitors, _ = simulate(
                 n_people=n_people,
                 start_time=datetime.datetime(2020, 2, 28, 0, 0),
                 simulation_days=n_days,

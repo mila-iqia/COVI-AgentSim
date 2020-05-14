@@ -23,7 +23,7 @@ from covid19sim.configs.constants import TICK_MINUTE
 @click.option('--port', help='which port should we look for inference servers on', type=int, default=6688)
 @click.option('--config', help='where is the configuration file for this experiment', type=str, default="configs/naive_config.yml")
 @click.option('--tune', help='track additional specific metrics to plot and explore', is_flag=True, default=False)
-def sim(n_people=None,
+def main(n_people=None,
         init_percent_sick=0.01,
         start_time=datetime.datetime(2020, 2, 28, 0, 0),
         simulation_days=30,
@@ -59,7 +59,7 @@ def sim(n_people=None,
         warnings.filterwarnings("ignore")
         outfile = None
 
-    monitors, tracker = run_simu(
+    monitors, tracker = simulate(
         n_people=n_people,
         init_percent_sick=init_percent_sick,
         start_time=start_time,
@@ -81,7 +81,7 @@ def sim(n_people=None,
         dump_tracker_data(data, outdir, filename)
 
 
-def run_simu(n_people=None,
+def simulate(n_people=None,
              init_percent_sick=0.01,
              start_time=datetime.datetime(2020, 2, 28, 0, 0),
              simulation_days=10,
@@ -140,4 +140,4 @@ def run_simu(n_people=None,
 
 
 if __name__ == "__main__":
-    sim()
+    main()
