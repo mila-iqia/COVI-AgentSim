@@ -239,7 +239,7 @@ def run_simu(n_people=None,
     all_possible_symptoms = [""] * len(SYMPTOMS_META)
     for k, v in SYMPTOMS_META.items():
         all_possible_symptoms[v] = k
-    env.process(city.run(1440/24, outfile, all_possible_symptoms, port, n_jobs))
+    env.process(city.run(SECONDS_PER_HOUR, outfile, all_possible_symptoms, port, n_jobs))
 
     # Initiate human processes
     for human in city.humans:

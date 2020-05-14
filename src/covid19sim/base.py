@@ -415,7 +415,7 @@ class City:
         Run the City DOCTODO(improve this)
 
         Args:
-            duration (int): duration of a step, in minutes.
+            duration (int): duration of a step, in seconds.
             outfile (str): may be None, the run's output file to write to
             all_possible_symptoms (dict): copy of SYMPTOMS_META (config.py)
             port (int): the port for integrated_risk_pred when updating the humans'
@@ -482,7 +482,7 @@ class City:
                 self.tracker.track_risk_attributes(self.humans)
 
             # Let the hour pass
-            yield self.env.timeout(duration * SECONDS_PER_MINUTE)
+            yield self.env.timeout(int(duration))
 
             # increment the day / update uids if we start the timeslot 0
             if self.env.timestamp.hour == 0 and self.env.timestamp != self.env.initial_timestamp:
