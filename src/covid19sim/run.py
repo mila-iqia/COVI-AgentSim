@@ -9,7 +9,7 @@ from covid19sim.simulator import Human
 from covid19sim.base import *
 from covid19sim.monitors import EventMonitor, TimeMonitor, SEIRMonitor
 from covid19sim.configs.exp_config import ExpConfig
-from covid19sim.configs.constants import TICK_MINUTE
+from covid19sim.configs.constants import *
 
 @click.group()
 def simu():
@@ -218,35 +218,41 @@ def run_simu(n_people=None,
     env = Env(start_time)
     city_x_range = (0,1000)
     city_y_range = (0,1000)
-    city = City(env, n_people, init_percent_sick, rng, city_x_range, city_y_range, start_time, Human)
-    monitors = [EventMonitor(f=1800, dest=outfile, chunk_size=out_chunk_size), SEIRMonitor(f=1440)]
+    city = City(env, n_people, init_percent_sick, rng,
+                city_x_range, city_y_range, Human)
 
-    # run the simulation
+    # Add monitors
+    monitors = [
+        EventMonitor(f=SECONDS_PER_HOUR*30, dest=outfile, chunk_size=out_chunk_size),
+        SEIRMonitor (f=SECONDS_PER_DAY),
+    ]
     if print_progress:
-        monitors.append(TimeMonitor(1440)) # print every day
-
+        monitors.append(TimeMonitor(SECONDS_PER_DAY))
     if other_monitors:
         monitors += other_monitors
 
-    # run city
+    # Kickstart EventMonitor
+    monitors[0].dump()
+    monitors[0].join_iothread()
+
+    # Initiate city process, which runs every hour
     all_possible_symptoms = [""] * len(SYMPTOMS_META)
     for k, v in SYMPTOMS_META.items():
         all_possible_symptoms[v] = k
-    monitors[0].dump()
-    monitors[0].join_iothread()
-    # run this every hour
-    env.process(city.run(1440/24, outfile, start_time, all_possible_symptoms, port, n_jobs))
+    env.process(city.run(SECONDS_PER_HOUR, outfile, all_possible_symptoms, port, n_jobs))
 
-    # run humans
+    # Initiate human processes
     for human in city.humans:
         env.process(human.run(city=city))
 
-    # run monitors
+    # Initiate monitor processes
     for m in monitors:
         env.process(m.run(env, city=city))
 
-    env.run(until=simulation_days * 24 * 60 / TICK_MINUTE)
+    # Run simulation until termination
+    env.run(until=env.ts_initial+simulation_days*SECONDS_PER_DAY)
 
+    # Return
     return monitors, city.tracker
 
 

@@ -12,7 +12,7 @@ from covid19sim.utils import compute_distance, _get_random_area, _draw_random_di
 from covid19sim.track import Tracker
 from covid19sim.interventions import *
 from covid19sim.frozen.utils import update_uid
-from covid19sim.configs.constants import TICK_MINUTE
+from covid19sim.configs.constants import *
 from covid19sim.configs.exp_config import ExpConfig
 
 
@@ -26,53 +26,53 @@ class Env(simpy.Environment):
         Args:
             initial_timestamp (datetime.datetime): The environment's initial timestamp
         """
-        super().__init__()
-        self.initial_timestamp = initial_timestamp
-
-    def time(self):
-        """
-        Alias for simpy-defined `now` attribute
-
-        Returns:
-            datetime.datetime: current time in the environment
-        """
-        return self.now
+        self.initial_timestamp = datetime.datetime.combine(initial_timestamp.date(),
+                                                           datetime.time())
+        self.ts_initial = int(self.initial_timestamp.timestamp())
+        super().__init__(self.ts_initial)
 
     @property
     def timestamp(self):
         """
         Returns:
-            datetime.datetime: current date (initial timestamp shifted by
-                env.now * TICK_MINUTE minutes)
+            datetime.datetime: Current date.
         """
+        #
+        ##
+        ## The following is preferable, but not equivalent to the initial
+        ## version, because timedelta ignores Daylight Saving Time.
+        ##
+        #
+        #return datetime.datetime.fromtimestamp(int(self.now))
+        #
         return self.initial_timestamp + datetime.timedelta(
-            minutes=self.now * TICK_MINUTE)
+            seconds=self.now-self.ts_initial)
 
     def minutes(self):
         """
         Returns:
-            int: current timestamp minute
+            int: Current timestamp minute
         """
         return self.timestamp.minute
 
     def hour_of_day(self):
         """
         Returns:
-            int: current timestamp hour
+            int: Current timestamp hour
         """
         return self.timestamp.hour
 
     def day_of_week(self):
         """
         Returns:
-            int: current timestamp day of the week
+            int: Current timestamp day of the week
         """
         return self.timestamp.weekday()
 
     def is_weekend(self):
         """
         Returns:
-            bool: current timestamp day is a weekend day
+            bool: Current timestamp day is a weekend day
         """
         return self.day_of_week() >= 5
 
@@ -83,17 +83,16 @@ class Env(simpy.Environment):
 
         Returns:
             str: iso string representing current timestamp
-    """
+        """
         return self.timestamp.isoformat()
 
-class City(simpy.Environment):
+class City:
     """
-    City environment
+    City
     """
 
-    def __init__(self, env, n_people, init_percent_sick, rng, x_range, y_range, start_time, Human):
+    def __init__(self, env, n_people, init_percent_sick, rng, x_range, y_range, Human):
         """
-
         Args:
             env (simpy.Environment): [description]
             n_people (int): Number of people in the city
@@ -101,7 +100,6 @@ class City(simpy.Environment):
             rng (np.random.RandomState): Random number generator
             x_range (tuple): (min_x, max_x)
             y_range (tuple): (min_y, max_y)
-            start_time (datetime.datetime): City's initial datetime
             init_percent_sick (float): % of humans sick at the start of the simulation
             Human (covid19.simulator.Human): Class for the city's human instances
         """
@@ -112,7 +110,6 @@ class City(simpy.Environment):
         self.total_area = (x_range[1] - x_range[0]) * (y_range[1] - y_range[0])
         self.n_people = n_people
         self.init_percent_sick = init_percent_sick
-        self.start_time = start_time
         self.last_date_to_check_tests = self.env.timestamp.date()
         self.test_count_today = defaultdict(int)
         self.test_type_preference = list(zip(*sorted(TEST_TYPES.items(), key=lambda x:x[1]['preference'])))[0]
@@ -132,6 +129,10 @@ class City(simpy.Environment):
         # self.tracker.track_initialized_covid_params(self.humans)
 
         self.intervention = None
+
+    @property
+    def start_time(self):
+        return datetime.datetime.fromtimestamp(self.env.ts_initial)
 
     def create_location(self, specs, type, name, area=None):
         """
@@ -409,14 +410,13 @@ class City(simpy.Environment):
             h.stores_preferences = [(compute_distance(h.household, s) + 1e-1) ** -1 for s in self.stores]
             h.parks_preferences = [(compute_distance(h.household, s) + 1e-1) ** -1 for s in self.parks]
 
-    def run(self, duration, outfile, start_time, all_possible_symptoms, port, n_jobs):
+    def run(self, duration, outfile, all_possible_symptoms, port, n_jobs):
         """
         Run the City DOCTODO(improve this)
 
         Args:
-            duration (int): duration of a step (env.timeout(duration / TICK_MINUTE))
+            duration (int): duration of a step, in seconds.
             outfile (str): may be None, the run's output file to write to
-            start_time (datetime.datetime): useless arg << FIXME
             all_possible_symptoms (dict): copy of SYMPTOMS_META (config.py)
             port (int): the port for integrated_risk_pred when updating the humans'
                 risk
@@ -482,7 +482,7 @@ class City(simpy.Environment):
                 self.tracker.track_risk_attributes(self.humans)
 
             # Let the hour pass
-            yield self.env.timeout(duration / TICK_MINUTE)
+            yield self.env.timeout(int(duration))
 
             # increment the day / update uids if we start the timeslot 0
             if self.env.timestamp.hour == 0 and self.env.timestamp != self.env.initial_timestamp:
