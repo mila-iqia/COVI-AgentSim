@@ -9,7 +9,6 @@ import numpy as np
 
 from covid19sim.run import run_simu
 from covid19sim.configs.exp_config import ExpConfig
-from tests.utils import start_inference_server
 
 
 class ModelsTest(unittest.TestCase):
@@ -19,12 +18,11 @@ class ModelsTest(unittest.TestCase):
         """
 
         # Load the experimental configuration
-        ExpConfig.load_config(os.path.join(os.path.dirname(__file__), "../src/covid19sim/configs/naive_config.yml"))
+        ExpConfig.load_config(os.path.join(os.path.dirname(__file__), "../src/covid19sim/configs/test_config.yml"))
 
         with TemporaryDirectory() as d:
             n_people = 100
-            n_days = 20
-
+            n_days = 30
             monitors, _ = run_simu(
                 n_people=n_people,
                 start_time=datetime.datetime(2020, 2, 28, 0, 0),
@@ -32,7 +30,7 @@ class ModelsTest(unittest.TestCase):
                 init_percent_sick=0.1,
                 outfile=os.path.join(d, "output"),
                 out_chunk_size=1,
-                seed=0, n_jobs=4,
+                seed=0, n_jobs=12,
                 port=6688
             )
             days_output = glob.glob(f"{d}/daily_outputs/*/")
