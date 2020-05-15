@@ -1502,6 +1502,8 @@ class Human(object):
             state["obs_preexisting_conditions"] = \
                 covid19sim.frozen.helper.conditions_to_np(self.obs_preexisting_conditions)
 
+            state["infection_timestamp"] = self.infection_timestamp
+
             # Inference server is expecting test_time to be the time of a positive test
             # TODO: move this logic out in a structure that will be used to send the data
             #  to the server
