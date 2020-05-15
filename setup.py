@@ -31,8 +31,7 @@ setup(
     install_requires     = requirements,
     extras_require       = {
         "ctt": [
-            "ctt @ git+https://github.com/nasimrahaman/ctt@bunchacrunch#egg=ctt",
-            "speedrun @ git+git://github.com/inferno-pytorch/speedrun.git@p2p_risk_prediction" # TODO: remove this once nasim's merged bunchacrunch with master
+            "ctt @ git+https://github.com/nasimrahaman/ctt@bunchacrunch_reqs#egg=ctt",
         ],
         "ctt-tf": [
             "ctt[tensorflow] @ git+https://github.com/nasimrahaman/ctt@master#egg=ctt"
