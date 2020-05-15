@@ -11,7 +11,6 @@ import datetime
 import dill
 import copy
 
-from covid19sim.configs.config import HUMAN_DISTRIBUTION, LOCATION_DISTRIBUTION, INFECTION_RADIUS, EFFECTIVE_R_WINDOW
 from covid19sim.utils import log
 
 
@@ -103,7 +102,7 @@ class Tracker(object):
         self.critical_per_day = [0]
 
         # demographics
-        self.age_bins = sorted(HUMAN_DISTRIBUTION.keys(), key = lambda x:x[0])
+        self.age_bins = sorted(self.city.conf.get("HUMAN_DISTRIBUTION").keys(), key = lambda x:x[0])
         self.n_humans = len(self.city.humans)
 
         # track encounters
@@ -251,7 +250,7 @@ class Tracker(object):
 
         # recovery stats
         self.recovered_stats.append([0,0])
-        if len(self.recovered_stats) > EFFECTIVE_R_WINDOW:
+        if len(self.recovered_stats) > self.city.conf.get("EFFECTIVE_R_WINDOW"):
             self.recovered_stats = self.recovered_stats[1:]
 
         # test_per_day
@@ -666,7 +665,11 @@ class Tracker(object):
         self.n_contacts += 1
 
         # bins of 50
-        dist_bin = math.floor(distance/50) if distance <= INFECTION_RADIUS else math.floor(INFECTION_RADIUS/50)
+        dist_bin = (
+            math.floor(distance / 50)
+            if distance <= self.city.conf.get("INFECTION_RADIUS")
+            else math.floor(self.city.conf.get("INFECTION_RADIUS") / 50)
+        )
 
         # bins of 15 mins
         time_bin = math.floor(duration/15) if duration <= 60 else 4
@@ -878,8 +881,8 @@ class Tracker(object):
         plt.savefig(f"{dirname}/infection_graph.png")
 
         os.makedirs(f"{dirname}/contact_stats", exist_ok=True)
-        types = sorted(LOCATION_DISTRIBUTION.keys())
-        ages = sorted(HUMAN_DISTRIBUTION.keys(), key = lambda x:x[0])
+        types = sorted(self.city.conf.get("LOCATION_DISTRIBUTION").keys())
+        ages = sorted(self.city.conf.get("HUMAN_DISTRIBUTION").keys(), key = lambda x:x[0])
         for hour, v1 in self.transition_probability.items():
             images = []
             fig,ax =  plt.subplots(3,2, figsize=(18,12), sharex=True, sharey=False)

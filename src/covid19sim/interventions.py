@@ -5,8 +5,6 @@ from orderedset import OrderedSet
 import numpy as np
 
 from covid19sim.configs.constants import BIG_NUMBER
-from covid19sim.configs.config import RHO, GAMMA, MANUAL_TRACING_P_CONTACT,\
-    RISK_TRANSMISSION_PROBA, DEFAULT_DISTANCE
 from covid19sim.models.run import integrated_risk_pred
 
 class BehaviorInterventions(object):
@@ -97,7 +95,7 @@ class LimitContact (BehaviorInterventions):
         human._max_misc_per_week = human.max_misc_per_week
         human._max_shop_per_week = human.max_shop_per_week
 
-        human.maintain_distance = DEFAULT_DISTANCE + 100 * (human.carefulness - 0.5)
+        human.maintain_distance = human.conf.get("DEFAULT_DISTANCE") + 100 * (human.carefulness - 0.5)
         human.max_misc_per_week = 1
         human.max_shop_per_week = 1
 
@@ -228,8 +226,8 @@ class Quarantine(BehaviorInterventions):
             human ([type]): [description]
         """
         human.workplace = human._workplace
-        human.rho = RHO
-        human.gamma = GAMMA
+        human.rho = human.conf.get("RHO")
+        human.gamma = human.conf.get("GAMMA")
         human.rest_at_home = False
         human._quarantine = False
         delattr(human, "_workplace")
@@ -264,8 +262,8 @@ class Lockdown(BehaviorInterventions):
             human ([type]): [description]
         """
         human.workplace = human._workplace
-        human.rho = RHO
-        human.gamma = GAMMA
+        human.rho = human.conf.get("RHO")
+        human.gamma = human.conf.get("GAMMA")
         delattr(human, "_workplace")
 
     def __repr__(self):
@@ -310,8 +308,8 @@ class SocialDistancing(BehaviorInterventions):
         """
         human.maintain_extra_distance = human._maintain_extra_distance
         human.time_encounter_reduction_factor = human._time_encounter_reduction_factor
-        human.rho = RHO
-        human.gamma = GAMMA
+        human.rho = human.conf.get("RHO")
+        human.gamma = human.conf.get("GAMMA")
         delattr(human, "_maintain_extra_distance")
         delattr(human, "_time_encounter_reduction_factor")
 
@@ -525,7 +523,7 @@ class Tracing(object):
         self.delay = 0
         self.app = True
         if risk_model == "manual":
-            self.p_contact = MANUAL_TRACING_P_CONTACT
+            self.p_contact = self.conf.get("MANUAL_TRACING_P_CONTACT")
             self.delay = 1
             self.app = False
 
@@ -615,12 +613,12 @@ class Tracing(object):
                 risk = 0.0
 
         elif self.risk_model == "naive":
-            risk = 1.0 - (1.0 - RISK_TRANSMISSION_PROBA) ** (t+s)
+            risk = 1.0 - (1.0 - self.conf.get("RISK_TRANSMISSION_PROBA")) ** (t+s)
 
         elif self.risk_model == "other":
             r_up, v_up, r_down, v_down = r
             r_score = 2*v_up - v_down
-            risk = 1.0 - (1.0 - RISK_TRANSMISSION_PROBA) ** (t + 0.5*s + r_score)
+            risk = 1.0 - (1.0 - self.conf.get("RISK_TRANSMISSION_PROBA")) ** (t + 0.5*s + r_score)
 
         return risk
 

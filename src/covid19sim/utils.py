@@ -9,7 +9,6 @@ import math
 import dill
 import pathlib
 
-from covid19sim.configs.config import *
 from covid19sim.interventions import *
 
 
@@ -467,7 +466,7 @@ def _sample_viral_load_gamma(rng, shape_mean=4.5, shape_std=.15, scale_mean=1., 
     return gamma(shape, scale=scale)
 
 
-def _sample_viral_load_piecewise(rng, initial_viral_load=0, age=40):
+def _sample_viral_load_piecewise(rng, initial_viral_load=0, age=40, conf={}):
     """
     This function samples a piece-wise linear viral load model which increases, plateaus, and drops
 
@@ -478,10 +477,27 @@ def _sample_viral_load_piecewise(rng, initial_viral_load=0, age=40):
     """
     # https://stackoverflow.com/questions/18441779/how-to-specify-upper-and-lower-limits-when-using-numpy-random-normal
 	# https://www.thelancet.com/journals/laninf/article/PIIS1473-3099(20)30196-1/fulltext
+
+    MAX_VIRAL_LOAD = conf.get("MAX_VIRAL_LOAD")
+    MIN_VIRAL_LOAD = conf.get("MIN_VIRAL_LOAD")
+    PLATEAU_DURATION_CLIP_HIGH = conf.get("PLATEAU_DURATION_CLIP_HIGH")
+    PLATEAU_DURATION_CLIP_LOW = conf.get("PLATEAU_DURATION_CLIP_LOW")
+    PLATEAU_DURATION_MEAN = conf.get("PLATEAU_DURATION_MEAN")
+    PLATEAU_START_CLIP_HIGH = conf.get("PLATEAU_START_CLIP_HIGH")
+    PLATEAU_START_CLIP_LOW = conf.get("PLATEAU_START_CLIP_LOW")
+    PLATEAU_START_MEAN = conf.get("PLATEAU_START_MEAN")
+    PLATEAU_START_STD = conf.get("PLATEAU_START_STD")
+    PLATEAU_DURATION_STD = conf.get("PLATEAU_DURATION_STD")
+    RECOVERY_CLIP_HIGH = conf.get("RECOVERY_CLIP_HIGH")
+    RECOVERY_CLIP_LOW = conf.get("RECOVERY_CLIP_LOW")
+    RECOVERY_MEAN = conf.get("RECOVERY_MEAN")
+    RECOVERY_STD = conf.get("RECOVERY_STD")
+    VIRAL_LOAD_RECOVERY_FACTOR = conf.get("VIRAL_LOAD_RECOVERY_FACTOR")
+
     plateau_start = truncnorm((PLATEAU_START_CLIP_LOW - PLATEAU_START_MEAN)/PLATEAU_START_STD, (PLATEAU_START_CLIP_HIGH - PLATEAU_START_MEAN) / PLATEAU_START_STD, loc=PLATEAU_START_MEAN, scale=PLATEAU_START_STD).rvs(1, random_state=rng)
-    plateau_end = plateau_start + truncnorm((PLATEAU_DURATION_CLIP_LOW - PLATEAU_DURATION_MEAN)/PLEATEAU_DURATION_STD,
-                                            (PLATEAU_DURATION_CLIP_HIGH - PLATEAU_DURATION_MEAN) / PLEATEAU_DURATION_STD,
-                                            loc=PLATEAU_DURATION_MEAN, scale=PLEATEAU_DURATION_STD).rvs(1, random_state=rng)
+    plateau_end = plateau_start + truncnorm((PLATEAU_DURATION_CLIP_LOW - PLATEAU_DURATION_MEAN)/PLATEAU_DURATION_STD,
+                                            (PLATEAU_DURATION_CLIP_HIGH - PLATEAU_DURATION_MEAN) / PLATEAU_DURATION_STD,
+                                            loc=PLATEAU_DURATION_MEAN, scale=PLATEAU_DURATION_STD).rvs(1, random_state=rng)
     recovered = plateau_end + ((age/10)-1) # age is a determining factor for the recovery time
     recovered = recovered + initial_viral_load * VIRAL_LOAD_RECOVERY_FACTOR \
                           + truncnorm((RECOVERY_CLIP_LOW - RECOVERY_MEAN) / RECOVERY_STD,
@@ -1024,7 +1040,7 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
 
     return progression
 
-def _get_allergy_progression(rng):
+def _get_allergy_progression(rng, P_SEVERE_ALLERGIES):
     """
     [summary]
 
@@ -1053,7 +1069,7 @@ def _get_allergy_progression(rng):
     progression = [symptoms]
     return progression
 
-def _get_flu_progression(age, rng, carefulness, preexisting_conditions, really_sick, extremely_sick):
+def _get_flu_progression(age, rng, carefulness, preexisting_conditions, really_sick, extremely_sick, FLU_INCUBATION, AVG_FLU_DURATION):
     """
     [summary]
 
@@ -1131,9 +1147,9 @@ def _get_flu_progression(age, rng, carefulness, preexisting_conditions, really_s
                         symptoms_per_phase[phase_i].append(symptom)
 
     if age < 12 or age > 40 or any(preexisting_conditions) or really_sick or extremely_sick:
-        mean = AVG_FLU_DURATION + 2 -2*carefulness
+        mean = AVG_FLU_DURATION + 2 - 2 * carefulness
     else:
-        mean = AVG_FLU_DURATION - 2*carefulness
+        mean = AVG_FLU_DURATION - 2 * carefulness
 
     len_flu = rng.normal(mean,3)
 
@@ -1465,7 +1481,7 @@ def proba_to_risk_fn(mapping):
 
     return _proba_to_risk
 
-def get_intervention(key, RISK_MODEL=None, TRACING_ORDER=None, TRACE_SYMPTOMS=None, TRACE_RISK_UPDATE=None, SHOULD_MODIFY_BEHAVIOR=True):
+def get_intervention(key, RISK_MODEL=None, TRACING_ORDER=None, TRACE_SYMPTOMS=None, TRACE_RISK_UPDATE=None, SHOULD_MODIFY_BEHAVIOR=True, MASKS_SUPPLY=0):
 	"""
     [summary]
 
@@ -1476,6 +1492,7 @@ def get_intervention(key, RISK_MODEL=None, TRACING_ORDER=None, TRACE_SYMPTOMS=No
         TRACE_SYMPTOMS ([type], optional): [description]. Defaults to None.
         TRACE_RISK_UPDATE ([type], optional): [description]. Defaults to None.
         SHOULD_MODIFY_BEHAVIOR (bool, optional): [description]. Defaults to True.
+        MASKS_SUPPLY (int, optional): [description]. Defaults to 0.
 
     Raises:
         NotImplementedError: [description]
@@ -1542,7 +1559,7 @@ def filter_open(locations):
     """
     return [loc for loc in locations if loc.is_open_for_business]
 
-def filter_queue_max(locations):
+def filter_queue_max(locations, max_len):
     """Given an iterable of locations, will return a list of those
     with queues that are not too long.
 
@@ -1552,7 +1569,7 @@ def filter_queue_max(locations):
     Returns:
         list
     """
-    return [loc for loc in locations if len(loc.queue)<=MAX_STORE_QUEUE_LENGTH]
+    return [loc for loc in locations if len(loc.queue) <= max_len]
 
 def extract_tracker_data(tracker, conf):
     """

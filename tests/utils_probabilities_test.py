@@ -454,13 +454,16 @@ class FluSymptoms(unittest.TestCase):
             self.assertNotIn(s_prob.id, s_ids)
             s_ids.add(s_prob.id)
 
+        FLU_INCUBATION = 1 # config.py /!\
+        AVG_FLU_DURATION = 5 # config.py /!\
+
         for really_sick in really_sick_options:
             for extremely_sick in extremely_sick_options if really_sick else (False,):
                 for preexisting_conditions in preexisting_conditions_options:
                     # To simplify the tests, we expect each stage to last 1 day
                     computed_dist = [[set(day_symptoms) for day_symptoms in
                                       _get_flu_progression(age, rng, carefulness, preexisting_conditions,
-                                                           really_sick, extremely_sick)]
+                                                           really_sick, extremely_sick, FLU_INCUBATION)]
                                      for _ in range(n_people)]
 
                     probs = [[0] * len(SYMPTOMS) for _ in symptoms_contexts]
