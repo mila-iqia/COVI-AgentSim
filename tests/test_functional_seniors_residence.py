@@ -7,7 +7,7 @@ from covid19sim.simulator import Human
 from covid19sim.base import City, Env, EmptyCity
 from covid19sim.monitors import EventMonitor, TimeMonitor, SEIRMonitor
 from covid19sim.configs.exp_config import ExpConfig
-from covid19sim.configs import config
+from covid19sim.configs import config as core_config
 from covid19sim.frozen.helper import SYMPTOMS_META, SYMPTOMS_META_IDMAP
 from covid19sim.configs.constants import TICK_MINUTE
 import datetime

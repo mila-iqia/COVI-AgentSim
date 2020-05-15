@@ -69,4 +69,4 @@ class ExpConfig(object):
         """
         with open(path) as file:
             ExpConfig.config = yaml.load(file, Loader=yaml.FullLoader)
-        return ExpConfig.config
+        return

@@ -9,6 +9,7 @@ import numpy as np
 
 from covid19sim.run import simulate
 from covid19sim.configs.exp_config import ExpConfig
+from covid19sim.configs import config as core_config
 
 
 class ModelsTest(unittest.TestCase):
