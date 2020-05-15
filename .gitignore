@@ -10,6 +10,7 @@
 # output files
 output/
 CTT-SHIPMENT-0
+exp/
 
 # Pycharm stuff
 .idea/

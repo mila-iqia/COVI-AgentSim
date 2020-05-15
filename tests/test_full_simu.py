@@ -6,7 +6,7 @@ import unittest
 import zipfile
 from tempfile import TemporaryDirectory
 
-from covid19sim.run import run_simu
+from covid19sim.run import simulate
 from covid19sim.base import Event
 from covid19sim.configs.exp_config import ExpConfig
 
@@ -21,7 +21,7 @@ class FullUnitTest(unittest.TestCase):
         with TemporaryDirectory() as d:
             outfile = os.path.join(d, "data")
             n_people = 100
-            monitors, _ = run_simu(
+            monitors, _ = simulate(
                 n_people=n_people,
                 start_time=datetime.datetime(2020, 2, 28, 0, 0),
                 simulation_days=20,
@@ -63,7 +63,7 @@ class SeedUnitTest(unittest.TestCase):
         with TemporaryDirectory() as d1, TemporaryDirectory() as d2:
             of1 = os.path.join(d1, "data")
             of2 = os.path.join(d2, "data")
-            monitors1, _ = run_simu(
+            monitors1, _ = simulate(
                 n_people=self.n_people,
                 start_time=self.start_time,
                 simulation_days=self.simulation_days,
@@ -75,7 +75,7 @@ class SeedUnitTest(unittest.TestCase):
             monitors1[0].dump()
             monitors1[0].join_iothread()
 
-            monitors2, _ = run_simu(
+            monitors2, _ = simulate(
                 n_people=self.n_people,
                 start_time=self.start_time,
                 simulation_days=self.simulation_days,
@@ -116,7 +116,7 @@ class SeedUnitTest(unittest.TestCase):
         with TemporaryDirectory() as d1, TemporaryDirectory() as d2:
             of1 = os.path.join(d1, "data")
             of2 = os.path.join(d2, "data")
-            monitors1, _ = run_simu(
+            monitors1, _ = simulate(
                 n_people=self.n_people,
                 start_time=self.start_time,
                 simulation_days=self.simulation_days,
@@ -128,7 +128,7 @@ class SeedUnitTest(unittest.TestCase):
             monitors1[0].dump()
             monitors1[0].join_iothread()
 
-            monitors2, _ = run_simu(
+            monitors2, _ = simulate(
                 n_people=self.n_people,
                 start_time=self.start_time,
                 simulation_days=self.simulation_days,
