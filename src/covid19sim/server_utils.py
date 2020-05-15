@@ -206,7 +206,7 @@ class InferenceWorker(threading.Thread):
                 return [InferenceWorker.process_sample(human, engine, mp_backend, mp_threads) for human in sample]
         else:
             assert isinstance(sample, dict), "unexpected input data format"
-            results = proc_human(sample, engine, mp_backend, mp_threads)
+            results = proc_human(sample, engine)
             if results is not None:
                 return (results['name'], results['risk_history'], results['clusters'])
             return None
@@ -398,7 +398,7 @@ def proc_human(params, inference_engine=None):
                 clustering_type = functools.partial(clustering_type, ticks_per_uid_roll=1)
             # note: we create the manager to use day-level timestamps only
             human["clusters"] = clustering_type(
-                max_history_ticks_offset=ExpConfig.get('TRACING_N_DAYS_HISTORY'),
+                max_history_ticks_offset=14, # TODO: we should pass this value in as an argument instead of a magic number (num days history)
                 # note: the simulator should be able to match all update messages to encounters, but
                 # since the time slot update voodoo, I (PLSC) have not been able to make no-adopt
                 # version of the naive implementation work (both with and without batching)

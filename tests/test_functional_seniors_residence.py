@@ -54,6 +54,7 @@ def test_functional_seniors_residence():
                                 profession='retired',
                                 rho=config.RHO,
                                 gamma=config.GAMMA,
+                                has_app=True,
                                 infection_timestamp=infection[i]
                                 ) for i in range(N)]
 

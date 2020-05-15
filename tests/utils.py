@@ -1,8 +1,11 @@
 import dataclasses
 import numpy as np
 import typing
+import os
+from multiprocessing import Process
 
 import covid19sim.frozen.message_utils as mu
+import covid19sim.server_bootstrap
 
 
 @dataclasses.dataclass
@@ -251,3 +254,17 @@ def generate_random_messages(
     ]
     messages = generate_received_messages(humans)  # hopefully this is not too slow
     return [msg for msgs in messages[0]["received_messages"].values() for msg in msgs], visits
+
+
+def start_inference_server():
+    """
+    [summary]
+
+    Returns:
+        [type]: [description]
+    """
+    exp_dir = os.path.join(os.path.dirname(__file__), "exp/DEBUG-0")
+    p = Process(target=covid19sim.server_bootstrap.main, args=([f"-e{exp_dir}"],), daemon=True)
+    p.start()
+    return p
+

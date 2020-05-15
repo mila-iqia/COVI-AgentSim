@@ -16,4 +16,6 @@ networkx
 tqdm
 seaborn
 pyyaml
+pytest-cov==2.8.1
 cached_property
+requests
