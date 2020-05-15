@@ -12,7 +12,6 @@ import warnings
 from covid19sim.utils import download_exp_data_if_not_exist
 from covid19sim.server_utils import InferenceClient, InferenceWorker
 from ctt.inference.infer import InferenceEngine
-from covid19sim.configs.exp_config import ExpConfig
 
 def query_inference_server(params, **inf_client_kwargs):
     """
@@ -30,7 +29,7 @@ def query_inference_server(params, **inf_client_kwargs):
     return results
 
 
-def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_symptoms, port=6688, n_jobs=1, data_path=None):
+def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_symptoms, port=6688, n_jobs=1, data_path=None, conf={}):
     """
     [summary]
     Setup and make the calls to the server
@@ -44,7 +43,7 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
         port (int, optional): [description]. Defaults to 6688.
         n_jobs (int, optional): [description]. Defaults to 1.
         data_path ([type], optional): [description]. Defaults to None.
-
+        conf (dict): yaml experimental configuration
     Returns:
         [type]: [description]
     """
@@ -54,7 +53,7 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
     current_time = (start + timedelta(days=current_day, hours=time_slot))
 
     # prepare the model stuff in case we need it
-    model_exp_data_path = ExpConfig.get('TRANSFORMER_EXP_PATH')
+    model_exp_data_path = conf.get('TRANSFORMER_EXP_PATH')
     if model_exp_data_path.startswith("http"):
         assert os.path.isdir("/tmp"), "don't know where to download data to..."
         downloaded_exp_data_path = "/tmp/temporary_exp"
@@ -79,17 +78,17 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
             "start": start,
             "current_day": current_day,
             "all_possible_symptoms": all_possible_symptoms,
-            "COLLECT_TRAINING_DATA": ExpConfig.get('COLLECT_TRAINING_DATA'),
+            "COLLECT_TRAINING_DATA": conf.get('COLLECT_TRAINING_DATA'),
             "human": human_state,
             "log_path": log_path,
             "time_slot": time_slot,
-            "risk_model": ExpConfig.get('RISK_MODEL'),
-            "oracle": ExpConfig.get("USE_ORACLE")
+            "risk_model": conf.get('RISK_MODEL'),
+            "oracle": conf.get("USE_ORACLE")
         })
         human.contact_book.update_messages = []
         human.contact_book.messages = []
 
-    if ExpConfig.get('USE_INFERENCE_SERVER'):
+    if conf.get('USE_INFERENCE_SERVER'):
         batch_start_offset = 0
         batch_size = 300  # @@@@ TODO: make this a high-level configurable arg?
         batched_params = []
@@ -98,7 +97,7 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
             batched_params.append(all_params[batch_start_offset:batch_end_offset])
             batch_start_offset += batch_size
         query_func = functools.partial(query_inference_server, target_port=port)
-        with Parallel(n_jobs=n_jobs, batch_size=ExpConfig.get('MP_BATCHSIZE'), backend=ExpConfig.get('MP_BACKEND'), verbose=0, prefer="threads") as parallel:
+        with Parallel(n_jobs=n_jobs, batch_size=conf.get('MP_BATCHSIZE'), backend=conf.get('MP_BACKEND'), verbose=0, prefer="threads") as parallel:
             batched_results = parallel((delayed(query_func)(params) for params in batched_params))
         results = []
         for b in batched_results:
@@ -106,12 +105,12 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
     else:
         # recreating an engine every time should not be too expensive... right?
         engine = InferenceEngine(model_exp_data_path)
-        results = InferenceWorker.process_sample(all_params, engine, ExpConfig.get('MP_BACKEND'), n_jobs)
+        results = InferenceWorker.process_sample(all_params, engine, conf.get('MP_BACKEND'), n_jobs)
 
     for result in results:
         if result is not None:
             name, risk_history, clusters = result
-            if ExpConfig.get('RISK_MODEL') == "transformer":
+            if conf.get('RISK_MODEL') == "transformer":
                 # TODO: Fix can be None. What should be done in this case
                 if risk_history is not None:
                     # risk_history = np.clip(risk_history, 0., 1.)
@@ -120,17 +119,17 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
                     hd[name].update_risk_level()
                     for i in range(len(risk_history)):
                         hd[name].prev_risk_history_map[current_day - i] = risk_history[i]
-                elif current_day != ExpConfig.get('INTERVENTION_DAY'):
+                elif current_day != conf.get('INTERVENTION_DAY'):
                     warnings.warn(f"risk history is none for human:{name}", RuntimeWarning)
                 hd[name].last_risk_update = current_time
             hd[name].clusters = clusters
             hd[name].last_cluster_update = current_time
 
     # print out the clusters
-    if ExpConfig.get('DUMP_CLUSTERS'):
-        os.makedirs(ExpConfig.get('DUMP_CLUSTERS'), exist_ok=True)
+    if conf.get('DUMP_CLUSTERS'):
+        os.makedirs(conf.get('DUMP_CLUSTERS'), exist_ok=True)
         curr_date_str = current_time.strftime("%Y%m%d-%H%M%S")
-        curr_dump_path = os.path.join(ExpConfig.get('DUMP_CLUSTERS'), curr_date_str + ".pkl")
+        curr_dump_path = os.path.join(conf.get('DUMP_CLUSTERS'), curr_date_str + ".pkl")
         to_dump = {human_id: human.clusters for human_id, human in hd.items()
                    if human.last_cluster_update == current_time}
         with open(curr_dump_path, "wb") as fd:

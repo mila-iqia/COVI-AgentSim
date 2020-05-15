@@ -1602,11 +1602,11 @@ def download_exp_data_if_not_exist(
 
 def extract_tracker_data(tracker, conf):
     """
-    Get a dictionnary collecting interesting fields of the tracker and experimental settings from ExpConfig
+    Get a dictionnary collecting interesting fields of the tracker and experimental settings
 
     Args:
         tracker (covid19sim.track.Tracker): Tracker toring simulation data
-        ExpConfig (dict): Experimental Configuration
+        conf (dict): Experimental Configuration
 
     returns:
         dict: the extracted data

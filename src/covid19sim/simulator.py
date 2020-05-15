@@ -1471,7 +1471,7 @@ class Human(object):
                     if self.flu_timestamp is not None:
                         flu_infector, flu_infectee = self, h
 
-                    if self.rng.random() < FLU_CONTAGIOUSNESS:
+                    if self.rng.random() < self.conf.get("FLU_CONTAGIOUSNESS"):
                         flu_infectee.flu_timestamp = self.env.timestamp
 
                 city.tracker.track_encounter_events(human1=self, human2=h, location=location, distance=distance, duration=t_near)

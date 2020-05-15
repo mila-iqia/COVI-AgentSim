@@ -12,6 +12,7 @@ import numpy as np
 
 from covid19sim.base import Event
 from covid19sim.configs.exp_config import ExpConfig
+import covid19sim.configs.config as core_config
 from covid19sim.run import simulate
 from covid19sim.utils import extract_tracker_data
 
@@ -60,9 +61,10 @@ if __name__ == "__main__":
     # https://coronavirus.jhu.edu/testing/testing-positivity
     # https://www.canada.ca/content/dam/phac-aspc/documents/services/diseases/2019-novel-coronavirus-infection/surv-covid19-epi-update-eng.pdf
     path = Path(__file__).parent
-    conf = ExpConfig.load_config(
-        path / "test_configs" / "test_covid_test.yml"
-    ).config  # test_covid_test = no intervention
+    exp_config = ExpConfig.load_config(path / "test_configs" / "test_covid_test.yml")
+    conf = {k: getattr(core_config, k) for k in dir(core_config) if "__" not in k}
+    conf.update(exp_config)
+    # test_covid_test = no intervention
     outfile = None
 
     # ----------------------------
@@ -79,7 +81,7 @@ if __name__ == "__main__":
         outfile=outfile,
         init_percent_sick=init_percent_sick,
         out_chunk_size=500,
-        conf=conf
+        conf=conf,
     )
 
     # ---------------------------

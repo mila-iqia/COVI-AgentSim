@@ -104,8 +104,8 @@ def main(
     """
 
     # Load the experimental configuration
-    conf = {k: getattr(core_config, k) for k in dir(core_config) if "__" not in k}
     exp_config = ExpConfig.load_config(config)
+    conf = {k: getattr(core_config, k) for k in dir(core_config) if "__" not in k}
     conf.update(exp_config)
     if outdir is None:
         outdir = "output"

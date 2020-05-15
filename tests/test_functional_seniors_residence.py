@@ -29,7 +29,9 @@ def test_functional_seniors_residence():
 
         # Find the test_configs directory, and load the required config yaml
         path = Path(__file__).parent
-        conf = ExpConfig.load_config(path / "test_configs" / "naive_local.yml")
+        exp_config = ExpConfig.load_config(path / "test_configs" / "naive_local.yml")
+        conf = {k: getattr(core_config, k) for k in dir(core_config) if "__" not in k}
+        conf.update(exp_config)
 
         env = Env(start_time)
         city = EmptyCity(env, rng, city_x_range, city_y_range, start_time, conf)
