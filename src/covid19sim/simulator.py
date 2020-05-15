@@ -210,6 +210,7 @@ class Human(object):
         self.incubation_days = None # self.infectiousness_onset_days + self.viral_load_plateau_start + self.rng.normal(loc=SYMPTOM_ONSET_WRT_VIRAL_LOAD_PEAK_AVG, scale=SYMPTOM_ONSET_WRT_VIRAL_LOAD_PEAK_STD)
         self.recovery_days = None # self.infectiousness_onset_days + self.viral_load_recovered
         self.test_result, self.test_type = None, None
+        self._infection_timestamp = None
         self.infection_timestamp = infection_timestamp
         self.initial_viral_load = self.rng.rand() if infection_timestamp is not None else 0
         if self.infection_timestamp is not None:
@@ -423,6 +424,26 @@ class Human(object):
         self._tracing = value
 
     @property
+    def infection_timestamp(self):
+        """
+        Returns the timestamp when the human was infected by COVID.
+        Returns None if human is not exposed or infectious.
+        """
+        return self._infection_timestamp
+
+    @infection_timestamp.setter
+    def infection_timestamp(self, val):
+        """
+        Sets the infection_timestamp to val.
+        Raises AssertError at an attempt to overwrite infection_timestamp.
+        """
+        if self.infection_timestamp is not None:
+            assert val is None, f"{self}: attempt to overwrite infection_timestamp"
+
+        assert val is None or isinstance(val, datetime.datetime), f"{self}: improper type {type(val)} being assigned to infection_timestamp"
+        self._infection_timestamp = val
+
+    @property
     def is_susceptible(self):
         """
         [summary]
@@ -445,20 +466,20 @@ class Human(object):
     @property
     def is_infectious(self):
         """
-        [summary]
+        Returns True if human is infectious i.e. is able to infect others
 
         Returns:
-            [type]: [description]
+            bool: if human is infectious, False if not
         """
         return not self.is_removed and self.infection_timestamp is not None and self.env.timestamp - self.infection_timestamp >= datetime.timedelta(days=self.infectiousness_onset_days)
 
     @property
     def is_removed(self):
         """
-        [summary]
+        Returns True if human is either dead or has recovered from COVID and can't be reinfected i.e is immune
 
         Returns:
-            [type]: [description]
+            bool: True if human is immune or dead, False if not
         """
         return self.is_immune or self.is_dead
 
@@ -888,11 +909,11 @@ class Human(object):
         return 1.0
 
     def expire(self):
-        """ 
+        """
         This function (generator) will cause the human to expire, after which self.is_dead==True.
         Yields self.env.timeout(np.inf), which when passed to env.procces will inactivate self
         for the remainder of the simulation.
-        
+
         Yields:
             generator
         """
@@ -1026,12 +1047,12 @@ class Human(object):
                 yield self.env.process(self.excursion(city, "hospital"))
 
             # Work is a partial imperitive
-            if (not self.profession=="retired" and 
+            if (not self.profession=="retired" and
                 not self.env.is_weekend() and
                 hour in self.work_start_hour and
                 not self.rest_at_home):
                 yield self.env.process(self.excursion(city, "work"))
-                
+
             # TODO (EM) These optional and erratic behaviours should be more probabalistic,
             # with probs depending on state of lockdown of city
             # Lockdown should also close a fraction of the shops
@@ -1131,7 +1152,7 @@ class Human(object):
                 # If we make it here, it counts as a visit to the shop
                 self.count_shop+=1
                 yield self.env.process(self.at(grocery_store, city, t))
-        
+
         elif location_type == "exercise":
             park = self._select_location(location_type="park", city=city)
             if park is None:
@@ -1145,7 +1166,7 @@ class Human(object):
             t = _draw_random_discreet_gaussian(self.avg_working_minutes, self.scale_working_minutes, self.rng)
             if self.workplace.is_open_for_business:
                 yield self.env.process(self.at(self.workplace, city, t))
-            else: 
+            else:
                 # work from home
                 yield self.env.process(self.at(self.household, city, t))
 
@@ -1203,12 +1224,16 @@ class Human(object):
 
     def at(self, location, city, duration):
         """
-        [summary]
+        Enter/Exit human to/from a `location` for some `duration`.
+        Once human is at a location, encounters are sampled.
+        During the stay, human is likely to be infected either by a contagion or
+        through environmental transmission.
+        Cold/Flu/Allergy onset also takes place in this function.
 
         Args:
-            location ([type]): [description]
-            city ([type]): [description]
-            duration ([type]): [description]
+            location (Location): next location to enter
+            city (City): city in which human resides
+            duration (float): time duration for which human stays at this location
 
         Yields:
             [type]: [description]
@@ -1245,7 +1270,7 @@ class Human(object):
                 continue
 
             # age mixing #FIXME: find a better way
-            # places other than the household, you mix with everyone
+            # at places other than the household, you mix with everyone
             if location != self.household and not self.rng.random() < (0.1 * abs(self.age - h.age) + 1) ** -1:
                 continue
 
@@ -1279,66 +1304,48 @@ class Human(object):
                     proximity_factor = INFECTION_DISTANCE_FACTOR * (1 - distance/INFECTION_RADIUS) + INFECTION_DURATION_FACTOR * min((t_near - INFECTION_DURATION)/INFECTION_DURATION, 1)
                 mask_efficacy = (self.mask_efficacy + h.mask_efficacy)*2
 
-                # TODO: merge the two clauses into one (follow cold and flu)
-                infectee = None
-                if self.is_infectious:
-                    ratio = self.asymptomatic_infection_ratio  if self.is_asymptomatic else 1.0
-                    p_infection = self.infectiousness * ratio * proximity_factor
+                # covid transmission
+                infector, infectee = None, None
+                if self.is_infectious ^ h.is_infectious:
+                    infector, infectee = self, h
+                    if h.is_infectious:
+                        infector, infectee = h, self
+
+                    ratio = infector.asymptomatic_infection_ratio  if infector.is_asymptomatic else 1.0
+                    p_infection = infector.infectiousness * ratio * proximity_factor
                     # FIXME: remove hygiene from severity multiplier; init hygiene = 0; use sum here instead
                     reduction_factor = CONTAGION_KNOB + sum(getattr(x, "_hygiene", 0) for x in [self, h]) + mask_efficacy
-                    p_infection *= np.exp(-reduction_factor * h.n_infectious_contacts)
+                    p_infection *= np.exp(-reduction_factor * infector.n_infectious_contacts)
 
-                    x_human = self.rng.random() < p_infection
+                    x_human = infector.rng.random() < p_infection
 
-                    if x_human and h.is_susceptible:
-                        h.infection_timestamp = self.env.timestamp
-                        h.initial_viral_load = h.rng.random()
-                        h.compute_covid_properties()
-                        infectee = h.name
+                    if x_human and infectee.is_susceptible:
+                        infectee.infection_timestamp = self.env.timestamp
+                        infectee.initial_viral_load = infector.rng.random()
+                        infectee.compute_covid_properties()
 
-                        self.n_infectious_contacts+=1
-                        Event.log_exposed(h, self, self.env.timestamp)
-                        h.exposure_message = encode_message(self.cur_message((self.env.timestamp - self.env.initial_timestamp).days))
-                        city.tracker.track_infection('human', from_human=self, to_human=h, location=location, timestamp=self.env.timestamp)
-                        city.tracker.track_covid_properties(h)
+                        infector.n_infectious_contacts += 1
+                        Event.log_exposed(infectee, infector, self.env.timestamp)
+                        infector.exposure_message = encode_message(self.cur_message((self.env.timestamp - self.env.initial_timestamp).days))
+                        city.tracker.track_infection('human', from_human=infector, to_human=infectee, location=location, timestamp=self.env.timestamp)
+                        city.tracker.track_covid_properties(infectee)
+                    else:
+                        infector, infectee = None, None
 
-                elif h.is_infectious:
-                    ratio = h.asymptomatic_infection_ratio  if h.is_asymptomatic else 1.0
-                    p_infection = h.infectiousness * ratio * proximity_factor # &prob_infectious
-                    # FIXME: remove hygiene from severity multiplier; init hygiene = 0; use sum here instead
-                    reduction_factor = CONTAGION_KNOB + sum(getattr(x, "_hygiene", 0) for x in [self, h]) + mask_efficacy
-                    p_infection *= np.exp(-reduction_factor * h.n_infectious_contacts)
-
-                    x_human = self.rng.random() < p_infection
-
-                    if x_human and self.is_susceptible:
-                        self.infection_timestamp = self.env.timestamp
-                        self.initial_viral_load = self.rng.random()
-                        self.compute_covid_properties()
-                        infectee = self.name
-                        h.n_infectious_contacts+=1
-                        Event.log_exposed(self, h, self.env.timestamp)
-                        city.tracker.track_infection('human', from_human=h, to_human=self, location=location, timestamp=self.env.timestamp)
-                        city.tracker.track_covid_properties(self)
-
-                # other transmissions
-                # if either are infected
-                if self.cold_timestamp is not None or h.cold_timestamp is not None:
+                # cold transmissions
+                if self.has_cold ^ h.has_cold:
                     cold_infector, cold_infectee = h, self
                     if self.cold_timestamp is not None:
                         cold_infector, cold_infectee = self, h
 
-                    # TODO - bug - in case when both had the cold, one has chance to have timestamp updated.
-
                     if self.rng.random() < COLD_CONTAGIOUSNESS:
                         cold_infectee.cold_timestamp = self.env.timestamp
 
-                if self.flu_timestamp is not None or h.flu_timestamp is not None:
+                # flu tansmission
+                if self.has_flu ^ h.has_flu:
                     flu_infector, flu_infectee = h, self
                     if self.flu_timestamp is not None:
                         flu_infector, flu_infectee = self, h
-
-                    # TODO - bug - in case when both had the flu, one has chance to have timestamp updated.
 
                     if self.rng.random() < FLU_CONTAGIOUSNESS:
                         flu_infectee.flu_timestamp = self.env.timestamp
@@ -1348,7 +1355,7 @@ class Human(object):
                                     location=location,
                                     duration=t_near,
                                     distance=distance,
-                                    infectee=infectee,
+                                    infectee=None if not infectee else infectee.name,
                                     time=self.env.timestamp
                                     )
 
@@ -1459,7 +1466,7 @@ class Human(object):
             return loc
         else:
             return None
-        
+
 
     def get_message_dict(self):
         """
