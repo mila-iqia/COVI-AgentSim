@@ -4,12 +4,13 @@ Main file to run the simulations
 import click
 import os
 
-from covid19sim.frozen.helper import SYMPTOMS_META, SYMPTOMS_META_IDMAP
+from covid19sim.frozen.helper import SYMPTOMS_META_IDMAP
 from covid19sim.simulator import Human
 from covid19sim.base import *
 from covid19sim.monitors import EventMonitor, TimeMonitor, SEIRMonitor
 from covid19sim.configs.exp_config import ExpConfig
 from covid19sim.configs.constants import TICK_MINUTE
+from covid19sim.utils import extract_tracker_data, dump_tracker_data
 
 
 @click.command()
@@ -23,12 +24,13 @@ from covid19sim.configs.constants import TICK_MINUTE
 @click.option('--port', help='which port should we look for inference servers on', type=int, default=6688)
 @click.option('--config', help='where is the configuration file for this experiment', type=str, default="configs/naive_config.yml")
 @click.option('--tune', help='track additional specific metrics to plot and explore', is_flag=True, default=False)
+@click.option('--name', help='name of the file to append metrics file', type=str, default="")
 def main(n_people=None,
         init_percent_sick=0.01,
         start_time=datetime.datetime(2020, 2, 28, 0, 0),
         simulation_days=30,
         outdir=None, out_chunk_size=None,
-        seed=0, n_jobs=1, port=6688, config="configs/naive_config.yml", tune=False):
+        seed=0, n_jobs=1, port=6688, config="configs/naive_config.yml", name="", tune=False):
     """
     [summary]
 
@@ -68,6 +70,7 @@ def main(n_people=None,
         print_progress=True,
         seed=seed, n_jobs=n_jobs, port=port
     )
+    timenow = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
 
     if not tune:
         monitors[0].dump()
