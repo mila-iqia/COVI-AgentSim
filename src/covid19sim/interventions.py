@@ -733,7 +733,7 @@ class TestCapacity(CityInterventions):
         """
         pass
 
-def get_intervention(key, RISK_MODEL=None, TRACING_ORDER=None, TRACE_SYMPTOMS=None, TRACE_RISK_UPDATE=None, SHOULD_MODIFY_BEHAVIOR=True):
+def get_intervention(key, RISK_MODEL=None, TRACING_ORDER=None, TRACE_SYMPTOMS=None, TRACE_RISK_UPDATE=None, SHOULD_MODIFY_BEHAVIOR=True,MASKS_SUPPLY=0):
     """
     [summary]
 
@@ -744,6 +744,7 @@ def get_intervention(key, RISK_MODEL=None, TRACING_ORDER=None, TRACE_SYMPTOMS=No
         TRACE_SYMPTOMS ([type], optional): [description]. Defaults to None.
         TRACE_RISK_UPDATE ([type], optional): [description]. Defaults to None.
         SHOULD_MODIFY_BEHAVIOR (bool, optional): [description]. Defaults to True.
+        MASKS_SUPPLY (int, optional): [description]. Defaults to 0.
 
     Raises:
         NotImplementedError: [description]
