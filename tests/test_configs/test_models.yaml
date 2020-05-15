@@ -22,11 +22,7 @@ CLUSTER_PATH : "output/clusters"
 TRANSFORMER_EXP_PATH : "https://drive.google.com/file/d/1Z7g3gKh2kWFSmK2Yr19MQq0blOWS5st0"
 
 # Inference & Training
-INFECTIOUSNESS_N_DAYS_HISTORY : 14
 TRACING_N_DAYS_HISTORY : 14
-MP_BATCHSIZE : "auto"
-MP_N_JOBS : "1"
-MP_BACKEND : "loky"
 DUMP_CLUSTERS : False
 CLUSTER_ALGO_TYPE : "blind" # should be in ["old", "blind", "naive", "perfect", "simple"]
 

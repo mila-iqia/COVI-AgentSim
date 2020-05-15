@@ -534,24 +534,28 @@ class Tracing(object):
 
         return risk
 
-    def update_human_risks(self, **kwargs):
+    def update_human_risks(
+            self,
+            city,
+            all_possible_symptoms,
+            data_path,
+            conf,
+    ):
         """
         Updates the risk value based on the `risk_model`.
         Calls an external server if the `risk_model` relies on a machine learning server.
         """
-        city = kwargs.get("city")
-        all_possible_symptoms = kwargs.get("symptoms")
-        port = kwargs.get("port")
-        n_jobs = kwargs.get("n_jobs")
-        data_path = kwargs.get("data_path")
-        COLLECT_TRAINING_DATA = kwargs.get("COLLECT_TRAINING_DATA")
 
         if self.risk_model == "transformer":
-            all_possible_symptoms = kwargs.get("symptoms")
-            port = kwargs.get("port")
-            n_jobs = kwargs.get("n_jobs")
-            data_path = kwargs.get("data_path")
-            city.humans = integrated_risk_pred(city.humans, city.start_time, city.current_day, city.env.timestamp.hour, all_possible_symptoms, port=port, n_jobs=n_jobs, data_path=data_path, conf=city.conf)
+            city.humans = integrated_risk_pred(
+                city.humans,
+                city.start_time,
+                city.current_day,
+                city.env.timestamp.hour,
+                all_possible_symptoms,
+                data_path=data_path,
+                conf=conf,
+            )
         else:
             for human in city.humans:
                 cur_day = (human.env.timestamp - human.env.initial_timestamp).days
@@ -566,9 +570,16 @@ class Tracing(object):
 
                     human.risk_history_map[cur_day] = human.risk
 
-            if COLLECT_TRAINING_DATA:
-                city.humans = integrated_risk_pred(city.humans, city.start_time, city.current_day, city.env.timestamp.hour, all_possible_symptoms, port=port, n_jobs=n_jobs, data_path=data_path, conf=city.conf)
-
+            if conf.get("COLLECT_TRAINING_DATA"):
+                city.humans = integrated_risk_pred(
+                    city.humans,
+                    city.start_time,
+                    city.current_day,
+                    city.env.timestamp.hour,
+                    all_possible_symptoms,
+                    data_path=data_path,
+                    conf=conf,
+                )
 
     def compute_tracing_delay(self, human):
         """
