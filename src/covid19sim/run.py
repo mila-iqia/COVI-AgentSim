@@ -4,7 +4,7 @@ Main file to run the simulations
 import click
 import os
 
-from covid19sim.frozen.helper import SYMPTOMS_META, SYMPTOMS_META_IDMAP
+from covid19sim.frozen.helper import SYMPTOMS_META_IDMAP
 from covid19sim.simulator import Human
 from covid19sim.base import *
 from covid19sim.monitors import EventMonitor, TimeMonitor, SEIRMonitor
@@ -66,6 +66,9 @@ from covid19sim.configs.constants import TICK_MINUTE
     is_flag=True,
     default=False,
 )
+@click.option(
+    "--name", help="name of the file to append metrics file", type=str, default=""
+)
 def main(
     n_people=None,
     init_percent_sick=0.01,
@@ -78,6 +81,7 @@ def main(
     port=6688,
     config="configs/naive_config.yml",
     tune=False,
+    name="",
 ):
     """
     [summary]
@@ -125,6 +129,7 @@ def main(
         port=port,
         conf=conf,
     )
+    timenow = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 
     if not tune:
         monitors[0].dump()
@@ -184,7 +189,7 @@ def simulate(
         city_y_range,
         start_time,
         Human,
-        conf
+        conf,
     )
     monitors = [
         EventMonitor(f=1800, dest=outfile, chunk_size=out_chunk_size),

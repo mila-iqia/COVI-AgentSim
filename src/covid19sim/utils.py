@@ -1,16 +1,21 @@
 """
 [summary]
 """
-from collections import OrderedDict, namedtuple
-from scipy.stats import norm, truncnorm, gamma
-from functools import lru_cache
 import datetime
 import math
-import dill
+import os
 import pathlib
+import typing
+import zipfile
+from collections import OrderedDict, namedtuple
+from functools import lru_cache
+
+import dill
+import numpy as np
+import requests
+from scipy.stats import gamma, norm, truncnorm
 
 from covid19sim.interventions import *
-
 
 SymptomProbability = namedtuple('SymptomProbability', ['name', 'id', 'probabilities'])
 SymptomProbability.__doc__ = '''A symptom probabilities collection given contexts
@@ -431,7 +436,7 @@ PREEXISTING_CONDITIONS = OrderedDict([
 
 
 def log(str, logfile=None, timestamp=False):
-	"""
+    """
     [summary]
 
     Args:
@@ -439,13 +444,13 @@ def log(str, logfile=None, timestamp=False):
         logfile ([type], optional): [description]. Defaults to None.
         timestamp (bool, optional): [description]. Defaults to False.
     """
-	if timestamp:
-		str = f"[{datetime.datetime.now()}] {str}"
+    if timestamp:
+        str = f"[{datetime.datetime.now()}] {str}"
 
-	print(str)
-	if logfile is not None:
-		with open(logfile, mode='a') as f:
-			print(str, file=f)
+    print(str)
+    if logfile is not None:
+        with open(logfile, mode='a') as f:
+            print(str, file=f)
 
 def _sample_viral_load_gamma(rng, shape_mean=4.5, shape_std=.15, scale_mean=1., scale_std=.15):
     """
@@ -1324,10 +1329,10 @@ def _get_random_age_multinomial(AGE_DISTRIBUTION, rng):
     return rng.uniform(age_group[0], age_group[1])
 
 def _get_random_area(num, total_area, rng):
-	"""
+    """
     Using Dirichlet distribution since it generates a "distribution of probabilities"
-	which will ensure that the total area allotted to a location type remains conserved
-	while also maintaining a uniform distribution
+    which will ensure that the total area allotted to a location type remains conserved
+    while also maintaining a uniform distribution
 
     Args:
         num ([type]): [description]
@@ -1337,10 +1342,10 @@ def _get_random_area(num, total_area, rng):
     Returns:
         [type]: [description]
     """
-	# Keeping max at area/2 to ensure no location is allocated more than half of the total area allocated to its location type
-	area = rng.dirichlet(np.ones(math.ceil(num/2)))*(total_area/2)
-	area = np.append(area,rng.dirichlet(np.ones(math.floor(num/2)))*(total_area/2))
-	return area
+    # Keeping max at area/2 to ensure no location is allocated more than half of the total area allocated to its location type
+    area = rng.dirichlet(np.ones(math.ceil(num/2)))*(total_area/2)
+    area = np.append(area,rng.dirichlet(np.ones(math.floor(num/2)))*(total_area/2))
+    return area
 
 def _draw_random_discreet_gaussian(avg, scale, rng):
     """
@@ -1481,46 +1486,6 @@ def proba_to_risk_fn(mapping):
 
     return _proba_to_risk
 
-def get_intervention(key, RISK_MODEL=None, TRACING_ORDER=None, TRACE_SYMPTOMS=None, TRACE_RISK_UPDATE=None, SHOULD_MODIFY_BEHAVIOR=True, MASKS_SUPPLY=0):
-	"""
-    [summary]
-
-    Args:
-        key ([type]): [description]
-        RISK_MODEL ([type], optional): [description]. Defaults to None.
-        TRACING_ORDER ([type], optional): [description]. Defaults to None.
-        TRACE_SYMPTOMS ([type], optional): [description]. Defaults to None.
-        TRACE_RISK_UPDATE ([type], optional): [description]. Defaults to None.
-        SHOULD_MODIFY_BEHAVIOR (bool, optional): [description]. Defaults to True.
-        MASKS_SUPPLY (int, optional): [description]. Defaults to 0.
-
-    Raises:
-        NotImplementedError: [description]
-
-    Returns:
-        [type]: [description]
-    """
-	if key == "Lockdown":
-		return Lockdown()
-	elif key == "WearMask":
-		return WearMask(MASKS_SUPPLY)
-	elif key == "SocialDistancing":
-		return SocialDistancing()
-	elif key == "Quarantine":
-		return Quarantine()
-	elif key == "Tracing":
-		return Tracing(RISK_MODEL, TRACING_ORDER, TRACE_SYMPTOMS, TRACE_RISK_UPDATE, SHOULD_MODIFY_BEHAVIOR)
-	elif key == "WashHands":
-		return WashHands()
-	elif key == "Stand2M":
-		return Stand2M()
-	elif key == "StayHome":
-		return StayHome()
-	elif key == "GetTested":
-		raise NotImplementedError
-	else:
-		raise
-
 def get_recommendations(risk_level):
     """
     [summary]
@@ -1571,13 +1536,77 @@ def filter_queue_max(locations, max_len):
     """
     return [loc for loc in locations if len(loc.queue) <= max_len]
 
-def extract_tracker_data(tracker, conf):
+
+def download_file_from_google_drive(
+        gdrive_file_id: typing.AnyStr,
+        destination: typing.AnyStr,
+        chunk_size: int = 32768
+) -> typing.AnyStr:
     """
-    Get a dictionnary collecting interesting fields of the tracker and experimental settings from conf
+    Downloads a file from google drive, bypassing the confirmation prompt.
+
+    Args:
+        gdrive_file_id: ID string of the file to download from google drive.
+        destination: where to save the file.
+        chunk_size: chunk size for gradual downloads.
+
+    Returns:
+        The path to the downloaded file.
+    """
+    # taken from this StackOverflow answer: https://stackoverflow.com/a/39225039
+    URL = "https://docs.google.com/uc?export=download"
+    session = requests.Session()
+    response = session.get(URL, params={'id': gdrive_file_id}, stream=True)
+    token = None
+    for key, value in response.cookies.items():
+        if key.startswith('download_warning'):
+            token = value
+    if token:
+        params = {'id': gdrive_file_id, 'confirm': token}
+        response = session.get(URL, params=params, stream=True)
+    with open(destination, "wb") as f:
+        for chunk in response.iter_content(chunk_size):
+            if chunk:  # filter out keep-alive new chunks
+                f.write(chunk)
+    return destination
+
+
+def download_exp_data_if_not_exist(
+        exp_data_url: typing.AnyStr,
+        exp_data_destination: typing.AnyStr,
+) -> typing.AnyStr:
+    """
+    Downloads & extract config/weights for a model if the provided destination does not exist.
+
+    The provided URL will be assumed to be a Google Drive download URL. The download will be
+    skipped entirely if the destination folder already exists. This function will return the
+    path to the existing folder, or to the newly created folder.
+
+    Args:
+        exp_data_url: the zip URL (under the `https://drive.google.com/file/d/ID` format).
+        exp_data_destination: where to save the model data.
+
+    Returns:
+        The path to the model data.
+    """
+    assert exp_data_url.startswith("https://drive.google.com/file/d/")
+    if os.path.exists(exp_data_destination):
+        return exp_data_destination
+    os.makedirs(exp_data_destination)
+    gdrive_file_id = exp_data_url.split("/")[-1]
+    zip_destination = os.path.join(exp_data_destination, f"{gdrive_file_id}.zip")
+    zip_path = download_file_from_google_drive(gdrive_file_id, zip_destination)
+    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+        zip_ref.extractall(exp_data_destination)
+    return exp_data_destination
+
+def extract_tracker_data(tracker, ExpConfig):
+    """
+    Get a dictionnary collecting interesting fields of the tracker and experimental settings from ExpConfig
 
     Args:
         tracker (covid19sim.track.Tracker): Tracker toring simulation data
-        conf (dict): Experimental Configuration
+        ExpConfig (dict): Experimental Configuration
 
     returns:
         dict: the extracted data

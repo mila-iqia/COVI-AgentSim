@@ -316,9 +316,7 @@ class NaiveClusteringTests(unittest.TestCase):
             simple_homogeneity_scores = simple_cluster_manager._get_homogeneity_scores()
             for id in naive_homogeneity_scores:
                 self.assertLessEqual(naive_homogeneity_scores[id], 1.0)
-                expected_user_encounters = \
-                    sum([v.visited_real_uid == 0 and v.visitor_real_uid == id for v in visits])
-                min_homogeneity = expected_user_encounters / sum([v.visited_real_uid == 0 for v in visits])
+                min_homogeneity = 1 / sum([v.visited_real_uid == 0 for v in visits])
                 self.assertLessEqual(min_homogeneity, naive_homogeneity_scores[id])
                 if id in perfect_homogeneity_scores:
                     self.assertEqual(perfect_homogeneity_scores[id], 1.0)

@@ -732,3 +732,51 @@ class TestCapacity(CityInterventions):
             city ([type]): [description]
         """
         pass
+
+def get_intervention(key, RISK_MODEL=None, TRACING_ORDER=None, TRACE_SYMPTOMS=None, TRACE_RISK_UPDATE=None, SHOULD_MODIFY_BEHAVIOR=True):
+    """
+    [summary]
+
+    Args:
+        key ([type]): [description]
+        RISK_MODEL ([type], optional): [description]. Defaults to None.
+        TRACING_ORDER ([type], optional): [description]. Defaults to None.
+        TRACE_SYMPTOMS ([type], optional): [description]. Defaults to None.
+        TRACE_RISK_UPDATE ([type], optional): [description]. Defaults to None.
+        SHOULD_MODIFY_BEHAVIOR (bool, optional): [description]. Defaults to True.
+
+    Raises:
+        NotImplementedError: [description]
+
+    Returns:
+        [type]: [description]
+    """
+    if key == "Lockdown":
+        return Lockdown()
+    elif key == "WearMask":
+        return WearMask(MASKS_SUPPLY)
+    elif key == "SocialDistancing":
+        return SocialDistancing()
+    elif key == "Quarantine":
+        return Quarantine()
+    elif key == "Tracing":
+        # there's a global variable somewhere called 'Tracing'
+        import covid19sim.interventions
+        return covid19sim.interventions.Tracing(
+            RISK_MODEL,
+            TRACING_ORDER,
+            TRACE_SYMPTOMS,
+            TRACE_RISK_UPDATE,
+            SHOULD_MODIFY_BEHAVIOR,
+        )
+    elif key == "WashHands":
+        return WashHands()
+    elif key == "Stand2M":
+        return Stand2M()
+    elif key == "StayHome":
+        return StayHome()
+    elif key == "GetTested":
+        raise NotImplementedError
+    else:
+        raise
+

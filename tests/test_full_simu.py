@@ -8,6 +8,7 @@ from tempfile import TemporaryDirectory
 
 from covid19sim.run import simulate
 from covid19sim.base import Event
+from covid19sim.configs.exp_config import ExpConfig
 
 class FullUnitTest(unittest.TestCase):
 
@@ -15,13 +16,15 @@ class FullUnitTest(unittest.TestCase):
         """
             run one simulation and ensure json files are correctly populated and most of the users have activity
         """
+        ExpConfig.load_config(os.path.join(os.path.dirname(__file__), "../src/covid19sim/configs/naive_config.yml"))
+
         with TemporaryDirectory() as d:
             outfile = os.path.join(d, "data")
             n_people = 100
             monitors, _ = simulate(
                 n_people=n_people,
                 start_time=datetime.datetime(2020, 2, 28, 0, 0),
-                simulation_days=10,
+                simulation_days=20,
                 outfile=outfile,
                 init_percent_sick=0.1,
                 out_chunk_size=500
@@ -35,27 +38,28 @@ class FullUnitTest(unittest.TestCase):
                 for pkl in zf.namelist():
                     data.extend(pickle.loads(zf.read(pkl)))
 
-            self.assertTrue(len(data) > 0)
+        self.assertTrue(len(data) > 0)
 
-            self.assertTrue(Event.encounter in {d['event_type'] for d in data})
-            self.assertTrue(Event.test in {d['event_type'] for d in data})
+        self.assertTrue(Event.encounter in {d['event_type'] for d in data})
+        self.assertTrue(Event.test in {d['event_type'] for d in data})
 
-            self.assertTrue(len({d['human_id'] for d in data}) > n_people / 2)
+        self.assertTrue(len({d['human_id'] for d in data}) > n_people / 2)
 
 
 class SeedUnitTest(unittest.TestCase):
-
-    def setUp(self):
-        self.test_seed = 136
-        self.n_people = 100
-        self.start_time = datetime.datetime(2020, 2, 28, 0, 0)
-        self.simulation_days = 10
 
     def test_sim_same_seed(self):
         """
         Run two simulations with the same seed and ensure we get the same output
         Note: If this test is failing, it is a good idea to load the data of both files and use DeepDiff to compare
         """
+
+        self.test_seed = 136
+        self.n_people = 100
+        self.start_time = datetime.datetime(2020, 2, 28, 0, 0)
+        self.simulation_days = 20
+        ExpConfig.load_config(os.path.join(os.path.dirname(__file__), "../src/covid19sim/configs/naive_config.yml"))
+
         with TemporaryDirectory() as d1, TemporaryDirectory() as d2:
             of1 = os.path.join(d1, "data")
             of2 = os.path.join(d2, "data")
@@ -103,6 +107,11 @@ class SeedUnitTest(unittest.TestCase):
         """
         Using different seeds should yield different output
         """
+        self.test_seed = 136
+        self.n_people = 100
+        self.start_time = datetime.datetime(2020, 2, 28, 0, 0)
+        self.simulation_days = 20
+        ExpConfig.load_config(os.path.join(os.path.dirname(__file__), "../src/covid19sim/configs/naive_config.yml"))
 
         with TemporaryDirectory() as d1, TemporaryDirectory() as d2:
             of1 = os.path.join(d1, "data")
