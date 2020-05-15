@@ -1,18 +1,20 @@
 """
 [summary]
 """
-from matplotlib import pyplot as plt
 import json
-import pylab as pl
 import pickle
-from datetime import datetime, timedelta
 import threading
+import time
 import zipfile
+from datetime import datetime, timedelta
 
-from covid19sim.utils import _json_serialize
-from covid19sim.configs.constants import TICK_MINUTE
+import pylab as pl
+from matplotlib import pyplot as plt
+
 from covid19sim.base import City
+from covid19sim.configs.constants import TICK_MINUTE
 from covid19sim.simulator import Human
+from covid19sim.utils import _json_serialize
 
 
 class BaseMonitor(object):
@@ -70,6 +72,7 @@ class SEIRMonitor(BaseMonitor):
         Yields:
             [type]: [description]
         """
+        process_start = time.time()
         n_days = 0
         while True:
             S, E, I, R = 0, 0, 0, 0
@@ -93,7 +96,12 @@ class SEIRMonitor(BaseMonitor):
             T = E + I + R
             # print(np.mean([h.risk for h in city.humans]))
             # print(env.timestamp, f"Ro: {R0:5.2f} G:{G:5.2f} S:{S} E:{E} I:{I} R:{R} T:{T} P3:{Projected3:5.2f} M:{M:5.2f} +Test:{P} H:{H} C:{C} RiskP:{RiskP:3.2f}") RiskP:{RiskP:3.2f}
-            print(env.timestamp, f"Ro: {R0:2.2f} S:{S} E:{E} I:{I} T:{T} P3:{Projected3:5.2f} RiskP:{prec[1][0]:3.2f} F:{F:3.2f} EM:{EM:3.2f} G:{green} B:{blue} O:{orange} R:{red} ")
+            env_time = str(env.timestamp).split()[0]
+            proc_time = "{:8}".format("({}s)".format(int(time.time() - process_start)))
+            demographics = f"| Ro: {R0:2.2f} S:{S} E:{E} I:{I} E+I+R:{T}"
+            stats = f"| P3:{Projected3:5.2f} RiskP:{prec[1][0]:3.2f} F:{F:3.2f} EM:{EM:3.2f}"
+            colors = f"|  G:{green} B:{blue} O:{orange} R:{red}"
+            print(proc_time, env_time, demographics, stats, colors)
             # print(city.tracker.recovered_stats)
             self.data.append({
                     'time': env.timestamp,

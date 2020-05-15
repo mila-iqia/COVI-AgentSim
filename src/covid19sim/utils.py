@@ -1640,6 +1640,7 @@ def extract_tracker_data(tracker, conf):
     data['feelings'] = tracker.feelings
     data['rec_feelings'] = tracker.rec_feelings
     data['outside_daily_contacts'] = tracker.outside_daily_contacts
+    data['test_monitor'] = tracker.test_monitor
     # data['dist_encounters'] = dict(tracker.dist_encounters)
     # data['time_encounters'] = dict(tracker.time_encounters)
     # data['day_encounters'] = dict(tracker.day_encounters)

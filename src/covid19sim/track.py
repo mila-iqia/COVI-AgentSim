@@ -2,14 +2,15 @@
 """
 [summary]
 """
-import pandas as pd
-import numpy as np
+import copy
+import datetime
 import math
 from collections import defaultdict
-import networkx as nx
-import datetime
+
 import dill
-import copy
+import networkx as nx
+import numpy as np
+import pandas as pd
 
 from covid19sim.utils import log
 
@@ -141,6 +142,7 @@ class Tracker(object):
         # monitors
         self.human_monitor = {}
         self.infection_monitor = []
+        self.test_monitor = []
 
         # update messages
         self.infector_infectee_update_messages = defaultdict(lambda :defaultdict(dict))
@@ -517,7 +519,6 @@ class Tracker(object):
     def track_tested_results(self, human, test_result, test_type):
         """
         [summary]
-
         Args:
             human ([type]): [description]
             test_result ([type]): [description]
@@ -525,6 +526,14 @@ class Tracker(object):
         """
         if test_result == "positive":
             self.cases_positive_per_day[-1] += 1
+
+        self.test_monitor.append({
+            "name": human.name,
+            "symptoms": list(human.symptoms),
+            "timestamp": human.env.timestamp,
+            "type": test_type,
+            "result": test_result
+        })
 
     def track_recovery(self, n_infectious_contacts, duration):
         """

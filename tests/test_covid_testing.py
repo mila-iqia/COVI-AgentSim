@@ -10,9 +10,9 @@ from tempfile import TemporaryDirectory
 
 import numpy as np
 
+import covid19sim.configs.config as core_config
 from covid19sim.base import Event
 from covid19sim.configs.exp_config import ExpConfig
-import covid19sim.configs.config as core_config
 from covid19sim.run import simulate
 from covid19sim.utils import extract_tracker_data
 
@@ -61,7 +61,7 @@ if __name__ == "__main__":
     # https://coronavirus.jhu.edu/testing/testing-positivity
     # https://www.canada.ca/content/dam/phac-aspc/documents/services/diseases/2019-novel-coronavirus-infection/surv-covid19-epi-update-eng.pdf
     path = Path(__file__).parent
-    exp_config = ExpConfig.load_config(path / "test_configs" / "test_covid_test.yml")
+    exp_config = ExpConfig.load_config(path / "test_configs" / "test_covid_testing.yml")
     conf = {k: getattr(core_config, k) for k in dir(core_config) if "__" not in k}
     conf.update(exp_config)
     # test_covid_test = no intervention
@@ -70,8 +70,8 @@ if __name__ == "__main__":
     # ----------------------------
     # -----  Run Simulation  -----
     # ----------------------------
-    n_people = 10000
-    simulation_days = 30
+    n_people = 100
+    simulation_days = 20
     init_percent_sick = 0.01
     start_time = datetime.datetime(2020, 2, 28, 0, 0)
     monitors, tracker = simulate(
