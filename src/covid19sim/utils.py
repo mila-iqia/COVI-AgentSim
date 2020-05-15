@@ -6,16 +6,13 @@ from scipy.stats import norm, truncnorm, gamma
 from functools import lru_cache
 import datetime
 import math
-<<<<<<< HEAD
 import os
 import requests
 import typing
 import zipfile
 import numpy as np
-=======
 import dill
 import pathlib
->>>>>>> d71a5c509e13ced4445a96c55be84aa52506e20e
 
 from covid19sim.configs.config import *
 
