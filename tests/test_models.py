@@ -21,8 +21,8 @@ class ModelsTest(unittest.TestCase):
         ExpConfig.load_config(os.path.join(os.path.dirname(__file__), "../src/covid19sim/configs/test_config.yml"))
 
         with TemporaryDirectory() as d:
-            n_people = 100
-            n_days = 30
+            n_people = 10
+            n_days = 20
             monitors, _ = run_simu(
                 n_people=n_people,
                 start_time=datetime.datetime(2020, 2, 28, 0, 0),
