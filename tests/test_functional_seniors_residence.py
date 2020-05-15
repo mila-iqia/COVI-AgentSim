@@ -57,15 +57,17 @@ def test_functional_seniors_residence():
             Human(
                 env=city.env,
                 city=city,
-                rng=rng,
                 name=i,
                 age=ages[i],
+                rng=rng,
+                has_app=False,
+                infection_timestamp=infection[i],
                 household=sr,
                 workplace=sr,
                 profession="retired",
                 rho=conf.get("RHO"),
                 gamma=conf.get("GAMMA"),
-                infection_timestamp=infection[i],
+                conf=conf
             )
             for i in range(N)
         ]
