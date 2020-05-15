@@ -320,10 +320,6 @@ class NaiveCluster(ClusterBase):
         self._real_encounter_times.extend(cluster._real_encounter_times)
         self._unclustered_messages.extend(cluster._unclustered_messages)
 
-    def get_encounter_count(self):
-        """Returns the total number of encounters aggregated into this cluster."""
-        return sum([len(m) for m in self.messages_by_timestamp.values()])
-
     def get_cluster_embedding(
             self,
             current_timestamp: TimestampType,
@@ -331,11 +327,14 @@ class NaiveCluster(ClusterBase):
             old_compat_mode: bool = False,
     ) -> np.ndarray:
         """Returns the 'embeddings' array for this particular cluster."""
-        tot_messages = self.get_encounter_count()
         if old_compat_mode:
             assert include_cluster_id
             # cid+risk+duraton+day; 4th entry ('day') will be added in the caller
-            return np.asarray([self.cluster_id, self.risk_level, tot_messages], dtype=np.int64)
+            return np.asarray([
+                self.cluster_id,
+                self.risk_level,
+                len(self.messages_by_timestamp[current_timestamp]),
+            ], dtype=np.int64)
         else:
             # TODO: convert all this stuff to a dictionary --- arrays are too uninformative
             # note: this returns an array of five 'features', i.e. the cluster ID, the cluster's
@@ -343,6 +342,7 @@ class NaiveCluster(ClusterBase):
             #       to the first encounter timestamp of the cluster, and the offset to the last
             #       encounter of the cluster. This array's type will be returned as np.int64 to
             #       insure that no data is lost w.r.t. message counts or timestamps.
+            tot_messages = self.get_encounter_count()
             if include_cluster_id:
                 return np.asarray([
                     self.cluster_id, self.risk_level, tot_messages,
@@ -368,6 +368,10 @@ class NaiveCluster(ClusterBase):
     def get_timestamps(self) -> typing.List[TimestampType]:
         """Returns the list of timestamps for which this cluster possesses at least one encounter."""
         return list(self.messages_by_timestamp.keys())
+
+    def get_encounter_count(self) -> int:
+        """Returns the number of encounters aggregated inside this cluster."""
+        return sum([len(msgs) for msgs in self.messages_by_timestamp.values()])
 
 
 class NaiveClusterManager(ClusterManagerBase):
@@ -576,12 +580,13 @@ class NaiveClusterManager(ClusterManagerBase):
         if self.generate_embeddings_by_timestamp:
             cluster_embeds = collections.defaultdict(list)
             for cluster in self.clusters:
-                embed = cluster.get_cluster_embedding(
-                    current_timestamp=self.latest_refresh_timestamp,
-                    include_cluster_id=True,
-                    old_compat_mode=self.generate_backw_compat_embeddings,
-                )
                 for timestamp in cluster.messages_by_timestamp:
+                    embed = cluster.get_cluster_embedding(
+                        current_timestamp=timestamp if self.generate_backw_compat_embeddings
+                        else self.latest_refresh_timestamp,
+                        include_cluster_id=True,
+                        old_compat_mode=self.generate_backw_compat_embeddings,
+                    )
                     cluster_embeds[timestamp].append([*embed, timestamp])
             flat_output = []
             for timestamp in sorted(cluster_embeds.keys()):

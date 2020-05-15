@@ -231,6 +231,10 @@ class BlindCluster(ClusterBase):
         """Returns the list of timestamps for which this cluster possesses at least one encounter."""
         return [self.first_update_time]  # this impl's clusters always only cover a single timestamp
 
+    def get_encounter_count(self) -> int:
+        """Returns the number of encounters aggregated inside this cluster."""
+        return len(self.messages)
+
 
 class BlindClusterManager(ClusterManagerBase):
     """Manages message cluster creation and updates.
@@ -353,7 +357,8 @@ class BlindClusterManager(ClusterManagerBase):
             cluster_embeds = collections.defaultdict(list)
             for cluster in self.clusters:
                 embed = cluster.get_cluster_embedding(
-                    current_timestamp=self.latest_refresh_timestamp,
+                    current_timestamp=cluster.latest_update_time if self.generate_backw_compat_embeddings
+                    else self.latest_refresh_timestamp,
                     include_cluster_id=True,
                     old_compat_mode=self.generate_backw_compat_embeddings,
                 )

@@ -75,6 +75,10 @@ class ClusterBase:
         """Returns the list of timestamps for which this cluster possesses at least one encounter."""
         raise NotImplementedError
 
+    def get_encounter_count(self) -> int:
+        """Returns the number of encounters aggregated inside this cluster."""
+        raise NotImplementedError
+
 
 class ClusterManagerBase:
     """Manages message cluster creation and updates.
