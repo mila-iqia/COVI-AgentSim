@@ -463,7 +463,7 @@ class FluSymptoms(unittest.TestCase):
                     # To simplify the tests, we expect each stage to last 1 day
                     computed_dist = [[set(day_symptoms) for day_symptoms in
                                       _get_flu_progression(age, rng, carefulness, preexisting_conditions,
-                                                           really_sick, extremely_sick, FLU_INCUBATION)]
+                                                           really_sick, extremely_sick, FLU_INCUBATION, AVG_FLU_DURATION)]
                                      for _ in range(n_people)]
 
                     probs = [[0] * len(SYMPTOMS) for _ in symptoms_contexts]
