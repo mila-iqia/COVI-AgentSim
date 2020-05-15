@@ -66,7 +66,6 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
         assert len(model_exp_data_path_subdirs) == 1, "should only have one dir per experiment zip"
         model_exp_data_path = model_exp_data_path_subdirs[0]
 
-    # We're going to send a request to the server for each human
     for human in humans:
         if time_slot not in human.time_slots:
             continue
