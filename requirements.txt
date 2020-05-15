@@ -16,3 +16,8 @@ networkx
 tqdm
 seaborn
 pyyaml
+pytest-cov==2.8.1
+omegaconf
+hydra-core
+cached_property
+requests

@@ -81,7 +81,7 @@ class SimpleClusteringTests(unittest.TestCase):
         self.assertEqual(len(cluster_manager.clusters), 3)
         self.assertEqual(cluster_manager.latest_refresh_timestamp, 0)
         expositions = cluster_manager._get_expositions_array()
-        self.assertTrue(len(expositions) == 5 and sum(expositions) == 0)
+        self.assertTrue(len(expositions) == 3 and sum(expositions) == 0)
         embeddings = cluster_manager.get_embeddings_array()
         self.assertTrue((embeddings[:, 1] == 7).all())  # risk level
         self.assertTrue(np.logical_and(embeddings[:, 2] > 0, embeddings[:, 2] < 3).all())
@@ -181,9 +181,7 @@ class SimpleClusteringTests(unittest.TestCase):
             homogeneity_scores = cluster_manager._get_homogeneity_scores()
             for id in homogeneity_scores:
                 self.assertLessEqual(homogeneity_scores[id], 1.0)
-                expected_user_encounters = \
-                    sum([v.visited_real_uid == 0 and v.visitor_real_uid == id for v in visits])
-                min_homogeneity = expected_user_encounters / sum([v.visited_real_uid == 0 for v in visits])
+                min_homogeneity = 1 / sum([v.visited_real_uid == 0 for v in visits])
                 self.assertLessEqual(min_homogeneity, homogeneity_scores[id])
 
 

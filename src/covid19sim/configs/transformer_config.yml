@@ -16,8 +16,8 @@ PERCENT_FOLLOW: 1.0
 P_HAS_APP: -1.0
 
 # PATHS
-TRANSFORMER_EXP_PATH: "" #"CTT-SHIPMENT-0"
-CLUSTER_PATH: "output/clusters"
+TRANSFORMER_EXP_PATH : "https://drive.google.com/file/d/1Z7g3gKh2kWFSmK2Yr19MQq0blOWS5st0"
+CLUSTER_PATH : "output/clusters"
 
 # Inference & Training
 INFECTIOUSNESS_N_DAYS_HISTORY: 14
