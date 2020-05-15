@@ -21,7 +21,7 @@ from covid19sim.frozen.utils import create_new_uid, Message, UpdateMessage, enco
 from covid19sim.utils import _normalize_scores, _get_random_sex, _get_covid_progression, \
      _get_preexisting_conditions, _draw_random_discreet_gaussian, _sample_viral_load_piecewise, \
      _get_cold_progression, _get_flu_progression, _get_allergy_progression, _get_get_really_sick
-from covid19sim.configs.constants import BIG_NUMBER, TICK_MINUTE
+from covid19sim.configs.constants import *
 from covid19sim.configs.exp_config import ExpConfig
 
 
@@ -1176,8 +1176,8 @@ class Human(object):
         location.add_human(self)
         self.wear_mask()
 
-        self.leaving_time = duration + self.env.now
-        self.start_time = self.env.now
+        self.start_time   = self.env.now
+        self.leaving_time = self.start_time + duration*SECONDS_PER_MINUTE*TICK_MINUTE
         area = self.location.area
         initial_viral_load = 0
 
@@ -1222,7 +1222,8 @@ class Human(object):
                         h.contact_book.sent_messages_by_day[cur_day].append(h.cur_message(cur_day))
                         self.contact_book.sent_messages_by_day[cur_day].append(self.cur_message(cur_day))
 
-            t_overlap = min(self.leaving_time, getattr(h, "leaving_time", 60)) - max(self.start_time, getattr(h, "start_time", 60))
+            t_overlap = (min(self.leaving_time, getattr(h, "leaving_time", self.env.ts_initial+SECONDS_PER_HOUR*TICK_MINUTE)) -
+                         max(self.start_time,   getattr(h, "start_time",   self.env.ts_initial+SECONDS_PER_HOUR*TICK_MINUTE)))/(SECONDS_PER_MINUTE*TICK_MINUTE)
             t_near = self.rng.random() * t_overlap * self.time_encounter_reduction_factor
 
             city.tracker.track_social_mixing(human1=self, human2=h, duration=t_near, timestamp = self.env.timestamp)
@@ -1303,7 +1304,7 @@ class Human(object):
                                     time=self.env.timestamp
                                     )
 
-        yield self.env.timeout(duration / TICK_MINUTE)
+        yield self.env.timeout(duration * SECONDS_PER_MINUTE)
 
         # environmental transmission
         p_infection = ENVIRONMENTAL_INFECTION_KNOB * location.contamination_probability * (1-self.mask_efficacy) # &prob_infection

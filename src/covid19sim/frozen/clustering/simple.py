@@ -136,6 +136,10 @@ class SimpleCluster(ClusterBase):
         """Returns the list of timestamps for which this cluster possesses at least one encounter."""
         return [self.first_update_time]  # this impl's clusters always only cover a single timestamp
 
+    def get_encounter_count(self) -> int:
+        """Returns the number of encounters aggregated inside this cluster."""
+        return len(self.messages)
+
 
 class SimplisticClusterManager(ClusterManagerBase):
     """Manages message cluster creation and updates.
@@ -219,12 +223,13 @@ class SimplisticClusterManager(ClusterManagerBase):
             cluster_embeds = collections.defaultdict(list)
             for cluster in self.clusters:
                 embed = cluster.get_cluster_embedding(
-                    current_timestamp=self.latest_refresh_timestamp,
+                    current_timestamp=cluster.latest_update_time if self.generate_backw_compat_embeddings
+                    else self.latest_refresh_timestamp,
                     include_cluster_id=True,
                     old_compat_mode=self.generate_backw_compat_embeddings,
                 )
-                for msg in cluster.messages:
-                    cluster_embeds[msg.encounter_time].append([*embed, cluster.latest_update_time])
+                cluster_embeds[cluster.latest_update_time].append(
+                    [*embed, cluster.latest_update_time])
             flat_output = []
             for timestamp in sorted(cluster_embeds.keys()):
                 flat_output.extend(cluster_embeds[timestamp])
@@ -241,9 +246,8 @@ class SimplisticClusterManager(ClusterManagerBase):
         if self.generate_embeddings_by_timestamp:
             cluster_flags = collections.defaultdict(list)
             for cluster in self.clusters:
-                flags = cluster._get_cluster_exposition_flag()
-                for msg in cluster.messages:
-                    cluster_flags[msg.encounter_time].append(flags)
+                cluster_flags[cluster.latest_update_time].append(
+                    cluster._get_cluster_exposition_flag())
             flat_output = []
             for timestamp in sorted(cluster_flags.keys()):
                 flat_output.extend(cluster_flags[timestamp])
