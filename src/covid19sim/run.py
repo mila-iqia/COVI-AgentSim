@@ -1,16 +1,20 @@
 """
 Main file to run the simulations
 """
-import click
 import os
+import datetime
 
-from covid19sim.frozen.helper import SYMPTOMS_META_IDMAP
-from covid19sim.simulator import Human
-from covid19sim.base import *
-from covid19sim.monitors import EventMonitor, TimeMonitor, SEIRMonitor
-from covid19sim.configs.exp_config import ExpConfig
+import click
+import numpy as np
+
+from covid19sim.base import City, Env
 from covid19sim.configs import config as core_config
 from covid19sim.configs.constants import TICK_MINUTE
+from covid19sim.configs.exp_config import ExpConfig
+from covid19sim.frozen.helper import SYMPTOMS_META_IDMAP
+from covid19sim.monitors import EventMonitor, SEIRMonitor, TimeMonitor
+from covid19sim.simulator import Human
+from covid19sim.utils import dump_tracker_data, extract_tracker_data
 
 
 @click.command()

@@ -15,7 +15,7 @@ import numpy as np
 import requests
 from scipy.stats import gamma, norm, truncnorm
 
-from covid19sim.interventions import *
+# from covid19sim.interventions import *
 
 SymptomProbability = namedtuple('SymptomProbability', ['name', 'id', 'probabilities'])
 SymptomProbability.__doc__ = '''A symptom probabilities collection given contexts
@@ -1600,7 +1600,7 @@ def download_exp_data_if_not_exist(
         zip_ref.extractall(exp_data_destination)
     return exp_data_destination
 
-def extract_tracker_data(tracker, ExpConfig):
+def extract_tracker_data(tracker, conf):
     """
     Get a dictionnary collecting interesting fields of the tracker and experimental settings from ExpConfig
 

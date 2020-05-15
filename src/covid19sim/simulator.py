@@ -1474,8 +1474,7 @@ class Human(object):
                     if self.rng.random() < FLU_CONTAGIOUSNESS:
                         flu_infectee.flu_timestamp = self.env.timestamp
 
-                city.tracker.track_
-                encounter_events(human1=self, human2=h, location=location, distance=distance, duration=t_near)
+                city.tracker.track_encounter_events(human1=self, human2=h, location=location, distance=distance, duration=t_near)
 
                 if self.conf.get('COLLECT_LOGS'):
                     Event.log_encounter(
