@@ -24,7 +24,6 @@ from covid19sim.utils import _normalize_scores, _get_random_sex, _get_covid_prog
     _get_cold_progression, _get_flu_progression, _get_allergy_progression, _get_get_really_sick, \
     filter_open, filter_queue_max
 from covid19sim.configs.constants import BIG_NUMBER, TICK_MINUTE
-from covid19sim.configs.exp_config import ExpConfig
 
 
 class Visits(object):
@@ -127,7 +126,7 @@ class Human(object):
                               for k, v in sorted(list(covid19sim.frozen.helper.SYMPTOMS_META.items()),
                                                  key=lambda item: item[1])]
 
-    def __init__(self, env, city, name, age, rng, has_app, infection_timestamp, household, workplace, profession, rho=0.3, gamma=0.21, symptoms=[], test_results=None):
+    def __init__(self, env, city, name, age, rng, has_app, infection_timestamp, household, workplace, profession, rho=0.3, gamma=0.21, symptoms=[], test_results=None, conf={}):
         """
         [summary]
 
@@ -145,7 +144,9 @@ class Human(object):
             gamma (float, optional): [description]. Defaults to 0.21.
             symptoms (list, optional): [description]. Defaults to [].
             test_results ([type], optional): [description]. Defaults to None.
+            conf (dict): yaml experiment configuration
         """
+        self.conf = conf
         self.env = env
         self.city = city
         self._events = []
@@ -230,7 +231,7 @@ class Human(object):
         self.notified = False
         self.tracing_method = None
         self.maintain_extra_distance = 0
-        self.how_much_I_follow_recommendations = ExpConfig.get('PERCENT_FOLLOW')
+        self.how_much_I_follow_recommendations = self.conf.get('PERCENT_FOLLOW')
         self.recommendations_to_follow = OrderedSet()
         self.time_encounter_reduction_factor = 1.0
         self.hygiene = self.carefulness
@@ -240,7 +241,7 @@ class Human(object):
         # self.rec_level = -1 # risk-based recommendations
         self.past_N_days_contacts = [OrderedSet()]
         self.n_contacts_tested_positive = defaultdict(int)
-        self.contact_book = Contacts(self.has_app)
+        self.contact_book = Contacts(self.has_app, self.conf)
         self.message_info = { 'traced': False, \
                 'receipt':datetime.datetime.max, \
                 'delay':BIG_NUMBER, 'n_contacts_tested_positive': defaultdict(lambda :[0]),
@@ -258,7 +259,10 @@ class Human(object):
         self.clusters = Clusters()
         self.tested_positive_contact_count = 0
         # Padding the array
-        self.infectiousnesses = deque([0] * ExpConfig.get('TRACING_N_DAYS_HISTORY'), maxlen=ExpConfig.get('TRACING_N_DAYS_HISTORY'))
+        self.infectiousnesses = deque(
+            [0] * self.conf.get('TRACING_N_DAYS_HISTORY'),
+            maxlen=self.conf.get('TRACING_N_DAYS_HISTORY')
+        )
         self.uid = create_new_uid(rng)
         self.exposure_message = None
         self.exposure_source = None
@@ -266,7 +270,10 @@ class Human(object):
 
         # create 24 timeslots to do your updating
         time_slot = rng.randint(0, 24)
-        self.time_slots = [int((time_slot + i*24/ExpConfig.get('UPDATES_PER_DAY')) % 24) for i in range(ExpConfig.get('UPDATES_PER_DAY'))]
+        self.time_slots = [
+            int((time_slot + i * 24 / self.conf.get('UPDATES_PER_DAY')) % 24)
+            for i in range(self.conf.get('UPDATES_PER_DAY'))
+        ]
         # keep track of when the risk/clusters were last updated (i.e. latest timeslot date)
         self.last_cluster_update = None
         self.last_risk_update = None
@@ -277,8 +284,14 @@ class Human(object):
         self.flu_progression = _get_flu_progression(self.age, self.rng, self.carefulness, self.preexisting_conditions, self.can_get_really_sick, self.can_get_extremely_sick)
         self.all_symptoms, self.cold_symptoms, self.flu_symptoms, self.covid_symptoms, self.allergy_symptoms = [], [], [], [], []
         # Padding the array
-        self.rolling_all_symptoms = deque([tuple()] * ExpConfig.get('TRACING_N_DAYS_HISTORY'), maxlen=ExpConfig.get('TRACING_N_DAYS_HISTORY'))
-        self.rolling_all_reported_symptoms = deque([tuple()] * ExpConfig.get('TRACING_N_DAYS_HISTORY'), maxlen=ExpConfig.get('TRACING_N_DAYS_HISTORY'))
+        self.rolling_all_symptoms = deque(
+            [tuple()] * self.conf.get('TRACING_N_DAYS_HISTORY'),
+            maxlen=self.conf.get('TRACING_N_DAYS_HISTORY')
+        )
+        self.rolling_all_reported_symptoms = deque(
+            [tuple()] * self.conf.get('TRACING_N_DAYS_HISTORY'),
+            maxlen=self.conf.get('TRACING_N_DAYS_HISTORY')
+        )
 
         # habits
         self.avg_shopping_time = _draw_random_discreet_gaussian(AVG_SHOP_TIME_MINUTES, SCALE_SHOP_TIME_MINUTES, self.rng)
@@ -888,18 +901,21 @@ class Human(object):
         return 1.0
 
     def expire(self):
-        """ 
+        """
         This function (generator) will cause the human to expire, after which self.is_dead==True.
         Yields self.env.timeout(np.inf), which when passed to env.procces will inactivate self
         for the remainder of the simulation.
-        
+
         Yields:
             generator
         """
         self.recovered_timestamp = datetime.datetime.max
         self.update_risk(recovery=True)
         self.all_symptoms, self.covid_symptoms = [], []
-        Event.log_recovery(self, self.env.timestamp, death=True)
+
+        if self.conf.get('COLLECT_LOGS'):
+            Event.log_recovery(self, self.env.timestamp, death=True)
+
         yield self.env.timeout(np.inf)
 
     def assert_state_changes(self):
@@ -923,7 +939,11 @@ class Human(object):
             collect_training_data (bool, optional): [description]. Defaults to False.
         """
         # FIXME: PERCENT_FOLLOW < 1 will throw an error because ot self.notified somewhere
-        if intervention is not None and not self.notified and self.rng.random() < ExpConfig.get('PERCENT_FOLLOW'):
+        if (
+            intervention is not None
+            and not self.notified
+            and self.rng.random() < self.conf.get('PERCENT_FOLLOW')
+        ):
             self.tracing = False
             if isinstance(intervention, Tracing):
                 self.tracing = True
@@ -970,7 +990,10 @@ class Human(object):
                 (self.is_incubated and self.env.timestamp - self.symptom_start_time >= datetime.timedelta(days=TEST_DAYS)))):
                 # make testing a function of age/hospitalization/travel
                 if self.get_tested(city):
-                    Event.log_test(self, self.env.timestamp)
+
+                    if self.conf.get('COLLECT_LOGS'):
+                        Event.log_test(self, self.env.timestamp)
+
                     self.test_time = self.env.timestamp
                     city.tracker.track_tested_results(self, self.test_result, self.test_type)
                     self.update_risk(test_results=True)
@@ -994,7 +1017,10 @@ class Human(object):
                     self.never_recovers = self.rng.random() <= P_NEVER_RECOVERS[min(math.floor(self.age/10),8)]
                     self.update_risk(recovery=True)
                     self.all_symptoms, self.covid_symptoms = [], []
-                    Event.log_recovery(self, self.env.timestamp, death=False)
+
+                    if self.conf.get('COLLECT_LOGS'):
+                        Event.log_recovery(self, self.env.timestamp, death=False)
+
                 else:
                     yield self.env.process(self.expire())
 
@@ -1026,12 +1052,12 @@ class Human(object):
                 yield self.env.process(self.excursion(city, "hospital"))
 
             # Work is a partial imperitive
-            if (not self.profession=="retired" and 
+            if (not self.profession=="retired" and
                 not self.env.is_weekend() and
                 hour in self.work_start_hour and
                 not self.rest_at_home):
                 yield self.env.process(self.excursion(city, "work"))
-                
+
             # TODO (EM) These optional and erratic behaviours should be more probabalistic,
             # with probs depending on state of lockdown of city
             # Lockdown should also close a fraction of the shops
@@ -1131,7 +1157,7 @@ class Human(object):
                 # If we make it here, it counts as a visit to the shop
                 self.count_shop+=1
                 yield self.env.process(self.at(grocery_store, city, t))
-        
+
         elif location_type == "exercise":
             park = self._select_location(location_type="park", city=city)
             if park is None:
@@ -1145,7 +1171,7 @@ class Human(object):
             t = _draw_random_discreet_gaussian(self.avg_working_minutes, self.scale_working_minutes, self.rng)
             if self.workplace.is_open_for_business:
                 yield self.env.process(self.at(self.workplace, city, t))
-            else: 
+            else:
                 # work from home
                 yield self.env.process(self.at(self.household, city, t))
 
@@ -1258,7 +1284,7 @@ class Human(object):
                     self.contact_book.add(human=h, timestamp=self.env.timestamp, self_human=self)
                     h.contact_book.add(human=self, timestamp=self.env.timestamp, self_human=h)
                     cur_day = (self.env.timestamp - self.env.initial_timestamp).days
-                    if self.has_app and h.has_app and (cur_day >= ExpConfig.get('INTERVENTION_DAY')):
+                    if self.has_app and h.has_app and (cur_day >= self.conf.get('INTERVENTION_DAY')):
                         self.contact_book.messages.append(h.cur_message(cur_day))
                         h.contact_book.messages.append(self.cur_message(cur_day))
                         self.contact_book.messages_by_day[cur_day].append(h.cur_message(cur_day))
@@ -1297,7 +1323,10 @@ class Human(object):
                         infectee = h.name
 
                         self.n_infectious_contacts+=1
-                        Event.log_exposed(h, self, self.env.timestamp)
+
+                        if self.conf.get('COLLECT_LOGS'):
+                            Event.log_exposed(h, self, self.env.timestamp)
+
                         h.exposure_message = encode_message(self.cur_message((self.env.timestamp - self.env.initial_timestamp).days))
                         city.tracker.track_infection('human', from_human=self, to_human=h, location=location, timestamp=self.env.timestamp)
                         city.tracker.track_covid_properties(h)
@@ -1316,8 +1345,11 @@ class Human(object):
                         self.initial_viral_load = self.rng.random()
                         self.compute_covid_properties()
                         infectee = self.name
-                        h.n_infectious_contacts+=1
-                        Event.log_exposed(self, h, self.env.timestamp)
+                        h.n_infectious_contacts += 1
+
+                        if self.conf.get('COLLECT_LOGS'):
+                            Event.log_exposed(self, h, self.env.timestamp)
+
                         city.tracker.track_infection('human', from_human=h, to_human=self, location=location, timestamp=self.env.timestamp)
                         city.tracker.track_covid_properties(self)
 
@@ -1344,13 +1376,17 @@ class Human(object):
                         flu_infectee.flu_timestamp = self.env.timestamp
 
                 city.tracker.track_encounter_events(human1=self, human2=h, location=location, distance=distance, duration=t_near)
-                Event.log_encounter(self, h,
-                                    location=location,
-                                    duration=t_near,
-                                    distance=distance,
-                                    infectee=infectee,
-                                    time=self.env.timestamp
-                                    )
+
+                if self.conf.get('COLLECT_LOGS'):
+                    Event.log_encounter(
+                        self,
+                        h,
+                        location=location,
+                        duration=t_near,
+                        distance=distance,
+                        infectee=infectee,
+                        time=self.env.timestamp
+                    )
 
         yield self.env.timeout(duration / TICK_MINUTE)
 
@@ -1362,7 +1398,10 @@ class Human(object):
             self.infection_timestamp = self.env.timestamp
             self.initial_viral_load = self.rng.random()
             self.compute_covid_properties()
-            Event.log_exposed(self, location,  self.env.timestamp)
+
+            if self.conf.get('COLLECT_LOGS'):
+                Event.log_exposed(self, location, self.env.timestamp)
+
             city.tracker.track_infection('env', from_human=None, to_human=self, location=location, timestamp=self.env.timestamp)
             city.tracker.track_covid_properties(self)
 
@@ -1459,7 +1498,7 @@ class Human(object):
             return loc
         else:
             return None
-        
+
 
     def get_message_dict(self):
         """
@@ -1698,7 +1737,7 @@ class Human(object):
         Returns:
             [type]: [description]
         """
-        _proba_to_risk_level = proba_to_risk_fn(np.array(ExpConfig.get('RISK_MAPPING')))
+        _proba_to_risk_level = proba_to_risk_fn(np.array(self.conf.get('RISK_MAPPING')))
         return min(_proba_to_risk_level(self.risk), 15)
 
     @risk.setter
@@ -1730,9 +1769,9 @@ class Human(object):
         [summary]
         """
         cur_day = (self.env.timestamp - self.env.initial_timestamp).days
-        _proba_to_risk_level = proba_to_risk_fn(np.array(ExpConfig.get('RISK_MAPPING')))
+        _proba_to_risk_level = proba_to_risk_fn(np.array(self.conf.get('RISK_MAPPING')))
 
-        for day in range(cur_day - ExpConfig.get('TRACING_N_DAYS_HISTORY'), cur_day + 1):
+        for day in range(cur_day - self.conf.get('TRACING_N_DAYS_HISTORY'), cur_day + 1):
             if day not in self.prev_risk_history_map.keys():
                 continue
 

@@ -1554,22 +1554,22 @@ def filter_queue_max(locations):
     """
     return [loc for loc in locations if len(loc.queue)<=MAX_STORE_QUEUE_LENGTH]
 
-def extract_tracker_data(tracker, ExpConfig):
+def extract_tracker_data(tracker, conf):
     """
-    Get a dictionnary collecting interesting fields of the tracker and experimental settings from ExpConfig
+    Get a dictionnary collecting interesting fields of the tracker and experimental settings from conf
 
     Args:
         tracker (covid19sim.track.Tracker): Tracker toring simulation data
-        ExpConfig (dict): Experimental Configuration
+        conf (dict): Experimental Configuration
 
     returns:
         dict: the extracted data
     """
     timenow = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
     data = dict()
-    data['intervention_day'] = ExpConfig.get('INTERVENTION_DAY')
-    data['intervention'] = ExpConfig.get('INTERVENTION')
-    data['risk_model'] = ExpConfig.get('RISK_MODEL')
+    data['intervention_day'] = conf.get('INTERVENTION_DAY')
+    data['intervention'] = conf.get('INTERVENTION')
+    data['risk_model'] = conf.get('RISK_MODEL')
     data['expected_mobility'] = tracker.expected_mobility
     data['serial_interval'] = tracker.get_generation_time()
     data['mobility'] = tracker.mobility

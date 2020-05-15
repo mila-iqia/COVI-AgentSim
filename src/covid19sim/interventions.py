@@ -8,7 +8,6 @@ from covid19sim.configs.constants import BIG_NUMBER
 from covid19sim.configs.config import RHO, GAMMA, MANUAL_TRACING_P_CONTACT,\
     RISK_TRANSMISSION_PROBA, DEFAULT_DISTANCE
 from covid19sim.models.run import integrated_risk_pred
-from covid19sim.configs.exp_config import ExpConfig
 
 class BehaviorInterventions(object):
     """
@@ -634,6 +633,7 @@ class Tracing(object):
         port = kwargs.get("port")
         n_jobs = kwargs.get("n_jobs")
         data_path = kwargs.get("data_path")
+        COLLECT_TRAINING_DATA = kwargs.get("COLLECT_TRAINING_DATA")
 
         if self.risk_model == "transformer":
             all_possible_symptoms = kwargs.get("symptoms")
@@ -657,7 +657,7 @@ class Tracing(object):
                     # human.update_risk_level()
                     # human.prev_risk_history_map[cur_day] = human.risk
 
-            if ExpConfig.get('COLLECT_TRAINING_DATA'):
+            if COLLECT_TRAINING_DATA:
                 city.humans = integrated_risk_pred(city.humans, city.start_time, city.current_day, city.env.timestamp.hour, all_possible_symptoms, port=port, n_jobs=n_jobs, data_path=data_path)
 
 

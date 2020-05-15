@@ -28,10 +28,10 @@ def test_functional_seniors_residence():
 
         # Find the test_configs directory, and load the required config yaml
         path = Path(__file__).parent
-        ExpConfig.load_config(path/"test_configs"/"naive_local.yml")
+        conf = ExpConfig.load_config(path/"test_configs"/"naive_local.yml").config
 
         env = Env(start_time)
-        city = EmptyCity(env, rng, city_x_range, city_y_range, start_time)
+        city = EmptyCity(env, rng, city_x_range, city_y_range, start_time, conf)
 
         sr = city.create_location(config.LOCATION_DISTRIBUTION['senior_residency'], 'senior_residency', 0, area=1000)
         city.senior_residencys.append(sr)
@@ -90,6 +90,6 @@ def test_functional_seniors_residence():
         # Check some stats on number dead
         #len([h for h in city.humans if h.dead])/len(city.humans)
 
-        # Curve fit to outbreak propagation 
+        # Curve fit to outbreak propagation
         # TODO
 

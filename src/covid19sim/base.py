@@ -20,7 +20,6 @@ from covid19sim.track import Tracker
 from covid19sim.interventions import *
 from covid19sim.frozen.utils import update_uid
 from covid19sim.configs.constants import TICK_MINUTE
-from covid19sim.configs.exp_config import ExpConfig
 
 
 class Env(simpy.Environment):
@@ -98,7 +97,7 @@ class City(simpy.Environment):
     City environment
     """
 
-    def __init__(self, env, n_people, init_percent_sick, rng, x_range, y_range, start_time, Human):
+    def __init__(self, env, n_people, init_percent_sick, rng, x_range, y_range, start_time, Human, conf):
         """
 
         Args:
@@ -110,7 +109,9 @@ class City(simpy.Environment):
             y_range (tuple): (min_y, max_y)
             start_time (datetime.datetime): City's initial datetime
             Human (covid19.simulator.Human): Class for the city's human instances
+            conf (dict): yaml configuration of the experiment
         """
+        self.conf = conf
         self.env = env
         self.rng = rng
         self.x_range = x_range
@@ -130,7 +131,8 @@ class City(simpy.Environment):
         print("Initializing humans ...")
         self.initialize_humans(Human)
 
-        self.log_static_info()
+        if self.conf.get('COLLECT_LOGS'):
+            self.log_static_info()
 
         print("Computing their preferences")
         self._compute_preferences()
@@ -249,8 +251,8 @@ class City(simpy.Environment):
         chosen_infected = set(self.rng.choice(self.n_people, init_infected, replace=False).tolist())
 
         # app users
-        all_has_app = ExpConfig.get('P_HAS_APP') < 0
-        n_apps = ExpConfig.get('P_HAS_APP') * self.n_people if ExpConfig.get('P_HAS_APP') > 0 else self.n_people
+        all_has_app = self.conf.get('P_HAS_APP') < 0
+        n_apps = self.conf.get('P_HAS_APP') * self.n_people if self.conf.get('P_HAS_APP') > 0 else self.n_people
         n_apps_per_age = {k:math.ceil(v * n_apps) for k,v in APP_USERS_FRACTION_BY_AGE.items()}
 
         for age_bin, specs in HUMAN_DISTRIBUTION.items():
@@ -439,17 +441,19 @@ class City(simpy.Environment):
 
         while True:
             # Notify humans to follow interventions on intervention day
-            if self.current_day == ExpConfig.get('INTERVENTION_DAY') and not humans_notified:
-                self.intervention = get_intervention(key=ExpConfig.get('INTERVENTION'),
-                                                     RISK_MODEL=ExpConfig.get('RISK_MODEL'),
-                                                     TRACING_ORDER=ExpConfig.get('TRACING_ORDER'),
-                                                     TRACE_SYMPTOMS=ExpConfig.get('TRACE_SYMPTOMS'),
-                                                     TRACE_RISK_UPDATE=ExpConfig.get('TRACE_RISK_UPDATE'),
-                                                     SHOULD_MODIFY_BEHAVIOR=ExpConfig.get('SHOULD_MODIFY_BEHAVIOR'))
+            if self.current_day == self.conf.get('INTERVENTION_DAY') and not humans_notified:
+                self.intervention = get_intervention(
+                    key=self.conf.get('INTERVENTION'),
+                    RISK_MODEL=self.conf.get('RISK_MODEL'),
+                    TRACING_ORDER=self.conf.get('TRACING_ORDER'),
+                    TRACE_SYMPTOMS=self.conf.get('TRACE_SYMPTOMS'),
+                    TRACE_RISK_UPDATE=self.conf.get('TRACE_RISK_UPDATE'),
+                    SHOULD_MODIFY_BEHAVIOR=self.conf.get('SHOULD_MODIFY_BEHAVIOR')
+                )
 
                 _ = [h.notify(self.intervention) for h in self.humans]
                 print(self.intervention)
-                if ExpConfig.get('COLLECT_TRAINING_DATA'):
+                if self.conf.get('COLLECT_TRAINING_DATA'):
                     print("naive risk calculation without changing behavior... Humans notified!")
 
                 humans_notified = True
@@ -470,7 +474,9 @@ class City(simpy.Environment):
                 human.update_risk(symptoms=human.symptoms)
                 human.infectiousnesses.appendleft(calculate_average_infectiousness(human))
 
-                Event.log_daily(human, human.env.timestamp)
+                if self.conf.get('COLLECT_LOGS'):
+                    Event.log_daily(human, human.env.timestamp)
+
                 self.tracker.track_symptoms(human)
 
                 # keep only past N_DAYS contacts
@@ -479,14 +485,19 @@ class City(simpy.Environment):
                                           'n_risk_increased', 'n_risk_decreased', "n_risk_mag_decreased",
                                           "n_risk_mag_increased"]:
                         for order in human.message_info[type_contacts]:
-                            if len(human.message_info[type_contacts][order]) > ExpConfig.get('TRACING_N_DAYS_HISTORY'):
+                            if len(human.message_info[type_contacts][order]) > self.conf.get('TRACING_N_DAYS_HISTORY'):
                                 human.message_info[type_contacts][order] = human.message_info[type_contacts][order][1:]
                             human.message_info[type_contacts][order].append(0)
 
             if isinstance(self.intervention, Tracing):
-                self.intervention.update_human_risks(city=self,
-                                symptoms=all_possible_symptoms, port=port,
-                                n_jobs=n_jobs, data_path=outfile)
+                self.intervention.update_human_risks(
+                    city=self,
+                    symptoms=all_possible_symptoms,
+                    port=port,
+                    n_jobs=n_jobs,
+                    data_path=outfile,
+                    COLLECT_TRAINING_DATA=self.conf.get("COLLECT_TRAINING_DATA")
+                )
                 self.tracker.track_risk_attributes(self.humans)
 
             # Let the hour pass
@@ -830,8 +841,6 @@ class Event:
                 None otherwise
             time (datetime.datetime): timestamp of encounter
         """
-        if ExpConfig.get('COLLECT_LOGS') is False:
-            return
 
         h_obs_keys   = ['obs_hospitalized', 'obs_in_icu',
                         'obs_lat', 'obs_lon']
@@ -893,9 +902,6 @@ class Event:
             human (covid19sim.simulator.Human): Human whose test should be logged
             time (datetime.datetime): Event's time
         """
-        if ExpConfig.get('COLLECT_LOGS') is False:
-            return
-
         human.events.append(
             {
                 'human_id': human.name,
@@ -926,9 +932,6 @@ class Event:
             human (covid19sim.simulator.Human): Human who's health should be logged
             time (datetime.datetime): Event time
         """
-        if ExpConfig.get('COLLECT_LOGS') is False:
-            return
-
         human.events.append(
             {
                 'human_id': human.name,
@@ -960,9 +963,6 @@ class Event:
             source ([type]): [description]
             time ([type]): [description]
         """
-        if ExpConfig.get('COLLECT_LOGS') is False:
-            return
-
         human.events.append(
             {
                 'human_id': human.name,
@@ -992,9 +992,6 @@ class Event:
             time ([type]): [description]
             death ([type]): [description]
         """
-        if ExpConfig.get('COLLECT_LOGS') is False:
-            return
-
         human.events.append(
             {
                 'human_id': human.name,
@@ -1022,9 +1019,6 @@ class Event:
             human ([type]): [description]
             time ([type]): [description]
         """
-        if ExpConfig.get('COLLECT_LOGS') is False:
-            return
-
         h_obs_keys = ['obs_preexisting_conditions',  "obs_age", "obs_sex", "obs_is_healthcare_worker"]
         h_unobs_keys = ['preexisting_conditions', "age", "sex", "is_healthcare_worker"]
         obs_payload = {key:getattr(human, key) for key in h_obs_keys}
@@ -1057,13 +1051,15 @@ class Contacts(object):
     """
     [summary]
     """
-    def __init__(self, has_app):
+    def __init__(self, has_app, conf):
         """
         [summary]
 
         Args:
             has_app (bool): [description]
+            conf (dict): yaml experiment configuration
         """
+        self.conf = conf
         self.messages = []
         self.sent_messages_by_day = defaultdict(list)
         self.messages_by_day = defaultdict(list)
@@ -1104,7 +1100,7 @@ class Contacts(object):
 
         remove_idx = -1
         for history in self.book[human]:
-            if (date - history[0]).days > ExpConfig.get('TRACING_N_DAYS_HISTORY'):
+            if (date - history[0]).days > self.conf.get('TRACING_N_DAYS_HISTORY'):
                 remove_idx += 1
             else:
                 break
@@ -1154,7 +1150,7 @@ class EmptyCity(City):
     externally defined code.  Useful for controlled scenarios and functional testing
     """
 
-    def __init__(self, env, rng, x_range, y_range, start_time):
+    def __init__(self, env, rng, x_range, y_range, start_time, conf):
         """
 
         Args:
@@ -1163,7 +1159,9 @@ class EmptyCity(City):
             x_range (tuple): (min_x, max_x)
             y_range (tuple): (min_y, max_y)
             start_time (datetime.datetime): City's initial datetime
+            conf (dict): yaml experiment configuration
         """
+        self.conf = conf
         self.env = env
         self.rng = rng
         self.x_range = x_range
@@ -1175,9 +1173,9 @@ class EmptyCity(City):
         self.test_count_today = defaultdict(int)
 
         # Get the test type with the lowest preference?
-        # TODO - EM: Should this rather sort on 'preference' in descending order? 
+        # TODO - EM: Should this rather sort on 'preference' in descending order?
         self.test_type_preference = list(zip(*sorted(TEST_TYPES.items(), key=lambda x:x[1]['preference'])))[0]
-    
+
         self.humans = []
         self.households = OrderedSet()
         self.stores = []
@@ -1193,7 +1191,9 @@ class EmptyCity(City):
         After adding humans and locations to the city, execute this function to finalize the City
         object in preparation for simulation.
         """
-        self.log_static_info()
+        if self.conf.get('COLLECT_LOGS'):
+            self.log_static_info()
+
         print("Computing preferences")
         self._compute_preferences()
         self.tracker = Tracker(self.env, self)

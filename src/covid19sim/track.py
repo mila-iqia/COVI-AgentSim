@@ -13,7 +13,6 @@ import copy
 
 from covid19sim.configs.config import HUMAN_DISTRIBUTION, LOCATION_DISTRIBUTION, INFECTION_RADIUS, EFFECTIVE_R_WINDOW
 from covid19sim.utils import log
-from covid19sim.configs.exp_config import ExpConfig
 
 
 def get_nested_dict(nesting):
@@ -52,10 +51,10 @@ class Tracker(object):
         self.city = city
         # filename to store intermediate results; useful for bigger simulations;
         timenow = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
-        if ExpConfig.get('INTERVENTION_DAY') == -1:
+        if city.conf.get('INTERVENTION_DAY') == -1:
             name = "unmitigated"
         else:
-            name = ExpConfig.get('RISK_MODEL')
+            name = city.conf.get('RISK_MODEL')
         self.filename = f"tracker_data_n_{len(city.humans)}_{timenow}_{name}.pkl"
 
         # infection & contacts
@@ -900,9 +899,9 @@ class Tracker(object):
 
     def dump_metrics(self):
         data = dict()
-        data['intervention_day'] = ExpConfig.get('INTERVENTION_DAY')
-        data['intervention'] = ExpConfig.get('INTERVENTION')
-        data['risk_model'] = ExpConfig.get('RISK_MODEL')
+        data['intervention_day'] = self.city.conf.get('INTERVENTION_DAY')
+        data['intervention'] = self.city.conf.get('INTERVENTION')
+        data['risk_model'] = self.city.conf.get('RISK_MODEL')
 
         data['expected_mobility'] = self.expected_mobility
         data['mobility'] = self.mobility

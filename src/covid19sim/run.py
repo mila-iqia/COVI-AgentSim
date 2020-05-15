@@ -23,12 +23,19 @@ from covid19sim.configs.constants import TICK_MINUTE
 @click.option('--port', help='which port should we look for inference servers on', type=int, default=6688)
 @click.option('--config', help='where is the configuration file for this experiment', type=str, default="configs/naive_config.yml")
 @click.option('--tune', help='track additional specific metrics to plot and explore', is_flag=True, default=False)
-def main(n_people=None,
-        init_percent_sick=0.01,
-        start_time=datetime.datetime(2020, 2, 28, 0, 0),
-        simulation_days=30,
-        outdir=None, out_chunk_size=None,
-        seed=0, n_jobs=1, port=6688, config="configs/naive_config.yml", tune=False):
+def main(
+    n_people=None,
+    init_percent_sick=0.01,
+    start_time=datetime.datetime(2020, 2, 28, 0, 0),
+    simulation_days=30,
+    outdir=None,
+    out_chunk_size=None,
+    seed=0,
+    n_jobs=1,
+    port=6688,
+    config="configs/naive_config.yml",
+    tune=False
+):
     """
     [summary]
 
@@ -46,7 +53,7 @@ def main(n_people=None,
     """
 
     # Load the experimental configuration
-    ExpConfig.load_config(config)
+    conf = ExpConfig.load_config(config).config
     if outdir is None:
         outdir = "output"
     os.makedirs(f"{outdir}", exist_ok=True)
@@ -64,9 +71,13 @@ def main(n_people=None,
         init_percent_sick=init_percent_sick,
         start_time=start_time,
         simulation_days=simulation_days,
-        outfile=outfile, out_chunk_size=out_chunk_size,
+        outfile=outfile,
+        out_chunk_size=out_chunk_size,
         print_progress=True,
-        seed=seed, n_jobs=n_jobs, port=port
+        seed=seed,
+        n_jobs=n_jobs,
+        port=port,
+        conf=conf
     )
 
     if not tune:
@@ -77,16 +88,24 @@ def main(n_people=None,
         tracker.write_metrics(logfile)
     else:
         filename = f"tracker_data_n_{n_people}_seed_{seed}_{timenow}_{name}.pkl"
-        data = extract_tracker_data(tracker, ExpConfig)
+        data = extract_tracker_data(tracker, conf)
         dump_tracker_data(data, outdir, filename)
 
 
-def simulate(n_people=None,
-             init_percent_sick=0.01,
-             start_time=datetime.datetime(2020, 2, 28, 0, 0),
-             simulation_days=10,
-             outfile=None, out_chunk_size=None,
-             print_progress=False, seed=0, port=6688, n_jobs=1, other_monitors=[]):
+def simulate(
+    n_people=None,
+    init_percent_sick=0.01,
+    start_time=datetime.datetime(2020, 2, 28, 0, 0),
+    simulation_days=10,
+    outfile=None,
+    out_chunk_size=None,
+    print_progress=False,
+    seed=0,
+    port=6688,
+    n_jobs=1,
+    other_monitors=[],
+    conf={}
+):
     """
     [summary]
 
