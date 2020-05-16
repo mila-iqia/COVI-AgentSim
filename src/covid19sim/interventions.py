@@ -283,7 +283,7 @@ class SocialDistancing(BehaviorInterventions):
     """
     [summary]
     """
-    DEFAULT_SOCIAL_DISTANCE = 100 # cm
+    DEFAULT_SOCIAL_DISTANCE = 150 # cm
     TIME_ENCOUNTER_REDUCTION_FACTOR = 0.5
     _RHO = 0.2
     _GAMMA = 0.5

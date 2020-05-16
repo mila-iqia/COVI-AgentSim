@@ -199,16 +199,16 @@ INFECTION_DURATION_FACTOR = 0.0
 TEST_TYPES = {
     "lab": {
         "capacity": 100,
-        "time_to_result":2,
+        "time_to_result":1,
         "P_FALSE_NEGATIVE":0.1, #&false-negative,
         "preference":1
     }
 }
 
-P_TEST = 0.3
+P_TEST = 0.5
 P_TEST_SYMPTOMATIC = 0.3
 P_TEST_ASYMPTOMATIC = 0.05
-TEST_DAYS = 5
+TEST_DAYS = 2
 
 # VIRAL LOAD PARAMS
 MIN_VIRAL_LOAD = 0.1

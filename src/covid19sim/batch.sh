@@ -1,24 +1,25 @@
 #!/bin/bash
 #path="/dev/shm/output/batch"
-root_path="/dev/shm/output"
+root_path="sum_output"
 batch_path="batch"
 outzip_name="1k_app_1.zip"
 config_dir="configs"
-config_file="naive_config.yml"
+config_file="transformer_config.yml"
 n_people=1000
-simulation_days=30
+simulation_days=22
 n_jobs=10
-num_seeds=10
+num_seeds=2
 sim_git_hash=$(cd covid_p2p_simulation; git rev-parse HEAD)
 ctt_git_hash=$(cd ctt; git rev-parse HEAD)
-
+begin_seed=1005
 for (( i=0; i<$num_seeds; i++ ))
   do
-    echo "running seed ${i}"
+    seed=$((begin_seed + i))
+    echo "running seed ${seed}"
     mkdir "${root_path}/${batch_path}/${i}"
 
     # Run the simulations
-    python run.py sim --n_people $n_people --seed $i --outdir "$root_path/$batch_path/$i" --simulation_days $simulation_days --n_jobs $n_jobs --config $config_dir/$config_file &
+    python run.py --tune --n_people $n_people --seed $seed --outdir "$root_path/$batch_path/$i" --simulation_days $simulation_days --n_jobs $n_jobs --config $config_dir/$config_file --init_percent_sick 0.002 &
   done
 
 wait
@@ -29,7 +30,7 @@ for (( i=0; i<$num_seeds; i++ ))
     path2="$(ls $root_path/$batch_path/$i | grep sim)"
     echo "merge"
     echo "$root_path/$batch_path/$i/$path2/$path2-output.zip"
-    python models/merge_outputs.py --data_path "$root_path/$batch_path/$i/$path2/daily_outputs" --output_path "$root_path/$path2-output.zip"
+   # python models/merge_outputs.py --data_path "$root_path/$batch_path/$i/$path2/daily_outputs" --output_path "$root_path/$path2-output.zip"
   done
 
 # Copy the experimental config into the output zip
@@ -53,11 +54,11 @@ If you have any questions or you think you've found a bug -- please reach out to
 EOL
 
 # Cleanup the output
-rm -fr $root_path/$batch_path
+#rm -fr $root_path/$batch_path
 
 # Zip the merged outputs and config
-zip $root_path/$outzip_name $root_path/*
+#zip $root_path/$outzip_name $root_path/*
 
 # Copy the merged outputs to AWS
-aws s3 cp  $root_path/$outzip_name s3://covid-p2p-simulation
+#aws s3 cp  $root_path/$outzip_name s3://covid-p2p-simulation
 
