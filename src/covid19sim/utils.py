@@ -9,6 +9,7 @@ import typing
 import zipfile
 from collections import OrderedDict, namedtuple
 from functools import lru_cache
+import yaml
 
 import dill
 import numpy as np
@@ -1689,7 +1690,7 @@ def load_conf(config_path):
     """
     conf = {k: getattr(core_constants, k) for k in dir(core_constants) if "__" not in k}
     core = {k: getattr(core_config, k) for k in dir(core_config) if "__" not in k}
-    with open(path) as file:
+    with open(config_path) as file:
         exp_config = yaml.load(file, Loader=yaml.FullLoader)
 
     conf.update(core)
