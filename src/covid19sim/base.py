@@ -18,7 +18,6 @@ from covid19sim.utils import compute_distance, _get_random_area, _draw_random_di
 from covid19sim.track import Tracker
 from covid19sim.interventions import *
 from covid19sim.frozen.utils import update_uid
-from covid19sim.configs.constants import TICK_MINUTE
 
 
 class Env(simpy.Environment):
@@ -524,7 +523,7 @@ class City(simpy.Environment):
                 self.tracker.track_risk_attributes(self.humans)
 
             # Let the hour pass
-            yield self.env.timeout(duration / self.conf.get("TICK_MINUTE")
+            yield self.env.timeout(duration / self.conf.get("TICK_MINUTE"))
 
             # increment the day / update uids if we start the timeslot 0
             if self.env.timestamp.hour == 0 and self.env.timestamp != self.env.initial_timestamp:

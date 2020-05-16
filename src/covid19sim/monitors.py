@@ -12,7 +12,6 @@ import pylab as pl
 from matplotlib import pyplot as plt
 
 from covid19sim.base import City
-from covid19sim.configs.constants import TICK_MINUTE
 from covid19sim.simulator import Human
 from covid19sim.utils import _json_serialize
 

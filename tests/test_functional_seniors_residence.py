@@ -6,10 +6,8 @@ import numpy as np
 from covid19sim.simulator import Human
 from covid19sim.base import City, Env, EmptyCity
 from covid19sim.monitors import EventMonitor, TimeMonitor, SEIRMonitor
-from covid19sim.configs.exp_config import ExpConfig
-from covid19sim.configs import config as core_config
+from covid19sim.utils import load_conf
 from covid19sim.frozen.helper import SYMPTOMS_META, SYMPTOMS_META_IDMAP
-from covid19sim.configs.constants import TICK_MINUTE
 import datetime
 from pathlib import Path
 
@@ -29,9 +27,7 @@ def test_functional_seniors_residence():
 
         # Find the test_configs directory, and load the required config yaml
         path = Path(__file__).parent
-        exp_config = ExpConfig.load_config(path / "test_configs" / "naive_local.yml")
-        conf = {k: getattr(core_config, k) for k in dir(core_config) if "__" not in k}
-        conf.update(exp_config)
+        conf = load_conf(path / "test_configs" / "naive_local.yml")
 
         env = Env(start_time)
         city = EmptyCity(env, rng, city_x_range, city_y_range, start_time, conf)

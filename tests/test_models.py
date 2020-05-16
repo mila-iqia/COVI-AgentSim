@@ -8,8 +8,7 @@ import unittest
 import numpy as np
 
 from covid19sim.run import simulate
-from covid19sim.configs.exp_config import ExpConfig
-from covid19sim.configs import config as core_config
+from covid19sim.utils import load_conf
 
 
 class ModelsTest(unittest.TestCase):
@@ -19,9 +18,7 @@ class ModelsTest(unittest.TestCase):
         """
 
         # Load the experimental configuration
-        exp_config = ExpConfig.load_config(os.path.join(os.path.dirname(__file__), "../src/covid19sim/configs/test_config.yml"))
-        conf = {k: getattr(core_config, k) for k in dir(core_config) if "__" not in k}
-        conf.update(exp_config)
+        conf = load_conf(os.path.join(os.path.dirname(__file__), "../src/covid19sim/configs/test_config.yml"))
 
         with TemporaryDirectory() as d:
             n_people = 10

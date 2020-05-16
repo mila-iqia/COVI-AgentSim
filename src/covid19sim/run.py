@@ -8,13 +8,11 @@ import click
 import numpy as np
 
 from covid19sim.base import City, Env
-from covid19sim.configs import config as core_config
-from covid19sim.configs.constants import TICK_MINUTE
-from covid19sim.configs.exp_config import ExpConfig
+
 from covid19sim.frozen.helper import SYMPTOMS_META_IDMAP
 from covid19sim.monitors import EventMonitor, SEIRMonitor, TimeMonitor
 from covid19sim.simulator import Human
-from covid19sim.utils import dump_tracker_data, extract_tracker_data
+from covid19sim.utils import dump_tracker_data, extract_tracker_data, load_conf
 
 
 @click.command()
@@ -104,9 +102,7 @@ def main(
     """
 
     # Load the experimental configuration
-    exp_config = ExpConfig.load_config(config)
-    conf = {k: getattr(core_config, k) for k in dir(core_config) if "__" not in k}
-    conf.update(exp_config)
+    conf = load_conf(config)
     if outdir is None:
         outdir = "output"
     os.makedirs(f"{outdir}", exist_ok=True)

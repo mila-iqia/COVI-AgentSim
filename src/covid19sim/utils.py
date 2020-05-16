@@ -15,6 +15,9 @@ import numpy as np
 import requests
 from scipy.stats import gamma, norm, truncnorm
 
+import covid19sim.configs.constants as core_constants
+import covid19sim.configs.config as core_config
+
 # from covid19sim.interventions import *
 
 SymptomProbability = namedtuple('SymptomProbability', ['name', 'id', 'probabilities'])
@@ -1672,3 +1675,24 @@ def dump_tracker_data(data, outdir, name):
     outdir.mkdir(exist_ok=True, parents=True)
     with open(outdir / name, 'wb') as f:
         dill.dump(data, f)
+
+
+def load_conf(config_path):
+    """
+    Loads a yaml config file and use it to overwrite: constants.py and config.py
+
+    Args:
+        config_path (str): where to find the configuration
+
+    Returns:
+        dict: configuration for the simulation
+    """
+    conf = {k: getattr(core_constants, k) for k in dir(core_constants) if "__" not in k}
+    core = {k: getattr(core_config, k) for k in dir(core_config) if "__" not in k}
+    with open(path) as file:
+        exp_config = yaml.load(file, Loader=yaml.FullLoader)
+
+    conf.update(core)
+    conf.update(exp_config)
+
+    return conf

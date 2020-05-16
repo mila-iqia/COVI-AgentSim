@@ -8,8 +8,8 @@ from tempfile import TemporaryDirectory
 
 from covid19sim.run import simulate
 from covid19sim.base import Event
-from covid19sim.configs.exp_config import ExpConfig
-import covid19sim.configs.config as core_config
+from covid19sim.utils import load_conf
+
 
 class FullUnitTest(unittest.TestCase):
 
@@ -17,9 +17,8 @@ class FullUnitTest(unittest.TestCase):
         """
             run one simulation and ensure json files are correctly populated and most of the users have activity
         """
-        exp_config = ExpConfig.load_config(os.path.join(os.path.dirname(__file__), "../src/covid19sim/configs/naive_config.yml"))
-        conf = {k: getattr(core_config, k) for k in dir(core_config) if "__" not in k}
-        conf.update(exp_config)
+
+        conf = load_conf(os.path.join(os.path.dirname(__file__), "../src/covid19sim/configs/naive_config.yml"))
 
         with TemporaryDirectory() as d:
             outfile = os.path.join(d, "data")
@@ -62,9 +61,8 @@ class SeedUnitTest(unittest.TestCase):
         self.n_people = 100
         self.start_time = datetime.datetime(2020, 2, 28, 0, 0)
         self.simulation_days = 20
-        exp_config = ExpConfig.load_config(os.path.join(os.path.dirname(__file__), "../src/covid19sim/configs/naive_config.yml"))
-        conf = {k: getattr(core_config, k) for k in dir(core_config) if "__" not in k}
-        conf.update(exp_config)
+
+        conf = load_conf(os.path.join(os.path.dirname(__file__), "../src/covid19sim/configs/naive_config.yml"))
 
         with TemporaryDirectory() as d1, TemporaryDirectory() as d2:
             of1 = os.path.join(d1, "data")
@@ -119,9 +117,8 @@ class SeedUnitTest(unittest.TestCase):
         self.n_people = 100
         self.start_time = datetime.datetime(2020, 2, 28, 0, 0)
         self.simulation_days = 20
-        exp_config = ExpConfig.load_config(os.path.join(os.path.dirname(__file__), "../src/covid19sim/configs/naive_config.yml"))
-        conf = {k: getattr(core_config, k) for k in dir(core_config) if "__" not in k}
-        conf.update(exp_config)
+
+        conf = load_conf(os.path.join(os.path.dirname(__file__), "../src/covid19sim/configs/naive_config.yml"))
 
         with TemporaryDirectory() as d1, TemporaryDirectory() as d2:
             of1 = os.path.join(d1, "data")
