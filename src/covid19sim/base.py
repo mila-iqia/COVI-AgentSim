@@ -26,13 +26,14 @@ class Env(simpy.Environment):
     Custom simpy.Environment
     """
 
-    def __init__(self, initial_timestamp):
+    def __init__(self, initial_timestamp, tick_minute):
         """
         Args:
             initial_timestamp (datetime.datetime): The environment's initial timestamp
         """
         super().__init__()
         self.initial_timestamp = initial_timestamp
+        self.tick_minute = tick_minute
 
     def time(self):
         """
@@ -48,10 +49,10 @@ class Env(simpy.Environment):
         """
         Returns:
             datetime.datetime: current date (initial timestamp shifted by
-                env.now * TICK_MINUTE minutes)
+                env.now * tick_minute minutes)
         """
         return self.initial_timestamp + datetime.timedelta(
-            minutes=self.now * TICK_MINUTE)
+            minutes=self.now * self.tick_minute)
 
     def minutes(self):
         """
@@ -469,7 +470,8 @@ class City(simpy.Environment):
                     TRACE_SYMPTOMS=self.conf.get('TRACE_SYMPTOMS'),
                     TRACE_RISK_UPDATE=self.conf.get('TRACE_RISK_UPDATE'),
                     SHOULD_MODIFY_BEHAVIOR=self.conf.get('SHOULD_MODIFY_BEHAVIOR'),
-                    MASKS_SUPPLY=self.conf.get("MASKS_SUPPLY")
+                    MASKS_SUPPLY=self.conf.get("MASKS_SUPPLY"),
+                    BIG_NUMBER=self.conf.get("BIG_NUMBER")
                 )
 
                 _ = [h.notify(self.intervention) for h in self.humans]
@@ -522,7 +524,7 @@ class City(simpy.Environment):
                 self.tracker.track_risk_attributes(self.humans)
 
             # Let the hour pass
-            yield self.env.timeout(duration / TICK_MINUTE)
+            yield self.env.timeout(duration / self.conf.get("TICK_MINUTE")
 
             # increment the day / update uids if we start the timeslot 0
             if self.env.timestamp.hour == 0 and self.env.timestamp != self.env.initial_timestamp:

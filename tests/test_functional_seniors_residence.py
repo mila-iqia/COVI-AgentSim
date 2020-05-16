@@ -98,7 +98,7 @@ def test_functional_seniors_residence():
         for m in monitors:
             env.process(m.run(env, city=city))
 
-        env.run(until=simulation_days * 24 * 60 / TICK_MINUTE)
+        env.run(until=simulation_days * 24 * 60 / city.conf.get("TICK_MINUTE"))
 
         # Check dead humans are removed from the residence
         assert sum([h.is_dead for h in city.humans]) == N - len(sr.humans)

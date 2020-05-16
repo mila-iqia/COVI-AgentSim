@@ -248,7 +248,7 @@ class Human(object):
         self.contact_book = Contacts(self.has_app, self.conf)
         self.message_info = { 'traced': False, \
                 'receipt':datetime.datetime.max, \
-                'delay':BIG_NUMBER, 'n_contacts_tested_positive': defaultdict(lambda :[0]),
+                'delay':self.conf.get("BIG_NUMBER"), 'n_contacts_tested_positive': defaultdict(lambda :[0]),
                 "n_contacts_symptoms":defaultdict(lambda :[0]), "n_contacts_risk_updates":defaultdict(lambda :[0]),
                 "n_risk_decreased": defaultdict(lambda :[0]), "n_risk_increased":defaultdict(lambda :[0]),
                 "n_risk_mag_increased":defaultdict(lambda :[0]), "n_risk_mag_decreased":defaultdict(lambda :[0])
@@ -1487,7 +1487,7 @@ class Human(object):
                         time=self.env.timestamp
                     )
 
-        yield self.env.timeout(duration / TICK_MINUTE)
+        yield self.env.timeout(duration / self.conf.get("TICK_MINUTE"))
 
         # environmental transmission
         p_infection = self.conf.get("ENVIRONMENTAL_INFECTION_KNOB") * location.contamination_probability * (1 - self.mask_efficacy) # &prob_infection

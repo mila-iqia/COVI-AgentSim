@@ -223,7 +223,7 @@ def simulate(
     for m in monitors:
         env.process(m.run(env, city=city))
 
-    env.run(until=simulation_days * 24 * 60 / TICK_MINUTE)
+    env.run(until=simulation_days * 24 * 60 / city.conf.get("TICK_MINUTE"))
 
     return monitors, city.tracker
 
