@@ -61,7 +61,7 @@ def main(n_people=None,
         warnings.filterwarnings("ignore")
         outfile = None
 
-    monitors, tracker = simulate(
+    city, monitors, tracker = simulate(
         n_people=n_people,
         init_percent_sick=init_percent_sick,
         start_time=start_time,
@@ -71,7 +71,15 @@ def main(n_people=None,
         seed=seed, n_jobs=n_jobs, port=port
     )
     timenow = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
-
+    all_N1s = 0
+    all_contacts = 0
+    for human in city.humans:
+        all_N1s += human.N1
+        all_contacts += human.num_contacts
+    print(f"all_N1s: {all_N1s}")
+    print(f"all_N1s/(sim days * len(city.humans)): {all_N1s / (simulation_days * len(city.humans))}")
+    print(f"N1 per contact: {all_N1s / all_contacts}")
+    
     if not tune:
         monitors[0].dump()
         monitors[0].join_iothread()
@@ -139,7 +147,7 @@ def simulate(n_people=None,
 
     env.run(until=simulation_days * 24 * 60 / TICK_MINUTE)
 
-    return monitors, city.tracker
+    return city, monitors, city.tracker
 
 
 if __name__ == "__main__":

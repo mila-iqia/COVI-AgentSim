@@ -176,7 +176,7 @@ class WashHands(BehaviorInterventions):
             human ([type]): [description]
         """
         human._hygiene = human.hygiene
-        human.hygiene = human.rng.uniform(human.carefulness, 3)
+        human.hygiene = human.rng.uniform(human.carefulness, 1)
 
     def revert_behavior(self, human):
         """
@@ -283,8 +283,8 @@ class SocialDistancing(BehaviorInterventions):
     """
     [summary]
     """
-    DEFAULT_SOCIAL_DISTANCE = 175 # cm
-    TIME_ENCOUNTER_REDUCTION_FACTOR = 0.2
+    DEFAULT_SOCIAL_DISTANCE = 150 # cm
+    TIME_ENCOUNTER_REDUCTION_FACTOR = 0.5
     _RHO = 0.2
     _GAMMA = 0.5
 
@@ -422,7 +422,7 @@ def get_recommendations(level):
     if level == 0:
         return [WashHands()]
     if level == 1:
-        return [WashHands(), Stand2M(), SocialDistancing(), WearMask()]
+        return [WashHands(), Stand2M(), WearMask()]
     if level == 2:
         return [WashHands(), SocialDistancing(), Stand2M(), WearMask(), 'monitor_symptoms']
 

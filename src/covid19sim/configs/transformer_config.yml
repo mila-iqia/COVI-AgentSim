@@ -8,13 +8,13 @@ SHOULD_MODIFY_BEHAVIOR : True
 USE_ORACLE: False
 
 ## INTERVENTIONS
-INTERVENTION_DAY : 5
+INTERVENTION_DAY : 5 
 # NOTE: INTERVENTION is only valid if INTERVENTION_DAY >= 0
 INTERVENTION : "Tracing"
 PERCENT_FOLLOW : 1.0
 # NOTE: HAS_APP params are only used when an app based INTERVENTION = "Tracing" is used
 P_HAS_APP : 0.66
-
+M : 1
 
 # PATHS
 TRANSFORMER_EXP_PATH : "https://drive.google.com/file/d/1Z7g3gKh2kWFSmK2Yr19MQq0blOWS5st0"

@@ -236,6 +236,8 @@ class Human(object):
         self.time_encounter_reduction_factor = 1.0
         self.hygiene = self.carefulness #self.rng.uniform(self.carefulness, 3) if self.has_app else self.carefulness
         self.test_recommended = False
+        self.N1 = 0
+        self.num_contacts = 0
 
         # risk prediction
         # self.rec_level = -1 # risk-based recommendations
@@ -1319,7 +1321,10 @@ class Human(object):
                     p_infection = infector.infectiousness * ratio * proximity_factor
                     # FIXME: remove hygiene from severity multiplier; init hygiene = 0; use sum here instead
                     reduction_factor = CONTAGION_KNOB + sum(getattr(x, "_hygiene", 0) for x in [self, h]) + mask_efficacy
-                    p_infection *= np.exp(-reduction_factor * infector.n_infectious_contacts)
+                    N1 = ExpConfig.get("M") * np.exp(-reduction_factor * infector.n_infectious_contacts)
+                    self.N1 += N1
+                    self.num_contacts += 1
+                    p_infection *= N1
 
                     x_human = infector.rng.random() < p_infection
 

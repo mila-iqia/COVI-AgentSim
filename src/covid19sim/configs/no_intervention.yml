@@ -14,7 +14,7 @@ INTERVENTION_DAY : -1
 INTERVENTION : ""
 PERCENT_FOLLOW : 1.0
 P_HAS_APP : 0.66 # add 10% of the target adoption rate
-
+M : 1
 
 # PATHS
 CLUSTER_PATH : "output/clusters"
