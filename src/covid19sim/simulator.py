@@ -234,7 +234,7 @@ class Human(object):
         self.how_much_I_follow_recommendations = ExpConfig.get('PERCENT_FOLLOW')
         self.recommendations_to_follow = OrderedSet()
         self.time_encounter_reduction_factor = 1.0
-        self.hygiene = self.carefulness
+        self.hygiene = self.carefulness #self.rng.uniform(self.carefulness, 3) if self.has_app else self.carefulness
         self.test_recommended = False
 
         # risk prediction
@@ -969,7 +969,6 @@ class Human(object):
             [type]: [description]
         """
         self.household.humans.add(self)
-
         while True:
             hour, day = self.env.hour_of_day(), self.env.day_of_week()
             if day==0:
