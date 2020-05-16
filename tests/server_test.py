@@ -1,11 +1,10 @@
 import unittest.mock
 
 import covid19sim.server_utils
+import covid19sim.server_bootstrap
 
 
 class ServerTests(unittest.TestCase):
-
-    EXPERIMENT_DATA_URL = "https://drive.google.com/file/d/1Z7g3gKh2kWFSmK2Yr19MQq0blOWS5st0"
 
     @staticmethod
     def fake_proc_human_batch(sample, *args, **kwargs):
@@ -13,7 +12,7 @@ class ServerTests(unittest.TestCase):
 
     def test_inference(self):
         manager = covid19sim.server_utils.InferenceBroker(
-            model_exp_path=self.EXPERIMENT_DATA_URL,
+            model_exp_path=covid19sim.server_bootstrap.default_model_exp_path,
             workers=2,
             mp_backend="loky",
             mp_threads=4,

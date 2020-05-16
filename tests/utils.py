@@ -271,11 +271,9 @@ def start_inference_server():
     Returns:
         [type]: [description]
     """
-    exp_dir = os.path.join(os.path.dirname(__file__), "exp/DEBUG-0")
-    p = Process(target=covid19sim.server_bootstrap.main, args=([f"-e{exp_dir}"],), daemon=True)
+    p = Process(target=covid19sim.server_bootstrap.main, daemon=True)
     p.start()
     return p
-
 
 
 def get_test_conf(conf_name):
