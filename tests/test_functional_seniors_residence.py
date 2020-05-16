@@ -29,7 +29,7 @@ def test_functional_seniors_residence():
         path = Path(__file__).parent
         conf = load_conf(path / "test_configs" / "naive_local.yml")
 
-        env = Env(start_time)
+        env = Env(start_time, conf.get("TICK_MINUTE"))
         city = EmptyCity(env, rng, city_x_range, city_y_range, start_time, conf)
 
         sr = city.create_location(

@@ -177,7 +177,7 @@ def simulate(
         [type]: [description]
     """
     rng = np.random.RandomState(seed)
-    env = Env(start_time)
+    env = Env(start_time, conf.get("TICK_MINUTE"))
     city_x_range = (0, 1000)
     city_y_range = (0, 1000)
     city = City(
