@@ -1028,8 +1028,7 @@ class Human(object):
                 # set it once for the rest of the disease path
                 i_feel = self.how_am_I_feeling()
                 # If you are in the GREEN level, modulate the mobility using FEELING_KNOB
-                if self.rec_level == 0:
-                    i_feel = GREEN_FEELING_KNOB * i_feel
+                i_feel = GREEN_FEELING_KNOB * i_feel
                 if self.rng.random() > i_feel:
                     self.rest_at_home = True
 
