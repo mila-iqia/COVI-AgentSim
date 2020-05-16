@@ -1034,7 +1034,13 @@ class Human(object):
 
             # happens when recovered
             elif self.rest_at_home and self.how_am_I_feeling() == 1.0:
-                self.rest_at_home = False
+                i_feel = self.how_am_I_feeling()
+                # If you are in the GREEN level, modulate the mobility using FEELING_KNOB
+                i_feel = GREEN_FEELING_KNOB * i_feel
+                if self.rng.random() > i_feel:
+                    self.rest_at_home = True
+                else:
+                    self.rest_at_home = False
 
             # Behavioral imperatives
             if self.is_extremely_sick:
