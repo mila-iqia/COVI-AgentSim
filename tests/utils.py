@@ -1,12 +1,19 @@
 import dataclasses
-import numpy as np
-import typing
 import os
+import typing
 from multiprocessing import Process
+from pathlib import Path
+
+import numpy as np
+import yaml
+from omegaconf import OmegaConf
 
 import covid19sim.frozen.message_utils as mu
 import covid19sim.server_bootstrap
 
+HYDRA_PATH = (
+    Path(__file__).parent.parent / "src/covid19sim/hydra-configs"
+).resolve()
 
 @dataclasses.dataclass
 class Visit:
@@ -268,3 +275,35 @@ def start_inference_server():
     p.start()
     return p
 
+
+
+def get_test_conf(config_path):
+    """
+    Loads the default configurations in hydra-configs and overwrites it
+    with values in config_path
+
+    Args:
+        hydra_path (str | Path): path to the hydra-configs directory
+        config_path (str | Path): path to the overwiting config
+
+    Returns:
+        dict: full overwritten config
+    """
+
+    assert Path(config_path).resolve().suffix == ".yaml"
+
+    config = HYDRA_PATH / "config.yaml"
+
+    with config.open("r") as f:
+        defaults = yaml.safe_load(f)["defaults"]
+
+    default_confs = [
+        OmegaConf.load(str(HYDRA_PATH / (d + ".yaml")))
+        for d in defaults
+    ]
+    base_conf = OmegaConf.merge(*default_confs)
+    base_conf = OmegaConf.to_container(base_conf, resolve=True)
+
+    with open(config_path, "r") as f:
+        base_conf.update(yaml.safe_load(f))
+    return base_conf
