@@ -12,7 +12,8 @@ import numpy as np
 
 from covid19sim.base import Event
 from covid19sim.run import simulate
-from covid19sim.utils import extract_tracker_data, load_conf
+from covid19sim.utils import extract_tracker_data
+from tests.utils import get_test_conf
 
 
 def print_dict(title, dic, is_sorted=None):
@@ -59,7 +60,7 @@ if __name__ == "__main__":
     # https://coronavirus.jhu.edu/testing/testing-positivity
     # https://www.canada.ca/content/dam/phac-aspc/documents/services/diseases/2019-novel-coronavirus-infection/surv-covid19-epi-update-eng.pdf
     path = Path(__file__).parent
-    conf = load_conf(path / "test_configs" / "test_covid_testing.yml")
+    conf = get_test_conf(path / "test_configs" / "test_covid_testing.yml")
     # test_covid_test = no intervention
     outfile = None
 

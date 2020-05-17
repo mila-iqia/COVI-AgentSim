@@ -1,15 +1,16 @@
-import pytest
-import tempfile
-import os
-import numpy as np
-
-from covid19sim.simulator import Human
-from covid19sim.base import City, Env, EmptyCity
-from covid19sim.monitors import EventMonitor, TimeMonitor, SEIRMonitor
-from covid19sim.utils import load_conf
-from covid19sim.frozen.helper import SYMPTOMS_META, SYMPTOMS_META_IDMAP
 import datetime
+import os
+import tempfile
 from pathlib import Path
+
+import numpy as np
+import pytest
+from tests.utils import get_test_conf
+
+from covid19sim.base import City, EmptyCity, Env
+from covid19sim.frozen.helper import SYMPTOMS_META, SYMPTOMS_META_IDMAP
+from covid19sim.monitors import EventMonitor, SEIRMonitor, TimeMonitor
+from covid19sim.simulator import Human
 
 
 def test_functional_seniors_residence():
@@ -26,8 +27,9 @@ def test_functional_seniors_residence():
         city_y_range = (0, 1000)
 
         # Find the test_configs directory, and load the required config yaml
-        path = Path(__file__).parent
-        conf = load_conf(path / "test_configs" / "naive_local.yml")
+        path = Path(__file__).parent.resolve()
+
+        conf = get_test_conf(path / "test_configs" / "naive_local.yml")
 
         env = Env(start_time, conf.get("TICK_MINUTE"))
         city = EmptyCity(env, rng, city_x_range, city_y_range, start_time, conf)
@@ -63,7 +65,7 @@ def test_functional_seniors_residence():
                 profession="retired",
                 rho=conf.get("RHO"),
                 gamma=conf.get("GAMMA"),
-                conf=conf
+                conf=conf,
             )
             for i in range(N)
         ]

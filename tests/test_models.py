@@ -2,13 +2,13 @@ import datetime
 import glob
 import os
 import pickle
-from tempfile import TemporaryDirectory
 import unittest
+from tempfile import TemporaryDirectory
 
 import numpy as np
+from tests.utils import get_test_conf
 
 from covid19sim.run import simulate
-from covid19sim.utils import load_conf
 
 
 class ModelsTest(unittest.TestCase):
@@ -18,7 +18,8 @@ class ModelsTest(unittest.TestCase):
         """
 
         # Load the experimental configuration
-        conf = load_conf(os.path.join(os.path.dirname(__file__), "../src/covid19sim/configs/test_config.yml"))
+        conf_path = Path(__file__).parent / "test_configs/test_models.yaml"
+        conf = get_test_conf(conf_path)
 
         with TemporaryDirectory() as d:
             n_people = 10

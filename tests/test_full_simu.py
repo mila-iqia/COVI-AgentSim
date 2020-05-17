@@ -6,24 +6,22 @@ import unittest
 import zipfile
 from pathlib import Path
 from tempfile import TemporaryDirectory
-import hydra
-from hydra.experimental import compose, initialize
 
-from covid19sim.run import simulate
+from tests.utils import get_test_conf
+
 from covid19sim.base import Event
-from covid19sim.utils import parse_configuration
+from covid19sim.run import simulate
 
+TEST_CONF = (Path(__file__).parent / "test_configs" / "naive_local.yaml").resolve()
 
 class FullUnitTest(unittest.TestCase):
 
-    @hydra.main(config_path="/Users/victor/Documents/covid/covid_p2p_simulation/src/covid19sim/hydra-configs")
-    def test_simu_run(self, conf):
+    def test_simu_run(self):
         """
             run one simulation and ensure json files are correctly populated and most of the users have activity
         """
-        conf = parse_configuration(conf)
-        import pdb; pdb.set_trace()
 
+        conf = get_test_conf(TEST_CONF)
 
         with TemporaryDirectory() as d:
             outfile = os.path.join(d, "data")
@@ -67,7 +65,7 @@ class SeedUnitTest(unittest.TestCase):
         self.start_time = datetime.datetime(2020, 2, 28, 0, 0)
         self.simulation_days = 20
 
-        conf = load_conf(os.path.join(os.path.dirname(__file__), "../src/covid19sim/configs/naive_config.yml"))
+        conf = get_test_conf(TEST_CONF)
 
         with TemporaryDirectory() as d1, TemporaryDirectory() as d2:
             of1 = os.path.join(d1, "data")
@@ -123,7 +121,7 @@ class SeedUnitTest(unittest.TestCase):
         self.start_time = datetime.datetime(2020, 2, 28, 0, 0)
         self.simulation_days = 20
 
-        conf = load_conf(os.path.join(os.path.dirname(__file__), "../src/covid19sim/configs/naive_config.yml"))
+        conf = get_test_conf(TEST_CONF)
 
         with TemporaryDirectory() as d1, TemporaryDirectory() as d2:
             of1 = os.path.join(d1, "data")
