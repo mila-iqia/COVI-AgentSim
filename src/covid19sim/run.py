@@ -59,8 +59,6 @@ def main(conf: DictConfig) -> None:
     print("seed:", conf["seed"])
     print("n_jobs:", conf["n_jobs"])
 
-    return
-
     monitors, tracker = simulate(
         n_people=conf["n_people"],
         init_percent_sick=conf["init_percent_sick"],
@@ -121,6 +119,19 @@ def simulate(
     Returns:
         [type]: [description]
     """
+
+    conf["n_people"] = n_people
+    conf["init_percent_sick"] = init_percent_sick
+    conf["start_time"] = start_time
+    conf["simulation_days"] = simulation_days
+    conf["outfile"] = outfile
+    conf["out_chunk_size"] = out_chunk_size
+    conf["print_progress"] = print_progress
+    conf["seed"] = seed
+    conf["port"] = port
+    conf["n_jobs"] = n_jobs
+    conf["other_monitors"] = other_monitors
+
     rng = np.random.RandomState(seed)
     env = Env(start_time, conf.get("TICK_MINUTE"))
     city_x_range = (0, 1000)
