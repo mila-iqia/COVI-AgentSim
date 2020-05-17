@@ -61,7 +61,7 @@ def main(n_people=None,
         warnings.filterwarnings("ignore")
         outfile = None
 
-    monitors, tracker = simulate(
+    city, monitors, tracker = simulate(
         n_people=n_people,
         init_percent_sick=init_percent_sick,
         start_time=start_time,
@@ -71,7 +71,15 @@ def main(n_people=None,
         seed=seed, n_jobs=n_jobs, port=port
     )
     timenow = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
-
+    all_effective_contacts = 0
+    all_contacts = 0
+    for human in city.humans:
+        all_effective_contacts += human.effective_contacts
+        all_contacts += human.num_contacts
+    print(f"all_effective_contacts: {all_effective_contacts}")
+    print(f"all_effective_contacts/(sim days * len(city.humans)): {all_effective_contacts / (simulation_days * len(city.humans))}")
+    print(f"effective contacts per contacs (M): {all_effective_contacts / all_contacts}")
+    
     if not tune:
         monitors[0].dump()
         monitors[0].join_iothread()
@@ -79,6 +87,20 @@ def main(n_people=None,
         logfile = os.path.join(f"{outdir}/logs.txt")
         tracker.write_metrics(logfile)
     else:
+        import sys
+        sys.path.append("../../plots")
+        from plot_rt import PlotRt
+        cases_per_day = tracker.cases_per_day
+        if tracker.get_generation_time() > 0:
+            serial_interval = tracker.get_generation_time()
+        else:
+            serial_interval = 7.0
+            print("WARNING: serial_interval is 0")
+        print(f"using serial interval :{serial_interval}")
+        plotrt = PlotRt(R_T_MAX=4, sigma=0.25, GAMMA=1.0/serial_interval)
+        most_likely, _ = plotrt.compute(cases_per_day, r0_estimate=2.5)
+        print("Rt", most_likely[:20])
+
         filename = f"tracker_data_n_{n_people}_seed_{seed}_{timenow}_{name}.pkl"
         data = extract_tracker_data(tracker, ExpConfig)
         dump_tracker_data(data, outdir, filename)
@@ -139,7 +161,7 @@ def simulate(n_people=None,
 
     env.run(until=simulation_days * 24 * 60 / TICK_MINUTE)
 
-    return monitors, city.tracker
+    return city, monitors, city.tracker
 
 
 if __name__ == "__main__":

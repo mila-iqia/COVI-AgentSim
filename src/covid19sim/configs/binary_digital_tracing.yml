@@ -13,7 +13,8 @@ INTERVENTION_DAY : 5
 # NOTE: INTERVENTION is only valid if INTERVENTION_DAY >= 0
 INTERVENTION : "Tracing"
 PERCENT_FOLLOW : 1.0
-P_HAS_APP : -1.0
+P_HAS_APP : 0.66
+M : .5
 
 # PATHS
 CLUSTER_PATH : "output/"
@@ -31,6 +32,6 @@ CLUSTER_ALGO_TYPE : "blind" # should be in ["old", "blind", "naive", "perfect", 
 # TRACING RISK MODEL PARAMETERS  (non-ML)
 TRACE_SYMPTOMS : False
 TRACE_RISK_UPDATE : False
-TRACING_ORDER : 1
+TRACING_ORDER : 2 
 UPDATES_PER_DAY : 4
 RISK_MAPPING : []

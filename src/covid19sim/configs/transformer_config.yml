@@ -13,7 +13,8 @@ INTERVENTION_DAY: 5
 INTERVENTION: "Tracing"
 PERCENT_FOLLOW: 1.0
 # NOTE: HAS_APP params are only used when an app based INTERVENTION = "Tracing" is used
-P_HAS_APP: -1.0
+P_HAS_APP : 0.66
+M : .3
 
 # PATHS
 TRANSFORMER_EXP_PATH : "https://drive.google.com/file/d/1Z7g3gKh2kWFSmK2Yr19MQq0blOWS5st0"
@@ -29,28 +30,25 @@ DUMP_CLUSTERS: False
 CLUSTER_ALGO_TYPE: "blind" # should be in ["old", "blind", "naive", "perfect", "simple"]
 
 # TRACING RISK MODEL PARAMETERS  (non-ML)
-TRACE_SYMPTOMS: False
-TRACE_RISK_UPDATE: False
-TRACING_ORDER: 1
-UPDATES_PER_DAY: 4
+TRACE_SYMPTOMS : False
+TRACE_RISK_UPDATE : False
+TRACING_ORDER : 1
+UPDATES_PER_DAY : 4
+RISK_MAPPING : [0.0,
+                0.0001,
+                0.02790058831805188,
+                0.056507214366051786,
+                0.09964329702354373,
+                0.12181110126553577,
+                0.18458727162787497,
+                0.28600519445013506,
+                0.3628629063698628,
+                0.44121387005841506,
+                0.4954098649943365,
+                0.5819137774823899,
+                0.6232547997952577,
+                0.7266351205574721,
+                0.8874807435526698,
+                1.0,
+                1.065126768029105]
 
-RISK_MAPPING:
-  [
-    0.,
-    0.01,
-    0.20009698,
-    0.3337032,
-    0.42782824,
-    0.53769504,
-    0.62646553,
-    0.72454666,
-    0.79687407,
-    0.8408014,
-    0.87897228,
-    0.90514533,
-    0.92788853,
-    0.94996601,
-    0.97018845,
-    0.98973414,
-    1.,
-  ]
