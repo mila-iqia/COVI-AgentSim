@@ -234,8 +234,10 @@ class Human(object):
         self.how_much_I_follow_recommendations = ExpConfig.get('PERCENT_FOLLOW')
         self.recommendations_to_follow = OrderedSet()
         self.time_encounter_reduction_factor = 1.0
-        self.hygiene = self.carefulness
+        self.hygiene = self.carefulness #self.rng.uniform(self.carefulness, 3) if self.has_app else self.carefulness
         self.test_recommended = False
+        self.effective_contacts = 0
+        self.num_contacts = 0
 
         # risk prediction
         # self.rec_level = -1 # risk-based recommendations
@@ -969,7 +971,6 @@ class Human(object):
             [type]: [description]
         """
         self.household.humans.add(self)
-
         while True:
             hour, day = self.env.hour_of_day(), self.env.day_of_week()
             if day==0:
@@ -1028,14 +1029,19 @@ class Human(object):
                 # set it once for the rest of the disease path
                 i_feel = self.how_am_I_feeling()
                 # If you are in the GREEN level, modulate the mobility using FEELING_KNOB
-                if self.rec_level == 0:
-                    i_feel = GREEN_FEELING_KNOB * i_feel
+                i_feel = GREEN_FEELING_KNOB * i_feel
                 if self.rng.random() > i_feel:
                     self.rest_at_home = True
 
             # happens when recovered
             elif self.rest_at_home and self.how_am_I_feeling() == 1.0:
-                self.rest_at_home = False
+                i_feel = self.how_am_I_feeling()
+                # If you are in the GREEN level, modulate the mobility using FEELING_KNOB
+                i_feel = GREEN_FEELING_KNOB * i_feel
+                if self.rng.random() > i_feel:
+                    self.rest_at_home = True
+                else:
+                    self.rest_at_home = False
 
             # Behavioral imperatives
             if self.is_extremely_sick:
@@ -1303,10 +1309,18 @@ class Human(object):
                 if INFECTION_DISTANCE_FACTOR or INFECTION_DURATION_FACTOR:
                     proximity_factor = INFECTION_DISTANCE_FACTOR * (1 - distance/INFECTION_RADIUS) + INFECTION_DURATION_FACTOR * min((t_near - INFECTION_DURATION)/INFECTION_DURATION, 1)
                 mask_efficacy = (self.mask_efficacy + h.mask_efficacy)*2
+                
+                # used for matching "mobility" between methods
+                scale_factor_passed = self.rng.random() < ExpConfig.get("M")
+                cur_day = (self.env.timestamp - self.env.initial_timestamp).days 
+                if cur_day > ExpConfig.get("INTERVENTION_DAY"):
+                    self.num_contacts += 1
+                    self.effective_contacts += ExpConfig.get("M")
 
-                # covid transmission
+                #if cur_day >5:  
                 infector, infectee = None, None
-                if self.is_infectious ^ h.is_infectious:
+
+                if (self.is_infectious ^ h.is_infectious) and scale_factor_passed:
                     infector, infectee = self, h
                     if h.is_infectious:
                         infector, infectee = h, self

@@ -436,7 +436,8 @@ class City(simpy.Environment):
         """
         self.current_day = 0
         humans_notified = False
-
+        tmp_M = ExpConfig.get("M")
+        ExpConfig.set("M", 1)
         while True:
             # Notify humans to follow interventions on intervention day
             if self.current_day == ExpConfig.get('INTERVENTION_DAY') and not humans_notified:
@@ -449,6 +450,7 @@ class City(simpy.Environment):
 
                 _ = [h.notify(self.intervention) for h in self.humans]
                 print(self.intervention)
+                ExpConfig.set("M", tmp_M)
                 if ExpConfig.get('COLLECT_TRAINING_DATA'):
                     print("naive risk calculation without changing behavior... Humans notified!")
 

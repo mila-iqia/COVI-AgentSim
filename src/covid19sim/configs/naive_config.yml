@@ -14,7 +14,7 @@ INTERVENTION : "Tracing"
 PERCENT_FOLLOW : 1.0
 P_HAS_APP : 1.0
 ABSOLUTE_P_HAS_APP : True # If False, we modulate P_HAS_APP with carefulness and age
-
+M : 1
 
 # PATHS
 CLUSTER_PATH : "output/clusters"
@@ -26,7 +26,7 @@ MP_BATCHSIZE : "auto"
 MP_N_JOBS : "1"
 MP_BACKEND : "loky"
 DUMP_CLUSTERS : True
-CLUSTER_TYPE : "heuristic" # "random", "graph"
+CLUSTER_ALGO_TYPE : "blind" # should be in ["old", "blind", "naive", "perfect", "simple"]
 
 
 # TRACING RISK MODEL PARAMETERS  (non-ML)

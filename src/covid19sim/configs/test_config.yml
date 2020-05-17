@@ -7,6 +7,7 @@ RISK_MODEL : "transformer" # "naive"  "manual", "digital", "transformer"
 INIT_PERCENT_SICK : 0.1
 SHOULD_MODIFY_BEHAVIOR : True
 USE_ORACLE: False
+M : 1
 
 ## INTERVENTIONS
 INTERVENTION_DAY : 2
@@ -27,7 +28,7 @@ MP_BATCHSIZE : "auto"
 MP_N_JOBS : "1"
 MP_BACKEND : "loky"
 DUMP_CLUSTERS : False
-CLUSTER_TYPE : "heuristic" # "random", "graph"
+CLUSTER_ALGO_TYPE : "blind" # should be in ["old", "blind", "naive", "perfect", "simple"]
 
 
 # TRACING RISK MODEL PARAMETERS  (non-ML)
