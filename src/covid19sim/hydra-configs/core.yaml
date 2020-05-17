@@ -76,7 +76,7 @@ LOCATION_DISTRIBUTION:
 # house_size: 1 2 3 4 5
 OTHERS_WORKPLACE_CHOICE: [1.0, 0.0, 0.0]
 HOUSE_SIZE_PREFERENCE: [0.30, 0.30, 0.15, 0.15, 0.1]
-HUMAN_DISTRIBUTION:
+HUMAN_DISTRIBUTION: # this is parsed into tuple keys in utils.py/parse_configuration e.g. "1-15" => (1, 15)
   {
     "1-15":
       {
@@ -145,7 +145,7 @@ P_CAREFUL_PERSON: 0.3 # &carefulness
 P_TRAVELLED_INTERNATIONALLY_RECENTLY: 0.05
 
 # https://science.sciencemag.org/content/368/6491/eabb6936; Table 9
-APP_USERS_FRACTION_BY_AGE:
+APP_USERS_FRACTION_BY_AGE: # this is parsed into tuple keys in utils.py/parse_configuration e.g. "1-15" => (1, 15)
   {
     "0-9": 0.0,
     "10-19": 0.15387771850636053,

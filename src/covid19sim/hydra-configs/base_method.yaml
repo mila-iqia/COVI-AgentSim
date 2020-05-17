@@ -1,7 +1,8 @@
 #FORMER COMMAND-LINE ARGS
 n_people: 1000
 init_percent_sick: 0.001
-start_time: "2020-02-28 00:00:00" # '%Y-%m-%d %H:%M:%S'
+start_time: "2020-02-28 00:00:00" # in utils.py/parse_configuration, this will be parsed
+                                  #his will be parsed into a datetime object with the following schema: '%Y-%m-%d %H:%M:%S'
 simulation_days: 30
 outdir: ./output
 out_chunk_size: null
