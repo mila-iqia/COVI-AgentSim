@@ -8,10 +8,10 @@ config_file="transformer_config.yml"
 n_people=1000
 simulation_days=22
 n_jobs=10
-num_seeds=2
+num_seeds=3
 sim_git_hash=$(cd covid_p2p_simulation; git rev-parse HEAD)
 ctt_git_hash=$(cd ctt; git rev-parse HEAD)
-begin_seed=1005
+begin_seed=1007
 for (( i=0; i<$num_seeds; i++ ))
   do
     seed=$((begin_seed + i))

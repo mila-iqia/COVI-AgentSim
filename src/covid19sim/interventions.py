@@ -136,7 +136,7 @@ class Stand2M(BehaviorInterventions):
         """
         # FIXME : Social distancing also has this parameter
         human._maintain_extra_distance_2m = human.maintain_extra_distance
-        human.maintain_extra_distance = 100 # cms
+        human.maintain_extra_distance = 200 # cms
 
     def revert_behavior(self, human):
         """
@@ -176,7 +176,7 @@ class WashHands(BehaviorInterventions):
             human ([type]): [description]
         """
         human._hygiene = human.hygiene
-        human.hygiene = human.rng.uniform(human.carefulness, 1)
+        human.hygiene = human.rng.uniform(human.carefulness, 2)
 
     def revert_behavior(self, human):
         """
@@ -283,7 +283,7 @@ class SocialDistancing(BehaviorInterventions):
     """
     [summary]
     """
-    DEFAULT_SOCIAL_DISTANCE = 150 # cm
+    DEFAULT_SOCIAL_DISTANCE = 200 # cm
     TIME_ENCOUNTER_REDUCTION_FACTOR = 0.5
     _RHO = 0.2
     _GAMMA = 0.5
@@ -424,7 +424,7 @@ def get_recommendations(level):
     if level == 1:
         return [WashHands(), Stand2M(), WearMask()]
     if level == 2:
-        return [WashHands(), SocialDistancing(), Stand2M(), WearMask(), 'monitor_symptoms']
+        return [WashHands(), SocialDistancing(), WearMask(), 'monitor_symptoms']
 
     return [WashHands(), SocialDistancing(), WearMask(), 'monitor_symptoms', GetTested("recommendations"), Quarantine()]
 
