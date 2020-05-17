@@ -14,7 +14,7 @@ INTERVENTION : "Tracing"
 PERCENT_FOLLOW : 1.0
 # NOTE: HAS_APP params are only used when an app based INTERVENTION = "Tracing" is used
 P_HAS_APP : 0.66
-M : 1
+M : .3
 
 # PATHS
 TRANSFORMER_EXP_PATH : "https://drive.google.com/file/d/1Z7g3gKh2kWFSmK2Yr19MQq0blOWS5st0"
