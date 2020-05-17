@@ -5,6 +5,7 @@ import datetime
 import math
 import os
 import pathlib
+from pathlib import Path
 import typing
 import zipfile
 from collections import OrderedDict, namedtuple
@@ -1674,27 +1675,6 @@ def dump_tracker_data(data, outdir, name):
     with open(outdir / name, 'wb') as f:
         dill.dump(data, f)
 
-
-def load_conf(config_path):
-    """
-    Loads a yaml config file and use it to overwrite: constants.py and config.py
-
-    Args:
-        config_path (str): where to find the configuration
-
-    Returns:
-        dict: configuration for the simulation
-    """
-    conf = {k: getattr(core_constants, k) for k in dir(core_constants) if "__" not in k}
-    core = {k: getattr(core_config, k) for k in dir(core_config) if "__" not in k}
-    with open(config_path) as file:
-        exp_config = yaml.load(file, Loader=yaml.FullLoader)
-
-    conf.update(core)
-    conf.update(exp_config)
-
-    return conf
-
 def parse_configuration(conf):
     conf = OmegaConf.to_container(conf, resolve=True)
     if "APP_USERS_FRACTION_BY_AGE" in conf:
@@ -1713,5 +1693,7 @@ def parse_configuration(conf):
         conf["start_time"] = datetime.datetime.strptime(
             conf["start_time"], "%Y-%m-%d %H:%M:%S"
         )
+
+    assert "RISK_MODEL" in conf and conf["RISK_MODEL"] is not None
 
     return conf
