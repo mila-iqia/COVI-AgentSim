@@ -6,141 +6,86 @@ import datetime
 
 import click
 import numpy as np
-
 from covid19sim.base import City, Env
 
 from covid19sim.frozen.helper import SYMPTOMS_META_IDMAP
 from covid19sim.monitors import EventMonitor, SEIRMonitor, TimeMonitor
 from covid19sim.simulator import Human
-from covid19sim.utils import dump_tracker_data, extract_tracker_data, load_conf
+from covid19sim.utils import (
+    dump_tracker_data,
+    extract_tracker_data,
+    parse_configuration,
+)
+import hydra
+from omegaconf import DictConfig
 
 
-@click.command()
-@click.option("--n_people", help="population of the city", type=int, default=100)
-@click.option(
-    "--init_percent_sick",
-    help="initial percentage of sick people",
-    type=float,
-    default=0.01,
-)
-@click.option(
-    "--simulation_days",
-    help="number of days to run the simulation for",
-    type=int,
-    default=30,
-)
-@click.option(
-    "--out_chunk_size",
-    help="minimum number of events per dump in outfile",
-    type=int,
-    default=1,
-    required=False,
-)
-@click.option(
-    "--outdir",
-    help="the directory to write data to",
-    type=str,
-    default="output",
-    required=False,
-)
-@click.option("--seed", help="seed for the process", type=int, default=0)
-@click.option(
-    "--n_jobs",
-    help="number of parallel procs to query the risk servers with",
-    type=int,
-    default=1,
-)
-@click.option(
-    "--port",
-    help="which port should we look for inference servers on",
-    type=int,
-    default=6688,
-)
-@click.option(
-    "--config",
-    help="where is the configuration file for this experiment",
-    type=str,
-    default="configs/naive_config.yml",
-)
-@click.option(
-    "--tune",
-    help="track additional specific metrics to plot and explore",
-    is_flag=True,
-    default=False,
-)
-@click.option(
-    "--name", help="name of the file to append metrics file", type=str, default=""
-)
-def main(
-    n_people=None,
-    init_percent_sick=0.01,
-    start_time=datetime.datetime(2020, 2, 28, 0, 0),
-    simulation_days=30,
-    outdir=None,
-    out_chunk_size=None,
-    seed=0,
-    n_jobs=1,
-    port=6688,
-    config="configs/naive_config.yml",
-    tune=False,
-    name="",
-):
+@hydra.main(config_path="hydra-configs/config.yaml")
+def main(conf: DictConfig) -> None:
     """
     [summary]
 
     Args:
-        n_people ([type], optional): [description]. Defaults to None.
-        init_percent_sick (int, optional): [description]. Defaults to 0.
-        start_time ([type], optional): [description]. Defaults to datetime.datetime(2020, 2, 28, 0, 0).
-        simulation_days (int, optional): [description]. Defaults to 30.
-        outdir ([type], optional): [description]. Defaults to None.
-        out_chunk_size ([type], optional): [description]. Defaults to None.
-        seed (int, optional): [description]. Defaults to 0.
-        n_jobs (int, optional): [description]. Defaults to 1.
-        port (int, optional): [description]. Defaults to 6688.
-        config (str, optional): [description]. Defaults to "configs/naive_config.yml".
+        conf (DictConfig): yaml configuration file
     """
 
     # Load the experimental configuration
-    conf = load_conf(config)
-    if outdir is None:
-        outdir = "output"
-    os.makedirs(f"{outdir}", exist_ok=True)
-    outdir = f"{outdir}/sim_v2_people-{n_people}_days-{simulation_days}_init-{init_percent_sick}_seed-{seed}_{datetime.datetime.now().strftime('%Y%m%d-%H%M%S')}"
-    os.makedirs(outdir)
-    outfile = os.path.join(outdir, "data")
+    print(conf.pretty())
+    conf = parse_configuration(conf)
+    if conf["outdir"] is None:
+        conf["outdir"] = "output"
+    os.makedirs(f"{conf['outdir']}", exist_ok=True)
+    conf["outdir"] = "{}/sim_v2_people-{}_days-{}_init-{}_seed-{}_{}".format(
+        conf["outdir"],
+        conf["n_people"],
+        conf["simulation_days"],
+        conf["init_percent_sick"],
+        conf["seed"],
+        datetime.datetime.now().strftime("'%Y%m%d-%H%M%S"),
+    )
+    os.makedirs(conf["outdir"])
+    outfile = os.path.join(conf["outdir"], "data")
 
-    if tune:
+    if conf["tune"]:
+        print("Using Tune")
         import warnings
 
         warnings.filterwarnings("ignore")
         outfile = None
 
+    conf["outfile"] = outfile
+
+    print("n_people:", conf["n_people"])
+    print("seed:", conf["seed"])
+    print("n_jobs:", conf["n_jobs"])
+
+    return
+
     monitors, tracker = simulate(
-        n_people=n_people,
-        init_percent_sick=init_percent_sick,
-        start_time=start_time,
-        simulation_days=simulation_days,
-        outfile=outfile,
-        out_chunk_size=out_chunk_size,
-        print_progress=True,
-        seed=seed,
-        n_jobs=n_jobs,
-        port=port,
+        n_people=conf["n_people"],
+        init_percent_sick=conf["init_percent_sick"],
+        start_time=conf["start_time"],
+        simulation_days=conf["simulation_days"],
+        outfile=conf["outfile"],
+        out_chunk_size=conf["out_chunk_size"],
+        print_progress=conf["print_progress"],
+        seed=conf["seed"],
+        n_jobs=conf["n_jobs"],
+        port=conf["port"],
         conf=conf,
     )
     timenow = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 
-    if not tune:
+    if not conf["tune"]:
         monitors[0].dump()
         monitors[0].join_iothread()
         # write metrics
-        logfile = os.path.join(f"{outdir}/logs.txt")
+        logfile = os.path.join(f"{conf['outdir']}/logs.txt")
         tracker.write_metrics(logfile)
     else:
-        filename = f"tracker_data_n_{n_people}_seed_{seed}_{timenow}_{name}.pkl"
+        filename = f"tracker_data_n_{conf['n_people']}_seed_{conf['seed']}_{timenow}_{conf['name']}.pkl"
         data = extract_tracker_data(tracker, conf)
-        dump_tracker_data(data, outdir, filename)
+        dump_tracker_data(data, conf["outdir"], filename)
 
 
 def simulate(

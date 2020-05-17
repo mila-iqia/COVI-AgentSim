@@ -9,17 +9,14 @@ import typing
 import zipfile
 from collections import OrderedDict, namedtuple
 from functools import lru_cache
-import yaml
 
 import dill
 import numpy as np
 import requests
+import yaml
+from addict import Dict
+from omegaconf import OmegaConf
 from scipy.stats import gamma, norm, truncnorm
-
-import covid19sim.configs.constants as core_constants
-import covid19sim.configs.config as core_config
-
-# from covid19sim.interventions import *
 
 SymptomProbability = namedtuple('SymptomProbability', ['name', 'id', 'probabilities'])
 SymptomProbability.__doc__ = '''A symptom probabilities collection given contexts
@@ -1695,5 +1692,26 @@ def load_conf(config_path):
 
     conf.update(core)
     conf.update(exp_config)
+
+    return conf
+
+def parse_configuration(conf):
+    conf = OmegaConf.to_container(conf, resolve=True)
+    if "APP_USERS_FRACTION_BY_AGE" in conf:
+        conf["APP_USERS_FRACTION_BY_AGE"] = {
+            tuple(int(i) for i in k.split("-")): v
+            for k, v in conf["APP_USERS_FRACTION_BY_AGE"].items()
+        }
+
+    if "HUMAN_DISTRIBUTION" in conf:
+        conf["HUMAN_DISTRIBUTION"] = {
+            tuple(int(i) for i in k.split("-")): v
+            for k, v in conf["HUMAN_DISTRIBUTION"].items()
+        }
+
+    if "start_time" in conf:
+        conf["start_time"] = datetime.datetime.strptime(
+            conf["start_time"], "%Y-%m-%d %H:%M:%S"
+        )
 
     return conf

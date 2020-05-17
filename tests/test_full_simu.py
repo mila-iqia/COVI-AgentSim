@@ -4,21 +4,26 @@ import os
 import pickle
 import unittest
 import zipfile
+from pathlib import Path
 from tempfile import TemporaryDirectory
+import hydra
+from hydra.experimental import compose, initialize
 
 from covid19sim.run import simulate
 from covid19sim.base import Event
-from covid19sim.utils import load_conf
+from covid19sim.utils import parse_configuration
 
 
 class FullUnitTest(unittest.TestCase):
 
-    def test_simu_run(self):
+    @hydra.main(config_path="/Users/victor/Documents/covid/covid_p2p_simulation/src/covid19sim/hydra-configs")
+    def test_simu_run(self, conf):
         """
             run one simulation and ensure json files are correctly populated and most of the users have activity
         """
+        conf = parse_configuration(conf)
+        import pdb; pdb.set_trace()
 
-        conf = load_conf(os.path.join(os.path.dirname(__file__), "../src/covid19sim/configs/naive_config.yml"))
 
         with TemporaryDirectory() as d:
             outfile = os.path.join(d, "data")

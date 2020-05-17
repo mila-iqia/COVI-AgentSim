@@ -4,7 +4,6 @@
 from orderedset import OrderedSet
 import numpy as np
 
-from covid19sim.configs.constants import BIG_NUMBER
 from covid19sim.models.run import integrated_risk_pred
 
 class BehaviorInterventions(object):
