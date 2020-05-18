@@ -1,5 +1,5 @@
 """
-[summary]
+Contains the `Human` class that defines the behavior of human.
 """
 
 import math

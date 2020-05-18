@@ -1,6 +1,6 @@
-
 """
-[summary]
+Contains a class to track several simulation metrics.
+It is initialized as an attribute of the city and called at several places in `Human`.
 """
 import copy
 import datetime
@@ -710,10 +710,11 @@ class Tracker(object):
 
     def write_metrics(self, logfile):
         """
-        [summary]
+        Writes various metrics to logfile.
+        Prints them if logfile is None.
 
         Args:
-            logfile ([type]): [description]
+            logfile ([str]): filename where these logs will be dumped
         """
         log("######## DEMOGRAPHICS #########", logfile)
         log(f"age distribution\n {self.age_distribution.describe()}", logfile)

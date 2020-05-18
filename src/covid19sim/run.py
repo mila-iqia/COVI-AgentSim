@@ -4,7 +4,6 @@ Main file to run the simulations
 import os
 import datetime
 
-import click
 import numpy as np
 from covid19sim.base import City, Env
 
@@ -25,7 +24,7 @@ from omegaconf import DictConfig
 @hydra.main(config_path="hydra-configs/config.yaml")
 def main(conf: DictConfig) -> None:
     """
-    [summary]
+    Enables command line execution of the simulator.
 
     Args:
         conf (DictConfig): yaml configuration file
@@ -147,7 +146,7 @@ def simulate(
     conf={},
 ):
     """
-    [summary]
+    Run the simulation.
 
     Args:
         n_people ([type], optional): [description]. Defaults to None.
