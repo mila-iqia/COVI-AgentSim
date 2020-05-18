@@ -10,6 +10,7 @@ from omegaconf import OmegaConf
 
 import covid19sim.frozen.message_utils as mu
 import covid19sim.server_bootstrap
+from covid19sim.utils import parse_configuration
 
 HYDRA_PATH = (
     Path(__file__).parent.parent / "src/covid19sim/hydra-configs"
@@ -301,9 +302,6 @@ def get_test_conf(config_path):
         OmegaConf.load(str(HYDRA_PATH / (d + ".yaml")))
         for d in defaults
     ]
-    base_conf = OmegaConf.merge(*default_confs)
-    base_conf = OmegaConf.to_container(base_conf, resolve=True)
+    conf = OmegaConf.merge(*default_confs, OmegaConf.load(str(config_path)))
 
-    with open(config_path, "r") as f:
-        base_conf.update(yaml.safe_load(f))
-    return base_conf
+    return parse_configuration(conf)

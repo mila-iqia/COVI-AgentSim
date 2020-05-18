@@ -1,8 +1,9 @@
 #FORMER COMMAND-LINE ARGS
 n_people: 1000
 init_percent_sick: 0.001
-start_time: "2020-02-28 00:00:00" # in utils.py/parse_configuration, this will be parsed
-                                  #his will be parsed into a datetime object with the following schema: '%Y-%m-%d %H:%M:%S'
+start_time:
+  "2020-02-28 00:00:00" # in utils.py/parse_configuration, this will be parsed
+  #his will be parsed into a datetime object with the following schema: '%Y-%m-%d %H:%M:%S'
 simulation_days: 30
 outdir: ./output
 out_chunk_size: null
@@ -14,40 +15,31 @@ name: ""
 print_progress: True
 
 # EXPERIMENTAL PARAMETERS
-COLLECT_LOGS : False
-COLLECT_TRAINING_DATA : False
-USE_INFERENCE_SERVER : True
-SHOULD_MODIFY_BEHAVIOR : True
+COLLECT_LOGS: False
+COLLECT_TRAINING_DATA: False
+USE_INFERENCE_SERVER: False
+RISK_MODEL: "" # "naive"  "manual", "digital", "transformer"
+SHOULD_MODIFY_BEHAVIOR: False
 USE_ORACLE: False
 
 ## INTERVENTIONS
-INTERVENTION_DAY : 5
+INTERVENTION_DAY: 5
 # NOTE: INTERVENTION is only valid if INTERVENTION_DAY >= 0
-INTERVENTION : "Tracing"
-PERCENT_FOLLOW : 1.0
+PERCENT_FOLLOW: 1.0
 # NOTE: HAS_APP params are only used when an app based INTERVENTION = "Tracing" is used
-P_HAS_APP : -1.0
-
-
-# PATHS
-TRANSFORMER_EXP_PATH : "" #"CTT-SHIPMENT-0"
-CLUSTER_PATH : "output/clusters"
+P_HAS_APP: -1.0
 
 # Inference & Training
-INFECTIOUSNESS_N_DAYS_HISTORY : 14
-TRACING_N_DAYS_HISTORY : 14
-MP_BATCHSIZE : "auto"
-MP_N_JOBS : "1"
-MP_BACKEND : "loky"
-DUMP_CLUSTERS : False
-CLUSTER_TYPE : "heuristic" # "random", "graph"
+INFECTIOUSNESS_N_DAYS_HISTORY: 14
+TRACING_N_DAYS_HISTORY: 14
+MP_BATCHSIZE: "auto"
+MP_N_JOBS: "1"
+MP_BACKEND: "loky"
+DUMP_CLUSTERS: False
+CLUSTER_TYPE: "blind" # "heuristic", "random", "graph"
 
-
-# TRACING RISK MODEL PARAMETERS  (non-ML)
+UPDATES_PER_DAY: 4
 TRACE_SYMPTOMS : False
 TRACE_RISK_UPDATE : False
-TRACING_ORDER : 1
-UPDATES_PER_DAY : 4
-
-
-RISK_MAPPING : []
+TRACING_ORDER: 1
+RISK_MAPPING: []

@@ -3,6 +3,7 @@ import glob
 import os
 import pickle
 import unittest
+from pathlib import Path
 from tempfile import TemporaryDirectory
 
 import numpy as np

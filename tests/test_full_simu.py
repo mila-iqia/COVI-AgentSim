@@ -23,6 +23,9 @@ class FullUnitTest(unittest.TestCase):
 
         conf = get_test_conf(TEST_CONF)
 
+        print(conf["COLLECT_LOGS"])
+        print(conf["COLLECT_TRAINING_DATA"])
+
         with TemporaryDirectory() as d:
             outfile = os.path.join(d, "data")
             n_people = 100
@@ -37,7 +40,6 @@ class FullUnitTest(unittest.TestCase):
             )
             monitors[0].dump()
             monitors[0].join_iothread()
-
             # Ensure
             data = []
             with zipfile.ZipFile(f"{outfile}.zip", 'r') as zf:

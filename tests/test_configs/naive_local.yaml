@@ -1,7 +1,7 @@
 ---
 # EXPERIMENTAL PARAMETERS
-COLLECT_LOGS : False
-COLLECT_TRAINING_DATA : False
+COLLECT_LOGS : True
+COLLECT_TRAINING_DATA : True
 USE_INFERENCE_SERVER : False
 RISK_MODEL : "naive" # "naive"  "manual", "digital", "transformer"
 INIT_PERCENT_SICK : 0.0025

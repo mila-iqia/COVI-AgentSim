@@ -132,6 +132,8 @@ def simulate(
     conf["n_jobs"] = n_jobs
     conf["other_monitors"] = other_monitors
 
+    print(">>> GOT SEED", seed)
+
     rng = np.random.RandomState(seed)
     env = Env(start_time, conf.get("TICK_MINUTE"))
     city_x_range = (0, 1000)
