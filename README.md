@@ -21,7 +21,7 @@ To install the simulator without `ctt`
 pip install .
 ```
 
-To install the simulator with [`ctt`](https://github.com/nasimrahaman/ctt)
+To install the simulator with [`ctt`](https://github.com/covi-canada/machine-learning)
 ```
 pip install '.[ctt]'
 ```

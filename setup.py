@@ -7,7 +7,7 @@ with open('requirements.txt', 'r') as f:
 setup(
     name                 = "covid19sim",
     version              = "0.0.0.dev0",
-    url                  = "https://github.com/pg2455/covid_p2p_simulation",
+    url                  = "https://github.com/covi-canada/simulator",
     description          = "Simulation of COVID-19 spread.",
     long_description     = "Simulation of COVID-19 spread.",
     classifiers          = [
@@ -31,10 +31,10 @@ setup(
     install_requires     = requirements,
     extras_require       = {
         "ctt": [
-            "ctt @ git+https://github.com/nasimrahaman/ctt@bunchacrunch_reqs#egg=ctt",
+            "ctt @ git+https://github.com/covi-canada/machine-learning@bunchacrunch#egg=ctt",
         ],
         "ctt-tf": [
-            "ctt[tensorflow] @ git+https://github.com/nasimrahaman/ctt@master#egg=ctt"
+            "ctt[tensorflow] @ git+https://github.com/covi-canada/machine-learning@master#egg=ctt"
         ],
     },
     packages             = find_packages("src"),
