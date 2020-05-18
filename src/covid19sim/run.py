@@ -194,7 +194,8 @@ def run_simu(n_people=None,
              start_time=datetime.datetime(2020, 2, 28, 0, 0),
              simulation_days=10,
              outfile=None, out_chunk_size=None,
-             print_progress=False, seed=0, port=6688, n_jobs=1, other_monitors=[]):
+             print_progress=False, seed=0, port=6688, n_jobs=1, other_monitors=[],
+             return_city=False):
     """
     [summary]
 
@@ -210,6 +211,7 @@ def run_simu(n_people=None,
         port (int, optional): [description]. Defaults to 6688.
         n_jobs (int, optional): [description]. Defaults to 1.
         other_monitors (list, optional): [description]. Defaults to [].
+        return_city (bool, optional): Returns an additional city object if set to True.
 
     Returns:
         [type]: [description]
@@ -252,8 +254,10 @@ def run_simu(n_people=None,
     # Run simulation until termination
     env.run(until=env.ts_initial+simulation_days*SECONDS_PER_DAY)
 
-    # Return
-    return monitors, city.tracker
+    if not return_city:
+        return monitors, city.tracker
+    else:
+        return monitors, city.tracker, city
 
 
 if __name__ == "__main__":
