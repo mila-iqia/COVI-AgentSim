@@ -1,9 +1,3 @@
----
-tags: covid, hydra
----
-
-(*author: victor schmidt - 2020/05/18*)
-
 # COVI Simulator's configuration
 
 COVI's Simulator uses [Hydra](https://hydra.cc/) to manage configurations and easily run simulations.
@@ -16,12 +10,12 @@ This document will walk you through COVI-specific Hydra usage.
 
 ### Main file
 
-Hydra uses YAML configuration files. They **must** all be in `root/src/covid19sim/hydra-configs/`. YAML's main supported types are ~ `int`, `float`, `string`, `list`, `dictionnary`. Anything more complicated could trigger parsing errors. Learn more in the *Advanced* section.
+Hydra uses YAML configuration files. They **must** all be in `root/src/covid19sim/hydra-configs/`. YAML's main supported types are ~ `int`, `float`, `string`, `list`, `dictionary`. Anything more complicated could trigger parsing errors. Learn more in the *Advanced* section.
 
 ```
 ------------------------- NOTE ------------------------------------
 | YAML doesn't have a `tuple` type, and `list`s cannot be used as |
-| keys for dictionnary                                            |
+| keys for dictionary                                             |
 -------------------------------------------------------------------
 ```
 
@@ -72,7 +66,7 @@ conf = {
 
 ### Named configurations
 
-***Second***, Hydra can access specific configurations specified from the command line and stored in directeories **within** `hydra-configs/`. The name of such subfolders will describe how to load them
+***Second***, Hydra can access specific configurations specified from the command line and stored in directories **within** `hydra-configs/`. The name of such sub-folders will describe how to load them
 
 ```yaml
 # tracing-method/binary_tracing.yaml
@@ -128,7 +122,7 @@ conf = {
 
 ### COVI Files
 
-As explained, COVI has a `config.yaml` which loads 3 defaults, in this order (subsequent ones overwriting the previous ones on the intersection of theyr keys):
+As explained, COVI has a `config.yaml` which loads 3 defaults, in this order (subsequent ones overwriting the previous ones on the intersection of their keys):
 
 1. `constants.yaml` contains epidemiological constants used in the simulator's logic
 2. `core.yaml` contains the default parameters of the simulator. Most of them will not change through-out experiments, though one can overwrite them in other configs
@@ -181,7 +175,7 @@ Then `python run.py tracing-method=transformer martin=find_other`
 -------------------------------------------------------------------
 ```
 
-## Transitionning: What's new
+## Transitioning: What's new
 
 Python configuration files are gone, they have been changed to YAMLs:
 
