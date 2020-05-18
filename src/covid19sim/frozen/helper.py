@@ -73,22 +73,32 @@ def recovered_array(human_recovered_timestamp, date):
     return is_recovered, recovery_day
 
 
-def get_test_result_array(human_test_time, date):
+def get_test_result_array(test_results, date):
     # identical to human.get_test_result_array
     results = np.zeros(14)
-    result_day = (date - human_test_time).days
-    if result_day >= 0 and result_day < 14:
-        # TODO: add if human test results "negative" -1
-        results[result_day] = 1
+    for test_result, test_time in test_results:
+        result_day = (date - test_time).days
+        if result_day >= 0 and result_day < 14:
+            results[result_day] = test_result
     return results
 
 
+# TODO: negative should probably return 0 and None return -1 to be consistent with encoded age and sex
+def encode_test_result(test_result):
+    if test_result is None:
+        return 0
+    if test_result.lower() == 'positive':
+        return 1
+    elif test_result.lower() == 'negative':
+        return -1
+
+
 def messages_to_np(human):
-    if isinstance(human["clusters"], ClusterManagerBase):
-        return human["clusters"].get_embeddings_array()
+    if isinstance(human.clusters, ClusterManagerBase):
+        return human.clusters.get_embeddings_array()
     else:
         ms_enc = []
-        for day, clusters in human["clusters"].clusters_by_day.items():
+        for day, clusters in human.clusters.clusters_by_day.items():
             for cluster_id, messages in clusters.items():
                 # TODO: take an average over the risks for that day
                 if not any(messages):
@@ -99,16 +109,16 @@ def messages_to_np(human):
 
 def candidate_exposures(human, date):
     candidate_encounters = messages_to_np(human)
-    if isinstance(human["clusters"], ClusterManagerBase):
-        exposed_encounters = human["clusters"]._get_expositions_array()
+    if isinstance(human.clusters, ClusterManagerBase):
+        exposed_encounters = human.clusters._get_expositions_array()
     else:
         exposed_encounters = np.zeros(len(candidate_encounters))
-        if human["exposure_message"]:
+        if human.exposure_message:
             idx = 0
-            for day, clusters in human["clusters"].clusters_by_day.items():
+            for day, clusters in human.clusters.clusters_by_day.items():
                 for cluster_id, messages in clusters.items():
                     for message in messages:
-                        if message == human["exposure_message"]:
+                        if message == human.exposure_message:
                             exposed_encounters[idx] = 1.
                             break
                     if sum(exposed_encounters) == 1:
@@ -128,12 +138,12 @@ def conditions_to_np(conditions):
     return conditions_encs
 
 
-def symptoms_to_np(all_symptoms, all_possible_symptoms):
+def symptoms_to_np(all_symptoms):
     rolling_window = 14
-    symptoms_enc = np.zeros((rolling_window, len(all_possible_symptoms) + 1))
+    symptoms_enc = np.zeros((rolling_window, len(SYMPTOMS_META) + 1))
     for day, symptoms in zip(range(rolling_window), all_symptoms):
         for symptom in symptoms:
-            symptoms_enc[day, all_possible_symptoms.index(symptom)] = 1.
+            symptoms_enc[day, SYMPTOMS_META[symptom]] = 1.
     return symptoms_enc
 
 

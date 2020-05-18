@@ -2,17 +2,100 @@
 Handles querying the inference server with serialized humans and their messages.
 """
 
-from datetime import timedelta
+from collections import deque
+import dataclasses
+from datetime import datetime, timedelta
 import os
 import pickle
 import functools
 from joblib import Parallel, delayed
+from typing import Deque, List
 import warnings
 import numpy as np
 
+from covid19sim.frozen.clusters import Clusters
+from covid19sim.frozen.helper import conditions_to_np, encode_age, encode_sex, \
+    encode_test_result, symptoms_to_np
+from covid19sim.frozen.utils import Message, UpdateMessage, encode_message, encode_update_message
 from covid19sim.server_utils import InferenceClient, InferenceWorker
 from ctt.inference.infer import InferenceEngine
 from covid19sim.configs.exp_config import ExpConfig
+
+
+def make_human_as_message(human):
+    preexisting_conditions = conditions_to_np(human.preexisting_conditions)
+
+    obs_preexisting_conditions = conditions_to_np(human.obs_preexisting_conditions)
+
+    test_results = deque(((encode_test_result(result), timestamp)
+                          for result, timestamp in human.test_results))
+
+    rolling_all_symptoms = symptoms_to_np(human.rolling_all_symptoms)
+
+    rolling_all_reported_symptoms = symptoms_to_np(human.rolling_all_reported_symptoms)
+
+    messages = [encode_message(message) for message in human.contact_book.messages
+                # match day; ugly till refactor
+                if message[2] == human.contact_book.messages[-1][2]]
+
+    update_messages = [encode_update_message(update_message)
+                       for update_message in human.contact_book.update_messages
+                       # match day; ugly till refactor
+                       if update_message[3] == human.contact_book.update_messages[-1][3]]
+
+    return HumanAsMessage(name=human.name,
+                          age=encode_age(human.age),
+                          sex=encode_sex(human.sex),
+                          obs_age=encode_age(human.obs_age),
+                          obs_sex=encode_sex(human.obs_sex),
+                          preexisting_conditions=preexisting_conditions,
+                          obs_preexisting_conditions=obs_preexisting_conditions,
+
+                          infectiousnesses=human.infectiousnesses,
+                          infection_timestamp=human.infection_timestamp,
+                          recovered_timestamp=human.recovered_timestamp,
+                          test_results=test_results,
+                          rolling_all_symptoms=rolling_all_symptoms,
+                          rolling_all_reported_symptoms=rolling_all_reported_symptoms,
+
+                          clusters=human.clusters,
+                          messages=messages,
+                          exposure_message=human.exposure_message,
+                          update_messages=update_messages,
+                          carefulness=human.carefulness,
+                          has_app=human.has_app)
+
+
+@dataclasses.dataclass
+class HumanAsMessage:
+    # Static fields
+    name: str
+    age: int
+    sex: str
+    obs_age: int
+    obs_sex: str
+    preexisting_conditions: np.array
+    obs_preexisting_conditions: np.array
+
+    # Medical fields
+    infectiousnesses: deque
+    # TODO: Should be reformatted to int timestamp
+    infection_timestamp: datetime
+    # TODO: Should be reformatted to int timestamp
+    recovered_timestamp: datetime
+    # TODO: Should be reformatted to deque of (int, int timestamp)
+    test_results: Deque[tuple]
+    rolling_all_symptoms: np.array
+    rolling_all_reported_symptoms: np.array
+
+    # Risk fields
+    clusters: Clusters
+    messages: List[Message]
+    exposure_message: Message
+    update_messages: List[UpdateMessage]
+    carefulness: float
+    has_app: bool
+
 
 def query_inference_server(params, **inf_client_kwargs):
     """
@@ -30,7 +113,7 @@ def query_inference_server(params, **inf_client_kwargs):
     return results
 
 
-def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_symptoms, port=6688, n_jobs=1, data_path=None):
+def integrated_risk_pred(humans, start, current_day, time_slot, port=6688, n_jobs=1, data_path=None):
     """
     [summary]
     Setup and make the calls to the server
@@ -40,7 +123,6 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
         start ([type]): [description]
         current_day ([type]): [description]
         time_slot ([type]): [description]
-        all_possible_symptoms ([type]): [description]
         port (int, optional): [description]. Defaults to 6688.
         n_jobs (int, optional): [description]. Defaults to 1.
         data_path ([type], optional): [description]. Defaults to None.
@@ -58,7 +140,7 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
         if time_slot not in human.time_slots:
             continue
 
-        human_state = human.get_message_dict()
+        human_message = make_human_as_message(human)
 
         log_path = None
         if data_path:
@@ -66,9 +148,8 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
         all_params.append({
             "start": start,
             "current_day": current_day,
-            "all_possible_symptoms": all_possible_symptoms,
             "COLLECT_TRAINING_DATA": ExpConfig.get('COLLECT_TRAINING_DATA'),
-            "human": human_state,
+            "human": human_message,
             "log_path": log_path,
             "time_slot": time_slot,
             "risk_model": ExpConfig.get('RISK_MODEL'),

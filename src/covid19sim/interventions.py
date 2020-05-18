@@ -630,17 +630,15 @@ class Tracing(object):
         [summary]
         """
         city = kwargs.get("city")
-        all_possible_symptoms = kwargs.get("symptoms")
         port = kwargs.get("port")
         n_jobs = kwargs.get("n_jobs")
         data_path = kwargs.get("data_path")
 
         if self.risk_model == "transformer":
-            all_possible_symptoms = kwargs.get("symptoms")
             port = kwargs.get("port")
             n_jobs = kwargs.get("n_jobs")
             data_path = kwargs.get("data_path")
-            city.humans = integrated_risk_pred(city.humans, city.start_time, city.current_day, city.env.timestamp.hour, all_possible_symptoms, port=port, n_jobs=n_jobs, data_path=data_path)
+            city.humans = integrated_risk_pred(city.humans, city.start_time, city.current_day, city.env.timestamp.hour, port=port, n_jobs=n_jobs, data_path=data_path)
         else:
             for human in city.humans:
                 cur_day = (human.env.timestamp - human.env.initial_timestamp).days
@@ -658,7 +656,7 @@ class Tracing(object):
                     # human.prev_risk_history_map[cur_day] = human.risk
 
             if ExpConfig.get('COLLECT_TRAINING_DATA'):
-                city.humans = integrated_risk_pred(city.humans, city.start_time, city.current_day, city.env.timestamp.hour, all_possible_symptoms, port=port, n_jobs=n_jobs, data_path=data_path)
+                city.humans = integrated_risk_pred(city.humans, city.start_time, city.current_day, city.env.timestamp.hour, port=port, n_jobs=n_jobs, data_path=data_path)
 
 
     def compute_tracing_delay(self, human):

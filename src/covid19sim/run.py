@@ -238,10 +238,7 @@ def run_simu(n_people=None,
     monitors[0].join_iothread()
 
     # Initiate city process, which runs every hour
-    all_possible_symptoms = [""] * len(SYMPTOMS_META)
-    for k, v in SYMPTOMS_META.items():
-        all_possible_symptoms[v] = k
-    env.process(city.run(SECONDS_PER_HOUR, outfile, all_possible_symptoms, port, n_jobs))
+    env.process(city.run(SECONDS_PER_HOUR, outfile, port, n_jobs))
 
     # Initiate human processes
     for human in city.humans:
