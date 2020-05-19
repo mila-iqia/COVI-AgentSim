@@ -11,6 +11,7 @@ from covid19sim.base import City, Env
 from covid19sim.frozen.helper import SYMPTOMS_META_IDMAP
 from covid19sim.monitors import EventMonitor, SEIRMonitor, TimeMonitor
 from covid19sim.simulator import Human
+from covid19sim.constants import TICK_MINUTE
 from covid19sim.utils import (
     dump_tracker_data,
     extract_tracker_data,
@@ -181,7 +182,7 @@ def simulate(
     conf["other_monitors"] = other_monitors
 
     rng = np.random.RandomState(seed)
-    env = Env(start_time, conf.get("TICK_MINUTE"))
+    env = Env(start_time)
     city_x_range = (0, 1000)
     city_y_range = (0, 1000)
     city = City(
@@ -223,7 +224,7 @@ def simulate(
     for m in monitors:
         env.process(m.run(env, city=city))
 
-    env.run(until=simulation_days * 24 * 60 / city.conf.get("TICK_MINUTE"))
+    env.run(until=simulation_days * 24 * 60 / TICK_MINUTE)
 
     return city, monitors, city.tracker
 

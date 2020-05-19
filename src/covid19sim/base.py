@@ -6,6 +6,7 @@ import math
 import datetime
 import itertools
 from collections import defaultdict
+from covid19sim.constants import TICK_MINUTE
 
 try:
     # Python 3.8
@@ -17,6 +18,7 @@ except ImportError:
 from covid19sim.utils import compute_distance, _get_random_area, _draw_random_discreet_gaussian, calculate_average_infectiousness
 from covid19sim.track import Tracker
 from covid19sim.interventions import *
+from covid19sim.constants import TICK_MINUTE
 from covid19sim.frozen.utils import update_uid
 
 
@@ -25,14 +27,13 @@ class Env(simpy.Environment):
     Custom simpy.Environment
     """
 
-    def __init__(self, initial_timestamp, tick_minute):
+    def __init__(self, initial_timestamp):
         """
         Args:
             initial_timestamp (datetime.datetime): The environment's initial timestamp
         """
         super().__init__()
         self.initial_timestamp = initial_timestamp
-        self.tick_minute = tick_minute
 
     def time(self):
         """
@@ -48,10 +49,10 @@ class Env(simpy.Environment):
         """
         Returns:
             datetime.datetime: current date (initial timestamp shifted by
-                env.now * tick_minute minutes)
+                env.now * TICK_MINUTE minutes)
         """
         return self.initial_timestamp + datetime.timedelta(
-            minutes=self.now * self.tick_minute)
+            minutes=self.now * TICK_MINUTE)
 
     def minutes(self):
         """
@@ -470,8 +471,7 @@ class City(simpy.Environment):
                     TRACE_SYMPTOMS=self.conf.get('TRACE_SYMPTOMS'),
                     TRACE_RISK_UPDATE=self.conf.get('TRACE_RISK_UPDATE'),
                     SHOULD_MODIFY_BEHAVIOR=self.conf.get('SHOULD_MODIFY_BEHAVIOR'),
-                    MASKS_SUPPLY=self.conf.get("MASKS_SUPPLY"),
-                    BIG_NUMBER=self.conf.get("BIG_NUMBER")
+                    MASKS_SUPPLY=self.conf.get("MASKS_SUPPLY")
                 )
 
                 _ = [h.notify(self.intervention) for h in self.humans]
@@ -525,7 +525,7 @@ class City(simpy.Environment):
                 self.tracker.track_risk_attributes(self.humans)
 
             # Let the hour pass
-            yield self.env.timeout(duration / self.conf.get("TICK_MINUTE"))
+            yield self.env.timeout(duration / TICK_MINUTE)
 
             # increment the day / update uids if we start the timeslot 0
             if self.env.timestamp.hour == 0 and self.env.timestamp != self.env.initial_timestamp:

@@ -11,6 +11,7 @@ from covid19sim.base import City, EmptyCity, Env
 from covid19sim.frozen.helper import SYMPTOMS_META, SYMPTOMS_META_IDMAP
 from covid19sim.monitors import EventMonitor, SEIRMonitor, TimeMonitor
 from covid19sim.simulator import Human
+from covid19sim.constants import TICK_MINUTE
 
 
 def test_functional_seniors_residence():
@@ -29,7 +30,7 @@ def test_functional_seniors_residence():
         # Find the test_configs directory, and load the required config yaml
         conf = get_test_conf("naive_local.yaml")
 
-        env = Env(start_time, conf.get("TICK_MINUTE"))
+        env = Env(start_time)
         city = EmptyCity(env, rng, city_x_range, city_y_range, start_time, conf)
 
         sr = city.create_location(
@@ -94,7 +95,7 @@ def test_functional_seniors_residence():
         for m in monitors:
             env.process(m.run(env, city=city))
 
-        env.run(until=simulation_days * 24 * 60 / city.conf.get("TICK_MINUTE"))
+        env.run(until=simulation_days * 24 * 60 / TICK_MINUTE)
 
         # Check dead humans are removed from the residence
         assert sum([h.is_dead for h in city.humans]) == N - len(sr.humans)

@@ -5,7 +5,7 @@ from orderedset import OrderedSet
 import numpy as np
 
 from covid19sim.models.run import integrated_risk_pred
-
+from covid19sim.constants import BIG_NUMBER
 class BehaviorInterventions(object):
     """
     [summary]
@@ -531,7 +531,7 @@ class Tracing(object):
     """
     [summary]
     """
-    def __init__(self, risk_model, max_depth=None, symptoms=False, risk=False, should_modify_behavior=True, BIG_NUMBER=100000):
+    def __init__(self, risk_model, max_depth=None, symptoms=False, risk=False, should_modify_behavior=True):
         """
         [summary]
 
@@ -542,7 +542,6 @@ class Tracing(object):
             symptoms (bool, optional): [description]. Defaults to False.
             risk (bool, optional): [description]. Defaults to False.
             should_modify_behavior (bool, optional): [description]. Defaults to True.
-            BIG_NUMBER (int, optional): [description]. Defaults to 0.
         """
         self.risk_model = risk_model
         if risk_model in ['manual', 'digital']:
@@ -771,7 +770,7 @@ class TestCapacity(CityInterventions):
         """
         pass
 
-def get_intervention(key, RISK_MODEL=None, TRACING_ORDER=None, TRACE_SYMPTOMS=None, TRACE_RISK_UPDATE=None, SHOULD_MODIFY_BEHAVIOR=True,MASKS_SUPPLY=0, BIG_NUMBER=100000):
+def get_intervention(key, RISK_MODEL=None, TRACING_ORDER=None, TRACE_SYMPTOMS=None, TRACE_RISK_UPDATE=None, SHOULD_MODIFY_BEHAVIOR=True,MASKS_SUPPLY=0):
     """
     [summary]
 
@@ -783,7 +782,6 @@ def get_intervention(key, RISK_MODEL=None, TRACING_ORDER=None, TRACE_SYMPTOMS=No
         TRACE_RISK_UPDATE ([type], optional): [description]. Defaults to None.
         SHOULD_MODIFY_BEHAVIOR (bool, optional): [description]. Defaults to True.
         MASKS_SUPPLY (int, optional): [description]. Defaults to 0.
-        BIG_NUMBER (int, optional): [description]. Defaults to 100000.
 
     Raises:
         NotImplementedError: [description]
@@ -808,7 +806,6 @@ def get_intervention(key, RISK_MODEL=None, TRACING_ORDER=None, TRACE_SYMPTOMS=No
             TRACE_SYMPTOMS,
             TRACE_RISK_UPDATE,
             SHOULD_MODIFY_BEHAVIOR,
-            BIG_NUMBER
         )
     elif key == "WashHands":
         return WashHands()
