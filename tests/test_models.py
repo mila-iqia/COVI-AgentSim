@@ -19,8 +19,8 @@ class ModelsTest(unittest.TestCase):
         """
 
         # Load the experimental configuration
-        conf_path = Path(__file__).parent / "test_configs/test_models.yaml"
-        conf = get_test_conf(conf_path)
+        conf_name = "test_models.yaml"
+        conf = get_test_conf(conf_name)
 
         with TemporaryDirectory() as d:
             n_people = 10

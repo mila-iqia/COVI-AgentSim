@@ -59,8 +59,7 @@ if __name__ == "__main__":
     warnings.filterwarnings("ignore")
     # https://coronavirus.jhu.edu/testing/testing-positivity
     # https://www.canada.ca/content/dam/phac-aspc/documents/services/diseases/2019-novel-coronavirus-infection/surv-covid19-epi-update-eng.pdf
-    path = Path(__file__).parent
-    conf = get_test_conf(path / "test_configs" / "test_covid_testing.yml")
+    conf = get_test_conf("test_covid_testing.yml")
     # test_covid_test = no intervention
     outfile = None
 

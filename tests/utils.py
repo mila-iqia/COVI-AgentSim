@@ -278,20 +278,24 @@ def start_inference_server():
 
 
 
-def get_test_conf(config_path):
+def get_test_conf(conf_name):
     """
     Loads the default configurations in hydra-configs and overwrites it
-    with values in config_path
+    with values in test_configs/`conf_name`
+
+    conf_name **must** be in `tests/test_configs/`
 
     Args:
-        hydra_path (str | Path): path to the hydra-configs directory
-        config_path (str | Path): path to the overwiting config
+        conf_name (str): name of the configuration to load in `tests/test_configs/`
 
     Returns:
-        dict: full overwritten config
+        dict: full overwritten config, using covid19sim.utils.parse_configuration
     """
+    config_path = Path(__file__).parent / "test_configs" / conf_name
+    config_path = config_path.resolve()
 
-    assert Path(config_path).resolve().suffix == ".yaml"
+    assert config_path.suffix == ".yaml"
+    assert config_path.exists()
 
     config = HYDRA_PATH / "config.yaml"
 

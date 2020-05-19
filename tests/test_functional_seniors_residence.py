@@ -27,9 +27,7 @@ def test_functional_seniors_residence():
         city_y_range = (0, 1000)
 
         # Find the test_configs directory, and load the required config yaml
-        path = Path(__file__).parent.resolve()
-
-        conf = get_test_conf(path / "test_configs" / "naive_local.yaml")
+        conf = get_test_conf("naive_local.yaml")
 
         env = Env(start_time, conf.get("TICK_MINUTE"))
         city = EmptyCity(env, rng, city_x_range, city_y_range, start_time, conf)

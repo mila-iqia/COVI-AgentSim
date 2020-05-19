@@ -211,11 +211,11 @@ from pathlib import Path
 from tests.utils import get_test_conf
 
 
-test_config_path = Path(__file__).parent / "test_configs" / "test_variables.yaml"
-conf = get_test_conf(test_config_path)
+test_config_name = "test_variables.yaml"
+conf = get_test_conf(test_config_name)
 ```
 
-`get_test_conf` will load `hydra-configs/config.yaml`'s `defaults` and overwrite the resulting configuration with whatever's in `test_variables.yaml`.
+`get_test_conf` will load `hydra-configs/config.yaml`'s `defaults` and overwrite the resulting configuration with whatever's in `test_configs/test_variables.yaml`. Test configurations **must** be in `test_configs/`.
 
 The whole Hydra setup is tested in `tests/test_hydra.py`. Contact Victor if you want to add / change tests.
 

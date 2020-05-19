@@ -70,11 +70,11 @@ class HydraTests(unittest.TestCase):
         """
         Check tests/utils.py/get_test_conf
         """
-        path = Path(__file__).parent / "test_configs" / "naive_local.yaml"
-        self.assertIsInstance(get_test_conf(path), dict)
-        self.assertIsInstance(get_test_conf(str(path)), dict)
-        test_conf = get_test_conf(path)
+        conf_name = "naive_local.yaml"
+        self.assertIsInstance(get_test_conf(conf_name), dict)
+        test_conf = get_test_conf(conf_name)
 
+        path = Path(__file__).parent / "test_configs" / conf_name
         with path.open("r") as f:
             reference_conf = yaml.safe_load(f)
 

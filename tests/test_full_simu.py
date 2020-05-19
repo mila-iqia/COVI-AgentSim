@@ -12,7 +12,7 @@ from tests.utils import get_test_conf
 from covid19sim.base import Event
 from covid19sim.run import simulate
 
-TEST_CONF = (Path(__file__).parent / "test_configs" / "naive_local.yaml").resolve()
+TEST_CONF_NAME = "naive_local.yaml"
 
 class FullUnitTest(unittest.TestCase):
 
@@ -21,7 +21,7 @@ class FullUnitTest(unittest.TestCase):
             run one simulation and ensure json files are correctly populated and most of the users have activity
         """
 
-        conf = get_test_conf(TEST_CONF)
+        conf = get_test_conf(TEST_CONF_NAME)
 
         print(conf["COLLECT_LOGS"])
         print(conf["COLLECT_TRAINING_DATA"])
@@ -67,7 +67,7 @@ class SeedUnitTest(unittest.TestCase):
         self.start_time = datetime.datetime(2020, 2, 28, 0, 0)
         self.simulation_days = 20
 
-        conf = get_test_conf(TEST_CONF)
+        conf = get_test_conf(TEST_CONF_NAME)
 
         with TemporaryDirectory() as d1, TemporaryDirectory() as d2:
             of1 = os.path.join(d1, "data")
@@ -123,7 +123,7 @@ class SeedUnitTest(unittest.TestCase):
         self.start_time = datetime.datetime(2020, 2, 28, 0, 0)
         self.simulation_days = 20
 
-        conf = get_test_conf(TEST_CONF)
+        conf = get_test_conf(TEST_CONF_NAME)
 
         with TemporaryDirectory() as d1, TemporaryDirectory() as d2:
             of1 = os.path.join(d1, "data")
