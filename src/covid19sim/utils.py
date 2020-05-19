@@ -10,6 +10,7 @@ import typing
 import zipfile
 from collections import OrderedDict, namedtuple
 from functools import lru_cache
+import subprocess
 
 import dill
 import numpy as np
