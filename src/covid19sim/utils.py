@@ -1676,6 +1676,18 @@ def dump_tracker_data(data, outdir, name):
         dill.dump(data, f)
 
 def parse_configuration(conf):
+    """
+    Transforms an Omegaconf object to native python dict, parsing specific fields like:
+    "1-15" age bin in YAML file becomes (1, 15) tuple, and datetime is parsed from string.
+
+    /!\ ANY key-specific parsing should have its inverse in covid19sim.utils.dump_conf()
+
+    Args:
+        conf (omegaconf.OmegaConf): Hydra-loaded configuration
+
+    Returns:
+        dict: parsed configuration to use in experiment
+    """
     conf = OmegaConf.to_container(conf, resolve=True)
     if "APP_USERS_FRACTION_BY_AGE" in conf:
         conf["APP_USERS_FRACTION_BY_AGE"] = {
@@ -1697,3 +1709,41 @@ def parse_configuration(conf):
     assert "RISK_MODEL" in conf and conf["RISK_MODEL"] is not None
 
     return conf
+
+
+def dump_conf(conf, path):
+    """
+    Dumps a `conf` dict in `path` and reverses the parsings done in parse_configurations
+
+    /!\ parsings done in parse_configurations should be reversed in this function.
+
+    `path` should be to a `.yaml` file.
+
+    Args:
+        conf (dict): experimental configuration
+        path (str | Path): where to dump the resulting YAML
+    """
+    if "APP_USERS_FRACTION_BY_AGE" in conf:
+        conf["APP_USERS_FRACTION_BY_AGE"] = {
+            "-".join([str(i) for i in k]): v
+            for k, v in conf["APP_USERS_FRACTION_BY_AGE"].items()
+        }
+
+    if "HUMAN_DISTRIBUTION" in conf:
+        conf["HUMAN_DISTRIBUTION"] = {
+            "-".join([str(i) for i in k]): v
+            for k, v in conf["APP_USERS_FRACTION_BY_AGE"].items()
+        }
+
+    if "start_time" in conf:
+        conf["start_time"] = conf["start_time"].strftime("%Y-%m-%d %H:%M:%S")
+
+    path = Path(path).resolve()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.exists():
+        print("WARNING configuration already exists in {}. Overwriting.".format(
+            str(path.parent)
+        ))
+
+    with path.open("w") as f:
+        yaml.safe_dump(conf, str(path))

@@ -15,6 +15,7 @@ from covid19sim.utils import (
     dump_tracker_data,
     extract_tracker_data,
     parse_configuration,
+    dump_conf
 )
 import hydra
 from omegaconf import DictConfig
@@ -96,6 +97,8 @@ def main(conf: DictConfig) -> None:
     print(
         f"effective contacts per contacts (GLOBAL_MOBILITY_SCALING_FACTOR): {all_effective_contacts / all_contacts}"
     )
+
+    dump_conf(city.conf, "{}/full_configuration.yaml".format(city.conf["outdir"]))
 
     if not tune:
         # ----------------------------------------------
