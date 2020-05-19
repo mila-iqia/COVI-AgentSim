@@ -302,7 +302,7 @@ def get_recommendations(level):
         level (int): recommendation level.
 
     Returns:
-        [list]: a list of `BehaviorInterventions`.
+        list: a list of `BehaviorInterventions`.
     """
     if level == 0:
         return [WashHands()]
