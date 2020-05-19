@@ -76,8 +76,6 @@ def main(conf: DictConfig) -> None:
         out_chunk_size=conf["out_chunk_size"],
         print_progress=conf["print_progress"],
         seed=conf["seed"],
-        n_jobs=conf["n_jobs"],
-        port=conf["port"],
         conf=conf,
     )
 
@@ -140,8 +138,6 @@ def simulate(
     out_chunk_size=None,
     print_progress=False,
     seed=0,
-    port=6688,
-    n_jobs=1,
     other_monitors=[],
     conf={},
 ):
@@ -157,8 +153,6 @@ def simulate(
         out_chunk_size ([type], optional): [description]. Defaults to None.
         print_progress (bool, optional): [description]. Defaults to False.
         seed (int, optional): [description]. Defaults to 0.
-        port (int, optional): [description]. Defaults to 6688.
-        n_jobs (int, optional): [description]. Defaults to 1.
         other_monitors (list, optional): [description]. Defaults to [].
 
     Returns:
@@ -173,8 +167,6 @@ def simulate(
     conf["out_chunk_size"] = out_chunk_size
     conf["print_progress"] = print_progress
     conf["seed"] = seed
-    conf["port"] = port
-    conf["n_jobs"] = n_jobs
     conf["other_monitors"] = other_monitors
 
     rng = np.random.RandomState(seed)
@@ -209,7 +201,7 @@ def simulate(
     monitors[0].join_iothread()
     # run this every hour
     env.process(
-        city.run(1440 / 24, outfile, start_time, SYMPTOMS_META_IDMAP, port, n_jobs)
+        city.run(1440 / 24, outfile, start_time, SYMPTOMS_META_IDMAP)
     )
 
     # run humans

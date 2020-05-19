@@ -83,11 +83,7 @@ def test_functional_seniors_residence():
         monitors[0].dump()
         monitors[0].join_iothread()
 
-        env.process(
-            city.run(
-                1440 / 24, outfile, start_time, SYMPTOMS_META_IDMAP, port=668, n_jobs=1
-            )
-        )
+        env.process(city.run(1440/24, outfile, start_time, SYMPTOMS_META_IDMAP))
 
         for human in city.humans:
             env.process(human.run(city=city))

@@ -1587,21 +1587,23 @@ def download_exp_data_if_not_exist(
 
     Args:
         exp_data_url: the zip URL (under the `https://drive.google.com/file/d/ID` format).
-        exp_data_destination: where to save the model data.
+        exp_data_destination: where to extract the model data.
 
     Returns:
         The path to the model data.
     """
     assert exp_data_url.startswith("https://drive.google.com/file/d/")
-    if os.path.exists(exp_data_destination):
-        return exp_data_destination
-    os.makedirs(exp_data_destination)
     gdrive_file_id = exp_data_url.split("/")[-1]
-    zip_destination = os.path.join(exp_data_destination, f"{gdrive_file_id}.zip")
-    zip_path = download_file_from_google_drive(gdrive_file_id, zip_destination)
-    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-        zip_ref.extractall(exp_data_destination)
-    return exp_data_destination
+    output_data_path = os.path.join(exp_data_destination, gdrive_file_id)
+    downloaded_zip_path = os.path.join(exp_data_destination, f"{gdrive_file_id}.zip")
+    if os.path.isfile(downloaded_zip_path) and os.path.isdir(output_data_path):
+        return output_data_path
+    os.makedirs(output_data_path, exist_ok=True)
+    zip_path = download_file_from_google_drive(gdrive_file_id, downloaded_zip_path)
+    with zipfile.ZipFile(zip_path, "r") as zip_ref:
+        zip_ref.extractall(output_data_path)
+    return output_data_path
+
 
 def extract_tracker_data(tracker, conf):
     """

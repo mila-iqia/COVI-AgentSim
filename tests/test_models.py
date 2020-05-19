@@ -31,8 +31,8 @@ class ModelsTest(unittest.TestCase):
                 init_percent_sick=0.1,
                 outfile=os.path.join(d, "output"),
                 out_chunk_size=1,
-                seed=0, n_jobs=12,
-                port=6688, conf=conf
+                seed=0,
+                conf=conf,
             )
             days_output = glob.glob(f"{d}/daily_outputs/*/")
             days_output.sort(key=lambda p: int(p.split(os.path.sep)[-2]))

@@ -27,10 +27,6 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -e '.[ctt]'
-        # Hack to have a config to use
-        git remote add ci_config https://github.com/satyaog/covid_p2p_simulation.git
-        git fetch --depth=1 ci_config ci_config
-        git checkout ci_config/ci_config -- exp/DEBUG-0/Configurations/train_config.yml
     - name: Lint with flake8
       run: |
         pip install flake8

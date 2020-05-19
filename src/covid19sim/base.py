@@ -440,7 +440,7 @@ class City(simpy.Environment):
             h.stores_preferences = [(compute_distance(h.household, s) + 1e-1) ** -1 for s in self.stores]
             h.parks_preferences = [(compute_distance(h.household, s) + 1e-1) ** -1 for s in self.parks]
 
-    def run(self, duration, outfile, start_time, all_possible_symptoms, port, n_jobs):
+    def run(self, duration, outfile, start_time, all_possible_symptoms):
         """
         Run the City.
         Several daily tasks take place here.
@@ -452,10 +452,6 @@ class City(simpy.Environment):
             outfile (str): may be None, the run's output file to write to
             start_time (datetime.datetime): useless arg << FIXME
             all_possible_symptoms (dict): copy of SYMPTOMS_META (config.py)
-            port (int): the port for integrated_risk_pred when updating the humans'
-                risk
-            n_jobs (int): the number of jobs for integrated_risk_pred when updating
-                the humans' risk
 
         Yields:
             simpy.Timeout
@@ -519,11 +515,9 @@ class City(simpy.Environment):
             if isinstance(self.intervention, Tracing):
                 self.intervention.update_human_risks(
                     city=self,
-                    symptoms=all_possible_symptoms,
-                    port=port,
-                    n_jobs=n_jobs,
+                    all_possible_symptoms=all_possible_symptoms,
                     data_path=outfile,
-                    COLLECT_TRAINING_DATA=self.conf.get("COLLECT_TRAINING_DATA")
+                    conf=self.conf,
                 )
                 self.tracker.track_risk_attributes(self.humans)
 
