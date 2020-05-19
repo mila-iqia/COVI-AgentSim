@@ -1129,8 +1129,8 @@ class Contacts(object):
         If there are no more contacts for human, delete the id of that human from the book.
 
         Args:
-            human ([Human]): one of the keys in self.book
-            date ([datetime.datetime.date], optional): . Defaults to None
+            human (Human): one of the keys in self.book
+            date (datetime.datetime.date, optional): . Defaults to None
         """
         # keep the history of risk levels (transformers)
         if date is None:
@@ -1153,11 +1153,11 @@ class Contacts(object):
         Sends messages to all `Human`s in self.book.
 
         Args:
-            owner ([Human]): owner of this contact book.
-            tracing_method ([Tracing]): Method of tracing that is being used.
+            owner (Human): owner of this contact book.
+            tracing_method (Tracing): Method of tracing that is being used.
             order (int, optional): Number of hops from the source of the message. Defaults to 1.
             reason (str, optional): Reason for the trigger of this message. Defaults to "test". Possible values - "test", "symptoms", "risk_updates"
-            payload ([dict], optional): Extra information related to the message. Defaults to None.
+            payload (dict, optional): Extra information related to the message. Defaults to None.
         """
         p_contact = tracing_method.p_contact
         delay = tracing_method.delay

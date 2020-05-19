@@ -26,7 +26,7 @@ class BehaviorInterventions(object):
         `attr` will store new value.
 
         Args:
-            human ([Human]): `Human` object.
+            human (Human): `Human` object.
         """
         pass
 
@@ -37,7 +37,7 @@ class BehaviorInterventions(object):
         deletes `_attr` from `Human`.
 
         Args:
-            human ([Human]): `Human` object.
+            human (Human): `Human` object.
         """
         pass
 
@@ -299,7 +299,7 @@ def get_recommendations(level):
     Maps recommendation level to a list `BehaviorInterventions`.
 
     Args:
-        level ([int]): recommendation level.
+        level (int): recommendation level.
 
     Returns:
         [list]: a list of `BehaviorInterventions`.
@@ -376,7 +376,7 @@ class GetTested(BehaviorInterventions):
     def __init__(self, source):
         """
         Args:
-            source ([str]): reason behind getting tested e.g. recommendation, diagnosis, etc.
+            source (str): reason behind getting tested e.g. recommendation, diagnosis, etc.
         """
         self.source = source
 
@@ -411,8 +411,8 @@ class Tracing(object):
             4. dont_trace_traced (bool) - If `Human.message_info['traced']` is True, no need to send him a message. If True, reduces the number of messages being passed around.
 
         Args:
-            risk_model ([str]): Type of tracing to implement. Following methods are currently available - digital, manual, naive, other, transformer.
-            max_depth ([int], optional): The number of hops away from the source. The term `order` is also used for this. Defaults to 1.
+            risk_model (str): Type of tracing to implement. Following methods are currently available - digital, manual, naive, other, transformer.
+            max_depth (int, optional): The number of hops away from the source. The term `order` is also used for this. Defaults to 1.
             symptoms (bool, optional): If tracing is to be triggered when someone reports symptoms? Defaults to False.
             risk (bool, optional): If tracing is to be triggered when someone changes risk level?. Defaults to False. Note: this is not to be confused with risk_model="transformer".
             should_modify_behavior (bool, optional): If behavior should be modified or not? Used for conunterfactual studies. Defaults to True.
@@ -467,12 +467,12 @@ class Tracing(object):
         Note 1: not used by `risk_model = transformer`.
 
         Args:
-            human ([Human]): Human object.
+            human (Human): Human object.
 
         Returns:
-            t ([int]): Number of past registered contacts that are tested positive in the last `configs.blah.yml --> TRACING_N_DAYS_HISTORY`.
-            s ([int]): Number of past registered contacts that have shown symptoms in the last `configs.blah.yml --> TRACING_N_DAYS_HISTORY`.
-            (r_up, v_up, r_down, v_down) ([tuple]):
+            t (int): Number of past registered contacts that are tested positive in the last `configs.blah.yml --> TRACING_N_DAYS_HISTORY`.
+            s (int): Number of past registered contacts that have shown symptoms in the last `configs.blah.yml --> TRACING_N_DAYS_HISTORY`.
+            (r_up, v_up, r_down, v_down) (tuple):
                 r_up: Number of past registered contacts that increased their risk levels in the last `configs.blah.yml --> TRACING_N_DAYS_HISTORY`.
                 v_up: Averge increase in magnitude of risk levels of contacts that increased their risk levels in the last `configs.blah.yml --> TRACING_N_DAYS_HISTORY`.
                 r_down: Number of past registered contacts that decreased their risk levels in the last `configs.blah.yml --> TRACING_N_DAYS_HISTORY`.
@@ -575,7 +575,7 @@ class Tracing(object):
         Computes delay for tracing. NOT IMPLEMENTED.
 
         Args:
-            human ([Human]): `Human` object
+            human (Human): `Human` object
         """
         pass # FIXME: circualr imports issue; can't import _draw_random_discreet_gaussian
 
@@ -598,7 +598,7 @@ class CityInterventions(object):
         Modify attributes of city.
 
         Args:
-            city ([City]): `City` object
+            city (City): `City` object
         """
         pass
 
@@ -607,7 +607,7 @@ class CityInterventions(object):
         resets attributes of the city.
 
         Args:
-            city ([City]): `City` object
+            city (City): `City` object
         """
         pass
 
@@ -628,11 +628,11 @@ def get_intervention(key, RISK_MODEL=None, TRACING_ORDER=None, TRACE_SYMPTOMS=No
     Returns appropriate class of intervention.
 
     Args:
-        key ([str]): type of intervention
-        RISK_MODEL ([str], optional): passed to `Tracing.risk_model`. Defaults to None.
-        TRACING_ORDER ([int], optional): passed to `Tracing.max_depth`. Defaults to None.
-        TRACE_SYMPTOMS ([type], optional): passed to `Tracing.symptoms`. Defaults to None.
-        TRACE_RISK_UPDATE ([type], optional): passed to `Tracing.risk`. Defaults to None.
+        key (str): type of intervention
+        RISK_MODEL (str, optional): passed to `Tracing.risk_model`. Defaults to None.
+        TRACING_ORDER (int, optional): passed to `Tracing.max_depth`. Defaults to None.
+        TRACE_SYMPTOMS (bool, optional): passed to `Tracing.symptoms`. Defaults to None.
+        TRACE_RISK_UPDATE (bool, optional): passed to `Tracing.risk`. Defaults to None.
         SHOULD_MODIFY_BEHAVIOR (bool, optional): passed to `Tracing.should_modify_behavior`. Defaults to True.
 
     Raises:

@@ -708,13 +708,13 @@ class Tracker(object):
         self.dist_encounters[dist_bin] += 1
         self.time_encounters[time_bin] += 1
 
-    def write_metrics(self, logfile):
+    def write_metrics(self, logfile=None):
         """
         Writes various metrics to logfile.
         Prints them if logfile is None.
 
         Args:
-            logfile ([str]): filename where these logs will be dumped
+            logfile (str, optional): filename where these logs will be dumped
         """
         log("######## DEMOGRAPHICS #########", logfile)
         log(f"age distribution\n {self.age_distribution.describe()}", logfile)
