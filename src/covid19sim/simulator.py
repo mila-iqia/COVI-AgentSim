@@ -1089,12 +1089,14 @@ class Human(object):
             # TODO: needs better conditions; log test based on some condition on symptoms
             if (self.test_result != "positive" and (
                 self.test_recommended or (
-                    self.is_incubated and self.env.timestamp - self.symptom_start_time >= datetime.timedelta(days=TEST_DAYS)
+                    self.is_incubated and
+                    self.env.timestamp - self.symptom_start_time >= datetime.timedelta(days=self.conf["TEST_DAYS"])
                 )
             )):
-                if 0<= (self.env.timestamp - self.test_time).days < TEST_INTERVAL:
+                if 0<= (self.env.timestamp - self.test_time).days < self.conf["TEST_INTERVAL"]:
                         warnings.warn(
-                            f"{self.name}'s last test time is less than {TEST_INTERVAL} days. Will not retest human today. "
+                            f"{self.name}'s last test time is less than {self.conf['TEST_INTERVAL']} days. "
+                            "Will not retest human today. "
                             f"Current day {self.env.timestamp}, "
                             f"Last test time {self.test_time}",
                             RuntimeWarning
