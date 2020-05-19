@@ -1449,7 +1449,7 @@ class Human(object):
                     p_infection = infector.infectiousness * ratio * proximity_factor
                     # FIXME: remove hygiene from severity multiplier; init hygiene = 0; use sum here instead
                     reduction_factor = self.conf.get("CONTAGION_KNOB") + sum(getattr(x, "_hygiene", 0) for x in [self, h]) + mask_efficacy
-                    p_infection *= np.exp(-reduction_factor * h.n_infectious_contacts)
+                    p_infection *= np.exp(-reduction_factor * infector.n_infectious_contacts)
 
                     x_human = infector.rng.random() < p_infection
 
@@ -1461,7 +1461,7 @@ class Human(object):
                         infector.n_infectious_contacts += 1
 
                         if self.conf.get('COLLECT_LOGS'):
-                            Event.log_exposed(h, self, self.env.timestamp)
+                            Event.log_exposed(infectee, infector, self.env.timestamp)
 
                         infector.exposure_message = encode_message(self.cur_message((self.env.timestamp - self.env.initial_timestamp).days))
                         city.tracker.track_infection('human', from_human=infector, to_human=infectee, location=location, timestamp=self.env.timestamp)
