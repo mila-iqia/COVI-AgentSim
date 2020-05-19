@@ -12,6 +12,18 @@ output/
 CTT-SHIPMENT-0
 exp/
 
+#Hydra stuff
+*.hydra/
+src/covid19sim/hydra-configs/*
+!src/covid19sim/hydra-configs/config.yaml
+!src/covid19sim/hydra-configs/base_method.yaml
+!src/covid19sim/hydra-configs/constants.yaml
+!src/covid19sim/hydra-configs/core.yaml
+!src/covid19sim/hydra-configs/tracing-method/
+!src/covid19sim/hydra-configs/release/
+!src/covid19sim/hydra-configs/run-type/
+
+
 # Pycharm stuff
 .idea/
 .vscode

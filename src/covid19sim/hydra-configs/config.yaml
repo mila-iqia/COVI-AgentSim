@@ -1,0 +1,9 @@
+# defaults is a hydra-specific field that loads the list of yaml files in order,
+# each subsequent one overwriting the previous one on common keys
+defaults:
+  - core
+  - base_method
+
+hydra:
+  run:
+    dir: . # move hydra output dir to current working directory

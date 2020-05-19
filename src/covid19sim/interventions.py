@@ -4,13 +4,8 @@
 from orderedset import OrderedSet
 import numpy as np
 
-from covid19sim.configs.constants import BIG_NUMBER
-from covid19sim.configs.config import RHO, GAMMA, MANUAL_TRACING_P_CONTACT,\
-    RISK_TRANSMISSION_PROBA, DEFAULT_DISTANCE
 from covid19sim.models.run import integrated_risk_pred
-from covid19sim.configs.exp_config import ExpConfig
-from covid19sim.configs.config import MASKS_SUPPLY
-
+from covid19sim.constants import BIG_NUMBER
 class BehaviorInterventions(object):
     """
     [summary]
@@ -99,7 +94,7 @@ class LimitContact (BehaviorInterventions):
         human._max_misc_per_week = human.max_misc_per_week
         human._max_shop_per_week = human.max_shop_per_week
 
-        human.maintain_distance = DEFAULT_DISTANCE + 100 * (human.carefulness - 0.5)
+        human.maintain_distance = human.conf.get("DEFAULT_DISTANCE") + 100 * (human.carefulness - 0.5)
         human.max_misc_per_week = 1
         human.max_shop_per_week = 1
 
@@ -230,8 +225,8 @@ class Quarantine(BehaviorInterventions):
             human ([type]): [description]
         """
         human.workplace = human._workplace
-        human.rho = RHO
-        human.gamma = GAMMA
+        human.rho = human.conf.get("RHO")
+        human.gamma = human.conf.get("GAMMA")
         human.rest_at_home = False
         human._quarantine = False
         delattr(human, "_workplace")
@@ -266,8 +261,8 @@ class Lockdown(BehaviorInterventions):
             human ([type]): [description]
         """
         human.workplace = human._workplace
-        human.rho = RHO
-        human.gamma = GAMMA
+        human.rho = human.conf.get("RHO")
+        human.gamma = human.conf.get("GAMMA")
         delattr(human, "_workplace")
 
     def __repr__(self):
@@ -312,8 +307,8 @@ class SocialDistancing(BehaviorInterventions):
         """
         human.maintain_extra_distance = human._maintain_extra_distance
         human.time_encounter_reduction_factor = human._time_encounter_reduction_factor
-        human.rho = RHO
-        human.gamma = GAMMA
+        human.rho = human.conf.get("RHO")
+        human.gamma = human.conf.get("GAMMA")
         delattr(human, "_maintain_extra_distance")
         delattr(human, "_time_encounter_reduction_factor")
 
@@ -565,7 +560,7 @@ class Tracing(object):
         self.delay = 0
         self.app = True
         if risk_model == "manual":
-            self.p_contact = MANUAL_TRACING_P_CONTACT
+            self.p_contact = self.conf.get("MANUAL_TRACING_P_CONTACT")
             self.delay = 1
             self.app = False
 
@@ -655,12 +650,12 @@ class Tracing(object):
                 risk = 0.0
 
         elif self.risk_model == "naive":
-            risk = 1.0 - (1.0 - RISK_TRANSMISSION_PROBA) ** (t+s)
+            risk = 1.0 - (1.0 - self.conf.get("RISK_TRANSMISSION_PROBA")) ** (t+s)
 
         elif self.risk_model == "other":
             r_up, v_up, r_down, v_down = r
             r_score = 2*v_up - v_down
-            risk = 1.0 - (1.0 - RISK_TRANSMISSION_PROBA) ** (t + 0.5*s + r_score)
+            risk = 1.0 - (1.0 - self.conf.get("RISK_TRANSMISSION_PROBA")) ** (t + 0.5*s + r_score)
 
         return risk
 
@@ -673,13 +668,14 @@ class Tracing(object):
         port = kwargs.get("port")
         n_jobs = kwargs.get("n_jobs")
         data_path = kwargs.get("data_path")
+        COLLECT_TRAINING_DATA = kwargs.get("COLLECT_TRAINING_DATA")
 
         if self.risk_model == "transformer":
             all_possible_symptoms = kwargs.get("symptoms")
             port = kwargs.get("port")
             n_jobs = kwargs.get("n_jobs")
             data_path = kwargs.get("data_path")
-            city.humans = integrated_risk_pred(city.humans, city.start_time, city.current_day, city.env.timestamp.hour, all_possible_symptoms, port=port, n_jobs=n_jobs, data_path=data_path)
+            city.humans = integrated_risk_pred(city.humans, city.start_time, city.current_day, city.env.timestamp.hour, all_possible_symptoms, port=port, n_jobs=n_jobs, data_path=data_path, conf=city.conf)
         else:
             for human in city.humans:
                 cur_day = (human.env.timestamp - human.env.initial_timestamp).days
@@ -696,8 +692,8 @@ class Tracing(object):
                     # human.update_risk_level()
                     # human.prev_risk_history_map[cur_day] = human.risk
 
-            if ExpConfig.get('COLLECT_TRAINING_DATA'):
-                city.humans = integrated_risk_pred(city.humans, city.start_time, city.current_day, city.env.timestamp.hour, all_possible_symptoms, port=port, n_jobs=n_jobs, data_path=data_path)
+            if COLLECT_TRAINING_DATA:
+                city.humans = integrated_risk_pred(city.humans, city.start_time, city.current_day, city.env.timestamp.hour, all_possible_symptoms, port=port, n_jobs=n_jobs, data_path=data_path, conf=city.conf)
 
 
     def compute_tracing_delay(self, human):
@@ -774,7 +770,7 @@ class TestCapacity(CityInterventions):
         """
         pass
 
-def get_intervention(key, RISK_MODEL=None, TRACING_ORDER=None, TRACE_SYMPTOMS=None, TRACE_RISK_UPDATE=None, SHOULD_MODIFY_BEHAVIOR=True):
+def get_intervention(key, RISK_MODEL=None, TRACING_ORDER=None, TRACE_SYMPTOMS=None, TRACE_RISK_UPDATE=None, SHOULD_MODIFY_BEHAVIOR=True,MASKS_SUPPLY=0):
     """
     [summary]
 
@@ -785,6 +781,7 @@ def get_intervention(key, RISK_MODEL=None, TRACING_ORDER=None, TRACE_SYMPTOMS=No
         TRACE_SYMPTOMS ([type], optional): [description]. Defaults to None.
         TRACE_RISK_UPDATE ([type], optional): [description]. Defaults to None.
         SHOULD_MODIFY_BEHAVIOR (bool, optional): [description]. Defaults to True.
+        MASKS_SUPPLY (int, optional): [description]. Defaults to 0.
 
     Raises:
         NotImplementedError: [description]

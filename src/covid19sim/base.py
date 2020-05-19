@@ -6,6 +6,7 @@ import math
 import datetime
 import itertools
 from collections import defaultdict
+from covid19sim.constants import TICK_MINUTE
 
 try:
     # Python 3.8
@@ -14,13 +15,11 @@ except ImportError:
     # Previous version of python need to install cached_property
     from cached_property import cached_property
 
-from covid19sim.configs.config import *
 from covid19sim.utils import compute_distance, _get_random_area, _draw_random_discreet_gaussian, calculate_average_infectiousness
 from covid19sim.track import Tracker
 from covid19sim.interventions import *
+from covid19sim.constants import TICK_MINUTE
 from covid19sim.frozen.utils import update_uid
-from covid19sim.configs.constants import TICK_MINUTE
-from covid19sim.configs.exp_config import ExpConfig
 
 
 class Env(simpy.Environment):
@@ -98,7 +97,7 @@ class City(simpy.Environment):
     City environment
     """
 
-    def __init__(self, env, n_people, init_percent_sick, rng, x_range, y_range, start_time, Human):
+    def __init__(self, env, n_people, init_percent_sick, rng, x_range, y_range, start_time, Human, conf):
         """
 
         Args:
@@ -110,7 +109,9 @@ class City(simpy.Environment):
             y_range (tuple): (min_y, max_y)
             start_time (datetime.datetime): City's initial datetime
             Human (covid19.simulator.Human): Class for the city's human instances
+            conf (dict): yaml configuration of the experiment
         """
+        self.conf = conf
         self.env = env
         self.rng = rng
         self.x_range = x_range
@@ -121,7 +122,7 @@ class City(simpy.Environment):
         self.start_time = start_time
         self.last_date_to_check_tests = self.env.timestamp.date()
         self.test_count_today = defaultdict(int)
-        self.test_type_preference = list(zip(*sorted(TEST_TYPES.items(), key=lambda x:x[1]['preference'])))[0]
+        self.test_type_preference = list(zip(*sorted(self.conf.get("TEST_TYPES").items(), key=lambda x:x[1]['preference'])))[0]
         print("Initializing locations ...")
         self.initialize_locations()
 
@@ -130,7 +131,8 @@ class City(simpy.Environment):
         print("Initializing humans ...")
         self.initialize_humans(Human)
 
-        self.log_static_info()
+        if self.conf.get('COLLECT_LOGS'):
+            self.log_static_info()
 
         print("Computing their preferences")
         self._compute_preferences()
@@ -194,7 +196,7 @@ class City(simpy.Environment):
             self.last_date_to_check_tests = self.env.timestamp.date()
             for k in self.test_count_today.keys():
                 self.test_count_today[k] = 0
-        return any(self.test_count_today[test_type] < TEST_TYPES[test_type]['capacity'] for test_type in self.test_type_preference)
+        return any(self.test_count_today[test_type] < self.conf.get("TEST_TYPES")[test_type]['capacity'] for test_type in self.test_type_preference)
 
     def get_available_test(self):
         """
@@ -207,7 +209,7 @@ class City(simpy.Environment):
             str: available test_type
         """
         for test_type in self.test_type_preference:
-            if self.test_count_today[test_type] < TEST_TYPES[test_type]['capacity']:
+            if self.test_count_today[test_type] < self.conf.get("TEST_TYPES")[test_type]['capacity']:
                 self.test_count_today[test_type] += 1
                 return test_type
 
@@ -216,7 +218,7 @@ class City(simpy.Environment):
         Create locations according to config.py / LOCATION_DISTRIBUTION.
         The City instance will have attributes <location_type>s = list(location(*args))
         """
-        for location, specs in LOCATION_DISTRIBUTION.items():
+        for location, specs in self.conf.get("LOCATION_DISTRIBUTION").items():
             if location in ['household']:
                 continue
 
@@ -249,11 +251,14 @@ class City(simpy.Environment):
         chosen_infected = set(self.rng.choice(self.n_people, init_infected, replace=False).tolist())
 
         # app users
-        all_has_app = ExpConfig.get('P_HAS_APP') < 0
-        n_apps = ExpConfig.get('P_HAS_APP') * self.n_people if ExpConfig.get('P_HAS_APP') > 0 else self.n_people
-        n_apps_per_age = {k:math.ceil(v * n_apps) for k,v in APP_USERS_FRACTION_BY_AGE.items()}
+        all_has_app = self.conf.get('P_HAS_APP') < 0
+        n_apps = self.conf.get('P_HAS_APP') * self.n_people if self.conf.get('P_HAS_APP') > 0 else self.n_people
+        n_apps_per_age = {
+            k:math.ceil(v * n_apps)
+            for k,v in self.conf.get("APP_USERS_FRACTION_BY_AGE").items()
+        }
 
-        for age_bin, specs in HUMAN_DISTRIBUTION.items():
+        for age_bin, specs in self.conf.get("HUMAN_DISTRIBUTION").items():
             n = math.ceil(specs['p'] * self.n_people)
             ages = self.rng.randint(*age_bin, size=n)
 
@@ -263,10 +268,10 @@ class City(simpy.Environment):
             p = [specs['profession_profile'][x] for x in professions]
             profession = self.rng.choice(professions, p=p, size=n)
 
-            # select who should have app based on APP_USERS_FRACTION_BY_AGE
+            # select who should have app based on self.conf's APP_USERS_FRACTION_BY_AGE
             chosen_app_user_bin = []
             for my_age in ages:
-                for x, frac in APP_USERS_FRACTION_BY_AGE.items():
+                for x, frac in self.conf.get("APP_USERS_FRACTION_BY_AGE").items():
                     if x[0] <= my_age <= x[1]:
                         chosen_app_user_bin.append(x)
                         break
@@ -293,7 +298,11 @@ class City(simpy.Environment):
                 elif profession[i] == 'school':
                     workplace = self.rng.choice(self.schools)
                 elif profession[i] == 'others':
-                    type_of_workplace = self.rng.choice([0,1,2], p=OTHERS_WORKPLACE_CHOICE, size=1).item()
+                    type_of_workplace = self.rng.choice(
+                        [0,1,2],
+                        p=self.conf.get("OTHERS_WORKPLACE_CHOICE"),
+                        size=1
+                    ).item()
                     type_of_workplace = [self.workplaces, self.stores, self.miscs][type_of_workplace]
                     workplace = self.rng.choice(type_of_workplace)
                 else:
@@ -309,9 +318,10 @@ class City(simpy.Environment):
                         household=res,
                         workplace=workplace,
                         profession=profession[i],
-                        rho=RHO,
-                        gamma=GAMMA,
-                        infection_timestamp=self.start_time if count_humans - 1 in chosen_infected else None
+                        rho=self.conf.get("RHO"),
+                        gamma=self.conf.get("GAMMA"),
+                        infection_timestamp=self.start_time if count_humans - 1 in chosen_infected else None,
+                        conf=self.conf
                         )
                     )
 
@@ -322,8 +332,12 @@ class City(simpy.Environment):
             if human.household is not None:
                 continue
             if len(remaining_houses) == 0:
-                cap = self.rng.choice(range(1,6), p=HOUSE_SIZE_PREFERENCE, size=1)
-                x = self.create_location(LOCATION_DISTRIBUTION['household'], 'household', len(self.households))
+                cap = self.rng.choice(range(1,6), p=self.conf.get("HOUSE_SIZE_PREFERENCE"), size=1)
+                x = self.create_location(
+                    self.conf.get("LOCATION_DISTRIBUTION")['household'],
+                    'household',
+                    len(self.households)
+                )
 
                 remaining_houses.append((x, cap))
 
@@ -331,7 +345,7 @@ class City(simpy.Environment):
             res = None
             for  c, (house, n_vacancy) in enumerate(remaining_houses):
                 new_avg_age = (human.age + sum(x.age for x in house.residents))/(len(house.residents) + 1)
-                if new_avg_age > MIN_AVG_HOUSE_AGE:
+                if new_avg_age > self.conf.get("MIN_AVG_HOUSE_AGE"):
                     res = house
                     n_vacancy -= 1
                     if n_vacancy == 0:
@@ -339,14 +353,18 @@ class City(simpy.Environment):
                     break
 
             if res is None:
-                for i, (l,u) in enumerate(HUMAN_DISTRIBUTION.keys()):
+                for i, (l,u) in enumerate(self.conf.get("HUMAN_DISTRIBUTION").keys()):
                     if l <= human.age < u:
                         bin = (l,u)
                         break
 
-                house_size_preference = HUMAN_DISTRIBUTION[(l,u)]['residence_preference']['house_size']
+                house_size_preference = self.conf.get("HUMAN_DISTRIBUTION")[(l,u)]['residence_preference']['house_size']
                 cap = self.rng.choice(range(1,6), p=house_size_preference, size=1)
-                res = self.create_location(LOCATION_DISTRIBUTION['household'], 'household', len(self.households))
+                res = self.create_location(
+                    self.conf.get("LOCATION_DISTRIBUTION")['household'],
+                    'household',
+                    len(self.households)
+                )
                 if cap - 1 > 0:
                     remaining_houses.append((res, cap-1))
 
@@ -356,7 +374,12 @@ class City(simpy.Environment):
             self.households.add(res)
 
         # assign area to house
-        area = _get_random_area(len(self.households), LOCATION_DISTRIBUTION['household']['area'] * self.total_area, self.rng)
+        area = _get_random_area(
+            len(self.households),
+            self.conf.get("LOCATION_DISTRIBUTION")['household']['area'] * self.total_area,
+            self.rng
+        )
+
         for i,house in enumerate(self.households):
             house.area = area[i]
 
@@ -436,22 +459,25 @@ class City(simpy.Environment):
         """
         self.current_day = 0
         humans_notified = False
-        tmp_M = ExpConfig.get("M")
-        ExpConfig.set("M", 1)
+        tmp_M = self.conf.get("GLOBAL_MOBILITY_SCALING_FACTOR")
+        self.conf["GLOBAL_MOBILITY_SCALING_FACTOR"] = 1
         while True:
             # Notify humans to follow interventions on intervention day
-            if self.current_day == ExpConfig.get('INTERVENTION_DAY') and not humans_notified:
-                self.intervention = get_intervention(key=ExpConfig.get('INTERVENTION'),
-                                                     RISK_MODEL=ExpConfig.get('RISK_MODEL'),
-                                                     TRACING_ORDER=ExpConfig.get('TRACING_ORDER'),
-                                                     TRACE_SYMPTOMS=ExpConfig.get('TRACE_SYMPTOMS'),
-                                                     TRACE_RISK_UPDATE=ExpConfig.get('TRACE_RISK_UPDATE'),
-                                                     SHOULD_MODIFY_BEHAVIOR=ExpConfig.get('SHOULD_MODIFY_BEHAVIOR'))
+            if self.current_day == self.conf.get('INTERVENTION_DAY') and not humans_notified:
+                self.intervention = get_intervention(
+                    key=self.conf.get('INTERVENTION'),
+                    RISK_MODEL=self.conf.get('RISK_MODEL'),
+                    TRACING_ORDER=self.conf.get('TRACING_ORDER'),
+                    TRACE_SYMPTOMS=self.conf.get('TRACE_SYMPTOMS'),
+                    TRACE_RISK_UPDATE=self.conf.get('TRACE_RISK_UPDATE'),
+                    SHOULD_MODIFY_BEHAVIOR=self.conf.get('SHOULD_MODIFY_BEHAVIOR'),
+                    MASKS_SUPPLY=self.conf.get("MASKS_SUPPLY")
+                )
 
                 _ = [h.notify(self.intervention) for h in self.humans]
                 print(self.intervention)
-                ExpConfig.set("M", tmp_M)
-                if ExpConfig.get('COLLECT_TRAINING_DATA'):
+                self.conf["GLOBAL_MOBILITY_SCALING_FACTOR"] = tmp_M
+                if self.conf.get('COLLECT_TRAINING_DATA'):
                     print("naive risk calculation without changing behavior... Humans notified!")
 
                 humans_notified = True
@@ -472,7 +498,9 @@ class City(simpy.Environment):
                 human.update_risk(symptoms=human.symptoms)
                 human.infectiousnesses.appendleft(calculate_average_infectiousness(human))
 
-                Event.log_daily(human, human.env.timestamp)
+                if self.conf.get('COLLECT_LOGS'):
+                    Event.log_daily(human, human.env.timestamp)
+
                 self.tracker.track_symptoms(human)
 
                 # keep only past N_DAYS contacts
@@ -481,14 +509,19 @@ class City(simpy.Environment):
                                           'n_risk_increased', 'n_risk_decreased', "n_risk_mag_decreased",
                                           "n_risk_mag_increased"]:
                         for order in human.message_info[type_contacts]:
-                            if len(human.message_info[type_contacts][order]) > ExpConfig.get('TRACING_N_DAYS_HISTORY'):
+                            if len(human.message_info[type_contacts][order]) > self.conf.get('TRACING_N_DAYS_HISTORY'):
                                 human.message_info[type_contacts][order] = human.message_info[type_contacts][order][1:]
                             human.message_info[type_contacts][order].append(0)
 
             if isinstance(self.intervention, Tracing):
-                self.intervention.update_human_risks(city=self,
-                                symptoms=all_possible_symptoms, port=port,
-                                n_jobs=n_jobs, data_path=outfile)
+                self.intervention.update_human_risks(
+                    city=self,
+                    symptoms=all_possible_symptoms,
+                    port=port,
+                    n_jobs=n_jobs,
+                    data_path=outfile,
+                    COLLECT_TRAINING_DATA=self.conf.get("COLLECT_TRAINING_DATA")
+                )
                 self.tracker.track_risk_attributes(self.humans)
 
             # Let the hour pass
@@ -579,7 +612,11 @@ class Location(simpy.Resource):
         self.humans.add(human)
         if human.is_infectious:
             self.contamination_timestamp = self.env.timestamp
-            rnd_surface = float(self.rng.choice(a=MAX_DAYS_CONTAMINATION, size=1, p=self.contaminated_surface_probability))
+            rnd_surface = float(self.rng.choice(
+                    a=human.conf.get("MAX_DAYS_CONTAMINATION"),
+                    size=1,
+                    p=self.contaminated_surface_probability
+            ))
             self.max_day_contamination = max(self.max_day_contamination, rnd_surface)
 
     def remove_human(self, human):
@@ -832,8 +869,6 @@ class Event:
                 None otherwise
             time (datetime.datetime): timestamp of encounter
         """
-        if ExpConfig.get('COLLECT_LOGS') is False:
-            return
 
         h_obs_keys   = ['obs_hospitalized', 'obs_in_icu',
                         'obs_lat', 'obs_lon']
@@ -895,9 +930,6 @@ class Event:
             human (covid19sim.simulator.Human): Human whose test should be logged
             time (datetime.datetime): Event's time
         """
-        if ExpConfig.get('COLLECT_LOGS') is False:
-            return
-
         human.events.append(
             {
                 'human_id': human.name,
@@ -928,9 +960,6 @@ class Event:
             human (covid19sim.simulator.Human): Human who's health should be logged
             time (datetime.datetime): Event time
         """
-        if ExpConfig.get('COLLECT_LOGS') is False:
-            return
-
         human.events.append(
             {
                 'human_id': human.name,
@@ -962,9 +991,6 @@ class Event:
             source ([type]): [description]
             time ([type]): [description]
         """
-        if ExpConfig.get('COLLECT_LOGS') is False:
-            return
-
         human.events.append(
             {
                 'human_id': human.name,
@@ -994,9 +1020,6 @@ class Event:
             time ([type]): [description]
             death ([type]): [description]
         """
-        if ExpConfig.get('COLLECT_LOGS') is False:
-            return
-
         human.events.append(
             {
                 'human_id': human.name,
@@ -1024,9 +1047,6 @@ class Event:
             human ([type]): [description]
             time ([type]): [description]
         """
-        if ExpConfig.get('COLLECT_LOGS') is False:
-            return
-
         h_obs_keys = ['obs_preexisting_conditions',  "obs_age", "obs_sex", "obs_is_healthcare_worker"]
         h_unobs_keys = ['preexisting_conditions', "age", "sex", "is_healthcare_worker"]
         obs_payload = {key:getattr(human, key) for key in h_obs_keys}
@@ -1059,13 +1079,15 @@ class Contacts(object):
     """
     [summary]
     """
-    def __init__(self, has_app):
+    def __init__(self, has_app, conf):
         """
         [summary]
 
         Args:
             has_app (bool): [description]
+            conf (dict): yaml experiment configuration
         """
+        self.conf = conf
         self.messages = []
         self.sent_messages_by_day = defaultdict(list)
         self.messages_by_day = defaultdict(list)
@@ -1106,7 +1128,7 @@ class Contacts(object):
 
         remove_idx = -1
         for history in self.book[human]:
-            if (date - history[0]).days > ExpConfig.get('TRACING_N_DAYS_HISTORY'):
+            if (date - history[0]).days > self.conf.get('TRACING_N_DAYS_HISTORY'):
                 remove_idx += 1
             else:
                 break
@@ -1144,7 +1166,10 @@ class Contacts(object):
                     self.update_book(human)
                     t = 0
                     if delay:
-                        t = _draw_random_discreet_gaussian(MANUAL_TRACING_DELAY_AVG, MANUAL_TRACING_DELAY_STD, human.rng)
+                        t = _draw_random_discreet_gaussian(
+                            self.conf.get("MANUAL_TRACING_DELAY_AVG"),
+                            self.conf.get("MANUAL_TRACING_DELAY_STD"),
+                            human.rng)
 
                     total_contacts = sum(map(lambda x:x[1], self.book[human]))
                     human.update_risk(update_messages={'n':total_contacts, 'delay': t, 'order':order, 'reason':reason, 'payload':payload})
@@ -1156,7 +1181,7 @@ class EmptyCity(City):
     externally defined code.  Useful for controlled scenarios and functional testing
     """
 
-    def __init__(self, env, rng, x_range, y_range, start_time):
+    def __init__(self, env, rng, x_range, y_range, start_time, conf):
         """
 
         Args:
@@ -1165,7 +1190,9 @@ class EmptyCity(City):
             x_range (tuple): (min_x, max_x)
             y_range (tuple): (min_y, max_y)
             start_time (datetime.datetime): City's initial datetime
+            conf (dict): yaml experiment configuration
         """
+        self.conf = conf
         self.env = env
         self.rng = rng
         self.x_range = x_range
@@ -1177,9 +1204,16 @@ class EmptyCity(City):
         self.test_count_today = defaultdict(int)
 
         # Get the test type with the lowest preference?
-        # TODO - EM: Should this rather sort on 'preference' in descending order? 
-        self.test_type_preference = list(zip(*sorted(TEST_TYPES.items(), key=lambda x:x[1]['preference'])))[0]
-    
+        # TODO - EM: Should this rather sort on 'preference' in descending order?
+        self.test_type_preference = list(
+            zip(
+                *sorted(
+                    self.conf.get("TEST_TYPES").items(),
+                    key=lambda x:x[1]['preference']
+                )
+            )
+        )[0]
+
         self.humans = []
         self.households = OrderedSet()
         self.stores = []
@@ -1195,7 +1229,9 @@ class EmptyCity(City):
         After adding humans and locations to the city, execute this function to finalize the City
         object in preparation for simulation.
         """
-        self.log_static_info()
+        if self.conf.get('COLLECT_LOGS'):
+            self.log_static_info()
+
         print("Computing preferences")
         self._compute_preferences()
         self.tracker = Tracker(self.env, self)

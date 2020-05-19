@@ -2,13 +2,13 @@ import datetime
 import glob
 import os
 import pickle
-from tempfile import TemporaryDirectory
 import unittest
+from tempfile import TemporaryDirectory
 
 import numpy as np
+from tests.utils import get_test_conf
 
 from covid19sim.run import simulate
-from covid19sim.configs.exp_config import ExpConfig
 
 
 class ModelsTest(unittest.TestCase):
@@ -18,7 +18,8 @@ class ModelsTest(unittest.TestCase):
         """
 
         # Load the experimental configuration
-        ExpConfig.load_config(os.path.join(os.path.dirname(__file__), "../src/covid19sim/configs/test_config.yml"))
+        conf_name = "test_models.yaml"
+        conf = get_test_conf(conf_name)
 
         with TemporaryDirectory() as d:
             n_people = 10
@@ -31,11 +32,11 @@ class ModelsTest(unittest.TestCase):
                 outfile=os.path.join(d, "output"),
                 out_chunk_size=1,
                 seed=0, n_jobs=12,
-                port=6688
+                port=6688, conf=conf
             )
             days_output = glob.glob(f"{d}/daily_outputs/*/")
             days_output.sort(key=lambda p: int(p.split(os.path.sep)[-2]))
-            self.assertEqual(len(days_output), n_days - ExpConfig.get('INTERVENTION_DAY'))
+            self.assertEqual(len(days_output), n_days - conf.get('INTERVENTION_DAY'))
 
             output = [[]] * len(days_output)
 
@@ -49,7 +50,7 @@ class ModelsTest(unittest.TestCase):
                         day_humans.append(day_human)
                         self.assertEqual(day_human['current_day'], day_humans[0]['current_day'])
                 self.assertGreaterEqual(len(day_humans), n_people)
-                output[day_humans[0]['current_day'] - ExpConfig.get('INTERVENTION_DAY')] = day_humans
+                output[day_humans[0]['current_day'] - conf.get('INTERVENTION_DAY')] = day_humans
 
             for i in range(1, len(output)):
                 self.assertEqual(len(output[i-1]), len(output[i]))
@@ -57,9 +58,9 @@ class ModelsTest(unittest.TestCase):
             stats = {'human_enc_ids': [0] * 256,
                      'humans': {}}
 
-            for current_day, day_output in zip(range(ExpConfig.get('INTERVENTION_DAY'), n_days),
+            for current_day, day_output in zip(range(conf.get('INTERVENTION_DAY'), n_days),
                                                output):
-                output_day_index = current_day - ExpConfig.get('INTERVENTION_DAY')
+                output_day_index = current_day - conf.get('INTERVENTION_DAY')
                 for h_i, human in enumerate(day_output):
                     stats['humans'].setdefault(h_i, {})
                     stats['humans'][h_i].setdefault('candidate_encounters_cnt', 0)
@@ -73,7 +74,7 @@ class ModelsTest(unittest.TestCase):
                     observed = human['observed']
                     unobserved = human['unobserved']
 
-                    if current_day == ExpConfig.get('INTERVENTION_DAY'):
+                    if current_day == conf.get('INTERVENTION_DAY'):
                         prev_observed = None
                         prev_unobserved = None
                     else:

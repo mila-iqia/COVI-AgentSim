@@ -20,7 +20,6 @@ import covid19sim.frozen.clustering.base
 import covid19sim.frozen.clusters
 import covid19sim.frozen.helper
 import covid19sim.frozen.utils
-from covid19sim.configs.exp_config import ExpConfig
 
 
 expected_raw_packet_param_names = [

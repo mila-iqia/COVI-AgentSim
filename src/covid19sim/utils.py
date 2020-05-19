@@ -1,21 +1,24 @@
 """
 [summary]
 """
-from collections import OrderedDict, namedtuple
-from scipy.stats import norm, truncnorm, gamma
-from functools import lru_cache
 import datetime
 import math
 import os
-import requests
+import pathlib
+from pathlib import Path
 import typing
 import zipfile
-import numpy as np
+from collections import OrderedDict, namedtuple
+from functools import lru_cache
+import subprocess
+
 import dill
-import pathlib
-
-from covid19sim.configs.config import *
-
+import numpy as np
+import requests
+import yaml
+from addict import Dict
+from omegaconf import OmegaConf
+from scipy.stats import gamma, norm, truncnorm
 
 SymptomProbability = namedtuple('SymptomProbability', ['name', 'id', 'probabilities'])
 SymptomProbability.__doc__ = '''A symptom probabilities collection given contexts
@@ -471,7 +474,7 @@ def _sample_viral_load_gamma(rng, shape_mean=4.5, shape_std=.15, scale_mean=1., 
     return gamma(shape, scale=scale)
 
 
-def _sample_viral_load_piecewise(rng, initial_viral_load=0, age=40):
+def _sample_viral_load_piecewise(rng, initial_viral_load=0, age=40, conf={}):
     """
     This function samples a piece-wise linear viral load model which increases, plateaus, and drops
 
@@ -481,11 +484,28 @@ def _sample_viral_load_piecewise(rng, initial_viral_load=0, age=40):
         age (int, optional): [description]. Defaults to 40.
     """
     # https://stackoverflow.com/questions/18441779/how-to-specify-upper-and-lower-limits-when-using-numpy-random-normal
-    # https://www.thelancet.com/journals/laninf/article/PIIS1473-3099(20)30196-1/fulltext
+	# https://www.thelancet.com/journals/laninf/article/PIIS1473-3099(20)30196-1/fulltext
+
+    MAX_VIRAL_LOAD = conf.get("MAX_VIRAL_LOAD")
+    MIN_VIRAL_LOAD = conf.get("MIN_VIRAL_LOAD")
+    PLATEAU_DURATION_CLIP_HIGH = conf.get("PLATEAU_DURATION_CLIP_HIGH")
+    PLATEAU_DURATION_CLIP_LOW = conf.get("PLATEAU_DURATION_CLIP_LOW")
+    PLATEAU_DURATION_MEAN = conf.get("PLATEAU_DURATION_MEAN")
+    PLATEAU_START_CLIP_HIGH = conf.get("PLATEAU_START_CLIP_HIGH")
+    PLATEAU_START_CLIP_LOW = conf.get("PLATEAU_START_CLIP_LOW")
+    PLATEAU_START_MEAN = conf.get("PLATEAU_START_MEAN")
+    PLATEAU_START_STD = conf.get("PLATEAU_START_STD")
+    PLATEAU_DURATION_STD = conf.get("PLATEAU_DURATION_STD")
+    RECOVERY_CLIP_HIGH = conf.get("RECOVERY_CLIP_HIGH")
+    RECOVERY_CLIP_LOW = conf.get("RECOVERY_CLIP_LOW")
+    RECOVERY_MEAN = conf.get("RECOVERY_MEAN")
+    RECOVERY_STD = conf.get("RECOVERY_STD")
+    VIRAL_LOAD_RECOVERY_FACTOR = conf.get("VIRAL_LOAD_RECOVERY_FACTOR")
+
     plateau_start = truncnorm((PLATEAU_START_CLIP_LOW - PLATEAU_START_MEAN)/PLATEAU_START_STD, (PLATEAU_START_CLIP_HIGH - PLATEAU_START_MEAN) / PLATEAU_START_STD, loc=PLATEAU_START_MEAN, scale=PLATEAU_START_STD).rvs(1, random_state=rng)
-    plateau_end = plateau_start + truncnorm((PLATEAU_DURATION_CLIP_LOW - PLATEAU_DURATION_MEAN)/PLEATEAU_DURATION_STD,
-                                            (PLATEAU_DURATION_CLIP_HIGH - PLATEAU_DURATION_MEAN) / PLEATEAU_DURATION_STD,
-                                            loc=PLATEAU_DURATION_MEAN, scale=PLEATEAU_DURATION_STD).rvs(1, random_state=rng)
+    plateau_end = plateau_start + truncnorm((PLATEAU_DURATION_CLIP_LOW - PLATEAU_DURATION_MEAN)/PLATEAU_DURATION_STD,
+                                            (PLATEAU_DURATION_CLIP_HIGH - PLATEAU_DURATION_MEAN) / PLATEAU_DURATION_STD,
+                                            loc=PLATEAU_DURATION_MEAN, scale=PLATEAU_DURATION_STD).rvs(1, random_state=rng)
     recovered = plateau_end + ((age/10)-1) # age is a determining factor for the recovery time
     recovered = recovered + initial_viral_load * VIRAL_LOAD_RECOVERY_FACTOR \
                           + truncnorm((RECOVERY_CLIP_LOW - RECOVERY_MEAN) / RECOVERY_STD,
@@ -1028,7 +1048,7 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
 
     return progression
 
-def _get_allergy_progression(rng):
+def _get_allergy_progression(rng, P_SEVERE_ALLERGIES):
     """
     [summary]
 
@@ -1057,7 +1077,7 @@ def _get_allergy_progression(rng):
     progression = [symptoms]
     return progression
 
-def _get_flu_progression(age, rng, carefulness, preexisting_conditions, really_sick, extremely_sick):
+def _get_flu_progression(age, rng, carefulness, preexisting_conditions, really_sick, extremely_sick, FLU_INCUBATION, AVG_FLU_DURATION):
     """
     [summary]
 
@@ -1135,9 +1155,9 @@ def _get_flu_progression(age, rng, carefulness, preexisting_conditions, really_s
                         symptoms_per_phase[phase_i].append(symptom)
 
     if age < 12 or age > 40 or any(preexisting_conditions) or really_sick or extremely_sick:
-        mean = AVG_FLU_DURATION + 2 -2*carefulness
+        mean = AVG_FLU_DURATION + 2 - 2 * carefulness
     else:
-        mean = AVG_FLU_DURATION - 2*carefulness
+        mean = AVG_FLU_DURATION - 2 * carefulness
 
     len_flu = rng.normal(mean,3)
 
@@ -1507,7 +1527,7 @@ def filter_open(locations):
     """
     return [loc for loc in locations if loc.is_open_for_business]
 
-def filter_queue_max(locations):
+def filter_queue_max(locations, max_len):
     """Given an iterable of locations, will return a list of those
     with queues that are not too long.
 
@@ -1517,7 +1537,7 @@ def filter_queue_max(locations):
     Returns:
         list
     """
-    return [loc for loc in locations if len(loc.queue)<=MAX_STORE_QUEUE_LENGTH]
+    return [loc for loc in locations if len(loc.queue) <= max_len]
 
 
 def download_file_from_google_drive(
@@ -1583,22 +1603,22 @@ def download_exp_data_if_not_exist(
         zip_ref.extractall(exp_data_destination)
     return exp_data_destination
 
-def extract_tracker_data(tracker, ExpConfig):
+def extract_tracker_data(tracker, conf):
     """
-    Get a dictionnary collecting interesting fields of the tracker and experimental settings from ExpConfig
+    Get a dictionnary collecting interesting fields of the tracker and experimental settings
 
     Args:
         tracker (covid19sim.track.Tracker): Tracker toring simulation data
-        ExpConfig (dict): Experimental Configuration
+        conf (dict): Experimental Configuration
 
     returns:
         dict: the extracted data
     """
     timenow = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
     data = dict()
-    data['intervention_day'] = ExpConfig.get('INTERVENTION_DAY')
-    data['intervention'] = ExpConfig.get('INTERVENTION')
-    data['risk_model'] = ExpConfig.get('RISK_MODEL')
+    data['intervention_day'] = conf.get('INTERVENTION_DAY')
+    data['intervention'] = conf.get('INTERVENTION')
+    data['risk_model'] = conf.get('RISK_MODEL')
     data['expected_mobility'] = tracker.expected_mobility
     data['serial_interval'] = tracker.get_generation_time()
     data['mobility'] = tracker.mobility
@@ -1623,6 +1643,7 @@ def extract_tracker_data(tracker, ExpConfig):
     data['feelings'] = tracker.feelings
     data['rec_feelings'] = tracker.rec_feelings
     data['outside_daily_contacts'] = tracker.outside_daily_contacts
+    data['test_monitor'] = tracker.test_monitor
     # data['dist_encounters'] = dict(tracker.dist_encounters)
     # data['time_encounters'] = dict(tracker.time_encounters)
     # data['day_encounters'] = dict(tracker.day_encounters)
@@ -1654,3 +1675,86 @@ def dump_tracker_data(data, outdir, name):
     outdir.mkdir(exist_ok=True, parents=True)
     with open(outdir / name, 'wb') as f:
         dill.dump(data, f)
+
+def parse_configuration(conf):
+    """
+    Transforms an Omegaconf object to native python dict, parsing specific fields like:
+    "1-15" age bin in YAML file becomes (1, 15) tuple, and datetime is parsed from string.
+
+    /!\ ANY key-specific parsing should have its inverse in covid19sim.utils.dump_conf()
+
+    Args:
+        conf (omegaconf.OmegaConf): Hydra-loaded configuration
+
+    Returns:
+        dict: parsed configuration to use in experiment
+    """
+    conf = OmegaConf.to_container(conf, resolve=True)
+    if "APP_USERS_FRACTION_BY_AGE" in conf:
+        conf["APP_USERS_FRACTION_BY_AGE"] = {
+            tuple(int(i) for i in k.split("-")): v
+            for k, v in conf["APP_USERS_FRACTION_BY_AGE"].items()
+        }
+
+    if "HUMAN_DISTRIBUTION" in conf:
+        conf["HUMAN_DISTRIBUTION"] = {
+            tuple(int(i) for i in k.split("-")): v
+            for k, v in conf["HUMAN_DISTRIBUTION"].items()
+        }
+
+    if "start_time" in conf:
+        conf["start_time"] = datetime.datetime.strptime(
+            conf["start_time"], "%Y-%m-%d %H:%M:%S"
+        )
+
+    assert "RISK_MODEL" in conf and conf["RISK_MODEL"] is not None
+
+    conf["GIT_COMMIT_HASH"] = get_git_revision_hash()
+
+    return conf
+
+
+def dump_conf(conf, path):
+    """
+    Dumps a `conf` dict in `path` and reverses the parsings done in parse_configurations
+
+    /!\ parsings done in parse_configurations should be reversed in this function.
+
+    `path` should be to a `.yaml` file.
+
+    Args:
+        conf (dict): experimental configuration
+        path (str | Path): where to dump the resulting YAML
+    """
+    if "APP_USERS_FRACTION_BY_AGE" in conf:
+        conf["APP_USERS_FRACTION_BY_AGE"] = {
+            "-".join([str(i) for i in k]): v
+            for k, v in conf["APP_USERS_FRACTION_BY_AGE"].items()
+        }
+
+    if "HUMAN_DISTRIBUTION" in conf:
+        conf["HUMAN_DISTRIBUTION"] = {
+            "-".join([str(i) for i in k]): v
+            for k, v in conf["APP_USERS_FRACTION_BY_AGE"].items()
+        }
+
+    if "start_time" in conf:
+        conf["start_time"] = conf["start_time"].strftime("%Y-%m-%d %H:%M:%S")
+
+    path = Path(path).resolve()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.exists():
+        print("WARNING configuration already exists in {}. Overwriting.".format(
+            str(path.parent)
+        ))
+
+    with path.open("w") as f:
+        yaml.safe_dump(conf, str(path))
+
+def get_git_revision_hash():
+    """Get current git hash the code is run from
+
+    Returns:
+        str: git hash
+    """
+    return subprocess.check_output(["git", "rev-parse", "HEAD"]).decode().strip()

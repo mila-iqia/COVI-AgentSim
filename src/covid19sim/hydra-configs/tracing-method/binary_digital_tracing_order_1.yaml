@@ -1,0 +1,10 @@
+---
+# NOTE: RISK_MODEL is only valid when INTERVENTION = "Tracing"
+RISK_MODEL : "digital" # "naive"  "manual", "digital", "transformer"
+SHOULD_MODIFY_BEHAVIOR : True
+
+## INTERVENTIONS
+INTERVENTION : "Tracing"
+
+# TRACING RISK MODEL PARAMETERS  (non-ML)
+TRACING_ORDER : 1

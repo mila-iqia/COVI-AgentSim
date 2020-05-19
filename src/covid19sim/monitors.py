@@ -1,20 +1,20 @@
 """
 [summary]
 """
-from matplotlib import pyplot as plt
 import json
-import pylab as pl
 import pickle
-from datetime import datetime, timedelta
 import threading
-import zipfile
 import time
+import zipfile
+from datetime import datetime, timedelta
 
-from covid19sim.utils import _json_serialize
-from covid19sim.configs.constants import TICK_MINUTE
+import pylab as pl
+from matplotlib import pyplot as plt
+
 from covid19sim.base import City
 from covid19sim.simulator import Human
-
+from covid19sim.utils import _json_serialize
+from covid19sim.constants import TICK_MINUTE
 
 class BaseMonitor(object):
     """
@@ -71,8 +71,8 @@ class SEIRMonitor(BaseMonitor):
         Yields:
             [type]: [description]
         """
-        n_days = 0
         process_start = time.time()
+        n_days = 0
         while True:
             S, E, I, R = 0, 0, 0, 0
             R0 = city.tracker.get_R()
