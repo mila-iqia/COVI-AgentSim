@@ -516,7 +516,7 @@ class Tracing(object):
             Output of `self.process_messages`
 
         Returns:
-            [float]: a scalar value.
+            float: a scalar value.
         """
         if self.risk_model in ['manual', 'digital']:
             if t + s > 0:
