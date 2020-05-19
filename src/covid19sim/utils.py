@@ -1708,6 +1708,8 @@ def parse_configuration(conf):
 
     assert "RISK_MODEL" in conf and conf["RISK_MODEL"] is not None
 
+    conf["GIT_COMMIT_HASH"] = get_git_revision_hash()
+
     return conf
 
 
@@ -1747,3 +1749,11 @@ def dump_conf(conf, path):
 
     with path.open("w") as f:
         yaml.safe_dump(conf, str(path))
+
+def get_git_revision_hash():
+    """Get current git hash the code is run from
+
+    Returns:
+        str: git hash
+    """
+    return subprocess.check_output(["git", "rev-parse", "HEAD"]).decode().strip()
