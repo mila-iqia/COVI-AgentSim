@@ -3,11 +3,11 @@
 root_path="sum_output"
 batch_path="batch"
 outzip_name="1k_app_1.zip"
-config_dir="configs"
-config_file="transformer_config.yml"
-n_people=1000
-simulation_days=22
-n_jobs=10
+# config_dir="configs"
+# config_file="transformer_config.yml"
+# n_people=1000
+# simulation_days=22
+# n_jobs=10
 num_seeds=3
 sim_git_hash=$(cd covid_p2p_simulation; git rev-parse HEAD)
 ctt_git_hash=$(cd ctt; git rev-parse HEAD)
@@ -19,7 +19,7 @@ for (( i=0; i<$num_seeds; i++ ))
     mkdir "${root_path}/${batch_path}/${i}"
 
     # Run the simulations
-    python run.py --tune --n_people $n_people --seed $seed --outdir "$root_path/$batch_path/$i" --simulation_days $simulation_days --n_jobs $n_jobs --config $config_dir/$config_file --init_percent_sick 0.002 &
+    python run.py release=plots-tlmp-202-05-17 seed=$seed outdir="$root_path/$batch_path/$i" &
   done
 
 wait
@@ -34,7 +34,7 @@ for (( i=0; i<$num_seeds; i++ ))
   done
 
 # Copy the experimental config into the output zip
-cp $config_dir/$config_file $root_path/$config_file
+# cp $config_dir/$config_file $root_path/$config_file
 
 # Add a dataset README
 cat > README.txt <<EOL
