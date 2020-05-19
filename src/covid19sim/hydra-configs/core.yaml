@@ -1,4 +1,4 @@
-MOBILITY_FACTOR: .3 # Mobility reduction factor
+GLOBAL_MOBILITY_SCALING_FACTOR: .3 # Mobility reduction factor
 
 # NOISE IN SIM PARAMETERS
 LOCATION_TECH: "gps" # &location-tech

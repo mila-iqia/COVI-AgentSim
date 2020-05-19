@@ -1430,11 +1430,11 @@ class Human(object):
                 mask_efficacy = (self.mask_efficacy + h.mask_efficacy)*2
 
                 # used for matching "mobility" between methods
-                scale_factor_passed = self.rng.random() < self.conf.get("MOBILITY_FACTOR")
+                scale_factor_passed = self.rng.random() < self.conf.get("GLOBAL_MOBILITY_SCALING_FACTOR")
                 cur_day = (self.env.timestamp - self.env.initial_timestamp).days
                 if cur_day > self.conf.get("INTERVENTION_DAY"):
                     self.num_contacts += 1
-                    self.effective_contacts += self.conf.get("MOBILITY_FACTOR")
+                    self.effective_contacts += self.conf.get("GLOBAL_MOBILITY_SCALING_FACTOR")
 
                 #if cur_day >5:
                 infector, infectee = None, None

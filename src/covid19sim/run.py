@@ -61,7 +61,6 @@ def main(conf: DictConfig) -> None:
         warnings.filterwarnings("ignore")
         outfile = None
 
-
     # ----------------------------
     # -----  Run Simulation  -----
     # ----------------------------
@@ -95,7 +94,7 @@ def main(conf: DictConfig) -> None:
         f"all_effective_contacts/(sim days * len(city.humans)): {all_effective_contacts / (simulation_days * len(city.humans))}"
     )
     print(
-        f"effective contacts per contacts (MOBILITY_FACTOR): {all_effective_contacts / all_contacts}"
+        f"effective contacts per contacts (GLOBAL_MOBILITY_SCALING_FACTOR): {all_effective_contacts / all_contacts}"
     )
 
     if not tune:
