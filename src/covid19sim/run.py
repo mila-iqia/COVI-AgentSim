@@ -167,8 +167,6 @@ def simulate(
     conf["out_chunk_size"] = out_chunk_size
     conf["print_progress"] = print_progress
     conf["seed"] = seed
-    conf["port"] = port
-    conf["n_jobs"] = n_jobs
     conf["other_monitors"] = other_monitors
 
     rng = np.random.RandomState(seed)
