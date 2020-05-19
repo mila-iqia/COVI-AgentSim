@@ -114,10 +114,7 @@ def main(conf: DictConfig) -> None:
         # ------------------------------------------------------
         # -----  Tune: Create Plots And Write Tacker Data  -----
         # ------------------------------------------------------
-        import sys
-
-        sys.path.append("../../plots")
-        from plot_rt import PlotRt
+        from covid19sim.plot_rt import PlotRt
 
         cases_per_day = tracker.cases_per_day
         if tracker.get_generation_time() > 0:
