@@ -1,5 +1,5 @@
 """
-[summary]
+Contains the `Human` class that defines the behavior of human.
 """
 
 import math
@@ -1065,7 +1065,7 @@ class Human(object):
         [summary]
 
         Args:
-            city ([type]): [description]
+            city (City): [description]
 
         Yields:
             [type]: [description]
@@ -1087,24 +1087,25 @@ class Human(object):
 
             # log test
             # TODO: needs better conditions; log test based on some condition on symptoms
-            if (
-                self.test_result != "positive"
-                and (
-                    self.test_recommended or (
-                         self.is_incubated
-                         and self.env.timestamp - self.symptom_start_time >= datetime.timedelta(days=self.conf.get("TEST_DAYS"))
-                    )
+            if (self.test_result != "positive" and (
+                self.test_recommended or (
+                    self.is_incubated and
+                    self.env.timestamp - self.symptom_start_time >= datetime.timedelta(days=self.conf["TEST_DAYS"])
                 )
-            ):
+            )):
+                if 0<= (self.env.timestamp - self.test_time).days < self.conf["TEST_INTERVAL"]:
+                        warnings.warn(
+                            f"{self.name}'s last test time is less than {self.conf['TEST_INTERVAL']} days. "
+                            "Will not retest human today. "
+                            f"Current day {self.env.timestamp}, "
+                            f"Last test time {self.test_time}",
+                            RuntimeWarning
+                        )
                 # make testing a function of age/hospitalization/travel
-                if self.get_tested(city):
-
-                    if self.conf.get('COLLECT_LOGS'):
-                        Event.log_test(self, self.env.timestamp)
-
+                elif self.get_tested(city):
+                    Event.log_test(self, self.env.timestamp)
                     self.test_time = self.env.timestamp
                     city.tracker.track_tested_results(self, self.test_result, self.test_type)
-                    self.update_risk(test_results=True)
 
             # recover
             if self.is_infectious and self.days_since_covid >= self.recovery_days:
@@ -1368,6 +1369,10 @@ class Human(object):
         area = self.location.area
         initial_viral_load = 0
 
+        # is meaningful only if location is Hospital or ICU
+        #if self.should_get_tested:
+        #    self.get_tested(city)
+
         # accumulate time at household
         if location == self.household:
             if self.last_location != self.household:
@@ -1439,7 +1444,6 @@ class Human(object):
 
                 #if cur_day >5:
                 infector, infectee = None, None
-
                 if (self.is_infectious ^ h.is_infectious) and scale_factor_passed:
                     infector, infectee = self, h
                     if h.is_infectious:

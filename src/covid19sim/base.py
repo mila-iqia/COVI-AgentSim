@@ -442,7 +442,10 @@ class City(simpy.Environment):
 
     def run(self, duration, outfile, start_time, all_possible_symptoms, port, n_jobs):
         """
-        Run the City DOCTODO(improve this)
+        Run the City.
+        Several daily tasks take place here.
+        Examples include - (1) modifying behavior of humans based on an intervention
+        (2) gathering daily statistics on humans
 
         Args:
             duration (int): duration of a step (env.timeout(duration / TICK_MINUTE))
@@ -1077,14 +1080,19 @@ class Event:
 
 class Contacts(object):
     """
-    [summary]
+    `Human` has a contact book that stores a count of all the past encounters.
+    This class is also used to store `messages` that are a privacy preserved way of communicating
+    between two `Human`.
+    It is used in tracing back to the previous encounters that a `Human` had with other `Human`.
     """
     def __init__(self, has_app, conf):
         """
-        [summary]
+        Initiliazes a book.
+        A book is a dict with keys as humans and values as list of past encounters.
+        Encounters are stored for the past TRACING_N_DAYS_HISTORY.
 
         Args:
-            has_app (bool): [description]
+            has_app (bool): True if owner (type: Human) has an app, else False
             conf (dict): yaml experiment configuration
         """
         self.conf = conf
@@ -1098,7 +1106,9 @@ class Contacts(object):
 
     def add(self, **kwargs):
         """
-        [summary]
+        Called at the time of an encounter.
+        Initializes an entry if the encountee is not in the book.
+        Adds 1 to the last entry if the encountee is already in the book.
         """
         human = kwargs.get("human")
         timestamp = kwargs.get("timestamp")
@@ -1113,14 +1123,14 @@ class Contacts(object):
             self.book[human][-1][1] += 1
         self.update_book(human, timestamp.date())
 
-    def update_book(self, human, date=None, risk_level = None):
+    def update_book(self, human, date=None):
         """
-        [summary]
+        Deletes the entries older than TRACING_N_DAYS_HISTORY.
+        If there are no more contacts for human, delete the id of that human from the book.
 
         Args:
-            human ([type]): [description]
-            date ([type], optional): [description]. Defaults to None.
-            risk_level ([type], optional): [description]. Defaults to None.
+            human (Human): one of the keys in self.book
+            date (datetime.datetime.date, optional): . Defaults to None
         """
         # keep the history of risk levels (transformers)
         if date is None:
@@ -1140,14 +1150,14 @@ class Contacts(object):
 
     def send_message(self, owner, tracing_method, order=1, reason="test", payload=None):
         """
-        [summary]
+        Sends messages to all `Human`s in self.book.
 
         Args:
-            owner ([type]): [description]
-            tracing_method ([type]): [description]
-            order (int, optional): [description]. Defaults to 1.
-            reason (str, optional): [description]. Defaults to "test".
-            payload ([type], optional): [description]. Defaults to None.
+            owner (Human): owner of this contact book.
+            tracing_method (Tracing): Method of tracing that is being used.
+            order (int, optional): Number of hops from the source of the message. Defaults to 1.
+            reason (str, optional): Reason for the trigger of this message. Defaults to "test". Possible values - "test", "symptoms", "risk_updates"
+            payload (dict, optional): Extra information related to the message. Defaults to None.
         """
         p_contact = tracing_method.p_contact
         delay = tracing_method.delay
