@@ -1368,8 +1368,8 @@ class Human(object):
         initial_viral_load = 0
 
         # is meaningful only if location is Hospital or ICU
-        if self.should_get_tested:
-            self.get_tested(city)
+        #if self.should_get_tested:
+        #    self.get_tested(city)
 
         # accumulate time at household
         if location == self.household:
