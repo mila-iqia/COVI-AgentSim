@@ -459,7 +459,7 @@ class City(simpy.Environment):
         self.current_day = 0
         humans_notified = False
         tmp_M = self.conf.get("MOBILITY_FACTOR")
-        self.conf.set("MOBILITY_FACTOR", 1)
+        self.conf["MOBILITY_FACTOR"] = 1
         while True:
             # Notify humans to follow interventions on intervention day
             if self.current_day == self.conf.get('INTERVENTION_DAY') and not humans_notified:
@@ -476,7 +476,7 @@ class City(simpy.Environment):
 
                 _ = [h.notify(self.intervention) for h in self.humans]
                 print(self.intervention)
-                self.conf.set("MOBILITY_FACTOR", tmp_M)
+                self.conf["MOBILITY_FACTOR"] = tmp_M
                 if self.conf.get('COLLECT_TRAINING_DATA'):
                     print("naive risk calculation without changing behavior... Humans notified!")
 
