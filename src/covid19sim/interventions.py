@@ -639,7 +639,7 @@ def get_intervention(key, RISK_MODEL=None, TRACING_ORDER=None, TRACE_SYMPTOMS=No
         NotImplementedError: If intervention has not been implemented.
 
     Returns:
-        [BehaviorInterventions]: `BehaviorInterventions` corresponding to the arguments.
+        `BehaviorInterventions`: `BehaviorInterventions` corresponding to the arguments.
     """
     if key == "Lockdown":
         return Lockdown()
