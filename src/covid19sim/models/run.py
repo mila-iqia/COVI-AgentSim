@@ -83,14 +83,15 @@ def integrated_risk_pred(humans, start, current_day, time_slot, all_possible_sym
             "log_path": log_path,
             "time_slot": time_slot,
             "risk_model": conf.get('RISK_MODEL'),
-            "oracle": conf.get("USE_ORACLE")
+            "oracle": conf.get("USE_ORACLE"),
+            "CLUSTER_ALGO_TYPE": conf.get("CLUSTER_ALGO_TYPE")
         })
         human.contact_book.update_messages = []
         human.contact_book.messages = []
 
     if conf.get('USE_INFERENCE_SERVER'):
         batch_start_offset = 0
-        batch_size = 300  # @@@@ TODO: make this a high-level configurable arg?
+        batch_size = 100  # @@@@ TODO: make this a high-level configurable arg?
         batched_params = []
         while batch_start_offset < len(all_params):
             batch_end_offset = min(batch_start_offset + batch_size, len(all_params))

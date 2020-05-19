@@ -25,7 +25,7 @@ class ModelsTest(unittest.TestCase):
         with TemporaryDirectory() as d:
             n_people = 10
             n_days = 20
-            monitors, _ = simulate(
+            city, monitors, _ = simulate(
                 n_people=n_people,
                 start_time=datetime.datetime(2020, 2, 28, 0, 0),
                 simulation_days=n_days,

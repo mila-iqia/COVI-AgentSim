@@ -29,9 +29,14 @@ def main(conf: DictConfig) -> None:
         conf (DictConfig): yaml configuration file
     """
 
-    # Load the experimental configuration
-    print(conf.pretty())
+    # -------------------------------------------------
+    # -----  Load the experimental configuration  -----
+    # -------------------------------------------------
     conf = parse_configuration(conf)
+
+    # -------------------------------------
+    # -----  Create Output Directory  -----
+    # -------------------------------------
     if conf["outdir"] is None:
         conf["outdir"] = "output"
     os.makedirs(f"{conf['outdir']}", exist_ok=True)
@@ -46,6 +51,9 @@ def main(conf: DictConfig) -> None:
     os.makedirs(conf["outdir"])
     outfile = os.path.join(conf["outdir"], "data")
 
+    # ---------------------------------
+    # -----  Filter-Out Warnings  -----
+    # ---------------------------------
     if conf["tune"]:
         print("Using Tune")
         import warnings
@@ -53,13 +61,13 @@ def main(conf: DictConfig) -> None:
         warnings.filterwarnings("ignore")
         outfile = None
 
+
+    # ----------------------------
+    # -----  Run Simulation  -----
+    # ----------------------------
     conf["outfile"] = outfile
 
-    print("n_people:", conf["n_people"])
-    print("seed:", conf["seed"])
-    print("n_jobs:", conf["n_jobs"])
-
-    monitors, tracker = simulate(
+    city, monitors, tracker = simulate(
         n_people=conf["n_people"],
         init_percent_sick=conf["init_percent_sick"],
         start_time=conf["start_time"],
@@ -72,15 +80,53 @@ def main(conf: DictConfig) -> None:
         port=conf["port"],
         conf=conf,
     )
-    timenow = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 
-    if not conf["tune"]:
+    # ----------------------------------------
+    # -----  Compute Effective Contacts  -----
+    # ----------------------------------------
+    timenow = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    all_effective_contacts = 0
+    all_contacts = 0
+    for human in city.humans:
+        all_effective_contacts += human.effective_contacts
+        all_contacts += human.num_contacts
+    print(f"all_effective_contacts: {all_effective_contacts}")
+    print(
+        f"all_effective_contacts/(sim days * len(city.humans)): {all_effective_contacts / (simulation_days * len(city.humans))}"
+    )
+    print(
+        f"effective contacts per contacts (M): {all_effective_contacts / all_contacts}"
+    )
+
+    if not tune:
+        # ----------------------------------------------
+        # -----  Not Tune: Write Logs And Metrics  -----
+        # ----------------------------------------------
         monitors[0].dump()
         monitors[0].join_iothread()
         # write metrics
         logfile = os.path.join(f"{conf['outdir']}/logs.txt")
         tracker.write_metrics(logfile)
     else:
+        # ------------------------------------------------------
+        # -----  Tune: Create Plots And Write Tacker Data  -----
+        # ------------------------------------------------------
+        import sys
+
+        sys.path.append("../../plots")
+        from plot_rt import PlotRt
+
+        cases_per_day = tracker.cases_per_day
+        if tracker.get_generation_time() > 0:
+            serial_interval = tracker.get_generation_time()
+        else:
+            serial_interval = 7.0
+            print("WARNING: serial_interval is 0")
+        print(f"using serial interval :{serial_interval}")
+        plotrt = PlotRt(R_T_MAX=4, sigma=0.25, GAMMA=1.0 / serial_interval)
+        most_likely, _ = plotrt.compute(cases_per_day, r0_estimate=2.5)
+        print("Rt", most_likely[:20])
+
         filename = f"tracker_data_n_{conf['n_people']}_seed_{conf['seed']}_{timenow}_{conf['name']}.pkl"
         data = extract_tracker_data(tracker, conf)
         dump_tracker_data(data, conf["outdir"], filename)
@@ -132,8 +178,6 @@ def simulate(
     conf["n_jobs"] = n_jobs
     conf["other_monitors"] = other_monitors
 
-    print(">>> GOT SEED", seed)
-
     rng = np.random.RandomState(seed)
     env = Env(start_time, conf.get("TICK_MINUTE"))
     city_x_range = (0, 1000)
@@ -179,7 +223,7 @@ def simulate(
 
     env.run(until=simulation_days * 24 * 60 / city.conf.get("TICK_MINUTE"))
 
-    return monitors, city.tracker
+    return city, monitors, city.tracker
 
 
 if __name__ == "__main__":

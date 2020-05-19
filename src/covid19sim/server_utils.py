@@ -24,9 +24,8 @@ import covid19sim.frozen.utils
 
 expected_raw_packet_param_names = [
     "start", "current_day", "all_possible_symptoms", "human",
-    "COLLECT_TRAINING_DATA", "log_path", "risk_model", 'time_slot', "oracle"
+    "COLLECT_TRAINING_DATA", "log_path", "risk_model", 'time_slot', "oracle", "CLUSTER_ALGO_TYPE"
 ]
-
 expected_processed_packet_param_names = [
     "current_day", "observed", "unobserved"
 ]
@@ -380,7 +379,7 @@ def proc_human(params, inference_engine=None):
         "unexpected/broken proc_human input format between simulator and inference service"
 
     # Cluster Messages
-    CLUSTER_ALGO_TYPE = "naive"  # should be in ["old", "blind", "naive", "perfect", "simple"]
+    CLUSTER_ALGO_TYPE = params["CLUSTER_ALGO_TYPE"] # see yml config
     # TODO: put algo type def above in config file
     human = params["human"]
     if CLUSTER_ALGO_TYPE == "old":
