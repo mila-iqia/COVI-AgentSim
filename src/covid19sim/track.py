@@ -1,19 +1,18 @@
-
 """
-[summary]
+Contains a class to track several simulation metrics.
+It is initialized as an attribute of the city and called at several places in `Human`.
 """
-import pandas as pd
-import numpy as np
+import copy
+import datetime
 import math
 from collections import defaultdict
-import networkx as nx
-import datetime
-import dill
-import copy
 
-from covid19sim.configs.config import HUMAN_DISTRIBUTION, LOCATION_DISTRIBUTION, INFECTION_RADIUS, EFFECTIVE_R_WINDOW
+import dill
+import networkx as nx
+import numpy as np
+import pandas as pd
+
 from covid19sim.utils import log
-from covid19sim.configs.exp_config import ExpConfig
 
 
 def get_nested_dict(nesting):
@@ -52,10 +51,10 @@ class Tracker(object):
         self.city = city
         # filename to store intermediate results; useful for bigger simulations;
         timenow = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
-        if ExpConfig.get('INTERVENTION_DAY') == -1:
+        if city.conf.get('INTERVENTION_DAY') == -1:
             name = "unmitigated"
         else:
-            name = ExpConfig.get('RISK_MODEL')
+            name = city.conf.get('RISK_MODEL')
         self.filename = f"tracker_data_n_{len(city.humans)}_{timenow}_{name}.pkl"
 
         # infection & contacts
@@ -104,7 +103,7 @@ class Tracker(object):
         self.critical_per_day = [0]
 
         # demographics
-        self.age_bins = sorted(HUMAN_DISTRIBUTION.keys(), key = lambda x:x[0])
+        self.age_bins = sorted(self.city.conf.get("HUMAN_DISTRIBUTION").keys(), key = lambda x:x[0])
         self.n_humans = len(self.city.humans)
 
         # track encounters
@@ -143,6 +142,7 @@ class Tracker(object):
         # monitors
         self.human_monitor = {}
         self.infection_monitor = []
+        self.test_monitor = []
 
         # update messages
         self.infector_infectee_update_messages = defaultdict(lambda :defaultdict(dict))
@@ -160,10 +160,11 @@ class Tracker(object):
         self.sex_distribution = pd.DataFrame([h.sex for h in self.city.humans])
         # print("gender distribution\n", self.gender_distribution.describe())
 
-        self.house_age = pd.DataFrame([np.mean([h.age for h in house.residents]) for house in self.city.households])
-        self.house_size = pd.DataFrame([len(house.residents) for house in self.city.households])
-        print("house age distribution\n", self.house_age.describe())
-        print("house size distribution\n", self.house_size.describe())
+        if self.city.households:
+            self.house_age = pd.DataFrame([np.mean([h.age for h in house.residents]) for house in self.city.households])
+            self.house_size = pd.DataFrame([len(house.residents) for house in self.city.households])
+            print("house age distribution\n", self.house_age.describe())
+            print("house size distribution\n", self.house_size.describe())
 
         self.frac_asymptomatic = sum(h.is_asymptomatic for h in self.city.humans)/len(self.city.humans)
         print("asymptomatic fraction", self.frac_asymptomatic)
@@ -251,7 +252,7 @@ class Tracker(object):
 
         # recovery stats
         self.recovered_stats.append([0,0])
-        if len(self.recovered_stats) > EFFECTIVE_R_WINDOW:
+        if len(self.recovered_stats) > self.city.conf.get("EFFECTIVE_R_WINDOW"):
             self.recovered_stats = self.recovered_stats[1:]
 
         # test_per_day
@@ -518,7 +519,6 @@ class Tracker(object):
     def track_tested_results(self, human, test_result, test_type):
         """
         [summary]
-
         Args:
             human ([type]): [description]
             test_result ([type]): [description]
@@ -526,6 +526,14 @@ class Tracker(object):
         """
         if test_result == "positive":
             self.cases_positive_per_day[-1] += 1
+
+        self.test_monitor.append({
+            "name": human.name,
+            "symptoms": list(human.symptoms),
+            "timestamp": human.env.timestamp,
+            "type": test_type,
+            "result": test_result
+        })
 
     def track_recovery(self, n_infectious_contacts, duration):
         """
@@ -666,7 +674,11 @@ class Tracker(object):
         self.n_contacts += 1
 
         # bins of 50
-        dist_bin = math.floor(distance/50) if distance <= INFECTION_RADIUS else math.floor(INFECTION_RADIUS/50)
+        dist_bin = (
+            math.floor(distance / 50)
+            if distance <= self.city.conf.get("INFECTION_RADIUS")
+            else math.floor(self.city.conf.get("INFECTION_RADIUS") / 50)
+        )
 
         # bins of 15 mins
         time_bin = math.floor(duration/15) if duration <= 60 else 4
@@ -696,12 +708,13 @@ class Tracker(object):
         self.dist_encounters[dist_bin] += 1
         self.time_encounters[time_bin] += 1
 
-    def write_metrics(self, logfile):
+    def write_metrics(self, logfile=None):
         """
-        [summary]
+        Writes various metrics to logfile.
+        Prints them if logfile is None.
 
         Args:
-            logfile ([type]): [description]
+            logfile (str, optional): filename where these logs will be dumped
         """
         log("######## DEMOGRAPHICS #########", logfile)
         log(f"age distribution\n {self.age_distribution.describe()}", logfile)
@@ -878,8 +891,8 @@ class Tracker(object):
         plt.savefig(f"{dirname}/infection_graph.png")
 
         os.makedirs(f"{dirname}/contact_stats", exist_ok=True)
-        types = sorted(LOCATION_DISTRIBUTION.keys())
-        ages = sorted(HUMAN_DISTRIBUTION.keys(), key = lambda x:x[0])
+        types = sorted(self.city.conf.get("LOCATION_DISTRIBUTION").keys())
+        ages = sorted(self.city.conf.get("HUMAN_DISTRIBUTION").keys(), key = lambda x:x[0])
         for hour, v1 in self.transition_probability.items():
             images = []
             fig,ax =  plt.subplots(3,2, figsize=(18,12), sharex=True, sharey=False)
@@ -899,9 +912,9 @@ class Tracker(object):
 
     def dump_metrics(self):
         data = dict()
-        data['intervention_day'] = ExpConfig.get('INTERVENTION_DAY')
-        data['intervention'] = ExpConfig.get('INTERVENTION')
-        data['risk_model'] = ExpConfig.get('RISK_MODEL')
+        data['intervention_day'] = self.city.conf.get('INTERVENTION_DAY')
+        data['intervention'] = self.city.conf.get('INTERVENTION')
+        data['risk_model'] = self.city.conf.get('RISK_MODEL')
 
         data['expected_mobility'] = self.expected_mobility
         data['mobility'] = self.mobility

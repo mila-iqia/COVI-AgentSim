@@ -77,8 +77,8 @@ data = pickle.load(open("output/data.pkl", 'rb'))
 ## How to run it as a function?
 Although not designed with this usage in mind one can still call it like this
 ```
-from run import run_simu
-monitors = run_simu(n_stores=100, n_parks=50, n_people=100, n_misc=100, print_progress=False, seed=0)
+from run import simulate
+monitors = simulate(n_stores=100, n_parks=50, n_people=100, n_misc=100, print_progress=False, seed=0)
 ```
 
 `data` is a `list` of `dict`.

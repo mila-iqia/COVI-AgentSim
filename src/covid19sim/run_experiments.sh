@@ -10,7 +10,7 @@ fi
 # launch simulations
 for seed in 1234 1235 1236 1237
 do
-  $PYTHON run.py tune --n_people 2000 --simulation_days 45 --seed $seed --init_percent_sick 0.001 --config configs/$1 --name $2  --outdir tune/ --n_jobs 10 &
+  $PYTHON run.py tune --n_people 2000 --simulation_days 45 --seed $seed --init_percent_sick 0.001 --config configs/$1 --name $2  --outdir tune/ &
   sleep 5;
 done
 wait;

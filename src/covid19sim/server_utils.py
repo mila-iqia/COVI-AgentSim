@@ -20,19 +20,19 @@ import covid19sim.frozen.clustering.base
 import covid19sim.frozen.clusters
 import covid19sim.frozen.helper
 import covid19sim.frozen.utils
-from covid19sim.configs.exp_config import ExpConfig
+import covid19sim.utils
 
 
 expected_raw_packet_param_names = [
-    "start", "current_day", "human", "COLLECT_TRAINING_DATA", "log_path",
-    "risk_model", 'time_slot', "oracle"
+    "start", "current_day", "human", "log_path", "time_slot", "conf"
 ]
-
 expected_processed_packet_param_names = [
     "current_day", "observed", "unobserved"
 ]
 
 default_poll_delay_ms = 500
+default_frontend_ipc_address = "ipc:///tmp/covid19sim-inference-frontend.ipc"
+default_backend_ipc_address = "ipc:///tmp/covid19sim-inference-backend.ipc"
 
 
 class AtomicCounter(object):
@@ -41,37 +41,16 @@ class AtomicCounter(object):
     """
 
     def __init__(self, init=0):
-        """
-        [summary]
-
-        Args:
-            init (int, optional): [description]. Defaults to 0.
-        """
         self._count = init
         self._lock = threading.Lock()
 
     def increment(self, delta=1):
-        """
-        [summary]
-
-        Args:
-            delta (int, optional): [description]. Defaults to 1.
-
-        Returns:
-            [type]: [description]
-        """
         with self._lock:
             self._count += delta
             return self._count
 
     @property
     def count(self):
-        """
-        [summary]
-
-        Returns:
-            [type]: [description]
-        """
         return self._count
 
 
@@ -89,21 +68,24 @@ class InferenceWorker(threading.Thread):
             identifier: typing.Any,
             mp_backend: typing.AnyStr,
             mp_threads: int,
+            weights_path: typing.Optional[typing.AnyStr] = None,
             context: typing.Optional[zmq.Context] = None,
     ):
         """
-        [summary]
+        Initializes the inference worker's attributes (counters, condvars, context).
 
         Args:
-            experiment_directory (typing.AnyStr): [description]
-            identifier (typing.Any): [description]
-            mp_backend (typing.AnyStr): [description]
-            mp_threads (int): [description]
-            context (typing.Optional[zmq.Context], optional): [description]. Defaults to None.
+            experiment_directory: the path to the experiment directory to pass to the inference engine.
+            identifier: identifier for this worker (name, used for debug purposes only).
+            mp_backend: joblib parallel backend to use when processing humans in parallel.
+            mp_threads: joblib parallel thread count to use when processing humans in parallel.
+            weights_path: the path to the specific weight file to use. If not, will use the 'best
+                checkpoint weights' inside the experiment directory.
+            context: zmq context to create i/o objects from.
         """
-
         threading.Thread.__init__(self)
         self.experiment_directory = experiment_directory
+        self.weights_path = weights_path
         self.identifier = identifier
         self.stop_flag = threading.Event()
         self.packet_counter = AtomicCounter(init=0)
@@ -116,13 +98,15 @@ class InferenceWorker(threading.Thread):
         self.init_time = None
 
     def run(self):
+        """Main loop of the inference worker thread.
+
+        Will receive brokered requests from the frontend, process them, and respond
+        with the result through the broker.
         """
-        [summary]
-        """
-        engine = InferenceEngine(self.experiment_directory)
+        engine = InferenceEngineWrapper(self.experiment_directory, self.weights_path)
         socket = self.context.socket(zmq.REQ)
         socket.identity = str(self.identifier).encode("ascii")
-        socket.connect("ipc://backend.ipc")
+        socket.connect(default_backend_ipc_address)
         socket.send(b"READY")  # tell broker we're ready
         poller = zmq.Poller()
         poller.register(socket, zmq.POLLIN)
@@ -132,9 +116,8 @@ class InferenceWorker(threading.Thread):
             if socket in evts and evts[socket] == zmq.POLLIN:
                 proc_start_time = time.time()
                 address, empty, buffer = socket.recv_multipart()
-                hdi = pickle.loads(buffer)
-                response = self.process_sample(
-                    hdi, engine, self.mp_backend, self.mp_threads)
+                sample = pickle.loads(buffer)
+                response = proc_human_batch(sample, engine, self.mp_backend, self.mp_threads)
                 response = pickle.dumps(response)
                 socket.send_multipart([address, b"", response])
                 self.time_counter.increment(time.time() - proc_start_time)
@@ -142,80 +125,28 @@ class InferenceWorker(threading.Thread):
         socket.close()
 
     def get_processed_count(self):
-        """
-        Returns the total number of processed requests by this inference server.
-
-        Returns:
-            [type]: [description]
-        """
+        """Returns the total number of processed requests by this inference server."""
         return self.packet_counter.count
 
     def get_averge_processing_delay(self):
-        """
-        Returns the average sample processing time between reception & response (in seconds).
-
-        Returns:
-            [type]: [description]
-        """
+        """Returns the average sample processing time between reception & response (in seconds)."""
         tot_delay, tot_packet_count = self.time_counter.count, self.packet_counter.count
         if not tot_packet_count:
             return float("nan")
         return tot_delay / self.packet_counter.count
 
     def get_processing_uptime(self):
-        """
-        Returns the fraction of total uptime that the server spends processing requests.
-
-        Returns:
-            [type]: [description]
-        """
+        """Returns the fraction of total uptime that the server spends processing requests."""
         tot_process_time, tot_time = self.time_counter.count, time.time() - self.init_time
         return tot_process_time / tot_time
 
     def stop(self):
-        """
-        Stops the infinite data reception loop, allowing a clean shutdown.
-        """
+        """Stops the infinite data reception loop, allowing a clean shutdown."""
         self.stop_flag.set()
-
-    @staticmethod
-    def process_sample(sample, engine, mp_backend=None, mp_threads=0):
-        """
-        [summary]
-
-        Args:
-            sample ([type]): [description]
-            engine ([type]): [description]
-            mp_backend ([type], optional): [description]. Defaults to None.
-            mp_threads (int, optional): [description]. Defaults to 0.
-
-        Returns:
-            [type]: [description]
-        """
-        if isinstance(sample, list):
-            if mp_threads > 0:
-                import joblib
-                with joblib.Parallel(
-                        n_jobs=mp_threads,
-                        backend=mp_backend,
-                        batch_size="auto",
-                        prefer="threads") as parallel:
-                    results = parallel((joblib.delayed(proc_human)(human, engine) for human in sample))
-                return [(h.name, risk_history, h.clusters) for h, risk_history in results]
-            else:
-                return [InferenceWorker.process_sample(human, engine, mp_backend, mp_threads) for human in sample]
-        else:
-            assert isinstance(sample, dict), "unexpected input data format"
-            result_human, risk_history = proc_human(sample, engine, mp_backend, mp_threads)
-            if result_human is not None:
-                return (result_human.name, risk_history, result_human.clusters)
-            return None
 
 
 class InferenceBroker(threading.Thread):
-    """
-    Manages inference workers through a backend connection for load balancing.
-    """
+    """Manages inference workers through a backend connection for load balancing."""
 
     def __init__(
             self,
@@ -223,23 +154,24 @@ class InferenceBroker(threading.Thread):
             workers: int,
             mp_backend: typing.AnyStr,
             mp_threads: int,
-            port: int,
+            port: typing.Optional[int] = None,
             verbose: bool = False,
             verbose_print_delay: float = 5.,
+            weights_path: typing.Optional[typing.AnyStr] = None,
             context: typing.Optional[zmq.Context] = None,
     ):
         """
-        [summary]
+        Initializes the inference broker's attributes (counters, condvars, context).
 
         Args:
-            model_exp_path (typing.AnyStr): [description]
-            workers (int): [description]
-            mp_backend (typing.AnyStr): [description]
-            mp_threads (int): [description]
-            port (int): [description]
-            verbose (bool, optional): [description]. Defaults to False.
-            verbose_print_delay (float, optional): [description]. Defaults to 5..
-            context (typing.Optional[zmq.Context], optional): [description]. Defaults to None.
+            model_exp_path: the path to the experiment directory to pass to the inference engine.
+            workers: the number of independent inference workers to spawn to process requests.
+            mp_backend: joblib parallel backend to use when processing humans in parallel.
+            mp_threads: joblib parallel thread count to use when processing humans in parallel.
+            port: the port number to accept TCP requests on. If None, will accept IPC requests instead.
+            verbose: toggles whether to print extra debug information while running.
+            verbose_print_delay: specifies how often the extra debug info should be printed.
+            context: zmq context to create i/o objects from.
         """
         threading.Thread.__init__(self)
         if context is None:
@@ -250,19 +182,28 @@ class InferenceBroker(threading.Thread):
         self.mp_threads = mp_threads
         self.port = port
         self.model_exp_path = model_exp_path
+        self.weights_path = weights_path
         self.stop_flag = threading.Event()
         self.verbose = verbose
         self.verbose_print_delay = verbose_print_delay
 
     def run(self):
+        """Main loop of the inference broker thread.
+
+        Will received requests from clients and dispatch them to available workers.
         """
-        [summary]
-        """
-        print(f"Initializing {self.workers} worker(s) from directory: {self.model_exp_path}")
+        print(f"Initializing {self.workers} worker(s) from experiment: {self.model_exp_path}")
+        if self.weights_path is not None:
+            print(f"\t will use weights directly from: {self.weights_path}")
         frontend = self.context.socket(zmq.ROUTER)
-        frontend.bind(f"tcp://*:{self.port}")
+        if self.port:
+            frontend_address = f"tcp://*:{self.port}"
+        else:
+            frontend_address = default_frontend_ipc_address
+        print(f"Will listen for inference requests at: {frontend_address}")
+        frontend.bind(frontend_address)
         backend = self.context.socket(zmq.ROUTER)
-        backend.bind("ipc://backend.ipc")
+        backend.bind(default_backend_ipc_address)
         worker_map = {}
         for worker_idx in range(self.workers):
             worker_id = f"worker:{worker_idx}"
@@ -271,6 +212,7 @@ class InferenceBroker(threading.Thread):
                 worker_id,
                 self.mp_backend,
                 self.mp_threads,
+                weights_path=self.weights_path,
                 context=self.context
             )
             worker_map[worker_id] = worker
@@ -299,7 +241,8 @@ class InferenceBroker(threading.Thread):
                     packets = worker.get_processed_count()
                     delay = worker.get_averge_processing_delay()
                     uptime = worker.get_processing_uptime()
-                    print(f"  {worker_id}:  packets={packets}  avg_delay={delay:.6f}sec  proc_time_ratio={uptime:.1%}")
+                    print(f"  {worker_id}:  packets={packets}"
+                          f"  avg_delay={delay:.6f}sec  proc_time_ratio={uptime:.1%}")
                 last_update_timestamp = time.time()
         for w in worker_map.values():
             w.stop()
@@ -323,82 +266,105 @@ class InferenceClient:
 
     def __init__(
             self,
-            target_port: typing.Union[int, typing.List[int]],
-            target_addr: typing.Union[str, typing.List[str]] = "localhost",
+            server_address: typing.Optional[typing.AnyStr] = default_frontend_ipc_address,
             context: typing.Optional[zmq.Context] = None,
     ):
         """
-        [summary]
+        Initializes the client's attributes (socket, context).
 
         Args:
-            target_port (typing.Union[int, typing.List[int]]): [description]
-            target_addr (typing.Union[str, typing.List[str]], optional): [description]. Defaults to "localhost".
-            context (typing.Optional[zmq.Context], optional): [description]. Defaults to None.
+            server_address: address of the inference server frontend to send requests to.
+            context: zmq context to create i/o objects from.
         """
-        self.target_ports = [target_port] if isinstance(target_port, int) else target_port
-        self.target_addrs = [target_addr] if isinstance(target_addr, str) else target_addr
-        if len(self.target_ports) != len(self.target_addrs):
-            assert len(self.target_addrs) == 1 and len(self.target_ports) > 1, \
-                "must either match all ports to one address or provide full port/addr combos"
-            self.target_addrs = self.target_addrs * len(self.target_ports)
         if context is None:
             context = zmq.Context()
         self.context = context
         self.socket = self.context.socket(zmq.REQ)
-        for addr, port in zip(self.target_addrs, self.target_ports):
-            self.socket.connect(f"tcp://{addr}:{port}")
+        if server_address is None:
+            server_address = default_frontend_ipc_address
+        self.socket.connect(server_address)
 
     def infer(self, sample):
-        """
-        Forwards a data sample for the inference engine using pickle.
-
-        Args:
-            sample ([type]): [description]
-
-        Returns:
-            [type]: [description]
-        """
-        self.socket.send(pickle.dumps(sample))
-        return pickle.loads(self.socket.recv())
+        """Forwards a data sample for the inference engine using pickle."""
+        self.socket.send_pyobj(sample)
+        return self.socket.recv_pyobj()
 
 
-def proc_human(params, inference_engine=None):
+class InferenceEngineWrapper(InferenceEngine):
+    """Inference engine wrapper used to download & extract experiment data, if necessary."""
+
+    def __init__(self, experiment_directory, *args, **kwargs):
+        if experiment_directory.startswith("http"):
+            assert os.path.isdir("/tmp"), "don't know where to download data to..."
+            experiment_root_directory = \
+                covid19sim.utils.download_exp_data_if_not_exist(experiment_directory, "/tmp")
+            experiment_subdirectories = \
+                [os.path.join(experiment_root_directory, p) for p in os.listdir(experiment_root_directory)
+                 if os.path.isdir(os.path.join(experiment_root_directory, p))]
+            assert len(experiment_subdirectories) == 1, "should only have one dir per experiment zip"
+            experiment_directory = experiment_subdirectories[0]
+        super().__init__(experiment_directory, *args, **kwargs)
+
+
+def proc_human_batch(
+        sample,
+        engine,
+        mp_backend,
+        mp_threads,
+):
     """
-    (Pre-)Processes the received simulator data for a single human.
+    Processes a chunk of human data, clustering messages and computing new risk levels.
 
     Args:
-        params ([type]): [description]
-        inference_engine ([type], optional): [description]. Defaults to None.
+        sample: a dictionary of data necessary for clustering+inference.
+        engine: the inference engine, pre-instantiated with the right experiment config.
+        mp_backend: joblib parallel backend to use when processing humans in parallel.
+        mp_threads: joblib parallel thread count to use when processing humans in parallel.
 
     Returns:
-        [type]: [description]
+        The clustering + risk level update results.
     """
-    if all([p in params for p in expected_processed_packet_param_names]):
-        return params, None  # probably fetching data from data loader; skip stuff below
+    if isinstance(sample, list):
+        if mp_threads > 0:
+            import joblib
+            with joblib.Parallel(
+                    n_jobs=mp_threads,
+                    backend=mp_backend,
+                    batch_size="auto",
+                    prefer="threads") as parallel:
+                results = parallel((joblib.delayed(_proc_human)(human, engine) for human in sample))
+            return [(h.name, risk_history, h.clusters) for h, risk_history in results]
+        else:
+            return [proc_human_batch(human, engine, mp_backend, mp_threads) for human in sample]
+    else:
+        assert isinstance(sample, dict), "unexpected input data format"
+        result_human, risk_history = _proc_human(sample, engine)
+        return result_human.name, risk_history, result_human.clusters
 
+
+def _proc_human(params, inference_engine):
+    """Internal implementation of the `proc_human_batch` function."""
     assert isinstance(params, dict) and \
-           all([p in params for p in expected_raw_packet_param_names]), \
-        "unexpected/broken proc_human input format between simulator and inference service"
+        all([p in params for p in expected_raw_packet_param_names]), \
+        "unexpected/broken _proc_human input format between simulator and inference service"
+    conf = params["conf"]
 
     # Cluster Messages
-    CLUSTER_ALGO_TYPE = "naive"  # should be in ["old", "blind", "naive", "perfect", "simple"]
-    # TODO: put algo type def above in config file
+    cluster_algo_type = conf.get("CLUSTER_ALGO_TYPE")
     human = params["human"]
-    if CLUSTER_ALGO_TYPE == "old":
+    if cluster_algo_type == "old":
         human.clusters.add_messages(human.messages)
         human.clusters.update_records(human.update_messages)
         human.clusters.purge(params["current_day"])
     else:
-        # note: this arg should only be true if the sim keeps sending old messages every iteration
-        REBUILD_CLUSTERS_FROM_SCRATCH = False  # TODO: put in config file
-        if REBUILD_CLUSTERS_FROM_SCRATCH or \
-                not isinstance(human.clusters, covid19sim.frozen.clustering.base.ClusterManagerBase):
-            clustering_type = covid19sim.frozen.clustering.base.get_cluster_manager_type(CLUSTER_ALGO_TYPE)
-            if CLUSTER_ALGO_TYPE == "naive":
+        if not isinstance(human.clusters, covid19sim.frozen.clustering.base.ClusterManagerBase):
+            clustering_type = \
+                covid19sim.frozen.clustering.base.get_cluster_manager_type(cluster_algo_type)
+            if cluster_algo_type == "naive":
                 clustering_type = functools.partial(clustering_type, ticks_per_uid_roll=1)
             # note: we create the manager to use day-level timestamps only
             human.clusters = clustering_type(
-                max_history_ticks_offset=ExpConfig.get('TRACING_N_DAYS_HISTORY'),
+                max_history_ticks_offset=conf.get("TRACING_N_DAYS_HISTORY"),
                 # note: the simulator should be able to match all update messages to encounters, but
                 # since the time slot update voodoo, I (PLSC) have not been able to make no-adopt
                 # version of the naive implementation work (both with and without batching)
@@ -408,32 +374,15 @@ def proc_human(params, inference_engine=None):
             )
         # set the current day as the refresh timestamp to auto-purge outdated messages in advance
         human.clusters.set_current_timestamp(params["current_day"])
-        USE_MESSAGE_BATCHING = True  # TODO: put in config file
-        if USE_MESSAGE_BATCHING:
-            encounter_messages = covid19sim.frozen.utils.convert_messages_to_batched_new_format(
-                human.messages, human.exposure_message)
-            update_messages = covid19sim.frozen.utils.convert_messages_to_batched_new_format(
-                human.update_messages)
-            earliest_new_encounter_message = encounter_messages[0][0] if len(encounter_messages) else None
-        else:
-            encounter_messages = \
-                [covid19sim.frozen.utils.convert_message_to_new_format(m) for m in human.messages]
-            exposure_message = \
-                covid19sim.frozen.utils.convert_message_to_new_format(human.exposure_message) \
-                if human.exposure_message else None
-            # since the original messages do not carry the 'exposition' flag, we have to set it manually:
-            # hopefully this will only match the proper messages (based on _real_sender_id comparisons)...
-            if exposure_message is not None:
-                for m in encounter_messages:
-                    m._exposition_event = m == exposure_message
-            update_messages = \
-                [covid19sim.frozen.utils.convert_message_to_new_format(m) for m in human.update_messages]
-            earliest_new_encounter_message = encounter_messages[0] if len(encounter_messages) else None
+        encounter_messages = covid19sim.frozen.utils.convert_messages_to_batched_new_format(
+            human.messages, human.exposure_message)
+        update_messages = covid19sim.frozen.utils.convert_messages_to_batched_new_format(
+            human.update_messages)
+        earliest_new_encounter_message = encounter_messages[0][0] if len(encounter_messages) else None
         if earliest_new_encounter_message is not None:
             # quick verification: even with a 1-day buffer for timeslot craziness, we should not be
             # getting old encounters here; the simulator should not keep & transfer those every call
-            assert REBUILD_CLUSTERS_FROM_SCRATCH or \
-                   earliest_new_encounter_message.encounter_time + 1 >= params["current_day"]
+            assert earliest_new_encounter_message.encounter_time + 1 >= params["current_day"]
         human.clusters.add_messages(
             messages=[*encounter_messages, *update_messages],
             current_timestamp=params["current_day"],
@@ -471,32 +420,29 @@ def proc_human(params, inference_engine=None):
         }
     }
 
-    if params["COLLECT_TRAINING_DATA"]:
+    if conf.get("COLLECT_TRAINING_DATA"):
         os.makedirs(params["log_path"], exist_ok=True)
         with open(os.path.join(params["log_path"], f"daily_human-{params['time_slot']}.pkl"), 'wb') as fd:
             pickle.dump(daily_output, fd)
 
-    # Return ground truth infectiousnesses
-    if params.get('oracle', None):
+    if conf.get("USE_ORACLE"):
+        # return ground truth infectiousnesses
         human['risk_history'] = human['infectiousnesses']
-        return human
-    inference_result = None
-    if params['risk_model'] == "transformer":
-        try:
-            inference_result = inference_engine.infer(daily_output)
-        except InvalidSetSize:
-            pass  # return None for invalid samples
-        except RuntimeError as error:
-            # TODO: ctt.modules.HealthHistoryEmbedding can fail with :
-            #  size mismatch, m1: [14 x 29], m2: [13 x 128]
-            warnings.warn(str(error), RuntimeWarning)
-    risk_history = None
-    if inference_result is not None:
-        # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-        # ... TODO: apply the inference results to the human's risk before returning it
-        #           (it will depend on the output format used by Nasim)
-        # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-        risk_history = inference_result['infectiousness']
+    else:
+        # estimate infectiousnesses using CTT inference engine
+        inference_result = None
+        if conf.get("RISK_MODEL") == "transformer":
+            try:
+                inference_result = inference_engine.infer(daily_output)
+            except InvalidSetSize:
+                pass  # return None for invalid samples
+            except RuntimeError as error:
+                # TODO: ctt.modules.HealthHistoryEmbedding can fail with :
+                #  size mismatch, m1: [14 x 29], m2: [13 x 128]
+                warnings.warn(str(error), RuntimeWarning)
+        risk_history = None
+        if inference_result is not None:
+            risk_history = inference_result['infectiousness']
 
     # clear all messages for next time we update
     human.messages = []

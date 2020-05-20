@@ -1,33 +1,30 @@
 ---
 # EXPERIMENTAL PARAMETERS
-COLLECT_LOGS : False
-COLLECT_TRAINING_DATA : False
-USE_INFERENCE_SERVER : True
+COLLECT_LOGS : True
+COLLECT_TRAINING_DATA : True
+USE_INFERENCE_SERVER : False
 RISK_MODEL : "transformer" # "naive"  "manual", "digital", "transformer"
+INIT_PERCENT_SICK : 0.1
 SHOULD_MODIFY_BEHAVIOR : True
 USE_ORACLE: False
+GLOBAL_MOBILITY_SCALING_FACTOR : 1
 
 ## INTERVENTIONS
-INTERVENTION_DAY : 5
-# NOTE: INTERVENTION is only valid if INTERVENTION_DAY >= 0
+INTERVENTION_DAY : 2
 INTERVENTION : "Tracing"
 PERCENT_FOLLOW : 1.0
-# NOTE: HAS_APP params are only used when an app based INTERVENTION = "Tracing" is used
-P_HAS_APP : -1.0
+P_HAS_APP : 0.5
+ABSOLUTE_P_HAS_APP : False # If False, we modulate P_HAS_APP with carefulness and age
 
 
 # PATHS
-TRANSFORMER_EXP_PATH : "" #"CTT-SHIPMENT-0"
 CLUSTER_PATH : "output/clusters"
+TRANSFORMER_EXP_PATH : "https://drive.google.com/file/d/1Z7g3gKh2kWFSmK2Yr19MQq0blOWS5st0"
 
 # Inference & Training
-INFECTIOUSNESS_N_DAYS_HISTORY : 14
 TRACING_N_DAYS_HISTORY : 14
-MP_BATCHSIZE : "auto"
-MP_N_JOBS : "1"
-MP_BACKEND : "loky"
 DUMP_CLUSTERS : False
-CLUSTER_TYPE : "heuristic" # "random", "graph"
+CLUSTER_ALGO_TYPE : "blind" # should be in ["old", "blind", "naive", "perfect", "simple"]
 
 
 # TRACING RISK MODEL PARAMETERS  (non-ML)
