@@ -75,6 +75,7 @@ def main(conf: DictConfig) -> None:
         out_chunk_size=conf["out_chunk_size"],
         print_progress=conf["print_progress"],
         seed=conf["seed"],
+        return_city=True,
         conf=conf,
     )
 
@@ -91,9 +92,10 @@ def main(conf: DictConfig) -> None:
     print(
         f"all_effective_contacts/(sim days * len(city.humans)): {all_effective_contacts / (conf['simulation_days'] * len(city.humans))}"
     )
-    print(
-        f"effective contacts per contacts (GLOBAL_MOBILITY_SCALING_FACTOR): {all_effective_contacts / all_contacts}"
-    )
+    if all_contacts != 0:
+        print(
+            f"effective contacts per contacts (GLOBAL_MOBILITY_SCALING_FACTOR): {all_effective_contacts / all_contacts}"
+        )
 
     dump_conf(city.conf, "{}/full_configuration.yaml".format(city.conf["outdir"]))
 
