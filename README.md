@@ -16,15 +16,22 @@ We plan to update the simulator as more and more about COVID-19 will be known.
 
 
 ## Dependencies
-Following `python` packages are required (python>=3.7)
+To install the simulator without `ctt`
 ```
-pip install -r requirements.txt
+pip install .
 ```
+
+To install the simulator with [`ctt`](https://github.com/nasimrahaman/ctt)
+```
+pip install '.[ctt]'
+```
+
+Please checkout `setup.py` for external dependencies.
 
 ## How to run it using command line?
 Run the simulator as -
 ```
-python run.py sim --n_people 100 --init_percent_sick 0.01 --seed 0
+python run.py sim --n_people 100 --seed 0
 ```
 
 The simulator will output a logfile to `output/sim_people-{N_PEOPLE}_days-{SIMULATION_DAYS}_init-{INIT_PERCENT_SICK}_seed-{SEED}_{DATE}-{TIME}/data.zip`. It is a .zip file of `list` of `dict` pickles which contains a log of the mobility activity of a population of humans in `simulator.py`.
@@ -33,13 +40,13 @@ Run the risk prediction algorithms as -
 ```
 python risk_prediction.py
 ```
-This file reads in the logs that are output from the simulator, and runs a risk prediction algorithm based on: 
+This file reads in the logs that are output from the simulator, and runs a risk prediction algorithm based on:
  1) The reported symptoms of that individual, given they have the app.
  2) The encounters that individual had (which contain quantized user ids and risk levels).
  3) The risk update messages that are sent when a previously encountered user's risk level changes significantly.
- 
-You may select the model which you want to specify, or add your own model in that file. 
-This file also handles clustering of messages (under the currently understood privacy model), which can be useful for risk prediction algorithms which 
+
+You may select the model which you want to specify, or add your own model in that file.
+This file also handles clustering of messages (under the currently understood privacy model), which can be useful for risk prediction algorithms which
 depend on knowing how many contacts happened with one individual.
 
 ## How to run tests?
@@ -52,13 +59,13 @@ python run.py test
 
 ```
 @click.option('--n_people', help='population of the city', type=int, default=100)
-@click.option('--init_percent_sick', help='% of population initially sick', type=float, default=0.01)
 @click.option('--simulation_days', help='number of days to run the simulation for', type=int, default=30)
 @click.option('--out_chunk_size', help='number of events per dump in outfile', type=int, default=2500, required=False)
 @click.option('--outdir', help='the directory to write data to', type=str, default="output", required=False)
 @click.option('--seed', help='seed for the process', type=int, default=0)
 @click.option('--n_jobs', help='number of parallel procs to query the risk servers with', type=int, default=1)
 @click.option('--port', help='which port should we look for inference servers on', type=int, default=6688)
+@click.option('--config', help='which experiment config would we like to run with', type=str, default="configs/naive_config.yml")
 ```
 
 ### Accessing Simulation Data
@@ -70,8 +77,8 @@ data = pickle.load(open("output/data.pkl", 'rb'))
 ## How to run it as a function?
 Although not designed with this usage in mind one can still call it like this
 ```
-from run import run_simu
-monitors = run_simu(n_stores=100, n_parks=50, n_people=100, n_misc=100, init_percent_sick=0.01, print_progress=False, seed=0)
+from run import simulate
+monitors = simulate(n_stores=100, n_parks=50, n_people=100, n_misc=100, print_progress=False, seed=0)
 ```
 
 `data` is a `list` of `dict`.

@@ -1,13 +1,23 @@
-scipy==1.4.1
-simpy==3.0.12
-numpy==1.18.2
-matplotlib==3.2.1
-ipython==7.13.0
-click==7.1.1
-orderedset==2.0.3
-networkx==2.4
-tqdm==4.45.0
-seaborn==0.10.0
-joblib==0.14.1
-dill>=0.3.1.1
-pyzmq==19.0.0
+# This file is splitted in setup.py to fill the install_requires field
+# Format when using a git endpoint should be:
+#  package_name @ git+https://url.git@pathspec#egg=package_name
+addict
+dill
+joblib
+pyzmq
+scipy
+numpy
+simpy
+matplotlib
+ipython
+click
+orderedset
+networkx
+tqdm
+seaborn
+pyyaml
+pytest-cov==2.8.1
+omegaconf==1.4.1
+hydra-core
+cached_property
+requests
