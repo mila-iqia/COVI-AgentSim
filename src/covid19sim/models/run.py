@@ -21,7 +21,7 @@ from covid19sim.frozen.helper import conditions_to_np, encode_age, encode_sex, \
 from covid19sim.frozen.utils import Message, UpdateMessage, encode_message, encode_update_message
 
 
-def make_human_as_message(human):
+def make_human_as_message(human, conf):
     preexisting_conditions = conditions_to_np(human.preexisting_conditions)
 
     obs_preexisting_conditions = conditions_to_np(human.obs_preexisting_conditions)
@@ -29,9 +29,9 @@ def make_human_as_message(human):
     test_results = deque(((encode_test_result(result), timestamp)
                           for result, timestamp in human.test_results))
 
-    rolling_all_symptoms = symptoms_to_np(human.rolling_all_symptoms)
+    rolling_all_symptoms = symptoms_to_np(human.rolling_all_symptoms, conf)
 
-    rolling_all_reported_symptoms = symptoms_to_np(human.rolling_all_reported_symptoms)
+    rolling_all_reported_symptoms = symptoms_to_np(human.rolling_all_reported_symptoms, conf)
 
     messages = [encode_message(message) for message in human.contact_book.messages
                 # match day; ugly till refactor
@@ -127,7 +127,7 @@ def integrated_risk_pred(
         if time_slot not in human.time_slots:
             continue
 
-        human_message = make_human_as_message(human)
+        human_message = make_human_as_message(human, conf)
 
         log_path = None
         if data_path:

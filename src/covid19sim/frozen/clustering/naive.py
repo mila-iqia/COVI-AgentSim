@@ -64,7 +64,10 @@ class NaiveCluster(ClusterBase):
     def _get_encounter_match_score(
             self,
             message: mu.EncounterMessage,
-            ticks_per_uid_roll: TimeOffsetType = 24 * 60 * 60,  # one tick per second, one roll per day
+            # TODO: Code is currently comparing ticks_per_uid_roll 
+            #  to messages time expressed in days not ticks. Messages still
+            #  need to be updated to hold ticks
+            ticks_per_uid_roll: TimeOffsetType,
     ) -> int:
         """Returns the match score between the provided encounter message and this cluster.
 
@@ -150,7 +153,10 @@ class NaiveCluster(ClusterBase):
     def fit_encounter_message(
             self,
             message: mu.EncounterMessage,
-            ticks_per_uid_roll: TimeOffsetType = 24 * 60 * 60,  # one tick per second, one roll per day
+            # TODO: Code is currently comparing ticks_per_uid_roll 
+            #  to messages time expressed in days not ticks. Messages still
+            #  need to be updated to hold ticks
+            ticks_per_uid_roll: TimeOffsetType,
             minimum_match_score: int = 1,  # means we should at least find a 1-bit uid match
     ) -> typing.Optional[mu.EncounterMessage]:
         """Updates the current cluster given a new encounter message.
@@ -384,12 +390,18 @@ class NaiveClusterManager(ClusterManagerBase):
     """
 
     clusters: typing.List[NaiveCluster]
+    # TODO: Code is currently comparing ticks_per_uid_roll 
+    #  to messages time expressed in days not ticks. Messages still
+    #  need to be updated to hold ticks
     ticks_per_uid_roll: TimeOffsetType
 
     def __init__(
             self,
-            ticks_per_uid_roll: TimeOffsetType = 24 * 60 * 60,  # one tick per second, one roll per day
-            max_history_ticks_offset: TimeOffsetType = 24 * 60 * 60 * 14,  # one tick per second, 14 days
+            # TODO: Code is currently comparing ticks_per_uid_roll and
+            #  max_history_ticks_offset to messages time expressed in days not ticks.
+            #  Messages still need to be updated to hold ticks
+            ticks_per_uid_roll: TimeOffsetType,
+            max_history_ticks_offset: TimeOffsetType,
             add_orphan_updates_as_clusters: bool = False,
             generate_embeddings_by_timestamp: bool = True,
             generate_backw_compat_embeddings: bool = False,

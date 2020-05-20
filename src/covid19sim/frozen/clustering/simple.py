@@ -153,7 +153,10 @@ class SimplisticClusterManager(ClusterManagerBase):
 
     def __init__(
             self,
-            max_history_ticks_offset: TimeOffsetType = 24 * 60 * 60 * 14,  # one tick per second, 14 days
+            # TODO: Code is currently comparing max_history_ticks_offset 
+            #  to messages time expressed in days not ticks. Messages still
+            #  need to be updated to hold ticks
+            max_history_ticks_offset: TimeOffsetType,
             add_orphan_updates_as_clusters: bool = False,
             generate_embeddings_by_timestamp: bool = True,
             generate_backw_compat_embeddings: bool = False,

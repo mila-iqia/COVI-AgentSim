@@ -30,7 +30,6 @@ TRANSFORMER_EXP_PATH: "https://drive.google.com/file/d/1Z7g3gKh2kWFSmK2Yr19MQq0b
 CLUSTER_PATH: "output/clusters"
 
 # Inference & Training
-INFECTIOUSNESS_N_DAYS_HISTORY: 14
 TRACING_N_DAYS_HISTORY: 14
 MP_BATCHSIZE: "auto"
 MP_N_JOBS: "1"

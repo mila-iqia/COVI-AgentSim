@@ -23,12 +23,12 @@ class MakeHumanAsMessageProxy:
     def set_start_time(self, start_time: datetime.datetime):
         self._start_time = start_time
 
-    def make_human_as_message(self, human):
+    def make_human_as_message(self, human, conf):
         # if len(human.contact_book.messages):
         #     import pdb; pdb.set_trace()
         tc = self.test_case
 
-        message = ModelsTest.make_human_as_message(human)
+        message = ModelsTest.make_human_as_message(human, conf)
 
         now = human.env.timestamp
         today = now.date()
@@ -455,7 +455,7 @@ class HumanAsMessageTest(unittest.TestCase):
                       workplace={'workplace': 'workplace'}, profession="profession", rho=0.3,
                       gamma=0.21, symptoms=[], test_results=None, conf=conf)
 
-        message = make_human_as_message(human)
+        message = make_human_as_message(human, {"TRACING_N_DAYS_HISTORY": 14})
 
         for k in message.__dict__.keys():
             if k in ('messages', 'update_messages'):
