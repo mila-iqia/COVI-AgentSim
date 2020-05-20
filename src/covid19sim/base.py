@@ -423,7 +423,6 @@ class City:
             profession = self.rng.choice(professions, p=p, size=n)
 
             # select who should have app based on self.conf's SMARTPHONE_OWNER_FRACTION_BY_AGE
-            # FIXME: model uptake instead
             chosen_app_user_bin = []
             for my_age in ages:
                 for x, frac in self.conf.get("SMARTPHONE_OWNER_FRACTION_BY_AGE").items():
