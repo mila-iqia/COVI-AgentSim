@@ -16,11 +16,12 @@ print_progress: True
 COLLECT_LOGS: False
 COLLECT_TRAINING_DATA: False
 USE_INFERENCE_SERVER: False
-RISK_MODEL: "" # "naive"  "manual", "digital", "transformer"
+RISK_MODEL: "naive" # "naive"  "manual", "digital", "transformer"
 SHOULD_MODIFY_BEHAVIOR: False
 USE_ORACLE: False
 
 ## INTERVENTIONS
+INTERVENTION: 'Tracing'
 INTERVENTION_DAY: 5
 # NOTE: INTERVENTION is only valid if INTERVENTION_DAY >= 0
 PERCENT_FOLLOW: 1.0

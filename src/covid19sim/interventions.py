@@ -389,11 +389,18 @@ class GetTested(BehaviorInterventions):
     def __repr__(self):
         return "Get Tested"
 
+
 class Tracing(object):
     """
     Implements tracing. It relies on categorization of `Human` according to risk_levels.
     """
-    def __init__(self, risk_model, max_depth=1, symptoms=False, risk=False, should_modify_behavior=True):
+    def __init__(
+            self,
+            risk_model,
+            max_depth=1,
+            symptoms=False,
+            risk=False,
+            should_modify_behavior=True):
         """
         risk_levels are determined based on risk, which is computed using `Tracing.compute_risk`.
         `Human.message_info` carries information about all the contacts that person had in the past `configs.blah.yml --> TRACING_N_DAYS_HISTORY`.
@@ -452,9 +459,8 @@ class Tracing(object):
             self.propagate_risk = False
             self.propagate_symptoms = False
 
-
     def modify_behavior(self, human):
-        if not self.should_modify_behavior and (not human.app and self.app):
+        if not self.should_modify_behavior and (not human.has_app and self.app):
             return
 
         return self.intervention.modify_behavior(human)
@@ -507,7 +513,7 @@ class Tracing(object):
 
         return t,s,(r_up, v_up, r_down, v_down)
 
-    def compute_risk(self, t, s, r):
+    def compute_risk(self, t, s, r, conf):
         """
         computes risk value based on the statistics of past contacts.
         Note 1: not used by `risk_model = transformer`.
@@ -525,12 +531,12 @@ class Tracing(object):
                 risk = 0.0
 
         elif self.risk_model == "naive":
-            risk = 1.0 - (1.0 - self.conf.get("RISK_TRANSMISSION_PROBA")) ** (t+s)
+            risk = 1.0 - (1.0 - conf.get("RISK_TRANSMISSION_PROBA")) ** (t+s)
 
         elif self.risk_model == "other":
             r_up, v_up, r_down, v_down = r
             r_score = 2*v_up - v_down
-            risk = 1.0 - (1.0 - self.conf.get("RISK_TRANSMISSION_PROBA")) ** (t + 0.5*s + r_score)
+            risk = 1.0 - (1.0 - conf.get("RISK_TRANSMISSION_PROBA")) ** (t + 0.5*s + r_score)
 
         return risk
 
@@ -561,7 +567,7 @@ class Tracing(object):
                     old_risk = human.risk
                     if not human.is_removed and human.test_result != "positive":
                         t, s, r = self.process_messages(human)
-                        human.risk = self.compute_risk(t, s, r)
+                        human.risk = self.compute_risk(t, s, r, conf)
 
                     if human.risk != old_risk:
                         self.modify_behavior(human)
