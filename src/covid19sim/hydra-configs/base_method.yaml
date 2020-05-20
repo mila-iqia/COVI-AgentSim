@@ -1,0 +1,39 @@
+#FORMER COMMAND-LINE ARGS
+n_people: 1000
+init_percent_sick: 0.001
+start_time:
+  "2020-02-28 00:00:00" # in utils.py/parse_configuration, this will be parsed
+  # into a datetime object with the following schema: '%Y-%m-%d %H:%M:%S'
+simulation_days: 30
+outdir: ./output
+out_chunk_size: null
+seed: 0
+tune: False
+name: ""
+print_progress: True
+
+# EXPERIMENTAL PARAMETERS
+COLLECT_LOGS: False
+COLLECT_TRAINING_DATA: False
+USE_INFERENCE_SERVER: False
+RISK_MODEL: "" # "naive"  "manual", "digital", "transformer"
+SHOULD_MODIFY_BEHAVIOR: False
+USE_ORACLE: False
+
+## INTERVENTIONS
+INTERVENTION_DAY: 5
+# NOTE: INTERVENTION is only valid if INTERVENTION_DAY >= 0
+PERCENT_FOLLOW: 1.0
+# NOTE: HAS_APP params are only used when an app based INTERVENTION = "Tracing" is used
+P_HAS_APP: -1.0
+
+# Inference & Training
+TRACING_N_DAYS_HISTORY: 14
+DUMP_CLUSTERS: False
+CLUSTER_ALGO_TYPE: "blind" # should be in ["old", "blind", "naive", "perfect", "simple"]
+
+UPDATES_PER_DAY: 4
+TRACE_SYMPTOMS : False
+TRACE_RISK_UPDATE : False
+TRACING_ORDER: 1
+RISK_MAPPING: []
