@@ -53,7 +53,7 @@ class AllergyProgression(unittest.TestCase):
             s_id = s_prob.id
 
             for i, (context, expected_prob) in enumerate((c, p) for c, p in s_prob.probabilities.items()
-                                                         if c in symptoms_contexts):
+                                                         if c in symptoms_contexts.values()):
                 prob = probs[s_id]
 
                 self.assertAlmostEqual(prob, expected_prob,
@@ -102,32 +102,51 @@ class ColdProgression(unittest.TestCase):
             for extremely_sick in extremely_sick_options if really_sick else (False,):
                 for preexisting_conditions in preexisting_conditions_options:
                     # To simplify the tests, we expect each stage to last 1 day
-                    computed_dist = [[set(day_symptoms) for day_symptoms in
+                    computed_dist = [[day_symptoms for day_symptoms in
                                       _get_cold_progression(age, rng, carefulness, preexisting_conditions,
                                                             really_sick, extremely_sick)]
                                      for _ in range(n_people)]
 
                     probs = [[0] * len(SYMPTOMS) for _ in symptoms_contexts]
+                    # Number of phases occurences.
+                    phases_occurrence_count = [0] * len(symptoms_contexts)
 
                     for human_symptoms in computed_dist:
+                        # Assert that there are no symptoms on the first day
                         for day_symptoms in human_symptoms[:1]:
                             self.assertEqual(len(day_symptoms), 0)
 
-                        for i, day_symptoms in enumerate((human_symptoms[1], human_symptoms[-1])):
+                        # There is a chance for the cold to lasts only 2 days,
+                        # with the 'cold' phase being skipped
+                        if human_symptoms[1] is human_symptoms[-1]:
+                            phases = [set(), set(human_symptoms[-1])]
+                        else:
+                            phases = [set(human_symptoms[1]), set(human_symptoms[-1])]
+                            
+                        for i, day_symptoms in enumerate(phases):
+                            # There is a chance for the cold to lasts only 2 days,
+                            # with the 'cold' phase being skipped
+                            if i == 0 and len(day_symptoms) == 0:
+                                continue
+
+                            phases_occurrence_count[i] += 1
                             self.assertEqual(len([s for s in ('mild', 'moderate') if s in day_symptoms]), 1)
 
                             for s_name, s_prob in SYMPTOMS.items():
                                 probs[i][s_prob.id] += int(s_name in day_symptoms)
 
-                    for symptoms_probs in probs:
+                    self.assertEqual(phases_occurrence_count[1], n_people)
+                    self.assertLess(phases_occurrence_count[0], phases_occurrence_count[1])
+
+                    for symptoms_probs, phase_occurrence_count in zip(probs, phases_occurrence_count):
                         for i in range(len(symptoms_probs)):
-                            symptoms_probs[i] /= n_people
+                            symptoms_probs[i] /= phase_occurrence_count
 
                     for s_name, s_prob in SYMPTOMS.items():
                         s_id = s_prob.id
 
                         for i, (context, expected_prob) in enumerate((c, p) for c, p in s_prob.probabilities.items()
-                                                                     if c in symptoms_contexts):
+                                                                     if c in symptoms_contexts.values()):
                             prob = probs[i][s_id]
 
                             if i == 0:
@@ -172,11 +191,11 @@ class CovidProgression(unittest.TestCase):
 
     n_people = 1000  # Test too slow to use 10000 ppl
     initial_viral_load_options = (0.10, 0.25, 0.50, 0.75)
-    viral_load_plateau_start = 2
-    viral_load_plateau_end = 4
-    viral_load_recovered = 7
+    viral_load_plateau_start = 1
+    viral_load_plateau_end = 3
+    viral_load_recovered = 6
     ages_options = (25, 50, 75)
-    incubation_days = 1
+    incubation_days = 2
     really_sick_options = (True, False)
     extremely_sick_options = (True, False)
     preexisting_conditions_options = (tuple(), ('pre1', 'pre2'), ('pre1', 'pre2', 'pre3'))
@@ -279,7 +298,7 @@ class CovidProgression(unittest.TestCase):
                 continue
 
             for i, (context, expected_prob) in enumerate((c, p) for c, p in s_prob.probabilities.items()
-                                                         if c in symptoms_contexts):
+                                                         if c in symptoms_contexts.values()):
                 prob = probs[i][s_id]
 
                 if s_id == _get_id('lost_consciousness') and \
@@ -459,6 +478,13 @@ class FluProgression(unittest.TestCase):
         def _get_id(symptom):
             return SYMPTOMS[symptom].id
 
+        def _get_probability(symptom_probs, symptom_context):
+            if isinstance(symptom_probs, str):
+                symptom_probs = SYMPTOMS[symptom_probs]
+            if isinstance(symptom_context, int):
+                symptom_context = symptoms_contexts[symptom_context]
+            return symptom_probs.probabilities[symptom_context]
+
         out_of_context_symptoms = set()
         for _, prob in SYMPTOMS.items():
             for context in prob.probabilities:
@@ -477,39 +503,67 @@ class FluProgression(unittest.TestCase):
         extremely_sick_options = (True, False)
         preexisting_conditions_options = (tuple(), ('pre1', 'pre2'))
 
-        FLU_INCUBATION = 1 # config.py /!\
         AVG_FLU_DURATION = 5 # config.py /!\
 
         for really_sick in really_sick_options:
             for extremely_sick in extremely_sick_options if really_sick else (False,):
                 for preexisting_conditions in preexisting_conditions_options:
                     # To simplify the tests, we expect each stage to last 1 day
-                    computed_dist = [[set(day_symptoms) for day_symptoms in
+                    computed_dist = [[day_symptoms for day_symptoms in
                                       _get_flu_progression(age, rng, carefulness, preexisting_conditions,
-                                                           really_sick, extremely_sick, FLU_INCUBATION, AVG_FLU_DURATION)]
+                                                           really_sick, extremely_sick, AVG_FLU_DURATION)]
                                      for _ in range(n_people)]
 
                     probs = [[0] * len(SYMPTOMS) for _ in symptoms_contexts]
+                    # Number of phases occurences.
+                    phases_occurrence_count = [0] * len(symptoms_contexts)
 
                     for human_symptoms in computed_dist:
-                        for i, day_symptoms in enumerate((*human_symptoms[0:2], human_symptoms[-1])):
+                        # There is a chance that the cold'symptoms last only
+                        # 1 day (so 2 days if we include the non-symptomatic day)
+                        if human_symptoms[1] is human_symptoms[-1]:
+                            phases = [set(human_symptoms[0]),
+                                      set(),
+                                      set(human_symptoms[-1])]
+                        else:
+                            phases = [set(human_symptoms[0]),
+                                      set(human_symptoms[1]),
+                                      set(human_symptoms[-1])]
+
+                        for i, day_symptoms in enumerate(phases):
+                            # There is a chance that the cold'symptoms last only
+                            # 1 day, in which case the 'cold' phase is skipped
+                            if i == 1 and len(day_symptoms) == 0:
+                                continue
+
+                            phases_occurrence_count[i] += 1
                             self.assertEqual(len([s for s in ('mild', 'moderate') if s in day_symptoms]), 1)
 
                             for s_name, s_prob in SYMPTOMS.items():
                                 probs[i][s_prob.id] += int(s_name in day_symptoms)
 
-                    for symptoms_probs in probs:
+                    self.assertEqual(phases_occurrence_count[0], n_people)
+                    self.assertEqual(phases_occurrence_count[2], n_people)
+                    self.assertLess(phases_occurrence_count[1], phases_occurrence_count[2])
+
+                    for symptoms_probs, phase_occurrence_count in zip(probs, phases_occurrence_count):
                         for i in range(len(symptoms_probs)):
-                            symptoms_probs[i] /= n_people
+                            symptoms_probs[i] /= phase_occurrence_count
 
                     for s_name, s_prob in SYMPTOMS.items():
                         s_id = s_prob.id
 
                         for i, (context, expected_prob) in enumerate((c, p) for c, p in s_prob.probabilities.items()
-                                                                     if c in symptoms_contexts):
+                                                                     if c in symptoms_contexts.values()):
                             prob = probs[i][s_id]
 
                             if i == 0:
+                                if s_id == _get_id('mild'):
+                                    expected_prob = 1
+                                elif s_id == _get_id('moderate'):
+                                    expected_prob = 0
+
+                            elif i == 1:
                                 if really_sick or extremely_sick or any(preexisting_conditions):
                                     if s_id == _get_id('moderate'):
                                         expected_prob = 1
@@ -520,11 +574,16 @@ class FluProgression(unittest.TestCase):
                                 elif s_id == _get_id('moderate'):
                                     expected_prob = 0
 
-                            elif i == 1:
+                            elif i == 2:
                                 if s_id == _get_id('mild'):
                                     expected_prob = 1
                                 elif s_id == _get_id('moderate'):
                                     expected_prob = 0
+
+                            if s_id in (_get_id('diarrhea'), _get_id('nausea_vomiting')):
+                                # 'diarrhea' and 'nausea_vomiting' are dependent
+                                # on the presence of gastro in the phas symptoms
+                                expected_prob *= _get_probability('gastro', i)
 
                             self.assertAlmostEqual(prob, expected_prob,
                                                    delta=0 if expected_prob in (0, 1)

@@ -72,7 +72,7 @@ LOCATION_DISTRIBUTION:
         "social_contact_factor": 0.4,
         "surface_prob": [0.0, 0.0, 0.0, 0.0, 1.0],
         "rnd_capacity": [2, 5],
-      }
+      },
   }
 
 # house_size: 1 2 3 4 5
@@ -241,33 +241,14 @@ MAX_DAYS_CONTAMINATION: [0.125, 0.333333, 1, 2, 3] # &envrionmental contaminatio
 VIRAL_LOAD_MIN: 0.0001 # FIXME:unused
 VIRAL_LOAD_NORMALIZATION: 2 # FIXME:unused
 
-# convex combination - if it sums to 1
-INFECTION_DISTANCE_FACTOR: 0.0
-INFECTION_DURATION_FACTOR: 0.0
-
-# TESTING
-# capacity is per day; time_to_result is per day
-TEST_TYPES: { "lab": {
-        "capacity": 100,
-        "time_to_result": 2,
-        "P_FALSE_NEGATIVE": 0.1, # &false-negative,
-        "preference": 1,
-      } }
-
-P_TEST: 0.5
-P_TEST_SYMPTOMATIC: 0.3 # FIXME:unused
-P_TEST_ASYMPTOMATIC: 0.05 # FIXME:unused
-TEST_DAYS: 2
-TEST_INTERVAL: 10
-
 # VIRAL LOAD PARAMS
 MIN_VIRAL_LOAD: 0.1
 MAX_VIRAL_LOAD: 0.4
 
 PLATEAU_START_MEAN: 2.5
-PLATEAU_START_STD: 0.25
-PLATEAU_START_CLIP_LOW: 2
-PLATEAU_START_CLIP_HIGH: 3
+PLATEAU_START_STD: 0.1
+PLATEAU_START_CLIP_LOW: 2.25
+PLATEAU_START_CLIP_HIGH: 2.75
 
 PLATEAU_DURATION_MEAN: 5.5
 PLATEAU_DURATION_STD: 1
@@ -282,27 +263,57 @@ VIRAL_LOAD_RECOVERY_FACTOR: 3 # higher initial viral load means longer recovery
 
 # INCUBATION PARAMS
 SYMPTOM_ONSET_WRT_VIRAL_LOAD_PEAK_AVG: 0.6 # DAYS
-SYMPTOM_ONSET_WRT_VIRAL_LOAD_PEAK_STD: 0.1
-INFECTIOUSNESS_ONSET_DAYS_AVG: 1.5 # 1 gets added to this to ensure a minimum 1 day
-INFECTIOUSNESS_ONSET_DAYS_STD: 0.1
+SYMPTOM_ONSET_WRT_VIRAL_LOAD_PEAK_STD: 0.05
+INCUBATION_DAYS_GAMMA_SHAPE: 5.807 # Refer Table 2 (Appendix) in https://www.acpjournals.org/doi/10.7326/M20-0504 for parameters of lognormal fit
+INCUBATION_DAYS_GAMMA_SCALE: 0.948
 
 # ASYMTPOMATIC
 BASELINE_P_ASYMPTOMATIC: 0.20 # &p-asymptomatic
-ASYMPTOMATIC_INFECTION_RATIO: 0.2 # &prob_infectious
+ASYMPTOMATIC_INFECTION_RATIO: 0.1 # &prob_infectious
+
+# convex combination - if it sums to 1. Unused, because there is no data on it.
+INFECTION_DISTANCE_FACTOR: 0.0
+INFECTION_DURATION_FACTOR: 0.0
+
+# TESTING
+# capacity is proportion of population tested per day
+TEST_TYPES: { "lab": {
+        "capacity": 0.001,  # ! /!\ This is now a proportion of population, not an absolute (int) value
+        "time_to_result": {
+          "in-patient": 0.33, # days
+          "out-patient": 2.0, # verbal communication with H&A (find-source)
+          },
+        "P_FALSE_NEGATIVE": {
+            "days_since_exposure": [1, 4, 5, 8, 9, 21],
+            "rate": [1, 0.67, 0.38, 0.2, 0.21, 0.66],
+            }, # https://www.acc.org/latest-in-cardiology/journal-scans/2020/05/18/13/42/variation-in-false-negative-rate-of-reverse?utm_source=journalscan&utm_medium=email_newsletter&utm_campaign=journalscan&utm_content=20200521
+        "P_FALSE_POSITIVE": 0.00, # verbal communication with H&A (find-source)
+        "preference": 1, # TODO: preference might depend on symptoms
+      } }
+
+P_TEST_MODERATE: 0.4
+P_TEST_MILD: 0.1
+P_TEST_SEVERE: 1.0
+GET_TESTED_SYMPTOMS_CHECKED_IN_HOSPITAL: ["mild", "moderate", "severe", "fever", "chills", "gastro", "diarrhea", "cough", "fatigue", "trouble_breathing", "loss_of_taste", "light_trouble_breathing", "mild_trouble_breathing", "moderate_trouble_breathing", "heavy_trouble_breathing" ]
+GET_TESTED_SYMPTOMS_CHECKED_BY_SELF: ["cough", "fever", "trouble_breathing", "chills", "loss_of_taste", ""]
 
 # SEASONAL ALLERGIES
-P_ALLERGIES: 0.00
-P_HAS_ALLERGIES_TODAY: 0.0
+P_ALLERGIES: 0.4 # proportion of population; https://www.healthline.com/health/allergies/statistics#1
+# P_HAS_ALLERGIES_TODAY: 0.005 # likelihood to start allergy any day (2-3 times per year) # produces too many allergies (experimental)
+P_HAS_ALLERGIES_TODAY: 0.0005
 
 # OTHER TRANSMISSIBLE DISEASES
-P_FLU: 0.000 # &p-flu
+# P_FLU_TODAY: 0.003 # # likelihood to start flu any day (1 per year)
+
+# https://www.webmd.com/cold-and-flu/flu-statistics
+# Flu season is December to February. Assuming simulation runs form March, we are switching off Flu
+P_FLU_TODAY: 0.000
 FLU_CONTAGIOUSNESS: 0.05
-FLU_INCUBATION: 1
 AVG_FLU_DURATION: 5
 
-P_COLD: 0.000 # &p-cold
-COLD_CONTAGIOUSNESS: 0.05
-COLD_INCUBATION: 1 # FIXME:unused
+# likelihood to start cold any day (2-3 times per year) # https://www.cdc.gov/features/rhinoviruses/index.html
+P_COLD_TODAY: 0.005
+COLD_CONTAGIOUSNESS: 0.0005 # likelihood of transmitting at an encounter (no-source)
 AVG_COLD_DURATION: 3 # FIXME:unused
 
 # LIFESTYLE PARAMETERS
@@ -358,12 +369,11 @@ MAX_MESSAGE_PASSING_DISTANCE: 1000 # cm GPS; 10 x 10 m grid everyone is a contac
 
 # DISTANCE_ENCOUNTER PARAMETERS cms
 MIN_DIST_ENCOUNTER: 20
-MAX_DIST_ENCOUNTER: 200
+MAX_DIST_ENCOUNTER: 300 # cms
 
 # KNOBS
-CONTAGION_KNOB: 1.85
+CONTAGION_KNOB: 1.0
 ENVIRONMENTAL_INFECTION_KNOB: 0.0005
-GREEN_FEELING_KNOB: 1.0
 
 ## INTERVENTIONS
 # WASH HANDS
@@ -380,6 +390,7 @@ MASK_EFFICACY_NORMIE: 0.32
 MASK_EFFICACY_HEALTHWORKER: 0.98
 BASELINE_P_MASK: 0.5 # FIXME:unused
 MASKS_SUPPLY: 1000000
+MASK_EFFICACY_FACTOR: 2 # used in reduction of probability o transmission (no-source)
 
 # naive tracing
 RISK_TRANSMISSION_PROBA: 0.03

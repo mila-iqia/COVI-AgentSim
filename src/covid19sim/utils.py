@@ -38,7 +38,7 @@ Attributes
         probabilities of the symptom per context
         A probability of `-1` is assigned when it is heavily variable given
         multiple factors and is handled entirely in the code
-        A probability of `None` is assigned when the symptom it can be skipped
+        A probability of `None` is assigned when the symptom can be skipped
         entirely in the context. The context can also be removed from the dict
 '''
 ConditionProbability = namedtuple('ConditionProbability', ['name', 'id', 'age', 'sex', 'probability'])
@@ -254,9 +254,7 @@ SYMPTOMS = OrderedDict([
                                                      'covid_plateau_1': -1,
                                                      'covid_plateau_2': -1,
                                                      'covid_post_plateau_1': -1,
-                                                     'covid_post_plateau_2': -1,
-                                                     'cold': 0.1,
-                                                     'cold_last_day': 0.0})
+                                                     'covid_post_plateau_2': -1})
     ),
     (
         'sneezing',
@@ -346,9 +344,7 @@ SYMPTOMS = OrderedDict([
                                                  'covid_plateau_1': 0.3,
                                                  'covid_plateau_2': 0.35,
                                                  'covid_post_plateau_1': 0.0,
-                                                 'covid_post_plateau_2': 0.0,
-                                                 'cold': 0.2,
-                                                 'cold_last_day': 0.0})
+                                                 'covid_post_plateau_2': 0.0})
     ),
 
     (
@@ -492,14 +488,20 @@ def _sample_viral_load_gamma(rng, shape_mean=4.5, shape_std=.15, scale_mean=1., 
     return gamma(shape, scale=scale)
 
 
-def _sample_viral_load_piecewise(rng, initial_viral_load=0, age=40, conf={}):
+def _sample_viral_load_piecewise(rng, plateau_start, initial_viral_load=0, age=40, conf={}):
     """
-    This function samples a piece-wise linear viral load model which increases, plateaus, and drops
+    This function samples a piece-wise linear viral load model which increases, plateaus, and drops.
 
     Args:
-        rng ([type]): [description]
-        initial_viral_load (int, optional): [description]. Defaults to 0.
-        age (int, optional): [description]. Defaults to 40.
+        rng (np.random.RandomState): random number generator
+        plateau_start: start of the plateau with respect to infectiousness_onset_days
+        initial_viral_load (int, optional): unused
+        age (int, optional): age of the person. Defaults to 40.
+
+    Returns:
+        plateau_height (float): height of the plateau, i.e., viral load at its peak
+        plateau_end (float): days after beign infectious when the plateau ends
+        recovered (float): days after being infectious when the viral load is assumed to be ineffective (not necessarily 0)
     """
     # https://stackoverflow.com/questions/18441779/how-to-specify-upper-and-lower-limits-when-using-numpy-random-normal
 	# https://www.thelancet.com/journals/laninf/article/PIIS1473-3099(20)30196-1/fulltext
@@ -520,10 +522,11 @@ def _sample_viral_load_piecewise(rng, initial_viral_load=0, age=40, conf={}):
     RECOVERY_STD = conf.get("RECOVERY_STD")
     VIRAL_LOAD_RECOVERY_FACTOR = conf.get("VIRAL_LOAD_RECOVERY_FACTOR")
 
-    plateau_start = truncnorm((PLATEAU_START_CLIP_LOW - PLATEAU_START_MEAN)/PLATEAU_START_STD, (PLATEAU_START_CLIP_HIGH - PLATEAU_START_MEAN) / PLATEAU_START_STD, loc=PLATEAU_START_MEAN, scale=PLATEAU_START_STD).rvs(1, random_state=rng)
+    # plateau_start = truncnorm((PLATEAU_START_CLIP_LOW - PLATEAU_START_MEAN)/PLATEAU_START_STD, (PLATEAU_START_CLIP_HIGH - PLATEAU_START_MEAN) / PLATEAU_START_STD, loc=PLATEAU_START_MEAN, scale=PLATEAU_START_STD).rvs(1, random_state=rng)
     plateau_end = plateau_start + truncnorm((PLATEAU_DURATION_CLIP_LOW - PLATEAU_DURATION_MEAN)/PLATEAU_DURATION_STD,
                                             (PLATEAU_DURATION_CLIP_HIGH - PLATEAU_DURATION_MEAN) / PLATEAU_DURATION_STD,
                                             loc=PLATEAU_DURATION_MEAN, scale=PLATEAU_DURATION_STD).rvs(1, random_state=rng)
+
     recovered = plateau_end + ((age/10)-1) # age is a determining factor for the recovery time
     recovered = recovered + initial_viral_load * VIRAL_LOAD_RECOVERY_FACTOR \
                           + truncnorm((RECOVERY_CLIP_LOW - RECOVERY_MEAN) / RECOVERY_STD,
@@ -534,7 +537,7 @@ def _sample_viral_load_piecewise(rng, initial_viral_load=0, age=40, conf={}):
     # plateau_mean =  initial_viral_load - (base + MIN_VIRAL_LOAD) / (base + MIN_VIRAL_LOAD, base + MAX_VIRAL_LOAD) # transform initial viral load into a range
     # plateau_height = rng.normal(plateau_mean, 1)
     plateau_height = rng.uniform(base + MIN_VIRAL_LOAD, base + MAX_VIRAL_LOAD)
-    return plateau_height, plateau_start.item(), plateau_end.item(), recovered.item()
+    return plateau_height, plateau_end.item(), recovered.item()
 
 
 def _normalize_scores(scores):
@@ -1048,7 +1051,7 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
             'trouble_breathing' in symptoms_per_phase[phase_i]:
         symptoms_per_phase[phase_i].append('heavy_trouble_breathing')
 
-    symptom_onset_delay = round(viral_load_plateau_start - incubation_days)
+    symptom_onset_delay = round(incubation_days - viral_load_plateau_start)
     plateau_duration = round(viral_load_plateau_end - viral_load_plateau_start)
 
     # same delay in symptom plateau as there was in symptom onset
@@ -1096,7 +1099,7 @@ def _get_allergy_progression(rng):
     progression = [symptoms]
     return progression
 
-def _get_flu_progression(age, rng, carefulness, preexisting_conditions, really_sick, extremely_sick, FLU_INCUBATION, AVG_FLU_DURATION):
+def _get_flu_progression(age, rng, carefulness, preexisting_conditions, really_sick, extremely_sick, AVG_FLU_DURATION):
     """
     [summary]
 
@@ -1112,12 +1115,7 @@ def _get_flu_progression(age, rng, carefulness, preexisting_conditions, really_s
         [type]: [description]
     """
     symptoms_contexts = SYMPTOMS_CONTEXTS['flu']
-
-    progression = [[] for day in range(FLU_INCUBATION)]
-
     symptoms_per_phase = [[] for _ in range(len(symptoms_contexts))]
-
-    progression = []
 
     # Day 1 symptoms:
     phase_i = 0
@@ -1185,6 +1183,7 @@ def _get_flu_progression(age, rng, carefulness, preexisting_conditions, really_s
     else:
         len_flu = round(len_flu)
 
+    progression = []
     for duration, symptoms in zip((1, len_flu - 2, 1),
                                   symptoms_per_phase):
         for day in range(duration):
@@ -1210,7 +1209,6 @@ def _get_cold_progression(age, rng, carefulness, preexisting_conditions, really_
     """
     symptoms_contexts = SYMPTOMS_CONTEXTS['cold']
 
-    progression = [[]]
     symptoms_per_phase = [[] for _ in range(len(symptoms_contexts))]
 
     # Day 2-4ish if it's a longer cold, if 2 days long this doesn't get added
@@ -1222,7 +1220,7 @@ def _get_cold_progression(age, rng, carefulness, preexisting_conditions, really_
     else:
         symptoms_per_phase[phase_i].append('mild')
 
-    for symptom in ('runny_nose', 'cough', 'trouble_breathing', 'loss_of_taste', 'fatigue', 'sneezing'):
+    for symptom in ('runny_nose', 'cough', 'fatigue', 'sneezing'):
         rand = rng.rand()
         if rand < SYMPTOMS[symptom].probabilities[phase]:
             symptoms_per_phase[phase_i].append(symptom)
@@ -1249,6 +1247,7 @@ def _get_cold_progression(age, rng, carefulness, preexisting_conditions, really_
     else:
         len_cold = math.ceil(len_cold)
 
+    progression = [[]]
     for duration, symptoms in zip((len_cold - 1, 1),
                                   symptoms_per_phase):
         for day in range(duration):
@@ -1365,8 +1364,9 @@ def _get_random_area(num, total_area, rng):
         [type]: [description]
     """
     # Keeping max at area/2 to ensure no location is allocated more than half of the total area allocated to its location type
-    area = rng.dirichlet(np.ones(math.ceil(num/2)))*(total_area/2)
-    area = np.append(area,rng.dirichlet(np.ones(math.floor(num/2)))*(total_area/2))
+    # area = rng.dirichlet(np.ones(math.ceil(num/2)))*(total_area/2)
+    # area = np.append(area, rng.dirichlet(np.ones(math.floor(num/2)))*(total_area/2))
+    area = np.array([total_area/num for _ in range(num)])
     return area
 
 def _draw_random_discreet_gaussian(avg, scale, rng):
@@ -1833,3 +1833,14 @@ def get_git_revision_hash():
         str: git hash
     """
     return subprocess.check_output(["git", "rev-parse", "HEAD"]).decode().strip()
+
+def get_test_false_negative_rate(test_type, days_since_exposure, conf, interpolate="step"):
+    rates = conf['TEST_TYPES'][test_type]['P_FALSE_NEGATIVE']['rate']
+    days = conf['TEST_TYPES'][test_type]['P_FALSE_NEGATIVE']['days_since_exposure']
+    if interpolate == "step":
+        for x,y in zip(days, rates):
+            if  days_since_exposure <= x:
+                return y
+        return y
+    else:
+        raise

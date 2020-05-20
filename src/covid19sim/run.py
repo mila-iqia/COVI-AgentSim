@@ -39,19 +39,20 @@ def main(conf: DictConfig) -> None:
     # -------------------------------------
     # -----  Create Output Directory  -----
     # -------------------------------------
-    if conf["outdir"] is None:
-        conf["outdir"] = "output"
-    os.makedirs(f"{conf['outdir']}", exist_ok=True)
-    conf["outdir"] = "{}/sim_v2_people-{}_days-{}_init-{}_seed-{}_{}".format(
-        conf["outdir"],
-        conf["n_people"],
-        conf["simulation_days"],
-        conf["init_percent_sick"],
-        conf["seed"],
-        datetime.datetime.now().strftime("%Y%m%d-%H%M%S"),
-    )
-    os.makedirs(conf["outdir"])
-    outfile = os.path.join(conf["outdir"], "data")
+    if not conf["tune"]:
+        if conf["outdir"] is None:
+            conf["outdir"] = "output"
+        os.makedirs(f"{conf['outdir']}", exist_ok=True)
+        conf["outdir"] = "{}/sim_v2_people-{}_days-{}_init-{}_seed-{}_{}".format(
+            conf["outdir"],
+            conf["n_people"],
+            conf["simulation_days"],
+            conf["init_percent_sick"],
+            conf["seed"],
+            datetime.datetime.now().strftime("%Y%m%d-%H%M%S"),
+        )
+        os.makedirs(conf["outdir"])
+        outfile = os.path.join(conf["outdir"], "data")
 
     # ---------------------------------
     # -----  Filter-Out Warnings  -----
@@ -131,7 +132,7 @@ def main(conf: DictConfig) -> None:
         filename = f"tracker_data_n_{conf['n_people']}_seed_{conf['seed']}_{timenow}_{conf['name']}.pkl"
         data = extract_tracker_data(tracker, conf)
         dump_tracker_data(data, conf["outdir"], filename)
-
+        tracker.write_metrics(f"{conf['outdir']}/log_{timenow}_{conf['name']}.txt")
 
 def simulate(
     n_people=None,
@@ -180,7 +181,14 @@ def simulate(
     city_x_range = (0, 1000)
     city_y_range = (0, 1000)
     city = City(
-        env, n_people, init_percent_sick, rng, city_x_range, city_y_range, Human, conf
+        env,
+        n_people,
+        init_percent_sick,
+        rng,
+        city_x_range,
+        city_y_range,
+        Human,
+        conf,
     )
 
     # Add monitors

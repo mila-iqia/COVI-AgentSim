@@ -9,7 +9,8 @@ from collections import defaultdict, Counter
 
 import simpy
 
-from covid19sim.utils import compute_distance, _get_random_area, relativefreq2absolutefreq
+from covid19sim.utils import compute_distance, _get_random_area, relativefreq2absolutefreq, \
+    get_test_false_negative_rate
 from covid19sim.track import Tracker
 from covid19sim.interventions import *
 from covid19sim.models.run import batch_run_timeslot_heavy_jobs
@@ -119,9 +120,15 @@ class City:
         self.total_area = (x_range[1] - x_range[0]) * (y_range[1] - y_range[0])
         self.n_people = n_people
         self.init_percent_sick = init_percent_sick
-        self.last_date_to_check_tests = self.env.timestamp.date()
-        self.test_count_today = defaultdict(int)
-        self.test_type_preference = list(zip(*sorted(self.conf.get("TEST_TYPES").items(), key=lambda x:x[1]['preference'])))[0]
+
+        self.test_type_preference = list(zip(*sorted(conf.get("TEST_TYPES").items(), key=lambda x:x[1]['preference'])))[0]
+        self.max_capacity_per_test_type = {
+            test_type: max([int(conf['TEST_TYPES'][test_type]['capacity'] * self.n_people), 1])
+            for test_type in self.test_type_preference
+        }
+
+        self.covid_testing_facility = TestFacility(self.test_type_preference, self.max_capacity_per_test_type, env, conf)
+
         print("Initializing locations ...")
         self.initialize_locations()
 
@@ -345,36 +352,9 @@ class City:
                         lon=self.rng.randint(*self.y_range),
                         area=area,
                         social_contact_factor=specs['social_contact_factor'],
-                        capacity= None if not specs['rnd_capacity'] else self.rng.randint(*specs['rnd_capacity']),
+                        capacity=None if not specs['rnd_capacity'] else self.rng.randint(*specs['rnd_capacity']),
                         surface_prob = specs['surface_prob']
                         )
-
-    @property
-    def tests_available(self):
-        """
-        Returns:
-            bool: tests are available
-        """
-        if self.last_date_to_check_tests != self.env.timestamp.date():
-            self.last_date_to_check_tests = self.env.timestamp.date()
-            for k in self.test_count_today.keys():
-                self.test_count_today[k] = 0
-        return any(self.test_count_today[test_type] < self.conf.get("TEST_TYPES")[test_type]['capacity'] for test_type in self.test_type_preference)
-
-    def get_available_test(self):
-        """
-        Returns a test_type: the first type that is available according to preference
-        hierarchy (TEST_TYPES[test_type]['preference']).
-
-        See TEST_TYPES in config.py
-
-        Returns:
-            str: available test_type
-        """
-        for test_type in self.test_type_preference:
-            if self.test_count_today[test_type] < self.conf.get("TEST_TYPES")[test_type]['capacity']:
-                self.test_count_today[test_type] += 1
-                return test_type
 
     def initialize_locations(self):
         """
@@ -382,6 +362,7 @@ class City:
         The City instance will have attributes <location_type>s = list(location(*args))
         """
         for location, specs in self.conf.get("LOCATION_DISTRIBUTION").items():
+            # household distribution is separate
             if location in ['household']:
                 continue
 
@@ -408,8 +389,6 @@ class City:
         Args:
             human_type (Class): Class for the city's human instances
         """
-
-
         # make humans
         count_humans = 0
         house_allocations = {2:[], 3:[], 4:[], 5:[]}
@@ -444,6 +423,7 @@ class City:
             profession = self.rng.choice(professions, p=p, size=n)
 
             # select who should have app based on self.conf's SMARTPHONE_OWNER_FRACTION_BY_AGE
+            # FIXME: model uptake instead
             chosen_app_user_bin = []
             for my_age in ages:
                 for x, frac in self.conf.get("SMARTPHONE_OWNER_FRACTION_BY_AGE").items():
@@ -566,6 +546,9 @@ class City:
         # we don't need a cached property, this will do fine
         self.hd = {human.name: human for human in self.humans}
 
+    def add_to_test_queue(self, human):
+        self.covid_testing_facility.add_to_test_queue(human)
+
     def log_static_info(self):
         """
         Logs events for all humans in the city
@@ -649,6 +632,9 @@ class City:
                     print("naive risk calculation without changing behavior... Humans notified!")
                 humans_notified = True
 
+            # run city testing routine, providing test results for those who need them
+            self.covid_testing_facility.clear_test_queue()
+
             all_new_update_messages = []  # accumulate everything here so we can filter if needed
             backup_human_init_risks = {}  # backs up human risks before any update takes place
 
@@ -670,10 +656,6 @@ class City:
                 # get instant updates; the current implementation assues a one-timeslot-delay
                 # minimum for everyone, even when updating on the same timeslot as the contact
                 all_new_update_messages.extend(new_update_messages)
-
-                if self.conf.get('COLLECT_LOGS'):
-                    Event.log_daily(human, human.env.timestamp)
-                self.tracker.track_symptoms(human)
 
             if isinstance(self.intervention, Tracing):
                 # time to run the cluster+risk prediction via transformer (if we need it)
@@ -705,6 +687,11 @@ class City:
             if current_day != last_day_idx:
                 last_day_idx = current_day
                 self.cleanup_global_mailbox(self.env.timestamp)
+                # TODO: this is an assumption which will break in reality, instead of updating once per day everyone at the same time, it should be throughout the day
+                for human in self.humans:
+                    human.catch_other_disease_at_random()
+                    if self.conf.get('COLLECT_LOGS'):
+                        Event.log_daily(human, human.env.timestamp)
                 self.tracker.increment_day()
                 if self.conf.get("USE_GAEN"):
                     print(
@@ -714,6 +701,123 @@ class City:
                             int(self.conf["n_people"] * self.conf["MESSAGE_BUDGET_GAEN"])
                         ),
                     )
+
+
+class TestFacility(object):
+    """
+    Implements queue behavior for tests.
+    It keeps a queue of `Human`s who need a test.
+    Depending on the daily budget of testing, tests are administered to `Human` according to a scoring function.
+    """
+
+    def __init__(self, test_type_preference, max_capacity_per_test_type, env, conf):
+        self.test_type_preference = test_type_preference
+        self.max_capacity_per_test_type = max_capacity_per_test_type
+
+        self.test_count_today = defaultdict(int)
+        self.env = env
+        self.conf = conf
+        self.test_queue = OrderedSet()
+        self.last_date_to_check_tests = self.env.timestamp.date()
+
+    def reset_tests_capacity(self):
+        """
+        Resets the tests capactiy back to the allowed budget each day.
+        """
+        if self.last_date_to_check_tests != self.env.timestamp.date():
+            self.last_date_to_check_tests = self.env.timestamp.date()
+            for k in self.test_count_today.keys():
+                self.test_count_today[k] = 0
+
+    def get_available_test(self):
+        """
+        Returns a first type that is available according to preference hierarchy
+
+        See TEST_TYPES in core.yaml
+
+        Returns:
+            str: available test_type
+        """
+        for test_type in self.test_type_preference:
+            if self.test_count_today[test_type] < self.max_capacity_per_test_type[test_type]:
+                self.test_count_today[test_type] += 1
+                return test_type
+
+    def add_to_test_queue(self, human):
+        """
+        Adds `Human` to the test queue.
+
+        Args:
+            human (Human): `Human` object.
+        """
+        if human in self.test_queue:
+            return
+        self.test_queue.add(human)
+
+    def clear_test_queue(self):
+        """
+        It is called at the same frequency as `while` in City.run.
+        Triages `Human` in queue to administer tests.
+        With probability P_FALSE_NEGATIVE the test will be negative, otherwise it will be positive
+
+        See TEST_TYPES in core.yaml
+        """
+        # reset here. if reset at end, it results in carry over remaining test at the 0th hour.
+        self.reset_tests_capacity()
+        test_triage = sorted(list(self.test_queue), key=lambda human: -self.score_test_need(human))
+        for human in test_triage:
+            test_type = self.get_available_test()
+            if test_type:
+
+                if human.infection_timestamp is not None:
+                    if human.rng.rand() < get_test_false_negative_rate(test_type, human.days_since_covid, human.conf):
+                        unobserved_result = 'negative'
+                    else:
+                        unobserved_result = 'positive'
+                else:
+                    if human.rng.rand() < self.conf['TEST_TYPES'][test_type]["P_FALSE_POSITIVE"]:
+                        unobserved_result = "positive"
+                    else:
+                        unobserved_result = "negative"
+
+                human.set_test_info(test_type, unobserved_result)  # /!\ sets other attributes related to tests
+                self.test_queue.remove(human)
+
+            else:
+                # no more tests available
+                break
+
+    def score_test_need(self, human):
+        """
+        Score `Human`s according to some criterion. Highest score gets the test first.
+        Note: this can be replaced by a better heuristic.
+
+        Args:
+            human (Human): `Human` object.
+
+        Returns:
+            float: score value indicating chances of `Human` getting a test.
+        """
+        score = 0
+
+        if 'severe' in human.symptoms:
+            score += self.conf['P_TEST_SEVERE']
+        elif 'moderate' in human.symptoms:
+            score += self.conf['P_TEST_MODERATE']
+        elif 'mild' in human.symptoms:
+            score += self.conf['P_TEST_MILD']
+
+        if isinstance(human.location, (Hospital, ICU)):
+            score += 1
+
+        if human.test_recommended:
+            score += 1
+
+        if human.test_result == "negative":
+            score += 0.2  # small value
+
+        return score
+
 
 class Location(simpy.Resource):
     """
@@ -1277,8 +1381,14 @@ class EmptyCity(City):
         self.y_range = y_range
         self.total_area = (x_range[1] - x_range[0]) * (y_range[1] - y_range[0])
         self.n_people = 0
-        self.last_date_to_check_tests = self.env.timestamp.date()
-        self.test_count_today = defaultdict(int)
+
+        self.test_type_preference = list(zip(*sorted(conf.get("TEST_TYPES").items(), key=lambda x:x[1]['preference'])))[0]
+        self.max_capacity_per_test_type = {
+            test_type: max([int(conf['TEST_TYPES'][test_type]['capacity'] * self.n_people), 1])
+            for test_type in self.test_type_preference
+        }
+
+        self.covid_testing_facility = TestFacility(self.test_type_preference, self.max_capacity_per_test_type, env, conf)
 
         # Get the test type with the lowest preference?
         # TODO - EM: Should this rather sort on 'preference' in descending order?

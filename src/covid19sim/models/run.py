@@ -46,6 +46,7 @@ def make_human_as_message(
     obs_preexisting_conditions = conditions_to_np(human.obs_preexisting_conditions)
     test_results = collections.deque(((encode_test_result(result), timestamp)
                                       for result, timestamp in human.test_results))
+    test_results.pop()  # skip the last test_results holding a placeholder for do test data
     rolling_all_symptoms = symptoms_to_np(human.rolling_all_symptoms, conf)
     rolling_all_reported_symptoms = symptoms_to_np(human.rolling_all_reported_symptoms, conf)
 

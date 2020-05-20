@@ -388,6 +388,8 @@ class GetTested(BehaviorInterventions):
 
     def modify_behavior(self, human):
         human.test_recommended  = True
+        # send human to the testing center
+        human.check_covid_testing_needs()
 
     def revert_behavior(self, human):
         human.test_recommended  = False

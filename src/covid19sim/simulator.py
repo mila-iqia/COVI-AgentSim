@@ -7,12 +7,12 @@ import datetime
 import numpy as np
 import typing
 import warnings
-from collections import defaultdict, Counter
+from collections import defaultdict
 from orderedset import OrderedSet
 
 from covid19sim.interventions import Tracing
 from covid19sim.utils import compute_distance, proba_to_risk_fn
-from covid19sim.base import Event, PersonalMailboxType
+from covid19sim.base import Event, PersonalMailboxType, Hospital, ICU
 from collections import deque
 
 from covid19sim.utils import _normalize_scores, _get_random_sex, _get_covid_progression, \
@@ -155,9 +155,9 @@ class Human(object):
         ) # draw a beta with the distribution in documents
 
         # Indicates whether this person will show severe signs of illness.
-        self.cold_timestamp = self.env.timestamp if self.rng.random() < self.conf.get("P_COLD") else None
-        self.flu_timestamp = self.env.timestamp if self.rng.random() < self.conf.get("P_FLU") else None # different from asymptomatic
-        self.allergy_timestamp = self.env.timestamp if self.rng.random() < self.conf.get("P_HAS_ALLERGIES_TODAY") else None
+        self.cold_timestamp = None
+        self.flu_timestamp = None
+        self.allergy_timestamp = None
         self.can_get_really_sick = _get_get_really_sick(self.age, self.sex, self.rng)
         self.can_get_extremely_sick = self.can_get_really_sick and self.rng.random() >= 0.7 # &severe; 30% of severe cases need ICU
         self.never_recovers = self.rng.random() <= self.conf.get("P_NEVER_RECOVERS")[min(math.floor(self.age/10),8)]
@@ -171,7 +171,8 @@ class Human(object):
         self.infectiousness_onset_days = None # 1 + self.rng.normal(loc=self.conf.get("INFECTIOUSNESS_ONSET_DAYS_AVG"), scale=self.conf.get("INFECTIOUSNESS_ONSET_DAYS_STD"))
         self.incubation_days = None # self.infectiousness_onset_days + self.viral_load_plateau_start + self.rng.normal(loc=self.conf.get("SYMPTOM_ONSET_WRT_VIRAL_LOAD_PEAK_AVG"), scale=self.conf.get("SYMPTOM_ONSET_WRT_VIRAL_LOAD_PEAK_STD")
         self.recovery_days = None # self.infectiousness_onset_days + self.viral_load_recovered
-        self.test_result, self.test_type = None, None
+        self.test_time, self.test_type = None, None
+        self.got_new_test_results = False
         self.test_results = deque(((None, datetime.datetime.max),))
         self.test_result_validated = None
         self.reported_test_result = None
@@ -200,7 +201,7 @@ class Human(object):
         self.how_much_I_follow_recommendations = self.conf.get('PERCENT_FOLLOW')
         self.recommendations_to_follow = OrderedSet()
         self.time_encounter_reduction_factor = 1.0
-        self.hygiene = self.carefulness #self.rng.uniform(self.carefulness, 3) if self.has_app else self.carefulness
+        self.hygiene = 0 # start everyone with a baseline hygiene. Only increase it once the intervention is introduced.
         self.test_recommended = False
         self.effective_contacts = 0
         self.num_contacts = 0
@@ -231,8 +232,8 @@ class Human(object):
         self.symptom_start_time = None
         self.cold_progression = _get_cold_progression(self.age, self.rng, self.carefulness, self.preexisting_conditions, self.can_get_really_sick, self.can_get_extremely_sick)
         self.flu_progression = _get_flu_progression(
-            self.age, self.rng, self.carefulness, self.preexisting_conditions, self.can_get_really_sick, self.can_get_extremely_sick,
-            self.conf.get("FLU_INCUBATION"), self.conf.get("AVG_FLU_DURATION")
+            self.age, self.rng, self.carefulness, self.preexisting_conditions,
+            self.can_get_really_sick, self.can_get_extremely_sick, self.conf.get("AVG_FLU_DURATION")
         )
         self.all_symptoms, self.cold_symptoms, self.flu_symptoms, self.covid_symptoms, self.allergy_symptoms = [], [], [], [], []
         # Padding the array
@@ -634,10 +635,63 @@ class Human(object):
         """
         return self.can_get_extremely_sick and 'severe' in self.symptoms
 
+    def compute_covid_properties(self):
+        """
+        Pre-computes viral load curve.
+        Specifically, characteristics of viral load plateau curve, i.e., height, start/end of plateau,
+        start of infectiousness and when the symptom will show up.
+        """
+        # state change from exposed to infectious occur after these many days
+        # infectioness can be calculated based on incubation days
+        self.infectiousness_onset_days = self.rng.gamma(
+            shape=self.conf['INCUBATION_DAYS_GAMMA_SHAPE'] / 2,
+            scale=self.conf['INCUBATION_DAYS_GAMMA_SCALE']
+        )
+
+        # symptom onset occur after these days (average of 5 days)
+        self.incubation_days = (
+                        self.infectiousness_onset_days +
+                        self.rng.gamma(
+                                shape=self.conf['INCUBATION_DAYS_GAMMA_SHAPE'] / 2,
+                                scale=self.conf['INCUBATION_DAYS_GAMMA_SCALE']
+                            ))
+
+        # peak viral load occurs before symptom onset
+        # plateau start is relative to infectiousness onset days to ease the calculation of viral load
+        self.viral_load_plateau_start = (
+            self.incubation_days
+            # This the 0.6 days to be confirmed with epidemiologist
+            - self.rng.gamma(
+                    shape=self.conf["SYMPTOM_ONSET_WRT_VIRAL_LOAD_PEAK_AVG"],
+                    scale=self.conf['INCUBATION_DAYS_GAMMA_SCALE']
+                    )
+            - self.infectiousness_onset_days )
+
+        # days returned from this function are relative to infectiousness onset days
+        self.viral_load_plateau_height, \
+            self.viral_load_plateau_end, \
+              self.viral_load_recovered = _sample_viral_load_piecewise(
+                  rng=self.rng,
+                  plateau_start=self.viral_load_plateau_start,
+                  age=self.age,
+                  initial_viral_load=self.initial_viral_load,
+                  conf=self.conf
+            )
+
+        # Confirm with epidemiologist if used in any technical sense
+        self.recovery_days = self.infectiousness_onset_days + self.viral_load_recovered
+
+        self.covid_progression = _get_covid_progression(self.initial_viral_load, self.viral_load_plateau_start, self.viral_load_plateau_end,
+                                        self.viral_load_recovered, age=self.age, incubation_days=self.incubation_days,
+                                        really_sick=self.can_get_really_sick, extremely_sick=self.can_get_extremely_sick,
+                                        rng=self.rng, preexisting_conditions=self.preexisting_conditions, carefulness=self.carefulness)
+
     def viral_load_for_day(self, timestamp):
         """ Calculates the elapsed time since infection, returning this person's current viral load"""
-        if not self.infection_timestamp:
+
+        if self.infection_timestamp is None:
             return 0.
+
         # calculates the time since infection in days
         days_infectious = (timestamp - self.infection_timestamp).total_seconds() / 86400 - self.infectiousness_onset_days
 
@@ -685,7 +739,6 @@ class Human(object):
               severity_multiplier += 0.2
             if 'cough' in self.symptoms:
               severity_multiplier += 0.25
-            severity_multiplier += (1-self.hygiene)
         return self.viral_load_for_day(timestamp) * severity_multiplier
 
     @property
@@ -728,7 +781,7 @@ class Human(object):
             return []
 
         # TODO: symptoms should not be updated here.
-        #  Explicit call to Human.update_reported_symptoms() should be required
+        # Explicit call to Human.update_reported_symptoms() should be required
         self.update_reported_symptoms()
         return self.rolling_all_reported_symptoms[0]
 
@@ -771,10 +824,11 @@ class Human(object):
         self.all_symptoms = list(all_symptoms)
 
         self.rolling_all_symptoms.appendleft(self.all_symptoms)
-
         # Keep reported symptoms in sync
         # TODO: Inconsistency could come from Human.symptoms being accessed instead of Human.all_symptoms
         self.update_reported_symptoms()
+        self.check_covid_testing_needs()
+        self.city.tracker.track_symptoms(self)
 
     def update_reported_symptoms(self):
         """
@@ -789,6 +843,120 @@ class Human(object):
 
         reported_symptoms = [s for s in self.rolling_all_symptoms[0] if self.rng.random() < self.carefulness]
         self.rolling_all_reported_symptoms.appendleft(reported_symptoms)
+
+    @property
+    def test_result(self):
+        if self.test_time is None:
+            return None
+
+        # for every new test, this will return None until the test results arrive
+        if (self.env.timestamp - self.test_time).days < self.time_to_test_result:
+            return None
+
+        return self.hidden_test_result
+
+    @test_result.setter
+    def test_result(self, val):
+        if val is None:
+            self.test_type = None
+            self.test_time = None
+            self.hidden_test_result = None
+            self.time_to_test_result = None
+            self.test_result_validated = None
+            self.reported_test_result = None
+            self.reported_test_type = None
+
+    def set_test_info(self, test_type, unobserved_result):
+        """
+        sets test related attributes such as
+            test_type (str): type of test used
+            time_time (str): time of testing
+            time_to_test_result (str): delay in getting results back
+            hidden_test_result (str): test results are not immediately available
+            test_result_validated (str): whether these results will be validated by an agency
+            reported_test_result (str): test result reported by self
+            reported_test_type (str): test type reported by self
+
+        NOTE: these values can be overwritten by subsequent test results
+        """
+        self.test_type = test_type
+        self.test_time = self.env.timestamp
+        self.hidden_test_result = unobserved_result
+        if isinstance(self.location, (Hospital, ICU)):
+            self.time_to_test_result = self.conf['TEST_TYPES'][test_type]['time_to_result']['in-patient']
+        else:
+            self.time_to_test_result = self.conf['TEST_TYPES'][test_type]['time_to_result']['out-patient']
+
+        # test reporting behavior
+        if self.test_type == "lab":
+            self.test_result_validated = True
+        else:
+            self.test_result_validated = False
+
+        if self.has_app and self.rng.random() < self.carefulness:
+            self.reported_test_result = self.test_result
+            self.reported_test_type = self.test_type
+        else:
+            self.reported_test_result = None
+            self.reported_test_type = None
+
+        if self.conf.get('COLLECT_LOGS'):
+            Event.log_test(self, self.test_time)
+
+        self.test_results.appendleft((self.hidden_test_result, self.env.timestamp))
+        self.city.tracker.track_tested_results(self)
+        self.got_new_test_results = True
+
+    def check_covid_testing_needs(self, at_hospital=False):
+        """
+        Checks whether self needs a test or not. Note: this only adds self to the test queue (not administer a test yet) of City.
+        It is called every time symptoms are updated. It is also called from GetTested intervention.
+
+        It depends upon the following factors -
+            1. if `Human` is at a hospital, TEST_SYMPTOMS_FOR_HOSPITAL are checked for
+            2. elsewhere there is a proability related to whether symptoms are "severe", "moderate", or "mild"
+            3. if test_recommended is true (set by app recommendations)
+            4. if the `Human` is careful enough to check symptoms itself
+
+        Args:
+            at_hospital (bool, optional): follows the check for testing needs at a hospital.
+        """
+        # has been tested positive already
+        if self.test_result == "positive":
+            return
+
+        # waiting for the results. no need to test again.
+        if self.test_time is not None and self.test_result is None:
+            return
+
+        should_get_test = False
+        if at_hospital:
+            assert isinstance(self.location, (Hospital, ICU)), "Not at hospital; wrong argument"
+            # Is in a hospital and has symptoms that hospitals check for
+            TEST_SYMPTOMS_FOR_HOSPITAL = set(self.conf['GET_TESTED_SYMPTOMS_CHECKED_IN_HOSPITAL'])
+            should_get_test = any(TEST_SYMPTOMS_FOR_HOSPITAL & set(self.symptoms))
+        else:
+            if "severe" in self.symptoms:
+                should_get_test = self.rng.rand() < self.conf['P_TEST_SEVERE']
+
+            elif "moderate" in self.symptoms:
+                should_get_test = self.rng.rand() < self.conf['P_TEST_MODERATE']
+
+            elif "mild" in self.symptoms:
+                should_get_test = self.rng.rand() < self.conf['P_TEST_MILD']
+
+            # has been recommended the test by an intervention
+            if not should_get_test and self.test_recommended:
+                should_get_test = self.rng.random() < self.how_much_I_follow_recommendations
+
+            if not should_get_test:
+                # Has symptoms that a careful person would fear to be covid
+                SUSPICIOUS_SYMPTOMS = set(self.conf['GET_TESTED_SYMPTOMS_CHECKED_BY_SELF'])
+                if set(self.symptoms) and SUSPICIOUS_SYMPTOMS:
+                    should_get_test = self.rng.rand() < self.carefulness
+
+        if should_get_test:
+            self.city.add_to_test_queue(self)
 
     def initialize_daily_risk(self, current_day_idx: int):
         """Initializes the risk history map with a new/copied risk value for the given day, if needed.
@@ -854,6 +1022,11 @@ class Human(object):
         self.last_date["symptoms_updated"] = current_timestamp.date()
         self.update_symptoms()  # FIXME: duplicate call in 'update_reported_symptoms'?
         self.update_reported_symptoms()
+        if self.got_new_test_results:
+            if self.test_result == "positive":
+                self.risk_history_map[current_day_idx] = 1.0
+            elif self.test_result == "negative":
+                self.risk_history_map[current_day_idx] = .2
         self.contact_book.cleanup_contacts(init_timestamp, current_timestamp)
 
         update_messages = []
@@ -862,7 +1035,8 @@ class Human(object):
 
             if isinstance(self.tracing_method, Tracing) and self.tracing_method.risk_model != "transformer":
                 # if not running transformer, we're using basic tracing --- do it now, it won't be batched later
-                if not self.is_removed and self.test_result != "positive":
+                if not self.is_removed and not self.got_new_test_results:
+                    # note: we check to make sure we don't have test results here not to overwrite the risk value
                     self.risk_history_map[current_day_idx] = \
                         self.tracing_method.compute_risk(self, personal_mailbox, self.city.hd)
                     update_reason = "tracing"
@@ -903,6 +1077,7 @@ class Human(object):
             self.infectiousness_history_map[current_day_idx] = calculate_average_infectiousness(self)
         # update the 'prev risk history' since we just generated the necessary updates
         self.prev_risk_history_map[current_day_idx] = self.risk_history_map[current_day_idx]
+        self.got_new_test_results = False  # if we did have new results, we caught them above
         return update_messages
 
     def apply_transformer_risk_updates(
@@ -941,84 +1116,6 @@ class Human(object):
         for i in range(len(risk_history)):
             self.prev_risk_history_map[current_day_idx - i] = risk_history[i]
         return update_messages
-
-    def compute_covid_properties(self):
-        """
-        [summary]
-        """
-        self.viral_load_plateau_height, \
-          self.viral_load_plateau_start, \
-            self.viral_load_plateau_end, \
-              self.viral_load_recovered = _sample_viral_load_piecewise(
-                  rng=self.rng,
-                  age=self.age,
-                  initial_viral_load=self.initial_viral_load,
-                  conf=self.conf
-            )
-        self.infectiousness_onset_days = (
-            1
-            + self.rng.normal(
-                loc=self.conf.get("INFECTIOUSNESS_ONSET_DAYS_AVG"),
-                scale=self.conf.get("INFECTIOUSNESS_ONSET_DAYS_STD")
-            )
-        )
-        # FIXME : Make incubation_days as lognormal
-        self.incubation_days = (
-            self.infectiousness_onset_days
-            + self.viral_load_plateau_start
-            + self.rng.normal(
-                loc=self.conf.get("SYMPTOM_ONSET_WRT_VIRAL_LOAD_PEAK_AVG"),
-                scale=self.conf.get("SYMPTOM_ONSET_WRT_VIRAL_LOAD_PEAK_STD")
-            )
-        )
-        self.recovery_days = self.infectiousness_onset_days + self.viral_load_recovered
-
-        self.covid_progression = _get_covid_progression(self.initial_viral_load, self.viral_load_plateau_start, self.viral_load_plateau_end,
-                                        self.viral_load_recovered, age=self.age, incubation_days=self.incubation_days,
-                                        really_sick=self.can_get_really_sick, extremely_sick=self.can_get_extremely_sick,
-                                        rng=self.rng, preexisting_conditions=self.preexisting_conditions, carefulness=self.carefulness)
-
-    def get_tested(self, city, source="illness"):
-        """
-        [summary]
-
-        Args:
-            city ([type]): [description]
-            source (str, optional): [description]. Defaults to "illness".
-
-        Returns:
-            [type]: [description]
-        """
-        if not city.tests_available:
-            return False
-
-        # TODO: get observed data on testing / who gets tested when??
-        if any(self.symptoms) and self.rng.rand() < self.conf.get("P_TEST"):
-            self.test_type = city.get_available_test()
-            # note: check for infection timestamp; symptoms might be caused by a distracting disease
-            if self.infection_timestamp is None or \
-                    self.rng.rand() < self.conf.get("TEST_TYPES")[self.test_type]['P_FALSE_NEGATIVE']:
-                self.test_result = 'negative'
-            else:
-                assert self.infection_timestamp <= city.env.timestamp, \
-                    "how did we get here if the user is not actually infected?"
-                self.test_result = 'positive'
-
-            if self.test_type == "lab":
-                self.test_result_validated = True
-            else:
-                self.test_result_validated = False
-
-            if self.has_app and self.rng.random() < self.carefulness:
-                self.reported_test_result = self.test_result
-                self.reported_test_type = self.test_type
-            else:
-                self.reported_test_result = None
-                self.reported_test_type = None
-
-            return True
-
-        return False
 
     def wear_mask(self, put_on=False):
         """
@@ -1067,9 +1164,31 @@ class Human(object):
             self.flu_symptoms = []
 
         if (self.allergy_timestamp is not None and
-            self.days_since_allergies >= self.len_allergies):
+            self.days_since_allergies >= len(self.allergy_progression)):
             self.allergy_timestamp = None
             self.allergy_symptoms = []
+
+    def catch_other_disease_at_random(self):
+        # assumption: no other infection if already infected with covid
+        if self.infection_timestamp is not None:
+            return
+
+        # Catch a random cold
+        if self.cold_timestamp is None and self.rng.random() < self.conf["P_COLD_TODAY"]:
+            self.cold_timestamp  = self.env.timestamp
+            # print("caught cold")
+            return
+
+        # Catch a random flu (TODO: model seasonality through P_FLU_TODAY)
+        if self.flu_timestamp is None and self.rng.random() < self.conf["P_FLU_TODAY"]:
+            self.flu_timestamp = self.env.timestamp
+            return
+
+        # Have random allergy symptoms
+        if self.has_allergies and self.rng.random() < self.conf["P_HAS_ALLERGIES_TODAY"]:
+            self.allergy_timestamp = self.env.timestamp
+            # print("caught allergy")
+            return
 
     def how_am_I_feeling(self):
         """
@@ -1083,7 +1202,7 @@ class Human(object):
             return 1.0
 
         if getattr(self, "_quarantine", None) and self.rng.random() < self.how_much_I_follow_recommendations:
-            return 0.10
+            return 0.1
 
         if sum(x in current_symptoms for x in ["severe", "extremely_severe"]) > 0:
             return 0.0
@@ -1092,13 +1211,13 @@ class Human(object):
             return 0.1
 
         elif sum(x in current_symptoms for x in ["trouble_breathing"]) > 0:
-            return 0.3 * (1 + self.carefulness)
+            return 0.3
 
-        elif sum(x in current_symptoms for x in ["moderate", "mild", "fever"]) > 0:
-            return 0.5
+        elif sum(x in current_symptoms for x in ["moderate", "fever"]) > 0:
+            return 0.3
 
-        elif sum(x in current_symptoms for x in ["cough", "fatigue", "gastro", "aches"]) > 0:
-            return 0.5
+        elif sum(x in current_symptoms for x in ["cough", "fatigue", "gastro", "aches", "mild"]) > 0:
+            return 0.6
 
         return 1.0
 
@@ -1127,7 +1246,14 @@ class Human(object):
         if self.last_state != self.state:
             # can skip the compartment if hospitalized in exposed
             if not self.obs_hospitalized:
-                assert self.state.index(1) in next_state[self.last_state.index(1)], f"invalid compartment transition for {self.name}: {self.last_state} to {self.state}"
+                try:
+                    if not self.state.index(1) in next_state[self.last_state.index(1)]:
+                        warnings.warn(f"invalid compartment transition for {self.name}: {self.last_state} to {self.state}"
+                            f"incubation days:{self.incubation_days:3.3f} infectiousness onset days {self.infectiousness_onset_days}"
+                            f"recovery days {self.recovery_days: 3.3f}", RuntimeWarning)
+                except:
+                    import pdb; pdb.set_trace()
+
             self.last_state = self.state
 
     def notify(self, intervention=None):
@@ -1180,50 +1306,32 @@ class Human(object):
             # track symptoms
             if self.is_incubated and self.symptom_start_time is None:
                 self.symptom_start_time = self.env.timestamp
-                city.tracker.track_generation_times(self.name) # it doesn't count environmental infection or primary case or asymptomatic/presymptomatic infections; refer the definition
-
-            # log test
-            # TODO: needs better conditions; log test based on some condition on symptoms
-            if (self.test_result != "positive" and (
-                self.test_recommended or (
-                    self.is_incubated and
-                    self.env.timestamp - self.symptom_start_time >= datetime.timedelta(days=self.conf["TEST_DAYS"])
-                )
-            )):
-                if 0 <= (self.env.timestamp - self.test_results[0][1]).days < self.conf["TEST_INTERVAL"]:
-                    # last test was performed fairly recently, we will not retest that person today
-                    pass
-                # make testing a function of age/hospitalization/travel
-                elif self.get_tested(city):
-                    Event.log_test(self, self.env.timestamp)
-                    self.test_results.appendleft((self.test_result, self.env.timestamp))
-                    city.tracker.track_tested_results(self, self.test_result, self.test_type)
+                # it doesn't count environmental infection or primary case or asymptomatic/presymptomatic infections; refer the definition
+                city.tracker.track_generation_times(self.name)
 
             # recover
             if self.is_infectious and self.days_since_covid >= self.recovery_days:
                 city.tracker.track_recovery(self.n_infectious_contacts, self.recovery_days)
 
-                self.test_result, self.test_result_type = None, None
+                # TO DISCUSS: Should the test result be reset here? We don't know in reality
+                # when the person has recovered; currently not reset
+                # self.test_result = None
                 self.infection_timestamp = None
+                self.all_symptoms, self.covid_symptoms = [], []
 
-                if not self.never_recovers:
-                    if not self.conf.get("REINFECTION_POSSIBLE"):
-                        self.recovered_timestamp = self.env.timestamp
-                        self.is_immune = not self.conf.get("REINFECTION_POSSIBLE")
-                    else:
-                        self.recovered_timestamp = self.env.timestamp
-                        self.test_result, self.test_type = None, None
-                    # TODO - EM - What is this code for? Seems odd.
-                    # Is this to "resample" the chance to never recover for a possible section infection?
-                    self.never_recovers = self.rng.random() <= self.conf.get("P_NEVER_RECOVERS")[min(math.floor(self.age/10),8)]
-                    self.risk = self.conf.get("BASELINE_RISK_VALUE")  # FIXME: may affect contacts before next timeslot
-                    self.all_symptoms, self.covid_symptoms = [], []
+                if self.never_recovers:
+                    yield self.env.process(self.expire())
+                else:
+                    self.recovered_timestamp = self.env.timestamp
+                    self.is_immune = not self.conf.get("REINFECTION_POSSIBLE")
+
+                    # "resample" the chance probability of never recovering again (experimental)
+                    if not self.is_immune:
+                        self.never_recovers = self.rng.random() < self.conf.get("P_NEVER_RECOVERS")[
+                            min(math.floor(self.age / 10), 8)]
+
                     if self.conf.get('COLLECT_LOGS'):
                         Event.log_recovery(self, self.env.timestamp, death=False)
-
-                else:
-                    yield self.env.process(self.expire())
-
 
             self.assert_state_changes()
 
@@ -1232,20 +1340,15 @@ class Human(object):
             if not self.rest_at_home:
                 # set it once for the rest of the disease path
                 i_feel = self.how_am_I_feeling()
-                # If you are in the GREEN level, modulate the mobility using FEELING_KNOB
-                i_feel = self.conf.get("GREEN_FEELING_KNOB") * i_feel
                 if self.rng.random() > i_feel:
                     self.rest_at_home = True
+                    # print(f"{self} C:{self.has_cold} A:{self.has_allergy_symptoms} staying home because I feel {i_feel} {self.symptoms}")
 
             # happens when recovered
             elif self.rest_at_home and self.how_am_I_feeling() == 1.0:
-                i_feel = self.how_am_I_feeling()
-                # If you are in the GREEN level, modulate the mobility using FEELING_KNOB
-                i_feel = self.conf.get("GREEN_FEELING_KNOB") * i_feel
-                if self.rng.random() > i_feel:
-                    self.rest_at_home = True
-                else:
-                    self.rest_at_home = False
+                self.rest_at_home = False
+                # print(f"{self} C:{self.has_cold} A:{self.has_allergy_symptoms} going out because I recovered {self.symptoms}")
+
 
             # Behavioral imperatives
             if self.is_extremely_sick:
@@ -1460,9 +1563,7 @@ class Human(object):
         area = self.location.area
         initial_viral_load = 0
 
-        # is meaningful only if location is Hospital or ICU
-        #if self.should_get_tested:
-        #    self.get_tested(city)
+        self.check_covid_testing_needs(at_hospital=isinstance(location, (Hospital, ICU)))
 
         # accumulate time at household
         if location == self.household:
@@ -1488,12 +1589,19 @@ class Human(object):
             if location != self.household and not self.rng.random() < (0.1 * abs(self.age - h.age) + 1) ** -1:
                 continue
 
-            distance = np.sqrt(int(area/len(self.location.humans))) + \
-                self.rng.randint(self.conf.get("MIN_DIST_ENCOUNTER"), self.conf.get("MAX_DIST_ENCOUNTER")) + \
-                self.maintain_extra_distance
+            packing_term = 100 * np.sqrt(area/len(self.location.humans)) # cms
+            encounter_term = self.rng.uniform(self.conf.get("MIN_DIST_ENCOUNTER"), self.conf.get("MAX_DIST_ENCOUNTER"))
+            social_distancing_term = np.mean([self.maintain_extra_distance, h.maintain_extra_distance]) * self.rng.rand()
+            # if you're in a space, you cannot be more than packing term apart
+            distance = np.clip(encounter_term + social_distancing_term, a_min=0, a_max=packing_term)
+            # if distance == packing_term:
+                # print(f"packing:{packing_term:5.2f} encounter:{encounter_term} social_distancing:{social_distancing_term} distance clipped:{distance == packing_term} distance:{distance} {location}")
 
+            # risk model
             h1_msg, h2_msg = None, None
-            if self.conf.get("MIN_MESSAGE_PASSING_DISTANCE") < distance < self.conf.get("MAX_MESSAGE_PASSING_DISTANCE"):
+            if (
+                self.conf.get("MIN_MESSAGE_PASSING_DISTANCE") < distance <  self.conf.get("MAX_MESSAGE_PASSING_DISTANCE")
+            ):
                 if self.tracing and self.has_app and h.has_app:
                     h1_msg, h2_msg = exchange_encounter_messages(
                         h1=self,
@@ -1515,15 +1623,15 @@ class Human(object):
                 and t_near > self.conf.get("INFECTION_DURATION")
             )
 
-            # Conditions met for possible infection
+            # Conditions met for possible infection #https://www.cdc.gov/coronavirus/2019-ncov/hcp/guidance-risk-assesment-hcp.html
             if contact_condition:
                 proximity_factor = 1
                 if self.conf.get("INFECTION_DISTANCE_FACTOR") or self.conf.get("INFECTION_DURATION_FACTOR"):
+                    # currently unused
                     proximity_factor = (
                         self.conf.get("INFECTION_DISTANCE_FACTOR") * (1 - distance / self.conf.get("INFECTION_RADIUS"))
                         + self.conf.get("INFECTION_DURATION_FACTOR") * min((t_near - self.conf.get("INFECTION_DURATION")) / self.conf.get("INFECTION_DURATION"), 1)
                     )
-                mask_efficacy = (self.mask_efficacy + h.mask_efficacy)*2
 
                 # used for matching "mobility" between methods
                 scale_factor_passed = self.rng.random() < self.conf.get("GLOBAL_MOBILITY_SCALING_FACTOR")
@@ -1544,12 +1652,14 @@ class Human(object):
 
                     ratio = infector.asymptomatic_infection_ratio if infector.is_asymptomatic else 1.0
                     p_infection = infector.infectiousness * ratio * proximity_factor
-                    # FIXME: remove hygiene from severity multiplier; init hygiene = 0; use sum here instead
-                    reduction_factor = self.conf.get("CONTAGION_KNOB") + sum(getattr(x, "_hygiene", 0) for x in [self, h]) + mask_efficacy
+
+                    # factors that can reduce probability of transmission (no-source)
+                    mask_efficacy = (self.mask_efficacy + h.mask_efficacy)*self.conf['MASK_EFFICACY_FACTOR']
+                    hygiene_efficacy = self.hygiene + h.hygiene
+                    reduction_factor = self.conf["CONTAGION_KNOB"] +  mask_efficacy + hygiene_efficacy
                     p_infection *= np.exp(-reduction_factor * infector.n_infectious_contacts)
 
                     x_human = infector.rng.random() < p_infection
-
                     if x_human and infectee.is_susceptible:
                         infectee.infection_timestamp = self.env.timestamp
                         infectee.initial_viral_load = infector.rng.random()
@@ -1567,15 +1677,17 @@ class Human(object):
                     else:
                         infector, infectee = None, None
 
-                # cold transmissions
+                # cold transmission
                 if self.has_cold ^ h.has_cold:
                     cold_infector, cold_infectee = h, self
                     if self.cold_timestamp is not None:
                         cold_infector, cold_infectee = self, h
 
-                    # TODO - bug - in case when both had the cold, one has chance to have timestamp updated.
-                    if self.rng.random() < self.conf.get("COLD_CONTAGIOUSNESS"):
-                        cold_infectee.cold_timestamp = self.env.timestamp
+                    # assumed no overloading of covid
+                    if cold_infectee.infection_timestamp is None:
+                        if self.rng.random() < self.conf.get("COLD_CONTAGIOUSNESS"):
+                            cold_infectee.cold_timestamp = self.env.timestamp
+                            # print("cold transmission occured")
 
                 # flu tansmission
                 if self.has_flu ^ h.has_flu:
@@ -1583,8 +1695,10 @@ class Human(object):
                     if self.flu_timestamp is not None:
                         flu_infector, flu_infectee = self, h
 
-                    if self.rng.random() < self.conf.get("FLU_CONTAGIOUSNESS"):
-                        flu_infectee.flu_timestamp = self.env.timestamp
+                    # assumed no overloading of covid
+                    if flu_infectee.infection_timestamp is not None:
+                        if self.rng.random() < self.conf.get("FLU_CONTAGIOUSNESS"):
+                            flu_infectee.flu_timestamp = self.env.timestamp
 
                 city.tracker.track_encounter_events(human1=self, human2=h, location=location, distance=distance, duration=t_near)
 
@@ -1615,18 +1729,6 @@ class Human(object):
 
             city.tracker.track_infection('env', from_human=None, to_human=self, location=location, timestamp=self.env.timestamp)
             city.tracker.track_covid_properties(self)
-
-        # Catch a random cold
-        if self.cold_timestamp is None and self.rng.random() < self.conf.get("P_COLD"):
-            self.cold_timestamp  = self.env.timestamp
-
-        # Catch a random flu
-        if self.flu_timestamp is None and self.rng.random() < self.conf.get("P_FLU"):
-            self.flu_timestamp = self.env.timestamp
-
-        # Have random allergy symptoms
-        if self.has_allergies and self.rng.random() < self.conf.get("P_HAS_ALLERGIES_TODAY"):
-            self.allergy_timestamp = self.env.timestamp
 
         location.remove_human(self)
 

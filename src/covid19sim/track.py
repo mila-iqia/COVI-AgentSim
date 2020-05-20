@@ -6,7 +6,8 @@ import os
 import datetime
 import math
 import typing
-from collections import defaultdict
+import warnings
+from collections import Counter, deque, defaultdict
 
 import dill
 import networkx as nx
@@ -14,6 +15,33 @@ import numpy as np
 import pandas as pd
 
 from covid19sim.utils import log
+
+def print_dict(title, dic, is_sorted=None, top_k=None, logfile=None):
+    if not is_sorted:
+        items = dic.items()
+    else:
+        items = sorted(dic.items(), key=lambda x: x[1])[:top_k]
+        if is_sorted == "desc":
+            items = reversed(items)
+
+    ml = max([len(k) for k in dic.keys()] + [0]) + 2
+    aligned = "{:" + str(ml) + "}"
+    log(
+        "{}:\n   ".format(title) +
+        "\n    ".join((aligned + ": {:5.4f}").format(k, v) for k, v in items),
+        logfile
+    )
+
+
+def normalize_counter(counter, normalizer=None):
+    if normalizer:
+        total = normalizer
+    else:
+        total = float(sum(counter.values()))
+
+    for key in counter:
+        counter[key] /= total
+    return counter
 
 
 def get_nested_dict(nesting):
@@ -99,9 +127,10 @@ class Tracker(object):
         self.r = []
 
         # testing & hospitalization
-        self.cases_positive_per_day = [0]
         self.hospitalization_per_day = [0]
         self.critical_per_day = [0]
+        self.test_results_per_day = defaultdict(lambda :{'positive':0, 'negative':0})
+        self.tested_per_day = [0]
 
         # demographics
         self.age_bins = sorted(self.city.conf.get("HUMAN_DISTRIBUTION").keys(), key = lambda x:x[0])
@@ -214,9 +243,9 @@ class Tracker(object):
             [type]: [description]
         """
         if len(self.r) > 0:
-            for x in self.r:
+            for idx,x in enumerate(self.r):
                 if x >0:
-                    return x
+                    return np.mean(self.r[idx:idx+5])
         else:
             log("not enough data points to estimate r0. Falling back to average")
             return self.get_R()
@@ -257,7 +286,7 @@ class Tracker(object):
             self.recovered_stats = self.recovered_stats[1:]
 
         # test_per_day
-        self.cases_positive_per_day.append(0)
+        self.tested_per_day.append(0)
         self.hospitalization_per_day.append(0)
         self.critical_per_day.append(0)
 
@@ -292,8 +321,8 @@ class Tracker(object):
         #
         self.avg_infectiousness_per_day.append(np.mean([h.infectiousness for h in self.city.humans]))
 
-        if len(self.city.humans) > 5000:
-            self.dump_metrics()
+        # if len(self.city.humans) > 5000:
+            # self.dump_metrics()
 
     def compute_mobility(self):
         """
@@ -315,7 +344,7 @@ class Tracker(object):
             EM += (1-h.risk) # proxy for mobility
         return M, G, B, O, R, EM/len(self.city.humans), F/len(self.city.humans)
 
-    def compute_risk_precision(self, daily=True, threshold=0.5, until_days=None):
+    def compute_risk_precision(self, daily=True, until_days=None):
         """
         [summary]
 
@@ -351,13 +380,19 @@ class Tracker(object):
                 xy = type[:math.ceil(k * len(type))]
                 pred = 1.0*sum(1 for x,y in xy if y)
 
-                # FIXME: line below previously divided by zero --- it's hard to tell what all this
-                #   doing, someone please rewrite this stuff more clearly...
-                top_k_prec[idx].append(pred/len(xy) if len(xy) else 1.0)
+                # precision
+                if len(xy):
+                    top_k_prec[idx].append(pred/len(xy))
+                else:
+                    # happens when the population size is too small.
+                    warnings.warn(f"population size {len(all)} too small to compute top-{k} precision for {len(xy)} people.", RuntimeWarning)
+                    top_k_prec[idx].append(-1)
+                # lift
                 if total_infected:
                     lift[idx].append(pred/(k*total_infected))
                 else:
                     lift[idx].append(0) # FIXME: it might not be correct definition for Lift
+
             z = sum(1 for x,y in type if y)
             recall.append(0)
             if z:
@@ -421,14 +456,14 @@ class Tracker(object):
 
     def track_infection(self, type, from_human, to_human, location, timestamp):
         """
-        [summary]
+        Called every time someone is infected either by other `Human` or through envrionmental contamination.
 
         Args:
-            type ([type]): [description]
-            from_human ([type]): [description]
-            to_human ([type]): [description]
-            location ([type]): [description]
-            timestamp ([type]): [description]
+            type (str): Type of transmissions, i.e., human or environmental.
+            from_human (Human): `Human` who infected to_human
+            to_human (Human): `Human` who got infected
+            location (Location): `Location` where the even took place.
+            timestamp (datetime.datetime): time at which this event took place.
         """
         for i, (l,u) in enumerate(self.age_bins):
             if from_human and l <= from_human.age < u:
@@ -504,24 +539,140 @@ class Tracker(object):
         n, avg_gen_time = self.avg_generation_times
         self.avg_generation_times = (n+1, 1.0*(avg_gen_time * n + generation_time)/(n+1))
 
-    def track_tested_results(self, human, test_result, test_type):
+    def track_symptoms(self, human=None, count_all=False):
         """
-        [summary]
-        Args:
-            human ([type]): [description]
-            test_result ([type]): [description]
-            test_type ([type]): [description]
-        """
-        if test_result == "positive":
-            self.cases_positive_per_day[-1] += 1
+        Keeps a set of symptoms experienced by `Human` until it stops experiencing them.
+        It is called from `self.update_symptoms` from `Human`.
+        When the symptoms are empty, it adds them to the counter.
 
+        attributes used:
+            self.symptoms_set (dict (dict (set))):
+                Maps reason of symptoms, i.e., covid, cold, flu, etc. or all  to a set for each human.
+                When the symptoms are over, human is deleted from the this dictionary.
+                Upon deletion, symptoms count are noted in `self.symptoms`
+
+            self.symptoms (dict(dict(int))):
+                It keeps the frequency of symptoms once the human's symptoms are finished.
+
+        Args:
+            human (Human, optional): `Human` object. Defaults to None.
+            count_all (bool, optional): clears up self.symptoms_set to add the count of symptoms to self.symptoms.
+                                        It is used at the end of simulation to aggregate information.
+                                        destroys self.symptoms_set to avoid any errors.
+        """
+        if count_all:
+            for human in self.symptoms_set['covid']:
+                self.symptoms['covid']['n'] += 1
+                for s in self.symptoms_set['covid'][human]:
+                    self.symptoms['covid'][s] += 1
+
+            for human in self.symptoms_set['all']:
+                self.symptoms['all']['n'] += 1
+                for s in self.symptoms_set['all'][human]:
+                    self.symptoms['all'][s] += 1
+
+            delattr(self, "symptoms_set")
+            return
+
+        if human.covid_symptoms:
+            self.symptoms_set['covid'][human.name].update(human.covid_symptoms)
+        else:
+            if human.name in self.symptoms_set['covid']:
+                self.symptoms['covid']['n'] += 1
+                for s in self.symptoms_set['covid'][human.name]:
+                    self.symptoms['covid'][s] += 1
+                self.symptoms_set['covid'].pop(human.name)
+
+        if human.all_symptoms:
+            self.symptoms_set['all'][human.name].update(human.all_symptoms)
+        else:
+            if human.name in self.symptoms_set['all']:
+                self.symptoms['all']['n'] += 1
+                for s in self.symptoms_set['all'][human.name]:
+                    self.symptoms['all'][s] += 1
+                self.symptoms_set['all'].pop(human.name)
+
+
+    def track_tested_results(self, human):
+        """
+        Keeps count of tests on a particular day. It is called every time someone is tested.
+        NOTE: it is assumed to be called at the time of test, and due to the delay in time to result
+        the function increments the count of tests on future dates.
+
+        attributes used : self.test_monitor, self.test_results_per_day
+
+        Args:
+            human (Human): `Human` who got tested
+            test_result (str): "positive" or "negative"
+            test_type (str): type of test administered to `Human`
+        """
+
+        test_result_arrival_time = human.test_time + datetime.timedelta(days=human.time_to_test_result)
+        test_result_arrival_date = test_result_arrival_time.date()
+        self.test_results_per_day[test_result_arrival_date][human.hidden_test_result] += 1
+        self.tested_per_day[-1] += 1
         self.test_monitor.append({
             "name": human.name,
             "symptoms": list(human.symptoms),
-            "timestamp": human.env.timestamp,
-            "type": test_type,
-            "result": test_result
+            "test_time": human.test_time,
+            "result_time": test_result_arrival_time,
+            "test_type": human.test_type,
+            "test_result": human.hidden_test_result,
         })
+
+    def compute_test_statistics(self, logfile=False):
+        """
+
+        """
+        tests_per_human = Counter([m["name"] for m in self.test_monitor])
+        max_tests_per_human = max(tests_per_human.values())
+
+        # percent of population tested
+        n_tests = len(self.test_monitor)
+        n_people = len(self.city.humans)
+        percent_tested = 1.0 * n_tests/n_people
+        daily_percent_test_results = [sum(x.values())/n_people for x in self.test_results_per_day.values()]
+        proportion_infected = sum(not h.is_susceptible for h in self.city.humans)/n_people
+
+        # positivity rate
+        n_positives = sum(x["positive"] for x in self.test_results_per_day.values())
+        n_negatives = sum(x["negative"] for x in self.test_results_per_day.values())
+        positivity_rate = n_positives/(n_positives + n_negatives)
+
+        # symptoms | tests
+        # count of humans who has symptom x given a test was administered
+        test_given_symptoms_statistics = Counter([s for tm in self.test_monitor for s in tm["symptoms"]])
+        positive_test_given_symptoms = Counter([s for tm in self.test_monitor for s in tm["symptoms"] if tm['test_result'] == "positive"])
+        negative_test_given_symptoms = Counter([s for tm in self.test_monitor for s in tm["symptoms"] if tm['test_result'] == "negative"])
+
+        # new infected - tests (per day)
+        infected_minus_tests_per_day = [x - y for x,y in zip(self.e_per_day, self.tested_per_day)]
+
+        log("######## COVID Testing Statistics #########", logfile)
+        log(f"Proportion infected : {100*proportion_infected: 2.3f}%", logfile)
+        log(f"Positivity rate: {100*positivity_rate: 2.3f}%", logfile)
+        log(f"Total Tests: {n_positives + n_negatives} Total positive tests: {n_positives} Total negative tests: {n_negatives}", logfile)
+        log(f"Maximum tests given to an individual: {max_tests_per_human}", logfile)
+        log(f"Proportion of population tested until end: {100 * percent_tested: 4.3f}%", logfile)
+        log(f"Proportion of population tested daily Avg: {100 * np.mean(daily_percent_test_results): 4.3f}%", logfile)
+        log(f"Proportion of population tested daily Max: {100 * max(daily_percent_test_results): 4.3f}%", logfile)
+        log(f"Proportion of population tested daily Min: {100 * min(daily_percent_test_results): 4.3f}%", logfile)
+        # log(f"infected - tests daily Avg: {np.mean(infected_minus_tests_per_day): 4.3f}", logfile)
+
+        log(f"P(tested | symptoms = x), where x is ", logfile)
+        for x in ["severe", "moderate", "mild"]:
+            # total number of humans who has symptom x
+            n_humans_who_experienced_symptom_x = self.symptoms["all"][x]
+            if n_humans_who_experienced_symptom_x:
+                p = min(test_given_symptoms_statistics[x]/n_humans_who_experienced_symptom_x, 1)
+                log(f"    {x} {p: 3.3f}", logfile)
+
+        test_given_symptoms_statistics = normalize_counter(test_given_symptoms_statistics, normalizer=n_tests)
+        print_dict("P(symptoms = x | tested), where x is", test_given_symptoms_statistics, is_sorted="desc", logfile=logfile, top_k=10)
+
+        # positive_test_given_symptoms = normalize_counter(positive_test_given_symptoms, normalizer=n_tests)
+        # print_dict("P(symptoms = x | test is +), where x is", positive_test_given_symptoms, is_sorted="desc", logfile=logfile)
+
 
     def track_recovery(self, n_infectious_contacts, duration):
         """
@@ -554,31 +705,6 @@ class Tracker(object):
                 bin = i
 
         self.transition_probability[hour][bin][from_location][to_location] += 1
-
-    def track_symptoms(self, human):
-        """
-        [summary]
-
-        Args:
-            human ([type]): [description]
-        """
-        if human.covid_symptoms:
-            self.symptoms_set['covid'][human.name].update(human.covid_symptoms)
-        else:
-            if human.name in self.symptoms_set['covid']:
-                self.symptoms['covid']['n'] += 1
-                for s in self.symptoms_set['covid'][human.name]:
-                    self.symptoms['covid'][s] += 1
-                self.symptoms_set['covid'].pop(human.name)
-
-        if human.all_symptoms:
-            self.symptoms_set['all'][human.name].update(human.all_symptoms)
-        else:
-            if human.name in self.symptoms_set['all']:
-                self.symptoms['all']['n'] += 1
-                for s in self.symptoms_set['all'][human.name]:
-                    self.symptoms['all'][s] += 1
-                self.symptoms_set['all'].pop(human.name)
 
     def track_social_mixing(self, **kwargs):
         """
@@ -711,13 +837,17 @@ class Tracker(object):
         log(f"Fraction of asymptomatic {self.frac_asymptomatic}", logfile )
 
         log("######## COVID PROPERTIES #########", logfile)
-        print("Avg. incubation days", self.covid_properties['incubation_days'][1])
-        print("Avg. recovery days", self.covid_properties['recovery_days'][1])
-        print("Avg. infectiousnes onset days", self.covid_properties['infectiousness_onset_days'][1])
+        log(f"Avg. incubation days {self.covid_properties['incubation_days'][1]: 5.2f}", logfile)
+        log(f"Avg. recovery days {self.covid_properties['recovery_days'][1]: 5.2f}", logfile)
+        log(f"Avg. infectiousnes onset days {self.covid_properties['infectiousness_onset_days'][1]: 5.2f}", logfile)
 
         log("######## COVID SPREAD #########", logfile)
-        x = 1.0*self.n_env_infection/self.n_infectious_contacts if self.n_infectious_contacts else 0.0
-        log(f"environmental transmission ratio {x}", logfile )
+        x = 0
+        if len(self.infection_monitor) > 0:
+            x = 1.0*self.n_env_infection/len(self.infection_monitor)
+        log(f"human-human transmissions {len(self.infection_monitor)}", logfile )
+        log(f"environment-human transmissions {self.n_env_infection}", logfile )
+        log(f"environmental transmission ratio {x:5.3f}", logfile )
         r0 = self.get_R0(logfile)
         log(f"Ro {r0}", logfile)
         log(f"Generation times {self.get_generation_time()} ", logfile)
@@ -764,12 +894,24 @@ class Tracker(object):
                 x = 1.0 * v['infection_count']/len(v['humans'])
                 log(f"{loc_type} R0 {x}", logfile)
 
-        # log("######## SYMPTOMS #########", logfile)
-        # total = self.symptoms['covid']['n']
-        # for s,v in self.symptoms['covid'].items():
-        #     if s == 'n':
-        #         continue
-        #     log(f"{s} {100*v/total:5.2f}%")
+        log("######## SYMPTOMS #########", logfile)
+        self.track_symptoms(count_all=True)
+        total = self.symptoms['covid']['n']
+        tmp_s = {}
+        for s,v in self.symptoms['covid'].items():
+            if s == 'n':
+                continue
+            tmp_s[s] = v/total
+        print_dict("P(symptoms = x | covid patient), where x is", tmp_s, is_sorted="desc", top_k=10, logfile=logfile)
+
+        total = self.symptoms['all']['n']
+        tmp_s = {}
+        for s,v in self.symptoms['covid'].items():
+            if s == 'n':
+                continue
+            tmp_s[s] = v/total
+        print_dict("P(symptoms = x | human had some sickness e.g. cold, flu, allergies, covid), where x is", tmp_s, is_sorted="desc", top_k=10, logfile=logfile)
+
         #
         # log("######## MOBILITY #########", logfile)
         # log("Day - ", logfile)
@@ -804,55 +946,57 @@ class Tracker(object):
         #     v = self.daily_age_group_encounters[bin][1]
         #     log(f"{bin} #avg: {v} %:{100*v/total:5.2f} ", logfile)
         #
-        for until_days in [30, None]:
-            log("******** Risk Precision/Recall *********", logfile)
-            prec, lift, recall = self.compute_risk_precision(daily=False, until_days=until_days)
-            top_k = [0.01, 0.03, 0.05, 0.10]
-            type_str = ["all", "no test", "no test and symptoms"]
+        # for until_days in [30, None]:
+        #     log("******** Risk Precision/Recall *********", logfile)
+        #     prec, lift, recall = self.compute_risk_precision(daily=False, until_days=until_days)
+        #     top_k = [0.01, 0.03, 0.05, 0.10]
+        #     type_str = ["all", "no test", "no test and symptoms"]
+        #
+        #     log(f"*** Precision (until days={until_days}) ***", logfile)
+        #     idx = 0
+        #     for k_values in zip(*prec):
+        #         x,y,z= k_values
+        #         log(f"Top-{100*top_k[idx]:2.2f}% all: {100*x:5.2f}% no_test:{100*y:5.2f}% no_test_and_symptoms: {100*z:5.2f}%", logfile)
+        #         idx += 1
+        #
+        #     log(f"*** Lift (until days={until_days}) ***", logfile)
+        #     idx = 0
+        #     for k_values in zip(*lift):
+        #         x,y,z = k_values
+        #         log(f"Top-{100*top_k[idx]:2.2f}% all: {x:5.2f} no_test:{y:5.2f} no_test_and_symptoms: {z:5.2f}", logfile)
+        #         idx += 1
+        #
+        #     log(f"*** Recall (until days={until_days}) ***", logfile)
+        #     x,y,z = recall
+        #     log(f"all: {100*x:5.2f}% no_test: {100*y:5.2f}% no_test_and_symptoms: {100*z:5.2f}%", logfile)
+        #
+        # log("*** Avg daily precision ***", logfile)
+        # prec = [x[0] for x in self.risk_precision_daily]
+        # lift = [x[1] for x in self.risk_precision_daily]
+        # recall = [x[2] for x in self.risk_precision_daily]
+        #
+        # all = list(zip(*[x[0] for x in prec]))
+        # no_test = list(zip(*[x[1] for x in prec]))
+        # no_test_symptoms = list(zip(*[x[2] for x in prec]))
+        # idx = 0
+        # for k in top_k:
+        #     log(f"Top-{100*top_k[idx]:2.2f}% all: {100*np.mean(all[idx]):5.2f}% no_test:{100*np.mean(no_test[idx]):5.2f}% no_test_and_symptoms: {100*np.mean(no_test_symptoms[idx]):5.2f}%", logfile)
+        #     idx += 1
+        #
+        # log("*** Avg daily lift ***", logfile)
+        # all = list(zip(*[x[0] for x in lift]))
+        # no_test = list(zip(*[x[1] for x in lift]))
+        # no_test_symptoms = list(zip(*[x[2] for x in lift]))
+        # idx = 0
+        # for k in top_k:
+        #     log(f"Top-{100*top_k[idx]:2.2f}% all: {np.mean(all[idx]):5.2f} no_test:{np.mean(no_test[idx]):5.2f} no_test_and_symptoms: {np.mean(no_test_symptoms[idx]):5.2f}", logfile)
+        #     idx += 1
+        #
+        # log("*** Avg. daily recall ***", logfile)
+        # x,y,z = zip(*recall)
+        # log(f"all: {100*np.mean(x):5.2f}% no_test: {100*np.mean(y):5.2f} no_test_and_symptoms: {100*np.mean(z):5.2f}", logfile)
 
-            log(f"*** Precision (until days={until_days}) ***", logfile)
-            idx = 0
-            for k_values in zip(*prec):
-                x,y,z= k_values
-                log(f"Top-{100*top_k[idx]:2.2f}% all: {100*x:5.2f}% no_test:{100*y:5.2f}% no_test_and_symptoms: {100*z:5.2f}%", logfile)
-                idx += 1
-
-            log(f"*** Lift (until days={until_days}) ***", logfile)
-            idx = 0
-            for k_values in zip(*lift):
-                x,y,z = k_values
-                log(f"Top-{100*top_k[idx]:2.2f}% all: {x:5.2f} no_test:{y:5.2f} no_test_and_symptoms: {z:5.2f}", logfile)
-                idx += 1
-
-            log(f"*** Recall (until days={until_days}) ***", logfile)
-            x,y,z = recall
-            log(f"all: {100*x:5.2f}% no_test: {100*y:5.2f}% no_test_and_symptoms: {100*z:5.2f}%", logfile)
-
-        log("*** Avg daily precision ***", logfile)
-        prec = [x[0] for x in self.risk_precision_daily]
-        lift = [x[1] for x in self.risk_precision_daily]
-        recall = [x[2] for x in self.risk_precision_daily]
-
-        all = list(zip(*[x[0] for x in prec]))
-        no_test = list(zip(*[x[1] for x in prec]))
-        no_test_symptoms = list(zip(*[x[2] for x in prec]))
-        idx = 0
-        for k in top_k:
-            log(f"Top-{100*top_k[idx]:2.2f}% all: {100*np.mean(all[idx]):5.2f}% no_test:{100*np.mean(no_test[idx]):5.2f}% no_test_and_symptoms: {100*np.mean(no_test_symptoms[idx]):5.2f}%", logfile)
-            idx += 1
-
-        log("*** Avg daily lift ***", logfile)
-        all = list(zip(*[x[0] for x in lift]))
-        no_test = list(zip(*[x[1] for x in lift]))
-        no_test_symptoms = list(zip(*[x[2] for x in lift]))
-        idx = 0
-        for k in top_k:
-            log(f"Top-{100*top_k[idx]:2.2f}% all: {np.mean(all[idx]):5.2f} no_test:{np.mean(no_test[idx]):5.2f} no_test_and_symptoms: {np.mean(no_test_symptoms[idx]):5.2f}", logfile)
-            idx += 1
-
-        log("*** Avg. daily recall ***", logfile)
-        x,y,z = zip(*recall)
-        log(f"all: {100*np.mean(x):5.2f}% no_test: {100*np.mean(y):5.2f} no_test_and_symptoms: {100*np.mean(z):5.2f}", logfile)
+        self.compute_test_statistics(logfile)
 
     def plot_metrics(self, dirname):
         """

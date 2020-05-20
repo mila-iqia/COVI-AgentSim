@@ -23,8 +23,6 @@ class MakeHumanAsMessageProxy:
         self._start_time = start_time
 
     def make_human_as_message(self, human, personal_mailbox, conf):
-        # if len(human.contact_book.messages):
-        #     import pdb; pdb.set_trace()
         tc = self.test_case
 
         message = ModelsTest.make_human_as_message(human, personal_mailbox, conf)
@@ -54,6 +52,11 @@ class MakeHumanAsMessageProxy:
             if human.obs_sex is not None:
                 tc.assertIsInstance(human.obs_sex, str)
                 tc.assertIn(human.obs_sex.lower()[0], {'f', 'm', 'o'})
+
+            # message.test_results should only contain tests results paired with
+            # a test time
+            for test_result, _ in message.test_results:
+                tc.assertNotEqual(test_result, 0)
 
             validate_human_message(tc, message, human)
 
@@ -107,7 +110,8 @@ def validate_human_message(test_case, message, human):
             zip(message.rolling_all_reported_symptoms, human.rolling_all_reported_symptoms):
         test_case.assertEqual(m_rolling_all_reported_symptoms.sum(), len(h_rolling_all_reported_symptomsin))
 
-    test_case.assertEqual(len(message.test_results), len(human.test_results))
+    # The empty placeholder is excluded from the count
+    test_case.assertEqual(len(message.test_results), len(human.test_results) - 1)
 
     # TODO: add a serious way to test whether the correct update messages were added from the mailbox?
 
@@ -199,6 +203,7 @@ class ModelsTest(unittest.TestCase):
                             stats['humans'][h_i].setdefault('has_recovery_day', 0)
                             stats['humans'][h_i].setdefault('exposure_encounter_cnt', 0)
                             stats['humans'][h_i].setdefault('infectiousness', 0)
+                            stats['humans'][h_i].setdefault('tests_results_cnt', 0)
 
                             self.assertEqual(current_day, human['current_day'])
 
@@ -313,6 +318,7 @@ class ModelsTest(unittest.TestCase):
 
                             last_test_result, last_test_time = human_hour_log['test_results'][0]
                             if last_test_time != datetime.datetime.max and (current_datetime - last_test_time).days < 1:
+                                stats['humans'][h_i]['tests_results_cnt'] += bool(last_test_result)
                                 self.assertEqual(observed['test_results'][0], encode_test_result(last_test_result))
 
                             if prev_observed:
@@ -403,12 +409,14 @@ class ModelsTest(unittest.TestCase):
             has_recovery_day = 0
             exposure_encounter_cnt = 0
             infectiousness = 0
+            tests_results_cnt = 0
             for _, human_stats in stats['humans'].items():
                 candidate_encounters_cnt += human_stats['candidate_encounters_cnt']
                 has_exposure_day += human_stats['has_exposure_day']
                 has_recovery_day += human_stats['has_recovery_day']
                 exposure_encounter_cnt += human_stats['exposure_encounter_cnt']
                 infectiousness += human_stats['infectiousness']
+                tests_results_cnt += human_stats['tests_results_cnt']
 
             # TODO: Validate the values to check against
             self.assertGreaterEqual(candidate_encounters_cnt, n_people)
@@ -416,6 +424,7 @@ class ModelsTest(unittest.TestCase):
             # self.assertGreaterEqual(has_recovery_day, n_people * 0.2)
             self.assertGreaterEqual(exposure_encounter_cnt, n_people)
             self.assertGreaterEqual(infectiousness, n_people)
+            self.assertGreaterEqual(tests_results_cnt, n_people * 0.1)
 
 
 class HumanAsMessageTest(unittest.TestCase):
