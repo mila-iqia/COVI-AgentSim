@@ -1769,7 +1769,7 @@ def dump_conf(conf, path):
         ))
 
     with path.open("w") as f:
-        yaml.safe_dump(conf, str(path))
+        yaml.safe_dump(conf, f)
 
 def get_git_revision_hash():
     """Get current git hash the code is run from
