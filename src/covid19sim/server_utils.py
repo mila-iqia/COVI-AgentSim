@@ -404,7 +404,8 @@ def _proc_human(params, inference_engine):
             "test_results": covid19sim.frozen.helper.get_test_result_array(human.test_results, todays_date, conf),
             "preexisting_conditions": human.obs_preexisting_conditions,
             "age": human.obs_age,
-            "sex": human.obs_sex
+            "sex": human.obs_sex,
+            "risk_mapping": conf.get("RISK_MAPPING"),
         },
         "unobserved": {
             "true_symptoms": true_symptoms,
