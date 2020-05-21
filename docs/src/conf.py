@@ -12,14 +12,14 @@
 #
 import os
 import sys
-sys.path.insert(0, os.path.abspath('../'))
+sys.path.insert(0, os.path.abspath('../../src/covid19sim'))
 
 
 # -- Project information -----------------------------------------------------
 
-project = 'covid19-p2p-sim'
-copyright = '2020, Mila'
-author = 'Mila'
+project = 'Covi-Canada simulator'
+copyright = '2020, Covi-Canada'
+author = 'Covi-Canada'
 
 
 # -- General configuration ---------------------------------------------------
@@ -27,10 +27,21 @@ author = 'Mila'
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ['sphinx.ext.autodoc', 'sphinx.ext.coverage', 'sphinx.ext.napoleon']
+extensions = [
+    'sphinx.ext.autodoc',
+    'sphinx.ext.coverage',
+    'sphinx.ext.napoleon',
+    'recommonmark',
+]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
+
+source_suffix = {
+    '.rst': 'restructuredtext',
+    '.txt': 'markdown',
+    '.md': 'markdown',
+}
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
