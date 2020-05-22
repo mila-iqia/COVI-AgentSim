@@ -626,6 +626,7 @@ class City:
             if current_day == self.conf.get('INTERVENTION_DAY') and not humans_notified:
                 self.intervention = get_intervention(
                     key=self.conf.get('INTERVENTION'),
+                    conf=self.conf,
                     RISK_MODEL=self.conf.get('RISK_MODEL'),
                     TRACING_ORDER=self.conf.get('TRACING_ORDER'),
                     TRACE_SYMPTOMS=self.conf.get('TRACE_SYMPTOMS'),

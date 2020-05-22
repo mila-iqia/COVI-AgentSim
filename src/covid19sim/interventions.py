@@ -422,6 +422,7 @@ class Tracing(object):
     def __init__(
             self,
             risk_model: typing.AnyStr,
+            conf: dict,
             max_depth: int = 1,
             symptoms: bool = False,
             risk: bool = False,
@@ -433,6 +434,7 @@ class Tracing(object):
         Args:
             risk_model (str): Type of tracing to implement. Following methods are currently
                 available - digital, manual, naive, other, transformer.
+            conf (dict): configuration to use.
             max_depth (int, optional): The number of hops away from the source. The term `order`
                 is also used for this. Defaults to 1.
             symptoms (bool, optional): If tracing is to be triggered when someone reports symptoms?
@@ -461,7 +463,7 @@ class Tracing(object):
         if risk_model == "manual":
             assert not symptoms, "makes no sense to trace symptoms by phone...?"
             assert not risk, "don't make be believe we will trace risk by phone either"
-            self.p_contact = self.conf.get("MANUAL_TRACING_P_CONTACT")
+            self.p_contact = conf.get("MANUAL_TRACING_P_CONTACT")
             self.delay = 1
             self.app = False
 
@@ -629,12 +631,13 @@ class TestCapacity(CityInterventions):
     def revert_city(self, city):
         raise NotImplementedError
 
-def get_intervention(key, RISK_MODEL=None, TRACING_ORDER=None, TRACE_SYMPTOMS=None, TRACE_RISK_UPDATE=None, SHOULD_MODIFY_BEHAVIOR=True,MASKS_SUPPLY=0):
+def get_intervention(key, conf, RISK_MODEL=None, TRACING_ORDER=None, TRACE_SYMPTOMS=None, TRACE_RISK_UPDATE=None, SHOULD_MODIFY_BEHAVIOR=True,MASKS_SUPPLY=0):
     """
     Returns appropriate class of intervention.
 
     Args:
         key (str): type of intervention
+        conf (dict): configuration to send to intervention object
         RISK_MODEL (str, optional): passed to `Tracing.risk_model`. Defaults to None.
         TRACING_ORDER (int, optional): passed to `Tracing.max_depth`. Defaults to None.
         TRACE_SYMPTOMS (bool, optional): passed to `Tracing.symptoms`. Defaults to None.
@@ -657,9 +660,9 @@ def get_intervention(key, RISK_MODEL=None, TRACING_ORDER=None, TRACE_SYMPTOMS=No
         return Quarantine()
     elif key == "Tracing":
         # there's a global variable somewhere called 'Tracing'
-        import covid19sim.interventions
-        return covid19sim.interventions.Tracing(
+        return Tracing(
             RISK_MODEL,
+            conf,
             TRACING_ORDER,
             TRACE_SYMPTOMS,
             TRACE_RISK_UPDATE,
