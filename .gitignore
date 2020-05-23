@@ -15,6 +15,7 @@ FRESH-SNOWFLAKE-224B
 
 #Hydra stuff
 *.hydra/
+*multirun/
 src/covid19sim/hydra-configs/simulation/*
 !src/covid19sim/hydra-configs/simulation/config.yaml
 !src/covid19sim/hydra-configs/simulation/base_method.yaml
