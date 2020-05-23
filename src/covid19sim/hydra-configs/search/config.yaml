@@ -29,7 +29,7 @@ hydra:
         tracing_method:
           - oracle
         n_people: 1000
-        simulation_days: 22
+        simulation_days: 1
         # a linearly-distributed scalar between 0 and 1
         P_HAS_APP:
           lower: 0.0
@@ -60,3 +60,4 @@ P_HAS_APP: 0.6
 P_CAREFUL_PERSON: 0.5
 GLOBAL_MOBILITY_SCALING_FACTOR: 0.3
 seed: 0
+outdir: "/network/tmp1/weissmar/covid"
