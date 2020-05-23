@@ -3,23 +3,19 @@ Contains utility classes for remote inference inside the simulation.
 """
 
 import datetime
-import functools
 import numpy as np
 import os
 import pickle
 import threading
 import time
 import typing
-import warnings
 import zmq
 
 from ctt.inference.infer import InferenceEngine
-from ctt.data_loading.loader import InvalidSetSize
 
-import covid19sim.frozen.clustering.base
-import covid19sim.frozen.clusters
+import covid19sim.frozen.clustering.gaen
+import covid19sim.frozen.message_utils
 import covid19sim.frozen.helper
-import covid19sim.frozen.utils
 import covid19sim.utils
 
 
@@ -333,13 +329,12 @@ def proc_human_batch(
                     batch_size="auto",
                     prefer="threads") as parallel:
                 results = parallel((joblib.delayed(_proc_human)(human, engine) for human in sample))
-            return [(h.name, risk_history, h.clusters) for h, risk_history in results]
+            return [r for r in results]
         else:
             return [proc_human_batch(human, engine, mp_backend, mp_threads) for human in sample]
     else:
         assert isinstance(sample, dict), "unexpected input data format"
-        result_human, risk_history = _proc_human(sample, engine)
-        return result_human.name, risk_history, result_human.clusters
+        return _proc_human(sample, engine)
 
 
 def _proc_human(params, inference_engine):
@@ -348,53 +343,42 @@ def _proc_human(params, inference_engine):
         all([p in params for p in expected_raw_packet_param_names]), \
         "unexpected/broken _proc_human input format between simulator and inference service"
     conf = params["conf"]
+    todays_date = params["start"] + datetime.timedelta(days=params["current_day"], hours=params["time_slot"])
 
-    # Cluster Messages
-    cluster_algo_type = conf.get("CLUSTER_ALGO_TYPE")
+    # cluster messages; as of the GAEN refactoring, only one algo can be used
     human = params["human"]
-    if cluster_algo_type == "old":
-        human.clusters.add_messages(human.messages)
-        human.clusters.update_records(human.update_messages)
-        human.clusters.purge(params["current_day"])
-    else:
-        if not isinstance(human.clusters, covid19sim.frozen.clustering.base.ClusterManagerBase):
-            clustering_type = \
-                covid19sim.frozen.clustering.base.get_cluster_manager_type(cluster_algo_type)
-            if cluster_algo_type == "naive":
-                clustering_type = functools.partial(clustering_type, ticks_per_uid_roll=1)
-            # note: we create the manager to use day-level timestamps only
-            human.clusters = clustering_type(
-                max_history_ticks_offset=conf.get("TRACING_N_DAYS_HISTORY"),
-                # note: the simulator should be able to match all update messages to encounters, but
-                # since the time slot update voodoo, I (PLSC) have not been able to make no-adopt
-                # version of the naive implementation work (both with and without batching)
-                add_orphan_updates_as_clusters=True,
-                generate_embeddings_by_timestamp=True,
-                generate_backw_compat_embeddings=True,
-            )
-        # set the current day as the refresh timestamp to auto-purge outdated messages in advance
-        human.clusters.set_current_timestamp(params["current_day"])
-        encounter_messages = covid19sim.frozen.utils.convert_messages_to_batched_new_format(
-            human.messages, human.exposure_message)
-        update_messages = covid19sim.frozen.utils.convert_messages_to_batched_new_format(
-            human.update_messages)
-        earliest_new_encounter_message = encounter_messages[0][0] if len(encounter_messages) else None
-        if earliest_new_encounter_message is not None:
-            # quick verification: even with a 1-day buffer for timeslot craziness, we should not be
-            # getting old encounters here; the simulator should not keep & transfer those every call
-            assert earliest_new_encounter_message.encounter_time + 1 >= params["current_day"]
-        human.clusters.add_messages(
-            messages=[*encounter_messages, *update_messages],
-            current_timestamp=params["current_day"],
+    if human.clusters is None:
+        human.clusters = covid19sim.frozen.clustering.gaen.GAENClusterManager(
+            max_history_offset=datetime.timedelta(days=conf.get("TRACING_N_DAYS_HISTORY")),
+            add_orphan_updates_as_clusters=True,
+            generate_embeddings_by_timestamp=True,
+            generate_backw_compat_embeddings=True,
         )
+    # set the current day as the refresh timestamp to auto-purge outdated messages in advance
+    human.clusters.set_current_timestamp(todays_date)
+    update_messages = covid19sim.frozen.message_utils.batch_messages(human.update_messages)
+    human.clusters.add_messages(messages=update_messages, current_timestamp=todays_date)
+    # FIXME: there are messages getting duplicated somewhere, this is pretty bad @@@@@
+    # uids = []
+    # for c in human.clusters.clusters:
+    #     uids.extend(c.get_encounter_uids())
+    # assert len(np.unique(uids)) == len(uids), "found collision"
 
     # Format for supervised learning / transformer inference
-    todays_date = params["start"] + datetime.timedelta(days=params["current_day"], hours=params["time_slot"])
     is_exposed, exposure_day = covid19sim.frozen.helper.exposure_array(human.infection_timestamp, todays_date, conf)
     is_recovered, recovery_day = covid19sim.frozen.helper.recovered_array(human.recovered_timestamp, todays_date, conf)
-    candidate_encounters, exposure_encounter = covid19sim.frozen.helper.candidate_exposures(human, todays_date)
+    candidate_encounters, exposure_encounter = covid19sim.frozen.helper.candidate_exposures(human)
     reported_symptoms = human.rolling_all_reported_symptoms
     true_symptoms = human.rolling_all_symptoms
+
+    # FIXME: DIRTY DIRTY HACK; Nasim's DataLoader expects that the embeddings contain an absolute
+    #  day index instead of a relative offset (i.e. the exact simulation day instead of [0,14])...
+    if len(candidate_encounters):
+        candidate_encounters[:, 3] = params["current_day"] - candidate_encounters[:, 3]
+        # Nasim also does some masking with a hard-coded 14-day history length, let's do the same...
+        valid_encounter_mask = candidate_encounters[:, 3] > (params["current_day"] - 14)
+        candidate_encounters = candidate_encounters[valid_encounter_mask]
+        exposure_encounter = exposure_encounter[valid_encounter_mask]
 
     daily_output = {
         "current_day": params["current_day"],
@@ -425,26 +409,13 @@ def _proc_human(params, inference_engine):
         with open(os.path.join(params["log_path"], f"daily_human-{params['time_slot']}.pkl"), 'wb') as fd:
             pickle.dump(daily_output, fd)
 
+    inference_result, risk_history = None, None
     if conf.get("USE_ORACLE"):
         # return ground truth infectiousnesses
-        human['risk_history'] = human['infectiousnesses']
-    else:
-        # estimate infectiousnesses using CTT inference engine
-        inference_result = None
-        if conf.get("RISK_MODEL") == "transformer":
-            try:
-                inference_result = inference_engine.infer(daily_output)
-            except InvalidSetSize:
-                pass  # return None for invalid samples
-            except RuntimeError as error:
-                # TODO: ctt.modules.HealthHistoryEmbedding can fail with :
-                #  size mismatch, m1: [14 x 29], m2: [13 x 128]
-                warnings.warn(str(error), RuntimeWarning)
-        risk_history = None
+        risk_history = human['infectiousnesses']
+    elif conf.get("RISK_MODEL") == "transformer" and len(candidate_encounters):
+        # no need to do actual inference if the cluster count is zero
+        inference_result = inference_engine.infer(daily_output)
         if inference_result is not None:
             risk_history = inference_result['infectiousness']
-
-    # clear all messages for next time we update
-    human.messages = []
-    human.update_messages = []
-    return human, risk_history
+    return human.name, risk_history, human.clusters

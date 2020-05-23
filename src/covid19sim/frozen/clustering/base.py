@@ -3,11 +3,15 @@ import numpy as np
 import typing
 
 from covid19sim.frozen.message_utils import EncounterMessage, GenericMessageType, UpdateMessage, \
-    TimestampType, TimeOffsetType, RealUserIDType, RiskLevelType
+    TimestampType, TimeOffsetType, RealUserIDType, RiskLevelType, TimestampDefault
 
 ClusterIDType = int
 MessagesArrayType = typing.Union[typing.Iterable[GenericMessageType],
-                                 typing.Iterable[typing.List[GenericMessageType]]]
+                                 typing.Iterable[typing.List[GenericMessageType]],
+                                 typing.Iterable[typing.Dict[TimestampType, typing.List[GenericMessageType]]]]
+
+UpdateMessageBatchType = typing.Union[typing.List[UpdateMessage],
+                                      typing.Dict[TimestampType, typing.Iterable[UpdateMessage]]]
 
 
 @dataclasses.dataclass
@@ -29,18 +33,15 @@ class ClusterBase:
     ##########################################
     # private variables (for debugging only!)
 
-    _real_encounter_uids: typing.List[RealUserIDType] = dataclasses.field(default_factory=list)
+    _real_encounter_uids: typing.Set[RealUserIDType] = dataclasses.field(default_factory=set)
     """Real Unique Identifiers (UIDs) of the clustered user(s)."""
 
-    _real_encounter_times: typing.List[TimestampType] = dataclasses.field(default_factory=list)
+    _real_encounter_times: typing.Set[TimestampType] = dataclasses.field(default_factory=set)
     """Real timestamp of the clustered encounter(s)."""
-
-    _unclustered_messages: typing.List[GenericMessageType] = dataclasses.field(default_factory=list)
-    """List of all messages (encounter+update) messages that were used to update this cluster."""
 
     def _is_homogenous(self) -> bool:
         """Returns whether this cluster is truly homogenous (i.e. tied to one user) or not."""
-        return len(np.unique([m._sender_uid for m in self._unclustered_messages])) <= 1
+        return len(self._real_encounter_uids) <= 1
 
     @staticmethod
     def create_cluster_from_message(
@@ -88,10 +89,7 @@ class ClusterManagerBase:
 
     clusters: typing.List[ClusterBase]
     latest_refresh_timestamp: TimestampType
-    # TODO: Code is currently comparing max_history_ticks_offset 
-    #  to messages time expressed in days not ticks. Messages still
-    #  need to be updated to hold ticks
-    max_history_ticks_offset: TimeOffsetType
+    max_history_offset: TimeOffsetType
     add_orphan_updates_as_clusters: bool
     generate_embeddings_by_timestamp: bool
     generate_backw_compat_embeddings: bool
@@ -99,10 +97,7 @@ class ClusterManagerBase:
 
     def __init__(
             self,
-            # TODO: Code is currently comparing max_history_ticks_offset 
-            #  to messages time expressed in days not ticks. Messages still
-            #  need to be updated to hold ticks
-            max_history_ticks_offset: TimeOffsetType,
+            max_history_offset: TimeOffsetType,
             add_orphan_updates_as_clusters: bool = False,
             generate_embeddings_by_timestamp: bool = True,
             generate_backw_compat_embeddings: bool = False,
@@ -111,8 +106,8 @@ class ClusterManagerBase:
         self.clusters = []
         self.max_cluster_id = max_cluster_id
         self.next_cluster_id = 0
-        self.latest_refresh_timestamp = TimestampType(0)
-        self.max_history_ticks_offset = max_history_ticks_offset
+        self.latest_refresh_timestamp = TimestampDefault
+        self.max_history_offset = max_history_offset
         self.add_orphan_updates_as_clusters = add_orphan_updates_as_clusters
         self.generate_embeddings_by_timestamp = generate_embeddings_by_timestamp
         self.generate_backw_compat_embeddings = generate_backw_compat_embeddings
@@ -122,8 +117,8 @@ class ClusterManagerBase:
         """Gets rid of clusters that are too old given the current timestamp."""
         to_keep = []
         for cluster in self.clusters:
-            update_offset = int(current_timestamp) - int(cluster.first_update_time)
-            if update_offset < self.max_history_ticks_offset:
+            update_offset = current_timestamp - cluster.first_update_time
+            if update_offset < self.max_history_offset:
                 to_keep.append(cluster)
         self.clusters = to_keep
 
@@ -132,8 +127,8 @@ class ClusterManagerBase:
         self.latest_refresh_timestamp = max(message.encounter_time, self.latest_refresh_timestamp)
         outdated = False
         if self.latest_refresh_timestamp:
-            min_offset = int(self.latest_refresh_timestamp) - int(message.encounter_time)
-            if min_offset > self.max_history_ticks_offset:
+            min_offset = self.latest_refresh_timestamp - message.encounter_time
+            if min_offset > self.max_history_offset:
                 # there's no way this message is useful if we get here, since it's so old
                 outdated = True
             if cleanup:
@@ -150,26 +145,13 @@ class ClusterManagerBase:
         if current_timestamp is not None:
             self.latest_refresh_timestamp = max(current_timestamp, self.latest_refresh_timestamp)
         for message in messages:
+            assert isinstance(message, (EncounterMessage, UpdateMessage, list, dict))
             if isinstance(message, EncounterMessage):
                 self._add_encounter_message(message, cleanup=False)
             elif isinstance(message, UpdateMessage):
                 self._add_update_message(message, cleanup=False)
-            elif isinstance(message, list):
-                if message:
-                    assert all([isinstance(m, EncounterMessage) for m in message]) or \
-                        all([isinstance(m, UpdateMessage) for m in message]), \
-                        "batched messages should all be the same type"
-                    if len(message) == 1:  # no actual need for the batched impl
-                        if isinstance(message[0], EncounterMessage):
-                            self._add_encounter_message(message[0], cleanup=False)
-                        else:
-                            self._add_update_message(message[0], cleanup=False)
-                    elif isinstance(message[0], EncounterMessage):
-                        self._add_encounter_message_batch(message, cleanup=False)
-                    else:
-                        self._add_update_message_batch(message, cleanup=False)
-            else:
-                ValueError("unexpected message type")
+            elif isinstance(message, (list, dict)) and message:
+                self._add_update_message_batch(message, cleanup=False)
         if cleanup:
             self.cleanup_clusters(self.latest_refresh_timestamp)
 
@@ -190,21 +172,20 @@ class ClusterManagerBase:
         """Fits an update message to an existing cluster."""
         return NotImplementedError
 
-    def _add_update_message_batch(self, messages: typing.List[UpdateMessage], cleanup: bool = True):
+    def _add_update_message_batch(self, messages: UpdateMessageBatchType, cleanup: bool = True):
         """Fits a batch of update messages to existing clusters, and forwards the remaining to non-batch impl."""
-        # by default, just forward everything to the default impl
-        # (only some clustering algos will be advantaged by having a custom impl here)
-        for m in messages:
-            self._add_update_message(m, cleanup=False)
-        if cleanup:
-            self.cleanup_clusters(self.latest_refresh_timestamp)
+        raise NotImplementedError
 
     def set_current_timestamp(self, timestamp: TimestampType):
         """Sets the timestamp used internally to invalidate outdated messages/clusters."""
         assert timestamp >= self.latest_refresh_timestamp, "how could we have received future messages?"
         self.latest_refresh_timestamp = timestamp
 
-    def get_embeddings_array(self) -> np.ndarray:
+    def get_embeddings_array(
+            self,
+            cleanup: bool = False,
+            current_timestamp: typing.Optional[TimestampType] = None,  # will use internal latest if None
+    ) -> np.ndarray:
         """Returns the 'embeddings' array for all clusters managed by this object."""
         raise NotImplementedError
 
@@ -268,8 +249,7 @@ def get_cluster_manager_type(algo_name: str):
         import covid19sim.frozen.clustering.blind
         return covid19sim.frozen.clustering.blind.BlindClusterManager
     if algo_name == "naive":
-        import covid19sim.frozen.clustering.naive
-        return covid19sim.frozen.clustering.naive.NaiveClusterManager
+        raise NotImplementedError("naive clustering algo deprecated since GAEN refactoring")
     if algo_name == "perfect":
         import covid19sim.frozen.clustering.perfect
         return covid19sim.frozen.clustering.perfect.PerfectClusterManager
