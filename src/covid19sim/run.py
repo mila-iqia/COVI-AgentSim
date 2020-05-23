@@ -34,6 +34,11 @@ def main(conf: DictConfig) -> None:
     # -------------------------------------------------
     conf = parse_configuration(conf)
 
+    print("YAAAY")
+    print(conf["n_people"])
+    print(conf["P_HAS_APP"])
+    return
+
     # -------------------------------------
     # -----  Create Output Directory  -----
     # -------------------------------------
