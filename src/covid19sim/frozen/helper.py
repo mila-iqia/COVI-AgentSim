@@ -53,36 +53,36 @@ SYMPTOMS_META_IDMAP = [""] * len(SYMPTOMS_META)
 for k, v in SYMPTOMS_META.items():
     SYMPTOMS_META_IDMAP[v] = k
 
-def exposure_array(human_infection_timestamp, date):
+def exposure_array(human_infection_timestamp, date, conf):
     # identical to human.exposure_array
     exposed = False
     exposure_day = None
     if human_infection_timestamp:
         exposure_day = (date - human_infection_timestamp).days
-        if exposure_day >= 0 and exposure_day < 14:
+        if exposure_day >= 0 and exposure_day < conf.get("TRACING_N_DAYS_HISTORY"):
             exposed = True
         else:
             exposure_day = None
     return exposed, exposure_day
 
 
-def recovered_array(human_recovered_timestamp, date):
+def recovered_array(human_recovered_timestamp, date, conf):
     # identical to human.recovered_array
     is_recovered = False
     recovery_day = (date - human_recovered_timestamp).days
-    if recovery_day >= 0 and recovery_day < 14:
+    if recovery_day >= 0 and recovery_day < conf.get("TRACING_N_DAYS_HISTORY"):
         is_recovered = True
     else:
         recovery_day = None
     return is_recovered, recovery_day
 
 
-def get_test_result_array(test_results, date):
+def get_test_result_array(test_results, date, conf):
     # identical to human.get_test_result_array
-    results = np.zeros(14)
+    results = np.zeros(conf.get("TRACING_N_DAYS_HISTORY"))
     for test_result, test_time in test_results:
         result_day = (date - test_time).days
-        if result_day >= 0 and result_day < 14:
+        if result_day >= 0 and result_day < conf.get("TRACING_N_DAYS_HISTORY"):
             results[result_day] = test_result
     return results
 
@@ -142,8 +142,8 @@ def conditions_to_np(conditions):
     return conditions_encs
 
 
-def symptoms_to_np(all_symptoms):
-    rolling_window = 14
+def symptoms_to_np(all_symptoms, conf):
+    rolling_window = conf.get("TRACING_N_DAYS_HISTORY")
     symptoms_enc = np.zeros((rolling_window, len(SYMPTOMS_META) + 1))
     for day, symptoms in zip(range(rolling_window), all_symptoms):
         for symptom in symptoms:

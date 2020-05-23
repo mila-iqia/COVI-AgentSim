@@ -21,3 +21,5 @@ omegaconf==1.4.1
 hydra-core
 cached_property
 requests
+recommonmark
+sphinx

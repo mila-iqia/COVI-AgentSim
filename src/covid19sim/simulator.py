@@ -221,7 +221,7 @@ class Human(object):
 
         # Message Passing and Risk Prediction
         self.sent_messages = {}
-        self.clusters = Clusters()
+        self.clusters = Clusters(self.conf)
         self.tested_positive_contact_count = 0
         # Padding the array
         self.infectiousnesses = deque(
@@ -1662,6 +1662,7 @@ class Human(object):
         Returns:
             [type]: [description]
         """
+        warnings.warn("Deprecated", DeprecationWarning)
         if not symptoms:
             return []
         if not self.symptom_start_time:
@@ -1703,6 +1704,7 @@ class Human(object):
         Returns:
             [type]: [description]
         """
+        warnings.warn("Deprecated in favor of frozen.helper.exposure_array()", DeprecationWarning)
         # dont change the logic in here, it needs to remain FROZEN
         exposed = False
         exposure_day = None
@@ -1724,6 +1726,7 @@ class Human(object):
         Returns:
             [type]: [description]
         """
+        warnings.warn("Deprecated in favor of frozen.helper.recovered_array()", DeprecationWarning)
         # dont change the logic in here, it needs to remain FROZEN
         is_recovered = False
         recovery_day = (date - self.recovered_timestamp).days

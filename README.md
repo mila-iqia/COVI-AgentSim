@@ -95,12 +95,12 @@ It will open a browser window with the plot of [SEIR curves](https://www.idmod.o
 
 ## Semantics of Data
 `data` is a `list`. Each entry in the `list` is an event represented as a `dict`.
-The detailed information about events is in [docs/events.md](docs/events.md)
+The detailed information about events is in [docs/events.md](docs/src/notes/events.md)
 
 ## Contributing
 Please get in touch with me at [pgupta@turing.ac.uk](pgupta@turing.ac.uk). There are several people working on it, so it will be the best use of everyone's time and effort if we all work on different aspects of this project.
 
-Some areas that need work are listed [here](docs/CONTRIBUTING.md). We track and manage our tasks using [Google Sheets](https://docs.google.com/spreadsheets/d/11t1T66AAVeR6P341nZYP1qwLdvhCkU_EwFwUkyLziLQ/edit?usp=sharing).
+Some areas that need work are listed [here](docs/src/notes/CONTRIBUTING.md). We track and manage our tasks using [Google Sheets](https://docs.google.com/spreadsheets/d/11t1T66AAVeR6P341nZYP1qwLdvhCkU_EwFwUkyLziLQ/edit?usp=sharing).
 
 ## Collaborators
 [@marco-gires](https://github.com/marco-gires), [@marie-pellat](https://github.com/mariepellat), [@teganmaharaj](https://github.com/teganmaharaj), [@giancarlok](https://github.com/giancarlok), [@thechange](https://github.com/thechange), [@soundarya98](https://github.com/soundarya98), [@mweiss17](https://github.com/mweiss17)

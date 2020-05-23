@@ -390,8 +390,8 @@ def _proc_human(params, inference_engine):
 
     # Format for supervised learning / transformer inference
     todays_date = params["start"] + datetime.timedelta(days=params["current_day"], hours=params["time_slot"])
-    is_exposed, exposure_day = covid19sim.frozen.helper.exposure_array(human.infection_timestamp, todays_date)
-    is_recovered, recovery_day = covid19sim.frozen.helper.recovered_array(human.recovered_timestamp, todays_date)
+    is_exposed, exposure_day = covid19sim.frozen.helper.exposure_array(human.infection_timestamp, todays_date, conf)
+    is_recovered, recovery_day = covid19sim.frozen.helper.recovered_array(human.recovered_timestamp, todays_date, conf)
     candidate_encounters, exposure_encounter = covid19sim.frozen.helper.candidate_exposures(human, todays_date)
     reported_symptoms = human.rolling_all_reported_symptoms
     true_symptoms = human.rolling_all_symptoms
@@ -401,10 +401,11 @@ def _proc_human(params, inference_engine):
         "observed": {
             "reported_symptoms": reported_symptoms,
             "candidate_encounters": candidate_encounters,
-            "test_results": covid19sim.frozen.helper.get_test_result_array(human.test_results, todays_date),
+            "test_results": covid19sim.frozen.helper.get_test_result_array(human.test_results, todays_date, conf),
             "preexisting_conditions": human.obs_preexisting_conditions,
             "age": human.obs_age,
-            "sex": human.obs_sex
+            "sex": human.obs_sex,
+            "risk_mapping": conf.get("RISK_MAPPING"),
         },
         "unobserved": {
             "true_symptoms": true_symptoms,

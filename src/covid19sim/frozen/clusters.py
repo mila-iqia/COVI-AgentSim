@@ -11,10 +11,11 @@ class Clusters:
      an update to a record. We have various clues (uid, risk, number of updates sent for a day) as
      signals about which records to update, as well as whether our clusters are correct."""
 
-    def __init__(self):
+    def __init__(self, conf):
         self.num_messages = 0
         self.clusters = defaultdict(list)
         self.clusters_by_day = defaultdict(dict)
+        self.conf = conf
 
     def add_messages(self, messages):
         """ This function clusters new messages by scoring them against old messages in a sort of naive nearest neighbors approach"""
@@ -113,7 +114,7 @@ class Clusters:
     def purge(self, current_day):
         """ ensure we don't keep messages older than 14 days"""
         # TODO: Optimize this function
-        for cluster_id, messages in self.clusters_by_day[current_day - 14].items():
+        for cluster_id, messages in self.clusters_by_day[current_day - self.conf['TRACING_N_DAYS_HISTORY']].items():
             for message in messages:
                 del self.clusters[cluster_id][self.clusters[cluster_id].index(message)]
                 self.num_messages -= 1
@@ -123,8 +124,8 @@ class Clusters:
                 to_purge.append(cluster_id)
         for cluster_id in to_purge:
             del self.clusters[cluster_id]
-        if current_day - 14 >= 0:
-            del self.clusters_by_day[current_day - 14]
+        if current_day - self.conf['TRACING_N_DAYS_HISTORY'] >= 0:
+            del self.clusters_by_day[current_day - self.conf['TRACING_N_DAYS_HISTORY']]
         to_purge = defaultdict(list)
         for day, clusters in self.clusters_by_day.items():
             for cluster_id, messages in clusters.items():

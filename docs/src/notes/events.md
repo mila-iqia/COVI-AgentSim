@@ -1,3 +1,4 @@
+# Events
 Each event is similar to what an individual's app would notice.
 So `human_id` is the app owner (`Human`)'s unique id.
 `time` is the start of the event.
