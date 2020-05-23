@@ -13,8 +13,6 @@ import argparse
 from pathlib import Path
 from sklearn.metrics import confusion_matrix, classification_report, f1_score
 import pdb
-import matplotlib
-import matplotlib.pyplot as plt
 
 
 def proba_to_risk(probas, mapping):
@@ -260,11 +258,11 @@ if __name__ == "__main__":
 
     Usage:
 
-        $ python find_rec_levels.py --data path/to/data.pkl --risk_levels
+        $ python find_rec_levels.py --data path/to/data.pkl --risk_level
         or
         $ python find_rec_levels.py --data path/to/data.pkl --samples 10000
         or
-        $ python find_rec_levels.py --data path/to/data.pkl --risk_levels --plot_model "[1, 4, 8]"
+        $ python find_rec_levels.py --data path/to/data.pkl --risk_level --plot_model "[1, 4, 8]"
         or
         $ python find_rec_levels.py --help
 
@@ -371,7 +369,7 @@ if __name__ == "__main__":
         help="When plotting histograms, number of bins to use",
     )
     parser.add_argument(
-        "--risk_levels",
+        "--risk_level",
         default=False,
         action="store_true",
         help="If true, find rec_levels from risk_levels, otherwise it's from risks",
@@ -449,7 +447,7 @@ if __name__ == "__main__":
     # -------------------------------
     # -----  Sample Thresholds  -----
     # -------------------------------
-    if opts.risk_levels:
+    if opts.risk_level:
         models = risk_level_thresholds()
         X = np.array([r["risk_level"] for r in risk_attributes])
     else:
@@ -489,8 +487,19 @@ if __name__ == "__main__":
     # -----------------------------
     # -----  PLOT BEST MODEL  -----
     # -----------------------------
+    import matplotlib
 
-    # matplotlib.use("MacOSX")
+    gui_env = ["MacOSX", "TKAgg", "GTKAgg", "Qt4Agg", "WXAgg"]
+    for gui in gui_env:
+        try:
+            print("testing", gui)
+            matplotlib.use(gui, warn=False, force=True)
+            from matplotlib import pyplot as plt
+
+            break
+        except:
+            continue
+    print("Using:", matplotlib.get_backend())
 
     if opts.plot_model:
         best_model = (
@@ -509,16 +518,16 @@ if __name__ == "__main__":
         for i, r in enumerate(risk_attributes):
             yb = y_best[i]
             yt = y_true[i]
-            histograms[yb][r["risk_level" if opts.risk_levels else "risk"]] += 1
-            true_histograms[yt][r["risk_level" if opts.risk_levels else "risk"]] += 1
+            histograms[yb][r["risk_level" if opts.risk_level else "risk"]] += 1
+            true_histograms[yt][r["risk_level" if opts.risk_level else "risk"]] += 1
     else:
         histograms = {c: [] for c in id_to_color}
         true_histograms = {c: [] for c in id_to_color}
         for i, r in enumerate(risk_attributes):
             yb = y_best[i]
             yt = y_true[i]
-            histograms[yb].append(r["risk_level" if opts.risk_levels else "risk"])
-            true_histograms[yt].append(r["risk_level" if opts.risk_levels else "risk"])
+            histograms[yb].append(r["risk_level" if opts.risk_level else "risk"])
+            true_histograms[yt].append(r["risk_level" if opts.risk_level else "risk"])
 
     fig, axes = plt.subplots(4)
     ax1, ax2, ax3, ax4 = axes
@@ -536,7 +545,7 @@ if __name__ == "__main__":
                 else:
                     ax.hist(
                         histograms[hist] or [0],
-                        bins=opts.bins if not opts.risk_levels else 16,
+                        bins=opts.bins if not opts.risk_level else 16,
                         color=id_to_color[hist].lower(),
                         alpha=0.5,
                     )
@@ -552,7 +561,7 @@ if __name__ == "__main__":
                 else:
                     ax.hist(
                         true_histograms[hist] or [0],
-                        bins=opts.bins if not opts.risk_levels else 16,
+                        bins=opts.bins if not opts.risk_level else 16,
                         color=id_to_color[hist].lower(),
                         alpha=0.5,
                     )
@@ -567,10 +576,10 @@ if __name__ == "__main__":
                 )
             )
         ax.set_xticks(
-            np.arange(0, 1.1, 0.1) if not opts.risk_levels else np.arange(0, 16)
+            np.arange(0, 1.1, 0.1) if not opts.risk_level else np.arange(0, 16)
         )
         if i == 3:
-            ax.set_xlabel("risk" if not opts.risk_levels else "risk_level")
+            ax.set_xlabel("risk" if not opts.risk_level else "risk_level")
         log = "Log-" if i in {1, 3} else ""
         true = "TRUE " if i < 2 else ""
         ax.set_ylabel(true + log + "Reports")
@@ -584,4 +593,4 @@ if __name__ == "__main__":
             fontsize=9,
         )
 
-    plt.show(block=False)
+    plt.show()

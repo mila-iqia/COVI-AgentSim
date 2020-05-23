@@ -12,7 +12,7 @@ output/
 CTT-SHIPMENT-0
 exp/
 FRESH-SNOWFLAKE-224B
-
+!docs/find_rec_level_plot.png
 #Hydra stuff
 *.hydra/
 *multirun/
