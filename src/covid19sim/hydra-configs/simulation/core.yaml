@@ -12,11 +12,11 @@ LOCATION_DISTRIBUTION:
   {
     "store":
       {
-        "n": 50,
+        "n": 500,
         "area": 0.15,
-        "social_contact_factor": 0.6,
+        "social_contact_factor": 0.7,
         "surface_prob": [0.1, 0.1, 0.3, 0.2, 0.3],
-        "rnd_capacity": [30, 50],
+        "rnd_capacity": [300, 1000],
       },
     "workplace":
       {
@@ -28,7 +28,7 @@ LOCATION_DISTRIBUTION:
       },
     "school":
       {
-        "n": 100,
+        "n": 500,
         "area": 0.05,
         "social_contact_factor": 0.8,
         "surface_prob": [0.1, 0.1, 0.3, 0.2, 0.3],
@@ -36,7 +36,7 @@ LOCATION_DISTRIBUTION:
       },
     "senior_residency":
       {
-        "n": 100,
+        "n": 500,
         "area": 0.05,
         "social_contact_factor": 0.8,
         "surface_prob": [0.1, 0.1, 0.3, 0.2, 0.3],
@@ -52,7 +52,7 @@ LOCATION_DISTRIBUTION:
       },
     "park":
       {
-        "n": 50,
+        "n": 250,
         "area": 0.05,
         "social_contact_factor": 0.2,
         "surface_prob": [0.8, 0.05, 0.05, 0.05, 0.05],
@@ -60,20 +60,20 @@ LOCATION_DISTRIBUTION:
       },
     "misc":
       {
-        "n": 30,
+        "n": 40,
         "area": 0.15,
         "social_contact_factor": 0.8,
         "surface_prob": [0.1, 0.1, 0.3, 0.2, 0.3],
-        "rnd_capacity": [30, 50],
+        "rnd_capacity": [300, 500],
       },
     "hospital":
       {
-        "n": 100,
+        "n": 1000,
         "area": 0.05,
         "social_contact_factor": 0.4,
         "surface_prob": [0.0, 0.0, 0.0, 0.0, 1.0],
-        "rnd_capacity": [40, 100],
-      },
+        "rnd_capacity": [20, 50],
+      }
   }
 
 # house_size: 1 2 3 4 5
