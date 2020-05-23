@@ -1,14 +1,13 @@
----
+# @package _global_
 # EXPERIMENTAL PARAMETERS
-COLLECT_LOGS: False
+COLLECT_LOGS: True
 COLLECT_TRAINING_DATA: False
 USE_INFERENCE_SERVER: True
 RISK_MODEL: "transformer" # "naive"  "manual", "digital", "transformer"
-SHOULD_MODIFY_BEHAVIOR: True
-USE_ORACLE: False
+SHOULD_MODIFY_BEHAVIOR: False
+USE_ORACLE: True
 
 ## INTERVENTIONS
-# NOTE: INTERVENTION is only valid if INTERVENTION_DAY >= 0
 INTERVENTION: "Tracing"
 
 # PATHS

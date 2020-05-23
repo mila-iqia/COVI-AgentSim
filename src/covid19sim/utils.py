@@ -1696,6 +1696,18 @@ def dump_tracker_data(data, outdir, name):
     with open(outdir / name, 'wb') as f:
         dill.dump(data, f)
 
+def parse_search_configuration(conf):
+    """
+    Parses the OmegaConf to native types
+
+    Args:
+        conf (OmegaConf): Hydra configuration
+
+    Returns:
+        dict: parsed conf
+    """
+    return OmegaConf.to_container(conf, resolve=True)
+
 def parse_configuration(conf):
     """
     Transforms an Omegaconf object to native python dict, parsing specific fields like:

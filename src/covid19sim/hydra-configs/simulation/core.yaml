@@ -1,3 +1,4 @@
+# @package _global_
 GLOBAL_MOBILITY_SCALING_FACTOR: .3 # Mobility reduction factor
 
 # NOISE IN SIM PARAMETERS

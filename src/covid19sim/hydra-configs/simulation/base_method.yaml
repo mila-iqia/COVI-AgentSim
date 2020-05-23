@@ -1,3 +1,5 @@
+# @package _global_
+
 #FORMER COMMAND-LINE ARGS
 n_people: 1000
 init_percent_sick: 0.001

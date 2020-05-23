@@ -1,0 +1,62 @@
+defaults:
+  - hydra/sweeper: nevergrad
+
+hydra:
+
+  run:
+    dir: .
+
+  sweep:
+    subdir: .
+
+  sweeper:
+    params:
+      # configuration of the optimizer
+      optim:
+        # name of the nevergrad optimizer to use
+        # OnePlusOne is good at low budget, but may converge early
+        optimizer: OnePlusOne
+        # total number of function evaluations to perform
+        budget: 4
+        # number of parallel workers for performing function evaluations
+        num_workers: 2
+        # maximize: true  # comment out for maximization
+      # default parametrization of the search space
+      parametrization:
+
+        run_type:
+          - collect-all
+        tracing_method:
+          - oracle
+        n_people: 1000
+        simulation_days: 22
+        # a linearly-distributed scalar between 0 and 1
+        P_HAS_APP:
+          lower: 0.0
+          upper: 1.0
+        # a linearly-distributed scalar between 0 and 1
+        P_CAREFUL_PERSON:
+          lower: 0.0
+          upper: 1.0
+        # a linearly-distributed scalar between 0 and 1
+        GLOBAL_MOBILITY_SCALING_FACTOR:
+          lower: 0.0
+          upper: 1.0
+
+        # an integer scalar going from 4 to 16
+        # init and step parameters could also be provided,
+        # by default init is set to the middle of the range
+        # and step is set to a sixth of the range
+        seed: # for sole reproducibility purposes
+          lower: 0
+          upper: 10
+          integer: true
+
+run_type: collect-all
+tracing_method: oracle
+n_people: 1000
+simulation_days: 22
+P_HAS_APP: 0.6
+P_CAREFUL_PERSON: 0.5
+GLOBAL_MOBILITY_SCALING_FACTOR: 0.3
+seed: 0
