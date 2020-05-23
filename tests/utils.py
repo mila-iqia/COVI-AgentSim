@@ -12,8 +12,8 @@ import covid19sim.frozen.message_utils as mu
 import covid19sim.server_bootstrap
 from covid19sim.utils import parse_configuration
 
-HYDRA_PATH = (
-    Path(__file__).parent.parent / "src/covid19sim/hydra-configs"
+HYDRA_SIM_PATH = (
+    Path(__file__).parent.parent / "src/covid19sim/hydra-configs/simulation"
 ).resolve()
 
 @dataclasses.dataclass
@@ -295,13 +295,13 @@ def get_test_conf(conf_name):
     assert config_path.suffix == ".yaml"
     assert config_path.exists()
 
-    config = HYDRA_PATH / "config.yaml"
+    config = HYDRA_SIM_PATH / "config.yaml"
 
     with config.open("r") as f:
         defaults = yaml.safe_load(f)["defaults"]
 
     default_confs = [
-        OmegaConf.load(str(HYDRA_PATH / (d + ".yaml")))
+        OmegaConf.load(str(HYDRA_SIM_PATH / (d + ".yaml")))
         for d in defaults
     ]
     conf = OmegaConf.merge(*default_confs, OmegaConf.load(str(config_path)))

@@ -14,13 +14,13 @@ from covid19sim.utils import (
     dump_tracker_data,
     extract_tracker_data,
     parse_configuration,
-    dump_conf
+    dump_conf,
 )
 import hydra
 from omegaconf import DictConfig
 
 
-@hydra.main(config_path="hydra-configs/config.yaml")
+@hydra.main(config_path="hydra-configs/simulation", config_name="config")
 def main(conf: DictConfig) -> None:
     """
     Enables command line execution of the simulator.
@@ -46,7 +46,7 @@ def main(conf: DictConfig) -> None:
         conf["simulation_days"],
         conf["init_percent_sick"],
         conf["seed"],
-        datetime.datetime.now().strftime("'%Y%m%d-%H%M%S"),
+        datetime.datetime.now().strftime("%Y%m%d-%H%M%S"),
     )
     os.makedirs(conf["outdir"])
     outfile = os.path.join(conf["outdir"], "data")
@@ -177,20 +177,13 @@ def simulate(
     city_x_range = (0, 1000)
     city_y_range = (0, 1000)
     city = City(
-        env,
-        n_people,
-        init_percent_sick,
-        rng,
-        city_x_range,
-        city_y_range,
-        Human,
-        conf,
+        env, n_people, init_percent_sick, rng, city_x_range, city_y_range, Human, conf
     )
 
     # Add monitors
     monitors = [
-        EventMonitor(f=SECONDS_PER_HOUR*30, dest=outfile, chunk_size=out_chunk_size),
-        SEIRMonitor (f=SECONDS_PER_DAY),
+        EventMonitor(f=SECONDS_PER_HOUR * 30, dest=outfile, chunk_size=out_chunk_size),
+        SEIRMonitor(f=SECONDS_PER_DAY),
     ]
     if print_progress:
         monitors.append(TimeMonitor(SECONDS_PER_DAY))
@@ -213,7 +206,7 @@ def simulate(
         env.process(m.run(env, city=city))
 
     # Run simulation until termination
-    env.run(until=env.ts_initial+simulation_days*SECONDS_PER_DAY)
+    env.run(until=env.ts_initial + simulation_days * SECONDS_PER_DAY)
 
     if not return_city:
         return monitors, city.tracker
