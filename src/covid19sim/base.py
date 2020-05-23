@@ -906,7 +906,7 @@ class Hospital(Location):
                                         lat=lat,
                                         lon=lon,
                                         social_contact_factor=social_contact_factor,
-                                        capacity=int(capacity* (1- self.ICU_CAPACITY)),
+                                        capacity=math.ceil(capacity* (1- self.ICU_CAPACITY)),
                                         surface_prob=surface_prob,
                                         )
         self.location_contamination = 1
@@ -918,7 +918,7 @@ class Hospital(Location):
                         lat=lat,
                         lon=lon,
                         social_contact_factor=social_contact_factor,
-                        capacity=int(capacity* (self.ICU_CAPACITY)),
+                        capacity=math.ceil(capacity* (self.ICU_CAPACITY)),
                         surface_prob=surface_prob,
                         )
 
