@@ -64,6 +64,11 @@ def main(conf: DictConfig) -> None:
 
     add `dev=True` to just see the commands that would be run, without
     running them
+
+    NOTE: ALL parameters used in run.py may be overridden from this commandline.
+    For instance you can change init_percent_sick
+
+    $ python random_search.py exp_file=experiment n_search=20 init_percent_sick=0.1
     """
 
     # These will be filtered out when passing arguments to run.py
