@@ -96,14 +96,14 @@ def encode_test_result(test_result):
         return -1
 
 
-def messages_to_np(human):
-    return human.clusters.get_embeddings_array()
+def messages_to_np(cluster_mgr):
+    return cluster_mgr.get_embeddings_array()
 
 
-def candidate_exposures(human):
-    candidate_encounters = messages_to_np(human)
-    assert isinstance(human.clusters, ClusterManagerBase)
-    exposed_encounters = human.clusters._get_expositions_array()
+def candidate_exposures(cluster_mgr):
+    candidate_encounters = messages_to_np(cluster_mgr)
+    assert isinstance(cluster_mgr, ClusterManagerBase)
+    exposed_encounters = cluster_mgr._get_expositions_array()
     return candidate_encounters, exposed_encounters
 
 

@@ -223,7 +223,6 @@ class Human(object):
             for i in range(self.conf.get('UPDATES_PER_DAY'))
         ]
         # keep track of when the risk/clusters were last updated (i.e. latest timeslot date)
-        self.last_cluster_update = None
         self.last_risk_update = None
 
         # symptoms

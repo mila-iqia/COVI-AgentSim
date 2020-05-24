@@ -103,6 +103,7 @@ class ClusterManagerBase:
             generate_backw_compat_embeddings: bool = False,
             max_cluster_id: int = 1000,
     ):
+        self._is_being_used = False  # for multithread sanity checks (could be a mutex?)
         self.clusters = []
         self.max_cluster_id = max_cluster_id
         self.next_cluster_id = 0
@@ -239,6 +240,10 @@ class ClusterManagerBase:
         possible with simulator data.
         """
         raise NotImplementedError
+
+    def __repr__(self):
+        """For pretty printing."""
+        return f"{type(self)}: nb_clusters={self.get_cluster_count()}"
 
 
 def get_cluster_manager_type(algo_name: str):

@@ -3,10 +3,12 @@ Contains utility classes for remote inference inside the simulation.
 """
 
 import datetime
+import joblib
+import multiprocessing
+import multiprocessing.managers
 import numpy as np
 import os
 import pickle
-import threading
 import time
 import typing
 import zmq
@@ -31,26 +33,7 @@ default_frontend_ipc_address = "ipc:///tmp/covid19sim-inference-frontend.ipc"
 default_backend_ipc_address = "ipc:///tmp/covid19sim-inference-backend.ipc"
 
 
-class AtomicCounter(object):
-    """
-    Implements an atomic & thread-safe counter.
-    """
-
-    def __init__(self, init=0):
-        self._count = init
-        self._lock = threading.Lock()
-
-    def increment(self, delta=1):
-        with self._lock:
-            self._count += delta
-            return self._count
-
-    @property
-    def count(self):
-        return self._count
-
-
-class InferenceWorker(threading.Thread):
+class InferenceWorker(multiprocessing.Process):
     """
     Spawns a single inference worker instance.
 
@@ -62,78 +45,89 @@ class InferenceWorker(threading.Thread):
             self,
             experiment_directory: typing.AnyStr,
             identifier: typing.Any,
-            mp_backend: typing.AnyStr,
-            mp_threads: int,
+            n_parallel_procs: int,
+            cluster_mgr_map: typing.Dict,
             weights_path: typing.Optional[typing.AnyStr] = None,
-            context: typing.Optional[zmq.Context] = None,
     ):
         """
-        Initializes the inference worker's attributes (counters, condvars, context).
+        Initializes the inference worker's attributes (counters, condvars, ...).
 
         Args:
             experiment_directory: the path to the experiment directory to pass to the inference engine.
             identifier: identifier for this worker (name, used for debug purposes only).
-            mp_backend: joblib parallel backend to use when processing humans in parallel.
-            mp_threads: joblib parallel thread count to use when processing humans in parallel.
+            n_parallel_procs: joblib parallel process count to use for clustering+inference.
+            cluster_mgr_map: map of human-to-cluster-managers to use for clustering.
             weights_path: the path to the specific weight file to use. If not, will use the 'best
                 checkpoint weights' inside the experiment directory.
-            context: zmq context to create i/o objects from.
         """
-        threading.Thread.__init__(self)
+        super().__init__()
         self.experiment_directory = experiment_directory
         self.weights_path = weights_path
         self.identifier = identifier
-        self.stop_flag = threading.Event()
-        self.packet_counter = AtomicCounter(init=0)
-        self.time_counter = AtomicCounter(init=0.)
-        self.mp_backend = mp_backend
-        self.mp_threads = mp_threads
-        if context is None:
-            context = zmq.Context()
-        self.context = context
-        self.init_time = None
+        self.stop_flag = multiprocessing.Event()
+        self.packet_counter = multiprocessing.Value("i", 0)
+        self.time_counter = multiprocessing.Value("f", 0.0)
+        self.time_init = multiprocessing.Value("f", 0.0)
+        self.n_parallel_procs = n_parallel_procs
+        self.cluster_mgr_map = cluster_mgr_map
 
     def run(self):
-        """Main loop of the inference worker thread.
+        """Main loop of the inference worker process.
 
         Will receive brokered requests from the frontend, process them, and respond
         with the result through the broker.
         """
         engine = InferenceEngineWrapper(self.experiment_directory, self.weights_path)
-        socket = self.context.socket(zmq.REQ)
+        context = zmq.Context()
+        socket = context.socket(zmq.REQ)
         socket.identity = str(self.identifier).encode("ascii")
         socket.connect(default_backend_ipc_address)
         socket.send(b"READY")  # tell broker we're ready
         poller = zmq.Poller()
         poller.register(socket, zmq.POLLIN)
-        self.init_time = time.time()
+        self.time_init.value = time.time()
         while not self.stop_flag.is_set():
             evts = dict(poller.poll(default_poll_delay_ms))
             if socket in evts and evts[socket] == zmq.POLLIN:
                 proc_start_time = time.time()
                 address, empty, buffer = socket.recv_multipart()
                 sample = pickle.loads(buffer)
-                response = proc_human_batch(sample, engine, self.mp_backend, self.mp_threads)
+                response = proc_human_batch(
+                    sample=sample,
+                    engine=engine,
+                    cluster_mgr_map=self.cluster_mgr_map,
+                    n_parallel_procs=self.n_parallel_procs,
+                )
                 response = pickle.dumps(response)
                 socket.send_multipart([address, b"", response])
-                self.time_counter.increment(time.time() - proc_start_time)
-                self.packet_counter.increment()
+                with self.time_counter.get_lock():
+                    self.time_counter.value += time.time() - proc_start_time
+                with self.packet_counter.get_lock():
+                    self.packet_counter.value += 1
         socket.close()
 
     def get_processed_count(self):
         """Returns the total number of processed requests by this inference server."""
-        return self.packet_counter.count
+        return int(self.packet_counter.value)
+
+    def get_total_delay(self):
+        """Returns the total time spent processing requests by this inference server."""
+        return float(self.time_counter.value)
+
+    def get_run_init_time(self):
+        """Returns the time at which the worker started running."""
+        return float(self.time_init.value)
 
     def get_averge_processing_delay(self):
         """Returns the average sample processing time between reception & response (in seconds)."""
-        tot_delay, tot_packet_count = self.time_counter.count, self.packet_counter.count
+        tot_delay, tot_packet_count = self.get_total_delay(), self.get_processed_count()
         if not tot_packet_count:
             return float("nan")
-        return tot_delay / self.packet_counter.count
+        return tot_delay / tot_packet_count
 
     def get_processing_uptime(self):
         """Returns the fraction of total uptime that the server spends processing requests."""
-        tot_process_time, tot_time = self.time_counter.count, time.time() - self.init_time
+        tot_process_time, tot_time = self.get_total_delay(), time.time() - self.get_run_init_time()
         return tot_process_time / tot_time
 
     def stop(self):
@@ -141,108 +135,108 @@ class InferenceWorker(threading.Thread):
         self.stop_flag.set()
 
 
-class InferenceBroker(threading.Thread):
+class InferenceBroker:
     """Manages inference workers through a backend connection for load balancing."""
 
     def __init__(
             self,
             model_exp_path: typing.AnyStr,
             workers: int,
-            mp_backend: typing.AnyStr,
-            mp_threads: int,
+            n_parallel_procs: int,
             port: typing.Optional[int] = None,
             verbose: bool = False,
             verbose_print_delay: float = 5.,
             weights_path: typing.Optional[typing.AnyStr] = None,
-            context: typing.Optional[zmq.Context] = None,
     ):
         """
-        Initializes the inference broker's attributes (counters, condvars, context).
+        Initializes the inference broker's attributes (counters, condvars, ...).
 
         Args:
             model_exp_path: the path to the experiment directory to pass to the inference engine.
             workers: the number of independent inference workers to spawn to process requests.
-            mp_backend: joblib parallel backend to use when processing humans in parallel.
-            mp_threads: joblib parallel thread count to use when processing humans in parallel.
+            n_parallel_procs: joblib parallel process count to use for clustering+inference.
             port: the port number to accept TCP requests on. If None, will accept IPC requests instead.
             verbose: toggles whether to print extra debug information while running.
             verbose_print_delay: specifies how often the extra debug info should be printed.
-            context: zmq context to create i/o objects from.
         """
-        threading.Thread.__init__(self)
-        if context is None:
-            context = zmq.Context()
-        self.context = context
         self.workers = workers
-        self.mp_backend = mp_backend
-        self.mp_threads = mp_threads
+        self.n_parallel_procs = n_parallel_procs
         self.port = port
         self.model_exp_path = model_exp_path
         self.weights_path = weights_path
-        self.stop_flag = threading.Event()
+        self.stop_flag = multiprocessing.Event()
         self.verbose = verbose
         self.verbose_print_delay = verbose_print_delay
 
     def run(self):
-        """Main loop of the inference broker thread.
+        """Main loop of the inference broker process.
 
         Will received requests from clients and dispatch them to available workers.
         """
         print(f"Initializing {self.workers} worker(s) from experiment: {self.model_exp_path}")
         if self.weights_path is not None:
             print(f"\t will use weights directly from: {self.weights_path}")
-        frontend = self.context.socket(zmq.ROUTER)
+        context = zmq.Context()
+        frontend = context.socket(zmq.ROUTER)
         if self.port:
             frontend_address = f"tcp://*:{self.port}"
         else:
             frontend_address = default_frontend_ipc_address
         print(f"Will listen for inference requests at: {frontend_address}")
         frontend.bind(frontend_address)
-        backend = self.context.socket(zmq.ROUTER)
+        backend = context.socket(zmq.ROUTER)
         backend.bind(default_backend_ipc_address)
-        worker_map = {}
-        for worker_idx in range(self.workers):
-            worker_id = f"worker:{worker_idx}"
-            worker = InferenceWorker(
-                self.model_exp_path,
-                worker_id,
-                self.mp_backend,
-                self.mp_threads,
-                weights_path=self.weights_path,
-                context=self.context
-            )
-            worker_map[worker_id] = worker
-            worker.start()
-        available_worker_ids = []
-        worker_poller = zmq.Poller()
-        worker_poller.register(backend, zmq.POLLIN)
-        worker_poller.register(frontend, zmq.POLLIN)
-        last_update_timestamp = time.time()
-        while not self.stop_flag.is_set():
-            evts = dict(worker_poller.poll(default_poll_delay_ms))
-            if backend in evts and evts[backend] == zmq.POLLIN:
-                request = backend.recv_multipart()
-                worker_id, empty, client = request[:3]
-                available_worker_ids.append(worker_id)
-                if client != b"READY" and len(request) > 3:
-                    empty, reply = request[3:]
-                    frontend.send_multipart([client, b"", reply])
-            if available_worker_ids and frontend in evts and evts[frontend] == zmq.POLLIN:
-                client, empty, request = frontend.recv_multipart()
-                worker_id = available_worker_ids.pop(0)
-                backend.send_multipart([worker_id, b"", client, b"", request])
-            if self.verbose and time.time() - last_update_timestamp > self.verbose_print_delay:
-                print(f" {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')} stats:")
-                for worker_id, worker in worker_map.items():
-                    packets = worker.get_processed_count()
-                    delay = worker.get_averge_processing_delay()
-                    uptime = worker.get_processing_uptime()
-                    print(f"  {worker_id}:  packets={packets}"
-                          f"  avg_delay={delay:.6f}sec  proc_time_ratio={uptime:.1%}")
-                last_update_timestamp = time.time()
-        for w in worker_map.values():
-            w.stop()
-            w.join()
+        with multiprocessing.Manager() as mem_manager:
+            worker_map = {}
+            cluster_mgr_map = mem_manager.dict()
+            for worker_idx in range(self.workers):
+                worker_id = f"worker:{worker_idx}"
+                print(f"Launching {worker_id}...")
+                worker = InferenceWorker(
+                    experiment_directory=self.model_exp_path,
+                    identifier=worker_id,
+                    n_parallel_procs=self.n_parallel_procs,
+                    cluster_mgr_map=cluster_mgr_map,
+                    weights_path=self.weights_path,
+                )
+                worker_map[worker_id] = worker
+                worker.start()
+            available_worker_ids = []
+            worker_poller = zmq.Poller()
+            worker_poller.register(backend, zmq.POLLIN)
+            worker_poller.register(frontend, zmq.POLLIN)
+            last_update_timestamp = time.time()
+            print("Entering dispatch loop...")
+            while not self.stop_flag.is_set():
+                evts = dict(worker_poller.poll(default_poll_delay_ms))
+                if backend in evts and evts[backend] == zmq.POLLIN:
+                    request = backend.recv_multipart()
+                    worker_id, empty, client = request[:3]
+                    available_worker_ids.append(worker_id)
+                    if client != b"READY" and len(request) > 3:
+                        empty, reply = request[3:]
+                        frontend.send_multipart([client, b"", reply])
+                if available_worker_ids and frontend in evts and evts[frontend] == zmq.POLLIN:
+                    client, empty, request = frontend.recv_multipart()
+                    worker_id = available_worker_ids.pop(0)
+                    backend.send_multipart([worker_id, b"", client, b"", request])
+                if self.verbose and time.time() - last_update_timestamp > self.verbose_print_delay:
+                    print(f" {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')} stats:")
+                    for worker_id, worker in worker_map.items():
+                        packets = worker.get_processed_count()
+                        delay = worker.get_averge_processing_delay()
+                        uptime = worker.get_processing_uptime()
+                        print(
+                            f"  {worker_id}:"
+                            f"  packets={packets}"
+                            f"  avg_delay={delay:.6f}sec"
+                            f"  proc_time_ratio={uptime:.1%}"
+                            f"  cluster_mgr_count={len(cluster_mgr_map)}"
+                        )
+                    last_update_timestamp = time.time()
+            for w in worker_map.values():
+                w.stop()
+                w.join()
 
     def stop(self):
         """
@@ -305,8 +299,9 @@ class InferenceEngineWrapper(InferenceEngine):
 def proc_human_batch(
         sample,
         engine,
-        mp_backend,
-        mp_threads,
+        cluster_mgr_map,
+        n_parallel_procs,
+        clusters_dump_path: typing.Optional[typing.AnyStr] = None,
 ):
     """
     Processes a chunk of human data, clustering messages and computing new risk levels.
@@ -314,27 +309,55 @@ def proc_human_batch(
     Args:
         sample: a dictionary of data necessary for clustering+inference.
         engine: the inference engine, pre-instantiated with the right experiment config.
-        mp_backend: joblib parallel backend to use when processing humans in parallel.
-        mp_threads: joblib parallel thread count to use when processing humans in parallel.
+        cluster_mgr_map: map of human-to-cluster-managers to use for clustering.
+        n_parallel_procs: internal joblib parallel process count for clustering+inference.
+        clusters_dump_path: defines where to dump clusters (if required).
 
     Returns:
         The clustering + risk level update results.
     """
-    if isinstance(sample, list):
-        if mp_threads > 0:
-            import joblib
-            with joblib.Parallel(
-                    n_jobs=mp_threads,
-                    backend=mp_backend,
-                    batch_size="auto",
-                    prefer="threads") as parallel:
-                results = parallel((joblib.delayed(_proc_human)(human, engine) for human in sample))
-            return [r for r in results]
+    assert isinstance(sample, list) and all([isinstance(p, dict) for p in sample])
+    ref_timestamp = None
+    for params in sample:
+        human_name = params["human"].name
+        timestamp = params["start"] + datetime.timedelta(days=params["current_day"], hours=params["time_slot"])
+        if ref_timestamp is None:
+            ref_timestamp = timestamp
         else:
-            return [proc_human_batch(human, engine, mp_backend, mp_threads) for human in sample]
+            assert ref_timestamp == timestamp, "how can we possibly have different timestamps here"
+        if human_name not in cluster_mgr_map:
+            # cluster messages; as of the GAEN refactoring, only one algo can be used
+            cluster_mgr = covid19sim.frozen.clustering.gaen.GAENClusterManager(
+                max_history_offset=datetime.timedelta(days=params["conf"].get("TRACING_N_DAYS_HISTORY")),
+                add_orphan_updates_as_clusters=True,
+                generate_embeddings_by_timestamp=True,
+                generate_backw_compat_embeddings=True,
+            )
+        else:
+            cluster_mgr = cluster_mgr_map[human_name]
+        assert not cluster_mgr._is_being_used, "two processes should never try to access the same human"
+        cluster_mgr._is_being_used = True
+        params["cluster_mgr"] = cluster_mgr
+    if n_parallel_procs > 0:
+        with joblib.Parallel(n_jobs=n_parallel_procs, batch_size="auto") as parallel:
+            results = parallel((joblib.delayed(_proc_human)(params, engine) for params in sample))
     else:
-        assert isinstance(sample, dict), "unexpected input data format"
-        return _proc_human(sample, engine)
+        results = [_proc_human(params, engine) for params in sample]
+    for params in sample:
+        cluster_mgr = params["cluster_mgr"]
+        assert cluster_mgr._is_being_used
+        cluster_mgr._is_being_used = False
+        cluster_mgr_map[params["human"].name] = cluster_mgr
+
+    if clusters_dump_path and ref_timestamp:
+        os.makedirs(clusters_dump_path, exist_ok=True)
+        curr_date_str = ref_timestamp.strftime("%Y%m%d-%H%M%S")
+        curr_dump_path = os.path.join(clusters_dump_path, curr_date_str + ".pkl")
+        to_dump = {params["human"].name: params["cluster_mgr"] for params in sample}
+        with open(curr_dump_path, "wb") as fd:
+            pickle.dump(to_dump, fd)
+
+    return results
 
 
 def _proc_human(params, inference_engine):
@@ -344,30 +367,22 @@ def _proc_human(params, inference_engine):
         "unexpected/broken _proc_human input format between simulator and inference service"
     conf = params["conf"]
     todays_date = params["start"] + datetime.timedelta(days=params["current_day"], hours=params["time_slot"])
+    human, cluster_mgr = params["human"], params["cluster_mgr"]
 
-    # cluster messages; as of the GAEN refactoring, only one algo can be used
-    human = params["human"]
-    if human.clusters is None:
-        human.clusters = covid19sim.frozen.clustering.gaen.GAENClusterManager(
-            max_history_offset=datetime.timedelta(days=conf.get("TRACING_N_DAYS_HISTORY")),
-            add_orphan_updates_as_clusters=True,
-            generate_embeddings_by_timestamp=True,
-            generate_backw_compat_embeddings=True,
-        )
     # set the current day as the refresh timestamp to auto-purge outdated messages in advance
-    human.clusters.set_current_timestamp(todays_date)
+    cluster_mgr.set_current_timestamp(todays_date)
     update_messages = covid19sim.frozen.message_utils.batch_messages(human.update_messages)
-    human.clusters.add_messages(messages=update_messages, current_timestamp=todays_date)
+    cluster_mgr.add_messages(messages=update_messages, current_timestamp=todays_date)
     # FIXME: there are messages getting duplicated somewhere, this is pretty bad @@@@@
     # uids = []
-    # for c in human.clusters.clusters:
+    # for c in cluster_mgr.clusters:
     #     uids.extend(c.get_encounter_uids())
     # assert len(np.unique(uids)) == len(uids), "found collision"
 
     # Format for supervised learning / transformer inference
     is_exposed, exposure_day = covid19sim.frozen.helper.exposure_array(human.infection_timestamp, todays_date, conf)
     is_recovered, recovery_day = covid19sim.frozen.helper.recovered_array(human.recovered_timestamp, todays_date, conf)
-    candidate_encounters, exposure_encounter = covid19sim.frozen.helper.candidate_exposures(human)
+    candidate_encounters, exposure_encounter = covid19sim.frozen.helper.candidate_exposures(cluster_mgr)
     reported_symptoms = human.rolling_all_reported_symptoms
     true_symptoms = human.rolling_all_symptoms
 
@@ -418,4 +433,4 @@ def _proc_human(params, inference_engine):
         inference_result = inference_engine.infer(daily_output)
         if inference_result is not None:
             risk_history = inference_result['infectiousness']
-    return human.name, risk_history, human.clusters
+    return human.name, risk_history

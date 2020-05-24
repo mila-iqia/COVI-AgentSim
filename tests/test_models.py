@@ -90,7 +90,6 @@ def validate_human_message(test_case, message, human):
     test_case.assertEqual(message.infection_timestamp, human.infection_timestamp)
     test_case.assertEqual(message.recovered_timestamp, human.recovered_timestamp)
 
-    test_case.assertEqual(message.clusters, human.clusters)
     test_case.assertEqual(message.carefulness, human.carefulness)
     test_case.assertEqual(message.has_app, human.has_app)
 

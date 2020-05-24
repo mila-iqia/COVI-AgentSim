@@ -6,10 +6,8 @@ import collections
 import dataclasses
 import datetime
 import os
-import pickle
 import functools
 import typing
-import warnings
 from joblib import Parallel, delayed
 
 import numpy as np
@@ -18,7 +16,7 @@ from covid19sim.server_utils import InferenceClient, InferenceEngineWrapper, pro
 from covid19sim.utils import proba_to_risk_fn
 from covid19sim.frozen.helper import conditions_to_np, encode_age, encode_sex, \
     encode_test_result, symptoms_to_np
-from covid19sim.frozen.message_utils import UIDType, UpdateMessage
+from covid19sim.frozen.message_utils import UpdateMessage
 from covid19sim.frozen.clustering.base import ClusterManagerBase
 
 if typing.TYPE_CHECKING:
@@ -73,7 +71,6 @@ def make_human_as_message(
                           rolling_all_symptoms=rolling_all_symptoms,
                           rolling_all_reported_symptoms=rolling_all_reported_symptoms,
 
-                          clusters=human.clusters,
                           update_messages=update_messages,
                           carefulness=human.carefulness,
                           has_app=human.has_app)
@@ -102,10 +99,26 @@ class HumanAsMessage:
     rolling_all_reported_symptoms: np.array
 
     # Risk-level-related fields
-    clusters: ClusterManagerBase
     update_messages: typing.List[UpdateMessage]
     carefulness: float
     has_app: bool
+
+
+class DummyMemManager:
+    """Dummy memory manager used when running in a single process."""
+
+    global_cluster_map: typing.Dict[str, ClusterManagerBase] = {}
+    global_inference_engine: InferenceEngineWrapper = None
+
+    @classmethod
+    def get_cluster_mgr_map(cls) -> typing.Dict[str, ClusterManagerBase]:
+        return cls.global_cluster_map
+
+    @classmethod
+    def get_engine(cls, conf) -> InferenceEngineWrapper:
+        if cls.global_inference_engine is None:
+            cls.global_inference_engine = InferenceEngineWrapper(conf.get('TRANSFORMER_EXP_PATH'))
+        return cls.global_inference_engine
 
 
 def batch_run_timeslot_heavy_jobs(
@@ -146,19 +159,16 @@ def batch_run_timeslot_heavy_jobs(
         if time_slot not in human.time_slots:
             continue
 
-        human_message = make_human_as_message(
-            human=human,
-            personal_mailbox=global_mailbox[human.name],
-            conf=conf
-        )
-
-        log_path = None
-        if data_path:
-            log_path = f'{os.path.dirname(data_path)}/daily_outputs/{current_day_idx}/{human.name[6:]}/'
+        log_path = f"{os.path.dirname(data_path)}/daily_outputs/{current_day_idx}/{human.name[6:]}/" \
+            if data_path else None
         all_params.append({
             "start": init_timestamp,
             "current_day": current_day_idx,
-            "human": human_message,
+            "human": make_human_as_message(
+                human=human,
+                personal_mailbox=global_mailbox[human.name],
+                conf=conf
+            ),
             "log_path": log_path,
             "time_slot": time_slot,
             "conf": conf,
@@ -183,19 +193,19 @@ def batch_run_timeslot_heavy_jobs(
         inference_frontend_address = conf.get('INFERENCE_SERVER_ADDRESS', None)
         query_func = functools.partial(query_inference_server, server_address=inference_frontend_address)
 
-        with Parallel(n_jobs=parallel_reqs, backend="loky", prefer="threads") as parallel:
+        with Parallel(n_jobs=parallel_reqs, prefer="threads") as parallel:
             batched_results = parallel((delayed(query_func)(params) for params in batched_params))
         results = []
         for b in batched_results:
             results.extend(b)
     else:
-        # recreating an engine every time should not be too expensive... right?
-        engine = InferenceEngineWrapper(conf.get('TRANSFORMER_EXP_PATH'))
-        results = proc_human_batch(all_params, engine, "loky", parallel_reqs)
+        cluster_mgr_map = DummyMemManager.get_cluster_mgr_map()
+        engine = DummyMemManager.get_engine(conf)
+        results = proc_human_batch(all_params, engine, cluster_mgr_map, parallel_reqs)
 
     proba_to_risk_level_map = proba_to_risk_fn(np.array(conf.get('RISK_MAPPING')))
     new_update_messages = []
-    for name, risk_history, clusters in results:
+    for name, risk_history in results:
         human = hd[name]
         if conf.get('RISK_MODEL') == "transformer":
             if risk_history is not None:
@@ -217,16 +227,5 @@ def batch_run_timeslot_heavy_jobs(
                     human.prev_risk_history_map[current_day_idx - i] = risk_history[i]
                 new_update_messages.extend(new_msgs)
                 human.last_risk_update = current_timestamp
-        human.clusters = clusters
-        human.last_cluster_update = current_timestamp
-
-    if conf.get('DUMP_CLUSTERS'):
-        os.makedirs(conf.get('DUMP_CLUSTERS'), exist_ok=True)
-        curr_date_str = current_timestamp.strftime("%Y%m%d-%H%M%S")
-        curr_dump_path = os.path.join(conf.get('DUMP_CLUSTERS'), curr_date_str + ".pkl")
-        to_dump = {human_id: human.clusters for human_id, human in hd.items()
-                   if human.last_cluster_update == current_timestamp}
-        with open(curr_dump_path, "wb") as fd:
-            pickle.dump(to_dump, fd)
 
     return humans, new_update_messages
