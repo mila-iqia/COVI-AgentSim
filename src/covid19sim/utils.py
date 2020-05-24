@@ -1741,8 +1741,12 @@ def parse_configuration(conf):
 
     assert "RISK_MODEL" in conf and conf["RISK_MODEL"] is not None
 
-    conf["GIT_COMMIT_HASH"] = get_git_revision_hash()
-
+    try:
+        conf["GIT_COMMIT_HASH"] = get_git_revision_hash()
+    except subprocess.CalledProcessError as e:
+        print(e)
+        print(">> Ignoring git hash")
+        conf["GIT_COMMIT_HASH"] = "N0_GIT"
     return conf
 
 
