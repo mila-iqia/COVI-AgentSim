@@ -20,7 +20,7 @@ import hydra
 from omegaconf import DictConfig
 
 
-@hydra.main(config_path="hydra-configs/simulation", config_name="config")
+@hydra.main(config_path="hydra-configs/simulation/config.yaml")
 def main(conf: DictConfig) -> None:
     """
     Enables command line execution of the simulator.

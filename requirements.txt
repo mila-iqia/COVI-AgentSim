@@ -17,8 +17,8 @@ tqdm
 seaborn
 pyyaml
 pytest-cov==2.8.1
-git+https://github.com/facebookresearch/hydra.git#egg=hydra-core
-git+https://github.com/facebookresearch/hydra.git#egg=hydra_nevergrad_sweeper&subdirectory=plugins/hydra_nevergrad_sweeper
+hydra-core==0.11
+omegaconf==1.4.1
 cached_property
 requests
 recommonmark

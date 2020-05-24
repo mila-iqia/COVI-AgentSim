@@ -1,0 +1,25 @@
+# `sample` can be
+# - `uniform` (from np.random.uniform(*from))
+# - `range` (np.choice(np.arange(*from)))
+# - `list` (np.choice(from))
+
+run_type: collect-all
+tracing_method: oracle
+n_people: 1000
+simulation_days: 22
+
+P_HAS_APP:
+  sample: uniform # uniform in range:
+  from: [0.0, 1.0]
+
+P_CAREFUL_PERSON:
+  sample: uniform # uniform in range:
+  from: [0.0, 1.0]
+
+GLOBAL_MOBILITY_SCALING_FACTOR:
+  sample: uniform # uniform in range:
+  from: [0.0, 1.0]
+
+seed: # for sole reproducibility purposes
+  sample: range # uniform int choice
+  from: [0, 10]
