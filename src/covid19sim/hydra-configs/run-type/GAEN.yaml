@@ -1,0 +1,4 @@
+USE_GAEN: true
+MESSAGE_BUDGET_GAEN : 0.01 #0.004 # 40,000 messages per day / 10,000,000 people max geo-ip
+BURN_IN_DAYS: 0 # don't try and send a message before that many days after the intervention
+DAYS_BETWEEN_MESSAGES: 2 # can't resend a message within that time-frame (0: can always send, 1: cannot send today, 2: cannot resend today nor tomorrow, etc.)
