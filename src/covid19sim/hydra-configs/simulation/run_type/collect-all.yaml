@@ -1,3 +1,4 @@
+# @package _global_
 COLLECT_LOGS: True
 COLLECT_TRAINING_DATA: True
 USE_INFERENCE_SERVER: True

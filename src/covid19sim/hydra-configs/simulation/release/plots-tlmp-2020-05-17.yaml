@@ -1,3 +1,4 @@
+# @package _global_
 tune: true
 n_people: 1000
 simulation_days: 22
