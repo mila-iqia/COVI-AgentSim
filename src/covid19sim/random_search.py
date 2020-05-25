@@ -128,7 +128,7 @@ def fill_template(template_str, conf):
     partition = f"#SBATCH --partition={partition}"
     cpu = f"#SBATCH --cpus-per-task={cpu}"
     mem = f"#SBATCH --mem={mem}GB"
-    gres = f"#SBATCH --gres={gres}"
+    gres = f"#SBATCH --gres={gres}" if gres else ""
     time = f"#SBATCH --time={time}"
     log = f"#SBATCH -o {log}"
     return template_str.format(
