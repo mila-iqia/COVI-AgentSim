@@ -365,7 +365,9 @@ def proc_human_batch(
             ref_timestamp = timestamp
         else:
             assert ref_timestamp == timestamp, "how can we possibly have different timestamps here"
-        if human_name not in cluster_mgr_map:
+        cluster_mgr_hash = str(params["city_hash"]) + ":" + human_name
+        params["cluster_mgr_hash"] = cluster_mgr_hash
+        if cluster_mgr_hash not in cluster_mgr_map:
             # cluster messages; as of the GAEN refactoring, only one algo can be used
             cluster_mgr = covid19sim.frozen.clustering.gaen.GAENClusterManager(
                 max_history_offset=datetime.timedelta(days=params["conf"].get("TRACING_N_DAYS_HISTORY")),
@@ -374,7 +376,7 @@ def proc_human_batch(
                 generate_backw_compat_embeddings=True,
             )
         else:
-            cluster_mgr = cluster_mgr_map[human_name]
+            cluster_mgr = cluster_mgr_map[cluster_mgr_hash]
         assert not cluster_mgr._is_being_used, "two processes should never try to access the same human"
         cluster_mgr._is_being_used = True
         params["cluster_mgr"] = cluster_mgr
@@ -387,7 +389,7 @@ def proc_human_batch(
         cluster_mgr = params["cluster_mgr"]
         assert cluster_mgr._is_being_used
         cluster_mgr._is_being_used = False
-        cluster_mgr_map[params["human"].name] = cluster_mgr
+        cluster_mgr_map[params["cluster_mgr_hash"]] = cluster_mgr
 
     if clusters_dump_path and ref_timestamp:
         os.makedirs(clusters_dump_path, exist_ok=True)

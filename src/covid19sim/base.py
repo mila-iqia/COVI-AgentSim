@@ -619,6 +619,7 @@ class City:
         tmp_M = self.conf.get("GLOBAL_MOBILITY_SCALING_FACTOR")
         self.conf["GLOBAL_MOBILITY_SCALING_FACTOR"] = 1
         last_day_idx = 0
+        city_hash = self.rng.randint(1 << 32)  # used for inference server data hashing
         while True:
             current_day = (self.env.timestamp - self.start_time).days
             # Notify humans to follow interventions on intervention day
@@ -676,6 +677,8 @@ class City:
                         time_slot=self.env.timestamp.hour,
                         conf=self.conf,
                         data_path=outfile,
+                        # let's hope there are no collisions on the server with this hash...
+                        city_hash=city_hash,
                     )
                     all_new_update_messages.extend(new_update_messages)
                 self.tracker.track_risk_attributes(self.hd)
