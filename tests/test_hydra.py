@@ -93,7 +93,7 @@ class HydraTests(unittest.TestCase):
 
         toy_conf = OmegaConf.create(
             {
-                "APP_USERS_FRACTION_BY_AGE": {"1-15": "something"},
+                "SMARTPHONE_OWNER_FRACTION_BY_AGE": {"1-15": "something"},
                 "HUMAN_DISTRIBUTION": {"0-20": "something_else"},
                 "start_time": "2020-02-28 00:00:00",
             }
@@ -106,7 +106,7 @@ class HydraTests(unittest.TestCase):
         parsed_conf = parse_configuration(toy_conf)
 
         self.assertDictEqual(
-            parsed_conf["APP_USERS_FRACTION_BY_AGE"], {(1, 15): "something"}
+            parsed_conf["SMARTPHONE_OWNER_FRACTION_BY_AGE"], {(1, 15): "something"}
         )
         self.assertDictEqual(
             parsed_conf["HUMAN_DISTRIBUTION"], {(0, 20): "something_else"}
