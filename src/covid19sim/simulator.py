@@ -222,8 +222,6 @@ class Human(object):
             int((time_slot + i * 24 / self.conf.get('UPDATES_PER_DAY')) % 24)
             for i in range(self.conf.get('UPDATES_PER_DAY'))
         ]
-        # keep track of when the risk/clusters were last updated (i.e. latest timeslot date)
-        self.last_risk_update = None
 
         # symptoms
         self.symptom_start_time = None
@@ -827,16 +825,15 @@ class Human(object):
         self.update_reported_symptoms()
         self.contact_book.cleanup_contacts(init_timestamp, current_timestamp)
 
-        if not self.risk_history_map:
+        if not self.risk_history_map:  # if we're on day zero, add a baseline risk value in
             self.risk_history_map[current_day_idx] = self.conf.get("BASELINE_RISK_VALUE")
-            self.last_risk_update = current_timestamp
         if current_day_idx not in self.risk_history_map:
             existing_day_idxs = list(self.risk_history_map.keys())
             closest_day_idx_idx = \
                 int(np.argmin([np.abs(d - current_day_idx) for d in existing_day_idxs]))
+            # TODO: this is shielding logic errors, make sure someone somewhere always assigns risk
             self.risk_history_map[current_day_idx] = \
                 self.risk_history_map[existing_day_idxs[closest_day_idx_idx]]
-            self.last_risk_update = current_timestamp
 
         update_messages = []
         if self.tracing_method is not None:
@@ -847,7 +844,6 @@ class Human(object):
                 if not self.is_removed and self.test_result != "positive":
                     self.risk_history_map[current_day_idx] = \
                         self.tracing_method.compute_risk(self, personal_mailbox, self.city.hd)
-                    self.last_risk_update = current_timestamp
                     update_reason = "tracing"
 
             if self.symptoms and self.tracing_method.propagate_symptoms:
@@ -856,7 +852,6 @@ class Human(object):
                     assert self.tracing_method.risk_model != "transformer"
                     self.risk_history_map[current_day_idx] = max(0.8, self.risk)
                     self.has_logged_symptoms = True  # FIXME: this is never turned back off? but we can get reinfected?
-                    self.last_risk_update = current_timestamp
                     update_reason = "symptoms"
 
             proba_to_risk_level_map = proba_to_risk_fn(np.array(self.conf.get('RISK_MAPPING')))
@@ -1450,7 +1445,9 @@ class Human(object):
                         h2=h,
                         env_timestamp=self.env.timestamp,
                         initial_timestamp=self.env.initial_timestamp,
-                        minutes_granularity=self.conf.get("ENCOUNTER_TIME_GRANULARITY_MINS", 60 * 12),  # 12 hours
+                        # note: the granularity here does not really matter, it's only used to keep map sizes small
+                        # in the clustering algorithm --- in reality, only the encounter day matters
+                        minutes_granularity=self.conf.get("ENCOUNTER_TIME_GRANULARITY_MINS", 60 * 12),
                     )
 
             t_overlap = (min(self.leaving_time, getattr(h, "leaving_time", self.env.ts_initial+SECONDS_PER_HOUR)) -

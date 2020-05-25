@@ -557,7 +557,6 @@ class City:
                     self.register_new_messages(new_update_messages)
                 self.tracker.track_risk_attributes(self.hd)
 
-            # Let the hour pass
             yield self.env.timeout(int(duration))
 
             if current_day != last_day_idx:

@@ -226,6 +226,5 @@ def batch_run_timeslot_heavy_jobs(
                 for i in range(len(risk_history)):
                     human.prev_risk_history_map[current_day_idx - i] = risk_history[i]
                 new_update_messages.extend(new_msgs)
-                human.last_risk_update = current_timestamp
 
     return humans, new_update_messages
