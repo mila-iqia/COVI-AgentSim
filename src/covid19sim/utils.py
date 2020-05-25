@@ -5,19 +5,20 @@ import datetime
 import math
 import os
 import pathlib
-from pathlib import Path
+import subprocess
 import typing
 import zipfile
 from collections import OrderedDict, namedtuple
+from copy import deepcopy
 from functools import lru_cache
-import subprocess
+from pathlib import Path
 
 import dill
 import numpy as np
 import requests
 import yaml
 from addict import Dict
-from omegaconf import OmegaConf
+from omegaconf import OmegaConf, DictConfig
 from scipy.stats import gamma, norm, truncnorm
 
 P_SEVERE_ALLERGIES = 0.02
@@ -1721,7 +1722,11 @@ def parse_configuration(conf):
     Returns:
         dict: parsed configuration to use in experiment
     """
-    conf = OmegaConf.to_container(conf, resolve=True)
+    if isinstance(conf, (OmegaConf, DictConfig)):
+        conf = OmegaConf.to_container(conf, resolve=True)
+    elif not isinstance(conf, dict):
+        raise ValueError("Unknown configuration type {}".format(type(conf)))
+
     if "APP_USERS_FRACTION_BY_AGE" in conf:
         conf["APP_USERS_FRACTION_BY_AGE"] = {
             tuple(int(i) for i in k.split("-")): v
@@ -1750,9 +1755,10 @@ def parse_configuration(conf):
     return conf
 
 
-def dump_conf(conf, path):
+def dump_conf(_conf, path):
     """
-    Dumps a `conf` dict in `path` and reverses the parsings done in parse_configurations
+    Dumps a `_conf` dict in `path` and reverses the parsings done in parse_configurations.
+    Uses a deepcopy not to modify the referenced object.
 
     /!\ parsings done in parse_configurations should be reversed in this function.
 
@@ -1762,6 +1768,7 @@ def dump_conf(conf, path):
         conf (dict): experimental configuration
         path (str | Path): where to dump the resulting YAML
     """
+    conf = deepcopy(_conf)
     if "APP_USERS_FRACTION_BY_AGE" in conf:
         conf["APP_USERS_FRACTION_BY_AGE"] = {
             "-".join([str(i) for i in k]): v
@@ -1771,7 +1778,7 @@ def dump_conf(conf, path):
     if "HUMAN_DISTRIBUTION" in conf:
         conf["HUMAN_DISTRIBUTION"] = {
             "-".join([str(i) for i in k]): v
-            for k, v in conf["APP_USERS_FRACTION_BY_AGE"].items()
+            for k, v in conf["HUMAN_DISTRIBUTION"].items()
         }
 
     if "start_time" in conf:

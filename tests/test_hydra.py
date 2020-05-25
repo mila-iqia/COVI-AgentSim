@@ -1,12 +1,13 @@
 import datetime
 import unittest
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 import yaml
 from omegaconf import OmegaConf
 from tests.utils import HYDRA_SIM_PATH, get_test_conf
 
-from covid19sim.utils import parse_configuration
+from covid19sim.utils import dump_conf, parse_configuration
 
 
 class HydraTests(unittest.TestCase):
@@ -130,3 +131,16 @@ class HydraTests(unittest.TestCase):
         self.assertEqual(
             parsed_conf["start_time"], datetime.datetime(2020, 2, 28, 0, 0, 0)
         )
+
+    def test_dump_conf(self):
+        """
+        asserts that a conf that is dumped and parsed again yields identical results
+        """
+        conf = get_test_conf("naive_local.yaml")
+
+        with TemporaryDirectory() as d:
+            dump_conf(conf, Path(d) / "dumped.yaml")
+            with (Path(d) / "dumped.yaml").open("r") as f:
+                loaded_conf = yaml.safe_load(f)
+            parsed_conf = parse_configuration(loaded_conf)
+            self.assertDictEqual(conf, parsed_conf)
