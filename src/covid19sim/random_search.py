@@ -90,6 +90,7 @@ def fill_template(template_str, conf):
         )
 
     partition = f"#SBATCH --partition={partition}"
+    cpu = f"#SBATCH --cpus-per-task={partition}"
     mem = f"#SBATCH --mem={mem}GB"
     gres = f"#SBATCH --gres={gres}"
     time = f"#SBATCH --time={time}"
@@ -186,6 +187,10 @@ def main(conf: DictConfig) -> None:
             # dev-mode: don't actually run the command
             if "dev" in conf and conf["dev"]:
                 print(">>> ", command)
+                print(str(tmp))
+                print("." * 50)
+                print(job_str)
+                print("." * 50)
             else:
                 # not dev-mode: sbatch it!
                 process = subprocess.call(command.split())
