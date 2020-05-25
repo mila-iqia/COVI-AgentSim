@@ -117,7 +117,7 @@ HUMAN_DISTRIBUTION: # this is parsed into tuple keys in utils.py/parse_configura
         "p": 0.136,
         "residence_preference":
           {
-            "house_size": [0.2, 0.3, 0.2, 0.1, 0.1],
+            "house_size": [0.2, 0.3, 0.3, 0.1, 0.1],
             "senior_residency": 0.0,
           },
         "profession_profile":
@@ -195,7 +195,7 @@ HUMAN_DISTRIBUTION: # this is parsed into tuple keys in utils.py/parse_configura
         "p": 0.043,
         "residence_preference":
           {
-            "house_size": [0.1, 0.5, 0.1, 0.15, 0.1],
+            "house_size": [0.15, 0.5, 0.1, 0.15, 0.1],
             "senior_residency": 0.4,
           },
         "profession_profile":
