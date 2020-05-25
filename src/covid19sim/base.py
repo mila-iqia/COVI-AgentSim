@@ -207,6 +207,7 @@ class City:
             if self.conf.get("USE_GAEN"):
                 should_send = self._check_should_send_message_gaen(
                     current_day_idx=current_day_idx,
+                    current_timestamp=current_timestamp,
                     human=source_human,
                     risk_change_score=updater_scores[source_human],
                 )
@@ -246,6 +247,7 @@ class City:
     def _check_should_send_message_gaen(
             self,
             current_day_idx: int,
+            current_timestamp: datetime.datetime,
             human: "Human",
             risk_change_score: int,
     ) -> bool:
@@ -256,10 +258,11 @@ class City:
             return False
         days_between_messages = self.conf.get("DAYS_BETWEEN_MESSAGES")
         # don't send messages if you sent recently
-        if current_day_idx - human.contact_book.latest_update_time < days_between_messages:
+        if (current_timestamp - human.contact_book.latest_update_time).days < days_between_messages:
             return False
         # don't exceed the message budget
-        if self.sent_messages_by_day[current_day_idx] >= message_budget * self.conf.get("n_people"):
+        already_sent_messages = self.sent_messages_by_day.get(current_day_idx, 0)
+        if already_sent_messages >= message_budget * self.conf.get("n_people"):
             return False
 
         # if people uniformly send messages in the population, then 1 / days_between_messages people
@@ -695,8 +698,8 @@ class City:
                     print(
                         "cur_day: {}, budget spent: {} / {} ".format(
                             current_day,
-                            self.daily_update_message_budget_sent_gaen,
-                            self.conf["n_people"] * self.conf["MESSAGE_BUDGET_GAEN"]
+                            self.sent_messages_by_day.get(current_day, 0),
+                            int(self.conf["n_people"] * self.conf["MESSAGE_BUDGET_GAEN"])
                         ),
                     )
 

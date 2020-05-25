@@ -352,14 +352,20 @@ class ContactBook:
 
     def get_contacts(
             self,
-            humans_map: typing.Dict[str, "Human"]
+            humans_map: typing.Dict[str, "Human"],
+            only_with_initial_update: bool = False,
     ) -> typing.List["Human"]:
         """Returns a list of all humans that the contact book owner encountered."""
-        # note: this is based on unobserved variables, so in reality, we can't use it on the app
+        # note1: this is based on unobserved variables, so in reality, we can't use it on the app
+        # note2: the 'only_with_initial_update' allows us to only fetch contacts that *should* have
+        #        been confirmed by an initial update received at the contact book owner's timeslot;
+        #        this is an approximation of what would really happen however, since we would need
+        #        to check whether we have actually received an update from that contact
         output = {}
         for day, msgs in self.encounters_by_day.items():
             for msg in msgs:
-                if msg._receiver_uid not in output:
+                if msg._receiver_uid not in output and \
+                        (not only_with_initial_update or msg.risk_level is not None):
                     output[msg._receiver_uid] = humans_map[msg._receiver_uid]
         return list(output.values())
 
@@ -383,7 +389,7 @@ class ContactBook:
             count_map = collections.defaultdict(int)
         elif self._is_being_traced:
             return count_map
-        for contact in self.get_contacts(humans_map):
+        for contact in self.get_contacts(humans_map, only_with_initial_update=True):
             assert contact.has_app, "how can we be tracing this person without an app?"
             if tracing_probability < 1.0 and contact.rng.rand() > tracing_probability:
                 continue  # skip that person without flagging so we might still contact them
@@ -417,7 +423,7 @@ class ContactBook:
             count_map = collections.defaultdict(int)
         elif self._is_being_traced:
             return count_map
-        for contact in self.get_contacts(humans_map):
+        for contact in self.get_contacts(humans_map, only_with_initial_update=True):
             assert contact.has_app, "how can we be tracing this person without an app?"
             if not contact.contact_book._is_being_traced and contact.has_logged_symptoms and \
                     contact.infection_timestamp >= contact.env.timestamp and \
@@ -449,7 +455,7 @@ class ContactBook:
             count_map = collections.defaultdict(int)
         elif self._is_being_traced:
             return count_map
-        for contact in self.get_contacts(humans_map):
+        for contact in self.get_contacts(humans_map, only_with_initial_update=True):
             assert contact.has_app, "how can we be tracing this person without an app?"
             if not contact.contact_book._is_being_traced:
                 count_map[curr_order + 1] += contact.contact_book.get_risk_level_update_count()
@@ -487,15 +493,12 @@ class ContactBook:
         Returns:
             The risk level change score (a numeric value).
         """
-        prev_days = set(prev_risk_history_map.keys())
-        curr_days = set(curr_risk_history_map.keys())
-        assert not curr_days.symmetric_difference(prev_days)
         change = 0
-        for day_idx in prev_days:
+        for day_idx in set(prev_risk_history_map.keys()) & set(curr_risk_history_map.keys()):
             old_risk_level = min(proba_to_risk_level_map(prev_risk_history_map[day_idx]), 15)
             curr_risk_level = min(proba_to_risk_level_map(curr_risk_history_map[day_idx]), 15)
-            n_encs_for_day = self.encounters_by_day[day_idx] if day_idx in self.encounters_by_day else 0
-            change += np.abs(curr_risk_level - old_risk_level) * n_encs_for_day
+            n_encs_for_day = len(self.encounters_by_day.get(day_idx, []))
+            change += abs(curr_risk_level - old_risk_level) * n_encs_for_day
         return change  # Danger potential PII => fewer bits
 
     def cleanup_contacts(
