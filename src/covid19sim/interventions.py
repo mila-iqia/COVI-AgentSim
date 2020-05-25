@@ -331,32 +331,30 @@ class RiskBasedRecommendations(BehaviorInterventions):
     It uses `Human.recommendations_to_follow` to keep a record of various recommendations
     that `Human` is currently following.
     """
-    UPPER_GREEN = 1
-    UPPER_BLUE = 3
-    UPPER_ORANGE = 5
-    UPPER_RED = 15
 
     def __init__(self):
         super(RiskBasedRecommendations, self).__init__()
 
     @staticmethod
-    def get_recommendations_level(risk_level):
+    def get_recommendations_level(risk_level, thresholds, max_risk_level):
         """
         Converts the risk level to recommendation level.
 
         Args:
             risk_level (int): quantized risk level of range 0-15. sent in encounter messages and update messages.
+            thresholds (list|tuple): exactly 3 values to convert risk_level to rec_level
+            max_risk_level (int): maximum allowed risk_level for sanity check (assert risk_level <= max_risk_level)
 
         Returns:
             recommendation level (int): App recommendation level which takes on a range of 0-3.
         """
-        if risk_level <= RiskBasedRecommendations.UPPER_GREEN:
+        if risk_level <= thresholds[0]:
             return 0
-        elif RiskBasedRecommendations.UPPER_GREEN < risk_level <= RiskBasedRecommendations.UPPER_BLUE:
+        elif thresholds[0] < risk_level <= thresholds[1]:
             return 1
-        elif RiskBasedRecommendations.UPPER_BLUE < risk_level <= RiskBasedRecommendations.UPPER_ORANGE:
+        elif thresholds[1] < risk_level <= thresholds[2]:
             return 2
-        elif RiskBasedRecommendations.UPPER_ORANGE < risk_level <= RiskBasedRecommendations.UPPER_RED:
+        elif thresholds[2] < risk_level <= max_risk_level:
             return 3
         else:
             raise

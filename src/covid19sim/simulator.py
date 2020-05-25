@@ -1877,5 +1877,9 @@ class Human(object):
                 else:
                     return 0
 
-            return self.tracing_method.intervention.get_recommendations_level(self.risk_level)
+            return self.tracing_method.intervention.get_recommendations_level(
+                self.risk_level,
+                self.conf.get("REC_LEVEL_THRESHOLDS"),
+                self.conf.get("MAX_RISK_LEVEL")
+            )
         return -1
