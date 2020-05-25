@@ -300,6 +300,8 @@ if __name__ == "__main__":
     }
     color_to_id = {"GREEN": 0, "YELLOW": 1, "ORANGE": 2, "RED": 3}
     id_to_color = {v: k for k, v in color_to_id.items()}
+    print(">>> Warning: using hard-coded risk_level_mapping.")
+    print(">>> Make sure you have the latest one when running this script")
     risk_level_mapping = [
         0.0,
         0.0001,
