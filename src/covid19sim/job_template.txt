@@ -13,8 +13,11 @@ source $CONDA_ACTIVATE
 
 conda deactivate
 conda activate {env_name} # covid is default
-
 cd {code_loc} # where is simulator's code? default: $HOME/simulator/src/covid19sim/
+
+echo $(pwd)
+
+python server_bootstrap.py -e /network/tmp1/weissmar/FRESH-SNOWFLAKE-224B -w 4 &
 
 hydra_args=$@
 

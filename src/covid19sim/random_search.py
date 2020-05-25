@@ -100,7 +100,7 @@ def fill_template(template_str, conf):
     home = os.environ.get("HOME")
 
     partition = conf.get("partition", "main")
-    cpu = conf.get("cpu", 6)
+    cpu = conf.get("cpus-per-task", 6)
     mem = conf.get("mem", 16)
     gres = conf.get("gres", "")
     time = conf.get("time", "4:00:00")
@@ -114,7 +114,7 @@ def fill_template(template_str, conf):
             + "\n".join(
                 [
                     "  {:10}: {}".format("partition", partition),
-                    "  {:10}: {}".format("cpu", cpu),
+                    "  {:10}: {}".format("cpus-per-task", cpu),
                     "  {:10}: {}".format("mem", mem),
                     "  {:10}: {}".format("gres", gres),
                     "  {:10}: {}".format("time", time),
@@ -126,12 +126,11 @@ def fill_template(template_str, conf):
         )
 
     partition = f"#SBATCH --partition={partition}"
-    cpu = f"#SBATCH --cpus-per-task={partition}"
+    cpu = f"#SBATCH --cpus-per-task={cpu}"
     mem = f"#SBATCH --mem={mem}GB"
     gres = f"#SBATCH --gres={gres}"
     time = f"#SBATCH --time={time}"
     log = f"#SBATCH -o {log}"
-
     return template_str.format(
         partition=partition,
         cpu=cpu,
@@ -175,7 +174,7 @@ def main(conf: DictConfig) -> None:
         "dev",
         "exp_file",
         "partition",
-        "cpu",
+        "cpus-per-task",
         "mem",
         "time",
         "log",
@@ -216,14 +215,13 @@ def main(conf: DictConfig) -> None:
         job_str = fill_template(template_job_str, conf)
         # get temporary file to write sbatch run file
         tmp = Path(tempfile.NamedTemporaryFile(suffix='.sh').name)
-
         try:
             # create temporary sbatch file
             with tmp.open("w") as f:
                 f.write(job_str)
 
             # Base command: sbatch tmp_file.sh
-            command = f"sbatch {str(tmp)}"
+            command = f"sbatch --export=NONE {str(tmp)}"
             # Add covid19sim/run.py hydra arguments
             for k, v in opts.items():
                 if k not in RANDOM_SEARCH_SPECIFIC_PARAMS:

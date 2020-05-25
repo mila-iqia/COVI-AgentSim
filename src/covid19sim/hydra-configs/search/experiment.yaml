@@ -3,8 +3,8 @@
 # - `range` (np.choice(np.arange(*from)))
 # - `list` (np.choice(from))
 
-run_type: collect-all
 tracing_method: oracle
+run_type: collect-all
 n_people: 1000
 simulation_days: 22
 
