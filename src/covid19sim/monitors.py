@@ -101,7 +101,7 @@ class SEIRMonitor(BaseMonitor):
             nd = str(len(str(city.n_people)))
             demographics = f"| Ro: {R0:2.2f} S:{S:<{nd}} E:{E:<{nd}} I:{I:<{nd}} E+I+R:{T:<{nd}}"
             stats = f"| P3:{Projected3:5.2f} RiskP:{prec[1][0]:3.2f} F:{F:3.2f} EM:{EM:3.2f}"
-            colors = "" # f"| G:{green} B:{blue} O:{orange} R:{red}"
+            colors =  f"| G:{green} B:{blue} O:{orange} R:{red}"
             print(proc_time, day, env_time, demographics, stats, colors)
             # print(city.tracker.recovered_stats)
             self.data.append({
