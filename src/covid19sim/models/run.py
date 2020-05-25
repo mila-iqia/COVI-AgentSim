@@ -13,7 +13,6 @@ from joblib import Parallel, delayed
 import numpy as np
 
 from covid19sim.server_utils import InferenceClient, InferenceEngineWrapper, proc_human_batch
-from covid19sim.utils import proba_to_risk_fn
 from covid19sim.frozen.helper import conditions_to_np, encode_age, encode_sex, \
     encode_test_result, symptoms_to_np
 from covid19sim.frozen.message_utils import UpdateMessage
@@ -129,6 +128,7 @@ def batch_run_timeslot_heavy_jobs(
         time_slot: int,
         conf: typing.Dict,
         data_path: typing.Optional[typing.AnyStr] = None,
+        city_hash: int = 0,
 ) -> typing.Tuple[typing.Iterable["Human"], typing.List[UpdateMessage]]:
     """
     Runs the 'heavy' processes that must occur for all users in parallel.
@@ -144,8 +144,10 @@ def batch_run_timeslot_heavy_jobs(
             Note that messages can be removed from this mailbox in this function, but not added, as
             that is delegated to the caller (see the return values).
         time_slot: the current timeslot of the day (i.e. an integer that corresponds to the hour).
-        data_path: Root path where to save the 'daily outputs', i.e. the training data for ML models.
         conf: YAML configuration dictionary with all relevant settings for the simulation.
+        data_path: Root path where to save the 'daily outputs', i.e. the training data for ML models.
+        city_hash: a hash used to tag this city's humans on an inference server that may be used by
+            multiple cities in parallel. Bad mojo will happen if two cities have the same hash...
     Returns:
         A tuple consisting of the updated humans & of the newly generated update messages to register.
     """
@@ -172,6 +174,7 @@ def batch_run_timeslot_heavy_jobs(
             "log_path": log_path,
             "time_slot": time_slot,
             "conf": conf,
+            "city_hash": city_hash,
         })
 
     parallel_reqs = conf.get('INFERENCE_REQ_PARALLEL_JOBS', 16)

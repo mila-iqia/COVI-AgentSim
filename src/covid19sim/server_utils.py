@@ -44,6 +44,7 @@ class InferenceWorker(multiprocessing.Process):
     def __init__(
             self,
             experiment_directory: typing.AnyStr,
+            backend_address: typing.AnyStr,
             identifier: typing.Any,
             n_parallel_procs: int,
             cluster_mgr_map: typing.Dict,
@@ -62,9 +63,12 @@ class InferenceWorker(multiprocessing.Process):
         """
         super().__init__()
         self.experiment_directory = experiment_directory
+        self.backend_address = backend_address
         self.weights_path = weights_path
         self.identifier = identifier
         self.stop_flag = multiprocessing.Event()
+        self.reset_flag = multiprocessing.Event()
+        self.running_flag = multiprocessing.Value("i", 0)
         self.packet_counter = multiprocessing.Value("i", 0)
         self.time_counter = multiprocessing.Value("f", 0.0)
         self.time_init = multiprocessing.Value("f", 0.0)
@@ -80,13 +84,22 @@ class InferenceWorker(multiprocessing.Process):
         engine = InferenceEngineWrapper(self.experiment_directory, self.weights_path)
         context = zmq.Context()
         socket = context.socket(zmq.REQ)
-        socket.identity = str(self.identifier).encode("ascii")
-        socket.connect(default_backend_ipc_address)
+        socket.identity = self.identifier.encode()
+        print(f"{self.identifier} contacting broker via: {self.backend_address}")
+        socket.connect(self.backend_address)
         socket.send(b"READY")  # tell broker we're ready
         poller = zmq.Poller()
         poller.register(socket, zmq.POLLIN)
         self.time_init.value = time.time()
+        self.time_counter.value = 0.0
+        self.packet_counter.value = 0
+        self.running_flag.value = 1
         while not self.stop_flag.is_set():
+            if self.reset_flag.is_set():
+                self.time_counter.value = 0.0
+                self.packet_counter.value = 0
+                self.time_init.value = 0.0
+                self.reset_flag.clear()
             evts = dict(poller.poll(default_poll_delay_ms))
             if socket in evts and evts[socket] == zmq.POLLIN:
                 proc_start_time = time.time()
@@ -104,19 +117,24 @@ class InferenceWorker(multiprocessing.Process):
                     self.time_counter.value += time.time() - proc_start_time
                 with self.packet_counter.get_lock():
                     self.packet_counter.value += 1
+        self.running_flag.value = 0
         socket.close()
 
     def get_processed_count(self):
-        """Returns the total number of processed requests by this inference server."""
+        """Returns the total number of processed requests by this inference worker."""
         return int(self.packet_counter.value)
 
     def get_total_delay(self):
-        """Returns the total time spent processing requests by this inference server."""
+        """Returns the total time spent processing requests by this inference worker."""
         return float(self.time_counter.value)
 
-    def get_run_init_time(self):
-        """Returns the time at which the worker started running."""
-        return float(self.time_init.value)
+    def get_uptime(self):
+        """Returns the total uptime of this inference worker."""
+        return time.time() - float(self.time_init.value)
+
+    def is_running(self):
+        """Returns whether this inference worker is running or not."""
+        return bool(self.running_flag.value)
 
     def get_averge_processing_delay(self):
         """Returns the average sample processing time between reception & response (in seconds)."""
@@ -127,7 +145,7 @@ class InferenceWorker(multiprocessing.Process):
 
     def get_processing_uptime(self):
         """Returns the fraction of total uptime that the server spends processing requests."""
-        tot_process_time, tot_time = self.get_total_delay(), time.time() - self.get_run_init_time()
+        tot_process_time, tot_time = self.get_total_delay(), self.get_uptime()
         return tot_process_time / tot_time
 
     def stop(self):
@@ -143,7 +161,8 @@ class InferenceBroker:
             model_exp_path: typing.AnyStr,
             workers: int,
             n_parallel_procs: int,
-            port: typing.Optional[int] = None,
+            frontend_address: typing.AnyStr = default_frontend_ipc_address,
+            backend_address: typing.AnyStr = default_backend_ipc_address,
             verbose: bool = False,
             verbose_print_delay: float = 5.,
             weights_path: typing.Optional[typing.AnyStr] = None,
@@ -161,7 +180,9 @@ class InferenceBroker:
         """
         self.workers = workers
         self.n_parallel_procs = n_parallel_procs
-        self.port = port
+        self.frontend_address = frontend_address
+        self.backend_address = backend_address
+        assert frontend_address != backend_address
         self.model_exp_path = model_exp_path
         self.weights_path = weights_path
         self.stop_flag = multiprocessing.Event()
@@ -178,22 +199,25 @@ class InferenceBroker:
             print(f"\t will use weights directly from: {self.weights_path}")
         context = zmq.Context()
         frontend = context.socket(zmq.ROUTER)
-        if self.port:
-            frontend_address = f"tcp://*:{self.port}"
-        else:
-            frontend_address = default_frontend_ipc_address
-        print(f"Will listen for inference requests at: {frontend_address}")
-        frontend.bind(frontend_address)
+        print(f"Will listen for inference requests at: {self.frontend_address}")
+        frontend.bind(self.frontend_address)
         backend = context.socket(zmq.ROUTER)
-        backend.bind(default_backend_ipc_address)
+        print(f"Will dispatch inference work at: {self.backend_address}")
+        backend.bind(self.backend_address)
+        worker_backend_address = self.backend_address.replace("*", "localhost")
+        worker_poller = zmq.Poller()
+        worker_poller.register(backend, zmq.POLLIN)
+        worker_poller.register(frontend, zmq.POLLIN)
         with multiprocessing.Manager() as mem_manager:
             worker_map = {}
             cluster_mgr_map = mem_manager.dict()
+            available_worker_ids = []
             for worker_idx in range(self.workers):
                 worker_id = f"worker:{worker_idx}"
                 print(f"Launching {worker_id}...")
                 worker = InferenceWorker(
                     experiment_directory=self.model_exp_path,
+                    backend_address=worker_backend_address,
                     identifier=worker_id,
                     n_parallel_procs=self.n_parallel_procs,
                     cluster_mgr_map=cluster_mgr_map,
@@ -201,10 +225,10 @@ class InferenceBroker:
                 )
                 worker_map[worker_id] = worker
                 worker.start()
-            available_worker_ids = []
-            worker_poller = zmq.Poller()
-            worker_poller.register(backend, zmq.POLLIN)
-            worker_poller.register(frontend, zmq.POLLIN)
+                request = backend.recv_multipart()
+                worker_id, empty, response = request[:3]
+                assert worker_id == worker.identifier.encode() and response == b"READY"
+                available_worker_ids.append(worker.identifier.encode())
             last_update_timestamp = time.time()
             print("Entering dispatch loop...")
             while not self.stop_flag.is_set():
@@ -212,14 +236,24 @@ class InferenceBroker:
                 if backend in evts and evts[backend] == zmq.POLLIN:
                     request = backend.recv_multipart()
                     worker_id, empty, client = request[:3]
+                    assert worker_id not in available_worker_ids, \
+                        f"got unexpected stuff from {worker_id}: {request}"
                     available_worker_ids.append(worker_id)
-                    if client != b"READY" and len(request) > 3:
-                        empty, reply = request[3:]
-                        frontend.send_multipart([client, b"", reply])
+                    empty, reply = request[3:]
+                    frontend.send_multipart([client, b"", reply])
                 if available_worker_ids and frontend in evts and evts[frontend] == zmq.POLLIN:
                     client, empty, request = frontend.recv_multipart()
-                    worker_id = available_worker_ids.pop(0)
-                    backend.send_multipart([worker_id, b"", client, b"", request])
+                    if request == b"RESET":
+                        print("got reset request, will clear all clusters")
+                        assert len(available_worker_ids) == self.workers
+                        for k in list(cluster_mgr_map.keys()):
+                            del cluster_mgr_map[k]
+                        for worker in worker_map.values():
+                            worker.reset_flag.set()
+                        frontend.send_multipart([client, b"", b"READY"])
+                    else:
+                        worker_id = available_worker_ids.pop(0)
+                        backend.send_multipart([worker_id, b"", client, b"", request])
                 if self.verbose and time.time() - last_update_timestamp > self.verbose_print_delay:
                     print(f" {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')} stats:")
                     for worker_id, worker in worker_map.items():
@@ -228,10 +262,11 @@ class InferenceBroker:
                         uptime = worker.get_processing_uptime()
                         print(
                             f"  {worker_id}:"
+                            f"  running={worker.is_running()}"
                             f"  packets={packets}"
                             f"  avg_delay={delay:.6f}sec"
                             f"  proc_time_ratio={uptime:.1%}"
-                            f"  cluster_mgr_count={len(cluster_mgr_map)}"
+                            f"  nb_clusters={len(worker.cluster_mgr_map)}"
                         )
                     last_update_timestamp = time.time()
             for w in worker_map.values():
@@ -279,6 +314,11 @@ class InferenceClient:
         self.socket.send_pyobj(sample)
         return self.socket.recv_pyobj()
 
+    def request_reset(self):
+        self.socket.send(b"RESET")
+        response = self.socket.recv()
+        assert response == b"READY"
+
 
 class InferenceEngineWrapper(InferenceEngine):
     """Inference engine wrapper used to download & extract experiment data, if necessary."""
@@ -325,7 +365,9 @@ def proc_human_batch(
             ref_timestamp = timestamp
         else:
             assert ref_timestamp == timestamp, "how can we possibly have different timestamps here"
-        if human_name not in cluster_mgr_map:
+        cluster_mgr_hash = str(params["city_hash"]) + ":" + human_name
+        params["cluster_mgr_hash"] = cluster_mgr_hash
+        if cluster_mgr_hash not in cluster_mgr_map:
             # cluster messages; as of the GAEN refactoring, only one algo can be used
             cluster_mgr = covid19sim.frozen.clustering.gaen.GAENClusterManager(
                 max_history_offset=datetime.timedelta(days=params["conf"].get("TRACING_N_DAYS_HISTORY")),
@@ -334,7 +376,7 @@ def proc_human_batch(
                 generate_backw_compat_embeddings=True,
             )
         else:
-            cluster_mgr = cluster_mgr_map[human_name]
+            cluster_mgr = cluster_mgr_map[cluster_mgr_hash]
         assert not cluster_mgr._is_being_used, "two processes should never try to access the same human"
         cluster_mgr._is_being_used = True
         params["cluster_mgr"] = cluster_mgr
@@ -347,7 +389,7 @@ def proc_human_batch(
         cluster_mgr = params["cluster_mgr"]
         assert cluster_mgr._is_being_used
         cluster_mgr._is_being_used = False
-        cluster_mgr_map[params["human"].name] = cluster_mgr
+        cluster_mgr_map[params["cluster_mgr_hash"]] = cluster_mgr
 
     if clusters_dump_path and ref_timestamp:
         os.makedirs(clusters_dump_path, exist_ok=True)

@@ -619,6 +619,7 @@ class City:
         tmp_M = self.conf.get("GLOBAL_MOBILITY_SCALING_FACTOR")
         self.conf["GLOBAL_MOBILITY_SCALING_FACTOR"] = 1
         last_day_idx = 0
+        city_hash = self.rng.randint(1 << 32)  # used for inference server data hashing
         while True:
             current_day = (self.env.timestamp - self.start_time).days
             # Notify humans to follow interventions on intervention day
@@ -643,7 +644,7 @@ class City:
             backup_human_init_risks = {}  # backs up human risks before any update takes place
 
             # iterate over humans, and if it's their timeslot, then update their state
-            for human in self.humans:  # we could shuffle humans here? for same-timeslot-updates?
+            for human in self.humans:
                 if self.env.timestamp.hour not in human.time_slots:
                     continue
                 human.initialize_daily_risk(current_day)
@@ -676,6 +677,8 @@ class City:
                         time_slot=self.env.timestamp.hour,
                         conf=self.conf,
                         data_path=outfile,
+                        # let's hope there are no collisions on the server with this hash...
+                        city_hash=city_hash,
                     )
                     all_new_update_messages.extend(new_update_messages)
                 self.tracker.track_risk_attributes(self.hd)
