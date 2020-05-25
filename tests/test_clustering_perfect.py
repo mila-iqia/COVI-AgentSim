@@ -1,9 +1,10 @@
+import datetime
 import unittest
 
 import covid19sim.frozen.clustering.perfect as clu
 from tests.utils import generate_random_messages
 
-never = 9999  # dirty macro to indicate a human will never get infected
+never = datetime.timedelta(days=9999)  # dirty macro to indicate a human will never get infected
 
 
 class PerfectClusteringTests(unittest.TestCase):
@@ -22,7 +23,7 @@ class PerfectClusteringTests(unittest.TestCase):
                 n_expositions=n_expositions,
                 max_timestamp=max_timestamp,
             )
-            cluster_manager = clu.PerfectClusterManager(max_history_ticks_offset=never)
+            cluster_manager = clu.PerfectClusterManager(max_history_offset=never)
             cluster_manager.add_messages(h0_messages)
             for cluster in cluster_manager.clusters:
                 self.assertTrue(cluster._is_homogenous())

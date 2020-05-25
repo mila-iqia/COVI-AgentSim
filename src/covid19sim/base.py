@@ -5,19 +5,18 @@ import simpy
 import math
 import datetime
 import itertools
+import typing
 from collections import defaultdict
 
-try:
-    # Python 3.8
-    from functools import cached_property
-except ImportError:
-    # Previous version of python need to install cached_property
-    from cached_property import cached_property
-
-from covid19sim.utils import compute_distance, _get_random_area, _draw_random_discreet_gaussian, calculate_average_infectiousness
+from covid19sim.utils import compute_distance, _get_random_area
 from covid19sim.track import Tracker
 from covid19sim.interventions import *
-from covid19sim.frozen.utils import update_uid
+from covid19sim.models.run import batch_run_timeslot_heavy_jobs
+from covid19sim.frozen.message_utils import UIDType, UpdateMessage, combine_update_messages, \
+    RealUserIDType
+
+PersonalMailboxType = typing.Dict[UIDType, UpdateMessage]
+SimulatorMailboxType = typing.Dict[RealUserIDType, PersonalMailboxType]
 
 
 class Env(simpy.Environment):
@@ -123,6 +122,7 @@ class City:
         self.initialize_locations()
 
         self.humans = []
+        self.hd = {}  # previously a cached property for some unknown reason
         self.households = OrderedSet()
         print("Initializing humans ...")
         self.initialize_humans(Human)
@@ -133,9 +133,57 @@ class City:
         print("Computing their preferences")
         self._compute_preferences()
         self.tracker = Tracker(env, self)
-        # self.tracker.track_initialized_covid_params(self.humans)
-
         self.intervention = None
+        # note: for good efficiency in the simulator, we will not allow humans to 'download'
+        # database diffs between their last timeslot and their current timeslot; instead, we
+        # will give them the global mailbox object (a dictionary) and have them 'pop' all
+        # messages they consume from their own (simulation-only!) personal mailbox
+        self.global_mailbox: SimulatorMailboxType = defaultdict(dict)
+
+    def cleanup_global_mailbox(
+            self,
+            current_timestamp: datetime.datetime,
+    ):
+        """Removes all messages older than 14 days from the global mailbox."""
+        # note that to keep the simulator efficient, users will directly pop the update messages that
+        # they consume, so this is only necessary for edge cases (e.g. dead people can't update)
+        max_encounter_age = self.conf.get('TRACING_N_DAYS_HISTORY')
+        self.global_mailbox = {
+            user_key: {gaen_key: message for gaen_key, message in personal_mailbox.items()
+                       if (current_timestamp - message.encounter_time).days <= max_encounter_age}
+            for user_key, personal_mailbox in self.global_mailbox.items()
+        }
+
+    def register_new_messages(
+            self,
+            update_messages: typing.List[UpdateMessage],
+    ):
+        """Adds new update messages to the global mailbox, passing them to trackers if needed."""
+        # note that to keep the simulator efficient, users will have their own private mailbox inside
+        # the global mailbox (this replaces the database diff logic & allows faster access)
+        for update_message in update_messages:
+            source_human = self.hd[update_message._sender_uid]
+            destination_human = self.hd[update_message._receiver_uid]
+            self.tracker.track_update_messages(
+                from_human=source_human,
+                to_human=destination_human,
+                payload={
+                    "reason": update_message._update_reason,
+                    "new_risk_level": update_message.new_risk_level
+                },
+            )
+            mailbox_key = update_message.uid  # GAEN key = message uid
+            personal_mailbox = self.global_mailbox[destination_human.name]
+            assert mailbox_key not in personal_mailbox or \
+                   (update_message._sender_uid == personal_mailbox[mailbox_key]._sender_uid and
+                    update_message._receiver_uid == personal_mailbox[mailbox_key]._receiver_uid), \
+                "unexpected collision in personal mailbox (go buy a lottery ticket?)"
+            if mailbox_key in personal_mailbox:
+                # if there is still an old update message in the global mailbox, just crush it
+                personal_mailbox[mailbox_key] = \
+                    combine_update_messages(personal_mailbox[mailbox_key], update_message)
+            else:
+                personal_mailbox[mailbox_key] = update_message
 
     @property
     def start_time(self):
@@ -383,10 +431,8 @@ class City:
         for i,house in enumerate(self.households):
             house.area = area[i]
 
-    @cached_property
-    def hd(self):
-        """This lazy cached_property allows for easy O(1) access of humans for message passing"""
-        return {human.name: human for human in self.humans}
+        # we don't need a cached property, this will do fine
+        self.hd = {human.name: human for human in self.humans}
 
     def log_static_info(self):
         """
@@ -454,13 +500,14 @@ class City:
         Yields:
             simpy.Timeout
         """
-        self.current_day = 0
         humans_notified = False
         tmp_M = self.conf.get("GLOBAL_MOBILITY_SCALING_FACTOR")
         self.conf["GLOBAL_MOBILITY_SCALING_FACTOR"] = 1
+        last_day_idx = 0
         while True:
+            current_day = (self.env.timestamp - self.start_time).days
             # Notify humans to follow interventions on intervention day
-            if self.current_day == self.conf.get('INTERVENTION_DAY') and not humans_notified:
+            if current_day == self.conf.get('INTERVENTION_DAY') and not humans_notified:
                 self.intervention = get_intervention(
                     key=self.conf.get('INTERVENTION'),
                     RISK_MODEL=self.conf.get('RISK_MODEL'),
@@ -470,63 +517,51 @@ class City:
                     SHOULD_MODIFY_BEHAVIOR=self.conf.get('SHOULD_MODIFY_BEHAVIOR'),
                     MASKS_SUPPLY=self.conf.get("MASKS_SUPPLY")
                 )
-
                 _ = [h.notify(self.intervention) for h in self.humans]
                 print(self.intervention)
                 self.conf["GLOBAL_MOBILITY_SCALING_FACTOR"] = tmp_M
                 if self.conf.get('COLLECT_TRAINING_DATA'):
                     print("naive risk calculation without changing behavior... Humans notified!")
-
                 humans_notified = True
 
-            # iterate over humans, and if it's their timeslot, then update their infectionsness, symptoms, and message info
-            for human in self.humans:
-                # if it's your time to update,
+            # iterate over humans, and if it's their timeslot, then update their state
+            for human in self.humans:  # we could shuffle humans here? for same-timeslot-updates?
                 if self.env.timestamp.hour not in human.time_slots:
                     continue
-
-                # And you haven't updated today
-                if human.last_date.get('symptoms_updated') == self.env.timestamp.date():
-                    continue
-
-                human.last_date['symptoms_updated'] = self.env.timestamp.date()
-                human.update_symptoms()
-                human.update_reported_symptoms()
-                human.update_risk(symptoms=human.symptoms)
-                human.infectiousnesses.appendleft(calculate_average_infectiousness(human))
+                # note: the global mailbox is modified inside the lightweight loop, so any
+                # parallelization in this function has to be done very carefully in order to
+                # keep the same update-order-behavior for humans on the same timeslot
+                new_update_messages = human.run_timeslot_lightweight_jobs(
+                    init_timestamp=self.start_time,
+                    current_timestamp=self.env.timestamp,
+                    personal_mailbox=self.global_mailbox[human.name],
+                )
+                self.register_new_messages(new_update_messages)
 
                 if self.conf.get('COLLECT_LOGS'):
                     Event.log_daily(human, human.env.timestamp)
-
                 self.tracker.track_symptoms(human)
 
-                # keep only past N_DAYS contacts
-                if human.tracing:
-                    for type_contacts in ['n_contacts_tested_positive', 'n_contacts_symptoms', \
-                                          'n_risk_increased', 'n_risk_decreased', "n_risk_mag_decreased",
-                                          "n_risk_mag_increased"]:
-                        for order in human.message_info[type_contacts]:
-                            if len(human.message_info[type_contacts][order]) > self.conf.get('TRACING_N_DAYS_HISTORY'):
-                                human.message_info[type_contacts][order] = human.message_info[type_contacts][order][1:]
-                            human.message_info[type_contacts][order].append(0)
-
             if isinstance(self.intervention, Tracing):
-                self.intervention.update_human_risks(
-                    city=self,
-                    data_path=outfile,
-                    conf=self.conf,
-                )
-                self.tracker.track_risk_attributes(self.humans)
+                # time to run the cluster+risk prediction via transformer (if we need it)
+                if self.intervention.risk_model == "transformer" or self.conf.get("COLLECT_TRAINING_DATA"):
+                    self.humans, new_update_messages = batch_run_timeslot_heavy_jobs(
+                        humans=self.humans,
+                        init_timestamp=self.start_time,
+                        current_timestamp=self.env.timestamp,
+                        global_mailbox=self.global_mailbox,
+                        time_slot=self.env.timestamp.hour,
+                        conf=self.conf,
+                        data_path=outfile,
+                    )
+                    self.register_new_messages(new_update_messages)
+                self.tracker.track_risk_attributes(self.hd)
 
-            # Let the hour pass
             yield self.env.timeout(int(duration))
 
-            # increment the day / update uids if we start the timeslot 0
-            if self.env.timestamp.hour == 0 and self.env.timestamp != self.env.initial_timestamp:
-                # TODO: this is an assumption which will break in reality, instead of updating once per day everyone at the same time, it should be throughout the day
-                for human in self.humans:
-                    human.uid = update_uid(human.uid, human.rng)
-                self.current_day += 1
+            if current_day != last_day_idx:
+                last_day_idx = current_day
+                self.cleanup_global_mailbox(self.env.timestamp)
                 self.tracker.increment_day()
 
 
@@ -1069,113 +1104,6 @@ class Event:
         )
 
 
-class Contacts(object):
-    """
-    `Human` has a contact book that stores a count of all the past encounters.
-    This class is also used to store `messages` that are a privacy preserved way of communicating
-    between two `Human`.
-    It is used in tracing back to the previous encounters that a `Human` had with other `Human`.
-    """
-    def __init__(self, has_app, conf):
-        """
-        Initiliazes a book.
-        A book is a dict with keys as humans and values as list of past encounters.
-        Encounters are stored for the past TRACING_N_DAYS_HISTORY.
-
-        Args:
-            has_app (bool): True if owner (type: Human) has an app, else False
-            conf (dict): yaml experiment configuration
-        """
-        self.conf = conf
-        self.messages = []
-        self.sent_messages_by_day = defaultdict(list)
-        self.messages_by_day = defaultdict(list)
-        self.update_messages = []
-        # human --> [[date, counts], ...]
-        self.book = {}
-        self.has_app = has_app
-
-    def add(self, **kwargs):
-        """
-        Called at the time of an encounter.
-        Initializes an entry if the encountee is not in the book.
-        Adds 1 to the last entry if the encountee is already in the book.
-        """
-        human = kwargs.get("human")
-        timestamp = kwargs.get("timestamp")
-
-        if human not in self.book:
-            self.book[human] = [[timestamp.date(), 1]]
-            return
-
-        if timestamp.date() != self.book[human][-1][0]:
-            self.book[human].append([timestamp.date(), 1])
-        else:
-            self.book[human][-1][1] += 1
-        self.update_book(human, timestamp.date())
-
-    def update_book(self, human, date=None):
-        """
-        Deletes the entries older than TRACING_N_DAYS_HISTORY.
-        If there are no more contacts for human, delete the id of that human from the book.
-
-        Args:
-            human (Human): one of the keys in self.book
-            date (datetime.datetime.date, optional): . Defaults to None
-        """
-        # keep the history of risk levels (transformers)
-        if date is None:
-            date = self.book[human][-1][0] # last contact date
-
-        remove_idx = -1
-        for history in self.book[human]:
-            if (date - history[0]).days > self.conf.get('TRACING_N_DAYS_HISTORY'):
-                remove_idx += 1
-            else:
-                break
-        self.book[human] = self.book[human][remove_idx:]
-
-        # remove that human from the book
-        if len(self.book[human]) == 0:
-            self.book.pop(human)
-
-    def send_message(self, owner, tracing_method, order=1, reason="test", payload=None):
-        """
-        Sends messages to all `Human`s in self.book.
-
-        Args:
-            owner (Human): owner of this contact book.
-            tracing_method (Tracing): Method of tracing that is being used.
-            order (int, optional): Number of hops from the source of the message. Defaults to 1.
-            reason (str, optional): Reason for the trigger of this message. Defaults to "test". Possible values - "test", "symptoms", "risk_updates"
-            payload (dict, optional): Extra information related to the message. Defaults to None.
-        """
-        p_contact = tracing_method.p_contact
-        delay = tracing_method.delay
-        app = tracing_method.app
-        if app and not owner.has_app:
-            return
-
-        for idx, human in enumerate(self.book):
-
-            redundant_tracing = human.message_info['traced'] and tracing_method.dont_trace_traced
-            if redundant_tracing: # manual and digital - no effect of new messages
-                continue
-
-            if not app or (app and human.has_app):
-                if human.rng.random() < p_contact:
-                    self.update_book(human)
-                    t = 0
-                    if delay:
-                        t = _draw_random_discreet_gaussian(
-                            self.conf.get("MANUAL_TRACING_DELAY_AVG"),
-                            self.conf.get("MANUAL_TRACING_DELAY_STD"),
-                            human.rng)
-
-                    total_contacts = sum(map(lambda x:x[1], self.book[human]))
-                    human.update_risk(update_messages={'n':total_contacts, 'delay': t, 'order':order, 'reason':reason, 'payload':payload})
-                    owner.city.tracker.track_update_messages(owner, human, {'reason':reason})
-
 class EmptyCity(City):
     """
     An empty City environment (no humans or locations) that the user can build with
@@ -1222,6 +1150,7 @@ class EmptyCity(City):
         self.parks = []
         self.schools = []
         self.workplaces = []
+        self.global_mailbox: SimulatorMailboxType = defaultdict(dict)
 
     @property
     def start_time(self):

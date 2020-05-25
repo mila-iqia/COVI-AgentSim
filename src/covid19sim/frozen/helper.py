@@ -1,7 +1,6 @@
 import numpy as np
 
 from covid19sim.frozen.clustering.base import ClusterManagerBase
-from covid19sim.frozen.utils import decode_message, convert_message_to_new_format
 
 # NOTE: THIS MAP SHOULD ALWAYS MATCH THE NAME/IDS PROVIDED IN utils.py
 PREEXISTING_CONDITIONS_META = {
@@ -97,41 +96,14 @@ def encode_test_result(test_result):
         return -1
 
 
-def messages_to_np(human):
-    if isinstance(human.clusters, ClusterManagerBase):
-        return human.clusters.get_embeddings_array()
-    else:
-        ms_enc = []
-        for day, clusters in human.clusters.clusters_by_day.items():
-            for cluster_id, messages in clusters.items():
-                # TODO: take an average over the risks for that day
-                if not any(messages):
-                    continue
-                ms_enc.append([cluster_id, decode_message(messages[0]).risk, len(messages), day])
-        return np.array(ms_enc)
+def messages_to_np(cluster_mgr):
+    return cluster_mgr.get_embeddings_array()
 
 
-def candidate_exposures(human, date):
-    candidate_encounters = messages_to_np(human)
-    if isinstance(human.clusters, ClusterManagerBase):
-        exposed_encounters = human.clusters._get_expositions_array()
-    else:
-        exposed_encounters = np.zeros(len(candidate_encounters))
-        if human.exposure_message:
-            idx = 0
-            for day, clusters in human.clusters.clusters_by_day.items():
-                for cluster_id, messages in clusters.items():
-                    for message in messages:
-                        if message == human.exposure_message:
-                            exposed_encounters[idx] = 1.
-                            break
-                    if sum(exposed_encounters) == 1:
-                        break
-                    if any(messages):
-                        idx += 1
-                if sum(exposed_encounters) == 1:
-                    break
-
+def candidate_exposures(cluster_mgr):
+    candidate_encounters = messages_to_np(cluster_mgr)
+    assert isinstance(cluster_mgr, ClusterManagerBase)
+    exposed_encounters = cluster_mgr._get_expositions_array()
     return candidate_encounters, exposed_encounters
 
 

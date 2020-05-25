@@ -5,6 +5,7 @@ It is initialized as an attribute of the city and called at several places in `H
 import copy
 import datetime
 import math
+import typing
 from collections import defaultdict
 
 import dill
@@ -275,18 +276,16 @@ class Tracker(object):
         self.risk_values.append([(h.risk, h.is_exposed or h.is_infectious, h.test_result, len(h.symptoms) == 0) for h in self.city.humans])
         row = []
         for h in self.city.humans:
-            x = { "infection_timestamp": h.infection_timestamp,
-                  "n_infectious_contacts": h.n_infectious_contacts,
-                  "risk": h.risk,
-                  "risk_level": h.risk_level,
-                  "rec_level": h.rec_level,
-                  "state": h.state.index(1),
-                  "test_result": h.test_result,
-                  "n_symptoms": len(h.symptoms),
-                  "test_orders":copy.deepcopy(h.message_info['n_contacts_tested_positive']),
-                  "symptom_orders":copy.deepcopy(h.message_info['n_contacts_symptoms']),
-                 }
-            row.append(x)
+            row.append({
+                "infection_timestamp": h.infection_timestamp,
+                "n_infectious_contacts": h.n_infectious_contacts,
+                "risk": h.risk,
+                "risk_level": h.risk_level,
+                "rec_level": h.rec_level,
+                "state": h.state.index(1),
+                "test_result": h.test_result,
+                "n_symptoms": len(h.symptoms),
+            })
 
         self.human_monitor[self.env.timestamp.date()-datetime.timedelta(days=1)] = row
 
@@ -352,7 +351,9 @@ class Tracker(object):
                 xy = type[:math.ceil(k * len(type))]
                 pred = 1.0*sum(1 for x,y in xy if y)
 
-                top_k_prec[idx].append(pred/len(xy))
+                # FIXME: line below previously divided by zero --- it's hard to tell what all this
+                #   doing, someone please rewrite this stuff more clearly...
+                top_k_prec[idx].append(pred/len(xy) if len(xy) else 1.0)
                 if total_infected:
                     lift[idx].append(pred/(k*total_infected))
                 else:
@@ -364,12 +365,12 @@ class Tracker(object):
             idx += 1
         return top_k_prec, lift, recall
 
-    def track_risk_attributes(self, humans):
-        for h in humans:
+    def track_risk_attributes(self, hd: typing.Dict):
+        for name, h in hd.items():
             if h.is_removed:
                 continue
-
-            _tmp = {
+            order_1_contacts = h.contact_book.get_contacts(hd)
+            self.risk_attributes.append({
                 "risk": h.risk,
                 "risk_level": h.risk_level,
                 "rec_level": h.rec_level,
@@ -380,28 +381,15 @@ class Tracker(object):
                 "recovered": h.is_removed,
                 "timestamp": self.env.timestamp,
                 "test_recommended": h.test_recommended,
-                "name":h.name
-            }
-
-            order_1_is_exposed = False
-            order_1_is_infectious = False
-            order_1_is_presymptomatic = False
-            order_1_is_symptomatic = False
-            order_1_is_tested = False
-            for order_1_human in h.contact_book.book:
-                order_1_is_exposed = order_1_is_exposed or order_1_human.is_exposed
-                order_1_is_infectious = order_1_is_infectious or order_1_human.is_infectious
-                order_1_is_presymptomatic = order_1_is_presymptomatic or (order_1_human.is_infectious and len(order_1_human.symptoms) == 0)
-                order_1_is_symptomatic = order_1_is_symptomatic or (order_1_human.is_infectious and len(order_1_human.symptoms) > 0)
-                order_1_is_tested = order_1_is_tested or order_1_human.test_result == "positive"
-
-            _tmp["order_1_is_exposed"] = order_1_is_exposed
-            _tmp["order_1_is_presymptomatic"] = order_1_is_presymptomatic
-            _tmp["order_1_is_infectious"] = order_1_is_infectious
-            _tmp["order_1_is_symptomatic"] = order_1_is_symptomatic
-            _tmp["order_1_is_tested"] = order_1_is_tested
-
-            self.risk_attributes.append(_tmp)
+                "name": h.name,
+                "order_1_is_exposed": any([c.is_exposed for c in order_1_contacts]),
+                "order_1_is_infectious": any([c.is_infectious for c in order_1_contacts]),
+                "order_1_is_presymptomatic": any([c.is_infectious and
+                                                  len(c.symptoms) == 0 for c in order_1_contacts]),
+                "order_1_is_symptomatic": any([c.is_infectious and
+                                               len(c.symptoms) > 0 for c in order_1_contacts]),
+                "order_1_is_tested": any([c.test_result == "positive" for c in order_1_contacts]),
+            })
 
     def track_covid_properties(self, human):
         """

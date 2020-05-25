@@ -10,7 +10,6 @@ import numpy as np
 from tests.utils import get_test_conf
 
 from covid19sim.frozen.helper import conditions_to_np, encode_age, encode_sex, encode_test_result
-from covid19sim.frozen.utils import encode_message
 from covid19sim.run import simulate
 
 
@@ -23,12 +22,12 @@ class MakeHumanAsMessageProxy:
     def set_start_time(self, start_time: datetime.datetime):
         self._start_time = start_time
 
-    def make_human_as_message(self, human, conf):
+    def make_human_as_message(self, human, personal_mailbox, conf):
         # if len(human.contact_book.messages):
         #     import pdb; pdb.set_trace()
         tc = self.test_case
 
-        message = ModelsTest.make_human_as_message(human, conf)
+        message = ModelsTest.make_human_as_message(human, personal_mailbox, conf)
 
         now = human.env.timestamp
         today = now.date()
@@ -91,8 +90,6 @@ def validate_human_message(test_case, message, human):
     test_case.assertEqual(message.infection_timestamp, human.infection_timestamp)
     test_case.assertEqual(message.recovered_timestamp, human.recovered_timestamp)
 
-    test_case.assertEqual(message.clusters, human.clusters)
-    test_case.assertEqual(message.exposure_message, human.exposure_message)
     test_case.assertEqual(message.carefulness, human.carefulness)
     test_case.assertEqual(message.has_app, human.has_app)
 
@@ -116,13 +113,7 @@ def validate_human_message(test_case, message, human):
 
     test_case.assertEqual(len(message.test_results), len(human.test_results))
 
-    test_case.assertEqual(len(message.messages), len([m for m in human.contact_book.messages
-                                                      # match day; ugly till refactor
-                                                      if m[2] == human.contact_book.messages[-1][2]]))
-    test_case.assertEqual(len(message.update_messages),
-                          len([u_m for u_m in human.contact_book.update_messages
-                               # match day; ugly till refactor
-                               if u_m[3] == human.contact_book.update_messages[-1][3]]))
+    # TODO: add a serious way to test whether the correct update messages were added from the mailbox?
 
 
 class ModelsTest(unittest.TestCase):
@@ -454,15 +445,21 @@ class HumanAsMessageTest(unittest.TestCase):
                       infection_timestamp=today, household={'household': 'household'},
                       workplace={'workplace': 'workplace'}, profession="profession", rho=0.3,
                       gamma=0.21, symptoms=[], test_results=None, conf=conf)
-
-        message = make_human_as_message(human, {"TRACING_N_DAYS_HISTORY": 14})
+        human.contact_book.mailbox_keys_by_day[0] = [0, 1]  # add two dummy encounter keys
+        personal_mailbox = {1: "fake_message"}  # create a dummy personal mailbox with one update
+        dummy_conf = {"TRACING_N_DAYS_HISTORY": 14}  # create a dummy config (only needs 1 setting)
+        message = make_human_as_message(human, personal_mailbox, dummy_conf)
 
         for k in message.__dict__.keys():
-            if k in ('messages', 'update_messages'):
-                self.assertIn(k, human.contact_book.__dict__)
+            if k == 'update_messages':
+                self.assertEqual(len(message.update_messages), 1)
+                self.assertEqual(message.update_messages[0], "fake_message")
             elif k == 'infection_timestamp':
                 self.assertIn(f'_{k}', human.__dict__)
             else:
-                self.assertIn(k, human.__dict__)
+                if k == "infectiousnesses":  # everything works except that one, it's a property
+                    self.assertEqual(len(human.infectiousnesses), dummy_conf["TRACING_N_DAYS_HISTORY"])
+                else:
+                    self.assertIn(k, human.__dict__)
 
         validate_human_message(self, message, human)

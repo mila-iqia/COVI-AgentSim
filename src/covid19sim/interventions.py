@@ -1,11 +1,19 @@
 """
 Implements human behavior/government policy changes.
 """
+import datetime
+import typing
 from orderedset import OrderedSet
+
 import numpy as np
 
-from covid19sim.models.run import integrated_risk_pred
 from covid19sim.constants import BIG_NUMBER
+
+if typing.TYPE_CHECKING:
+    from covid19sim.simulator import Human
+    from covid19sim.base import PersonalMailboxType
+
+
 class BehaviorInterventions(object):
     """
     A base class to modify behavior based on the type of intervention.
@@ -393,36 +401,46 @@ class GetTested(BehaviorInterventions):
 class Tracing(object):
     """
     Implements tracing. It relies on categorization of `Human` according to risk_levels.
+
+    This object carries a bunch of flags & is responsible for determining the risk level of humans when
+    the transformer is not used for risk level inference. To do so, it will use the targeted human's
+    contact book to pull statistics about its recent contacts.
+
+    If the transformer is used, this object becomes fairly useless, and will only be used to apply
+    recommended behavior changes.
+
+    The name of this class is probably not the best, feel free to suggest alternatives.
+
+    Attributes:
+        p_contact (float): adds a noise to the tracing procedure, as it is not always possible
+            to contact everyone (or remember all contacts) when using manual tracing.
+        delay (int): defines whether there should be a delay between the time when someone
+            triggers tracing and someone is traced. It is 0 for digital tracing, and 1 for manual.
+        app (bool): defines whether an app is required for this tracing. For example, manual
+            tracing doesn't use app.
     """
     def __init__(
             self,
-            risk_model,
-            max_depth=1,
-            symptoms=False,
-            risk=False,
-            should_modify_behavior=True):
+            risk_model: typing.AnyStr,
+            max_depth: int = 1,
+            symptoms: bool = False,
+            risk: bool = False,
+            should_modify_behavior: bool = True,
+    ):
         """
-        risk_levels are determined based on risk, which is computed using `Tracing.compute_risk`.
-        `Human.message_info` carries information about all the contacts that person had in the past `configs.blah.yml --> TRACING_N_DAYS_HISTORY`.
-        Depending on the type of risk_model, `Human.risk` is computed using the contents of this `Human.message_info`.
-
-        Note 0: `Human.message_info` is used for all `risk_model`s except for `transformer`, a type of `retrospective-risk` tracing method.
-        Note 1: `risk`, `symptoms`, `max_depth` do not mean anything for `retrospective-risk` tracing. This method relies on changes in risk_levels, i.e., every time
-        the risk level changes, a message is sent to the contacts.
-        Note 2: `retrospective-risk` tracing relies on `Human.messages`, `Human.messages_by_day`, etc.
-
-        Following attributes are further used -
-            1. p_contact (float) - adds a noise to the tracing procedure. For example, it is not possible to contact everyone in manual tracing.
-            2. delay (bool) - if there should be a delay between the time when someone triggers tracing and someone is traced. For example, its 0 for digital tracing.
-            3. app (bool) - If an app is required for this tracing. For example, manual tracing doesn't use app.
-            4. dont_trace_traced (bool) - If `Human.message_info['traced']` is True, no need to send him a message. If True, reduces the number of messages being passed around.
+        Initializes the tracing object.
 
         Args:
-            risk_model (str): Type of tracing to implement. Following methods are currently available - digital, manual, naive, other, transformer.
-            max_depth (int, optional): The number of hops away from the source. The term `order` is also used for this. Defaults to 1.
-            symptoms (bool, optional): If tracing is to be triggered when someone reports symptoms? Defaults to False.
-            risk (bool, optional): If tracing is to be triggered when someone changes risk level?. Defaults to False. Note: this is not to be confused with risk_model="transformer".
-            should_modify_behavior (bool, optional): If behavior should be modified or not? Used for conunterfactual studies. Defaults to True.
+            risk_model (str): Type of tracing to implement. Following methods are currently
+                available - digital, manual, naive, other, transformer.
+            max_depth (int, optional): The number of hops away from the source. The term `order`
+                is also used for this. Defaults to 1.
+            symptoms (bool, optional): If tracing is to be triggered when someone reports symptoms?
+                Defaults to False.
+            risk (bool, optional): If tracing is to be triggered when someone changes risk level?
+                Defaults to False. Note: this is not to be confused with risk_model="transformer".
+            should_modify_behavior (bool, optional): If behavior should be modified or not? Used
+                for conunterfactual studies. Defaults to True.
         """
         self.risk_model = risk_model
         if risk_model in ['manual', 'digital']:
@@ -441,18 +459,16 @@ class Tracing(object):
         self.delay = 0
         self.app = True
         if risk_model == "manual":
+            assert not symptoms, "makes no sense to trace symptoms by phone...?"
+            assert not risk, "don't make be believe we will trace risk by phone either"
             self.p_contact = self.conf.get("MANUAL_TRACING_P_CONTACT")
             self.delay = 1
             self.app = False
 
-        self.dont_trace_traced = False
-        if risk_model in ["manual", "digital"]:
-            self.dont_trace_traced = True
-
         self.propagate_risk_max_depth = max_depth
         # more than 3 will slow down the simulation too much
         if self.propagate_risk:
-            self.propage_risk_max_depth = 3
+            self.propage_risk_max_depth = min(3, max_depth)
 
         if risk_model == "transformer":
             self.propagate_risk_max_depth = BIG_NUMBER
@@ -462,127 +478,104 @@ class Tracing(object):
     def modify_behavior(self, human):
         if not self.should_modify_behavior and (not human.has_app and self.app):
             return
-
         return self.intervention.modify_behavior(human)
 
-    def process_messages(self, human):
+    def _get_hypothetical_contact_tracing_results(
+            self,
+            human: "Human",
+            mailbox: "PersonalMailboxType",
+            humans_map: typing.Dict[str, "Human"],
+    ) -> typing.Tuple[int, int, typing.Tuple[int, int, int, int]]:
         """
-        Extract relevant information from `Human.message_info`
+        Returns the counts for the 'hypothetical' tracing methods that might be used in apps/real life.
 
-        Note 0: one can use any combination of these contacts across `order`s. We have used exponential decay (experimental)
-        Note 1: not used by `risk_model = transformer`.
+        This function will use the target human's logged encounters to fetch all his contacts using the
+        provided city-wide human map. The number of past days covered by the tracing will depend on the
+        contact book's maximum history, which should be defined from `TRACING_N_DAYS_HISTORY`.
 
         Args:
-            human (Human): Human object.
+            human: the human for which to generate the contact tracing counts.
+            mailbox: centralized mailbox with all recent update messages for the target human.
+            humans_map: a human-name-to-human-object reference map to pass to the contact book functions.
 
         Returns:
-            t (int): Number of past registered contacts that are tested positive in the last `configs.blah.yml --> TRACING_N_DAYS_HISTORY`.
-            s (int): Number of past registered contacts that have shown symptoms in the last `configs.blah.yml --> TRACING_N_DAYS_HISTORY`.
-            (r_up, v_up, r_down, v_down) (tuple):
-                r_up: Number of past registered contacts that increased their risk levels in the last `configs.blah.yml --> TRACING_N_DAYS_HISTORY`.
-                v_up: Averge increase in magnitude of risk levels of contacts that increased their risk levels in the last `configs.blah.yml --> TRACING_N_DAYS_HISTORY`.
-                r_down: Number of past registered contacts that decreased their risk levels in the last `configs.blah.yml --> TRACING_N_DAYS_HISTORY`.
-                v_down: Averge decrease in magnitude of risk levels of contacts that increased their risk levels in the last `configs.blah.yml --> TRACING_N_DAYS_HISTORY`.
+            t (int): Number of recent contacts that are tested positive.
+            s (int): Number of recent contacts that have reported symptoms.
+                r_up: Number of recent contacts that increased their risk levels.
+                v_up: Average increase in magnitude of risk levels of recent contacts.
+                r_down: Number of recent contacts that decreased their risk levels.
+                v_down: Average decrease in magnitude of risk levels of recent contacts.
         """
-        # total test messages
-        t = 0
-        for order in human.message_info['n_contacts_tested_positive']:
-            t += sum(human.message_info['n_contacts_tested_positive'][order]) * np.exp(-2*(order-1))
+        assert self.risk_model != "transformer", "we should never be in here!"
+        assert self.risk_model in ["manual", "digital", "naive", "other"], "missing something?"
+        t, s, r_up, r_down, v_up, v_down = 0, 0, 0, 0, 0, 0
 
-        # total symptoms messages
-        s = 0
+        if self.risk_model == "manual":
+            # test_tracing_delay = datetime.timedelta(days=1)  # 1 day was previously used by default
+            raise NotImplementedError(  # TODO: complete implementation as detailed below
+                "the current implementation does not log encounters if the users do not have the app; "
+                "therefore, manual tracing is dead --- we could fix that by logging encounters all the "
+                "time (with a global flab?) and by checking that flag in the tracing call below as well"
+                # ... or by simply assuming everyone has an app?
+            )
+        else:
+            test_tracing_delay = datetime.timedelta(days=0)
+        positive_test_counts = human.contact_book.get_positive_contacts_counts(
+            humans_map=humans_map,
+            tracing_delay=test_tracing_delay,
+            tracing_probability=self.p_contact,
+            max_order=self.max_depth,
+        )
+        for order, count in positive_test_counts.items():
+            t += count * np.exp(-2*(order-1))
+
         if self.propagate_symptoms:
-            for order in human.message_info['n_contacts_symptoms']:
-                s += sum(human.message_info['n_contacts_symptoms'][order]) * np.exp(-2*(order-1))
+            symptomatic_counts = human.contact_book.get_symptomatic_contacts_counts(
+                humans_map=humans_map, max_order=self.max_depth)
+            for order, count in symptomatic_counts.items():
+                s += count * np.exp(-2*(order-1))
 
-        r_up, r_down, v_up, v_down = 0, 0, 0, 0
         if self.propagate_risk:
-            for order in human.message_info['n_risk_increased']:
-                xy = zip(human.message_info['n_risk_mag_increased'][order], human.message_info['n_risk_increased'][order])
-                r_up += sum(human.message_info['n_risk_increased'][order])
-                z = [1.0*x/y for x,y in xy if y]
-                if z:
-                    v_up += np.mean(z)
+            # TODO: contact book is still missing the r_up,r_down,v_up,v_down tracing functions
+            # note1: we could use the simpler `get_risk_level_update_counts` function instead?
+            # note2: for whoever might want to reimplement the missing tracing, check the orig code
+            # note3: the mailbox is passed into this function, we could give it to the contact book
+            #        (or to a pure function from somewhere else) to fetch the 4 counts
+            raise NotImplementedError
+        return t, s, (r_up, v_up, r_down, v_down)
 
-            for order in human.message_info['n_risk_decreased']:
-                xy = zip(human.message_info['n_risk_mag_decreased'][order], human.message_info['n_risk_decreased'][order])
-                r_down += sum(human.message_info['n_risk_decreased'][order])
-                z = [1.0*x/y for x,y in xy if y]
-                if z:
-                    v_down += np.mean(z)
-
-        return t,s,(r_up, v_up, r_down, v_down)
-
-    def compute_risk(self, t, s, r, conf):
+    def compute_risk(
+            self,
+            human: "Human",
+            mailbox: "PersonalMailboxType",
+            humans_map: typing.Dict[str, "Human"],
+    ):
         """
-        computes risk value based on the statistics of past contacts.
-        Note 1: not used by `risk_model = transformer`.
+        Computes the infection risk of a human based on the statistics of its past contacts.
 
         Args:
-            Output of `self.process_messages`
+            human: the human for which to generate the contact tracing counts.
+            mailbox: centralized mailbox with all recent update messages for the target human.
+            humans_map: a human-name-to-human-object reference map to pass to the contact book functions.
 
         Returns:
             float: a scalar value.
         """
-        if self.risk_model in ['manual', 'digital']:
+        assert self.risk_model != "transformer", "we should never be in here!"
+        assert self.risk_model in ["manual", "digital", "naive", "other"], "missing something?"
+        t, s, r = self._get_hypothetical_contact_tracing_results(human, mailbox, humans_map)
+        if self.risk_model in ["manual", "digital"]:
             if t + s > 0:
                 risk = 1.0
             else:
                 risk = 0.0
-
         elif self.risk_model == "naive":
-            risk = 1.0 - (1.0 - conf.get("RISK_TRANSMISSION_PROBA")) ** (t+s)
-
+            risk = 1.0 - (1.0 - human.conf.get("RISK_TRANSMISSION_PROBA")) ** (t+s)
         elif self.risk_model == "other":
             r_up, v_up, r_down, v_down = r
             r_score = 2*v_up - v_down
-            risk = 1.0 - (1.0 - conf.get("RISK_TRANSMISSION_PROBA")) ** (t + 0.5*s + r_score)
-
+            risk = 1.0 - (1.0 - human.conf.get("RISK_TRANSMISSION_PROBA")) ** (t + 0.5*s + r_score)
         return risk
-
-    def update_human_risks(
-            self,
-            city,
-            data_path,
-            conf,
-    ):
-        """
-        Updates the risk value based on the `risk_model`.
-        Calls an external server if the `risk_model` relies on a machine learning server.
-        """
-
-        if self.risk_model == "transformer":
-            city.humans = integrated_risk_pred(
-                city.humans,
-                city.start_time,
-                city.current_day,
-                city.env.timestamp.hour,
-                data_path=data_path,
-                conf=conf,
-            )
-        else:
-            for human in city.humans:
-                cur_day = (human.env.timestamp - human.env.initial_timestamp).days
-                if (human.env.timestamp - human.message_info['receipt']).days >= human.message_info['delay'] or self.risk_model != "manual":
-                    old_risk = human.risk
-                    if not human.is_removed and human.test_result != "positive":
-                        t, s, r = self.process_messages(human)
-                        human.risk = self.compute_risk(t, s, r, conf)
-
-                    if human.risk != old_risk:
-                        self.modify_behavior(human)
-
-                    human.risk_history_map[cur_day] = human.risk
-
-            if conf.get("COLLECT_TRAINING_DATA"):
-                city.humans = integrated_risk_pred(
-                    city.humans,
-                    city.start_time,
-                    city.current_day,
-                    city.env.timestamp.hour,
-                    data_path=data_path,
-                    conf=conf,
-                )
 
     def compute_tracing_delay(self, human):
         """
@@ -596,7 +589,6 @@ class Tracing(object):
     def __repr__(self):
         if self.risk_model == "transformer":
             return f"Tracing: {self.risk_model}"
-
         return f"Tracing: {self.risk_model} order {self.max_depth} symptoms: {self.propagate_symptoms} risk: {self.propagate_risk} modify:{self.should_modify_behavior}"
 
 

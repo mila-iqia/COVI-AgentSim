@@ -16,14 +16,12 @@ import argparse
 import functools
 import signal
 import sys
-import time
 
 import covid19sim.server_utils
 
 default_workers = 4
-default_threads = 4
+default_nproc = 4
 default_model_exp_path = "https://drive.google.com/file/d/1Z7g3gKh2kWFSmK2Yr19MQq0blOWS5st0"
-default_mp_backend = "loky"
 
 
 def parse_args(args=None):
@@ -49,10 +47,8 @@ def parse_args(args=None):
     argparser.add_argument("-w", "--workers", default=None, type=int, help=workers_doc)
     verbosity_doc = "Toggles program verbosity on/off. Default is OFF (0). Variable expects 0 or 1."
     argparser.add_argument("-v", "--verbose", default=0, type=int, help=verbosity_doc)
-    mp_backend_doc = f"Name of the joblib backend to use. Default is {default_mp_backend}."
-    argparser.add_argument("--mp-backend", default=None, type=int, help=mp_backend_doc)
-    mp_threads_doc = f"Number of threads to spawn in each worker. Will use {default_threads} by default."
-    argparser.add_argument("--mp-threads", default=None, type=int, help=mp_threads_doc)
+    mp_nproc_doc = f"Number of processes to spawn in each worker. Will use {default_nproc} by default."
+    argparser.add_argument("--nproc", default=None, type=int, help=mp_nproc_doc)
     weights_path_doc = "Path to the specific weights to reload inside the inference engine(s). " \
                        "Will use the 'best checkpoint' weights if not specified."
     argparser.add_argument("--weights-path", default=None, type=str, help=weights_path_doc)
@@ -65,11 +61,9 @@ def parse_args(args=None):
     if args.workers is None:
         args.workers = default_workers
     assert args.workers > 0, f"invalid worker count: {args.workers}"
-    if args.mp_backend is None:
-        args.mp_backend = default_mp_backend
-    if args.mp_threads is None:
-        args.mp_threads = default_threads
-    assert args.mp_threads >= 0, f"invalid thread count: {args.mp_threads}"
+    if args.nproc is None:
+        args.nproc = default_nproc
+    assert args.nproc >= 0, f"invalid process count: {args.nproc}"
     return args
 
 
@@ -77,7 +71,6 @@ def interrupt_handler(signal, frame, broker):
     """Signal callback used to gently stop workers (releasing sockets) & exit."""
     print("Received SIGINT; shutting down inference worker(s) gracefully...")
     broker.stop()
-    broker.join()
     print("All done.")
     sys.exit(0)
 
@@ -88,17 +81,14 @@ def main(args=None):
     broker = covid19sim.server_utils.InferenceBroker(
         model_exp_path=args.exp_path,
         workers=args.workers,
-        mp_backend=args.mp_backend,
-        mp_threads=args.mp_threads,
+        n_parallel_procs=args.nproc,
         port=args.port,
         weights_path=args.weights_path,
         verbose=args.verbose,
     )
-    broker.start()
     handler = functools.partial(interrupt_handler, broker=broker)
     signal.signal(signal.SIGINT, handler)
-    while True:
-        time.sleep(60)
+    broker.run()
 
 
 if __name__ == "__main__":

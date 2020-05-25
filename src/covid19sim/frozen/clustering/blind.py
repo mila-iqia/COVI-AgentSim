@@ -7,6 +7,7 @@ from covid19sim.frozen.message_utils import EncounterMessage, GenericMessageType
     TimestampType, create_encounter_from_update_message, create_updated_encounter_with_message
 from covid19sim.frozen.clustering.base import ClusterIDType, RealUserIDType, TimeOffsetType, \
     ClusterBase, ClusterManagerBase, MessagesArrayType
+from covid19sim.frozen.clustering.simple import SimplisticClusterManager
 
 
 class BlindCluster(ClusterBase):
@@ -51,9 +52,8 @@ class BlindCluster(ClusterBase):
             messages=[message] if isinstance(message, EncounterMessage)
                 else [create_encounter_from_update_message(message)],
             # debug-only stuff below
-            _real_encounter_uids=[message._sender_uid],
-            _real_encounter_times=[message._real_encounter_time],
-            _unclustered_messages=[message],  # once added, messages here should never be removed
+            _real_encounter_uids={message._sender_uid},
+            _real_encounter_times={message._real_encounter_time},
         )
 
     def fit_encounter_message(self, message: EncounterMessage):
@@ -63,9 +63,8 @@ class BlindCluster(ClusterBase):
         assert message.encounter_time == self.first_update_time
         assert message.encounter_time == self.latest_update_time
         self.messages.append(message)  # in this list, encounters may get updated
-        self._real_encounter_uids.append(message._sender_uid)
-        self._real_encounter_times.append(message._real_encounter_time)
-        self._unclustered_messages.append(message)  # in this list, messages NEVER get updated
+        self._real_encounter_uids.add(message._sender_uid)
+        self._real_encounter_times.add(message._real_encounter_time)
 
     def fit_update_message(
             self,
@@ -89,9 +88,8 @@ class BlindCluster(ClusterBase):
                 blind_update=True,
             )
             self.risk_level = update_message.new_risk_level
-            self._real_encounter_uids.append(update_message._sender_uid)
-            self._real_encounter_times.append(update_message._real_encounter_time)
-            self._unclustered_messages.append(update_message)  # in this list, messages NEVER get updated
+            self._real_encounter_uids.add(update_message._sender_uid)
+            self._real_encounter_times.add(update_message._real_encounter_time)
             return None
         else:
             # we have multiple messages in this cluster, and the update can only apply to one;
@@ -127,9 +125,8 @@ class BlindCluster(ClusterBase):
                 blind_update=True,
             )
             self.risk_level = self.messages[0].risk_level
-            self._real_encounter_uids.append(update_messages[0]._sender_uid)
-            self._real_encounter_times.append(update_messages[0]._real_encounter_time)
-            self._unclustered_messages.append(update_messages[0])  # in this list, messages NEVER get updated
+            self._real_encounter_uids.add(update_messages[0]._sender_uid)
+            self._real_encounter_times.add(update_messages[0]._real_encounter_time)
             return update_messages[1:], None
         elif len(self.messages) == nb_matches:
             # we can apply simultaneous updates to all messages in this cluster and avoid splitting; do that
@@ -140,9 +137,8 @@ class BlindCluster(ClusterBase):
                     blind_update=True,
                 ))
             self.messages = new_encounters
-            self._real_encounter_uids.extend([m._sender_uid for m in update_messages[:nb_matches]])
-            self._real_encounter_times.extend([m._real_encounter_time for m in update_messages[:nb_matches]])
-            self._unclustered_messages.extend(update_messages[:nb_matches])
+            self._real_encounter_uids.update([m._sender_uid for m in update_messages[:nb_matches]])
+            self._real_encounter_times.update([m._real_encounter_time for m in update_messages[:nb_matches]])
             self.risk_level = new_encounters[0].risk_level
             return update_messages[nb_matches:], None
         else:
@@ -163,9 +159,8 @@ class BlindCluster(ClusterBase):
                 first_update_time=updated_messages_to_transfer[0].encounter_time,
                 latest_update_time=updated_messages_to_transfer[0].encounter_time,
                 messages=updated_messages_to_transfer,
-                _real_encounter_uids=[m._sender_uid for m in updated_messages_to_transfer],
-                _real_encounter_times=[m._real_encounter_time for m in updated_messages_to_transfer],
-                _unclustered_messages=updated_messages_to_transfer,
+                _real_encounter_uids={m._sender_uid for m in updated_messages_to_transfer},
+                _real_encounter_times={m._real_encounter_time for m in updated_messages_to_transfer},
             )
             return update_messages[nb_matches:], new_cluster
             # note: out of laziness for the debugging stuff, we do not remove anything from unobserved vars
@@ -188,9 +183,8 @@ class BlindCluster(ClusterBase):
         self.messages.extend(cluster.messages)
         # we can make sure whoever tries to use the other cluster again will have a bad surprise...
         cluster.messages = None
-        self._real_encounter_uids.extend(cluster._real_encounter_uids)
-        self._real_encounter_times.extend(cluster._real_encounter_times)
-        self._unclustered_messages.extend(cluster._unclustered_messages)
+        self._real_encounter_uids.update(cluster._real_encounter_uids)
+        self._real_encounter_times.update(cluster._real_encounter_times)
 
     def get_cluster_embedding(
             self,
@@ -212,12 +206,12 @@ class BlindCluster(ClusterBase):
             if include_cluster_id:
                 return np.asarray([
                     self.cluster_id, self.risk_level, len(self.messages),
-                    current_timestamp - self.first_update_time  # first/last is the same
+                    (current_timestamp - self.first_update_time).days  # first/last is the same
                 ], dtype=np.int64)
             else:
                 return np.asarray([
                     self.risk_level, len(self.messages),
-                    current_timestamp - self.first_update_time  # first/last is the same
+                    (current_timestamp - self.first_update_time).days  # first/last is the same
                 ], dtype=np.int64)
 
     def _get_cluster_exposition_flag(self) -> bool:
@@ -248,17 +242,14 @@ class BlindClusterManager(ClusterManagerBase):
 
     def __init__(
             self,
-            # TODO: Code is currently comparing max_history_ticks_offset 
-            #  to messages time expressed in days not ticks. Messages still
-            #  need to be updated to hold ticks
-            max_history_ticks_offset: TimeOffsetType,
+            max_history_offset: TimeOffsetType,
             add_orphan_updates_as_clusters: bool = False,
             generate_embeddings_by_timestamp: bool = True,
             generate_backw_compat_embeddings: bool = False,
             max_cluster_id: int = 1000,  # let's hope no user ever reaches 1000 simultaneous clusters
     ):
         super().__init__(
-            max_history_ticks_offset=max_history_ticks_offset,
+            max_history_offset=max_history_offset,
             add_orphan_updates_as_clusters=add_orphan_updates_as_clusters,
             generate_embeddings_by_timestamp=generate_embeddings_by_timestamp,
             generate_backw_compat_embeddings=generate_backw_compat_embeddings,
@@ -292,8 +283,8 @@ class BlindClusterManager(ClusterManagerBase):
         """Gets rid of clusters that are too old given the current timestamp."""
         to_keep = []
         for cluster_idx, cluster in enumerate(self.clusters):
-            cluster_update_offset = int(current_timestamp) - int(cluster.first_update_time)
-            if cluster_update_offset < self.max_history_ticks_offset:
+            cluster_update_offset = current_timestamp - cluster.first_update_time
+            if cluster_update_offset < self.max_history_offset:
                 to_keep.append(cluster)
         self.clusters = to_keep
 
@@ -352,31 +343,14 @@ class BlindClusterManager(ClusterManagerBase):
             else:
                 raise AssertionError(f"could not find any proper cluster match for: {message}")
 
-    def get_embeddings_array(self) -> np.ndarray:
+    def get_embeddings_array(
+            self,
+            cleanup: bool = False,
+            current_timestamp: typing.Optional[TimestampType] = None,  # will use internal latest if None
+    ) -> np.ndarray:
         """Returns the 'embeddings' array for all clusters managed by this object."""
-        assert not self.generate_backw_compat_embeddings or self.generate_embeddings_by_timestamp, \
-            "original embeddings were generated by timestamp, cannot avoid that for backw compat"
-        if self.generate_embeddings_by_timestamp:
-            cluster_embeds = collections.defaultdict(list)
-            for cluster in self.clusters:
-                embed = cluster.get_cluster_embedding(
-                    current_timestamp=cluster.latest_update_time if self.generate_backw_compat_embeddings
-                    else self.latest_refresh_timestamp,
-                    include_cluster_id=True,
-                    old_compat_mode=self.generate_backw_compat_embeddings,
-                )
-                cluster_embeds[cluster.latest_update_time].append(
-                    [*embed, cluster.latest_update_time])
-            flat_output = []
-            for timestamp in sorted(cluster_embeds.keys()):
-                flat_output.extend(cluster_embeds[timestamp])
-            return np.asarray(flat_output)
-        else:
-            return np.asarray([
-                c.get_cluster_embedding(
-                    current_timestamp=self.latest_refresh_timestamp,
-                    include_cluster_id=False,
-                ) for c in self.clusters], dtype=np.int64)
+        # code is 100% identical in SimplisticClusterManager, use that instead
+        return SimplisticClusterManager.get_embeddings_array(self, cleanup, current_timestamp)
 
     def _get_expositions_array(self) -> np.ndarray:
         """Returns the 'expositions' array for all clusters managed by this object."""

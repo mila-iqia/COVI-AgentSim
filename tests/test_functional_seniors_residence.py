@@ -67,6 +67,8 @@ def test_functional_seniors_residence():
             )
             for i in range(N)
         ]
+        # pick one human randomly and make sure it cannot recover (for later checks)
+        humans[np.random.randint(N)].never_recovers = True
 
         city.humans = humans
         city.initWorld()
@@ -106,3 +108,7 @@ def test_functional_seniors_residence():
 
         # Curve fit to outbreak propagation
         # TODO
+
+
+if __name__ == "__main__":
+    test_functional_seniors_residence()

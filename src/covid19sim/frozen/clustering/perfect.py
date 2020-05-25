@@ -13,17 +13,14 @@ class PerfectClusterManager(SimplisticClusterManager):
 
     def __init__(
             self,
-            # TODO: Code is currently comparing max_history_ticks_offset 
-            #  to messages time expressed in days not ticks. Messages still
-            #  need to be updated to hold ticks
-            max_history_ticks_offset: TimeOffsetType,
+            max_history_offset: TimeOffsetType,
             add_orphan_updates_as_clusters: bool = False,
             generate_embeddings_by_timestamp: bool = True,
             generate_backw_compat_embeddings: bool = False,
             max_cluster_id: int = 1000,  # let's hope no user ever reaches 1000 simultaneous clusters
     ):
         super().__init__(
-            max_history_ticks_offset=max_history_ticks_offset,
+            max_history_offset=max_history_offset,
             add_orphan_updates_as_clusters=add_orphan_updates_as_clusters,
             generate_embeddings_by_timestamp=generate_embeddings_by_timestamp,
             generate_backw_compat_embeddings=generate_backw_compat_embeddings,
@@ -39,8 +36,7 @@ class PerfectClusterManager(SimplisticClusterManager):
         assert message._sender_uid is not None
         matched_cluster = None
         for cluster in self.clusters:
-            # note: all 'real' uids in the cluster should be the same, we just pick the first
-            if cluster._real_encounter_uids[0] == message._sender_uid:
+            if message._sender_uid in cluster._real_encounter_uids:
                 matched_cluster = cluster
                 break
         if matched_cluster is not None:
@@ -59,8 +55,7 @@ class PerfectClusterManager(SimplisticClusterManager):
         # update message at a time, and hope that no update messages will be missing
         assert message._sender_uid is not None
         for cluster in self.clusters:
-            # note: all 'real' uids in the cluster should be the same, we just pick the first
-            if cluster._real_encounter_uids[0] == message._sender_uid:
+            if message._sender_uid in cluster._real_encounter_uids:
                 cluster.skip_homogeneity_checks = True  # ensure the fit won't throw
                 message = cluster.fit_update_message(message)
                 if message is None:
