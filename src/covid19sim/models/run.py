@@ -203,28 +203,16 @@ def batch_run_timeslot_heavy_jobs(
         engine = DummyMemManager.get_engine(conf)
         results = proc_human_batch(all_params, engine, cluster_mgr_map, parallel_reqs)
 
-    proba_to_risk_level_map = proba_to_risk_fn(np.array(conf.get('RISK_MAPPING')))
     new_update_messages = []
     for name, risk_history in results:
         human = hd[name]
         if conf.get('RISK_MODEL') == "transformer":
             if risk_history is not None:
-                # risk_history = np.clip(risk_history, 0., 1.)
-                for i in range(len(risk_history)):
-                    human.risk_history_map[current_day_idx - i] = risk_history[i]
-                new_msgs = human.contact_book.generate_updates(
-                    init_timestamp=init_timestamp,
-                    current_timestamp=current_timestamp,
-                    prev_risk_history_map=human.prev_risk_history_map,
-                    curr_risk_history_map=human.risk_history_map,
-                    proba_to_risk_level_map=proba_to_risk_level_map,
-                    update_reason="transformer",
-                    tracing_method=human.tracing_method,
+                new_update_messages.extend(
+                    human.apply_transformer_risk_updates(
+                        current_day_idx=current_day_idx,
+                        current_timestamp=current_timestamp,
+                        risk_history=risk_history,
+                    )
                 )
-                if human.check_if_latest_risk_level_changed(proba_to_risk_level_map):
-                    human.tracing_method.modify_behavior(human)
-                for i in range(len(risk_history)):
-                    human.prev_risk_history_map[current_day_idx - i] = risk_history[i]
-                new_update_messages.extend(new_msgs)
-
     return humans, new_update_messages

@@ -347,6 +347,7 @@ class ContactBook:
         self.encounters_by_day: typing.Dict[int, typing.List[EncounterMessage]] = {}
         # the mailbox keys are used to fetch update messages and provide them to the clustering algo
         self.mailbox_keys_by_day: typing.Dict[int, typing.List[UIDType]] = {}
+        self.latest_update_time = datetime.datetime.min
         self._is_being_traced = False  # used for internal tracing only
 
     def get_contacts(
@@ -372,6 +373,9 @@ class ContactBook:
             count_map: typing.Optional[typing.Dict[int, int]] = None,
     ) -> typing.Dict[int, int]:  # returns order-to-count mapping
         """Traces and returns the number of Nth-order contacts that have been tested positive."""
+        # FIXME: the 'delay' is only applicable for real-life tracing where all humans would
+        #   instantly be contacted after N days; for digital tracing, each hop would need to
+        #   take the timeslot delay into account, which it does not do right now
         if curr_order == 0:
             for human in humans_map.values():
                 human.contact_book._is_being_traced = False
@@ -467,6 +471,33 @@ class ContactBook:
                 count += len(msg._applied_updates)
         return count
 
+    def get_risk_level_change_score(
+            self,
+            prev_risk_history_map: typing.Dict[int, float],
+            curr_risk_history_map: typing.Dict[int, float],
+            proba_to_risk_level_map: typing.Callable,
+    ):
+        """Returns the 'risk level change' score used for GAEN message impact estimation.
+
+        Args:
+            prev_risk_history_map: the previous risk history map of the human who owns this contact book.
+            curr_risk_history_map: the current risk history map of the human who owns this contact book.
+            proba_to_risk_level_map: the risk-probability-to-risk-level mapping function.
+
+        Returns:
+            The risk level change score (a numeric value).
+        """
+        prev_days = set(prev_risk_history_map.keys())
+        curr_days = set(curr_risk_history_map.keys())
+        assert not curr_days.symmetric_difference(prev_days)
+        change = 0
+        for day_idx in prev_days:
+            old_risk_level = min(proba_to_risk_level_map(prev_risk_history_map[day_idx]), 15)
+            curr_risk_level = min(proba_to_risk_level_map(curr_risk_history_map[day_idx]), 15)
+            n_encs_for_day = self.encounters_by_day[day_idx] if day_idx in self.encounters_by_day else 0
+            change += np.abs(curr_risk_level - old_risk_level) * n_encs_for_day
+        return change  # Danger potential PII => fewer bits
+
     def cleanup_contacts(
             self,
             init_timestamp: TimestampType,
@@ -485,9 +516,9 @@ class ContactBook:
 
     def generate_initial_updates(
             self,
-            init_timestamp: datetime.datetime,
+            current_day_idx: int,
             current_timestamp: datetime.datetime,
-            risk_history_map: typing.Dict[datetime.datetime, float],
+            risk_history_map: typing.Dict[int, float],
             proba_to_risk_level_map: typing.Callable,
             tracing_method: typing.Optional["Tracing"],
     ):
@@ -498,7 +529,7 @@ class ContactBook:
         If the tracing method is not yet defined, does nothing.
 
         Args:
-            init_timestamp: initialization timestamp of the simulation.
+            current_day_idx: the current day index inside the simulation.
             current_timestamp: the current timestamp of the simulation.
             risk_history_map: the risk history map of the human who owns this contact book.
             proba_to_risk_level_map: the risk-probability-to-risk-level mapping function.
@@ -510,7 +541,6 @@ class ContactBook:
         update_messages = []
         if tracing_method is None:
             return update_messages  # no need to generate update messages until tracing is enabled
-        current_day_idx = (current_timestamp - init_timestamp).days
         assert current_day_idx >= 0
         for encounter_day_idx, encounter_messages in self.encounters_by_day.items():
             for encounter_message in encounter_messages:
@@ -534,7 +564,7 @@ class ContactBook:
 
     def generate_updates(
             self,
-            init_timestamp: datetime.datetime,
+            current_day_idx: int,
             current_timestamp: datetime.datetime,
             prev_risk_history_map: typing.Dict[int, float],
             curr_risk_history_map: typing.Dict[int, float],
@@ -549,7 +579,7 @@ class ContactBook:
         If the tracing method is not yet defined, does nothing.
 
         Args:
-            init_timestamp: initialization timestamp of the simulation.
+            current_day_idx: the current day index inside the simulation.
             current_timestamp: the current timestamp of the simulation.
             prev_risk_history_map: the previous risk history map of the human who owns this contact book.
             curr_risk_history_map: the current risk history map of the human who owns this contact book.
@@ -563,7 +593,6 @@ class ContactBook:
         update_messages = []
         if tracing_method is None:
             return update_messages  # no need to generate update messages until tracing is enabled
-        current_day_idx = (current_timestamp - init_timestamp).days
         assert current_day_idx >= 0
         for encounter_day_idx, encounter_messages in self.encounters_by_day.items():
             assert current_day_idx - encounter_day_idx <= self.tracing_n_days_history, \
