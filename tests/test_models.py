@@ -65,17 +65,13 @@ class MakeHumanAsMessageProxy:
         for k in human.__dict__.keys():
             if k == 'contact_book':
                 trimmed_human['contact_book'] = human.contact_book.__dict__.copy()
-                for cb_k in human.contact_book.__dict__.keys():
-                    if cb_k not in ('messages', 'update_messages'):
-                        del trimmed_human['contact_book'][cb_k]
-                    else:
-                        trimmed_human['contact_book'][cb_k] = \
-                            [encode_message(m) for m in trimmed_human['contact_book'][cb_k]]
+                for contact_day, msgs in trimmed_human['contact_book']['encounters_by_day'].items():
+                    for msg in msgs:
+                        # discard applied updates to keep the trimmed human lightweight
+                        msg._applied_updates = None
             elif k not in message_fields:
                 del trimmed_human[k]
-
         trimmed_human['infection_timestamp'] = human.infection_timestamp
-
         return pickle.loads(pickle.dumps(trimmed_human))
 
 
