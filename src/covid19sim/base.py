@@ -1,12 +1,13 @@
 """
 [summary]
 """
-import simpy
-import math
+import copy
 import datetime
 import itertools
-import typing
-from collections import defaultdict
+import math
+from collections import defaultdict, Counter
+
+import simpy
 
 from covid19sim.utils import compute_distance, _get_random_area
 from covid19sim.track import Tracker
@@ -14,6 +15,9 @@ from covid19sim.interventions import *
 from covid19sim.models.run import batch_run_timeslot_heavy_jobs
 from covid19sim.frozen.message_utils import UIDType, UpdateMessage, combine_update_messages, \
     RealUserIDType
+
+if typing.TYPE_CHECKING:
+    from covid19sim.simulator import Human
 
 PersonalMailboxType = typing.Dict[UIDType, UpdateMessage]
 SimulatorMailboxType = typing.Dict[RealUserIDType, PersonalMailboxType]
@@ -95,7 +99,7 @@ class City:
     City
     """
 
-    def __init__(self, env, n_people, init_percent_sick, rng, x_range, y_range, Human, conf):
+    def __init__(self, env, n_people, init_percent_sick, rng, x_range, y_range, human_type, conf):
         """
         Args:
             env (simpy.Environment): [description]
@@ -104,7 +108,7 @@ class City:
             rng (np.random.RandomState): Random number generator
             x_range (tuple): (min_x, max_x)
             y_range (tuple): (min_y, max_y)
-            Human (covid19.simulator.Human): Class for the city's human instances
+            human_type (covid19.simulator.Human): Class for the city's human instances
             conf (dict): yaml configuration of the experiment
         """
         self.conf = conf
@@ -125,7 +129,7 @@ class City:
         self.hd = {}  # previously a cached property for some unknown reason
         self.households = OrderedSet()
         print("Initializing humans ...")
-        self.initialize_humans(Human)
+        self.initialize_humans(human_type)
 
         if self.conf.get('COLLECT_LOGS'):
             self.log_static_info()
@@ -134,6 +138,12 @@ class City:
         self._compute_preferences()
         self.tracker = Tracker(env, self)
         self.intervention = None
+
+        # GAEN summary statistics that enable the individual to determine whether they should send their info
+        self.risk_change_histogram = Counter()
+        self.risk_change_histogram_sum = 0
+        self.sent_messages_by_day: typing.Dict[int, int] = {}
+
         # note: for good efficiency in the simulator, we will not allow humans to 'download'
         # database diffs between their last timeslot and their current timeslot; instead, we
         # will give them the global mailbox object (a dictionary) and have them 'pop' all
@@ -156,14 +166,57 @@ class City:
 
     def register_new_messages(
             self,
+            current_day_idx: int,
+            current_timestamp: datetime.datetime,
             update_messages: typing.List[UpdateMessage],
+            prev_human_risk_history_maps: typing.Dict["Human", typing.Dict[int, float]],
+            new_human_risk_history_maps: typing.Dict["Human", typing.Dict[int, float]],
     ):
-        """Adds new update messages to the global mailbox, passing them to trackers if needed."""
+        """Adds new update messages to the global mailbox, passing them to trackers if needed.
+
+        This function may choose to discard messages based on the mailbox server protocol being used.
+        For this purpose, the risk history level maps of all users are provided as input. Note that
+        these risk history maps may not actually be transfered to the server, and we have to be
+        careful how we use this data in a safe fashion so that (in real life) only non-PII info
+        needs to be transmitted to the server for filtering.
+        """
+        humans_with_updates = {self.hd[m._sender_uid] for m in update_messages}
+
+        if self.conf.get("USE_GAEN"):
+            # update risk level change histogram using scores of new updaters
+            updater_scores = {
+                h: h.contact_book.get_risk_level_change_score(
+                    prev_risk_history_map=prev_human_risk_history_maps[h],
+                    curr_risk_history_map=new_human_risk_history_maps[h],
+                    proba_to_risk_level_map=h.proba_to_risk_level_map,
+                ) for h in humans_with_updates
+            }
+            for score in updater_scores.values():
+                self.risk_change_histogram[score] += 1
+            self.risk_change_histogram_sum += len(updater_scores)
+        else:
+            # TODO: add filtering steps (if any) for other protocols
+            pass
+
         # note that to keep the simulator efficient, users will have their own private mailbox inside
         # the global mailbox (this replaces the database diff logic & allows faster access)
         for update_message in update_messages:
             source_human = self.hd[update_message._sender_uid]
             destination_human = self.hd[update_message._receiver_uid]
+
+            if self.conf.get("USE_GAEN"):
+                should_send = self._check_should_send_message_gaen(
+                    current_day_idx=current_day_idx,
+                    human=source_human,
+                    risk_change_score=updater_scores[source_human],
+                )
+                if not should_send:
+                    continue
+            else:
+                # TODO: add filtering steps (if any) for other protocols
+                pass
+
+            # if we get here, it's because we actually chose to send the message
             self.tracker.track_update_messages(
                 from_human=source_human,
                 to_human=destination_human,
@@ -172,6 +225,11 @@ class City:
                     "new_risk_level": update_message.new_risk_level
                 },
             )
+            if current_day_idx not in self.sent_messages_by_day:
+                self.sent_messages_by_day[current_day_idx] = 0
+            self.sent_messages_by_day[current_day_idx] += 1
+            source_human.contact_book.latest_update_time = \
+                max(source_human.contact_book.latest_update_time, current_timestamp)
             mailbox_key = update_message.uid  # GAEN key = message uid
             personal_mailbox = self.global_mailbox[destination_human.name]
             assert mailbox_key not in personal_mailbox or \
@@ -184,6 +242,60 @@ class City:
                     combine_update_messages(personal_mailbox[mailbox_key], update_message)
             else:
                 personal_mailbox[mailbox_key] = update_message
+
+    def _check_should_send_message_gaen(
+            self,
+            current_day_idx: int,
+            human: "Human",
+            risk_change_score: int,
+    ) -> bool:
+        """Returns whether a specific human with a given GAEN impact score should send updates or not."""
+        message_budget = self.conf.get("MESSAGE_BUDGET_GAEN")
+        # give at least BURN_IN_DAYS days to get risk histograms
+        if current_day_idx - self.conf.get("INTERVENTION_DAY") < self.conf.get("BURN_IN_DAYS"):
+            return False
+        days_between_messages = self.conf.get("DAYS_BETWEEN_MESSAGES")
+        # don't send messages if you sent recently
+        if current_day_idx - human.contact_book.latest_update_time < days_between_messages:
+            return False
+        # don't exceed the message budget
+        if self.sent_messages_by_day[current_day_idx] >= message_budget * self.conf.get("n_people"):
+            return False
+
+        # if people uniformly send messages in the population, then 1 / days_between_messages people
+        # won't send messages today anyway
+        # FIXME this overestimates messages but it's ok (??) because we have a hard daily cap
+        message_budget = days_between_messages * message_budget
+        # but if we don't have that we underestimate the number of available messages in the budget
+        # because some people will have already sent a message the day before and won't be able to
+        # on this day
+
+        # reduce due to multiple updates per day so uniformly distribute messages
+        message_budget = message_budget / self.conf.get("UPDATES_PER_DAY")
+
+        # sorted list (decreasing order) of tuples (risk_change, proportion of people with that risk_change)
+        scaled_risks = sorted(
+            {
+                k: v / self.risk_change_histogram_sum
+                for k, v in self.risk_change_histogram.items()
+            }.items(),
+            reverse=True
+        )
+        summed_percentiles = 0
+        for rc, percentile in scaled_risks:
+            # there's room for this person's message
+            if risk_change_score == rc and summed_percentiles < message_budget:
+                # coin flip if you're in this bucket but this is the "last" bucket
+                if summed_percentiles + percentile > message_budget:
+                    # Out of all the available messages (MAX_NUM_MESSAGES_GAEN), summed_percentile
+                    # have been sent. There remains (MAX - summed) messages to split across percentile people
+                    if self.rng.random() < (message_budget - summed_percentiles):  # / percentile:
+                        return True
+                # otherwise there is room for messages so you should send
+                else:
+                    return True
+            summed_percentiles += percentile
+        return False
 
     @property
     def start_time(self):
@@ -275,7 +387,7 @@ class City:
             locs = [self.create_location(specs, location, i, area[i]) for i in range(n)]
             setattr(self, f"{location}s", locs)
 
-    def initialize_humans(self, Human):
+    def initialize_humans(self, human_type):
         """
         allocate humans to houses such that (unsolved)
         1. average number of residents in a house is (approx.) 2.6
@@ -285,7 +397,7 @@ class City:
         current implementation is an approximate heuristic
 
         Args:
-            Human (Class): Class for the city's human instances
+            human_type (Class): Class for the city's human instances
         """
 
 
@@ -356,7 +468,7 @@ class City:
                 else:
                     workplace = res
 
-                self.humans.append(Human(
+                self.humans.append(human_type(
                         env=self.env,
                         city=self,
                         rng=self.rng,
@@ -524,10 +636,15 @@ class City:
                     print("naive risk calculation without changing behavior... Humans notified!")
                 humans_notified = True
 
+            all_new_update_messages = []  # accumulate everything here so we can filter if needed
+            backup_human_init_risks = {}  # backs up human risks before any update takes place
+
             # iterate over humans, and if it's their timeslot, then update their state
             for human in self.humans:  # we could shuffle humans here? for same-timeslot-updates?
                 if self.env.timestamp.hour not in human.time_slots:
                     continue
+                human.initialize_daily_risk(current_day)
+                backup_human_init_risks[human] = copy.deepcopy(human.risk_history_map)
                 # note: the global mailbox is modified inside the lightweight loop, so any
                 # parallelization in this function has to be done very carefully in order to
                 # keep the same update-order-behavior for humans on the same timeslot
@@ -536,7 +653,10 @@ class City:
                     current_timestamp=self.env.timestamp,
                     personal_mailbox=self.global_mailbox[human.name],
                 )
-                self.register_new_messages(new_update_messages)
+                # previously, risk updates were sent right away, meaning some lucky humans could
+                # get instant updates; the current implementation assues a one-timeslot-delay
+                # minimum for everyone, even when updating on the same timeslot as the contact
+                all_new_update_messages.extend(new_update_messages)
 
                 if self.conf.get('COLLECT_LOGS'):
                     Event.log_daily(human, human.env.timestamp)
@@ -554,8 +674,16 @@ class City:
                         conf=self.conf,
                         data_path=outfile,
                     )
-                    self.register_new_messages(new_update_messages)
+                    all_new_update_messages.extend(new_update_messages)
                 self.tracker.track_risk_attributes(self.hd)
+
+            self.register_new_messages(
+                current_day_idx=current_day,
+                current_timestamp=self.env.timestamp,
+                update_messages=all_new_update_messages,
+                prev_human_risk_history_maps=backup_human_init_risks,
+                new_human_risk_history_maps={h: h.risk_history_map for h in self.humans},
+            )
 
             yield self.env.timeout(int(duration))
 
@@ -563,7 +691,14 @@ class City:
                 last_day_idx = current_day
                 self.cleanup_global_mailbox(self.env.timestamp)
                 self.tracker.increment_day()
-
+                if self.conf.get("USE_GAEN"):
+                    print(
+                        "cur_day: {}, budget spent: {} / {} ".format(
+                            current_day,
+                            self.daily_update_message_budget_sent_gaen,
+                            self.conf["n_people"] * self.conf["MESSAGE_BUDGET_GAEN"]
+                        ),
+                    )
 
 class Location(simpy.Resource):
     """

@@ -7,7 +7,7 @@ import datetime
 import numpy as np
 import typing
 import warnings
-from collections import defaultdict
+from collections import defaultdict, Counter
 from orderedset import OrderedSet
 
 from covid19sim.interventions import Tracing
@@ -212,6 +212,10 @@ class Human(object):
         self.infectiousness_history_map = dict()
         self.risk_history_map = dict()  # updated inside the human's (current) timeslot
         self.prev_risk_history_map = dict()  # used to check how the risk changed since the last timeslot
+        self.history_map_last_message = dict()
+        self.last_sent_update_gaen = 0
+        self.last_message_risk_history_map = {}
+        self.proba_to_risk_level_map = proba_to_risk_fn(np.array(self.conf.get('RISK_MAPPING')))
 
         # Message Passing and Risk Prediction
         self.clusters = None
@@ -786,12 +790,39 @@ class Human(object):
         reported_symptoms = [s for s in self.rolling_all_symptoms[0] if self.rng.random() < self.carefulness]
         self.rolling_all_reported_symptoms.appendleft(reported_symptoms)
 
-    def check_if_latest_risk_level_changed(self, proba_to_risk_level_map: typing.Callable):
+    def initialize_daily_risk(self, current_day_idx: int):
+        """Initializes the risk history map with a new/copied risk value for the given day, if needed.
+
+        Will also drop old unnecessary entries in the current & previous risk history maps.
+        """
+        if not self.risk_history_map:  # if we're on day zero, add a baseline risk value in
+            self.risk_history_map[current_day_idx] = self.conf.get("BASELINE_RISK_VALUE")
+        elif current_day_idx not in self.risk_history_map:
+            assert (current_day_idx - 1) in self.risk_history_map, \
+                "humans should never skip a day worth of risk refresh"
+            self.risk_history_map[current_day_idx] = self.risk_history_map[current_day_idx - 1]
+        curr_day_set = set(self.risk_history_map.keys())
+        prev_day_set = set(self.prev_risk_history_map.keys())
+        day_set_diff = curr_day_set.symmetric_difference(prev_day_set)
+        assert not day_set_diff or day_set_diff == {current_day_idx}, \
+            "1st timeslot should have single-day-diff, otherwise no diff, what is this?"
+        history_day_idxs = curr_day_set | prev_day_set
+        expected_history_len = self.conf.get("TRACING_N_DAYS_HISTORY")
+        for day_idx in history_day_idxs:
+            assert day_idx <= current_day_idx, "...we're looking into the future now?"
+            if current_day_idx - day_idx > expected_history_len:
+                del self.risk_history_map[day_idx]
+                if day_idx in self.prev_risk_history_map:
+                    del self.prev_risk_history_map[day_idx]
+        # ready for the day now; prepare the prev risk entry in case we need a quick diff
+        self.prev_risk_history_map[current_day_idx] = self.risk_history_map[current_day_idx]
+
+    def check_if_latest_risk_level_changed(self):
         """Returns whether the latest risk level stored in the current/previous risk history maps match."""
         previous_latest_day = max(self.prev_risk_history_map.keys())
         new_latest_day = max(self.risk_history_map.keys())
-        prev_risk_level = min(proba_to_risk_level_map(self.prev_risk_history_map[previous_latest_day]), 15)
-        curr_risk_level = min(proba_to_risk_level_map(self.risk_history_map[new_latest_day]), 15)
+        prev_risk_level = min(self.proba_to_risk_level_map(self.prev_risk_history_map[previous_latest_day]), 15)
+        curr_risk_level = min(self.proba_to_risk_level_map(self.risk_history_map[new_latest_day]), 15)
         return prev_risk_level != curr_risk_level
 
     def run_timeslot_lightweight_jobs(
@@ -825,16 +856,6 @@ class Human(object):
         self.update_reported_symptoms()
         self.contact_book.cleanup_contacts(init_timestamp, current_timestamp)
 
-        if not self.risk_history_map:  # if we're on day zero, add a baseline risk value in
-            self.risk_history_map[current_day_idx] = self.conf.get("BASELINE_RISK_VALUE")
-        if current_day_idx not in self.risk_history_map:
-            existing_day_idxs = list(self.risk_history_map.keys())
-            closest_day_idx_idx = \
-                int(np.argmin([np.abs(d - current_day_idx) for d in existing_day_idxs]))
-            # TODO: this is shielding logic errors, make sure someone somewhere always assigns risk
-            self.risk_history_map[current_day_idx] = \
-                self.risk_history_map[existing_day_idxs[closest_day_idx_idx]]
-
         update_messages = []
         if self.tracing_method is not None:
             update_reason = "risk_update"  # default update reason (if we don't get more specific)
@@ -854,34 +875,71 @@ class Human(object):
                     self.has_logged_symptoms = True  # FIXME: this is never turned back off? but we can get reinfected?
                     update_reason = "symptoms"
 
-            proba_to_risk_level_map = proba_to_risk_fn(np.array(self.conf.get('RISK_MAPPING')))
             update_messages = [
                 # if we had any encounters for which we have not sent an initial message, do it now
                 *self.contact_book.generate_initial_updates(
-                    init_timestamp=init_timestamp,
+                    current_day_idx=current_day_idx,
                     current_timestamp=current_timestamp,
                     risk_history_map=self.risk_history_map,
-                    proba_to_risk_level_map=proba_to_risk_level_map,
+                    proba_to_risk_level_map=self.proba_to_risk_level_map,
                     tracing_method=self.tracing_method,
                 ),
                 # then, generate risk level update messages for all other encounters (if needed)
                 *self.contact_book.generate_updates(
-                    init_timestamp=init_timestamp,
+                    current_day_idx=current_day_idx,
                     current_timestamp=current_timestamp,
                     prev_risk_history_map=self.prev_risk_history_map,
                     curr_risk_history_map=self.risk_history_map,
-                    proba_to_risk_level_map=proba_to_risk_level_map,
+                    proba_to_risk_level_map=self.proba_to_risk_level_map,
                     update_reason=update_reason,
                     tracing_method=self.tracing_method,
                 ),
             ]
-            if self.check_if_latest_risk_level_changed(proba_to_risk_level_map):
+            if self.check_if_latest_risk_level_changed():
                 self.tracing_method.modify_behavior(self)
 
         if current_day_idx not in self.infectiousness_history_map:
             # contrarily to risk, infectiousness only changes once a day (human behavior has no impact)
             self.infectiousness_history_map[current_day_idx] = calculate_average_infectiousness(self)
+        # update the 'prev risk history' since we just generated the necessary updates
         self.prev_risk_history_map[current_day_idx] = self.risk_history_map[current_day_idx]
+        return update_messages
+
+    def apply_transformer_risk_updates(
+            self,
+            current_day_idx: int,
+            current_timestamp: datetime.datetime,
+            risk_history: typing.List[float],
+    ):
+        """Applies a vector of risk values predicted by the transformer to this human, generating
+        update messages for past encounters & modifying behavior if necessary.
+
+        Args:
+            current_day_idx: the current day index inside the simulation.
+            current_timestamp: the current timestamp of the simulation.
+            risk_history: the risk history vector predicted by the transformer.
+
+        Returns:
+            The update messages to send to contacts through the server.
+        """
+        assert self.tracing_method.risk_model == "transformer"
+        assert len(risk_history) == self.contact_book.tracing_n_days_history, \
+            "unexpected transformer history coverage; what's going on?"
+        for day_offset_idx in range(len(risk_history)):  # note: idx:0 == today
+            self.risk_history_map[current_day_idx - day_offset_idx] = risk_history[day_offset_idx]
+        update_messages = self.contact_book.generate_updates(
+            current_day_idx=current_day_idx,
+            current_timestamp=current_timestamp,
+            prev_risk_history_map=self.prev_risk_history_map,
+            curr_risk_history_map=self.risk_history_map,
+            proba_to_risk_level_map=self.proba_to_risk_level_map,
+            update_reason="transformer",
+            tracing_method=self.tracing_method,
+        )
+        if self.check_if_latest_risk_level_changed():
+            self.tracing_method.modify_behavior(self)
+        for i in range(len(risk_history)):
+            self.prev_risk_history_map[current_day_idx - i] = risk_history[i]
         return update_messages
 
     def compute_covid_properties(self):
@@ -937,7 +995,9 @@ class Human(object):
         # TODO: get observed data on testing / who gets tested when??
         if any(self.symptoms) and self.rng.rand() < self.conf.get("P_TEST"):
             self.test_type = city.get_available_test()
-            if self.rng.rand() < self.conf.get("TEST_TYPES")[self.test_type]['P_FALSE_NEGATIVE']:
+            # note: check for infection timestamp; symptoms might be caused by a distracting disease
+            if self.infection_timestamp is None or \
+                    self.rng.rand() < self.conf.get("TEST_TYPES")[self.test_type]['P_FALSE_NEGATIVE']:
                 self.test_result = 'negative'
             else:
                 assert self.infection_timestamp <= city.env.timestamp, \
