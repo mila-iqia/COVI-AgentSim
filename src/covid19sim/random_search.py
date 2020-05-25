@@ -139,7 +139,7 @@ def fill_template(template_str, conf):
         mem=mem,
         gres=gres,
         time=time,
-        log=log,
+        slurm_log=slurm_log,
         env_name=env_name,
         code_loc=code_loc,
         weights=weights,
