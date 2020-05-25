@@ -392,10 +392,16 @@ class City:
 
     def initialize_humans(self, human_type):
         """
-        allocate humans to houses such that (unsolved)
-        1. average number of residents in a house is (approx.) 2.6
-        2. not all residents are below 15 years of age
-        3. age occupancy distribution follows HUMAN_DSITRIBUTION.residence_preference.house_size
+        `Human`s are created based on the statistics captured in HUMAN_DSITRIBUTION. Age distribution is specified via 'p'.
+        SMARTPHONE_OWNER_FRACTION_BY_AGE defines the fraction of population in the age bin that owns smartphone.
+        APP_UPTAKE is the percentage of people in an age-bin who will adopt an app. (source: refer comments in core.yaml)
+
+        Profession of `Human` is determined via `profession_profile` in each age bin. (no-source)
+
+        Allocate humans to houses such that (unsolved)
+            1. average number of residents in a house is (approx.) 2.5 (enforced via HOUSE_SIZE_PREFERENCE in core.yaml)
+            2. not all residents are below MIN_AVG_HOUSE_AGE years of age
+            3. age occupancy distribution follows HUMAN_DSITRIBUTION.residence_preference.house_size (no-source)
 
         current implementation is an approximate heuristic
 
@@ -432,6 +438,7 @@ class City:
 
             senior_residency_preference = specs['residence_preference']['senior_residency']
 
+            # draw professions randomly for everyone
             professions = ['healthcare', 'school', 'others', 'retired']
             p = [specs['profession_profile'][x] for x in professions]
             profession = self.rng.choice(professions, p=p, size=n)
@@ -456,10 +463,11 @@ class City:
                 else:
                     has_app = False
 
-                # residence
+                # select if residence is one of senior residency
                 res = None
                 if self.rng.random() < senior_residency_preference:
                     res = self.rng.choice(self.senior_residencys)
+
                 # workplace
                 if profession[i] == "healthcare":
                     workplace = self.rng.choice(self.hospitals + self.senior_residencys)
@@ -493,12 +501,14 @@ class City:
                         )
                     )
 
-        # assign houses
+        # assign houses; above only assigns senior residence
         # stores tuples - (location, current number of residents, maximum number of residents allowed)
         remaining_houses = []
         for human in self.humans:
             if human.household is not None:
                 continue
+
+            # if all of the available houses are at a capacity, create a new one with predetermined capacity
             if len(remaining_houses) == 0:
                 cap = self.rng.choice(range(1,6), p=self.conf.get("HOUSE_SIZE_PREFERENCE"), size=1)
                 x = self.create_location(
@@ -509,7 +519,7 @@ class City:
 
                 remaining_houses.append((x, cap))
 
-            # get_best_match
+            # if there are houses that are ready to accommodate human, find a best match
             res = None
             for  c, (house, n_vacancy) in enumerate(remaining_houses):
                 new_avg_age = (human.age + sum(x.age for x in house.residents))/(len(house.residents) + 1)
@@ -520,6 +530,8 @@ class City:
                         remaining_houses = remaining_houses[:c] + remaining_houses[c+1:]
                     break
 
+            # if there was no best match because of the check on MIN_AVG_HOUSE_AGE, allocate a new house based on
+            # residence_preference of that age bin
             if res is None:
                 for i, (l,u) in enumerate(self.conf.get("HUMAN_DISTRIBUTION").keys()):
                     if l <= human.age < u:
