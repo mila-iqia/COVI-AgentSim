@@ -2,7 +2,7 @@
 Contains a class to track several simulation metrics.
 It is initialized as an attribute of the city and called at several places in `Human`.
 """
-import copy
+import os
 import datetime
 import math
 import typing
@@ -924,5 +924,6 @@ class Tracker(object):
         data['infection_monitor'] = self.infection_monitor
         data['infector_infectee_update_messages'] = self.infector_infectee_update_messages
 
+        os.makedirs("logs3", exist_ok=True)
         with open(f"logs3/{self.filename}", 'wb') as f:
             dill.dump(data, f)
