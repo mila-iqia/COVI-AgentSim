@@ -643,7 +643,7 @@ class City:
             backup_human_init_risks = {}  # backs up human risks before any update takes place
 
             # iterate over humans, and if it's their timeslot, then update their state
-            for human in self.humans:  # we could shuffle humans here? for same-timeslot-updates?
+            for human in self.humans:
                 if self.env.timestamp.hour not in human.time_slots:
                     continue
                 human.initialize_daily_risk(current_day)

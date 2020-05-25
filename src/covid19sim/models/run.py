@@ -13,7 +13,6 @@ from joblib import Parallel, delayed
 import numpy as np
 
 from covid19sim.server_utils import InferenceClient, InferenceEngineWrapper, proc_human_batch
-from covid19sim.utils import proba_to_risk_fn
 from covid19sim.frozen.helper import conditions_to_np, encode_age, encode_sex, \
     encode_test_result, symptoms_to_np
 from covid19sim.frozen.message_utils import UpdateMessage
