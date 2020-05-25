@@ -4,7 +4,7 @@
 {cpu}              # Nb. of cpus (max(unkillable)=4, max(main)=6)
 {mem}              # Require memory (16GB default should be enough)
 {time}             # The job will run for 4 hours
-{log}              # Write the logs in /network/tmp1/<user>/covi-slurm-%j.out
+{slurm_log}        # Write the logs in /network/tmp1/<user>/covi-slurm-%j.out
 {gres}             # May use GPU to get allocation
 
 module load anaconda/3
@@ -13,11 +13,14 @@ source $CONDA_ACTIVATE
 
 conda deactivate
 conda activate {env_name} # covid is default
-cd {code_loc} # where is simulator's code? default: $HOME/simulator/src/covid19sim/
+
+# where is simulator's code? default: $HOME/simulator/src/covid19sim/
+cd {code_loc}
 
 echo $(pwd)
+echo $(which python)
 
-python server_bootstrap.py -e /network/tmp1/weissmar/FRESH-SNOWFLAKE-224B -w 4 &
+python server_bootstrap.py -e {weights} -w 4 &
 
 hydra_args=$@
 

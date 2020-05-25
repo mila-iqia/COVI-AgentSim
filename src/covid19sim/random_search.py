@@ -104,8 +104,9 @@ def fill_template(template_str, conf):
     mem = conf.get("mem", 16)
     gres = conf.get("gres", "")
     time = conf.get("time", "4:00:00")
-    log = conf.get("log", f"/network/tmp1/{user}/covi-slurm-%j.out")
+    slurm_log = conf.get("slurm_log", f"/network/tmp1/{user}/covi-slurm-%j.out")
     env_name = conf.get("env_name", "covid")
+    weights = conf.get("weights", f"/network/tmp1/{user}/FRESH-SNOWFLAKE-224B")
     code_loc = conf.get("code_loc", str(Path(home) / "simulator/src/covid19sim/"))
 
     if "dev" in conf and conf["dev"]:
@@ -118,9 +119,10 @@ def fill_template(template_str, conf):
                     "  {:10}: {}".format("mem", mem),
                     "  {:10}: {}".format("gres", gres),
                     "  {:10}: {}".format("time", time),
-                    "  {:10}: {}".format("log", log),
+                    "  {:10}: {}".format("slurm_log", slurm_log),
                     "  {:10}: {}".format("env_name", env_name),
                     "  {:10}: {}".format("code_loc", code_loc),
+                    "  {:10}: {}".format("weights", weights),
                 ]
             )
         )
@@ -130,7 +132,7 @@ def fill_template(template_str, conf):
     mem = f"#SBATCH --mem={mem}GB"
     gres = f"#SBATCH --gres={gres}" if gres else ""
     time = f"#SBATCH --time={time}"
-    log = f"#SBATCH -o {log}"
+    slurm_log = f"#SBATCH -o {slurm_log}"
     return template_str.format(
         partition=partition,
         cpu=cpu,
@@ -140,6 +142,7 @@ def fill_template(template_str, conf):
         log=log,
         env_name=env_name,
         code_loc=code_loc,
+        weights=weights,
     )
 
 
@@ -170,17 +173,18 @@ def main(conf: DictConfig) -> None:
 
     # These will be filtered out when passing arguments to run.py
     RANDOM_SEARCH_SPECIFIC_PARAMS = {
-        "n_search",
-        "dev",
-        "exp_file",
-        "partition",
-        "cpus-per-task",
-        "mem",
-        "time",
-        "log",
-        "gres",
-        "env_name",
-        "code_loc",
+        "n_search",  # number of random iterations
+        "dev",  # dev-mode: print stuff, don't run them
+        "exp_file",  # what experimental parametrization
+        "partition",  # sbatch partition to use
+        "cpus-per-task",  # sbatch number of cpus
+        "mem",  # sbatch memory to request
+        "time",  # sbatch job upper bound on duration
+        "slurm_log",  # sbatch logs destination
+        "gres",  # sbatch gres arg, may be nothing or gpu:1
+        "env_name",  # conda environment to load
+        "code_loc",  # where to find the source code, will cd there
+        "weights",  # where to find the transformer's weights. default is /network/tmp1/<user>/FRESH-SNOWFLAKE-224B
     }
 
     # move back to original directory because hydra moved
@@ -214,7 +218,7 @@ def main(conf: DictConfig) -> None:
         # fill-in template with `partition` `time` `code_loc` etc. from command-line overwrites
         job_str = fill_template(template_job_str, conf)
         # get temporary file to write sbatch run file
-        tmp = Path(tempfile.NamedTemporaryFile(suffix='.sh').name)
+        tmp = Path(tempfile.NamedTemporaryFile(suffix=".sh").name)
         try:
             # create temporary sbatch file
             with tmp.open("w") as f:
