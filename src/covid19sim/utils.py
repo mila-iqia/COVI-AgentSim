@@ -1727,10 +1727,11 @@ def parse_configuration(conf):
     elif not isinstance(conf, dict):
         raise ValueError("Unknown configuration type {}".format(type(conf)))
 
-    if "APP_USERS_FRACTION_BY_AGE" in conf:
-        conf["APP_USERS_FRACTION_BY_AGE"] = {
+    conf = OmegaConf.to_container(conf, resolve=True)
+    if "SMARTPHONE_OWNER_FRACTION_BY_AGE" in conf:
+        conf["SMARTPHONE_OWNER_FRACTION_BY_AGE"] = {
             tuple(int(i) for i in k.split("-")): v
-            for k, v in conf["APP_USERS_FRACTION_BY_AGE"].items()
+            for k, v in conf["SMARTPHONE_OWNER_FRACTION_BY_AGE"].items()
         }
 
     if "HUMAN_DISTRIBUTION" in conf:
@@ -1770,10 +1771,10 @@ def dump_conf(_conf, path):
         path (str | Path): where to dump the resulting YAML
     """
     conf = deepcopy(_conf)
-    if "APP_USERS_FRACTION_BY_AGE" in conf:
-        conf["APP_USERS_FRACTION_BY_AGE"] = {
+    if "SMARTPHONE_OWNER_FRACTION_BY_AGE" in conf:
+        conf["SMARTPHONE_OWNER_FRACTION_BY_AGE"] = {
             "-".join([str(i) for i in k]): v
-            for k, v in conf["APP_USERS_FRACTION_BY_AGE"].items()
+            for k, v in conf["SMARTPHONE_OWNER_FRACTION_BY_AGE"].items()
         }
 
     if "HUMAN_DISTRIBUTION" in conf:
@@ -1794,6 +1795,36 @@ def dump_conf(_conf, path):
 
     with path.open("w") as f:
         yaml.safe_dump(conf, f)
+
+
+def relativefreq2absolutefreq(
+        bins_fractions: dict,
+        n_elements: int,
+        rng
+) -> dict:
+    """
+    Convert relative frequencies to absolute frequencies such that the number of elements sum to n_entity.
+    First, we assign `math.floor(fraction*n_entity)` to each bin and then, we assign the remaining elements randomly
+    until we have `n_entity`.
+    Args:
+        bins_fractions (dict): each key is the bin description and each value is the relative frequency.
+        n_elements (int): the total number of elements to assign.
+        rng: a random generator for randomly assigning the remaining elements
+    Returns:
+        histogram (dict): each key is the bin description and each value is the absolute frequency.
+    """
+    histogram = {}
+    for my_bin, fraction in bins_fractions.items():
+        histogram[my_bin] = math.floor(fraction * n_elements)
+    while np.sum(list(histogram.values())) < n_elements:
+        bins = list(histogram.keys())
+        random_bin = rng.choice(len(bins))
+        histogram[bins[random_bin]] += 1
+
+    assert np.sum(list(histogram.values())) == n_elements
+
+    return histogram
+
 
 def get_git_revision_hash():
     """Get current git hash the code is run from

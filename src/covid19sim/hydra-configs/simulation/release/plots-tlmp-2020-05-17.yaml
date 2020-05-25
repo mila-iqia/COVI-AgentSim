@@ -22,7 +22,7 @@ INTERVENTION_DAY: 5
 INTERVENTION: "Tracing"
 PERCENT_FOLLOW: 1.0
 # NOTE: HAS_APP params are only used when an app based INTERVENTION = "Tracing" is used
-P_HAS_APP: 0.66
+APP_UPTAKE: 0.66
 GLOBAL_MOBILITY_SCALING_FACTOR: .3
 
 # PATHS
@@ -213,6 +213,21 @@ HUMAN_DISTRIBUTION: # this is parsed into tuple keys in utils.py/parse_configura
 P_CAREFUL_PERSON: 0.3 # &carefulness
 P_TRAVELLED_INTERNATIONALLY_RECENTLY: 0.05
 
+# Source: COVID-19 individual-based model with instantaneous contract tracing (Table 9)
+SMARTPHONE_OWNER_FRACTION_BY_AGE:
+  {
+      '0-9': 0.0,
+      '10-19': 0.90,
+      '20-29': 0.96,
+      '30-39': 0.95,
+      '40-49': 0.91,
+      '50-59': 0.81,
+      '60-69': 0.64,
+      '70-79': 0.41,
+      '80-200': 0.27,
+  }
+
+# Old version, now it has been replaced by SMARTPHONE_OWNER_FRACTION_BY_AGE
 # https://science.sciencemag.org/content/368/6491/eabb6936; Table 9
 APP_USERS_FRACTION_BY_AGE: # this is parsed into tuple keys in utils.py/parse_configuration e.g. "1-15" => (1, 15)
   {

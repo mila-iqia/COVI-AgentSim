@@ -26,7 +26,7 @@ INTERVENTION_DAY: -1
 # NOTE: INTERVENTION is only valid if INTERVENTION_DAY >= 0
 PERCENT_FOLLOW: 1.0
 # NOTE: HAS_APP params are only used when an app based INTERVENTION = "Tracing" is used
-P_HAS_APP: -1.0
+APP_UPTAKE: -1.0
 
 REC_LEVEL_THRESHOLDS: [1, 3, 5] # how to convert risk_levels to rec_levels
 MAX_RISK_LEVEL: 15 # maximum allowed risk_level => assert risk_level in range(0, MAX_RISK_LEVEL + 1)

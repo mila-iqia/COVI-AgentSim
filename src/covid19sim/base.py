@@ -9,7 +9,7 @@ from collections import defaultdict, Counter
 
 import simpy
 
-from covid19sim.utils import compute_distance, _get_random_area
+from covid19sim.utils import compute_distance, _get_random_area, relativefreq2absolutefreq
 from covid19sim.track import Tracker
 from covid19sim.interventions import *
 from covid19sim.models.run import batch_run_timeslot_heavy_jobs
@@ -413,16 +413,21 @@ class City:
         init_infected = math.ceil(self.init_percent_sick * self.n_people)
         chosen_infected = set(self.rng.choice(self.n_people, init_infected, replace=False).tolist())
 
+        age_histogram = relativefreq2absolutefreq(
+            bins_fractions={age_bin: specs['p'] for age_bin, specs in self.conf.get('HUMAN_DISTRIBUTION').items()},
+            n_elements=self.n_people,
+            rng=self.rng
+        )
+
         # app users
-        all_has_app = self.conf.get('P_HAS_APP') < 0
-        n_apps = self.conf.get('P_HAS_APP') * self.n_people if self.conf.get('P_HAS_APP') > 0 else self.n_people
+        all_has_app = self.conf.get('APP_UPTAKE') < 0
         n_apps_per_age = {
-            k:math.ceil(v * n_apps)
-            for k,v in self.conf.get("APP_USERS_FRACTION_BY_AGE").items()
+            k: math.ceil(age_histogram[k]*v*self.conf.get('APP_UPTAKE'))
+            for k, v in self.conf.get("SMARTPHONE_OWNER_FRACTION_BY_AGE").items()
         }
 
         for age_bin, specs in self.conf.get("HUMAN_DISTRIBUTION").items():
-            n = math.ceil(specs['p'] * self.n_people)
+            n = age_histogram[age_bin]
             ages = self.rng.randint(*age_bin, size=n)
 
             senior_residency_preference = specs['residence_preference']['senior_residency']
@@ -431,11 +436,11 @@ class City:
             p = [specs['profession_profile'][x] for x in professions]
             profession = self.rng.choice(professions, p=p, size=n)
 
-            # select who should have app based on self.conf's APP_USERS_FRACTION_BY_AGE
+            # select who should have app based on self.conf's SMARTPHONE_OWNER_FRACTION_BY_AGE
             chosen_app_user_bin = []
             for my_age in ages:
-                for x, frac in self.conf.get("APP_USERS_FRACTION_BY_AGE").items():
-                    if x[0] <= my_age <= x[1]:
+                for x, frac in self.conf.get("SMARTPHONE_OWNER_FRACTION_BY_AGE").items():
+                    if x[0] <= my_age < x[1]:
                         chosen_app_user_bin.append(x)
                         break
 

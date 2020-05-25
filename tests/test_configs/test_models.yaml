@@ -12,7 +12,7 @@ USE_ORACLE : False
 INTERVENTION_DAY : 10
 INTERVENTION : "Tracing"
 PERCENT_FOLLOW : 1.0
-P_HAS_APP : 0.5
+APP_UPTAKE : 0.5
 ABSOLUTE_P_HAS_APP : False # If False, we modulate P_HAS_APP with carefulness and age
 GLOBAL_MOBILITY_SCALING_FACTOR : 1
 
