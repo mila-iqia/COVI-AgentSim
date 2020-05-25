@@ -40,6 +40,15 @@ def sample_param(sample_dict):
 
 
 def load_search_conf(path):
+    """
+    Load a yaml file in `path`
+
+    Args:
+        path (str | pathlib.Path): path to yaml file
+
+    Returns:
+        any: python native variable loaded by PyYaml
+    """
     path = Path(path)
     assert path.exists()
     assert path.suffix in {".yaml", ".yml"}
@@ -48,6 +57,16 @@ def load_search_conf(path):
 
 
 def sample_search_conf(exp):
+    """
+    Samples parameters parametrized in `exp`: should be a dict with
+    values which fit `sample_params(dic)`'s API
+
+    Args:
+        exp (dict): experiment's parametrization
+
+    Returns:
+        dict: sampled configuration
+    """
     conf = {}
     for k, v in exp.items():
         conf[k] = sample_param(v)
@@ -55,11 +74,28 @@ def sample_search_conf(exp):
 
 
 def load_template():
+    """
+    Get the template string to format according to arguments
+
+    Returns:
+        str: template string full of "{variable_name}"
+    """
     with (Path(__file__).parent / "job_template.txt").open("r") as f:
         return f.read()
 
 
 def fill_template(template_str, conf):
+    """
+    Formats the template_job_str with variables from the conf dict,
+    which is a sampled experiment
+
+    Args:
+        template_str (str): sbatch template
+        conf (dict): sbatch parameters
+
+    Returns:
+        str: formated template
+    """
     user = os.environ.get("USER")
     home = os.environ.get("HOME")
 
@@ -123,6 +159,14 @@ def main(conf: DictConfig) -> None:
     For instance you can change init_percent_sick
 
     $ python random_search.py exp_file=experiment n_search=20 init_percent_sick=0.1
+
+    NOTE: you may also pass arguments overridding the default `sbatch` job's
+    parametrization like partition, gres, code_loc (=where is the simulator's code),
+    env_name (= what conda env to load). For instance:
+
+    $ python random_search.py partition=unkillable gres=gpu:1 env_name=covid-env\
+                              n_search=20 init_percent_sick=0.1
+
     """
 
     # These will be filtered out when passing arguments to run.py
@@ -200,7 +244,6 @@ def main(conf: DictConfig) -> None:
             print("-" * 80)
             print("-" * 80)
         finally:
-            print()
             # remove trailing sbatch file
             os.remove(tmp)
 
