@@ -94,7 +94,7 @@ class ClusteringCodePaths(unittest.TestCase):
                 continue
 
             with self.subTest(cluster_algo_type=cluster_algo_type):
-                for oa_i in range(a_i - 1):
+                for oa_i in range(a_i):
                     self.assertEqual(hashlib.md5(pickle.dumps(model_before_intervention_events)).hexdigest(),
                                      hashlib.md5(pickle.dumps(before_intervention_events[oa_i])).hexdigest(),
                                      msg=f"Before intervention day {self.config['INTERVENTION_DAY']}, "
