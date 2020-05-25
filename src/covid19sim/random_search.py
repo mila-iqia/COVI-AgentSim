@@ -100,7 +100,7 @@ def fill_template(template_str, conf):
     home = os.environ.get("HOME")
 
     partition = conf.get("partition", "main")
-    cpu = conf.get("cpus-per-task", 6)
+    cpu = conf.get("cpus", 6)
     mem = conf.get("mem", 16)
     gres = conf.get("gres", "")
     time = conf.get("time", "4:00:00")
@@ -177,7 +177,7 @@ def main(conf: DictConfig) -> None:
         "dev",  # dev-mode: print stuff, don't run them
         "exp_file",  # what experimental parametrization
         "partition",  # sbatch partition to use
-        "cpus-per-task",  # sbatch number of cpus
+        "cpus",  # sbatch number of cpus
         "mem",  # sbatch memory to request
         "time",  # sbatch job upper bound on duration
         "slurm_log",  # sbatch logs destination
@@ -232,7 +232,7 @@ def main(conf: DictConfig) -> None:
                     command += f" {k}={v}"
             # dev-mode: don't actually run the command
             if "dev" in conf and conf["dev"]:
-                print(">>> ", command)
+                print("\n>>> ", command, end="\n\n")
                 print(str(tmp))
                 print("." * 50)
                 print(job_str)

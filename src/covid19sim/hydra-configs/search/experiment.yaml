@@ -7,6 +7,7 @@ tracing_method: oracle
 run_type: collect-all
 n_people: 1000
 simulation_days: 22
+INTERVENTION_DAY: 5
 
 P_HAS_APP:
   sample: uniform # uniform in range:

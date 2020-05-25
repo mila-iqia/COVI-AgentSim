@@ -55,17 +55,18 @@ def main(conf: DictConfig) -> None:
     # ---------------------------------
     # -----  Filter-Out Warnings  -----
     # ---------------------------------
+    import warnings
+    warnings.filterwarnings("ignore")
     if conf["tune"]:
         print("Using Tune")
-        import warnings
-
-        warnings.filterwarnings("ignore")
         outfile = None
 
     # ----------------------------
     # -----  Run Simulation  -----
     # ----------------------------
     conf["outfile"] = outfile
+
+    print("RISK_MODEL ==> ", conf.get('RISK_MODEL'))
 
     city, monitors, tracker = simulate(
         n_people=conf["n_people"],
