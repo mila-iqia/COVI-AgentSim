@@ -1191,13 +1191,8 @@ class Human(object):
                 )
             )):
                 if 0 <= (self.env.timestamp - self.test_results[0][1]).days < self.conf["TEST_INTERVAL"]:
-                        warnings.warn(
-                            f"{self.name}'s last test time is less than {self.conf['TEST_INTERVAL']} days. "
-                            "Will not retest human today. "
-                            f"Current day {self.env.timestamp}, "
-                            f"Last test time {self.test_results[0][1]}",
-                            RuntimeWarning
-                        )
+                    # last test was performed fairly recently, we will not retest that person today
+                    pass
                 # make testing a function of age/hospitalization/travel
                 elif self.get_tested(city):
                     Event.log_test(self, self.env.timestamp)
