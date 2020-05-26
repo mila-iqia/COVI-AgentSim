@@ -120,7 +120,7 @@ def fill_intel_template(template_str, conf):
 
 def fill_mila_template(template_str, conf):
     """
-    Formats the template_job_str with variables from the conf dict,
+    Formats the template_str with variables from the conf dict,
     which is a sampled experiment
 
     Args:
@@ -251,7 +251,7 @@ def main(conf: DictConfig) -> None:
     # override experimental parametrization with the commandline conf
     conf.update(overrides)
     infra = conf.get("infra", "mila")
-    template_job_str = load_template(infra)
+    template_str = load_template(infra)
 
     home = os.environ["HOME"]
 
@@ -263,11 +263,11 @@ def main(conf: DictConfig) -> None:
         # sample parameters
         opts = sample_search_conf(conf)
         # fill-in template with `partition` `time` `code_loc` etc. from command-line overwrites
-        job_str = fill_template(template_job_str, conf)
         # get temporary file to write sbatch run file
         hydra_args = get_hydra_args(opts, RANDOM_SEARCH_SPECIFIC_PARAMS)
         if infra == "mila":
             print("\nJOB", i)
+            job_str = fill_mila_template(template_str, conf)
             tmp = Path(tempfile.NamedTemporaryFile(suffix=".sh").name)
 
             # create temporary sbatch file
@@ -293,7 +293,7 @@ def main(conf: DictConfig) -> None:
 
         if infra == "intel":
             if i == 0:
-                intel_str = job_str
+                intel_str = fill_intel_template(template_str, opts)
             intel_str += "\n{}\n".format("python run.py " + hydra_args)
 
     if infra == "intel":
