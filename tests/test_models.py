@@ -236,7 +236,7 @@ class ModelsTest(unittest.TestCase):
                             # Symptoms:
                             # ['aches', 'cough', 'fatigue', 'fever', 'gastro', 'loss_of_taste',
                             #  'mild', 'moderate', 'runny_nose', 'severe', 'trouble_breathing']
-                            self.assertEqual(observed['reported_symptoms'].shape, (14, 28))
+                            self.assertEqual(observed['reported_symptoms'].shape, (14, 27))
                             if observed['candidate_encounters'].size:
                                 stats['humans'][h_i]['candidate_encounters_cnt'] += 1
                                 # candidate_encounters[:, 0] is the other human's signature id
@@ -269,7 +269,7 @@ class ModelsTest(unittest.TestCase):
                             # Symptoms:
                             # ['aches', 'cough', 'fatigue', 'fever', 'gastro', 'loss_of_taste',
                             #  'mild', 'moderate', 'runny_nose', 'severe', 'trouble_breathing']
-                            self.assertEqual(unobserved['true_symptoms'].shape, (14, 28))
+                            self.assertEqual(unobserved['true_symptoms'].shape, (14, 27))
                             # Has been exposed or not
                             self.assertIn(unobserved['is_exposed'], (0, 1))
                             if unobserved['exposure_day'] is not None:
