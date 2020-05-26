@@ -241,6 +241,7 @@ def main(conf: DictConfig) -> None:
         "code_loc",  # where to find the source code, will cd there
         "weights",  # where to find the transformer's weights. default is /network/tmp1/<user>/FRESH-SNOWFLAKE-224B
         "infra",  # using Mila or Intel cluster?
+        "now_str", # naming scheme
     }
 
     # move back to original directory because hydra moved
@@ -260,6 +261,7 @@ def main(conf: DictConfig) -> None:
     )
     # override experimental parametrization with the commandline conf
     conf.update(overrides)
+    conf["now_str"] = now_str()
     infra = conf.get("infra", "mila")
     template_str = load_template(infra)
 
@@ -303,7 +305,6 @@ def main(conf: DictConfig) -> None:
 
         if infra == "intel":
             if i == 0:
-                conf["now_str"] = now_str()
                 intel_str = fill_intel_template(template_str, opts)
             intel_str += "\n{}\n".format("python run.py " + hydra_args)
 
