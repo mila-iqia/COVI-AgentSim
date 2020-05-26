@@ -77,16 +77,24 @@ LOCATION_DISTRIBUTION:
 
 # house_size: 1 2 3 4 5
 OTHERS_WORKPLACE_CHOICE: [1.0, 0.0, 0.0]
-HOUSE_SIZE_PREFERENCE: [0.30, 0.40, 0.1, 0.1, 0.1]
-HUMAN_DISTRIBUTION: # this is parsed into tuple keys in utils.py/parse_configuration e.g. "1-15" => (1, 15)
+HOUSE_SIZE_PREFERENCE: [0.30, 0.30, 0.15, 0.15, 0.1]
+
+# The group age proportion (p) are taken from Statistics Canada
+# ref: https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1710000501
+HUMAN_DISTRIBUTION: # this is parsed into tuple keys in utils.py/parse_configuration e.g. "0-10" => (0, 10)
   {
     "0-10":
       {
         "p": 0.106,
         "residence_preference":
-          { "house_size": [0.0, 0.2, 0.3, 0.3, 0.2], "senior_residency": 0.0 },
+          {
+            "house_size": [0.0, 0.2, 0.3, 0.3, 0.2],
+            "senior_residency": 0.0,
+          },
         "profession_profile":
-          { "healthcare": 0.0, "school": 1.0, "others": 0.0, "retired": 0.0 },
+          {
+              "healthcare": 0.0, "school": 1.0, "others": 0.0, "retired": 0.0
+          },
       },
     "10-20":
       {
@@ -97,7 +105,9 @@ HUMAN_DISTRIBUTION: # this is parsed into tuple keys in utils.py/parse_configura
             "senior_residency": 0.0,
           },
         "profession_profile":
-          { "healthcare": 0.0, "school": 0.9, "others": 0.1, "retired": 0.0 },
+          {
+            "healthcare": 0.0, "school": 0.9, "others": 0.1, "retired": 0.0
+          },
       },
     "20-30":
       {
@@ -108,7 +118,9 @@ HUMAN_DISTRIBUTION: # this is parsed into tuple keys in utils.py/parse_configura
             "senior_residency": 0.0,
           },
         "profession_profile":
-          { "healthcare": 0.1, "school": 0.1, "others": 0.8, "retired": 0.0 },
+          {
+            "healthcare": 0.1, "school": 0.1, "others": 0.8, "retired": 0.0
+          },
       },
     "30-40":
       {
@@ -145,7 +157,9 @@ HUMAN_DISTRIBUTION: # this is parsed into tuple keys in utils.py/parse_configura
             "senior_residency": 0.0,
           },
         "profession_profile":
-          { "healthcare": 0.1, "school": 0.0, "others": 0.85, "retired": 0.05 },
+          {
+            "healthcare": 0.1, "school": 0.0, "others": 0.85, "retired": 0.05
+          },
       },
     "60-70":
       {
@@ -156,7 +170,9 @@ HUMAN_DISTRIBUTION: # this is parsed into tuple keys in utils.py/parse_configura
                 "senior_residency": 0.005,
             },
           "profession_profile":
-            { "healthcare": 0.1, "school": 0.0, "others": 0.8, "retired": 0.1 },
+            {
+              "healthcare": 0.1, "school": 0.0, "others": 0.8, "retired": 0.1
+            },
       },
     "70-80":
       {
@@ -167,7 +183,9 @@ HUMAN_DISTRIBUTION: # this is parsed into tuple keys in utils.py/parse_configura
                 "senior_residency": 0.9,
             },
           "profession_profile":
-            { "healthcare": 0.0, "school": 0.0, "others": 0.1, "retired": 0.9 },
+            {
+                "healthcare": 0.0, "school": 0.0, "others": 0.1, "retired": 0.9
+            },
       },
     "80-150":
       {
@@ -178,7 +196,9 @@ HUMAN_DISTRIBUTION: # this is parsed into tuple keys in utils.py/parse_configura
             "senior_residency": 0.35, # https://www12.statcan.gc.ca/census-recensement/2016/as-sa/98-200-x/2016004/98-200-x2016004-eng.cfm?wbdisable=true
           },
         "profession_profile":
-          { "healthcare": 0.0, "school": 0.0, "others": 0.1, "retired": 0.9 },
+          {
+            "healthcare": 0.0, "school": 0.0, "others": 0.1, "retired": 0.9
+          },
       },
   }
 
@@ -187,6 +207,7 @@ P_CAREFUL_PERSON: 0.3 # &carefulness
 P_TRAVELLED_INTERNATIONALLY_RECENTLY: 0.05
 
 # Source: COVID-19 individual-based model with instantaneous contract tracing (Table 9)
+# TODO: link to the document
 SMARTPHONE_OWNER_FRACTION_BY_AGE:
   {
       '0-10': 0.0,
