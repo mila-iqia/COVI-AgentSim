@@ -111,7 +111,10 @@ def fill_intel_template(template_str, conf):
         print(
             "Using:\n"
             + "\n".join(
-                ["  {:10}: {}".format(env_name), "  {:10}: {}".format(code_loc)]
+                [
+                    "  {:10}: {}".format("env_name", env_name),
+                    "  {:10}: {}".format("code_loc", code_loc),
+                ]
             )
         )
 
