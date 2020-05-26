@@ -181,9 +181,11 @@ def fill_mila_template(template_str, conf):
 
 
 def get_hydra_args(opts, exclude=set()):
+    hydra_args = ""
     for k, v in opts.items():
         if k not in exclude:
-            command += f" {k}={v}"
+            hydra_args += f" {k}={v}"
+    return hydra_args
 
 
 def printlines():
