@@ -1,37 +1,30 @@
 import datetime
 import os
-import tempfile
-from pathlib import Path
 from scipy.optimize import curve_fit
 from scipy.stats import lognorm, norm, gamma
-from pathlib import Path
 import yaml
 from omegaconf import OmegaConf
 import numpy as np
 
-import matplotlib
 import matplotlib.pyplot as plt
-from matplotlib.lines import Line2D
 
-from covid19sim.base import City, EmptyCity, Env
-from covid19sim.monitors import EventMonitor, SEIRMonitor, TimeMonitor
+import covid19sim
+from covid19sim.base import City, Env
 from covid19sim.simulator import Human
-from covid19sim.constants import SECONDS_PER_DAY, SECONDS_PER_HOUR
 from covid19sim.utils import parse_configuration
 
 
 def load_config():
-    HYDRA_PATH = (
-        Path().parent.parent / "src/covid19sim/hydra-configs"
-    ).resolve()
+    HYDRA_PATH = os.path.dirname(covid19sim.__file__) + "/hydra-configs/simulation/"
+    assert os.path.isdir(HYDRA_PATH)
 
-    config = HYDRA_PATH / "config.yaml"
+    config_path = os.path.join(HYDRA_PATH, "config.yaml")
 
-    with config.open("r") as f:
-        defaults = yaml.safe_load(f)["defaults"]
+    with open(config_path, "r") as fd:
+        defaults = yaml.safe_load(fd)["defaults"]
 
     default_confs = [
-        OmegaConf.load(str(HYDRA_PATH / (d + ".yaml")))
+        OmegaConf.load(os.path.join(HYDRA_PATH, d + ".yaml"))
         for d in defaults
     ]
 
