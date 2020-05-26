@@ -7,10 +7,9 @@
 {slurm_log}        # Write the logs in /network/tmp1/<user>/covi-slurm-%j.out
 {gres}             # May use GPU to get allocation
 
+module purge
 module load anaconda/3
-
 source $CONDA_ACTIVATE
-
 conda deactivate
 conda activate {env_name} # covid is default
 
@@ -22,11 +21,11 @@ echo $(which python)
 
 python server_bootstrap.py -e {weights} -w 4 &
 
-hydra_args=$@
-
+hydra_args="$@"
 echo "received $hydra_args"
-
 echo "------------------------"
 
 
 HYDRA_FULL_ERROR=1 python run.py $hydra_args
+
+echo "Done."

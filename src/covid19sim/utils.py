@@ -1749,9 +1749,10 @@ def parse_configuration(conf):
     try:
         conf["GIT_COMMIT_HASH"] = get_git_revision_hash()
     except subprocess.CalledProcessError as e:
+        print(">> Contained git error:")
         print(e)
         print(">> Ignoring git hash")
-        conf["GIT_COMMIT_HASH"] = "N0_GIT"
+        conf["GIT_COMMIT_HASH"] = "NO_GIT"
     return conf
 
 

@@ -6,8 +6,16 @@ import hydra
 import numpy as np
 import yaml
 from omegaconf import DictConfig
+import datetime
 
 from covid19sim.utils import parse_search_configuration
+
+
+def intel_file_name():
+    now = str(datetime.datetime.now())
+    now = now.split(".")[0]
+    now = now.replace("-", "").replace(":", "").replace(" ", "_")
+    return f"covi_search_{now}.sh"
 
 
 def sample_param(sample_dict):
@@ -73,18 +81,44 @@ def sample_search_conf(exp):
     return conf
 
 
-def load_template():
+def load_template(infra):
     """
     Get the template string to format according to arguments
 
     Returns:
         str: template string full of "{variable_name}"
     """
-    with (Path(__file__).parent / "job_template.txt").open("r") as f:
-        return f.read()
+    if infra == "mila":
+        with (Path(__file__).parent / "job_scripts" / "mila_sbatch_template.sh").open(
+            "r"
+        ) as f:
+            return f.read()
+    if infra == "intel":
+        with (Path(__file__).parent / "job_scripts" / "intel_template.sh").open(
+            "r"
+        ) as f:
+            return f.read()
+    raise ValueError("Unknown infrastructure " + str(infra))
 
 
-def fill_template(template_str, conf):
+def fill_intel_template(template_str, conf):
+    home = os.environ.get("HOME")
+
+    env_name = conf.get("env_name", "covid")
+    code_loc = conf.get("code_loc", str(Path(home) / "simulator/src/covid19sim/"))
+
+    if "dev" in conf and conf["dev"]:
+        print(
+            "Using:\n"
+            + "\n".join(
+                ["  {:10}: {}".format(env_name), "  {:10}: {}".format(code_loc)]
+            )
+        )
+
+    return template_str.format(env_name=env_name, code_loc=code_loc)
+
+
+def fill_mila_template(template_str, conf):
     """
     Formats the template_job_str with variables from the conf dict,
     which is a sampled experiment
@@ -132,7 +166,7 @@ def fill_template(template_str, conf):
     mem = f"#SBATCH --mem={mem}GB"
     gres = f"#SBATCH --gres={gres}" if gres else ""
     time = f"#SBATCH --time={time}"
-    slurm_log = f"#SBATCH -o {slurm_log}"
+    slurm_log = f"#SBATCH -o {slurm_log}\n#SBATCH -e {slurm_log}"
     return template_str.format(
         partition=partition,
         cpu=cpu,
@@ -144,6 +178,17 @@ def fill_template(template_str, conf):
         code_loc=code_loc,
         weights=weights,
     )
+
+
+def get_hydra_args(opts, exclude=set()):
+    for k, v in opts.items():
+        if k not in exclude:
+            command += f" {k}={v}"
+
+
+def printlines():
+    print("=" * 80)
+    print("=" * 80)
 
 
 @hydra.main(config_path="hydra-configs/search/config.yaml", strict=False)
@@ -185,6 +230,7 @@ def main(conf: DictConfig) -> None:
         "env_name",  # conda environment to load
         "code_loc",  # where to find the source code, will cd there
         "weights",  # where to find the transformer's weights. default is /network/tmp1/<user>/FRESH-SNOWFLAKE-224B
+        "infra",  # using Mila or Intel cluster?
     }
 
     # move back to original directory because hydra moved
@@ -204,32 +250,32 @@ def main(conf: DictConfig) -> None:
     )
     # override experimental parametrization with the commandline conf
     conf.update(overrides)
+    infra = conf.get("infra", "mila")
+    template_job_str = load_template(infra)
 
-    template_job_str = load_template()
+    home = os.environ["HOME"]
 
     # run n_search jobs
-    print("-" * 80)
-    print("-" * 80)
+    printlines()
+    intel_str = ""
     for i in range(conf.get("n_search", 1)):
-        print("\nJOB", i)
 
         # sample parameters
         opts = sample_search_conf(conf)
         # fill-in template with `partition` `time` `code_loc` etc. from command-line overwrites
         job_str = fill_template(template_job_str, conf)
         # get temporary file to write sbatch run file
-        tmp = Path(tempfile.NamedTemporaryFile(suffix=".sh").name)
-        try:
+        hydra_args = get_hydra_args(opts, RANDOM_SEARCH_SPECIFIC_PARAMS)
+        if infra == "mila":
+            print("\nJOB", i)
+            tmp = Path(tempfile.NamedTemporaryFile(suffix=".sh").name)
+
             # create temporary sbatch file
             with tmp.open("w") as f:
                 f.write(job_str)
 
-            # Base command: sbatch tmp_file.sh
-            command = f"sbatch --export=NONE {str(tmp)}"
-            # Add covid19sim/run.py hydra arguments
-            for k, v in opts.items():
-                if k not in RANDOM_SEARCH_SPECIFIC_PARAMS:
-                    command += f" {k}={v}"
+            command = f"sbatch {str(tmp)} {hydra_args}"
+
             # dev-mode: don't actually run the command
             if "dev" in conf and conf["dev"]:
                 print("\n>>> ", command, end="\n\n")
@@ -239,15 +285,31 @@ def main(conf: DictConfig) -> None:
                 print("." * 50)
             else:
                 # not dev-mode: sbatch it!
-                process = subprocess.call(command.split())
+                process = subprocess.call(command.split(), cwd=home)
 
             # prints
             print()
-            print("-" * 80)
-            print("-" * 80)
-        finally:
-            # remove trailing sbatch file
-            os.remove(tmp)
+            printlines()
+
+        if infra == "intel":
+            if i == 0:
+                intel_str = job_str
+            intel_str += "\n{}\n".format("python run.py " + hydra_args)
+
+    if infra == "intel":
+        path = Path(home) / intel_file_name()
+        assert not path.exists()
+        if "dev" in conf and conf["dev"]:
+            print(str(path))
+            print("." * 50)
+            print(intel_str)
+            print("." * 50)
+
+        else:
+            command = f"sh {str(path)}"
+            with path.open("w") as f:
+                f.write(intel_str)
+            process = subprocess.call(command.split(), cwd=home)
 
 
 if __name__ == "__main__":
