@@ -107,7 +107,9 @@ def fill_intel_template(template_str, conf):
     env_name = conf.get("env_name", "covid")
     code_loc = conf.get("code_loc", str(Path(home) / "simulator/src/covid19sim/"))
     weights = conf.get("weights", str(Path(home) / "FRESH-SNOWFLAKE-224B/"))
-    server_out = f"server_{conf['now_str']}.out"
+    server_out = str(
+        Path(home) / "covi_search" / "logs" / f"server_{conf['now_str']}.out"
+    )
 
     if "dev" in conf and conf["dev"]:
         print(
@@ -306,7 +308,7 @@ def main(conf: DictConfig) -> None:
             intel_str += "\n{}\n".format("python run.py " + hydra_args)
 
     if infra == "intel":
-        path = Path(home) / f"covi_search{conf['now_str']}.sh"
+        path = Path(home) / "covi_search" / f"covi_search{conf['now_str']}.sh"
         assert not path.exists()
         if "dev" in conf and conf["dev"]:
             print(str(path))
@@ -315,10 +317,10 @@ def main(conf: DictConfig) -> None:
             print("." * 50)
 
         else:
-            command = f"sh {str(path)}"
+            command = f"sh {path.name}"
             with path.open("w") as f:
                 f.write(intel_str)
-            process = subprocess.call(command.split(), cwd=home)
+            process = subprocess.call(command.split(), cwd=str(path.parent))
 
 
 if __name__ == "__main__":
