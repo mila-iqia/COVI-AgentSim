@@ -470,7 +470,7 @@ def _proc_human(params, inference_engine):
     inference_result, risk_history = None, None
     if conf.get("USE_ORACLE"):
         # return ground truth infectiousnesses
-        risk_history = human['infectiousnesses']
+        risk_history = human.infectiousnesses
     elif conf.get("RISK_MODEL") == "transformer" and len(candidate_encounters):
         # no need to do actual inference if the cluster count is zero
         inference_result = inference_engine.infer(daily_output)
