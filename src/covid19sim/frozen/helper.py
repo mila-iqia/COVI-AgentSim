@@ -110,7 +110,7 @@ def conditions_to_np(conditions):
 
 def symptoms_to_np(all_symptoms, conf):
     rolling_window = conf.get("TRACING_N_DAYS_HISTORY")
-    symptoms_enc = np.zeros((rolling_window, len(SYMPTOMS_META) + 1))
+    symptoms_enc = np.zeros((rolling_window, len(SYMPTOMS_META)))
     for day, symptoms in zip(range(rolling_window), all_symptoms):
         for symptom in symptoms:
             symptoms_enc[day, SYMPTOMS_META[symptom]] = 1.
