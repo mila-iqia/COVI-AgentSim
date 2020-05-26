@@ -106,6 +106,7 @@ def fill_intel_template(template_str, conf):
 
     env_name = conf.get("env_name", "covid")
     code_loc = conf.get("code_loc", str(Path(home) / "simulator/src/covid19sim/"))
+    weights = conf.get("weights", str(Path(home) / "FRESH-SNOWFLAKE-224B/"))
 
     if "dev" in conf and conf["dev"]:
         print(
@@ -114,11 +115,12 @@ def fill_intel_template(template_str, conf):
                 [
                     "  {:10}: {}".format("env_name", env_name),
                     "  {:10}: {}".format("code_loc", code_loc),
+                    "  {:10}: {}".format("weights", weights),
                 ]
             )
         )
 
-    return template_str.format(env_name=env_name, code_loc=code_loc)
+    return template_str.format(env_name=env_name, code_loc=code_loc, weights=weights)
 
 
 def fill_mila_template(template_str, conf):
