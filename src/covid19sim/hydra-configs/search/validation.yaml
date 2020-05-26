@@ -1,0 +1,35 @@
+# `sample` can be
+# - `uniform` (from np.random.uniform(*from))
+# - `range` (np.choice(np.arange(*from)))
+# - `list` (np.choice(from))
+
+tracing_method: oracle
+run_type: collect-all
+n_people: 1000
+simulation_days: 22
+INTERVENTION_DAY: 5
+
+P_HAS_APP:
+  sample: cartesian # will be sampled in this order, in a cartesian product with any other "cartesian" sampling
+  from:
+    - 0.3
+    - 0.5
+    - 0.7
+
+P_CAREFUL_PERSON:
+  sample: cartesian # will be sampled in this order, in a cartesian product with any other "cartesian" sampling
+  from:
+    - 0.3
+    - 0.5
+    - 0.7
+
+GLOBAL_MOBILITY_SCALING_FACTOR:
+  sample: cartesian # will be sampled in this order, in a cartesian product with any other "cartesian" sampling
+  from:
+    - 0.3
+    - 0.5
+    - 0.7
+
+seed: # for sole reproducibility purposes
+  sample: range # uniform int choice
+  from: [0, 10]

@@ -7,7 +7,7 @@ import numpy as np
 import yaml
 from omegaconf import DictConfig
 import datetime
-
+import itertools
 from covid19sim.utils import parse_search_configuration
 
 
@@ -36,7 +36,9 @@ def sample_param(sample_dict):
     """
     if not isinstance(sample_dict, dict) or "sample" not in sample_dict:
         return sample_dict
-    if sample_dict["sample"] == "range":
+    if sample_dict["sample"] == "cartesian":
+        return "store_cartesian"
+    elif sample_dict["sample"] == "range":
         value = np.random.choice(np.arange(*sample_dict["from"]))
     elif sample_dict["sample"] == "list":
         value = np.random.choice(sample_dict["from"])
@@ -64,7 +66,16 @@ def load_search_conf(path):
         return yaml.safe_load(f)
 
 
-def sample_search_conf(exp):
+def sample_cartesians(cartesian_keys, exp, idx):
+    conf = {}
+    cartesian_values = [exp[key]["from"] for key in cartesian_keys]
+    product = list(itertools.product(*cartesian_values))
+    for k, v in zip(cartesian_keys, product[idx % len(product)]):
+        conf[k] = v
+    return conf
+
+
+def sample_search_conf(exp, idx=0):
     """
     Samples parameters parametrized in `exp`: should be a dict with
     values which fit `sample_params(dic)`'s API
@@ -76,8 +87,15 @@ def sample_search_conf(exp):
         dict: sampled configuration
     """
     conf = {}
+    cartesians = []
     for k, v in exp.items():
-        conf[k] = sample_param(v)
+        candidate = sample_param(v)
+        if candidate == "store_cartesian":
+            cartesians.append(k)
+        else:
+            conf[k] = candidate
+    if cartesians:
+        conf.update(sample_cartesians(cartesians, exp, idx))
     return conf
 
 
@@ -275,7 +293,7 @@ def main(conf: DictConfig) -> None:
     for i in range(conf.get("n_search", 1)):
 
         # sample parameters
-        opts = sample_search_conf(conf)
+        opts = sample_search_conf(conf, i)
         # fill-in template with `partition` `time` `code_loc` etc. from command-line overwrites
         # get temporary file to write sbatch run file
         hydra_args = get_hydra_args(opts, RANDOM_SEARCH_SPECIFIC_PARAMS)
