@@ -8,6 +8,6 @@ echo $(which python)
 echo "Stating Job"
 
 
-# python server_bootstrap.py -e {weights} -w 4 > {server_out} 2>&1 &
+gdb -ex r -ex "thread apply all bt" --args python server_bootstrap.py -e {weights} -w 4 > {server_out} 2>&1 &
 
 # DO NOT WRITE ANYTHIN AFTER THIS, PYTHON WILL APPEND TO THIS FILE
