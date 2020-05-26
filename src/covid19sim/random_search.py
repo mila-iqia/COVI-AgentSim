@@ -11,11 +11,11 @@ import datetime
 from covid19sim.utils import parse_search_configuration
 
 
-def intel_file_name():
+def now_str():
     now = str(datetime.datetime.now())
     now = now.split(".")[0]
     now = now.replace("-", "").replace(":", "").replace(" ", "_")
-    return f"covi_search_{now}.sh"
+    return now
 
 
 def sample_param(sample_dict):
@@ -107,6 +107,7 @@ def fill_intel_template(template_str, conf):
     env_name = conf.get("env_name", "covid")
     code_loc = conf.get("code_loc", str(Path(home) / "simulator/src/covid19sim/"))
     weights = conf.get("weights", str(Path(home) / "FRESH-SNOWFLAKE-224B/"))
+    server_out = f"server_{conf['now_str']}.out"
 
     if "dev" in conf and conf["dev"]:
         print(
@@ -300,11 +301,12 @@ def main(conf: DictConfig) -> None:
 
         if infra == "intel":
             if i == 0:
+                conf["now_str"] = now_str()
                 intel_str = fill_intel_template(template_str, opts)
             intel_str += "\n{}\n".format("python run.py " + hydra_args)
 
     if infra == "intel":
-        path = Path(home) / intel_file_name()
+        path = Path(home) / f"covi_search{conf['now_str']}.sh"
         assert not path.exists()
         if "dev" in conf and conf["dev"]:
             print(str(path))
