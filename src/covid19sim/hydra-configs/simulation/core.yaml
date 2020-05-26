@@ -77,10 +77,14 @@ LOCATION_DISTRIBUTION:
 
 # house_size: 1 2 3 4 5
 OTHERS_WORKPLACE_CHOICE: [1.0, 0.0, 0.0]
-HOUSE_SIZE_PREFERENCE: [0.30, 0.30, 0.15, 0.15, 0.1]
+
+# Household size distribution from Canada Statistics - Census profile 2016 (ref: https://tinyurl.com/qsf2q8d)
+HOUSE_SIZE_PREFERENCE: [0.282, 0.344, 0.152, 0.138, 0.084]
 
 # The group age proportion (p) are taken from Statistics Canada
 # ref: https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1710000501
+# ref: https://www12.statcan.gc.ca/census-recensement/2011/as-sa/98-312-x/2011003/fig/fig3_4-4-eng.cfm
+# TODO: senior_residency should be adjusted w.r.t. to the actual number of people per bin to combine them.
 HUMAN_DISTRIBUTION: # this is parsed into tuple keys in utils.py/parse_configuration e.g. "0-10" => (0, 10)
   {
     "0-10":
@@ -167,7 +171,7 @@ HUMAN_DISTRIBUTION: # this is parsed into tuple keys in utils.py/parse_configura
           "residence_preference":
             {
                 "house_size": [0.25, 0.5, 0.1, 0.05, 0.1],
-                "senior_residency": 0.005,
+                "senior_residency": 0.009,
             },
           "profession_profile":
             {
@@ -180,7 +184,7 @@ HUMAN_DISTRIBUTION: # this is parsed into tuple keys in utils.py/parse_configura
           "residence_preference":
             {
                 "house_size": [0.1, 0.6, 0.15, 0.05, 0.1],
-                "senior_residency": 0.9,
+                "senior_residency": 0.07,
             },
           "profession_profile":
             {
@@ -193,7 +197,7 @@ HUMAN_DISTRIBUTION: # this is parsed into tuple keys in utils.py/parse_configura
         "residence_preference":
           {
             "house_size": [0.1, 0.5, 0.1, 0.15, 0.1],
-            "senior_residency": 0.35, # https://www12.statcan.gc.ca/census-recensement/2016/as-sa/98-200-x/2016004/98-200-x2016004-eng.cfm?wbdisable=true
+            "senior_residency": 0.4, # https://www12.statcan.gc.ca/census-recensement/2016/as-sa/98-200-x/2016004/98-200-x2016004-eng.cfm?wbdisable=true
           },
         "profession_profile":
           {
