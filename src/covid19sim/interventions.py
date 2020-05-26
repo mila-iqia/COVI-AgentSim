@@ -412,36 +412,38 @@ class Tracing(object):
     The name of this class is probably not the best, feel free to suggest alternatives.
 
     Attributes:
+        risk_model (str): type of tracing to use. The following methods are currently
+            available: digital, manual, naive, other, transformer.
         p_contact (float): adds a noise to the tracing procedure, as it is not always possible
             to contact everyone (or remember all contacts) when using manual tracing.
         delay (int): defines whether there should be a delay between the time when someone
             triggers tracing and someone is traced. It is 0 for digital tracing, and 1 for manual.
         app (bool): defines whether an app is required for this tracing. For example, manual
             tracing doesn't use app.
+        max_depth (int, optional): The number of hops away from the source to consider while tracing.
+            The term `order` is also used for this. Defaults to 1.
+        propagate_symptoms (bool, optional): Defines whether tracing is to be triggered when someone
+            reports symptoms. Defaults to False.
+        propagate_risk (bool, optional): Define whether tracing is to be triggered when someone
+            changes their risk level. Defaults to False. Note: this is not to be mixed with
+            risk_model="transformer".
+        should_modify_behavior (bool, optional): Defines whether behavior should be modified or not
+            following the tracing intervention for conunterfactual studies. Defaults to True.
+
     """
-    def __init__(
-            self,
-            risk_model: typing.AnyStr,
-            max_depth: int = 1,
-            symptoms: bool = False,
-            risk: bool = False,
-            should_modify_behavior: bool = True,
-    ):
+    def __init__(self, conf: dict):
         """
         Initializes the tracing object.
 
         Args:
-            risk_model (str): Type of tracing to implement. Following methods are currently
-                available - digital, manual, naive, other, transformer.
-            max_depth (int, optional): The number of hops away from the source. The term `order`
-                is also used for this. Defaults to 1.
-            symptoms (bool, optional): If tracing is to be triggered when someone reports symptoms?
-                Defaults to False.
-            risk (bool, optional): If tracing is to be triggered when someone changes risk level?
-                Defaults to False. Note: this is not to be confused with risk_model="transformer".
-            should_modify_behavior (bool, optional): If behavior should be modified or not? Used
-                for conunterfactual studies. Defaults to True.
+            conf (dict): configuration to parse settings from.
         """
+        risk_model = conf.get("RISK_MODEL")
+        max_depth = conf.get("TRACING_ORDER")
+        symptoms = conf.get("TRACE_SYMPTOMS")
+        risk = conf.get("TRACE_RISK_UPDATE")
+        should_modify_behavior = conf.get("SHOULD_MODIFY_BEHAVIOR"),
+
         self.risk_model = risk_model
         if risk_model in ['manual', 'digital']:
             self.intervention = BinaryTracing()
@@ -452,7 +454,7 @@ class Tracing(object):
         self.max_depth = max_depth
         self.propagate_symptoms = symptoms
         self.propagate_risk = risk
-        self.propagate_postive_test = True # bare minimum
+        self.propagate_postive_test = True  # bare minimum
         self.should_modify_behavior = should_modify_behavior
 
         self.p_contact = 1
@@ -461,7 +463,7 @@ class Tracing(object):
         if risk_model == "manual":
             assert not symptoms, "makes no sense to trace symptoms by phone...?"
             assert not risk, "don't make be believe we will trace risk by phone either"
-            self.p_contact = self.conf.get("MANUAL_TRACING_P_CONTACT")
+            self.p_contact = conf.get("MANUAL_TRACING_P_CONTACT")
             self.delay = 1
             self.app = False
 
@@ -629,17 +631,12 @@ class TestCapacity(CityInterventions):
     def revert_city(self, city):
         raise NotImplementedError
 
-def get_intervention(key, RISK_MODEL=None, TRACING_ORDER=None, TRACE_SYMPTOMS=None, TRACE_RISK_UPDATE=None, SHOULD_MODIFY_BEHAVIOR=True,MASKS_SUPPLY=0):
+def get_intervention(conf):
     """
-    Returns appropriate class of intervention.
+    Returns the appropriate class of intervention.
 
     Args:
-        key (str): type of intervention
-        RISK_MODEL (str, optional): passed to `Tracing.risk_model`. Defaults to None.
-        TRACING_ORDER (int, optional): passed to `Tracing.max_depth`. Defaults to None.
-        TRACE_SYMPTOMS (bool, optional): passed to `Tracing.symptoms`. Defaults to None.
-        TRACE_RISK_UPDATE (bool, optional): passed to `Tracing.risk`. Defaults to None.
-        SHOULD_MODIFY_BEHAVIOR (bool, optional): passed to `Tracing.should_modify_behavior`. Defaults to True.
+        conf (dict): configuration to send to intervention object.
 
     Raises:
         NotImplementedError: If intervention has not been implemented.
@@ -647,24 +644,17 @@ def get_intervention(key, RISK_MODEL=None, TRACING_ORDER=None, TRACE_SYMPTOMS=No
     Returns:
         `BehaviorInterventions`: `BehaviorInterventions` corresponding to the arguments.
     """
+    key = conf.get("INTERVENTION")
     if key == "Lockdown":
         return Lockdown()
     elif key == "WearMask":
-        return WearMask(MASKS_SUPPLY)
+        return WearMask(conf.get("MASKS_SUPPLY"))
     elif key == "SocialDistancing":
         return SocialDistancing()
     elif key == "Quarantine":
         return Quarantine()
     elif key == "Tracing":
-        # there's a global variable somewhere called 'Tracing'
-        import covid19sim.interventions
-        return covid19sim.interventions.Tracing(
-            RISK_MODEL,
-            TRACING_ORDER,
-            TRACE_SYMPTOMS,
-            TRACE_RISK_UPDATE,
-            SHOULD_MODIFY_BEHAVIOR,
-        )
+        return Tracing(conf)
     elif key == "WashHands":
         return WashHands()
     elif key == "Stand2M":

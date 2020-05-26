@@ -23,7 +23,10 @@ class BlindClusteringTests(unittest.TestCase):
                       for idx in range(3)]
             messages = generate_received_messages(humans)
             h0_messages = [msg for msgs in messages[0]["received_messages"].values() for msg in msgs]
-            cluster_manager = clu.BlindClusterManager(max_history_offset=never)
+            cluster_manager = clu.BlindClusterManager(
+                max_history_offset=never,
+                generate_backw_compat_embeddings=True,
+            )
             cluster_manager.add_messages(h0_messages)
             self.assertEqual(len(cluster_manager.clusters), 1)
             self.assertEqual(cluster_manager.latest_refresh_timestamp, Toff(2))
@@ -38,7 +41,10 @@ class BlindClusteringTests(unittest.TestCase):
                       for idx in range(3)]
             messages = generate_received_messages(humans, minimum_risk_level_for_updates=1)
             h0_messages = [msg for msgs in messages[0]["received_messages"].values() for msg in msgs]
-            cluster_manager = clu.BlindClusterManager(max_history_offset=never)
+            cluster_manager = clu.BlindClusterManager(
+                max_history_offset=never,
+                generate_backw_compat_embeddings=True,
+            )
             cluster_manager.add_messages(h0_messages)
             self.assertEqual(len(cluster_manager.clusters), 2)
             self.assertEqual(cluster_manager.latest_refresh_timestamp, Toff(2))

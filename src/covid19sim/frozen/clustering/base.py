@@ -1,4 +1,5 @@
 import dataclasses
+import datetime
 import numpy as np
 import typing
 
@@ -175,7 +176,13 @@ class ClusterManagerBase:
 
     def _add_update_message_batch(self, messages: UpdateMessageBatchType, cleanup: bool = True):
         """Fits a batch of update messages to existing clusters, and forwards the remaining to non-batch impl."""
-        raise NotImplementedError
+        # if no faster implementation is provided, just loop over messages individually
+        if isinstance(messages, list):
+            for msg in messages:
+                self._add_update_message(msg)
+        elif isinstance(messages, dict):
+            for timestamp, msgs in messages.items():
+                return self._add_update_message_batch(msgs)
 
     def set_current_timestamp(self, timestamp: TimestampType):
         """Sets the timestamp used internally to invalidate outdated messages/clusters."""
@@ -188,7 +195,26 @@ class ClusterManagerBase:
             current_timestamp: typing.Optional[TimestampType] = None,  # will use internal latest if None
     ) -> np.ndarray:
         """Returns the 'embeddings' array for all clusters managed by this object."""
-        raise NotImplementedError
+        if not self.generate_backw_compat_embeddings or not self.generate_embeddings_by_timestamp:
+            raise NotImplementedError
+        if current_timestamp is not None:
+            self.latest_refresh_timestamp = max(current_timestamp, self.latest_refresh_timestamp)
+        if cleanup:
+            self.cleanup_clusters(self.latest_refresh_timestamp)
+        # note: we start the sequence with the OLDEST encounters, and move forward in time
+        output = []
+        target_timestamp = self.latest_refresh_timestamp - self.max_history_offset
+        while target_timestamp <= self.latest_refresh_timestamp:
+            for cluster in self.clusters:
+                embed = cluster.get_cluster_embedding(
+                    current_timestamp=target_timestamp,
+                    include_cluster_id=True,
+                    old_compat_mode=True,
+                )
+                if embed is not None:
+                    output.append([*embed, (self.latest_refresh_timestamp - target_timestamp).days])
+            target_timestamp += datetime.timedelta(days=1)
+        return np.asarray(output)
 
     def _get_expositions_array(self) -> np.ndarray:
         """Returns the 'expositions' array for all clusters managed by this object."""

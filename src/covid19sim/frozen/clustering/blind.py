@@ -1,4 +1,3 @@
-import collections
 import dataclasses
 import numpy as np
 import typing
@@ -7,7 +6,10 @@ from covid19sim.frozen.message_utils import EncounterMessage, GenericMessageType
     TimestampType, create_encounter_from_update_message, create_updated_encounter_with_message
 from covid19sim.frozen.clustering.base import ClusterIDType, RealUserIDType, TimeOffsetType, \
     ClusterBase, ClusterManagerBase, MessagesArrayType
-from covid19sim.frozen.clustering.simple import SimplisticClusterManager
+from covid19sim.frozen.clustering.simple import SimpleCluster, SimplisticClusterManager
+
+# TODO: determine whether these class can really derive from their 'simple' counterparts, and
+#       make sure there is no bad stuff happening when calling functions from outside
 
 
 class BlindCluster(ClusterBase):
@@ -193,33 +195,18 @@ class BlindCluster(ClusterBase):
             old_compat_mode: bool = False,
     ) -> np.ndarray:
         """Returns the 'embeddings' array for this particular cluster."""
-        if old_compat_mode:
-            assert include_cluster_id
-            # cid+risk+duraton+day; 4th entry ('day') will be added in the caller
-            return np.asarray([self.cluster_id, self.risk_level, len(self.messages)], dtype=np.int64)
-        else:
-            # note: this returns an array of four 'features', i.e. the cluster ID, the cluster's
-            #       average encounter risk level, the number of messages in the cluster, and
-            #       the offset to the first encounter timestamp of the cluster. This array's type
-            #       will be returned as np.int64 to insure that no data is lost w.r.t. message
-            #       counts or timestamps.
-            if include_cluster_id:
-                return np.asarray([
-                    self.cluster_id, self.risk_level, len(self.messages),
-                    (current_timestamp - self.first_update_time).days  # first/last is the same
-                ], dtype=np.int64)
-            else:
-                return np.asarray([
-                    self.risk_level, len(self.messages),
-                    (current_timestamp - self.first_update_time).days  # first/last is the same
-                ], dtype=np.int64)
+        # code is 100% identical in SimpleCluster, use that instead
+        return SimpleCluster.get_cluster_embedding(
+            self,
+            current_timestamp=current_timestamp,
+            include_cluster_id=include_cluster_id,
+            old_compat_mode=old_compat_mode,
+        )
 
     def _get_cluster_exposition_flag(self) -> bool:
         """Returns whether this particular cluster contains an exposition encounter."""
-        # note: an 'exposition encounter' is an encounter where the user was exposed to the virus;
-        #       this knowledge is UNOBSERVED (hence the underscore prefix in the function name), and
-        #       relies on the flag being properly defined in the clustered messages
-        return any([bool(m._exposition_event) for m in self.messages])
+        # code is 100% identical in SimpleCluster, use that instead
+        return SimpleCluster._get_cluster_exposition_flag(self)
 
     def get_timestamps(self) -> typing.List[TimestampType]:
         """Returns the list of timestamps for which this cluster possesses at least one encounter."""
@@ -354,67 +341,19 @@ class BlindClusterManager(ClusterManagerBase):
 
     def _get_expositions_array(self) -> np.ndarray:
         """Returns the 'expositions' array for all clusters managed by this object."""
-        if self.generate_embeddings_by_timestamp:
-            cluster_flags = collections.defaultdict(list)
-            for cluster in self.clusters:
-                cluster_flags[cluster.latest_update_time].append(
-                    cluster._get_cluster_exposition_flag())
-            flat_output = []
-            for timestamp in sorted(cluster_flags.keys()):
-                flat_output.extend(cluster_flags[timestamp])
-            return np.asarray(flat_output)
-        else:
-            return np.asarray([c._get_cluster_exposition_flag() for c in self.clusters], dtype=np.uint8)
+        # code is 100% identical in SimplisticClusterManager, use that instead
+        return SimplisticClusterManager._get_expositions_array(self)
 
     def _get_homogeneity_scores(self) -> typing.Dict[RealUserIDType, float]:
-        """Returns the homogeneity score for all real users in the clusters.
-
-        The homogeneity score for a user is defined as the number of true encounters involving that
-        user divided by the total number of encounters attributed to that user (via clustering). It
-        expresses how well the clustering algorithm managed to isolate that user's encounters from
-        the encounters of other users. In other words, it expresses how commonly a user was confused
-        for other users.
-
-        A homogeneity score of 1 means that the user was only ever assigned to clusters that only
-        contained its own encounters. The homogeneity does not reflect how many extra (unnecessary)
-        clusters were created by the algorithm.
-
-        Computing this score requires the use of the "real" user IDs, meaning this is only
-        possible with simulator data.
-        """
-        user_true_encounter_counts = collections.defaultdict(int)
-        user_total_encounter_count = collections.defaultdict(int)
-        for cluster in self.clusters:
-            cluster_users = set()
-            for msg in cluster.messages:
-                user_true_encounter_counts[msg._sender_uid] += 1
-                cluster_users.add(msg._sender_uid)
-            for user in cluster_users:
-                user_total_encounter_count[user] += len(cluster.messages)
-        return {user: user_true_encounter_counts[user] / user_total_encounter_count[user]
-                for user in user_true_encounter_counts}
+        """Returns the homogeneity score for all real users in the clusters."""
+        # code is 100% identical in SimplisticClusterManager, use that instead
+        return SimplisticClusterManager._get_homogeneity_scores(self)
 
     def get_encounters_cluster_mapping(self) -> typing.List[typing.Tuple[EncounterMessage, ClusterIDType]]:
         """Returns a flattened list of encounters mapped to their cluster ids."""
         return [(encounter, c.cluster_id) for c in self.clusters for encounter in c.messages]
 
     def _get_cluster_count_error(self) -> int:
-        """Returns the difference between the number of clusters and the number of unique users.
-
-        Since the number of clusters should correspond to the number of unique users that the
-        clustering method can detect, we can compare this value with the actual number of
-        unique users that it saw. The absolute difference between the two can inform us on
-        how well the clustering method fragmented the encounters.
-
-        Note that an absolute error of 0 does not mean that the clusters were properly matched
-        to the right users. It only means that the clustering resulted in the right number of
-        users.
-
-        Computing this score requires the use of the "real" user IDs, meaning this is only
-        possible with simulator data.
-        """
-        encountered_users = set()
-        for cluster in self.clusters:
-            for msg in cluster.messages:
-                encountered_users.add(msg._sender_uid)
-        return abs(len(encountered_users) - len(self.clusters))
+        """Returns the difference between the number of clusters and the number of unique users."""
+        # code is 100% identical in SimplisticClusterManager, use that instead
+        return SimplisticClusterManager._get_cluster_count_error(self)
