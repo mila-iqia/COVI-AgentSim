@@ -1,8 +1,20 @@
+import datetime
 import numpy as np
 import unittest
-from tests.utils import FakeHuman
-from covid19sim.utils import should_send_message_gaen
-from pytest import approx
+
+from covid19sim.base import City
+
+
+class DummyContactBook(object):
+    pass
+
+
+class DummyHuman(object):
+    pass
+
+
+class DummyCity(object):
+    pass
 
 
 class ShouldSendMessageGaenTests(unittest.TestCase):
@@ -11,51 +23,43 @@ class ShouldSendMessageGaenTests(unittest.TestCase):
         check returns false if not far enough from intervention day
         """
         cur_day = 10
-        BURN_IN_DAYS = 2
-        DAYS_BETWEEN_MESSAGES = 2
-        INTERVENTION_DAY = 10
-        last_sent_update_gaen = 0
-        rng = np.random.RandomState(0)
         daily_update_message_budget_sent_gaen = 0
-        message_budget = 1
-        UPDATES_PER_DAY = 4
-        n_people = 1000
-
-        risk_change_hist = {0: 12, 1: 1}
-        risk_change_hist_sum = sum(risk_change_hist.values())
+        current_timestamp = datetime.datetime.now()
         risk_change = 2
-        res = should_send_message_gaen(
-            risk_change,
-            cur_day,
-            last_sent_update_gaen,
-            risk_change_hist,
-            risk_change_hist_sum,
-            rng,
-            daily_update_message_budget_sent_gaen,
-            message_budget,
-            INTERVENTION_DAY,
-            UPDATES_PER_DAY,
-            n_people,
-            BURN_IN_DAYS,
-            DAYS_BETWEEN_MESSAGES,
+
+        city = DummyCity()
+        city.conf = dict(
+            BURN_IN_DAYS=2,
+            DAYS_BETWEEN_MESSAGES=2,
+            INTERVENTION_DAY=10,
+            UPDATES_PER_DAY=4,
+            MESSAGE_BUDGET_GAEN=1,
+            n_people=1000,
+        )
+        city.rng = np.random.RandomState(0)
+        city.risk_change_hist = {0: 12, 1: 1}
+        city.risk_change_histogram_sum = sum(city.risk_change_hist.values())
+        city.sent_messages_by_day = {cur_day: daily_update_message_budget_sent_gaen}
+        human = DummyHuman()
+        human.contact_book = DummyContactBook()
+        human.contact_book.latest_update_time = current_timestamp - datetime.timedelta(days=cur_day)
+
+        res = City._check_should_send_message_gaen(
+            city,
+            current_day_idx=cur_day,
+            current_timestamp=current_timestamp,
+            human=human,
+            risk_change_score=risk_change,
         )
         self.assertFalse(res)
 
-        INTERVENTION_DAY = 9
-        res = should_send_message_gaen(
-            risk_change,
-            cur_day,
-            last_sent_update_gaen,
-            risk_change_hist,
-            risk_change_hist_sum,
-            rng,
-            daily_update_message_budget_sent_gaen,
-            message_budget,
-            INTERVENTION_DAY,
-            UPDATES_PER_DAY,
-            n_people,
-            BURN_IN_DAYS,
-            DAYS_BETWEEN_MESSAGES,
+        city.conf["INTERVENTION_DAY"] = 9
+        res = City._check_should_send_message_gaen(
+            city,
+            current_day_idx=cur_day,
+            current_timestamp=current_timestamp,
+            human=human,
+            risk_change_score=risk_change,
         )
         self.assertFalse(res)
 
@@ -64,33 +68,33 @@ class ShouldSendMessageGaenTests(unittest.TestCase):
         check returns false if last update is too recent
         """
         cur_day = 10
-        BURN_IN_DAYS = 2
-        DAYS_BETWEEN_MESSAGES = 2
-        INTERVENTION_DAY = 5
-        last_sent_update_gaen = 10
-        rng = np.random.RandomState(0)
         daily_update_message_budget_sent_gaen = 0
-        message_budget = 1
-        UPDATES_PER_DAY = 4
-        n_people = 1000
-
-        risk_change_hist = {0: 12, 1: 1}
-        risk_change_hist_sum = sum(risk_change_hist.values())
+        current_timestamp = datetime.datetime.now()
         risk_change = 2
-        res = should_send_message_gaen(
-            risk_change,
-            cur_day,
-            last_sent_update_gaen,
-            risk_change_hist,
-            risk_change_hist_sum,
-            rng,
-            daily_update_message_budget_sent_gaen,
-            message_budget,
-            INTERVENTION_DAY,
-            UPDATES_PER_DAY,
-            n_people,
-            BURN_IN_DAYS,
-            DAYS_BETWEEN_MESSAGES,
+
+        city = DummyCity()
+        city.conf = dict(
+            BURN_IN_DAYS=2,
+            DAYS_BETWEEN_MESSAGES=2,
+            INTERVENTION_DAY=5,
+            UPDATES_PER_DAY=4,
+            MESSAGE_BUDGET_GAEN=1,
+            n_people=1000,
+        )
+        city.rng = np.random.RandomState(0)
+        city.risk_change_histogram = {0: 12, 1: 1}
+        city.risk_change_histogram_sum = sum(city.risk_change_histogram.values())
+        city.sent_messages_by_day = {cur_day: daily_update_message_budget_sent_gaen}
+        human = DummyHuman()
+        human.contact_book = DummyContactBook()
+        human.contact_book.latest_update_time = current_timestamp
+
+        res = City._check_should_send_message_gaen(
+            city,
+            current_day_idx=cur_day,
+            current_timestamp=current_timestamp,
+            human=human,
+            risk_change_score=risk_change,
         )
         self.assertFalse(res)
 
@@ -99,33 +103,33 @@ class ShouldSendMessageGaenTests(unittest.TestCase):
         check returns True if in last bucket, which is smaller than total message budget
         """
         cur_day = 10
-        BURN_IN_DAYS = 2
-        DAYS_BETWEEN_MESSAGES = 2
-        INTERVENTION_DAY = 5
-        last_sent_update_gaen = 0
-        rng = np.random.RandomState(0)
         daily_update_message_budget_sent_gaen = 0
-        message_budget = 1
-        UPDATES_PER_DAY = 4
-        n_people = 1000
+        current_timestamp = datetime.datetime.now()
+        risk_change = 1
 
-        risk_change_hist = {0: 1000, 1: 1}
-        risk_change_hist_sum = sum(risk_change_hist.values())
-        risk_change = 1  # risk_change HAS to be in risk_change_hist
-        res = should_send_message_gaen(
-            risk_change,
-            cur_day,
-            last_sent_update_gaen,
-            risk_change_hist,
-            risk_change_hist_sum,
-            rng,
-            daily_update_message_budget_sent_gaen,
-            message_budget,
-            INTERVENTION_DAY,
-            UPDATES_PER_DAY,
-            n_people,
-            BURN_IN_DAYS,
-            DAYS_BETWEEN_MESSAGES,
+        city = DummyCity()
+        city.conf = dict(
+            BURN_IN_DAYS=2,
+            DAYS_BETWEEN_MESSAGES=2,
+            INTERVENTION_DAY=5,
+            UPDATES_PER_DAY=4,
+            MESSAGE_BUDGET_GAEN=1,
+            n_people=1000,
+        )
+        city.rng = np.random.RandomState(0)
+        city.risk_change_histogram = {0: 1000, 1: 1}
+        city.risk_change_histogram_sum = sum(city.risk_change_histogram.values())
+        city.sent_messages_by_day = {cur_day: daily_update_message_budget_sent_gaen}
+        human = DummyHuman()
+        human.contact_book = DummyContactBook()
+        human.contact_book.latest_update_time = current_timestamp - datetime.timedelta(days=cur_day)
+
+        res = City._check_should_send_message_gaen(
+            city,
+            current_day_idx=cur_day,
+            current_timestamp=current_timestamp,
+            human=human,
+            risk_change_score=risk_change,
         )
         self.assertTrue(res)
 
@@ -134,37 +138,41 @@ class ShouldSendMessageGaenTests(unittest.TestCase):
         check if you're in the last bucket but it's larger than message budget, total messages = budget for this update (=> /UPDATES_PER_DAY)
         """
         cur_day = 10
-        BURN_IN_DAYS = 2
-        DAYS_BETWEEN_MESSAGES = 1
-        INTERVENTION_DAY = 5
-        last_sent_update_gaen = 0
-        rng = np.random.RandomState(0)
         daily_update_message_budget_sent_gaen = 0
-        message_budget = 1
-        UPDATES_PER_DAY = 4
-        n_people = 1000
+        current_timestamp = datetime.datetime.now()
+        risk_change = 1  # risk_change HAS to be in risk_change_histogram
 
-        risk_change_hist = {0: 60, 1: 40}
-        risk_change_hist_sum = sum(risk_change_hist.values())
-        risk_change = 1  # risk_change HAS to be in risk_change_hist
+        city = DummyCity()
+        city.conf = dict(
+            BURN_IN_DAYS=2,
+            DAYS_BETWEEN_MESSAGES=1,
+            INTERVENTION_DAY=5,
+            UPDATES_PER_DAY=4,
+            MESSAGE_BUDGET_GAEN=1,
+            n_people=1000,
+        )
+        city.rng = np.random.RandomState(0)
+        city.risk_change_histogram = {0: 60, 1: 40}
+        city.risk_change_histogram_sum = sum(city.risk_change_histogram.values())
+        city.sent_messages_by_day = {cur_day: daily_update_message_budget_sent_gaen}
+        human = DummyHuman()
+        human.contact_book = DummyContactBook()
+        human.contact_book.latest_update_time = current_timestamp - datetime.timedelta(days=cur_day)
+
         results = []
         for i in range(1000):
-            res = should_send_message_gaen(
-                risk_change,
-                cur_day,
-                last_sent_update_gaen,
-                risk_change_hist,
-                risk_change_hist_sum,
-                rng,
-                daily_update_message_budget_sent_gaen,
-                message_budget,
-                INTERVENTION_DAY,
-                UPDATES_PER_DAY,
-                n_people,
-                BURN_IN_DAYS,
-                DAYS_BETWEEN_MESSAGES,
+            res = City._check_should_send_message_gaen(
+                city,
+                current_day_idx=cur_day,
+                current_timestamp=current_timestamp,
+                human=human,
+                risk_change_score=risk_change,
             )
             results.append(res)
+            if res:
+                if cur_day not in city.sent_messages_by_day:
+                    city.sent_messages_by_day[cur_day] = 0
+                city.sent_messages_by_day[cur_day] += 1
 
         self.assertAlmostEqual(1 / 4, np.mean(results), 2)
 
@@ -174,37 +182,40 @@ class ShouldSendMessageGaenTests(unittest.TestCase):
         budget, then messages sent correspond to the number of remaining messages
         """
         cur_day = 10
-        BURN_IN_DAYS = 2
-        DAYS_BETWEEN_MESSAGES = 1
-        INTERVENTION_DAY = 5
-        last_sent_update_gaen = 0
-        rng = np.random.RandomState(0)
         daily_update_message_budget_sent_gaen = 0
-        message_budget = 1
-        UPDATES_PER_DAY = 4
-        n_people = 1000
+        current_timestamp = datetime.datetime.now()
+        risk_change = 1  # risk_change HAS to be in risk_change_histogram
 
-        risk_change_hist = {0: 50, 1: 40, 2: 10}
-        risk_change_hist_sum = sum(risk_change_hist.values())
-        risk_change = 1  # risk_change HAS to be in risk_change_hist
+        city = DummyCity()
+        city.conf = dict(
+            BURN_IN_DAYS=2,
+            DAYS_BETWEEN_MESSAGES=1,
+            INTERVENTION_DAY=5,
+            UPDATES_PER_DAY=4,
+            MESSAGE_BUDGET_GAEN=1,
+            n_people=1000,
+        )
+        city.rng = np.random.RandomState(0)
+        city.risk_change_histogram = {0: 50, 1: 40, 2: 10}
+        city.risk_change_histogram_sum = sum(city.risk_change_histogram.values())
+        city.sent_messages_by_day = {cur_day: daily_update_message_budget_sent_gaen}
+        human = DummyHuman()
+        human.contact_book = DummyContactBook()
+        human.contact_book.latest_update_time = current_timestamp - datetime.timedelta(days=cur_day)
         results = []
         for i in range(1000):
-            res = should_send_message_gaen(
-                risk_change,
-                cur_day,
-                last_sent_update_gaen,
-                risk_change_hist,
-                risk_change_hist_sum,
-                rng,
-                daily_update_message_budget_sent_gaen,
-                message_budget,
-                INTERVENTION_DAY,
-                UPDATES_PER_DAY,
-                n_people,
-                BURN_IN_DAYS,
-                DAYS_BETWEEN_MESSAGES,
+            res = City._check_should_send_message_gaen(
+                city,
+                current_day_idx=cur_day,
+                current_timestamp=current_timestamp,
+                human=human,
+                risk_change_score=risk_change,
             )
             results.append(res)
+            if res:
+                if cur_day not in city.sent_messages_by_day:
+                    city.sent_messages_by_day[cur_day] = 0
+                city.sent_messages_by_day[cur_day] += 1
         # allowed messages: 100 / 4 = 25
         # already sent messages: 10
         # remaining to send for second bucket: 15
@@ -215,33 +226,33 @@ class ShouldSendMessageGaenTests(unittest.TestCase):
         If the last bucket is larger than the budget then no message is sent when in the second largest bucket
         """
         cur_day = 10
-        BURN_IN_DAYS = 2
-        DAYS_BETWEEN_MESSAGES = 1
-        INTERVENTION_DAY = 5
-        last_sent_update_gaen = 0
-        rng = np.random.RandomState(0)
         daily_update_message_budget_sent_gaen = 0
-        message_budget = 1
-        UPDATES_PER_DAY = 4
-        n_people = 1000
+        current_timestamp = datetime.datetime.now()
+        risk_change = 1  # risk_change HAS to be in risk_change_histogram
 
-        risk_change_hist = {0: 40, 1: 20, 2: 40}
-        risk_change_hist_sum = sum(risk_change_hist.values())
-        risk_change = 1  # risk_change HAS to be in risk_change_hist
-        res = should_send_message_gaen(
-            risk_change,
-            cur_day,
-            last_sent_update_gaen,
-            risk_change_hist,
-            risk_change_hist_sum,
-            rng,
-            daily_update_message_budget_sent_gaen,
-            message_budget,
-            INTERVENTION_DAY,
-            UPDATES_PER_DAY,
-            n_people,
-            BURN_IN_DAYS,
-            DAYS_BETWEEN_MESSAGES,
+        city = DummyCity()
+        city.conf = dict(
+            BURN_IN_DAYS=2,
+            DAYS_BETWEEN_MESSAGES=1,
+            INTERVENTION_DAY=5,
+            UPDATES_PER_DAY=4,
+            MESSAGE_BUDGET_GAEN=1,
+            n_people=1000,
+        )
+        city.rng = np.random.RandomState(0)
+        city.risk_change_histogram = {0: 40, 1: 20, 2: 40}
+        city.risk_change_histogram_sum = sum(city.risk_change_histogram.values())
+        city.sent_messages_by_day = {cur_day: daily_update_message_budget_sent_gaen}
+        human = DummyHuman()
+        human.contact_book = DummyContactBook()
+        human.contact_book.latest_update_time = current_timestamp - datetime.timedelta(days=cur_day)
+
+        res = City._check_should_send_message_gaen(
+            city,
+            current_day_idx=cur_day,
+            current_timestamp=current_timestamp,
+            human=human,
+            risk_change_score=risk_change,
         )
         self.assertFalse(res)
 
@@ -250,36 +261,40 @@ class ShouldSendMessageGaenTests(unittest.TestCase):
         Everything works still with a very low budget
         """
         cur_day = 10
-        BURN_IN_DAYS = 2
-        DAYS_BETWEEN_MESSAGES = 2
-        INTERVENTION_DAY = 5
-        last_sent_update_gaen = 0
-        rng = np.random.RandomState(0)
         daily_update_message_budget_sent_gaen = 0
-        message_budget = 0.01  # 0.0025
-        UPDATES_PER_DAY = 4
-        n_people = 1000
+        current_timestamp = datetime.datetime.now()
+        risk_change = 2  # risk_change HAS to be in risk_change_histogram
 
-        risk_change_hist = {0: 40, 1: 20, 2: 40}
-        risk_change_hist_sum = sum(risk_change_hist.values())
-        risk_change = 2  # risk_change HAS to be in risk_change_hist
+        city = DummyCity()
+        city.conf = dict(
+            BURN_IN_DAYS=2,
+            DAYS_BETWEEN_MESSAGES=2,
+            INTERVENTION_DAY=5,
+            UPDATES_PER_DAY=4,
+            MESSAGE_BUDGET_GAEN=0.01,
+            n_people=1000,
+        )
+        city.rng = np.random.RandomState(0)
+        city.risk_change_histogram = {0: 40, 1: 20, 2: 40}
+        city.risk_change_histogram_sum = sum(city.risk_change_histogram.values())
+        city.sent_messages_by_day = {cur_day: daily_update_message_budget_sent_gaen}
+        human = DummyHuman()
+        human.contact_book = DummyContactBook()
+        human.contact_book.latest_update_time = current_timestamp - datetime.timedelta(days=cur_day)
+
         results = []
         for i in range(1000):
-            res = should_send_message_gaen(
-                risk_change,
-                cur_day,
-                last_sent_update_gaen,
-                risk_change_hist,
-                risk_change_hist_sum,
-                rng,
-                daily_update_message_budget_sent_gaen,
-                message_budget,
-                INTERVENTION_DAY,
-                UPDATES_PER_DAY,
-                n_people,
-                BURN_IN_DAYS,
-                DAYS_BETWEEN_MESSAGES,
+            res = City._check_should_send_message_gaen(
+                city,
+                current_day_idx=cur_day,
+                current_timestamp=current_timestamp,
+                human=human,
+                risk_change_score=risk_change,
             )
             results.append(res)
+            if res:
+                if cur_day not in city.sent_messages_by_day:
+                    city.sent_messages_by_day[cur_day] = 0
+                city.sent_messages_by_day[cur_day] += 1
 
-        self.assertAlmostEqual(message_budget / 4, np.mean(results), 2)
+        self.assertAlmostEqual(city.conf["MESSAGE_BUDGET_GAEN"] / 4, np.mean(results), 2)
