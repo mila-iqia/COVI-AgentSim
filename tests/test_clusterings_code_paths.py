@@ -8,6 +8,7 @@ from tempfile import TemporaryDirectory
 
 from tests.utils import get_test_conf
 
+from covid19sim.models.run import DummyMemManager
 from covid19sim.base import Event
 from covid19sim.run import simulate
 
@@ -27,7 +28,7 @@ class ClusteringCodePaths(unittest.TestCase):
         self.config['TRANSFORMER_EXP_PATH'] = "https://drive.google.com/file/d/1Z7g3gKh2kWFSmK2Yr19MQq0blOWS5st0"
         self.config['RISK_MODEL'] = 'transformer'
 
-        self.cluster_algo_types = ('old', 'blind', 'naive', 'perfect', 'simple')
+        self.cluster_algo_types = ('gaen', 'blind')
 
     def test_clustering_code_paths(self):
         """
@@ -42,7 +43,7 @@ class ClusteringCodePaths(unittest.TestCase):
                 self.config['CLUSTER_ALGO_TYPE'] = cluster_algo_type
 
                 data = []
-
+                DummyMemManager.global_cluster_map = {}  # reset clusters between tests
                 with TemporaryDirectory() as d:
                     outfile = os.path.join(d, "data")
                     monitors, _ = simulate(

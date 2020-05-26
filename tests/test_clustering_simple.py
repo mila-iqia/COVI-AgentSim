@@ -38,7 +38,10 @@ class SimpleClusteringTests(unittest.TestCase):
             self.assertEqual(sum([len(msgs) for msgs in h0_messages.values()]), 2)
             self.assertEqual(len(h0_messages[2]), 2)
             h0_messages = [msg for msgs in h0_messages.values() for msg in msgs]
-            cluster_manager = clu.SimplisticClusterManager(max_history_offset=never)
+            cluster_manager = clu.SimplisticClusterManager(
+                max_history_offset=never,
+                generate_backw_compat_embeddings=True,
+            )
             cluster_manager.add_messages(h0_messages)
             self.assertEqual(len(cluster_manager.clusters), 2)
             self.assertEqual(cluster_manager.latest_refresh_timestamp, Toff(2))
@@ -76,7 +79,10 @@ class SimpleClusteringTests(unittest.TestCase):
         self.assertEqual(len(h0_messages), 1)  # single timestep in book
         self.assertEqual(len(h0_messages[0]), 5)  # all 5 encounter messages in day 0
         h0_messages = [msg for msgs in h0_messages.values() for msg in msgs]
-        cluster_manager = clu.SimplisticClusterManager(max_history_offset=never)
+        cluster_manager = clu.SimplisticClusterManager(
+            max_history_offset=never,
+            generate_backw_compat_embeddings=True,
+        )
         cluster_manager.add_messages(h0_messages)
         self.assertEqual(len(cluster_manager.clusters), 3)
         self.assertEqual(cluster_manager.latest_refresh_timestamp, Toff(0))

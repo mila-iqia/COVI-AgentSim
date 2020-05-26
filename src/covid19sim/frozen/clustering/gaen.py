@@ -493,39 +493,11 @@ class GAENClusterManager(ClusterManagerBase):
         self.next_cluster_id = (self.next_cluster_id + 1) % self.max_cluster_id
         self.clusters.append(new_cluster)
 
-    def get_embeddings_array(
-            self,
-            cleanup: bool = False,
-            current_timestamp: typing.Optional[TimestampType] = None,  # will use internal latest if None
-    ) -> np.ndarray:
-        """Returns the 'embeddings' array for all clusters managed by this object."""
-        if not self.generate_backw_compat_embeddings or not self.generate_embeddings_by_timestamp:
-            raise NotImplementedError
-        if current_timestamp is not None:
-            self.latest_refresh_timestamp = max(current_timestamp, self.latest_refresh_timestamp)
-        if cleanup:
-            self.cleanup_clusters(self.latest_refresh_timestamp)
-        # note: we start the sequence with the OLDEST encounters, and move forward in time
-        output = []
-        target_timestamp = self.latest_refresh_timestamp - self.max_history_offset
-        while target_timestamp <= self.latest_refresh_timestamp:
-            for cluster in self.clusters:
-                embed = cluster.get_cluster_embedding(
-                    current_timestamp=target_timestamp,
-                    include_cluster_id=True,
-                    old_compat_mode=True,
-                )
-                if embed is not None:
-                    output.append([*embed, (self.latest_refresh_timestamp - target_timestamp).days])
-            target_timestamp += datetime.timedelta(days=1)
-        return np.asarray(output)
-
     def _get_expositions_array(self) -> np.ndarray:
         """Returns the 'expositions' array for all clusters managed by this object."""
         if not self.generate_backw_compat_embeddings or not self.generate_embeddings_by_timestamp:
             raise NotImplementedError  # must keep 1:1 mapping with embedding!
         # assume the latest refresh timestamp is up-to-date FIXME should we pass in curr timestamp as above?
-
         output = []
         target_timestamp = self.latest_refresh_timestamp - self.max_history_offset
         while target_timestamp <= self.latest_refresh_timestamp:

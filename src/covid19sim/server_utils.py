@@ -15,6 +15,7 @@ import zmq
 
 from ctt.inference.infer import InferenceEngine
 
+import covid19sim.frozen.clustering.blind
 import covid19sim.frozen.clustering.gaen
 import covid19sim.frozen.message_utils
 import covid19sim.frozen.helper
@@ -361,8 +362,14 @@ def proc_human_batch(
         cluster_mgr_hash = str(params["city_hash"]) + ":" + human_name
         params["cluster_mgr_hash"] = cluster_mgr_hash
         if cluster_mgr_hash not in cluster_mgr_map:
+            cluster_algo_type = params["conf"].get("CLUSTER_ALGO_TYPE", "gaen")
+            assert cluster_algo_type in ["blind", "gaen"]
+            if cluster_algo_type == "blind":
+                cluster_algo_type = covid19sim.frozen.clustering.blind.BlindClusterManager
+            else:
+                cluster_algo_type = covid19sim.frozen.clustering.gaen.GAENClusterManager
             # cluster messages; as of the GAEN refactoring, only one algo can be used
-            cluster_mgr = covid19sim.frozen.clustering.gaen.GAENClusterManager(
+            cluster_mgr = cluster_algo_type(
                 max_history_offset=datetime.timedelta(days=params["conf"].get("TRACING_N_DAYS_HISTORY")),
                 add_orphan_updates_as_clusters=True,
                 generate_embeddings_by_timestamp=True,
