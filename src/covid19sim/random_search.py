@@ -123,7 +123,9 @@ def fill_intel_template(template_str, conf):
             )
         )
 
-    return template_str.format(env_name=env_name, code_loc=code_loc, weights=weights)
+    return template_str.format(
+        env_name=env_name, code_loc=code_loc, weights=weights, server_out=server_out
+    )
 
 
 def fill_mila_template(template_str, conf):
@@ -241,7 +243,7 @@ def main(conf: DictConfig) -> None:
         "code_loc",  # where to find the source code, will cd there
         "weights",  # where to find the transformer's weights. default is /network/tmp1/<user>/FRESH-SNOWFLAKE-224B
         "infra",  # using Mila or Intel cluster?
-        "now_str", # naming scheme
+        "now_str",  # naming scheme
     }
 
     # move back to original directory because hydra moved
