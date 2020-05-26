@@ -18,27 +18,6 @@ class HydraTests(unittest.TestCase):
         """
         self.assertTrue((HYDRA_SIM_PATH / "config.yaml").exists())
 
-    def test_all_but_config_start_package_global(self):
-        """
-        assert that all non-config.yaml files start with @package _global_
-        """
-        # package = "@package _global_"
-        # yamls = HYDRA_SIM_PATH.glob("**/*.yaml")
-        # for y in yamls:
-        #     if y.stem == "config":
-        #         continue
-        #     with y.open("r") as f:
-        #         lines = []
-        #         for line in f.readlines():
-        #             if line == "\n" or line.startswith("#") or line.startswith(" "):
-        #                 lines.append(line)
-        #             else:
-        #                 break
-        #     self.assertTrue(any(package in l for l in lines))
-        # TODO FIXME @@@@@@@@@ PROBABLY A FORGOTTEN ARTEFACT FOR THE HYDRA VERSION BUMP
-        warnings.warn("VICTOR, THIS IS MR. TEST, PLEASE FIX ME, I NEED TO LOVE AGAIN")
-        pass
-
     def test_only_yaml_no_yml(self):
         """
         All files in hydra conf dir and test_configs should be yaml, not yml or other

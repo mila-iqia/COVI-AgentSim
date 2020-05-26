@@ -1,4 +1,3 @@
-# @package _global_
 # NOTE: RISK_MODEL is only valid when INTERVENTION = "Tracing"
 RISK_MODEL : "digital" # "naive"  "manual", "digital", "transformer"
 SHOULD_MODIFY_BEHAVIOR : True

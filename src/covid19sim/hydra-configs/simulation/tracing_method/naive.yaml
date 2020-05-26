@@ -1,4 +1,3 @@
-# @package _global_
 RISK_MODEL: "naive" # "naive"  "manual", "digital", "transformer"
 SHOULD_MODIFY_BEHAVIOR: True
 
