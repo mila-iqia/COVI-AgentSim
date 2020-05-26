@@ -18,7 +18,6 @@ class ServerTests(unittest.TestCase):
             broker = covid19sim.server_utils.InferenceBroker(
                 model_exp_path=covid19sim.server_bootstrap.default_model_exp_path,
                 workers=2,
-                n_parallel_procs=0,
                 verbose=True,
                 verbose_print_delay=5,
             )

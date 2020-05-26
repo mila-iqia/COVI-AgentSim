@@ -20,7 +20,6 @@ import sys
 import covid19sim.server_utils
 
 default_workers = 6
-default_nproc = 0
 default_model_exp_path = "https://drive.google.com/file/d/1Z7g3gKh2kWFSmK2Yr19MQq0blOWS5st0"
 
 
@@ -49,8 +48,6 @@ def parse_args(args=None):
     argparser.add_argument("-w", "--workers", default=None, type=int, help=workers_doc)
     verbosity_doc = "Toggles program verbosity on/off. Default is OFF (0). Variable expects 0 or 1."
     argparser.add_argument("-v", "--verbose", default=0, type=int, help=verbosity_doc)
-    mp_nproc_doc = f"Number of processes to spawn in each worker. Will use {default_nproc} by default."
-    argparser.add_argument("--nproc", default=None, type=int, help=mp_nproc_doc)
     weights_path_doc = "Path to the specific weights to reload inside the inference engine(s). " \
                        "Will use the 'best checkpoint' weights if not specified."
     argparser.add_argument("--weights-path", default=None, type=str, help=weights_path_doc)
@@ -66,9 +63,6 @@ def parse_args(args=None):
     if args.workers is None:
         args.workers = default_workers
     assert args.workers > 0, f"invalid worker count: {args.workers}"
-    if args.nproc is None:
-        args.nproc = default_nproc
-    assert args.nproc >= 0, f"invalid process count: {args.nproc}"
     return args
 
 
@@ -94,7 +88,6 @@ def main(args=None):
     broker = covid19sim.server_utils.InferenceBroker(
         model_exp_path=args.exp_path,
         workers=args.workers,
-        n_parallel_procs=args.nproc,
         frontend_address=frontend_address,
         backend_address=backend_address,
         weights_path=args.weights_path,

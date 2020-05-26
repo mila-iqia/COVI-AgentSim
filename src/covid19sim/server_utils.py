@@ -46,7 +46,6 @@ class InferenceWorker(multiprocessing.Process):
             experiment_directory: typing.AnyStr,
             backend_address: typing.AnyStr,
             identifier: typing.Any,
-            n_parallel_procs: int,
             cluster_mgr_map: typing.Dict,
             weights_path: typing.Optional[typing.AnyStr] = None,
     ):
@@ -72,7 +71,6 @@ class InferenceWorker(multiprocessing.Process):
         self.packet_counter = multiprocessing.Value("i", 0)
         self.time_counter = multiprocessing.Value("f", 0.0)
         self.time_init = multiprocessing.Value("f", 0.0)
-        self.n_parallel_procs = n_parallel_procs
         self.cluster_mgr_map = cluster_mgr_map
 
     def run(self):
@@ -109,7 +107,6 @@ class InferenceWorker(multiprocessing.Process):
                     sample=sample,
                     engine=engine,
                     cluster_mgr_map=self.cluster_mgr_map,
-                    n_parallel_procs=self.n_parallel_procs,
                 )
                 response = pickle.dumps(response)
                 socket.send_multipart([address, b"", response])
@@ -160,7 +157,6 @@ class InferenceBroker:
             self,
             model_exp_path: typing.AnyStr,
             workers: int,
-            n_parallel_procs: int,
             frontend_address: typing.AnyStr = default_frontend_ipc_address,
             backend_address: typing.AnyStr = default_backend_ipc_address,
             verbose: bool = False,
@@ -179,7 +175,6 @@ class InferenceBroker:
             verbose_print_delay: specifies how often the extra debug info should be printed.
         """
         self.workers = workers
-        self.n_parallel_procs = n_parallel_procs
         self.frontend_address = frontend_address
         self.backend_address = backend_address
         assert frontend_address != backend_address
@@ -219,7 +214,6 @@ class InferenceBroker:
                     experiment_directory=self.model_exp_path,
                     backend_address=worker_backend_address,
                     identifier=worker_id,
-                    n_parallel_procs=self.n_parallel_procs,
                     cluster_mgr_map=cluster_mgr_map,
                     weights_path=self.weights_path,
                 )
@@ -340,7 +334,6 @@ def proc_human_batch(
         sample,
         engine,
         cluster_mgr_map,
-        n_parallel_procs,
         clusters_dump_path: typing.Optional[typing.AnyStr] = None,
 ):
     """
@@ -380,11 +373,7 @@ def proc_human_batch(
         assert not cluster_mgr._is_being_used, "two processes should never try to access the same human"
         cluster_mgr._is_being_used = True
         params["cluster_mgr"] = cluster_mgr
-    if n_parallel_procs > 0:
-        with joblib.Parallel(n_jobs=n_parallel_procs, batch_size="auto") as parallel:
-            results = parallel((joblib.delayed(_proc_human)(params, engine) for params in sample))
-    else:
-        results = [_proc_human(params, engine) for params in sample]
+    results = [_proc_human(params, engine) for params in sample]
     for params in sample:
         cluster_mgr = params["cluster_mgr"]
         assert cluster_mgr._is_being_used

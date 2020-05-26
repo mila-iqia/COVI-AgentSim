@@ -177,7 +177,6 @@ def batch_run_timeslot_heavy_jobs(
             "city_hash": city_hash,
         })
 
-    parallel_reqs = conf.get('INFERENCE_REQ_PARALLEL_JOBS', 16)
     if conf.get('USE_INFERENCE_SERVER'):
         batch_start_offset = 0
         batch_size = conf.get('INFERENCE_REQ_BATCH_SIZE', 100)
@@ -186,6 +185,7 @@ def batch_run_timeslot_heavy_jobs(
             batch_end_offset = min(batch_start_offset + batch_size, len(all_params))
             batched_params.append(all_params[batch_start_offset:batch_end_offset])
             batch_start_offset += batch_size
+        parallel_reqs = conf.get('INFERENCE_REQ_PARALLEL_JOBS', 16)
         parallel_reqs = max(min(parallel_reqs, len(batched_params)), 1)
 
         def query_inference_server(params, **inf_client_kwargs):
@@ -204,7 +204,7 @@ def batch_run_timeslot_heavy_jobs(
     else:
         cluster_mgr_map = DummyMemManager.get_cluster_mgr_map()
         engine = DummyMemManager.get_engine(conf)
-        results = proc_human_batch(all_params, engine, cluster_mgr_map, parallel_reqs)
+        results = proc_human_batch(all_params, engine, cluster_mgr_map)
 
     new_update_messages = []
     for name, risk_history in results:
