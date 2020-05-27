@@ -43,7 +43,7 @@ def test_age_distribution(
         rng=rng,
         x_range=city_x_range,
         y_range=city_y_range,
-        Human=Human,
+        human_type=Human,
         conf=conf,
     )
 
@@ -111,7 +111,7 @@ def test_household_distribution(
         rng=rng,
         x_range=city_x_range,
         y_range=city_y_range,
-        Human=Human,
+        human_type=Human,
         conf=conf,
     )
 
@@ -170,7 +170,7 @@ def test_app_distribution(
         rng=rng,
         x_range=city_x_range,
         y_range=city_y_range,
-        Human=Human,
+        human_type=Human,
         conf=conf,
     )
 
