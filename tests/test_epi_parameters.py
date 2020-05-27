@@ -85,6 +85,7 @@ def test_incubation_days():
             infectiousness_onset_data.append(human.infectiousness_onset_days)
             recovery_data.append(human.recovery_days)
 
+        print(f"minimum incubation days: {min(incubation_data)}")
         # convert into pmf
         ydata = np.array(incubation_data)
         pmf, xdata, _ = ax.hist(ydata, density=True)

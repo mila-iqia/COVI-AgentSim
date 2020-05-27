@@ -1245,14 +1245,12 @@ class Human(object):
         assert sum(self.state) == 1, f"invalid compartment for {self.name}: {self.state}"
         if self.last_state != self.state:
             # can skip the compartment if hospitalized in exposed
+            # can also skip the compartment if incubation days is very small
             if not self.obs_hospitalized:
-                try:
-                    if not self.state.index(1) in next_state[self.last_state.index(1)]:
-                        warnings.warn(f"invalid compartment transition for {self.name}: {self.last_state} to {self.state}"
-                            f"incubation days:{self.incubation_days:3.3f} infectiousness onset days {self.infectiousness_onset_days}"
-                            f"recovery days {self.recovery_days: 3.3f}", RuntimeWarning)
-                except:
-                    import pdb; pdb.set_trace()
+                if not self.state.index(1) in next_state[self.last_state.index(1)]:
+                    warnings.warn(f"invalid compartment transition for {self.name}: {self.last_state} to {self.state}"
+                        f"incubation days:{self.incubation_days:3.3f} infectiousness onset days {self.infectiousness_onset_days}"
+                        f"recovery days {self.recovery_days: 3.3f}", RuntimeWarning)
 
             self.last_state = self.state
 
