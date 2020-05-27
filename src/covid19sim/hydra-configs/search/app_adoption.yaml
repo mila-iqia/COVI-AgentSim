@@ -17,7 +17,7 @@ n_people: 1000
 simulation_days: 22
 INTERVENTION_DAY: 5
 
-P_HAS_APP:
+APP_UPTAKE:
   sample: sequential # will be sampled in this order
   from:
     - 0.2

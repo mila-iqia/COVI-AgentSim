@@ -17,7 +17,7 @@ n_people: 1000
 simulation_days: 22
 INTERVENTION_DAY: 5
 
-P_HAS_APP:
+APP_UPTAKE:
   sample: cartesian # will be sampled in this order, in a cartesian product with any other "cartesian" sampling
   from:
     - 0.3

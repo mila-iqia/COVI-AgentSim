@@ -17,7 +17,7 @@ n_people: 1000
 simulation_days: 22
 INTERVENTION_DAY: 5
 
-P_HAS_APP:
+APP_UPTAKE:
   sample: uniform # uniform in range:
   from: [0.0, 1.0]
 
