@@ -237,7 +237,7 @@ INFECTION_DURATION: 15 # minutes
 P_NEVER_RECOVERS: [0, 0.002, 0.002, 0.002, 0.004, 0.02, 0.04, 0.08, 0.15] # &never_recovers
 REINFECTION_POSSIBLE: False # [0, 1]
 # aerosol    copper      cardboard       steel       plastic
-MAX_DAYS_CONTAMINATION: [0.125, 0.333333, 1, 2, 3] # &envrionmental contamination
+MAX_DAYS_CONTAMINATION: [0.125, 0.333333, 1, 2, 3] # https://www.nejm.org/doi/pdf/10.1056/NEJMc2004973?articleTools=true
 VIRAL_LOAD_MIN: 0.0001 # FIXME:unused
 VIRAL_LOAD_NORMALIZATION: 2 # FIXME:unused
 
