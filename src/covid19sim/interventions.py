@@ -336,25 +336,25 @@ class RiskBasedRecommendations(BehaviorInterventions):
         super(RiskBasedRecommendations, self).__init__()
 
     @staticmethod
-    def get_recommendations_level(risk_level, thresholds, max_risk_level):
+    def get_recommendations_level(human, thresholds, max_risk_level):
         """
         Converts the risk level to recommendation level.
 
         Args:
-            risk_level (int): quantized risk level of range 0-15. sent in encounter messages and update messages.
+            human (Human): the human for which we want to compute the recommendation.
             thresholds (list|tuple): exactly 3 values to convert risk_level to rec_level
             max_risk_level (int): maximum allowed risk_level for sanity check (assert risk_level <= max_risk_level)
 
         Returns:
             recommendation level (int): App recommendation level which takes on a range of 0-3.
         """
-        if risk_level <= thresholds[0]:
+        if human.risk_level <= thresholds[0]:
             return 0
-        elif thresholds[0] < risk_level <= thresholds[1]:
+        elif thresholds[0] < human.risk_level <= thresholds[1]:
             return 1
-        elif thresholds[1] < risk_level <= thresholds[2]:
+        elif thresholds[1] < human.risk_level <= thresholds[2]:
             return 2
-        elif thresholds[2] < risk_level <= max_risk_level:
+        elif thresholds[2] < human.risk_level <= max_risk_level:
             return 3
         else:
             raise
