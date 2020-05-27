@@ -619,7 +619,7 @@ class City:
         tmp_M = self.conf.get("GLOBAL_MOBILITY_SCALING_FACTOR")
         self.conf["GLOBAL_MOBILITY_SCALING_FACTOR"] = 1
         last_day_idx = 0
-        city_hash = int(time.time())  # real-life time used as hash for inference server data hashing
+        city_hash = int(time.time_ns())  # real-life time used as hash for inference server data hashing
         while True:
             current_day = (self.env.timestamp - self.start_time).days
             # Notify humans to follow interventions on intervention day
