@@ -77,7 +77,7 @@ class SEIRMonitor(BaseMonitor):
             R0 = city.tracker.get_R()
             G = city.tracker.get_generation_time()
             t_P = city.tracker.test_results_per_day[env.timestamp.date()]['positive']
-            t_T = city.tracker.tested_per_day[-1]
+            t_T = 0 if len(city.tracker.tested_per_day) < 2 else city.tracker.tested_per_day[-2]
             H = sum(city.tracker.hospitalization_per_day)
             C = sum(city.tracker.critical_per_day)
             Projected3 = min(1.0*city.tracker.n_infected_init * 2 ** (n_days/3), len(city.humans))

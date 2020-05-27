@@ -701,7 +701,6 @@ class City:
                         ),
                     )
 
-
 class TestFacility(object):
     """
     Implements queue behavior for tests.
@@ -761,13 +760,12 @@ class TestFacility(object):
 
         See TEST_TYPES in core.yaml
         """
-        # reset here. if reset at end, it results in carry over remaining test at the 0th hour.
+        # reset here. if reset at end, it results in carry-over of remaining test at the 0th hour.
         self.reset_tests_capacity()
         test_triage = sorted(list(self.test_queue), key=lambda human: -self.score_test_need(human))
         for human in test_triage:
             test_type = self.get_available_test()
             if test_type:
-
                 if human.infection_timestamp is not None:
                     if human.rng.rand() < get_test_false_negative_rate(test_type, human.days_since_covid, human.conf):
                         unobserved_result = 'negative'
@@ -816,7 +814,6 @@ class TestFacility(object):
             score += 0.2  # small value
 
         return score
-
 
 class Location(simpy.Resource):
     """
