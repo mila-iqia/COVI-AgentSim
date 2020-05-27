@@ -28,14 +28,20 @@ class InterventionCodePath(unittest.TestCase):
         self.config['INTERVENTION_DAY'] = self.intervention_day
         self.config['TRANSFORMER_EXP_PATH'] = "https://drive.google.com/file/d/1Z7g3gKh2kWFSmK2Yr19MQq0blOWS5st0"
 
-        self.interventions_risk_models = (('', ''), ('Lockdown', ''),
-                                          ('WearMask', ''), ('SocialDistancing', ''),
-                                          ('Quarantine', ''),
-                                          ('Tracing', 'naive'),
-                                          # ('Tracing', 'manual'), manual is currently not working
-                                          ('Tracing', 'digital'), ('Tracing', 'transformer'),
-                                          ('WashHands', ''), ('Stand2M', ''),
-                                          ('StayHome', ''))
+        self.interventions_risk_models = (
+            ('', ''),
+            ('Lockdown', ''),
+            ('WearMask', ''),
+            ('SocialDistancing', ''),
+            ('Quarantine', ''),
+            ('Tracing', 'naive'),
+            # ('Tracing', 'manual'), manual is currently not working
+            ('Tracing', 'digital'),
+            ('Tracing', 'transformer'),
+            ('WashHands', ''),
+            ('StandApart', ''),
+            ('StayHome', ''),
+        )
 
     def test_intervention_code_path(self):
         """
@@ -126,8 +132,8 @@ class InterventionCodePath(unittest.TestCase):
                         # 'SocialDistancing' and 'Stand2M' yields the exact same results
                         if {'WearMask', 'WashHands'}.issubset({intervention,
                                                                other_intervention}) or \
-                                {'SocialDistancing', 'Stand2M'}.issubset({intervention,
-                                                                          other_intervention}):
+                                {'SocialDistancing', 'StandApart'}.issubset({intervention,
+                                                                             other_intervention}):
                             warnings.warn(f"At and after intervention day [{self.config['INTERVENTION_DAY']}], "
                                           f"simulation with intervention/risk_model [{intervention}/{risk_model}] "
                                           f"yielded the same results as simulation with "
