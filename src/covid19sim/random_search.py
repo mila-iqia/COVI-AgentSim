@@ -319,6 +319,7 @@ def main(conf: DictConfig) -> None:
         "weights",  # where to find the transformer's weights. default is /network/tmp1/<user>/FRESH-SNOWFLAKE-224B
         "infra",  # using Mila or Intel cluster?
         "now_str",  # naming scheme
+        "parallel_search", #run with & at the end instead of ; to run in subshells
     }
 
     # move back to original directory because hydra moved
@@ -340,6 +341,7 @@ def main(conf: DictConfig) -> None:
     conf.update(overrides)
     conf["now_str"] = now_str()
     infra = conf.get("infra", "mila")
+    parallel_search = conf.get("parallel_search", False)
     template_str = load_template(infra)
 
     home = os.environ["HOME"]
@@ -383,7 +385,8 @@ def main(conf: DictConfig) -> None:
         if infra == "intel":
             if i == 0:
                 intel_str = fill_intel_template(template_str, opts)
-            intel_str += "\n{};\n".format("python run.py " + hydra_args)
+            command_suffix = "&" if parallel_search else ";"
+            intel_str += "\n{}{}\n".format("python run.py " + hydra_args, command_suffix)
 
     if infra == "intel":
         path = Path(home) / "covi_search" / f"covi_search{conf['now_str']}.sh"
