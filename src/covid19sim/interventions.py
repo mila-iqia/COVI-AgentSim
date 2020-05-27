@@ -4,6 +4,7 @@ Implements human behavior/government policy changes.
 import datetime
 import typing
 from orderedset import OrderedSet
+from itertools import islice
 
 import numpy as np
 
@@ -397,6 +398,41 @@ class GetTested(BehaviorInterventions):
     def __repr__(self):
         return "Get Tested"
 
+class HeuristicRecommendations(RiskBasedRecommendations):
+    @staticmethod
+    def get_recommendations_level(human, thresholds, max_risk_level):
+        if human.age >= 70:
+            return max(human.curr_rec_level, 2)
+
+        elif human.reported_test_result == "positive":
+            return 3
+
+        elif human.all_reported_symptoms:
+            if "extremely-severe" in human.all_reported_symptoms:
+                return 3
+            elif "severe" in human.all_reported_symptoms:
+                return 3
+            elif "moderate" in human.all_reported_symptoms:
+                return 3
+            else:
+                # If mild symptoms
+                return 2
+
+        elif human.curr_rec_level > 0:
+            # See https://github.com/Covi-Canada/simulator/issues/29
+            no_positive_test_result_past_14_days = True
+            for test_result, test_time in human.test_results:
+                result_day = (human.env.timestamp - test_time).days
+                if result_day >= 0 and result_day < human.conf.get("TRACING_N_DAYS_HISTORY"):
+                    no_positive_test_result_past_14_days &= (test_result != "positive")
+
+            no_symptoms_past_7_days = (not any(islice(human.rolling_all_reported_symptoms, 7)))
+
+            if (no_symptoms_past_7_days and no_positive_test_result_past_14_days):
+                return 0
+
+        return max(human.curr_rec_level, 0)
+
 
 class Tracing(object):
     """
@@ -447,6 +483,9 @@ class Tracing(object):
         self.risk_model = risk_model
         if risk_model in ['manual', 'digital']:
             self.intervention = BinaryTracing()
+        elif risk_model == "heuristic":
+            # Combination of risk-based & heuristic recommendations
+            self.intervention = HeuristicRecommendations()
         else:
             # risk based
             self.intervention = RiskBasedRecommendations()
@@ -467,6 +506,9 @@ class Tracing(object):
             self.delay = 1
             self.app = False
 
+        if risk_model == "heuristic":
+            self.risk_mapping = conf.get("RISK_MAPPING")
+
         self.propagate_risk_max_depth = max_depth
         # more than 3 will slow down the simulation too much
         if self.propagate_risk:
@@ -481,6 +523,10 @@ class Tracing(object):
         if not self.should_modify_behavior and (not human.has_app and self.app):
             return
         return self.intervention.modify_behavior(human)
+
+    def risk_level_to_risk(self, risk_level):
+        risk_level = min(risk_level, 15)
+        return self.risk_mapping[risk_level + 1]
 
     def _get_hypothetical_contact_tracing_results(
             self,
@@ -509,7 +555,7 @@ class Tracing(object):
                 v_down: Average decrease in magnitude of risk levels of recent contacts.
         """
         assert self.risk_model != "transformer", "we should never be in here!"
-        assert self.risk_model in ["manual", "digital", "naive", "other"], "missing something?"
+        assert self.risk_model in ["manual", "digital", "naive", "heuristic", "other"], "missing something?"
         t, s, r_up, r_down, v_up, v_down = 0, 0, 0, 0, 0, 0
 
         if self.risk_model == "manual":
@@ -564,15 +610,89 @@ class Tracing(object):
             float: a scalar value.
         """
         assert self.risk_model != "transformer", "we should never be in here!"
-        assert self.risk_model in ["manual", "digital", "naive", "other"], "missing something?"
+        assert self.risk_model in ["manual", "digital", "naive", "heuristic", "other"], "missing something?"
         t, s, r = self._get_hypothetical_contact_tracing_results(human, mailbox, humans_map)
+
         if self.risk_model in ["manual", "digital"]:
             if t + s > 0:
                 risk = 1.0
             else:
                 risk = 0.0
+
         elif self.risk_model == "naive":
             risk = 1.0 - (1.0 - human.conf.get("RISK_TRANSMISSION_PROBA")) ** (t+s)
+
+        elif self.risk_model == "heuristic":
+            risk = human.risk
+
+            no_message_gt3_past_7_days = True
+            high_risk_message, high_risk_num_days = -1, -1
+            moderate_risk_message, moderate_risk_num_days = -1, -1
+            mild_risk_message, mild_risk_num_days = -1, -1
+
+            for _, update_message in mailbox.items():
+                encounter_day = (human.env.timestamp - update_message.encounter_time).days
+                risk_level = update_message.new_risk_level
+
+                if (encounter_day < 7) and (risk_level >= 3):
+                    no_message_gt3_past_7_days = False
+
+                if (risk_level >= 12):
+                    high_risk_message = max(high_risk_message, risk_level)
+                    high_risk_num_days = max(high_risk_num_days, encounter_day)
+
+                elif (risk_level >= 10):
+                    moderate_risk_message = max(moderate_risk_message, risk_level)
+                    moderate_risk_num_days = max(moderate_risk_message, encounter_day)
+
+                elif (risk_level >= 6):
+                    mild_risk_message = max(mild_risk_message, risk_level)
+                    mild_risk_num_days = max(mild_risk_message, encounter_day)
+
+            if human.reported_test_result == "positive":
+                # Update risk for the past 14 days
+                risk = [self.risk_level_to_risk(15)] * 14
+
+            elif human.all_reported_symptoms:
+                # Update risk for the past 7 days
+                if "extremely-severe" in human.all_reported_symptoms:
+                    risk = [self.risk_level_to_risk(12)] * 7
+                elif "severe" in human.all_reported_symptoms:
+                    risk = [self.risk_level_to_risk(12)] * 7
+                elif "moderate" in human.all_reported_symptoms:
+                    risk = [self.risk_level_to_risk(10)] * 7
+                else:
+                    # If mild symptoms
+                    risk = [self.risk_level_to_risk(7)] * 7
+
+            elif human.curr_rec_level > 0:
+                # See https://github.com/Covi-Canada/simulator/issues/29
+                no_positive_test_result_past_14_days = True
+                for test_result, test_time in human.test_results:
+                    result_day = (human.env.timestamp - test_time).days
+                    if result_day >= 0 and result_day < human.conf.get("TRACING_N_DAYS_HISTORY"):
+                        no_positive_test_result_past_14_days &= (test_result != "positive")
+
+                no_symptoms_past_7_days = (not any(islice(human.rolling_all_reported_symptoms, 7)))
+
+                if (no_symptoms_past_7_days and no_positive_test_result_past_14_days
+                        and no_message_gt3_past_7_days):
+                     # Update risk for the past 7 days
+                    risk = [self.risk_level_to_risk(0)] * 7
+
+            elif high_risk_message > 0:
+                # TODO: Decrease the risk level depending on the number of encounters (N > 5)
+                updated_risk = max(human.risk_level, self.risk_level_to_risk(high_risk_message - 5))
+                risk = [updated_risk] * max(high_risk_num_days - 2, 1) # Update at least 1 day
+
+            elif moderate_risk_message > 0:
+                updated_risk = max(human.risk_level, self.risk_level_to_risk(moderate_risk_message - 5))
+                risk = [updated_risk] * max(moderate_risk_num_days - 2, 1) # Update at least 1 day
+
+            elif mild_risk_message > 0:
+                updated_risk = max(human.risk_level, self.risk_level_to_risk(mild_risk_message - 5))
+                risk = [updated_risk] * max(mild_risk_num_days - 2, 1) # Update at least 1 day
+
         elif self.risk_model == "other":
             r_up, v_up, r_down, v_down = r
             r_score = 2*v_up - v_down
