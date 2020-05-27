@@ -38,10 +38,20 @@ def sample_param(sample_dict):
         return sample_dict
 
     if sample_dict["sample"] == "cartesian":
-        return "__store_cartesian__"
+        assert isinstance(
+            sample_dict["from"], list
+        ), "{}'s `from` field MUST be a list, found {}".format(
+            sample_dict["sample"], sample_dict["from"]
+        )
+        return "__cartesian__"
 
     if sample_dict["sample"] == "sequential":
-        return "__store_sequential__"
+        assert isinstance(
+            sample_dict["from"], list
+        ), "{}'s `from` field MUST be a list, found {}".format(
+            sample_dict["sample"], sample_dict["from"]
+        )
+        return "__sequential__"
 
     if sample_dict["sample"] == "range":
         return np.random.choice(np.arange(*sample_dict["from"]))
@@ -133,9 +143,9 @@ def sample_search_conf(exp, idx=0):
     sequentials = []
     for k, v in exp.items():
         candidate = sample_param(v)
-        if candidate == "__store_cartesian__":
+        if candidate == "__cartesian__":
             cartesians.append(k)
-        elif candidate == "__store_sequential__":
+        elif candidate == "__sequential__":
             sequentials.append(k)
         else:
             conf[k] = candidate
