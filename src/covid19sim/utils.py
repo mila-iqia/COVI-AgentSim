@@ -1727,7 +1727,6 @@ def parse_configuration(conf):
     elif not isinstance(conf, dict):
         raise ValueError("Unknown configuration type {}".format(type(conf)))
 
-    conf = OmegaConf.to_container(conf, resolve=True)
     if "SMARTPHONE_OWNER_FRACTION_BY_AGE" in conf:
         conf["SMARTPHONE_OWNER_FRACTION_BY_AGE"] = {
             tuple(int(i) for i in k.split("-")): v
