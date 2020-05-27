@@ -24,7 +24,7 @@ USE_ORACLE: False
 INTERVENTION: ""
 INTERVENTION_DAY: -1
 # NOTE: INTERVENTION is only valid if INTERVENTION_DAY >= 0
-PERCENT_FOLLOW: 1.0
+DROPOUT_RATE: 0.02
 # NOTE: HAS_APP params are only used when an app based INTERVENTION = "Tracing" is used
 APP_UPTAKE: -1.0
 

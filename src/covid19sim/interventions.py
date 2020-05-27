@@ -267,7 +267,7 @@ class BinaryTracing(BehaviorInterventions):
             recommendations = [Quarantine()]
         self.revert_behavior(human)
         for rec in recommendations:
-            if isinstance(rec, BehaviorInterventions) and human.rng.rand() < human.how_much_I_follow_recommendations:
+            if isinstance(rec, BehaviorInterventions) and human.follows_recommendations_today:
                 rec.modify_behavior(human)
                 human.recommendations_to_follow.add(rec)
 
@@ -363,7 +363,7 @@ class RiskBasedRecommendations(BehaviorInterventions):
         recommendations = get_recommendations(human.rec_level)
         self.revert_behavior(human)
         for rec in recommendations:
-            if isinstance(rec, BehaviorInterventions) and human.rng.rand() < human.how_much_I_follow_recommendations:
+            if isinstance(rec, BehaviorInterventions) and human.follows_recommendations_today:
                 rec.modify_behavior(human)
                 human.recommendations_to_follow.add(rec)
 

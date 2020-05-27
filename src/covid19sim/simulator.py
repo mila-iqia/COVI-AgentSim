@@ -198,7 +198,7 @@ class Human(object):
         self.notified = False
         self.tracing_method = None
         self.maintain_extra_distance = 0
-        self.how_much_I_follow_recommendations = self.conf.get('PERCENT_FOLLOW')
+        self._follows_recommendations_today = None
         self.recommendations_to_follow = OrderedSet()
         self.time_encounter_reduction_factor = 1.0
         self.hygiene = 0 # start everyone with a baseline hygiene. Only increase it once the intervention is introduced.
@@ -348,6 +348,16 @@ class Human(object):
         self.count_shop=0
 
         self.work_start_hour = self.rng.choice(range(7, 17), 3)
+
+    @property
+    def follows_recommendations_today(self):
+        last_date = self.last_date["follow_recommendations"]
+        current_date = self.env.timestamp.date()
+        if last_date is None or (current_date - last_date).days > 0:
+            proba = self.conf.get("DROPOUT_RATE")
+            self.last_date["follow_recommendations"] = self.env.timestamp.date()
+            self._follows_recommendations_today = self.rng.rand() < proba
+        return self._follows_recommendations_today
 
 
     def assign_household(self, location):
@@ -1262,11 +1272,9 @@ class Human(object):
             intervention ([type], optional): [description]. Defaults to None.
             collect_training_data (bool, optional): [description]. Defaults to False.
         """
-        # FIXME: PERCENT_FOLLOW < 1 will throw an error because ot self.notified somewhere
         if (
             intervention is not None
             and not self.notified
-            and self.rng.random() < self.conf.get('PERCENT_FOLLOW')
         ):
             self.tracing = False
             if isinstance(intervention, Tracing):

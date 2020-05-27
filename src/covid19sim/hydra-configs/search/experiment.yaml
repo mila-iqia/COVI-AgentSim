@@ -29,6 +29,10 @@ GLOBAL_MOBILITY_SCALING_FACTOR:
   sample: uniform # uniform in range:
   from: [0.0, 1.0]
 
+DROPOUT_RATE:
+  sample: uniform # uniform in range:
+  from: [0.0, 0.2]
+
 seed: # for sole reproducibility purposes
   sample: range # uniform int choice
   from: [0, 10]
