@@ -120,8 +120,8 @@ def sample_sequentials(sequential_keys, exp, idx):
     """
     conf = {}
     for k in sequential_keys:
-        v = exp[key]["from"]
-        conf[k].update(v[idx % len(v)])
+        v = exp[k]["from"]
+        conf[k] = v[idx % len(v)]
     return conf
 
 
@@ -383,7 +383,7 @@ def main(conf: DictConfig) -> None:
         if infra == "intel":
             if i == 0:
                 intel_str = fill_intel_template(template_str, opts)
-            intel_str += "\n{}\n".format("python run.py " + hydra_args)
+            intel_str += "\n{};\n".format("python run.py " + hydra_args)
 
     if infra == "intel":
         path = Path(home) / "covi_search" / f"covi_search{conf['now_str']}.sh"
