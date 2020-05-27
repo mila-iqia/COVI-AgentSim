@@ -11,6 +11,7 @@ from covid19sim.constants import SECONDS_PER_DAY, SECONDS_PER_HOUR
 from covid19sim.monitors import EventMonitor, SEIRMonitor, TimeMonitor
 from covid19sim.simulator import Human
 from covid19sim.server_utils import InferenceClient
+from covid19sim.models.run import DummyMemManager
 from covid19sim.utils import (
     dump_tracker_data,
     extract_tracker_data,
@@ -196,12 +197,15 @@ def simulate(
     monitors[0].dump()
     monitors[0].join_iothread()
 
-    # If using an inference server, ask it to reset its clusters
-    if conf.get("USE_INFERENCE_SERVER") and conf.get("RESET_INFERENCE_SERVER", False):
-        inference_frontend_address = conf.get('INFERENCE_SERVER_ADDRESS', None)
-        print("requesting cluster reset from inference server...")
-        temporary_client = InferenceClient(server_address=inference_frontend_address)
-        temporary_client.request_reset()
+    # we might need to reset the state of the clusters held in shared memory (server or not)
+    if conf.get("RESET_INFERENCE_SERVER", False):
+        if conf.get("USE_INFERENCE_SERVER"):
+            inference_frontend_address = conf.get('INFERENCE_SERVER_ADDRESS', None)
+            print("requesting cluster reset from inference server...")
+            temporary_client = InferenceClient(server_address=inference_frontend_address)
+            temporary_client.request_reset()
+        else:
+            DummyMemManager.global_cluster_map = {}
 
     # Initiate city process, which runs every hour
     env.process(city.run(SECONDS_PER_HOUR, outfile))

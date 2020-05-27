@@ -22,7 +22,8 @@ CLUSTER_PATH : "output/clusters.json"
 # Inference & Training
 TRACING_N_DAYS_HISTORY : 14
 DUMP_CLUSTERS : False
-CLUSTER_ALGO_TYPE: "blind" # should be in ["old", "blind", "naive", "perfect", "simple"]
+CLUSTER_ALGO_TYPE: "blind" # should be in ["gaen", "blind"]
+RESET_INFERENCE_SERVER: True
 
 # TRACING RISK MODEL PARAMETERS  (non-ML)
 TRACE_SYMPTOMS : True
