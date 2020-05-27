@@ -226,50 +226,52 @@ SMARTPHONE_OWNER_FRACTION_BY_AGE:
   }
 
 # DISEASE PARAMETERS
-AVG_INCUBATION_DAYS: 5 # &avg-incubation-days FIXME:unused
-SCALE_INCUBATION_DAYS: 0.5 # FIXME:unused
-INFECTIOUSNESS_ONSET_DAYS_WRT_SYMPTOM_ONSET: 2.5 # relative to incubation days FIXME:unused
-AVG_RECOVERY_DAYS: 14 # FIXME:unused
-SCALE_RECOVERY_DAYS: 4 # FIXME:unused
 INFECTION_RADIUS: 200 # cms
 INFECTION_DURATION: 15 # minutes
+
 #                   0-9 10-19 20-29  30-39  40-49  50-59 60-69 70-79  80-  # Assuming dath rate to be same for 80 and above
 P_NEVER_RECOVERS: [0, 0.002, 0.002, 0.002, 0.004, 0.02, 0.04, 0.08, 0.15] # &never_recovers
 REINFECTION_POSSIBLE: False # [0, 1]
+
 # aerosol    copper      cardboard       steel       plastic
-MAX_DAYS_CONTAMINATION: [0.125, 0.333333, 1, 2, 3] # https://www.nejm.org/doi/pdf/10.1056/NEJMc2004973?articleTools=true
-VIRAL_LOAD_MIN: 0.0001 # FIXME:unused
-VIRAL_LOAD_NORMALIZATION: 2 # FIXME:unused
+MAX_DAYS_CONTAMINATION: [0.125, 0.333333, 1, 2, 3] # days # https://www.nejm.org/doi/pdf/10.1056/NEJMc2004973?articleTools=true
 
-# VIRAL LOAD PARAMS
-MIN_VIRAL_LOAD: 0.1
-MAX_VIRAL_LOAD: 0.4
-
-PLATEAU_START_MEAN: 2.5
-PLATEAU_START_STD: 0.1
-PLATEAU_START_CLIP_LOW: 2.25
-PLATEAU_START_CLIP_HIGH: 2.75
-
-PLATEAU_DURATION_MEAN: 5.5
-PLATEAU_DURATION_STD: 1
-PLATEAU_DURATION_CLIP_LOW: 3.0
-PLATEAU_DURATION_CLIP_HIGH: 9.0
-
-RECOVERY_MEAN: 6
-RECOVERY_STD: 1
-RECOVERY_CLIP_LOW: 2.5
-RECOVERY_CLIP_HIGH: 10
 VIRAL_LOAD_RECOVERY_FACTOR: 3 # higher initial viral load means longer recovery
 
-# INCUBATION PARAMS
-SYMPTOM_ONSET_WRT_VIRAL_LOAD_PEAK_AVG: 0.6 # DAYS
-SYMPTOM_ONSET_WRT_VIRAL_LOAD_PEAK_STD: 0.05
-INCUBATION_DAYS_GAMMA_SHAPE: 5.807 # Refer Table 2 (Appendix) in https://www.acpjournals.org/doi/10.7326/M20-0504 for parameters of lognormal fit
+# INCUBATION PERIOD
+# Refer Table 2 (Appendix) in https://www.acpjournals.org/doi/10.7326/M20-0504 for parameters of lognormal fit
+INCUBATION_DAYS_GAMMA_SHAPE: 5.807
 INCUBATION_DAYS_GAMMA_SCALE: 0.948
 
+# &infectiousness-onset [He 2020 https://www.nature.com/articles/s41591-020-0869-5#ref-CR1] infectiousness started from 2.3 days (95% CI, 0.8–3.0 days) before symptom onset and peaked at 0.7 days (95% CI, −0.2–2.0 days) before symptom onset (Fig. 1c).
+INFECTIOUSNESS_ONSET_DAYS_WRT_INCUBATION_AVG: 2.3
+
+# &infectiousness-onset [He 2020 https://www.nature.com/articles/s41591-020-0869-5#ref-CR1] infectiousness peaked at 0.7 days (95% CI, −0.2–2.0 days) before symptom onset (Fig. 1c).
+INFECTIOUSNESS_PEAK_WRT_INCUBATION_AVG: 0.7 # DAYS
+
+# Avg plateau duration
+# infered from https://www.medrxiv.org/content/10.1101/2020.04.10.20061325v2.full.pdf (Figure 1 & 4).
+# 8 is infered from Figure 4 by eye-balling.
+PLATEAU_DURATION_MEAN: 8
+
+# recovery is with respect to incubation days
+RECOVERY_DAYS_AVG: 14
+
+# VIRAL LOAD PEAK
+MIN_VIRAL_LOAD_PEAK_HEIGHT: 0.1
+MAX_VIRAL_LOAD_PEAK_HEIGHT: 1.0
+
+# VIRAL LOAD PLATEAU
+MIN_MULTIPLIER_PLATEAU_HEIGHT: 0.5
+MAX_MULTIPLIER_PLATEAU_HEIGHT: 0.8
+
+# OTHER CONDITIONS
+INFLAMMATORY_CONDITIONS: ["smoker", "diabetes", "heart_disease", "COPD", "immuno-suppressed"]
+
 # ASYMTPOMATIC
-BASELINE_P_ASYMPTOMATIC: 0.20 # &p-asymptomatic
-ASYMPTOMATIC_INFECTION_RATIO: 0.1 # &prob_infectious
+BASELINE_P_ASYMPTOMATIC: 0.18 # p-asymptomatic [Mizumoto 2020 https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7078829/] probability of never showing symptoms yet testing positive
+MILD_INFECTION_RATIO: 0.48 # &prob_infectious_mild [Luo 2020 https://www.medrxiv.org/content/10.1101/2020.03.24.20042606v1]
+ASYMPTOMATIC_INFECTION_RATIO: 0.29 # &prob_infectious_asymp [Luo 2020 https://www.medrxiv.org/content/10.1101/2020.03.24.20042606v1]
 
 # convex combination - if it sums to 1. Unused, because there is no data on it.
 INFECTION_DISTANCE_FACTOR: 0.0
@@ -300,7 +302,7 @@ GET_TESTED_SYMPTOMS_CHECKED_BY_SELF: ["cough", "fever", "trouble_breathing", "ch
 # SEASONAL ALLERGIES
 P_ALLERGIES: 0.4 # proportion of population; https://www.healthline.com/health/allergies/statistics#1
 # P_HAS_ALLERGIES_TODAY: 0.005 # likelihood to start allergy any day (2-3 times per year) # produces too many allergies (experimental)
-P_HAS_ALLERGIES_TODAY: 0.0005
+P_HAS_ALLERGIES_TODAY: 0.005
 
 # OTHER TRANSMISSIBLE DISEASES
 # P_FLU_TODAY: 0.003 # # likelihood to start flu any day (1 per year)
@@ -372,7 +374,7 @@ MIN_DIST_ENCOUNTER: 20
 MAX_DIST_ENCOUNTER: 300 # cms
 
 # KNOBS
-CONTAGION_KNOB: 1.4
+CONTAGION_KNOB: 0
 ENVIRONMENTAL_INFECTION_KNOB: 0.0005
 
 ## INTERVENTIONS

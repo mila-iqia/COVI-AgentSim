@@ -727,6 +727,11 @@ class TestFacility(object):
             for k in self.test_count_today.keys():
                 self.test_count_today[k] = 0
 
+            # TODO : remove humans from queue
+            # for human in self.test_queue:
+            #     if not any(human.symptoms) and not human.test_recommended:
+            #         self.test_queue.remove(human)
+
     def get_available_test(self):
         """
         Returns a first type that is available according to preference hierarchy
