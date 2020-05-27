@@ -385,8 +385,8 @@ def main(conf: DictConfig) -> None:
         if infra == "intel":
             if i == 0:
                 intel_str = fill_intel_template(template_str, opts)
-            command_suffix = "&" if parallel_search else ";"
-            intel_str += "\n{}{}\n".format("python run.py " + hydra_args, command_suffix)
+            command_suffix = "&\nsleep 5;\n" if parallel_search else ";\n"
+            intel_str += "\n{}{}".format("python run.py " + hydra_args, command_suffix)
 
     if infra == "intel":
         path = Path(home) / "covi_search" / f"covi_search{conf['now_str']}.sh"
