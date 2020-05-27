@@ -36,17 +36,23 @@ def sample_param(sample_dict):
     """
     if not isinstance(sample_dict, dict) or "sample" not in sample_dict:
         return sample_dict
+
     if sample_dict["sample"] == "cartesian":
-        return "store_cartesian"
-    elif sample_dict["sample"] == "range":
-        value = np.random.choice(np.arange(*sample_dict["from"]))
-    elif sample_dict["sample"] == "list":
-        value = np.random.choice(sample_dict["from"])
-    elif sample_dict["sample"] == "uniform":
-        value = np.random.uniform(*sample_dict["from"])
-    else:
-        raise ValueError("Unknonw sample type in dict " + str(sample_dict))
-    return value
+        return "__store_cartesian__"
+
+    if sample_dict["sample"] == "sequential":
+        return "__store_sequential__"
+
+    if sample_dict["sample"] == "range":
+        return np.random.choice(np.arange(*sample_dict["from"]))
+
+    if sample_dict["sample"] == "list":
+        return np.random.choice(sample_dict["from"])
+
+    if sample_dict["sample"] == "uniform":
+        return np.random.uniform(*sample_dict["from"])
+
+    raise ValueError("Unknown sample type in dict " + str(sample_dict))
 
 
 def load_search_conf(path):
@@ -67,11 +73,45 @@ def load_search_conf(path):
 
 
 def sample_cartesians(cartesian_keys, exp, idx):
+    """
+    Returns the `idx`th item in the cartesian product of all cartesian keys to
+    be sampled.
+
+    Args:
+        cartesian_keys (list): keys in the experimental configuration that are to be used in the full
+           cartesian product
+        exp (dict): experimental configuration
+        idx (int): index of the current sample
+
+    Returns:
+        dict: sampled point in the cartesian space (with keys = cartesian_keys)
+    """
     conf = {}
     cartesian_values = [exp[key]["from"] for key in cartesian_keys]
     product = list(itertools.product(*cartesian_values))
     for k, v in zip(cartesian_keys, product[idx % len(product)]):
         conf[k] = v
+    return conf
+
+
+def sample_sequentials(sequential_keys, exp, idx):
+    """
+    Samples sequentially from the "from" values specified in each key of the experimental
+    configuration which have sample == "sequential"
+    Unlike `cartesian` sampling, `sequential` sampling iterates *independently* over each keys
+
+    Args:
+        sequential_keys (list): keys to be sampled sequentially
+        exp (dict): experimental config
+        idx (int): index of the current sample
+
+    Returns:
+        conf: sampled dict
+    """
+    conf = {}
+    for k in sequential_keys:
+        v = exp[key]["from"]
+        conf[k].update(v[idx % len(v)])
     return conf
 
 
@@ -82,18 +122,25 @@ def sample_search_conf(exp, idx=0):
 
     Args:
         exp (dict): experiment's parametrization
+        idx  (int): experiment's idx in the sampling procedure (useful in case a key
+            should be sampled in a cartesian or sequential manner)
 
     Returns:
         dict: sampled configuration
     """
     conf = {}
     cartesians = []
+    sequentials = []
     for k, v in exp.items():
         candidate = sample_param(v)
-        if candidate == "store_cartesian":
+        if candidate == "__store_cartesian__":
             cartesians.append(k)
+        elif candidate == "__store_sequential__":
+            sequentials.append(k)
         else:
             conf[k] = candidate
+    if sequentials:
+        conf.update(sample_sequentials(sequentials, exp, idx))
     if cartesians:
         conf.update(sample_cartesians(cartesians, exp, idx))
     return conf
