@@ -365,10 +365,9 @@ class ModelsTest(unittest.TestCase):
                                 check = unobserved['infectiousness'][1:] == prev_unobserved['infectiousness'][:13]
                                 self.assertTrue(check if isinstance(check, bool) else check.all())
 
-                                if prev_unobserved['is_exposed'] and prev_unobserved['exposure_day'] < 13:
-                                    self.assertTrue(unobserved['is_exposed'])
-                                    self.assertEqual(max(0, unobserved['exposure_day'] - 1),
-                                                     prev_unobserved['exposure_day'])
+                                if prev_unobserved['is_exposed']:
+                                    self.assertTrue(prev_unobserved['recovery_days'], unobserved['recovery_days'])
+                                    self.assertLess(prev_unobserved['exposure_day'], prev_unobserved['recovery_days'])
 
                                 if unobserved['is_exposed'] != prev_unobserved['is_exposed']:
                                     if unobserved['is_exposed']:
@@ -388,8 +387,7 @@ class ModelsTest(unittest.TestCase):
                                                 raise
                                         self.assertEqual(prev_unobserved['infectiousness'][0], 0)
                                     else:
-                                        self.assertEqual(prev_unobserved['exposure_day'], 13)
-                                        self.assertFalse(unobserved['is_exposed'])
+                                        self.assertLessEqual(prev_unobserved['exposure_day'], 13)
                                         self.assertEqual(unobserved['exposure_day'], None)
 
                                 if prev_unobserved['is_recovered']:

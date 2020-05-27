@@ -54,10 +54,14 @@ for k, v in SYMPTOMS_META.items():
 
 def exposure_array(human_infection_timestamp, date, conf):
     # identical to human.exposure_array
+    # TODO FIXME: THIS IS NOT AN "EXPOSURE DAY", THIS IS A TIME SINCE EXPOSURE. TERRIBLE
+    #   VARIABLE NAMES NEED TO BE UPDATED.
     exposed = False
     exposure_day = None
     if human_infection_timestamp:
         exposure_day = (date - human_infection_timestamp).days
+        # TODO FIXME: WHY ARE WE THRESHOLDING WITH N_DAYS_HISTORY? WE IF WANT TO DETERMINE
+        #   WHETHER THE USER IS STILL INFECTIOUS OR HAS RECOVERED, WE SHOULD USE 'RECOVERY_DAYS'
         if exposure_day >= 0 and exposure_day < conf.get("TRACING_N_DAYS_HISTORY"):
             exposed = True
         else:
