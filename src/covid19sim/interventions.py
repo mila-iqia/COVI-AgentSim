@@ -577,7 +577,8 @@ class Tracing(object):
             r_up, v_up, r_down, v_down = r
             r_score = 2*v_up - v_down
             risk = 1.0 - (1.0 - human.conf.get("RISK_TRANSMISSION_PROBA")) ** (t + 0.5*s + r_score)
-        return risk
+
+        return risk if isinstance(risk, list) else [risk]
 
     def compute_tracing_delay(self, human):
         """

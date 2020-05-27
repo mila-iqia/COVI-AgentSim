@@ -1061,8 +1061,11 @@ class Human(object):
                 # if not running transformer, we're using basic tracing --- do it now, it won't be batched later
                 if not self.is_removed and not self.got_new_test_results:
                     # note: we check to make sure we don't have test results here not to overwrite the risk value
-                    self.risk_history_map[current_day_idx] = \
-                        self.tracing_method.compute_risk(self, personal_mailbox, self.city.hd)
+                    risks = self.tracing_method.compute_risk(self, personal_mailbox, self.city.hd)
+                    for day_offset, risk in enumerate(risks):
+                        if current_day_idx - day_offset in self.risk_history_map:
+                            self.risk_history_map[current_day_idx - day_offset] = risk
+                        
                     update_reason = "tracing"
 
             if self.symptoms and self.tracing_method.propagate_symptoms:
