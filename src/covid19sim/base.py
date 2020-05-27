@@ -1,5 +1,5 @@
 """
-[summary]
+Contains base classes that define environment of the simulator.
 """
 import copy
 import datetime
@@ -987,7 +987,6 @@ class Household(Location):
         super(Household, self).__init__(**kwargs)
         self.residents = []
 
-
 class Hospital(Location):
     """
     Hospital location class, inheriting from covid19sim.base.Location
@@ -1058,7 +1057,6 @@ class Hospital(Location):
         """
         human.obs_hospitalized = False
         super().remove_human(human)
-
 
 class ICU(Location):
     """
