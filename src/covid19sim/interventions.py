@@ -106,19 +106,19 @@ class LimitContact (BehaviorInterventions):
         return "Limit Contact"
 
 
-class Stand2M(BehaviorInterventions):
+class StandApart(BehaviorInterventions):
     """
     `Human` should maintain an extra distance with other people.
     It adds `_maintain_extra_distance_2m` because of the conflict with a same named attribute in
     `SocialDistancing`
     """
-    def __init__(self):
-        pass
+    def __init__(self, default_distance=100):
+        self.DEFAULT_SOCIAL_DISTANCE = default_distance
 
     def modify_behavior(self, human):
         # FIXME : Social distancing also has this parameter
         human._maintain_extra_distance_2m = human.maintain_extra_distance
-        human.maintain_extra_distance = 200 # cms
+        human.maintain_extra_distance = self.DEFAULT_SOCIAL_DISTANCE + 100 * (human.carefulness - 0.5)
 
     def revert_behavior(self, human):
         human.maintain_extra_distance = human._maintain_extra_distance_2m
@@ -262,7 +262,7 @@ class BinaryTracing(BehaviorInterventions):
 
     def modify_behavior(self, human):
         if human.rec_level == 0:
-            recommendations = []
+            recommendations = [WashHands(), StandApart(default_distance=25)]
         else:
             recommendations = [Quarantine()]
         self.revert_behavior(human)
@@ -315,7 +315,7 @@ def get_recommendations(level):
     if level == 0:
         return [WashHands()]
     if level == 1:
-        return [WashHands(), Stand2M(), WearMask()]
+        return [WashHands(), StandApart(), WearMask()]
     if level == 2:
         return [WashHands(), SocialDistancing(), WearMask(), 'monitor_symptoms']
 
@@ -657,8 +657,8 @@ def get_intervention(conf):
         return Tracing(conf)
     elif key == "WashHands":
         return WashHands()
-    elif key == "Stand2M":
-        return Stand2M()
+    elif key == "StandApart":
+        return StandApart()
     elif key == "StayHome":
         return StayHome()
     elif key == "GetTested":

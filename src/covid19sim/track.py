@@ -145,6 +145,7 @@ class Tracker(object):
 
         self.dist_encounters = defaultdict(int)
         self.time_encounters = defaultdict(int)
+        self.encounter_distances = []
 
         # symptoms
         self.symptoms = {'covid': defaultdict(int), 'all':defaultdict(int)}
@@ -764,6 +765,13 @@ class Tracker(object):
                 self.contacts['location_duration'][location.location_type].extend([0 for _ in range(bin - x + 1)])
             self.contacts['location_duration'][location.location_type][bin] += 1
 
+    def track_encounter_distance(self, type, packing_term, encounter_term, social_distancing_term, distance, location=None):
+        if location:
+            str = '{}\t{}\t{}\t{}\t{}\t{}'.format(type, location, packing_term, encounter_term, social_distancing_term, distance)
+        else:
+            str = 'B\t{}\t{}\t{}\t{}'.format(packing_term, encounter_term, social_distancing_term, distance)
+        self.encounter_distances.append(str)
+
     def track_encounter_events(self, human1, human2, location, distance, duration):
         """
         [summary]
@@ -1067,6 +1075,7 @@ class Tracker(object):
         data['human_monitor'] = self.human_monitor
         data['infection_monitor'] = self.infection_monitor
         data['infector_infectee_update_messages'] = self.infector_infectee_update_messages
+        data['encounter_distances'] = self.encounter_distances
 
         os.makedirs("logs3", exist_ok=True)
         with open(f"logs3/{self.filename}", 'wb') as f:

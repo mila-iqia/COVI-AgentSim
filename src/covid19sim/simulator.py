@@ -1587,18 +1587,30 @@ class Human(object):
             if location != self.household and not self.rng.random() < (0.1 * abs(self.age - h.age) + 1) ** -1:
                 continue
 
+            # first term is packing metric for the location in cm
             packing_term = 100 * np.sqrt(area/len(self.location.humans)) # cms
             encounter_term = self.rng.uniform(self.conf.get("MIN_DIST_ENCOUNTER"), self.conf.get("MAX_DIST_ENCOUNTER"))
             social_distancing_term = np.mean([self.maintain_extra_distance, h.maintain_extra_distance]) * self.rng.rand()
             # if you're in a space, you cannot be more than packing term apart
             distance = np.clip(encounter_term + social_distancing_term, a_min=0, a_max=packing_term)
+            # TODO: how often do we clip here and for which location type?
+            # TODO: what is the distribution of distances here (and each type)?
             # if distance == packing_term:
                 # print(f"packing:{packing_term:5.2f} encounter:{encounter_term} social_distancing:{social_distancing_term} distance clipped:{distance == packing_term} distance:{distance} {location}")
+
+            if distance == packing_term:
+                city.tracker.track_encounter_distance(
+                    "A\t1", packing_term, encounter_term,
+                    social_distancing_term, distance, location)
+            else:
+                city.tracker.track_encounter_distance(
+                    "A\t0", packing_term, encounter_term,
+                    social_distancing_term, distance, location)
 
             # risk model
             h1_msg, h2_msg = None, None
             if (
-                self.conf.get("MIN_MESSAGE_PASSING_DISTANCE") < distance <  self.conf.get("MAX_MESSAGE_PASSING_DISTANCE")
+                self.conf.get("MIN_MESSAGE_PASSING_DISTANCE") < distance < self.conf.get("MAX_MESSAGE_PASSING_DISTANCE")
             ):
                 if self.tracing and self.has_app and h.has_app:
                     h1_msg, h2_msg = exchange_encounter_messages(
@@ -1623,6 +1635,9 @@ class Human(object):
 
             # Conditions met for possible infection #https://www.cdc.gov/coronavirus/2019-ncov/hcp/guidance-risk-assesment-hcp.html
             if contact_condition:
+                city.tracker.track_encounter_distance("B\t0", packing_term, encounter_term, social_distancing_term, distance, location=None)
+                # TODO: whats the distribution of distances that get here (each distance type)?
+
                 proximity_factor = 1
                 if self.conf.get("INFECTION_DISTANCE_FACTOR") or self.conf.get("INFECTION_DURATION_FACTOR"):
                     # currently unused
@@ -1640,6 +1655,7 @@ class Human(object):
 
                 infector, infectee = None, None
                 if (self.is_infectious ^ h.is_infectious) and scale_factor_passed:
+                    # TODO: whats the distribution of distances that get here (each distance type)?
                     if self.is_infectious:
                         infector, infectee = self, h
                         infectee_msg = h2_msg
