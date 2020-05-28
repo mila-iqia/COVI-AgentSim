@@ -779,6 +779,7 @@ class Human(object):
 
         if not self.is_infectious:
             return 0
+
         start_p = self.get_infectiousness_for_day(self.env.timestamp, self.is_infectious)
         end_p = self.get_infectiousness_for_day(self.env.timestamp + datetime.timedelta(hours=hours), self.is_infectious)
         return hours / 24 * (start_p + end_p) / 2
@@ -1659,7 +1660,7 @@ class Human(object):
 
             t_overlap = (min(self.leaving_time, getattr(h, "leaving_time", self.env.ts_initial+SECONDS_PER_HOUR)) -
                          max(self.start_time,   getattr(h, "start_time",   self.env.ts_initial+SECONDS_PER_HOUR))) / SECONDS_PER_MINUTE
-            t_near = self.rng.random() * t_overlap * min(self.time_encounter_reduction_factor, h.time_encounter_reduction_factor)
+            t_near = self.rng.random() * t_overlap * max(self.time_encounter_reduction_factor, h.time_encounter_reduction_factor)
 
             city.tracker.track_social_mixing(human1=self, human2=h, duration=t_near, timestamp = self.env.timestamp)
             contact_condition = (
