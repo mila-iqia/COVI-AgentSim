@@ -350,7 +350,9 @@ class Human(object):
         self.count_shop=0
 
         self.work_start_hour = self.rng.choice(range(7, 17), 3)
-
+        # TODO: add a proper description whoever was doing that getattr hack in the human's at function
+        self.location_leaving_time = self.env.ts_initial + SECONDS_PER_HOUR
+        self.location_start_time = self.env.ts_initial
 
     def assign_household(self, location):
         """
@@ -1558,8 +1560,10 @@ class Human(object):
         location.add_human(self)
         self.wear_mask()
 
-        self.start_time   = self.env.now
-        self.leaving_time = self.start_time + duration*SECONDS_PER_MINUTE
+        self.location_start_time   = self.env.now
+        self.location_leaving_time = self.location_start_time + duration*SECONDS_PER_MINUTE
+        print(f"self.location_start_time: {self.location_start_time}")
+        print(f"self.location_leaving_time: {self.location_leaving_time}")
         area = self.location.area
         initial_viral_load = 0
 
@@ -1598,7 +1602,7 @@ class Human(object):
             # TODO: how often do we clip here and for which location type?
             # TODO: what is the distribution of distances here (and each type)?
             # if distance == packing_term:
-                # print(f"packing:{packing_term:5.2f} encounter:{encounter_term} social_distancing:{social_distancing_term} distance clipped:{distance == packing_term} distance:{distance} {location}")
+            # print(f"packing:{packing_term:5.2f} encounter:{encounter_term} social_distancing:{social_distancing_term} distance clipped:{distance == packing_term} distance:{distance} {location}")
 
             if distance == packing_term:
                 city.tracker.track_encounter_distance(
@@ -1608,6 +1612,13 @@ class Human(object):
                 city.tracker.track_encounter_distance(
                     "A\t0", packing_term, encounter_term,
                     social_distancing_term, distance, location)
+
+
+            t_overlap = (min(self.location_leaving_time, h.location_leaving_time) -
+                         max(self.location_start_time,   h.location_start_time)) / SECONDS_PER_MINUTE
+            t_near = self.rng.random() * t_overlap * self.time_encounter_reduction_factor
+            print(t_overlap)
+            print(t_near)
 
             # risk model
             h1_msg, h2_msg = None, None
@@ -1624,10 +1635,6 @@ class Human(object):
                         # in the clustering algorithm --- in reality, only the encounter day matters
                         minutes_granularity=self.conf.get("ENCOUNTER_TIME_GRANULARITY_MINS", 60 * 12),
                     )
-
-            t_overlap = (min(self.leaving_time, getattr(h, "leaving_time", self.env.ts_initial+SECONDS_PER_HOUR)) -
-                         max(self.start_time,   getattr(h, "start_time",   self.env.ts_initial+SECONDS_PER_HOUR))) / SECONDS_PER_MINUTE
-            t_near = self.rng.random() * t_overlap * self.time_encounter_reduction_factor
 
             city.tracker.track_social_mixing(human1=self, human2=h, duration=t_near, timestamp = self.env.timestamp)
             contact_condition = (
