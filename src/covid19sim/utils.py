@@ -1734,10 +1734,22 @@ def parse_configuration(conf):
             for k, v in conf["SMARTPHONE_OWNER_FRACTION_BY_AGE"].items()
         }
 
+    if "NORMALIZED_SUSCEPTIBILITY_BY_AGE" in conf:
+        conf["NORMALIZED_SUSCEPTIBILITY_BY_AGE"] = {
+            tuple(int(i) for i in k.split("-")): v
+            for k, v in conf["NORMALIZED_SUSCEPTIBILITY_BY_AGE"].items()
+        }
+
     if "HUMAN_DISTRIBUTION" in conf:
         conf["HUMAN_DISTRIBUTION"] = {
             tuple(int(i) for i in k.split("-")): v
             for k, v in conf["HUMAN_DISTRIBUTION"].items()
+        }
+
+    if "MEAN_DAILY_INTERACTION_FOR_AGE_GROUP" in conf:
+        conf["MEAN_DAILY_INTERACTION_FOR_AGE_GROUP"] = {
+            tuple(int(i) for i in k.split("-")): v
+            for k, v in conf["MEAN_DAILY_INTERACTION_FOR_AGE_GROUP"].items()
         }
 
     if "start_time" in conf:
@@ -1782,6 +1794,18 @@ def dump_conf(_conf, path):
             "-".join([str(i) for i in k]): v
             for k, v in conf["HUMAN_DISTRIBUTION"].items()
         }
+
+    if "NORMALIZED_SUSCEPTIBILITY_BY_AGE" in conf:
+        conf["NORMALIZED_SUSCEPTIBILITY_BY_AGE"] = {
+                "-".join([str(i) for i in k]): v
+                for k, v in conf["NORMALIZED_SUSCEPTIBILITY_BY_AGE"].items()
+            }
+
+    if "MEAN_DAILY_INTERACTION_FOR_AGE_GROUP" in conf:
+        conf["MEAN_DAILY_INTERACTION_FOR_AGE_GROUP"] = {
+                "-".join([str(i) for i in k]): v
+                for k, v in conf["MEAN_DAILY_INTERACTION_FOR_AGE_GROUP"].items()
+            }
 
     if "start_time" in conf:
         conf["start_time"] = conf["start_time"].strftime("%Y-%m-%d %H:%M:%S")

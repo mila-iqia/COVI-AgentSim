@@ -13,7 +13,7 @@ LOCATION_DISTRIBUTION:
       {
         "n": 500,
         "area": 0.15,
-        "social_contact_factor": 0.7,
+        "social_contact_factor": 1,
         "surface_prob": [0.1, 0.1, 0.3, 0.2, 0.3],
         "rnd_capacity": [30, 100],
       },
@@ -21,7 +21,7 @@ LOCATION_DISTRIBUTION:
       {
         "n": 50,
         "area": 0.2,
-        "social_contact_factor": 0.3,
+        "social_contact_factor": 1,
         "surface_prob": [0.1, 0.1, 0.3, 0.2, 0.3],
         "rnd_capacity": null,
       },
@@ -29,7 +29,7 @@ LOCATION_DISTRIBUTION:
       {
         "n": 500,
         "area": 0.05,
-        "social_contact_factor": 0.8,
+        "social_contact_factor": 1,
         "surface_prob": [0.1, 0.1, 0.3, 0.2, 0.3],
         "rnd_capacity": null,
       },
@@ -37,7 +37,7 @@ LOCATION_DISTRIBUTION:
       {
         "n": 500,
         "area": 0.05,
-        "social_contact_factor": 0.8,
+        "social_contact_factor": 3,
         "surface_prob": [0.1, 0.1, 0.3, 0.2, 0.3],
         "rnd_capacity": null,
       },
@@ -45,7 +45,7 @@ LOCATION_DISTRIBUTION:
       {
         "n": 2.6,
         "area": 0.30,
-        "social_contact_factor": 1.0,
+        "social_contact_factor": 2,
         "surface_prob": [0.1, 0.1, 0.3, 0.2, 0.3],
         "rnd_capacity": null,
       },
@@ -53,7 +53,7 @@ LOCATION_DISTRIBUTION:
       {
         "n": 250,
         "area": 0.05,
-        "social_contact_factor": 0.2,
+        "social_contact_factor": 0.1,
         "surface_prob": [0.8, 0.05, 0.05, 0.05, 0.05],
         "rnd_capacity": null,
       },
@@ -61,7 +61,7 @@ LOCATION_DISTRIBUTION:
       {
         "n": 40,
         "area": 0.15,
-        "social_contact_factor": 0.8,
+        "social_contact_factor": 1,
         "surface_prob": [0.1, 0.1, 0.3, 0.2, 0.3],
         "rnd_capacity": [300, 500],
       },
@@ -69,7 +69,7 @@ LOCATION_DISTRIBUTION:
       {
         "n": 1000,
         "area": 0.05,
-        "social_contact_factor": 0.4,
+        "social_contact_factor": 2,
         "surface_prob": [0.0, 0.0, 0.0, 0.0, 1.0],
         "rnd_capacity": [2, 5],
       },
@@ -275,6 +275,35 @@ ASYMPTOMATIC_INFECTION_RATIO: 0.1 # &prob_infectious
 INFECTION_DISTANCE_FACTOR: 0.0
 INFECTION_DURATION_FACTOR: 0.0
 
+# normalized susceptibility to infection broken down age group
+# refer Oxford COVID-19 model
+# They normalise the fitted attack rate across age groups so that average age has a susceptiblity of 1.0
+# UK's average age = 40; Canada's average age = 42. Just taking the normalized susceptiblity from Table 5.
+NORMALIZED_SUSCEPTIBILITY_BY_AGE: {
+    "0-10": 0.71,
+    "10-20": 0.74,
+    "20-30": 0.79,
+    "30-40": 0.87,
+    "40-50": 0.98,
+    "50-60": 1.11,
+    "60-70": 1.26,
+    "70-80": 1.45,
+    "80-150": 1.66,
+  }
+
+MEAN_DAILY_INTERACTION_FOR_AGE_GROUP: {
+  "0-10": 10,
+  "10-20": 10,
+  "20-30": 7,
+  "30-40": 7,
+  "40-50": 7,
+  "50-60": 7,
+  "60-70": 7,
+  "70-80": 3,
+  "80-150": 3,
+
+  }
+
 # TESTING
 # capacity is proportion of population tested per day
 TEST_TYPES: { "lab": {
@@ -300,7 +329,7 @@ GET_TESTED_SYMPTOMS_CHECKED_BY_SELF: ["cough", "fever", "trouble_breathing", "ch
 # SEASONAL ALLERGIES
 P_ALLERGIES: 0.4 # proportion of population; https://www.healthline.com/health/allergies/statistics#1
 # P_HAS_ALLERGIES_TODAY: 0.005 # likelihood to start allergy any day (2-3 times per year) # produces too many allergies (experimental)
-P_HAS_ALLERGIES_TODAY: 0.0005
+P_HAS_ALLERGIES_TODAY: 0.005
 
 # OTHER TRANSMISSIBLE DISEASES
 # P_FLU_TODAY: 0.003 # # likelihood to start flu any day (1 per year)
@@ -312,7 +341,9 @@ FLU_CONTAGIOUSNESS: 0.05
 AVG_FLU_DURATION: 5
 
 # likelihood to start cold any day (2-3 times per year) # https://www.cdc.gov/features/rhinoviruses/index.html
-P_COLD_TODAY: 0.005
+# Section on Modelling and interventions - https://github.com/BDI-pathogens/covid-19_instant_tracing/blob/master/Report%20-%20Effective%20Configurations%20of%20a%20Digital%20Contact%20Tracing%20App.pdf
+# non-Covid19 symtpoms via influenza etc. is 0.002%. This seems like a typo. assuming 0.002 here.
+P_COLD_TODAY: 0.002
 COLD_CONTAGIOUSNESS: 0.0005 # likelihood of transmitting at an encounter (no-source)
 AVG_COLD_DURATION: 3 # FIXME:unused
 
@@ -372,8 +403,8 @@ MIN_DIST_ENCOUNTER: 20
 MAX_DIST_ENCOUNTER: 300 # cms
 
 # KNOBS
-CONTAGION_KNOB: 1.4
-ENVIRONMENTAL_INFECTION_KNOB: 0.0005
+CONTAGION_KNOB: 1.5
+ENVIRONMENTAL_INFECTION_KNOB: 0.0001
 
 ## INTERVENTIONS
 # WASH HANDS

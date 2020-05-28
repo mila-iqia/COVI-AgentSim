@@ -152,7 +152,17 @@ class Human(object):
             self.conf.get("ASYMPTOMATIC_INFECTION_RATIO")
             if self.is_asymptomatic
             else 0.0
-        ) # draw a beta with the distribution in documents
+        )
+
+        # normalized susceptibility and mean daily interaction for this age group
+        # required for Oxford COVID-19 infection model
+        age_bins = self.conf['NORMALIZED_SUSCEPTIBILITY_BY_AGE'].keys()
+        for l,u in age_bins:
+            if  l <= age <= u:
+                bin = (l,u)
+                break
+        self.normalized_susceptibility = self.conf['NORMALIZED_SUSCEPTIBILITY_BY_AGE'][bin]
+        self.mean_daily_interaction_age_group = self.conf['MEAN_DAILY_INTERACTION_FOR_AGE_GROUP'][bin]
 
         # Indicates whether this person will show severe signs of illness.
         self.cold_timestamp = None
@@ -1593,10 +1603,6 @@ class Human(object):
             social_distancing_term = np.mean([self.maintain_extra_distance, h.maintain_extra_distance]) * self.rng.rand()
             # if you're in a space, you cannot be more than packing term apart
             distance = np.clip(encounter_term + social_distancing_term, a_min=0, a_max=packing_term)
-            # TODO: how often do we clip here and for which location type?
-            # TODO: what is the distribution of distances here (and each type)?
-            # if distance == packing_term:
-                # print(f"packing:{packing_term:5.2f} encounter:{encounter_term} social_distancing:{social_distancing_term} distance clipped:{distance == packing_term} distance:{distance} {location}")
 
             if distance == packing_term:
                 city.tracker.track_encounter_distance(
@@ -1636,7 +1642,6 @@ class Human(object):
             # Conditions met for possible infection #https://www.cdc.gov/coronavirus/2019-ncov/hcp/guidance-risk-assesment-hcp.html
             if contact_condition:
                 city.tracker.track_encounter_distance("B\t0", packing_term, encounter_term, social_distancing_term, distance, location=None)
-                # TODO: whats the distribution of distances that get here (each distance type)?
 
                 proximity_factor = 1
                 if self.conf.get("INFECTION_DISTANCE_FACTOR") or self.conf.get("INFECTION_DURATION_FACTOR"):
@@ -1664,14 +1669,19 @@ class Human(object):
                         infector, infectee = h, self
                         infectee_msg = h1_msg
 
-                    ratio = infector.asymptomatic_infection_ratio if infector.is_asymptomatic else 1.0
-                    p_infection = infector.infectiousness * ratio * proximity_factor
+                    # probability of transmission
+                    # It is similar to Oxford COVID-19 model described in Section 4.
+                    infection_ratio = infector.asymptomatic_infection_ratio if infector.is_asymptomatic else 1.0
+                    rate_of_infection = infectee.normalized_susceptibility * location.social_contact_factor * 1/infectee.mean_daily_interaction_age_group
+                    rate_of_infection *= infector.infectiousness * infection_ratio * self.conf["CONTAGION_KNOB"]
+                    p_infection = 1 - np.exp(-rate_of_infection)
 
-                    # factors that can reduce probability of transmission (no-source)
+                    # factors that can reduce probability of transmission.
+                    # (no-source) How to reduce the transmission probability mathematically?
                     mask_efficacy = (self.mask_efficacy + h.mask_efficacy)*self.conf['MASK_EFFICACY_FACTOR']
                     hygiene_efficacy = self.hygiene + h.hygiene
-                    reduction_factor = self.conf["CONTAGION_KNOB"] +  mask_efficacy + hygiene_efficacy
-                    p_infection *= np.exp(-reduction_factor * infector.n_infectious_contacts)
+                    reduction_factor = mask_efficacy + hygiene_efficacy
+                    p_infection *= np.exp(-reduction_factor)
 
                     x_human = infector.rng.random() < p_infection
                     if x_human and infectee.is_susceptible:
