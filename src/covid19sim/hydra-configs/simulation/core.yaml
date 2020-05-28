@@ -305,6 +305,10 @@ NORMALIZED_SUSCEPTIBILITY_BY_AGE: {
     "80-150": 1.66,
   }
 
+# these numbers are taken for daily_mean_work_interactions from Oxford study (Table 3)
+# I_as used in the probability of transmission denotes mean daily interactions
+# The report doesn't have a table for I_as so the numbers in Table 3 are used as a proxy
+# TODO: check the updated version of the report for these numbers.
 MEAN_DAILY_INTERACTION_FOR_AGE_GROUP: {
   "0-10": 10,
   "10-20": 10,
