@@ -78,13 +78,12 @@ LOCATION_DISTRIBUTION:
 # house_size: 1 2 3 4 5
 OTHERS_WORKPLACE_CHOICE: [1.0, 0.0, 0.0]
 
-# Household size distribution from Canada Statistics - Census profile 2016 (ref: https://tinyurl.com/qsf2q8d)
-HOUSE_SIZE_PREFERENCE: [0.282, 0.344, 0.152, 0.138, 0.084]
 
 # The group age proportion (p) are taken from Statistics Canada
 # ref: https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1710000501
 # ref: https://www12.statcan.gc.ca/census-recensement/2011/as-sa/98-312-x/2011003/fig/fig3_4-4-eng.cfm
 # TODO: senior_residency should be adjusted w.r.t. to the actual number of people per bin to combine them.
+HOUSE_SIZE_PREFERENCE: [0.45, 0.5, 0.005, 0.035, 0.01]
 HUMAN_DISTRIBUTION: # this is parsed into tuple keys in utils.py/parse_configuration e.g. "0-10" => (0, 10)
   {
     "0-10":
@@ -92,12 +91,12 @@ HUMAN_DISTRIBUTION: # this is parsed into tuple keys in utils.py/parse_configura
         "p": 0.106,
         "residence_preference":
           {
-            "house_size": [0.0, 0.2, 0.3, 0.3, 0.2],
+            "house_size": [0.0, 0.2, 0.25, 0.35, 0.2],
             "senior_residency": 0.0,
           },
         "profession_profile":
           {
-              "healthcare": 0.0, "school": 1.0, "others": 0.0, "retired": 0.0
+            "healthcare": 0.0, "school": 1.0, "others": 0.0, "retired": 0.0
           },
       },
     "10-20":
@@ -105,12 +104,12 @@ HUMAN_DISTRIBUTION: # this is parsed into tuple keys in utils.py/parse_configura
         "p": 0.110,
         "residence_preference":
           {
-            "house_size": [0.00, 0.1, 0.1, 0.3, 0.5],
+            "house_size": [0.00, 0.2, 0.55, 0.15, 0.1],
             "senior_residency": 0.0,
           },
         "profession_profile":
           {
-            "healthcare": 0.0, "school": 0.9, "others": 0.1, "retired": 0.0
+            "healthcare": 0.0, "school": 0.85, "others": 0.15, "retired": 0.0
           },
       },
     "20-30":
@@ -118,12 +117,12 @@ HUMAN_DISTRIBUTION: # this is parsed into tuple keys in utils.py/parse_configura
         "p": 0.136,
         "residence_preference":
           {
-            "house_size": [0.1, 0.45, 0.25, 0.10, 0.1],
+            "house_size": [0.2, 0.3, 0.2, 0.1, 0.1],
             "senior_residency": 0.0,
           },
         "profession_profile":
           {
-            "healthcare": 0.1, "school": 0.1, "others": 0.8, "retired": 0.0
+            "healthcare": 0.06, "school": 0.02, "others": 0.92, "retired": 0.0
           },
       },
     "30-40":
@@ -136,7 +135,7 @@ HUMAN_DISTRIBUTION: # this is parsed into tuple keys in utils.py/parse_configura
           },
         "profession_profile":
           {
-            "healthcare": 0.1, "school": 0.05, "others": 0.85, "retired": 0.0
+            "healthcare": 0.06, "school": 0.02, "others": 0.92, "retired": 0.0
           },
       },
     "40-50":
@@ -149,7 +148,7 @@ HUMAN_DISTRIBUTION: # this is parsed into tuple keys in utils.py/parse_configura
           },
         "profession_profile":
           {
-            "healthcare": 0.1, "school": 0.0, "others": 0.9, "retired": 0.00
+            "healthcare": 0.06, "school": 0.02, "others": 0.92, "retired": 0.00
           },
       },
     "50-60":
@@ -157,51 +156,51 @@ HUMAN_DISTRIBUTION: # this is parsed into tuple keys in utils.py/parse_configura
         "p": 0.140,
         "residence_preference":
           {
-            "house_size": [0.15, 0.6, 0.1, 0.05, 0.1],
+            "house_size": [0.2, 0.6, 0.1, 0.05, 0.05],
             "senior_residency": 0.0,
           },
         "profession_profile":
           {
-            "healthcare": 0.1, "school": 0.0, "others": 0.85, "retired": 0.05
+            "healthcare": 0.06, "school": 0.02, "others": 0.92, "retired": 0.0
           },
       },
     "60-70":
       {
-          "p": 0.123,
-          "residence_preference":
-            {
-                "house_size": [0.25, 0.5, 0.1, 0.05, 0.1],
-                "senior_residency": 0.009,
-            },
-          "profession_profile":
-            {
-              "healthcare": 0.1, "school": 0.0, "others": 0.8, "retired": 0.1
-            },
+        "p": 0.123,
+        "residence_preference":
+          {
+            "house_size": [0.25, 0.6, 0.05, 0.05, 0.05],
+            "senior_residency": 0.009,
+          },
+        "profession_profile":
+          {
+            "healthcare": 0.01, "school": 0.01, "others": 0.68, "retired": 0.3
+          },
       },
     "70-80":
       {
-          "p": 0.076,
-          "residence_preference":
-            {
-                "house_size": [0.1, 0.6, 0.15, 0.05, 0.1],
-                "senior_residency": 0.07,
-            },
-          "profession_profile":
-            {
-                "healthcare": 0.0, "school": 0.0, "others": 0.1, "retired": 0.9
-            },
+        "p": 0.076,
+        "residence_preference":
+          {
+            "house_size": [0.1, 0.6, 0.15, 0.05, 0.1],
+            "senior_residency": 0.07,
+          },
+        "profession_profile":
+          {
+            "healthcare": 0.01, "school": 0.0, "others": 0.04, "retired": 0.95
+          },
       },
-    "80-150":
+    "80-101":
       {
         "p": 0.043,
         "residence_preference":
           {
             "house_size": [0.1, 0.5, 0.1, 0.15, 0.1],
-            "senior_residency": 0.4, # https://www12.statcan.gc.ca/census-recensement/2016/as-sa/98-200-x/2016004/98-200-x2016004-eng.cfm?wbdisable=true
+            "senior_residency": 0.4,
           },
         "profession_profile":
           {
-            "healthcare": 0.0, "school": 0.0, "others": 0.1, "retired": 0.9
+            "healthcare": 0.0, "school": 0.0, "others": 0.0, "retired": 1.0
           },
       },
   }
@@ -214,15 +213,15 @@ P_TRAVELLED_INTERNATIONALLY_RECENTLY: 0.05
 # TODO: link to the document
 SMARTPHONE_OWNER_FRACTION_BY_AGE:
   {
-      '0-10': 0.0,
-      '10-20': 0.90,
-      '20-30': 0.96,
-      '30-40': 0.95,
-      '40-50': 0.91,
-      '50-60': 0.81,
-      '60-70': 0.64,
-      '70-80': 0.41,
-      '80-150': 0.27,
+    '0-10': 0.0,
+    '10-20': 0.90,
+    '20-30': 0.96,
+    '30-40': 0.95,
+    '40-50': 0.91,
+    '50-60': 0.81,
+    '60-70': 0.64,
+    '70-80': 0.41,
+    '80-101': 0.27,
   }
 
 # DISEASE PARAMETERS
