@@ -16,7 +16,7 @@ def test_basic_demographics(
         test_conf_name: str,
         age_error_tol: float = 2.0,
         age_distribution_error_tol: float = 0.01,
-        profession_error_tol: float = 0.01,
+        profession_error_tol: float = 0.02,
         fraction_over_100_error_tol: float = 0.001):
     """
         Tests for the about demographic statistics:
@@ -151,7 +151,7 @@ def test_household_distribution(
         test_conf_name: str,
         avg_household_size_error_tol: float = 0.1,
         fraction_in_households_error_tol: float = 0.1,
-        household_size_distribution_error_tol: float = 0.02):
+        household_size_distribution_error_tol: float = 0.05):
     """
         Tests for the demographic statistics related to the households
             - each human is associated to a household
@@ -357,7 +357,7 @@ def test_app_distribution(
         rng=rng,
         x_range=city_x_range,
         y_range=city_y_range,
-        Human=Human,
+        human_type=Human,
         conf=conf,
     )
 
