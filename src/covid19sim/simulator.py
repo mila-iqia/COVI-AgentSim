@@ -18,7 +18,7 @@ from collections import deque
 from covid19sim.utils import _normalize_scores, _get_random_sex, _get_covid_progression, \
     _get_preexisting_conditions, _draw_random_discreet_gaussian, _sample_viral_load_piecewise, \
     _get_cold_progression, _get_flu_progression, _get_allergy_progression, _get_get_really_sick, \
-    filter_open, filter_queue_max, calculate_average_infectiousness
+    filter_open, filter_queue_max, calculate_average_infectiousness, _get_inflammatory_disease_level, _get_disease_days
 from covid19sim.constants import SECONDS_PER_MINUTE, SECONDS_PER_HOUR
 from covid19sim.frozen.message_utils import ContactBook, exchange_encounter_messages, RealUserIDType
 
@@ -120,6 +120,7 @@ class Human(object):
         self.age = age
         self.sex = _get_random_sex(self.rng)
         self.preexisting_conditions = _get_preexisting_conditions(self.age, self.sex, self.rng)
+        self.inflammatory_disease_level = _get_inflammatory_disease_level(self.rng, self.preexisting_conditions, self.conf.get("INFLAMMATORY_CONDITIONS"))
 
         age_modifier = 2 if self.age > 40 or self.age < 12 else 2
         # &carefulness
@@ -153,6 +154,7 @@ class Human(object):
             if self.is_asymptomatic
             else 0.0
         )
+        self.infection_ratio = None
 
         # normalized susceptibility and mean daily interaction for this age group
         # required for Oxford COVID-19 infection model
@@ -177,7 +179,7 @@ class Human(object):
         # possibly initialized as infected
         self.recovered_timestamp = datetime.datetime.min
         self.is_immune = False # different from asymptomatic
-        self.viral_load_plateau_height, self.viral_load_plateau_start, self.viral_load_plateau_end, self.viral_load_recovered = None,None,None,None
+        self.viral_load_plateau_height, self.viral_load_plateau_start, self.viral_load_plateau_end = None,None,None
         self.infectiousness_onset_days = None # 1 + self.rng.normal(loc=self.conf.get("INFECTIOUSNESS_ONSET_DAYS_AVG"), scale=self.conf.get("INFECTIOUSNESS_ONSET_DAYS_STD"))
         self.incubation_days = None # self.infectiousness_onset_days + self.viral_load_plateau_start + self.rng.normal(loc=self.conf.get("SYMPTOM_ONSET_WRT_VIRAL_LOAD_PEAK_AVG"), scale=self.conf.get("SYMPTOM_ONSET_WRT_VIRAL_LOAD_PEAK_STD")
         self.recovery_days = None # self.infectiousness_onset_days + self.viral_load_recovered
@@ -192,6 +194,7 @@ class Human(object):
         self.initial_viral_load = self.rng.rand() if infection_timestamp is not None else 0
         if self.infection_timestamp is not None:
             self.compute_covid_properties()
+
 
         # counters and memory
         self.r0 = []
@@ -651,50 +654,46 @@ class Human(object):
         Specifically, characteristics of viral load plateau curve, i.e., height, start/end of plateau,
         start of infectiousness and when the symptom will show up.
         """
-        # state change from exposed to infectious occur after these many days
-        # infectioness can be calculated based on incubation days
-        self.infectiousness_onset_days = self.rng.gamma(
-            shape=self.conf['INCUBATION_DAYS_GAMMA_SHAPE'] / 2,
-            scale=self.conf['INCUBATION_DAYS_GAMMA_SCALE']
-        )
+        # NOTE: all the days returned here are with respect to exposure day
+        self.infectiousness_onset_days, self.viral_load_peak_start, \
+            self.incubation_days, self.viral_load_plateau_start, \
+                self.viral_load_plateau_end, self.recovery_days, \
+                    self.viral_load_peak_height, self.viral_load_plateau_height = _get_disease_days(self.rng, self.conf, self.age, self.inflammatory_disease_level)
 
-        # symptom onset occur after these days (average of 5 days)
-        self.incubation_days = (
-                        self.infectiousness_onset_days +
-                        self.rng.gamma(
-                                shape=self.conf['INCUBATION_DAYS_GAMMA_SHAPE'] / 2,
-                                scale=self.conf['INCUBATION_DAYS_GAMMA_SCALE']
-                            ))
+        # for ease of calculation, make viral load parameters relative to infectiousness onset
+        self.viral_load_peak_start -= self.infectiousness_onset_days
+        self.viral_load_plateau_start -= self.infectiousness_onset_days
+        self.viral_load_plateau_end -= self.infectiousness_onset_days
 
-        # peak viral load occurs before symptom onset
-        # plateau start is relative to infectiousness onset days to ease the calculation of viral load
-        self.viral_load_plateau_start = (
-            self.incubation_days
-            # This the 0.6 days to be confirmed with epidemiologist
-            - self.rng.gamma(
-                    shape=self.conf["SYMPTOM_ONSET_WRT_VIRAL_LOAD_PEAK_AVG"],
-                    scale=self.conf['INCUBATION_DAYS_GAMMA_SCALE']
-                    )
-            - self.infectiousness_onset_days )
+        # precompute peak-plateau slope
+        denominator = (self.viral_load_plateau_start - self.viral_load_peak_start)
+        numerator =  self.viral_load_peak_height - self.viral_load_plateau_height
+        self.peak_plateau_slope = numerator / denominator
+        assert self.peak_plateau_slope >= 0 , f"viral load should decrease after peak. peak:{self.viral_load_peak_height} plateau height:{self.viral_load_plateau_height}"
 
-        # days returned from this function are relative to infectiousness onset days
-        self.viral_load_plateau_height, \
-            self.viral_load_plateau_end, \
-              self.viral_load_recovered = _sample_viral_load_piecewise(
-                  rng=self.rng,
-                  plateau_start=self.viral_load_plateau_start,
-                  age=self.age,
-                  initial_viral_load=self.initial_viral_load,
-                  conf=self.conf
-            )
+        # percomupte plateau-end - recovery slope (should be negative because it is decreasing)
+        numerator = self.viral_load_plateau_height
+        denominator = self.recovery_days - self.viral_load_plateau_end
+        self.plateau_end_recovery_slope = numerator / denominator
+        assert self.plateau_end_recovery_slope >= 0, f"slopes are assumed to be positive for ease of calculation"
 
-        # Confirm with epidemiologist if used in any technical sense
-        self.recovery_days = self.infectiousness_onset_days + self.viral_load_recovered
+        self.covid_progression = []
+        if not self.is_asymptomatic:
+            self.covid_progression = _get_covid_progression(self.initial_viral_load, self.viral_load_plateau_start, self.viral_load_plateau_end,
+                                            self.recovery_days, age=self.age, incubation_days=self.incubation_days,
+                                            really_sick=self.can_get_really_sick, extremely_sick=self.can_get_extremely_sick,
+                                            rng=self.rng, preexisting_conditions=self.preexisting_conditions, carefulness=self.carefulness)
 
-        self.covid_progression = _get_covid_progression(self.initial_viral_load, self.viral_load_plateau_start, self.viral_load_plateau_end,
-                                        self.viral_load_recovered, age=self.age, incubation_days=self.incubation_days,
-                                        really_sick=self.can_get_really_sick, extremely_sick=self.can_get_extremely_sick,
-                                        rng=self.rng, preexisting_conditions=self.preexisting_conditions, carefulness=self.carefulness)
+        all_symptoms = set(symptom for symptoms_per_day in self.covid_progression for symptom in symptoms_per_day)
+        # infection ratios
+        if self.is_asymptomatic:
+            self.infection_ratio = self.conf['ASYMPTOMATIC_INFECTION_RATIO']
+
+        elif sum(x in all_symptoms for x in ['moderate', 'severe', 'extremely-severe']) > 0:
+            self.infection_ratio = 1.0
+
+        else:
+            self.infection_ratio = self.conf['MILD_INFECTION_RATIO']
 
     def viral_load_for_day(self, timestamp):
         """ Calculates the elapsed time since infection, returning this person's current viral load"""
@@ -708,17 +707,26 @@ class Human(object):
         if days_infectious < 0:
             return 0.
 
-        # implements the piecewise linear function
-        if days_infectious < self.viral_load_plateau_start:
-            cur_viral_load = self.viral_load_plateau_height * days_infectious / self.viral_load_plateau_start
+        # Rising to peak
+        if days_infectious < self.viral_load_peak_start:
+            cur_viral_load = self.viral_load_peak_height * days_infectious / (self.viral_load_peak_start)
+
+        # Descending to plateau from peak
+        elif days_infectious < self.viral_load_plateau_start:
+            days_since_peak = days_infectious - self.viral_load_peak_start
+            cur_viral_load = self.viral_load_peak_height - self.peak_plateau_slope * days_since_peak
+
+        # plateau duration
         elif days_infectious < self.viral_load_plateau_end:
             cur_viral_load = self.viral_load_plateau_height
-        else:
-            cur_viral_load = self.viral_load_plateau_height - self.viral_load_plateau_height * (days_infectious - self.viral_load_plateau_end) / (self.viral_load_recovered - self.viral_load_plateau_end)
 
-        # the viral load cannot be negative
-        if cur_viral_load < 0:
-            cur_viral_load = 0.
+        # during recovery
+        else:
+            days_since_plateau_end = days_infectious - self.viral_load_plateau_end
+            cur_viral_load = self.viral_load_plateau_height - self.plateau_end_recovery_slope * days_since_plateau_end
+            cur_viral_load = max(0, cur_viral_load) # clip it at 0
+
+        assert 0 <= cur_viral_load <= 1, f"effective viral load out of bounds. viral load:{cur_viral_load} plateau_end:{days_since_plateau_end}"
 
         return cur_viral_load
 
@@ -749,11 +757,31 @@ class Human(object):
               severity_multiplier += 0.2
             if 'cough' in self.symptoms:
               severity_multiplier += 0.25
-        return self.viral_load_for_day(timestamp) * severity_multiplier
+
+        # max multiplier = 1 + 0.2 + 0.25 + 1 = 2.45
+        # re-normalize [0-1]
+        infectiousness = (self.viral_load_for_day(timestamp) * severity_multiplier)/2.45
+        return infectiousness
 
     @property
     def infectiousness(self):
         return self.get_infectiousness_for_day(self.env.timestamp, self.is_infectious)
+
+    def infectiousness_delta(self, hours):
+        """
+        Computes area under the probability curve defined by infectiousness and time duration
+        of self.env.timestamp and self.env.timestamp + delta_timestamp.
+        Currently, it only takes the average of starting and ending probabilities.
+
+        Args:
+            hours (float): area under the infectiousness curve is computed for this duration
+        """
+
+        if not self.is_infectious:
+            return 0
+        start_p = self.get_infectiousness_for_day(self.env.timestamp, self.is_infectious)
+        end_p = self.get_infectiousness_for_day(self.env.timestamp + datetime.timedelta(hours=hours), self.is_infectious)
+        return hours / 24 * (start_p + end_p) / 2
 
     @property
     def obs_symptoms(self):
@@ -1631,7 +1659,7 @@ class Human(object):
 
             t_overlap = (min(self.leaving_time, getattr(h, "leaving_time", self.env.ts_initial+SECONDS_PER_HOUR)) -
                          max(self.start_time,   getattr(h, "start_time",   self.env.ts_initial+SECONDS_PER_HOUR))) / SECONDS_PER_MINUTE
-            t_near = self.rng.random() * t_overlap * self.time_encounter_reduction_factor
+            t_near = self.rng.random() * t_overlap * min(self.time_encounter_reduction_factor, h.time_encounter_reduction_factor)
 
             city.tracker.track_social_mixing(human1=self, human2=h, duration=t_near, timestamp = self.env.timestamp)
             contact_condition = (
@@ -1671,9 +1699,9 @@ class Human(object):
 
                     # probability of transmission
                     # It is similar to Oxford COVID-19 model described in Section 4.
-                    infection_ratio = infector.asymptomatic_infection_ratio if infector.is_asymptomatic else 1.0
                     rate_of_infection = infectee.normalized_susceptibility * location.social_contact_factor * 1/infectee.mean_daily_interaction_age_group
-                    rate_of_infection *= infector.infectiousness * infection_ratio * self.conf["CONTAGION_KNOB"]
+                    rate_of_infection *= infector.infectiousness_delta(hours=t_near) * infector.infection_ratio
+                    rate_of_infection *= self.conf["CONTAGION_KNOB"]
                     p_infection = 1 - np.exp(-rate_of_infection)
 
                     # factors that can reduce probability of transmission.

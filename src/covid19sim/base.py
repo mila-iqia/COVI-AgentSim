@@ -728,7 +728,7 @@ class TestFacility(object):
             self.last_date_to_check_tests = self.env.timestamp.date()
             for k in self.test_count_today.keys():
                 self.test_count_today[k] = 0
-
+                
             # clear queue
             # TODO : check more scenarios about when the person can be removed from a queue
             to_remove = []
@@ -737,7 +737,6 @@ class TestFacility(object):
                     to_remove.append(human)
 
             _ = [self.test_queue.remove(human) for human in to_remove]
-
 
     def get_available_test(self):
         """
