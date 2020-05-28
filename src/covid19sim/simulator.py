@@ -957,7 +957,7 @@ class Human(object):
 
             # has been recommended the test by an intervention
             if not should_get_test and self.test_recommended:
-                should_get_test = self.rng.random() < self.how_much_I_follow_recommendations
+                should_get_test = self.rng.random() < self.follows_recommendations_today
 
             if not should_get_test:
                 # Has symptoms that a careful person would fear to be covid
@@ -1211,7 +1211,7 @@ class Human(object):
         if current_symptoms == []:
             return 1.0
 
-        if getattr(self, "_quarantine", None) and self.rng.random() < self.how_much_I_follow_recommendations:
+        if getattr(self, "_quarantine", None) and self.follows_recommendations_today:
             return 0.1
 
         if sum(x in current_symptoms for x in ["severe", "extremely_severe"]) > 0:
