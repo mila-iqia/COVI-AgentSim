@@ -16,6 +16,8 @@ run_type: collect-all
 n_people: 1000
 simulation_days: 22
 INTERVENTION_DAY: 5
+init_percent_sick: 0.002
+
 
 APP_UPTAKE:
   sample: uniform # uniform in range:
