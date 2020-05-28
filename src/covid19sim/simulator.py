@@ -709,8 +709,9 @@ class Human(object):
         else:
             days_since_plateau_end = days_infectious - self.viral_load_plateau_end
             cur_viral_load = self.viral_load_plateau_height - self.plateau_end_recovery_slope * days_since_plateau_end
+            cur_viral_load = max(0, cur_viral_load) # clip it at 0 
 
-        assert 0 <= cur_viral_load <= 1, f"effective viral load out of bounds. viral load:{cur_viral_load}"
+        assert 0 <= cur_viral_load <= 1, f"effective viral load out of bounds. viral load:{cur_viral_load} plateau_end:{days_since_plateau_end}"
 
         return cur_viral_load
 
