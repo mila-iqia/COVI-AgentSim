@@ -79,7 +79,7 @@ LOCATION_DISTRIBUTION:
 OTHERS_WORKPLACE_CHOICE: [1.0, 0.0, 0.0]
 
 # Household size distribution from Canada Statistics - Census profile 2016 (ref: https://tinyurl.com/qsf2q8d)
-HOUSE_SIZE_PREFERENCE: [0.282, 0.344, 0.152, 0.138, 0.084]
+HOUSE_SIZE_PREFERENCE: [0.45, 0.5, 0.005, 0.035, 0.01]
 
 # The group age proportion (p) are taken from Statistics Canada
 # ref: https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1710000501
@@ -110,7 +110,7 @@ HUMAN_DISTRIBUTION: # this is parsed into tuple keys in utils.py/parse_configura
           },
         "profession_profile":
           {
-            "healthcare": 0.0, "school": 0.9, "others": 0.1, "retired": 0.0
+            "healthcare": 0.0, "school": 0.85, "others": 0.15, "retired": 0.0
           },
       },
     "20-30":
@@ -123,7 +123,7 @@ HUMAN_DISTRIBUTION: # this is parsed into tuple keys in utils.py/parse_configura
           },
         "profession_profile":
           {
-            "healthcare": 0.1, "school": 0.1, "others": 0.8, "retired": 0.0
+            "healthcare": 0.06, "school": 0.02, "others": 0.92, "retired": 0.0
           },
       },
     "30-40":
@@ -136,7 +136,7 @@ HUMAN_DISTRIBUTION: # this is parsed into tuple keys in utils.py/parse_configura
           },
         "profession_profile":
           {
-            "healthcare": 0.1, "school": 0.05, "others": 0.85, "retired": 0.0
+            "healthcare": 0.06, "school": 0.02, "others": 0.92, "retired": 0.0
           },
       },
     "40-50":
@@ -149,7 +149,7 @@ HUMAN_DISTRIBUTION: # this is parsed into tuple keys in utils.py/parse_configura
           },
         "profession_profile":
           {
-            "healthcare": 0.1, "school": 0.0, "others": 0.9, "retired": 0.00
+            "healthcare": 0.06, "school": 0.02, "others": 0.92, "retired": 0.0
           },
       },
     "50-60":
@@ -162,7 +162,7 @@ HUMAN_DISTRIBUTION: # this is parsed into tuple keys in utils.py/parse_configura
           },
         "profession_profile":
           {
-            "healthcare": 0.1, "school": 0.0, "others": 0.85, "retired": 0.05
+            "healthcare": 0.06, "school": 0.02, "others": 0.92, "retired": 0.0
           },
       },
     "60-70":
@@ -175,7 +175,7 @@ HUMAN_DISTRIBUTION: # this is parsed into tuple keys in utils.py/parse_configura
             },
           "profession_profile":
             {
-              "healthcare": 0.1, "school": 0.0, "others": 0.8, "retired": 0.1
+              "healthcare": 0.01, "school": 0.01, "others": 0.68, "retired": 0.3
             },
       },
     "70-80":
@@ -188,7 +188,7 @@ HUMAN_DISTRIBUTION: # this is parsed into tuple keys in utils.py/parse_configura
             },
           "profession_profile":
             {
-                "healthcare": 0.0, "school": 0.0, "others": 0.1, "retired": 0.9
+                 "healthcare": 0.01, "school": 0.0, "others": 0.04, "retired": 0.95
             },
       },
     "80-150":
@@ -201,7 +201,7 @@ HUMAN_DISTRIBUTION: # this is parsed into tuple keys in utils.py/parse_configura
           },
         "profession_profile":
           {
-            "healthcare": 0.0, "school": 0.0, "others": 0.1, "retired": 0.9
+            "healthcare": 0.0, "school": 0.0, "others": 0.0, "retired": 1.0
           },
       },
   }
@@ -403,7 +403,7 @@ MIN_DIST_ENCOUNTER: 20
 MAX_DIST_ENCOUNTER: 300 # cms
 
 # KNOBS
-CONTAGION_KNOB: 1.5
+CONTAGION_KNOB: 3.5
 ENVIRONMENTAL_INFECTION_KNOB: 0.0001
 
 ## INTERVENTIONS
