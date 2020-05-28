@@ -654,13 +654,13 @@ class Human(object):
         denominator = (self.viral_load_plateau_start - self.viral_load_peak_start)
         numerator =  self.viral_load_peak_height - self.viral_load_plateau_height
         self.peak_plateau_slope = numerator / denominator
-        assert self.peak_plateau_slope > 0 , f"viral load should decrease after peak. peak:{self.viral_load_peak_height} plateau height:{self.viral_load_plateau_height}"
+        assert self.peak_plateau_slope >= 0 , f"viral load should decrease after peak. peak:{self.viral_load_peak_height} plateau height:{self.viral_load_plateau_height}"
 
         # percomupte plateau-end - recovery slope (should be negative because it is decreasing)
         numerator = self.viral_load_plateau_height
         denominator = self.recovery_days - self.viral_load_plateau_end
         self.plateau_end_recovery_slope = numerator / denominator
-        assert self.plateau_end_recovery_slope > 0, f"solopes are assumed to be positive for ease of calculation"
+        assert self.plateau_end_recovery_slope >= 0, f"slopes are assumed to be positive for ease of calculation"
 
         self.covid_progression = []
         if not self.is_asymptomatic:
@@ -679,47 +679,6 @@ class Human(object):
 
         else:
             self.infection_ratio = self.conf['MILD_INFECTION_RATIO']
-
-        # # state change from exposed to infectious occur after these many days
-        # # infectioness can be calculated based on incubation days
-        # self.infectiousness_onset_days = self.rng.gamma(
-        #     shape=self.conf['INCUBATION_DAYS_GAMMA_SHAPE'] / 2,
-        #     scale=self.conf['INCUBATION_DAYS_GAMMA_SCALE']
-        # )
-        #
-        # # symptom onset occur after these days (average of 5 days)
-        # self.incubation_days = (
-        #                 self.infectiousness_onset_days +
-        #                 self.rng.gamma(
-        #                         shape=self.conf['INCUBATION_DAYS_GAMMA_SHAPE'] / 2,
-        #                         scale=self.conf['INCUBATION_DAYS_GAMMA_SCALE']
-        #                     ))
-        #
-        # # peak viral load occurs before symptom onset
-        # # plateau start is relative to infectiousness onset days to ease the calculation of viral load
-        # self.viral_load_plateau_start = (
-        #     self.incubation_days
-        #     # This the 0.6 days to be confirmed with epidemiologist
-        #     - self.rng.gamma(
-        #             shape=self.conf["SYMPTOM_ONSET_WRT_VIRAL_LOAD_PEAK_AVG"],
-        #             scale=self.conf['INCUBATION_DAYS_GAMMA_SCALE']
-        #             )
-        #     - self.infectiousness_onset_days )
-        #
-        # # days returned from this function are relative to infectiousness onset days
-        # self.viral_load_plateau_height, \
-        #     self.viral_load_plateau_end, \
-        #       self.viral_load_recovered = _sample_viral_load_piecewise(
-        #           rng=self.rng,
-        #           plateau_start=self.viral_load_plateau_start,
-        #           age=self.age,
-        #           initial_viral_load=self.initial_viral_load,
-        #           conf=self.conf
-        #     )
-        #
-        # # Confirm with epidemiologist if used in any technical sense
-        # self.recovery_days = self.infectiousness_onset_days + self.viral_load_recovered
-
 
     def viral_load_for_day(self, timestamp):
         """ Calculates the elapsed time since infection, returning this person's current viral load"""

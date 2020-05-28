@@ -124,6 +124,7 @@ def test_incubation_days():
             print(f"{param_names[idx]}")
             print(f"shape: {avg_mu: 3.3f} ({ci_mu[0]: 3.3f} - {ci_mu[1]: 3.3f}) refernce value: 5.807 (3.585 - 13.865)")
             print(f"scale: {avg_sigma: 3.3f} ({ci_sigma[0]: 3.3f} - {ci_sigma[1]: 3.3f}) refernce value: 0.948 (0.368 - 1.696)")
+            assert 3.585 <= avg_mu <= 13.865, "not a fitted gamma distribution"
 
         elif param_names[idx] == "infectiousness onset days":
             print(f"**** Fitted Gamma distribution over {N} runs ... 95% CI ****")

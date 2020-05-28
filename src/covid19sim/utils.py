@@ -581,8 +581,9 @@ def _get_disease_days(rng, conf, age, inflammatory_disease_level):
     peak_height = rng.uniform(conf['MIN_VIRAL_LOAD_PEAK_HEIGHT'], conf['MAX_VIRAL_LOAD_PEAK_HEIGHT']) * base
 
     # as long as min and max viral load are [0-1], this will be [0-1]
-    plateau_height = peak_height * rng.uniform(conf['MIN_MULTIPLIER_PLATEAU_HEIGHT'], conf['MAX_MULTIPLIER_PLATEAU_HEIGHT']) 
+    plateau_height = peak_height * rng.uniform(conf['MIN_MULTIPLIER_PLATEAU_HEIGHT'], conf['MAX_MULTIPLIER_PLATEAU_HEIGHT'])
 
+    assert peak_height != 0, f"viral load of peak of 0 sampled age:{age}"
     return infectiousness_onset_days, viral_load_peak, incubation_days, plateau_start, plateau_end, recovery_days, peak_height, plateau_height
 
 def _sample_viral_load_piecewise(rng, plateau_start, initial_viral_load=0, age=40, conf={}):

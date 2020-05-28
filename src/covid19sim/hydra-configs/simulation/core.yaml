@@ -87,7 +87,7 @@ HOUSE_SIZE_PREFERENCE: [0.282, 0.344, 0.152, 0.138, 0.084]
 # TODO: senior_residency should be adjusted w.r.t. to the actual number of people per bin to combine them.
 HUMAN_DISTRIBUTION: # this is parsed into tuple keys in utils.py/parse_configuration e.g. "0-10" => (0, 10)
   {
-    "0-10":
+    "1-10":
       {
         "p": 0.106,
         "residence_preference":
@@ -100,7 +100,7 @@ HUMAN_DISTRIBUTION: # this is parsed into tuple keys in utils.py/parse_configura
               "healthcare": 0.0, "school": 1.0, "others": 0.0, "retired": 0.0
           },
       },
-    "10-20":
+    "11-20":
       {
         "p": 0.110,
         "residence_preference":
@@ -113,7 +113,7 @@ HUMAN_DISTRIBUTION: # this is parsed into tuple keys in utils.py/parse_configura
             "healthcare": 0.0, "school": 0.9, "others": 0.1, "retired": 0.0
           },
       },
-    "20-30":
+    "21-30":
       {
         "p": 0.136,
         "residence_preference":
@@ -126,7 +126,7 @@ HUMAN_DISTRIBUTION: # this is parsed into tuple keys in utils.py/parse_configura
             "healthcare": 0.1, "school": 0.1, "others": 0.8, "retired": 0.0
           },
       },
-    "30-40":
+    "31-40":
       {
         "p": 0.138,
         "residence_preference":
@@ -139,7 +139,7 @@ HUMAN_DISTRIBUTION: # this is parsed into tuple keys in utils.py/parse_configura
             "healthcare": 0.1, "school": 0.05, "others": 0.85, "retired": 0.0
           },
       },
-    "40-50":
+    "41-50":
       {
         "p": 0.128,
         "residence_preference":
@@ -152,7 +152,7 @@ HUMAN_DISTRIBUTION: # this is parsed into tuple keys in utils.py/parse_configura
             "healthcare": 0.1, "school": 0.0, "others": 0.9, "retired": 0.00
           },
       },
-    "50-60":
+    "51-60":
       {
         "p": 0.140,
         "residence_preference":
@@ -165,7 +165,7 @@ HUMAN_DISTRIBUTION: # this is parsed into tuple keys in utils.py/parse_configura
             "healthcare": 0.1, "school": 0.0, "others": 0.85, "retired": 0.05
           },
       },
-    "60-70":
+    "61-70":
       {
           "p": 0.123,
           "residence_preference":
@@ -178,7 +178,7 @@ HUMAN_DISTRIBUTION: # this is parsed into tuple keys in utils.py/parse_configura
               "healthcare": 0.1, "school": 0.0, "others": 0.8, "retired": 0.1
             },
       },
-    "70-80":
+    "71-80":
       {
           "p": 0.076,
           "residence_preference":
@@ -191,7 +191,7 @@ HUMAN_DISTRIBUTION: # this is parsed into tuple keys in utils.py/parse_configura
                 "healthcare": 0.0, "school": 0.0, "others": 0.1, "retired": 0.9
             },
       },
-    "80-150":
+    "81-150":
       {
         "p": 0.043,
         "residence_preference":
@@ -214,15 +214,15 @@ P_TRAVELLED_INTERNATIONALLY_RECENTLY: 0.05
 # TODO: link to the document
 SMARTPHONE_OWNER_FRACTION_BY_AGE:
   {
-      '0-10': 0.0,
-      '10-20': 0.90,
-      '20-30': 0.96,
-      '30-40': 0.95,
-      '40-50': 0.91,
-      '50-60': 0.81,
-      '60-70': 0.64,
-      '70-80': 0.41,
-      '80-150': 0.27,
+      '1-10': 0.0,
+      '11-20': 0.90,
+      '21-30': 0.96,
+      '31-40': 0.95,
+      '41-50': 0.91,
+      '51-60': 0.81,
+      '61-70': 0.64,
+      '71-80': 0.41,
+      '81-150': 0.27,
   }
 
 # DISEASE PARAMETERS
