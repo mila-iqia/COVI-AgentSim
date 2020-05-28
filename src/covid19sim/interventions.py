@@ -608,6 +608,10 @@ class Tracing(object):
             moderate_risk_message, moderate_risk_num_days = -1, -1
             mild_risk_message, mild_risk_num_days = -1, -1
 
+            # Check if the user received messages with specific risk level
+            # TODO: mailbox only contains update messages, and not encounter messages
+            # TODO: use the result of the clustering algorithm to find the number of
+            #       encounters with another user with high risk level
             for _, update_message in mailbox.items():
                 encounter_day = (human.env.timestamp - update_message.encounter_time).days
                 risk_level = update_message.new_risk_level
@@ -633,35 +637,42 @@ class Tracing(object):
                 human.curr_rec_level = 3
 
             elif human.all_reported_symptoms:
-                # Update risk for the past 7 days
                 if "extremely-severe" in human.all_reported_symptoms:
+                    # For severe symptoms, set R = 12 for now and all past 7 days
                     risk = [self.risk_level_to_risk(12)] * 7
+                    # Set recommendations level L = 3
                     human.curr_rec_level = 3
                 elif "severe" in human.all_reported_symptoms:
                     risk = [self.risk_level_to_risk(12)] * 7
                     human.curr_rec_level = 3
                 elif "moderate" in human.all_reported_symptoms:
+                    # For intermediate symptoms, set R = 10 for now and all past 7 days
                     risk = [self.risk_level_to_risk(10)] * 7
+                    # Set recommendations level L = 3
                     human.curr_rec_level = 3
                 else:
-                    # If mild symptoms
+                    # For mild symptoms, set R = 7 for now and all past 7 days
                     risk = [self.risk_level_to_risk(7)] * 7
+                    # Set recommendations level L = 2
                     human.curr_rec_level = 2
 
             elif human.curr_rec_level > 0:
-                # See https://github.com/Covi-Canada/simulator/issues/29
+                # Check if there was no positive test result in the past 14 days
                 no_positive_test_result_past_14_days = True
                 for test_result, test_time in human.test_results:
                     result_day = (human.env.timestamp - test_time).days
                     if result_day >= 0 and result_day < human.conf.get("TRACING_N_DAYS_HISTORY"):
                         no_positive_test_result_past_14_days &= (test_result != "positive")
 
+                # Check if there was no symptoms in the past 7 days
                 no_symptoms_past_7_days = (not any(islice(human.rolling_all_reported_symptoms, 7)))
 
-                if (no_symptoms_past_7_days and no_positive_test_result_past_14_days
+                if (no_symptoms_past_7_days
+                        and no_positive_test_result_past_14_days
                         and no_message_gt3_past_7_days):
-                     # Update risk for the past 7 days
+                    # Set risk level R = 0 for now and all past 7 days
                     risk = [self.risk_level_to_risk(0)] * 7
+                    # Set recommendations level L = 0
                     human.curr_rec_level = 0
 
             elif high_risk_message > 0:
@@ -671,13 +682,19 @@ class Tracing(object):
                 human.curr_rec_level = 3
 
             elif moderate_risk_message > 0:
+                # Set the risk level to max(R' - 5, R) for all days after day D + 2
+                # (with at least 1 update for the current day)
                 updated_risk = max(human.risk_level, self.risk_level_to_risk(moderate_risk_message - 5))
-                risk = [updated_risk] * max(moderate_risk_num_days - 2, 1) # Update at least 1 day
+                risk = [updated_risk] * max(moderate_risk_num_days - 2, 1)
+                # Set recommendations level L = 2
                 human.curr_rec_level = 2
 
             elif mild_risk_message > 0:
+                # Set the risk level to max(R' - 5, R) for all days after day D + 2
+                # (with at least 1 update for the current day)
                 updated_risk = max(human.risk_level, self.risk_level_to_risk(mild_risk_message - 5))
-                risk = [updated_risk] * max(mild_risk_num_days - 2, 1) # Update at least 1 day
+                risk = [updated_risk] * max(mild_risk_num_days - 2, 1)
+                # Set recommendations level L = 1
                 human.curr_rec_level = 1
 
         elif self.risk_model == "other":
