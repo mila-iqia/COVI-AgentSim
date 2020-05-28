@@ -555,7 +555,7 @@ def _get_disease_days(rng, conf, age, inflammatory_disease_level):
     # viral load peaks INFECTIOUSNESS_PEAK_AVG days before incubation days
     viral_load_peak_wrt_incubation_days  = truncnorm((INFECTIOUSNESS_PEAK_CLIP_LOW - INFECTIOUSNESS_PEAK_AVG) / INFECTIOUSNESS_PEAK_STD,
                                             (INFECTIOUSNESS_PEAK_CLIP_HIGH - INFECTIOUSNESS_PEAK_AVG) / INFECTIOUSNESS_PEAK_STD,
-                                            loc=PLATEAU_DURATION_MEAN, scale=PLATEAU_DURATION_STD).rvs(1, random_state=rng).item()
+                                            loc=INFECTIOUSNESS_PEAK_AVG, scale=INFECTIOUSNESS_PEAK_STD).rvs(1, random_state=rng).item()
     viral_load_peak = incubation_days - viral_load_peak_wrt_incubation_days
 
     # (no-source) We assume that plateau start is equi-distant from the peak
