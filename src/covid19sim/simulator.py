@@ -1624,6 +1624,7 @@ class Human(object):
             # self.rng.random() - 0.5 gives a uniform random variable centered at 0
             # we scale by the distance s.t. if the true distance of the encounter is 2m you could think it is 0m or 4m,
             # whereas an encounter of 1m has a possible distance of 0.5 and 1.5m
+            # a longer discussion is contained in docs/bluetooth.md
             approximated_bluetooth_distance = distance + distance * (self.rng.rand() - 0.5) * np.mean([self.phone_bluetooth_noise, h.phone_bluetooth_noise])
             assert approximated_bluetooth_distance <= 2*distance
 
