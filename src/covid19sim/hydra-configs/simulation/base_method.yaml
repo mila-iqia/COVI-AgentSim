@@ -21,6 +21,7 @@ USE_INFERENCE_SERVER: False
 RISK_MODEL: "" # "naive"  "manual", "digital", "transformer"
 SHOULD_MODIFY_BEHAVIOR: False
 USE_ORACLE: False
+INFERENCE_SERVER_ADDRESS: null
 
 ## INTERVENTIONS
 INTERVENTION: ""
