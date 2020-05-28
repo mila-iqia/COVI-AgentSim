@@ -549,6 +549,9 @@ def _get_disease_days(rng, conf, age, inflammatory_disease_level):
                                                                  (INFECTIOUSNESS_ONSET_WRT_SYMPTOM_ONSET_CLIP_HIGH - INFECTIOUSNESS_ONSET_WRT_SYMPTOM_ONSET_AVG) / INFECTIOUSNESS_ONSET_WRT_SYMPTOM_ONSET_STD,
                                       loc=INFECTIOUSNESS_ONSET_WRT_SYMPTOM_ONSET_AVG, scale=INFECTIOUSNESS_ONSET_WRT_SYMPTOM_ONSET_STD).rvs(1, random_state=rng).item()
 
+    # (no-source) assumption is that there is atleast one day to remain exposed
+    infectiousness_onset_days = max(1, infectiousness_onset_days)
+
     # viral load peaks INFECTIOUSNESS_PEAK_AVG days before incubation days
     viral_load_peak_wrt_incubation_days  = truncnorm((INFECTIOUSNESS_PEAK_CLIP_LOW - INFECTIOUSNESS_PEAK_AVG) / INFECTIOUSNESS_PEAK_STD,
                                             (INFECTIOUSNESS_PEAK_CLIP_HIGH - INFECTIOUSNESS_PEAK_AVG) / INFECTIOUSNESS_PEAK_STD,
