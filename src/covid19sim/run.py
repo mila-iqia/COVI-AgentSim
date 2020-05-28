@@ -20,6 +20,7 @@ from covid19sim.utils import (
 )
 import hydra
 from omegaconf import DictConfig
+from pathlib import Path
 
 
 @hydra.main(config_path="hydra-configs/simulation/config.yaml")
@@ -39,19 +40,19 @@ def main(conf: DictConfig) -> None:
     # -------------------------------------
     # -----  Create Output Directory  -----
     # -------------------------------------
+    if conf["outdir"] is None:
+        conf["outdir"] = str(Path(__file__) / "output")
+    conf["outdir"] = "{}/sim_v2_people-{}_days-{}_init-{}_seed-{}_{}".format(
+        conf["outdir"],
+        conf["n_people"],
+        conf["simulation_days"],
+        conf["init_percent_sick"],
+        conf["seed"],
+        datetime.datetime.now().strftime("%Y%m%d-%H%M%S"),
+    )
+    os.makedirs(conf["outdir"])
+
     if not conf["tune"]:
-        if conf["outdir"] is None:
-            conf["outdir"] = "output"
-        os.makedirs(f"{conf['outdir']}", exist_ok=True)
-        conf["outdir"] = "{}/sim_v2_people-{}_days-{}_init-{}_seed-{}_{}".format(
-            conf["outdir"],
-            conf["n_people"],
-            conf["simulation_days"],
-            conf["init_percent_sick"],
-            conf["seed"],
-            datetime.datetime.now().strftime("%Y%m%d-%H%M%S"),
-        )
-        os.makedirs(conf["outdir"])
         outfile = os.path.join(conf["outdir"], "data")
 
     # ---------------------------------
@@ -129,6 +130,8 @@ def main(conf: DictConfig) -> None:
         most_likely, _ = plotrt.compute(cases_per_day, r0_estimate=2.5)
         print("Rt", most_likely[:20])
 
+        print("Dumping Tracker Data in", conf["outdir"])
+        Path(conf["outdir"]).mkdir(parents=True, exist_ok=True)
         filename = f"tracker_data_n_{conf['n_people']}_seed_{conf['seed']}_{timenow}_{conf['name']}.pkl"
         data = extract_tracker_data(tracker, conf)
         dump_tracker_data(data, conf["outdir"], filename)

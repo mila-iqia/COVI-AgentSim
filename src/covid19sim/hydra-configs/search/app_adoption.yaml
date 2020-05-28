@@ -18,9 +18,11 @@ simulation_days: 22
 INTERVENTION_DAY: 5
 
 APP_UPTAKE:
-  sample: sequential # will be sampled in this order
+  sample: cartesian # will be sampled in this order
   from:
+    - 0.1
     - 0.2
+    - 0.3
     - 0.4
     - 0.5
     - 0.6
@@ -28,5 +30,8 @@ APP_UPTAKE:
     - 1
 
 seed: # for sole reproducibility purposes
-  sample: range # uniform int choice
-  from: [0, 10]
+  sample: cartesian # uniform int choice
+  from:
+    - 1000
+    - 1001
+    - 1002
