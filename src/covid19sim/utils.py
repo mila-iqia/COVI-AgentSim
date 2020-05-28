@@ -5,7 +5,9 @@ import datetime
 import math
 import os
 import pathlib
+import shutil
 import subprocess
+import time
 import typing
 import zipfile
 from collections import OrderedDict, namedtuple
@@ -18,7 +20,7 @@ import numpy as np
 import requests
 import yaml
 from addict import Dict
-from omegaconf import OmegaConf, DictConfig
+from omegaconf import DictConfig, OmegaConf
 from scipy.stats import gamma, norm, truncnorm
 
 P_SEVERE_ALLERGIES = 0.02
@@ -1844,3 +1846,18 @@ def get_test_false_negative_rate(test_type, days_since_exposure, conf, interpola
         return y
     else:
         raise
+
+def subprocess_cmd(command):
+    process = subprocess.Popen(command,stdout=subprocess.PIPE, shell=True)
+    proc_stdout = process.communicate()[0].strip()
+
+def zip_outdir(outdir):
+    path = Path(outdir).resolve()
+    assert path.exists()
+    print(f"Zipping {outdir}...")
+    start_time = time.time()
+    command = "cd {}; zip -r -0 {}.zip {}".format(
+        str(path.parent), path.name, path.name
+    )
+    subprocess_cmd(command)
+

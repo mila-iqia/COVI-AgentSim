@@ -306,6 +306,7 @@ def main(conf: DictConfig) -> None:
     # These will be filtered out when passing arguments to run.py
     RANDOM_SEARCH_SPECIFIC_PARAMS = {
         "n_search",  # number of random iterations
+        "n_runs_per_search",  # number of random iterations
         "dev",  # dev-mode: print stuff, don't run them
         "exp_file",  # what experimental parametrization
         "partition",  # sbatch partition to use
@@ -361,6 +362,10 @@ def main(conf: DictConfig) -> None:
             job_str = fill_mila_template(template_str, conf)
             tmp = Path(tempfile.NamedTemporaryFile(suffix=".sh").name)
 
+            for k in range(conf.get("n_runs_per_search", 1)):
+                job_str += "\n{}\n".format(
+
+                )
             # create temporary sbatch file
             with tmp.open("w") as f:
                 f.write(job_str)
