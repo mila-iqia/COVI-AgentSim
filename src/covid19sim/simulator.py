@@ -354,6 +354,9 @@ class Human(object):
         self.location_leaving_time = self.env.ts_initial + SECONDS_PER_HOUR
         self.location_start_time = self.env.ts_initial
 
+        # The average noise in bluetooth signal strength to distance translation is sampled from a uniform distribution between 0 and 1
+        self.phone_bluetooth_noise = self.rng.rand()
+
     def assign_household(self, location):
         """
         [summary]
@@ -1560,10 +1563,8 @@ class Human(object):
         location.add_human(self)
         self.wear_mask()
 
-        self.location_start_time   = self.env.now
+        self.location_start_time = self.env.now
         self.location_leaving_time = self.location_start_time + duration*SECONDS_PER_MINUTE
-        print(f"self.location_start_time: {self.location_start_time}")
-        print(f"self.location_leaving_time: {self.location_leaving_time}")
         area = self.location.area
         initial_viral_load = 0
 
@@ -1617,24 +1618,34 @@ class Human(object):
             t_overlap = (min(self.location_leaving_time, h.location_leaving_time) -
                          max(self.location_start_time,   h.location_start_time)) / SECONDS_PER_MINUTE
             t_near = self.rng.random() * t_overlap * self.time_encounter_reduction_factor
-            print(t_overlap)
-            print(t_near)
 
-            # risk model
+            # phone_bluetooth_noise is a value selected between 0 and 2 meters to approximate the noise in the manufacturers bluetooth chip
+            # distance is the "average" distance of the encounter
+            # self.rng.random() - 0.5 gives a uniform random variable centered at 0
+            # we scale by the distance s.t. if the true distance of the encounter is 2m you could think it is 0m or 4m,
+            # whereas an encounter of 1m has a possible distance of 0.5 and 1.5m
+            approximated_bluetooth_distance = distance + distance * (self.rng.rand() - 0.5) * np.mean([self.phone_bluetooth_noise, h.phone_bluetooth_noise])
+            assert approximated_bluetooth_distance <= 2*distance
+
             h1_msg, h2_msg = None, None
-            if (
-                self.conf.get("MIN_MESSAGE_PASSING_DISTANCE") < distance < self.conf.get("MAX_MESSAGE_PASSING_DISTANCE")
-            ):
-                if self.tracing and self.has_app and h.has_app:
-                    h1_msg, h2_msg = exchange_encounter_messages(
-                        h1=self,
-                        h2=h,
-                        env_timestamp=self.env.timestamp,
-                        initial_timestamp=self.env.initial_timestamp,
-                        # note: the granularity here does not really matter, it's only used to keep map sizes small
-                        # in the clustering algorithm --- in reality, only the encounter day matters
-                        minutes_granularity=self.conf.get("ENCOUNTER_TIME_GRANULARITY_MINS", 60 * 12),
-                    )
+
+            # The maximum distance of a message which we would consider to be "high risk" and therefore meriting an
+            # encounter message is under 2 meters for at least 5 minutes.
+            if approximated_bluetooth_distance < self.conf.get("MAX_MESSAGE_PASSING_DISTANCE") and \
+                    t_near > self.conf.get('MIN_MESSAGE_PASSING_DURATION') and \
+                    self.tracing and \
+                    self.has_app and \
+                    h.has_app:
+]
+                h1_msg, h2_msg = exchange_encounter_messages(
+                    h1=self,
+                    h2=h,
+                    env_timestamp=self.env.timestamp,
+                    initial_timestamp=self.env.initial_timestamp,
+                    # note: the granularity here does not really matter, it's only used to keep map sizes small
+                    # in the clustering algorithm --- in reality, only the encounter day matters
+                    minutes_granularity=self.conf.get("ENCOUNTER_TIME_GRANULARITY_MINS", 60 * 12),
+                )
 
             city.tracker.track_social_mixing(human1=self, human2=h, duration=t_near, timestamp = self.env.timestamp)
             contact_condition = (
