@@ -1636,7 +1636,6 @@ class Human(object):
                     self.tracing and \
                     self.has_app and \
                     h.has_app:
-]
                 h1_msg, h2_msg = exchange_encounter_messages(
                     h1=self,
                     h2=h,
