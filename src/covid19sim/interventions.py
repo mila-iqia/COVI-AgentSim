@@ -401,35 +401,13 @@ class GetTested(BehaviorInterventions):
 class HeuristicRecommendations(RiskBasedRecommendations):
     @staticmethod
     def get_recommendations_level(human, thresholds, max_risk_level):
+        # Most of the logic for recommendations level update is given in the
+        # "Tracing" class (with "heuristic" tracing method). The recommendations
+        # level for the heuristic tracing algorithm are dependent on messages
+        # received in the mailbox, which get_recommendations_level does not have
+        # access to under the current API.
         if human.age >= 70:
             return max(human.curr_rec_level, 2)
-
-        elif human.reported_test_result == "positive":
-            return 3
-
-        elif human.all_reported_symptoms:
-            if "extremely-severe" in human.all_reported_symptoms:
-                return 3
-            elif "severe" in human.all_reported_symptoms:
-                return 3
-            elif "moderate" in human.all_reported_symptoms:
-                return 3
-            else:
-                # If mild symptoms
-                return 2
-
-        elif human.curr_rec_level > 0:
-            # See https://github.com/Covi-Canada/simulator/issues/29
-            no_positive_test_result_past_14_days = True
-            for test_result, test_time in human.test_results:
-                result_day = (human.env.timestamp - test_time).days
-                if result_day >= 0 and result_day < human.conf.get("TRACING_N_DAYS_HISTORY"):
-                    no_positive_test_result_past_14_days &= (test_result != "positive")
-
-            no_symptoms_past_7_days = (not any(islice(human.rolling_all_reported_symptoms, 7)))
-
-            if (no_symptoms_past_7_days and no_positive_test_result_past_14_days):
-                return 0
 
         return max(human.curr_rec_level, 0)
 
@@ -652,18 +630,23 @@ class Tracing(object):
             if human.reported_test_result == "positive":
                 # Update risk for the past 14 days
                 risk = [self.risk_level_to_risk(15)] * 14
+                human.curr_rec_level = 3
 
             elif human.all_reported_symptoms:
                 # Update risk for the past 7 days
                 if "extremely-severe" in human.all_reported_symptoms:
                     risk = [self.risk_level_to_risk(12)] * 7
+                    human.curr_rec_level = 3
                 elif "severe" in human.all_reported_symptoms:
                     risk = [self.risk_level_to_risk(12)] * 7
+                    human.curr_rec_level = 3
                 elif "moderate" in human.all_reported_symptoms:
                     risk = [self.risk_level_to_risk(10)] * 7
+                    human.curr_rec_level = 3
                 else:
                     # If mild symptoms
                     risk = [self.risk_level_to_risk(7)] * 7
+                    human.curr_rec_level = 2
 
             elif human.curr_rec_level > 0:
                 # See https://github.com/Covi-Canada/simulator/issues/29
@@ -679,19 +662,23 @@ class Tracing(object):
                         and no_message_gt3_past_7_days):
                      # Update risk for the past 7 days
                     risk = [self.risk_level_to_risk(0)] * 7
+                    human.curr_rec_level = 0
 
             elif high_risk_message > 0:
                 # TODO: Decrease the risk level depending on the number of encounters (N > 5)
                 updated_risk = max(human.risk_level, self.risk_level_to_risk(high_risk_message - 5))
                 risk = [updated_risk] * max(high_risk_num_days - 2, 1) # Update at least 1 day
+                human.curr_rec_level = 3
 
             elif moderate_risk_message > 0:
                 updated_risk = max(human.risk_level, self.risk_level_to_risk(moderate_risk_message - 5))
                 risk = [updated_risk] * max(moderate_risk_num_days - 2, 1) # Update at least 1 day
+                human.curr_rec_level = 2
 
             elif mild_risk_message > 0:
                 updated_risk = max(human.risk_level, self.risk_level_to_risk(mild_risk_message - 5))
                 risk = [updated_risk] * max(mild_risk_num_days - 2, 1) # Update at least 1 day
+                human.curr_rec_level = 1
 
         elif self.risk_model == "other":
             r_up, v_up, r_down, v_down = r
