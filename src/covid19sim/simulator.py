@@ -171,12 +171,16 @@ class Human(object):
         self.infectiousness_onset_days = None # 1 + self.rng.normal(loc=self.conf.get("INFECTIOUSNESS_ONSET_DAYS_AVG"), scale=self.conf.get("INFECTIOUSNESS_ONSET_DAYS_STD"))
         self.incubation_days = None # self.infectiousness_onset_days + self.viral_load_plateau_start + self.rng.normal(loc=self.conf.get("SYMPTOM_ONSET_WRT_VIRAL_LOAD_PEAK_AVG"), scale=self.conf.get("SYMPTOM_ONSET_WRT_VIRAL_LOAD_PEAK_STD")
         self.recovery_days = None # self.infectiousness_onset_days + self.viral_load_recovered
-        self.test_time, self.test_type = None, None
+
+        self.test_type = None
+        self.test_time = None
+        self.hidden_test_result = None
+        self.will_report_test_result = None
+        self.time_to_test_result = None
+        self.test_result_validated = None
         self.got_new_test_results = False
         self.test_results = deque(((None, datetime.datetime.max),))
-        self.test_result_validated = None
-        self.reported_test_result = None
-        self.reported_test_type = None
+
         self._infection_timestamp = None
         self.infection_timestamp = infection_timestamp
         self.initial_viral_load = self.rng.rand() if infection_timestamp is not None else 0
@@ -857,16 +861,25 @@ class Human(object):
 
         return self.hidden_test_result
 
-    @test_result.setter
-    def test_result(self, val):
-        if val is None:
-            self.test_type = None
-            self.test_time = None
-            self.hidden_test_result = None
-            self.time_to_test_result = None
-            self.test_result_validated = None
-            self.reported_test_result = None
-            self.reported_test_type = None
+    @property
+    def reported_test_result(self):
+        if self.will_report_test_result:
+            return self.test_result
+        return None
+
+    @property
+    def reported_test_type(self):
+        if self.will_report_test_result:
+            return self.test_type
+        return None
+
+    def reset_test_result(self):
+        self.test_type = None
+        self.test_time = None
+        self.hidden_test_result = None
+        self.will_report_test_result = None
+        self.time_to_test_result = None
+        self.test_result_validated = None
 
     def set_test_info(self, test_type, unobserved_result):
         """
@@ -884,27 +897,14 @@ class Human(object):
         self.test_type = test_type
         self.test_time = self.env.timestamp
         self.hidden_test_result = unobserved_result
+        self.will_report_test_result = self.has_app and self.rng.random() < self.carefulness
         if isinstance(self.location, (Hospital, ICU)):
             self.time_to_test_result = self.conf['TEST_TYPES'][test_type]['time_to_result']['in-patient']
         else:
             self.time_to_test_result = self.conf['TEST_TYPES'][test_type]['time_to_result']['out-patient']
-
-        # test reporting behavior
-        if self.test_type == "lab":
-            self.test_result_validated = True
-        else:
-            self.test_result_validated = False
-
-        if self.has_app and self.rng.random() < self.carefulness:
-            self.reported_test_result = self.test_result
-            self.reported_test_type = self.test_type
-        else:
-            self.reported_test_result = None
-            self.reported_test_type = None
-
+        self.test_result_validated = self.test_type == "lab"
         if self.conf.get('COLLECT_LOGS'):
             Event.log_test(self, self.test_time)
-
         self.test_results.appendleft((self.hidden_test_result, self.env.timestamp))
         self.city.tracker.track_tested_results(self)
         self.got_new_test_results = True
@@ -1315,7 +1315,7 @@ class Human(object):
 
                 # TO DISCUSS: Should the test result be reset here? We don't know in reality
                 # when the person has recovered; currently not reset
-                # self.test_result = None
+                # self.reset_test_result()
                 self.infection_timestamp = None
                 self.all_symptoms, self.covid_symptoms = [], []
 
