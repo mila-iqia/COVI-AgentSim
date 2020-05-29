@@ -583,12 +583,13 @@ def _get_disease_days(rng, conf, age, inflammatory_disease_level):
     # viral load height. There are two parameters here -
     # peak - peak of the viral load curve
     # plateau - plateau of the viral load curve
-    # max: 130/200 + 1 + 3/3.5 = 2.5, scales the base to [0-1]
+    # max: 130/200 + 3/3.5 = 2.5, scales the base to [0-1]
     # Older people and those with inflammatory diseases have higher viral load
     # https://www.medrxiv.org/content/10.1101/2020.04.10.20061325v2.full.pdf
     # TODO : make it dependent on initial viral load
     # (no-source) dependence on age vs inflammatory_disease_count
-    base = (age/200 + inflammatory_disease_level/3.5)/1.5
+    # base = conf['AGE_FACTOR_VIRAL_LOAD_HEIGHT'] * age/200 + conf['INFLAMMATORY_DISEASE_FACTOR_VIRAL_LOAD_HEIGHT'] * np.exp(-inflammatory_disease_level/3)
+    base = 1.0
 
     # as long as min and max viral load are [0-1], this will be [0-1]
     peak_height = rng.uniform(conf['MIN_VIRAL_LOAD_PEAK_HEIGHT'], conf['MAX_VIRAL_LOAD_PEAK_HEIGHT']) * base
