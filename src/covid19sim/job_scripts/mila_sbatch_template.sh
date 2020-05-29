@@ -19,13 +19,8 @@ cd {code_loc}
 echo $(pwd)
 echo $(which python)
 
-python server_bootstrap.py -e {weights} -w 4 &
+python server_bootstrap.py -e {weights} -w 4 {frontend} {backend}&
 
-hydra_args="$@"
-echo "received $hydra_args"
 echo "------------------------"
 
-
-HYDRA_FULL_ERROR=1 python run.py $hydra_args
-
-echo "Done."
+# THIS FILE WILL BE APPENDED TO. DO NOT WRITE AFTER THIS LINE
