@@ -3,6 +3,7 @@ Main file to run the simulations
 """
 import os
 import datetime
+import logging
 
 import numpy as np
 from covid19sim.base import City, Env
@@ -178,6 +179,8 @@ def simulate(
     conf["print_progress"] = print_progress
     conf["seed"] = seed
     conf["other_monitors"] = other_monitors
+
+    logging.basicConfig(level=getattr(logging, conf["LOGGING_LEVEL"].upper()))
 
     rng = np.random.RandomState(seed)
     env = Env(start_time)

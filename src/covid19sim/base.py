@@ -4,6 +4,7 @@ Contains base classes that define environment of the simulator.
 import copy
 import datetime
 import itertools
+import logging
 import math
 import time
 from collections import defaultdict, Counter
@@ -1196,6 +1197,20 @@ class Event:
                 'payload':{'observed':obs_payload, 'unobserved':unobs_payload}
             })
 
+        logging.debug("{time} - {human1.name}{h1_infectee} "
+                      "encountered {human2.name}{h1_infectee} "
+                      "for {duration:.2f}min at ({location.lat}, {location.lon}) "
+                      "and stayed at {distance:.2f}cm."
+                      .format(time=time,
+                              human1=human1,
+                              h1_infectee=' (infectee)' if infectee == human1.name else '',
+                              human2=human2,
+                              h2_infectee=' (infectee)' if infectee == human2.name else '',
+                              duration=duration,
+                              location=location,
+                              distance=distance
+                      ))
+
     @staticmethod
     def log_test(human, time):
         """
@@ -1227,6 +1242,7 @@ class Event:
                 }
             }
         )
+        logging.debug(f"{time} - {human.name} tested {human.test_result}.")
 
     @staticmethod
     def log_daily(human, time):
@@ -1287,6 +1303,7 @@ class Event:
                 }
             }
         )
+        logging.debug(f"{time} - {human.name} was contaminated by {source.name}.")
 
     @staticmethod
     def log_recovery(human, time, death):
@@ -1313,6 +1330,7 @@ class Event:
                 }
             }
         )
+        logging.debug(f"{time} - {human.name} recovered and is {'' if death else 'not'} {death}.")
 
 
     @staticmethod
@@ -1339,18 +1357,17 @@ class Event:
 
         obs_payload['household_size'] = len(human.household.residents)
 
-        human.events.append(
-            {
-                'human_id': human.name,
-                'event_type':Event.static_info,
-                'time':time,
-                'payload':{
-                    'observed': obs_payload,
-                    'unobserved':unobs_payload
-                }
-
+        event = {
+            'human_id': human.name,
+            'event_type':Event.static_info,
+            'time':time,
+            'payload':{
+                'observed': obs_payload,
+                'unobserved':unobs_payload
             }
-        )
+        }
+        human.events.append(event)
+        logging.debug(f"{time} - {human} static info:\n{event}")
 
 
 class EmptyCity(City):

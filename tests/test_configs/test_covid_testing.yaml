@@ -49,3 +49,6 @@ RISK_MAPPING:
     0.98973414,
     1.,
   ]
+
+# Console logging (Conditional with COLLECT_LOGS)
+LOGGING_LEVEL: "WARNING"

@@ -136,7 +136,6 @@ class ModelsTest(unittest.TestCase):
         # Load the experimental configuration
         conf_name = "test_models.yaml"
         conf = get_test_conf(conf_name)
-        conf['COLLECT_LOGS'] = False
 
         with TemporaryDirectory() as d:
             start_time = datetime.datetime(2020, 2, 28, 0, 0)
