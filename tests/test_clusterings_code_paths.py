@@ -23,6 +23,7 @@ class ClusteringCodePaths(unittest.TestCase):
         self.start_time = datetime.datetime(2020, 2, 28, 0, 0)
         self.simulation_days = 10
 
+        self.config['COLLECT_LOGS'] = True
         self.config['INTERVENTION_DAY'] = 5
         self.config['TRANSFORMER_EXP_PATH'] = "https://drive.google.com/file/d/1Z7g3gKh2kWFSmK2Yr19MQq0blOWS5st0"
         self.config['RISK_MODEL'] = 'transformer'
