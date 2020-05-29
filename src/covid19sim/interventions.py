@@ -223,10 +223,11 @@ class SocialDistancing(BehaviorInterventions):
         3. Reduced mobility (using RHO and GAMMA)
 
     """
-    DEFAULT_SOCIAL_DISTANCE = 200 # cm
-    TIME_ENCOUNTER_REDUCTION_FACTOR = 0.5
-    _RHO = 0.2
-    _GAMMA = 0.5
+    def __init__(self, default_distance=100, time_encounter_reduction_factor=0.5):
+        self.DEFAULT_SOCIAL_DISTANCE = default_distance # cm
+        self.TIME_ENCOUNTER_REDUCTION_FACTOR = time_encounter_reduction_factor
+        self._RHO = 0.2
+        self._GAMMA = 0.5
 
     def modify_behavior(self, human):
         human._maintain_extra_distance = human.maintain_extra_distance
@@ -314,13 +315,13 @@ def get_recommendations(level):
         list: a list of `BehaviorInterventions`.
     """
     if level == 0:
-        return [WashHands()]
+        return [WashHands(), StandApart(default_distance=25)]
     if level == 1:
-        return [WashHands(), StandApart(), WearMask()]
+        return [WashHands(), StandApart(default_distance=75), WearMask()]
     if level == 2:
-        return [WashHands(), SocialDistancing(), WearMask(), 'monitor_symptoms']
+        return [WashHands(), SocialDistancing(default_distance=100), WearMask(), 'monitor_symptoms']
 
-    return [WashHands(), SocialDistancing(), WearMask(), 'monitor_symptoms', GetTested("recommendations"), Quarantine()]
+    return [WashHands(), SocialDistancing(default_distance=100), WearMask(), 'monitor_symptoms', GetTested("recommendations"), Quarantine()]
 
 class RiskBasedRecommendations(BehaviorInterventions):
     """

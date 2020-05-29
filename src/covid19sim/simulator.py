@@ -19,7 +19,8 @@ from collections import deque
 from covid19sim.utils import _normalize_scores, _get_random_sex, _get_covid_progression, \
     _get_preexisting_conditions, _draw_random_discreet_gaussian, _sample_viral_load_piecewise, \
     _get_cold_progression, _get_flu_progression, _get_allergy_progression, _get_get_really_sick, \
-    filter_open, filter_queue_max, calculate_average_infectiousness, _get_inflammatory_disease_level, _get_disease_days
+    filter_open, filter_queue_max, calculate_average_infectiousness, _get_inflammatory_disease_level, _get_disease_days,\
+    get_p_infection
 from covid19sim.constants import SECONDS_PER_MINUTE, SECONDS_PER_HOUR
 from covid19sim.frozen.message_utils import ContactBook, exchange_encounter_messages, RealUserIDType
 
@@ -770,22 +771,26 @@ class Human(object):
     def infectiousness(self):
         return self.get_infectiousness_for_day(self.env.timestamp, self.is_infectious)
 
-    def infectiousness_delta(self, hours):
+    def infectiousness_delta(self, t_near):
         """
         Computes area under the probability curve defined by infectiousness and time duration
         of self.env.timestamp and self.env.timestamp + delta_timestamp.
         Currently, it only takes the average of starting and ending probabilities.
 
         Args:
-            hours (float): area under the infectiousness curve is computed for this duration
+            t_near (float): time spent near another person in hours
+
+        Returns:
+            area (float): area under the infectiousness curve is computed for this duration
         """
 
         if not self.is_infectious:
             return 0
 
         start_p = self.get_infectiousness_for_day(self.env.timestamp, self.is_infectious)
-        end_p = self.get_infectiousness_for_day(self.env.timestamp + datetime.timedelta(hours=hours), self.is_infectious)
-        return hours / 24 * (start_p + end_p) / 2
+        end_p = self.get_infectiousness_for_day(self.env.timestamp + datetime.timedelta(hours=t_near), self.is_infectious)
+        area = t_near / 24 * (start_p + end_p) / 2
+        return area
 
     @property
     def obs_symptoms(self):
@@ -1714,20 +1719,15 @@ class Human(object):
                         infector, infectee = h, self
                         infectee_msg = h1_msg
 
-                    # probability of transmission
-                    # It is similar to Oxford COVID-19 model described in Section 4.
-                    rate_of_infection = infectee.normalized_susceptibility * location.social_contact_factor * 1/infectee.mean_daily_interaction_age_group
-                    rate_of_infection *= infector.infectiousness_delta(hours=t_near) * infector.infection_ratio
-                    rate_of_infection *= self.conf["CONTAGION_KNOB"]
-                    p_infection = 1 - np.exp(-rate_of_infection)
-
-                    # factors that can reduce probability of transmission.
-                    # (no-source) How to reduce the transmission probability mathematically?
-                    mask_efficacy = (self.mask_efficacy + h.mask_efficacy)*self.conf['MASK_EFFICACY_FACTOR']
-                    hygiene_efficacy = self.hygiene + h.hygiene
-                    reduction_factor = mask_efficacy + hygiene_efficacy
-                    p_infection *= np.exp(-reduction_factor)
-
+                    p_infection = get_p_infection(infector,
+                                                  infector.infectiousness_delta(hours=t_near),
+                                                  infectee,
+                                                  location.social_contact_factor,
+                                                  self.conf['CONTAGION_KNOB'],
+                                                  self.conf['MASK_EFFICACY_FACTOR'],
+                                                  self.conf['HYGIENE_EFFICACY_FACTOR'],
+                                                  self,
+                                                  h)
                     x_human = infector.rng.random() < p_infection
                     if x_human and infectee.is_susceptible:
                         infectee.infection_timestamp = self.env.timestamp
