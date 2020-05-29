@@ -589,7 +589,8 @@ class Tracing(object):
         """
         assert self.risk_model != "transformer", "we should never be in here!"
         assert self.risk_model in ["manual", "digital", "naive", "heuristic", "other"], "missing something?"
-        t, s, r = self._get_hypothetical_contact_tracing_results(human, mailbox, humans_map)
+        if self.risk_model != "heuristic":
+            t, s, r = self._get_hypothetical_contact_tracing_results(human, mailbox, humans_map)
 
         if self.risk_model in ["manual", "digital"]:
             if t + s > 0:
