@@ -212,14 +212,14 @@ P_TRAVELLED_INTERNATIONALLY_RECENTLY: 0.05
 # TODO: link to the document
 SMARTPHONE_OWNER_FRACTION_BY_AGE:
   {
-    '0-10': 0.0,
-    '10-20': 0.90,
-    '20-30': 0.96,
-    '30-40': 0.95,
-    '40-50': 0.91,
-    '50-60': 0.81,
-    '60-70': 0.64,
-    '70-80': 0.41,
+    '1-10': 0.0,
+    '11-20': 0.90,
+    '21-30': 0.96,
+    '31-40': 0.95,
+    '41-50': 0.91,
+    '51-60': 0.81,
+    '61-70': 0.64,
+    '71-80': 0.41,
     '80-101': 0.27,
   }
 
@@ -244,7 +244,7 @@ INCUBATION_DAYS_GAMMA_SCALE: 0.948
 # &infectiousness-onset [He 2020 https://www.nature.com/articles/s41591-020-0869-5#ref-CR1] infectiousness peaked at 0.7 days (95% CI, −0.2–2.0 days) before symptom onset (Fig. 1c).
 INFECTIOUSNESS_PEAK_AVG: 0.7 # DAYS
 INFECTIOUSNESS_PEAK_STD: 0.5
-INFECTIOUSNESS_PEAK_CLIP_LOW: -0.5
+INFECTIOUSNESS_PEAK_CLIP_LOW: 0.01
 INFECTIOUSNESS_PEAK_CLIP_HIGH: 2.2
 
 # &infectiousness-onset [He 2020 https://www.nature.com/articles/s41591-020-0869-5#ref-CR1] infectiousness started from 2.3 days (95% CI, 0.8–3.0 days) before symptom onset and peaked at 0.7 days (95% CI, −0.2–2.0 days) before symptom onset (Fig. 1c).

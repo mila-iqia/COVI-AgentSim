@@ -1673,7 +1673,7 @@ class Human(object):
 
             t_overlap = (min(self.location_leaving_time, h.location_leaving_time) -
                          max(self.location_start_time,   h.location_start_time)) / SECONDS_PER_MINUTE
-            t_near = self.rng.random() * t_overlap * self.time_encounter_reduction_factor
+            t_near = self.rng.random() * t_overlap * max(self.time_encounter_reduction_factor, h.time_encounter_reduction_factor)
 
             # phone_bluetooth_noise is a value selected between 0 and 2 meters to approximate the noise in the manufacturers bluetooth chip
             # distance is the "average" distance of the encounter
@@ -1709,10 +1709,6 @@ class Human(object):
                         minutes_granularity=encounter_time_granularity,
                     )
                     remaining_time_in_contact -= encounter_time_granularity
-
-            t_overlap = (min(self.leaving_time, getattr(h, "leaving_time", self.env.ts_initial+SECONDS_PER_HOUR)) -
-                         max(self.start_time,   getattr(h, "start_time",   self.env.ts_initial+SECONDS_PER_HOUR))) / SECONDS_PER_MINUTE
-            t_near = self.rng.random() * t_overlap * max(self.time_encounter_reduction_factor, h.time_encounter_reduction_factor)
 
             city.tracker.track_social_mixing(human1=self, human2=h, duration=t_near, timestamp = self.env.timestamp)
             contact_condition = (

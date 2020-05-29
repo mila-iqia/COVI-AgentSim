@@ -404,7 +404,6 @@ class City:
             n_elements=self.n_people,
             rng=self.rng
         )
-
         # app users
         all_has_app = self.conf.get('APP_UPTAKE') < 0
         n_apps_per_age = {
