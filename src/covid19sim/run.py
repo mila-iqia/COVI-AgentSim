@@ -3,6 +3,7 @@ Main file to run the simulations
 """
 import os
 import datetime
+import shutil
 
 import numpy as np
 from covid19sim.base import City, Env
@@ -17,6 +18,7 @@ from covid19sim.utils import (
     extract_tracker_data,
     parse_configuration,
     dump_conf,
+    zip_outdir
 )
 import hydra
 from omegaconf import DictConfig
@@ -113,6 +115,10 @@ def main(conf: DictConfig) -> None:
         # write metrics
         logfile = os.path.join(f"{conf['outdir']}/logs.txt")
         tracker.write_metrics(logfile)
+        if conf["zip_outdir"]:
+            zip_outdir(conf["outdir"])
+            if conf["delete_outdir"]:
+                shutil.rmtree(conf["outdir"])
     else:
         # ------------------------------------------------------
         # -----  Tune: Create Plots And Write Tacker Data  -----

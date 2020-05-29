@@ -2088,3 +2088,18 @@ def get_p_infection(infector, infectors_infectiousness, infectee, social_contact
     reduction_factor = mask_efficacy * mask_efficacy_factor + hygiene_efficacy * hygiene_efficacy_factor
     p_infection *= np.exp(-reduction_factor)
     return p_infection
+
+
+def subprocess_cmd(command):
+    process = subprocess.Popen(command,stdout=subprocess.PIPE, shell=True)
+    proc_stdout = process.communicate()[0].strip()
+
+def zip_outdir(outdir):
+    path = Path(outdir).resolve()
+    assert path.exists()
+    print(f"Zipping {outdir}...")
+    start_time = time.time()
+    command = "cd {}; zip -r -0 {}.zip {}".format(
+        str(path.parent), path.name, path.name
+    )
+    subprocess_cmd(command)
