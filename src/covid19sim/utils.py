@@ -67,7 +67,9 @@ Attributes
         A probability of `-1` is assigned when it is handled entirely in the code
 '''
 
-SYMPTOMS_CONTEXTS = {'covid': {0: 'covid_pre_plateau', 1: 'covid_plateau_1', 2: 'covid_plateau_2',
+
+# FIXME: covid_pre_plateau should be covid_incubation and there should be no symptoms in this phase
+SYMPTOMS_CONTEXTS = {'covid': {0: 'covid_incubation', 1: 'covid_pre_plateau', 2: 'covid_plateau_2',
                                3: 'covid_post_plateau_1', 4: 'covid_post_plateau_2'},
                      'allergy': {0: 'allergy'},
                      'cold': {0: 'cold', 1: 'cold_last_day'},
@@ -487,6 +489,203 @@ def _sample_viral_load_gamma(rng, shape_mean=4.5, shape_std=.15, scale_mean=1., 
     scale = rng.normal(scale_mean, scale_std)
     return gamma(shape, scale=scale)
 
+def _get_inflammatory_disease_level(rng, preexisting_conditions, inflammatory_conditions):
+    cond_count = 0
+    for cond in inflammatory_conditions:
+        if cond in preexisting_conditions:
+          cond_count += 1
+    if cond_count > 3:
+        cond_count = 3
+    return cond_count
+
+def _get_disease_days(rng, conf, age, inflammatory_disease_level):
+    """
+    Defines viral load curve parameters.
+    It is based on the study here https://www.medrxiv.org/content/10.1101/2020.04.10.20061325v2.full.pdf (Figure 1).
+
+    We have used the same scale for the gamma distribution for all the parameters as fitted in the study here
+        https://www.acpjournals.org/doi/10.7326/M20-0504 (Appendix Table 2)
+
+    NOTE: Using gamma for all paramters is for the ease of computation.
+    NOTE: Gamma distribution is only well supported in literature for incubation days
+
+    Args:
+        rng (np.random.RandomState): random number generator
+        conf (dict): configuration dictionary
+        age (float): age of human
+        inflammatory_disease_level (int): based on count of inflammatory conditions.
+    """
+    # NOTE: references are in core.yaml alongside above parameters
+    # All days count FROM EXPOSURE i.e. infection_timestamp
+
+    PLATEAU_DURATION_CLIP_HIGH = conf.get("PLATEAU_DURATION_CLIP_HIGH")
+    PLATEAU_DURATION_CLIP_LOW = conf.get("PLATEAU_DURATION_CLIP_LOW")
+    PLATEAU_DURATION_MEAN = conf.get("PLATEAU_DURATION_MEAN")
+    PLATEAU_DURATION_STD = conf.get("PLATEAU_DURATION_STD")
+
+    INFECTIOUSNESS_ONSET_WRT_SYMPTOM_ONSET_AVG = conf.get("INFECTIOUSNESS_ONSET_DAYS_WRT_SYMPTOM_ONSET_AVG")
+    INFECTIOUSNESS_ONSET_WRT_SYMPTOM_ONSET_STD = conf.get("INFECTIOUSNESS_ONSET_DAYS_WRT_SYMPTOM_ONSET_STD")
+    INFECTIOUSNESS_ONSET_WRT_SYMPTOM_ONSET_CLIP_LOW = conf.get("INFECTIOUSNESS_ONSET_DAYS_WRT_SYMPTOM_ONSET_CLIP_LOW")
+    INFECTIOUSNESS_ONSET_WRT_SYMPTOM_ONSET_CLIP_HIGH = conf.get("INFECTIOUSNESS_ONSET_DAYS_WRT_SYMPTOM_ONSET_CLIP_HIGH")
+
+    INFECTIOUSNESS_PEAK_AVG = conf.get("INFECTIOUSNESS_PEAK_AVG")
+    INFECTIOUSNESS_PEAK_STD = conf.get("INFECTIOUSNESS_PEAK_STD")
+    INFECTIOUSNESS_PEAK_CLIP_HIGH = conf.get("INFECTIOUSNESS_PEAK_CLIP_HIGH")
+    INFECTIOUSNESS_PEAK_CLIP_LOW = conf.get("INFECTIOUSNESS_PEAK_CLIP_LOW")
+
+    RECOVERY_DAYS_AVG = conf.get("RECOVERY_DAYS_AVG")
+    RECOVERY_STD = conf.get("RECOVERY_STD")
+    RECOVERY_CLIP_LOW = conf.get("RECOVERY_CLIP_LOW")
+    RECOVERY_CLIP_HIGH = conf.get("RECOVERY_CLIP_HIGH")
+
+    # days after exposure when symptoms show up
+    incubation_days = rng.gamma(
+        shape=conf['INCUBATION_DAYS_GAMMA_SHAPE'],
+        scale=conf['INCUBATION_DAYS_GAMMA_SCALE']
+    )
+
+    # days after exposure when viral shedding starts, i.e., person is infectious
+    infectiousness_onset_days = incubation_days - truncnorm((INFECTIOUSNESS_ONSET_WRT_SYMPTOM_ONSET_CLIP_LOW - INFECTIOUSNESS_ONSET_WRT_SYMPTOM_ONSET_AVG) / INFECTIOUSNESS_ONSET_WRT_SYMPTOM_ONSET_STD,
+                                                                 (INFECTIOUSNESS_ONSET_WRT_SYMPTOM_ONSET_CLIP_HIGH - INFECTIOUSNESS_ONSET_WRT_SYMPTOM_ONSET_AVG) / INFECTIOUSNESS_ONSET_WRT_SYMPTOM_ONSET_STD,
+                                      loc=INFECTIOUSNESS_ONSET_WRT_SYMPTOM_ONSET_AVG, scale=INFECTIOUSNESS_ONSET_WRT_SYMPTOM_ONSET_STD).rvs(1, random_state=rng).item()
+
+    # (no-source) assumption is that there is atleast one day to remain exposed
+    infectiousness_onset_days = max(1, infectiousness_onset_days)
+
+    # viral load peaks INFECTIOUSNESS_PEAK_AVG days before incubation days
+    viral_load_peak_wrt_incubation_days  = truncnorm((INFECTIOUSNESS_PEAK_CLIP_LOW - INFECTIOUSNESS_PEAK_AVG) / INFECTIOUSNESS_PEAK_STD,
+                                            (INFECTIOUSNESS_PEAK_CLIP_HIGH - INFECTIOUSNESS_PEAK_AVG) / INFECTIOUSNESS_PEAK_STD,
+                                            loc=INFECTIOUSNESS_PEAK_AVG, scale=INFECTIOUSNESS_PEAK_STD).rvs(1, random_state=rng).item()
+    viral_load_peak = incubation_days - viral_load_peak_wrt_incubation_days
+
+    # (no-source) We assume that plateau start is equi-distant from the peak
+    # infered from the curves in Figure 1 of the reference above
+    plateau_start = incubation_days + viral_load_peak_wrt_incubation_days
+
+    # (no-source) plateau duration is assumed to be of avg PLATEAU_DRATION_MEAN
+    plateau_end = plateau_start + truncnorm((PLATEAU_DURATION_CLIP_LOW - PLATEAU_DURATION_MEAN) / PLATEAU_DURATION_STD,
+                                            (PLATEAU_DURATION_CLIP_HIGH - PLATEAU_DURATION_MEAN) / PLATEAU_DURATION_STD,
+                                            loc=PLATEAU_DURATION_MEAN, scale=PLATEAU_DURATION_STD).rvs(1, random_state=rng).item()
+
+    # recovery is often quoted with respect to the incubation days
+    # so we add it here with respect to the plateau end.
+    RECOVERY_WRT_PLATEAU_END_AVG = conf['RECOVERY_DAYS_AVG'] - conf['PLATEAU_DURATION_MEAN'] - INFECTIOUSNESS_ONSET_WRT_SYMPTOM_ONSET_AVG
+    recovery_days = plateau_end + truncnorm((RECOVERY_CLIP_LOW - RECOVERY_WRT_PLATEAU_END_AVG) / RECOVERY_STD,
+                                            (RECOVERY_CLIP_HIGH - RECOVERY_WRT_PLATEAU_END_AVG) / RECOVERY_STD,
+                                            loc=RECOVERY_WRT_PLATEAU_END_AVG, scale=RECOVERY_STD).rvs(1, random_state=rng).item()
+
+
+    # Time to recover is proportional to age
+    # based on hospitalization data (biased towards older people) https://pubs.rsna.org/doi/10.1148/radiol.2020200370
+    # (no-source) it adds dependency of recovery days on age
+    recovery_days += age/40
+
+    # viral load height. There are two parameters here -
+    # peak - peak of the viral load curve
+    # plateau - plateau of the viral load curve
+    # max: 130/200 + 1 + 3/3.5 = 2.5, scales the base to [0-1]
+    # Older people and those with inflammatory diseases have higher viral load
+    # https://www.medrxiv.org/content/10.1101/2020.04.10.20061325v2.full.pdf
+    # TODO : make it dependent on initial viral load
+    # (no-source) dependence on age vs inflammatory_disease_count
+    base = (age/200 + inflammatory_disease_level/3.5)/1.5
+
+    # as long as min and max viral load are [0-1], this will be [0-1]
+    peak_height = rng.uniform(conf['MIN_VIRAL_LOAD_PEAK_HEIGHT'], conf['MAX_VIRAL_LOAD_PEAK_HEIGHT']) * base
+
+    # as long as min and max viral load are [0-1], this will be [0-1]
+    plateau_height = peak_height * rng.uniform(conf['MIN_MULTIPLIER_PLATEAU_HEIGHT'], conf['MAX_MULTIPLIER_PLATEAU_HEIGHT'])
+
+    assert peak_height != 0, f"viral load of peak of 0 sampled age:{age}"
+    return infectiousness_onset_days, viral_load_peak, incubation_days, plateau_start, plateau_end, recovery_days, peak_height, plateau_height
+
+def _get_disease_days_v1(rng, conf, age, inflammatory_disease_level):
+    """
+    Defines viral load curve parameters.
+    It is based on the study here https://www.medrxiv.org/content/10.1101/2020.04.10.20061325v2.full.pdf (Figure 1).
+
+    We have used the same scale for the gamma distribution for all the parameters as fitted in the study here
+        https://www.acpjournals.org/doi/10.7326/M20-0504 (Appendix Table 2)
+
+    NOTE: Using gamma for all paramters is for the ease of computation.
+    NOTE: Gamma distribution is only well supported in literature for incubation days
+
+    Args:
+        rng (np.random.RandomState): random number generator
+        conf (dict): configuration dictionary
+        age (float): age of human
+        inflammatory_disease_level (int): based on count of inflammatory conditions.
+    """
+    # NOTE: references are in core.yaml alongside above parameters
+    # All days count FROM EXPOSURE i.e. infection_timestamp
+    # days are sampled additively to result in a gamma distribution for known paramters
+
+    # person starts being infectious some days before symptom onset
+    INFECTIOUSNESS_ONSET_DAYS_AVG = conf['INCUBATION_DAYS_GAMMA_SHAPE'] - conf['INFECTIOUSNESS_ONSET_DAYS_WRT_INCUBATION_AVG']
+    infectiousness_onset_days = rng.gamma(
+                                    shape=INFECTIOUSNESS_ONSET_DAYS_AVG,
+                                    scale=conf['INCUBATION_DAYS_GAMMA_SCALE']
+                                )
+
+    # peak of viral load is reached after that
+    VIRAL_LOAD_PEAK_WRT_INFECTIOUSNESS_AVG = conf['INCUBATION_DAYS_GAMMA_SHAPE'] \
+                     - INFECTIOUSNESS_ONSET_DAYS_AVG \
+                     - conf['INFECTIOUSNESS_PEAK_WRT_INCUBATION_AVG']
+
+    viral_load_peak  = infectiousness_onset_days +  rng.gamma(
+                                                shape=VIRAL_LOAD_PEAK_WRT_INFECTIOUSNESS_AVG,
+                                                scale=conf['INCUBATION_DAYS_GAMMA_SCALE']
+                                                )
+    # symptoms start after that; incubation period is from the day of exposure to symptom onset
+    # it is modeled additively so that final incubation days is a gamma distribution
+    incubation_days = infectiousness_onset_days + viral_load_peak + \
+                     + rng.gamma(
+                                shape=conf['INFECTIOUSNESS_PEAK_WRT_INCUBATION_AVG'],
+                                scale=conf['INCUBATION_DAYS_GAMMA_SCALE']
+                        )
+
+    # (no-source) We assume that plateau start is equi-distant from the peak
+    # infered from the curves in Figure 1 of the reference above
+    plateau_start = incubation_days + (incubation_days - viral_load_peak)
+
+    # (no-source) plateau duration is assumed to be of avg PLATEAU_DRATION_MEAN
+    plateau_end = plateau_start + rng.gamma(
+                                shape=conf['PLATEAU_DURATION_MEAN'],
+                                scale=conf['INCUBATION_DAYS_GAMMA_SCALE']
+                    )
+
+    # recovery is often quoted with respect to the incubation days
+    # so we add it here with respect to the plateau end. It results in gamma distribution for recovery days.
+    # Gamma distribution is an assumption while maintaining the mean values.
+    RECOVERY_WRT_PLATEAU_END_AVG = conf['RECOVERY_DAYS_AVG'] - conf['PLATEAU_DURATION_MEAN'] - conf['INFECTIOUSNESS_PEAK_WRT_INCUBATION_AVG']
+    recovery_days = plateau_end + rng.gamma(
+                                shape=RECOVERY_WRT_PLATEAU_END_AVG,
+                                scale=conf['INCUBATION_DAYS_GAMMA_SCALE']
+                    )
+
+    # Time to recover is proportional to age
+    # based on hospitalization data (biased towards older people) https://pubs.rsna.org/doi/10.1148/radiol.2020200370
+    # (no-source) it adds dependency of recovery days on age
+    recovery_days += age/40
+
+    # viral load height. There are two parameters here -
+    # peak - peak of the viral load curve
+    # plateau - plateau of the viral load curve
+    # max: 130/200 + 1 + 3/3.5 = 2.5, scales the base to [0-1]
+    # Older people and those with inflammatory diseases have higher viral load
+    # https://www.medrxiv.org/content/10.1101/2020.04.10.20061325v2.full.pdf
+    # TODO : make it dependent on initial viral load
+    # (no-source) dependence on age vs inflammatory_disease_count
+    base = (age/200 + inflammatory_disease_level/3.5)/1.5
+
+    # as long as min and max viral load are [0-1], this will be [0-1]
+    peak_height = rng.uniform(conf['MIN_VIRAL_LOAD_PEAK_HEIGHT'], conf['MAX_VIRAL_LOAD_PEAK_HEIGHT']) * base
+
+    # as long as min and max viral load are [0-1], this will be [0-1]
+    plateau_height = peak_height * rng.uniform(conf['MIN_MULTIPLIER_PLATEAU_HEIGHT'], conf['MAX_MULTIPLIER_PLATEAU_HEIGHT'])
+
+    assert peak_height != 0, f"viral load of peak of 0 sampled age:{age}"
+    return infectiousness_onset_days, viral_load_peak, incubation_days, plateau_start, plateau_end, recovery_days, peak_height, plateau_height
 
 def _sample_viral_load_piecewise(rng, plateau_start, initial_viral_load=0, age=40, conf={}):
     """
@@ -663,7 +862,7 @@ def _get_get_really_sick(age, sex, rng):
 
 # 2D Array of symptoms; first axis is days after exposure (infection), second is an array of symptoms
 def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_load_plateau_end,
-                           viral_load_recovered, age, incubation_days, really_sick, extremely_sick,
+                           recovery_days, age, incubation_days, really_sick, extremely_sick,
                            rng, preexisting_conditions, carefulness):
     """
     [summary]
@@ -672,7 +871,7 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
         initial_viral_load ([type]): [description]
         viral_load_plateau_start ([type]): [description]
         viral_load_plateau_end ([type]): [description]
-        viral_load_recovered ([type]): [description]
+        recovery_days (float): time to recover
         age ([type]): [description]
         incubation_days ([type]): [description]
         really_sick ([type]): [description]
@@ -688,14 +887,16 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
     progression = []
     symptoms_per_phase = [[] for i in range(len(symptoms_contexts))]
 
-    # Before onset of symptoms (incubation)
-    # ====================================================
-    for day in range(math.ceil(incubation_days)):
-        progression.append([])
-
-    # Before the symptom's plateau
+    # Phase 0 - Before onset of symptoms (incubation)
     # ====================================================
     phase_i = 0
+    symptoms_per_phase[phase_i]= []
+    # for day in range(math.ceil(incubation_days)):
+    #     progression.append([])
+
+    # Phase 1 of plateau
+    # ====================================================
+    phase_i = 1
     phase = symptoms_contexts[phase_i]
 
     p_fever = SYMPTOMS['fever'].probabilities[phase]
@@ -765,85 +966,85 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
             'trouble_breathing' in symptoms_per_phase[phase_i]:
         symptoms_per_phase[phase_i].append('moderate_trouble_breathing')
 
-
-    # During the plateau of symptoms Part 1
-    # ====================================================
-    phase_i = 1
-    phase = symptoms_contexts[phase_i]
-
-    if extremely_sick:
-        symptoms_per_phase[phase_i].append('extremely-severe')
-    elif really_sick or len(preexisting_conditions) >2 or 'moderate' in symptoms_per_phase[phase_i-1] or \
-            initial_viral_load > 0.6:
-        symptoms_per_phase[phase_i].append('severe')
-    elif rng.rand() < p_gastro:
-        symptoms_per_phase[phase_i].append('moderate')
-    else:
-        symptoms_per_phase[phase_i].append('mild')
-
-    if 'fever' in symptoms_per_phase[phase_i-1] or initial_viral_load > 0.8 or \
-            rng.rand() < SYMPTOMS['fever'].probabilities[phase]:
-        symptoms_per_phase[phase_i].append('fever')
-        if rng.rand() < SYMPTOMS['chills'].probabilities[phase]:
-            symptoms_per_phase[phase_i].append('chills')
-
-
-    # gastro symptoms are more likely to be earlier and are more
-    # likely to show extreme symptoms later
-    if 'gastro' in symptoms_per_phase[phase_i-1] or rng.rand() < p_gastro *.5:
-        symptoms_per_phase[phase_i].append('gastro')
-
-        for symptom in ('diarrhea', 'nausea_vomiting'):
-            rand = rng.rand()
-            if rand < SYMPTOMS[symptom].probabilities[phase]:
-                symptoms_per_phase[phase_i].append(symptom)
-
-    # fatigue and unusual symptoms are more heavily age-related
-    # but more likely later, and less if you're careful/taking care
-    # of yourself
-    if rng.rand() < p_lethargy + (p_gastro/2): #if you had gastro symptoms before more likely to be lethargic now
-        symptoms_per_phase[phase_i].append('fatigue')
-
-        if age > 75 and rng.rand() < SYMPTOMS['unusual'].probabilities[phase]:
-            symptoms_per_phase[phase_i].append('unusual')
-        if really_sick or extremely_sick or len(preexisting_conditions) > 2 and \
-                rng.rand() < SYMPTOMS['lost_consciousness'].probabilities[phase]:
-            symptoms_per_phase[phase_i].append('lost_consciousness')
-
-        for symptom in ('hard_time_waking_up', 'headache', 'confused'):
-            rand = rng.rand()
-            if rand < SYMPTOMS[symptom].probabilities[phase]:
-                symptoms_per_phase[phase_i].append(symptom)
-
-    # respiratory symptoms more common at this stage
-    p_respiratory = initial_viral_load - (carefulness * 0.25) # e.g. 0.5 - 0.7*0.25 = 0.5-0.17
-    if 'smoker' in preexisting_conditions or 'lung_disease' in preexisting_conditions:
-        p_respiratory = (p_respiratory * 4) + age/200  # e.g. 0.1 * 4 * 45/200 = 0.4 + 0.225
-    if rng.rand() < p_respiratory:
-        symptoms_per_phase[phase_i].append('trouble_breathing')
-
-        if extremely_sick and rng.rand() < SYMPTOMS['severe_chest_pain'].probabilities[phase]:
-            symptoms_per_phase[phase_i].append('severe_chest_pain')
-
-        for symptom in ('sneezing', 'cough', 'runny_nose', 'sore_throat'):
-            rand = rng.rand()
-            if rand < SYMPTOMS[symptom].probabilities[phase]:
-                symptoms_per_phase[phase_i].append(symptom)
-
-    if 'loss_of_taste' in symptoms_per_phase[phase_i-1] or \
-            rng.rand() < SYMPTOMS['loss_of_taste'].probabilities[phase]:
-        symptoms_per_phase[phase_i].append('loss_of_taste')
-
-    if 'mild' in symptoms_per_phase[phase_i] and \
-            'trouble_breathing' in symptoms_per_phase[phase_i]:
-        symptoms_per_phase[phase_i].append('light_trouble_breathing')
-    if 'moderate' in symptoms_per_phase[phase_i] and \
-            'trouble_breathing' in symptoms_per_phase[phase_i]:
-        symptoms_per_phase[phase_i].append('moderate_trouble_breathing')
-    if ('severe' in symptoms_per_phase[phase_i] or 'extremely-severe' in symptoms_per_phase[phase_i]) and \
-            'trouble_breathing' in symptoms_per_phase[phase_i]:
-        symptoms_per_phase[phase_i].append('heavy_trouble_breathing')
-
+    # TODO: Delete me
+    # # During the plateau of symptoms Part 1
+    # # ====================================================
+    # phase_i = 1
+    # phase = symptoms_contexts[phase_i]
+    #
+    # if extremely_sick:
+    #     symptoms_per_phase[phase_i].append('extremely-severe')
+    # elif really_sick or len(preexisting_conditions) >2 or 'moderate' in symptoms_per_phase[phase_i-1] or \
+    #         initial_viral_load > 0.6:
+    #     symptoms_per_phase[phase_i].append('severe')
+    # elif rng.rand() < p_gastro:
+    #     symptoms_per_phase[phase_i].append('moderate')
+    # else:
+    #     symptoms_per_phase[phase_i].append('mild')
+    #
+    # if 'fever' in symptoms_per_phase[phase_i-1] or initial_viral_load > 0.8 or \
+    #         rng.rand() < SYMPTOMS['fever'].probabilities[phase]:
+    #     symptoms_per_phase[phase_i].append('fever')
+    #     if rng.rand() < SYMPTOMS['chills'].probabilities[phase]:
+    #         symptoms_per_phase[phase_i].append('chills')
+    #
+    #
+    # # gastro symptoms are more likely to be earlier and are more
+    # # likely to show extreme symptoms later
+    # if 'gastro' in symptoms_per_phase[phase_i-1] or rng.rand() < p_gastro *.5:
+    #     symptoms_per_phase[phase_i].append('gastro')
+    #
+    #     for symptom in ('diarrhea', 'nausea_vomiting'):
+    #         rand = rng.rand()
+    #         if rand < SYMPTOMS[symptom].probabilities[phase]:
+    #             symptoms_per_phase[phase_i].append(symptom)
+    #
+    # # fatigue and unusual symptoms are more heavily age-related
+    # # but more likely later, and less if you're careful/taking care
+    # # of yourself
+    # if rng.rand() < p_lethargy + (p_gastro/2): #if you had gastro symptoms before more likely to be lethargic now
+    #     symptoms_per_phase[phase_i].append('fatigue')
+    #
+    #     if age > 75 and rng.rand() < SYMPTOMS['unusual'].probabilities[phase]:
+    #         symptoms_per_phase[phase_i].append('unusual')
+    #     if really_sick or extremely_sick or len(preexisting_conditions) > 2 and \
+    #             rng.rand() < SYMPTOMS['lost_consciousness'].probabilities[phase]:
+    #         symptoms_per_phase[phase_i].append('lost_consciousness')
+    #
+    #     for symptom in ('hard_time_waking_up', 'headache', 'confused'):
+    #         rand = rng.rand()
+    #         if rand < SYMPTOMS[symptom].probabilities[phase]:
+    #             symptoms_per_phase[phase_i].append(symptom)
+    #
+    # # respiratory symptoms more common at this stage
+    # p_respiratory = initial_viral_load - (carefulness * 0.25) # e.g. 0.5 - 0.7*0.25 = 0.5-0.17
+    # if 'smoker' in preexisting_conditions or 'lung_disease' in preexisting_conditions:
+    #     p_respiratory = (p_respiratory * 4) + age/200  # e.g. 0.1 * 4 * 45/200 = 0.4 + 0.225
+    # if rng.rand() < p_respiratory:
+    #     symptoms_per_phase[phase_i].append('trouble_breathing')
+    #
+    #     if extremely_sick and rng.rand() < SYMPTOMS['severe_chest_pain'].probabilities[phase]:
+    #         symptoms_per_phase[phase_i].append('severe_chest_pain')
+    #
+    #     for symptom in ('sneezing', 'cough', 'runny_nose', 'sore_throat'):
+    #         rand = rng.rand()
+    #         if rand < SYMPTOMS[symptom].probabilities[phase]:
+    #             symptoms_per_phase[phase_i].append(symptom)
+    #
+    # if 'loss_of_taste' in symptoms_per_phase[phase_i-1] or \
+    #         rng.rand() < SYMPTOMS['loss_of_taste'].probabilities[phase]:
+    #     symptoms_per_phase[phase_i].append('loss_of_taste')
+    #
+    # if 'mild' in symptoms_per_phase[phase_i] and \
+    #         'trouble_breathing' in symptoms_per_phase[phase_i]:
+    #     symptoms_per_phase[phase_i].append('light_trouble_breathing')
+    # if 'moderate' in symptoms_per_phase[phase_i] and \
+    #         'trouble_breathing' in symptoms_per_phase[phase_i]:
+    #     symptoms_per_phase[phase_i].append('moderate_trouble_breathing')
+    # if ('severe' in symptoms_per_phase[phase_i] or 'extremely-severe' in symptoms_per_phase[phase_i]) and \
+    #         'trouble_breathing' in symptoms_per_phase[phase_i]:
+    #     symptoms_per_phase[phase_i].append('heavy_trouble_breathing')
+    #
 
     # During the symptoms plateau Part 2 (worst part of the disease)
     # ====================================================
@@ -1051,23 +1252,24 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
             'trouble_breathing' in symptoms_per_phase[phase_i]:
         symptoms_per_phase[phase_i].append('heavy_trouble_breathing')
 
-    symptom_onset_delay = round(incubation_days - viral_load_plateau_start)
-    plateau_duration = round(viral_load_plateau_end - viral_load_plateau_start)
+    plateau_duration = math.ceil(viral_load_plateau_end - viral_load_plateau_start)
+    recovery_duration = math.ceil(recovery_days -  viral_load_plateau_end)
 
     # same delay in symptom plateau as there was in symptom onset
-    pre_plateau_duration = symptom_onset_delay
+    incubation_duration = math.ceil(incubation_days)
     plateau_1_duration = plateau_duration // 2
     plateau_2_duration = plateau_duration - plateau_1_duration
-    post_plateau_1_duration = symptom_onset_delay
-    post_plateau_2_duration = round(viral_load_recovered - viral_load_plateau_end - 2)
+    post_plateau_1_duration = recovery_duration // 2
+    post_plateau_2_duration = recovery_duration - post_plateau_1_duration
 
-    for duration, symptoms in zip((pre_plateau_duration, plateau_1_duration, plateau_2_duration,
+    for duration, symptoms in zip((incubation_duration, plateau_1_duration, plateau_2_duration,
                                    post_plateau_1_duration, post_plateau_2_duration),
                                   symptoms_per_phase):
         for day in range(duration):
             progression.append(symptoms)
 
     return progression
+
 
 def _get_allergy_progression(rng):
     """
@@ -1734,10 +1936,22 @@ def parse_configuration(conf):
             for k, v in conf["SMARTPHONE_OWNER_FRACTION_BY_AGE"].items()
         }
 
+    if "NORMALIZED_SUSCEPTIBILITY_BY_AGE" in conf:
+        conf["NORMALIZED_SUSCEPTIBILITY_BY_AGE"] = {
+            tuple(int(i) for i in k.split("-")): v
+            for k, v in conf["NORMALIZED_SUSCEPTIBILITY_BY_AGE"].items()
+        }
+
     if "HUMAN_DISTRIBUTION" in conf:
         conf["HUMAN_DISTRIBUTION"] = {
             tuple(int(i) for i in k.split("-")): v
             for k, v in conf["HUMAN_DISTRIBUTION"].items()
+        }
+
+    if "MEAN_DAILY_INTERACTION_FOR_AGE_GROUP" in conf:
+        conf["MEAN_DAILY_INTERACTION_FOR_AGE_GROUP"] = {
+            tuple(int(i) for i in k.split("-")): v
+            for k, v in conf["MEAN_DAILY_INTERACTION_FOR_AGE_GROUP"].items()
         }
 
     if "start_time" in conf:
@@ -1782,6 +1996,18 @@ def dump_conf(_conf, path):
             "-".join([str(i) for i in k]): v
             for k, v in conf["HUMAN_DISTRIBUTION"].items()
         }
+
+    if "NORMALIZED_SUSCEPTIBILITY_BY_AGE" in conf:
+        conf["NORMALIZED_SUSCEPTIBILITY_BY_AGE"] = {
+                "-".join([str(i) for i in k]): v
+                for k, v in conf["NORMALIZED_SUSCEPTIBILITY_BY_AGE"].items()
+            }
+
+    if "MEAN_DAILY_INTERACTION_FOR_AGE_GROUP" in conf:
+        conf["MEAN_DAILY_INTERACTION_FOR_AGE_GROUP"] = {
+                "-".join([str(i) for i in k]): v
+                for k, v in conf["MEAN_DAILY_INTERACTION_FOR_AGE_GROUP"].items()
+            }
 
     if "start_time" in conf:
         conf["start_time"] = conf["start_time"].strftime("%Y-%m-%d %H:%M:%S")
@@ -1844,3 +2070,20 @@ def get_test_false_negative_rate(test_type, days_since_exposure, conf, interpola
         return y
     else:
         raise
+
+def get_p_infection(infector, infectors_infectiousness, infectee, social_contact_factor, contagion_knob, mask_efficacy_factor, hygiene_efficacy_factor, self, h):
+    # probability of transmission
+    # It is similar to Oxford COVID-19 model described in Section 4.
+    rate_of_infection = infectee.normalized_susceptibility * social_contact_factor * 1 / infectee.mean_daily_interaction_age_group
+    rate_of_infection *= infectors_infectiousness * infector.infection_ratio
+    rate_of_infection *= contagion_knob
+    p_infection = 1 - np.exp(-rate_of_infection)
+
+    # factors that can reduce probability of transmission.
+    # (no-source) How to reduce the transmission probability mathematically?
+    mask_efficacy = (self.mask_efficacy + h.mask_efficacy)
+    # mask_efficacy = p_infection - infector.mask_efficacy * p_infection - infectee.mask_efficacy * p_infection
+    hygiene_efficacy = self.hygiene + h.hygiene
+    reduction_factor = mask_efficacy * mask_efficacy_factor + hygiene_efficacy * hygiene_efficacy_factor
+    p_infection *= np.exp(-reduction_factor)
+    return p_infection
