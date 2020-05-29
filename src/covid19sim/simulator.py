@@ -1103,7 +1103,13 @@ class Human(object):
             # contrarily to risk, infectiousness only changes once a day (human behavior has no impact)
             self.infectiousness_history_map[current_day_idx] = calculate_average_infectiousness(self)
         # update the 'prev risk history' since we just generated the necessary updates
-        self.prev_risk_history_map[current_day_idx] = self.risk_history_map[current_day_idx]
+        if isinstance(self.tracing_method, Tracing) and self.tracing_method.risk_model != "transformer":
+            if not self.is_removed and not self.got_new_test_results:
+                for day_offset, _ in enumerate(risks):
+                    if current_day_idx - day_offset in self.risk_history_map:
+                        self.prev_risk_history_map[current_day_idx - day_offset] = self.risk_history_map[current_day_idx - day_offset]
+        else:
+            self.prev_risk_history_map[current_day_idx] = self.risk_history_map[current_day_idx]
         self.got_new_test_results = False  # if we did have new results, we caught them above
         return update_messages
 
