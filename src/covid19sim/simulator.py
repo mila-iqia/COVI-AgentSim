@@ -1720,7 +1720,7 @@ class Human(object):
                         infectee_msg = h1_msg
 
                     p_infection = get_p_infection(infector,
-                                                  infector.infectiousness_delta(hours=t_near),
+                                                  infector.infectiousness_delta(t_near),
                                                   infectee,
                                                   location.social_contact_factor,
                                                   self.conf['CONTAGION_KNOB'],

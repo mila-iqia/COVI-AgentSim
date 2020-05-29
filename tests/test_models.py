@@ -400,7 +400,7 @@ class ModelsTest(unittest.TestCase):
                                 self.assertEqual(unobserved['true_age'], prev_unobserved['true_age'])
                                 self.assertEqual(unobserved['true_sex'], prev_unobserved['true_sex'])
 
-                    current_datetime += datetime.timedelta(hours=1)
+                    current_datetime += datetime.timedelta(t_near=1)
 
             candidate_encounters_cnt = 0
             has_exposure_day = 0
