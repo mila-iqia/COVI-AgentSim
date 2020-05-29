@@ -9,7 +9,9 @@ import warnings
 import numpy as np
 from tests.utils import get_test_conf
 
-from covid19sim.frozen.helper import conditions_to_np, encode_age, encode_sex, encode_test_result
+from covid19sim.frozen.helper import (conditions_to_np, symptoms_to_np, encode_age, encode_sex,
+                                      encode_test_result, recovered_array, candidate_exposures,
+                                      exposure_array, get_test_result_array)
 from covid19sim.run import simulate
 
 
@@ -145,7 +147,7 @@ class ModelsTest(unittest.TestCase):
 
             ModelsTest.make_human_as_message_proxy.set_start_time(start_time)
 
-            monitors, _ = simulate(
+            monitors, tracker = simulate(
                 n_people=n_people,
                 start_time=start_time,
                 simulation_days=n_days,
@@ -155,6 +157,7 @@ class ModelsTest(unittest.TestCase):
                 seed=0,
                 conf=conf,
             )
+            sim_humans = tracker.city.humans
             days_output = glob.glob(f"{d}/daily_outputs/*/")
             days_output.sort(key=lambda p: int(p.split(os.path.sep)[-2]))
             self.assertEqual(len(days_output), n_days - conf.get('INTERVENTION_DAY'))
@@ -383,6 +386,56 @@ class ModelsTest(unittest.TestCase):
                                                  prev_unobserved['true_preexisting_conditions']).all())
                                 self.assertEqual(unobserved['true_age'], prev_unobserved['true_age'])
                                 self.assertEqual(unobserved['true_sex'], prev_unobserved['true_sex'])
+
+                            # We can compare the pkls for the last daily_output to the state of the humans
+                            # at the end of the simulation.
+                            if current_day == n_days - 1:
+                                s_human = sim_humans[h_i - 1]
+
+                                date_at_update = start_time + datetime.timedelta(days=n_days - 1, hours=hour)
+                                is_exposed, exposure_day = exposure_array(s_human.infection_timestamp, date_at_update, conf)
+                                is_recovered, recovery_day = recovered_array(s_human.recovered_timestamp, date_at_update, conf)
+                                candidate_encounters, exposure_encounters = candidate_exposures(s_human, date_at_update)
+                                test_results = [(encode_test_result(result), timestamp) for result, timestamp in s_human.test_results]
+                                test_results = get_test_result_array(test_results, date_at_update, conf)
+
+                                self.assertTrue((symptoms_to_np(s_human.rolling_all_reported_symptoms, conf) ==
+                                                 observed['reported_symptoms']).all())
+                                self.assertTrue((test_results == observed['test_results']).all())
+                                self.assertTrue((conditions_to_np(s_human.obs_preexisting_conditions) ==
+                                                 observed['preexisting_conditions']).all())
+                                self.assertEqual(encode_age(s_human.obs_age), observed['age'])
+                                self.assertEqual(encode_sex(s_human.obs_sex), observed['sex'])
+                                self.assertEqual(conf['RISK_MAPPING'], observed['risk_mapping'])
+
+                                self.assertTrue((symptoms_to_np(s_human.rolling_all_symptoms, conf) ==
+                                                 unobserved['true_symptoms']).all())
+                                self.assertEqual(is_exposed, unobserved['is_exposed'])
+                                self.assertEqual(exposure_day, unobserved['exposure_day'])
+                                self.assertEqual(is_recovered, unobserved['is_recovered'])
+                                self.assertEqual(recovery_day, unobserved['recovery_day'])
+                                self.assertTrue((s_human.infectiousnesses == unobserved['infectiousness']).all())
+                                self.assertTrue((conditions_to_np(s_human.preexisting_conditions) ==
+                                                 unobserved['true_preexisting_conditions']).all())
+                                self.assertEqual(encode_age(s_human.age), unobserved['true_age'])
+                                self.assertEqual(encode_sex(s_human.sex), unobserved['true_sex'])
+
+                                # Some encounters might have happened between the human's update on the last day
+                                # and the end of the simulation so we have to compare those in observed and
+                                # unobserved to only the first N in candidate_encounters and exposure_encounters,
+                                # respectively. Also, the candidate encounters might have changed risk level
+                                # because of recent update messages so we don't check that value.
+                                nb_candidates = len(observed['candidate_encounters'])
+                                if nb_candidates > 0:
+                                    self.assertTrue((candidate_encounters[:nb_candidates,:2] ==
+                                                     observed['candidate_encounters'][:,:2]).all())
+                                    self.assertTrue((candidate_encounters[:nb_candidates,3:] ==
+                                                     observed['candidate_encounters'][:,3:]).all())
+
+                                nb_exp_encounter = len(unobserved['exposure_encounter'])
+                                if nb_exp_encounter > 0:
+                                    self.assertTrue((exposure_encounters[:nb_exp_encounter] ==
+                                                     unobserved['exposure_encounter']).all())
 
                     current_datetime += datetime.timedelta(hours=1)
 
