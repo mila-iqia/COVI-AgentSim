@@ -137,9 +137,8 @@ class WashHands(BehaviorInterventions):
         pass
 
     def modify_behavior(self, human):
-        assert human.carefulness <= 1.
         human._hygiene = human.hygiene
-        human.hygiene = human.rng.uniform(human.carefulness, 1)
+        human.hygiene = human.rng.uniform(min(human.carefulness, 1) , 1)
 
     def revert_behavior(self, human):
         human.hygiene = human._hygiene
