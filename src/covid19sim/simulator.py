@@ -5,6 +5,7 @@ Contains the `Human` class that defines the behavior of human.
 import math
 import datetime
 import numpy as np
+import scipy
 import typing
 import warnings
 from collections import defaultdict
@@ -361,6 +362,8 @@ class Human(object):
         self.count_shop=0
 
         self.work_start_hour = self.rng.choice(range(7, 17), 3)
+        self.denied_icu = None
+        self.denied_icu_days = None
 
 
     def assign_household(self, location):
@@ -1389,8 +1392,21 @@ class Human(object):
 
             # Behavioral imperatives
             if self.is_extremely_sick:
-                city.tracker.track_hospitalization(self, "icu")
-                yield self.env.process(self.excursion(city, "hospital-icu"))
+                if self.age < 80 or (self.denied_icu is None and self.rng.rand() < 0.5): # oxf study: 80+ 50% no ICU
+                    city.tracker.track_hospitalization(self, "icu")
+                    if self.age >= 80:
+                        self.denied_icu = False
+                    yield self.env.process(self.excursion(city, "hospital-icu"))
+                else:
+                    if self.denied_icu:
+                        time_since_denial = (self.env.timestamp.date() - self.last_date["denied_icu"]).days
+                        if time_since_denial >= self.denied_icu_days:
+                            yield self.env.process(self.expire())
+                    else:
+                        self.last_date["denied_icu"] = self.env.timestamp.date()
+                        self.denied_icu = True
+                        self.denied_icu_days = int(scipy.stats.gamma.rvs(1, loc=2.5))
+
 
             elif self.is_really_sick:
                 city.tracker.track_hospitalization(self)
