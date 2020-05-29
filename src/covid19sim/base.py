@@ -633,6 +633,8 @@ class City:
                 humans_notified = True
 
             # run city testing routine, providing test results for those who need them
+            # TODO: running this every hour of the day might not be correct.
+            # TODO: testing budget is used up at hour 0 if its small
             self.covid_testing_facility.clear_test_queue()
 
             all_new_update_messages = []  # accumulate everything here so we can filter if needed
@@ -727,6 +729,15 @@ class TestFacility(object):
             self.last_date_to_check_tests = self.env.timestamp.date()
             for k in self.test_count_today.keys():
                 self.test_count_today[k] = 0
+                
+            # clear queue
+            # TODO : check more scenarios about when the person can be removed from a queue
+            to_remove = []
+            for human in self.test_queue:
+                if not any(human.symptoms) and not human.test_recommended:
+                    to_remove.append(human)
+
+            _ = [self.test_queue.remove(human) for human in to_remove]
 
     def get_available_test(self):
         """
@@ -937,7 +948,7 @@ class Location(simpy.Resource):
             lag = (self.env.timestamp - self.contamination_timestamp)
             lag /= datetime.timedelta(days=1)
             p_infection = 1 - lag / self.max_day_contamination # linear decay; &envrionmental_contamination
-            return self.social_contact_factor * p_infection
+            return p_infection
         return 0.0
 
     def __hash__(self):
