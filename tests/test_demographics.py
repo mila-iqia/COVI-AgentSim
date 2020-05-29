@@ -16,7 +16,7 @@ def test_basic_demographics(
         test_conf_name: str,
         age_error_tol: float = 2.0,
         age_distribution_error_tol: float = 0.01,
-        profession_error_tol: float = 0.02,
+        profession_error_tol: float = 0.03,
         fraction_over_100_error_tol: float = 0.001):
     """
         Tests for the about demographic statistics:
