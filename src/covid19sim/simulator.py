@@ -1637,15 +1637,22 @@ class Human(object):
                     self.tracing and \
                     self.has_app and \
                     h.has_app:
-                h1_msg, h2_msg = exchange_encounter_messages(
-                    h1=self,
-                    h2=h,
-                    env_timestamp=self.env.timestamp,
-                    initial_timestamp=self.env.initial_timestamp,
-                    # note: the granularity here does not really matter, it's only used to keep map sizes small
-                    # in the clustering algorithm --- in reality, only the encounter day matters
-                    minutes_granularity=self.conf.get("ENCOUNTER_TIME_GRANULARITY_MINS", 60 * 12),
-                )
+                remaining_time_in_contact = t_near
+                encounter_time_granularity = self.conf.get("ENCOUNTER_TIME_GRANULARITY_MINS", 15)
+                while remaining_time_in_contact > encounter_time_granularity:
+                    # note: every loop we will overwrite the messages but it doesn't matter since
+                    # they're recorded in the contact books and we only need one for exposure flagging
+                    h1_msg, h2_msg = exchange_encounter_messages(
+                        h1=self,
+                        h2=h,
+                        # TODO: could adjust real timestamps in encounter messages based on remaining time?
+                        env_timestamp=self.env.timestamp,
+                        initial_timestamp=self.env.initial_timestamp,
+                        # note: the granularity here does not really matter, it's only used to keep map sizes small
+                        # in the clustering algorithm --- in reality, only the encounter day matters
+                        minutes_granularity=encounter_time_granularity,
+                    )
+                    remaining_time_in_contact -= encounter_time_granularity
 
             city.tracker.track_social_mixing(human1=self, human2=h, duration=t_near, timestamp = self.env.timestamp)
             contact_condition = (
