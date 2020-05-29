@@ -774,7 +774,7 @@ class Human(object):
         Currently, it only takes the average of starting and ending probabilities.
 
         Args:
-            hours (float): area under the infectiousness curve is computed for this duration
+            hours (float): area under the infectiousness curve is computed for this duration (in hours)
         """
 
         if not self.is_infectious:
