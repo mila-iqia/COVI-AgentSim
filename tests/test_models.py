@@ -395,7 +395,7 @@ class ModelsTest(unittest.TestCase):
                                 date_at_update = start_time + datetime.timedelta(days=n_days - 1, hours=hour)
                                 is_exposed, exposure_day = exposure_array(s_human.infection_timestamp, date_at_update, conf)
                                 is_recovered, recovery_day = recovered_array(s_human.recovered_timestamp, date_at_update, conf)
-                                candidate_encounters, exposure_encounters = candidate_exposures(s_human, date_at_update)
+                                candidate_encounters, exposure_encounters = candidate_exposures(s_human)
                                 test_results = [(encode_test_result(result), timestamp) for result, timestamp in s_human.test_results]
                                 test_results = get_test_result_array(test_results, date_at_update, conf)
 
