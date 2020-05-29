@@ -125,6 +125,17 @@ def sample_sequentials(sequential_keys, exp, idx):
     return conf
 
 
+def get_uuid():
+    return "{}_{}".format(np.random.randint(1e5, 1e6), np.random.randint(1e5, 1e6))
+
+
+def ipc_addresses():
+    uuid = get_uuid()
+    ipc_front = "ipc:///tmp/covid19_{}_frontend.ipc".format(uuid)
+    ipc_back = "ipc:///tmp/covid19_{}_backend.ipc".format(uuid)
+    return (ipc_front, ipc_back)
+
+
 def sample_search_conf(exp, idx=0):
     """
     Samples parameters parametrized in `exp`: should be a dict with
@@ -227,6 +238,7 @@ def fill_mila_template(template_str, conf):
     env_name = conf.get("env_name", "covid")
     weights = conf.get("weights", f"/network/tmp1/{user}/FRESH-SNOWFLAKE-224B")
     code_loc = conf.get("code_loc", str(Path(home) / "simulator/src/covid19sim/"))
+    ipc = conf.get("ipc", {"frontend": "", "backend": ""})
 
     if "dev" in conf and conf["dev"]:
         print(
@@ -242,6 +254,8 @@ def fill_mila_template(template_str, conf):
                     "  {:10}: {}".format("env_name", env_name),
                     "  {:10}: {}".format("code_loc", code_loc),
                     "  {:10}: {}".format("weights", weights),
+                    "  {:10}: {}".format("frontend", ipc["frontend"]),
+                    "  {:10}: {}".format("backend", ipc["backend"]),
                 ]
             )
         )
@@ -252,6 +266,8 @@ def fill_mila_template(template_str, conf):
     gres = f"#SBATCH --gres={gres}" if gres else ""
     time = f"#SBATCH --time={time}"
     slurm_log = f"#SBATCH -o {slurm_log}\n#SBATCH -e {slurm_log}"
+    frontend = '--frontend="{}"'.format(ipc["frontend"]) if ipc["frontend"] else ""
+    backend = '--backend="{}"'.format(ipc["backend"]) if ipc["backend"] else ""
     return template_str.format(
         partition=partition,
         cpu=cpu,
@@ -262,6 +278,8 @@ def fill_mila_template(template_str, conf):
         env_name=env_name,
         code_loc=code_loc,
         weights=weights,
+        frontend=frontend,
+        backend=backend,
     )
 
 
@@ -306,6 +324,7 @@ def main(conf: DictConfig) -> None:
     # These will be filtered out when passing arguments to run.py
     RANDOM_SEARCH_SPECIFIC_PARAMS = {
         "n_search",  # number of random iterations
+        "n_runs_per_search",  # number of random iterations
         "dev",  # dev-mode: print stuff, don't run them
         "exp_file",  # what experimental parametrization
         "partition",  # sbatch partition to use
@@ -319,7 +338,8 @@ def main(conf: DictConfig) -> None:
         "weights",  # where to find the transformer's weights. default is /network/tmp1/<user>/FRESH-SNOWFLAKE-224B
         "infra",  # using Mila or Intel cluster?
         "now_str",  # naming scheme
-        "parallel_search", #run with & at the end instead of ; to run in subshells
+        "parallel_search",  # run with & at the end instead of ; to run in subshells
+        "ipc",  # run with & at the end instead of ; to run in subshells
     }
 
     # move back to original directory because hydra moved
@@ -352,28 +372,35 @@ def main(conf: DictConfig) -> None:
     for i in range(conf.get("n_search", 1)):
 
         # sample parameters
-        opts = sample_search_conf(conf, i)
         # fill-in template with `partition` `time` `code_loc` etc. from command-line overwrites
         # get temporary file to write sbatch run file
-        hydra_args = get_hydra_args(opts, RANDOM_SEARCH_SPECIFIC_PARAMS)
         if infra == "mila":
             print("\nJOB", i)
+            ipcf, ipcb = ipc_addresses()
+            conf["ipc"] = {"frontend": ipcf, "backend": ipcb}
             job_str = fill_mila_template(template_str, conf)
-            tmp = Path(tempfile.NamedTemporaryFile(suffix=".sh").name)
+            opts = sample_search_conf(conf, i)
+            opts["INFERENCE_SERVER_ADDRESS"] = f'"{ipcf}"'
+            hydra_args = get_hydra_args(opts, RANDOM_SEARCH_SPECIFIC_PARAMS)
+
+            for k in range(conf.get("n_runs_per_search", 1)):
+                job_str += "\n{};\n".format("python run.py" + hydra_args)
+                opts = sample_search_conf(conf, i)
+                opts["INFERENCE_SERVER_ADDRESS"] = f'"{ipcf}"'
+                hydra_args = get_hydra_args(opts, RANDOM_SEARCH_SPECIFIC_PARAMS)
 
             # create temporary sbatch file
+            tmp = Path(tempfile.NamedTemporaryFile(suffix=".sh").name)
             with tmp.open("w") as f:
                 f.write(job_str)
 
-            command = f"sbatch {str(tmp)} {hydra_args}"
-
+            command = f"sbatch {str(tmp)}"
             # dev-mode: don't actually run the command
             if "dev" in conf and conf["dev"]:
                 print("\n>>> ", command, end="\n\n")
                 print(str(tmp))
                 print("." * 50)
                 print(job_str)
-                print("." * 50)
             else:
                 # not dev-mode: sbatch it!
                 process = subprocess.call(command.split(), cwd=home)
