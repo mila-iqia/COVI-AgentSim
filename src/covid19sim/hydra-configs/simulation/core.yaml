@@ -443,7 +443,8 @@ MASK_EFFICACY_NORMIE: 0.32
 MASK_EFFICACY_HEALTHWORKER: 0.98
 BASELINE_P_MASK: 0.5 # FIXME:unused
 MASKS_SUPPLY: 1000000
-MASK_EFFICACY_FACTOR: 2 # used in reduction of probability o transmission (no-source)
+MASK_EFFICACY_FACTOR: 1 # used in reduction of probability o transmission (no-source)
+HYGIENE_EFFICACY_FACTOR: 0.5 # used in reduction of probability of transmission (no-source)
 
 # naive tracing
 RISK_TRANSMISSION_PROBA: 0.03

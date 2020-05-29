@@ -36,10 +36,10 @@ def parse_args(args=None):
     argparser = argparse.ArgumentParser(
         description="COVID19-P2P-Transformer Inference Server Spawner",
     )
-    frontend_port_doc = f"Frontend port to accept TCP connections on; will use IPC if not provided. "
-    argparser.add_argument("--frontend-port", default=None, type=str, help=frontend_port_doc)
-    backend_port_doc = f"Backend port to dispatch work on; will use IPC if not provided. "
-    argparser.add_argument("--backend-port", default=None, type=str, help=backend_port_doc)
+    frontend_doc = f"Frontend port or address to accept TCP/IPC connections on."
+    argparser.add_argument("--frontend", default=None, type=str, help=frontend_doc)
+    backend_doc = f"Backend port or address to dispatch work on."
+    argparser.add_argument("--backend", default=None, type=str, help=backend_doc)
     exp_path_doc = f"Path to the experiment directory that should be used to instantiate the " \
                    f"inference engine(s). Will use Google Drive reference exp if not provided. " \
                    f"See `infer.py` for more information."
@@ -52,12 +52,12 @@ def parse_args(args=None):
                        "Will use the 'best checkpoint' weights if not specified."
     argparser.add_argument("--weights-path", default=None, type=str, help=weights_path_doc)
     args = argparser.parse_args(args)
-    if args.frontend_port is not None:
-        assert args.frontend_port.isdigit(), f"unexpected port number format ({args.frontend_port})"
-        args.frontend_port = int(args.frontend_port)
-    if args.backend_port is not None:
-        assert args.backend_port.isdigit(), f"unexpected port number format ({args.backend_port})"
-        args.backend_port = int(args.backend_port)
+    if args.frontend is not None:
+        if args.frontend.isdigit():
+            args.frontend = int(args.frontend)
+    if args.backend is not None:
+        if args.backend.isdigit():
+            args.backend = int(args.backend)
     if args.exp_path is None:
         args.exp_path = default_model_exp_path
     if args.workers is None:
@@ -77,12 +77,18 @@ def interrupt_handler(signal, frame, broker):
 def main(args=None):
     """Main entrypoint; see parse_args for information on the arguments."""
     args = parse_args(args)
-    if args.frontend_port is not None:
-        frontend_address = f"tcp://*:{args.frontend_port}"
+    if args.frontend is not None:
+        if isinstance(args.frontend, int):
+            frontend_address = f"tcp://*:{args.frontend}"
+        else:
+            frontend_address = args.frontend
     else:
         frontend_address = covid19sim.server_utils.default_frontend_ipc_address
-    if args.backend_port is not None:
-        backend_address = f"tcp://*:{args.backend_port}"
+    if args.backend is not None:
+        if isinstance(args.backend, int):
+            backend_address = f"tcp://*:{args.backend}"
+        else:
+            backend_address = args.backend
     else:
         backend_address = covid19sim.server_utils.default_backend_ipc_address
     broker = covid19sim.server_utils.InferenceBroker(
