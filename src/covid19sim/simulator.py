@@ -906,8 +906,7 @@ class Human(object):
         else:
             self.time_to_test_result = self.conf['TEST_TYPES'][test_type]['time_to_result']['out-patient']
         self.test_result_validated = self.test_type == "lab"
-        if self.conf.get('COLLECT_LOGS'):
-            Event.log_test(self, self.test_time)
+        Event.log_test(self.conf.get('COLLECT_LOGS'), self, self.test_time)
         self.test_results.appendleft((
             self.hidden_test_result if self.will_report_test_result else None,
             self.env.timestamp,  # for result availability checking later
@@ -1266,8 +1265,7 @@ class Human(object):
         self.recovered_timestamp = datetime.datetime.max
         self.risk = 0  # assume bodies are harmless, no more contacts can occur
         self.all_symptoms, self.covid_symptoms = [], []
-        if self.conf.get('COLLECT_LOGS'):
-            Event.log_recovery(self, self.env.timestamp, death=True)
+        Event.log_recovery(self.conf.get('COLLECT_LOGS'), self, self.env.timestamp, death=True)
         yield self.env.timeout(np.inf)
 
     def assert_state_changes(self):
@@ -1361,8 +1359,7 @@ class Human(object):
                         self.never_recovers = self.rng.random() < self.conf.get("P_NEVER_RECOVERS")[
                             min(math.floor(self.age / 10), 8)]
 
-                    if self.conf.get('COLLECT_LOGS'):
-                        Event.log_recovery(self, self.env.timestamp, death=False)
+                    Event.log_recovery(self.conf.get('COLLECT_LOGS'), self, self.env.timestamp, death=False)
 
             self.assert_state_changes()
 
@@ -1714,8 +1711,7 @@ class Human(object):
 
                         infector.n_infectious_contacts += 1
 
-                        if self.conf.get('COLLECT_LOGS'):
-                            Event.log_exposed(infectee, infector, self.env.timestamp)
+                        Event.log_exposed(self.conf.get('COLLECT_LOGS'), infectee, infector, self.env.timestamp)
 
                         if infectee_msg is not None:  # could be None if we are not currently tracing
                             infectee_msg._exposition_event = True
@@ -1749,16 +1745,16 @@ class Human(object):
 
                 city.tracker.track_encounter_events(human1=self, human2=h, location=location, distance=distance, duration=t_near)
 
-                if self.conf.get('COLLECT_LOGS'):
-                    Event.log_encounter(
-                        self,
-                        h,
-                        location=location,
-                        duration=t_near,
-                        distance=distance,
-                        infectee=None if not infectee else infectee.name,
-                        time=self.env.timestamp
-                    )
+                Event.log_encounter(
+                    self.conf['COLLECT_LOGS'],
+                    self,
+                    h,
+                    location=location,
+                    duration=t_near,
+                    distance=distance,
+                    infectee=None if not infectee else infectee.name,
+                    time=self.env.timestamp
+                )
 
         yield self.env.timeout(duration * SECONDS_PER_MINUTE)
 
@@ -1771,8 +1767,7 @@ class Human(object):
             self.initial_viral_load = self.rng.random()
             self.compute_covid_properties()
 
-            if self.conf.get('COLLECT_LOGS'):
-                Event.log_exposed(self, location, self.env.timestamp)
+            Event.log_exposed(self.conf.get('COLLECT_LOGS'), self, location, self.env.timestamp)
 
             city.tracker.track_infection('env', from_human=None, to_human=self, location=location, timestamp=self.env.timestamp)
             city.tracker.track_covid_properties(self)
