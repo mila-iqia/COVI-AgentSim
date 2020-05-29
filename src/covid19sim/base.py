@@ -524,6 +524,13 @@ class City:
         self.hd = {human.name: human for human in self.humans}
 
     def have_some_humans_download_the_app(self):
+        age_histogram = relativefreq2absolutefreq(
+            bins_fractions={age_bin: specs['p']
+                            for age_bin, specs
+                            in self.conf.get('HUMAN_DISTRIBUTION').items()},
+            n_elements=self.n_people,
+            rng=self.rng
+        )
         # app users
         all_has_app = self.conf.get('APP_UPTAKE') < 0
         # The dict below keeps track of an app quota for each age group
@@ -534,7 +541,7 @@ class City:
         for human in self.humans:
             if all_has_app:
                 # i get an app, you get an app, everyone gets an app
-                self.human.has_app = True
+                human.has_app = True
                 continue
 
             # Find what age bin the human is in
