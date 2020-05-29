@@ -2081,9 +2081,9 @@ def get_p_infection(infector, infectors_infectiousness, infectee, social_contact
 
     # factors that can reduce probability of transmission.
     # (no-source) How to reduce the transmission probability mathematically?
-    mask_efficacy = (self.mask_efficacy + h.mask_efficacy) * mask_efficacy_factor
+    mask_efficacy = (self.mask_efficacy + h.mask_efficacy)
     # mask_efficacy = p_infection - infector.mask_efficacy * p_infection - infectee.mask_efficacy * p_infection
     hygiene_efficacy = self.hygiene + h.hygiene
-    reduction_factor = mask_efficacy + hygiene_efficacy * hygiene_efficacy_factor
+    reduction_factor = mask_efficacy * mask_efficacy_factor + hygiene_efficacy * hygiene_efficacy_factor
     p_infection *= np.exp(-reduction_factor)
     return p_infection
