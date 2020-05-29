@@ -20,7 +20,7 @@ class ClusteringCodePaths(unittest.TestCase):
 
         self.test_seed = 0
         self.n_people = 30
-        self.start_time = datetime.datetime(2020, 2, 28, 0, 0)
+        self.location_start_time = datetime.datetime(2020, 2, 28, 0, 0)
         self.simulation_days = 10
 
         self.config['INTERVENTION_DAY'] = 5
@@ -46,7 +46,7 @@ class ClusteringCodePaths(unittest.TestCase):
                     outfile = os.path.join(d, "data")
                     monitors, _ = simulate(
                         n_people=self.n_people,
-                        start_time=self.start_time,
+                        start_time=self.location_start_time,
                         simulation_days=self.simulation_days,
                         outfile=outfile,
                         out_chunk_size=0,
@@ -71,7 +71,7 @@ class ClusteringCodePaths(unittest.TestCase):
 
                 events_logs.append(data)
 
-        intervention_time = self.start_time + datetime.timedelta(days=self.config['INTERVENTION_DAY'])
+        intervention_time = self.location_start_time + datetime.timedelta(days=self.config['INTERVENTION_DAY'])
         before_intervention_events = []
         after_intervention_events = []
         for a_i, cluster_algo_type in enumerate(self.cluster_algo_types):

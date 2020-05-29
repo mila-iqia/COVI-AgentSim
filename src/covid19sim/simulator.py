@@ -209,7 +209,9 @@ class Human(object):
 
         # interventions & risk prediction
         self.tracing = False
-        self.WEAR_MASK =  False
+        self.WEAR_MASK = False
+        self.wearing_mask = False
+        self.mask_efficacy = 0
         self.notified = False
         self.tracing_method = None
         self.maintain_extra_distance = 0
@@ -363,9 +365,14 @@ class Human(object):
         self.count_shop=0
 
         self.work_start_hour = self.rng.choice(range(7, 17), 3)
+        # TODO: @whoever was doing that getattr thing in the human's at function, add a proper description
+        self.location_leaving_time = self.env.ts_initial + SECONDS_PER_HOUR
+        self.location_start_time = self.env.ts_initial
         self.denied_icu = None
         self.denied_icu_days = None
 
+        # The average noise in bluetooth signal strength to distance translation is sampled from a uniform distribution between 0 and 1
+        self.phone_bluetooth_noise = self.rng.rand()
 
     def assign_household(self, location):
         """
@@ -1616,8 +1623,8 @@ class Human(object):
         location.add_human(self)
         self.wear_mask()
 
-        self.start_time   = self.env.now
-        self.leaving_time = self.start_time + duration*SECONDS_PER_MINUTE
+        self.location_start_time = self.env.now
+        self.location_leaving_time = self.location_start_time + duration*SECONDS_PER_MINUTE
         area = self.location.area
         initial_viral_load = 0
 
@@ -1663,21 +1670,45 @@ class Human(object):
                     "A\t0", packing_term, encounter_term,
                     social_distancing_term, distance, location)
 
-            # risk model
+
+            t_overlap = (min(self.location_leaving_time, h.location_leaving_time) -
+                         max(self.location_start_time,   h.location_start_time)) / SECONDS_PER_MINUTE
+            t_near = self.rng.random() * t_overlap * self.time_encounter_reduction_factor
+
+            # phone_bluetooth_noise is a value selected between 0 and 2 meters to approximate the noise in the manufacturers bluetooth chip
+            # distance is the "average" distance of the encounter
+            # self.rng.random() - 0.5 gives a uniform random variable centered at 0
+            # we scale by the distance s.t. if the true distance of the encounter is 2m you could think it is 0m or 4m,
+            # whereas an encounter of 1m has a possible distance of 0.5 and 1.5m
+            # a longer discussion is contained in docs/bluetooth.md
+            approximated_bluetooth_distance = distance + distance * (self.rng.rand() - 0.5) * np.mean([self.phone_bluetooth_noise, h.phone_bluetooth_noise])
+            assert approximated_bluetooth_distance <= 2*distance
+
             h1_msg, h2_msg = None, None
-            if (
-                self.conf.get("MIN_MESSAGE_PASSING_DISTANCE") < distance < self.conf.get("MAX_MESSAGE_PASSING_DISTANCE")
-            ):
-                if self.tracing and self.has_app and h.has_app:
+
+            # The maximum distance of a message which we would consider to be "high risk" and therefore meriting an
+            # encounter message is under 2 meters for at least 5 minutes.
+            if approximated_bluetooth_distance < self.conf.get("MAX_MESSAGE_PASSING_DISTANCE") and \
+                    t_near > self.conf.get('MIN_MESSAGE_PASSING_DURATION') and \
+                    self.tracing and \
+                    self.has_app and \
+                    h.has_app:
+                remaining_time_in_contact = t_near
+                encounter_time_granularity = self.conf.get("ENCOUNTER_TIME_GRANULARITY_MINS", 15)
+                while remaining_time_in_contact > encounter_time_granularity:
+                    # note: every loop we will overwrite the messages but it doesn't matter since
+                    # they're recorded in the contact books and we only need one for exposure flagging
                     h1_msg, h2_msg = exchange_encounter_messages(
                         h1=self,
                         h2=h,
+                        # TODO: could adjust real timestamps in encounter messages based on remaining time?
                         env_timestamp=self.env.timestamp,
                         initial_timestamp=self.env.initial_timestamp,
                         # note: the granularity here does not really matter, it's only used to keep map sizes small
                         # in the clustering algorithm --- in reality, only the encounter day matters
-                        minutes_granularity=self.conf.get("ENCOUNTER_TIME_GRANULARITY_MINS", 60 * 12),
+                        minutes_granularity=encounter_time_granularity,
                     )
+                    remaining_time_in_contact -= encounter_time_granularity
 
             t_overlap = (min(self.leaving_time, getattr(h, "leaving_time", self.env.ts_initial+SECONDS_PER_HOUR)) -
                          max(self.start_time,   getattr(h, "start_time",   self.env.ts_initial+SECONDS_PER_HOUR))) / SECONDS_PER_MINUTE

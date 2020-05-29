@@ -22,7 +22,7 @@ class ReproducibilityTest(unittest.TestCase):
 
         self.test_seed = 136
         self.n_people = 100
-        self.start_time = datetime.datetime(2020, 2, 28, 0, 0)
+        self.location_start_time = datetime.datetime(2020, 2, 28, 0, 0)
         self.simulation_days = 20
 
     def test_reproducibility(self):
@@ -42,7 +42,7 @@ class ReproducibilityTest(unittest.TestCase):
                     outfile = os.path.join(d, "data")
                     monitors, _ = simulate(
                         n_people=self.n_people,
-                        start_time=self.start_time,
+                        start_time=self.location_start_time,
                         simulation_days=self.simulation_days,
                         outfile=outfile,
                         out_chunk_size=0,
