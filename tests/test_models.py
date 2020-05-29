@@ -13,6 +13,7 @@ from covid19sim.frozen.helper import (conditions_to_np, symptoms_to_np, encode_a
                                       encode_test_result, recovered_array, candidate_exposures,
                                       exposure_array, get_test_result_array)
 from covid19sim.run import simulate
+from covid19sim.models.run import DummyMemManager
 
 
 class MakeHumanAsMessageProxy:
@@ -395,7 +396,13 @@ class ModelsTest(unittest.TestCase):
                                 date_at_update = start_time + datetime.timedelta(days=n_days - 1, hours=hour)
                                 is_exposed, exposure_day = exposure_array(s_human.infection_timestamp, date_at_update, conf)
                                 is_recovered, recovery_day = recovered_array(s_human.recovered_timestamp, date_at_update, conf)
-                                candidate_encounters, exposure_encounters = candidate_exposures(s_human)
+
+                                # note: we can only fetch the clusters if the test is running without inference server
+                                cluster_mgr_map = DummyMemManager.get_cluster_mgr_map()
+                                # the cluster managers are indexed by the city hash + the human's name (we just have the latter)
+                                self.assertEqual(len(cluster_mgr_map), len(sim_humans))
+                                cluster_mgr = next(iter([c for k, c in cluster_mgr_map.items() if k.endswith(s_human.name)]))
+                                candidate_encounters, exposure_encounters = candidate_exposures(cluster_mgr)
                                 test_results = [(encode_test_result(result), timestamp) for result, timestamp in s_human.test_results]
                                 test_results = get_test_result_array(test_results, date_at_update, conf)
 
