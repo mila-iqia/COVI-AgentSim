@@ -194,7 +194,9 @@ class Human(object):
 
         # interventions & risk prediction
         self.tracing = False
-        self.WEAR_MASK =  False
+        self.WEAR_MASK = False
+        self.wearing_mask = False
+        self.mask_efficacy = 0
         self.notified = False
         self.tracing_method = None
         self.maintain_extra_distance = 0

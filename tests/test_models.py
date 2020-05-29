@@ -429,6 +429,7 @@ class HumanAsMessageTest(unittest.TestCase):
     class EnvMock:
         def __init__(self, timestamp):
             self.timestamp = timestamp
+            self.ts_initial = 0
 
     def test_human_as_message(self):
         from covid19sim.simulator import Human
