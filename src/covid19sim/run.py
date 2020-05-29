@@ -22,7 +22,7 @@ from covid19sim.utils import (
 import hydra
 from omegaconf import DictConfig
 from pathlib import Path
-
+import shutil
 
 @hydra.main(config_path="hydra-configs/simulation/config.yaml")
 def main(conf: DictConfig) -> None:
