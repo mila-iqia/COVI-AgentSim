@@ -1,28 +1,28 @@
 """
 Main file to run the simulations
 """
-import os
 import datetime
+import os
+import shutil
+from pathlib import Path
 
+import hydra
 import numpy as np
-from covid19sim.base import City, Env
+from omegaconf import DictConfig
 
+from covid19sim.base import City, Env
 from covid19sim.constants import SECONDS_PER_DAY, SECONDS_PER_HOUR
-from covid19sim.monitors import EventMonitor, SEIRMonitor, TimeMonitor
-from covid19sim.simulator import Human
-from covid19sim.server_utils import InferenceClient
 from covid19sim.models.run import DummyMemManager
+from covid19sim.monitors import EventMonitor, SEIRMonitor, TimeMonitor
+from covid19sim.server_utils import InferenceClient
+from covid19sim.simulator import Human
 from covid19sim.utils import (
+    dump_conf,
     dump_tracker_data,
     extract_tracker_data,
     parse_configuration,
-    dump_conf,
-    zip_outdir
+    zip_outdir,
 )
-import hydra
-from omegaconf import DictConfig
-from pathlib import Path
-import shutil
 
 @hydra.main(config_path="hydra-configs/simulation/config.yaml")
 def main(conf: DictConfig) -> None:
@@ -60,6 +60,7 @@ def main(conf: DictConfig) -> None:
     # -----  Filter-Out Warnings  -----
     # ---------------------------------
     import warnings
+
     warnings.filterwarnings("ignore")
     if conf["tune"]:
         print("Using Tune")
@@ -70,7 +71,7 @@ def main(conf: DictConfig) -> None:
     # ----------------------------
     conf["outfile"] = outfile
 
-    print("RISK_MODEL ==> ", conf.get('RISK_MODEL'))
+    print("RISK_MODEL ==> ", conf.get("RISK_MODEL"))
 
     city, monitors, tracker = simulate(
         n_people=conf["n_people"],
@@ -142,6 +143,7 @@ def main(conf: DictConfig) -> None:
         dump_tracker_data(data, conf["outdir"], filename)
         tracker.write_metrics(f"{conf['outdir']}/log_{timenow}_{conf['name']}.txt")
 
+
 def simulate(
     n_people=None,
     init_percent_sick=0.01,
@@ -189,14 +191,7 @@ def simulate(
     city_x_range = (0, 1000)
     city_y_range = (0, 1000)
     city = City(
-        env,
-        n_people,
-        init_percent_sick,
-        rng,
-        city_x_range,
-        city_y_range,
-        Human,
-        conf,
+        env, n_people, init_percent_sick, rng, city_x_range, city_y_range, Human, conf
     )
 
     # Add monitors
@@ -216,9 +211,11 @@ def simulate(
     # we might need to reset the state of the clusters held in shared memory (server or not)
     if conf.get("RESET_INFERENCE_SERVER", False):
         if conf.get("USE_INFERENCE_SERVER"):
-            inference_frontend_address = conf.get('INFERENCE_SERVER_ADDRESS', None)
+            inference_frontend_address = conf.get("INFERENCE_SERVER_ADDRESS", None)
             print("requesting cluster reset from inference server...")
-            temporary_client = InferenceClient(server_address=inference_frontend_address)
+            temporary_client = InferenceClient(
+                server_address=inference_frontend_address
+            )
             temporary_client.request_reset()
         else:
             DummyMemManager.global_cluster_map = {}
