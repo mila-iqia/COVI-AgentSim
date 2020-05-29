@@ -1117,32 +1117,32 @@ class Human(object):
             self.prev_risk_history_map[current_day_idx - i] = risk_history[i]
         return update_messages
 
-    def wear_mask(self, put_on=False):
+    def wear_mask(self):
         """
-        [summary]
-
-        Args:
-            put_on (bool, optional): [description]. Defaults to False.
+        Determines whether this human wears a mask given their carefulness and how good at masks they are (mask_efficacy)
         """
+        # if you don't wear a mask, then it is not effective
         if not self.WEAR_MASK:
             self.wearing_mask, self.mask_efficacy = False, 0
             return
 
+        # people do not wear masks at home
         self.wearing_mask = True
         if self.location == self.household:
             self.wearing_mask = False
 
-        # if self.location.location_type == 'store':
-        #     if self.carefulness > 0.6:
-        #         self.wearing_mask = True
-        #     elif self.rng.rand() < self.carefulness * self.conf.get("BASELINE_P_MASK"):
-        #         self.wearing_mask = True
-        # elif self.rng.rand() < self.carefulness * self.conf.get("BASELINE_P_MASK"):
-        #     self.wearing_mask = True
+        # if they go to a store, they are more likely to wear a mask
+        if self.location.location_type == 'store':
+            if self.carefulness > 0.6:
+                self.wearing_mask = True
+            elif self.rng.rand() < self.carefulness * self.conf.get("BASELINE_P_MASK"):
+                self.wearing_mask = True
+        elif self.rng.rand() < self.carefulness * self.conf.get("BASELINE_P_MASK"):
+            self.wearing_mask = True
 
         # efficacy - people do not wear it properly
         if self.wearing_mask:
-            if  self.workplace.location_type == 'hospital':
+            if self.workplace.location_type == 'hospital':
               self.mask_efficacy = self.conf.get("MASK_EFFICACY_HEALTHWORKER")
             else:
               self.mask_efficacy = self.conf.get("MASK_EFFICACY_NORMIE")
@@ -1668,9 +1668,9 @@ class Human(object):
                     p_infection = infector.infectiousness * ratio * proximity_factor
 
                     # factors that can reduce probability of transmission (no-source)
-                    mask_efficacy = (self.mask_efficacy + h.mask_efficacy)*self.conf['MASK_EFFICACY_FACTOR']
+                    mask_efficacy = (self.mask_efficacy + h.mask_efficacy) * self.conf['MASK_EFFICACY_FACTOR']
                     hygiene_efficacy = self.hygiene + h.hygiene
-                    reduction_factor = self.conf["CONTAGION_KNOB"] +  mask_efficacy + hygiene_efficacy
+                    reduction_factor = self.conf["CONTAGION_KNOB"] + mask_efficacy + hygiene_efficacy
                     p_infection *= np.exp(-reduction_factor * infector.n_infectious_contacts)
 
                     x_human = infector.rng.random() < p_infection

@@ -112,7 +112,7 @@ class StandApart(BehaviorInterventions):
     It adds `_maintain_extra_distance_2m` because of the conflict with a same named attribute in
     `SocialDistancing`
     """
-    def __init__(self, default_distance=100):
+    def __init__(self, default_distance=25):
         self.DEFAULT_SOCIAL_DISTANCE = default_distance
 
     def modify_behavior(self, human):
@@ -137,8 +137,9 @@ class WashHands(BehaviorInterventions):
         pass
 
     def modify_behavior(self, human):
+        assert human.carefulness <= 1.
         human._hygiene = human.hygiene
-        human.hygiene = human.rng.uniform(human.carefulness, 2)
+        human.hygiene = human.rng.uniform(human.carefulness, 1)
 
     def revert_behavior(self, human):
         human.hygiene = human._hygiene
@@ -360,8 +361,13 @@ class RiskBasedRecommendations(BehaviorInterventions):
             raise
 
     def modify_behavior(self, human):
+        # get the list of recommendations I should be following
         recommendations = get_recommendations(human.rec_level)
+
+        # revert all my previous behaviours
         self.revert_behavior(human)
+
+        # apply each behaviour I should be following
         for rec in recommendations:
             if isinstance(rec, BehaviorInterventions) and human.rng.rand() < human.how_much_I_follow_recommendations:
                 rec.modify_behavior(human)
