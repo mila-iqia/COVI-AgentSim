@@ -53,10 +53,9 @@ class MakeHumanAsMessageProxy:
                 tc.assertIsInstance(human.obs_sex, str)
                 tc.assertIn(human.obs_sex.lower()[0], {'f', 'm', 'o'})
 
-            # message.test_results should only contain tests results paired with
-            # a test time
-            for test_result, _ in message.test_results:
-                tc.assertNotEqual(test_result, 0)
+            # message.test_results should only contain values in [-1, 0, 1]
+            for test_result in message.test_results:
+                tc.assertIn(test_result, [-1., 0., 1.])
 
             validate_human_message(tc, message, human)
 
@@ -109,9 +108,6 @@ def validate_human_message(test_case, message, human):
     for m_rolling_all_reported_symptoms, h_rolling_all_reported_symptomsin in \
             zip(message.rolling_all_reported_symptoms, human.rolling_all_reported_symptoms):
         test_case.assertEqual(m_rolling_all_reported_symptoms.sum(), len(h_rolling_all_reported_symptomsin))
-
-    # The empty placeholder is excluded from the count
-    test_case.assertEqual(len(message.test_results), len(human.test_results) - 1)
 
     # TODO: add a serious way to test whether the correct update messages were added from the mailbox?
 
@@ -316,10 +312,13 @@ class ModelsTest(unittest.TestCase):
                                 self.assertTrue(unobserved['is_recovered'])
                                 self.assertEqual(unobserved['recovery_day'], 0)
 
-                            last_test_result, last_test_time = human_hour_log['test_results'][0]
-                            if last_test_time != datetime.datetime.max and (current_datetime - last_test_time).days < 1:
-                                stats['humans'][h_i]['tests_results_cnt'] += bool(last_test_result)
-                                self.assertEqual(observed['test_results'][0], encode_test_result(last_test_result))
+                            for last_test_result, last_test_time, last_test_delay in human_hour_log['test_results']:
+                                self.assertIn(last_test_result, ["positive", "negative", None])
+                                days_since_test = (current_datetime - last_test_time).days
+                                if days_since_test >= last_test_delay and days_since_test < 14 and last_test_result is not None:
+                                    stats['humans'][h_i]['tests_results_cnt'] += last_test_result == "positive"
+                                    self.assertEqual(observed['test_results'][days_since_test],
+                                                     float(encode_test_result(last_test_result)))
 
                             if prev_observed:
                                 self.assertTrue((observed['reported_symptoms'][1:] == prev_observed['reported_symptoms'][:13]).all())
@@ -340,21 +339,6 @@ class ModelsTest(unittest.TestCase):
                                             self.assertFalse(False,
                                                              msg=f"Could not find previous candidate_encounter {prev_masked[i]} "
                                                              f"in current day.")
-
-                                try:
-                                    self.assertTrue((observed['test_results'][1:] ==
-                                                     prev_observed['test_results'][:13]).all())
-                                except AssertionError as error:
-                                    # If a human is tested exactly at the time of his time slot, the result will only be
-                                    # recorded the next day since inference event happens before human events
-                                    if last_test_time + datetime.timedelta(days=1) == current_datetime:
-                                        warnings.warn(f"Human {h_i + 1} got tested exactly 1 day ago "
-                                                      f"which is only reported today. "
-                                                      f"current_datetime {str(current_datetime)}, "
-                                                      f"current_day {current_day}, "
-                                                      f"hour {hour}: {str(error)}")
-                                    else:
-                                        raise
 
                                 self.assertTrue((observed['preexisting_conditions'] ==
                                                  prev_observed['preexisting_conditions']).all())

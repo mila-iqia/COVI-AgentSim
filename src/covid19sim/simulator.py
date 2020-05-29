@@ -179,8 +179,8 @@ class Human(object):
         self.time_to_test_result = None
         self.test_result_validated = None
         self.got_new_test_results = False
-        self.test_results = deque(((None, datetime.datetime.max),))
-
+        self.test_results = deque()
+        self.test_result_validated = None
         self._infection_timestamp = None
         self.infection_timestamp = infection_timestamp
         self.initial_viral_load = self.rng.rand() if infection_timestamp is not None else 0
@@ -905,9 +905,28 @@ class Human(object):
         self.test_result_validated = self.test_type == "lab"
         if self.conf.get('COLLECT_LOGS'):
             Event.log_test(self, self.test_time)
-        self.test_results.appendleft((self.hidden_test_result, self.env.timestamp))
+        self.test_results.appendleft((
+            self.hidden_test_result if self.will_report_test_result else None,
+            self.env.timestamp,  # for result availability checking later
+            self.time_to_test_result,  # in days
+        ))
         self.city.tracker.track_tested_results(self)
         self.got_new_test_results = True
+
+    def get_test_results_array(self, current_timestamp):
+        """Will return an encoded test result array for this user's recent history.
+
+        Negative results will be -1, unknown results 0, and positive results 1.
+        """
+        results = np.zeros(self.conf.get("TRACING_N_DAYS_HISTORY"))
+        for real_test_result, test_timestamp, test_delay in self.test_results:
+            result_day = (current_timestamp - test_timestamp).days
+            assert result_day >= 0, "how are we getting future test results here...?"
+            if result_day < self.conf.get("TRACING_N_DAYS_HISTORY"):
+                if result_day >= self.time_to_test_result and real_test_result is not None:
+                    assert real_test_result in ["positive", "negative"]
+                    results[result_day] = 1 if real_test_result == "positive" else -1
+        return results
 
     def check_covid_testing_needs(self, at_hospital=False):
         """
@@ -1856,24 +1875,6 @@ class Human(object):
         else:
             rolling_all_symptoms_till_day = symptoms[:sickness_day]
         return rolling_all_symptoms_till_day
-
-    def get_test_result_array(self, date):
-        """
-        [summary]
-
-        Args:
-            date ([type]): [description]
-
-        Returns:
-            [type]: [description]
-        """
-        warnings.warn("Deprecated in favor of frozen.helper.get_test_result_array()", DeprecationWarning)
-        # dont change the logic in here, it needs to remain FROZEN
-        results = np.zeros(14)
-        result_day = (date - self.test_time).days
-        if result_day >= 0 and result_day < 14:
-            results[result_day] = 1
-        return results
 
     def exposure_array(self, date):
         """
