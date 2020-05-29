@@ -1216,9 +1216,9 @@ class Human(object):
             self.allergy_symptoms = []
 
     def catch_other_disease_at_random(self):
-        # assumption: no other infection if already infected with covid
-        if self.infection_timestamp is not None:
-            return
+        # # assumption: no other infection if already infected with covid
+        # if self.infection_timestamp is not None:
+        #     return
 
         # Catch a random cold
         if self.cold_timestamp is None and self.rng.random() < self.conf["P_COLD_TODAY"]:
@@ -1252,7 +1252,7 @@ class Human(object):
             return 0.1
 
         if sum(x in current_symptoms for x in ["severe", "extremely_severe"]) > 0:
-            return 0.0
+            return 0.2
 
         elif self.test_result == "positive":
             return 0.1
@@ -1261,7 +1261,7 @@ class Human(object):
             return 0.3
 
         elif sum(x in current_symptoms for x in ["moderate", "fever"]) > 0:
-            return 0.3
+            return 0.5
 
         elif sum(x in current_symptoms for x in ["cough", "fatigue", "gastro", "aches", "mild"]) > 0:
             return 0.6
