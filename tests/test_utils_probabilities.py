@@ -198,10 +198,11 @@ class CovidProgression(unittest.TestCase):
     n_people = 1000  # Test too slow to use 10000 ppl
     initial_viral_load_options = (0.10, 0.25, 0.50, 0.75)
     viral_load_plateau_start = 1
-    viral_load_plateau_end = 3
-    viral_load_recovered = 5
+    viral_load_plateau_end = 2
+    viral_load_recovered = 4
     ages_options = (25, 50, 75)
     incubation_days = 1
+    infectiousness_onset_days = 1
     really_sick_options = (True, False)
     extremely_sick_options = (True, False)
     preexisting_conditions_options = (tuple(), ('pre1', 'pre2'), ('pre1', 'pre2', 'pre3'))
@@ -256,9 +257,9 @@ class CovidProgression(unittest.TestCase):
         computed_dist = [[set(day_symptoms) for day_symptoms in
                           _get_covid_progression(initial_viral_load, self.viral_load_plateau_start,
                                                  self.viral_load_plateau_end, self.viral_load_recovered,
-                                                 age, self.incubation_days, really_sick,
-                                                 extremely_sick,
-                                                 rng, preexisting_conditions, carefulness)]
+                                                 age, self.incubation_days, self.infectiousness_onset_days,
+                                                 really_sick, extremely_sick, rng, preexisting_conditions,
+                                                 carefulness)]
                          for _ in range(self.n_people)]
 
         probs = [[0] * len(SYMPTOMS) for _ in symptoms_contexts]
