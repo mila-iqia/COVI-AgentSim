@@ -9,6 +9,7 @@ outdir: ./output
 out_chunk_size: null
 seed: 0
 tune: False
+sim_only: False
 name: ""
 print_progress: True
 zip_outdir: False

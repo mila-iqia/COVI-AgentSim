@@ -14,7 +14,7 @@ from covid19sim.utils import compute_distance, _get_random_area, relativefreq2ab
     get_test_false_negative_rate
 from covid19sim.track import Tracker
 from covid19sim.interventions import *
-from covid19sim.models.run import batch_run_timeslot_heavy_jobs
+#from covid19sim.models.run import batch_run_timeslot_heavy_jobs
 from covid19sim.frozen.message_utils import UIDType, UpdateMessage, combine_update_messages, \
     RealUserIDType
 
