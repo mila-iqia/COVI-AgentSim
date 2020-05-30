@@ -39,10 +39,6 @@ def main(conf: DictConfig) -> None:
     # -------------------------------------------------
     conf = parse_configuration(conf)
 
-    if conf["sim_only"] is False:
-        from covid19sim.server_utils import InferenceClient
-        from covid19sim.models.run import DummyMemManager
-
     # -------------------------------------
     # -----  Create Output Directory  -----
     # -------------------------------------
@@ -223,9 +219,11 @@ def simulate(
         if conf.get("USE_INFERENCE_SERVER"):
             inference_frontend_address = conf.get('INFERENCE_SERVER_ADDRESS', None)
             print("requesting cluster reset from inference server...")
+            from covid19sim.server_utils import InferenceClient
             temporary_client = InferenceClient(server_address=inference_frontend_address)
             temporary_client.request_reset()
         else:
+            from covid19sim.models.run import DummyMemManager
             DummyMemManager.global_cluster_map = {}
 
     # Initiate city process, which runs every hour
