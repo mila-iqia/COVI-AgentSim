@@ -220,6 +220,7 @@ class Human(object):
         self.tracing_method = None
         self.maintain_extra_distance = 0
         self._follows_recommendations_today = None
+        self.curr_rec_level = -1 # Current recommendations level
         self.recommendations_to_follow = OrderedSet()
         self.time_encounter_reduction_factor = 1.0
         self.hygiene = 0 # start everyone with a baseline hygiene. Only increase it once the intervention is introduced.
@@ -1123,8 +1124,11 @@ class Human(object):
                 # if not running transformer, we're using basic tracing --- do it now, it won't be batched later
                 if not self.is_removed and not self.got_new_test_results:
                     # note: we check to make sure we don't have test results here not to overwrite the risk value
-                    self.risk_history_map[current_day_idx] = \
-                        self.tracing_method.compute_risk(self, personal_mailbox, self.city.hd)
+                    risks = self.tracing_method.compute_risk(self, personal_mailbox, self.city.hd)
+                    for day_offset, risk in enumerate(risks):
+                        if current_day_idx - day_offset in self.risk_history_map:
+                            self.risk_history_map[current_day_idx - day_offset] = risk
+                        
                     update_reason = "tracing"
 
             if self.symptoms and self.tracing_method.propagate_symptoms:
@@ -1162,7 +1166,13 @@ class Human(object):
             # contrarily to risk, infectiousness only changes once a day (human behavior has no impact)
             self.infectiousness_history_map[current_day_idx] = calculate_average_infectiousness(self)
         # update the 'prev risk history' since we just generated the necessary updates
-        self.prev_risk_history_map[current_day_idx] = self.risk_history_map[current_day_idx]
+        if isinstance(self.tracing_method, Tracing) and self.tracing_method.risk_model != "transformer":
+            if not self.is_removed and not self.got_new_test_results:
+                for day_offset, _ in enumerate(risks):
+                    if current_day_idx - day_offset in self.risk_history_map:
+                        self.prev_risk_history_map[current_day_idx - day_offset] = self.risk_history_map[current_day_idx - day_offset]
+        else:
+            self.prev_risk_history_map[current_day_idx] = self.risk_history_map[current_day_idx]
         self.got_new_test_results = False  # if we did have new results, we caught them above
         return update_messages
 
@@ -2082,13 +2092,16 @@ class Human(object):
             # FIXME: maybe merge Quarantine in RiskBasedRecommendations with 2 levels
             if self.tracing_method.risk_model in ["manual", "digital"]:
                 if self.risk == 1.0:
-                    return 3
+                    self.curr_rec_level = 3
                 else:
-                    return 0
+                    self.curr_rec_level = 0
+            else:
+                self.curr_rec_level = self.tracing_method.intervention.get_recommendations_level(
+                    self,
+                    self.conf.get("REC_LEVEL_THRESHOLDS"),
+                    self.conf.get("MAX_RISK_LEVEL")
+                )
+        else:
+            self.curr_rec_level = -1
 
-            return self.tracing_method.intervention.get_recommendations_level(
-                self.risk_level,
-                self.conf.get("REC_LEVEL_THRESHOLDS"),
-                self.conf.get("MAX_RISK_LEVEL")
-            )
-        return -1
+        return self.curr_rec_level
