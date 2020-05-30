@@ -11,12 +11,16 @@ from covid19sim.simulator import Human
 from tests.utils import get_test_conf
 
 
+@pytest.mark.parametrize('seed', [62, 93, 73, 3, 51])
 @pytest.mark.parametrize('test_conf_name', ['test_covid_testing.yaml'])
 def test_basic_demographics(
+        seed: int,
         test_conf_name: str,
         age_error_tol: float = 2.0,
         age_distribution_error_tol: float = 0.01,
         profession_error_tol: float = 0.03,
+        sex_diff_error_tol: float = 0.1,
+        profession_error_tol: float = 0.02,
         fraction_over_100_error_tol: float = 0.001):
     """
         Tests for the about demographic statistics:
@@ -39,8 +43,7 @@ def test_basic_demographics(
 
     conf = get_test_conf(test_conf_name)
 
-    seed = 0
-    n_people = 1000
+    n_people = 5000
     init_percent_sick = 0.01
     rng = np.random.RandomState(seed=seed)
     start_time = datetime.datetime(2020, 2, 28, 0, 0)
@@ -91,23 +94,27 @@ def test_basic_demographics(
     maximum_age = 117  # Canadian record: Marie-Louise Meilleur
     assert df.age.max() < maximum_age, f'There is a person older than the Canadian longevity record.'
 
-    # For now, this test is not relevant for a population of 1,000.
+    # For now, this test is not relevant for a population of 5,000.
     # Ref: https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1710000501
     canstat_fraction_over_100 = 0.000287183
-    print(f'Average number of people over 100', df.age[df.age > 100].count() / n_people)
     fraction_over_100 = df.age[df.age > 100].count() / n_people
     assert math.fabs(fraction_over_100 - canstat_fraction_over_100) < fraction_over_100_error_tol, \
         f'The simulated fraction over 100 ({fraction_over_100}) is too different ' \
         f'from the Canadian statistic ({canstat_fraction_over_100})'
 
     # Check basic statistics about sex
-    canstat_rel_diff = 0.018
+    canstat_sex_rel_diff = 0.018
     sex_grouped = df.groupby('sex').count()
     sex_grouped = sex_grouped.apply(lambda x: x / n_people)
-    sex_rel_difference = math.fabs(sex_grouped.age['male'] - sex_grouped.age['female']) / n_people
-    assert sex_rel_difference < canstat_rel_diff, \
-        f'The relative difference between male and female in the population is {sex_rel_difference} ' \
-        f'while the actual number for Canada is {canstat_rel_diff}'
+    sex_rel_diff = math.fabs(sex_grouped.age['male'] - sex_grouped.age['female'])
+    assert (math.fabs(sex_rel_diff - canstat_sex_rel_diff) < sex_diff_error_tol), \
+        f'The relative difference between male and female in the population is {sex_rel_diff} ' \
+        f'while the actual number for Canada is {canstat_sex_rel_diff}'
+
+    fraction_other_sex = sex_grouped.age['other']
+    assert math.fabs(fraction_other_sex - 0.1) < sex_diff_error_tol, \
+        f'The relative difference between other and the one specified in config ' \
+        f'is too high (diff={fraction_other_sex - 0.1})'
 
     # Check that the simulated age distribution is similar to the one specified in HUMAN_DISTRIBUTION
     age_histogram = {}
@@ -147,8 +154,10 @@ def test_basic_demographics(
         f'is {sim_education_profession:.2f} while the statistics for Canada is {canstat_education_profession:.2f}'
 
 
+@pytest.mark.parametrize('seed', [62, 93, 73, 3, 51])
 @pytest.mark.parametrize('test_conf_name', ['test_covid_testing.yaml'])
 def test_household_distribution(
+        seed: int,
         test_conf_name: str,
         avg_household_size_error_tol: float = 0.22, #TODO: change this back to 0.1. I had to bump it up otherwise the tests fail for inscrutable reasons...
         fraction_in_households_error_tol: float = 0.1,
@@ -172,8 +181,13 @@ def test_household_distribution(
 
     conf = get_test_conf(test_conf_name)
 
-    seed = 0
-    n_people = 1000
+    # Test that all house_size preferences sum to 1
+    for key, value in conf['HUMAN_DISTRIBUTION'].items():
+        val = np.sum(value['residence_preference']['house_size'])
+        assert math.fabs(np.sum(value['residence_preference']['house_size']) - 1.) < 1e-6, \
+            f'The house_size preferences for age group {key} does not sum to 1. (actual value= {val})'
+
+    n_people = 5000
     init_percent_sick = 0.01
     rng = np.random.RandomState(seed=seed)
     start_time = datetime.datetime(2020, 2, 28, 0, 0)
@@ -215,7 +229,6 @@ def test_household_distribution(
         f' while the statistics for Canada is {avg_household_size:.2f}'
 
     # Number of persons in private household from
-    # Canada Statistics - Census profile 2016 (ref: https://tinyurl.com/qsf2q8d)
     fraction_in_households = 0.98  # Value from CanStats
     sim_fraction_in_households = n_resident_in_households / n_people
     assert math.fabs(sim_fraction_in_households - fraction_in_households) < fraction_in_households_error_tol, \
@@ -223,7 +236,6 @@ def test_household_distribution(
         f' while the statistics for Canada is {fraction_in_households:.2f}'
 
     # Household size distribution from
-    # Canada Statistics - Census profile 2016 (ref: https://tinyurl.com/qsf2q8d)
     household_size_distribution = [0.282, 0.364, 0.152, 0.138, 0.084]
     assert np.allclose(
         sim_household_size_distribution,
@@ -232,9 +244,11 @@ def test_household_distribution(
         f'the discrepancy between simulated and estimated household size distribution is too important.'
 
 
+@pytest.mark.parametrize('seed', [62, 93, 73, 3, 51])
 @pytest.mark.parametrize('test_conf_name', ['test_covid_testing.yaml'])
 @pytest.mark.parametrize('app_uptake', [None, 0.25, 0.5, 0.75, 1.0])
 def test_app_distribution(
+        seed: int,
         test_conf_name: str,
         app_uptake: float
 ):
@@ -252,7 +266,7 @@ def test_app_distribution(
     if app_uptake:
         conf['APP_UPTAKE'] = app_uptake
 
-    n_people = 1000
+    n_people = 5000
     init_percent_sick = 0.01
     start_time = datetime.datetime(2020, 2, 28, 0, 0)
 

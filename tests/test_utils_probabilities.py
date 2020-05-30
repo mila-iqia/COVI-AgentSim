@@ -14,8 +14,14 @@ class Symptoms(unittest.TestCase):
 
             s_prob_contexts = set(s_prob.probabilities.keys())
             if s_prob_contexts:
-                self.assertTrue([1 for _, symptoms_contexts in SYMPTOMS_CONTEXTS.items()
-                                 if set(symptoms_contexts.values()).issubset(s_prob_contexts)])
+                # At least a full set of symptoms_context should be found
+                # in the list of contexts of the symptom
+                for disease_label, symptoms_contexts in SYMPTOMS_CONTEXTS.items():
+                    if set(symptoms_contexts.values()).issubset(s_prob_contexts):
+                        break
+                else:
+                    self.assertTrue(False, msg=f"{s_name} symptom should contain "
+                    f"at least a full set of a disease's contexts")
 
 
 class AllergyProgression(unittest.TestCase):
@@ -192,10 +198,11 @@ class CovidProgression(unittest.TestCase):
     n_people = 1000  # Test too slow to use 10000 ppl
     initial_viral_load_options = (0.10, 0.25, 0.50, 0.75)
     viral_load_plateau_start = 1
-    viral_load_plateau_end = 3
-    viral_load_recovered = 6
+    viral_load_plateau_end = 2
+    viral_load_recovered = 4
     ages_options = (25, 50, 75)
-    incubation_days = 2
+    incubation_days = 1
+    infectiousness_onset_days = 1
     really_sick_options = (True, False)
     extremely_sick_options = (True, False)
     preexisting_conditions_options = (tuple(), ('pre1', 'pre2'), ('pre1', 'pre2', 'pre3'))
@@ -250,32 +257,46 @@ class CovidProgression(unittest.TestCase):
         computed_dist = [[set(day_symptoms) for day_symptoms in
                           _get_covid_progression(initial_viral_load, self.viral_load_plateau_start,
                                                  self.viral_load_plateau_end, self.viral_load_recovered,
-                                                 age, self.incubation_days, really_sick,
-                                                 extremely_sick,
-                                                 rng, preexisting_conditions, carefulness)]
+                                                 age, self.incubation_days, self.infectiousness_onset_days,
+                                                 really_sick, extremely_sick, rng, preexisting_conditions,
+                                                 carefulness)]
                          for _ in range(self.n_people)]
 
         probs = [[0] * len(SYMPTOMS) for _ in symptoms_contexts]
 
         for human_symptoms in computed_dist:
             # To simplify the tests, we expect each stage to last 1 day
-            self.assertEqual(len(human_symptoms),
-                             len(symptoms_contexts) + self.incubation_days)
+            self.assertEqual(len(human_symptoms), len(symptoms_contexts))
 
+            # The covid incubation period should not have any symptoms
             for day_symptoms in human_symptoms[:self.incubation_days]:
                 self.assertEqual(len(day_symptoms), 0)
 
+            # The covid incubation period should not have any symptoms
             for i, day_symptoms in enumerate(human_symptoms[self.incubation_days:]):
+                # There should be exactly 1 occurrence of any of the sickness level
                 self.assertEqual(len([s for s in ('mild', 'moderate', 'severe', 'extremely-severe')
                                       if s in day_symptoms]), 1)
-                self.assertIn(
-                    len([s for s in ('light_trouble_breathing', 'moderate_trouble_breathing',
-                                     'heavy_trouble_breathing')
-                         if s in day_symptoms]),
-                    (0, 1) if 'trouble_breathing' in day_symptoms else (0,))
+                if 'trouble_breathing' in day_symptoms:
+                    # There should be exactly 1 occurrence of any of the trouble_breathing level
+                    self.assertEqual(
+                        len([s for s in ('light_trouble_breathing', 'moderate_trouble_breathing',
+                                         'heavy_trouble_breathing')
+                             if s in day_symptoms]),
+                        1
+                    )
+                else:
+                    # There should be no occurrence of any of the trouble_breathing level
+                    self.assertEqual(
+                        len([s for s in ('light_trouble_breathing', 'moderate_trouble_breathing',
+                                         'heavy_trouble_breathing')
+                             if s in day_symptoms]),
+                        0
+                    )
 
                 for s_name, s_prob in SYMPTOMS.items():
-                    probs[i][s_prob.id] += int(s_name in day_symptoms)
+                    # probs[0] are the probability for the incubation period
+                    probs[i+1][s_prob.id] += int(s_name in day_symptoms)
 
         for symptoms_probs in probs:
             for i in range(len(symptoms_probs)):
@@ -305,7 +326,8 @@ class CovidProgression(unittest.TestCase):
                         not (really_sick or extremely_sick or len(preexisting_conditions) > 2):
                     expected_prob = 0
 
-                if i == 0:
+                # covid_onset
+                if i == 1:
                     if really_sick or extremely_sick or len(preexisting_conditions) > 2 \
                             or initial_viral_load > 0.6:
                         if s_id == _get_id('moderate'):
@@ -334,41 +356,7 @@ class CovidProgression(unittest.TestCase):
                         # as complex as maintaining the code
                         continue
 
-                elif i == 1:
-                    if extremely_sick:
-                        if s_id == _get_id('extremely-severe'):
-                            expected_prob = 1
-                        elif s_id in {_get_id('mild'), _get_id('moderate'), _get_id('severe')}:
-                            expected_prob = 0
-                    elif really_sick or len(preexisting_conditions) > 2 or initial_viral_load > 0.6:
-                        if s_id == _get_id('severe'):
-                            expected_prob = 1
-                        elif s_id in {_get_id('mild'), _get_id('moderate'), _get_id('extremely-severe')}:
-                            expected_prob = 0
-                    elif s_id in {_get_id('severe'), _get_id('extremely-severe')}:
-                        expected_prob = 0
-                    elif s_id in {_get_id('mild'), _get_id('moderate')}:
-                        # Skip this test as maintaining of the tests would be
-                        # as complex as maintaining the code
-                        continue
-
-                    if s_id == _get_id('lost_consciousness') and \
-                            not (really_sick or extremely_sick or len(preexisting_conditions) > 2):
-                        expected_prob = 0
-
-                    elif s_id == _get_id('severe_chest_pain') and \
-                            not extremely_sick:
-                        expected_prob = 0
-
-                    elif s_id == _get_id('loss_of_taste'):
-                        p = _get_probability('loss_of_taste', 0)
-                        expected_prob = p + (1 - p) * expected_prob
-
-                    elif s_id in {_get_id('fever'), _get_id('chills')}:
-                        # Skip this test as maintaining of the tests would be
-                        # as complex as maintaining the code
-                        continue
-
+                # covid_plateau
                 elif i == 2:
                     if extremely_sick:
                         if s_id == _get_id('extremely-severe'):
@@ -405,6 +393,7 @@ class CovidProgression(unittest.TestCase):
                         # as complex as maintaining the code
                         continue
 
+                # covid_post_plateau_1
                 elif i == 3:
                     if extremely_sick:
                         if s_id == _get_id('severe'):
@@ -429,6 +418,7 @@ class CovidProgression(unittest.TestCase):
                             not extremely_sick:
                         expected_prob = 0
 
+                # covid_post_plateau_2
                 elif i == 4:
                     if extremely_sick:
                         if s_id == _get_id('moderate'):
