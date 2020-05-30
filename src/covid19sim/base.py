@@ -14,7 +14,6 @@ from covid19sim.utils import compute_distance, _get_random_area, relativefreq2ab
     get_test_false_negative_rate
 from covid19sim.track import Tracker
 from covid19sim.interventions import *
-from covid19sim.models.run import batch_run_timeslot_heavy_jobs
 from covid19sim.frozen.message_utils import UIDType, UpdateMessage, combine_update_messages, \
     RealUserIDType
 
@@ -405,13 +404,6 @@ class City:
             rng=self.rng
         )
 
-        # app users
-        all_has_app = self.conf.get('APP_UPTAKE') < 0
-        n_apps_per_age = {
-            k: math.ceil(age_histogram[k]*v*self.conf.get('APP_UPTAKE'))
-            for k, v in self.conf.get("SMARTPHONE_OWNER_FRACTION_BY_AGE").items()
-        }
-
         for age_bin, specs in self.conf.get("HUMAN_DISTRIBUTION").items():
             n = age_histogram[age_bin]
             ages = self.rng.randint(*age_bin, size=n)
@@ -423,25 +415,9 @@ class City:
             p = [specs['profession_profile'][x] for x in professions]
             profession = self.rng.choice(professions, p=p, size=n)
 
-            # select who should have app based on self.conf's SMARTPHONE_OWNER_FRACTION_BY_AGE
-            chosen_app_user_bin = []
-            for my_age in ages:
-                for x, frac in self.conf.get("SMARTPHONE_OWNER_FRACTION_BY_AGE").items():
-                    if x[0] <= my_age < x[1]:
-                        chosen_app_user_bin.append(x)
-                        break
-
             for i in range(n):
                 count_humans += 1
                 age = ages[i]
-
-                # should the person has an app?
-                current_app_bin = chosen_app_user_bin[i]
-                if n_apps_per_age[current_app_bin] > 0:
-                    has_app = True
-                    n_apps_per_age[current_app_bin] -= 1
-                else:
-                    has_app = False
 
                 # select if residence is one of senior residency
                 res = None
@@ -468,7 +444,7 @@ class City:
                         env=self.env,
                         city=self,
                         rng=self.rng,
-                        has_app=has_app or all_has_app,
+                        has_app=False,      # has_app gets set later when we intervene
                         name=count_humans,
                         age=age,
                         household=res,
@@ -545,6 +521,46 @@ class City:
 
         # we don't need a cached property, this will do fine
         self.hd = {human.name: human for human in self.humans}
+
+    def have_some_humans_download_the_app(self):
+        """
+        This method is called on intervention day if the intervention type is 
+        `Tracing`. It simulates the process of downloading the app on for smartphone
+        users according to `APP_UPTAKE` and `SMARTPHONE_OWNER_FRACTION_BY_AGE`.
+        """
+        age_histogram = relativefreq2absolutefreq(
+            bins_fractions={age_bin: specs['p']
+                            for age_bin, specs
+                            in self.conf.get('HUMAN_DISTRIBUTION').items()},
+            n_elements=self.n_people,
+            rng=self.rng
+        )
+        # app users
+        all_has_app = self.conf.get('APP_UPTAKE') < 0
+        # The dict below keeps track of an app quota for each age group
+        n_apps_per_age = {
+            k: math.ceil(age_histogram[k] * v * self.conf.get('APP_UPTAKE'))
+            for k, v in self.conf.get("SMARTPHONE_OWNER_FRACTION_BY_AGE").items()
+        }
+        for human in self.humans:
+            if all_has_app:
+                # i get an app, you get an app, everyone gets an app
+                human.has_app = True
+                continue
+
+            # Find what age bin the human is in
+            age_bin = None
+            for x in n_apps_per_age:
+                if x[0] <= human.age < x[1]:
+                    age_bin = x
+                    break
+            assert age_bin is not None
+
+            if n_apps_per_age[age_bin] > 0:
+                # This human gets an app If there's quota left in his age group
+                human.has_app = True
+                n_apps_per_age[age_bin] -= 1
+                continue
 
     def add_to_test_queue(self, human):
         self.covid_testing_facility.add_to_test_queue(human)
@@ -631,8 +647,12 @@ class City:
                 if self.conf.get('COLLECT_TRAINING_DATA'):
                     print("naive risk calculation without changing behavior... Humans notified!")
                 humans_notified = True
+                if isinstance(self.intervention, Tracing):
+                    self.have_some_humans_download_the_app()
 
             # run city testing routine, providing test results for those who need them
+            # TODO: running this every hour of the day might not be correct.
+            # TODO: testing budget is used up at hour 0 if its small
             self.covid_testing_facility.clear_test_queue()
 
             all_new_update_messages = []  # accumulate everything here so we can filter if needed
@@ -660,6 +680,7 @@ class City:
             if isinstance(self.intervention, Tracing):
                 # time to run the cluster+risk prediction via transformer (if we need it)
                 if self.intervention.risk_model == "transformer" or self.conf.get("COLLECT_TRAINING_DATA"):
+                    from covid19sim.models.run import batch_run_timeslot_heavy_jobs
                     self.humans, new_update_messages = batch_run_timeslot_heavy_jobs(
                         humans=self.humans,
                         init_timestamp=self.start_time,
@@ -727,6 +748,15 @@ class TestFacility(object):
             self.last_date_to_check_tests = self.env.timestamp.date()
             for k in self.test_count_today.keys():
                 self.test_count_today[k] = 0
+                
+            # clear queue
+            # TODO : check more scenarios about when the person can be removed from a queue
+            to_remove = []
+            for human in self.test_queue:
+                if not any(human.symptoms) and not human.test_recommended:
+                    to_remove.append(human)
+
+            _ = [self.test_queue.remove(human) for human in to_remove]
 
     def get_available_test(self):
         """
@@ -937,7 +967,7 @@ class Location(simpy.Resource):
             lag = (self.env.timestamp - self.contamination_timestamp)
             lag /= datetime.timedelta(days=1)
             p_infection = 1 - lag / self.max_day_contamination # linear decay; &envrionmental_contamination
-            return self.social_contact_factor * p_infection
+            return p_infection
         return 0.0
 
     def __hash__(self):

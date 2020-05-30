@@ -14,17 +14,19 @@ from covid19sim.base import City, Env
 from covid19sim.constants import SECONDS_PER_DAY, SECONDS_PER_HOUR
 from covid19sim.models.run import DummyMemManager
 from covid19sim.monitors import EventMonitor, SEIRMonitor, TimeMonitor
-from covid19sim.server_utils import InferenceClient
 from covid19sim.simulator import Human
+
 from covid19sim.utils import (
     dump_conf,
     dump_tracker_data,
     extract_tracker_data,
     parse_configuration,
     zip_outdir,
+    dump_conf,
 )
 
 @hydra.main(config_path="hydra-configs/simulation/config.yaml")
+
 def main(conf: DictConfig) -> None:
     """
     Enables command line execution of the simulator.
@@ -213,11 +215,11 @@ def simulate(
         if conf.get("USE_INFERENCE_SERVER"):
             inference_frontend_address = conf.get("INFERENCE_SERVER_ADDRESS", None)
             print("requesting cluster reset from inference server...")
-            temporary_client = InferenceClient(
-                server_address=inference_frontend_address
-            )
+            from covid19sim.server_utils import InferenceClient
+            temporary_client = InferenceClient(server_address=inference_frontend_address)
             temporary_client.request_reset()
         else:
+            from covid19sim.models.run import DummyMemManager
             DummyMemManager.global_cluster_map = {}
 
     # Initiate city process, which runs every hour

@@ -35,6 +35,10 @@ DROPOUT_RATE:
   sample: uniform # uniform in range:
   from: [0.0, 0.2]
 
+SHOULD_MODIFY_BEHAVIOR:
+  sample: list
+  from: [True, False]
+
 seed: # for sole reproducibility purposes
   sample: range # uniform int choice
   from: [0, 10]

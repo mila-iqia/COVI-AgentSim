@@ -442,7 +442,7 @@ def _proc_human(params, inference_engine):
         "observed": {
             "reported_symptoms": reported_symptoms,
             "candidate_encounters": candidate_encounters,
-            "test_results": covid19sim.frozen.helper.get_test_result_array(human.test_results, todays_date, conf),
+            "test_results": human.test_results,
             "preexisting_conditions": human.obs_preexisting_conditions,
             "age": human.obs_age,
             "sex": human.obs_sex,
