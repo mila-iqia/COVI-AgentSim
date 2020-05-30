@@ -222,7 +222,9 @@ class Human(object):
         self.history_map_last_message = dict()
         self.last_sent_update_gaen = 0
         self.last_message_risk_history_map = {}
-        self.proba_to_risk_level_map = proba_to_risk_fn(np.array(self.conf.get('RISK_MAPPING')))
+        risk_mapping_array = np.array(self.conf.get('RISK_MAPPING'))
+        assert len(risk_mapping_array) > 0, "risk mapping must always be defined!"
+        self.proba_to_risk_level_map = proba_to_risk_fn(risk_mapping_array)
 
         # Message Passing and Risk Prediction
         self.clusters = None
@@ -1972,8 +1974,7 @@ class Human(object):
         Returns:
             [type]: [description]
         """
-        _proba_to_risk_level = proba_to_risk_fn(np.array(self.conf.get('RISK_MAPPING')))
-        return min(_proba_to_risk_level(self.risk), 15)
+        return min(self.proba_to_risk_level_map(self.risk), 15)
 
     @risk.setter
     def risk(self, val):
