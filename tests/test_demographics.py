@@ -18,6 +18,7 @@ def test_basic_demographics(
         test_conf_name: str,
         age_error_tol: float = 2.0,
         age_distribution_error_tol: float = 0.01,
+        profession_error_tol: float = 0.03,
         sex_diff_error_tol: float = 0.1,
         profession_error_tol: float = 0.03,
         fraction_over_100_error_tol: float = 0.001):
@@ -59,6 +60,7 @@ def test_basic_demographics(
         human_type=Human,
         conf=conf,
     )
+    city.have_some_humans_download_the_app()
 
     # Check that the actual population size is the same than specified
     assert len(city.humans) == n_people
@@ -283,6 +285,7 @@ def test_app_distribution(
         human_type=Human,
         conf=conf,
     )
+    city.have_some_humans_download_the_app()
 
     population = []
     for human in city.humans:
@@ -373,6 +376,7 @@ def test_app_distribution(
         human_type=Human,
         conf=conf,
     )
+    city.have_some_humans_download_the_app()
 
     population = []
     for human in city.humans:
