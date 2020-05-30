@@ -524,6 +524,11 @@ class City:
         self.hd = {human.name: human for human in self.humans}
 
     def have_some_humans_download_the_app(self):
+        """
+        This method is called on intervention day if the intervention type is 
+        `Tracing`. It simulates the process of downloading the app on for smartphone
+        users according to `APP_UPTAKE` and `SMARTPHONE_OWNER_FRACTION_BY_AGE`.
+        """
         age_histogram = relativefreq2absolutefreq(
             bins_fractions={age_bin: specs['p']
                             for age_bin, specs
