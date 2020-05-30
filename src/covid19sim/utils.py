@@ -867,8 +867,8 @@ def _get_get_really_sick(age, sex, rng):
 
 # 2D Array of symptoms; first axis is days after exposure (infection), second is an array of symptoms
 def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_load_plateau_end,
-                           recovery_days, age, incubation_days, really_sick, extremely_sick,
-                           rng, preexisting_conditions, carefulness):
+                           recovery_days, age, incubation_days, infectiousness_onset_days,
+                           really_sick, extremely_sick, rng, preexisting_conditions, carefulness):
     """
     [summary]
 
@@ -1259,13 +1259,18 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
 
     viral_load_plateau_duration = math.ceil(viral_load_plateau_end - viral_load_plateau_start)
     recovery_duration = math.ceil(recovery_days - viral_load_plateau_end)
+    incubation_days_wrt_infectiousness_onset_days = incubation_days - infectiousness_onset_days
 
     # same delay in symptom plateau as there was in symptom onset
     incubation_duration = math.ceil(incubation_days)
-    covid_onset_duration = viral_load_plateau_duration // 2
-    plateau_duration = viral_load_plateau_duration - covid_onset_duration
+    covid_onset_duration = math.ceil(viral_load_plateau_start -
+                                     incubation_days_wrt_infectiousness_onset_days) + \
+                           viral_load_plateau_duration // 3
+    plateau_duration = math.ceil(viral_load_plateau_duration * 2/3)
     post_plateau_1_duration = recovery_duration // 2
     post_plateau_2_duration = recovery_duration - post_plateau_1_duration
+
+    assert viral_load_plateau_start >= incubation_days_wrt_infectiousness_onset_days
 
     for duration, symptoms in zip((incubation_duration, covid_onset_duration, plateau_duration,
                                    post_plateau_1_duration, post_plateau_2_duration),
