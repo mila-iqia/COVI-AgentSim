@@ -772,24 +772,28 @@ def _get_random_age(rng):
         age = round(float(draw))
     return age
 
+
 # &sex
 def _get_random_sex(rng):
     """
-    [summary]
+    This function returns the sex at birth of the person.
+    Other is associated with 'prefer not to answer' for the CanStats census.
+    TODO: the proportion parameters should be in a config file.
 
     Args:
-        rng ([type]): [description]
+        rng (): A random number generator
 
     Returns:
-        [type]: [description]
+        [str]: Possible choices of sex {female, male, other}
     """
     p = rng.rand()
-    if p < .4:
+    if p < .45:
         return 'female'
-    elif p < .8:
+    elif p < .90:
         return 'male'
     else:
         return 'other'
+
 
 def _get_get_really_sick(age, sex, rng):
     """
