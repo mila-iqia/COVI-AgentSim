@@ -19,7 +19,7 @@ SHOULD_MODIFY_BEHAVIOR: True
 
 APP_UPTAKE:
   sample: uniform # uniform in range:
-  from: [0.0, 1.0]
+  from: [0.01, 1.0]
 
 P_CAREFUL_PERSON:
   sample: uniform # uniform in range:
@@ -27,7 +27,7 @@ P_CAREFUL_PERSON:
 
 GLOBAL_MOBILITY_SCALING_FACTOR:
   sample: uniform # uniform in range:
-  from: [0.0, 1.0]
+  from: [0.1, 1.0]
 
 DROPOUT_RATE:
   sample: uniform # uniform in range:
@@ -35,11 +35,11 @@ DROPOUT_RATE:
 
 init_percent_sick:
   sample: uniform
-  from: [0.001, 0.01]
+  from: [0.001, 0.035] # @nasim's German article https://www.google.de/amp/s/www.quarks.de/gesellschaft/wissenschaft/heinsberg-studie-das-lernen-wir-daraus-und-das-nicht/amp/
 
 INTERVENTION_DAY:
   sample: range
-  from: [0, 10]
+  from: [3, 7]
 
 seed: # for sole reproducibility purposes
   sample: range # uniform int choice
