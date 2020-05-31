@@ -14,7 +14,7 @@
 tracing_method: oracle
 run_type: collect-all
 n_people: 1000
-simulation_days: 22
+simulation_days: 30
 SHOULD_MODIFY_BEHAVIOR: True
 
 APP_UPTAKE:
