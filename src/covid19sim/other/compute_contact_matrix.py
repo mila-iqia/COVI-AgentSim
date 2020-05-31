@@ -23,7 +23,11 @@ def generate_contact_matrix(
 
 
 if __name__ == '__main__':
-    # This is the contact matrix associated with Great Britain from the study TODO Table. S8.4 from TODO
+    # Ref: Mossong, Joël, Niel Hens, Mark Jit, Philippe Beutels, Kari Auranen, Rafael Mikolajczyk, Marco Massari et
+    # al. "Social contacts and mixing patterns relevant to the spread of infectious diseases." PLoS medicine 5,
+    # no. 3 (2008).
+    # Link: https://journals.plos.org/plosmedicine/article/file?type=printable&id=10.1371/journal.pmed.0050074
+    # This is the contact matrix associated with Great Britain (Table. S8.4)
     cm = np.array([
         [1.92, 0.65, 0.41, 0.24, 0.46, 0.73, 0.67, 0.83, 0.24, 0.22, 0.36, 0.2, 0.2, 0.26, 0.13],
         [0.95, 6.64, 1.09, 0.73, 0.61, 0.75, 0.95, 1.39, 0.9, 0.16, 0.3, 0.22, 0.5, 0.48, 0.2],
