@@ -30,12 +30,17 @@ expected_processed_packet_param_names = [
 ]
 
 default_poll_delay_ms = 500
-default_frontend_ipc_address = "ipc://" + str(
-    Path("/Tmp/slurm.{}.0".format(os.environ.get("SLURM_JOB_ID"))) / "covid19sim-inference-frontend.ipc"
-)
-default_backend_ipc_address = "ipc://" + str(
-    Path("/Tmp/slurm.{}.0".format(os.environ.get("SLURM_JOB_ID"))) / "covid19sim-inference-backend.ipc"
-)
+
+# if on slurm
+if os.path.isdir("/Tmp"):
+    frontend_path = Path("/Tmp/slurm.{}.0".format(os.environ.get("SLURM_JOB_ID")))
+    backend_path = Path("/Tmp/slurm.{}.0".format(os.environ.get("SLURM_JOB_ID")))
+else:
+    frontend_path = "/tmp"
+    backend_path = "/tmp"
+
+default_frontend_ipc_address = "ipc://" + os.path.join(frontend_path, "covid19sim-inference-frontend.ipc")
+default_backend_ipc_address = "ipc://" + os.path.join(backend_path, "covid19sim-inference-backend.ipc")
 
 
 class InferenceWorker(multiprocessing.Process):

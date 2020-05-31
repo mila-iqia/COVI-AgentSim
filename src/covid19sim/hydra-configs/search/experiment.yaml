@@ -15,9 +15,7 @@ tracing_method: oracle
 run_type: collect-all
 n_people: 1000
 simulation_days: 22
-INTERVENTION_DAY: 5
-init_percent_sick: 0.002
-
+SHOULD_MODIFY_BEHAVIOR: True
 
 APP_UPTAKE:
   sample: uniform # uniform in range:
@@ -33,11 +31,15 @@ GLOBAL_MOBILITY_SCALING_FACTOR:
 
 DROPOUT_RATE:
   sample: uniform # uniform in range:
-  from: [0.0, 0.2]
+  from: [0.0, 0.5]
 
-SHOULD_MODIFY_BEHAVIOR:
-  sample: list
-  from: [True, False]
+init_percent_sick:
+  sample: uniform
+  from: [0.001, 0.01]
+
+INTERVENTION_DAY:
+  sample: range
+  from: [0, 10]
 
 seed: # for sole reproducibility purposes
   sample: range # uniform int choice
