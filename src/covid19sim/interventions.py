@@ -666,7 +666,7 @@ class Tracing(object):
             elif human.curr_rec_level > 0:
                 # Check if there was no positive test result in the past 14 days
                 no_positive_test_result_past_14_days = True
-                for test_result, test_time in human.test_results:
+                for test_result, test_time, _ in human.test_results:
                     result_day = (human.env.timestamp - test_time).days
                     if result_day >= 0 and result_day < human.conf.get("TRACING_N_DAYS_HISTORY"):
                         no_positive_test_result_past_14_days &= (test_result != "positive")
