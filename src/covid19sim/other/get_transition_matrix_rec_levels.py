@@ -136,9 +136,9 @@ if __name__ == '__main__':
         'matrices to apply the mobility patterns from an `origin` experiment '
         '(e.g. Binary Digital Tracing) to a `destination` experiment (e.g. '
         'Transformer). The recommendation levels of origin are updated as '
-        'usual, following the tracing method of origin (e.g. Transformer), '
-        'but the interventions on the mobility follow the recommendations (in '
-        'expectation) from the destination (e.g. Binary Digital Tracing).')
+        'usual, following the tracing method of origin (e.g. Binary Digital '
+        'Tracing), but the interventions on the mobility follow the '
+        'recommendations (in expectation) from the destination (e.g. Transformer).')
     parser.add_argument('--origin', type=str,
         help='Path to the folder of the origin experiment (e.g. Binary Digital '
              'Tracing), i.e. the tracing method to use for the update of the '
