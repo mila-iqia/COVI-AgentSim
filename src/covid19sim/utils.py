@@ -2257,7 +2257,8 @@ def lp_solution_to_transport_plan(dist_0, dist_1, solution):
 
     # Zero out small values of the solution
     solution[np.isclose(solution, 0.)] = 0.
-    solution /= solution.sum() / (1 - min_dist.sum())
+    if not np.isclose(min_dist.sum(), 1):
+        solution /= solution.sum() / (1 - min_dist.sum())
 
     # The solution contains the upper triangular values in the first half
     # of the solution, and the lower triangular values in the second half.
