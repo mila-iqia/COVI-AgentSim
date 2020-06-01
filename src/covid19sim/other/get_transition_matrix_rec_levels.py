@@ -1,3 +1,17 @@
+"""
+Script to creates the transition matrices to apply the mobility patterns from a
+`source` experiment (e.g. Binary Digital Tracing) to a `target` experiment (e.g.
+Transformer). The recommendation levels of source are updated as usual, following
+the tracing method of source (e.g. Binary Digital Tracing), but the interventions
+on the mobility follow the recommendations (in expectation) from the target (e.g.
+Transformer).
+
+How to use:
+    python src/covid19sim/other/get_transition_matrix_rec_levels.py --source path/to/binary_tracing/experiment --target path/to/transformer/experiment
+
+This script returns a new configuration file that can be run to apply the updates
+of the recommendation levels of source, but with the interventions from target.
+"""
 import numpy as np
 import os
 import glob
@@ -150,7 +164,7 @@ if __name__ == '__main__':
     import argparse
 
     parser = argparse.ArgumentParser(description='Creates the transition '
-        'matrices to apply the mobility patterns from an `source` experiment '
+        'matrices to apply the mobility patterns from a `source` experiment '
         '(e.g. Binary Digital Tracing) to a `target` experiment (e.g. '
         'Transformer). The recommendation levels of source are updated as '
         'usual, following the tracing method of source (e.g. Binary Digital '
