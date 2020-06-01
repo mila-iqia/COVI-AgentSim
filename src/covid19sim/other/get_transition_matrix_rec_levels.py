@@ -108,20 +108,20 @@ def main(args):
             origin_dist, destination_dist)
     logging.info('Transition matrices successfully created.')
 
-    # Update the destination configuration file
-    destination_config['DAILY_REC_LEVEL_MAPPING'] = transition_matrices.flatten().tolist()
+    # Update the origin configuration file
+    origin_config['DAILY_REC_LEVEL_MAPPING'] = transition_matrices.flatten().tolist()
 
     # Save the new destination configuration
     logging.debug('Saving new configuration to `{0}`...'.format(args.output_config))
     with open(args.output_config, 'w') as f:
-        yaml.dump(destination_config, f, Dumper=yaml.Dumper)
+        yaml.dump(origin_config, f, Dumper=yaml.Dumper)
 
     # Save the original configuration as a comment
     with open(args.output_config, 'a') as f:
-        origin_config_yaml = yaml.dump(origin_config, Dumper=yaml.Dumper)
-        origin_config_lines = origin_config_yaml.split('\n')
-        f.write(f'\n# Original configuration: {args.origin}\n#\n')
-        for line in origin_config_lines:
+        destination_config_yaml = yaml.dump(destination_config, Dumper=yaml.Dumper)
+        destination_config_lines = destination_config_yaml.split('\n')
+        f.write(f'\n# Destination configuration: {args.destination}\n#\n')
+        for line in destination_config_lines:
             f.write(f'# {line}\n')
 
     logging.info('New configuration file saved: `{0}`'.format(args.output_config))
@@ -134,15 +134,19 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Creates the transition '
         'matrices to apply the mobility patterns from an `origin` experiment '
-        '(e.g. Transformer) to a `destination` experiment (e.g. Digital Binary '
-        'Tracing). The recommendation levels of destination are updated as '
-        'usual, following the tracing method of destination (e.g. Digital '
-        'Binary Tracing), but the interventions on the mobility follow the '
-        'recommendations (in expectation) from the origin (e.g. Transformer).')
+        '(e.g. Binary Digital Tracing) to a `destination` experiment (e.g. '
+        'Transformer). The recommendation levels of origin are updated as '
+        'usual, following the tracing method of origin (e.g. Transformer), '
+        'but the interventions on the mobility follow the recommendations (in '
+        'expectation) from the destination (e.g. Binary Digital Tracing).')
     parser.add_argument('--origin', type=str,
-        help='Path to the folder of the origin experiment (e.g. Transformer).')
+        help='Path to the folder of the origin experiment (e.g. Binary Digital '
+             'Tracing), i.e. the tracing method to use for the update of the '
+             'recommendation levels.')
     parser.add_argument('--destination', type=str,
-        help='Path to the folder of the destination experiment (e.g. Binary Digital Tracing).')
+        help='Path to the folder of the destination experiment (e.g. '
+             'Transformer), i.e. the tracing method which we apply the mobility '
+             'intervention of.')
     parser.add_argument('--output-config', type=str, required=True,
         help='Path to save the updated configuration file (destination '
              'configuration file + additional mapping from origin to destination.')
