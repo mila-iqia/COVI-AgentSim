@@ -266,7 +266,7 @@ class BinaryTracing(BehaviorInterventions):
         if human.rec_level == 0:
             recommendations = [WashHands(), StandApart(default_distance=25)]
         else:
-            recommendations = [Quarantine()]
+            recommendations = [WashHands(), SocialDistancing(default_distance=100), WearMask(), 'monitor_symptoms', GetTested("recommendations"), Quarantine()]
         self.revert_behavior(human)
         for rec in recommendations:
             if isinstance(rec, BehaviorInterventions) and human.follows_recommendations_today:
