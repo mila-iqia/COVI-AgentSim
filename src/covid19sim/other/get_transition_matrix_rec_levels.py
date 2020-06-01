@@ -5,8 +5,18 @@ import yaml
 import pickle
 import warnings
 import logging
+from datetime import datetime
 
 from covid19sim.utils import get_rec_level_transition_matrix
+
+
+def generate_name(origin_config, destination_config):
+    origin_model = origin_config['RISK_MODEL']
+    seed = origin_config['seed']
+    destination_model = destination_config['RISK_MODEL']
+    timenow = datetime.now().strftime('%Y%m%d-%H%M%S')
+
+    return f'{origin_model}_to_{destination_model}_seed-{seed}_{timenow}.yaml'
 
 
 def get_config_and_data(folder):
@@ -112,22 +122,29 @@ def main(args):
     origin_config['DAILY_REC_LEVEL_MAPPING'] = transition_matrices.flatten().tolist()
 
     # Save the new destination configuration
-    logging.debug('Saving new configuration to `{0}`...'.format(args.output_config))
-    with open(args.output_config, 'w') as f:
+    config_folder = os.path.join(os.path.dirname(__file__), '../hydra-configs/simulation', 'transport')
+    config_folder = os.path.relpath(config_folder)
+    if not os.path.exists(config_folder):
+        os.mkdir(config_folder)
+
+    output_filename = generate_name(origin_config, destination_config)
+    output_path = os.path.join(config_folder, output_filename)
+
+    logging.debug('Saving new configuration to `{0}`...'.format(output_path))
+    with open(output_path, 'w') as f:
         yaml.dump(origin_config, f, Dumper=yaml.Dumper)
 
     # Save the original configuration as a comment
-    with open(args.output_config, 'a') as f:
+    with open(output_path, 'a') as f:
         destination_config_yaml = yaml.dump(destination_config, Dumper=yaml.Dumper)
         destination_config_lines = destination_config_yaml.split('\n')
         f.write(f'\n# Destination configuration: {args.destination}\n#\n')
         for line in destination_config_lines:
             f.write(f'# {line}\n')
 
-    logging.info('New configuration file saved: `{0}`'.format(args.output_config))
-    # Requires Hydra > 1.0
-    # logging.info('To run the experiment with the new mobility:')
-    # logging.info(f'\tpython src/covid19sim/run.py --config-path {args.output_config}')
+    logging.info('New configuration file saved: `{0}`'.format(output_path))
+    logging.info(f'To run the experiment with the new mobility:\n\tpython '
+                 f'src/covid19sim/run.py transport={output_filename}')
 
 if __name__ == '__main__':
     import argparse
@@ -147,9 +164,6 @@ if __name__ == '__main__':
         help='Path to the folder of the destination experiment (e.g. '
              'Transformer), i.e. the tracing method which we apply the mobility '
              'intervention of.')
-    parser.add_argument('--output-config', type=str, required=True,
-        help='Path to save the updated configuration file (destination '
-             'configuration file + additional mapping from origin to destination.')
     parser.add_argument('--num-rec-levels', type=int, default=4,
         help='Number of possible recommendation levels (default: 4)')
     parser.add_argument('--verbose', action='store_true')
