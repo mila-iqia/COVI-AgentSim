@@ -132,11 +132,17 @@ def main(args):
 if __name__ == '__main__':
     import argparse
 
-    parser = argparse.ArgumentParser('Recommendation levels transition matrix')
+    parser = argparse.ArgumentParser(description='Creates the transition '
+        'matrices to apply the mobility patterns from an `origin` experiment '
+        '(e.g. Transformer) to a `destination` experiment (e.g. Digital Binary '
+        'Tracing). The recommendation levels of destination are updated as '
+        'usual, following the tracing method of destination (e.g. Digital '
+        'Binary Tracing), but the interventions on the mobility follow the '
+        'recommendations (in expectation) from the origin (e.g. Transformer).')
     parser.add_argument('--origin', type=str,
-        help='Path to the folder of the origin experiment (e.g. Digital Binary Tracing).')
+        help='Path to the folder of the origin experiment (e.g. Transformer).')
     parser.add_argument('--destination', type=str,
-        help='Path to the folder of the destination experiment (e.g. Transformer).')
+        help='Path to the folder of the destination experiment (e.g. Binary Digital Tracing).')
     parser.add_argument('--output-config', type=str, required=True,
         help='Path to save the updated configuration file (destination '
              'configuration file + additional mapping from origin to destination.')

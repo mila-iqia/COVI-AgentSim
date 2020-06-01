@@ -2167,7 +2167,7 @@ def lp_solve_wasserstein(dist_0, dist_1):
     this heuristic, we then have a LP formulation with 12 variables (if dist0
     and dist1 take each 4 values, e.g. 4 recommendation levels) and 7 constraints.
     The variable T is encoded as a vector with the upper triangular values of the
-    transport plan in the first half and the lower triangular value in the second half.
+    transport plan in the first half and the lower triangular values in the second half.
 
         T = [T_{01}, T_{02}, T_{03}, T_{12}, T_{13}, T_{23},
              T_{10}, T_{20}, T_{21}, T_{30}, T_{31}, T_{32}]
