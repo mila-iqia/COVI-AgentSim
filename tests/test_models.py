@@ -139,7 +139,7 @@ class ModelsTest(unittest.TestCase):
 
         with TemporaryDirectory() as d:
             start_time = datetime.datetime(2020, 2, 28, 0, 0)
-            n_people = 30
+            n_people = 50
             n_days = 20
 
             ModelsTest.make_human_as_message_proxy.set_start_time(start_time)
