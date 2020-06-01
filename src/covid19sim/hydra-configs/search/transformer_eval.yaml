@@ -32,3 +32,5 @@ seed: # for sole reproducibility purposes
     - 2004
 
 # export WEIGHTS=DASHING-UNIVERSE-393A; python random_search.py infra=mila n_search=1 n_runs_per_search=5 gres="gpu:1" partition=long env_name=covid38 tune=true outdir=/network/tmp1/schmidtv/covid_sims/model_selection/$WEIGHTS exp_file=transformer_eval weights=$tv/$WEIGHTS dev=true
+
+# export WEIGHTS=DASHING-UNIVERSE-393A; python random_search.py infra=intel n_search=5 env_name=covid-victor tune=true outdir=/home/mila/model_selection/$WEIGHTS exp_file=transformer_eval weights=/home/mila/$WEIGHTS dev=true

@@ -414,10 +414,12 @@ def main(conf: DictConfig) -> None:
             printlines()
 
         if infra == "intel":
-            if i == 0:
-                intel_str = fill_intel_template(template_str, opts)
             opts = sample_search_conf(conf, run_idx)
             hydra_args = get_hydra_args(opts, RANDOM_SEARCH_SPECIFIC_PARAMS)
+
+            if i == 0:
+                intel_str = fill_intel_template(template_str, opts)
+
             command_suffix = "&\nsleep 5;\n" if parallel_search else ";\n"
             intel_str += "\n{}{}".format("python run.py " + hydra_args, command_suffix)
             run_idx += 1
