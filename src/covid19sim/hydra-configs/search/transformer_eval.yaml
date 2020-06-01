@@ -12,7 +12,6 @@
 # - `sequential` samples will loop through the values in `from`. `from` MUST be a list
 
 tracing_method: transformer
-run_type: collect-all
 n_people: 1000
 simulation_days: 30
 INTERVENTION_DAY: 5
@@ -21,9 +20,10 @@ DROPOUT_RATE: 0.02
 APP_UPTAKE: 0.7
 P_CAREFUL_PERSON: 0.3
 GLOBAL_MOBILITY_SCALING_FACTOR: 1
+tune: true
 
 seed: # for sole reproducibility purposes
-  sample: sequential # uniform int choice
+  sample: sequential # loop through list sequentially, in order
   from:
     - 2000
     - 2001
@@ -31,5 +31,4 @@ seed: # for sole reproducibility purposes
     - 2003
     - 2004
 
-# supercrunch
-
+# export WEIGHTS=DASHING-UNIVERSE-393A; python random_search.py infra=mila n_search=1 n_runs_per_search=5 gres="gpu:1" partition=long env_name=covid38 tune=true outdir=/network/tmp1/schmidtv/covid_sims/model_selection/$WEIGHTS exp_file=transformer_eval weights=$tv/$WEIGHTS dev=true
