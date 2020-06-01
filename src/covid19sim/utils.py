@@ -2182,26 +2182,22 @@ def lp_solve_wasserstein(dist_0, dist_1):
         T_{02} + T_{12} + T_{32} = dist1_{2} - min(dist0_{2}, dist1_{2})
                  sum_{ij} T_{ij} = 1 - sum_{i} min(dist0_{i}, dist1_{i})
 
-    Parameters
-    ----------
-    dist_0 : np.ndarray instance
-        The distribution to move from. This array should have non-negative
-        values, be normalized (i.e. sum to 1), and have the same shape as dist_1.
+    Note:
+        [1] Justin Solomon, Optimal Transport on Discrete Domains
+            (https://arxiv.org/abs/1801.07745)
 
-    dist_1 : np.ndarray instance
-        The distribution to move from. This array should have non-negative
-        values, be normalized (i.e. sum to 1), and have the same shape as dist_0.
+    Args:
+        dist_0 (np.ndarray): The distribution to move from. This array should
+            have non-negative values, be normalized (i.e. sum to 1), and have
+            the same shape as dist_1.
+        dist_1 (np.ndarray): The distribution to move to. This array should
+            have non-negative values, be normalized (i.e. sum to 1), and have
+            the same shape as dist_0.
 
-    Returns
-    -------
-    solution : np.ndarray instance
-        Array containing the solution of the Linear Program. This array contains
-        the off-diagonal values of the optimal transport plan.
-
-    References
-    ----------
-    [1] Justin Solomon, Optimal Transport on Discrete Domains
-        (https://arxiv.org/abs/1801.07745)
+    Returns:
+        np.ndarray: Array containing the solution of the Linear Program.
+            This array contains the off-diagonal values of the optimal
+            transport plan.
     """
     min_dist = np.minimum(dist_0, dist_1)
 
@@ -2229,26 +2225,21 @@ def lp_solution_to_transport_plan(dist_0, dist_1, solution):
     """Converts the solution of the LP given by lp_solve_wasserstein
     (off-diagonal values) into the full transport plan.
 
-    Parameters
-    ----------
-    dist_0 : np.ndarray instance
-        The distribution to move from. This array should have non-negative
-        values, be normalized (i.e. sum to 1), and have the same shape as dist_1.
+    Args:
+        dist_0 (np.ndarray): The distribution to move from. This array should
+            have non-negative values, be normalized (i.e. sum to 1), and have
+            the same shape as dist_1.
+        dist_1 (np.ndarray): The distribution to move to. This array should
+            have non-negative values, be normalized (i.e. sum to 1), and have
+            the same shape as dist_0.
+        solution (np.ndarray): Array containing the solution of the Linear
+            Program. This array contains the off-diagonal values of the optimal
+            transport plan (upper triangular values in the first half, lower
+            triangular values in the second half).
 
-    dist_1 : np.ndarray instance
-        The distribution to move to. This array should have non-negative
-        values, be normalized (i.e. sum to 1), and have the same shape as dist_0.
-
-    solution : np.ndarray instance
-        Array containing the solution of the Linear Program. This array contains
-        the off-diagonal values of the optimal transport plan (upper triangular
-        values in the first half, lower triangular values in the second half).
-
-    Returns
-    -------
-    transition_matrix : np.ndarray instance
-        An array containing the full optimal transport plan. The transition
-        matrix is a normalized version of the optimal transport plan.
+    Returns:
+        np.ndarray: An array containing the full optimal transport plan. The
+            transition matrix is a normalized version of the optimal transport plan.
     """
     # The diagonal of the transition matrix contains the minimum values
     # of both distributions, i.e. as much mass as possible is kept fixed.
@@ -2273,21 +2264,16 @@ def get_rec_level_transition_matrix(source, target):
     recommendation levels (e.g. given by Digital Binary Tracing) to another
     distribution of recommendation levels (e.g. given by a Transformer).
 
-    Parameters
-    ----------
-    source : np.ndarray instance
-        The source distribution. This distribution does not need to be
-        normalized (i.e. array of counts).
+    Args:
+        source (np.ndarray): The source distribution. This distribution does
+            not need to be normalized (i.e. array of counts).
+        target (np.ndarray): The target distribution. This distribution does
+        not need to be normalized (i.e. array of counts).
 
-    target : np.ndarray instance
-        The target distribution. This distribution does not need to be
-        normalized (i.e. array of counts).
-
-    Returns
-    -------
-    transition_matrix : np.ndarray instance
-        Transition matrix containing, where the value {i, j} corresponds to
-        P(target recommendation level = j | source recommendation level = i)
+    Returns:
+        np.ndarray: Transition matrix containing, where the value {i, j}
+            corresponds to
+            P(target recommendation level = j | source recommendation level = i)
     """
     # Normalize the distributions (in case we got counts)
     if np.isclose(source.sum(), 0) or np.isclose(target.sum(), 0):
