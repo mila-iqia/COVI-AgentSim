@@ -263,7 +263,18 @@ class BinaryTracing(BehaviorInterventions):
         super(BinaryTracing, self).__init__()
 
     def modify_behavior(self, human):
-        recommendations = get_recommendations(human.rec_level)
+        # If there is a mapping available for recommendation levels in the
+        # configuration file, use the intervention level randomly picked from
+        # this transition matrix, based on the recommendation level. The update
+        # of the recommendation levels are not altered.
+        if human.daily_rec_level_mapping is None:
+            intervention_level = human.rec_level
+        else:
+            # QKFIX: There are 4 recommendation levels, the value is hard-coded here
+            probas = human.daily_rec_level_mapping[human.rec_level]
+            intervention_level = human.rng.choice(4, p=probas)
+        recommendations = get_recommendations(intervention_level)
+
         self.revert_behavior(human)
         for rec in recommendations:
             if isinstance(rec, BehaviorInterventions) and human.follows_recommendations_today:
@@ -359,8 +370,17 @@ class RiskBasedRecommendations(BehaviorInterventions):
             raise
 
     def modify_behavior(self, human):
-        # get the list of recommendations I should be following
-        recommendations = get_recommendations(human.rec_level)
+        # If there is a mapping available for recommendation levels in the
+        # configuration file, use the intervention level randomly picked from
+        # this transition matrix, based on the recommendation level. The update
+        # of the recommendation levels are not altered.
+        if human.daily_rec_level_mapping is None:
+            intervention_level = human.rec_level
+        else:
+            # QKFIX: There are 4 recommendation levels, the value is hard-coded here
+            probas = human.daily_rec_level_mapping[human.rec_level]
+            intervention_level = human.rng.choice(4, p=probas)
+        recommendations = get_recommendations(intervention_level)
 
         # revert all my previous behaviours
         self.revert_behavior(human)
