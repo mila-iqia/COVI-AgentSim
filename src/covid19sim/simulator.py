@@ -388,7 +388,7 @@ class Human(object):
         if last_date is None or (current_date - last_date).days > 0:
             proba = self.conf.get("DROPOUT_RATE")
             self.last_date["follow_recommendations"] = self.env.timestamp.date()
-            self._follows_recommendations_today = self.rng.rand() < proba
+            self._follows_recommendations_today = self.rng.rand() < (1 - proba)
         return self._follows_recommendations_today
 
     def assign_household(self, location):
