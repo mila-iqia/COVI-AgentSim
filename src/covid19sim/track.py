@@ -297,7 +297,6 @@ class Tracker(object):
         self.expected_mobility.append(EM)
         self.feelings.append(F)
         self.rec_feelings.extend([(h.rec_level, h.how_am_I_feeling()) for h in self.city.humans])
-        self.outside_daily_contacts.append(self.n_outside_daily_contacts/len(self.city.humans))
 
         # risk models
         prec, lift, recall = self.compute_risk_precision(daily=True)
@@ -741,6 +740,7 @@ class Tracker(object):
 
                 self.contacts['n_contacts']['total'] = np.zeros((150,150))
 
+                self.outside_daily_contacts.append(1.0 * self.n_outside_daily_contacts/len(self.city.humans))
                 self.n_outside_daily_contacts = 0
                 self.last_day['social_mixing'] = day
 

@@ -1347,12 +1347,7 @@ class Human(object):
                 self.tracing = True
                 self.tracing_method = intervention
                 self.risk = 0  # FIXME: may affect contacts before next timeslot
-                # initiate with basic recommendations
-                # FIXME: Check isinstance of the RiskBasedRecommendations class
-                if intervention.risk_model not in ['manual', 'digital']:
-                    intervention.modify_behavior(self)
-            else:
-                intervention.modify_behavior(self)
+            intervention.modify_behavior(self)
             self.notified = True
 
     def run(self, city):
