@@ -80,16 +80,6 @@ def recovered_array(human_recovered_timestamp, date, conf):
     return is_recovered, recovery_day
 
 
-def get_test_result_array(test_results, date, conf):
-    # identical to human.get_test_result_array
-    results = np.zeros(conf.get("TRACING_N_DAYS_HISTORY"))
-    for test_result, test_time in test_results:
-        result_day = (date - test_time).days
-        if result_day >= 0 and result_day < conf.get("TRACING_N_DAYS_HISTORY"):
-            results[result_day] = test_result
-    return results
-
-
 # TODO: negative should probably return 0 and None return -1 to be consistent with encoded age and sex
 def encode_test_result(test_result):
     if test_result is None:

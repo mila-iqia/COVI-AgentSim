@@ -16,6 +16,8 @@ run_type: collect-all
 n_people: 1000
 simulation_days: 22
 INTERVENTION_DAY: 5
+DROPOUT_RATE: 0.02
+init_percent_sick: 0.002
 
 APP_UPTAKE:
   sample: cartesian # will be sampled in this order, in a cartesian product with any other "cartesian" sampling
@@ -40,4 +42,4 @@ GLOBAL_MOBILITY_SCALING_FACTOR:
 
 seed: # for sole reproducibility purposes
   sample: range # uniform int choice
-  from: [0, 10]
+  from: [10, 50]

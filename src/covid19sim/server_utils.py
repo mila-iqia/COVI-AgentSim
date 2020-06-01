@@ -12,7 +12,7 @@ import pickle
 import time
 import typing
 import zmq
-
+from pathlib import Path
 from ctt.inference.infer import InferenceEngine
 
 import covid19sim.frozen.clustering.blind
@@ -30,8 +30,17 @@ expected_processed_packet_param_names = [
 ]
 
 default_poll_delay_ms = 500
-default_frontend_ipc_address = "ipc:///tmp/covid19sim-inference-frontend.ipc"
-default_backend_ipc_address = "ipc:///tmp/covid19sim-inference-backend.ipc"
+
+# if on slurm
+if os.path.isdir("/Tmp"):
+    frontend_path = Path("/Tmp/slurm.{}.0".format(os.environ.get("SLURM_JOB_ID")))
+    backend_path = Path("/Tmp/slurm.{}.0".format(os.environ.get("SLURM_JOB_ID")))
+else:
+    frontend_path = "/tmp"
+    backend_path = "/tmp"
+
+default_frontend_ipc_address = "ipc://" + os.path.join(frontend_path, "covid19sim-inference-frontend.ipc")
+default_backend_ipc_address = "ipc://" + os.path.join(backend_path, "covid19sim-inference-backend.ipc")
 
 
 class InferenceWorker(multiprocessing.Process):
@@ -438,7 +447,7 @@ def _proc_human(params, inference_engine):
         "observed": {
             "reported_symptoms": reported_symptoms,
             "candidate_encounters": candidate_encounters,
-            "test_results": covid19sim.frozen.helper.get_test_result_array(human.test_results, todays_date, conf),
+            "test_results": human.test_results,
             "preexisting_conditions": human.obs_preexisting_conditions,
             "age": human.obs_age,
             "sex": human.obs_sex,

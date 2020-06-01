@@ -16,6 +16,9 @@ run_type: collect-all
 n_people: 1000
 simulation_days: 22
 INTERVENTION_DAY: 5
+init_percent_sick: 0.002
+DROPOUT_RATE: 0.02
+
 
 APP_UPTAKE:
   sample: cartesian # will be sampled in this order

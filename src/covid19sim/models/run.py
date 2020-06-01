@@ -44,9 +44,6 @@ def make_human_as_message(
     """
     preexisting_conditions = conditions_to_np(human.preexisting_conditions)
     obs_preexisting_conditions = conditions_to_np(human.obs_preexisting_conditions)
-    test_results = collections.deque(((encode_test_result(result), timestamp)
-                                      for result, timestamp in human.test_results))
-    test_results.pop()  # skip the last test_results holding a placeholder for do test data
     rolling_all_symptoms = symptoms_to_np(human.rolling_all_symptoms, conf)
     rolling_all_reported_symptoms = symptoms_to_np(human.rolling_all_reported_symptoms, conf)
 
@@ -68,7 +65,7 @@ def make_human_as_message(
         infectiousnesses=human.infectiousnesses,
         infection_timestamp=human.infection_timestamp,
         recovered_timestamp=human.recovered_timestamp,
-        test_results=test_results,
+        test_results=human.get_test_results_array(human.env.timestamp),
         rolling_all_symptoms=rolling_all_symptoms,
         rolling_all_reported_symptoms=rolling_all_reported_symptoms,
         incubation_days=human.incubation_days,
