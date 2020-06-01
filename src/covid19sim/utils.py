@@ -1853,7 +1853,9 @@ def extract_tracker_data(tracker, conf):
     data['intervention'] = conf.get('INTERVENTION')
     data['risk_model'] = conf.get('RISK_MODEL')
     data['expected_mobility'] = tracker.expected_mobility
-    data['serial_interval'] = tracker.get_generation_time()
+    data['serial_interval'] = tracker.get_serial_interval()
+    data['all_serial_intervals'] = tracker.serial_intervals
+    data['generation_times'] = tracker.get_generation_time()
     data['mobility'] = tracker.mobility
     data['n_init_infected'] = tracker.n_infected_init
     data['contacts'] = dict(tracker.contacts)
@@ -1878,6 +1880,8 @@ def extract_tracker_data(tracker, conf):
     data['outside_daily_contacts'] = tracker.outside_daily_contacts
     data['test_monitor'] = tracker.test_monitor
     data['encounter_distances'] = tracker.encounter_distances
+    data['effective_contacts_since_intervention'] = tracker.compute_effective_contacts(since_intervention=True)
+    data['effective_contacts_all_days'] = tracker.compute_effective_contacts(since_intervention=False)
     # data['dist_encounters'] = dict(tracker.dist_encounters)
     # data['time_encounters'] = dict(tracker.time_encounters)
     # data['day_encounters'] = dict(tracker.day_encounters)

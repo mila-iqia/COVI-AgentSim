@@ -1330,17 +1330,21 @@ class Human(object):
 
     def notify(self, intervention=None):
         """
-        [summary]
+        This function is called once on the intervention day to notify `Human`.
+        `self.notified` is a flag that is used debugging interventions.
+        If the interevention is of type `Tracing`, everyone is initalized from 0 recommendation level
+        and associated behavior modifications. Subsequent changes in behavior are dependent on recommendation level
+        changes during the course of simulation.
+
+        All other interventions modify behavior only once on intervention day.
+        NOTE: DROPOUT_RATE might affect the behavior modifications.
 
         Args:
-            intervention ([type], optional): [description]. Defaults to None.
-            collect_training_data (bool, optional): [description]. Defaults to False.
+            intervention (BehaviorIntervention, optional): intervention that `Human` should follow. Defaults to None.
         """
-        # FIXME: PERCENT_FOLLOW < 1 will throw an error because ot self.notified somewhere
         if (
             intervention is not None
             and not self.notified
-            and self.rng.random() < self.conf.get('PERCENT_FOLLOW')
         ):
             self.tracing = False
             if isinstance(intervention, Tracing):
@@ -1370,11 +1374,15 @@ class Human(object):
             # recover from cold/flu/allergies if it's time
             self.recover_health()
 
-            # track symptoms
-            if self.is_incubated and self.symptom_start_time is None:
+            # used for tracking serial interval
+            # person needs to show symptoms in order for this to be true.
+            # is_incubated checks for asymptomaticity and whether the days since exposure is
+            # greater than incubation_days.
+            # Note: it doesn't count symptom start time from environmental infection or asymptomatic/presymptomatic infections
+            # reference is in city.tracker.track_serial_interval.__doc__
+            if self.is_incubated and self.symptom_start_time is None and any(self.symptoms):
                 self.symptom_start_time = self.env.timestamp
-                # it doesn't count environmental infection or primary case or asymptomatic/presymptomatic infections; refer the definition
-                city.tracker.track_generation_times(self.name)
+                city.tracker.track_serial_interval(self.name)
 
             # recover
             if self.is_infectious and self.days_since_covid >= self.recovery_days:
@@ -1685,7 +1693,6 @@ class Human(object):
                     "A\t0", packing_term, encounter_term,
                     social_distancing_term, distance, location)
 
-
             t_overlap = (min(self.location_leaving_time, h.location_leaving_time) -
                          max(self.location_start_time,   h.location_start_time)) / SECONDS_PER_MINUTE
             t_near = self.rng.random() * t_overlap * max(self.time_encounter_reduction_factor, h.time_encounter_reduction_factor)
@@ -1770,7 +1777,9 @@ class Human(object):
                                                   self.conf['HYGIENE_EFFICACY_FACTOR'],
                                                   self,
                                                   h)
+
                     x_human = infector.rng.random() < p_infection
+                    city.tracker.track_p_infection(x_human, p_infection, infector.viral_load)
                     if x_human and infectee.is_susceptible:
                         infectee.infection_timestamp = self.env.timestamp
                         infectee.initial_viral_load = infector.rng.random()

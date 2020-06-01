@@ -126,9 +126,8 @@ def main(conf: DictConfig) -> None:
         from covid19sim.plotting.plot_rt import PlotRt
 
         cases_per_day = tracker.cases_per_day
-        if tracker.get_generation_time() > 0:
-            serial_interval = tracker.get_generation_time()
-        else:
+        serial_interval = tracker.get_generation_time()
+        if serial_interval == 0:
             serial_interval = 7.0
             print("WARNING: serial_interval is 0")
         print(f"using serial interval :{serial_interval}")
