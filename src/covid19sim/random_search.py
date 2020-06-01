@@ -340,6 +340,7 @@ def main(conf: DictConfig) -> None:
         "now_str",  # naming scheme
         "parallel_search",  # run with & at the end instead of ; to run in subshells
         "ipc",  # run with & at the end instead of ; to run in subshells
+        "start_index", # ignore the first runs, to continue a cartesian or sequential exploration for instance
     }
 
     # move back to original directory because hydra moved
@@ -362,6 +363,7 @@ def main(conf: DictConfig) -> None:
     conf["now_str"] = now_str()
     infra = conf.get("infra", "mila")
     parallel_search = conf.get("parallel_search", False)
+    start_index = conf.get("start_index", 0)
     template_str = load_template(infra)
 
     home = os.environ["HOME"]
@@ -369,6 +371,7 @@ def main(conf: DictConfig) -> None:
     # run n_search jobs
     printlines()
     intel_str = ""
+    run_idx = start_index
     for i in range(conf.get("n_search", 1)):
 
         # sample parameters
@@ -379,13 +382,14 @@ def main(conf: DictConfig) -> None:
             ipcf, ipcb = ipc_addresses()
             conf["ipc"] = {"frontend": ipcf, "backend": ipcb}
             job_str = fill_mila_template(template_str, conf)
-            opts = sample_search_conf(conf, i)
+            opts = sample_search_conf(conf, run_idx)
             opts["INFERENCE_SERVER_ADDRESS"] = f'"{ipcf}"'
             hydra_args = get_hydra_args(opts, RANDOM_SEARCH_SPECIFIC_PARAMS)
 
             for k in range(conf.get("n_runs_per_search", 1)):
                 job_str += "\n{};\n".format("python run.py" + hydra_args)
-                opts = sample_search_conf(conf, i)
+                run_idx += 1
+                opts = sample_search_conf(conf, run_idx)
                 opts["INFERENCE_SERVER_ADDRESS"] = f'"{ipcf}"'
                 hydra_args = get_hydra_args(opts, RANDOM_SEARCH_SPECIFIC_PARAMS)
 
@@ -412,8 +416,11 @@ def main(conf: DictConfig) -> None:
         if infra == "intel":
             if i == 0:
                 intel_str = fill_intel_template(template_str, opts)
+            opts = sample_search_conf(conf, run_idx)
+            hydra_args = get_hydra_args(opts, RANDOM_SEARCH_SPECIFIC_PARAMS)
             command_suffix = "&\nsleep 5;\n" if parallel_search else ";\n"
             intel_str += "\n{}{}".format("python run.py " + hydra_args, command_suffix)
+            run_idx += 1
 
     if infra == "intel":
         path = Path(home) / "covi_search" / f"covi_search{conf['now_str']}.sh"
