@@ -2236,7 +2236,7 @@ def lp_solution_to_transport_plan(dist_0, dist_1, solution):
         values, be normalized (i.e. sum to 1), and have the same shape as dist_1.
 
     dist_1 : np.ndarray instance
-        The distribution to move from. This array should have non-negative
+        The distribution to move to. This array should have non-negative
         values, be normalized (i.e. sum to 1), and have the same shape as dist_0.
 
     solution : np.ndarray instance

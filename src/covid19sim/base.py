@@ -1,6 +1,7 @@
 """
 Contains base classes that define environment of the simulator.
 """
+import numpy as np
 import copy
 import datetime
 import itertools
@@ -126,6 +127,13 @@ class City:
             test_type: max([int(conf['TEST_TYPES'][test_type]['capacity'] * self.n_people), 1])
             for test_type in self.test_type_preference
         }
+
+        if 'DAILY_REC_LEVEL_MAPPING' in conf:
+            # QKFIX: There are 4 recommendation levels, value is hard-coded here
+            self.daily_rec_level_mappings = (np.asarray(conf['DAILY_REC_LEVEL_MAPPING'], dtype=np.float_)
+                                               .reshape((-1, 4, 4)))
+        else:
+            self.daily_rec_level_mappings = None
 
         self.covid_testing_facility = TestFacility(self.test_type_preference, self.max_capacity_per_test_type, env, conf)
 
@@ -580,6 +588,19 @@ class City:
             list: all of everyone's events
         """
         return list(itertools.chain(*[h.events for h in self.humans]))
+
+    @property
+    def daily_rec_level_mapping(self):
+        if self.daily_rec_level_mappings is None:
+            return None
+
+        current_day = (self.env.timestamp - self.env.initial_timestamp).days
+        if self.conf.get('INTERVENTION_DAY', -1) >= 0:
+            current_day -= self.conf.get('INTERVENTION_DAY')
+
+        index = min(current_day, len(self.daily_rec_level_mappings) - 1)
+
+        return self.daily_rec_level_mappings[index]
 
     def events_slice(self, begin, end):
         """

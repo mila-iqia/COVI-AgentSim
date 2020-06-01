@@ -267,11 +267,11 @@ class BinaryTracing(BehaviorInterventions):
         # configuration file, use the intervention level randomly picked from
         # this transition matrix, based on the recommendation level. The update
         # of the recommendation levels are not altered.
-        if human.daily_rec_level_mapping is None:
+        if human.city.daily_rec_level_mapping is None:
             intervention_level = human.rec_level
         else:
             # QKFIX: There are 4 recommendation levels, the value is hard-coded here
-            probas = human.daily_rec_level_mapping[human.rec_level]
+            probas = human.city.daily_rec_level_mapping[human.rec_level]
             intervention_level = human.rng.choice(4, p=probas)
         recommendations = get_recommendations(intervention_level)
 
@@ -374,11 +374,11 @@ class RiskBasedRecommendations(BehaviorInterventions):
         # configuration file, use the intervention level randomly picked from
         # this transition matrix, based on the recommendation level. The update
         # of the recommendation levels are not altered.
-        if human.daily_rec_level_mapping is None:
+        if human.city.daily_rec_level_mapping is None:
             intervention_level = human.rec_level
         else:
             # QKFIX: There are 4 recommendation levels, the value is hard-coded here
-            probas = human.daily_rec_level_mapping[human.rec_level]
+            probas = human.city.daily_rec_level_mapping[human.rec_level]
             intervention_level = human.rng.choice(4, p=probas)
         recommendations = get_recommendations(intervention_level)
 

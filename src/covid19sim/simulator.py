@@ -225,12 +225,6 @@ class Human(object):
         self.test_recommended = False
         self.effective_contacts = 0
         self.num_contacts = 0
-        if 'DAILY_REC_LEVEL_MAPPING' in conf:
-            # QKFIX: There are 4 recommendation levels, value is hard-coded here
-            self.daily_rec_level_mappings = (np.asarray(conf['DAILY_REC_LEVEL_MAPPING'], dtype=np.float_)
-                                               .reshape((-1, 4, 4)))
-        else:
-            self.daily_rec_level_mappings = None
 
         # risk prediction
         self.contact_book = ContactBook(
@@ -2057,16 +2051,3 @@ class Human(object):
                 )
         else:
             return -1
-
-    @property
-    def daily_rec_level_mapping(self):
-        if self.daily_rec_level_mappings is None:
-            return None
-
-        current_day = (self.env.timestamp - self.env.initial_timestamp).days
-        if self.conf.get('INTERVENTION_DAY', -1) >= 0:
-            current_day -= self.conf.get('INTERVENTION_DAY')
-
-        index = min(current_day, len(self.daily_rec_level_mappings) - 1)
-
-        return self.daily_rec_level_mappings[index]
