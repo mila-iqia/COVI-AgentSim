@@ -1080,10 +1080,10 @@ class Tracker(object):
         r0 = p_transmission * effective_contacts * infectiousness_duration
 
         log(f"Eff. contacts: {effective_contacts:5.3f} \t % infected: {p_infected: 2.3f}%", logfile)
-        log(f"Probability of transmission: {p_transmission:2.3f}", logfile)
-        log(f"Ro (valid only when small proportion of population is infected): {r0: 2.3f}", logfile)
-        log("definition of small might be blurry for a population size of less than 1000  ", logfile)
-        log(f"Serial interval: {self.get_serial_interval(): 5.3f}", logfile)
+        # log(f"Probability of transmission: {p_transmission:2.3f}", logfile)
+        # log(f"Ro (valid only when small proportion of population is infected): {r0: 2.3f}", logfile)
+        # log("definition of small might be blurry for a population size of less than 1000  ", logfile)
+        # log(f"Serial interval: {self.get_serial_interval(): 5.3f}", logfile)
 
     def plot_metrics(self, dirname):
         """
