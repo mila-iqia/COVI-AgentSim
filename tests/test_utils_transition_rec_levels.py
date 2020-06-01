@@ -9,7 +9,7 @@ def test_lp_solve_wasserstein():
     dist_1 = np.array([0.4, 0.2, 0.3, 0.1])
 
     expected_solution = np.array([0.2, 0.2, 0.0, 0.0, 0.0, 0.0,
-                              0.0, 0.0, 0.0, 0.0, 0.0, 0.1])
+                                  0.0, 0.0, 0.0, 0.0, 0.0, 0.1])
     solution = lp_solve_wasserstein(dist_0, dist_1)
 
     np.testing.assert_allclose(solution, expected_solution, atol=1e-7)
@@ -33,8 +33,8 @@ def test_lp_solution_to_transport_plan():
 
 
 def test_get_rec_level_transition_matrix():
-    origin = np.array([0.8, 0.0, 0.0, 0.2])
-    destination = np.array([0.4, 0.2, 0.3, 0.1])
+    source = np.array([0.8, 0.0, 0.0, 0.2])
+    target = np.array([0.4, 0.2, 0.3, 0.1])
 
     expected_transition_matrix = np.array([
         [0.5, 0.25, 0.25, 0.0],
@@ -42,6 +42,6 @@ def test_get_rec_level_transition_matrix():
         [0.0,  0.0,  1.0, 0.0],
         [0.0,  0.0,  0.5, 0.5]
     ])
-    transition_matrix = get_rec_level_transition_matrix(origin, destination)
+    transition_matrix = get_rec_level_transition_matrix(source, target)
 
     np.testing.assert_allclose(expected_transition_matrix, transition_matrix, atol=1e-7)

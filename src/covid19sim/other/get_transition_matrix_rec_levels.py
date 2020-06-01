@@ -10,13 +10,13 @@ from datetime import datetime
 from covid19sim.utils import get_rec_level_transition_matrix
 
 
-def generate_name(origin_config, destination_config):
-    origin_model = origin_config['RISK_MODEL']
-    seed = origin_config['seed']
-    destination_model = destination_config['RISK_MODEL']
+def generate_name(source_config, target_config):
+    source_model = source_config['RISK_MODEL']
+    seed = source_config['seed']
+    target_model = target_config['RISK_MODEL']
     timenow = datetime.now().strftime('%Y%m%d-%H%M%S')
 
-    return f'{origin_model}_to_{destination_model}_seed-{seed}_{timenow}.yaml'
+    return f'{source_model}_to_{target_model}_seed-{seed}_{timenow}.yaml'
 
 
 def get_config_and_data(folder):
@@ -86,60 +86,60 @@ def get_rec_levels_distributions(data, num_rec_levels=4):
 def main(args):
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO)
 
-    origin_config, origin_data = get_config_and_data(args.origin)
-    destination_config, destination_data = get_config_and_data(args.destination)
+    source_config, source_data = get_config_and_data(args.source)
+    target_config, target_data = get_config_and_data(args.target)
 
-    if origin_config['seed'] != destination_config['seed']:
-        warnings.warn('The seed of the origin experiment is different from the '
-                      'seed of the destination experiment. origin.seed={0}, '
-                      'destination.seed={1}.'.format(origin_config['seed'],
-                      destination_config['seed']))
+    if source_config['seed'] != target_config['seed']:
+        warnings.warn('The seed of the source experiment is different from the '
+                      'seed of the target experiment. source.seed={0}, '
+                      'target.seed={1}.'.format(source_config['seed'],
+                      target_config['seed']))
 
-    if origin_data['intervention_day'] != destination_data['intervention_day']:
-        raise ValueError('The intervention day of the origin experiment is '
+    if source_data['intervention_day'] != target_data['intervention_day']:
+        raise ValueError('The intervention day of the source experiment is '
                          'different from the intervention day of the '
-                         'destination experiment. origin.intervention_day={0}, '
-                         'destination.intervention_day={1}.'.format(
-                         origin_data['intervention_day'],
-                         destination_data['intervention_day']))
+                         'target experiment. source.intervention_day={0}, '
+                         'target.intervention_day={1}.'.format(
+                         source_data['intervention_day'],
+                         target_data['intervention_day']))
 
-    origin_dists = get_rec_levels_distributions(origin_data,
+    source_dists = get_rec_levels_distributions(source_data,
                                                 num_rec_levels=args.num_rec_levels)
-    destination_dists = get_rec_levels_distributions(destination_data,
+    target_dists = get_rec_levels_distributions(target_data,
                                                      num_rec_levels=args.num_rec_levels)
 
-    transition_matrices = np.zeros((origin_dists.shape[0], args.num_rec_levels,
+    transition_matrices = np.zeros((source_dists.shape[0], args.num_rec_levels,
                                    args.num_rec_levels), dtype=np.float_)
 
-    for index, (origin_dist, destination_dist) in enumerate(zip(origin_dists, destination_dists)):
+    for index, (source_dist, target_dist) in enumerate(zip(source_dists, target_dists)):
         logging.debug('Building the transition matrix for day {0}'.format(
-                      origin_data['intervention_day'] + index))
+                      source_data['intervention_day'] + index))
         transition_matrices[index] = get_rec_level_transition_matrix(
-            origin_dist, destination_dist)
+            source_dist, target_dist)
     logging.info('Transition matrices successfully created.')
 
-    # Update the origin configuration file
-    origin_config['DAILY_REC_LEVEL_MAPPING'] = transition_matrices.flatten().tolist()
+    # Update the source configuration file
+    source_config['DAILY_REC_LEVEL_MAPPING'] = transition_matrices.flatten().tolist()
 
-    # Save the new destination configuration
+    # Save the new source configuration
     config_folder = os.path.join(os.path.dirname(__file__), '../hydra-configs/simulation', 'transport')
     config_folder = os.path.relpath(config_folder)
     if not os.path.exists(config_folder):
         os.mkdir(config_folder)
 
-    output_filename = generate_name(origin_config, destination_config)
+    output_filename = generate_name(source_config, target_config)
     output_path = os.path.join(config_folder, output_filename)
 
     logging.debug('Saving new configuration to `{0}`...'.format(output_path))
     with open(output_path, 'w') as f:
-        yaml.dump(origin_config, f, Dumper=yaml.Dumper)
+        yaml.dump(source_config, f, Dumper=yaml.Dumper)
 
-    # Save the original configuration as a comment
+    # Save the source configuration as a comment
     with open(output_path, 'a') as f:
-        destination_config_yaml = yaml.dump(destination_config, Dumper=yaml.Dumper)
-        destination_config_lines = destination_config_yaml.split('\n')
-        f.write(f'\n# Destination configuration: {args.destination}\n#\n')
-        for line in destination_config_lines:
+        target_config_yaml = yaml.dump(target_config, Dumper=yaml.Dumper)
+        target_config_lines = target_config_yaml.split('\n')
+        f.write(f'\n# Target configuration: {args.target}\n#\n')
+        for line in target_config_lines:
             f.write(f'# {line}\n')
 
     logging.info('New configuration file saved: `{0}`'.format(output_path))
@@ -150,18 +150,18 @@ if __name__ == '__main__':
     import argparse
 
     parser = argparse.ArgumentParser(description='Creates the transition '
-        'matrices to apply the mobility patterns from an `origin` experiment '
-        '(e.g. Binary Digital Tracing) to a `destination` experiment (e.g. '
-        'Transformer). The recommendation levels of origin are updated as '
-        'usual, following the tracing method of origin (e.g. Binary Digital '
+        'matrices to apply the mobility patterns from an `source` experiment '
+        '(e.g. Binary Digital Tracing) to a `target` experiment (e.g. '
+        'Transformer). The recommendation levels of source are updated as '
+        'usual, following the tracing method of source (e.g. Binary Digital '
         'Tracing), but the interventions on the mobility follow the '
-        'recommendations (in expectation) from the destination (e.g. Transformer).')
-    parser.add_argument('--origin', type=str,
-        help='Path to the folder of the origin experiment (e.g. Binary Digital '
+        'recommendations (in expectation) from the target (e.g. Transformer).')
+    parser.add_argument('--source', type=str,
+        help='Path to the folder of the source experiment (e.g. Binary Digital '
              'Tracing), i.e. the tracing method to use for the update of the '
              'recommendation levels.')
-    parser.add_argument('--destination', type=str,
-        help='Path to the folder of the destination experiment (e.g. '
+    parser.add_argument('--target', type=str,
+        help='Path to the folder of the target experiment (e.g. '
              'Transformer), i.e. the tracing method which we apply the mobility '
              'intervention of.')
     parser.add_argument('--num-rec-levels', type=int, default=4,

@@ -2268,34 +2268,34 @@ def lp_solution_to_transport_plan(dist_0, dist_1, solution):
 
     return transition
 
-def get_rec_level_transition_matrix(origin, destination):
+def get_rec_level_transition_matrix(source, target):
     """Compute the transition matrix to go from one distribution of
     recommendation levels (e.g. given by Digital Binary Tracing) to another
     distribution of recommendation levels (e.g. given by a Transformer).
 
     Parameters
     ----------
-    origin : np.ndarray instance
-        The origin distribution. This distribution does not need to be
+    source : np.ndarray instance
+        The source distribution. This distribution does not need to be
         normalized (i.e. array of counts).
 
-    destination : np.ndarray instance
-        The destination distribution. This distribution does not need to be
+    target : np.ndarray instance
+        The target distribution. This distribution does not need to be
         normalized (i.e. array of counts).
 
     Returns
     -------
     transition_matrix : np.ndarray instance
         Transition matrix containing, where the value {i, j} corresponds to
-        P(destination recommendation level = j | origin recommendation level = i)
+        P(target recommendation level = j | source recommendation level = i)
     """
     # Normalize the distributions (in case we got counts)
-    if np.isclose(origin.sum(), 0) or np.isclose(destination.sum(), 0):
+    if np.isclose(source.sum(), 0) or np.isclose(target.sum(), 0):
         raise ValueError('The function `get_rec_level_transition_matrix` expects '
                          'two distributions, but got an array full of zeros. '
-                         'origin={0}, destination={1}.'.format(origin, destination))
-    dist_0 = origin / origin.sum()
-    dist_1 = destination / destination.sum()
+                         'source={0}, target={1}.'.format(source, target))
+    dist_0 = source / source.sum()
+    dist_1 = target / target.sum()
 
     solution = lp_solve_wasserstein(dist_0, dist_1)
     transport_plan = lp_solution_to_transport_plan(dist_0, dist_1, solution)
