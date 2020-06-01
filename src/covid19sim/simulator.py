@@ -2064,7 +2064,7 @@ class Human(object):
             return None
 
         current_day = (self.env.timestamp - self.env.initial_timestamp).days
-        if self.conf.get('INTERVENTION_DAY', -1) < 0:
+        if self.conf.get('INTERVENTION_DAY', -1) >= 0:
             current_day -= self.conf.get('INTERVENTION_DAY')
 
         index = min(current_day, len(self.daily_rec_level_mappings) - 1)
