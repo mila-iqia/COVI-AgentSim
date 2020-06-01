@@ -263,10 +263,7 @@ class BinaryTracing(BehaviorInterventions):
         super(BinaryTracing, self).__init__()
 
     def modify_behavior(self, human):
-        if human.rec_level == 0:
-            recommendations = [WashHands(), StandApart(default_distance=25)]
-        else:
-            recommendations = [WashHands(), SocialDistancing(default_distance=100), WearMask(), 'monitor_symptoms', GetTested("recommendations"), Quarantine()]
+        recommendations = get_recommendations(human.rec_level)
         self.revert_behavior(human)
         for rec in recommendations:
             if isinstance(rec, BehaviorInterventions) and human.follows_recommendations_today:
