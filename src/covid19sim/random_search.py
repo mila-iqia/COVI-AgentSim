@@ -238,7 +238,7 @@ def fill_mila_template(template_str, conf):
     cpu = conf.get("cpus", 6)
     mem = conf.get("mem", 16)
     gres = conf.get("gres", "")
-    time = conf.get("time", "4:00:00")
+    time = str(conf.get("time", "4:00:00"))
     slurm_log = conf.get("slurm_log", f"/network/tmp1/{user}/covi-slurm-%j.out")
     if "%j.out" not in slurm_log:
         slurm_log = str(Path(slurm_log).resolve() / "covi-slurm-%j.out")
@@ -314,7 +314,7 @@ def fill_beluga_template(template_str, conf):
 
     cpu = conf.get("cpus", 6)
     mem = conf.get("mem", 16)
-    time = conf.get("time", "3:00:00")
+    time = str(conf.get("time", "3:00:00"))
     slurm_log = conf.get("slurm_log", f"/scratch/{user}/covi-slurm-%j.out")
     if "%j.out" not in slurm_log:
         slurm_log = str(Path(slurm_log).resolve() / "covi-slurm-%j.out")
