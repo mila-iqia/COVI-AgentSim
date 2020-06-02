@@ -219,6 +219,7 @@ class Human(object):
         self.tracing_method = None
         self.maintain_extra_distance = 0
         self._follows_recommendations_today = None
+        self._intervention_level = -1 # Intervention level (level of behaviour modification to apply), for logging purposes
         self.recommendations_to_follow = OrderedSet()
         self.time_encounter_reduction_factor = 1.0
         self.hygiene = 0 # start everyone with a baseline hygiene. Only increase it once the intervention is introduced.

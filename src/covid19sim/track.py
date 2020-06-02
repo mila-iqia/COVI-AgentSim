@@ -109,6 +109,7 @@ class Tracker(object):
         self.r_per_day = [sum(h.is_removed for h in self.city.humans)]
         self.humans_state = defaultdict(list)
         self.humans_rec_level = defaultdict(list)
+        self.humans_intervention_level = defaultdict(list)
 
         # R0 and Generation times
         self.avg_infectious_duration = 0
@@ -350,6 +351,7 @@ class Tracker(object):
                 state = 'N/A'
             self.humans_state[human.name].append(state)
             self.humans_rec_level[human.name].append(human.rec_level)
+            self.humans_intervention_level[human.name].append(human._intervention_level)
 
         # Rt
         self.r.append(self.get_R())

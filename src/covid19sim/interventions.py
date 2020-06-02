@@ -273,6 +273,7 @@ class BinaryTracing(BehaviorInterventions):
             # QKFIX: There are 4 recommendation levels, the value is hard-coded here
             probas = human.city.daily_rec_level_mapping[human.rec_level]
             intervention_level = human.rng.choice(4, p=probas)
+        human._intervention_level = intervention_level
         recommendations = get_recommendations(intervention_level)
 
         self.revert_behavior(human)
@@ -380,6 +381,7 @@ class RiskBasedRecommendations(BehaviorInterventions):
             # QKFIX: There are 4 recommendation levels, the value is hard-coded here
             probas = human.city.daily_rec_level_mapping[human.rec_level]
             intervention_level = human.rng.choice(4, p=probas)
+        human._intervention_level = intervention_level
         recommendations = get_recommendations(intervention_level)
 
         # revert all my previous behaviours
