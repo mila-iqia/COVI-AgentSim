@@ -24,8 +24,6 @@ from omegaconf import DictConfig, OmegaConf
 from scipy.stats import gamma, norm, truncnorm
 from scipy.optimize import linprog
 
-P_SEVERE_ALLERGIES = 0.02
-
 SymptomProbability = namedtuple('SymptomProbability', ['name', 'id', 'probabilities'])
 SymptomProbability.__doc__ = '''A symptom probabilities collection given contexts
 
@@ -320,11 +318,13 @@ SYMPTOMS = OrderedDict([
                                                            'covid_onset': -1,
                                                            'covid_plateau': -1,
                                                            'covid_post_plateau_1': -1,
-                                                           'covid_post_plateau_2': -1})
+                                                           'covid_post_plateau_2': -1,
+                                                           'allergy': 0.02})
     ),
+    # This symptoms was in fact a mislabeled light_trouble_breathing
     (
         'mild_trouble_breathing',
-        SymptomProbability('mild_trouble_breathing', 23, {'allergy': P_SEVERE_ALLERGIES})
+        SymptomProbability('mild_trouble_breathing', 23, {})
     ),
     (
         'moderate_trouble_breathing',
@@ -1326,14 +1326,14 @@ def _get_allergy_progression(rng):
     phase = symptoms_contexts[phase_i]
 
     symptoms = []
-    for symptom in ('sneezing', 'mild_trouble_breathing', 'sore_throat', 'fatigue',
+    for symptom in ('sneezing', 'light_trouble_breathing', 'sore_throat', 'fatigue',
                     'hard_time_waking_up', 'headache'):
         rand = rng.rand()
         if rand < SYMPTOMS[symptom].probabilities[phase]:
             symptoms.append(symptom)
 
             # commented out because these are not used elsewhere for now
-            # if symptom == 'mild_trouble_breathing':
+            # if symptom == 'light_trouble_breathing':
             #     for symptom in ('hives', 'swelling'):
             #         rand = rng.rand()
             #         if rand < SYMPTOMS[symptom].probabilities[phase]:
