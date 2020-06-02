@@ -23,18 +23,22 @@ class MakeHumanAsMessageProxy:
         self._start_time = start_time
 
     def make_human_as_message(self, human, personal_mailbox, conf):
+        from covid19sim.models.run import HumanAsMessage
         tc = self.test_case
-
-        message = ModelsTest.make_human_as_message(human, personal_mailbox, conf)
 
         now = human.env.timestamp
         today = now.date()
         current_day = (now - self._start_time).days
 
         self.humans_logs.setdefault(current_day, [{} for _ in range(24)])
-
-        trimmed_human = MakeHumanAsMessageProxy._take_human_snapshot(human, message.__dict__.keys())
+        trimmed_human = MakeHumanAsMessageProxy._take_human_snapshot(
+            human,
+            personal_mailbox,
+            HumanAsMessage.__dict__['__annotations__'].keys()
+        )
         self.humans_logs[current_day][now.hour][int(human.name[6:])] = trimmed_human
+
+        message = ModelsTest.make_human_as_message(human, personal_mailbox, conf)
 
         with tc.subTest(name=human.name, now=now):
             tc.assertEqual(human.last_date['symptoms_updated'], today)
@@ -53,27 +57,22 @@ class MakeHumanAsMessageProxy:
                 tc.assertIsInstance(human.obs_sex, str)
                 tc.assertIn(human.obs_sex.lower()[0], {'f', 'm', 'o'})
 
-            # message.test_results should only contain values in [-1, 0, 1]
-            for test_result in message.test_results:
-                tc.assertIn(test_result, [-1., 0., 1.])
-
             validate_human_message(tc, message, human)
 
         return message
 
     @staticmethod
-    def _take_human_snapshot(human, message_fields):
-        trimmed_human = human.__dict__.copy()
-        for k in human.__dict__.keys():
-            if k == 'contact_book':
-                trimmed_human['contact_book'] = human.contact_book.__dict__.copy()
-                for contact_day, msgs in trimmed_human['contact_book']['encounters_by_day'].items():
-                    for msg in msgs:
-                        # discard applied updates to keep the trimmed human lightweight
-                        msg._applied_updates = None
-            elif k not in message_fields:
-                del trimmed_human[k]
-        trimmed_human['infection_timestamp'] = human.infection_timestamp
+    def _take_human_snapshot(human, personal_mailbox, message_fields):
+        trimmed_human = {}
+        for k in message_fields:
+            if k == 'infectiousnesses':
+                trimmed_human[k] = human.infectiousnesses
+            elif k == 'infection_timestamp':
+                trimmed_human[k] = human.infection_timestamp
+            elif k == 'update_messages':
+                trimmed_human[k] = personal_mailbox
+            else:
+                trimmed_human[k] = human.__dict__[k]
         return pickle.loads(pickle.dumps(trimmed_human))
 
 
@@ -187,11 +186,13 @@ class ModelsTest(unittest.TestCase):
                 output_day_index = current_day - conf.get('INTERVENTION_DAY')
                 current_datetime = start_time + datetime.timedelta(days=current_day)
 
+                humans_day_log = ModelsTest.make_human_as_message_proxy.humans_logs[current_day]
+
                 for hour, hour_output in enumerate(day_output):
                     for h_i, human in hour_output.items():
+                        human_hour_log = humans_day_log[hour][h_i]
                         with self.subTest(current_datetime=str(current_datetime),
                                           current_day=current_day, hour=hour, human_id=h_i + 1):
-                            human_hour_log = ModelsTest.make_human_as_message_proxy.humans_logs[current_day][hour][h_i]
 
                             stats['humans'].setdefault(h_i, {})
                             stats['humans'][h_i].setdefault('candidate_encounters_cnt', 0)
@@ -231,11 +232,14 @@ class ModelsTest(unittest.TestCase):
                                 self.assertGreaterEqual(observed['candidate_encounters'][:, 2].min(), 0)  # encounters
                                 self.assertGreaterEqual(observed['candidate_encounters'][:, 3].min(), 0)  # day idx
 
-                            # Has received a positive test result [index] days before today
+                            # Has received a positive or negative test result [index] days before today
                             self.assertEqual(observed['test_results'].shape, (14,))
                             self.assertIn(observed['test_results'].min(), (-1, 0, 1))
                             self.assertIn(observed['test_results'].max(), (-1, 0, 1))
                             self.assertIn(observed['test_results'][observed['test_results'] == 1].sum(), (0, 1))
+                            # message.test_results should only contain values in [-1, 0, 1]
+                            for test_result in observed['test_results']:
+                                self.assertIn(test_result, (-1., 0., 1.))
 
                             # Multihot encoding
                             self.assertIn(observed['preexisting_conditions'].min(), (0, 1))
@@ -284,6 +288,7 @@ class ModelsTest(unittest.TestCase):
                             self.assertTrue((unobserved['true_symptoms'] == observed['reported_symptoms'])
                                             [observed['reported_symptoms'].astype(np.bool)].all())
 
+                            # A human should not be exposed and recovered at the same time
                             if unobserved['is_exposed'] or unobserved['is_recovered']:
                                 self.assertNotEqual(unobserved['is_exposed'], unobserved['is_recovered'])
 
@@ -302,11 +307,17 @@ class ModelsTest(unittest.TestCase):
                             if observed['sex'] != -1:
                                 self.assertEqual(unobserved['true_sex'], observed['sex'])
 
+                            # Test inputs used to create the data
+
+                            # On the day of exposure, the human should be exposed
+                            # and be at his first exposure day
                             if human_hour_log['infection_timestamp'] is not None and \
                                     (current_datetime - human_hour_log['infection_timestamp']).days < 1:
                                 self.assertTrue(unobserved['is_exposed'])
                                 self.assertEqual(unobserved['exposure_day'], 0)
 
+                            # On the day of recovery, the human should be recovered
+                            # and be at his first recovered day
                             if human_hour_log['recovered_timestamp'] != datetime.datetime.max and \
                                     (current_datetime - human_hour_log['recovered_timestamp']).days < 1:
                                 self.assertTrue(unobserved['is_recovered'])
@@ -320,8 +331,11 @@ class ModelsTest(unittest.TestCase):
                                     self.assertEqual(observed['test_results'][days_since_test],
                                                      float(encode_test_result(last_test_result)))
 
+                            # Test rolling properties
                             if prev_observed:
+                                # Check rolling reported_symptoms
                                 self.assertTrue((observed['reported_symptoms'][1:] == prev_observed['reported_symptoms'][:13]).all())
+                                # Check rolling candidate_encounters
                                 if observed['candidate_encounters'].size and prev_observed['candidate_encounters'].size:
                                     # TODO: Can't validate rolling of the message because of new messages being added
                                     current_day_mask = observed['candidate_encounters'][:, 3] < current_day  # Get the last 13 days excluding today
@@ -340,22 +354,24 @@ class ModelsTest(unittest.TestCase):
                                                              msg=f"Could not find previous candidate_encounter {prev_masked[i]} "
                                                              f"in current day.")
 
+                                # preexisting_conditions, age and sex should not change
                                 self.assertTrue((observed['preexisting_conditions'] ==
                                                  prev_observed['preexisting_conditions']).all())
                                 self.assertEqual(observed['age'], prev_observed['age'])
                                 self.assertEqual(observed['sex'], prev_observed['sex'])
 
+                                # Check rolling true_symptoms
                                 self.assertTrue((unobserved['true_symptoms'][1:] == prev_unobserved['true_symptoms'][:13]).all())
+                                # Check rolling infectiousness
                                 check = unobserved['infectiousness'][1:] == prev_unobserved['infectiousness'][:13]
                                 self.assertTrue(check if isinstance(check, bool) else check.all())
 
-                                if prev_unobserved['is_exposed']:
-                                    self.assertTrue(prev_unobserved['recovery_days'], unobserved['recovery_days'])
-                                    self.assertLess(prev_unobserved['exposure_day'], prev_unobserved['recovery_days'])
-
                                 if unobserved['is_exposed'] != prev_unobserved['is_exposed']:
+                                    # If a human just got exposed
                                     if unobserved['is_exposed']:
                                         try:
+                                            # If a human just got exposed, the human should be
+                                            # at his first exposure day
                                             self.assertEqual(unobserved['exposure_day'], 0)
                                         except AssertionError as error:
                                             # If a human is exposed exactly at the time of his time slot, the result will only be
@@ -369,22 +385,52 @@ class ModelsTest(unittest.TestCase):
                                                               f"hour {hour}: {str(error)}")
                                             else:
                                                 raise
+                                        # If a human just got exposed, the human should be in his
+                                        # not infectiouss phase
                                         self.assertEqual(prev_unobserved['infectiousness'][0], 0)
                                     else:
                                         self.assertLessEqual(prev_unobserved['exposure_day'], 13)
                                         self.assertEqual(unobserved['exposure_day'], None)
 
+                                # Once a human recovers, it should stay recovered
                                 if prev_unobserved['is_recovered']:
                                     self.assertTrue(unobserved['is_recovered'])
                                     self.assertEqual(max(0, unobserved['recovery_day'] - 1),
                                                      prev_unobserved['recovery_day'])
 
+                                # true_preexisting_conditions, true_age and true_sex should not change
                                 self.assertTrue((unobserved['true_preexisting_conditions'] ==
                                                  prev_unobserved['true_preexisting_conditions']).all())
                                 self.assertEqual(unobserved['true_age'], prev_unobserved['true_age'])
                                 self.assertEqual(unobserved['true_sex'], prev_unobserved['true_sex'])
 
                     current_datetime += datetime.timedelta(hours=1)
+
+                # Test stability of some properties across time slots
+                for hour in range(24 // conf['UPDATES_PER_DAY'], 24):
+                    for h_i, human_hour_log in humans_day_log[hour].items():
+                        previous_time_slot_human_hour_log = \
+                            humans_day_log[hour - 24 // conf['UPDATES_PER_DAY']][h_i]
+
+                        # infectiousness should not be updated multiple times per day (regression test)
+                        self.assertEqual(
+                            previous_time_slot_human_hour_log['infectiousnesses'],
+                            human_hour_log['infectiousnesses']
+                        )
+
+                        # rolling_all_symptoms should not be updated multiple times per day
+                        self.assertEqual(
+                            previous_time_slot_human_hour_log['rolling_all_symptoms'],
+                            human_hour_log['rolling_all_symptoms']
+                        )
+
+                        # rolling_all_reported_symptoms should not be updated multiple times per day
+                        self.assertEqual(
+                            previous_time_slot_human_hour_log['rolling_all_reported_symptoms'],
+                            human_hour_log['rolling_all_reported_symptoms']
+                        )
+
+                        # TODO: do we expect other fields to stay stable through the day?
 
             candidate_encounters_cnt = 0
             has_exposure_day = 0
@@ -444,10 +490,9 @@ class HumanAsMessageTest(unittest.TestCase):
                 self.assertEqual(message.update_messages[0], "fake_message")
             elif k == 'infection_timestamp':
                 self.assertIn(f'_{k}', human.__dict__)
+            elif k == "infectiousnesses":  # everything works except that one, it's a property
+                self.assertEqual(len(human.infectiousnesses), dummy_conf["TRACING_N_DAYS_HISTORY"])
             else:
-                if k == "infectiousnesses":  # everything works except that one, it's a property
-                    self.assertEqual(len(human.infectiousnesses), dummy_conf["TRACING_N_DAYS_HISTORY"])
-                else:
-                    self.assertIn(k, human.__dict__)
+                self.assertIn(k, human.__dict__)
 
         validate_human_message(self, message, human)
