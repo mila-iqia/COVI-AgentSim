@@ -184,6 +184,11 @@ def load_template(infra):
             "r"
         ) as f:
             return f.read()
+    if infra == "beluga":
+        with (Path(__file__).parent / "job_scripts" / "beluga_sbatch_template.sh").open(
+            "r"
+        ) as f:
+            return f.read()
     raise ValueError("Unknown infrastructure " + str(infra))
 
 
@@ -292,6 +297,81 @@ def fill_mila_template(template_str, conf):
         workers=workers
     )
 
+def fill_beluga_template(template_str, conf):
+    """
+    Formats the template_str with variables from the conf dict,
+    which is a sampled experiment
+
+    Args:
+        template_str (str): sbatch template
+        conf (dict): sbatch parameters
+
+    Returns:
+        str: formated template
+    """
+    user = os.environ.get("USER")
+    home = os.environ.get("HOME")
+
+    partition = conf.get("partition", "main")
+    cpu = conf.get("cpus", 6)
+    mem = conf.get("mem", 16)
+    time = conf.get("time", "3:00:00")
+    slurm_log = conf.get("slurm_log", f"/scratch/{user}/covi-slurm-%j.out")
+    if "%j.out" not in slurm_log:
+        slurm_log = str(Path(slurm_log).resolve() / "covi-slurm-%j.out")
+        if not Path(slurm_log).parent.exists():
+            Path(slurm_log).parent.mkdir(parents=True)
+    env_name = conf.get("env_name", "covid")
+    weights = conf.get("weights", f"/scratch/{user}/FRESH-SNOWFLAKE-224B")
+    code_loc = conf.get("code_loc", str(Path(home) / "simulator/src/covid19sim/"))
+    ipc = conf.get("ipc", {"frontend": "", "backend": ""})
+    use_transformer = str(conf.get("use_transformer", True)).lower()
+    workers = cpu - 1
+
+    if "dev" in conf and conf["dev"]:
+        print(
+            "Using:\n"
+            + "\n".join(
+                [
+                    "  {:10}: {}".format("partition", partition),
+                    "  {:10}: {}".format("cpus-per-task", cpu),
+                    "  {:10}: {}".format("mem", mem),
+                    "  {:10}: {}".format("time", time),
+                    "  {:10}: {}".format("slurm_log", slurm_log),
+                    "  {:10}: {}".format("env_name", env_name),
+                    "  {:10}: {}".format("code_loc", code_loc),
+                    "  {:10}: {}".format("weights", weights),
+                    "  {:10}: {}".format("frontend", ipc["frontend"]),
+                    "  {:10}: {}".format("backend", ipc["backend"]),
+                    "  {:10}: {}".format("use_transformer", use_transformer),
+                    "  {:10}: {}".format("workers", workers),
+                ]
+            )
+        )
+
+    partition = f"#SBATCH --partition={partition}"
+    cpu = f"#SBATCH --cpus-per-task={cpu}"
+    mem = f"#SBATCH --mem={mem}GB"
+    gres = f"#SBATCH --gres={gres}" if gres else ""
+    time = f"#SBATCH --time={time}"
+    slurm_log = f"#SBATCH -o {slurm_log}\n#SBATCH -e {slurm_log}"
+    frontend = '--frontend="{}"'.format(ipc["frontend"]) if ipc["frontend"] else ""
+    backend = '--backend="{}"'.format(ipc["backend"]) if ipc["backend"] else ""
+    return template_str.format(
+        partition=partition,
+        cpu=cpu,
+        mem=mem,
+        time=time,
+        slurm_log=slurm_log,
+        env_name=env_name,
+        code_loc=code_loc,
+        weights=weights,
+        frontend=frontend,
+        backend=backend,
+        use_transformer=use_transformer,
+        workers=workers
+    )
+
 
 def get_hydra_args(opts, exclude=set()):
     hydra_args = ""
@@ -389,14 +469,18 @@ def main(conf: DictConfig) -> None:
         # sample parameters
         # fill-in template with `partition` `time` `code_loc` etc. from command-line overwrites
         # get temporary file to write sbatch run file
-        if infra == "mila":
+        if infra in {"mila", "beluga"}:
             print("\nJOB", i)
 
             if use_transformer:
                 ipcf, ipcb = ipc_addresses()
                 conf["ipc"] = {"frontend": ipcf, "backend": ipcb}
 
-            job_str = fill_mila_template(template_str, conf)
+            if infra == "mila":
+                job_str = fill_mila_template(template_str, conf)
+            elif infra == "beluga":
+                job_str = fill_beluga_template(template_str, conf)
+
             opts = sample_search_conf(conf, run_idx)
 
             if use_transformer:
