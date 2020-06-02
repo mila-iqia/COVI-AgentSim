@@ -239,6 +239,7 @@ def fill_mila_template(template_str, conf):
     weights = conf.get("weights", f"/network/tmp1/{user}/FRESH-SNOWFLAKE-224B")
     code_loc = conf.get("code_loc", str(Path(home) / "simulator/src/covid19sim/"))
     ipc = conf.get("ipc", {"frontend": "", "backend": ""})
+    use_transformer = conf.get("use_transformer", True)
 
     if "dev" in conf and conf["dev"]:
         print(
@@ -256,6 +257,7 @@ def fill_mila_template(template_str, conf):
                     "  {:10}: {}".format("weights", weights),
                     "  {:10}: {}".format("frontend", ipc["frontend"]),
                     "  {:10}: {}".format("backend", ipc["backend"]),
+                    "  {:10}: {}".format("use_transformer", use_transformer),
                 ]
             )
         )
@@ -280,6 +282,7 @@ def fill_mila_template(template_str, conf):
         weights=weights,
         frontend=frontend,
         backend=backend,
+        use_transformer=use_transformer
     )
 
 
@@ -341,6 +344,7 @@ def main(conf: DictConfig) -> None:
         "parallel_search",  # run with & at the end instead of ; to run in subshells
         "ipc",  # run with & at the end instead of ; to run in subshells
         "start_index", # ignore the first runs, to continue a cartesian or sequential exploration for instance
+        "use_transormer", # defaults to True
     }
 
     # move back to original directory because hydra moved
@@ -364,6 +368,7 @@ def main(conf: DictConfig) -> None:
     infra = conf.get("infra", "mila")
     parallel_search = conf.get("parallel_search", False)
     start_index = conf.get("start_index", 0)
+    use_transformer = conf.get("use_transformer", True)
     template_str = load_template(infra)
 
     home = os.environ["HOME"]
@@ -379,18 +384,27 @@ def main(conf: DictConfig) -> None:
         # get temporary file to write sbatch run file
         if infra == "mila":
             print("\nJOB", i)
-            ipcf, ipcb = ipc_addresses()
-            conf["ipc"] = {"frontend": ipcf, "backend": ipcb}
+
+            if use_transformer:
+                ipcf, ipcb = ipc_addresses()
+                conf["ipc"] = {"frontend": ipcf, "backend": ipcb}
+
             job_str = fill_mila_template(template_str, conf)
             opts = sample_search_conf(conf, run_idx)
-            opts["INFERENCE_SERVER_ADDRESS"] = f'"{ipcf}"'
+
+            if use_transformer:
+                opts["INFERENCE_SERVER_ADDRESS"] = f'"{ipcf}"'
+
             hydra_args = get_hydra_args(opts, RANDOM_SEARCH_SPECIFIC_PARAMS)
 
             for k in range(conf.get("n_runs_per_search", 1)):
                 job_str += "\n{};\n".format("python run.py" + hydra_args)
                 run_idx += 1
                 opts = sample_search_conf(conf, run_idx)
-                opts["INFERENCE_SERVER_ADDRESS"] = f'"{ipcf}"'
+
+                if use_transformer:
+                    opts["INFERENCE_SERVER_ADDRESS"] = f'"{ipcf}"'
+
                 hydra_args = get_hydra_args(opts, RANDOM_SEARCH_SPECIFIC_PARAMS)
 
             # create temporary sbatch file

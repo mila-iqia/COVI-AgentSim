@@ -19,7 +19,11 @@ cd {code_loc}
 echo $(pwd)
 echo $(which python)
 
-python server_bootstrap.py -e {weights} -w 4 {frontend} {backend}&
+use_transormer={use_transormer}
+
+if [ "$use_transormer" = true ] ; then
+    python server_bootstrap.py -e {weights} -w 4 {frontend} {backend}&
+fi
 
 echo "------------------------"
 
