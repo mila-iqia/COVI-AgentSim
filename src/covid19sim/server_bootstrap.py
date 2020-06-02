@@ -68,9 +68,9 @@ def parse_args(args=None):
 
 def interrupt_handler(signal, frame, broker):
     """Signal callback used to gently stop workers (releasing sockets) & exit."""
-    print("Received SIGINT; shutting down inference worker(s) gracefully...")
+    print("Received SIGINT; shutting down inference worker(s) gracefully...", flush=True)
     broker.stop()
-    print("All done.")
+    print("All done.", flush=True)
     sys.exit(0)
 
 
