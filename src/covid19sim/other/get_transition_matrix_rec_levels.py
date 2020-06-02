@@ -21,8 +21,6 @@ import warnings
 import logging
 from datetime import datetime
 
-from covid19sim.utils import get_rec_level_transition_matrix
-
 
 def generate_name(source_config, target_config):
     source_model = source_config['RISK_MODEL']

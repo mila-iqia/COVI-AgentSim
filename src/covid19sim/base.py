@@ -12,7 +12,7 @@ from collections import defaultdict, Counter
 import simpy
 
 from covid19sim.utils import compute_distance, _get_random_area, relativefreq2absolutefreq, \
-    get_test_false_negative_rate, calculate_average_infectiousness
+    get_test_false_negative_rate, calculate_average_infectiousness, get_rec_level_transition_matrix
 from covid19sim.track import Tracker
 from covid19sim.interventions import *
 from covid19sim.frozen.message_utils import UIDType, UpdateMessage, combine_update_messages, \
@@ -128,12 +128,13 @@ class City:
             for test_type in self.test_type_preference
         }
 
-        if 'DAILY_REC_LEVEL_MAPPING' in conf:
+        if 'DAILY_TARGET_REC_LEVEL_DIST' in conf:
             # QKFIX: There are 4 recommendation levels, value is hard-coded here
-            self.daily_rec_level_mappings = (np.asarray(conf['DAILY_REC_LEVEL_MAPPING'], dtype=np.float_)
-                                               .reshape((-1, 4, 4)))
+            self.daily_target_rec_level_dists = (np.asarray(conf['DAILY_TARGET_REC_LEVEL_DIST'], dtype=np.float_)
+                                                   .reshape((-1, 4)))
         else:
-            self.daily_rec_level_mappings = None
+            self.daily_target_rec_level_dists = None
+        self.daily_rec_level_mapping = None
 
         self.covid_testing_facility = TestFacility(self.test_type_preference, self.max_capacity_per_test_type, env, conf)
 
@@ -589,18 +590,34 @@ class City:
         """
         return list(itertools.chain(*[h.events for h in self.humans]))
 
-    @property
-    def daily_rec_level_mapping(self):
-        if self.daily_rec_level_mappings is None:
+    def compute_daily_rec_level_distribution(self):
+        # QKFIX: There are 4 recommendation levels, the value is hard-coded here
+        counts = np.zeros((4,), dtype=np.float_)
+        for human in self.humans:
+            counts[human.rec_level] += 1
+
+        if self.n_people > 0:
+            counts /= float(self.n_people)
+
+        return counts
+
+    def compute_daily_rec_level_mapping(self, current_day):
+        # If there is no target recommendation level distribution
+        if self.daily_target_rec_level_dists is None:
             return None
 
-        current_day = (self.env.timestamp - self.env.initial_timestamp).days
-        if self.conf.get('INTERVENTION_DAY', -1) >= 0:
+        if self.conf.get('INTERVENTION_DAY', -1) < 0:
+            return None
+        else:
             current_day -= self.conf.get('INTERVENTION_DAY')
 
-        index = min(current_day, len(self.daily_rec_level_mappings) - 1)
+        daily_rec_level_dist = self.compute_daily_rec_level_distribution()
 
-        return self.daily_rec_level_mappings[index]
+        index = min(current_day, len(self.daily_target_rec_level_dists) - 1)
+        daily_target_rec_level_dist = self.daily_target_rec_level_dists[index]
+
+        return get_rec_level_transition_matrix(daily_rec_level_dist,
+                                               daily_target_rec_level_dist)
 
     def events_slice(self, begin, end):
         """
@@ -752,6 +769,9 @@ class City:
 
             if current_day != last_day_idx:
                 last_day_idx = current_day
+                # Compute the transition matrix of recommendation levels to
+                # target distribution of recommendation levels
+                self.daily_rec_level_mapping = self.compute_daily_rec_level_mapping(current_day)
                 self.cleanup_global_mailbox(self.env.timestamp)
                 # TODO: this is an assumption which will break in reality, instead of updating once per day everyone at the same time, it should be throughout the day
                 for human in self.humans:
