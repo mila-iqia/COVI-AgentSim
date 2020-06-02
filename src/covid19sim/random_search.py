@@ -427,6 +427,7 @@ def main(conf: DictConfig) -> None:
         "ipc",  # run with & at the end instead of ; to run in subshells
         "start_index", # ignore the first runs, to continue a cartesian or sequential exploration for instance
         "use_transformer", # defaults to True
+        "use_tmpdir", # use SLURM_TMPDIR and copy files to outdir after
     }
 
     # move back to original directory because hydra moved
@@ -452,8 +453,14 @@ def main(conf: DictConfig) -> None:
     start_index = conf.get("start_index", 0)
     use_transformer = conf.get("use_transformer", True)
     template_str = load_template(infra)
+    use_tmpdir = conf.get("use_tmpdir", False)
+    outdir = None
 
     home = os.environ["HOME"]
+
+    if use_tmpdir:
+        outdir = str(conf["outdir"])
+        conf["outdir"] = "$SLURM_TMPDIR"
 
     # run n_search jobs
     printlines()
@@ -494,6 +501,9 @@ def main(conf: DictConfig) -> None:
                     opts["INFERENCE_SERVER_ADDRESS"] = f'"{ipcf}"'
 
                 hydra_args = get_hydra_args(opts, RANDOM_SEARCH_SPECIFIC_PARAMS)
+
+            if use_tmpdir:
+                job_str += f"\n cp $SLURM_TMPDIR/*.zip {outdir}"
 
             # create temporary sbatch file
             tmp = Path(tempfile.NamedTemporaryFile(suffix=".sh").name)

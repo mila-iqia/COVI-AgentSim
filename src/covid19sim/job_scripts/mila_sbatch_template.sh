@@ -13,6 +13,8 @@ source $CONDA_ACTIVATE
 conda deactivate
 conda activate {env_name} # covid is default
 
+export PYTHONUNBUFFERED=1
+
 # where is simulator's code? default: $HOME/simulator/src/covid19sim/
 cd {code_loc}
 
