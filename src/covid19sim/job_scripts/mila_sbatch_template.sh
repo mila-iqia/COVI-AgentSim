@@ -21,7 +21,7 @@ echo $(which python)
 
 use_transormer={use_transormer}
 
-if [ "$use_transormer" = true ] ; then
+if [ "$use_transformer" = true ] ; then
     python server_bootstrap.py -e {weights} -w 4 {frontend} {backend}&
 fi
 
