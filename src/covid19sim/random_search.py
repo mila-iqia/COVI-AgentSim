@@ -239,7 +239,7 @@ def fill_mila_template(template_str, conf):
     weights = conf.get("weights", f"/network/tmp1/{user}/FRESH-SNOWFLAKE-224B")
     code_loc = conf.get("code_loc", str(Path(home) / "simulator/src/covid19sim/"))
     ipc = conf.get("ipc", {"frontend": "", "backend": ""})
-    use_transformer = conf.get("use_transformer", True)
+    use_transformer = str(conf.get("use_transformer", True)).lower()
 
     if "dev" in conf and conf["dev"]:
         print(
