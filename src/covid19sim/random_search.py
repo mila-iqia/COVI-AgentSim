@@ -312,7 +312,6 @@ def fill_beluga_template(template_str, conf):
     user = os.environ.get("USER")
     home = os.environ.get("HOME")
 
-    partition = conf.get("partition", "main")
     cpu = conf.get("cpus", 6)
     mem = conf.get("mem", 16)
     time = conf.get("time", "3:00:00")
@@ -333,7 +332,6 @@ def fill_beluga_template(template_str, conf):
             "Using:\n"
             + "\n".join(
                 [
-                    "  {:10}: {}".format("partition", partition),
                     "  {:10}: {}".format("cpus-per-task", cpu),
                     "  {:10}: {}".format("mem", mem),
                     "  {:10}: {}".format("time", time),
@@ -349,16 +347,13 @@ def fill_beluga_template(template_str, conf):
             )
         )
 
-    partition = f"#SBATCH --partition={partition}"
     cpu = f"#SBATCH --cpus-per-task={cpu}"
     mem = f"#SBATCH --mem={mem}GB"
-    gres = f"#SBATCH --gres={gres}" if gres else ""
     time = f"#SBATCH --time={time}"
     slurm_log = f"#SBATCH -o {slurm_log}\n#SBATCH -e {slurm_log}"
     frontend = '--frontend="{}"'.format(ipc["frontend"]) if ipc["frontend"] else ""
     backend = '--backend="{}"'.format(ipc["backend"]) if ipc["backend"] else ""
     return template_str.format(
-        partition=partition,
         cpu=cpu,
         mem=mem,
         time=time,
