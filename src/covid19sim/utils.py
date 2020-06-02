@@ -5,7 +5,9 @@ import datetime
 import math
 import os
 import pathlib
+import shutil
 import subprocess
+import time
 import typing
 import zipfile
 from collections import OrderedDict, namedtuple
@@ -18,7 +20,7 @@ import numpy as np
 import requests
 import yaml
 from addict import Dict
-from omegaconf import OmegaConf, DictConfig
+from omegaconf import DictConfig, OmegaConf
 from scipy.stats import gamma, norm, truncnorm
 
 P_SEVERE_ALLERGIES = 0.02
@@ -1882,6 +1884,8 @@ def extract_tracker_data(tracker, conf):
     data['encounter_distances'] = tracker.encounter_distances
     data['effective_contacts_since_intervention'] = tracker.compute_effective_contacts(since_intervention=True)
     data['effective_contacts_all_days'] = tracker.compute_effective_contacts(since_intervention=False)
+    data['humans_state'] = tracker.humans_state
+    data['humans_rec_level'] = tracker.humans_rec_level
     # data['dist_encounters'] = dict(tracker.dist_encounters)
     # data['time_encounters'] = dict(tracker.time_encounters)
     # data['day_encounters'] = dict(tracker.day_encounters)

@@ -219,7 +219,8 @@ class Human(object):
         self.notified = False
         self.tracing_method = None
         self.maintain_extra_distance = 0
-        self.how_much_I_follow_recommendations = self.conf.get('PERCENT_FOLLOW')
+        self._follows_recommendations_today = None
+        self.curr_rec_level = -1 # Current recommendations level
         self.recommendations_to_follow = OrderedSet()
         self.time_encounter_reduction_factor = 1.0
         self.hygiene = 0 # start everyone with a baseline hygiene. Only increase it once the intervention is introduced.
@@ -237,7 +238,9 @@ class Human(object):
         self.history_map_last_message = dict()
         self.last_sent_update_gaen = 0
         self.last_message_risk_history_map = {}
-        self.proba_to_risk_level_map = proba_to_risk_fn(np.array(self.conf.get('RISK_MAPPING')))
+        risk_mapping_array = np.array(self.conf.get('RISK_MAPPING'))
+        assert len(risk_mapping_array) > 0, "risk mapping must always be defined!"
+        self.proba_to_risk_level_map = proba_to_risk_fn(risk_mapping_array)
 
         # Message Passing and Risk Prediction
         self.clusters = None
@@ -374,9 +377,19 @@ class Human(object):
         self.location_start_time = self.env.ts_initial
         self.denied_icu = None
         self.denied_icu_days = None
-
+        
         # The average noise in bluetooth signal strength to distance translation is sampled from a uniform distribution between 0 and 1
         self.phone_bluetooth_noise = self.rng.rand()
+
+    @property
+    def follows_recommendations_today(self):
+        last_date = self.last_date["follow_recommendations"]
+        current_date = self.env.timestamp.date()
+        if last_date is None or (current_date - last_date).days > 0:
+            proba = self.conf.get("DROPOUT_RATE")
+            self.last_date["follow_recommendations"] = self.env.timestamp.date()
+            self._follows_recommendations_today = self.rng.rand() < (1 - proba)
+        return self._follows_recommendations_today
 
     def assign_household(self, location):
         """
@@ -1021,7 +1034,7 @@ class Human(object):
 
             # has been recommended the test by an intervention
             if not should_get_test and self.test_recommended:
-                should_get_test = self.rng.random() < self.how_much_I_follow_recommendations
+                should_get_test = self.rng.random() < self.follows_recommendations_today
 
             if not should_get_test:
                 # Has symptoms that a careful person would fear to be covid
@@ -1111,8 +1124,11 @@ class Human(object):
                 # if not running transformer, we're using basic tracing --- do it now, it won't be batched later
                 if not self.is_removed and not self.got_new_test_results:
                     # note: we check to make sure we don't have test results here not to overwrite the risk value
-                    self.risk_history_map[current_day_idx] = \
-                        self.tracing_method.compute_risk(self, personal_mailbox, self.city.hd)
+                    risks = self.tracing_method.compute_risk(self, personal_mailbox, self.city.hd)
+                    for day_offset, risk in enumerate(risks):
+                        if current_day_idx - day_offset in self.risk_history_map:
+                            self.risk_history_map[current_day_idx - day_offset] = risk
+                        
                     update_reason = "tracing"
 
             if self.symptoms and self.tracing_method.propagate_symptoms:
@@ -1150,7 +1166,13 @@ class Human(object):
             # contrarily to risk, infectiousness only changes once a day (human behavior has no impact)
             self.infectiousness_history_map[current_day_idx] = calculate_average_infectiousness(self)
         # update the 'prev risk history' since we just generated the necessary updates
-        self.prev_risk_history_map[current_day_idx] = self.risk_history_map[current_day_idx]
+        if isinstance(self.tracing_method, Tracing) and self.tracing_method.risk_model != "transformer":
+            if not self.is_removed and not self.got_new_test_results:
+                for day_offset, _ in enumerate(risks):
+                    if current_day_idx - day_offset in self.risk_history_map:
+                        self.prev_risk_history_map[current_day_idx - day_offset] = self.risk_history_map[current_day_idx - day_offset]
+        else:
+            self.prev_risk_history_map[current_day_idx] = self.risk_history_map[current_day_idx]
         self.got_new_test_results = False  # if we did have new results, we caught them above
         return update_messages
 
@@ -1275,7 +1297,7 @@ class Human(object):
         if current_symptoms == []:
             return 1.0
 
-        if getattr(self, "_quarantine", None) and self.rng.random() < self.how_much_I_follow_recommendations:
+        if getattr(self, "_quarantine", None) and self.follows_recommendations_today:
             return 0.1
 
         if sum(x in current_symptoms for x in ["severe", "extremely_severe"]) > 0:
@@ -2057,8 +2079,7 @@ class Human(object):
         Returns:
             [type]: [description]
         """
-        _proba_to_risk_level = proba_to_risk_fn(np.array(self.conf.get('RISK_MAPPING')))
-        return min(_proba_to_risk_level(self.risk), 15)
+        return min(self.proba_to_risk_level_map(self.risk), 15)
 
     @risk.setter
     def risk(self, val):
@@ -2077,13 +2098,16 @@ class Human(object):
             # FIXME: maybe merge Quarantine in RiskBasedRecommendations with 2 levels
             if self.tracing_method.risk_model in ["manual", "digital"]:
                 if self.risk == 1.0:
-                    return 3
+                    self.curr_rec_level = 3
                 else:
-                    return 0
+                    self.curr_rec_level = 0
+            else:
+                self.curr_rec_level = self.tracing_method.intervention.get_recommendations_level(
+                    self,
+                    self.conf.get("REC_LEVEL_THRESHOLDS"),
+                    self.conf.get("MAX_RISK_LEVEL")
+                )
+        else:
+            self.curr_rec_level = -1
 
-            return self.tracing_method.intervention.get_recommendations_level(
-                self.risk_level,
-                self.conf.get("REC_LEVEL_THRESHOLDS"),
-                self.conf.get("MAX_RISK_LEVEL")
-            )
-        return -1
+        return self.curr_rec_level

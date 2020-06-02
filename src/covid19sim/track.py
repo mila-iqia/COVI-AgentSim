@@ -107,6 +107,8 @@ class Tracker(object):
         self.e_per_day = [sum(h.is_exposed for h in self.city.humans)]
         self.i_per_day = [sum(h.is_infectious for h in self.city.humans)]
         self.r_per_day = [sum(h.is_removed for h in self.city.humans)]
+        self.humans_state = defaultdict(list)
+        self.humans_rec_level = defaultdict(list)
 
         # R0 and Generation times
         self.avg_infectious_duration = 0
@@ -306,6 +308,20 @@ class Tracker(object):
         self.i_per_day.append(sum(h.is_infectious for h in self.city.humans))
         self.r_per_day.append(sum(h.is_removed for h in self.city.humans))
         self.ei_per_day.append(self.e_per_day[-1] + self.i_per_day[-1])
+
+        for human in self.city.humans:
+            if human.is_susceptible:
+                state = 'S'
+            elif human.is_exposed:
+                state = 'E'
+            elif human.is_infectious:
+                state = 'I'
+            elif human.is_removed:
+                state = 'R'
+            else:
+                state = 'N/A'
+            self.humans_state[human.name].append(state)
+            self.humans_rec_level[human.name].append(human.rec_level)
 
         # Rt
         self.r.append(self.get_R())
