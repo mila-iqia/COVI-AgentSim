@@ -31,7 +31,7 @@ GLOBAL_MOBILITY_SCALING_FACTOR:
 
 DROPOUT_RATE:
   sample: uniform # uniform in range:
-  from: [0.0, 0.5]
+  from: [0.0, 0.25]
 
 init_percent_sick:
   sample: uniform
@@ -44,3 +44,8 @@ INTERVENTION_DAY:
 seed: # for sole reproducibility purposes
   sample: range # uniform int choice
   from: [0, 10]
+
+
+# python random_search.py infra=mila n_search=50 n_runs_per_search=1 partition=covi cpus=4 env_name=covid38 zip_outdir=True delete_outdir=True outdir=/network/tmp1/schmidtv/covid_sims/nasim/deadline
+
+# python random_search.py infra=mila n_search=50 n_runs_per_search=1 gres="gpu:1" partition=long cpus=8 env_name=covid38 zip_outdir=True delete_outdir=True outdir=/network/tmp1/schmidtv/covid_sims/nasim/deadline
