@@ -460,6 +460,7 @@ def main(conf: DictConfig) -> None:
 
     if use_tmpdir:
         outdir = str(conf["outdir"])
+        Path(outdir).resolve().mkdir(parents=True, exist_ok=True)
         conf["outdir"] = "$SLURM_TMPDIR"
 
     # run n_search jobs
