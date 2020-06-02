@@ -351,7 +351,7 @@ def main(conf: DictConfig) -> None:
         "parallel_search",  # run with & at the end instead of ; to run in subshells
         "ipc",  # run with & at the end instead of ; to run in subshells
         "start_index", # ignore the first runs, to continue a cartesian or sequential exploration for instance
-        "use_transormer", # defaults to True
+        "use_transformer", # defaults to True
     }
 
     # move back to original directory because hydra moved
