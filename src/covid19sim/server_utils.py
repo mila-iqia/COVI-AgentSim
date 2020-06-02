@@ -9,6 +9,7 @@ import multiprocessing.managers
 import numpy as np
 import os
 import pickle
+import sys
 import time
 import typing
 import zmq
@@ -93,7 +94,7 @@ class InferenceWorker(multiprocessing.Process):
         context = zmq.Context()
         socket = context.socket(zmq.REQ)
         socket.identity = self.identifier.encode()
-        print(f"{self.identifier} contacting broker via: {self.backend_address}")
+        print(f"{self.identifier} contacting broker via: {self.backend_address}", flush=True)
         socket.connect(self.backend_address)
         socket.send(b"READY")  # tell broker we're ready
         poller = zmq.Poller()
@@ -199,15 +200,15 @@ class InferenceBroker:
 
         Will received requests from clients and dispatch them to available workers.
         """
-        print(f"Initializing {self.workers} worker(s) from experiment: {self.model_exp_path}")
+        print(f"Initializing {self.workers} worker(s) from experiment: {self.model_exp_path}", flush=True)
         if self.weights_path is not None:
-            print(f"\t will use weights directly from: {self.weights_path}")
+            print(f"\t will use weights directly from: {self.weights_path}", flush=True)
         context = zmq.Context()
         frontend = context.socket(zmq.ROUTER)
-        print(f"Will listen for inference requests at: {self.frontend_address}")
+        print(f"Will listen for inference requests at: {self.frontend_address}", flush=True)
         frontend.bind(self.frontend_address)
         backend = context.socket(zmq.ROUTER)
-        print(f"Will dispatch inference work at: {self.backend_address}")
+        print(f"Will dispatch inference work at: {self.backend_address}", flush=True)
         backend.bind(self.backend_address)
         worker_backend_address = self.backend_address.replace("*", "localhost")
         worker_poller = zmq.Poller()
@@ -219,7 +220,7 @@ class InferenceBroker:
             available_worker_ids = []
             for worker_idx in range(self.workers):
                 worker_id = f"worker:{worker_idx}"
-                print(f"Launching {worker_id}...")
+                print(f"Launching {worker_id}...", flush=True)
                 worker = InferenceWorker(
                     experiment_directory=self.model_exp_path,
                     backend_address=worker_backend_address,
@@ -234,7 +235,7 @@ class InferenceBroker:
                 assert worker_id == worker.identifier.encode() and response == b"READY"
                 available_worker_ids.append(worker.identifier.encode())
             last_update_timestamp = time.time()
-            print("Entering dispatch loop...")
+            print("Entering dispatch loop...", flush=True)
             while not self.stop_flag.is_set():
                 evts = dict(worker_poller.poll(default_poll_delay_ms))
                 if backend in evts and evts[backend] == zmq.POLLIN:
@@ -248,7 +249,7 @@ class InferenceBroker:
                 if available_worker_ids and frontend in evts and evts[frontend] == zmq.POLLIN:
                     client, empty, request = frontend.recv_multipart()
                     if request == b"RESET":
-                        print("got reset request, will clear all clusters")
+                        print("got reset request, will clear all clusters", flush=True)
                         assert len(available_worker_ids) == self.workers
                         for k in list(cluster_mgr_map.keys()):
                             del cluster_mgr_map[k]
@@ -272,6 +273,7 @@ class InferenceBroker:
                             f"  proc_time_ratio={uptime:.1%}"
                             f"  nb_clusters={len(worker.cluster_mgr_map)}"
                         )
+                    sys.stdout.flush()
                     last_update_timestamp = time.time()
             for w in worker_map.values():
                 w.stop()
