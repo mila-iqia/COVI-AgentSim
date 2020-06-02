@@ -130,6 +130,7 @@ def main(args):
         os.mkdir(config_folder)
 
     output_filename = generate_name(source_config, target_config)
+    output_config_name, _ = os.path.splitext(output_filename)
     output_path = os.path.join(config_folder, output_filename)
 
     logging.debug('Saving new configuration to `{0}`...'.format(output_path))
@@ -146,7 +147,7 @@ def main(args):
 
     logging.info('New configuration file saved: `{0}`'.format(output_path))
     logging.info(f'To run the experiment with the new mobility:\n\tpython '
-                 f'src/covid19sim/run.py transport={output_filename}')
+                 f'src/covid19sim/run.py transport={output_config_name}')
 
 if __name__ == '__main__':
     import argparse
