@@ -235,6 +235,8 @@ def fill_mila_template(template_str, conf):
     gres = conf.get("gres", "")
     time = conf.get("time", "4:00:00")
     slurm_log = conf.get("slurm_log", f"/network/tmp1/{user}/covi-slurm-%j.out")
+    if "%j.out" not in slurm_log:
+        slurm_log = str(Path(slurm_log).resolve() / "covi-slurm-%j.out")
     env_name = conf.get("env_name", "covid")
     weights = conf.get("weights", f"/network/tmp1/{user}/FRESH-SNOWFLAKE-224B")
     code_loc = conf.get("code_loc", str(Path(home) / "simulator/src/covid19sim/"))
