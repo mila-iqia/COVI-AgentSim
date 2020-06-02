@@ -75,7 +75,6 @@ class SEIRMonitor(BaseMonitor):
         n_days = 0
         while True:
             R0 = city.tracker.get_R()
-            G = city.tracker.get_generation_time()
             t_P = city.tracker.test_results_per_day[env.timestamp.date()]['positive']
             t_T = 0 if len(city.tracker.tested_per_day) < 2 else city.tracker.tested_per_day[-2]
             H = sum(city.tracker.hospitalization_per_day)

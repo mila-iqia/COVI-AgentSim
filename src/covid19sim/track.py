@@ -100,20 +100,23 @@ class Tracker(object):
                 'n_contacts': {'avg': (0, np.zeros((150,150))), 'total': np.zeros((150,150))}
 
                 }
+        self.p_infection = []
 
         self.infection_graph = nx.DiGraph()
         self.s_per_day = [sum(h.is_susceptible for h in self.city.humans)]
         self.e_per_day = [sum(h.is_exposed for h in self.city.humans)]
         self.i_per_day = [sum(h.is_infectious for h in self.city.humans)]
         self.r_per_day = [sum(h.is_removed for h in self.city.humans)]
+        self.humans_state = defaultdict(list)
+        self.humans_rec_level = defaultdict(list)
 
         # R0 and Generation times
         self.avg_infectious_duration = 0
         self.n_recovery = 0
         self.n_infectious_contacts = 0
         self.n_contacts = 0
-        self.avg_generation_times = (0,0)
-        self.generation_time_book = {}
+        self.serial_intervals = []
+        self.serial_interval_book = {}
         self.n_env_infection = 0
         self.recovered_stats = []
         self.covid_properties = defaultdict(lambda : [0,0])
@@ -134,7 +137,7 @@ class Tracker(object):
 
         # demographics
         self.age_bins = sorted(self.city.conf.get("HUMAN_DISTRIBUTION").keys(), key = lambda x:x[0])
-        self.n_humans = len(self.city.humans)
+        self.n_people = self.n_humans = len(self.city.humans)
 
         # track encounters
         self.last_encounter_day = self.env.day_of_week()
@@ -253,12 +256,40 @@ class Tracker(object):
 
     def get_generation_time(self):
         """
-        [summary]
+        Generation time is the time from exposure day until an infection occurs.
+        """
+        times = []
+        for x in self.infection_monitor:
+            if x['from']:
+                times.append((x['infection_timestamp'] - x['from_infection_timestamp']).total_seconds() / 86400)
+
+        return np.mean(times)
+
+    def get_serial_interval(self):
+        """
+        Returns serial interval.
+        For description of serial interval, refer self.track_serial_interval
 
         Returns:
-            [type]: [description]
+            float: serial interval
         """
-        return self.avg_generation_times[1]
+        return np.mean(self.serial_intervals)
+
+    def track_serial_interval(self, human_name):
+        """
+        tracks serial interval ("time duration between a primary case-patient (infector) having symptom onset and a secondary case-patient (infectee) having symptom onset")
+        reference: https://wwwnc.cdc.gov/eid/article/26/6/20-0357_article
+
+        `self.serial_interval_book` maps infectee.name to symptom_start_time of infector who infected this infectee.
+
+        Args:
+            human_name (str): name of `Human` who just experienced some symptoms
+        """
+        if human_name not in self.serial_interval_book:
+            return
+
+        serial_interval = (self.env.timestamp - self.serial_interval_book.pop(human_name)).total_seconds() / 86400 # DAYS
+        self.serial_intervals.append(serial_interval)
 
     def increment_day(self):
         """
@@ -277,6 +308,20 @@ class Tracker(object):
         self.i_per_day.append(sum(h.is_infectious for h in self.city.humans))
         self.r_per_day.append(sum(h.is_removed for h in self.city.humans))
         self.ei_per_day.append(self.e_per_day[-1] + self.i_per_day[-1])
+
+        for human in self.city.humans:
+            if human.is_susceptible:
+                state = 'S'
+            elif human.is_exposed:
+                state = 'E'
+            elif human.is_infectious:
+                state = 'I'
+            elif human.is_removed:
+                state = 'R'
+            else:
+                state = 'N/A'
+            self.humans_state[human.name].append(state)
+            self.humans_rec_level[human.name].append(human.rec_level)
 
         # Rt
         self.r.append(self.get_R())
@@ -297,7 +342,6 @@ class Tracker(object):
         self.expected_mobility.append(EM)
         self.feelings.append(F)
         self.rec_feelings.extend([(h.rec_level, h.how_am_I_feeling()) for h in self.city.humans])
-        self.outside_daily_contacts.append(self.n_outside_daily_contacts/len(self.city.humans))
 
         # risk models
         prec, lift, recall = self.compute_risk_precision(daily=True)
@@ -473,6 +517,23 @@ class Tracker(object):
                 to_bin = i
 
         self.cases_per_day[-1] += 1
+        self.infection_monitor.append({
+                        "from": None if not type=="human" else from_human.name,
+                        "from_risk":  None if not type=="human" else from_human.risk,
+                        "from_risk_level": None if not type=="human" else from_human.risk_level,
+                        "from_rec_level": None if not type=="human" else from_human.rec_level,
+                        "from_infection_timestamp": None if not type=="human" else from_human.infection_timestamp,
+                        "from_is_asymptomatic": None if not type=="human" else from_human.is_asymptomatic,
+                        "to": to_human.name,
+                        "to_risk": to_human.risk,
+                        "to_risk_level": to_human.risk_level,
+                        "to_rec_level": to_human.rec_level,
+                        "infection_date": timestamp.date(),
+                        "infection_timestamp":timestamp,
+                        "to_is_asymptomatic": to_human.is_asymptomatic,
+                        "location":location.location_type,
+                        "location": location.name
+                    })
 
         if type == "human":
             self.contacts["human_infection"][from_human.age, to_human.age] += 1
@@ -483,10 +544,8 @@ class Tracker(object):
             self.infection_graph.add_node(to_human.name, bin=to_bin, time=timestamp)
             self.infection_graph.add_edge(from_human.name, to_human.name,  timedelta=delta)
 
-            self.infection_monitor.append([from_human.name, from_human.risk, from_human.risk_level, from_human.rec_level, to_human.name, to_human.risk, to_human.risk_level, to_human.rec_level, timestamp.date()])
-
             if from_human.symptom_start_time is not None:
-                self.generation_time_book[to_human.name] = from_human.symptom_start_time
+                self.serial_interval_book[to_human.name] = from_human.symptom_start_time
 
             if from_human.is_asymptomatic:
                 self.r_0['asymptomatic']['infection_count'] += 1
@@ -507,7 +566,6 @@ class Tracker(object):
             self.contacts["location_env_infection"][location.location_type][to_bin] += 1
             self.infection_graph.add_node(to_human.name, bin=to_bin, time=timestamp)
             self.infection_graph.add_edge(-1, to_human.name,  timedelta="")
-            self.infection_monitor.append([None, to_human.name, timestamp.date()])
 
     def track_update_messages(self, from_human, to_human, payload):
         if self.infection_graph.has_edge(from_human.name, to_human.name):
@@ -525,20 +583,6 @@ class Tracker(object):
                     return
                 x = {'method':model, 'reason':payload['reason']}
                 self.infector_infectee_update_messages[from_human.name][to_human.name][self.env.timestamp] = x
-
-    def track_generation_times(self, human_name):
-        """
-        [summary]
-
-        Args:
-            human_name ([type]): [description]
-        """
-        if human_name not in self.generation_time_book:
-            return
-
-        generation_time = (self.env.timestamp - self.generation_time_book.pop(human_name)).total_seconds() / 86400 # DAYS
-        n, avg_gen_time = self.avg_generation_times
-        self.avg_generation_times = (n+1, 1.0*(avg_gen_time * n + generation_time)/(n+1))
 
     def track_symptoms(self, human=None, count_all=False):
         """
@@ -741,6 +785,7 @@ class Tracker(object):
 
                 self.contacts['n_contacts']['total'] = np.zeros((150,150))
 
+                self.outside_daily_contacts.append(1.0 * self.n_outside_daily_contacts/len(self.city.humans))
                 self.n_outside_daily_contacts = 0
                 self.last_day['social_mixing'] = day
 
@@ -829,6 +874,40 @@ class Tracker(object):
         self.daily_age_group_encounters[bin2[1]][-1] += 1
         self.dist_encounters[dist_bin] += 1
         self.time_encounters[time_bin] += 1
+
+    def track_p_infection(self, infection, p_infection, viral_load):
+        """
+        Keeps track of attributes related to infection to be used for calculating
+        probability of transmission.
+        """
+        self.p_infection.append([infection, p_infection, viral_load])
+
+    def compute_probability_of_transmission(self):
+        """
+        If X interactions qualify as close contact and Y of them resulted in an infection,
+        probability of transmission is defined as Y/X
+        """
+        total_infections = sum(x[0] for x in self.p_infection)
+        total_contacts = len(self.p_infection)
+        return total_infections / total_contacts
+
+    def compute_effective_contacts(self, since_intervention=True):
+        """
+        Effective contacts are those that qualify to be within contact_condition in `Human.at`.
+        These are major candidates for infectious contacts.
+        """
+        all_effective_contacts = 0
+        all_contacts = 0
+        for human in self.city.humans:
+            all_effective_contacts += human.effective_contacts
+            all_contacts += human.num_contacts
+
+        conf = self.city.conf
+        days = conf['simulation_days']
+        if since_intervention and conf['INTERVENTION_DAY'] > 0 :
+            days = conf['simulation_days'] - conf['INTERVENTION_DAY']
+
+        return all_effective_contacts / (days * self.n_people)
 
     def write_metrics(self, logfile=None):
         """
@@ -1005,6 +1084,22 @@ class Tracker(object):
         # log(f"all: {100*np.mean(x):5.2f}% no_test: {100*np.mean(y):5.2f} no_test_and_symptoms: {100*np.mean(z):5.2f}", logfile)
 
         self.compute_test_statistics(logfile)
+
+        log("######## Effective Contacts & % infected #########", logfile)
+        p_infected = 100 * sum(self.cases_per_day) / len(self.city.humans)
+        effective_contacts = self.compute_effective_contacts()
+        p_transmission = self.compute_probability_of_transmission()
+        infectiousness_duration = self.covid_properties['recovery_days'][1] - self.covid_properties['infectiousness_onset_days'][1]
+        # R0 = Susceptible population x Duration of infectiousness x p_transmission
+        # https://www.youtube.com/watch?v=wZabMDS0CeA
+        # valid only when small portion of population is infected
+        r0 = p_transmission * effective_contacts * infectiousness_duration
+
+        log(f"Eff. contacts: {effective_contacts:5.3f} \t % infected: {p_infected: 2.3f}%", logfile)
+        # log(f"Probability of transmission: {p_transmission:2.3f}", logfile)
+        # log(f"Ro (valid only when small proportion of population is infected): {r0: 2.3f}", logfile)
+        # log("definition of small might be blurry for a population size of less than 1000  ", logfile)
+        # log(f"Serial interval: {self.get_serial_interval(): 5.3f}", logfile)
 
     def plot_metrics(self, dirname):
         """
