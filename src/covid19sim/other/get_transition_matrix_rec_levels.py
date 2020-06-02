@@ -117,23 +117,13 @@ def main(args):
                          source_data['intervention_day'],
                          target_data['intervention_day']))
 
-    source_dists = get_rec_levels_distributions(source_data,
-                                                num_rec_levels=args.num_rec_levels)
+    # Compute the distributions of recommendation levels for
+    # target tracing method (e.g. Transformer)
     target_dists = get_rec_levels_distributions(target_data,
-                                                     num_rec_levels=args.num_rec_levels)
-
-    transition_matrices = np.zeros((source_dists.shape[0], args.num_rec_levels,
-                                   args.num_rec_levels), dtype=np.float_)
-
-    for index, (source_dist, target_dist) in enumerate(zip(source_dists, target_dists)):
-        logging.debug('Building the transition matrix for day {0}'.format(
-                      source_data['intervention_day'] + index))
-        transition_matrices[index] = get_rec_level_transition_matrix(
-            source_dist, target_dist)
-    logging.info('Transition matrices successfully created.')
+                                                num_rec_levels=args.num_rec_levels)
 
     # Update the source configuration file
-    source_config['DAILY_REC_LEVEL_MAPPING'] = transition_matrices.flatten().tolist()
+    source_config['DAILY_TARGET_REC_LEVEL_DIST'] = target_dists.flatten().tolist()
 
     # Save the new source configuration
     config_folder = os.path.join(os.path.dirname(__file__), '../hydra-configs/simulation', 'transport')
