@@ -240,6 +240,7 @@ def fill_mila_template(template_str, conf):
     code_loc = conf.get("code_loc", str(Path(home) / "simulator/src/covid19sim/"))
     ipc = conf.get("ipc", {"frontend": "", "backend": ""})
     use_transformer = str(conf.get("use_transformer", True)).lower()
+    workers = cpu - 1
 
     if "dev" in conf and conf["dev"]:
         print(
@@ -258,6 +259,7 @@ def fill_mila_template(template_str, conf):
                     "  {:10}: {}".format("frontend", ipc["frontend"]),
                     "  {:10}: {}".format("backend", ipc["backend"]),
                     "  {:10}: {}".format("use_transformer", use_transformer),
+                    "  {:10}: {}".format("workers", workers),
                 ]
             )
         )
@@ -282,7 +284,8 @@ def fill_mila_template(template_str, conf):
         weights=weights,
         frontend=frontend,
         backend=backend,
-        use_transformer=use_transformer
+        use_transformer=use_transformer,
+        workers=workers
     )
 
 
