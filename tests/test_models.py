@@ -136,11 +136,12 @@ class ModelsTest(unittest.TestCase):
         # Load the experimental configuration
         conf_name = "test_models.yaml"
         conf = get_test_conf(conf_name)
+        conf['TEST_TYPES']['lab']['capacity'] = 0.1
 
         with TemporaryDirectory() as d:
             start_time = datetime.datetime(2020, 2, 28, 0, 0)
-            n_people = 50
-            n_days = 20
+            n_people = 30
+            n_days = 22
 
             ModelsTest.make_human_as_message_proxy.set_start_time(start_time)
 
@@ -404,8 +405,8 @@ class ModelsTest(unittest.TestCase):
             # self.assertGreaterEqual(has_exposure_day, n_people * 0.5)
             # self.assertGreaterEqual(has_recovery_day, n_people * 0.2)
             self.assertGreaterEqual(exposure_encounter_cnt, n_people)
-            self.assertGreaterEqual(infectiousness, n_people)
-            self.assertGreaterEqual(tests_results_cnt, n_people * 0.1)
+            self.assertGreaterEqual(infectiousness, 1)
+            self.assertGreaterEqual(tests_results_cnt, n_people * conf['TEST_TYPES']['lab']['capacity'])
 
 
 class HumanAsMessageTest(unittest.TestCase):
