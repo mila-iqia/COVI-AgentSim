@@ -237,6 +237,8 @@ def fill_mila_template(template_str, conf):
     slurm_log = conf.get("slurm_log", f"/network/tmp1/{user}/covi-slurm-%j.out")
     if "%j.out" not in slurm_log:
         slurm_log = str(Path(slurm_log).resolve() / "covi-slurm-%j.out")
+        if not Path(slurm_log).parent.exists():
+            Path(slurm_log).parent.mkdir(parents=True)
     env_name = conf.get("env_name", "covid")
     weights = conf.get("weights", f"/network/tmp1/{user}/FRESH-SNOWFLAKE-224B")
     code_loc = conf.get("code_loc", str(Path(home) / "simulator/src/covid19sim/"))
