@@ -401,6 +401,8 @@ def main(conf: DictConfig) -> None:
             hydra_args = get_hydra_args(opts, RANDOM_SEARCH_SPECIFIC_PARAMS)
 
             for k in range(conf.get("n_runs_per_search", 1)):
+                if "dev" not in conf or not conf["dev"]:
+                    job_str += f"\necho 'python run.py {hydra_args}'\n"
                 job_str += "\n{};\n".format("python run.py" + hydra_args)
                 run_idx += 1
                 opts = sample_search_conf(conf, run_idx)
@@ -412,6 +414,7 @@ def main(conf: DictConfig) -> None:
 
             # create temporary sbatch file
             tmp = Path(tempfile.NamedTemporaryFile(suffix=".sh").name)
+            tmp = tmp.parent / (Path(conf.get("outdir", "")).name + "_" + tmp.name)
             with tmp.open("w") as f:
                 f.write(job_str)
 
