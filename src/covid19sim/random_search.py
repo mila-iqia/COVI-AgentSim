@@ -526,6 +526,7 @@ def main(conf: DictConfig) -> None:
                 job_out = Path(home) / f"job_logs"
                 job_out.mkdir(exist_ok=True)
                 job_out = job_out / f"{now_str()}.out"
+                print("Job logs:", str(job_out))
                 command_suffix = f" &> {str(job_out)} {command_suffix}"
 
             # append run command
