@@ -430,6 +430,10 @@ class GetTested(BehaviorInterventions):
         return "Get Tested"
 
 class HeuristicRecommendations(RiskBasedRecommendations):
+    def __init__(self, version=2):
+        super(HeuristicRecommendations, self).__init__()
+        self.version = version
+
     @staticmethod
     def get_recommendations_level(human, thresholds, max_risk_level):
         # Most of the logic for recommendations level update is given in the
@@ -438,7 +442,8 @@ class HeuristicRecommendations(RiskBasedRecommendations):
         # received in the mailbox, which get_recommendations_level does not have
         # access to under the current API.
         if human.age >= 70:
-            return max(human.rec_level, 2)
+            rec_level = 1 if (self.version == 2) else 2
+            return max(human.rec_level, rec_level)
         return max(human.rec_level, 0)
 
 
@@ -491,9 +496,12 @@ class Tracing(object):
         self.risk_model = risk_model
         if risk_model in ['manual', 'digital']:
             self.intervention = BinaryTracing()
-        elif risk_model == "heuristic":
+        elif risk_model == "heuristicv1":
             # Combination of risk-based & heuristic recommendations
-            self.intervention = HeuristicRecommendations()
+            self.intervention = HeuristicRecommendations(version=1)
+        elif risk_model == "heuristicv2":
+            # Combination of risk-based & heuristic recommendations
+            self.intervention = HeuristicRecommendations(version=2)
         else:
             # risk based
             self.intervention = RiskBasedRecommendations()
@@ -563,7 +571,7 @@ class Tracing(object):
                 v_down: Average decrease in magnitude of risk levels of recent contacts.
         """
         assert self.risk_model != "transformer", "we should never be in here!"
-        assert self.risk_model in ["manual", "digital", "naive", "heuristic", "other"], "missing something?"
+        assert self.risk_model in ["manual", "digital", "naive", "heuristicv1", "heuristicv2", "other"], "missing something?"
         t, s, r_up, r_down, v_up, v_down = 0, 0, 0, 0, 0, 0
 
         if self.risk_model == "manual":
@@ -619,8 +627,8 @@ class Tracing(object):
             float: a scalar value.
         """
         assert self.risk_model != "transformer", "we should never be in here!"
-        assert self.risk_model in ["manual", "digital", "naive", "heuristic", "other"], "missing something?"
-        if self.risk_model != "heuristic":
+        assert self.risk_model in ["manual", "digital", "naive", "heuristicv1", "heuristicv2", "other"], "missing something?"
+        if self.risk_model not in ["heuristicv1", "heuristicv2"]:
             t, s, r = self._get_hypothetical_contact_tracing_results(human, mailbox, humans_map)
 
         if self.risk_model in ["manual", "digital"]:
@@ -632,13 +640,34 @@ class Tracing(object):
         elif self.risk_model == "naive":
             risk = 1.0 - (1.0 - human.conf.get("RISK_TRANSMISSION_PROBA")) ** (t+s)
 
-        elif self.risk_model == "heuristic":
+        elif self.risk_model in ["heuristicv1", "heuristicv2"]:
             risk = human.risk
 
             no_message_gt3_past_7_days = True
             high_risk_message, high_risk_num_days = -1, -1
             moderate_risk_message, moderate_risk_num_days = -1, -1
             mild_risk_message, mild_risk_num_days = -1, -1
+
+            if self.intervention.version == 1:
+                high_risk_threshold, high_risk_rec_level = 12, 3
+                moderate_risk_threshold, moderate_risk_rec_level = 10, 2
+                mild_risk_threshold, mild_risk_rec_level = 6, 1
+
+                severe_symptoms_risk_level, severe_symptoms_rec_level = 12, 3
+                moderate_symptoms_risk_level, moderate_symptoms_rec_level = 10, 3
+                mild_symptoms_risk_level, mild_symptoms_rec_level = 7, 2
+
+            elif self.intervention.version == 2:
+                high_risk_threshold, high_risk_rec_level = 10, 2
+                moderate_risk_threshold, moderate_risk_rec_level = 8, 1
+                mild_risk_threshold, mild_risk_rec_level = 4, 1
+
+                severe_symptoms_risk_level, severe_symptoms_rec_level = 10, 2
+                moderate_symptoms_risk_level, moderate_symptoms_rec_level = 8, 2
+                mild_symptoms_risk_level, mild_symptoms_rec_level = 6, 1
+
+            else:
+                raise NotImplementedError()
 
             # Check if the user received messages with specific risk level
             # TODO: mailbox only contains update messages, and not encounter messages
@@ -652,15 +681,15 @@ class Tracing(object):
                     if (encounter_day < 7) and (risk_level >= 3):
                         no_message_gt3_past_7_days = False
 
-                    if (risk_level >= 12):
+                    if (risk_level >= high_risk_threshold):
                         high_risk_message = max(high_risk_message, risk_level)
                         high_risk_num_days = max(high_risk_num_days, encounter_day)
 
-                    elif (risk_level >= 10):
+                    elif (risk_level >= moderate_risk_threshold):
                         moderate_risk_message = max(moderate_risk_message, risk_level)
                         moderate_risk_num_days = max(moderate_risk_message, encounter_day)
 
-                    elif (risk_level >= 6):
+                    elif (risk_level >= mild_risk_threshold):
                         mild_risk_message = max(mild_risk_message, risk_level)
                         mild_risk_num_days = max(mild_risk_message, encounter_day)
 
@@ -669,16 +698,19 @@ class Tracing(object):
                 risk = [self.risk_level_to_risk(15)] * 14
             elif human.all_reported_symptoms:
                 if "extremely-severe" in human.all_reported_symptoms:
-                    # For severe symptoms, set R = 12 for now and all past 7 days
-                    risk = [self.risk_level_to_risk(12)] * 7
+                    # For severe symptoms, set R = 10 for now and all past 7 days
+                    risk = [self.risk_level_to_risk(severe_symptoms_risk_level)] * 7
+                    # TODO: Set recommendations level L = 2
                 elif "severe" in human.all_reported_symptoms:
-                    risk = [self.risk_level_to_risk(12)] * 7
+                    risk = [self.risk_level_to_risk(severe_symptoms_risk_level)] * 7
                 elif "moderate" in human.all_reported_symptoms:
-                    # For intermediate symptoms, set R = 10 for now and all past 7 days
-                    risk = [self.risk_level_to_risk(10)] * 7
+                    # For intermediate symptoms, set R = 8 for now and all past 7 days
+                    risk = [self.risk_level_to_risk(moderate_symptoms_risk_level)] * 7
+                    # TODO: Set recommendations level L = 2
                 else:
-                    # For mild symptoms, set R = 7 for now and all past 7 days
-                    risk = [self.risk_level_to_risk(7)] * 7
+                    # For mild symptoms, set R = 6 for now and all past 7 days
+                    risk = [self.risk_level_to_risk(mild_symptoms_risk_level)] * 7
+                    # TODO: Set recommendations level L = 1
 
             elif human.rec_level > 0:
                 # Check if there was no positive test result in the past 14 days
@@ -701,18 +733,21 @@ class Tracing(object):
                 # TODO: Decrease the risk level depending on the number of encounters (N > 5)
                 updated_risk = max(human.risk_level, self.risk_level_to_risk(high_risk_message - 5))
                 risk = [updated_risk] * max(high_risk_num_days - 2, 1) # Update at least 1 day
+                # TODO: Set recommendations level L = 2
 
             elif moderate_risk_message > 0:
                 # Set the risk level to max(R' - 5, R) for all days after day D + 2
                 # (with at least 1 update for the current day)
                 updated_risk = max(human.risk_level, self.risk_level_to_risk(moderate_risk_message - 5))
                 risk = [updated_risk] * max(moderate_risk_num_days - 2, 1)
+                # TODO: Set recommendations level L = 1
 
             elif mild_risk_message > 0:
                 # Set the risk level to max(R' - 5, R) for all days after day D + 2
                 # (with at least 1 update for the current day)
                 updated_risk = max(human.risk_level, self.risk_level_to_risk(mild_risk_message - 5))
                 risk = [updated_risk] * max(mild_risk_num_days - 2, 1)
+                # TODO: Set recommendations level L = 1
 
         elif self.risk_model == "other":
             r_up, v_up, r_down, v_down = r
