@@ -15,7 +15,7 @@ TimestampDefault = datetime.datetime.utcfromtimestamp(0)
 RealUserIDType = typing.Union[int, str]
 
 UIDType = int  # should be at least 16 bytes for truly unique keys?
-message_uid_bit_count = 128  # to be adjusted with the actual real bit count of the GAEN keys
+message_uid_bit_count = 128  # to be adjusted with the actual real bit count of the mailbox keys
 message_uid_mask = UIDType((1 << message_uid_bit_count) - 1)
 
 RiskLevelType = np.uint8
@@ -100,9 +100,6 @@ class UpdateMessage:
     #############################################
     # unobserved variables (for debugging only!)
 
-    _order_offset: int = 1  # 1 means that a direct contact had a new cause for update
-    """Defines the 'order' distance of the original cause of the update."""
-
     _sender_uid: typing.Optional[RealUserIDType] = None
     """Real Unique Identifier (UID) of the updater."""
 
@@ -123,17 +120,16 @@ def generate_encounter_message(
         sender: "Human",
         receiver: "Human",
         env_timestamp: TimestampType,
-        minutes_granularity: int,
+        use_gaen_key: bool = False,
 ) -> EncounterMessage:
     """Generates an encounter message to pass from a sender to a receiver.
 
     TODO: determine whether we should actually use a real 15-min lifespan key for exchanges?
     """
     return EncounterMessage(
-        uid=create_new_uid(),  # GAEN: uid == mailbox key (generate a new one every time)
+        uid=create_new_uid() if use_gaen_key else None,
         risk_level=None,  # dirty hack, but it will do for now (we will have to check for None)
-        encounter_time=env_timestamp -
-        datetime.timedelta(minutes=env_timestamp.minute % minutes_granularity),
+        encounter_time=datetime.datetime.combine(env_timestamp.date(), datetime.datetime.min.time()),
         _sender_uid=sender.name,
         _receiver_uid=receiver.name,
         _real_encounter_time=env_timestamp,
@@ -146,7 +142,7 @@ def exchange_encounter_messages(
         h2: "Human",
         env_timestamp: datetime.datetime,
         initial_timestamp: datetime.datetime,
-        minutes_granularity: int,
+        use_gaen_key: bool = False,
 ) -> typing.Tuple[EncounterMessage, EncounterMessage]:
     """Creates & exchanges encounter messages between two humans.
 
@@ -161,8 +157,8 @@ def exchange_encounter_messages(
     Returns both newly created encounter messages, which contain the mailbox keys as uids. The
     contact books of both users will be updated by this function.
     """
-    h1_msg = generate_encounter_message(h1, h2, env_timestamp, minutes_granularity)
-    h2_msg = generate_encounter_message(h2, h1, env_timestamp, minutes_granularity)
+    h1_msg = generate_encounter_message(h1, h2, env_timestamp, use_gaen_key=use_gaen_key)
+    h2_msg = generate_encounter_message(h2, h1, env_timestamp, use_gaen_key=use_gaen_key)
     # the encounter messages above are essentially reminders that we need to update that contact
     curr_day_idx = (env_timestamp - initial_timestamp).days
     assert 0 <= curr_day_idx
@@ -171,13 +167,13 @@ def exchange_encounter_messages(
         h1.contact_book.encounters_by_day[curr_day_idx] = []
         h1.contact_book.mailbox_keys_by_day[curr_day_idx] = []
     h1.contact_book.encounters_by_day[curr_day_idx].append(h1_msg)
-    h1.contact_book.mailbox_keys_by_day[curr_day_idx].append(h2_msg.uid)  # GAEN: uid == mailbox key
+    h1.contact_book.mailbox_keys_by_day[curr_day_idx].append(h2_msg.uid)  # message uid == mailbox key
     if curr_day_idx not in h2.contact_book.encounters_by_day:
         assert curr_day_idx not in h2.contact_book.mailbox_keys_by_day
         h2.contact_book.encounters_by_day[curr_day_idx] = []
         h2.contact_book.mailbox_keys_by_day[curr_day_idx] = []
     h2.contact_book.encounters_by_day[curr_day_idx].append(h2_msg)
-    h2.contact_book.mailbox_keys_by_day[curr_day_idx].append(h1_msg.uid)  # GAEN: uid == mailbox key
+    h2.contact_book.mailbox_keys_by_day[curr_day_idx].append(h1_msg.uid)  # message uid == mailbox key
     return h1_msg, h2_msg
 
 
@@ -185,7 +181,6 @@ def create_update_message(
         encounter_message: EncounterMessage,
         new_risk_level: RiskLevelType,
         current_time: TimestampType,
-        order_offset: int = 1,
         update_reason: typing.Optional[str] = None,
 ) -> UpdateMessage:
     """Creates and returns an update message for a given encounter.
@@ -194,7 +189,6 @@ def create_update_message(
         encounter_message: the encounter message for which to create an update.
         new_risk_level: the new risk level of the sender.
         current_time: the current time of the simulation.
-        order_offset: the order offset indicating the distance to the original updater.
         update_reason: the (optional) reason why this update is being generated.
 
     Returns:
@@ -207,8 +201,7 @@ def create_update_message(
         old_risk_level=encounter_message.risk_level,
         new_risk_level=new_risk_level,
         encounter_time=encounter_message.encounter_time,
-        update_time=current_time,  # TODO: discretize if needed? @@@
-        _order_offset=order_offset,
+        update_time=datetime.datetime.combine(current_time.date(), datetime.datetime.min.time()),
         _sender_uid=encounter_message._sender_uid,
         _receiver_uid=encounter_message._receiver_uid,
         _real_encounter_time=encounter_message._real_encounter_time,
@@ -309,7 +302,6 @@ def combine_update_messages(
         new_risk_level=newest_update_message.new_risk_level,
         encounter_time=oldest_update_message.encounter_time,
         update_time=newest_update_message.update_time,
-        _order_offset=newest_update_message._order_offset,
         _sender_uid=newest_update_message._sender_uid if
         oldest_update_message._sender_uid == newest_update_message._sender_uid else None,
         _receiver_uid=newest_update_message._receiver_uid if
@@ -559,7 +551,6 @@ class ContactBook:
                             encounter_message=encounter_message,
                             new_risk_level=RiskLevelType(encounter_message.risk_level),
                             current_time=current_timestamp,
-                            order_offset=1,
                             update_reason="contact",
                         )
                     )
@@ -616,7 +607,6 @@ class ContactBook:
                             encounter_message=encounter_message,
                             new_risk_level=RiskLevelType(new_risk_level),
                             current_time=current_timestamp,
-                            order_offset=1,  # this will be useful if we want to stop feedback loops in the sim
                             update_reason=update_reason,
                         )
                     )
@@ -634,9 +624,10 @@ def batch_messages(
     batched_update_messages = collections.defaultdict(list)
     for message in messages:
         if isinstance(message, EncounterMessage):
-            batched_encounter_messages[message.risk_level].append(message)
+            msg_code = (message.risk_level, message.encounter_time)
+            batched_encounter_messages[msg_code].append(message)
         else:
-            msg_code = (message.old_risk_level, message.new_risk_level)
+            msg_code = (message.old_risk_level, message.new_risk_level, message.update_time)
             batched_update_messages[msg_code].append(message)
     output = []
     for msgs in batched_encounter_messages.values():

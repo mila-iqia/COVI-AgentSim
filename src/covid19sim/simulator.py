@@ -1746,11 +1746,11 @@ class Human(object):
                         h1=self,
                         h2=h,
                         # TODO: could adjust real timestamps in encounter messages based on remaining time?
+                        # env_timestamp=self.env.timestamp - datetime.timedelta(minutes=remaining_time_in_contact),
+                        # the above change might break clustering asserts if we somehow jump across timeslots/days
                         env_timestamp=self.env.timestamp,
                         initial_timestamp=self.env.initial_timestamp,
-                        # note: the granularity here does not really matter, it's only used to keep map sizes small
-                        # in the clustering algorithm --- in reality, only the encounter day matters
-                        minutes_granularity=encounter_time_granularity,
+                        use_gaen_key=self.conf.get("USE_GAEN"),
                     )
                     remaining_time_in_contact -= encounter_time_granularity
 

@@ -619,24 +619,25 @@ class Tracing(object):
             # TODO: mailbox only contains update messages, and not encounter messages
             # TODO: use the result of the clustering algorithm to find the number of
             #       encounters with another user with high risk level
-            for _, update_message in mailbox.items():
-                encounter_day = (human.env.timestamp - update_message.encounter_time).days
-                risk_level = update_message.new_risk_level
+            for _, update_messages in mailbox.items():
+                for update_message in update_messages:
+                    encounter_day = (human.env.timestamp - update_message.encounter_time).days
+                    risk_level = update_message.new_risk_level
 
-                if (encounter_day < 7) and (risk_level >= 3):
-                    no_message_gt3_past_7_days = False
+                    if (encounter_day < 7) and (risk_level >= 3):
+                        no_message_gt3_past_7_days = False
 
-                if (risk_level >= 12):
-                    high_risk_message = max(high_risk_message, risk_level)
-                    high_risk_num_days = max(high_risk_num_days, encounter_day)
+                    if (risk_level >= 12):
+                        high_risk_message = max(high_risk_message, risk_level)
+                        high_risk_num_days = max(high_risk_num_days, encounter_day)
 
-                elif (risk_level >= 10):
-                    moderate_risk_message = max(moderate_risk_message, risk_level)
-                    moderate_risk_num_days = max(moderate_risk_message, encounter_day)
+                    elif (risk_level >= 10):
+                        moderate_risk_message = max(moderate_risk_message, risk_level)
+                        moderate_risk_num_days = max(moderate_risk_message, encounter_day)
 
-                elif (risk_level >= 6):
-                    mild_risk_message = max(mild_risk_message, risk_level)
-                    mild_risk_num_days = max(mild_risk_message, encounter_day)
+                    elif (risk_level >= 6):
+                        mild_risk_message = max(mild_risk_message, risk_level)
+                        mild_risk_num_days = max(mild_risk_message, encounter_day)
 
             if human.reported_test_result == "positive":
                 # Update risk for the past 14 days

@@ -20,7 +20,7 @@ from covid19sim.frozen.message_utils import UIDType, UpdateMessage, combine_upda
 if typing.TYPE_CHECKING:
     from covid19sim.simulator import Human
 
-PersonalMailboxType = typing.Dict[UIDType, UpdateMessage]
+PersonalMailboxType = typing.Dict[UIDType, typing.List[UpdateMessage]]
 SimulatorMailboxType = typing.Dict[RealUserIDType, PersonalMailboxType]
 
 
@@ -165,11 +165,17 @@ class City:
         # note that to keep the simulator efficient, users will directly pop the update messages that
         # they consume, so this is only necessary for edge cases (e.g. dead people can't update)
         max_encounter_age = self.conf.get('TRACING_N_DAYS_HISTORY')
-        self.global_mailbox = {
-            user_key: {gaen_key: message for gaen_key, message in personal_mailbox.items()
-                       if (current_timestamp - message.encounter_time).days <= max_encounter_age}
-            for user_key, personal_mailbox in self.global_mailbox.items()
-        }
+        new_global_mailbox = {}
+        for user_key, personal_mailbox in self.global_mailbox.items():
+            new_personal_mailbox = {}
+            for mailbox_key, messages in personal_mailbox.items():
+                for message in messages:
+                    if (current_timestamp - message.encounter_time).days <= max_encounter_age:
+                        if mailbox_key not in new_personal_mailbox:
+                            new_personal_mailbox[mailbox_key] = []
+                        new_personal_mailbox[mailbox_key].append(message)
+            new_global_mailbox[user_key] = new_personal_mailbox
+        self.global_mailbox = new_global_mailbox
 
     def register_new_messages(
             self,
@@ -238,18 +244,11 @@ class City:
             self.sent_messages_by_day[current_day_idx] += 1
             source_human.contact_book.latest_update_time = \
                 max(source_human.contact_book.latest_update_time, current_timestamp)
-            mailbox_key = update_message.uid  # GAEN key = message uid
+            mailbox_key = update_message.uid  # mailbox key = message uid
             personal_mailbox = self.global_mailbox[destination_human.name]
-            assert mailbox_key not in personal_mailbox or \
-                   (update_message._sender_uid == personal_mailbox[mailbox_key]._sender_uid and
-                    update_message._receiver_uid == personal_mailbox[mailbox_key]._receiver_uid), \
-                "unexpected collision in personal mailbox (go buy a lottery ticket?)"
-            if mailbox_key in personal_mailbox:
-                # if there is still an old update message in the global mailbox, just crush it
-                personal_mailbox[mailbox_key] = \
-                    combine_update_messages(personal_mailbox[mailbox_key], update_message)
-            else:
-                personal_mailbox[mailbox_key] = update_message
+            if mailbox_key not in personal_mailbox:
+                personal_mailbox[mailbox_key] = []
+            personal_mailbox[mailbox_key].append(update_message)
 
     def _check_should_send_message_gaen(
             self,
