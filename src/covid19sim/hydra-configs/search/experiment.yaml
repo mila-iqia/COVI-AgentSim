@@ -34,8 +34,8 @@ DROPOUT_RATE:
   from: [0.0, 0.25]
 
 init_percent_sick:
-  sample: uniform
-  from: [0.001, 0.035] # @nasim's German article https://www.google.de/amp/s/www.quarks.de/gesellschaft/wissenschaft/heinsberg-studie-das-lernen-wir-daraus-und-das-nicht/amp/
+  sample: list
+  from: [0.003, 0.006, 0.009, 0.012, 0.015, 0.018, 0.021, 0.024, 0.027, 0.03, 0.033, 0.036, 0.039, 0.042, 0.045, 0.048]
 
 INTERVENTION_DAY:
   sample: range
