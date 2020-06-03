@@ -24,11 +24,11 @@ tune: true
 APP_UPTAKE: # for sole reproducibility purposes
   sample: cartesian # loop through list sequentially, in order
   from:   # Ad. Rate
-    - 0.7 # 0.49842099999999995
     - 0.1 # 0.071203
     - 0.3 # 0.213609
     - 0.5 # 0.356015
-    - 1   # 0.49842099999999995
+    - 0.7 # 0.49842099999999995
+    - 1   # 0.71203
 
 seed: # for sole reproducibility purposes
   sample: cartesian # loop through list sequentially, in order
