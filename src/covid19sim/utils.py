@@ -545,39 +545,64 @@ def _get_disease_days(rng, conf, age, inflammatory_disease_level):
         shape=conf['INCUBATION_DAYS_GAMMA_SHAPE'],
         scale=conf['INCUBATION_DAYS_GAMMA_SCALE']
     )
-    # (no-source) assumption is that there is atleast one day to remain exposed
-    incubation_days = max(1, incubation_days)
+    # (no-source) assumption is that there is at least two days to remain exposed
+    # Comparitively, we set infectiousness_onset_days to be at least one day to remain exposed
+    incubation_days = max(2.0, incubation_days)
 
     # days after exposure when viral shedding starts, i.e., person is infectious
-    infectiousness_onset_days = incubation_days - truncnorm((INFECTIOUSNESS_ONSET_WRT_SYMPTOM_ONSET_CLIP_LOW - INFECTIOUSNESS_ONSET_WRT_SYMPTOM_ONSET_AVG) / INFECTIOUSNESS_ONSET_WRT_SYMPTOM_ONSET_STD,
-                                                                 (INFECTIOUSNESS_ONSET_WRT_SYMPTOM_ONSET_CLIP_HIGH - INFECTIOUSNESS_ONSET_WRT_SYMPTOM_ONSET_AVG) / INFECTIOUSNESS_ONSET_WRT_SYMPTOM_ONSET_STD,
-                                      loc=INFECTIOUSNESS_ONSET_WRT_SYMPTOM_ONSET_AVG, scale=INFECTIOUSNESS_ONSET_WRT_SYMPTOM_ONSET_STD).rvs(1, random_state=rng).item()
+    infectiousness_onset_days = \
+        incubation_days - \
+        truncnorm((INFECTIOUSNESS_ONSET_WRT_SYMPTOM_ONSET_CLIP_LOW - INFECTIOUSNESS_ONSET_WRT_SYMPTOM_ONSET_AVG) /
+                  INFECTIOUSNESS_ONSET_WRT_SYMPTOM_ONSET_STD,
+                  (INFECTIOUSNESS_ONSET_WRT_SYMPTOM_ONSET_CLIP_HIGH - INFECTIOUSNESS_ONSET_WRT_SYMPTOM_ONSET_AVG) /
+                  INFECTIOUSNESS_ONSET_WRT_SYMPTOM_ONSET_STD,
+                  loc=INFECTIOUSNESS_ONSET_WRT_SYMPTOM_ONSET_AVG,
+                  scale=INFECTIOUSNESS_ONSET_WRT_SYMPTOM_ONSET_STD).rvs(1, random_state=rng).item()
 
-    # (no-source) assumption is that there is atleast one day to remain exposed
-    infectiousness_onset_days = max(1, infectiousness_onset_days)
+    # (no-source) assumption is that there is at least one day to remain exposed
+    infectiousness_onset_days = max(1.0, infectiousness_onset_days)
 
     # viral load peaks INFECTIOUSNESS_PEAK_AVG days before incubation days
-    viral_load_peak_wrt_incubation_days  = truncnorm((INFECTIOUSNESS_PEAK_CLIP_LOW - INFECTIOUSNESS_PEAK_AVG) / INFECTIOUSNESS_PEAK_STD,
-                                            (INFECTIOUSNESS_PEAK_CLIP_HIGH - INFECTIOUSNESS_PEAK_AVG) / INFECTIOUSNESS_PEAK_STD,
-                                            loc=INFECTIOUSNESS_PEAK_AVG, scale=INFECTIOUSNESS_PEAK_STD).rvs(1, random_state=rng).item()
+    viral_load_peak_wrt_incubation_days = \
+        truncnorm((INFECTIOUSNESS_PEAK_CLIP_LOW - INFECTIOUSNESS_PEAK_AVG) /
+                  INFECTIOUSNESS_PEAK_STD,
+                  (INFECTIOUSNESS_PEAK_CLIP_HIGH - INFECTIOUSNESS_PEAK_AVG) /
+                  INFECTIOUSNESS_PEAK_STD,
+                  loc=INFECTIOUSNESS_PEAK_AVG,
+                  scale=INFECTIOUSNESS_PEAK_STD).rvs(1, random_state=rng).item()
+
     viral_load_peak = incubation_days - viral_load_peak_wrt_incubation_days
+
+    # (no-source) assumption is that there is atleast half a day after the infectiousness_onset_days
+    viral_load_peak = max(infectiousness_onset_days + 0.5, viral_load_peak)
+
+    viral_load_peak_wrt_incubation_days = incubation_days - viral_load_peak
 
     # (no-source) We assume that plateau start is equi-distant from the peak
     # infered from the curves in Figure 1 of the reference above
     plateau_start = incubation_days + viral_load_peak_wrt_incubation_days
 
     # (no-source) plateau duration is assumed to be of avg PLATEAU_DRATION_MEAN
-    plateau_end = plateau_start + truncnorm((PLATEAU_DURATION_CLIP_LOW - PLATEAU_DURATION_MEAN) / PLATEAU_DURATION_STD,
-                                            (PLATEAU_DURATION_CLIP_HIGH - PLATEAU_DURATION_MEAN) / PLATEAU_DURATION_STD,
-                                            loc=PLATEAU_DURATION_MEAN, scale=PLATEAU_DURATION_STD).rvs(1, random_state=rng).item()
+    plateau_end = \
+        plateau_start + \
+        truncnorm((PLATEAU_DURATION_CLIP_LOW - PLATEAU_DURATION_MEAN) /
+                  PLATEAU_DURATION_STD,
+                  (PLATEAU_DURATION_CLIP_HIGH - PLATEAU_DURATION_MEAN) /
+                  PLATEAU_DURATION_STD,
+                  loc=PLATEAU_DURATION_MEAN,
+                  scale=PLATEAU_DURATION_STD).rvs(1, random_state=rng).item()
 
     # recovery is often quoted with respect to the incubation days
     # so we add it here with respect to the plateau end.
     RECOVERY_WRT_PLATEAU_END_AVG = conf['RECOVERY_DAYS_AVG'] - conf['PLATEAU_DURATION_MEAN'] - INFECTIOUSNESS_ONSET_WRT_SYMPTOM_ONSET_AVG
-    recovery_days = plateau_end + truncnorm((RECOVERY_CLIP_LOW - RECOVERY_WRT_PLATEAU_END_AVG) / RECOVERY_STD,
-                                            (RECOVERY_CLIP_HIGH - RECOVERY_WRT_PLATEAU_END_AVG) / RECOVERY_STD,
-                                            loc=RECOVERY_WRT_PLATEAU_END_AVG, scale=RECOVERY_STD).rvs(1, random_state=rng).item()
-
+    recovery_days = \
+        plateau_end + \
+        truncnorm((RECOVERY_CLIP_LOW - RECOVERY_WRT_PLATEAU_END_AVG) /
+                  RECOVERY_STD,
+                  (RECOVERY_CLIP_HIGH - RECOVERY_WRT_PLATEAU_END_AVG) /
+                  RECOVERY_STD,
+                  loc=RECOVERY_WRT_PLATEAU_END_AVG,
+                  scale=RECOVERY_STD).rvs(1, random_state=rng).item()
 
     # Time to recover is proportional to age
     # based on hospitalization data (biased towards older people) https://pubs.rsna.org/doi/10.1148/radiol.2020200370
