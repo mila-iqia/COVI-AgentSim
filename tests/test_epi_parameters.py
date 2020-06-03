@@ -31,6 +31,7 @@ def load_config():
     conf = OmegaConf.merge(*default_confs)
     return parse_configuration(conf)
 
+
 def test_incubation_days():
     """
     Intialize `Human`s and compute their covid properties.
@@ -139,5 +140,141 @@ def test_incubation_days():
             print(f"sigma: {avg_sigma: 3.3f} ({ci_sigma[0]: 3.3f} - {ci_sigma[1]: 3.3f}) refernce value: no-source")
 
 
+def test_human_compute_covid_properties():
+    """
+    """
+    conf = load_config()
+
+    # This test force the call Human.compute_covid_properties()
+    n_people = 1
+    init_percent_sick = 0
+    start_time = datetime.datetime(2020, 2, 28, 0, 0)
+    city_x_range = (0, 1000)
+    city_y_range = (0, 1000)
+
+    env = Env(start_time)
+
+    city = City(
+        env,
+        n_people,
+        init_percent_sick,
+        np.random.RandomState(42),
+        city_x_range,
+        city_y_range,
+        Human,
+        conf,
+    )
+
+    def _get_human_covid_properties(human):
+        human.compute_covid_properties()
+
+        # &infectiousness-onset [He 2020 https://www.nature.com/articles/s41591-020-0869-5#ref-CR1]
+        # infectiousness started from 2.3 days (95% CI, 0.8–3.0 days) before symptom
+        # onset and peaked at 0.7 days (95% CI, −0.2–2.0 days) before symptom onset (Fig. 1c).
+        assert human.infectiousness_onset_days <= human.incubation_days
+        assert human.incubation_days - human.infectiousness_onset_days >= 0.0
+        assert human.incubation_days - human.infectiousness_onset_days <= 3.3
+
+        # viral_load_peak_start, viral_load_plateau_start and viral_load_plateau_
+        # end are relative to infectiousness_onset_days
+        assert human.viral_load_peak_start + human.infectiousness_onset_days < \
+               human.incubation_days
+        assert human.incubation_days < human.viral_load_plateau_start + human.infectiousness_onset_days
+        assert human.viral_load_plateau_start < human.viral_load_plateau_end
+        assert human.viral_load_plateau_end + human.infectiousness_onset_days < \
+               human.recovery_days
+
+        # &infectiousness-peak [He 2020 https://www.nature.com/articles/s41591-020-0869-5#ref-CR1]
+        # infectiousness peaked at 0.7 days (95% CI, −0.2–2.0 days) before symptom onset (Fig. 1c).
+        assert human.incubation_days - \
+               (human.viral_load_peak_start + human.infectiousness_onset_days) >= 0.01
+        assert human.incubation_days - \
+               (human.viral_load_peak_start + human.infectiousness_onset_days) <= 2.2
+
+        # Avg plateau duration
+        # infered from https://www.medrxiv.org/content/10.1101/2020.04.10.20061325v2.full.pdf (Figure 1 & 4).
+        # 8 is infered from Figure 4 by eye-balling.
+        assert human.viral_load_plateau_end - human.viral_load_plateau_start >= 3.0
+        assert human.viral_load_plateau_end - human.viral_load_plateau_start <= 9.0
+
+        assert human.viral_load_peak_height >= conf['MIN_VIRAL_LOAD_PEAK_HEIGHT']
+        assert human.viral_load_peak_height <= conf['MAX_VIRAL_LOAD_PEAK_HEIGHT']
+
+        assert human.viral_load_plateau_height <= human.viral_load_peak_height
+
+        assert (human.viral_load_peak_height -
+                human.peak_plateau_slope * (human.viral_load_plateau_start -
+                                            human.viral_load_peak_start)) - \
+               human.viral_load_plateau_height < 0.001
+
+        assert human.viral_load_plateau_height - \
+               human.plateau_end_recovery_slope * (human.recovery_days -
+                                                   (human.viral_load_plateau_end +
+                                                    human.infectiousness_onset_days)) < 0.001
+
+        return [human.infectiousness_onset_days, human.viral_load_peak_start,
+                human.incubation_days, human.viral_load_plateau_start,
+                human.viral_load_plateau_end, human.recovery_days,
+                human.viral_load_peak_height, human.viral_load_plateau_height,
+                human.peak_plateau_slope, human.plateau_end_recovery_slope]
+
+    human = city.humans[0]
+    # Reset the rng
+    human.rng = np.random.RandomState(42)
+    # force is_asymptomatic to False since we are not testing the symptoms
+    human.is_asymptomatic = False
+    # force the age to a somewhat median
+    human.age = 40
+    covid_properties_samples = [_get_human_covid_properties(human)
+                                for _ in range(10000)]
+
+    covid_properties_samples_mean = covid_properties_samples[0]
+    for sample in covid_properties_samples[1:]:
+        for i in range(len(covid_properties_samples_mean)):
+            covid_properties_samples_mean[i] += sample[i]
+
+    for i in range(len(covid_properties_samples_mean)):
+        covid_properties_samples_mean[i] /= 10000
+
+    infectiousness_onset_days_mean, viral_load_peak_start_mean, \
+        incubation_days_mean, viral_load_plateau_start_mean, \
+        viral_load_plateau_end_mean, recovery_days_mean, \
+        viral_load_peak_height_mean, viral_load_plateau_height_mean, \
+        peak_plateau_slope_mean, plateau_end_recovery_slope_mean = covid_properties_samples_mean
+
+    # infectiousness_onset_days
+    # &infectiousness-onset [He 2020 https://www.nature.com/articles/s41591-020-0869-5#ref-CR1]
+    # infectiousness started from 2.3 days (95% CI, 0.8–3.0 days) before symptom
+    # onset and peaked at 0.7 days (95% CI, −0.2–2.0 days) before symptom onset (Fig. 1c).
+    # TODO: infectiousness_onset_days has a minimum of 1 which affects this mean. Validate this assert
+    assert abs(infectiousness_onset_days_mean - 2.3) < 1.5, \
+        f"The average of infectiousness_onset_days should be about {2.3}"
+
+    # viral_load_peak_start
+    # &infectiousness-peak [He 2020 https://www.nature.com/articles/s41591-020-0869-5#ref-CR1]
+    # infectiousness peaked at 0.7 days (95% CI, −0.2–2.0 days) before symptom onset (Fig. 1c).
+    assert abs(incubation_days_mean -
+               (viral_load_peak_start_mean + infectiousness_onset_days_mean) - 0.7) < 0.5, \
+        f"The average of viral_load_peak_start should be about {0.7}"
+
+    # incubation_days
+    # INCUBATION PERIOD
+    # Refer Table 2 (Appendix) in https://www.acpjournals.org/doi/10.7326/M20-0504 for parameters of lognormal fit
+    assert abs(incubation_days_mean - 5.807) < 0.5, \
+        f"The average of infectiousness_onset_days should be about {5.807} days"
+
+    # viral_load_plateau_start_mean, viral_load_plateau_end_mean
+    # Avg plateau duration
+    # infered from https://www.medrxiv.org/content/10.1101/2020.04.10.20061325v2.full.pdf (Figure 1 & 4).
+    # 8 is infered from Figure 4 by eye-balling.
+    assert abs(viral_load_plateau_end_mean - viral_load_plateau_start_mean) - 4.5 < 0.5, \
+        f"The average of the plateau duration should be about {4.5} days"
+
+    # recovery is with respect to incubation days. (no-source) 14 is loosely defined.
+    assert abs(recovery_days_mean - incubation_days_mean) - 14 < 0.5, \
+        f"The average of the recovery time  should be about {14} days"
+
+
 if __name__ == "__main__":
     test_incubation_days()
+    test_human_compute_covid_properties()
