@@ -472,6 +472,7 @@ def main(conf: DictConfig) -> None:
     template_str = load_template(infra)
     use_tmpdir = conf.get("use_tmpdir", False)
     outdir = None
+    dev = "dev" in conf and conf["dev"]
 
     home = os.environ["HOME"]
 
@@ -515,7 +516,7 @@ def main(conf: DictConfig) -> None:
         for k in range(conf.get("n_runs_per_search", 1)):
 
             # echo commandlines run in job
-            if ("dev" not in conf or not conf["dev"]):
+            if not dev:
                 job_str += f"\necho 'python run.py {hydra_args}'\n"
 
 
@@ -543,21 +544,24 @@ def main(conf: DictConfig) -> None:
         if use_tmpdir and infra != "intel":
             # data  needs to be zipped for it to be transferred
             assert conf["zip_outdir"]
-            job_str += f"\n cp $SLURM_TMPDIR/*.zip {outdir}"
+            job_str += f"\ncp $SLURM_TMPDIR/*.zip {outdir}"
 
         # create temporary sbatch file
         tmp = Path(tempfile.NamedTemporaryFile(suffix=".sh").name)
         # give somewhat meaningful name to t
         tmp = tmp.parent / (Path(conf.get("outdir", "")).name + "_" + tmp.name)
-        with tmp.open("w") as f:
-            f.write(job_str)
+        if not dev:
+            with tmp.open("w") as f:
+                f.write(job_str)
 
+        # sbatch or bash execution
         if infra in {"beluga", "mila"}:
             command = f"sbatch {str(tmp)}"
         elif infra == "intel":
             command = f"bash {str(tmp)}"
+
         # dev-mode: don't actually run the command
-        if "dev" in conf and conf["dev"]:
+        if dev:
             print("\n>>> ", command, end="\n\n")
             print(str(tmp))
             print("." * 50)
