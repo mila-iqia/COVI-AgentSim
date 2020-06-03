@@ -521,7 +521,7 @@ class Tracing(object):
             self.delay = 1
             self.app = False
 
-        if risk_model == "heuristic":
+        if risk_model in ["heuristicv1", "heuristicv2"]:
             self.risk_mapping = conf.get("RISK_MAPPING")
 
         self.propagate_risk_max_depth = max_depth
