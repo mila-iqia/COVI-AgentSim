@@ -289,7 +289,11 @@ def fill_mila_template(template_str, conf):
             )
         )
 
-    partition = f"#SBATCH --partition={partition}"
+    partition = (
+        f"#SBATCH --partition={partition}"
+        if partition != "covi"
+        else "#SBATCH --reservation=covid\n#SBATCH --partition=long"
+    )
     cpu = f"#SBATCH --cpus-per-task={cpu}"
     mem = f"#SBATCH --mem={mem}GB"
     gres = f"#SBATCH --gres={gres}" if gres else ""
@@ -518,7 +522,6 @@ def main(conf: DictConfig) -> None:
             # echo commandlines run in job
             if not dev:
                 job_str += f"\necho 'python run.py {hydra_args}'\n"
-
 
             command_suffix = "&\nsleep 5;\n" if parallel_search else ";\n"
             # intel doesn't have a log file so let's make one

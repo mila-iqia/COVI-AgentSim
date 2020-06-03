@@ -112,6 +112,9 @@ class UpdateMessage:
     _real_update_time: typing.Optional[TimestampType] = None
     """Real update generation timestamp."""
 
+    _exposition_event: typing.Optional[bool] = None
+    """Flags whether the original encounter corresponds to an exposition event for the receiver."""
+
     _update_reason: typing.Optional[str] = None
     """Reason why this update message was sent (for debugging)."""
 
@@ -206,6 +209,7 @@ def create_update_message(
         _receiver_uid=encounter_message._receiver_uid,
         _real_encounter_time=encounter_message._real_encounter_time,
         _real_update_time=current_time,
+        _exposition_event=encounter_message._exposition_event,
         _update_reason=update_reason,
     )
 
@@ -310,6 +314,8 @@ def combine_update_messages(
         oldest_update_message._real_encounter_time == newest_update_message._real_encounter_time else None,
         _real_update_time=newest_update_message._real_update_time if
         oldest_update_message._real_update_time == newest_update_message._real_update_time else None,
+        _exposition_event=newest_update_message._exposition_event if
+        oldest_update_message._exposition_event == newest_update_message._exposition_event else None,
         _update_reason=newest_update_message._update_reason,
     )
 
@@ -644,7 +650,8 @@ def batch_messages(
             msg_code = (message.risk_level, message.encounter_time)
             batched_encounter_messages[msg_code].append(message)
         else:
-            msg_code = (message.old_risk_level, message.new_risk_level, message.update_time)
+            msg_code = (message.old_risk_level, message.new_risk_level,
+                        message.encounter_time, message.update_time)
             batched_update_messages[msg_code].append(message)
     output = []
     for msgs in batched_encounter_messages.values():
