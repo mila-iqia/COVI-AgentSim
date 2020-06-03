@@ -545,6 +545,8 @@ def _get_disease_days(rng, conf, age, inflammatory_disease_level):
         shape=conf['INCUBATION_DAYS_GAMMA_SHAPE'],
         scale=conf['INCUBATION_DAYS_GAMMA_SCALE']
     )
+    # (no-source) assumption is that there is atleast one day to remain exposed
+    incubation_days = max(1, incubation_days)
 
     # days after exposure when viral shedding starts, i.e., person is infectious
     infectiousness_onset_days = incubation_days - truncnorm((INFECTIOUSNESS_ONSET_WRT_SYMPTOM_ONSET_CLIP_LOW - INFECTIOUSNESS_ONSET_WRT_SYMPTOM_ONSET_AVG) / INFECTIOUSNESS_ONSET_WRT_SYMPTOM_ONSET_STD,

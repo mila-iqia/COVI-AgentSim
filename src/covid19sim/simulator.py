@@ -701,7 +701,7 @@ class Human(object):
 
         # percomupte plateau-end - recovery slope (should be negative because it is decreasing)
         numerator = self.viral_load_plateau_height
-        denominator = self.recovery_days - self.viral_load_plateau_end
+        denominator = self.recovery_days - (self.viral_load_plateau_end + self.infectiousness_onset_days)
         self.plateau_end_recovery_slope = numerator / denominator
         assert self.plateau_end_recovery_slope >= 0, f"slopes are assumed to be positive for ease of calculation"
 
