@@ -116,7 +116,8 @@ class Tracker(object):
         self.n_infectious_contacts = 0
         self.n_contacts = 0
         self.serial_intervals = []
-        self.serial_interval_book = {}
+        self.serial_interval_book_to = defaultdict(dict)
+        self.serial_interval_book_from = defaultdict(dict)
         self.n_env_infection = 0
         self.recovered_stats = []
         self.covid_properties = defaultdict(lambda : [0,0])
@@ -285,11 +286,38 @@ class Tracker(object):
         Args:
             human_name (str): name of `Human` who just experienced some symptoms
         """
-        if human_name not in self.serial_interval_book:
-            return
 
-        serial_interval = (self.env.timestamp - self.serial_interval_book.pop(human_name)).total_seconds() / 86400 # DAYS
-        self.serial_intervals.append(serial_interval)
+        def register_serial_interval(infector, infectee):
+            serial_interval = (infectee.symptom_start_time - infector.symptom_start_time).total_seconds() / 86400 # DAYS
+            self.serial_intervals.append(serial_interval)
+
+        # Pending intervals which manifested symptoms?
+        # With human_name as infectee?
+        remove = []
+        for from_name, (to_human, from_human) in self.serial_interval_book_to[human_name].items():
+            if from_human.symptom_start_time is not None:
+                # We know to_human.symptom_start_time is not None because it happened before calling this func
+                # Therefore, it is time to ...
+                register_serial_interval(from_human, to_human)
+                remove.append(from_name)
+        # Remove pending intervals which were completed
+        for from_name in remove:
+            self.serial_interval_book_to[human_name].pop(from_name)
+            self.serial_interval_book_from[from_name].pop(human_name)
+
+        # With human_name as infector?
+        remove = []
+        for to_name, (to_human, from_human) in self.serial_interval_book_from[human_name].items():
+            if to_human.symptom_start_time is not None:
+                # We know from_human.symptom_start_time is not None because it happened before calling this func
+                # Therefore, it is time to ...
+                register_serial_interval(from_human, to_human)
+                remove.append(to_name)
+        # Remove pending intervals which were completed
+        for to_name in remove:
+            self.serial_interval_book_from[human_name].pop(to_name)
+            self.serial_interval_book_to[to_name].pop(human_name)
+
 
     def increment_day(self):
         """
@@ -544,8 +572,12 @@ class Tracker(object):
             self.infection_graph.add_node(to_human.name, bin=to_bin, time=timestamp)
             self.infection_graph.add_edge(from_human.name, to_human.name,  timedelta=delta)
 
-            if from_human.symptom_start_time is not None:
-                self.serial_interval_book[to_human.name] = from_human.symptom_start_time
+            # Keep records of the infection so that serial intervals 
+            # can be registered when symptoms appear 
+            # Note: We need a bidirectional record (to/from), because we can't 
+            # anticipate which (to or from) will manifest symptoms first  
+            self.serial_interval_book_to[to_human.name][from_human.name] = (to_human, from_human)
+            self.serial_interval_book_from[from_human.name][to_human.name] = (to_human, from_human)
 
             if from_human.is_asymptomatic:
                 self.r_0['asymptomatic']['infection_count'] += 1
