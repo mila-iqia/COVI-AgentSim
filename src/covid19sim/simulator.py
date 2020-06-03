@@ -1733,12 +1733,12 @@ class Human(object):
             # The maximum distance of a message which we would consider to be "high risk" and therefore meriting an
             # encounter message is under 2 meters for at least 5 minutes.
             if approximated_bluetooth_distance < self.conf.get("MAX_MESSAGE_PASSING_DISTANCE") and \
-                    t_near > self.conf.get('MIN_MESSAGE_PASSING_DURATION') and \
+                    t_near > self.conf.get("MIN_MESSAGE_PASSING_DURATION") and \
                     self.tracing and \
                     self.has_app and \
                     h.has_app:
                 remaining_time_in_contact = t_near
-                encounter_time_granularity = self.conf.get("ENCOUNTER_TIME_GRANULARITY_MINS", 15)
+                encounter_time_granularity = self.conf.get("MIN_MESSAGE_PASSING_DURATION")
                 while remaining_time_in_contact > encounter_time_granularity:
                     # note: every loop we will overwrite the messages but it doesn't matter since
                     # they're recorded in the contact books and we only need one for exposure flagging
