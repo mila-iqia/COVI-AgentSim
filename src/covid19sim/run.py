@@ -56,9 +56,9 @@ def main(conf: DictConfig) -> None:
     if Path(conf["outdir"]).exists():
         out_path = Path(conf["outdir"])
         out_idx = 1
-        while (out_path.parent / (out_path.name + f"_{idx}")).exists():
+        while (out_path.parent / (out_path.name + f"_{out_idx}")).exists():
             out_idx += 1
-        conf["outdir"] = str(out_path.parent / (out_path.name + f"_{idx}"))
+        conf["outdir"] = str(out_path.parent / (out_path.name + f"_{out_idx}"))
 
     os.makedirs(conf["outdir"])
 
