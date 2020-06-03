@@ -434,7 +434,7 @@ class HumanAsMessageTest(unittest.TestCase):
                       workplace={'workplace': 'workplace'}, profession="profession", rho=0.3,
                       gamma=0.21, symptoms=[], test_results=None, conf=conf)
         human.contact_book.mailbox_keys_by_day[0] = [0, 1]  # add two dummy encounter keys
-        personal_mailbox = {1: "fake_message"}  # create a dummy personal mailbox with one update
+        personal_mailbox = {1: ["fake_message"]}  # create a dummy personal mailbox with one update
         dummy_conf = {"TRACING_N_DAYS_HISTORY": 14}  # create a dummy config (only needs 1 setting)
         message = make_human_as_message(human, personal_mailbox, dummy_conf)
 

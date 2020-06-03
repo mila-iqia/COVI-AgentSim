@@ -35,7 +35,7 @@ class CommonTests(unittest.TestCase):
             self.assertEqual(update_msg.uid, encounter_msg.uid)
             self.assertEqual(update_msg.old_risk_level, encounter_msg.risk_level)
             self.assertEqual(update_msg.encounter_time, encounter_msg.encounter_time)
-            self.assertGreater(update_msg.update_time, update_msg.encounter_time)
+            self.assertGreaterEqual(update_msg.update_time.date(), update_msg.encounter_time.date())
             dummy_recreated_encounter_msg = mu.create_encounter_from_update_message(update_msg)
             self.assertEqual(dummy_recreated_encounter_msg.uid, encounter_msg.uid)
             self.assertEqual(dummy_recreated_encounter_msg.risk_level, update_msg.new_risk_level)

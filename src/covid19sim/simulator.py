@@ -1733,12 +1733,12 @@ class Human(object):
             # The maximum distance of a message which we would consider to be "high risk" and therefore meriting an
             # encounter message is under 2 meters for at least 5 minutes.
             if approximated_bluetooth_distance < self.conf.get("MAX_MESSAGE_PASSING_DISTANCE") and \
-                    t_near > self.conf.get('MIN_MESSAGE_PASSING_DURATION') and \
+                    t_near > self.conf.get("MIN_MESSAGE_PASSING_DURATION") and \
                     self.tracing and \
                     self.has_app and \
                     h.has_app:
                 remaining_time_in_contact = t_near
-                encounter_time_granularity = self.conf.get("ENCOUNTER_TIME_GRANULARITY_MINS", 15)
+                encounter_time_granularity = self.conf.get("MIN_MESSAGE_PASSING_DURATION")
                 while remaining_time_in_contact > encounter_time_granularity:
                     # note: every loop we will overwrite the messages but it doesn't matter since
                     # they're recorded in the contact books and we only need one for exposure flagging
@@ -1746,11 +1746,11 @@ class Human(object):
                         h1=self,
                         h2=h,
                         # TODO: could adjust real timestamps in encounter messages based on remaining time?
+                        # env_timestamp=self.env.timestamp - datetime.timedelta(minutes=remaining_time_in_contact),
+                        # the above change might break clustering asserts if we somehow jump across timeslots/days
                         env_timestamp=self.env.timestamp,
                         initial_timestamp=self.env.initial_timestamp,
-                        # note: the granularity here does not really matter, it's only used to keep map sizes small
-                        # in the clustering algorithm --- in reality, only the encounter day matters
-                        minutes_granularity=encounter_time_granularity,
+                        use_gaen_key=self.conf.get("USE_GAEN"),
                     )
                     remaining_time_in_contact -= encounter_time_granularity
 

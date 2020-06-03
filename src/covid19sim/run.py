@@ -53,6 +53,13 @@ def main(conf: DictConfig) -> None:
         conf["seed"],
         datetime.datetime.now().strftime("%Y%m%d-%H%M%S"),
     )
+    if Path(conf["outdir"]).exists():
+        out_path = Path(conf["outdir"])
+        out_idx = 1
+        while (out_path.parent / (out_path.name + f"_{idx}")).exists():
+            out_idx += 1
+        conf["outdir"] = str(out_path.parent / (out_path.name + f"_{idx}"))
+
     os.makedirs(conf["outdir"])
 
     if not conf["tune"]:
