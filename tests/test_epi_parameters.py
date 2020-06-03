@@ -296,6 +296,89 @@ def test_human_compute_covid_properties():
             _get_human_covid_properties(human)
 
 
+def test_human_viral_load_for_day():
+    """
+    Test the sample over the viral load curve
+    """
+    conf = load_config()
+
+    init_percent_sick = 0
+    start_time = datetime.datetime(2020, 2, 28, 0, 0)
+    city_x_range = (0, 1000)
+    city_y_range = (0, 1000)
+
+    env = Env(start_time)
+
+    city = City(
+        env,
+        1,  # This test force the call Human.compute_covid_properties()
+        init_percent_sick,
+        np.random.RandomState(42),
+        city_x_range,
+        city_y_range,
+        Human,
+        conf,
+    )
+
+    human = city.humans[0]
+    # force is_asymptomatic to True since we are not testing the symptoms
+    human.is_asymptomatic = True
+    # force the age to a median
+    human.age = 40
+    # Set infection date
+    now = env.timestamp
+    human.infection_timestamp = now
+
+    # Curve key points in days wrt infection timestamp
+    # Set plausible covid properties to make the computations easy to validate
+    infectiousness_onset_days = 2.5
+    viral_load_peak_start = 4.5
+    incubation_days = 5
+    viral_load_plateau_start = 5.5
+    viral_load_plateau_end = 5.5 + 4.5
+    recovery_days = 5 + 15
+
+    human.infectiousness_onset_days = infectiousness_onset_days
+    # viral_load_peak_start, viral_load_plateau_start and viral_load_plateau_
+    # end are relative to infectiousness_onset_days
+    human.viral_load_peak_start = viral_load_peak_start - infectiousness_onset_days
+    human.incubation_days = incubation_days
+    human.viral_load_plateau_start = viral_load_plateau_start - infectiousness_onset_days
+    human.viral_load_plateau_end = viral_load_plateau_end - infectiousness_onset_days
+    human.recovery_days = recovery_days
+
+    human.viral_load_peak_height = 1.0
+    human.viral_load_plateau_height = 0.75
+    human.peak_plateau_slope = 0.25 / (viral_load_plateau_start - viral_load_peak_start)
+    human.plateau_end_recovery_slope = 0.75 / (recovery_days - viral_load_plateau_end)
+
+    assert human.viral_load_for_day(now) == 0.0
+    # Between infection_timestamp and infectiousness_onset_days
+    assert human.viral_load_for_day(now +
+                                    datetime.timedelta(days=infectiousness_onset_days / 2)) == 0.0
+    assert human.viral_load_for_day(now + datetime.timedelta(days=infectiousness_onset_days)) == 0.0
+    # Between infectiousness_onset_days and viral_load_peak_start
+    assert human.viral_load_for_day(now +
+                                    datetime.timedelta(days=infectiousness_onset_days +
+                                                            (viral_load_peak_start - infectiousness_onset_days) /
+                                                            2)) == 1.0 / 2
+    assert human.viral_load_for_day(now + datetime.timedelta(days=viral_load_peak_start)) == 1.0
+    assert human.viral_load_for_day(now + datetime.timedelta(days=incubation_days)) == 0.75 + 0.25 / 2
+    assert human.viral_load_for_day(now + datetime.timedelta(days=viral_load_plateau_start)) == 0.75
+    # Between viral_load_plateau_start and viral_load_plateau_end
+    assert human.viral_load_for_day(now +
+                                    datetime.timedelta(days=viral_load_plateau_start +
+                                                            (viral_load_plateau_end - viral_load_plateau_start) /
+                                                            2)) == 0.75
+    assert human.viral_load_for_day(now + datetime.timedelta(days=viral_load_plateau_end)) == 0.75
+    assert human.viral_load_for_day(now +
+                                    datetime.timedelta(days=viral_load_plateau_end +
+                                                            (recovery_days - viral_load_plateau_end) /
+                                                            2)) == 0.75 / 2
+    assert human.viral_load_for_day(now + datetime.timedelta(days=recovery_days)) == 0.0
+
+
 if __name__ == "__main__":
     test_incubation_days()
     test_human_compute_covid_properties()
+    test_human_viral_load_for_day()

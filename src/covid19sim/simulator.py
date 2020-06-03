@@ -21,7 +21,7 @@ from covid19sim.utils import _normalize_scores, _get_random_sex, _get_covid_prog
     _get_cold_progression, _get_flu_progression, _get_allergy_progression, _get_get_really_sick, \
     filter_open, filter_queue_max, calculate_average_infectiousness, _get_inflammatory_disease_level, _get_disease_days,\
     get_p_infection
-from covid19sim.constants import SECONDS_PER_MINUTE, SECONDS_PER_HOUR
+from covid19sim.constants import SECONDS_PER_MINUTE, SECONDS_PER_HOUR, SECONDS_PER_DAY
 from covid19sim.frozen.message_utils import ContactBook, exchange_encounter_messages, RealUserIDType
 
 
@@ -730,7 +730,8 @@ class Human(object):
             return 0.
 
         # calculates the time since infection in days
-        days_infectious = (timestamp - self.infection_timestamp).total_seconds() / 86400 - self.infectiousness_onset_days
+        days_infectious = (timestamp - self.infection_timestamp).total_seconds() / SECONDS_PER_DAY - \
+                          self.infectiousness_onset_days
 
         if days_infectious < 0:
             return 0.
