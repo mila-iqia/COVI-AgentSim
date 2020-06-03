@@ -434,8 +434,7 @@ class HeuristicRecommendations(RiskBasedRecommendations):
         super(HeuristicRecommendations, self).__init__()
         self.version = version
 
-    @staticmethod
-    def get_recommendations_level(human, thresholds, max_risk_level):
+    def get_recommendations_level(self, human, thresholds, max_risk_level):
         # Most of the logic for recommendations level update is given in the
         # "Tracing" class (with "heuristic" tracing method). The recommendations
         # level for the heuristic tracing algorithm are dependent on messages
