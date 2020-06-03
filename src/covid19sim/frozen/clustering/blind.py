@@ -5,7 +5,7 @@ import typing
 from covid19sim.frozen.message_utils import EncounterMessage, GenericMessageType, UpdateMessage, \
     TimestampType, create_encounter_from_update_message, create_updated_encounter_with_message
 from covid19sim.frozen.clustering.base import ClusterIDType, RealUserIDType, TimeOffsetType, \
-    ClusterBase, ClusterManagerBase, MessagesArrayType
+    ClusterBase, ClusterManagerBase, MessagesArrayType, UpdateMessageBatchType
 from covid19sim.frozen.clustering.simple import SimpleCluster, SimplisticClusterManager
 
 # TODO: determine whether these class can really derive from their 'simple' counterparts, and
@@ -104,8 +104,8 @@ class BlindCluster(ClusterBase):
 
     def fit_update_message_batch(
             self,
-            update_messages: typing.List[UpdateMessage],
-    ) -> typing.Tuple[typing.List[UpdateMessage], typing.Optional["BlindCluster"]]:
+            batched_messages: UpdateMessageBatchType,
+    ) -> typing.Tuple[UpdateMessageBatchType, typing.Optional["BlindCluster"]]:
         """Updates encounters in the current cluster given a list of new update messages.
 
         If this cluster gets split as a result of the update, the function will return the newly
@@ -113,48 +113,52 @@ class BlindCluster(ClusterBase):
         cluster, they will be returned as-is. Finally, if any update message was applied to the cluster
         without splitting it, the function will return the remaining updates.
         """
-        if not update_messages:
-            return [], None
+        if not batched_messages:
+            return batched_messages, None
+        assert isinstance(batched_messages, dict) and batched_messages, "missing implementation for non-timestamped batches"
+        assert self.first_update_time in batched_messages, "can't fit anything if timestamps don't even overlap?"
+        target_messages = batched_messages[self.first_update_time]
+        assert isinstance(target_messages, list)
+        if not target_messages:
+            return batched_messages, None
         # TODO: what will happen when update messages are no longer systematically sent? (assert will break)
-        assert update_messages[0].old_risk_level == self.risk_level
-        assert update_messages[0].encounter_time == self.first_update_time
-        assert update_messages[0].encounter_time == self.latest_update_time
-        nb_matches = min(len(update_messages), len(self.messages))
+        assert all([m.old_risk_level == self.risk_level for m in target_messages])
+        assert all([m.encounter_time == self.first_update_time for m in target_messages])
+        assert all([m.encounter_time == self.latest_update_time for m in target_messages])
+        nb_matches = min(len(target_messages), len(self.messages))
         if len(self.messages) == 1 and nb_matches == 1:
             # we can trivially self-update without splitting; do that
+            update_message = target_messages.pop()
             self.messages[0] = create_updated_encounter_with_message(
-                encounter_message=self.messages[0], update_message=update_messages[0],
+                encounter_message=self.messages[0], update_message=update_message,
                 blind_update=True,
             )
-            self.risk_level = self.messages[0].risk_level
-            self._real_encounter_uids.add(update_messages[0]._sender_uid)
-            self._real_encounter_times.add(update_messages[0]._real_encounter_time)
-            return update_messages[1:], None
+            self.risk_level = update_message.new_risk_level
+            self._real_encounter_uids.add(update_message._sender_uid)
+            self._real_encounter_times.add(update_message._real_encounter_time)
+            return batched_messages, None
         elif len(self.messages) == nb_matches:
             # we can apply simultaneous updates to all messages in this cluster and avoid splitting; do that
             new_encounters = []
-            for encounter_idx, old_encounter in enumerate(self.messages):
+            update_messages = [target_messages.pop() for _ in range(nb_matches)]
+            for encounter_idx, (old_encounter, update_message) in enumerate(zip(self.messages, update_messages)):
                 new_encounters.append(create_updated_encounter_with_message(
-                    encounter_message=old_encounter, update_message=update_messages[encounter_idx],
+                    encounter_message=old_encounter, update_message=update_message,
                     blind_update=True,
                 ))
             self.messages = new_encounters
-            self._real_encounter_uids.update([m._sender_uid for m in update_messages[:nb_matches]])
-            self._real_encounter_times.update([m._real_encounter_time for m in update_messages[:nb_matches]])
+            self._real_encounter_uids.update([m._sender_uid for m in update_messages])
+            self._real_encounter_times.update([m._real_encounter_time for m in update_messages])
             self.risk_level = new_encounters[0].risk_level
-            return update_messages[nb_matches:], None
+            return batched_messages, None
         else:
             # we lack a bunch of update messages, so we still need to split
-            messages_to_transfer = self.messages[:nb_matches]
-            messages_to_keep = self.messages[nb_matches:]
             updated_messages_to_transfer = [
                 create_updated_encounter_with_message(
-                    encounter_message=messages_to_transfer[idx], update_message=update_messages[idx],
+                    encounter_message=self.messages.pop(), update_message=target_messages.pop(),
                     blind_update=True,
-                ) for idx in range(len(messages_to_transfer))
+                ) for _ in range(nb_matches)
             ]
-            assert messages_to_keep
-            self.messages = messages_to_keep
             new_cluster = BlindCluster(
                 cluster_id=None,  # cluster id will be assigned properly in manager
                 risk_level=updated_messages_to_transfer[0].risk_level,
@@ -164,7 +168,7 @@ class BlindCluster(ClusterBase):
                 _real_encounter_uids={m._sender_uid for m in updated_messages_to_transfer},
                 _real_encounter_times={m._real_encounter_time for m in updated_messages_to_transfer},
             )
-            return update_messages[nb_matches:], new_cluster
+            return batched_messages, new_cluster
             # note: out of laziness for the debugging stuff, we do not remove anything from unobserved vars
 
     def fit_cluster(
@@ -329,6 +333,56 @@ class BlindClusterManager(ClusterManagerBase):
                 self.clusters.append(new_cluster)
             else:
                 raise AssertionError(f"could not find any proper cluster match for: {message}")
+
+    def _add_update_message_batch(self, messages: UpdateMessageBatchType, cleanup: bool = True):
+        """Fits a batch of update messages to existing clusters, and forwards the remaining to non-batch impl."""
+        # we assume all update messages in the batch have the same old/new risk levels, & are not outdated
+        assert isinstance(messages, dict) and messages, "missing implementation for non-timestamped batches"
+        first_message_key = next(iter(messages.keys()))
+        batch_risk_level = messages[first_message_key][0].old_risk_level
+        batch_encounter_time = messages[first_message_key][0].encounter_time
+        cluster_idx = 0
+        while cluster_idx < len(self.clusters):
+            cluster = self.clusters[cluster_idx]
+            if cluster.risk_level != batch_risk_level or \
+                    cluster.first_update_time != batch_encounter_time:
+                cluster_idx += 1
+                continue
+            messages, new_cluster = cluster.fit_update_message_batch(messages)
+            if new_cluster is not None:
+                new_cluster.cluster_id = self.next_cluster_id
+                self.next_cluster_id = (self.next_cluster_id + 1) % self.max_cluster_id
+                # to keep the results identical with/without batching, insert at curr index + 1
+                self.clusters.insert(cluster_idx + 1, new_cluster)
+                cluster_idx += 1  # skip that cluster if there are still updates to apply
+            if not any([len(msgs) for msgs in messages.values()]):
+                break  # all messages got adopted
+            cluster_idx += 1
+        if messages and self.add_orphan_updates_as_clusters:
+            self._add_new_cluster_from_message_batch(messages)
+        elif messages:
+            raise AssertionError(f"could not find adopters for {len(messages)} updates")
+        if cleanup:
+            self.cleanup_clusters(self.latest_refresh_timestamp)
+
+    def _add_new_cluster_from_message_batch(self, messages: MessagesArrayType):
+        """Creates and adds a new cluster in the internal structs while cycling the cluster ids."""
+        assert isinstance(messages, dict) and messages, "missing implementation for non-timestamped batches"
+        flat_messages = [m for msgs in messages.values() for m in msgs]
+        if not flat_messages:
+            return
+        assert self.add_orphan_updates_as_clusters
+        new_cluster = BlindCluster(
+            cluster_id=self.next_cluster_id,
+            risk_level=flat_messages[0].new_risk_level,
+            first_update_time=flat_messages[0].encounter_time,
+            latest_update_time=flat_messages[0].encounter_time,
+            messages=[create_encounter_from_update_message(m) for m in flat_messages],
+            _real_encounter_uids={m._sender_uid for m in flat_messages},
+            _real_encounter_times={m._real_encounter_time for m in flat_messages},
+        )
+        self.next_cluster_id = (self.next_cluster_id + 1) % self.max_cluster_id
+        self.clusters.append(new_cluster)
 
     def get_embeddings_array(
             self,

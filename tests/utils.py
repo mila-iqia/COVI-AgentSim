@@ -148,6 +148,7 @@ def generate_sent_messages(
                                 _receiver_uid=message._receiver_uid,
                                 _real_encounter_time=message._real_encounter_time,
                                 _real_update_time=mu.TimestampDefault + datetime.timedelta(days=timestamp),
+                                _exposition_event=message._exposition_event,
                                 _update_reason="positive_test",
                             )
                             sent_update_messages[timestamp].append(update_message)
