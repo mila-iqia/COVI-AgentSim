@@ -574,7 +574,7 @@ def _get_disease_days(rng, conf, age, inflammatory_disease_level):
 
     viral_load_peak = incubation_days - viral_load_peak_wrt_incubation_days
 
-    # (no-source) assumption is that there is atleast half a day after the infectiousness_onset_days
+    # (no-source) assumption is that there is at least half a day after the infectiousness_onset_days
     viral_load_peak = max(infectiousness_onset_days + 0.5, viral_load_peak)
 
     viral_load_peak_wrt_incubation_days = incubation_days - viral_load_peak
@@ -595,7 +595,7 @@ def _get_disease_days(rng, conf, age, inflammatory_disease_level):
 
     # recovery is often quoted with respect to the incubation days
     # so we add it here with respect to the plateau end.
-    RECOVERY_WRT_PLATEAU_END_AVG = conf['RECOVERY_DAYS_AVG'] - conf['PLATEAU_DURATION_MEAN'] - INFECTIOUSNESS_ONSET_WRT_SYMPTOM_ONSET_AVG
+    RECOVERY_WRT_PLATEAU_END_AVG = RECOVERY_DAYS_AVG - PLATEAU_DURATION_MEAN - INFECTIOUSNESS_ONSET_WRT_SYMPTOM_ONSET_AVG
     recovery_days = \
         plateau_end + \
         truncnorm((RECOVERY_CLIP_LOW - RECOVERY_WRT_PLATEAU_END_AVG) /

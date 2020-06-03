@@ -142,11 +142,11 @@ def test_incubation_days():
 
 def test_human_compute_covid_properties():
     """
+    Test the covid properties of the class Human over a population for 3 ages
     """
     conf = load_config()
 
-    # This test force the call Human.compute_covid_properties()
-    n_people = 1
+    n_people = 10000
     init_percent_sick = 0
     start_time = datetime.datetime(2020, 2, 28, 0, 0)
     city_x_range = (0, 1000)
@@ -156,7 +156,7 @@ def test_human_compute_covid_properties():
 
     city = City(
         env,
-        n_people,
+        1,  # This test directly calls Human.compute_covid_properties() on a Human
         init_percent_sick,
         np.random.RandomState(42),
         city_x_range,
@@ -168,15 +168,15 @@ def test_human_compute_covid_properties():
     def _get_human_covid_properties(human):
         human.compute_covid_properties()
 
-        # &infectiousness-onset [He 2020 https://www.nature.com/articles/s41591-020-0869-5#ref-CR1]
-        # infectiousness started from 2.3 days (95% CI, 0.8–3.0 days) before symptom
-        # onset and peaked at 0.7 days (95% CI, −0.2–2.0 days) before symptom onset (Fig. 1c).
-        assert human.infectiousness_onset_days <= human.incubation_days
-        assert human.incubation_days - human.infectiousness_onset_days >= 0.0
-        assert human.incubation_days - human.infectiousness_onset_days <= 3.3
+        assert human.infectiousness_onset_days >= 1.0
+        assert human.viral_load_peak_start >= 0.5 - 0.00001
+        assert human.incubation_days >= 2.0
+
+        assert human.infectiousness_onset_days < human.incubation_days
 
         # viral_load_peak_start, viral_load_plateau_start and viral_load_plateau_
         # end are relative to infectiousness_onset_days
+        assert human.infectiousness_onset_days < human.viral_load_peak_start + human.infectiousness_onset_days
         assert human.viral_load_peak_start + human.infectiousness_onset_days < \
                human.incubation_days
         assert human.incubation_days < human.viral_load_plateau_start + human.infectiousness_onset_days
@@ -184,10 +184,21 @@ def test_human_compute_covid_properties():
         assert human.viral_load_plateau_end + human.infectiousness_onset_days < \
                human.recovery_days
 
-        # &infectiousness-peak [He 2020 https://www.nature.com/articles/s41591-020-0869-5#ref-CR1]
+        # &infectiousness-onset [He 2020 https://www.nature.com/articles/s41591-020-0869-5#ref-CR1]
+        # infectiousness started from 2.3 days (95% CI, 0.8–3.0 days) before symptom
+        # onset and peaked at 0.7 days (95% CI, −0.2–2.0 days) before symptom onset (Fig. 1c).
+        assert human.incubation_days - human.infectiousness_onset_days >= 0.5
+        assert human.incubation_days - human.infectiousness_onset_days <= 3.3
+
+        # &infectiousness-onset [He 2020 https://www.nature.com/articles/s41591-020-0869-5#ref-CR1]
         # infectiousness peaked at 0.7 days (95% CI, −0.2–2.0 days) before symptom onset (Fig. 1c).
-        assert human.incubation_days - \
-               (human.viral_load_peak_start + human.infectiousness_onset_days) >= 0.01
+        try:
+            assert human.incubation_days - \
+                   (human.viral_load_peak_start + human.infectiousness_onset_days) >= 0.01
+        except AssertionError:
+            # If the assert above fails, it can only be when we forced viral_load_peak_start
+            # to 0.5 day after infectiousness_onset_days
+            assert abs(human.viral_load_peak_start - 0.5) <= 0.00001
         assert human.incubation_days - \
                (human.viral_load_peak_start + human.infectiousness_onset_days) <= 2.2
 
@@ -202,15 +213,18 @@ def test_human_compute_covid_properties():
 
         assert human.viral_load_plateau_height <= human.viral_load_peak_height
 
+        # peak_plateau_slope must transit from viral_load_peak_height to
+        # viral_load_plateau_height
         assert (human.viral_load_peak_height -
                 human.peak_plateau_slope * (human.viral_load_plateau_start -
                                             human.viral_load_peak_start)) - \
-               human.viral_load_plateau_height < 0.001
+               human.viral_load_plateau_height < 0.00001
 
+        # peak_plateau_slope must transit from viral_load_plateau_height to 0.0
         assert human.viral_load_plateau_height - \
                human.plateau_end_recovery_slope * (human.recovery_days -
                                                    (human.viral_load_plateau_end +
-                                                    human.infectiousness_onset_days)) < 0.001
+                                                    human.infectiousness_onset_days)) < 0.00001
 
         return [human.infectiousness_onset_days, human.viral_load_peak_start,
                 human.incubation_days, human.viral_load_plateau_start,
@@ -221,12 +235,12 @@ def test_human_compute_covid_properties():
     human = city.humans[0]
     # Reset the rng
     human.rng = np.random.RandomState(42)
-    # force is_asymptomatic to False since we are not testing the symptoms
-    human.is_asymptomatic = False
-    # force the age to a somewhat median
+    # force is_asymptomatic to True since we are not testing the symptoms
+    human.is_asymptomatic = True
+    # force the age to a median
     human.age = 40
     covid_properties_samples = [_get_human_covid_properties(human)
-                                for _ in range(10000)]
+                                for _ in range(n_people)]
 
     covid_properties_samples_mean = covid_properties_samples[0]
     for sample in covid_properties_samples[1:]:
@@ -234,7 +248,7 @@ def test_human_compute_covid_properties():
             covid_properties_samples_mean[i] += sample[i]
 
     for i in range(len(covid_properties_samples_mean)):
-        covid_properties_samples_mean[i] /= 10000
+        covid_properties_samples_mean[i] /= n_people
 
     infectiousness_onset_days_mean, viral_load_peak_start_mean, \
         incubation_days_mean, viral_load_plateau_start_mean, \
@@ -251,7 +265,7 @@ def test_human_compute_covid_properties():
         f"The average of infectiousness_onset_days should be about {2.3}"
 
     # viral_load_peak_start
-    # &infectiousness-peak [He 2020 https://www.nature.com/articles/s41591-020-0869-5#ref-CR1]
+    # &infectiousness-onset [He 2020 https://www.nature.com/articles/s41591-020-0869-5#ref-CR1]
     # infectiousness peaked at 0.7 days (95% CI, −0.2–2.0 days) before symptom onset (Fig. 1c).
     assert abs(incubation_days_mean -
                (viral_load_peak_start_mean + infectiousness_onset_days_mean) - 0.7) < 0.5, \
@@ -270,9 +284,16 @@ def test_human_compute_covid_properties():
     assert abs(viral_load_plateau_end_mean - viral_load_plateau_start_mean) - 4.5 < 0.5, \
         f"The average of the plateau duration should be about {4.5} days"
 
-    # recovery is with respect to incubation days. (no-source) 14 is loosely defined.
+    # (no-source) 14 is loosely defined.
     assert abs(recovery_days_mean - incubation_days_mean) - 14 < 0.5, \
         f"The average of the recovery time  should be about {14} days"
+
+    # Test with a young and senior ages
+    for age in (20, 75):
+        human.age = age
+        for _ in range(n_people):
+            # Assert the covid properties
+            _get_human_covid_properties(human)
 
 
 if __name__ == "__main__":
