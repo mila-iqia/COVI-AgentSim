@@ -346,6 +346,7 @@ class ContactBook:
             self,
             humans_map: typing.Dict[str, "Human"],
             only_with_initial_update: bool = False,
+            make_sure_15min_minimum_between_contacts: bool = False,
     ) -> typing.List["Human"]:
         """Returns a list of all humans that the contact book owner encountered."""
         # note1: this is based on unobserved variables, so in reality, we can't use it on the app
@@ -354,11 +355,20 @@ class ContactBook:
         #        this is an approximation of what would really happen however, since we would need
         #        to check whether we have actually received an update from that contact
         output = {}
+        real_human_encounter_times = collections.defaultdict(set)
         for day, msgs in self.encounters_by_day.items():
             for msg in msgs:
+                if make_sure_15min_minimum_between_contacts:
+                    real_human_encounter_times[msg._receiver_uid].add(msg._real_encounter_time)
                 if msg._receiver_uid not in output and \
                         (not only_with_initial_update or msg.risk_level is not None):
                     output[msg._receiver_uid] = humans_map[msg._receiver_uid]
+        if make_sure_15min_minimum_between_contacts:
+            for human_name, encounter_times in real_human_encounter_times.items():
+                encounter_times = sorted(list(encounter_times))
+                for encounter_time_idx in range(1, len(encounter_times)):
+                    assert (encounter_times[encounter_time_idx] -
+                            encounter_times[encounter_time_idx - 1]) >= datetime.timedelta(minutes=15)
         return list(output.values())
 
     def get_positive_contacts_counts(
@@ -369,6 +379,7 @@ class ContactBook:
             max_order: int = 1,
             curr_order: int = 0,
             count_map: typing.Optional[typing.Dict[int, int]] = None,
+            make_sure_15min_minimum_between_contacts: bool = False,
     ) -> typing.Dict[int, int]:  # returns order-to-count mapping
         """Traces and returns the number of Nth-order contacts that have been tested positive."""
         # FIXME: the 'delay' is only applicable for real-life tracing where all humans would
@@ -381,7 +392,12 @@ class ContactBook:
             count_map = collections.defaultdict(int)
         elif self._is_being_traced:
             return count_map
-        for contact in self.get_contacts(humans_map, only_with_initial_update=True):
+        for contact in self.get_contacts(
+                humans_map,
+                only_with_initial_update=True,
+                # note: the check below is really just for an assert, it doesn't change behavior
+                make_sure_15min_minimum_between_contacts=make_sure_15min_minimum_between_contacts,
+        ):
             assert contact.has_app, "how can we be tracing this person without an app?"
             if tracing_probability < 1.0 and contact.rng.rand() > tracing_probability:
                 continue  # skip that person without flagging so we might still contact them
@@ -397,6 +413,7 @@ class ContactBook:
                     max_order=max_order,
                     curr_order=curr_order + 1,
                     count_map=count_map,
+                    make_sure_15min_minimum_between_contacts=make_sure_15min_minimum_between_contacts,
                 )
         return count_map
 

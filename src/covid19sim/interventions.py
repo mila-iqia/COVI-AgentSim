@@ -557,6 +557,7 @@ class Tracing(object):
             tracing_delay=test_tracing_delay,
             tracing_probability=self.p_contact,
             max_order=self.max_depth,
+            make_sure_15min_minimum_between_contacts=True,
         )
         for order, count in positive_test_counts.items():
             t += count * np.exp(-2*(order-1))
