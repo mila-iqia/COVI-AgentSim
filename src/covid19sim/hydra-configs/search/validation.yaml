@@ -37,6 +37,5 @@ P_CAREFUL_PERSON:
 seed:
   sample: cartesian
   from:
-  - 3000
-  - 3001
-  - 3002
+  - 3003
+  - 3004
