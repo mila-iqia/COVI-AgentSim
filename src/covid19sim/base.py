@@ -165,7 +165,7 @@ class City:
         # note that to keep the simulator efficient, users will directly pop the update messages that
         # they consume, so this is only necessary for edge cases (e.g. dead people can't update)
         max_encounter_age = self.conf.get('TRACING_N_DAYS_HISTORY')
-        new_global_mailbox = {}
+        new_global_mailbox = defaultdict(dict)
         for user_key, personal_mailbox in self.global_mailbox.items():
             new_personal_mailbox = {}
             for mailbox_key, messages in personal_mailbox.items():
@@ -664,7 +664,7 @@ class City:
                     # contrarily to risk, infectiousness only changes once a day (human behavior has no impact)
                     human.infectiousness_history_map[current_day] = calculate_average_infectiousness(human)
 
-                if self.env.timestamp.hour not in human.time_slots:
+                if not human.has_app or self.env.timestamp.hour not in human.time_slots:
                     continue
                 human.initialize_daily_risk(current_day)
                 backup_human_init_risks[human] = copy.deepcopy(human.risk_history_map)
@@ -674,7 +674,7 @@ class City:
                     personal_mailbox=self.global_mailbox[human.name],
                 )
 
-            if isinstance(self.intervention, Tracing):
+            if isinstance(self.intervention, Tracing) and self.intervention.app:
                 # time to run the cluster+risk prediction via transformer (if we need it)
                 if self.intervention.risk_model == "transformer" or self.conf.get("COLLECT_TRAINING_DATA"):
                     from covid19sim.models.run import batch_run_timeslot_heavy_jobs
@@ -694,7 +694,7 @@ class City:
                 self.tracker.track_risk_attributes(self.hd)
                 update_messages = []
                 for human in self.humans:
-                    if self.env.timestamp.hour not in human.time_slots:
+                    if not human.has_app or self.env.timestamp.hour not in human.time_slots:
                         continue
                     # if we had any encounters for which we have not sent an initial message, do it now
                     update_messages.extend(human.contact_book.generate_initial_updates(
