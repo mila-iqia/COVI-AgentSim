@@ -291,7 +291,7 @@ def fill_mila_template(template_str, conf):
 
     partition = (
         f"#SBATCH --partition={partition}"
-        if partition != "covi"
+        if partition != "covid"
         else "#SBATCH --reservation=covid\n#SBATCH --partition=long"
     )
     cpu = f"#SBATCH --cpus-per-task={cpu}"
