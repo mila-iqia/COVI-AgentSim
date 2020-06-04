@@ -13,10 +13,10 @@
 
 tracing_method: transformer
 run_type: collect-all
-n_people: 1000
-simulation_days: 22
+n_people: 3000
+simulation_days: 30
 INTERVENTION_DAY: 5
-init_percent_sick: 0.002
+init_percent_sick: 0.01
 DROPOUT_RATE: 0.02
 
 
@@ -24,17 +24,13 @@ APP_UPTAKE:
   sample: cartesian # will be sampled in this order
   from:
     - 0.1
-    - 0.2
     - 0.3
-    - 0.4
-    - 0.5
     - 0.6
     - 0.8
-    - 1
 
 seed: # for sole reproducibility purposes
   sample: cartesian # uniform int choice
   from:
-    - 1000
-    - 1001
-    - 1002
+    - 3000
+    - 3001
+    - 3002
