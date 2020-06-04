@@ -9,6 +9,7 @@ from omegaconf import DictConfig
 import datetime
 import itertools
 from covid19sim.utils import parse_search_configuration
+import time
 
 
 def now_str():
@@ -572,26 +573,12 @@ def main(conf: DictConfig) -> None:
             print(job_str)
         else:
             # not dev-mode: run it!
-            process = subprocess.call(command.split(), cwd=home)
+            _ = subprocess.call(command.split(), cwd=home)
+            time.sleep(0.5)
 
         # prints
         print()
         printlines()
-
-    # if infra == "intel":
-    #     path = Path(home) / "covi_search" / f"covi_search{conf['now_str']}.sh"
-    #     assert not path.exists()
-    #     if "dev" in conf and conf["dev"]:
-    #         print(str(path))
-    #         print("." * 50)
-    #         print(intel_str)
-    #         print("." * 50)
-
-    #     else:
-    #         command = f"sh {path.name}"
-    #         with path.open("w") as f:
-    #             f.write(intel_str)
-    #         process = subprocess.call(command.split(), cwd=str(path.parent))
 
 
 if __name__ == "__main__":
