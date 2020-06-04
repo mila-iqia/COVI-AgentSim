@@ -192,7 +192,6 @@ class Human(object):
         self.will_report_test_result = None
         self.time_to_test_result = None
         self.test_result_validated = None
-        self.got_new_test_results = False
         self.test_results = deque()
         self.test_result_validated = None
         self._infection_timestamp = None
@@ -220,7 +219,6 @@ class Human(object):
         self.tracing_method = None
         self.maintain_extra_distance = 0
         self._follows_recommendations_today = None
-        self.curr_rec_level = -1 # Current recommendations level
         self.recommendations_to_follow = OrderedSet()
         self.time_encounter_reduction_factor = 1.0
         self.hygiene = 0 # start everyone with a baseline hygiene. Only increase it once the intervention is introduced.
@@ -894,12 +892,7 @@ class Human(object):
         # self.new_symptoms = list(all_symptoms - set(self.all_symptoms))
         # TODO: remove self.all_symptoms in favor of self.rolling_all_symptoms[0]
         self.all_symptoms = list(all_symptoms)
-
         self.rolling_all_symptoms.appendleft(self.all_symptoms)
-        # Keep reported symptoms in sync
-        # TODO: Inconsistency could come from Human.symptoms being accessed instead of Human.all_symptoms
-        self.update_reported_symptoms()
-        self.check_covid_testing_needs()
         self.city.tracker.track_symptoms(self)
 
     def update_reported_symptoms(self):
@@ -977,7 +970,6 @@ class Human(object):
             self.time_to_test_result,  # in days
         ))
         self.city.tracker.track_tested_results(self)
-        self.got_new_test_results = True
 
     def get_test_results_array(self, current_timestamp):
         """Will return an encoded test result array for this user's recent history.
@@ -1016,6 +1008,10 @@ class Human(object):
         if self.test_time is not None and self.test_result is None:
             return
 
+        # already in test queue, bail out
+        if self in self.city.covid_testing_facility.test_queue:
+            return
+
         should_get_test = False
         if at_hospital:
             assert isinstance(self.location, (Hospital, ICU)), "Not at hospital; wrong argument"
@@ -1050,8 +1046,18 @@ class Human(object):
 
         Will also drop old unnecessary entries in the current & previous risk history maps.
         """
+        if self.test_result:
+            days_since_test_result = (self.env.timestamp - self.test_time -
+                                      datetime.timedelta(days=self.time_to_test_result)).days
+            if self.test_result == "negative" and \
+                    days_since_test_result >= self.conf.get("RESET_NEGATIVE_TEST_RESULT_DELAY", 2):
+                self.reset_test_result()
+            elif self.test_result == "positive" and \
+                    days_since_test_result >= self.conf.get("RESET_POSITIVE_TEST_RESULT_DELAY",
+                                                            self.conf.get("TRACING_N_DAYS_HISTORY") + 1):
+                self.reset_test_result()
         if not self.risk_history_map:  # if we're on day zero, add a baseline risk value in
-            self.risk_history_map[current_day_idx] = self.conf.get("BASELINE_RISK_VALUE")
+            self.risk_history_map[current_day_idx] = self.baseline_risk
         elif current_day_idx not in self.risk_history_map:
             assert (current_day_idx - 1) in self.risk_history_map, \
                 "humans should never skip a day worth of risk refresh"
@@ -1106,112 +1112,46 @@ class Human(object):
         assert self.last_date["symptoms_updated"] <= current_timestamp.date()
         current_day_idx = (current_timestamp - init_timestamp).days
         assert current_day_idx >= 0
-        self.last_date["symptoms_updated"] = current_timestamp.date()
-        self.update_symptoms()  # FIXME: duplicate call in 'update_reported_symptoms'?
-        self.update_reported_symptoms()
-        if self.got_new_test_results:
-            if self.test_result == "positive":
-                self.risk_history_map[current_day_idx] = 1.0
-            elif self.test_result == "negative":
-                self.risk_history_map[current_day_idx] = .2
         self.contact_book.cleanup_contacts(init_timestamp, current_timestamp)
+        self.last_date["symptoms_updated"] = current_timestamp.date()
+        self.update_reported_symptoms()
+        # baseline risk might be updated by methods below (if enabled)
+        self.risk_history_map[current_day_idx] = self.baseline_risk
 
-        update_messages = []
-        if self.tracing_method is not None:
+        if self.tracing_method is not None and not self.is_removed:
             update_reason = "risk_update"  # default update reason (if we don't get more specific)
-
             if isinstance(self.tracing_method, Tracing) and self.tracing_method.risk_model != "transformer":
                 # if not running transformer, we're using basic tracing --- do it now, it won't be batched later
-                if not self.is_removed and not self.got_new_test_results:
-                    # note: we check to make sure we don't have test results here not to overwrite the risk value
-                    risks = self.tracing_method.compute_risk(self, personal_mailbox, self.city.hd)
-                    for day_offset, risk in enumerate(risks):
-                        if current_day_idx - day_offset in self.risk_history_map:
-                            self.risk_history_map[current_day_idx - day_offset] = risk
+                risks = self.tracing_method.compute_risk(self, personal_mailbox, self.city.hd)
+                for day_offset, risk in enumerate(risks):
+                    if current_day_idx - day_offset in self.risk_history_map:
+                        self.risk_history_map[current_day_idx - day_offset] = \
+                            max(risk, self.risk_history_map[current_day_idx - day_offset])
 
-                    update_reason = "tracing"
-
-            if self.symptoms and self.tracing_method.propagate_symptoms:
+            if self.all_reported_symptoms and self.tracing_method.propagate_symptoms:
                 target_symptoms = ["severe", "trouble_breathing"]
                 if any([s in target_symptoms for s in self.symptoms]) and not self.has_logged_symptoms:
                     assert self.tracing_method.risk_model != "transformer"
-                    self.risk_history_map[current_day_idx] = max(0.8, self.risk)
+                    self.risk_history_map[current_day_idx] = max(0.8, self.risk_history_map[current_day_idx])
                     self.has_logged_symptoms = True  # FIXME: this is never turned back off? but we can get reinfected?
-                    update_reason = "symptoms"
-
-            update_messages = [
-                # if we had any encounters for which we have not sent an initial message, do it now
-                *self.contact_book.generate_initial_updates(
-                    current_day_idx=current_day_idx,
-                    current_timestamp=current_timestamp,
-                    risk_history_map=self.risk_history_map,
-                    proba_to_risk_level_map=self.proba_to_risk_level_map,
-                    tracing_method=self.tracing_method,
-                ),
-                # then, generate risk level update messages for all other encounters (if needed)
-                *self.contact_book.generate_updates(
-                    current_day_idx=current_day_idx,
-                    current_timestamp=current_timestamp,
-                    prev_risk_history_map=self.prev_risk_history_map,
-                    curr_risk_history_map=self.risk_history_map,
-                    proba_to_risk_level_map=self.proba_to_risk_level_map,
-                    update_reason=update_reason,
-                    tracing_method=self.tracing_method,
-                ),
-            ]
-            if self.check_if_latest_risk_level_changed():
-                self.tracing_method.modify_behavior(self)
-
-        if current_day_idx not in self.infectiousness_history_map:
-            # contrarily to risk, infectiousness only changes once a day (human behavior has no impact)
-            self.infectiousness_history_map[current_day_idx] = calculate_average_infectiousness(self)
-        # update the 'prev risk history' since we just generated the necessary updates
-        if isinstance(self.tracing_method, Tracing) and self.tracing_method.risk_model != "transformer":
-            if not self.is_removed and not self.got_new_test_results:
-                for day_offset, _ in enumerate(risks):
-                    if current_day_idx - day_offset in self.risk_history_map:
-                        self.prev_risk_history_map[current_day_idx - day_offset] = self.risk_history_map[current_day_idx - day_offset]
-        else:
-            self.prev_risk_history_map[current_day_idx] = self.risk_history_map[current_day_idx]
-        self.got_new_test_results = False  # if we did have new results, we caught them above
-        return update_messages
 
     def apply_transformer_risk_updates(
             self,
             current_day_idx: int,
-            current_timestamp: datetime.datetime,
             risk_history: typing.List[float],
     ):
-        """Applies a vector of risk values predicted by the transformer to this human, generating
-        update messages for past encounters & modifying behavior if necessary.
+        """Applies a vector of risk values predicted by the transformer to this human.
 
         Args:
             current_day_idx: the current day index inside the simulation.
             current_timestamp: the current timestamp of the simulation.
             risk_history: the risk history vector predicted by the transformer.
-
-        Returns:
-            The update messages to send to contacts through the server.
         """
         assert self.tracing_method.risk_model == "transformer"
         assert len(risk_history) == self.contact_book.tracing_n_days_history, \
             "unexpected transformer history coverage; what's going on?"
         for day_offset_idx in range(len(risk_history)):  # note: idx:0 == today
             self.risk_history_map[current_day_idx - day_offset_idx] = risk_history[day_offset_idx]
-        update_messages = self.contact_book.generate_updates(
-            current_day_idx=current_day_idx,
-            current_timestamp=current_timestamp,
-            prev_risk_history_map=self.prev_risk_history_map,
-            curr_risk_history_map=self.risk_history_map,
-            proba_to_risk_level_map=self.proba_to_risk_level_map,
-            update_reason="transformer",
-            tracing_method=self.tracing_method,
-        )
-        if self.check_if_latest_risk_level_changed():
-            self.tracing_method.modify_behavior(self)
-        for i in range(len(risk_history)):
-            self.prev_risk_history_map[current_day_idx - i] = risk_history[i]
-        return update_messages
 
     def wear_mask(self):
         """
@@ -1327,7 +1267,6 @@ class Human(object):
             generator
         """
         self.recovered_timestamp = datetime.datetime.max
-        self.risk = 0  # assume bodies are harmless, no more contacts can occur
         self.all_symptoms, self.covid_symptoms = [], []
         if self.conf.get('COLLECT_LOGS'):
             Event.log_recovery(self, self.env.timestamp, death=True)
@@ -1372,7 +1311,6 @@ class Human(object):
             if isinstance(intervention, Tracing):
                 self.tracing = True
                 self.tracing_method = intervention
-                self.risk = 0  # FIXME: may affect contacts before next timeslot
             intervention.modify_behavior(self)
             self.notified = True
 
@@ -2046,6 +1984,17 @@ class Human(object):
     ############################## RISK PREDICTION #################################
 
     @property
+    def baseline_risk(self):
+        if self.is_removed:
+            return 0.0
+        elif self.test_result == "positive":
+            return 1.0
+        elif self.test_result == "negative":
+            return 0.2
+        else:
+            return self.conf.get("BASELINE_RISK_VALUE")
+
+    @property
     def risk(self):
         """
         [summary]
@@ -2053,23 +2002,15 @@ class Human(object):
         Returns:
             [type]: [description]
         """
-        if not self.risk_history_map:
-            return self.conf.get("BASELINE_RISK_VALUE")
-
-        cur_day = (self.env.timestamp - self.env.initial_timestamp).days
-        if self.is_removed:
-            self.risk_history_map[cur_day] = 0.0
-        elif self.test_result == "positive":
-            self.risk_history_map[cur_day] = 1.0
-        elif self.test_result == "negative":
-            # TODO:  Risk because of negaitve results should not go down to 0.20. It should be max(o.2, current_risk). It should also depend on the test_type
-            self.risk_history_map[cur_day] = 0.2
-
-        if cur_day in self.risk_history_map:
-            return self.risk_history_map[cur_day]
+        if self.risk_history_map:
+            cur_day = (self.env.timestamp - self.env.initial_timestamp).days
+            if cur_day in self.risk_history_map:
+                return self.risk_history_map[cur_day]
+            else:
+                last_day = max(self.risk_history_map.keys())
+                return self.risk_history_map[last_day]
         else:
-            last_day = max(self.risk_history_map.keys())
-            return self.risk_history_map[last_day]
+            return self.baseline_risk
 
     @property
     def risk_level(self):
@@ -2098,16 +2039,14 @@ class Human(object):
             # FIXME: maybe merge Quarantine in RiskBasedRecommendations with 2 levels
             if self.tracing_method.risk_model in ["manual", "digital"]:
                 if self.risk == 1.0:
-                    self.curr_rec_level = 3
+                    return 3
                 else:
-                    self.curr_rec_level = 0
+                    return 0
             else:
-                self.curr_rec_level = self.tracing_method.intervention.get_recommendations_level(
+                return self.tracing_method.intervention.get_recommendations_level(
                     self,
                     self.conf.get("REC_LEVEL_THRESHOLDS"),
                     self.conf.get("MAX_RISK_LEVEL")
                 )
         else:
-            self.curr_rec_level = -1
-
-        return self.curr_rec_level
+            return -1

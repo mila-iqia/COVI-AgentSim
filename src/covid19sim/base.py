@@ -11,7 +11,7 @@ from collections import defaultdict, Counter
 import simpy
 
 from covid19sim.utils import compute_distance, _get_random_area, relativefreq2absolutefreq, \
-    get_test_false_negative_rate
+    get_test_false_negative_rate, calculate_average_infectiousness
 from covid19sim.track import Tracker
 from covid19sim.interventions import *
 from covid19sim.frozen.message_utils import UIDType, UpdateMessage, combine_update_messages, \
@@ -659,28 +659,26 @@ class City:
 
             # iterate over humans, and if it's their timeslot, then update their state
             for human in self.humans:
+                human.check_covid_testing_needs()  # humans can decide to get tested whenever
+                if current_day not in human.infectiousness_history_map:
+                    # contrarily to risk, infectiousness only changes once a day (human behavior has no impact)
+                    human.infectiousness_history_map[current_day] = calculate_average_infectiousness(human)
+
                 if self.env.timestamp.hour not in human.time_slots:
                     continue
                 human.initialize_daily_risk(current_day)
                 backup_human_init_risks[human] = copy.deepcopy(human.risk_history_map)
-                # note: the global mailbox is modified inside the lightweight loop, so any
-                # parallelization in this function has to be done very carefully in order to
-                # keep the same update-order-behavior for humans on the same timeslot
-                new_update_messages = human.run_timeslot_lightweight_jobs(
+                human.run_timeslot_lightweight_jobs(
                     init_timestamp=self.start_time,
                     current_timestamp=self.env.timestamp,
                     personal_mailbox=self.global_mailbox[human.name],
                 )
-                # previously, risk updates were sent right away, meaning some lucky humans could
-                # get instant updates; the current implementation assues a one-timeslot-delay
-                # minimum for everyone, even when updating on the same timeslot as the contact
-                all_new_update_messages.extend(new_update_messages)
 
             if isinstance(self.intervention, Tracing):
                 # time to run the cluster+risk prediction via transformer (if we need it)
                 if self.intervention.risk_model == "transformer" or self.conf.get("COLLECT_TRAINING_DATA"):
                     from covid19sim.models.run import batch_run_timeslot_heavy_jobs
-                    self.humans, new_update_messages = batch_run_timeslot_heavy_jobs(
+                    self.humans = batch_run_timeslot_heavy_jobs(
                         humans=self.humans,
                         init_timestamp=self.start_time,
                         current_timestamp=self.env.timestamp,
@@ -691,16 +689,43 @@ class City:
                         # let's hope there are no collisions on the server with this hash...
                         city_hash=city_hash,
                     )
-                    all_new_update_messages.extend(new_update_messages)
-                self.tracker.track_risk_attributes(self.hd)
 
-            self.register_new_messages(
-                current_day_idx=current_day,
-                current_timestamp=self.env.timestamp,
-                update_messages=all_new_update_messages,
-                prev_human_risk_history_maps=backup_human_init_risks,
-                new_human_risk_history_maps={h: h.risk_history_map for h in self.humans},
-            )
+                # finally, iterate over humans again, and if it's their timeslot, then send update messages
+                self.tracker.track_risk_attributes(self.hd)
+                update_messages = []
+                for human in self.humans:
+                    if self.env.timestamp.hour not in human.time_slots:
+                        continue
+                    # if we had any encounters for which we have not sent an initial message, do it now
+                    update_messages.extend(human.contact_book.generate_initial_updates(
+                        current_day_idx=current_day,
+                        current_timestamp=self.env.timestamp,
+                        risk_history_map=human.risk_history_map,
+                        proba_to_risk_level_map=human.proba_to_risk_level_map,
+                        tracing_method=human.tracing_method,
+                    ))
+                    # then, generate risk level update messages for all other encounters (if needed)
+                    update_messages.extend(human.contact_book.generate_updates(
+                        current_day_idx=current_day,
+                        current_timestamp=self.env.timestamp,
+                        prev_risk_history_map=human.prev_risk_history_map,
+                        curr_risk_history_map=human.risk_history_map,
+                        proba_to_risk_level_map=human.proba_to_risk_level_map,
+                        update_reason="unknown",  # FIXME got schwacked in hotfix, only used for debugging
+                        tracing_method=human.tracing_method,
+                    ))
+                    if human.check_if_latest_risk_level_changed():
+                        human.tracing_method.modify_behavior(human)
+                    for day_idx, risk_val in human.risk_history_map.items():
+                        human.prev_risk_history_map[day_idx] = risk_val
+
+                self.register_new_messages(
+                    current_day_idx=current_day,
+                    current_timestamp=self.env.timestamp,
+                    update_messages=update_messages,
+                    prev_human_risk_history_maps=backup_human_init_risks,
+                    new_human_risk_history_maps={h: h.risk_history_map for h in self.humans},
+                )
 
             yield self.env.timeout(int(duration))
 
@@ -838,10 +863,7 @@ class TestFacility(object):
             score += 1
 
         if human.test_recommended:
-            score += 1
-
-        if human.test_result == "negative":
-            score += 0.2  # small value
+            score += 0.1  # @@@@@@ FIXME THIS IS ARBITRARY
 
         return score
 

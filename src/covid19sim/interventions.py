@@ -413,9 +413,8 @@ class HeuristicRecommendations(RiskBasedRecommendations):
         # received in the mailbox, which get_recommendations_level does not have
         # access to under the current API.
         if human.age >= 70:
-            return max(human.curr_rec_level, 2)
-
-        return max(human.curr_rec_level, 0)
+            return max(human.rec_level, 2)
+        return max(human.rec_level, 0)
 
 
 class Tracing(object):
@@ -643,29 +642,20 @@ class Tracing(object):
             if human.reported_test_result == "positive":
                 # Update risk for the past 14 days
                 risk = [self.risk_level_to_risk(15)] * 14
-                human.curr_rec_level = 3
-
             elif human.all_reported_symptoms:
                 if "extremely-severe" in human.all_reported_symptoms:
                     # For severe symptoms, set R = 12 for now and all past 7 days
                     risk = [self.risk_level_to_risk(12)] * 7
-                    # Set recommendations level L = 3
-                    human.curr_rec_level = 3
                 elif "severe" in human.all_reported_symptoms:
                     risk = [self.risk_level_to_risk(12)] * 7
-                    human.curr_rec_level = 3
                 elif "moderate" in human.all_reported_symptoms:
                     # For intermediate symptoms, set R = 10 for now and all past 7 days
                     risk = [self.risk_level_to_risk(10)] * 7
-                    # Set recommendations level L = 3
-                    human.curr_rec_level = 3
                 else:
                     # For mild symptoms, set R = 7 for now and all past 7 days
                     risk = [self.risk_level_to_risk(7)] * 7
-                    # Set recommendations level L = 2
-                    human.curr_rec_level = 2
 
-            elif human.curr_rec_level > 0:
+            elif human.rec_level > 0:
                 # Check if there was no positive test result in the past 14 days
                 no_positive_test_result_past_14_days = True
                 for test_result, test_time, _ in human.test_results:
@@ -681,30 +671,23 @@ class Tracing(object):
                         and no_message_gt3_past_7_days):
                     # Set risk level R = 0 for now and all past 7 days
                     risk = [self.risk_level_to_risk(0)] * 7
-                    # Set recommendations level L = 0
-                    human.curr_rec_level = 0
 
             elif high_risk_message > 0:
                 # TODO: Decrease the risk level depending on the number of encounters (N > 5)
                 updated_risk = max(human.risk_level, self.risk_level_to_risk(high_risk_message - 5))
                 risk = [updated_risk] * max(high_risk_num_days - 2, 1) # Update at least 1 day
-                human.curr_rec_level = 3
 
             elif moderate_risk_message > 0:
                 # Set the risk level to max(R' - 5, R) for all days after day D + 2
                 # (with at least 1 update for the current day)
                 updated_risk = max(human.risk_level, self.risk_level_to_risk(moderate_risk_message - 5))
                 risk = [updated_risk] * max(moderate_risk_num_days - 2, 1)
-                # Set recommendations level L = 2
-                human.curr_rec_level = 2
 
             elif mild_risk_message > 0:
                 # Set the risk level to max(R' - 5, R) for all days after day D + 2
                 # (with at least 1 update for the current day)
                 updated_risk = max(human.risk_level, self.risk_level_to_risk(mild_risk_message - 5))
                 risk = [updated_risk] * max(mild_risk_num_days - 2, 1)
-                # Set recommendations level L = 1
-                human.curr_rec_level = 1
 
         elif self.risk_model == "other":
             r_up, v_up, r_down, v_down = r
