@@ -45,11 +45,12 @@ def main(conf: DictConfig) -> None:
     # -------------------------------------
     if conf["outdir"] is None:
         conf["outdir"] = str(Path(__file__) / "output")
-    conf["outdir"] = "{}/sim_v2_people-{}_days-{}_init-{}_seed-{}_{}".format(
+    conf["outdir"] = "{}/sim_v2_people-{}_days-{}_init-{}_uptake-{}_seed-{}_{}".format(
         conf["outdir"],
         conf["n_people"],
         conf["simulation_days"],
         conf["init_percent_sick"],
+        conf["APP_UPTAKE"],
         conf["seed"],
         datetime.datetime.now().strftime("%Y%m%d-%H%M%S"),
     )
