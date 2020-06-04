@@ -97,7 +97,7 @@ def compute_presymptomatic_warning_signals(data) -> float:
         presymp += infection_timestamp <= t_rec <= t_s
         preinf += infection_timestamp <= t_rec <= t_inf
 
-    total = len(infection_timetamps)
+    total = len(infection_timestamps)
     return presymp, preinf, total
 
 
@@ -107,7 +107,7 @@ def get_metrics(data) -> dict:
     # red but not even exposed (not infected nor infectious) and red and truely infectious
     true_quarantine, false_quarantine = compute_true_false_quarantine(data)
     # was the rec_level increased between exposure and infectiousness (good) or not (bad)
-    exposed_to_infectious_interval = compute_exposed_to_infectious_interval(data)
+    exposed_to_infectious_interval = compute_presymptomatic_warning_signals(data)
 
 
 if __name__ == "__main__":
