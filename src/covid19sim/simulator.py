@@ -981,7 +981,8 @@ class Human(object):
             result_day = (current_timestamp - test_timestamp).days
             assert result_day >= 0, "how are we getting future test results here...?"
             if result_day < self.conf.get("TRACING_N_DAYS_HISTORY"):
-                if result_day >= self.time_to_test_result and real_test_result is not None:
+                if self.time_to_test_result is not None and result_day >= self.time_to_test_result \
+                        and real_test_result is not None:
                     assert real_test_result in ["positive", "negative"]
                     results[result_day] = 1 if real_test_result == "positive" else -1
         return results
