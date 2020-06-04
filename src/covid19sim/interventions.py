@@ -643,6 +643,8 @@ class Tracing(object):
             risk = human.risk
 
             no_message_gt3_past_7_days = True
+            no_positive_test_result_past_14_days = True
+            earliest_negative_test_result_num_days = -1
             high_risk_message, high_risk_num_days = -1, -1
             moderate_risk_message, moderate_risk_num_days = -1, -1
             mild_risk_message, mild_risk_num_days = -1, -1
@@ -692,6 +694,15 @@ class Tracing(object):
                         mild_risk_message = max(mild_risk_message, risk_level)
                         mild_risk_num_days = max(mild_risk_message, encounter_day)
 
+            for test_result, test_time, _ in human.test_results:
+                result_day = (human.env.timestamp - test_time).days
+                if result_day >= 0 and result_day < human.conf.get("TRACING_N_DAYS_HISTORY"):
+                    no_positive_test_result_past_14_days &= (test_result != "positive")
+
+                    if test_result == "negative":
+                        earliest_negative_test_result_num_days = max(result_day,
+                            earliest_negative_test_result_num_days)
+
             if human.reported_test_result == "positive":
                 # Update risk for the past 14 days
                 risk = [self.risk_level_to_risk(15)] * 14
@@ -711,22 +722,19 @@ class Tracing(object):
                     risk = [self.risk_level_to_risk(mild_symptoms_risk_level)] * 7
                     # TODO: Set recommendations level L = 1
 
-            elif human.rec_level > 0:
-                # Check if there was no positive test result in the past 14 days
-                no_positive_test_result_past_14_days = True
-                for test_result, test_time, _ in human.test_results:
-                    result_day = (human.env.timestamp - test_time).days
-                    if result_day >= 0 and result_day < human.conf.get("TRACING_N_DAYS_HISTORY"):
-                        no_positive_test_result_past_14_days &= (test_result != "positive")
-
+            elif (human.rec_level > 0) and no_positive_test_result_past_14_days:
                 # Check if there was no symptoms in the past 7 days
                 no_symptoms_past_7_days = (not any(islice(human.rolling_all_reported_symptoms, 7)))
 
-                if (no_symptoms_past_7_days
-                        and no_positive_test_result_past_14_days
-                        and no_message_gt3_past_7_days):
+                if no_symptoms_past_7_days:# and no_message_gt3_past_7_days:
                     # Set risk level R = 0 for now and all past 7 days
                     risk = [self.risk_level_to_risk(0)] * 7
+
+                elif earliest_negative_test_result_num_days > 0:
+                    # Set risk level R = 1 for now and all past D days
+                    risk = [self.risk_level_to_risk(1)] * earliest_negative_test_result_num_days
+                    # Set recommendation level L = 0
+                    human.curr_rec_level = 0
 
             elif high_risk_message > 0:
                 # TODO: Decrease the risk level depending on the number of encounters (N > 5)
