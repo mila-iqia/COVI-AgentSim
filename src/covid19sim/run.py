@@ -4,6 +4,7 @@ Main file to run the simulations
 import datetime
 import os
 import shutil
+import time
 from pathlib import Path
 
 import hydra
@@ -15,18 +16,12 @@ from covid19sim.constants import SECONDS_PER_DAY, SECONDS_PER_HOUR
 from covid19sim.models.run import DummyMemManager
 from covid19sim.monitors import EventMonitor, SEIRMonitor, TimeMonitor
 from covid19sim.simulator import Human
+from covid19sim.utils import (dump_conf, dump_tracker_data,
+                              extract_tracker_data, parse_configuration,
+                              zip_outdir)
 
-from covid19sim.utils import (
-    dump_conf,
-    dump_tracker_data,
-    extract_tracker_data,
-    parse_configuration,
-    zip_outdir,
-    dump_conf,
-)
 
 @hydra.main(config_path="hydra-configs/simulation/config.yaml")
-
 def main(conf: DictConfig) -> None:
     """
     Enables command line execution of the simulator.
@@ -45,7 +40,9 @@ def main(conf: DictConfig) -> None:
     # -------------------------------------
     if conf["outdir"] is None:
         conf["outdir"] = str(Path(__file__) / "output")
-    conf["outdir"] = "{}/sim_v2_people-{}_days-{}_init-{}_uptake-{}_seed-{}_{}".format(
+    conf[
+        "outdir"
+    ] = "{}/sim_v2_people-{}_days-{}_init-{}_uptake-{}_seed-{}_{}_{}".format(
         conf["outdir"],
         conf["n_people"],
         conf["simulation_days"],
@@ -53,6 +50,7 @@ def main(conf: DictConfig) -> None:
         conf["APP_UPTAKE"],
         conf["seed"],
         datetime.datetime.now().strftime("%Y%m%d-%H%M%S"),
+        str(time.time_ns())[-6:],
     )
     if Path(conf["outdir"]).exists():
         out_path = Path(conf["outdir"])
@@ -223,10 +221,14 @@ def simulate(
             inference_frontend_address = conf.get("INFERENCE_SERVER_ADDRESS", None)
             print("requesting cluster reset from inference server...")
             from covid19sim.server_utils import InferenceClient
-            temporary_client = InferenceClient(server_address=inference_frontend_address)
+
+            temporary_client = InferenceClient(
+                server_address=inference_frontend_address
+            )
             temporary_client.request_reset()
         else:
             from covid19sim.models.run import DummyMemManager
+
             DummyMemManager.global_cluster_map = {}
 
     # Initiate city process, which runs every hour
