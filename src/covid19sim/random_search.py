@@ -268,6 +268,8 @@ def fill_mila_template(template_str, conf):
     use_transformer = str(conf.get("use_transformer", True)).lower()
     workers = cpu - 1
 
+    use_server = use_transformer and conf.get("USE_INFERENCE_SERVER", True)
+
     if "dev" in conf and conf["dev"]:
         print(
             "Using:\n"
@@ -285,6 +287,7 @@ def fill_mila_template(template_str, conf):
                     "  {:10}: {}".format("frontend", ipc["frontend"]),
                     "  {:10}: {}".format("backend", ipc["backend"]),
                     "  {:10}: {}".format("use_transformer", use_transformer),
+                    "  {:10}: {}".format("use_server", use_server),
                     "  {:10}: {}".format("workers", workers),
                 ]
             )
@@ -314,7 +317,7 @@ def fill_mila_template(template_str, conf):
         weights=weights,
         frontend=frontend,
         backend=backend,
-        use_transformer=use_transformer,
+        use_server=use_server,
         workers=workers,
     )
 

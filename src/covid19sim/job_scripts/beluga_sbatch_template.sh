@@ -18,9 +18,9 @@ cd {code_loc}
 echo $(pwd)
 echo $(which python)
 
-use_transformer={use_transformer}
+use_server={use_server}
 
-if [ "$use_transformer" = true ] ; then
+if [ "$use_server" = true ] ; then
     python server_bootstrap.py -e {weights} -w {workers} {frontend} {backend}&
 fi
 

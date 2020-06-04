@@ -377,7 +377,7 @@ class Human(object):
         self.location_start_time = self.env.ts_initial
         self.denied_icu = None
         self.denied_icu_days = None
-        
+
         # The average noise in bluetooth signal strength to distance translation is sampled from a uniform distribution between 0 and 1
         self.phone_bluetooth_noise = self.rng.rand()
 
@@ -1128,7 +1128,7 @@ class Human(object):
                     for day_offset, risk in enumerate(risks):
                         if current_day_idx - day_offset in self.risk_history_map:
                             self.risk_history_map[current_day_idx - day_offset] = risk
-                        
+
                     update_reason = "tracing"
 
             if self.symptoms and self.tracing_method.propagate_symptoms:
