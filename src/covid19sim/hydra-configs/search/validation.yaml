@@ -18,6 +18,15 @@ DROPOUT_RATE: 0.02
 init_percent_sick: 0.01
 tune: true
 
+seed:
+  sample: cartesian
+  from:
+  - 3000
+  - 3001
+  - 3002
+  - 3003
+  - 3004
+
 APP_UPTAKE:
   sample: cartesian # will be sampled in this order, in a cartesian product with any other "cartesian" sampling
   from:
@@ -33,9 +42,3 @@ P_CAREFUL_PERSON:
   from:
     - 0.3
     - 0.6
-
-seed:
-  sample: cartesian
-  from:
-  - 3003
-  - 3004
