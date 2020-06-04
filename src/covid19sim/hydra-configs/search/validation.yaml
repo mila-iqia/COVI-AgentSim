@@ -18,16 +18,6 @@ DROPOUT_RATE: 0.02
 init_percent_sick: 0.01
 tune: true
 
-# tracing_method:
-#   sample: cartesian
-#   from:
-#     # - oracle
-#     # - no_intervention
-#     # - binary_digital_tracing_order_1
-#     - binary_digital_tracing_order_2
-#     - heuristic
-#     - transformer # + mlp
-
 APP_UPTAKE:
   sample: cartesian # will be sampled in this order, in a cartesian product with any other "cartesian" sampling
   from:
@@ -36,7 +26,7 @@ APP_UPTAKE:
     - 0.8415 # AR: 0.599173245
 # for uptake in [0.0705, 0.4215, 0.8415]: print(uptake, ":", sum(s * uptake * h["p"] for s, h in zip(sd.values(), hd.values() )))
 # hd is HUMAN_DISTRIBUTION from core.yaml
-# sd is SMARTPHONE_OWNER_FRACTION_BY_AGE
+# sd is SMARTPHONE_OWNER_FRACTION_BY_AGE from core.yaml
 
 P_CAREFUL_PERSON:
   sample: cartesian # will be sampled in this order, in a cartesian product with any other "cartesian" sampling
@@ -50,5 +40,3 @@ seed:
   - 3000
   - 3001
   - 3002
-  - 3003
-  - 3004
