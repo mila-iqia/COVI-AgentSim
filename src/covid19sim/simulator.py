@@ -1332,8 +1332,9 @@ class Human(object):
         while True:
             hour, day = self.env.hour_of_day(), self.env.day_of_week()
             if day==0:
-                self.count_exercise=0
-                self.count_shop=0
+                self.count_exercise = 0
+                self.count_shop = 0
+                self.count_misc = 0
 
             # recover from cold/flu/allergies if it's time
             self.recover_health()
@@ -1436,7 +1437,7 @@ class Human(object):
             elif ( self.env.is_weekend() and
                     self.rng.random() < 0.5 and
                     not self.rest_at_home and
-                    not self.count_misc<=self.max_misc_per_week):
+                    self.count_misc < self.max_misc_per_week):
                 yield  self.env.process(self.excursion(city, "leisure"))
 
             yield self.env.process(self.at(self.household, city, 60))
@@ -1643,7 +1644,7 @@ class Human(object):
             # first term is packing metric for the location in cm
             packing_term = 100 * np.sqrt(area/len(self.location.humans)) # cms
             encounter_term = self.rng.uniform(self.conf.get("MIN_DIST_ENCOUNTER"), self.conf.get("MAX_DIST_ENCOUNTER"))
-            social_distancing_term = np.mean([self.maintain_extra_distance, h.maintain_extra_distance]) * self.rng.rand()
+            social_distancing_term = np.mean([self.maintain_extra_distance, h.maintain_extra_distance]) #* self.rng.rand()
             # if you're in a space, you cannot be more than packing term apart
             distance = np.clip(encounter_term + social_distancing_term, a_min=0, a_max=packing_term)
 
@@ -1875,7 +1876,7 @@ class Human(object):
                          m != self.location]
             pool_locs = [m for m in city.miscs if m != self.location]
             # Only consider locations open for business and not too long queues
-            locs = filter_queue_max(filter_open(city.miscs))
+            locs = filter_queue_max(filter_open(city.miscs), self.conf.get("MAX_MISC_QUEUE_LENGTH"))
             visited_locs = self.visits.miscs
 
         else:

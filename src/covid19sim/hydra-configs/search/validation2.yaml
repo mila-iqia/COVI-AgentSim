@@ -23,6 +23,7 @@ APP_UPTAKE:
   from:
     - 0.4215 # AR: 0.300120645
     - 0.8415 # AR: 0.599173245
+    - -1
 # for uptake in [0.0705, 0.4215, 0.8415]: print(uptake, ":", sum(s * uptake * h["p"] for s, h in zip(sd.values(), hd.values() )))
 # hd is HUMAN_DISTRIBUTION from core.yaml
 # sd is SMARTPHONE_OWNER_FRACTION_BY_AGE from core.yaml

@@ -1,0 +1,25 @@
+n_people: 1500
+simulation_days: 30
+init_percent_sick: 0.00333
+test_capacity: 0.02
+COLD_CONTAGIOUSNESS: 0.0
+INTERVENTION_DAY: 5
+tune: true
+
+APP_UPTAKE:
+  sample: cartesian
+  from:
+    - 0.2107 # 15%
+    - 0.4215 # 30%
+    - 0.6320 # 45%
+    - 0.8415 # 60%
+    - 0.9831 # 70%
+
+seed:
+  sample: cartesian
+  from:
+    - 3000
+    - 3001
+    - 3002
+    - 3003
+    - 3004

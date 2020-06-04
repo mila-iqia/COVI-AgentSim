@@ -23,7 +23,7 @@ from covid19sim.utils import (dump_conf, dump_tracker_data,
 
 
 @hydra.main(config_path="hydra-configs/simulation/config.yaml")
-def main(conf: DictConfig) -> None:
+def main(conf: DictConfig):
     """
     Enables command line execution of the simulator.
 
@@ -150,6 +150,7 @@ def main(conf: DictConfig) -> None:
         data = extract_tracker_data(tracker, conf)
         dump_tracker_data(data, conf["outdir"], filename)
         tracker.write_metrics(f"{conf['outdir']}/log_{timenow}_{conf['name']}.txt")
+    return conf
 
 
 def simulate(

@@ -327,13 +327,13 @@ def get_recommendations(level):
         list: a list of `BehaviorInterventions`.
     """
     if level == 0:
-        return [WashHands(), StandApart(default_distance=25)]
+        return [WashHands(), StandApart(default_distance=40)]
     if level == 1:
-        return [WashHands(), StandApart(default_distance=75), WearMask()]
+        return [WashHands(), StandApart(default_distance=100), WearMask()]
     if level == 2:
-        return [WashHands(), SocialDistancing(default_distance=100), WearMask(), 'monitor_symptoms']
+        return [WashHands(), SocialDistancing(default_distance=125), WearMask(), 'monitor_symptoms']
 
-    return [WashHands(), SocialDistancing(default_distance=100), WearMask(), 'monitor_symptoms', GetTested("recommendations"), Quarantine()]
+    return [WashHands(), SocialDistancing(default_distance=150), WearMask(), 'monitor_symptoms', GetTested("recommendations"), Quarantine()]
 
 class RiskBasedRecommendations(BehaviorInterventions):
     """
