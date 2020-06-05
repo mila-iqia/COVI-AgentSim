@@ -640,14 +640,14 @@ class City:
             # Notify humans to follow interventions on intervention day
             if current_day == self.conf.get('INTERVENTION_DAY') and not humans_notified:
                 self.intervention = get_intervention(conf=self.conf)
+                if isinstance(self.intervention, Tracing):
+                    self.have_some_humans_download_the_app()
                 _ = [h.notify(self.intervention) for h in self.humans]
                 print(self.intervention)
                 self.conf["GLOBAL_MOBILITY_SCALING_FACTOR"] = tmp_M
                 if self.conf.get('COLLECT_TRAINING_DATA'):
                     print("naive risk calculation without changing behavior... Humans notified!")
                 humans_notified = True
-                if isinstance(self.intervention, Tracing):
-                    self.have_some_humans_download_the_app()
 
             # run city testing routine, providing test results for those who need them
             # TODO: running this every hour of the day might not be correct.
