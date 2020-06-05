@@ -752,8 +752,7 @@ class City:
                         update_reason="unknown",  # FIXME got schwacked in hotfix, only used for debugging
                         tracing_method=human.tracing_method,
                     ))
-                    if human.check_if_latest_risk_level_changed():
-                        human.tracing_method.modify_behavior(human)
+                    human.tracing_method.modify_behavior(human)
                     for day_idx, risk_val in human.risk_history_map.items():
                         human.prev_risk_history_map[day_idx] = risk_val
 
