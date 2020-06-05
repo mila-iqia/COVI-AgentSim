@@ -9,6 +9,7 @@ from omegaconf import DictConfig
 import datetime
 import itertools
 from covid19sim.utils import parse_search_configuration
+import time
 
 
 def now_str():
@@ -267,6 +268,8 @@ def fill_mila_template(template_str, conf):
     use_transformer = str(conf.get("use_transformer", True)).lower()
     workers = cpu - 1
 
+    use_server = use_transformer and conf.get("USE_INFERENCE_SERVER", True)
+
     if "dev" in conf and conf["dev"]:
         print(
             "Using:\n"
@@ -284,6 +287,7 @@ def fill_mila_template(template_str, conf):
                     "  {:10}: {}".format("frontend", ipc["frontend"]),
                     "  {:10}: {}".format("backend", ipc["backend"]),
                     "  {:10}: {}".format("use_transformer", use_transformer),
+                    "  {:10}: {}".format("use_server", use_server),
                     "  {:10}: {}".format("workers", workers),
                 ]
             )
@@ -313,7 +317,7 @@ def fill_mila_template(template_str, conf):
         weights=weights,
         frontend=frontend,
         backend=backend,
-        use_transformer=use_transformer,
+        use_server=use_server,
         workers=workers,
     )
 
@@ -345,7 +349,9 @@ def fill_beluga_template(template_str, conf):
     weights = conf.get("weights", f"/scratch/{user}/FRESH-SNOWFLAKE-224B")
     code_loc = conf.get("code_loc", str(Path(home) / "simulator/src/covid19sim/"))
     ipc = conf.get("ipc", {"frontend": "", "backend": ""})
-    use_transformer = str(conf.get("use_transformer", True)).lower()
+    use_transformer = conf.get("use_transformer", True)
+
+    use_server = str(use_transformer and conf.get("USE_INFERENCE_SERVER", True)).lower()
     workers = cpu - 1
 
     if "dev" in conf and conf["dev"]:
@@ -363,6 +369,7 @@ def fill_beluga_template(template_str, conf):
                     "  {:10}: {}".format("frontend", ipc["frontend"]),
                     "  {:10}: {}".format("backend", ipc["backend"]),
                     "  {:10}: {}".format("use_transformer", use_transformer),
+                    "  {:10}: {}".format("use_server", use_server),
                     "  {:10}: {}".format("workers", workers),
                 ]
             )
@@ -384,7 +391,7 @@ def fill_beluga_template(template_str, conf):
         weights=weights,
         frontend=frontend,
         backend=backend,
-        use_transformer=use_transformer,
+        use_server=use_server,
         workers=workers,
     )
 
@@ -448,7 +455,9 @@ def main(conf: DictConfig) -> None:
         "ipc",  # run with & at the end instead of ; to run in subshells
         "start_index",  # ignore the first runs, to continue a cartesian or sequential exploration for instance
         "use_transformer",  # defaults to True
+        "use_server",  # defaults to True
         "use_tmpdir",  # use SLURM_TMPDIR and copy files to outdir after
+        "test_capacity",  # use SLURM_TMPDIR and copy files to outdir after
     }
 
     # move back to original directory because hydra moved
@@ -515,6 +524,8 @@ def main(conf: DictConfig) -> None:
 
         # convert params to string command-line args
         hydra_args = get_hydra_args(opts, RANDOM_SEARCH_SPECIFIC_PARAMS)
+        if conf.get("test_capacity") is not None:
+            hydra_args += f" TEST_TYPES.lab.capacity={conf.get('test_capacity')}"
 
         # do n_runs_per_search simulations per job
         for k in range(conf.get("n_runs_per_search", 1)):
@@ -572,26 +583,12 @@ def main(conf: DictConfig) -> None:
             print(job_str)
         else:
             # not dev-mode: run it!
-            process = subprocess.call(command.split(), cwd=home)
+            _ = subprocess.call(command.split(), cwd=home)
+            time.sleep(0.5)
 
         # prints
         print()
         printlines()
-
-    # if infra == "intel":
-    #     path = Path(home) / "covi_search" / f"covi_search{conf['now_str']}.sh"
-    #     assert not path.exists()
-    #     if "dev" in conf and conf["dev"]:
-    #         print(str(path))
-    #         print("." * 50)
-    #         print(intel_str)
-    #         print("." * 50)
-
-    #     else:
-    #         command = f"sh {path.name}"
-    #         with path.open("w") as f:
-    #             f.write(intel_str)
-    #         process = subprocess.call(command.split(), cwd=str(path.parent))
 
 
 if __name__ == "__main__":
