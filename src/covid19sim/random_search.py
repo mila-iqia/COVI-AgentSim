@@ -349,7 +349,9 @@ def fill_beluga_template(template_str, conf):
     weights = conf.get("weights", f"/scratch/{user}/FRESH-SNOWFLAKE-224B")
     code_loc = conf.get("code_loc", str(Path(home) / "simulator/src/covid19sim/"))
     ipc = conf.get("ipc", {"frontend": "", "backend": ""})
-    use_transformer = str(conf.get("use_transformer", True)).lower()
+    use_transformer = conf.get("use_transformer", True)
+
+    use_server = str(use_transformer and conf.get("USE_INFERENCE_SERVER", True)).lower()
     workers = cpu - 1
 
     if "dev" in conf and conf["dev"]:
@@ -367,6 +369,7 @@ def fill_beluga_template(template_str, conf):
                     "  {:10}: {}".format("frontend", ipc["frontend"]),
                     "  {:10}: {}".format("backend", ipc["backend"]),
                     "  {:10}: {}".format("use_transformer", use_transformer),
+                    "  {:10}: {}".format("use_server", use_server),
                     "  {:10}: {}".format("workers", workers),
                 ]
             )
@@ -388,7 +391,7 @@ def fill_beluga_template(template_str, conf):
         weights=weights,
         frontend=frontend,
         backend=backend,
-        use_transformer=use_transformer,
+        use_server=use_server,
         workers=workers,
     )
 
