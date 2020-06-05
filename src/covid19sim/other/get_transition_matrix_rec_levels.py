@@ -73,14 +73,22 @@ def get_config_and_data(folder):
     return config, data
 
 
-def get_rec_levels_distributions(data, num_rec_levels=4):
+def get_rec_levels_distributions(data, config, num_rec_levels=4):
     rec_levels = data['humans_rec_level']
     intervention_day = data['intervention_day']
     num_days = len(next(iter(rec_levels.values())))
+    if 'humans_has_app' in data:
+        has_app = data['humans_has_app']
+        rec_levels_with_app = [value for (key, value) in rec_levels.items() if has_app[key]]
+    else:
+        if config.get('APP_UPTAKE', -1) >= 0:
+            logging.warning('`humans_has_app` is not available even though '
+                'APP_UPTAKE is not -1 (APP_UPTAKE={0}).'.format(config.get('APP_UPTAKE', -1)))
+        rec_levels_with_app = rec_levels.values()
 
-    rec_levels_per_day = np.zeros((num_days, len(rec_levels)), dtype=np.int_)
+    rec_levels_per_day = np.zeros((num_days, len(rec_levels_with_app)), dtype=np.int_)
 
-    for index, recommendations in enumerate(rec_levels.values()):
+    for index, recommendations in enumerate(rec_levels_with_app):
         rec_levels_per_day[:, index] = np.asarray(recommendations, dtype=np.int_)
 
     # Remove the days before intervention (without recommendation)
@@ -117,7 +125,7 @@ def main(args):
 
     # Compute the distributions of recommendation levels for
     # target tracing method (e.g. Transformer)
-    target_dists = get_rec_levels_distributions(target_data,
+    target_dists = get_rec_levels_distributions(target_data, target_config,
                                                 num_rec_levels=args.num_rec_levels)
 
     # Update the source configuration file

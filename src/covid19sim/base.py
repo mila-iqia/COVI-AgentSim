@@ -594,10 +594,11 @@ class City:
         # QKFIX: There are 4 recommendation levels, the value is hard-coded here
         counts = np.zeros((4,), dtype=np.float_)
         for human in self.humans:
-            counts[human.rec_level] += 1
+            if human.has_app:
+                counts[human.rec_level] += 1
 
-        if self.n_people > 0:
-            counts /= float(self.n_people)
+        if np.sum(counts) > 0:
+            counts /= np.sum(counts)
 
         return counts
 
@@ -610,6 +611,8 @@ class City:
             return None
         else:
             current_day -= self.conf.get('INTERVENTION_DAY')
+            if current_day < 0:
+                return None
 
         daily_rec_level_dist = self.compute_daily_rec_level_distribution()
 
