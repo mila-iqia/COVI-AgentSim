@@ -523,7 +523,7 @@ class City:
 
     def have_some_humans_download_the_app(self):
         """
-        This method is called on intervention day if the intervention type is 
+        This method is called on intervention day if the intervention type is
         `Tracing`. It simulates the process of downloading the app on for smartphone
         users according to `APP_UPTAKE` and `SMARTPHONE_OWNER_FRACTION_BY_AGE`.
         """
@@ -772,7 +772,7 @@ class TestFacility(object):
             self.last_date_to_check_tests = self.env.timestamp.date()
             for k in self.test_count_today.keys():
                 self.test_count_today[k] = 0
-                
+
             # clear queue
             # TODO : check more scenarios about when the person can be removed from a queue
             to_remove = []
@@ -863,7 +863,7 @@ class TestFacility(object):
             score += 1
 
         if human.test_recommended:
-            score += 0.1  # @@@@@@ FIXME THIS IS ARBITRARY
+            score += 0.3  # @@@@@@ FIXME THIS IS ARBITRARY
 
         return score
 
