@@ -267,6 +267,9 @@ class BinaryTracing(BehaviorInterventions):
         # configuration file, use the intervention level randomly picked from
         # this transition matrix, based on the recommendation level. The update
         # of the recommendation levels are not altered.
+        if not human.has_app:
+            return
+
         if human.city.daily_rec_level_mapping is None:
             intervention_level = human.rec_level
         else:
@@ -375,6 +378,9 @@ class RiskBasedRecommendations(BehaviorInterventions):
         # configuration file, use the intervention level randomly picked from
         # this transition matrix, based on the recommendation level. The update
         # of the recommendation levels are not altered.
+        if not human.has_app:
+            return
+
         if human.city.daily_rec_level_mapping is None:
             intervention_level = human.rec_level
         else:
