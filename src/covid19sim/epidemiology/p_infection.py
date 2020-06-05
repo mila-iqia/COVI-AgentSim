@@ -1,6 +1,7 @@
 import datetime
 import numpy as np
 
+
 def get_p_infection(infector, infectors_infectiousness, infectee, social_contact_factor, contagion_knob, mask_efficacy_factor, hygiene_efficacy_factor, self, h):
     # probability of transmission
     # It is similar to Oxford COVID-19 model described in Section 4.
@@ -18,6 +19,7 @@ def get_p_infection(infector, infectors_infectiousness, infectee, social_contact
     p_infection *= np.exp(-reduction_factor)
     return p_infection
 
+
 def infectiousness_delta(human, t_near):
     """
     Computes area under the probability curve defined by infectiousness and time duration
@@ -25,7 +27,7 @@ def infectiousness_delta(human, t_near):
     Currently, it only takes the average of starting and ending probabilities.
 
     Args:
-        t_near (float): time spent near another person in hours
+        t_near (float): time spent near another person in minutes
 
     Returns:
         area (float): area under the infectiousness curve is computed for this duration
@@ -35,6 +37,6 @@ def infectiousness_delta(human, t_near):
         return 0
 
     start_p = human.get_infectiousness_for_day(human.env.timestamp, human.is_infectious)
-    end_p = human.get_infectiousness_for_day(human.env.timestamp + datetime.timedelta(hours=t_near), human.is_infectious)
-    area = t_near / 24 * (start_p + end_p) / 2
+    end_p = human.get_infectiousness_for_day(human.env.timestamp + datetime.timedelta(minutes=t_near), human.is_infectious)
+    area = t_near / (24 * 60) * (start_p + end_p) / 2
     return area
