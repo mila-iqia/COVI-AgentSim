@@ -525,7 +525,7 @@ def main(conf: DictConfig) -> None:
         # convert params to string command-line args
         hydra_args = get_hydra_args(opts, RANDOM_SEARCH_SPECIFIC_PARAMS)
         if conf.get("test_type", False):
-            hydra_args += " TEST_TYPE.lab.capacity=0.005"
+            hydra_args += " TEST_TYPES.lab.capacity=0.005"
 
         # do n_runs_per_search simulations per job
         for k in range(conf.get("n_runs_per_search", 1)):
