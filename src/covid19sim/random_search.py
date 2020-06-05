@@ -457,6 +457,7 @@ def main(conf: DictConfig) -> None:
         "use_transformer",  # defaults to True
         "use_server",  # defaults to True
         "use_tmpdir",  # use SLURM_TMPDIR and copy files to outdir after
+        "test_type",  # use SLURM_TMPDIR and copy files to outdir after
     }
 
     # move back to original directory because hydra moved
@@ -523,6 +524,8 @@ def main(conf: DictConfig) -> None:
 
         # convert params to string command-line args
         hydra_args = get_hydra_args(opts, RANDOM_SEARCH_SPECIFIC_PARAMS)
+        if conf.get("test_type", False):
+            hydra_args += " TEST_TYPE.lab.capacity=0.005"
 
         # do n_runs_per_search simulations per job
         for k in range(conf.get("n_runs_per_search", 1)):
