@@ -452,6 +452,7 @@ def main(conf: DictConfig) -> None:
         "ipc",  # run with & at the end instead of ; to run in subshells
         "start_index",  # ignore the first runs, to continue a cartesian or sequential exploration for instance
         "use_transformer",  # defaults to True
+        "use_server",  # defaults to True
         "use_tmpdir",  # use SLURM_TMPDIR and copy files to outdir after
     }
 
