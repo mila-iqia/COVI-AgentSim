@@ -426,14 +426,6 @@ class ModelsTest(unittest.TestCase):
                                 self.assertEqual(encode_age(s_human.age), unobserved['true_age'])
                                 self.assertEqual(encode_sex(s_human.sex), unobserved['true_sex'])
 
-                                # Some encounters might have happened between the human's update on the last day
-                                # and the end of the simulation so we have to compare those in unobserved to only
-                                # the first N in exposure_encounters.
-                                nb_exp_encounter = len(unobserved['exposure_encounter'])
-                                if nb_exp_encounter > 0:
-                                    self.assertTrue((exposure_encounters[:nb_exp_encounter] ==
-                                                     unobserved['exposure_encounter']).all())
-
                     current_datetime += datetime.timedelta(hours=1)
 
             candidate_encounters_cnt = 0
