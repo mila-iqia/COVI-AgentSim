@@ -4,6 +4,7 @@ Contains the `Human` class that defines the behavior of human.
 
 import math
 import datetime
+import logging
 import numpy as np
 import typing
 import warnings
@@ -1007,6 +1008,8 @@ class Human(object):
                     del self.prev_risk_history_map[day_idx]
         # ready for the day now; prepare the prev risk entry in case we need a quick diff
         self.prev_risk_history_map[current_day_idx] = self.risk_history_map[current_day_idx]
+        logging.debug(f"Initializing the risk of {self.name} to "
+                      f"{self.risk_history_map[current_day_idx]}")
 
     def check_if_latest_risk_level_changed(self):
         """Returns whether the latest risk level stored in the current/previous risk history maps match."""
@@ -1110,6 +1113,17 @@ class Human(object):
         else:
             self.prev_risk_history_map[current_day_idx] = self.risk_history_map[current_day_idx]
         self.got_new_test_results = False  # if we did have new results, we caught them above
+
+        Event.log_risk_update(
+            self.conf['COLLECT_LOGS'],
+            human=self,
+            tracing_description=str(self.tracing_method),
+            prev_risk_history_map=self.prev_risk_history_map,
+            risk_history_map=self.risk_history_map,
+            current_day_idx=current_day_idx,
+            time=self.env.timestamp
+        )
+
         return update_messages
 
     def apply_transformer_risk_updates(
@@ -1147,6 +1161,17 @@ class Human(object):
             self.tracing_method.modify_behavior(self)
         for i in range(len(risk_history)):
             self.prev_risk_history_map[current_day_idx - i] = risk_history[i]
+
+        Event.log_risk_update(
+            self.conf['COLLECT_LOGS'],
+            human=self,
+            tracing_description=str(self.tracing_method),
+            prev_risk_history_map=self.prev_risk_history_map,
+            risk_history_map=self.risk_history_map,
+            current_day_idx=current_day_idx,
+            time=self.env.timestamp
+        )
+
         return update_messages
 
     def wear_mask(self, put_on=False):
@@ -1651,6 +1676,16 @@ class Human(object):
                         # note: the granularity here does not really matter, it's only used to keep map sizes small
                         # in the clustering algorithm --- in reality, only the encounter day matters
                         minutes_granularity=self.conf.get("ENCOUNTER_TIME_GRANULARITY_MINS", 60 * 12),
+                    )
+
+                    Event.log_encounter_messages(
+                        self.conf['COLLECT_LOGS'],
+                        self,
+                        h,
+                        location=location,
+                        duration=t_near,
+                        distance=distance,
+                        time=self.env.timestamp
                     )
 
             t_overlap = (min(self.leaving_time, getattr(h, "leaving_time", self.env.ts_initial+SECONDS_PER_HOUR)) -

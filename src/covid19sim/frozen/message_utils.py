@@ -1,7 +1,6 @@
 import collections
 import dataclasses
 import datetime
-import logging
 import typing
 
 import numpy as np
@@ -179,7 +178,6 @@ def exchange_encounter_messages(
         h2.contact_book.mailbox_keys_by_day[curr_day_idx] = []
     h2.contact_book.encounters_by_day[curr_day_idx].append(h2_msg)
     h2.contact_book.mailbox_keys_by_day[curr_day_idx].append(h1_msg.uid)  # GAEN: uid == mailbox key
-    logging.debug(f"Humans {h1.name} and {h2.name} exchanged encounter messages")
     return h1_msg, h2_msg
 
 
