@@ -9,8 +9,11 @@ import warnings
 import numpy as np
 from tests.utils import get_test_conf
 
-from covid19sim.frozen.helper import conditions_to_np, encode_age, encode_sex, encode_test_result
+from covid19sim.frozen.helper import (conditions_to_np, symptoms_to_np, encode_age, encode_sex,
+                                      encode_test_result, recovered_array, candidate_exposures,
+                                      exposure_array)
 from covid19sim.run import simulate
+from covid19sim.models.run import DummyMemManager
 
 
 class MakeHumanAsMessageProxy:
@@ -135,16 +138,16 @@ class ModelsTest(unittest.TestCase):
         # Load the experimental configuration
         conf_name = "test_models.yaml"
         conf = get_test_conf(conf_name)
-        conf['COLLECT_LOGS'] = False
+        conf['TEST_TYPES']['lab']['capacity'] = 0.1
 
         with TemporaryDirectory() as d:
             start_time = datetime.datetime(2020, 2, 28, 0, 0)
             n_people = 30
-            n_days = 20
+            n_days = 22
 
             ModelsTest.make_human_as_message_proxy.set_start_time(start_time)
 
-            monitors, _ = simulate(
+            monitors, tracker = simulate(
                 n_people=n_people,
                 start_time=start_time,
                 simulation_days=n_days,
@@ -154,6 +157,7 @@ class ModelsTest(unittest.TestCase):
                 seed=0,
                 conf=conf,
             )
+            sim_humans = tracker.city.humans
             days_output = glob.glob(f"{d}/daily_outputs/*/")
             days_output.sort(key=lambda p: int(p.split(os.path.sep)[-2]))
             self.assertEqual(len(days_output), n_days - conf.get('INTERVENTION_DAY'))
@@ -406,6 +410,44 @@ class ModelsTest(unittest.TestCase):
                                 self.assertEqual(unobserved['true_age'], prev_unobserved['true_age'])
                                 self.assertEqual(unobserved['true_sex'], prev_unobserved['true_sex'])
 
+                            # We can compare the pkls for the last daily_output to the state of the humans
+                            # at the end of the simulation.
+                            if current_day == n_days - 1:
+                                s_human = sim_humans[h_i - 1]
+
+                                date_at_update = start_time + datetime.timedelta(days=n_days - 1, hours=hour)
+                                is_exposed, exposure_day = exposure_array(s_human.infection_timestamp, date_at_update, conf)
+                                is_recovered, recovery_day = recovered_array(s_human.recovered_timestamp, date_at_update, conf)
+
+                                # note: we can only fetch the clusters if the test is running without inference server
+                                cluster_mgr_map = DummyMemManager.get_cluster_mgr_map()
+                                # the cluster managers are indexed by the city hash + the human's name (we just have the latter)
+                                self.assertEqual(len(cluster_mgr_map), len(sim_humans))
+                                cluster_mgr = next(iter([c for k, c in cluster_mgr_map.items() if k.endswith(s_human.name)]))
+                                candidate_encounters, exposure_encounters = candidate_exposures(cluster_mgr)
+                                test_results = s_human.get_test_results_array(date_at_update)
+
+                                self.assertTrue((symptoms_to_np(s_human.rolling_all_reported_symptoms, conf) ==
+                                                 observed['reported_symptoms']).all())
+                                self.assertTrue((test_results == observed['test_results']).all())
+                                self.assertTrue((conditions_to_np(s_human.obs_preexisting_conditions) ==
+                                                 observed['preexisting_conditions']).all())
+                                self.assertEqual(encode_age(s_human.obs_age), observed['age'])
+                                self.assertEqual(encode_sex(s_human.obs_sex), observed['sex'])
+                                self.assertEqual(conf['RISK_MAPPING'], observed['risk_mapping'])
+
+                                self.assertTrue((symptoms_to_np(s_human.rolling_all_symptoms, conf) ==
+                                                 unobserved['true_symptoms']).all())
+                                self.assertEqual(is_exposed, unobserved['is_exposed'])
+                                self.assertEqual(exposure_day, unobserved['exposure_day'])
+                                self.assertEqual(is_recovered, unobserved['is_recovered'])
+                                self.assertEqual(recovery_day, unobserved['recovery_day'])
+                                self.assertTrue((s_human.infectiousnesses == unobserved['infectiousness']).all())
+                                self.assertTrue((conditions_to_np(s_human.preexisting_conditions) ==
+                                                 unobserved['true_preexisting_conditions']).all())
+                                self.assertEqual(encode_age(s_human.age), unobserved['true_age'])
+                                self.assertEqual(encode_sex(s_human.sex), unobserved['true_sex'])
+
                     current_datetime += datetime.timedelta(hours=1)
 
                 # Test stability of some properties across time slots
@@ -453,8 +495,8 @@ class ModelsTest(unittest.TestCase):
             # self.assertGreaterEqual(has_exposure_day, n_people * 0.5)
             # self.assertGreaterEqual(has_recovery_day, n_people * 0.2)
             self.assertGreaterEqual(exposure_encounter_cnt, n_people)
-            self.assertGreaterEqual(infectiousness, n_people)
-            self.assertGreaterEqual(tests_results_cnt, n_people * 0.1)
+            self.assertGreaterEqual(infectiousness, 1)
+            self.assertGreaterEqual(tests_results_cnt, n_people * conf['TEST_TYPES']['lab']['capacity'])
 
 
 class HumanAsMessageTest(unittest.TestCase):

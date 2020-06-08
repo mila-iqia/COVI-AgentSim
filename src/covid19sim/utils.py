@@ -1960,12 +1960,13 @@ def parse_search_configuration(conf):
     """
     return OmegaConf.to_container(conf, resolve=True)
 
+
 def parse_configuration(conf):
     """
     Transforms an Omegaconf object to native python dict, parsing specific fields like:
     "1-15" age bin in YAML file becomes (1, 15) tuple, and datetime is parsed from string.
 
-    /!\ ANY key-specific parsing should have its inverse in covid19sim.utils.dump_conf()
+    ANY key-specific parsing should have its inverse in covid19sim.utils.dump_conf()
 
     Args:
         conf (omegaconf.OmegaConf): Hydra-loaded configuration
@@ -1977,6 +1978,12 @@ def parse_configuration(conf):
         conf = OmegaConf.to_container(conf, resolve=True)
     elif not isinstance(conf, dict):
         raise ValueError("Unknown configuration type {}".format(type(conf)))
+
+    if "AGE_GROUP_CONTACT_AVG" in conf:
+        conf['AGE_GROUP_CONTACT_AVG']['age_groups'] = [
+            eval(age_group) for age_group in conf['AGE_GROUP_CONTACT_AVG']['age_groups']
+        ]
+        conf['AGE_GROUP_CONTACT_AVG']['contact_avg'] = np.array(conf['AGE_GROUP_CONTACT_AVG']['contact_avg'])
 
     if "SMARTPHONE_OWNER_FRACTION_BY_AGE" in conf:
         conf["SMARTPHONE_OWNER_FRACTION_BY_AGE"] = {
@@ -2019,46 +2026,53 @@ def parse_configuration(conf):
     return conf
 
 
-def dump_conf(_conf, path):
+def dump_conf(
+        conf: dict,
+        path: typing.Union[str, Path],
+):
     """
-    Dumps a `_conf` dict in `path` and reverses the parsings done in parse_configurations.
-    Uses a deepcopy not to modify the referenced object.
-
-    /!\ parsings done in parse_configurations should be reversed in this function.
-
-    `path` should be to a `.yaml` file.
+    Perform a deep copy of the configuration dictionary, preprocess the elements into strings
+    to reverse the preprocessing performed by `parse_configuration` and then, dumps the content into a `.yaml` file.
 
     Args:
-        conf (dict): experimental configuration
-        path (str | Path): where to dump the resulting YAML
+        conf (dict): configuration dictionary to be written in a file
+        path (str | Path): `.yaml` file where the configuration is written
     """
-    conf = deepcopy(_conf)
-    if "SMARTPHONE_OWNER_FRACTION_BY_AGE" in conf:
-        conf["SMARTPHONE_OWNER_FRACTION_BY_AGE"] = {
+
+    copy_conf = deepcopy(conf)
+
+    if "AGE_GROUP_CONTACT_AVG" in copy_conf:
+        copy_conf['AGE_GROUP_CONTACT_AVG']['age_groups'] = \
+            ["(" + ", ".join([str(i) for i in age_group]) + ")"
+             for age_group in copy_conf["AGE_GROUP_CONTACT_AVG"]['age_groups']]
+        copy_conf['AGE_GROUP_CONTACT_AVG']['contact_avg'] = copy_conf['AGE_GROUP_CONTACT_AVG']['contact_avg'].tolist()
+
+    if "SMARTPHONE_OWNER_FRACTION_BY_AGE" in copy_conf:
+        copy_conf["SMARTPHONE_OWNER_FRACTION_BY_AGE"] = {
             "-".join([str(i) for i in k]): v
-            for k, v in conf["SMARTPHONE_OWNER_FRACTION_BY_AGE"].items()
+            for k, v in copy_conf["SMARTPHONE_OWNER_FRACTION_BY_AGE"].items()
         }
 
-    if "HUMAN_DISTRIBUTION" in conf:
-        conf["HUMAN_DISTRIBUTION"] = {
+    if "HUMAN_DISTRIBUTION" in copy_conf:
+        copy_conf["HUMAN_DISTRIBUTION"] = {
             "-".join([str(i) for i in k]): v
-            for k, v in conf["HUMAN_DISTRIBUTION"].items()
+            for k, v in copy_conf["HUMAN_DISTRIBUTION"].items()
         }
 
-    if "NORMALIZED_SUSCEPTIBILITY_BY_AGE" in conf:
-        conf["NORMALIZED_SUSCEPTIBILITY_BY_AGE"] = {
+    if "NORMALIZED_SUSCEPTIBILITY_BY_AGE" in copy_conf:
+        copy_conf["NORMALIZED_SUSCEPTIBILITY_BY_AGE"] = {
                 "-".join([str(i) for i in k]): v
-                for k, v in conf["NORMALIZED_SUSCEPTIBILITY_BY_AGE"].items()
+                for k, v in copy_conf["NORMALIZED_SUSCEPTIBILITY_BY_AGE"].items()
             }
 
-    if "MEAN_DAILY_INTERACTION_FOR_AGE_GROUP" in conf:
-        conf["MEAN_DAILY_INTERACTION_FOR_AGE_GROUP"] = {
+    if "MEAN_DAILY_INTERACTION_FOR_AGE_GROUP" in copy_conf:
+        copy_conf["MEAN_DAILY_INTERACTION_FOR_AGE_GROUP"] = {
                 "-".join([str(i) for i in k]): v
-                for k, v in conf["MEAN_DAILY_INTERACTION_FOR_AGE_GROUP"].items()
+                for k, v in copy_conf["MEAN_DAILY_INTERACTION_FOR_AGE_GROUP"].items()
             }
 
-    if "start_time" in conf:
-        conf["start_time"] = conf["start_time"].strftime("%Y-%m-%d %H:%M:%S")
+    if "start_time" in copy_conf:
+        copy_conf["start_time"] = copy_conf["start_time"].strftime("%Y-%m-%d %H:%M:%S")
 
     path = Path(path).resolve()
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -2068,7 +2082,7 @@ def dump_conf(_conf, path):
         ))
 
     with path.open("w") as f:
-        yaml.safe_dump(conf, f)
+        yaml.safe_dump(copy_conf, f)
 
 
 def relativefreq2absolutefreq(
@@ -2112,8 +2126,8 @@ def get_test_false_negative_rate(test_type, days_since_exposure, conf, interpola
     rates = conf['TEST_TYPES'][test_type]['P_FALSE_NEGATIVE']['rate']
     days = conf['TEST_TYPES'][test_type]['P_FALSE_NEGATIVE']['days_since_exposure']
     if interpolate == "step":
-        for x,y in zip(days, rates):
-            if  days_since_exposure <= x:
+        for x, y in zip(days, rates):
+            if days_since_exposure <= x:
                 return y
         return y
     else:

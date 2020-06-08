@@ -4,6 +4,7 @@ Contains the `Human` class that defines the behavior of human.
 
 import math
 import datetime
+import logging
 import numpy as np
 import scipy
 import typing
@@ -964,8 +965,7 @@ class Human(object):
         else:
             self.time_to_test_result = self.conf['TEST_TYPES'][test_type]['time_to_result']['out-patient']
         self.test_result_validated = self.test_type == "lab"
-        if self.conf.get('COLLECT_LOGS'):
-            Event.log_test(self, self.test_time)
+        Event.log_test(self.conf.get('COLLECT_LOGS'), self, self.test_time)
         self.test_results.appendleft((
             self.hidden_test_result if self.will_report_test_result else None,
             self.env.timestamp,  # for result availability checking later
@@ -974,14 +974,14 @@ class Human(object):
         self.city.tracker.track_tested_results(self)
 
     def get_test_results_array(self, current_timestamp):
-        """Will return an encoded test result array for this user's recent history.
+        """Will return an encoded test result array for this user's recent history
+        (starting from current_timestamp).
 
         Negative results will be -1, unknown results 0, and positive results 1.
         """
         results = np.zeros(self.conf.get("TRACING_N_DAYS_HISTORY"))
         for real_test_result, test_timestamp, test_delay in self.test_results:
             result_day = (current_timestamp - test_timestamp).days
-            assert result_day >= 0, "how are we getting future test results here...?"
             if result_day < self.conf.get("TRACING_N_DAYS_HISTORY"):
                 if self.time_to_test_result is not None and result_day >= self.time_to_test_result \
                         and real_test_result is not None:
@@ -1080,6 +1080,8 @@ class Human(object):
                     del self.prev_risk_history_map[day_idx]
         # ready for the day now; prepare the prev risk entry in case we need a quick diff
         self.prev_risk_history_map[current_day_idx] = self.risk_history_map[current_day_idx]
+        logging.debug(f"Initializing the risk of {self.name} to "
+                      f"{self.risk_history_map[current_day_idx]}")
 
     def check_if_latest_risk_level_changed(self):
         """Returns whether the latest risk level stored in the current/previous risk history maps match."""
@@ -1271,8 +1273,7 @@ class Human(object):
         """
         self.recovered_timestamp = datetime.datetime.max
         self.all_symptoms, self.covid_symptoms = [], []
-        if self.conf.get('COLLECT_LOGS'):
-            Event.log_recovery(self, self.env.timestamp, death=True)
+        Event.log_recovery(self.conf.get('COLLECT_LOGS'), self, self.env.timestamp, death=True)
         yield self.env.timeout(np.inf)
 
     def assert_state_changes(self):
@@ -1368,8 +1369,7 @@ class Human(object):
                         self.never_recovers = self.rng.random() < self.conf.get("P_NEVER_RECOVERS")[
                             min(math.floor(self.age / 10), 8)]
 
-                    if self.conf.get('COLLECT_LOGS'):
-                        Event.log_recovery(self, self.env.timestamp, death=False)
+                    Event.log_recovery(self.conf.get('COLLECT_LOGS'), self, self.env.timestamp, death=False)
 
             self.assert_state_changes()
 
@@ -1694,6 +1694,15 @@ class Human(object):
                         use_gaen_key=self.conf.get("USE_GAEN"),
                     )
                     remaining_time_in_contact -= encounter_time_granularity
+                Event.log_encounter_messages(
+                    self.conf['COLLECT_LOGS'],
+                    self,
+                    h,
+                    location=location,
+                    duration=t_near,
+                    distance=distance,
+                    time=self.env.timestamp
+                )
 
             city.tracker.track_social_mixing(human1=self, human2=h, duration=t_near, timestamp = self.env.timestamp)
             contact_condition = (
@@ -1720,7 +1729,7 @@ class Human(object):
                     self.num_contacts += 1
                     self.effective_contacts += self.conf.get("GLOBAL_MOBILITY_SCALING_FACTOR")
 
-                infector, infectee = None, None
+                infector, infectee, p_infection = None, None, None
                 if (self.is_infectious ^ h.is_infectious) and scale_factor_passed:
                     # TODO: whats the distribution of distances that get here (each distance type)?
                     if self.is_infectious:
@@ -1750,8 +1759,7 @@ class Human(object):
 
                         infector.n_infectious_contacts += 1
 
-                        if self.conf.get('COLLECT_LOGS'):
-                            Event.log_exposed(infectee, infector, self.env.timestamp)
+                        Event.log_exposed(self.conf.get('COLLECT_LOGS'), infectee, infector, p_infection, self.env.timestamp)
 
                         if infectee_msg is not None:  # could be None if we are not currently tracing
                             infectee_msg._exposition_event = True
@@ -1785,16 +1793,17 @@ class Human(object):
 
                 city.tracker.track_encounter_events(human1=self, human2=h, location=location, distance=distance, duration=t_near)
 
-                if self.conf.get('COLLECT_LOGS'):
-                    Event.log_encounter(
-                        self,
-                        h,
-                        location=location,
-                        duration=t_near,
-                        distance=distance,
-                        infectee=None if not infectee else infectee.name,
-                        time=self.env.timestamp
-                    )
+                Event.log_encounter(
+                    self.conf['COLLECT_LOGS'],
+                    self,
+                    h,
+                    location=location,
+                    duration=t_near,
+                    distance=distance,
+                    infectee=None if not infectee else infectee.name,
+                    p_infection=p_infection,
+                    time=self.env.timestamp
+                )
 
         yield self.env.timeout(duration * SECONDS_PER_MINUTE)
 
@@ -1807,8 +1816,7 @@ class Human(object):
             self.initial_viral_load = self.rng.random()
             self.compute_covid_properties()
 
-            if self.conf.get('COLLECT_LOGS'):
-                Event.log_exposed(self, location, self.env.timestamp)
+            Event.log_exposed(self.conf.get('COLLECT_LOGS'), self, location, self.env.timestamp)
 
             city.tracker.track_infection('env', from_human=None, to_human=self, location=location, timestamp=self.env.timestamp)
             city.tracker.track_covid_properties(self)

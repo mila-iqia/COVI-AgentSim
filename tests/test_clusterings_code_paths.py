@@ -23,6 +23,7 @@ class ClusteringCodePaths(unittest.TestCase):
         self.n_people = 30
         self.location_start_time = datetime.datetime(2020, 2, 28, 0, 0)
         self.simulation_days = 10
+        self.config['COLLECT_LOGS'] = True
         self.config['INTERVENTION_DAY'] = 5
         self.cluster_algo_types = ('gaen', 'blind')
 

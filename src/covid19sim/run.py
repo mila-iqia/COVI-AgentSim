@@ -2,6 +2,7 @@
 Main file to run the simulations
 """
 import datetime
+import logging
 import os
 import shutil
 import time
@@ -192,6 +193,8 @@ def simulate(
     conf["print_progress"] = print_progress
     conf["seed"] = seed
     conf["other_monitors"] = other_monitors
+
+    logging.basicConfig(level=getattr(logging, conf["LOGGING_LEVEL"].upper()))
 
     rng = np.random.RandomState(seed)
     env = Env(start_time)

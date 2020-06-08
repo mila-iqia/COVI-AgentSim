@@ -5,6 +5,7 @@ import numpy as np
 import copy
 import datetime
 import itertools
+import logging
 import math
 import time
 from collections import defaultdict, Counter
@@ -147,8 +148,7 @@ class City:
         print("Initializing humans ...")
         self.initialize_humans(human_type)
 
-        if self.conf.get('COLLECT_LOGS'):
-            self.log_static_info()
+        self.log_static_info()
 
         print("Computing their preferences")
         self._compute_preferences()
@@ -578,7 +578,7 @@ class City:
         Logs events for all humans in the city
         """
         for h in self.humans:
-            Event.log_static_info(self, h, self.env.timestamp)
+            Event.log_static_info(self.conf['COLLECT_LOGS'], self, h, self.env.timestamp)
 
     @property
     def events(self):
@@ -756,6 +756,15 @@ class City:
                         tracing_method=human.tracing_method,
                     ))
                     human.tracing_method.modify_behavior(human)
+                    Event.log_risk_update(
+                        self.conf['COLLECT_LOGS'],
+                        human=human,
+                        tracing_description=str(human.tracing_method),
+                        prev_risk_history_map=human.prev_risk_history_map,
+                        risk_history_map=human.risk_history_map,
+                        current_day_idx=current_day,
+                        time=self.env.timestamp,
+                    )
                     for day_idx, risk_val in human.risk_history_map.items():
                         human.prev_risk_history_map[day_idx] = risk_val
 
@@ -778,8 +787,7 @@ class City:
                 # TODO: this is an assumption which will break in reality, instead of updating once per day everyone at the same time, it should be throughout the day
                 for human in self.humans:
                     human.catch_other_disease_at_random()
-                    if self.conf.get('COLLECT_LOGS'):
-                        Event.log_daily(human, human.env.timestamp)
+                    Event.log_daily(self.conf.get('COLLECT_LOGS'), human, human.env.timestamp)
                 self.tracker.increment_day()
                 if self.conf.get("USE_GAEN"):
                     print(
@@ -881,6 +889,10 @@ class TestFacility(object):
             else:
                 # no more tests available
                 break
+
+        logging.debug(f"Cleared the test queue for {len(test_triage)} humans. "
+                      f"Out of those, {len(test_triage) - len(self.test_queue)} "
+                      f"were tested")
 
     def score_test_need(self, human):
         """
@@ -1194,6 +1206,8 @@ class Event:
     """
     test = 'test'
     encounter = 'encounter'
+    encounter_message = 'encounter_message'
+    risk_update = 'risk_update'
     contamination = 'contamination'
     recovered = 'recovered'
     static_info = 'static_info'
@@ -1208,7 +1222,7 @@ class Event:
         return [Event.test, Event.encounter, Event.contamination, Event.static_info, Event.visit, Event.daily]
 
     @staticmethod
-    def log_encounter(human1, human2, location, duration, distance, infectee, time):
+    def log_encounter(COLLECT_LOGS, human1, human2, location, duration, distance, infectee, p_infection, time):
         """
         Logs the encounter between `human1` and `human2` at `location` for `duration`
         while staying at `distance` from each other. If infectee is not None, it is
@@ -1232,6 +1246,109 @@ class Event:
 
 
         Args:
+            COLLECT_LOGS (bool): Log the event in a file if True
+            human1 (covid19sim.simulator.Human): One of the encounter's 2 humans
+            human2 (covid19sim.simulator.Human): One of the encounter's 2 humans
+            location (covid19sim.base.Location): Where the encounter happened
+            duration (int): duration of encounter
+            distance (float): distance between people (TODO: meters? cm?)
+            infectee (str | None): name of the human which is infected, if any.
+                None otherwise
+            p_infection (float): probability for the infectee of getting infected
+            time (datetime.datetime): timestamp of encounter
+        """
+        if COLLECT_LOGS:
+            h_obs_keys   = ['obs_hospitalized', 'obs_in_icu',
+                            'obs_lat', 'obs_lon']
+
+            h_unobs_keys = ['carefulness', 'viral_load', 'infectiousness',
+                            'symptoms', 'is_exposed', 'is_infectious',
+                            'infection_timestamp', 'is_really_sick',
+                            'is_extremely_sick', 'sex',  'wearing_mask', 'mask_efficacy',
+                            'risk', 'risk_level', 'rec_level']
+
+            loc_obs_keys = ['location_type', 'lat', 'lon']
+            loc_unobs_keys = ['contamination_probability', 'social_contact_factor']
+
+            obs, unobs = [], []
+
+            same_household = (human1.household.name == human2.household.name) & (location.name == human1.household.name)
+            for human in [human1, human2]:
+                o = {key:getattr(human, key) for key in h_obs_keys}
+                obs.append(o)
+                u = {key:getattr(human, key) for key in h_unobs_keys}
+                u['human_id'] = human.name
+                u['location_is_residence'] = human.household == location
+                u['got_exposed'] = infectee == human.name if infectee else False
+                u['exposed_other'] = infectee != human.name if infectee else False
+                u['same_household'] = same_household
+                u['infectiousness_start_time'] = None if not u['got_exposed'] else human.infection_timestamp + datetime.timedelta(days=human.infectiousness_onset_days)
+                unobs.append(u)
+
+            loc_obs = {key:getattr(location, key) for key in loc_obs_keys}
+            loc_unobs = {key:getattr(location, key) for key in loc_unobs_keys}
+            loc_unobs['location_p_infection'] = location.contamination_probability / location.social_contact_factor
+            other_obs = {'duration':duration, 'distance':distance}
+            other_unobs = {'p_infection':p_infection}
+            both_have_app = human1.has_app and human2.has_app
+            for i, human in [(0, human1), (1, human2)]:
+                if both_have_app:
+                    obs_payload = {**loc_obs, **other_obs, 'human1':obs[i], 'human2':obs[1-i]}
+                    unobs_payload = {**loc_unobs, **other_unobs, 'human1':unobs[i], 'human2':unobs[1-i]}
+                else:
+                    obs_payload = {}
+                    unobs_payload = { **loc_obs, **loc_unobs, **other_obs, **other_unobs, 'human1':{**obs[i], **unobs[i]},
+                                        'human2': {**obs[1-i], **unobs[1-i]} }
+
+            human.events.append({
+                'human_id':human.name,
+                'event_type':Event.encounter,
+                'time':time,
+                'payload':{'observed':obs_payload, 'unobserved':unobs_payload}
+            })
+
+        logging.info(f"{time} - {human1.name} and {human2.name} {Event.encounter} event")
+        logging.debug("{time} - {human1.name}{h1_infectee} "
+                      "encountered {human2.name}{h2_infectee} "
+                      "for {duration:.2f}min at ({location.lat}, {location.lon}) "
+                      "and stayed at {distance:.2f}cm. The probability of getting "
+                      "infected was {p_infection:.3f}"
+                      .format(time=time,
+                              human1=human1,
+                              h1_infectee=' (infectee)' if infectee == human1.name else '',
+                              human2=human2,
+                              h2_infectee=' (infectee)' if infectee == human2.name else '',
+                              duration=duration,
+                              location=location,
+                              distance=distance,
+                              p_infection=p_infection if p_infection else 0.0
+                      ))
+
+    def log_encounter_messages(COLLECT_LOGS, human1, human2, location, duration, distance, time):
+        """
+        Logs the encounter between `human1` and `human2` at `location` for `duration`
+        while staying at `distance` from each other. If infectee is not None, it is
+        either human1.name or human2.name.
+
+        Each of the two humans gets its `events` attribute appended whit a dictionnary
+        describing the encounter:
+
+        human.events.append({
+                'human_id':human.name,
+                'event_type':Event.encounter,
+                'time':time,
+                'payload':{
+                    'observed': obs_payload,  # None if one of the humans does not have
+                                              # the app. Otherwise contains the observed
+                                              # data: lat, lon, location_type
+                    'unobserved':unobs_payload  # unobserved data, see loc_unobs_keys and
+                                                # h_unobs_keys
+                }
+        })
+
+
+        Args:
+            COLLECT_LOGS (bool): Log the event in a file if True
             human1 (covid19sim.simulator.Human): One of the encounter's 2 humans
             human2 (covid19sim.simulator.Human): One of the encounter's 2 humans
             location (covid19sim.base.Location): Where the encounter happened
@@ -1241,57 +1358,88 @@ class Event:
                 None otherwise
             time (datetime.datetime): timestamp of encounter
         """
+        if COLLECT_LOGS:
+            h_obs_keys   = ['obs_hospitalized', 'obs_in_icu',
+                            'obs_lat', 'obs_lon']
 
-        h_obs_keys   = ['obs_hospitalized', 'obs_in_icu',
-                        'obs_lat', 'obs_lon']
+            h_unobs_keys = ['carefulness', 'viral_load', 'infectiousness',
+                            'symptoms', 'is_exposed', 'is_infectious',
+                            'infection_timestamp', 'is_really_sick',
+                            'is_extremely_sick', 'sex',  'wearing_mask', 'mask_efficacy',
+                            'risk', 'risk_level', 'rec_level']
 
-        h_unobs_keys = ['carefulness', 'viral_load', 'infectiousness',
-                        'symptoms', 'is_exposed', 'is_infectious',
-                        'infection_timestamp', 'is_really_sick',
-                        'is_extremely_sick', 'sex',  'wearing_mask', 'mask_efficacy',
-                        'risk', 'risk_level', 'rec_level']
+            loc_obs_keys = ['location_type', 'lat', 'lon']
+            loc_unobs_keys = ['contamination_probability', 'social_contact_factor']
 
-        loc_obs_keys = ['location_type', 'lat', 'lon']
-        loc_unobs_keys = ['contamination_probability', 'social_contact_factor']
+            obs, unobs = [], []
 
-        obs, unobs = [], []
+            same_household = (human1.household.name == human2.household.name) & (location.name == human1.household.name)
+            for human in [human1, human2]:
+                o = {key:getattr(human, key) for key in h_obs_keys}
+                obs.append(o)
+                u = {key:getattr(human, key) for key in h_unobs_keys}
+                u['human_id'] = human.name
+                u['location_is_residence'] = human.household == location
+                u['same_household'] = same_household
+                unobs.append(u)
 
-        same_household = (human1.household.name == human2.household.name) & (location.name == human1.household.name)
-        for human in [human1, human2]:
-            o = {key:getattr(human, key) for key in h_obs_keys}
-            obs.append(o)
-            u = {key:getattr(human, key) for key in h_unobs_keys}
-            u['human_id'] = human.name
-            u['location_is_residence'] = human.household == location
-            u['got_exposed'] = infectee == human.name if infectee else False
-            u['exposed_other'] = infectee != human.name if infectee else False
-            u['same_household'] = same_household
-            u['infectiousness_start_time'] = None if not u['got_exposed'] else human.infection_timestamp + datetime.timedelta(days=human.infectiousness_onset_days)
-            unobs.append(u)
-
-        loc_obs = {key:getattr(location, key) for key in loc_obs_keys}
-        loc_unobs = {key:getattr(location, key) for key in loc_unobs_keys}
-        loc_unobs['location_p_infection'] = location.contamination_probability / location.social_contact_factor
-        other_obs = {'duration':duration, 'distance':distance}
-        both_have_app = human1.has_app and human2.has_app
-        for i, human in [(0, human1), (1, human2)]:
-            if both_have_app:
-                obs_payload = {**loc_obs, **other_obs, 'human1':obs[i], 'human2':obs[1-i]}
-                unobs_payload = {**loc_unobs, 'human1':unobs[i], 'human2':unobs[1-i]}
-            else:
-                obs_payload = {}
-                unobs_payload = { **loc_obs, **loc_unobs, **other_obs, 'human1':{**obs[i], **unobs[i]},
-                                    'human2': {**obs[1-i], **unobs[1-i]} }
+            loc_obs = {key:getattr(location, key) for key in loc_obs_keys}
+            loc_unobs = {key:getattr(location, key) for key in loc_unobs_keys}
+            loc_unobs['location_p_infection'] = location.contamination_probability / location.social_contact_factor
+            other_obs = {'duration':duration, 'distance':distance}
+            both_have_app = human1.has_app and human2.has_app
+            for i, human in [(0, human1), (1, human2)]:
+                if both_have_app:
+                    obs_payload = {**loc_obs, **other_obs, 'human1':obs[i], 'human2':obs[1-i]}
+                    unobs_payload = {**loc_unobs, 'human1':unobs[i], 'human2':unobs[1-i]}
+                else:
+                    obs_payload = {}
+                    unobs_payload = { **loc_obs, **loc_unobs, **other_obs, 'human1':{**obs[i], **unobs[i]},
+                                        'human2': {**obs[1-i], **unobs[1-i]} }
 
             human.events.append({
                 'human_id':human.name,
-                'event_type':Event.encounter,
+                'event_type':Event.encounter_message,
                 'time':time,
                 'payload':{'observed':obs_payload, 'unobserved':unobs_payload}
             })
 
+        logging.info(f"{time} - {human1.name} and {human2.name} {Event.encounter_message} event")
+        logging.debug("{time} - {human1.name} and {human2.name} exchanged encounter "
+                      "messages for {duration:.2f}min at ({location.lat}, {location.lon}) "
+                      "and stayed at {distance:.2f}cm"
+                      .format(time=time,
+                              human1=human1,
+                              human2=human2,
+                              duration=duration,
+                              location=location,
+                              distance=distance))
+
+    def log_risk_update(COLLECT_LOGS, human, tracing_description,
+                        prev_risk_history_map, risk_history_map, current_day_idx,
+                        time):
+        if COLLECT_LOGS:
+            human.events.append({
+                'human_id':human.name,
+                'event_type':Event.risk_update,
+                'time':time,
+                'payload':{
+                    'observed': {
+                        'tracing_description': tracing_description,
+                        'prev_risk_history_map': prev_risk_history_map,
+                        'risk_history_map': risk_history_map,
+                    }
+                }
+            })
+
+        logging.info(f"{time} - {human.name} {Event.risk_update} event")
+        logging.debug(f"{time} - {human.name} updated his risk from "
+                      f"{prev_risk_history_map[current_day_idx]} to "
+                      f"{risk_history_map[current_day_idx]} following "
+                      f"{tracing_description} rules")
+
     @staticmethod
-    def log_test(human, time):
+    def log_test(COLLECT_LOGS, human, time):
         """
         Adds an event to a human's `events` list if COLLECT_LOGS is True.
         Events contains the test resuts time, reported_test_result,
@@ -1299,122 +1447,145 @@ class Event:
         split across observed and unobserved data.
 
         Args:
+            COLLECT_LOGS ([type]): [description]
             human (covid19sim.simulator.Human): Human whose test should be logged
             time (datetime.datetime): Event's time
         """
-        human.events.append(
-            {
-                'human_id': human.name,
-                'event_type': Event.test,
-                'time': time,
-                'payload': {
-                    'observed':{
-                        'result': human.reported_test_result,
-                        'test_type':human.reported_test_type,
-                        'validated_test_result':human.test_result_validated
-                    },
-                    'unobserved':{
-                        'test_type':human.test_type,
-                        'result': human.test_result
-                    }
+        if COLLECT_LOGS:
+            human.events.append(
+                {
+                    'human_id': human.name,
+                    'event_type': Event.test,
+                    'time': time,
+                    'payload': {
+                        'observed':{
+                            'result': human.reported_test_result,
+                            'test_type':human.reported_test_type,
+                            'validated_test_result':human.test_result_validated
+                        },
+                        'unobserved':{
+                            'test_type':human.test_type,
+                            'result': human.test_result
+                        }
 
+                    }
                 }
-            }
-        )
+            )
+        logging.info(f"{time} - {human.name} {Event.test} event")
+        logging.debug(f"{time} - {human.name} tested {human.test_result}.")
 
     @staticmethod
-    def log_daily(human, time):
+    def log_daily(COLLECT_LOGS, human, time):
         """
         Adds an event to a human's `events` list containing daily health information
         like symptoms, infectiousness and viral_load.
 
         Args:
+            COLLECT_LOGS ([type]): [description]
             human (covid19sim.simulator.Human): Human who's health should be logged
             time (datetime.datetime): Event time
         """
-        human.events.append(
-            {
-                'human_id': human.name,
-                'event_type': Event.daily,
-                'time': time,
-                'payload': {
-                    'observed':{
-                        "reported_symptoms": human.obs_symptoms
-                    },
-                    'unobserved':{
-                        'infectiousness': human.infectiousness,
-                        "viral_load": human.viral_load,
-                        "all_symptoms": human.all_symptoms,
-                        "covid_symptoms":human.covid_symptoms,
-                        "flu_symptoms":human.flu_symptoms,
-                        "cold_symptoms":human.cold_symptoms
+        if COLLECT_LOGS:
+            human.events.append(
+                {
+                    'human_id': human.name,
+                    'event_type': Event.daily,
+                    'time': time,
+                    'payload': {
+                        'observed':{
+                            "reported_symptoms": human.obs_symptoms
+                        },
+                        'unobserved':{
+                            'infectiousness': human.infectiousness,
+                            "viral_load": human.viral_load,
+                            "all_symptoms": human.all_symptoms,
+                            "covid_symptoms":human.covid_symptoms,
+                            "flu_symptoms":human.flu_symptoms,
+                            "cold_symptoms":human.cold_symptoms
+                        }
                     }
                 }
-            }
-        )
+            )
+        logging.info(f"{time} - {human.name} {Event.daily} event")
 
     @staticmethod
-    def log_exposed(human, source, time):
+    def log_exposed(COLLECT_LOGS, human, source, p_infection, time):
         """
         [summary]
 
         Args:
+            COLLECT_LOGS ([type]): [description]
             human ([type]): [description]
             source ([type]): [description]
+            p_infection (float): probability for the infectee of getting infected
             time ([type]): [description]
         """
-        human.events.append(
-            {
-                'human_id': human.name,
-                'event_type': Event.contamination,
-                'time': time,
-                'payload': {
-                    'observed':{
-                    },
-                    'unobserved':{
-                      'exposed': True,
-                      'source':source.name,
-                      'source_is_location': 'human' not in source.name,
-                      'source_is_human': 'human' in source.name,
-                      'infectiousness_start_time': human.infection_timestamp + datetime.timedelta(days=human.infectiousness_onset_days)
+        if COLLECT_LOGS:
+            human.events.append(
+                {
+                    'human_id': human.name,
+                    'event_type': Event.contamination,
+                    'time': time,
+                    'payload': {
+                        'observed':{
+                        },
+                        'unobserved':{
+                          'exposed': True,
+                          'source':source.name,
+                          'source_is_location': 'human' not in source.name,
+                          'source_is_human': 'human' in source.name,
+                          'infectiousness_start_time': human.infection_timestamp + datetime.timedelta(days=human.infectiousness_onset_days),
+                          'p_infection': p_infection
+                        }
                     }
                 }
-            }
-        )
+            )
+        logging.info(f"{time} - {human.name} {Event.contamination} event")
+        logging.debug("{time} - {human.name} was contaminated by {source.name}. "
+                      "The probability of getting infected was {p_infection:.3f}"
+                      .format(time=time,
+                              human=human,
+                              source=source,
+                              p_infection=p_infection))
 
     @staticmethod
-    def log_recovery(human, time, death):
+    def log_recovery(COLLECT_LOGS, human, time, death):
         """
         [summary]
 
         Args:
+            COLLECT_LOGS ([type]): [description]
             human ([type]): [description]
             time ([type]): [description]
             death ([type]): [description]
         """
-        human.events.append(
-            {
-                'human_id': human.name,
-                'event_type': Event.recovered,
-                'time': time,
-                'payload': {
-                    'observed':{
-                    },
-                    'unobserved':{
-                        'recovered': not death,
-                        'death': death
+        if COLLECT_LOGS:
+            human.events.append(
+                {
+                    'human_id': human.name,
+                    'event_type': Event.recovered,
+                    'time': time,
+                    'payload': {
+                        'observed':{
+                        },
+                        'unobserved':{
+                            'recovered': not death,
+                            'death': death
+                        }
                     }
                 }
-            }
-        )
+            )
+        logging.info(f"{time} - {human.name} {Event.recovered} event")
+        logging.debug(f"{time} - {human.name} recovered and is {'' if death else 'not'} {death}.")
 
 
     @staticmethod
-    def log_static_info(city, human, time):
+    def log_static_info(COLLECT_LOGS, city, human, time):
         """
         [summary]
 
         Args:
+            COLLECT_LOGS ([type]): [description]
             city ([type]): [description]
             human ([type]): [description]
             time ([type]): [description]
@@ -1433,8 +1604,7 @@ class Event:
 
         obs_payload['household_size'] = len(human.household.residents)
 
-        human.events.append(
-            {
+        event = {
                 'human_id': human.name,
                 'event_type':Event.static_info,
                 'time':time,
@@ -1442,9 +1612,11 @@ class Event:
                     'observed': obs_payload,
                     'unobserved':unobs_payload
                 }
-
             }
-        )
+        if COLLECT_LOGS:
+            human.events.append(event)
+        logging.info(f"{time} - {human.name} {Event.static_info} event")
+        logging.debug(f"{time} - {human} static info:\n{event}")
 
 
 class EmptyCity(City):
@@ -1511,8 +1683,7 @@ class EmptyCity(City):
         After adding humans and locations to the city, execute this function to finalize the City
         object in preparation for simulation.
         """
-        if self.conf.get('COLLECT_LOGS'):
-            self.log_static_info()
+        self.log_static_info()
 
         print("Computing preferences")
         self._compute_preferences()

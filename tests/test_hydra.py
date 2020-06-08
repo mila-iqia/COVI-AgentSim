@@ -1,14 +1,14 @@
 import datetime
 import unittest
-import warnings
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+import numpy as np
 import yaml
 from omegaconf import OmegaConf
-from tests.utils import HYDRA_SIM_PATH, get_test_conf
 
 from covid19sim.utils import dump_conf, parse_configuration
+from tests.utils import HYDRA_SIM_PATH, get_test_conf
 
 
 class HydraTests(unittest.TestCase):
@@ -51,7 +51,7 @@ class HydraTests(unittest.TestCase):
         for d in all_dirs:
             self.assertListEqual([n for n in d.iterdir() if n.is_dir()], [])
 
-    def no_hyphen_dits(self):
+    def no_hyphen_dirs(self):
         """
         No sub-folder can have a "-" in their name
         """
@@ -119,6 +119,7 @@ class HydraTests(unittest.TestCase):
         """
         asserts that a conf that is dumped and parsed again yields identical results
         """
+
         conf = get_test_conf("naive_local.yaml")
 
         with TemporaryDirectory() as d:
@@ -126,4 +127,12 @@ class HydraTests(unittest.TestCase):
             with (Path(d) / "dumped.yaml").open("r") as f:
                 loaded_conf = yaml.safe_load(f)
             parsed_conf = parse_configuration(loaded_conf)
+
+            # assertDictEqual cannot handle equality with np.array, e.g. by using np.all,
+            # so we need to do it manually.
+            age_group_contact_avg1 = conf.pop('AGE_GROUP_CONTACT_AVG')
+            age_group_contact_avg2 = parsed_conf.pop('AGE_GROUP_CONTACT_AVG')
+            self.assertListEqual(age_group_contact_avg1['age_groups'], age_group_contact_avg2['age_groups'])
+            np.testing.assert_almost_equal(age_group_contact_avg1['contact_avg'], age_group_contact_avg2['contact_avg'])
+
             self.assertDictEqual(conf, parsed_conf)
