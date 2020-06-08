@@ -327,9 +327,11 @@ class ModelsTest(unittest.TestCase):
                                 self.assertIn(last_test_result, ["positive", "negative", None])
                                 days_since_test = (current_datetime - last_test_time).days
                                 if days_since_test >= last_test_delay and days_since_test < 14 and last_test_result is not None:
-                                    stats['humans'][h_i]['tests_results_cnt'] += last_test_result == "positive"
-                                    self.assertEqual(observed['test_results'][days_since_test],
-                                                     float(encode_test_result(last_test_result)))
+                                    if last_test_result == "positive":
+                                        stats['humans'][h_i]['tests_results_cnt'] += 1
+                                        # note: negative test results get ignored after a few days, check only for positive here
+                                        self.assertEqual(observed['test_results'][days_since_test],
+                                                         float(encode_test_result(last_test_result)))
 
                             # Test rolling properties
                             if prev_observed:
