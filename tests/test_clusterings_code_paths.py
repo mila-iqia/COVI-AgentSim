@@ -19,16 +19,11 @@ TEST_CONF_NAME = "test_models.yaml"
 class ClusteringCodePaths(unittest.TestCase):
     def setUp(self):
         self.config = get_test_conf(TEST_CONF_NAME)
-
         self.test_seed = 0
         self.n_people = 30
         self.location_start_time = datetime.datetime(2020, 2, 28, 0, 0)
         self.simulation_days = 10
-
         self.config['INTERVENTION_DAY'] = 5
-        self.config['TRANSFORMER_EXP_PATH'] = "https://drive.google.com/file/d/1Z7g3gKh2kWFSmK2Yr19MQq0blOWS5st0"
-        self.config['RISK_MODEL'] = 'transformer'
-
         self.cluster_algo_types = ('gaen', 'blind')
 
     def test_clustering_code_paths(self):
