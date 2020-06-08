@@ -1816,7 +1816,7 @@ class Human(object):
             self.initial_viral_load = self.rng.random()
             self.compute_covid_properties()
 
-            Event.log_exposed(self.conf.get('COLLECT_LOGS'), self, location, self.env.timestamp)
+            Event.log_exposed(self.conf.get('COLLECT_LOGS'), self, location, p_infection, self.env.timestamp)
 
             city.tracker.track_infection('env', from_human=None, to_human=self, location=location, timestamp=self.env.timestamp)
             city.tracker.track_covid_properties(self)

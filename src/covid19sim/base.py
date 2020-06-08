@@ -122,6 +122,7 @@ class City:
         self.total_area = (x_range[1] - x_range[0]) * (y_range[1] - y_range[0])
         self.n_people = n_people
         self.init_percent_sick = init_percent_sick
+        self.hash = int(time.time_ns())  # real-life time used as hash for inference server data hashing
 
         self.test_type_preference = list(zip(*sorted(conf.get("TEST_TYPES").items(), key=lambda x:x[1]['preference'])))[0]
         self.max_capacity_per_test_type = {
@@ -675,7 +676,6 @@ class City:
         tmp_M = self.conf.get("GLOBAL_MOBILITY_SCALING_FACTOR")
         self.conf["GLOBAL_MOBILITY_SCALING_FACTOR"] = 1
         last_day_idx = 0
-        city_hash = int(time.time_ns())  # real-life time used as hash for inference server data hashing
         while True:
             current_day = (self.env.timestamp - self.start_time).days
             # Notify humans to follow interventions on intervention day
@@ -728,7 +728,7 @@ class City:
                         conf=self.conf,
                         data_path=outfile,
                         # let's hope there are no collisions on the server with this hash...
-                        city_hash=city_hash,
+                        city_hash=self.hash,
                     )
 
                 # finally, iterate over humans again, and if it's their timeslot, then send update messages

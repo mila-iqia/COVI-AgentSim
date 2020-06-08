@@ -147,7 +147,7 @@ class ModelsTest(unittest.TestCase):
 
             ModelsTest.make_human_as_message_proxy.set_start_time(start_time)
 
-            monitors, tracker = simulate(
+            city, monitors, tracker = simulate(
                 n_people=n_people,
                 start_time=start_time,
                 simulation_days=n_days,
@@ -155,6 +155,7 @@ class ModelsTest(unittest.TestCase):
                 outfile=os.path.join(d, "output"),
                 out_chunk_size=1,
                 seed=0,
+                return_city=True,
                 conf=conf,
             )
             sim_humans = tracker.city.humans
@@ -421,9 +422,10 @@ class ModelsTest(unittest.TestCase):
 
                                 # note: we can only fetch the clusters if the test is running without inference server
                                 cluster_mgr_map = DummyMemManager.get_cluster_mgr_map()
+                                target_cluster_mgrs = {k: c for k, c in cluster_mgr_map.items() if k.startswith(str(city.hash))}
                                 # the cluster managers are indexed by the city hash + the human's name (we just have the latter)
-                                self.assertEqual(len(cluster_mgr_map), len(sim_humans))
-                                cluster_mgr = next(iter([c for k, c in cluster_mgr_map.items() if k.endswith(s_human.name)]))
+                                self.assertLessEqual(len(target_cluster_mgrs), len(sim_humans))  # can't be 100% due to uptake
+                                cluster_mgr = next(iter([c for k, c in target_cluster_mgrs.items() if k.endswith(s_human.name)]))
                                 candidate_encounters, exposure_encounters = candidate_exposures(cluster_mgr)
                                 test_results = s_human.get_test_results_array(date_at_update)
 
