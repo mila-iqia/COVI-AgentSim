@@ -11,7 +11,7 @@ from tests.utils import get_test_conf
 
 from covid19sim.frozen.helper import (conditions_to_np, symptoms_to_np, encode_age, encode_sex,
                                       encode_test_result, recovered_array, candidate_exposures,
-                                      exposure_array, get_test_result_array)
+                                      exposure_array)
 from covid19sim.run import simulate
 from covid19sim.models.run import DummyMemManager
 
@@ -403,8 +403,7 @@ class ModelsTest(unittest.TestCase):
                                 self.assertEqual(len(cluster_mgr_map), len(sim_humans))
                                 cluster_mgr = next(iter([c for k, c in cluster_mgr_map.items() if k.endswith(s_human.name)]))
                                 candidate_encounters, exposure_encounters = candidate_exposures(cluster_mgr)
-                                test_results = [(encode_test_result(result), timestamp) for result, timestamp in s_human.test_results]
-                                test_results = get_test_result_array(test_results, date_at_update, conf)
+                                test_results = s_human.get_test_results_array(date_at_update)
 
                                 self.assertTrue((symptoms_to_np(s_human.rolling_all_reported_symptoms, conf) ==
                                                  observed['reported_symptoms']).all())
