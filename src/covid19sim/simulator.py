@@ -1718,7 +1718,7 @@ class Human(object):
                     self.num_contacts += 1
                     self.effective_contacts += self.conf.get("GLOBAL_MOBILITY_SCALING_FACTOR")
 
-                infector, infectee = None, None
+                infector, infectee, p_infection = None, None, None
                 if (self.is_infectious ^ h.is_infectious) and scale_factor_passed:
                     # TODO: whats the distribution of distances that get here (each distance type)?
                     if self.is_infectious:
@@ -1746,7 +1746,7 @@ class Human(object):
 
                         infector.n_infectious_contacts += 1
 
-                        Event.log_exposed(self.conf.get('COLLECT_LOGS'), infectee, infector, self.env.timestamp)
+                        Event.log_exposed(self.conf.get('COLLECT_LOGS'), infectee, infector, p_infection, self.env.timestamp)
 
                         if infectee_msg is not None:  # could be None if we are not currently tracing
                             infectee_msg._exposition_event = True
@@ -1788,6 +1788,7 @@ class Human(object):
                     duration=t_near,
                     distance=distance,
                     infectee=None if not infectee else infectee.name,
+                    p_infection=p_infection,
                     time=self.env.timestamp
                 )
 

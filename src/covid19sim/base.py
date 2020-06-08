@@ -1119,7 +1119,7 @@ class Event:
         return [Event.test, Event.encounter, Event.contamination, Event.static_info, Event.visit, Event.daily]
 
     @staticmethod
-    def log_encounter(COLLECT_LOGS, human1, human2, location, duration, distance, infectee, time):
+    def log_encounter(COLLECT_LOGS, human1, human2, location, duration, distance, infectee, p_infection, time):
         """
         Logs the encounter between `human1` and `human2` at `location` for `duration`
         while staying at `distance` from each other. If infectee is not None, it is
@@ -1151,6 +1151,7 @@ class Event:
             distance (float): distance between people (TODO: meters? cm?)
             infectee (str | None): name of the human which is infected, if any.
                 None otherwise
+            p_infection (float): probability for the infectee of getting infected
             time (datetime.datetime): timestamp of encounter
         """
         if COLLECT_LOGS:
@@ -1185,14 +1186,15 @@ class Event:
             loc_unobs = {key:getattr(location, key) for key in loc_unobs_keys}
             loc_unobs['location_p_infection'] = location.contamination_probability / location.social_contact_factor
             other_obs = {'duration':duration, 'distance':distance}
+            other_unobs = {'p_infection':p_infection}
             both_have_app = human1.has_app and human2.has_app
             for i, human in [(0, human1), (1, human2)]:
                 if both_have_app:
                     obs_payload = {**loc_obs, **other_obs, 'human1':obs[i], 'human2':obs[1-i]}
-                    unobs_payload = {**loc_unobs, 'human1':unobs[i], 'human2':unobs[1-i]}
+                    unobs_payload = {**loc_unobs, **other_unobs, 'human1':unobs[i], 'human2':unobs[1-i]}
                 else:
                     obs_payload = {}
-                    unobs_payload = { **loc_obs, **loc_unobs, **other_obs, 'human1':{**obs[i], **unobs[i]},
+                    unobs_payload = { **loc_obs, **loc_unobs, **other_obs, **other_unobs, 'human1':{**obs[i], **unobs[i]},
                                         'human2': {**obs[1-i], **unobs[1-i]} }
 
             human.events.append({
@@ -1206,7 +1208,8 @@ class Event:
         logging.debug("{time} - {human1.name}{h1_infectee} "
                       "encountered {human2.name}{h2_infectee} "
                       "for {duration:.2f}min at ({location.lat}, {location.lon}) "
-                      "and stayed at {distance:.2f}cm"
+                      "and stayed at {distance:.2f}cm. The probability of getting "
+                      "infected was {p_infection:.3f}"
                       .format(time=time,
                               human1=human1,
                               h1_infectee=' (infectee)' if infectee == human1.name else '',
@@ -1214,7 +1217,8 @@ class Event:
                               h2_infectee=' (infectee)' if infectee == human2.name else '',
                               duration=duration,
                               location=location,
-                              distance=distance
+                              distance=distance,
+                              p_infection=p_infection if p_infection else 0.0
                       ))
 
     def log_encounter_messages(COLLECT_LOGS, human1, human2, location, duration, distance, time):
@@ -1306,8 +1310,7 @@ class Event:
                               human2=human2,
                               duration=duration,
                               location=location,
-                              distance=distance
-                      ))
+                              distance=distance))
 
     def log_risk_update(COLLECT_LOGS, human, tracing_description,
                         prev_risk_history_map, risk_history_map, current_day_idx,
@@ -1403,7 +1406,7 @@ class Event:
         logging.info(f"{time} - {human.name} {Event.daily} event")
 
     @staticmethod
-    def log_exposed(COLLECT_LOGS, human, source, time):
+    def log_exposed(COLLECT_LOGS, human, source, p_infection, time):
         """
         [summary]
 
@@ -1411,6 +1414,7 @@ class Event:
             COLLECT_LOGS ([type]): [description]
             human ([type]): [description]
             source ([type]): [description]
+            p_infection (float): probability for the infectee of getting infected
             time ([type]): [description]
         """
         if COLLECT_LOGS:
@@ -1427,13 +1431,19 @@ class Event:
                           'source':source.name,
                           'source_is_location': 'human' not in source.name,
                           'source_is_human': 'human' in source.name,
-                          'infectiousness_start_time': human.infection_timestamp + datetime.timedelta(days=human.infectiousness_onset_days)
+                          'infectiousness_start_time': human.infection_timestamp + datetime.timedelta(days=human.infectiousness_onset_days),
+                          'p_infection': p_infection
                         }
                     }
                 }
             )
         logging.info(f"{time} - {human.name} {Event.contamination} event")
-        logging.debug(f"{time} - {human.name} was contaminated by {source.name}")
+        logging.debug("{time} - {human.name} was contaminated by {source.name}. "
+                      "The probability of getting infected was {p_infection:.3f}"
+                      .format(time=time,
+                              human=human,
+                              source=source,
+                              p_infection=p_infection))
 
     @staticmethod
     def log_recovery(COLLECT_LOGS, human, time, death):
