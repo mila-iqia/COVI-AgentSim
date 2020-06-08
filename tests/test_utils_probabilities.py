@@ -198,10 +198,11 @@ class CovidProgression(unittest.TestCase):
     n_people = 10000
     initial_viral_load_options = (0.50, 0.75)  # This test only checks for 0.6 threshold
     viral_load_plateau_start = 1
-    viral_load_plateau_end = 3
-    viral_load_recovered = 6
+    viral_load_plateau_end = 2
+    viral_load_recovered = 4
     ages_options = (50,)  # This test doesn't do checks on age
-    incubation_days = 2
+    incubation_days = 1
+    infectiousness_onset_days = 1
     really_sick_options = (True, False)
     extremely_sick_options = (True, False)
     preexisting_conditions_options = (tuple(), ('pre1', 'pre2'), ('pre1', 'pre2', 'pre3'))
@@ -234,10 +235,6 @@ class CovidProgression(unittest.TestCase):
         """
         rng = np.random.RandomState(1234)
 
-        import cProfile
-        p = cProfile.Profile()
-        p.enable()
-
         for initial_viral_load in self.initial_viral_load_options:
             for age in self.ages_options:
                 for really_sick in self.really_sick_options:
@@ -248,8 +245,6 @@ class CovidProgression(unittest.TestCase):
                                     rng, initial_viral_load, age, really_sick,
                                     extremely_sick, preexisting_conditions,
                                     carefulness)
-        p.disable()
-        p.dump_stats("test_covid_progression.stats")
 
     def _test_covid_progression(self, rng, initial_viral_load, age, really_sick,
                                 extremely_sick, preexisting_conditions,
