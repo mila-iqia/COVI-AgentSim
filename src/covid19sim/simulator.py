@@ -916,14 +916,14 @@ class Human(object):
         self.got_new_test_results = True
 
     def get_test_results_array(self, current_timestamp):
-        """Will return an encoded test result array for this user's recent history.
+        """Will return an encoded test result array for this user's recent history
+        (starting from current_timestamp).
 
         Negative results will be -1, unknown results 0, and positive results 1.
         """
         results = np.zeros(self.conf.get("TRACING_N_DAYS_HISTORY"))
         for real_test_result, test_timestamp, test_delay in self.test_results:
             result_day = (current_timestamp - test_timestamp).days
-            assert result_day >= 0, "how are we getting future test results here...?"
             if result_day < self.conf.get("TRACING_N_DAYS_HISTORY"):
                 if result_day >= self.time_to_test_result and real_test_result is not None:
                     assert real_test_result in ["positive", "negative"]
