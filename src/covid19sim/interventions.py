@@ -710,17 +710,21 @@ class Tracing(object):
                 if "extremely-severe" in human.all_reported_symptoms:
                     # For severe symptoms, set R = 10 for now and all past 7 days
                     risk = [self.risk_level_to_risk(severe_symptoms_risk_level)] * 7
-                    # TODO: Set recommendations level L = 2
+                    # Set recommendations level L = 2
+                    human._rec_level = severe_symptoms_rec_level
                 elif "severe" in human.all_reported_symptoms:
                     risk = [self.risk_level_to_risk(severe_symptoms_risk_level)] * 7
+                    human._rec_level = severe_symptoms_rec_level
                 elif "moderate" in human.all_reported_symptoms:
                     # For intermediate symptoms, set R = 8 for now and all past 7 days
                     risk = [self.risk_level_to_risk(moderate_symptoms_risk_level)] * 7
-                    # TODO: Set recommendations level L = 2
+                    # Set recommendations level L = 2
+                    human._rec_level = moderate_symptoms_rec_level
                 else:
                     # For mild symptoms, set R = 6 for now and all past 7 days
                     risk = [self.risk_level_to_risk(mild_symptoms_risk_level)] * 7
-                    # TODO: Set recommendations level L = 1
+                    # Set recommendations level L = 1
+                    human._rec_level = mild_symptoms_rec_level
 
             elif (human.rec_level > 0) and no_positive_test_result_past_14_days:
                 # Check if there was no symptoms in the past 7 days
@@ -733,27 +737,31 @@ class Tracing(object):
                 elif earliest_negative_test_result_num_days > 0:
                     # Set risk level R = 1 for now and all past D days
                     risk = [self.risk_level_to_risk(1)] * earliest_negative_test_result_num_days
-                    # TODO: Set recommendation level L = 0
+                    # Set recommendation level L = 0
+                    human._rec_level = 0
 
             elif high_risk_message > 0:
                 # TODO: Decrease the risk level depending on the number of encounters (N > 5)
                 updated_risk = max(human.risk_level, self.risk_level_to_risk(high_risk_message - 5))
                 risk = [updated_risk] * max(high_risk_num_days - 2, 1) # Update at least 1 day
-                # TODO: Set recommendations level L = 2
+                # Set recommendations level L = 2
+                human._rec_level = high_risk_rec_level
 
             elif moderate_risk_message > 0:
                 # Set the risk level to max(R' - 5, R) for all days after day D + 2
                 # (with at least 1 update for the current day)
                 updated_risk = max(human.risk_level, self.risk_level_to_risk(moderate_risk_message - 5))
                 risk = [updated_risk] * max(moderate_risk_num_days - 2, 1)
-                # TODO: Set recommendations level L = 1
+                # Set recommendations level L = 1
+                human._rec_level = moderate_risk_rec_level
 
             elif mild_risk_message > 0:
                 # Set the risk level to max(R' - 5, R) for all days after day D + 2
                 # (with at least 1 update for the current day)
                 updated_risk = max(human.risk_level, self.risk_level_to_risk(mild_risk_message - 5))
                 risk = [updated_risk] * max(mild_risk_num_days - 2, 1)
-                # TODO: Set recommendations level L = 1
+                # Set recommendations level L = 1
+                human._rec_level = mild_risk_rec_level
 
         elif self.risk_model == "other":
             r_up, v_up, r_down, v_down = r
