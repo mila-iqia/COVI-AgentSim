@@ -16,7 +16,7 @@ import numpy as np
 import pandas as pd
 
 from covid19sim.epidemiology.symptoms import MILD, MODERATE, SEVERE, EXTREMELY_SEVERE
-from covid19sim.utils.utils import log
+from covid19sim.utils.utils import log, deepcopy_obj_array_except_env
 from covid19sim.utils.constants import SECONDS_PER_DAY
 if typing.TYPE_CHECKING:
     from covid19sim.human import Human
@@ -512,7 +512,7 @@ class Tracker(object):
     def track_humans(self, hd: typing.Dict, current_timestamp: datetime.datetime, keep_full_copies: bool):
         if keep_full_copies:
             assert current_timestamp not in self.human_backups
-            self.human_backups[current_timestamp] = copy.deepcopy(hd)
+            self.human_backups[current_timestamp] = deepcopy_obj_array_except_env(hd)
         for name, h in hd.items():
             order_1_contacts = h.contact_book.get_contacts(hd)
             self.risk_attributes.append({
