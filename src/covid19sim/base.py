@@ -755,6 +755,7 @@ class City:
                         update_reason="unknown",  # FIXME got schwacked in hotfix, only used for debugging
                         tracing_method=human.tracing_method,
                     ))
+                    human.get_recommendations_level()
                     human.tracing_method.modify_behavior(human)
                     Event.log_risk_update(
                         self.conf['COLLECT_LOGS'],

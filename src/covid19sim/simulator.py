@@ -220,6 +220,7 @@ class Human(object):
         self.tracing_method = None
         self.maintain_extra_distance = 0
         self._follows_recommendations_today = None
+        self._rec_level = -1 # Recommendation level
         self._intervention_level = -1 # Intervention level (level of behaviour modification to apply), for logging purposes
         self.recommendations_to_follow = OrderedSet()
         self.time_encounter_reduction_factor = 1.0
@@ -1315,6 +1316,7 @@ class Human(object):
             if isinstance(intervention, Tracing):
                 self.tracing = True
                 self.tracing_method = intervention
+            self.get_recommendations_level()
             intervention.modify_behavior(self)
             self.notified = True
 
@@ -2045,20 +2047,24 @@ class Human(object):
         cur_day = (self.env.timestamp - self.env.initial_timestamp).days
         self.risk_history_map[cur_day] = val
 
-    @property
-    def rec_level(self):
+    def get_recommendations_level(self):
         if isinstance(self.tracing_method, Tracing):
             # FIXME: maybe merge Quarantine in RiskBasedRecommendations with 2 levels
             if self.tracing_method.risk_model in ["manual", "digital"]:
                 if self.risk == 1.0:
-                    return 3
+                    self._rec_level = 3
                 else:
-                    return 0
+                    self._rec_level = 0
             else:
-                return self.tracing_method.intervention.get_recommendations_level(
+                self._rec_level = self.tracing_method.intervention.get_recommendations_level(
                     self,
                     self.conf.get("REC_LEVEL_THRESHOLDS"),
                     self.conf.get("MAX_RISK_LEVEL")
                 )
         else:
-            return -1
+            self._rec_level = -1
+        return self.rec_level
+
+    @property
+    def rec_level(self):
+        return self._rec_level
