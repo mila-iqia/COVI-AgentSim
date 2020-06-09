@@ -1,0 +1,69 @@
+# -------------------------------------
+# -----  Simulation Fixed Params  -----
+# -------------------------------------
+n_people: 1000
+simulation_days: 22
+# init_percent_sick: 0.002
+test_capacity: 0.02
+# COLD_CONTAGIOUSNESS: 0.0
+INTERVENTION_DAY: 5
+P_CAREFUL_PERSON: 0.3 # 0.6
+# zip_outdir: false
+tune: true
+COLLECT_LOGS: False
+
+# ---------------------------------------
+# -----  Experimental Fixed Params  -----
+# ---------------------------------------
+
+n_search: -1 # figures out the size of cartesian product for you
+USE_INFERENCE_SERVER: False
+cpus: 4
+
+# -------------------------
+# -----  Directories  -----
+# -------------------------
+infra: beluga
+time: '"2:50:00"'
+weights_dir: /scratch/vsch # where to find weights specified as transformer>RADIANT-RESONANCE-561
+base_dir: /scratch/vsch/covid_sims/plan_bb/validation3 # if outdir is not provided, runs will be stored in base_dir/${tracing_method}
+code_loc: /home/vsch/simulator/src/covid19sim
+use_tmpdir: false
+
+# --------------------------------------
+# -----  Sampling Parametrization  -----
+# --------------------------------------
+
+tracing_method:
+  sample: cartesian
+  from:
+    - oracle>HOPEFUL-STAR-324B # oracle needs weights
+    - binary_digital_tracing_order_1
+    - binary_digital_tracing_order_2
+    - no_intervention
+    - transformer>HOPEFUL-STAR-324B
+    # - transformer>DARK-DISCO-437
+    # - transformer>DAILY-GALAXY-438
+
+APP_UPTAKE:
+  sample: cartesian
+  from:
+    - 0.4215 # 30%
+    - 0.8415 # 60%
+    - -1 # 100%
+
+GLOBAL_MOBILITY_SCALING_FACTOR:
+  sample: cartesian
+  from:
+    - 0.3
+    # - 0.6
+    # - 0.75
+
+seed:
+  sample: cartesian
+  from:
+    - 3000
+    - 3001
+    - 3002
+    - 3003
+    - 3004
