@@ -730,7 +730,7 @@ class Tracing(object):
                 # Check if there was no symptoms in the past 7 days
                 no_symptoms_past_7_days = (not any(islice(human.rolling_all_reported_symptoms, 7)))
 
-                if no_symptoms_past_7_days:# and no_message_gt3_past_7_days:
+                if no_symptoms_past_7_days and no_message_gt3_past_7_days:
                     # Set risk level R = 0 for now and all past 7 days
                     risk = [self.risk_level_to_risk(0)] * 7
 
