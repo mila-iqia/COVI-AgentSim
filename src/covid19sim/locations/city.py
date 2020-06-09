@@ -682,6 +682,13 @@ class City:
                     behaviors = self.intervention.get_behaviors(human)
                 human.apply_behaviors(behaviors)
 
+            self.tracker.track_humans(
+                hd=self.hd,
+                current_timestamp=self.env.timestamp,
+                keep_full_copies=self.conf.get("KEEP_FULL_OBJ_COPIES", False),
+            )
+            # self.tracker.track_locations() # TODO
+
             yield self.env.timeout(int(duration))
 
             # finally, run end-of-day activities (if possible); these include mailbox cleanups, symptom updates, ...
