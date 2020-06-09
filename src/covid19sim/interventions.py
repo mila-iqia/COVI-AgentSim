@@ -733,8 +733,7 @@ class Tracing(object):
                 elif earliest_negative_test_result_num_days > 0:
                     # Set risk level R = 1 for now and all past D days
                     risk = [self.risk_level_to_risk(1)] * earliest_negative_test_result_num_days
-                    # Set recommendation level L = 0
-                    human.curr_rec_level = 0
+                    # TODO: Set recommendation level L = 0
 
             elif high_risk_message > 0:
                 # TODO: Decrease the risk level depending on the number of encounters (N > 5)
