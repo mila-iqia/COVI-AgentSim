@@ -266,6 +266,9 @@ def simulate(
     # Run simulation until termination
     env.run(until=env.ts_initial + simulation_days * SECONDS_PER_DAY)
 
+    if conf.get("KEEP_FULL_OBJ_COPIES", False):
+        city.tracker.dump_backup_objects()
+
     if not return_city:
         return monitors, city.tracker
     else:

@@ -2,6 +2,7 @@
 Contains a class to track several simulation metrics.
 It is initialized as an attribute of the city and called at several places in `Human`.
 """
+import copy
 import os
 import datetime
 import math
@@ -16,6 +17,9 @@ import pandas as pd
 
 from covid19sim.utils.utils import log
 from covid19sim.utils.constants import SECONDS_PER_DAY
+if typing.TYPE_CHECKING:
+    from covid19sim.human import Human
+
 
 def print_dict(title, dic, is_sorted=None, top_k=None, logfile=None):
     if not is_sorted:
@@ -204,6 +208,9 @@ class Tracker(object):
         self.risk_precision_daily = [self.compute_risk_precision()]
         self.init_infected = [human for human in self.city.humans if human.is_exposed]
         self.fully_initialized = True
+
+        # raw object copies
+        self.human_backups: typing.Dict[datetime.datetime, typing.Dict[str, "Human"]] = {}
 
     def summarize_population(self):
         """
@@ -501,12 +508,14 @@ class Tracker(object):
             idx += 1
         return top_k_prec, lift, recall
 
-    def track_risk_attributes(self, hd: typing.Dict):
+    def track_humans(self, hd: typing.Dict, current_timestamp: datetime.datetime, keep_full_copies: bool):
+        if keep_full_copies:
+            assert current_timestamp not in self.human_backups
+            self.human_backups[current_timestamp] = copy.deepcopy(hd)
         for name, h in hd.items():
-            if h.is_removed:
-                continue
             order_1_contacts = h.contact_book.get_contacts(hd)
             self.risk_attributes.append({
+                "has_app": h.has_app,
                 "risk": h.risk,
                 "risk_level": h.risk_level,
                 "rec_level": h.rec_level,
@@ -560,7 +569,7 @@ class Tracker(object):
         if type == "icu":
             self.critical_per_day[-1] += 1
 
-    def track_infection(self, type, from_human, to_human, location, timestamp):
+    def track_infection(self, type, from_human, to_human, location, timestamp, p_infection):
         """
         Called every time someone is infected either by other `Human` or through envrionmental contamination.
 
@@ -570,6 +579,7 @@ class Tracker(object):
             to_human (Human): `Human` who got infected
             location (Location): `Location` where the even took place.
             timestamp (datetime.datetime): time at which this event took place.
+            p_infection: the probability of infection threshold that passed.
         """
         for i, (l,u) in enumerate(self.age_bins):
             if from_human and l <= from_human.age <= u:
@@ -579,24 +589,25 @@ class Tracker(object):
 
         self.cases_per_day[-1] += 1
         self.infection_monitor.append({
-                        "from": None if not type=="human" else from_human.name,
-                        "from_risk":  None if not type=="human" else from_human.risk,
-                        "from_risk_level": None if not type=="human" else from_human.risk_level,
-                        "from_rec_level": None if not type=="human" else from_human.rec_level,
-                        "from_infection_timestamp": None if not type=="human" else from_human.infection_timestamp,
-                        "from_is_asymptomatic": None if not type=="human" else from_human.is_asymptomatic,
-                        "from_has_app": None if not type=="human" else from_human.has_app,
-                        "to": to_human.name,
-                        "to_risk": to_human.risk,
-                        "to_risk_level": to_human.risk_level,
-                        "to_rec_level": to_human.rec_level,
-                        "infection_date": timestamp.date(),
-                        "infection_timestamp":timestamp,
-                        "to_is_asymptomatic": to_human.is_asymptomatic,
-                        "to_has_app": to_human.has_app,
-                        "location_type":location.location_type,
-                        "location": location.name
-                    })
+            "from": None if not type=="human" else from_human.name,
+            "from_risk":  None if not type=="human" else from_human.risk,
+            "from_risk_level": None if not type=="human" else from_human.risk_level,
+            "from_rec_level": None if not type=="human" else from_human.rec_level,
+            "from_infection_timestamp": None if not type=="human" else from_human.infection_timestamp,
+            "from_is_asymptomatic": None if not type=="human" else from_human.is_asymptomatic,
+            "from_has_app": None if not type == "human" else from_human.has_app,
+            "to": to_human.name,
+            "to_risk": to_human.risk,
+            "to_risk_level": to_human.risk_level,
+            "to_rec_level": to_human.rec_level,
+            "infection_date": timestamp.date(),
+            "infection_timestamp":timestamp,
+            "to_is_asymptomatic": to_human.is_asymptomatic,
+            "to_has_app": to_human.has_app,
+            "location_type": location.location_type,
+            "location": location.name,
+            "p_infection": p_infection,
+        })
 
         if type == "human":
             self.contacts["human_infection"][from_human.age, to_human.age] += 1
@@ -1242,12 +1253,11 @@ class Tracker(object):
             fig.suptitle(f"Hour {hour}", fontsize=16)
             fig.savefig(f"{dirname}/contact_stats/hour_{hour}.png")
 
-    def dump_metrics(self):
+    def _get_metrics_data(self):
         data = dict()
         data['intervention_day'] = self.city.conf.get('INTERVENTION_DAY')
         data['intervention'] = self.city.conf.get('INTERVENTION')
         data['risk_model'] = self.city.conf.get('RISK_MODEL')
-
         data['expected_mobility'] = self.expected_mobility
         data['mobility'] = self.mobility
         data['n_init_infected'] = self.n_infected_init
@@ -1268,9 +1278,19 @@ class Tracker(object):
         data['infection_monitor'] = self.infection_monitor
         data['infector_infectee_update_messages'] = self.infector_infectee_update_messages
         data['encounter_distances'] = self.encounter_distances
+        return data
 
+    def dump_metrics(self):
+        data = self._get_metrics_data()
         os.makedirs("logs3", exist_ok=True)
         with open(f"logs3/{self.filename}", 'wb') as f:
+            dill.dump(data, f)
+
+    def dump_backup_objects(self):
+        data = self._get_metrics_data()
+        data["human_backups"] = self.human_backups
+        os.makedirs("debug", exist_ok=True)
+        with open(f"debug/{self.filename}", 'wb') as f:
             dill.dump(data, f)
 
     def write_for_training(self, humans, outfile, conf):

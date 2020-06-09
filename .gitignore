@@ -8,6 +8,7 @@
 *.json
 *.DS_Store
 # output files
+debug/
 output/
 CTT-SHIPMENT-0
 exp/

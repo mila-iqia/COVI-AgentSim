@@ -1390,7 +1390,14 @@ class Human(BaseHuman):
 
                         if infectee_msg is not None:  # could be None if we are not currently tracing
                             infectee_msg._exposition_event = True
-                        city.tracker.track_infection('human', from_human=infector, to_human=infectee, location=location, timestamp=env_timestamp)
+                        city.tracker.track_infection(
+                            type='human',
+                            from_human=infector,
+                            to_human=infectee,
+                            location=location,
+                            timestamp=env_timestamp,
+                            p_infection=p_infection,
+                        )
                     else:
                         infector, infectee = None, None
 
@@ -1439,8 +1446,21 @@ class Human(BaseHuman):
             self.ts_covid19_infection = self.env.now
             self.initial_viral_load = self.rng.random()
             compute_covid_properties(self)
-            city.tracker.track_infection('env', from_human=None, to_human=self, location=location, timestamp=self.env.timestamp)
-            Event.log_exposed(self.conf.get('COLLECT_LOGS'), self, location, p_infection, self.env.timestamp)
+            city.tracker.track_infection(
+                type='env',
+                from_human=None,
+                to_human=self,
+                location=location,
+                timestamp=self.env.timestamp,
+                p_infection=p_infection,
+            )
+            Event.log_exposed(
+                self.conf.get('COLLECT_LOGS'),
+                self,
+                location,
+                p_infection,
+                self.env.timestamp,
+            )
 
         location.remove_human(self)
 
