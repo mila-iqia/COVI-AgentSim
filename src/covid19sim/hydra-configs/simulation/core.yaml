@@ -386,14 +386,14 @@ P_HAS_ALLERGIES_TODAY: 0.005
 # https://www.webmd.com/cold-and-flu/flu-statistics
 # Flu season is December to February. Assuming simulation runs form March, we are switching off Flu
 P_FLU_TODAY: 0.000
-FLU_CONTAGIOUSNESS: 0.0005
+FLU_CONTAGIOUSNESS: 0.000
 AVG_FLU_DURATION: 5
 
 # likelihood to start cold any day (2-3 times per year) # https://www.cdc.gov/features/rhinoviruses/index.html
 # Section on Modelling and interventions - https://github.com/BDI-pathogens/covid-19_instant_tracing/blob/master/Report%20-%20Effective%20Configurations%20of%20a%20Digital%20Contact%20Tracing%20App.pdf
 # non-Covid19 symtpoms via influenza etc. is 0.002%. This seems like a typo. assuming 0.002 here.
 P_COLD_TODAY: 0.002
-COLD_CONTAGIOUSNESS: 0.005 # likelihood of transmitting at an encounter (no-source)
+COLD_CONTAGIOUSNESS: 0.000 # likelihood of transmitting at an encounter (no-source)
 AVG_COLD_DURATION: 3 # FIXME:unused
 
 # LIFESTYLE PARAMETERS
