@@ -75,7 +75,6 @@ class SEIRMonitor(BaseMonitor):
         n_days = 0
         while True:
             R0 = city.tracker.get_R()
-            G = city.tracker.get_generation_time()
             t_P = city.tracker.test_results_per_day[env.timestamp.date()]['positive']
             t_T = 0 if len(city.tracker.tested_per_day) < 2 else city.tracker.tested_per_day[-2]
             H = sum(city.tracker.hospitalization_per_day)
@@ -106,7 +105,7 @@ class SEIRMonitor(BaseMonitor):
             demographics = f"| Ro: {R0:2.2f} S:{S:<{nd}} E:{E:<{nd}} I:{I:<{nd}} E+I+R:{T:<{nd}} +Test:{t_P}/{t_T}"
             stats = f"| P3:{Projected3:5.2f} RiskP:{prec[1][0]:3.2f} F:{F:3.2f} EM:{EM:3.2f} TestQueue:{test_queue_length}"
             other_diseases = f"| cold:{cold} allergies:{allergies}"
-            colors = "" # f"| G:{green} B:{blue} O:{orange} R:{red}"
+            colors = f"| G:{green} B:{blue} O:{orange} R:{red}"
             print(proc_time, day, env_time, demographics, stats, other_diseases, colors)
             # print(city.tracker.recovered_stats)
             self.data.append({

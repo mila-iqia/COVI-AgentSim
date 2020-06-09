@@ -20,7 +20,8 @@ import sys
 import covid19sim.server_utils
 
 default_workers = 6
-default_model_exp_path = "https://drive.google.com/file/d/1Z7g3gKh2kWFSmK2Yr19MQq0blOWS5st0"
+# RADIANT-RESONANCE-561
+default_model_exp_path = "https://drive.google.com/file/d/1QhiZehbxNOhA-7n37h6XEHTORIXweXc6"
 
 
 def parse_args(args=None):
@@ -68,9 +69,9 @@ def parse_args(args=None):
 
 def interrupt_handler(signal, frame, broker):
     """Signal callback used to gently stop workers (releasing sockets) & exit."""
-    print("Received SIGINT; shutting down inference worker(s) gracefully...")
+    print("Received SIGINT; shutting down inference worker(s) gracefully...", flush=True)
     broker.stop()
-    print("All done.")
+    print("All done.", flush=True)
     sys.exit(0)
 
 

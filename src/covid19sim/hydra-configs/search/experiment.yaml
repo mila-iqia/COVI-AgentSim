@@ -14,12 +14,12 @@
 tracing_method: oracle
 run_type: collect-all
 n_people: 1000
-simulation_days: 22
-INTERVENTION_DAY: 5
+simulation_days: 30
+SHOULD_MODIFY_BEHAVIOR: True
 
 APP_UPTAKE:
   sample: uniform # uniform in range:
-  from: [0.0, 1.0]
+  from: [0.01, 1.0]
 
 P_CAREFUL_PERSON:
   sample: uniform # uniform in range:
@@ -27,8 +27,25 @@ P_CAREFUL_PERSON:
 
 GLOBAL_MOBILITY_SCALING_FACTOR:
   sample: uniform # uniform in range:
-  from: [0.0, 1.0]
+  from: [0.1, 1.0]
+
+DROPOUT_RATE:
+  sample: uniform # uniform in range:
+  from: [0.0, 0.25]
+
+init_percent_sick:
+  sample: list
+  from: [0.003, 0.006, 0.009, 0.012, 0.015, 0.018, 0.021, 0.024, 0.027, 0.03, 0.033, 0.036, 0.039, 0.042, 0.045, 0.048]
+
+INTERVENTION_DAY:
+  sample: range
+  from: [3, 7]
 
 seed: # for sole reproducibility purposes
   sample: range # uniform int choice
   from: [0, 10]
+
+
+# python random_search.py infra=mila n_search=50 n_runs_per_search=1 partition=covi cpus=4 env_name=covid38 zip_outdir=True delete_outdir=True outdir=/network/tmp1/schmidtv/covid_sims/nasim/deadline
+
+# python random_search.py infra=mila n_search=50 n_runs_per_search=1 gres="gpu:1" partition=long cpus=8 env_name=covid38 zip_outdir=True delete_outdir=True outdir=/network/tmp1/schmidtv/covid_sims/nasim/deadline

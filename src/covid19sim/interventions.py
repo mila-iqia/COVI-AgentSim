@@ -113,7 +113,7 @@ class StandApart(BehaviorInterventions):
     It adds `_maintain_extra_distance_2m` because of the conflict with a same named attribute in
     `SocialDistancing`
     """
-    def __init__(self, default_distance=100):
+    def __init__(self, default_distance=25):
         self.DEFAULT_SOCIAL_DISTANCE = default_distance
 
     def modify_behavior(self, human):
@@ -139,7 +139,7 @@ class WashHands(BehaviorInterventions):
 
     def modify_behavior(self, human):
         human._hygiene = human.hygiene
-        human.hygiene = human.rng.uniform(human.carefulness, 2)
+        human.hygiene = human.rng.uniform(min(human.carefulness, 1) , 1)
 
     def revert_behavior(self, human):
         human.hygiene = human._hygiene
@@ -223,10 +223,11 @@ class SocialDistancing(BehaviorInterventions):
         3. Reduced mobility (using RHO and GAMMA)
 
     """
-    DEFAULT_SOCIAL_DISTANCE = 200 # cm
-    TIME_ENCOUNTER_REDUCTION_FACTOR = 0.5
-    _RHO = 0.2
-    _GAMMA = 0.5
+    def __init__(self, default_distance=100, time_encounter_reduction_factor=0.5):
+        self.DEFAULT_SOCIAL_DISTANCE = default_distance # cm
+        self.TIME_ENCOUNTER_REDUCTION_FACTOR = time_encounter_reduction_factor
+        self._RHO = 0.2
+        self._GAMMA = 0.5
 
     def modify_behavior(self, human):
         human._maintain_extra_distance = human.maintain_extra_distance
@@ -262,13 +263,25 @@ class BinaryTracing(BehaviorInterventions):
         super(BinaryTracing, self).__init__()
 
     def modify_behavior(self, human):
-        if human.rec_level == 0:
-            recommendations = [WashHands(), StandApart(default_distance=25)]
+        # If there is a mapping available for recommendation levels in the
+        # configuration file, use the intervention level randomly picked from
+        # this transition matrix, based on the recommendation level. The update
+        # of the recommendation levels are not altered.
+        if not human.has_app:
+            return
+
+        if human.city.daily_rec_level_mapping is None:
+            intervention_level = human.rec_level
         else:
-            recommendations = [Quarantine()]
+            # QKFIX: There are 4 recommendation levels, the value is hard-coded here
+            probas = human.city.daily_rec_level_mapping[human.rec_level]
+            intervention_level = human.rng.choice(4, p=probas)
+        human._intervention_level = intervention_level
+        recommendations = get_recommendations(intervention_level)
+
         self.revert_behavior(human)
         for rec in recommendations:
-            if isinstance(rec, BehaviorInterventions) and human.rng.rand() < human.how_much_I_follow_recommendations:
+            if isinstance(rec, BehaviorInterventions) and human.follows_recommendations_today:
                 rec.modify_behavior(human)
                 human.recommendations_to_follow.add(rec)
 
@@ -314,13 +327,13 @@ def get_recommendations(level):
         list: a list of `BehaviorInterventions`.
     """
     if level == 0:
-        return [WashHands()]
+        return [WashHands(), StandApart(default_distance=40)]
     if level == 1:
-        return [WashHands(), StandApart(), WearMask()]
+        return [WashHands(), StandApart(default_distance=100), WearMask()]
     if level == 2:
-        return [WashHands(), SocialDistancing(), WearMask(), 'monitor_symptoms']
+        return [WashHands(), SocialDistancing(default_distance=125), WearMask(), 'monitor_symptoms']
 
-    return [WashHands(), SocialDistancing(), WearMask(), 'monitor_symptoms', GetTested("recommendations"), Quarantine()]
+    return [WashHands(), SocialDistancing(default_distance=150), WearMask(), 'monitor_symptoms', GetTested("recommendations"), Quarantine()]
 
 class RiskBasedRecommendations(BehaviorInterventions):
     """
@@ -361,10 +374,28 @@ class RiskBasedRecommendations(BehaviorInterventions):
             raise
 
     def modify_behavior(self, human):
-        recommendations = get_recommendations(human.rec_level)
+        # If there is a mapping available for recommendation levels in the
+        # configuration file, use the intervention level randomly picked from
+        # this transition matrix, based on the recommendation level. The update
+        # of the recommendation levels are not altered.
+        if not human.has_app:
+            return
+
+        if human.city.daily_rec_level_mapping is None:
+            intervention_level = human.rec_level
+        else:
+            # QKFIX: There are 4 recommendation levels, the value is hard-coded here
+            probas = human.city.daily_rec_level_mapping[human.rec_level]
+            intervention_level = human.rng.choice(4, p=probas)
+        human._intervention_level = intervention_level
+        recommendations = get_recommendations(intervention_level)
+
+        # revert all my previous behaviours
         self.revert_behavior(human)
+
+        # apply each behaviour I should be following
         for rec in recommendations:
-            if isinstance(rec, BehaviorInterventions) and human.rng.rand() < human.how_much_I_follow_recommendations:
+            if isinstance(rec, BehaviorInterventions) and human.follows_recommendations_today:
                 rec.modify_behavior(human)
                 human.recommendations_to_follow.add(rec)
 
@@ -407,9 +438,8 @@ class HeuristicRecommendations(RiskBasedRecommendations):
         # received in the mailbox, which get_recommendations_level does not have
         # access to under the current API.
         if human.age >= 70:
-            return max(human.curr_rec_level, 2)
-
-        return max(human.curr_rec_level, 0)
+            return max(human.rec_level, 2)
+        return max(human.rec_level, 0)
 
 
 class Tracing(object):
@@ -551,6 +581,7 @@ class Tracing(object):
             tracing_delay=test_tracing_delay,
             tracing_probability=self.p_contact,
             max_order=self.max_depth,
+            make_sure_15min_minimum_between_contacts=False,
         )
         for order, count in positive_test_counts.items():
             t += count * np.exp(-2*(order-1))
@@ -613,54 +644,46 @@ class Tracing(object):
             # TODO: mailbox only contains update messages, and not encounter messages
             # TODO: use the result of the clustering algorithm to find the number of
             #       encounters with another user with high risk level
-            for _, update_message in mailbox.items():
-                encounter_day = (human.env.timestamp - update_message.encounter_time).days
-                risk_level = update_message.new_risk_level
+            for _, update_messages in mailbox.items():
+                for update_message in update_messages:
+                    encounter_day = (human.env.timestamp - update_message.encounter_time).days
+                    risk_level = update_message.new_risk_level
 
-                if (encounter_day < 7) and (risk_level >= 3):
-                    no_message_gt3_past_7_days = False
+                    if (encounter_day < 7) and (risk_level >= 3):
+                        no_message_gt3_past_7_days = False
 
-                if (risk_level >= 12):
-                    high_risk_message = max(high_risk_message, risk_level)
-                    high_risk_num_days = max(high_risk_num_days, encounter_day)
+                    if (risk_level >= 12):
+                        high_risk_message = max(high_risk_message, risk_level)
+                        high_risk_num_days = max(high_risk_num_days, encounter_day)
 
-                elif (risk_level >= 10):
-                    moderate_risk_message = max(moderate_risk_message, risk_level)
-                    moderate_risk_num_days = max(moderate_risk_message, encounter_day)
+                    elif (risk_level >= 10):
+                        moderate_risk_message = max(moderate_risk_message, risk_level)
+                        moderate_risk_num_days = max(moderate_risk_message, encounter_day)
 
-                elif (risk_level >= 6):
-                    mild_risk_message = max(mild_risk_message, risk_level)
-                    mild_risk_num_days = max(mild_risk_message, encounter_day)
+                    elif (risk_level >= 6):
+                        mild_risk_message = max(mild_risk_message, risk_level)
+                        mild_risk_num_days = max(mild_risk_message, encounter_day)
 
             if human.reported_test_result == "positive":
                 # Update risk for the past 14 days
                 risk = [self.risk_level_to_risk(15)] * 14
-                human.curr_rec_level = 3
-
             elif human.all_reported_symptoms:
                 if "extremely-severe" in human.all_reported_symptoms:
                     # For severe symptoms, set R = 12 for now and all past 7 days
                     risk = [self.risk_level_to_risk(12)] * 7
-                    # Set recommendations level L = 3
-                    human.curr_rec_level = 3
                 elif "severe" in human.all_reported_symptoms:
                     risk = [self.risk_level_to_risk(12)] * 7
-                    human.curr_rec_level = 3
                 elif "moderate" in human.all_reported_symptoms:
                     # For intermediate symptoms, set R = 10 for now and all past 7 days
                     risk = [self.risk_level_to_risk(10)] * 7
-                    # Set recommendations level L = 3
-                    human.curr_rec_level = 3
                 else:
                     # For mild symptoms, set R = 7 for now and all past 7 days
                     risk = [self.risk_level_to_risk(7)] * 7
-                    # Set recommendations level L = 2
-                    human.curr_rec_level = 2
 
-            elif human.curr_rec_level > 0:
+            elif human.rec_level > 0:
                 # Check if there was no positive test result in the past 14 days
                 no_positive_test_result_past_14_days = True
-                for test_result, test_time in human.test_results:
+                for test_result, test_time, _ in human.test_results:
                     result_day = (human.env.timestamp - test_time).days
                     if result_day >= 0 and result_day < human.conf.get("TRACING_N_DAYS_HISTORY"):
                         no_positive_test_result_past_14_days &= (test_result != "positive")
@@ -673,30 +696,23 @@ class Tracing(object):
                         and no_message_gt3_past_7_days):
                     # Set risk level R = 0 for now and all past 7 days
                     risk = [self.risk_level_to_risk(0)] * 7
-                    # Set recommendations level L = 0
-                    human.curr_rec_level = 0
 
             elif high_risk_message > 0:
                 # TODO: Decrease the risk level depending on the number of encounters (N > 5)
                 updated_risk = max(human.risk_level, self.risk_level_to_risk(high_risk_message - 5))
                 risk = [updated_risk] * max(high_risk_num_days - 2, 1) # Update at least 1 day
-                human.curr_rec_level = 3
 
             elif moderate_risk_message > 0:
                 # Set the risk level to max(R' - 5, R) for all days after day D + 2
                 # (with at least 1 update for the current day)
                 updated_risk = max(human.risk_level, self.risk_level_to_risk(moderate_risk_message - 5))
                 risk = [updated_risk] * max(moderate_risk_num_days - 2, 1)
-                # Set recommendations level L = 2
-                human.curr_rec_level = 2
 
             elif mild_risk_message > 0:
                 # Set the risk level to max(R' - 5, R) for all days after day D + 2
                 # (with at least 1 update for the current day)
                 updated_risk = max(human.risk_level, self.risk_level_to_risk(mild_risk_message - 5))
                 risk = [updated_risk] * max(mild_risk_num_days - 2, 1)
-                # Set recommendations level L = 1
-                human.curr_rec_level = 1
 
         elif self.risk_model == "other":
             r_up, v_up, r_down, v_down = r

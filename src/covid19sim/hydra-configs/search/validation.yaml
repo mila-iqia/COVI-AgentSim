@@ -11,33 +11,34 @@
 #                  => {A:1, B: y}, {A:1, B: z}, {A:2, B: y}, {A:2, B: z}, {A:1, B: y}
 # - `sequential` samples will loop through the values in `from`. `from` MUST be a list
 
-tracing_method: oracle
-run_type: collect-all
-n_people: 1000
-simulation_days: 22
+n_people: 3000
+simulation_days: 30
 INTERVENTION_DAY: 5
+DROPOUT_RATE: 0.02
+init_percent_sick: 0.01
+tune: true
+
+seed:
+  sample: cartesian
+  from:
+  - 3000
+  - 3001
+  - 3002
+  - 3003
+  - 3004
 
 APP_UPTAKE:
   sample: cartesian # will be sampled in this order, in a cartesian product with any other "cartesian" sampling
   from:
-    - 0.3
-    - 0.5
-    - 0.7
+    - 0.0705 # AR: 0.050198115 AR = AU / Smartphone_proportion
+    - 0.4215 # AR: 0.300120645
+    - 0.8415 # AR: 0.599173245
+# for uptake in [0.0705, 0.4215, 0.8415]: print(uptake, ":", sum(s * uptake * h["p"] for s, h in zip(sd.values(), hd.values() )))
+# hd is HUMAN_DISTRIBUTION from core.yaml
+# sd is SMARTPHONE_OWNER_FRACTION_BY_AGE from core.yaml
 
 P_CAREFUL_PERSON:
   sample: cartesian # will be sampled in this order, in a cartesian product with any other "cartesian" sampling
   from:
     - 0.3
-    - 0.5
-    - 0.7
-
-GLOBAL_MOBILITY_SCALING_FACTOR:
-  sample: cartesian # will be sampled in this order, in a cartesian product with any other "cartesian" sampling
-  from:
-    - 0.3
-    - 0.5
-    - 0.7
-
-seed: # for sole reproducibility purposes
-  sample: range # uniform int choice
-  from: [0, 10]
+    - 0.6

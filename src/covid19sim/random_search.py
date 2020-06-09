@@ -9,12 +9,12 @@ from omegaconf import DictConfig
 import datetime
 import itertools
 from covid19sim.utils import parse_search_configuration
+import time
 
 
 def now_str():
     now = str(datetime.datetime.now())
-    now = now.split(".")[0]
-    now = now.replace("-", "").replace(":", "").replace(" ", "_")
+    now = now.replace("-", "").replace(":", "").replace(" ", "_").replace(".", "_")
     return now
 
 
@@ -125,6 +125,17 @@ def sample_sequentials(sequential_keys, exp, idx):
     return conf
 
 
+def get_uuid():
+    return "{}_{}".format(np.random.randint(1e5, 1e6), np.random.randint(1e5, 1e6))
+
+
+def ipc_addresses():
+    uuid = get_uuid()
+    ipc_front = "ipc:///tmp/covid19_{}_frontend.ipc".format(uuid)
+    ipc_back = "ipc:///tmp/covid19_{}_backend.ipc".format(uuid)
+    return (ipc_front, ipc_back)
+
+
 def sample_search_conf(exp, idx=0):
     """
     Samples parameters parametrized in `exp`: should be a dict with
@@ -173,6 +184,11 @@ def load_template(infra):
             "r"
         ) as f:
             return f.read()
+    if infra == "beluga":
+        with (Path(__file__).parent / "job_scripts" / "beluga_sbatch_template.sh").open(
+            "r"
+        ) as f:
+            return f.read()
     raise ValueError("Unknown infrastructure " + str(infra))
 
 
@@ -182,9 +198,14 @@ def fill_intel_template(template_str, conf):
     env_name = conf.get("env_name", "covid")
     code_loc = conf.get("code_loc", str(Path(home) / "simulator/src/covid19sim/"))
     weights = conf.get("weights", str(Path(home) / "FRESH-SNOWFLAKE-224B/"))
-    server_out = str(
-        Path(home) / "covi_search" / "logs" / f"server_{conf['now_str']}.out"
-    )
+    ipc = conf.get("ipc", {"frontend": "", "backend": ""})
+    cpu = conf.get("cpus", 6)
+    use_transformer = str(conf.get("use_transformer", True)).lower()
+
+    if conf.get("parallel_search"):
+        workers = cpu - conf.get("n_runs_per_search", 1)
+    else:
+        workers = cpu - 1
 
     if "dev" in conf and conf["dev"]:
         print(
@@ -194,12 +215,24 @@ def fill_intel_template(template_str, conf):
                     "  {:10}: {}".format("env_name", env_name),
                     "  {:10}: {}".format("code_loc", code_loc),
                     "  {:10}: {}".format("weights", weights),
+                    "  {:10}: {}".format("use_transformer", use_transformer),
+                    "  {:10}: {}".format("workers", workers),
+                    "  {:10}: {}".format("frontend", ipc["frontend"]),
+                    "  {:10}: {}".format("backend", ipc["backend"]),
                 ]
             )
         )
+    frontend = '--frontend="{}"'.format(ipc["frontend"]) if ipc["frontend"] else ""
+    backend = '--backend="{}"'.format(ipc["backend"]) if ipc["backend"] else ""
 
     return template_str.format(
-        env_name=env_name, code_loc=code_loc, weights=weights, server_out=server_out
+        env_name=env_name,
+        code_loc=code_loc,
+        weights=weights,
+        frontend=frontend,
+        backend=backend,
+        use_transformer=use_transformer,
+        workers=workers,
     )
 
 
@@ -222,11 +255,20 @@ def fill_mila_template(template_str, conf):
     cpu = conf.get("cpus", 6)
     mem = conf.get("mem", 16)
     gres = conf.get("gres", "")
-    time = conf.get("time", "4:00:00")
+    time = str(conf.get("time", "4:00:00"))
     slurm_log = conf.get("slurm_log", f"/network/tmp1/{user}/covi-slurm-%j.out")
+    if "%j.out" not in slurm_log:
+        slurm_log = str(Path(slurm_log).resolve() / "covi-slurm-%j.out")
+        if not Path(slurm_log).parent.exists():
+            Path(slurm_log).parent.mkdir(parents=True)
     env_name = conf.get("env_name", "covid")
     weights = conf.get("weights", f"/network/tmp1/{user}/FRESH-SNOWFLAKE-224B")
     code_loc = conf.get("code_loc", str(Path(home) / "simulator/src/covid19sim/"))
+    ipc = conf.get("ipc", {"frontend": "", "backend": ""})
+    use_transformer = str(conf.get("use_transformer", True)).lower()
+    workers = cpu - 1
+
+    use_server = use_transformer and conf.get("USE_INFERENCE_SERVER", True)
 
     if "dev" in conf and conf["dev"]:
         print(
@@ -242,16 +284,27 @@ def fill_mila_template(template_str, conf):
                     "  {:10}: {}".format("env_name", env_name),
                     "  {:10}: {}".format("code_loc", code_loc),
                     "  {:10}: {}".format("weights", weights),
+                    "  {:10}: {}".format("frontend", ipc["frontend"]),
+                    "  {:10}: {}".format("backend", ipc["backend"]),
+                    "  {:10}: {}".format("use_transformer", use_transformer),
+                    "  {:10}: {}".format("use_server", use_server),
+                    "  {:10}: {}".format("workers", workers),
                 ]
             )
         )
 
-    partition = f"#SBATCH --partition={partition}"
+    partition = (
+        f"#SBATCH --partition={partition}"
+        if partition != "covid"
+        else "#SBATCH --reservation=covid\n#SBATCH --partition=long"
+    )
     cpu = f"#SBATCH --cpus-per-task={cpu}"
     mem = f"#SBATCH --mem={mem}GB"
     gres = f"#SBATCH --gres={gres}" if gres else ""
     time = f"#SBATCH --time={time}"
     slurm_log = f"#SBATCH -o {slurm_log}\n#SBATCH -e {slurm_log}"
+    frontend = '--frontend="{}"'.format(ipc["frontend"]) if ipc["frontend"] else ""
+    backend = '--backend="{}"'.format(ipc["backend"]) if ipc["backend"] else ""
     return template_str.format(
         partition=partition,
         cpu=cpu,
@@ -262,6 +315,84 @@ def fill_mila_template(template_str, conf):
         env_name=env_name,
         code_loc=code_loc,
         weights=weights,
+        frontend=frontend,
+        backend=backend,
+        use_server=use_server,
+        workers=workers,
+    )
+
+
+def fill_beluga_template(template_str, conf):
+    """
+    Formats the template_str with variables from the conf dict,
+    which is a sampled experiment
+
+    Args:
+        template_str (str): sbatch template
+        conf (dict): sbatch parameters
+
+    Returns:
+        str: formated template
+    """
+    user = os.environ.get("USER")
+    home = os.environ.get("HOME")
+
+    cpu = conf.get("cpus", 6)
+    mem = conf.get("mem", 16)
+    time = str(conf.get("time", "3:00:00"))
+    slurm_log = conf.get("slurm_log", f"/scratch/{user}/covi-slurm-%j.out")
+    if "%j.out" not in slurm_log:
+        slurm_log = str(Path(slurm_log).resolve() / "covi-slurm-%j.out")
+        if not Path(slurm_log).parent.exists():
+            Path(slurm_log).parent.mkdir(parents=True)
+    env_name = conf.get("env_name", "covid")
+    weights = conf.get("weights", f"/scratch/{user}/FRESH-SNOWFLAKE-224B")
+    code_loc = conf.get("code_loc", str(Path(home) / "simulator/src/covid19sim/"))
+    ipc = conf.get("ipc", {"frontend": "", "backend": ""})
+    use_transformer = conf.get("use_transformer", True)
+
+    use_server = str(use_transformer and conf.get("USE_INFERENCE_SERVER", True)).lower()
+    workers = cpu - 1
+
+    if "dev" in conf and conf["dev"]:
+        print(
+            "Using:\n"
+            + "\n".join(
+                [
+                    "  {:10}: {}".format("cpus-per-task", cpu),
+                    "  {:10}: {}".format("mem", mem),
+                    "  {:10}: {}".format("time", time),
+                    "  {:10}: {}".format("slurm_log", slurm_log),
+                    "  {:10}: {}".format("env_name", env_name),
+                    "  {:10}: {}".format("code_loc", code_loc),
+                    "  {:10}: {}".format("weights", weights),
+                    "  {:10}: {}".format("frontend", ipc["frontend"]),
+                    "  {:10}: {}".format("backend", ipc["backend"]),
+                    "  {:10}: {}".format("use_transformer", use_transformer),
+                    "  {:10}: {}".format("use_server", use_server),
+                    "  {:10}: {}".format("workers", workers),
+                ]
+            )
+        )
+
+    cpu = f"#SBATCH --cpus-per-task={cpu}"
+    mem = f"#SBATCH --mem={mem}GB"
+    time = f"#SBATCH --time={time}"
+    slurm_log = f"#SBATCH -o {slurm_log}\n#SBATCH -e {slurm_log}"
+    frontend = '--frontend="{}"'.format(ipc["frontend"]) if ipc["frontend"] else ""
+    backend = '--backend="{}"'.format(ipc["backend"]) if ipc["backend"] else ""
+    return template_str.format(
+        cpu=cpu,
+        mem=mem,
+        time=time,
+        slurm_log=slurm_log,
+        env_name=env_name,
+        code_loc=code_loc,
+        weights=weights,
+        frontend=frontend,
+        backend=backend,
+        use_server=use_server,
+        workers=workers,
     )
 
 
@@ -306,6 +437,7 @@ def main(conf: DictConfig) -> None:
     # These will be filtered out when passing arguments to run.py
     RANDOM_SEARCH_SPECIFIC_PARAMS = {
         "n_search",  # number of random iterations
+        "n_runs_per_search",  # number of random iterations
         "dev",  # dev-mode: print stuff, don't run them
         "exp_file",  # what experimental parametrization
         "partition",  # sbatch partition to use
@@ -319,7 +451,13 @@ def main(conf: DictConfig) -> None:
         "weights",  # where to find the transformer's weights. default is /network/tmp1/<user>/FRESH-SNOWFLAKE-224B
         "infra",  # using Mila or Intel cluster?
         "now_str",  # naming scheme
-        "parallel_search", #run with & at the end instead of ; to run in subshells
+        "parallel_search",  # run with & at the end instead of ; to run in subshells
+        "ipc",  # run with & at the end instead of ; to run in subshells
+        "start_index",  # ignore the first runs, to continue a cartesian or sequential exploration for instance
+        "use_transformer",  # defaults to True
+        "use_server",  # defaults to True
+        "use_tmpdir",  # use SLURM_TMPDIR and copy files to outdir after
+        "test_capacity",  # use SLURM_TMPDIR and copy files to outdir after
     }
 
     # move back to original directory because hydra moved
@@ -342,66 +480,115 @@ def main(conf: DictConfig) -> None:
     conf["now_str"] = now_str()
     infra = conf.get("infra", "mila")
     parallel_search = conf.get("parallel_search", False)
+    start_index = conf.get("start_index", 0)
+    use_transformer = conf.get("use_transformer", True)
     template_str = load_template(infra)
+    use_tmpdir = conf.get("use_tmpdir", False)
+    outdir = None
+    dev = "dev" in conf and conf["dev"]
 
     home = os.environ["HOME"]
+
+    if use_tmpdir:
+        outdir = str(conf["outdir"])
+        Path(outdir).resolve().mkdir(parents=True, exist_ok=True)
+        conf["outdir"] = "$SLURM_TMPDIR"
 
     # run n_search jobs
     printlines()
     intel_str = ""
+    run_idx = start_index
     for i in range(conf.get("n_search", 1)):
+        print("\nJOB", i)
+        # use a different ipc address for each run
+        if use_transformer:
+            ipcf, ipcb = ipc_addresses()
+            conf["ipc"] = {"frontend": ipcf, "backend": ipcb}
 
-        # sample parameters
-        opts = sample_search_conf(conf, i)
-        # fill-in template with `partition` `time` `code_loc` etc. from command-line overwrites
-        # get temporary file to write sbatch run file
-        hydra_args = get_hydra_args(opts, RANDOM_SEARCH_SPECIFIC_PARAMS)
+        # fill template
         if infra == "mila":
-            print("\nJOB", i)
             job_str = fill_mila_template(template_str, conf)
-            tmp = Path(tempfile.NamedTemporaryFile(suffix=".sh").name)
+        elif infra == "beluga":
+            job_str = fill_beluga_template(template_str, conf)
+        elif infra == "intel":
+            job_str = fill_intel_template(template_str, conf)
+        else:
+            raise ValueError("Unknown infra " + str(infra))
 
-            # create temporary sbatch file
+        # sample params
+        opts = sample_search_conf(conf, run_idx)
+
+        # specify server frontend
+        if use_transformer:
+            opts["INFERENCE_SERVER_ADDRESS"] = f'"{ipcf}"'
+
+        # convert params to string command-line args
+        hydra_args = get_hydra_args(opts, RANDOM_SEARCH_SPECIFIC_PARAMS)
+        if conf.get("test_capacity") is not None:
+            hydra_args += f" TEST_TYPES.lab.capacity={conf.get('test_capacity')}"
+
+        # do n_runs_per_search simulations per job
+        for k in range(conf.get("n_runs_per_search", 1)):
+
+            # echo commandlines run in job
+            if not dev:
+                job_str += f"\necho 'python run.py {hydra_args}'\n"
+
+            command_suffix = "&\nsleep 5;\n" if parallel_search else ";\n"
+            # intel doesn't have a log file so let's make one
+            if infra == "intel":
+                job_out = Path(home) / f"job_logs"
+                job_out.mkdir(exist_ok=True)
+                job_out = job_out / f"{now_str()}.out"
+                print("Job logs:", str(job_out))
+                command_suffix = f" &> {str(job_out)} {command_suffix}"
+
+            # append run command
+            job_str += "\n{}{}".format("python run.py" + hydra_args, command_suffix)
+            run_idx += 1
+            # sample next params
+            opts = sample_search_conf(conf, run_idx)
+            # specify server frontend
+            if use_transformer:
+                opts["INFERENCE_SERVER_ADDRESS"] = f'"{ipcf}"'
+
+            # convert params to string command-line args
+            hydra_args = get_hydra_args(opts, RANDOM_SEARCH_SPECIFIC_PARAMS)
+
+        # output in slurm_tmpdir and move zips to original outdir specified
+        if use_tmpdir and infra != "intel":
+            # data  needs to be zipped for it to be transferred
+            assert conf["zip_outdir"]
+            job_str += f"\ncp $SLURM_TMPDIR/*.zip {outdir}"
+
+        # create temporary sbatch file
+        tmp = Path(tempfile.NamedTemporaryFile(suffix=".sh").name)
+        # give somewhat meaningful name to t
+        tmp = tmp.parent / (Path(conf.get("outdir", "")).name + "_" + tmp.name)
+        if not dev:
             with tmp.open("w") as f:
                 f.write(job_str)
 
-            command = f"sbatch {str(tmp)} {hydra_args}"
+        # sbatch or bash execution
+        if infra in {"beluga", "mila"}:
+            command = f"sbatch {str(tmp)}"
+        elif infra == "intel":
+            command = f"bash {str(tmp)}"
 
-            # dev-mode: don't actually run the command
-            if "dev" in conf and conf["dev"]:
-                print("\n>>> ", command, end="\n\n")
-                print(str(tmp))
-                print("." * 50)
-                print(job_str)
-                print("." * 50)
-            else:
-                # not dev-mode: sbatch it!
-                process = subprocess.call(command.split(), cwd=home)
-
-            # prints
-            print()
-            printlines()
-
-        if infra == "intel":
-            if i == 0:
-                intel_str = fill_intel_template(template_str, opts)
-            command_suffix = "&\nsleep 5;\n" if parallel_search else ";\n"
-            intel_str += "\n{}{}".format("python run.py " + hydra_args, command_suffix)
-
-    if infra == "intel":
-        path = Path(home) / "covi_search" / f"covi_search{conf['now_str']}.sh"
-        assert not path.exists()
-        if "dev" in conf and conf["dev"]:
-            print(str(path))
+        # dev-mode: don't actually run the command
+        if dev:
+            print("\n>>> ", command, end="\n\n")
+            print(str(tmp))
             print("." * 50)
-            print(intel_str)
-            print("." * 50)
-
+            print(job_str)
         else:
-            command = f"sh {path.name}"
-            with path.open("w") as f:
-                f.write(intel_str)
-            process = subprocess.call(command.split(), cwd=str(path.parent))
+            # not dev-mode: run it!
+            _ = subprocess.call(command.split(), cwd=home)
+            time.sleep(0.5)
+
+        # prints
+        print()
+        printlines()
 
 
 if __name__ == "__main__":

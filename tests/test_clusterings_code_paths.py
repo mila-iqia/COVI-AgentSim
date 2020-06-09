@@ -10,6 +10,8 @@ from tests.utils import get_test_conf
 
 from covid19sim.base import Event
 from covid19sim.run import simulate
+from covid19sim.server_utils import InferenceClient
+from covid19sim.models.run import DummyMemManager
 
 TEST_CONF_NAME = "test_models.yaml"
 
@@ -17,17 +19,12 @@ TEST_CONF_NAME = "test_models.yaml"
 class ClusteringCodePaths(unittest.TestCase):
     def setUp(self):
         self.config = get_test_conf(TEST_CONF_NAME)
-
         self.test_seed = 0
         self.n_people = 30
-        self.start_time = datetime.datetime(2020, 2, 28, 0, 0)
+        self.location_start_time = datetime.datetime(2020, 2, 28, 0, 0)
         self.simulation_days = 10
-
         self.config['COLLECT_LOGS'] = True
         self.config['INTERVENTION_DAY'] = 5
-        self.config['TRANSFORMER_EXP_PATH'] = "https://drive.google.com/file/d/1Z7g3gKh2kWFSmK2Yr19MQq0blOWS5st0"
-        self.config['RISK_MODEL'] = 'transformer'
-
         self.cluster_algo_types = ('gaen', 'blind')
 
     def test_clustering_code_paths(self):
@@ -47,7 +44,7 @@ class ClusteringCodePaths(unittest.TestCase):
                     outfile = os.path.join(d, "data")
                     monitors, _ = simulate(
                         n_people=self.n_people,
-                        start_time=self.start_time,
+                        start_time=self.location_start_time,
                         simulation_days=self.simulation_days,
                         outfile=outfile,
                         out_chunk_size=0,
@@ -72,7 +69,7 @@ class ClusteringCodePaths(unittest.TestCase):
 
                 events_logs.append(data)
 
-        intervention_time = self.start_time + datetime.timedelta(days=self.config['INTERVENTION_DAY'])
+        intervention_time = self.location_start_time + datetime.timedelta(days=self.config['INTERVENTION_DAY'])
         before_intervention_events = []
         after_intervention_events = []
         for a_i, cluster_algo_type in enumerate(self.cluster_algo_types):

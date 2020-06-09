@@ -12,25 +12,29 @@
 # - `sequential` samples will loop through the values in `from`. `from` MUST be a list
 
 tracing_method: transformer
-run_type: collect-all
-n_people: 3000
+n_people: 1000
 simulation_days: 30
 INTERVENTION_DAY: 5
-init_percent_sick: 0.01
+init_percent_sick: 0.002
 DROPOUT_RATE: 0.02
+P_CAREFUL_PERSON: 0.3
+GLOBAL_MOBILITY_SCALING_FACTOR: 1
+tune: true
 
-
-APP_UPTAKE:
-  sample: cartesian # will be sampled in this order
-  from:
-    - 0.1
-    - 0.3
-    - 0.6
-    - 0.8
+APP_UPTAKE: # for sole reproducibility purposes
+  sample: cartesian # loop through list sequentially, in order
+  from:   # Ad. Rate
+    - 0.1 # 0.071203
+    - 0.3 # 0.213609
+    - 0.5 # 0.356015
+    - 0.7 # 0.49842099999999995
+    - 1   # 0.71203
 
 seed: # for sole reproducibility purposes
-  sample: cartesian # uniform int choice
+  sample: cartesian # loop through list sequentially, in order
   from:
-    - 3000
-    - 3001
-    - 3002
+    - 2000
+    - 2001
+    - 2002
+    - 2003
+    - 2004

@@ -1,17 +1,14 @@
 #! /bin/bash
 # /!\ THIS FILE WILL BE PYTHON-FORMATTED: DO NOT USE CURLY-BRACKETS IN TEXT
-{partition}        # Partition to use
+#SBATCH  --account=rrg-bengioy-ad
 {cpu}              # Nb. of cpus (max(unkillable)=4, max(main)=6)
 {mem}              # Require memory (16GB default should be enough)
 {time}             # The job will run for 4 hours
 {slurm_log}        # Write the logs in /network/tmp1/<user>/covi-slurm-%j.out
-{gres}             # May use GPU to get allocation
 
 module purge
-module load anaconda/3
-source $CONDA_ACTIVATE
-conda deactivate
-conda activate {env_name} # covid is default
+module load python/3.8.2
+source ~/{env_name}/bin/activate
 
 export PYTHONUNBUFFERED=1
 

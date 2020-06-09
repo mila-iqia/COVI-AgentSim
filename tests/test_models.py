@@ -147,7 +147,7 @@ class ModelsTest(unittest.TestCase):
 
             ModelsTest.make_human_as_message_proxy.set_start_time(start_time)
 
-            monitors, tracker = simulate(
+            city, monitors, tracker = simulate(
                 n_people=n_people,
                 start_time=start_time,
                 simulation_days=n_days,
@@ -155,6 +155,7 @@ class ModelsTest(unittest.TestCase):
                 outfile=os.path.join(d, "output"),
                 out_chunk_size=1,
                 seed=0,
+                return_city=True,
                 conf=conf,
             )
             sim_humans = tracker.city.humans
@@ -331,9 +332,11 @@ class ModelsTest(unittest.TestCase):
                                 self.assertIn(last_test_result, ["positive", "negative", None])
                                 days_since_test = (current_datetime - last_test_time).days
                                 if days_since_test >= last_test_delay and days_since_test < 14 and last_test_result is not None:
-                                    stats['humans'][h_i]['tests_results_cnt'] += last_test_result == "positive"
-                                    self.assertEqual(observed['test_results'][days_since_test],
-                                                     float(encode_test_result(last_test_result)))
+                                    if last_test_result == "positive":
+                                        stats['humans'][h_i]['tests_results_cnt'] += 1
+                                        # note: negative test results get ignored after a few days, check only for positive here
+                                        self.assertEqual(observed['test_results'][days_since_test],
+                                                         float(encode_test_result(last_test_result)))
 
                             # Test rolling properties
                             if prev_observed:
@@ -419,9 +422,10 @@ class ModelsTest(unittest.TestCase):
 
                                 # note: we can only fetch the clusters if the test is running without inference server
                                 cluster_mgr_map = DummyMemManager.get_cluster_mgr_map()
+                                target_cluster_mgrs = {k: c for k, c in cluster_mgr_map.items() if k.startswith(str(city.hash))}
                                 # the cluster managers are indexed by the city hash + the human's name (we just have the latter)
-                                self.assertEqual(len(cluster_mgr_map), len(sim_humans))
-                                cluster_mgr = next(iter([c for k, c in cluster_mgr_map.items() if k.endswith(s_human.name)]))
+                                self.assertLessEqual(len(target_cluster_mgrs), len(sim_humans))  # can't be 100% due to uptake
+                                cluster_mgr = next(iter([c for k, c in target_cluster_mgrs.items() if k.endswith(s_human.name)]))
                                 candidate_encounters, exposure_encounters = candidate_exposures(cluster_mgr)
                                 test_results = s_human.get_test_results_array(date_at_update)
 
@@ -522,7 +526,7 @@ class HumanAsMessageTest(unittest.TestCase):
                       workplace={'workplace': 'workplace'}, profession="profession", rho=0.3,
                       gamma=0.21, symptoms=[], test_results=None, conf=conf)
         human.contact_book.mailbox_keys_by_day[0] = [0, 1]  # add two dummy encounter keys
-        personal_mailbox = {1: "fake_message"}  # create a dummy personal mailbox with one update
+        personal_mailbox = {1: ["fake_message"]}  # create a dummy personal mailbox with one update
         dummy_conf = {"TRACING_N_DAYS_HISTORY": 14}  # create a dummy config (only needs 1 setting)
         message = make_human_as_message(human, personal_mailbox, dummy_conf)
 

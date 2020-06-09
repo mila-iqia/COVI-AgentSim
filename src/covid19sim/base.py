@@ -1,6 +1,7 @@
 """
 Contains base classes that define environment of the simulator.
 """
+import numpy as np
 import copy
 import datetime
 import itertools
@@ -12,17 +13,16 @@ from collections import defaultdict, Counter
 import simpy
 
 from covid19sim.utils import compute_distance, _get_random_area, relativefreq2absolutefreq, \
-    get_test_false_negative_rate
+    get_test_false_negative_rate, calculate_average_infectiousness, get_rec_level_transition_matrix
 from covid19sim.track import Tracker
 from covid19sim.interventions import *
-from covid19sim.models.run import batch_run_timeslot_heavy_jobs
 from covid19sim.frozen.message_utils import UIDType, UpdateMessage, combine_update_messages, \
     RealUserIDType
 
 if typing.TYPE_CHECKING:
     from covid19sim.simulator import Human
 
-PersonalMailboxType = typing.Dict[UIDType, UpdateMessage]
+PersonalMailboxType = typing.Dict[UIDType, typing.List[UpdateMessage]]
 SimulatorMailboxType = typing.Dict[RealUserIDType, PersonalMailboxType]
 
 
@@ -122,12 +122,21 @@ class City:
         self.total_area = (x_range[1] - x_range[0]) * (y_range[1] - y_range[0])
         self.n_people = n_people
         self.init_percent_sick = init_percent_sick
+        self.hash = int(time.time_ns())  # real-life time used as hash for inference server data hashing
 
         self.test_type_preference = list(zip(*sorted(conf.get("TEST_TYPES").items(), key=lambda x:x[1]['preference'])))[0]
         self.max_capacity_per_test_type = {
             test_type: max([int(conf['TEST_TYPES'][test_type]['capacity'] * self.n_people), 1])
             for test_type in self.test_type_preference
         }
+
+        if 'DAILY_TARGET_REC_LEVEL_DIST' in conf:
+            # QKFIX: There are 4 recommendation levels, value is hard-coded here
+            self.daily_target_rec_level_dists = (np.asarray(conf['DAILY_TARGET_REC_LEVEL_DIST'], dtype=np.float_)
+                                                   .reshape((-1, 4)))
+        else:
+            self.daily_target_rec_level_dists = None
+        self.daily_rec_level_mapping = None
 
         self.covid_testing_facility = TestFacility(self.test_type_preference, self.max_capacity_per_test_type, env, conf)
 
@@ -166,11 +175,17 @@ class City:
         # note that to keep the simulator efficient, users will directly pop the update messages that
         # they consume, so this is only necessary for edge cases (e.g. dead people can't update)
         max_encounter_age = self.conf.get('TRACING_N_DAYS_HISTORY')
-        self.global_mailbox = {
-            user_key: {gaen_key: message for gaen_key, message in personal_mailbox.items()
-                       if (current_timestamp - message.encounter_time).days <= max_encounter_age}
-            for user_key, personal_mailbox in self.global_mailbox.items()
-        }
+        new_global_mailbox = defaultdict(dict)
+        for user_key, personal_mailbox in self.global_mailbox.items():
+            new_personal_mailbox = {}
+            for mailbox_key, messages in personal_mailbox.items():
+                for message in messages:
+                    if (current_timestamp - message.encounter_time).days <= max_encounter_age:
+                        if mailbox_key not in new_personal_mailbox:
+                            new_personal_mailbox[mailbox_key] = []
+                        new_personal_mailbox[mailbox_key].append(message)
+            new_global_mailbox[user_key] = new_personal_mailbox
+        self.global_mailbox = new_global_mailbox
 
     def register_new_messages(
             self,
@@ -239,18 +254,11 @@ class City:
             self.sent_messages_by_day[current_day_idx] += 1
             source_human.contact_book.latest_update_time = \
                 max(source_human.contact_book.latest_update_time, current_timestamp)
-            mailbox_key = update_message.uid  # GAEN key = message uid
+            mailbox_key = update_message.uid  # mailbox key = message uid
             personal_mailbox = self.global_mailbox[destination_human.name]
-            assert mailbox_key not in personal_mailbox or \
-                   (update_message._sender_uid == personal_mailbox[mailbox_key]._sender_uid and
-                    update_message._receiver_uid == personal_mailbox[mailbox_key]._receiver_uid), \
-                "unexpected collision in personal mailbox (go buy a lottery ticket?)"
-            if mailbox_key in personal_mailbox:
-                # if there is still an old update message in the global mailbox, just crush it
-                personal_mailbox[mailbox_key] = \
-                    combine_update_messages(personal_mailbox[mailbox_key], update_message)
-            else:
-                personal_mailbox[mailbox_key] = update_message
+            if mailbox_key not in personal_mailbox:
+                personal_mailbox[mailbox_key] = []
+            personal_mailbox[mailbox_key].append(update_message)
 
     def _check_should_send_message_gaen(
             self,
@@ -405,13 +413,6 @@ class City:
             rng=self.rng
         )
 
-        # app users
-        all_has_app = self.conf.get('APP_UPTAKE') < 0
-        n_apps_per_age = {
-            k: math.ceil(age_histogram[k]*v*self.conf.get('APP_UPTAKE'))
-            for k, v in self.conf.get("SMARTPHONE_OWNER_FRACTION_BY_AGE").items()
-        }
-
         for age_bin, specs in self.conf.get("HUMAN_DISTRIBUTION").items():
             n = age_histogram[age_bin]
             ages = self.rng.randint(*age_bin, size=n)
@@ -423,25 +424,9 @@ class City:
             p = [specs['profession_profile'][x] for x in professions]
             profession = self.rng.choice(professions, p=p, size=n)
 
-            # select who should have app based on self.conf's SMARTPHONE_OWNER_FRACTION_BY_AGE
-            chosen_app_user_bin = []
-            for my_age in ages:
-                for x, frac in self.conf.get("SMARTPHONE_OWNER_FRACTION_BY_AGE").items():
-                    if x[0] <= my_age < x[1]:
-                        chosen_app_user_bin.append(x)
-                        break
-
             for i in range(n):
                 count_humans += 1
                 age = ages[i]
-
-                # should the person has an app?
-                current_app_bin = chosen_app_user_bin[i]
-                if n_apps_per_age[current_app_bin] > 0:
-                    has_app = True
-                    n_apps_per_age[current_app_bin] -= 1
-                else:
-                    has_app = False
 
                 # select if residence is one of senior residency
                 res = None
@@ -468,7 +453,7 @@ class City:
                         env=self.env,
                         city=self,
                         rng=self.rng,
-                        has_app=has_app or all_has_app,
+                        has_app=False,      # has_app gets set later when we intervene
                         name=count_humans,
                         age=age,
                         household=res,
@@ -546,6 +531,46 @@ class City:
         # we don't need a cached property, this will do fine
         self.hd = {human.name: human for human in self.humans}
 
+    def have_some_humans_download_the_app(self):
+        """
+        This method is called on intervention day if the intervention type is
+        `Tracing`. It simulates the process of downloading the app on for smartphone
+        users according to `APP_UPTAKE` and `SMARTPHONE_OWNER_FRACTION_BY_AGE`.
+        """
+        age_histogram = relativefreq2absolutefreq(
+            bins_fractions={age_bin: specs['p']
+                            for age_bin, specs
+                            in self.conf.get('HUMAN_DISTRIBUTION').items()},
+            n_elements=self.n_people,
+            rng=self.rng
+        )
+        # app users
+        all_has_app = self.conf.get('APP_UPTAKE') < 0
+        # The dict below keeps track of an app quota for each age group
+        n_apps_per_age = {
+            k: math.ceil(age_histogram[k] * v * self.conf.get('APP_UPTAKE'))
+            for k, v in self.conf.get("SMARTPHONE_OWNER_FRACTION_BY_AGE").items()
+        }
+        for human in self.humans:
+            if all_has_app:
+                # i get an app, you get an app, everyone gets an app
+                human.has_app = True
+                continue
+
+            # Find what age bin the human is in
+            age_bin = None
+            for x in n_apps_per_age:
+                if x[0] <= human.age < x[1]:
+                    age_bin = x
+                    break
+            assert age_bin is not None
+
+            if n_apps_per_age[age_bin] > 0:
+                # This human gets an app If there's quota left in his age group
+                human.has_app = True
+                n_apps_per_age[age_bin] -= 1
+                continue
+
     def add_to_test_queue(self, human):
         self.covid_testing_facility.add_to_test_queue(human)
 
@@ -565,6 +590,38 @@ class City:
             list: all of everyone's events
         """
         return list(itertools.chain(*[h.events for h in self.humans]))
+
+    def compute_daily_rec_level_distribution(self):
+        # QKFIX: There are 4 recommendation levels, the value is hard-coded here
+        counts = np.zeros((4,), dtype=np.float_)
+        for human in self.humans:
+            if human.has_app:
+                counts[human.rec_level] += 1
+
+        if np.sum(counts) > 0:
+            counts /= np.sum(counts)
+
+        return counts
+
+    def compute_daily_rec_level_mapping(self, current_day):
+        # If there is no target recommendation level distribution
+        if self.daily_target_rec_level_dists is None:
+            return None
+
+        if self.conf.get('INTERVENTION_DAY', -1) < 0:
+            return None
+        else:
+            current_day -= self.conf.get('INTERVENTION_DAY')
+            if current_day < 0:
+                return None
+
+        daily_rec_level_dist = self.compute_daily_rec_level_distribution()
+
+        index = min(current_day, len(self.daily_target_rec_level_dists) - 1)
+        daily_target_rec_level_dist = self.daily_target_rec_level_dists[index]
+
+        return get_rec_level_transition_matrix(daily_rec_level_dist,
+                                               daily_target_rec_level_dist)
 
     def events_slice(self, begin, end):
         """
@@ -619,12 +676,13 @@ class City:
         tmp_M = self.conf.get("GLOBAL_MOBILITY_SCALING_FACTOR")
         self.conf["GLOBAL_MOBILITY_SCALING_FACTOR"] = 1
         last_day_idx = 0
-        city_hash = int(time.time_ns())  # real-life time used as hash for inference server data hashing
         while True:
             current_day = (self.env.timestamp - self.start_time).days
             # Notify humans to follow interventions on intervention day
             if current_day == self.conf.get('INTERVENTION_DAY') and not humans_notified:
                 self.intervention = get_intervention(conf=self.conf)
+                if isinstance(self.intervention, Tracing):
+                    self.have_some_humans_download_the_app()
                 _ = [h.notify(self.intervention) for h in self.humans]
                 print(self.intervention)
                 self.conf["GLOBAL_MOBILITY_SCALING_FACTOR"] = tmp_M
@@ -633,6 +691,8 @@ class City:
                 humans_notified = True
 
             # run city testing routine, providing test results for those who need them
+            # TODO: running this every hour of the day might not be correct.
+            # TODO: testing budget is used up at hour 0 if its small
             self.covid_testing_facility.clear_test_queue()
 
             all_new_update_messages = []  # accumulate everything here so we can filter if needed
@@ -640,27 +700,26 @@ class City:
 
             # iterate over humans, and if it's their timeslot, then update their state
             for human in self.humans:
-                if self.env.timestamp.hour not in human.time_slots:
+                human.check_covid_testing_needs()  # humans can decide to get tested whenever
+                if current_day not in human.infectiousness_history_map:
+                    # contrarily to risk, infectiousness only changes once a day (human behavior has no impact)
+                    human.infectiousness_history_map[current_day] = calculate_average_infectiousness(human)
+
+                if not human.has_app or self.env.timestamp.hour not in human.time_slots:
                     continue
                 human.initialize_daily_risk(current_day)
                 backup_human_init_risks[human] = copy.deepcopy(human.risk_history_map)
-                # note: the global mailbox is modified inside the lightweight loop, so any
-                # parallelization in this function has to be done very carefully in order to
-                # keep the same update-order-behavior for humans on the same timeslot
-                new_update_messages = human.run_timeslot_lightweight_jobs(
+                human.run_timeslot_lightweight_jobs(
                     init_timestamp=self.start_time,
                     current_timestamp=self.env.timestamp,
                     personal_mailbox=self.global_mailbox[human.name],
                 )
-                # previously, risk updates were sent right away, meaning some lucky humans could
-                # get instant updates; the current implementation assues a one-timeslot-delay
-                # minimum for everyone, even when updating on the same timeslot as the contact
-                all_new_update_messages.extend(new_update_messages)
 
-            if isinstance(self.intervention, Tracing):
+            if isinstance(self.intervention, Tracing) and self.intervention.app:
                 # time to run the cluster+risk prediction via transformer (if we need it)
                 if self.intervention.risk_model == "transformer" or self.conf.get("COLLECT_TRAINING_DATA"):
-                    self.humans, new_update_messages = batch_run_timeslot_heavy_jobs(
+                    from covid19sim.models.run import batch_run_timeslot_heavy_jobs
+                    self.humans = batch_run_timeslot_heavy_jobs(
                         humans=self.humans,
                         init_timestamp=self.start_time,
                         current_timestamp=self.env.timestamp,
@@ -669,23 +728,62 @@ class City:
                         conf=self.conf,
                         data_path=outfile,
                         # let's hope there are no collisions on the server with this hash...
-                        city_hash=city_hash,
+                        city_hash=self.hash,
                     )
-                    all_new_update_messages.extend(new_update_messages)
-                self.tracker.track_risk_attributes(self.hd)
 
-            self.register_new_messages(
-                current_day_idx=current_day,
-                current_timestamp=self.env.timestamp,
-                update_messages=all_new_update_messages,
-                prev_human_risk_history_maps=backup_human_init_risks,
-                new_human_risk_history_maps={h: h.risk_history_map for h in self.humans},
-            )
+                # finally, iterate over humans again, and if it's their timeslot, then send update messages
+                self.tracker.track_risk_attributes(self.hd)
+                update_messages = []
+                for human in self.humans:
+                    if not human.has_app or self.env.timestamp.hour not in human.time_slots:
+                        continue
+                    # if we had any encounters for which we have not sent an initial message, do it now
+                    update_messages.extend(human.contact_book.generate_initial_updates(
+                        current_day_idx=current_day,
+                        current_timestamp=self.env.timestamp,
+                        risk_history_map=human.risk_history_map,
+                        proba_to_risk_level_map=human.proba_to_risk_level_map,
+                        tracing_method=human.tracing_method,
+                    ))
+                    # then, generate risk level update messages for all other encounters (if needed)
+                    update_messages.extend(human.contact_book.generate_updates(
+                        current_day_idx=current_day,
+                        current_timestamp=self.env.timestamp,
+                        prev_risk_history_map=human.prev_risk_history_map,
+                        curr_risk_history_map=human.risk_history_map,
+                        proba_to_risk_level_map=human.proba_to_risk_level_map,
+                        update_reason="unknown",  # FIXME got schwacked in hotfix, only used for debugging
+                        tracing_method=human.tracing_method,
+                    ))
+                    human.get_recommendations_level()
+                    human.tracing_method.modify_behavior(human)
+                    Event.log_risk_update(
+                        self.conf['COLLECT_LOGS'],
+                        human=human,
+                        tracing_description=str(human.tracing_method),
+                        prev_risk_history_map=human.prev_risk_history_map,
+                        risk_history_map=human.risk_history_map,
+                        current_day_idx=current_day,
+                        time=self.env.timestamp,
+                    )
+                    for day_idx, risk_val in human.risk_history_map.items():
+                        human.prev_risk_history_map[day_idx] = risk_val
+
+                self.register_new_messages(
+                    current_day_idx=current_day,
+                    current_timestamp=self.env.timestamp,
+                    update_messages=update_messages,
+                    prev_human_risk_history_maps=backup_human_init_risks,
+                    new_human_risk_history_maps={h: h.risk_history_map for h in self.humans},
+                )
 
             yield self.env.timeout(int(duration))
 
             if current_day != last_day_idx:
                 last_day_idx = current_day
+                # Compute the transition matrix of recommendation levels to
+                # target distribution of recommendation levels
+                self.daily_rec_level_mapping = self.compute_daily_rec_level_mapping(current_day)
                 self.cleanup_global_mailbox(self.env.timestamp)
                 # TODO: this is an assumption which will break in reality, instead of updating once per day everyone at the same time, it should be throughout the day
                 for human in self.humans:
@@ -726,6 +824,15 @@ class TestFacility(object):
             self.last_date_to_check_tests = self.env.timestamp.date()
             for k in self.test_count_today.keys():
                 self.test_count_today[k] = 0
+
+            # clear queue
+            # TODO : check more scenarios about when the person can be removed from a queue
+            to_remove = []
+            for human in self.test_queue:
+                if not any(human.symptoms) and not human.test_recommended:
+                    to_remove.append(human)
+
+            _ = [self.test_queue.remove(human) for human in to_remove]
 
     def get_available_test(self):
         """
@@ -784,6 +891,10 @@ class TestFacility(object):
                 # no more tests available
                 break
 
+        logging.debug(f"Cleared the test queue for {len(test_triage)} humans. "
+                      f"Out of those, {len(test_triage) - len(self.test_queue)} "
+                      f"were tested")
+
     def score_test_need(self, human):
         """
         Score `Human`s according to some criterion. Highest score gets the test first.
@@ -808,10 +919,7 @@ class TestFacility(object):
             score += 1
 
         if human.test_recommended:
-            score += 1
-
-        if human.test_result == "negative":
-            score += 0.2  # small value
+            score += 0.3  # @@@@@@ FIXME THIS IS ARBITRARY
 
         return score
 
@@ -936,7 +1044,7 @@ class Location(simpy.Resource):
             lag = (self.env.timestamp - self.contamination_timestamp)
             lag /= datetime.timedelta(days=1)
             p_infection = 1 - lag / self.max_day_contamination # linear decay; &envrionmental_contamination
-            return self.social_contact_factor * p_infection
+            return p_infection
         return 0.0
 
     def __hash__(self):
@@ -1099,6 +1207,8 @@ class Event:
     """
     test = 'test'
     encounter = 'encounter'
+    encounter_message = 'encounter_message'
+    risk_update = 'risk_update'
     contamination = 'contamination'
     recovered = 'recovered'
     static_info = 'static_info'
@@ -1113,7 +1223,109 @@ class Event:
         return [Event.test, Event.encounter, Event.contamination, Event.static_info, Event.visit, Event.daily]
 
     @staticmethod
-    def log_encounter(COLLECT_LOGS, human1, human2, location, duration, distance, infectee, time):
+    def log_encounter(COLLECT_LOGS, human1, human2, location, duration, distance, infectee, p_infection, time):
+        """
+        Logs the encounter between `human1` and `human2` at `location` for `duration`
+        while staying at `distance` from each other. If infectee is not None, it is
+        either human1.name or human2.name.
+
+        Each of the two humans gets its `events` attribute appended whit a dictionnary
+        describing the encounter:
+
+        human.events.append({
+                'human_id':human.name,
+                'event_type':Event.encounter,
+                'time':time,
+                'payload':{
+                    'observed': obs_payload,  # None if one of the humans does not have
+                                              # the app. Otherwise contains the observed
+                                              # data: lat, lon, location_type
+                    'unobserved':unobs_payload  # unobserved data, see loc_unobs_keys and
+                                                # h_unobs_keys
+                }
+        })
+
+
+        Args:
+            COLLECT_LOGS (bool): Log the event in a file if True
+            human1 (covid19sim.simulator.Human): One of the encounter's 2 humans
+            human2 (covid19sim.simulator.Human): One of the encounter's 2 humans
+            location (covid19sim.base.Location): Where the encounter happened
+            duration (int): duration of encounter
+            distance (float): distance between people (TODO: meters? cm?)
+            infectee (str | None): name of the human which is infected, if any.
+                None otherwise
+            p_infection (float): probability for the infectee of getting infected
+            time (datetime.datetime): timestamp of encounter
+        """
+        if COLLECT_LOGS:
+            h_obs_keys   = ['obs_hospitalized', 'obs_in_icu',
+                            'obs_lat', 'obs_lon']
+
+            h_unobs_keys = ['carefulness', 'viral_load', 'infectiousness',
+                            'symptoms', 'is_exposed', 'is_infectious',
+                            'infection_timestamp', 'is_really_sick',
+                            'is_extremely_sick', 'sex',  'wearing_mask', 'mask_efficacy',
+                            'risk', 'risk_level', 'rec_level']
+
+            loc_obs_keys = ['location_type', 'lat', 'lon']
+            loc_unobs_keys = ['contamination_probability', 'social_contact_factor']
+
+            obs, unobs = [], []
+
+            same_household = (human1.household.name == human2.household.name) & (location.name == human1.household.name)
+            for human in [human1, human2]:
+                o = {key:getattr(human, key) for key in h_obs_keys}
+                obs.append(o)
+                u = {key:getattr(human, key) for key in h_unobs_keys}
+                u['human_id'] = human.name
+                u['location_is_residence'] = human.household == location
+                u['got_exposed'] = infectee == human.name if infectee else False
+                u['exposed_other'] = infectee != human.name if infectee else False
+                u['same_household'] = same_household
+                u['infectiousness_start_time'] = None if not u['got_exposed'] else human.infection_timestamp + datetime.timedelta(days=human.infectiousness_onset_days)
+                unobs.append(u)
+
+            loc_obs = {key:getattr(location, key) for key in loc_obs_keys}
+            loc_unobs = {key:getattr(location, key) for key in loc_unobs_keys}
+            loc_unobs['location_p_infection'] = location.contamination_probability / location.social_contact_factor
+            other_obs = {'duration':duration, 'distance':distance}
+            other_unobs = {'p_infection':p_infection}
+            both_have_app = human1.has_app and human2.has_app
+            for i, human in [(0, human1), (1, human2)]:
+                if both_have_app:
+                    obs_payload = {**loc_obs, **other_obs, 'human1':obs[i], 'human2':obs[1-i]}
+                    unobs_payload = {**loc_unobs, **other_unobs, 'human1':unobs[i], 'human2':unobs[1-i]}
+                else:
+                    obs_payload = {}
+                    unobs_payload = { **loc_obs, **loc_unobs, **other_obs, **other_unobs, 'human1':{**obs[i], **unobs[i]},
+                                        'human2': {**obs[1-i], **unobs[1-i]} }
+
+            human.events.append({
+                'human_id':human.name,
+                'event_type':Event.encounter,
+                'time':time,
+                'payload':{'observed':obs_payload, 'unobserved':unobs_payload}
+            })
+
+        logging.info(f"{time} - {human1.name} and {human2.name} {Event.encounter} event")
+        logging.debug("{time} - {human1.name}{h1_infectee} "
+                      "encountered {human2.name}{h2_infectee} "
+                      "for {duration:.2f}min at ({location.lat}, {location.lon}) "
+                      "and stayed at {distance:.2f}cm. The probability of getting "
+                      "infected was {p_infection:.3f}"
+                      .format(time=time,
+                              human1=human1,
+                              h1_infectee=' (infectee)' if infectee == human1.name else '',
+                              human2=human2,
+                              h2_infectee=' (infectee)' if infectee == human2.name else '',
+                              duration=duration,
+                              location=location,
+                              distance=distance,
+                              p_infection=p_infection if p_infection else 0.0
+                      ))
+
+    def log_encounter_messages(COLLECT_LOGS, human1, human2, location, duration, distance, time):
         """
         Logs the encounter between `human1` and `human2` at `location` for `duration`
         while staying at `distance` from each other. If infectee is not None, it is
@@ -1169,10 +1381,7 @@ class Event:
                 u = {key:getattr(human, key) for key in h_unobs_keys}
                 u['human_id'] = human.name
                 u['location_is_residence'] = human.household == location
-                u['got_exposed'] = infectee == human.name if infectee else False
-                u['exposed_other'] = infectee != human.name if infectee else False
                 u['same_household'] = same_household
-                u['infectiousness_start_time'] = None if not u['got_exposed'] else human.infection_timestamp + datetime.timedelta(days=human.infectiousness_onset_days)
                 unobs.append(u)
 
             loc_obs = {key:getattr(location, key) for key in loc_obs_keys}
@@ -1191,25 +1400,44 @@ class Event:
 
             human.events.append({
                 'human_id':human.name,
-                'event_type':Event.encounter,
+                'event_type':Event.encounter_message,
                 'time':time,
                 'payload':{'observed':obs_payload, 'unobserved':unobs_payload}
             })
 
-        logging.info(f"{time} - {human1.name} and {human2.name} {Event.encounter} event")
-        logging.debug("{time} - {human1.name}{h1_infectee} "
-                      "encountered {human2.name}{h1_infectee} "
-                      "for {duration:.2f}min at ({location.lat}, {location.lon}) "
+        logging.info(f"{time} - {human1.name} and {human2.name} {Event.encounter_message} event")
+        logging.debug("{time} - {human1.name} and {human2.name} exchanged encounter "
+                      "messages for {duration:.2f}min at ({location.lat}, {location.lon}) "
                       "and stayed at {distance:.2f}cm"
                       .format(time=time,
                               human1=human1,
-                              h1_infectee=' (infectee)' if infectee == human1.name else '',
                               human2=human2,
-                              h2_infectee=' (infectee)' if infectee == human2.name else '',
                               duration=duration,
                               location=location,
-                              distance=distance
-                      ))
+                              distance=distance))
+
+    def log_risk_update(COLLECT_LOGS, human, tracing_description,
+                        prev_risk_history_map, risk_history_map, current_day_idx,
+                        time):
+        if COLLECT_LOGS:
+            human.events.append({
+                'human_id':human.name,
+                'event_type':Event.risk_update,
+                'time':time,
+                'payload':{
+                    'observed': {
+                        'tracing_description': tracing_description,
+                        'prev_risk_history_map': prev_risk_history_map,
+                        'risk_history_map': risk_history_map,
+                    }
+                }
+            })
+
+        logging.info(f"{time} - {human.name} {Event.risk_update} event")
+        logging.debug(f"{time} - {human.name} updated his risk from "
+                      f"{prev_risk_history_map[current_day_idx]} to "
+                      f"{risk_history_map[current_day_idx]} following "
+                      f"{tracing_description} rules")
 
     @staticmethod
     def log_test(COLLECT_LOGS, human, time):
@@ -1282,7 +1510,7 @@ class Event:
         logging.info(f"{time} - {human.name} {Event.daily} event")
 
     @staticmethod
-    def log_exposed(COLLECT_LOGS, human, source, time):
+    def log_exposed(COLLECT_LOGS, human, source, p_infection, time):
         """
         [summary]
 
@@ -1290,6 +1518,7 @@ class Event:
             COLLECT_LOGS ([type]): [description]
             human ([type]): [description]
             source ([type]): [description]
+            p_infection (float): probability for the infectee of getting infected
             time ([type]): [description]
         """
         if COLLECT_LOGS:
@@ -1306,13 +1535,19 @@ class Event:
                           'source':source.name,
                           'source_is_location': 'human' not in source.name,
                           'source_is_human': 'human' in source.name,
-                          'infectiousness_start_time': human.infection_timestamp + datetime.timedelta(days=human.infectiousness_onset_days)
+                          'infectiousness_start_time': human.infection_timestamp + datetime.timedelta(days=human.infectiousness_onset_days),
+                          'p_infection': p_infection
                         }
                     }
                 }
             )
         logging.info(f"{time} - {human.name} {Event.contamination} event")
-        logging.debug(f"{time} - {human.name} was contaminated by {source.name}")
+        logging.debug("{time} - {human.name} was contaminated by {source.name}. "
+                      "The probability of getting infected was {p_infection:.3f}"
+                      .format(time=time,
+                              human=human,
+                              source=source,
+                              p_infection=p_infection))
 
     @staticmethod
     def log_recovery(COLLECT_LOGS, human, time, death):
@@ -1415,6 +1650,7 @@ class EmptyCity(City):
             for test_type in self.test_type_preference
         }
 
+        self.daily_target_rec_level_dists = None
         self.covid_testing_facility = TestFacility(self.test_type_preference, self.max_capacity_per_test_type, env, conf)
 
         # Get the test type with the lowest preference?

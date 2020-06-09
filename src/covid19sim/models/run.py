@@ -48,10 +48,12 @@ def make_human_as_message(
     rolling_all_reported_symptoms = symptoms_to_np(human.rolling_all_reported_symptoms, conf)
 
     # TODO: we could index the global mailbox by day, it might be faster that way
-    target_gaen_keys = [key for keys in human.contact_book.mailbox_keys_by_day.values() for key in keys]
-    update_messages = [
-        personal_mailbox.pop(key) for key in target_gaen_keys if key in personal_mailbox
-    ]
+    target_mailbox_keys = [key for keys in human.contact_book.mailbox_keys_by_day.values() for key in keys]
+    update_messages = []
+    for key in target_mailbox_keys:
+        if key in personal_mailbox:
+            assert isinstance(personal_mailbox[key], list)
+            update_messages.extend(personal_mailbox.pop(key))
 
     return HumanAsMessage(
         name=human.name,
@@ -133,7 +135,7 @@ def batch_run_timeslot_heavy_jobs(
         conf: typing.Dict,
         data_path: typing.Optional[typing.AnyStr] = None,
         city_hash: int = 0,
-) -> typing.Tuple[typing.Iterable["Human"], typing.List[UpdateMessage]]:
+) -> typing.Iterable["Human"]:
     """
     Runs the 'heavy' processes that must occur for all users in parallel.
 
@@ -162,7 +164,7 @@ def batch_run_timeslot_heavy_jobs(
     all_params = []
 
     for human in humans:
-        if time_slot not in human.time_slots:
+        if not human.has_app or time_slot not in human.time_slots:
             continue
 
         log_path = f"{os.path.dirname(data_path)}/daily_outputs/{current_day_idx}/{human.name[6:]}/" \
@@ -210,16 +212,12 @@ def batch_run_timeslot_heavy_jobs(
         engine = DummyMemManager.get_engine(conf)
         results = proc_human_batch(all_params, engine, cluster_mgr_map)
 
-    new_update_messages = []
     for name, risk_history in results:
         human = hd[name]
         if conf.get('RISK_MODEL') == "transformer":
             if risk_history is not None:
-                new_update_messages.extend(
-                    human.apply_transformer_risk_updates(
-                        current_day_idx=current_day_idx,
-                        current_timestamp=current_timestamp,
-                        risk_history=risk_history,
-                    )
+                human.apply_transformer_risk_updates(
+                    current_day_idx=current_day_idx,
+                    risk_history=risk_history,
                 )
-    return humans, new_update_messages
+    return humans
