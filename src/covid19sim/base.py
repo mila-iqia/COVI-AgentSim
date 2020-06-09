@@ -1310,14 +1310,26 @@ class Event:
 
         logging.info(f"{time} - {human1.name} and {human2.name} {Event.encounter} event")
         logging.debug("{time} - {human1.name}{h1_infectee} "
+                      "(viral load:{h1_viralload:.3f}, risk:{h1_risk:.3f}, "
+                      "risk lvl:{h1_risk_lvl}, rec lvl:{h1_rec_lvl}) "
                       "encountered {human2.name}{h2_infectee} "
+                      "(viral load:{h2_viralload:.3f}, risk:{h2_risk:.3f}, "
+                      "risk lvl:{h2_risk_lvl}, rec lvl:{h2_rec_lvl}) "
                       "for {duration:.2f}min at ({location.lat}, {location.lon}) "
                       "and stayed at {distance:.2f}cm. The probability of getting "
-                      "infected was {p_infection:.3f}"
+                      "infected was {p_infection:.6f}"
                       .format(time=time,
                               human1=human1,
+                              h1_viralload=human1.viral_load_for_day(time),
+                              h1_risk=human1.risk,
+                              h1_risk_lvl=human1.risk_level,
+                              h1_rec_lvl=human1.rec_level,
                               h1_infectee=' (infectee)' if infectee == human1.name else '',
                               human2=human2,
+                              h2_viralload=human2.viral_load_for_day(time),
+                              h2_risk=human2.risk,
+                              h2_risk_lvl=human2.risk_level,
+                              h2_rec_lvl=human2.rec_level,
                               h2_infectee=' (infectee)' if infectee == human2.name else '',
                               duration=duration,
                               location=location,
@@ -1543,7 +1555,7 @@ class Event:
             )
         logging.info(f"{time} - {human.name} {Event.contamination} event")
         logging.debug("{time} - {human.name} was contaminated by {source.name}. "
-                      "The probability of getting infected was {p_infection:.3f}"
+                      "The probability of getting infected was {p_infection:.6f}"
                       .format(time=time,
                               human=human,
                               source=source,

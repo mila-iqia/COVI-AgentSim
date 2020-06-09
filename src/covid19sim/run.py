@@ -195,7 +195,7 @@ def simulate(
     conf["seed"] = seed
     conf["other_monitors"] = other_monitors
 
-    logging.basicConfig(level=getattr(logging, conf["LOGGING_LEVEL"].upper()))
+    logging.root.setLevel(getattr(logging, conf["LOGGING_LEVEL"].upper()))
 
     rng = np.random.RandomState(seed)
     env = Env(start_time)
