@@ -1,0 +1,10 @@
+RISK_MODEL: "naive" # "naive"  "manual", "digital", "transformer"
+SHOULD_MODIFY_BEHAVIOR: True
+
+## INTERVENTIONS
+INTERVENTION: "Tracing"
+
+# TRACING RISK MODEL PARAMETERS  (non-ML)
+TRACE_SYMPTOMS: True
+TRACE_RISK_UPDATE: True
+TRACING_ORDER: 1

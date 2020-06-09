@@ -1,7 +1,6 @@
 import numpy as np
 
 from covid19sim.frozen.clustering.base import ClusterManagerBase
-from covid19sim.frozen.utils import decode_message, convert_message_to_new_format
 
 # NOTE: THIS MAP SHOULD ALWAYS MATCH THE NAME/IDS PROVIDED IN utils.py
 PREEXISTING_CONDITIONS_META = {
@@ -55,10 +54,14 @@ for k, v in SYMPTOMS_META.items():
 
 def exposure_array(human_infection_timestamp, date, conf):
     # identical to human.exposure_array
+    # TODO FIXME: THIS IS NOT AN "EXPOSURE DAY", THIS IS A TIME SINCE EXPOSURE. TERRIBLE
+    #   VARIABLE NAMES NEED TO BE UPDATED.
     exposed = False
     exposure_day = None
     if human_infection_timestamp:
         exposure_day = (date - human_infection_timestamp).days
+        # TODO FIXME: WHY ARE WE THRESHOLDING WITH N_DAYS_HISTORY? WE IF WANT TO DETERMINE
+        #   WHETHER THE USER IS STILL INFECTIOUS OR HAS RECOVERED, WE SHOULD USE 'RECOVERY_DAYS'
         if exposure_day >= 0 and exposure_day < conf.get("TRACING_N_DAYS_HISTORY"):
             exposed = True
         else:
@@ -77,16 +80,6 @@ def recovered_array(human_recovered_timestamp, date, conf):
     return is_recovered, recovery_day
 
 
-def get_test_result_array(test_results, date, conf):
-    # identical to human.get_test_result_array
-    results = np.zeros(conf.get("TRACING_N_DAYS_HISTORY"))
-    for test_result, test_time in test_results:
-        result_day = (date - test_time).days
-        if result_day >= 0 and result_day < conf.get("TRACING_N_DAYS_HISTORY"):
-            results[result_day] = test_result
-    return results
-
-
 # TODO: negative should probably return 0 and None return -1 to be consistent with encoded age and sex
 def encode_test_result(test_result):
     if test_result is None:
@@ -97,41 +90,14 @@ def encode_test_result(test_result):
         return -1
 
 
-def messages_to_np(human):
-    if isinstance(human.clusters, ClusterManagerBase):
-        return human.clusters.get_embeddings_array()
-    else:
-        ms_enc = []
-        for day, clusters in human.clusters.clusters_by_day.items():
-            for cluster_id, messages in clusters.items():
-                # TODO: take an average over the risks for that day
-                if not any(messages):
-                    continue
-                ms_enc.append([cluster_id, decode_message(messages[0]).risk, len(messages), day])
-        return np.array(ms_enc)
+def messages_to_np(cluster_mgr):
+    return cluster_mgr.get_embeddings_array()
 
 
-def candidate_exposures(human, date):
-    candidate_encounters = messages_to_np(human)
-    if isinstance(human.clusters, ClusterManagerBase):
-        exposed_encounters = human.clusters._get_expositions_array()
-    else:
-        exposed_encounters = np.zeros(len(candidate_encounters))
-        if human.exposure_message:
-            idx = 0
-            for day, clusters in human.clusters.clusters_by_day.items():
-                for cluster_id, messages in clusters.items():
-                    for message in messages:
-                        if message == human.exposure_message:
-                            exposed_encounters[idx] = 1.
-                            break
-                    if sum(exposed_encounters) == 1:
-                        break
-                    if any(messages):
-                        idx += 1
-                if sum(exposed_encounters) == 1:
-                    break
-
+def candidate_exposures(cluster_mgr):
+    candidate_encounters = messages_to_np(cluster_mgr)
+    assert isinstance(cluster_mgr, ClusterManagerBase)
+    exposed_encounters = cluster_mgr._get_expositions_array()
     return candidate_encounters, exposed_encounters
 
 

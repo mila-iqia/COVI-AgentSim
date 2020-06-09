@@ -1,11 +1,20 @@
 """
 Implements human behavior/government policy changes.
 """
+import datetime
+import typing
 from orderedset import OrderedSet
+from itertools import islice
+
 import numpy as np
 
-from covid19sim.models.run import integrated_risk_pred
 from covid19sim.constants import BIG_NUMBER
+
+if typing.TYPE_CHECKING:
+    from covid19sim.simulator import Human
+    from covid19sim.base import PersonalMailboxType
+
+
 class BehaviorInterventions(object):
     """
     A base class to modify behavior based on the type of intervention.
@@ -98,19 +107,19 @@ class LimitContact (BehaviorInterventions):
         return "Limit Contact"
 
 
-class Stand2M(BehaviorInterventions):
+class StandApart(BehaviorInterventions):
     """
     `Human` should maintain an extra distance with other people.
     It adds `_maintain_extra_distance_2m` because of the conflict with a same named attribute in
     `SocialDistancing`
     """
-    def __init__(self):
-        pass
+    def __init__(self, default_distance=25):
+        self.DEFAULT_SOCIAL_DISTANCE = default_distance
 
     def modify_behavior(self, human):
         # FIXME : Social distancing also has this parameter
         human._maintain_extra_distance_2m = human.maintain_extra_distance
-        human.maintain_extra_distance = 200 # cms
+        human.maintain_extra_distance = self.DEFAULT_SOCIAL_DISTANCE + 100 * (human.carefulness - 0.5)
 
     def revert_behavior(self, human):
         human.maintain_extra_distance = human._maintain_extra_distance_2m
@@ -130,7 +139,7 @@ class WashHands(BehaviorInterventions):
 
     def modify_behavior(self, human):
         human._hygiene = human.hygiene
-        human.hygiene = human.rng.uniform(human.carefulness, 2)
+        human.hygiene = human.rng.uniform(min(human.carefulness, 1) , 1)
 
     def revert_behavior(self, human):
         human.hygiene = human._hygiene
@@ -214,10 +223,11 @@ class SocialDistancing(BehaviorInterventions):
         3. Reduced mobility (using RHO and GAMMA)
 
     """
-    DEFAULT_SOCIAL_DISTANCE = 200 # cm
-    TIME_ENCOUNTER_REDUCTION_FACTOR = 0.5
-    _RHO = 0.2
-    _GAMMA = 0.5
+    def __init__(self, default_distance=100, time_encounter_reduction_factor=0.5):
+        self.DEFAULT_SOCIAL_DISTANCE = default_distance # cm
+        self.TIME_ENCOUNTER_REDUCTION_FACTOR = time_encounter_reduction_factor
+        self._RHO = 0.2
+        self._GAMMA = 0.5
 
     def modify_behavior(self, human):
         human._maintain_extra_distance = human.maintain_extra_distance
@@ -253,13 +263,25 @@ class BinaryTracing(BehaviorInterventions):
         super(BinaryTracing, self).__init__()
 
     def modify_behavior(self, human):
-        if human.rec_level == 0:
-            recommendations = []
+        # If there is a mapping available for recommendation levels in the
+        # configuration file, use the intervention level randomly picked from
+        # this transition matrix, based on the recommendation level. The update
+        # of the recommendation levels are not altered.
+        if not human.has_app:
+            return
+
+        if human.city.daily_rec_level_mapping is None:
+            intervention_level = human.rec_level
         else:
-            recommendations = [Quarantine()]
+            # QKFIX: There are 4 recommendation levels, the value is hard-coded here
+            probas = human.city.daily_rec_level_mapping[human.rec_level]
+            intervention_level = human.rng.choice(4, p=probas)
+        human._intervention_level = intervention_level
+        recommendations = get_recommendations(intervention_level)
+
         self.revert_behavior(human)
         for rec in recommendations:
-            if isinstance(rec, BehaviorInterventions) and human.rng.rand() < human.how_much_I_follow_recommendations:
+            if isinstance(rec, BehaviorInterventions) and human.follows_recommendations_today:
                 rec.modify_behavior(human)
                 human.recommendations_to_follow.add(rec)
 
@@ -305,13 +327,13 @@ def get_recommendations(level):
         list: a list of `BehaviorInterventions`.
     """
     if level == 0:
-        return [WashHands()]
+        return [WashHands(), StandApart(default_distance=40)]
     if level == 1:
-        return [WashHands(), Stand2M(), WearMask()]
+        return [WashHands(), StandApart(default_distance=100), WearMask()]
     if level == 2:
-        return [WashHands(), SocialDistancing(), WearMask(), 'monitor_symptoms']
+        return [WashHands(), SocialDistancing(default_distance=125), WearMask(), 'monitor_symptoms']
 
-    return [WashHands(), SocialDistancing(), WearMask(), 'monitor_symptoms', GetTested("recommendations"), Quarantine()]
+    return [WashHands(), SocialDistancing(default_distance=150), WearMask(), 'monitor_symptoms', GetTested("recommendations"), Quarantine()]
 
 class RiskBasedRecommendations(BehaviorInterventions):
     """
@@ -323,41 +345,57 @@ class RiskBasedRecommendations(BehaviorInterventions):
     It uses `Human.recommendations_to_follow` to keep a record of various recommendations
     that `Human` is currently following.
     """
-    UPPER_GREEN = 1
-    UPPER_BLUE = 3
-    UPPER_ORANGE = 5
-    UPPER_RED = 15
 
     def __init__(self):
         super(RiskBasedRecommendations, self).__init__()
 
     @staticmethod
-    def get_recommendations_level(risk_level):
+    def get_recommendations_level(human, thresholds, max_risk_level):
         """
         Converts the risk level to recommendation level.
 
         Args:
-            risk_level (int): quantized risk level of range 0-15. sent in encounter messages and update messages.
+            human (Human): the human for which we want to compute the recommendation.
+            thresholds (list|tuple): exactly 3 values to convert risk_level to rec_level
+            max_risk_level (int): maximum allowed risk_level for sanity check (assert risk_level <= max_risk_level)
 
         Returns:
             recommendation level (int): App recommendation level which takes on a range of 0-3.
         """
-        if risk_level <= RiskBasedRecommendations.UPPER_GREEN:
+        if human.risk_level <= thresholds[0]:
             return 0
-        elif RiskBasedRecommendations.UPPER_GREEN < risk_level <= RiskBasedRecommendations.UPPER_BLUE:
+        elif thresholds[0] < human.risk_level <= thresholds[1]:
             return 1
-        elif RiskBasedRecommendations.UPPER_BLUE < risk_level <= RiskBasedRecommendations.UPPER_ORANGE:
+        elif thresholds[1] < human.risk_level <= thresholds[2]:
             return 2
-        elif RiskBasedRecommendations.UPPER_ORANGE < risk_level <= RiskBasedRecommendations.UPPER_RED:
+        elif thresholds[2] < human.risk_level <= max_risk_level:
             return 3
         else:
             raise
 
     def modify_behavior(self, human):
-        recommendations = get_recommendations(human.rec_level)
+        # If there is a mapping available for recommendation levels in the
+        # configuration file, use the intervention level randomly picked from
+        # this transition matrix, based on the recommendation level. The update
+        # of the recommendation levels are not altered.
+        if not human.has_app:
+            return
+
+        if human.city.daily_rec_level_mapping is None:
+            intervention_level = human.rec_level
+        else:
+            # QKFIX: There are 4 recommendation levels, the value is hard-coded here
+            probas = human.city.daily_rec_level_mapping[human.rec_level]
+            intervention_level = human.rng.choice(4, p=probas)
+        human._intervention_level = intervention_level
+        recommendations = get_recommendations(intervention_level)
+
+        # revert all my previous behaviours
         self.revert_behavior(human)
+
+        # apply each behaviour I should be following
         for rec in recommendations:
-            if isinstance(rec, BehaviorInterventions) and human.rng.rand() < human.how_much_I_follow_recommendations:
+            if isinstance(rec, BehaviorInterventions) and human.follows_recommendations_today:
                 rec.modify_behavior(human)
                 human.recommendations_to_follow.add(rec)
 
@@ -382,6 +420,8 @@ class GetTested(BehaviorInterventions):
 
     def modify_behavior(self, human):
         human.test_recommended  = True
+        # send human to the testing center
+        human.check_covid_testing_needs()
 
     def revert_behavior(self, human):
         human.test_recommended  = False
@@ -389,44 +429,71 @@ class GetTested(BehaviorInterventions):
     def __repr__(self):
         return "Get Tested"
 
+class HeuristicRecommendations(RiskBasedRecommendations):
+    @staticmethod
+    def get_recommendations_level(human, thresholds, max_risk_level):
+        # Most of the logic for recommendations level update is given in the
+        # "Tracing" class (with "heuristic" tracing method). The recommendations
+        # level for the heuristic tracing algorithm are dependent on messages
+        # received in the mailbox, which get_recommendations_level does not have
+        # access to under the current API.
+        if human.age >= 70:
+            return max(human.rec_level, 2)
+        return max(human.rec_level, 0)
+
 
 class Tracing(object):
     """
     Implements tracing. It relies on categorization of `Human` according to risk_levels.
+
+    This object carries a bunch of flags & is responsible for determining the risk level of humans when
+    the transformer is not used for risk level inference. To do so, it will use the targeted human's
+    contact book to pull statistics about its recent contacts.
+
+    If the transformer is used, this object becomes fairly useless, and will only be used to apply
+    recommended behavior changes.
+
+    The name of this class is probably not the best, feel free to suggest alternatives.
+
+    Attributes:
+        risk_model (str): type of tracing to use. The following methods are currently
+            available: digital, manual, naive, other, transformer.
+        p_contact (float): adds a noise to the tracing procedure, as it is not always possible
+            to contact everyone (or remember all contacts) when using manual tracing.
+        delay (int): defines whether there should be a delay between the time when someone
+            triggers tracing and someone is traced. It is 0 for digital tracing, and 1 for manual.
+        app (bool): defines whether an app is required for this tracing. For example, manual
+            tracing doesn't use app.
+        max_depth (int, optional): The number of hops away from the source to consider while tracing.
+            The term `order` is also used for this. Defaults to 1.
+        propagate_symptoms (bool, optional): Defines whether tracing is to be triggered when someone
+            reports symptoms. Defaults to False.
+        propagate_risk (bool, optional): Define whether tracing is to be triggered when someone
+            changes their risk level. Defaults to False. Note: this is not to be mixed with
+            risk_model="transformer".
+        should_modify_behavior (bool, optional): Defines whether behavior should be modified or not
+            following the tracing intervention for conunterfactual studies. Defaults to True.
+
     """
-    def __init__(
-            self,
-            risk_model,
-            max_depth=1,
-            symptoms=False,
-            risk=False,
-            should_modify_behavior=True):
+    def __init__(self, conf: dict):
         """
-        risk_levels are determined based on risk, which is computed using `Tracing.compute_risk`.
-        `Human.message_info` carries information about all the contacts that person had in the past `configs.blah.yml --> TRACING_N_DAYS_HISTORY`.
-        Depending on the type of risk_model, `Human.risk` is computed using the contents of this `Human.message_info`.
-
-        Note 0: `Human.message_info` is used for all `risk_model`s except for `transformer`, a type of `retrospective-risk` tracing method.
-        Note 1: `risk`, `symptoms`, `max_depth` do not mean anything for `retrospective-risk` tracing. This method relies on changes in risk_levels, i.e., every time
-        the risk level changes, a message is sent to the contacts.
-        Note 2: `retrospective-risk` tracing relies on `Human.messages`, `Human.messages_by_day`, etc.
-
-        Following attributes are further used -
-            1. p_contact (float) - adds a noise to the tracing procedure. For example, it is not possible to contact everyone in manual tracing.
-            2. delay (bool) - if there should be a delay between the time when someone triggers tracing and someone is traced. For example, its 0 for digital tracing.
-            3. app (bool) - If an app is required for this tracing. For example, manual tracing doesn't use app.
-            4. dont_trace_traced (bool) - If `Human.message_info['traced']` is True, no need to send him a message. If True, reduces the number of messages being passed around.
+        Initializes the tracing object.
 
         Args:
-            risk_model (str): Type of tracing to implement. Following methods are currently available - digital, manual, naive, other, transformer.
-            max_depth (int, optional): The number of hops away from the source. The term `order` is also used for this. Defaults to 1.
-            symptoms (bool, optional): If tracing is to be triggered when someone reports symptoms? Defaults to False.
-            risk (bool, optional): If tracing is to be triggered when someone changes risk level?. Defaults to False. Note: this is not to be confused with risk_model="transformer".
-            should_modify_behavior (bool, optional): If behavior should be modified or not? Used for conunterfactual studies. Defaults to True.
+            conf (dict): configuration to parse settings from.
         """
+        risk_model = conf.get("RISK_MODEL")
+        max_depth = conf.get("TRACING_ORDER")
+        symptoms = conf.get("TRACE_SYMPTOMS")
+        risk = conf.get("TRACE_RISK_UPDATE")
+        should_modify_behavior = conf.get("SHOULD_MODIFY_BEHAVIOR"),
+
         self.risk_model = risk_model
         if risk_model in ['manual', 'digital']:
             self.intervention = BinaryTracing()
+        elif risk_model == "heuristic":
+            # Combination of risk-based & heuristic recommendations
+            self.intervention = HeuristicRecommendations()
         else:
             # risk based
             self.intervention = RiskBasedRecommendations()
@@ -434,25 +501,26 @@ class Tracing(object):
         self.max_depth = max_depth
         self.propagate_symptoms = symptoms
         self.propagate_risk = risk
-        self.propagate_postive_test = True # bare minimum
+        self.propagate_postive_test = True  # bare minimum
         self.should_modify_behavior = should_modify_behavior
 
         self.p_contact = 1
         self.delay = 0
         self.app = True
         if risk_model == "manual":
-            self.p_contact = self.conf.get("MANUAL_TRACING_P_CONTACT")
+            assert not symptoms, "makes no sense to trace symptoms by phone...?"
+            assert not risk, "don't make be believe we will trace risk by phone either"
+            self.p_contact = conf.get("MANUAL_TRACING_P_CONTACT")
             self.delay = 1
             self.app = False
 
-        self.dont_trace_traced = False
-        if risk_model in ["manual", "digital"]:
-            self.dont_trace_traced = True
+        if risk_model == "heuristic":
+            self.risk_mapping = conf.get("RISK_MAPPING")
 
         self.propagate_risk_max_depth = max_depth
         # more than 3 will slow down the simulation too much
         if self.propagate_risk:
-            self.propage_risk_max_depth = 3
+            self.propage_risk_max_depth = min(3, max_depth)
 
         if risk_model == "transformer":
             self.propagate_risk_max_depth = BIG_NUMBER
@@ -462,127 +530,196 @@ class Tracing(object):
     def modify_behavior(self, human):
         if not self.should_modify_behavior and (not human.has_app and self.app):
             return
-
         return self.intervention.modify_behavior(human)
 
-    def process_messages(self, human):
-        """
-        Extract relevant information from `Human.message_info`
+    def risk_level_to_risk(self, risk_level):
+        risk_level = min(risk_level, 15)
+        return self.risk_mapping[risk_level + 1]
 
-        Note 0: one can use any combination of these contacts across `order`s. We have used exponential decay (experimental)
-        Note 1: not used by `risk_model = transformer`.
+    def _get_hypothetical_contact_tracing_results(
+            self,
+            human: "Human",
+            mailbox: "PersonalMailboxType",
+            humans_map: typing.Dict[str, "Human"],
+    ) -> typing.Tuple[int, int, typing.Tuple[int, int, int, int]]:
+        """
+        Returns the counts for the 'hypothetical' tracing methods that might be used in apps/real life.
+
+        This function will use the target human's logged encounters to fetch all his contacts using the
+        provided city-wide human map. The number of past days covered by the tracing will depend on the
+        contact book's maximum history, which should be defined from `TRACING_N_DAYS_HISTORY`.
 
         Args:
-            human (Human): Human object.
+            human: the human for which to generate the contact tracing counts.
+            mailbox: centralized mailbox with all recent update messages for the target human.
+            humans_map: a human-name-to-human-object reference map to pass to the contact book functions.
 
         Returns:
-            t (int): Number of past registered contacts that are tested positive in the last `configs.blah.yml --> TRACING_N_DAYS_HISTORY`.
-            s (int): Number of past registered contacts that have shown symptoms in the last `configs.blah.yml --> TRACING_N_DAYS_HISTORY`.
-            (r_up, v_up, r_down, v_down) (tuple):
-                r_up: Number of past registered contacts that increased their risk levels in the last `configs.blah.yml --> TRACING_N_DAYS_HISTORY`.
-                v_up: Averge increase in magnitude of risk levels of contacts that increased their risk levels in the last `configs.blah.yml --> TRACING_N_DAYS_HISTORY`.
-                r_down: Number of past registered contacts that decreased their risk levels in the last `configs.blah.yml --> TRACING_N_DAYS_HISTORY`.
-                v_down: Averge decrease in magnitude of risk levels of contacts that increased their risk levels in the last `configs.blah.yml --> TRACING_N_DAYS_HISTORY`.
+            t (int): Number of recent contacts that are tested positive.
+            s (int): Number of recent contacts that have reported symptoms.
+                r_up: Number of recent contacts that increased their risk levels.
+                v_up: Average increase in magnitude of risk levels of recent contacts.
+                r_down: Number of recent contacts that decreased their risk levels.
+                v_down: Average decrease in magnitude of risk levels of recent contacts.
         """
-        # total test messages
-        t = 0
-        for order in human.message_info['n_contacts_tested_positive']:
-            t += sum(human.message_info['n_contacts_tested_positive'][order]) * np.exp(-2*(order-1))
+        assert self.risk_model != "transformer", "we should never be in here!"
+        assert self.risk_model in ["manual", "digital", "naive", "heuristic", "other"], "missing something?"
+        t, s, r_up, r_down, v_up, v_down = 0, 0, 0, 0, 0, 0
 
-        # total symptoms messages
-        s = 0
+        if self.risk_model == "manual":
+            # test_tracing_delay = datetime.timedelta(days=1)  # 1 day was previously used by default
+            raise NotImplementedError(  # TODO: complete implementation as detailed below
+                "the current implementation does not log encounters if the users do not have the app; "
+                "therefore, manual tracing is dead --- we could fix that by logging encounters all the "
+                "time (with a global flab?) and by checking that flag in the tracing call below as well"
+                # ... or by simply assuming everyone has an app?
+            )
+        else:
+            test_tracing_delay = datetime.timedelta(days=0)
+        positive_test_counts = human.contact_book.get_positive_contacts_counts(
+            humans_map=humans_map,
+            tracing_delay=test_tracing_delay,
+            tracing_probability=self.p_contact,
+            max_order=self.max_depth,
+            make_sure_15min_minimum_between_contacts=False,
+        )
+        for order, count in positive_test_counts.items():
+            t += count * np.exp(-2*(order-1))
+
         if self.propagate_symptoms:
-            for order in human.message_info['n_contacts_symptoms']:
-                s += sum(human.message_info['n_contacts_symptoms'][order]) * np.exp(-2*(order-1))
+            symptomatic_counts = human.contact_book.get_symptomatic_contacts_counts(
+                humans_map=humans_map, max_order=self.max_depth)
+            for order, count in symptomatic_counts.items():
+                s += count * np.exp(-2*(order-1))
 
-        r_up, r_down, v_up, v_down = 0, 0, 0, 0
         if self.propagate_risk:
-            for order in human.message_info['n_risk_increased']:
-                xy = zip(human.message_info['n_risk_mag_increased'][order], human.message_info['n_risk_increased'][order])
-                r_up += sum(human.message_info['n_risk_increased'][order])
-                z = [1.0*x/y for x,y in xy if y]
-                if z:
-                    v_up += np.mean(z)
+            # TODO: contact book is still missing the r_up,r_down,v_up,v_down tracing functions
+            # note1: we could use the simpler `get_risk_level_update_counts` function instead?
+            # note2: for whoever might want to reimplement the missing tracing, check the orig code
+            # note3: the mailbox is passed into this function, we could give it to the contact book
+            #        (or to a pure function from somewhere else) to fetch the 4 counts
+            raise NotImplementedError
+        return t, s, (r_up, v_up, r_down, v_down)
 
-            for order in human.message_info['n_risk_decreased']:
-                xy = zip(human.message_info['n_risk_mag_decreased'][order], human.message_info['n_risk_decreased'][order])
-                r_down += sum(human.message_info['n_risk_decreased'][order])
-                z = [1.0*x/y for x,y in xy if y]
-                if z:
-                    v_down += np.mean(z)
-
-        return t,s,(r_up, v_up, r_down, v_down)
-
-    def compute_risk(self, t, s, r, conf):
+    def compute_risk(
+            self,
+            human: "Human",
+            mailbox: "PersonalMailboxType",
+            humans_map: typing.Dict[str, "Human"],
+    ):
         """
-        computes risk value based on the statistics of past contacts.
-        Note 1: not used by `risk_model = transformer`.
+        Computes the infection risk of a human based on the statistics of its past contacts.
 
         Args:
-            Output of `self.process_messages`
+            human: the human for which to generate the contact tracing counts.
+            mailbox: centralized mailbox with all recent update messages for the target human.
+            humans_map: a human-name-to-human-object reference map to pass to the contact book functions.
 
         Returns:
             float: a scalar value.
         """
-        if self.risk_model in ['manual', 'digital']:
+        assert self.risk_model != "transformer", "we should never be in here!"
+        assert self.risk_model in ["manual", "digital", "naive", "heuristic", "other"], "missing something?"
+        if self.risk_model != "heuristic":
+            t, s, r = self._get_hypothetical_contact_tracing_results(human, mailbox, humans_map)
+
+        if self.risk_model in ["manual", "digital"]:
             if t + s > 0:
                 risk = 1.0
             else:
                 risk = 0.0
 
         elif self.risk_model == "naive":
-            risk = 1.0 - (1.0 - conf.get("RISK_TRANSMISSION_PROBA")) ** (t+s)
+            risk = 1.0 - (1.0 - human.conf.get("RISK_TRANSMISSION_PROBA")) ** (t+s)
+
+        elif self.risk_model == "heuristic":
+            risk = human.risk
+
+            no_message_gt3_past_7_days = True
+            high_risk_message, high_risk_num_days = -1, -1
+            moderate_risk_message, moderate_risk_num_days = -1, -1
+            mild_risk_message, mild_risk_num_days = -1, -1
+
+            # Check if the user received messages with specific risk level
+            # TODO: mailbox only contains update messages, and not encounter messages
+            # TODO: use the result of the clustering algorithm to find the number of
+            #       encounters with another user with high risk level
+            for _, update_messages in mailbox.items():
+                for update_message in update_messages:
+                    encounter_day = (human.env.timestamp - update_message.encounter_time).days
+                    risk_level = update_message.new_risk_level
+
+                    if (encounter_day < 7) and (risk_level >= 3):
+                        no_message_gt3_past_7_days = False
+
+                    if (risk_level >= 12):
+                        high_risk_message = max(high_risk_message, risk_level)
+                        high_risk_num_days = max(high_risk_num_days, encounter_day)
+
+                    elif (risk_level >= 10):
+                        moderate_risk_message = max(moderate_risk_message, risk_level)
+                        moderate_risk_num_days = max(moderate_risk_message, encounter_day)
+
+                    elif (risk_level >= 6):
+                        mild_risk_message = max(mild_risk_message, risk_level)
+                        mild_risk_num_days = max(mild_risk_message, encounter_day)
+
+            if human.reported_test_result == "positive":
+                # Update risk for the past 14 days
+                risk = [self.risk_level_to_risk(15)] * 14
+            elif human.all_reported_symptoms:
+                if "extremely-severe" in human.all_reported_symptoms:
+                    # For severe symptoms, set R = 12 for now and all past 7 days
+                    risk = [self.risk_level_to_risk(12)] * 7
+                elif "severe" in human.all_reported_symptoms:
+                    risk = [self.risk_level_to_risk(12)] * 7
+                elif "moderate" in human.all_reported_symptoms:
+                    # For intermediate symptoms, set R = 10 for now and all past 7 days
+                    risk = [self.risk_level_to_risk(10)] * 7
+                else:
+                    # For mild symptoms, set R = 7 for now and all past 7 days
+                    risk = [self.risk_level_to_risk(7)] * 7
+
+            elif human.rec_level > 0:
+                # Check if there was no positive test result in the past 14 days
+                no_positive_test_result_past_14_days = True
+                for test_result, test_time, _ in human.test_results:
+                    result_day = (human.env.timestamp - test_time).days
+                    if result_day >= 0 and result_day < human.conf.get("TRACING_N_DAYS_HISTORY"):
+                        no_positive_test_result_past_14_days &= (test_result != "positive")
+
+                # Check if there was no symptoms in the past 7 days
+                no_symptoms_past_7_days = (not any(islice(human.rolling_all_reported_symptoms, 7)))
+
+                if (no_symptoms_past_7_days
+                        and no_positive_test_result_past_14_days
+                        and no_message_gt3_past_7_days):
+                    # Set risk level R = 0 for now and all past 7 days
+                    risk = [self.risk_level_to_risk(0)] * 7
+
+            elif high_risk_message > 0:
+                # TODO: Decrease the risk level depending on the number of encounters (N > 5)
+                updated_risk = max(human.risk_level, self.risk_level_to_risk(high_risk_message - 5))
+                risk = [updated_risk] * max(high_risk_num_days - 2, 1) # Update at least 1 day
+
+            elif moderate_risk_message > 0:
+                # Set the risk level to max(R' - 5, R) for all days after day D + 2
+                # (with at least 1 update for the current day)
+                updated_risk = max(human.risk_level, self.risk_level_to_risk(moderate_risk_message - 5))
+                risk = [updated_risk] * max(moderate_risk_num_days - 2, 1)
+
+            elif mild_risk_message > 0:
+                # Set the risk level to max(R' - 5, R) for all days after day D + 2
+                # (with at least 1 update for the current day)
+                updated_risk = max(human.risk_level, self.risk_level_to_risk(mild_risk_message - 5))
+                risk = [updated_risk] * max(mild_risk_num_days - 2, 1)
 
         elif self.risk_model == "other":
             r_up, v_up, r_down, v_down = r
             r_score = 2*v_up - v_down
-            risk = 1.0 - (1.0 - conf.get("RISK_TRANSMISSION_PROBA")) ** (t + 0.5*s + r_score)
+            risk = 1.0 - (1.0 - human.conf.get("RISK_TRANSMISSION_PROBA")) ** (t + 0.5*s + r_score)
 
-        return risk
-
-    def update_human_risks(
-            self,
-            city,
-            data_path,
-            conf,
-    ):
-        """
-        Updates the risk value based on the `risk_model`.
-        Calls an external server if the `risk_model` relies on a machine learning server.
-        """
-
-        if self.risk_model == "transformer":
-            city.humans = integrated_risk_pred(
-                city.humans,
-                city.start_time,
-                city.current_day,
-                city.env.timestamp.hour,
-                data_path=data_path,
-                conf=conf,
-            )
-        else:
-            for human in city.humans:
-                cur_day = (human.env.timestamp - human.env.initial_timestamp).days
-                if (human.env.timestamp - human.message_info['receipt']).days >= human.message_info['delay'] or self.risk_model != "manual":
-                    old_risk = human.risk
-                    if not human.is_removed and human.test_result != "positive":
-                        t, s, r = self.process_messages(human)
-                        human.risk = self.compute_risk(t, s, r, conf)
-
-                    if human.risk != old_risk:
-                        self.modify_behavior(human)
-
-                    human.risk_history_map[cur_day] = human.risk
-
-            if conf.get("COLLECT_TRAINING_DATA"):
-                city.humans = integrated_risk_pred(
-                    city.humans,
-                    city.start_time,
-                    city.current_day,
-                    city.env.timestamp.hour,
-                    data_path=data_path,
-                    conf=conf,
-                )
+        return risk if isinstance(risk, list) else [risk]
 
     def compute_tracing_delay(self, human):
         """
@@ -596,7 +733,6 @@ class Tracing(object):
     def __repr__(self):
         if self.risk_model == "transformer":
             return f"Tracing: {self.risk_model}"
-
         return f"Tracing: {self.risk_model} order {self.max_depth} symptoms: {self.propagate_symptoms} risk: {self.propagate_risk} modify:{self.should_modify_behavior}"
 
 
@@ -637,17 +773,12 @@ class TestCapacity(CityInterventions):
     def revert_city(self, city):
         raise NotImplementedError
 
-def get_intervention(key, RISK_MODEL=None, TRACING_ORDER=None, TRACE_SYMPTOMS=None, TRACE_RISK_UPDATE=None, SHOULD_MODIFY_BEHAVIOR=True,MASKS_SUPPLY=0):
+def get_intervention(conf):
     """
-    Returns appropriate class of intervention.
+    Returns the appropriate class of intervention.
 
     Args:
-        key (str): type of intervention
-        RISK_MODEL (str, optional): passed to `Tracing.risk_model`. Defaults to None.
-        TRACING_ORDER (int, optional): passed to `Tracing.max_depth`. Defaults to None.
-        TRACE_SYMPTOMS (bool, optional): passed to `Tracing.symptoms`. Defaults to None.
-        TRACE_RISK_UPDATE (bool, optional): passed to `Tracing.risk`. Defaults to None.
-        SHOULD_MODIFY_BEHAVIOR (bool, optional): passed to `Tracing.should_modify_behavior`. Defaults to True.
+        conf (dict): configuration to send to intervention object.
 
     Raises:
         NotImplementedError: If intervention has not been implemented.
@@ -655,28 +786,21 @@ def get_intervention(key, RISK_MODEL=None, TRACING_ORDER=None, TRACE_SYMPTOMS=No
     Returns:
         `BehaviorInterventions`: `BehaviorInterventions` corresponding to the arguments.
     """
+    key = conf.get("INTERVENTION")
     if key == "Lockdown":
         return Lockdown()
     elif key == "WearMask":
-        return WearMask(MASKS_SUPPLY)
+        return WearMask(conf.get("MASKS_SUPPLY"))
     elif key == "SocialDistancing":
         return SocialDistancing()
     elif key == "Quarantine":
         return Quarantine()
     elif key == "Tracing":
-        # there's a global variable somewhere called 'Tracing'
-        import covid19sim.interventions
-        return covid19sim.interventions.Tracing(
-            RISK_MODEL,
-            TRACING_ORDER,
-            TRACE_SYMPTOMS,
-            TRACE_RISK_UPDATE,
-            SHOULD_MODIFY_BEHAVIOR,
-        )
+        return Tracing(conf)
     elif key == "WashHands":
         return WashHands()
-    elif key == "Stand2M":
-        return Stand2M()
+    elif key == "StandApart":
+        return StandApart()
     elif key == "StayHome":
         return StayHome()
     elif key == "GetTested":

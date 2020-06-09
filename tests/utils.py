@@ -1,7 +1,6 @@
 import dataclasses
-import os
+import datetime
 import typing
-from multiprocessing import Process
 from pathlib import Path
 
 import numpy as np
@@ -9,12 +8,15 @@ import yaml
 from omegaconf import OmegaConf
 
 import covid19sim.frozen.message_utils as mu
-import covid19sim.server_bootstrap
 from covid19sim.utils import parse_configuration
 
-HYDRA_PATH = (
-    Path(__file__).parent.parent / "src/covid19sim/hydra-configs"
+HYDRA_SIM_PATH = (
+    Path(__file__).parent.parent / "src/covid19sim/hydra-configs/simulation"
 ).resolve()
+
+never = datetime.timedelta(days=9999)  # dirty macro to indicate a human will never get infected
+Toff = lambda x: mu.TimestampDefault + datetime.timedelta(x)  # noqa
+
 
 @dataclasses.dataclass
 class Visit:
@@ -34,7 +36,7 @@ class FakeHuman:
     def __init__(
             self,
             real_uid: int,
-            exposition_timestamp: int,
+            exposition_timestamp: mu.TimestampType,
             visits_to_adopt: typing.List[Visit],
             force_init_uid: typing.Optional[typing.Union[mu.UIDType, typing.List[mu.UIDType]]] = None,
             force_init_risk: typing.Optional[typing.Union[mu.RiskLevelType, typing.List[mu.RiskLevelType]]] = None,
@@ -56,37 +58,43 @@ class FakeHuman:
         self.rolling_uids = np.asarray(force_init_uid)
         self.rolling_exposed = np.asarray([exposition_timestamp == 0])
         self.rolling_risk = np.asarray(force_init_risk)
-        self.rolling_visits = [[v for v in self.visits if v.timestamp == 0]]
-        max_timestamp = max([v.timestamp for v in self.visits]) if self.visits else 1
-        for timestamp in range(1, int(max_timestamp) + 1):
-            if len(self.rolling_uids) <= timestamp:
-                self.rolling_uids = np.append(self.rolling_uids, mu.update_uid(self.rolling_uids[-1]))
-            elif len(self.rolling_uids) >= 2:
-                assert ((self.rolling_uids[-1] >> 1) << 1) == ((self.rolling_uids[-2] << 1) & mu.message_uid_mask)
+        self.rolling_visits = [[v for v in self.visits if v.timestamp == mu.TimestampDefault]]
+        max_timestamp = max([(v.timestamp - mu.TimestampDefault).days for v in self.visits]) \
+            if self.visits else 1
+        for timestamp_offset in range(1, int(max_timestamp) + 1):
+            timestamp = mu.TimestampDefault + datetime.timedelta(days=timestamp_offset)
+            if len(self.rolling_uids) <= timestamp_offset:
+                self.rolling_uids = np.append(self.rolling_uids, mu.create_new_uid())
             self.rolling_exposed = np.append(self.rolling_exposed, timestamp >= exposition_timestamp)
             # we gradually increase risk level from time of exposition time (just faking things)
-            if len(self.rolling_risk) <= timestamp:
-                self.rolling_risk = np.append(self.rolling_risk,
-                                              self.rolling_risk[-1] + 1 if timestamp >= exposition_timestamp
-                                              else self.rolling_risk[-1])
+            if len(self.rolling_risk) <= timestamp_offset:
+                self.rolling_risk = \
+                    np.append(self.rolling_risk,
+                              self.rolling_risk[-1] + 1
+                              if timestamp >= exposition_timestamp else self.rolling_risk[-1])
             self.rolling_visits.append([v for v in self.visits if v.timestamp == timestamp])
         for v in self.visits:
             # note: under the current logic, only the visitor can infect the visited
             assert v.visitor_real_uid != v.visited_real_uid
+            visit_timestamp_offset = (v.timestamp - mu.TimestampDefault).days
             if v.visitor_real_uid == real_uid:
-                v.visitor_uid = self.rolling_uids[v.timestamp]
+                v.visitor_uid = self.rolling_uids[visit_timestamp_offset]
                 v.visitor = self
             if v.visited_real_uid == real_uid:
-                v.visited_uid = self.rolling_uids[v.timestamp]
+                v.visited_uid = self.rolling_uids[visit_timestamp_offset]
                 v.visited = self
             if not allow_spurious_exposition:
                 # make sure the input exposition matches with the visit logic
-                assert not v.exposition or self.rolling_exposed[v.timestamp]
-            elif v.exposition and v.visitor_real_uid == real_uid and not self.rolling_exposed[v.timestamp]:
+                assert not v.exposition or self.rolling_exposed[visit_timestamp_offset]
+            elif v.exposition and v.visitor_real_uid == real_uid and \
+                    not self.rolling_exposed[visit_timestamp_offset]:
                 # allow visits to set the exposition timestamp for this human
-                for timestamp in range(int(v.timestamp), int(max_timestamp) + 1):
-                    self.rolling_exposed[timestamp] = True
-                    self.rolling_risk[timestamp] = self.rolling_risk[max(timestamp - 1, 0)] + 1
+                for timestamp_offset in range(1, int(max_timestamp) + 1):
+                    timestamp = mu.TimestampDefault + datetime.timedelta(days=timestamp_offset)
+                    if timestamp >= v.timestamp:
+                        self.rolling_exposed[timestamp_offset] = True
+                        self.rolling_risk[timestamp_offset] = \
+                            self.rolling_risk[max(timestamp_offset - 1, 0)] + 1
 
 
 def generate_sent_messages(
@@ -115,10 +123,10 @@ def generate_sent_messages(
                 encounter_message = mu.EncounterMessage(
                     uid=human.rolling_uids[timestamp],
                     risk_level=risk_level,
-                    encounter_time=int(timestamp),
+                    encounter_time=mu.TimestampDefault + datetime.timedelta(days=timestamp),
                     _sender_uid=human.real_uid,
                     _receiver_uid=opposite_human.real_uid,
-                    _real_encounter_time=int(timestamp),
+                    _real_encounter_time=mu.TimestampDefault + datetime.timedelta(days=timestamp),
                     _exposition_event=visit.exposition and is_visited,
                 )
                 sent_encounter_messages[timestamp].append(encounter_message)
@@ -135,11 +143,12 @@ def generate_sent_messages(
                                 old_risk_level=human.rolling_risk[prev_timestamp],
                                 new_risk_level=mu.RiskLevelType(maximum_risk_level_for_saturaton),
                                 encounter_time=message.encounter_time,
-                                update_time=int(timestamp),
+                                update_time=mu.TimestampDefault + datetime.timedelta(days=timestamp),
                                 _sender_uid=message._sender_uid,
                                 _receiver_uid=message._receiver_uid,
                                 _real_encounter_time=message._real_encounter_time,
-                                _real_update_time=int(timestamp),
+                                _real_update_time=mu.TimestampDefault + datetime.timedelta(days=timestamp),
+                                _exposition_event=message._exposition_event,
                                 _update_reason="positive_test",
                             )
                             sent_update_messages[timestamp].append(update_message)
@@ -154,7 +163,7 @@ def generate_sent_messages(
                             update_message = mu.create_update_message(
                                 encounter_message=message,
                                 new_risk_level=human.rolling_risk[prev_timestamp],
-                                current_time=int(timestamp),
+                                current_time=mu.TimestampDefault + datetime.timedelta(days=timestamp),
                                 update_reason="symptoms",
                             )
                             sent_update_messages[timestamp].append(update_message)
@@ -237,7 +246,7 @@ def generate_random_messages(
             visitor_real_uid=visitor_real_uid,
             visited_real_uid=visited_real_uid,
             exposition=False,
-            timestamp=np.random.randint(max_timestamp + 1),
+            timestamp=mu.TimestampDefault + datetime.timedelta(days=np.random.randint(max_timestamp + 1)),
         ))
     # ...then, had a handful of exposition visits to increase risk levels
     for _ in range(n_expositions):
@@ -249,31 +258,19 @@ def generate_random_messages(
             visitor_real_uid=exposer_real_uid,
             visited_real_uid=exposed_real_uid,
             exposition=True,
-            timestamp=np.random.randint(max_timestamp + 1),
+            timestamp=mu.TimestampDefault + datetime.timedelta(days=np.random.randint(max_timestamp + 1)),
         ))
     # now, generate all humans with the spurious thingy tag so we dont have to set expo flags
     humans = [
         FakeHuman(
             real_uid=idx,
-            exposition_timestamp=999999999,  # never
+            exposition_timestamp=mu.TimestampDefault + never,
             visits_to_adopt=visits,
             allow_spurious_exposition=True,
         ) for idx in range(n_humans)
     ]
     messages = generate_received_messages(humans)  # hopefully this is not too slow
     return [msg for msgs in messages[0]["received_messages"].values() for msg in msgs], visits
-
-
-def start_inference_server():
-    """
-    [summary]
-
-    Returns:
-        [type]: [description]
-    """
-    p = Process(target=covid19sim.server_bootstrap.main, daemon=True)
-    p.start()
-    return p
 
 
 def get_test_conf(conf_name):
@@ -295,13 +292,13 @@ def get_test_conf(conf_name):
     assert config_path.suffix == ".yaml"
     assert config_path.exists()
 
-    config = HYDRA_PATH / "config.yaml"
+    config = HYDRA_SIM_PATH / "config.yaml"
 
     with config.open("r") as f:
         defaults = yaml.safe_load(f)["defaults"]
 
     default_confs = [
-        OmegaConf.load(str(HYDRA_PATH / (d + ".yaml")))
+        OmegaConf.load(str(HYDRA_SIM_PATH / (d + ".yaml")))
         for d in defaults
     ]
     conf = OmegaConf.merge(*default_confs, OmegaConf.load(str(config_path)))

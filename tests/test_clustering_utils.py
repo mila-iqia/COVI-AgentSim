@@ -2,25 +2,18 @@ import datetime
 import numpy as np
 import unittest
 
-import covid19sim.frozen.utils
 import covid19sim.frozen.message_utils as mu
-from tests.utils import FakeHuman, generate_received_messages, generate_sent_messages, Visit
-
-never = 9999  # dirty macro to indicate a human will never get infected
+from tests.utils import FakeHuman, generate_received_messages, generate_sent_messages, Visit, Toff
 
 
 class CommonTests(unittest.TestCase):
     # check all utility functions & data classes...
 
-    def test_create_and_update_uid(self):
-        self.assertEqual(mu.message_uid_bit_count, 4)  # current test impl hardcodes stuff
-        n_trials = 1000
+    def test_create_uid(self):
+        n_trials = 10000
         for _ in range(n_trials):
             uid = mu.create_new_uid()
-            assert 0 <= uid <= 15
-            new_uid = mu.update_uid(uid)
-            assert 0 <= new_uid <= 15
-            self.assertEqual(((uid * 2) & 15), new_uid - (new_uid % 2))
+            assert 0 <= uid < (1 << mu.message_uid_bit_count)
 
     def test_create_update_message(self):
         n_trials = 1000
@@ -30,19 +23,19 @@ class CommonTests(unittest.TestCase):
             encounter_msg = mu.EncounterMessage(
                 uid=mu.create_new_uid(),
                 risk_level=np.uint8(np.random.randint(mu.risk_level_mask + 1)),
-                encounter_time=int(fake_encounter_time.timestamp()),
+                encounter_time=fake_encounter_time,
             )
             fake_update_time = fake_encounter_time + \
                                datetime.timedelta(seconds=np.random.randint(1, 10))
             update_msg = mu.create_update_message(
                 encounter_message=encounter_msg,
                 new_risk_level=np.uint8(np.random.randint(mu.risk_level_mask + 1)),
-                current_time=int(fake_update_time.timestamp()),
+                current_time=fake_update_time,
             )
             self.assertEqual(update_msg.uid, encounter_msg.uid)
             self.assertEqual(update_msg.old_risk_level, encounter_msg.risk_level)
             self.assertEqual(update_msg.encounter_time, encounter_msg.encounter_time)
-            self.assertGreater(update_msg.update_time, update_msg.encounter_time)
+            self.assertGreaterEqual(update_msg.update_time.date(), update_msg.encounter_time.date())
             dummy_recreated_encounter_msg = mu.create_encounter_from_update_message(update_msg)
             self.assertEqual(dummy_recreated_encounter_msg.uid, encounter_msg.uid)
             self.assertEqual(dummy_recreated_encounter_msg.risk_level, update_msg.new_risk_level)
@@ -62,7 +55,7 @@ class CommonTests(unittest.TestCase):
             encounter_msg = mu.EncounterMessage(
                 uid=uid,
                 risk_level=init_risk,
-                encounter_time=int(fake_encounter_time.timestamp()),
+                encounter_time=fake_encounter_time,
             )
             fake_update_time = fake_encounter_time + \
                                datetime.timedelta(seconds=np.random.randint(1000))
@@ -70,97 +63,13 @@ class CommonTests(unittest.TestCase):
                 uid=uid,
                 old_risk_level=init_risk,
                 new_risk_level=np.uint8(np.random.randint(mu.risk_level_mask + 1)),
-                encounter_time=int(fake_encounter_time.timestamp()),
-                update_time=int(fake_update_time.timestamp()),
+                encounter_time=fake_encounter_time,
+                update_time=fake_update_time,
             )
             new_encounter_msg = mu.create_updated_encounter_with_message(encounter_msg, update_msg)
             self.assertEqual(encounter_msg.uid, new_encounter_msg.uid)
             self.assertEqual(update_msg.new_risk_level, new_encounter_msg.risk_level)
             self.assertEqual(encounter_msg.encounter_time, new_encounter_msg.encounter_time)
-
-    def test_find_encounter_match_random(self):
-        n_trials = 1000
-        for _ in range(n_trials):
-            old_encounter_time = datetime.datetime.now() + \
-                                 datetime.timedelta(seconds=np.random.randint(100))
-            old_encounter_msg = mu.EncounterMessage(
-                uid=mu.create_new_uid(),
-                risk_level=np.uint8(np.random.randint(mu.risk_level_mask + 1)),
-                encounter_time=int(old_encounter_time.timestamp()),
-            )
-            new_encounter_time = old_encounter_time + \
-                                 datetime.timedelta(hours=np.random.randint(1, 150))
-            new_encounter_msg = mu.EncounterMessage(
-                uid=mu.create_new_uid(),
-                risk_level=np.uint8(np.random.randint(mu.risk_level_mask + 1)),
-                encounter_time=int(new_encounter_time.timestamp()),
-            )
-            score = mu.find_encounter_match_score(
-                old_encounter_msg,
-                new_encounter_msg,
-            )
-            self.assertGreaterEqual(score, -1)
-            self.assertLessEqual(score, mu.message_uid_bit_count)
-
-    def test_find_encounter_match_positive_or_null(self):
-        n_trials = 1000
-        for _ in range(n_trials):
-            old_encounter_time = datetime.datetime.now() + \
-                                 datetime.timedelta(seconds=np.random.randint(100))
-            old_encounter_msg = mu.EncounterMessage(
-                uid=mu.create_new_uid(),
-                risk_level=np.uint8(np.random.randint(mu.risk_level_mask + 1)),
-                encounter_time=int(old_encounter_time.timestamp()),
-            )
-            new_uid = old_encounter_msg.uid
-            for day_offset in range(0, mu.message_uid_bit_count * 2):
-                new_encounter_time = old_encounter_time + \
-                                     datetime.timedelta(days=day_offset) + \
-                                     datetime.timedelta(hours=np.random.randint(1, 23))
-                new_encounter_msg = mu.EncounterMessage(
-                    uid=new_uid,
-                    risk_level=np.uint8(np.random.randint(mu.risk_level_mask + 1)),
-                    encounter_time=int(new_encounter_time.timestamp()),
-                )
-                score = mu.find_encounter_match_score(
-                    old_encounter_msg,
-                    new_encounter_msg,
-                )
-                if day_offset < mu.message_uid_bit_count:
-                    self.assertEqual(score, mu.message_uid_bit_count - day_offset)
-                else:
-                    self.assertEqual(score, 0)
-                new_uid = mu.update_uid(new_uid)
-
-    def test_find_encounter_match_negative(self):
-        np.random.seed(0)
-        n_trials = 1000
-        for trial_idx in range(n_trials):
-            old_encounter_time = datetime.datetime.now() + \
-                                 datetime.timedelta(seconds=np.random.randint(100))
-            old_encounter_msg = mu.EncounterMessage(
-                uid=mu.create_new_uid(),
-                risk_level=np.uint8(np.random.randint(mu.risk_level_mask + 1)),
-                encounter_time=int(old_encounter_time.timestamp()),
-            )
-            legit_new_uid = old_encounter_msg.uid
-            for day_offset in range(0, mu.message_uid_bit_count):
-                new_encounter_time = old_encounter_time + \
-                                     datetime.timedelta(days=day_offset) + \
-                                     datetime.timedelta(hours=np.random.randint(1, 23))
-                bflip = np.random.choice(list(range(mu.message_uid_bit_count - day_offset)))
-                new_uid = legit_new_uid ^ np.uint8(1 << (mu.message_uid_bit_count - bflip - 1))
-                new_encounter_msg = mu.EncounterMessage(
-                    uid=new_uid,
-                    risk_level=np.uint8(np.random.randint(mu.risk_level_mask + 1)),
-                    encounter_time=int(new_encounter_time.timestamp()),
-                )
-                score = mu.find_encounter_match_score(
-                    old_encounter_msg,
-                    new_encounter_msg,
-                )
-                self.assertEqual(score, -1)
-                legit_new_uid = mu.update_uid(legit_new_uid)
 
 
 class MessageTests(unittest.TestCase):
@@ -168,11 +77,11 @@ class MessageTests(unittest.TestCase):
 
     def test_simple_negative_encounter(self):
         visits = [
-            Visit(visitor_real_uid=1, visited_real_uid=0, exposition=False, timestamp=3),
+            Visit(visitor_real_uid=1, visited_real_uid=0, exposition=False, timestamp=Toff(3)),
         ]
         humans = [
-            FakeHuman(real_uid=0, exposition_timestamp=never, visits_to_adopt=visits),
-            FakeHuman(real_uid=1, exposition_timestamp=never, visits_to_adopt=visits),
+            FakeHuman(real_uid=0, exposition_timestamp=Toff(9999), visits_to_adopt=visits),
+            FakeHuman(real_uid=1, exposition_timestamp=Toff(9999), visits_to_adopt=visits),
         ]
         messages = generate_sent_messages(humans)
         self.assertIn(0, messages)
@@ -191,8 +100,8 @@ class MessageTests(unittest.TestCase):
         self.assertEqual(human0_encounter._receiver_uid, 1)
         self.assertEqual(human1_encounter._sender_uid, 1)
         self.assertEqual(human1_encounter._receiver_uid, 0)
-        self.assertEqual(human0_encounter._real_encounter_time, 3)
-        self.assertEqual(human1_encounter._real_encounter_time, 3)
+        self.assertEqual(human0_encounter._real_encounter_time, Toff(3))
+        self.assertEqual(human1_encounter._real_encounter_time, Toff(3))
         self.assertEqual(human0_encounter._real_encounter_time, human0_encounter.encounter_time)
         self.assertEqual(human1_encounter._real_encounter_time, human1_encounter.encounter_time)
         self.assertEqual(human0_encounter.risk_level, 0)
@@ -204,11 +113,11 @@ class MessageTests(unittest.TestCase):
 
     def test_simple_positive_encounter(self):
         visits = [
-            Visit(visitor_real_uid=1, visited_real_uid=0, exposition=True, timestamp=3),
+            Visit(visitor_real_uid=1, visited_real_uid=0, exposition=True, timestamp=Toff(3)),
         ]
         humans = [
-            FakeHuman(real_uid=0, exposition_timestamp=2, visits_to_adopt=visits),
-            FakeHuman(real_uid=1, exposition_timestamp=3, visits_to_adopt=visits),
+            FakeHuman(real_uid=0, exposition_timestamp=Toff(2), visits_to_adopt=visits),
+            FakeHuman(real_uid=1, exposition_timestamp=Toff(3), visits_to_adopt=visits),
         ]
         self.assertTrue(all([
             not humans[0].rolling_exposed[0],
@@ -238,13 +147,13 @@ class MessageTests(unittest.TestCase):
 
     def test_simple_update(self):
         visits = [
-            Visit(visitor_real_uid=0, visited_real_uid=1, exposition=True, timestamp=4),
+            Visit(visitor_real_uid=0, visited_real_uid=1, exposition=True, timestamp=Toff(4)),
             # 2nd visit used to make sure we populate the message tree beyond the 5-day mark
-            Visit(visitor_real_uid=0, visited_real_uid=1, exposition=False, timestamp=6),
+            Visit(visitor_real_uid=0, visited_real_uid=1, exposition=False, timestamp=Toff(6)),
         ]
         humans = [
-            FakeHuman(real_uid=0, exposition_timestamp=1, visits_to_adopt=visits),  # starts off sick
-            FakeHuman(real_uid=1, exposition_timestamp=4, visits_to_adopt=visits),  # gets sick on day 4
+            FakeHuman(real_uid=0, exposition_timestamp=Toff(1), visits_to_adopt=visits),  # starts off sick
+            FakeHuman(real_uid=1, exposition_timestamp=Toff(4), visits_to_adopt=visits),  # gets sick on day 4
         ]
         messages = generate_sent_messages(humans, minimum_risk_level_for_updates=5)  # will send updates on day 5
         human0_encounters = [(t, m) for t, msgs in messages[0]["sent_encounter_messages"].items() for m in msgs]
@@ -265,27 +174,27 @@ class MessageTests(unittest.TestCase):
         self.assertEqual(human0_update.uid, humans[0].rolling_uids[4])
         self.assertEqual(human0_update.old_risk_level, 0)
         self.assertEqual(human0_update.new_risk_level, 4)
-        self.assertEqual(human0_update.encounter_time, 4)
-        self.assertEqual(human0_update.update_time, 5)
+        self.assertEqual(human0_update.encounter_time, Toff(4))
+        self.assertEqual(human0_update.update_time, Toff(5))
         self.assertEqual(human0_update._sender_uid, 0)
         self.assertEqual(human0_update._receiver_uid, 1)
-        self.assertEqual(human0_update._real_encounter_time, 4)
-        self.assertEqual(human0_update._real_update_time, 5)
+        self.assertEqual(human0_update._real_encounter_time, Toff(4))
+        self.assertEqual(human0_update._real_update_time, Toff(5))
         self.assertEqual(human0_update._update_reason, "symptoms")
 
     def test_chain_updates(self):
         visits = [
-            Visit(visitor_real_uid=1, visited_real_uid=0, exposition=False, timestamp=0),
-            Visit(visitor_real_uid=0, visited_real_uid=1, exposition=False, timestamp=2),
-            Visit(visitor_real_uid=0, visited_real_uid=1, exposition=False, timestamp=2),
-            Visit(visitor_real_uid=1, visited_real_uid=0, exposition=True, timestamp=4),
-            Visit(visitor_real_uid=1, visited_real_uid=0, exposition=False, timestamp=7),
-            Visit(visitor_real_uid=1, visited_real_uid=0, exposition=False, timestamp=8),
-            Visit(visitor_real_uid=1, visited_real_uid=0, exposition=False, timestamp=12),
+            Visit(visitor_real_uid=1, visited_real_uid=0, exposition=False, timestamp=Toff(0)),
+            Visit(visitor_real_uid=0, visited_real_uid=1, exposition=False, timestamp=Toff(2)),
+            Visit(visitor_real_uid=0, visited_real_uid=1, exposition=False, timestamp=Toff(2)),
+            Visit(visitor_real_uid=1, visited_real_uid=0, exposition=True, timestamp=Toff(4)),
+            Visit(visitor_real_uid=1, visited_real_uid=0, exposition=False, timestamp=Toff(7)),
+            Visit(visitor_real_uid=1, visited_real_uid=0, exposition=False, timestamp=Toff(8)),
+            Visit(visitor_real_uid=1, visited_real_uid=0, exposition=False, timestamp=Toff(12)),
         ]
         humans = [
-            FakeHuman(real_uid=0, exposition_timestamp=4, visits_to_adopt=visits),  # sick on day 4 (transmission)
-            FakeHuman(real_uid=1, exposition_timestamp=1, visits_to_adopt=visits),  # sick on day 1 (random)
+            FakeHuman(real_uid=0, exposition_timestamp=Toff(4), visits_to_adopt=visits),  # sick on day 4 (transmission)
+            FakeHuman(real_uid=1, exposition_timestamp=Toff(1), visits_to_adopt=visits),  # sick on day 1 (random)
         ]
         messages = generate_sent_messages(
             humans,
@@ -317,16 +226,16 @@ class MessageTests(unittest.TestCase):
 
     def test_multiple_encounters(self):
         visits = [
-            Visit(visitor_real_uid=1, visited_real_uid=0, exposition=False, timestamp=3),
-            Visit(visitor_real_uid=0, visited_real_uid=2, exposition=False, timestamp=3),
-            Visit(visitor_real_uid=2, visited_real_uid=1, exposition=False, timestamp=3),
-            Visit(visitor_real_uid=3, visited_real_uid=0, exposition=False, timestamp=3),
+            Visit(visitor_real_uid=1, visited_real_uid=0, exposition=False, timestamp=Toff(3)),
+            Visit(visitor_real_uid=0, visited_real_uid=2, exposition=False, timestamp=Toff(3)),
+            Visit(visitor_real_uid=2, visited_real_uid=1, exposition=False, timestamp=Toff(3)),
+            Visit(visitor_real_uid=3, visited_real_uid=0, exposition=False, timestamp=Toff(3)),
         ]
         humans = [
-            FakeHuman(real_uid=0, exposition_timestamp=never, visits_to_adopt=visits),
-            FakeHuman(real_uid=1, exposition_timestamp=never, visits_to_adopt=visits),
-            FakeHuman(real_uid=2, exposition_timestamp=never, visits_to_adopt=visits),
-            FakeHuman(real_uid=3, exposition_timestamp=never, visits_to_adopt=visits),
+            FakeHuman(real_uid=0, exposition_timestamp=Toff(9999), visits_to_adopt=visits),
+            FakeHuman(real_uid=1, exposition_timestamp=Toff(9999), visits_to_adopt=visits),
+            FakeHuman(real_uid=2, exposition_timestamp=Toff(9999), visits_to_adopt=visits),
+            FakeHuman(real_uid=3, exposition_timestamp=Toff(9999), visits_to_adopt=visits),
         ]
         messages = generate_sent_messages(humans)
         self.assertTrue(all(idx in messages for idx in range(4)))
@@ -339,17 +248,17 @@ class MessageTests(unittest.TestCase):
 
     def test_gen_received_messages(self):
         visits = [
-            Visit(visitor_real_uid=1, visited_real_uid=0, exposition=False, timestamp=0),
-            Visit(visitor_real_uid=1, visited_real_uid=0, exposition=True, timestamp=4),
-            Visit(visitor_real_uid=0, visited_real_uid=2, exposition=False, timestamp=6),
-            Visit(visitor_real_uid=1, visited_real_uid=0, exposition=False, timestamp=7),
-            Visit(visitor_real_uid=1, visited_real_uid=0, exposition=False, timestamp=8),
-            Visit(visitor_real_uid=0, visited_real_uid=2, exposition=False, timestamp=9),
+            Visit(visitor_real_uid=1, visited_real_uid=0, exposition=False, timestamp=Toff(0)),
+            Visit(visitor_real_uid=1, visited_real_uid=0, exposition=True, timestamp=Toff(4)),
+            Visit(visitor_real_uid=0, visited_real_uid=2, exposition=False, timestamp=Toff(6)),
+            Visit(visitor_real_uid=1, visited_real_uid=0, exposition=False, timestamp=Toff(7)),
+            Visit(visitor_real_uid=1, visited_real_uid=0, exposition=False, timestamp=Toff(8)),
+            Visit(visitor_real_uid=0, visited_real_uid=2, exposition=False, timestamp=Toff(9)),
         ]
         humans = [
-            FakeHuman(real_uid=0, exposition_timestamp=4, visits_to_adopt=visits),  # sick on day 4 (transmission)
-            FakeHuman(real_uid=1, exposition_timestamp=1, visits_to_adopt=visits),  # sick on day 1 (random)
-            FakeHuman(real_uid=2, exposition_timestamp=never, visits_to_adopt=visits),  # never sick
+            FakeHuman(real_uid=0, exposition_timestamp=Toff(4), visits_to_adopt=visits),  # sick on day 4 (transmission)
+            FakeHuman(real_uid=1, exposition_timestamp=Toff(1), visits_to_adopt=visits),  # sick on day 1 (random)
+            FakeHuman(real_uid=2, exposition_timestamp=Toff(9999), visits_to_adopt=visits),  # never sick
         ]
         sent_messages = generate_sent_messages(
             humans=humans, minimum_risk_level_for_updates=5, maximum_risk_level_for_saturaton=10,
@@ -366,8 +275,8 @@ class MessageTests(unittest.TestCase):
         self.assertEqual(sum([len(msgs) for msgs in received_messages[2]["received_update_messages"].values()]), 1)
         self.assertEqual(len(received_messages[2]["received_update_messages"][8]), 1)
         update_from_0_to_2_on_day_8 = received_messages[2]["received_update_messages"][8][0]
-        self.assertEqual(update_from_0_to_2_on_day_8.update_time, 8)
-        self.assertEqual(update_from_0_to_2_on_day_8.encounter_time, 6)
+        self.assertEqual(update_from_0_to_2_on_day_8.update_time, Toff(8))
+        self.assertEqual(update_from_0_to_2_on_day_8.encounter_time, Toff(6))
         self.assertEqual(update_from_0_to_2_on_day_8.uid, humans[0].rolling_uids[6])
         self.assertEqual(update_from_0_to_2_on_day_8.old_risk_level, 0)
         self.assertEqual(update_from_0_to_2_on_day_8.new_risk_level, 3)
@@ -398,23 +307,22 @@ class MessageTests(unittest.TestCase):
                 }
             }
         ]
-        messages = covid19sim.frozen.utils.convert_json_to_new_format(
-            contacts, extract_self_reported_risks=True)
+        messages = mu.convert_json_to_messages(contacts, extract_self_reported_risks=True)
         self.assertEqual(len(messages), 14)
         self.assertTrue(all([isinstance(m, mu.UpdateMessage) for m in messages]))
         self.assertTrue(
             (messages[0].uid == 4) and
             (messages[0].old_risk_level == 0) and
             (messages[0].new_risk_level == 15) and
-            (messages[0].encounter_time == 18359) and
-            (messages[0].update_time == 18359)
+            (messages[0].encounter_time == datetime.datetime(2020, 4, 7)) and
+            (messages[0].update_time == datetime.datetime(2020, 4, 7))
         )
         self.assertTrue(
             (messages[1].uid == 4) and
             (messages[1].old_risk_level == 15) and
             (messages[1].new_risk_level == 11) and
-            (messages[1].encounter_time == 18359) and
-            (messages[1].update_time == 18361)
+            (messages[1].encounter_time == datetime.datetime(2020, 4, 7)) and
+            (messages[1].update_time == datetime.datetime(2020, 4, 9))
         )
 
 

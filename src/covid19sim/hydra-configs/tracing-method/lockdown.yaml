@@ -1,7 +1,0 @@
----
-RISK_MODEL: "" # "naive"  "manual", "digital", "transformer"
-SHOULD_MODIFY_BEHAVIOR: True
-
-INTERVENTION: "Lockdown"
-
-TRACING_ORDER: 1

@@ -1,0 +1,40 @@
+# `sample` can be
+# - `uniform` (from np.random.uniform(*from))
+# - `range` (np.choice(np.arange(*from)))
+# - `list` (np.choice(from))
+# - `cartesian` special case where a cartesian product of all keys with the `cartesian` sampling scheme
+#               is created and iterated over in order. `from` MUST be a list
+#               As we iterate over the cartesian product of all
+#               such keys, others are sampled as usual. If n_search is larger than the size of the cartesian
+#               product, it will cycle again through the product in the same order
+#               example with A being `cartesian` from [1, 2] and B from [y, z] and 5 searches:
+#                  => {A:1, B: y}, {A:1, B: z}, {A:2, B: y}, {A:2, B: z}, {A:1, B: y}
+# - `sequential` samples will loop through the values in `from`. `from` MUST be a list
+
+n_people: 1000
+simulation_days: 30
+INTERVENTION_DAY: 5
+DROPOUT_RATE: 0.02
+init_percent_sick: 0.01
+tune: true
+
+APP_UPTAKE:
+  sample: cartesian # will be sampled in this order, in a cartesian product with any other "cartesian" sampling
+  from:
+    - 0.4215 # AR: 0.300120645
+    - 0.8415 # AR: 0.599173245
+    - -1
+# for uptake in [0.0705, 0.4215, 0.8415]: print(uptake, ":", sum(s * uptake * h["p"] for s, h in zip(sd.values(), hd.values() )))
+# hd is HUMAN_DISTRIBUTION from core.yaml
+# sd is SMARTPHONE_OWNER_FRACTION_BY_AGE from core.yaml
+
+P_CAREFUL_PERSON: 0.6
+
+seed:
+  sample: cartesian
+  from:
+  - 3000
+  - 3001
+  - 3002
+  - 3003
+  - 3004

@@ -2,67 +2,81 @@
 Handles querying the inference server with serialized humans and their messages.
 """
 
-from collections import deque
+import collections
 import dataclasses
-from datetime import datetime, timedelta
+import datetime
 import os
-import pickle
 import functools
+import typing
 from joblib import Parallel, delayed
-from typing import Deque, List
-import warnings
 
 import numpy as np
 
 from covid19sim.server_utils import InferenceClient, InferenceEngineWrapper, proc_human_batch
-from covid19sim.frozen.clusters import Clusters
 from covid19sim.frozen.helper import conditions_to_np, encode_age, encode_sex, \
     encode_test_result, symptoms_to_np
-from covid19sim.frozen.utils import Message, UpdateMessage, encode_message, encode_update_message
+from covid19sim.frozen.message_utils import UpdateMessage
+from covid19sim.frozen.clustering.base import ClusterManagerBase
+
+if typing.TYPE_CHECKING:
+    from covid19sim.simulator import Human
+    from covid19sim.base import SimulatorMailboxType, PersonalMailboxType
 
 
-def make_human_as_message(human, conf):
+def make_human_as_message(
+        human: "Human",
+        personal_mailbox: "PersonalMailboxType",
+        conf: typing.Dict,
+):
+    """
+    Creates a human dataclass from a super-ultra-way-too-heavy human object.
+
+    The returned dataclass can more properly be serialized and sent to a remote server for
+    clustering/inference. All update messages aimed at the given human found in the global
+    mailbox will be popped and added to the dataclass.
+
+    Args:
+        human: the human object to convert.
+        personal_mailbox: the personal mailbox dictionary to fetch update messages from.
+        conf: YAML configuration dictionary with all relevant settings for the simulation.
+    Returns:
+        The nice-and-slim human dataclass object.
+    """
     preexisting_conditions = conditions_to_np(human.preexisting_conditions)
-
     obs_preexisting_conditions = conditions_to_np(human.obs_preexisting_conditions)
-
-    test_results = deque(((encode_test_result(result), timestamp)
-                          for result, timestamp in human.test_results))
-
     rolling_all_symptoms = symptoms_to_np(human.rolling_all_symptoms, conf)
-
     rolling_all_reported_symptoms = symptoms_to_np(human.rolling_all_reported_symptoms, conf)
 
-    messages = [encode_message(message) for message in human.contact_book.messages
-                # match day; ugly till refactor
-                if message[2] == human.contact_book.messages[-1][2]]
+    # TODO: we could index the global mailbox by day, it might be faster that way
+    target_mailbox_keys = [key for keys in human.contact_book.mailbox_keys_by_day.values() for key in keys]
+    update_messages = []
+    for key in target_mailbox_keys:
+        if key in personal_mailbox:
+            assert isinstance(personal_mailbox[key], list)
+            update_messages.extend(personal_mailbox.pop(key))
 
-    update_messages = [encode_update_message(update_message)
-                       for update_message in human.contact_book.update_messages
-                       # match day; ugly till refactor
-                       if update_message[3] == human.contact_book.update_messages[-1][3]]
+    return HumanAsMessage(
+        name=human.name,
+        age=encode_age(human.age),
+        sex=encode_sex(human.sex),
+        obs_age=encode_age(human.obs_age),
+        obs_sex=encode_sex(human.obs_sex),
+        preexisting_conditions=preexisting_conditions,
+        obs_preexisting_conditions=obs_preexisting_conditions,
 
-    return HumanAsMessage(name=human.name,
-                          age=encode_age(human.age),
-                          sex=encode_sex(human.sex),
-                          obs_age=encode_age(human.obs_age),
-                          obs_sex=encode_sex(human.obs_sex),
-                          preexisting_conditions=preexisting_conditions,
-                          obs_preexisting_conditions=obs_preexisting_conditions,
+        infectiousnesses=human.infectiousnesses,
+        infection_timestamp=human.infection_timestamp,
+        recovered_timestamp=human.recovered_timestamp,
+        test_results=human.get_test_results_array(human.env.timestamp),
+        rolling_all_symptoms=rolling_all_symptoms,
+        rolling_all_reported_symptoms=rolling_all_reported_symptoms,
+        incubation_days=human.incubation_days,
+        recovery_days=human.recovery_days,
 
-                          infectiousnesses=human.infectiousnesses,
-                          infection_timestamp=human.infection_timestamp,
-                          recovered_timestamp=human.recovered_timestamp,
-                          test_results=test_results,
-                          rolling_all_symptoms=rolling_all_symptoms,
-                          rolling_all_reported_symptoms=rolling_all_reported_symptoms,
-
-                          clusters=human.clusters,
-                          messages=messages,
-                          exposure_message=human.exposure_message,
-                          update_messages=update_messages,
-                          carefulness=human.carefulness,
-                          has_app=human.has_app)
+        update_messages=update_messages,
+        carefulness=human.carefulness,
+        has_app=human.has_app
+    )
 
 
 @dataclasses.dataclass
@@ -77,73 +91,98 @@ class HumanAsMessage:
     obs_preexisting_conditions: np.array
 
     # Medical fields
-    infectiousnesses: deque
+    infectiousnesses: typing.Iterable
     # TODO: Should be reformatted to int timestamp
-    infection_timestamp: datetime
+    infection_timestamp: datetime.datetime
     # TODO: Should be reformatted to int timestamp
-    recovered_timestamp: datetime
+    recovered_timestamp: datetime.datetime
     # TODO: Should be reformatted to deque of (int, int timestamp)
-    test_results: Deque[tuple]
+    test_results: collections.deque
     rolling_all_symptoms: np.array
     rolling_all_reported_symptoms: np.array
+    incubation_days: int  # NOTE: FOR NOW, USED FOR TESTING/DEBUGGING ONLY
+    recovery_days: int  # NOTE: FOR NOW, USED FOR TESTING/DEBUGGING ONLY
 
-    # Risk fields
-    clusters: Clusters
-    messages: List[Message]
-    exposure_message: Message
-    update_messages: List[UpdateMessage]
+    # Risk-level-related fields
+    update_messages: typing.List[UpdateMessage]
     carefulness: float
     has_app: bool
 
 
-def integrated_risk_pred(
-        humans,
-        start,
-        current_day,
-        time_slot,
-        data_path=None,
-        conf={},
-):
+class DummyMemManager:
+    """Dummy memory manager used when running in a single process."""
+
+    global_cluster_map: typing.Dict[str, ClusterManagerBase] = {}
+    global_inference_engine: InferenceEngineWrapper = None
+
+    @classmethod
+    def get_cluster_mgr_map(cls) -> typing.Dict[str, ClusterManagerBase]:
+        return cls.global_cluster_map
+
+    @classmethod
+    def get_engine(cls, conf) -> InferenceEngineWrapper:
+        if cls.global_inference_engine is None:
+            cls.global_inference_engine = InferenceEngineWrapper(conf.get('TRANSFORMER_EXP_PATH'))
+        return cls.global_inference_engine
+
+
+def batch_run_timeslot_heavy_jobs(
+        humans: typing.Iterable["Human"],
+        init_timestamp: datetime.datetime,
+        current_timestamp: datetime.datetime,
+        global_mailbox: "SimulatorMailboxType",
+        time_slot: int,
+        conf: typing.Dict,
+        data_path: typing.Optional[typing.AnyStr] = None,
+        city_hash: int = 0,
+) -> typing.Iterable["Human"]:
     """
-    [summary]
-    Setup and make the calls to the server
+    Runs the 'heavy' processes that must occur for all users in parallel.
+
+    The heavy stuff here is the clustering and risk level inference using a 3rd party model.
+    These steps can be delegated to a remote server if the simulator is configured that way.
 
     Args:
-        humans ([type]): [description]
-        start ([type]): [description]
-        current_day ([type]): [description]
-        time_slot ([type]): [description]
-        data_path ([type], optional): [description]. Defaults to None.
-        conf (dict): yaml experimental configuration
+        humans: the list of all humans in the zone.
+        init_timestamp: initialization timestamp of the simulation.
+        current_timestamp: the current timestamp of the simulation.
+        global_mailbox: the global mailbox dictionary used to fetch already-existing updates from.
+            Note that messages can be removed from this mailbox in this function, but not added, as
+            that is delegated to the caller (see the return values).
+        time_slot: the current timeslot of the day (i.e. an integer that corresponds to the hour).
+        conf: YAML configuration dictionary with all relevant settings for the simulation.
+        data_path: Root path where to save the 'daily outputs', i.e. the training data for ML models.
+        city_hash: a hash used to tag this city's humans on an inference server that may be used by
+            multiple cities in parallel. Bad mojo will happen if two cities have the same hash...
     Returns:
-        [type]: [description]
+        A tuple consisting of the updated humans & of the newly generated update messages to register.
     """
-    hd = humans[0].city.hd
+    current_day_idx = (current_timestamp - init_timestamp).days
+    assert current_day_idx >= 0
+
+    hd = next(iter(humans)).city.hd
     all_params = []
 
-    current_time = (start + timedelta(days=current_day, hours=time_slot))
-
     for human in humans:
-        if time_slot not in human.time_slots:
+        if not human.has_app or time_slot not in human.time_slots:
             continue
 
-        human_message = make_human_as_message(human, conf)
-
-        log_path = None
-        if data_path:
-            log_path = f'{os.path.dirname(data_path)}/daily_outputs/{current_day}/{human.name[6:]}/'
+        log_path = f"{os.path.dirname(data_path)}/daily_outputs/{current_day_idx}/{human.name[6:]}/" \
+            if data_path else None
         all_params.append({
-            "start": start,
-            "current_day": current_day,
-            "human": human_message,
+            "start": init_timestamp,
+            "current_day": current_day_idx,
+            "human": make_human_as_message(
+                human=human,
+                personal_mailbox=global_mailbox[human.name],
+                conf=conf
+            ),
             "log_path": log_path,
             "time_slot": time_slot,
             "conf": conf,
+            "city_hash": city_hash,
         })
-        human.contact_book.update_messages = []
-        human.contact_book.messages = []
 
-    parallel_reqs = conf.get('INFERENCE_REQ_PARALLEL_JOBS', 16)
     if conf.get('USE_INFERENCE_SERVER'):
         batch_start_offset = 0
         batch_size = conf.get('INFERENCE_REQ_BATCH_SIZE', 100)
@@ -152,6 +191,7 @@ def integrated_risk_pred(
             batch_end_offset = min(batch_start_offset + batch_size, len(all_params))
             batched_params.append(all_params[batch_start_offset:batch_end_offset])
             batch_start_offset += batch_size
+        parallel_reqs = conf.get('INFERENCE_REQ_PARALLEL_JOBS', 16)
         parallel_reqs = max(min(parallel_reqs, len(batched_params)), 1)
 
         def query_inference_server(params, **inf_client_kwargs):
@@ -162,42 +202,22 @@ def integrated_risk_pred(
         inference_frontend_address = conf.get('INFERENCE_SERVER_ADDRESS', None)
         query_func = functools.partial(query_inference_server, server_address=inference_frontend_address)
 
-        with Parallel(n_jobs=parallel_reqs, backend="loky", prefer="threads") as parallel:
+        with Parallel(n_jobs=parallel_reqs, prefer="threads") as parallel:
             batched_results = parallel((delayed(query_func)(params) for params in batched_params))
         results = []
         for b in batched_results:
             results.extend(b)
     else:
-        # recreating an engine every time should not be too expensive... right?
-        engine = InferenceEngineWrapper(conf.get('TRANSFORMER_EXP_PATH'))
-        results = proc_human_batch(all_params, engine, "loky", parallel_reqs)
+        cluster_mgr_map = DummyMemManager.get_cluster_mgr_map()
+        engine = DummyMemManager.get_engine(conf)
+        results = proc_human_batch(all_params, engine, cluster_mgr_map)
 
-    for result in results:
-        if result is not None:
-            name, risk_history, clusters = result
-            if conf.get('RISK_MODEL') == "transformer":
-                # TODO: Fix can be None. What should be done in this case
-                if risk_history is not None:
-                    # risk_history = np.clip(risk_history, 0., 1.)
-                    for i in range(len(risk_history)):
-                        hd[name].risk_history_map[current_day - i] = risk_history[i]
-                    hd[name].update_risk_level()
-                    for i in range(len(risk_history)):
-                        hd[name].prev_risk_history_map[current_day - i] = risk_history[i]
-                elif current_day != conf.get('INTERVENTION_DAY'):
-                    warnings.warn(f"risk history is none for human:{name}", RuntimeWarning)
-                hd[name].last_risk_update = current_time
-            hd[name].clusters = clusters
-            hd[name].last_cluster_update = current_time
-
-    # print out the clusters
-    if conf.get('DUMP_CLUSTERS'):
-        os.makedirs(conf.get('DUMP_CLUSTERS'), exist_ok=True)
-        curr_date_str = current_time.strftime("%Y%m%d-%H%M%S")
-        curr_dump_path = os.path.join(conf.get('DUMP_CLUSTERS'), curr_date_str + ".pkl")
-        to_dump = {human_id: human.clusters for human_id, human in hd.items()
-                   if human.last_cluster_update == current_time}
-        with open(curr_dump_path, "wb") as fd:
-            pickle.dump(to_dump, fd)
-
+    for name, risk_history in results:
+        human = hd[name]
+        if conf.get('RISK_MODEL') == "transformer":
+            if risk_history is not None:
+                human.apply_transformer_risk_updates(
+                    current_day_idx=current_day_idx,
+                    risk_history=risk_history,
+                )
     return humans

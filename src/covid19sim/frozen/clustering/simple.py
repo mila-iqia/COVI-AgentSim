@@ -1,5 +1,6 @@
 import collections
 import dataclasses
+import datetime
 import numpy as np
 import typing
 
@@ -52,9 +53,8 @@ class SimpleCluster(ClusterBase):
             messages=[message] if isinstance(message, EncounterMessage)
                 else [create_encounter_from_update_message(message)],
             # debug-only stuff below
-            _real_encounter_uids=[message._sender_uid],
-            _real_encounter_times=[message._real_encounter_time],
-            _unclustered_messages=[message],  # once added, messages here should never be removed
+            _real_encounter_uids={message._sender_uid},
+            _real_encounter_times={message._real_encounter_time},
         )
 
     def fit_encounter_message(self, message: EncounterMessage):
@@ -64,9 +64,8 @@ class SimpleCluster(ClusterBase):
             assert self.latest_update_time == message.encounter_time
             assert self.first_update_time == message.encounter_time
         self.messages.append(message)  # in this list, encounters may get updated
-        self._real_encounter_uids.append(message._sender_uid)
-        self._real_encounter_times.append(message._real_encounter_time)
-        self._unclustered_messages.append(message)  # in this list, messages NEVER get updated
+        self._real_encounter_uids.add(message._sender_uid)
+        self._real_encounter_times.add(message._real_encounter_time)
 
     def fit_update_message(self, update_message: UpdateMessage):
         """Updates an encounter in the current cluster given a new update message.
@@ -92,9 +91,8 @@ class SimpleCluster(ClusterBase):
             update_message=update_message,
             blind_update=self.skip_homogeneity_checks,
         )
-        self._real_encounter_uids.append(update_message._sender_uid)
-        self._real_encounter_times.append(update_message._real_encounter_time)
-        self._unclustered_messages.append(update_message)  # in this list, messages NEVER get updated
+        self._real_encounter_uids.add(update_message._sender_uid)
+        self._real_encounter_times.add(update_message._real_encounter_time)
 
     def get_cluster_embedding(
             self,
@@ -103,27 +101,24 @@ class SimpleCluster(ClusterBase):
             old_compat_mode: bool = False,
     ) -> np.ndarray:
         """Returns the 'embeddings' array for this particular cluster."""
-        actual_risk_level = RiskLevelType(np.round(np.mean([m.risk_level for m in self.messages])))
         if old_compat_mode:
             assert include_cluster_id
-            # cid+risk+duraton+day; 4th entry ('day') will be added in the caller
-            return np.asarray([self.cluster_id, actual_risk_level, len(self.messages)], dtype=np.int64)
-        else:
-            # note: this returns an array of four 'features', i.e. the cluster ID, the cluster's
-            #       average encounter risk level, the number of messages in the cluster, and
-            #       the offset to the first encounter timestamp of the cluster. This array's type
-            #       will be returned as np.int64 to insure that no data is lost w.r.t. message
-            #       counts or timestamps.
-            if include_cluster_id:
+            # we want 4 values: cluster id + cluster risk + encounter count + time offset
+            # ... the last value (time offset) will be added in the manager who calls this
+            nb_encounters_on_target_day = 0
+            for message in self.messages:
+                if message.encounter_time.date() == current_timestamp.date():
+                    nb_encounters_on_target_day += 1
+            if nb_encounters_on_target_day:
                 return np.asarray([
-                    self.cluster_id, actual_risk_level, len(self.messages),
-                    current_timestamp - self.first_update_time  # first/last is the same
+                    self.cluster_id,
+                    self.risk_level,
+                    nb_encounters_on_target_day,
                 ], dtype=np.int64)
             else:
-                return np.asarray([
-                    actual_risk_level, len(self.messages),
-                    current_timestamp - self.first_update_time  # first/last is the same
-                ], dtype=np.int64)
+                return None  # the cluster does not have encounters on that day, skip it
+        else:
+            raise NotImplementedError
 
     def _get_cluster_exposition_flag(self) -> bool:
         """Returns whether this particular cluster contains an exposition encounter."""
@@ -153,17 +148,14 @@ class SimplisticClusterManager(ClusterManagerBase):
 
     def __init__(
             self,
-            # TODO: Code is currently comparing max_history_ticks_offset 
-            #  to messages time expressed in days not ticks. Messages still
-            #  need to be updated to hold ticks
-            max_history_ticks_offset: TimeOffsetType,
+            max_history_offset: TimeOffsetType,
             add_orphan_updates_as_clusters: bool = False,
             generate_embeddings_by_timestamp: bool = True,
             generate_backw_compat_embeddings: bool = False,
             max_cluster_id: int = 1000,  # let's hope no user ever reaches 1000 simultaneous clusters
     ):
         super().__init__(
-            max_history_ticks_offset=max_history_ticks_offset,
+            max_history_offset=max_history_offset,
             add_orphan_updates_as_clusters=add_orphan_updates_as_clusters,
             generate_embeddings_by_timestamp=generate_embeddings_by_timestamp,
             generate_backw_compat_embeddings=generate_backw_compat_embeddings,
@@ -218,45 +210,23 @@ class SimplisticClusterManager(ClusterManagerBase):
             else:
                 raise AssertionError(f"could not find any proper cluster match for: {message}")
 
-    def get_embeddings_array(self) -> np.ndarray:
-        """Returns the 'embeddings' array for all clusters managed by this object."""
-        assert not self.generate_backw_compat_embeddings or self.generate_embeddings_by_timestamp, \
-            "original embeddings were generated by timestamp, cannot avoid that for backw compat"
-        if self.generate_embeddings_by_timestamp:
-            cluster_embeds = collections.defaultdict(list)
-            for cluster in self.clusters:
-                embed = cluster.get_cluster_embedding(
-                    current_timestamp=cluster.latest_update_time if self.generate_backw_compat_embeddings
-                    else self.latest_refresh_timestamp,
-                    include_cluster_id=True,
-                    old_compat_mode=self.generate_backw_compat_embeddings,
-                )
-                cluster_embeds[cluster.latest_update_time].append(
-                    [*embed, cluster.latest_update_time])
-            flat_output = []
-            for timestamp in sorted(cluster_embeds.keys()):
-                flat_output.extend(cluster_embeds[timestamp])
-            return np.asarray(flat_output)
-        else:
-            return np.asarray([
-                c.get_cluster_embedding(
-                    current_timestamp=self.latest_refresh_timestamp,
-                    include_cluster_id=False,
-                ) for c in self.clusters], dtype=np.int64)
-
     def _get_expositions_array(self) -> np.ndarray:
         """Returns the 'expositions' array for all clusters managed by this object."""
-        if self.generate_embeddings_by_timestamp:
-            cluster_flags = collections.defaultdict(list)
+        if not self.generate_backw_compat_embeddings or not self.generate_embeddings_by_timestamp:
+            raise NotImplementedError  # must keep 1:1 mapping with embedding!
+        # assume the latest refresh timestamp is up-to-date FIXME should we pass in curr timestamp as above?
+        output = []
+        target_timestamp = self.latest_refresh_timestamp - self.max_history_offset
+        while target_timestamp <= self.latest_refresh_timestamp:
             for cluster in self.clusters:
-                cluster_flags[cluster.latest_update_time].append(
-                    cluster._get_cluster_exposition_flag())
-            flat_output = []
-            for timestamp in sorted(cluster_flags.keys()):
-                flat_output.extend(cluster_flags[timestamp])
-            return np.asarray(flat_output)
-        else:
-            return np.asarray([c._get_cluster_exposition_flag() for c in self.clusters], dtype=np.uint8)
+                cluster_timestamp_match = \
+                    any([msg.encounter_time.date() == target_timestamp.date() for msg in cluster.messages])
+                if cluster_timestamp_match:
+                    cluster_contains_matching_exposition = \
+                        any([m._exposition_event for m in cluster.messages])
+                    output.append(cluster_contains_matching_exposition)
+            target_timestamp += datetime.timedelta(days=1)
+        return np.asarray(output)
 
     def _get_homogeneity_scores(self) -> typing.Dict[RealUserIDType, float]:
         """Returns the homogeneity score for all real users in the clusters.

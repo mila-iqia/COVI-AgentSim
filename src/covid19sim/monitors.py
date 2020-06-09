@@ -74,10 +74,9 @@ class SEIRMonitor(BaseMonitor):
         process_start = time.time()
         n_days = 0
         while True:
-            S, E, I, R = 0, 0, 0, 0
             R0 = city.tracker.get_R()
-            G = city.tracker.get_generation_time()
-            P = sum(city.tracker.cases_positive_per_day)
+            t_P = city.tracker.test_results_per_day[env.timestamp.date()]['positive']
+            t_T = 0 if len(city.tracker.tested_per_day) < 2 else city.tracker.tested_per_day[-2]
             H = sum(city.tracker.hospitalization_per_day)
             C = sum(city.tracker.critical_per_day)
             Projected3 = min(1.0*city.tracker.n_infected_init * 2 ** (n_days/3), len(city.humans))
@@ -93,16 +92,21 @@ class SEIRMonitor(BaseMonitor):
             I = city.tracker.i_per_day[-1]
             R = city.tracker.r_per_day[-1]
             T = E + I + R
+            cold = sum(h.has_cold for h in city.humans)
+            allergies = sum(h.has_allergy_symptoms for h in city.humans)
+
+            test_queue_length = len(city.covid_testing_facility.test_queue)
             # print(np.mean([h.risk for h in city.humans]))
             # print(env.timestamp, f"Ro: {R0:5.2f} G:{G:5.2f} S:{S} E:{E} I:{I} R:{R} T:{T} P3:{Projected3:5.2f} M:{M:5.2f} +Test:{P} H:{H} C:{C} RiskP:{RiskP:3.2f}") RiskP:{RiskP:3.2f}
             env_time = str(env.timestamp).split()[0]
             day = "Day {:2}:".format((city.env.timestamp - city.start_time).days)
             proc_time = "{:8}".format("({}s)".format(int(time.time() - process_start)))
             nd = str(len(str(city.n_people)))
-            demographics = f"| Ro: {R0:2.2f} S:{S:<{nd}} E:{E:<{nd}} I:{I:<{nd}} E+I+R:{T:<{nd}}"
-            stats = f"| P3:{Projected3:5.2f} RiskP:{prec[1][0]:3.2f} F:{F:3.2f} EM:{EM:3.2f}"
-            colors = "" # f"| G:{green} B:{blue} O:{orange} R:{red}"
-            print(proc_time, day, env_time, demographics, stats, colors)
+            demographics = f"| Ro: {R0:2.2f} S:{S:<{nd}} E:{E:<{nd}} I:{I:<{nd}} E+I+R:{T:<{nd}} +Test:{t_P}/{t_T}"
+            stats = f"| P3:{Projected3:5.2f} RiskP:{prec[1][0]:3.2f} F:{F:3.2f} EM:{EM:3.2f} TestQueue:{test_queue_length}"
+            other_diseases = f"| cold:{cold} allergies:{allergies}"
+            colors = f"| G:{green} B:{blue} O:{orange} R:{red}"
+            print(proc_time, day, env_time, demographics, stats, other_diseases, colors)
             # print(city.tracker.recovered_stats)
             self.data.append({
                     'time': env.timestamp,

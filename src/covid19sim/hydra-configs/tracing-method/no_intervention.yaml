@@ -1,6 +1,0 @@
----
-
-# NOTE: RISK_MODEL is only valid when INTERVENTION = "Tracing"
-RISK_MODEL: "" # "naive"  "manual", "digital", "transformer"
-
-INTERVENTION: ""

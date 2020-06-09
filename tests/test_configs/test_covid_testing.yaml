@@ -12,8 +12,8 @@ USE_ORACLE: False
 INTERVENTION_DAY: -1
 # NOTE: INTERVENTION is only valid if INTERVENTION_DAY >= 0
 INTERVENTION: ""
-PERCENT_FOLLOW: 1.0
-P_HAS_APP: -1.0 # add 10% of the target adoption rate
+DROPOUT_RATE: 0.02
+APP_UPTAKE: -1.0 # add 10% of the target adoption rate
 
 # PATHS
 CLUSTER_PATH: "output/clusters"
@@ -21,7 +21,8 @@ CLUSTER_PATH: "output/clusters"
 # Inference & Training
 TRACING_N_DAYS_HISTORY: 14
 DUMP_CLUSTERS: False
-CLUSTER_ALGO_TYPE: "blind" # should be in ["old", "blind", "naive", "perfect", "simple"]
+CLUSTER_ALGO_TYPE: "blind" # should be in ["gaen", "blind"]
+RESET_INFERENCE_SERVER: True
 
 # TRACING RISK MODEL PARAMETERS  (non-ML)
 TRACE_SYMPTOMS: False
@@ -48,3 +49,6 @@ RISK_MAPPING:
     0.98973414,
     1.,
   ]
+
+# Console logging (Conditional with COLLECT_LOGS)
+LOGGING_LEVEL: "WARNING"

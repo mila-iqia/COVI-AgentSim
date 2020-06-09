@@ -15,10 +15,12 @@ orderedset
 networkx
 tqdm
 seaborn
+pandas
 pyyaml
+pytest
 pytest-cov==2.8.1
+hydra-core==0.11
 omegaconf==1.4.1
-hydra-core
 cached_property
 requests
 recommonmark
