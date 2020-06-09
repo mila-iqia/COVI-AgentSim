@@ -1,6 +1,8 @@
 """
 [summary]
 """
+import copy
+import dataclasses
 import datetime
 import math
 import os
@@ -10,6 +12,7 @@ import typing
 import zipfile
 from copy import deepcopy
 from functools import lru_cache
+from orderedset import OrderedSet
 from pathlib import Path
 import time
 import dill
@@ -614,3 +617,105 @@ def zip_outdir(outdir):
 def normal_pdf(x, mean, std):
     proba = np.exp(-(((x - mean) ** 2) / (2 * std ** 2))) / (std * (2 * np.pi) ** 0.5)
     return proba
+
+
+def deepcopy_obj_array_except_env(array):
+    """Copies a Human/City/Location object array, calling the child function below for each object."""
+    if isinstance(array, dict):
+        return {k: deepcopy_obj_except_env(v) for k, v in array.items()}
+    elif isinstance(array, list):
+        return [deepcopy_obj_except_env(v) for v in array]
+    else:
+        raise NotImplementedError
+
+
+@dataclasses.dataclass(init=False)
+class DummyEnv:
+    """Dummy picklable constant version of the `Env` class."""
+    initial_timestamp: datetime.datetime
+    timestamp: datetime.datetime
+    ts_initial: int
+    now: int
+
+    def __init__(self, env):
+        self.initial_timestamp = env.initial_timestamp
+        self.timestamp = env.timestamp
+        self.ts_initial = env.ts_initial
+        self.now = env.now
+
+    def minutes(self):
+        return self.timestamp.minute
+
+    def hour_of_day(self):
+        return self.timestamp.hour
+
+    def day_of_week(self):
+        return self.timestamp.weekday()
+
+    def is_weekend(self):
+        return self.day_of_week() >= 5
+
+    def time_of_day(self):
+        return self.timestamp.isoformat()
+
+
+def deepcopy_obj_except_env(obj):
+    """Copies a Human/City/Location object without its env part (which fails due to the generator)."""
+    from covid19sim.human import Human
+    from covid19sim.locations.location import Location
+    from covid19sim.locations.city import City, Household, Hospital
+    assert isinstance(obj, (Human, Location, City))
+    if isinstance(obj, Human):
+        dummy_env = DummyEnv(obj.env)
+        curr_location_name = obj.location.name if obj.location else ""
+        last_location_name = obj.last_location.name if obj.last_location else ""
+        household_name = obj.household.name if obj.household else ""
+        workplace_names = [w.name for w in obj._workplace]
+        backup_attribs = \
+            (obj.env, obj.city, obj.household, obj.location,
+             obj.last_location, obj.my_history, obj._workplace, obj.visits)
+        obj.env, obj.city, obj.household, obj.location, \
+        obj.last_location, obj.my_history, obj._workplace, obj.visits = [None] * len(backup_attribs)
+        obj.env = dummy_env  # should replicate the env's behavior perfectly
+        obj.location = curr_location_name  # this will break lookups, but still provide basic info
+        obj.last_location = last_location_name  # this will break lookups, but still provide basic info
+        obj.household = household_name  # this will break lookups, but still provide basic info
+        obj._workplace = workplace_names  # this will break lookups, but still provide basic info
+        obj_copy = copy.deepcopy(obj)
+        obj_copy.last_date = dict(obj_copy.last_date)
+        obj.env, obj.city, obj.household, obj.location, \
+        obj.last_location, obj.my_history, obj._workplace, obj.visits = backup_attribs
+        return obj_copy
+    elif isinstance(obj, Location):
+        # Replace the Location's attributes with values that can be deepcopied
+        # while still keeping the vital information
+        backup_location_attribs = (obj.env, obj.humans, obj.infectious_human,
+                                   obj.users, obj._env)
+
+        obj.env = DummyEnv(obj.env)  # should replicate the env's behavior perfectly
+        obj.infectious_human = obj.infectious_human()  # fct broken by changing obj.humans at next line
+        obj.humans = OrderedSet([h.name for h in obj.humans])  # this will break lookups, but still provide basic info
+        obj._env = DummyEnv(obj._env)  # should replicate the env's behavior perfectly
+        obj.users = None
+
+        if isinstance(obj, Household):
+            backup_residents = obj.residents
+            obj.residents = [h.name for h in obj.residents]  # will break lookups, but still provide basic info
+        elif isinstance(obj, Hospital):
+            # The hospical contains a sublocation which must be deepcopied too
+            backup_icu = obj.icu
+            obj.icu = deepcopy_obj_except_env(obj.icu)
+
+        # Copy the Location
+        obj_copy = copy.deepcopy(obj)
+
+        # Restore the Location's original attributes
+        obj.env, obj.humans, obj.infectious_human, obj.users, obj._env = backup_location_attribs
+
+        if isinstance(obj, Household):
+            obj.residents = backup_residents
+        elif isinstance(obj, Hospital):
+            obj.icu = backup_icu
+
+    else:  # isinstance(obj, City):
+        raise NotImplementedError
