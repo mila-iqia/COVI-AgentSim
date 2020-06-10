@@ -20,6 +20,7 @@ def plot_locations(locations: List[int],
                          "store": "tab:purple",
                          "school": "tab:olive",
                          "workplace": "tab:gray",
+                         "senior_residency": "tab:brown"
                          "misc": "tab:pink"}
 
     """
@@ -33,7 +34,7 @@ def plot_locations(locations: List[int],
     for location, timestamp in zip(locations, timestamps):
         l_name = locations_names[location]
         color = location_to_color[l_name.split(":")[0]]
-        plt.broken_barh([(timestamp, 1/24)], (location, 1), facecolor=color)
+        plt.broken_barh([(timestamp, 1/24)], (location, 1), facecolor=color, label=l_name)
     plt.title("Location")
     plt.ylim((0, len(locations_names)))
     # plt.set_yticklabels(locations_names)
