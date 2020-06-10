@@ -52,10 +52,9 @@ def get_location_history(human_snapshots: List[Human],
                          all_locations: Dict[Tuple[int, int], Tuple[str, int]],
                          time_begin: datetime.datetime,
                          time_end: datetime.datetime) -> \
-        Tuple[List[int], List[datetime.datetime], Any]:
+        Tuple[List[int], List[datetime.datetime]]:
     locations = []
     l_timestamps = []
-    min_max = None
 
     # There is one human snapshot per time slot per day
     start_index = (time_begin - timestamps[0]).days * len(human_snapshots[0].time_slots)
@@ -69,17 +68,16 @@ def get_location_history(human_snapshots: List[Human],
         locations.append(all_locations[(human.location.lon, human.location.lat)][1])
         l_timestamps.append(timestamp)
 
-    return locations, l_timestamps, min_max
+    return locations, l_timestamps
 
 
 def get_recommendation_level_history(human_snapshots: List[Human],
                                      timestamps: List[datetime.datetime],
                                      time_begin: datetime.datetime,
                                      time_end: datetime.datetime) -> \
-        Tuple[List[int], List[datetime.datetime], Any]:
+        Tuple[List[int], List[datetime.datetime]]:
     recommendation_levels = []
-    r_timestamps = []
-    min_max = (0, 3)
+    rl_timestamps = []
 
     # There is one human snapshot per time slot per day
     start_index = (time_begin - timestamps[0]).days * len(human_snapshots[0].time_slots)
@@ -91,19 +89,18 @@ def get_recommendation_level_history(human_snapshots: List[Human],
             break
 
         recommendation_levels.append(human.rec_level)
-        r_timestamps.append(timestamp)
+        rl_timestamps.append(timestamp)
 
-    return recommendation_levels, r_timestamps, min_max
+    return recommendation_levels, rl_timestamps
 
 
 def get_risk_history(human_snapshots: List[Human],
                      timestamps: List[datetime.datetime],
                      time_begin: datetime.datetime,
                      time_end: datetime.datetime) -> \
-        Tuple[List[int], List[datetime.datetime], Any]:
+        Tuple[List[int], List[datetime.datetime]]:
     risks = []
     r_timestamps = []
-    min_max = (0.0, 1.0)
 
     # There is one human snapshot per time slot per day
     start_index = (time_begin - timestamps[0]).days * len(human_snapshots[0].time_slots)
@@ -117,17 +114,16 @@ def get_risk_history(human_snapshots: List[Human],
         risks.append(human.risk)
         r_timestamps.append(timestamp)
 
-    return risks, r_timestamps, min_max
+    return risks, r_timestamps
 
 
 def get_viral_load_history(human_snapshots: List[Human],
                            timestamps: List[datetime.datetime],
                            time_begin: datetime.datetime,
                            time_end: datetime.datetime) -> \
-        Tuple[List[int], List[datetime.datetime], Any]:
+        Tuple[List[int], List[datetime.datetime]]:
     viral_loads = []
     vl_timestamps = []
-    min_max = (0.0, 1.0)
 
     # There is one human snapshot per time slot per day
     start_index = (time_begin - timestamps[0]).days * len(human_snapshots[0].time_slots)
@@ -141,7 +137,7 @@ def get_viral_load_history(human_snapshots: List[Human],
         viral_loads.append(human.viral_load_for_day(timestamp))
         vl_timestamps.append(timestamp)
 
-    return viral_loads, vl_timestamps, min_max
+    return viral_loads, vl_timestamps
 
 
 def generate_human_centric_plots(debug_data, output_folder):
@@ -149,12 +145,29 @@ def generate_human_centric_plots(debug_data, output_folder):
     timestamps = list(human_backups.keys())
     nb_humans = len(human_backups[timestamps[0]].keys())
 
+    begin = timestamps[0]
+    end = timestamps[-1]
+
     # Treat each human individually
     for idx_human in range(1, nb_humans + 1):
 
         # Get all the backups of this human for all the timestamps
         h_key = "human:%i" % idx_human
         h_backup = [human_backups[t][h_key] for t in timestamps]
+
+        fig, axes = plt.subplots(3, 1, sharex="col")
+        plt.xlabel("Time")
+        plt.gcf().autofmt_xdate()
+
+        risks, r_timestamps = get_risk_history(h_backup, timestamps, begin, end)
+        viral_loads, vl_timestamps = get_viral_load_history(h_backup, timestamps, begin, end)
+        recommendation_levels, rl_timestamps = get_viral_load_history(h_backup, timestamps, begin, end)
+
+        plot_risks(axes[0], risks, timestamps)
+        plot_viral_loads(axes[1], viral_loads, timestamps)
+        plot_recommendation_levels(axes[2], recommendation_levels, timestamps)
+
+        plt.savefig(os.path.join(output_folder, f"{str(begin)}-{str(end)}_{h_key}.png"))
 
 
 def generate_location_centric_plots(debug_data, output_folder):
