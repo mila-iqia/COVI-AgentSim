@@ -304,31 +304,31 @@ def generate_human_centric_plots(debug_data, output_folder):
 
         fig = plt.figure()
 
-        fig.add_subplot(7, 2, 2)
+        fig.add_subplot(4, 3, 2)
         plot_risks(risks, timestamps)
 
-        fig.add_subplot(7, 2, 4)
+        fig.add_subplot(4, 3, 5)
         plot_viral_loads(viral_loads, timestamps)
 
-        fig.add_subplot(7, 2, 6)
+        fig.add_subplot(4, 3, 8)
         plot_symptoms(true_symptoms, obs_symptoms, timestamps)
 
-        fig.add_subplot(7, 2, 8)
+        fig.add_subplot(4, 3, 11)
         plot_recommendation_levels(recommendation_levels, timestamps)
 
-        fig.add_subplot(7, 2, 10)
+        fig.add_subplot(4, 3, 3)
         plot_locations(locations, sorted_all_locations, timestamps)
 
-        fig.add_subplot(7, 2, 12)
+        fig.add_subplot(4, 3, 6)
         tmp_events = {e_label: (e_cnts if e_label == "Encounters" else [0] * len(e_cnts))
                       for e_label, e_cnts in events.items()}
         plot_events(tmp_events, timestamps)
-        fig.add_subplot(7, 2, 14)
+        fig.add_subplot(4, 3, 9)
         tmp_events = {e_label: (e_cnts if e_label != "Encounters" else [0] * len(e_cnts))
                       for e_label, e_cnts in events.items()}
         plot_events(tmp_events, timestamps)
 
-        fig.add_subplot(1, 2, 1)
+        fig.add_subplot(1, 3, 1)
         human = h_backup[-1]
         table_data = [
             ["name:", human.name],
@@ -343,10 +343,10 @@ def generate_human_centric_plots(debug_data, output_folder):
         ]
         table = plt.table(cellText=table_data, loc='center')
         table.set_fontsize(14)
-        table.scale(1, 3)
+        table.scale(1, 2)
         plt.axis('off')
 
-        fig.set_size_inches(6.4 * 2, 4.8 * 4)
+        fig.set_size_inches(6.4 * 2, 4.8 * 2)
 
         plot_path = os.path.join(output_folder, f"{str(begin)}-{str(end)}_{h_key}.png")
         plt.savefig(plot_path, bbox_inches='tight', pad_inches=0.1)
