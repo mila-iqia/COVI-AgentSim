@@ -20,7 +20,7 @@ def plot_locations(locations: List[int],
                          "store": "tab:purple",
                          "school": "tab:olive",
                          "workplace": "tab:gray",
-                         "senior_residency": "tab:brown"
+                         "senior_residency": "tab:brown",
                          "misc": "tab:pink"}
 
     """
@@ -193,7 +193,7 @@ def generate_human_centric_plots(debug_data, output_folder):
 
         risks, r_timestamps = get_risk_history(h_backup, timestamps, begin, end)
         viral_loads, vl_timestamps = get_viral_load_history(h_backup, timestamps, begin, end)
-        recommendation_levels, rl_timestamps = get_viral_load_history(h_backup, timestamps, begin, end)
+        recommendation_levels, rl_timestamps = get_recommendation_level_history(h_backup, timestamps, begin, end)
         locations, l_timestamps = get_location_history(h_backup, timestamps, sorted_all_locations, begin, end)
 
         fig = plt.figure()
