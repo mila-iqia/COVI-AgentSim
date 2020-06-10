@@ -325,6 +325,7 @@ def generate_human_centric_plots(debug_data, output_folder):
             ["carefulness:", human.carefulness],
             ["has_app:", human.has_app],
             ["has_allergies:", human.has_allergies],
+            ["nb preconditions", len(human.preexisting_conditions)],
             ["household:", human.household],
             ["workplace:", human.workplace],
             ["timeslots:", str(human.time_slots)],
