@@ -541,7 +541,9 @@ class Tracing(object):
     # Mirror BehaviorInterventions interface
     def get_recommendations(self, human: "Human"):
         recommendations = []
-        if not self.should_modify_behavior and (not human.has_app and self.app):
+        # TODO: comment this and refactor this stuff; there are probably bugs in here, and we
+        #  need to make sure that interventions can be truly disassociated from app usage
+        if self.should_modify_behavior:
             recommendations = self.intervention.get_recommendations(human)
         if (not recommendations or
             not isinstance(recommendations[-1], Quarantine)) and \
