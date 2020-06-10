@@ -209,9 +209,6 @@ class Tracker(object):
         self.init_infected = [human for human in self.city.humans if human.is_exposed]
         self.fully_initialized = True
 
-        # raw object copies
-        self.human_backups: typing.Dict[datetime.datetime, typing.Dict[str, "Human"]] = {}
-
     def summarize_population(self):
         """
         [summary]
@@ -509,9 +506,6 @@ class Tracker(object):
         return top_k_prec, lift, recall
 
     def track_humans(self, hd: typing.Dict, current_timestamp: datetime.datetime, keep_full_copies: bool):
-        if keep_full_copies:
-            assert current_timestamp not in self.human_backups
-            self.human_backups[current_timestamp] = deepcopy_obj_array_except_env(hd)
         for name, h in hd.items():
             order_1_contacts = h.contact_book.get_contacts(hd)
             self.risk_attributes.append({
@@ -535,6 +529,11 @@ class Tracker(object):
                                                len(c.symptoms) > 0 for c in order_1_contacts]),
                 "order_1_is_tested": any([c.test_result == "positive" for c in order_1_contacts]),
             })
+        if keep_full_copies:
+            self.dump_backup_objects(
+                human_backups=deepcopy_obj_array_except_env(hd),
+                current_timestamp=current_timestamp,
+            )
 
     def track_app_adoption(self):
         self.adoption_rate = sum(h.has_app for h in self.city.humans) / self.n_people
@@ -1286,11 +1285,16 @@ class Tracker(object):
         with open(f"logs3/{self.filename}", 'wb') as f:
             dill.dump(data, f)
 
-    def dump_backup_objects(self):
+    def dump_backup_objects(
+            self,
+            human_backups,
+            current_timestamp,
+    ):
         data = self._get_metrics_data()
-        data["human_backups"] = self.human_backups
-        os.makedirs("debug", exist_ok=True)
-        with open(f"debug/{self.filename}", 'wb') as f:
+        data["human_backups"] = human_backups
+        dump_folder = os.path.join("debug", self.filename.split(".pkl")[0])
+        os.makedirs(dump_folder, exist_ok=True)
+        with open(os.path.join(dump_folder, current_timestamp.isoformat()), "wb") as f:
             dill.dump(data, f)
 
     def write_for_training(self, humans, outfile, conf):
