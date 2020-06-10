@@ -63,7 +63,7 @@ LOCATION_DISTRIBUTION:
         "area": 0.15,
         "social_contact_factor": 1,
         "surface_prob": [0.1, 0.1, 0.3, 0.2, 0.3],
-        "rnd_capacity": [300, 500],
+        "rnd_capacity": [30, 50],
       },
     "hospital":
       {
@@ -82,7 +82,7 @@ OTHERS_WORKPLACE_CHOICE: [1.0, 0.0, 0.0]
 # ref: https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1710000501
 # ref: https://www12.statcan.gc.ca/census-recensement/2011/as-sa/98-312-x/2011003/fig/fig3_4-4-eng.cfm
 # TODO: senior_residency should be adjusted w.r.t. to the actual number of people per bin to combine them.
-HOUSE_SIZE_PREFERENCE: [0.45, 0.5, 0.005, 0.035, 0.01]
+HOUSE_SIZE_PREFERENCE: [0.282, 0.344, 0.152, 0.138, 0.084]
 HUMAN_DISTRIBUTION: # this is parsed into tuple keys in utils.py/parse_configuration e.g. "0-10" => (0, 10)
   {
     "1-10":
@@ -356,7 +356,7 @@ MEAN_DAILY_INTERACTION_FOR_AGE_GROUP: {
 # TESTING
 # capacity is proportion of population tested per day
 TEST_TYPES: { "lab": {
-        "capacity": 0.001,  # ! /!\ This is now a proportion of population, not an absolute (int) value
+        "capacity": 0.01,  # ! /!\ This is now a proportion of population, not an absolute (int) value
         "time_to_result": {
           "in-patient": 0.33, # days
           "out-patient": 2.0, # verbal communication with H&A (find-source)
@@ -459,6 +459,7 @@ ENVIRONMENTAL_INFECTION_KNOB: 0.001
 ## INTERVENTIONS
 # WASH HANDS
 HYGIENE_EFFECT: 0.2 # FIXME:unused
+HYGIENE_EFFICACY_FACTOR: 0.5 # used in reduction of probability of transmission (no-source)
 
 # RISK RECOMMENDATIONS
 DEFAULT_DISTANCE: 100 # cms
@@ -471,8 +472,7 @@ MASK_EFFICACY_NORMIE: 0.32
 MASK_EFFICACY_HEALTHWORKER: 0.98
 BASELINE_P_MASK: 0.5 # FIXME:unused
 MASKS_SUPPLY: 1000000
-MASK_EFFICACY_FACTOR: 1 # used in reduction of probability o transmission (no-source)
-HYGIENE_EFFICACY_FACTOR: 0.5 # used in reduction of probability of transmission (no-source)
+MASK_EFFICACY_FACTOR: 0.4 # used in reduction of probability of transmission (no-source)
 
 # naive tracing
 RISK_TRANSMISSION_PROBA: 0.03
@@ -482,6 +482,9 @@ BASELINE_RISK_VALUE: 0.01
 MANUAL_TRACING_P_CONTACT: 0.50
 MANUAL_TRACING_DELAY_AVG: 3 # days
 MANUAL_TRACING_DELAY_STD: 0.5 # days
+
+# bundled recommendations
+BUNDLED_INTERVENTION_RECOMMENDATION_LEVEL: 0
 
 # Console logging (Condition with COLLECT_LOGS)
 LOGGING_LEVEL: "WARNING"

@@ -116,13 +116,14 @@ class City:
         """
         self.conf = conf
         self.env = env
-        self.rng = rng
+        self.rng = np.random.RandomState(rng.randint(2 ** 16))
         self.x_range = x_range
         self.y_range = y_range
         self.total_area = (x_range[1] - x_range[0]) * (y_range[1] - y_range[0])
         self.n_people = n_people
         self.init_percent_sick = init_percent_sick
         self.hash = int(time.time_ns())  # real-life time used as hash for inference server data hashing
+        self.tracker = Tracker(env, self)
 
         self.test_type_preference = list(zip(*sorted(conf.get("TEST_TYPES").items(), key=lambda x:x[1]['preference'])))[0]
         self.max_capacity_per_test_type = {
@@ -137,7 +138,6 @@ class City:
         else:
             self.daily_target_rec_level_dists = None
         self.daily_rec_level_mapping = None
-
         self.covid_testing_facility = TestFacility(self.test_type_preference, self.max_capacity_per_test_type, env, conf)
 
         print("Initializing locations ...")
@@ -148,12 +148,15 @@ class City:
         self.households = OrderedSet()
         print("Initializing humans ...")
         self.initialize_humans(human_type)
+        for human in self.humans:
+            human.track_this_guy = True
+            if human.is_exposed:
+                print(human, human.household, human.household.residents)
 
         self.log_static_info()
 
         print("Computing their preferences")
         self._compute_preferences()
-        self.tracker = Tracker(env, self)
         self.intervention = None
 
         # GAEN summary statistics that enable the individual to determine whether they should send their info
@@ -166,6 +169,7 @@ class City:
         # will give them the global mailbox object (a dictionary) and have them 'pop' all
         # messages they consume from their own (simulation-only!) personal mailbox
         self.global_mailbox: SimulatorMailboxType = defaultdict(dict)
+        self.tracker.initialize()
 
     def cleanup_global_mailbox(
             self,
@@ -407,15 +411,15 @@ class City:
         init_infected = math.ceil(self.init_percent_sick * self.n_people)
         chosen_infected = set(self.rng.choice(self.n_people, init_infected, replace=False).tolist())
 
-        age_histogram = relativefreq2absolutefreq(
+        self.age_histogram = relativefreq2absolutefreq(
             bins_fractions={age_bin: specs['p'] for age_bin, specs in self.conf.get('HUMAN_DISTRIBUTION').items()},
             n_elements=self.n_people,
             rng=self.rng
         )
 
         for age_bin, specs in self.conf.get("HUMAN_DISTRIBUTION").items():
-            n = age_histogram[age_bin]
-            ages = self.rng.randint(*age_bin, size=n)
+            n = self.age_histogram[age_bin]
+            ages = ages = self.rng.randint(low=age_bin[0], high=age_bin[1]+1, size=n) # high is exclusive
 
             senior_residency_preference = specs['residence_preference']['senior_residency']
 
@@ -469,7 +473,14 @@ class City:
         # assign houses; above only assigns senior residence
         # stores tuples - (location, current number of residents, maximum number of residents allowed)
         remaining_houses = []
-        for human in self.humans:
+        # for cases when human is below certain age and can't live in a single house
+        house_size_preference = copy.deepcopy(self.conf.get('HOUSE_SIZE_PREFERENCE'))
+        house_size_preference[0] = 0.0
+        house_size_preference = np.array(house_size_preference)
+        renormalized_house_size_preference = house_size_preference / house_size_preference.sum()
+
+        permuted_humans = [self.humans[x] for x in self.rng.permutation(len(self.humans))]
+        for human in permuted_humans:
             if human.household is not None:
                 continue
 
@@ -499,11 +510,13 @@ class City:
             # residence_preference of that age bin
             if res is None:
                 for i, (l,u) in enumerate(self.conf.get("HUMAN_DISTRIBUTION").keys()):
-                    if l <= human.age < u:
+                    if l <= human.age <= u:
                         bin = (l,u)
                         break
 
-                house_size_preference = self.conf.get("HUMAN_DISTRIBUTION")[(l,u)]['residence_preference']['house_size']
+                if human.age <= self.conf.get("MIN_AVG_HOUSE_AGE"):
+                    house_size_preference = renormalized_house_size_preference
+
                 cap = self.rng.choice(range(1,6), p=house_size_preference, size=1)
                 res = self.create_location(
                     self.conf.get("LOCATION_DISTRIBUTION")['household'],
@@ -537,6 +550,7 @@ class City:
         `Tracing`. It simulates the process of downloading the app on for smartphone
         users according to `APP_UPTAKE` and `SMARTPHONE_OWNER_FRACTION_BY_AGE`.
         """
+        print("Downloading the app...")
         age_histogram = relativefreq2absolutefreq(
             bins_fractions={age_bin: specs['p']
                             for age_bin, specs
@@ -548,7 +562,7 @@ class City:
         all_has_app = self.conf.get('APP_UPTAKE') < 0
         # The dict below keeps track of an app quota for each age group
         n_apps_per_age = {
-            k: math.ceil(age_histogram[k] * v * self.conf.get('APP_UPTAKE'))
+            k: math.ceil(self.age_histogram[k] * v * self.conf.get('APP_UPTAKE'))
             for k, v in self.conf.get("SMARTPHONE_OWNER_FRACTION_BY_AGE").items()
         }
         for human in self.humans:
@@ -560,7 +574,7 @@ class City:
             # Find what age bin the human is in
             age_bin = None
             for x in n_apps_per_age:
-                if x[0] <= human.age < x[1]:
+                if x[0] <= human.age <= x[1]:
                     age_bin = x
                     break
             assert age_bin is not None
@@ -570,6 +584,9 @@ class City:
                 human.has_app = True
                 n_apps_per_age[age_bin] -= 1
                 continue
+
+        self.tracker.adoption_rate = sum(h.has_app for h in self.humans) / len(self.humans)
+        print(f"adoption rate: {100*self.tracker.adoption_rate:3.2f}%")
 
     def add_to_test_queue(self, human):
         self.covid_testing_facility.add_to_test_queue(human)
@@ -683,11 +700,14 @@ class City:
                 self.intervention = get_intervention(conf=self.conf)
                 if isinstance(self.intervention, Tracing):
                     self.have_some_humans_download_the_app()
+
                 _ = [h.notify(self.intervention) for h in self.humans]
+
                 print(self.intervention)
                 self.conf["GLOBAL_MOBILITY_SCALING_FACTOR"] = tmp_M
                 if self.conf.get('COLLECT_TRAINING_DATA'):
                     print("naive risk calculation without changing behavior... Humans notified!")
+
                 humans_notified = True
 
             # run city testing routine, providing test results for those who need them
@@ -958,7 +978,7 @@ class Location(simpy.Resource):
         super().__init__(env, capacity)
         self.humans = OrderedSet() #OrderedSet instead of set for determinism when iterating
         self.name = name
-        self.rng = rng
+        self.rng = np.random.RandomState(rng.randint(2 ** 16))
         self.lat = lat
         self.lon = lon
         self.area = area
@@ -1638,7 +1658,7 @@ class EmptyCity(City):
         """
         self.conf = conf
         self.env = env
-        self.rng = rng
+        self.rng = np.random.RandomState(rng.randint(2 ** 16))
         self.x_range = x_range
         self.y_range = y_range
         self.total_area = (x_range[1] - x_range[0]) * (y_range[1] - y_range[0])

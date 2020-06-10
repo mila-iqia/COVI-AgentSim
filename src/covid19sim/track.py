@@ -84,7 +84,7 @@ class Tracker(object):
             name = "unmitigated"
         else:
             name = city.conf.get('RISK_MODEL')
-        self.filename = f"tracker_data_n_{len(city.humans)}_{timenow}_{name}.pkl"
+        self.filename = f"tracker_data_n_{city.n_people}_{timenow}_{name}.pkl"
 
         # infection & contacts
         self.contacts = {
@@ -97,16 +97,22 @@ class Tracker(object):
                 'duration': {'avg': (0, np.zeros((150,150))), 'total': np.zeros((150,150)), 'n': np.zeros((150,150))},
                 'histogram_duration': [0],
                 'location_duration':defaultdict(lambda : [0]),
-                'n_contacts': {'avg': (0, np.zeros((150,150))), 'total': np.zeros((150,150))}
+                'n_contacts': {
+                        'avg': (0, np.zeros((150,150))),
+                        'total': np.zeros((150,150)),
+                        'n_people': defaultdict(lambda : set())
+                        },
+                'n_bluetooth_contacts': {
+                        'avg': (0, np.zeros((150,150))),
+                        'total': np.zeros((150,150)),
+                        'n_people': defaultdict(lambda : set())
+                        },
+
 
                 }
         self.p_infection = []
 
         self.infection_graph = nx.DiGraph()
-        self.s_per_day = [sum(h.is_susceptible for h in self.city.humans)]
-        self.e_per_day = [sum(h.is_exposed for h in self.city.humans)]
-        self.i_per_day = [sum(h.is_infectious for h in self.city.humans)]
-        self.r_per_day = [sum(h.is_removed for h in self.city.humans)]
         self.humans_state = defaultdict(list)
         self.humans_rec_level = defaultdict(list)
         self.humans_intervention_level = defaultdict(list)
@@ -125,7 +131,7 @@ class Tracker(object):
 
         # cumulative incidence
         day = self.env.timestamp.strftime("%d %b")
-        self.last_day = {'track_recovery':day, "track_infection":day, 'social_mixing':day}
+        self.last_day = {'track_recovery':day, "track_infection":day, 'social_mixing':day, 'bluetooth_communications': day}
         self.cumulative_incidence = []
         self.cases_per_day = [0]
         self.r_0 = defaultdict(lambda : {'infection_count':0, 'humans':set()})
@@ -139,7 +145,7 @@ class Tracker(object):
 
         # demographics
         self.age_bins = sorted(self.city.conf.get("HUMAN_DISTRIBUTION").keys(), key = lambda x:x[0])
-        self.n_people = self.n_humans = len(self.city.humans)
+        self.n_people = self.n_humans = self.city.n_people
 
         # track encounters
         self.last_encounter_day = self.env.day_of_week()
@@ -159,17 +165,10 @@ class Tracker(object):
         # mobility
         self.n_outside_daily_contacts = 0
         self.transition_probability = get_nested_dict(4)
-        M, G, B, O, R, EM, F = self.compute_mobility()
-        self.mobility = [M]
-        self.expected_mobility = [EM]
-        self.summarize_population()
-        self.feelings = [F]
         self.rec_feelings = []
         self.outside_daily_contacts = []
 
         # risk models
-        self.risk_precision_daily = [self.compute_risk_precision()]
-        self.recommended_levels_daily = [[G, B, O, R]]
         self.ei_per_day = []
         self.risk_values = []
         self.avg_infectiousness_per_day = []
@@ -182,6 +181,23 @@ class Tracker(object):
 
         # update messages
         self.infector_infectee_update_messages = defaultdict(lambda :defaultdict(dict))
+
+    def initialize(self):
+        self.s_per_day = [sum(h.is_susceptible for h in self.city.humans)]
+        self.e_per_day = [sum(h.is_exposed for h in self.city.humans)]
+        self.i_per_day = [sum(h.is_infectious for h in self.city.humans)]
+        self.r_per_day = [sum(h.is_removed for h in self.city.humans)]
+
+        M, G, B, O, R, EM, F = self.compute_mobility()
+        self.recommended_levels_daily = [[G, B, O, R]]
+        self.mobility = [M]
+        self.expected_mobility = [EM]
+        self.summarize_population()
+        self.feelings = [F]
+
+        # risk models
+        self.risk_precision_daily = [self.compute_risk_precision()]
+        self.init_infected = [human for human in self.city.humans if human.is_exposed]
 
     def summarize_population(self):
         """
@@ -541,9 +557,9 @@ class Tracker(object):
             timestamp (datetime.datetime): time at which this event took place.
         """
         for i, (l,u) in enumerate(self.age_bins):
-            if from_human and l <= from_human.age < u:
+            if from_human and l <= from_human.age <= u:
                 from_bin = i
-            if l <= to_human.age < u:
+            if l <= to_human.age <= u:
                 to_bin = i
 
         self.cases_per_day[-1] += 1
@@ -574,10 +590,10 @@ class Tracker(object):
             self.infection_graph.add_node(to_human.name, bin=to_bin, time=timestamp)
             self.infection_graph.add_edge(from_human.name, to_human.name,  timedelta=delta)
 
-            # Keep records of the infection so that serial intervals 
-            # can be registered when symptoms appear 
-            # Note: We need a bidirectional record (to/from), because we can't 
-            # anticipate which (to or from) will manifest symptoms first  
+            # Keep records of the infection so that serial intervals
+            # can be registered when symptoms appear
+            # Note: We need a bidirectional record (to/from), because we can't
+            # anticipate which (to or from) will manifest symptoms first
             self.serial_interval_book_to[to_human.name][from_human.name] = (to_human, from_human)
             self.serial_interval_book_from[from_human.name][to_human.name] = (to_human, from_human)
 
@@ -787,7 +803,7 @@ class Tracker(object):
 
     def track_social_mixing(self, **kwargs):
         """
-        [summary]
+        Keeps count of average daily encounters between different ages.
         """
         duration = kwargs.get('duration')
         bin = math.floor(duration/15)
@@ -803,7 +819,7 @@ class Tracker(object):
             day = timestamp.strftime("%d %b")
 
             if self.last_day['social_mixing'] != day:
-                # duration
+                # average duration per contact across age groups (minutes)
                 n, M = self.contacts['duration']['avg']
                 where = self.contacts['duration']['n'] != 0
                 m = np.divide(self.contacts['duration']['total'], self.contacts['duration']['n'], where=where)
@@ -812,11 +828,18 @@ class Tracker(object):
                 self.contacts['duration']['total'] = np.zeros((150,150))
                 self.contacts['duration']['n'] = np.zeros((150,150))
 
-                # n_contacts
+                # number of contacts across age groups
                 n, M = self.contacts['n_contacts']['avg']
                 m = self.contacts['n_contacts']['total']
-                self.contacts['n_contacts']['avg'] = (n+1, (n*M + m)/(n+1))
+                any_contact = np.zeros_like(m)
+                for age1, age2 in self.contacts['n_contacts']['n_people'].keys():
+                    x = len(self.contacts['n_contacts']['n_people'][age1, age2])
+                    m[age1, age2] /=  x
+                    any_contact[age1, age2] = 1.0
 
+                # update values
+                self.contacts['n_contacts']['avg'] = (n+1, (n*M + m)/(n+1))
+                self.contacts['n_contacts']['n_people'] = defaultdict(lambda : set())
                 self.contacts['n_contacts']['total'] = np.zeros((150,150))
 
                 self.outside_daily_contacts.append(1.0 * self.n_outside_daily_contacts/len(self.city.humans))
@@ -828,13 +851,15 @@ class Tracker(object):
                 human2 = kwargs.get('human2', None)
                 if human1 is not None and human2 is not None:
                     self.contacts['duration']['total'][human1.age, human2.age] += duration
-                    self.contacts['duration']['n'][human1.age, human2.age] += 1
-
                     self.contacts['duration']['total'][human2.age, human1.age] += duration
+                    self.contacts['duration']['n'][human1.age, human2.age] += 1
                     self.contacts['duration']['n'][human2.age, human1.age] += 1
 
                     self.contacts['n_contacts']['total'][human1.age, human2.age] += 1
                     self.contacts['n_contacts']['total'][human2.age, human1.age] += 1
+                    self.contacts['n_contacts']['n_people'][(human1.age, human2.age)].add(human1.name)
+                    self.contacts['n_contacts']['n_people'][(human2.age, human1.age)].add(human2.name)
+
                     if human1.location != human1.household:
                         self.n_outside_daily_contacts += 1
 
@@ -843,6 +868,29 @@ class Tracker(object):
             if bin >= x:
                 self.contacts['location_duration'][location.location_type].extend([0 for _ in range(bin - x + 1)])
             self.contacts['location_duration'][location.location_type][bin] += 1
+
+    def track_bluetooth_communications(self, human1, human2, timestamp):
+        day = timestamp.strftime("%d %b")
+        if self.last_day['bluetooth_communications']  != day:
+            n, M = self.contacts['n_bluetooth_contacts']['avg']
+            m = self.contacts['n_bluetooth_contacts']['total']
+            any_contact = np.zeros_like(m)
+            for age1, age2 in self.contacts['n_bluetooth_contacts']['n_people'].keys():
+                x = len(self.contacts['n_bluetooth_contacts']['n_people'][age1, age2])
+                m[age1, age2] /=  x
+                any_contact[age1, age2] = 1.0
+
+            # update values
+            self.contacts['n_bluetooth_contacts']['avg'] = (n+1, (n*M + m)/(n+1))
+            self.contacts['n_bluetooth_contacts']['n_people'] = defaultdict(lambda : set())
+            self.contacts['n_bluetooth_contacts']['total'] = np.zeros((150,150))
+            self.last_day['bluetooth_communications'] = day
+
+        else:
+            self.contacts['n_bluetooth_contacts']['total'][human1.age, human2.age] += 1
+            self.contacts['n_bluetooth_contacts']['total'][human2.age, human1.age] += 1
+            self.contacts['n_bluetooth_contacts']['n_people'][(human1.age, human2.age)].add(human1.name)
+            self.contacts['n_bluetooth_contacts']['n_people'][(human2.age, human1.age)].add(human2.name)
 
     def track_encounter_distance(self, type, packing_term, encounter_term, social_distancing_term, distance, location=None):
         if location:
@@ -853,19 +901,20 @@ class Tracker(object):
 
     def track_encounter_events(self, human1, human2, location, distance, duration):
         """
-        [summary]
+        Counts encounters that qualify to be in contact_condition.
+        Keeps average of daily
 
         Args:
-            human1 ([type]): [description]
-            human2 ([type]): [description]
-            location ([type]): [description]
-            distance ([type]): [description]
-            duration ([type]): [description]
+            human1 (Human): One of the `Human` involved in encounter
+            human2 (Human): One of the `Human` involved in encounter
+            location (Location): Location at which encounter took place
+            distance (float): Distance at which encounter took place (cm)
+            duration (float): time duration for which the encounter took place (minutes)
         """
         for i, (l,u) in enumerate(self.age_bins):
-            if l <= human1.age < u:
+            if l <= human1.age <= u:
                 bin1 = (i,(l,u))
-            if l <= human2.age < u:
+            if l <= human2.age <= u:
                 bin2 = (i, (l,u))
 
         self.contacts["all_encounters"][human1.age, human2.age] += 1
@@ -1034,13 +1083,13 @@ class Tracker(object):
         print_dict("P(symptoms = x | human had some sickness e.g. cold, flu, allergies, covid), where x is", tmp_s, is_sorted="desc", top_k=10, logfile=logfile)
 
         #
-        # log("######## MOBILITY #########", logfile)
-        # log("Day - ", logfile)
-        # total = sum(v[1] for v in self.day_encounters.values())
-        # x = ['Mon', "Tue", "Wed", "Thurs", "Fri", "Sat", "Sun"]
-        # for c,day in enumerate(x):
-        #     v = self.day_encounters[c]
-        #     log(f"{day} #avg: {v[1]} %:{100*v[1]/total:5.2f} ", logfile)
+        log("######## MOBILITY #########", logfile)
+        log("Day - ", logfile)
+        total = sum(v[1] for v in self.day_encounters.values())
+        x = ['Mon', "Tue", "Wed", "Thurs", "Fri", "Sat", "Sun"]
+        for c,day in enumerate(x):
+            v = self.day_encounters[c]
+            log(f"{day} #avg: {v[1]/self.n_people} %:{100*v[1]/total:5.2f} ", logfile)
         #
         # log("Hour - ", logfile)
         # total = sum(v[1] for v in self.hour_encounters.values())
@@ -1061,11 +1110,12 @@ class Tracker(object):
         #     v = self.time_encounters[c]
         #     log(f"{bin} #avg: {v} %:{100*v/total:5.2f} ", logfile)
         #
-        # log("Average Daily Contacts ", logfile)
-        # total = sum(x[1] for x in self.daily_age_group_encounters.values())
-        # for bin in self.age_bins:
-        #     v = self.daily_age_group_encounters[bin][1]
-        #     log(f"{bin} #avg: {v} %:{100*v/total:5.2f} ", logfile)
+        log("Average Daily Contacts ", logfile)
+        total = sum(x[1] for x in self.daily_age_group_encounters.values())
+        for bin in self.age_bins:
+            x = self.city.age_histogram[bin]
+            v = self.daily_age_group_encounters[bin][1]
+            log(f"{bin} #avg: {v/x} %:{100*v/total:5.2f} ", logfile)
         #
         # for until_days in [30, None]:
         #     log("******** Risk Precision/Recall *********", logfile)

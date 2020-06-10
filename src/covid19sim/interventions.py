@@ -78,7 +78,7 @@ class StayHome(BehaviorInterventions):
     def __repr__(self):
         return "Stay Home"
 
-class LimitContact (BehaviorInterventions):
+class LimitContact(BehaviorInterventions):
     """
     TODO.
     Not currently being used.
@@ -126,7 +126,7 @@ class StandApart(BehaviorInterventions):
         delattr(human, "_maintain_extra_distance_2m")
 
     def __repr__(self):
-        return "Stand 2M"
+        return f"Stand {self.DEFAULT_SOCIAL_DISTANCE} cms apart"
 
 class WashHands(BehaviorInterventions):
     """
@@ -316,6 +316,31 @@ class WearMask(BehaviorInterventions):
     def __repr__(self):
         return f"Wear Mask"
 
+class BundledInterventions(BehaviorInterventions):
+    """
+    Implements bunch of recommendations for general awareness.
+    At the start of this intervention, everyone is initialized with these interventions.
+    DROPOUT might affect their ability to follow.
+    """
+    def __init__(self, level):
+        super(BundledInterventions, self).__init__()
+        self.recommendations = get_recommendations(level)
+
+    def modify_behavior(self, human):
+        self.revert_behavior(human)
+        for rec in self.recommendations:
+            if isinstance(rec, BehaviorInterventions) and human.follows_recommendations_today:
+                rec.modify_behavior(human)
+                human.recommendations_to_follow.add(rec)
+
+    def revert_behavior(self, human):
+        for rec in human.recommendations_to_follow:
+            rec.revert_behavior(human)
+        human.recommendations_to_follow = OrderedSet()
+
+    def __repr__(self):
+        return "\t".join([str(x) for x in self.recommendations])
+
 def get_recommendations(level):
     """
     Maps recommendation level to a list `BehaviorInterventions`.
@@ -327,11 +352,11 @@ def get_recommendations(level):
         list: a list of `BehaviorInterventions`.
     """
     if level == 0:
-        return [WashHands(), StandApart(default_distance=40)]
+        return [WashHands(), StandApart(default_distance=25)]
     if level == 1:
-        return [WashHands(), StandApart(default_distance=100), WearMask()]
+        return [WashHands(), StandApart(default_distance=75), WearMask()]
     if level == 2:
-        return [WashHands(), SocialDistancing(default_distance=125), WearMask(), 'monitor_symptoms']
+        return [WashHands(), SocialDistancing(default_distance=100), WearMask(), 'monitor_symptoms']
 
     return [WashHands(), SocialDistancing(default_distance=150), WearMask(), 'monitor_symptoms', GetTested("recommendations"), Quarantine()]
 
@@ -805,5 +830,7 @@ def get_intervention(conf):
         return StayHome()
     elif key == "GetTested":
         raise NotImplementedError
+    elif key == "BundledInterventions":
+        return BundledInterventions(conf["BUNDLED_INTERVENTION_RECOMMENDATION_LEVEL"])
     else:
         raise

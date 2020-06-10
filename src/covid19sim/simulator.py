@@ -111,7 +111,7 @@ class Human(object):
         self.city = city
         self._events = []
         self.name: RealUserIDType = f"human:{name}"
-        self.rng = rng
+        self.rng = np.random.RandomState(rng.randint(2 ** 16))
         self.has_app = has_app
         self.profession = profession
         self.is_healthcare_worker = True if profession == "healthcare" else False
@@ -119,6 +119,8 @@ class Human(object):
         self.workplace = workplace
         self.rho = rho
         self.gamma = gamma
+        self.track_this_guy = False
+        self.my_history = []
 
         self.age = age
         self.sex = _get_random_sex(self.rng)
@@ -163,7 +165,8 @@ class Human(object):
         # required for Oxford COVID-19 infection model
         age_bins = self.conf['NORMALIZED_SUSCEPTIBILITY_BY_AGE'].keys()
         for l,u in age_bins:
-            if  l <= age <= u:
+            # NOTE  & FIXME: lower limit is exclusive
+            if  l < age <= u:
                 bin = (l,u)
                 break
         self.normalized_susceptibility = self.conf['NORMALIZED_SUSCEPTIBILITY_BY_AGE'][bin]
@@ -340,6 +343,13 @@ class Human(object):
             self.rng
         )
 
+        #getting the number of misc hours from a distribution
+        self.number_of_misc_hours = _draw_random_discreet_gaussian(
+            self.conf.get("AVG_NUM_MISC_HOURS", 5),
+            self.conf.get("SCALE_NUM_MISC_HOURS", 1),
+            self.rng
+        )
+
         #Multiple shopping days and hours
         self.shopping_days = self.rng.choice(range(7), self.number_of_shopping_days)
         self.shopping_hours = self.rng.choice(range(7, 20), self.number_of_shopping_hours)
@@ -371,6 +381,9 @@ class Human(object):
             self.rng
         )
         self.count_shop=0
+
+        # leisure hours on weekends
+        self.misc_hours = self.rng.choice(range(7, 24), self.number_of_misc_hours)
 
         self.work_start_hour = self.rng.choice(range(7, 17), 3)
         # TODO: @whoever was doing that getattr thing in the human's at function, add a proper description
@@ -724,6 +737,8 @@ class Human(object):
 
         else:
             self.infection_ratio = self.conf['MILD_INFECTION_RATIO']
+
+        self.city.tracker.track_covid_properties(self)
 
     def viral_load_for_day(self, timestamp):
         """ Calculates the elapsed time since infection, returning this person's current viral load"""
@@ -1439,6 +1454,7 @@ class Human(object):
             elif ( self.env.is_weekend() and
                     self.rng.random() < 0.5 and
                     not self.rest_at_home and
+                    hour in self.misc_hours and
                     self.count_misc < self.max_misc_per_week):
                 yield  self.env.process(self.excursion(city, "leisure"))
 
@@ -1589,6 +1605,32 @@ class Human(object):
         else:
             raise ValueError(f'Unknown excursion type:{location_type}')
 
+    def track_me(self, new_location):
+        row = {
+            # basic info
+            'time':self.env.timestamp,
+            'hour':self.env.hour_of_day(),
+            'day':self.env.day_of_week(),
+            'state':self.state,
+            'has_app':self.has_app,
+            # change of location
+            'location':str(self.location),
+            'new_location':str(new_location)    ,
+            # health
+            'cold':self.has_cold,
+            'flu':self.has_flu,
+            'allergies':self.has_allergies,
+            # app-related
+            'rec_level': self.rec_level,
+            'risk':self.risk,
+            'risk_level':self.risk_level,
+            # test
+            'test_result':self.test_result,
+            'hidden_test_results': self.hidden_test_result,
+            'test_time': self.test_time,
+        }
+        self.my_history.append(row)
+
     def at(self, location, city, duration):
         """
         Enter/Exit human to/from a `location` for some `duration`.
@@ -1600,12 +1642,14 @@ class Human(object):
         Args:
             location (Location): next location to enter
             city (City): city in which human resides
-            duration (float): time duration for which human stays at this location
+            duration (float): time duration for which human stays at this location (minutes)
 
         Yields:
             [type]: [description]
         """
         city.tracker.track_trip(from_location=self.location.location_type, to_location=location.location_type, age=self.age, hour=self.env.hour_of_day())
+        if self.track_this_guy:
+            self.track_me(location)
 
         # add the human to the location
         self.location = location
@@ -1683,7 +1727,9 @@ class Human(object):
                     h.has_app:
                 remaining_time_in_contact = t_near
                 encounter_time_granularity = self.conf.get("MIN_MESSAGE_PASSING_DURATION")
+                exchanged = False
                 while remaining_time_in_contact > encounter_time_granularity:
+                    exchanged = True
                     # note: every loop we will overwrite the messages but it doesn't matter since
                     # they're recorded in the contact books and we only need one for exposure flagging
                     h1_msg, h2_msg = exchange_encounter_messages(
@@ -1697,6 +1743,10 @@ class Human(object):
                         use_gaen_key=self.conf.get("USE_GAEN"),
                     )
                     remaining_time_in_contact -= encounter_time_granularity
+
+                if exchanged:
+                    city.tracker.track_bluetooth_communications(human1=self, human2=h, timestamp = self.env.timestamp)
+
                 Event.log_encounter_messages(
                     self.conf['COLLECT_LOGS'],
                     self,
@@ -1707,14 +1757,16 @@ class Human(object):
                     time=self.env.timestamp
                 )
 
-            city.tracker.track_social_mixing(human1=self, human2=h, duration=t_near, timestamp = self.env.timestamp)
             contact_condition = (
                 distance <= self.conf.get("INFECTION_RADIUS")
                 and t_near > self.conf.get("INFECTION_DURATION")
             )
 
-            # Conditions met for possible infection #https://www.cdc.gov/coronavirus/2019-ncov/hcp/guidance-risk-assesment-hcp.html
+            # Conditions met for possible infection
+            # https://www.cdc.gov/coronavirus/2019-ncov/hcp/guidance-risk-assesment-hcp.html
             if contact_condition:
+                city.tracker.track_social_mixing(human1=self, human2=h, duration=t_near, timestamp = self.env.timestamp)
+                city.tracker.track_encounter_events(human1=self, human2=h, location=location, distance=distance, duration=t_near)
                 city.tracker.track_encounter_distance("B\t0", packing_term, encounter_term, social_distancing_term, distance, location=None)
 
                 proximity_factor = 1
@@ -1734,7 +1786,6 @@ class Human(object):
 
                 infector, infectee, p_infection = None, None, None
                 if (self.is_infectious ^ h.is_infectious) and scale_factor_passed:
-                    # TODO: whats the distribution of distances that get here (each distance type)?
                     if self.is_infectious:
                         infector, infectee = self, h
                         infectee_msg = h2_msg
@@ -1767,7 +1818,6 @@ class Human(object):
                         if infectee_msg is not None:  # could be None if we are not currently tracing
                             infectee_msg._exposition_event = True
                         city.tracker.track_infection('human', from_human=infector, to_human=infectee, location=location, timestamp=self.env.timestamp)
-                        city.tracker.track_covid_properties(infectee)
                     else:
                         infector, infectee = None, None
 
@@ -1794,8 +1844,6 @@ class Human(object):
                         if self.rng.random() < self.conf.get("FLU_CONTAGIOUSNESS"):
                             flu_infectee.flu_timestamp = self.env.timestamp
 
-                city.tracker.track_encounter_events(human1=self, human2=h, location=location, distance=distance, duration=t_near)
-
                 Event.log_encounter(
                     self.conf['COLLECT_LOGS'],
                     self,
@@ -1818,11 +1866,8 @@ class Human(object):
             self.infection_timestamp = self.env.timestamp
             self.initial_viral_load = self.rng.random()
             self.compute_covid_properties()
-
-            Event.log_exposed(self.conf.get('COLLECT_LOGS'), self, location, p_infection, self.env.timestamp)
-
             city.tracker.track_infection('env', from_human=None, to_human=self, location=location, timestamp=self.env.timestamp)
-            city.tracker.track_covid_properties(self)
+            Event.log_exposed(self.conf.get('COLLECT_LOGS'), self, location, p_infection, self.env.timestamp)
 
         location.remove_human(self)
 
