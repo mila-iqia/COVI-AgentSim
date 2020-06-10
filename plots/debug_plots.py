@@ -383,9 +383,6 @@ if __name__ == '__main__':
                 debug_data["human_backups"] = {}
             debug_data["human_backups"][timestamp] = human_backups
 
-            if len(debug_data["human_backups"]) % 24 == 0:
-                break
-
     # Ensure that the output folder does exist
     if not os.path.exists(args.output_folder):
         os.makedirs(args.output_folder)
