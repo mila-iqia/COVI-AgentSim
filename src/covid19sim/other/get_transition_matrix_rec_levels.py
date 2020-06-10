@@ -166,7 +166,7 @@ def get_bulk_folders(folder, keys):
     for filename in config_filenames:
         with open(filename, 'r') as f:
             config = yaml.safe_load(f)
-        key = (config[k] for k in keys)
+        key = tuple(config[k] for k in keys)
         seed = config['seed']
         bulk_folders[key][seed] = os.path.dirname(filename)
 
@@ -187,10 +187,10 @@ def main(args):
                 try:
                     source_folder = source_folders[key][seed]
                 except KeyError:
-                    logging.warn('The configuration `{0}` with seed `{1}` exists '
-                                 'in the bulk target folder `{2}` but not in the '
-                                 'bulk source folder `{3}`. Ignoring this '
-                                 'configuration.'.format(key, seed, args.target, args.source))
+                    logging.warning('The configuration `{0}` with seed `{1}` exists '
+                                    'in the bulk target folder `{2}` but not in the '
+                                    'bulk source folder `{3}`. Ignoring this '
+                                    'configuration.'.format(key, seed, args.target, args.source))
                     continue
                 generate_single(args, source_folder, target_folder)
 
