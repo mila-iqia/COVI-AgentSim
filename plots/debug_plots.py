@@ -304,26 +304,26 @@ def generate_human_centric_plots(debug_data, output_folder):
 
         fig = plt.figure()
 
-        fig.add_subplot(6, 2, 2)
+        fig.add_subplot(7, 2, 2)
         plot_risks(risks, timestamps)
 
-        fig.add_subplot(6, 2, 4)
+        fig.add_subplot(7, 2, 4)
         plot_viral_loads(viral_loads, timestamps)
 
-        fig.add_subplot(6, 2, 6)
+        fig.add_subplot(7, 2, 6)
         plot_symptoms(true_symptoms, obs_symptoms, timestamps)
 
-        fig.add_subplot(6, 2, 8)
+        fig.add_subplot(7, 2, 8)
         plot_recommendation_levels(recommendation_levels, timestamps)
 
-        fig.add_subplot(6, 2, 10)
+        fig.add_subplot(7, 2, 10)
         plot_locations(locations, sorted_all_locations, timestamps)
 
-        fig.add_subplot(6, 2, 12)
+        fig.add_subplot(7, 2, 12)
         tmp_events = {e_label: (e_cnts if e_label == "Encounters" else [0] * len(e_cnts))
                       for e_label, e_cnts in events.items()}
         plot_events(tmp_events, timestamps)
-        fig.add_subplot(6, 2, 14)
+        fig.add_subplot(7, 2, 14)
         tmp_events = {e_label: (e_cnts if e_label != "Encounters" else [0] * len(e_cnts))
                       for e_label, e_cnts in events.items()}
         plot_events(tmp_events, timestamps)
@@ -382,6 +382,9 @@ if __name__ == '__main__':
                 debug_data = day_debug_data
                 debug_data["human_backups"] = {}
             debug_data["human_backups"][timestamp] = human_backups
+
+            if len(debug_data["human_backups"]) % 24 == 0:
+                break
 
     # Ensure that the output folder does exist
     if not os.path.exists(args.output_folder):
