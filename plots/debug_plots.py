@@ -188,7 +188,7 @@ if __name__ == '__main__':
 
     # Load the debug data
     debug_data = None
-    with zipfile.ZipFile(args.events_data) as zf:
+    with zipfile.ZipFile(args.debug_data) as zf:
         for filename in zf.namelist():
             day_debug_data = pickle.load(zf.open(filename))
             if debug_data is None:
