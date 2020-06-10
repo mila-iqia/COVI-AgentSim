@@ -26,14 +26,18 @@ def plot_recommendation_levels(recommendation_levels: List[int],
     plt.title("Recommendation Level")
     plt.ylim((0, 3))
     plt.yticks([tick for tick in range(4)])
+    plt.xlabel("Time")
+    plt.gcf().autofmt_xdate()
 
 
 def plot_risks(risks: List[int],
                timestamps: List[datetime.datetime]):
     plt.step(timestamps, risks)
-    plt.title("Risk")
+    plt.title("Risk Level")
     plt.ylim((0, 15))
     plt.yticks([tick * 4 for tick in range(4+1)])
+    plt.xlabel("Time")
+    plt.gcf().autofmt_xdate()
 
 
 def plot_viral_loads(viral_loads: List[int],
@@ -42,6 +46,8 @@ def plot_viral_loads(viral_loads: List[int],
     plt.title("Viral Load Curve")
     plt.ylim((0, 1))
     plt.yticks([tick / 4 for tick in range(4+1)])
+    plt.xlabel("Time")
+    plt.gcf().autofmt_xdate()
 
 
 def get_location_history(human_snapshots: List[Human],
@@ -108,7 +114,7 @@ def get_risk_history(human_snapshots: List[Human],
         if timestamp > time_end:
             break
 
-        risks.append(human.risk)
+        risks.append(human.risk_level)
         r_timestamps.append(timestamp)
 
     return risks, r_timestamps
@@ -160,18 +166,12 @@ def generate_human_centric_plots(debug_data, output_folder):
 
         fig.add_subplot(3, 2, 2)
         plot_risks(risks, timestamps)
-        plt.xlabel("Time")
-        plt.gcf().autofmt_xdate()
 
         fig.add_subplot(3, 2, 4)
         plot_viral_loads(viral_loads, timestamps)
-        plt.xlabel("Time")
-        plt.gcf().autofmt_xdate()
 
         fig.add_subplot(3, 2, 6)
         plot_recommendation_levels(recommendation_levels, timestamps)
-        plt.xlabel("Time")
-        plt.gcf().autofmt_xdate()
 
         fig.add_subplot(1, 2, 1)
         human = h_backup[0]
@@ -224,7 +224,6 @@ if __name__ == '__main__':
                 debug_data = day_debug_data
                 debug_data["human_backups"] = {}
             debug_data["human_backups"][timestamp] = human_backups
-
 
     # Ensure that the output folder does exist
     if not os.path.exists(args.output_folder):
