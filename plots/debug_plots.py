@@ -189,13 +189,18 @@ if __name__ == '__main__':
     # Load the debug data
     debug_data = None
     with zipfile.ZipFile(args.debug_data) as zf:
-        for filename in zf.namelist():
-            day_debug_data = pickle.load(zf.open(filename))
+        for fileinfo in zf.infolist():
+            if fileinfo.is_dir():
+                continue
+            
+            day_debug_data = pickle.loads(zf.read(fileinfo))
+            timestamp = day_debug_data["human_backups"]["human:1"].env.timestamp
+            human_backups = day_debug_data["human_backups"]
             if debug_data is None:
                 debug_data = day_debug_data
-            else:
-                for k in debug_data:
-                    debug_data[k].extend(day_debug_data[k])
+                debug_data["human_backups"] = {}
+            debug_data["human_backups"][timestamp] = human_backups
+
 
     # Ensure that the output folder does exist
     if not os.path.exists(args.output_folder):
