@@ -9,7 +9,7 @@ def get_states(filename):
 
     humans_state = data['humans_state']
     has_app = data['humans_has_app']
-    names = [name for name in humans_state if has_app[name]]
+    names = list(humans_state.keys())
     num_days = len(humans_state[names[0]])
     states = np.zeros((len(names), num_days), dtype=np.int_)
     
