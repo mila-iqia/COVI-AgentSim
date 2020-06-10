@@ -318,7 +318,7 @@ def generate_human_centric_plots(debug_data, output_folder):
         plot_events(events, timestamps)
 
         fig.add_subplot(1, 2, 1)
-        human = h_backup[0]
+        human = h_backup[-1]
         table_data = [
             ["name:", human.name],
             ["age:", human.age],
