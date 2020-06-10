@@ -11,7 +11,7 @@ from src.covid19sim.simulator import Human
 from src.covid19sim.base import Event
 
 
-PLOT_EVENTS_LABEL = ["Encounters", "Contaminations", "Tests"]
+PLOT_EVENTS_LABEL = ["Encounters", "Contaminations", "Tests", "Positive Tests", "Negative Tests"]
 
 
 def plot_events(events: Dict[str, List[int]],
@@ -140,7 +140,12 @@ def get_events_history(human_snapshots: List[Human],
             elif event["event_type"] == Event.contamination:
                 events["Contaminations"][-1] += 1
             elif event["event_type"] == Event.test:
-                events["Tests"][-1] += 1
+                if human.hidden_test_result == 'positive':
+                    events["Positive Tests"][-1] += 1
+                elif human.hidden_test_result == 'negative':
+                    events["Negative Tests"][-1] += 1
+                else:
+                    events["Tests"][-1] += 1
 
         e_timestamps.append(timestamp)
 
@@ -315,7 +320,13 @@ def generate_human_centric_plots(debug_data, output_folder):
         plot_locations(locations, sorted_all_locations, timestamps)
 
         fig.add_subplot(6, 2, 12)
-        plot_events(events, timestamps)
+        tmp_events = {e_label: (e_cnts if e_label == "Encounters" else [0] * len(e_cnts))
+                      for e_label, e_cnts in events.items()}
+        plot_events(tmp_events, timestamps)
+        fig.add_subplot(6, 2, 14)
+        tmp_events = {e_label: (e_cnts if e_label != "Encounters" else [0] * len(e_cnts))
+                      for e_label, e_cnts in events.items()}
+        plot_events(tmp_events, timestamps)
 
         fig.add_subplot(1, 2, 1)
         human = h_backup[-1]
@@ -335,8 +346,10 @@ def generate_human_centric_plots(debug_data, output_folder):
         table.scale(1, 3)
         plt.axis('off')
 
+        fig.set_size_inches(6.4 * 2, 4.8 * 4)
+
         plot_path = os.path.join(output_folder, f"{str(begin)}-{str(end)}_{h_key}.png")
-        plt.savefig(plot_path, bbox_inches='tight', pad_inches=0)
+        plt.savefig(plot_path, bbox_inches='tight', pad_inches=0.1)
         plt.close()
 
 
