@@ -20,6 +20,7 @@ import pickle
 import warnings
 import logging
 from datetime import datetime
+from collections import defaultdict
 
 
 def generate_name(source_config, target_config):
@@ -103,11 +104,9 @@ def get_rec_levels_distributions(data, config, num_rec_levels=4):
     return counts / np.sum(counts, axis=1, keepdims=True)
 
 
-def main(args):
-    logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO)
-
-    source_config, source_data = get_config_and_data(args.source)
-    target_config, target_data = get_config_and_data(args.target)
+def generate_single(args, source, target):
+    source_config, source_data = get_config_and_data(source)
+    target_config, target_data = get_config_and_data(target)
 
     if source_config['seed'] != target_config['seed']:
         warnings.warn('The seed of the source experiment is different from the '
@@ -132,7 +131,9 @@ def main(args):
     source_config['DAILY_TARGET_REC_LEVEL_DIST'] = target_dists.flatten().tolist()
 
     # Save the new source configuration
-    config_folder = os.path.join(os.path.dirname(__file__), '../hydra-configs/simulation', 'transport')
+    config_folder = os.path.join(os.path.dirname(__file__),
+                                 '../hydra-configs/simulation',
+                                 args.config_folder)
     config_folder = os.path.relpath(config_folder)
     if not os.path.exists(config_folder):
         os.mkdir(config_folder)
@@ -149,16 +150,54 @@ def main(args):
     with open(output_path, 'a') as f:
         target_config_yaml = yaml.dump(target_config, Dumper=yaml.Dumper)
         target_config_lines = target_config_yaml.split('\n')
-        f.write(f'\n# Target configuration: {args.target}\n#\n')
+        f.write(f'\n# Target configuration: {target}\n#\n')
         for line in target_config_lines:
             f.write(f'# {line}\n')
 
     logging.info('New configuration file saved: `{0}`'.format(output_path))
     logging.info(f'To run the experiment with the new mobility:\n\tpython '
-                 f'src/covid19sim/run.py transport={output_config_name}')
+                 f'src/covid19sim/run.py {args.config_folder}={output_config_name}')
+
+
+def get_bulk_folders(folder, keys):
+    config_filenames = glob.glob(os.path.join(folder, '*/*.yaml'))
+    bulk_folders = defaultdict(dict)
+
+    for filename in config_filenames:
+        with open(filename, 'r') as f:
+            config = yaml.safe_load(f)
+        key = (config[k] for k in keys)
+        seed = config['seed']
+        bulk_folders[key][seed] = os.path.dirname(filename)
+
+    return bulk_folders
+
+
+def main(args):
+    logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO)
+
+    if args.bulk_keys is None:
+        generate_single(args, args.source, args.target)
+    else:
+        source_folders = get_bulk_folders(args.source, args.bulk_keys)
+        target_folders = get_bulk_folders(args.target, args.bulk_keys)
+
+        for key, folders in target_folders.items():
+            for seed, target_folder in folders.items():
+                try:
+                    source_folder = source_folders[key][seed]
+                except KeyError:
+                    logging.warn('The configuration `{0}` with seed `{1}` exists '
+                                 'in the bulk target folder `{2}` but not in the '
+                                 'bulk source folder `{3}`. Ignoring this '
+                                 'configuration.'.format(key, seed, args.target, args.source))
+                    continue
+                generate_single(args, source_folder, target_folder)
+
 
 if __name__ == '__main__':
     import argparse
+    import json
 
     parser = argparse.ArgumentParser(description='Creates the transition '
         'matrices to apply the mobility patterns from a `source` experiment '
@@ -175,6 +214,13 @@ if __name__ == '__main__':
         help='Path to the folder of the target experiment (e.g. '
              'Transformer), i.e. the tracing method which we apply the mobility '
              'intervention of.')
+    parser.add_argument('--config-folder', type=str, default='transport',
+        help='Name of the folder where the new configuration files are placed. '
+             'The folder is created automatically inside `hydra-configs/simulation`.')
+    parser.add_argument('--bulk-keys', type=json.loads, default=None,
+        help='The keys in the configuration to loop over for bulk creation. '
+             'If not provided, then only a single pair of configuration files '
+             'is merged.')
     parser.add_argument('--num-rec-levels', type=int, default=4,
         help='Number of possible recommendation levels (default: 4)')
     parser.add_argument('--verbose', action='store_true')
