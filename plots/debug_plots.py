@@ -60,6 +60,18 @@ def plot_risks(risks: List[int],
     plt.gcf().autofmt_xdate()
 
 
+def plot_symptoms(true_symptoms: List[int],
+                  obs_symptoms: List[int],
+                  timestamps: List[datetime.datetime]):
+    plt.step(timestamps, true_symptoms, color="tab:red")
+    plt.step(timestamps, obs_symptoms, color="tab:blue")
+    plt.title("Nb symptoms (red=true, blue=obs)")
+    plt.ylim((0, 15))
+    plt.yticks([tick * 4 for tick in range(4+1)])
+    plt.xlabel("Time")
+    plt.gcf().autofmt_xdate()
+
+
 def plot_viral_loads(viral_loads: List[int],
                      timestamps: List[datetime.datetime]):
     plt.plot(timestamps, viral_loads)
@@ -114,6 +126,32 @@ def get_recommendation_level_history(human_snapshots: List[Human],
         rl_timestamps.append(timestamp)
 
     return recommendation_levels, rl_timestamps
+
+
+def get_symptom_history(human_snapshots: List[Human],
+                        timestamps: List[datetime.datetime],
+                        time_begin: datetime.datetime,
+                        time_end: datetime.datetime) -> \
+        Tuple[List[int], List[int], List[datetime.datetime]]:
+
+    true_symptoms = []
+    obs_symptoms = []
+    rl_timestamps = []
+
+    # There is one human snapshot per time slot per day
+    start_index = (time_begin - timestamps[0]).days * len(human_snapshots[0].time_slots)
+    for i in range(max(0, start_index), len(human_snapshots)):
+        human = human_snapshots[i]
+        timestamp = timestamps[i]
+
+        if timestamp > time_end:
+            break
+
+        true_symptoms.append(len(human.rolling_all_symptoms[-1]))
+        obs_symptoms.append(len(human.rolling_all_reported_symptoms[-1]))
+        rl_timestamps.append(timestamp)
+
+    return true_symptoms, obs_symptoms, rl_timestamps
 
 
 def get_risk_history(human_snapshots: List[Human],
@@ -193,23 +231,25 @@ def generate_human_centric_plots(debug_data, output_folder):
 
         risks, r_timestamps = get_risk_history(h_backup, timestamps, begin, end)
         viral_loads, vl_timestamps = get_viral_load_history(h_backup, timestamps, begin, end)
+        true_symptoms, obs_symptoms, s_timestamps = get_symptom_history(h_backup, timestamps, begin, end)
         recommendation_levels, rl_timestamps = get_recommendation_level_history(h_backup, timestamps, begin, end)
         locations, l_timestamps = get_location_history(h_backup, timestamps, sorted_all_locations, begin, end)
 
         fig = plt.figure()
 
-        fig.add_subplot(4, 2, 2)
+        fig.add_subplot(5, 2, 2)
         plot_risks(risks, timestamps)
 
-        fig.add_subplot(4, 2, 4)
+        fig.add_subplot(5, 2, 4)
         plot_viral_loads(viral_loads, timestamps)
 
-        fig.add_subplot(4, 2, 6)
-        plot_recommendation_levels(recommendation_levels, timestamps)
-        plt.xlabel("Time")
-        plt.gcf().autofmt_xdate()
+        fig.add_subplot(5, 2, 6)
+        plot_symptoms(true_symptoms, obs_symptoms, timestamps)
 
-        fig.add_subplot(4, 2, 8)
+        fig.add_subplot(5, 2, 8)
+        plot_recommendation_levels(recommendation_levels, timestamps)
+
+        fig.add_subplot(5, 2, 10)
         plot_locations(locations, sorted_all_locations, timestamps)
         plt.xlabel("Time")
         plt.gcf().autofmt_xdate()
