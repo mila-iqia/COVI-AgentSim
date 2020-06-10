@@ -2,7 +2,8 @@ import argparse
 import datetime
 import pickle
 import os
-from typing import Any, Dict, List, Tuple
+from typing import Dict, List, Tuple
+import zipfile
 
 from matplotlib import pyplot as plt
 
@@ -186,8 +187,15 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # Load the debug data
-    with open(args.debug_data, "rb") as f:
-        debug_data = pickle.load(f)
+    debug_data = None
+    with zipfile.ZipFile(args.events_data) as zf:
+        for filename in zf.namelist():
+            day_debug_data = pickle.load(zf.open(filename))
+            if debug_data is None:
+                debug_data = day_debug_data
+            else:
+                for k in debug_data:
+                    debug_data[k].extend(day_debug_data[k])
 
     # Ensure that the output folder does exist
     if not os.path.exists(args.output_folder):
