@@ -14,8 +14,26 @@ def plot_locations(locations: List[int],
                    locations_names: List[str],
                    timestamps: List[datetime.datetime]):
 
+    location_to_color = {"household": "tab:red",
+                         "park": "tab:green",
+                         "hospital": "tab:blue",
+                         "store": "tab:purple",
+                         "school": "tab:olive",
+                         "workplace": "tab:gray",
+                         "misc": "tab:pink"}
+
+    """
+    for l_idx, l_name in enumerate(locations_names):
+        l_timestamps = [l for (l,t) in zip(locations, timestamps) if l == l_idx]
+        l_plot_xs = [(t, 1./24) for t in l_timestamps]
+        l_plot_ys = [(l_idx, 1)] * len(l_timestamps)
+        plt.broken_barh(l_plot_xs, l_plot_ys)
+    """
+
     for location, timestamp in zip(locations, timestamps):
-        plt.broken_barh([(timestamp, 1/24)], (location, 1))
+        l_name = locations_names[location]
+        color = location_to_color[l_name.split(":")[0]]
+        plt.broken_barh([(timestamp, 1/24)], (location, 1), facecolor=color)
     plt.title("Location")
     plt.ylim((0, len(locations_names)))
     # plt.set_yticklabels(locations_names)
@@ -189,9 +207,9 @@ def generate_human_centric_plots(debug_data, output_folder):
         plot_recommendation_levels(recommendation_levels, timestamps)
         plt.xlabel("Time")
         plt.gcf().autofmt_xdate()
-        
+
         fig.add_subplot(4, 2, 8)
-        plot_locations(locations, all_locations, timestamps)
+        plot_locations(locations, sorted_all_locations, timestamps)
         plt.xlabel("Time")
         plt.gcf().autofmt_xdate()
 
