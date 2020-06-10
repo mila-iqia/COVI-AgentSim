@@ -76,7 +76,7 @@ def plot_recommendation_levels(recommendation_levels: List[int],
                                timestamps: List[datetime.datetime]):
     plt.step(timestamps, recommendation_levels)
     plt.title("Recommendation Level")
-    plt.ylim((0, 3))
+    plt.ylim((-1, 3))
     plt.yticks([tick for tick in range(4)])
     plt.xlabel("Time")
     plt.gcf().autofmt_xdate()
@@ -98,8 +98,6 @@ def plot_symptoms(true_symptoms: List[int],
     plt.step(timestamps, true_symptoms, color="tab:red")
     plt.step(timestamps, obs_symptoms, color="tab:blue")
     plt.title("Nb symptoms (red=true, blue=obs)")
-    plt.ylim((0, 15))
-    plt.yticks([tick * 4 for tick in range(4+1)])
     plt.xlabel("Time")
     plt.gcf().autofmt_xdate()
 
@@ -124,6 +122,7 @@ def get_events_history(human_snapshots: List[Human],
 
     # There is one human snapshot per time slot per day
     start_index = (time_begin - timestamps[0]).days * len(human_snapshots[0].time_slots)
+    previous_timestamp = datetime.datetime(1970, 1, 1)
     for i in range(max(0, start_index), len(human_snapshots)):
         human = human_snapshots[i]
         timestamp = timestamps[i]
@@ -135,6 +134,11 @@ def get_events_history(human_snapshots: List[Human],
             timestamp_events.append(0)
 
         for event in human.events:
+            if event["time"] <= previous_timestamp:
+                continue
+            elif event["time"] > timestamp:
+                break
+
             if event["event_type"] == Event.encounter:
                 events["Encounters"][-1] += 1
             elif event["event_type"] == Event.contamination:
@@ -148,6 +152,7 @@ def get_events_history(human_snapshots: List[Human],
                     events["Tests"][-1] += 1
 
         e_timestamps.append(timestamp)
+        previous_timestamp = timestamp
 
     return events, e_timestamps 
 
@@ -371,7 +376,9 @@ if __name__ == '__main__':
     # Load the debug data
     debug_data = None
     with zipfile.ZipFile(args.debug_data) as zf:
-        for fileinfo in zf.infolist():
+        fileinfos = zf.infolist()
+        fileinfos.sort(key=lambda fi: fi.filename)
+        for fileinfo in fileinfos:
             if fileinfo.is_dir():
                 continue
 
