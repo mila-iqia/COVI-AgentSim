@@ -13,8 +13,9 @@ from src.covid19sim.simulator import Human
 def plot_locations(locations: List[int],
                    locations_names: List[str],
                    timestamps: List[datetime.datetime]):
+
     for location, timestamp in zip(locations, timestamps):
-        plt.broken_barh([(timestamp, 1)], (location, 1))
+        plt.broken_barh([(timestamp, 1/24)], (location, 1))
     plt.title("Location")
     plt.ylim((0, len(locations_names)))
     # plt.set_yticklabels(locations_names)
@@ -67,8 +68,7 @@ def get_location_history(human_snapshots: List[Human],
 
         if timestamp > time_end:
             break
-
-        locations.append(all_locations[(human.location.lon, human.location.lat)][1])
+        locations.append(all_locations.index(human.location))
         l_timestamps.append(timestamp)
 
     return locations, l_timestamps
@@ -147,9 +147,19 @@ def generate_human_centric_plots(debug_data, output_folder):
     human_backups = debug_data['human_backups']
     timestamps = list(human_backups.keys())
     nb_humans = len(human_backups[timestamps[0]].keys())
-
     begin = timestamps[0]
     end = timestamps[-1]
+
+    # Get list of all locations
+    all_locations = set()
+    for t in timestamps:
+        for h in human_backups[t].values():
+            all_locations.add(h.location)
+    all_locations = list(all_locations)
+
+    # Sort locations by type and then by index
+    sorted_locations_indices = sorted([(l.split(':')[0], int(l.split(':')[1])) for l in all_locations])
+    sorted_all_locations = ["%s:%i" % (l[0], l[1]) for l in sorted_locations_indices]
 
     # Treat each human individually
     for idx_human in range(1, nb_humans + 1):
@@ -158,20 +168,32 @@ def generate_human_centric_plots(debug_data, output_folder):
         h_key = "human:%i" % idx_human
         h_backup = [human_backups[t][h_key] for t in timestamps]
 
+        fig, axes = plt.subplots(4, 1, sharex="col")
+        plt.xlabel("Time")
+        plt.gcf().autofmt_xdate()
+
         risks, r_timestamps = get_risk_history(h_backup, timestamps, begin, end)
         viral_loads, vl_timestamps = get_viral_load_history(h_backup, timestamps, begin, end)
         recommendation_levels, rl_timestamps = get_viral_load_history(h_backup, timestamps, begin, end)
+        locations, l_timestamps = get_location_history(h_backup, timestamps, sorted_all_locations, begin, end)
 
         fig = plt.figure()
 
-        fig.add_subplot(3, 2, 2)
+        fig.add_subplot(4, 2, 2)
         plot_risks(risks, timestamps)
 
-        fig.add_subplot(3, 2, 4)
+        fig.add_subplot(4, 2, 4)
         plot_viral_loads(viral_loads, timestamps)
 
-        fig.add_subplot(3, 2, 6)
+        fig.add_subplot(4, 2, 6)
         plot_recommendation_levels(recommendation_levels, timestamps)
+        plt.xlabel("Time")
+        plt.gcf().autofmt_xdate()
+        
+        fig.add_subplot(4, 2, 8)
+        plot_locations(locations, all_locations, timestamps)
+        plt.xlabel("Time")
+        plt.gcf().autofmt_xdate()
 
         fig.add_subplot(1, 2, 1)
         human = h_backup[0]
@@ -216,7 +238,7 @@ if __name__ == '__main__':
         for fileinfo in zf.infolist():
             if fileinfo.is_dir():
                 continue
-            
+
             day_debug_data = pickle.loads(zf.read(fileinfo))
             timestamp = day_debug_data["human_backups"]["human:1"].env.timestamp
             human_backups = day_debug_data["human_backups"]
