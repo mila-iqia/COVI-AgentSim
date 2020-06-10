@@ -145,11 +145,20 @@ def get_viral_load_history(human_snapshots: List[Human],
 
 
 def generate_human_centric_plots(debug_data, output_folder):
-    pass
+    human_backups = debug_data['human_backups']
+    timestamps = list(human_backups.keys())
+    nb_humans = len(human_backups[timestamps[0]].keys())
+
+    # Treat each human individually
+    for idx_human in range(1, nb_humans + 1):
+
+        # Get all the backups of this human for all the timestamps
+        h_key = "human:%i" % idx_human
+        h_backup = [human_backups[t][h_key] for t in timestamps]
 
 
 def generate_location_centric_plots(debug_data, output_folder):
-    import pdb; pdb.set_trace()
+    pass
 
 
 def generate_debug_plots(debug_data, output_folder):
