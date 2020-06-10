@@ -10,42 +10,38 @@ from matplotlib import pyplot as plt
 from src.covid19sim.simulator import Human
 
 
-def plot_locations(axe,
-                   locations: List[int],
+def plot_locations(locations: List[int],
                    locations_names: List[str],
                    timestamps: List[datetime.datetime]):
     for location, timestamp in zip(locations, timestamps):
-        axe.broken_barh([(timestamp, 1)], (location, 1))
-    axe.set_title("Location")
-    axe.set_ylim((0, len(locations_names)))
-    axe.set_yticklabels(locations_names)
+        plt.broken_barh([(timestamp, 1)], (location, 1))
+    plt.title("Location")
+    plt.ylim((0, len(locations_names)))
+    # plt.set_yticklabels(locations_names)
 
 
-def plot_recommendation_levels(axe,
-                               recommendation_levels: List[int],
+def plot_recommendation_levels(recommendation_levels: List[int],
                                timestamps: List[datetime.datetime]):
-    axe.step(timestamps, recommendation_levels)
-    axe.set_title("Recommendation Level")
-    axe.set_ylim((0, 3))
-    axe.set_yticks([tick for tick in range(4)])
+    plt.step(timestamps, recommendation_levels)
+    plt.title("Recommendation Level")
+    plt.ylim((0, 3))
+    plt.yticks([tick for tick in range(4)])
 
 
-def plot_risks(axe,
-               risks: List[int],
+def plot_risks(risks: List[int],
                timestamps: List[datetime.datetime]):
-    axe.step(timestamps, risks)
-    axe.set_title("Risk")
-    axe.set_ylim((0, 15))
-    axe.set_yticks([tick * 4 for tick in range(4+1)])
+    plt.step(timestamps, risks)
+    plt.title("Risk")
+    plt.ylim((0, 15))
+    plt.yticks([tick * 4 for tick in range(4+1)])
 
 
-def plot_viral_loads(axe,
-                     viral_loads: List[int],
+def plot_viral_loads(viral_loads: List[int],
                      timestamps: List[datetime.datetime]):
-    axe.plot(timestamps, viral_loads)
-    axe.set_title("Viral Load Curve")
-    axe.set_ylim((0, 1))
-    axe.set_yticks([tick / 4 for tick in range(4+1)])
+    plt.plot(timestamps, viral_loads)
+    plt.title("Viral Load Curve")
+    plt.ylim((0, 1))
+    plt.yticks([tick / 4 for tick in range(4+1)])
 
 
 def get_location_history(human_snapshots: List[Human],
@@ -156,19 +152,47 @@ def generate_human_centric_plots(debug_data, output_folder):
         h_key = "human:%i" % idx_human
         h_backup = [human_backups[t][h_key] for t in timestamps]
 
-        fig, axes = plt.subplots(3, 1, sharex="col")
-        plt.xlabel("Time")
-        plt.gcf().autofmt_xdate()
-
         risks, r_timestamps = get_risk_history(h_backup, timestamps, begin, end)
         viral_loads, vl_timestamps = get_viral_load_history(h_backup, timestamps, begin, end)
         recommendation_levels, rl_timestamps = get_viral_load_history(h_backup, timestamps, begin, end)
 
-        plot_risks(axes[0], risks, timestamps)
-        plot_viral_loads(axes[1], viral_loads, timestamps)
-        plot_recommendation_levels(axes[2], recommendation_levels, timestamps)
+        fig = plt.figure()
 
-        plt.savefig(os.path.join(output_folder, f"{str(begin)}-{str(end)}_{h_key}.png"))
+        fig.add_subplot(3, 2, 2)
+        plot_risks(risks, timestamps)
+        plt.xlabel("Time")
+        plt.gcf().autofmt_xdate()
+
+        fig.add_subplot(3, 2, 4)
+        plot_viral_loads(viral_loads, timestamps)
+        plt.xlabel("Time")
+        plt.gcf().autofmt_xdate()
+
+        fig.add_subplot(3, 2, 6)
+        plot_recommendation_levels(recommendation_levels, timestamps)
+        plt.xlabel("Time")
+        plt.gcf().autofmt_xdate()
+
+        fig.add_subplot(1, 2, 1)
+        human = h_backup[0]
+        table_data = [
+            ["name:", human.name],
+            ["age:", human.age],
+            ["carefulness:", human.carefulness],
+            ["has_app:", human.has_app],
+            ["has_allergies:", human.has_allergies],
+            ["household:", human.household],
+            ["workplace:", human.workplace],
+            ["timeslots:", str(human.time_slots)],
+        ]
+        table = plt.table(cellText=table_data, loc='center')
+        table.set_fontsize(14)
+        table.scale(1, 3)
+        plt.axis('off')
+
+        plot_path = os.path.join(output_folder, f"{str(begin)}-{str(end)}_{h_key}.png")
+        plt.savefig(plot_path, bbox_inches='tight', pad_inches=0)
+        plt.close()
 
 
 def generate_location_centric_plots(debug_data, output_folder):
