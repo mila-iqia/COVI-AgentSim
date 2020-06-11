@@ -16,15 +16,15 @@ n_search: -1 # figures out the size of cartesian product for you
 USE_INFERENCE_SERVER: False
 cpus: 4
 env_name: covid38
-infra: beluga
+infra: bbbbb
 time: "'02:50:00'"
 
 # -------------------------
 # -----  Directories  -----
 # -------------------------
-base_dir: /scratch/vsch/covid_sims/hail_mary # if outdir is not provided, runs will be stored in base_dir/${tracing_method}
-code_loc: /home/vsch/simulator/src/covid19sim/
-weights_dir: /scratch/vsch
+base_dir: /scratch/xxx/covid_sims/hail_mary # if outdir is not provided, runs will be stored in base_dir/${tracing_method}
+code_loc: /home/xxx/simulator/src/covid19sim/
+weights_dir: /scratch/xxx
 use_tmpdir: false
 
 # --------------------------------------

@@ -1,7 +1,7 @@
 # COVID-19 Spread Simulator for Tracing App
 
 
-This is a sub-project of [Peer-to-Peer AI Tracing App](https://mila.quebec/en/peer-to-peer-ai-tracing-of-covid-19/) delegated by [Prof. Yoshua Bengio](https://yoshuabengio.org/). Read more about the app in Prof. Bengio's [blog post](https://yoshuabengio.org/2020/03/23/peer-to-peer-ai-tracing-of-covid-19/).
+This is a sub-project of XXX. Read more about the app in XXX [blog post]().
 
 The simulator is built using [`simpy`](!https://simpy.readthedocs.io/en/latest/simpy_intro/index.html).
 It simulates human mobility along with infectious disease (COVID) spreading in a city, where city has houses, grocery stores, parks, workplaces, and other non-essential establishments.
@@ -44,7 +44,7 @@ When invoked, the simulator will read the yaml files found in the `hydra_configs
 - init_percent_sick: Proportion of humans sick at the beginning of the simulation
 - simulation_days: Number of days simulated.
 - seed: Seed for the random number generators used by the simulator.
-- COLLECT_LOGS: If set to True, 
+- COLLECT_LOGS: If set to True,
 - COLLECT_TRAINING_DATA: If set to True, the simulator will output daily data for each human in the simulation. This day can be used to train an ML model.
 
 
@@ -76,11 +76,3 @@ monitors = simulate(
 ## Semantics of Data
 `data` is a `list`. Each entry in the `list` is an event represented as a `dict`.
 The detailed information about events is in [docs/events.md](docs/src/notes/events.md)
-
-## Contributing
-Please get in touch with me at [pgupta@turing.ac.uk](pgupta@turing.ac.uk). There are several people working on it, so it will be the best use of everyone's time and effort if we all work on different aspects of this project.
-
-Some areas that need work are listed [here](docs/src/notes/CONTRIBUTING.md). We track and manage our tasks using [Google Sheets](https://docs.google.com/spreadsheets/d/11t1T66AAVeR6P341nZYP1qwLdvhCkU_EwFwUkyLziLQ/edit?usp=sharing).
-
-## Collaborators
-[@marco-gires](https://github.com/marco-gires), [@marie-pellat](https://github.com/mariepellat), [@teganmaharaj](https://github.com/teganmaharaj), [@giancarlok](https://github.com/giancarlok), [@thechange](https://github.com/thechange), [@soundarya98](https://github.com/soundarya98), [@mweiss17](https://github.com/mweiss17)

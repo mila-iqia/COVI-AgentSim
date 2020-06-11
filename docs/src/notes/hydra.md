@@ -159,15 +159,13 @@ If you want to run experiments for a particular set of plots, parameter tuning o
 For instance:
 
 ```yaml
-# martin/find_this_param.yaml
 VARIABLE_X = 1213
 
 ---------------------------------
-# martin/find_other.yaml
 VARIABLE_X = 9999
 ```
 
-Then `python run.py tracing-method=transformer martin=find_other`
+Then `python run.py tracing-method=transformer XXX=find_other`
 
 ```
 ----------------------------- NOTE --------------------------------
@@ -218,7 +216,7 @@ conf = get_test_conf(test_config_name)
 
 `get_test_conf` will load `hydra-configs/simulation/config.yaml`'s `defaults` and overwrite the resulting configuration with whatever's in `test_configs/test_variables.yaml`. Test configurations **must** be in `test_configs/`.
 
-The whole Hydra setup is tested in `tests/test_hydra.py`. Contact Victor if you want to add / change tests.
+The whole Hydra setup is tested in `tests/test_hydra.py`. Contact XXX if you want to add / change tests.
 
 ## Advanced
 

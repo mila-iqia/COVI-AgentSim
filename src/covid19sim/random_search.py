@@ -293,8 +293,8 @@ def load_template(infra):
     Returns:
         str: template string full of "{variable_name}"
     """
-    if infra == "mila":
-        with (Path(__file__).parent / "job_scripts" / "mila_sbatch_template.sh").open(
+    if infra == "mmmm":
+        with (Path(__file__).parent / "job_scripts" / "mmmm_sbatch_template.sh").open(
             "r"
         ) as f:
             return f.read()
@@ -303,8 +303,8 @@ def load_template(infra):
             "r"
         ) as f:
             return f.read()
-    if infra == "beluga":
-        with (Path(__file__).parent / "job_scripts" / "beluga_sbatch_template.sh").open(
+    if infra == "bbbbb":
+        with (Path(__file__).parent / "job_scripts" / "bbbbb_sbatch_template.sh").open(
             "r"
         ) as f:
             return f.read()
@@ -355,7 +355,7 @@ def fill_intel_template(template_str, conf):
     )
 
 
-def fill_mila_template(template_str, conf):
+def fill_mmmm_template(template_str, conf):
     """
     Formats the template_str with variables from the conf dict,
     which is a sampled experiment
@@ -444,7 +444,7 @@ def fill_mila_template(template_str, conf):
     )
 
 
-def fill_beluga_template(template_str, conf):
+def fill_bbbbb_template(template_str, conf):
     """
     Formats the template_str with variables from the conf dict,
     which is a sampled experiment
@@ -573,7 +573,7 @@ def main(conf: DictConfig) -> None:
         "env_name",  # conda environment to load
         "code_loc",  # where to find the source code, will cd there
         "weights",  # where to find the transformer's weights. default is /network/tmp1/<user>/FRESH-SNOWFLAKE-224B
-        "infra",  # using Mila or Intel cluster?
+        "infra",  # using mmmm or Intel cluster?
         "now_str",  # naming scheme
         "parallel_search",  # run with & at the end instead of ; to run in subshells
         "ipc",  # run with & at the end instead of ; to run in subshells
@@ -627,7 +627,7 @@ def main(conf: DictConfig) -> None:
     print(f"Running {total_runs} scripts")
 
     conf["now_str"] = now_str()
-    infra = conf.get("infra", "mila")
+    infra = conf.get("infra", "mmmm")
     parallel_search = conf.get("parallel_search", False)
     start_index = conf.get("start_index", 0)
     template_str = load_template(infra)
@@ -655,10 +655,10 @@ def main(conf: DictConfig) -> None:
         ipcf, ipcb = None, None
 
         # fill template
-        if infra == "mila":
-            job_str = fill_mila_template(template_str, conf)
-        elif infra == "beluga":
-            job_str = fill_beluga_template(template_str, conf)
+        if infra == "mmmm":
+            job_str = fill_mmmm_template(template_str, conf)
+        elif infra == "bbbbb":
+            job_str = fill_bbbbb_template(template_str, conf)
         elif infra == "intel":
             job_str = fill_intel_template(template_str, conf)
         else:
@@ -754,7 +754,7 @@ def main(conf: DictConfig) -> None:
                 f.write(job_str)
 
         # sbatch or bash execution
-        if infra in {"beluga", "mila"}:
+        if infra in {"bbbbb", "mmmm"}:
             command = f"sbatch {str(tmp)}"
         elif infra == "intel":
             command = f"bash {str(tmp)}"

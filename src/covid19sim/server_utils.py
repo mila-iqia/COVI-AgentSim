@@ -435,11 +435,11 @@ def _proc_human(params, inference_engine):
     reported_symptoms = human.rolling_all_reported_symptoms
     true_symptoms = human.rolling_all_symptoms
 
-    # FIXME: DIRTY DIRTY HACK; Nasim's DataLoader expects that the embeddings contain an absolute
+    # XXX's DataLoader expects that the embeddings contain an absolute
     #  day index instead of a relative offset (i.e. the exact simulation day instead of [0,14])...
     if len(candidate_encounters):
         candidate_encounters[:, 3] = params["current_day"] - candidate_encounters[:, 3]
-        # Nasim also does some masking with a hard-coded 14-day history length, let's do the same...
+        # XXX also does some masking with a hard-coded 14-day history length, let's do the same...
         valid_encounter_mask = candidate_encounters[:, 3] > (params["current_day"] - 14)
         candidate_encounters = candidate_encounters[valid_encounter_mask]
         exposure_encounter = exposure_encounter[valid_encounter_mask]

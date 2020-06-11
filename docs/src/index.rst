@@ -1,8 +1,8 @@
 Welcome to Covi-Canada simulator documentation!
 =======================================================
-This is a sub-project of `Peer-to-Peer AI Tracing App <https://mila.quebec/en/peer-to-peer-ai-tracing-of-covid-19/>`_
-delegated by `Prof. Yoshua Bengio <https://yoshuabengio.org/>`_.
-Read more about the app in Prof. Bengio's `blog post <https://yoshuabengio.org/2020/03/23/peer-to-peer-ai-tracing-of-covid-19/>`_.
+This is a sub-project of `XXX`_
+delegated by `XXX`_.
+Read more about the app in XXX.
 
 The simulator is built using `simpy <https://simpy.readthedocs.io/en/latest/simpy_intro/index.html>`_.
 It simulates human mobility along with infectious disease (COVID) spreading in a city, where city has houses, grocery stores, parks, workplaces, and other non-essential establishments.

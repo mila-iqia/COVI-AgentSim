@@ -284,7 +284,7 @@ if __name__ == "__main__":
     # -----  Constants  -----
     # -----------------------
     ptrace = pdb.set_trace  # debug only
-    filename = "/Users/victor/Downloads/"
+    filename = "/Users/XXX/Downloads/"
     filename += "tracker_data_n_300_seed_0_20200511-202514_transformer_no_modif.pkl"
 
     category_to_color = {
