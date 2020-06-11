@@ -69,11 +69,11 @@ data = pickle.load(open("output/data.pkl", 'rb'))
 Although not designed with this usage in mind one, can still call the simulator like this :
 ```
 from run import simulate
-monitors = simulate(n_stores=100, n_parks=50, n_people=100, n_misc=100, print_progress=False, seed=0)
+city, monitors, tracker = simulate(n_stores=100, n_parks=50, n_people=100, n_misc=100, print_progress=False, seed=0)
 ```
 
 `data` is a `list` of `dict`.
 
 
 ## Semantics of code
-`Human` class, located in `simulator.py`, builds people with individual properties, and the `City` and `Location` classes, located in `base.py` builds stores, parks, workplaces, households, and non-essential establishments. 
+`Human` class, located in `simulator.py`, builds people with individual properties, and the `City` and `Location` classes, located in `base.py` build stores, parks, workplaces, households, and non-essential establishments. 
