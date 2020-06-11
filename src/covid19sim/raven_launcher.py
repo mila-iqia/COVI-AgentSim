@@ -36,8 +36,8 @@ def main(args=None):
             print(raven_job.build_submission(write=False))
             print("-------------------------------------")
         else:
-            raven_job.launch()
-            time.sleep(5)
+            raven_job.launch(verbose=True)
+            time.sleep(1)
 
 
 if __name__ == '__main__':
