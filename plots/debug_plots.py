@@ -217,8 +217,8 @@ def get_symptom_history(human_snapshots: List[Human],
         if timestamp > time_end:
             break
 
-        true_symptoms.append(len(human.rolling_all_symptoms[-1]))
-        obs_symptoms.append(len(human.rolling_all_reported_symptoms[-1]))
+        true_symptoms.append(len(human.rolling_all_symptoms[0]))
+        obs_symptoms.append(len(human.rolling_all_reported_symptoms[0]))
         rl_timestamps.append(timestamp)
 
     return true_symptoms, obs_symptoms, rl_timestamps
@@ -272,7 +272,7 @@ def get_viral_load_history(human_snapshots: List[Human],
 
 def generate_human_centric_plots(debug_data, output_folder):
     human_backups = debug_data['human_backups']
-    timestamps = list(human_backups.keys())
+    timestamps = sorted(list(human_backups.keys()))
     nb_humans = len(human_backups[timestamps[0]].keys())
     begin = timestamps[0]
     end = timestamps[-1]
