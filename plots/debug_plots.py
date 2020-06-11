@@ -32,7 +32,7 @@ def plot_events(events: Dict[str, List[int]],
             plt.step(timestamps, events[event_label], where='mid')
         else:
             plt.bar(timestamps, events[event_label],
-                    width=0.05,
+                    width=0.1,
                     color=event_to_color[event_label],
                     bottom=events_sum,
                     label=event_label)
@@ -45,8 +45,10 @@ def plot_events(events: Dict[str, List[int]],
 
 
 def plot_encounters(encounters: Dict[str, List[int]],
+                    risky_encounters: Dict[str, List[int]],
                     contamination_encounters: Dict[str, List[int]],
                     timestamps: List[datetime.datetime]):
+    risky_encounters_human_ids = set()
     contamination_encounters_human_ids = set()
     for other_human in encounters:
         other_human_id = int(other_human[6:])
@@ -54,15 +56,22 @@ def plot_encounters(encounters: Dict[str, List[int]],
             if not encounter:
                 continue
             plt.broken_barh([(timestamp, 1/24)], (other_human_id - 1, 1), label=other_human)
+        for encounter, timestamp in zip(risky_encounters[other_human], timestamps):
+            if not encounter:
+                continue
+            risky_encounters_human_ids.add(other_human_id)
+            plt.broken_barh([(timestamp, 1 / 21)], (other_human_id - 1, 1), color="tab:orange", label=other_human)
         for encounter, timestamp in zip(contamination_encounters[other_human], timestamps):
             if not encounter:
                 continue
             contamination_encounters_human_ids.add(other_human_id)
-            plt.broken_barh([(timestamp, 1 / 18)], (other_human_id - 1, 1), color="tab:red", label=other_human)
+            plt.broken_barh([(timestamp, 1 / 12)], (other_human_id - 1, 1), color="tab:red", label=other_human)
 
     plt.title("Encounters")
     plt.ylim((0, len(encounters)))
-    plt.yticks([int(tick / 4 * len(encounters)) for tick in range(4+1)] + list(contamination_encounters_human_ids))
+    plt.yticks([int(tick / 4 * len(encounters)) for tick in range(4+1)] +
+               list(risky_encounters_human_ids) +
+               list(contamination_encounters_human_ids))
     # plt.set_yticklabels(locations_names)
     plt.xlabel("Time")
     plt.gcf().autofmt_xdate()
@@ -160,9 +169,10 @@ def get_events_history(all_human_events: List[Dict],
                        timestamps: List[datetime.datetime],
                        time_begin: datetime.datetime,
                        time_end: datetime.datetime) -> \
-        Tuple[Dict[str, List[int]], Dict[str, List[int]], Dict[str, List[int]], List[datetime.datetime]]:
+        Tuple[Dict[str, List[int]], Dict[str, List[int]], Dict[str, List[int]], Dict[str, List[int]], List[datetime.datetime]]:
     events = {event_label: [] for event_label in PLOT_EVENTS_LABEL}
     encounters = {f"human:{i+1}": [] for i in range(humans_cnt)}
+    risky_encounters = {f"human:{i+1}": [] for i in range(humans_cnt)}
     contamination_encounters = {f"human:{i+1}": [] for i in range(humans_cnt)}
     e_timestamps = []
 
@@ -179,9 +189,12 @@ def get_events_history(all_human_events: List[Dict],
 
         for timestamp_events in events.values():
             timestamp_events.append(0)
-        for timestamp_encounters, timestamp_encounters_contamination_encounters in \
-                zip(encounters.values(), contamination_encounters.values()):
+        for timestamp_encounters, timestamp_risky_encounters, \
+            timestamp_encounters_contamination_encounters in \
+                zip(encounters.values(), risky_encounters.values(),
+                    contamination_encounters.values()):
             timestamp_encounters.append(0)
+            timestamp_risky_encounters.append(0)
             timestamp_encounters_contamination_encounters.append(0)
 
         while events_i < len(all_human_events) and \
@@ -189,14 +202,18 @@ def get_events_history(all_human_events: List[Dict],
             event = all_human_events[events_i]
             if event["event_type"] == Event.encounter:
                 events["Encounters"][-1] += 1
-                other_human_id = event["payload"]["unobserved"]["human2"]["human_id"]
-                if contamination_encounters[other_human_id][-1] == 0:
-                    encounters[other_human_id][-1] += 1
+                other_human = event["payload"]["unobserved"]["human2"]
+                if contamination_encounters[other_human["human_id"]][-1] == 0:
+                    if other_human["is_infectious"]:
+                        risky_encounters[other_human["human_id"]][-1] += 1
+                    else:
+                        encounters[other_human["human_id"]][-1] += 1
             elif event["event_type"] == Event.contamination:
                 events["Contaminations"][-1] += 1
                 other_human_id = event["payload"]["unobserved"]["source"]
                 if other_human_id.startswith("human"):
                     encounters[other_human_id][-1] = 0
+                    risky_encounters[other_human_id][-1] = 0
                     contamination_encounters[other_human_id][-1] += 1
             elif event["event_type"] == Event.test:
                 if human.hidden_test_result == "positive":
@@ -209,7 +226,7 @@ def get_events_history(all_human_events: List[Dict],
 
         e_timestamps.append(timestamp)
 
-    return events, encounters, contamination_encounters, e_timestamps
+    return events, encounters, risky_encounters, contamination_encounters, e_timestamps
 
 
 def get_location_history(human_snapshots: List[Human],
@@ -387,7 +404,11 @@ def generate_human_centric_plots(debug_data, humans_events, output_folder):
         true_symptoms, obs_symptoms, s_timestamps = get_symptom_history(h_backup, timestamps, begin, end)
         recommendation_levels, rl_timestamps = get_recommendation_level_history(h_backup, timestamps, begin, end)
         locations, l_timestamps = get_location_history(h_backup, timestamps, sorted_all_locations, begin, end)
-        events, encounters, contamination_encounters, e_timestamps = get_events_history(humans_events[h_key], nb_humans, timestamps, begin, end)
+        events, \
+            encounters, \
+            risky_encounters, \
+            contamination_encounters, \
+            e_timestamps = get_events_history(humans_events[h_key], nb_humans, timestamps, begin, end)
         states, s_timestamps = get_states_history(h_backup, timestamps, begin, end)
 
         fig = plt.figure()
@@ -411,7 +432,7 @@ def generate_human_centric_plots(debug_data, humans_events, output_folder):
         plot_events(events, timestamps)
 
         fig.add_subplot(4, 3, 9)
-        plot_encounters(encounters, contamination_encounters, timestamps)
+        plot_encounters(encounters, risky_encounters, contamination_encounters, timestamps)
 
         fig.add_subplot(4, 3, 12)
         plot_states(states, timestamps)
@@ -444,6 +465,7 @@ def generate_human_centric_plots(debug_data, humans_events, output_folder):
 
         plot_path = os.path.join(output_folder, f"{str(begin)}-{str(end)}_{h_key}.png")
         fig.savefig(plot_path, bbox_inches='tight', pad_inches=0.1)
+        fig.clf()
         plt.close(fig)
 
 
