@@ -73,29 +73,27 @@ def plot_locations(locations: List[int],
     plt.gcf().autofmt_xdate()
 
 
-def plot_metadata(human):
-    table_data = [
-        ["name:", human.name],
-        ["age:", human.age],
-        ["carefulness:", human.carefulness],
-        ["has_app:", human.has_app],
-        ["has_allergies:", human.has_allergies],
-        ["household:", human.household],
-        ["workplace:", human.workplace],
-        ["timeslots:", str(human.time_slots)],
-    ]
-    table = plt.table(cellText=table_data, loc='center')
-    table.set_fontsize(14)
-    table.scale(1, 3)
-    plt.axis('off')
-
-
 def plot_recommendation_levels(recommendation_levels: List[int],
                                timestamps: List[datetime.datetime]):
     plt.step(timestamps, recommendation_levels)
     plt.title("Recommendation Level")
     plt.ylim((-1, 3))
     plt.yticks([tick for tick in range(4)])
+    plt.xlabel("Time")
+    plt.gcf().autofmt_xdate()
+
+
+def plot_states(states: Dict[str, List[bool]],
+                timestamps: List[datetime.datetime]):
+    state_to_color = {"has_flu": "tab:red",
+                      "has_cold": "tab:green",
+                      "has_allergy_symptoms": "tab:blue",
+                      "is_infected": "tab:purple"}
+    for state_name, state_vals in states.items():
+        plt.step(timestamps, [int(s) for s in state_vals], color=state_to_color[state_name])
+    plt.title("Binary States")
+    plt.ylim((-0.1, 1.1))
+    plt.yticks([0, 1])
     plt.xlabel("Time")
     plt.gcf().autofmt_xdate()
 
@@ -300,6 +298,33 @@ def get_viral_load_history(human_snapshots: List[Human],
     return viral_loads, vl_timestamps
 
 
+def get_states_history(human_snapshots: List[Human],
+                       timestamps: List[datetime.datetime],
+                       time_begin: datetime.datetime,
+                       time_end: datetime.datetime) -> \
+        Tuple[Dict[str, List[bool]], List[datetime.datetime]]:
+    states = {
+        "has_flu": [],
+        "has_cold": [],
+        "has_allergy_symptoms": [],
+        "is_infected": [],
+    }
+    s_timestamps = []
+    # There is one human snapshot per time slot per day
+    start_index = (time_begin - timestamps[0]).days * len(human_snapshots[0].time_slots)
+    for i in range(max(0, start_index), len(human_snapshots)):
+        human = human_snapshots[i]
+        timestamp = timestamps[i]
+        if timestamp > time_end:
+            break
+        states["has_flu"].append(human.has_flu)
+        states["has_cold"].append(human.has_cold)
+        states["has_allergy_symptoms"].append(human.has_allergy_symptoms)
+        states["is_infected"].append(not human.is_susceptible)
+        s_timestamps.append(timestamp)
+    return states, s_timestamps
+
+
 def generate_human_centric_plots(debug_data, output_folder):
     human_backups = debug_data['human_backups']
     timestamps = sorted(list(human_backups.keys()))
@@ -331,6 +356,7 @@ def generate_human_centric_plots(debug_data, output_folder):
         recommendation_levels, rl_timestamps = get_recommendation_level_history(h_backup, timestamps, begin, end)
         locations, l_timestamps = get_location_history(h_backup, timestamps, sorted_all_locations, begin, end)
         events, encounters, e_timestamps = get_events_history(h_backup, nb_humans, timestamps, begin, end)
+        states, s_timestamps = get_states_history(h_backup, timestamps, begin, end)
 
         fig = plt.figure()
 
@@ -355,6 +381,9 @@ def generate_human_centric_plots(debug_data, output_folder):
         fig.add_subplot(4, 3, 9)
         plot_encounters(encounters, timestamps)
 
+        fig.add_subplot(4, 3, 12)
+        plot_states(states, timestamps)
+
         fig.add_subplot(1, 3, 1)
         human = h_backup[-1]
         table_data = [
@@ -367,13 +396,19 @@ def generate_human_centric_plots(debug_data, output_folder):
             ["household:", human.household],
             ["workplace:", human.workplace],
             ["timeslots:", str(human.time_slots)],
+            ["asymptomatic", human.is_asymptomatic],
+            ["gets +/++ sick",
+             str([human.can_get_really_sick, human.can_get_extremely_sick])],
+            ["E/M/S/W mins",
+             str([human.avg_exercise_time, human.avg_misc_time,
+                  human.avg_shopping_time, human.avg_working_minutes])],
         ]
         table = plt.table(cellText=table_data, loc='center')
-        table.set_fontsize(14)
-        table.scale(1, 2)
+        table.set_fontsize(18)
+        table.scale(1, 1.7)
         plt.axis('off')
 
-        fig.set_size_inches(6.4 * 2, 4.8 * 2)
+        fig.set_size_inches(15, 10)
 
         plot_path = os.path.join(output_folder, f"{str(begin)}-{str(end)}_{h_key}.png")
         fig.savefig(plot_path, bbox_inches='tight', pad_inches=0.1)
