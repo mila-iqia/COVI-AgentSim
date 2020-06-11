@@ -12,12 +12,12 @@ We plan to update the simulator as more and more about COVID-19 will be known.
 
 ## Dependencies
 
-To run all experiments, including Transformer, clone the `machine-learning` repository] in addition to this one, and install this simulator with `ctt`:
+To run all experiments, including Transformer, clone the `machine-learning` repository in addition to this one, and install this simulator with `ctt`:
 ```
 pip install '.[ctt]'
 ```
 
-If you want to run only the simulator, or the simulator with BCT baselines, you don't need to clone the `machine-learning` repository and don't need to install `ctt`; it is only required for the transformer and other ML baselines. To install the simulator without `ctt`: ( *note that this usage is not what we use for paper experiments, and may not be fully supported/explained by this README* )
+If you want to run only the simulator, or the simulator with BCT baselines, you don't need to clone the `machine-learning` repository and don't need to install `ctt`; it is only required for the transformer and other ML baselines. To install the simulator without `ctt`: (*note that this usage is not what we use for paper experiments, and may not be fully supported/explained by this README*)
 
 ```
 pip install .
@@ -76,9 +76,4 @@ monitors = simulate(n_stores=100, n_parks=50, n_people=100, n_misc=100, print_pr
 
 
 ## Semantics of code
-`Human` class builds people, and `Location` class builds stores, parks, workplaces, households, and non-essential establishments.
-
-## Semantics of Data
-`data` is a `list`. Each entry in the `list` is an event represented as a `dict`.
-The detailed information about events is in [docs/events.md](docs/src/notes/events.md)
-
+`Human` class, located in `simulator.py`, builds people with individual properties, and the `City` and `Location` classes, located in `base.py` builds stores, parks, workplaces, households, and non-essential establishments. 
