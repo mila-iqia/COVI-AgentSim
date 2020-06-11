@@ -57,7 +57,7 @@ def plot_encounters(encounters: Dict[str, List[int]],
         for encounter, timestamp in zip(contamination_encounters[other_human], timestamps):
             if not encounter:
                 continue
-            contamination_encounters_human_ids.add(other_human_id - 1)
+            contamination_encounters_human_ids.add(other_human_id)
             plt.broken_barh([(timestamp, 1 / 18)], (other_human_id - 1, 1), color="tab:red", label=other_human)
 
     plt.title("Encounters")
@@ -485,6 +485,9 @@ if __name__ == '__main__':
                 for event in human._events:
                     humans_events[human.name][(event["time"], event["event_type"])] = event
                 human._events = []
+
+            # if len(debug_data["human_backups"]) % (24 * 2) == 0:
+            #     break
 
     for human_id, human_events in humans_events.items():
         events = list(human_events.values())
