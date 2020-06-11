@@ -16,8 +16,11 @@ PLOT_EVENTS_LABEL = ["Encounters", "Contaminations", "Tests", "Positive Tests", 
 
 def plot_events(events: Dict[str, List[int]],
                 timestamps: List[datetime.datetime]):
+    events_sum = [0] * len(timestamps)
     for event_label in PLOT_EVENTS_LABEL:
-        plt.bar(timestamps, events[event_label], label=event_label)
+        plt.bar(timestamps, events[event_label], width=1/24, bottom=events_sum, label=event_label)
+        for i in range(len(events[event_label])):
+            events_sum[i] += events[event_label][i]
     plt.title("Events")
     plt.xlabel("Time")
     plt.gcf().autofmt_xdate()
@@ -373,8 +376,8 @@ def generate_human_centric_plots(debug_data, output_folder):
         fig.set_size_inches(6.4 * 2, 4.8 * 2)
 
         plot_path = os.path.join(output_folder, f"{str(begin)}-{str(end)}_{h_key}.png")
-        plt.savefig(plot_path, bbox_inches='tight', pad_inches=0.1)
-        plt.close()
+        fig.savefig(plot_path, bbox_inches='tight', pad_inches=0.1)
+        plt.close(fig)
 
 
 def generate_location_centric_plots(debug_data, output_folder):
