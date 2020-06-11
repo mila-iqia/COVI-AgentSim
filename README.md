@@ -53,6 +53,10 @@ python random_search.py
 All experiments are reproducible given a random seed. Use the random seeds given in the config files (don't change anything) in order to reproduce the same results in the paper.
 
 
+## How to make plots?
+
+All plots are in jupyter notebooks in the `notebooks` directory.
+
 ## How to run tests?
 From the root of `simulator`, run:
 ```
