@@ -1,53 +1,50 @@
-# COVID-19 Spread Simulator for Tracing App
-
-
-This is a sub-project of [Peer-to-Peer AI Tracing App](https://mila.quebec/en/peer-to-peer-ai-tracing-of-covid-19/) delegated by [Prof. Yoshua Bengio](https://yoshuabengio.org/). Read more about the app in Prof. Bengio's [blog post](https://yoshuabengio.org/2020/03/23/peer-to-peer-ai-tracing-of-covid-19/).
+# Covid-19 Spread Simulator for Tracing App
 
 The simulator is built using [`simpy`](!https://simpy.readthedocs.io/en/latest/simpy_intro/index.html).
-It simulates human mobility along with infectious disease (COVID) spreading in a city, where city has houses, grocery stores, parks, workplaces, and other non-essential establishments.
+It simulates human mobility along with infectious disease (COVID-19) spreading in a city, where city has houses, grocery stores, parks, workplaces, and other non-essential establishments.
 
 Human mobility simulation is based on Spatial-EPR model. More details on this model are [here](https://www.nature.com/articles/ncomms9166) and [here](https://www.nature.com/articles/nphys1760).
 
 The infection spread in this simulator is modeled according to what is known about COVID-19.
-The assumptions about the COVID-19 spread and mobility implemented in the simulator are in the [Google Doc](https://docs.google.com/document/d/1jn8dOXgmVRX62Ux-jBSuReayATrzrd5XZS2LJuQ2hLs/edit?usp=sharing).
-The same document also details our current understanding of COVID-19.
 Our understanding is based on the published research as well as interactions with the epidemiologists.
 We plan to update the simulator as more and more about COVID-19 will be known.
 
 
 ## Dependencies
-To install the simulator without `ctt`
-```
-pip install .
-```
 
-To install the simulator with [`ctt`](https://github.com/covi-canada/machine-learning)
+To run all experiments, including Transformer, install the simulator with [`ctt`](https://github.com/covi-canada/machine-learning)
 ```
 pip install '.[ctt]'
+```
+
+
+If you want to run only the simulator, or the simulator with BCT baselines, you don't need `ctt`; it is only required for the transformer and other ML baselines. To install the simulator without `ctt`
+```
+pip install .
 ```
 
 Please checkout `setup.py` for external dependencies.
 
 ## How to run it using command line?
-Run the simulator as -
+Run the simulator in the 'unmitigated' scenario with console logging of infection progression and various statistics use `tune=True`
 ```
-python run.py sim --n_people 100 --seed 0
+python run.py tune=True 
 ```
 
-The simulator will output a logfile to `output/sim_people-{N_PEOPLE}_days-{SIMULATION_DAYS}_init-{INIT_PERCENT_SICK}_seed-{SEED}_{DATE}-{TIME}/data.zip`. It is a .zip file of `list` of `dict` pickles which contains a log of the mobility activity of a population of humans in `simulator.py`.
+The simulator will output a logfile and pickle to `output/sim_people-{N_PEOPLE}_days-{SIMULATION_DAYS}_init-{INIT_PERCENT_SICK}_seed-{SEED}_{DATE}-{TIME}/data.zip`. The `.pkl` contains all the activity of a population of humans in `simulator.py`. For a thousand people for 30 days (the default), this takes around 15 minutes on a 2-year old laptop (X1 carbon).
 
-Run the risk prediction algorithms as -
-```
-python risk_prediction.py
-```
-This file reads in the logs that are output from the simulator, and runs a risk prediction algorithm based on:
- 1) The reported symptoms of that individual, given they have the app.
- 2) The encounters that individual had (which contain quantized user ids and risk levels).
- 3) The risk update messages that are sent when a previously encountered user's risk level changes significantly.
+In order to train with a risk predictor in the loop, set the type of intervention (`b`, ,)  and the day that intervention should start:
 
-You may select the model which you want to specify, or add your own model in that file.
-This file also handles clustering of messages (under the currently understood privacy model), which can be useful for risk prediction algorithms which
-depend on knowing how many contacts happened with one individual.
+```
+python run.py tune=True tracing_method=`transformer` INTERVENTION_DAY=5
+```
+
+The above commands only produces one run of the simulator. In order to run multiple simulations with domain randomization suitable for creating a training dataset, we make use of a config file located at `simulator/src/covid19sim/hydra-configs/search/expriment.yaml`. Note that this takes several hours on a CPU cluster.
+
+```
+python random_search.py
+```
+
 
 ## How to run tests?
 Run -
