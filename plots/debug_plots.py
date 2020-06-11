@@ -23,6 +23,21 @@ def plot_events(events: Dict[str, List[int]],
     plt.gcf().autofmt_xdate()
 
 
+def plot_encounters(encounters: Dict[str, List[int]],
+                    timestamps: List[datetime.datetime]):
+    for other_human in encounters:
+        other_human_id = int(other_human[6:])
+        for encounter, timestamp in zip(encounters[other_human], timestamps):
+            if not encounter:
+                continue
+            plt.broken_barh([(timestamp, 1/24)], (other_human_id - 1, 1), label=other_human)
+    plt.title("Encounters")
+    plt.ylim((0, len(encounters)))
+    # plt.set_yticklabels(locations_names)
+    plt.xlabel("Time")
+    plt.gcf().autofmt_xdate()
+
+
 def plot_locations(locations: List[int],
                    locations_names: List[str],
                    timestamps: List[datetime.datetime]):
@@ -113,18 +128,21 @@ def plot_viral_loads(viral_loads: List[int],
 
 
 def get_events_history(human_snapshots: List[Human],
+                       humans_cnt: int,
                        timestamps: List[datetime.datetime],
                        time_begin: datetime.datetime,
                        time_end: datetime.datetime) -> \
-        Tuple[Dict[str, List[int]], List[datetime.datetime]]:
+        Tuple[Dict[str, List[int]], Dict[str, List[int]], List[datetime.datetime]]:
     events = {event_label: [] for event_label in PLOT_EVENTS_LABEL}
+    encounters = {f"human:{i+1}": [] for i in range(humans_cnt)}
     e_timestamps = []
 
     # There is one human snapshot per time slot per day
     start_index = (time_begin - timestamps[0]).days * len(human_snapshots[0].time_slots)
     previous_timestamp = datetime.datetime(1970, 1, 1)
     for i in range(max(0, start_index), len(human_snapshots)):
-        human = human_snapshots[i]
+        # Events are usually 1 time slot late
+        human = human_snapshots[min(i+1, len(human_snapshots) - 1)]
         timestamp = timestamps[i]
 
         if timestamp > time_end:
@@ -132,6 +150,8 @@ def get_events_history(human_snapshots: List[Human],
 
         for timestamp_events in events.values():
             timestamp_events.append(0)
+        for timestamp_encounters in encounters.values():
+            timestamp_encounters.append(0)
 
         for event in human.events:
             if event["time"] <= previous_timestamp:
@@ -141,6 +161,8 @@ def get_events_history(human_snapshots: List[Human],
 
             if event["event_type"] == Event.encounter:
                 events["Encounters"][-1] += 1
+                other_human_id = event['payload']['unobserved']['human2']['human_id']
+                encounters[other_human_id][-1] += 1
             elif event["event_type"] == Event.contamination:
                 events["Contaminations"][-1] += 1
             elif event["event_type"] == Event.test:
@@ -154,7 +176,7 @@ def get_events_history(human_snapshots: List[Human],
         e_timestamps.append(timestamp)
         previous_timestamp = timestamp
 
-    return events, e_timestamps 
+    return events, encounters, e_timestamps
 
 
 def get_location_history(human_snapshots: List[Human],
@@ -305,7 +327,7 @@ def generate_human_centric_plots(debug_data, output_folder):
         true_symptoms, obs_symptoms, s_timestamps = get_symptom_history(h_backup, timestamps, begin, end)
         recommendation_levels, rl_timestamps = get_recommendation_level_history(h_backup, timestamps, begin, end)
         locations, l_timestamps = get_location_history(h_backup, timestamps, sorted_all_locations, begin, end)
-        events, e_timestamps = get_events_history(h_backup, timestamps, begin, end)
+        events, encounters, e_timestamps = get_events_history(h_backup, nb_humans, timestamps, begin, end)
 
         fig = plt.figure()
 
@@ -325,13 +347,10 @@ def generate_human_centric_plots(debug_data, output_folder):
         plot_locations(locations, sorted_all_locations, timestamps)
 
         fig.add_subplot(4, 3, 6)
-        tmp_events = {e_label: (e_cnts if e_label == "Encounters" else [0] * len(e_cnts))
-                      for e_label, e_cnts in events.items()}
-        plot_events(tmp_events, timestamps)
+        plot_events(events, timestamps)
+
         fig.add_subplot(4, 3, 9)
-        tmp_events = {e_label: (e_cnts if e_label != "Encounters" else [0] * len(e_cnts))
-                      for e_label, e_cnts in events.items()}
-        plot_events(tmp_events, timestamps)
+        plot_encounters(encounters, timestamps)
 
         fig.add_subplot(1, 3, 1)
         human = h_backup[-1]
