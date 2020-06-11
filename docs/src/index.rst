@@ -10,7 +10,7 @@ Human mobility simulation is based on Spatial-EPR model.
 More details on this model are `here <https://www.nature.com/articles/ncomms9166>`_ and `here <https://www.nature.com/articles/nphys1760>`_.
 
 The infection spread in this simulator is modeled according to what is known about COVID-19.
-The assumptions about the COVID-19 spread and mobility implemented in the simulator are in the `Google Doc <https://docs.google.com/document/d/1jn8dOXgmVRX62Ux-jBSuReayATrzrd5XZS2LJuQ2hLs/edit?usp=sharing>`_.
+The assumptions about the COVID-19 spread and mobility implemented in the simulator are in the `Google Doc`_.
 The same document also details our current understanding of COVID-19.
 Our understanding is based on the published research as well as interactions with the epidemiologists.
 We plan to update the simulator as more and more about COVID-19 will be known.
