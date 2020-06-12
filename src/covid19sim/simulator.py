@@ -12,7 +12,7 @@ import warnings
 from collections import defaultdict
 from orderedset import OrderedSet
 
-from covid19sim.interventions import Tracing
+from covid19sim.interventions import Tracing, modify_behavior
 from covid19sim.utils import compute_distance, proba_to_risk_fn
 from covid19sim.base import Event, PersonalMailboxType, Hospital, ICU
 from collections import deque
@@ -1316,8 +1316,9 @@ class Human(object):
             if isinstance(intervention, Tracing):
                 self.tracing = True
                 self.tracing_method = intervention
-            self.get_recommendations_level()
-            intervention.modify_behavior(self)
+            self.update_recommendations_level()
+            recommendations = intervention.get_recommendations(self)
+            modify_behavior(intervention, self, recommendations)
             self.notified = True
 
     def run(self, city):
@@ -2047,7 +2048,7 @@ class Human(object):
         cur_day = (self.env.timestamp - self.env.initial_timestamp).days
         self.risk_history_map[cur_day] = val
 
-    def get_recommendations_level(self):
+    def update_recommendations_level(self):
         if isinstance(self.tracing_method, Tracing):
             # FIXME: maybe merge Quarantine in RiskBasedRecommendations with 2 levels
             if self.tracing_method.risk_model in ["manual", "digital"]:
@@ -2063,7 +2064,6 @@ class Human(object):
                 )
         else:
             self._rec_level = -1
-        return self.rec_level
 
     @property
     def rec_level(self):

@@ -25,6 +25,17 @@ class BehaviorInterventions(object):
         """
         pass
 
+    def get_recommendations(self, human: Human):
+        recommendations = self._get_recommendations_impl(human)
+        if (not recommendations or
+            not isinstance(recommendations[-1], Quarantine)) and \
+                any(1 for h in human.household.humans if h.test_result == "positive"):
+            recommendations.append(Quarantine())
+        return recommendations
+
+    def _get_recommendations_impl(self, human: Human):
+        return []
+
     def modify_behavior(self, human):
         """
         Changes the behavior attributes of `Human`.
@@ -37,7 +48,7 @@ class BehaviorInterventions(object):
         Args:
             human (Human): `Human` object.
         """
-        pass
+        raise NotImplementedError()
 
     def revert_behavior(self, human):
         """
@@ -48,10 +59,21 @@ class BehaviorInterventions(object):
         Args:
             human (Human): `Human` object.
         """
-        pass
+        raise NotImplementedError()
 
     def __repr__(self):
         return "BehaviorInterventions"
+
+
+class Unmitigated(BehaviorInterventions):
+    def modify_behavior(self, human):
+        pass
+
+    def revert_behavior(self, human):
+        pass
+
+    def __repr__(self):
+        return "Unmitigated"
 
 
 class StayHome(BehaviorInterventions):
@@ -262,13 +284,13 @@ class BinaryTracing(BehaviorInterventions):
     def __init__(self):
         super(BinaryTracing, self).__init__()
 
-    def modify_behavior(self, human):
+    def _get_recommendations_impl(self, human: Human):
         # If there is a mapping available for recommendation levels in the
         # configuration file, use the intervention level randomly picked from
         # this transition matrix, based on the recommendation level. The update
         # of the recommendation levels are not altered.
         if not human.has_app:
-            return
+            return []
 
         if human.city.daily_rec_level_mapping is None:
             intervention_level = human.rec_level
@@ -277,13 +299,7 @@ class BinaryTracing(BehaviorInterventions):
             probas = human.city.daily_rec_level_mapping[human.rec_level]
             intervention_level = human.rng.choice(4, p=probas)
         human._intervention_level = intervention_level
-        recommendations = get_recommendations(intervention_level)
-
-        self.revert_behavior(human)
-        for rec in recommendations:
-            if isinstance(rec, BehaviorInterventions) and human.follows_recommendations_today:
-                rec.modify_behavior(human)
-                human.recommendations_to_follow.add(rec)
+        return _get_tracing_recommendations(intervention_level)
 
     def revert_behavior(self, human):
         for rec in human.recommendations_to_follow:
@@ -316,7 +332,7 @@ class WearMask(BehaviorInterventions):
     def __repr__(self):
         return f"Wear Mask"
 
-def get_recommendations(level):
+def _get_tracing_recommendations(level):
     """
     Maps recommendation level to a list `BehaviorInterventions`.
 
@@ -333,6 +349,8 @@ def get_recommendations(level):
     if level == 2:
         return [WashHands(), SocialDistancing(default_distance=125), WearMask(), 'monitor_symptoms']
 
+    # NOTE: Quarantine must be last to be found by BehaviorInterventions.get_recommendations()
+    # and Tracing.get_recommendations()
     return [WashHands(), SocialDistancing(default_distance=150), WearMask(), 'monitor_symptoms', GetTested("recommendations"), Quarantine()]
 
 class RiskBasedRecommendations(BehaviorInterventions):
@@ -373,13 +391,13 @@ class RiskBasedRecommendations(BehaviorInterventions):
         else:
             raise
 
-    def modify_behavior(self, human):
+    def _get_recommendations_impl(self, human: Human):
         # If there is a mapping available for recommendation levels in the
         # configuration file, use the intervention level randomly picked from
         # this transition matrix, based on the recommendation level. The update
         # of the recommendation levels are not altered.
         if not human.has_app:
-            return
+            return []
 
         if human.city.daily_rec_level_mapping is None:
             intervention_level = human.rec_level
@@ -388,16 +406,7 @@ class RiskBasedRecommendations(BehaviorInterventions):
             probas = human.city.daily_rec_level_mapping[human.rec_level]
             intervention_level = human.rng.choice(4, p=probas)
         human._intervention_level = intervention_level
-        recommendations = get_recommendations(intervention_level)
-
-        # revert all my previous behaviours
-        self.revert_behavior(human)
-
-        # apply each behaviour I should be following
-        for rec in recommendations:
-            if isinstance(rec, BehaviorInterventions) and human.follows_recommendations_today:
-                rec.modify_behavior(human)
-                human.recommendations_to_follow.add(rec)
+        return _get_tracing_recommendations(intervention_level)
 
     def revert_behavior(self, human):
         for rec in human.recommendations_to_follow:
@@ -534,10 +543,20 @@ class Tracing(object):
             self.propagate_risk = False
             self.propagate_symptoms = False
 
-    def modify_behavior(self, human):
+    # Mirror BehaviorInterventions interface
+    def get_recommendations(self, human: Human):
+        recommendations = []
         if not self.should_modify_behavior and (not human.has_app and self.app):
-            return
-        return self.intervention.modify_behavior(human)
+            recommendations = self.intervention.get_recommendations(human)
+        if (not recommendations or
+            not isinstance(recommendations[-1], Quarantine)) and \
+                any(1 for h in human.household.humans if h.test_result == "positive"):
+            recommendations.append(Quarantine())
+        return recommendations
+
+    # Mirror BehaviorInterventions interface
+    def revert_behavior(self, human):
+        self.intervention.revert_behavior(human)
 
     def risk_level_to_risk(self, risk_level):
         risk_level = min(risk_level, 15)
@@ -856,3 +875,13 @@ def get_intervention(conf):
         raise NotImplementedError
     else:
         raise
+
+
+def modify_behavior(intervention: BehaviorInterventions,
+                    human: Human,
+                    recommendations: typing.List[typing.Any[BehaviorInterventions, str]]):
+    intervention.revert_behavior(human)
+    for rec in recommendations:
+        if isinstance(rec, BehaviorInterventions) and human.follows_recommendations_today:
+            rec.modify_behavior(human)
+            human.recommendations_to_follow.add(rec)

@@ -1750,25 +1750,6 @@ def proba_to_risk_fn(mapping):
 
     return _proba_to_risk
 
-def get_recommendations(risk_level):
-    """
-    [summary]
-
-    Args:
-        risk_level ([type]): [description]
-
-    Returns:
-        [type]: [description]
-    """
-    if risk_level == 0:
-        return ['stay_home', 'wash_hands', 'stand_2m']
-    if risk_level == 1:
-        return ['stay_home', 'wash_hands', 'stand_2m', 'limit_contact']
-    if risk_level == 2:
-        return ['stay_home', 'wash_hands', 'stand_2m', 'limit_contact', 'wear_mask', 'monitor_symptoms']
-    else:
-        return ['stay_home', 'wash_hands', 'stand_2m', 'limit_contact', 'wear_mask', 'monitor_symptoms', 'get_tested', 'quarantine']
-
 def calculate_average_infectiousness(human):
     cur_infectiousness = human.get_infectiousness_for_day(human.env.timestamp, human.is_infectious)
     is_infectious_tomorrow = True if human.infection_timestamp and human.env.timestamp - human.infection_timestamp + datetime.timedelta(days=1) >= datetime.timedelta(days=human.infectiousness_onset_days) else False

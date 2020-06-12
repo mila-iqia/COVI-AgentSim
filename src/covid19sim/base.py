@@ -676,6 +676,7 @@ class City:
         tmp_M = self.conf.get("GLOBAL_MOBILITY_SCALING_FACTOR")
         self.conf["GLOBAL_MOBILITY_SCALING_FACTOR"] = 1
         last_day_idx = 0
+        self.intervention = Unmitigated()
         while True:
             current_day = (self.env.timestamp - self.start_time).days
             # Notify humans to follow interventions on intervention day
@@ -755,8 +756,7 @@ class City:
                         update_reason="unknown",  # FIXME got schwacked in hotfix, only used for debugging
                         tracing_method=human.tracing_method,
                     ))
-                    human.get_recommendations_level()
-                    human.tracing_method.modify_behavior(human)
+                    human.update_recommendations_level()
                     Event.log_risk_update(
                         self.conf['COLLECT_LOGS'],
                         human=human,
@@ -776,6 +776,10 @@ class City:
                     prev_human_risk_history_maps=backup_human_init_risks,
                     new_human_risk_history_maps={h: h.risk_history_map for h in self.humans},
                 )
+
+            for human in self.humans:
+                recommendations = self.intervention.get_recommendations(human)
+                modify_behavior(self.intervention, human, recommendations)
 
             yield self.env.timeout(int(duration))
 
@@ -1702,4 +1706,4 @@ class EmptyCity(City):
         self._compute_preferences()
         self.tracker = Tracker(self.env, self)
         # self.tracker.track_initialized_covid_params(self.humans)
-        self.intervention = None
+        self.intervention = Unmitigated()
