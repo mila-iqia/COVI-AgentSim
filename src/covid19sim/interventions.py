@@ -25,7 +25,7 @@ class BehaviorInterventions(object):
         """
         pass
 
-    def get_recommendations(self, human: Human):
+    def get_recommendations(self, human: "Human"):
         recommendations = self._get_recommendations_impl(human)
         if (not recommendations or
             not isinstance(recommendations[-1], Quarantine)) and \
@@ -33,7 +33,7 @@ class BehaviorInterventions(object):
             recommendations.append(Quarantine())
         return recommendations
 
-    def _get_recommendations_impl(self, human: Human):
+    def _get_recommendations_impl(self, human: "Human"):
         return []
 
     def modify_behavior(self, human):
@@ -188,8 +188,7 @@ class Quarantine(BehaviorInterventions):
         pass
 
     def modify_behavior(self, human):
-        human._workplace = human.workplace
-        human.workplace = human.household
+        human.set_temporary_workplace(human.household)
         human.rho = self._RHO
         human.gamma = self._GAMMA
         human.rest_at_home = True
@@ -197,12 +196,11 @@ class Quarantine(BehaviorInterventions):
         # print(f"{human} quarantined {human.tracing_method}")
 
     def revert_behavior(self, human):
-        human.workplace = human._workplace
+        human.revert_workplace()
         human.rho = human.conf.get("RHO")
         human.gamma = human.conf.get("GAMMA")
         human.rest_at_home = False
         human._quarantine = False
-        delattr(human, "_workplace")
 
     def __repr__(self):
         return f"Quarantine"
@@ -223,16 +221,14 @@ class Lockdown(BehaviorInterventions):
     _GAMMA = 1
 
     def modify_behavior(self, human):
-        human._workplace = human.workplace
-        human.workplace = human.household
+        human.set_temporary_workplace(human.household)
         human.rho = self._RHO
         human.gamma = self._GAMMA
 
     def revert_behavior(self, human):
-        human.workplace = human._workplace
+        human.revert_workplace()
         human.rho = human.conf.get("RHO")
         human.gamma = human.conf.get("GAMMA")
-        delattr(human, "_workplace")
 
     def __repr__(self):
         return f"Lockdown"
@@ -252,17 +248,16 @@ class SocialDistancing(BehaviorInterventions):
         self._GAMMA = 0.5
 
     def modify_behavior(self, human):
-        human._maintain_extra_distance = human.maintain_extra_distance
-        human._time_encounter_reduction_factor = human.time_encounter_reduction_factor
-
-        human.maintain_extra_distance = self.DEFAULT_SOCIAL_DISTANCE + 100 * (human.carefulness - 0.5)
-        human.time_encounter_reduction_factor = self.TIME_ENCOUNTER_REDUCTION_FACTOR
+        maintain_extra_distance = self.DEFAULT_SOCIAL_DISTANCE + 100 * (human.carefulness - 0.5)
+        time_encounter_reduction_factor = self.TIME_ENCOUNTER_REDUCTION_FACTOR
+        human.set_temporary_maintain_extra_distance(maintain_extra_distance)
+        human.set_temporary_time_encounter_reduction_factor(time_encounter_reduction_factor)
         human.rho = self._RHO
         human.gamma = self._GAMMA
 
     def revert_behavior(self, human):
-        human.maintain_extra_distance = human._maintain_extra_distance
-        human.time_encounter_reduction_factor = human._time_encounter_reduction_factor
+        human.revert_maintain_extra_distance()
+        human.revert_time_encounter_reduction_factor()
         human.rho = human.conf.get("RHO")
         human.gamma = human.conf.get("GAMMA")
         delattr(human, "_maintain_extra_distance")
@@ -284,7 +279,7 @@ class BinaryTracing(BehaviorInterventions):
     def __init__(self):
         super(BinaryTracing, self).__init__()
 
-    def _get_recommendations_impl(self, human: Human):
+    def _get_recommendations_impl(self, human: "Human"):
         # If there is a mapping available for recommendation levels in the
         # configuration file, use the intervention level randomly picked from
         # this transition matrix, based on the recommendation level. The update
@@ -391,7 +386,7 @@ class RiskBasedRecommendations(BehaviorInterventions):
         else:
             raise
 
-    def _get_recommendations_impl(self, human: Human):
+    def _get_recommendations_impl(self, human: "Human"):
         # If there is a mapping available for recommendation levels in the
         # configuration file, use the intervention level randomly picked from
         # this transition matrix, based on the recommendation level. The update
@@ -544,7 +539,7 @@ class Tracing(object):
             self.propagate_symptoms = False
 
     # Mirror BehaviorInterventions interface
-    def get_recommendations(self, human: Human):
+    def get_recommendations(self, human: "Human"):
         recommendations = []
         if not self.should_modify_behavior and (not human.has_app and self.app):
             recommendations = self.intervention.get_recommendations(human)
@@ -878,8 +873,8 @@ def get_intervention(conf):
 
 
 def modify_behavior(intervention: BehaviorInterventions,
-                    human: Human,
-                    recommendations: typing.List[typing.Any[BehaviorInterventions, str]]):
+                    human: "Human",
+                    recommendations: list):
     intervention.revert_behavior(human)
     for rec in recommendations:
         if isinstance(rec, BehaviorInterventions) and human.follows_recommendations_today:

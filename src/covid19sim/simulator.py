@@ -115,8 +115,8 @@ class Human(object):
         self.has_app = has_app
         self.profession = profession
         self.is_healthcare_worker = True if profession == "healthcare" else False
+        self._workplace = deque((workplace,))
         self.assign_household(household)
-        self.workplace = workplace
         self.rho = rho
         self.gamma = gamma
 
@@ -218,12 +218,12 @@ class Human(object):
         self.mask_efficacy = 0
         self.notified = False
         self.tracing_method = None
-        self.maintain_extra_distance = 0
+        self._maintain_extra_distance = deque((0,))
         self._follows_recommendations_today = None
         self._rec_level = -1 # Recommendation level
         self._intervention_level = -1 # Intervention level (level of behaviour modification to apply), for logging purposes
         self.recommendations_to_follow = OrderedSet()
-        self.time_encounter_reduction_factor = 1.0
+        self._time_encounter_reduction_factor = deque((1.0,))
         self.hygiene = 0 # start everyone with a baseline hygiene. Only increase it once the intervention is introduced.
         self.test_recommended = False
         self.effective_contacts = 0
@@ -402,7 +402,7 @@ class Human(object):
         self.household = location
         self.location = location
         if self.profession == "retired":
-            self.workplace = location
+            self._workplace[-1] = location
 
     def __repr__(self):
         """
@@ -412,6 +412,42 @@ class Human(object):
             [type]: [description]
         """
         return f"H:{self.name} age:{self.age}, SEIR:{int(self.is_susceptible)}{int(self.is_exposed)}{int(self.is_infectious)}{int(self.is_removed)}"
+
+    @property
+    def workplace(self):
+        return self._workplace[0]
+
+    def set_temporary_workplace(self, new_workplace):
+        self._workplace.appendleft(new_workplace)
+
+    def revert_workplace(self):
+        workplace = self._workplace[-1]
+        self._workplace.clear()
+        self._workplace.appendleft(workplace)
+
+    @property
+    def maintain_extra_distance(self):
+        return self._maintain_extra_distance[0]
+
+    def set_temporary_maintain_extra_distance(self, new_maintain_extra_distance):
+        self._maintain_extra_distance.appendleft(new_maintain_extra_distance)
+
+    def revert_maintain_extra_distance(self):
+        maintain_extra_distance = self._maintain_extra_distance[-1]
+        self._maintain_extra_distance.clear()
+        self._maintain_extra_distance.appendleft(maintain_extra_distance)
+
+    @property
+    def time_encounter_reduction_factor(self):
+        return self._time_encounter_reduction_factor[0]
+
+    def set_temporary_time_encounter_reduction_factor(self, new_time_encounter_reduction_factor):
+        self._time_encounter_reduction_factor.appendleft(new_time_encounter_reduction_factor)
+
+    def revert_time_encounter_reduction_factor(self):
+        time_encounter_reduction_factor = self._time_encounter_reduction_factor[-1]
+        self._time_encounter_reduction_factor.clear()
+        self._time_encounter_reduction_factor.appendleft(time_encounter_reduction_factor)
 
     ########### MEMORY OPTIMIZATION ###########
     @property
