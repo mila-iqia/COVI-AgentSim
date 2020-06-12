@@ -8,6 +8,19 @@ import zipfile
 from matplotlib import pyplot as plt
 
 from src.covid19sim.simulator import Human
+from src.covid19sim.base import Event
+
+
+PLOT_EVENTS_LABEL = ["Encounters", "Contaminations", "Tests"]
+
+
+def plot_events(events: Dict[str, List[int]],
+                timestamps: List[datetime.datetime]):
+    for event_label in PLOT_EVENTS_LABEL:
+        plt.bar(timestamps, events[event_label], label=event_label)
+    plt.title("Events")
+    plt.xlabel("Time")
+    plt.gcf().autofmt_xdate()
 
 
 def plot_locations(locations: List[int],
@@ -38,6 +51,25 @@ def plot_locations(locations: List[int],
     plt.title("Location")
     plt.ylim((0, len(locations_names)))
     # plt.set_yticklabels(locations_names)
+    plt.xlabel("Time")
+    plt.gcf().autofmt_xdate()
+
+
+def plot_metadata(human):
+    table_data = [
+        ["name:", human.name],
+        ["age:", human.age],
+        ["carefulness:", human.carefulness],
+        ["has_app:", human.has_app],
+        ["has_allergies:", human.has_allergies],
+        ["household:", human.household],
+        ["workplace:", human.workplace],
+        ["timeslots:", str(human.time_slots)],
+    ]
+    table = plt.table(cellText=table_data, loc='center')
+    table.set_fontsize(14)
+    table.scale(1, 3)
+    plt.axis('off')
 
 
 def plot_recommendation_levels(recommendation_levels: List[int],
@@ -80,6 +112,39 @@ def plot_viral_loads(viral_loads: List[int],
     plt.yticks([tick / 4 for tick in range(4+1)])
     plt.xlabel("Time")
     plt.gcf().autofmt_xdate()
+
+
+def get_events_history(human_snapshots: List[Human],
+                       timestamps: List[datetime.datetime],
+                       time_begin: datetime.datetime,
+                       time_end: datetime.datetime) -> \
+        Tuple[Dict[str, List[int]], List[datetime.datetime]]:
+    events = {event_label: [] for event_label in PLOT_EVENTS_LABEL}
+    e_timestamps = []
+
+    # There is one human snapshot per time slot per day
+    start_index = (time_begin - timestamps[0]).days * len(human_snapshots[0].time_slots)
+    for i in range(max(0, start_index), len(human_snapshots)):
+        human = human_snapshots[i]
+        timestamp = timestamps[i]
+
+        if timestamp > time_end:
+            break
+
+        for timestamp_events in events.values():
+            timestamp_events.append(0)
+
+        for event in human.events:
+            if event["event_type"] == Event.encounter:
+                events["Encounters"][-1] += 1
+            elif event["event_type"] == Event.contamination:
+                events["Contaminations"][-1] += 1
+            elif event["event_type"] == Event.test:
+                events["Tests"][-1] += 1
+
+        e_timestamps.append(timestamp)
+
+    return events, e_timestamps 
 
 
 def get_location_history(human_snapshots: List[Human],
@@ -225,34 +290,32 @@ def generate_human_centric_plots(debug_data, output_folder):
         h_key = "human:%i" % idx_human
         h_backup = [human_backups[t][h_key] for t in timestamps]
 
-        fig, axes = plt.subplots(4, 1, sharex="col")
-        plt.xlabel("Time")
-        plt.gcf().autofmt_xdate()
-
         risks, r_timestamps = get_risk_history(h_backup, timestamps, begin, end)
         viral_loads, vl_timestamps = get_viral_load_history(h_backup, timestamps, begin, end)
         true_symptoms, obs_symptoms, s_timestamps = get_symptom_history(h_backup, timestamps, begin, end)
         recommendation_levels, rl_timestamps = get_recommendation_level_history(h_backup, timestamps, begin, end)
         locations, l_timestamps = get_location_history(h_backup, timestamps, sorted_all_locations, begin, end)
+        events, e_timestamps = get_events_history(h_backup, timestamps, begin, end)
 
         fig = plt.figure()
 
-        fig.add_subplot(5, 2, 2)
+        fig.add_subplot(6, 2, 2)
         plot_risks(risks, timestamps)
 
-        fig.add_subplot(5, 2, 4)
+        fig.add_subplot(6, 2, 4)
         plot_viral_loads(viral_loads, timestamps)
 
-        fig.add_subplot(5, 2, 6)
+        fig.add_subplot(6, 2, 6)
         plot_symptoms(true_symptoms, obs_symptoms, timestamps)
 
-        fig.add_subplot(5, 2, 8)
+        fig.add_subplot(6, 2, 8)
         plot_recommendation_levels(recommendation_levels, timestamps)
 
-        fig.add_subplot(5, 2, 10)
+        fig.add_subplot(6, 2, 10)
         plot_locations(locations, sorted_all_locations, timestamps)
-        plt.xlabel("Time")
-        plt.gcf().autofmt_xdate()
+
+        fig.add_subplot(6, 2, 12)
+        plot_events(events, timestamps)
 
         fig.add_subplot(1, 2, 1)
         human = h_backup[0]
