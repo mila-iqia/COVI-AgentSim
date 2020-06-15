@@ -181,6 +181,7 @@ class Tracker(object):
 
         # update messages
         self.infector_infectee_update_messages = defaultdict(lambda :defaultdict(dict))
+        self.init_infected = [human for human in self.city.humans if human.is_exposed]
 
     def initialize(self):
         self.s_per_day = [sum(h.is_susceptible for h in self.city.humans)]
@@ -570,6 +571,7 @@ class Tracker(object):
                         "from_rec_level": None if not type=="human" else from_human.rec_level,
                         "from_infection_timestamp": None if not type=="human" else from_human.infection_timestamp,
                         "from_is_asymptomatic": None if not type=="human" else from_human.is_asymptomatic,
+                        "from_has_app": None if not type=="human" else from_human.has_app,
                         "to": to_human.name,
                         "to_risk": to_human.risk,
                         "to_risk_level": to_human.risk_level,
@@ -577,6 +579,7 @@ class Tracker(object):
                         "infection_date": timestamp.date(),
                         "infection_timestamp":timestamp,
                         "to_is_asymptomatic": to_human.is_asymptomatic,
+                        "to_has_app": to_human.has_app,
                         "location":location.location_type,
                         "location": location.name
                     })
@@ -622,7 +625,7 @@ class Tracker(object):
             reason = payload['reason']
             model = self.city.intervention.risk_model
             if  model == "transformer":
-                if  reason != "risk_update":
+                if  reason not in ["unknown", "contact"]:
                     return # transformer only sends risks
                 x = {'method':model, 'reason':payload['reason'], 'new_risk_level':payload['new_risk_level']}
                 self.infector_infectee_update_messages[from_human.name][to_human.name][self.env.timestamp] = x
