@@ -1140,15 +1140,15 @@ class Human(object):
         # baseline risk might be updated by methods below (if enabled)
         self.risk_history_map[current_day_idx] = self.baseline_risk
 
-        if self.tracing_method is not None and not self.is_removed:
+        if self.tracing_method is not None and not self.is_dead:
             update_reason = "risk_update"  # default update reason (if we don't get more specific)
             if isinstance(self.tracing_method, Tracing) and self.tracing_method.risk_model != "transformer":
                 # if not running transformer, we're using basic tracing --- do it now, it won't be batched later
                 risks = self.tracing_method.compute_risk(self, personal_mailbox, self.city.hd)
                 for day_offset, risk in enumerate(risks):
                     if current_day_idx - day_offset in self.risk_history_map:
-                        self.risk_history_map[current_day_idx - day_offset] = \
-                            max(risk, self.risk_history_map[current_day_idx - day_offset])
+                        self.risk_history_map[current_day_idx - day_offset] = risk
+                        # max(risk, self.risk_history_map[current_day_idx - day_offset])
 
             if self.all_reported_symptoms and self.tracing_method.propagate_symptoms:
                 target_symptoms = ["severe", "trouble_breathing"]
@@ -1291,6 +1291,7 @@ class Human(object):
         self.recovered_timestamp = datetime.datetime.max
         self.all_symptoms, self.covid_symptoms = [], []
         Event.log_recovery(self.conf.get('COLLECT_LOGS'), self, self.env.timestamp, death=True)
+        self.location.remove_human(self)
         yield self.env.timeout(np.inf)
 
     def assert_state_changes(self):
@@ -2047,9 +2048,9 @@ class Human(object):
     def baseline_risk(self):
         if self.is_removed:
             return 0.0
-        elif self.test_result == "positive":
+        elif self.reported_test_result == "positive":
             return 1.0
-        elif self.test_result == "negative":
+        elif self.reported_test_result == "negative":
             return 0.2
         else:
             return self.conf.get("BASELINE_RISK_VALUE")
