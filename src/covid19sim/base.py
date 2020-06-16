@@ -718,8 +718,9 @@ class City:
             all_new_update_messages = []  # accumulate everything here so we can filter if needed
             backup_human_init_risks = {}  # backs up human risks before any update takes place
 
+            alive_humans = [human for human in self.humans if not human.is_dead]
             # iterate over humans, and if it's their timeslot, then update their state
-            for human in self.humans:
+            for human in alive_humans:
                 human.check_covid_testing_needs()  # humans can decide to get tested whenever
                 if current_day not in human.infectiousness_history_map:
                     # contrarily to risk, infectiousness only changes once a day (human behavior has no impact)
@@ -754,9 +755,15 @@ class City:
                 # finally, iterate over humans again, and if it's their timeslot, then send update messages
                 self.tracker.track_risk_attributes(self.hd)
                 update_messages = []
-                for human in self.humans:
+                for human in alive_humans:
                     if not human.has_app or self.env.timestamp.hour not in human.time_slots:
                         continue
+
+                    # overwrite risk values to 1.0 if human has positive test result (for all tracing methods)
+                    if human.reported_test_result == "positive":
+                        for day_offset in range(self.conf.get("TRACING_N_DAYS_HISTORY")):
+                            human.risk_history_map[current_day - day_offset] = 1.0
+
                     # if we had any encounters for which we have not sent an initial message, do it now
                     update_messages.extend(human.contact_book.generate_initial_updates(
                         current_day_idx=current_day,
@@ -806,7 +813,7 @@ class City:
                 self.daily_rec_level_mapping = self.compute_daily_rec_level_mapping(current_day)
                 self.cleanup_global_mailbox(self.env.timestamp)
                 # TODO: this is an assumption which will break in reality, instead of updating once per day everyone at the same time, it should be throughout the day
-                for human in self.humans:
+                for human in alive_humans:
                     human.catch_other_disease_at_random()
                     Event.log_daily(self.conf.get('COLLECT_LOGS'), human, human.env.timestamp)
                 self.tracker.increment_day()
