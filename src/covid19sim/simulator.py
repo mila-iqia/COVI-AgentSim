@@ -834,17 +834,6 @@ class Human(object):
         return area
 
     @property
-    def obs_symptoms(self):
-        """
-        [summary]
-
-        Returns:
-            [type]: [description]
-        """
-        warnings.warn("Deprecated in favor of Human.all_reported_symptoms()", DeprecationWarning)
-        return self.all_reported_symptoms
-
-    @property
     def symptoms(self):
         """
         [summary]
@@ -860,10 +849,10 @@ class Human(object):
     @property
     def all_reported_symptoms(self):
         """
-        [summary]
+        returns all symptoms reported in the past TRACING_N_DAYS_HISTORY days
 
         Returns:
-            [type]: [description]
+            list: list of symptoms
         """
         if not self.has_app:
             return []
@@ -871,7 +860,7 @@ class Human(object):
         # TODO: symptoms should not be updated here.
         # Explicit call to Human.update_reported_symptoms() should be required
         self.update_reported_symptoms()
-        return self.rolling_all_reported_symptoms[0]
+        return set(symptom for symptoms in self.rolling_all_reported_symptoms for symptom in symptoms)
 
     def update_symptoms(self):
         """
