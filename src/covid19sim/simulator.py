@@ -1331,7 +1331,7 @@ class Human(object):
             if isinstance(intervention, Tracing):
                 self.tracing = True
                 self.tracing_method = intervention
-            self.get_recommendations_level()
+            self.update_recommendations_level()
             intervention.modify_behavior(self)
             self.notified = True
 
@@ -2092,7 +2092,7 @@ class Human(object):
         cur_day = (self.env.timestamp - self.env.initial_timestamp).days
         self.risk_history_map[cur_day] = val
 
-    def get_recommendations_level(self):
+    def update_recommendations_level(self):
         if isinstance(self.tracing_method, Tracing):
             # FIXME: maybe merge Quarantine in RiskBasedRecommendations with 2 levels
             if self.tracing_method.risk_model in ["manual", "digital"]:
@@ -2108,7 +2108,7 @@ class Human(object):
                 )
         else:
             self._rec_level = -1
-        return self.rec_level
+        # return self.rec_level
 
     @property
     def rec_level(self):

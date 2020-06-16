@@ -772,10 +772,10 @@ class City:
                         prev_risk_history_map=human.prev_risk_history_map,
                         curr_risk_history_map=human.risk_history_map,
                         proba_to_risk_level_map=human.proba_to_risk_level_map,
-                        update_reason="unknown",  # FIXME got schwacked in hotfix, only used for debugging
+                        update_reason="unknown",
                         tracing_method=human.tracing_method,
                     ))
-                    human.get_recommendations_level()
+                    human.update_recommendations_level()
                     human.tracing_method.modify_behavior(human)
                     Event.log_risk_update(
                         self.conf['COLLECT_LOGS'],
