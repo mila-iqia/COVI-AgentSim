@@ -204,7 +204,6 @@ class Human(object):
         if self.infection_timestamp is not None:
             self.compute_covid_properties()
 
-
         # counters and memory
         self.r0 = []
         self.has_logged_symptoms = False
@@ -1075,12 +1074,14 @@ class Human(object):
                     days_since_test_result >= self.conf.get("RESET_POSITIVE_TEST_RESULT_DELAY",
                                                             self.conf.get("TRACING_N_DAYS_HISTORY") + 1):
                 self.reset_test_result()
+
         if not self.risk_history_map:  # if we're on day zero, add a baseline risk value in
             self.risk_history_map[current_day_idx] = self.baseline_risk
         elif current_day_idx not in self.risk_history_map:
             assert (current_day_idx - 1) in self.risk_history_map, \
                 "humans should never skip a day worth of risk refresh"
             self.risk_history_map[current_day_idx] = self.risk_history_map[current_day_idx - 1]
+
         curr_day_set = set(self.risk_history_map.keys())
         prev_day_set = set(self.prev_risk_history_map.keys())
         day_set_diff = curr_day_set.symmetric_difference(prev_day_set)
@@ -1331,7 +1332,7 @@ class Human(object):
             if isinstance(intervention, Tracing):
                 self.tracing = True
                 self.tracing_method = intervention
-            self.update_recommendations_level()
+            self.update_recommendations_level(intervention_start=True)
             intervention.modify_behavior(self)
             self.notified = True
 
@@ -2092,7 +2093,7 @@ class Human(object):
         cur_day = (self.env.timestamp - self.env.initial_timestamp).days
         self.risk_history_map[cur_day] = val
 
-    def update_recommendations_level(self):
+    def update_recommendations_level(self, intervention_start=False):
         if isinstance(self.tracing_method, Tracing):
             # FIXME: maybe merge Quarantine in RiskBasedRecommendations with 2 levels
             if self.tracing_method.risk_model in ["manual", "digital"]:
@@ -2104,7 +2105,8 @@ class Human(object):
                 self._rec_level = self.tracing_method.intervention.get_recommendations_level(
                     self,
                     self.conf.get("REC_LEVEL_THRESHOLDS"),
-                    self.conf.get("MAX_RISK_LEVEL")
+                    self.conf.get("MAX_RISK_LEVEL"),
+                    intervention_start=intervention_start
                 )
         else:
             self._rec_level = -1

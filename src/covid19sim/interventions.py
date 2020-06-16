@@ -456,7 +456,7 @@ class GetTested(BehaviorInterventions):
 
 class HeuristicRecommendations(RiskBasedRecommendations):
 
-    def __init__(self, version=2):
+    def __init__(self, version, conf):
         super(HeuristicRecommendations, self).__init__()
         self.version = version
         if self.version == 1:
@@ -480,25 +480,36 @@ class HeuristicRecommendations(RiskBasedRecommendations):
         else:
             raise NotImplementedError()
 
-    @staticmethod
-    def get_recommendations_level(human, thresholds, max_risk_level):
+        self.risk_mapping = conf.get("RISK_MAPPING")
+
+    def get_recommendations_level(self, human, thresholds, max_risk_level, **kwargs):
+        """
+        /!\ Overwrites _heuristic_rec_level on the very first day of intervention
+        """
         # Most of the logic for recommendations level update is given in the
         # "Tracing" class (with "heuristic" tracing method). The recommendations
         # level for the heuristic tracing algorithm are dependent on messages
         # received in the mailbox, which get_recommendations_level does not have
         # access to under the current API.
+
+        intervention_start = kwargs.get("intervention_start")
+        if intervention_start:
+            setattr(human, "_heuristic_rec_level", 0)
+        else:
+            assert hasattr(human, '_heuristic_rec_level'), f"heuristic recommendation level not set for {human}"
+
         if human.age >= 70:
             rec_level = 1 if (self.version == 2) else 2
-            return max(human.rec_level, rec_level)
+            rec_level = max(human.rec_level, rec_level)
+            setattr(human, "_heuristic_rec_level", rec_level)
 
-        assert hasattr(human, '_heuristic_rec_level'), f"heuristic recommendation level not set for {human}"
         return getattr(human, '_heuristic_rec_level')
 
     def risk_level_to_risk(self, risk_level):
         risk_level = min(risk_level, 15)
         return self.risk_mapping[risk_level + 1]
 
-    def compute_risk(self, human):
+    def compute_risk(self, human, mailbox):
         """
         Computes risk according to heuristic.
 
@@ -590,7 +601,6 @@ class HeuristicRecommendations(RiskBasedRecommendations):
             elif latest_negative_test_result_num_days is not None:
                 # Set risk level R = 1 for now and all past D days
                 risk = [self.risk_level_to_risk(1)] * latest_negative_test_result_num_days
-                # Set recommendation level L = 0
 
             setattr(human, '_heuristic_rec_level', 0)
 
@@ -666,9 +676,10 @@ class Tracing(object):
         self.risk_model = risk_model
         if risk_model in ['manual', 'digital']:
             self.intervention = BinaryTracing()
-        elif risk_model == "heuristic":
-            # Combination of risk-based & heuristic recommendations
-            self.intervention = HeuristicRecommendations()
+        elif risk_model == "heuristicv1":
+            self.intervention = HeuristicRecommendations(version=1, conf=conf)
+        elif risk_model == "heuristicv2":
+            self.intervention = HeuristicRecommendations(version=2, conf=conf)
         else:
             # risk based
             self.intervention = RiskBasedRecommendations()
@@ -689,8 +700,6 @@ class Tracing(object):
             self.delay = 1
             self.app = False
 
-        if risk_model == "heuristic":
-            self.risk_mapping = conf.get("RISK_MAPPING")
 
         self.propagate_risk_max_depth = max_depth
         # more than 3 will slow down the simulation too much
@@ -734,7 +743,7 @@ class Tracing(object):
                 v_down: Average decrease in magnitude of risk levels of recent contacts.
         """
         assert self.risk_model != "transformer", "we should never be in here!"
-        assert self.risk_model in ["manual", "digital", "naive", "heuristic", "other"], "missing something?"
+        assert self.risk_model in ["manual", "digital", "naive", "heuristicv1", "heuristicv2", "other"], "missing something?"
         t, s, r_up, r_down, v_up, v_down = 0, 0, 0, 0, 0, 0
 
         if self.risk_model == "manual":
@@ -790,7 +799,7 @@ class Tracing(object):
             float: a scalar value.
         """
         assert self.risk_model != "transformer", "we should never be in here!"
-        assert self.risk_model in ["manual", "digital", "naive", "heuristic", "other"], "missing something?"
+        assert self.risk_model in ["manual", "digital", "naive", "heuristicv1", "heuristicv2", "other"], "missing something?"
         if self.risk_model != "heuristic":
             t, s, r = self._get_hypothetical_contact_tracing_results(human, mailbox, humans_map)
 
@@ -803,8 +812,8 @@ class Tracing(object):
         elif self.risk_model == "naive":
             risk = 1.0 - (1.0 - human.conf.get("RISK_TRANSMISSION_PROBA")) ** (t+s)
 
-        elif self.risk_model == "heuristic":
-            risk = self.intervention.compute_risk(human)
+        elif self.risk_model in ["heuristicv1", "heuristicv2"]:
+            risk = self.intervention.compute_risk(human, mailbox)
 
         elif self.risk_model == "other":
             r_up, v_up, r_down, v_down = r
