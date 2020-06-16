@@ -793,6 +793,7 @@ class City:
                         current_day_idx=current_day,
                         time=self.env.timestamp,
                     )
+
                     for day_idx, risk_val in human.risk_history_map.items():
                         human.prev_risk_history_map[day_idx] = risk_val
 
@@ -1521,7 +1522,7 @@ class Event:
                     'time': time,
                     'payload': {
                         'observed':{
-                            "reported_symptoms": human.obs_symptoms
+                            "reported_symptoms": human.all_reported_symptoms
                         },
                         'unobserved':{
                             'infectiousness': human.infectiousness,
