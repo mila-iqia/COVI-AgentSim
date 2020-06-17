@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import pickle
 
@@ -87,3 +88,12 @@ def get_all_intervention_levels(filenames):
         all_intervention_levels[i + 1] = get_intervention_levels(filename)
 
     return all_intervention_levels
+
+
+def absolute_file_paths(directory):
+    to_return = []
+    for dirpath,_,filenames in os.walk(directory):
+        for f in filenames:
+            if ".pkl" in f:
+                to_return.append(os.path.abspath(os.path.join(dirpath, f)))
+    return to_return

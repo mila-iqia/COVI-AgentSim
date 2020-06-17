@@ -106,17 +106,18 @@ class PlotRt:
                 smoothed.append(math.ceil(1.0/3.0*cases[k-1]+1.0/3.0*cases[k]+1.0/3.0*cases[k+1]))
         return smoothed
 
-    def compute(self, data, r0_estimate=None):
+    def compute(self, data, r0_estimate=None, bounds=False):
         data = self._smooth_cases(data)
         data = pd.Series(data, index=list(range(len(data))))
         posteriors, log_likelihood = self._get_posteriors(data, r0_estimate)
         # Note that this takes a while to execute - it's not the most efficient algorithm
-        hdis = self._highest_density_interval(posteriors, p=.5)
+        hdis = False
+        if bounds:
+            hdis = self._highest_density_interval(posteriors, p=.5)
+            hdis = np.array(hdis)
+
         most_likely = posteriors.idxmax().rename('ML')
-
         most_likely = np.array(most_likely)
-        hdis = np.array(hdis)
-
         return most_likely, hdis
 
     @staticmethod

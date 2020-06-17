@@ -1863,6 +1863,7 @@ def extract_tracker_data(tracker, conf):
     data['intervention_day'] = conf.get('INTERVENTION_DAY')
     data['intervention'] = conf.get('INTERVENTION')
     data['risk_model'] = conf.get('RISK_MODEL')
+    data['adoption_rate'] = getattr(tracker, 'adoption_rate', 1.0)
     data['expected_mobility'] = tracker.expected_mobility
     data['serial_interval'] = tracker.get_serial_interval()
     data['all_serial_intervals'] = tracker.serial_intervals
@@ -1897,6 +1898,13 @@ def extract_tracker_data(tracker, conf):
     data['humans_rec_level'] = tracker.humans_rec_level
     data['humans_intervention_level'] = tracker.humans_intervention_level
     data['humans_has_app'] = dict((human.name, human.has_app) for human in tracker.city.humans)
+    data['day_encounters'] = dict(tracker.day_encounters)
+    data['daily_age_group_encounters'] = dict(tracker.daily_age_group_encounters)
+    data['tracked_humans'] = dict({human.name:human.my_history for human in tracker.city.humans})
+    data['age_histogram'] = tracker.city.age_histogram
+    data['p_transmission'] = tracker.compute_probability_of_transmission()
+    data['covid_properties'] = tracker.covid_properties
+    data['human_has_app'] = tracker.human_has_app
     # data['dist_encounters'] = dict(tracker.dist_encounters)
     # data['time_encounters'] = dict(tracker.time_encounters)
     # data['day_encounters'] = dict(tracker.day_encounters)

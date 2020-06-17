@@ -14,11 +14,11 @@ def compute_early_warning(data) -> dict:
         infection_timestamps[x['to']] = x['infection_timestamp']
 
     early_warning, early_warning_infected = {}, {}
-    risk_attributes = sorted(data['risk_attributes'], lambda x:x['timestamp'])
+    risk_attributes = sorted(data['risk_attributes'], key=lambda x:x['timestamp'])
     for attr in risk_attributes:
         name = attr['name']
         rec_level = attr['rec_level']
-        infected = attr['is_infectious'] or attr['is_exposed']
+        infected = attr['infectious'] or attr['exposed']
         infection_timestamp = infection_timestamps.get(name, None)
         symptoms = attr['symptoms']
 
@@ -33,10 +33,10 @@ def compute_early_warning(data) -> dict:
             early_warning_infected[name] = (timestamp - infection_timestamp).total_seconds() / 86400
 
     return {
-                'early_warning_all_mean': np.mean(early_warning.values()),
-                'early_warning_all_median': np.median(early_warning.values()),
-                'early_warning_infected_mean': np.mean(early_warning_infected.values()),
-                'early_warning_infected_median': np.median(early_warning_infected.values())
+                'early_warning_all_mean': np.mean(list(early_warning.values())),
+                'early_warning_all_median': np.median(list(early_warning.values())),
+                'early_warning_infected_mean': np.mean(list(early_warning_infected.values())),
+                'early_warning_infected_median': np.median(list(early_warning_infected.values()))
             }
 
 
@@ -66,7 +66,7 @@ def compute_presymptomatic_warning_signals(data) -> float:
 
     early_warning, early_warning_infected = {}, {}
     human_risk_attributes = defaultdict(list)
-    risk_attributes = sorted(data['risk_attributes'], lambda x:x['timestamp'])
+    risk_attributes = sorted(data['risk_attributes'], key=lambda x:x['timestamp'])
     for attr in risk_attributes:
         human_risk_attributes[attr['name']].append(attr)
 

@@ -116,13 +116,14 @@ class City:
         """
         self.conf = conf
         self.env = env
-        self.rng = rng
+        self.rng = np.random.RandomState(rng.randint(2 ** 16))
         self.x_range = x_range
         self.y_range = y_range
         self.total_area = (x_range[1] - x_range[0]) * (y_range[1] - y_range[0])
         self.n_people = n_people
         self.init_percent_sick = init_percent_sick
         self.hash = int(time.time_ns())  # real-life time used as hash for inference server data hashing
+        self.tracker = Tracker(env, self)
 
         self.test_type_preference = list(zip(*sorted(conf.get("TEST_TYPES").items(), key=lambda x:x[1]['preference'])))[0]
         self.max_capacity_per_test_type = {
@@ -137,7 +138,6 @@ class City:
         else:
             self.daily_target_rec_level_dists = None
         self.daily_rec_level_mapping = None
-
         self.covid_testing_facility = TestFacility(self.test_type_preference, self.max_capacity_per_test_type, env, conf)
 
         print("Initializing locations ...")
@@ -146,14 +146,18 @@ class City:
         self.humans = []
         self.hd = {}  # previously a cached property for some unknown reason
         self.households = OrderedSet()
+        self.age_histogram = None
         print("Initializing humans ...")
         self.initialize_humans(human_type)
+        for human in self.humans:
+            human.track_this_guy = True
+            if human.is_exposed:
+                print(human, human.household, human.household.residents)
 
         self.log_static_info()
 
         print("Computing their preferences")
         self._compute_preferences()
-        self.tracker = Tracker(env, self)
         self.intervention = None
 
         # GAEN summary statistics that enable the individual to determine whether they should send their info
@@ -166,6 +170,7 @@ class City:
         # will give them the global mailbox object (a dictionary) and have them 'pop' all
         # messages they consume from their own (simulation-only!) personal mailbox
         self.global_mailbox: SimulatorMailboxType = defaultdict(dict)
+        self.tracker.initialize()
 
     def cleanup_global_mailbox(
             self,
@@ -407,15 +412,15 @@ class City:
         init_infected = math.ceil(self.init_percent_sick * self.n_people)
         chosen_infected = set(self.rng.choice(self.n_people, init_infected, replace=False).tolist())
 
-        age_histogram = relativefreq2absolutefreq(
+        self.age_histogram = relativefreq2absolutefreq(
             bins_fractions={age_bin: specs['p'] for age_bin, specs in self.conf.get('HUMAN_DISTRIBUTION').items()},
             n_elements=self.n_people,
             rng=self.rng
         )
 
         for age_bin, specs in self.conf.get("HUMAN_DISTRIBUTION").items():
-            n = age_histogram[age_bin]
-            ages = self.rng.randint(*age_bin, size=n)
+            n = self.age_histogram[age_bin]
+            ages = self.rng.randint(low=age_bin[0], high=age_bin[1]+1, size=n)  # high is exclusive
 
             senior_residency_preference = specs['residence_preference']['senior_residency']
 
@@ -469,7 +474,14 @@ class City:
         # assign houses; above only assigns senior residence
         # stores tuples - (location, current number of residents, maximum number of residents allowed)
         remaining_houses = []
-        for human in self.humans:
+        # for cases when human is below certain age and can't live in a single house
+        house_size_preference = copy.deepcopy(self.conf.get('HOUSE_SIZE_PREFERENCE'))
+        house_size_preference[0] = 0.0
+        house_size_preference = np.array(house_size_preference)
+        renormalized_house_size_preference = house_size_preference / house_size_preference.sum()
+
+        permuted_humans = [self.humans[x] for x in self.rng.permutation(len(self.humans))]
+        for human in permuted_humans:
             if human.household is not None:
                 continue
 
@@ -499,11 +511,13 @@ class City:
             # residence_preference of that age bin
             if res is None:
                 for i, (l,u) in enumerate(self.conf.get("HUMAN_DISTRIBUTION").keys()):
-                    if l <= human.age < u:
+                    if l <= human.age <= u:
                         bin = (l,u)
                         break
 
-                house_size_preference = self.conf.get("HUMAN_DISTRIBUTION")[(l,u)]['residence_preference']['house_size']
+                if human.age <= self.conf.get("MIN_AVG_HOUSE_AGE"):
+                    house_size_preference = renormalized_house_size_preference
+
                 cap = self.rng.choice(range(1,6), p=house_size_preference, size=1)
                 res = self.create_location(
                     self.conf.get("LOCATION_DISTRIBUTION")['household'],
@@ -537,6 +551,7 @@ class City:
         `Tracing`. It simulates the process of downloading the app on for smartphone
         users according to `APP_UPTAKE` and `SMARTPHONE_OWNER_FRACTION_BY_AGE`.
         """
+        print("Downloading the app...")
         age_histogram = relativefreq2absolutefreq(
             bins_fractions={age_bin: specs['p']
                             for age_bin, specs
@@ -548,7 +563,7 @@ class City:
         all_has_app = self.conf.get('APP_UPTAKE') < 0
         # The dict below keeps track of an app quota for each age group
         n_apps_per_age = {
-            k: math.ceil(age_histogram[k] * v * self.conf.get('APP_UPTAKE'))
+            k: math.ceil(self.age_histogram[k] * v * self.conf.get('APP_UPTAKE'))
             for k, v in self.conf.get("SMARTPHONE_OWNER_FRACTION_BY_AGE").items()
         }
         for human in self.humans:
@@ -560,7 +575,7 @@ class City:
             # Find what age bin the human is in
             age_bin = None
             for x in n_apps_per_age:
-                if x[0] <= human.age < x[1]:
+                if x[0] <= human.age <= x[1]:
                     age_bin = x
                     break
             assert age_bin is not None
@@ -570,6 +585,8 @@ class City:
                 human.has_app = True
                 n_apps_per_age[age_bin] -= 1
                 continue
+
+        self.tracker.track_app_adoption()
 
     def add_to_test_queue(self, human):
         self.covid_testing_facility.add_to_test_queue(human)
@@ -699,8 +716,9 @@ class City:
             all_new_update_messages = []  # accumulate everything here so we can filter if needed
             backup_human_init_risks = {}  # backs up human risks before any update takes place
 
+            alive_humans = [human for human in self.humans if not human.is_dead]
             # iterate over humans, and if it's their timeslot, then update their state
-            for human in self.humans:
+            for human in alive_humans:
                 human.check_covid_testing_needs()  # humans can decide to get tested whenever
                 if current_day not in human.infectiousness_history_map:
                     # contrarily to risk, infectiousness only changes once a day (human behavior has no impact)
@@ -735,9 +753,15 @@ class City:
                 # finally, iterate over humans again, and if it's their timeslot, then send update messages
                 self.tracker.track_risk_attributes(self.hd)
                 update_messages = []
-                for human in self.humans:
+                for human in alive_humans:
                     if not human.has_app or self.env.timestamp.hour not in human.time_slots:
                         continue
+
+                    # overwrite risk values to 1.0 if human has positive test result (for all tracing methods)
+                    if human.reported_test_result == "positive":
+                        for day_offset in range(self.conf.get("TRACING_N_DAYS_HISTORY")):
+                            human.risk_history_map[current_day - day_offset] = 1.0
+
                     # if we had any encounters for which we have not sent an initial message, do it now
                     update_messages.extend(human.contact_book.generate_initial_updates(
                         current_day_idx=current_day,
@@ -746,6 +770,7 @@ class City:
                         proba_to_risk_level_map=human.proba_to_risk_level_map,
                         tracing_method=human.tracing_method,
                     ))
+
                     # then, generate risk level update messages for all other encounters (if needed)
                     update_messages.extend(human.contact_book.generate_updates(
                         current_day_idx=current_day,
@@ -753,7 +778,7 @@ class City:
                         prev_risk_history_map=human.prev_risk_history_map,
                         curr_risk_history_map=human.risk_history_map,
                         proba_to_risk_level_map=human.proba_to_risk_level_map,
-                        update_reason="unknown",  # FIXME got schwacked in hotfix, only used for debugging
+                        update_reason="unknown",
                         tracing_method=human.tracing_method,
                     ))
                     human.update_recommendations_level()
@@ -777,7 +802,7 @@ class City:
                     new_human_risk_history_maps={h: h.risk_history_map for h in self.humans},
                 )
 
-            for human in self.humans:
+            for human in alive_humans:
                 recommendations = self.intervention.get_recommendations(human)
                 modify_behavior(self.intervention, human, recommendations)
 
@@ -790,7 +815,7 @@ class City:
                 self.daily_rec_level_mapping = self.compute_daily_rec_level_mapping(current_day)
                 self.cleanup_global_mailbox(self.env.timestamp)
                 # TODO: this is an assumption which will break in reality, instead of updating once per day everyone at the same time, it should be throughout the day
-                for human in self.humans:
+                for human in alive_humans:
                     human.catch_other_disease_at_random()
                     Event.log_daily(self.conf.get('COLLECT_LOGS'), human, human.env.timestamp)
                 self.tracker.increment_day()
@@ -962,7 +987,7 @@ class Location(simpy.Resource):
         super().__init__(env, capacity)
         self.humans = OrderedSet() #OrderedSet instead of set for determinism when iterating
         self.name = name
-        self.rng = rng
+        self.rng = np.random.RandomState(rng.randint(2 ** 16))
         self.lat = lat
         self.lon = lon
         self.area = area
@@ -1510,7 +1535,7 @@ class Event:
                     'time': time,
                     'payload': {
                         'observed':{
-                            "reported_symptoms": human.obs_symptoms
+                            "reported_symptoms": human.all_reported_symptoms
                         },
                         'unobserved':{
                             'infectiousness': human.infectiousness,
@@ -1654,7 +1679,7 @@ class EmptyCity(City):
         """
         self.conf = conf
         self.env = env
-        self.rng = rng
+        self.rng = np.random.RandomState(rng.randint(2 ** 16))
         self.x_range = x_range
         self.y_range = y_range
         self.total_area = (x_range[1] - x_range[0]) * (y_range[1] - y_range[0])
