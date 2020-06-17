@@ -74,6 +74,7 @@ class SEIRMonitor(BaseMonitor):
         process_start = time.time()
         n_days = 0
         while True:
+            assert city.tracker.fully_initialized
             R0 = city.tracker.get_R()
             t_P = city.tracker.test_results_per_day[env.timestamp.date()]['positive']
             t_T = 0 if len(city.tracker.tested_per_day) < 2 else city.tracker.tested_per_day[-2]

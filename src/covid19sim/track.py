@@ -76,6 +76,7 @@ class Tracker(object):
             env ([type]): [description]
             city ([type]): [description]
         """
+        self.fully_initialized = False
         self.env = env
         self.city = city
         # filename to store intermediate results; useful for bigger simulations;
@@ -198,6 +199,7 @@ class Tracker(object):
         # risk models
         self.risk_precision_daily = [self.compute_risk_precision()]
         self.init_infected = [human for human in self.city.humans if human.is_exposed]
+        self.fully_initialized = True
 
     def summarize_population(self):
         """

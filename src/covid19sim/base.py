@@ -1730,5 +1730,6 @@ class EmptyCity(City):
         print("Computing preferences")
         self._compute_preferences()
         self.tracker = Tracker(self.env, self)
+        self.tracker.initialize()
         # self.tracker.track_initialized_covid_params(self.humans)
         self.intervention = Unmitigated()
