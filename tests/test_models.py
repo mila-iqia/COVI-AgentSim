@@ -164,6 +164,13 @@ class ModelsTest(unittest.TestCase):
             self.assertEqual(len(days_output), n_days - conf.get('INTERVENTION_DAY'))
             output = [[] for _ in days_output]
 
+            # Ensure that humans have a reasonnable recommendation level.
+            for h in sim_humans:
+                if not h.has_app:
+                    assert h.rec_level == -1
+                else:
+                    assert h.rec_level >= 0
+
             for i, day_output in enumerate(days_output):
                 current_day = i + conf.get('INTERVENTION_DAY')
                 for hour in range(0, 24):
