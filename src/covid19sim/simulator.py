@@ -2085,7 +2085,7 @@ class Human(object):
         self.risk_history_map[cur_day] = val
 
     def update_recommendations_level(self):
-        if isinstance(self.tracing_method, Tracing):
+        if self.has_app and isinstance(self.tracing_method, Tracing):
             # FIXME: maybe merge Quarantine in RiskBasedRecommendations with 2 levels
             if self.tracing_method.risk_model in ["manual", "digital"]:
                 if self.risk == 1.0:
