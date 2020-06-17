@@ -2136,7 +2136,7 @@ class Human(object):
                     self,
                     self.conf.get("REC_LEVEL_THRESHOLDS"),
                     self.conf.get("MAX_RISK_LEVEL"),
-                    intervention_start=intervention_start
+                    intervention_start=intervention_start,
                 )
 
     @property

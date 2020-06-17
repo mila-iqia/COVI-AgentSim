@@ -19,11 +19,6 @@ class BehaviorInterventions(object):
     """
     A base class to modify behavior based on the type of intervention.
     """
-    def __init__(self):
-        """
-        [summary]
-        """
-        pass
 
     def get_recommendations(self, human: "Human"):
         recommendations = self._get_recommendations_impl(human)
@@ -142,16 +137,15 @@ class StandApart(BehaviorInterventions):
         self.DEFAULT_SOCIAL_DISTANCE = default_distance
 
     def modify_behavior(self, human):
-        # FIXME : Social distancing also has this parameter
-        human._maintain_extra_distance_2m = human.maintain_extra_distance
-        human.maintain_extra_distance = self.DEFAULT_SOCIAL_DISTANCE + 100 * (human.carefulness - 0.5)
+        distance = self.DEFAULT_SOCIAL_DISTANCE + 100 * (human.carefulness - 0.5)
+        human.set_temporary_maintain_extra_distance(distance)
 
     def revert_behavior(self, human):
-        human.maintain_extra_distance = human._maintain_extra_distance_2m
-        delattr(human, "_maintain_extra_distance_2m")
+        human.revert_maintain_extra_distance()
 
     def __repr__(self):
         return f"Stand {self.DEFAULT_SOCIAL_DISTANCE} cms apart"
+
 
 class WashHands(BehaviorInterventions):
     """
@@ -236,6 +230,7 @@ class Lockdown(BehaviorInterventions):
     def __repr__(self):
         return f"Lockdown"
 
+
 class SocialDistancing(BehaviorInterventions):
     """
     Implements social distancing. Following is included -
@@ -263,8 +258,6 @@ class SocialDistancing(BehaviorInterventions):
         human.revert_time_encounter_reduction_factor()
         human.rho = human.conf.get("RHO")
         human.gamma = human.conf.get("GAMMA")
-        delattr(human, "_maintain_extra_distance")
-        delattr(human, "_time_encounter_reduction_factor")
 
     def __repr__(self):
         """
@@ -394,7 +387,7 @@ class RiskBasedRecommendations(BehaviorInterventions):
         super(RiskBasedRecommendations, self).__init__()
 
     @staticmethod
-    def get_recommendations_level(human, thresholds, max_risk_level):
+    def get_recommendations_level(human, thresholds, max_risk_level, intervention_start=False):
         """
         Converts the risk level to recommendation level.
 
@@ -492,7 +485,7 @@ class HeuristicRecommendations(RiskBasedRecommendations):
 
         self.risk_mapping = conf.get("RISK_MAPPING")
 
-    def get_recommendations_level(self, human, thresholds, max_risk_level, **kwargs):
+    def get_recommendations_level(self, human, thresholds, max_risk_level, intervention_start=False):
         """
         /!\ Overwrites _heuristic_rec_level on the very first day of intervention; note that
         the `_heuristic_rec_level` attribute must be set in each human before calling this via
@@ -504,7 +497,6 @@ class HeuristicRecommendations(RiskBasedRecommendations):
         # received in the mailbox, which get_recommendations_level does not have
         # access to under the current API.
 
-        intervention_start = kwargs.get("intervention_start")
         if intervention_start:
             setattr(human, "_heuristic_rec_level", 0)
         else:
@@ -724,15 +716,9 @@ class Tracing(object):
 
     # Mirror BehaviorInterventions interface
     def get_recommendations(self, human: "Human"):
+        recommendations = []
         if self.should_modify_behavior:
-            recommendations = self._get_recommendations_impl(human)
-        if not any([isinstance(rec, Quarantine) for rec in recommendations]) and \
-                any([h.test_result == "positive" for h in human.household.humans]):
-            # in short, if we are not already quarantining and if there is a member
-            # of the household that got a positive test (even if they didn't tell their
-            # app, whether because they don't have one or don't care, they should still
-            # warn their housemates)
-            recommendations.append(Quarantine())
+            recommendations = self.intervention.get_recommendations(human)
         return recommendations
 
     # Mirror BehaviorInterventions interface
