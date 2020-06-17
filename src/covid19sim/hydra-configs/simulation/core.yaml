@@ -189,7 +189,7 @@ HUMAN_DISTRIBUTION: # this is parsed into tuple keys in utils.py/parse_configura
             "healthcare": 0.01, "school": 0.0, "others": 0.04, "retired": 0.95
           },
       },
-    "80-101":
+    "81-101":
       {
         "p": 0.043,
         "residence_preference":
@@ -249,7 +249,7 @@ SMARTPHONE_OWNER_FRACTION_BY_AGE:
     '51-60': 0.81,
     '61-70': 0.64,
     '71-80': 0.41,
-    '80-101': 0.27,
+    '81-101': 0.27,
   }
 
 # DISEASE PARAMETERS
