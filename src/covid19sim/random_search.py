@@ -11,9 +11,87 @@ import itertools
 from covid19sim.utils import parse_search_configuration
 from collections import defaultdict
 
+SAMPLE_KEYS = {"list", "uniform", "range", "cartesian", "sequential"}
+
 
 class RandomSearchError(Exception):
     pass
+
+
+def check_conf(conf):
+    tracing_methods = []
+    hydra_configs = Path(__file__).parent / "hydra-configs"
+    exp_file = conf.get("exp_file", "experiment")
+    use_tmpdir = conf.get("use_tmpdir")
+    infra = conf.get("infra")
+    zip_outdir = conf.get("zip_outdir")
+    for k, v in conf.items():
+        if isinstance(v, dict) and "sample" in v:
+            if v["sample"] not in SAMPLE_KEYS:
+                raise RandomSearchError(
+                    "Unknown sampling procedure {} for {}".format(v["sample"], k)
+                )
+            if "from" not in v:
+                raise RandomSearchError(f"No 'from' key for {k}")
+            if v["sample"] == "cartesian" and not isinstance(v["from"], list):
+                raise RandomSearchError(f"'from' field for {k} should be a list")
+
+        if k == "tracing_method":
+            if isinstance(v, dict) and "sample" in v:
+                tracing_methods += v["from"]
+            else:
+                tracing_methods.append(v)
+
+        elif k == "tune":
+            if conf.get("use_tmpdir", False) is not False:
+                raise RandomSearchError("Cannot use 'tune' and use_tmpdir:true")
+
+        elif k == "run_type":
+            if not (hydra_configs / "simulation" / "run_type" / f"{v}.yaml").exists():
+                raise RandomSearchError(f"Unknown run_type {v}")
+
+    if not (hydra_configs / "search" / f"{exp_file}.yaml").exists():
+        raise RandomSearchError(f"Unknown exp_file {exp_file}")
+
+    weights_dir = conf.get("weights_dir", "None")
+    for tm in tracing_methods:
+        weights = conf.get("weights", None)
+        if "oracle" in tm or "transformer" in tm:
+            if weights is None and ">" not in tm:
+                raise RandomSearchError(
+                    f"Unknown {tm} weights. Please specify '>' or 'weights: ...'"
+                )
+            elif ">" in tm:
+                if not Path(weights_dir).exists():
+                    raise RandomSearchError(
+                        "No 'weights' specified and unknown 'weights_dir' {}".format(
+                            weights_dir
+                        )
+                    )
+                w = tm.split(">")[-1].strip()
+                weights = Path(weights_dir) / w
+            elif weights is not None:
+                weights = Path(weights)
+
+            if not weights.exists():
+                raise RandomSearchError(
+                    "Cannot find weights {}".format(str(weights))
+                )
+            else:
+                transformer_best = weights / "Weights" / "best.ckpt"
+                transformer_config = weights / "Configurations" / "train_config.yml"
+                if not transformer_best.exists():
+                    raise RandomSearchError(
+                        "Cannot find weights {}".format(transformer_best)
+                    )
+                if not transformer_config.exists():
+                    raise RandomSearchError(
+                        "Cannot find train config {}".format(transformer_config)
+                    )
+    if use_tmpdir and infra != "intel" and not zip_outdir:
+        raise RandomSearchError(
+            "zip_outdir must be true when using tmpdir (use_tmpdir)"
+        )
 
 
 def compute_n_search(conf):
@@ -309,7 +387,7 @@ def fill_mila_template(template_str, conf):
     workers = cpu - 1
     if "%j.out" not in slurm_log:
         slurm_log = str(Path(slurm_log).resolve() / "covi-slurm-%j.out")
-        if not Path(slurm_log).parent.exists():
+        if not Path(slurm_log).parent.exists() and not conf.get("dev"):
             Path(slurm_log).parent.mkdir(parents=True)
 
     use_server = str(use_transformer and conf.get("USE_INFERENCE_SERVER", True)).lower()
@@ -389,7 +467,7 @@ def fill_beluga_template(template_str, conf):
     )
     if "%j.out" not in slurm_log:
         slurm_log = str(Path(slurm_log).resolve() / "covi-slurm-%j.out")
-        if not Path(slurm_log).parent.exists():
+        if not Path(slurm_log).parent.exists() and not conf.get("dev"):
             Path(slurm_log).parent.mkdir(parents=True)
     env_name = conf.get("env_name", "covid")
     weights = conf.get("weights")
@@ -525,6 +603,7 @@ def main(conf: DictConfig) -> None:
     )
     # override experimental parametrization with the commandline conf
     conf.update(overrides)
+    check_conf(conf)
 
     # -------------------------------------
     # -----  Compute Specific Values  -----
@@ -629,7 +708,8 @@ def main(conf: DictConfig) -> None:
 
             if use_tmpdir:
                 outdir = str(opts["outdir"])
-                Path(outdir).resolve().mkdir(parents=True, exist_ok=True)
+                if not dev:
+                    Path(outdir).resolve().mkdir(parents=True, exist_ok=True)
                 opts["outdir"] = "$SLURM_TMPDIR"
 
             if opts["tracing_method"] == "no_intervention":
@@ -648,7 +728,8 @@ def main(conf: DictConfig) -> None:
             # intel doesn't have a log file so let's make one
             if infra == "intel":
                 job_out = Path(home) / f"job_logs"
-                job_out.mkdir(exist_ok=True)
+                if not dev:
+                    job_out.mkdir(exist_ok=True)
                 job_out = job_out / f"{now_str()}.out"
                 print("Job logs:", str(job_out))
                 command_suffix = f" &> {str(job_out)} {command_suffix}"
