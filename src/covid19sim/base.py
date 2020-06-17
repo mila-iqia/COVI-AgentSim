@@ -146,6 +146,7 @@ class City:
         self.humans = []
         self.hd = {}  # previously a cached property for some unknown reason
         self.households = OrderedSet()
+        self.age_histogram = None
         print("Initializing humans ...")
         self.initialize_humans(human_type)
         for human in self.humans:
@@ -419,7 +420,7 @@ class City:
 
         for age_bin, specs in self.conf.get("HUMAN_DISTRIBUTION").items():
             n = self.age_histogram[age_bin]
-            ages = ages = self.rng.randint(low=age_bin[0], high=age_bin[1]+1, size=n) # high is exclusive
+            ages = self.rng.randint(low=age_bin[0], high=age_bin[1]+1, size=n)  # high is exclusive
 
             senior_residency_preference = specs['residence_preference']['senior_residency']
 

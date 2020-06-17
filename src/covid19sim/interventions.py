@@ -484,7 +484,9 @@ class HeuristicRecommendations(RiskBasedRecommendations):
 
     def get_recommendations_level(self, human, thresholds, max_risk_level, **kwargs):
         """
-        /!\ Overwrites _heuristic_rec_level on the very first day of intervention
+        /!\ Overwrites _heuristic_rec_level on the very first day of intervention; note that
+        the `_heuristic_rec_level` attribute must be set in each human before calling this via
+        the `intervention_start` kwarg.
         """
         # Most of the logic for recommendations level update is given in the
         # "Tracing" class (with "heuristic" tracing method). The recommendations

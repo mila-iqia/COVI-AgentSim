@@ -196,7 +196,7 @@ def simulate(
     conf["other_monitors"] = other_monitors
 
     logging.basicConfig(level=getattr(logging, conf["LOGGING_LEVEL"].upper()))
-    logging.getLogger().disabled  = True
+    # logging.getLogger().disabled = True
 
     rng = np.random.RandomState(seed)
     env = Env(start_time)
