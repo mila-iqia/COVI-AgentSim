@@ -585,8 +585,7 @@ class City:
                 n_apps_per_age[age_bin] -= 1
                 continue
 
-        self.tracker.adoption_rate = sum(h.has_app for h in self.humans) / len(self.humans)
-        print(f"adoption rate: {100*self.tracker.adoption_rate:3.2f}%")
+        self.tracker.track_app_adoption()
 
     def add_to_test_queue(self, human):
         self.covid_testing_facility.add_to_test_queue(human)
@@ -772,6 +771,7 @@ class City:
                         proba_to_risk_level_map=human.proba_to_risk_level_map,
                         tracing_method=human.tracing_method,
                     ))
+
                     # then, generate risk level update messages for all other encounters (if needed)
                     update_messages.extend(human.contact_book.generate_updates(
                         current_day_idx=current_day,

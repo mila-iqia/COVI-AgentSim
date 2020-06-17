@@ -1923,6 +1923,7 @@ def extract_tracker_data(tracker, conf):
     data['age_histogram'] = tracker.city.age_histogram
     data['p_transmission'] = tracker.compute_probability_of_transmission()
     data['covid_properties'] = tracker.covid_properties
+    data['human_has_app'] = tracker.human_has_app
     # data['dist_encounters'] = dict(tracker.dist_encounters)
     # data['time_encounters'] = dict(tracker.time_encounters)
     # data['day_encounters'] = dict(tracker.day_encounters)

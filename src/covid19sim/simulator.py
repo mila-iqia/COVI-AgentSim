@@ -1280,7 +1280,8 @@ class Human(object):
         self.recovered_timestamp = datetime.datetime.max
         self.all_symptoms, self.covid_symptoms = [], []
         Event.log_recovery(self.conf.get('COLLECT_LOGS'), self, self.env.timestamp, death=True)
-        self.location.remove_human(self)
+        if self in self.location.humans:
+            self.location.remove_human(self)
         yield self.env.timeout(np.inf)
 
     def assert_state_changes(self):
