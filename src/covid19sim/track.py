@@ -405,6 +405,7 @@ class Tracker(object):
                 "state": h.state.index(1),
                 "test_result": h.test_result,
                 "n_symptoms": len(h.symptoms),
+                "name":h.name,
             })
 
         self.human_monitor[self.env.timestamp.date()-datetime.timedelta(days=1)] = row
@@ -516,6 +517,11 @@ class Tracker(object):
                                                len(c.symptoms) > 0 for c in order_1_contacts]),
                 "order_1_is_tested": any([c.test_result == "positive" for c in order_1_contacts]),
             })
+
+    def track_app_adoption(self):
+        self.adoption_rate = sum(h.has_app for h in self.city.humans) / self.n_people
+        print(f"adoption rate: {100*self.adoption_rate:3.2f}%")
+        self.human_has_app = set([h.name for h in self.city.humans if h.has_app])
 
     def track_covid_properties(self, human):
         """
