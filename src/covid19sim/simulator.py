@@ -773,7 +773,8 @@ class Human(object):
         else:
             self.infection_ratio = self.conf['MILD_INFECTION_RATIO']
 
-        self.city.tracker.track_covid_properties(self)
+        if hasattr(self.city, "tracker"):  # some tests are running with dummy cities that don't track anything
+            self.city.tracker.track_covid_properties(self)
 
     def viral_load_for_day(self, timestamp):
         """ Calculates the elapsed time since infection, returning this person's current viral load"""
