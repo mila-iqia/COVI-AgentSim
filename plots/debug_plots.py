@@ -14,6 +14,44 @@ from src.covid19sim.base import Event
 PLOT_EVENTS_LABEL = ["Encounters", "Contaminations", "Tests", "Positive Tests", "Negative Tests"]
 
 
+LOCATION_TO_COLOR = {"household": "tab:red",
+                     "park": "tab:green",
+                     "hospital": "tab:blue",
+                     "store": "tab:purple",
+                     "school": "tab:olive",
+                     "workplace": "tab:gray",
+                     "senior_residency": "tab:brown",
+                     "misc": "tab:pink"}
+
+
+ENCOUNTER_TO_COLOR = {"non-infectuous": "tab:blue",
+                      "infectuous": "tab:orange",
+                      "contamination": "tab:red"}
+
+
+EVENT_TO_COLOR = {"Contaminations": "tab:red",
+                  "Tests": "tab:green",
+                  "Encounters": "tab:blue",
+                  "Positive Tests": "tab:purple",
+                  "Negative Tests": "tab:olive"}
+
+
+STATE_TO_COLOR = {"has_flu": "tab:red",
+                  "has_cold": "tab:green",
+                  "has_allergy_symptoms": "tab:blue",
+                  "is_infected": "tab:purple"}
+
+
+def plot_mapping(title, mapping):
+    plt.title(title)
+    table_data = [[k + " :", v.replace("tab:","")] for k,v in mapping.items()]
+    table = plt.table(cellText=table_data, loc='center')
+    table.set_fontsize(14)
+    table.scale(1, 0.5)
+    plt.axis('off')
+    plt.gcf().autofmt_xdate()
+
+
 def plot_events(events: Dict[str, List[int]],
                 timestamps: List[datetime.datetime]):
     event_to_width = {"Encounters": 0.05,
@@ -21,11 +59,6 @@ def plot_events(events: Dict[str, List[int]],
                       "Tests": 0.05,
                       "Positive Tests": 0.05,
                       "Negative Tests": 0.05}
-    event_to_color = {"Contaminations": "tab:red",
-                      "Tests": "tab:green",
-                      "Encounters": "tab:blue",
-                      "Positive Tests": "tab:purple",
-                      "Negative Tests": "tab:olive"}
     events_sum = [0] * len(timestamps)
     for event_label in PLOT_EVENTS_LABEL:
         if event_label == "Encounters":
@@ -33,7 +66,7 @@ def plot_events(events: Dict[str, List[int]],
         else:
             plt.bar(timestamps, events[event_label],
                     width=0.1,
-                    color=event_to_color[event_label],
+                    color=EVENT_TO_COLOR[event_label],
                     bottom=events_sum,
                     label=event_label)
             for i in range(len(events[event_label])):
@@ -55,17 +88,20 @@ def plot_encounters(encounters: Dict[str, List[int]],
         for encounter, timestamp in zip(encounters[other_human], timestamps):
             if not encounter:
                 continue
-            plt.broken_barh([(timestamp, 1/24)], (other_human_id - 1, 1), label=other_human)
+            safe_color = ENCOUNTER_TO_COLOR["non-infectuous"]
+            plt.broken_barh([(timestamp, 1/24)], (other_human_id - 1, 1), color=safe_color, label=other_human)
         for encounter, timestamp in zip(risky_encounters[other_human], timestamps):
             if not encounter:
                 continue
             risky_encounters_human_ids.add(other_human_id)
-            plt.broken_barh([(timestamp, 1 / 21)], (other_human_id - 1, 1), color="tab:orange", label=other_human)
+            risky_color = ENCOUNTER_TO_COLOR["infectuous"]
+            plt.broken_barh([(timestamp, 1 / 21)], (other_human_id - 1, 1), color=risky_color, label=other_human)
         for encounter, timestamp in zip(contamination_encounters[other_human], timestamps):
             if not encounter:
                 continue
             contamination_encounters_human_ids.add(other_human_id)
-            plt.broken_barh([(timestamp, 1 / 12)], (other_human_id - 1, 1), color="tab:red", label=other_human)
+            contamination_color = ENCOUNTER_TO_COLOR["contamination"]
+            plt.broken_barh([(timestamp, 1 / 12)], (other_human_id - 1, 1), color=contamination_color, label=other_human)
 
     plt.title("Encounters")
     plt.ylim((0, len(encounters)))
@@ -81,30 +117,12 @@ def plot_locations(locations: List[int],
                    locations_names: List[str],
                    timestamps: List[datetime.datetime]):
 
-    location_to_color = {"household": "tab:red",
-                         "park": "tab:green",
-                         "hospital": "tab:blue",
-                         "store": "tab:purple",
-                         "school": "tab:olive",
-                         "workplace": "tab:gray",
-                         "senior_residency": "tab:brown",
-                         "misc": "tab:pink"}
-
-    """
-    for l_idx, l_name in enumerate(locations_names):
-        l_timestamps = [l for (l,t) in zip(locations, timestamps) if l == l_idx]
-        l_plot_xs = [(t, 1./24) for t in l_timestamps]
-        l_plot_ys = [(l_idx, 1)] * len(l_timestamps)
-        plt.broken_barh(l_plot_xs, l_plot_ys)
-    """
-
     for location, timestamp in zip(locations, timestamps):
         l_name = locations_names[location]
-        color = location_to_color[l_name.split(":")[0]]
+        color = LOCATION_TO_COLOR[l_name.split(":")[0]]
         plt.broken_barh([(timestamp, 1/24)], (location, 1), facecolor=color, label=l_name)
     plt.title("Location")
     plt.ylim((0, len(locations_names)))
-    # plt.set_yticklabels(locations_names)
     plt.xlabel("Time")
     plt.gcf().autofmt_xdate()
 
@@ -121,12 +139,8 @@ def plot_recommendation_levels(recommendation_levels: List[int],
 
 def plot_states(states: Dict[str, List[bool]],
                 timestamps: List[datetime.datetime]):
-    state_to_color = {"has_flu": "tab:red",
-                      "has_cold": "tab:green",
-                      "has_allergy_symptoms": "tab:blue",
-                      "is_infected": "tab:purple"}
     for state_name, state_vals in states.items():
-        plt.step(timestamps, [int(s) for s in state_vals], color=state_to_color[state_name])
+        plt.step(timestamps, [int(s) for s in state_vals], color=STATE_TO_COLOR[state_name])
     plt.title("Binary States")
     plt.ylim((-0.1, 1.1))
     plt.yticks([0, 1])
@@ -411,33 +425,50 @@ def generate_human_centric_plots(debug_data, humans_events, output_folder):
             e_timestamps = get_events_history(humans_events[h_key], nb_humans, timestamps, begin, end)
         states, s_timestamps = get_states_history(h_backup, timestamps, begin, end)
 
-        fig = plt.figure()
+        fig = plt.figure(constrained_layout=True)
 
-        fig.add_subplot(4, 3, 2)
+        # First row (columns 2+)
+        fig.add_subplot(4, 4, 2)
         plot_risks(risks, timestamps)
 
-        fig.add_subplot(4, 3, 5)
-        plot_viral_loads(viral_loads, timestamps)
-
-        fig.add_subplot(4, 3, 8)
-        plot_symptoms(true_symptoms, obs_symptoms, timestamps)
-
-        fig.add_subplot(4, 3, 11)
-        plot_recommendation_levels(recommendation_levels, timestamps)
-
-        fig.add_subplot(4, 3, 3)
+        fig.add_subplot(4, 4, 3)
         plot_locations(locations, sorted_all_locations, timestamps)
 
-        fig.add_subplot(4, 3, 6)
+        fig.add_subplot(4, 4, 4)
+        plot_mapping("Location legend", LOCATION_TO_COLOR)
+
+        # Second row (columns 2+)
+        fig.add_subplot(4, 4, 6)
+        plot_viral_loads(viral_loads, timestamps)
+
+        fig.add_subplot(4, 4, 7)
         plot_events(events, timestamps)
 
-        fig.add_subplot(4, 3, 9)
+        fig.add_subplot(4, 4, 8)
+        plot_mapping("Event legend", EVENT_TO_COLOR)
+
+        # Third row (columns 2+)
+        fig.add_subplot(4, 4, 10)
+        plot_symptoms(true_symptoms, obs_symptoms, timestamps)
+
+        fig.add_subplot(4, 4, 11)
         plot_encounters(encounters, risky_encounters, contamination_encounters, timestamps)
 
-        fig.add_subplot(4, 3, 12)
+        fig.add_subplot(4, 4, 12)
+        plot_mapping("Encounter legend", ENCOUNTER_TO_COLOR)
+
+        # Fourth row (columns 2+)
+        fig.add_subplot(4, 4, 14)
+        plot_recommendation_levels(recommendation_levels, timestamps)
+
+        fig.add_subplot(4, 4, 15)
         plot_states(states, timestamps)
 
-        fig.add_subplot(1, 3, 1)
+        fig.add_subplot(4, 4, 16)
+        plot_mapping("States legend", STATE_TO_COLOR)
+
+        # First column
+        fig.add_subplot(1, 4, 1)
         human = h_backup[-1]
         table_data = [
             ["name:", human.name],
