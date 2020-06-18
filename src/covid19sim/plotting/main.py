@@ -2,6 +2,7 @@ import hydra
 from omegaconf import OmegaConf
 from pathlib import Path
 import math
+from collections import defaultdict
 
 import covid19sim.plotting.plot_pareto_adoption as pareto_adoption
 from covid19sim.plotting.utils.extract_data import get_all_paths
@@ -35,6 +36,22 @@ def check_data(path, plots):
     if "pareto_adoption" in plots:
         pass
 
+def summarize_configs(all_paths):
+    ignore_keys = {"outdir", "GIT_COMMIT_HASH", "DAILY_TARGET_REC_LEVEL_DIST"}
+    total_pkls = sum(len(mv) for mv in all_paths.values())
+    print("Found {} methods and {} pkls:\n{}".format(
+        len(all_paths),
+        total_pkls,
+        "\n    ".join(["{} ({})".format(Path(mk).name, len(mv)) for mk, mv in all_paths.items()])
+    ))
+    confs = defaultdict(set)
+    for mk, mv in all_paths.items():
+        for rk, rv in mv.items():
+            for ck, cv in rv["conf"].items():
+                if ck in ignore_keys:
+                    continue
+                confs[ck].add(str(cv))
+    print("Varying parameters are:\n" + "    \n".join([f"{k}:{v}" for k, v in confs.items() if len(v) > 1]))
 
 @hydra.main(config_path=str(HYDRA_CONF_PATH.resolve() / "config.yaml"), strict=False)
 def main(conf):
@@ -63,8 +80,14 @@ def main(conf):
         plots = [plots]
 
     check_data(path, plots)
-    all_paths = get_all_paths(path)
 
+    print("Reading configs from {}...".format(str(path)), end="", flush=True)
+    all_paths = get_all_paths(path)
+    print("Done.")
+    summarize_configs(all_paths)
+    
+    import pdb; pdb.set_trace()
+    
     for plot in plots:
         func = all_plots[plot].run
         print_header(plot)

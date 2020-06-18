@@ -199,25 +199,27 @@ def absolute_file_paths(directory):
 
 
 def get_all_paths(base_path):
-    base_path = Path(base_path)
+    base_path = Path(base_path).resolve()
     assert base_path.exists()
     methods = [
         m for m in base_path.iterdir() if m.is_dir() and not m.name.startswith(".")
     ]
     assert methods
 
-    all_paths = {m.name: {} for m in methods}
+    all_paths = {str(m): {} for m in methods}
     for m in methods:
+        sm = str(m)
         runs = [
             r
             for r in m.iterdir()
             if r.is_dir()
             and not r.name.startswith(".")
-            and len(r.glob("tracker*.pkl")) == 1
+            and len(list(r.glob("tracker*.pkl"))) == 1
         ]
         for r in runs:
-            all_paths[m][r] = {}
+            sr = str(r)
+            all_paths[sm][sr] = {}
             with (r / "full_configuration.yaml").open("r") as f:
-                all_paths[m][r]["conf"] = yaml.safe_load(f)
-            all_paths[m][r]["pkl"] = list(r.glob("tracker*.pkl"))[0]
+                all_paths[sm][sr]["conf"] = yaml.safe_load(f)
+            all_paths[sm][sr]["pkl"] = list(r.glob("tracker*.pkl"))[0]
     return all_paths
