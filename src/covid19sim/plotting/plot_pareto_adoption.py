@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from matplotlib.lines import Line2D
+import matplotlib.colors as mcolors
 from scipy import stats as sps
 
 from covid19sim.plotting.utils.extract_data import (
@@ -177,6 +178,47 @@ def plot_all_metrics(
     return axs
 
 
+def get_line2D(value, idx, markers, colors, is_method=True, compare="APP_UPTAKE"):
+    legends = {
+        "APP_UPTAKE": lambda x: f"{float(x) * 100 * 0.71203:.0f}% Adoption Rate",
+        "method": {
+            "bdt1": "1st Order Binary Tracing",
+            "bdt2": "2nd Order Binary Tracing",
+            "heuristicv1": "Heuristic (v1)",
+            "heuristicv2": "Heuristic (v2)",
+            "transformer": "Transformer",
+            "linreg": "Linear Regression",
+            "mlp": "MLP",
+            "unmitigated": "Unmitigated",
+            "oracle": "Oracle",
+        },
+    }
+    colors = []
+
+    if is_method:
+        return Line2D(
+            [0],
+            [0],
+            color="none",
+            marker="o",
+            markeredgecolor="k",
+            markerfacecolor=colors[idx],
+            markersize=15,
+            label=legends["method"][value],
+        )
+
+    return Line2D(
+        [0],
+        [0],
+        color="none",
+        lw=2,
+        marker=markers[idx],
+        markerfacecolor="black",
+        markersize=15,
+        label=legends[compare](value),
+    )
+
+
 def run(data, compare):
     """
     data is a dictionnary that maps methods (bdt1, bdt1_norm, transformer etc.)
@@ -208,7 +250,6 @@ def run(data, compare):
     """
 
     rows = []
-    # dir = "../src/covid19sim/tune/.."
     filenames = []
     labels = []
     filenames_norm = []
@@ -225,90 +266,10 @@ def run(data, compare):
     rows += get_all(filenames, labels, normalized=False)
     rows += get_all(filenames_norm, labels_norm, normalized=True)
 
-    if False:  # prateek code
-        unmitigated = absolute_file_paths(f"{dir}/unmitigated")
-        rows += get_all([unmitigated], ["unmitigated"])
-
-        bdt1 = absolute_file_paths(f"{dir}/bdt1")
-        bdt1_70 = absolute_file_paths(f"{dir}/bdt1_70")
-        bdt1_60 = absolute_file_paths(f"{dir}/bdt1_60")
-        bdt1_40 = absolute_file_paths(f"{dir}/bdt1_40")
-        rows += get_all(
-            [bdt1, bdt1_70, bdt1_60, bdt1_40], ["bdt1", "bdt1_70", "bdt1_60", "bdt1_40"]
-        )
-
-        bdt2 = absolute_file_paths(f"{dir}/bdt2")
-        bdt2_70 = absolute_file_paths(f"{dir}/bdt2_70")
-        bdt2_60 = absolute_file_paths(f"{dir}/bdt2_60")
-        bdt2_40 = absolute_file_paths(f"{dir}/bdt2_40")
-        rows += get_all(
-            [bdt2, bdt2_70, bdt2_60, bdt2_40], ["bdt2", "bdt2_70", "bdt2_60", "bdt2_40"]
-        )
-
-        heuristic = absolute_file_paths(f"{dir}/heuristic")
-        heuristic_70 = absolute_file_paths(f"{dir}/heuristic_70")
-        heuristic_40 = absolute_file_paths(f"{dir}/heuristic_40")
-        heuristic_60 = absolute_file_paths(f"{dir}/heuristic_60")
-
-        heuristics = [heuristic, heuristic_70, heuristic_60, heuristic_40]
-        heuristic_labels = ["heuristic", "heuristic_70", "heuristic_60", "heuristic_40"]
-        rows += get_all(heuristics, heuristic_labels)
-
-        bdt1_norm = absolute_file_paths(f"{dir}/bdt1_norm")
-        bdt1_70_norm = absolute_file_paths(f"{dir}/bdt1_70_norm")
-        bdt1_40_norm = absolute_file_paths(f"{dir}/bdt1_40_norm")
-        bdt1_60_norm = absolute_file_paths(f"{dir}/bdt1_60_norm")
-
-        norm_bdt1 = [bdt1_norm, bdt1_70_norm, bdt1_60_norm, bdt1_40_norm]
-        norm_bdt1_labels = ["bdt1_norm", "bdt1_70_norm", "bdt1_60_norm", "bdt1_40_norm"]
-        rows += get_all(norm_bdt1, norm_bdt1_labels, normalized=True)
-
-        #
-        bdt2_norm = absolute_file_paths(f"{dir}/bdt2")
-        bdt2_70_norm = absolute_file_paths(f"{dir}/bdt2_70_norm")
-        bdt2_40_norm = absolute_file_paths(f"{dir}/bdt2_40_norm")
-        bdt2_60_norm = absolute_file_paths(f"{dir}/bdt2_60_norm")
-
-        # norm_bdt2 = [bdt2_norm, bdt2_70_norm, bdt2_60_norm, bdt2_40_norm]
-        # norm_bdt2_labels = ['bdt2_norm', 'bdt2_70_norm', 'bdt2_60_norm', 'bdt2_40_norm']
-        norm_bdt2 = [bdt2_70_norm, bdt2_60_norm, bdt2_40_norm]
-        norm_bdt2_labels = ["bdt2_70_norm", "bdt2_60_norm", "bdt2_40_norm"]
-        rows += get_all(norm_bdt2, norm_bdt2_labels, normalized=True)
-
-        #
-        transformer = absolute_file_paths(f"../src/covid19sim/tune/{dir}/transformer")
-        transformer_60 = absolute_file_paths(
-            f"../src/covid19sim/tune/{dir}/transformer_60"
-        )
-        transformer_40 = absolute_file_paths(
-            f"../src/covid19sim/tune/{dir}/transformer_40"
-        )
-        transformer_70 = absolute_file_paths(
-            f"../src/covid19sim/tune/{dir}/transformer_70"
-        )
-
-        transformers = [transformer, transformer_60, transformer_40, transformer_70]
-        transformer_labels = [
-            "transformer",
-            "transformer_60",
-            "transformer_40",
-            "transformer_70",
-        ]
-        rows += get_all(transformers, transformer_labels)
-        linear = absolute_file_paths(f"../src/covid19sim/tune/{dir}/linear")
-        linear_60 = absolute_file_paths(f"../src/covid19sim/tune/{dir}/linear_60")
-        linear_40 = absolute_file_paths(f"../src/covid19sim/tune/{dir}/linear_40")
-        linear_70 = absolute_file_paths(f"../src/covid19sim/tune/{dir}/linear_70")
-
-        linears = [linear, linear_60, linear_40, linear_70]
-        linear_labels = ["linear", "linear_60", "linear_40", "linear_70"]
-        rows += get_all(linears, linear_labels)
-
-    data = pd.DataFrame(
-        rows, columns=["type", "metric", 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
-    )
-    data["mean"] = data[[1, 2, 3, 4]].mean(axis=1)
-    data["stderr"] = data[[1, 2, 3, 4]].sem(axis=1)
+    n_seeds = len(list(data.values)[0])
+    df = pd.DataFrame(rows, columns=["type", "metric"] + list(range(len(n_seeds))))
+    df["mean"] = df[[1, 2, 3, 4]].mean(axis=1)
+    df["stderr"] = df[[1, 2, 3, 4]].sem(axis=1)
 
     ############
     ### /!\ Ordering should be consistent everywhere. i.e. _70, _60, _40
@@ -326,15 +287,23 @@ def run(data, compare):
 
     ms = 6 * 2 * 1.5
     capsize = 4
-    markers = ["P", "s", "X", "d", "."]
+    markers = ["P", "s", "X", "d", ".", "h", "^", "*", "v"]
     colormap = [
         "#34495e",
-        "mediumvioletred",
-        "orangered",
-        "royalblue",
+        "blue",
+        "brown",
+        "cyan",
         "darkorange",
+        "gray",
         "green",
+        "mediumvioletred",
+        "olive",
+        "orange",
+        "orangered",
+        "pink",
+        "purple",
         "red",
+        "royalblue",
     ]
 
     fig, axs = plt.subplots(
@@ -346,167 +315,48 @@ def run(data, compare):
     )
     axs = [i for j in axs for i in j]
 
-    #
-    plot_all_metrics(
-        axs,
-        data,
-        "unmitigated",
-        colormap[0],
-        markers[0],
-        xmetrics,
-        ymetric,
-        capsize=capsize,
-        ms=ms,
-    )
+    base_methods = set([lab.split("_")[0] for lab in labels + labels_norm])
 
-    #
-    idx = 1
-    for i, label in enumerate(["bdt1", "bdt1_70", "bdt1_60", "bdt1_40"]):
-        plot_all_metrics(axs, data, label, colormap[idx], markers[i], xmetrics, ymetric)
+    legend = []
+    legend_compare_ok = False
+    for idx, method in enumerate(base_methods):
+        current_labels = [lab for lab in labels if lab.startswith(method)]
+        current_labels_norm = [lab for lab in labels_norm if lab.startswith(method)]
+        legend.append(get_line2D(method, idx, markers, colormap, True, compare))
+        for i, lab in enumerate(current_labels):
+            if not legend_compare_ok:
+                legend.append(
+                    get_line2D(
+                        lab.split("_")[-1], idx, markers, colormap, False, compare
+                    )
+                )
+            plot_all_metrics(
+                axs,
+                df,
+                lab,
+                colormap[idx],
+                markers[i],
+                xmetrics,
+                ymetric,
+                capsize=capsize,
+                ms=ms,
+                normalized=False,
+            )
+        for i, lab in enumerate(current_labels_norm):
+            plot_all_metrics(
+                axs,
+                df,
+                lab,
+                colormap[idx],
+                markers[i],
+                xmetrics,
+                ymetric,
+                capsize=capsize,
+                ms=ms,
+                normalized=True,
+            )
+        legend_compare_ok = True
 
-    #
-    idx = 1
-    for i, label in enumerate(
-        ["bdt1_norm", "bdt1_70_norm", "bdt1_60_norm", "bdt1_40_norm"]
-    ):
-        plot_all_metrics(
-            axs,
-            data,
-            label,
-            colormap[idx],
-            markers[i],
-            xmetrics,
-            ymetric,
-            normalized=True,
-        )
-
-    #
-    idx = 2
-    for i, label in enumerate(["bdt2", "bdt2_70", "bdt2_60", "bdt2_40"]):
-        plot_all_metrics(axs, data, label, colormap[idx], markers[i], xmetrics, ymetric)
-
-    #
-    idx = 2
-    for i, label in enumerate(
-        ["bdt2_norm", "bdt2_70_norm", "bdt2_60_norm", "bdt2_40_norm"]
-    ):
-        plot_all_metrics(
-            axs,
-            data,
-            label,
-            colormap[idx],
-            markers[i],
-            xmetrics,
-            ymetric,
-            normalized=True,
-        )
-
-    #
-    idx = 3
-    for i, label in enumerate(
-        ["heuristic", "heuristic_70", "heuristic_60", "heuristic_40"]
-    ):
-        plot_all_metrics(axs, data, label, colormap[idx], markers[i], xmetrics, ymetric)
-
-    # idx = 3
-    # for i, label in enumerate(
-    #   ['transformer', 'transformer_70', 'transformer_60', 'transformer_40']
-    #  ):
-    #     plot_all_metrics(
-    #       axs, data, label, colormap[idx], markers[i], xmetrics, ymetric
-    #     )
-
-    # idx = 4
-    # for i, label in enumerate(['linear_70', 'linear_60', 'linear_40']):
-    #     plot_all_metrics(
-    #           axs, data, label, colormap[idx], markers[i], xmetrics, ymetric
-    #     )
-
-    # legends
-    legend = [
-        Line2D(
-            [0],
-            [0],
-            color="none",
-            marker="o",
-            markeredgecolor="k",
-            markerfacecolor=colormap[0],
-            markersize=15,
-            label="Unmitigated",
-        ),
-        Line2D(
-            [0],
-            [0],
-            color="none",
-            lw=2,
-            marker="P",
-            markerfacecolor="black",
-            markersize=10,
-            label="100%$^*$ adoption",
-        ),
-        Line2D(
-            [0],
-            [0],
-            color="none",
-            marker="o",
-            markeredgecolor="k",
-            markerfacecolor="mediumvioletred",
-            markersize=15,
-            label="1st-order Binary Tracing",
-        ),
-        Line2D(
-            [0],
-            [0],
-            color="none",
-            lw=2,
-            marker="s",
-            markerfacecolor="black",
-            markersize=10,
-            label="70% adoption",
-        ),
-        Line2D(
-            [0],
-            [0],
-            color="none",
-            marker="o",
-            markeredgecolor="k",
-            markerfacecolor="orangered",
-            markersize=15,
-            label="2nd Order Binary Tracing",
-        ),
-        Line2D(
-            [0],
-            [0],
-            color="none",
-            lw=2,
-            marker="X",
-            markerfacecolor="black",
-            markersize=10,
-            label="60% adoption",
-        ),
-        Line2D(
-            [0],
-            [0],
-            color="none",
-            marker="o",
-            markeredgecolor="k",
-            markerfacecolor="royalblue",
-            markersize=15,
-            label="heuristic",
-        ),
-        Line2D(
-            [0],
-            [0],
-            color="none",
-            lw=2,
-            marker="d",
-            markerfacecolor="black",
-            markersize=10,
-            label="40% adoption",
-        ),
-        #     Line2D([0], [0], color='none', marker='o', markeredgecolor='k',
-        # markerfacecolor='darkorange', markersize=15, label='Linear Regression'),
-    ]
     fig.legend(
         handles=legend,
         loc="upper center",
