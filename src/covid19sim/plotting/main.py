@@ -147,6 +147,8 @@ def main(conf):
     if not isinstance(plots, list):
         plots = [plots]
 
+    assert all(p in all_plots for p in plots)
+
     check_data(path, plots)
 
     print("Reading configs from {}...".format(str(path)), end="", flush=True)
