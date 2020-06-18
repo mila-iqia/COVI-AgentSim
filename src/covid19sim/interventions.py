@@ -568,10 +568,18 @@ class HeuristicRecommendations(RiskBasedRecommendations):
                         or (latest_negative_test_result_num_days > result_day))):
                     latest_negative_test_result_num_days = result_day
 
+        no_symptoms_past_7_days = (not any(islice(human.rolling_all_reported_symptoms, (human.conf.get("TRACING_N_DAYS_HISTORY") // 2))))
+
         if human.reported_test_result == "positive":
             # Update risk for the past 14 days (2 weeks)
             risk = [self.risk_level_to_risk(15)] * human.conf.get("TRACING_N_DAYS_HISTORY")
             setattr(human, '_heuristic_rec_level', 3)
+
+        elif (no_positive_test_result_past_14_days
+                and latest_negative_test_result_num_days is not None):
+            # Set risk level R = 1 for now and all past D days
+            risk = [self.risk_level_to_risk(1)] * latest_negative_test_result_num_days
+            setattr(human, '_heuristic_rec_level', 0)
 
         elif human.all_reported_symptoms:
             # for some symptoms set R for now and all past 7 days
@@ -594,18 +602,10 @@ class HeuristicRecommendations(RiskBasedRecommendations):
             risk = [self.risk_level_to_risk(new_risk_level)] * (human.conf.get("TRACING_N_DAYS_HISTORY") // 2)
             setattr(human, '_heuristic_rec_level', new_rec_level)
 
-        elif human.rec_level > 0 and no_positive_test_result_past_14_days:
-            # Check if there was no symptoms in the past 7 days
-            no_symptoms_past_7_days = (not any(islice(human.rolling_all_reported_symptoms, (human.conf.get("TRACING_N_DAYS_HISTORY") // 2))))
-
-            if no_symptoms_past_7_days and no_message_gt3_past_7_days:
-                # Set risk level R = 0 for now and all past 7 days
-                risk = [self.risk_level_to_risk(0)] * (human.conf.get("TRACING_N_DAYS_HISTORY") // 2)
-
-            elif latest_negative_test_result_num_days is not None:
-                # Set risk level R = 1 for now and all past D days
-                risk = [self.risk_level_to_risk(1)] * latest_negative_test_result_num_days
-
+        elif (human.rec_level > 0 and no_positive_test_result_past_14_days
+                and no_symptoms_past_7_days and no_message_gt3_past_7_days):
+            # Set risk level R = 0 for now and all past 7 days
+            risk = [self.risk_level_to_risk(0)] * (human.conf.get("TRACING_N_DAYS_HISTORY") // 2)
             setattr(human, '_heuristic_rec_level', 0)
 
         elif high_risk_message > 0:
