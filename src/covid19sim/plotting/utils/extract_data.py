@@ -228,5 +228,5 @@ def get_all_paths(base_path):
             all_paths[sm][sr] = {}
             with (r / "full_configuration.yaml").open("r") as f:
                 all_paths[sm][sr]["conf"] = yaml.safe_load(f)
-            all_paths[sm][sr]["pkl"] = list(r.glob("tracker*.pkl"))[0]
+            all_paths[sm][sr]["pkl"] = str(list(r.glob("tracker*.pkl"))[0])
     return all_paths
