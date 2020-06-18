@@ -163,7 +163,7 @@ def main(conf):
     for plot in plots:
         func = all_plots[plot].run
         print_header(plot)
-        func(data)
+        func(data, conf["compare"])
         print_footer()
 
 

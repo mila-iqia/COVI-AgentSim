@@ -177,82 +177,132 @@ def plot_all_metrics(
     return axs
 
 
-def run(dir):
+def run(data, compare):
+    """
+    data is a dictionnary that maps methods (bdt1, bdt1_norm, transformer etc.)
+    to another dictionnary which has keys the values of the comparing key and
+    values a dictionnary with the run's simulation configuration and pkl path
+
+    e.g.
+    compare=APP_UPTAKE
+    data:
+      bdt1:
+        -1:
+          pkl: path/to/tracker.pkl
+          conf: configuration_dict
+        0.8415:
+          pkl: path/to/tracker.pkl
+          conf: configuration_dict
+      bdt2:
+        -1:
+          pkl: path/to/tracker.pkl
+          conf: configuration_dict
+        0.8415:
+          pkl: path/to/tracker.pkl
+          conf: configuration_dict
+
+
+    Args:
+        data (dict): the data as method -> comparing value -> conf, pkl
+        compare (str): the key used to compare runs, like APP_UPTAKE
+    """
 
     rows = []
     # dir = "../src/covid19sim/tune/.."
-    dir = "/miniscratch/schmidtv/prateek/post-debug-1K-0.01"
-    unmitigated = absolute_file_paths(f"{dir}/unmitigated")
-    rows += get_all([unmitigated], ["unmitigated"])
+    filenames = []
+    labels = []
+    filenames_norm = []
+    labels_norm = []
+    for method in data:
+        for key in data[method]:
+            if "_norm" in method:
+                filenames_norm.append([r["pkl"] for r in data[method][key].values()])
+                labels_norm.append(f"{method}_{key}")
+            else:
+                filenames.append([r["pkl"] for r in data[method][key].values()])
+                labels.append(f"{method}_{key}")
 
-    bdt1 = absolute_file_paths(f"{dir}/bdt1")
-    bdt1_70 = absolute_file_paths(f"{dir}/bdt1_70")
-    bdt1_60 = absolute_file_paths(f"{dir}/bdt1_60")
-    bdt1_40 = absolute_file_paths(f"{dir}/bdt1_40")
-    rows += get_all(
-        [bdt1, bdt1_70, bdt1_60, bdt1_40], ["bdt1", "bdt1_70", "bdt1_60", "bdt1_40"]
-    )
+    rows += get_all(filenames, labels, normalized=False)
+    rows += get_all(filenames_norm, labels_norm, normalized=True)
 
-    bdt2 = absolute_file_paths(f"{dir}/bdt2")
-    bdt2_70 = absolute_file_paths(f"{dir}/bdt2_70")
-    bdt2_60 = absolute_file_paths(f"{dir}/bdt2_60")
-    bdt2_40 = absolute_file_paths(f"{dir}/bdt2_40")
-    rows += get_all(
-        [bdt2, bdt2_70, bdt2_60, bdt2_40], ["bdt2", "bdt2_70", "bdt2_60", "bdt2_40"]
-    )
+    if False:  # prateek code
+        unmitigated = absolute_file_paths(f"{dir}/unmitigated")
+        rows += get_all([unmitigated], ["unmitigated"])
 
-    heuristic = absolute_file_paths(f"{dir}/heuristic")
-    heuristic_70 = absolute_file_paths(f"{dir}/heuristic_70")
-    heuristic_40 = absolute_file_paths(f"{dir}/heuristic_40")
-    heuristic_60 = absolute_file_paths(f"{dir}/heuristic_60")
+        bdt1 = absolute_file_paths(f"{dir}/bdt1")
+        bdt1_70 = absolute_file_paths(f"{dir}/bdt1_70")
+        bdt1_60 = absolute_file_paths(f"{dir}/bdt1_60")
+        bdt1_40 = absolute_file_paths(f"{dir}/bdt1_40")
+        rows += get_all(
+            [bdt1, bdt1_70, bdt1_60, bdt1_40], ["bdt1", "bdt1_70", "bdt1_60", "bdt1_40"]
+        )
 
-    heuristics = [heuristic, heuristic_70, heuristic_60, heuristic_40]
-    heuristic_labels = ["heuristic", "heuristic_70", "heuristic_60", "heuristic_40"]
-    rows += get_all(heuristics, heuristic_labels)
+        bdt2 = absolute_file_paths(f"{dir}/bdt2")
+        bdt2_70 = absolute_file_paths(f"{dir}/bdt2_70")
+        bdt2_60 = absolute_file_paths(f"{dir}/bdt2_60")
+        bdt2_40 = absolute_file_paths(f"{dir}/bdt2_40")
+        rows += get_all(
+            [bdt2, bdt2_70, bdt2_60, bdt2_40], ["bdt2", "bdt2_70", "bdt2_60", "bdt2_40"]
+        )
 
-    bdt1_norm = absolute_file_paths(f"{dir}/bdt1_norm")
-    bdt1_70_norm = absolute_file_paths(f"{dir}/bdt1_70_norm")
-    bdt1_40_norm = absolute_file_paths(f"{dir}/bdt1_40_norm")
-    bdt1_60_norm = absolute_file_paths(f"{dir}/bdt1_60_norm")
+        heuristic = absolute_file_paths(f"{dir}/heuristic")
+        heuristic_70 = absolute_file_paths(f"{dir}/heuristic_70")
+        heuristic_40 = absolute_file_paths(f"{dir}/heuristic_40")
+        heuristic_60 = absolute_file_paths(f"{dir}/heuristic_60")
 
-    norm_bdt1 = [bdt1_norm, bdt1_70_norm, bdt1_60_norm, bdt1_40_norm]
-    norm_bdt1_labels = ["bdt1_norm", "bdt1_70_norm", "bdt1_60_norm", "bdt1_40_norm"]
-    rows += get_all(norm_bdt1, norm_bdt1_labels, normalized=True)
+        heuristics = [heuristic, heuristic_70, heuristic_60, heuristic_40]
+        heuristic_labels = ["heuristic", "heuristic_70", "heuristic_60", "heuristic_40"]
+        rows += get_all(heuristics, heuristic_labels)
 
-    #
-    bdt2_norm = absolute_file_paths(f"{dir}/bdt2")
-    bdt2_70_norm = absolute_file_paths(f"{dir}/bdt2_70_norm")
-    bdt2_40_norm = absolute_file_paths(f"{dir}/bdt2_40_norm")
-    bdt2_60_norm = absolute_file_paths(f"{dir}/bdt2_60_norm")
+        bdt1_norm = absolute_file_paths(f"{dir}/bdt1_norm")
+        bdt1_70_norm = absolute_file_paths(f"{dir}/bdt1_70_norm")
+        bdt1_40_norm = absolute_file_paths(f"{dir}/bdt1_40_norm")
+        bdt1_60_norm = absolute_file_paths(f"{dir}/bdt1_60_norm")
 
-    # norm_bdt2 = [bdt2_norm, bdt2_70_norm, bdt2_60_norm, bdt2_40_norm]
-    # norm_bdt2_labels = ['bdt2_norm', 'bdt2_70_norm', 'bdt2_60_norm', 'bdt2_40_norm']
-    norm_bdt2 = [bdt2_70_norm, bdt2_60_norm, bdt2_40_norm]
-    norm_bdt2_labels = ["bdt2_70_norm", "bdt2_60_norm", "bdt2_40_norm"]
-    rows += get_all(norm_bdt2, norm_bdt2_labels, normalized=True)
+        norm_bdt1 = [bdt1_norm, bdt1_70_norm, bdt1_60_norm, bdt1_40_norm]
+        norm_bdt1_labels = ["bdt1_norm", "bdt1_70_norm", "bdt1_60_norm", "bdt1_40_norm"]
+        rows += get_all(norm_bdt1, norm_bdt1_labels, normalized=True)
 
-    #
-    transformer = absolute_file_paths(f"../src/covid19sim/tune/{dir}/transformer")
-    transformer_60 = absolute_file_paths(f"../src/covid19sim/tune/{dir}/transformer_60")
-    transformer_40 = absolute_file_paths(f"../src/covid19sim/tune/{dir}/transformer_40")
-    transformer_70 = absolute_file_paths(f"../src/covid19sim/tune/{dir}/transformer_70")
+        #
+        bdt2_norm = absolute_file_paths(f"{dir}/bdt2")
+        bdt2_70_norm = absolute_file_paths(f"{dir}/bdt2_70_norm")
+        bdt2_40_norm = absolute_file_paths(f"{dir}/bdt2_40_norm")
+        bdt2_60_norm = absolute_file_paths(f"{dir}/bdt2_60_norm")
 
-    transformers = [transformer, transformer_60, transformer_40, transformer_70]
-    transformer_labels = [
-        "transformer",
-        "transformer_60",
-        "transformer_40",
-        "transformer_70",
-    ]
-    rows += get_all(transformers, transformer_labels)
-    linear = absolute_file_paths(f"../src/covid19sim/tune/{dir}/linear")
-    linear_60 = absolute_file_paths(f"../src/covid19sim/tune/{dir}/linear_60")
-    linear_40 = absolute_file_paths(f"../src/covid19sim/tune/{dir}/linear_40")
-    linear_70 = absolute_file_paths(f"../src/covid19sim/tune/{dir}/linear_70")
+        # norm_bdt2 = [bdt2_norm, bdt2_70_norm, bdt2_60_norm, bdt2_40_norm]
+        # norm_bdt2_labels = ['bdt2_norm', 'bdt2_70_norm', 'bdt2_60_norm', 'bdt2_40_norm']
+        norm_bdt2 = [bdt2_70_norm, bdt2_60_norm, bdt2_40_norm]
+        norm_bdt2_labels = ["bdt2_70_norm", "bdt2_60_norm", "bdt2_40_norm"]
+        rows += get_all(norm_bdt2, norm_bdt2_labels, normalized=True)
 
-    linears = [linear, linear_60, linear_40, linear_70]
-    linear_labels = ["linear", "linear_60", "linear_40", "linear_70"]
-    rows += get_all(linears, linear_labels)
+        #
+        transformer = absolute_file_paths(f"../src/covid19sim/tune/{dir}/transformer")
+        transformer_60 = absolute_file_paths(
+            f"../src/covid19sim/tune/{dir}/transformer_60"
+        )
+        transformer_40 = absolute_file_paths(
+            f"../src/covid19sim/tune/{dir}/transformer_40"
+        )
+        transformer_70 = absolute_file_paths(
+            f"../src/covid19sim/tune/{dir}/transformer_70"
+        )
+
+        transformers = [transformer, transformer_60, transformer_40, transformer_70]
+        transformer_labels = [
+            "transformer",
+            "transformer_60",
+            "transformer_40",
+            "transformer_70",
+        ]
+        rows += get_all(transformers, transformer_labels)
+        linear = absolute_file_paths(f"../src/covid19sim/tune/{dir}/linear")
+        linear_60 = absolute_file_paths(f"../src/covid19sim/tune/{dir}/linear_60")
+        linear_40 = absolute_file_paths(f"../src/covid19sim/tune/{dir}/linear_40")
+        linear_70 = absolute_file_paths(f"../src/covid19sim/tune/{dir}/linear_70")
+
+        linears = [linear, linear_60, linear_40, linear_70]
+        linear_labels = ["linear", "linear_60", "linear_40", "linear_70"]
+        rows += get_all(linears, linear_labels)
 
     data = pd.DataFrame(
         rows, columns=["type", "metric", 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
