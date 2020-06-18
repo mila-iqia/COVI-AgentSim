@@ -67,36 +67,46 @@ def summarize_configs(all_paths):
     )
 
 
-def map_conf_to_models(all_paths, conf):
-    new_paths = {}
-    for mk, mv in all_paths.items():
-        conf = list(mv.values())[0]["conf"]
-        data = {"path": mk, "runs": mv}
-        if conf["RISK_MODEL"] == "":
-            new_paths["unmitigated"] = data
-        elif conf["RISK_MODEL"] == "digital":
-            if conf["TRACING_ORDER"] == 1:
-                new_paths["bdt1"] = data
-            elif conf["TRACING_ORDER"] == 2:
-                new_paths["bdt2"] = data
-            else:
-                raise ValueError(
-                    "Unknown binary digital tracing order: {}".format(
-                        conf["TRACING_ORDER"]
-                    )
-                )
-        elif conf["RISK_MODEL"] == "transformer":
-            # FIXME this won't work if the run used the inference server
-            model = Path(conf["TRANSFORMER_EXP_PATH"]).name
-            if model not in conf["model_mapping"]:
-                raise ValueError("Unknown transformer {}".format(model))
-            new_paths[conf["model_mapping"][model]] = data
-        elif conf["RISK_MODEL"] == "heuristicv1":
-            new_paths["heuristicv1"] = data
-        elif conf["RISK_MODEL"] == "heuristicv2":
-            new_paths["heuristicv2"] = data
+def get_model(conf, mapping):
+    if conf["RISK_MODEL"] == "":
+        return "unmitigated"
+
+    if conf["RISK_MODEL"] == "digital":
+        if conf["TRACING_ORDER"] == 1:
+            return "bdt1"
+        elif conf["TRACING_ORDER"] == 2:
+            return "bdt2"
         else:
-            raise ValueError("Unknown RISK_MODEL {}".format(conf["RISK_MODEL"]))
+            raise ValueError(
+                "Unknown binary digital tracing order: {}".format(conf["TRACING_ORDER"])
+            )
+
+    if conf["RISK_MODEL"] == "transformer":
+        # FIXME this won't work if the run used the inference server
+        model = Path(conf["TRANSFORMER_EXP_PATH"]).name
+        if model not in mapping:
+            raise ValueError("Unknown transformer {}".format(model))
+        return conf["model_mapping"][model]
+
+    if conf["RISK_MODEL"] == "heuristicv1":
+        return "heuristicv1"
+
+    if conf["RISK_MODEL"] == "heuristicv2":
+        return "heuristicv2"
+
+    raise ValueError("Unknown RISK_MODEL {}".format(conf["RISK_MODEL"]))
+
+
+def map_conf_to_models(all_paths, plot_conf):
+    new_data = defaultdict(lambda: defaultdict(dict))
+    key = plot_conf["compare"]
+    for mk, mv in all_paths.items():
+        for rk, rv in mv.items():
+            sim_conf = rv["conf"]
+            compare_value = plot_conf[key]
+            model = get_model(sim_conf, plot_conf["model_mapping"])
+            new_data[model][compare_value][rk] = rv
+    return new_data
 
 
 @hydra.main(config_path=str(HYDRA_CONF_PATH.resolve() / "config.yaml"), strict=False)
@@ -131,6 +141,7 @@ def main(conf):
     all_paths = get_all_paths(path)
     print("Done.")
     summarize_configs(all_paths)
+    data = map_conf_to_models(all_paths, conf)
 
     import pdb
 
@@ -139,7 +150,7 @@ def main(conf):
     for plot in plots:
         func = all_plots[plot].run
         print_header(plot)
-        func(all_paths)
+        func(data)
         print_footer()
 
 

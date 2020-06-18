@@ -26,6 +26,8 @@ model_mapping:
   SWEET-BIRD-443: linreg
   WINTER-MOON-285: diurnal
 
+compare: APP_UPTAKE
+
 hydra:
   run:
     dir: .
