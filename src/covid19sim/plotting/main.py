@@ -69,12 +69,18 @@ def summarize_configs(all_paths):
 
 def get_model(conf, mapping):
     if conf["RISK_MODEL"] == "":
+        if conf.get("DAILY_TARGET_REC_LEVEL_DIST", False):
+            return "unmitigated_norm"
         return "unmitigated"
 
     if conf["RISK_MODEL"] == "digital":
         if conf["TRACING_ORDER"] == 1:
+            if conf.get("DAILY_TARGET_REC_LEVEL_DIST", False):
+                return "btd1_norm"
             return "bdt1"
         elif conf["TRACING_ORDER"] == 2:
+            if conf.get("DAILY_TARGET_REC_LEVEL_DIST", False):
+                return "btd2_norm"
             return "bdt2"
         else:
             raise ValueError(
@@ -86,12 +92,18 @@ def get_model(conf, mapping):
         model = Path(conf["TRANSFORMER_EXP_PATH"]).name
         if model not in mapping:
             raise ValueError("Unknown transformer {}".format(model))
+        if conf.get("DAILY_TARGET_REC_LEVEL_DIST", False):
+            return conf["model_mapping"][model] + "_norm"
         return conf["model_mapping"][model]
 
     if conf["RISK_MODEL"] == "heuristicv1":
+        if conf.get("DAILY_TARGET_REC_LEVEL_DIST", False):
+            return "heuristicv1_norm"
         return "heuristicv1"
 
     if conf["RISK_MODEL"] == "heuristicv2":
+        if conf.get("DAILY_TARGET_REC_LEVEL_DIST", False):
+            return "heuristicv2_norm"
         return "heuristicv2"
 
     raise ValueError("Unknown RISK_MODEL {}".format(conf["RISK_MODEL"]))
@@ -142,6 +154,7 @@ def main(conf):
     print("Done.")
     summarize_configs(all_paths)
     data = map_conf_to_models(all_paths, conf)
+    len([run for compare in data.values() for run in compare.values])
 
     import pdb
 
