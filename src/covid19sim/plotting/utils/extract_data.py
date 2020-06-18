@@ -202,9 +202,16 @@ def get_all_paths(base_path):
     base_path = Path(base_path).resolve()
     assert base_path.exists()
     methods = [
-        m for m in base_path.iterdir() if m.is_dir() and not m.name.startswith(".")
+        m
+        for m in base_path.iterdir()
+        if m.is_dir()
+        and not m.name.startswith(".")
+        and len(list(m.glob("**/tracker*.pkl"))) > 0
     ]
-    assert methods
+    assert methods, (
+        "Could not find any methods. Make sure the folder structure is correct"
+        + " (expecting <base_path_you_provided>/<method>/<run>/tracker*.pkl)"
+    )
 
     all_paths = {str(m): {} for m in methods}
     for m in methods:
