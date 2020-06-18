@@ -356,17 +356,17 @@ class BundledInterventions(BehaviorInterventions):
         super(BundledInterventions, self).__init__()
         self.recommendations = _get_tracing_recommendations(level)
 
-    # def modify_behavior(self, human):
-    #     self.revert_behavior(human)
-    #     for rec in self.recommendations:
-    #         if isinstance(rec, BehaviorInterventions) and human.follows_recommendations_today:
-    #             rec.modify_behavior(human)
-    #             human.recommendations_to_follow.add(rec)
-    #
-    # def revert_behavior(self, human):
-    #     for rec in human.recommendations_to_follow:
-    #         rec.revert_behavior(human)
-    #     human.recommendations_to_follow = OrderedSet()
+    def modify_behavior(self, human):
+        self.revert_behavior(human)
+        for rec in self.recommendations:
+            if isinstance(rec, BehaviorInterventions) and human.follows_recommendations_today:
+                rec.modify_behavior(human)
+                human.recommendations_to_follow.add(rec)
+
+    def revert_behavior(self, human):
+        for rec in human.recommendations_to_follow:
+            rec.revert_behavior(human)
+        human.recommendations_to_follow = OrderedSet()
 
     def __repr__(self):
         return "\t".join([str(x) for x in self.recommendations])
@@ -809,10 +809,8 @@ class Tracing(object):
         """
         assert self.risk_model != "transformer", "we should never be in here!"
         assert self.risk_model in ["manual", "digital", "naive", "heuristicv1", "heuristicv2", "other"], "missing something?"
-        if self.risk_model not in ["heuristicv1", "heuristicv2"]:
+        if self.risk_model in ['manual', 'digital']:
             t, s, r = self._get_hypothetical_contact_tracing_results(human, mailbox, humans_map)
-
-        if self.risk_model in ["manual", "digital"]:
             if t + s > 0:
                 risk = 1.0
             else:

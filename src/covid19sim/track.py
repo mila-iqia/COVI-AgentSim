@@ -633,9 +633,9 @@ class Tracker(object):
         if self.infection_graph.has_edge(from_human.name, to_human.name):
             reason = payload['reason']
             model = self.city.intervention.risk_model
-            if  model == "transformer":
+            if  model in ["transformer", "heuristicv1", "heuristicv2"]:
                 if  reason not in ["unknown", "contact"]:
-                    return # transformer only sends risks
+                    return # only sends risks
                 x = {'method':model, 'reason':payload['reason'], 'new_risk_level':payload['new_risk_level']}
                 self.infector_infectee_update_messages[from_human.name][to_human.name][self.env.timestamp] = x
             else:
