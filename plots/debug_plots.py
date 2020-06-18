@@ -42,7 +42,13 @@ STATE_TO_COLOR = {"has_flu": "tab:red",
                   "is_infected": "tab:purple"}
 
 
-def plot_mapping(title, mapping):
+def set_pad_for_table(table, pad=0.1):
+    for cell in table._cells.values():
+        cell.PAD = pad
+
+
+def plot_mapping(title: str,
+                 mapping: Dict[str, str]):
     plt.title(title)
     table_data = [[k + " :", v.replace("tab:","")] for k,v in mapping.items()]
     table = plt.table(cellText=table_data, loc='center')
@@ -388,6 +394,29 @@ def get_states_history(human_snapshots: List[Human],
     return states, s_timestamps
 
 
+def get_infection_history(humans_events: Dict[str, List], human_key: str):
+
+    # Get the list of events in which the specified human was infected by someone else
+    infectee_events = []
+    for e in humans_events[human_key]:
+        if e["event_type"] == Event.contamination:
+            infectee_events.append([e["payload"]["unobserved"]["source"], e["time"]])
+
+    # Get the list of events in which the specified human infected someone else
+    infector_events = []
+    for h_events in humans_events.values():
+        for e in h_events:
+            if (e["event_type"] == Event.contamination and
+                    "source" in e["payload"]["unobserved"].keys() and
+                    e["payload"]["unobserved"]["source"] == human_key):
+                infector_events.append([e["human_id"], e["time"]])
+
+    # Sort infector events by the date of the infection (swap columns, sort, swap columns)
+    infector_events = [[j[1], j[0]] for j in sorted([[i[1], i[0]] for i in infector_events])]
+
+    return infectee_events, infector_events
+
+
 def generate_human_centric_plots(debug_data, humans_events, output_folder):
     human_backups = debug_data['human_backups']
     timestamps = sorted(list(human_backups.keys()))
@@ -424,6 +453,7 @@ def generate_human_centric_plots(debug_data, humans_events, output_folder):
             contamination_encounters, \
             e_timestamps = get_events_history(humans_events[h_key], nb_humans, timestamps, begin, end)
         states, s_timestamps = get_states_history(h_backup, timestamps, begin, end)
+        infectee_events, infector_events = get_infection_history(humans_events, h_key)
 
         fig = plt.figure(constrained_layout=True)
 
@@ -486,10 +516,23 @@ def generate_human_centric_plots(debug_data, humans_events, output_folder):
             ["E/M/S/W mins",
              str([human.avg_exercise_time, human.avg_misc_time,
                   human.avg_shopping_time, human.avg_working_minutes])],
+            ["infected by:", "\n".join(", ".join([str(i) for i in e]) for e in infectee_events)],
         ]
-        table = plt.table(cellText=table_data, loc='center')
-        table.set_fontsize(18)
-        table.scale(1, 1.7)
+
+        if len(infector_events) == 1:
+            table_data.append(["has infected:", ""])
+        else:
+            for idx, e in enumerate(infector_events):
+                if idx == 0:
+                    table_data.append(["has infected:", ", ".join([str(i) for i in e])])
+                else:
+                    table_data.append(["", ", ".join([str(i) for i in e])])
+
+        table = plt.table(cellText=table_data, loc='center', colWidths=[0.33, 0.67])
+        #table.auto_set_font_size(False)
+        #table.set_fontsize(8)
+        table.scale(1, 1.2)
+        set_pad_for_table(table, pad=0.05)
         plt.axis('off')
 
         fig.set_size_inches(15, 10)
