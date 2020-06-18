@@ -89,7 +89,8 @@ def add_keywords_to_spreadsheet():
                         elif 'scale' in name or 'std' in name:
                             stat = 'standard deviation'
                         elif 'median' in name:
-                            stat = median
+                            raise NotImplementedError
+                            # stat = median
                         else:
                             stat = ''
 
@@ -142,4 +143,4 @@ def update_comments_in_src(src_path='src', spreadsheet_path=''):
         if edits_required:
             shutil.move(src=tmp_filename, dst=filename)
         print (str(num_updated_file) + 'edits made to '+ filename)
-    print (str(num_updated_total) + 'edits made in total.'
+    print (str(num_updated_total) + 'edits made in total.')
