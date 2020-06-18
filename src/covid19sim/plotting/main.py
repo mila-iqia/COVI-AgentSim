@@ -154,11 +154,6 @@ def main(conf):
     print("Done.")
     summarize_configs(all_paths)
     data = map_conf_to_models(all_paths, conf)
-    len([run for compare in data.values() for run in compare.values])
-
-    import pdb
-
-    pdb.set_trace()
 
     for plot in plots:
         func = all_plots[plot].run
