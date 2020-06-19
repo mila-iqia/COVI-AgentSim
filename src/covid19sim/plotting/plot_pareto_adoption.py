@@ -55,8 +55,14 @@ def get_proxy_r(data):
 
 
 def get_fq_r(filename, normalized=False):
-    data = pickle.load(open(filename, "rb"))
-
+    try:
+        data = pickle.load(open(filename, "rb"))
+    except TypeError as e:
+        print(
+            "Could not load file {}.".format(filename)
+            + " Remember Python 3.7 cannot read 3.8 pickles and vice versa:\n"
+            + e
+        )
     f3, f2, f1, f1_up, f2_up = get_all_false(data=data, normalized=normalized)
     x = [i[-5:].mean() for i in [f3, f2, f1, f1_up, f2_up]]
 
