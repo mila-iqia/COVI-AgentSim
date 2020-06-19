@@ -1,5 +1,7 @@
 """
 Implements human behavior/government policy changes.
+
+
 """
 import datetime
 import typing
@@ -11,7 +13,7 @@ import numpy as np
 from covid19sim.constants import BIG_NUMBER
 
 if typing.TYPE_CHECKING:
-    from covid19sim.simulator import Human
+    from covid19sim.human import Human
     from covid19sim.base import PersonalMailboxType
 
 
@@ -340,14 +342,14 @@ def _get_tracing_recommendations(level):
     if level == 1:
         return [WashHands(), StandApart(default_distance=75), WearMask()]
     if level == 2:
-        return [WashHands(), SocialDistancing(default_distance=100), WearMask(), 'monitor_symptoms']
+        return [WashHands(), SocialDistancing(default_distance=100), WearMask()]
 
-    return [WashHands(), SocialDistancing(default_distance=150), WearMask(), 'monitor_symptoms', GetTested("recommendations"), Quarantine()]
+    return [WashHands(), SocialDistancing(default_distance=150), WearMask(), GetTested("recommendations"), Quarantine()]
 
 
 class BundledInterventions(BehaviorInterventions):
     """
-    Implements bunch of recommendations for general awareness.
+    Used for tuning the "strength" of parameters associated with interventions.
     At the start of this intervention, everyone is initialized with these interventions.
     DROPOUT might affect their ability to follow.
     """
@@ -428,9 +430,7 @@ class RiskBasedRecommendations(BehaviorInterventions):
         return _get_tracing_recommendations(intervention_level)
 
     def revert_behavior(self, human):
-        for rec in human.recommendations_to_follow:
-            rec.revert_behavior(human)
-        human.recommendations_to_follow = OrderedSet()
+        raise "NotImplemented"
 
 class GetTested(BehaviorInterventions):
     """
@@ -920,13 +920,3 @@ def get_intervention(conf):
         return BundledInterventions(conf["BUNDLED_INTERVENTION_RECOMMENDATION_LEVEL"])
     else:
         raise
-
-
-def modify_behavior(intervention: BehaviorInterventions,
-                    human: "Human",
-                    recommendations: list):
-    intervention.revert_behavior(human)
-    for rec in recommendations:
-        if isinstance(rec, BehaviorInterventions) and human.follows_recommendations_today:
-            rec.modify_behavior(human)
-            human.recommendations_to_follow.add(rec)

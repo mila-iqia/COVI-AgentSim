@@ -16,7 +16,7 @@ from covid19sim.base import City, Env
 from covid19sim.constants import SECONDS_PER_DAY, SECONDS_PER_HOUR
 from covid19sim.models.run import DummyMemManager
 from covid19sim.monitors import EventMonitor, SEIRMonitor, TimeMonitor
-from covid19sim.simulator import Human
+from covid19sim.human import Human
 from covid19sim.utils import (dump_conf, dump_tracker_data,
                               extract_tracker_data, parse_configuration,
                               zip_outdir)

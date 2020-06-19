@@ -12,7 +12,7 @@ import pylab as pl
 from matplotlib import pyplot as plt
 
 from covid19sim.base import City
-from covid19sim.simulator import Human
+from covid19sim.human import Human
 from covid19sim.utils import _json_serialize
 from covid19sim.constants import SECONDS_PER_HOUR
 

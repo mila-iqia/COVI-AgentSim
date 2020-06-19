@@ -6,7 +6,7 @@ import typing
 import numpy as np
 
 if typing.TYPE_CHECKING:
-    from covid19sim.simulator import Human
+    from covid19sim.human import Human
     from covid19sim.interventions import Tracing
 
 TimestampType = datetime.datetime

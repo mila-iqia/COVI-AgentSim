@@ -20,7 +20,7 @@ from covid19sim.frozen.message_utils import UIDType, UpdateMessage, combine_upda
     RealUserIDType
 
 if typing.TYPE_CHECKING:
-    from covid19sim.simulator import Human
+    from covid19sim.human import Human
 
 PersonalMailboxType = typing.Dict[UIDType, typing.List[UpdateMessage]]
 SimulatorMailboxType = typing.Dict[RealUserIDType, PersonalMailboxType]
@@ -816,7 +816,7 @@ class City:
 
             for human in alive_humans:
                 recommendations = self.intervention.get_recommendations(human)
-                modify_behavior(self.intervention, human, recommendations)
+                human.apply_intervention(recommendations)
 
             yield self.env.timeout(int(duration))
 
@@ -1034,7 +1034,7 @@ class Location(simpy.Resource):
         Adds a human instance to the OrderedSet of humans at the location.
 
         Args:
-            human (covid19sim.simulator.Human): The human to add.
+            human (covid19sim.human.Human): The human to add.
         """
         self.humans.add(human)
 
@@ -1049,7 +1049,7 @@ class Location(simpy.Resource):
         /!\ Human is not returned
 
         Args:
-            human (covid19sim.simulator.Human): The human to remove
+            human (covid19sim.human.Human): The human to remove
         """
         if human in self.humans:
             if human.is_infectious:
@@ -1207,7 +1207,7 @@ class Hospital(Location):
         is set to True
 
         Args:
-            human (covid19sim.simulator.Human): human to add
+            human (covid19sim.human.Human): human to add
         """
         human.obs_hospitalized = True
         super().add_human(human)
@@ -1219,7 +1219,7 @@ class Hospital(Location):
         set to False
 
         Args:
-            human (covid19sim.simulator.Human): human to remove
+            human (covid19sim.human.Human): human to remove
         """
         human.obs_hospitalized = False
         super().remove_human(human)
@@ -1244,7 +1244,7 @@ class ICU(Location):
         obs_in_icu attributes are set to True
 
         Args:
-            human (covid19sim.simulator.Human): human to add
+            human (covid19sim.human.Human): human to add
         """
         human.obs_hospitalized = True
         human.obs_in_icu = True
@@ -1257,7 +1257,7 @@ class ICU(Location):
         obs_in_icu attributes are set to False
 
         Args:
-            human (covid19sim.simulator.Human): human to remove
+            human (covid19sim.human.Human): human to remove
         """
         human.obs_hospitalized = False
         human.obs_in_icu = False
@@ -1310,8 +1310,8 @@ class Event:
 
         Args:
             COLLECT_LOGS (bool): Log the event in a file if True
-            human1 (covid19sim.simulator.Human): One of the encounter's 2 humans
-            human2 (covid19sim.simulator.Human): One of the encounter's 2 humans
+            human1 (covid19sim.human.Human): One of the encounter's 2 humans
+            human2 (covid19sim.human.Human): One of the encounter's 2 humans
             location (covid19sim.base.Location): Where the encounter happened
             duration (int): duration of encounter
             distance (float): distance between people (TODO: meters? cm?)
@@ -1424,8 +1424,8 @@ class Event:
 
         Args:
             COLLECT_LOGS (bool): Log the event in a file if True
-            human1 (covid19sim.simulator.Human): One of the encounter's 2 humans
-            human2 (covid19sim.simulator.Human): One of the encounter's 2 humans
+            human1 (covid19sim.human.Human): One of the encounter's 2 humans
+            human2 (covid19sim.human.Human): One of the encounter's 2 humans
             location (covid19sim.base.Location): Where the encounter happened
             duration (int): duration of encounter
             distance (float): distance between people (TODO: meters? cm?)
@@ -1523,7 +1523,7 @@ class Event:
 
         Args:
             COLLECT_LOGS ([type]): [description]
-            human (covid19sim.simulator.Human): Human whose test should be logged
+            human (covid19sim.human.Human): Human whose test should be logged
             time (datetime.datetime): Event's time
         """
         if COLLECT_LOGS:
@@ -1557,7 +1557,7 @@ class Event:
 
         Args:
             COLLECT_LOGS ([type]): [description]
-            human (covid19sim.simulator.Human): Human who's health should be logged
+            human (covid19sim.human.Human): Human who's health should be logged
             time (datetime.datetime): Event time
         """
         if COLLECT_LOGS:

@@ -12,7 +12,7 @@ import warnings
 from collections import defaultdict
 from orderedset import OrderedSet
 
-from covid19sim.interventions import Tracing, modify_behavior
+from covid19sim.interventions import Tracing, BehaviorInterventions
 from covid19sim.utils import compute_distance, proba_to_risk_fn
 from covid19sim.base import Event, PersonalMailboxType, Hospital, ICU
 from collections import deque
@@ -24,62 +24,6 @@ from covid19sim.utils import _normalize_scores, _get_random_sex, _get_covid_prog
     get_p_infection
 from covid19sim.constants import SECONDS_PER_MINUTE, SECONDS_PER_HOUR, SECONDS_PER_DAY
 from covid19sim.frozen.message_utils import ContactBook, exchange_encounter_messages, RealUserIDType
-
-
-class Visits(object):
-    """
-    [summary]
-    """
-
-    def __init__(self):
-        """
-        [summary]
-        """
-        self.parks = defaultdict(int)
-        self.stores = defaultdict(int)
-        self.hospitals = defaultdict(int)
-        self.miscs = defaultdict(int)
-
-    @property
-    def n_parks(self):
-        """
-        [summary]
-
-        Returns:
-            [type]: [description]
-        """
-        return len(self.parks)
-
-    @property
-    def n_stores(self):
-        """
-        [summary]
-
-        Returns:
-            [type]: [description]
-        """
-        return len(self.stores)
-
-    @property
-    def n_hospitals(self):
-        """
-        [summary]
-
-        Returns:
-            [type]: [description]
-        """
-        return len(self.hospitals)
-
-    @property
-    def n_miscs(self):
-        """
-        [summary]
-
-        Returns:
-            [type]: [description]
-        """
-        return len(self.miscs)
-
 
 class Human(object):
     """
@@ -1378,8 +1322,21 @@ class Human(object):
                 self.tracing_method = intervention
             self.update_recommendations_level(intervention_start=True)
             recommendations = intervention.get_recommendations(self)
-            modify_behavior(intervention, self, recommendations)
+            self.apply_intervention(recommendations)
             self.notified = True
+
+    def apply_intervention(self, new_recommendations: list):
+        """ We provide a list of recommendations and a human, we revert the human's existing recommendations
+            and apply the new ones"""
+        for old_rec in self.recommendations_to_follow:
+            old_rec.revert_behavior(self)
+        self.recommendations_to_follow = OrderedSet()
+
+        for new_rec in new_recommendations:
+            assert isinstance(new_rec, BehaviorInterventions)
+            if self.follows_recommendations_today:
+                new_rec.modify_behavior(self)
+                self.recommendations_to_follow.add(new_rec)
 
     def run(self, city):
         """

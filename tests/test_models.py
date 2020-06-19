@@ -532,7 +532,7 @@ class HumanAsMessageTest(unittest.TestCase):
             self.ts_initial = 0
 
     def test_human_as_message(self):
-        from covid19sim.simulator import Human
+        from covid19sim.human import Human
         from covid19sim.models.run import make_human_as_message
 
         # Load the experimental configuration

@@ -10,8 +10,7 @@ import matplotlib.pyplot as plt
 
 import covid19sim
 from covid19sim.base import City, Env
-from covid19sim.constants import SECONDS_PER_DAY
-from covid19sim.simulator import Human
+from covid19sim.human import Human
 from covid19sim.utils import parse_configuration
 
 

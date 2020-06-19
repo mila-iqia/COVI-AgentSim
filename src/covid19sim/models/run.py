@@ -19,7 +19,7 @@ from covid19sim.frozen.message_utils import UpdateMessage
 from covid19sim.frozen.clustering.base import ClusterManagerBase
 
 if typing.TYPE_CHECKING:
-    from covid19sim.simulator import Human
+    from covid19sim.human import Human
     from covid19sim.base import SimulatorMailboxType, PersonalMailboxType
 
 

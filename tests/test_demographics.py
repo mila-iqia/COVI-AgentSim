@@ -7,7 +7,7 @@ import pytest
 
 from covid19sim import utils
 from covid19sim.base import Env, City
-from covid19sim.simulator import Human
+from covid19sim.human import Human
 from tests.utils import get_test_conf
 
 
