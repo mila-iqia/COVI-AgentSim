@@ -625,17 +625,22 @@ class ContactBook:
                 for encounter_idx, encounter_message in enumerate(encounter_messages):
                     assert encounter_message.risk_level is not None, \
                         "should have already initialized all encounters before updating...?"
-                    update_messages.append(
-                        create_update_message(
-                            encounter_message=encounter_message,
-                            new_risk_level=RiskLevelType(new_risk_level),
-                            current_time=current_timestamp,
-                            update_reason=update_reason,
+                    assert encounter_message.risk_level == old_risk_level or \
+                        encounter_message.risk_level == new_risk_level, \
+                        "encounter message risk mismatch (should have old level if already initialized " \
+                        "or new level if it was initialized just now, but nothing else)"
+                    if encounter_message.risk_level != new_risk_level:
+                        update_messages.append(
+                            create_update_message(
+                                encounter_message=encounter_message,
+                                new_risk_level=RiskLevelType(new_risk_level),
+                                current_time=current_timestamp,
+                                update_reason=update_reason,
+                            )
                         )
-                    )
-                    encounter_messages[encounter_idx] = create_updated_encounter_with_message(
-                        encounter_message, update_messages[-1],  # to keep track of applied updates internally...
-                    )
+                        encounter_messages[encounter_idx] = create_updated_encounter_with_message(
+                            encounter_message, update_messages[-1],  # to keep track of applied updates internally...
+                        )
         return update_messages
 
 
