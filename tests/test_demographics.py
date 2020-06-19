@@ -6,7 +6,7 @@ import pandas as pd
 import pytest
 
 from covid19sim import utils
-from covid19sim.base import Env, City
+from covid19sim.city import Env, City
 from covid19sim.human import Human
 from tests.utils import get_test_conf
 

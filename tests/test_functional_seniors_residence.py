@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 from tests.utils import get_test_conf
 
-from covid19sim.base import City, EmptyCity, Env
+from covid19sim.city import City, EmptyCity, Env
 from covid19sim.monitors import EventMonitor, SEIRMonitor, TimeMonitor
 from covid19sim.human import Human
 from covid19sim.constants import SECONDS_PER_DAY, SECONDS_PER_HOUR

@@ -14,7 +14,7 @@ from orderedset import OrderedSet
 
 from covid19sim.interventions import Tracing, BehaviorInterventions
 from covid19sim.utils import compute_distance, proba_to_risk_fn
-from covid19sim.base import Event, PersonalMailboxType, Hospital, ICU
+from covid19sim.city import Event, PersonalMailboxType, Hospital, ICU
 from collections import deque
 
 from covid19sim.utils import _normalize_scores, _get_random_sex, _get_covid_progression, \
@@ -24,6 +24,7 @@ from covid19sim.utils import _normalize_scores, _get_random_sex, _get_covid_prog
     get_p_infection
 from covid19sim.constants import SECONDS_PER_MINUTE, SECONDS_PER_HOUR, SECONDS_PER_DAY
 from covid19sim.frozen.message_utils import ContactBook, exchange_encounter_messages, RealUserIDType
+from covid19sim.visits import Visits
 
 class Human(object):
     """
@@ -1135,13 +1136,6 @@ class Human(object):
                     if current_day_idx - day_offset in self.risk_history_map:
                         self.risk_history_map[current_day_idx - day_offset] = risk
                         # max(risk, self.risk_history_map[current_day_idx - day_offset])
-
-            if self.all_reported_symptoms and self.tracing_method.propagate_symptoms:
-                target_symptoms = ["severe", "trouble_breathing"]
-                if any([s in target_symptoms for s in self.symptoms]) and not self.has_logged_symptoms:
-                    assert self.tracing_method.risk_model != "transformer"
-                    self.risk_history_map[current_day_idx] = max(0.8, self.risk_history_map[current_day_idx])
-                    self.has_logged_symptoms = True  # FIXME: this is never turned back off? but we can get reinfected?
 
     def apply_transformer_risk_updates(
             self,

@@ -11,7 +11,7 @@ from tempfile import TemporaryDirectory
 import numpy as np
 
 
-from covid19sim.base import Event
+from covid19sim.city import Event
 from covid19sim.run import simulate
 from covid19sim.utils import extract_tracker_data
 from tests.utils import get_test_conf

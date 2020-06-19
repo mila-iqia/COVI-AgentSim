@@ -20,7 +20,7 @@ from covid19sim.frozen.clustering.base import ClusterManagerBase
 
 if typing.TYPE_CHECKING:
     from covid19sim.human import Human
-    from covid19sim.base import SimulatorMailboxType, PersonalMailboxType
+    from covid19sim.city import SimulatorMailboxType, PersonalMailboxType
 
 
 def make_human_as_message(

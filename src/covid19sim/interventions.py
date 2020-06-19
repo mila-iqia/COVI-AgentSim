@@ -14,7 +14,7 @@ from covid19sim.constants import BIG_NUMBER
 
 if typing.TYPE_CHECKING:
     from covid19sim.human import Human
-    from covid19sim.base import PersonalMailboxType
+    from covid19sim.city import PersonalMailboxType
 
 
 class BehaviorInterventions(object):

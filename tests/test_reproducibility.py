@@ -8,7 +8,7 @@ from tempfile import TemporaryDirectory
 
 from tests.utils import get_test_conf
 
-from covid19sim.base import Event
+from covid19sim.city import Event
 from covid19sim.run import simulate
 
 TEST_CONF_NAME = "naive_local.yaml"

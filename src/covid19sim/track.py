@@ -634,6 +634,7 @@ class Tracker(object):
             self.infection_graph.add_edge(-1, to_human.name,  timedelta="")
 
     def track_update_messages(self, from_human, to_human, payload):
+        """ Track which update messages are sent and when (used for plotting) """
         if self.infection_graph.has_edge(from_human.name, to_human.name):
             reason = payload['reason']
             assert reason in ['unknown', 'contact'], "improper reason for sending a message"
