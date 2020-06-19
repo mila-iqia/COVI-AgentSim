@@ -10,8 +10,6 @@ from tests.utils import get_test_conf
 
 from covid19sim.city import Event
 from covid19sim.run import simulate
-from covid19sim.server_utils import InferenceClient
-from covid19sim.models.run import DummyMemManager
 
 TEST_CONF_NAME = "test_models.yaml"
 

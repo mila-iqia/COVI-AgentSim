@@ -1,9 +1,8 @@
-import multiprocessing
 import time
 import unittest.mock
 
-import covid19sim.server_utils
-import covid19sim.server_bootstrap
+import covid19sim.models.server_utils
+import covid19sim.models.server_bootstrap
 
 
 class ServerTests(unittest.TestCase):
@@ -15,8 +14,8 @@ class ServerTests(unittest.TestCase):
     @staticmethod
     def start_server():
         with unittest.mock.patch("covid19sim.server_utils.proc_human_batch") as mock:
-            broker = covid19sim.server_utils.InferenceBroker(
-                model_exp_path=covid19sim.server_bootstrap.default_model_exp_path,
+            broker = covid19sim.models.server_utils.InferenceBroker(
+                model_exp_path=covid19sim.models.server_bootstrap.default_model_exp_path,
                 workers=2,
                 verbose=True,
                 verbose_print_delay=5,
@@ -28,7 +27,7 @@ class ServerTests(unittest.TestCase):
     def start_client():
         # make sure the server is up & running, and we're not throwing stuff against a dead handle
         time.sleep(6)
-        remote_engine = covid19sim.server_utils.InferenceClient()
+        remote_engine = covid19sim.models.server_utils.InferenceClient()
         for test_idx in range(100):
             remote_output = remote_engine.infer(test_idx)
             assert remote_output == test_idx

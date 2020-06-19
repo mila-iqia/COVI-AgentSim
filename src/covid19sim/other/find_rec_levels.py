@@ -253,7 +253,7 @@ if __name__ == "__main__":
                                       HOW TO USE
 
     Data:
-        This script expects pickled data that was output by ~ `python run.py ... tune=True`,
+        This script expects pickled data that was output by ~ `python heavy_jobs.py ... tune=True`,
         meaning the city.tracker's data parsed by covid19sim.utils.extract_tracker_data
 
     Usage:

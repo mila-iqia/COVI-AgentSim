@@ -156,7 +156,7 @@ def generate_single(args, source, target):
 
     logging.info('New configuration file saved: `{0}`'.format(output_path))
     logging.info(f'To run the experiment with the new mobility:\n\tpython '
-                 f'src/covid19sim/run.py {args.config_folder}={output_config_name}')
+                 f'src/covid19sim/heavy_jobs.py {args.config_folder}={output_config_name}')
 
     return output_config_name
 

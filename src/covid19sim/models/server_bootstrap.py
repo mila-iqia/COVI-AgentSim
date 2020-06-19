@@ -17,7 +17,7 @@ import functools
 import signal
 import sys
 
-import covid19sim.server_utils
+import covid19sim.models.server_utils
 
 default_workers = 6
 # RADIANT-RESONANCE-561
@@ -84,15 +84,15 @@ def main(args=None):
         else:
             frontend_address = args.frontend
     else:
-        frontend_address = covid19sim.server_utils.default_frontend_ipc_address
+        frontend_address = covid19sim.models.server_utils.default_frontend_ipc_address
     if args.backend is not None:
         if isinstance(args.backend, int):
             backend_address = f"tcp://*:{args.backend}"
         else:
             backend_address = args.backend
     else:
-        backend_address = covid19sim.server_utils.default_backend_ipc_address
-    broker = covid19sim.server_utils.InferenceBroker(
+        backend_address = covid19sim.models.server_utils.default_backend_ipc_address
+    broker = covid19sim.models.server_utils.InferenceBroker(
         model_exp_path=args.exp_path,
         workers=args.workers,
         frontend_address=frontend_address,

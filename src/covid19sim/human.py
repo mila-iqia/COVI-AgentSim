@@ -12,7 +12,8 @@ import warnings
 from collections import defaultdict
 from orderedset import OrderedSet
 
-from covid19sim.interventions import Tracing, BehaviorInterventions
+from covid19sim.interventions import BehaviorInterventions
+from covid19sim.tracing import Tracing
 from covid19sim.utils import compute_distance, proba_to_risk_fn
 from covid19sim.city import Event, PersonalMailboxType, Hospital, ICU
 from collections import deque
@@ -31,7 +32,7 @@ class Human(object):
     [summary]
     """
 
-    def __init__(self, env, city, name, age, rng, has_app, infection_timestamp, household, workplace, profession, rho=0.3, gamma=0.21, symptoms=[], test_results=None, conf={}):
+    def __init__(self, env, city, name, age, rng, has_app, infection_timestamp, household, workplace, profession, rho=0.3, gamma=0.21, conf={}):
         """
         [summary]
 
@@ -47,8 +48,6 @@ class Human(object):
             profession ([type]): [description]
             rho (float, optional): [description]. Defaults to 0.3.
             gamma (float, optional): [description]. Defaults to 0.21.
-            symptoms (list, optional): [description]. Defaults to [].
-            test_results ([type], optional): [description]. Defaults to None.
             conf (dict): yaml experiment configuration
         """
         self.conf = conf
@@ -1128,14 +1127,17 @@ class Human(object):
         # baseline risk might be updated by methods below (if enabled)
         self.risk_history_map[current_day_idx] = self.baseline_risk
 
-        if self.tracing_method is not None and not self.is_dead:
-            if isinstance(self.tracing_method, Tracing) and self.tracing_method.risk_model != "transformer":
-                # if not running transformer, we're using basic tracing --- do it now, it won't be batched later
-                risks = self.tracing_method.compute_risk(self, personal_mailbox, self.city.hd)
-                for day_offset, risk in enumerate(risks):
-                    if current_day_idx - day_offset in self.risk_history_map:
-                        self.risk_history_map[current_day_idx - day_offset] = risk
-                        # max(risk, self.risk_history_map[current_day_idx - day_offset])
+        # if you're dead, not tracing, or using the transformer you don't need to update your risk here
+        if self.is_dead or\
+                not isinstance(self.tracing_method, Tracing) or\
+                self.tracing_method.risk_model == "transformer":
+            return
+
+        # All tracing methods that are _not ML_ (heuristic, bdt1, bdt2, etc) will compute new risks here
+        risks = self.tracing_method.compute_risk(self, personal_mailbox, self.city.hd)
+        for day_offset, risk in enumerate(risks):
+            if current_day_idx - day_offset in self.risk_history_map:
+                self.risk_history_map[current_day_idx - day_offset] = risk
 
     def apply_transformer_risk_updates(
             self,
