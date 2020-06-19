@@ -533,7 +533,7 @@ def printlines():
     print("=" * 80)
 
 
-@hydra.main(config_path="hydra-configs/search/config.yaml", strict=False)
+@hydra.main(config_path="../hydra-configs/search/config.yaml", strict=False)
 def main(conf: DictConfig) -> None:
 
     """
@@ -544,7 +544,7 @@ def main(conf: DictConfig) -> None:
     add `dev=True` to just see the commands that would be run, without
     running them
 
-    NOTE: ALL parameters used in heavy_jobs.py may be overridden from this commandline.
+    NOTE: ALL parameters used in run.py may be overridden from this commandline.
     For instance you can change init_percent_sick
 
     $ python random_search.py exp_file=experiment n_search=20 init_percent_sick=0.1
@@ -558,7 +558,7 @@ def main(conf: DictConfig) -> None:
 
     """
 
-    # These will be filtered out when passing arguments to heavy_jobs.py
+    # These will be filtered out when passing arguments to run.py
     RANDOM_SEARCH_SPECIFIC_PARAMS = {
         "n_search",  # number of random iterations
         "n_runs_per_search",  # number of random iterations
@@ -722,7 +722,7 @@ def main(conf: DictConfig) -> None:
 
             # echo commandlines run in job
             if not dev:
-                job_str += f"\necho 'python heavy_jobs.py {hydra_args}'\n"
+                job_str += f"\necho 'python run.py {hydra_args}'\n"
 
             command_suffix = "&\nsleep 5;\n" if parallel_search else ";\n"
             # intel doesn't have a log file so let's make one
@@ -735,7 +735,7 @@ def main(conf: DictConfig) -> None:
                 command_suffix = f" &> {str(job_out)} {command_suffix}"
 
             # append run command
-            job_str += "\n{}{}".format("python heavy_jobs.py" + hydra_args, command_suffix)
+            job_str += "\n{}{}".format("python run.py" + hydra_args, command_suffix)
             run_idx += 1
             # sample next params
 

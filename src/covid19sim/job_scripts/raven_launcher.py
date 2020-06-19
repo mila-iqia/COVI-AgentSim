@@ -27,11 +27,11 @@ def main(args=None):
     with open(args.file, "r") as f:
         lines = f.readlines()
     for line in lines:
-        if not line.startswith("python heavy_jobs.py"):
+        if not line.startswith("python run.py"):
             continue
         components = shlex.split(line)[2:]
         components[-1] = components[-1].replace(";", "")
-        raven_job = RavenJob().set_script_path("heavy_jobs.py").set_script_args(components)
+        raven_job = RavenJob().set_script_path("run.py").set_script_args(components)
         if args.disarm:
             print(raven_job.build_submission(write=False))
             print("-------------------------------------")

@@ -1,17 +1,12 @@
 import datetime
-import math
 
 import numpy as np
-import pandas as pd
-import pytest
 
-from covid19sim import utils
-from covid19sim.city import Env, City
+from covid19sim.env import Env
 from covid19sim.human import Human
-from covid19sim.track import Tracker
+from covid19sim.logging.track import Tracker
 from tests.utils import get_test_conf
-
-from covid19sim.city import City, EmptyCity, Env
+from covid19sim.city import EmptyCity
 import tempfile
 
 def test_track_serial_interval():
