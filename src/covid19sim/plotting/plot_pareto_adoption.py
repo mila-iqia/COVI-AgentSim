@@ -55,14 +55,8 @@ def get_proxy_r(data):
 
 
 def get_fq_r(filename, normalized=False):
-    try:
-        data = pickle.load(open(filename, "rb"))
-    except TypeError as e:
-        print(
-            "Could not load file {}.".format(filename)
-            + " Remember Python 3.7 cannot read 3.8 pickles and vice versa:\n"
-            + e
-        )
+    data = pickle.load(open(filename, "rb"))
+
     f3, f2, f1, f1_up, f2_up = get_all_false(data=data, normalized=normalized)
     x = [i[-5:].mean() for i in [f3, f2, f1, f1_up, f2_up]]
 
@@ -139,9 +133,16 @@ def get_all(filename_types, labels, normalized=False):
     _rows = []
     for i, filenames in enumerate(filename_types):
         print(labels[i], len(filenames))
-        metrics = get_mean_fq_r(filenames, normalized=normalized)
-        for key, val in metrics.items():
-            _rows.append([labels[i], key] + val)
+        try:
+            metrics = get_mean_fq_r(filenames, normalized=normalized)
+            for key, val in metrics.items():
+                _rows.append([labels[i], key] + val)
+        except TypeError as e:
+            print(
+                "Could not load files \n{}".format("\n".join(filenames))
+                + "\nRemember Python 3.7 cannot read 3.8 pickles and vice versa:\n"
+                + e
+            )
     return _rows
 
 
@@ -255,7 +256,6 @@ def run(data, compare):
         compare (str): the key used to compare runs, like APP_UPTAKE
     """
 
-    rows = []
     filenames = []
     labels = []
     filenames_norm = []
@@ -269,8 +269,15 @@ def run(data, compare):
                 filenames.append([r["pkl"] for r in data[method][key].values()])
                 labels.append(f"{method}_{key}")
 
-    rows += get_all(filenames, labels, normalized=False)
-    rows += get_all(filenames_norm, labels_norm, normalized=True)
+    rows = get_all(filenames, labels, normalized=False)
+    lrows = set([r[0] for r in rows])
+    labels = [label for label in labels if label in lrows]
+
+    rows_norm = get_all(filenames_norm, labels_norm, normalized=True)
+    lrows_norm = set([r[0] for r in rows_norm])
+    labels_norm = [label for label in labels_norm if label in lrows_norm]
+
+    rows = rows + rows_norm
 
     n_seeds = len(list(data.values)[0])
     df = pd.DataFrame(rows, columns=["type", "metric"] + list(range(len(n_seeds))))
