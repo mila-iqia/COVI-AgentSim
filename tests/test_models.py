@@ -74,6 +74,8 @@ class MakeHumanAsMessageProxy:
                 trimmed_human[k] = human.infection_timestamp
             elif k == 'update_messages':
                 trimmed_human[k] = personal_mailbox
+            elif k == 'test_results':
+                trimmed_human[k] = human.test_results
             else:
                 trimmed_human[k] = human.__dict__[k]
         return pickle.loads(pickle.dumps(trimmed_human))
@@ -545,6 +547,8 @@ class HumanAsMessageTest(unittest.TestCase):
                 self.assertIn(f'_{k}', human.__dict__)
             elif k == "infectiousnesses":  # everything works except that one, it's a property
                 self.assertEqual(len(human.infectiousnesses), dummy_conf["TRACING_N_DAYS_HISTORY"])
+            elif k == 'test_results':
+                self.assertTrue(hasattr(human, k))
             else:
                 self.assertIn(k, human.__dict__)
 
