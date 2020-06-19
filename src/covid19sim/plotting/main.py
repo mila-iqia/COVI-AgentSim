@@ -6,7 +6,7 @@ import math
 from collections import defaultdict
 
 import covid19sim.plotting.plot_pareto_adoption as pareto_adoption
-from covid19sim.plotting.utils.extract_data import get_all_paths
+from covid19sim.plotting.utils.extract_data import get_all_data
 
 print("Ok.")
 HYDRA_CONF_PATH = Path(__file__).parent.parent / "hydra-configs" / "plot"
@@ -152,10 +152,10 @@ def main(conf):
     assert path.exists()
 
     print("Reading configs from {}...".format(str(path)), end="", flush=True)
-    all_paths = get_all_paths(path)
+    all_data = get_all_data(path)
     print("Done.")
-    summarize_configs(all_paths)
-    data = map_conf_to_models(all_paths, conf)
+    summarize_configs(all_data)
+    data = map_conf_to_models(all_data, conf)
     check_data(data)
 
     for plot in plots:

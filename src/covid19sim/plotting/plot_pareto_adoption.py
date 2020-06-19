@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from matplotlib.lines import Line2D
-import matplotlib.colors as mcolors
 from scipy import stats as sps
 
 from covid19sim.plotting.utils.extract_data import (
@@ -54,8 +53,10 @@ def get_proxy_r(data):
     return sum(data["cases_per_day"][5:]) / total_infected
 
 
-def get_fq_r(filename, normalized=False):
-    data = pickle.load(open(filename, "rb"))
+def get_fq_r(filename=None, data=None, normalized=False):
+    assert filename is not None or data is not None
+    if data is None:
+        data = pickle.load(open(filename, "rb"))
 
     f3, f2, f1, f1_up, f2_up = get_all_false(data=data, normalized=normalized)
     x = [i[-5:].mean() for i in [f3, f2, f1, f1_up, f2_up]]
@@ -76,8 +77,15 @@ def get_fq_r(filename, normalized=False):
     return x, y, z, a, od, ec
 
 
-def get_mean_fq_r(filenames, normalized=False):
-    _tmp = sorted(filenames, key=lambda x: int(x.split("/")[-1].split("_")[5]))
+def get_mean_fq_r(filenames=None, pkls=None, normalized=False):
+    assert filenames is not None or pkls is not None
+    if pkls is not None:
+        _tmp = [(None, pkl) for pkl in pkls]
+    elif filenames is not None:
+        _tmp = [(filename, None) for filename in filenames]
+    else:
+        raise ValueError("filenames and pkls are None")
+
     metrics = {
         "f3": [],
         "f2": [],
@@ -90,8 +98,10 @@ def get_mean_fq_r(filenames, normalized=False):
         "outside_daily_contacts": [],
         "effective_contacts": [],
     }
-    for filename in _tmp:
-        x, y, z, a, od, ec = get_fq_r(filename, normalized=normalized)
+    for filename, pkl in _tmp:
+        x, y, z, a, od, ec = get_fq_r(
+            filename=filename, data=pkl, normalized=normalized
+        )
         metrics["f3"].append(x[0])
         metrics["f2"].append(x[1])
         metrics["f1"].append(x[2])
@@ -129,20 +139,20 @@ def get_effective_R(data):
     return np.mean(rt[-5:])
 
 
-def get_all(filename_types, labels, normalized=False):
+def get_all(filename_types=None, pkl_types=None, labels=[], normalized=False):
+    if pkl_types is not None:
+        tmp = [(None, pkls) for pkls in pkl_types]
+    elif filename_types is not None:
+        tmp = [(filenames, None) for filenames in filename_types]
+    else:
+        raise ValueError("filename_types and pkl_types are None")
+
     _rows = []
-    for i, filenames in enumerate(filename_types):
-        print(labels[i], len(filenames))
-        try:
-            metrics = get_mean_fq_r(filenames, normalized=normalized)
-            for key, val in metrics.items():
-                _rows.append([labels[i], key] + val)
-        except TypeError as e:
-            print(
-                "Could not load files \n{}".format("\n".join(filenames))
-                + "\nRemember Python 3.7 cannot read 3.8 pickles and vice versa:\n"
-                + e
-            )
+    for i, (filenames, pkls) in enumerate(tmp):
+        print(labels[i], len(filenames) if filenames is not None else len(pkls))
+        metrics = get_mean_fq_r(filenames=filenames, pkls=pkls, normalized=normalized)
+        for key, val in metrics.items():
+            _rows.append([labels[i], key] + val)
     return _rows
 
 
@@ -237,17 +247,17 @@ def run(data, compare):
     data:
       bdt1:
         -1:
-          pkl: path/to/tracker.pkl
+          pkl: loaded_tracker.pkl
           conf: configuration_dict
         0.8415:
-          pkl: path/to/tracker.pkl
+          pkl: loaded_tracker.pkl
           conf: configuration_dict
       bdt2:
         -1:
-          pkl: path/to/tracker.pkl
+          pkl: loaded_tracker.pkl
           conf: configuration_dict
         0.8415:
-          pkl: path/to/tracker.pkl
+          pkl: loaded_tracker.pkl
           conf: configuration_dict
 
 
@@ -256,24 +266,24 @@ def run(data, compare):
         compare (str): the key used to compare runs, like APP_UPTAKE
     """
 
-    filenames = []
+    pkls = []
     labels = []
-    filenames_norm = []
+    pkls_norm = []
     labels_norm = []
     for method in data:
         for key in data[method]:
             if "_norm" in method:
-                filenames_norm.append([r["pkl"] for r in data[method][key].values()])
+                pkls_norm.append([r["pkl"] for r in data[method][key].values()])
                 labels_norm.append(f"{method}_{key}")
             else:
-                filenames.append([r["pkl"] for r in data[method][key].values()])
+                pkls.append([r["pkl"] for r in data[method][key].values()])
                 labels.append(f"{method}_{key}")
 
-    rows = get_all(filenames, labels, normalized=False)
+    rows = get_all(pkl_types=pkls, labels=labels, normalized=False)
     lrows = set([r[0] for r in rows])
     labels = [label for label in labels if label in lrows]
 
-    rows_norm = get_all(filenames_norm, labels_norm, normalized=True)
+    rows_norm = get_all(pkl_types=pkls_norm, labels=labels_norm, normalized=True)
     lrows_norm = set([r[0] for r in rows_norm])
     labels_norm = [label for label in labels_norm if label in lrows_norm]
 

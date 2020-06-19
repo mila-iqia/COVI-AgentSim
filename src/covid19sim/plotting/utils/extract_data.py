@@ -198,7 +198,7 @@ def absolute_file_paths(directory):
     return to_return
 
 
-def get_all_paths(base_path):
+def get_all_data(base_path):
     base_path = Path(base_path).resolve()
     assert base_path.exists()
     methods = [
@@ -213,7 +213,7 @@ def get_all_paths(base_path):
         + " (expecting <base_path_you_provided>/<method>/<run>/tracker*.pkl)"
     )
 
-    all_paths = {str(m): {} for m in methods}
+    all_data = {str(m): {} for m in methods}
     for m in methods:
         sm = str(m)
         runs = [
@@ -223,10 +223,21 @@ def get_all_paths(base_path):
             and not r.name.startswith(".")
             and len(list(r.glob("tracker*.pkl"))) == 1
         ]
-        for r in runs:
-            sr = str(r)
-            all_paths[sm][sr] = {}
-            with (r / "full_configuration.yaml").open("r") as f:
-                all_paths[sm][sr]["conf"] = yaml.safe_load(f)
-            all_paths[sm][sr]["pkl"] = str(list(r.glob("tracker*.pkl"))[0])
-    return all_paths
+        try:
+            for r in runs:
+                sr = str(r)
+                all_data[sm][sr] = {}
+                print("Loading {}/{}".format(m.name, r.name), end="\r", flush=True)
+                with (r / "full_configuration.yaml").open("r") as f:
+                    all_data[sm][sr]["conf"] = yaml.safe_load(f)
+                with open(str(list(r.glob("tracker*.pkl"))[0]), "rb") as f:
+                    all_data[sm][sr]["pkl"] = pickle.load(f)
+        except TypeError as e:
+            print(
+                "Could not load pkl in {}/{}".format(m.name, r.name)
+                + "\nRemember Python 3.7 cannot read 3.8 pickles and vice versa:\n"
+                + str(e)
+            )
+            print("Skimming method {}".format(m.name))
+            del all_data[sm]
+    return all_data
