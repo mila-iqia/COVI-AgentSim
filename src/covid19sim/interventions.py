@@ -570,6 +570,8 @@ class HeuristicRecommendations(RiskBasedRecommendations):
 
         no_symptoms_past_7_days = (not any(islice(human.rolling_all_reported_symptoms, (human.conf.get("TRACING_N_DAYS_HISTORY") // 2))))
         assert human.rec_level == getattr(human, '_heuristic_rec_level'), "rec level mismatch"
+        no_symptoms_past_7_days = (not any(islice(human.rolling_all_reported_symptoms,
+                                                    (human.conf.get("TRACING_N_DAYS_HISTORY") // 2))))
 
         if human.reported_test_result == "positive":
             # Update risk for the past 14 days (2 weeks)
