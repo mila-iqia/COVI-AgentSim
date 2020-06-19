@@ -13,12 +13,12 @@ from collections import defaultdict, Counter
 import simpy
 
 from covid19sim.utils import compute_distance, _get_random_area, relativefreq2absolutefreq, \
-    get_test_false_negative_rate, calculate_average_infectiousness, get_rec_level_transition_matrix
+    get_test_false_negative_rate, calculate_average_infectiousness
 from covid19sim.track import Tracker
 from covid19sim.tracing import Tracing
 from covid19sim.interventions import *
 from covid19sim.distributed_inference.message_utils import UIDType, UpdateMessage, RealUserIDType
-
+from covid19sim.distribution_normalization.dist_utils import get_rec_level_transition_matrix
 if typing.TYPE_CHECKING:
     from covid19sim.human import Human
 
