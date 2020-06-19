@@ -196,7 +196,7 @@ class Human(object):
         self._will_report_test_result = None
         self.time_to_test_result = None
         self.test_result_validated = None
-        self.test_results = deque()
+        self._test_results = deque()
         self.test_result_validated = None
         self._infection_timestamp = None
         self.infection_timestamp = infection_timestamp
@@ -990,6 +990,17 @@ class Human(object):
             return None
         return self.has_app and self._will_report_test_result
 
+    @property
+    def test_results(self):
+        test_results = []
+        for hidden_test_result, will_report, test_timestamp, test_delay in self._test_results:
+            test_results.append((
+                hidden_test_result if (self.has_app and will_report) else None,
+                test_timestamp,
+                test_delay
+            ))
+        return test_results
+
     def set_test_info(self, test_type, unobserved_result):
         """
         sets test related attributes such as
@@ -1013,8 +1024,9 @@ class Human(object):
             self.time_to_test_result = self.conf['TEST_TYPES'][test_type]['time_to_result']['out-patient']
         self.test_result_validated = self.test_type == "lab"
         Event.log_test(self.conf.get('COLLECT_LOGS'), self, self.test_time)
-        self.test_results.appendleft((
-            self.hidden_test_result if self.will_report_test_result else None,
+        self._test_results.appendleft((
+            self.hidden_test_result,
+            self._will_report_test_result,
             self.env.timestamp,  # for result availability checking later
             self.time_to_test_result,  # in days
         ))
@@ -1085,7 +1097,7 @@ class Human(object):
             if not should_get_test:
                 # Has symptoms that a careful person would fear to be covid
                 SUSPICIOUS_SYMPTOMS = set(self.conf['GET_TESTED_SYMPTOMS_CHECKED_BY_SELF'])
-                if set(self.symptoms) and SUSPICIOUS_SYMPTOMS:
+                if set(self.symptoms) & SUSPICIOUS_SYMPTOMS:
                     should_get_test = self.rng.rand() < self.carefulness
 
         if should_get_test:
