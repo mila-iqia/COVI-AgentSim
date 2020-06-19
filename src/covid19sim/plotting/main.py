@@ -33,10 +33,11 @@ def print_footer():
     print()
 
 
-def check_data(path, plots):
-    assert path.exists()
-    if "pareto_adoption" in plots:
-        pass
+def check_data(data):
+    # TODO check all pkls exist
+    # TODO check 1 pkl is loadable (3.7 vs 3.8)
+    # TODO check all methods have same seeds and same comparisons
+    pass
 
 
 def summarize_configs(all_paths):
@@ -148,14 +149,14 @@ def main(conf):
         plots = [plots]
 
     assert all(p in all_plots for p in plots)
-
-    check_data(path, plots)
+    assert path.exists()
 
     print("Reading configs from {}...".format(str(path)), end="", flush=True)
     all_paths = get_all_paths(path)
     print("Done.")
     summarize_configs(all_paths)
     data = map_conf_to_models(all_paths, conf)
+    check_data(data)
 
     for plot in plots:
         func = all_plots[plot].run
