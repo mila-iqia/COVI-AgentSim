@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
 from covid19sim.interventions import WashHands, WearMask
-from covid19sim.utils import get_p_infection
+from covid19sim.epidemiology.p_infection import get_p_infection
 from tests.utils import get_test_conf
 
 class DummyHuman:

@@ -7,7 +7,7 @@ import os
 sys.path.append(os.getcwd())
 import numpy as np
 from matplotlib import pyplot as plt
-from utils import _sample_viral_load_gamma, _sample_viral_load_piecewise
+from covid19sim.epidemiology.viral_load import _sample_viral_load_gamma, _sample_viral_load_piecewise
 
 VIRAL_LOAD_DIR_PATH = "output/viral_load"
 VIRAL_LOAD_PLOT_PATH = os.path.join(VIRAL_LOAD_DIR_PATH, "viral_load.png")

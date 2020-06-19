@@ -1,7 +1,8 @@
 import pytest
 import numpy as np
 
-from covid19sim.utils import lp_solve_wasserstein, lp_solution_to_transport_plan, get_rec_level_transition_matrix
+from covid19sim.distribution_normalization.dist_utils import lp_solve_wasserstein, lp_solution_to_transport_plan,\
+    get_rec_level_transition_matrix
 
 
 def test_lp_solve_wasserstein():

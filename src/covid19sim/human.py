@@ -18,10 +18,13 @@ from covid19sim.utils import compute_distance, proba_to_risk_fn
 from covid19sim.city import Event, PersonalMailboxType, Hospital, ICU
 from collections import deque
 
-from covid19sim.utils import _normalize_scores, _get_random_sex, _get_covid_progression, \
-    _get_preexisting_conditions, _draw_random_discreet_gaussian, _get_cold_progression, _get_flu_progression, _get_allergy_progression, _get_get_really_sick, \
-    filter_open, filter_queue_max, _get_inflammatory_disease_level, _get_disease_days,\
-    get_p_infection
+from covid19sim.utils import _normalize_scores, _draw_random_discreet_gaussian, filter_open, filter_queue_max
+from covid19sim.epidemiology.health_status import _get_get_really_sick, _get_inflammatory_disease_level,\
+    _get_preexisting_conditions, _get_random_sex
+from covid19sim.epidemiology.viral_load import _get_disease_days
+from covid19sim.epidemiology.symptoms import _get_covid_progression, _get_cold_progression, _get_flu_progression,\
+    _get_allergy_progression
+from covid19sim.epidemiology.p_infection import get_p_infection
 from covid19sim.constants import SECONDS_PER_MINUTE, SECONDS_PER_HOUR, SECONDS_PER_DAY
 from covid19sim.distributed_inference.message_utils import ContactBook, exchange_encounter_messages, RealUserIDType
 from covid19sim.visits import Visits
