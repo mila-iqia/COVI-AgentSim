@@ -1449,7 +1449,7 @@ class Human(object):
                     # print(f"{self} C:{self.has_cold} A:{self.has_allergy_symptoms} staying home because I feel {i_feel} {self.symptoms}")
 
             # happens when recovered
-            elif self.rest_at_home and self.how_am_I_feeling() == 1.0:
+            elif self.rest_at_home and self.how_am_I_feeling() == 1.0 and self.is_removed:
                 self.rest_at_home = False
                 # print(f"{self} C:{self.has_cold} A:{self.has_allergy_symptoms} going out because I recovered {self.symptoms}")
 
