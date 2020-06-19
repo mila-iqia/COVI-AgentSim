@@ -115,7 +115,8 @@ class RiskBasedRecommendations(BehaviorInterventions):
         return _get_tracing_recommendations(intervention_level)
 
     def revert_behavior(self, human):
-        raise Exception("NotImplemented")
+        # TODO: refactor this
+        raise Exception("This is never called")
 
 
 class Unmitigated(BehaviorInterventions):
@@ -348,9 +349,8 @@ class BinaryTracing(BehaviorInterventions):
         return _get_tracing_recommendations(intervention_level)
 
     def revert_behavior(self, human):
-        for rec in human.recommendations_to_follow:
-            rec.revert_behavior(human)
-        human.recommendations_to_follow = OrderedSet()
+        # TODO: refactor such that we can delete this function
+        raise Exception("This is never called")
 
 
 class WearMask(BehaviorInterventions):
