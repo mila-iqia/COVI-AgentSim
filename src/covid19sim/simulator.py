@@ -193,7 +193,7 @@ class Human(object):
         self.test_type = None
         self.test_time = None
         self.hidden_test_result = None
-        self.will_report_test_result = None
+        self._will_report_test_result = None
         self.time_to_test_result = None
         self.test_result_validated = None
         self.test_results = deque()
@@ -980,9 +980,15 @@ class Human(object):
         self.test_type = None
         self.test_time = None
         self.hidden_test_result = None
-        self.will_report_test_result = None
+        self._will_report_test_result = None
         self.time_to_test_result = None
         self.test_result_validated = None
+
+    @property
+    def will_report_test_result(self):
+        if self._will_report_test_result is None:
+            return None
+        return self.has_app and self._will_report_test_result
 
     def set_test_info(self, test_type, unobserved_result):
         """
@@ -1000,7 +1006,7 @@ class Human(object):
         self.test_type = test_type
         self.test_time = self.env.timestamp
         self.hidden_test_result = unobserved_result
-        self.will_report_test_result = self.has_app and self.rng.random() < self.carefulness
+        self._will_report_test_result = self.rng.random() < self.carefulness
         if isinstance(self.location, (Hospital, ICU)):
             self.time_to_test_result = self.conf['TEST_TYPES'][test_type]['time_to_result']['in-patient']
         else:
