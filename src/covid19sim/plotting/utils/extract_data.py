@@ -234,10 +234,10 @@ def get_all_data(base_path):
                     all_data[sm][sr]["pkl"] = pickle.load(f)
         except TypeError as e:
             print(
-                "Could not load pkl in {}/{}".format(m.name, r.name)
+                f"\nCould not load pkl in {m.name}/{r.name}"
                 + "\nRemember Python 3.7 cannot read 3.8 pickles and vice versa:\n"
-                + str(e)
+                + f"Error: {str(e)}"
             )
-            print("Skimming method {}".format(m.name))
+            print(">>> Skipping method **{}**\n".format(m.name))
             del all_data[sm]
     return all_data
