@@ -3,7 +3,7 @@ import datetime
 import numpy as np
 import typing
 
-from covid19sim.frozen.message_utils import EncounterMessage, GenericMessageType, UpdateMessage, \
+from covid19sim.distributed_inference.message_utils import EncounterMessage, GenericMessageType, UpdateMessage, \
     TimestampType, TimeOffsetType, RealUserIDType, RiskLevelType, TimestampDefault
 
 ClusterIDType = int
@@ -277,15 +277,15 @@ def get_cluster_manager_type(algo_name: str):
     assert algo_name in ["blind", "naive", "perfect", "simple", "gaen"], \
         f"invalid clustering algo name: {algo_name}"
     if algo_name == "blind":
-        import covid19sim.frozen.clustering.blind
-        return covid19sim.frozen.clustering.blind.BlindClusterManager
+        import covid19sim.distributed_inference.clustering.blind
+        return covid19sim.distributed_inference.clustering.blind.BlindClusterManager
     if algo_name == "naive":
         raise NotImplementedError("naive clustering algo deprecated since GAEN refactoring")
     if algo_name == "perfect":
-        import covid19sim.frozen.clustering.perfect
-        return covid19sim.frozen.clustering.perfect.PerfectClusterManager
+        import covid19sim.distributed_inference.clustering.perfect
+        return covid19sim.distributed_inference.clustering.perfect.PerfectClusterManager
     if algo_name == "simple":
         raise NotImplementedError("simple clustering algo deprecated since GAEN refactoring")
     if algo_name == "gaen":
-        import covid19sim.frozen.clustering.gaen
-        return covid19sim.frozen.clustering.gaen.GAENClusterManager
+        import covid19sim.distributed_inference.clustering.gaen
+        return covid19sim.distributed_inference.clustering.gaen.GAENClusterManager

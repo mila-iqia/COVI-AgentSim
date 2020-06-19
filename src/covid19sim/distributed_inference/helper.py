@@ -1,6 +1,6 @@
 import numpy as np
 
-from covid19sim.frozen.clustering.base import ClusterManagerBase
+from covid19sim.distributed_inference.clustering.base import ClusterManagerBase
 
 # NOTE: THIS MAP SHOULD ALWAYS MATCH THE NAME/IDS PROVIDED IN utils.py
 PREEXISTING_CONDITIONS_META = {

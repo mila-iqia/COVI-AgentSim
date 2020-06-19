@@ -8,9 +8,9 @@ import functools
 import typing
 from joblib import Parallel, delayed
 
-from covid19sim.models.server_utils import InferenceClient, InferenceEngineWrapper, proc_human_batch
-from covid19sim.frozen.clustering.base import ClusterManagerBase
-from covid19sim.models.human_as_message import make_human_as_message
+from covid19sim.distributed_inference.server_utils import InferenceClient, InferenceEngineWrapper, proc_human_batch
+from covid19sim.distributed_inference.clustering.base import ClusterManagerBase
+from covid19sim.distributed_inference.human_as_message import make_human_as_message
 if typing.TYPE_CHECKING:
     from covid19sim.human import Human
     from covid19sim.city import SimulatorMailboxType
@@ -58,7 +58,7 @@ def batch_run_timeslot_heavy_jobs(
             that is delegated to the caller (see the return values).
         time_slot: the current timeslot of the day (i.e. an integer that corresponds to the hour).
         conf: YAML configuration dictionary with all relevant settings for the simulation.
-        data_path: Root path where to save the 'daily outputs', i.e. the training data for ML models.
+        data_path: Root path where to save the 'daily outputs', i.e. the training data for ML distributed_inference.
         city_hash: a hash used to tag this city's humans on an inference server that may be used by
             multiple cities in parallel. Bad mojo will happen if two cities have the same hash...
     Returns:

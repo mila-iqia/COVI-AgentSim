@@ -1,6 +1,6 @@
 """Entrypoint that can be used to start many inference workers on a single node."""
 
-import covid19sim.models.server_bootstrap
+import covid19sim.distributed_inference.server_bootstrap
 
 
 def main(args=None):
@@ -13,7 +13,7 @@ def main(args=None):
     Returns:
         [type]: [description]
     """
-    return covid19sim.models.server_bootstrap.main(args)
+    return covid19sim.distributed_inference.server_bootstrap.main(args)
 
 
 if __name__ == "__main__":

@@ -4,7 +4,7 @@ import warnings
 
 from covid19sim.utils import PREEXISTING_CONDITIONS, SYMPTOMS
 
-from covid19sim.frozen.helper import conditions_to_np, symptoms_to_np, \
+from covid19sim.distributed_inference.helper import conditions_to_np, symptoms_to_np, \
     encode_age, encode_sex, encode_test_result, PREEXISTING_CONDITIONS_META, \
     SYMPTOMS_META
 

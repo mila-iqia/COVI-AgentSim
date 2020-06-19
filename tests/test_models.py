@@ -9,11 +9,11 @@ import warnings
 import numpy as np
 from tests.utils import get_test_conf
 
-from covid19sim.frozen.helper import (conditions_to_np, symptoms_to_np, encode_age, encode_sex,
-                                      encode_test_result, recovered_array, candidate_exposures,
-                                      exposure_array)
+from covid19sim.distributed_inference.helper import (conditions_to_np, symptoms_to_np, encode_age, encode_sex,
+                                                     encode_test_result, recovered_array, candidate_exposures,
+                                                     exposure_array)
 from covid19sim.run import simulate
-from covid19sim.models.heavy_jobs import DummyMemManager
+from covid19sim.distributed_inference.heavy_jobs import DummyMemManager
 
 
 class MakeHumanAsMessageProxy:
@@ -26,7 +26,7 @@ class MakeHumanAsMessageProxy:
         self._start_time = start_time
 
     def make_human_as_message(self, human, personal_mailbox, conf):
-        from covid19sim.models.heavy_jobs import HumanAsMessage
+        from covid19sim.distributed_inference.heavy_jobs import HumanAsMessage
         tc = self.test_case
 
         now = human.env.timestamp
@@ -117,18 +117,18 @@ def validate_human_message(test_case, message, human):
 
 
 class ModelsTest(unittest.TestCase):
-    from covid19sim.models.heavy_jobs import make_human_as_message
+    from covid19sim.distributed_inference.heavy_jobs import make_human_as_message
     make_human_as_message_proxy = None
 
     def setUp(self):
-        from covid19sim.models import heavy_jobs
+        from covid19sim.distributed_inference import heavy_jobs
 
         proxy = MakeHumanAsMessageProxy(self)
         ModelsTest.make_human_as_message_proxy = proxy
         heavy_jobs.make_human_as_message = proxy.make_human_as_message
 
     def tearDown(self):
-        from covid19sim.models import heavy_jobs
+        from covid19sim.distributed_inference import heavy_jobs
 
         heavy_jobs.make_human_as_message = ModelsTest.make_human_as_message
 
@@ -533,7 +533,7 @@ class HumanAsMessageTest(unittest.TestCase):
 
     def test_human_as_message(self):
         from covid19sim.human import Human
-        from covid19sim.models.heavy_jobs import make_human_as_message
+        from covid19sim.distributed_inference.heavy_jobs import make_human_as_message
 
         # Load the experimental configuration
         conf_name = "test_models.yaml"

@@ -19,12 +19,11 @@ from covid19sim.city import Event, PersonalMailboxType, Hospital, ICU
 from collections import deque
 
 from covid19sim.utils import _normalize_scores, _get_random_sex, _get_covid_progression, \
-    _get_preexisting_conditions, _draw_random_discreet_gaussian, _sample_viral_load_piecewise, \
-    _get_cold_progression, _get_flu_progression, _get_allergy_progression, _get_get_really_sick, \
-    filter_open, filter_queue_max, calculate_average_infectiousness, _get_inflammatory_disease_level, _get_disease_days,\
+    _get_preexisting_conditions, _draw_random_discreet_gaussian, _get_cold_progression, _get_flu_progression, _get_allergy_progression, _get_get_really_sick, \
+    filter_open, filter_queue_max, _get_inflammatory_disease_level, _get_disease_days,\
     get_p_infection
 from covid19sim.constants import SECONDS_PER_MINUTE, SECONDS_PER_HOUR, SECONDS_PER_DAY
-from covid19sim.frozen.message_utils import ContactBook, exchange_encounter_messages, RealUserIDType
+from covid19sim.distributed_inference.message_utils import ContactBook, exchange_encounter_messages, RealUserIDType
 from covid19sim.visits import Visits
 
 class Human(object):

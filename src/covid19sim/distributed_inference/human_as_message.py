@@ -4,9 +4,9 @@ import typing
 import collections
 import dataclasses
 import numpy as np
-from covid19sim.frozen.helper import conditions_to_np, encode_age, encode_sex, \
+from covid19sim.distributed_inference.helper import conditions_to_np, encode_age, encode_sex, \
     symptoms_to_np
-from covid19sim.frozen.message_utils import UpdateMessage
+from covid19sim.distributed_inference.message_utils import UpdateMessage
 if typing.TYPE_CHECKING:
     from covid19sim.human import Human
     from covid19sim.city import PersonalMailboxType

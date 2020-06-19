@@ -1,6 +1,6 @@
-from covid19sim.frozen.message_utils import EncounterMessage, UpdateMessage
-from covid19sim.frozen.clustering.base import TimeOffsetType
-from covid19sim.frozen.clustering.simple import SimpleCluster, SimplisticClusterManager
+from covid19sim.distributed_inference.message_utils import EncounterMessage, UpdateMessage
+from covid19sim.distributed_inference.clustering.base import TimeOffsetType
+from covid19sim.distributed_inference.clustering.simple import SimpleCluster, SimplisticClusterManager
 
 
 class PerfectClusterManager(SimplisticClusterManager):

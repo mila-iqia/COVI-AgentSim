@@ -170,7 +170,7 @@ class Tracker(object):
         self.rec_feelings = []
         self.outside_daily_contacts = []
 
-        # risk models
+        # risk distributed_inference
         self.ei_per_day = []
         self.risk_values = []
         self.avg_infectiousness_per_day = []
@@ -199,7 +199,7 @@ class Tracker(object):
         self.summarize_population()
         self.feelings = [F]
 
-        # risk models
+        # risk distributed_inference
         self.risk_precision_daily = [self.compute_risk_precision()]
         self.init_infected = [human for human in self.city.humans if human.is_exposed]
         self.fully_initialized = True
@@ -394,7 +394,7 @@ class Tracker(object):
         self.feelings.append(F)
         self.rec_feelings.extend([(h.rec_level, h.how_am_I_feeling()) for h in self.city.humans])
 
-        # risk models
+        # risk distributed_inference
         prec, lift, recall = self.compute_risk_precision(daily=True)
         self.risk_precision_daily.append((prec,lift, recall))
         self.recommended_levels_daily.append([G, B, O, R])
