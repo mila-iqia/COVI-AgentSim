@@ -4,7 +4,7 @@ import numpy as np
 
 from covid19sim.env import Env
 from covid19sim.human import Human
-from covid19sim.logging.track import Tracker
+from covid19sim.log.track import Tracker
 from tests.utils import get_test_conf
 from covid19sim.city import EmptyCity
 import tempfile

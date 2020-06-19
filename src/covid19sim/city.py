@@ -14,7 +14,7 @@ import simpy
 
 from covid19sim.utils import compute_distance, _get_random_area, relativefreq2absolutefreq, \
     get_test_false_negative_rate, calculate_average_infectiousness
-from covid19sim.logging.track import Tracker
+from covid19sim.log.track import Tracker
 from covid19sim.tracing import Tracing
 from covid19sim.interventions import *
 from covid19sim.distributed_inference.message_utils import UIDType, UpdateMessage, RealUserIDType

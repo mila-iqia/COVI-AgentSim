@@ -115,7 +115,7 @@ class RiskBasedRecommendations(BehaviorInterventions):
         return _get_tracing_recommendations(intervention_level)
 
     def revert_behavior(self, human):
-        raise "NotImplemented"
+        raise Exception("NotImplemented")
 
 
 class Unmitigated(BehaviorInterventions):
