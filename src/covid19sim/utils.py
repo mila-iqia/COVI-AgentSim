@@ -1905,6 +1905,7 @@ def extract_tracker_data(tracker, conf):
     data['p_transmission'] = tracker.compute_probability_of_transmission()
     data['covid_properties'] = tracker.covid_properties
     data['human_has_app'] = tracker.human_has_app
+    data['to_human_max_msg_per_day'] = tracker.to_human_max_msg_per_day
     # data['dist_encounters'] = dict(tracker.dist_encounters)
     # data['time_encounters'] = dict(tracker.time_encounters)
     # data['day_encounters'] = dict(tracker.day_encounters)

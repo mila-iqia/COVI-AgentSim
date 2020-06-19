@@ -872,16 +872,15 @@ class Human(object):
 
     @property
     def symptoms(self):
-        """
-        [summary]
-
-        Returns:
-            [type]: [description]
-        """
         # TODO: symptoms should not be updated here.
         #  Explicit call to Human.update_symptoms() should be required
         self.update_symptoms()
         return self.rolling_all_symptoms[0]
+
+    @property
+    def reported_symptoms(self):
+        self.update_symptoms()
+        return self.rolling_all_reported_symptoms[0]
 
     @property
     def all_reported_symptoms(self):

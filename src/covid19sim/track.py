@@ -182,7 +182,8 @@ class Tracker(object):
         self.test_monitor = []
 
         # update messages
-        self.infector_infectee_update_messages = defaultdict(lambda :defaultdict(dict))
+        self.infector_infectee_update_messages = defaultdict(lambda :defaultdict(lambda : defaultdict(lambda :{'unknown':{}, 'contact':{}})))
+        self.to_human_max_msg_per_day = defaultdict(lambda : defaultdict(lambda :-1))
 
     def initialize(self):
         self.s_per_day = [sum(h.is_susceptible for h in self.city.humans)]
@@ -410,6 +411,8 @@ class Tracker(object):
                 "n_symptoms": len(h.symptoms),
                 "name": h.name,
                 "dead": h.is_dead,
+                "reported_test_result": h.reported_test_result,
+                "n_reported_symptoms": len(h.reported_symptoms),
             })
 
         self.human_monitor[self.env.timestamp.date()-datetime.timedelta(days=1)] = row
@@ -589,7 +592,7 @@ class Tracker(object):
                         "infection_timestamp":timestamp,
                         "to_is_asymptomatic": to_human.is_asymptomatic,
                         "to_has_app": to_human.has_app,
-                        "location":location.location_type,
+                        "location_type":location.location_type,
                         "location": location.name
                     })
 
@@ -632,19 +635,14 @@ class Tracker(object):
     def track_update_messages(self, from_human, to_human, payload):
         if self.infection_graph.has_edge(from_human.name, to_human.name):
             reason = payload['reason']
+            assert reason in ['unknown', 'contact'], "improper reason for sending a message"
             model = self.city.intervention.risk_model
-            if  model in ["transformer", "heuristicv1", "heuristicv2"]:
-                if  reason not in ["unknown", "contact"]:
-                    return # only sends risks
-                x = {'method':model, 'reason':payload['reason'], 'new_risk_level':payload['new_risk_level']}
-                self.infector_infectee_update_messages[from_human.name][to_human.name][self.env.timestamp] = x
-            else:
-                if not self.city.intervention.propagate_risk and reason == "risk_update":
-                    return
-                if not self.city.intervention.propagate_symptoms and reason == "symptoms":
-                    return
-                x = {'method':model, 'reason':payload['reason']}
-                self.infector_infectee_update_messages[from_human.name][to_human.name][self.env.timestamp] = x
+            count = self.infector_infectee_update_messages[from_human.name][to_human.name][self.env.timestamp][reason].get('count', 0)
+            x = {'method':model, 'new_risk_level':payload['new_risk_level'], 'count':count+1}
+            self.infector_infectee_update_messages[from_human.name][to_human.name][self.env.timestamp][reason] = x
+        else:
+            old_max_risk_level = self.to_human_max_msg_per_day[to_human.name][self.env.timestamp.date()]
+            self.to_human_max_msg_per_day[to_human.name][self.env.timestamp.date()] = max(old_max_risk_level, payload['new_risk_level'])
 
     def track_symptoms(self, human=None, count_all=False):
         """
