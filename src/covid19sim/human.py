@@ -26,8 +26,8 @@ from covid19sim.epidemiology.human_properties import get_liklihood_of_severe_ill
 from covid19sim.epidemiology.viral_load import compute_covid_properties, viral_load_for_day
 from covid19sim.epidemiology.symptoms import _get_cold_progression, _get_flu_progression,\
     _get_allergy_progression
-from covid19sim.epidemiology.p_infection import get_p_infection
-from covid19sim.constants import SECONDS_PER_MINUTE, SECONDS_PER_HOUR, SECONDS_PER_DAY
+from covid19sim.epidemiology.p_infection import get_p_infection, infectiousness_delta
+from covid19sim.constants import SECONDS_PER_MINUTE, SECONDS_PER_HOUR
 from covid19sim.distributed_inference.message_utils import ContactBook, exchange_encounter_messages, RealUserIDType
 from covid19sim.visits import Visits
 
@@ -399,25 +399,9 @@ class Human(object):
     ########### MEMORY OPTIMIZATION ###########
     @property
     def events(self):
-        """
-        [summary]
-
-        Returns:
-            [type]: [description]
-        """
         return self._events
 
     def events_slice(self, begin, end):
-        """
-        [summary]
-
-        Args:
-            begin ([type]): [description]
-            end ([type]): [description]
-
-        Returns:
-            [type]: [description]
-        """
         end_i = len(self._events)
         begin_i = end_i
         for i, event in enumerate(self._events):
@@ -430,46 +414,15 @@ class Human(object):
         return self._events[begin_i:end_i]
 
     def pull_events_slice(self, end):
-        """
-        [summary]
-
-        Args:
-            end ([type]): [description]
-
-        Returns:
-            [type]: [description]
-        """
         end_i = len(self._events)
         for i, event in enumerate(self._events):
             if event['time'] >= end:
                 end_i = i
                 break
-
         events_slice, self._events = self._events[:end_i], self._events[end_i:]
-
         return events_slice
 
     ########### EPI ###########
-
-    @property
-    def tracing(self):
-        """
-        [summary]
-
-        Returns:
-            [type]: [description]
-        """
-        return self._tracing
-
-    @tracing.setter
-    def tracing(self, value):
-        """
-        [summary]
-
-        Args:
-            value ([type]): [description]
-        """
-        self._tracing = value
 
     @property
     def infection_timestamp(self):
@@ -494,20 +447,20 @@ class Human(object):
     @property
     def is_susceptible(self):
         """
-        [summary]
+        Returns True if human is susceptible to being infected by Covid-19
 
         Returns:
-            [type]: [description]
+            bool: if human is susceptible, False if not
         """
         return not self.is_exposed and not self.is_infectious and not self.is_removed
 
     @property
     def is_exposed(self):
         """
-        [summary]
+        Returns True if human has been exposed to Covid-19 but cannot yet infect anyone else
 
         Returns:
-            [type]: [description]
+            bool: if human is exposed, False if not
         """
         return self.infection_timestamp is not None and self.env.timestamp - self.infection_timestamp < datetime.timedelta(days=self.infectiousness_onset_days)
 
@@ -544,10 +497,10 @@ class Human(object):
     @property
     def is_incubated(self):
         """
-        [summary]
+        Returns True if the human has spent sufficient time to culture the virus, otherwise False.
 
         Returns:
-            [type]: [description]
+            bool: True if Covid-19 incubated, False if not.
         """
         return (not self.is_asymptomatic and self.infection_timestamp is not None and
                 self.env.timestamp - self.infection_timestamp >= datetime.timedelta(days=self.incubation_days))
@@ -555,50 +508,32 @@ class Human(object):
     @property
     def state(self):
         """
-        [summary]
+        The state (SEIR) that this person is in (True if in state, False otherwise)
 
         Returns:
-            [type]: [description]
+            bool: True for the state this person is in (Susceptible, Exposed, Infectious, Removed)
         """
         return [int(self.is_susceptible), int(self.is_exposed), int(self.is_infectious), int(self.is_removed)]
 
     @property
     def has_cold(self):
-        """
-        [summary]
-
-        Returns:
-            [type]: [description]
-        """
         return self.cold_timestamp is not None
 
     @property
     def has_flu(self):
-        """
-        [summary]
-
-        Returns:
-            [type]: [description]
-        """
         return self.flu_timestamp is not None
 
     @property
     def has_allergy_symptoms(self):
-        """
-        [summary]
-
-        Returns:
-            [type]: [description]
-        """
         return self.allergy_timestamp is not None
 
     @property
     def days_since_covid(self):
         """
-        [summary]
+        The number of days since infection with Covid-19 for this person
 
         Returns:
-            [type]: [description]
+            Int or None: Returns an Integer representing the number of days since infection, or None if not infected.
         """
         if self.infection_timestamp is None:
             return
@@ -607,10 +542,10 @@ class Human(object):
     @property
     def days_since_cold(self):
         """
-        [summary]
+        The number of days since infection with cold for this person
 
         Returns:
-            [type]: [description]
+            Int or None: Returns an Integer representing the number of days since infection, or None if not infected.
         """
         if self.cold_timestamp is None:
             return
@@ -619,10 +554,10 @@ class Human(object):
     @property
     def days_since_flu(self):
         """
-        [summary]
+        The number of days since infection with flu for this person
 
         Returns:
-            [type]: [description]
+            Int or None: Returns an Integer representing the number of days since infection, or None if not infected.
         """
         if self.flu_timestamp is None:
             return
@@ -631,10 +566,10 @@ class Human(object):
     @property
     def days_since_allergies(self):
         """
-        [summary]
+        The number of days since allergies began for this person
 
         Returns:
-            [type]: [description]
+            Int or None: Returns an Integer representing the number of days since allgergies started, or None if no allergies.
         """
         if self.allergy_timestamp is None:
             return
@@ -642,22 +577,10 @@ class Human(object):
 
     @property
     def is_really_sick(self):
-        """
-        [summary]
-
-        Returns:
-            [type]: [description]
-        """
         return self.can_get_really_sick and 'severe' in self.symptoms
 
     @property
     def is_extremely_sick(self):
-        """
-        [summary]
-
-        Returns:
-            [type]: [description]
-        """
         return self.can_get_extremely_sick and 'severe' in self.symptoms
 
     @property
@@ -666,23 +589,24 @@ class Human(object):
         Calculates the elapsed time since infection, returning this person's current viral load
 
         Returns:
-            [type]: [description]
+            Float: Returns a real valued number between 0. and 1. indicating amount of viral load (proportional to infectiousness)
         """
         return viral_load_for_day(self, self.env.timestamp)
 
     def get_infectiousness_for_day(self, timestamp, is_infectious):
         """
-        [summary]
+        Scales the infectiousness value using pre-existing conditions
 
         Returns:
             [type]: [description]
         """
         severity_multiplier = 1
         if is_infectious:
-            if self.can_get_really_sick:
-              severity_multiplier = 1
-            if self.is_extremely_sick:
-              severity_multiplier = 1
+            #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ MARTIN WEISS FIX THIS
+            # if self.can_get_really_sick:
+            #   severity_multiplier = 1
+            # if self.is_extremely_sick:
+            #   severity_multiplier = 1
             if 'immuno-compromised' in self.preexisting_conditions:
               severity_multiplier += 0.2
             if 'cough' in self.symptoms:
@@ -696,27 +620,6 @@ class Human(object):
     @property
     def infectiousness(self):
         return self.get_infectiousness_for_day(self.env.timestamp, self.is_infectious)
-
-    def infectiousness_delta(self, t_near):
-        """
-        Computes area under the probability curve defined by infectiousness and time duration
-        of self.env.timestamp and self.env.timestamp + delta_timestamp.
-        Currently, it only takes the average of starting and ending probabilities.
-
-        Args:
-            t_near (float): time spent near another person in hours
-
-        Returns:
-            area (float): area under the infectiousness curve is computed for this duration
-        """
-
-        if not self.is_infectious:
-            return 0
-
-        start_p = self.get_infectiousness_for_day(self.env.timestamp, self.is_infectious)
-        end_p = self.get_infectiousness_for_day(self.env.timestamp + datetime.timedelta(hours=t_near), self.is_infectious)
-        area = t_near / 24 * (start_p + end_p) / 2
-        return area
 
     @property
     def symptoms(self):
@@ -878,22 +781,6 @@ class Human(object):
             self.time_to_test_result,  # in days
         ))
         self.city.tracker.track_tested_results(self)
-
-    def get_test_results_array(self, current_timestamp):
-        """Will return an encoded test result array for this user's recent history
-        (starting from current_timestamp).
-
-        Negative results will be -1, unknown results 0, and positive results 1.
-        """
-        results = np.zeros(self.conf.get("TRACING_N_DAYS_HISTORY"))
-        for real_test_result, test_timestamp, test_delay in self.test_results:
-            result_day = (current_timestamp - test_timestamp).days
-            if result_day < self.conf.get("TRACING_N_DAYS_HISTORY"):
-                if self.time_to_test_result is not None and result_day >= self.time_to_test_result \
-                        and real_test_result is not None:
-                    assert real_test_result in ["positive", "negative"]
-                    results[result_day] = 1 if real_test_result == "positive" else -1
-        return results
 
     def check_if_needs_covid_test(self, at_hospital=False):
         """
@@ -1681,7 +1568,7 @@ class Human(object):
                         infectee_msg = h1_msg
 
                     p_infection = get_p_infection(infector,
-                                                  infector.infectiousness_delta(t_near),
+                                                  infectiousness_delta(infector, t_near),
                                                   infectee,
                                                   location.social_contact_factor,
                                                   self.conf['CONTAGION_KNOB'],

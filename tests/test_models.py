@@ -12,6 +12,7 @@ from tests.utils import get_test_conf
 from covid19sim.distributed_inference.helper import (conditions_to_np, symptoms_to_np, encode_age, encode_sex,
                                                      encode_test_result, recovered_array, candidate_exposures,
                                                      exposure_array)
+from covid19sim.distributed_inference.human_as_message import get_test_results_array
 from covid19sim.run import simulate
 from covid19sim.distributed_inference.heavy_jobs import DummyMemManager
 
@@ -451,7 +452,7 @@ class ModelsTest(unittest.TestCase):
                                 self.assertLessEqual(len(target_cluster_mgrs), len(sim_humans))  # can't be 100% due to uptake
                                 cluster_mgr = next(iter([c for k, c in target_cluster_mgrs.items() if k.endswith(s_human.name)]))
                                 candidate_encounters, exposure_encounters = candidate_exposures(cluster_mgr)
-                                test_results = s_human.get_test_results_array(date_at_update)
+                                test_results = get_test_results_array(s_human, date_at_update)
 
                                 self.assertTrue((symptoms_to_np(s_human.rolling_all_reported_symptoms, conf) ==
                                                  observed['reported_symptoms']).all())

@@ -127,3 +127,4 @@ class TestFacility(object):
             score += 0.3  # @@@@@@ FIXME THIS IS ARBITRARY
 
         return score
+

@@ -11,6 +11,24 @@ if typing.TYPE_CHECKING:
     from covid19sim.human import Human
     from covid19sim.locations.city import PersonalMailboxType
 
+
+def get_test_results_array(human, current_timestamp):
+    """Will return an encoded test result array for this user's recent history
+    (starting from current_timestamp).
+
+    Negative results will be -1, unknown results 0, and positive results 1.
+    """
+    results = np.zeros(human.conf.get("TRACING_N_DAYS_HISTORY"))
+    for real_test_result, test_timestamp, test_delay in human.test_results:
+        result_day = (current_timestamp - test_timestamp).days
+        if result_day < human.conf.get("TRACING_N_DAYS_HISTORY"):
+            if human.time_to_test_result is not None and result_day >= human.time_to_test_result \
+                    and real_test_result is not None:
+                assert real_test_result in ["positive", "negative"]
+                results[result_day] = 1 if real_test_result == "positive" else -1
+    return results
+
+
 def make_human_as_message(
         human: "Human",
         personal_mailbox: "PersonalMailboxType",
