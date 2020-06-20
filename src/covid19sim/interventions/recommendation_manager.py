@@ -8,11 +8,11 @@ import typing
 import numpy as np
 
 from covid19sim.constants import BIG_NUMBER
-from covid19sim.interventions import RiskBasedRecommendations, HeuristicRecommendations, BinaryTracing
+from covid19sim.interventions.recommendation_getters import RiskBasedRecommendationGetter, HeuristicRecommendationGetter, BinaryTracing
 if typing.TYPE_CHECKING:
     from covid19sim.city import PersonalMailboxType
 
-class Tracing(object):
+class NonMLRiskComputer(object):
     """
     Implements tracing. Assigns risk_levels to Humans.
 
@@ -41,7 +41,7 @@ class Tracing(object):
         propagate_risk (bool, optional): Define whether tracing is to be triggered when someone
             changes their risk level. Defaults to False. Note: this is not to be mixed with
             risk_model="transformer".
-        should_modify_behavior (bool, optional): Defines whether behavior should be modified or not
+        should_modify (bool, optional): Defines whether behavior should be modified or not
             following the tracing intervention for conunterfactual studies. Defaults to True.
 
     """
@@ -56,24 +56,23 @@ class Tracing(object):
         max_depth = conf.get("TRACING_ORDER")
         symptoms = conf.get("TRACE_SYMPTOMS")
         risk = conf.get("TRACE_RISK_UPDATE")
-        should_modify_behavior = conf.get("SHOULD_MODIFY_BEHAVIOR"),
+        should_modify = conf.get("SHOULD_MODIFY_BEHAVIOR"),
 
         self.risk_model = risk_model
         if risk_model in ['manual', 'digital']:
-            self.intervention = BinaryTracing()
+            self.recommendation_getter = BinaryTracing()
         elif risk_model == "heuristicv1":
-            self.intervention = HeuristicRecommendations(version=1, conf=conf)
+            self.recommendation_getter = HeuristicRecommendationGetter(version=1, conf=conf)
         elif risk_model == "heuristicv2":
-            self.intervention = HeuristicRecommendations(version=2, conf=conf)
+            self.recommendation_getter = HeuristicRecommendationGetter(version=2, conf=conf)
         else:
-            # risk based
-            self.intervention = RiskBasedRecommendations()
+            self.recommendation_getter = RiskBasedRecommendationGetter()
 
         self.max_depth = max_depth
         self.propagate_symptoms = symptoms
         self.propagate_risk = risk
         self.propagate_postive_test = True  # bare minimum
-        self.should_modify_behavior = should_modify_behavior
+        self.should_modify = should_modify
 
         self.p_contact = 1
         self.delay = 0
@@ -95,16 +94,16 @@ class Tracing(object):
             self.propagate_risk = False
             self.propagate_symptoms = False
 
-    # Mirror BehaviorInterventions interface
+    # Mirror RecommendationGetter interface
     def get_recommendations(self, human: "Human"):
         recommendations = []
-        if self.should_modify_behavior:
-            recommendations = self.intervention.get_recommendations(human)
+        if self.should_modify:
+            recommendations = self.recommendation_getter.get_recommendations(human)
         return recommendations
 
-    # Mirror BehaviorInterventions interface
-    def revert_behavior(self, human):
-        self.intervention.revert_behavior(human)
+    # Mirror RecommendationGetter interface
+    def revert(self, human):
+        self.recommendation_getter.revert(human)
 
     def _get_hypothetical_contact_tracing_results(
             self,
@@ -201,7 +200,7 @@ class Tracing(object):
             risk = 1.0 - (1.0 - human.conf.get("RISK_TRANSMISSION_PROBA")) ** (t+s)
 
         elif self.risk_model in ["heuristicv1", "heuristicv2"]:
-            risk = self.intervention.compute_risk(human, mailbox)
+            risk = self.recommendation_getter.compute_risk(human, mailbox)
 
         elif self.risk_model == "other":
             r_up, v_up, r_down, v_down = r
@@ -221,6 +220,6 @@ class Tracing(object):
 
     def __repr__(self):
         if self.risk_model == "transformer":
-            return f"Tracing: {self.risk_model}"
-        return f"Tracing: {self.risk_model} order {self.max_depth} symptoms: {self.propagate_symptoms} risk: {self.propagate_risk} modify:{self.should_modify_behavior}"
+            return f"NonMLRiskComputer: {self.risk_model}"
+        return f"Tracing: {self.risk_model} order {self.max_depth} symptoms: {self.propagate_symptoms} risk: {self.propagate_risk} modify:{self.should_modify}"
 

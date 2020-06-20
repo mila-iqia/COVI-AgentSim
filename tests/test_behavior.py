@@ -1,6 +1,6 @@
 import unittest
 import numpy as np
-from covid19sim.interventions import WashHands, WearMask
+from covid19sim.interventions.behaviors import WashHands, WearMask
 from covid19sim.epidemiology.p_infection import get_p_infection
 from tests.utils import get_test_conf
 
@@ -44,7 +44,7 @@ class BehaviorTest(unittest.TestCase):
         print(f"p_infection default: {p_infection}")
 
     def test_wash_hands_p_infection(self):
-        WashHands().modify_behavior(self.human1)
+        WashHands().modify(self.human1)
 
         assert self.human1.hygiene != 0
         infector = self.human1
@@ -53,8 +53,8 @@ class BehaviorTest(unittest.TestCase):
         print(f"p_infection one washes hands: {p_infection}")
 
     def test_wash_hands_p_infection_both(self):
-        WashHands().modify_behavior(self.human1)
-        WashHands().modify_behavior(self.human2)
+        WashHands().modify(self.human1)
+        WashHands().modify(self.human2)
 
         assert self.human1.hygiene != 0
         infector = self.human1
@@ -63,7 +63,7 @@ class BehaviorTest(unittest.TestCase):
         print(f"p_infection both wash hands: {p_infection}")
 
     def test_mask_p_infection_one(self):
-        WearMask().modify_behavior(self.human1)
+        WearMask().modify(self.human1)
         self.human1.mask_efficacy = self.conf.get("MASK_EFFICACY_NORMIE")
 
         infector = self.human1
@@ -73,10 +73,10 @@ class BehaviorTest(unittest.TestCase):
 
 
     def test_mask_p_infection_both(self):
-        WearMask().modify_behavior(self.human1)
+        WearMask().modify(self.human1)
         self.human1.mask_efficacy = self.conf.get("MASK_EFFICACY_NORMIE")
 
-        WearMask().modify_behavior(self.human2)
+        WearMask().modify(self.human2)
         self.human2.mask_efficacy = self.conf.get("MASK_EFFICACY_NORMIE")
 
         infector = self.human1

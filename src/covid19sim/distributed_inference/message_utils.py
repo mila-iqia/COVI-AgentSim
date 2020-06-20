@@ -7,7 +7,7 @@ import numpy as np
 
 if typing.TYPE_CHECKING:
     from covid19sim.human import Human
-    from covid19sim.interventions import Tracing
+    from covid19sim.interventions.recommendation_manager import NonMLRiskComputer
 
 TimestampType = datetime.datetime
 TimeOffsetType = datetime.timedelta
@@ -538,7 +538,7 @@ class ContactBook:
             current_timestamp: datetime.datetime,
             risk_history_map: typing.Dict[int, float],
             proba_to_risk_level_map: typing.Callable,
-            tracing_method: typing.Optional["Tracing"],
+            tracing_method: typing.Optional["NonMLRiskComputer"],
     ):
         """
         Generates and returns the update messages needed to communicate the initial risk
@@ -587,7 +587,7 @@ class ContactBook:
             curr_risk_history_map: typing.Dict[int, float],
             proba_to_risk_level_map: typing.Callable,
             update_reason: str,
-            tracing_method: typing.Optional["Tracing"],
+            tracing_method: typing.Optional["NonMLRiskComputer"],
     ):
         """
         Will check the human's previously registered risk level over the past 'TRACING_N_DAYS_HISTORY'

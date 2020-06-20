@@ -12,8 +12,8 @@ import warnings
 from collections import defaultdict
 from orderedset import OrderedSet
 
-from covid19sim.interventions import BehaviorInterventions
-from covid19sim.tracing import Tracing
+from covid19sim.interventions.behaviors import Behavior
+from covid19sim.interventions.recommendation_manager import NonMLRiskComputer
 from covid19sim.utils import compute_distance, proba_to_risk_fn
 from covid19sim.city import Event, PersonalMailboxType, Hospital, ICU
 from collections import deque
@@ -1131,7 +1131,7 @@ class Human(object):
 
         # if you're dead, not tracing, or using the transformer you don't need to update your risk here
         if self.is_dead or\
-                not isinstance(self.tracing_method, Tracing) or\
+                not isinstance(self.tracing_method, NonMLRiskComputer) or\
                 self.tracing_method.risk_model == "transformer":
             return
 
@@ -1315,7 +1315,7 @@ class Human(object):
             and not self.notified
         ):
             self.tracing = False
-            if isinstance(intervention, Tracing):
+            if isinstance(intervention, NonMLRiskComputer):
                 self.tracing = True
                 self.tracing_method = intervention
             self.update_recommendations_level(intervention_start=True)
@@ -1327,13 +1327,13 @@ class Human(object):
         """ We provide a list of recommendations and a human, we revert the human's existing recommendations
             and apply the new ones"""
         for old_rec in self.recommendations_to_follow:
-            old_rec.revert_behavior(self)
+            old_rec.revert(self)
         self.recommendations_to_follow = OrderedSet()
 
         for new_rec in new_recommendations:
-            assert isinstance(new_rec, BehaviorInterventions)
+            assert isinstance(new_rec, Behavior)
             if self.follows_recommendations_today:
-                new_rec.modify_behavior(self)
+                new_rec.modify(self)
                 self.recommendations_to_follow.add(new_rec)
 
     def run(self, city):
@@ -2093,17 +2093,17 @@ class Human(object):
         self.risk_history_map[cur_day] = val
 
     def update_recommendations_level(self, intervention_start=False):
-        if not self.has_app or not isinstance(self.tracing_method, Tracing):
+        if not self.has_app or not isinstance(self.tracing_method, NonMLRiskComputer):
             self._rec_level = -1
         else:
-            # FIXME: maybe merge Quarantine in RiskBasedRecommendations with 2 levels
+            # FIXME: maybe merge Quarantine in RiskBasedRecommendationGetter with 2 levels
             if self.tracing_method.risk_model in ["manual", "digital"]:
                 if self.risk == 1.0:
                     self._rec_level = 3
                 else:
                     self._rec_level = 0
             else:
-                self._rec_level = self.tracing_method.intervention.get_recommendations_level(
+                self._rec_level = self.tracing_method.recommendation_getter.get_recommendations_level(
                     self,
                     self.conf.get("REC_LEVEL_THRESHOLDS"),
                     self.conf.get("MAX_RISK_LEVEL"),

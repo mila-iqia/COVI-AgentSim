@@ -9,16 +9,18 @@ import logging
 import math
 import time
 from collections import defaultdict, Counter
-
+from orderedset import OrderedSet
 import simpy
 
 from covid19sim.utils import compute_distance, _get_random_area, relativefreq2absolutefreq, \
     get_test_false_negative_rate, calculate_average_infectiousness
 from covid19sim.log.track import Tracker
-from covid19sim.tracing import Tracing
-from covid19sim.interventions import *
+from covid19sim.interventions.recommendation_manager import NonMLRiskComputer
+from covid19sim.interventions.behaviors import *
+from covid19sim.interventions.recommendation_getters import RecommendationGetter
 from covid19sim.distributed_inference.message_utils import UIDType, UpdateMessage, RealUserIDType
 from covid19sim.distribution_normalization.dist_utils import get_rec_level_transition_matrix
+from covid19sim.interventions.intervention_utils import get_intervention
 if typing.TYPE_CHECKING:
     from covid19sim.human import Human
 
@@ -477,7 +479,7 @@ class City:
     def have_some_humans_download_the_app(self):
         """
         This method is called on intervention day if the intervention type is
-        `Tracing`. It simulates the process of downloading the app on for smartphone
+        `NonMLRiskComputer`. It simulates the process of downloading the app on for smartphone
         users according to `APP_UPTAKE` and `SMARTPHONE_OWNER_FRACTION_BY_AGE`.
         """
         def _log_app_info(human):
@@ -634,13 +636,13 @@ class City:
         tmp_M = self.conf.get("GLOBAL_MOBILITY_SCALING_FACTOR")
         self.conf["GLOBAL_MOBILITY_SCALING_FACTOR"] = 1
         last_day_idx = 0
-        self.intervention = Unmitigated()
+        self.intervention = RecommendationGetter()
         while True:
             current_day = (self.env.timestamp - self.start_time).days
             # Notify humans to follow interventions on intervention day
             if current_day == self.conf.get('INTERVENTION_DAY') and not humans_notified:
                 self.intervention = get_intervention(conf=self.conf)
-                if isinstance(self.intervention, Tracing):
+                if isinstance(self.intervention, NonMLRiskComputer):
                     self.have_some_humans_download_the_app()
                 _ = [h.notify(self.intervention) for h in self.humans]
                 print(self.intervention)
@@ -675,7 +677,7 @@ class City:
                     personal_mailbox=self.global_mailbox[human.name],
                 )
 
-            if isinstance(self.intervention, Tracing) and self.intervention.app:
+            if isinstance(self.intervention, NonMLRiskComputer) and self.intervention.app:
                 # time to run the cluster+risk prediction via transformer (if we need it)
                 if self.intervention.risk_model == "transformer" or self.conf.get("COLLECT_TRAINING_DATA"):
                     from covid19sim.distributed_inference.heavy_jobs import batch_run_timeslot_heavy_jobs
@@ -1694,4 +1696,4 @@ class EmptyCity(City):
         self.tracker = Tracker(self.env, self)
         self.tracker.initialize()
         # self.tracker.track_initialized_covid_params(self.humans)
-        self.intervention = Unmitigated()
+        self.intervention = RecommendationGetter()
