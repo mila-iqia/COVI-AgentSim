@@ -4,7 +4,7 @@ import numpy as np
 
 from covid19sim.epidemiology.symptoms import _get_allergy_progression, _get_cold_progression, \
     _get_covid_progression, _get_flu_progression, SYMPTOMS, SYMPTOMS_CONTEXTS
-from covid19sim.epidemiology.health_status import _get_preexisting_conditions, PREEXISTING_CONDITIONS
+from covid19sim.epidemiology.human_properties import _get_preexisting_conditions, PREEXISTING_CONDITIONS
 
 class Symptoms(unittest.TestCase):
     def test_symptoms_structure(self):

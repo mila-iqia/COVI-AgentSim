@@ -303,22 +303,22 @@ class Tracker(object):
         tracks serial interval ("time duration between a primary case-patient (infector) having symptom onset and a secondary case-patient (infectee) having symptom onset")
         reference: https://wwwnc.cdc.gov/eid/article/26/6/20-0357_article
 
-        `self.serial_interval_book` maps infectee.name to symptom_start_time of infector who infected this infectee.
+        `self.serial_interval_book` maps infectee.name to covid_symptom_start_time of infector who infected this infectee.
 
         Args:
             human_name (str): name of `Human` who just experienced some symptoms
         """
 
         def register_serial_interval(infector, infectee):
-            serial_interval = (infectee.symptom_start_time - infector.symptom_start_time).total_seconds() / 86400 # DAYS
+            serial_interval = (infectee.covid_symptom_start_time - infector.covid_symptom_start_time).total_seconds() / 86400 # DAYS
             self.serial_intervals.append(serial_interval)
 
         # Pending intervals which manifested symptoms?
         # With human_name as infectee?
         remove = []
         for from_name, (to_human, from_human) in self.serial_interval_book_to[human_name].items():
-            if from_human.symptom_start_time is not None:
-                # We know to_human.symptom_start_time is not None because it happened before calling this func
+            if from_human.covid_symptom_start_time is not None:
+                # We know to_human.covid_symptom_start_time is not None because it happened before calling this func
                 # Therefore, it is time to ...
                 register_serial_interval(from_human, to_human)
                 remove.append(from_name)
@@ -330,8 +330,8 @@ class Tracker(object):
         # With human_name as infector?
         remove = []
         for to_name, (to_human, from_human) in self.serial_interval_book_from[human_name].items():
-            if to_human.symptom_start_time is not None:
-                # We know from_human.symptom_start_time is not None because it happened before calling this func
+            if to_human.covid_symptom_start_time is not None:
+                # We know from_human.covid_symptom_start_time is not None because it happened before calling this func
                 # Therefore, it is time to ...
                 register_serial_interval(from_human, to_human)
                 remove.append(to_name)

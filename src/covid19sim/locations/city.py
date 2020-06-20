@@ -21,7 +21,7 @@ from covid19sim.interventions.intervention_utils import get_intervention
 from covid19sim.log.event import Event
 from covid19sim.locations.test_facility import TestFacility
 from covid19sim.locations.location import Location
-from covid19sim.locations.medical import Hospital, ICU
+from covid19sim.locations.hospital import Hospital
 
 if typing.TYPE_CHECKING:
     from covid19sim.human import Human
@@ -338,8 +338,6 @@ class City:
         """
         # make humans
         count_humans = 0
-        house_allocations = {2:[], 3:[], 4:[], 5:[]}
-        n_houses = 0
 
         # initial infections
         init_infected = math.ceil(self.init_percent_sick * self.n_people)
@@ -378,7 +376,7 @@ class City:
                     workplace = self.rng.choice(self.schools)
                 elif profession[i] == 'others':
                     type_of_workplace = self.rng.choice(
-                        [0,1,2],
+                        [0, 1, 2],
                         p=self.conf.get("OTHERS_WORKPLACE_CHOICE"),
                         size=1
                     ).item()
@@ -443,11 +441,6 @@ class City:
             # if there was no best match because of the check on MIN_AVG_HOUSE_AGE, allocate a new house based on
             # residence_preference of that age bin
             if res is None:
-                for i, (l,u) in enumerate(self.conf.get("HUMAN_DISTRIBUTION").keys()):
-                    if l <= human.age <= u:
-                        bin = (l,u)
-                        break
-
                 if human.age <= self.conf.get("MIN_AVG_HOUSE_AGE"):
                     house_size_preference = renormalized_house_size_preference
 
@@ -475,7 +468,6 @@ class City:
         for i,house in enumerate(self.households):
             house.area = area[i]
 
-        # we don't need a cached property, this will do fine
         self.hd = {human.name: human for human in self.humans}
 
     def have_some_humans_download_the_app(self):

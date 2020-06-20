@@ -79,22 +79,22 @@ def test_track_serial_interval():
 
         # check no interval is registered for only to_human symptoms 
         # or only from_human symptoms
-        humans[1].symptom_start_time = datetime.datetime(2020, 2, 28, 0, 0)
+        humans[1].covid_symptom_start_time = datetime.datetime(2020, 2, 28, 0, 0)
         t.track_serial_interval(humans[1].name)
         assert len(t.serial_intervals)==0
 
-        humans[5].symptom_start_time = datetime.datetime(2020, 2, 28, 0, 0)+datetime.timedelta(days=4)
+        humans[5].covid_symptom_start_time = datetime.datetime(2020, 2, 28, 0, 0)+datetime.timedelta(days=4)
         t.track_serial_interval(humans[5].name)
         assert len(t.serial_intervals)==0
 
         # check a negative interval is registered for subsequent infector symptoms
-        humans[0].symptom_start_time = datetime.datetime(2020, 2, 28, 0, 0)+datetime.timedelta(days=1)
+        humans[0].covid_symptom_start_time = datetime.datetime(2020, 2, 28, 0, 0)+datetime.timedelta(days=1)
         t.track_serial_interval(humans[0].name)
         assert len(t.serial_intervals)==1
         assert t.serial_intervals[0]==-1.0
 
         # check infector and infectee intervals are registered
-        humans[2].symptom_start_time = datetime.datetime(2020, 2, 28, 0, 0)+datetime.timedelta(days=2)
+        humans[2].covid_symptom_start_time = datetime.datetime(2020, 2, 28, 0, 0)+datetime.timedelta(days=2)
         t.track_serial_interval(humans[2].name)
         assert len(t.serial_intervals)==3
         # Intervals (2,5) and (0,2) should be registered

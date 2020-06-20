@@ -8,7 +8,6 @@ import pathlib
 import subprocess
 import typing
 import zipfile
-from collections import OrderedDict, namedtuple
 from copy import deepcopy
 from functools import lru_cache
 from pathlib import Path
@@ -18,7 +17,7 @@ import numpy as np
 import requests
 import yaml
 from omegaconf import DictConfig, OmegaConf
-from scipy.stats import gamma, norm, truncnorm
+from scipy.stats import norm
 
 
 def log(str, logfile=None, timestamp=False):
@@ -72,7 +71,7 @@ def _get_random_area(num, total_area, rng):
     area = np.array([total_area/num for _ in range(num)])
     return area
 
-def _draw_random_discreet_gaussian(avg, scale, rng):
+def draw_random_discrete_gaussian(avg, scale, rng):
     """
     [summary]
 

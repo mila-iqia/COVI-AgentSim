@@ -2,7 +2,7 @@ import numpy as np
 import unittest
 import warnings
 
-from covid19sim.epidemiology.health_status import PREEXISTING_CONDITIONS
+from covid19sim.epidemiology.human_properties import PREEXISTING_CONDITIONS
 from covid19sim.epidemiology.symptoms import SYMPTOMS
 
 from covid19sim.distributed_inference.helper import conditions_to_np, symptoms_to_np, \

@@ -157,17 +157,16 @@ def _get_random_sex(rng):
 
 
 
-def _get_get_really_sick(age, sex, rng):
+def get_liklihood_of_severe_illness(age, sex, rng):
     """
-    [summary]
-
+    Liklihood of getting really sick (i.e., requiring hospitalization) from Covid-19
     Args:
-        age ([type]): [description]
-        sex ([type]): [description]
-        rng ([type]): [description]
+        age ([int]): [description]
+        sex ([int]): [description]
+        rng ([RandState]): [description]
 
     Returns:
-        [type]: [description]
+        Boolean: returns True if this person would likely require hospitalization given that they contracted Covid-19
     """
     if sex.lower().startswith('f'):
         if age < 10:
@@ -299,3 +298,22 @@ def _get_inflammatory_disease_level(rng, preexisting_conditions, inflammatory_co
         cond_count = 3
     return cond_count
 
+
+def get_carefulness(age, rng, conf):
+    # &carefulness
+    if rng.rand() < conf.get("P_CAREFUL_PERSON"):
+        carefulness = (round(rng.normal(55, 10)) + age / 2) / 100
+    else:
+        carefulness = (round(rng.normal(25, 10)) + age / 2) / 100
+    return carefulness
+
+def get_age_bin(age, conf):
+    # normalized susceptibility and mean daily interaction for this age group
+    # required for Oxford COVID-19 infection model
+    age_bins = conf['NORMALIZED_SUSCEPTIBILITY_BY_AGE'].keys()
+    for l, u in age_bins:
+        # NOTE  & FIXME: lower limit is exclusive
+        if l < age <= u:
+            bin = (l, u)
+            break
+    return bin
