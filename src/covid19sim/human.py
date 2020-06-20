@@ -602,11 +602,11 @@ class Human(object):
         """
         severity_multiplier = 1
         if is_infectious:
-            #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ MARTIN WEISS FIX THIS
-            # if self.can_get_really_sick:
-            #   severity_multiplier = 1
-            # if self.is_extremely_sick:
-            #   severity_multiplier = 1
+            # @@@@@ TEGAN this makes no sense -- should these be += 1? check the normalizing constant below (mw)
+            if self.can_get_really_sick:
+              severity_multiplier = 1
+            if self.is_extremely_sick:
+              severity_multiplier = 1
             if 'immuno-compromised' in self.preexisting_conditions:
               severity_multiplier += 0.2
             if 'cough' in self.symptoms:
