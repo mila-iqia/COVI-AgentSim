@@ -620,8 +620,6 @@ class ContactBook:
             old_risk_level = min(proba_to_risk_level_map(prev_risk_history_map[encounter_day_idx]), 15)
             new_risk_level = min(proba_to_risk_level_map(curr_risk_history_map[encounter_day_idx]), 15)
             if old_risk_level != new_risk_level:
-                # payload = {'change': new_risk_level > old_risk_level,
-                #            'magnitude': abs(new_risk_level - old_risk_level)}
                 for encounter_idx, encounter_message in enumerate(encounter_messages):
                     assert encounter_message.risk_level is not None, \
                         "should have already initialized all encounters before updating...?"

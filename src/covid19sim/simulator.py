@@ -1184,7 +1184,6 @@ class Human(object):
         self.risk_history_map[current_day_idx] = self.baseline_risk
 
         if self.tracing_method is not None and not self.is_dead:
-            update_reason = "risk_update"  # default update reason (if we don't get more specific)
             if isinstance(self.tracing_method, Tracing) and self.tracing_method.risk_model != "transformer":
                 # if not running transformer, we're using basic tracing --- do it now, it won't be batched later
                 risks = self.tracing_method.compute_risk(self, personal_mailbox, self.city.hd)

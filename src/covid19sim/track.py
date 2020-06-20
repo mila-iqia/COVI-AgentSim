@@ -184,6 +184,7 @@ class Tracker(object):
         # update messages
         self.infector_infectee_update_messages = defaultdict(lambda :defaultdict(lambda : defaultdict(lambda :{'unknown':{}, 'contact':{}})))
         self.to_human_max_msg_per_day = defaultdict(lambda : defaultdict(lambda :-1))
+        self.human_has_app = set()
 
     def initialize(self):
         self.s_per_day = [sum(h.is_susceptible for h in self.city.humans)]
