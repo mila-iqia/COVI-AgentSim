@@ -515,7 +515,7 @@ class Tracker(object):
                 "test": h.test_result,
                 "recovered": h.is_removed,
                 "timestamp": self.env.timestamp,
-                "test_recommended": h.test_recommended,
+                "test_recommended": h._test_recommended,
                 "name": h.name,
                 "order_1_is_exposed": any([c.is_exposed for c in order_1_contacts]),
                 "order_1_is_infectious": any([c.is_infectious for c in order_1_contacts]),

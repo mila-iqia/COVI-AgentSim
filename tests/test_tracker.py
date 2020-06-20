@@ -6,7 +6,7 @@ from covid19sim.env import Env
 from covid19sim.human import Human
 from covid19sim.log.track import Tracker
 from tests.utils import get_test_conf
-from covid19sim.city import EmptyCity
+from covid19sim.locations.city import EmptyCity
 import tempfile
 
 def test_track_serial_interval():

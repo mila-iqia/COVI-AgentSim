@@ -9,7 +9,7 @@ from covid19sim.distributed_inference.helper import conditions_to_np, encode_age
 from covid19sim.distributed_inference.message_utils import UpdateMessage
 if typing.TYPE_CHECKING:
     from covid19sim.human import Human
-    from covid19sim.city import PersonalMailboxType
+    from covid19sim.locations.city import PersonalMailboxType
 
 def make_human_as_message(
         human: "Human",

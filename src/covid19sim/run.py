@@ -12,7 +12,7 @@ import hydra
 import numpy as np
 from omegaconf import DictConfig
 
-from covid19sim.city import City
+from covid19sim.locations.city import City
 from covid19sim.env import Env
 from covid19sim.constants import SECONDS_PER_DAY, SECONDS_PER_HOUR
 from covid19sim.log.monitors import EventMonitor, SEIRMonitor, TimeMonitor

@@ -46,8 +46,13 @@ class Behavior(object):
         """
         raise NotImplementedError
 
+###############################
+###  Human-level Behaviors  ###
+###############################
+
 
 class Unmitigated(Behavior):
+    """ This simulates the condition where no one is paying attention to the virus and it spreads in an unmitigated way """
     def modify(self, human):
         pass
 
@@ -56,59 +61,6 @@ class Unmitigated(Behavior):
 
     def __repr__(self):
         return "Unmitigated"
-
-
-class StayHome(Behavior):
-    """
-    TODO.
-    Not currently being used.
-    """
-    def __init__(self):
-        pass
-
-    def modify(self, human):
-        human._max_misc_per_week = human.max_misc_per_week
-        human._max_shop_per_week = human.max_shop_per_week
-
-        human.max_misc_per_week = 1
-        human.max_shop_per_week = 1
-
-    def revert(self, human):
-        human.max_misc_per_week = human._max_misc_per_week
-        human.max_shop_per_week = human._max_shop_per_week
-        delattr(human, "_max_misc_per_week")
-        delattr(human, "_max_shop_per_week")
-
-    def __repr__(self):
-        return "Stay Home"
-
-class LimitContact(Behavior):
-    """
-    TODO.
-    Not currently being used.
-    """
-    def __init__(self):
-        pass
-
-    def modify(self, human):
-        human._maintain_distance = human.maintain_distance
-        human._max_misc_per_week = human.max_misc_per_week
-        human._max_shop_per_week = human.max_shop_per_week
-
-        human.maintain_distance = human.conf.get("DEFAULT_DISTANCE") + 100 * (human.carefulness - 0.5)
-        human.max_misc_per_week = 1
-        human.max_shop_per_week = 1
-
-    def revert(self, human):
-        human.maintain_distance = human._maintain_distance
-        human.max_misc_per_week = human._max_misc_per_week
-        human.max_shop_per_week = human._max_shop_per_week
-        delattr(human, "_maintain_distance")
-        delattr(human, "_max_misc_per_week")
-        delattr(human, "_max_shop_per_week")
-
-    def __repr__(self):
-        return "Limit Contact"
 
 
 class StandApart(Behavior):
@@ -151,6 +103,7 @@ class WashHands(Behavior):
     def __repr__(self):
         return "Wash Hands"
 
+
 class Quarantine(Behavior):
     """
     Implements quarantining for `Human`. Following is included -
@@ -185,6 +138,7 @@ class Quarantine(Behavior):
 
     def __repr__(self):
         return f"Quarantine"
+
 
 # FIXME: Lockdown should be a mix of CityBasedIntervention and RecommendationGetter.
 class Lockdown(Behavior):
@@ -244,9 +198,6 @@ class SocialDistancing(Behavior):
         human.gamma = human.conf.get("GAMMA")
 
     def __repr__(self):
-        """
-        [summary]
-        """
         return f"Social Distancing"
 
 
@@ -279,9 +230,6 @@ class GetTested(Behavior):
     """
     `Human` should get tested.
     """
-    # FIXME: can't be called as a stand alone class. Needs human.recommendations_to_follow to work
-    # FIXME: test_recommended should be _test_recommended. Make it a convention that any attribute added here,
-    # starts with _
     def __init__(self, source):
         """
         Args:
@@ -290,15 +238,19 @@ class GetTested(Behavior):
         self.source = source
 
     def modify(self, human):
-        human.test_recommended  = True
-        # send human to the testing center
-        human.check_covid_testing_needs()
+        human._test_recommended = True
+        human.check_if_needs_covid_test()
 
     def revert(self, human):
-        human.test_recommended  = False
+        human._test_recommended = False
 
     def __repr__(self):
         return "Get Tested"
+
+
+###############################
+####  City-level Policies  ####
+###############################
 
 class CityInterventions(object):
     """

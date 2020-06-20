@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 import pylab as pl
 from matplotlib import pyplot as plt
 
-from covid19sim.city import City
+from covid19sim.locations.city import City
 from covid19sim.human import Human
 from covid19sim.utils import _json_serialize
 from covid19sim.constants import SECONDS_PER_HOUR

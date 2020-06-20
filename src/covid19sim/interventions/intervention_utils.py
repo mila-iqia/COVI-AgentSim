@@ -30,8 +30,6 @@ def get_intervention(conf):
         return WashHands()
     elif key == "StandApart":
         return StandApart()
-    elif key == "StayHome":
-        return StayHome()
     elif key == "GetTested":
         raise NotImplementedError
     elif key == "BundledInterventions":

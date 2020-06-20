@@ -9,7 +9,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 import covid19sim
-from covid19sim.city import City
+from covid19sim.locations.city import City
 from covid19sim.env import Env
 from covid19sim.human import Human
 from covid19sim.utils import parse_configuration

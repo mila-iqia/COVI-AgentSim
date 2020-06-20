@@ -13,7 +13,7 @@ from covid19sim.distributed_inference.clustering.base import ClusterManagerBase
 from covid19sim.distributed_inference.human_as_message import make_human_as_message
 if typing.TYPE_CHECKING:
     from covid19sim.human import Human
-    from covid19sim.city import SimulatorMailboxType
+    from covid19sim.locations.city import SimulatorMailboxType
 
 
 class DummyMemManager:

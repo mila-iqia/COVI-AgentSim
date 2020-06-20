@@ -15,7 +15,9 @@ from orderedset import OrderedSet
 from covid19sim.interventions.behaviors import Behavior
 from covid19sim.interventions.recommendation_manager import NonMLRiskComputer
 from covid19sim.utils import compute_distance, proba_to_risk_fn
-from covid19sim.city import Event, PersonalMailboxType, Hospital, ICU
+from covid19sim.locations.city import PersonalMailboxType
+from covid19sim.locations.medical import Hospital, ICU
+from covid19sim.log.event import Event
 from collections import deque
 
 from covid19sim.utils import _normalize_scores, _draw_random_discreet_gaussian, filter_open, filter_queue_max
@@ -173,7 +175,7 @@ class Human(object):
         self.recommendations_to_follow = OrderedSet()
         self._time_encounter_reduction_factor = deque((1.0,))
         self.hygiene = 0 # start everyone with a baseline hygiene. Only increase it once the intervention is introduced.
-        self.test_recommended = False
+        self._test_recommended = False
         self.effective_contacts = 0
         self.num_contacts = 0
 
@@ -331,7 +333,6 @@ class Human(object):
         self.misc_hours = self.rng.choice(range(7, 24), self.number_of_misc_hours)
 
         self.work_start_hour = self.rng.choice(range(7, 17), 3)
-        # TODO: @whoever was doing that getattr thing in the human's at function, add a proper description
         self.location_leaving_time = self.env.ts_initial + SECONDS_PER_HOUR
         self.location_start_time = self.env.ts_initial
         self.denied_icu = None
@@ -993,7 +994,7 @@ class Human(object):
                     results[result_day] = 1 if real_test_result == "positive" else -1
         return results
 
-    def check_covid_testing_needs(self, at_hospital=False):
+    def check_if_needs_covid_test(self, at_hospital=False):
         """
         Checks whether self needs a test or not. Note: this only adds self to the test queue (not administer a test yet) of City.
         It is called every time symptoms are updated. It is also called from GetTested intervention.
@@ -1001,7 +1002,7 @@ class Human(object):
         It depends upon the following factors -
             1. if `Human` is at a hospital, TEST_SYMPTOMS_FOR_HOSPITAL are checked for
             2. elsewhere there is a proability related to whether symptoms are "severe", "moderate", or "mild"
-            3. if test_recommended is true (set by app recommendations)
+            3. if _test_recommended is true (set by app recommendations)
             4. if the `Human` is careful enough to check symptoms itself
 
         Args:
@@ -1036,7 +1037,7 @@ class Human(object):
                 should_get_test = self.rng.rand() < self.conf['P_TEST_MILD']
 
             # has been recommended the test by an intervention
-            if not should_get_test and self.test_recommended:
+            if not should_get_test and self._test_recommended:
                 should_get_test = self.rng.random() < self.follows_recommendations_today
 
             if not should_get_test:
@@ -1659,9 +1660,8 @@ class Human(object):
         self.location_start_time = self.env.now
         self.location_leaving_time = self.location_start_time + duration*SECONDS_PER_MINUTE
         area = self.location.area
-        initial_viral_load = 0
 
-        self.check_covid_testing_needs(at_hospital=isinstance(location, (Hospital, ICU)))
+        self.check_if_needs_covid_test(at_hospital=isinstance(location, (Hospital, ICU)))
 
         # accumulate time at household
         if location == self.household:
@@ -1769,14 +1769,6 @@ class Human(object):
                 city.tracker.track_encounter_events(human1=self, human2=h, location=location, distance=distance, duration=t_near)
                 city.tracker.track_encounter_distance("B\t0", packing_term, encounter_term, social_distancing_term, distance, location=None)
 
-                proximity_factor = 1
-                if self.conf.get("INFECTION_DISTANCE_FACTOR") or self.conf.get("INFECTION_DURATION_FACTOR"):
-                    # currently unused
-                    proximity_factor = (
-                        self.conf.get("INFECTION_DISTANCE_FACTOR") * (1 - distance / self.conf.get("INFECTION_RADIUS"))
-                        + self.conf.get("INFECTION_DURATION_FACTOR") * min((t_near - self.conf.get("INFECTION_DURATION")) / self.conf.get("INFECTION_DURATION"), 1)
-                    )
-
                 # used for matching "mobility" between methods
                 scale_factor_passed = self.rng.random() < self.conf.get("GLOBAL_MOBILITY_SCALING_FACTOR")
                 cur_day = (self.env.timestamp - self.env.initial_timestamp).days
@@ -1859,8 +1851,7 @@ class Human(object):
         yield self.env.timeout(duration * SECONDS_PER_MINUTE)
 
         # environmental transmission
-        p_infection = self.conf.get("ENVIRONMENTAL_INFECTION_KNOB") * location.contamination_probability * (1 - self.mask_efficacy) # &prob_infection
-        # initial_viral_load += p_infection
+        p_infection = self.conf.get("ENVIRONMENTAL_INFECTION_KNOB") * location.contamination_probability * (1 - self.mask_efficacy)
         x_environment = location.contamination_probability > 0 and self.rng.random() < p_infection
         if x_environment and self.is_susceptible:
             self.infection_timestamp = self.env.timestamp
@@ -1903,14 +1894,12 @@ class Human(object):
             visited_locs = self.visits.stores
 
         elif location_type == "hospital":
-            hospital = None
             for hospital in sorted(filter_open(city.hospitals), key=lambda x:compute_distance(self.location, x)):
                 if len(hospital.humans) < hospital.capacity:
                     return hospital
             return None
 
         elif location_type == "hospital-icu":
-            icu = None
             for hospital in sorted(filter_open(city.hospitals), key=lambda x:compute_distance(self.location, x)):
                 if len(hospital.icu.humans) < hospital.icu.capacity:
                     return hospital.icu
@@ -1921,7 +1910,6 @@ class Human(object):
             self.adjust_gamma = 1.0
             pool_pref = [(compute_distance(self.location, m) + 1e-1) ** -1 for m in city.miscs if
                          m != self.location]
-            pool_locs = [m for m in city.miscs if m != self.location]
             # Only consider locations open for business and not too long queues
             locs = filter_queue_max(filter_open(city.miscs), self.conf.get("MAX_MISC_QUEUE_LENGTH"))
             visited_locs = self.visits.miscs
