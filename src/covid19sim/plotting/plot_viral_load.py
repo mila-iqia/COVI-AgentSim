@@ -1,5 +1,5 @@
 """
-Samples the viral load distributed_inference functions and outputs charts showing the course of their
+Samples the viral load models functions and outputs charts showing the course of their
 progression
 """
 import sys
@@ -74,7 +74,7 @@ def piecewise_linear(x, rng, NUM_PEOPLE):
 
 
 if __name__ == "__main__":
-    # Sample the distributed_inference
+    # Sample the model
     viral_loads_gamma = gamma_dist(x, rng, NUM_PEOPLE)
     viral_loads_piecewise = piecewise_linear(x, rng, NUM_PEOPLE)
 

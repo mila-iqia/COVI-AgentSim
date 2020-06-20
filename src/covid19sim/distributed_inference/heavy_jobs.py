@@ -58,7 +58,7 @@ def batch_run_timeslot_heavy_jobs(
             that is delegated to the caller (see the return values).
         time_slot: the current timeslot of the day (i.e. an integer that corresponds to the hour).
         conf: YAML configuration dictionary with all relevant settings for the simulation.
-        data_path: Root path where to save the 'daily outputs', i.e. the training data for ML distributed_inference.
+        data_path: Root path where to save the 'daily outputs', i.e. the training data for ML models.
         city_hash: a hash used to tag this city's humans on an inference server that may be used by
             multiple cities in parallel. Bad mojo will happen if two cities have the same hash...
     Returns:
