@@ -1,5 +1,6 @@
 from scipy.stats import gamma, truncnorm
-
+from covid19sim.epidemiology.symptoms import _get_covid_progression
+from covid19sim.constants import SECONDS_PER_DAY
 
 def _sample_viral_load_gamma(rng, shape_mean=4.5, shape_std=.15, scale_mean=1., scale_std=.15):
     """
@@ -199,3 +200,98 @@ def _sample_viral_load_piecewise(rng, plateau_start, initial_viral_load=0, age=4
     # plateau_height = rng.normal(plateau_mean, 1)
     plateau_height = rng.uniform(base + MIN_VIRAL_LOAD, base + MAX_VIRAL_LOAD)
     return plateau_height, plateau_end.item(), recovered.item()
+
+
+def compute_covid_properties(human):
+    """
+    Pre-computes viral load curve.
+    Specifically, characteristics of viral load plateau curve, i.e., height, start/end of plateau,
+    start of infectiousness and when the symptom will show up.
+    """
+    # NOTE: all the days returned here are with respect to exposure day
+    human.infectiousness_onset_days, human.viral_load_peak_start, \
+    human.incubation_days, human.viral_load_plateau_start, \
+    human.viral_load_plateau_end, human.recovery_days, \
+    human.viral_load_peak_height, human.viral_load_plateau_height = _get_disease_days(human.rng, human.conf, human.age,
+                                                                                    human.inflammatory_disease_level)
+
+    # for ease of calculation, make viral load parameters relative to infectiousness onset
+    human.viral_load_peak_start -= human.infectiousness_onset_days
+    human.viral_load_plateau_start -= human.infectiousness_onset_days
+    human.viral_load_plateau_end -= human.infectiousness_onset_days
+
+    # precompute peak-plateau slope
+    denominator = (human.viral_load_plateau_start - human.viral_load_peak_start)
+    numerator = human.viral_load_peak_height - human.viral_load_plateau_height
+    human.peak_plateau_slope = numerator / denominator
+    assert human.peak_plateau_slope >= 0, f"viral load should decrease after peak. peak:{human.viral_load_peak_height} plateau height:{human.viral_load_plateau_height}"
+
+    # percomupte plateau-end - recovery slope (should be negative because it is decreasing)
+    numerator = human.viral_load_plateau_height
+    denominator = human.recovery_days - (human.viral_load_plateau_end + human.infectiousness_onset_days)
+    human.plateau_end_recovery_slope = numerator / denominator
+    assert human.plateau_end_recovery_slope >= 0, f"slopes are assumed to be positive for ease of calculation"
+
+    human.covid_progression = []
+    if not human.is_asymptomatic:
+        human.covid_progression = _get_covid_progression(human.initial_viral_load, human.viral_load_plateau_start,
+                                                        human.viral_load_plateau_end,
+                                                        human.recovery_days, age=human.age,
+                                                        incubation_days=human.incubation_days,
+                                                        infectiousness_onset_days=human.infectiousness_onset_days,
+                                                        really_sick=human.can_get_really_sick,
+                                                        extremely_sick=human.can_get_extremely_sick,
+                                                        rng=human.rng,
+                                                        preexisting_conditions=human.preexisting_conditions,
+                                                        carefulness=human.carefulness)
+
+    all_symptoms = set(symptom for symptoms_per_day in human.covid_progression for symptom in symptoms_per_day)
+    # infection ratios
+    if human.is_asymptomatic:
+        human.infection_ratio = human.conf['ASYMPTOMATIC_INFECTION_RATIO']
+
+    elif sum(x in all_symptoms for x in ['moderate', 'severe', 'extremely-severe']) > 0:
+        human.infection_ratio = 1.0
+
+    else:
+        human.infection_ratio = human.conf['MILD_INFECTION_RATIO']
+
+    if hasattr(human.city, "tracker"):  # some tests are running with dummy cities that don't track anything
+        human.city.tracker.track_covid_properties(human)
+
+
+def viral_load_for_day(human, timestamp):
+    """ Calculates the elapsed time since infection, returning this person's current viral load"""
+
+    if human.infection_timestamp is None:
+        return 0.
+
+    # calculates the time since infection in days
+    days_infectious = (timestamp - human.infection_timestamp).total_seconds() / SECONDS_PER_DAY - \
+                      human.infectiousness_onset_days
+
+    if days_infectious < 0:
+        return 0.
+
+    # Rising to peak
+    if days_infectious < human.viral_load_peak_start:
+        cur_viral_load = human.viral_load_peak_height * days_infectious / (human.viral_load_peak_start)
+
+    # Descending to plateau from peak
+    elif days_infectious < human.viral_load_plateau_start:
+        days_since_peak = days_infectious - human.viral_load_peak_start
+        cur_viral_load = human.viral_load_peak_height - human.peak_plateau_slope * days_since_peak
+
+    # plateau duration
+    elif days_infectious < human.viral_load_plateau_end:
+        cur_viral_load = human.viral_load_plateau_height
+
+    # during recovery
+    else:
+        days_since_plateau_end = days_infectious - human.viral_load_plateau_end
+        cur_viral_load = human.viral_load_plateau_height - human.plateau_end_recovery_slope * days_since_plateau_end
+        cur_viral_load = max(0, cur_viral_load) # clip it at 0
+
+    assert 0 <= cur_viral_load <= 1, f"effective viral load out of bounds. viral load:{cur_viral_load} plateau_end:{days_since_plateau_end}"
+
+    return cur_viral_load

@@ -23,8 +23,8 @@ from collections import deque
 from covid19sim.utils import _normalize_scores, draw_random_discrete_gaussian, filter_open, filter_queue_max
 from covid19sim.epidemiology.human_properties import get_liklihood_of_severe_illness, _get_inflammatory_disease_level,\
     _get_preexisting_conditions, _get_random_sex, get_carefulness, get_age_bin
-from covid19sim.epidemiology.viral_load import _get_disease_days
-from covid19sim.epidemiology.symptoms import _get_covid_progression, _get_cold_progression, _get_flu_progression,\
+from covid19sim.epidemiology.viral_load import compute_covid_properties, viral_load_for_day
+from covid19sim.epidemiology.symptoms import _get_cold_progression, _get_flu_progression,\
     _get_allergy_progression
 from covid19sim.epidemiology.p_infection import get_p_infection
 from covid19sim.constants import SECONDS_PER_MINUTE, SECONDS_PER_HOUR, SECONDS_PER_DAY
@@ -126,7 +126,7 @@ class Human(object):
         self.initial_viral_load = self.rng.rand() if infection_timestamp is not None else 0
         self.infectiousness_onset_days = None
         if self.infection_timestamp is not None:
-            self.compute_covid_properties()
+            compute_covid_properties(self)
         self.last_state = self.state
 
         # Covid-19 testing
@@ -660,93 +660,6 @@ class Human(object):
         """
         return self.can_get_extremely_sick and 'severe' in self.symptoms
 
-    def compute_covid_properties(self):
-        """
-        Pre-computes viral load curve.
-        Specifically, characteristics of viral load plateau curve, i.e., height, start/end of plateau,
-        start of infectiousness and when the symptom will show up.
-        """
-        # NOTE: all the days returned here are with respect to exposure day
-        self.infectiousness_onset_days, self.viral_load_peak_start, \
-            self.incubation_days, self.viral_load_plateau_start, \
-                self.viral_load_plateau_end, self.recovery_days, \
-                    self.viral_load_peak_height, self.viral_load_plateau_height = _get_disease_days(self.rng, self.conf, self.age, self.inflammatory_disease_level)
-
-        # for ease of calculation, make viral load parameters relative to infectiousness onset
-        self.viral_load_peak_start -= self.infectiousness_onset_days
-        self.viral_load_plateau_start -= self.infectiousness_onset_days
-        self.viral_load_plateau_end -= self.infectiousness_onset_days
-
-        # precompute peak-plateau slope
-        denominator = (self.viral_load_plateau_start - self.viral_load_peak_start)
-        numerator =  self.viral_load_peak_height - self.viral_load_plateau_height
-        self.peak_plateau_slope = numerator / denominator
-        assert self.peak_plateau_slope >= 0 , f"viral load should decrease after peak. peak:{self.viral_load_peak_height} plateau height:{self.viral_load_plateau_height}"
-
-        # percomupte plateau-end - recovery slope (should be negative because it is decreasing)
-        numerator = self.viral_load_plateau_height
-        denominator = self.recovery_days - (self.viral_load_plateau_end + self.infectiousness_onset_days)
-        self.plateau_end_recovery_slope = numerator / denominator
-        assert self.plateau_end_recovery_slope >= 0, f"slopes are assumed to be positive for ease of calculation"
-
-        self.covid_progression = []
-        if not self.is_asymptomatic:
-            self.covid_progression = _get_covid_progression(self.initial_viral_load, self.viral_load_plateau_start, self.viral_load_plateau_end,
-                                            self.recovery_days, age=self.age, incubation_days=self.incubation_days,
-                                            infectiousness_onset_days=self.infectiousness_onset_days,
-                                            really_sick=self.can_get_really_sick, extremely_sick=self.can_get_extremely_sick,
-                                            rng=self.rng, preexisting_conditions=self.preexisting_conditions, carefulness=self.carefulness)
-
-        all_symptoms = set(symptom for symptoms_per_day in self.covid_progression for symptom in symptoms_per_day)
-        # infection ratios
-        if self.is_asymptomatic:
-            self.infection_ratio = self.conf['ASYMPTOMATIC_INFECTION_RATIO']
-
-        elif sum(x in all_symptoms for x in ['moderate', 'severe', 'extremely-severe']) > 0:
-            self.infection_ratio = 1.0
-
-        else:
-            self.infection_ratio = self.conf['MILD_INFECTION_RATIO']
-
-        if hasattr(self.city, "tracker"):  # some tests are running with dummy cities that don't track anything
-            self.city.tracker.track_covid_properties(self)
-
-    def viral_load_for_day(self, timestamp):
-        """ Calculates the elapsed time since infection, returning this person's current viral load"""
-
-        if self.infection_timestamp is None:
-            return 0.
-
-        # calculates the time since infection in days
-        days_infectious = (timestamp - self.infection_timestamp).total_seconds() / SECONDS_PER_DAY - \
-                          self.infectiousness_onset_days
-
-        if days_infectious < 0:
-            return 0.
-
-        # Rising to peak
-        if days_infectious < self.viral_load_peak_start:
-            cur_viral_load = self.viral_load_peak_height * days_infectious / (self.viral_load_peak_start)
-
-        # Descending to plateau from peak
-        elif days_infectious < self.viral_load_plateau_start:
-            days_since_peak = days_infectious - self.viral_load_peak_start
-            cur_viral_load = self.viral_load_peak_height - self.peak_plateau_slope * days_since_peak
-
-        # plateau duration
-        elif days_infectious < self.viral_load_plateau_end:
-            cur_viral_load = self.viral_load_plateau_height
-
-        # during recovery
-        else:
-            days_since_plateau_end = days_infectious - self.viral_load_plateau_end
-            cur_viral_load = self.viral_load_plateau_height - self.plateau_end_recovery_slope * days_since_plateau_end
-            cur_viral_load = max(0, cur_viral_load) # clip it at 0
-
-        assert 0 <= cur_viral_load <= 1, f"effective viral load out of bounds. viral load:{cur_viral_load} plateau_end:{days_since_plateau_end}"
-
-        return cur_viral_load
-
     @property
     def viral_load(self):
         """
@@ -755,7 +668,7 @@ class Human(object):
         Returns:
             [type]: [description]
         """
-        return self.viral_load_for_day(self.env.timestamp)
+        return viral_load_for_day(self, self.env.timestamp)
 
     def get_infectiousness_for_day(self, timestamp, is_infectious):
         """
@@ -777,7 +690,7 @@ class Human(object):
 
         # max multiplier = 1 + 0.2 + 0.25 + 1 = 2.45
         # re-normalize [0-1]
-        infectiousness = (self.viral_load_for_day(timestamp) * severity_multiplier)/2.45
+        infectiousness = (viral_load_for_day(self, timestamp) * severity_multiplier)/2.45
         return infectiousness
 
     @property
@@ -1782,7 +1695,7 @@ class Human(object):
                     if x_human and infectee.is_susceptible:
                         infectee.infection_timestamp = self.env.timestamp
                         infectee.initial_viral_load = infector.rng.random()
-                        infectee.compute_covid_properties()
+                        compute_covid_properties(infectee)
 
                         infector.n_infectious_contacts += 1
 
@@ -1837,7 +1750,7 @@ class Human(object):
         if x_environment and self.is_susceptible:
             self.infection_timestamp = self.env.timestamp
             self.initial_viral_load = self.rng.random()
-            self.compute_covid_properties()
+            compute_covid_properties(self)
             city.tracker.track_infection('env', from_human=None, to_human=self, location=location, timestamp=self.env.timestamp)
             Event.log_exposed(self.conf.get('COLLECT_LOGS'), self, location, p_infection, self.env.timestamp)
 
@@ -1924,31 +1837,6 @@ class Human(object):
         else:
             return None
 
-    def symptoms_at_time(self, now, symptoms):
-        """
-        [summary]
-
-        Args:
-            now ([type]): [description]
-            symptoms ([type]): [description]
-
-        Returns:
-            [type]: [description]
-        """
-        warnings.warn("Deprecated", DeprecationWarning)
-        if not symptoms:
-            return []
-        if not self.covid_symptom_start_time:
-            return []
-        sickness_day = (now - self.covid_symptom_start_time).days
-        if not sickness_day:
-            return []
-        if sickness_day > 14:
-            rolling_all_symptoms_till_day = symptoms[sickness_day-14: sickness_day]
-        else:
-            rolling_all_symptoms_till_day = symptoms[:sickness_day]
-        return rolling_all_symptoms_till_day
-
     def exposure_array(self, date):
         """
         [summary]
@@ -1982,7 +1870,6 @@ class Human(object):
             [type]: [description]
         """
         warnings.warn("Deprecated in favor of frozen.helper.recovered_array()", DeprecationWarning)
-        # dont change the logic in here, it needs to remain FROZEN
         is_recovered = False
         recovery_day = (date - self.recovered_timestamp).days
         if recovery_day >= 0 and recovery_day < 14:
@@ -2049,17 +1936,6 @@ class Human(object):
             [type]: [description]
         """
         return min(self.proba_to_risk_level_map(self.risk), 15)
-
-    # @risk.setter
-    # def risk(self, val):
-    #     """
-    #     [summary]
-    #
-    #     Args:
-    #         val ([type]): [description]
-    #     """
-    #     cur_day = (self.env.timestamp - self.env.initial_timestamp).days
-    #     self.risk_history_map[cur_day] = val
 
     def update_recommendations_level(self, intervention_start=False):
         if not self.has_app or not isinstance(self.tracing_method, NonMLRiskComputer):

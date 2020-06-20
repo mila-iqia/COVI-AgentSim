@@ -1,5 +1,6 @@
 import datetime
 import logging
+from covid19sim.epidemiology.viral_load import viral_load_for_day
 
 class Event:
     """
@@ -120,13 +121,13 @@ class Event:
                       "infected was {p_infection:.6f}"
                       .format(time=time,
                               human1=human1,
-                              h1_viralload=human1.viral_load_for_day(time),
+                              h1_viralload=viral_load_for_day(human1, time),
                               h1_risk=human1.risk,
                               h1_risk_lvl=human1.risk_level,
                               h1_rec_lvl=human1.rec_level,
                               h1_infectee=' (infectee)' if infectee == human1.name else '',
                               human2=human2,
-                              h2_viralload=human2.viral_load_for_day(time),
+                              h2_viralload=viral_load_for_day(human2, time),
                               h2_risk=human2.risk,
                               h2_risk_lvl=human2.risk_level,
                               h2_rec_lvl=human2.rec_level,

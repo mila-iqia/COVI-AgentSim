@@ -13,6 +13,7 @@ from covid19sim.locations.city import City
 from covid19sim.env import Env
 from covid19sim.human import Human
 from covid19sim.utils import parse_configuration
+from covid19sim.epidemiology.viral_load import compute_covid_properties, viral_load_for_day
 
 
 def load_config():
@@ -79,7 +80,7 @@ def test_incubation_days():
 
         incubation_data, infectiousness_onset_data, recovery_data = [], [], []
         for human in city.humans:
-            human.compute_covid_properties()
+            compute_covid_properties(human)
             assert human.incubation_days >= 0, "negative incubation days"
             assert human.infectiousness_onset_days >= 0, "negative infectiousness onset days"
             assert human.recovery_days >= 0, "negative recovery days"
@@ -167,7 +168,7 @@ def test_human_compute_covid_properties():
     )
 
     def _get_human_covid_properties(human):
-        human.compute_covid_properties()
+        compute_covid_properties(human)
 
         assert human.infectiousness_onset_days >= 1.0
         assert human.viral_load_peak_start >= 0.5 - 0.00001
@@ -297,7 +298,7 @@ def test_human_compute_covid_properties():
             _get_human_covid_properties(human)
 
 
-def test_human_viral_load_for_day():
+def test_viral_load_for_day(human, ):
     """
     Test the sample over the viral load curve
     """
@@ -353,30 +354,30 @@ def test_human_viral_load_for_day():
     human.peak_plateau_slope = 0.25 / (viral_load_plateau_start - viral_load_peak_start)
     human.plateau_end_recovery_slope = 0.75 / (recovery_days - viral_load_plateau_end)
 
-    assert human.viral_load_for_day(now) == 0.0
+    assert viral_load_for_day(human, now) == 0.0
     # Between infection_timestamp and infectiousness_onset_days
-    assert human.viral_load_for_day(now +
+    assert viral_load_for_day(human, now +
                                     datetime.timedelta(days=infectiousness_onset_days / 2)) == 0.0
-    assert human.viral_load_for_day(now + datetime.timedelta(days=infectiousness_onset_days)) == 0.0
+    assert viral_load_for_day(human, now + datetime.timedelta(days=infectiousness_onset_days)) == 0.0
     # Between infectiousness_onset_days and viral_load_peak_start
-    assert human.viral_load_for_day(now +
+    assert viral_load_for_day(human, now +
                                     datetime.timedelta(days=infectiousness_onset_days +
                                                             (viral_load_peak_start - infectiousness_onset_days) /
                                                             2)) == 1.0 / 2
-    assert human.viral_load_for_day(now + datetime.timedelta(days=viral_load_peak_start)) == 1.0
-    assert human.viral_load_for_day(now + datetime.timedelta(days=incubation_days)) == 0.75 + 0.25 / 2
-    assert human.viral_load_for_day(now + datetime.timedelta(days=viral_load_plateau_start)) == 0.75
+    assert viral_load_for_day(human, now + datetime.timedelta(days=viral_load_peak_start)) == 1.0
+    assert viral_load_for_day(human, now + datetime.timedelta(days=incubation_days)) == 0.75 + 0.25 / 2
+    assert viral_load_for_day(human, now + datetime.timedelta(days=viral_load_plateau_start)) == 0.75
     # Between viral_load_plateau_start and viral_load_plateau_end
-    assert human.viral_load_for_day(now +
+    assert viral_load_for_day(human, now +
                                     datetime.timedelta(days=viral_load_plateau_start +
                                                             (viral_load_plateau_end - viral_load_plateau_start) /
                                                             2)) == 0.75
-    assert human.viral_load_for_day(now + datetime.timedelta(days=viral_load_plateau_end)) == 0.75
-    assert human.viral_load_for_day(now +
+    assert viral_load_for_day(human, now + datetime.timedelta(days=viral_load_plateau_end)) == 0.75
+    assert viral_load_for_day(human, now +
                                     datetime.timedelta(days=viral_load_plateau_end +
                                                             (recovery_days - viral_load_plateau_end) /
                                                             2)) == 0.75 / 2
-    assert human.viral_load_for_day(now + datetime.timedelta(days=recovery_days)) == 0.0
+    assert viral_load_for_day(human, now + datetime.timedelta(days=recovery_days)) == 0.0
 
 
 class EnvMock():
@@ -570,7 +571,7 @@ def test_human_allergies_symptoms():
 if __name__ == "__main__":
     test_incubation_days()
     test_human_compute_covid_properties()
-    test_human_viral_load_for_day()
+    test_viral_load_for_day()
     test_human_cold_symptoms()
     test_human_flu_symptoms()
     test_human_allergies_symptoms()
