@@ -27,7 +27,6 @@ Attributes
         entirely in the context. The context can also be removed from the dict
 '''
 
-# FIXME: covid_pre_plateau should be covid_incubation and there should be no symptoms in this phase
 SYMPTOMS_CONTEXTS = {'covid': {0: 'covid_incubation', 1: 'covid_onset', 2: 'covid_plateau',
                                3: 'covid_post_plateau_1', 4: 'covid_post_plateau_2'},
                      'allergy': {0: 'allergy'},

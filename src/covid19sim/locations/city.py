@@ -77,7 +77,7 @@ class City:
         self.initialize_locations()
 
         self.humans = []
-        self.hd = {}  # previously a cached property for some unknown reason
+        self.hd = {}
         self.households = OrderedSet()
         self.age_histogram = None
         print("Initializing humans ...")

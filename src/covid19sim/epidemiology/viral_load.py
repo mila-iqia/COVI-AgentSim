@@ -165,18 +165,12 @@ def _sample_viral_load_piecewise(rng, plateau_start, initial_viral_load=0, age=4
         plateau_end (float): days after beign infectious when the plateau ends
         recovered (float): days after being infectious when the viral load is assumed to be ineffective (not necessarily 0)
     """
-    # https://stackoverflow.com/questions/18441779/how-to-specify-upper-and-lower-limits-when-using-numpy-random-normal
-	# https://www.thelancet.com/journals/laninf/article/PIIS1473-3099(20)30196-1/fulltext
 
     MAX_VIRAL_LOAD = conf.get("MAX_VIRAL_LOAD")
     MIN_VIRAL_LOAD = conf.get("MIN_VIRAL_LOAD")
     PLATEAU_DURATION_CLIP_HIGH = conf.get("PLATEAU_DURATION_CLIP_HIGH")
     PLATEAU_DURATION_CLIP_LOW = conf.get("PLATEAU_DURATION_CLIP_LOW")
     PLATEAU_DURATION_MEAN = conf.get("PLATEAU_DURATION_MEAN")
-    PLATEAU_START_CLIP_HIGH = conf.get("PLATEAU_START_CLIP_HIGH")
-    PLATEAU_START_CLIP_LOW = conf.get("PLATEAU_START_CLIP_LOW")
-    PLATEAU_START_MEAN = conf.get("PLATEAU_START_MEAN")
-    PLATEAU_START_STD = conf.get("PLATEAU_START_STD")
     PLATEAU_DURATION_STD = conf.get("PLATEAU_DURATION_STD")
     RECOVERY_CLIP_HIGH = conf.get("RECOVERY_CLIP_HIGH")
     RECOVERY_CLIP_LOW = conf.get("RECOVERY_CLIP_LOW")
@@ -184,7 +178,6 @@ def _sample_viral_load_piecewise(rng, plateau_start, initial_viral_load=0, age=4
     RECOVERY_STD = conf.get("RECOVERY_STD")
     VIRAL_LOAD_RECOVERY_FACTOR = conf.get("VIRAL_LOAD_RECOVERY_FACTOR")
 
-    # plateau_start = truncnorm((PLATEAU_START_CLIP_LOW - PLATEAU_START_MEAN)/PLATEAU_START_STD, (PLATEAU_START_CLIP_HIGH - PLATEAU_START_MEAN) / PLATEAU_START_STD, loc=PLATEAU_START_MEAN, scale=PLATEAU_START_STD).rvs(1, random_state=rng)
     plateau_end = plateau_start + truncnorm((PLATEAU_DURATION_CLIP_LOW - PLATEAU_DURATION_MEAN)/PLATEAU_DURATION_STD,
                                             (PLATEAU_DURATION_CLIP_HIGH - PLATEAU_DURATION_MEAN) / PLATEAU_DURATION_STD,
                                             loc=PLATEAU_DURATION_MEAN, scale=PLATEAU_DURATION_STD).rvs(1, random_state=rng)
@@ -196,8 +189,6 @@ def _sample_viral_load_piecewise(rng, plateau_start, initial_viral_load=0, age=4
                                         loc=RECOVERY_MEAN, scale=RECOVERY_STD).rvs(1, random_state=rng)
 
     base = age/200 # peak viral load varies linearly with age
-    # plateau_mean =  initial_viral_load - (base + MIN_VIRAL_LOAD) / (base + MIN_VIRAL_LOAD, base + MAX_VIRAL_LOAD) # transform initial viral load into a range
-    # plateau_height = rng.normal(plateau_mean, 1)
     plateau_height = rng.uniform(base + MIN_VIRAL_LOAD, base + MAX_VIRAL_LOAD)
     return plateau_height, plateau_end.item(), recovered.item()
 

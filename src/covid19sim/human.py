@@ -92,7 +92,7 @@ class Human(object):
 
         """ Biological Properties """
         # Individual Characteristics
-        self.sex = _get_random_sex(self.rng)
+        self.sex = _get_random_sex(self.rng, self.conf)
         self.age = age
         self.age_bin = get_age_bin(age, conf)
         self.normalized_susceptibility = self.conf['NORMALIZED_SUSCEPTIBILITY_BY_AGE'][self.age_bin]
@@ -600,21 +600,14 @@ class Human(object):
         Returns:
             [type]: [description]
         """
+        infectiousness = 0.
         severity_multiplier = 1
         if is_infectious:
-            # @@@@@ TEGAN this makes no sense -- should these be += 1? check the normalizing constant below (mw)
-            if self.can_get_really_sick:
-              severity_multiplier = 1
-            if self.is_extremely_sick:
-              severity_multiplier = 1
             if 'immuno-compromised' in self.preexisting_conditions:
               severity_multiplier += 0.2
             if 'cough' in self.symptoms:
               severity_multiplier += 0.25
-
-        # max multiplier = 1 + 0.2 + 0.25 + 1 = 2.45
-        # re-normalize [0-1]
-        infectiousness = (viral_load_for_day(self, timestamp) * severity_multiplier)/2.45
+            infectiousness = (viral_load_for_day(self, timestamp) * severity_multiplier * self.infection_ratio)/self.conf['INFECTIOUSNESS_NORMALIZATION_CONST']
         return infectiousness
 
     @property

@@ -7,8 +7,6 @@ reduce their liklihood of infecting others (wearing a mask, washing hands); they
 
 - * RecommendationGetter * A list of behaviors which are recommended by a Tracing Method? Model? Your mom?
 
-- * Your mom * the person who raised you AKA the Manager
-
 - * NonMLRiskComputer * Handle computing the risk for non-ml tracing methods like heuristic and binarytracing
 
 """

@@ -66,8 +66,6 @@ def _get_random_area(num, total_area, rng):
         [type]: [description]
     """
     # Keeping max at area/2 to ensure no location is allocated more than half of the total area allocated to its location type
-    # area = rng.dirichlet(np.ones(math.ceil(num/2)))*(total_area/2)
-    # area = np.append(area, rng.dirichlet(np.ones(math.floor(num/2)))*(total_area/2))
     area = np.array([total_area/num for _ in range(num)])
     return area
 

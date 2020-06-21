@@ -73,7 +73,7 @@ def make_human_as_message(
         infectiousnesses=human.infectiousnesses,
         infection_timestamp=human.infection_timestamp,
         recovered_timestamp=human.recovered_timestamp,
-        test_results=human.get_test_results_array(human.env.timestamp),
+        test_results=get_test_results_array(human, human.env.timestamp),
         rolling_all_symptoms=rolling_all_symptoms,
         rolling_all_reported_symptoms=rolling_all_reported_symptoms,
         incubation_days=human.incubation_days,

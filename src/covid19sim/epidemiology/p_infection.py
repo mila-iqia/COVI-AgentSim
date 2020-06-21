@@ -5,7 +5,7 @@ def get_p_infection(infector, infectors_infectiousness, infectee, social_contact
     # probability of transmission
     # It is similar to Oxford COVID-19 model described in Section 4.
     rate_of_infection = infectee.normalized_susceptibility * social_contact_factor * 1 / infectee.mean_daily_interaction_age_group
-    rate_of_infection *= infectors_infectiousness * infector.infection_ratio
+    rate_of_infection *= infectors_infectiousness
     rate_of_infection *= contagion_knob
     p_infection = 1 - np.exp(-rate_of_infection)
 

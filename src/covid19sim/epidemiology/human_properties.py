@@ -135,11 +135,10 @@ def _get_random_age(rng):
 
 
 # &sex
-def _get_random_sex(rng):
+def _get_random_sex(rng, conf):
     """
     This function returns the sex at birth of the person.
     Other is associated with 'prefer not to answer' for the CanStats census.
-    TODO: the proportion parameters should be in a config file.
 
     Args:
         rng (): A random number generator
@@ -148,13 +147,12 @@ def _get_random_sex(rng):
         [str]: Possible choices of sex {female, male, other}
     """
     p = rng.rand()
-    if p < .45:
+    if p < conf.get('P_FEMALE'):
         return 'female'
-    elif p < .90:
+    elif p < conf.get('P_FEMALE') + conf.get('P_MALE'):
         return 'male'
     else:
         return 'other'
-
 
 
 def get_liklihood_of_severe_illness(age, sex, rng):
