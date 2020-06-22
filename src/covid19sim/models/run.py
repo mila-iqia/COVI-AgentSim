@@ -1,3 +1,4 @@
+
 """
 Handles querying the inference server with serialized humans and their messages.
 """
