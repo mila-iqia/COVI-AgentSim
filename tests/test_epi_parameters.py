@@ -298,7 +298,7 @@ def test_human_compute_covid_properties():
             _get_human_covid_properties(human)
 
 
-def test_viral_load_for_day(human, ):
+def test_viral_load_for_day():
     """
     Test the sample over the viral load curve
     """
