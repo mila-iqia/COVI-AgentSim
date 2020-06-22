@@ -131,11 +131,11 @@ class Human(object):
         self.last_state = self.state # And we set their SEIR state (starts as either Susceptible or Exposed)
 
         # Covid-19 testing
-        self.test_type = None
-        self.test_time = None
-        self.hidden_test_result = None
-        self._will_report_test_result = None
-        self.time_to_test_result = None
+        self.test_type = None # E.g. PCR, Antibody, Physician
+        self.test_time = None # Time when this person was tested
+        self.hidden_test_result = None # Test results (that will be reported to this person but have not yet been)
+        self._will_report_test_result = None # Determines whether this individual will report their test (given that they received a test result)
+        self.time_to_test_result = None # How long does it take for this person to receive their test after it has been administered
         self.test_result_validated = None
         self._test_results = deque()
         self.test_result_validated = None
