@@ -10,12 +10,12 @@ import time
 from collections import defaultdict, Counter
 from orderedset import OrderedSet
 
-from covid19sim.utils import compute_distance, _get_random_area, relativefreq2absolutefreq, calculate_average_infectiousness
+from covid19sim.utils.utils import compute_distance, _get_random_area, relativefreq2absolutefreq, calculate_average_infectiousness
 from covid19sim.log.track import Tracker
 from covid19sim.interventions.recommendation_manager import NonMLRiskComputer
 from covid19sim.interventions.behaviors import *
 from covid19sim.interventions.recommendation_getters import RecommendationGetter
-from covid19sim.distributed_inference.message_utils import UIDType, UpdateMessage, RealUserIDType
+from covid19sim.inference.message_utils import UIDType, UpdateMessage, RealUserIDType
 from covid19sim.distribution_normalization.dist_utils import get_rec_level_transition_matrix
 from covid19sim.interventions.intervention_utils import get_intervention
 from covid19sim.log.event import Event
@@ -674,7 +674,7 @@ class City:
             if isinstance(self.intervention, NonMLRiskComputer) and self.intervention.app:
                 # time to run the cluster+risk prediction via transformer (if we need it)
                 if self.intervention.risk_model == "transformer" or self.conf.get("COLLECT_TRAINING_DATA"):
-                    from covid19sim.distributed_inference.heavy_jobs import batch_run_timeslot_heavy_jobs
+                    from covid19sim.inference.heavy_jobs import batch_run_timeslot_heavy_jobs
                     self.humans = batch_run_timeslot_heavy_jobs(
                         humans=self.humans,
                         init_timestamp=self.start_time,

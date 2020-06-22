@@ -13,16 +13,16 @@ import numpy as np
 from omegaconf import DictConfig
 
 from covid19sim.locations.city import City
-from covid19sim.env import Env
-from covid19sim.constants import SECONDS_PER_DAY, SECONDS_PER_HOUR
+from covid19sim.utils.env import Env
+from covid19sim.utils.constants import SECONDS_PER_DAY, SECONDS_PER_HOUR
 from covid19sim.log.monitors import EventMonitor, SEIRMonitor, TimeMonitor
 from covid19sim.human import Human
-from covid19sim.utils import (dump_conf, dump_tracker_data,
-                              extract_tracker_data, parse_configuration,
-                              zip_outdir)
+from covid19sim.utils.utils import (dump_conf, dump_tracker_data,
+                                    extract_tracker_data, parse_configuration,
+                                    zip_outdir)
 
 
-@hydra.main(config_path="hydra-configs/simulation/config.yaml")
+@hydra.main(config_path="configs/simulation/config.yaml")
 def main(conf: DictConfig):
     """
     Enables command line execution of the simulator.
@@ -224,14 +224,14 @@ def simulate(
         if conf.get("USE_INFERENCE_SERVER"):
             inference_frontend_address = conf.get("INFERENCE_SERVER_ADDRESS", None)
             print("requesting cluster reset from inference server...")
-            from covid19sim.distributed_inference.server_utils import InferenceClient
+            from covid19sim.inference.server_utils import InferenceClient
 
             temporary_client = InferenceClient(
                 server_address=inference_frontend_address
             )
             temporary_client.request_reset()
         else:
-            from covid19sim.distributed_inference.heavy_jobs import DummyMemManager
+            from covid19sim.inference.heavy_jobs import DummyMemManager
 
             DummyMemManager.global_cluster_map = {}
 

@@ -1,8 +1,8 @@
 import datetime
 import unittest
 
-import covid19sim.distributed_inference.clustering.blind as clu
-import covid19sim.distributed_inference.message_utils as mu
+import covid19sim.inference.clustering.blind as clu
+import covid19sim.inference.message_utils as mu
 from tests.utils import FakeHuman, generate_received_messages, generate_random_messages, Visit, \
     never, Toff
 

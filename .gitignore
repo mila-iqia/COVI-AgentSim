@@ -16,14 +16,14 @@ FRESH-SNOWFLAKE-224B
 #Hydra stuff
 *.hydra/
 *multirun/
-src/covid19sim/hydra-configs/simulation/*
-!src/covid19sim/hydra-configs/simulation/config.yaml
-!src/covid19sim/hydra-configs/simulation/base_method.yaml
-!src/covid19sim/hydra-configs/simulation/constants.yaml
-!src/covid19sim/hydra-configs/simulation/core.yaml
-!src/covid19sim/hydra-configs/simulation/tracing_method
-!src/covid19sim/hydra-configs/simulation/release
-!src/covid19sim/hydra-configs/simulation/run_type
+src/covid19sim/configs/simulation/*
+!src/covid19sim/configs/simulation/config.yaml
+!src/covid19sim/configs/simulation/base_method.yaml
+!src/covid19sim/configs/simulation/constants.yaml
+!src/covid19sim/configs/simulation/core.yaml
+!src/covid19sim/configs/simulation/tracing_method
+!src/covid19sim/configs/simulation/release
+!src/covid19sim/configs/simulation/run_type
 
 
 # Pycharm stuff

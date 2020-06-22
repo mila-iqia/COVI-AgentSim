@@ -7,14 +7,14 @@ import datetime
 import math
 import typing
 import warnings
-from collections import Counter, deque, defaultdict
+from collections import Counter, defaultdict
 
 import dill
 import networkx as nx
 import numpy as np
 import pandas as pd
 
-from covid19sim.utils import log
+from covid19sim.utils.utils import log
 
 def print_dict(title, dic, is_sorted=None, top_k=None, logfile=None):
     if not is_sorted:
@@ -1207,7 +1207,7 @@ class Tracker(object):
         import matplotlib.pyplot as plt
         import networkx as nx
         import seaborn as sns
-        import glob, os
+        import os
 
         x = pd.DataFrame.from_dict(self.contacts['all'])
         x = x[sorted(x.columns)]

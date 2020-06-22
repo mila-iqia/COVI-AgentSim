@@ -15,10 +15,10 @@ import zmq
 from pathlib import Path
 from ctt.inference.infer import InferenceEngine
 
-import covid19sim.distributed_inference.clustering.base
-import covid19sim.distributed_inference.message_utils
-import covid19sim.distributed_inference.helper
-import covid19sim.utils
+import covid19sim.inference.clustering.base
+import covid19sim.inference.message_utils
+import covid19sim.inference.helper
+import covid19sim.utils.utils
 
 
 expected_raw_packet_param_names = [
@@ -331,7 +331,7 @@ class InferenceEngineWrapper(InferenceEngine):
         if experiment_directory.startswith("http"):
             assert os.path.isdir("/tmp"), "don't know where to download data to..."
             experiment_root_directory = \
-                covid19sim.utils.download_exp_data_if_not_exist(experiment_directory, "/tmp")
+                covid19sim.utils.utils.download_exp_data_if_not_exist(experiment_directory, "/tmp")
             experiment_subdirectories = \
                 [os.path.join(experiment_root_directory, p) for p in os.listdir(experiment_root_directory)
                  if os.path.isdir(os.path.join(experiment_root_directory, p))]
@@ -371,7 +371,7 @@ def proc_human_batch(
         cluster_mgr_hash = str(params["city_hash"]) + ":" + human_name
         params["cluster_mgr_hash"] = cluster_mgr_hash
         if cluster_mgr_hash not in cluster_mgr_map:
-            cluster_algo_type = covid19sim.distributed_inference.clustering.base.get_cluster_manager_type(
+            cluster_algo_type = covid19sim.inference.clustering.base.get_cluster_manager_type(
                 params["conf"].get("CLUSTER_ALGO_TYPE", "blind"),
             )
             cluster_mgr = cluster_algo_type(
@@ -414,7 +414,7 @@ def _proc_human(params, inference_engine):
 
     # set the current day as the refresh timestamp to auto-purge outdated messages in advance
     cluster_mgr.set_current_timestamp(todays_date)
-    update_messages = covid19sim.distributed_inference.message_utils.batch_messages(human.update_messages)
+    update_messages = covid19sim.inference.message_utils.batch_messages(human.update_messages)
     cluster_mgr.add_messages(messages=update_messages, current_timestamp=todays_date)
     # FIXME: there are messages getting duplicated somewhere, this is pretty bad @@@@@
     # uids = []
@@ -423,9 +423,9 @@ def _proc_human(params, inference_engine):
     # assert len(np.unique(uids)) == len(uids), "found collision"
 
     # Format for supervised learning / transformer inference
-    is_exposed, exposure_day = covid19sim.distributed_inference.helper.exposure_array(human.infection_timestamp, todays_date, conf)
-    is_recovered, recovery_day = covid19sim.distributed_inference.helper.recovered_array(human.recovered_timestamp, todays_date, conf)
-    candidate_encounters, exposure_encounter = covid19sim.distributed_inference.helper.candidate_exposures(cluster_mgr)
+    is_exposed, exposure_day = covid19sim.inference.helper.exposure_array(human.infection_timestamp, todays_date, conf)
+    is_recovered, recovery_day = covid19sim.inference.helper.recovered_array(human.recovered_timestamp, todays_date, conf)
+    candidate_encounters, exposure_encounter = covid19sim.inference.helper.candidate_exposures(cluster_mgr)
     reported_symptoms = human.rolling_all_reported_symptoms
     true_symptoms = human.rolling_all_symptoms
 

@@ -4,7 +4,7 @@ from collections import Counter, deque
 import numpy as np
 
 from covid19sim.run import simulate
-from covid19sim.utils import extract_tracker_data
+from covid19sim.utils.utils import extract_tracker_data
 from tests.utils import get_test_conf
 
 

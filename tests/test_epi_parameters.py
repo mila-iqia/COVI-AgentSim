@@ -10,9 +10,9 @@ import matplotlib.pyplot as plt
 
 import covid19sim
 from covid19sim.locations.city import City
-from covid19sim.env import Env
+from covid19sim.utils.env import Env
 from covid19sim.human import Human
-from covid19sim.utils import parse_configuration
+from covid19sim.utils.utils import parse_configuration
 from covid19sim.epidemiology.viral_load import compute_covid_properties, viral_load_for_day
 
 

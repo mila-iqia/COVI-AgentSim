@@ -7,8 +7,8 @@ import numpy as np
 import yaml
 from omegaconf import OmegaConf
 
-import covid19sim.distributed_inference.message_utils as mu
-from covid19sim.utils import parse_configuration
+import covid19sim.inference.message_utils as mu
+from covid19sim.utils.utils import parse_configuration
 
 HYDRA_SIM_PATH = (
     Path(__file__).parent.parent / "src/covid19sim/hydra-configs/simulation"

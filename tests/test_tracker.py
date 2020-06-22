@@ -2,7 +2,7 @@ import datetime
 
 import numpy as np
 
-from covid19sim.env import Env
+from covid19sim.utils.env import Env
 from covid19sim.human import Human
 from covid19sim.log.track import Tracker
 from tests.utils import get_test_conf

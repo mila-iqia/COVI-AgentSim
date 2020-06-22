@@ -1,7 +1,7 @@
 import logging
 from collections import defaultdict
 from orderedset import OrderedSet
-from covid19sim.utils import get_test_false_negative_rate
+from covid19sim.utils.utils import get_test_false_negative_rate
 from covid19sim.locations.hospital import Hospital, ICU
 
 class TestFacility(object):

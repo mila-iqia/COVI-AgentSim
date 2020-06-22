@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 
-from covid19sim.utils import probas_to_risk_mapping, proba_to_risk_fn
+from covid19sim.utils.utils import probas_to_risk_mapping, proba_to_risk_fn
 
 
 probabilities = np.array([

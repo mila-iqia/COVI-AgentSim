@@ -7,7 +7,7 @@ import numpy as np
 import yaml
 from omegaconf import OmegaConf
 
-from covid19sim.utils import dump_conf, parse_configuration
+from covid19sim.utils.utils import dump_conf, parse_configuration
 from tests.utils import HYDRA_SIM_PATH, get_test_conf
 
 

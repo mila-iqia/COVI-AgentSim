@@ -3,8 +3,8 @@ import datetime
 import numpy as np
 import typing
 
-import covid19sim.distributed_inference.message_utils as mu
-from covid19sim.distributed_inference.clustering.base import ClusterIDType, TimestampType, \
+import covid19sim.inference.message_utils as mu
+from covid19sim.inference.clustering.base import ClusterIDType, TimestampType, \
     TimeOffsetType, ClusterBase, ClusterManagerBase, MessagesArrayType, RealUserIDType, \
     UpdateMessageBatchType
 

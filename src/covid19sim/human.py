@@ -14,22 +14,22 @@ from orderedset import OrderedSet
 
 from covid19sim.interventions.behaviors import Behavior
 from covid19sim.interventions.recommendation_manager import NonMLRiskComputer
-from covid19sim.utils import compute_distance, proba_to_risk_fn
+from covid19sim.utils.utils import compute_distance, proba_to_risk_fn
 from covid19sim.locations.city import PersonalMailboxType
 from covid19sim.locations.hospital import Hospital, ICU
 from covid19sim.log.event import Event
 from collections import deque
 
-from covid19sim.utils import _normalize_scores, draw_random_discrete_gaussian, filter_open, filter_queue_max
+from covid19sim.utils.utils import _normalize_scores, draw_random_discrete_gaussian, filter_open, filter_queue_max
 from covid19sim.epidemiology.human_properties import get_liklihood_of_severe_illness, _get_inflammatory_disease_level,\
     _get_preexisting_conditions, _get_random_sex, get_carefulness, get_age_bin
 from covid19sim.epidemiology.viral_load import compute_covid_properties, viral_load_for_day
 from covid19sim.epidemiology.symptoms import _get_cold_progression, _get_flu_progression,\
     _get_allergy_progression
 from covid19sim.epidemiology.p_infection import get_p_infection, infectiousness_delta
-from covid19sim.constants import SECONDS_PER_MINUTE, SECONDS_PER_HOUR
-from covid19sim.distributed_inference.message_utils import ContactBook, exchange_encounter_messages, RealUserIDType
-from covid19sim.visits import Visits
+from covid19sim.utils.constants import SECONDS_PER_MINUTE, SECONDS_PER_HOUR
+from covid19sim.inference.message_utils import ContactBook, exchange_encounter_messages, RealUserIDType
+from covid19sim.utils.visits import Visits
 
 class Human(object):
     """
@@ -1246,32 +1246,14 @@ class Human(object):
     ############################## MOBILITY ##################################
     @property
     def lat(self):
-        """
-        [summary]
-
-        Returns:
-            [type]: [description]
-        """
         return self.location.lat if self.location else self.household.lat
 
     @property
     def lon(self):
-        """
-        [summary]
-
-        Returns:
-            [type]: [description]
-        """
         return self.location.lon if self.location else self.household.lon
 
     @property
     def obs_lat(self):
-        """
-        [summary]
-
-        Returns:
-            [type]: [description]
-        """
         if self.conf.get("LOCATION_TECH") == 'bluetooth':
             return round(self.lat + self.rng.normal(0, 2))
         else:
@@ -1279,12 +1261,6 @@ class Human(object):
 
     @property
     def obs_lon(self):
-        """
-        [summary]
-
-        Returns:
-            [type]: [description]
-        """
         if self.conf.get("LOCATION_TECH") == 'bluetooth':
             return round(self.lon + self.rng.normal(0, 2))
         else:

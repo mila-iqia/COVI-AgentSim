@@ -4,9 +4,9 @@ import datetime
 import numpy as np
 import typing
 
-from covid19sim.distributed_inference.message_utils import EncounterMessage, GenericMessageType, UpdateMessage, \
+from covid19sim.inference.message_utils import EncounterMessage, GenericMessageType, UpdateMessage, \
     TimestampType, create_encounter_from_update_message, create_updated_encounter_with_message
-from covid19sim.distributed_inference.clustering.base import ClusterIDType, RealUserIDType, TimeOffsetType, \
+from covid19sim.inference.clustering.base import ClusterIDType, RealUserIDType, TimeOffsetType, \
     ClusterBase, ClusterManagerBase
 
 

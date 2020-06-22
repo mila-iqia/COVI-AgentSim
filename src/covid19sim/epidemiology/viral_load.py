@@ -1,6 +1,6 @@
 from scipy.stats import gamma, truncnorm
 from covid19sim.epidemiology.symptoms import _get_covid_progression
-from covid19sim.constants import SECONDS_PER_DAY
+from covid19sim.utils.constants import SECONDS_PER_DAY
 
 def _sample_viral_load_gamma(rng, shape_mean=4.5, shape_std=.15, scale_mean=1., scale_std=.15):
     """

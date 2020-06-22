@@ -8,7 +8,7 @@ import yaml
 from omegaconf import DictConfig
 import datetime
 import itertools
-from covid19sim.utils import parse_search_configuration
+from covid19sim.utils.utils import parse_search_configuration
 from collections import defaultdict
 
 SAMPLE_KEYS = {"list", "uniform", "range", "cartesian", "sequential"}
@@ -533,7 +533,7 @@ def printlines():
     print("=" * 80)
 
 
-@hydra.main(config_path="../hydra-configs/search/config.yaml", strict=False)
+@hydra.main(config_path="../configs/search/config.yaml", strict=False)
 def main(conf: DictConfig) -> None:
 
     """

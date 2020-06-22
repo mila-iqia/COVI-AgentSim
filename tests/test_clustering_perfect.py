@@ -1,7 +1,7 @@
 import datetime
 import unittest
 
-import covid19sim.distributed_inference.clustering.perfect as clu
+import covid19sim.inference.clustering.perfect as clu
 from tests.utils import generate_random_messages
 
 never = datetime.timedelta(days=9999)  # dirty macro to indicate a human will never get infected
