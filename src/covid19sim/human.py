@@ -125,6 +125,7 @@ class Human(object):
         self.never_recovers = self.rng.random() <= self.conf.get("P_NEVER_RECOVERS")[min(math.floor(self.age/10), 8)]
         self.initial_viral_load = self.rng.rand() if infection_timestamp is not None else 0
         self.infectiousness_onset_days = None
+        self.is_immune = False
         if self.infection_timestamp is not None:
             compute_covid_properties(self)
         self.last_state = self.state
@@ -482,7 +483,7 @@ class Human(object):
         Returns:
             bool: True if human is immune or dead, False if not
         """
-        return self.is_dead
+        return self.is_immune or self.is_dead
 
     @property
     def is_dead(self):
@@ -1162,6 +1163,13 @@ class Human(object):
                     yield self.env.process(self.expire())
                 else:
                     self.recovered_timestamp = self.env.timestamp
+                    self.is_immune = not self.conf.get("REINFECTION_POSSIBLE")
+
+                    # "resample" the chance probability of never recovering again (experimental)
+                    if not self.is_immune:
+                        self.never_recovers = self.rng.random() < self.conf.get("P_NEVER_RECOVERS")[
+                            min(math.floor(self.age / 10), 8)]
+
                     Event.log_recovery(self.conf.get('COLLECT_LOGS'), self, self.env.timestamp, death=False)
 
             self.assert_state_changes()
