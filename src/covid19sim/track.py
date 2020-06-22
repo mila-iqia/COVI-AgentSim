@@ -147,6 +147,7 @@ class Tracker(object):
         # demographics
         self.age_bins = sorted(self.city.conf.get("HUMAN_DISTRIBUTION").keys(), key = lambda x:x[0])
         self.n_people = self.n_humans = self.city.n_people
+        self.human_has_app = None
 
         # track encounters
         self.last_encounter_day = self.env.day_of_week()
