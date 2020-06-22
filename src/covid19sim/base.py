@@ -1016,46 +1016,56 @@ class Location(simpy.Resource):
     def add_human(self, human):
         """
         Adds a human instance to the OrderedSet of humans at the location.
-        If they are infectious, then location.contamination_timestamp is set to the
-        env's timestamp and the duration of this contamination is set
-        (location.max_day_contamination) according to the distribution of surfaces
-        (location.contaminated_surface_probability) and the survival of the virus
-        per surface type (MAX_DAYS_CONTAMINATION)
 
         Args:
             human (covid19sim.simulator.Human): The human to add.
         """
         self.humans.add(human)
-        if human.is_infectious:
-            self.contamination_timestamp = self.env.timestamp
-            rnd_surface = float(self.rng.choice(
-                    a=human.conf.get("MAX_DAYS_CONTAMINATION"),
-                    size=1,
-                    p=self.contaminated_surface_probability
-            ))
-            self.max_day_contamination = max(self.max_day_contamination, rnd_surface)
 
     def remove_human(self, human):
         """
         Remove a given human from location.human
+        If they are infectious, then location.contamination_timestamp is set to the
+        env's timestamp and the duration of this contamination is set
+        (location.max_day_contamination) according to the distribution of surfaces
+        (location.contaminated_surface_probability) and the survival of the virus
+        per surface type (MAX_DAYS_CONTAMINATION)
         /!\ Human is not returned
 
         Args:
             human (covid19sim.simulator.Human): The human to remove
         """
-        self.humans.remove(human)
+        if human in self.humans:
+            if human.is_infectious:
+                self.contamination_timestamp = self.env.timestamp
+                rnd_surface = float(self.rng.choice(
+                        a=human.conf.get("MAX_DAYS_CONTAMINATION"),
+                        size=1,
+                        p=self.contaminated_surface_probability
+                ))
+                self.max_day_contamination = max(self.max_day_contamination, rnd_surface)
+            self.humans.remove(human)
 
     @property
     def is_contaminated(self):
         """
-        Is the location currently contaminated? This depends on the moment
-        when it got contaminated (see add_human()), current time and the
-        duration of the contamination (location.max_day_contamination)
+        Is the location currently contaminated? It is if one of these two
+        conditions is true :
+        - an infectious human is present at the location (location is
+          considered constantly reinfected by the human)
+        - there are no infectious humans but the location was contaminated
+          recently (see remove_human()). This depends on the time the last
+          infectious human left, the current time and the duration of the
+          contamination (location.max_day_contamination).
 
         Returns:
             bool: Is the place currently contaminating?
         """
-        return self.env.timestamp - self.contamination_timestamp <= datetime.timedelta(days=self.max_day_contamination)
+        if self.infectious_human():
+            return True
+        else:
+            return (self.env.timestamp - self.contamination_timestamp <=
+                    datetime.timedelta(days=self.max_day_contamination))
 
     @property
     def contamination_probability(self):
@@ -1070,11 +1080,18 @@ class Location(simpy.Resource):
             float: probability that a human is contaminated when going to this location.
         """
         if self.is_contaminated:
-            lag = (self.env.timestamp - self.contamination_timestamp)
-            lag /= datetime.timedelta(days=1)
-            p_infection = 1 - lag / self.max_day_contamination # linear decay; &envrionmental_contamination
-            return p_infection
-        return 0.0
+            if self.infectious_human():
+                # Location constantly reinfected by the infectious human
+                p_infection = 1.0
+            else:
+                # Linear decay of p_infection depending on time since last infection
+                lag = (self.env.timestamp - self.contamination_timestamp)
+                lag /= datetime.timedelta(days=1)
+                p_infection = 1 - lag / self.max_day_contamination
+        else:
+            p_infection = 0.0
+
+        return p_infection
 
     def __hash__(self):
         """

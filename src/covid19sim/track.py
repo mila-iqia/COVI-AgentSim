@@ -407,7 +407,8 @@ class Tracker(object):
                 "state": h.state.index(1),
                 "test_result": h.test_result,
                 "n_symptoms": len(h.symptoms),
-                "name":h.name,
+                "name": h.name,
+                "dead": h.is_dead,
             })
 
         self.human_monitor[self.env.timestamp.date()-datetime.timedelta(days=1)] = row
