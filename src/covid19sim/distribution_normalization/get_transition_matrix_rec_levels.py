@@ -132,7 +132,7 @@ def generate_single(args, source, target):
 
     # Save the new source configuration
     config_folder = os.path.join(os.path.dirname(__file__),
-                                 '../hydra-configs/simulation',
+                                 '../configs/simulation',
                                  args.config_folder)
     config_folder = os.path.relpath(config_folder)
     if not os.path.exists(config_folder):
@@ -241,7 +241,7 @@ if __name__ == '__main__':
              'intervention of.')
     parser.add_argument('--config-folder', type=str, default='transport',
         help='Name of the folder where the new configuration files are placed. '
-             'The folder is created automatically inside `hydra-configs/simulation`.')
+             'The folder is created automatically inside `configs/simulation`.')
     parser.add_argument('--bulk-keys', type=json.loads, default=None,
         help='The keys in the configuration to loop over for bulk creation. '
              'If not provided, then only a single pair of configuration files '

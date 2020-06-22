@@ -12,7 +12,7 @@ Let's take an example where you want to normalize a run based on **1st-order Bin
 python src/covid19sim/other/get_transition_matrix_rec_levels.py --source path/to/bdt1/experiment --target path/to/transformer/experiment --config-folder normalized_bdt1
 ```
 
-This script takes as input the paths of the **source (BDT1)** and the **target (Transformer)**, which contains the `*.pkl` file, as well as the `*.yaml` configuration file. This script generates a new configuration file for **BDT1, using the mobility of Transformer**, which is placed into the **config-folder** (under `src/covid19sim/hydra-configs/simulation`).
+This script takes as input the paths of the **source (BDT1)** and the **target (Transformer)**, which contains the `*.pkl` file, as well as the `*.yaml` configuration file. This script generates a new configuration file for **BDT1, using the mobility of Transformer**, which is placed into the **config-folder** (under `src/covid19sim/configs/simulation`).
 
 >/!\ Both runs must have the same seed (the script checks for this), and preferrably the same settings (`APP_UPTAKE`, `init_percent_sick`, etc...), although the script **does not** check for matching settings.
 
@@ -21,7 +21,7 @@ For example
 ```
 $ python src/covid19sim/other/get_transition_matrix_rec_levels.py --source $SLURM_TMPDIR/bdt1/sim_v2_people-1000_days-30_init-0.01_uptake-0.8415_seed-5001_20200611-001905_771610 --target $SLURM_TMPDIR/transMI/sim_v2_people-1000_days-30_init-0.01_uptake-0.8415_seed-5001_20200611-001505_996537 --config-folder normalized_bdt1
 
-INFO:root:New configuration file saved: `src/covid19sim/hydra-configs/simulation/normalized_bdt1/digital_to_transformer_seed-5001_20200617-085711.yaml`
+INFO:root:New configuration file saved: `src/covid19sim/configs/simulation/normalized_bdt1/digital_to_transformer_seed-5001_20200617-085711.yaml`
 INFO:root:To run the experiment with the new mobility:
     python src/covid19sim/run.py normalized_bdt1=digital_to_transformer_seed-5001_20200617-085711
 ```
@@ -68,13 +68,13 @@ Then we can call the following script:
 $ python src/covid19sim/other/get_transition_matrix_rec_levels.py --source $SLURM_TMPDIR/bdt1 --target $SLURM_TMPDIR/transMI --bulk-keys '["APP_UPTAKE","init_percent_sick"]' --config-folder normalized_bdt1
 
 
-INFO:root:New configuration file saved: `src/covid19sim/hydra-configs/simulation/normalized_bdt1/digital_to_transformer_seed-5001_20200617-091412.yaml`
+INFO:root:New configuration file saved: `src/covid19sim/configs/simulation/normalized_bdt1/digital_to_transformer_seed-5001_20200617-091412.yaml`
 INFO:root:To run the experiment with the new mobility:
     python src/covid19sim/run.py normalized_bdt1=digital_to_transformer_seed-5001_20200617-091412
-INFO:root:New configuration file saved: `src/covid19sim/hydra-configs/simulation/normalized_bdt1/digital_to_transformer_seed-5000_20200617-091422.yaml`
+INFO:root:New configuration file saved: `src/covid19sim/configs/simulation/normalized_bdt1/digital_to_transformer_seed-5000_20200617-091422.yaml`
 INFO:root:To run the experiment with the new mobility:
     python src/covid19sim/run.py normalized_bdt1=digital_to_transformer_seed-5000_20200617-091422
-INFO:root:New configuration file saved: `src/covid19sim/hydra-configs/simulation/normalized_bdt1/digital_to_transformer_seed-5002_20200617-091433.yaml`
+INFO:root:New configuration file saved: `src/covid19sim/configs/simulation/normalized_bdt1/digital_to_transformer_seed-5002_20200617-091433.yaml`
 INFO:root:To run the experiment with the new mobility:
     python src/covid19sim/run.py normalized_bdt1=digital_to_transformer_seed-5002_20200617-091433
 ...
@@ -82,7 +82,7 @@ INFO:root:To run the experiment with the new mobility:
 
 >/!\ The single and double quotes in `--bulk-keys` are important and are not exchangeable. Also there can't be a space inside the `''` (specially after the `,`).
 
-This will give you all the commands you have to run to get the new simulations on **BDT1, with the mobility of Transformer**. You can manually launch them individually, or have another script loop over all the configuration files returned by the script (e.g. inside the `src/covid19sim/hydra-configs/simulation/normalized_bdt1/` folder) and launch the corresponding jobs using `sbatch`.
+This will give you all the commands you have to run to get the new simulations on **BDT1, with the mobility of Transformer**. You can manually launch them individually, or have another script loop over all the configuration files returned by the script (e.g. inside the `src/covid19sim/configs/simulation/normalized_bdt1/` folder) and launch the corresponding jobs using `sbatch`.
 
 >/!\ There is not automatic process to launch all the jobs at once for now. This might be possible using `random_search.py`.
 

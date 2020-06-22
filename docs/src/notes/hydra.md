@@ -10,7 +10,7 @@ This document will walk you through COVI-specific Hydra usage.
 
 ### Main file
 
-Hydra uses YAML configuration files. They **must** all be in `root/src/covid19sim/hydra-configs/simulation`. YAML's main supported types are ~ `int`, `float`, `string`, `list`, `dictionary`. Anything more complicated could trigger parsing errors. Learn more in the *Advanced* section.
+Hydra uses YAML configuration files. They **must** all be in `root/src/covid19sim/configs/simulation`. YAML's main supported types are ~ `int`, `float`, `string`, `list`, `dictionary`. Anything more complicated could trigger parsing errors. Learn more in the *Advanced* section.
 
 ```
 ------------------------- NOTE ------------------------------------
@@ -19,7 +19,7 @@ Hydra uses YAML configuration files. They **must** all be in `root/src/covid19si
 -------------------------------------------------------------------
 ```
 
-***First***, Hydra will first read `hydra-configs/simulation/config.yaml` and then load sequentially all the files listed in the `defaults:` values. Each of them will **overwrite the previous ones if they share keys**. This allows for a hierarchy of configurations.
+***First***, Hydra will first read `configs/simulation/config.yaml` and then load sequentially all the files listed in the `defaults:` values. Each of them will **overwrite the previous ones if they share keys**. This allows for a hierarchy of configurations.
 
 For instance:
 
@@ -66,7 +66,7 @@ conf = {
 
 ### Named configurations
 
-***Second***, Hydra can access specific configurations specified from the command line and stored in directories **within** `hydra-configs/simulation`. The name of such sub-folders will describe how to load them
+***Second***, Hydra can access specific configurations specified from the command line and stored in directories **within** `configs/simulation`. The name of such sub-folders will describe how to load them
 
 ```yaml
 # tracing-method/binary_tracing.yaml
@@ -150,11 +150,11 @@ As explained, COVI has a `config.yaml` which loads 3 defaults, in this order (su
 -------------------------------------------------------------------
 ```
 
-You will notice that `hydra-configs` also holds a `search` folder which has not been mentioned yet. Its purpose is to implement a hyper-parameter random search. Ideas are similar to `simulation` which is described in this tutorial. It holds configurations for `random_search.py`.
+You will notice that `configs` also holds a `search` folder which has not been mentioned yet. Its purpose is to implement a hyper-parameter random search. Ideas are similar to `simulation` which is described in this tutorial. It holds configurations for `random_search.py`.
 
 ### Personal setup
 
-If you want to run experiments for a particular set of plots, parameter tuning or exploration, you need not change the values in the aforementioned files/folder. **Rather**, create your directory in `hydra-configs/simulation` (which will not be tracked unless you change `.gitignore`) and put your overwriting configs in there.
+If you want to run experiments for a particular set of plots, parameter tuning or exploration, you need not change the values in the aforementioned files/folder. **Rather**, create your directory in `configs/simulation` (which will not be tracked unless you change `.gitignore`) and put your overwriting configs in there.
 
 For instance:
 
@@ -216,7 +216,7 @@ test_config_name = "test_variables.yaml"
 conf = get_test_conf(test_config_name)
 ```
 
-`get_test_conf` will load `hydra-configs/simulation/config.yaml`'s `defaults` and overwrite the resulting configuration with whatever's in `test_configs/test_variables.yaml`. Test configurations **must** be in `test_configs/`.
+`get_test_conf` will load `configs/simulation/config.yaml`'s `defaults` and overwrite the resulting configuration with whatever's in `test_configs/test_variables.yaml`. Test configurations **must** be in `test_configs/`.
 
 The whole Hydra setup is tested in `tests/test_hydra.py`. Contact Victor if you want to add / change tests.
 

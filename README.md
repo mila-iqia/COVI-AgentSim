@@ -44,7 +44,7 @@ Note that for MLP and linear regression, the tracing method should be set to `tr
 | `model.name =`| `MixSetNet`    | `MomentNet` | `MomentNet` |
 | `model.kwargs.block_type =` | `sssss`   | `nrrrn` | `l` |
 
-The above commands only produces one run of the simulator. This is useful for debugging, but in order to run multiple simulations with domain randomization, suitable for creating a training dataset, we make use of a config file located at `simulator/src/covid19sim/hydra-configs/search/expriment.yaml` to run 100 train and 20 validation. Note that this takes several hours on a CPU cluster.
+The above commands only produces one run of the simulator. This is useful for debugging, but in order to run multiple simulations with domain randomization, suitable for creating a training dataset, we make use of a config file located at `simulator/src/covid19sim/configs/search/expriment.yaml` to run 100 train and 20 validation. Note that this takes several hours on a CPU cluster.
 
 ```
 python random_search.py

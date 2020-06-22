@@ -20,7 +20,7 @@ class RandomSearchError(Exception):
 
 def check_conf(conf):
     tracing_methods = []
-    hydra_configs = Path(__file__).parent / "hydra-configs"
+    hydra_configs = Path(__file__).parent / "configs"
     exp_file = conf.get("exp_file", "experiment")
     use_tmpdir = conf.get("use_tmpdir")
     infra = conf.get("infra")
@@ -594,10 +594,10 @@ def main(conf: DictConfig) -> None:
 
     # load experimental configuration
     # override with exp_file=<X>
-    # where <X> is in hydra-configs/search and is ".yaml"
+    # where <X> is in configs/search and is ".yaml"
     conf = load_search_conf(
         Path()
-        / "hydra-configs"
+        / "configs"
         / "search"
         / (overrides.get("exp_file", "experiment") + ".yaml")
     )

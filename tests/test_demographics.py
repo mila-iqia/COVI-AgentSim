@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from covid19sim import utils
+from covid19sim.utils import utils
 from covid19sim.locations.city import City
 from covid19sim.utils.env import Env
 from covid19sim.human import Human

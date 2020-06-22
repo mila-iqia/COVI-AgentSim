@@ -17,7 +17,7 @@ from covid19sim.epidemiology.viral_load import compute_covid_properties, viral_l
 
 
 def load_config():
-    HYDRA_PATH = os.path.dirname(covid19sim.__file__) + "/hydra-configs/simulation/"
+    HYDRA_PATH = os.path.dirname(covid19sim.__file__) + "/configs/simulation/"
     assert os.path.isdir(HYDRA_PATH)
 
     config_path = os.path.join(HYDRA_PATH, "config.yaml")
