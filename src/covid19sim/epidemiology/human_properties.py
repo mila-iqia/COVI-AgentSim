@@ -155,7 +155,7 @@ def _get_random_sex(rng, conf):
         return 'other'
 
 
-def get_liklihood_of_severe_illness(age, sex, rng):
+def may_develop_severe_illness(age, sex, rng):
     """
     Liklihood of getting really sick (i.e., requiring hospitalization) from Covid-19
     Args:

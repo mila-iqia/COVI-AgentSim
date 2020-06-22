@@ -311,7 +311,7 @@ AGE_FACTOR_VIRAL_LOAD_HEIGHT:  0.2
 # OTHER CONDITIONS
 INFLAMMATORY_CONDITIONS: ["smoker", "diabetes", "heart_disease", "COPD", "immuno-suppressed"]
 
-# ASYMTPOMATIC
+# ASYMPTOMATIC
 BASELINE_P_ASYMPTOMATIC: 0.18 # p-asymptomatic [Mizumoto 2020 https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7078829/] probability of never showing symptoms yet testing positive
 MILD_INFECTION_RATIO: 0.48 # &prob_infectious_mild [Luo 2020 https://www.medrxiv.org/content/10.1101/2020.03.24.20042606v1]
 ASYMPTOMATIC_INFECTION_RATIO: 0.29 # &prob_infectious_asymp [Luo 2020 https://www.medrxiv.org/content/10.1101/2020.03.24.20042606v1]

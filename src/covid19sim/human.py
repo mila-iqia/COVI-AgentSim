@@ -21,7 +21,7 @@ from covid19sim.log.event import Event
 from collections import deque
 
 from covid19sim.utils.utils import _normalize_scores, draw_random_discrete_gaussian, filter_open, filter_queue_max
-from covid19sim.epidemiology.human_properties import get_liklihood_of_severe_illness, _get_inflammatory_disease_level,\
+from covid19sim.epidemiology.human_properties import may_develop_severe_illness, _get_inflammatory_disease_level,\
     _get_preexisting_conditions, _get_random_sex, get_carefulness, get_age_bin
 from covid19sim.epidemiology.viral_load import compute_covid_properties, viral_load_for_day
 from covid19sim.epidemiology.symptoms import _get_cold_progression, _get_flu_progression,\
@@ -65,70 +65,70 @@ class Human(object):
         """
 
         # Utility References
-        self.conf = conf
-        self.env = env
-        self.city = city
+        self.conf = conf # Simulation-level Configurations
+        self.env = env # Simpy Environment (primarily used for timing / syncronization)
+        self.city = city # Manages lots of things inc. initializing humans and locations, tracking/updating humans
 
         # SEIR Tracking
-        self.recovered_timestamp = datetime.datetime.min
-        self._infection_timestamp = None
-        self.infection_timestamp = infection_timestamp
-        self.n_infectious_contacts = 0
-        self.exposure_source = None
+        self.recovered_timestamp = datetime.datetime.min # Time of recovery from covid -- min if not yet recovered
+        self._infection_timestamp = None # private time of infection with covid - implemented this way to ensure only infected 1 time
+        self.infection_timestamp = infection_timestamp # time of infection with covid
+        self.n_infectious_contacts = 0 # number of high-risk contacts with an infected individual.
+        self.exposure_source = None # source that exposed this human to covid (and infected them). None if not infected.
 
         # Human-related properties
-        self.name: RealUserIDType = f"human:{name}"
-        self.rng = np.random.RandomState(rng.randint(2 ** 16))
-        self.profession = profession
-        self.is_healthcare_worker = True if profession == "healthcare" else False
-        self._workplace = deque((workplace,))
+        self.name: RealUserIDType = f"human:{name}" # Name of this human
+        self.rng = np.random.RandomState(rng.randint(2 ** 16)) # RNG for this particular human
+        self.profession = profession # The job this human has (e.g. healthcare worker, retired, school, etc)
+        self.is_healthcare_worker = True if profession == "healthcare" else False # convenience boolean to check if is healthcare worker
+        self._workplace = deque((workplace,)) # Created as a list because we sometimes modify human's workplace to WFH if in quarantine, then go back to work when released
 
         # Logging / Tracking
-        self.track_this_human = False
-        self.my_history = []
-        self.r0 = []
-        self._events = []
+        self.track_this_human = False # TODO: @PRATEEK plz comment this
+        self.my_history = [] # TODO: @PRATEEK plz comment this
+        self.r0 = [] # TODO: @PRATEEK plz comment this
+        self._events = [] # TODO: @PRATEEK plz comment this
 
 
         """ Biological Properties """
         # Individual Characteristics
-        self.sex = _get_random_sex(self.rng, self.conf)
-        self.age = age
-        self.age_bin = get_age_bin(age, conf)
-        self.normalized_susceptibility = self.conf['NORMALIZED_SUSCEPTIBILITY_BY_AGE'][self.age_bin]
-        self.mean_daily_interaction_age_group = self.conf['MEAN_DAILY_INTERACTION_FOR_AGE_GROUP'][self.age_bin]
-        self.preexisting_conditions = _get_preexisting_conditions(self.age, self.sex, self.rng)
-        self.inflammatory_disease_level = _get_inflammatory_disease_level(self.rng, self.preexisting_conditions, self.conf.get("INFLAMMATORY_CONDITIONS"))
-        self.carefulness = get_carefulness(self.age, self.rng, self.conf)
+        self.sex = _get_random_sex(self.rng, self.conf) # The sex of this person conforming with Canadian statistics
+        self.age = age # The age of this person, conforming with Canadian statistics
+        self.age_bin = get_age_bin(age, conf) # Age bins required for Oxford-like COVID-19 infection model and social mixing tracker
+        self.normalized_susceptibility = self.conf['NORMALIZED_SUSCEPTIBILITY_BY_AGE'][self.age_bin] # Susceptibility to Covid-19 by age
+        self.mean_daily_interaction_age_group = self.conf['MEAN_DAILY_INTERACTION_FOR_AGE_GROUP'][self.age_bin] # Social mixing is determined by age
+        self.preexisting_conditions = _get_preexisting_conditions(self.age, self.sex, self.rng) # Which pre-existing conditions does this person have? E.g. COPD, asthma
+        self.inflammatory_disease_level = _get_inflammatory_disease_level(self.rng, self.preexisting_conditions, self.conf.get("INFLAMMATORY_CONDITIONS")) # how many pre-existing conditions are inflammatory (e.g. smoker)
+        self.carefulness = get_carefulness(self.age, self.rng, self.conf) # How careful is this person? Determines their liklihood of contracting Covid / getting really sick, etc
 
         # Illness Properties
         self.is_asymptomatic = self.rng.rand() < self.conf.get("BASELINE_P_ASYMPTOMATIC") - (self.age - 50) * 0.5 / 100 # e.g. 70: baseline-0.1, 20: baseline+0.15
-        self.infection_ratio = None
-        self.cold_timestamp = None
-        self.flu_timestamp = None
-        self.allergy_timestamp = None
+        self.infection_ratio = None # Ratio that helps make asymptomatic people less infectious than symptomatic. see `ASYMPTOMATIC_INFECTION_RATIO` in core.yaml
+        self.cold_timestamp = None # time when this person was infected with cold
+        self.flu_timestamp = None # time when this person was infected with flu
+        self.allergy_timestamp = None # time when this person started having allergy symptoms
 
         # Allergies
-        self.has_allergies = self.rng.rand() < self.conf.get("P_ALLERGIES")
-        len_allergies = self.rng.normal(1/self.carefulness, 1)
+        self.has_allergies = self.rng.rand() < self.conf.get("P_ALLERGIES") # determines whether this person has allergies
+        len_allergies = self.rng.normal(1/self.carefulness, 1)  # determines the number of symptoms this persons allergies would present with (if they start experiencing symptoms)
         self.len_allergies = 7 if len_allergies > 7 else np.ceil(len_allergies)
-        self.allergy_progression = _get_allergy_progression(self.rng)
+        self.allergy_progression = _get_allergy_progression(self.rng) # if this human starts having allergy symptoms, then there is a progression of symptoms over one or multiple days
 
 
         """ Covid-19 """
         # Covid-19 properties
-        self.viral_load_plateau_height, self.viral_load_plateau_start, self.viral_load_plateau_end = None, None, None
-        self.incubation_days = None
-        self.recovery_days = None
-        self.can_get_really_sick = get_liklihood_of_severe_illness(self.age, self.sex, self.rng)
+        self.viral_load_plateau_height, self.viral_load_plateau_start, self.viral_load_plateau_end = None, None, None # Determines aspects of the piece-wise linear viral load curve for this human
+        self.incubation_days = None # number of days the virus takes to incubate before the person becomes infectious
+        self.recovery_days = None # number of recovery days post viral load plateau
+        self.infectiousness_onset_days = None # number of days after exposure that this person becomes infectious
+        self.can_get_really_sick = may_develop_severe_illness(self.age, self.sex, self.rng) # boolean representing whether this person may need to go to the hospital
         self.can_get_extremely_sick = self.can_get_really_sick and self.rng.random() >= 0.7 # &severe; 30% of severe cases need ICU
-        self.never_recovers = self.rng.random() <= self.conf.get("P_NEVER_RECOVERS")[min(math.floor(self.age/10), 8)]
-        self.initial_viral_load = self.rng.rand() if infection_timestamp is not None else 0
-        self.infectiousness_onset_days = None
-        self.is_immune = False
-        if self.infection_timestamp is not None:
-            compute_covid_properties(self)
-        self.last_state = self.state
+        self.never_recovers = self.rng.random() <= self.conf.get("P_NEVER_RECOVERS")[min(math.floor(self.age/10), 8)] # boolean representing that this person will die if they are infected with Covid-19
+        self.initial_viral_load = self.rng.rand() if infection_timestamp is not None else 0 # starting value for Covid-19 viral load if this person is one of the initially exposed people
+        self.is_immune = False # whether this person is immune to Covid-19 (happens after recovery)
+        if self.infection_timestamp is not None: # if this is an initially Covid-19 sick person
+            compute_covid_properties(self) # then we pre-calculate the course of their disease
+        self.last_state = self.state # And we set their SEIR state (starts as either Susceptible or Exposed)
 
         # Covid-19 testing
         self.test_type = None

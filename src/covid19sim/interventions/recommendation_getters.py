@@ -1,3 +1,7 @@
+"""
+Encodes the logic getting recommendations. Probably should be merged with recommendation_manager.py
+"""
+
 import typing
 from itertools import islice
 from covid19sim.interventions.behaviors import Quarantine

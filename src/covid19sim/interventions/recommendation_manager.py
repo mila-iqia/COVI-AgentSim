@@ -1,6 +1,6 @@
 """
 
-Tracing is a logic engine for non-ml contact tracing methods
+NonMLRiskComputer is a logic engine for non-ml contact tracing methods.
 
 """
 import datetime
@@ -15,7 +15,7 @@ if typing.TYPE_CHECKING:
 
 class NonMLRiskComputer(object):
     """
-    Implements tracing. Assigns risk_levels to Humans.
+    Implements contact tracing and assigns risk_levels to Humans.
 
     This object carries a bunch of flags & is responsible for determining the risk level of humans when
     the transformer is not used for risk level inference. To do so, it will use the targeted human's
