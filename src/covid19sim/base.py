@@ -150,7 +150,7 @@ class City:
         print("Initializing humans ...")
         self.initialize_humans(human_type)
         for human in self.humans:
-            human.track_this_guy = True
+            human.track_this_guy = False
             if human.is_exposed:
                 print(human, human.household, human.household.residents)
 
