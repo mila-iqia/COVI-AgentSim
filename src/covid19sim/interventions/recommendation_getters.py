@@ -1,6 +1,10 @@
+import typing
 from itertools import islice
 from covid19sim.interventions.behaviors import Quarantine
 from covid19sim.interventions.intervention_utils import _get_tracing_recommendations
+
+if typing.TYPE_CHECKING:
+    from covid19sim.human import Human
 
 
 class RecommendationGetter(object):

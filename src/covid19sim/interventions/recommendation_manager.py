@@ -9,7 +9,9 @@ import numpy as np
 
 from covid19sim.interventions.recommendation_getters import RiskBasedRecommendationGetter, HeuristicRecommendationGetter, BinaryTracing
 if typing.TYPE_CHECKING:
+    from covid19sim.human import Human
     from covid19sim.locations.city import PersonalMailboxType
+
 
 class NonMLRiskComputer(object):
     """
