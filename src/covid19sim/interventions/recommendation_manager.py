@@ -99,17 +99,12 @@ class NonMLRiskComputer(object):
 
         Returns:
             t (int): Number of recent contacts that are tested positive.
-            s (int): Number of recent contacts that have reported symptoms.
-                r_up: Number of recent contacts that increased their risk levels.
-                v_up: Average increase in magnitude of risk levels of recent contacts.
-                r_down: Number of recent contacts that decreased their risk levels.
-                v_down: Average decrease in magnitude of risk levels of recent contacts.
         """
         assert self.risk_model != "transformer", "we should never be in here!"
         assert self.risk_model in ["manual", "digital", "naive", "heuristicv1", "heuristicv2", "other"], "missing something?"
-        t, s, r_up, r_down, v_up, v_down = 0, 0, 0, 0, 0, 0
+        t = 0
 
-        test_tracing_delay = datetime.timedelta(days=0)
+        test_tracing_delay = datetime.timedelta(days=0) # TODO: Move to config
         positive_test_counts = human.contact_book.get_positive_contacts_counts(
             humans_map=humans_map,
             tracing_delay=test_tracing_delay,
@@ -120,7 +115,7 @@ class NonMLRiskComputer(object):
         for order, count in positive_test_counts.items():
             t += count * np.exp(-2*(order-1))
 
-        return t, s, (r_up, v_up, r_down, v_down)
+        return t
 
     def compute_risk(
             self,

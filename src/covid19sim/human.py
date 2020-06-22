@@ -136,49 +136,46 @@ class Human(object):
         self.hidden_test_result = None # Test results (that will be reported to this person but have not yet been)
         self._will_report_test_result = None # Determines whether this individual will report their test (given that they received a test result)
         self.time_to_test_result = None # How long does it take for this person to receive their test after it has been administered
-        self.test_result_validated = None
-        self._test_results = deque()
-        self.test_result_validated = None
-        self.denied_icu = None
-        self.denied_icu_days = None
+        self.test_result_validated = None # Represents whether a test result is validated by some public health agency (True for PCR Tests, some antiody tests)
+        self._test_results = deque() # History of test results (e.g. if you get a negative PCR test, you can still get more tests)
+        self.denied_icu = None # Used because some older people have been denied use of ICU for younger / better candidates
+        self.denied_icu_days = None # number of days the person would be denied ICU access (Note: denied ICU logic could probably be improved)
 
         # Symptoms
-        self.covid_symptom_start_time = None
-        self.cold_progression = _get_cold_progression(self.age, self.rng, self.carefulness, self.preexisting_conditions, self.can_get_really_sick, self.can_get_extremely_sick)
+        self.covid_symptom_start_time = None # The time when this persons covid symptoms start (requires that they are in infectious state)
+        self.cold_progression = _get_cold_progression(self.age, self.rng, self.carefulness, self.preexisting_conditions, self.can_get_really_sick, self.can_get_extremely_sick) # determines the symptoms that this person would have if they had a cold
         self.flu_progression = _get_flu_progression(
             self.age, self.rng, self.carefulness, self.preexisting_conditions,
             self.can_get_really_sick, self.can_get_extremely_sick, self.conf.get("AVG_FLU_DURATION")
-        )
+        ) # determines the symptoms this person would have if they had the flu
         self.all_symptoms, self.cold_symptoms, self.flu_symptoms, self.covid_symptoms, self.allergy_symptoms = [], [], [], [], []
         self.rolling_all_symptoms = deque(
             [tuple()] * self.conf.get('TRACING_N_DAYS_HISTORY'),
             maxlen=self.conf.get('TRACING_N_DAYS_HISTORY')
-        )
+        ) # stores the ground-truth Covid-19 symptoms this person has on day D (used for our ML predictor and other symptom-based predictors)
         self.rolling_all_reported_symptoms = deque(
             [tuple()] * self.conf.get('TRACING_N_DAYS_HISTORY'),
             maxlen=self.conf.get('TRACING_N_DAYS_HISTORY')
-        )
+        ) # stores the Covid-19 symptoms this person had reported in the app until the current simulation day (empty if they do not have the app)
 
 
         """App-related"""
-        self.has_app = has_app
-        time_slot = rng.randint(0, 24) # create 24 timeslots to do your updating
+        self.has_app = has_app # Does this prson have the app
+        time_slot = rng.randint(0, 24) # Assign this person to some timeslot
         self.time_slots = [
             int((time_slot + i * 24 / self.conf.get('UPDATES_PER_DAY')) % 24)
             for i in range(self.conf.get('UPDATES_PER_DAY'))
-        ]
-        # The noise in bluetooth signal strength to distance is sampled from a uniform distribution between 0 and 1
-        self.phone_bluetooth_noise = self.rng.rand()
+        ] # If people update their risk predictions 4 times per day (every 6 hours) then this code assigns the specific times _this_ person will update
+        self.phone_bluetooth_noise = self.rng.rand() # Error in distance estimation using Bluetooth with a specific type of phone is sampled from a uniform distribution between 0 and 1
 
-        # Observed attributes: whether people enter stuff in the app
-        self.has_logged_info = self.has_app and self.rng.rand() < self.carefulness
-        self.has_logged_symptoms = False
+        # Observed attributes; whether people enter stuff in the app
+        self.has_logged_info = self.has_app and self.rng.rand() < self.carefulness # Determines whether this person writes their demographic data into the app
         self.obs_is_healthcare_worker = True if self.is_healthcare_worker and self.rng.random()<0.9 else False # 90% of the time, healthcare workers will declare it
-        self.obs_age = self.age if self.has_app and self.has_logged_info else None
-        self.obs_sex = self.sex if self.has_app and self.has_logged_info else None
-        self.obs_preexisting_conditions = self.preexisting_conditions if self.has_app and self.has_logged_info else []
-        self.obs_hospitalized = False
-        self.obs_in_icu = False
+        self.obs_age = self.age if self.has_app and self.has_logged_info else None # The age of this human reported to the app
+        self.obs_sex = self.sex if self.has_app and self.has_logged_info else None # The sex of this human reported to the app
+        self.obs_preexisting_conditions = self.preexisting_conditions if self.has_app and self.has_logged_info else [] # the preexisting conditions of this human reported to the app
+        self.obs_hospitalized = False # Whether this person was hospitalized (as reported to the app)
+        self.obs_in_icu = False # Whether this person was put in the ICU (as reported to the app)
 
 
         """ Interventions """
