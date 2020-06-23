@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 
 import covid19sim
 from covid19sim.base import City, Env
+from covid19sim.constants import SECONDS_PER_DAY
 from covid19sim.simulator import Human
 from covid19sim.utils import parse_configuration
 
@@ -378,7 +379,198 @@ def test_human_viral_load_for_day():
     assert human.viral_load_for_day(now + datetime.timedelta(days=recovery_days)) == 0.0
 
 
+class EnvMock():
+        """
+        Custom simpy.Environment
+        """
+
+        def __init__(self, initial_timestamp):
+            """
+            Args:
+                initial_timestamp (datetime.datetime): The environment's initial timestamp
+            """
+            self.initial_timestamp = datetime.datetime.combine(initial_timestamp.date(),
+                                                               datetime.time())
+            self.ts_initial = int(self.initial_timestamp.timestamp())
+            self.now = self.ts_initial
+
+        @property
+        def timestamp(self):
+            """
+            Returns:
+                datetime.datetime: Current date.
+            """
+            #
+            ##
+            ## The following is preferable, but not equivalent to the initial
+            ## version, because timedelta ignores Daylight Saving Time.
+            ##
+            #
+            # return datetime.datetime.fromtimestamp(int(self.now))
+            #
+            return self.initial_timestamp + datetime.timedelta(
+                seconds=self.now - self.ts_initial)
+
+        def minutes(self):
+            """
+            Returns:
+                int: Current timestamp minute
+            """
+            return self.timestamp.minute
+
+        def hour_of_day(self):
+            """
+            Returns:
+                int: Current timestamp hour
+            """
+            return self.timestamp.hour
+
+        def day_of_week(self):
+            """
+            Returns:
+                int: Current timestamp day of the week
+            """
+            return self.timestamp.weekday()
+
+        def is_weekend(self):
+            """
+            Returns:
+                bool: Current timestamp day is a weekend day
+            """
+            return self.day_of_week() >= 5
+
+        def time_of_day(self):
+            """
+            Time of day in iso format
+            datetime(2020, 2, 28, 0, 0) => '2020-02-28T00:00:00'
+
+            Returns:
+                str: iso string representing current timestamp
+            """
+            return self.timestamp.isoformat()
+
+
+def test_human_cold_symptoms():
+    conf = load_config()
+
+    # Test cold symptoms
+    conf["P_COLD_TODAY"] = 1.0
+    conf["P_FLU_TODAY"] = 0.0
+    conf["P_HAS_ALLERGIES_TODAY"] = 0.0
+    init_percent_sick = 0
+
+    n_people = 10000
+    start_time = datetime.datetime(2020, 2, 28, 0, 0)
+    city_x_range = (0, 1000)
+    city_y_range = (0, 1000)
+
+    env = EnvMock(start_time)
+
+    # Init humans
+    city = City(
+        env,
+        n_people,
+        init_percent_sick,
+        np.random.RandomState(42),
+        city_x_range,
+        city_y_range,
+        Human,
+        conf
+    )
+
+    for day in range(10):
+        env.now += SECONDS_PER_DAY
+        for human in city.humans:
+            human.has_allergies = False
+            human.catch_other_disease_at_random()
+            human.update_symptoms()
+            if day < len(human.cold_progression):
+                assert set(human.all_symptoms) == set(human.cold_progression[day]), \
+                    f"Human symptoms should be those of cold"
+
+
+def test_human_flu_symptoms():
+    conf = load_config()
+
+    # Test cold symptoms
+    conf["P_COLD_TODAY"] = 0.0
+    conf["P_FLU_TODAY"] = 1.0
+    conf["P_HAS_ALLERGIES_TODAY"] = 0.0
+    init_percent_sick = 0
+
+    n_people = 10000
+    start_time = datetime.datetime(2020, 2, 28, 0, 0)
+    city_x_range = (0, 1000)
+    city_y_range = (0, 1000)
+
+    env = EnvMock(start_time)
+
+    # Init humans
+    city = City(
+        env,
+        n_people,
+        init_percent_sick,
+        np.random.RandomState(42),
+        city_x_range,
+        city_y_range,
+        Human,
+        conf
+    )
+
+    for day in range(10):
+        env.now += SECONDS_PER_DAY
+        for human in city.humans:
+            human.has_allergies = False
+            human.catch_other_disease_at_random()
+            human.update_symptoms()
+            if day < len(human.flu_progression):
+                assert set(human.all_symptoms) == set(human.flu_progression[day]), \
+                    f"Human symptoms should be those of flu"
+
+
+def test_human_allergies_symptoms():
+    conf = load_config()
+
+    # Test cold symptoms
+    conf["P_COLD_TODAY"] = 0.0
+    conf["P_FLU_TODAY"] = 0.0
+    conf["P_HAS_ALLERGIES_TODAY"] = 1.0
+    init_percent_sick = 0
+
+    n_people = 10000
+    start_time = datetime.datetime(2020, 2, 28, 0, 0)
+    city_x_range = (0, 1000)
+    city_y_range = (0, 1000)
+
+    env = EnvMock(start_time)
+
+    # Init humans
+    city = City(
+        env,
+        n_people,
+        init_percent_sick,
+        np.random.RandomState(42),
+        city_x_range,
+        city_y_range,
+        Human,
+        conf
+    )
+
+    for day in range(10):
+        env.now += SECONDS_PER_DAY
+        for human in city.humans:
+            human.has_allergies = True
+            human.catch_other_disease_at_random()
+            human.update_symptoms()
+            if day < len(human.allergy_progression):
+                assert set(human.all_symptoms) == set(human.allergy_progression[day]), \
+                    f"Human symptoms should be those of allergy"
+
+
 if __name__ == "__main__":
     test_incubation_days()
     test_human_compute_covid_properties()
     test_human_viral_load_for_day()
+    test_human_cold_symptoms()
+    test_human_flu_symptoms()
+    test_human_allergies_symptoms()
