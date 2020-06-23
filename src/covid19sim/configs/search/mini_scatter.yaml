@@ -1,25 +1,67 @@
-n_people: 1500
-simulation_days: 30
-init_percent_sick: 0.00333
-test_capacity: 0.02
-COLD_CONTAGIOUSNESS: 0.0
+# -------------------------------------
+# -----  Simulation Fixed Params  -----
+# -------------------------------------
+n_people: 100
+simulation_days: 25
+test_capacity: 0.005
+DROPOUT_RATE: 0.02
 INTERVENTION_DAY: 5
 tune: true
+COLD_CONTAGIOUSNESS: 0
+
+# ---------------------------------------
+# -----  Experimental Fixed Params  -----
+# ---------------------------------------
+n_search: -1 # figures out the size of cartesian product for you
+
+
+# -------------------------
+# -----  Directories  -----
+# -------------------------
+base_dir: /scratch/vsch/covid_sims/mini_adoption # if outdir is not provided, runs will be stored in base_dir/${tracing_method}
+code_loc: /home/vsch/simulator/src/covid19sim/
+weights_dir: /scratch/vsch
+use_tmpdir: false
+
+# --------------------------------------
+# -----  Sampling Parametrization  -----
+# --------------------------------------
+
+tracing_method:
+  sample: cartesian
+  from:
+    - no_intervention
+    - heuristicv1
+    - transformer>AMBER-WOOD-691B
+    - transformer>ANCIENT-SEA-523
+    - oracle>AMBER-WOOD-691B
+    - binary_digital_tracing_order_1
+    - binary_digital_tracing_order_2
 
 APP_UPTAKE:
   sample: cartesian
   from:
-    - 0.2107 # 15%
+    # - 0.0150 # 1%
     # - 0.4215 # 30%
-    - 0.6320 # 45%
-    # - 0.8415 # 60%
-    - 0.9831 # 70%
+    - 0.5618 # 40%
+    - 0.8415 # 60%
+    # - -1     # 100%
+
+P_CAREFUL_PERSON:
+  sample: cartesian
+  from:
+    - 0.3
+
+init_percent_sick:
+  sample: cartesian
+  from:
+    - 0.002
+    - 0.01
 
 seed:
   sample: cartesian
   from:
-    - 3000
-    - 3001
-    - 3002
-    - 3003
-    - 3004
+    - 5000
+    - 5001
+    - 5002
+    - 5003
