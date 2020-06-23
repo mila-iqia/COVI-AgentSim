@@ -136,23 +136,18 @@ class NonMLRiskComputer(object):
         """
         assert self.risk_model != "transformer", "we should never be in here!"
         assert self.risk_model in ["manual", "digital", "naive", "heuristicv1", "heuristicv2", "other"], "missing something?"
-        if self.risk_model in ['manual', 'digital']:
-            t, s, r = self._get_hypothetical_contact_tracing_results(human, mailbox, humans_map)
-            if t + s > 0:
+        if self.risk_model in ["manual", "digital"]:
+            t = self._get_hypothetical_contact_tracing_results(human, humans_map)
+            if t > 0:
                 risk = 1.0
             else:
                 risk = 0.0
 
         elif self.risk_model == "naive":
-            risk = 1.0 - (1.0 - human.conf.get("RISK_TRANSMISSION_PROBA")) ** (t+s)
+            risk = 1.0 - (1.0 - human.conf.get("RISK_TRANSMISSION_PROBA")) ** t
 
         elif self.risk_model in ["heuristicv1", "heuristicv2"]:
             risk = self.recommendation_getter.compute_risk(human, mailbox)
-
-        elif self.risk_model == "other":
-            r_up, v_up, r_down, v_down = r
-            r_score = 2*v_up - v_down
-            risk = 1.0 - (1.0 - human.conf.get("RISK_TRANSMISSION_PROBA")) ** (t + 0.5*s + r_score)
 
         return risk if isinstance(risk, list) else [risk]
 
@@ -160,4 +155,3 @@ class NonMLRiskComputer(object):
         if self.risk_model == "transformer":
             return f"{self.risk_model}"
         return f"Tracing: {self.risk_model} order {self.max_depth} modify:{self.should_modify}"
-
