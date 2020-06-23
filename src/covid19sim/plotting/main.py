@@ -4,7 +4,7 @@ from omegaconf import OmegaConf
 from pathlib import Path
 import math
 from collections import defaultdict
-
+from time import time
 import covid19sim.plotting.plot_pareto_adoption as pareto_adoption
 import covid19sim.plotting.plot_jellybeans as jellybeans
 from covid19sim.plotting.utils.extract_data import get_all_data
@@ -182,8 +182,9 @@ def main(conf):
         )
 
     print("Reading configs from {}...".format(str(path)), end="", flush=True)
-    all_data = get_all_data(path, keep_pkl_keys)
-    print("Done.")
+    rtime = time()
+    all_data = get_all_data(path, keep_pkl_keys, conf.get("multithread", False))
+    print("Done in {:.2f}s.".format(time() - rtime))
     summarize_configs(all_data)
     data = map_conf_to_models(all_data, conf)
     check_data(data)
@@ -194,10 +195,14 @@ def main(conf):
         try:
             func(data, path, conf["compare"])
         except Exception as e:
-            print("** ERROR **")
-            print(str(e))
-            print("*" * len(str(e)))
-            print("Ignoring " + plot)
+            if isinstance(e, KeyboardInterrupt):
+                print("Interrupting.")
+                break
+            else:
+                print("** ERROR **")
+                print(str(e))
+                print("*" * len(str(e)))
+                print("Ignoring " + plot)
         print_footer()
 
 

@@ -28,6 +28,7 @@ model_mapping:
   WINTER-MOON-285: diurnal
 
 compare: APP_UPTAKE
+multithread: False
 
 hydra:
   run:

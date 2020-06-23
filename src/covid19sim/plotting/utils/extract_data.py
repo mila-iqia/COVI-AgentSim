@@ -8,9 +8,9 @@ import numpy as np
 import os
 import pickle
 from covid19sim.plotting.plot_rt import PlotRt
-import multiprocessing as mp
 from pathlib import Path
 import yaml
+import concurrent.futures
 
 
 def get_data(filename=None, data=None):
@@ -212,7 +212,7 @@ def absolute_file_paths(directory):
     return to_return
 
 
-def get_all_data(base_path, keep_pkl_keys):
+def get_all_data(base_path, keep_pkl_keys, multi_thread=False):
     base_path = Path(base_path).resolve()
     assert base_path.exists()
     methods = [
@@ -238,17 +238,28 @@ def get_all_data(base_path, keep_pkl_keys):
             and len(list(r.glob("tracker*.pkl"))) == 1
         ]
         try:
-            for r in runs:
-                sr = str(r)
-                all_data[sm][sr] = {}
-                print("Loading {}/{}".format(m.name, r.name), end="\r", flush=True)
-                with (r / "full_configuration.yaml").open("r") as f:
-                    all_data[sm][sr]["conf"] = yaml.safe_load(f)
-                with open(str(list(r.glob("tracker*.pkl"))[0]), "rb") as f:
-                    pkl_data = pickle.load(f)
-                    all_data[sm][sr]["pkl"] = {
-                        k: v for k, v in pkl_data.items() if k in keep_pkl_keys
-                    }
+            if multi_thread:
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    futures = [
+                        executor.submit(thread_read_run, (r, keep_pkl_keys))
+                        for r in runs
+                    ]
+                runs_data = [f.result() for f in futures]
+                for r, conf, pkl in runs_data:
+                    sr = str(r)
+                    all_data[sm][sr] = {}
+                    all_data[sm][sr]["conf"] = conf
+                    all_data[sm][sr]["pkl"] = pkl
+
+            else:
+                for r in runs:
+                    r, conf, pkl = thread_read_run((r, keep_pkl_keys))
+                    sr = str(r)
+                    all_data[sm][sr] = {}
+                    all_data[sm][sr]["conf"] = conf
+                    all_data[sm][sr]["pkl"] = pkl
+                # print("Loading {}/{}".format(m.name, r.name), end="\r", flush=True)
+
         except TypeError as e:
             print(
                 f"\nCould not load pkl in {m.name}/{r.name}"
@@ -258,3 +269,14 @@ def get_all_data(base_path, keep_pkl_keys):
             print(">>> Skipping method **{}**\n".format(m.name))
             del all_data[sm]
     return all_data
+
+
+def thread_read_run(args):
+    r, keep_pkl_keys = args
+    with (r / "full_configuration.yaml").open("r") as f:
+        conf = yaml.safe_load(f)
+    with open(str(list(r.glob("tracker*.pkl"))[0]), "rb") as f:
+        pkl_data = pickle.load(f)
+        pkl = {k: v for k, v in pkl_data.items() if k in keep_pkl_keys}
+
+    return (r, conf, pkl)
