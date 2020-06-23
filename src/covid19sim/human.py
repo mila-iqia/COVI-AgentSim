@@ -65,161 +65,159 @@ class Human(object):
         """
 
         # Utility References
-        self.conf = conf # Simulation-level Configurations
-        self.env = env # Simpy Environment (primarily used for timing / syncronization)
-        self.city = city # Manages lots of things inc. initializing humans and locations, tracking/updating humans
+        self.conf = conf  # Simulation-level Configurations
+        self.env = env  # Simpy Environment (primarily used for timing / syncronization)
+        self.city = city  # Manages lots of things inc. initializing humans and locations, tracking/updating humans
 
         # SEIR Tracking
-        self.recovered_timestamp = datetime.datetime.min # Time of recovery from covid -- min if not yet recovered
-        self._infection_timestamp = None # private time of infection with covid - implemented this way to ensure only infected 1 time
-        self.infection_timestamp = infection_timestamp # time of infection with covid
-        self.n_infectious_contacts = 0 # number of high-risk contacts with an infected individual.
-        self.exposure_source = None # source that exposed this human to covid (and infected them). None if not infected.
+        self.recovered_timestamp = datetime.datetime.min  # Time of recovery from covid -- min if not yet recovered
+        self._infection_timestamp = None  # private time of infection with covid - implemented this way to ensure only infected 1 time
+        self.infection_timestamp = infection_timestamp  # time of infection with covid
+        self.n_infectious_contacts = 0  # number of high-risk contacts with an infected individual.
+        self.exposure_source = None  # source that exposed this human to covid (and infected them). None if not infected.
 
         # Human-related properties
-        self.name: RealUserIDType = f"human:{name}" # Name of this human
-        self.rng = np.random.RandomState(rng.randint(2 ** 16)) # RNG for this particular human
-        self.profession = profession # The job this human has (e.g. healthcare worker, retired, school, etc)
-        self.is_healthcare_worker = True if profession == "healthcare" else False # convenience boolean to check if is healthcare worker
-        self._workplace = deque((workplace,)) # Created as a list because we sometimes modify human's workplace to WFH if in quarantine, then go back to work when released
+        self.name: RealUserIDType = f"human:{name}"  # Name of this human
+        self.rng = np.random.RandomState(rng.randint(2 ** 16))  # RNG for this particular human
+        self.profession = profession  # The job this human has (e.g. healthcare worker, retired, school, etc)
+        self.is_healthcare_worker = True if profession == "healthcare" else False  # convenience boolean to check if is healthcare worker
+        self._workplace = deque((workplace,))  # Created as a list because we sometimes modify human's workplace to WFH if in quarantine, then go back to work when released
 
         # Logging / Tracking
-        self.track_this_human = False # TODO: @PRATEEK plz comment this
-        self.my_history = [] # TODO: @PRATEEK plz comment this
-        self.r0 = [] # TODO: @PRATEEK plz comment this
-        self._events = [] # TODO: @PRATEEK plz comment this
+        self.track_this_human = False  # TODO: @PRATEEK plz comment this
+        self.my_history = []  # TODO: @PRATEEK plz comment this
+        self.r0 = []  # TODO: @PRATEEK plz comment this
+        self._events = []  # TODO: @PRATEEK plz comment this
 
 
         """ Biological Properties """
         # Individual Characteristics
-        self.sex = _get_random_sex(self.rng, self.conf) # The sex of this person conforming with Canadian statistics
-        self.age = age # The age of this person, conforming with Canadian statistics
-        self.age_bin = get_age_bin(age, conf) # Age bins required for Oxford-like COVID-19 infection model and social mixing tracker
-        self.normalized_susceptibility = self.conf['NORMALIZED_SUSCEPTIBILITY_BY_AGE'][self.age_bin] # Susceptibility to Covid-19 by age
-        self.mean_daily_interaction_age_group = self.conf['MEAN_DAILY_INTERACTION_FOR_AGE_GROUP'][self.age_bin] # Social mixing is determined by age
-        self.preexisting_conditions = _get_preexisting_conditions(self.age, self.sex, self.rng) # Which pre-existing conditions does this person have? E.g. COPD, asthma
-        self.inflammatory_disease_level = _get_inflammatory_disease_level(self.rng, self.preexisting_conditions, self.conf.get("INFLAMMATORY_CONDITIONS")) # how many pre-existing conditions are inflammatory (e.g. smoker)
-        self.carefulness = get_carefulness(self.age, self.rng, self.conf) # How careful is this person? Determines their liklihood of contracting Covid / getting really sick, etc
+        self.sex = _get_random_sex(self.rng, self.conf)  # The sex of this person conforming with Canadian statistics
+        self.age = age  # The age of this person, conforming with Canadian statistics
+        self.age_bin = get_age_bin(age, conf)  # Age bins required for Oxford-like COVID-19 infection model and social mixing tracker
+        self.normalized_susceptibility = self.conf['NORMALIZED_SUSCEPTIBILITY_BY_AGE'][self.age_bin]  # Susceptibility to Covid-19 by age
+        self.mean_daily_interaction_age_group = self.conf['MEAN_DAILY_INTERACTION_FOR_AGE_GROUP'][self.age_bin]  # Social mixing is determined by age
+        self.preexisting_conditions = _get_preexisting_conditions(self.age, self.sex, self.rng)  # Which pre-existing conditions does this person have? E.g. COPD, asthma
+        self.inflammatory_disease_level = _get_inflammatory_disease_level(self.rng, self.preexisting_conditions, self.conf.get("INFLAMMATORY_CONDITIONS"))  # how many pre-existing conditions are inflammatory (e.g. smoker)
+        self.carefulness = get_carefulness(self.age, self.rng, self.conf)  # How careful is this person? Determines their liklihood of contracting Covid / getting really sick, etc
 
         # Illness Properties
-        self.is_asymptomatic = self.rng.rand() < self.conf.get("BASELINE_P_ASYMPTOMATIC") - (self.age - 50) * 0.5 / 100 # e.g. 70: baseline-0.1, 20: baseline+0.15
-        self.infection_ratio = None # Ratio that helps make asymptomatic people less infectious than symptomatic. see `ASYMPTOMATIC_INFECTION_RATIO` in core.yaml
-        self.cold_timestamp = None # time when this person was infected with cold
-        self.flu_timestamp = None # time when this person was infected with flu
-        self.allergy_timestamp = None # time when this person started having allergy symptoms
+        self.is_asymptomatic = self.rng.rand() < self.conf.get("BASELINE_P_ASYMPTOMATIC") - (self.age - 50) * 0.5 / 100  # e.g. 70: baseline-0.1, 20: baseline+0.15
+        self.infection_ratio = None  # Ratio that helps make asymptomatic people less infectious than symptomatic. see `ASYMPTOMATIC_INFECTION_RATIO` in core.yaml
+        self.cold_timestamp = None  # time when this person was infected with cold
+        self.flu_timestamp = None  # time when this person was infected with flu
+        self.allergy_timestamp = None  # time when this person started having allergy symptoms
 
         # Allergies
-        self.has_allergies = self.rng.rand() < self.conf.get("P_ALLERGIES") # determines whether this person has allergies
-        len_allergies = self.rng.normal(1/self.carefulness, 1)  # determines the number of symptoms this persons allergies would present with (if they start experiencing symptoms)
+        self.has_allergies = self.rng.rand() < self.conf.get("P_ALLERGIES")  # determines whether this person has allergies
+        len_allergies = self.rng.normal(1/self.carefulness, 1)   # determines the number of symptoms this persons allergies would present with (if they start experiencing symptoms)
         self.len_allergies = 7 if len_allergies > 7 else np.ceil(len_allergies)
-        self.allergy_progression = _get_allergy_progression(self.rng) # if this human starts having allergy symptoms, then there is a progression of symptoms over one or multiple days
+        self.allergy_progression = _get_allergy_progression(self.rng)  # if this human starts having allergy symptoms, then there is a progression of symptoms over one or multiple days
 
 
         """ Covid-19 """
         # Covid-19 properties
-        self.viral_load_plateau_height, self.viral_load_plateau_start, self.viral_load_plateau_end = None, None, None # Determines aspects of the piece-wise linear viral load curve for this human
-        self.incubation_days = None # number of days the virus takes to incubate before the person becomes infectious
-        self.recovery_days = None # number of recovery days post viral load plateau
-        self.infectiousness_onset_days = None # number of days after exposure that this person becomes infectious
-        self.can_get_really_sick = may_develop_severe_illness(self.age, self.sex, self.rng) # boolean representing whether this person may need to go to the hospital
-        self.can_get_extremely_sick = self.can_get_really_sick and self.rng.random() >= 0.7 # &severe; 30% of severe cases need ICU
-        self.never_recovers = self.rng.random() <= self.conf.get("P_NEVER_RECOVERS")[min(math.floor(self.age/10), 8)] # boolean representing that this person will die if they are infected with Covid-19
-        self.initial_viral_load = self.rng.rand() if infection_timestamp is not None else 0 # starting value for Covid-19 viral load if this person is one of the initially exposed people
-        self.is_immune = False # whether this person is immune to Covid-19 (happens after recovery)
-        if self.infection_timestamp is not None: # if this is an initially Covid-19 sick person
-            compute_covid_properties(self) # then we pre-calculate the course of their disease
-        self.last_state = self.state # And we set their SEIR state (starts as either Susceptible or Exposed)
+        self.viral_load_plateau_height, self.viral_load_plateau_start, self.viral_load_plateau_end = None, None, None  # Determines aspects of the piece-wise linear viral load curve for this human
+        self.incubation_days = None  # number of days the virus takes to incubate before the person becomes infectious
+        self.recovery_days = None  # number of recovery days post viral load plateau
+        self.infectiousness_onset_days = None  # number of days after exposure that this person becomes infectious
+        self.can_get_really_sick = may_develop_severe_illness(self.age, self.sex, self.rng)  # boolean representing whether this person may need to go to the hospital
+        self.can_get_extremely_sick = self.can_get_really_sick and self.rng.random() >= 0.7  # &severe; 30% of severe cases need ICU
+        self.never_recovers = self.rng.random() <= self.conf.get("P_NEVER_RECOVERS")[min(math.floor(self.age/10), 8)]  # boolean representing that this person will die if they are infected with Covid-19
+        self.initial_viral_load = self.rng.rand() if infection_timestamp is not None else 0  # starting value for Covid-19 viral load if this person is one of the initially exposed people
+        self.is_immune = False  # whether this person is immune to Covid-19 (happens after recovery)
+        if self.infection_timestamp is not None:  # if this is an initially Covid-19 sick person
+            compute_covid_properties(self)  # then we pre-calculate the course of their disease
+        self.last_state = self.state  # And we set their SEIR state (starts as either Susceptible or Exposed)
 
         # Covid-19 testing
-        self.test_type = None # E.g. PCR, Antibody, Physician
-        self.test_time = None # Time when this person was tested
-        self.hidden_test_result = None # Test results (that will be reported to this person but have not yet been)
-        self._will_report_test_result = None # Determines whether this individual will report their test (given that they received a test result)
-        self.time_to_test_result = None # How long does it take for this person to receive their test after it has been administered
-        self.test_result_validated = None # Represents whether a test result is validated by some public health agency (True for PCR Tests, some antiody tests)
-        self._test_results = deque() # History of test results (e.g. if you get a negative PCR test, you can still get more tests)
-        self.denied_icu = None # Used because some older people have been denied use of ICU for younger / better candidates
-        self.denied_icu_days = None # number of days the person would be denied ICU access (Note: denied ICU logic could probably be improved)
+        self.test_type = None  # E.g. PCR, Antibody, Physician
+        self.test_time = None  # Time when this person was tested
+        self.hidden_test_result = None  # Test results (that will be reported to this person but have not yet been)
+        self._will_report_test_result = None  # Determines whether this individual will report their test (given that they received a test result)
+        self.time_to_test_result = None  # How long does it take for this person to receive their test after it has been administered
+        self.test_result_validated = None  # Represents whether a test result is validated by some public health agency (True for PCR Tests, some antiody tests)
+        self._test_results = deque()  # History of test results (e.g. if you get a negative PCR test, you can still get more tests)
+        self.denied_icu = None  # Used because some older people have been denied use of ICU for younger / better candidates
+        self.denied_icu_days = None  # number of days the person would be denied ICU access (Note: denied ICU logic could probably be improved)
 
         # Symptoms
-        self.covid_symptom_start_time = None # The time when this persons covid symptoms start (requires that they are in infectious state)
+        self.covid_symptom_start_time = None  # The time when this persons covid symptoms start (requires that they are in infectious state)
         self.cold_progression = _get_cold_progression(self.age, self.rng, self.carefulness, self.preexisting_conditions, self.can_get_really_sick, self.can_get_extremely_sick) # determines the symptoms that this person would have if they had a cold
         self.flu_progression = _get_flu_progression(
             self.age, self.rng, self.carefulness, self.preexisting_conditions,
             self.can_get_really_sick, self.can_get_extremely_sick, self.conf.get("AVG_FLU_DURATION")
-        ) # determines the symptoms this person would have if they had the flu
+        )  # determines the symptoms this person would have if they had the flu
         self.all_symptoms, self.cold_symptoms, self.flu_symptoms, self.covid_symptoms, self.allergy_symptoms = [], [], [], [], []
         self.rolling_all_symptoms = deque(
             [tuple()] * self.conf.get('TRACING_N_DAYS_HISTORY'),
             maxlen=self.conf.get('TRACING_N_DAYS_HISTORY')
-        ) # stores the ground-truth Covid-19 symptoms this person has on day D (used for our ML predictor and other symptom-based predictors)
+        )  # stores the ground-truth Covid-19 symptoms this person has on day D (used for our ML predictor and other symptom-based predictors)
         self.rolling_all_reported_symptoms = deque(
             [tuple()] * self.conf.get('TRACING_N_DAYS_HISTORY'),
             maxlen=self.conf.get('TRACING_N_DAYS_HISTORY')
-        ) # stores the Covid-19 symptoms this person had reported in the app until the current simulation day (empty if they do not have the app)
+        )  # stores the Covid-19 symptoms this person had reported in the app until the current simulation day (empty if they do not have the app)
 
 
         """App-related"""
-        self.has_app = has_app # Does this prson have the app
-        time_slot = rng.randint(0, 24) # Assign this person to some timeslot
+        self.has_app = has_app  # Does this prson have the app
+        time_slot = rng.randint(0, 24)  # Assign this person to some timeslot
         self.time_slots = [
             int((time_slot + i * 24 / self.conf.get('UPDATES_PER_DAY')) % 24)
             for i in range(self.conf.get('UPDATES_PER_DAY'))
-        ] # If people update their risk predictions 4 times per day (every 6 hours) then this code assigns the specific times _this_ person will update
-        self.phone_bluetooth_noise = self.rng.rand() # Error in distance estimation using Bluetooth with a specific type of phone is sampled from a uniform distribution between 0 and 1
+        ]  # If people update their risk predictions 4 times per day (every 6 hours) then this code assigns the specific times _this_ person will update
+        self.phone_bluetooth_noise = self.rng.rand()  # Error in distance estimation using Bluetooth with a specific type of phone is sampled from a uniform distribution between 0 and 1
 
         # Observed attributes; whether people enter stuff in the app
-        self.has_logged_info = self.has_app and self.rng.rand() < self.carefulness # Determines whether this person writes their demographic data into the app
-        self.obs_is_healthcare_worker = True if self.is_healthcare_worker and self.rng.random()<0.9 else False # 90% of the time, healthcare workers will declare it
-        self.obs_age = self.age if self.has_app and self.has_logged_info else None # The age of this human reported to the app
-        self.obs_sex = self.sex if self.has_app and self.has_logged_info else None # The sex of this human reported to the app
-        self.obs_preexisting_conditions = self.preexisting_conditions if self.has_app and self.has_logged_info else [] # the preexisting conditions of this human reported to the app
-        self.obs_hospitalized = False # Whether this person was hospitalized (as reported to the app)
-        self.obs_in_icu = False # Whether this person was put in the ICU (as reported to the app)
+        self.has_logged_info = self.has_app and self.rng.rand() < self.carefulness  # Determines whether this person writes their demographic data into the app
+        self.obs_is_healthcare_worker = True if self.is_healthcare_worker and self.rng.random()<0.9 else False  # 90% of the time, healthcare workers will declare it
+        self.obs_age = self.age if self.has_app and self.has_logged_info else None  # The age of this human reported to the app
+        self.obs_sex = self.sex if self.has_app and self.has_logged_info else None  # The sex of this human reported to the app
+        self.obs_preexisting_conditions = self.preexisting_conditions if self.has_app and self.has_logged_info else []  # the preexisting conditions of this human reported to the app
+        self.obs_hospitalized = False  # Whether this person was hospitalized (as reported to the app)
+        self.obs_in_icu = False  # Whether this person was put in the ICU (as reported to the app)
 
 
         """ Interventions """
-        self.tracing = False
-        self.WEAR_MASK = False
-        self.wearing_mask = False
-        self.mask_efficacy = 0
-        self.notified = False
-        self.tracing_method = None
-        self._maintain_extra_distance = deque((0,))
-        self._follows_recommendations_today = None
-        self._rec_level = -1 # Recommendation level
-        self._intervention_level = -1 # Intervention level (level of behaviour modification to apply), for logging purposes
-        self.recommendations_to_follow = OrderedSet()
-        self._time_encounter_reduction_factor = deque((1.0,))
-        self.hygiene = 0 # start everyone with a baseline hygiene. Only increase it once the intervention is introduced.
-        self._test_recommended = False
-        self.effective_contacts = 0
-        self.num_contacts = 0
+        self.tracing = False  # A reference to the NonMLRiskComputer logic engine which implements tracing methods
+        self.WEAR_MASK = False  # A boolean value determining whether this person will try to wear a mask during encounters
+        self.wearing_mask = False  # A bolean value that represents whether this person is currently wearing a mask
+        self.mask_efficacy = 0.  # A float value representing how good this person is at wearing a mask (i.e. healthcare workers are better than others)
+        self.notified = False  # Value indicating whether this person has been "notified" to start following some interventions
+        self.tracing_method = None  # Type of contact tracing to do, e.g. Transformer or binary contact tracing or heuristic
+        self._maintain_extra_distance = deque((0,))  # Represents the extra distance this person could take as a result of an intervention
+        self._follows_recommendations_today = None  # Whether this person will follow app recommendations today
+        self._rec_level = -1  # Recommendation level used for Heuristic / ML methods
+        self._intervention_level = -1  # Intervention level (level of behaviour modification to apply), for logging purposes
+        self.recommendations_to_follow = OrderedSet()  # which recommendations this person will follow now
+        self._time_encounter_reduction_factor = deque((1.0,))  # how much does this person try to reduce the amount of time they are in contact with others
+        self.hygiene = 0  # start everyone with a baseline hygiene. Only increase it once the intervention is introduced.
+        self._test_recommended = False  # does the app recommend that this person should get a covid-19 test
+        self.effective_contacts = 0  # A scaled number of the high-risk contacts (under 2m for over 15 minutes) that this person had
+        self.num_contacts = 0  # unscaled number of high-risk contacts
 
 
         """Risk prediction"""
-        self.contact_book = ContactBook(tracing_n_days_history=self.conf.get("TRACING_N_DAYS_HISTORY"))
-        self.infectiousness_history_map = dict()
-        self.risk_history_map = dict()  # updated inside the human's (current) timeslot
+        self.contact_book = ContactBook(tracing_n_days_history=self.conf.get("TRACING_N_DAYS_HISTORY"))  # Used for tracking high-risk contacts (for app-based contact tracing methods)
+        self.infectiousness_history_map = dict()  # Stores the (predicted) 14-day history of Covid-19 infectiousness (based on viral load and symptoms)
+        self.risk_history_map = dict()  # 14-day risk history (estimated infectiousness) updated inside the human's (current) timeslot
         self.prev_risk_history_map = dict()  # used to check how the risk changed since the last timeslot
-        self.history_map_last_message = dict()
-        self.last_sent_update_gaen = 0
-        self.last_message_risk_history_map = {}
-        risk_mapping_array = np.array(self.conf.get('RISK_MAPPING'))
+        self.last_sent_update_gaen = 0  # Used for modelling the Googe-Apple Exposure Notification protocol
+        risk_mapping_array = np.array(self.conf.get('RISK_MAPPING'))  # mapping from float risk value to risk level
         assert len(risk_mapping_array) > 0, "risk mapping must always be defined!"
         self.proba_to_risk_level_map = proba_to_risk_fn(risk_mapping_array)
 
 
         """Mobility"""
-        self.assign_household(household)
-        self.rho = rho
-        self.gamma = gamma
-        self.rest_at_home = False # to track mobility due to symptoms
-        self.visits = Visits()
+        self.assign_household(household)  # assigns this person to the specified household
+        self.rho = rho  # controls mobility (how often this person goes out and visits new places)
+        self.gamma = gamma  # controls mobility (how often this person goes out and visits new places)
+        self.rest_at_home = False  # determines whether people rest at home due to feeling sick (used to track mobility due to symptoms)
+        self.visits = Visits()  # used to help implement mobility
         self.travelled_recently = self.rng.rand() > self.conf.get("P_TRAVELLED_INTERNATIONALLY_RECENTLY")
-        self.last_date = defaultdict(lambda : self.env.initial_timestamp.date())
-        self.last_location = self.location
-        self.last_duration = 0
+        self.last_date = defaultdict(lambda : self.env.initial_timestamp.date())  # used to track the last time this person did various things (like record smptoms)
+        self.last_location = self.location  # tracks the last place this person was
+        self.last_duration = 0  # tracks how long this person was somewhere
 
         # Habits
         self.avg_shopping_time = draw_random_discrete_gaussian(
@@ -311,7 +309,7 @@ class Human(object):
             self.conf.get("SCALE_MAX_NUM_MISC_PER_WEEK"),
             self.rng
         )
-        self.count_misc=0
+        self.count_misc = 0
 
         # Limiting the number of hours spent exercising per week
         self.max_exercise_per_week = draw_random_discrete_gaussian(
@@ -319,7 +317,7 @@ class Human(object):
             self.conf.get("SCALE_MAX_NUM_EXERCISE_PER_WEEK"),
             self.rng
         )
-        self.count_exercise=0
+        self.count_exercise = 0
 
         #Limiting the number of hours spent shopping per week
         self.max_shop_per_week = draw_random_discrete_gaussian(
@@ -327,7 +325,7 @@ class Human(object):
             self.conf.get("SCALE_MAX_NUM_SHOP_PER_WEEK"),
             self.rng
         )
-        self.count_shop=0
+        self.count_shop = 0
 
         # leisure hours on weekends
         self.misc_hours = self.rng.choice(range(7, 24), self.number_of_misc_hours)
