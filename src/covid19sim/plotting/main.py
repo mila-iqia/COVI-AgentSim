@@ -191,7 +191,13 @@ def main(conf):
     for plot in plots:
         func = all_plots[plot].run
         print_header(plot)
-        func(data, path, conf["compare"])
+        try:
+            func(data, path, conf["compare"])
+        except Exception as e:
+            print("** ERROR **")
+            print(str(e))
+            print("*" * len(str(e)))
+            print("Ignoring " + plot)
         print_footer()
 
 
