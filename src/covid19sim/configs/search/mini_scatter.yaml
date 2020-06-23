@@ -8,6 +8,7 @@ DROPOUT_RATE: 0.02
 INTERVENTION_DAY: 5
 tune: true
 COLD_CONTAGIOUSNESS: 0
+USE_INFERENCE_SERVER: false
 
 # ---------------------------------------
 # -----  Experimental Fixed Params  -----
