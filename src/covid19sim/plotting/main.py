@@ -183,7 +183,7 @@ def main(conf):
 
     print("Reading configs from {}...".format(str(path)), end="", flush=True)
     rtime = time()
-    all_data = get_all_data(path, keep_pkl_keys, conf.get("multithread", False))
+    all_data = get_all_data(path, keep_pkl_keys, conf.get("multithreading", False))
     print("Done in {:.2f}s.".format(time() - rtime))
     summarize_configs(all_data)
     data = map_conf_to_models(all_data, conf)

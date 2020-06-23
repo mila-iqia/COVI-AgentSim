@@ -244,7 +244,7 @@ def get_all_data(base_path, keep_pkl_keys, multi_thread=False):
                         executor.submit(thread_read_run, (r, keep_pkl_keys))
                         for r in runs
                     ]
-                runs_data = [f.result() for f in futures]
+                    runs_data = [f.result() for f in futures]
                 for r, conf, pkl in runs_data:
                     sr = str(r)
                     all_data[sm][sr] = {}
