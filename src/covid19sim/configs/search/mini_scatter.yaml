@@ -56,7 +56,6 @@ P_CAREFUL_PERSON:
 init_percent_sick:
   sample: cartesian
   from:
-    - 0.002
     - 0.01
 
 seed:
@@ -65,4 +64,3 @@ seed:
     - 5000
     - 5001
     - 5002
-    - 5003
