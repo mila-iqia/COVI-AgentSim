@@ -1,4 +1,5 @@
 model_mapping:
+  AMBER-WOOD-691B: transformer
   ANCIENT-SEA-523: mlp
   AVID-WAVE-652A: transformer
   AVID-WAVE-652B: transformer

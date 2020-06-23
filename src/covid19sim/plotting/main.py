@@ -92,10 +92,14 @@ def get_model(conf, mapping):
         # FIXME this won't work if the run used the inference server
         model = Path(conf["TRANSFORMER_EXP_PATH"]).name
         if model not in mapping:
-            raise ValueError("Unknown transformer {}".format(model))
+            print(
+                "Warning: unknown model name {}. Defaulting to `transformer`".format(
+                    model
+                )
+            )
         if conf.get("DAILY_TARGET_REC_LEVEL_DIST", False):
-            return conf["model_mapping"][model] + "_norm"
-        return conf["model_mapping"][model]
+            return mapping.get(model, "transformer") + "_norm"
+        return mapping.get(model, "transformer")
 
     if conf["RISK_MODEL"] == "heuristicv1":
         if conf.get("DAILY_TARGET_REC_LEVEL_DIST", False):
