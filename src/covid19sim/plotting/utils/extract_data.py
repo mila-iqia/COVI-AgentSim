@@ -100,11 +100,17 @@ def get_all_states(filenames):
 
 
 def get_rec_levels(filename=None, data=None):
+    if data is None:
+        if filename is not None:
+            with open(filename, "rb") as f:
+                data = pickle.load(f)
+        else:
+            raise ValueError("filename and data arguments are None")
 
-    rec_levels = get_human_rec_levels(filename, data)
+    rec_levels = get_human_rec_levels(filename, data) + 1  # account for rec_levels `-1`
 
     def bincount(x):
-        return np.bincount(x, minlength=4)
+        return np.bincount(x, minlength=5)
 
     return np.apply_along_axis(bincount, axis=0, arr=rec_levels) / rec_levels.shape[0]
 
@@ -129,15 +135,23 @@ def get_human_rec_levels(filename=None, data=None, normalized=False):
     return rec_levels
 
 
-def get_all_rec_levels(filenames):
-    rec_levels = get_rec_levels(filenames[0])
+def get_all_rec_levels(filenames=None, data=None):
+    if data is not None:
+        data = [d["pkl"] for d in data.values()]
+        filenames = [None] * len(data)
+    elif filenames is not None:
+        data = [None] * len(filenames)
+    else:
+        raise ValueError("filenames and data arguments are None")
+
+    rec_levels = get_rec_levels(filenames[0], data[0])
     all_rec_levels = np.zeros(
         (len(filenames),) + rec_levels.shape, dtype=rec_levels.dtype
     )
     all_rec_levels[0] = rec_levels
 
     for i, filename in enumerate(filenames[1:]):
-        all_rec_levels[i + 1] = get_rec_levels(filename)
+        all_rec_levels[i + 1] = get_rec_levels(filename, data[i + 1])
 
     return all_rec_levels
 
@@ -198,7 +212,7 @@ def absolute_file_paths(directory):
     return to_return
 
 
-def get_all_data(base_path):
+def get_all_data(base_path, keep_pkl_keys):
     base_path = Path(base_path).resolve()
     assert base_path.exists()
     methods = [
@@ -231,7 +245,10 @@ def get_all_data(base_path):
                 with (r / "full_configuration.yaml").open("r") as f:
                     all_data[sm][sr]["conf"] = yaml.safe_load(f)
                 with open(str(list(r.glob("tracker*.pkl"))[0]), "rb") as f:
-                    all_data[sm][sr]["pkl"] = pickle.load(f)
+                    pkl_data = pickle.load(f)
+                    all_data[sm][sr]["pkl"] = {
+                        k: v for k, v in pkl_data.items() if k in keep_pkl_keys
+                    }
         except TypeError as e:
             print(
                 f"\nCould not load pkl in {m.name}/{r.name}"

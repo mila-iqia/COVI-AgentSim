@@ -80,7 +80,7 @@ def get_fq_r(filename=None, data=None, normalized=False):
 def get_mean_fq_r(filenames=None, pkls=None, normalized=False):
     assert filenames is not None or pkls is not None
     if pkls is not None:
-        _tmp = [(None, pkl) for pkl in pkls]
+        _tmp = [(None, {"pkl": pkl}) for pkl in pkls]
     elif filenames is not None:
         _tmp = [(filename, None) for filename in filenames]
     else:
@@ -100,7 +100,7 @@ def get_mean_fq_r(filenames=None, pkls=None, normalized=False):
     }
     for filename, pkl in _tmp:
         x, y, z, a, od, ec = get_fq_r(
-            filename=filename, data=pkl, normalized=normalized
+            filename=filename, data=pkl["pkl"], normalized=normalized
         )
         metrics["f3"].append(x[0])
         metrics["f2"].append(x[1])
@@ -210,7 +210,6 @@ def get_line2D(value, idx, markers, colors, is_method=True, compare="APP_UPTAKE"
             "oracle": "Oracle",
         },
     }
-    colors = []
 
     if is_method:
         return Line2D(
@@ -236,14 +235,14 @@ def get_line2D(value, idx, markers, colors, is_method=True, compare="APP_UPTAKE"
     )
 
 
-def run(data, compare):
+def run(data, path, comparison_key):
     """
     data is a dictionnary that maps methods (bdt1, bdt1_norm, transformer etc.)
     to another dictionnary which has keys the values of the comparing key and
     values a dictionnary with the run's simulation configuration and pkl path
 
     e.g.
-    compare=APP_UPTAKE
+    comparison_key=APP_UPTAKE
     data:
       bdt1:
         -1:
@@ -263,7 +262,7 @@ def run(data, compare):
 
     Args:
         data (dict): the data as method -> comparing value -> conf, pkl
-        compare (str): the key used to compare runs, like APP_UPTAKE
+        comparison_key (str): the key used to compare runs, like APP_UPTAKE
     """
 
     pkls = []
@@ -289,10 +288,10 @@ def run(data, compare):
 
     rows = rows + rows_norm
 
-    n_seeds = len(list(data.values)[0])
-    df = pd.DataFrame(rows, columns=["type", "metric"] + list(range(len(n_seeds))))
-    df["mean"] = df[[1, 2, 3, 4]].mean(axis=1)
-    df["stderr"] = df[[1, 2, 3, 4]].sem(axis=1)
+    n_seeds = len(list(data.values())[0])
+    df = pd.DataFrame(rows, columns=["type", "metric"] + list(np.arange(n_seeds) + 1))
+    df["mean"] = df[list(np.arange(n_seeds) + 1)].mean(axis=1)
+    df["stderr"] = df[list(np.arange(n_seeds) + 1)].sem(axis=1)
 
     ############
     ### /!\ Ordering should be consistent everywhere. i.e. _70, _60, _40
@@ -313,20 +312,20 @@ def run(data, compare):
     markers = ["P", "s", "X", "d", ".", "h", "^", "*", "v"]
     colormap = [
         "#34495e",
+        "mediumvioletred",
+        "orangered",
+        "royalblue",
+        "darkorange",
+        "green",
+        "red",
         "blue",
         "brown",
         "cyan",
-        "darkorange",
         "gray",
-        "green",
-        "mediumvioletred",
         "olive",
         "orange",
-        "orangered",
         "pink",
         "purple",
-        "red",
-        "royalblue",
     ]
 
     fig, axs = plt.subplots(
@@ -345,12 +344,17 @@ def run(data, compare):
     for idx, method in enumerate(base_methods):
         current_labels = [lab for lab in labels if lab.startswith(method)]
         current_labels_norm = [lab for lab in labels_norm if lab.startswith(method)]
-        legend.append(get_line2D(method, idx, markers, colormap, True, compare))
+        legend.append(get_line2D(method, idx, markers, colormap, True, comparison_key))
         for i, lab in enumerate(current_labels):
             if not legend_compare_ok:
                 legend.append(
                     get_line2D(
-                        lab.split("_")[-1], idx, markers, colormap, False, compare
+                        lab.split("_")[-1],
+                        i,
+                        markers,
+                        colormap,
+                        False,
+                        comparison_key,
                     )
                 )
             plot_all_metrics(
@@ -380,20 +384,21 @@ def run(data, compare):
             )
         legend_compare_ok = True
 
-    fig.legend(
-        handles=legend,
-        loc="upper center",
-        ncol=idx + 1,
-        fontsize=30,
-        bbox_to_anchor=(0.5, 1.08),
-    )
+    metric_name_map = {
+        "f3": "False level-3",
+        "f2": "False level-2",
+        "f1": "False level-1",
+        "f2_up": "False level >= 2",
+        "effective_contacts": "Effective Contacts",
+        "outside_daily_contacts": "Outside Daily Contacts",
+    }
 
     # grids
     for axis_id, ax in enumerate(axs):
         ax.grid(True, axis="x", alpha=0.3)
         ax.grid(True, axis="y", alpha=0.3)
 
-        ax.set_xlabel(xmetrics[axis_id], size=40)
+        ax.set_xlabel(metric_name_map[xmetrics[axis_id]], size=40)
         for tick in ax.xaxis.get_major_ticks():
             tick.label.set_fontsize(30)
 
@@ -407,18 +412,30 @@ def run(data, compare):
         ylabel = "Proxy $\hat{R_t}$"
     elif ymetric == "r":
         ylabel = "$R_t$"
-    fig.text(-0.05, 0.5, ylabel, va="center", rotation="vertical", size=50)
+    ylab = fig.text(-0.05, 0.5, ylabel, va="center", rotation="vertical", size=50)
 
     if ymetric in ["proxy_r", "r"]:
         for ax in axs:
             ax.plot([0, 1.0], [1.0, 1.0], "-.", c="gray", alpha=0.3, label="Rt = 1.0")
 
-    fig.suptitle(
+    spttl = fig.suptitle(
         "Comparison of tracing methods across different adoption rates",
         fontsize=50,
         y=1.1,
     )
+    lgd = fig.legend(
+        handles=legend,
+        loc="upper center",
+        ncol=idx + 1,
+        fontsize=30,
+        bbox_to_anchor=(0.5, 1.08),
+    )
 
     plt.tight_layout()
-    save_path = Path(dir) / "pareto_adoption_all_metrics.png"
-    plt.savefig(str(save_path), dpi=200)
+    save_path = Path(path) / "pareto_adoption_all_metrics.png"
+    fig.savefig(
+        str(save_path),
+        dpi=200,
+        bbox_extra_artists=(lgd, ylab, spttl),
+        bbox_inches="tight",
+    )

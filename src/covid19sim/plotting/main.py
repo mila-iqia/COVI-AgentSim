@@ -6,6 +6,7 @@ import math
 from collections import defaultdict
 
 import covid19sim.plotting.plot_pareto_adoption as pareto_adoption
+import covid19sim.plotting.plot_jellybeans as jellybeans
 from covid19sim.plotting.utils.extract_data import get_all_data
 
 print("Ok.")
@@ -28,7 +29,6 @@ def print_header(plot):
 
 
 def print_footer():
-    print("#" * 60)
     print("#" * 60)
     print()
 
@@ -116,7 +116,7 @@ def map_conf_to_models(all_paths, plot_conf):
     for mk, mv in all_paths.items():
         for rk, rv in mv.items():
             sim_conf = rv["conf"]
-            compare_value = plot_conf[key]
+            compare_value = sim_conf[key]
             model = get_model(sim_conf, plot_conf["model_mapping"])
             new_data[model][compare_value][rk] = rv
     return new_data
@@ -126,7 +126,10 @@ def map_conf_to_models(all_paths, plot_conf):
 def main(conf):
     conf = OmegaConf.to_container(conf)
 
-    all_plots = {"pareto_adoption": pareto_adoption}
+    all_plots = {
+        "pareto_adoption": pareto_adoption,
+        "jellybeans": jellybeans,
+    }
 
     if "help" in conf:
         print("Available plotting options:")
@@ -144,15 +147,38 @@ def main(conf):
 
     plots = conf["plot"]
     if plots == "all":
-        plots = list(all_plots.values())
+        plots = list(all_plots.keys())
     if not isinstance(plots, list):
         plots = [plots]
 
-    assert all(p in all_plots for p in plots)
+    assert all(p in all_plots for p in plots), "Allowed plots are {}".format(
+        "\n   ".join(all_plots.keys())
+    )
     assert path.exists()
 
+    keep_pkl_keys = set()
+    if "pareto_adoption" in plots:
+        keep_pkl_keys.update(
+            [
+                "intervention_day",
+                "outside_daily_contacts",
+                "effective_contacts_since_intervention",
+                "intervention_day",
+                "cases_per_day",
+                "n_humans",
+                "generation_times",
+                "humans_state",
+                "humans_intervention_level",
+                "humans_rec_level",
+            ]
+        )
+    if "jellybeans" in plots:
+        keep_pkl_keys.update(
+            ["humans_intervention_level", "humans_rec_level", "intervention_day",]
+        )
+
     print("Reading configs from {}...".format(str(path)), end="", flush=True)
-    all_data = get_all_data(path)
+    all_data = get_all_data(path, keep_pkl_keys)
     print("Done.")
     summarize_configs(all_data)
     data = map_conf_to_models(all_data, conf)
@@ -161,7 +187,7 @@ def main(conf):
     for plot in plots:
         func = all_plots[plot].run
         print_header(plot)
-        func(data, conf["compare"])
+        func(data, path, conf["compare"])
         print_footer()
 
 
