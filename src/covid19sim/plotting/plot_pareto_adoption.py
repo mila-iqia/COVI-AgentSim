@@ -149,7 +149,6 @@ def get_all(filename_types=None, pkl_types=None, labels=[], normalized=False):
 
     _rows = []
     for i, (filenames, pkls) in enumerate(tmp):
-        print(labels[i], len(filenames) if filenames is not None else len(pkls))
         metrics = get_mean_fq_r(filenames=filenames, pkls=pkls, normalized=normalized)
         for key, val in metrics.items():
             _rows.append([labels[i], key] + val)
@@ -264,7 +263,7 @@ def run(data, path, comparison_key):
         data (dict): the data as method -> comparing value -> conf, pkl
         comparison_key (str): the key used to compare runs, like APP_UPTAKE
     """
-
+    print("Preparing data...")
     pkls = []
     labels = []
     pkls_norm = []
@@ -342,6 +341,7 @@ def run(data, path, comparison_key):
     legend = []
     legend_compare_ok = False
     for idx, method in enumerate(base_methods):
+        print("Plotting", method, "...")
         current_labels = [lab for lab in labels if lab.startswith(method)]
         current_labels_norm = [lab for lab in labels_norm if lab.startswith(method)]
         legend.append(get_line2D(method, idx, markers, colormap, True, comparison_key))
@@ -349,12 +349,7 @@ def run(data, path, comparison_key):
             if not legend_compare_ok:
                 legend.append(
                     get_line2D(
-                        lab.split("_")[-1],
-                        i,
-                        markers,
-                        colormap,
-                        False,
-                        comparison_key,
+                        lab.split("_")[-1], i, markers, colormap, False, comparison_key,
                     )
                 )
             plot_all_metrics(
@@ -433,9 +428,11 @@ def run(data, path, comparison_key):
 
     plt.tight_layout()
     save_path = Path(path) / "pareto_adoption_all_metrics.png"
+    print("Saving Figure {}/{} ...".format(save_path.parent.name, save_path.name))
     fig.savefig(
         str(save_path),
         dpi=200,
         bbox_extra_artists=(lgd, ylab, spttl),
         bbox_inches="tight",
     )
+    print("Done.")

@@ -25,7 +25,7 @@ def run(data, path, comparison_key):
     Args:
         data ([type]): [description]
     """
-    # Hardcoded
+    print("Preparing data...")
     intervention_day = None
     for mk, mv in data.items():
         if "unmitigated" in mk:
@@ -77,11 +77,10 @@ def run(data, path, comparison_key):
         "unmitigated": "Unmitigated",
         "oracle": "Oracle",
     }
-
     for i, (comparison_value, comparison_dict) in enumerate(data_rec_levels.items()):
         fig = plt.figure(figsize=(25, 5), constrained_layout=True)
         gridspec = fig.add_gridspec(np.math.ceil(len(data) / max_cols), max_cols)
-
+        print(f"Plotting {comparison_key} {comparison_value} ...")
         for j, (method_name, method_risk_levels) in enumerate(comparison_dict.items()):
             if method_name == "unmitigated":
                 continue
@@ -130,6 +129,8 @@ def run(data, path, comparison_key):
         save_path = path / "comparison-recommendation-levels-{}-{}.pdf".format(
             comparison_key, comparison_value
         )
+        print("Saving Figure {}/{} ...".format(save_path.parent.name, save_path.name))
         plt.savefig(
             str(save_path), bbox_inches="tight", format="pdf",
         )
+    print("Done.")

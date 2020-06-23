@@ -44,7 +44,7 @@ def summarize_configs(all_paths):
     ignore_keys = {"outdir", "GIT_COMMIT_HASH", "DAILY_TARGET_REC_LEVEL_DIST"}
     total_pkls = sum(len(mv) for mv in all_paths.values())
     print(
-        "Found {} methods and {} pkls:\n{}".format(
+        "Found {} methods and {} pkls:\n    {}".format(
             len(all_paths),
             total_pkls,
             "\n    ".join(
@@ -63,8 +63,8 @@ def summarize_configs(all_paths):
                     continue
                 confs[ck].add(str(cv))
     print(
-        "Varying parameters are:\n"
-        + "    \n".join([f"{k}:{v}" for k, v in confs.items() if len(v) > 1])
+        "Varying parameters are:\n    "
+        + "\n    ".join([f"{k}: {v}" for k, v in confs.items() if len(v) > 1])
     )
 
 
@@ -181,10 +181,10 @@ def main(conf):
             ["humans_intervention_level", "humans_rec_level", "intervention_day",]
         )
 
-    print("Reading configs from {}...".format(str(path)), end="", flush=True)
+    print("Reading configs from {}:".format(str(path)))
     rtime = time()
     all_data = get_all_data(path, keep_pkl_keys, conf.get("multithreading", False))
-    print("Done in {:.2f}s.".format(time() - rtime))
+    print("\nDone in {:.2f}s.\n".format(time() - rtime))
     summarize_configs(all_data)
     data = map_conf_to_models(all_data, conf)
     check_data(data)

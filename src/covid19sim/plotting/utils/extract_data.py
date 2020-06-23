@@ -237,6 +237,8 @@ def get_all_data(base_path, keep_pkl_keys, multi_thread=False):
             and not r.name.startswith(".")
             and len(list(r.glob("tracker*.pkl"))) == 1
         ]
+        print(" " * 100, end="\r")
+        print("Loading runs in", m.name, "...", end="\r")
         try:
             if multi_thread:
                 with concurrent.futures.ThreadPoolExecutor() as executor:
