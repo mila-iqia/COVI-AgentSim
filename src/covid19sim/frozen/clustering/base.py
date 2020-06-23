@@ -274,7 +274,7 @@ class ClusterManagerBase:
 
 def get_cluster_manager_type(algo_name: str):
     """Returns the type of cluster manager to instantiate based on algo name."""
-    assert algo_name in ["blind", "naive", "perfect", "simple"], \
+    assert algo_name in ["blind", "naive", "perfect", "simple", "gaen"], \
         f"invalid clustering algo name: {algo_name}"
     if algo_name == "blind":
         import covid19sim.frozen.clustering.blind
@@ -285,5 +285,7 @@ def get_cluster_manager_type(algo_name: str):
         import covid19sim.frozen.clustering.perfect
         return covid19sim.frozen.clustering.perfect.PerfectClusterManager
     if algo_name == "simple":
-        import covid19sim.frozen.clustering.simple
-        return covid19sim.frozen.clustering.simple.SimplisticClusterManager
+        raise NotImplementedError("simple clustering algo deprecated since GAEN refactoring")
+    if algo_name == "gaen":
+        import covid19sim.frozen.clustering.gaen
+        return covid19sim.frozen.clustering.gaen.GAENClusterManager
