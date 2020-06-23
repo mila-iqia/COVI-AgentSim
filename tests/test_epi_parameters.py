@@ -492,7 +492,7 @@ def test_human_cold_symptoms():
 def test_human_flu_symptoms():
     conf = load_config()
 
-    # Test cold symptoms
+    # Test flu symptoms
     conf["P_COLD_TODAY"] = 0.0
     conf["P_FLU_TODAY"] = 1.0
     conf["P_HAS_ALLERGIES_TODAY"] = 0.0
@@ -531,7 +531,7 @@ def test_human_flu_symptoms():
 def test_human_allergies_symptoms():
     conf = load_config()
 
-    # Test cold symptoms
+    # Test allergies symptoms
     conf["P_COLD_TODAY"] = 0.0
     conf["P_FLU_TODAY"] = 0.0
     conf["P_HAS_ALLERGIES_TODAY"] = 1.0
