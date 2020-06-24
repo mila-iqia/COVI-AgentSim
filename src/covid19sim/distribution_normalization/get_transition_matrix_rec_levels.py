@@ -26,6 +26,8 @@ from collections import defaultdict
 def generate_name(source_config, target_config):
     source_model = source_config['RISK_MODEL']
     seed = source_config['seed']
+    if args.name_as_seed:
+        return f'seed-{seed}.yaml'
     target_model = target_config['RISK_MODEL']
     timenow = datetime.now().strftime('%Y%m%d-%H%M%S')
 
@@ -135,8 +137,7 @@ def generate_single(args, source, target):
                                  '../configs/simulation',
                                  args.config_folder)
     config_folder = os.path.relpath(config_folder)
-    if not os.path.exists(config_folder):
-        os.mkdir(config_folder)
+    os.makedirs(config_folder, exist_ok=True)
 
     output_filename = generate_name(source_config, target_config)
     output_config_name, _ = os.path.splitext(output_filename)
@@ -253,6 +254,8 @@ if __name__ == '__main__':
     parser.add_argument('--num-rec-levels', type=int, default=4,
         help='Number of possible recommendation levels (default: 4)')
     parser.add_argument('--verbose', action='store_true')
+    parser.add_argument('--name_as_seed', action='store_true',
+            help='stores the configuration file with the name seed-{seed}.yaml')
 
     args = parser.parse_args()
 
