@@ -1363,12 +1363,12 @@ class Event:
                     unobs_payload = { **loc_obs, **loc_unobs, **other_obs, **other_unobs, 'human1':{**obs[i], **unobs[i]},
                                         'human2': {**obs[1-i], **unobs[1-i]} }
 
-            human.events.append({
-                'human_id':human.name,
-                'event_type':Event.encounter,
-                'time':time,
-                'payload':{'observed':obs_payload, 'unobserved':unobs_payload}
-            })
+                human.events.append({
+                    'human_id':human.name,
+                    'event_type':Event.encounter,
+                    'time':time,
+                    'payload':{'observed':obs_payload, 'unobserved':unobs_payload}
+                })
 
         logging.info(f"{time} - {human1.name} and {human2.name} {Event.encounter} event")
         logging.debug("{time} - {human1.name}{h1_infectee} "
