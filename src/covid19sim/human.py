@@ -117,7 +117,7 @@ class Human(object):
 
         """ Covid-19 """
         # Covid-19 properties
-        self.viral_load_plateau_height, self.viral_load_plateau_start, self.viral_load_plateau_end = None, None, None  # Determines aspects of the piece-wise linear viral load curve for this human
+        self.viral_load_plateau_height, self.viral_load_plateau_start, self.viral_load_plateau_end, self.viral_load_peak_start, self.viral_load_peak_height = None, None, None, None, None  # Determines aspects of the piece-wise linear viral load curve for this human
         self.incubation_days = None  # number of days the virus takes to incubate before the person becomes infectious
         self.recovery_days = None  # number of recovery days post viral load plateau
         self.infectiousness_onset_days = None  # number of days after exposure that this person becomes infectious
