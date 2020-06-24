@@ -1,16 +1,15 @@
 import datetime
 import os
 import tempfile
-from pathlib import Path
 
 import numpy as np
-import pytest
 from tests.utils import get_test_conf
 
-from covid19sim.base import City, EmptyCity, Env
-from covid19sim.monitors import EventMonitor, SEIRMonitor, TimeMonitor
-from covid19sim.simulator import Human
-from covid19sim.constants import SECONDS_PER_DAY, SECONDS_PER_HOUR
+from covid19sim.locations.city import EmptyCity
+from covid19sim.utils.env import Env
+from covid19sim.log.monitors import EventMonitor, SEIRMonitor, TimeMonitor
+from covid19sim.human import Human
+from covid19sim.utils.constants import SECONDS_PER_DAY, SECONDS_PER_HOUR
 
 
 def test_functional_seniors_residence():

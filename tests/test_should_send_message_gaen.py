@@ -2,7 +2,7 @@ import datetime
 import numpy as np
 import unittest
 
-from covid19sim.base import City
+from covid19sim.locations.city import City
 
 
 class DummyContactBook(object):

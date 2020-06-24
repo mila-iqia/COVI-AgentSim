@@ -7,11 +7,11 @@ import numpy as np
 import yaml
 from omegaconf import OmegaConf
 
-import covid19sim.frozen.message_utils as mu
-from covid19sim.utils import parse_configuration
+import covid19sim.inference.message_utils as mu
+from covid19sim.utils.utils import parse_configuration
 
 HYDRA_SIM_PATH = (
-    Path(__file__).parent.parent / "src/covid19sim/hydra-configs/simulation"
+    Path(__file__).parent.parent / "src/covid19sim/configs/simulation"
 ).resolve()
 
 never = datetime.timedelta(days=9999)  # dirty macro to indicate a human will never get infected
@@ -275,7 +275,7 @@ def generate_random_messages(
 
 def get_test_conf(conf_name):
     """
-    Loads the default configurations in hydra-configs and overwrites it
+    Loads the default configurations in configs and overwrites it
     with values in test_configs/`conf_name`
 
     conf_name **must** be in `tests/test_configs/`

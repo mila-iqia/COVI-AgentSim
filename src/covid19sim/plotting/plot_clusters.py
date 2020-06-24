@@ -9,7 +9,7 @@ sys.path.append(os.getcwd())
 import numpy as np
 import matplotlib
 from matplotlib import pyplot as plt
-from covid19sim.frozen.utils import decode_message
+from covid19sim.frozen import decode_message
 from collections import defaultdict, Counter
 import networkx as nx
 import plotly.graph_objects as go

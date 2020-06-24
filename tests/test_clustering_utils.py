@@ -2,7 +2,7 @@ import datetime
 import numpy as np
 import unittest
 
-import covid19sim.frozen.message_utils as mu
+import covid19sim.inference.message_utils as mu
 from tests.utils import FakeHuman, generate_received_messages, generate_sent_messages, Visit, Toff
 
 

@@ -1,19 +1,10 @@
 import datetime
-import hashlib
-import os
-import pickle
-import unittest
-import zipfile
 from collections import Counter, deque
-from pathlib import Path
-from tempfile import TemporaryDirectory
 
 import numpy as np
 
-
-from covid19sim.base import Event
 from covid19sim.run import simulate
-from covid19sim.utils import extract_tracker_data
+from covid19sim.utils.utils import extract_tracker_data
 from tests.utils import get_test_conf
 
 

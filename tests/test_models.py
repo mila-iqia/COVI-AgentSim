@@ -9,11 +9,12 @@ import warnings
 import numpy as np
 from tests.utils import get_test_conf
 
-from covid19sim.frozen.helper import (conditions_to_np, symptoms_to_np, encode_age, encode_sex,
-                                      encode_test_result, recovered_array, candidate_exposures,
-                                      exposure_array)
+from covid19sim.inference.helper import (conditions_to_np, symptoms_to_np, encode_age, encode_sex,
+                                         encode_test_result, recovered_array, candidate_exposures,
+                                         exposure_array)
+from covid19sim.inference.human_as_message import get_test_results_array
 from covid19sim.run import simulate
-from covid19sim.models.run import DummyMemManager
+from covid19sim.inference.heavy_jobs import DummyMemManager
 
 
 class MakeHumanAsMessageProxy:
@@ -26,7 +27,7 @@ class MakeHumanAsMessageProxy:
         self._start_time = start_time
 
     def make_human_as_message(self, human, personal_mailbox, conf):
-        from covid19sim.models.run import HumanAsMessage
+        from covid19sim.inference.human_as_message import HumanAsMessage
         tc = self.test_case
 
         now = human.env.timestamp
@@ -117,20 +118,20 @@ def validate_human_message(test_case, message, human):
 
 
 class ModelsTest(unittest.TestCase):
-    from covid19sim.models.run import make_human_as_message
+    from covid19sim.inference.heavy_jobs import make_human_as_message
     make_human_as_message_proxy = None
 
     def setUp(self):
-        from covid19sim.models import run
+        from covid19sim.inference import heavy_jobs
 
         proxy = MakeHumanAsMessageProxy(self)
         ModelsTest.make_human_as_message_proxy = proxy
-        run.make_human_as_message = proxy.make_human_as_message
+        heavy_jobs.make_human_as_message = proxy.make_human_as_message
 
     def tearDown(self):
-        from covid19sim.models import run
+        from covid19sim.inference import heavy_jobs
 
-        run.make_human_as_message = ModelsTest.make_human_as_message
+        heavy_jobs.make_human_as_message = ModelsTest.make_human_as_message
 
     def test_run(self):
         """
@@ -451,7 +452,7 @@ class ModelsTest(unittest.TestCase):
                                 self.assertLessEqual(len(target_cluster_mgrs), len(sim_humans))  # can't be 100% due to uptake
                                 cluster_mgr = next(iter([c for k, c in target_cluster_mgrs.items() if k.endswith(s_human.name)]))
                                 candidate_encounters, exposure_encounters = candidate_exposures(cluster_mgr)
-                                test_results = s_human.get_test_results_array(date_at_update)
+                                test_results = get_test_results_array(s_human, date_at_update)
 
                                 self.assertTrue((symptoms_to_np(s_human.rolling_all_reported_symptoms, conf) ==
                                                  observed['reported_symptoms']).all())
@@ -532,8 +533,8 @@ class HumanAsMessageTest(unittest.TestCase):
             self.ts_initial = 0
 
     def test_human_as_message(self):
-        from covid19sim.simulator import Human
-        from covid19sim.models.run import make_human_as_message
+        from covid19sim.human import Human
+        from covid19sim.inference.heavy_jobs import make_human_as_message
 
         # Load the experimental configuration
         conf_name = "test_models.yaml"
@@ -548,7 +549,7 @@ class HumanAsMessageTest(unittest.TestCase):
         human = Human(env=env, city={'city': 'city'}, name=1, age=25, rng=rng, has_app=True,
                       infection_timestamp=today, household={'household': 'household'},
                       workplace={'workplace': 'workplace'}, profession="profession", rho=0.3,
-                      gamma=0.21, symptoms=[], test_results=None, conf=conf)
+                      gamma=0.21, conf=conf)
         human.contact_book.mailbox_keys_by_day[0] = [0, 1]  # add two dummy encounter keys
         personal_mailbox = {1: ["fake_message"]}  # create a dummy personal mailbox with one update
         dummy_conf = {"TRACING_N_DAYS_HISTORY": 14}  # create a dummy config (only needs 1 setting)
