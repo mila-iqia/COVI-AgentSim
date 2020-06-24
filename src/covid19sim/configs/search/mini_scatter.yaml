@@ -19,10 +19,14 @@ n_search: -1 # figures out the size of cartesian product for you
 # -------------------------
 # -----  Directories  -----
 # -------------------------
+infra: beluga
 base_dir: /scratch/vsch/covid_sims/mini_adoption # if outdir is not provided, runs will be stored in base_dir/${tracing_method}
 code_loc: /home/vsch/simulator/src/covid19sim/
 weights_dir: /scratch/vsch
 use_tmpdir: false
+cpus: 4
+env_name: covid38
+time: "'02:50:00'"
 
 # --------------------------------------
 # -----  Sampling Parametrization  -----
@@ -31,13 +35,13 @@ use_tmpdir: false
 tracing_method:
   sample: cartesian
   from:
-    - no_intervention
-    - heuristicv1
+    # - no_intervention
+    # - heuristicv1
     - transformer>AMBER-WOOD-691B
-    - transformer>ANCIENT-SEA-523
-    - oracle>AMBER-WOOD-691B
-    - binary_digital_tracing_order_1
-    - binary_digital_tracing_order_2
+    # - transformer>ANCIENT-SEA-523
+    # - oracle>AMBER-WOOD-691B
+    # - binary_digital_tracing_order_1
+    # - binary_digital_tracing_order_2
 
 APP_UPTAKE:
   sample: cartesian

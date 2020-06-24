@@ -282,3 +282,36 @@ def thread_read_run(args):
         pkl = {k: v for k, v in pkl_data.items() if k in keep_pkl_keys}
 
     return (r, conf, pkl)
+
+
+def truncate_seeds(data):
+    """
+    If not all runs have the same seeds (typically, a run is missing some seeds),
+    remove data  which is not in the intersection of all seeds.
+
+    Args:
+        data (dict): The data to prune
+    """
+    seeds = set()
+    first = True
+    for mk, mv in data.items():
+        for ck, cv in mv.items():
+            comparison_seeds = set()
+            for rv in cv.values():
+                rseed = rv["conf"]["seed"]
+                if not first and rseed not in seeds:
+                    print(" !!  Warning not all runs have the same number of seeds")
+                    print(" !!  Pruning seeds to the interesection of all runs.")
+                comparison_seeds.add(rseed)
+            if first:
+                seeds = comparison_seeds
+                first = False
+            else:
+                seeds = seeds.intersection(comparison_seeds)
+
+    for mk, mv in data.items():
+        for ck, cv in mv.items():
+            for rk, rv in cv.items():
+                if rv["conf"]["seed"] not in seeds:
+                    del data[mk][ck][rk]
+    return data
