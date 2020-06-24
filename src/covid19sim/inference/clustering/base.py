@@ -287,5 +287,5 @@ def get_cluster_manager_type(algo_name: str):
     if algo_name == "simple":
         raise NotImplementedError("simple clustering algo deprecated since GAEN refactoring")
     if algo_name == "gaen":
-        import covid19sim.distributed_inference.clustering.gaen
-        return covid19sim.distributed_inference.clustering.gaen.GAENClusterManager
+        import covid19sim.inference.clustering.gaen
+        return covid19sim.inference.clustering.gaen.GAENClusterManager

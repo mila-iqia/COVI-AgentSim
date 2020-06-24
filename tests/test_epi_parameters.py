@@ -9,6 +9,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 import covid19sim
+from covid19sim.utils.constants import SECONDS_PER_DAY
 from covid19sim.locations.city import City
 from covid19sim.utils.env import Env
 from covid19sim.human import Human
