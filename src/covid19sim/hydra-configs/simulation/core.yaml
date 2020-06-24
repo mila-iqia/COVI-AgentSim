@@ -372,7 +372,7 @@ TEST_TYPES: { "lab": {
 P_TEST_MODERATE: 0.4
 P_TEST_MILD: 0.1
 P_TEST_SEVERE: 1.0
-GET_TESTED_SYMPTOMS_CHECKED_IN_HOSPITAL: ["mild", "moderate", "severe", "fever", "chills", "gastro", "diarrhea", "cough", "fatigue", "trouble_breathing", "loss_of_taste", "light_trouble_breathing", "mild_trouble_breathing", "moderate_trouble_breathing", "heavy_trouble_breathing" ]
+GET_TESTED_SYMPTOMS_CHECKED_IN_HOSPITAL: ["mild", "moderate", "severe", "fever", "chills", "gastro", "diarrhea", "cough", "fatigue", "trouble_breathing", "loss_of_taste", "light_trouble_breathing", "moderate_trouble_breathing", "heavy_trouble_breathing" ]
 GET_TESTED_SYMPTOMS_CHECKED_BY_SELF: ["cough", "fever", "trouble_breathing", "chills", "loss_of_taste", ""]
 
 # SEASONAL ALLERGIES

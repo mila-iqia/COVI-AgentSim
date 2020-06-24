@@ -158,6 +158,8 @@ def generate_single(args, source, target):
     logging.info(f'To run the experiment with the new mobility:\n\tpython '
                  f'src/covid19sim/run.py {args.config_folder}={output_config_name}')
 
+    return output_config_name
+
 
 def get_bulk_folders(folder, keys):
     config_filenames = glob.glob(os.path.join(folder, '*/*.yaml'))
@@ -177,10 +179,17 @@ def main(args):
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO)
 
     if args.bulk_keys is None:
+        if args.output is not None:
+            logging.warning('The script is used to normalize only a single pair '
+                            'of simulations, and therefore will only return one '
+                            'single new configuration. The output filename for '
+                            'combining the new configuration files (--ouput) is '
+                            'therefore ignored.')
         generate_single(args, args.source, args.target)
     else:
         source_folders = get_bulk_folders(args.source, args.bulk_keys)
         target_folders = get_bulk_folders(args.target, args.bulk_keys)
+        new_configs = []
 
         for key, folders in target_folders.items():
             for seed, target_folder in folders.items():
@@ -192,7 +201,23 @@ def main(args):
                                     'bulk source folder `{3}`. Ignoring this '
                                     'configuration.'.format(key, seed, args.target, args.source))
                     continue
-                generate_single(args, source_folder, target_folder)
+                new_config = generate_single(args, source_folder, target_folder)
+                new_configs.append(new_config)
+
+        # Return the list of new configuration files as a *.yaml file
+        if new_configs:
+            output_dict = {args.config_folder: {
+                'sample': 'cartesian',
+                'from': new_configs
+            }}
+            logging.info('Use the following snippet inside a configuration file '
+                         'to use in combination with `random_search.py`\n'
+                         '{0}.'.format(yaml.dump(output_dict, Dumper=yaml.Dumper, indent=4)))
+
+            if args.output is not None:
+                logging.info('Saving this snippet of code in `{0}`.'.format(args.output))
+                with open(args.output, 'w') as f:
+                    yaml.dump(output_dict, f, Dumper=yaml.Dumper)
 
 
 if __name__ == '__main__':
@@ -221,6 +246,10 @@ if __name__ == '__main__':
         help='The keys in the configuration to loop over for bulk creation. '
              'If not provided, then only a single pair of configuration files '
              'is merged.')
+    parser.add_argument('--output', type=str, default=None, required=False,
+        help='The output *.yaml file used to store the new configuration files '
+             'to be compiled into a new configuration file that can be launched '
+             'with `random_search.py`.')
     parser.add_argument('--num-rec-levels', type=int, default=4,
         help='Number of possible recommendation levels (default: 4)')
     parser.add_argument('--verbose', action='store_true')
