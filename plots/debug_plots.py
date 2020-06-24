@@ -397,19 +397,15 @@ def get_states_history(human_snapshots: List[Human],
 def get_infection_history(humans_events: Dict[str, List], human_key: str):
 
     # Get the list of events in which the specified human was infected by someone else
+    # and list of events in which the specified human infected someone else
     infectee_events = []
+    infector_events = []
     for e in humans_events[human_key]:
         if e["event_type"] == Event.contamination:
             infectee_events.append([e["payload"]["unobserved"]["source"], e["time"]])
-
-    # Get the list of events in which the specified human infected someone else
-    infector_events = []
-    for h_events in humans_events.values():
-        for e in h_events:
-            if (e["event_type"] == Event.contamination and
-                    "source" in e["payload"]["unobserved"].keys() and
-                    e["payload"]["unobserved"]["source"] == human_key):
-                infector_events.append([e["human_id"], e["time"]])
+        elif e["event_type"] == Event.encounter and \
+                e['payload']['unobserved']['human1']['exposed_other']:
+            infector_events.append([e["human_id"], e["time"]])
 
     # Sort infector events by the date of the infection (swap columns, sort, swap columns)
     infector_events = [[j[1], j[0]] for j in sorted([[i[1], i[0]] for i in infector_events])]
