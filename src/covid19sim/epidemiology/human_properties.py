@@ -53,8 +53,8 @@ PREEXISTING_CONDITIONS = OrderedDict([
         ConditionProbability('heart_disease', 2, 75, 'f', 0.13),
         ConditionProbability('heart_disease', 2, 75, 'm', 0.178),
         ConditionProbability('heart_disease', 2, 75, 'a', 0.15),
-        ConditionProbability('heart_disease', 2, 100, 'f', 0.311),
-        ConditionProbability('heart_disease', 2, 100, 'm', 0.44),
+        ConditionProbability('heart_disease', 2, 1000, 'f', 0.311),
+        ConditionProbability('heart_disease', 2, 1000, 'm', 0.44),
         ConditionProbability('heart_disease', 2, 1000, 'a', 0.375)
     ]),
     # 'smoker' is a dependency of 'cancer' so it needs to be inserted
@@ -70,7 +70,7 @@ PREEXISTING_CONDITIONS = OrderedDict([
     ('COPD', [
         ConditionProbability('COPD', 3, 35, 'a', 0.0),
         ConditionProbability('COPD', 3, 50, 'a', 0.015),
-        ConditionProbability('COPD', 3, 65, 'f', 0.037),
+        ConditionProbability('COPD', 3, 65, 'a', 0.037),
         ConditionProbability('COPD', 3, 1000, 'a', 0.075)
     ]),
     ('asthma', [
