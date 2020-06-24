@@ -8,7 +8,7 @@ Notebooks are not git friendly because they are colossol HTML files. Please obse
 5. Please follow good naming practices so that the intent of the notebook is clear from it's name.
 6. **If you want to use a notebook** and are not the author of the notebook, please copy the notebook locally and use the clone instead. If you don't, it will show up in the diff, and you will have to either lose your progress by stashing it or commit the entire notebook. This commit will be a nightmare to resolve if there are any conflicts in it somewhere.
 7. If you want to make changes to the existing notebook, contact the author of the notebook and work out a solution.
-8. Please use `utils/` to write any python script that you want to write.
+8. Please use `utils/` to write any python script that you want to use in your notebooks.
 
 # Notebooks
 1. `spy_humans_pro` - Visualize the timeline of phone message exchange between infector and infectee in an infection chain.
