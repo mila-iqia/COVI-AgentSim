@@ -551,6 +551,16 @@ class City:
         `Tracing`. It simulates the process of downloading the app on for smartphone
         users according to `APP_UPTAKE` and `SMARTPHONE_OWNER_FRACTION_BY_AGE`.
         """
+        def _log_app_info(human):
+            if not human.has_app:
+                return
+            # (assumption) 90% of the time, healthcare workers will declare it
+            human.obs_is_healthcare_worker = True if human.is_healthcare_worker and human.rng.random() < 0.9 else False
+            human.has_logged_info = human.rng.rand() < human.carefulness
+            human.obs_age = human.age if human.has_logged_info else None
+            human.obs_sex = human.sex if human.has_logged_info else None
+            human.obs_preexisting_conditions = human.preexisting_conditions if human.has_logged_info else []
+
         print("Downloading the app...")
         age_histogram = relativefreq2absolutefreq(
             bins_fractions={age_bin: specs['p']
@@ -570,6 +580,7 @@ class City:
             if all_has_app:
                 # i get an app, you get an app, everyone gets an app
                 human.has_app = True
+                _log_app_info(human)
                 continue
 
             # Find what age bin the human is in
@@ -583,6 +594,7 @@ class City:
             if n_apps_per_age[age_bin] > 0:
                 # This human gets an app If there's quota left in his age group
                 human.has_app = True
+                _log_app_info(human)
                 n_apps_per_age[age_bin] -= 1
                 continue
 
@@ -808,6 +820,7 @@ class City:
 
             yield self.env.timeout(int(duration))
 
+            # daily activities
             if current_day != last_day_idx:
                 last_day_idx = current_day
                 # Compute the transition matrix of recommendation levels to
@@ -816,7 +829,10 @@ class City:
                 self.cleanup_global_mailbox(self.env.timestamp)
                 # TODO: this is an assumption which will break in reality, instead of updating once per day everyone at the same time, it should be throughout the day
                 for human in alive_humans:
+                    # recover from cold/flu/allergies if it's time
+                    human.recover_health()
                     human.catch_other_disease_at_random()
+                    human.update_symptoms()
                     Event.log_daily(self.conf.get('COLLECT_LOGS'), human, human.env.timestamp)
                 self.tracker.increment_day()
                 if self.conf.get("USE_GAEN"):

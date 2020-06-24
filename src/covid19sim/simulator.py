@@ -141,11 +141,11 @@ class Human(object):
         self.allergy_progression = _get_allergy_progression(self.rng)
 
         # logged info can be quite different
-        self.has_logged_info = self.has_app and self.rng.rand() < self.carefulness
-        self.obs_is_healthcare_worker = True if self.is_healthcare_worker and self.rng.random()<0.9 else False # 90% of the time, healthcare workers will declare it
-        self.obs_age = self.age if self.has_app and self.has_logged_info else None
-        self.obs_sex = self.sex if self.has_app and self.has_logged_info else None
-        self.obs_preexisting_conditions = self.preexisting_conditions if self.has_app and self.has_logged_info else []
+        self.has_logged_info = False
+        self.obs_is_healthcare_worker = False
+        self.obs_age = None
+        self.obs_sex = None
+        self.obs_preexisting_conditions = []
 
         self.rest_at_home = False # to track mobility due to symptoms
         self.visits = Visits()
@@ -1401,9 +1401,7 @@ class Human(object):
                 self.count_shop = 0
                 self.count_misc = 0
 
-            # recover from cold/flu/allergies if it's time
-            self.recover_health()
-
+            # TODO - P - ideally check this every hour in base.py
             # used for tracking serial interval
             # person needs to show symptoms in order for this to be true.
             # is_incubated checks for asymptomaticity and whether the days since exposure is
@@ -1414,6 +1412,7 @@ class Human(object):
                 self.symptom_start_time = self.env.timestamp
                 city.tracker.track_serial_interval(self.name)
 
+            # TODO - P - ideally check this every hour in base.py
             # recover
             if self.is_infectious and self.days_since_covid >= self.recovery_days:
                 city.tracker.track_recovery(self.n_infectious_contacts, self.recovery_days)
