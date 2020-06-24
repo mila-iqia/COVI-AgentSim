@@ -209,6 +209,8 @@ def proba_to_risk_fn(mapping):
     return _proba_to_risk
 
 def calculate_average_infectiousness(human):
+    """ This is only used for the infectiousness value for a human that is written out for the ML predictor.
+    We write tomorrows infectiousness (and predict tomorrows infectiousness) so that our predictor is conservative. """
     # cur_infectiousness = human.get_infectiousness_for_day(human.env.timestamp, human.is_infectious)
     is_infectious_tomorrow = True if human.infection_timestamp and human.env.timestamp - human.infection_timestamp + datetime.timedelta(days=1) >= datetime.timedelta(days=human.infectiousness_onset_days) else False
     tomorrows_infectiousness = human.get_infectiousness_for_day(human.env.timestamp + datetime.timedelta(days=1),
