@@ -7,8 +7,8 @@ import zipfile
 
 from matplotlib import pyplot as plt
 
-from src.covid19sim.simulator import Human
-from src.covid19sim.base import Event
+from covid19sim.simulator import Human
+from covid19sim.base import Event
 
 
 PLOT_EVENTS_LABEL = ["Encounters", "Contaminations", "Tests", "Positive Tests", "Negative Tests"]
@@ -581,9 +581,6 @@ if __name__ == '__main__':
                 for event in human._events:
                     humans_events[human.name][(event["time"], event["event_type"])] = event
                 human._events = []
-
-            # if len(debug_data["human_backups"]) % (24 * 2) == 0:
-            #     break
 
     for human_id, human_events in humans_events.items():
         events = list(human_events.values())
