@@ -77,6 +77,8 @@ class MakeHumanAsMessageProxy:
                 trimmed_human[k] = personal_mailbox
             elif k == 'test_results':
                 trimmed_human[k] = human.test_results
+            elif k == 'viral_load_to_infectiousness_multiplier':
+                trimmed_human[k] = human.viral_load_to_infectiousness_multiplier
             else:
                 trimmed_human[k] = human.__dict__[k]
         return pickle.loads(pickle.dumps(trimmed_human))
