@@ -530,6 +530,7 @@ class HumanAsMessageTest(unittest.TestCase):
     class EnvMock:
         def __init__(self, timestamp):
             self.timestamp = timestamp
+            self.initial_timestamp = timestamp
             self.ts_initial = 0
 
     def test_human_as_message(self):
@@ -564,6 +565,8 @@ class HumanAsMessageTest(unittest.TestCase):
             elif k == "infectiousnesses":  # everything works except that one, it's a property
                 self.assertEqual(len(human.infectiousnesses), dummy_conf["TRACING_N_DAYS_HISTORY"])
             elif k == 'test_results':
+                self.assertTrue(hasattr(human, k))
+            elif k == "viral_load_to_infectiousness_multiplier":
                 self.assertTrue(hasattr(human, k))
             else:
                 self.assertIn(k, human.__dict__)
