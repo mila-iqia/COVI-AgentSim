@@ -597,14 +597,24 @@ class Human(object):
             [type]: [description]
         """
         infectiousness = 0.
-        severity_multiplier = 1
         if is_infectious:
-            if 'immuno-compromised' in self.preexisting_conditions:
-              severity_multiplier += self.conf['IMMUNOCOMPROMISED_SEVERITY_MULTIPLIER_ADDITION']
-            if 'cough' in self.symptoms:
-              severity_multiplier += self.conf['COUGH_SEVERITY_MULTIPLIER_ADDITION']
-            infectiousness = (viral_load_for_day(self, timestamp) * severity_multiplier * self.infection_ratio)/self.conf['INFECTIOUSNESS_NORMALIZATION_CONST']
+            infectiousness = viral_load_for_day(self, timestamp) * self.viral_load_to_infectiousness_multiplier
         return infectiousness
+
+    @property
+    def infectiousness_severity_multiplier(self):
+        severity_multiplier = 1
+        if 'immuno-compromised' in self.preexisting_conditions:
+            severity_multiplier += self.conf['IMMUNOCOMPROMISED_SEVERITY_MULTIPLIER_ADDITION']
+        if 'cough' in self.symptoms:
+            severity_multiplier += self.conf['COUGH_SEVERITY_MULTIPLIER_ADDITION']
+        return severity_multiplier
+
+    @property
+    def viral_load_to_infectiousness_multiplier(self):
+        """Final multiplier that converts viral-load to infectiousness."""
+        return (self.infectiousness_severity_multiplier * self.infection_ratio /
+                self.conf['INFECTIOUSNESS_NORMALIZATION_CONST'])
 
     @property
     def infectiousness(self):
