@@ -10,6 +10,8 @@ Notebooks are not git friendly because they are colossol HTML files. Please obse
 7. If you want to make changes to the existing notebook, contact the author of the notebook and work out a solution.
 8. Please use `utils/` to write any python script that you want to use in your notebooks.
 
+NOTE: If you really want to see a diff between two notebooks, here is a suggested tool - https://nbdime.readthedocs.io/en/latest/
+
 # Notebooks
 1. `spy_humans_pro` - Visualize the timeline of phone message exchange between infector and infectee in an infection chain.
 2. `intervention_impact` - Visualize cumulative cases per day and effective reproduction number.
