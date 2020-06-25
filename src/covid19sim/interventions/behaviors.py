@@ -5,10 +5,6 @@ Implements human behavior/government policy changes.
 reduce their liklihood of infecting others (wearing a mask, washing hands); they can choose to go out less
 (reducing gamma and rho); or they can take more distance / reduce time spent with others while out.
 
-- * RecommendationGetter * A list of behaviors which are recommended by a Tracing Method? Model? Your mom?
-
-- * NonMLRiskComputer * Handle computing the risk for non-ml tracing methods like heuristic and binarytracing
-
 """
 import typing
 if typing.TYPE_CHECKING:
@@ -125,7 +121,7 @@ class Quarantine(Behavior):
         human.gamma = self._GAMMA
         human.rest_at_home = True
         human._quarantine = True
-        # print(f"{human} quarantined {human.tracing_method}")
+        # print(f"{human} quarantined {human.intervention}")
 
     def revert(self, human):
         human.revert_workplace()

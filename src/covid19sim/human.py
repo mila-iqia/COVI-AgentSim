@@ -13,7 +13,7 @@ from collections import defaultdict
 from orderedset import OrderedSet
 
 from covid19sim.interventions.behaviors import Behavior
-from covid19sim.interventions.recommendation_manager import NonMLRiskComputer
+from covid19sim.interventions.tracing import BaseMethod
 from covid19sim.utils.utils import compute_distance, proba_to_risk_fn
 from covid19sim.locations.city import PersonalMailboxType
 from covid19sim.locations.hospital import Hospital, ICU
@@ -179,12 +179,10 @@ class Human(object):
 
 
         """ Interventions """
-        self.tracing = False  # A reference to the NonMLRiskComputer logic engine which implements tracing methods
         self.WEAR_MASK = False  # A boolean value determining whether this person will try to wear a mask during encounters
         self.wearing_mask = False  # A bolean value that represents whether this person is currently wearing a mask
         self.mask_efficacy = 0.  # A float value representing how good this person is at wearing a mask (i.e. healthcare workers are better than others)
-        self.notified = False  # Value indicating whether this person has been "notified" to start following some interventions
-        self.tracing_method = None  # Type of contact tracing to do, e.g. Transformer or binary contact tracing or heuristic
+        self.intervention = None  # Type of contact tracing to do, e.g. Transformer or binary contact tracing or heuristic
         self._maintain_extra_distance = deque((0,))  # Represents the extra distance this person could take as a result of an intervention
         self._follows_recommendations_today = None  # Whether this person will follow app recommendations today
         self._rec_level = -1  # Recommendation level used for Heuristic / ML methods
@@ -921,13 +919,11 @@ class Human(object):
         self.risk_history_map[current_day_idx] = self.baseline_risk
 
         # if you're dead, not tracing, or using the transformer you don't need to update your risk here
-        if self.is_dead or\
-                not isinstance(self.tracing_method, NonMLRiskComputer) or\
-                self.tracing_method.risk_model == "transformer":
+        if self.is_dead or self.conf.get("RISK_MODEL") == "transformer":
             return
 
         # All tracing methods that are _not ML_ (heuristic, bdt1, bdt2, etc) will compute new risks here
-        risks = self.tracing_method.compute_risk(self, personal_mailbox, self.city.hd)
+        risks = self.intervention.compute_risk(self, personal_mailbox, self.city.hd)
         for day_offset, risk in enumerate(risks):
             if current_day_idx - day_offset in self.risk_history_map:
                 self.risk_history_map[current_day_idx - day_offset] = risk
@@ -944,7 +940,7 @@ class Human(object):
             current_timestamp: the current timestamp of the simulation.
             risk_history: the risk history vector predicted by the transformer.
         """
-        assert self.tracing_method.risk_model == "transformer"
+        assert self.conf.get("RISK_MODEL") == "transformer"
         assert len(risk_history) == self.contact_book.tracing_n_days_history, \
             "unexpected transformer history coverage; what's going on?"
         for day_offset_idx in range(len(risk_history)):  # note: idx:0 == today
@@ -1087,10 +1083,9 @@ class Human(object):
 
             self.last_state = self.state
 
-    def notify(self, intervention=None):
+    def set_intervention(self, intervention):
         """
         This function is called once on the intervention day to notify `Human`.
-        `self.notified` is a flag that is used debugging interventions.
         If the interevention is of type `Tracing`, everyone is initalized from 0 recommendation level
         and associated behavior modifications. Subsequent changes in behavior are dependent on recommendation level
         changes during the course of simulation.
@@ -1101,42 +1096,25 @@ class Human(object):
         Args:
             intervention (BehaviorIntervention, optional): intervention that `Human` should follow. Defaults to None.
         """
-        if (
-            intervention is not None
-            and not self.notified
-        ):
-            self.tracing = False
-            if isinstance(intervention, NonMLRiskComputer):
-                self.tracing = True
-                self.tracing_method = intervention
-            self.update_recommendations_level(intervention_start=True)
-            recommendations = intervention.get_recommendations(self)
-            self.apply_intervention(recommendations)
-            self.notified = True
+        self.intervention = intervention
+        self.update_recommendations_level(intervention_start=True)
+        behaviors = intervention.get_behaviors(self)
+        self.apply_behaviors(behaviors)
 
-    def apply_intervention(self, new_recommendations: list):
+    def apply_behaviors(self, new_behaviors: list):
         """ We provide a list of recommendations and a human, we revert the human's existing recommendations
             and apply the new ones"""
         for old_rec in self.recommendations_to_follow:
             old_rec.revert(self)
         self.recommendations_to_follow = OrderedSet()
 
-        for new_rec in new_recommendations:
-            assert isinstance(new_rec, Behavior)
+        for new_behavior in new_behaviors:
+            assert isinstance(new_behavior, Behavior)
             if self.follows_recommendations_today:
-                new_rec.modify(self)
-                self.recommendations_to_follow.add(new_rec)
+                new_behavior.modify(self)
+                self.recommendations_to_follow.add(new_behavior)
 
     def run(self, city):
-        """
-        [summary]
-
-        Args:
-            city (City): [description]
-
-        Yields:
-            [type]: [description]
-        """
         self.household.humans.add(self)
         while True:
             hour, day = self.env.hour_of_day(), self.env.day_of_week()
@@ -1488,7 +1466,6 @@ class Human(object):
             # encounter message is under 2 meters for at least 5 minutes.
             if approximated_bluetooth_distance < self.conf.get("MAX_MESSAGE_PASSING_DISTANCE") and \
                     t_near > self.conf.get("MIN_MESSAGE_PASSING_DURATION") and \
-                    self.tracing and \
                     self.has_app and \
                     h.has_app:
                 remaining_time_in_contact = t_near
@@ -1783,12 +1760,6 @@ class Human(object):
 
     @property
     def risk(self):
-        """
-        [summary]
-
-        Returns:
-            [type]: [description]
-        """
         if self.risk_history_map:
             cur_day = (self.env.timestamp - self.env.initial_timestamp).days
             if cur_day in self.risk_history_map:
@@ -1801,31 +1772,22 @@ class Human(object):
 
     @property
     def risk_level(self):
-        """
-        [summary]
-
-        Returns:
-            [type]: [description]
-        """
         return min(self.proba_to_risk_level_map(self.risk), 15)
 
     def update_recommendations_level(self, intervention_start=False):
-        if not self.has_app or not isinstance(self.tracing_method, NonMLRiskComputer):
+        if not self.has_app:
             self._rec_level = -1
-        else:
-            # FIXME: maybe merge Quarantine in RiskBasedRecommendationGetter with 2 levels
-            if self.tracing_method.risk_model in ["manual", "digital"]:
-                if self.risk == 1.0:
-                    self._rec_level = 3
-                else:
-                    self._rec_level = 0
-            else:
-                self._rec_level = self.tracing_method.recommendation_getter.get_recommendations_level(
-                    self,
-                    self.conf.get("REC_LEVEL_THRESHOLDS"),
-                    self.conf.get("MAX_RISK_LEVEL"),
-                    intervention_start=intervention_start,
-                )
+            return
+
+        if self.conf.get("RISK_MODEL") == "digital":
+            assert self.risk == 0. or self.risk == 1.0
+
+        self._rec_level = self.intervention.get_recommendations_level(
+            self,
+            self.conf.get("REC_LEVEL_THRESHOLDS"),
+            self.conf.get("MAX_RISK_LEVEL"),
+            intervention_start=intervention_start,
+        )
 
     @property
     def rec_level(self):
