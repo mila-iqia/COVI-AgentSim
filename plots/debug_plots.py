@@ -495,6 +495,21 @@ def get_infection_history(humans_events: Dict[str, List], human_key: str):
 
 
 def generate_human_centric_plots(human_backups, humans_events, nb_humans_in_sim, output_folder):
+
+    def split_location(location_name: str):
+        # Split location type from id and suffix "location_type:id-suffix"
+        parts = location_name.split(':')
+        # Split location id from suffix "location_id-suffix"
+        parts.extend(parts[1].split('-'))
+        parts = parts[0:1] + parts[2:]
+        parts[1] = int(parts[1])
+        return parts
+
+    def join_location_parts(location_parts: list):
+        return "%s:%i" % (location_parts[0], location_parts[1]) if len(location_parts) == 2 else \
+            "%s:%i-%s" % (location_parts[0], location_parts[1], location_parts[2])
+
+    human_backups = debug_data['human_backups']
     timestamps = sorted(list(human_backups.keys()))
     human_names = list(human_backups[timestamps[0]].keys())
     begin = timestamps[0]
@@ -508,8 +523,8 @@ def generate_human_centric_plots(human_backups, humans_events, nb_humans_in_sim,
     all_locations = list(all_locations)
 
     # Sort locations by type and then by index
-    sorted_locations_indices = sorted([(l.split(':')[0], int(l.split(':')[1])) for l in all_locations])
-    sorted_all_locations = ["%s:%i" % (l[0], l[1]) for l in sorted_locations_indices]
+    sorted_locations_indices = sorted([split_location(l) for l in all_locations])
+    sorted_all_locations = [join_location_parts(l) for l in sorted_locations_indices]
 
     # Treat each human individually
     for h_key in human_names:
