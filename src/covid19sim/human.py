@@ -109,7 +109,6 @@ class Human(object):
         self.allergy_timestamp = None  # time when this person started having allergy symptoms
 
         # Allergies
-        self.has_allergies = self.rng.rand() < self.conf.get("P_ALLERGIES")  # determines whether this person has allergies
         len_allergies = self.rng.normal(1/self.carefulness, 1)   # determines the number of symptoms this persons allergies would present with (if they start experiencing symptoms)
         self.len_allergies = 7 if len_allergies > 7 else np.ceil(len_allergies)
         self.allergy_progression = _get_allergy_progression(self.rng)  # if this human starts having allergy symptoms, then there is a progression of symptoms over one or multiple days
@@ -1018,7 +1017,7 @@ class Human(object):
             return
 
         # Have random allergy symptoms
-        if self.has_allergies and self.rng.random() < self.conf["P_HAS_ALLERGIES_TODAY"]:
+        if "allergies" in self.preexisting_conditions and self.rng.random() < self.conf["P_HAS_ALLERGIES_TODAY"]:
             self.allergy_timestamp = self.env.timestamp
             # print("caught allergy")
             return
@@ -1386,7 +1385,7 @@ class Human(object):
             # health
             'cold':self.has_cold,
             'flu':self.has_flu,
-            'allergies':self.has_allergies,
+            'allergies':"allergies" in self.preexisting_conditions,
             # app-related
             'rec_level': self.rec_level,
             'risk':self.risk,

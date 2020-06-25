@@ -561,7 +561,7 @@ def test_human_allergies_symptoms():
     for day in range(10):
         env.now += SECONDS_PER_DAY
         for human in city.humans:
-            human.has_allergies = True
+            human.preexisting_conditions.append('allergies')
             human.catch_other_disease_at_random()
             human.update_symptoms()
             if day < len(human.allergy_progression):

@@ -110,6 +110,9 @@ PREEXISTING_CONDITIONS = OrderedDict([
     ]),
     ('pregnant', [
         ConditionProbability('pregnant', 9, -1, 'f', -1)
+    ]),
+    ('allergies', [
+        ConditionProbability('allergies', 10, 1000, 'a', 0.2)
     ])
 ])
 

@@ -376,7 +376,7 @@ GET_TESTED_SYMPTOMS_CHECKED_IN_HOSPITAL: ["mild", "moderate", "severe", "fever",
 GET_TESTED_SYMPTOMS_CHECKED_BY_SELF: ["cough", "fever", "trouble_breathing", "chills", "loss_of_taste", ""]
 
 # SEASONAL ALLERGIES
-P_ALLERGIES: 0.4 # proportion of population; https://www.healthline.com/health/allergies/statistics#1
+P_ALLERGIES: 0.2 # proportion of population; https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6121311/
 # P_HAS_ALLERGIES_TODAY: 0.005 # likelihood to start allergy any day (2-3 times per year) # produces too many allergies (experimental)
 P_HAS_ALLERGIES_TODAY: 0.005
 
