@@ -1,0 +1,187 @@
+---
+# EXPERIMENTAL PARAMETERS
+COLLECT_LOGS : True
+COLLECT_TRAINING_DATA : False
+USE_INFERENCE_SERVER : False
+RISK_MODEL : "transformer" # "naive", "manual", "digital", "transformer"
+INIT_PERCENT_SICK : 0.1
+SHOULD_MODIFY_BEHAVIOR : True
+USE_ORACLE : False
+
+## INTERVENTIONS
+INTERVENTION_DAY : 5
+INTERVENTION : "Tracing"
+DROPOUT_RATE: 0.02
+APP_UPTAKE : 0.6
+GLOBAL_MOBILITY_SCALING_FACTOR: .3
+
+# PATHS
+CLUSTER_PATH : "output/clusters.json"
+
+# Inference & Training
+TRACING_N_DAYS_HISTORY : 14
+DUMP_CLUSTERS : False
+CLUSTER_ALGO_TYPE: "blind" # should be in ["gaen", "blind"]
+RESET_INFERENCE_SERVER: True
+
+# TRACING RISK MODEL PARAMETERS  (non-ML)
+TRACE_SYMPTOMS : False
+TRACE_RISK_UPDATE : False
+TRACING_ORDER : 1
+UPDATES_PER_DAY : 4
+
+RISK_MAPPING :
+  [
+    0.0,
+    0.010190361,
+    0.022800818,
+    0.033924844,
+    0.044960417,
+    0.0564146,
+    0.069076724,
+    0.08331901,
+    0.09839013,
+    0.115344636,
+    0.13295256,
+    0.15386948,
+    0.1748018,
+    0.19909734,
+    0.22582635,
+    0.26276696,
+    1.0,
+  ]
+
+# The group age proportion (p) are taken from Statistics Canada
+# ref: https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1710000501
+# ref: https://www12.statcan.gc.ca/census-recensement/2011/as-sa/98-312-x/2011003/fig/fig3_4-4-eng.cfm
+# TODO: senior_residency should be adjusted w.r.t. to the actual number of people per bin to combine them.
+HOUSE_SIZE_PREFERENCE: [0.282, 0.344, 0.152, 0.138, 0.084]
+HUMAN_DISTRIBUTION: # this is parsed into tuple keys in utils.py/parse_configuration e.g. "0-10" => (0, 10)
+  {
+    # Skip this age group to remove age differenciation filtering in Human.at()
+    "1-10":
+      {
+        "p": 0.0,
+        "residence_preference":
+          {
+            "house_size": [0.0, 0.2, 0.25, 0.35, 0.2],
+            "senior_residency": 0.0,
+          },
+        "profession_profile":
+          {
+            "healthcare": 0.0, "school": 1.0, "others": 0.0, "retired": 0.0
+          },
+      },
+    # Skip this age group to remove age differenciation filtering in Human.at()
+    "11-20":
+      {
+        "p": 0.0,
+        "residence_preference":
+          {
+            "house_size": [0.00, 0.2, 0.55, 0.15, 0.1],
+            "senior_residency": 0.0,
+          },
+        "profession_profile":
+          {
+            "healthcare": 0.0, "school": 0.85, "others": 0.15, "retired": 0.0
+          },
+      },
+    "21-30":
+      {
+        "p": 0.338,
+        "residence_preference":
+          {
+            "house_size": [0.2, 0.3, 0.3, 0.1, 0.1],
+            "senior_residency": 0.0,
+          },
+        "profession_profile":
+          {
+            "healthcare": 0.06, "school": 0.02, "others": 0.92, "retired": 0.0
+          },
+      },
+    "31-40":
+      {
+        "p": 0.343,
+        "residence_preference":
+          {
+            "house_size": [0.1, 0.3, 0.30, 0.10, 0.2],
+            "senior_residency": 0.0,
+          },
+        "profession_profile":
+          {
+            "healthcare": 0.06, "school": 0.02, "others": 0.92, "retired": 0.0
+          },
+      },
+    "41-50":
+      {
+        "p": 0.319,
+        "residence_preference":
+          {
+            "house_size": [0.1, 0.4, 0.2, 0.2, 0.1],
+            "senior_residency": 0.0,
+          },
+        "profession_profile":
+          {
+            "healthcare": 0.06, "school": 0.02, "others": 0.92, "retired": 0.0
+          },
+      },
+    # Skip this age group to remove age differenciation filtering in Human.at()
+    "51-60":
+      {
+        "p": 0.0,
+        "residence_preference":
+          {
+            "house_size": [0.2, 0.6, 0.1, 0.05, 0.05],
+            "senior_residency": 0.0,
+          },
+        "profession_profile":
+          {
+            "healthcare": 0.06, "school": 0.02, "others": 0.92, "retired": 0.0
+          },
+      },
+    # Skip this age group to remove age differenciation filtering in Human.at()
+    "61-70":
+      {
+        "p": 0.0,
+        "residence_preference":
+          {
+            "house_size": [0.25, 0.6, 0.05, 0.05, 0.05],
+            "senior_residency": 0.009,
+          },
+        "profession_profile":
+          {
+            "healthcare": 0.01, "school": 0.01, "others": 0.68, "retired": 0.3
+          },
+      },
+    # Skip this age group to remove age differenciation filtering in Human.at()
+    "71-80":
+      {
+        "p": 0.0,
+        "residence_preference":
+          {
+            "house_size": [0.1, 0.6, 0.15, 0.05, 0.1],
+            "senior_residency": 0.07,
+          },
+        "profession_profile":
+          {
+            "healthcare": 0.01, "school": 0.0, "others": 0.04, "retired": 0.95
+          },
+      },
+    # Skip this age group to remove age differenciation filtering in Human.at()
+    "81-101":
+      {
+        "p": 0.0,
+        "residence_preference":
+          {
+            "house_size": [0.15, 0.5, 0.1, 0.15, 0.1],
+            "senior_residency": 0.4,
+          },
+        "profession_profile":
+          {
+            "healthcare": 0.0, "school": 0.0, "others": 0.0, "retired": 1.0
+          },
+      },
+  }
+
+# Console logging (Conditional with COLLECT_LOGS)
+LOGGING_LEVEL: "WARNING"

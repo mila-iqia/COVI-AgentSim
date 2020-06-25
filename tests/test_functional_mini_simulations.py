@@ -3,6 +3,7 @@ import os
 import pickle
 import typing
 import unittest
+import warnings
 import zipfile
 from collections import namedtuple
 from tempfile import TemporaryDirectory
@@ -201,6 +202,412 @@ class MiniSimulationTest(unittest.TestCase):
     def tearDown(self):
         import covid19sim.log.event
         covid19sim.log.event.Event = MiniSimulationTest.Event
+
+
+class InterventionRiskTest(MiniSimulationTest):
+    def setUp(self):
+        super(InterventionRiskTest, self).setUp()
+
+        # Prevent testing to ease analysis of 1st and 2 order tracing
+        self.config['TEST_TYPES']['lab']['capacity'] = 0
+        self.config['BASELINE_RISK_VALUE'] = 0.0
+        # Prevent quarantines, we want to test contacts and messages
+        self.config["DROPOUT_RATE"] = 1.0
+
+    def test_tracing_order_1(self):
+        """
+        Test the risk assigned to humans when using 1st order binary tracing
+        """
+        from covid19sim.human import Human
+        intervention = InterventionProps('Tracing', 'digital', 1)
+
+        initial_infectors = set()
+
+        # TODO: Fix the code to have contacts take effect immediately to simplify
+        #  this test. Since current code only makes contacts have an effect 1
+        #  time slot later, the contacts state for all humans are not in sync
+        #  and must be kept in cache for each human
+
+        # Holds human's contacts
+        contacts: typing.Dict[Human, set] = {}
+        # contacts currently only have an effect 1 time slot later
+        time_slot_contacts: typing.Dict[Human, set] = {}
+
+        def log_encounter_messages_proxy(*args, **kwargs):
+            Event.log_encounter_messages(*args, **kwargs)
+            human1 = kwargs.get('human1', None)
+            human2 = kwargs.get('human2', None)
+
+            for arg in (*args, *kwargs.values()):
+                if isinstance(arg, Human):
+                    if human1 is None:
+                        human1 = arg
+                    elif human2 is None:
+                        human2 = arg
+                        break
+
+            time_slot_contacts[human1].add(human2)
+            time_slot_contacts[human2].add(human1)
+
+        def log_risk_update_proxy(*args, **kwargs):
+            Event.log_risk_update(*args, **kwargs)
+            human = kwargs.get('human', None)
+            time = kwargs.get('time', None)
+            for arg in args:
+                if isinstance(arg, Human):
+                    human = arg
+                    break
+            for arg in args:
+                if isinstance(arg, datetime.datetime):
+                    time = arg
+                    break
+
+            with self.subTest(human=human.name, time=str(time),
+                              initial_infectors=initial_infectors.copy(),
+                              contacts=contacts[human].copy(),
+                              time_slot_contacts=time_slot_contacts[human].copy()):
+                if human in initial_infectors:
+                    self.assertEqual(human.risk, 1,
+                                     msg=f"initial infector should be at risk")
+                else:
+                    for other_human in contacts[human]:
+                        if other_human in initial_infectors:
+                            self.assertEqual(human.risk, 1,
+                                             msg=f"The contact with the initial "
+                                             f"infector {other_human} was not "
+                                             f"flagged at risk")
+                            break
+                    else:
+                        self.assertEqual(human.risk, human.baseline_risk,
+                                         msg=f"A human not in contact with "
+                                         f"the initial infector should not "
+                                         f"be flagged as at risk")
+
+            contacts[human].update(time_slot_contacts[human])
+            time_slot_contacts[human].clear()
+
+        def log_static_info_proxy(*args, **kwargs):
+            Event.log_static_info(*args, **kwargs)
+            human = kwargs.get('human', None)
+            for arg in args:
+                if isinstance(arg, Human):
+                    human = arg
+                    break
+
+            self.assertIsNot(human, None)
+
+            # add human to list of initial_infectors
+            if human.is_exposed:
+                _init_infector(human)
+                initial_infectors.add(human)
+
+            contacts.setdefault(human, set())
+            time_slot_contacts.setdefault(human, set())
+
+        ProxyEvent.log_encounter_messages = log_encounter_messages_proxy
+        ProxyEvent.log_risk_update = log_risk_update_proxy
+        ProxyEvent.log_static_info = log_static_info_proxy
+
+        _run_simulation(self, intervention)
+
+        # We want to test with only 1 initial infector
+        self.assertEqual(1, len(initial_infectors))
+
+    def test_tracing_order_2(self):
+        """
+        Test the risk assigned to humans when using 2nd order binary tracing
+        """
+        from covid19sim.human import Human
+        intervention = InterventionProps('Tracing', 'digital', 2)
+
+        # TODO: This code would be much simpler if the effects of a contact was
+        #  not delayed by a time slot. It would remove the need for
+        #  time_slot_contacts and staged_time_slot_contacts which would be
+        #  replaced by a simple order_1_contacts set
+
+        # Since current code only makes contacts have an effect 1
+        # time slot later, the contacts state for all humans are not in sync
+        # and must be kept in cache for each human
+
+        initial_infectors = set()
+        # Holds human's contacts
+        contacts: typing.Dict[Human, set] = {}
+        # Contacts currently only have an effect 1 time slot later
+        time_slot_contacts: typing.Dict[Human, set] = {}
+        # In between contacts that should be taken into account in the next
+        # human's risk_update but which should not be taken into account by the
+        # other humans in the same time slot
+        staged_time_slot_contacts: \
+            typing.Dict[datetime.datetime, typing.Dict[Human, set]] = {}
+
+        def log_encounter_messages_proxy(*args, **kwargs):
+            Event.log_encounter_messages(*args, **kwargs)
+            human1 = kwargs.get('human1', None)
+            human2 = kwargs.get('human2', None)
+
+            for arg in (*args, *kwargs.values()):
+                if isinstance(arg, Human):
+                    if human1 is None:
+                        human1 = arg
+                    elif human2 is None:
+                        human2 = arg
+                        break
+
+            time_slot_contacts[human1].add(human2)
+            time_slot_contacts[human2].add(human1)
+
+        def log_risk_update_proxy(*args, **kwargs):
+            Event.log_risk_update(*args, **kwargs)
+            human = kwargs.get('human', None)
+            time = kwargs.get('time', None)
+            for arg in args:
+                if isinstance(arg, Human):
+                    human = arg
+                    break
+            for arg in args:
+                if isinstance(arg, datetime.datetime):
+                    time = arg
+                    break
+
+            h_contacts = contacts[human]
+            h_time_slot_contacts = time_slot_contacts[human]
+
+            # Add previous time slot contacts to each humans' contacts
+            for time_slot in list(staged_time_slot_contacts.keys()):
+                if time_slot != time:
+                    for h, h_staged_time_slot_contacts in \
+                            staged_time_slot_contacts[time_slot].items():
+                        contacts[h].update(h_staged_time_slot_contacts)
+                    del staged_time_slot_contacts[time_slot]
+
+            with self.subTest(human=human.name, time=str(time),
+                              initial_infectors=initial_infectors.copy(),
+                              contacts=h_contacts.copy(),
+                              time_slot_contacts=h_time_slot_contacts.copy()):
+                if human in initial_infectors:
+                    self.assertEqual(human.risk, 1,
+                                     msg=f"initial infector should be at risk")
+                elif h_contacts.intersection(initial_infectors):
+                    self.assertEqual(human.risk, 1,
+                                     msg=f"1st order contact should be at risk")
+                else:
+                    for other_human in h_contacts:
+                        if contacts[other_human].intersection(initial_infectors):
+                            with self.subTest(human=human.name, time=str(time),
+                                              initial_infectors=initial_infectors.copy(),
+                                              other_human=other_human,
+                                              other_human_contacts=contacts[other_human]):
+                                self.assertEqual(human.risk, 1,
+                                                 msg=f"2nd order contact should be "
+                                                 f"at risk")
+                                break
+                    else:
+                        self.assertEqual(human.risk, human.baseline_risk,
+                                         msg=f"A human not in contact with the "
+                                         f"initial infector or a 2nd order "
+                                         f"contact should not be flagged as at risk")
+
+            # Stage this time slot contacts to be taken into account in the
+            # next risk_update
+            staged_time_slot_contacts.setdefault(time, dict())
+            staged_time_slot_contacts[time].setdefault(human, set())
+            staged_time_slot_contacts[time][human].update(h_time_slot_contacts)
+            h_time_slot_contacts.clear()
+
+        def log_static_info_proxy(*args, **kwargs):
+            Event.log_static_info(*args, **kwargs)
+            human = kwargs.get('human', None)
+            for arg in args:
+                if isinstance(arg, Human):
+                    human = arg
+                    break
+
+            self.assertIsNot(human, None)
+
+            # add human to list of initial_infectors
+            if human.is_exposed:
+                _init_infector(human)
+                initial_infectors.add(human)
+
+            contacts.setdefault(human, set())
+            time_slot_contacts.setdefault(human, set())
+
+        ProxyEvent.log_encounter_messages = log_encounter_messages_proxy
+        ProxyEvent.log_risk_update = log_risk_update_proxy
+        ProxyEvent.log_static_info = log_static_info_proxy
+
+        _run_simulation(self, intervention)
+
+        # We want to test with only 1 initial infector
+        self.assertEqual(len(initial_infectors), 1)
+
+    def test_transformer(self):
+        """
+        Test that the risk assigned to humans is at least the same as with
+        tracing order 2
+        """
+        from covid19sim.human import Human
+        intervention = InterventionProps('Tracing', 'transformer', None)
+
+        # TODO: This code would be much simpler if the effects of a contact was
+        #  not delayed by a time slot. It would remove the need for
+        #  time_slot_contacts and staged_time_slot_contacts which would be
+        #  replaced by a simple order_1_contacts set
+
+        # Since current code only makes contacts have an effect 1
+        # time slot later, the contacts state for all humans are not in sync
+        # and must be kept in cache for each human
+
+        initial_infectors = set()
+        # Holds human's contacts
+        contacts: typing.Dict[Human, set] = {}
+        # Contacts currently only have an effect 1 time slot later
+        time_slot_contacts: typing.Dict[Human, set] = {}
+        # In between contacts that should be taken into account in the next
+        # human's risk_update but which should not be taken into account by the
+        # other humans in the same time slot
+        staged_time_slot_contacts: \
+            typing.Dict[datetime.datetime, typing.Dict[Human, set]] = {}
+
+        # Holds humans's recommendation levels
+        rec_levels: typing.Dict[Human, typing.Set[int]] = {}
+
+        def log_encounter_messages_proxy(*args, **kwargs):
+            Event.log_encounter_messages(*args, **kwargs)
+            human1 = kwargs.get('human1', None)
+            human2 = kwargs.get('human2', None)
+
+            for arg in (*args, *kwargs.values()):
+                if isinstance(arg, Human):
+                    if human1 is None:
+                        human1 = arg
+                    elif human2 is None:
+                        human2 = arg
+                        break
+
+            time_slot_contacts[human1].add(human2)
+            time_slot_contacts[human2].add(human1)
+
+        def log_risk_update_proxy(*args, **kwargs):
+            Event.log_risk_update(*args, **kwargs)
+            human = kwargs.get('human', None)
+            time = kwargs.get('time', None)
+            for arg in args:
+                if isinstance(arg, Human):
+                    human = arg
+                    break
+            for arg in args:
+                if isinstance(arg, datetime.datetime):
+                    time = arg
+                    break
+
+            h_contacts = contacts[human]
+            h_time_slot_contacts = time_slot_contacts[human]
+
+            # Add previous time slot contacts to each humans' contacts
+            for time_slot in list(staged_time_slot_contacts.keys()):
+                if time_slot != time:
+                    for h, h_staged_time_slot_contacts in \
+                            staged_time_slot_contacts[time_slot].items():
+                        contacts[h].update(h_staged_time_slot_contacts)
+                    del staged_time_slot_contacts[time_slot]
+
+            rec_levels.setdefault(human, set())
+            rec_levels[human].add(human.rec_level)
+
+            with self.subTest(human=human.name, time=str(time),
+                              initial_infectors=initial_infectors.copy(),
+                              contacts=h_contacts.copy(),
+                              time_slot_contacts=h_time_slot_contacts.copy(),
+                              rec_levels=rec_levels[human].copy()):
+                if human in initial_infectors:
+                    self.assertEqual(human.rec_level, 3,
+                                     msg=f"initial infector should be at risk")
+                elif h_contacts.intersection(initial_infectors):
+                    # At least one non-zero rec level should have been assigned
+                    # to the human
+                    # TODO: Verify if it makes sense that a 5 days (duration of
+                    #  this mini simulation) is enough to have the rec_level droping
+                    #  to 0
+                    try:
+                        non_zero_rec_levels = [rec_level for rec_level in rec_levels[human]
+                                               if rec_level > 0]
+                        self.assertGreaterEqual(len(non_zero_rec_levels), 1,
+                                                msg=f"1st order contact should be at "
+                                                f"a minimum risk")
+                    except AssertionError as error:
+                        warnings.warn(f"1st order contact should probably be at "
+                                      f"a minimum risk: {str(error)}", RuntimeWarning)
+                else:
+                    for other_human in h_contacts:
+                        if contacts[other_human].intersection(initial_infectors):
+                            with self.subTest(human=human.name, time=str(time),
+                                              initial_infectors=initial_infectors.copy(),
+                                              other_human=other_human,
+                                              other_human_contacts=contacts[other_human]):
+                                # At least one non-zero rec level should have been assigned
+                                # to the human
+                                # TODO: Verify if it makes sense that a 5 days (duration of
+                                #  this mini simulation) is enough to have the rec_level droping
+                                #  to 0
+                                try:
+                                    non_zero_rec_levels = [rec_level for rec_level in rec_levels[human]
+                                                           if rec_level > 0]
+                                    self.assertGreaterEqual(len(non_zero_rec_levels), 1,
+                                                            msg=f"2nd order contact should be at "
+                                                            f"a minimum risk")
+                                except AssertionError as error:
+                                    warnings.warn(f"2nd order contact should probably be at "
+                                                  f"a minimum risk: {str(error)}", RuntimeWarning)
+                                break
+                    else:
+                        if not human.all_symptoms:
+                            try:
+                                self.assertEqual(human.rec_level, 0,
+                                                 msg=f"A human not in contact with the "
+                                                 f"initial infector or a 1st order "
+                                                 f"contact and without any symptoms "
+                                                 f"should not be flagged as at risk")
+                            except AssertionError as error:
+                                warnings.warn(f"A human not in contact with the "
+                                              f"initial infector or a 1st order "
+                                              f"contact and without any symptoms "
+                                              f"should probably not be flagged as "
+                                              f"at risk: {str(error)}", RuntimeWarning)
+
+            # Stage this time slot contacts to be taken into account in the
+            # next risk_update
+            staged_time_slot_contacts.setdefault(time, dict())
+            staged_time_slot_contacts[time].setdefault(human, set())
+            staged_time_slot_contacts[time][human].update(h_time_slot_contacts)
+            h_time_slot_contacts.clear()
+
+        def log_static_info_proxy(*args, **kwargs):
+            Event.log_static_info(*args, **kwargs)
+            human = kwargs.get('human', None)
+            for arg in args:
+                if isinstance(arg, Human):
+                    human = arg
+                    break
+
+            self.assertIsNot(human, None)
+
+            # add human to list of initial_infectors
+            if human.is_exposed:
+                _init_infector(human)
+                initial_infectors.add(human)
+
+            contacts.setdefault(human, set())
+            time_slot_contacts.setdefault(human, set())
+
+        ProxyEvent.log_encounter_messages = log_encounter_messages_proxy
+        ProxyEvent.log_risk_update = log_risk_update_proxy
+        ProxyEvent.log_static_info = log_static_info_proxy
+
+        _run_simulation(self, intervention)
+
+        # We want to test with only 1 initial infector
+        self.assertEqual(len(initial_infectors), 1)
 
 
 class MessagingTest(MiniSimulationTest):
