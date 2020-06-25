@@ -613,8 +613,12 @@ class Human(object):
     @property
     def viral_load_to_infectiousness_multiplier(self):
         """Final multiplier that converts viral-load to infectiousness."""
-        return (self.infectiousness_severity_multiplier * self.infection_ratio /
-                self.conf['INFECTIOUSNESS_NORMALIZATION_CONST'])
+        if self.infection_ratio is None:
+            return None
+        else:
+            return (self.infectiousness_severity_multiplier *
+                    (self.infection_ratio if self.infection_ratio is not None else 1) /
+                    self.conf['INFECTIOUSNESS_NORMALIZATION_CONST'])
 
     @property
     def infectiousness(self):
