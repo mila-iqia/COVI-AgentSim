@@ -1,46 +1,67 @@
 """
-Encodes the logic getting recommendations. Probably should be merged with recommendation_manager.py
-"""
 
+These are logic engines for doing tracing.
+
+"""
 import typing
+import copy
+import numpy as np
 from itertools import islice
 from covid19sim.interventions.behaviors import Quarantine
-from covid19sim.interventions.intervention_utils import _get_tracing_recommendations
+from covid19sim.interventions.tracing_utils import _get_behaviors_for_level, create_behavior
 
 if typing.TYPE_CHECKING:
     from covid19sim.human import Human
+    from covid19sim.locations.city import PersonalMailboxType
 
 
-class RecommendationGetter(object):
+class BaseMethod(object):
     """
-    A base class to modify behavior based on the type of intervention.
-    """
+    Implements contact tracing and assigns risk_levels to Humans.
 
-    def get_recommendations(self, human: "Human"):
-        recommendations = self._get_recommendations_impl(human)
-        if not any([isinstance(rec, Quarantine) for rec in recommendations]) and \
+    This object carries a bunch of flags & is responsible for determining the risk level of humans when
+    the transformer is not used for risk level inference. To do so, it will use the targeted human's
+    contact book to pull statistics about its recent contacts.
+
+    If the transformer is used, this object becomes fairly useless, and will only be used to apply
+    recommended behavior changes.
+
+    The name of this class is probably not the best, feel free to suggest alternatives.
+
+    Attributes:
+            Default Behaviors: can be set in the config as a list of strings corresponding to keys in `create_behavior`
+
+    """
+    def __init__(self, conf: dict):
+        """
+        Initializes the tracing object.
+
+        Args:
+            conf (dict): configuration to parse settings from.
+        """
+        self.default_behaviors = [create_behavior(key) for key in conf.get("DEFAULT_BEHAVIORS", [])]
+
+    def get_behaviors(self, human: "Human"):
+        behaviors = copy.deepcopy(self.default_behaviors)
+
+        if human.has_app:
+            if human.city.daily_rec_level_mapping is None:
+                intervention_level = human.rec_level
+            else:
+                # QKFIX: There are 4 recommendation levels, the value is hard-coded here
+                probas = human.city.daily_rec_level_mapping[human.rec_level]
+                intervention_level = human.rng.choice(4, p=probas)
+            human._intervention_level = intervention_level
+            behaviors = _get_behaviors_for_level(intervention_level)
+
+        if not any([isinstance(rec, Quarantine) for rec in behaviors]) and \
                 any([h.test_result == "positive" for h in human.household.humans]):
             # in short, if we are not already quarantining and if there is a member
             # of the household that got a positive test (even if they didn't tell their
             # app, whether because they don't have one or don't care, they should still
             # warn their housemates)
-            recommendations.append(Quarantine())
-        return recommendations
-
-    def _get_recommendations_impl(self, human: "Human"):
-        return []
-
-
-class RiskBasedRecommendationGetter(RecommendationGetter):
-    """
-    Implements recommendation based behavior modifications.
-    The risk level is mapped to a recommendation level. The thresholds to do so are fixed.
-    These thresholds are decided using a heuristic, which is outside the scope of this class.
-    Each recommendation level is a list of different `RecommendationGetter`.
-
-    It uses `Human.recommendations_to_follow` to keep a record of various recommendations
-    that `Human` is currently following.
-    """
+            behaviors.append(Quarantine())
+        return behaviors
 
     @staticmethod
     def get_recommendations_level(human, thresholds, max_risk_level, intervention_start=False):
@@ -66,30 +87,60 @@ class RiskBasedRecommendationGetter(RecommendationGetter):
         else:
             raise
 
-    def _get_recommendations_impl(self, human: "Human"):
-        # If there is a mapping available for recommendation levels in the
-        # configuration file, use the intervention level randomly picked from
-        # this transition matrix, based on the recommendation level. The update
-        # of the recommendation levels are not altered.
-        if not human.has_app:
-            return []
+    def compute_risk(
+            self,
+            human: "Human",
+            mailbox: "PersonalMailboxType",
+            humans_map: typing.Dict[str, "Human"],
+    ):
+        """
+        Computes the infection risk of a human based on the statistics of its past contacts.
 
-        if human.city.daily_rec_level_mapping is None:
-            intervention_level = human.rec_level
+        Args:
+            human: the human for which to generate the contact tracing counts.
+            mailbox: centralized mailbox with all recent update messages for the target human.
+            humans_map: a human-name-to-human-object reference map to pass to the contact book functions.
+
+        Returns:
+            float: a scalar value.
+        """
+        raise NotImplementedError
+
+
+class BinaryDigitalTracing(BaseMethod):
+    """
+        Attributes:
+            max_depth (int, optional): The number of hops away from the source to consider while tracing.
+            The term `order` is also used for this. Defaults to 1.
+    """
+    def __init__(self, conf):
+        self.max_depth = conf.get("TRACING_ORDER")
+
+    def compute_risk(
+            self,
+            human: "Human",
+            mailbox: "PersonalMailboxType",
+            humans_map: typing.Dict[str, "Human"],
+    ):
+        t = 0
+
+        positive_test_counts = human.contact_book.get_positive_contacts_counts(
+            humans_map=humans_map,
+            max_order=self.max_depth,
+            make_sure_15min_minimum_between_contacts=False,
+        )
+        for order, count in positive_test_counts.items():
+            t += count * np.exp(-2 * (order - 1))
+
+        if t > 0:
+            risk = 1.0
         else:
-            # QKFIX: There are 4 recommendation levels, the value is hard-coded here
-            probas = human.city.daily_rec_level_mapping[human.rec_level]
-            intervention_level = human.rng.choice(4, p=probas)
-        human._intervention_level = intervention_level
-        return _get_tracing_recommendations(intervention_level)
+            risk = 0.0
 
-    def revert(self, human):
-        # TODO: refactor this
-        raise Exception("This is never called")
+        return risk if isinstance(risk, list) else [risk]
 
 
-class HeuristicRecommendationGetter(RiskBasedRecommendationGetter):
-
+class Heuristic(BaseMethod):
     def __init__(self, version, conf):
         self.version = version
         if self.version == 1:
@@ -122,7 +173,7 @@ class HeuristicRecommendationGetter(RiskBasedRecommendationGetter):
         the `intervention_start` kwarg.
         """
         # Most of the logic for recommendations level update is given in the
-        # "NonMLRiskComputer" class (with "heuristic" tracing method). The recommendations
+        # "BaseMEthod" class (with "heuristic" tracing method). The recommendations
         # level for the heuristic tracing algorithm are dependent on messages
         # received in the mailbox, which get_recommendations_level does not have
         # access to under the current API.
@@ -143,7 +194,7 @@ class HeuristicRecommendationGetter(RiskBasedRecommendationGetter):
         risk_level = min(risk_level, 15)
         return self.risk_mapping[risk_level + 1]
 
-    def compute_risk(self, human, mailbox):
+    def compute_risk(self, human, mailbox, humans_map: typing.Dict[str, "Human"]):
         """
         Computes risk according to heuristic.
 
@@ -262,32 +313,3 @@ class HeuristicRecommendationGetter(RiskBasedRecommendationGetter):
 
         return risk
 
-
-class BinaryTracing(RecommendationGetter):
-    """
-    Implements two recommendations for binary tracing.
-    There are only two levels, i.e., 0 and 1.
-    At the start of this intervention, everyone is initialized with recommendations
-    in the level 0.
-    """
-
-    def _get_recommendations_impl(self, human: "Human"):
-        # If there is a mapping available for recommendation levels in the
-        # configuration file, use the intervention level randomly picked from
-        # this transition matrix, based on the recommendation level. The update
-        # of the recommendation levels are not altered.
-        if not human.has_app:
-            return []
-
-        if human.city.daily_rec_level_mapping is None:
-            intervention_level = human.rec_level
-        else:
-            # QKFIX: There are 4 recommendation levels, the value is hard-coded here
-            probas = human.city.daily_rec_level_mapping[human.rec_level]
-            intervention_level = human.rng.choice(4, p=probas)
-        human._intervention_level = intervention_level
-        return _get_tracing_recommendations(intervention_level)
-
-    def revert(self, human):
-        # TODO: refactor such that we can delete this function
-        raise Exception("This is never called")

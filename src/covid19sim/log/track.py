@@ -639,7 +639,7 @@ class Tracker(object):
         if self.infection_graph.has_edge(from_human.name, to_human.name):
             reason = payload['reason']
             assert reason in ['unknown', 'contact'], "improper reason for sending a message"
-            model = self.city.intervention.risk_model
+            model = self.city.conf.get("RISK_MODEL")
             count = self.infector_infectee_update_messages[from_human.name][to_human.name][self.env.timestamp][reason].get('count', 0)
             x = {'method':model, 'new_risk_level':payload['new_risk_level'], 'count':count+1}
             self.infector_infectee_update_messages[from_human.name][to_human.name][self.env.timestamp][reason] = x

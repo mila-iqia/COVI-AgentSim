@@ -1,41 +1,38 @@
 from orderedset import OrderedSet
 from covid19sim.interventions.behaviors import *
 
+
 def get_intervention(conf):
-    """
-    Returns the appropriate class of intervention.
+    from covid19sim.interventions.tracing import BaseMethod, Heuristic, BinaryDigitalTracing
+    key = conf.get("RISK_MODEL")
+    if key == "" or key == "transformer":
+        return BaseMethod(conf)
+    elif key == "heuristicv1":
+        return Heuristic(version=1, conf=conf)
+    elif key == "heuristicv2":
+        return Heuristic(version=2, conf=conf)
+    elif key == "BinaryDigitalTracing":
+        return BinaryDigitalTracing(conf)
+    elif key == "BundledInterventions":
+        return BundledInterventions(conf["BUNDLED_INTERVENTION_RECOMMENDATION_LEVEL"])
+    else:
+        raise NotImplementedError
 
-    Args:
-        conf (dict): configuration to send to intervention object.
-
-    Raises:
-        NotImplementedError: If intervention has not been implemented.
-
-    Returns:
-        `Behavior`: `Behavior` corresponding to the arguments.
-    """
-    key = conf.get("INTERVENTION")
+def create_behavior(key):
     if key == "Lockdown":
         return Lockdown()
     elif key == "WearMask":
-        return WearMask(conf.get("MASKS_SUPPLY"))
+        return WearMask(100000)
     elif key == "SocialDistancing":
         return SocialDistancing()
     elif key == "Quarantine":
         return Quarantine()
-    elif key == "Tracing":
-        from covid19sim.interventions.recommendation_manager import NonMLRiskComputer
-        return NonMLRiskComputer(conf)
     elif key == "WashHands":
         return WashHands()
     elif key == "StandApart":
         return StandApart()
-    elif key == "GetTested":
-        raise NotImplementedError
-    elif key == "BundledInterventions":
-        return BundledInterventions(conf["BUNDLED_INTERVENTION_RECOMMENDATION_LEVEL"])
     else:
-        raise
+        raise NotImplementedError
 
 class BundledInterventions(Behavior):
     """
@@ -46,7 +43,7 @@ class BundledInterventions(Behavior):
 
     def __init__(self, level):
         super(BundledInterventions, self).__init__()
-        self.recommendations = _get_tracing_recommendations(level)
+        self.recommendations = _get_behaviors_for_level(level)
 
     def modify(self, human):
         self.revert(human)
@@ -64,7 +61,7 @@ class BundledInterventions(Behavior):
         return "\t".join([str(x) for x in self.recommendations])
 
 
-def _get_tracing_recommendations(level):
+def _get_behaviors_for_level(level):
     """
     Maps recommendation level to a list `Behavior`.
 
