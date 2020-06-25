@@ -1271,3 +1271,36 @@ class Tracker(object):
         os.makedirs("logs3", exist_ok=True)
         with open(f"logs3/{self.filename}", 'wb') as f:
             dill.dump(data, f)
+
+    def write_for_training(self, humans, outfile, conf):
+        """ Writes some data out for the ML predictor """
+        data = dict()
+        data['hospitalization_per_day'] = self.hospitalization_per_day
+
+        # parse test results
+        data['positive_test_results_per_day'] = []
+        data['negative_test_results_per_day'] = []
+        for d in self.test_results_per_day.values():
+            data['positive_test_results_per_day'].append(d['positive'])
+            data['negative_test_results_per_day'].append(d['negative'])
+
+        data['tested_per_day'] = self.tested_per_day
+        data['i_per_day'] = self.i_per_day
+        data['adoption_rate'] = self.adoption_rate
+        data['lab_test_capacity'] = conf['TEST_TYPES']['lab']['capacity']
+        data['n_people'] = conf['n_people']
+
+        data['humans'] = {}
+        for human in humans:
+            humans_data = {}
+            humans_data['viral_load_plateau_start'] = human.viral_load_plateau_start
+            humans_data['viral_load_plateau_height'] = human.viral_load_plateau_height
+            humans_data['viral_load_plateau_end'] = human.viral_load_plateau_end
+            humans_data['viral_load_peak_start'] = human.viral_load_peak_start
+            humans_data['viral_load_peak_height'] = human.viral_load_peak_height
+            humans_data['viral_load_plateau_end'] = human.viral_load_plateau_end
+            humans_data['incubation_days'] = human.incubation_days
+            humans_data['recovery_days'] = human.recovery_days
+            data['humans'][human.name] = humans_data
+        with open(outfile, 'wb') as f:
+            dill.dump(data, f)

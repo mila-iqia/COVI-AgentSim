@@ -124,6 +124,11 @@ def main(conf: DictConfig):
         # write metrics
         logfile = os.path.join(f"{conf['outdir']}/logs.txt")
         tracker.write_metrics(logfile)
+
+        # write values to train with
+        train_priors = os.path.join(f"{conf['outdir']}/train_priors.pkl")
+        tracker.write_for_training(city.humans, train_priors, conf)
+
         if conf["zip_outdir"]:
             zip_outdir(conf["outdir"])
             if conf["delete_outdir"]:
