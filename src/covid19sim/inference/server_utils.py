@@ -461,7 +461,8 @@ def _proc_human(params, inference_engine):
             "infectiousness": np.array(human.infectiousnesses),
             "true_preexisting_conditions": human.preexisting_conditions,
             "true_age": human.age,
-            "true_sex": human.sex
+            "true_sex": human.sex,
+            "viral_load_to_infectiousness_multiplier": human.viral_load_to_infectiousness_multiplier
         }
     }
 
