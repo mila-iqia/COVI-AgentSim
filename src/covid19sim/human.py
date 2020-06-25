@@ -616,8 +616,7 @@ class Human(object):
         if self.infection_ratio is None:
             return None
         else:
-            return (self.infectiousness_severity_multiplier *
-                    (self.infection_ratio if self.infection_ratio is not None else 1) /
+            return (self.infectiousness_severity_multiplier * self.infection_ratio /
                     self.conf['INFECTIOUSNESS_NORMALIZATION_CONST'])
 
     @property
