@@ -1,4 +1,7 @@
 import math
+import datetime
+import dataclasses
+import networkx as nx
 from collections import namedtuple, OrderedDict
 
 
@@ -326,6 +329,21 @@ SYMPTOMS = OrderedDict([
     #     SymptomProbability('swelling', __, {'allergy': 0.3})
     # )
 ])
+
+
+@dataclasses.dataclass
+class SymptomsProgression(object):
+    starts_at: datetime.datetime
+    progression: list
+    G: nx.Graph
+
+    # def init_progression(self):
+    #     """ Creates the set of symptoms this person would have if they caught this disease """
+    #     raise NotImplementedError
+    #
+    # def get_symptom_at(self, current_time: datetime.datetime):
+    #     """ Gets an array of symptoms this person has at the current time """
+    #     raise NotImplementedError
 
 
 # 2D Array of symptoms; first axis is days after exposure (infection), second is an array of symptoms
