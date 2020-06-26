@@ -18,11 +18,12 @@ def get_intervention(conf):
     else:
         raise NotImplementedError
 
-def create_behavior(key):
+
+def create_behavior(key, conf):
     if key == "Lockdown":
         return Lockdown()
     elif key == "WearMask":
-        return WearMask(100000)
+        return WearMask(conf.get("MASKS_SUPPLY"))
     elif key == "SocialDistancing":
         return SocialDistancing()
     elif key == "Quarantine":
@@ -33,6 +34,7 @@ def create_behavior(key):
         return StandApart()
     else:
         raise NotImplementedError
+
 
 class BundledInterventions(Behavior):
     """

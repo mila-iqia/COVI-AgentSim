@@ -39,7 +39,7 @@ class BaseMethod(object):
         Args:
             conf (dict): configuration to parse settings from.
         """
-        self.default_behaviors = [create_behavior(key) for key in conf.get("DEFAULT_BEHAVIORS", [])]
+        self.default_behaviors = [create_behavior(key, conf) for key in conf.get("DEFAULT_BEHAVIORS", [])]
 
     def get_behaviors(self, human: "Human"):
         behaviors = copy.deepcopy(self.default_behaviors)
