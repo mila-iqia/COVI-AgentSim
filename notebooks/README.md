@@ -17,3 +17,7 @@ NOTE: If you really want to see a diff between two notebooks, here is a suggeste
 2. `intervention_impact` - Visualize cumulative cases per day and effective reproduction number.
 3. `pareto-adoption-analysis` - Visualize the trade-off between mobility metrics and the severity of the outbreak as a result of different interventions.
 4. `viral_load_plots` - Plots the viral load curves (individual or group average).
+5. `app_adoption_comparison` - Analysis of the influence of the app adoption rate (`APP_UPTAKE`) on the total number of cases and recommendations given for different methods.
+6. `comparison-heuristic` - Comparison of the different versions of Heuristic tracing (v1 and v2).
+7. `distribution-normalization-verification` - Verify empirically that the distribution normalization works as expected.
+8. `recommendation-levels-stackplot` - Daily distribution of recommendation levels, broken down by SEIR state.
