@@ -1,4 +1,5 @@
 from collections import OrderedDict, namedtuple
+from covid19sim.utils.utils import normal_pdf
 
 # NOTE: THE PREEXISTING CONDITION NAMES/IDs BELOW MUST MATCH THOSE IN frozen/helper.py
 ConditionProbability = namedtuple('ConditionProbability', ['name', 'id', 'age', 'sex', 'probability'])
@@ -281,8 +282,8 @@ def _get_preexisting_conditions(age, sex, rng):
         conditions.append('lung_disease')
 
     if sex.lower().startswith('f') and age > 18 and age < 50:
-        p_pregnant = rng.normal(27, 5)
-        if rng.rand() < p_pregnant:
+        p_pregnant_at_age = normal_pdf(age, 27, 5)
+        if rng.rand() < p_pregnant_at_age:
             conditions.append('pregnant')
 
     return conditions
