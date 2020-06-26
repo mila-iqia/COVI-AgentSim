@@ -659,7 +659,7 @@ class City:
             for human in alive_humans:
                 behaviors = []
                 if self.conf.get("SHOULD_MODIFY_BEHAVIOR"):
-                    behaviors = self.intervention.recommendation_getter.get_behaviors(human)
+                    behaviors = self.intervention.get_behaviors(human)
                 human.apply_behaviors(behaviors)
 
             yield self.env.timeout(int(duration))
@@ -855,4 +855,4 @@ class EmptyCity(City):
         self.tracker = Tracker(self.env, self)
         self.tracker.initialize()
         # self.tracker.track_initialized_covid_params(self.humans)
-        self.intervention = RecommendationGetter()
+        self.intervention = BaseMethod(self.conf)
