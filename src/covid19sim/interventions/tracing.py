@@ -114,6 +114,7 @@ class BinaryDigitalTracing(BaseMethod):
             The term `order` is also used for this. Defaults to 1.
     """
     def __init__(self, conf):
+        super().__init__(conf)
         self.max_depth = conf.get("TRACING_ORDER")
 
     def compute_risk(
@@ -141,7 +142,9 @@ class BinaryDigitalTracing(BaseMethod):
 
 
 class Heuristic(BaseMethod):
+
     def __init__(self, version, conf):
+        super().__init__(conf)
         self.version = version
         if self.version == 1:
             self.high_risk_threshold, self.high_risk_rec_level = 12, 3
@@ -312,4 +315,3 @@ class Heuristic(BaseMethod):
             setattr(human, '_heuristic_rec_level', self.mild_risk_rec_level)
 
         return risk
-
