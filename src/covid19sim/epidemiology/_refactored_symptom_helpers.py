@@ -281,6 +281,16 @@ class TransitionRule(object):
     def __hash__(self):
         return hash((self.from_health_state, self.to_health_state))
 
+    def __str__(self):
+        proba_str = (
+            f"(P={self.proba_score_value})"
+            if self.proba_score_value is not None
+            else "(FN)"
+            if self.proba_fn is not None
+            else "(UNK)"
+        )
+        return f"{str(self.from_health_state)} --{proba_str}--> {str(self.to_health_state)}"
+
 
 class TransitionRuleSet(object):
     # TODO Support for OR w.r.t symptoms of other states. For instance, one could
@@ -519,7 +529,7 @@ if __name__ == "__main__":
     )
     default_rules.add_transition_rule(
         from_health_state=HealthState.parse("mild fever at covid onset"),
-        to_health_state=HealthState.parse("severe fever at covid onset"),
+        to_health_state=HealthState.parse("severe fever, headache at covid onset"),
         proba_score_value=0.5,
     )
     print(
@@ -528,5 +538,11 @@ if __name__ == "__main__":
         )
     )
     # Prints either with proba 0.5:
-    #   SEVERE FEVER at COVID (ONSET)
+    #   SEVERE FEVER, UNDEFINED HEADACHE at COVID (ONSET)
     #   MODERATE FEVER at COVID (ONSET)
+
+# TODO:
+#  * Ensure that transitions cannot happen from higher phase to lower phases
+#  * Export to networkx graph (visualization)
+#  * Pretty printing
+#  * Parse ruleset from a text file
