@@ -94,6 +94,14 @@ PyMODINIT_FUNC PyInit__native(void){
                 return NULL;                                          \
             }                                                         \
         }while(0)
+    ADDINTMACRO(SECONDS_PER_MINUTE);
+    ADDINTMACRO(SECONDS_PER_HOUR);
+    ADDINTMACRO(SECONDS_PER_DAY);
+    ADDINTMACRO(SECONDS_PER_EPHEMERIS_DAY);
+    ADDINTMACRO(SECONDS_PER_WEEK);
+    ADDINTMACRO(SECONDS_PER_YEAR);
+    ADDINTMACRO(SECONDS_PER_TROPICAL_YEAR);
+    ADDINTMACRO(SECONDS_PER_LEAP_YEAR);
     ADDINTMACRO(HUMAN_SYMPTOM_SNEEZING);
     #undef ADDINTMACRO
     
