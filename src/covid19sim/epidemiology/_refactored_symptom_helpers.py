@@ -539,10 +539,21 @@ class TransitionRuleSet(object):
         ), "`transition_rule` is not an iterable of TransitionRule instances."
         return transition_rule
 
+    def get_all_rules(self):
+        all_rules = set()
+        for key in self.rule_set:
+            all_rules.update(self.rule_set[key])
+        return all_rules
+
+    def __str__(self):
+        return "\n".join(
+            ["Ruleset("] + ["  " + str(rule) for rule in self.get_all_rules()] + [")"]
+        )
+
 
 if __name__ == "__main__":
     transition_rule = TransitionRule(
-        from_health_state=HealthState.parse("mild fever at covid plateau"),
+        from_health_state=HealthState.parse("mild fever at covid onset"),
         to_health_state=HealthState.parse("mild fever at covid onset"),
         proba_score_value=0.6,
     )
@@ -559,17 +570,18 @@ if __name__ == "__main__":
         to_health_state=HealthState.parse("severe fever, headache at covid onset"),
         proba_score_value=0.5,
     )
-    print(
-        default_rules.sample_next_health_state(
-            current_health_state=HealthState.parse("mild fever at covid onset")
-        )
-    )
+    print(default_rules)
+    # print(
+    #     default_rules.sample_next_health_state(
+    #         current_health_state=HealthState.parse("mild fever at covid onset")
+    #     )
+    # )
+
     # Prints either with proba 0.5:
     #   SEVERE FEVER, UNDEFINED HEADACHE at COVID (ONSET)
     #   MODERATE FEVER at COVID (ONSET)
 
 # TODO:
-#  * Ensure that transitions cannot happen from higher phase to lower phases
 #  * Export to networkx graph (visualization)
 #  * Pretty printing
 #  * Parse ruleset from a text file
