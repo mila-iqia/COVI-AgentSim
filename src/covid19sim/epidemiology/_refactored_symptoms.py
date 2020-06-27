@@ -1,3 +1,3 @@
-from covid19sim.epidemiology._refactored_symptom_helpers import Symptom
+from covid19sim.epidemiology._refactored_symptom_helpers import Symptoms
 
 
