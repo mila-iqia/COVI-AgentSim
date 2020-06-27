@@ -75,14 +75,14 @@ class AllergyContext(DiseaseContext):
 
 
 class ColdContext(DiseaseContext):
-    COLD = 0
-    COLD_LAST_DAY = 1
+    FIRST_DAY = 0
+    LAST_DAY = 1
 
 
 class FluContext(DiseaseContext):
-    FLU_FIRST_DAY = 0
-    FLU = 1
-    FLU_LAST_DAY = 2
+    ONSET = 0
+    PLATEAU = 1
+    POST_PLATEAU = 2
 
 
 class Disease(Enum):
@@ -278,6 +278,26 @@ class TransitionRule(object):
         else:
             return self.proba_default
 
+    def assert_validity(self):
+        assert (
+            self.to_health_state.disease_phase.disease
+            == self.from_health_state.disease_phase.disease
+        ), (
+            f"Inconsistent transition rule: going from disease "
+            f"{self.from_health_state.disease_phase.disease} to "
+            f"disease {self.to_health_state.disease_phase.disease}."
+        )
+        assert (
+            self.from_health_state.disease_phase.context
+            <= self.to_health_state.disease_phase.context
+        ), (
+            f"Inconsistent transition rule: transitioning from phase "
+            f"{self.from_health_state.disease_phase.context.name} to phase "
+            f"{self.to_health_state.disease_phase.context.name} of disease "
+            f"{self.from_health_state.disease_phase.disease}."
+        )
+        return self
+
     def __hash__(self):
         return hash((self.from_health_state, self.to_health_state))
 
@@ -395,7 +415,7 @@ class TransitionRuleSet(object):
                     to_health_state=_to_health_state,
                     proba_score_value=proba_score_value,
                     proba_fn=proba_fn,
-                )
+                ).assert_validity()
                 for _from_health_state, _to_health_state in product(
                     from_health_state, to_health_state
                 )
@@ -521,6 +541,13 @@ class TransitionRuleSet(object):
 
 
 if __name__ == "__main__":
+    transition_rule = TransitionRule(
+        from_health_state=HealthState.parse("mild fever at covid plateau"),
+        to_health_state=HealthState.parse("mild fever at covid onset"),
+        proba_score_value=0.6,
+    )
+    transition_rule.assert_validity()
+
     default_rules = TransitionRuleSet()
     default_rules.add_transition_rule(
         from_health_state=HealthState.parse("mild fever at covid onset"),
