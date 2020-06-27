@@ -150,8 +150,8 @@ class Tracker(object):
         self.human_has_app = None
 
         # track encounters
-        self.last_encounter_day = self.env.day_of_week()
-        self.last_encounter_hour = self.env.hour_of_day()
+        self.last_encounter_day = self.env.day_of_week
+        self.last_encounter_hour = self.env.hour_of_day
         self.day_encounters = defaultdict(lambda : [0.,0.,0.])
         self.hour_encounters = defaultdict(lambda : [0.,0.,0.])
         self.daily_age_group_encounters = defaultdict(lambda :[0.,0.,0.])
@@ -945,8 +945,8 @@ class Tracker(object):
         # bins of 15 mins
         time_bin = math.floor(duration/15) if duration <= 60 else 4
 
-        hour = self.env.hour_of_day()
-        day = self.env.day_of_week()
+        hour = self.env.hour_of_day
+        day = self.env.day_of_week
         if self.last_encounter_day != day:
             n, avg, last_day_count = self.day_encounters[self.last_encounter_day]
             self.day_encounters[self.last_encounter_day] = [n+1, (avg * n + last_day_count)/(n + 1), 0]

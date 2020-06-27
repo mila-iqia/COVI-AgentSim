@@ -1138,7 +1138,7 @@ class Human(object):
         """
         self.household.humans.add(self)
         while True:
-            hour, day = self.env.hour_of_day(), self.env.day_of_week()
+            hour, day = self.env.hour_of_day, self.env.day_of_week
             if day==0:
                 self.count_exercise = 0
                 self.count_shop = 0
@@ -1220,7 +1220,7 @@ class Human(object):
 
             # Work is a partial imperitive
             if (not self.profession=="retired" and
-                not self.env.is_weekend() and
+                not self.env.is_weekend and
                 hour in self.work_start_hour and
                 not self.rest_at_home):
                 yield self.env.process(self.excursion(city, "work"))
@@ -1241,7 +1241,7 @@ class Human(object):
                     not self.rest_at_home):
                 yield  self.env.process(self.excursion(city, "exercise"))
 
-            elif ( self.env.is_weekend() and
+            elif ( self.env.is_weekend and
                     self.rng.random() < 0.5 and
                     not self.rest_at_home and
                     hour in self.misc_hours and
@@ -1375,8 +1375,8 @@ class Human(object):
         row = {
             # basic info
             'time':self.env.timestamp,
-            'hour':self.env.hour_of_day(),
-            'day':self.env.day_of_week(),
+            'hour':self.env.hour_of_day,
+            'day':self.env.day_of_week,
             'state':self.state,
             'has_app':self.has_app,
             # change of location
@@ -1413,7 +1413,7 @@ class Human(object):
         Yields:
             [type]: [description]
         """
-        city.tracker.track_trip(from_location=self.location.location_type, to_location=location.location_type, age=self.age, hour=self.env.hour_of_day())
+        city.tracker.track_trip(from_location=self.location.location_type, to_location=location.location_type, age=self.age, hour=self.env.hour_of_day)
         if self.track_this_human:
             self.track_me(location)
 
