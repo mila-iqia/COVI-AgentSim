@@ -50,6 +50,7 @@ class BaseSymptom(Enum):
     CHEST_PAIN = auto()
     LOSS_OF_TASTE = auto()
     ACHES = auto()
+    MISC = auto()
 
 
 class DiseaseContext(IntEnum):
@@ -85,11 +86,16 @@ class FluContext(DiseaseContext):
     POST_PLATEAU = 2
 
 
+class HealthyContext(DiseaseContext):
+    HEALTHY = 0
+
+
 class Disease(Enum):
     COVID = CovidContext
     ALLERGY = AllergyContext
     COLD = ColdContext
     FLU = FluContext
+    HEALTHY = HealthyContext
 
 
 @dataclasses.dataclass(unsafe_hash=True)
