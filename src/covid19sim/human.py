@@ -73,7 +73,7 @@ class Human(object):
         self.recovered_timestamp = datetime.datetime.min  # Time of recovery from covid -- min if not yet recovered
         self._infection_timestamp = None  # private time of infection with covid - implemented this way to ensure only infected 1 time
         self.infection_timestamp = infection_timestamp  # time of infection with covid
-        self.n_infectious_contacts = 0  # number of high-risk contacts with an infected individual.
+        self.n_infectious_contacts = 0  # number of high-risk (infected someone) contacts with an infected individual.
         self.exposure_source = None  # source that exposed this human to covid (and infected them). None if not infected.
 
         # Human-related properties
@@ -117,7 +117,7 @@ class Human(object):
 
         """ Covid-19 """
         # Covid-19 properties
-        self.viral_load_plateau_height, self.viral_load_plateau_start, self.viral_load_plateau_end, self.viral_load_peak_start, self.viral_load_peak_height = None, None, None, None, None  # Determines aspects of the piece-wise linear viral load curve for this human
+        self.viral_load_plateau_height, self.viral_load_plateau_start, self.viral_load_plateau_end = None, None, None  # Determines aspects of the piece-wise linear viral load curve for this human
         self.incubation_days = None  # number of days the virus takes to incubate before the person becomes infectious
         self.recovery_days = None  # number of recovery days post viral load plateau
         self.infectiousness_onset_days = None  # number of days after exposure that this person becomes infectious
@@ -1430,16 +1430,42 @@ class Human(object):
             self.last_location = location
             city.tracker.track_social_mixing(location=location, duration=self.last_duration)
 
+        yield self.env.timeout(duration * SECONDS_PER_MINUTE)
+
+        # draw a time / distance from a distribution
+        n_interactions = 0
+        if location == self.household:
+            interact_with = self.household.humans
+            distance_of_encounter = [self.rng.select_distance() for h in interact_with]
+            time_of_encounter = []
+            duration_of_encounter = []
+        elif location == self.workplace:
+            n_interact_with = self.rng.negative_binomial(self.location.avg_contacts, 0.5)
+            interact_with = self.rng.choice(self.location.humans, p=get_contact_probability(), size=n_interact_with)
+            # use conf['WORKPLACE_DISTANCE_PROFILE']
+            distance_of_encounter = [self.rng.select_distance() for h in interact_with]
+            # use conf['WORKPLACE_TIME_PROFILE']
+            duration_of_encounter = [self.rng.select_distance() for h in interact_with]
+            time_of_encounter = [self.rng.select_distance() for h in interact_with]
+        else:
+            n_interact_with = self.rng.negative_binomial(self.location.avg_contacts, 0.5)
+            interact_with = self.rng.choice(self.location.humans, p=get_contact_probability(), size=n_interact_with)
+            # use conf['WORKPLACE_DISTANCE_PROFILE']
+            distance_of_encounter = [self.rng.select_distance() for h in interact_with]
+            # use conf['WORKPLACE_TIME_PROFILE']
+            duration_of_encounter = [self.rng.select_distance() for h in interact_with]
+            time_of_encounter = [self.rng.select_distance() for h in interact_with]
+
+
         # Report all the encounters (epi transmission)
-        for h in location.humans:
-            if h == self:
-                continue
+        for h in interact_with:
 
-            # age mixing #FIXME: find a better way
-            # at places other than the household, you mix with everyone
-            if location != self.household and not self.rng.random() < (0.1 * abs(self.age - h.age) + 1) ** -1:
-                continue
 
+            # exchange messages; input - duration, distance, time, self, h
+            # contact condition for infection
+            # infect
+
+            # distance ---
             # first term is packing metric for the location in cm
             packing_term = 100 * np.sqrt(area/len(self.location.humans)) # cms
             encounter_term = self.rng.uniform(self.conf.get("MIN_DIST_ENCOUNTER"), self.conf.get("MAX_DIST_ENCOUNTER"))
@@ -1456,6 +1482,7 @@ class Human(object):
                     "A\t0", packing_term, encounter_term,
                     social_distancing_term, distance, location)
 
+            # duration ----
             t_overlap = (min(self.location_leaving_time, h.location_leaving_time) -
                          max(self.location_start_time,   h.location_start_time)) / SECONDS_PER_MINUTE
             t_near = self.rng.random() * t_overlap * max(self.time_encounter_reduction_factor, h.time_encounter_reduction_factor)
@@ -1601,7 +1628,6 @@ class Human(object):
                     time=self.env.timestamp
                 )
 
-        yield self.env.timeout(duration * SECONDS_PER_MINUTE)
 
         # environmental transmission
         p_infection = self.conf.get("ENVIRONMENTAL_INFECTION_KNOB") * location.contamination_probability * (1 - self.mask_efficacy)

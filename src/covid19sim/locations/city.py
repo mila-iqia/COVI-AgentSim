@@ -349,6 +349,12 @@ class City:
             rng=self.rng
         )
 
+        self.humans = get_humans_with_age(self.age_histogram, conf)
+        self.humans = assign_profession_to_humans(self.humans, self, conf)
+        self.humans = assign_workplace_to_humans(self.humans, self, conf)
+        self.humans = assign_households_to_humans(self.humans, self, conf)
+
+
         for age_bin, specs in self.conf.get("HUMAN_DISTRIBUTION").items():
             n = self.age_histogram[age_bin]
             ages = self.rng.randint(low=age_bin[0], high=age_bin[1]+1, size=n)  # high is exclusive
