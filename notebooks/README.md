@@ -21,3 +21,4 @@ NOTE: If you really want to see a diff between two notebooks, here is a suggeste
 6. `comparison-heuristic` - Comparison of the different versions of Heuristic tracing (v1 and v2).
 7. `distribution-normalization-verification` - Verify empirically that the distribution normalization works as expected.
 8. `recommendation-levels-stackplot` - Daily distribution of recommendation levels, broken down by SEIR state.
+9. `analysis` - Constructs a networkx graph of encounters. Useful for plotting infection chains. 
