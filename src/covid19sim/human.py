@@ -27,7 +27,7 @@ from covid19sim.epidemiology.viral_load import compute_covid_properties, viral_l
 from covid19sim.epidemiology.symptoms import _get_cold_progression, _get_flu_progression,\
     _get_allergy_progression
 from covid19sim.epidemiology.p_infection import get_p_infection, infectiousness_delta
-from covid19sim.utils.constants import SECONDS_PER_MINUTE, SECONDS_PER_HOUR
+from covid19sim.utils.constants import SECONDS_PER_MINUTE, SECONDS_PER_HOUR, SECONDS_PER_DAY
 from covid19sim.inference.message_utils import ContactBook, exchange_encounter_messages, RealUserIDType
 from covid19sim.utils.visits import Visits
 from covid19sim.native._native import BaseHuman
@@ -448,7 +448,7 @@ class Human(BaseHuman):
         Returns:
             Float: Returns a real valued number between 0. and 1. indicating amount of viral load (proportional to infectiousness)
         """
-        return viral_load_for_day(self, self.env.timestamp)
+        return viral_load_for_day(self, self.env.now)
 
     def get_infectiousness_for_day(self, timestamp, is_infectious):
         """
@@ -482,7 +482,7 @@ class Human(BaseHuman):
 
     @property
     def infectiousness(self):
-        return self.get_infectiousness_for_day(self.env.timestamp, self.is_infectious)
+        return self.get_infectiousness_for_day(self.env.now, self.is_infectious)
 
     @property
     def symptoms(self):
@@ -521,28 +521,28 @@ class Human(BaseHuman):
 
         self.last_date['symptoms'] = self.env.timestamp.date()
 
-        if self.cold_timestamp is not None:
+        if self.has_cold:
             t = self.days_since_cold
             if t < len(self.cold_progression):
                 self.cold_symptoms = self.cold_progression[t]
             else:
                 self.cold_symptoms = []
 
-        if self.flu_timestamp is not None:
+        if self.has_flu:
             t = self.days_since_flu
             if t < len(self.flu_progression):
                 self.flu_symptoms = self.flu_progression[t]
             else:
                 self.flu_symptoms = []
 
-        if self.infection_timestamp is not None and not self.is_asymptomatic:
+        if self.has_covid and not self.is_asymptomatic:
             t = self.days_since_covid
             if self.is_removed or t >= len(self.covid_progression):
                 self.covid_symptoms = []
             else:
                 self.covid_symptoms = self.covid_progression[t]
 
-        if self.allergy_timestamp is not None:
+        if self.has_allergy_symptoms:
             self.allergy_symptoms = self.allergy_progression[0]
 
         all_symptoms = set(self.flu_symptoms + self.cold_symptoms + self.allergy_symptoms + self.covid_symptoms)
@@ -869,18 +869,18 @@ class Human(BaseHuman):
 
         # Catch a random cold
         if self.cold_timestamp is None and self.rng.random() < self.conf["P_COLD_TODAY"]:
-            self.cold_timestamp  = self.env.timestamp
+            self.ts_cold_symptomatic = self.env.now
             # print("caught cold")
             return
 
         # Catch a random flu (TODO: model seasonality through P_FLU_TODAY)
         if self.flu_timestamp is None and self.rng.random() < self.conf["P_FLU_TODAY"]:
-            self.flu_timestamp = self.env.timestamp
+            self.ts_flu_symptomatic = self.env.now
             return
 
         # Have random allergy symptoms
         if "allergies" in self.preexisting_conditions and self.rng.random() < self.conf["P_HAS_ALLERGIES_TODAY"]:
-            self.allergy_timestamp = self.env.timestamp
+            self.ts_allergy_symptomatic = self.env.now
             # print("caught allergy")
             return
 
@@ -1031,7 +1031,7 @@ class Human(BaseHuman):
                 if self.never_recovers:
                     yield self.env.process(self.expire())
                 else:
-                    self.recovered_timestamp = self.env.timestamp
+                    self.ts_covid19_recovery = self.env.now
                     self.is_immune = not self.conf.get("REINFECTION_POSSIBLE")
 
                     # "resample" the chance probability of never recovering again (experimental)
@@ -1189,7 +1189,7 @@ class Human(BaseHuman):
 
             self.obs_hospitalized = True
             if self.infection_timestamp is not None:
-                t = self.recovery_days - (self.env.timestamp - self.infection_timestamp).total_seconds() / 86400 # DAYS
+                t = self.recovery_days - (self.env.now - self.ts_covid19_infection) / SECONDS_PER_DAY # DAYS
                 t = max(t * 24 * 60,0)
             else:
                 t = len(self.symptoms)/10 * 60 # FIXME: better model
@@ -1398,7 +1398,7 @@ class Human(BaseHuman):
 
                 # used for matching "mobility" between methods
                 scale_factor_passed = self.rng.random() < self.conf.get("GLOBAL_MOBILITY_SCALING_FACTOR")
-                cur_day = (self.env.timestamp - self.env.initial_timestamp).days
+                cur_day = int(self.env.now - self.env.ts_initial) // SECONDS_PER_DAY
                 if cur_day > self.conf.get("INTERVENTION_DAY"):
                     self.num_contacts += 1
                     self.effective_contacts += self.conf.get("GLOBAL_MOBILITY_SCALING_FACTOR")
@@ -1426,7 +1426,7 @@ class Human(BaseHuman):
                     x_human = infector.rng.random() < p_infection
                     city.tracker.track_p_infection(x_human, p_infection, infector.viral_load)
                     if x_human and infectee.is_susceptible:
-                        infectee.infection_timestamp = self.env.timestamp
+                        infectee.ts_covid19_infection = self.env.now
                         infectee.initial_viral_load = infector.rng.random()
                         compute_covid_properties(infectee)
 
@@ -1443,25 +1443,25 @@ class Human(BaseHuman):
                 # cold transmission
                 if self.has_cold ^ h.has_cold:
                     cold_infector, cold_infectee = h, self
-                    if self.cold_timestamp is not None:
+                    if self.has_cold:
                         cold_infector, cold_infectee = self, h
 
                     # assumed no overloading of covid
-                    if cold_infectee.infection_timestamp is None:
+                    if not cold_infectee.has_covid:
                         if self.rng.random() < self.conf.get("COLD_CONTAGIOUSNESS"):
-                            cold_infectee.cold_timestamp = self.env.timestamp
+                            cold_infectee.ts_cold_symptomatic = self.env.now
                             # print("cold transmission occured")
 
                 # flu tansmission
                 if self.has_flu ^ h.has_flu:
                     flu_infector, flu_infectee = h, self
-                    if self.flu_timestamp is not None:
+                    if self.has_flu:
                         flu_infector, flu_infectee = self, h
 
                     # assumed no overloading of covid
-                    if flu_infectee.infection_timestamp is not None:
+                    if flu_infectee.has_covid: # BUG: Either this or cold is wrong
                         if self.rng.random() < self.conf.get("FLU_CONTAGIOUSNESS"):
-                            flu_infectee.flu_timestamp = self.env.timestamp
+                            flu_infectee.ts_flu_symptomatic = self.env.now
 
                 Event.log_encounter(
                     self.conf['COLLECT_LOGS'],
@@ -1481,7 +1481,7 @@ class Human(BaseHuman):
         p_infection = self.conf.get("ENVIRONMENTAL_INFECTION_KNOB") * location.contamination_probability * (1 - self.mask_efficacy)
         x_environment = location.contamination_probability > 0 and self.rng.random() < p_infection
         if x_environment and self.is_susceptible:
-            self.infection_timestamp = self.env.timestamp
+            self.ts_covid19_infection = self.env.now
             self.initial_viral_load = self.rng.random()
             compute_covid_properties(self)
             city.tracker.track_infection('env', from_human=None, to_human=self, location=location, timestamp=self.env.timestamp)

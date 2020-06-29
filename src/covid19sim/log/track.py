@@ -15,6 +15,7 @@ import numpy as np
 import pandas as pd
 
 from covid19sim.utils.utils import log
+from covid19sim.utils.constants import SECONDS_PER_DAY
 
 def print_dict(title, dic, is_sorted=None, top_k=None, logfile=None):
     if not is_sorted:
@@ -238,7 +239,7 @@ class Tracker(object):
         """
         # https://web.stanford.edu/~jhj1/teachingdocs/Jones-on-R0.pdf; vlaid over a long time horizon
         # average infectious contacts (transmission) * average number of contacts * average duration of infection
-        time_since_start =  (self.env.timestamp - self.env.initial_timestamp).total_seconds() / 86400 # DAYS
+        time_since_start =  (self.env.now - self.env.ts_initial) / SECONDS_PER_DAY # DAYS
         if time_since_start == 0:
             return -1
 
@@ -284,7 +285,7 @@ class Tracker(object):
         times = []
         for x in self.infection_monitor:
             if x['from']:
-                times.append((x['infection_timestamp'] - x['from_infection_timestamp']).total_seconds() / 86400)
+                times.append((x['infection_timestamp'] - x['from_infection_timestamp']).total_seconds() / SECONDS_PER_DAY)
 
         return np.mean(times)
 
@@ -310,7 +311,7 @@ class Tracker(object):
         """
 
         def register_serial_interval(infector, infectee):
-            serial_interval = (infectee.covid_symptom_start_time - infector.covid_symptom_start_time).total_seconds() / 86400 # DAYS
+            serial_interval = (infectee.covid_symptom_start_time - infector.covid_symptom_start_time).total_seconds() / SECONDS_PER_DAY # DAYS
             self.serial_intervals.append(serial_interval)
 
         # Pending intervals which manifested symptoms?
