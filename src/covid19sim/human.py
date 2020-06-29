@@ -30,8 +30,9 @@ from covid19sim.epidemiology.p_infection import get_p_infection, infectiousness_
 from covid19sim.utils.constants import SECONDS_PER_MINUTE, SECONDS_PER_HOUR
 from covid19sim.inference.message_utils import ContactBook, exchange_encounter_messages, RealUserIDType
 from covid19sim.utils.visits import Visits
+from covid19sim.native._native import BaseHuman
 
-class Human(object):
+class Human(BaseHuman):
     """
     [summary]
     """
@@ -63,6 +64,8 @@ class Human(object):
         Risk prediction
         Mobility
         """
+
+        super().__init__(env)
 
         # Utility References
         self.conf = conf  # Simulation-level Configurations
@@ -117,9 +120,9 @@ class Human(object):
         """ Covid-19 """
         # Covid-19 properties
         self.viral_load_plateau_height, self.viral_load_plateau_start, self.viral_load_plateau_end, self.viral_load_peak_start, self.viral_load_peak_height = None, None, None, None, None  # Determines aspects of the piece-wise linear viral load curve for this human
-        self.incubation_days = None  # number of days the virus takes to incubate before the person becomes infectious
+        self.incubation_days = 0  # number of days the virus takes to incubate before the person becomes infectious
         self.recovery_days = None  # number of recovery days post viral load plateau
-        self.infectiousness_onset_days = None  # number of days after exposure that this person becomes infectious
+        self.infectiousness_onset_days = 0  # number of days after exposure that this person becomes infectious
         self.can_get_really_sick = may_develop_severe_illness(self.age, self.sex, self.rng)  # boolean representing whether this person may need to go to the hospital
         self.can_get_extremely_sick = self.can_get_really_sick and self.rng.random() >= 0.7  # &severe; 30% of severe cases need ICU
         self.never_recovers = self.rng.random() <= self.conf.get("P_NEVER_RECOVERS")[min(math.floor(self.age/10), 8)]  # boolean representing that this person will die if they are infected with Covid-19
@@ -420,87 +423,6 @@ class Human(object):
     ########### EPI ###########
 
     @property
-    def infection_timestamp(self):
-        """
-        Returns the timestamp when the human was infected by COVID.
-        Returns None if human is not exposed or infectious.
-        """
-        return self._infection_timestamp
-
-    @infection_timestamp.setter
-    def infection_timestamp(self, val):
-        """
-        Sets the infection_timestamp to val.
-        Raises AssertError at an attempt to overwrite infection_timestamp.
-        """
-        if self.infection_timestamp is not None:
-            assert val is None, f"{self}: attempt to overwrite infection_timestamp"
-
-        assert val is None or isinstance(val, datetime.datetime), f"{self}: improper type {type(val)} being assigned to infection_timestamp"
-        self._infection_timestamp = val
-
-    @property
-    def is_susceptible(self):
-        """
-        Returns True if human is susceptible to being infected by Covid-19
-
-        Returns:
-            bool: if human is susceptible, False if not
-        """
-        return not self.is_exposed and not self.is_infectious and not self.is_removed
-
-    @property
-    def is_exposed(self):
-        """
-        Returns True if human has been exposed to Covid-19 but cannot yet infect anyone else
-
-        Returns:
-            bool: if human is exposed, False if not
-        """
-        return self.infection_timestamp is not None and self.env.timestamp - self.infection_timestamp < datetime.timedelta(days=self.infectiousness_onset_days)
-
-    @property
-    def is_infectious(self):
-        """
-        Returns True if human is infectious i.e. is able to infect others
-
-        Returns:
-            bool: if human is infectious, False if not
-        """
-        return not self.is_removed and self.infection_timestamp is not None and self.env.timestamp - self.infection_timestamp >= datetime.timedelta(days=self.infectiousness_onset_days)
-
-    @property
-    def is_removed(self):
-        """
-        Returns True if human is either dead or has recovered from COVID and can't be reinfected i.e is immune
-
-        Returns:
-            bool: True if human is immune or dead, False if not
-        """
-        return self.is_immune or self.is_dead
-
-    @property
-    def is_dead(self):
-        """
-        Returns True if the human is dead, otherwise False.
-
-        Returns:
-            bool: True if dead, False if not.
-        """
-        return self.recovered_timestamp == datetime.datetime.max
-
-    @property
-    def is_incubated(self):
-        """
-        Returns True if the human has spent sufficient time to culture the virus, otherwise False.
-
-        Returns:
-            bool: True if Covid-19 incubated, False if not.
-        """
-        return (not self.is_asymptomatic and self.infection_timestamp is not None and
-                self.env.timestamp - self.infection_timestamp >= datetime.timedelta(days=self.incubation_days))
-
-    @property
     def state(self):
         """
         The state (SEIR) that this person is in (True if in state, False otherwise)
@@ -509,66 +431,6 @@ class Human(object):
             bool: True for the state this person is in (Susceptible, Exposed, Infectious, Removed)
         """
         return [int(self.is_susceptible), int(self.is_exposed), int(self.is_infectious), int(self.is_removed)]
-
-    @property
-    def has_cold(self):
-        return self.cold_timestamp is not None
-
-    @property
-    def has_flu(self):
-        return self.flu_timestamp is not None
-
-    @property
-    def has_allergy_symptoms(self):
-        return self.allergy_timestamp is not None
-
-    @property
-    def days_since_covid(self):
-        """
-        The number of days since infection with Covid-19 for this person
-
-        Returns:
-            Int or None: Returns an Integer representing the number of days since infection, or None if not infected.
-        """
-        if self.infection_timestamp is None:
-            return
-        return (self.env.timestamp-self.infection_timestamp).days
-
-    @property
-    def days_since_cold(self):
-        """
-        The number of days since infection with cold for this person
-
-        Returns:
-            Int or None: Returns an Integer representing the number of days since infection, or None if not infected.
-        """
-        if self.cold_timestamp is None:
-            return
-        return (self.env.timestamp-self.cold_timestamp).days
-
-    @property
-    def days_since_flu(self):
-        """
-        The number of days since infection with flu for this person
-
-        Returns:
-            Int or None: Returns an Integer representing the number of days since infection, or None if not infected.
-        """
-        if self.flu_timestamp is None:
-            return
-        return (self.env.timestamp-self.flu_timestamp).days
-
-    @property
-    def days_since_allergies(self):
-        """
-        The number of days since allergies began for this person
-
-        Returns:
-            Int or None: Returns an Integer representing the number of days since allgergies started, or None if no allergies.
-        """
-        if self.allergy_timestamp is None:
-            return
-        return (self.env.timestamp-self.allergy_timestamp).days
 
     @property
     def is_really_sick(self):
