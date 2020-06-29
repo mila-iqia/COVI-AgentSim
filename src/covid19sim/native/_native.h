@@ -120,7 +120,8 @@ struct BaseHumanObject{
     double                 ts_covid19_infection, ts_covid19_infectious, ts_covid19_symptomatic,
                            ts_covid19_recovery,  ts_covid19_immunity;
     double                 infectiousness_onset_days;
-    double                 incubation_onset_days;
+    double                 incubation_days;
+    char                   is_asymptomatic;
 };
 
 

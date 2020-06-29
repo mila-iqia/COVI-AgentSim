@@ -83,6 +83,7 @@ PyMODINIT_FUNC PyInit__native(void){
             }                                                         \
         }while(0)
     ADDTYPE(BaseEnvironment);
+    ADDTYPE(BaseHuman);
     #undef ADDTYPE
     
     
