@@ -74,7 +74,7 @@ def batch_run_timeslot_heavy_jobs(
         if not human.has_app or time_slot not in human.time_slots or human.is_dead:
             continue
 
-        log_path = f"{os.path.dirname(data_path)}/daily_outputs/{current_day_idx}/{human.name[6:]}/" \
+        log_path = f"{os.path.dirname(data_path)}/" \
             if data_path else None
         all_params.append({
             "start": init_timestamp,

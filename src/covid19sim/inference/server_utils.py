@@ -15,6 +15,7 @@ import sys
 import time
 import typing
 import zmq
+import h5py
 from pathlib import Path
 from ctt.inference.infer import InferenceEngine
 
@@ -767,9 +768,10 @@ def _proc_human(params, inference_engine):
     }
 
     if conf.get("COLLECT_TRAINING_DATA"):
-        os.makedirs(params["log_path"], exist_ok=True)
-        with open(os.path.join(params["log_path"], f"daily_human-{params['time_slot']}.pkl"), 'wb') as fd:
-            pickle.dump(daily_output, fd)
+        with h5py.File(params["log_path"] + "train.hdf5", 'a') as f:
+            s = pickle.dumps(daily_output)
+            f['dataset'].attrs["idx"] = f['dataset'].attrs["idx"] + 1
+            f['dataset'][f['dataset'].attrs["idx"]] = np.fromstring(s, dtype='uint8')
 
     inference_result, risk_history = None, None
     if conf.get("USE_ORACLE"):

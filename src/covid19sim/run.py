@@ -9,6 +9,7 @@ import time
 from pathlib import Path
 
 import hydra
+import h5py
 import numpy as np
 from omegaconf import DictConfig
 
@@ -64,7 +65,10 @@ def main(conf: DictConfig):
 
     if not conf["tune"]:
         outfile = os.path.join(conf["outdir"], "data")
-
+        with h5py.File(os.path.join(conf["outdir"], "train.hdf5"), 'w') as f:
+            dt = h5py.special_dtype(vlen=np.uint8)
+            f.create_dataset("dataset", shape=(4 * conf['n_people'] * conf['simulation_days'],), dtype=dt, compression="gzip")
+            f['dataset'].attrs["idx"] = 0
     # ---------------------------------
     # -----  Filter-Out Warnings  -----
     # ---------------------------------
@@ -126,8 +130,9 @@ def main(conf: DictConfig):
         tracker.write_metrics(logfile)
 
         # write values to train with
-        train_priors = os.path.join(f"{conf['outdir']}/train_priors.pkl")
-        tracker.write_for_training(city.humans, train_priors, conf)
+        if conf['COLLECT_TRAINING_DATA']:
+            train_priors = os.path.join(f"{conf['outdir']}/train_priors.pkl")
+            tracker.write_for_training(city.humans, train_priors, conf)
 
         if conf["zip_outdir"]:
             zip_outdir(conf["outdir"])
