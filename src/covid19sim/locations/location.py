@@ -175,3 +175,16 @@ class Location(simpy.Resource):
         if s.get('humans'):
             del s['humans']
         return s
+
+
+class Household(Location):
+    """
+    Household location class, inheriting from covid19sim.base.Location
+    """
+    def __init__(self, **kwargs):
+        """
+        Args:
+            kwargs (dict): all the args necessary for a Location's init
+        """
+        super(Household, self).__init__(**kwargs)
+        self.residents = []

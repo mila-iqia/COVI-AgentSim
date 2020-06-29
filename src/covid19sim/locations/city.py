@@ -11,6 +11,7 @@ from collections import defaultdict, Counter
 from orderedset import OrderedSet
 
 from covid19sim.utils.utils import compute_distance, _get_random_area, relativefreq2absolutefreq, calculate_average_infectiousness
+from covid19sim.utils.demographics import get_humans_with_age, assign_profession_to_humans, assign_workplace_to_humans, assign_households_to_humans
 from covid19sim.log.track import Tracker
 from covid19sim.interventions.recommendation_manager import NonMLRiskComputer
 from covid19sim.interventions.behaviors import *
@@ -20,7 +21,7 @@ from covid19sim.distribution_normalization.dist_utils import get_rec_level_trans
 from covid19sim.interventions.intervention_utils import get_intervention
 from covid19sim.log.event import Event
 from covid19sim.locations.test_facility import TestFacility
-from covid19sim.locations.location import Location
+from covid19sim.locations.location import Location, Household
 from covid19sim.locations.hospital import Hospital
 
 if typing.TYPE_CHECKING:
@@ -344,125 +345,125 @@ class City:
         chosen_infected = set(self.rng.choice(self.n_people, init_infected, replace=False).tolist())
 
         self.age_histogram = relativefreq2absolutefreq(
-            bins_fractions={age_bin: specs['p'] for age_bin, specs in self.conf.get('HUMAN_DISTRIBUTION').items()},
+            bins_fractions={(x[0], x[1]): x[2] for x in self.conf.get('P_AGE')},
             n_elements=self.n_people,
             rng=self.rng
         )
 
-        self.humans = get_humans_with_age(self.age_histogram, conf)
-        self.humans = assign_profession_to_humans(self.humans, self, conf)
-        self.humans = assign_workplace_to_humans(self.humans, self, conf)
-        self.humans = assign_households_to_humans(self.humans, self, conf)
+        self.humans = get_humans_with_age(self, self.age_histogram, self.conf, self.rng, chosen_infected, human_type)
+        # self.humans = assign_profession_to_humans(self.humans, self, self.conf)
+        # self.humans = assign_workplace_to_humans(self.humans, self, self.conf)
+        self.humans, self.households = assign_households_to_humans(self.humans, self, self.conf)
 
 
-        for age_bin, specs in self.conf.get("HUMAN_DISTRIBUTION").items():
-            n = self.age_histogram[age_bin]
-            ages = self.rng.randint(low=age_bin[0], high=age_bin[1]+1, size=n)  # high is exclusive
-
-            senior_residency_preference = specs['residence_preference']['senior_residency']
-
-            # draw professions randomly for everyone
-            professions = ['healthcare', 'school', 'others', 'retired']
-            p = [specs['profession_profile'][x] for x in professions]
-            profession = self.rng.choice(professions, p=p, size=n)
-
-            for i in range(n):
-                count_humans += 1
-                age = ages[i]
-
-                # select if residence is one of senior residency
-                res = None
-                if self.rng.random() < senior_residency_preference:
-                    res = self.rng.choice(self.senior_residencys)
-
-                # workplace
-                if profession[i] == "healthcare":
-                    workplace = self.rng.choice(self.hospitals + self.senior_residencys)
-                elif profession[i] == 'school':
-                    workplace = self.rng.choice(self.schools)
-                elif profession[i] == 'others':
-                    type_of_workplace = self.rng.choice(
-                        [0, 1, 2],
-                        p=self.conf.get("OTHERS_WORKPLACE_CHOICE"),
-                        size=1
-                    ).item()
-                    type_of_workplace = [self.workplaces, self.stores, self.miscs][type_of_workplace]
-                    workplace = self.rng.choice(type_of_workplace)
-                else:
-                    workplace = res
-
-                self.humans.append(human_type(
-                        env=self.env,
-                        city=self,
-                        rng=self.rng,
-                        has_app=False,      # has_app gets set later when we intervene
-                        name=count_humans,
-                        age=age,
-                        household=res,
-                        workplace=workplace,
-                        profession=profession[i],
-                        rho=self.conf.get("RHO"),
-                        gamma=self.conf.get("GAMMA"),
-                        infection_timestamp=self.start_time if count_humans - 1 in chosen_infected else None,
-                        conf=self.conf
-                        )
-                    )
-
-        # assign houses; above only assigns senior residence
-        # stores tuples - (location, current number of residents, maximum number of residents allowed)
-        remaining_houses = []
-        # for cases when human is below certain age and can't live in a single house
-        house_size_preference = copy.deepcopy(self.conf.get('HOUSE_SIZE_PREFERENCE'))
-        house_size_preference[0] = 0.0
-        house_size_preference = np.array(house_size_preference)
-        renormalized_house_size_preference = house_size_preference / house_size_preference.sum()
-
-        permuted_humans = [self.humans[x] for x in self.rng.permutation(len(self.humans))]
-        for human in permuted_humans:
-            if human.household is not None:
-                continue
-
-            # if all of the available houses are at a capacity, create a new one with predetermined capacity
-            if len(remaining_houses) == 0:
-                cap = self.rng.choice(range(1,6), p=self.conf.get("HOUSE_SIZE_PREFERENCE"), size=1)
-                x = self.create_location(
-                    self.conf.get("LOCATION_DISTRIBUTION")['household'],
-                    'household',
-                    len(self.households)
-                )
-
-                remaining_houses.append((x, cap))
-
-            # if there are houses that are ready to accommodate human, find a best match
-            res = None
-            for  c, (house, n_vacancy) in enumerate(remaining_houses):
-                new_avg_age = (human.age + sum(x.age for x in house.residents))/(len(house.residents) + 1)
-                if new_avg_age > self.conf.get("MIN_AVG_HOUSE_AGE"):
-                    res = house
-                    n_vacancy -= 1
-                    if n_vacancy == 0:
-                        remaining_houses = remaining_houses[:c] + remaining_houses[c+1:]
-                    break
-
-            # if there was no best match because of the check on MIN_AVG_HOUSE_AGE, allocate a new house based on
-            # residence_preference of that age bin
-            if res is None:
-                if human.age <= self.conf.get("MIN_AVG_HOUSE_AGE"):
-                    house_size_preference = renormalized_house_size_preference
-
-                cap = self.rng.choice(range(1,6), p=house_size_preference, size=1)
-                res = self.create_location(
-                    self.conf.get("LOCATION_DISTRIBUTION")['household'],
-                    'household',
-                    len(self.households)
-                )
-                if cap - 1 > 0:
-                    remaining_houses.append((res, cap-1))
-
-            # FIXME: there is some circular reference here
-            res.residents.append(human)
-            human.assign_household(res)
-            self.households.add(res)
+        # for age_bin, specs in self.conf.get("HUMAN_DISTRIBUTION").items():
+        #     n = self.age_histogram[age_bin]
+        #     ages = self.rng.randint(low=age_bin[0], high=age_bin[1]+1, size=n)  # high is exclusive
+        #
+        #     senior_residency_preference = specs['residence_preference']['senior_residency']
+        #
+        #     # draw professions randomly for everyone
+        #     professions = ['healthcare', 'school', 'others', 'retired']
+        #     p = [specs['profession_profile'][x] for x in professions]
+        #     profession = self.rng.choice(professions, p=p, size=n)
+        #
+        #     for i in range(n):
+        #         count_humans += 1
+        #         age = ages[i]
+        #
+        #         # select if residence is one of senior residency
+        #         res = None
+        #         if self.rng.random() < senior_residency_preference:
+        #             res = self.rng.choice(self.senior_residencys)
+        #
+        #         # workplace
+        #         if profession[i] == "healthcare":
+        #             workplace = self.rng.choice(self.hospitals + self.senior_residencys)
+        #         elif profession[i] == 'school':
+        #             workplace = self.rng.choice(self.schools)
+        #         elif profession[i] == 'others':
+        #             type_of_workplace = self.rng.choice(
+        #                 [0, 1, 2],
+        #                 p=self.conf.get("OTHERS_WORKPLACE_CHOICE"),
+        #                 size=1
+        #             ).item()
+        #             type_of_workplace = [self.workplaces, self.stores, self.miscs][type_of_workplace]
+        #             workplace = self.rng.choice(type_of_workplace)
+        #         else:
+        #             workplace = res
+        #
+        #         self.humans.append(human_type(
+        #                 env=self.env,
+        #                 city=self,
+        #                 rng=self.rng,
+        #                 has_app=False,      # has_app gets set later when we intervene
+        #                 name=count_humans,
+        #                 age=age,
+        #                 household=res,
+        #                 workplace=workplace,
+        #                 profession=profession[i],
+        #                 rho=self.conf.get("RHO"),
+        #                 gamma=self.conf.get("GAMMA"),
+        #                 infection_timestamp=self.start_time if count_humans - 1 in chosen_infected else None,
+        #                 conf=self.conf
+        #                 )
+        #             )
+        #
+        # # assign houses; above only assigns senior residence
+        # # stores tuples - (location, current number of residents, maximum number of residents allowed)
+        # remaining_houses = []
+        # # for cases when human is below certain age and can't live in a single house
+        # house_size_preference = copy.deepcopy(self.conf.get('HOUSE_SIZE_PREFERENCE'))
+        # house_size_preference[0] = 0.0
+        # house_size_preference = np.array(house_size_preference)
+        # renormalized_house_size_preference = house_size_preference / house_size_preference.sum()
+        #
+        # permuted_humans = [self.humans[x] for x in self.rng.permutation(len(self.humans))]
+        # for human in permuted_humans:
+        #     if human.household is not None:
+        #         continue
+        #
+        #     # if all of the available houses are at a capacity, create a new one with predetermined capacity
+        #     if len(remaining_houses) == 0:
+        #         cap = self.rng.choice(range(1,6), p=self.conf.get("HOUSE_SIZE_PREFERENCE"), size=1)
+        #         x = self.create_location(
+        #             self.conf.get("LOCATION_DISTRIBUTION")['household'],
+        #             'household',
+        #             len(self.households)
+        #         )
+        #
+        #         remaining_houses.append((x, cap))
+        #
+        #     # if there are houses that are ready to accommodate human, find a best match
+        #     res = None
+        #     for  c, (house, n_vacancy) in enumerate(remaining_houses):
+        #         new_avg_age = (human.age + sum(x.age for x in house.residents))/(len(house.residents) + 1)
+        #         if new_avg_age > self.conf.get("MIN_AVG_HOUSE_AGE"):
+        #             res = house
+        #             n_vacancy -= 1
+        #             if n_vacancy == 0:
+        #                 remaining_houses = remaining_houses[:c] + remaining_houses[c+1:]
+        #             break
+        #
+        #     # if there was no best match because of the check on MIN_AVG_HOUSE_AGE, allocate a new house based on
+        #     # residence_preference of that age bin
+        #     if res is None:
+        #         if human.age <= self.conf.get("MIN_AVG_HOUSE_AGE"):
+        #             house_size_preference = renormalized_house_size_preference
+        #
+        #         cap = self.rng.choice(range(1,6), p=house_size_preference, size=1)
+        #         res = self.create_location(
+        #             self.conf.get("LOCATION_DISTRIBUTION")['household'],
+        #             'household',
+        #             len(self.households)
+        #         )
+        #         if cap - 1 > 0:
+        #             remaining_houses.append((res, cap-1))
+        #
+        #     # FIXME: there is some circular reference here
+        #     res.residents.append(human)
+        #     human.assign_household(res)
+        #     self.households.add(res)
 
         # assign area to house
         area = _get_random_area(
@@ -774,19 +775,6 @@ class City:
                             int(self.conf["n_people"] * self.conf["MESSAGE_BUDGET_GAEN"])
                         ),
                     )
-
-
-class Household(Location):
-    """
-    Household location class, inheriting from covid19sim.base.Location
-    """
-    def __init__(self, **kwargs):
-        """
-        Args:
-            kwargs (dict): all the args necessary for a Location's init
-        """
-        super(Household, self).__init__(**kwargs)
-        self.residents = []
 
 
 class EmptyCity(City):

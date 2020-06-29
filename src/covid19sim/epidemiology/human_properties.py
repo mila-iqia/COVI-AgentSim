@@ -310,8 +310,10 @@ def get_age_bin(age, conf):
     # required for Oxford COVID-19 infection model
     age_bins = conf['NORMALIZED_SUSCEPTIBILITY_BY_AGE'].keys()
     for l, u in age_bins:
-        # NOTE  & FIXME: lower limit is exclusive
-        if l < age <= u:
+        if l <= age <= u:
             bin = (l, u)
             break
-    return bin
+    try:
+        return bin
+    except:
+        import pdb; pdb.set_trace()

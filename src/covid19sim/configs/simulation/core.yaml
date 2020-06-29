@@ -75,6 +75,63 @@ LOCATION_DISTRIBUTION:
       },
   }
 
+COUNTRY: "Canada"
+REGION: "Montreal"
+
+P_HOUSEHOLD_SIZE: [0.394, 0.298, 0.136, 0.112, 0.06]
+P_FAMILY_TYPE_SIZE_2: [0.198, 0.070, 0.03]
+P_FAMILY_TYPE_SIZE_3: [0.091, 0.03, 0.015]
+P_FAMILY_TYPE_SIZE_4: [0.096, 0.008, 0.008]
+P_FAMILY_TYPE_SIZE_MORE_THAN_5: [0.044, 0.003, 0.014]
+MIN_AGE_COUPLE: 25
+MAX_AGE_COUPLE_WITH_CHILDREN: 65
+MIN_AGE_SINGLE_PARENT: 30
+MAX_AGE_SINGLE_PARENT: 60
+MAX_AGE_CHILDREN: 15
+P_MULTIGENERATIONAL_FAMILY: 0.015
+P_COLLECTIVE_70_74: 0.0025
+P_COLLECTIVE_75_79: 0.0025
+P_COLLECTIVE_80_above: 0.017
+P_AGE_SOLO_DWELLLERS_GIVEN_HOUSESIZE_1: [[0, 4, 0.0],
+                                         [5, 9, 0.0],
+                                         [10, 14, 0.0],
+                                         [15, 19, 0.0036965443759304443],
+                                         [20, 24, 0.04050656352664703],
+                                         [25, 29, 0.08236366540850498],
+                                         [30, 34, 0.08036315583876404],
+                                         [35, 39, 0.06662188307122593],
+                                         [40, 44, 0.05447753487688209],
+                                         [45, 49, 0.061166114151859505],
+                                         [50, 54, 0.07899697367438215],
+                                         [55, 59, 0.08849240507820566],
+                                         [60, 64, 0.08991688613071544],
+                                         [65, 69, 0.08616853066878354],
+                                         [70, 74, 0.07314565348534838],
+                                         [75, 79, 0.0648654340868155],
+                                         [80, 110, 0.12921865562593535]]
+
+
+P_AGE: [
+    [0, 4, 0.057],
+    [5, 9, 0.054],
+    [10, 14, 0.047],
+    [15, 19, 0.05],
+    [20, 24, 0.072],
+    [25, 29, 0.079],
+    [30, 34, 0.078],
+    [35, 39, 0.076],
+    [40, 44, 0.066],
+    [45, 49, 0.065],
+    [50, 54, 0.068],
+    [55, 59, 0.065],
+    [60, 64, 0.057],
+    [65, 69, 0.049],
+    [70, 74, 0.037],
+    [75, 79, 0.029],
+    [80, 110, 0.051],
+]
+
+
 # house_size: 1 2 3 4 5
 OTHERS_WORKPLACE_CHOICE: [1.0, 0.0, 0.0]
 
@@ -241,15 +298,15 @@ P_TRAVELLED_INTERNATIONALLY_RECENTLY: 0.05
 # TODO: link to the document
 SMARTPHONE_OWNER_FRACTION_BY_AGE:
   {
-    '1-10': 0.0,
-    '11-20': 0.90,
-    '21-30': 0.96,
-    '31-40': 0.95,
-    '41-50': 0.91,
-    '51-60': 0.81,
-    '61-70': 0.64,
-    '71-80': 0.41,
-    '81-101': 0.27,
+    '0-9': 0.0,
+    '10-19': 0.90,
+    '20-29': 0.96,
+    '30-39': 0.95,
+    '40-49': 0.91,
+    '50-59': 0.81,
+    '60-69': 0.64,
+    '70-79': 0.41,
+    '80-110': 0.27,
   }
 
 # DISEASE PARAMETERS
@@ -323,17 +380,17 @@ INFECTION_DURATION_FACTOR: 0.0
 # normalized susceptibility to infection broken down age group
 # refer Oxford COVID-19 model
 # They normalise the fitted attack rate across age groups so that average age has a susceptiblity of 1.0
-# UK's average age = 40; Canada's average age = 42. Just taking the normalized susceptiblity from Table 5.
+# UK's average age = 40; Canada's average age = 42. We use the same normalized susceptiblity from Table 5.
 NORMALIZED_SUSCEPTIBILITY_BY_AGE: {
-    "0-10": 0.71,
-    "10-20": 0.74,
-    "20-30": 0.79,
-    "30-40": 0.87,
-    "40-50": 0.98,
-    "50-60": 1.11,
-    "60-70": 1.26,
-    "70-80": 1.45,
-    "80-150": 1.66,
+    "0-9": 0.71,
+    "10-19": 0.74,
+    "20-29": 0.79,
+    "30-39": 0.87,
+    "40-49": 0.98,
+    "50-59": 1.11,
+    "60-69": 1.26,
+    "70-79": 1.45,
+    "80-110": 1.66,
   }
 
 # these numbers are taken for daily_mean_work_interactions from Oxford study (Table 3)
@@ -341,15 +398,15 @@ NORMALIZED_SUSCEPTIBILITY_BY_AGE: {
 # The report doesn't have a table for I_as so the numbers in Table 3 are used as a proxy
 # TODO: check the updated version of the report for these numbers.
 MEAN_DAILY_INTERACTION_FOR_AGE_GROUP: {
-  "0-10": 10,
-  "10-20": 10,
-  "20-30": 7,
-  "30-40": 7,
-  "40-50": 7,
-  "50-60": 7,
-  "60-70": 7,
-  "70-80": 3,
-  "80-150": 3,
+  "0-9": 10,
+  "10-19": 10,
+  "20-29": 7,
+  "30-39": 7,
+  "40-49": 7,
+  "50-59": 7,
+  "60-69": 7,
+  "70-79": 3,
+  "80-110": 3,
 
   }
 
