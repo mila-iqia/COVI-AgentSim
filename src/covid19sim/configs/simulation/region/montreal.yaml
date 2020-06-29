@@ -1,0 +1,156 @@
+# Region
+# Région de Montréal Quebec
+
+###################
+## Statcan data  ##
+####################
+
+# https://www12.statcan.gc.ca/census-recensement/2016/dp-pd/prof/details/page.cfm?Lang=E&Geo1=HR&Code1=2406&Geo2=PR&Code2=01&SearchText=montreal&SearchType=Contains&SearchPR=01&B1=All&TABID=1&type=1
+POPULATION_SIZE_REGION: 1942045
+P_AGE_REGION: [
+    [0, 4, 0.057],
+    [5, 9, 0.054],
+    [10, 14, 0.047],
+    [15, 19, 0.05],
+    [20, 24, 0.072],
+    [25, 29, 0.079],
+    [30, 34, 0.078],
+    [35, 39, 0.076],
+    [40, 44, 0.066],
+    [45, 49, 0.065],
+    [50, 54, 0.068],
+    [55, 59, 0.065],
+    [60, 64, 0.057],
+    [65, 69, 0.049],
+    [70, 74, 0.037],
+    [75, 79, 0.029],
+    [80, 110, 0.051],
+]
+
+# https://www12.statcan.gc.ca/census-recensement/2016/dp-pd/prof/details/page.cfm?Lang=E&Geo1=HR&Code1=2406&Geo2=PR&Code2=01&SearchText=montreal&SearchType=Contains&SearchPR=01&B1=Families,%20households%20and%20marital%20status&TABID=1&type=0
+# Household and Dwelling characteristic
+# household size distribution
+# fraction of **all** households that are 1 person households 0.394 (A.1)
+# fraction of **all** households that are 2 persons households 0.298 (A.2)
+# fraction of **all** households that are 3 persons households 0.136 (A.3)
+# fraction of **all** households that are 4 persons households 0.112 (A.4)
+# fraction of **all** households that are more than 5 persons households 0.06 (A.5)
+# average household size 2.2
+P_HOUSEHOLD_SIZE:  [0.394, 0.298, 0.136, 0.112, 0.06]
+
+# Total number of 1 person private households in Montreal - 342,510
+# ref: https://www12.statcan.gc.ca/census-recensement/2016/dp-pd/prof/details/page.cfm?Lang=E&Geo1=HR&Code1=2406&Geo2=PR&Code2=01&SearchText=montreal&SearchType=Contains&SearchPR=01&B1=All&TABID=1&type=0
+N_HOUSESIZE_1: 342510
+
+# Household type (B)
+# total private households - 870,375 (B.1)
+# one census-family households - 469,260 (0.539) (B.2)
+
+# Family characteristics (C)
+# age-household size distribution
+# total at least one census family households 485,285 (C.1)
+# 2 person families
+#   2 person families in private households - 241,425 (C.2)
+#   fraction of **all** households that are 2 person families = (C.2 / C.1) * (B.2 / B.1) = 0.268 (C.2.a)
+#   fraction of **all** households that are of size 2 and not 2 person families = (C.2.a - A.2) = 0.03
+#       couples without children - 178,110 (C.2.1)
+#       fraction of **all** households that are "couples without children" = (C.2.1 / C.1) * (B.2 / B.1) = 0.198
+#       single parent with a child - 63,315 (C.2.2)
+#       fraction of **all** households that are "single parent with a child" - (C.2.2 / C.1) * (B.2 / B.1) = 0.070
+P_FAMILY_TYPE_SIZE_2: [0.198, 0.070, 0.03]
+
+# 3 person families
+#   3 person families in private households - 109,085 (C.3)
+#   fraction of **all** households that are 3 person families = (C.3 / C.1) * (B.2 / B.1) = 0.121 (C.3.a)
+#   fraction of **all** households that are of size 3 and not 3 person families = (C.3.a - A.3) = 0.015
+#       couples with 1 child - 82,310 (C.3.1)
+#       fraction of **all** households that are "couples with 1 child" = (C.3.1 / C.1) * (B.2 / B.1) = 0.091
+#       single parent with 2 children - 26,780 (C.3.2)
+#       fraction of **all** households that are "single parent with 2 children" = (C.3.2 / C.1) * (B.2 / B.1) = 0.03
+P_FAMILY_TYPE_SIZE_3: [0.091, 0.03, 0.015]
+
+# 4 person families
+#   4 person families in private households - 93,225 (C.4)
+#   fraction of **all** households that are 4 person families = (C.4 / C.1) * (B.2 / B.1) = 0.104 (C.4.a)
+#   fraction of **all** households that are of size 4 and not 4 person families = (C.4.a - A.4) = 0.008 (C.4.b)
+#       couples with 2 children - 85,985 (C.4.1)
+#       fraction of **all** households that are "couples with 2 children" = (C.4.1 / C.1) * (B.2 / B.1) = 0.096 (C.4.1.a)
+#       single parent with 3 or more children - 9,610 (C.4.2)
+#       single parent with 3 children - 9,610 (C.4 - C.4.1) = 7240 (C.4.3)
+#       fraction of **all** households that are "single parent with 3 children" = (C.4.3 / C.1) * (B.2 / B.1) = 0.008
+P_FAMILY_TYPE_SIZE_4: [0.096, 0.008, 0.008]
+
+# 5 or more person families
+#   5 person families in private households - 41,555 (C.5)
+#   fraction of **all** households that are 5 person families = (C.5 / C.1) * (B.2 / B.1) = 0.046 (C.5.a)
+#   fraction of **all** households that are of size more than 5 and not more than 5 person families = (C.5.a - A.5) = 0.014
+#      couples with 3 or more children - 39,180 (C.5.1)
+#      fraction of **all** households that are "couples with 3 or more children" = (C.5.1 / C.1) * (B.2 / B.1) = 0.044
+#      single parent with 4 or more children - (C.4.2 - C.4.3) = 2370 (C.5.2)
+#      fraction of **all** households that are "single parent with 4 or more children" = (C.5.2 / C.1) * (B.2 / B.1) = 0.003
+P_FAMILY_TYPE_SIZE_MORE_THAN_5: [0.044, 0.003, 0.014]
+
+# multi-generation households (D)
+# https://www12.statcan.gc.ca/census-recensement/2016/dp-pd/hlt-fst/fam/Table.cfm?Lang=E&T=24&Geo=00&SO=18D
+# Total private households  - 779,800 (D.1)
+# multi-generation households - 11,410 (D.2)
+# fraction of **all** households that are multigenerational - (D.2 / D.1)  = 0.015
+# (assumed) multi-generation households are one of more than 3 persons families.
+# These are sampled when family_type = other.
+# Minimum age sampled for grandparent = 45
+# ref: https://www150.statcan.gc.ca/n1/pub/75-006-x/2015001/article/14154-eng.htm
+P_MULTIGENERATIONAL_FAMILY: 0.015
+
+# Senior residency & long term care centers
+# ref: https://www12.statcan.gc.ca/census-recensement/2016/dp-pd/prof/details/page.cfm?Lang=E&Geo1=HR&Code1=2406&Geo2=PR&Code2=01&SearchText=montreal&SearchType=Contains&SearchPR=01&B1=All&TABID=1&type=0
+# total population = 1,942,045 (E)
+# ref: https://www12.statcan.gc.ca/census-recensement/2016/dp-pd/covid19/table2-eng.cfm?geo=A0002&S=1&O=A
+# total population living in collectives for seniors - 32935 (E.1)
+# total population aged 0 to 79 living in collectives for seniors - 9750 (E.2)
+# total population aged 80 or above living in collectives for seniors - 23185 (E.3)
+# probability of living in a senior residency given 0 < age < 79 (E.2 / E)
+# NOTE: (assumption) minimum age for collective is 70 yo
+P_COLLECTIVE_70_79: 0.005
+# (assumption) equal distribution for two age bins
+P_COLLECTIVE_70_74: 0.0025
+P_COLLECTIVE_75_79: 0.0025
+# probability of living in a senior residency given age > 80
+P_COLLECTIVE_80_above: 0.017
+
+
+# (no-source) these values are assumed
+MIN_AGE_COUPLE: 25
+MAX_AGE_COUPLE_WITH_CHILDREN: 60
+MIN_AGE_SINGLE_PARENT: 30
+MAX_AGE_SINGLE_PARENT: 60
+MAX_AGE_CHILDREN: 15
+
+######################################################
+## Pre-computed using utils/config_demographics.py  ##
+######################################################
+
+# Solo dwellers
+# procedure -
+# Data for solo dwellers for country is from country.yaml
+# project it back per age group as per region's demographics
+# Multiply by a correction term to make number of solo houses equal to A.1 * TOTAL_HOUSES
+# Normalize it to get probabilities given housesize of 1
+# Keys to read the list - lower age limit, upper age limit, proportion of population in this age bin that live in household of size 1
+
+P_AGE_SOLO_DWELLERS_GIVEN_HOUSESIZE_1: [[0, 4, 0.0],
+    [5, 9, 0.0],
+    [10, 14, 0.0],
+    [15, 19, 0.0036965443759304434],
+    [20, 24, 0.04050656352664702],
+    [25, 29, 0.08236366540850498],
+    [30, 34, 0.08036315583876404],
+    [35, 39, 0.06662188307122592],
+    [40, 44, 0.05447753487688208],
+    [45, 49, 0.061166114151859505],
+    [50, 54, 0.07899697367438215],
+    [55, 59, 0.08849240507820566],
+    [60, 64, 0.08991688613071544],
+    [65, 69, 0.08616853066878354],
+    [70, 74, 0.07314565348534839],
+    [75, 79, 0.06486543408681548],
+    [80, 110, 0.12921865562593535]]
