@@ -848,34 +848,37 @@ class Human(BaseHuman):
         """
         [summary]
         """
-        if (self.cold_timestamp is not None and
+        if (self.has_cold and
             self.days_since_cold >= len(self.cold_progression)):
             self.cold_timestamp = None
             self.cold_symptoms = []
 
-        if (self.flu_timestamp is not None and
+        if (self.has_flu and
             self.days_since_flu >= len(self.flu_progression)):
             self.flu_timestamp = None
             self.flu_symptoms = []
 
-        if (self.allergy_timestamp is not None and
+        if (self.has_allergy_symptoms and
             self.days_since_allergies >= len(self.allergy_progression)):
             self.allergy_timestamp = None
             self.allergy_symptoms = []
 
     def catch_other_disease_at_random(self):
+        # BUG: Is it intentional that if a random cold is caught, then one
+        #      cannot also catch a random flu, due to early return?
+        #
         # # assumption: no other infection if already infected with covid
         # if self.infection_timestamp is not None:
         #     return
 
         # Catch a random cold
-        if self.cold_timestamp is None and self.rng.random() < self.conf["P_COLD_TODAY"]:
+        if not self.has_cold and self.rng.random() < self.conf["P_COLD_TODAY"]:
             self.ts_cold_symptomatic = self.env.now
             # print("caught cold")
             return
 
         # Catch a random flu (TODO: model seasonality through P_FLU_TODAY)
-        if self.flu_timestamp is None and self.rng.random() < self.conf["P_FLU_TODAY"]:
+        if not self.has_flu and self.rng.random() < self.conf["P_FLU_TODAY"]:
             self.ts_flu_symptomatic = self.env.now
             return
 
@@ -1002,6 +1005,8 @@ class Human(BaseHuman):
         self.household.humans.add(self)
         while True:
             hour, day = self.env.hour_of_day, self.env.day_of_week
+            # BUG: Every time this loop is re-entered on Monday, the following
+            #      code will execute.
             if day==0:
                 self.count_exercise = 0
                 self.count_shop = 0
@@ -1015,7 +1020,7 @@ class Human(BaseHuman):
             # Note: it doesn't count symptom start time from environmental infection or asymptomatic/presymptomatic infections
             # reference is in city.tracker.track_serial_interval.__doc__
             if self.is_incubated and self.covid_symptom_start_time is None and any(self.symptoms):
-                self.covid_symptom_start_time = self.env.timestamp
+                self.covid_symptom_start_time = self.env.now
                 city.tracker.track_serial_interval(self.name)
 
             # TODO - P - ideally check this every hour in base.py
