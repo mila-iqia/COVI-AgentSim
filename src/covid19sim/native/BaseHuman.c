@@ -765,6 +765,13 @@ static PyObject*              BaseHuman_get_is_incubated        (BaseHumanObject
                            (self->env->ts_now - self->ts_covid19_infection >=
                             self->incubation_days * SECONDS_PER_EPHEMERIS_DAY));
 }
+static PyObject*              BaseHuman_get_has_covid           (BaseHumanObject* self, void* closure){
+    int is_removed = self->env->ts_now >= self->ts_covid19_immunity ||
+                     self->env->ts_now >= self->ts_death;
+    double td_infected = self->env->ts_now - self->ts_covid19_infection;
+    
+    return PyBool_FromLong(!is_removed && (td_infected >= 0));
+}
 static PyObject*              BaseHuman_get_has_cold            (BaseHumanObject* self, void* closure){
     return PyBool_FromLong(self->ts_cold_symptomatic != INFINITY);
 }
@@ -899,6 +906,7 @@ static PyGetSetDef BaseHuman_getset[] = {
     {"is_removed",           (getter)BaseHuman_get_is_removed,           NULL,                                      "Whether human is removed, i.e. is dead or has acquired immunity from COVID-19."},
     {"is_dead",              (getter)BaseHuman_get_is_dead,              NULL,                                      "Whether human is dead."},
     {"is_incubated",         (getter)BaseHuman_get_is_incubated,         NULL,                                      "Whether human has spent enough time to become symptomatic."},
+    {"has_covid",            (getter)BaseHuman_get_has_covid,            NULL,                                      "Whether human has COVID-19 (i.e., is either exposed or infectious)"},
     {"has_cold",             (getter)BaseHuman_get_has_cold,             NULL,                                      "Whether human has a cold."},
     {"has_flu",              (getter)BaseHuman_get_has_flu,              NULL,                                      "Whether human has a flu."},
     {"has_allergy_symptoms", (getter)BaseHuman_get_has_allergy_symptoms, NULL,                                      "Whether human has allergy symptoms."},
