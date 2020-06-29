@@ -10,7 +10,8 @@ import covid19sim.plotting.plot_jellybeans as jellybeans
 from covid19sim.plotting.utils.extract_data import get_all_data, truncate_seeds
 
 print("Ok.")
-HYDRA_CONF_PATH = Path(__file__).parent.parent / "hydra-configs" / "plot"
+
+HYDRA_CONF_PATH = Path(__file__).parent.parent / "configs" / "plot"
 
 
 def print_header(plot):
