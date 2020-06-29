@@ -15,6 +15,7 @@ from covid19sim.inference.helper import (conditions_to_np, symptoms_to_np, encod
 from covid19sim.inference.human_as_message import get_test_results_array
 from covid19sim.run import simulate
 from covid19sim.inference.heavy_jobs import DummyMemManager
+from covid19sim.native import Environment
 
 
 class MakeHumanAsMessageProxy:
@@ -529,11 +530,8 @@ class ModelsTest(unittest.TestCase):
 
 
 class HumanAsMessageTest(unittest.TestCase):
-    class EnvMock:
-        def __init__(self, timestamp):
-            self.timestamp = timestamp
-            self.initial_timestamp = timestamp
-            self.ts_initial = 0
+    class EnvMock(Environment):
+        pass
 
     def test_human_as_message(self):
         from covid19sim.human import Human
@@ -569,6 +567,8 @@ class HumanAsMessageTest(unittest.TestCase):
             elif k == 'test_results':
                 self.assertTrue(hasattr(human, k))
             elif k == "viral_load_to_infectiousness_multiplier":
+                self.assertTrue(hasattr(human, k))
+            elif k == "name":
                 self.assertTrue(hasattr(human, k))
             else:
                 self.assertIn(k, human.__dict__)

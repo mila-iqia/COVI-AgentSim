@@ -49,6 +49,10 @@ static BaseHumanObject*       BaseHuman_new                     (PyTypeObject* t
     self->ts_covid19_symptomatic = INFINITY;
     self->ts_covid19_recovery    = INFINITY;
     self->ts_covid19_immunity    = INFINITY;
+    if(!self->name){
+        Py_INCREF(Py_None);
+        self->name = Py_None;
+    }
     
     
     /* Return new object */
@@ -126,8 +130,10 @@ static PyObject*              BaseHuman_get_env                 (BaseHumanObject
 }
 static int                    BaseHuman_set_env                 (BaseHumanObject* self, PyObject* val, void* closure){
     BaseEnvironmentObject* tmp;
-    if(!PyObject_IsInstance((PyObject*)val, (PyObject*)&BaseEnvironmentType))
+    if(!PyObject_IsInstance((PyObject*)val, (PyObject*)&BaseEnvironmentType)){
+        PyErr_Format(PyExc_TypeError, "Expected BaseEnvironment instance!");
         return -1;
+    }
     Py_INCREF(val);
     tmp = self->env;
     self->env = (BaseEnvironmentObject*)val;
