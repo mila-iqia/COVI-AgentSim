@@ -7,10 +7,9 @@ from collections import defaultdict
 from time import time
 import covid19sim.plotting.plot_pareto_adoption as pareto_adoption
 import covid19sim.plotting.plot_jellybeans as jellybeans
-from covid19sim.plotting.utils.extract_data import get_all_data, truncate_seeds
+from covid19sim.plotting.utils.extract_data import get_all_data
 
 print("Ok.")
-
 HYDRA_CONF_PATH = Path(__file__).parent.parent / "configs" / "plot"
 
 
@@ -124,7 +123,7 @@ def map_conf_to_models(all_paths, plot_conf):
             compare_value = sim_conf[key]
             model = get_model(sim_conf, plot_conf["model_mapping"])
             new_data[model][compare_value][rk] = rv
-    return new_data
+    return dict(new_data)
 
 
 @hydra.main(config_path=str(HYDRA_CONF_PATH.resolve() / "config.yaml"), strict=False)
@@ -189,7 +188,6 @@ def main(conf):
     summarize_configs(all_data)
     data = map_conf_to_models(all_data, conf)
     check_data(data)
-    data = truncate_seeds(data)
 
     for plot in plots:
         func = all_plots[plot].run

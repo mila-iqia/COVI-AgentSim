@@ -192,6 +192,8 @@ def load_search_conf(path):
     Returns:
         any: python native variable loaded by PyYaml
     """
+    print(path)
+    print()
     path = Path(path)
     assert path.exists()
     assert path.suffix in {".yaml", ".yml"}
