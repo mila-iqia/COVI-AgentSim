@@ -342,7 +342,7 @@ class Human(BaseHuman):
         current_date = self.env.timestamp.date()
         if last_date is None or (current_date - last_date).days > 0:
             proba = self.conf.get("DROPOUT_RATE")
-            self.last_date["follow_recommendations"] = self.env.timestamp.date()
+            self.last_date["follow_recommendations"] = current_date
             self._follows_recommendations_today = self.rng.rand() < (1 - proba)
         return self._follows_recommendations_today
 
@@ -516,10 +516,11 @@ class Human(BaseHuman):
         """
         [summary]
         """
-        if self.last_date['symptoms'] == self.env.timestamp.date():
+        current_date = self.env.timestamp.date()
+        if self.last_date['symptoms'] == current_date:
             return
 
-        self.last_date['symptoms'] = self.env.timestamp.date()
+        self.last_date['symptoms'] = current_date
 
         if self.has_cold:
             t = self.days_since_cold
@@ -557,11 +558,11 @@ class Human(BaseHuman):
         [summary]
         """
         self.update_symptoms()
-
-        if self.last_date['reported_symptoms'] == self.env.timestamp.date():
+        current_date = self.env.timestamp.date()
+        if self.last_date['reported_symptoms'] == current_date:
             return
 
-        self.last_date['reported_symptoms'] = self.env.timestamp.date()
+        self.last_date['reported_symptoms'] = current_date
 
         reported_symptoms = [s for s in self.rolling_all_symptoms[0] if self.rng.random() < self.carefulness]
         self.rolling_all_reported_symptoms.appendleft(reported_symptoms)
@@ -1025,7 +1026,7 @@ class Human(BaseHuman):
                 # TO DISCUSS: Should the test result be reset here? We don't know in reality
                 # when the person has recovered; currently not reset
                 # self.reset_test_result()
-                self.infection_timestamp = None
+                self.ts_covid19_infection = float('inf')
                 self.all_symptoms, self.covid_symptoms = [], []
 
                 if self.never_recovers:
@@ -1305,6 +1306,7 @@ class Human(BaseHuman):
             city.tracker.track_social_mixing(location=location, duration=self.last_duration)
 
         # Report all the encounters (epi transmission)
+        env_timestamp = self.env.timestamp
         for h in location.humans:
             if h == self:
                 continue
@@ -1365,14 +1367,14 @@ class Human(BaseHuman):
                         # TODO: could adjust real timestamps in encounter messages based on remaining time?
                         # env_timestamp=self.env.timestamp - datetime.timedelta(minutes=remaining_time_in_contact),
                         # the above change might break clustering asserts if we somehow jump across timeslots/days
-                        env_timestamp=self.env.timestamp,
+                        env_timestamp=env_timestamp,
                         initial_timestamp=self.env.initial_timestamp,
                         use_gaen_key=self.conf.get("USE_GAEN"),
                     )
                     remaining_time_in_contact -= encounter_time_granularity
 
                 if exchanged:
-                    city.tracker.track_bluetooth_communications(human1=self, human2=h, timestamp = self.env.timestamp)
+                    city.tracker.track_bluetooth_communications(human1=self, human2=h, timestamp = env_timestamp)
 
                 Event.log_encounter_messages(
                     self.conf['COLLECT_LOGS'],
@@ -1381,7 +1383,7 @@ class Human(BaseHuman):
                     location=location,
                     duration=t_near,
                     distance=distance,
-                    time=self.env.timestamp
+                    time=env_timestamp
                 )
 
             contact_condition = (
@@ -1392,7 +1394,7 @@ class Human(BaseHuman):
             # Conditions met for possible infection
             # https://www.cdc.gov/coronavirus/2019-ncov/hcp/guidance-risk-assesment-hcp.html
             if contact_condition:
-                city.tracker.track_social_mixing(human1=self, human2=h, duration=t_near, timestamp = self.env.timestamp)
+                city.tracker.track_social_mixing(human1=self, human2=h, duration=t_near, timestamp = env_timestamp)
                 city.tracker.track_encounter_events(human1=self, human2=h, location=location, distance=distance, duration=t_near)
                 city.tracker.track_encounter_distance("B\t0", packing_term, encounter_term, social_distancing_term, distance, location=None)
 
@@ -1432,11 +1434,11 @@ class Human(BaseHuman):
 
                         infector.n_infectious_contacts += 1
 
-                        Event.log_exposed(self.conf.get('COLLECT_LOGS'), infectee, infector, p_infection, self.env.timestamp)
+                        Event.log_exposed(self.conf.get('COLLECT_LOGS'), infectee, infector, p_infection, env_timestamp)
 
                         if infectee_msg is not None:  # could be None if we are not currently tracing
                             infectee_msg._exposition_event = True
-                        city.tracker.track_infection('human', from_human=infector, to_human=infectee, location=location, timestamp=self.env.timestamp)
+                        city.tracker.track_infection('human', from_human=infector, to_human=infectee, location=location, timestamp=env_timestamp)
                     else:
                         infector, infectee = None, None
 
@@ -1472,9 +1474,10 @@ class Human(BaseHuman):
                     distance=distance,
                     infectee=None if not infectee else infectee.name,
                     p_infection=p_infection,
-                    time=self.env.timestamp
+                    time=env_timestamp
                 )
 
+        assert env_timestamp == self.env.timestamp
         yield self.env.timeout(duration * SECONDS_PER_MINUTE)
 
         # environmental transmission
@@ -1651,7 +1654,7 @@ class Human(BaseHuman):
             [type]: [description]
         """
         if self.risk_history_map:
-            cur_day = (self.env.timestamp - self.env.initial_timestamp).days
+            cur_day = int(self.env.now - self.env.ts_initial) // SECONDS_PER_DAY
             if cur_day in self.risk_history_map:
                 return self.risk_history_map[cur_day]
             else:
