@@ -895,26 +895,22 @@ class Human(BaseHuman):
         Returns:
             [type]: [description]
         """
-        current_symptoms = self.symptoms
-        if current_symptoms == []:
+        current_symptoms = set(self.symptoms)
+        if not current_symptoms:
             return 1.0
 
         if getattr(self, "_quarantine", None) and self.follows_recommendations_today:
             return 0.1
 
-        if sum(x in current_symptoms for x in ["severe", "extremely_severe"]) > 0:
+        if current_symptoms & {"severe", "extremely_severe"}:
             return 0.2
-
         elif self.test_result == "positive":
             return 0.1
-
-        elif sum(x in current_symptoms for x in ["trouble_breathing"]) > 0:
+        elif current_symptoms & {"trouble_breathing"}:
             return 0.3
-
-        elif sum(x in current_symptoms for x in ["moderate", "fever"]) > 0:
+        elif current_symptoms & {"moderate", "fever"}:
             return 0.5
-
-        elif sum(x in current_symptoms for x in ["cough", "fatigue", "gastro", "aches", "mild"]) > 0:
+        elif current_symptoms & {"cough", "fatigue", "gastro", "aches", "mild"}:
             return 0.6
 
         return 1.0
