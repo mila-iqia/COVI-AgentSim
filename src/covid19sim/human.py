@@ -113,7 +113,7 @@ class Human(BaseHuman):
 
         # Allergies
         len_allergies = self.rng.normal(1/self.carefulness, 1)   # determines the number of symptoms this persons allergies would present with (if they start experiencing symptoms)
-        self.len_allergies = 7 if len_allergies > 7 else np.ceil(len_allergies)
+        self.len_allergies = 7 if len_allergies > 7 else math.ceil(len_allergies)
         self.allergy_progression = _get_allergy_progression(self.rng)  # if this human starts having allergy symptoms, then there is a progression of symptoms over one or multiple days
 
 
@@ -1315,11 +1315,11 @@ class Human(BaseHuman):
                 continue
 
             # first term is packing metric for the location in cm
-            packing_term = 100 * np.sqrt(area/len(self.location.humans)) # cms
+            packing_term = 100 * math.sqrt(area/len(self.location.humans)) # cms
             encounter_term = self.rng.uniform(self.conf.get("MIN_DIST_ENCOUNTER"), self.conf.get("MAX_DIST_ENCOUNTER"))
-            social_distancing_term = np.mean([self.maintain_extra_distance, h.maintain_extra_distance]) #* self.rng.rand()
+            social_distancing_term = 0.5*(self.maintain_extra_distance + h.maintain_extra_distance) #* self.rng.rand()
             # if you're in a space, you cannot be more than packing term apart
-            distance = np.clip(encounter_term + social_distancing_term, a_min=0, a_max=packing_term)
+            distance = min(max(encounter_term + social_distancing_term, 0), packing_term)
 
             if distance == packing_term:
                 city.tracker.track_encounter_distance(
@@ -1340,7 +1340,7 @@ class Human(BaseHuman):
             # we scale by the distance s.t. if the true distance of the encounter is 2m you could think it is 0m or 4m,
             # whereas an encounter of 1m has a possible distance of 0.5 and 1.5m
             # a longer discussion is contained in docs/bluetooth.md
-            approximated_bluetooth_distance = distance + distance * (self.rng.rand() - 0.5) * np.mean([self.phone_bluetooth_noise, h.phone_bluetooth_noise])
+            approximated_bluetooth_distance = distance + distance * (self.rng.rand() - 0.5) * 0.5*(self.phone_bluetooth_noise + h.phone_bluetooth_noise)
             assert approximated_bluetooth_distance <= 2*distance
 
             h1_msg, h2_msg = None, None
