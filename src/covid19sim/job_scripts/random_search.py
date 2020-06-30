@@ -36,7 +36,7 @@ def check_conf(conf):
             if v["sample"] == "cartesian" and not isinstance(v["from"], list):
                 raise RandomSearchError(f"'from' field for {k} should be a list")
 
-        if k == "intervention":
+        if k == "tracing_method":
             if isinstance(v, dict) and "sample" in v:
                 tracing_methods += v["from"]
             else:
@@ -578,7 +578,7 @@ def main(conf: DictConfig) -> None:
         "use_tmpdir",  # use SLURM_TMPDIR and copy files to outdir after
         "test_capacity",  # change TEST_TYPES.lab.capacity to that value
         "weights_dir",  # where are the weights
-        "base_dir",  # output dir will be base_dir/intervention
+        "base_dir",  # output dir will be base_dir/tracing_method
     }
 
     # move back to original directory because hydra moved
@@ -665,7 +665,7 @@ def main(conf: DictConfig) -> None:
             opts = sample_search_conf(conf, run_idx)
             # specify server frontend
 
-            use_transformer = opts["intervention"].split(">")[0].strip() in {
+            use_transformer = opts["tracing_method"].split(">")[0].strip() in {
                 "oracle",
                 "transformer",
             }
@@ -673,13 +673,13 @@ def main(conf: DictConfig) -> None:
 
             if use_transformer:
                 if "weights" not in opts:
-                    if ">" not in opts["intervention"]:
+                    if ">" not in opts["tracing_method"]:
                         raise RandomSearchError("Unknown weights for transformer")
-                    weights_name = opts["intervention"].split(">")[-1].strip()
+                    weights_name = opts["tracing_method"].split(">")[-1].strip()
                     opts["weights"] = str(Path(opts["weights_dir"]) / weights_name)
-                if ">" in opts["intervention"]:
-                    opts["intervention"] = (
-                        opts["intervention"].split(">")[0].strip()
+                if ">" in opts["tracing_method"]:
+                    opts["tracing_method"] = (
+                        opts["tracing_method"].split(">")[0].strip()
                     )
 
             if use_server:
@@ -695,10 +695,10 @@ def main(conf: DictConfig) -> None:
 
             if not opts.get("outdir"):
                 extension = ""
-                if opts["intervention"] == "transformer":
+                if opts["tracing_method"] == "transformer":
                     extension = Path(opts["weights"]).name
                 opts["outdir"] = str(
-                    Path(opts["base_dir"]) / (opts["intervention"] + extension)
+                    Path(opts["base_dir"]) / (opts["tracing_method"] + extension)
                 )
 
             if use_tmpdir:
@@ -707,7 +707,7 @@ def main(conf: DictConfig) -> None:
                     Path(outdir).resolve().mkdir(parents=True, exist_ok=True)
                 opts["outdir"] = "$SLURM_TMPDIR"
 
-            if opts["intervention"] == "no_intervention":
+            if opts["tracing_method"] == "no_intervention":
                 opts["INTERVENTION_DAY"] = -1
 
             # convert params to string command-line args
