@@ -207,6 +207,7 @@ def get_line2D(value, idx, markers, colors, is_method=True, compare="APP_UPTAKE"
             "unmitigated": "Unmitigated",
             "oracle": "Oracle",
         },
+        'REC_LEVEL_THRESHOLDS': lambda x: f"{''.join(x)} Thresholds"
     }
 
     if is_method:

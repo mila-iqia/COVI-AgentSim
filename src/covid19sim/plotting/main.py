@@ -148,7 +148,7 @@ def map_conf_to_models(all_paths, plot_conf):
     for mk, mv in all_paths.items():
         for rk, rv in mv.items():
             sim_conf = rv["conf"]
-            compare_value = sim_conf[key]
+            compare_value = str(sim_conf[key])
             model = get_model(sim_conf, plot_conf["model_mapping"])
             new_data[model][compare_value][rk] = rv
     return dict(new_data)
