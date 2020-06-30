@@ -20,7 +20,7 @@ class RandomSearchError(Exception):
 
 def check_conf(conf):
     tracing_methods = []
-    hydra_configs = Path(__file__).parent / "configs"
+    hydra_configs = Path(__file__).resolve().parent.parent / "configs"
     exp_file = conf.get("exp_file", "experiment")
     use_tmpdir = conf.get("use_tmpdir")
     infra = conf.get("infra")
@@ -74,9 +74,7 @@ def check_conf(conf):
                 weights = Path(weights)
 
             if not weights.exists():
-                raise RandomSearchError(
-                    "Cannot find weights {}".format(str(weights))
-                )
+                raise RandomSearchError("Cannot find weights {}".format(str(weights)))
             else:
                 transformer_best = weights / "Weights" / "best.ckpt"
                 transformer_config = weights / "Configurations" / "train_config.yml"
@@ -293,20 +291,15 @@ def load_template(infra):
     Returns:
         str: template string full of "{variable_name}"
     """
+    base = Path(__file__).resolve().parent
     if infra == "mila":
-        with (Path(__file__).parent / "job_scripts" / "mila_sbatch_template.sh").open(
-            "r"
-        ) as f:
+        with (base / "mila_sbatch_template.sh").open("r") as f:
             return f.read()
     if infra == "intel":
-        with (Path(__file__).parent / "job_scripts" / "intel_template.sh").open(
-            "r"
-        ) as f:
+        with (base / "intel_template.sh").open("r") as f:
             return f.read()
     if infra == "beluga":
-        with (Path(__file__).parent / "job_scripts" / "beluga_sbatch_template.sh").open(
-            "r"
-        ) as f:
+        with (base / "beluga_sbatch_template.sh").open("r") as f:
             return f.read()
     raise ValueError("Unknown infrastructure " + str(infra))
 
@@ -596,7 +589,7 @@ def main(conf: DictConfig) -> None:
     # override with exp_file=<X>
     # where <X> is in configs/search and is ".yaml"
     conf = load_search_conf(
-        Path()
+        Path(__file__).resolve().parent.parent
         / "configs"
         / "search"
         / (overrides.get("exp_file", "experiment") + ".yaml")
