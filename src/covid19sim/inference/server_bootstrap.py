@@ -22,7 +22,6 @@ import covid19sim.inference.server_utils
 default_workers = 6
 # TWILIGHT-RAIN-696
 default_model_exp_path = "https://drive.google.com/file/d/1kXA-0juviQOL0R08YlQpaS5gKumQ8zrT"
-default_data_buffer_size = ((10 * 1024) * 1024)  # 1MB
 
 
 def parse_args(args=None):
@@ -58,6 +57,7 @@ def parse_args(args=None):
     datacollect_argparser = subparsers.add_parser("datacollect", help="Create a data collection server")
     data_output_path_doc = "Path to the HDF5 file that will contain all collected data samples."
     datacollect_argparser.add_argument("-o", "--out-path", type=str, help=data_output_path_doc)
+    default_data_buffer_size = covid19sim.inference.server_utils.default_data_buffer_size
     data_buffer_size_doc = "Size of the data buffer used to queue collected samples for writing " \
                            f"(in bytes). Will use {default_data_buffer_size // (1024 * 1024)}MB " \
                            "by default."
@@ -82,7 +82,7 @@ def parse_args(args=None):
 def interrupt_handler(signal, frame, broker):
     """Signal callback used to gently stop workers (releasing sockets) & exit."""
     print("Received SIGINT; shutting down inference worker(s) gracefully...", flush=True)
-    broker.stop()
+    broker.stop_gracefully()
     print("All done.", flush=True)
     sys.exit(0)
 

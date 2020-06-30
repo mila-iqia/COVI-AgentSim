@@ -9,7 +9,7 @@ import time
 from pathlib import Path
 
 import hydra
-import h5py
+import multiprocessing
 import numpy as np
 from omegaconf import DictConfig
 
@@ -18,6 +18,7 @@ from covid19sim.utils.env import Env
 from covid19sim.utils.constants import SECONDS_PER_DAY, SECONDS_PER_HOUR
 from covid19sim.log.monitors import EventMonitor, SEIRMonitor, TimeMonitor
 from covid19sim.human import Human
+from covid19sim.inference.server_utils import DataCollectionBroker
 from covid19sim.utils.utils import (dump_conf, dump_tracker_data,
                                     extract_tracker_data, parse_configuration,
                                     zip_outdir)
@@ -63,12 +64,20 @@ def main(conf: DictConfig):
 
     os.makedirs(conf["outdir"])
 
-    if not conf["tune"]:
-        outfile = os.path.join(conf["outdir"], "data")
-        with h5py.File(os.path.join(conf["outdir"], "train.hdf5"), 'w') as f:
-            dt = h5py.special_dtype(vlen=np.uint8)
-            f.create_dataset("dataset", shape=(4 * conf['n_people'] * conf['simulation_days'],), dtype=dt, compression="gzip")
-            f['dataset'].attrs["idx"] = 0
+    collection_server = None
+    outfile = os.path.join(conf["outdir"], "data")
+    if conf['COLLECT_TRAINING_DATA']:
+        class DataCollectionServer(DataCollectionBroker, multiprocessing.Process):
+            def __init__(self, **kwargs):
+                multiprocessing.Process.__init__(self)
+                DataCollectionBroker.__init__(self, **kwargs)
+
+        collection_server = DataCollectionServer(
+            data_output_path=os.path.join(conf["outdir"], "train.hdf5"),
+            config_backup=conf,
+        )
+        collection_server.start()
+
     # ---------------------------------
     # -----  Filter-Out Warnings  -----
     # ---------------------------------
@@ -119,6 +128,12 @@ def main(conf: DictConfig):
 
     dump_conf(city.conf, "{}/full_configuration.yaml".format(city.conf["outdir"]))
 
+    if conf['COLLECT_TRAINING_DATA']:
+        train_priors = os.path.join(f"{conf['outdir']}/train_priors.pkl")
+        tracker.write_for_training(city.humans, train_priors, conf)
+        collection_server.stop_gracefully()
+        collection_server.join()
+
     if not conf["tune"]:
         # ----------------------------------------------
         # -----  Not Tune: Write Logs And Metrics  -----
@@ -129,19 +144,14 @@ def main(conf: DictConfig):
         logfile = os.path.join(f"{conf['outdir']}/logs.txt")
         tracker.write_metrics(logfile)
 
-        # write values to train with
-        if conf['COLLECT_TRAINING_DATA']:
-            train_priors = os.path.join(f"{conf['outdir']}/train_priors.pkl")
-            tracker.write_for_training(city.humans, train_priors, conf)
-
         if conf["zip_outdir"]:
             zip_outdir(conf["outdir"])
             if conf["delete_outdir"]:
                 shutil.rmtree(conf["outdir"])
     else:
-        # ------------------------------------------------------
-        # -----  Tune: Create Plots And Write Tacker Data  -----
-        # ------------------------------------------------------
+        # -------------------------------------------------------
+        # -----  Tune: Create Plots And Write Tracker Data  -----
+        # -------------------------------------------------------
         from covid19sim.plotting.plot_rt import PlotRt
 
         cases_per_day = tracker.cases_per_day

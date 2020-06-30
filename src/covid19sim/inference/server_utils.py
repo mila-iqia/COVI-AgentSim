@@ -4,6 +4,7 @@ Contains utility classes for remote inference inside the simulation.
 
 import datetime
 import h5py
+import json
 import multiprocessing
 import multiprocessing.managers
 import numpy as np
@@ -15,7 +16,6 @@ import sys
 import time
 import typing
 import zmq
-import h5py
 from pathlib import Path
 from ctt.inference.infer import InferenceEngine
 
@@ -26,13 +26,14 @@ import covid19sim.utils.utils
 
 
 expected_raw_packet_param_names = [
-    "start", "current_day", "human", "log_path", "time_slot", "conf"
+    "start", "current_day", "human", "time_slot", "conf"
 ]
 expected_processed_packet_param_names = [
     "current_day", "observed", "unobserved"
 ]
 
 default_poll_delay_ms = 500
+default_data_buffer_size = ((10 * 1024) * 1024)  # 10MB
 
 # if on slurm
 if os.path.isdir("/Tmp"):
@@ -107,7 +108,7 @@ class BaseWorker(multiprocessing.Process):
         tot_process_time, tot_time = self.get_total_delay(), self.get_uptime()
         return tot_process_time / tot_time
 
-    def stop(self):
+    def stop_gracefully(self):
         """Stops the infinite data reception loop, allowing a clean shutdown."""
         self.stop_flag.set()
 
@@ -148,7 +149,7 @@ class BaseBroker:
         """
         raise NotImplementedError
 
-    def stop(self):
+    def stop_gracefully(self):
         """
         Stops the infinite data reception loop, allowing a clean shutdown.
         """
@@ -349,7 +350,7 @@ class InferenceBroker(BaseBroker):
                     sys.stdout.flush()
                     last_update_timestamp = time.time()
             for w in worker_map.values():
-                w.stop()
+                w.stop_gracefully()
                 w.join()
 
 
@@ -421,10 +422,11 @@ class DataCollectionWorker(BaseWorker):
             self,
             data_output_path: typing.AnyStr,
             backend_address: typing.AnyStr,
-            dataset_init_size: int = 1024,
+            dataset_init_size: int = 4096,
             dataset_max_size: typing.Optional[int] = None,
             compression: typing.Optional[typing.AnyStr] = "lzf",
             compression_opts: typing.Optional[typing.Any] = None,
+            config_backup: typing.Optional[typing.Dict] = None,
     ):
         """
         Initializes the data collection worker's attributes (counters, condvars, ...).
@@ -439,6 +441,7 @@ class DataCollectionWorker(BaseWorker):
         self.dataset_max_size = dataset_max_size
         self.compression = compression
         self.compression_opts = compression_opts
+        self.config_backup = config_backup
 
     def run(self):
         """Main loop of the data collection worker process.
@@ -447,14 +450,14 @@ class DataCollectionWorker(BaseWorker):
         with the result through the broker.
         """
         context = zmq.Context()
-        socket = context.socket(zmq.REQ)
+        socket = context.socket(zmq.REP)
+        socket.setsockopt(zmq.RCVTIMEO, default_poll_delay_ms)
         socket.connect(self.backend_address)
-        poller = zmq.Poller()
-        poller.register(socket, zmq.POLLIN)
         self.time_init.value = time.time()
         self.time_counter.value = 0.0
         self.packet_counter.value = 0
         self.running_flag.value = 1
+        print(f"creating hdf5 collection file at: {self.data_output_path}", flush=True)
         with h5py.File(self.data_output_path, "w") as fd:
             try:
                 fd.attrs["git_hash"] = covid19sim.utils.utils.get_git_revision_hash()
@@ -462,8 +465,11 @@ class DataCollectionWorker(BaseWorker):
                 fd.attrs["git_hash"] = "NO_GIT"
             fd.attrs["creation_date"] = datetime.datetime.now().isoformat()
             fd.attrs["creator"] = str(platform.node())
+            config_backup = json.dumps(covid19sim.utils.utils.dumps_conf(self.config_backup)) \
+                if self.config_backup else None
+            fd.attrs["config"] = config_backup
             dataset = fd.create_dataset(
-                "samples",
+                "dataset",
                 shape=(self.dataset_init_size, ),
                 maxshape=(self.dataset_max_size, ),
                 dtype=h5py.special_dtype(vlen=np.uint8),
@@ -478,19 +484,21 @@ class DataCollectionWorker(BaseWorker):
                     self.packet_counter.value = 0
                     self.time_init.value = 0.0
                     self.reset_flag.clear()
-                evts = dict(poller.poll(default_poll_delay_ms))
-                if socket in evts and evts[socket] == zmq.POLLIN:
-                    proc_start_time = time.time()
+                try:
                     buffer = socket.recv()
-                    if sample_idx >= len(dataset):
-                        dataset.resize(len(dataset) * 2, axis=0)
-                    dataset[sample_idx] = np.frombuffer(buffer, dtype=np.uint8)
-                    total_dataset_bytes += len(buffer)
-                    sample_idx += 1
-                    with self.time_counter.get_lock():
-                        self.time_counter.value += time.time() - proc_start_time
-                    with self.packet_counter.get_lock():
-                        self.packet_counter.value += 1
+                except zmq.error.Again:
+                    continue
+                proc_start_time = time.time()
+                if sample_idx >= len(dataset):
+                    dataset.resize(len(dataset) * 4, axis=0)
+                dataset[sample_idx] = np.frombuffer(buffer, dtype=np.uint8)
+                total_dataset_bytes += len(buffer)
+                socket.send(str(sample_idx).encode())
+                sample_idx += 1
+                with self.time_counter.get_lock():
+                    self.time_counter.value += time.time() - proc_start_time
+                with self.packet_counter.get_lock():
+                    self.packet_counter.value += 1
             self.running_flag.value = 0
             socket.close()
             dataset.attrs["total_bytes"] = total_dataset_bytes
@@ -502,11 +510,12 @@ class DataCollectionBroker(BaseBroker):
     def __init__(
             self,
             data_output_path: typing.AnyStr,
-            data_buffer_size: int,  # NOTE: in bytes!
+            data_buffer_size: int = default_data_buffer_size,  # NOTE: in bytes!
             frontend_address: typing.AnyStr = default_datacollect_frontend_address,
             backend_address: typing.AnyStr = default_datacollect_backend_address,
             verbose: bool = False,
             verbose_print_delay: float = 5.,
+            config_backup: typing.Optional[typing.Dict] = None,
     ):
         """
         Initializes the data collection broker's attributes (counters, condvars, ...).
@@ -528,6 +537,7 @@ class DataCollectionBroker(BaseBroker):
         )
         self.data_output_path = data_output_path
         self.data_buffer_size = data_buffer_size
+        self.config_backup = config_backup
 
     def run(self):
         """Main loop of the data collection broker process.
@@ -538,7 +548,7 @@ class DataCollectionBroker(BaseBroker):
         frontend = context.socket(zmq.ROUTER)
         print(f"Will listen for data collection requests at: {self.frontend_address}", flush=True)
         frontend.bind(self.frontend_address)
-        backend = context.socket(zmq.ROUTER)
+        backend = context.socket(zmq.REQ)
         print(f"Will dispatch data collection work at: {self.backend_address}", flush=True)
         backend.bind(self.backend_address)
         worker_backend_address = self.backend_address.replace("*", "localhost")
@@ -548,11 +558,13 @@ class DataCollectionBroker(BaseBroker):
         worker = DataCollectionWorker(
             data_output_path=self.data_output_path,
             backend_address=worker_backend_address,
+            config_backup=self.config_backup,
         )
         worker.start()
         backend.setsockopt(zmq.SNDTIMEO, 5)
         last_update_timestamp = time.time()
         curr_queue_size = 0
+        expected_sample_idx = 0
         request_queue = []
         print("Entering dispatch loop...", flush=True)
         while not self.stop_flag.is_set():
@@ -571,6 +583,9 @@ class DataCollectionBroker(BaseBroker):
                 assert curr_queue_size >= len(next_packet)
                 try:
                     backend.send(next_packet)
+                    written_sample_idx_str = backend.recv()
+                    assert expected_sample_idx == int(written_sample_idx_str.decode())
+                    expected_sample_idx = expected_sample_idx + 1
                     curr_queue_size -= len(next_packet)
                     request_queue.pop(0)
                 except zmq.error.Again:
@@ -591,14 +606,8 @@ class DataCollectionBroker(BaseBroker):
             next_packet = request_queue.pop(0)
             backend.send_multipart(next_packet)
             curr_queue_size -= len(next_packet[-1])
-        worker.stop()
+        worker.stop_gracefully()
         worker.join()
-
-    def stop(self):
-        """
-        Stops the infinite data reception loop, allowing a clean shutdown.
-        """
-        self.stop_flag.set()
 
 
 class DataCollectionClient:
@@ -768,11 +777,10 @@ def _proc_human(params, inference_engine):
     }
 
     if conf.get("COLLECT_TRAINING_DATA"):
-        with h5py.File(params["log_path"] + "train.hdf5", "a") as f:
-            s = pickle.dumps(daily_output)
-            f["dataset"].attrs["idx"] = f["dataset"].attrs["idx"] + 1
-            f["dataset"][f['dataset'].attrs["idx"]] = np.fromstring(s, dtype="uint8")
-
+        data_collect_client = DataCollectionClient(
+            server_address=conf.get("data_collection_server_address", default_datacollect_frontend_address),
+        )
+        data_collect_client.write(daily_output)
     inference_result, risk_history = None, None
     if conf.get("USE_ORACLE"):
         # return ground truth infectiousnesses
