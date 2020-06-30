@@ -1,5 +1,6 @@
 print("Loading imports...", end="", flush=True)
 import hydra
+import traceback
 from omegaconf import OmegaConf
 from pathlib import Path
 import math
@@ -200,7 +201,7 @@ def main(conf):
                 break
             else:
                 print("** ERROR **")
-                print(str(e))
+                print(traceback.format_exc())
                 print("*" * len(str(e)))
                 print("Ignoring " + plot)
         print_footer()

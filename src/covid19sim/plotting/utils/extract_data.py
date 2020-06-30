@@ -238,9 +238,10 @@ def get_all_data(base_path, keep_pkl_keys, multi_thread=False):
             and len(list(r.glob("tracker*.pkl"))) == 1
         ]
         print(" " * 100, end="\r")
-        print("Loading runs in", m.name, "...", end="\r")
+
         try:
             if multi_thread:
+                print("Loading runs in", m.name, "...", end="\r")
                 with concurrent.futures.ThreadPoolExecutor() as executor:
                     futures = [
                         executor.submit(thread_read_run, (r, keep_pkl_keys))
@@ -254,7 +255,14 @@ def get_all_data(base_path, keep_pkl_keys, multi_thread=False):
                     all_data[sm][sr]["pkl"] = pkl
 
             else:
-                for r in runs:
+                for i, r in enumerate(runs):
+                    print(" " * 120, end="\r")
+                    print(
+                        "Loading runs in",
+                        m.name,
+                        "... ({}/{})".format(i + 1, len(runs)),
+                        end="\r",
+                    )
                     r, conf, pkl = thread_read_run((r, keep_pkl_keys))
                     sr = str(r)
                     all_data[sm][sr] = {}

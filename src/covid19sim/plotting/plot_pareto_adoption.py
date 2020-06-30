@@ -287,7 +287,14 @@ def run(data, path, comparison_key):
 
     rows = rows + rows_norm
 
-    n_seeds = len(list(data.values())[0])
+    n_seeds = None
+    for mv in data.values():
+        for cv in mv.values():
+            n_seeds = len(cv)
+            break
+        break
+    assert n_seeds is not None, "Could not find the number of seeds"
+
     df = pd.DataFrame(rows, columns=["type", "metric"] + list(np.arange(n_seeds) + 1))
     df["mean"] = df[list(np.arange(n_seeds) + 1)].mean(axis=1)
     df["stderr"] = df[list(np.arange(n_seeds) + 1)].sem(axis=1)

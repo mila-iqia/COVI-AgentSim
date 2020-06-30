@@ -92,7 +92,7 @@ def run(data, path, comparison_key):
             if method_name in {"transformer", "linreg", "mlp"}:
                 transformer_name = get_transformer_name(data[method_name])
             if transformer_name is not None:
-                title += " ({})".format(get_transformer_name())
+                title += " ({})".format(get_transformer_name(data[method_name]))
 
             ax = fig.add_subplot(gridspec[row, col])
             ax.stackplot(
