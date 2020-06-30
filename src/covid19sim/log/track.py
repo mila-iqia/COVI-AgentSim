@@ -1317,7 +1317,8 @@ class Tracker(object):
     ):
         data = self._get_metrics_data()
         data["human_backups"] = human_backups
-        data["location_backups"] = location_backups
+        # Location based plots are not yet implemented
+        # data["location_backups"] = location_backups
         dump_folder = os.path.join("debug", self.filename.split(".pkl")[0])
         os.makedirs(dump_folder, exist_ok=True)
         with open(os.path.join(dump_folder, current_timestamp.isoformat()), "wb") as f:
