@@ -384,6 +384,7 @@ class City:
                     workplace = self.rng.choice(type_of_workplace)
                 else:
                     workplace = res
+
                 self.humans.append(human_type(
                         env=self.env,
                         city=self,
@@ -400,7 +401,6 @@ class City:
                         conf=self.conf
                         )
                     )
-
 
         # assign houses; above only assigns senior residence
         # stores tuples - (location, current number of residents, maximum number of residents allowed)
