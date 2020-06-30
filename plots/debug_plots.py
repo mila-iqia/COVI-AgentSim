@@ -42,6 +42,86 @@ STATE_TO_COLOR = {"has_flu": "tab:red",
                   "is_infected": "tab:purple"}
 
 
+class DebugDataLoader():
+
+    def __init__(self, debug_data_path: str):
+        self.path = debug_data_path
+
+        with zipfile.ZipFile(self.path) as zf:
+            zip_files = [f for f in zf.infolist() if not f.is_dir()]
+
+            # Nb of timestamps = nb of files (1 file per timestamp)
+            self.nb_timestamps = len(zip_files)
+
+            # Read any file to get humans names
+            day_debug_data = pickle.loads(zf.read(zip_files[0]))
+            human_names = list(day_debug_data["human_backups"].keys())
+            self.human_names = sorted(human_names, key=lambda x: int(x.split(":")[1]))
+
+    def get_nb_humans(self):
+        return len(self.human_names)
+
+    def get_humans_names(self):
+        return self.human_names
+
+    def get_nb_timestamps(self):
+        return self.nb_timestamps
+
+    def load_human_data(self, start_idx=None, end_idx=None):
+        """
+        Load human backups and event data for the specified humans.
+
+        Ex : Calling with start_idx=1 and end_idx=4 will load data for
+        the second, third and fourth humans.
+
+        Args:
+            start_idx (int, optional): Index (starting at 0) of the first human to load.
+                If unspecified, loading will start at first human.
+            end_idx (int, optional): Index (starting at 0) of the last human to load plus one.
+                If unspecified, humans up until the last one will be loaded.
+
+        Returns:
+            [type]: [description]
+        """
+
+        if start_idx is not None and end_idx is not None:
+            assert start_idx < end_idx
+
+        # Load the human data
+        human_backups = {}
+        humans_events = {}
+        with zipfile.ZipFile(self.path) as zf:
+            fileinfos = zf.infolist()
+            fileinfos.sort(key=lambda fi: fi.filename)
+            for fileinfo in fileinfos:
+                if fileinfo.is_dir():
+                    continue
+
+                # Read file
+                day_debug_data = pickle.loads(zf.read(fileinfo))
+                timestamp = day_debug_data["human_backups"]["human:1"].env.timestamp
+                human_backups[timestamp] = {}
+
+                # Extract backups for specified humans
+                for human_name in self.get_humans_names()[start_idx:end_idx]:
+                    human_backups[timestamp][human_name] = day_debug_data["human_backups"][human_name]
+
+                # Extract human event data
+                for human in human_backups[timestamp].values():
+                    humans_events.setdefault(human.name, dict())
+                    for event in human._events:
+                        humans_events[human.name][(event["time"], event["event_type"])] = event
+                    human._events = []
+
+        # Ensure events are sorted by timestamp for each human
+        for human_id, human_events in humans_events.items():
+            events = list(human_events.values())
+            events.sort(key=lambda e: e["time"])
+            humans_events[human_id] = events
+
+        return human_backups, humans_events
+
+
 def set_pad_for_table(table, pad=0.1):
     for cell in table._cells.values():
         cell.PAD = pad
@@ -413,10 +493,9 @@ def get_infection_history(humans_events: Dict[str, List], human_key: str):
     return infectee_events, infector_events
 
 
-def generate_human_centric_plots(debug_data, humans_events, output_folder):
-    human_backups = debug_data['human_backups']
+def generate_human_centric_plots(human_backups, humans_events, nb_humans_in_sim, output_folder):
     timestamps = sorted(list(human_backups.keys()))
-    nb_humans = len(human_backups[timestamps[0]].keys())
+    human_names = list(human_backups[timestamps[0]].keys())
     begin = timestamps[0]
     end = timestamps[-1]
 
@@ -432,12 +511,12 @@ def generate_human_centric_plots(debug_data, humans_events, output_folder):
     sorted_all_locations = ["%s:%i" % (l[0], l[1]) for l in sorted_locations_indices]
 
     # Treat each human individually
-    for idx_human in range(1, nb_humans + 1):
+    for h_key in human_names:
 
         # Get all the backups of this human for all the timestamps
-        h_key = "human:%i" % idx_human
         h_backup = [human_backups[t][h_key] for t in timestamps]
 
+        # Extract data for each plot
         risks, r_timestamps = get_risk_history(h_backup, timestamps, begin, end)
         viral_loads, vl_timestamps = get_viral_load_history(h_backup, timestamps, begin, end)
         true_symptoms, obs_symptoms, s_timestamps = get_symptom_history(h_backup, timestamps, begin, end)
@@ -447,7 +526,7 @@ def generate_human_centric_plots(debug_data, humans_events, output_folder):
             encounters, \
             risky_encounters, \
             contamination_encounters, \
-            e_timestamps = get_events_history(humans_events[h_key], nb_humans, timestamps, begin, end)
+            e_timestamps = get_events_history(humans_events[h_key], nb_humans_in_sim, timestamps, begin, end)
         states, s_timestamps = get_states_history(h_backup, timestamps, begin, end)
         infectee_events, infector_events = get_infection_history(humans_events, h_key)
 
@@ -543,9 +622,16 @@ def generate_location_centric_plots(debug_data, output_folder):
     pass
 
 
-def generate_debug_plots(debug_data, humans_events, output_folder):
-    generate_human_centric_plots(debug_data, humans_events, output_folder)
-    generate_location_centric_plots(debug_data, output_folder)
+def generate_debug_plots(data_loader, output_folder, batch_size=10):
+
+    # Generate human-centric plots (break it down in batches to reduce mem usage)
+    nb_humans_in_sim = data_loader.get_nb_humans()
+    for i in range(0, nb_humans_in_sim, batch_size):
+        human_backups, human_events = data_loader.load_human_data(start_idx=i, end_idx=i+batch_size)
+        generate_human_centric_plots(human_backups, human_events, nb_humans_in_sim, output_folder)
+
+    # Generate location-centric plots
+    generate_location_centric_plots(data_loader, output_folder)
 
 
 if __name__ == '__main__':
@@ -555,36 +641,10 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # Load the debug data
-    debug_data = None
-    humans_events = {}
-    with zipfile.ZipFile(args.debug_data) as zf:
-        fileinfos = zf.infolist()
-        fileinfos.sort(key=lambda fi: fi.filename)
-        for fileinfo in fileinfos:
-            if fileinfo.is_dir():
-                continue
-
-            day_debug_data = pickle.loads(zf.read(fileinfo))
-            timestamp = day_debug_data["human_backups"]["human:1"].env.timestamp
-            human_backups = day_debug_data["human_backups"]
-            if debug_data is None:
-                debug_data = day_debug_data
-                debug_data["human_backups"] = {}
-            debug_data["human_backups"][timestamp] = human_backups
-
-            for human in debug_data["human_backups"][timestamp].values():
-                humans_events.setdefault(human.name, dict())
-                for event in human._events:
-                    humans_events[human.name][(event["time"], event["event_type"])] = event
-                human._events = []
-
-    for human_id, human_events in humans_events.items():
-        events = list(human_events.values())
-        events.sort(key=lambda e: e["time"])
-        humans_events[human_id] = events
+    data_loader = DebugDataLoader(args.debug_data)
 
     # Ensure that the output folder does exist
     if not os.path.exists(args.output_folder):
         os.makedirs(args.output_folder)
 
-    generate_debug_plots(debug_data, humans_events, args.output_folder)
+    generate_debug_plots(data_loader, args.output_folder)
