@@ -3,11 +3,14 @@ Contains utility classes for remote inference inside the simulation.
 """
 
 import datetime
+import h5py
 import multiprocessing
 import multiprocessing.managers
 import numpy as np
 import os
 import pickle
+import platform
+import subprocess
 import sys
 import time
 import typing
@@ -38,11 +41,120 @@ else:
     frontend_path = "/tmp"
     backend_path = "/tmp"
 
-default_frontend_ipc_address = "ipc://" + os.path.join(frontend_path, "covid19sim-inference-frontend.ipc")
-default_backend_ipc_address = "ipc://" + os.path.join(backend_path, "covid19sim-inference-backend.ipc")
+default_inference_frontend_address = "ipc://" + os.path.join(frontend_path, "covid19sim-inference-frontend.ipc")
+default_inference_backend_address = "ipc://" + os.path.join(backend_path, "covid19sim-inference-backend.ipc")
+
+default_datacollect_frontend_address = "ipc://" + os.path.join(frontend_path, "covid19sim-datacollect-frontend.ipc")
+default_datacollect_backend_address = "ipc://" + os.path.join(backend_path, "covid19sim-datacollect-backend.ipc")
 
 
-class InferenceWorker(multiprocessing.Process):
+class BaseWorker(multiprocessing.Process):
+    """Spawns a single worker instance.
+
+    These workers are managed by a broker class. They communicate with the broker using a
+    backend connection.
+    """
+
+    def __init__(
+            self,
+            backend_address: typing.AnyStr,
+            identifier: typing.Any = "worker",
+    ):
+        super().__init__()
+        self.backend_address = backend_address
+        self.identifier = identifier
+        self.stop_flag = multiprocessing.Event()
+        self.reset_flag = multiprocessing.Event()
+        self.running_flag = multiprocessing.Value("i", 0)
+        self.packet_counter = multiprocessing.Value("i", 0)
+        self.time_counter = multiprocessing.Value("f", 0.0)
+        self.time_init = multiprocessing.Value("f", 0.0)
+
+    def run(self):
+        """Main loop of the worker process.
+
+        Will receive brokered requests from the frontend, process them, and respond
+        with the result through the broker.
+        """
+        raise NotImplementedError
+
+    def get_processed_count(self):
+        """Returns the total number of processed requests by this worker."""
+        return int(self.packet_counter.value)
+
+    def get_total_delay(self):
+        """Returns the total time spent processing requests by this worker."""
+        return float(self.time_counter.value)
+
+    def get_uptime(self):
+        """Returns the total uptime of this worker."""
+        return time.time() - float(self.time_init.value)
+
+    def is_running(self):
+        """Returns whether this worker is running or not."""
+        return bool(self.running_flag.value)
+
+    def get_averge_processing_delay(self):
+        """Returns the average sample processing time between reception & response (in seconds)."""
+        tot_delay, tot_packet_count = self.get_total_delay(), self.get_processed_count()
+        if not tot_packet_count:
+            return float("nan")
+        return tot_delay / tot_packet_count
+
+    def get_processing_uptime(self):
+        """Returns the fraction of total uptime that the server spends processing requests."""
+        tot_process_time, tot_time = self.get_total_delay(), self.get_uptime()
+        return tot_process_time / tot_time
+
+    def stop(self):
+        """Stops the infinite data reception loop, allowing a clean shutdown."""
+        self.stop_flag.set()
+
+
+class BaseBroker:
+    """Manages workers through a backend connection for load balancing."""
+
+    def __init__(
+            self,
+            workers: int,
+            frontend_address: typing.AnyStr,
+            backend_address: typing.AnyStr,
+            verbose: bool = False,
+            verbose_print_delay: float = 5.,
+    ):
+        """
+        Initializes the broker's attributes (counters, condvars, ...).
+
+        Args:
+            workers: the number of independent workers to spawn to process requests.
+            frontend_address: address through which to exchange requests with clients.
+            backend_address: address through which to exchange requests with workers.
+            verbose: toggles whether to print extra debug information while running.
+            verbose_print_delay: specifies how often the extra debug info should be printed.
+        """
+        self.workers = workers
+        self.frontend_address = frontend_address
+        self.backend_address = backend_address
+        assert frontend_address != backend_address
+        self.stop_flag = multiprocessing.Event()
+        self.verbose = verbose
+        self.verbose_print_delay = verbose_print_delay
+
+    def run(self):
+        """Main loop of the broker process.
+
+        Will received requests from clients and dispatch them to available workers.
+        """
+        raise NotImplementedError
+
+    def stop(self):
+        """
+        Stops the infinite data reception loop, allowing a clean shutdown.
+        """
+        self.stop_flag.set()
+
+
+class InferenceWorker(BaseWorker):
     """
     Spawns a single inference worker instance.
 
@@ -63,23 +175,15 @@ class InferenceWorker(multiprocessing.Process):
 
         Args:
             experiment_directory: the path to the experiment directory to pass to the inference engine.
+            backend_address: address through which to exchange inference requests with the broker.
             identifier: identifier for this worker (name, used for debug purposes only).
-            n_parallel_procs: joblib parallel process count to use for clustering+inference.
             cluster_mgr_map: map of human-to-cluster-managers to use for clustering.
             weights_path: the path to the specific weight file to use. If not, will use the 'best
                 checkpoint weights' inside the experiment directory.
         """
-        super().__init__()
+        super().__init__(backend_address=backend_address, identifier=identifier)
         self.experiment_directory = experiment_directory
-        self.backend_address = backend_address
         self.weights_path = weights_path
-        self.identifier = identifier
-        self.stop_flag = multiprocessing.Event()
-        self.reset_flag = multiprocessing.Event()
-        self.running_flag = multiprocessing.Value("i", 0)
-        self.packet_counter = multiprocessing.Value("i", 0)
-        self.time_counter = multiprocessing.Value("f", 0.0)
-        self.time_init = multiprocessing.Value("f", 0.0)
         self.cluster_mgr_map = cluster_mgr_map
 
     def run(self):
@@ -126,48 +230,16 @@ class InferenceWorker(multiprocessing.Process):
         self.running_flag.value = 0
         socket.close()
 
-    def get_processed_count(self):
-        """Returns the total number of processed requests by this inference worker."""
-        return int(self.packet_counter.value)
 
-    def get_total_delay(self):
-        """Returns the total time spent processing requests by this inference worker."""
-        return float(self.time_counter.value)
-
-    def get_uptime(self):
-        """Returns the total uptime of this inference worker."""
-        return time.time() - float(self.time_init.value)
-
-    def is_running(self):
-        """Returns whether this inference worker is running or not."""
-        return bool(self.running_flag.value)
-
-    def get_averge_processing_delay(self):
-        """Returns the average sample processing time between reception & response (in seconds)."""
-        tot_delay, tot_packet_count = self.get_total_delay(), self.get_processed_count()
-        if not tot_packet_count:
-            return float("nan")
-        return tot_delay / tot_packet_count
-
-    def get_processing_uptime(self):
-        """Returns the fraction of total uptime that the server spends processing requests."""
-        tot_process_time, tot_time = self.get_total_delay(), self.get_uptime()
-        return tot_process_time / tot_time
-
-    def stop(self):
-        """Stops the infinite data reception loop, allowing a clean shutdown."""
-        self.stop_flag.set()
-
-
-class InferenceBroker:
+class InferenceBroker(BaseBroker):
     """Manages inference workers through a backend connection for load balancing."""
 
     def __init__(
             self,
             model_exp_path: typing.AnyStr,
             workers: int,
-            frontend_address: typing.AnyStr = default_frontend_ipc_address,
-            backend_address: typing.AnyStr = default_backend_ipc_address,
+            frontend_address: typing.AnyStr = default_inference_frontend_address,
+            backend_address: typing.AnyStr = default_inference_backend_address,
             verbose: bool = False,
             verbose_print_delay: float = 5.,
             weights_path: typing.Optional[typing.AnyStr] = None,
@@ -178,20 +250,22 @@ class InferenceBroker:
         Args:
             model_exp_path: the path to the experiment directory to pass to the inference engine.
             workers: the number of independent inference workers to spawn to process requests.
-            n_parallel_procs: joblib parallel process count to use for clustering+inference.
-            port: the port number to accept TCP requests on. If None, will accept IPC requests instead.
+            frontend_address: address through which to exchange inference requests with clients.
+            backend_address: address through which to exchange inference requests with workers.
             verbose: toggles whether to print extra debug information while running.
             verbose_print_delay: specifies how often the extra debug info should be printed.
+            weights_path: the path to the specific weight file to use. If not, will use the 'best
+                checkpoint weights' inside the experiment directory.
         """
-        self.workers = workers
-        self.frontend_address = frontend_address
-        self.backend_address = backend_address
-        assert frontend_address != backend_address
+        super().__init__(
+            workers=workers,
+            frontend_address=frontend_address,
+            backend_address=backend_address,
+            verbose=verbose,
+            verbose_print_delay=verbose_print_delay,
+        )
         self.model_exp_path = model_exp_path
         self.weights_path = weights_path
-        self.stop_flag = multiprocessing.Event()
-        self.verbose = verbose
-        self.verbose_print_delay = verbose_print_delay
 
     def run(self):
         """Main loop of the inference broker process.
@@ -277,12 +351,6 @@ class InferenceBroker:
                 w.stop()
                 w.join()
 
-    def stop(self):
-        """
-        Stops the infinite data reception loop, allowing a clean shutdown.
-        """
-        self.stop_flag.set()
-
 
 class InferenceClient:
     """
@@ -295,7 +363,7 @@ class InferenceClient:
 
     def __init__(
             self,
-            server_address: typing.Optional[typing.AnyStr] = default_frontend_ipc_address,
+            server_address: typing.Optional[typing.AnyStr] = default_inference_frontend_address,
             context: typing.Optional[zmq.Context] = None,
     ):
         """
@@ -310,7 +378,7 @@ class InferenceClient:
         self.context = context
         self.socket = self.context.socket(zmq.REQ)
         if server_address is None:
-            server_address = default_frontend_ipc_address
+            server_address = default_inference_frontend_address
         self.socket.connect(server_address)
 
     def infer(self, sample):
@@ -338,6 +406,236 @@ class InferenceEngineWrapper(InferenceEngine):
             assert len(experiment_subdirectories) == 1, "should only have one dir per experiment zip"
             experiment_directory = experiment_subdirectories[0]
         super().__init__(experiment_directory, *args, **kwargs)
+
+
+class DataCollectionWorker(BaseWorker):
+    """
+    Spawns a data collection worker instance.
+
+    This workers is managed by the DataCollectionBroker class. It communicates with
+    the broker using a backend connection.
+    """
+
+    def __init__(
+            self,
+            data_output_path: typing.AnyStr,
+            backend_address: typing.AnyStr,
+            dataset_init_size: int = 1024,
+            dataset_max_size: typing.Optional[int] = None,
+            compression: typing.Optional[typing.AnyStr] = "lzf",
+            compression_opts: typing.Optional[typing.Any] = None,
+    ):
+        """
+        Initializes the data collection worker's attributes (counters, condvars, ...).
+
+        Args:
+            data_output_path: the path where the collected data should be saved.
+            backend_address: address through which to exchange data collection requests with the broker.
+        """
+        super().__init__(backend_address=backend_address, identifier="data-collector")
+        self.data_output_path = data_output_path
+        self.dataset_init_size = dataset_init_size
+        self.dataset_max_size = dataset_max_size
+        self.compression = compression
+        self.compression_opts = compression_opts
+
+    def run(self):
+        """Main loop of the data collection worker process.
+
+        Will receive brokered requests from the frontend, process them, and respond
+        with the result through the broker.
+        """
+        context = zmq.Context()
+        socket = context.socket(zmq.REQ)
+        socket.connect(self.backend_address)
+        poller = zmq.Poller()
+        poller.register(socket, zmq.POLLIN)
+        self.time_init.value = time.time()
+        self.time_counter.value = 0.0
+        self.packet_counter.value = 0
+        self.running_flag.value = 1
+        with h5py.File(self.data_output_path, "w") as fd:
+            try:
+                fd.attrs["git_hash"] = covid19sim.utils.utils.get_git_revision_hash()
+            except subprocess.CalledProcessError:
+                fd.attrs["git_hash"] = "NO_GIT"
+            fd.attrs["creation_date"] = datetime.datetime.now().isoformat()
+            fd.attrs["creator"] = str(platform.node())
+            dataset = fd.create_dataset(
+                "samples",
+                shape=(self.dataset_init_size, ),
+                maxshape=(self.dataset_max_size, ),
+                dtype=h5py.special_dtype(vlen=np.uint8),
+                compression=self.compression,
+                compression_opts=self.compression_opts,
+            )
+            total_dataset_bytes = 0
+            sample_idx = 0
+            while not self.stop_flag.is_set():
+                if self.reset_flag.is_set():
+                    self.time_counter.value = 0.0
+                    self.packet_counter.value = 0
+                    self.time_init.value = 0.0
+                    self.reset_flag.clear()
+                evts = dict(poller.poll(default_poll_delay_ms))
+                if socket in evts and evts[socket] == zmq.POLLIN:
+                    proc_start_time = time.time()
+                    buffer = socket.recv()
+                    if sample_idx >= len(dataset):
+                        dataset.resize(len(dataset) * 2, axis=0)
+                    dataset[sample_idx] = np.frombuffer(buffer, dtype=np.uint8)
+                    total_dataset_bytes += len(buffer)
+                    sample_idx += 1
+                    with self.time_counter.get_lock():
+                        self.time_counter.value += time.time() - proc_start_time
+                    with self.packet_counter.get_lock():
+                        self.packet_counter.value += 1
+            self.running_flag.value = 0
+            socket.close()
+            dataset.attrs["total_bytes"] = total_dataset_bytes
+
+
+class DataCollectionBroker(BaseBroker):
+    """Manages exchanges with the data collection worker by buffering client requests."""
+
+    def __init__(
+            self,
+            data_output_path: typing.AnyStr,
+            data_buffer_size: int,  # NOTE: in bytes!
+            frontend_address: typing.AnyStr = default_datacollect_frontend_address,
+            backend_address: typing.AnyStr = default_datacollect_backend_address,
+            verbose: bool = False,
+            verbose_print_delay: float = 5.,
+    ):
+        """
+        Initializes the data collection broker's attributes (counters, condvars, ...).
+
+        Args:
+            data_output_path: the path where the collected data should be saved.
+            data_buffer_size: the amount of data that can be buffered by the broker (in bytes).
+            frontend_address: address through which to exchange data logging requests with clients.
+            backend_address: address through which to exchange data logging requests with the worker.
+            verbose: toggles whether to print extra debug information while running.
+            verbose_print_delay: specifies how often the extra debug info should be printed.
+        """
+        super().__init__(
+            workers=1,  # cannot safely write more than one sample at a time with this impl
+            frontend_address=frontend_address,
+            backend_address=backend_address,
+            verbose=verbose,
+            verbose_print_delay=verbose_print_delay,
+        )
+        self.data_output_path = data_output_path
+        self.data_buffer_size = data_buffer_size
+
+    def run(self):
+        """Main loop of the data collection broker process.
+
+        Will received requests from clients and dispatch them to the data collection worker.
+        """
+        context = zmq.Context()
+        frontend = context.socket(zmq.ROUTER)
+        print(f"Will listen for data collection requests at: {self.frontend_address}", flush=True)
+        frontend.bind(self.frontend_address)
+        backend = context.socket(zmq.ROUTER)
+        print(f"Will dispatch data collection work at: {self.backend_address}", flush=True)
+        backend.bind(self.backend_address)
+        worker_backend_address = self.backend_address.replace("*", "localhost")
+        worker_poller = zmq.Poller()
+        worker_poller.register(frontend, zmq.POLLIN)
+        print(f"Launching worker...", flush=True)
+        worker = DataCollectionWorker(
+            data_output_path=self.data_output_path,
+            backend_address=worker_backend_address,
+        )
+        worker.start()
+        backend.setsockopt(zmq.SNDTIMEO, 5)
+        last_update_timestamp = time.time()
+        curr_queue_size = 0
+        request_queue = []
+        print("Entering dispatch loop...", flush=True)
+        while not self.stop_flag.is_set():
+            evts = dict(worker_poller.poll(default_poll_delay_ms if not request_queue else 1))
+            if curr_queue_size < self.data_buffer_size and \
+                    frontend in evts and evts[frontend] == zmq.POLLIN:
+                client, empty, request = frontend.recv_multipart()
+                if request == b"RESET":
+                    worker.reset_flag.set()
+                    frontend.send_multipart([client, b"", b"READY"])
+                else:
+                    request_queue.append(request)
+                    curr_queue_size += len(request)
+            if request_queue:
+                next_packet = request_queue[0]
+                assert curr_queue_size >= len(next_packet)
+                try:
+                    backend.send(next_packet)
+                    curr_queue_size -= len(next_packet)
+                    request_queue.pop(0)
+                except zmq.error.Again:
+                    pass
+            if self.verbose and time.time() - last_update_timestamp > self.verbose_print_delay:
+                print(f" {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')} stats:")
+                packets = worker.get_processed_count()
+                delay = worker.get_averge_processing_delay()
+                uptime = worker.get_processing_uptime()
+                print(
+                    f"  running={worker.is_running()}  packets={packets}"
+                    f"  avg_delay={delay:.6f}sec  proc_time_ratio={uptime:.1%}",
+                    flush=True,
+                )
+                last_update_timestamp = time.time()
+        backend.setsockopt(zmq.SNDTIMEO, -1)
+        while request_queue:
+            next_packet = request_queue.pop(0)
+            backend.send_multipart(next_packet)
+            curr_queue_size -= len(next_packet[-1])
+        worker.stop()
+        worker.join()
+
+    def stop(self):
+        """
+        Stops the infinite data reception loop, allowing a clean shutdown.
+        """
+        self.stop_flag.set()
+
+
+class DataCollectionClient:
+    """
+    Creates a client through which data samples can be sent for collection.
+
+    This object should be fairly lightweight and low-cost, so creating
+    it once per day, per human *should* not create a significant overhead.
+    """
+
+    def __init__(
+            self,
+            server_address: typing.Optional[typing.AnyStr] = default_datacollect_frontend_address,
+            context: typing.Optional[zmq.Context] = None,
+    ):
+        """
+        Initializes the client's attributes (socket, context).
+
+        Args:
+            server_address: address of the data collection server frontend to send requests to.
+            context: zmq context to create i/o objects from.
+        """
+        if context is None:
+            context = zmq.Context()
+        self.context = context
+        self.socket = self.context.socket(zmq.REQ)
+        if server_address is None:
+            server_address = default_datacollect_frontend_address
+        self.socket.connect(server_address)
+
+    def write(self, sample):
+        """Forwards a data sample for the data writer using pickle."""
+        self.socket.send_pyobj(sample)
+
+    def request_reset(self):
+        self.socket.send(b"RESET")
+        response = self.socket.recv()
+        assert response == b"READY"
 
 
 def proc_human_batch(
