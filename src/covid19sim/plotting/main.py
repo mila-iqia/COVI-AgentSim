@@ -1,17 +1,44 @@
 print("Loading imports...", end="", flush=True)
-import hydra
-import traceback
-from omegaconf import OmegaConf
-from pathlib import Path
 import math
+import traceback
 from collections import defaultdict
+from pathlib import Path
 from time import time
-import covid19sim.plotting.plot_pareto_adoption as pareto_adoption
+import pickle
+
+import hydra
+from omegaconf import OmegaConf
+
 import covid19sim.plotting.plot_jellybeans as jellybeans
+import covid19sim.plotting.plot_pareto_adoption as pareto_adoption
+import covid19sim.plotting.plot_presymptomatic as presymptomatic
 from covid19sim.plotting.utils.extract_data import get_all_data
 
 print("Ok.")
 HYDRA_CONF_PATH = Path(__file__).parent.parent / "configs" / "plot"
+
+
+def sizeof(path, suffix="B"):
+    num = path.stat().st_size
+    for unit in ["", "K", "M", "G", "T", "P", "E", "Z"]:
+        if abs(num) < 1024.0:
+            return "%3.1f%s%s" % (num, unit, suffix)
+        num /= 1024.0
+    return "%.1f%s%s" % (num, "Y", suffix)
+
+
+def help():
+    print("Available plotting options:")
+    print("    * pareto_adoption")
+    print("    * jellybeans")
+    print("    * presymptomatic")
+    print("    * all")
+    print('    * "[opt1, opt2, ...]" (<- note, lists are stringified)')
+    print()
+    print('Use exclude="[opt1, opt2, ...]" with `all` to run all plots but those')
+    print()
+    print("python main.py path=./app_adoption plot=pareto_adoption")
+    print('python main.py plot=all exclude="[pareto_adoption]" # (<- note the "")')
 
 
 def print_header(plot):
@@ -127,29 +154,44 @@ def map_conf_to_models(all_paths, plot_conf):
     return dict(new_data)
 
 
+def parse_options(conf, all_plots):
+    options = {plot: {} for plot in all_plots}
+    for arg in conf:
+        for plot in all_plots:
+            if arg.startswith(plot):
+                opt_key = arg.split(plot + "_")[-1]
+                opt_value = conf[arg]
+                options[plot][opt_key] = opt_value
+    return dict(options)
+
+
 @hydra.main(config_path=str(HYDRA_CONF_PATH.resolve() / "config.yaml"), strict=False)
 def main(conf):
-    conf = OmegaConf.to_container(conf)
-
+    # --------------------------------
+    # -----  Parse Command-Line  -----
+    # --------------------------------
     all_plots = {
         "pareto_adoption": pareto_adoption,
         "jellybeans": jellybeans,
+        "presymptomatic": presymptomatic,
     }
 
+    conf = OmegaConf.to_container(conf)
+    options = parse_options(conf, all_plots)
+    path = Path(conf.get("path", ".")).resolve()
+    assert path.exists()
+    full_data_path = path / "full_plotting_data.pkl"
+
+    # -------------------
+    # -----  Help?  -----
+    # -------------------
     if "help" in conf:
-        print("Available plotting options:")
-        print("    * pareto_adoption")
-        print("    * all")
-        print('    * "[opt1, opt2, ...]" (<- note, lists are stringified)')
-        print()
-        print('Use exclude="[opt1, opt2, ...]" with `all` to run all plots but those')
-        print()
-        print("python main.py plot=pareto_adoption")
-        print('python main.py plot=all exclude="[pareto_adoption]"')
+        help()
         return
 
-    path = Path(conf.get("path", ".")).resolve()
-
+    # --------------------------
+    # -----  Select Plots  -----
+    # --------------------------
     plots = conf["plot"]
     if plots == "all":
         plots = list(all_plots.keys())
@@ -159,8 +201,10 @@ def main(conf):
     assert all(p in all_plots for p in plots), "Allowed plots are {}".format(
         "\n   ".join(all_plots.keys())
     )
-    assert path.exists()
 
+    # --------------------------------------
+    # -----  Select tracker data keys  -----
+    # --------------------------------------
     keep_pkl_keys = set()
     if "pareto_adoption" in plots:
         keep_pkl_keys.update(
@@ -179,22 +223,60 @@ def main(conf):
         )
     if "jellybeans" in plots:
         keep_pkl_keys.update(
-            ["humans_intervention_level", "humans_rec_level", "intervention_day",]
+            ["humans_intervention_level", "humans_rec_level", "intervention_day"]
         )
+    if "presymptomatic" in plots:
+        keep_pkl_keys.update(["human_monitor"])
 
-    print("Reading configs from {}:".format(str(path)))
-    rtime = time()
-    all_data = get_all_data(path, keep_pkl_keys, conf.get("multithreading", False))
-    print("\nDone in {:.2f}s.\n".format(time() - rtime))
-    summarize_configs(all_data)
-    data = map_conf_to_models(all_data, conf)
-    check_data(data)
+    # ------------------------------------
+    # -----  Load pre-computed data  -----
+    # ------------------------------------
+    if full_data_path.exists() and not conf.get("recompute", False):
+        try:
+            print(
+                "Using precomputed data ({}): {}...".format(
+                    sizeof(full_data_path), str(full_data_path)
+                )
+            )
+            with full_data_path.open("rb") as f:
+                data = pickle.load(f)
+            check_data(data)
+        except Exception:
+            print(
+                "{}\n{}\n{}\n\nCould not load {}. Recomputing data.".format(
+                    "*" * 30, traceback.format_exc(), "*" * 30, str(full_data_path),
+                )
+            )
+    else:
+        # --------------------------
+        # -----  Compute Data  -----
+        # --------------------------
+        print("Reading configs from {}:".format(str(path)))
+        rtime = time()
+        all_data = get_all_data(path, keep_pkl_keys, conf.get("multithreading", False))
+        print("\nDone in {:.2f}s.\n".format(time() - rtime))
+        summarize_configs(all_data)
+        data = map_conf_to_models(all_data, conf)
+        check_data(data)
+
+        # -------------------------------
+        # -----  Dump if requested  -----
+        # -------------------------------
+        if conf.get("dump", True):
+            print("Dumping data...", end="", flush=True)
+            t = time()
+            with full_data_path.open("wb") as f:
+                pickle.dump(data, f)
+            print("Done in {}s ({})".format(int(time() - t), sizeof(full_data_path)))
 
     for plot in plots:
         func = all_plots[plot].run
         print_header(plot)
         try:
-            func(data, path, conf["compare"])
+            # -------------------------------
+            # -----  Run Plot Function  -----
+            # -------------------------------
+            func(data, path, conf["compare"], **options[plot])
         except Exception as e:
             if isinstance(e, KeyboardInterrupt):
                 print("Interrupting.")

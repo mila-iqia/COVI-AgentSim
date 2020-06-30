@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.lines import Line2D
 from collections import defaultdict
-from covid19sim.plotting.utils.extract_data import get_all_rec_levels, get_all_states
+from covid19sim.plotting.utils.extract_data import get_all_rec_levels
 
 
 def get_transformer_name(method_dict):
@@ -129,7 +129,7 @@ def run(data, path, comparison_key):
         save_path = path / "comparison-recommendation-levels-{}-{}.pdf".format(
             comparison_key, comparison_value
         )
-        print("Saving Figure {}/{} ...".format(save_path.parent.name, save_path.name))
+        print("Saving Figure {} ...".format(save_path.name))
         plt.savefig(
             str(save_path), bbox_inches="tight", format="pdf",
         )

@@ -9,7 +9,6 @@ from matplotlib.lines import Line2D
 from scipy import stats as sps
 
 from covid19sim.plotting.utils.extract_data import (
-    absolute_file_paths,
     get_data,
     get_human_rec_levels,
     get_human_states,
@@ -435,7 +434,7 @@ def run(data, path, comparison_key):
 
     plt.tight_layout()
     save_path = Path(path) / "pareto_adoption_all_metrics.png"
-    print("Saving Figure {}/{} ...".format(save_path.parent.name, save_path.name))
+    print("Saving Figure {} ...".format(save_path.name))
     fig.savefig(
         str(save_path),
         dpi=200,
