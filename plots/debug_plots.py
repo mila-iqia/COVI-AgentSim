@@ -316,9 +316,10 @@ def get_events_history(all_human_events: List[Dict],
                     risky_encounters[other_human_id][-1] = 0
                     contamination_encounters[other_human_id][-1] += 1
             elif event["event_type"] == Event.test:
-                if human.hidden_test_result == "positive":
+                test_result = event["payload"]["unobserved"]["result"]
+                if test_result == "positive":
                     events["Positive Tests"][-1] += 1
-                elif human.hidden_test_result == "negative":
+                elif test_result == "negative":
                     events["Negative Tests"][-1] += 1
                 else:
                     events["Tests"][-1] += 1
