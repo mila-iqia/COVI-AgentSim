@@ -476,17 +476,15 @@ def parse_configuration(conf):
     return conf
 
 
-def dump_conf(
+def dumps_conf(
         conf: dict,
-        path: typing.Union[str, Path],
 ):
     """
     Perform a deep copy of the configuration dictionary, preprocess the elements into strings
-    to reverse the preprocessing performed by `parse_configuration` and then, dumps the content into a `.yaml` file.
+    to reverse the preprocessing performed by `parse_configuration`, returning the resulting dict.
 
     Args:
         conf (dict): configuration dictionary to be written in a file
-        path (str | Path): `.yaml` file where the configuration is written
     """
 
     copy_conf = deepcopy(conf)
@@ -524,15 +522,30 @@ def dump_conf(
     if "start_time" in copy_conf:
         copy_conf["start_time"] = copy_conf["start_time"].strftime("%Y-%m-%d %H:%M:%S")
 
+    return copy_conf
+
+
+def dump_conf(
+        conf: dict,
+        path: typing.Union[str, Path],
+):
+    """
+    Perform a deep copy of the configuration dictionary, preprocess the elements into strings
+    to reverse the preprocessing performed by `parse_configuration` and then, dumps the content into a `.yaml` file.
+
+    Args:
+        conf (dict): configuration dictionary to be written in a file
+        path (str | Path): `.yaml` file where the configuration is written
+    """
+    stringified_conf = dumps_conf(conf)
     path = Path(path).resolve()
     path.parent.mkdir(parents=True, exist_ok=True)
     if path.exists():
         print("WARNING configuration already exists in {}. Overwriting.".format(
             str(path.parent)
         ))
-
     with path.open("w") as f:
-        yaml.safe_dump(copy_conf, f)
+        yaml.safe_dump(stringified_conf, f)
 
 
 def relativefreq2absolutefreq(
