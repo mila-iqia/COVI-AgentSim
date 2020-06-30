@@ -11,7 +11,7 @@ def get_intervention(conf):
         return Heuristic(version=1, conf=conf)
     elif key == "heuristicv2":
         return Heuristic(version=2, conf=conf)
-    elif key == "BinaryDigitalTracing":
+    elif key == "digital":
         return BinaryDigitalTracing(conf)
     elif key == "BundledInterventions":
         return BundledInterventions(conf["BUNDLED_INTERVENTION_RECOMMENDATION_LEVEL"])

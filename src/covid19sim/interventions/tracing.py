@@ -314,4 +314,4 @@ class Heuristic(BaseMethod):
             risk = [updated_risk] * max(mild_risk_num_days - 2, 1)
             setattr(human, '_heuristic_rec_level', self.mild_risk_rec_level)
 
-        return risk
+        return risk if type(risk) == list else [risk]
