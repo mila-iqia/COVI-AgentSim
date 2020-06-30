@@ -25,3 +25,4 @@ cached_property
 requests
 recommonmark
 sphinx
+h5py

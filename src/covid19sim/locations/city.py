@@ -384,7 +384,6 @@ class City:
                     workplace = self.rng.choice(type_of_workplace)
                 else:
                     workplace = res
-
                 self.humans.append(human_type(
                         env=self.env,
                         city=self,

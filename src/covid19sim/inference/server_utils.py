@@ -768,10 +768,10 @@ def _proc_human(params, inference_engine):
     }
 
     if conf.get("COLLECT_TRAINING_DATA"):
-        with h5py.File(params["log_path"] + "train.hdf5", 'a') as f:
+        with h5py.File(params["log_path"] + "train.hdf5", "a") as f:
             s = pickle.dumps(daily_output)
-            f['dataset'].attrs["idx"] = f['dataset'].attrs["idx"] + 1
-            f['dataset'][f['dataset'].attrs["idx"]] = np.fromstring(s, dtype='uint8')
+            f["dataset"].attrs["idx"] = f["dataset"].attrs["idx"] + 1
+            f["dataset"][f['dataset'].attrs["idx"]] = np.fromstring(s, dtype="uint8")
 
     inference_result, risk_history = None, None
     if conf.get("USE_ORACLE"):
