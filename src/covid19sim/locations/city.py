@@ -401,6 +401,7 @@ class City:
                         )
                     )
 
+
         # assign houses; above only assigns senior residence
         # stores tuples - (location, current number of residents, maximum number of residents allowed)
         remaining_houses = []
