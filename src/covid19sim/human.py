@@ -1644,15 +1644,15 @@ class Human(BaseHuman):
             self._rec_level = -1
             return
 
-        if self.conf.get("RISK_MODEL") == "digital":
-            assert self.risk == 0. or self.risk == 1.0
-
         self._rec_level = self.intervention.get_recommendations_level(
             self,
             self.conf.get("REC_LEVEL_THRESHOLDS"),
             self.conf.get("MAX_RISK_LEVEL"),
             intervention_start=intervention_start,
         )
+
+        if self.conf.get("RISK_MODEL") == "digital":
+            assert self._rec_level == 0 or self._rec_level == 3
 
     @property
     def rec_level(self):
