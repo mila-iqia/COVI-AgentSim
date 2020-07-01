@@ -313,7 +313,4 @@ def get_age_bin(age, conf):
         if l <= age <= u:
             bin = (l, u)
             break
-    try:
-        return bin
-    except:
-        import pdb; pdb.set_trace()
+    return bin

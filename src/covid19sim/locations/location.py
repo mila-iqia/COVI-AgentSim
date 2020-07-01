@@ -188,3 +188,21 @@ class Household(Location):
         """
         super(Household, self).__init__(**kwargs)
         self.residents = []
+
+        location_type = kwargs.get("location_type", "household")
+        # for seniors, social common room serves as a workplace where they spend
+        # time hanging out with others
+        if location_type == "senior_residency":
+            name = kwargs.get("name")
+            self.social_common_room = Location(
+                env=kwargs.get("env"),
+                rng=kwargs.get("rng"),
+                name=f"SCR: {name}",
+                location_type="SCR",
+                lat=kwargs.get("lat"),
+                lon=kwargs.get("lon"),
+                area=kwargs.get("area"),
+                social_contact_factor=kwargs.get("social_contact_factor"),
+                capacity=None,
+                surface_prob=kwargs.get("surface_prob")
+            )
