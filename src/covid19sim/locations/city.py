@@ -737,6 +737,9 @@ class City:
                 for day_offset in range(self.conf.get("TRACING_N_DAYS_HISTORY")):
                     human.risk_history_map[current_day - day_offset] = 1.0
 
+            # using the risk history map & the risk level map, update the human's rec level
+            human.update_recommendations_level()
+
             # if we had any encounters for which we have not sent an initial message, do it now
             update_messages.extend(human.contact_book.generate_initial_updates(
                 current_day_idx=current_day,
@@ -756,7 +759,7 @@ class City:
                 update_reason="unknown",
                 intervention=human.intervention,
             ))
-            human.update_recommendations_level()
+
             Event.log_risk_update(
                 self.conf['COLLECT_LOGS'],
                 human=human,
