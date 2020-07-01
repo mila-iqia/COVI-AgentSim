@@ -1,9 +1,14 @@
 # Region
 # Région de Montréal Quebec
 
-###################
-## Statcan data  ##
-####################
+#########################################################
+###############       Statcan data         ##############
+#########################################################
+
+
+#########################################################
+###############       Housing data         ##############
+#########################################################
 
 # https://www12.statcan.gc.ca/census-recensement/2016/dp-pd/prof/details/page.cfm?Lang=E&Geo1=HR&Code1=2406&Geo2=PR&Code2=01&SearchText=montreal&SearchType=Contains&SearchPR=01&B1=All&TABID=1&type=1
 POPULATION_SIZE_REGION: 1942045
@@ -117,13 +122,17 @@ P_COLLECTIVE_75_79: 0.0025
 # probability of living in a senior residency given age > 80
 P_COLLECTIVE_80_above: 0.017
 
-
 # (no-source) these values are assumed
 MIN_AGE_COUPLE: 25
 MAX_AGE_COUPLE_WITH_CHILDREN: 60
 MIN_AGE_SINGLE_PARENT: 30
 MAX_AGE_SINGLE_PARENT: 60
 MAX_AGE_CHILDREN: 15
+
+#########################################################
+###########       Occupation data             ###########
+#########################################################
+
 
 ######################################################
 ## Pre-computed using utils/config_demographics.py  ##
@@ -154,3 +163,12 @@ P_AGE_SOLO_DWELLERS_GIVEN_HOUSESIZE_1: [[0, 4, 0.0],
     [70, 74, 0.07314565348534839],
     [75, 79, 0.06486543408681548],
     [80, 110, 0.12921865562593535]]
+
+# Normalized P_FAMILY_TYPE_
+# P_FAMILIY_TYPE_ are proportion of **all** households that are of particular type
+# normalized values - proportion of households of size that are of some type
+
+NORMALIZED_P_FAMILY_TYPE_SIZE_2: [0.6644295302013422, 0.2348993288590604, 0.1006711409395973]
+NORMALIZED_P_FAMILY_TYPE_SIZE_3: [0.6691176470588235, 0.2205882352941176, 0.1102941176470588]
+NORMALIZED_P_FAMILY_TYPE_SIZE_4: [0.857142857142857, 0.07142857142857142, 0.07142857142857142]
+NORMALIZED_P_FAMILY_TYPE_SIZE_MORE_THAN_5: [0.7213114754098361, 0.04918032786885246, 0.22950819672131148]

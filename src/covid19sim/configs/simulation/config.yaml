@@ -3,6 +3,7 @@
 defaults:
   - core
   - base_method
+  - region: montreal
 
 hydra:
   run:

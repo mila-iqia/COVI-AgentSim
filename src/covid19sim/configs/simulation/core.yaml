@@ -75,71 +75,9 @@ LOCATION_DISTRIBUTION:
       },
   }
 
-COUNTRY: "Canada"
-REGION: "Montreal"
-
-P_HOUSEHOLD_SIZE: [0.394, 0.298, 0.136, 0.112, 0.06]
-P_FAMILY_TYPE_SIZE_2: [0.198, 0.070, 0.03]
-P_FAMILY_TYPE_SIZE_3: [0.091, 0.03, 0.015]
-P_FAMILY_TYPE_SIZE_4: [0.096, 0.008, 0.008]
-P_FAMILY_TYPE_SIZE_MORE_THAN_5: [0.044, 0.003, 0.014]
-MIN_AGE_COUPLE: 25
-MAX_AGE_COUPLE_WITH_CHILDREN: 65
-MIN_AGE_SINGLE_PARENT: 30
-MAX_AGE_SINGLE_PARENT: 60
-MAX_AGE_CHILDREN: 15
-P_MULTIGENERATIONAL_FAMILY: 0.015
-P_COLLECTIVE_70_74: 0.0025
-P_COLLECTIVE_75_79: 0.0025
-P_COLLECTIVE_80_above: 0.017
-P_AGE_SOLO_DWELLLERS_GIVEN_HOUSESIZE_1: [[0, 4, 0.0],
-                                         [5, 9, 0.0],
-                                         [10, 14, 0.0],
-                                         [15, 19, 0.0036965443759304443],
-                                         [20, 24, 0.04050656352664703],
-                                         [25, 29, 0.08236366540850498],
-                                         [30, 34, 0.08036315583876404],
-                                         [35, 39, 0.06662188307122593],
-                                         [40, 44, 0.05447753487688209],
-                                         [45, 49, 0.061166114151859505],
-                                         [50, 54, 0.07899697367438215],
-                                         [55, 59, 0.08849240507820566],
-                                         [60, 64, 0.08991688613071544],
-                                         [65, 69, 0.08616853066878354],
-                                         [70, 74, 0.07314565348534838],
-                                         [75, 79, 0.0648654340868155],
-                                         [80, 110, 0.12921865562593535]]
-
-
-P_AGE: [
-    [0, 4, 0.057],
-    [5, 9, 0.054],
-    [10, 14, 0.047],
-    [15, 19, 0.05],
-    [20, 24, 0.072],
-    [25, 29, 0.079],
-    [30, 34, 0.078],
-    [35, 39, 0.076],
-    [40, 44, 0.066],
-    [45, 49, 0.065],
-    [50, 54, 0.068],
-    [55, 59, 0.065],
-    [60, 64, 0.057],
-    [65, 69, 0.049],
-    [70, 74, 0.037],
-    [75, 79, 0.029],
-    [80, 110, 0.051],
-]
-
-
 # house_size: 1 2 3 4 5
 OTHERS_WORKPLACE_CHOICE: [1.0, 0.0, 0.0]
 
-# The group age proportion (p) are taken from Statistics Canada
-# ref: https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1710000501
-# ref: https://www12.statcan.gc.ca/census-recensement/2011/as-sa/98-312-x/2011003/fig/fig3_4-4-eng.cfm
-# TODO: senior_residency should be adjusted w.r.t. to the actual number of people per bin to combine them.
-HOUSE_SIZE_PREFERENCE: [0.282, 0.344, 0.152, 0.138, 0.084]
 HUMAN_DISTRIBUTION: # this is parsed into tuple keys in utils.py/parse_configuration e.g. "0-10" => (0, 10)
   {
     "1-10":
