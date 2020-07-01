@@ -32,6 +32,10 @@ if __name__ == "__main__":
     POPULATION_SIZE_REGION = region["POPULATION_SIZE_REGION"]
     N_HOUSESIZE_1 = region["N_HOUSESIZE_1"]
 
+    # precompute 1
+    # computes age distribution of solo dwellers across all solo dwellers
+    # it projects the country level statistics to regional statistics
+    # a correction factor is used to correct for unequal number of houses of size 1
     age_bins = [(x[0], x[1]) for x in P_AGE_REGION]
     N_AGEBINS_SOLO_DWELLERS_COUNTRY = [[x[0], x[1], 0] for x in age_bins]
     for row in N_AGE_SOLO_DWELLERS_COUNTRY:
@@ -75,4 +79,44 @@ if __name__ == "__main__":
             + "\n"
             + "P_AGE_SOLO_DWELLERS_GIVEN_HOUSESIZE_1: "
             + "[{}]".format(",\n    ".join(map(str, P_AGE_SOLO_DWELLERS_GIVEN_HOUSESIZE_1)))
+        )
+
+
+    # precompute 2
+    # P_FAMILIY_TYPE_ are proportion of **all** households that are of particular type
+    # normalize them here to proportion of households of size that are of some type
+    P_FAMILY_TYPE_SIZE_2 = region['P_FAMILY_TYPE_SIZE_2']
+    NORMALIZED_P_FAMILY_TYPE_SIZE_2 = [x/sum(P_FAMILY_TYPE_SIZE_2) for x in P_FAMILY_TYPE_SIZE_2]
+
+    P_FAMILY_TYPE_SIZE_3 = region['P_FAMILY_TYPE_SIZE_3']
+    NORMALIZED_P_FAMILY_TYPE_SIZE_3 = [x/sum(P_FAMILY_TYPE_SIZE_3) for x in P_FAMILY_TYPE_SIZE_3]
+
+    P_FAMILY_TYPE_SIZE_4 = region['P_FAMILY_TYPE_SIZE_4']
+    NORMALIZED_P_FAMILY_TYPE_SIZE_4 = [x/sum(P_FAMILY_TYPE_SIZE_4) for x in P_FAMILY_TYPE_SIZE_4]
+
+    P_FAMILY_TYPE_SIZE_MORE_THAN_5 = region['P_FAMILY_TYPE_SIZE_MORE_THAN_5']
+    NORMALIZED_P_FAMILY_TYPE_SIZE_MORE_THAN_5 = [x/sum(P_FAMILY_TYPE_SIZE_MORE_THAN_5) for x in P_FAMILY_TYPE_SIZE_MORE_THAN_5]
+
+    comment = """
+# Normalized P_FAMILY_TYPE_
+# P_FAMILIY_TYPE_ are proportion of **all** households that are of particular type
+# normalized values - proportion of households of size that are of some type
+    """
+    with region_path.open("a") as f:
+        f.write(
+            "\n"
+            + (comment if not args.no_comments else "")
+            + "\n"
+            + "NORMALIZED_P_FAMILY_TYPE_SIZE_2: "
+            + str(NORMALIZED_P_FAMILY_TYPE_SIZE_2)
+            + "\n"
+            + "NORMALIZED_P_FAMILY_TYPE_SIZE_3: "
+            + str(NORMALIZED_P_FAMILY_TYPE_SIZE_3)
+            + "\n"
+            + "NORMALIZED_P_FAMILY_TYPE_SIZE_4: "
+            + str(NORMALIZED_P_FAMILY_TYPE_SIZE_4)
+            + "\n"
+            + "NORMALIZED_P_FAMILY_TYPE_SIZE_MORE_THAN_5: "
+            + str(NORMALIZED_P_FAMILY_TYPE_SIZE_MORE_THAN_5)
+            + "\n"
         )

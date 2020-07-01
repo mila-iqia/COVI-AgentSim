@@ -229,6 +229,10 @@ class Tracker(object):
         self.n_seniors = sum(1 for h in self.city.humans if h.household.location_type == "senior_residency")
         print("n_seniors", self.n_seniors)
 
+
+    def log_housing_statistics(self):
+        pass
+
     def get_R(self):
         """
         [summary]

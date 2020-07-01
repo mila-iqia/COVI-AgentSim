@@ -84,7 +84,7 @@ def main(conf: DictConfig):
 
     city, monitors, tracker = simulate(
         n_people=conf["n_people"],
-        init_percent_sick=conf["init_percent_sick"],
+        init_fraction_sick=conf["init_percent_sick"],
         start_time=conf["start_time"],
         simulation_days=conf["simulation_days"],
         outfile=conf["outfile"],
@@ -160,7 +160,7 @@ def main(conf: DictConfig):
 
 def simulate(
     n_people=None,
-    init_percent_sick=0.01,
+    init_fraction_sick=0.01,
     start_time=datetime.datetime(2020, 2, 28, 0, 0),
     simulation_days=10,
     outfile=None,
@@ -176,7 +176,7 @@ def simulate(
 
     Args:
         n_people ([type], optional): [description]. Defaults to None.
-        init_percent_sick (float, optional): [description]. Defaults to 0.0.
+        init_fraction_sick (float, optional): fraction of population initialized as sick. Defaults to 0.01.
         start_time ([type], optional): [description]. Defaults to datetime.datetime(2020, 2, 28, 0, 0).
         simulation_days (int, optional): [description]. Defaults to 10.
         outfile (str, optional): [description]. Defaults to None.
@@ -191,7 +191,7 @@ def simulate(
     """
 
     conf["n_people"] = n_people
-    conf["init_percent_sick"] = init_percent_sick
+    conf["init_percent_sick"] = init_fraction_sick
     conf["start_time"] = start_time
     conf["simulation_days"] = simulation_days
     conf["outfile"] = outfile
@@ -207,7 +207,7 @@ def simulate(
     city_x_range = (0, 1000)
     city_y_range = (0, 1000)
     city = City(
-        env, n_people, init_percent_sick, rng, city_x_range, city_y_range, Human, conf
+        env, n_people, init_fraction_sick, rng, city_x_range, city_y_range, Human, conf
     )
 
     # Add monitors
