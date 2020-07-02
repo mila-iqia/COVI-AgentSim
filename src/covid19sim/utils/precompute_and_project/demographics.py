@@ -2,6 +2,7 @@ import argparse
 import yaml
 from pathlib import Path
 
+
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
@@ -60,9 +61,9 @@ if __name__ == "__main__":
     P_AGE_SOLO_DWELLERS_GIVEN_HOUSESIZE_1 = [[x[0], x[1], x[2]/N_HOUSESIZE_1] for x in N_AGE_SOLO_DWELLERS_CORRECTED]
 
     comment = """
-######################################################
-## Pre-computed using utils/config_demographics.py  ##
-######################################################
+######################################################################
+## Pre-computed using utils/precompute_and_project/demographics.py  ##
+######################################################################
 
 # Solo dwellers
 # procedure -

@@ -93,9 +93,10 @@ class Human(object):
         # Individual Characteristics
         self.sex = _get_random_sex(self.rng, self.conf)  # The sex of this person conforming with Canadian statistics
         self.age = age  # The age of this person, conforming with Canadian statistics
-        self.age_bin = get_age_bin(age, conf)  # Age bins required for Oxford-like COVID-19 infection model and social mixing tracker
-        self.normalized_susceptibility = self.conf['NORMALIZED_SUSCEPTIBILITY_BY_AGE'][self.age_bin]  # Susceptibility to Covid-19 by age
-        self.mean_daily_interaction_age_group = self.conf['MEAN_DAILY_INTERACTION_FOR_AGE_GROUP'][self.age_bin]  # Social mixing is determined by age
+        _age_bin = get_age_bin(age, width=10)  # Age bins of width 10 are required for Oxford-like COVID-19 infection model and social mixing tracker
+        self.normalized_susceptibility = self.conf['NORMALIZED_SUSCEPTIBILITY_BY_AGE'][_age_bin]  # Susceptibility to Covid-19 by age
+        self.mean_daily_interaction_age_group = self.conf['MEAN_DAILY_INTERACTION_FOR_AGE_GROUP'][_age_bin]  # Social mixing is determined by age
+        self.age_bin_width_5 = get_age_bin(age, width=5)
         self.preexisting_conditions = _get_preexisting_conditions(self.age, self.sex, self.rng)  # Which pre-existing conditions does this person have? E.g. COPD, asthma
         self.inflammatory_disease_level = _get_inflammatory_disease_level(self.rng, self.preexisting_conditions, self.conf.get("INFLAMMATORY_CONDITIONS"))  # how many pre-existing conditions are inflammatory (e.g. smoker)
         self.carefulness = get_carefulness(self.age, self.rng, self.conf)  # How careful is this person? Determines their liklihood of contracting Covid / getting really sick, etc
@@ -1544,9 +1545,6 @@ class Human(object):
             # compute detected bluetooth distance and exchange bluetooth messages if conditions are satisfied
             h1_msg, h2_msg = self._exchange_app_messages(other_human, distance, t_near)
 
-            # determine if cold and flu contagion occured
-            self.check_cold_and_flu_contagion(other_human)
-
             contact_condition = (
                 distance <= self.conf.get("INFECTION_RADIUS")
                 and t_near > self.conf.get("INFECTION_DURATION")
@@ -1568,6 +1566,9 @@ class Human(object):
 
                 if scale_factor_passed:
                     self.check_covid_contagion(other_human, h1_msg, h2_msg)
+
+                # determine if cold and flu contagion occured
+                self.check_cold_and_flu_contagion(other_human)
 
                 # logging
                 Event.log_encounter(
