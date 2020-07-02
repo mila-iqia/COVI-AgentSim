@@ -296,7 +296,6 @@ def _get_inflammatory_disease_level(rng, preexisting_conditions, inflammatory_co
         cond_count = 3
     return cond_count
 
-
 def get_carefulness(age, rng, conf):
     # &carefulness
     if rng.rand() < conf.get("P_CAREFUL_PERSON"):
@@ -305,12 +304,35 @@ def get_carefulness(age, rng, conf):
         carefulness = min((max(round(rng.normal(25, 10)), 0) + age / 2) / 100, 1)
     return carefulness
 
-def get_age_bin(age, conf):
-    # normalized susceptibility and mean daily interaction for this age group
-    # required for Oxford COVID-19 infection model
-    age_bins = conf['NORMALIZED_SUSCEPTIBILITY_BY_AGE'].keys()
+def get_age_bin(age, width=10):
+    """
+    Various data sources like demographics and epidemiological parameters are available per age group.
+    The range of age groups vary from one source to another.
+    This function returns an appropriate group for a particular age.
+
+    Args:
+        age (int): age of `human`
+        width (int): number of ages included in each age group. For example,
+            age bins of the form 0-9 have a width of 10 (both limits inclusive)
+            age bins of the form 0-4 have a width of 5 (both limits inclusive)
+
+    Returns:
+        (int): idenitfier for the age group that can be used to look up values in various data sources
+            ranges from 0-9 if width = 10
+            ranges from 0-16 if width = 5
+
+    """
+    if width == 10:
+        age_bins = [(0,9), (10,19), (20,29), (30,39), (40,49), (50,59), (60,69), (70,79), (80,110)]
+    elif width == 5:
+        age_bins = [(0,4), (5,9), (10,14), (15,19), (20,24), (25,29), (30,34), (35,39), (40,44), (45,49), (50,54)
+                    (55,59), (60,64), (65,69), (70,74), (75,110)]
+    else:
+        raise
+
     for l, u in age_bins:
         if l <= age <= u:
             bin = (l, u)
             break
+
     return bin

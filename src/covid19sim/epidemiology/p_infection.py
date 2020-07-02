@@ -37,7 +37,7 @@ def get_human_human_p_transmission(infector, infectors_infectiousness, infectee,
 
     # factors that can reduce probability of transmission.
     # (no-source) How to reduce the transmission probability mathematically?
-    # we assume exponential rreduction
+    # we assume exponential reduction in p_infection
     mask_efficacy = (self.mask_efficacy + h.mask_efficacy)
     hygiene_efficacy = self.hygiene + h.hygiene
     reduction_factor = mask_efficacy * mask_efficacy_factor + hygiene_efficacy * hygiene_efficacy_factor
@@ -46,7 +46,11 @@ def get_human_human_p_transmission(infector, infectors_infectiousness, infectee,
 
 def get_environment_human_p_transmission(contamination_probability, human, environmental_infection_knob, mask_efficacy_factor, hygiene_efficacy_factor):
     """
-    computes probability of virus transmission to human via environmental contamination
+    computes probability of virus transmission to human via environmental contamination.
+    NOTE: the forumlation used here is completely experimental. We assume it to be proportional to
+        - virus strength at the location
+        - susceptibility of the person which acts as a proxy for inverse of immunity
+    We further degrade this probability via reduction factors.
 
     Args:
         contamination_probability (float): current virus strength at a location. It is used as a proxy for probability.
@@ -58,7 +62,7 @@ def get_environment_human_p_transmission(contamination_probability, human, envir
     Returns:
         (float): probability of environmetal contamination
     """
-    p_infection = contamination_contamination_probability
+    p_infection = contamination_probability * human.normalized_susceptibility
 
     mask_efficacy = human.mask_efficacy
     hygiene_efficacy = human.hygiene
