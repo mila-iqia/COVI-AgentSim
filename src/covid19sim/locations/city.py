@@ -295,6 +295,7 @@ class City:
                         env=self.env,
                         rng=self.rng,
                         conf=self.conf,
+                        type=type,
                         name=f"{type}:{name}",
                         location_type=type,
                         lat=self.rng.randint(*self.x_range),
@@ -393,13 +394,6 @@ class City:
             human.obs_preexisting_conditions = human.preexisting_conditions if human.has_logged_info else []
 
         print("Downloading the app...")
-        age_histogram = relativefreq2absolutefreq(
-            bins_fractions={age_bin: specs['p']
-                            for age_bin, specs
-                            in self.conf.get('HUMAN_DISTRIBUTION').items()},
-            n_elements=self.n_people,
-            rng=self.rng
-        )
         # app users
         all_has_app = self.conf.get('APP_UPTAKE') < 0
         # The dict below keeps track of an app quota for each age group

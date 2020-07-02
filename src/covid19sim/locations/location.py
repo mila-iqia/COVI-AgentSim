@@ -11,7 +11,7 @@ class Location(simpy.Resource):
     Class representing generic locations used in the simulator
     """
 
-    def __init__(self, env, rng, conf, area, name, location_type, lat, lon,
+    def __init__(self, env, rng, conf, type, area, name, location_type, lat, lon,
                  social_contact_factor, capacity, surface_prob):
         """
         Locations are created with city.create_location(), not instantiated directly
@@ -40,6 +40,7 @@ class Location(simpy.Resource):
         super().__init__(env, capacity)
         self.humans = OrderedSet()  # OrderedSet instead of set for determinism when iterating
         self.conf = conf
+        self.type = type
         self.name = name
         self.rng = np.random.RandomState(rng.randint(2 ** 16))
         self.lat = lat
@@ -52,6 +53,10 @@ class Location(simpy.Resource):
         self.contaminated_surface_probability = surface_prob
         self.max_day_contamination = 0
         self.is_open_for_business = True
+
+        self.MEAN_DAILY_KNOWN_INTERACTIONS = conf['LOCATION_DISTRIBUTION']['type']['mean_daily_interactions']
+        self.MEAN_DAILY_UNKNOWN_INTERACTIONS = conf['MEAN_DAILY_UNKNOWN_CONTACTS']
+        self.binned_humans = defaultdict(lambda :OrderedSet())
 
     def infectious_human(self):
         """
@@ -75,6 +80,7 @@ class Location(simpy.Resource):
             human (covid19sim.human.Human): The human to add.
         """
         self.humans.add(human)
+        self.binned_humans[human.age_bin_width_5].add(human)
 
     def remove_human(self, human):
         """
@@ -99,6 +105,7 @@ class Location(simpy.Resource):
                 ))
                 self.max_day_contamination = max(self.max_day_contamination, rnd_surface)
             self.humans.remove(human)
+            self.binned_humans[human.age_bin_width_5].remove(human)
 
     @property
     def is_contaminated(self):
@@ -160,7 +167,7 @@ class Location(simpy.Resource):
         """
 
         if type == "known":
-            human_bin = human.age_bin
+            human_bin = human.age_bin_width_5
             # sample human whom to interact with
             other_bin = self.rng.choice(range(self.TOTAL_BINS), self.P_CONTACT[human_bin])
             # what if there is no human in this bin?????
@@ -189,19 +196,19 @@ class Location(simpy.Resource):
         """
 
         if type == "known":
-            mean_daily_interactions = self.MEAN_DAILY_KNOWN_INTERACTIONS
-            min_dist_encounter = self.conf['MIN_DIST_INTERACTION']
-            max_dist_encounter = self.conf['MAX_DIST_INTERACTION']
+            mean_daily_interactions = self.MEAN_DAILY_KNOWN_CONTACTS
+            min_dist_encounter = self.conf['MIN_DIST_KNOWN_CONTACT']
+            max_dist_encounter = self.conf['MAX_DIST_KNOWN_CONTACT']
             mean_interaction_time = None
         elif type == "unknown":
-            mean_daily_interactions = self.MEAN_DAILY_UNKNOWN_INTERACTIONS
-            min_dist_encounter = self.conf['MIN_DIST_UNKNOWN_INTERACTION']
-            max_dist_encounter = self.conf['MAX_DIST_UNKNOWN_INTERACTION']
-            mean_interaction_time = self.conf["GAMMA_UNKOWN_INTERACTION_DURATION"]
+            mean_daily_interactions = self.MEAN_DAILY_UNKNOWN_CONTACTS
+            min_dist_encounter = self.conf['MIN_DIST_UNKNOWN_CONTACT']
+            max_dist_encounter = self.conf['MAX_DIST_UNKNOWN_CONTACT']
+            mean_interaction_time = self.conf["GAMMA_UNKNOWN_CONTACT_DURATION"]
         else:
             raise
 
-        scale_factor_interaction_time = self.conf['SCALE_FACTOR_INTERACTION_TIME']
+        scale_factor_interaction_time = self.conf['SCALE_FACTOR_CONTACT_DURATION']
         # (assumption) maximum allowable distance is when humans are uniformly spaced
         packing_term = 100 * np.sqrt(self.area/len(self.location.humans))
         interactee_sampler = _sample_interactee(type)
@@ -232,7 +239,7 @@ class Location(simpy.Resource):
                          max(human.location_start_time,   other_human.location_start_time)) / SECONDS_PER_MINUTE
 
             if type =="known":
-                mean_interaction_time = self.TIME_DURATION_MATRIX[human.age_bin, other_human.age_bin]
+                mean_interaction_time = self.TIME_DURATION_MATRIX[human.age_bin_width_5, other_human.age_bin_width_5]
 
             duration = min(t_overlap, self.rng.gamma(mean_interaction_time/scale_factor_interaction_time, scale_factor_interaction_time))
 
