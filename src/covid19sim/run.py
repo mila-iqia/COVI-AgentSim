@@ -217,6 +217,7 @@ def simulate(
     ]
     if print_progress:
         monitors.append(TimeMonitor(SECONDS_PER_DAY))
+
     if other_monitors:
         monitors += other_monitors
 

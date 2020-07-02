@@ -3,7 +3,6 @@ Functions to intialize a synthetic population using constants in configuration f
 """
 import numpy as np
 from collections import defaultdict
-from copy import deepcopy
 
 def get_humans_with_age(city, age_histogram, conf, rng, chosen_infected, human_type):
     """
@@ -106,7 +105,7 @@ def assign_households_to_humans(humans, city, conf):
     P_COLLECTIVE_80_above = conf['P_COLLECTIVE_80_above']
 
     n_people = city.n_people
-    unassigned_humans = deepcopy(humans)
+    unassigned_humans = humans
     age_bins = sorted(humans.keys(), key=lambda x:x[0])
     allocated_humans = []
 
@@ -147,6 +146,7 @@ def assign_households_to_humans(humans, city, conf):
         if humans_with_same_house:
             for human in humans_with_same_house:
                 allocated_humans = _assign_household(human, res, allocated_humans)
+            city.households.add(res)
         else:
             n_failed_attempts += 1
             if n_failed_attempts % 100 == 0:
@@ -158,17 +158,24 @@ def assign_households_to_humans(humans, city, conf):
 
         while len(allocated_humans) < city.n_people:
             housesize = city.rng.choice(range(1,6), p=P_HOUSEHOLD_SIZE, size=1).item()
+            res = city.create_location(
+                specs = conf.get("LOCATION_DISTRIBUTION")["household"],
+                type = "household",
+                name = len(city.households)
+            )
+
             humans_with_same_house = _sample_random_humans(unassigned_humans.keys(), unassigned_humans, city.rng, size=housesize)
             if humans_with_same_house:
                 for human in humans_with_same_house:
                     allocated_humans = _assign_household(human, res, allocated_humans)
+                city.households.add(res)
             else:
                 print(f"(Random attempt) Could not find humans for house size {housesize}... trying other house size!! Total allocated:{len(allocated_humans)}")
 
 
     assert len(allocated_humans) == city.n_people, "assigned humans and total population do not add up"
     assert sum(len(val) for x,val in unassigned_humans.items()) == 0, "there are unassigned humans in the list"
-
+    assert len(city.households) > 0
     # shuffle the list of humans so that the simulation is not dependent on the order of house allocation
     city.rng.shuffle(allocated_humans)
     city.tracker.log_housing_statistics()

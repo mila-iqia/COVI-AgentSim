@@ -294,6 +294,7 @@ class City:
         return   _cls(
                         env=self.env,
                         rng=self.rng,
+                        conf=self.conf,
                         name=f"{type}:{name}",
                         location_type=type,
                         lat=self.rng.randint(*self.x_range),
@@ -562,8 +563,8 @@ class City:
             # iterate over humans, and if it's their timeslot, then update their state
             for human in alive_humans:
                 human.check_if_needs_covid_test()  # humans can decide to get tested whenever
-                # human.check_covid_symptom_start()
-                # human.check_covid_recovery()
+                human.check_covid_symptom_start()
+                human.check_covid_recovery()
                 if current_day not in human.infectiousness_history_map:
                     # contrarily to risk, infectiousness only changes once a day (human behavior has no impact)
                     human.infectiousness_history_map[current_day] = calculate_average_infectiousness(human)

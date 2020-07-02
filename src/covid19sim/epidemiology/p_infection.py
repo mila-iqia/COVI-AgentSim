@@ -1,9 +1,35 @@
 import datetime
 import numpy as np
 
-def get_p_infection(infector, infectors_infectiousness, infectee, social_contact_factor, contagion_knob, mask_efficacy_factor, hygiene_efficacy_factor, self, h):
+def get_human_human_p_transmission(infector, infectors_infectiousness, infectee, social_contact_factor, contagion_knob, mask_efficacy_factor, hygiene_efficacy_factor, self, h):
+    """
+    Computes probability of virus transmission from infector to infectee.
+
+    We use the model used here (section: Infection Dynamics)
+        https://github.com/BDI-pathogens/OpenABM-Covid19/blob/master/documentation/covid19.md
+
+    Specfically, probability of transmission is proportional to
+        - susceptibility of the infectee: it is a proxy for the inverse of immunity to COVID
+        - social factor of the location: this factor allows for a control in relative fraction of transmission that takes place at different locations
+        - infectiousness of the infector - it serves as a proxy for probability of infecting someone based on viral load
+    Further, probability of transmission is inversely proportional to
+        - mean daily interactions of the infectee - (not explained well in the documents)
+
+    Args:
+        infector (covid19sim.human.Human):
+        infectors_infectiousness (float):
+        infectee (covid19sim.human.Human):
+        social_contact_factor (float):
+        contagion_knob (float):
+        mask_efficacy_factor (float):
+        hygiene_efficacy_factor (float):
+        self (covid19sim.human.Human):
+        h (covid19sim.human.Human):
+
+    Returns:
+        (float): probability of virus transmission
+    """
     # probability of transmission
-    # It is similar to Oxford COVID-19 model described in Section 4.
     rate_of_infection = infectee.normalized_susceptibility * social_contact_factor * 1 / infectee.mean_daily_interaction_age_group
     rate_of_infection *= infectors_infectiousness
     rate_of_infection *= contagion_knob
@@ -11,11 +37,35 @@ def get_p_infection(infector, infectors_infectiousness, infectee, social_contact
 
     # factors that can reduce probability of transmission.
     # (no-source) How to reduce the transmission probability mathematically?
+    # we assume exponential rreduction
     mask_efficacy = (self.mask_efficacy + h.mask_efficacy)
-    # mask_efficacy = p_infection - infector.mask_efficacy * p_infection - infectee.mask_efficacy * p_infection
     hygiene_efficacy = self.hygiene + h.hygiene
     reduction_factor = mask_efficacy * mask_efficacy_factor + hygiene_efficacy * hygiene_efficacy_factor
     p_infection *= np.exp(-reduction_factor)
+    return p_infection
+
+def get_environment_human_p_transmission(contamination_probability, human, environmental_infection_knob, mask_efficacy_factor, hygiene_efficacy_factor):
+    """
+    computes probability of virus transmission to human via environmental contamination
+
+    Args:
+        contamination_probability (float): current virus strength at a location. It is used as a proxy for probability.
+        human (covid19sim.human.Human): `human` for whom we need to compute this probability of transmission.
+        environmental_infection_knob (float): a global factor to calibrate probabilities such that total fraction of environmental transmission is as observed in the real world.
+        mask_efficacy_factor (float): a global factor to determine the effect of wearing mask on reducing the transmission probability
+        hygiene_efficacy_factor (float):a global factor to determine the effect of personal hygiene on reducing the transmission probability
+
+    Returns:
+        (float): probability of environmetal contamination
+    """
+    p_infection = contamination_contamination_probability
+
+    mask_efficacy = human.mask_efficacy
+    hygiene_efficacy = human.hygiene
+    reduction_factor = mask_efficacy * mask_efficacy_factor + hygiene_efficacy * hygiene_efficacy_factor
+
+    p_infection *= np.exp(-reduction_factor)
+    p_infection *= environmental_infection_knob
     return p_infection
 
 def infectiousness_delta(human, t_near):

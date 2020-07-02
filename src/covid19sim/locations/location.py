@@ -2,14 +2,16 @@ import simpy
 import datetime
 from orderedset import OrderedSet
 import numpy as np
-
+from covid19sim.utils.constants import SECONDS_PER_MINUTE, SECONDS_PER_HOUR
+from covid19sim.epidemiology.p_infection import get_environment_human_p_transmission
+from covid19sim.epidemiology.viral_load import compute_covid_properties
 
 class Location(simpy.Resource):
     """
     Class representing generic locations used in the simulator
     """
 
-    def __init__(self, env, rng, area, name, location_type, lat, lon,
+    def __init__(self, env, rng, conf, area, name, location_type, lat, lon,
                  social_contact_factor, capacity, surface_prob):
         """
         Locations are created with city.create_location(), not instantiated directly
@@ -37,6 +39,7 @@ class Location(simpy.Resource):
 
         super().__init__(env, capacity)
         self.humans = OrderedSet()  # OrderedSet instead of set for determinism when iterating
+        self.conf = conf
         self.name = name
         self.rng = np.random.RandomState(rng.randint(2 ** 16))
         self.lat = lat
@@ -143,6 +146,207 @@ class Location(simpy.Resource):
             p_infection = 0.0
 
         return p_infection
+
+    def _sample_interactee(self, type, human):
+        """
+        returns a function that samples encounter partner for a human
+
+        Args:
+            type (string): type of interaction to sample. expects "known", "unknown"
+            human (covid19sim.human.Human): human who will interact with the sampled human
+
+        Returns:
+            other_human (covid19sim.human.Human): `human` with whom this `human` will interact
+        """
+
+        if type == "known":
+            human_bin = human.age_bin
+            # sample human whom to interact with
+            other_bin = self.rng.choice(range(self.TOTAL_BINS), self.P_CONTACT[human_bin])
+            # what if there is no human in this bin?????
+            other_human = self.rng.choice(self.binned_humans[other_bin])
+        elif type == "unknown":
+            other_human = self.rng.choice(self.humans)
+        else:
+            raise
+
+        return other_human
+
+
+    def _sample_interaction_with_type(self, type, human):
+        """
+        Samples interactions of type `type` for `human`.
+
+        Args:
+            type (string): type of interaction to sample. expects "known", "unknown"
+            human (covid19sim.human.Human): human who will interact with the sampled human
+
+        Returns:
+            interactions (list): each element is as follows -
+                human (covid19sim.human.Human): other human with whom to have `type` of interaction
+                distance (float): distance from which this encounter took place (cm)
+                duration (float): duration for which this encounter took place (minutes)
+        """
+
+        if type == "known":
+            mean_daily_interactions = self.MEAN_DAILY_KNOWN_INTERACTIONS
+            min_dist_encounter = self.conf['MIN_DIST_INTERACTION']
+            max_dist_encounter = self.conf['MAX_DIST_INTERACTION']
+            mean_interaction_time = None
+        elif type == "unknown":
+            mean_daily_interactions = self.MEAN_DAILY_UNKNOWN_INTERACTIONS
+            min_dist_encounter = self.conf['MIN_DIST_UNKNOWN_INTERACTION']
+            max_dist_encounter = self.conf['MAX_DIST_UNKNOWN_INTERACTION']
+            mean_interaction_time = self.conf["GAMMA_UNKOWN_INTERACTION_DURATION"]
+        else:
+            raise
+
+        scale_factor_interaction_time = self.conf['SCALE_FACTOR_INTERACTION_TIME']
+        # (assumption) maximum allowable distance is when humans are uniformly spaced
+        packing_term = 100 * np.sqrt(self.area/len(self.location.humans))
+        interactee_sampler = _sample_interactee(type)
+
+        interactions = []
+        # what if there is no human as of now (solo house)
+        n_interactions = self.rng.negative_binomial(mean_daily_interactions, 0.5)
+        for i in range(n_interactions):
+            # sample other human
+            other_human = self._sample_interactee(type, human)
+
+            # sample distance of encounter
+            encounter_term = self.rng.uniform(min_dist_encounter, max_dist_encounter)
+            social_distancing_term = np.mean([self.maintain_extra_distance, h.maintain_extra_distance]) #* self.rng.rand()
+            distance = np.clip(encounter_term + social_distancing_term, a_min=0, a_max=packing_term)
+
+            # if distance == packing_term:
+            #     city.tracker.track_encounter_distance(
+            #         "A\t1", packing_term, encounter_term,
+            #         social_distancing_term, distance, location)
+            # else:
+            #     city.tracker.track_encounter_distance(
+            #         "A\t0", packing_term, encounter_term,
+            #         social_distancing_term, distance, location)
+
+            # sample duration of encounter
+            t_overlap = (min(human.location_leaving_time, other_human.location_leaving_time) -
+                         max(human.location_start_time,   other_human.location_start_time)) / SECONDS_PER_MINUTE
+
+            if type =="known":
+                mean_interaction_time = self.TIME_DURATION_MATRIX[human.age_bin, other_human.age_bin]
+
+            duration = min(t_overlap, self.rng.gamma(mean_interaction_time/scale_factor_interaction_time, scale_factor_interaction_time))
+
+            # add to the list
+            interactions.append((other_human, distance, duration))
+
+        return interactions
+
+
+    def sample_interactions(self, human):
+        """
+        samples how `human` interacts with other `human`s at this location at this time.
+
+        Args:
+            human (covid19sim.human.Human): human for whom interactions need to be sampled
+
+        Returns:
+            known_interactions (list): each element is as follows -
+                human (covid19sim.human.Human): other human with whom to interact
+                distance (float): distance from which this encounter took place (cm)
+                duration (float): duration for which this encounter took place (minutes)
+            unknown_interactions (list): each element is as follows -
+                human (covid19sim.human.Human): other human who was nearby and unknown to `human`
+                distance (float): distance from which this encounter took place (cm)
+                duration (float): duration for which this encounter took place (minutes)
+        """
+        # only `human` is at this location. There will be no interactions.
+        if len(self.humans) == 1:
+            assert human == self.humans[0]
+            return [], []
+
+        known_interactions = self._sample_interaction_with_type("known", human)
+        unknown_interactions = self._sample_interaction_with_type("unknown", human)
+
+        return known_interactions, unknown_interactions
+        #
+        # scale_factor_interaction_time = self.conf['SCALE_FACTOR_INTERACTION_TIME']
+        # packing_term = self._compute_maximum_distance_allowed_between_two_humans()
+        #
+        # known_interactions = []
+        # # what if there is no human as of now (solo house)
+        # n_interactions = self.rng.negative_binomial(self.MEAN_DAILY_KNOWN_INTERACTIONS, 0.5)
+        # for i in range(n_interactions):
+        #     human_bin = human.age_bin
+        #
+        #     # sample human whom to interact with
+        #     other_bin = self.rng.choice(range(self.TOTAL_BINS), self.P_CONTACT[human_bin])
+        #     # what if there is no human in this bin?????
+        #     other_human = self.rng.choice(self.binned_humans[other_bin])
+        #
+        #     # sample distance of encounter
+        #     encounter_term = self.rng.uniform(self.conf['MIN_DIST_INTERACTION'], self.conf['MAX_DIST_INTERACTION'])
+        #     social_distancing_term = np.mean([self.maintain_extra_distance, h.maintain_extra_distance]) #* self.rng.rand()
+        #     distance = np.clip(encounter_term + social_distancing_term, a_min=0, a_max=packing_term)
+        #
+        #
+        #     # sample duration of encounter
+        #     t_overlap = (min(human.location_leaving_time, other_human.location_leaving_time) -
+        #                  max(human.location_start_time,   other_human.location_start_time)) / SECONDS_PER_MINUTE
+        #     mean_interaction_time = self.TIME_DURATION_MATRIX[human_bin, other_bin]
+        #     duration = min(t_overlap, self.rng.gamma(mean_interaction_time/scale_factor_interaction_time, scale_factor_interaction_time))
+        #
+        #     # add to the list
+        #     known_interactions.append((other_human, distance, duration))
+        #
+        # # random interactions
+        # unknown_interactions = []
+        # n_interactions = self.rng.negative_binomial(self.MEAN_DAILY_UNKNOWN_INTERACTIONS, 0.5)
+        # for i in range(n_interactions):
+        #     other_human = self.rng.choice(self.humans)
+        #     distance = self.rng.uniform(self.conf['MIN_DIST_UNKNOWN_INTERACTION'], self.conf['MAX_DIST_UNKNOWN_INTERACTION'])
+        #     # time_already_spent_in_interactions = cumulative_time_spent[human]
+        #     t_overlap = (min(human.location_leaving_time, other_human.location_leaving_time) -
+        #                  max(human.location_start_time,   other_human.location_start_time)) / SECONDS_PER_MINUTE
+        #     duration = min(t_overlap, self.rng.gamma(self.conf["GAMMA_UNKOWN_INTERACTION_DURATION"]/scale_factor_interaction_time, scale_factor_interaction_time))
+        #     unknown_interactions.append((other_human, distance, duration))
+        #
+        # return known_interactions, unknown_interactions
+
+    def check_environmental_infection(self, human):
+        """
+        determines whether `human` gets infected due to the environment.
+
+        Environmental infection is modeled via surfaces. We consider the following study -
+        https://www.nejm.org/doi/pdf/10.1056/NEJMc2004973?articleTools=true
+        It shows the duration for which virus remains on a surface. Following surfaces are considered -
+        aerosol    copper      cardboard       steel       plastic
+
+        We sample a surface using surface_prob and infect the surface for MAX_DAYS_CONTAMINATION[surface_index] days.
+        NOTE: self.surface_prob is experimental, and there is no data on which surfaces are dominant at a location.
+        NOTE: our final objective is to make sure that environmental infection is around 10-15% of all transmissions to comply with the data.
+        We do that via ENVIRONMENTAL_INFECTION_KNOB.
+
+        Args:
+            human (covid19sim.human.Human): `human` for whom to check environmental infection.
+
+        Returns:
+            (bool): whether `human` was infected via environmental contamination.
+        """
+
+        p_transmission = get_environment_human_p_transmission(
+                                        self.contamination_probability,
+                                        human,
+                                        self.conf.get("ENVIRONMENTAL_INFECTION_KNOB"),
+                                        self.conf['MASK_EFFICACY_FACTOR'],
+                                        self.conf['HYGIENE_EFFICACY_FACTOR'],
+                                        )
+
+        x_environment = self.contamination_probability > 0 and self.rng.random() < p_transmission
+        if x_environment and human.is_susceptible:
+            human.infection_timestamp = human.env.timestamp
+            compute_covid_properties(human)
+            human.city.tracker.track_infection('env', from_human=None, to_human=human, location=self, timestamp=self.env.timestamp)
+            Event.log_exposed(self.conf.get('COLLECT_LOGS'), human, self, p_transmission, self.env.timestamp)
 
     def __hash__(self):
         """

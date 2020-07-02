@@ -145,7 +145,7 @@ class Tracker(object):
         self.tested_per_day = [0]
 
         # demographics
-        self.age_bins = sorted(self.city.conf.get("HUMAN_DISTRIBUTION").keys(), key = lambda x:x[0])
+        self.age_bins = [(x[0], x[1]) for x in sorted(self.city.conf.get("P_AGE_REGION"), key = lambda x:x[0])]
         self.n_people = self.n_humans = self.city.n_people
         self.human_has_app = None
 
@@ -973,7 +973,7 @@ class Tracker(object):
         self.daily_age_group_encounters[bin2[1]][-1] += 1
         self.dist_encounters[dist_bin] += 1
         self.time_encounters[time_bin] += 1
-
+        
     def track_p_infection(self, infection, p_infection, viral_load):
         """
         Keeps track of attributes related to infection to be used for calculating
