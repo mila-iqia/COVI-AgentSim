@@ -8,6 +8,8 @@ import math
 import os
 import pathlib
 import subprocess
+import sys
+import textwrap
 import typing
 import zipfile
 from copy import deepcopy
@@ -692,18 +694,21 @@ def deepcopy_obj_except_env(obj):
         household_name = obj.household.name if obj.household else ""
         workplace_names = [w.name for w in obj._workplace]
         backup_attribs = \
-            (obj.env, obj.city, obj.household, obj.location,
+            (obj.conf, obj.env, obj.city, obj.household, obj.location,
              obj.last_location, obj.my_history, obj._workplace, obj.visits)
-        obj.env, obj.city, obj.household, obj.location, \
+        obj.conf, obj.env, obj.city, obj.household, obj.location, \
         obj.last_location, obj.my_history, obj._workplace, obj.visits = [None] * len(backup_attribs)
         obj.env = dummy_env  # should replicate the env's behavior perfectly
         obj.location = curr_location_name  # this will break lookups, but still provide basic info
         obj.last_location = last_location_name  # this will break lookups, but still provide basic info
         obj.household = household_name  # this will break lookups, but still provide basic info
         obj._workplace = workplace_names  # this will break lookups, but still provide basic info
+
+        #test = get_approx_object_size_tree(obj)
+
         obj_copy = copy.deepcopy(obj)
         obj_copy.last_date = dict(obj_copy.last_date)
-        obj.env, obj.city, obj.household, obj.location, \
+        obj.conf, obj.env, obj.city, obj.household, obj.location, \
         obj.last_location, obj.my_history, obj._workplace, obj.visits = backup_attribs
         return obj_copy
     elif isinstance(obj, Location):
@@ -739,3 +744,48 @@ def deepcopy_obj_except_env(obj):
 
     else:  # isinstance(obj, City):
         raise NotImplementedError
+
+
+def get_approx_object_size_tree(obj, tree=None, seen_obj_ids=None):
+    """Returns a tree structure that contains the approximate size of an object and its children.
+
+    This function is recursive and will avoid loops, but it might still be very slow for large objects.
+
+    TODO: make faster/more accurate with `gc.get_referents`?
+    """
+    if tree is None:
+        tree = {None: 0}
+    else:
+        assert None in tree  # root cumulative size key, should always exist
+    if seen_obj_ids is None:
+        seen_obj_ids = set()
+    obj_id = id(obj)
+    if obj_id in seen_obj_ids:
+        return tree
+    seen_obj_ids.add(obj_id)
+    obj_size = sys.getsizeof(obj)
+    obj_name = textwrap.shorten(str(type(obj)) + ": " + str(obj), width=100) + " |> " + str(obj_id)
+    assert obj_name not in tree
+    tree[obj_name] = {None: obj_size}
+    if isinstance(obj, dict):
+        for attr_key, attr_val in obj.items():
+            tree[obj_name][attr_key] = {None: 0}
+            tree[obj_name][attr_key] = \
+                get_approx_object_size_tree(attr_key, tree[obj_name][attr_key], seen_obj_ids)
+            tree[obj_name][attr_key] = \
+                get_approx_object_size_tree(attr_val, tree[obj_name][attr_key], seen_obj_ids)
+            tree[obj_name][None] += tree[obj_name][attr_key][None]
+    elif hasattr(obj, "__dict__"):
+        for attr_key, attr_val in obj.__dict__.items():
+            tree[obj_name][attr_key] = {None: 0}
+            tree[obj_name][attr_key] = \
+                get_approx_object_size_tree(attr_val, tree[obj_name][attr_key], seen_obj_ids)
+            tree[obj_name][None] += tree[obj_name][attr_key][None]
+    elif hasattr(obj, "__iter__") and not isinstance(obj, (str, bytes, bytearray)):
+        for idx, attr_val in enumerate(obj):
+            tree[obj_name][f"#{idx}"] = {None: 0}
+            tree[obj_name][f"#{idx}"] = \
+                get_approx_object_size_tree(attr_val, tree[obj_name][f"#{idx}"], seen_obj_ids)
+            tree[obj_name][None] += tree[obj_name][f"#{idx}"][None]
+    tree[None] += tree[obj_name][None]
+    return tree
