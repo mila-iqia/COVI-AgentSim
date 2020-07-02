@@ -16,6 +16,7 @@ LOCATION_DISTRIBUTION:
         "social_contact_factor": 1,
         "surface_prob": [0.1, 0.1, 0.3, 0.2, 0.3],
         "rnd_capacity": [30, 100],
+        "mean_daily_interactions": 3.1
       },
     "workplace":
       {
@@ -24,6 +25,7 @@ LOCATION_DISTRIBUTION:
         "social_contact_factor": 1,
         "surface_prob": [0.1, 0.1, 0.3, 0.2, 0.3],
         "rnd_capacity": null,
+        "mean_daily_interactions": 10
       },
     "school":
       {
@@ -32,6 +34,7 @@ LOCATION_DISTRIBUTION:
         "social_contact_factor": 1,
         "surface_prob": [0.1, 0.1, 0.3, 0.2, 0.3],
         "rnd_capacity": null,
+        "mean_daily_interactions": 1.6
       },
     "senior_residency":
       {
@@ -40,6 +43,7 @@ LOCATION_DISTRIBUTION:
         "social_contact_factor": 3,
         "surface_prob": [0.1, 0.1, 0.3, 0.2, 0.3],
         "rnd_capacity": null,
+        "mean_daily_interactions": 2.7
       },
     "household":
       {
@@ -48,6 +52,7 @@ LOCATION_DISTRIBUTION:
         "social_contact_factor": 2,
         "surface_prob": [0.1, 0.1, 0.3, 0.2, 0.3],
         "rnd_capacity": null,
+        "mean_daily_interactions": 2.7
       },
     "park":
       {
@@ -56,6 +61,7 @@ LOCATION_DISTRIBUTION:
         "social_contact_factor": 0.1,
         "surface_prob": [0.8, 0.05, 0.05, 0.05, 0.05],
         "rnd_capacity": null,
+        "mean_daily_interactions": 3.1
       },
     "misc":
       {
@@ -64,6 +70,7 @@ LOCATION_DISTRIBUTION:
         "social_contact_factor": 1,
         "surface_prob": [0.1, 0.1, 0.3, 0.2, 0.3],
         "rnd_capacity": [30, 50],
+        "mean_daily_interactions": 3.1
       },
     "hospital":
       {
@@ -72,11 +79,10 @@ LOCATION_DISTRIBUTION:
         "social_contact_factor": 2,
         "surface_prob": [0.0, 0.0, 0.0, 0.0, 1.0],
         "rnd_capacity": [2, 5],
+        "mean_daily_interactions": 3.1
       },
   }
 
-# house_size: 1 2 3 4 5
-OTHERS_WORKPLACE_CHOICE: [1.0, 0.0, 0.0]
 
 HUMAN_DISTRIBUTION: # this is parsed into tuple keys in utils.py/parse_configuration e.g. "0-10" => (0, 10)
   {
@@ -439,13 +445,38 @@ AVG_MAX_NUM_MISC_PER_WEEK: 5
 SCALE_MAX_NUM_MISC_PER_WEEK: 2
 MAX_MISC_QUEUE_LENGTH: 10
 
-# ENCOUNTER CONDITIONS
-MAX_MESSAGE_PASSING_DISTANCE: 200 # high-risk contacts are within 200cm for more than 5 minutes
-MIN_MESSAGE_PASSING_DURATION: 15
+# BLUETOOTH MESSAGE EXCHANGE PARAMETERS
+# bluetooth messages are recorded when the devices are within MAX_MESSAGE_PASSING_DISTANCE radius
+# for more than MIN_MESSAGE_PASSING_DURATION mins
+MAX_MESSAGE_PASSING_DISTANCE: 200 # cms
+MIN_MESSAGE_PASSING_DURATION: 15 # mins
 
-# DISTANCE_ENCOUNTER PARAMETERS cms
-MIN_DIST_ENCOUNTER: 0
-MAX_DIST_ENCOUNTER: 300 # cms
+# CONTACT PARAMETERS
+
+# Contacts are broadly of two types - "known" and "unknown"
+# known contacts) are assumed to be those which we are aware of, for example, meeting a friend.
+# unknown contacts are those which are not known to us consciously ,i.e. strangers standing next to us in a metro.
+
+# known
+MIN_DIST_KNOWN_CONTACT: 0
+MAX_DIST_KNOWN_CONTACT: 200 # cms
+
+# unknown (all the numbers below are assumed because no data is available about them)
+# A distance greater than INFECTION_RADIUS is useless to model, however, in the context of tracing apps
+# distance between two bluetooth devices can be underesimated depending on the noise in the signals.
+# Thus, a distance of greater than 200 cms can potentially be visible as a risky contacts.
+# Here, we sample distances up to 300 cms to allow for bluetooth devices to record no-risk contacts
+MEAN_DAILY_UNKNOWN_CONTACTS: 1.0
+MIN_DIST_UNKNOWN_CONTACT: 100
+MAX_DIST_UNKNOWN_CONTACT: 300 # cms
+GAMMA_UNKNOWN_CONTACT_DURATION: 15
+
+# both: known and unknown
+# we sample duration as a gamma distribution with mean as MEAN_DAILY_CONTACT_DURATION / SCALE_FACTOR_CONTACT_DURATION
+# and variance as SCALE_FACTOR_CONTACT_DURATION. This ensures that the mean is MEAN_DAILY_CONTACT_DURATION and the variance is
+# MEAN_DAILY_CONTACT_DURATION * SCALE_FACTOR_CONTACT_DURATION
+# This way we are left with just one parameter to control the uncertainty around contact duration.
+SCALE_FACTOR_CONTACT_DURATION: 1.0
 
 # KNOBS
 CONTAGION_KNOB: 1
