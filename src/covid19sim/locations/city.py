@@ -331,7 +331,14 @@ class City:
             locs = [self.create_location(specs, location, i, area[i]) for i in range(n)]
             setattr(self, f"{location}s", locs)
 
-    def initialize_humans(self):
+    def get_all_locations(self):
+        """Returns a list of all concatenated locations held by this city."""
+        output = []
+        for location_name in self.conf.get("LOCATION_DISTRIBUTION"):
+            output.extend(getattr(self, f"{location_name}s"))
+        return output
+
+    def initialize_humans(self, human_type):
         """
         `Human`s are created based on the statistics captured in HUMAN_DSITRIBUTION. Age distribution is specified via 'p'.
         SMARTPHONE_OWNER_FRACTION_BY_AGE defines the fraction of population in the age bin that owns smartphone.

@@ -531,18 +531,9 @@ class Tracker(object):
                 "order_1_is_tested": any([c.test_result == "positive" for c in order_1_contacts]),
             })
         if keep_full_copies:
-            all_locations = (list(self.city.households) +
-                             self.city.hospitals +
-                             self.city.parks +
-                             self.city.stores +
-                             self.city.schools +
-                             self.city.workplaces +
-                             self.city.senior_residencys +
-                             self.city.miscs)
-
             self.dump_backup_objects(
                 human_backups=deepcopy_obj_array_except_env(hd),
-                location_backups=deepcopy_obj_array_except_env(all_locations),
+                location_backups=deepcopy_obj_array_except_env(self.city.get_all_locations()),
                 current_timestamp=current_timestamp,
             )
 
