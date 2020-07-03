@@ -27,11 +27,9 @@ def sizeof(path, suffix="B"):
     return "%.1f%s%s" % (num, "Y", suffix)
 
 
-def help():
+def help(all_plots):
     print("Available plotting options:")
-    print("    * pareto_adoption")
-    print("    * jellybeans")
-    print("    * presymptomatic")
+    print("    * " + "\n    * ".join(all_plots.keys()))
     print("    * all")
     print('    * "[opt1, opt2, ...]" (<- note, lists are stringified)')
     print()
@@ -159,7 +157,7 @@ def parse_options(conf, all_plots):
     for arg in conf:
         for plot in all_plots:
             if arg.startswith(plot):
-                opt_key = arg.split(plot + "_")[-1]
+                opt_key = arg.replace(plot + "_", "")
                 opt_value = conf[arg]
                 options[plot][opt_key] = opt_value
     return dict(options)
@@ -180,13 +178,13 @@ def main(conf):
     options = parse_options(conf, all_plots)
     path = Path(conf.get("path", ".")).resolve()
     assert path.exists()
-    full_data_path = path / "full_plotting_data.pkl"
+    cache_path = path / "cache.pkl"
 
     # -------------------
     # -----  Help?  -----
     # -------------------
     if "help" in conf:
-        help()
+        help(all_plots)
         return
 
     # --------------------------
@@ -231,23 +229,37 @@ def main(conf):
     # ------------------------------------
     # -----  Load pre-computed data  -----
     # ------------------------------------
-    if full_data_path.exists() and not conf.get("recompute", False):
+    cache = None
+    use_cache = cache_path.exists() and not conf.get("use_cache", False)
+    if use_cache:
         try:
             print(
-                "Using precomputed data ({}): {}...".format(
-                    sizeof(full_data_path), str(full_data_path)
+                "Using cached data ({}): {}...".format(
+                    sizeof(cache_path), str(cache_path)
                 )
             )
-            with full_data_path.open("rb") as f:
-                data = pickle.load(f)
-            check_data(data)
+            with cache_path.open("rb") as f:
+                cache = pickle.load(f)
+
+            # check that the loaded data contains what is required by current `plots`
+            if "plots" not in cache or not all(p in cache["plots"] for p in plots):
+                print(
+                    "Missing some data for plots {} in cache.pkl".format(
+                        ", ".join([p for p in plots if p not in cache["plots"]])
+                    )
+                )
+                use_cache = False
+            else:
+                data = cache["data"]
+                check_data(data)
+
         except Exception:
             print(
                 "{}\n{}\n{}\n\nCould not load {}. Recomputing data.".format(
-                    "*" * 30, traceback.format_exc(), "*" * 30, str(full_data_path),
+                    "*" * 30, traceback.format_exc(), "*" * 30, str(cache_path),
                 )
             )
-    else:
+    if not use_cache:
         # --------------------------
         # -----  Compute Data  -----
         # --------------------------
@@ -262,12 +274,17 @@ def main(conf):
         # -------------------------------
         # -----  Dump if requested  -----
         # -------------------------------
-        if conf.get("dump", True):
-            print("Dumping data...", end="", flush=True)
+        if conf.get("dump_cache", True):
+            print("Dumping cache...", end="", flush=True)
             t = time()
-            with full_data_path.open("wb") as f:
-                pickle.dump(data, f)
-            print("Done in {}s ({})".format(int(time() - t), sizeof(full_data_path)))
+            with cache_path.open("wb") as f:
+                if cache is None:
+                    cache = {"plots": plots, "data": data}
+                else:
+                    cache["plots"] = list(set(cache["plots"] + plots))
+                    cache["data"] = {**cache["data"], **data}
+                pickle.dump(cache, f)
+            print("Done in {}s ({})".format(int(time() - t), sizeof(cache_path)))
 
     for plot in plots:
         func = all_plots[plot].run
