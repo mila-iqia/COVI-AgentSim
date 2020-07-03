@@ -77,9 +77,15 @@ def run(data, path, comparison_key):
         "unmitigated": "Unmitigated",
         "oracle": "Oracle",
     }
+
+    n_lines = np.math.ceil(len(data) / max_cols)
+    n_cols = min((len(data), max_cols))
+
     for i, (comparison_value, comparison_dict) in enumerate(data_rec_levels.items()):
-        fig = plt.figure(figsize=(25, 5), constrained_layout=True)
-        gridspec = fig.add_gridspec(np.math.ceil(len(data) / max_cols), max_cols)
+        fig = plt.figure(
+            figsize=(5 * len(comparison_dict), 5), constrained_layout=True
+        )
+        gridspec = fig.add_gridspec(n_lines, n_cols)
         print(f"Plotting {comparison_key} {comparison_value} ...")
         for j, (method_name, method_risk_levels) in enumerate(comparison_dict.items()):
             if method_name == "unmitigated":
@@ -126,11 +132,11 @@ def run(data, path, comparison_key):
                     rotation=90,
                 )
         plt.suptitle("{} {}".format(comparison_key, comparison_value), size=17)
-        save_path = path / "comparison-recommendation-levels-{}-{}.pdf".format(
+        save_path = path / "comparison-recommendation-levels-{}-{}.png".format(
             comparison_key, comparison_value
         )
         print("Saving Figure {} ...".format(save_path.name))
         plt.savefig(
-            str(save_path), bbox_inches="tight", format="pdf",
+            str(save_path), bbox_inches="tight",
         )
     print("Done.")
