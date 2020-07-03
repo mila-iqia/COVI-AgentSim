@@ -193,7 +193,7 @@ def plot_all_metrics(
     return axs
 
 
-def get_line2D(value, idx, markers, colors, is_method=True, compare="APP_UPTAKE"):
+def get_line2D(value, color, marker, is_method=True, compare="APP_UPTAKE"):
     legends = {
         "APP_UPTAKE": lambda x: f"{float(x) * 100 * 0.71203:.0f}% Adoption Rate",
         "method": {
@@ -207,7 +207,7 @@ def get_line2D(value, idx, markers, colors, is_method=True, compare="APP_UPTAKE"
             "unmitigated": "Unmitigated",
             "oracle": "Oracle",
         },
-        'REC_LEVEL_THRESHOLDS': lambda x: f"{''.join(x)} Thresholds"
+        "REC_LEVEL_THRESHOLDS": lambda x: f"{''.join(x)} Thresholds",
     }
 
     if is_method:
@@ -217,7 +217,7 @@ def get_line2D(value, idx, markers, colors, is_method=True, compare="APP_UPTAKE"
             color="none",
             marker="o",
             markeredgecolor="k",
-            markerfacecolor=colors[idx],
+            markerfacecolor=color,
             markersize=15,
             label=legends["method"][value],
         )
@@ -227,7 +227,7 @@ def get_line2D(value, idx, markers, colors, is_method=True, compare="APP_UPTAKE"
         [0],
         color="none",
         lw=2,
-        marker=markers[idx],
+        marker=marker,
         markerfacecolor="black",
         markersize=15,
         label=legends[compare](value),
@@ -317,9 +317,7 @@ def run(data, path, comparison_key):
     capsize = 4
     markers = ["P", "s", "X", "d", ".", "h", "^", "*", "v"]
     colormap = [
-        "#34495e",
         "mediumvioletred",
-        "orangered",
         "royalblue",
         "darkorange",
         "green",
@@ -345,26 +343,36 @@ def run(data, path, comparison_key):
 
     base_methods = set([lab.split("_")[0] for lab in labels + labels_norm])
 
-    legend = []
-    legend_compare_ok = False
-    for idx, method in enumerate(base_methods):
+    method_legend = []
+    compare_legend = []
+    for idx, method in enumerate(sorted(base_methods)):
         print("Plotting", method, "...")
-        current_labels = [lab for lab in labels if lab.startswith(method)]
-        current_labels_norm = [lab for lab in labels_norm if lab.startswith(method)]
-        legend.append(get_line2D(method, idx, markers, colormap, True, comparison_key))
+        current_labels = sorted([lab for lab in labels if lab.startswith(method)])
+        current_labels_norm = sorted(
+            [lab for lab in labels_norm if lab.startswith(method)]
+        )
+        current_color = colormap[idx] if method != "unmitigated" else "#34495e"
+        method_legend.append(
+            get_line2D(method, current_color, None, True, comparison_key)
+        )
         for i, lab in enumerate(current_labels):
-            if not legend_compare_ok:
-                legend.append(
+            current_marker = markers[i]
+            if idx == 0:
+                compare_legend.append(
                     get_line2D(
-                        lab.split("_")[-1], i, markers, colormap, False, comparison_key,
+                        lab.split("_")[-1],
+                        current_color,
+                        current_marker,
+                        False,
+                        comparison_key,
                     )
                 )
             plot_all_metrics(
                 axs,
                 df,
                 lab,
-                colormap[idx],
-                markers[i],
+                current_color,
+                current_marker,
                 xmetrics,
                 ymetric,
                 capsize=capsize,
@@ -376,15 +384,14 @@ def run(data, path, comparison_key):
                 axs,
                 df,
                 lab,
-                colormap[idx],
-                markers[i],
+                current_color,
+                current_marker,
                 xmetrics,
                 ymetric,
                 capsize=capsize,
                 ms=ms,
                 normalized=True,
             )
-        legend_compare_ok = True
 
     metric_name_map = {
         "f3": "False level-3",
@@ -425,6 +432,25 @@ def run(data, path, comparison_key):
         fontsize=50,
         y=1.1,
     )
+    if len(method_legend) % 2 != 0:
+        legend = (
+            method_legend
+            + [
+                Line2D(
+                    [0],
+                    [0],
+                    color="none",
+                    marker="",
+                    markeredgecolor="k",
+                    markerfacecolor=None,
+                    markersize=1,
+                    label=" ",
+                )
+            ]
+            + compare_legend
+        )
+    else:
+        legend = method_legend + compare_legend
     lgd = fig.legend(
         handles=legend,
         loc="upper center",
