@@ -8,6 +8,7 @@ import math
 import typing
 import warnings
 from collections import Counter, defaultdict
+from copy import deepcopy
 
 import dill
 import networkx as nx
@@ -87,22 +88,66 @@ class Tracker(object):
             name = city.conf.get('RISK_MODEL')
         self.filename = f"tracker_data_n_{city.n_people}_{timenow}_{name}.pkl"
 
-        # infection & contacts
+        # all about contacts
+        contact_matrices_fmt = defaultdict(lambda: {
+                    'avg': (0, np.zeros((len(AGE_BIN_WIDTH_5), len(AGE_BIN_WIDTH_5)))),
+                    'total': np.zeros((len(AGE_BIN_WIDTH_5), len(AGE_BIN_WIDTH_5))),
+                    'n_people': defaultdict(lambda : set()),
+                    'avg_daily': (0, np.zeros((len(AGE_BIN_WIDTH_5), len(AGE_BIN_WIDTH_5)))),
+                })
+        self.contact_matrices = {
+                            "known": deepcopy(contact_matrices_fmt),
+                            "all": deepcopy(contact_matrices_fmt),
+                            "within_contact_condition": deepcopy(contact_matrices_fmt),
+                            }
+
+        contact_duration_matrices_fmt = defaultdict(lambda: {
+                    'avg': (0, np.zeros((len(AGE_BIN_WIDTH_5), len(AGE_BIN_WIDTH_5)))),
+                    'total': np.zeros((len(AGE_BIN_WIDTH_5), len(AGE_BIN_WIDTH_5))),
+                    'avg_daily': (0, np.zeros((len(AGE_BIN_WIDTH_5), len(AGE_BIN_WIDTH_5)))),
+                })
+        self.contact_duration_matrices = {
+                            "known": deepcopy(contact_duration_matrices_fmt),
+                            "all": deepcopy(contact_duration_matrices_fmt),
+                            "within_contact_condition": deepcopy(contact_duration_matrices_fmt),
+                            }
+
+        self.bluetooth_contact_matrices = defaultdict(lambda: {
+                    'avg': (0, np.zeros((len(AGE_BIN_WIDTH_5), len(AGE_BIN_WIDTH_5)))),
+                    'total': np.zeros((len(AGE_BIN_WIDTH_5), len(AGE_BIN_WIDTH_5))),
+                    'n_people': defaultdict(lambda : set()),
+                })
+
+        self.mean_daily_contacts_per_agegroup = {
+            'weekday': defaultdict(lambda: (0, np.zeros(len(AGE_BIN_WIDTH_5)))),
+            'weekend': defaultdict(lambda: (0, np.zeros(len(AGE_BIN_WIDTH_5)))),
+            "all": defaultdict(lambda : (0,0))
+        }
+
+        self.mean_daily_contact_duration_per_agegroup = {
+            'weekday': defaultdict(lambda: (0, np.zeros(len(AGE_BIN_WIDTH_5)))),
+            'weekend': defaultdict(lambda: (0, np.zeros(len(AGE_BIN_WIDTH_5)))),
+            "all": defaultdict(lambda : (0,0))
+        }
+
+        self.contact_distance_profile = {
+            "known":
+            "all":
+        }
+
+        self.contact_duration_profile = {
+            "known":,
+            "all":,
+        }
+
+
         self.contacts = {
-                'all_encounters':np.zeros((150,150)),
-                'location_all_encounters': defaultdict(lambda: np.zeros((150,150))),
                 'human_infection': np.zeros((150,150)),
                 'env_infection':get_nested_dict(1),
                 'location_env_infection': get_nested_dict(2),
                 'location_human_infection': defaultdict(lambda: np.zeros((150,150))),
-                'duration': {'avg': (0, np.zeros((150,150))), 'total': np.zeros((150,150)), 'n': np.zeros((150,150))},
                 'histogram_duration': [0],
                 'location_duration':defaultdict(lambda : [0]),
-                'n_contacts': {
-                        'avg': (0, np.zeros((150,150))),
-                        'total': np.zeros((150,150)),
-                        'n_people': defaultdict(lambda : set())
-                        },
                 'n_bluetooth_contacts': {
                         'avg': (0, np.zeros((150,150))),
                         'total': np.zeros((150,150)),
@@ -111,6 +156,8 @@ class Tracker(object):
 
 
                 }
+
+        # infection
         self.p_infection = []
 
         self.infection_graph = nx.DiGraph()
@@ -148,13 +195,6 @@ class Tracker(object):
         self.age_bins = [(x[0], x[1]) for x in sorted(self.city.conf.get("P_AGE_REGION"), key = lambda x:x[0])]
         self.n_people = self.n_humans = self.city.n_people
         self.human_has_app = None
-
-        # track encounters
-        self.last_encounter_day = self.env.day_of_week()
-        self.last_encounter_hour = self.env.hour_of_day()
-        self.day_encounters = defaultdict(lambda : [0.,0.,0.])
-        self.hour_encounters = defaultdict(lambda : [0.,0.,0.])
-        self.daily_age_group_encounters = defaultdict(lambda :[0.,0.,0.])
 
         self.dist_encounters = defaultdict(int)
         self.time_encounters = defaultdict(int)
@@ -810,6 +850,9 @@ class Tracker(object):
             age ([type]): [description]
             hour ([type]): [description]
         """
+        if not (self.conf['track_all'] or self.conf['track_trip']):
+            return
+
         bin = None
         for i, (l,u) in enumerate(self.age_bins):
             if l <= age < u:
@@ -817,75 +860,145 @@ class Tracker(object):
 
         self.transition_probability[hour][bin][from_location][to_location] += 1
 
-    def track_social_mixing(self, **kwargs):
+    def track_mixing(self, human1, human2, duration, distance, timestamp, location, interaction_type, contact_condition):
         """
-        Keeps count of average daily encounters between different ages.
+        Stores counts and statistics to generate various aspects of contacts and social mixing.
+        Following are being tracked -
+            1. (symmetric matrix) Mean daily contacts between two age groups broken down by location and type of interaction ("known", "all", "within_contact_condition")
+            2. (asymmetric matrix) Mean daily contacts per person in two age groups (asymmetric) broken down by location and type of interaction ("known", "all", "within_contact_condition")
+            3. (symmetric matrix) Mean duration of contacts between two age groups (symmetric) broken down by location and type of interaction ("known", "all", "within_contact_condition")
+            4. (asymmetric matrix) Mean duration of contacts per person in two age groups (asymmetric) broken down by location and type of interaction ("known", "all", "within_contact_condition")
+            5. (1D array) Mean daily contacts per age group on weekdays and weekends for each location type (only for "known" contacts)
+            6. (1D array) Mean daily contact duration per age group on weekdays and weekends for each location type (only for "known" contacts)
+            7. (scalar) Mean daily contact per person per day for each location type (only for "known" contacts)
+            8. (scalar) Mean daily contact duration per person per day for each location type(only for "known" contacts)
+
+        Args:
+            human1 (covid19sim.human.Human): one of the two `human`s involved in the encounter
+            human2 (covid19sim.human.Human): other of the two `human`s involved in the encounter
+            duration (float): time duration got which this encounter took place (minutes)
+            distance (float): distance from which these two humans met (cms)
+            timestamp (datetime.datetime): timestamp at which this event took place
+            location (Location): `Location` where this encounter took place
+            interaction_type (string): type of interaction i.e. "known" or "unknown". We keep track of "known" contacts and "all" contacts (that combines "known" and "unknown")
+            contact_condition (bool): whether the encounter was within the contact conditions for infection to happen
         """
-        duration = kwargs.get('duration')
-        bin = math.floor(duration/15)
-        location = kwargs.get('location', None)
+        if not (self.conf['track_all'] or self.conf['track_mixing']):
+            return
 
-        if location is None:
-            x = len(self.contacts['histogram_duration'])
-            if bin >= x:
-                self.contacts['histogram_duration'].extend([0 for _ in range(bin - x + 1)])
-            self.contacts['histogram_duration'][bin] += 1
+        x = len(self.contacts['histogram_duration'])
+        if bin >= x:
+            self.contacts['histogram_duration'].extend([0 for _ in range(bin - x + 1)])
+        self.contacts['histogram_duration'][bin] += 1
 
-            timestamp = kwargs.get('timestamp')
-            day = timestamp.strftime("%d %b")
+        day = timestamp.strftime("%d %b")
+        last_day = self.last_day['social_mixing']
+        if  last_day != day:
 
-            if self.last_day['social_mixing'] != day:
-                # average duration per contact across age groups (minutes)
-                n, M = self.contacts['duration']['avg']
-                where = self.contacts['duration']['n'] != 0
-                m = np.divide(self.contacts['duration']['total'], self.contacts['duration']['n'], where=where)
-                self.contacts['duration']['avg'] = (n+1, (n*M + m)/(n+1))
+            # everything related to contact matrices
+            for interaction_type in self.contact_matrices.keys():
+                for location_type in LOCATION_TYPES_TO_TRACK_MIXING:
+                    C = self.contact_matrices[interaction_type][location_type]
+                    D = self.contact_duration_matrices[interaction_type][location_type]
 
-                self.contacts['duration']['total'] = np.zeros((150,150))
-                self.contacts['duration']['n'] = np.zeros((150,150))
+                    # number of contacts per age group
+                    # mean daily contacts (symmetric matrix)
+                    n, M = C['avg_daily']
+                    C['avg_daily'] = (n+1, (n*M + C['total'])/(n+1))
 
-                # number of contacts across age groups
-                n, M = self.contacts['n_contacts']['avg']
-                m = self.contacts['n_contacts']['total']
-                any_contact = np.zeros_like(m)
-                for age1, age2 in self.contacts['n_contacts']['n_people'].keys():
-                    x = len(self.contacts['n_contacts']['n_people'][age1, age2])
-                    m[age1, age2] /=  x
-                    any_contact[age1, age2] = 1.0
+                    # /!\ Storing number of people per age group might lead to memory problems. It might not be sutiable for larger simulations.
+                    # mean daily contacts per person in an age group (similar to survey matrices)
+                    n, M = C['avg']
+                    n_people = np.zeros_like(m)
+                    for i, j in C['n_people'].keys():
+                        n_people[i, j] = len(C[(i,j)])
+                    m = np.divide(C['total'], n_people, where= n_people!=0)
+                    C['avg'] = (n+1, (n*M + m)/(n+1))
 
-                # update values
-                self.contacts['n_contacts']['avg'] = (n+1, (n*M + m)/(n+1))
-                self.contacts['n_contacts']['n_people'] = defaultdict(lambda : set())
-                self.contacts['n_contacts']['total'] = np.zeros((150,150))
+                    # mean duration per contact (minutes) (symmetric matrix)
+                    n, M = D['avg_daily']
+                    D['avg_daily'] = (n+1, (n*M + D['total'])/(n+1))
 
-                self.outside_daily_contacts.append(1.0 * self.n_outside_daily_contacts/len(self.city.humans))
-                self.n_outside_daily_contacts = 0
-                self.last_day['social_mixing'] = day
+                    # mean duration per contact per person (minutes) (similar to survey matrices)
+                    n, M = D['avg']
+                    m = np.divide(D['total'], n_people, where= n_people!=0)
+                    D['avg'] = (n+1, (n*M + m)/(n+1))
 
-            else:
-                human1 = kwargs.get('human1', None)
-                human2 = kwargs.get('human2', None)
-                if human1 is not None and human2 is not None:
-                    self.contacts['duration']['total'][human1.age, human2.age] += duration
-                    self.contacts['duration']['total'][human2.age, human1.age] += duration
-                    self.contacts['duration']['n'][human1.age, human2.age] += 1
-                    self.contacts['duration']['n'][human2.age, human1.age] += 1
+                    # reset the matrices for counting the next day's events
+                    C['total'] = np.zeros((len(AGE_BIN_WIDTH_5), len(AGE_BIN_WIDTH_5)))
+                    C['n_people'] = defaultdict(lambda : set())
+                    D['total'] = np.zeros((len(AGE_BIN_WIDTH_5), len(AGE_BIN_WIDTH_5)))
 
-                    self.contacts['n_contacts']['total'][human1.age, human2.age] += 1
-                    self.contacts['n_contacts']['total'][human2.age, human1.age] += 1
-                    self.contacts['n_contacts']['n_people'][(human1.age, human2.age)].add(human1.name)
-                    self.contacts['n_contacts']['n_people'][(human2.age, human1.age)].add(human2.name)
+                    # mean dailies per age group or otherwise for "known" contacts only. This is what is available via surveys.
+                    if interaction_type == "known":
+                        # mean weekday and weekend contact/contact duration per age group is only recorded for "known" contacts.
+                        type_of_day = ['weekday', 'weekend'][last_day.is_weekend()]
+                        n, Da = self.mean_daily_contact_duration_per_agegroup[type_of_day][location_type]
+                        n, Ca = self.mean_daily_contacts_per_agegroup[type_of_day][location_type]
 
-                    if human1.location != human1.household:
-                        self.n_outside_daily_contacts += 1
+                        ## total for yesterday per age group
+                        contacts_per_agegroup = C["total"].sum(axis=0)
+                        contact_duration_per_agegroup = D["total"].sum(axis=0)
+                        n_unique_people_per_agegroup = n_people.sum(axis=0)
 
-        if location is not None:
-            x = len(self.contacts['location_duration'][location.location_type])
-            if bin >= x:
-                self.contacts['location_duration'][location.location_type].extend([0 for _ in range(bin - x + 1)])
-            self.contacts['location_duration'][location.location_type][bin] += 1
+                        m = np.divide(contacts_per_agegroup, n_unique_people_per_agegroup, where=n_unique_people_per_agegroup!=0)
+                        self.mean_daily_contacts_per_agegroup[type_of_day][location_type] = (n+1, (n * Ca + m)/(n+1))
+
+                        m = np.divide(contact_duration_per_agegroup, n_unique_people_per_agegroup, where=n_unique_people_per_agegroup!=0)
+                        self.mean_daily_contact_duration_per_agegroup[type_of_day][location_type] = (n+1, (n * Da + m)/(n+1))
+
+                        # mean daily contacts
+                        n, d = self.mean_daily_contact_duration_per_agegroup["all"][location_type]
+                        n, c = self.mean_daily_contacts_per_agegroup["all"][location_type]
+                        total_contacts = C["total"].sum() / 2
+                        total_contact_duration = D["total"].sum() / 2
+                        total_unique_people = n_people.sum() / 2
+
+                        m = total_contact_duration / total_unique_people
+                        self.mean_daily_contact_duration_per_agegroup["all"][location_type] = (n+1, (d*n + m) / (n+1))
+
+                        m = total_contacts / total_unique_people
+                        self.mean_daily_contact_duration_per_agegroup["all"][location_type] = (n+1, (c*n + m) / (n+1))
+
+
+            self.outside_daily_contacts.append(1.0 * self.n_outside_daily_contacts/len(self.city.humans))
+            self.n_outside_daily_contacts = 0
+            self.last_day['social_mixing'] = day
+
+        else:
+            type_of_place = _get_location_type_to_track_mixing(location)
+            i = human1.age_bin_width_5.index
+            j = human2.age_bin_width_5.index
+
+            # everything related to the contact matrices is recorded here
+            interaction_types = ['all', interaction_type]
+            if contact_condition:
+                interaction_types.append("within_contact_condition")
+
+            for interaction_type in interaction_types:
+                for location_type in ['all', type_of_place]:
+                    C = self.contact_matrices[interaction_type][location_type]
+                    D = self.contact_duration_matrices[interaction_type][location_type]
+
+                    C['total'][i, j] += 1
+                    C['total'][j, i] += 1
+                    C['n_people'][(j,i)].add(human1.name) # in surveys, ij ==> j is the participant and i is the reported contact
+                    C['n_people'][(i,j)].add(human2.name)
+                    D['total'][i,j] += duration
+                    D['total'][j,i] += duration
+
+            if human1.location != human1.household:
+                self.n_outside_daily_contacts += 1
+
+        x = len(self.contacts['location_duration'][location.location_type])
+        if bin >= x:
+            self.contacts['location_duration'][location.location_type].extend([0 for _ in range(bin - x + 1)])
+        self.contacts['location_duration'][location.location_type][bin] += 1
 
     def track_bluetooth_communications(self, human1, human2, timestamp):
+        if not (self.conf['track_all'] or self.conf['track_bluetooth_communications']):
+            return
+
         day = timestamp.strftime("%d %b")
         if self.last_day['bluetooth_communications']  != day:
             n, M = self.contacts['n_bluetooth_contacts']['avg']
@@ -933,10 +1046,6 @@ class Tracker(object):
             if l <= human2.age <= u:
                 bin2 = (i, (l,u))
 
-        self.contacts["all_encounters"][human1.age, human2.age] += 1
-        self.contacts["all_encounters"][human2.age, human1.age] += 1
-        self.contacts["location_all_encounters"][location.location_type][human1.age, human2.age] += 1
-        self.contacts["location_all_encounters"][location.location_type][human2.age, human1.age] += 1
         self.n_contacts += 1
 
         # bins of 50
@@ -948,32 +1057,9 @@ class Tracker(object):
 
         # bins of 15 mins
         time_bin = math.floor(duration/15) if duration <= 60 else 4
-
-        hour = self.env.hour_of_day()
-        day = self.env.day_of_week()
-        if self.last_encounter_day != day:
-            n, avg, last_day_count = self.day_encounters[self.last_encounter_day]
-            self.day_encounters[self.last_encounter_day] = [n+1, (avg * n + last_day_count)/(n + 1), 0]
-
-            # per age bin
-            for bin in self.age_bins:
-                n, avg, last_day_count  = self.daily_age_group_encounters[bin]
-                self.daily_age_group_encounters[bin] = [n+1, (avg * n + last_day_count)/(n+1), 0]
-
-            self.last_encounter_day = day
-
-        if self.last_encounter_hour != hour:
-            n, avg, last_hour_count = self.hour_encounters[self.last_encounter_hour]
-            self.hour_encounters[self.last_encounter_hour] = [n+1, (avg * n + last_hour_count)/(n + 1), 0]
-            self.last_encounter_hour = hour
-
-        self.day_encounters[self.last_encounter_day][-1] += 1
-        self.hour_encounters[self.last_encounter_hour][-1] += 1
-        self.daily_age_group_encounters[bin1[1]][-1] += 1
-        self.daily_age_group_encounters[bin2[1]][-1] += 1
         self.dist_encounters[dist_bin] += 1
         self.time_encounters[time_bin] += 1
-        
+
     def track_p_infection(self, infection, p_infection, viral_load):
         """
         Keeps track of attributes related to infection to be used for calculating
