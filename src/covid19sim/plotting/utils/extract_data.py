@@ -6,6 +6,7 @@
 
 import numpy as np
 import os
+import multiprocessing as mp
 import pickle
 from covid19sim.plotting.plot_rt import PlotRt
 from pathlib import Path
