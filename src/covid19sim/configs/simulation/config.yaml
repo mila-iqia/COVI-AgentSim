@@ -4,6 +4,7 @@ defaults:
   - core
   - base_method
   - region: montreal
+  - track: all
 
 hydra:
   run:

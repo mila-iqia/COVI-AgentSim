@@ -1,4 +1,7 @@
 from collections import OrderedDict, namedtuple
+from covid19sim.utils.constants import AGE_BIN_WIDTH_5, AGE_BIN_WIDTH_10
+
+AGE_BIN_ID = namedtuple("AGE_BIN_ID", ['index', 'bin'])
 
 # NOTE: THE PREEXISTING CONDITION NAMES/IDs BELOW MUST MATCH THOSE IN frozen/helper.py
 ConditionProbability = namedtuple('ConditionProbability', ['name', 'id', 'age', 'sex', 'probability'])
@@ -317,22 +320,22 @@ def get_age_bin(age, width=10):
             age bins of the form 0-4 have a width of 5 (both limits inclusive)
 
     Returns:
-        (int): idenitfier for the age group that can be used to look up values in various data sources
+        age_bin (tuple): idenitfier for the age group that can be used to look up values in various data sources
             ranges from 0-9 if width = 10
             ranges from 0-16 if width = 5
+        i (int): ordering of this bin in the list
 
     """
     if width == 10:
-        age_bins = [(0,9), (10,19), (20,29), (30,39), (40,49), (50,59), (60,69), (70,79), (80,110)]
+        age_bins = AGE_BIN_WIDTH_10
     elif width == 5:
-        age_bins = [(0,4), (5,9), (10,14), (15,19), (20,24), (25,29), (30,34), (35,39), (40,44), (45,49), (50,54)
-                    (55,59), (60,64), (65,69), (70,74), (75,110)]
+        age_bins = AGE_BIN_WIDTH_5
     else:
         raise
 
-    for l, u in age_bins:
+    for i, (l, u) in enumerate(age_bins):
         if l <= age <= u:
             bin = (l, u)
             break
 
-    return bin
+    return AGE_BIN_ID(index=i, bin=bin)

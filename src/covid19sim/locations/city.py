@@ -295,7 +295,6 @@ class City:
                         env=self.env,
                         rng=self.rng,
                         conf=self.conf,
-                        type=type,
                         name=f"{type}:{name}",
                         location_type=type,
                         lat=self.rng.randint(*self.x_range),

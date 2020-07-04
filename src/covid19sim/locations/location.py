@@ -2,16 +2,17 @@ import simpy
 import datetime
 from orderedset import OrderedSet
 import numpy as np
-from covid19sim.utils.constants import SECONDS_PER_MINUTE, SECONDS_PER_HOUR
+from covid19sim.utils.constants import SECONDS_PER_MINUTE, SECONDS_PER_HOUR, AGE_BIN_WIDTH_5
 from covid19sim.epidemiology.p_infection import get_environment_human_p_transmission
 from covid19sim.epidemiology.viral_load import compute_covid_properties
+from covid19sim.log.event import Event
 
 class Location(simpy.Resource):
     """
     Class representing generic locations used in the simulator
     """
 
-    def __init__(self, env, rng, conf, type, area, name, location_type, lat, lon,
+    def __init__(self, env, rng, conf, area, name, location_type, lat, lon,
                  social_contact_factor, capacity, surface_prob):
         """
         Locations are created with city.create_location(), not instantiated directly
@@ -21,7 +22,7 @@ class Location(simpy.Resource):
             rng (np.random.RandomState): Random number generator
             area (float): Area of the location
             name (str): The location's name
-            location_type (str): Location's type, see
+            type (str): Location's type, see
             lat (float): Location's latitude
             lon (float): Location's longitude
             social_contact_factor (float): how much people are close to each other
@@ -40,7 +41,6 @@ class Location(simpy.Resource):
         super().__init__(env, capacity)
         self.humans = OrderedSet()  # OrderedSet instead of set for determinism when iterating
         self.conf = conf
-        self.type = type
         self.name = name
         self.rng = np.random.RandomState(rng.randint(2 ** 16))
         self.lat = lat
@@ -54,9 +54,23 @@ class Location(simpy.Resource):
         self.max_day_contamination = 0
         self.is_open_for_business = True
 
-        self.MEAN_DAILY_KNOWN_INTERACTIONS = conf['LOCATION_DISTRIBUTION']['type']['mean_daily_interactions']
-        self.MEAN_DAILY_UNKNOWN_INTERACTIONS = conf['MEAN_DAILY_UNKNOWN_CONTACTS']
-        self.binned_humans = defaultdict(lambda :OrderedSet())
+        self.MEAN_DAILY_KNOWN_CONTACTS = conf['LOCATION_DISTRIBUTION'][location_type]['mean_daily_interactions']
+        self.MEAN_DAILY_UNKNOWN_CONTACTS = conf['MEAN_DAILY_UNKNOWN_CONTACTS']
+        self.binned_humans = {bin:OrderedSet() for bin in AGE_BIN_WIDTH_5}
+        self.CONTACT_DURATION_GAMMA_SCALE_MATRIX = np.array(conf['CONTACT_DURATION_GAMMA_SCALE_MATRIX'])
+        self.CONTACT_DURATION_GAMMA_SHAPE_MATRIX = np.array(conf['CONTACT_DURATION_GAMMA_SHAPE_MATRIX'])
+
+        if location_type == "household":
+            self.P_CONTACT = np.array(conf['P_CONTACT_MATRIX_HOUSEHOLD'])
+        elif location_type in ["workplace", "store", "misc"]:
+            self.P_CONTACT = np.array(conf['P_CONTACT_MATRIX_WORK'])
+        elif location_type == "school":
+            self.P_CONTACT = np.array(conf['P_CONTACT_MATRIX_SCHOOL'])
+        else:
+            self.P_CONTACT = np.array(conf['P_CONTACT_MATRIX_OTHER'])
+
+        for matrix in [self.CONTACT_DURATION_GAMMA_SCALE_MATRIX, self.CONTACT_DURATION_GAMMA_SHAPE_MATRIX, self.P_CONTACT]:
+            assert matrix.shape[0] == matrix.shape[1], "contact matrix is not square"
 
     def infectious_human(self):
         """
@@ -80,7 +94,7 @@ class Location(simpy.Resource):
             human (covid19sim.human.Human): The human to add.
         """
         self.humans.add(human)
-        self.binned_humans[human.age_bin_width_5].add(human)
+        self.binned_humans[human.age_bin_width_5.bin].add(human)
 
     def remove_human(self, human):
         """
@@ -105,7 +119,7 @@ class Location(simpy.Resource):
                 ))
                 self.max_day_contamination = max(self.max_day_contamination, rnd_surface)
             self.humans.remove(human)
-            self.binned_humans[human.age_bin_width_5].remove(human)
+            self.binned_humans[human.age_bin_width_5.bin].remove(human)
 
     @property
     def is_contaminated(self):
@@ -165,15 +179,30 @@ class Location(simpy.Resource):
         Returns:
             other_human (covid19sim.human.Human): `human` with whom this `human` will interact
         """
+        if len(self.humans) == 1:
+            return None
 
         if type == "known":
-            human_bin = human.age_bin_width_5
+            human_bin = human.age_bin_width_5.index
             # sample human whom to interact with
-            other_bin = self.rng.choice(range(self.TOTAL_BINS), self.P_CONTACT[human_bin])
-            # what if there is no human in this bin?????
-            other_human = self.rng.choice(self.binned_humans[other_bin])
+            p = self.P_CONTACT[:, human_bin]
+            remaining_bins = [i for i, bin in enumerate(AGE_BIN_WIDTH_5) if len(self.binned_humans[bin]) > 0]
+            # TODO - P - with improved mobility, it should not happen
+            if p[remaining_bins].sum() == 0:
+                # print(f"bad allocation/mobility... {human} should not interact with anyone at {self}")
+                # normalized_p = [1/len(remaining_bins)] * len(remaining_bins)
+                return None
+            else:
+                normalized_p = p[remaining_bins]/p[remaining_bins].sum()
+            other_bin = self.rng.choice(remaining_bins, p=normalized_p, size=1).item()
+            other_humans = self.binned_humans[AGE_BIN_WIDTH_5[other_bin]]
+            if human in other_humans:
+                other_humans = other_humans.remove(human)
+            other_human = self.rng.choice(other_humans, size=1).item()
+
         elif type == "unknown":
-            other_human = self.rng.choice(self.humans)
+            other_humans = self.humans.remove(human)
+            other_human = self.rng.choice(other_humans, size=1).item()
         else:
             raise
 
@@ -210,8 +239,7 @@ class Location(simpy.Resource):
 
         scale_factor_interaction_time = self.conf['SCALE_FACTOR_CONTACT_DURATION']
         # (assumption) maximum allowable distance is when humans are uniformly spaced
-        packing_term = 100 * np.sqrt(self.area/len(self.location.humans))
-        interactee_sampler = _sample_interactee(type)
+        packing_term = 100 * np.sqrt(self.area/len(self.humans))
 
         interactions = []
         # what if there is no human as of now (solo house)
@@ -219,10 +247,12 @@ class Location(simpy.Resource):
         for i in range(n_interactions):
             # sample other human
             other_human = self._sample_interactee(type, human)
+            if other_human is None:
+                continue
 
             # sample distance of encounter
             encounter_term = self.rng.uniform(min_dist_encounter, max_dist_encounter)
-            social_distancing_term = np.mean([self.maintain_extra_distance, h.maintain_extra_distance]) #* self.rng.rand()
+            social_distancing_term = np.mean([human.maintain_extra_distance, other_human.maintain_extra_distance]) #* self.rng.rand()
             distance = np.clip(encounter_term + social_distancing_term, a_min=0, a_max=packing_term)
 
             # if distance == packing_term:
@@ -238,10 +268,17 @@ class Location(simpy.Resource):
             t_overlap = (min(human.location_leaving_time, other_human.location_leaving_time) -
                          max(human.location_start_time,   other_human.location_start_time)) / SECONDS_PER_MINUTE
 
-            if type =="known":
-                mean_interaction_time = self.TIME_DURATION_MATRIX[human.age_bin_width_5, other_human.age_bin_width_5]
+            if type == "known":
+                age_bin = human.age_bin_width_5.index
+                other_bin = other_human.age_bin_width_5.index
+                scale_duration = self.CONTACT_DURATION_GAMMA_SCALE_MATRIX[other_bin, age_bin]
+                shape_duration = self.CONTACT_DURATION_GAMMA_SHAPE_MATRIX[other_bin, age_bin]
+                duration = self.rng.gamma(shape_duration, scale_duration)
+            if type == "unknown":
+                duration = self.rng.gamma(mean_interaction_time/scale_factor_interaction_time, scale_factor_interaction_time)
 
-            duration = min(t_overlap, self.rng.gamma(mean_interaction_time/scale_factor_interaction_time, scale_factor_interaction_time))
+            # /!\ clipping changes the distribution.
+            duration = min(t_overlap, duration) * max(human.time_encounter_reduction_factor, other_human.time_encounter_reduction_factor)
 
             # add to the list
             interactions.append((other_human, distance, duration))
@@ -275,49 +312,6 @@ class Location(simpy.Resource):
         unknown_interactions = self._sample_interaction_with_type("unknown", human)
 
         return known_interactions, unknown_interactions
-        #
-        # scale_factor_interaction_time = self.conf['SCALE_FACTOR_INTERACTION_TIME']
-        # packing_term = self._compute_maximum_distance_allowed_between_two_humans()
-        #
-        # known_interactions = []
-        # # what if there is no human as of now (solo house)
-        # n_interactions = self.rng.negative_binomial(self.MEAN_DAILY_KNOWN_INTERACTIONS, 0.5)
-        # for i in range(n_interactions):
-        #     human_bin = human.age_bin
-        #
-        #     # sample human whom to interact with
-        #     other_bin = self.rng.choice(range(self.TOTAL_BINS), self.P_CONTACT[human_bin])
-        #     # what if there is no human in this bin?????
-        #     other_human = self.rng.choice(self.binned_humans[other_bin])
-        #
-        #     # sample distance of encounter
-        #     encounter_term = self.rng.uniform(self.conf['MIN_DIST_INTERACTION'], self.conf['MAX_DIST_INTERACTION'])
-        #     social_distancing_term = np.mean([self.maintain_extra_distance, h.maintain_extra_distance]) #* self.rng.rand()
-        #     distance = np.clip(encounter_term + social_distancing_term, a_min=0, a_max=packing_term)
-        #
-        #
-        #     # sample duration of encounter
-        #     t_overlap = (min(human.location_leaving_time, other_human.location_leaving_time) -
-        #                  max(human.location_start_time,   other_human.location_start_time)) / SECONDS_PER_MINUTE
-        #     mean_interaction_time = self.TIME_DURATION_MATRIX[human_bin, other_bin]
-        #     duration = min(t_overlap, self.rng.gamma(mean_interaction_time/scale_factor_interaction_time, scale_factor_interaction_time))
-        #
-        #     # add to the list
-        #     known_interactions.append((other_human, distance, duration))
-        #
-        # # random interactions
-        # unknown_interactions = []
-        # n_interactions = self.rng.negative_binomial(self.MEAN_DAILY_UNKNOWN_INTERACTIONS, 0.5)
-        # for i in range(n_interactions):
-        #     other_human = self.rng.choice(self.humans)
-        #     distance = self.rng.uniform(self.conf['MIN_DIST_UNKNOWN_INTERACTION'], self.conf['MAX_DIST_UNKNOWN_INTERACTION'])
-        #     # time_already_spent_in_interactions = cumulative_time_spent[human]
-        #     t_overlap = (min(human.location_leaving_time, other_human.location_leaving_time) -
-        #                  max(human.location_start_time,   other_human.location_start_time)) / SECONDS_PER_MINUTE
-        #     duration = min(t_overlap, self.rng.gamma(self.conf["GAMMA_UNKOWN_INTERACTION_DURATION"]/scale_factor_interaction_time, scale_factor_interaction_time))
-        #     unknown_interactions.append((other_human, distance, duration))
-        #
-        # return known_interactions, unknown_interactions
 
     def check_environmental_infection(self, human):
         """
@@ -409,7 +403,8 @@ class Household(Location):
                 env=kwargs.get("env"),
                 rng=kwargs.get("rng"),
                 name=f"SCR: {name}",
-                location_type="SCR",
+                conf=kwargs.get('conf'),
+                location_type=location_type,
                 lat=kwargs.get("lat"),
                 lon=kwargs.get("lon"),
                 area=kwargs.get("area"),
