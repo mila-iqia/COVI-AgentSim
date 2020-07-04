@@ -1,12 +1,15 @@
 import simpy
 import datetime
 from orderedset import OrderedSet
+from collections import namedtuple
 import numpy as np
+
 from covid19sim.utils.constants import SECONDS_PER_MINUTE, SECONDS_PER_HOUR, AGE_BIN_WIDTH_5
 from covid19sim.epidemiology.p_infection import get_environment_human_p_transmission
 from covid19sim.epidemiology.viral_load import compute_covid_properties
 from covid19sim.log.event import Event
 
+DistanceProfile = namedtuple("DistanceProfile", ['encounter_term', 'social_distancing_term', 'packing_term', 'distance'])
 class Location(simpy.Resource):
     """
     Class representing generic locations used in the simulator
@@ -186,7 +189,15 @@ class Location(simpy.Resource):
             human_bin = human.age_bin_width_5.index
             # sample human whom to interact with
             p = self.P_CONTACT[:, human_bin]
-            remaining_bins = [i for i, bin in enumerate(AGE_BIN_WIDTH_5) if len(self.binned_humans[bin]) > 0]
+
+            # valid humans for interaction
+            remaining_bins = []
+            for i, bin in enumerate(AGE_BIN_WIDTH_5):
+                if len(self.binned_humans[bin]) > 0:
+                    if not (i == human_bin and len(self.binned_humans[bin]) > 1):
+                        continue
+                    remaining_bins.append(i)
+
             # TODO - P - with improved mobility, it should not happen
             if p[remaining_bins].sum() == 0:
                 # print(f"bad allocation/mobility... {human} should not interact with anyone at {self}")
@@ -197,15 +208,16 @@ class Location(simpy.Resource):
             other_bin = self.rng.choice(remaining_bins, p=normalized_p, size=1).item()
             other_humans = self.binned_humans[AGE_BIN_WIDTH_5[other_bin]]
             if human in other_humans:
-                other_humans = other_humans.remove(human)
+                other_humans = [x for x in other_humans if x != human]
             other_human = self.rng.choice(other_humans, size=1).item()
 
         elif type == "unknown":
-            other_humans = self.humans.remove(human)
+            other_humans = [x for x in self.humans if x != human]
             other_human = self.rng.choice(other_humans, size=1).item()
         else:
             raise
 
+        assert other_human != human, "interaction with oneself should not happen"
         return other_human
 
 
@@ -220,7 +232,7 @@ class Location(simpy.Resource):
         Returns:
             interactions (list): each element is as follows -
                 human (covid19sim.human.Human): other human with whom to have `type` of interaction
-                distance (float): distance from which this encounter took place (cm)
+                distance_profile (covid19sim.locations.location.DistanceProfile): distance from which these two humans met (cms)
                 duration (float): duration for which this encounter took place (minutes)
         """
 
@@ -254,15 +266,7 @@ class Location(simpy.Resource):
             encounter_term = self.rng.uniform(min_dist_encounter, max_dist_encounter)
             social_distancing_term = np.mean([human.maintain_extra_distance, other_human.maintain_extra_distance]) #* self.rng.rand()
             distance = np.clip(encounter_term + social_distancing_term, a_min=0, a_max=packing_term)
-
-            # if distance == packing_term:
-            #     city.tracker.track_encounter_distance(
-            #         "A\t1", packing_term, encounter_term,
-            #         social_distancing_term, distance, location)
-            # else:
-            #     city.tracker.track_encounter_distance(
-            #         "A\t0", packing_term, encounter_term,
-            #         social_distancing_term, distance, location)
+            distance_profile = DistanceProfile(encounter_term=encounter_term, packing_term=packing_term, social_distancing_term=social_distancing_term, distance=distance)
 
             # sample duration of encounter
             t_overlap = (min(human.location_leaving_time, other_human.location_leaving_time) -
@@ -281,7 +285,7 @@ class Location(simpy.Resource):
             duration = min(t_overlap, duration) * max(human.time_encounter_reduction_factor, other_human.time_encounter_reduction_factor)
 
             # add to the list
-            interactions.append((other_human, distance, duration))
+            interactions.append((other_human, distance_profile, duration))
 
         return interactions
 
@@ -296,11 +300,11 @@ class Location(simpy.Resource):
         Returns:
             known_interactions (list): each element is as follows -
                 human (covid19sim.human.Human): other human with whom to interact
-                distance (float): distance from which this encounter took place (cm)
+                distance_profile (covid19sim.locations.location.DistanceProfile): distance from which this encounter took place (cms)
                 duration (float): duration for which this encounter took place (minutes)
             unknown_interactions (list): each element is as follows -
                 human (covid19sim.human.Human): other human who was nearby and unknown to `human`
-                distance (float): distance from which this encounter took place (cm)
+                distance_profile (covid19sim.locations.location.DistanceProfile): distance from which this encounter took place (cms)
                 duration (float): duration for which this encounter took place (minutes)
         """
         # only `human` is at this location. There will be no interactions.

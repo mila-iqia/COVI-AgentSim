@@ -1,5 +1,5 @@
 """
-[summary]
+Contains classes for regular saving relevant logs to the disk or printing output to the console at regular intervals.
 """
 import json
 import pickle
@@ -8,15 +8,116 @@ import time
 import zipfile
 from datetime import datetime, timedelta
 
-import pylab as pl
-from matplotlib import pyplot as plt
-
 from covid19sim.locations.city import City
 from covid19sim.human import Human
 from covid19sim.utils.utils import _json_serialize
-from covid19sim.utils.constants import SECONDS_PER_HOUR
+from covid19sim.utils.constants import SECONDS_PER_HOUR, SECONDS_PER_DAY
+from covid19sim.utils.utils import log
 
-class BaseMonitor(object):
+class SimulationMonitor(object):
+    """
+    Logs information at regular intervals to the console as well as to the disk.
+    Saves intermediate state of tracker at regular intervals.
+
+    Args:
+        frequency (float): regular simulation-intervals at which the information needs to be printed. Defaults to 1 simulation day.
+        logfile (str): filepath where the console output and final tracked metrics will be logged. Prints to the console only if None.
+        conf (dict): yaml configuration of the experiment
+    """
+
+    def __init__(self, frequency=SECONDS_PER_DAY, logfile=None, conf={}):
+        self.frequency = frequency
+        self.logfile = logfile
+        self.conf = conf
+        self.legend = """
+#################### CONSOLE OUPTUT ##################
+Legend - 
++Test: Total positive test results observed this day (Note: test results are available after some delay from the test time) / total tests administered on this day
+P3: Projected number of cases (E+I+R) if the cases were to grow with a doubling rate of 3 days.
+TestQueue: Total number of people present in the test queue at the time of this print out.
+H/C/D: Total number of people in hospital (H)/ ICU (C) at this point in simulation-time. Total died upto this day (D).
+        """
+        if self.conf['INTERVENTION_DAY'] >= 0 and self.conf['RISK_MODEL'] is not None:
+            self.legend += """
+G/B/O/R: Number of people in each of the 4 recommendation levels - Green, Blue, Orange, and Red.
+RiskP: Top 1% risk precision of the risk predictor computed for people with no test.
+            """
+
+        self.print_legend = True
+
+    def run(self, env, city: City):
+        """
+        Infinite loop yields events at regular intervals. It logs and saves information to `self.logfile`.
+
+        Args:
+            env (): [description]
+            city (City): [description]
+
+        Yields:
+            simpy.Environment.Timeout: Event that resumes after some specified duration.
+        """
+        process_start = time.time()
+        n_days = 0
+        while True:
+            assert city.tracker.fully_initialized
+
+            if self.print_legend:
+                log(self.legend, self.logfile)
+                self.print_legend = False
+
+            # test stats
+            t_P = city.tracker.test_results_per_day[env.timestamp.date()]['positive']
+            t_T = 0 if len(city.tracker.tested_per_day) < 2 else city.tracker.tested_per_day[-2]
+            test_queue_length = len(city.covid_testing_facility.test_queue)
+
+            # hospitalization stats
+            H = sum(len(hospital.humans) for hospital in city.hospitals)
+            C = sum(len(hospital.icu.humans) for hospital in city.hospitals)
+            D = sum(city.tracker.deaths_per_day)
+
+            # projections
+            Projected3 = min(1.0*city.tracker.n_infected_init * 2 ** (n_days/3), len(city.humans))
+
+            # SEIR stats
+            S = city.tracker.s_per_day[-1]
+            E = city.tracker.e_per_day[-1]
+            I = city.tracker.i_per_day[-1]
+            R = city.tracker.r_per_day[-1]
+            T = E + I + R
+
+            # other diseases
+            cold = sum(h.has_cold for h in city.humans)
+            allergies = sum(h.has_allergy_symptoms for h in city.humans)
+
+            # simulation time related
+            env_time = str(env.timestamp).split()[0]
+            day = "Day {:2}:".format((city.env.timestamp - city.start_time).days)
+            proc_time = "{:8}".format("({}s)".format(int(time.time() - process_start)))
+
+            # prepare string
+            nd = str(len(str(city.n_people)))
+            SEIR = f"| S:{S:<{nd}} E:{E:<{nd}} I:{I:<{nd}} E+I+R:{T:<{nd}} +Test:{t_P}/{t_T}"
+            stats = f"| P3:{Projected3:5.2f} TestQueue:{test_queue_length}"
+            other_diseases = f"| cold:{cold} allergies:{allergies}"
+            hospitalizations = f"| H:{H} C:{C} D:{D}"
+
+            str_to_print = f"{proc_time} {day} {env_time} {SEIR} {stats} {other_diseases} {hospitalizations}"
+            # conditional prints
+            colors, risk = "", ""
+            if self.conf['INTERVENTION_DAY'] >= 0 and self.conf['RISK_MODEL'] is not None:
+                green, blue, orange, red = city.tracker.recommended_levels_daily[-1]
+                colors = f"| G:{green} B:{blue} O:{orange} R:{red}"
+
+                prec, _, _ = city.tracker.risk_precision_daily[-1]
+                risk = f"| RiskP:{prec[1][0]:3.2f}"
+
+                str_to_print = f"{str_to_print} {colors} {risk}"
+
+            log(str_to_print, self.logfile)
+            yield env.timeout(self.frequency)
+            n_days += 1
+
+class EventMonitor(object):
     """
     [summary]
     """
@@ -34,107 +135,6 @@ class BaseMonitor(object):
         self.f = f or SECONDS_PER_HOUR
         self.dest = dest
         self.chunk_size = chunk_size if self.dest and chunk_size else 0
-
-    def run(self, env, city: City):
-        """
-        [summary]
-
-        Args:
-            env ([type]): [description]
-            city (City): [description]
-
-        Raises:
-            NotImplementedError: [description]
-        """
-        raise NotImplementedError
-
-    def dump(self):
-        """
-        [summary]
-        """
-        pass
-
-
-class SEIRMonitor(BaseMonitor):
-    """
-    [summary]
-    """
-
-    def run(self, env, city: City):
-        """
-        [summary]
-
-        Args:
-            env ([type]): [description]
-            city (City): [description]
-
-        Yields:
-            [type]: [description]
-        """
-        process_start = time.time()
-        n_days = 0
-        while True:
-            assert city.tracker.fully_initialized
-            R0 = city.tracker.get_R()
-            t_P = city.tracker.test_results_per_day[env.timestamp.date()]['positive']
-            t_T = 0 if len(city.tracker.tested_per_day) < 2 else city.tracker.tested_per_day[-2]
-            H = sum(city.tracker.hospitalization_per_day)
-            C = sum(city.tracker.critical_per_day)
-            Projected3 = min(1.0*city.tracker.n_infected_init * 2 ** (n_days/3), len(city.humans))
-            Projected5 = min(1.0*city.tracker.n_infected_init * 2 ** (n_days/5), len(city.humans))
-            Projected10 = min(1.0*city.tracker.n_infected_init * 2 ** (n_days/10), len(city.humans))
-            EM = city.tracker.expected_mobility[-1]
-            F = city.tracker.feelings[-1]
-            prec, _, _ = city.tracker.risk_precision_daily[-1]
-            green, blue, orange, red = city.tracker.recommended_levels_daily[-1]
-
-            S = city.tracker.s_per_day[-1]
-            E = city.tracker.e_per_day[-1]
-            I = city.tracker.i_per_day[-1]
-            R = city.tracker.r_per_day[-1]
-            T = E + I + R
-            cold = sum(h.has_cold for h in city.humans)
-            allergies = sum(h.has_allergy_symptoms for h in city.humans)
-
-            test_queue_length = len(city.covid_testing_facility.test_queue)
-            # print(np.mean([h.risk for h in city.humans]))
-            # print(env.timestamp, f"Ro: {R0:5.2f} G:{G:5.2f} S:{S} E:{E} I:{I} R:{R} T:{T} P3:{Projected3:5.2f} M:{M:5.2f} +Test:{P} H:{H} C:{C} RiskP:{RiskP:3.2f}") RiskP:{RiskP:3.2f}
-            env_time = str(env.timestamp).split()[0]
-            day = "Day {:2}:".format((city.env.timestamp - city.start_time).days)
-            proc_time = "{:8}".format("({}s)".format(int(time.time() - process_start)))
-            nd = str(len(str(city.n_people)))
-            demographics = f"| Ro: {R0:2.2f} S:{S:<{nd}} E:{E:<{nd}} I:{I:<{nd}} E+I+R:{T:<{nd}} +Test:{t_P}/{t_T}"
-            stats = f"| P3:{Projected3:5.2f} RiskP:{prec[1][0]:3.2f} F:{F:3.2f} EM:{EM:3.2f} TestQueue:{test_queue_length}"
-            other_diseases = f"| cold:{cold} allergies:{allergies}"
-            colors = f"| G:{green} B:{blue} O:{orange} R:{red}"
-            print(proc_time, day, env_time, demographics, stats, other_diseases, colors)
-            # print(city.tracker.recovered_stats)
-            self.data.append({
-                    'time': env.timestamp,
-                    'susceptible': S,
-                    'exposed': E,
-                    'infectious':I,
-                    'removed':R,
-                    'R': R0
-                    })
-            yield env.timeout(self.f)
-            n_days += 1
-
-class EventMonitor(BaseMonitor):
-    """
-    [summary]
-    """
-
-    def __init__(self, f=None, dest: str = None, chunk_size: int = None):
-        """
-        [summary]
-
-        Args:
-            f ([type], optional): [description]. Defaults to None.
-            dest (str, optional): [description]. Defaults to None.
-            chunk_size (int, optional): [description]. Defaults to None.
-        """
-        super().__init__(f, dest, chunk_size)
         self._iothread = threading.Thread()
         self._iothread.start()
 
@@ -190,177 +190,3 @@ class EventMonitor(BaseMonitor):
         timestamp = datetime.utcnow().timestamp()
         with zipfile.ZipFile(f"{dest}.zip", mode='a', compression=zipfile.ZIP_STORED) as zf:
             zf.writestr(f"{timestamp}.pkl", pickle.dumps(data))
-
-class TimeMonitor(BaseMonitor):
-    """
-    [summary]
-    """
-
-    def run(self, env, city: City):
-        """
-        [summary]
-
-        Args:
-            env ([type]): [description]
-            city (City): [description]
-
-        Yields:
-            [type]: [description]
-        """
-        while True:
-            # print(env.timestamp)
-            yield env.timeout(self.f)
-
-
-class PlotMonitor(BaseMonitor):
-    """
-    [summary]
-    """
-
-    def run(self, env, city: City):
-        """
-        [summary]
-
-        Args:
-            env ([type]): [description]
-            city (City): [description]
-
-        Yields:
-            [type]: [description]
-        """
-        fig = plt.figure(figsize=(15, 12))
-        while True:
-            d = {
-                'time': city.clock.time(),
-                'htime': city.clock.time_of_day(),
-                'sick': sum([int(h.is_sick) for h in city.humans]),
-            }
-            for k, v in Human.actions.items():
-                d[k] = sum(int(h.action == v) for h in city.humans)
-
-            self.data.append(d)
-            yield env.timeout(self.f)
-            self.plot()
-
-    def plot(self):
-        """
-        [summary]
-        """
-        pl.clf()
-        time_series = [d['time'] for d in self.data]
-        sick_series = [d['sick'] for d in self.data]
-        pl.plot(time_series, sick_series, label='sick')
-        for k, v in Human.actions.items():
-            action_series = [d[k] for d in self.data]
-            pl.plot(time_series, action_series, label=k)
-
-        pl.title(f"City at {self.data[-1]['htime']}")
-        pl.legend()
-
-
-class LatLonMonitor(BaseMonitor):
-    """
-    [summary]
-    """
-
-    def __init__(self, f=None):
-        """
-        [summary]
-
-        Args:
-            f ([type], optional): [description]. Defaults to None.
-        """
-        super().__init__(f)
-        self.city_data = {}
-
-    def run(self, env, city: City):
-        """
-        [summary]
-
-        Args:
-            env ([type]): [description]
-            city (City): [description]
-
-        Yields:
-            [type]: [description]
-        """
-        self.city_data['parks'] = [
-            {'lat': l.lat,
-             'lon': l.lon, } for l in city.parks
-        ]
-        self.city_data['stores'] = [
-            {'lat': l.lat,
-             'lon': l.lon, } for l in city.stores
-        ]
-        fig = plt.figure(figsize=(18, 16))
-        while True:
-            self.data.extend(
-                {'time': city.clock.time_of_day(),
-                 'is_sick': h.is_sick,
-                 'lat': h.lat(),
-                 'lon': h.lon(),
-                 'human_id': h.name,
-                 'household_id': h.household.name,
-                 'location': h.location.name if h.location else None
-                 } for h in city.humans
-            )
-            yield env.timeout(self.f)
-            self.plot()
-
-    def plot(self):
-        """
-        [summary]
-        """
-        pl.clf()
-        # PLOT STORES AND PARKS
-        lat_series = [d['lat'] for d in self.city_data['parks']]
-        lon_series = [d['lon'] for d in self.city_data['parks']]
-        s = 250
-        pl.scatter(lat_series, lon_series, s=s, marker='o', color='green', label='parks')
-
-        # PLOT STORES AND PARKS
-        lat_series = [d['lat'] for d in self.city_data['stores']]
-        lon_series = [d['lon'] for d in self.city_data['stores']]
-        s = 50
-        pl.scatter(lat_series, lon_series, s=s, marker='o', color='black', label='stores')
-
-        lat_series = [d['lat'] for d in self.data]
-        lon_series = [d['lon'] for d in self.data]
-        c = ['red' if d['is_sick'] else 'blue' for d in self.data]
-        s = 5
-        pl.scatter(lat_series, lon_series, s=s, marker='^', color=c, label='human')
-        sicks = sum([d['is_sick'] for d in self.data])
-        pl.title(f"City at {self.data[-1]['time']} - sick:{sicks}")
-        pl.legend()
-
-class StateMonitor(BaseMonitor):
-    """
-    [summary]
-    """
-
-    def run(self, env, city: City):
-        """
-        [summary]
-
-        Args:
-            env ([type]): [description]
-            city (City): [description]
-
-        Yields:
-            [type]: [description]
-        """
-        while True:
-            d = {
-                'time': city.time_of_day(),
-                'people': len(city.humans),
-                'sick': sum([int(h.is_sick) for h in city.humans]),
-            }
-            self.data.append(d)
-            print(city.clock.time_of_day())
-            yield env.timeout(self.f)
-
-    def dump(self):
-        """
-        [summary]
-        """
-        print(json.dumps(self.data, indent=1))

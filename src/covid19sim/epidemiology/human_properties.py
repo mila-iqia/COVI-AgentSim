@@ -320,10 +320,11 @@ def get_age_bin(age, width=10):
             age bins of the form 0-4 have a width of 5 (both limits inclusive)
 
     Returns:
-        age_bin (tuple): idenitfier for the age group that can be used to look up values in various data sources
-            ranges from 0-9 if width = 10
-            ranges from 0-16 if width = 5
-        i (int): ordering of this bin in the list
+        age_bin (AGE_BIN_ID): a namedtuple with the following keys:
+            bin: idenitfier for the age group that can be used to look up values in various data sources
+                ranges from 0-9 if width = 10
+                ranges from 0-16 if width = 5
+            index (int): ordering of this bin in the list
 
     """
     if width == 10:

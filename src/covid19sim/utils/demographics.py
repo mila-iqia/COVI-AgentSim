@@ -3,6 +3,7 @@ Functions to intialize a synthetic population using constants in configuration f
 """
 import numpy as np
 from collections import defaultdict
+from covid19sim.utils.utils import log
 
 def get_humans_with_age(city, age_histogram, conf, rng, chosen_infected, human_type):
     """
@@ -77,7 +78,7 @@ def assign_workplace_to_humans(humans, city, conf):
     return humans
 
 
-def assign_households_to_humans(humans, city, conf):
+def assign_households_to_humans(humans, city, conf, logfile=None):
     """
     Finds a best grouping of humans to assign to households based on regional configuration.
 
@@ -85,6 +86,7 @@ def assign_households_to_humans(humans, city, conf):
         humans (dict): keys are age bins (tuple) and values are a list of covid19sim.Human object of that age
         city (covid19sim.location.City): simulator's city object
         conf (dict): yaml configuration of the experiment
+        logfile (str): filepath where the console output and final tracked metrics will be logged.
 
     Returns:
         list: a list of humans with a residence
@@ -150,11 +152,11 @@ def assign_households_to_humans(humans, city, conf):
         else:
             n_failed_attempts += 1
             if n_failed_attempts % 100 == 0:
-                print(f"Failed attempt - {n_failed_attempts}. Total allocated:{len(allocated_humans)}")
+                log(f"Failed attempt - {n_failed_attempts}. Total allocated:{len(allocated_humans)}", logfile)
 
     # when number of attempts exceed the limit randomly allocate remaining humans
     if n_failed_attempts >= MAX_FAILED_ATTEMPTS_ALLOWED:
-        print("Exceeded the maximum number of failed attempts allowed to allocate houses... trying random allocation!")
+        log("Exceeded the maximum number of failed attempts allowed to allocate houses... trying random allocation!", logfile)
 
         while len(allocated_humans) < city.n_people:
             housesize = city.rng.choice(range(1,6), p=P_HOUSEHOLD_SIZE, size=1).item()
@@ -170,7 +172,7 @@ def assign_households_to_humans(humans, city, conf):
                     allocated_humans = _assign_household(human, res, allocated_humans)
                 city.households.add(res)
             else:
-                print(f"(Random attempt) Could not find humans for house size {housesize}... trying other house size!! Total allocated:{len(allocated_humans)}")
+                log(f"(Random attempt) Could not find humans for house size {housesize}... trying other house size!! Total allocated:{len(allocated_humans)}", logfile)
 
 
     assert len(allocated_humans) == city.n_people, "assigned humans and total population do not add up"
@@ -178,9 +180,6 @@ def assign_households_to_humans(humans, city, conf):
     assert len(city.households) > 0
     # shuffle the list of humans so that the simulation is not dependent on the order of house allocation
     city.rng.shuffle(allocated_humans)
-    city.tracker.log_housing_statistics()
-
-    print("allocated houses...")
     return allocated_humans
 
 def _random_choice_tuples(tuples, rng, size, P=None):

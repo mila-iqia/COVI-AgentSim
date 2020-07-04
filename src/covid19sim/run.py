@@ -15,11 +15,11 @@ from omegaconf import DictConfig
 from covid19sim.locations.city import City
 from covid19sim.utils.env import Env
 from covid19sim.utils.constants import SECONDS_PER_DAY, SECONDS_PER_HOUR
-from covid19sim.log.monitors import EventMonitor, SEIRMonitor, TimeMonitor
+from covid19sim.log.monitors import EventMonitor, SimulationMonitor
 from covid19sim.human import Human
 from covid19sim.utils.utils import (dump_conf, dump_tracker_data,
                                     extract_tracker_data, parse_configuration,
-                                    zip_outdir)
+                                    zip_outdir, log)
 
 
 @hydra.main(config_path="configs/simulation/config.yaml")
@@ -41,6 +41,8 @@ def main(conf: DictConfig):
     # -------------------------------------
     if conf["outdir"] is None:
         conf["outdir"] = str(Path(__file__) / "output")
+
+    timenow = datetime.datetime.now().strftime("%Y%m%d-%H%M%S"),
     conf[
         "outdir"
     ] = "{}/sim_v2_people-{}_days-{}_init-{}_uptake-{}_seed-{}_{}_{}".format(
@@ -50,9 +52,10 @@ def main(conf: DictConfig):
         conf["init_percent_sick"],
         conf["APP_UPTAKE"],
         conf["seed"],
-        datetime.datetime.now().strftime("%Y%m%d-%H%M%S"),
+        timenow,
         str(time.time_ns())[-6:],
     )
+
     if Path(conf["outdir"]).exists():
         out_path = Path(conf["outdir"])
         out_idx = 1
@@ -61,26 +64,25 @@ def main(conf: DictConfig):
         conf["outdir"] = str(out_path.parent / (out_path.name + f"_{out_idx}"))
 
     os.makedirs(conf["outdir"])
+    logfile = f"{conf['outdir']}/log_{timenow}_{conf['name']}.txt"
 
-    if not conf["tune"]:
-        outfile = os.path.join(conf["outdir"], "data")
+    if conf.get("COLLECT_TRAINING_DATA"):
+        datadir = os.path.join(conf["outdir"], "data")
+    else:
+        datadir = None
 
     # ---------------------------------
     # -----  Filter-Out Warnings  -----
     # ---------------------------------
     import warnings
-
     warnings.filterwarnings("ignore")
-    if conf["tune"]:
-        print("Using Tune")
-        outfile = None
 
     # ----------------------------
     # -----  Run Simulation  -----
     # ----------------------------
-    conf["outfile"] = outfile
-
-    print("RISK_MODEL ==> ", conf.get("RISK_MODEL"))
+    conf["outfile"] = datadir
+    log(f"RISK_MODEL = {conf['RISK_MODEL']}", logfile)
+    log(f"INTERVENTION_DAY = {conf['INTERVENTION_DAY']}", logfile)
 
     city, monitors, tracker = simulate(
         n_people=conf["n_people"],
@@ -91,8 +93,8 @@ def main(conf: DictConfig):
         out_chunk_size=conf["out_chunk_size"],
         print_progress=conf["print_progress"],
         seed=conf["seed"],
-        return_city=True,
         conf=conf,
+        logfile=logfile
     )
 
     # ----------------------------------------
@@ -114,6 +116,7 @@ def main(conf: DictConfig):
         )
 
     dump_conf(city.conf, "{}/full_configuration.yaml".format(city.conf["outdir"]))
+    tracker.write_metrics()
 
     if not conf["tune"]:
         # ----------------------------------------------
@@ -121,9 +124,6 @@ def main(conf: DictConfig):
         # ----------------------------------------------
         monitors[0].dump()
         monitors[0].join_iothread()
-        # write metrics
-        logfile = os.path.join(f"{conf['outdir']}/logs.txt")
-        tracker.write_metrics(logfile)
 
         # write values to train with
         train_priors = os.path.join(f"{conf['outdir']}/train_priors.pkl")
@@ -154,7 +154,6 @@ def main(conf: DictConfig):
         filename = f"tracker_data_n_{conf['n_people']}_seed_{conf['seed']}_{timenow}_{conf['name']}.pkl"
         data = extract_tracker_data(tracker, conf)
         dump_tracker_data(data, conf["outdir"], filename)
-        tracker.write_metrics(f"{conf['outdir']}/log_{timenow}_{conf['name']}.txt")
     return conf
 
 
@@ -168,8 +167,8 @@ def simulate(
     print_progress=False,
     seed=0,
     other_monitors=[],
-    return_city=False,
     conf={},
+    logfile=None
 ):
     """
     Run the simulation.
@@ -181,13 +180,15 @@ def simulate(
         simulation_days (int, optional): [description]. Defaults to 10.
         outfile (str, optional): [description]. Defaults to None.
         out_chunk_size ([type], optional): [description]. Defaults to None.
-        print_progress (bool, optional): [description]. Defaults to False.
         seed (int, optional): [description]. Defaults to 0.
         other_monitors (list, optional): [description]. Defaults to [].
-        return_city (bool, optional): Returns an additional city object if set to True.
+        conf (dict): yaml configuration of the experiment
+        logfile (str): filepath where the console output and final tracked metrics will be logged. Prints to the console only if None.
 
     Returns:
-        [type]: [description]
+        city (covid19sim.locations.city.City): [description]
+        monitors (list):
+        tracker (covid19sim.log.track.Tracker):
     """
 
     conf["n_people"] = n_people
@@ -199,6 +200,7 @@ def simulate(
     conf["print_progress"] = print_progress
     conf["seed"] = seed
     conf["other_monitors"] = other_monitors
+    conf['logfile'] = logfile
 
     logging.root.setLevel(getattr(logging, conf["LOGGING_LEVEL"].upper()))
 
@@ -207,16 +209,14 @@ def simulate(
     city_x_range = (0, 1000)
     city_y_range = (0, 1000)
     city = City(
-        env, n_people, init_fraction_sick, rng, city_x_range, city_y_range, Human, conf
+        env, n_people, init_fraction_sick, rng, city_x_range, city_y_range, Human, conf, logfile
     )
 
     # Add monitors
     monitors = [
         EventMonitor(f=SECONDS_PER_HOUR * 30, dest=outfile, chunk_size=out_chunk_size),
-        SEIRMonitor(f=SECONDS_PER_DAY),
+        SimulationMonitor(frequency=SECONDS_PER_DAY, logfile=logfile, conf=conf),
     ]
-    if print_progress:
-        monitors.append(TimeMonitor(SECONDS_PER_DAY))
 
     if other_monitors:
         monitors += other_monitors
@@ -255,10 +255,7 @@ def simulate(
     # Run simulation until termination
     env.run(until=env.ts_initial + simulation_days * SECONDS_PER_DAY)
 
-    if not return_city:
-        return monitors, city.tracker
-    else:
-        return city, monitors, city.tracker
+    return city, monitors, city.tracker
 
 
 if __name__ == "__main__":

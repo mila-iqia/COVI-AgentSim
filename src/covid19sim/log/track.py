@@ -16,6 +16,8 @@ import numpy as np
 import pandas as pd
 
 from covid19sim.utils.utils import log
+from covid19sim.utils.constants import AGE_BIN_WIDTH_5
+LOCATION_TYPES_TO_TRACK_MIXING = ["house", "work", "school", "other", "all"]
 
 def print_dict(title, dic, is_sorted=None, top_k=None, logfile=None):
     if not is_sorted:
@@ -44,6 +46,17 @@ def normalize_counter(counter, normalizer=None):
         counter[key] /= total
     return counter
 
+def _get_location_type_to_track_mixing(location):
+    if location.location_type == "household":
+        return "house"
+
+    if location.location_type == "workplace":
+        return "work"
+
+    if location.location_type == "school":
+        return "school"
+
+    return "other"
 
 def get_nested_dict(nesting):
     """
@@ -66,27 +79,29 @@ def get_nested_dict(nesting):
 
 class Tracker(object):
     """
-    [summary]
+    Keeps track of several aspects of the simulation. It is called from various locations in the entire codebase
+    to keep track of relevant metrics.
     """
-    def __init__(self, env, city):
+    def __init__(self, env, city, conf, logfile):
         """
-        [summary]
-
         Args:
-            object ([type]): [description]
-            env ([type]): [description]
+            env (simpy.Environment): Keeps track of events and their schedule
             city ([type]): [description]
+            conf (dict): yaml configuration of the experiment
+            logfile (str): filepath where the console output and final tracked metrics will be logged.
         """
         self.fully_initialized = False
         self.env = env
         self.city = city
-        # filename to store intermediate results; useful for bigger simulations;
-        timenow = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
-        if city.conf.get('INTERVENTION_DAY') == -1:
-            name = "unmitigated"
-        else:
-            name = city.conf.get('RISK_MODEL')
-        self.filename = f"tracker_data_n_{city.n_people}_{timenow}_{name}.pkl"
+        self.conf = conf
+        self.logfile = logfile
+        today = self.env.timestamp.date()
+        self.last_day = {
+                'track_recovery': today,
+                "track_infection": today,
+                'social_mixing': today,
+                'bluetooth_communications': today
+            }
 
         # all about contacts
         contact_matrices_fmt = defaultdict(lambda: {
@@ -113,9 +128,8 @@ class Tracker(object):
                             }
 
         self.bluetooth_contact_matrices = defaultdict(lambda: {
-                    'avg': (0, np.zeros((len(AGE_BIN_WIDTH_5), len(AGE_BIN_WIDTH_5)))),
+                    'avg_daily': (0, np.zeros((len(AGE_BIN_WIDTH_5), len(AGE_BIN_WIDTH_5)))),
                     'total': np.zeros((len(AGE_BIN_WIDTH_5), len(AGE_BIN_WIDTH_5))),
-                    'n_people': defaultdict(lambda : set()),
                 })
 
         self.mean_daily_contacts_per_agegroup = {
@@ -131,30 +145,24 @@ class Tracker(object):
         }
 
         self.contact_distance_profile = {
-            "known":
-            "all":
+            "known": defaultdict(dict),
+            "all": defaultdict(dict),
+            "within_contact_condition": defaultdict(dict)
         }
 
         self.contact_duration_profile = {
-            "known":,
-            "all":,
+            "known": defaultdict(dict),
+            "all": defaultdict(dict),
+            "within_contact_condition": defaultdict(dict)
         }
 
+        self.encounter_distances = []
 
         self.contacts = {
                 'human_infection': np.zeros((150,150)),
                 'env_infection':get_nested_dict(1),
                 'location_env_infection': get_nested_dict(2),
                 'location_human_infection': defaultdict(lambda: np.zeros((150,150))),
-                'histogram_duration': [0],
-                'location_duration':defaultdict(lambda : [0]),
-                'n_bluetooth_contacts': {
-                        'avg': (0, np.zeros((150,150))),
-                        'total': np.zeros((150,150)),
-                        'n_people': defaultdict(lambda : set())
-                        },
-
-
                 }
 
         # infection
@@ -178,8 +186,6 @@ class Tracker(object):
         self.covid_properties = defaultdict(lambda : [0,0])
 
         # cumulative incidence
-        day = self.env.timestamp.strftime("%d %b")
-        self.last_day = {'track_recovery':day, "track_infection":day, 'social_mixing':day, 'bluetooth_communications': day}
         self.cumulative_incidence = []
         self.cases_per_day = [0]
         self.r_0 = defaultdict(lambda : {'infection_count':0, 'humans':set()})
@@ -188,17 +194,14 @@ class Tracker(object):
         # testing & hospitalization
         self.hospitalization_per_day = [0]
         self.critical_per_day = [0]
+        self.deaths_per_day = [0]
         self.test_results_per_day = defaultdict(lambda :{'positive':0, 'negative':0})
         self.tested_per_day = [0]
 
         # demographics
-        self.age_bins = [(x[0], x[1]) for x in sorted(self.city.conf.get("P_AGE_REGION"), key = lambda x:x[0])]
+        self.age_bins = [(x[0], x[1]) for x in sorted(self.conf.get("P_AGE_REGION"), key = lambda x:x[0])]
         self.n_people = self.n_humans = self.city.n_people
         self.human_has_app = None
-
-        self.dist_encounters = defaultdict(int)
-        self.time_encounters = defaultdict(int)
-        self.encounter_distances = []
 
         # symptoms
         self.symptoms = {'covid': defaultdict(int), 'all':defaultdict(int)}
@@ -246,32 +249,103 @@ class Tracker(object):
 
     def summarize_population(self):
         """
-        [summary]
+        Logs statistics related to demographics.
         """
-        self.n_infected_init = sum([h.is_exposed for h in self.city.humans])
-        print(f"initial infection {self.n_infected_init}")
+        log("\n######## DEMOGRAPHICS / INITIALIZATION #########", self.logfile)
 
-        self.age_distribution = pd.DataFrame([h.age for h in self.city.humans])
-        print("age distribution\n", self.age_distribution.describe())
+        # age distribution
+        x = np.array([h.age for h in self.city.humans])
+        log(f"Age - mean: {x.mean():3.3f}, median: {np.median(x):3.0f}, std: {x.std():3.3f}", self.logfile)
 
-        self.sex_distribution = pd.DataFrame([h.sex for h in self.city.humans])
-        # print("gender distribution\n", self.gender_distribution.describe())
+        # gender distribution
+        str_to_print = "Gender: "
+        x = np.array([h.sex for h in self.city.humans])
+        for z in np.unique(x):
+            p = 100 * x[x==z].shape[0]/self.n_people
+            str_to_print += f"{z}: {p:2.3f}% | "
+        log(str_to_print, self.logfile)
 
-        if self.city.households:
-            self.house_age = pd.DataFrame([np.mean([h.age for h in house.residents]) for house in self.city.households])
-            self.house_size = pd.DataFrame([len(house.residents) for house in self.city.households])
-            print("house age distribution\n", self.house_age.describe())
-            print("house size distribution\n", self.house_size.describe())
+        # profession distribution
+        str_to_print = "Profession: "
+        x = np.array([h.profession for h in self.city.humans])
+        for z in np.unique(x):
+            p = 100 * x[x==z].shape[0]/self.n_people
+            str_to_print += f"{z}: {p:2.3f}% | "
+        log(str_to_print, self.logfile)
 
-        self.frac_asymptomatic = sum(h.is_asymptomatic for h in self.city.humans)/len(self.city.humans)
-        print("asymptomatic fraction", self.frac_asymptomatic)
+        log("\n*** House allocation *** ", self.logfile)
+        # senior residencies
+        self.n_senior_residency_residents = sum(1 for h in self.city.humans if h.household.location_type == "senior_residency")
+        p = self.n_senior_residency_residents / self.n_people
+        log(f"Total (%) number of residents in senior residencies: {self.n_senior_residency_residents} ({100*p:2.3f}%)", self.logfile)
 
-        self.n_seniors = sum(1 for h in self.city.humans if h.household.location_type == "senior_residency")
-        print("n_seniors", self.n_seniors)
+        # house allocation
+        n_houses = len(self.city.households)
+        sizes = np.zeros(n_houses)
+        multigenerationals, two_generations, only_adults = np.zeros(n_houses), np.zeros(n_houses), np.zeros(n_houses)
+        solo_ages = []
+        for i, house in enumerate(self.city.households):
+            sizes[i] = len(house.residents)
 
+            # multigenerational house
+            children, older, old = False, False, False
+            for human in house.residents:
+                if human.age <= self.conf['MAX_AGE_CHILDREN']:
+                    children = True
+                if human.age >= self.conf['MAX_AGE_COUPLE_WITH_CHILDREN']:
+                    older = True
+                if self.conf['MIN_AGE_COUPLE'] <= human.age < self.conf['MAX_AGE_COUPLE_WITH_CHILDREN']:
+                    old = True
+            multigenerationals[i] = children and older
+            two_generations[i] = children and old
+            only_adults[i] = not children
 
-    def log_housing_statistics(self):
-        pass
+            # solo dwellers
+            if len(house.residents) == 1:
+                solo_ages.append(house.residents[0].age)
+
+        ## counts
+        log(f"Total houses: {n_houses}", self.logfile)
+        log(f"Number of houses with single residents: {len(solo_ages)}", self.logfile)
+        ## size
+        str_to_print = "Household size: "
+        for z in sorted(np.unique(sizes)):
+            p = 100 * (sizes == z).sum() / n_houses
+            str_to_print += f"{z}: {p:2.3f}% | "
+        log(str_to_print, self.logfile)
+        log(f"Average house size - {sizes.mean(): 2.3f}", self.logfile)
+        ## type
+        str_to_print = "Household type: "
+        p = 100 * two_generations.mean()
+        str_to_print += f"Two generations: {p:2.3f}% | "
+        p = 100 * multigenerationals.mean()
+        str_to_print += f"multi-generation: {p:2.3f}% | "
+        p = 100 * only_adults.mean()
+        str_to_print += f"Only adults: {p:2.3f}% | "
+        log(str_to_print, self.logfile)
+
+        log("\n *** Other locations *** ", self.logfile)
+        ## collectives
+        n_senior_residencies = len(self.city.senior_residencys)
+        log(f"(Collectives) Senior Residencies: {n_senior_residencies}", self.logfile)
+
+        # location initialization
+        str_to_print = "Other locations (count): "
+        for location_type in self.conf['LOCATION_DISTRIBUTION'].keys():
+            n_locations = len(getattr(self.city, f"{location_type}s"))
+            str_to_print += f"{location_type}: {n_locations} | "
+        log(str_to_print, self.logfile)
+
+        log("\n *** Disease related initialization stats *** ", self.logfile)
+        # disease related
+        self.frac_asymptomatic = sum(h.is_asymptomatic for h in self.city.humans)/self.n_people
+        log(f"Percentage of population that is asymptomatic {100*self.frac_asymptomatic: 2.3f}", self.logfile)
+
+        self.n_infected_init = self.city.n_init_infected
+        log(f"Total number of infected humans {self.n_infected_init}", self.logfile)
+        for human in self.city.humans:
+            if human.is_exposed:
+                log(f"\t{human} @ {human.household} living with {len(human.household.residents) - 1} other residents", self.logfile)
 
     def get_R(self):
         """
@@ -430,6 +504,7 @@ class Tracker(object):
         self.tested_per_day.append(0)
         self.hospitalization_per_day.append(0)
         self.critical_per_day.append(0)
+        self.deaths_per_day.append(0)
 
         # mobility
         M, G, B, O, R, EM, F = self.compute_mobility()
@@ -440,7 +515,7 @@ class Tracker(object):
 
         # risk model
         prec, lift, recall = self.compute_risk_precision(daily=True)
-        self.risk_precision_daily.append((prec,lift, recall))
+        self.risk_precision_daily.append((prec, lift, recall))
         self.recommended_levels_daily.append([G, B, O, R])
         self.risk_values.append([(h.risk, h.is_exposed or h.is_infectious, h.test_result, len(h.symptoms) == 0) for h in self.city.humans])
         row = []
@@ -464,9 +539,6 @@ class Tracker(object):
 
         #
         self.avg_infectiousness_per_day.append(np.mean([h.infectiousness for h in self.city.humans]))
-
-        # if len(self.city.humans) > 5000:
-            # self.dump_metrics()
 
     def compute_mobility(self):
         """
@@ -602,6 +674,14 @@ class Tracker(object):
         self.hospitalization_per_day[-1] += 1
         if type == "icu":
             self.critical_per_day[-1] += 1
+
+    def track_deaths(self, human):
+        """
+        Keeps count of deaths per day.
+        Args:
+            human (covid19sim.human.Human): `human` who died`
+        """
+        self.deaths_per_day[-1] += 1
 
     def track_infection(self, type, from_human, to_human, location, timestamp):
         """
@@ -855,12 +935,12 @@ class Tracker(object):
 
         bin = None
         for i, (l,u) in enumerate(self.age_bins):
-            if l <= age < u:
+            if l <= age <= u:
                 bin = i
 
         self.transition_probability[hour][bin][from_location][to_location] += 1
 
-    def track_mixing(self, human1, human2, duration, distance, timestamp, location, interaction_type, contact_condition):
+    def track_mixing(self, human1, human2, duration, distance_profile, timestamp, location, interaction_type, contact_condition):
         """
         Stores counts and statistics to generate various aspects of contacts and social mixing.
         Following are being tracked -
@@ -872,12 +952,15 @@ class Tracker(object):
             6. (1D array) Mean daily contact duration per age group on weekdays and weekends for each location type (only for "known" contacts)
             7. (scalar) Mean daily contact per person per day for each location type (only for "known" contacts)
             8. (scalar) Mean daily contact duration per person per day for each location type(only for "known" contacts)
+            9. (histogram) counts of encounter distance in bins of 10 cms for each location type and interaction type ("known", "all", "within_contact_condition")
+            10.(histogram) counts of encounter duration in bins of 1 min for each location type and interaction type ("known", "all", "within_contact_condition")
+            11. TODO: Clean Up. (list of strings) Records distance terms related to encounters i.e. packing term, social distancing distance, and total distance
 
         Args:
             human1 (covid19sim.human.Human): one of the two `human`s involved in the encounter
             human2 (covid19sim.human.Human): other of the two `human`s involved in the encounter
             duration (float): time duration got which this encounter took place (minutes)
-            distance (float): distance from which these two humans met (cms)
+            distance_profile (covid19sim.locations.location.DistanceProfile): distance from which these two humans met (cms)
             timestamp (datetime.datetime): timestamp at which this event took place
             location (Location): `Location` where this encounter took place
             interaction_type (string): type of interaction i.e. "known" or "unknown". We keep track of "known" contacts and "all" contacts (that combines "known" and "unknown")
@@ -886,12 +969,7 @@ class Tracker(object):
         if not (self.conf['track_all'] or self.conf['track_mixing']):
             return
 
-        x = len(self.contacts['histogram_duration'])
-        if bin >= x:
-            self.contacts['histogram_duration'].extend([0 for _ in range(bin - x + 1)])
-        self.contacts['histogram_duration'][bin] += 1
-
-        day = timestamp.strftime("%d %b")
+        day = timestamp.date()
         last_day = self.last_day['social_mixing']
         if  last_day != day:
 
@@ -909,9 +987,9 @@ class Tracker(object):
                     # /!\ Storing number of people per age group might lead to memory problems. It might not be sutiable for larger simulations.
                     # mean daily contacts per person in an age group (similar to survey matrices)
                     n, M = C['avg']
-                    n_people = np.zeros_like(m)
+                    n_people = np.zeros_like(M)
                     for i, j in C['n_people'].keys():
-                        n_people[i, j] = len(C[(i,j)])
+                        n_people[i, j] = len(C['n_people'][(i,j)])
                     m = np.divide(C['total'], n_people, where= n_people!=0)
                     C['avg'] = (n+1, (n*M + m)/(n+1))
 
@@ -932,7 +1010,7 @@ class Tracker(object):
                     # mean dailies per age group or otherwise for "known" contacts only. This is what is available via surveys.
                     if interaction_type == "known":
                         # mean weekday and weekend contact/contact duration per age group is only recorded for "known" contacts.
-                        type_of_day = ['weekday', 'weekend'][last_day.is_weekend()]
+                        type_of_day = ['weekday', 'weekend'][last_day.weekday() >= 5]
                         n, Da = self.mean_daily_contact_duration_per_agegroup[type_of_day][location_type]
                         n, Ca = self.mean_daily_contacts_per_agegroup[type_of_day][location_type]
 
@@ -960,7 +1038,6 @@ class Tracker(object):
                         m = total_contacts / total_unique_people
                         self.mean_daily_contact_duration_per_agegroup["all"][location_type] = (n+1, (c*n + m) / (n+1))
 
-
             self.outside_daily_contacts.append(1.0 * self.n_outside_daily_contacts/len(self.city.humans))
             self.n_outside_daily_contacts = 0
             self.last_day['social_mixing'] = day
@@ -971,7 +1048,9 @@ class Tracker(object):
             j = human2.age_bin_width_5.index
 
             # everything related to the contact matrices is recorded here
-            interaction_types = ['all', interaction_type]
+            interaction_types = ["all"]
+            if interaction_type == "known":
+                interaction_types.append("known")
             if contact_condition:
                 interaction_types.append("within_contact_condition")
 
@@ -987,78 +1066,67 @@ class Tracker(object):
                     D['total'][i,j] += duration
                     D['total'][j,i] += duration
 
+                    # Note that the use of math.ceil makes the upper limit inclusive.
+                    # record distance profile/frequency counts (per 10 cms). It keeps counts for (distance_category - 10,  distance_category].
+                    distance_category = 10 * math.ceil(distance_profile.distance / 10)
+                    Cp = self.contact_distance_profile[interaction_type][location_type]
+                    Cp[distance_category] = Cp.get(distance_category, 0) + 1
+
+                    # record duration profile/frequency counts (per 1 min)
+                    duration_category = math.ceil(duration)
+                    Dp = self.contact_duration_profile[interaction_type][location_type]
+                    Dp[duration_category] = Dp.get(duration_category, 0) + 1
+
+            # replacement of track_encounter_distance.
+            # TODO: Clean Up. How exactly is this being used?
+            packing_term = distance_profile.packing_term
+            encounter_term = distance_profile.encounter_term
+            social_distancing_term = distance_profile.social_distancing_term
+            distance = distance_profile.distance
+            if contact_condition:
+                str = 'B\t{}\t{}\t{}\t{}'.format(packing_term, encounter_term, social_distancing_term, distance)
+            else:
+                type = "A\t1" if distance == packing_term else "A\t0"
+                str = '{}\t{}\t{}\t{}\t{}\t{}'.format(type, location, packing_term, encounter_term, social_distancing_term, distance)
+            self.encounter_distances.append(str)
+
             if human1.location != human1.household:
                 self.n_outside_daily_contacts += 1
 
-        x = len(self.contacts['location_duration'][location.location_type])
-        if bin >= x:
-            self.contacts['location_duration'][location.location_type].extend([0 for _ in range(bin - x + 1)])
-        self.contacts['location_duration'][location.location_type][bin] += 1
-
     def track_bluetooth_communications(self, human1, human2, timestamp):
+        """
+        Keeps track of mean daily unique bluetooth encounters between two age groups.
+        It is used to visualize the subset of contacts that are captured by bluetooth communication.
+        Compare it with `self.contact_matrices["all"][location_type]["avg_daily"]`.
+
+        Args:
+            human1 (covid19sim.human.Human): one of the two `human`s involved in an bluetooth exchange
+            human2 (covid19sim.human.Human): other of the two `human`s involved in an bluetooth exchange
+            timestamp (datetime.datetime): timestamp when this exchange took place
+        """
         if not (self.conf['track_all'] or self.conf['track_bluetooth_communications']):
             return
 
+        assert human1.has_app and human2.has_app, "tracking bluetooth communications for human who doesn't have an app"
+
         day = timestamp.strftime("%d %b")
         if self.last_day['bluetooth_communications']  != day:
-            n, M = self.contacts['n_bluetooth_contacts']['avg']
-            m = self.contacts['n_bluetooth_contacts']['total']
-            any_contact = np.zeros_like(m)
-            for age1, age2 in self.contacts['n_bluetooth_contacts']['n_people'].keys():
-                x = len(self.contacts['n_bluetooth_contacts']['n_people'][age1, age2])
-                m[age1, age2] /=  x
-                any_contact[age1, age2] = 1.0
+            for location_type in LOCATION_TYPES_TO_TRACK_MIXING:
+                B = self.bluetooth_contact_matrices[location_type]
+                n, M = B['avg_daily']
+                B['avg_daily'] = (n+1, (n*M + B['total'])/(n+1))
 
-            # update values
-            self.contacts['n_bluetooth_contacts']['avg'] = (n+1, (n*M + m)/(n+1))
-            self.contacts['n_bluetooth_contacts']['n_people'] = defaultdict(lambda : set())
-            self.contacts['n_bluetooth_contacts']['total'] = np.zeros((150,150))
+                # reset values
+                B['total'] = np.zeros((len(AGE_BIN_WIDTH_5), len(AGE_BIN_WIDTH_5)))
             self.last_day['bluetooth_communications'] = day
-
         else:
-            self.contacts['n_bluetooth_contacts']['total'][human1.age, human2.age] += 1
-            self.contacts['n_bluetooth_contacts']['total'][human2.age, human1.age] += 1
-            self.contacts['n_bluetooth_contacts']['n_people'][(human1.age, human2.age)].add(human1.name)
-            self.contacts['n_bluetooth_contacts']['n_people'][(human2.age, human1.age)].add(human2.name)
-
-    def track_encounter_distance(self, type, packing_term, encounter_term, social_distancing_term, distance, location=None):
-        if location:
-            str = '{}\t{}\t{}\t{}\t{}\t{}'.format(type, location, packing_term, encounter_term, social_distancing_term, distance)
-        else:
-            str = 'B\t{}\t{}\t{}\t{}'.format(packing_term, encounter_term, social_distancing_term, distance)
-        self.encounter_distances.append(str)
-
-    def track_encounter_events(self, human1, human2, location, distance, duration):
-        """
-        Counts encounters that qualify to be in contact_condition.
-        Keeps average of daily
-
-        Args:
-            human1 (Human): One of the `Human` involved in encounter
-            human2 (Human): One of the `Human` involved in encounter
-            location (Location): Location at which encounter took place
-            distance (float): Distance at which encounter took place (cm)
-            duration (float): time duration for which the encounter took place (minutes)
-        """
-        for i, (l,u) in enumerate(self.age_bins):
-            if l <= human1.age <= u:
-                bin1 = (i,(l,u))
-            if l <= human2.age <= u:
-                bin2 = (i, (l,u))
-
-        self.n_contacts += 1
-
-        # bins of 50
-        dist_bin = (
-            math.floor(distance / 50)
-            if distance <= self.city.conf.get("INFECTION_RADIUS")
-            else math.floor(self.city.conf.get("INFECTION_RADIUS") / 50)
-        )
-
-        # bins of 15 mins
-        time_bin = math.floor(duration/15) if duration <= 60 else 4
-        self.dist_encounters[dist_bin] += 1
-        self.time_encounters[time_bin] += 1
+            type_of_place = _get_location_type_to_track_mixing(location)
+            i = human1.age_bin_width_5.index
+            j = human2.age_bin_width_5.index
+            for location_type in ['all', type_of_place]:
+                B = self.bluetooth_contact_matrices[location_type]
+                B['total'][i, j] += 1
+                B['total'][j, i] += 1
 
     def track_p_infection(self, infection, p_infection, viral_load):
         """
@@ -1087,86 +1155,76 @@ class Tracker(object):
             all_effective_contacts += human.effective_contacts
             all_contacts += human.num_contacts
 
-        conf = self.city.conf
-        days = conf['simulation_days']
+        days = self.conf['simulation_days']
         if since_intervention and conf['INTERVENTION_DAY'] > 0 :
             days = conf['simulation_days'] - conf['INTERVENTION_DAY']
 
         return all_effective_contacts / (days * self.n_people)
 
-    def write_metrics(self, logfile=None):
+    def write_metrics(self):
         """
-        Writes various metrics to logfile.
-        Prints them if logfile is None.
-
-        Args:
-            logfile (str, optional): filename where these logs will be dumped
+        Writes various metrics to `self.logfile`. Prints them if `self.logfile` is None.
         """
-        log("######## DEMOGRAPHICS #########", logfile)
-        log(f"age distribution\n {self.age_distribution.describe()}", logfile)
-        log(f"house age distribution\n {self.house_age.describe()}", logfile )
-        log(f"house size distribution\n {self.house_size.describe()}", logfile )
-        log(f"Fraction of asymptomatic {self.frac_asymptomatic}", logfile )
 
-        log("######## COVID PROPERTIES #########", logfile)
-        log(f"Avg. incubation days {self.covid_properties['incubation_days'][1]: 5.2f}", logfile)
-        log(f"Avg. recovery days {self.covid_properties['recovery_days'][1]: 5.2f}", logfile)
-        log(f"Avg. infectiousnes onset days {self.covid_properties['infectiousness_onset_days'][1]: 5.2f}", logfile)
+        log("######## COVID PROPERTIES #########", self.logfile)
+        log(f"Avg. incubation days {self.covid_properties['incubation_days'][1]: 5.2f}", self.logfile)
+        log(f"Avg. recovery days {self.covid_properties['recovery_days'][1]: 5.2f}", self.logfile)
+        log(f"Avg. infectiousnes onset days {self.covid_properties['infectiousness_onset_days'][1]: 5.2f}", self.logfile)
 
-        log("######## COVID SPREAD #########", logfile)
+        log("######## COVID SPREAD #########", self.logfile)
         x = 0
         if len(self.infection_monitor) > 0:
             x = 1.0*self.n_env_infection/len(self.infection_monitor)
-        log(f"human-human transmissions {len(self.infection_monitor)}", logfile )
-        log(f"environment-human transmissions {self.n_env_infection}", logfile )
-        log(f"environmental transmission ratio {x:5.3f}", logfile )
-        r0 = self.get_R0(logfile)
-        log(f"Ro {r0}", logfile)
-        log(f"Generation times {self.get_generation_time()} ", logfile)
-        log(f"Cumulative Incidence {self.cumulative_incidence}", logfile )
-        log(f"R : {self.r}", logfile)
+        log(f"human-human transmissions {len(self.infection_monitor)}", self.logfile )
+        log(f"environment-human transmissions {self.n_env_infection}", self.logfile )
+        log(f"environmental transmission ratio {x:5.3f}", self.logfile )
+        r0 = self.get_R0(self.logfile)
+        log(f"Ro {r0}", self.logfile)
+        log(f"Generation times {self.get_generation_time()} ", self.logfile)
+        log(f"Cumulative Incidence {self.cumulative_incidence}", self.logfile )
+        log(f"R : {self.r}", self.logfile)
 
-        log("******** R0 *********", logfile)
+        log("******** R0 *********", self.logfile)
         if self.r_0['asymptomatic']['infection_count'] > 0:
             x = 1.0 * self.r_0['asymptomatic']['infection_count']/len(self.r_0['asymptomatic']['humans'])
         else:
             x = 0.0
-        log(f"Asymptomatic R0 {x}", logfile)
+        log(f"Asymptomatic R0 {x}", self.logfile)
 
         if self.r_0['presymptomatic']['infection_count'] > 0:
             x = 1.0 * self.r_0['presymptomatic']['infection_count']/len(self.r_0['presymptomatic']['humans'])
         else:
             x = 0.0
-        log(f"Presymptomatic R0 {x}", logfile)
+        log(f"Presymptomatic R0 {x}", self.logfile)
 
         if self.r_0['symptomatic']['infection_count'] > 0 :
             x = 1.0 * self.r_0['symptomatic']['infection_count']/len(self.r_0['symptomatic']['humans'])
         else:
             x = 0.0
-        log(f"Symptomatic R0 {x}", logfile )
+        log(f"Symptomatic R0 {x}", self.logfile )
 
-        log("******** Transmission Ratios *********", logfile)
+        log("******** Transmission Ratios *********", self.logfile)
         total = sum(self.r_0[x]['infection_count'] for x in ['symptomatic','presymptomatic', 'asymptomatic'])
         total += self.n_env_infection
 
         x = self.r_0['asymptomatic']['infection_count']
-        log(f"% asymptomatic transmission {100*x/total :5.2f}%", logfile)
+        log(f"% asymptomatic transmission {100*x/total :5.2f}%", self.logfile)
 
         x = self.r_0['presymptomatic']['infection_count']
-        log(f"% presymptomatic transmission {100*x/total :5.2f}%", logfile)
+        log(f"% presymptomatic transmission {100*x/total :5.2f}%", self.logfile)
 
         x = self.r_0['symptomatic']['infection_count']
-        log(f"% symptomatic transmission {100*x/total :5.2f}%", logfile)
+        log(f"% symptomatic transmission {100*x/total :5.2f}%", self.logfile)
 
-        log("******** R0 LOCATIONS *********", logfile)
+        log("******** R0 LOCATIONS *********", self.logfile)
         for loc_type, v in self.r_0.items():
             if loc_type in ['asymptomatic', 'presymptomatic', 'symptomatic']:
                 continue
             if v['infection_count']  > 0:
                 x = 1.0 * v['infection_count']/len(v['humans'])
-                log(f"{loc_type} R0 {x}", logfile)
+                log(f"{loc_type} R0 {x}", self.logfile)
 
-        log("######## SYMPTOMS #########", logfile)
+        log("######## SYMPTOMS #########", self.logfile)
         self.track_symptoms(count_all=True)
         total = self.symptoms['covid']['n']
         tmp_s = {}
@@ -1174,7 +1232,7 @@ class Tracker(object):
             if s == 'n':
                 continue
             tmp_s[s] = v/total
-        print_dict("P(symptoms = x | covid patient), where x is", tmp_s, is_sorted="desc", top_k=10, logfile=logfile)
+        print_dict("P(symptoms = x | covid patient), where x is", tmp_s, is_sorted="desc", top_k=10, logfile=self.logfile)
 
         total = self.symptoms['all']['n']
         tmp_s = {}
@@ -1182,68 +1240,68 @@ class Tracker(object):
             if s == 'n':
                 continue
             tmp_s[s] = v/total
-        print_dict("P(symptoms = x | human had some sickness e.g. cold, flu, allergies, covid), where x is", tmp_s, is_sorted="desc", top_k=10, logfile=logfile)
+        print_dict("P(symptoms = x | human had some sickness e.g. cold, flu, allergies, covid), where x is", tmp_s, is_sorted="desc", top_k=10, logfile=self.logfile)
 
         #
-        log("######## MOBILITY #########", logfile)
-        log("Day - ", logfile)
+        log("######## MOBILITY #########", self.logfile)
+        log("Day - ", self.logfile)
         total = sum(v[1] for v in self.day_encounters.values())
         x = ['Mon', "Tue", "Wed", "Thurs", "Fri", "Sat", "Sun"]
         for c,day in enumerate(x):
             v = self.day_encounters[c]
-            log(f"{day} #avg: {v[1]/self.n_people} %:{100*v[1]/total:5.2f} ", logfile)
+            log(f"{day} #avg: {v[1]/self.n_people} %:{100*v[1]/total:5.2f} ", self.logfile)
         #
-        # log("Hour - ", logfile)
+        # log("Hour - ", self.logfile)
         # total = sum(v[1] for v in self.hour_encounters.values())
         # for hour, v in self.hour_encounters.items():
-        #     log(f"{hour} #avg: {v[1]} %:{100*v[1]/total:5.2f} ", logfile)
+        #     log(f"{hour} #avg: {v[1]} %:{100*v[1]/total:5.2f} ", self.logfile)
         #
-        # log("Distance (cm) - ", logfile)
+        # log("Distance (cm) - ", self.logfile)
         # x = ['0 - 50', "50 - 100", "100 - 150", "150 - 200", ">= 200"]
         # total = sum(self.dist_encounters.values())
         # for c, dist in enumerate(x):
         #     v = self.dist_encounters[c]
-        #     log(f"{dist} #avg: {v} %:{100*v/total:5.2f} ", logfile)
+        #     log(f"{dist} #avg: {v} %:{100*v/total:5.2f} ", self.logfile)
         #
-        # log("Time (min) ", logfile)
+        # log("Time (min) ", self.logfile)
         # x = ['0 - 15', "15 - 30", "30 - 45", "45 - 60", ">= 60"]
         # total = sum(self.time_encounters.values())
         # for c, bin in enumerate(x):
         #     v = self.time_encounters[c]
-        #     log(f"{bin} #avg: {v} %:{100*v/total:5.2f} ", logfile)
+        #     log(f"{bin} #avg: {v} %:{100*v/total:5.2f} ", self.logfile)
         #
-        log("Average Daily Contacts ", logfile)
+        log("Average Daily Contacts ", self.logfile)
         total = sum(x[1] for x in self.daily_age_group_encounters.values())
         for bin in self.age_bins:
             x = self.city.age_histogram[bin]
             v = self.daily_age_group_encounters[bin][1]
-            log(f"{bin} #avg: {v/x} %:{100*v/total:5.2f} ", logfile)
+            log(f"{bin} #avg: {v/x} %:{100*v/total:5.2f} ", self.logfile)
         #
         # for until_days in [30, None]:
-        #     log("******** Risk Precision/Recall *********", logfile)
+        #     log("******** Risk Precision/Recall *********", self.logfile)
         #     prec, lift, recall = self.compute_risk_precision(daily=False, until_days=until_days)
         #     top_k = [0.01, 0.03, 0.05, 0.10]
         #     type_str = ["all", "no test", "no test and symptoms"]
         #
-        #     log(f"*** Precision (until days={until_days}) ***", logfile)
+        #     log(f"*** Precision (until days={until_days}) ***", self.logfile)
         #     idx = 0
         #     for k_values in zip(*prec):
         #         x,y,z= k_values
-        #         log(f"Top-{100*top_k[idx]:2.2f}% all: {100*x:5.2f}% no_test:{100*y:5.2f}% no_test_and_symptoms: {100*z:5.2f}%", logfile)
+        #         log(f"Top-{100*top_k[idx]:2.2f}% all: {100*x:5.2f}% no_test:{100*y:5.2f}% no_test_and_symptoms: {100*z:5.2f}%", self.logfile)
         #         idx += 1
         #
-        #     log(f"*** Lift (until days={until_days}) ***", logfile)
+        #     log(f"*** Lift (until days={until_days}) ***", self.logfile)
         #     idx = 0
         #     for k_values in zip(*lift):
         #         x,y,z = k_values
-        #         log(f"Top-{100*top_k[idx]:2.2f}% all: {x:5.2f} no_test:{y:5.2f} no_test_and_symptoms: {z:5.2f}", logfile)
+        #         log(f"Top-{100*top_k[idx]:2.2f}% all: {x:5.2f} no_test:{y:5.2f} no_test_and_symptoms: {z:5.2f}", self.logfile)
         #         idx += 1
         #
-        #     log(f"*** Recall (until days={until_days}) ***", logfile)
+        #     log(f"*** Recall (until days={until_days}) ***", self.logfile)
         #     x,y,z = recall
-        #     log(f"all: {100*x:5.2f}% no_test: {100*y:5.2f}% no_test_and_symptoms: {100*z:5.2f}%", logfile)
+        #     log(f"all: {100*x:5.2f}% no_test: {100*y:5.2f}% no_test_and_symptoms: {100*z:5.2f}%", self.logfile)
         #
-        # log("*** Avg daily precision ***", logfile)
+        # log("*** Avg daily precision ***", self.logfile)
         # prec = [x[0] for x in self.risk_precision_daily]
         # lift = [x[1] for x in self.risk_precision_daily]
         # recall = [x[2] for x in self.risk_precision_daily]
@@ -1253,25 +1311,25 @@ class Tracker(object):
         # no_test_symptoms = list(zip(*[x[2] for x in prec]))
         # idx = 0
         # for k in top_k:
-        #     log(f"Top-{100*top_k[idx]:2.2f}% all: {100*np.mean(all[idx]):5.2f}% no_test:{100*np.mean(no_test[idx]):5.2f}% no_test_and_symptoms: {100*np.mean(no_test_symptoms[idx]):5.2f}%", logfile)
+        #     log(f"Top-{100*top_k[idx]:2.2f}% all: {100*np.mean(all[idx]):5.2f}% no_test:{100*np.mean(no_test[idx]):5.2f}% no_test_and_symptoms: {100*np.mean(no_test_symptoms[idx]):5.2f}%", self.logfile)
         #     idx += 1
         #
-        # log("*** Avg daily lift ***", logfile)
+        # log("*** Avg daily lift ***", self.logfile)
         # all = list(zip(*[x[0] for x in lift]))
         # no_test = list(zip(*[x[1] for x in lift]))
         # no_test_symptoms = list(zip(*[x[2] for x in lift]))
         # idx = 0
         # for k in top_k:
-        #     log(f"Top-{100*top_k[idx]:2.2f}% all: {np.mean(all[idx]):5.2f} no_test:{np.mean(no_test[idx]):5.2f} no_test_and_symptoms: {np.mean(no_test_symptoms[idx]):5.2f}", logfile)
+        #     log(f"Top-{100*top_k[idx]:2.2f}% all: {np.mean(all[idx]):5.2f} no_test:{np.mean(no_test[idx]):5.2f} no_test_and_symptoms: {np.mean(no_test_symptoms[idx]):5.2f}", self.logfile)
         #     idx += 1
         #
-        # log("*** Avg. daily recall ***", logfile)
+        # log("*** Avg. daily recall ***", self.logfile)
         # x,y,z = zip(*recall)
-        # log(f"all: {100*np.mean(x):5.2f}% no_test: {100*np.mean(y):5.2f} no_test_and_symptoms: {100*np.mean(z):5.2f}", logfile)
+        # log(f"all: {100*np.mean(x):5.2f}% no_test: {100*np.mean(y):5.2f} no_test_and_symptoms: {100*np.mean(z):5.2f}", self.logfile)
 
-        self.compute_test_statistics(logfile)
+        self.compute_test_statistics(self.logfile)
 
-        log("######## Effective Contacts & % infected #########", logfile)
+        log("######## Effective Contacts & % infected #########", self.logfile)
         p_infected = 100 * sum(self.cases_per_day) / len(self.city.humans)
         effective_contacts = self.compute_effective_contacts()
         p_transmission = self.compute_probability_of_transmission()
@@ -1281,11 +1339,11 @@ class Tracker(object):
         # valid only when small portion of population is infected
         r0 = p_transmission * effective_contacts * infectiousness_duration
 
-        log(f"Eff. contacts: {effective_contacts:5.3f} \t % infected: {p_infected: 2.3f}%", logfile)
-        # log(f"Probability of transmission: {p_transmission:2.3f}", logfile)
-        # log(f"Ro (valid only when small proportion of population is infected): {r0: 2.3f}", logfile)
-        # log("definition of small might be blurry for a population size of less than 1000  ", logfile)
-        # log(f"Serial interval: {self.get_serial_interval(): 5.3f}", logfile)
+        log(f"Eff. contacts: {effective_contacts:5.3f} \t % infected: {p_infected: 2.3f}%", self.logfile)
+        # log(f"Probability of transmission: {p_transmission:2.3f}", self.logfile)
+        # log(f"Ro (valid only when small proportion of population is infected): {r0: 2.3f}", self.logfile)
+        # log("definition of small might be blurry for a population size of less than 1000  ", self.logfile)
+        # log(f"Serial interval: {self.get_serial_interval(): 5.3f}", self.logfile)
 
     def plot_metrics(self, dirname):
         """
@@ -1330,37 +1388,6 @@ class Tracker(object):
 
             fig.suptitle(f"Hour {hour}", fontsize=16)
             fig.savefig(f"{dirname}/contact_stats/hour_{hour}.png")
-
-    def dump_metrics(self):
-        data = dict()
-        data['intervention_day'] = self.city.conf.get('INTERVENTION_DAY')
-        data['intervention'] = self.city.conf.get('INTERVENTION')
-        data['risk_model'] = self.city.conf.get('RISK_MODEL')
-
-        data['expected_mobility'] = self.expected_mobility
-        data['mobility'] = self.mobility
-        data['n_init_infected'] = self.n_infected_init
-        data['contacts'] = dict(self.contacts)
-        data['cases_per_day'] = self.cases_per_day
-        data['ei_per_day'] = self.ei_per_day
-        data['r_0'] = self.r_0
-        data['R'] = self.r
-        data['n_humans'] = self.n_humans
-        data['s'] = self.s_per_day
-        data['e'] = self.e_per_day
-        data['i'] = self.i_per_day
-        data['r'] = self.r_per_day
-        data['avg_infectiousness_per_day'] = self.avg_infectiousness_per_day
-        data['risk_precision_global'] = self.compute_risk_precision(False)
-        data['risk_precision'] = self.risk_precision_daily
-        data['human_monitor'] = self.human_monitor
-        data['infection_monitor'] = self.infection_monitor
-        data['infector_infectee_update_messages'] = self.infector_infectee_update_messages
-        data['encounter_distances'] = self.encounter_distances
-
-        os.makedirs("logs3", exist_ok=True)
-        with open(f"logs3/{self.filename}", 'wb') as f:
-            dill.dump(data, f)
 
     def write_for_training(self, humans, outfile, conf):
         """ Writes some data out for the ML predictor """

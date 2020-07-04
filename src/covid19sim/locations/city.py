@@ -10,7 +10,7 @@ import time
 from collections import defaultdict, Counter
 from orderedset import OrderedSet
 
-from covid19sim.utils.utils import compute_distance, _get_random_area, relativefreq2absolutefreq, calculate_average_infectiousness
+from covid19sim.utils.utils import compute_distance, _get_random_area, relativefreq2absolutefreq, calculate_average_infectiousness, log
 from covid19sim.utils.demographics import get_humans_with_age, assign_profession_to_humans, assign_workplace_to_humans, assign_households_to_humans
 from covid19sim.log.track import Tracker
 from covid19sim.interventions.recommendation_manager import NonMLRiskComputer
@@ -36,10 +36,10 @@ class City:
     City
     """
 
-    def __init__(self, env, n_people, init_fraction_sick, rng, x_range, y_range, human_type, conf):
+    def __init__(self, env, n_people, init_fraction_sick, rng, x_range, y_range, human_type, conf, logfile):
         """
         Args:
-            env (simpy.Environment): [description]
+            env (simpy.Environment): Keeps track of events and their schedule
             n_people (int): Number of people in the city
             init_fraction_sick (float): fraction of population to be infected on day 0
             rng (np.random.RandomState): Random number generator
@@ -47,8 +47,10 @@ class City:
             y_range (tuple): (min_y, max_y)
             human_type (covid19.simulator.Human): Class for the city's human instances
             conf (dict): yaml configuration of the experiment
+            logfile (str): filepath where the console output and final tracked metrics will be logged. Prints to the console only if None.
         """
         self.conf = conf
+        self.logfile = logfile
         self.env = env
         self.rng = np.random.RandomState(rng.randint(2 ** 16))
         self.x_range = x_range
@@ -57,7 +59,7 @@ class City:
         self.n_people = n_people
         self.init_fraction_sick = init_fraction_sick
         self.hash = int(time.time_ns())  # real-life time used as hash for inference server data hashing
-        self.tracker = Tracker(env, self)
+        self.tracker = Tracker(env, self, conf, logfile)
 
         self.test_type_preference = list(zip(*sorted(conf.get("TEST_TYPES").items(), key=lambda x:x[1]['preference'])))[0]
         self.max_capacity_per_test_type = {
@@ -74,23 +76,22 @@ class City:
         self.daily_rec_level_mapping = None
         self.covid_testing_facility = TestFacility(self.test_type_preference, self.max_capacity_per_test_type, env, conf)
 
-        print("Initializing locations ...")
+        log("Initializing locations ...", self.logfile)
         self.initialize_locations()
 
         self.humans = []
         self.hd = {}
         self.households = OrderedSet()
         self.age_histogram = None
-        print("Initializing humans ...")
+
+        log("Initializing humans ...", self.logfile)
         self.initialize_humans(human_type)
         for human in self.humans:
             human.track_this_guy = False
-            if human.is_exposed:
-                print(human, human.household, human.household.residents)
 
         self.log_static_info()
 
-        print("Computing their preferences")
+        log("Computing their preferences", self.logfile)
         self._compute_preferences()
         self.intervention = None
 
@@ -339,8 +340,8 @@ class City:
             human_type (Class): Class for the city's human instances
         """
         # initial infections
-        init_infected = math.ceil(self.init_fraction_sick * self.n_people)
-        chosen_infected = set(self.rng.choice(self.n_people, init_infected, replace=False).tolist())
+        self.n_init_infected = math.ceil(self.init_fraction_sick * self.n_people)
+        chosen_infected = set(self.rng.choice(self.n_people, self.n_init_infected, replace=False).tolist())
 
         self.age_histogram = relativefreq2absolutefreq(
             bins_fractions={(x[0], x[1]): x[2] for x in self.conf.get('P_AGE_REGION')},
@@ -354,7 +355,7 @@ class City:
         # find best grouping to put humans together in a house
         # /!\ households are created at the time of allocation.
         # self.households is initialized within this function through calls to `self.create_location`
-        self.humans = assign_households_to_humans(self.humans, self, self.conf)
+        self.humans = assign_households_to_humans(self.humans, self, self.conf, self.logfile)
 
         # assign profession to humans
         for human in self.humans:

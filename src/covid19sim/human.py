@@ -94,8 +94,8 @@ class Human(object):
         self.sex = _get_random_sex(self.rng, self.conf)  # The sex of this person conforming with Canadian statistics
         self.age = age  # The age of this person, conforming with Canadian statistics
         _age_bin = get_age_bin(age, width=10)  # Age bins of width 10 are required for Oxford-like COVID-19 infection model and social mixing tracker
-        self.normalized_susceptibility = self.conf['NORMALIZED_SUSCEPTIBILITY_BY_AGE'][_age_bin]  # Susceptibility to Covid-19 by age
-        self.mean_daily_interaction_age_group = self.conf['MEAN_DAILY_INTERACTION_FOR_AGE_GROUP'][_age_bin]  # Social mixing is determined by age
+        self.normalized_susceptibility = self.conf['NORMALIZED_SUSCEPTIBILITY_BY_AGE'][_age_bin.bin]  # Susceptibility to Covid-19 by age
+        self.mean_daily_interaction_age_group = self.conf['MEAN_DAILY_INTERACTION_FOR_AGE_GROUP'][_age_bin.bin]  # Social mixing is determined by age
         self.age_bin_width_5 = get_age_bin(age, width=5)
         self.preexisting_conditions = _get_preexisting_conditions(self.age, self.sex, self.rng)  # Which pre-existing conditions does this person have? E.g. COPD, asthma
         self.inflammatory_disease_level = _get_inflammatory_disease_level(self.rng, self.preexisting_conditions, self.conf.get("INFLAMMATORY_CONDITIONS"))  # how many pre-existing conditions are inflammatory (e.g. smoker)
@@ -899,7 +899,7 @@ class Human(object):
 
     def check_covid_contagion(self, other_human, t_near, h1_msg, h2_msg):
         """
-        determines if covid contagion takes place.
+        Determines if covid contagion takes place.
         If yes, intializes the appropriate variables needed for covid progression.
 
         Args:
@@ -1205,6 +1205,7 @@ class Human(object):
         Event.log_recovery(self.conf.get('COLLECT_LOGS'), self, self.env.timestamp, death=True)
         if self in self.location.humans:
             self.location.remove_human(self)
+        self.tracker.track_deaths(self)
         yield self.env.timeout(np.inf)
 
     def assert_state_changes(self):
@@ -1555,28 +1556,26 @@ class Human(object):
         Args:
             interaction_profile: each element is expected as follows -
                 human (covid19sim.human.Human): other human with whom to interact
-                distance (float): distance from which this encounter took place (cm)
+                distance_profile (covid19sim.locations.location.DistanceProfile): distance from which this encounter took place (cms)
                 duration (float): duration for which this encounter took place (minutes)
             type (string): type of interaction to sample. expects "known", "unknown"
         """
-        # Report all the encounters (epi transmission)
-        for other_human, distance, t_near in interaction_profile:
+        for other_human, distance_profile, t_near in interaction_profile:
 
             # compute detected bluetooth distance and exchange bluetooth messages if conditions are satisfied
-            h1_msg, h2_msg = self._exchange_app_messages(other_human, distance, t_near)
+            h1_msg, h2_msg = self._exchange_app_messages(other_human, distance_profile.distance, t_near)
 
             contact_condition = (
-                distance <= self.conf.get("INFECTION_RADIUS")
+                distance_profile.distance <= self.conf.get("INFECTION_RADIUS")
                 and t_near > self.conf.get("INFECTION_DURATION")
             )
             self.city.tracker.track_mixing(human1=self, human2=other_human, duration=t_near,
-                            distance=distance, timestamp=self.env.timestamp, location=self.location,
+                            distance_profile=distance_profile, timestamp=self.env.timestamp, location=self.location,
                             interaction_type=type, contact_condition=contact_condition)
 
             # Conditions met for possible infection
             # https://www.cdc.gov/coronavirus/2019-ncov/hcp/guidance-risk-assesment-hcp.html
             if contact_condition:
-                # city.tracker.track_encounter_distance("B\t0", packing_term, encounter_term, social_distancing_term, distance, location=None)
 
                 # used for matching "mobility" between methods
                 scale_factor_passed = self.rng.random() < self.conf.get("GLOBAL_MOBILITY_SCALING_FACTOR")
@@ -1599,7 +1598,7 @@ class Human(object):
                     other_human,
                     location=self.location,
                     duration=t_near,
-                    distance=distance,
+                    distance=distance_profile.distance,
                     infectee=None if not infectee else infectee.name,
                     p_infection=p_infection,
                     time=self.env.timestamp
@@ -1752,6 +1751,7 @@ class Human(object):
 
         Args:
             other_human (covid19sim.human.Human) other human that self is communiciating via bluetooth
+            distance (float): actual distance of encounter with other_human (cms)
             duration (float): time duration of encounter (minutes)
 
         Returns:
@@ -1799,7 +1799,7 @@ class Human(object):
                 remaining_time_in_contact -= encounter_time_granularity
 
             if exchanged:
-                self.city.tracker.track_bluetooth_communications(human1=self, human2=h, timestamp = self.env.timestamp)
+                self.city.tracker.track_bluetooth_communications(human1=self, human2=h, timestamp=self.env.timestamp)
 
             Event.log_encounter_messages(
                 self.conf['COLLECT_LOGS'],
