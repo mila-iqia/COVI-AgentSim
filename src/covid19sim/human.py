@@ -897,13 +897,14 @@ class Human(object):
                     flu_infectee.flu_timestamp = self.env.timestamp
 
 
-    def check_covid_contagion(self, other_human, h1_msg, h2_msg):
+    def check_covid_contagion(self, other_human, t_near, h1_msg, h2_msg):
         """
         determines if covid contagion takes place.
         If yes, intializes the appropriate variables needed for covid progression.
 
         Args:
             other_human (covid19sim.human.Human): other_human with whom the encounter took place
+            t_near (float): duration for which this encounter took place (minutes)
             h1_msg ():
             h2_msg ():
 
@@ -912,7 +913,7 @@ class Human(object):
             infectee (covid19sim.human.Human): one who got infected by the infector. None if contagion didn't occur.
         """
         if not (self.is_infectious ^ other_human.is_infectious):
-            return None, None
+            return None, None, 0
 
         infector, infectee, p_infection = None, None, None
         if self.is_infectious:
@@ -926,7 +927,7 @@ class Human(object):
         p_infection = get_human_human_p_transmission(infector,
                                       infectiousness_delta(infector, t_near),
                                       infectee,
-                                      location.social_contact_factor,
+                                      self.location.social_contact_factor,
                                       self.conf['CONTAGION_KNOB'],
                                       self.conf['MASK_EFFICACY_FACTOR'],
                                       self.conf['HYGIENE_EFFICACY_FACTOR'],
@@ -944,9 +945,10 @@ class Human(object):
 
             # logging & tracker
             Event.log_exposed(self.conf.get('COLLECT_LOGS'), infectee, infector, p_infection, self.env.timestamp)
-            self.city.tracker.track_infection('human', from_human=infector, to_human=infectee, location=location, timestamp=self.env.timestamp)
+            self.city.tracker.track_infection('human', from_human=infector, to_human=infectee, location=self.location, timestamp=self.env.timestamp)
         else:
             infector, infectee = None, None
+        return infector, infectee, p_infection
 
     def move_to_hospital_if_required(self):
         """
@@ -1517,7 +1519,6 @@ class Human(object):
 
         # track transitions & locations visited
         city.tracker.track_trip(from_location=self.location.location_type, to_location=location.location_type, age=self.age, hour=self.env.hour_of_day())
-        city.tracker.track_social_mixing(location=location, duration=duration)
         if self.track_this_human:
             self.track_me(location)
 
@@ -1537,9 +1538,28 @@ class Human(object):
         # sample interactions with other humans at this location
         # unknown are the ones that self is not aware of e.g. person sitting next to self in a cafe
         known_interactions, unknown_interactions = location.sample_interactions(self)
-        interaction_profile = known_interactions + unknown_interactions
+        self.interact_with(known_interactions, type="known")
+        self.interact_with(unknown_interactions, type="unknown")
 
-        # # Report all the encounters (epi transmission)
+        # environmental transmission
+        location.check_environmental_infection(self)
+
+        # remove human from this location
+        location.remove_human(self)
+
+
+    def interact_with(self, interaction_profile, type):
+        """
+        Implements the exchange of bluetooth messages and contagion at the time of encounter.
+
+        Args:
+            interaction_profile: each element is expected as follows -
+                human (covid19sim.human.Human): other human with whom to interact
+                distance (float): distance from which this encounter took place (cm)
+                duration (float): duration for which this encounter took place (minutes)
+            type (string): type of interaction to sample. expects "known", "unknown"
+        """
+        # Report all the encounters (epi transmission)
         for other_human, distance, t_near in interaction_profile:
 
             # compute detected bluetooth distance and exchange bluetooth messages if conditions are satisfied
@@ -1549,13 +1569,14 @@ class Human(object):
                 distance <= self.conf.get("INFECTION_RADIUS")
                 and t_near > self.conf.get("INFECTION_DURATION")
             )
+            self.city.tracker.track_mixing(human1=self, human2=other_human, duration=t_near,
+                            distance=distance, timestamp=self.env.timestamp, location=self.location,
+                            interaction_type=type, contact_condition=contact_condition)
 
             # Conditions met for possible infection
             # https://www.cdc.gov/coronavirus/2019-ncov/hcp/guidance-risk-assesment-hcp.html
             if contact_condition:
-                city.tracker.track_social_mixing(human1=self, human2=other_human, duration=t_near, timestamp = self.env.timestamp)
-                city.tracker.track_encounter_events(human1=self, human2=other_human, location=location, distance=distance, duration=t_near)
-                city.tracker.track_encounter_distance("B\t0", packing_term, encounter_term, social_distancing_term, distance, location=None)
+                # city.tracker.track_encounter_distance("B\t0", packing_term, encounter_term, social_distancing_term, distance, location=None)
 
                 # used for matching "mobility" between methods
                 scale_factor_passed = self.rng.random() < self.conf.get("GLOBAL_MOBILITY_SCALING_FACTOR")
@@ -1564,8 +1585,9 @@ class Human(object):
                     self.num_contacts += 1
                     self.effective_contacts += self.conf.get("GLOBAL_MOBILITY_SCALING_FACTOR")
 
+                infector, infectee, p_infection = None, None, 0
                 if scale_factor_passed:
-                    self.check_covid_contagion(other_human, h1_msg, h2_msg)
+                    infector, infectee, p_infection = self.check_covid_contagion(other_human, t_near, h1_msg, h2_msg)
 
                 # determine if cold and flu contagion occured
                 self.check_cold_and_flu_contagion(other_human)
@@ -1574,20 +1596,14 @@ class Human(object):
                 Event.log_encounter(
                     self.conf['COLLECT_LOGS'],
                     self,
-                    h,
-                    location=location,
+                    other_human,
+                    location=self.location,
                     duration=t_near,
                     distance=distance,
                     infectee=None if not infectee else infectee.name,
                     p_infection=p_infection,
                     time=self.env.timestamp
                 )
-
-        # environmental transmission
-        location.check_environmental_infection(self)
-
-        # remove human from this location
-        location.remove_human(self)
 
     def _select_location(self, location_type, city):
         """
