@@ -1,0 +1,6 @@
+track_all: True
+
+# all tracking functions
+track_mixing: True
+track_trip: True
+track_bluetooth_communications: True
