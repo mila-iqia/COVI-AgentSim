@@ -262,10 +262,12 @@ class Tracker(object):
         Logs statistics related to demographics.
         """
         log("\n######## DEMOGRAPHICS / SYNTHETIC POPULATION #########", self.logfile)
-
+        log("NOTE: census numbers are in brackets\n", self.logfile)
         # age distribution
         x = np.array([h.age for h in self.city.humans])
-        log(f"Age - mean: {x.mean():3.3f}, median: {np.median(x):3.0f}, std: {x.std():3.3f}", self.logfile)
+        cns_avg = self.conf['AVERAGE_AGE_REGION']
+        cns_median = self.conf['MEDIAN_AGE_REGION']
+        log(f"Age (census) - mean: {x.mean():3.3f} ({cns_avg}), median: {np.median(x):3.0f} ({cns_median}), std: {x.std():3.3f}", self.logfile)
 
         # gender distribution
         str_to_print = "Gender: "
@@ -285,7 +287,7 @@ class Tracker(object):
 
         log("\n*** House allocation *** ", self.logfile)
         # senior residencies
-        self.n_senior_residency_residents = sum(1 for h in self.city.humans if h.household.location_type == "senior_residency")
+        self.n_senior_residency_residents = sum(len(sr.residents) for sr in self.city.senior_residencys)
         p = self.n_senior_residency_residents / self.n_people
         census = self.conf['P_COLLECTIVE']
         log(f"Total (%) number of residents in senior residencies (census): {self.n_senior_residency_residents} ({100*p:2.2f}%) ({100*census:2.2f})", self.logfile)
@@ -317,7 +319,7 @@ class Tracker(object):
 
         ## counts
         log(f"Total houses: {n_houses}", self.logfile)
-        log(f"Number of houses with single residents: {len(solo_ages)}", self.logfile)
+        log(f"Average house size - {sizes.mean(): 2.3f} ({self.conf['AVG_HOUSEHOLD_SIZE']: 2.3f})", self.logfile)
         ## size
         census = self.conf['P_HOUSEHOLD_SIZE']
         str_to_print = "Household size - simulation% (census): "
@@ -325,7 +327,21 @@ class Tracker(object):
             p = 100 * (sizes == z).sum() / n_houses
             str_to_print += f"{z}: {p:2.2f}% ({100*census[i]: 3.2f}) | "
         log(str_to_print, self.logfile)
-        log(f"Average house size - {sizes.mean(): 2.3f} ({self.conf['AVG_HOUSEHOLD_SIZE']: 2.3f})", self.logfile)
+
+        # solo dwellers
+        estimated_solo_dwellers_mean_age = sum([x[2] * (x[0] + x[1]) / 2 for x in self.conf['P_AGE_SOLO_DWELLERS_GIVEN_HOUSESIZE_1']])
+        simulated_solo_dwellers_age_given_housesize1 = [[x[0], x[1], 0] for x in self.conf['P_AGE_SOLO_DWELLERS_GIVEN_HOUSESIZE_1']]
+        n_solo_houses = len(solo_ages)
+        for age in solo_ages:
+            for i,x in enumerate(self.conf['P_AGE_SOLO_DWELLERS_GIVEN_HOUSESIZE_1']):
+                if x[0] <= age <= x[1]:
+                    simulated_solo_dwellers_age_given_housesize1[i][2] += 1
+        simulated_solo_dwellers_age_given_housesize1 = [[x[0], x[1], x[2]/n_solo_houses] for x in simulated_solo_dwellers_age_given_housesize1]
+        simulated_solo_dwellers_mean_age = sum([x[2] * (x[0] + x[1]) / 2 for x in simulated_solo_dwellers_age_given_housesize1])
+        str_to_print = f"Solo dwellers : Average age absolute: {np.mean(solo_ages): 2.2f} (Average with mid point of age groups - simulated:{simulated_solo_dwellers_mean_age: 2.2f} census:{estimated_solo_dwellers_mean_age: 2.2f}) | "
+        # str_to_print += f"Median age: {np.median(solo_ages)}"
+        log(str_to_print, self.logfile)
+
         ## type
         str_to_print = "Household type: "
         p = 100 * two_generations.mean()
@@ -346,7 +362,7 @@ class Tracker(object):
             cns = census[allocation_types == atype][0].item()
             str_to_print += f"{atype}: {100*p:2.3f}%  ({100*cns: 2.2f})| "
         log(str_to_print, self.logfile)
-
+        breakpoint()
 
         log("\n *** Other locations *** ", self.logfile)
         ## collectives

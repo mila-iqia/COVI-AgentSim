@@ -1548,7 +1548,6 @@ class Human(object):
         # remove human from this location
         location.remove_human(self)
 
-
     def interact_with(self, interaction_profile, type):
         """
         Implements the exchange of bluetooth messages and contagion at the time of encounter.
