@@ -41,6 +41,7 @@ P_AGE_REGION: [
 # fraction of **all** households that are 4 persons households 0.112 (A.4)
 # fraction of **all** households that are more than 5 persons households 0.06 (A.5)
 # average household size 2.2
+AVG_HOUSEHOLD_SIZE: 2.2
 P_HOUSEHOLD_SIZE:  [0.394, 0.298, 0.136, 0.112, 0.06]
 
 # Total number of 1 person private households in Montreal - 342,510
@@ -113,14 +114,10 @@ P_MULTIGENERATIONAL_FAMILY: 0.015
 # total population living in collectives for seniors - 32935 (E.1)
 # total population aged 0 to 79 living in collectives for seniors - 9750 (E.2)
 # total population aged 80 or above living in collectives for seniors - 23185 (E.3)
-# probability of living in a senior residency given 0 < age < 79 (E.2 / E)
-# NOTE: (assumption) minimum age for collective is 70 yo
-P_COLLECTIVE_70_79: 0.005
-# (assumption) equal distribution for two age bins
-P_COLLECTIVE_70_74: 0.0025
-P_COLLECTIVE_75_79: 0.0025
-# probability of living in a senior residency given age > 80
-P_COLLECTIVE_80_above: 0.017
+# probability of living in a senior residency - 0.017 E.1/E
+N_COLLECTIVE: 32935
+N_COLLECTIVE_65_79: 9750
+N_COLLECTIVE_80_above: 23185
 
 # (no-source) these values are assumed
 MIN_AGE_COUPLE: 25
@@ -134,9 +131,9 @@ MAX_AGE_CHILDREN: 15
 #########################################################
 
 
-###################################################################################
-## projected and precomputed using utils/precompute_and_project/demographics.py  ##
-###################################################################################
+######################################################################
+## Pre-computed using utils/precompute_and_project/demographics.py  ##
+######################################################################
 
 # Solo dwellers
 # procedure -
@@ -145,7 +142,7 @@ MAX_AGE_CHILDREN: 15
 # Multiply by a correction term to make number of solo houses equal to A.1 * TOTAL_HOUSES
 # Normalize it to get probabilities given housesize of 1
 # Keys to read the list - lower age limit, upper age limit, proportion of population in this age bin that live in household of size 1
-
+    
 P_AGE_SOLO_DWELLERS_GIVEN_HOUSESIZE_1: [[0, 4, 0.0],
     [5, 9, 0.0],
     [10, 14, 0.0],
@@ -167,37 +164,29 @@ P_AGE_SOLO_DWELLERS_GIVEN_HOUSESIZE_1: [[0, 4, 0.0],
 # Normalized P_FAMILY_TYPE_
 # P_FAMILIY_TYPE_ are proportion of **all** households that are of particular type
 # normalized values - proportion of households of size that are of some type
-
+    
 NORMALIZED_P_FAMILY_TYPE_SIZE_2: [0.6644295302013422, 0.2348993288590604, 0.1006711409395973]
 NORMALIZED_P_FAMILY_TYPE_SIZE_3: [0.6691176470588235, 0.2205882352941176, 0.1102941176470588]
 NORMALIZED_P_FAMILY_TYPE_SIZE_4: [0.857142857142857, 0.07142857142857142, 0.07142857142857142]
 NORMALIZED_P_FAMILY_TYPE_SIZE_MORE_THAN_5: [0.7213114754098361, 0.04918032786885246, 0.22950819672131148]
 
 
-# *********************** Overwrite P_AGE_SOLO_DWELLERS_GIVEN_HOUSESIZE_1 because a more accurate datasource is available ***********************
-# ref: https://www12.statcan.gc.ca/census-recensement/2016/dp-pd/dt-td/Rp-eng.cfm?TABID=2&LANG=E&APATH=3&DETAIL=0&DIM=0&FL=A&FREE=0&GC=0&GID=1161337&GK=0&GRP=1&PID=109648&PRID=10&PTYPE=109445&S=0&SHOWALL=0&SUB=0&Temporal=2016&THEME=117&VID=0&VNAMEE=&VNAMEF=&D1=0&D2=0&D3=0&D4=0&D5=0&D6=0
-P_AGE_SOLO_DWELLERS_GIVEN_HOUSESIZE_1: [[0, 4, 0.0],
-    [5, 9, 0.0],
-    [10, 14, 0.0],
-    [15, 19, 0.005576642],
-    [20, 24, 0.047080292],
-    [25, 29, 0.084919708],
-    [30, 34, 0.090948905],
-    [35, 39, 0.078277372],
-    [40, 44, 0.061708029],
-    [45, 49, 0.063343066],
-    [50, 54, 0.080321168],
-    [55, 59, 0.091649635],
-    [60, 64, 0.091547445],
-    [65, 69, 0.086321168],
-    [70, 74, 0.069109489],
-    [75, 79, 0.055226277],
-    [80, 110, 0.093970803]
-  ]
+# P_COLLECTIVE_
+# Probability of living in a collective given an age range.
+# (procedure) use N_COLLECTIVE_, P_AGE_REGION, and POPULATION_SIZE_REGION to compute the ratios.
+# (assumption) distribution of people aged 65-79 living in collective
+# is assumed to be skewed towards larger range [1/6, 2/6, 3/6]
 
-##################################################################
-## projected and precomputed using utils/precompute_and_project/contacts.py  ##
-##################################################################
+    
+P_COLLECTIVE: 0.016958927316308325
+P_COLLECTIVE_65_69: 0.10245879566989163
+P_COLLECTIVE_70_74: 0.04522955844887108
+P_COLLECTIVE_75_79: 0.08656001703146017
+P_COLLECTIVE_80_above: 0.23408718291144381
+
+#######################################################################################
+## projected and precomputed using utils/precompute_and_project/contact_matrices.py  ##
+#######################################################################################
 # ---- Adjusted Contact Matrix (procedure) ----
 # Raw contact matrix at the level of country is read from configs/simulation/country/country_name.yaml
 # Density correction is performed using the method M2 in "Projecting social contact matrices to different demographic structures"
@@ -207,11 +196,11 @@ P_AGE_SOLO_DWELLERS_GIVEN_HOUSESIZE_1: [[0, 4, 0.0],
 # ---- probability of contact between two age groups (procedure) ----
 # Resulting contact matrix is converted to likelihood via column normalization.
 # Thus, P_ij = probability of someone from age group j contacting someone in age group i
-
+    
 
 
 ####### Adjusted contact matrices
-
+    
 ADJUSTED_CONTACT_MATRIX_HOUSEHOLD: [
 [0.6249653744444444, 0.35865216281765755, 0.16521832116847196, 0.07156272929419541, 0.12430334152314812, 0.32831367411669915, 0.5453946124121989, 0.49418028453269225, 0.18545286370265154, 0.08183359883134328, 0.09843263301251291, 0.12962407386923078, 0.15197410405555556, 0.11930341188350342, 0.06709911082387389, 0.06539247319845891],
     [0.33977573319567556, 0.805148118, 0.36376606377179066, 0.10899560307749545, 0.03809263458552631, 0.12885914708150464, 0.4280178803536988, 0.5759763851525675, 0.393518542234674, 0.15452804811006102, 0.07247367600928792, 0.1079923159553306, 0.11203033362126567, 0.15348607816702464, 0.1702138893011913, 0.06616753409215932],
@@ -310,7 +299,7 @@ ADJUSTED_CONTACT_MATRIX_ALL: [
 
 
 ####### Probability of contact  matrices
-
+    
 P_CONTACT_MATRIX_HOUSEHOLD: [
 [0.15080492158069406, 0.07779990156020729, 0.035573234303276, 0.01781981279854765, 0.03595244827319056, 0.10154503868707669, 0.15347610023798441, 0.1302597924898047, 0.05665320803756173, 0.027690582467327737, 0.03801276381878158, 0.05169934869899903, 0.06936887397598925, 0.05234373161656923, 0.03203502607816142, 0.049753216726377246],
     [0.0819883067044246, 0.17465514171075336, 0.07832264198435462, 0.02714096097035409, 0.011017591785902616, 0.03985519978958911, 0.12044584529039362, 0.15182022989838226, 0.12021430888015051, 0.05228868974130872, 0.02798792072208155, 0.04307172450867089, 0.051136462641166114, 0.0673411929769412, 0.08126495739923925, 0.050342914144662465],
@@ -405,6 +394,7 @@ P_CONTACT_MATRIX_ALL: [
     [0.0073987838027245205, 0.012218299322535212, 0.009824895094023846, 0.007222968413750693, 0.006234876453074507, 0.008869929310554425, 0.009044828003563104, 0.014851994836619645, 0.01726083067249608, 0.015573015440500508, 0.01383337578945139, 0.01633221263995366, 0.04453858460015384, 0.058723691450742486, 0.13102705184517582, 0.07362680526267511],
     [0.013222058827434493, 0.01213062155304488, 0.013589727705210717, 0.006996171894821887, 0.006122969984514604, 0.006097685526822134, 0.009750219063736361, 0.010472306884076703, 0.011506268698322353, 0.01649924114581412, 0.01770999906235389, 0.015894356094591635, 0.022286157553996332, 0.03830663307454597, 0.07049508703687253, 0.19352270026516022]
 ]
+
 
 
 ################################################################################################

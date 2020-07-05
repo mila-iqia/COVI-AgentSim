@@ -397,6 +397,7 @@ class Household(Location):
         """
         super(Household, self).__init__(**kwargs)
         self.residents = []
+        self.allocation_type = None
 
         location_type = kwargs.get("location_type", "household")
         # for seniors, social common room serves as a workplace where they spend

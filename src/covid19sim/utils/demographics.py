@@ -91,9 +91,6 @@ def assign_households_to_humans(humans, city, conf, logfile=None):
     Returns:
         list: a list of humans with a residence
     """
-
-    MAX_FAILED_ATTEMPTS_ALLOWED = 10
-
     def _assign_household(human, res, allocated_humans):
         assert human not in allocated_humans, f"reassigning household to human:{human}"
         human.assign_household(res)
@@ -101,9 +98,11 @@ def assign_households_to_humans(humans, city, conf, logfile=None):
         allocated_humans.append(human)
         return allocated_humans
 
+    MAX_FAILED_ATTEMPTS_ALLOWED = 10000
     P_HOUSEHOLD_SIZE= conf['P_HOUSEHOLD_SIZE']
-    P_COLLECTIVE_75_79 = conf['P_COLLECTIVE_75_79']
+    P_COLLECTIVE_65_69 = conf['P_COLLECTIVE_65_69']
     P_COLLECTIVE_70_74 = conf['P_COLLECTIVE_70_74']
+    P_COLLECTIVE_75_79 = conf['P_COLLECTIVE_75_79']
     P_COLLECTIVE_80_above = conf['P_COLLECTIVE_80_above']
 
     n_people = city.n_people
@@ -111,8 +110,9 @@ def assign_households_to_humans(humans, city, conf, logfile=None):
     age_bins = sorted(humans.keys(), key=lambda x:x[0])
     allocated_humans = []
 
+    log("Allocating houses ... ", logfile)
     # allocate senior residencies
-    for bin, P in [[(70,74), P_COLLECTIVE_70_74], [(75,79), P_COLLECTIVE_75_79], [(80,110), P_COLLECTIVE_80_above]]:
+    for bin, P in [[(65,69), P_COLLECTIVE_65_69], [(70,74), P_COLLECTIVE_70_74], [(75,79), P_COLLECTIVE_75_79], [(80,110), P_COLLECTIVE_80_above]]:
         for human in unassigned_humans[bin]:
             if city.rng.random() < P:
                 res = city.rng.choice(city.senior_residencys, size=1).item()
@@ -120,7 +120,7 @@ def assign_households_to_humans(humans, city, conf, logfile=None):
                 unassigned_humans[bin].remove(human)
 
     # allocate households
-    n_failed_attempts = 0
+    n_failed_attempts, deviation = 0, 0
     while len(allocated_humans) < city.n_people and n_failed_attempts < MAX_FAILED_ATTEMPTS_ALLOWED:
         housesize = city.rng.choice(range(1,6), p=P_HOUSEHOLD_SIZE, size=1).item()
         res = city.create_location(
@@ -130,33 +130,35 @@ def assign_households_to_humans(humans, city, conf, logfile=None):
         )
 
         if housesize == 1:
-            humans_with_same_house, unassigned_humans, n_iters = find_one_human_for_solo_house(conf, city, unassigned_humans)
+            humans_with_same_house, unassigned_humans, n_iters, type = find_one_human_for_solo_house(conf, city, unassigned_humans)
 
         elif housesize == 2:
-            humans_with_same_house, unassigned_humans, n_iters = find_two_humans_for_house(conf, city, unassigned_humans)
+            humans_with_same_house, unassigned_humans, n_iters, type = find_two_humans_for_house(conf, city, unassigned_humans)
 
         elif housesize == 3:
-            humans_with_same_house, unassigned_humans, n_iters = find_three_humans_for_house(conf, city, unassigned_humans)
+            humans_with_same_house, unassigned_humans, n_iters, type = find_three_humans_for_house(conf, city, unassigned_humans)
 
         elif housesize == 4:
-            humans_with_same_house, unassigned_humans, n_iters = find_four_humans_for_house(conf, city, unassigned_humans)
+            humans_with_same_house, unassigned_humans, n_iters, type = find_four_humans_for_house(conf, city, unassigned_humans)
 
         elif housesize == 5:
-            humans_with_same_house, unassigned_humans, n_iters = find_five_humans_for_house(conf, city, unassigned_humans)
+            humans_with_same_house, unassigned_humans, n_iters, type = find_five_humans_for_house(conf, city, unassigned_humans)
 
         # allocate if succesful
         if humans_with_same_house:
             for human in humans_with_same_house:
                 allocated_humans = _assign_household(human, res, allocated_humans)
+            res.allocation_type = type
             city.households.add(res)
+            deviation += n_iters - 1
         else:
             n_failed_attempts += 1
             if n_failed_attempts % 100 == 0:
-                log(f"Failed attempt - {n_failed_attempts}. Total allocated:{len(allocated_humans)}", logfile)
+                log(f"Failed attempt - {n_failed_attempts}. Deviation: {deviation}. Total allocated:{len(allocated_humans)}", logfile)
 
     # when number of attempts exceed the limit randomly allocate remaining humans
     if n_failed_attempts >= MAX_FAILED_ATTEMPTS_ALLOWED:
-        log("Exceeded the maximum number of failed attempts allowed to allocate houses... trying random allocation!", logfile)
+        log("Deviation:{deviation}. Exceeded the maximum number of failed attempts allowed to allocate houses... trying random allocation!", logfile)
 
         while len(allocated_humans) < city.n_people:
             housesize = city.rng.choice(range(1,6), p=P_HOUSEHOLD_SIZE, size=1).item()
@@ -180,6 +182,7 @@ def assign_households_to_humans(humans, city, conf, logfile=None):
     assert len(city.households) > 0
     # shuffle the list of humans so that the simulation is not dependent on the order of house allocation
     city.rng.shuffle(allocated_humans)
+    log(f"Housing allocated with deviation:{deviation}", logfile)
     return allocated_humans
 
 def _random_choice_tuples(tuples, rng, size, P=None):
@@ -322,6 +325,7 @@ def find_one_human_for_solo_house(conf, city, unassigned_humans):
         human (list): human sampled to live alone
         unassigned_humans (dict): keys are age bin (tuple) and values are humans that do not have a household allocated
         n_iters (int): number of iterations it took to find this allocation
+        type (tuple): type of allocation (str) and census probability of this allocation type (float)
     """
     P_AGE_SOLO_DWELLERS_GIVEN_HOUSESIZE_1 = conf['P_AGE_SOLO_DWELLERS_GIVEN_HOUSESIZE_1']
     P_AGE_SOLO = [x[2] for x in P_AGE_SOLO_DWELLERS_GIVEN_HOUSESIZE_1]
@@ -339,7 +343,8 @@ def find_one_human_for_solo_house(conf, city, unassigned_humans):
             human = city.rng.choice(unassigned_humans[age_bin], size=1).tolist()
             unassigned_humans[age_bin].remove(human[0])
             break
-    return human, unassigned_humans, n_iters
+
+    return human, unassigned_humans, n_iters, ("solo", conf['P_HOUSEHOLD_SIZE'][0])
 
 def find_two_humans_for_house(conf, city, unassigned_humans):
     """
@@ -355,7 +360,9 @@ def find_two_humans_for_house(conf, city, unassigned_humans):
         humans (list): humans sampled to live together
         unassigned_humans (dict): keys are age bin (tuple) and values are humans that do not have a household allocated
         n_iters (int): number of iterations it took to find this allocation
+        type (tuple): type of allocation (str) and census probability of this allocation type (float)
     """
+    P_FAMILY_TYPE_SIZE_2 = conf['P_FAMILY_TYPE_SIZE_2']
     NORMALIZED_P_FAMILY_TYPE_SIZE_2 = conf['NORMALIZED_P_FAMILY_TYPE_SIZE_2']
 
     MIN_AGE_COUPLE = conf['MIN_AGE_COUPLE']
@@ -363,12 +370,12 @@ def find_two_humans_for_house(conf, city, unassigned_humans):
     MAX_AGE_SINGLE_PARENT = conf['MAX_AGE_SINGLE_PARENT']
     MAX_AGE_CHILDREN = conf['MAX_AGE_CHILDREN']
 
-    types = ["couple", "single_parent", "other"]
+    types = ["couple", "single_parent", "other-2"]
     n_iters, two_humans = 0, []
     age_bins = sorted(unassigned_humans.keys(), key=lambda x:x[0])
     while n_iters < 10:
         n_iters += 1
-        type = city.rng.choice(types, p=NORMALIZED_P_FAMILY_TYPE_SIZE_2, size=1)
+        type = city.rng.choice(types, p=NORMALIZED_P_FAMILY_TYPE_SIZE_2, size=1).item()
 
         if type == "couple":
             valid_age_bins = [x for x in age_bins if x[0] >= MIN_AGE_COUPLE]
@@ -380,7 +387,7 @@ def find_two_humans_for_house(conf, city, unassigned_humans):
             valid_younger_bins = [x for x in valid_age_bins if x[1] < MAX_AGE_CHILDREN]
             two_humans = _sample_single_parent_n_kids(valid_older_bins, valid_younger_bins, unassigned_humans, city.rng, n=1)
 
-        else:
+        elif type == "other-2":
             # (no-source) all other type of housing is resided by adults only
             valid_age_bins = [x for x in age_bins if len(unassigned_humans[x]) >= 1 and x[0] > MAX_AGE_CHILDREN]
             two_humans = _sample_random_humans(valid_age_bins, unassigned_humans, city.rng, size=2)
@@ -388,7 +395,7 @@ def find_two_humans_for_house(conf, city, unassigned_humans):
         if two_humans:
             break
 
-    return two_humans, unassigned_humans, n_iters
+    return two_humans, unassigned_humans, n_iters, (type, P_FAMILY_TYPE_SIZE_2[types.index(type)])
 
 def find_three_humans_for_house(conf, city, unassigned_humans):
     """
@@ -404,9 +411,11 @@ def find_three_humans_for_house(conf, city, unassigned_humans):
         humans (list): humans sampled to live together
         unassigned_humans (dict): keys are age bin (tuple) and values are humans that do not have a household allocated
         n_iters (int): number of iterations it took to find this allocation
+        type (tuple): type of allocation (str) and census probability of this allocation type (float)
     """
-
+    P_FAMILY_TYPE_SIZE_3 = conf['P_FAMILY_TYPE_SIZE_3']
     NORMALIZED_P_FAMILY_TYPE_SIZE_3 = conf['NORMALIZED_P_FAMILY_TYPE_SIZE_3']
+
     P_MULTIGENERATIONAL_FAMILY = conf['P_MULTIGENERATIONAL_FAMILY']
     MAX_AGE_CHILDREN = conf['MAX_AGE_CHILDREN']
     MIN_AGE_COUPLE = conf['MIN_AGE_COUPLE']
@@ -414,13 +423,13 @@ def find_three_humans_for_house(conf, city, unassigned_humans):
     MAX_AGE_SINGLE_PARENT = conf['MAX_AGE_SINGLE_PARENT']
     MAX_AGE_COUPLE_WITH_CHILDREN = conf['MAX_AGE_COUPLE_WITH_CHILDREN']
 
-    types = ["couple_with_kid", "single_parent_with_2_kids", "other"]
+    types = ["couple_with_kid", "single_parent_with_2_kids", "other-3"]
     n_iters, three_humans = 0, []
     valid_age_bins = [x for x, val in unassigned_humans.items() if len(val) >= 1]
     age_bins = sorted(unassigned_humans.keys(), key=lambda x:x[0])
     while n_iters < 10:
         n_iters += 1
-        type = city.rng.choice(types, p=NORMALIZED_P_FAMILY_TYPE_SIZE_3, size=1)
+        type = city.rng.choice(types, p=NORMALIZED_P_FAMILY_TYPE_SIZE_3, size=1).item()
 
         if type == "couple_with_kid":
             valid_couple_bins = [x for x in valid_age_bins if MIN_AGE_COUPLE < x[0] < MAX_AGE_COUPLE_WITH_CHILDREN]
@@ -432,7 +441,7 @@ def find_three_humans_for_house(conf, city, unassigned_humans):
             valid_younger_bins = [x for x in valid_age_bins if x[1] < MAX_AGE_CHILDREN]
             three_humans = _sample_single_parent_n_kids(valid_older_bins, valid_younger_bins, unassigned_humans, city.rng, n=2)
 
-        elif type == "other":
+        elif type == "other-3":
             # (no-source) all other type of housing is resided by adults only
             valid_age_bins = [x for x in age_bins if len(unassigned_humans[x]) >= 1 and x[0] > MAX_AGE_CHILDREN]
             three_humans = _sample_random_humans(valid_age_bins, unassigned_humans, city.rng, size=3)
@@ -440,7 +449,7 @@ def find_three_humans_for_house(conf, city, unassigned_humans):
         if three_humans:
             break
 
-    return three_humans, unassigned_humans, n_iters
+    return three_humans, unassigned_humans, n_iters, (type, P_FAMILY_TYPE_SIZE_3[types.index(type)])
 
 def find_four_humans_for_house(conf, city, unassigned_humans):
     """
@@ -456,8 +465,9 @@ def find_four_humans_for_house(conf, city, unassigned_humans):
         humans (list): humans sampled to live together
         unassigned_humans (dict): keys are age bin (tuple) and values are humans that do not have a household allocated
         n_iters (int): number of iterations it took to find this allocation
+        type (tuple): type of allocation (str) and census probability of this allocation type (float)
     """
-
+    P_FAMILY_TYPE_SIZE_4 = conf['P_FAMILY_TYPE_SIZE_4']
     NORMALIZED_P_FAMILY_TYPE_SIZE_4 = conf['NORMALIZED_P_FAMILY_TYPE_SIZE_4']
 
     P_MULTIGENERATIONAL_FAMILY = conf['P_MULTIGENERATIONAL_FAMILY']
@@ -467,13 +477,13 @@ def find_four_humans_for_house(conf, city, unassigned_humans):
     MAX_AGE_SINGLE_PARENT = conf['MAX_AGE_SINGLE_PARENT']
     MAX_AGE_COUPLE_WITH_CHILDREN = conf['MAX_AGE_COUPLE_WITH_CHILDREN']
 
-    types = ["couple_with_two_kids", "single_parent_with_three_kids", "other"]
+    types = ["couple_with_two_kids", "single_parent_with_three_kids", "other-4"]
     n_iters, four_humans = 0, []
     valid_age_bins = [x for x, val in unassigned_humans.items() if len(val) >= 1]
     age_bins = sorted(unassigned_humans.keys(), key=lambda x:x[0])
     while n_iters < 10:
         n_iters += 1
-        type = city.rng.choice(types, p=NORMALIZED_P_FAMILY_TYPE_SIZE_4, size=1)
+        type = city.rng.choice(types, p=NORMALIZED_P_FAMILY_TYPE_SIZE_4, size=1).item()
         if type == "couple_with_two_kids":
             valid_couple_bins = [x for x in valid_age_bins if MIN_AGE_COUPLE < x[0] < MAX_AGE_COUPLE_WITH_CHILDREN]
             valid_younger_bins = [x for x in valid_age_bins if x[1] < MAX_AGE_CHILDREN]
@@ -484,7 +494,7 @@ def find_four_humans_for_house(conf, city, unassigned_humans):
             valid_younger_bins = [x for x in valid_age_bins if x[1] < MAX_AGE_CHILDREN]
             four_humans = _sample_single_parent_n_kids(valid_older_bins, valid_younger_bins, unassigned_humans, city.rng, n=3)
 
-        elif type == "other":
+        elif type == "other-4":
             # (no-source) all other type of housing is resided by adults only
             valid_age_bins = [x for x in age_bins if len(unassigned_humans[x]) >= 1 and x[0] > MAX_AGE_CHILDREN]
             four_humans = _sample_random_humans(valid_age_bins, unassigned_humans, city.rng, size=4)
@@ -492,7 +502,7 @@ def find_four_humans_for_house(conf, city, unassigned_humans):
         if four_humans:
             break
 
-    return four_humans, unassigned_humans, n_iters
+    return four_humans, unassigned_humans, n_iters, (type, P_FAMILY_TYPE_SIZE_4[types.index(type)])
 
 def find_five_humans_for_house(conf, city, unassigned_humans):
     """
@@ -508,8 +518,9 @@ def find_five_humans_for_house(conf, city, unassigned_humans):
         humans (list): humans sampled to live together
         unassigned_humans (dict): keys are age bin (tuple) and values are humans that do not have a household allocated
         n_iters (int): number of iterations it took to find this allocation
+        type (tuple): type of allocation (str) and census probability of this allocation type (float)
     """
-
+    P_FAMILY_TYPE_SIZE_MORE_THAN_5 = conf['P_FAMILY_TYPE_SIZE_MORE_THAN_5']
     NORMALIZED_P_FAMILY_TYPE_SIZE_MORE_THAN_5 = conf['NORMALIZED_P_FAMILY_TYPE_SIZE_MORE_THAN_5']
 
     P_MULTIGENERATIONAL_FAMILY = conf['P_MULTIGENERATIONAL_FAMILY']
@@ -519,13 +530,13 @@ def find_five_humans_for_house(conf, city, unassigned_humans):
     MAX_AGE_SINGLE_PARENT = conf['MAX_AGE_SINGLE_PARENT']
     MAX_AGE_COUPLE_WITH_CHILDREN = conf['MAX_AGE_COUPLE_WITH_CHILDREN']
 
-    types = ["couple_with_three_kids", "single_parent_with_four_or_more_kids", "other"]
+    types = ["couple_with_three_kids", "single_parent_with_four_or_more_kids", "other-5"]
     n_iters, more_than_four_humans = 0, []
     valid_age_bins = [x for x, val in unassigned_humans.items() if len(val) >= 1]
     age_bins = sorted(unassigned_humans.keys(), key=lambda x:x[0])
     while n_iters < 10:
         n_iters += 1
-        type = city.rng.choice(types, p=NORMALIZED_P_FAMILY_TYPE_SIZE_MORE_THAN_5, size=1)
+        type = city.rng.choice(types, p=NORMALIZED_P_FAMILY_TYPE_SIZE_MORE_THAN_5, size=1).item()
         if type == "couple_with_three_kids":
             valid_couple_bins = [x for x in valid_age_bins if MIN_AGE_COUPLE < x[0] < MAX_AGE_COUPLE_WITH_CHILDREN]
             valid_younger_bins = [x for x in valid_age_bins if x[1] < MAX_AGE_CHILDREN]
@@ -536,7 +547,7 @@ def find_five_humans_for_house(conf, city, unassigned_humans):
             valid_younger_bins = [x for x in valid_age_bins if x[1] < MAX_AGE_CHILDREN]
             five_humans = _sample_single_parent_n_kids(valid_older_bins, valid_younger_bins, unassigned_humans, city.rng, n=4)
 
-        elif type == "other":
+        elif type == "other-5":
             # (no-source) all other type of housing is resided by adults only;
             # (no-source) we consider the max size to be 5
             valid_age_bins = [x for x in age_bins if len(unassigned_humans[x]) >= 1 and x[0] > MAX_AGE_CHILDREN]
@@ -545,4 +556,4 @@ def find_five_humans_for_house(conf, city, unassigned_humans):
         if five_humans:
             break
 
-    return five_humans, unassigned_humans, n_iters
+    return five_humans, unassigned_humans, n_iters, (type, P_FAMILY_TYPE_SIZE_MORE_THAN_5[types.index(type)])

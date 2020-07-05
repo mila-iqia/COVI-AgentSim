@@ -121,3 +121,53 @@ if __name__ == "__main__":
             + str(NORMALIZED_P_FAMILY_TYPE_SIZE_MORE_THAN_5)
             + "\n"
         )
+
+    # precompute 3
+    # P_COLLECTIVE_65_69, P_COLLECTIVE_70_74, P_COLLECTIVE_75_79, P_COLLECTIVE_80_above
+    # probability of living in a collective given age ranges
+    N_COLLECTIVE = region['N_COLLECTIVE']
+    N_COLLECTIVE_65_79 = region['N_COLLECTIVE_65_79']
+    N_COLLECTIVE_80_above = region['N_COLLECTIVE_80_above']
+    N_65_69 = P_AGE_REGION[-4][2] * POPULATION_SIZE_REGION
+    N_70_74 = P_AGE_REGION[-3][2] * POPULATION_SIZE_REGION
+    N_75_79 = P_AGE_REGION[-2][2] * POPULATION_SIZE_REGION
+    N_80_above = P_AGE_REGION[-1][2] * POPULATION_SIZE_REGION
+
+    # (assumption) distribution of people aged 65-79 living in collective
+    # is assumed to be skewed towards larger range [1/6, 2/6, 3/6]
+    N_COLLECTIVE_65_69 = N_COLLECTIVE_65_79 // 6
+    N_COLLECTIVE_70_74 = N_COLLECTIVE_65_79 // 3
+    N_COLLECTIVE_75_79 = N_COLLECTIVE_65_79 - N_COLLECTIVE_65_69 - N_COLLECTIVE_70_74
+
+    P_COLLECTIVE = N_COLLECTIVE / POPULATION_SIZE_REGION
+    P_COLLECTIVE_65_69 = N_COLLECTIVE_65_79 / N_65_69
+    P_COLLECTIVE_70_74 = N_COLLECTIVE_70_74 / N_70_74
+    P_COLLECTIVE_75_79 = N_COLLECTIVE_75_79 / N_75_79
+    P_COLLECTIVE_80_above = N_COLLECTIVE_80_above / N_80_above
+
+    comment = """
+# P_COLLECTIVE_
+# Probability of living in a collective given an age range.
+# (procedure) use N_COLLECTIVE_, P_AGE_REGION, and POPULATION_SIZE_REGION to compute the ratios.
+# (assumption) distribution of people aged 65-79 living in collective is assumed to be skewed towards larger range [1/6, 2/6, 3/6]
+    """
+    with region_path.open("a") as f:
+        f.write(
+            "\n"
+            + (comment if not args.no_comments else "")
+            + "\n"
+            + "P_COLLECTIVE: "
+            + str(P_COLLECTIVE)
+            + "\n"
+            + "P_COLLECTIVE_65_69: "
+            + str(P_COLLECTIVE_65_69)
+            + "\n"
+            + "P_COLLECTIVE_70_74: "
+            + str(P_COLLECTIVE_70_74)
+            + "\n"
+            + "P_COLLECTIVE_75_79: "
+            + str(P_COLLECTIVE_75_79)
+            + "\n"
+            + "P_COLLECTIVE_80_above: "
+            + str(P_COLLECTIVE_80_above)
+        )

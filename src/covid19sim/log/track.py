@@ -261,7 +261,7 @@ class Tracker(object):
         """
         Logs statistics related to demographics.
         """
-        log("\n######## DEMOGRAPHICS / INITIALIZATION #########", self.logfile)
+        log("\n######## DEMOGRAPHICS / SYNTHETIC POPULATION #########", self.logfile)
 
         # age distribution
         x = np.array([h.age for h in self.city.humans])
@@ -287,7 +287,8 @@ class Tracker(object):
         # senior residencies
         self.n_senior_residency_residents = sum(1 for h in self.city.humans if h.household.location_type == "senior_residency")
         p = self.n_senior_residency_residents / self.n_people
-        log(f"Total (%) number of residents in senior residencies: {self.n_senior_residency_residents} ({100*p:2.3f}%)", self.logfile)
+        census = self.conf['P_COLLECTIVE']
+        log(f"Total (%) number of residents in senior residencies (census): {self.n_senior_residency_residents} ({100*p:2.2f}%) ({100*census:2.2f})", self.logfile)
 
         # house allocation
         n_houses = len(self.city.households)
@@ -318,12 +319,13 @@ class Tracker(object):
         log(f"Total houses: {n_houses}", self.logfile)
         log(f"Number of houses with single residents: {len(solo_ages)}", self.logfile)
         ## size
-        str_to_print = "Household size: "
-        for z in sorted(np.unique(sizes)):
+        census = self.conf['P_HOUSEHOLD_SIZE']
+        str_to_print = "Household size - simulation% (census): "
+        for i,z in enumerate(sorted(np.unique(sizes))):
             p = 100 * (sizes == z).sum() / n_houses
-            str_to_print += f"{z}: {p:2.3f}% | "
+            str_to_print += f"{z}: {p:2.2f}% ({100*census[i]: 3.2f}) | "
         log(str_to_print, self.logfile)
-        log(f"Average house size - {sizes.mean(): 2.3f}", self.logfile)
+        log(f"Average house size - {sizes.mean(): 2.3f} ({self.conf['AVG_HOUSEHOLD_SIZE']: 2.3f})", self.logfile)
         ## type
         str_to_print = "Household type: "
         p = 100 * two_generations.mean()
@@ -333,6 +335,18 @@ class Tracker(object):
         p = 100 * only_adults.mean()
         str_to_print += f"Only adults: {p:2.3f}% | "
         log(str_to_print, self.logfile)
+
+        # allocation types
+        allocation_types, census = list(zip(*[res.allocation_type for res in self.city.households]))
+        allocation_types = np.array(allocation_types)
+        census = np.array(census)
+        str_to_print = "Allocation types: "
+        for atype in np.unique(allocation_types):
+            p = (allocation_types == atype).mean()
+            cns = census[allocation_types == atype][0].item()
+            str_to_print += f"{atype}: {100*p:2.3f}%  ({100*cns: 2.2f})| "
+        log(str_to_print, self.logfile)
+
 
         log("\n *** Other locations *** ", self.logfile)
         ## collectives
