@@ -1,5 +1,6 @@
 import math
 import pickle
+import wandb
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -147,6 +148,7 @@ def get_all(filename_types=None, pkl_types=None, labels=[], normalized=False):
         raise ValueError("filename_types and pkl_types are None")
 
     _rows = []
+
     for i, (filenames, pkls) in enumerate(tmp):
         metrics = get_mean_fq_r(filenames=filenames, pkls=pkls, normalized=normalized)
         for key, val in metrics.items():
@@ -202,6 +204,9 @@ def get_line2D(value, color, marker, is_method=True, compare="APP_UPTAKE"):
             "heuristicv1": "Heuristic (v1)",
             "heuristicv2": "Heuristic (v2)",
             "transformer": "Transformer",
+            "transformer-[0, 0, 0]": "Transformer-[0, 0, 0]",
+            "transformer-[0, 1, 2]": "Transformer-[0, 1, 2]",
+            "transformer-[1, 3, 5]": "Transformer-[1, 3, 5]",
             "linreg": "Linear Regression",
             "mlp": "MLP",
             "unmitigated": "Unmitigated",
@@ -234,7 +239,7 @@ def get_line2D(value, color, marker, is_method=True, compare="APP_UPTAKE"):
     )
 
 
-def run(data, path, comparison_key):
+def run(data, path, comparison_key, use_wandb):
     """
     data is a dictionnary that maps methods (bdt1, bdt1_norm, transformer etc.)
     to another dictionnary which has keys the values of the comparing key and
@@ -268,6 +273,8 @@ def run(data, path, comparison_key):
     labels = []
     pkls_norm = []
     labels_norm = []
+    import pdb; pdb.set_trace()
+
     for method in data:
         for key in data[method]:
             if "_norm" in method:
@@ -294,7 +301,6 @@ def run(data, path, comparison_key):
             break
         break
     assert n_seeds is not None, "Could not find the number of seeds"
-
     df = pd.DataFrame(rows, columns=["type", "metric"] + list(np.arange(n_seeds) + 1))
     df["mean"] = df[list(np.arange(n_seeds) + 1)].mean(axis=1)
     df["stderr"] = df[list(np.arange(n_seeds) + 1)].sem(axis=1)
@@ -468,4 +474,8 @@ def run(data, path, comparison_key):
         bbox_extra_artists=(lgd, ylab, spttl),
         bbox_inches="tight",
     )
+    if use_wandb:
+        print("Uploading to Weights and Biases...")
+        wandb.save(str(save_path))
     print("Done.")
+

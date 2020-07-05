@@ -5,6 +5,9 @@ from collections import defaultdict
 from pathlib import Path
 from time import time
 import pickle
+import wandb
+import os
+import shutil
 
 import hydra
 from omegaconf import OmegaConf
@@ -123,9 +126,10 @@ def get_model(conf, mapping):
                     model
                 )
             )
+        model_name = mapping.get(model, "transformer") + "-" + str(conf.get("REC_LEVEL_THRESHOLDS"))
         if conf.get("DAILY_TARGET_REC_LEVEL_DIST", False):
-            return mapping.get(model, "transformer") + "_norm"
-        return mapping.get(model, "transformer")
+            model_name = model_name + "_norm"
+        return model_name
 
     if conf["RISK_MODEL"] == "heuristicv1":
         if conf.get("DAILY_TARGET_REC_LEVEL_DIST", False):
@@ -176,9 +180,21 @@ def main(conf):
 
     conf = OmegaConf.to_container(conf)
     options = parse_options(conf, all_plots)
-    path = Path(conf.get("path", ".")).resolve()
-    assert path.exists()
-    cache_path = path / "cache.pkl"
+
+    if conf['use_wandb']:
+        wandb.init(project="COVI")
+
+    root_path = conf.get("path", ".")
+    plot_path = os.path.join(root_path, "plots")
+
+    root_path = Path(root_path).resolve()
+    plot_path = Path(plot_path).resolve()
+
+    if plot_path.exists():
+        shutil.rmtree(plot_path)
+    os.makedirs(plot_path)
+    assert plot_path.exists()
+    cache_path = root_path / "cache.pkl"
 
     # -------------------
     # -----  Help?  -----
@@ -263,9 +279,9 @@ def main(conf):
         # --------------------------
         # -----  Compute Data  -----
         # --------------------------
-        print("Reading configs from {}:".format(str(path)))
+        print("Reading configs from {}:".format(str(root_path)))
         rtime = time()
-        all_data = get_all_data(path, keep_pkl_keys, conf.get("multithreading", False))
+        all_data = get_all_data(root_path, keep_pkl_keys, conf.get("multithreading", False))
         print("\nDone in {:.2f}s.\n".format(time() - rtime))
         summarize_configs(all_data)
         data = map_conf_to_models(all_data, conf)
@@ -293,7 +309,7 @@ def main(conf):
             # -------------------------------
             # -----  Run Plot Function  -----
             # -------------------------------
-            func(data, path, conf["compare"], **options[plot])
+            func(data, plot_path, conf["compare"], conf['use_wandb'], **options[plot])
         except Exception as e:
             if isinstance(e, KeyboardInterrupt):
                 print("Interrupting.")

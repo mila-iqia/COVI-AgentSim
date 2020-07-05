@@ -1,4 +1,7 @@
 import numpy as np
+import wandb
+import os
+import matplotlib
 import matplotlib.pyplot as plt
 
 
@@ -66,7 +69,7 @@ def statistics(pkl_data, times, mode):
     return positive, negative
 
 
-def run(data, path, comparison_key, times=[-1, -2, -3], mode=None):
+def run(data, path, comparison_key, use_wandb, times=[-1, -2, -3], mode=None):
 
     # Options:
     # 1. "times" is a list, indicating the times we are interested in.
@@ -84,7 +87,7 @@ def run(data, path, comparison_key, times=[-1, -2, -3], mode=None):
         label2pkls = list()
         for method in data:
             for key in data[method]:
-                label = f"{method}_{key}"
+                label = f"{key}"
                 pkls = [r["pkl"] for r in data[method][key].values()]
                 label2pkls.append((label, pkls))
 
@@ -104,87 +107,114 @@ def run(data, path, comparison_key, times=[-1, -2, -3], mode=None):
             results.append((all_positive, all_negative, all_positive - all_negative))
 
         for k, time in enumerate(times):
-            fig, axs = plt.subplots(nrows=3, ncols=len(label2pkls), figsize=(30, 20))
+            i = 0
+            j = 0
 
-            for i in range(len(label2pkls)):
-                label = label2pkls[i][0]
-                result = results[i]
+            for method in data:
+                fig, axs = plt.subplots(nrows=3, ncols=len(data[method]), figsize=(20, 20))
+                fig.suptitle(method, fontsize=30)
+                j = j + i if i == 0 else j + i + 1
 
-                if mode == "risk":
-                    length = 16
-                    xlabel = "Risk Level"
-                    xticklabels = [
-                        0,
-                        "",
-                        "",
-                        "",
-                        4,
-                        "",
-                        "",
-                        "",
-                        8,
-                        "",
-                        "",
-                        "",
-                        12,
-                        "",
-                        "",
-                        "",
-                    ]
-                if mode == "rec":
-                    length = 4
-                    xlabel = "Rec Level"
-                    xticklabels = [0, 1, 2, 3]
+                for i in range(len(data[method])):
+                    print(i+j)
 
-                axs[0, i].bar(
-                    list(range(length)),
-                    result[0][k],
-                    color="darkorange",
-                    label="Day{}".format(time),
+                    label = label2pkls[i+j][0]
+                    result = results[i+j]
+
+                    # change the font size
+                    font = {'family': 'DejaVu Sans',
+                            'size': 18}
+                    matplotlib.rc('font', **font)
+                    plt.rcParams['axes.labelsize'] = 18
+
+                    if mode == "risk":
+                        length = 16
+                        xlabel = "Risk Level"
+                        xticklabels = [
+                            0,
+                            "",
+                            "",
+                            "",
+                            4,
+                            "",
+                            "",
+                            "",
+                            8,
+                            "",
+                            "",
+                            "",
+                            12,
+                            "",
+                            "",
+                            "",
+                        ]
+                    if mode == "rec":
+                        length = 4
+                        xlabel = "Rec Level"
+                        xticklabels = [0, 1, 2, 3]
+
+                    axs[0, i].bar(
+                        list(range(length)),
+                        result[0][k],
+                        color="darkorange",
+                        label="Day{}".format(time),
+                    )
+                    axs[0, i].set_title("{}".format(label))
+                    axs[0, i].set_xlabel(xlabel)
+                    if i == 0:
+                        axs[0, i].set_ylabel("Presymptomatic", size='large')
+                    else:
+                        axs[0, i].set_ylabel("Percentage of Population")
+                    axs[0, i].set_xticks(list(range(length)))
+                    axs[0, i].set_xticklabels(xticklabels)
+                    axs[0, i].set_ylim(0, 1)
+                    axs[0, i].plot([0, length - 1], [0, 0], color="b", linewidth=0.5)
+
+                    axs[1, i].bar(
+                        list(range(length)),
+                        result[1][k],
+                        color="darkorange",
+                        label="Day{}".format(time),
+                    )
+                    axs[1, i].set_title("{}".format(label))
+                    axs[1, i].set_xlabel(xlabel)
+                    if i == 0:
+                        axs[1, i].set_ylabel("Susceptible", size='large')
+                    else:
+                        axs[1, i].set_ylabel("Percentage of Population")
+                    axs[1, i].set_xticks(list(range(length)))
+                    axs[1, i].set_xticklabels(xticklabels)
+                    axs[1, i].set_ylim(0, 1)
+                    axs[1, i].plot([0, length - 1], [0, 0], color="b", linewidth=0.5)
+
+                    axs[2, i].bar(
+                        list(range(length)),
+                        result[2][k],
+                        color="darkorange",
+                        label="Day{}".format(time),
+                    )
+                    axs[2, i].set_title("{}".format(label))
+                    axs[2, i].set_xlabel(xlabel)
+                    if i == 0:
+                        axs[2, i].set_ylabel("Delta", size='large')
+                    else:
+                        axs[2, i].set_ylabel("Percentage of Population")
+                    axs[2, i].set_xticks(list(range(length)))
+                    axs[2, i].set_xticklabels(xticklabels)
+                    axs[2, i].set_ylim(-1, 0.5)
+                    axs[2, i].plot([0, length - 1], [0, 0], color="b", linewidth=0.5)
+
+                # plt.subplots_adjust(
+                #     left=0.05, bottom=0.05, right=0.99, top=0.95, wspace=0.5, hspace=0.3
+                # )
+                dir_path = path / "presymptomatic" / f"statistics_day{time}"
+                fig_path = dir_path / f"{method}_{mode}.png"
+                print(
+                    "Saving Figure", str(fig_path)
                 )
-                axs[0, i].set_title("{} @ Day{}".format(label, time))
-                axs[0, i].set_xlabel(xlabel)
-                axs[0, i].set_ylabel("Percentage")
-                axs[0, i].set_xticks(list(range(length)))
-                axs[0, i].set_xticklabels(xticklabels)
-                axs[0, i].set_ylim(0, 1)
-                axs[0, i].plot([0, length - 1], [0, 0], color="b", linewidth=0.5)
-
-                axs[1, i].bar(
-                    list(range(length)),
-                    result[1][k],
-                    color="darkorange",
-                    label="Day{}".format(time),
-                )
-                axs[1, i].set_title("{} @ Day{}".format(label, time))
-                axs[1, i].set_xlabel(xlabel)
-                axs[1, i].set_ylabel("Percentage")
-                axs[1, i].set_xticks(list(range(length)))
-                axs[1, i].set_xticklabels(xticklabels)
-                axs[1, i].set_ylim(0, 1)
-                axs[1, i].plot([0, length - 1], [0, 0], color="b", linewidth=0.5)
-
-                axs[2, i].bar(
-                    list(range(length)),
-                    result[2][k],
-                    color="darkorange",
-                    label="Day{}".format(time),
-                )
-                axs[2, i].set_title("{} @ Day{}".format(label, time))
-                axs[2, i].set_xlabel(xlabel)
-                axs[2, i].set_ylabel("Delta of Percentage")
-                axs[2, i].set_xticks(list(range(length)))
-                axs[2, i].set_xticklabels(xticklabels)
-                axs[2, i].set_ylim(-1, 0.5)
-                axs[2, i].plot([0, length - 1], [0, 0], color="b", linewidth=0.5)
-
-            plt.subplots_adjust(
-                left=0.05, bottom=0.05, right=0.99, top=0.95, wspace=0.5, hspace=0.3
-            )
-            print(
-                "Saving Figure",
-                "presymptomatic_{}_statistics_day{}.png".format(mode, time),
-            )
-            plt.savefig(
-                str(path / "presymptomatic_{}_statistics_day{}.png".format(mode, time))
-            )
+                os.makedirs(dir_path, exist_ok=True)
+                plt.savefig(fig_path)
+                if use_wandb:
+                    print("Uploading to Weights and Biases...")
+                    wandb.log({str(fig_path): wandb.Image(str(fig_path))})
+                print("Done.")

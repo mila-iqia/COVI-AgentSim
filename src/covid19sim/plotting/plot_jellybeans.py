@@ -2,6 +2,7 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
+import wandb
 from matplotlib.lines import Line2D
 from collections import defaultdict
 from covid19sim.plotting.utils.extract_data import get_all_rec_levels
@@ -13,7 +14,7 @@ def get_transformer_name(method_dict):
             return Path(run["conf"]["TRANSFORMER_EXP_PATH"]).name
 
 
-def run(data, path, comparison_key):
+def run(data, path, comparison_key, use_wandb):
     """
     data:
         method:
@@ -139,4 +140,9 @@ def run(data, path, comparison_key):
         plt.savefig(
             str(save_path), bbox_inches="tight",
         )
+        print("Uploading to Weights and Biases...")
+        if use_wandb:
+            print("Uploading to Weights and Biases...")
+            wandb.save(str(save_path))
+
     print("Done.")
