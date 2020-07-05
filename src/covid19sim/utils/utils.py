@@ -320,22 +320,28 @@ def extract_tracker_data(tracker, conf):
     """
     timenow = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
     data = dict()
+    # scalars
     data['intervention_day'] = conf.get('INTERVENTION_DAY')
     data['intervention'] = conf.get('INTERVENTION')
     data['risk_model'] = conf.get('RISK_MODEL')
+    data['n_humans'] = tracker.n_humans
+    data['n_init_infected'] = tracker.n_infected_init
     data['adoption_rate'] = getattr(tracker, 'adoption_rate', 1.0)
+    data['generation_times'] = tracker.get_generation_time()
+    data['p_transmission'] = tracker.compute_probability_of_transmission()
+
+    # contacts
+    data['contact_patterns'] = tracker.get_contact_data()
     data['expected_mobility'] = tracker.expected_mobility
     data['serial_interval'] = tracker.get_serial_interval()
     data['all_serial_intervals'] = tracker.serial_intervals
-    data['generation_times'] = tracker.get_generation_time()
     data['mobility'] = tracker.mobility
-    data['n_init_infected'] = tracker.n_infected_init
-    data['contacts'] = dict(tracker.contacts)
+    data['contacts'] = dict(tracker.contacts) ##
     data['cases_per_day'] = tracker.cases_per_day
     data['ei_per_day'] = tracker.ei_per_day
     data['r_0'] = tracker.r_0
     data['R'] = tracker.r
-    data['n_humans'] = tracker.n_humans
+
     data['s'] = tracker.s_per_day
     data['e'] = tracker.e_per_day
     data['i'] = tracker.i_per_day
@@ -358,25 +364,14 @@ def extract_tracker_data(tracker, conf):
     data['humans_rec_level'] = tracker.humans_rec_level
     data['humans_intervention_level'] = tracker.humans_intervention_level
     data['humans_has_app'] = dict((human.name, human.has_app) for human in tracker.city.humans)
-    data['day_encounters'] = dict(tracker.day_encounters)
-    data['daily_age_group_encounters'] = dict(tracker.daily_age_group_encounters)
+
+
     data['tracked_humans'] = dict({human.name:human.my_history for human in tracker.city.humans})
     data['age_histogram'] = tracker.city.age_histogram
-    data['p_transmission'] = tracker.compute_probability_of_transmission()
+
     data['covid_properties'] = tracker.covid_properties
     data['human_has_app'] = tracker.human_has_app
     data['to_human_max_msg_per_day'] = tracker.to_human_max_msg_per_day
-    # data['dist_encounters'] = dict(tracker.dist_encounters)
-    # data['time_encounters'] = dict(tracker.time_encounters)
-    # data['day_encounters'] = dict(tracker.day_encounters)
-    # data['hour_encounters'] = dict(tracker.hour_encounters)
-    # data['daily_age_group_encounters'] = dict(tracker.daily_age_group_encounters)
-    # data['age_distribution'] = tracker.age_distribution
-    # data['sex_distribution'] = tracker.sex_distribution
-    # data['house_size'] = tracker.house_size
-    # data['house_age'] = tracker.house_age
-    # data['symptoms'] = dict(tracker.symptoms)
-    # data['transition_probability'] = dict(tracker.transition_probability)
     return data
 
 

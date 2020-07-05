@@ -42,7 +42,7 @@ def main(conf: DictConfig):
     if conf["outdir"] is None:
         conf["outdir"] = str(Path(__file__) / "output")
 
-    timenow = datetime.datetime.now().strftime("%Y%m%d-%H%M%S"),
+    timenow = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     conf[
         "outdir"
     ] = "{}/sim_v2_people-{}_days-{}_init-{}_uptake-{}_seed-{}_{}_{}".format(
@@ -64,7 +64,7 @@ def main(conf: DictConfig):
         conf["outdir"] = str(out_path.parent / (out_path.name + f"_{out_idx}"))
 
     os.makedirs(conf["outdir"])
-    logfile = f"{conf['outdir']}/log_{timenow}_{conf['name']}.txt"
+    logfile = f"{conf['outdir']}/log_{timenow}.txt"
 
     if conf.get("COLLECT_TRAINING_DATA"):
         datadir = os.path.join(conf["outdir"], "data")
@@ -97,30 +97,12 @@ def main(conf: DictConfig):
         logfile=logfile
     )
 
-    # ----------------------------------------
-    # -----  Compute Effective Contacts  -----
-    # ----------------------------------------
-    timenow = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-    all_effective_contacts = 0
-    all_contacts = 0
-    for human in city.humans:
-        all_effective_contacts += human.effective_contacts
-        all_contacts += human.num_contacts
-    print(f"all_effective_contacts: {all_effective_contacts}")
-    print(
-        f"all_effective_contacts/(sim days * len(city.humans)): {all_effective_contacts / (conf['simulation_days'] * len(city.humans))}"
-    )
-    if all_contacts != 0:
-        print(
-            f"effective contacts per contacts (GLOBAL_MOBILITY_SCALING_FACTOR): {all_effective_contacts / all_contacts}"
-        )
-
     dump_conf(city.conf, "{}/full_configuration.yaml".format(city.conf["outdir"]))
     tracker.write_metrics()
 
     if not conf["tune"]:
         # ----------------------------------------------
-        # -----  Not Tune: Write Logs And Metrics  -----
+        # -----  Not Tune: Collect Training Data   -----
         # ----------------------------------------------
         monitors[0].dump()
         monitors[0].join_iothread()
@@ -135,23 +117,12 @@ def main(conf: DictConfig):
                 shutil.rmtree(conf["outdir"])
     else:
         # ------------------------------------------------------
-        # -----  Tune: Create Plots And Write Tacker Data  -----
+        # -----     Tune: Write logs And Tacker Data       -----
         # ------------------------------------------------------
-        from covid19sim.plotting.plot_rt import PlotRt
-
-        cases_per_day = tracker.cases_per_day
-        serial_interval = tracker.get_generation_time()
-        if serial_interval == 0:
-            serial_interval = 7.0
-            print("WARNING: serial_interval is 0")
-        print(f"using serial interval :{serial_interval}")
-        plotrt = PlotRt(R_T_MAX=4, sigma=0.25, GAMMA=1.0 / serial_interval)
-        most_likely, _ = plotrt.compute(cases_per_day, r0_estimate=2.5)
-        print("Rt", most_likely[:20])
-
-        print("Dumping Tracker Data in", conf["outdir"])
+        timenow = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+        log("Dumping Tracker Data in {}".format(conf["outdir"]), logfile)
         Path(conf["outdir"]).mkdir(parents=True, exist_ok=True)
-        filename = f"tracker_data_n_{conf['n_people']}_seed_{conf['seed']}_{timenow}_{conf['name']}.pkl"
+        filename = f"tracker_data_n_{conf['n_people']}_seed_{conf['seed']}_{timenow}.pkl"
         data = extract_tracker_data(tracker, conf)
         dump_tracker_data(data, conf["outdir"], filename)
     return conf

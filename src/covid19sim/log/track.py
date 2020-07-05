@@ -15,6 +15,7 @@ import networkx as nx
 import numpy as np
 import pandas as pd
 
+from covid19sim.plotting.plot_rt import PlotRt
 from covid19sim.utils.utils import log
 from covid19sim.utils.constants import AGE_BIN_WIDTH_5
 LOCATION_TYPES_TO_TRACK_MIXING = ["house", "work", "school", "other", "all"]
@@ -135,13 +136,22 @@ class Tracker(object):
         self.mean_daily_contacts_per_agegroup = {
             'weekday': defaultdict(lambda: (0, np.zeros(len(AGE_BIN_WIDTH_5)))),
             'weekend': defaultdict(lambda: (0, np.zeros(len(AGE_BIN_WIDTH_5)))),
-            "all": defaultdict(lambda : (0,0))
+            "all_days": defaultdict(lambda : (0,0))
         }
 
         self.mean_daily_contact_duration_per_agegroup = {
             'weekday': defaultdict(lambda: (0, np.zeros(len(AGE_BIN_WIDTH_5)))),
             'weekend': defaultdict(lambda: (0, np.zeros(len(AGE_BIN_WIDTH_5)))),
-            "all": defaultdict(lambda : (0,0))
+            "all_days": defaultdict(lambda : (0,0))
+        }
+
+        self.mean_daily_contacts = {
+            "weekend": defaultdict(lambda: (0,0)),
+            "weekday": defaultdict(lambda: (0,0)),
+        }
+        self.mean_daily_contact_duration = {
+            "weekend": defaultdict(lambda: (0,0)),
+            "weekday": defaultdict(lambda: (0,0)),
         }
 
         self.contact_distance_profile = {
@@ -879,7 +889,7 @@ class Tracker(object):
         # new infected - tests (per day)
         infected_minus_tests_per_day = [x - y for x,y in zip(self.e_per_day, self.tested_per_day)]
 
-        log("######## COVID Testing Statistics #########", logfile)
+        log("\n######## COVID Testing Statistics #########", logfile)
         log(f"Proportion infected : {100*proportion_infected: 2.3f}%", logfile)
         log(f"Positivity rate: {100*positivity_rate: 2.3f}%", logfile)
         log(f"Total Tests: {n_positives + n_negatives} Total positive tests: {n_positives} Total negative tests: {n_negatives}", logfile)
@@ -903,7 +913,6 @@ class Tracker(object):
 
         # positive_test_given_symptoms = normalize_counter(positive_test_given_symptoms, normalizer=n_tests)
         # print_dict("P(symptoms = x | test is +), where x is", positive_test_given_symptoms, is_sorted="desc", logfile=logfile)
-
 
     def track_recovery(self, n_infectious_contacts, duration):
         """
@@ -956,8 +965,10 @@ class Tracker(object):
             10.(histogram) counts of encounter duration in bins of 1 min for each location type and interaction type ("known", "all", "within_contact_condition")
             11. TODO: Clean Up. (list of strings) Records distance terms related to encounters i.e. packing term, social distancing distance, and total distance
 
+        NOTE: These values are aggregated every simulation day. At the end of the simulation one needs to call this function with all arguments as None to perform updates.
+
         Args:
-            human1 (covid19sim.human.Human): one of the two `human`s involved in the encounter
+            human1 (covid19sim.human.Human): one of the two `human`s involved in the encounter.
             human2 (covid19sim.human.Human): other of the two `human`s involved in the encounter
             duration (float): time duration got which this encounter took place (minutes)
             distance_profile (covid19sim.locations.location.DistanceProfile): distance from which these two humans met (cms)
@@ -969,9 +980,14 @@ class Tracker(object):
         if not (self.conf['track_all'] or self.conf['track_mixing']):
             return
 
+        update_only = False
+        if human1 is None or human2 is None:
+            update_only = True
+
         day = timestamp.date()
         last_day = self.last_day['social_mixing']
-        if  last_day != day:
+        # compute averages and reset the values
+        if  last_day != day or update_only:
 
             # everything related to contact matrices
             for interaction_type in self.contact_matrices.keys():
@@ -1026,56 +1042,59 @@ class Tracker(object):
                         self.mean_daily_contact_duration_per_agegroup[type_of_day][location_type] = (n+1, (n * Da + m)/(n+1))
 
                         # mean daily contacts
-                        n, d = self.mean_daily_contact_duration_per_agegroup["all"][location_type]
-                        n, c = self.mean_daily_contacts_per_agegroup["all"][location_type]
+                        n, d = self.mean_daily_contact_duration[type_of_day][location_type]
+                        n, c = self.mean_daily_contacts[type_of_day][location_type]
                         total_contacts = C["total"].sum() / 2
                         total_contact_duration = D["total"].sum() / 2
                         total_unique_people = n_people.sum() / 2
 
                         m = total_contact_duration / total_unique_people
-                        self.mean_daily_contact_duration_per_agegroup["all"][location_type] = (n+1, (d*n + m) / (n+1))
+                        self.mean_daily_contact_duration[type_of_day][location_type] = (n+1, (d*n + m) / (n+1))
 
                         m = total_contacts / total_unique_people
-                        self.mean_daily_contact_duration_per_agegroup["all"][location_type] = (n+1, (c*n + m) / (n+1))
+                        self.mean_daily_contacts[type_of_day][location_type] = (n+1, (c*n + m) / (n+1))
 
             self.outside_daily_contacts.append(1.0 * self.n_outside_daily_contacts/len(self.city.humans))
             self.n_outside_daily_contacts = 0
             self.last_day['social_mixing'] = day
 
-        else:
-            type_of_place = _get_location_type_to_track_mixing(location)
-            i = human1.age_bin_width_5.index
-            j = human2.age_bin_width_5.index
+        if update_only:
+            return
 
-            # everything related to the contact matrices is recorded here
-            interaction_types = ["all"]
-            if interaction_type == "known":
-                interaction_types.append("known")
-            if contact_condition:
-                interaction_types.append("within_contact_condition")
+        # record the values
+        type_of_place = _get_location_type_to_track_mixing(location)
+        i = human1.age_bin_width_5.index
+        j = human2.age_bin_width_5.index
 
-            for interaction_type in interaction_types:
-                for location_type in ['all', type_of_place]:
-                    C = self.contact_matrices[interaction_type][location_type]
-                    D = self.contact_duration_matrices[interaction_type][location_type]
+        # everything related to the contact matrices is recorded here
+        interaction_types = ["all"]
+        if interaction_type == "known":
+            interaction_types.append("known")
+        if contact_condition:
+            interaction_types.append("within_contact_condition")
 
-                    C['total'][i, j] += 1
-                    C['total'][j, i] += 1
-                    C['n_people'][(j,i)].add(human1.name) # in surveys, ij ==> j is the participant and i is the reported contact
-                    C['n_people'][(i,j)].add(human2.name)
-                    D['total'][i,j] += duration
-                    D['total'][j,i] += duration
+        for interaction_type in interaction_types:
+            for location_type in ['all', type_of_place]:
+                C = self.contact_matrices[interaction_type][location_type]
+                D = self.contact_duration_matrices[interaction_type][location_type]
 
-                    # Note that the use of math.ceil makes the upper limit inclusive.
-                    # record distance profile/frequency counts (per 10 cms). It keeps counts for (distance_category - 10,  distance_category].
-                    distance_category = 10 * math.ceil(distance_profile.distance / 10)
-                    Cp = self.contact_distance_profile[interaction_type][location_type]
-                    Cp[distance_category] = Cp.get(distance_category, 0) + 1
+                C['total'][i, j] += 1
+                C['total'][j, i] += 1
+                C['n_people'][(j,i)].add(human1.name) # in surveys, ij ==> j is the participant and i is the reported contact
+                C['n_people'][(i,j)].add(human2.name)
+                D['total'][i,j] += duration
+                D['total'][j,i] += duration
 
-                    # record duration profile/frequency counts (per 1 min)
-                    duration_category = math.ceil(duration)
-                    Dp = self.contact_duration_profile[interaction_type][location_type]
-                    Dp[duration_category] = Dp.get(duration_category, 0) + 1
+                # Note that the use of math.ceil makes the upper limit inclusive.
+                # record distance profile/frequency counts (per 10 cms). It keeps counts for (distance_category - 10,  distance_category].
+                distance_category = 10 * math.ceil(distance_profile.distance / 10)
+                Cp = self.contact_distance_profile[interaction_type][location_type]
+                Cp[distance_category] = Cp.get(distance_category, 0) + 1
+
+                # record duration profile/frequency counts (per 1 min)
+                duration_category = math.ceil(duration)
+                Dp = self.contact_duration_profile[interaction_type][location_type]
+                Dp[duration_category] = Dp.get(duration_category, 0) + 1
 
             # replacement of track_encounter_distance.
             # TODO: Clean Up. How exactly is this being used?
@@ -1109,8 +1128,13 @@ class Tracker(object):
 
         assert human1.has_app and human2.has_app, "tracking bluetooth communications for human who doesn't have an app"
 
-        day = timestamp.strftime("%d %b")
-        if self.last_day['bluetooth_communications']  != day:
+        update_only = False
+        if human1 is None or human2 is None:
+            update_only = True
+
+        day = timestamp.date()
+        # compute average and reset
+        if self.last_day['bluetooth_communications']  != day or update_only:
             for location_type in LOCATION_TYPES_TO_TRACK_MIXING:
                 B = self.bluetooth_contact_matrices[location_type]
                 n, M = B['avg_daily']
@@ -1119,14 +1143,65 @@ class Tracker(object):
                 # reset values
                 B['total'] = np.zeros((len(AGE_BIN_WIDTH_5), len(AGE_BIN_WIDTH_5)))
             self.last_day['bluetooth_communications'] = day
-        else:
-            type_of_place = _get_location_type_to_track_mixing(location)
-            i = human1.age_bin_width_5.index
-            j = human2.age_bin_width_5.index
-            for location_type in ['all', type_of_place]:
-                B = self.bluetooth_contact_matrices[location_type]
-                B['total'][i, j] += 1
-                B['total'][j, i] += 1
+
+        if update_only:
+            return
+
+        # record the new values
+        type_of_place = _get_location_type_to_track_mixing(location)
+        i = human1.age_bin_width_5.index
+        j = human2.age_bin_width_5.index
+        for location_type in ['all', type_of_place]:
+            B = self.bluetooth_contact_matrices[location_type]
+            B['total'][i, j] += 1
+            B['total'][j, i] += 1
+
+    def get_contact_data(self):
+        """
+        Removes references to `Human` objects from all the contact related dictionaries.
+
+        Returns:
+            (dict): keys are names of the metrics, and values are the cleaned metrics
+        """
+        # contact matrices
+        cm = {}
+        for key0, value0 in self.contact_matrices.items():
+            cm[key0] = {}
+            for key1, value1 in value0.items():
+                value1.pop("n_people")
+                value1.pop("total")
+                cm[key0][key1] = value1
+
+        # contact duration matrices
+        cdm = {}
+        for key0, value0 in self.contact_duration_matrices.items():
+            cdm[key0] = {}
+            for key1, value1 in value0.items():
+                value1.pop("total")
+                cdm[key0][key1] = value1
+
+        # bluetooth contact matrices
+        bcm = {}
+        for key0, value0 in self.bluetooth_contact_matrices.items():
+            bcm[key0] = {}
+            for key1, value1 in value0.items():
+                value1.pop("total")
+                bcm[key0][key1] = value1
+
+        return {
+            "contact_matrices": cm,
+            "contact_duration_matrices": cdm,
+            "bluetooth_contact_matrices": bcm,
+            "mean_daily_contacts_per_agegroup":self.mean_daily_contacts_per_agegroup,
+            "mean_daily_contact_duration_per_agegroup": self.mean_daily_contact_duration_per_agegroup,
+            "mean_daily_contacts": self.mean_daily_contacts,
+            "mean_daily_contact_duration": self.mean_daily_contact_duration,
+            "contact_distance_profile": self.contact_distance_profile,
+            "contact_duration_profile": self.contact_duration_profile,
+        }
+
+
+
 
     def track_p_infection(self, infection, p_infection, viral_load):
         """
@@ -1156,33 +1231,33 @@ class Tracker(object):
             all_contacts += human.num_contacts
 
         days = self.conf['simulation_days']
-        if since_intervention and conf['INTERVENTION_DAY'] > 0 :
-            days = conf['simulation_days'] - conf['INTERVENTION_DAY']
+        if since_intervention and self.conf['INTERVENTION_DAY'] > 0 :
+            days = self.conf['simulation_days'] - self.conf['INTERVENTION_DAY']
 
-        return all_effective_contacts / (days * self.n_people)
+        # recover GLOBAL_MOBILITY_SCALING_FACTOR
+        scale_factor = 0 if all_contacts == 0 else all_effective_contacts / all_contacts
+
+        return all_effective_contacts / (days * self.n_people), scale_factor
 
     def write_metrics(self):
         """
         Writes various metrics to `self.logfile`. Prints them if `self.logfile` is None.
         """
 
-        log("######## COVID PROPERTIES #########", self.logfile)
+        log("\n######## COVID PROPERTIES #########", self.logfile)
         log(f"Avg. incubation days {self.covid_properties['incubation_days'][1]: 5.2f}", self.logfile)
         log(f"Avg. recovery days {self.covid_properties['recovery_days'][1]: 5.2f}", self.logfile)
         log(f"Avg. infectiousnes onset days {self.covid_properties['infectiousness_onset_days'][1]: 5.2f}", self.logfile)
 
-        log("######## COVID SPREAD #########", self.logfile)
+        log("\n######## COVID SPREAD #########", self.logfile)
         x = 0
         if len(self.infection_monitor) > 0:
             x = 1.0*self.n_env_infection/len(self.infection_monitor)
         log(f"human-human transmissions {len(self.infection_monitor)}", self.logfile )
         log(f"environment-human transmissions {self.n_env_infection}", self.logfile )
         log(f"environmental transmission ratio {x:5.3f}", self.logfile )
-        r0 = self.get_R0(self.logfile)
-        log(f"Ro {r0}", self.logfile)
         log(f"Generation times {self.get_generation_time()} ", self.logfile)
-        log(f"Cumulative Incidence {self.cumulative_incidence}", self.logfile )
-        log(f"R : {self.r}", self.logfile)
+
 
         log("******** R0 *********", self.logfile)
         if self.r_0['asymptomatic']['infection_count'] > 0:
@@ -1207,6 +1282,7 @@ class Tracker(object):
         total = sum(self.r_0[x]['infection_count'] for x in ['symptomatic','presymptomatic', 'asymptomatic'])
         total += self.n_env_infection
 
+        total += 1e-6 # to avoid ZeroDivisionError
         x = self.r_0['asymptomatic']['infection_count']
         log(f"% asymptomatic transmission {100*x/total :5.2f}%", self.logfile)
 
@@ -1224,7 +1300,7 @@ class Tracker(object):
                 x = 1.0 * v['infection_count']/len(v['humans'])
                 log(f"{loc_type} R0 {x}", self.logfile)
 
-        log("######## SYMPTOMS #########", self.logfile)
+        log("\n######## SYMPTOMS #########", self.logfile)
         self.track_symptoms(count_all=True)
         total = self.symptoms['covid']['n']
         tmp_s = {}
@@ -1243,40 +1319,19 @@ class Tracker(object):
         print_dict("P(symptoms = x | human had some sickness e.g. cold, flu, allergies, covid), where x is", tmp_s, is_sorted="desc", top_k=10, logfile=self.logfile)
 
         #
-        log("######## MOBILITY #########", self.logfile)
-        log("Day - ", self.logfile)
-        total = sum(v[1] for v in self.day_encounters.values())
-        x = ['Mon', "Tue", "Wed", "Thurs", "Fri", "Sat", "Sun"]
-        for c,day in enumerate(x):
-            v = self.day_encounters[c]
-            log(f"{day} #avg: {v[1]/self.n_people} %:{100*v[1]/total:5.2f} ", self.logfile)
-        #
-        # log("Hour - ", self.logfile)
-        # total = sum(v[1] for v in self.hour_encounters.values())
-        # for hour, v in self.hour_encounters.items():
-        #     log(f"{hour} #avg: {v[1]} %:{100*v[1]/total:5.2f} ", self.logfile)
-        #
-        # log("Distance (cm) - ", self.logfile)
-        # x = ['0 - 50', "50 - 100", "100 - 150", "150 - 200", ">= 200"]
-        # total = sum(self.dist_encounters.values())
-        # for c, dist in enumerate(x):
-        #     v = self.dist_encounters[c]
-        #     log(f"{dist} #avg: {v} %:{100*v/total:5.2f} ", self.logfile)
-        #
-        # log("Time (min) ", self.logfile)
-        # x = ['0 - 15', "15 - 30", "30 - 45", "45 - 60", ">= 60"]
-        # total = sum(self.time_encounters.values())
-        # for c, bin in enumerate(x):
-        #     v = self.time_encounters[c]
-        #     log(f"{bin} #avg: {v} %:{100*v/total:5.2f} ", self.logfile)
-        #
-        log("Average Daily Contacts ", self.logfile)
-        total = sum(x[1] for x in self.daily_age_group_encounters.values())
-        for bin in self.age_bins:
-            x = self.city.age_histogram[bin]
-            v = self.daily_age_group_encounters[bin][1]
-            log(f"{bin} #avg: {v/x} %:{100*v/total:5.2f} ", self.logfile)
-        #
+        log("\n######## CONTACT PATTERNS #########", self.logfile)
+        str_to_print = "weekday - "
+        for location_type in LOCATION_TYPES_TO_TRACK_MIXING:
+            x = self.mean_daily_contacts["weekday"][location_type][1]
+            str_to_print += f"| {location_type}: {x:2.3f}"
+        log(str_to_print, self.logfile)
+
+        str_to_print = "weekend - "
+        for location_type in LOCATION_TYPES_TO_TRACK_MIXING:
+            x = self.mean_daily_contacts["weekend"][location_type][1]
+            str_to_print += f"| {location_type}: {x:2.3f}"
+        log(str_to_print, self.logfile)
+
         # for until_days in [30, None]:
         #     log("******** Risk Precision/Recall *********", self.logfile)
         #     prec, lift, recall = self.compute_risk_precision(daily=False, until_days=until_days)
@@ -1329,9 +1384,9 @@ class Tracker(object):
 
         self.compute_test_statistics(self.logfile)
 
-        log("######## Effective Contacts & % infected #########", self.logfile)
+        log("\n######## Effective Contacts & % infected #########", self.logfile)
         p_infected = 100 * sum(self.cases_per_day) / len(self.city.humans)
-        effective_contacts = self.compute_effective_contacts()
+        effective_contacts, scale_factor = self.compute_effective_contacts()
         p_transmission = self.compute_probability_of_transmission()
         infectiousness_duration = self.covid_properties['recovery_days'][1] - self.covid_properties['infectiousness_onset_days'][1]
         # R0 = Susceptible population x Duration of infectiousness x p_transmission
@@ -1340,10 +1395,24 @@ class Tracker(object):
         r0 = p_transmission * effective_contacts * infectiousness_duration
 
         log(f"Eff. contacts: {effective_contacts:5.3f} \t % infected: {p_infected: 2.3f}%", self.logfile)
+        if scale_factor:
+            log(f"effective contacts per contacts (GLOBAL_MOBILITY_SCALING_FACTOR): {scale_factor}", self.logfile)
         # log(f"Probability of transmission: {p_transmission:2.3f}", self.logfile)
         # log(f"Ro (valid only when small proportion of population is infected): {r0: 2.3f}", self.logfile)
         # log("definition of small might be blurry for a population size of less than 1000  ", self.logfile)
         # log(f"Serial interval: {self.get_serial_interval(): 5.3f}", self.logfile)
+
+        log("\n######## Rt #########", self.logfile)
+        cases_per_day = self.cases_per_day
+        serial_interval = self.get_generation_time()
+        if serial_interval == 0:
+            serial_interval = 7.0
+            log("WARNING: serial_interval is 0", self.logfile)
+        log(f"using serial interval :{serial_interval}", self.logfile)
+
+        plotrt = PlotRt(R_T_MAX=4, sigma=0.25, GAMMA=1.0 / serial_interval)
+        most_likely, _ = plotrt.compute(cases_per_day, r0_estimate=2.5)
+        log(f"Rt: {most_likely[:20]}", self.logfile)
 
     def plot_metrics(self, dirname):
         """
