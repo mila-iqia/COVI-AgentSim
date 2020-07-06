@@ -12,6 +12,7 @@ from orderedset import OrderedSet
 
 from covid19sim.utils.utils import compute_distance, _get_random_area, relativefreq2absolutefreq, calculate_average_infectiousness
 from covid19sim.log.track import Tracker
+from covid19sim.inference.heavy_jobs import batch_run_timeslot_heavy_jobs
 from covid19sim.interventions.tracing import BaseMethod
 from covid19sim.interventions.behaviors import *
 from covid19sim.inference.message_utils import UIDType, UpdateMessage, RealUserIDType
@@ -644,10 +645,20 @@ class City:
             # TODO: testing budget is used up at hour 0 if its small
             self.covid_testing_facility.clear_test_queue()
 
-            alive_humans = [human for human in self.humans if not human.is_dead]
+            alive_humans = []
+            # run non-app-related-stuff for all humans here (test seeking, infectiousness updates)
+            for human in self.humans:
+                if not human.is_dead:
+                    human.check_if_needs_covid_test()  # humans can decide to get tested whenever
+                    if current_day not in human.infectiousness_history_map:
+                        # contrarily to risk, infectiousness only changes once a day (human behavior has no impact)
+                        human.infectiousness_history_map[current_day] = calculate_average_infectiousness(human)
+                    alive_humans.append(human)
 
+            # now, run app-related stuff (risk assessment, message preparation, ...)
             prev_risk_history_maps, update_messages = self.run_app(current_day, outfile, alive_humans)
 
+            # update messages may not be sent if the distribution strategy (e.g. GAEN) chooses to filter them
             self.register_new_messages(
                 current_day_idx=current_day,
                 current_timestamp=self.env.timestamp,
@@ -656,6 +667,7 @@ class City:
                 new_human_risk_history_maps={h: h.risk_history_map for h in self.humans},
             )
 
+            # given the 'intervention' method and the risk estimated by each human, assign them behavior modifiers
             for human in alive_humans:
                 behaviors = []
                 if self.conf.get("SHOULD_MODIFY_BEHAVIOR"):
@@ -664,7 +676,7 @@ class City:
 
             yield self.env.timeout(int(duration))
 
-            # daily activities
+            # finally, run end-of-day activities (if possible); these include mailbox cleanups, symptom updates, ...
             if current_day != last_day_idx:
                 last_day_idx = current_day
                 self.do_daily_activies(current_day, alive_humans)
@@ -696,24 +708,21 @@ class City:
 
         # iterate over humans, and if it's their timeslot, then update their state
         for human in alive_humans:
-            human.check_if_needs_covid_test()  # humans can decide to get tested whenever
-            if current_day not in human.infectiousness_history_map:
-                # contrarily to risk, infectiousness only changes once a day (human behavior has no impact)
-                human.infectiousness_history_map[current_day] = calculate_average_infectiousness(human)
-
             if not human.has_app or self.env.timestamp.hour not in human.time_slots:
                 continue
+            # set the human's risk to a correct value for the day (if it does not exist already)
             human.initialize_daily_risk(current_day)
+            # keep a backup of the current risk map before infering anything, in case GAEN needs it
             backup_human_init_risks[human] = copy.deepcopy(human.risk_history_map)
+            # run 'lightweight' app jobs (e.g. contact book cleanup, symptoms reporting, bdt) without batching
             human.run_timeslot_lightweight_jobs(
                 init_timestamp=self.start_time,
                 current_timestamp=self.env.timestamp,
                 personal_mailbox=self.global_mailbox[human.name],
             )
 
-        # time to run the cluster+risk prediction via transformer (if we need it)
+        # now, batch-run the clustering + risk prediction using an ML model (if we need it)
         if self.conf.get("RISK_MODEL") == "transformer" or self.conf.get("COLLECT_TRAINING_DATA"):
-            from covid19sim.inference.heavy_jobs import batch_run_timeslot_heavy_jobs
             self.humans = batch_run_timeslot_heavy_jobs(
                 humans=self.humans,
                 init_timestamp=self.start_time,
@@ -725,8 +734,7 @@ class City:
                 city_hash=self.hash,
             )
 
-        # finally, iterate over humans again, and if it's their timeslot, then send update messages
-        self.tracker.track_risk_attributes(self.hd)
+        # iterate over humans again, and if it's their timeslot, then prepare risk update messages
         update_messages = []
         for human in alive_humans:
             if not human.has_app or self.env.timestamp.hour not in human.time_slots:
@@ -760,6 +768,7 @@ class City:
                 intervention=human.intervention,
             ))
 
+            # if we are collecting logs for debugging/drawing baseball plots, log risk here
             Event.log_risk_update(
                 self.conf['COLLECT_LOGS'],
                 human=human,
@@ -769,8 +778,15 @@ class City:
                 current_day_idx=current_day,
                 time=self.env.timestamp,
             )
+
+            # finally, override the 'previous' risk history map with the updated values of the current
+            # map so that the next call can look at the proper difference between the two
             for day_idx, risk_val in human.risk_history_map.items():
                 human.prev_risk_history_map[day_idx] = risk_val
+
+        # once we get here, the risk of humans with this timeslot should be updated, no matter the method
+        self.tracker.track_risk_attributes(self.hd)
+
         return backup_human_init_risks, update_messages
 
 
