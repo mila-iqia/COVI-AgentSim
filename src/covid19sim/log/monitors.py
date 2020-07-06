@@ -30,8 +30,8 @@ class SimulationMonitor(object):
         self.logfile = logfile
         self.conf = conf
         self.legend = """
-#################### CONSOLE OUPTUT ##################
-Legend - 
+#################### SIMULATION PROGRESS ##################
+Legend -
 +Test: Total positive test results observed this day (Note: test results are available after some delay from the test time) / total tests administered on this day
 P3: Projected number of cases (E+I+R) if the cases were to grow with a doubling rate of 3 days.
 TestQueue: Total number of people present in the test queue at the time of this print out.

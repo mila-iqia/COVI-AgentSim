@@ -207,7 +207,6 @@ def assign_households_to_humans(humans, city, conf, logfile=None):
         # allocate if succesful
         if humans_with_same_house:
             type = (housetype.typestr, housetype)
-
             allocated_humans = create_and_assign_household(humans_with_same_house, type, conf, city, allocated_humans)
         else:
             n_failed_attempts += 1
@@ -579,7 +578,7 @@ def _sample_random_humans(valid_age_bins, conf, unassigned_humans, rng, size):
 
     all_humans = [(y,x) for x in valid_other_bins for y in unassigned_humans[x]]
     if len(all_humans) < size:
-        return []
+        return ([], False)
 
     sampled = _random_choice_tuples(all_humans, rng, size=size)
     humans = []
@@ -588,7 +587,7 @@ def _sample_random_humans(valid_age_bins, conf, unassigned_humans, rng, size):
         humans.append(human)
 
     assert len(humans) == size, "number of humans sampled doesn't equal the expected size"
-    return humans, False
+    return (humans, False)
 
 def _sample_multigenerational_family(valid_age_bins, conf, unassigned_humans, rng, size):
     """
@@ -614,7 +613,7 @@ def _sample_multigenerational_family(valid_age_bins, conf, unassigned_humans, rn
 
     all_kids = [(y,x) for x in valid_younger_bins for y in unassigned_humans[x]]
     if len(all_kids) < 1 or len(valid_older_bins) == 0:
-        return []
+        return ([], False)
 
     # sample grand parent
     older_bin = _random_choice_tuples(valid_older_bins, rng, size=1)[0]
@@ -632,15 +631,13 @@ def _sample_multigenerational_family(valid_age_bins, conf, unassigned_humans, rn
 
         valid_other_bins = [x for x, val in unassigned_humans.items() if len(val) >= 1]
         all_humans = [(y,x) for x in valid_other_bins for y in unassigned_humans[x]]
-        if len(all_humans) < size - 2:
-            return []
+        if len(all_humans) > size - 2:
+            sampled = _random_choice_tuples(all_humans, rng, size=size-2)
+            for human, bin in sampled:
+                unassigned_humans[bin].remove(human)
+                humans.append(human)
 
-        sampled = _random_choice_tuples(all_humans, rng, size=size-2)
-        for human, bin in sampled:
-            unassigned_humans[bin].remove(human)
-            humans.append(human)
-
-    return humans, True
+    return (humans, True)
 
 def _get_valid_bins(valid_age_bins, min_age=-1, max_age=200):
     """
