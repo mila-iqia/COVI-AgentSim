@@ -70,18 +70,10 @@ class MakeHumanAsMessageProxy:
     def _take_human_snapshot(human, personal_mailbox, message_fields):
         trimmed_human = {}
         for k in message_fields:
-            if k == 'infectiousnesses':
-                trimmed_human[k] = human.infectiousnesses
-            elif k == 'infection_timestamp':
-                trimmed_human[k] = human.infection_timestamp
-            elif k == 'update_messages':
+            if k == 'update_messages':
                 trimmed_human[k] = personal_mailbox
-            elif k == 'test_results':
-                trimmed_human[k] = human.test_results
-            elif k == 'viral_load_to_infectiousness_multiplier':
-                trimmed_human[k] = human.viral_load_to_infectiousness_multiplier
             else:
-                trimmed_human[k] = human.__dict__[k]
+                trimmed_human[k] = getattr(human, k)
         return pickle.loads(pickle.dumps(trimmed_human))
 
 
@@ -560,17 +552,9 @@ class HumanAsMessageTest(unittest.TestCase):
             if k == 'update_messages':
                 self.assertEqual(len(message.update_messages), 1)
                 self.assertEqual(message.update_messages[0], "fake_message")
-            elif k == 'infection_timestamp':
-                self.assertIn(f'_{k}', human.__dict__)
-            elif k == "infectiousnesses":  # everything works except that one, it's a property
+            elif k == "infectiousnesses":
                 self.assertEqual(len(human.infectiousnesses), dummy_conf["TRACING_N_DAYS_HISTORY"])
-            elif k == 'test_results':
-                self.assertTrue(hasattr(human, k))
-            elif k == "viral_load_to_infectiousness_multiplier":
-                self.assertTrue(hasattr(human, k))
-            elif k == "name":
-                self.assertTrue(hasattr(human, k))
             else:
-                self.assertIn(k, human.__dict__)
+                self.assertTrue(hasattr(human, k))
 
         validate_human_message(self, message, human)
