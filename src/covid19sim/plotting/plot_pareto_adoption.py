@@ -273,7 +273,6 @@ def run(data, path, comparison_key, use_wandb):
     labels = []
     pkls_norm = []
     labels_norm = []
-    import pdb; pdb.set_trace()
 
     for method in data:
         for key in data[method]:
@@ -283,6 +282,9 @@ def run(data, path, comparison_key, use_wandb):
             else:
                 pkls.append([r["pkl"] for r in data[method][key].values()])
                 labels.append(f"{method}_{key}")
+
+    # import pdb; pdb.set_trace()
+    for idx, label in enumerate(labels): print(f"{len(pkls[idx])} {label}")
 
     rows = get_all(pkl_types=pkls, labels=labels, normalized=False)
     lrows = set([r[0] for r in rows])
@@ -347,12 +349,13 @@ def run(data, path, comparison_key, use_wandb):
     )
     axs = [i for j in axs for i in j]
 
-    base_methods = set([lab.split("_")[0] for lab in labels + labels_norm])
+    base_methods = sorted(set([lab.split("_")[0] for lab in labels + labels_norm]))
 
     method_legend = []
     compare_legend = []
     for idx, method in enumerate(sorted(base_methods)):
         print("Plotting", method, "...")
+
         current_labels = sorted([lab for lab in labels if lab.startswith(method)])
         current_labels_norm = sorted(
             [lab for lab in labels_norm if lab.startswith(method)]
@@ -362,6 +365,7 @@ def run(data, path, comparison_key, use_wandb):
             get_line2D(method, current_color, None, True, comparison_key)
         )
         for i, lab in enumerate(current_labels):
+
             current_marker = markers[i]
             if idx == 0:
                 compare_legend.append(

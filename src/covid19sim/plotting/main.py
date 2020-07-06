@@ -118,6 +118,8 @@ def get_model(conf, mapping):
             )
 
     if conf["RISK_MODEL"] == "transformer":
+        if conf['USE_ORACLE']:
+            return "oracle"
         # FIXME this won't work if the run used the inference server
         model = Path(conf["TRANSFORMER_EXP_PATH"]).name
         if model not in mapping:
