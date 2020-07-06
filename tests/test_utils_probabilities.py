@@ -609,6 +609,60 @@ class PreexistingConditions(unittest.TestCase):
                 self.assertEqual(c_name, c_prob.name)
                 self.assertEqual(c_prob.id, c_id)
 
+    def _test_population_conditions_dependencies(self, population_conditions):
+        for conditions in population_conditions:
+            try:
+                self.assertLess(conditions.index('smoker'), conditions.index('heart_disease'),
+                                'smoker is a dependency of heart_disease and should '
+                                'appear before heart_disease in the list of conditions')
+            except ValueError:
+                # smoker or heart_disease not present in the list
+                pass
+            try:
+                self.assertLess(conditions.index('diabetes'), conditions.index('heart_disease'),
+                                'diabetes is a dependency of heart_disease and should '
+                                'appear before heart_disease in the list of conditions')
+            except ValueError:
+                # diabetes or heart_disease not present in the list
+                pass
+
+            try:
+                self.assertLess(conditions.index('smoker'), conditions.index('cancer'),
+                                'smoker is a dependency of cancer and should '
+                                'appear before cancer in the list of conditions')
+            except ValueError:
+                # smoker or cancer not present in the list
+                pass
+
+            try:
+                self.assertLess(conditions.index('smoker'), conditions.index('COPD'),
+                                'smoker is a dependency of COPD and should '
+                                'appear before COPD in the list of conditions')
+            except ValueError:
+                # smoker or COPD not present in the list
+                pass
+
+            # With a big enough population, this test should make sure that stroke is
+            # not assigned before its dependencies. The dependencies of stroke are:
+            # immuno-suppressed, lung_disease, pregnant, allergies
+            try:
+                self.assertGreaterEqual(conditions.index('stroke'),
+                                        len(conditions) - 1 - len(['immuno-suppressed', 'lung_disease',
+                                                                   'pregnant', 'allergies']),
+                                        'The only conditions that are not dependencies of stroke are '
+                                        'immuno-suppressed, lung_disease, pregnant, allergies')
+            except ValueError:
+                # stroke not present in the list
+                pass
+
+            try:
+                self.assertLess(conditions.index('cancer'), conditions.index('immuno-suppressed'),
+                                'cancer is a dependency of immuno-suppressed and should '
+                                'appear before immuno-suppressed in the list of conditions')
+            except ValueError:
+                # cancer or immuno-suppressed not present in the list
+                pass
+
     def test_preexisting_conditions(self):
         """
             Test the distribution of the preexisting conditions
@@ -654,9 +708,13 @@ class PreexistingConditions(unittest.TestCase):
                     expected_prob = _get_probability('asthma', age, sex) + \
                                     _get_probability('COPD', age, sex)
 
-                computed_dist = [_get_preexisting_conditions(age, sex, rng) for _ in range(n_people)]
+                population_conditions = [_get_preexisting_conditions(age, sex, rng) for _ in range(n_people)]
 
-                prob = len([1 for conditions in computed_dist if c_name in conditions]) / n_people
+                # The conditional probability above should cover the conditions dependencies order
+                # but _test_population_conditions_dependencies makes it explicit
+                self._test_population_conditions_dependencies(population_conditions)
+
+                prob = len([1 for conditions in population_conditions if c_name in conditions]) / n_people
 
                 self.assertAlmostEqual(prob, expected_prob,
                                        delta=0 if not expected_prob else max(0.015, expected_prob * 0.05),
