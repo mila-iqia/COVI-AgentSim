@@ -106,11 +106,11 @@ def get_model(conf, mapping):
     if conf["RISK_MODEL"] == "digital":
         if conf["TRACING_ORDER"] == 1:
             if conf.get("DAILY_TARGET_REC_LEVEL_DIST", False):
-                return "btd1_norm"
+                return "bdt1_norm"
             return "bdt1"
         elif conf["TRACING_ORDER"] == 2:
             if conf.get("DAILY_TARGET_REC_LEVEL_DIST", False):
-                return "btd2_norm"
+                return "bdt2_norm"
             return "bdt2"
         else:
             raise ValueError(
