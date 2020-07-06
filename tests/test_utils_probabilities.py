@@ -4,7 +4,9 @@ import numpy as np
 
 from covid19sim.epidemiology.symptoms import _get_allergy_progression, _get_cold_progression, \
     _get_covid_progression, _get_flu_progression, SYMPTOMS, DISEASES_PHASES
-from covid19sim.epidemiology.human_properties import _get_preexisting_conditions, PREEXISTING_CONDITIONS
+from covid19sim.epidemiology.human_properties import _get_preexisting_conditions, PREEXISTING_CONDITIONS, \
+    HEART_DISEASE_IF_SMOKER_OR_DIABETES_MODIFIER, CANCER_OR_COPD_IF_SMOKER_MODIFIER, \
+    IMMUNO_SUPPRESSED_IF_CANCER_MODIFIER
 
 
 class Symptoms(unittest.TestCase):
@@ -629,7 +631,6 @@ class PreexistingConditions(unittest.TestCase):
             except ValueError:
                 # smoker or cancer not present in the list
                 pass
-
             try:
                 self.assertLess(conditions.index('smoker'), conditions.index('COPD'),
                                 'smoker is a dependency of COPD and should '
@@ -689,16 +690,22 @@ class PreexistingConditions(unittest.TestCase):
 
                 if c_id in (_get_id('cancer'), _get_id('COPD')):
                     modifer_prob = _get_probability('smoker', age, sex)
-                    expected_prob = expected_prob * (1.3 * modifer_prob + 0.95 * (1 - modifer_prob))
+                    expected_prob = expected_prob * \
+                                    (CANCER_OR_COPD_IF_SMOKER_MODIFIER * modifer_prob +
+                                     (1 - modifer_prob))
 
                 if c_id == _get_id('heart_disease'):
                     modifer_prob = _get_probability('diabetes', age, sex) + \
                                    _get_probability('smoker', age, sex)
-                    expected_prob = expected_prob * (2 * modifer_prob + 0.5 * (1 - modifer_prob))
+                    expected_prob = expected_prob * \
+                                    (HEART_DISEASE_IF_SMOKER_OR_DIABETES_MODIFIER * modifer_prob +
+                                     (1 - modifer_prob))
 
                 if c_id == _get_id('immuno-suppressed'):
                     modifer_prob = _get_probability('cancer', age, sex)
-                    expected_prob = expected_prob * (1.2 * modifer_prob + 0.98 * (1 - modifer_prob))
+                    expected_prob = expected_prob * \
+                                    (IMMUNO_SUPPRESSED_IF_CANCER_MODIFIER * modifer_prob +
+                                     (1 - modifer_prob))
 
                 if c_id == _get_id('lung_disease'):
                     expected_prob = _get_probability('asthma', age, sex) + \
