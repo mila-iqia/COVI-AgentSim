@@ -57,7 +57,7 @@ N_HOUSESIZE_1: 342510
 
 # Family characteristics (C)
 # age-household size distribution
-# total at least one census family households 485,285 (C.1)
+# number of at least one census family households 485,285 (C.1)
 # 2 person families
 #   2 person families in private households - 241,425 (C.2)
 #   fraction of **all** households that are 2 person families = (C.2 / C.1) * (B.2 / B.1) = 0.268 (C.2.a)
@@ -103,12 +103,13 @@ P_FAMILY_TYPE_SIZE_MORE_THAN_5: [0.044, 0.003, 0.014]
 # https://www12.statcan.gc.ca/census-recensement/2016/dp-pd/hlt-fst/fam/Table.cfm?Lang=E&T=24&Geo=00&SO=18D
 # Total private households  - 779,800 (D.1)
 # multi-generation households - 11,410 (D.2)
+# Total non-one-census family households - ("other census family households") 17,465 + ("non census family households") 48,770 - D.3 = 66235
 # fraction of **all** households that are multigenerational - (D.2 / D.1)  = 0.015
-# (assumed) multi-generation households are one of more than 3 persons families.
-# These are sampled when family_type = other.
+# fraction of **others** (category used in housing allocation in `demographics.py`) - D.2 / (D.3 + D.2) = 0.147
 # Minimum age sampled for grandparent = 45
 # ref: https://www150.statcan.gc.ca/n1/pub/75-006-x/2015001/article/14154-eng.htm
 P_MULTIGENERATIONAL_FAMILY: 0.015
+P_MULTIGENERTIONAL_FAMILY_GIVEN_OTHER_HOUSEHOLDS: 0.147
 
 # Senior residency & long term care centers
 # ref: https://www12.statcan.gc.ca/census-recensement/2016/dp-pd/prof/details/page.cfm?Lang=E&Geo1=HR&Code1=2406&Geo2=PR&Code2=01&SearchText=montreal&SearchType=Contains&SearchPR=01&B1=All&TABID=1&type=0
@@ -127,7 +128,8 @@ MIN_AGE_COUPLE: 25
 MAX_AGE_COUPLE_WITH_CHILDREN: 65
 MIN_AGE_SINGLE_PARENT: 30
 MAX_AGE_SINGLE_PARENT: 65
-MAX_AGE_CHILDREN: 15
+MAX_AGE_CHILDREN: 20
+MIN_AGE_GRANDPARENT: 60
 
 #########################################################
 ###########       Occupation data             ###########
@@ -185,6 +187,11 @@ P_COLLECTIVE_65_69: 0.01920971061380122
 P_COLLECTIVE_70_74: 0.04239053385700348
 P_COLLECTIVE_75_79: 0.07576442926630575
 P_COLLECTIVE_80_above: 0.23408718291144381
+
+# MAX_AGE_CHILDREN_ADJUSTED = MAX_AGE_CHILDREN
+# Adjust MAX_AGE_CHILDREN to MAX_AGE_CHILDREN_ADJUSTED everytime there is a failure due to shortage of kids.
+# It takes care of the discrepancy in definition of census family where kid is defined irrespective of the age
+MAX_AGE_CHILDREN_ADJUSTED: 20
 
 # *********************** Overwrite P_AGE_SOLO_DWELLERS_GIVEN_HOUSESIZE_1 because a more accurate datasource is available ***********************
 # ref: https://www12.statcan.gc.ca/census-recensement/2016/dp-pd/dt-td/Rp-eng.cfm?TABID=2&LANG=E&APATH=3&DETAIL=0&DIM=0&FL=A&FREE=0&GC=0&GID=1161337&GK=0&GRP=1&PID=109648&PRID=10&PTYPE=109445&S=0&SHOWALL=0&SUB=0&Temporal=2016&THEME=117&VID=0&VNAMEE=&VNAMEF=&D1=0&D2=0&D3=0&D4=0&D5=0&D6=0

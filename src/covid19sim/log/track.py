@@ -310,7 +310,7 @@ class Tracker(object):
                 if self.conf['MIN_AGE_COUPLE'] <= human.age < self.conf['MAX_AGE_COUPLE_WITH_CHILDREN']:
                     old = True
             multigenerationals[i] = children and older
-            two_generations[i] = children and old
+            two_generations[i] = children and (old or older)
             only_adults[i] = not children
 
             # solo dwellers
@@ -345,24 +345,24 @@ class Tracker(object):
         ## type
         str_to_print = "Household type: "
         p = 100 * two_generations.mean()
-        str_to_print += f"Two generations: {p:2.3f}% | "
+        str_to_print += f"Two generations: {p:2.2f}% | "
         p = 100 * multigenerationals.mean()
-        str_to_print += f"multi-generation: {p:2.3f}% | "
+        cns_multi = self.conf['P_MULTIGENERATIONAL_FAMILY']
+        str_to_print += f"multi-generation: {p:2.2f}% ({100*cns_multi:2.2f}) | "
         p = 100 * only_adults.mean()
-        str_to_print += f"Only adults: {p:2.3f}% | "
+        str_to_print += f"Only adults: {p:2.2f}% | "
         log(str_to_print, self.logfile)
 
         # allocation types
         allocation_types, census = list(zip(*[res.allocation_type for res in self.city.households]))
         allocation_types = np.array(allocation_types)
-        census = np.array(census)
+        census = np.array([x.probability for x in census])
         str_to_print = "Allocation types: "
         for atype in np.unique(allocation_types):
             p = (allocation_types == atype).mean()
             cns = census[allocation_types == atype][0].item()
             str_to_print += f"{atype}: {100*p:2.3f}%  ({100*cns: 2.2f})| "
         log(str_to_print, self.logfile)
-        breakpoint()
 
         log("\n *** Other locations *** ", self.logfile)
         ## collectives

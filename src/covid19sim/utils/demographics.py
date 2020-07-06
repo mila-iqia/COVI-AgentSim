@@ -2,10 +2,39 @@
 Functions to intialize a synthetic population using constants in configuration file.
 """
 import numpy as np
-from collections import defaultdict
-from covid19sim.utils.utils import log
+import math
+from collections import namedtuple
 
-MAX_TRIES=100
+from collections import defaultdict
+from covid19sim.utils.utils import log, relativefreq2absolutefreq
+
+HouseType = namedtuple("HouseType", ["adult_type", "n_kids", "n_humans", "probability"])
+MAX_TRIES = 1
+
+class HouseType(object):
+    """
+    Class to hold the attributes of a house.
+    Args:
+        adult_type (str): type of adults - "couple", "single_parent", "other"
+        n_kids (int): number of kids in the house
+        n_humans (int): total number of humans in the house
+        probability (float): census probability of sampling this type of type
+        multigenerational (bool): whether grandparents live with grandchildren
+    """
+    def __init__(self, adult_type, n_kids, n_humans, probability, multigenerational=False):
+        self.adult_type = adult_type
+        self.n_kids = n_kids
+        self.n_humans = n_humans
+        self.probability = probability
+        self.multigenerational = multigenerational
+
+        if  self.adult_type == "other":
+            typestr = f"other_{self.n_humans}"
+        elif self.adult_type == "solo":
+            typestr = "solo"
+        else:
+            typestr = f"{self.adult_type}_with_{self.n_kids}_kids"
+        self.typestr = typestr
 
 def get_humans_with_age(city, age_histogram, conf, rng, chosen_infected, human_type):
     """
@@ -103,6 +132,7 @@ def assign_households_to_humans(humans, city, conf, logfile=None):
     P_COLLECTIVE_70_74 = conf['P_COLLECTIVE_70_74']
     P_COLLECTIVE_75_79 = conf['P_COLLECTIVE_75_79']
     P_COLLECTIVE_80_above = conf['P_COLLECTIVE_80_above']
+    P_MULTIGENERATIONAL_FAMILY = conf['P_MULTIGENERATIONAL_FAMILY']
     MAX_AGE_CHILDREN = conf['MAX_AGE_CHILDREN']
 
     P_FAMILY_TYPE_SIZE_2 = conf['P_FAMILY_TYPE_SIZE_2']
@@ -110,14 +140,8 @@ def assign_households_to_humans(humans, city, conf, logfile=None):
     P_FAMILY_TYPE_SIZE_4 = conf['P_FAMILY_TYPE_SIZE_4']
     P_FAMILY_TYPE_SIZE_MORE_THAN_5 = conf['P_FAMILY_TYPE_SIZE_MORE_THAN_5']
 
-    FAMILY_TYPES = [("couple", 0), ("single_parent", 1) , ("other", 2), ("couple", 1), \
-                    ("single_parent", 2), ("other", 3), ("couple", 2), \
-                    ("single_parent", 3), ("other", 4), ("couple", 3), \
-                    ("single_parent", 4), ("other", 5), ("solo", 0)]
-
-    P_TYPES = P_FAMILY_TYPE_SIZE_2 + P_FAMILY_TYPE_SIZE_3
-    P_TYPES += P_FAMILY_TYPE_SIZE_4 + P_FAMILY_TYPE_SIZE_MORE_THAN_5
-    P_TYPES += [P_HOUSEHOLD_SIZE[0]]
+    FAMILY_TYPES = _get_family_types(P_HOUSEHOLD_SIZE, P_FAMILY_TYPE_SIZE_2, P_FAMILY_TYPE_SIZE_3, P_FAMILY_TYPE_SIZE_4, P_FAMILY_TYPE_SIZE_MORE_THAN_5)
+    P_TYPES = [x.probability for x in FAMILY_TYPES]
 
     assert len(P_TYPES) == len(FAMILY_TYPES), "not a valid mapping of probability and family types"
     assert abs(sum(P_TYPES) - 1) < 1e-2, "Probabilities do not sum to 1."
@@ -153,34 +177,59 @@ def assign_households_to_humans(humans, city, conf, logfile=None):
 
     # allocate households
     # presample houses equal to the number of houses as per census
-    n_houses_approx = int(n_people / AVG_HOUSEHOLD_SIZE)
-    housetypes = _random_choice_tuples(FAMILY_TYPES, city.rng, P=P_TYPES, size=n_houses_approx, replace=True)
+    n_houses_approx = math.ceil(n_people / AVG_HOUSEHOLD_SIZE)
+    housetypes = relativefreq2absolutefreq(
+                bins_fractions={x: x.probability for x in FAMILY_TYPES},
+                n_elements=n_houses_approx,
+                rng=city.rng
+                )
 
-    # ordering -
-    presampled_housetypes = housetypes
+    housetypes = [x for x, i in housetypes.items() for _ in range(i)]
+
+    # count checks
+    n_humans_needed = sum(h.n_humans for h in housetypes)
+    n_kids_left = sum(h.age < conf['MAX_AGE_CHILDREN'] for hs in unassigned_humans.values() for h in hs)
+    n_kids_needed = sum(h.n_kids for h in housetypes)
+    log(f"humans needed: {n_humans_needed} kids needed: {n_kids_needed} kids left:{n_kids_left}", logfile)
+
+    # order the preference
+    presampled_housetypes = _sort_housetypes(housetypes)
 
     n_failed_attempts = 0
     while len(allocated_humans) < city.n_people and n_failed_attempts < MAX_FAILED_ATTEMPTS_ALLOWED:
         if len(presampled_housetypes) > 0:
             housetype = presampled_housetypes.pop()
         else:
-            housetype = _random_choice_tuples(FAMILY_TYPES, city.rng, P=P_TYPES, size=1)[0]
+            housetype = _random_choice_tuples(FAMILY_TYPES, city.rng, 1, P=P_TYPES, replace=True)[0]
 
         humans_with_same_house, unassigned_humans = find_best_fit_humans(housetype, conf, city, unassigned_humans)
 
         # allocate if succesful
         if humans_with_same_house:
-            if  housetype[0] == "other":
-                typestr = f"other_{housetype[1]}"
-            elif housetype[0] == "solo":
-                typestr = "solo"
-            else:
-                typestr = f"{housetype[0]}_with_{housetype[1]}_kids"
-            type = (typestr, P_TYPES[FAMILY_TYPES.index(housetype)])
+            type = (housetype.typestr, housetype)
 
             allocated_humans = create_and_assign_household(humans_with_same_house, type, conf, city, allocated_humans)
         else:
             n_failed_attempts += 1
+
+            # If the failure is due to the unavailability of kids, redo the sampling
+            # Adjust MAX_AGE_CHILDREN to account for the discrepancy in definition of census family where kid is defined irrespective of age
+            starting_kids_max_age = conf['MAX_AGE_CHILDREN_ADJUSTED']
+            n_kids_left = sum(h.age < starting_kids_max_age for hs in unassigned_humans.values() for h in hs)
+            n_kids_needed = sum(h.n_kids for h in presampled_housetypes)
+            age_group_adjusted = False
+            while n_kids_needed > n_kids_left:
+                starting_kids_max_age += 5
+                n_kids_left = sum(h.age < starting_kids_max_age for hs in unassigned_humans.values() for h in hs)
+                age_group_adjusted = True
+            conf['MAX_AGE_CHILDREN_ADJUSTED'] = starting_kids_max_age
+
+            if age_group_adjusted:
+                log(f"kids needed: {n_kids_needed} kids left:{n_kids_left} MAX_AGE_CHILDREN_ADJUSTED: {starting_kids_max_age}", logfile)
+                presampled_housetypes += [housetype]
+                n_failed_attempts -= 1
+
+            # log
             if n_failed_attempts % 100 == 0:
                 log(f"Failed attempt - {n_failed_attempts}. Total allocated:{len(allocated_humans)}", logfile)
 
@@ -189,10 +238,10 @@ def assign_households_to_humans(humans, city, conf, logfile=None):
         log(f"Failed attempt - {n_failed_attempts}. Exceeded the maximum number of failed attempts allowed to allocate houses... trying random allocation!", logfile)
 
         while len(allocated_humans) < city.n_people:
-            housetype = city.rng.choice(FAMILY_TYPES, p=P_TYPES, size=n_houses_approx).item()
-
-            humans_with_same_house = _sample_random_humans(unassigned_humans.keys(), unassigned_humans, city.rng, size=housesize)
+            housetype = _random_choice_tuples(FAMILY_TYPES, city.rng, 1, P=P_TYPES, replace=True)[0]
+            humans_with_same_house = find_best_fit_humans(housetype, conf, city, unassigned_humans)
             if humans_with_same_house:
+                type = ("random", HouseType("random", -1, -1, -1))
                 allocated_humans = create_and_assign_household(humans_with_same_house, ("random", -1), conf, allocated_humans)
             else:
                 log(f"(Random attempt) Could not find humans for house size {housesize}... trying other house size!! Total allocated:{len(allocated_humans)}", logfile)
@@ -206,12 +255,72 @@ def assign_households_to_humans(humans, city, conf, logfile=None):
     log(f"Housing allocated with failed attempts: {n_failed_attempts} ", logfile)
     return allocated_humans
 
+def _get_family_types(P_HOUSEHOLD_SIZE, P_FAMILY_TYPE_SIZE_2, P_FAMILY_TYPE_SIZE_3, P_FAMILY_TYPE_SIZE_4, P_FAMILY_TYPE_SIZE_MORE_THAN_5):
+    """
+    Creates a list of all possible housetypes with their probabilities.
+    Note 1: P_FAMILY_TYPE_ is assumed to carry probabilities for types = "couple", "single_parent", "other" in this sequence.
+    Note 2: We consider a max house size of 5.
+
+    Args:
+        P_HOUSEHOLD_SIZE (list): (absolute) value at each index is the probability of drawing a house of size `index + 1`
+        P_FAMILY_TYPE_SIZE_2 (list): (absolute) probability of drawing a family type for which house size is 2. Note: It is not a conditional (on house size) probability.
+        P_FAMILY_TYPE_SIZE_3 (list): (absolute) probability of drawing a family type for which house size is 3. Note: It is not a conditional (on house size) probability.
+        P_FAMILY_TYPE_SIZE_4 (list): (absolute) probability of drawing a family type for which house size is 4. Note: It is not a conditional (on house size) probability.
+        P_FAMILY_TYPE_SIZE_MORE_THAN_5 (list): (absolute) probability of drawing a family type for which house size is 5. Note: It is not a conditional (on house size) probability.
+    Returns:
+        (list): list of `HouseType`s
+    """
+    FAMILY_TYPES = [
+                    # size=2
+                    HouseType("couple", 0, 2, P_FAMILY_TYPE_SIZE_2[0]),
+                    HouseType("single_parent", 1, 2, P_FAMILY_TYPE_SIZE_2[1]) ,
+                    HouseType("other", 0, 2, P_FAMILY_TYPE_SIZE_2[2]),
+
+                    # size=3
+                    HouseType("couple", 1, 3, P_FAMILY_TYPE_SIZE_3[0]),
+                    HouseType("single_parent", 2, 3, P_FAMILY_TYPE_SIZE_3[1]),
+                    HouseType("other", 0, 3, P_FAMILY_TYPE_SIZE_3[2]),
+
+                    # size=4
+                    HouseType("couple", 2, 4, P_FAMILY_TYPE_SIZE_4[0]),
+                    HouseType("single_parent", 3, 4, P_FAMILY_TYPE_SIZE_4[1]),
+                    HouseType("other", 0, 4, P_FAMILY_TYPE_SIZE_4[2]),
+
+                    # size=5
+                    HouseType("couple", 3, 5, P_FAMILY_TYPE_SIZE_MORE_THAN_5[0]),
+                    HouseType("single_parent", 4, 5, P_FAMILY_TYPE_SIZE_MORE_THAN_5[1]),
+                    HouseType("other", 0, 5, P_FAMILY_TYPE_SIZE_MORE_THAN_5[2]),
+
+                    # size=1
+                    HouseType("solo", 0, 1, P_HOUSEHOLD_SIZE[0])
+                ]
+
+    return FAMILY_TYPES
+
+def _sort_housetypes(housetypes):
+    """
+    Sorts the housetypes.
+
+    Args:
+        housetypes (list): a list of `HouseType`s to be sorted.
+
+    Returns:
+        (list): A sorted list of housetypes with ascending importance i.e. last element should be used first
+    """
+    score = {"couple":3, "single_parent":2, "other":1, "solo":0}
+    adult_type, n_kids, n_humans = list(zip(*[(score[x.adult_type], x.n_kids, x.n_humans) for x in housetypes]))
+
+    # define ordering here (according to ascending importance)
+    x = np.array([n_humans, adult_type, n_kids])
+    idxs = np.lexsort((x[0, :], x[1, :], x[2, :]))
+    return [housetypes[x] for x in idxs]
+
 def find_best_fit_humans(housetype, conf, city, unassigned_humans):
     """
     Finds humans to be allocated to a house of type `housetype`.
 
     Args:
-        housetype (tuple): type of house to sample
+        housetype (HouseType): type of house to sample
         conf (dict): yaml configuration of the experiment
         city (covid19sim.location.City): simulator's city object
         unassigned_humans (dict): keys are age bin (tuple) and values are humans that do not have a household allocated
@@ -222,34 +331,39 @@ def find_best_fit_humans(housetype, conf, city, unassigned_humans):
     """
     humans = []
     valid_age_bins = [x for x, val in unassigned_humans.items() if len(val) >= 1]
-    MAX_AGE_CHILDREN = conf['MAX_AGE_CHILDREN']
+    MAX_AGE_CHILDREN = conf['MAX_AGE_CHILDREN_ADJUSTED']
+    MIN_AGE_GRANDPARENT = conf["MIN_AGE_GRANDPARENT"]
 
-    if housetype[0] == "couple":
-        n_kids = housetype[1]
+    if housetype.adult_type == "couple":
+        n_kids = housetype.n_kids
         humans =  _sample_couple_with_n_kids(valid_age_bins, conf, unassigned_humans, city.rng, n=n_kids)
         if humans:
             assert len(humans) == n_kids + 2, "not a valid allocation"
             assert sum(h.age < MAX_AGE_CHILDREN for h in humans) == n_kids, "not a valid allocation"
 
-    elif housetype[0] == "single_parent":
-        n_kids = housetype[1]
+    elif housetype.adult_type == "single_parent":
+        n_kids = housetype.n_kids
         humans = _sample_single_parent_n_kids(valid_age_bins, conf, unassigned_humans, city.rng, n=n_kids)
         if humans:
             assert len(humans) == n_kids + 1, "not a valid allocation"
             assert sum(h.age < MAX_AGE_CHILDREN for h in humans) == n_kids, "not a valid allocation"
 
-    elif housetype[0] == "other":
-        n_humans = housetype[1]
-        humans = _sample_random_humans(valid_age_bins, conf, unassigned_humans, city.rng, size=n_humans)
+    elif housetype.adult_type == "other":
+        n_humans = housetype.n_humans
+        humans, multigenerational = _sample_random_humans(valid_age_bins, conf, unassigned_humans, city.rng, size=n_humans)
+        housetype.multigenerational = multigenerational
         if humans:
             assert len(humans) == n_humans, "not a valid allocation"
-            assert sum(h.age < MAX_AGE_CHILDREN for h in humans) == 0, "not a valid allocation"
+            if multigenerational:
+                assert any(h.age < MAX_AGE_CHILDREN for h in humans) and any(h.age > MIN_AGE_GRANDPARENT for h in humans),  "not a valid multigenerational allocation"
+            else:
+                assert sum(h.age < MAX_AGE_CHILDREN for h in humans) == 0, "not a valid allocation"
 
-    elif housetype[0] == "solo":
+    elif housetype.adult_type == "solo":
         humans = _sample_solo_dweller(valid_age_bins, conf, unassigned_humans, city.rng)
         if humans:
             assert len(humans) == 1, "not a valid allocation"
-            assert sum(h.age < MAX_AGE_CHILDREN for h in humans) == 0, "not a valid allocation"
+            assert sum(h.age < conf['MAX_AGE_CHILDREN'] for h in humans) == 0, "not a valid allocation"
 
     else:
         raise ValueError
@@ -350,7 +464,7 @@ def _sample_couple_with_n_kids(valid_age_bins, conf, unassigned_humans, rng, n=0
         list: humans belonging to a same household (length = n + 2 if succesful else 0)
     """
     MIN_AGE_COUPLE = conf['MIN_AGE_COUPLE']
-    MAX_AGE_CHILDREN = conf['MAX_AGE_CHILDREN']
+    MAX_AGE_CHILDREN = conf['MAX_AGE_CHILDREN_ADJUSTED']
     MAX_AGE_COUPLE_WITH_CHILDREN = conf['MAX_AGE_COUPLE_WITH_CHILDREN']
 
     valid_couple_bins = _get_valid_bins(valid_age_bins, min_age=MIN_AGE_COUPLE)
@@ -416,7 +530,7 @@ def _sample_single_parent_n_kids(valid_age_bins, conf, unassigned_humans, rng, n
     """
     MIN_AGE_SINGLE_PARENT = conf['MIN_AGE_SINGLE_PARENT']
     MAX_AGE_SINGLE_PARENT = conf['MAX_AGE_SINGLE_PARENT']
-    MAX_AGE_CHILDREN = conf['MAX_AGE_CHILDREN']
+    MAX_AGE_CHILDREN = conf['MAX_AGE_CHILDREN_ADJUSTED']
 
     valid_older_bins = _get_valid_bins(valid_age_bins, min_age=MIN_AGE_SINGLE_PARENT, max_age=MAX_AGE_SINGLE_PARENT)
     valid_younger_bins = _get_valid_bins(valid_age_bins, max_age=MAX_AGE_CHILDREN)
@@ -441,7 +555,7 @@ def _sample_single_parent_n_kids(valid_age_bins, conf, unassigned_humans, rng, n
 
 def _sample_random_humans(valid_age_bins, conf, unassigned_humans, rng, size):
     """
-    Samples humans randomly to be put in the same house
+    Samples humans randomly to be put in the same house. Also samples multigenerational family.
 
     Args:
         valid_age_bins (list): age bins that qualify to sample humans
@@ -451,9 +565,16 @@ def _sample_random_humans(valid_age_bins, conf, unassigned_humans, rng, size):
         size (int): number of humans to sample
 
     Returns:
-        list: humans belonging to a same household (length = size if succesful else 0)
+        humans (list): humans belonging to a same household (length = size if succesful else 0)
+        multigenerational (bool): whether the sampled humans belong to a multigenerational family
     """
-    MAX_AGE_CHILDREN = conf['MAX_AGE_CHILDREN']
+    MAX_AGE_CHILDREN = conf['MAX_AGE_CHILDREN_ADJUSTED']
+    P_MULTIGENERTIONAL_FAMILY_GIVEN_OTHER_HOUSEHOLDS = conf['P_MULTIGENERTIONAL_FAMILY_GIVEN_OTHER_HOUSEHOLDS']
+
+    if rng.random() < P_MULTIGENERTIONAL_FAMILY_GIVEN_OTHER_HOUSEHOLDS:
+        return _sample_multigenerational_family(valid_age_bins, conf, unassigned_humans, rng, size)
+
+    # (no-source) all other type of housing is resided by adults only
     valid_other_bins = _get_valid_bins(valid_age_bins, min_age=MAX_AGE_CHILDREN)
 
     all_humans = [(y,x) for x in valid_other_bins for y in unassigned_humans[x]]
@@ -467,7 +588,59 @@ def _sample_random_humans(valid_age_bins, conf, unassigned_humans, rng, size):
         humans.append(human)
 
     assert len(humans) == size, "number of humans sampled doesn't equal the expected size"
-    return humans
+    return humans, False
+
+def _sample_multigenerational_family(valid_age_bins, conf, unassigned_humans, rng, size):
+    """
+    Samples multigenerational families where at least one person is above 65 and at least one is below 15.
+
+    Args:
+        valid_age_bins (list): age bins that qualify to sample humans
+        conf (dict): yaml configuration of the experiment
+        unassigned_humans (dict): keys are age bin (tuple) and values are humans that do not have a household allocated
+        rng (np.random.RandomState): Random number generator
+        size (int): number of humans to sample
+
+    Returns:
+        humans (list): humans belonging to a same household (length = size if succesful else 0)
+        multigenerational (bool): whether the sampled humans belong to a multigenerational family
+    """
+    MAX_AGE_CHILDREN = conf['MAX_AGE_CHILDREN_ADJUSTED']
+    P_MULTIGENERTIONAL_FAMILY_GIVEN_OTHER_HOUSEHOLDS = conf['P_MULTIGENERTIONAL_FAMILY_GIVEN_OTHER_HOUSEHOLDS']
+    MIN_AGE_GRANDPARENT = conf["MIN_AGE_GRANDPARENT"]
+
+    valid_younger_bins = _get_valid_bins(valid_age_bins, max_age=MAX_AGE_CHILDREN)
+    valid_older_bins = _get_valid_bins(valid_age_bins, min_age=MIN_AGE_GRANDPARENT)
+
+    all_kids = [(y,x) for x in valid_younger_bins for y in unassigned_humans[x]]
+    if len(all_kids) < 1 or len(valid_older_bins) == 0:
+        return []
+
+    # sample grand parent
+    older_bin = _random_choice_tuples(valid_older_bins, rng, size=1)[0]
+    older_human = rng.choice(unassigned_humans[older_bin], size=1).item()
+    unassigned_humans[older_bin].remove(older_human)
+
+    # sample a young kid
+    kid, bin = _random_choice_tuples(all_kids, rng, size=1)[0]
+    unassigned_humans[bin].remove(kid)
+
+    humans = [older_human, kid]
+
+    # sample randomly from other binds if there are remaining spots
+    if size > 2:
+
+        valid_other_bins = [x for x, val in unassigned_humans.items() if len(val) >= 1]
+        all_humans = [(y,x) for x in valid_other_bins for y in unassigned_humans[x]]
+        if len(all_humans) < size - 2:
+            return []
+
+        sampled = _random_choice_tuples(all_humans, rng, size=size-2)
+        for human, bin in sampled:
+            unassigned_humans[bin].remove(human)
+            humans.append(human)
+
+    return humans, True
 
 def _get_valid_bins(valid_age_bins, min_age=-1, max_age=200):
     """

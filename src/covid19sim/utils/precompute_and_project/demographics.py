@@ -186,3 +186,24 @@ if __name__ == "__main__":
             + "P_COLLECTIVE_80_above: "
             + str(P_COLLECTIVE_80_above)
         )
+
+    # precompute 4
+    # MAX_AGE_CHILDREN_ADJUSTED = MAX_AGE_CHILDREN
+    # Adjust MAX_AGE_CHILDREN to MAX_AGE_CHILDREN_ADJUSTED everytime there is a failure due to shortage of kids.
+    # It takes care of the discrepancy in definition of census family where kid is defined irrespective of the age
+
+    MAX_AGE_CHILDREN = region["MAX_AGE_CHILDREN"]
+    comment = """
+    # MAX_AGE_CHILDREN_ADJUSTED = MAX_AGE_CHILDREN
+    # Adjust MAX_AGE_CHILDREN to MAX_AGE_CHILDREN_ADJUSTED everytime there is a failure due to shortage of kids.
+    # It takes care of the discrepancy in definition of census family where kid is defined irrespective of the age
+    """
+    with region_path.open("a") as f:
+        f.write(
+            "\n"
+            + (comment if not args.no_comments else "")
+            + "\n"
+            + "MAX_AGE_CHILDREN_ADJUSTED: "
+            + str(MAX_AGE_CHILDREN)
+            + "\n"
+        )
