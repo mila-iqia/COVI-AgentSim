@@ -603,7 +603,7 @@ class Human(BaseHuman):
         self.test_type = test_type
         self.test_time = self.env.timestamp
         self.hidden_test_result = unobserved_result
-        self._will_report_test_result = self.rng.random() < self.carefulness
+        self._will_report_test_result = self.rng.random() < self.conf.get("TEST_REPORT_PROB")
         if isinstance(self.location, (Hospital, ICU)):
             self.time_to_test_result = self.conf['TEST_TYPES'][test_type]['time_to_result']['in-patient']
         else:
