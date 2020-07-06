@@ -20,9 +20,7 @@ def get_intervention(conf):
 
 
 def create_behavior(key, conf):
-    if key == "Lockdown":
-        return Lockdown()
-    elif key == "WearMask":
+    if key == "WearMask":
         return WearMask(conf.get("MASKS_SUPPLY"))
     elif key == "SocialDistancing":
         return SocialDistancing()
@@ -55,7 +53,7 @@ class BundledInterventions(Behavior):
                 human.recommendations_to_follow.add(rec)
 
     def revert(self, human):
-        for rec in human.recommendations_to_follow:
+        for rec in reversed(human.recommendations_to_follow):
             rec.revert(human)
         human.recommendations_to_follow = OrderedSet()
 
@@ -65,7 +63,7 @@ class BundledInterventions(Behavior):
 
 def _get_behaviors_for_level(level):
     """
-    Maps recommendation level to a list `Behavior`.
+    Maps recommendation level to a list of `Behavior` objects.
 
     Args:
         level (int): recommendation level.
@@ -73,13 +71,12 @@ def _get_behaviors_for_level(level):
     Returns:
         list: a list of `Behavior`.
     """
-    assert level in [0, 1, 2, 3]
     if level == 0:
         return [WashHands(), StandApart(default_distance=25)]
     if level == 1:
         return [WashHands(), StandApart(default_distance=75), WearMask()]
     if level == 2:
         return [WashHands(), SocialDistancing(default_distance=100), WearMask()]
-
-    return [WashHands(), SocialDistancing(default_distance=150), WearMask(), GetTested("recommendations"), Quarantine()]
-
+    if level == 3:
+        return [WashHands(), SocialDistancing(default_distance=150), WearMask(), GetTested(), Quarantine()]
+    raise AssertionError(f"cannot generate behavior modifiers for rec level: {level}")

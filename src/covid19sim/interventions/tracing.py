@@ -42,6 +42,8 @@ class BaseMethod(object):
         self.default_behaviors = [create_behavior(key, conf) for key in conf.get("DEFAULT_BEHAVIORS", [])]
 
     def get_behaviors(self, human: "Human"):
+        # note: if there is overlap between default behaviors & recommended ones, the latter will override
+        # the former due to the use of list extend calls below + the modify/revert logic in behaviors
         behaviors = copy.deepcopy(self.default_behaviors)
 
         if human.has_app:
@@ -52,15 +54,15 @@ class BaseMethod(object):
                 probas = human.city.daily_rec_level_mapping[human.rec_level]
                 intervention_level = human.rng.choice(4, p=probas)
             human._intervention_level = intervention_level
-            behaviors = _get_behaviors_for_level(intervention_level)
+            behaviors.extend(_get_behaviors_for_level(intervention_level))
 
         if not any([isinstance(rec, Quarantine) for rec in behaviors]) and \
                 any([h.test_result == "positive" for h in human.household.humans]):
             # in short, if we are not already quarantining and if there is a member
             # of the household that got a positive test (even if they didn't tell their
-            # app, whether because they don't have one or don't care, they should still
-            # warn their housemates)
-            behaviors.append(Quarantine())
+            # app, whether because they don't have one or don't care), the housemates should
+            # know and get the same (max-level) recommendations, including quarantine
+            behaviors.extend(_get_behaviors_for_level(level=3))
         return behaviors
 
     @staticmethod
