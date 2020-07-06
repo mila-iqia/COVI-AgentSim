@@ -234,10 +234,6 @@ class CovidProgression(unittest.TestCase):
         """
         rng = np.random.RandomState(1234)
 
-        import cProfile
-        p = cProfile.Profile()
-        p.enable()
-
         for initial_viral_load in self.initial_viral_load_options:
             for age in self.ages_options:
                 for really_sick in self.really_sick_options:
@@ -248,8 +244,6 @@ class CovidProgression(unittest.TestCase):
                                     rng, initial_viral_load, age, really_sick,
                                     extremely_sick, preexisting_conditions,
                                     carefulness)
-        p.disable()
-        p.dump_stats("test_covid_progression.stats")
 
     def _test_covid_progression(self, rng, initial_viral_load, age, really_sick,
                                 extremely_sick, preexisting_conditions,
