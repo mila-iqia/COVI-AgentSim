@@ -9,7 +9,7 @@ from collections import namedtuple, OrderedDict
 """
 
 SymptomProbability = namedtuple('SymptomProbability', ['name', 'id', 'probabilities'])
-SymptomProbability.__doc__ = '''A symptom probabilities collection given contexts
+SymptomProbability.__doc__ = '''A symptom probabilities collection given a disease phase
 
 Attributes
     ----------
@@ -20,18 +20,19 @@ Attributes
         This attribute should never change once set. It is used to define the
         position of the symptom in a multi-hot encoding
     probabilities : dict
-        probabilities of the symptom per context
+        probabilities of the symptom per disease phase
         A probability of `-1` is assigned when it is heavily variable given
         multiple factors and is handled entirely in the code
         A probability of `None` is assigned when the symptom can be skipped
-        entirely in the context. The context can also be removed from the dict
+        entirely in the disease phase. The disease phase can also be removed 
+        from the dict
 '''
 
-SYMPTOMS_CONTEXTS = {'covid': {0: 'covid_incubation', 1: 'covid_onset', 2: 'covid_plateau',
-                               3: 'covid_post_plateau_1', 4: 'covid_post_plateau_2'},
-                     'allergy': {0: 'allergy'},
-                     'cold': {0: 'cold', 1: 'cold_last_day'},
-                     'flu': {0: 'flu_first_day', 1: 'flu', 2: 'flu_last_day'}}
+DISEASES_PHASES = {'covid': {0: 'covid_incubation', 1: 'covid_onset', 2: 'covid_plateau',
+                             3: 'covid_post_plateau_1', 4: 'covid_post_plateau_2'},
+                   'allergy': {0: 'allergy'},
+                   'cold': {0: 'cold', 1: 'cold_last_day'},
+                   'flu': {0: 'flu_first_day', 1: 'flu', 2: 'flu_last_day'}}
 
 SYMPTOMS = OrderedDict([
     # Sickness severity
@@ -351,9 +352,9 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
     Returns:
         [type]: [description]
     """
-    symptoms_contexts = SYMPTOMS_CONTEXTS['covid']
+    disease_phases = DISEASES_PHASES['covid']
     progression = []
-    symptoms_per_phase = [[] for i in range(len(symptoms_contexts))]
+    symptoms_per_phase = [[] for i in range(len(disease_phases))]
 
     # Phase 0 - Before onset of symptoms (incubation)
     # ====================================================
@@ -365,7 +366,7 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
     # Phase 1 of plateau
     # ====================================================
     phase_i = 1
-    phase = symptoms_contexts[phase_i]
+    phase = disease_phases[phase_i]
 
     p_fever = SYMPTOMS['fever'].probabilities[phase]
     if really_sick or extremely_sick or len(preexisting_conditions)>2 or initial_viral_load > 0.6:
@@ -438,7 +439,7 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
     # During the symptoms plateau Part 2 (worst part of the disease)
     # ====================================================
     phase_i = 2
-    phase = symptoms_contexts[phase_i]
+    phase = disease_phases[phase_i]
 
     if extremely_sick:
         symptoms_per_phase[phase_i].append('extremely-severe')
@@ -517,7 +518,7 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
     # After the plateau (recovery part 1)
     # ====================================================
     phase_i = 3
-    phase = symptoms_contexts[phase_i]
+    phase = disease_phases[phase_i]
 
     if extremely_sick:
         symptoms_per_phase[phase_i].append('severe')
@@ -582,7 +583,7 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
     # After the plateau (recovery part 2)
     # ====================================================
     phase_i = 4
-    phase = symptoms_contexts[phase_i]
+    phase = disease_phases[phase_i]
 
     if extremely_sick:
         symptoms_per_phase[phase_i].append('moderate')
@@ -675,9 +676,9 @@ def _get_allergy_progression(rng):
     Returns:
         [type]: [description]
     """
-    symptoms_contexts = SYMPTOMS_CONTEXTS['allergy']
+    disease_phases = DISEASES_PHASES['allergy']
     phase_i = 0
-    phase = symptoms_contexts[phase_i]
+    phase = disease_phases[phase_i]
 
     symptoms = []
     for symptom in ('sneezing', 'light_trouble_breathing', 'sore_throat', 'fatigue',
@@ -710,12 +711,12 @@ def _get_flu_progression(age, rng, carefulness, preexisting_conditions, really_s
     Returns:
         [type]: [description]
     """
-    symptoms_contexts = SYMPTOMS_CONTEXTS['flu']
-    symptoms_per_phase = [[] for _ in range(len(symptoms_contexts))]
+    disease_phases = DISEASES_PHASES['flu']
+    symptoms_per_phase = [[] for _ in range(len(disease_phases))]
 
     # Day 1 symptoms:
     phase_i = 0
-    phase = symptoms_contexts[phase_i]
+    phase = disease_phases[phase_i]
 
     symptoms_per_phase[phase_i].append('mild')
 
@@ -732,7 +733,7 @@ def _get_flu_progression(age, rng, carefulness, preexisting_conditions, really_s
 
     # Day 2-4ish if it's a longer flu, if 2 days long this doesn't get added
     phase_i = 1
-    phase = symptoms_contexts[phase_i]
+    phase = disease_phases[phase_i]
 
     if really_sick or extremely_sick or any(preexisting_conditions):
         symptoms_per_phase[phase_i].append('moderate')
@@ -752,7 +753,7 @@ def _get_flu_progression(age, rng, carefulness, preexisting_conditions, really_s
 
     # Last day
     phase_i = 2
-    phase = symptoms_contexts[phase_i]
+    phase = disease_phases[phase_i]
 
     symptoms_per_phase[phase_i].append('mild')
 
@@ -803,13 +804,13 @@ def _get_cold_progression(age, rng, carefulness, preexisting_conditions, really_
     Returns:
         [type]: [description]
     """
-    symptoms_contexts = SYMPTOMS_CONTEXTS['cold']
+    disease_phases = DISEASES_PHASES['cold']
 
-    symptoms_per_phase = [[] for _ in range(len(symptoms_contexts))]
+    symptoms_per_phase = [[] for _ in range(len(disease_phases))]
 
     # Day 2-4ish if it's a longer cold, if 2 days long this doesn't get added
     phase_i = 0
-    phase = symptoms_contexts[phase_i]
+    phase = disease_phases[phase_i]
 
     if really_sick or extremely_sick or any(preexisting_conditions):
         symptoms_per_phase[phase_i].append('moderate')
@@ -823,7 +824,7 @@ def _get_cold_progression(age, rng, carefulness, preexisting_conditions, really_
 
     # Last day
     phase_i = 1
-    phase = symptoms_contexts[phase_i]
+    phase = disease_phases[phase_i]
 
     symptoms_per_phase[phase_i].append('mild')
 

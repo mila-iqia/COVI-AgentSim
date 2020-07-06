@@ -3,24 +3,26 @@ import unittest
 import numpy as np
 
 from covid19sim.epidemiology.symptoms import _get_allergy_progression, _get_cold_progression, \
-    _get_covid_progression, _get_flu_progression, SYMPTOMS, SYMPTOMS_CONTEXTS
+    _get_covid_progression, _get_flu_progression, SYMPTOMS, DISEASES_PHASES
 from covid19sim.epidemiology.human_properties import _get_preexisting_conditions, PREEXISTING_CONDITIONS
+
 
 class Symptoms(unittest.TestCase):
     def test_symptoms_structure(self):
         for s_name, s_prob in SYMPTOMS.items():
             self.assertEqual(s_name, s_prob.name)
 
-            s_prob_contexts = set(s_prob.probabilities.keys())
-            if s_prob_contexts:
-                # At least a full set of symptoms_context should be found
-                # in the list of contexts of the symptom
-                for disease_label, symptoms_contexts in SYMPTOMS_CONTEXTS.items():
-                    if set(symptoms_contexts.values()).issubset(s_prob_contexts):
+            s_prob_diseases_phases = set(s_prob.probabilities.keys())
+            if s_prob_diseases_phases:
+                # At least a full set of disease_phases should be found
+                # in the list of disease_phases of the symptom
+                for disease_label, disease_phases in DISEASES_PHASES.items():
+                    if set(disease_phases.values()).issubset(s_prob_diseases_phases):
                         break
                 else:
-                    self.assertTrue(False, msg=f"{s_name} symptom should contain "
-                    f"at least a full set of a disease's contexts")
+                    self.assertTrue(False,
+                                    msg=f"{s_name} symptom should contain at least "
+                                    f"a full set of a disease's phases")
 
 
 class AllergyProgression(unittest.TestCase):
@@ -28,12 +30,12 @@ class AllergyProgression(unittest.TestCase):
         """
             Test the distribution of the allergy progression
         """
-        symptoms_contexts = SYMPTOMS_CONTEXTS['allergy']
+        disease_phases = DISEASES_PHASES['allergy']
 
         out_of_context_symptoms = set()
         for _, prob in SYMPTOMS.items():
-            for context in prob.probabilities:
-                if context in symptoms_contexts.values():
+            for disease_phase in prob.probabilities:
+                if disease_phase in disease_phases.values():
                     break
             else:
                 out_of_context_symptoms.add(prob.id)
@@ -57,15 +59,15 @@ class AllergyProgression(unittest.TestCase):
         for s_name, s_prob in SYMPTOMS.items():
             s_id = s_prob.id
 
-            for i, (context, expected_prob) in enumerate((c, p) for c, p in s_prob.probabilities.items()
-                                                         if c in symptoms_contexts.values()):
+            for i, (disease_phase, expected_prob) in enumerate((c, p) for c, p in s_prob.probabilities.items()
+                                                         if c in disease_phases.values()):
                 prob = probs[s_id]
 
                 self.assertAlmostEqual(prob, expected_prob,
                                        delta=0 if expected_prob in (0, 1)
                                        else max(0.015, expected_prob * 0.05),
                                        msg=f"Computation of the symptom [{s_name}] yielded an "
-                                       f"unexpected probability in context {context}")
+                                       f"unexpected probability in disease_phase {disease_phase}")
 
             if s_id in out_of_context_symptoms:
                 prob = probs[s_id]
@@ -80,15 +82,15 @@ class ColdProgression(unittest.TestCase):
         """
             Test the distribution of the cold symptoms
         """
-        symptoms_contexts = SYMPTOMS_CONTEXTS['cold']
+        disease_phases = DISEASES_PHASES['cold']
 
         def _get_id(symptom):
             return SYMPTOMS[symptom].id
 
         out_of_context_symptoms = set()
         for _, prob in SYMPTOMS.items():
-            for context in prob.probabilities:
-                if context in symptoms_contexts.values():
+            for disease_phase in prob.probabilities:
+                if disease_phase in disease_phases.values():
                     break
             else:
                 out_of_context_symptoms.add(prob.id)
@@ -112,9 +114,9 @@ class ColdProgression(unittest.TestCase):
                                                             really_sick, extremely_sick)]
                                      for _ in range(n_people)]
 
-                    probs = [[0] * len(SYMPTOMS) for _ in symptoms_contexts]
+                    probs = [[0] * len(SYMPTOMS) for _ in disease_phases]
                     # Number of phases occurences.
-                    phases_occurrence_count = [0] * len(symptoms_contexts)
+                    phases_occurrence_count = [0] * len(disease_phases)
 
                     for human_symptoms in computed_dist:
                         # Assert that there are no symptoms on the first day
@@ -150,8 +152,8 @@ class ColdProgression(unittest.TestCase):
                     for s_name, s_prob in SYMPTOMS.items():
                         s_id = s_prob.id
 
-                        for i, (context, expected_prob) in enumerate((c, p) for c, p in s_prob.probabilities.items()
-                                                                     if c in symptoms_contexts.values()):
+                        for i, (disease_phase, expected_prob) in enumerate((c, p) for c, p in s_prob.probabilities.items()
+                                                                     if c in disease_phases.values()):
                             prob = probs[i][s_id]
 
                             if i == 0:
@@ -178,7 +180,7 @@ class ColdProgression(unittest.TestCase):
                                                    f"unexpected probability for age {age}, really_sick {really_sick}, "
                                                    f"extremely_sick {extremely_sick}, "
                                                    f"preexisting_conditions {len(preexisting_conditions)} "
-                                                   f"and carefulness {carefulness} in context {context}")
+                                                   f"and carefulness {carefulness} in disease_phase {disease_phase}")
 
                         if s_id in out_of_context_symptoms:
                             prob = sum(probs[i][s_id] for i in range(len(probs))) / len(probs)
@@ -192,7 +194,7 @@ class ColdProgression(unittest.TestCase):
 
 
 class CovidProgression(unittest.TestCase):
-    symptoms_contexts = SYMPTOMS_CONTEXTS['covid']
+    disease_phases = DISEASES_PHASES['covid']
 
     n_people = 10000
     initial_viral_load_options = (0.50, 0.75)  # This test only checks for 0.6 threshold
@@ -210,8 +212,8 @@ class CovidProgression(unittest.TestCase):
     def setUp(self):
         self.out_of_context_symptoms = set()
         for _, prob in SYMPTOMS.items():
-            for context in prob.probabilities:
-                if context in self.symptoms_contexts.values():
+            for disease_phase in prob.probabilities:
+                if disease_phase in self.disease_phases.values():
                     break
             else:
                 self.out_of_context_symptoms.add(prob.id)
@@ -221,12 +223,12 @@ class CovidProgression(unittest.TestCase):
         return SYMPTOMS[symptom].id
 
     @staticmethod
-    def _get_probability(symptom_probs, symptom_context):
+    def _get_probability(symptom_probs, disease_phase):
         if isinstance(symptom_probs, str):
             symptom_probs = SYMPTOMS[symptom_probs]
-        if isinstance(symptom_context, int):
-            symptom_context = CovidProgression.symptoms_contexts[symptom_context]
-        return symptom_probs.probabilities[symptom_context]
+        if isinstance(disease_phase, int):
+            disease_phase = CovidProgression.disease_phases[disease_phase]
+        return symptom_probs.probabilities[disease_phase]
 
     def test_covid_progression(self):
         """
@@ -250,7 +252,7 @@ class CovidProgression(unittest.TestCase):
                                 carefulness):
         _get_id = self._get_id
         _get_probability = self._get_probability
-        symptoms_contexts = self.symptoms_contexts
+        disease_phases = self.disease_phases
 
         # List of list of set of symptoms (str). Each set contains the list of symptoms in a day
         computed_dist = [[set(day_symptoms) for day_symptoms in
@@ -261,11 +263,11 @@ class CovidProgression(unittest.TestCase):
                                                  carefulness)]
                          for _ in range(self.n_people)]
 
-        probs = [[0] * len(SYMPTOMS) for _ in symptoms_contexts]
+        probs = [[0] * len(SYMPTOMS) for _ in disease_phases]
 
         for human_symptoms in computed_dist:
             # To simplify the tests, we expect each stage to last 1 day
-            self.assertEqual(len(human_symptoms), len(symptoms_contexts))
+            self.assertEqual(len(human_symptoms), len(disease_phases))
 
             # The covid incubation period should not have any symptoms
             for day_symptoms in human_symptoms[:self.incubation_days]:
@@ -317,8 +319,8 @@ class CovidProgression(unittest.TestCase):
                 # as complex as maintaining the code
                 continue
 
-            for i, (context, expected_prob) in enumerate((c, p) for c, p in s_prob.probabilities.items()
-                                                         if c in symptoms_contexts.values()):
+            for i, (disease_phase, expected_prob) in enumerate((d_p, p) for d_p, p in s_prob.probabilities.items()
+                                                               if d_p in disease_phases.values()):
                 prob = probs[i][s_id]
 
                 if s_id == _get_id('lost_consciousness') and \
@@ -444,7 +446,7 @@ class CovidProgression(unittest.TestCase):
                     f"probability for initial_viral_load {initial_viral_load}, "
                     f"age {age}, really_sick {really_sick}, extremely_sick {extremely_sick}, "
                     f"preexisting_conditions {len(preexisting_conditions)} and "
-                    f"carefulness {carefulness} in context {i}:{context}")
+                    f"carefulness {carefulness} in disease_phase {i}:{disease_phase}")
 
             if s_id in self.out_of_context_symptoms:
                 prob = sum(probs[i][s_id] for i in range(len(probs))) / len(probs)
@@ -462,22 +464,22 @@ class FluProgression(unittest.TestCase):
         """
             Test the distribution of the flu symptoms
         """
-        symptoms_contexts = SYMPTOMS_CONTEXTS['flu']
+        disease_phases = DISEASES_PHASES['flu']
 
         def _get_id(symptom):
             return SYMPTOMS[symptom].id
 
-        def _get_probability(symptom_probs, symptom_context):
+        def _get_probability(symptom_probs, disease_phase):
             if isinstance(symptom_probs, str):
                 symptom_probs = SYMPTOMS[symptom_probs]
-            if isinstance(symptom_context, int):
-                symptom_context = symptoms_contexts[symptom_context]
-            return symptom_probs.probabilities[symptom_context]
+            if isinstance(disease_phase, int):
+                disease_phase = disease_phases[disease_phase]
+            return symptom_probs.probabilities[disease_phase]
 
         out_of_context_symptoms = set()
         for _, prob in SYMPTOMS.items():
             for context in prob.probabilities:
-                if context in symptoms_contexts.values():
+                if context in disease_phases.values():
                     break
             else:
                 out_of_context_symptoms.add(prob.id)
@@ -503,9 +505,9 @@ class FluProgression(unittest.TestCase):
                                                            really_sick, extremely_sick, AVG_FLU_DURATION)]
                                      for _ in range(n_people)]
 
-                    probs = [[0] * len(SYMPTOMS) for _ in symptoms_contexts]
+                    probs = [[0] * len(SYMPTOMS) for _ in disease_phases]
                     # Number of phases occurences.
-                    phases_occurrence_count = [0] * len(symptoms_contexts)
+                    phases_occurrence_count = [0] * len(disease_phases)
 
                     for human_symptoms in computed_dist:
                         # There is a chance that the cold'symptoms last only
@@ -542,8 +544,8 @@ class FluProgression(unittest.TestCase):
                     for s_name, s_prob in SYMPTOMS.items():
                         s_id = s_prob.id
 
-                        for i, (context, expected_prob) in enumerate((c, p) for c, p in s_prob.probabilities.items()
-                                                                     if c in symptoms_contexts.values()):
+                        for i, (disease_phase, expected_prob) in enumerate((d_p, p) for d_p, p in s_prob.probabilities.items()
+                                                                           if d_p in disease_phases.values()):
                             prob = probs[i][s_id]
 
                             if i == 0:
@@ -581,7 +583,7 @@ class FluProgression(unittest.TestCase):
                                                    f"unexpected probability for age {age}, really_sick {really_sick}, "
                                                    f"extremely_sick {extremely_sick}, "
                                                    f"preexisting_conditions {len(preexisting_conditions)} "
-                                                   f"and carefulness {carefulness} in context {context}")
+                                                   f"and carefulness {carefulness} in disease_phases {disease_phases}")
 
                         if s_id in out_of_context_symptoms:
                             prob = sum(probs[i][s_id] for i in range(len(probs))) / len(probs)
