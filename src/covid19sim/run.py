@@ -18,7 +18,7 @@ from covid19sim.utils.env import Env
 from covid19sim.utils.constants import SECONDS_PER_DAY, SECONDS_PER_HOUR
 from covid19sim.log.monitors import EventMonitor, SEIRMonitor, TimeMonitor
 from covid19sim.human import Human
-from covid19sim.inference.server_utils import DataCollectionBroker
+from covid19sim.inference.server_utils import DataCollectionServer
 from covid19sim.utils.utils import (dump_conf, dump_tracker_data,
                                     extract_tracker_data, parse_configuration,
                                     zip_outdir)
@@ -67,11 +67,6 @@ def main(conf: DictConfig):
     collection_server = None
     outfile = os.path.join(conf["outdir"], "data")
     if conf['COLLECT_TRAINING_DATA']:
-        class DataCollectionServer(DataCollectionBroker, multiprocessing.Process):
-            def __init__(self, **kwargs):
-                multiprocessing.Process.__init__(self)
-                DataCollectionBroker.__init__(self, **kwargs)
-
         collection_server = DataCollectionServer(
             data_output_path=os.path.join(conf["outdir"], "train.hdf5"),
             config_backup=conf,

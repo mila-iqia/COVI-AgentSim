@@ -394,6 +394,14 @@ class InferenceClient:
         assert response == b"READY"
 
 
+class InferenceServer(InferenceBroker, multiprocessing.Process):
+    """Wrapper object used to initialize a broker inside a separate process."""
+
+    def __init__(self, **kwargs):
+        multiprocessing.Process.__init__(self)
+        InferenceBroker.__init__(self, **kwargs)
+
+
 class InferenceEngineWrapper(InferenceEngine):
     """Inference engine wrapper used to download & extract experiment data, if necessary."""
 
@@ -646,6 +654,13 @@ class DataCollectionClient:
         self.socket.send(b"RESET")
         response = self.socket.recv()
         assert response == b"READY"
+
+
+class DataCollectionServer(DataCollectionBroker, multiprocessing.Process):
+    """Wrapper object used to initialize a broker inside a separate process."""
+    def __init__(self, **kwargs):
+        multiprocessing.Process.__init__(self)
+        DataCollectionBroker.__init__(self, **kwargs)
 
 
 def proc_human_batch(
