@@ -21,6 +21,7 @@ import warnings
 import logging
 from datetime import datetime
 from collections import defaultdict
+from pathlib import Path
 
 
 def generate_name(source_config, target_config):
@@ -199,7 +200,103 @@ def get_bulk_folders(folder, keys):
     return bulk_folders
 
 
+def get_model(conf):
+    if conf["RISK_MODEL"] == "":
+        return "unmitigated"
+
+    if conf["RISK_MODEL"] == "digital":
+        if conf["TRACING_ORDER"] == 1:
+            return "bdt1"
+        elif conf["TRACING_ORDER"] == 2:
+            return "bdt2"
+        else:
+            raise ValueError(
+                "Unknown binary digital tracing order: {}".format(conf["TRACING_ORDER"])
+            )
+    if conf["RISK_MODEL"] == "transformer":
+        if conf["USE_ORACLE"]:
+            return "oracle"
+        return "transformer"
+
+    if conf["RISK_MODEL"] == "heuristicv1":
+        return "heuristicv1"
+
+    if conf["RISK_MODEL"] == "heuristicv2":
+        return "heuristicv2"
+
+    raise ValueError("Unknown RISK_MODEL {}".format(conf["RISK_MODEL"]))
+
+
 def main(args):
+    if args.discover is None:
+        run(args)
+
+    parent = Path(args.discover).resolve()
+    run_conf = None
+    assert (
+        parent.exists() and parent.is_dir()
+    ), "Unknown parent folder to discover {}".format(str(parent))
+
+    global_dict = {}
+
+    print("Discovering runs to normalize in {}".format(str(parent)))
+
+    to_normalize = []
+    for method_dir in parent.iterdir():
+        if not method_dir.is_dir():
+            continue
+        for run_dir in method_dir.iterdir():
+            if not run_dir.is_dir():
+                continue
+            conf_path = run_dir / "full_configuration.yaml"
+            if conf_path.exists():
+                with (run_dir / "full_configuration.yaml").open("r") as f:
+                    run_conf = yaml.safe_load(f)
+                break
+
+        assert (
+            run_conf is not None
+        ), "run_conf is None: could not find full config in subdirs of {}".format(
+            str(method_dir)
+        )
+        tracing_method = get_model(run_conf)
+        if tracing_method not in {"transformer", "unmitigated"}:
+            print(f"Found config for {method_dir.name}")
+            to_normalize.append(
+                {"tracing_method": tracing_method, "method_dir": method_dir}
+            )
+
+    target_name = Path(args.target).name
+    for i, norm_dict in enumerate(to_normalize):
+        tracing_method = norm_dict["tracing_method"]
+        method_dir = norm_dict["method_dir"]
+        print("\n#" + "#" * 39)
+        print(f"Normalizing {method_dir.name} ({i + 1}/{len(to_normalize)})")
+        print("#" * 39 + "#\n")
+        if tracing_method != "transformer":
+            args.source = str(method_dir)
+            args.config_folder = f"{target_name}_{tracing_method}"
+            output_dict = run(args)
+            for k, v in output_dict.items():
+                if isinstance(v, dict) and "sample" in v:
+                    output_dict[k]["normalized"] = True
+            global_dict.update(output_dict)
+
+    global_dict["USE_INFERENCE_SERVER"] = False
+    global_dict["base_dir"] = str(parent)
+    global_dict["n_search"] = -1
+
+    search_path = Path(__file__).parent.parent / "configs" / "search"
+    global_conf_path = search_path / f"normalize_{parent.name}.yaml"
+    with global_conf_path.open("w") as f:
+        yaml.safe_dump(global_dict, f)
+
+    print(
+        "Writing in {}:\n{}".format(str(global_conf_path), yaml.safe_dump(global_dict))
+    )
+
+
+def run(args):
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO)
 
     if args.bulk_keys is None:
@@ -234,9 +331,7 @@ def main(args):
 
         # Return the list of new configuration files as a *.yaml file
         if new_configs:
-            output_dict = {
-                args.config_folder: {"sample": "cartesian", "from": new_configs}
-            }
+            output_dict = {args.config_folder: {"sample": "chain", "from": new_configs}}
             logging.info(
                 "Use the following snippet inside a configuration file "
                 "to use in combination with `random_search.py`\n"
@@ -249,6 +344,7 @@ def main(args):
                 )
                 with open(args.output, "w") as f:
                     yaml.dump(output_dict, f, Dumper=yaml.Dumper)
+            return output_dict
 
 
 if __name__ == "__main__":
@@ -313,6 +409,11 @@ if __name__ == "__main__":
         "--name_as_seed",
         action="store_true",
         help="stores the configuration file with the name seed-{seed}.yaml",
+    )
+    parser.add_argument(
+        "--discover",
+        help="Discover subfolders for which to run the normalization as if they were `target`",
+        default=None,
     )
 
     args = parser.parse_args()
