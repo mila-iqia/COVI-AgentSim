@@ -284,7 +284,8 @@ def run(data, path, comparison_key, use_wandb):
                 labels.append(f"{method}_{key}")
 
     # import pdb; pdb.set_trace()
-    for idx, label in enumerate(labels): print(f"{len(pkls[idx])} {label}")
+    for idx, label in enumerate(labels):
+        print(f"{len(pkls[idx])} seeds for {label}")
 
     rows = get_all(pkl_types=pkls, labels=labels, normalized=False)
     lrows = set([r[0] for r in rows])
@@ -354,8 +355,6 @@ def run(data, path, comparison_key, use_wandb):
     method_legend = []
     compare_legend = []
     for idx, method in enumerate(sorted(base_methods)):
-        print("Plotting", method, "...")
-
         current_labels = sorted([lab for lab in labels if lab.startswith(method)])
         current_labels_norm = sorted(
             [lab for lab in labels_norm if lab.startswith(method)]
@@ -390,6 +389,7 @@ def run(data, path, comparison_key, use_wandb):
                 normalized=False,
             )
         for i, lab in enumerate(current_labels_norm):
+            current_marker = markers[i]
             plot_all_metrics(
                 axs,
                 df,
@@ -470,7 +470,7 @@ def run(data, path, comparison_key, use_wandb):
     )
     plt.tight_layout()
     save_path = Path(path) / "pareto_adoption_all_metrics.png"
-    print("Saving Figure {} ...".format(save_path.name))
+    print("Saving Figure {}...".format(save_path.name), end="", flush=True)
     fig.savefig(
         str(save_path),
         dpi=100,
@@ -478,7 +478,6 @@ def run(data, path, comparison_key, use_wandb):
         bbox_inches="tight",
     )
     if use_wandb:
-        print("Uploading to Weights and Biases...")
+        print("Uploading to Weights and Biases...", end="", flush=True)
         wandb.save(str(save_path))
     print("Done.")
-

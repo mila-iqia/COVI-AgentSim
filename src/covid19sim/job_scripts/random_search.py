@@ -11,11 +11,79 @@ import itertools
 from covid19sim.utils.utils import parse_search_configuration
 from collections import defaultdict
 
-SAMPLE_KEYS = {"list", "uniform", "range", "cartesian", "sequential"}
+SAMPLE_KEYS = {"list", "uniform", "range", "cartesian", "sequential", "chain"}
 
 
 class RandomSearchError(Exception):
     pass
+
+
+def get_model(conf):
+    if conf["RISK_MODEL"] == "":
+        if conf.get("DAILY_TARGET_REC_LEVEL_DIST", False):
+            return "unmitigated_normed"
+        return "unmitigated"
+
+    if conf["RISK_MODEL"] == "digital":
+        if conf["TRACING_ORDER"] == 1:
+            if conf.get("DAILY_TARGET_REC_LEVEL_DIST", False):
+                return "binary_digital_tracing_order_1_normed"
+            return "binary_digital_tracing_order_1"
+        elif conf["TRACING_ORDER"] == 2:
+            if conf.get("DAILY_TARGET_REC_LEVEL_DIST", False):
+                return "binary_digital_tracing_order_2_normed"
+            return "binary_digital_tracing_order_2"
+        else:
+            raise ValueError(
+                "Unknown binary digital tracing order: {}".format(conf["TRACING_ORDER"])
+            )
+
+    if conf["RISK_MODEL"] == "transformer":
+        if conf["USE_ORACLE"]:
+            if conf.get("DAILY_TARGET_REC_LEVEL_DIST", False):
+                return "oracle_normed"
+            return "oracle"
+        # FIXME this won't work if the run used the inference server
+        if conf.get("DAILY_TARGET_REC_LEVEL_DIST", False):
+            return "transformer_normed"
+        return "transformer"
+
+    if conf["RISK_MODEL"] == "heuristicv1":
+        if conf.get("DAILY_TARGET_REC_LEVEL_DIST", False):
+            return "heuristicv1_normed"
+        return "heuristicv1"
+
+    if conf["RISK_MODEL"] == "heuristicv2":
+        if conf.get("DAILY_TARGET_REC_LEVEL_DIST", False):
+            return "heuristicv2_normed"
+        return "heuristicv2"
+
+    raise ValueError("Unknown RISK_MODEL {}".format(conf["RISK_MODEL"]))
+
+
+def normalize(opts):
+    if "normalization_folder" not in opts:
+        return opts
+
+    folder = opts["normalization_folder"]
+    run = opts[folder]
+
+    sim_configs = Path(__file__).resolve().parent.parent / "configs" / "simulation"
+    run_yaml = sim_configs / folder / f"{run}.yaml"
+
+    if not run_yaml.exists():
+        raise RandomSearchError(
+            f"Unknown normalized run: \nFolder: {folder}\nFile: {run_yaml.name}"
+        )
+
+    with run_yaml.open("r") as f:
+        run_conf = yaml.safe_load(f)
+
+    opts["tracing_method"] = get_model(run_conf)
+    if "TRANSFORMER_EXP_PATH" in run_conf:
+        weights = Path(run_conf["TRANSFORMER_EXP_PATH"]).name
+        opts["tracing_method"] += f">{weights}"
+    return opts
 
 
 def check_conf(conf):
@@ -120,6 +188,9 @@ def compute_n_search(conf):
     if "sequential" in samples:
         total = max(map(len, [s["from"] for s in samples["sequential"]]))
         return total
+    if "chain" in samples:
+        total = sum(map(len, [s["from"] for s in samples["chain"]]))
+        return total
 
     raise RandomSearchError(
         "Used n_search=-1 without any field being 'cartesian' or 'sequential'"
@@ -169,6 +240,14 @@ def sample_param(sample_dict):
             sample_dict["sample"], sample_dict["from"]
         )
         return "__sequential__"
+
+    if sample_dict["sample"] == "chain":
+        assert isinstance(
+            sample_dict["from"], list
+        ), "{}'s `from` field MUST be a list, found {}".format(
+            sample_dict["sample"], sample_dict["from"]
+        )
+        return "__chain__"
 
     if sample_dict["sample"] == "range":
         return np.random.choice(np.arange(*sample_dict["from"]))
@@ -223,6 +302,29 @@ def sample_cartesians(cartesian_keys, exp, idx):
     return conf
 
 
+def sample_chains(chain_keys, exp, idx):
+    """
+    Returns the `idx`th item in the chain of all chain keys to be sampled.
+
+    Args:
+        chain_keys (list): keys in the experimental configuration that are to be used in the full
+           chain
+        exp (dict): experimental configuration
+        idx (int): index of the current sample
+
+    Returns:
+        dict: sampled point in the cartesian space (with keys = chain_keys)
+    """
+    conf = {}
+    chain_values = [[(key, value) for value in exp[key]["from"]] for key in chain_keys]
+    chain = list(itertools.chain(*chain_values))
+    k, v = chain[idx % len(chain)]
+    conf[k] = v
+    if exp[k].get("normalized"):
+        conf["normalization_folder"] = k
+    return conf
+
+
 def sample_sequentials(sequential_keys, exp, idx):
     """
     Samples sequentially from the "from" values specified in each key of the experimental
@@ -271,16 +373,21 @@ def sample_search_conf(exp, idx=0):
     conf = {}
     cartesians = []
     sequentials = []
+    chains = []
     for k, v in exp.items():
         candidate = sample_param(v)
         if candidate == "__cartesian__":
             cartesians.append(k)
         elif candidate == "__sequential__":
             sequentials.append(k)
+        elif candidate == "__chain__":
+            chains.append(k)
         else:
             conf[k] = candidate
     if sequentials:
         conf.update(sample_sequentials(sequentials, exp, idx))
+    if chains:
+        conf.update(sample_chains(chains, exp, idx))
     if cartesians:
         conf.update(sample_cartesians(cartesians, exp, idx))
     return conf
@@ -378,7 +485,7 @@ def fill_mila_template(template_str, conf):
     code_loc = conf.get("code_loc", str(Path(home) / "simulator/src/covid19sim/"))
     ipc = conf.get("ipc", {"frontend": "", "backend": ""})
 
-    use_transformer = str(conf.get("use_transformer", True)).lower()
+    use_transformer = conf.get("use_transformer", True)
     workers = cpu - 1
     if "%j.out" not in slurm_log:
         slurm_log = str(Path(slurm_log).resolve() / "covi-slurm-%j.out")
@@ -454,9 +561,9 @@ def fill_beluga_template(template_str, conf):
     user = os.environ.get("USER")
     home = os.environ.get("HOME")
 
-    cpu = conf.get("cpus", 6)
-    mem = conf.get("mem", 16)
-    time = str(conf.get("time", "3:00:00"))
+    cpu = conf.get("cpus", 4)
+    mem = conf.get("mem", 12)
+    time = str(conf.get("time", "2:50:00"))
     slurm_log = conf.get(
         "slurm_log", conf.get("base_dir", f"/scratch/{user}/covi-slurm-%j.out")
     )
@@ -579,6 +686,7 @@ def main(conf: DictConfig) -> None:
         "test_capacity",  # change TEST_TYPES.lab.capacity to that value
         "weights_dir",  # where are the weights
         "base_dir",  # output dir will be base_dir/tracing_method
+        "normalization_folder",  # if this is a normalization run, the name of the normalization folder
     }
 
     # move back to original directory because hydra moved
@@ -663,9 +771,11 @@ def main(conf: DictConfig) -> None:
         for k in range(conf.get("n_runs_per_search", 1)):
 
             opts = sample_search_conf(conf, run_idx)
+            opts = normalize(opts)
+            run_idx += 1
             # specify server frontend
 
-            use_transformer = opts["tracing_method"].split(">")[0].strip() in {
+            use_transformer = opts.get("tracing_method", "").split(">")[0].strip() in {
                 "oracle",
                 "transformer",
             }
@@ -695,7 +805,7 @@ def main(conf: DictConfig) -> None:
 
             if not opts.get("outdir"):
                 extension = ""
-                if opts["tracing_method"] == "transformer":
+                if opts.get("tracing_method") == "transformer":
                     extension = Path(opts["weights"]).name
                 opts["outdir"] = str(
                     Path(opts["base_dir"]) / (opts["tracing_method"] + extension)
@@ -711,7 +821,10 @@ def main(conf: DictConfig) -> None:
                 opts["INTERVENTION_DAY"] = -1
 
             # convert params to string command-line args
-            hydra_args = get_hydra_args(opts, RANDOM_SEARCH_SPECIFIC_PARAMS)
+            exclude = RANDOM_SEARCH_SPECIFIC_PARAMS
+            if opts.get("normalization_folder"):
+                exclude.add("tracing_method")
+            hydra_args = get_hydra_args(opts, exclude)
             if opts.get("test_capacity") is not None:
                 hydra_args += f" TEST_TYPES.lab.capacity={opts.get('test_capacity')}"
 
@@ -731,7 +844,6 @@ def main(conf: DictConfig) -> None:
 
             # append run command
             job_str += "\n{}{}".format("python run.py" + hydra_args, command_suffix)
-            run_idx += 1
             # sample next params
 
         # output in slurm_tmpdir and move zips to original outdir specified
@@ -765,7 +877,7 @@ def main(conf: DictConfig) -> None:
             _ = subprocess.call(command.split(), cwd=home)
             print("In", opts["outdir"])
             print("With Sampled Params:")
-            print(sampled_str.format(**{k: opts[k] for k in sampled_keys}))
+            print(sampled_str.format(**{k: opts.get(k) for k in sampled_keys}))
 
         # prints
         print()

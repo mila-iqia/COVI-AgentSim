@@ -50,7 +50,7 @@ def statistics(pkl_data, times, mode):
             past_day = day + time
             if past_day < 0:
                 continue
-            if human_day2infectious.get((human, past_day), False) == True:
+            if human_day2infectious.get((human, past_day), False) is True:
                 if mode == "risk":
                     r = human_day2risk_level[(human, past_day)]
                 if mode == "rec":
@@ -74,7 +74,8 @@ def run(data, path, comparison_key, use_wandb, times=[-1, -2, -3], mode=None):
     # Options:
     # 1. "times" is a list, indicating the times we are interested in.
     # For example, [-1, -2, -3] means we want to get the plot for Day-1, Day-2, Day-3.
-    # 2. "mode" is a string, which can be either 'risk' or 'rec' if None, it will be both.
+    # 2. "mode" is a string, which can be either 'risk' or 'rec' if None,
+    # it will be both.
     if mode in {"rec", "risk"}:
         modes = [mode]
     elif mode is None:
@@ -117,14 +118,13 @@ def run(data, path, comparison_key, use_wandb, times=[-1, -2, -3], mode=None):
 
                 for i, adoption in enumerate(data[method].keys()):
 
-                    label = label2pkls[i+j][0]
-                    result = results[i+j]
+                    label = label2pkls[i + j][0]
+                    result = results[i + j]
 
                     # change the font size
-                    font = {'family': 'DejaVu Sans',
-                            'size': 18}
-                    matplotlib.rc('font', **font)
-                    plt.rcParams['axes.labelsize'] = 18
+                    font = {"family": "DejaVu Sans", "size": 18}
+                    matplotlib.rc("font", **font)
+                    plt.rcParams["axes.labelsize"] = 18
 
                     if mode == "risk":
                         length = 16
@@ -158,15 +158,18 @@ def run(data, path, comparison_key, use_wandb, times=[-1, -2, -3], mode=None):
                         color="darkorange",
                         label="Day{}".format(time),
                     )
-                    axs[0].set_title(f"Presymptomatic Rec Levels (Adoption: {float(label)*100}%)", y=1.06)
+                    axs[0].set_title(
+                        f"Presymptomatic Rec Levels (Adoption: {float(label)*100}%)",
+                        y=1.06,
+                    )
                     axs[0].set_xlabel(xlabel)
-                    axs[0].set_ylabel("% Population", size='medium')
+                    axs[0].set_ylabel("% Population", size="medium")
                     axs[0].set_xticks(list(range(length)))
                     axs[0].set_xticklabels(xticklabels)
                     axs[0].set_ylim(0, 1)
                     axs[0].set_yticks(list(range(0, 5)))
                     axs[0].set_yticklabels(["0", "20", "40", "60", "80", "100"])
-                    axs[0].plot([0, length - 1], [0, 0], color="b", linewidth=1.)
+                    axs[0].plot([0, length - 1], [0, 0], color="b", linewidth=1.0)
 
                     axs[1].bar(
                         list(range(length)),
@@ -174,15 +177,18 @@ def run(data, path, comparison_key, use_wandb, times=[-1, -2, -3], mode=None):
                         color="darkorange",
                         label="Day{}".format(time),
                     )
-                    axs[1].set_title(f"Susceptible Rec Levels (Adoption Rate: {float(label)*100}%)", y=1.06)
+                    axs[1].set_title(
+                        f"Susceptible Rec Levels (Adoption Rate: {float(label)*100}%)",
+                        y=1.06,
+                    )
                     axs[1].set_xlabel(xlabel)
-                    axs[1].set_ylabel("% Population", size='medium')
+                    axs[1].set_ylabel("% Population", size="medium")
                     axs[1].set_xticks(list(range(length)))
                     axs[1].set_xticklabels(xticklabels)
                     axs[1].set_ylim(0, 1)
                     axs[0].set_yticks(list(range(0, 5)))
                     axs[0].set_yticklabels(["0", "20", "40", "60", "80", "100"])
-                    axs[1].plot([0, length - 1], [0, 0], color="b", linewidth=1.)
+                    axs[1].plot([0, length - 1], [0, 0], color="b", linewidth=1.0)
 
                     axs[2].bar(
                         list(range(length)),
@@ -190,27 +196,34 @@ def run(data, path, comparison_key, use_wandb, times=[-1, -2, -3], mode=None):
                         color="darkorange",
                         label="Day{}".format(time),
                     )
-                    axs[2].set_title(f"Delta Rec Levels (Adoption Rate: {float(label)*100}%)", y=1.06)
+                    axs[2].set_title(
+                        f"Delta Rec Levels (Adoption Rate: {float(label)*100}%)", y=1.06
+                    )
                     axs[2].set_xlabel(xlabel)
-                    axs[2].set_ylabel("% Population", size='medium')
+                    axs[2].set_ylabel("% Population", size="medium")
                     axs[2].set_xticks(list(range(length)))
                     axs[2].set_xticklabels(xticklabels)
                     axs[2].set_ylim(-1, 1)
                     # axs[0].set_yticks(list(range(0, 5)))
                     # axs[0].set_yticklabels(["0", "20", "40", "60", "80", "100"])
-                    axs[2].plot([0, length - 1], [0, 0], color="b", linewidth=1.)
+                    axs[2].plot([0, length - 1], [0, 0], color="b", linewidth=1.0)
 
                     plt.subplots_adjust(
-                         wspace=0.5, hspace=0.3 # left=0.05, bottom=0.05, right=0.99, top=0.95,
+                        wspace=0.5,
+                        hspace=0.3,  # left=0.05, bottom=0.05, right=0.99, top=0.95,
                     )
-                    dir_path = path / "presymptomatic" / f"statistics_day{time}" / f"adoption_{label}"
+                    dir_path = (
+                        path
+                        / "presymptomatic"
+                        / f"statistics_day{time}"
+                        / f"adoption_{label}"
+                    )
                     fig_path = dir_path / f"{method}_{mode}.png"
-                    print(
-                        "Saving Figure", str(fig_path)
-                    )
+                    print(f"Saving Figure {str(fig_path)}...", end="", flush=True)
                     os.makedirs(dir_path, exist_ok=True)
                     plt.savefig(fig_path)
+                    plt.close("all")
                     if use_wandb:
-                        print("Uploading to Weights and Biases...")
+                        print("Uploading to Weights and Biases...", end="", flush=True)
                         wandb.log({str(fig_path): wandb.Image(str(fig_path))})
                     print("Done.")
