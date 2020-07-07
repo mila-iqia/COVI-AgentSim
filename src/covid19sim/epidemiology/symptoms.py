@@ -103,6 +103,42 @@ def _get_covid_fatigue_probability(phase_idx: int, age: int, initial_viral_load:
     # TODO: Make sure that it ok to have a p_lethargy >= to 1.
     return min(p_lethargy, 1.0)
 
+
+def _get_covid_trouble_breathing_probability(phase_idx: int, age: int, initial_viral_load: float,
+                                             carefulness: float, preexisting_conditions: list):
+    # covid_onset phase
+    if phase_idx == 1:
+        # respiratory symptoms not so common at this stage
+        # e.g. 0.5*0.5 - 0.7*0.25 = 0.25-0.17
+        p_respiratory = 0.5 * initial_viral_load - carefulness * 0.25
+    # covid_plateau phase
+    elif phase_idx == 2:
+        # respiratory symptoms more common at this stage
+        # e.g. 2* (0.5 - 0.7*0.25) = 2*(0.5-0.17)
+        p_respiratory = 2 * (initial_viral_load - carefulness * 0.25)
+    # covid_post_plateau_1 phase
+    elif phase_idx == 3:
+        # respiratory symptoms more common at this stage but less than plateau
+        # The comment was modified to be consistent with the code
+        # e.g. (0.5 - 0.7*0.25) = (0.5-0.17)
+        p_respiratory = initial_viral_load - carefulness * 0.25
+    # covid_post_plateau_2 phase
+    elif phase_idx == 4:
+        # respiratory symptoms getting less common
+        # The comment was modified to be consistent with the code
+        # e.g. 0.5* (0.5 - 0.7*0.25) = 0.5*(0.5-0.17)
+        p_respiratory = 0.5 * (initial_viral_load - carefulness * 0.25)
+    else:
+        p_respiratory = 0.
+
+    if 'smoker' in preexisting_conditions or 'lung_disease' in preexisting_conditions:
+        # e.g. 0.1 * 4 * 45/200 = 0.4 + 0.225
+        p_respiratory = (p_respiratory * 4.) + age/200
+
+    # TODO: Make sure that it ok to have a p_respiratory >= to 1.
+    return min(p_respiratory, 1.0)
+
+
 SYMPTOMS = OrderedDict([
     # Sickness severity
     # A lot of symptoms are dependent on the sickness severity so severity
@@ -540,10 +576,11 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
             if rand < SYMPTOMS[symptom].probabilities[phase]:
                 symptoms_per_phase[phase_i].append(symptom)
 
-    # respiratory symptoms not so common at this stage
-    p_respiratory = (0.5 * initial_viral_load) - (carefulness * 0.25) # e.g. 0.5*0.5 - 0.7*0.25 = 0.25-0.17
-    if 'smoker' in preexisting_conditions or 'lung_disease' in preexisting_conditions:
-        p_respiratory = (p_respiratory * 4) + age/200  # e.g. 0.1 * 4 * 45/200 = 0.4 + 0.225
+    p_respiratory = _get_covid_trouble_breathing_probability(phase_i,
+                                                             age,
+                                                             initial_viral_load,
+                                                             carefulness,
+                                                             preexisting_conditions)
     if rng.rand() < p_respiratory:
         symptoms_per_phase[phase_i].append('trouble_breathing')
 
@@ -616,10 +653,11 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
             if rand < SYMPTOMS[symptom].probabilities[phase]:
                 symptoms_per_phase[phase_i].append(symptom)
 
-    # respiratory symptoms more common at this stage
-    p_respiratory = 2*(initial_viral_load - (carefulness * 0.25)) # e.g. 2* (0.5 - 0.7*0.25) = 2*(0.5-0.17)
-    if 'smoker' in preexisting_conditions or 'lung_disease' in preexisting_conditions:
-        p_respiratory = (p_respiratory * 4) + age/200  # e.g. 0.1 * 4 * 45/200 = 0.4 + 0.225
+    p_respiratory = _get_covid_trouble_breathing_probability(phase_i,
+                                                             age,
+                                                             initial_viral_load,
+                                                             carefulness,
+                                                             preexisting_conditions)
     if rng.rand() < p_respiratory:
         symptoms_per_phase[phase_i].append('trouble_breathing')
 
@@ -680,10 +718,11 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
             if rand < SYMPTOMS[symptom].probabilities[phase]:
                 symptoms_per_phase[phase_i].append(symptom)
 
-    # respiratory symptoms more common at this stage but less than plateau
-    p_respiratory = (initial_viral_load - (carefulness * 0.25)) # e.g. 2* (0.5 - 0.7*0.25) = 2*(0.5-0.17)
-    if 'smoker' in preexisting_conditions or 'lung_disease' in preexisting_conditions:
-        p_respiratory = (p_respiratory * 4) + age/200  # e.g. 0.1 * 4 * 45/200 = 0.4 + 0.225
+    p_respiratory = _get_covid_trouble_breathing_probability(phase_i,
+                                                             age,
+                                                             initial_viral_load,
+                                                             carefulness,
+                                                             preexisting_conditions)
     if rng.rand() < p_respiratory:
         symptoms_per_phase[phase_i].append('trouble_breathing')
 
@@ -740,10 +779,11 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
             if rand < SYMPTOMS[symptom].probabilities[phase]:
                 symptoms_per_phase[phase_i].append(symptom)
 
-    # respiratory symptoms getting less common
-    p_respiratory = 0.5 * (initial_viral_load - (carefulness * 0.25)) # e.g. (0.5 - 0.7*0.25) = 0.5*(0.5-0.17)
-    if 'smoker' in preexisting_conditions or 'lung_disease' in preexisting_conditions:
-        p_respiratory = (p_respiratory * 4) + age/200  # e.g. 0.1 * 4 * 45/200 = 0.4 + 0.225
+    p_respiratory = _get_covid_trouble_breathing_probability(phase_i,
+                                                             age,
+                                                             initial_viral_load,
+                                                             carefulness,
+                                                             preexisting_conditions)
     if rng.rand() < p_respiratory:
         symptoms_per_phase[phase_i].append('trouble_breathing')
 
