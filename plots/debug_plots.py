@@ -54,10 +54,11 @@ class DebugDataLoader():
             # Nb of timestamps = nb of files (1 file per timestamp)
             self.nb_timestamps = len(zip_files)
 
-            # Read any file to get humans names
+            # Read any file to get humans names and config
             day_debug_data = pickle.loads(zf.read(zip_files[0]))
             human_names = list(day_debug_data["human_backups"].keys())
             self.human_names = sorted(human_names, key=lambda x: int(x.split(":")[1]))
+            self.conf = day_debug_data["conf"]
 
     def get_nb_humans(self):
         return len(self.human_names)
@@ -106,6 +107,10 @@ class DebugDataLoader():
                 # Extract backups for specified humans
                 for human_name in self.get_humans_names()[start_idx:end_idx]:
                     human_backups[timestamp][human_name] = day_debug_data["human_backups"][human_name]
+
+                    # Human backups were saved without their own copy of the config for space reasons.
+                    # This attribute must be restored or else some methods of the Human object won't work.
+                    human_backups[timestamp][human_name].conf = self.conf
 
                 # Extract human event data
                 for human in human_backups[timestamp].values():
