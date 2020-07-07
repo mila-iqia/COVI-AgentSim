@@ -69,6 +69,8 @@ def main(conf: DictConfig):
     if conf['COLLECT_TRAINING_DATA']:
         collection_server = DataCollectionServer(
             data_output_path=os.path.join(conf["outdir"], "train.hdf5"),
+            human_count=conf["n_people"],
+            simulation_days=conf["simulation_days"],
             config_backup=conf,
         )
         collection_server.start()

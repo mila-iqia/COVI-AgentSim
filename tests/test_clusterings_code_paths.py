@@ -46,6 +46,8 @@ class ClusteringCodePaths(unittest.TestCase):
                     collection_server = DataCollectionServer(
                         data_output_path=hdf5file,
                         config_backup=self.config,
+                        human_count=self.n_people,
+                        simulation_days=self.simulation_days,
                     )
                     collection_server.start()
                     monitors, _ = simulate(

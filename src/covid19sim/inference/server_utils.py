@@ -430,7 +430,8 @@ class DataCollectionWorker(BaseWorker):
             self,
             data_output_path: typing.AnyStr,
             backend_address: typing.AnyStr,
-            dataset_init_size: int = 4096,
+            human_count: int,
+            simulation_days: int,
             dataset_max_size: typing.Optional[int] = None,
             compression: typing.Optional[typing.AnyStr] = "lzf",
             compression_opts: typing.Optional[typing.Any] = None,
@@ -445,7 +446,8 @@ class DataCollectionWorker(BaseWorker):
         """
         super().__init__(backend_address=backend_address, identifier="data-collector")
         self.data_output_path = data_output_path
-        self.dataset_init_size = dataset_init_size
+        self.human_count = human_count
+        self.simulation_days = simulation_days
         self.dataset_max_size = dataset_max_size
         self.compression = compression
         self.compression_opts = compression_opts
@@ -478,8 +480,8 @@ class DataCollectionWorker(BaseWorker):
             fd.attrs["config"] = config_backup
             dataset = fd.create_dataset(
                 "dataset",
-                shape=(self.dataset_init_size, ),
-                maxshape=(self.dataset_max_size, ),
+                shape=(self.simulation_days, 24, self.human_count, ),
+                maxshape=(self.simulation_days, 24, self.human_count, ),
                 dtype=h5py.special_dtype(vlen=np.uint8),
                 compression=self.compression,
                 compression_opts=self.compression_opts,
@@ -497,9 +499,8 @@ class DataCollectionWorker(BaseWorker):
                 except zmq.error.Again:
                     continue
                 proc_start_time = time.time()
-                if sample_idx >= len(dataset):
-                    dataset.resize(len(dataset) * 4, axis=0)
-                dataset[sample_idx] = np.frombuffer(buffer, dtype=np.uint8)
+                day_idx, hour_idx, human_idx, buffer = pickle.loads(buffer)
+                dataset[day_idx, hour_idx, human_idx] = np.frombuffer(buffer, dtype=np.uint8)
                 total_dataset_bytes += len(buffer)
                 socket.send(str(sample_idx).encode())
                 sample_idx += 1
@@ -509,6 +510,7 @@ class DataCollectionWorker(BaseWorker):
                     self.packet_counter.value += 1
             self.running_flag.value = 0
             socket.close()
+            dataset.attrs["total_samples"] = sample_idx
             dataset.attrs["total_bytes"] = total_dataset_bytes
 
 
@@ -518,6 +520,8 @@ class DataCollectionBroker(BaseBroker):
     def __init__(
             self,
             data_output_path: typing.AnyStr,
+            human_count: int,
+            simulation_days: int,
             data_buffer_size: int = default_data_buffer_size,  # NOTE: in bytes!
             frontend_address: typing.AnyStr = default_datacollect_frontend_address,
             backend_address: typing.AnyStr = default_datacollect_backend_address,
@@ -544,6 +548,8 @@ class DataCollectionBroker(BaseBroker):
             verbose_print_delay=verbose_print_delay,
         )
         self.data_output_path = data_output_path
+        self.human_count = human_count
+        self.simulation_days = simulation_days
         self.data_buffer_size = data_buffer_size
         self.config_backup = config_backup
 
@@ -566,6 +572,8 @@ class DataCollectionBroker(BaseBroker):
         worker = DataCollectionWorker(
             data_output_path=self.data_output_path,
             backend_address=worker_backend_address,
+            human_count=self.human_count,
+            simulation_days=self.simulation_days,
             config_backup=self.config_backup,
         )
         worker.start()
@@ -646,9 +654,9 @@ class DataCollectionClient:
             server_address = default_datacollect_frontend_address
         self.socket.connect(server_address)
 
-    def write(self, sample):
+    def write(self, day_idx, hour_idx, human_idx, sample):
         """Forwards a data sample for the data writer using pickle."""
-        self.socket.send_pyobj(sample)
+        self.socket.send_pyobj((day_idx, hour_idx, human_idx, pickle.dumps(sample)))
 
     def request_reset(self):
         self.socket.send(b"RESET")
@@ -795,7 +803,8 @@ def _proc_human(params, inference_engine):
         data_collect_client = DataCollectionClient(
             server_address=conf.get("data_collection_server_address", default_datacollect_frontend_address),
         )
-        data_collect_client.write(daily_output)
+        human_id = int(human.name.split(":")[-1])
+        data_collect_client.write(params["current_day"], params["time_slot"], human_id, daily_output)
     inference_result, risk_history = None, None
     if conf.get("USE_ORACLE"):
         # return ground truth infectiousnesses
