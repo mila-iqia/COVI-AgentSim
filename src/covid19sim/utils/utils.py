@@ -4,16 +4,17 @@
 import copy
 import dataclasses
 import datetime
+import functools
+import gc
 import math
 import os
 import pathlib
 import subprocess
 import sys
 import textwrap
+import types
 import typing
 import zipfile
-from copy import deepcopy
-from functools import lru_cache
 from orderedset import OrderedSet
 from pathlib import Path
 import time
@@ -25,6 +26,8 @@ from omegaconf import DictConfig, OmegaConf
 from scipy.stats import norm
 
 from covid19sim.epidemiology.symptoms import STR_TO_SYMPTOMS
+if typing.TYPE_CHECKING:
+    from covid19sim.human import Human
 
 
 def log(str, logfile=None, timestamp=False):
@@ -119,7 +122,7 @@ def compute_distance(loc1, loc2):
     return np.sqrt((loc1.lat - loc2.lat) ** 2 + (loc1.lon - loc2.lon) ** 2)
 
 
-@lru_cache(500)
+@functools.lru_cache(500)
 def _get_integer_pdf(avg, scale, num_sigmas=2):
     """
     [summary]
@@ -235,6 +238,7 @@ def filter_open(locations):
         list
     """
     return [loc for loc in locations if loc.is_open_for_business]
+
 
 def filter_queue_max(locations, max_len):
     """Given an iterable of locations, will return a list of those
@@ -504,7 +508,7 @@ def dumps_conf(
         conf (dict): configuration dictionary to be written in a file
     """
 
-    copy_conf = deepcopy(conf)
+    copy_conf = copy.deepcopy(conf)
 
     if "AGE_GROUP_CONTACT_AVG" in copy_conf:
         copy_conf['AGE_GROUP_CONTACT_AVG']['age_groups'] = \
@@ -789,3 +793,22 @@ def get_approx_object_size_tree(obj, tree=None, seen_obj_ids=None):
             tree[obj_name][None] += tree[obj_name][f"#{idx}"][None]
     tree[None] += tree[obj_name][None]
     return tree
+
+
+def get_approx_object_size(obj):
+    """Returns the approximate size of an object and its children."""
+    blacklisted_types = (type, types.ModuleType, types.FunctionType)
+    if isinstance(obj, blacklisted_types):
+        raise TypeError('getsize() does not take argument of type: ' + str(type(obj)))
+    seen_ids = set()
+    size = 0
+    objects = [obj]
+    while objects:
+        need_referents = []
+        for obj in objects:
+            if not isinstance(obj, blacklisted_types) and id(obj) not in seen_ids:
+                seen_ids.add(id(obj))
+                size += sys.getsizeof(obj)
+                need_referents.append(obj)
+        objects = gc.get_referents(*need_referents)
+    return size
