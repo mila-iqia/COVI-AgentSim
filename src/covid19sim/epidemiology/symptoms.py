@@ -70,6 +70,39 @@ def _get_covid_gastro_probability(phase_idx: int, initial_viral_load: float):
     return p_gastro
 
 
+def _get_covid_fatigue_probability(phase_idx: int, age: int, initial_viral_load: float,
+                                   carefulness: float):
+    # fatigue and unusual symptoms are more heavily age-related
+    # but more likely later, and less if you're careful/taking care
+    # of yourself
+    p_lethargy = age / 200 + initial_viral_load * 0.6 - carefulness / 2
+    # covid_onset phase
+    if phase_idx == 1:
+        pass
+    # covid_plateau phase
+    elif phase_idx == 2:
+        # if you had gastro symptoms before you are more likely to be lethargic now
+        # initial_viral_load - .15 is the same probaility than p_gastro
+        # (previous code version was using p_gastro)
+        p_lethargy = p_lethargy + initial_viral_load - 0.15
+    # covid_post_plateau_1 phase
+    elif phase_idx == 3:
+        # if you had gastro symptoms before you are more likely to be lethargic now
+        # initial_viral_load - .15 is the same probaility than p_gastro
+        # (previous code version was using p_gastro)
+        p_lethargy = p_lethargy * 1.5 + initial_viral_load - 0.15
+    # covid_post_plateau_2 phase
+    elif phase_idx == 4:
+        # if you had gastro symptoms before you are more likely to be lethargic now
+        # initial_viral_load - .15 is the same probaility than p_gastro
+        # (previous code version was using p_gastro)
+        p_lethargy = p_lethargy * 2. + initial_viral_load - 0.15
+    else:
+        p_lethargy = 0.
+
+    # TODO: Make sure that it ok to have a p_lethargy >= to 1.
+    return min(p_lethargy, 1.0)
+
 SYMPTOMS = OrderedDict([
     # Sickness severity
     # A lot of symptoms are dependent on the sickness severity so severity
@@ -489,10 +522,10 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
             if rand < SYMPTOMS[symptom].probabilities[phase]:
                 symptoms_per_phase[phase_i].append(symptom)
 
-    # fatigue and unusual symptoms are more heavily age-related
-    # but more likely later, and less if you're careful/taking care
-    # of yourself
-    p_lethargy = (age/200) + initial_viral_load*0.6 - carefulness/2
+    p_lethargy = _get_covid_fatigue_probability(phase_i,
+                                                age,
+                                                initial_viral_load,
+                                                carefulness)
     if rng.rand() < p_lethargy:
         symptoms_per_phase[phase_i].append('fatigue')
 
@@ -565,10 +598,11 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
             if rand < SYMPTOMS[symptom].probabilities[phase]:
                 symptoms_per_phase[phase_i].append(symptom)
 
-    # fatigue and unusual symptoms are more heavily age-related
-    # but more likely later, and less if you're careful/taking care
-    # of yourself
-    if rng.rand() < (p_lethargy + initial_viral_load - 0.15): #if you had gastro symptoms before more likely to be lethargic now
+    p_lethargy = _get_covid_fatigue_probability(phase_i,
+                                                age,
+                                                initial_viral_load,
+                                                carefulness)
+    if rng.rand() < p_lethargy:
         symptoms_per_phase[phase_i].append('fatigue')
 
         if age > 75 and rng.rand() < SYMPTOMS['unusual'].probabilities[phase]:
@@ -628,10 +662,11 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
             if rand < SYMPTOMS[symptom].probabilities[phase]:
                 symptoms_per_phase[phase_i].append(symptom)
 
-    # fatigue and unusual symptoms are more heavily age-related
-    # but more likely later, and less if you're careful/taking care
-    # of yourself
-    if rng.rand() < (p_lethargy*1.5 + initial_viral_load - 0.15): #if you had gastro symptoms before more likely to be lethargic now
+    p_lethargy = _get_covid_fatigue_probability(phase_i,
+                                                age,
+                                                initial_viral_load,
+                                                carefulness)
+    if rng.rand() < p_lethargy:
         symptoms_per_phase[phase_i].append('fatigue')
 
         if age > 75 and rng.rand() < SYMPTOMS['unusual'].probabilities[phase]:
@@ -687,10 +722,11 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
             if rand < SYMPTOMS[symptom].probabilities[phase]:
                 symptoms_per_phase[phase_i].append(symptom)
 
-    # fatigue and unusual symptoms are more heavily age-related
-    # but more likely later, and less if you're careful/taking care
-    # of yourself
-    if rng.rand() < (p_lethargy*2 + initial_viral_load - 0.15): #if you had gastro symptoms before more likely to be lethargic now
+    p_lethargy = _get_covid_fatigue_probability(phase_i,
+                                                age,
+                                                initial_viral_load,
+                                                carefulness)
+    if rng.rand() < p_lethargy:
         symptoms_per_phase[phase_i].append('fatigue')
 
         if age > 75 and rng.rand() < SYMPTOMS['unusual'].probabilities[phase]:
