@@ -1319,22 +1319,6 @@ class Tracker(object):
         with open(f"logs3/{self.filename}", 'wb') as f:
             dill.dump(data, f)
 
-    def dump_backup_objects(
-            self,
-            human_backups,
-            location_backups,
-            current_timestamp,
-    ):
-        data = self._get_metrics_data()
-        data["conf"] = self.city.conf
-        data["human_backups"] = human_backups
-        # Location based plots are not yet implemented
-        # data["location_backups"] = location_backups
-        dump_folder = os.path.join("debug", self.filename.split(".pkl")[0])
-        os.makedirs(dump_folder, exist_ok=True)
-        with open(os.path.join(dump_folder, current_timestamp.isoformat()), "wb") as f:
-            dill.dump(data, f)
-
     def write_for_training(self, humans, outfile, conf):
         """ Writes some data out for the ML predictor """
         data = dict()
