@@ -50,6 +50,26 @@ def _get_covid_fever_probability(phase_idx: int, really_sick: bool, extremely_si
     return p_fever
 
 
+def _get_covid_gastro_probability(phase_idx: int, initial_viral_load: float):
+    # gastro symptoms are more likely to be earlier
+    p_gastro = initial_viral_load - 0.15
+    # covid_onset phase
+    if phase_idx == 1:
+        pass
+    # covid_plateau phase
+    elif phase_idx == 2:
+        p_gastro *= 0.25
+    # covid_post_plateau_1 phase
+    elif phase_idx == 3:
+        p_gastro *= 0.1
+    # covid_post_plateau_2 phase
+    elif phase_idx == 4:
+        p_gastro *= 0.1
+    else:
+        p_gastro = 0.
+    return p_gastro
+
+
 SYMPTOMS = OrderedDict([
     # Sickness severity
     # A lot of symptoms are dependent on the sickness severity so severity
@@ -458,9 +478,9 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
         if extremely_sick and rng.rand() < 0.8:
             symptoms_per_phase[phase_i].append('chills')
 
-    # gastro symptoms are more likely to be earlier and are more
-    # likely to show extreme symptoms later
-    p_gastro = initial_viral_load - .15
+    # gastro symptoms are more likely to show extreme symptoms later
+    p_gastro = _get_covid_gastro_probability(phase_i,
+                                             initial_viral_load)
     if rng.rand() < p_gastro:
         symptoms_per_phase[phase_i].append('gastro')
 
@@ -534,10 +554,10 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
         if rng.rand() < SYMPTOMS['chills'].probabilities[phase]:
             symptoms_per_phase[phase_i].append('chills')
 
-
-    # gastro symptoms are more likely to be earlier and are more
-    # likely to show extreme symptoms later (p gastro reduced compared to part1)
-    if 'gastro' in symptoms_per_phase[phase_i-1] or rng.rand() < p_gastro *.25:
+    # gastro symptoms are more likely to show extreme symptoms later
+    p_gastro = _get_covid_gastro_probability(phase_i,
+                                             initial_viral_load)
+    if 'gastro' in symptoms_per_phase[phase_i-1] or rng.rand() < p_gastro:
         symptoms_per_phase[phase_i].append('gastro')
 
         for symptom in ('diarrhea', 'nausea_vomiting'):
@@ -548,7 +568,7 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
     # fatigue and unusual symptoms are more heavily age-related
     # but more likely later, and less if you're careful/taking care
     # of yourself
-    if rng.rand() < (p_lethargy + p_gastro): #if you had gastro symptoms before more likely to be lethargic now
+    if rng.rand() < (p_lethargy + initial_viral_load - 0.15): #if you had gastro symptoms before more likely to be lethargic now
         symptoms_per_phase[phase_i].append('fatigue')
 
         if age > 75 and rng.rand() < SYMPTOMS['unusual'].probabilities[phase]:
@@ -597,9 +617,10 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
 
     symptoms_per_phase[phase_i].append(sickness_severity)
 
-    # gastro symptoms are more likely to be earlier and are more
-    # likely to show extreme symptoms later (p gastro reduced compared to part1)
-    if 'gastro' in symptoms_per_phase[phase_i-1] or rng.rand() < p_gastro *.1:
+    # gastro symptoms are more likely to show extreme symptoms later
+    p_gastro = _get_covid_gastro_probability(phase_i,
+                                             initial_viral_load)
+    if 'gastro' in symptoms_per_phase[phase_i-1] or rng.rand() < p_gastro:
         symptoms_per_phase[phase_i].append('gastro')
 
         for symptom in ('diarrhea', 'nausea_vomiting'):
@@ -610,7 +631,7 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
     # fatigue and unusual symptoms are more heavily age-related
     # but more likely later, and less if you're careful/taking care
     # of yourself
-    if rng.rand() < (p_lethargy*1.5 + p_gastro): #if you had gastro symptoms before more likely to be lethargic now
+    if rng.rand() < (p_lethargy*1.5 + initial_viral_load - 0.15): #if you had gastro symptoms before more likely to be lethargic now
         symptoms_per_phase[phase_i].append('fatigue')
 
         if age > 75 and rng.rand() < SYMPTOMS['unusual'].probabilities[phase]:
@@ -655,9 +676,10 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
 
     symptoms_per_phase[phase_i].append(sickness_severity)
 
-    # gastro symptoms are more likely to be earlier and are more
-    # likely to show extreme symptoms later (p gastro reduced compared to part1)
-    if 'gastro' in symptoms_per_phase[phase_i-1] or rng.rand() < p_gastro *.1:
+    # gastro symptoms are more likely to show extreme symptoms later
+    p_gastro = _get_covid_gastro_probability(phase_i,
+                                             initial_viral_load)
+    if 'gastro' in symptoms_per_phase[phase_i-1] or rng.rand() < p_gastro:
         symptoms_per_phase[phase_i].append('gastro')
 
         for symptom in ('diarrhea', 'nausea_vomiting'):
@@ -668,7 +690,7 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
     # fatigue and unusual symptoms are more heavily age-related
     # but more likely later, and less if you're careful/taking care
     # of yourself
-    if rng.rand() < (p_lethargy*2 + p_gastro): #if you had gastro symptoms before more likely to be lethargic now
+    if rng.rand() < (p_lethargy*2 + initial_viral_load - 0.15): #if you had gastro symptoms before more likely to be lethargic now
         symptoms_per_phase[phase_i].append('fatigue')
 
         if age > 75 and rng.rand() < SYMPTOMS['unusual'].probabilities[phase]:
