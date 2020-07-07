@@ -1307,6 +1307,7 @@ class Tracker(object):
             current_timestamp,
     ):
         data = self._get_metrics_data()
+        data["conf"] = self.city.conf
         data["human_backups"] = human_backups
         # Location based plots are not yet implemented
         # data["location_backups"] = location_backups
