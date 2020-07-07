@@ -691,9 +691,17 @@ class DummyHuman:
         ]
         for attr_name in self.blacklisted_attribs:
             setattr(self, attr_name, None)
-        # all other attributes will be copies as-is
+        # all other attributes will be copied as-is
         for attr_name in human.__dict__.keys():
-            if attr_name not in self.dummy_attribs and attr_name not in self.blacklisted_attribs:
+            if attr_name not in self.dummy_attribs and \
+                    attr_name not in self.blacklisted_attribs and \
+                    not attr_name.startswith("__"):
+                setattr(self, attr_name, getattr(human, attr_name))
+        from covid19sim.native._native import BaseHuman
+        for attr_name in BaseHuman.__dict__.keys():
+            if attr_name not in self.dummy_attribs and \
+                    attr_name not in self.blacklisted_attribs and \
+                    not attr_name.startswith("__"):
                 setattr(self, attr_name, getattr(human, attr_name))
 
 
