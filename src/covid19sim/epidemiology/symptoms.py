@@ -34,6 +34,22 @@ DISEASES_PHASES = {'covid': {0: 'covid_incubation', 1: 'covid_onset', 2: 'covid_
                    'cold': {0: 'cold', 1: 'cold_last_day'},
                    'flu': {0: 'flu_first_day', 1: 'flu', 2: 'flu_last_day'}}
 
+
+def _get_covid_fever_probability(phase_idx: int, really_sick: bool, extremely_sick: bool,
+                                 preexisting_conditions: list, initial_viral_load: float):
+    phase = DISEASES_PHASES['covid'][phase_idx]
+    p_fever = SYMPTOMS['fever'].probabilities[phase]
+    # covid_onset phase
+    if phase_idx == 1 and \
+            (really_sick or extremely_sick or
+             len(preexisting_conditions) > 2 or initial_viral_load > 0.6):
+        p_fever *= 2.
+    # covid_plateau phase
+    elif phase_idx == 2 and initial_viral_load > 0.6:
+        p_fever = 1.
+    return p_fever
+
+
 SYMPTOMS = OrderedDict([
     # Sickness severity
     # A lot of symptoms are dependent on the sickness severity so severity
@@ -329,6 +345,47 @@ SYMPTOMS = OrderedDict([
 ])
 
 
+def _get_covid_sickness_severity(rng, phase_idx: int, really_sick: bool, extremely_sick: bool,
+                                 preexisting_conditions: list, initial_viral_load: float):
+    # covid_incubation
+    if phase_idx == 0:
+        return None
+    # covid_onset phase
+    elif phase_idx == 1:
+        if really_sick or extremely_sick or len(preexisting_conditions) > 2 or initial_viral_load > 0.6:
+            return 'moderate'
+        else:
+            return 'mild'
+    # covid_plateau phase
+    elif phase_idx == 2:
+        if extremely_sick:
+            return 'extremely-severe'
+        elif really_sick or len(preexisting_conditions) > 2 or initial_viral_load > 0.6:
+            return 'severe'
+        # initial_viral_load - .15 is the same probaility than p_gastro
+        # (previous code version was using p_gastro)
+        elif rng.rand() < initial_viral_load - .15:
+            return 'moderate'
+        else:
+            return 'mild'
+    # covid_post_plateau_1 phase
+    elif phase_idx == 3:
+        if extremely_sick:
+            return 'severe'
+        elif really_sick:
+            return 'moderate'
+        else:
+            return 'mild'
+    # covid_post_plateau_2 phase
+    elif phase_idx == 4:
+        if extremely_sick:
+            return 'moderate'
+        else:
+            return 'mild'
+    else:
+        raise ValueError(f"Invalid phase_idx [{phase_idx}]")
+
+
 # 2D Array of symptoms; first axis is days after exposure (infection), second is an array of symptoms
 def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_load_plateau_end,
                            recovery_days, age, incubation_days, infectiousness_onset_days,
@@ -356,6 +413,7 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
     progression = []
     symptoms_per_phase = [[] for i in range(len(disease_phases))]
 
+
     # Phase 0 - Before onset of symptoms (incubation)
     # ====================================================
     phase_i = 0
@@ -363,23 +421,28 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
     # for day in range(math.ceil(incubation_days)):
     #     progression.append([])
 
-    # Phase 1 of plateau
+
+    # Phase 1 - Onset of symptoms (including plateau Part 1)
     # ====================================================
     phase_i = 1
     phase = disease_phases[phase_i]
 
-    p_fever = SYMPTOMS['fever'].probabilities[phase]
-    if really_sick or extremely_sick or len(preexisting_conditions)>2 or initial_viral_load > 0.6:
-        symptoms_per_phase[phase_i].append('moderate')
-        p_fever = 0.4
-    else:
-        symptoms_per_phase[phase_i].append('mild')
+    sickness_severity = _get_covid_sickness_severity(
+        rng, phase_i, really_sick, extremely_sick,
+        preexisting_conditions, initial_viral_load)
+
+    symptoms_per_phase[phase_i].append(sickness_severity)
+
+    p_fever = _get_covid_fever_probability(phase_i,
+                                           really_sick, extremely_sick,
+                                           preexisting_conditions,
+                                           initial_viral_load)
 
     if rng.rand() < p_fever:
         symptoms_per_phase[phase_i].append('fever')
-        if extremely_sick:
-            if rng.rand() < 0.8:
-                symptoms_per_phase[phase_i].append('chills')
+
+        if extremely_sick and rng.rand() < 0.8:
+            symptoms_per_phase[phase_i].append('chills')
 
     # gastro symptoms are more likely to be earlier and are more
     # likely to show extreme symptoms later
@@ -441,18 +504,21 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
     phase_i = 2
     phase = disease_phases[phase_i]
 
-    if extremely_sick:
-        symptoms_per_phase[phase_i].append('extremely-severe')
-    elif really_sick or len(preexisting_conditions) >2 or 'severe' in symptoms_per_phase[phase_i-1] or \
-            initial_viral_load > 0.6:
-        symptoms_per_phase[phase_i].append('severe')
-    elif rng.rand() < p_gastro:
-        symptoms_per_phase[phase_i].append('moderate')
-    else:
-        symptoms_per_phase[phase_i].append('mild')
+    sickness_severity = _get_covid_sickness_severity(
+        rng, phase_i, really_sick, extremely_sick,
+        preexisting_conditions, initial_viral_load)
 
-    if 'fever' in symptoms_per_phase[phase_i-1] or initial_viral_load > 0.6 or \
-            rng.rand() < SYMPTOMS['fever'].probabilities[phase]:
+    symptoms_per_phase[phase_i].append(sickness_severity)
+
+    if 'fever' in symptoms_per_phase[phase_i - 1]:
+        p_fever = 1.
+    else:
+        p_fever = _get_covid_fever_probability(phase_i,
+                                               really_sick, extremely_sick,
+                                               preexisting_conditions,
+                                               initial_viral_load)
+
+    if 'fever' in symptoms_per_phase[phase_i-1] or rng.rand() < p_fever:
         symptoms_per_phase[phase_i].append('fever')
         if rng.rand() < SYMPTOMS['chills'].probabilities[phase]:
             symptoms_per_phase[phase_i].append('chills')
@@ -520,12 +586,11 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
     phase_i = 3
     phase = disease_phases[phase_i]
 
-    if extremely_sick:
-        symptoms_per_phase[phase_i].append('severe')
-    elif really_sick:
-        symptoms_per_phase[phase_i].append('moderate')
-    else:
-        symptoms_per_phase[phase_i].append('mild')
+    sickness_severity = _get_covid_sickness_severity(
+        rng, phase_i, really_sick, extremely_sick,
+        preexisting_conditions, initial_viral_load)
+
+    symptoms_per_phase[phase_i].append(sickness_severity)
 
     # gastro symptoms are more likely to be earlier and are more
     # likely to show extreme symptoms later (p gastro reduced compared to part1)
@@ -585,10 +650,11 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
     phase_i = 4
     phase = disease_phases[phase_i]
 
-    if extremely_sick:
-        symptoms_per_phase[phase_i].append('moderate')
-    else:
-        symptoms_per_phase[phase_i].append('mild')
+    sickness_severity = _get_covid_sickness_severity(
+        rng, phase_i, really_sick, extremely_sick,
+        preexisting_conditions, initial_viral_load)
+
+    symptoms_per_phase[phase_i].append(sickness_severity)
 
     # gastro symptoms are more likely to be earlier and are more
     # likely to show extreme symptoms later (p gastro reduced compared to part1)
