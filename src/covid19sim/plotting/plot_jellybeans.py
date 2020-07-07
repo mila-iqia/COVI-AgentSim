@@ -8,6 +8,30 @@ from collections import defaultdict
 from covid19sim.plotting.utils.extract_data import get_all_rec_levels
 
 
+def get_title(method):
+    method_title = {
+        "bdt1": "1st Order Binary Tracing",
+        "bdt2": "2nd Order Binary Tracing",
+        "heuristicv1": "Heuristic (v1)",
+        "heuristicv2": "Heuristic (v2)",
+        "transformer": "Transformer",
+        "transformer-[1, 3, 5]": "Transformer-[1, 3, 5]",
+        "transformer-[0, 1, 2]": "Transformer-[0, 1, 2]",
+        "transformer-[0, 0, 0]": "Transformer-[0, 0, 0]",
+        "linreg": "Linear Regression",
+        "mlp": "MLP",
+        "unmitigated": "Unmitigated",
+        "oracle": "Oracle",
+    }
+    if "_norm" in method:
+        if method.replace("_norm", "") in method_title:
+            return method_title[method.replace("_norm", "")] + " (Norm.)"
+    if method in method_title:
+        return method_title[method]
+
+    return method.replace("_", " ").capitalize()
+
+
 def get_transformer_name(method_dict):
     for comparison in method_dict.values():
         for run in comparison.values():
@@ -49,8 +73,9 @@ def run(data, path, comparison_key, use_wandb):
 
     tmp_data = defaultdict(dict)
     for mk, mrl in data_rec_levels.items():
-        for ck, crl in mrl.items():
-            tmp_data[ck][mk] = crl
+        if mk != "unmitigated":
+            for ck, crl in mrl.items():
+                tmp_data[ck][mk] = crl
     data_rec_levels = tmp_data
 
     legend_handles = [
@@ -67,39 +92,22 @@ def run(data, path, comparison_key, use_wandb):
         for (level, color) in enumerate(colors)
     ]
 
-    method_title = {
-        "bdt1": "1st Order Binary Tracing",
-        "bdt2": "2nd Order Binary Tracing",
-        "heuristicv1": "Heuristic (v1)",
-        "heuristicv2": "Heuristic (v2)",
-        "transformer": "Transformer",
-        "transformer-[1, 3, 5]": "Transformer-[1, 3, 5]",
-        "transformer-[0, 1, 2]": "Transformer-[0, 1, 2]",
-        "transformer-[0, 0, 0]": "Transformer-[0, 0, 0]",
-        "linreg": "Linear Regression",
-        "mlp": "MLP",
-        "unmitigated": "Unmitigated",
-        "oracle": "Oracle",
-    }
-
     n_lines = np.math.ceil(len(data) / max_cols)
     n_cols = min((len(data), max_cols))
 
     for i, (comparison_value, comparison_dict) in enumerate(data_rec_levels.items()):
-        fig = plt.figure(
-            figsize=(5 * len(comparison_dict), 10 * len(data) / max_cols),
-            constrained_layout=True,
-        )
+        fig = plt.figure(figsize=(8 * n_cols, 8 * n_lines), constrained_layout=True,)
         gridspec = fig.add_gridspec(n_lines, n_cols)
-        print(f"Plotting {comparison_key} {comparison_value} ...")
-        for j, (method_name, method_risk_levels) in enumerate(comparison_dict.items()):
-            if method_name == "unmitigated":
-                continue
+        print(f"Plotting {comparison_key} {comparison_value}...")
+
+        method_names = sorted(comparison_dict.keys())
+        for j, method_name in enumerate(method_names):
+            breakpoint()
+            method_risk_levels = comparison_dict[method_name]
+
             col = j % max_cols
             row = j // max_cols
-            title = method_title.get(
-                method_name, method_name.replace("_", " ").capitalize()
-            )
+            title = get_title(method_name)
 
             transformer_name = None
             if method_name in {"transformer", "linreg", "mlp"}:
@@ -142,7 +150,7 @@ def run(data, path, comparison_key, use_wandb):
         save_path = path / "comparison-recommendation-levels-{}-{}.png".format(
             comparison_key, comparison_value
         )
-        print("Saving Figure {} ...".format(save_path.name), end="", flush=True)
+        print("Saving Figure {}...".format(save_path.name), end="", flush=True)
         plt.savefig(
             str(save_path), bbox_inches="tight",
         )

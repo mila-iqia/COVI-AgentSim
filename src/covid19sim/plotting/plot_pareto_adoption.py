@@ -470,7 +470,7 @@ def run(data, path, comparison_key, use_wandb):
     )
     plt.tight_layout()
     save_path = Path(path) / "pareto_adoption_all_metrics.png"
-    print("Saving Figure {} ...".format(save_path.name), end="", flush=True)
+    print("Saving Figure {}...".format(save_path.name), end="", flush=True)
     fig.savefig(
         str(save_path),
         dpi=100,

@@ -198,9 +198,9 @@ def main(conf):
     root_path = Path(root_path).resolve()
     plot_path = Path(plot_path).resolve()
 
-    if plot_path.exists():
+    if plot_path.exists() and conf.get("clear_plots"):
         shutil.rmtree(plot_path)
-    os.makedirs(plot_path)
+    plot_path.mkdir(parents=True, exist_ok=True)
     assert plot_path.exists()
     cache_path = root_path / "cache.pkl"
 

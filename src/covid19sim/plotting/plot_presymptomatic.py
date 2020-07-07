@@ -219,9 +219,10 @@ def run(data, path, comparison_key, use_wandb, times=[-1, -2, -3], mode=None):
                         / f"adoption_{label}"
                     )
                     fig_path = dir_path / f"{method}_{mode}.png"
-                    print("Saving Figure", str(fig_path), end="", flush=True)
+                    print(f"Saving Figure {str(fig_path)}...", end="", flush=True)
                     os.makedirs(dir_path, exist_ok=True)
                     plt.savefig(fig_path)
+                    plt.close("all")
                     if use_wandb:
                         print("Uploading to Weights and Biases...", end="", flush=True)
                         wandb.log({str(fig_path): wandb.Image(str(fig_path))})

@@ -260,7 +260,10 @@ def main(args):
             str(method_dir)
         )
         tracing_method = get_model(run_conf)
-        if tracing_method not in {"transformer", "unmitigated"}:
+        if (
+            tracing_method != "unmitigated"
+            and "DAILY_TARGET_REC_LEVEL_DIST" not in run_conf
+        ):
             print(f"Found config for {method_dir.name}")
             to_normalize.append(
                 {"tracing_method": tracing_method, "method_dir": method_dir}
