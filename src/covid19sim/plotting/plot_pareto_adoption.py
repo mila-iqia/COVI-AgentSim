@@ -326,7 +326,6 @@ def run(data, path, comparison_key, use_wandb):
     markers = ["P", "s", "X", "d", ".", "h", "^", "*", "v"]
     colormap = [
         "mediumvioletred",
-        "royalblue",
         "darkorange",
         "green",
         "red",
@@ -338,13 +337,14 @@ def run(data, path, comparison_key, use_wandb):
         "orange",
         "pink",
         "purple",
+        "royalblue",
     ]
 
     fig, axs = plt.subplots(
         nrows=math.ceil(len(xmetrics) / 2),
         ncols=2,
-        figsize=(30, 30),
-        dpi=500,
+        figsize=(20, 20),
+        dpi=100,
         sharey=True,
     )
     axs = [i for j in axs for i in j]
@@ -440,7 +440,7 @@ def run(data, path, comparison_key, use_wandb):
     spttl = fig.suptitle(
         "Comparison of tracing methods across different adoption rates",
         fontsize=50,
-        y=1.1,
+        y=1.15,
     )
     if len(method_legend) % 2 != 0:
         legend = (
@@ -464,17 +464,16 @@ def run(data, path, comparison_key, use_wandb):
     lgd = fig.legend(
         handles=legend,
         loc="upper center",
-        ncol=idx + 1,
-        fontsize=30,
-        bbox_to_anchor=(0.5, 1.08),
+        ncol= 3,# idx, # + 1,
+        fontsize=25,
+        bbox_to_anchor=(0.5, 1.1),
     )
-
     plt.tight_layout()
     save_path = Path(path) / "pareto_adoption_all_metrics.png"
     print("Saving Figure {} ...".format(save_path.name))
     fig.savefig(
         str(save_path),
-        dpi=200,
+        dpi=100,
         bbox_extra_artists=(lgd, ylab, spttl),
         bbox_inches="tight",
     )

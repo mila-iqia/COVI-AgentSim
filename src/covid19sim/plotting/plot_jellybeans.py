@@ -40,7 +40,7 @@ def run(data, path, comparison_key, use_wandb):
 
     colors = ["#007FA1", "#4CAF50", "#FFEB3B", "#FF9800", "#F44336"]
 
-    max_cols = 5
+    max_cols = 2
 
     data_rec_levels = {
         mk: {ck: get_all_rec_levels(data=cv) for ck, cv in mv.items()}
@@ -87,7 +87,7 @@ def run(data, path, comparison_key, use_wandb):
 
     for i, (comparison_value, comparison_dict) in enumerate(data_rec_levels.items()):
         fig = plt.figure(
-            figsize=(5 * len(comparison_dict), 5), constrained_layout=True
+            figsize=(5 * len(comparison_dict), 10 * len(data) / max_cols), constrained_layout=True
         )
         gridspec = fig.add_gridspec(n_lines, n_cols)
         print(f"Plotting {comparison_key} {comparison_value} ...")
@@ -112,30 +112,30 @@ def run(data, path, comparison_key, use_wandb):
             )
             ax.axvspan(0, intervention_day - 1, fc="gray", alpha=0.2)
             ax.axvline(intervention_day - 1, c="k", ls="-.")
-            ax.set_title(title, size=15)
-            ax.tick_params(axis="both", which="major", labelsize=13)
+            ax.set_title(title, size=35)
+            ax.tick_params(axis="both", which="major", labelsize=18)
             ax.yaxis.set_ticklabels(["0", "20", "40", "60", "80", "100"])
-            ax.set_xlabel("Days", size=15)
+            ax.set_xlabel("Days", size=30)
             ax.margins(0, 0)
             if j == 0:
-                ax.set_ylabel("% recommendation level", size=15)
+                ax.set_ylabel("% recommendation level", size=33)
                 ax.legend(
                     handles=legend_handles,
                     loc="lower left",
                     framealpha=1.0,
-                    fontsize=13,
+                    fontsize=23,
                 )
             else:
                 ax.text(
                     intervention_day - 1.5,
                     0.05,
                     "Intervention",
-                    size=15,
+                    size=25,
                     ha="right",
                     va="bottom",
                     rotation=90,
                 )
-        plt.suptitle("{} {}".format(comparison_key, comparison_value), size=17)
+        plt.suptitle("{} {}".format(comparison_key, comparison_value), size=47)
         save_path = path / "comparison-recommendation-levels-{}-{}.png".format(
             comparison_key, comparison_value
         )
