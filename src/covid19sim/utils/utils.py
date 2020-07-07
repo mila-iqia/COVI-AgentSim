@@ -630,12 +630,12 @@ def normal_pdf(x, mean, std):
     return proba
 
 
-def deepcopy_obj_array_except_env(array):
+def copy_obj_array_except_env(array):
     """Copies a Human/City/Location object array, calling the child function below for each object."""
     if isinstance(array, dict):
-        return {k: deepcopy_obj_except_env(v) for k, v in array.items()}
+        return {k: copy_obj_except_env(v) for k, v in array.items()}
     elif isinstance(array, list):
-        return [deepcopy_obj_except_env(v) for v in array]
+        return [copy_obj_except_env(v) for v in array]
     else:
         raise NotImplementedError
 
@@ -670,36 +670,41 @@ class DummyEnv:
         return self.timestamp.isoformat()
 
 
-def deepcopy_obj_except_env(obj):
+class DummyHuman:
+    """Dummy picklable constant version of the `Human` class."""
+    # note: since we're talking about a metric s*-ton of attributes, most will be dynamically added
+
+    def __init__(self, human: "Human"):
+        # "dummy" attributes replace the original attribute by a less-complex one
+        self.dummy_attribs = [
+            "env", "location", "last_location", "household", "_workplace", "last_date",
+        ]
+        self.env = DummyEnv(human.env)
+        self.location = human.location.name if human.location else ""
+        self.last_location = human.last_location.name if human.last_location else ""
+        self.household = human.household.name if human.household else ""
+        self._workplace = [w.name for w in human._workplace]
+        self.last_date = dict(human.last_date)
+        # "blacklisted" attributes are overriden with `None`, no matter their original value
+        self.blacklisted_attribs = [
+            "conf", "city", "my_history", "visits", "proba_to_risk_level_map",
+        ]
+        for attr_name in self.blacklisted_attribs:
+            setattr(self, attr_name, None)
+        # all other attributes will be copies as-is
+        for attr_name in human.__dict__.keys():
+            if attr_name not in self.dummy_attribs and attr_name not in self.blacklisted_attribs:
+                setattr(self, attr_name, getattr(human, attr_name))
+
+
+def copy_obj_except_env(obj):
     """Copies a Human/City/Location object without its env part (which fails due to the generator)."""
     from covid19sim.human import Human
     from covid19sim.locations.location import Location
     from covid19sim.locations.city import City, Household, Hospital
     assert isinstance(obj, (Human, Location, City))
     if isinstance(obj, Human):
-        dummy_env = DummyEnv(obj.env)
-        curr_location_name = obj.location.name if obj.location else ""
-        last_location_name = obj.last_location.name if obj.last_location else ""
-        household_name = obj.household.name if obj.household else ""
-        workplace_names = [w.name for w in obj._workplace]
-        backup_attribs = \
-            (obj.conf, obj.env, obj.city, obj.household, obj.location,
-             obj.last_location, obj.my_history, obj._workplace, obj.visits)
-        obj.conf, obj.env, obj.city, obj.household, obj.location, \
-        obj.last_location, obj.my_history, obj._workplace, obj.visits = [None] * len(backup_attribs)
-        obj.env = dummy_env  # should replicate the env's behavior perfectly
-        obj.location = curr_location_name  # this will break lookups, but still provide basic info
-        obj.last_location = last_location_name  # this will break lookups, but still provide basic info
-        obj.household = household_name  # this will break lookups, but still provide basic info
-        obj._workplace = workplace_names  # this will break lookups, but still provide basic info
-
-        #test = get_approx_object_size_tree(obj)
-
-        obj_copy = copy.deepcopy(obj)
-        obj_copy.last_date = dict(obj_copy.last_date)
-        obj.conf, obj.env, obj.city, obj.household, obj.location, \
-        obj.last_location, obj.my_history, obj._workplace, obj.visits = backup_attribs
-        return obj_copy
+        return DummyHuman(obj)
     elif isinstance(obj, Location):
         # Replace the Location's attributes with values that can be deepcopied
         # while still keeping the vital information
@@ -718,7 +723,7 @@ def deepcopy_obj_except_env(obj):
         elif isinstance(obj, Hospital):
             # The hospical contains a sublocation which must be deepcopied too
             backup_icu = obj.icu
-            obj.icu = deepcopy_obj_except_env(obj.icu)
+            obj.icu = copy_obj_except_env(obj.icu)
 
         # Copy the Location
         obj_copy = copy.deepcopy(obj)
