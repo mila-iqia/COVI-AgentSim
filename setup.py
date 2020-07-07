@@ -1,4 +1,9 @@
-from setuptools import setup, find_packages
+import glob
+import os
+from setuptools import setup, find_packages, Extension
+
+
+cloneroot = os.path.dirname(__file__)
 
 
 with open('requirements.txt', 'r') as f:
@@ -39,4 +44,12 @@ setup(
     },
     packages             = find_packages("src"),
     package_dir          = {'': 'src'},
+    ext_modules          = [
+        Extension("covid19sim.native._native",
+                  glob.glob(os.path.join(cloneroot, "src", "covid19sim", "native", "**", "*.c"),
+                            recursive=True),
+                  include_dirs=[os.path.join(cloneroot, "src", "covid19sim", "native")],
+                  define_macros=[("PY_SSIZE_T_CLEAN", None),],
+        ),
+    ],
 )
