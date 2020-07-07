@@ -1,5 +1,6 @@
 import math
 import pickle
+import wandb
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -147,6 +148,7 @@ def get_all(filename_types=None, pkl_types=None, labels=[], normalized=False):
         raise ValueError("filename_types and pkl_types are None")
 
     _rows = []
+
     for i, (filenames, pkls) in enumerate(tmp):
         metrics = get_mean_fq_r(filenames=filenames, pkls=pkls, normalized=normalized)
         for key, val in metrics.items():
@@ -202,6 +204,9 @@ def get_line2D(value, color, marker, is_method=True, compare="APP_UPTAKE"):
             "heuristicv1": "Heuristic (v1)",
             "heuristicv2": "Heuristic (v2)",
             "transformer": "Transformer",
+            "transformer-[0, 0, 0]": "Transformer-[0, 0, 0]",
+            "transformer-[0, 1, 2]": "Transformer-[0, 1, 2]",
+            "transformer-[1, 3, 5]": "Transformer-[1, 3, 5]",
             "linreg": "Linear Regression",
             "mlp": "MLP",
             "unmitigated": "Unmitigated",
@@ -234,7 +239,7 @@ def get_line2D(value, color, marker, is_method=True, compare="APP_UPTAKE"):
     )
 
 
-def run(data, path, comparison_key):
+def run(data, path, comparison_key, use_wandb):
     """
     data is a dictionnary that maps methods (bdt1, bdt1_norm, transformer etc.)
     to another dictionnary which has keys the values of the comparing key and
@@ -268,6 +273,7 @@ def run(data, path, comparison_key):
     labels = []
     pkls_norm = []
     labels_norm = []
+
     for method in data:
         for key in data[method]:
             if "_norm" in method:
@@ -276,6 +282,10 @@ def run(data, path, comparison_key):
             else:
                 pkls.append([r["pkl"] for r in data[method][key].values()])
                 labels.append(f"{method}_{key}")
+
+    # import pdb; pdb.set_trace()
+    for idx, label in enumerate(labels):
+        print(f"{len(pkls[idx])} seeds for {label}")
 
     rows = get_all(pkl_types=pkls, labels=labels, normalized=False)
     lrows = set([r[0] for r in rows])
@@ -294,7 +304,6 @@ def run(data, path, comparison_key):
             break
         break
     assert n_seeds is not None, "Could not find the number of seeds"
-
     df = pd.DataFrame(rows, columns=["type", "metric"] + list(np.arange(n_seeds) + 1))
     df["mean"] = df[list(np.arange(n_seeds) + 1)].mean(axis=1)
     df["stderr"] = df[list(np.arange(n_seeds) + 1)].sem(axis=1)
@@ -318,7 +327,6 @@ def run(data, path, comparison_key):
     markers = ["P", "s", "X", "d", ".", "h", "^", "*", "v"]
     colormap = [
         "mediumvioletred",
-        "royalblue",
         "darkorange",
         "green",
         "red",
@@ -330,23 +338,23 @@ def run(data, path, comparison_key):
         "orange",
         "pink",
         "purple",
+        "royalblue",
     ]
 
     fig, axs = plt.subplots(
         nrows=math.ceil(len(xmetrics) / 2),
         ncols=2,
-        figsize=(30, 30),
-        dpi=500,
+        figsize=(20, 20),
+        dpi=100,
         sharey=True,
     )
     axs = [i for j in axs for i in j]
 
-    base_methods = set([lab.split("_")[0] for lab in labels + labels_norm])
+    base_methods = sorted(set([lab.split("_")[0] for lab in labels + labels_norm]))
 
     method_legend = []
     compare_legend = []
     for idx, method in enumerate(sorted(base_methods)):
-        print("Plotting", method, "...")
         current_labels = sorted([lab for lab in labels if lab.startswith(method)])
         current_labels_norm = sorted(
             [lab for lab in labels_norm if lab.startswith(method)]
@@ -356,6 +364,7 @@ def run(data, path, comparison_key):
             get_line2D(method, current_color, None, True, comparison_key)
         )
         for i, lab in enumerate(current_labels):
+
             current_marker = markers[i]
             if idx == 0:
                 compare_legend.append(
@@ -380,6 +389,7 @@ def run(data, path, comparison_key):
                 normalized=False,
             )
         for i, lab in enumerate(current_labels_norm):
+            current_marker = markers[i]
             plot_all_metrics(
                 axs,
                 df,
@@ -430,7 +440,7 @@ def run(data, path, comparison_key):
     spttl = fig.suptitle(
         "Comparison of tracing methods across different adoption rates",
         fontsize=50,
-        y=1.1,
+        y=1.15,
     )
     if len(method_legend) % 2 != 0:
         legend = (
@@ -454,18 +464,20 @@ def run(data, path, comparison_key):
     lgd = fig.legend(
         handles=legend,
         loc="upper center",
-        ncol=idx + 1,
-        fontsize=30,
-        bbox_to_anchor=(0.5, 1.08),
+        ncol= 3,# idx, # + 1,
+        fontsize=25,
+        bbox_to_anchor=(0.5, 1.1),
     )
-
     plt.tight_layout()
     save_path = Path(path) / "pareto_adoption_all_metrics.png"
-    print("Saving Figure {} ...".format(save_path.name))
+    print("Saving Figure {}...".format(save_path.name), end="", flush=True)
     fig.savefig(
         str(save_path),
-        dpi=200,
+        dpi=100,
         bbox_extra_artists=(lgd, ylab, spttl),
         bbox_inches="tight",
     )
+    if use_wandb:
+        print("Uploading to Weights and Biases...", end="", flush=True)
+        wandb.save(str(save_path))
     print("Done.")
