@@ -21,9 +21,7 @@ from covid19sim.log.event import Event
 from covid19sim.utils.env import Env
 from covid19sim.utils.utils import parse_configuration
 
-
 PLOT_EVENTS_LABEL = ["Encounters", "Contaminations", "Tests", "Positive Tests", "Negative Tests"]
-
 
 LOCATION_TO_COLOR = {"household": "tab:red",
                      "park": "tab:green",
@@ -34,18 +32,15 @@ LOCATION_TO_COLOR = {"household": "tab:red",
                      "senior_residency": "tab:brown",
                      "misc": "tab:pink"}
 
-
 ENCOUNTER_TO_COLOR = {"non-infectuous": "tab:blue",
                       "infectuous": "tab:orange",
                       "contamination": "tab:red"}
-
 
 EVENT_TO_COLOR = {"Contaminations": "tab:red",
                   "Tests": "tab:green",
                   "Encounters": "tab:blue",
                   "Positive Tests": "tab:purple",
                   "Negative Tests": "tab:olive"}
-
 
 STATE_TO_COLOR = {"has_flu": "tab:red",
                   "has_cold": "tab:green",
@@ -150,7 +145,7 @@ def set_pad_for_table(table, pad=0.1):
 def plot_mapping(title: str,
                  mapping: Dict[str, str]):
     plt.title(title)
-    table_data = [[k + " :", v.replace("tab:","")] for k,v in mapping.items()]
+    table_data = [[k + " :", v.replace("tab:", "")] for k, v in mapping.items()]
     table = plt.table(cellText=table_data, loc='center')
     table.set_fontsize(14)
     table.scale(1, 0.5)
@@ -195,7 +190,7 @@ def plot_encounters(encounters: Dict[str, List[int]],
             if not encounter:
                 continue
             safe_color = ENCOUNTER_TO_COLOR["non-infectuous"]
-            plt.broken_barh([(timestamp, 1/24)], (other_human_id - 1, 1), color=safe_color, label=other_human)
+            plt.broken_barh([(timestamp, 1 / 24)], (other_human_id - 1, 1), color=safe_color, label=other_human)
         for encounter, timestamp in zip(risky_encounters[other_human], timestamps):
             if not encounter:
                 continue
@@ -207,11 +202,12 @@ def plot_encounters(encounters: Dict[str, List[int]],
                 continue
             contamination_encounters_human_ids.add(other_human_id)
             contamination_color = ENCOUNTER_TO_COLOR["contamination"]
-            plt.broken_barh([(timestamp, 1 / 12)], (other_human_id - 1, 1), color=contamination_color, label=other_human)
+            plt.broken_barh([(timestamp, 1 / 12)], (other_human_id - 1, 1), color=contamination_color,
+                            label=other_human)
 
     plt.title("Encounters")
     plt.ylim((0, len(encounters)))
-    plt.yticks([int(tick / 4 * len(encounters)) for tick in range(4+1)] +
+    plt.yticks([int(tick / 4 * len(encounters)) for tick in range(4 + 1)] +
                list(risky_encounters_human_ids) +
                list(contamination_encounters_human_ids))
     # plt.set_yticklabels(locations_names)
@@ -222,11 +218,10 @@ def plot_encounters(encounters: Dict[str, List[int]],
 def plot_locations(locations: List[int],
                    locations_names: List[str],
                    timestamps: List[datetime.datetime]):
-
     for location, timestamp in zip(locations, timestamps):
         l_name = locations_names[location]
         color = LOCATION_TO_COLOR[l_name.split(":")[0]]
-        plt.broken_barh([(timestamp, 1/24)], (location, 1), facecolor=color, label=l_name)
+        plt.broken_barh([(timestamp, 1 / 24)], (location, 1), facecolor=color, label=l_name)
     plt.title("Location")
     plt.ylim((0, len(locations_names)))
     plt.xlabel("Time")
@@ -259,7 +254,7 @@ def plot_risks(risks: List[int],
     plt.step(timestamps, risks)
     plt.title("Risk Level")
     plt.ylim((0, 15))
-    plt.yticks([tick * 4 for tick in range(4+1)])
+    plt.yticks([tick * 4 for tick in range(4 + 1)])
     plt.xlabel("Time")
     plt.gcf().autofmt_xdate()
 
@@ -279,7 +274,7 @@ def plot_viral_loads(viral_loads: List[int],
     plt.plot(timestamps, viral_loads)
     plt.title("Viral Load Curve")
     plt.ylim((0, 1))
-    plt.yticks([tick / 4 for tick in range(4+1)])
+    plt.yticks([tick / 4 for tick in range(4 + 1)])
     plt.xlabel("Time")
     plt.gcf().autofmt_xdate()
 
@@ -289,11 +284,12 @@ def get_events_history(all_human_events: List[Dict],
                        timestamps: List[datetime.datetime],
                        time_begin: datetime.datetime,
                        time_end: datetime.datetime) -> \
-        Tuple[Dict[str, List[int]], Dict[str, List[int]], Dict[str, List[int]], Dict[str, List[int]], List[datetime.datetime]]:
+        Tuple[Dict[str, List[int]], Dict[str, List[int]], Dict[str, List[int]], Dict[str, List[int]], List[
+            datetime.datetime]]:
     events = {event_label: [] for event_label in PLOT_EVENTS_LABEL}
-    encounters = {f"human:{i+1}": [] for i in range(humans_cnt)}
-    risky_encounters = {f"human:{i+1}": [] for i in range(humans_cnt)}
-    contamination_encounters = {f"human:{i+1}": [] for i in range(humans_cnt)}
+    encounters = {f"human:{i + 1}": [] for i in range(humans_cnt)}
+    risky_encounters = {f"human:{i + 1}": [] for i in range(humans_cnt)}
+    contamination_encounters = {f"human:{i + 1}": [] for i in range(humans_cnt)}
     e_timestamps = []
 
     # There is one human snapshot per time slot per day
@@ -401,7 +397,6 @@ def get_symptom_history(human_snapshots: List[Human],
                         time_begin: datetime.datetime,
                         time_end: datetime.datetime) -> \
         Tuple[List[int], List[int], List[datetime.datetime]]:
-
     true_symptoms = []
     obs_symptoms = []
     rl_timestamps = []
@@ -496,7 +491,6 @@ def get_states_history(human_snapshots: List[Human],
 
 
 def get_infection_history(humans_events: Dict[str, List], human_key: str):
-
     # Get the list of events in which the specified human was infected by someone else
     # and list of events in which the specified human infected someone else
     infectee_events = []
@@ -515,7 +509,6 @@ def get_infection_history(humans_events: Dict[str, List], human_key: str):
 
 
 def generate_human_centric_plots(human_backups, humans_events, nb_humans_in_sim, output_folder):
-
     def split_location(location_name: str):
         # Split location type from id and suffix "location_type:id-suffix"
         parts = location_name.split(':')
@@ -558,10 +551,10 @@ def generate_human_centric_plots(human_backups, humans_events, nb_humans_in_sim,
         recommendation_levels, rl_timestamps = get_recommendation_level_history(h_backup, timestamps, begin, end)
         locations, l_timestamps = get_location_history(h_backup, timestamps, sorted_all_locations, begin, end)
         events, \
-            encounters, \
-            risky_encounters, \
-            contamination_encounters, \
-            e_timestamps = get_events_history(humans_events[h_key], nb_humans_in_sim, timestamps, begin, end)
+        encounters, \
+        risky_encounters, \
+        contamination_encounters, \
+        e_timestamps = get_events_history(humans_events[h_key], nb_humans_in_sim, timestamps, begin, end)
         states, s_timestamps = get_states_history(h_backup, timestamps, begin, end)
         infectee_events, infector_events = get_infection_history(humans_events, h_key)
 
@@ -639,8 +632,8 @@ def generate_human_centric_plots(human_backups, humans_events, nb_humans_in_sim,
                     table_data.append(["", ", ".join([str(i) for i in e])])
 
         table = plt.table(cellText=table_data, loc='center', colWidths=[0.33, 0.67])
-        #table.auto_set_font_size(False)
-        #table.set_fontsize(8)
+        # table.auto_set_font_size(False)
+        # table.set_fontsize(8)
         table.scale(1, 1.2)
         set_pad_for_table(table, pad=0.05)
         plt.axis('off')
@@ -658,11 +651,10 @@ def generate_location_centric_plots(debug_data, output_folder):
 
 
 def generate_debug_plots(data_loader, output_folder, batch_size=10):
-
     # Generate human-centric plots (break it down in batches to reduce mem usage)
     nb_humans_in_sim = data_loader.get_nb_humans()
     for i in range(0, nb_humans_in_sim, batch_size):
-        human_backups, human_events = data_loader.load_human_data(start_idx=i, end_idx=i+batch_size)
+        human_backups, human_events = data_loader.load_human_data(start_idx=i, end_idx=i + batch_size)
         generate_human_centric_plots(human_backups, human_events, nb_humans_in_sim, output_folder)
 
     # Generate location-centric plots
