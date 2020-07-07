@@ -1,15 +1,25 @@
+"""This is the plotting script used to generate the so-called 'baseball cards' for all simulated humans."""
+
+# NOTE: THE HDF5 FILE THAT THIS SCRIPT EXPECTS AS INPUT IS ONLY GENERATED WHEN `KEEP_FULL_OBJ_COPIES=True`.
+# FOR PROPER EVENT PARSING, YOU SHOULD ALSO SET `COLLECT_LOGS=True`.
+
 import argparse
 import datetime
+import h5py
+import inspect
+import json
 import pickle
 import os
-from typing import Dict, List, Tuple
 import zipfile
+from typing import Dict, List, Tuple
 
 from matplotlib import pyplot as plt
 
 from covid19sim.epidemiology.viral_load import viral_load_for_day
 from covid19sim.human import Human
 from covid19sim.log.event import Event
+from covid19sim.utils.env import Env
+from covid19sim.utils.utils import parse_configuration
 
 
 PLOT_EVENTS_LABEL = ["Encounters", "Contaminations", "Tests", "Positive Tests", "Negative Tests"]
@@ -47,27 +57,25 @@ class DebugDataLoader():
 
     def __init__(self, debug_data_path: str):
         self.path = debug_data_path
-
-        with zipfile.ZipFile(self.path) as zf:
-            zip_files = [f for f in zf.infolist() if not f.is_dir()]
-
-            # Nb of timestamps = nb of files (1 file per timestamp)
-            self.nb_timestamps = len(zip_files)
-
-            # Read any file to get humans names and config
-            day_debug_data = pickle.loads(zf.read(zip_files[0]))
-            human_names = list(day_debug_data["human_backups"].keys())
-            self.human_names = sorted(human_names, key=lambda x: int(x.split(":")[1]))
-            self.conf = day_debug_data["conf"]
+        self.zipfd = None
+        if self.path.endswith(".zip"):
+            self.zipfd = zipfile.ZipFile(self.path)
+            fileinfos = self.zipfd.infolist()
+            assert len(fileinfos) == 1, "unexpected hdf5 archive structure"
+            raise NotImplementedError  # TODO LATER @@@@
+        else:
+            self.hdf5fd = h5py.File(self.path, "r")
+        self.conf = parse_configuration(json.loads(self.hdf5fd.attrs["config"]))
+        self.hdf5data = self.hdf5fd["dataset"]
+        self.simulation_days = self.hdf5data.shape[0]
+        assert self.hdf5data.shape[1] == 24  # 24 potential timeslots per day
+        self.n_people = self.hdf5data.shape[2]
 
     def get_nb_humans(self):
-        return len(self.human_names)
+        return self.n_people
 
-    def get_humans_names(self):
-        return self.human_names
-
-    def get_nb_timestamps(self):
-        return self.nb_timestamps
+    def get_nb_days(self):
+        return self.simulation_days
 
     def load_human_data(self, start_idx=None, end_idx=None):
         """
@@ -85,46 +93,52 @@ class DebugDataLoader():
         Returns:
             [type]: [description]
         """
+        if start_idx is None:
+            start_idx = 0
+        if end_idx is None:
+            end_idx = self.get_nb_humans()
+        assert start_idx < end_idx
 
-        if start_idx is not None and end_idx is not None:
-            assert start_idx < end_idx
-
-        # Load the human data
         human_backups = {}
         humans_events = {}
-        with zipfile.ZipFile(self.path) as zf:
-            fileinfos = zf.infolist()
-            fileinfos.sort(key=lambda fi: fi.filename)
-            for fileinfo in fileinfos:
-                if fileinfo.is_dir():
-                    continue
 
-                # Read file
-                day_debug_data = pickle.loads(zf.read(fileinfo))
-                timestamp = day_debug_data["human_backups"]["human:1"].env.timestamp
-                human_backups[timestamp] = {}
-
-                # Extract backups for specified humans
-                for human_name in self.get_humans_names()[start_idx:end_idx]:
-                    human_backups[timestamp][human_name] = day_debug_data["human_backups"][human_name]
-
-                    # Human backups were saved without their own copy of the config for space reasons.
-                    # This attribute must be restored or else some methods of the Human object won't work.
-                    human_backups[timestamp][human_name].conf = self.conf
-
-                # Extract human event data
-                for human in human_backups[timestamp].values():
-                    humans_events.setdefault(human.name, dict())
-                    for event in human._events:
-                        humans_events[human.name][(event["time"], event["event_type"])] = event
-                    human._events = []
-
-        # Ensure events are sorted by timestamp for each human
+        # first, quickly load all the raw data, we'll rebuild the full objects afterwards
+        for day_idx in range(self.get_nb_days()):
+            for hour_idx in range(24):
+                for human_idx in range(start_idx, end_idx):
+                    human_data = pickle.loads(self.hdf5data[day_idx, hour_idx, human_idx])
+                    timestamp = human_data.env.timestamp
+                    human_data.conf = self.conf
+                    if timestamp not in human_backups:
+                        human_backups[timestamp] = {}
+                    human_backups[timestamp][human_data.name] = human_data
+        human_constr_args = [k for k in inspect.getfullargspec(Human.__init__)[0] if k != "self"]
+        for timestamp, humans in human_backups.items():
+            # time to recreate the (approx) full object w/ its member functions
+            for human_name, human_dump in humans.items():
+                new_env = Env(human_dump.env.initial_timestamp)
+                new_env._now = human_dump.env.now
+                human_dump.env = new_env
+                human_dump.workplace = human_dump._workplace  # for backward compat w/ older HDF5s
+                human_obj = Human(*[getattr(human_dump, k) for k in human_constr_args])
+                # override all attributes except the blacklist/dummy ones
+                for attr_name in human_obj.__dict__.keys():
+                    if attr_name not in human_dump.dummy_attribs and \
+                            attr_name not in human_dump.blacklisted_attribs:
+                        setattr(human_obj, attr_name, getattr(human_dump, attr_name))
+                human_obj.name = human_dump.name
+                humans[human_name] = human_obj
+            # now, extract human event data
+            for human_name, human in humans.items():
+                humans_events[human.name] = {}
+                for event in human._events:
+                    humans_events[human.name][(event["time"], event["event_type"])] = event
+                human._events = []
+        # finally, ensure events are sorted by timestamp for each human
         for human_id, human_events in humans_events.items():
             events = list(human_events.values())
             events.sort(key=lambda e: e["time"])
             humans_events[human_id] = events
-
         return human_backups, humans_events
 
 
@@ -662,6 +676,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # Load the debug data
+    assert os.path.isfile(args.debug_data), \
+        f"invalid debug data dump file path: {args.debug_data}"
     data_loader = DebugDataLoader(args.debug_data)
 
     # Ensure that the output folder does exist
