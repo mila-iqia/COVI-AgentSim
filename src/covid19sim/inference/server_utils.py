@@ -432,7 +432,6 @@ class DataCollectionWorker(BaseWorker):
             backend_address: typing.AnyStr,
             human_count: int,
             simulation_days: int,
-            dataset_max_size: typing.Optional[int] = None,
             compression: typing.Optional[typing.AnyStr] = "lzf",
             compression_opts: typing.Optional[typing.Any] = None,
             config_backup: typing.Optional[typing.Dict] = None,
@@ -448,7 +447,6 @@ class DataCollectionWorker(BaseWorker):
         self.data_output_path = data_output_path
         self.human_count = human_count
         self.simulation_days = simulation_days
-        self.dataset_max_size = dataset_max_size
         self.compression = compression
         self.compression_opts = compression_opts
         self.config_backup = config_backup
@@ -525,6 +523,8 @@ class DataCollectionBroker(BaseBroker):
             data_buffer_size: int = default_data_buffer_size,  # NOTE: in bytes!
             frontend_address: typing.AnyStr = default_datacollect_frontend_address,
             backend_address: typing.AnyStr = default_datacollect_backend_address,
+            compression: typing.Optional[typing.AnyStr] = "lzf",
+            compression_opts: typing.Optional[typing.Any] = None,
             verbose: bool = False,
             verbose_print_delay: float = 5.,
             config_backup: typing.Optional[typing.Dict] = None,
@@ -551,6 +551,8 @@ class DataCollectionBroker(BaseBroker):
         self.human_count = human_count
         self.simulation_days = simulation_days
         self.data_buffer_size = data_buffer_size
+        self.compression = compression
+        self.compression_opts = compression_opts
         self.config_backup = config_backup
 
     def run(self):
@@ -574,6 +576,8 @@ class DataCollectionBroker(BaseBroker):
             backend_address=worker_backend_address,
             human_count=self.human_count,
             simulation_days=self.simulation_days,
+            compression=self.compression,
+            compression_opts=self.compression_opts,
             config_backup=self.config_backup,
         )
         worker.start()
