@@ -7,8 +7,9 @@ import zipfile
 
 from matplotlib import pyplot as plt
 
-from covid19sim.simulator import Human
-from covid19sim.base import Event
+from covid19sim.epidemiology.viral_load import viral_load_for_day
+from covid19sim.human import Human
+from covid19sim.log.event import Event
 
 
 PLOT_EVENTS_LABEL = ["Encounters", "Contaminations", "Tests", "Positive Tests", "Negative Tests"]
