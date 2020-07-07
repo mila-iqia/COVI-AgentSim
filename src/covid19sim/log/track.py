@@ -2,7 +2,6 @@
 Contains a class to track several simulation metrics.
 It is initialized as an attribute of the city and called at several places in `Human`.
 """
-import copy
 import os
 import datetime
 import math
@@ -16,7 +15,9 @@ import numpy as np
 import pandas as pd
 
 from covid19sim.epidemiology.symptoms import MILD, MODERATE, SEVERE, EXTREMELY_SEVERE
-from covid19sim.utils.utils import log, deepcopy_obj_array_except_env
+from covid19sim.inference.server_utils import DataCollectionServer, DataCollectionClient, \
+    default_datacollect_frontend_address
+from covid19sim.utils.utils import log, copy_obj_array_except_env
 from covid19sim.utils.constants import SECONDS_PER_DAY
 if typing.TYPE_CHECKING:
     from covid19sim.human import Human
@@ -68,6 +69,7 @@ def get_nested_dict(nesting):
     elif nesting == 4:
         return defaultdict(lambda : defaultdict(lambda : defaultdict(lambda : defaultdict(int))))
 
+
 class Tracker(object):
     """
     [summary]
@@ -86,12 +88,28 @@ class Tracker(object):
         self.city = city
         self.adoption_rate = 0
         # filename to store intermediate results; useful for bigger simulations;
-        timenow = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
-        if city.conf.get('INTERVENTION_DAY') == -1:
+        timenow = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+        if city.conf.get("INTERVENTION_DAY") == -1:
             name = "unmitigated"
         else:
-            name = city.conf.get('RISK_MODEL')
+            name = city.conf.get("RISK_MODEL")
         self.filename = f"tracker_data_n_{city.n_people}_{timenow}_{name}.pkl"
+        self.keep_full_human_copies = city.conf.get("KEEP_FULL_OBJ_COPIES", False)
+        self.collection_server, self.collection_client = None, None
+        if self.keep_full_human_copies:
+            assert not city.conf.get("COLLECT_TRAINING_DATA", False), \
+                "cannot collect human object copies & training data simultanously, both use same server"
+            assert os.path.isdir(city.conf["outdir"])
+            self.collection_server = DataCollectionServer(
+                data_output_path=os.path.join(city.conf["outdir"], "human_backups.hdf5"),
+                human_count=city.conf["n_people"],
+                simulation_days=city.conf["simulation_days"],
+                config_backup=city.conf,
+            )
+            self.collection_server.start()
+            self.collection_client = DataCollectionClient(
+                server_address=city.conf.get("data_collection_server_address", default_datacollect_frontend_address),
+            )
 
         # infection & contacts
         self.contacts = {
@@ -114,11 +132,8 @@ class Tracker(object):
                         'total': np.zeros((150,150)),
                         'n_people': defaultdict(lambda : set())
                         },
-
-
                 }
         self.p_infection = []
-
         self.infection_graph = nx.DiGraph()
         self.humans_state = defaultdict(list)
         self.humans_rec_level = defaultdict(list)
@@ -507,7 +522,7 @@ class Tracker(object):
             idx += 1
         return top_k_prec, lift, recall
 
-    def track_humans(self, hd: typing.Dict, current_timestamp: datetime.datetime, keep_full_copies: bool):
+    def track_humans(self, hd: typing.Dict, current_timestamp: datetime.datetime):
         for name, h in hd.items():
             order_1_contacts = h.contact_book.get_contacts(hd)
             self.risk_attributes.append({
@@ -531,12 +546,15 @@ class Tracker(object):
                                                len(c.symptoms) > 0 for c in order_1_contacts]),
                 "order_1_is_tested": any([c.test_result == "positive" for c in order_1_contacts]),
             })
-        if keep_full_copies:
-            self.dump_backup_objects(
-                human_backups=deepcopy_obj_array_except_env(hd),
-                location_backups=deepcopy_obj_array_except_env(self.city.get_all_locations()),
-                current_timestamp=current_timestamp,
-            )
+        if self.keep_full_human_copies:
+            assert self.collection_client is not None
+            human_backups = copy_obj_array_except_env(hd)
+            for name, human in human_backups.items():
+                human_id = int(name.split(":")[-1]) - 1
+                current_day = (current_timestamp - self.city.start_time).days
+                self.collection_client.write(current_day, current_timestamp.hour, human_id, human)
+            # @@@@@ TODO: do something with location backups
+            # location_backups = copy_obj_array_except_env(self.city.get_all_locations())
 
     def track_app_adoption(self):
         self.adoption_rate = sum(h.has_app for h in self.city.humans) / self.n_people

@@ -23,6 +23,7 @@ from covid19sim.log.event import Event
 from covid19sim.locations.test_facility import TestFacility
 from covid19sim.locations.location import Location
 from covid19sim.locations.hospital import Hospital
+import covid19sim.utils.utils
 
 if typing.TYPE_CHECKING:
     from covid19sim.human import Human
@@ -689,11 +690,7 @@ class City:
                     behaviors = self.intervention.get_behaviors(human)
                 human.apply_behaviors(behaviors)
 
-            self.tracker.track_humans(
-                hd=self.hd,
-                current_timestamp=self.env.timestamp,
-                keep_full_copies=self.conf.get("KEEP_FULL_OBJ_COPIES", False),
-            )
+            self.tracker.track_humans(hd=self.hd, current_timestamp=self.env.timestamp)
             # self.tracker.track_locations() # TODO
 
             yield self.env.timeout(int(duration))
