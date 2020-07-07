@@ -594,6 +594,7 @@ class DataCollectionBroker(BaseBroker):
                 else:
                     request_queue.append(request)
                     curr_queue_size += len(request)
+                    frontend.send_multipart([client, b"", b"GOTCHA"])
             if request_queue:
                 next_packet = request_queue[0]
                 assert curr_queue_size >= len(next_packet)
@@ -657,6 +658,8 @@ class DataCollectionClient:
     def write(self, day_idx, hour_idx, human_idx, sample):
         """Forwards a data sample for the data writer using pickle."""
         self.socket.send_pyobj((day_idx, hour_idx, human_idx, pickle.dumps(sample)))
+        response = self.socket.recv()
+        assert response == b"GOTCHA"
 
     def request_reset(self):
         self.socket.send(b"RESET")
