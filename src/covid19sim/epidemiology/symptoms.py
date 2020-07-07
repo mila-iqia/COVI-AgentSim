@@ -386,6 +386,20 @@ def _get_covid_sickness_severity(rng, phase_idx: int, really_sick: bool, extreme
         raise ValueError(f"Invalid phase_idx [{phase_idx}]")
 
 
+def _get_covid_trouble_breathing_severity(sickness_severity: str, symptoms: list):
+    if 'trouble_breathing' not in symptoms:
+        return None
+
+    if sickness_severity == 'mild':
+        return 'light_trouble_breathing'
+    elif sickness_severity == 'moderate':
+        return 'moderate_trouble_breathing'
+    elif sickness_severity in ('severe', 'extremely-severe'):
+        return 'heavy_trouble_breathing'
+    else:
+        raise ValueError(f"Invalid sickness_severity [{sickness_severity}]")
+
+
 # 2D Array of symptoms; first axis is days after exposure (infection), second is an array of symptoms
 def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_load_plateau_end,
                            recovery_days, age, incubation_days, infectiousness_onset_days,
@@ -491,12 +505,9 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
     if rng.rand() < SYMPTOMS['loss_of_taste'].probabilities[phase]:
         symptoms_per_phase[phase_i].append('loss_of_taste')
 
-    if 'mild' in symptoms_per_phase[phase_i] and \
-            'trouble_breathing' in symptoms_per_phase[phase_i]:
-        symptoms_per_phase[phase_i].append('light_trouble_breathing')
-    if 'moderate' in symptoms_per_phase[phase_i] and \
-            'trouble_breathing' in symptoms_per_phase[phase_i]:
-        symptoms_per_phase[phase_i].append('moderate_trouble_breathing')
+    trouble_breathing_severity = _get_covid_trouble_breathing_severity(sickness_severity, symptoms_per_phase[phase_i])
+    if trouble_breathing_severity is not None:
+        symptoms_per_phase[phase_i].append(trouble_breathing_severity)
 
 
     # During the symptoms plateau Part 2 (worst part of the disease)
@@ -566,15 +577,9 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
             if rand < SYMPTOMS[symptom].probabilities[phase]:
                 symptoms_per_phase[phase_i].append(symptom)
 
-    if 'mild' in symptoms_per_phase[phase_i] and \
-            'trouble_breathing' in symptoms_per_phase[phase_i]:
-        symptoms_per_phase[phase_i].append('light_trouble_breathing')
-    if 'moderate' in symptoms_per_phase[phase_i] and \
-            'trouble_breathing' in symptoms_per_phase[phase_i]:
-        symptoms_per_phase[phase_i].append('moderate_trouble_breathing')
-    if ('severe' in symptoms_per_phase[phase_i] or 'extremely-severe' in symptoms_per_phase[phase_i]) and \
-            'trouble_breathing' in symptoms_per_phase[phase_i]:
-        symptoms_per_phase[phase_i].append('heavy_trouble_breathing')
+    trouble_breathing_severity = _get_covid_trouble_breathing_severity(sickness_severity, symptoms_per_phase[phase_i])
+    if trouble_breathing_severity is not None:
+        symptoms_per_phase[phase_i].append(trouble_breathing_severity)
 
     if 'loss_of_taste' in symptoms_per_phase[phase_i-1] or \
             rng.rand() < SYMPTOMS['loss_of_taste'].probabilities[phase]:
@@ -634,15 +639,9 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
             if rand < SYMPTOMS[symptom].probabilities[phase]:
                 symptoms_per_phase[phase_i].append(symptom)
 
-    if 'mild' in symptoms_per_phase[phase_i] and \
-            'trouble_breathing' in symptoms_per_phase[phase_i]:
-        symptoms_per_phase[phase_i].append('light_trouble_breathing')
-    if 'moderate' in symptoms_per_phase[phase_i] and \
-            'trouble_breathing' in symptoms_per_phase[phase_i]:
-        symptoms_per_phase[phase_i].append('moderate_trouble_breathing')
-    if ('severe' in symptoms_per_phase[phase_i] or 'extremely-severe' in symptoms_per_phase[phase_i]) and \
-            'trouble_breathing' in symptoms_per_phase[phase_i]:
-        symptoms_per_phase[phase_i].append('heavy_trouble_breathing')
+    trouble_breathing_severity = _get_covid_trouble_breathing_severity(sickness_severity, symptoms_per_phase[phase_i])
+    if trouble_breathing_severity is not None:
+        symptoms_per_phase[phase_i].append(trouble_breathing_severity)
 
 
     # After the plateau (recovery part 2)
@@ -698,15 +697,9 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
             if rand < SYMPTOMS[symptom].probabilities[phase]:
                 symptoms_per_phase[phase_i].append(symptom)
 
-    if 'mild' in symptoms_per_phase[phase_i] and \
-            'trouble_breathing' in symptoms_per_phase[phase_i]:
-        symptoms_per_phase[phase_i].append('light_trouble_breathing')
-    if 'moderate' in symptoms_per_phase[phase_i] and \
-            'trouble_breathing' in symptoms_per_phase[phase_i]:
-        symptoms_per_phase[phase_i].append('moderate_trouble_breathing')
-    if ('severe' in symptoms_per_phase[phase_i] or 'extremely-severe' in symptoms_per_phase[phase_i]) and \
-            'trouble_breathing' in symptoms_per_phase[phase_i]:
-        symptoms_per_phase[phase_i].append('heavy_trouble_breathing')
+    trouble_breathing_severity = _get_covid_trouble_breathing_severity(sickness_severity, symptoms_per_phase[phase_i])
+    if trouble_breathing_severity is not None:
+        symptoms_per_phase[phase_i].append(trouble_breathing_severity)
 
     viral_load_plateau_duration = math.ceil(viral_load_plateau_end - viral_load_plateau_start)
     recovery_duration = math.ceil(recovery_days - viral_load_plateau_end)
