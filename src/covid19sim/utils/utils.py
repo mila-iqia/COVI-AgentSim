@@ -200,6 +200,12 @@ def probas_to_risk_mapping(probas,
 
     return cutoffs
 
+
+def _proba_to_risk(probas, mapping):
+    """Probability to risk mapping operation. Non-lambda version, because why use a lambda?"""
+    return np.maximum(np.searchsorted(mapping, probas, side='left') - 1, 0)
+
+
 def proba_to_risk_fn(mapping):
     """
     Create a callable, based on a mapping, that takes probabilities (in
@@ -212,10 +218,8 @@ def proba_to_risk_fn(mapping):
     Returns:
         callable: Function taking probabilities and returning discrete risk levels.
     """
-    def _proba_to_risk(probas):
-        return np.maximum(np.searchsorted(mapping, probas, side='left') - 1, 0)
+    return functools.partial(_proba_to_risk, mapping=mapping)
 
-    return _proba_to_risk
 
 def calculate_average_infectiousness(human):
     """ This is only used for the infectiousness value for a human that is written out for the ML predictor.
