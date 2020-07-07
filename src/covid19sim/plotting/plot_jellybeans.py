@@ -86,9 +86,7 @@ def run(data, path, comparison_key, use_wandb):
     n_cols = min((len(data), max_cols))
 
     for i, (comparison_value, comparison_dict) in enumerate(data_rec_levels.items()):
-        fig = plt.figure(
-            figsize=(5 * len(comparison_dict), 5), constrained_layout=True
-        )
+        fig = plt.figure(figsize=(5 * n_cols, 5 * n_lines), constrained_layout=True)
         gridspec = fig.add_gridspec(n_lines, n_cols)
         print(f"Plotting {comparison_key} {comparison_value} ...")
         for j, (method_name, method_risk_levels) in enumerate(comparison_dict.items()):
@@ -96,7 +94,9 @@ def run(data, path, comparison_key, use_wandb):
                 continue
             col = j % max_cols
             row = j // max_cols
-            title = method_title[method_name]
+            title = method_title.get(
+                method_name, method_name.replace("_", " ").capitalize()
+            )
 
             transformer_name = None
             if method_name in {"transformer", "linreg", "mlp"}:
@@ -139,13 +139,11 @@ def run(data, path, comparison_key, use_wandb):
         save_path = path / "comparison-recommendation-levels-{}-{}.png".format(
             comparison_key, comparison_value
         )
-        print("Saving Figure {} ...".format(save_path.name))
+        print("Saving Figure {} ...".format(save_path.name), end="", flush=True)
         plt.savefig(
             str(save_path), bbox_inches="tight",
         )
-        print("Uploading to Weights and Biases...")
         if use_wandb:
-            print("Uploading to Weights and Biases...")
+            print("Uploading to Weights and Biases...", end="", flush=True)
             wandb.save(str(save_path))
-
-    print("Done.")
+        print("Done.")

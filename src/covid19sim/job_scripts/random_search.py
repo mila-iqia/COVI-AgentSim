@@ -40,8 +40,12 @@ def get_model(conf):
 
     if conf["RISK_MODEL"] == "transformer":
         if conf["USE_ORACLE"]:
+            if conf.get("DAILY_TARGET_REC_LEVEL_DIST", False):
+                return "oracle_normed"
             return "oracle"
         # FIXME this won't work if the run used the inference server
+        if conf.get("DAILY_TARGET_REC_LEVEL_DIST", False):
+            return "transformer_normed"
         return "transformer"
 
     if conf["RISK_MODEL"] == "heuristicv1":
@@ -76,6 +80,9 @@ def normalize(opts):
         run_conf = yaml.safe_load(f)
 
     opts["tracing_method"] = get_model(run_conf)
+    if "TRANSFORMER_EXP_PATH" in run_conf:
+        weights = Path(run_conf["TRANSFORMER_EXP_PATH"]).name
+        opts["tracing_method"] += f">{weights}"
     return opts
 
 
@@ -554,9 +561,9 @@ def fill_beluga_template(template_str, conf):
     user = os.environ.get("USER")
     home = os.environ.get("HOME")
 
-    cpu = conf.get("cpus", 6)
-    mem = conf.get("mem", 16)
-    time = str(conf.get("time", "3:00:00"))
+    cpu = conf.get("cpus", 4)
+    mem = conf.get("mem", 12)
+    time = str(conf.get("time", "2:50:00"))
     slurm_log = conf.get(
         "slurm_log", conf.get("base_dir", f"/scratch/{user}/covi-slurm-%j.out")
     )
@@ -870,7 +877,7 @@ def main(conf: DictConfig) -> None:
             _ = subprocess.call(command.split(), cwd=home)
             print("In", opts["outdir"])
             print("With Sampled Params:")
-            print(sampled_str.format(**{k: opts[k] for k in sampled_keys}))
+            print(sampled_str.format(**{k: opts.get(k) for k in sampled_keys}))
 
         # prints
         print()

@@ -118,7 +118,9 @@ def get_model(conf, mapping):
             )
 
     if conf["RISK_MODEL"] == "transformer":
-        if conf['USE_ORACLE']:
+        if conf["USE_ORACLE"]:
+            if conf.get("DAILY_TARGET_REC_LEVEL_DIST", False):
+                return "oracle_normed"
             return "oracle"
         # FIXME this won't work if the run used the inference server
         model = Path(conf["TRANSFORMER_EXP_PATH"]).name
@@ -128,7 +130,11 @@ def get_model(conf, mapping):
                     model
                 )
             )
-        model_name = mapping.get(model, "transformer") + "-" + str(conf.get("REC_LEVEL_THRESHOLDS"))
+        model_name = (
+            mapping.get(model, "transformer")
+            + "-"
+            + str(conf.get("REC_LEVEL_THRESHOLDS"))
+        )
         if conf.get("DAILY_TARGET_REC_LEVEL_DIST", False):
             model_name = model_name + "_norm"
         return model_name
@@ -183,7 +189,7 @@ def main(conf):
     conf = OmegaConf.to_container(conf)
     options = parse_options(conf, all_plots)
 
-    if conf['use_wandb']:
+    if conf["use_wandb"]:
         wandb.init(project="COVI")
 
     root_path = conf.get("path", ".")
@@ -248,7 +254,7 @@ def main(conf):
     # -----  Load pre-computed data  -----
     # ------------------------------------
     cache = None
-    use_cache = cache_path.exists() and not conf.get("use_cache", False)
+    use_cache = cache_path.exists() and conf.get("use_cache", True)
     if use_cache:
         try:
             print(
@@ -283,7 +289,9 @@ def main(conf):
         # --------------------------
         print("Reading configs from {}:".format(str(root_path)))
         rtime = time()
-        all_data = get_all_data(root_path, keep_pkl_keys, conf.get("multithreading", False))
+        all_data = get_all_data(
+            root_path, keep_pkl_keys, conf.get("multithreading", False)
+        )
         print("\nDone in {:.2f}s.\n".format(time() - rtime))
         summarize_configs(all_data)
         data = map_conf_to_models(all_data, conf)
@@ -311,7 +319,7 @@ def main(conf):
             # -------------------------------
             # -----  Run Plot Function  -----
             # -------------------------------
-            func(data, plot_path, conf["compare"], conf['use_wandb'], **options[plot])
+            func(data, plot_path, conf["compare"], conf["use_wandb"], **options[plot])
         except Exception as e:
             if isinstance(e, KeyboardInterrupt):
                 print("Interrupting.")

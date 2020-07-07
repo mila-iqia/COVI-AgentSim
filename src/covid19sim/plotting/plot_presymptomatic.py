@@ -50,7 +50,7 @@ def statistics(pkl_data, times, mode):
             past_day = day + time
             if past_day < 0:
                 continue
-            if human_day2infectious.get((human, past_day), False) == True:
+            if human_day2infectious.get((human, past_day), False) is True:
                 if mode == "risk":
                     r = human_day2risk_level[(human, past_day)]
                 if mode == "rec":
@@ -74,7 +74,8 @@ def run(data, path, comparison_key, use_wandb, times=[-1, -2, -3], mode=None):
     # Options:
     # 1. "times" is a list, indicating the times we are interested in.
     # For example, [-1, -2, -3] means we want to get the plot for Day-1, Day-2, Day-3.
-    # 2. "mode" is a string, which can be either 'risk' or 'rec' if None, it will be both.
+    # 2. "mode" is a string, which can be either 'risk' or 'rec' if None,
+    # it will be both.
     if mode in {"rec", "risk"}:
         modes = [mode]
     elif mode is None:
@@ -111,21 +112,21 @@ def run(data, path, comparison_key, use_wandb, times=[-1, -2, -3], mode=None):
             j = 0
 
             for method in data:
-                fig, axs = plt.subplots(nrows=3, ncols=len(data[method]), figsize=(20, 20))
+                fig, axs = plt.subplots(
+                    nrows=3, ncols=len(data[method]), figsize=(20, 20)
+                )
                 fig.suptitle(method, fontsize=30)
                 j = j + i if i == 0 else j + i + 1
 
                 for i in range(len(data[method])):
-                    print(i+j)
 
-                    label = label2pkls[i+j][0]
-                    result = results[i+j]
+                    label = label2pkls[i + j][0]
+                    result = results[i + j]
 
                     # change the font size
-                    font = {'family': 'DejaVu Sans',
-                            'size': 18}
-                    matplotlib.rc('font', **font)
-                    plt.rcParams['axes.labelsize'] = 18
+                    font = {"family": "DejaVu Sans", "size": 18}
+                    matplotlib.rc("font", **font)
+                    plt.rcParams["axes.labelsize"] = 18
 
                     if mode == "risk":
                         length = 16
@@ -162,7 +163,7 @@ def run(data, path, comparison_key, use_wandb, times=[-1, -2, -3], mode=None):
                     axs[0, i].set_title("{}".format(label))
                     axs[0, i].set_xlabel(xlabel)
                     if i == 0:
-                        axs[0, i].set_ylabel("Presymptomatic", size='large')
+                        axs[0, i].set_ylabel("Presymptomatic", size="large")
                     else:
                         axs[0, i].set_ylabel("Percentage of Population")
                     axs[0, i].set_xticks(list(range(length)))
@@ -179,7 +180,7 @@ def run(data, path, comparison_key, use_wandb, times=[-1, -2, -3], mode=None):
                     axs[1, i].set_title("{}".format(label))
                     axs[1, i].set_xlabel(xlabel)
                     if i == 0:
-                        axs[1, i].set_ylabel("Susceptible", size='large')
+                        axs[1, i].set_ylabel("Susceptible", size="large")
                     else:
                         axs[1, i].set_ylabel("Percentage of Population")
                     axs[1, i].set_xticks(list(range(length)))
@@ -196,7 +197,7 @@ def run(data, path, comparison_key, use_wandb, times=[-1, -2, -3], mode=None):
                     axs[2, i].set_title("{}".format(label))
                     axs[2, i].set_xlabel(xlabel)
                     if i == 0:
-                        axs[2, i].set_ylabel("Delta", size='large')
+                        axs[2, i].set_ylabel("Delta", size="large")
                     else:
                         axs[2, i].set_ylabel("Percentage of Population")
                     axs[2, i].set_xticks(list(range(length)))
@@ -209,12 +210,12 @@ def run(data, path, comparison_key, use_wandb, times=[-1, -2, -3], mode=None):
                 # )
                 dir_path = path / "presymptomatic" / f"statistics_day{time}"
                 fig_path = dir_path / f"{method}_{mode}.png"
-                print(
-                    "Saving Figure", str(fig_path)
-                )
+                print("Saving Figure", str(fig_path), "...", end="", flush=True)
                 os.makedirs(dir_path, exist_ok=True)
                 plt.savefig(fig_path)
                 if use_wandb:
-                    print("Uploading to Weights and Biases...")
+                    print("Uploading to Weights and Biases...", end="", flush=True)
                     wandb.log({str(fig_path): wandb.Image(str(fig_path))})
                 print("Done.")
+                plt.close('all')
+        print()
