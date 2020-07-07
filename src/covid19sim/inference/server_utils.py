@@ -781,6 +781,7 @@ def _proc_human(params, inference_engine):
             "risk_mapping": conf.get("RISK_MAPPING"),
         },
         "unobserved": {
+            "human_id": int(human.name.split(":")[-1]),
             "incubation_days": human.incubation_days,
             "recovery_days": human.recovery_days,
             "true_symptoms": true_symptoms,
