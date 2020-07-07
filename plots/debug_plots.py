@@ -448,7 +448,7 @@ def get_viral_load_history(human_snapshots: List[Human],
         if timestamp > time_end:
             break
 
-        viral_loads.append(human.viral_load_for_day(timestamp))
+        viral_loads.append(viral_load_for_day(human, timestamp))
         vl_timestamps.append(timestamp)
 
     return viral_loads, vl_timestamps
@@ -515,7 +515,6 @@ def generate_human_centric_plots(human_backups, humans_events, nb_humans_in_sim,
         return "%s:%i" % (location_parts[0], location_parts[1]) if len(location_parts) == 2 else \
             "%s:%i-%s" % (location_parts[0], location_parts[1], location_parts[2])
 
-    human_backups = debug_data['human_backups']
     timestamps = sorted(list(human_backups.keys()))
     human_names = list(human_backups[timestamps[0]].keys())
     begin = timestamps[0]
@@ -602,7 +601,7 @@ def generate_human_centric_plots(human_backups, humans_events, nb_humans_in_sim,
             ["age:", human.age],
             ["carefulness:", human.carefulness],
             ["has_app:", human.has_app],
-            ["has_allergies:", human.has_allergies],
+            ["has_allergies:", human.has_allergy_symptoms],
             ["nb preconditions", len(human.preexisting_conditions)],
             ["household:", human.household],
             ["workplace:", human.workplace],
