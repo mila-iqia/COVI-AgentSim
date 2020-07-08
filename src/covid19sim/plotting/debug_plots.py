@@ -119,8 +119,7 @@ class DebugDataLoader():
                 human_obj = Human(*[getattr(human_dump, k) for k in human_constr_args])
                 # override all attributes except the blacklist/dummy ones
                 for attr_name in human_obj.__dict__.keys():
-                    if attr_name not in human_dump.dummy_attribs and \
-                            attr_name not in human_dump.blacklisted_attribs:
+                    if attr_name != "env" and attr_name not in human_dump.blacklisted_attribs:
                         setattr(human_obj, attr_name, getattr(human_dump, attr_name))
                 human_obj.name = human_dump.name
                 humans[human_name] = human_obj
