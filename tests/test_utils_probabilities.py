@@ -3,7 +3,8 @@ import unittest
 import numpy as np
 
 from covid19sim.epidemiology.symptoms import _get_allergy_progression, _get_cold_progression, \
-    _get_covid_progression, _get_covid_sickness_severity, _get_flu_progression, SYMPTOMS, DISEASES_PHASES
+    _get_covid_progression, _get_covid_sickness_severity, _get_covid_trouble_breathing_severity, \
+    _get_flu_progression, SYMPTOMS, DISEASES_PHASES
 from covid19sim.epidemiology.human_properties import _get_preexisting_conditions, PREEXISTING_CONDITIONS, \
     HEART_DISEASE_IF_SMOKER_OR_DIABETES_MODIFIER, CANCER_OR_COPD_IF_SMOKER_MODIFIER, \
     IMMUNO_SUPPRESSED_IF_CANCER_MODIFIER
@@ -381,6 +382,28 @@ class CovidProgression(unittest.TestCase):
                                 else:
                                     delta = 0.1
                                 self.assertAlmostEqual(prob, expected_prob, delta=delta)
+
+    def test_covid_trouble_breathing_severity(self):
+        _get_id = self._get_id
+        _get_probability = self._get_probability
+
+        symptoms_list_options = [[''], ['trouble_breathing']]
+
+        for sickness_severity in self.sickness_severities_options:
+            for symptoms_list in symptoms_list_options:
+                computed_severity = _get_covid_trouble_breathing_severity(sickness_severity, symptoms_list)
+
+                if 'trouble_breathing' not in symptoms_list:
+                    self.assertIs(computed_severity, None)
+
+                elif sickness_severity == 'mild':
+                    self.assertEqual(computed_severity, 'light_trouble_breathing')
+                elif sickness_severity == 'moderate':
+                    self.assertEqual(computed_severity, 'moderate_trouble_breathing')
+                elif sickness_severity in ('severe', 'extremely-severe'):
+                    self.assertEqual(computed_severity, 'heavy_trouble_breathing')
+                else:
+                    raise ValueError(f"Invalid severity [{computed_severity}]")
 
     def test_covid_progression(self):
         """
