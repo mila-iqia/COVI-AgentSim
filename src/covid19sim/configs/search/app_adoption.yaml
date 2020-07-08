@@ -12,10 +12,10 @@ USE_INFERENCE_SERVER: False
 # -------------------------
 # -----  Directories  -----
 # -------------------------
-base_dir: /home/mweiss10/simulator/results/transformers # if outdir is not provided, runs will be stored in base_dir/${tracing_method}
-code_loc: /home/mweiss10/simulator/src/covid19sim/
+base_dir: $HOME/simulator/results/ # if outdir is not provided, runs will be stored in base_dir/${tracing_method}
+code_loc: $HOME/simulator/src/covid19sim/
 use_tmpdir: false
-weights_dir: /scratch/mweiss10/weights
+weights_dir: $SCRATCH/weights
 
 # -------------------------------------
 # -----  Simulation Fixed Params  -----

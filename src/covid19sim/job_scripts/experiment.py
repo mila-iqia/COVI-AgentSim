@@ -9,6 +9,7 @@ from omegaconf import DictConfig
 import datetime
 import itertools
 from covid19sim.utils.utils import parse_search_configuration
+from covid19sim.plotting.utils import env_to_path
 from collections import defaultdict
 
 SAMPLE_KEYS = {"list", "uniform", "range", "cartesian", "sequential", "chain"}
@@ -710,6 +711,7 @@ def main(conf: DictConfig) -> None:
         "weights_dir",  # where are the weights
         "base_dir",  # output dir will be base_dir/tracing_method
         "normalization_folder",  # if this is a normalization run, the name of the normalization folder
+        "exp_name",  # folder name in base_dir => base_dir/exp_name/method/...
     }
 
     # move back to original directory because hydra moved
@@ -731,6 +733,10 @@ def main(conf: DictConfig) -> None:
     conf.update(overrides)
     check_conf(conf)
 
+    for k in ["code_loc", "base_dir", "outdir", "weights_dir"]:
+        if k in conf and conf[k]:
+            conf[k] = env_to_path(conf[k])
+
     # -------------------------------------
     # -----  Compute Specific Values  -----
     # -------------------------------------
@@ -749,6 +755,13 @@ def main(conf: DictConfig) -> None:
                 total_runs, conf["n_runs_per_search"]
             )
         )
+
+    if "exp_name" in conf:
+        if "base_dir" in conf:
+            conf["base_dir"] = str(Path(conf["base_dir"]) / conf["exp_name"])
+            print(f"Running experiments in base_dir: {conf['base_dir']}")
+        else:
+            print(f"Ignoring 'exp_name' {conf['exp_name']} as no base_dir was provided")
 
     print(f"Running {total_runs} scripts")
 
@@ -860,9 +873,11 @@ def main(conf: DictConfig) -> None:
             # -----  Set outdir from basedir (if any)  -----
             # ----------------------------------------------
             if not opts.get("outdir"):
-                opts["outdir"] = Path(opts["base_dir"])
+                opts["outdir"] = Path(opts["base_dir"]).resolve()
                 opts["outdir"] = opts["outdir"] / (opts["tracing_method"] + extension)
-                opts["outdir"] = str(opts["outdir"].resolve())
+                opts["outdir"] = str(opts["outdir"])
+
+            opts["outdir"] = opts["outdir"]
 
             # --------------------------------
             # -----  Use SLURM_TMPDIR ?  -----
