@@ -725,7 +725,7 @@ def main(conf: DictConfig) -> None:
         Path(__file__).resolve().parent.parent
         / "configs"
         / "search"
-        / (overrides.get("exp_file", "experiment") + ".yaml")
+        / (overrides.get("exp_file", "randomization") + ".yaml")
     )
     # override experimental parametrization with the commandline conf
     conf.update(overrides)
