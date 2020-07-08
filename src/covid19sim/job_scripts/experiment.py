@@ -799,11 +799,16 @@ def main(conf: DictConfig) -> None:
             extension = ""
             # specify server frontend
 
+            tracing_dict = None
+            tracing_name = None
+            if isinstance(opts.get("tracing_method", ""), dict):
+                tracing_dict = first_value(opts["tracing_method"])
+                tracing_name = first_key(opts["tracing_method"])
+
             use_transformer = (
-                isinstance(opts.get("tracing_method", ""), dict)
-                and opts["tracing_method"]
-                and "weights" in first_value(opts["tracing_method"])
-                and first_value(opts["tracing_method"])["weights"]
+                tracing_dict is not None
+                and "weights" in tracing_dict
+                and tracing_dict["weights"]
             )
             use_server = use_transformer and opts.get("USE_INFERENCE_SERVER", True)
 
@@ -811,18 +816,20 @@ def main(conf: DictConfig) -> None:
                 # -------------------------
                 # -----  Set Weights  -----
                 # -------------------------
+
                 if "weights" not in opts:
-                    weights_name = first_value(opts["tracing_method"])["weights"]
+                    weights_name = tracing_dict["weights"]
                     weights_name = weights_name.strip()
                     opts["weights"] = str(Path(opts["weights_dir"]) / weights_name)
 
-            if isinstance(opts["tracing_method"], dict):
+            if tracing_dict is not None:
                 # Create folder name extension based on keys in tracing_method dict
-                extensions = sorted(first_value(opts["tracing_method"]).items())
+                extensions = sorted(tracing_dict.items())
+
                 extension = "_" + "_".join(map(get_extension, extensions))
 
                 # Add tracing_method dict's keys and values to opts
-                for k, v in first_value(opts["tracing_method"]).items():
+                for k, v in tracing_dict.items():
                     if k != "weights":
                         if k in opts:
                             print(
@@ -833,7 +840,7 @@ def main(conf: DictConfig) -> None:
                         opts[k] = v
 
                 # set true tracing_method
-                opts["tracing_method"] = first_key(opts["tracing_method"])
+                opts["tracing_method"] = tracing_name
 
             # -----------------------------------------------------
             # -----  Inference Server / Transformer Exp Path  -----

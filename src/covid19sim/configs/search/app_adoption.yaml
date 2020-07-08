@@ -40,7 +40,7 @@ tracing_method:
     - heuristicv1
     - transformer:
         weights: ROSY-FOREST-704
-        REC_LEVEL_THRESHOLDS: [0, 0, 0]
+        REC_LEVEL_THRESHOLDS: [0, 1, 2]
     - oracle:
         weights: ROSY-FOREST-704
     - binary_digital_tracing_order_1
