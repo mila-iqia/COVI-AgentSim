@@ -1,0 +1,38 @@
+model_mapping:
+  AMBER-WOOD-691B: transformer
+  ANCIENT-SEA-523: mlp
+  AVID-WAVE-652A: transformer
+  AVID-WAVE-652B: transformer
+  BREEZY-DURIAN-521: linreg
+  DAILY-GALAXY-438: mlp
+  DARK-DISCO-437: linreg
+  DASHING-LION-441: mlp
+  DASHING-UNIVERSE-393A: transformer
+  DASHING-UNIVERSE-393: transformer
+  ETERNAL-RESONANCE-650A: transformer
+  ETHEREAL-DARKNESS-566: transformer
+  FEARLESS-FIREFLY-648A: linreg
+  FIERY-YOGURT-575: mlp
+  GENEROUS-BUSH-562: transformer
+  HOPEFUL-STAR-324A: transformer
+  HOPEFUL-STAR-324B: transformer
+  MILD-SOUND-646A: transformer
+  RADIANT-RESONANCE-561: transformer
+  ROSY-SERENITY-571: linreg
+  SCARLET-DAWN-653A: linreg
+  SKILLED-WATER-520: transformer
+  SMART-VALLEY-428A: transformer
+  SMART-VALLEY-428: transformer
+  SOFT-YOGHURT-518A: transformer
+  SWEET-BIRD-443: linreg
+  WINTER-MOON-285: diurnal
+  TWILIGHT-RAIN-696: transformer>twilight
+  ROSY-FOREST-704: transformer>rosy
+  VAGUE-THUNDER-705: transformer>vague
+
+use_wandb: False
+compare: n_people
+multithread: False
+hydra:
+  run:
+    dir: .
