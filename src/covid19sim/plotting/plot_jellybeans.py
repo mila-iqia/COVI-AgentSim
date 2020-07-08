@@ -44,7 +44,7 @@ def run(data, path, comparison_key):
     max_cols = 2
 
     data_rec_levels = {
-        mk: {ck: get_all_rec_levels(data=cv) for ck, cv in mv.items()}
+        mk: {ck: get_all_rec_levels(data=cv, normalized="_norm" in mk) for ck, cv in mv.items()}
         for mk, mv in data.items()
     }
 

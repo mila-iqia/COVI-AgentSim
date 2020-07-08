@@ -117,7 +117,7 @@ def get_all_states(filenames):
     return all_states
 
 
-def get_rec_levels(filename=None, data=None):
+def get_rec_levels(filename=None, data=None, normalized=False):
     if data is None:
         if filename is not None:
             with open(filename, "rb") as f:
@@ -125,7 +125,7 @@ def get_rec_levels(filename=None, data=None):
         else:
             raise ValueError("filename and data arguments are None")
 
-    rec_levels = get_human_rec_levels(filename, data) + 1  # account for rec_levels `-1`
+    rec_levels = get_human_rec_levels(filename, data, normalized=normalized) + 1  # account for rec_levels `-1`
 
     def bincount(x):
         return np.bincount(x, minlength=5)
@@ -153,7 +153,7 @@ def get_human_rec_levels(filename=None, data=None, normalized=False):
     return rec_levels
 
 
-def get_all_rec_levels(filenames=None, data=None):
+def get_all_rec_levels(filenames=None, data=None, normalized=False):
     if data is not None:
         data = [d["pkl"] for d in data.values()]
         filenames = [None] * len(data)
@@ -162,7 +162,7 @@ def get_all_rec_levels(filenames=None, data=None):
     else:
         raise ValueError("filenames and data arguments are None")
 
-    rec_levels = get_rec_levels(filenames[0], data[0])
+    rec_levels = get_rec_levels(filenames[0], data[0], normalized=normalized)
     all_rec_levels = np.zeros(
         (len(filenames),) + rec_levels.shape, dtype=rec_levels.dtype
     )
