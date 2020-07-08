@@ -1,9 +1,3 @@
-# ***********************
-# This file is a duplicate of data.py with improved functions.
-# Manually copied in a rush.
-# Some functions are also added.
-# **********************
-
 import numpy as np
 import os
 import multiprocessing as mp
@@ -12,7 +6,30 @@ from covid19sim.plotting.plot_rt import PlotRt
 from pathlib import Path
 import yaml
 import concurrent.futures
+from collections import defaultdict
 
+def get_title(method):
+    method_title = {
+        "bdt1": "1st Order Binary Tracing",
+        "bdt2": "2nd Order Binary Tracing",
+        "heuristicv1": "Heuristic (v1)",
+        "heuristicv2": "Heuristic (v2)",
+        "transformer": "Transformer",
+        "transformer-[1, 3, 5]": "Transformer-[1, 3, 5]",
+        "transformer-[0, 1, 2]": "Transformer-[0, 1, 2]",
+        "transformer-[0, 0, 0]": "Transformer-[0, 0, 0]",
+        "linreg": "Linear Regression",
+        "mlp": "MLP",
+        "unmitigated": "Unmitigated",
+        "oracle": "Oracle",
+    }
+    if "_norm" in method:
+        if method.replace("_norm", "") in method_title:
+            return method_title[method.replace("_norm", "")] + " (Norm.)"
+    if method in method_title:
+        return method_title[method]
+
+    return method.replace("_", " ").capitalize()
 
 def get_data(filename=None, data=None):
     if data:
@@ -282,13 +299,19 @@ def get_all_data(base_path, keep_pkl_keys, multi_thread=False):
     return all_data
 
 
+def default_to_regular_dict(d):
+    if isinstance(d, defaultdict):
+        d = {k: default_to_regular_dict(v) for k, v in d.items()}
+    return d
+
+
 def thread_read_run(args):
     r, keep_pkl_keys = args
     with (r / "full_configuration.yaml").open("r") as f:
         conf = yaml.safe_load(f)
     with open(str(list(r.glob("tracker*.pkl"))[0]), "rb") as f:
         pkl_data = pickle.load(f)
-        pkl = {k: v for k, v in pkl_data.items() if k in keep_pkl_keys}
+        pkl = {k: default_to_regular_dict(v) for k, v in pkl_data.items() if k in keep_pkl_keys}
 
     return (r, conf, pkl)
 
