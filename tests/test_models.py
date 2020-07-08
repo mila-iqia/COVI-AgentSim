@@ -1,7 +1,5 @@
 import datetime
-import glob
 import h5py
-import json
 import os
 import pickle
 import unittest
@@ -200,7 +198,8 @@ class ModelsTest(unittest.TestCase):
                                 human = pickle.loads(b)
                                 assert human["current_day"] == day_idx
                                 assert human["unobserved"]["human_id"] not in valid_outputs
-                                valid_outputs[human["unobserved"]["human_id"]] = human
+                                human_id = int(human["unobserved"]["human_id"].split(":")[-1])
+                                valid_outputs[human_id] = human
                         hour_outputs.append(valid_outputs)
                     output.append(hour_outputs)
             self.assertEqual(len(output), n_days - conf.get('INTERVENTION_DAY'))
