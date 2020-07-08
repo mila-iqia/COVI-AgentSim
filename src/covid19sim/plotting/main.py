@@ -14,8 +14,8 @@ import covid19sim.plotting.plot_jellybeans as jellybeans
 import covid19sim.plotting.plot_pareto_adoption as pareto_adoption
 import covid19sim.plotting.plot_presymptomatic as presymptomatic
 import covid19sim.plotting.plot_spy_human as spy_human
-from covid19sim.plotting.utils.extract_data import get_all_data
-from covid19sim.plotting.make_report import make_report
+from covid19sim.plotting.utils import get_all_data
+
 
 print("Ok.")
 HYDRA_CONF_PATH = Path(__file__).parent.parent / "configs" / "plot"
@@ -97,61 +97,6 @@ def summarize_configs(all_paths):
     )
 
 
-def get_model(conf, mapping):
-    if conf["RISK_MODEL"] == "":
-        if conf.get("DAILY_TARGET_REC_LEVEL_DIST", False):
-            return "unmitigated_norm"
-        return "unmitigated"
-
-    if conf["RISK_MODEL"] == "digital":
-        if conf["TRACING_ORDER"] == 1:
-            if conf.get("DAILY_TARGET_REC_LEVEL_DIST", False):
-                return "bdt1_norm"
-            return "bdt1"
-        elif conf["TRACING_ORDER"] == 2:
-            if conf.get("DAILY_TARGET_REC_LEVEL_DIST", False):
-                return "bdt2_norm"
-            return "bdt2"
-        else:
-            raise ValueError(
-                "Unknown binary digital tracing order: {}".format(conf["TRACING_ORDER"])
-            )
-
-    if conf["RISK_MODEL"] == "transformer":
-        if conf["USE_ORACLE"]:
-            if conf.get("DAILY_TARGET_REC_LEVEL_DIST", False):
-                return "oracle_normed"
-            return "oracle"
-        # FIXME this won't work if the run used the inference server
-        model = Path(conf["TRANSFORMER_EXP_PATH"]).name
-        if model not in mapping:
-            print(
-                "Warning: unknown model name {}. Defaulting to `transformer`".format(
-                    model
-                )
-            )
-        model_name = (
-            mapping.get(model, "transformer")
-            + "-"
-            + str(conf.get("REC_LEVEL_THRESHOLDS"))
-        )
-        if conf.get("DAILY_TARGET_REC_LEVEL_DIST", False):
-            model_name = model_name + "_norm"
-        return model_name
-
-    if conf["RISK_MODEL"] == "heuristicv1":
-        if conf.get("DAILY_TARGET_REC_LEVEL_DIST", False):
-            return "heuristicv1_norm"
-        return "heuristicv1"
-
-    if conf["RISK_MODEL"] == "heuristicv2":
-        if conf.get("DAILY_TARGET_REC_LEVEL_DIST", False):
-            return "heuristicv2_norm"
-        return "heuristicv2"
-
-    raise ValueError("Unknown RISK_MODEL {}".format(conf["RISK_MODEL"]))
-
-
 def map_conf_to_models(all_paths, plot_conf):
     new_data = {}  # defaultdict(lambda: defaultdict(dict))
     key = plot_conf["compare"]
@@ -159,7 +104,7 @@ def map_conf_to_models(all_paths, plot_conf):
         for rk, rv in mv.items():
             sim_conf = rv["conf"]
             compare_value = str(sim_conf[key])
-            model = get_model(sim_conf, plot_conf["model_mapping"])
+            model = Path(rk).parent.name
             if model not in new_data:
                 new_data[model] = {}
             if compare_value not in new_data[model]:

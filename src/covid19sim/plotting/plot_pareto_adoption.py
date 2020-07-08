@@ -8,10 +8,11 @@ import pandas as pd
 from matplotlib.lines import Line2D
 from scipy import stats as sps
 
-from covid19sim.plotting.utils.extract_data import (
+from covid19sim.plotting.utils import (
     get_data,
     get_human_rec_levels,
     get_human_states,
+    get_title
 )
 
 
@@ -194,28 +195,7 @@ def plot_all_metrics(
     return axs
 
 
-def get_line2D(value, color, marker, is_method=True, compare="APP_UPTAKE"):
-    legends = {
-        "APP_UPTAKE": lambda x: f"{float(x) * 100 * 0.71203:.0f}% Adoption Rate",
-        "method": {
-            "bdt1": "1st Order Binary Tracing",
-            "bdt2": "2nd Order Binary Tracing",
-            "heuristicv1": "Heuristic (v1)",
-            "heuristicv2": "Heuristic (v2)",
-            "transformer": "Transformer",
-            "transformer-[0, 0, 0]": "Transformer-[0, 0, 0]",
-            "transformer-[0, 1, 2]": "Transformer-[0, 1, 2]",
-            "transformer-[1, 3, 5]": "Transformer-[1, 3, 5]",
-            "transformer>twilight-[0, 1, 2]": "Transformer-twilight-[0, 1, 2]",
-            "transformer>rosy-[0, 1, 2]": "Transformer-rosy-[0, 1, 2]",
-            "transformer>vague-[0, 1, 2]": "Transformer-vague-[0, 1, 2]",
-            "linreg": "Linear Regression",
-            "mlp": "MLP",
-            "unmitigated": "Unmitigated",
-            "oracle": "Oracle",
-        },
-        "REC_LEVEL_THRESHOLDS": lambda x: f"{''.join(x)} Thresholds",
-    }
+def get_line2D(value, color, marker, is_method=True):
 
     if is_method:
         return Line2D(
@@ -226,7 +206,7 @@ def get_line2D(value, color, marker, is_method=True, compare="APP_UPTAKE"):
             markeredgecolor="k",
             markerfacecolor=color,
             markersize=15,
-            label=legends["method"][value],
+            label=get_title(value),
         )
 
     return Line2D(
@@ -237,7 +217,7 @@ def get_line2D(value, color, marker, is_method=True, compare="APP_UPTAKE"):
         marker=marker,
         markerfacecolor="black",
         markersize=15,
-        label=legends[compare](value),
+        label=get_title(value),
     )
 
 
@@ -351,20 +331,19 @@ def run(data, path, comparison_key):
     )
     axs = [i for j in axs for i in j]
 
-    base_methods = sorted(set([lab.split("_")[0] for lab in labels + labels_norm]))
+    base_methods = sorted(data.keys())
 
     method_legend = []
     compare_legend = []
     for idx, method in enumerate(sorted(base_methods)):
         print("Plotting", method, "...")
-        # import pdb; pdb.set_trace()
         current_labels = sorted([lab for lab in labels if lab.startswith(method)])
         current_labels_norm = sorted(
             [lab for lab in labels_norm if lab.startswith(method)]
         )
         current_color = colormap[idx] if method != "unmitigated" else "#34495e"
         method_legend.append(
-            get_line2D(method, current_color, None, True, comparison_key)
+            get_line2D(method, current_color, None, True)
         )
         for i, lab in enumerate(current_labels):
 
@@ -376,7 +355,6 @@ def run(data, path, comparison_key):
                         current_color,
                         current_marker,
                         False,
-                        comparison_key,
                     )
                 )
             plot_all_metrics(

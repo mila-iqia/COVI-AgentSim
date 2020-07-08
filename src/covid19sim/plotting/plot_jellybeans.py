@@ -4,31 +4,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.lines import Line2D
 from collections import defaultdict
-from covid19sim.plotting.utils.extract_data import get_all_rec_levels
+from covid19sim.plotting.utils import get_all_rec_levels, get_title
 
-
-def get_title(method):
-    method_title = {
-        "bdt1": "1st Order Binary Tracing",
-        "bdt2": "2nd Order Binary Tracing",
-        "heuristicv1": "Heuristic (v1)",
-        "heuristicv2": "Heuristic (v2)",
-        "transformer": "Transformer",
-        "transformer-[1, 3, 5]": "Transformer-[1, 3, 5]",
-        "transformer-[0, 1, 2]": "Transformer-[0, 1, 2]",
-        "transformer-[0, 0, 0]": "Transformer-[0, 0, 0]",
-        "linreg": "Linear Regression",
-        "mlp": "MLP",
-        "unmitigated": "Unmitigated",
-        "oracle": "Oracle",
-    }
-    if "_norm" in method:
-        if method.replace("_norm", "") in method_title:
-            return method_title[method.replace("_norm", "")] + " (Norm.)"
-    if method in method_title:
-        return method_title[method]
-
-    return method.replace("_", " ").capitalize()
 
 
 def get_transformer_name(method_dict):
@@ -51,6 +28,7 @@ def run(data, path, comparison_key):
     """
     print("Preparing data...")
     intervention_day = None
+    # TODO: fix this loop in the context of different intervention days
     for mk, mv in data.items():
         if "unmitigated" in mk:
             continue
@@ -72,7 +50,7 @@ def run(data, path, comparison_key):
 
     tmp_data = defaultdict(dict)
     for mk, mrl in data_rec_levels.items():
-        if mk != "unmitigated":
+        if "unmitigated" not in mk and "no_intervention" not in mk:
             for ck, crl in mrl.items():
                 tmp_data[ck][mk] = crl
     data_rec_levels = tmp_data

@@ -116,7 +116,6 @@ def run(data, path, comparison_key, times=[-1, -2, -3], mode=None):
                 j = j + i if i == 0 else j + i + 1
 
                 for i, adoption in enumerate(data[method].keys()):
-
                     label = label2pkls[i + j][0]
                     result = results[i + j]
 
@@ -220,6 +219,7 @@ def run(data, path, comparison_key, times=[-1, -2, -3], mode=None):
                     fig_path = dir_path / f"{method}_{mode}.png"
                     print(f"Saving Figure {str(fig_path)}...", end="", flush=True)
                     os.makedirs(dir_path, exist_ok=True)
+                    plt.gcf()
                     plt.savefig(fig_path)
                     plt.close("all")
                     print("Done.")
