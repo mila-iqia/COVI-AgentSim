@@ -18,6 +18,26 @@ class RandomSearchError(Exception):
     pass
 
 
+def first_key(d):
+    """get the first key of a dict"""
+    return list(d.keys())[0]
+
+
+def first_value(d):
+    """get the first value of a dict"""
+    return list(d.values())[0]
+
+
+def get_extension(x):
+    """Map a key, value tuple to a string to create the folder
+    name in base_dir
+    """
+    k, v = x
+    if k == "REC_LEVEL_THRESHOLDS":
+        return "".join(map(str, v))
+    return str(v)
+
+
 def get_model(conf):
     if conf["RISK_MODEL"] == "":
         if conf.get("DAILY_TARGET_REC_LEVEL_DIST", False):
@@ -124,19 +144,20 @@ def check_conf(conf):
     weights_dir = conf.get("weights_dir", "None")
     for tm in tracing_methods:
         weights = conf.get("weights", None)
-        if "oracle" in tm or "transformer" in tm:
-            if weights is None and ">" not in tm:
+        if isinstance(tm, dict):
+            model = first_key(tm)
+            if weights is None and "weights" not in tm[model]:
                 raise RandomSearchError(
-                    f"Unknown {tm} weights. Please specify '>' or 'weights: ...'"
+                    f"Unknown {tm[model]} weights. Please specify '>' or 'weights: ...'"
                 )
-            elif ">" in tm:
+            elif "weights" in tm[model]:
                 if not Path(weights_dir).exists():
                     raise RandomSearchError(
                         "No 'weights' specified and unknown 'weights_dir' {}".format(
                             weights_dir
                         )
                     )
-                w = tm.split(">")[-1].strip()
+                w = tm[model]["weights"]
                 weights = Path(weights_dir) / w
             elif weights is not None:
                 weights = Path(weights)
@@ -626,6 +647,8 @@ def get_hydra_args(opts, exclude=set()):
     hydra_args = ""
     for k, v in opts.items():
         if k not in exclude:
+            if isinstance(v, list):
+                v = f'"{v}"'
             hydra_args += f" {k}={v}"
     return hydra_args
 
@@ -773,25 +796,48 @@ def main(conf: DictConfig) -> None:
             opts = sample_search_conf(conf, run_idx)
             opts = normalize(opts)
             run_idx += 1
+            extension = ""
             # specify server frontend
 
-            use_transformer = opts.get("tracing_method", "").split(">")[0].strip() in {
-                "oracle",
-                "transformer",
-            }
+            use_transformer = (
+                isinstance(opts.get("tracing_method", ""), dict)
+                and opts["tracing_method"]
+                and "weights" in first_value(opts["tracing_method"])
+                and first_value(opts["tracing_method"])["weights"]
+            )
             use_server = use_transformer and opts.get("USE_INFERENCE_SERVER", True)
 
             if use_transformer:
+                # -------------------------
+                # -----  Set Weights  -----
+                # -------------------------
                 if "weights" not in opts:
-                    if ">" not in opts["tracing_method"]:
-                        raise RandomSearchError("Unknown weights for transformer")
-                    weights_name = opts["tracing_method"].split(">")[-1].strip()
+                    weights_name = first_value(opts["tracing_method"])["weights"]
+                    weights_name = weights_name.strip()
                     opts["weights"] = str(Path(opts["weights_dir"]) / weights_name)
-                if ">" in opts["tracing_method"]:
-                    opts["tracing_method"] = (
-                        opts["tracing_method"].split(">")[0].strip()
-                    )
 
+            if isinstance(opts["tracing_method"], dict):
+                # Create folder name extension based on keys in tracing_method dict
+                extensions = sorted(first_value(opts["tracing_method"]).items())
+                extension = "_" + "_".join(map(get_extension, extensions))
+
+                # Add tracing_method dict's keys and values to opts
+                for k, v in first_value(opts["tracing_method"]).items():
+                    if k != "weights":
+                        if k in opts:
+                            print(
+                                "Warning, overriding opts[{}]={} to opts[{}]={}".format(
+                                    k, opts[k], k, v
+                                )
+                            )
+                        opts[k] = v
+
+                # set true tracing_method
+                opts["tracing_method"] = first_key(opts["tracing_method"])
+
+            # -----------------------------------------------------
+            # -----  Inference Server / Transformer Exp Path  -----
+            # -----------------------------------------------------
             if use_server:
                 if ipcf is None:
                     ipcf, ipcb = ipc_addresses()
@@ -803,20 +849,24 @@ def main(conf: DictConfig) -> None:
                 if use_transformer:
                     opts["TRANSFORMER_EXP_PATH"] = opts["weights"]
 
+            # ----------------------------------------------
+            # -----  Set outdir from basedir (if any)  -----
+            # ----------------------------------------------
             if not opts.get("outdir"):
-                extension = ""
-                if opts.get("tracing_method") == "transformer":
-                    extension = Path(opts["weights"]).name
-                opts["outdir"] = str(
-                    Path(opts["base_dir"]) / (opts["tracing_method"] + extension)
-                )
+                opts["outdir"] = Path(opts["base_dir"])
+                opts["outdir"] = opts["outdir"] / (opts["tracing_method"] + extension)
+                opts["outdir"] = str(opts["outdir"].resolve())
 
+            # --------------------------------
+            # -----  Use SLURM_TMPDIR ?  -----
+            # --------------------------------
             if use_tmpdir:
                 outdir = str(opts["outdir"])
                 if not dev:
                     Path(outdir).resolve().mkdir(parents=True, exist_ok=True)
                 opts["outdir"] = "$SLURM_TMPDIR"
 
+            # overwrite intervention day if no_intervention
             if opts["tracing_method"] == "no_intervention":
                 opts["INTERVENTION_DAY"] = -1
 
