@@ -661,19 +661,24 @@ def generate_debug_plots(data_loader, output_folder, batch_size=10):
     generate_location_centric_plots(data_loader, output_folder)
 
 
+def main(debug_data_path, output_folder):
+    # Load the debug data
+    assert os.path.isfile(debug_data_path), \
+        f"invalid debug data dump file path: {debug_data_path}"
+    data_loader = DebugDataLoader(debug_data_path)
+
+    # Ensure that the output folder does exist
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
+
+    # Generate the plots
+    generate_debug_plots(data_loader, output_folder)
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--debug_data")
     parser.add_argument("--output_folder")
     args = parser.parse_args()
 
-    # Load the debug data
-    assert os.path.isfile(args.debug_data), \
-        f"invalid debug data dump file path: {args.debug_data}"
-    data_loader = DebugDataLoader(args.debug_data)
-
-    # Ensure that the output folder does exist
-    if not os.path.exists(args.output_folder):
-        os.makedirs(args.output_folder)
-
-    generate_debug_plots(data_loader, args.output_folder)
+    main(args.debug_data, args.output_folder)
