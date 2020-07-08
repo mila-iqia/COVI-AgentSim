@@ -3,8 +3,8 @@ import unittest
 import numpy as np
 
 from covid19sim.epidemiology.symptoms import _get_allergy_progression, _get_cold_progression, \
-    _get_covid_progression, _get_covid_sickness_severity, _get_covid_trouble_breathing_severity, \
-    _get_flu_progression, SYMPTOMS, DISEASES_PHASES
+    _get_covid_fever_probability, _get_covid_progression, _get_covid_sickness_severity, \
+    _get_covid_trouble_breathing_severity, _get_flu_progression, SYMPTOMS, DISEASES_PHASES
 from covid19sim.epidemiology.human_properties import _get_preexisting_conditions, PREEXISTING_CONDITIONS, \
     HEART_DISEASE_IF_SMOKER_OR_DIABETES_MODIFIER, CANCER_OR_COPD_IF_SMOKER_MODIFIER, \
     IMMUNO_SUPPRESSED_IF_CANCER_MODIFIER
@@ -405,6 +405,35 @@ class CovidProgression(unittest.TestCase):
                 else:
                     raise ValueError(f"Invalid severity [{computed_severity}]")
 
+    def test_covid_fever_probability(self):
+        disease_phases = self.disease_phases
+
+        for initial_viral_load in self.initial_viral_load_options:
+            for really_sick in self.really_sick_options:
+                for extremely_sick in self.extremely_sick_options if really_sick else (False,):
+                    for preexisting_conditions in self.preexisting_conditions_options:
+                        for phase_idx in disease_phases:
+                            phase = disease_phases[phase_idx]
+
+                            prob = _get_covid_fever_probability(phase_idx, really_sick, extremely_sick,
+                                                                list(preexisting_conditions), initial_viral_load)
+
+                            expected_prob = SYMPTOMS['fever'].probabilities[phase]
+
+                            # covid_onset
+                            if phase_idx == 1:
+                                if really_sick or extremely_sick or \
+                                        len(preexisting_conditions) > 2 or \
+                                        initial_viral_load > 0.6:
+                                    expected_prob *= 2.
+
+                            # covid_plateau
+                            elif phase_idx == 2:
+                                if initial_viral_load > 0.6:
+                                    expected_prob = 1.
+
+                            self.assertEqual(prob, expected_prob)
+
     def test_covid_progression(self):
         """
             Test the distribution of the covid symptoms
@@ -508,22 +537,13 @@ class CovidProgression(unittest.TestCase):
 
                 # covid_onset
                 if i == 1:
-                    if s_id == _get_id('chills') and \
-                            not extremely_sick:
-                        expected_prob = 0
-
-                    elif s_id == _get_id('lost_consciousness') and \
+                    if s_id == _get_id('lost_consciousness') and \
                             not (really_sick or extremely_sick or len(preexisting_conditions) > 2):
                         expected_prob = 0
 
                     elif s_id == _get_id('severe_chest_pain') and \
                             not extremely_sick:
                         expected_prob = 0
-
-                    elif s_id in {_get_id('fever'), _get_id('chills')}:
-                        # Skip this test as maintaining of the tests would be
-                        # as complex as maintaining the code
-                        continue
 
                 # covid_plateau
                 elif i == 2:
@@ -539,11 +559,6 @@ class CovidProgression(unittest.TestCase):
                         p0 = _get_probability('loss_of_taste', 0)
                         p1 = p0 + (1 - p0) * _get_probability('loss_of_taste', 1)
                         expected_prob = p1 + (1 - p1) * expected_prob
-
-                    elif s_id in {_get_id('fever'), _get_id('chills')}:
-                        # Skip this test as maintaining of the tests would be
-                        # as complex as maintaining the code
-                        continue
 
                 # covid_post_plateau_1
                 elif i == 3:
@@ -564,6 +579,21 @@ class CovidProgression(unittest.TestCase):
                     elif s_id == _get_id('severe_chest_pain') and \
                             not extremely_sick:
                         expected_prob = 0
+
+                if s_id in (_get_id('fever'), _get_id('chills')):
+                    fever_prob = _get_covid_fever_probability(i, really_sick, extremely_sick,
+                                                              list(preexisting_conditions), initial_viral_load)
+
+                    # covid_onset
+                    if i == 1:
+                        if s_id == _get_id('chills') and not extremely_sick:
+                            expected_prob = 0
+
+                    if s_id == _get_id('fever'):
+                        expected_prob = fever_prob
+                    else:
+                        # Other symptoms are dependent on fever
+                        expected_prob *= fever_prob
 
                 self.assertAlmostEqual(
                     prob, expected_prob,
