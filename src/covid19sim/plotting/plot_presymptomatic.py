@@ -1,5 +1,4 @@
 import numpy as np
-import wandb
 import os
 import matplotlib
 import matplotlib.pyplot as plt
@@ -69,7 +68,7 @@ def statistics(pkl_data, times, mode):
     return positive, negative
 
 
-def run(data, path, comparison_key, use_wandb, times=[-1, -2, -3], mode=None):
+def run(data, path, comparison_key, times=[-1, -2, -3], mode=None):
 
     # Options:
     # 1. "times" is a list, indicating the times we are interested in.
@@ -223,7 +222,4 @@ def run(data, path, comparison_key, use_wandb, times=[-1, -2, -3], mode=None):
                     os.makedirs(dir_path, exist_ok=True)
                     plt.savefig(fig_path)
                     plt.close("all")
-                    if use_wandb:
-                        print("Uploading to Weights and Biases...", end="", flush=True)
-                        wandb.log({str(fig_path): wandb.Image(str(fig_path))})
                     print("Done.")

@@ -1,6 +1,5 @@
 import math
 import pickle
-import wandb
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -242,7 +241,7 @@ def get_line2D(value, color, marker, is_method=True, compare="APP_UPTAKE"):
     )
 
 
-def run(data, path, comparison_key, use_wandb):
+def run(data, path, comparison_key):
     """
     data is a dictionnary that maps methods (bdt1, bdt1_norm, transformer etc.)
     to another dictionnary which has keys the values of the comparing key and
@@ -481,7 +480,4 @@ def run(data, path, comparison_key, use_wandb):
         bbox_extra_artists=(lgd, ylab, spttl),
         bbox_inches="tight",
     )
-    if use_wandb:
-        print("Uploading to Weights and Biases...", end="", flush=True)
-        wandb.save(str(save_path))
     print("Done.")

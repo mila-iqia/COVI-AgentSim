@@ -5,7 +5,6 @@ from collections import defaultdict
 from pathlib import Path
 from time import time
 import pickle
-import wandb
 import os
 import shutil
 
@@ -189,9 +188,6 @@ def main(conf):
     conf = OmegaConf.to_container(conf)
     options = parse_options(conf, all_plots)
 
-    if conf["use_wandb"]:
-        wandb.init(project="COVI")
-
     root_path = conf.get("path", ".")
     plot_path = os.path.join(root_path, "plots")
 
@@ -319,7 +315,7 @@ def main(conf):
             # -------------------------------
             # -----  Run Plot Function  -----
             # -------------------------------
-            func(data, plot_path, conf["compare"], conf["use_wandb"], **options[plot])
+            func(data, plot_path, conf["compare"], **options[plot])
         except Exception as e:
             if isinstance(e, KeyboardInterrupt):
                 print("Interrupting.")
