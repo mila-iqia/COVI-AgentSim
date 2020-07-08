@@ -1,6 +1,6 @@
 # -------------------------------------
-# -----  Simulation Fixed Params  -----
 # -------------------------------------
+# -----  Simulation Fixed Params  -----
 n_people: 1000
 simulation_days: 30
 test_capacity: 0.005
@@ -36,9 +36,8 @@ tracing_method:
   from:
     - no_intervention
     - heuristicv1
-    - transformer>MILD-SOUND-646A
-    - transformer>ETERNAL-RESONANCE-650A
-    - oracle>RADIANT-RESONANCE-561
+    - transformer>ROSY-FOREST-704
+    - oracle>ROSY-FOREST-704
     - binary_digital_tracing_order_1
     - binary_digital_tracing_order_2
 

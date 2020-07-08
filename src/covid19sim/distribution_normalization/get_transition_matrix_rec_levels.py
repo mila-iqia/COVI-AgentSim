@@ -243,9 +243,11 @@ def main(args):
 
     to_normalize = []
     for method_dir in parent.iterdir():
+        stop = True
         if not method_dir.is_dir():
             continue
         for run_dir in method_dir.iterdir():
+            stop = False
             if not run_dir.is_dir():
                 continue
             conf_path = run_dir / "full_configuration.yaml"
@@ -253,6 +255,12 @@ def main(args):
                 with (run_dir / "full_configuration.yaml").open("r") as f:
                     run_conf = yaml.safe_load(f)
                 break
+            else:
+                stop = True
+                break
+
+        if stop:
+            continue
 
         assert (
             run_conf is not None
@@ -263,13 +271,17 @@ def main(args):
         if (
             tracing_method != "unmitigated"
             and "DAILY_TARGET_REC_LEVEL_DIST" not in run_conf
+            and method_dir != Path(args.target).resolve()
         ):
             print(f"Found config for {method_dir.name}")
             to_normalize.append(
                 {"tracing_method": tracing_method, "method_dir": method_dir}
             )
 
-    target_name = Path(args.target).name
+    target_name = f"{parent.name}_{Path(args.target).name}"
+    if "transformer" in target_name:
+        target_name = target_name.replace("transformer", "")
+
     for i, norm_dict in enumerate(to_normalize):
         tracing_method = norm_dict["tracing_method"]
         method_dir = norm_dict["method_dir"]

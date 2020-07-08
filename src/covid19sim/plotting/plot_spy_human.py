@@ -1,6 +1,4 @@
-import covid19sim
 import pandas as pd
-import numpy as np
 import dill
 import os
 from collections import defaultdict
@@ -89,7 +87,12 @@ def summarize(
         # this person is assumed to be an infector for the next column
         infector_column = infector_name = columns[idx]  # infector
         RL = human_risk_each_day[today][infector_name]
-        max_RL_recieved_today = to_human_max_msg_per_day[infector_name][today]
+        max_RL_received_today = -1
+        if (
+            infector_name in to_human_max_msg_per_day
+            and today in to_human_max_msg_per_day[infector_name]
+        ):
+            max_RL_received_today = to_human_max_msg_per_day[infector_name][today]
 
         Rec = rec_levels[infector_column].item()
         test = test_results[infector_column].item()
@@ -100,8 +103,8 @@ def summarize(
             # use the carried message here
             cell += f" &#9889:{max_risk_level}"
 
-        if max_RL_recieved_today > 0:
-            cell += f" &#128229:{max_RL_recieved_today}"
+        if max_RL_received_today > 0:
+            cell += f" &#128229:{max_RL_received_today}"
 
         test_content = ""
         if reported_test_result == "positive":
@@ -309,9 +312,7 @@ def get_random_chain(infection_chain, depth=0):
     return infector_chain
 
 
-def plot(input_file, output_file):
-    data = dill.load(open(input_file, "rb"))
-
+def plot(data, output_file):
     human_risk_each_day = defaultdict(lambda: defaultdict(lambda: -1))
     for x in data["risk_attributes"]:
         date = x["timestamp"].date()
@@ -365,7 +366,7 @@ def plot(input_file, output_file):
         fo.write(df.render())
 
 
-def run(data, path, comparison_key, num_chains=1):
+def run(data, path, comparison_key, wandb=False, num_chains=1):
 
     # Options:
     # 1. "num_chains" is an integer, specifying how many infection chains we want to generate.
@@ -381,5 +382,5 @@ def run(data, path, comparison_key, num_chains=1):
         for k in range(num_chains):
             rand_index = random.randint(0, len(pkls) - 1)
             pkl = pkls[rand_index]
-            output_file = os.path.join(path, f"InfectionChain_{label}_chain:{k}.html")
+            output_file = os.path.join(path, f"infection_chain_{label}_chain:{k}.html")
             plot(pkl, output_file)

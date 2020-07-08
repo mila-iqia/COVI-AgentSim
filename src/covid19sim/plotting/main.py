@@ -7,14 +7,15 @@ from time import time
 import pickle
 import os
 import shutil
-
 import hydra
 from omegaconf import OmegaConf
 
 import covid19sim.plotting.plot_jellybeans as jellybeans
 import covid19sim.plotting.plot_pareto_adoption as pareto_adoption
 import covid19sim.plotting.plot_presymptomatic as presymptomatic
+import covid19sim.plotting.plot_spy_human as spy_human
 from covid19sim.plotting.utils.extract_data import get_all_data
+from covid19sim.plotting.make_report import make_report
 
 print("Ok.")
 HYDRA_CONF_PATH = Path(__file__).parent.parent / "configs" / "plot"
@@ -152,13 +153,17 @@ def get_model(conf, mapping):
 
 
 def map_conf_to_models(all_paths, plot_conf):
-    new_data = defaultdict(lambda: defaultdict(dict))
+    new_data = {}  # defaultdict(lambda: defaultdict(dict))
     key = plot_conf["compare"]
     for mk, mv in all_paths.items():
         for rk, rv in mv.items():
             sim_conf = rv["conf"]
             compare_value = str(sim_conf[key])
             model = get_model(sim_conf, plot_conf["model_mapping"])
+            if model not in new_data:
+                new_data[model] = {}
+            if compare_value not in new_data[model]:
+                new_data[model][compare_value] = {}
             new_data[model][compare_value][rk] = rv
     return dict(new_data)
 
@@ -183,6 +188,7 @@ def main(conf):
         "pareto_adoption": pareto_adoption,
         "jellybeans": jellybeans,
         "presymptomatic": presymptomatic,
+        "spy_human": spy_human,
     }
 
     conf = OmegaConf.to_container(conf)
@@ -237,6 +243,16 @@ def main(conf):
                 "humans_state",
                 "humans_intervention_level",
                 "humans_rec_level",
+            ]
+        )
+    if "spy_human" in plots:
+        keep_pkl_keys.update(
+            [
+                "risk_attributes",
+                "infection_monitor",
+                "infector_infectee_update_messages",
+                "to_human_max_msg_per_day",
+                "human_has_app",
             ]
         )
     if "jellybeans" in plots:
@@ -326,6 +342,8 @@ def main(conf):
                 print("*" * len(str(e)))
                 print("Ignoring " + plot)
         print_footer()
+
+    # make_report(plot_path)
 
 
 if __name__ == "__main__":

@@ -26,13 +26,12 @@ model_mapping:
   SOFT-YOGHURT-518A: transformer
   SWEET-BIRD-443: linreg
   WINTER-MOON-285: diurnal
-  TWILIGHT-RAIN-696: transformer>twilight
-  ROSY-FOREST-704: transformer>rosy
-  VAGUE-THUNDER-705: transformer>vague
+  TWILIGHT-RAIN-696: transformer
 
-use_wandb: False
-compare: n_people
+compare: APP_UPTAKE
 multithread: False
+use_wandb: False
+
 hydra:
   run:
     dir: .
