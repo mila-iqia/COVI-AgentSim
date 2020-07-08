@@ -2,7 +2,7 @@
 # -----  Infrastructure  -----
 # ----------------------------
 cpus: 4
-env_name: covid38
+env_name: covid
 infra: beluga
 mem: 8
 n_search: -1 # -1 figures out the size of cartesian product for you
@@ -12,10 +12,10 @@ USE_INFERENCE_SERVER: False
 # -------------------------
 # -----  Directories  -----
 # -------------------------
-base_dir: /home/vsch/covid_sims/app_adoption/something # if outdir is not provided, runs will be stored in base_dir/${tracing_method}
-code_loc: /home/vsch/simulator/src/covid19sim/
+base_dir: /home/mweiss10/simulator/results/transformers # if outdir is not provided, runs will be stored in base_dir/${tracing_method}
+code_loc: /home/mweiss10/simulator/src/covid19sim/
 use_tmpdir: false
-weights_dir: /scratch/vsch
+weights_dir: /scratch/mweiss10/weights
 
 # -------------------------------------
 # -----  Simulation Fixed Params  -----
@@ -62,3 +62,5 @@ seed:
     - 5000
     - 5001
     - 5002
+    - 5003
+    - 5004
