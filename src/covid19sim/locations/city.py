@@ -886,6 +886,7 @@ class EmptyCity(City):
         )[0]
 
         self.humans = []
+        self.hd = {}
         self.households = OrderedSet()
         self.stores = []
         self.senior_residencys = []
