@@ -207,6 +207,9 @@ def get_line2D(value, color, marker, is_method=True, compare="APP_UPTAKE"):
             "transformer-[0, 0, 0]": "Transformer-[0, 0, 0]",
             "transformer-[0, 1, 2]": "Transformer-[0, 1, 2]",
             "transformer-[1, 3, 5]": "Transformer-[1, 3, 5]",
+            "transformer>twilight-[0, 1, 2]": "Transformer-twilight-[0, 1, 2]",
+            "transformer>rosy-[0, 1, 2]": "Transformer-rosy-[0, 1, 2]",
+            "transformer>vague-[0, 1, 2]": "Transformer-vague-[0, 1, 2]",
             "linreg": "Linear Regression",
             "mlp": "MLP",
             "unmitigated": "Unmitigated",
@@ -283,7 +286,6 @@ def run(data, path, comparison_key, use_wandb):
                 pkls.append([r["pkl"] for r in data[method][key].values()])
                 labels.append(f"{method}_{key}")
 
-    # import pdb; pdb.set_trace()
     for idx, label in enumerate(labels):
         print(f"{len(pkls[idx])} seeds for {label}")
 
@@ -355,6 +357,8 @@ def run(data, path, comparison_key, use_wandb):
     method_legend = []
     compare_legend = []
     for idx, method in enumerate(sorted(base_methods)):
+        print("Plotting", method, "...")
+        # import pdb; pdb.set_trace()
         current_labels = sorted([lab for lab in labels if lab.startswith(method)])
         current_labels_norm = sorted(
             [lab for lab in labels_norm if lab.startswith(method)]
