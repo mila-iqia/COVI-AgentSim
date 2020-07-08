@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 
 from covid19sim.epidemiology.symptoms import _get_allergy_progression, _get_cold_progression, \
-    _get_covid_progression, _get_flu_progression, SYMPTOMS, DISEASES_PHASES
+    _get_covid_progression, _get_covid_sickness_severity, _get_flu_progression, SYMPTOMS, DISEASES_PHASES
 from covid19sim.epidemiology.human_properties import _get_preexisting_conditions, PREEXISTING_CONDITIONS, \
     HEART_DISEASE_IF_SMOKER_OR_DIABETES_MODIFIER, CANCER_OR_COPD_IF_SMOKER_MODIFIER, \
     IMMUNO_SUPPRESSED_IF_CANCER_MODIFIER
@@ -131,7 +131,7 @@ class ColdProgression(unittest.TestCase):
                             phases = [set(), set(human_symptoms[-1])]
                         else:
                             phases = [set(human_symptoms[1]), set(human_symptoms[-1])]
-                            
+
                         for i, day_symptoms in enumerate(phases):
                             # There is a chance for the cold to lasts only 2 days,
                             # with the 'cold' phase being skipped
@@ -210,6 +210,7 @@ class CovidProgression(unittest.TestCase):
     extremely_sick_options = (True, False)
     preexisting_conditions_options = (tuple(), ('pre1', 'pre2'), ('pre1', 'pre2', 'pre3'))
     carefulness_options = (0.50,)  # This test doesn't do checks on carefulness
+    sickness_severities_options = ['mild', 'moderate', 'severe', 'extremely-severe']
 
     def setUp(self):
         self.out_of_context_symptoms = set()
@@ -231,6 +232,155 @@ class CovidProgression(unittest.TestCase):
         if isinstance(disease_phase, int):
             disease_phase = CovidProgression.disease_phases[disease_phase]
         return symptom_probs.probabilities[disease_phase]
+
+    def test_covid_sickness_severity(self):
+        _get_id = self._get_id
+        _get_probability = self._get_probability
+        rng = np.random.RandomState(1234)
+
+        disease_phases = self.disease_phases
+
+        for initial_viral_load in self.initial_viral_load_options:
+            for really_sick in self.really_sick_options:
+                for extremely_sick in self.extremely_sick_options if really_sick else (False,):
+                    for preexisting_conditions in self.preexisting_conditions_options:
+                        for phase_idx in disease_phases:
+                            computed_severities = [_get_covid_sickness_severity(
+                                rng, phase_idx, really_sick, extremely_sick,
+                                list(preexisting_conditions), initial_viral_load)
+                                for _ in range(self.n_people)]
+
+                            probs = [0] * len(self.sickness_severities_options)
+
+                            for severity in computed_severities:
+                                if phase_idx == 0:
+                                    self.assertIs(severity, None)
+                                    continue
+
+                                severity_id = _get_id(severity)
+                                if severity_id == _get_id('mild'):
+                                    probs[0] += 1
+                                elif severity_id == _get_id('moderate'):
+                                    probs[1] += 1
+                                elif severity_id == _get_id('severe'):
+                                    probs[2] += 1
+                                elif severity_id == _get_id('extremely-severe'):
+                                    probs[3] += 1
+
+                            for i in range(len(probs)):
+                                probs[i] /= self.n_people
+
+                            expected_probs = [0] * len(self.sickness_severities_options)
+
+                            # covid_onset
+                            if phase_idx == 1:
+                                if really_sick or extremely_sick or len(preexisting_conditions) > 2 \
+                                        or initial_viral_load > 0.6:
+                                    # extremely-severe
+                                    expected_probs[3] = 0
+                                    # severe
+                                    expected_probs[2] = 0
+                                    # moderate
+                                    expected_probs[1] = 1
+                                    # mild
+                                    expected_probs[0] = 0
+                                else:
+                                    # extremely-severe
+                                    expected_probs[3] = 0
+                                    # severe
+                                    expected_probs[2] = 0
+                                    # moderate
+                                    expected_probs[1] = 0
+                                    # mild
+                                    expected_probs[0] = 1
+
+                            # covid_plateau
+                            elif phase_idx == 2:
+                                if extremely_sick:
+                                    # extremely-severe
+                                    expected_probs[3] = 1
+                                    # severe
+                                    expected_probs[2] = 0
+                                    # moderate
+                                    expected_probs[1] = 0
+                                    # mild
+                                    expected_probs[0] = 0
+                                elif really_sick or len(preexisting_conditions) > 2 or initial_viral_load > 0.6:
+                                    # extremely-severe
+                                    expected_probs[3] = 0
+                                    # severe
+                                    expected_probs[2] = 1
+                                    # moderate
+                                    expected_probs[1] = 0
+                                    # mild
+                                    expected_probs[0] = 0
+                                else:
+                                    # extremely-severe
+                                    expected_probs[3] = 0
+                                    # severe
+                                    expected_probs[2] = 0
+                                    # moderate
+                                    expected_probs[1] = initial_viral_load - .15
+                                    # mild
+                                    expected_probs[0] = 1 - (initial_viral_load - .15)
+
+                            # covid_post_plateau_1
+                            elif phase_idx == 3:
+                                if extremely_sick:
+                                    # extremely-severe
+                                    expected_probs[3] = 0
+                                    # severe
+                                    expected_probs[2] = 1
+                                    # moderate
+                                    expected_probs[1] = 0
+                                    # mild
+                                    expected_probs[0] = 0
+                                elif really_sick:
+                                    # extremely-severe
+                                    expected_probs[3] = 0
+                                    # severe
+                                    expected_probs[2] = 0
+                                    # moderate
+                                    expected_probs[1] = 1
+                                    # mild
+                                    expected_probs[0] = 0
+                                else:
+                                    # extremely-severe
+                                    expected_probs[3] = 0
+                                    # severe
+                                    expected_probs[2] = 0
+                                    # moderate
+                                    expected_probs[1] = 0
+                                    # mild
+                                    expected_probs[0] = 1
+
+                            # covid_post_plateau_2
+                            elif phase_idx == 4:
+                                if extremely_sick:
+                                    # extremely-severe
+                                    expected_probs[3] = 0
+                                    # severe
+                                    expected_probs[2] = 0
+                                    # moderate
+                                    expected_probs[1] = 1
+                                    # mild
+                                    expected_probs[0] = 0
+                                else:
+                                    # extremely-severe
+                                    expected_probs[3] = 0
+                                    # severe
+                                    expected_probs[2] = 0
+                                    # moderate
+                                    expected_probs[1] = 0
+                                    # mild
+                                    expected_probs[0] = 1
+
+                            for prob, expected_prob in zip(probs, expected_probs):
+                                if expected_prob in (0, 1):
+                                    delta = 0
+                                else:
+                                    delta = 0.1
+                                self.assertAlmostEqual(prob, expected_prob, delta=delta)
 
     def test_covid_progression(self):
         """
@@ -308,7 +458,11 @@ class CovidProgression(unittest.TestCase):
         for s_name, s_prob in SYMPTOMS.items():
             s_id = s_prob.id
 
-            if s_id in {_get_id('gastro'), _get_id('diarrhea'), _get_id('nausea_vomiting'),
+            if s_id in {  # Sickness severities tested in test_covid_sickness_severity()
+                        _get_id('mild'), _get_id('moderate'), _get_id('severe'),
+                        _get_id('extremely-severe'),
+
+                        _get_id('gastro'), _get_id('diarrhea'), _get_id('nausea_vomiting'),
 
                         _get_id('fatigue'), _get_id('unusual'), _get_id('hard_time_waking_up'),
                         _get_id('headache'), _get_id('confused'), _get_id('lost_consciousness'),
@@ -331,17 +485,6 @@ class CovidProgression(unittest.TestCase):
 
                 # covid_onset
                 if i == 1:
-                    if really_sick or extremely_sick or len(preexisting_conditions) > 2 \
-                            or initial_viral_load > 0.6:
-                        if s_id == _get_id('moderate'):
-                            expected_prob = 1
-                        elif s_id == _get_id('mild'):
-                            expected_prob = 0
-                    elif s_id == _get_id('mild'):
-                        expected_prob = 1
-                    elif s_id == _get_id('moderate'):
-                        expected_prob = 0
-
                     if s_id == _get_id('chills') and \
                             not extremely_sick:
                         expected_prob = 0
@@ -361,23 +504,6 @@ class CovidProgression(unittest.TestCase):
 
                 # covid_plateau
                 elif i == 2:
-                    if extremely_sick:
-                        if s_id == _get_id('extremely-severe'):
-                            expected_prob = 1
-                        elif s_id in {_get_id('mild'), _get_id('moderate'), _get_id('severe')}:
-                            expected_prob = 0
-                    elif really_sick or len(preexisting_conditions) > 2 or initial_viral_load > 0.6:
-                        if s_id == _get_id('severe'):
-                            expected_prob = 1
-                        elif s_id in {_get_id('mild'), _get_id('moderate'), _get_id('extremely-severe')}:
-                            expected_prob = 0
-                    elif s_id in {_get_id('severe'), _get_id('extremely-severe')}:
-                        expected_prob = 0
-                    elif s_id in {_get_id('mild'), _get_id('moderate')}:
-                        # Skip this test as maintaining of the tests would be
-                        # as complex as maintaining the code
-                        continue
-
                     if s_id == _get_id('lost_consciousness') and \
                             not (really_sick or extremely_sick or len(preexisting_conditions) > 2):
                         expected_prob = 0
@@ -398,21 +524,6 @@ class CovidProgression(unittest.TestCase):
 
                 # covid_post_plateau_1
                 elif i == 3:
-                    if extremely_sick:
-                        if s_id == _get_id('severe'):
-                            expected_prob = 1
-                        elif s_id in {_get_id('mild'), _get_id('moderate')}:
-                            expected_prob = 0
-                    elif really_sick:
-                        if s_id == _get_id('moderate'):
-                            expected_prob = 1
-                        elif s_id in {_get_id('mild'), _get_id('severe')}:
-                            expected_prob = 0
-                    elif s_id == _get_id('mild'):
-                        expected_prob = 1
-                    elif s_id in {_get_id('moderate'), _get_id('severe')}:
-                        expected_prob = 0
-
                     if s_id == _get_id('lost_consciousness') and \
                             not (really_sick or extremely_sick or len(preexisting_conditions) > 2):
                         expected_prob = 0
@@ -423,16 +534,6 @@ class CovidProgression(unittest.TestCase):
 
                 # covid_post_plateau_2
                 elif i == 4:
-                    if extremely_sick:
-                        if s_id == _get_id('moderate'):
-                            expected_prob = 1
-                        elif s_id == _get_id('mild'):
-                            expected_prob = 0
-                    elif s_id == _get_id('mild'):
-                        expected_prob = 1
-                    elif s_id == _get_id('moderate'):
-                        expected_prob = 0
-
                     if s_id == _get_id('lost_consciousness') and \
                             not (really_sick or extremely_sick or len(preexisting_conditions) > 2):
                         expected_prob = 0
