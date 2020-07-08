@@ -167,6 +167,8 @@ def main(conf):
     if not isinstance(plots, list):
         plots = [plots]
 
+    plots = [p for p in plots if p not in conf.get("exclude", [])]
+
     assert all(p in all_plots for p in plots), "Allowed plots are {}".format(
         "\n   ".join(all_plots.keys())
     )
