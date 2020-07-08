@@ -102,7 +102,6 @@ def run(data, path, comparison_key, use_wandb):
 
         method_names = sorted(comparison_dict.keys())
         for j, method_name in enumerate(method_names):
-            breakpoint()
             method_risk_levels = comparison_dict[method_name]
 
             col = j % max_cols

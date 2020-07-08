@@ -12,7 +12,7 @@ from covid19sim.plotting.plot_rt import PlotRt
 from pathlib import Path
 import yaml
 import concurrent.futures
-
+from collections import defaultdict
 
 def get_data(filename=None, data=None):
     if data:
@@ -282,13 +282,19 @@ def get_all_data(base_path, keep_pkl_keys, multi_thread=False):
     return all_data
 
 
+def default_to_regular_dict(d):
+    if isinstance(d, defaultdict):
+        d = {k: default_to_regular_dict(v) for k, v in d.items()}
+    return d
+
+
 def thread_read_run(args):
     r, keep_pkl_keys = args
     with (r / "full_configuration.yaml").open("r") as f:
         conf = yaml.safe_load(f)
     with open(str(list(r.glob("tracker*.pkl"))[0]), "rb") as f:
         pkl_data = pickle.load(f)
-        pkl = {k: v for k, v in pkl_data.items() if k in keep_pkl_keys}
+        pkl = {k: default_to_regular_dict(v) for k, v in pkl_data.items() if k in keep_pkl_keys}
 
     return (r, conf, pkl)
 

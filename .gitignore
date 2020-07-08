@@ -24,7 +24,7 @@ src/covid19sim/configs/simulation/*
 !src/covid19sim/configs/simulation/tracing_method
 !src/covid19sim/configs/simulation/release
 !src/covid19sim/configs/simulation/run_type
-
+*.imgur.conf
 
 # Pycharm stuff
 .idea/
