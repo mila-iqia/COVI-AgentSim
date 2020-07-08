@@ -78,9 +78,19 @@ class Human(BaseHuman):
         self.n_infectious_contacts = 0  # number of high-risk contacts with an infected individual.
         self.exposure_source = None  # source that exposed this human to covid (and infected them). None if not infected.
 
+        # rng stuff
+        # note: the seed is the important part, if one is not given directly, it will be generated...
+        # note2: keeping the initial seed value is important for when we serialize/deserialize this object
+        # note3: any call to self.rng after construction is not guaranteed to return the same behavior as during the run
+        if isinstance(rng, np.random.RandomState):
+            self.init_seed = rng.randint(2 ** 16)
+        else:
+            assert isinstance(rng, int)
+            self.init_seed = rng
+        self.rng = np.random.RandomState(self.init_seed)  # RNG for this particular human
+
         # Human-related properties
         self.name: RealUserIDType = f"human:{name}"  # Name of this human
-        self.rng = np.random.RandomState(rng.randint(2 ** 16))  # RNG for this particular human
         self.profession = profession  # The job this human has (e.g. healthcare worker, retired, school, etc)
         self.is_healthcare_worker = True if profession == "healthcare" else False  # convenience boolean to check if is healthcare worker
         self.workplace = workplace  # we sometimes modify human's workplace to WFH if in quarantine, then go back to work when released
@@ -164,7 +174,7 @@ class Human(BaseHuman):
 
         """App-related"""
         self.has_app = has_app  # Does this prson have the app
-        time_slot = rng.randint(0, 24)  # Assign this person to some timeslot
+        time_slot = self.rng.randint(0, 24)  # Assign this person to some timeslot
         self.time_slots = [
             int((time_slot + i * 24 / self.conf.get('UPDATES_PER_DAY')) % 24)
             for i in range(self.conf.get('UPDATES_PER_DAY'))
