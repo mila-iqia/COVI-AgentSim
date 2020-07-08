@@ -22,32 +22,25 @@ class PlotTest(unittest.TestCase):
         conf = get_test_conf(conf_name)
         conf['KEEP_FULL_OBJ_COPIES'] = True
         conf['COLLECT_TRAINING_DATA'] = False
+        conf['INTERVENTION_DAY'] = 2
 
         with TemporaryDirectory() as d:
 
             # Run the simulation
             start_time = datetime.datetime(2020, 2, 28, 0, 0)
-            n_people = 20
-            n_days = 10
+            n_people = 10
+            n_days = 7
 
             outfile=os.path.join(d, "output")
             os.mkdir(outfile)
             conf["outdir"] = outfile
-
             hdf5_path = os.path.join(outfile, "human_backups.hdf5")
-            collection_server = DataCollectionServer(
-                data_output_path=hdf5_path,
-                config_backup=conf,
-                human_count=n_people,
-                simulation_days=n_days,
-            )
-            collection_server.start()
 
             city, monitors, tracker = simulate(
                 n_people=n_people,
                 start_time=start_time,
                 simulation_days=n_days,
-                init_percent_sick=0.25,
+                init_percent_sick=0.5,
                 outfile=outfile,
                 out_chunk_size=1,
                 seed=0,
@@ -55,13 +48,14 @@ class PlotTest(unittest.TestCase):
                 conf=conf,
             )
 
-            collection_server.stop_gracefully()
-            collection_server.join()
+            # with the 'KEEP_FULL_OBJ_COPIES' set, the tracker should spawn its own collection server
+            assert hasattr(city, "tracker") and \
+                hasattr(city.tracker, "collection_server") and \
+                isinstance(city.tracker.collection_server, DataCollectionServer) and \
+                city.tracker.collection_server is not None
+            city.tracker.collection_server.stop_gracefully()
+            city.tracker.collection_server.join()
             assert os.path.exists(hdf5_path)
-
-            # This sleep is needed to ensure everything is clean up and the write lock
-            # on the human_backups.hdf5 file is properly released
-            time.sleep(30)
 
             # Ensure that baseball plots can be produced from the simulation outputs
             debug_plots.main(debug_data_path=hdf5_path,
