@@ -186,8 +186,8 @@ def run(data, path, comparison_key, use_wandb, times=[-1, -2, -3], mode=None):
                     axs[1].set_xticks(list(range(length)))
                     axs[1].set_xticklabels(xticklabels)
                     axs[1].set_ylim(0, 1)
-                    axs[0].set_yticks(list(range(0, 5)))
-                    axs[0].set_yticklabels(["0", "20", "40", "60", "80", "100"])
+                    axs[1].set_yticks(list(range(0, 5)))
+                    axs[1].set_yticklabels(["0", "20", "40", "60", "80", "100"])
                     axs[1].plot([0, length - 1], [0, 0], color="b", linewidth=1.0)
 
                     axs[2].bar(
