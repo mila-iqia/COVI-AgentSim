@@ -404,6 +404,15 @@ class Human(BaseHuman):
         return self.can_get_extremely_sick and 'severe' in self.symptoms
 
     @property
+    def is_quarantined(self):
+        """
+        Returns True if the human currently has a quarantine recommendation to follow, otherwise False.
+        Returns:
+            bool: True if quarantining, False if not.
+        """
+        return any([isinstance(rec, Quarantine) for rec in self.recommendations_to_follow])
+
+    @property
     def viral_load(self):
         """
         Calculates the elapsed time since infection, returning this person's current viral load
