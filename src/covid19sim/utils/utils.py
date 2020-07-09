@@ -694,16 +694,19 @@ class DummyHuman:
     # note: since we're talking about a metric s*-ton of attributes, most will be dynamically added
 
     def __init__(self, human: "Human"):
+        import pickle
         # "dummy" attributes replace the original attribute by a less-complex one
         self.dummy_attribs = [
-            "env", "location", "last_location", "household", "_workplace", "last_date",
+            "env", "location", "last_location", "household", "workplace", "last_date",
+            "recommendations_to_follow",  # the old states contained in behaviors might break serialization
         ]
         self.env = DummyEnv(human.env)
         self.location = human.location.name if human.location else ""
         self.last_location = human.last_location.name if human.last_location else ""
         self.household = human.household.name if human.household else ""
-        self._workplace = [w.name for w in human._workplace]
+        self.workplace = human.workplace.name if human.workplace else ""
         self.last_date = dict(human.last_date)
+        self.recommendations_to_follow = [str(rec) for rec in human.recommendations_to_follow]
         # "blacklisted" attributes are overriden with `None`, no matter their original value
         self.blacklisted_attribs = [
             "conf", "city", "my_history", "visits", "proba_to_risk_level_map",

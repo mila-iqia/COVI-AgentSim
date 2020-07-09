@@ -128,7 +128,6 @@ class DebugDataLoader():
                 new_env._now = human_dump.env.now
                 human_dump.env = new_env
                 human_dump.rng = human_dump.init_seed  # to keep same init construction state
-                human_dump.workplace = human_dump._workplace  # for backward compat w/ older HDF5s
                 human_obj = Human(*[getattr(human_dump, k) for k in human_constr_args])
                 # override all attributes except the blacklist/dummy ones
                 for attr_name in human_obj.__dict__.keys():
