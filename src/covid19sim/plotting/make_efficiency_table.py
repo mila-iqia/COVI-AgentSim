@@ -136,3 +136,29 @@ def run(data, path, comparison_key):
             result += infected
             print(result)
             results.append(result)
+
+    print("\n\n\n")
+    print("| Method | Restriction | % Infected |")
+    print("|---|---|---|")
+    for idx, method in enumerate(sorted(base_methods)):
+        current_labels = sorted([lab for lab in labels if lab.startswith(method)])
+        for i, lab in enumerate(current_labels):
+            result = f"{lab} | "
+            total_restriction = 0
+
+            for axis_idx, xmetric in enumerate(xmetrics):
+                x, xe = get_metrics(df, lab, xmetric)
+                y, ye = get_metrics(df, lab, ymetric)
+                if xmetric == "f1":
+                    total_restriction += round(float(x * 100), 1)
+
+                elif xmetric == "f2":
+                    total_restriction += 0.5 * round(float(x * 100), 1)
+
+                elif xmetric == "f3":
+                    total_restriction += 0.25 * round(float(x * 100), 1)
+            result += f"{total_restriction}% | "
+            infected = f" {round(float(y * 100), 1)}% +/- {round(float(ye * 100), 1)}% |"
+            result += infected
+            print(result)
+            results.append(result)
