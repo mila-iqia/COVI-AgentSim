@@ -160,7 +160,7 @@ def assign_households_to_humans(humans, city, conf, logfile=None):
     P_COLLECTIVE_75_above = conf['P_COLLECTIVE_75_above']
 
     P_MULTIGENERATIONAL_FAMILY = conf['P_MULTIGENERATIONAL_FAMILY']
-
+    AGE_DIFFERENCE_BETWEEN_PARENT_AND_KID = conf['AGE_DIFFERENCE_BETWEEN_PARENT_AND_KID']
     MAX_AGE_CHILDREN = conf['MAX_AGE_CHILDREN']
     MIN_AGE_COUPLE = conf['MIN_AGE_COUPLE']
     MIN_AGE_GRANDPARENT = conf["MIN_AGE_GRANDPARENT"]
@@ -234,7 +234,8 @@ def assign_households_to_humans(humans, city, conf, logfile=None):
     n_failed_attempts = 0
 
     # Step 1: start by allocating kids to house so that age difference between parents and kids are respected
-    YOUNGER_BINS = _get_valid_bins(AGE_BIN_WIDTH_5, max_age=MAX_AGE_CHILDREN_ADJUSTED)
+    # YOUNGER_BINS = _get_valid_bins(AGE_BIN_WIDTH_5, max_age=MAX_AGE_CHILDREN_ADJUSTED)
+    YOUNGER_BINS = _get_valid_bins(AGE_BIN_WIDTH_5, min_age=MAX_AGE_CHILDREN, max_age=MAX_AGE_CHILDREN+AGE_DIFFERENCE_BETWEEN_PARENT_AND_KID)
     KID_BINS = _get_valid_bins(AGE_BIN_WIDTH_5, max_age=MAX_AGE_CHILDREN)
     SEARCH_BINS = KID_BINS
     while True:
@@ -245,7 +246,7 @@ def assign_households_to_humans(humans, city, conf, logfile=None):
         # Note: We sample from YOUNGER_BINS if sampling for other kids in _sample_other_residents
         valid_kid_bins = [bin for bin in SEARCH_BINS if len(unassigned_humans[bin]) > 0]
         if n_kids_needed != 0 and len(valid_kid_bins) == 0:
-            SEARCH_BINS = YOUNGER_BINS # expand the search
+            SEARCH_BINS = YOUNGER_BINS # expand the search to mid generation
             continue
 
         _valid_bins = [bin for bin in KID_BINS if len(unassigned_humans[bin]) > 0]
@@ -351,6 +352,7 @@ def _sample_house_type(unallocated_houses, rng, kid=True):
         count = np.array(count)
         p = count / count.sum()
         n_kids = rng.choice(n_kids, size=1, p=p).item()
+
         return unallocated_houses[n_kids][0]
     else:
         return all_housetypes['unallocated'][0][0]
@@ -388,7 +390,7 @@ def _sample_other_residents(housetype, unassigned_humans, rng, conf, with_kid=No
 
         valid_parent_bins = valid_age_bins
         valid_grandparent_bins = valid_age_bins
-        
+
         kids = _sample_n_kids(valid_younger_bins, conf, unassigned_humans, rng, size=n_kids-1, with_kid=with_kid)
 
         assert with_kid in kids, "kid not present in sampled kids"
@@ -459,7 +461,7 @@ def _sample_n_parents(valid_age_bins, conf, unassigned_humans, rng, n, p_bin):
         p_bin = np.ones_like(valid_age_bins)
         p_bin /= p_bin.sum()
 
-    assert all(MIN_AGE_PARENT <= x[0] for x in  valid_age_bins), "not a valid parent bins"
+    # assert all(MIN_AGE_PARENT <= x[0] for x in  valid_age_bins), "not a valid parent bins"
     assert n in [1, 2], f"can not sample {n} parents"
     assert abs(p_bin.sum() - 1) < 1e-2, "probabilities do not sum to 1"
 
