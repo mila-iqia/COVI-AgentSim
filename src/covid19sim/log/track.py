@@ -262,6 +262,9 @@ class Tracker(object):
         """
         Logs statistics related to demographics.
         """
+        # warn by (*) string if something is off in percentage from census by this much amount
+        WARN_PERCENTAGE_THRESHOLD = 4
+
         log("\n######## DEMOGRAPHICS / SYNTHETIC POPULATION #########", self.logfile)
         log("NOTE: census numbers are in brackets\n", self.logfile)
         # age distribution
@@ -289,9 +292,10 @@ class Tracker(object):
         log("\n*** House allocation *** ", self.logfile)
         # senior residencies
         self.n_senior_residency_residents = sum(len(sr.residents) for sr in self.city.senior_residencys)
-        p = self.n_senior_residency_residents / self.n_people
-        census = self.conf['P_COLLECTIVE']
-        log(f"Total (%) number of residents in senior residencies (census): {self.n_senior_residency_residents} ({100*p:2.2f}%) ({100*census:2.2f})", self.logfile)
+        p = 100*self.n_senior_residency_residents / self.n_people
+        cns = 100*self.conf['P_COLLECTIVE']
+        warn = "(*)" if abs(p-cns) > 2 else ""
+        log(f"{warn}Total (%) number of residents in senior residencies (census): {self.n_senior_residency_residents} ({p:2.2f}%) ({cns:2.2f})", self.logfile)
 
         # house allocation
         n_houses = len(self.city.households)
@@ -321,13 +325,18 @@ class Tracker(object):
 
         ## counts
         log(f"Total houses: {n_houses}", self.logfile)
-        log(f"Average house size - {sizes.mean(): 2.3f} ({self.conf['AVG_HOUSEHOLD_SIZE']: 2.3f})", self.logfile)
+        p = sizes.mean()
+        cns = self.conf['AVG_HOUSEHOLD_SIZE']
+        warn = "(*)" if abs(p-cns) > 2 else ""
+        log(f"{warn}Average house size - {p: 2.3f} ({cns: 2.3f})", self.logfile)
         ## size
         census = self.conf['P_HOUSEHOLD_SIZE']
         str_to_print = "Household size - simulation% (census): "
         for i,z in enumerate(sorted(np.unique(sizes))):
             p = 100 * (sizes == z).sum() / n_houses
-            str_to_print += f"{z}: {p:2.2f}% ({100*census[i]: 3.2f}) | "
+            cns = 100*census[i]
+            warn = "(*)" if abs(p-cns) > WARN_PERCENTAGE_THRESHOLD else ""
+            str_to_print += f"{warn} {z}: {p:2.2f}% ({cns: 3.2f}) | "
         log(str_to_print, self.logfile)
 
         # solo dwellers
@@ -340,7 +349,8 @@ class Tracker(object):
                     simulated_solo_dwellers_age_given_housesize1[i][2] += 1
         simulated_solo_dwellers_age_given_housesize1 = [[x[0], x[1], x[2]/n_solo_houses] for x in simulated_solo_dwellers_age_given_housesize1]
         simulated_solo_dwellers_mean_age = sum([x[2] * (x[0] + x[1]) / 2 for x in simulated_solo_dwellers_age_given_housesize1])
-        str_to_print = f"Solo dwellers : Average age absolute: {np.mean(solo_ages): 2.2f} (Average with mid point of age groups - simulated:{simulated_solo_dwellers_mean_age: 2.2f} census:{estimated_solo_dwellers_mean_age: 2.2f}) | "
+        warn = "(*)" if abs(estimated_solo_dwellers_mean_age-simulated_solo_dwellers_mean_age) > 10 else ""
+        str_to_print = f"{warn}Solo dwellers : Average age absolute: {np.mean(solo_ages): 2.2f} (Average with mid point of age groups - simulated:{simulated_solo_dwellers_mean_age: 2.2f} census:{estimated_solo_dwellers_mean_age: 2.2f}) | "
         # str_to_print += f"Median age: {np.median(solo_ages)}"
         log(str_to_print, self.logfile)
 
@@ -349,8 +359,9 @@ class Tracker(object):
         p = 100 * two_generations.mean()
         str_to_print += f"Two generations: {p:2.2f}% | "
         p = 100 * multigenerationals.mean()
-        cns_multi = self.conf['P_MULTIGENERATIONAL_FAMILY']
-        str_to_print += f"multi-generation: {p:2.2f}% ({100*cns_multi:2.2f}) | "
+        cns = 100*self.conf['P_MULTIGENERATIONAL_FAMILY']
+        warn = "(*)" if abs(p-cns) > WARN_PERCENTAGE_THRESHOLD else ""
+        str_to_print += f"{warn}multi-generation: {p:2.2f}% ({cns:2.2f}) | "
         p = 100 * only_adults.mean()
         str_to_print += f"Only adults: {p:2.2f}% | "
         log(str_to_print, self.logfile)
@@ -362,9 +373,10 @@ class Tracker(object):
         allocation_types = np.array(living_arrangements)
         str_to_print = "Allocation types: "
         for atype in np.unique(allocation_types):
-            p = (allocation_types == atype).mean()
-            cns = census[allocation_types == atype][0].item()
-            str_to_print += f"{atype}: {100*p:2.3f}%  ({100*cns: 2.2f})| "
+            p = 100*(allocation_types == atype).mean()
+            cns = 100*census[allocation_types == atype][0].item()
+            warn = "(*)" if abs(p-cns) > WARN_PERCENTAGE_THRESHOLD else ""
+            str_to_print += f"{warn}{atype}: {p:2.3f}%  ({cns: 2.2f})| "
         log(str_to_print, self.logfile)
 
         log("\n *** Other locations *** ", self.logfile)
