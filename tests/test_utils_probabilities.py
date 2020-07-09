@@ -623,13 +623,6 @@ class CovidProgression(unittest.TestCase):
                                                                if d_p in disease_phases.values()):
                 prob = probs[i][s_id]
 
-                # covid_plateau
-                if i == 2:
-                    if s_id == _get_id('loss_of_taste'):
-                        p0 = _get_probability('loss_of_taste', 0)
-                        p1 = p0 + (1 - p0) * _get_probability('loss_of_taste', 1)
-                        expected_prob = p1 + (1 - p1) * expected_prob
-
                 if s_id in (_get_id('fever'), _get_id('chills')):
                     fever_prob = _get_covid_fever_probability(i, really_sick, extremely_sick,
                                                               list(preexisting_conditions), initial_viral_load)
@@ -709,6 +702,16 @@ class CovidProgression(unittest.TestCase):
                     else:
                         # Other symptoms are dependent on trouble_breathing
                         expected_prob *= trouble_breathing_prob
+
+                if s_id == _get_id('loss_of_taste'):
+                    # covid_onset
+                    if i == 1:
+                        expected_prob += _get_probability('loss_of_taste', 0)
+
+                    # covid_plateau
+                    elif i == 2:
+                        expected_prob += _get_probability('loss_of_taste', 1) + \
+                                         _get_probability('loss_of_taste', 0)
 
                 self.assertAlmostEqual(
                     prob, expected_prob,
