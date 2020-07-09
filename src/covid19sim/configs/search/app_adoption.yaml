@@ -1,43 +1,48 @@
-# -------------------------------------
-# -------------------------------------
-# -----  Simulation Fixed Params  -----
-n_people: 1000
-simulation_days: 30
-test_capacity: 0.005
-DROPOUT_RATE: 0.02
-INTERVENTION_DAY: 5
-tune: true
-COLD_CONTAGIOUSNESS: 0
-
-# ---------------------------------------
-# -----  Experimental Fixed Params  -----
-# ---------------------------------------
-n_search: -1 # figures out the size of cartesian product for you
-USE_INFERENCE_SERVER: False
+# ----------------------------
+# -----  Infrastructure  -----
+# ----------------------------
 cpus: 4
-env_name: covid38
+env_name: covid
 infra: beluga
+mem: 8
+n_search: -1 # -1 figures out the size of cartesian product for you
 time: "'02:50:00'"
+USE_INFERENCE_SERVER: False
 
 # -------------------------
 # -----  Directories  -----
 # -------------------------
-base_dir: /scratch/vsch/covid_sims/hail_mary # if outdir is not provided, runs will be stored in base_dir/${tracing_method}
-code_loc: /home/vsch/simulator/src/covid19sim/
-weights_dir: /scratch/vsch
+base_dir: $HOME/simulator/results/ # if outdir is not provided, runs will be stored in base_dir/${tracing_method}
+code_loc: $HOME/simulator/src/covid19sim/
 use_tmpdir: false
+weights_dir: $SCRATCH/weights
+
+# -------------------------------------
+# -----  Simulation Fixed Params  -----
+# -------------------------------------
+COLD_CONTAGIOUSNESS: 0
+DROPOUT_RATE: 0.02
+init_percent_sick: 0.005
+INTERVENTION_DAY: 5
+n_people: 1000
+P_CAREFUL_PERSON: 0.3
+simulation_days: 30
+test_capacity: 0.005
+tune: true
 
 # --------------------------------------
 # -----  Sampling Parametrization  -----
 # --------------------------------------
-
 tracing_method:
   sample: cartesian
   from:
     - no_intervention
     - heuristicv1
-    - transformer>ROSY-FOREST-704
-    - oracle>ROSY-FOREST-704
+    - transformer:
+        weights: ROSY-FOREST-704
+        REC_LEVEL_THRESHOLDS: [0, 1, 2]
+    - oracle:
+        weights: ROSY-FOREST-704
     - binary_digital_tracing_order_1
     - binary_digital_tracing_order_2
 
@@ -51,20 +56,11 @@ APP_UPTAKE:
     - 0.9831 # 70%
     # - -1     # 100%
 
-P_CAREFUL_PERSON:
-  sample: cartesian
-  from:
-    - 0.3
-
-init_percent_sick:
-  sample: cartesian
-  from:
-    - 0.002
-    - 0.01
-
 seed:
   sample: cartesian
   from:
     - 5000
     - 5001
     - 5002
+    - 5003
+    - 5004

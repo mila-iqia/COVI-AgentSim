@@ -9,6 +9,25 @@ import concurrent.futures
 from scipy import stats as sps
 from collections import defaultdict
 
+
+def env_to_path(path):
+    """Transorms an environment variable mention in a json
+    into its actual value. E.g. $HOME/clouds -> /home/vsch/clouds
+
+    Args:
+        path (str): path potentially containing the env variable
+
+    """
+    path_elements = path.split("/")
+    new_path = []
+    for el in path_elements:
+        if "$" in el:
+            new_path.append(os.environ[el.replace("$", "")])
+        else:
+            new_path.append(el)
+    return "/".join(new_path)
+
+
 def get_title(method):
     method_title = {
         "bdt1": "1st Order Binary Tracing",
@@ -31,6 +50,7 @@ def get_title(method):
         return method_title[method]
 
     return method.replace("_", " ").capitalize()
+
 
 def get_data(filename=None, data=None):
     if data:
@@ -126,7 +146,9 @@ def get_rec_levels(filename=None, data=None, normalized=False):
         else:
             raise ValueError("filename and data arguments are None")
 
-    rec_levels = get_human_rec_levels(filename, data, normalized=normalized) + 1  # account for rec_levels `-1`
+    rec_levels = (
+        get_human_rec_levels(filename, data, normalized=normalized) + 1
+    )  # account for rec_levels `-1`
 
     def bincount(x):
         return np.bincount(x, minlength=5)
@@ -312,7 +334,11 @@ def thread_read_run(args):
         conf = yaml.safe_load(f)
     with open(str(list(r.glob("tracker*.pkl"))[0]), "rb") as f:
         pkl_data = pickle.load(f)
-        pkl = {k: default_to_regular_dict(v) for k, v in pkl_data.items() if k in keep_pkl_keys}
+        pkl = {
+            k: default_to_regular_dict(v)
+            for k, v in pkl_data.items()
+            if k in keep_pkl_keys
+        }
 
     return (r, conf, pkl)
 
