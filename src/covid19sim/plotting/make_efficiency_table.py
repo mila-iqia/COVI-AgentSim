@@ -164,13 +164,13 @@ def run(data, path, comparison_key):
             infected = f" {round(float(y * 100), 1)}% +/- {round(float(ye * 100), 1)}% |"
             result += infected
 
-            infection_over_baseline = f" {float((baseline_infection - (y * 100)))} |"
+            infection_over_baseline = f" {round(float((baseline_infection - (y * 100))), 1)} |"
             result += infection_over_baseline
 
-            restriction_over_basleine = f" {float((method_restriction - baseline_restriction))} |"
+            restriction_over_basleine = f" {round(float((method_restriction - baseline_restriction)), 1)} |"
             result += restriction_over_basleine
 
-            efficiency = f" {float((baseline_infection - (y * 100)) / (method_restriction - baseline_restriction) )}"
+            efficiency = f" {round(float((baseline_infection - (y * 100)) / (method_restriction - baseline_restriction) ), 1)}"
             result += efficiency
             print(result)
             results.append(result)
