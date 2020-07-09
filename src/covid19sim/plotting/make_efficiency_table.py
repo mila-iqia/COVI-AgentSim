@@ -150,13 +150,13 @@ def run(data, path, comparison_key):
                 x, xe = get_metrics(df, lab, xmetric)
                 y, ye = get_metrics(df, lab, ymetric)
                 if xmetric == "f1":
-                    total_restriction += round(float(x * 100), 1)
+                    total_restriction += 0.25 * round(float(x * 100), 1)
 
                 elif xmetric == "f2":
                     total_restriction += 0.5 * round(float(x * 100), 1)
 
                 elif xmetric == "f3":
-                    total_restriction += 0.25 * round(float(x * 100), 1)
+                    total_restriction += 1 * round(float(x * 100), 1)
             result += f"{total_restriction}% | "
             infected = f" {round(float(y * 100), 1)}% +/- {round(float(ye * 100), 1)}% |"
             result += infected
