@@ -234,26 +234,29 @@ def assign_households_to_humans(humans, city, conf, logfile=None):
     n_failed_attempts = 0
 
     # Step 1: start by allocating kids to house so that age difference between parents and kids are respected
-    YOUNGER_BINS = _get_valid_bins(AGE_BIN_WIDTH_5, max_age=MAX_AGE_CHILDREN_ADJUSTED, inclusive=True)
+    YOUNGER_BINS = _get_valid_bins(AGE_BIN_WIDTH_5, max_age=MAX_AGE_CHILDREN_ADJUSTED)
     KID_BINS = _get_valid_bins(AGE_BIN_WIDTH_5, max_age=MAX_AGE_CHILDREN)
-    kid_keys = [n for n, houses in unallocated_houses.items() if n > 0 and len(houses) > 0]
-
+    SEARCH_BINS = KID_BINS
     while True:
-        # sample a young kid
-        valid_younger_bins = [bin for bin in YOUNGER_BINS if len(unassigned_humans[bin]) > 0]
+        kid_keys = [n for n, houses in unallocated_houses.items() if n > 0 and len(houses) > 0]
         n_kids_needed = sum(len(unallocated_houses[kid_key]) for kid_key in kid_keys)
-        if n_kids_needed == 0:
-            valid_kid_bins = _get_valid_bins(valid_younger_bins, max_age=MAX_AGE_CHILDREN)
-            n_kids_left = sum(len(unassigned_humans[bin]) for bin in valid_kid_bins)
-            if n_kids_left == 0:
-                break
-            else:
-                unallocated_houses, n_houses = _create_more_houses(unallocated_houses, city.rng, conf, n_kids=n_kids_left)
-                valid_younger_bins = valid_kid_bins
-                log(f"Sampled {n_houses} houses to accommodate {n_kids_left} kids", logfile)
 
+        # sample a young kid from SEARCH_BINS.
+        # Note: We sample from YOUNGER_BINS if sampling for other kids in _sample_other_residents
+        valid_kid_bins = [bin for bin in SEARCH_BINS if len(unassigned_humans[bin]) > 0]
+        if n_kids_needed != 0 and len(valid_kid_bins) == 0:
+            SEARCH_BINS = YOUNGER_BINS # expand the search
+            continue
 
-        kid = _sample_n_kids(valid_younger_bins, conf, unassigned_humans, city.rng, size=1, with_kid=None)[0]
+        _valid_bins = [bin for bin in KID_BINS if len(unassigned_humans[bin]) > 0]
+        if n_kids_needed == 0 and len(_valid_bins) == 0:
+            break
+            # else:
+            #     KID_BINS = YOUNGER_BINS
+            #     unallocated_houses, n_houses = _create_more_houses(unallocated_houses, city.rng, conf, n_kids=n_kids_left)
+            #     log(f"Sampled {n_houses} houses to accommodate {n_kids_left} kids", logfile)
+
+        kid = _sample_n_kids(valid_kid_bins, conf, unassigned_humans, city.rng, size=1, with_kid=None)[0]
 
         # find a house and other residents
         housetype = _sample_house_type(unallocated_houses, city.rng, kid=True)
@@ -344,8 +347,10 @@ def _sample_house_type(unallocated_houses, rng, kid=True):
         (HouseType): sampled house from `unallocated_houses`
     """
     if kid:
-        n_kids = [n for n, houses in unallocated_houses.items() if n > 0 and len(houses) > 0]
-        n_kids = rng.choice(n_kids, size=1).item()
+        n_kids, count = list(zip(*[(n,len(houses)) for n, houses in unallocated_houses.items() if n > 0 and len(houses) > 0]))
+        count = np.array(count)
+        p = count / count.sum()
+        n_kids = rng.choice(n_kids, size=1, p=p).item()
         return unallocated_houses[n_kids][0]
     else:
         return all_housetypes['unallocated'][0][0]
@@ -370,6 +375,7 @@ def _sample_other_residents(housetype, unassigned_humans, rng, conf, with_kid=No
     MAX_AGE_CHILDREN = conf['MAX_AGE_CHILDREN_ADJUSTED']
     MAX_AGE_COUPLE_WITH_CHILDREN = conf['MAX_AGE_COUPLE_WITH_CHILDREN']
     AGE_DIFFERENCE_BETWEEN_PARENT_AND_KID = conf['AGE_DIFFERENCE_BETWEEN_PARENT_AND_KID']
+    P_CONTACT_HOUSE = np.array(conf['P_CONTACT_MATRIX_HOUSEHOLD'])
 
     valid_age_bins = [x for x, val in unassigned_humans.items() if len(val) >= 1]
 
@@ -380,6 +386,9 @@ def _sample_other_residents(housetype, unassigned_humans, rng, conf, with_kid=No
         valid_parent_bins = _get_valid_bins(valid_age_bins, min_age=MIN_AGE_PARENT, max_age=MAX_AGE_COUPLE_WITH_CHILDREN)
         valid_grandparent_bins = _get_valid_bins(valid_age_bins, min_age=MIN_AGE_GRANDPARENT)
 
+        valid_parent_bins = valid_age_bins
+        valid_grandparent_bins = valid_age_bins
+        
         kids = _sample_n_kids(valid_younger_bins, conf, unassigned_humans, rng, size=n_kids-1, with_kid=with_kid)
 
         assert with_kid in kids, "kid not present in sampled kids"
@@ -390,17 +399,21 @@ def _sample_other_residents(housetype, unassigned_humans, rng, conf, with_kid=No
 
         parents, grandparents = [], []
         if n_parents:
-            # Note: we allow for some discrepancy in max age by taking the bin in which max age lies.
+            # Note: we allow for some discrepancy in max age by taking the bin in which min age lies.
             valid_parent_bins = [x for x in valid_parent_bins if x[1] >=  min_age_parent]
-            parents = _sample_n_parents(valid_parent_bins, conf, unassigned_humans, rng, n=n_parents)
+            avg_age_of_kids = np.mean([k.age for k in kids])
+            p_bin = _get_probability_of_drawing_bins(P_CONTACT_HOUSE, valid_parent_bins, age=avg_age_of_kids)
+            parents = _sample_n_parents(valid_parent_bins, conf, unassigned_humans, rng, n=n_parents, p_bin=p_bin)
 
             max_age_parent = max(p.age for p in parents)
             min_age_grandparent = max_age_parent + AGE_DIFFERENCE_BETWEEN_PARENT_AND_KID
 
         if n_grandparents:
-            # Note: we allow for some discrepancy in max age by taking the bin in which max age lies.
+            # Note: we allow for some discrepancy in max age by taking the bin in which min age lies.
             valid_grandparent_bins = [x for x in valid_grandparent_bins if x[1] >=  min_age_grandparent]
-            grandparents = _sample_n_parents(valid_grandparent_bins, conf, unassigned_humans, rng, n=n_grandparents)
+            avg_age_of_kids = np.mean([p.age for p in parents]) if parents else min_age_parent
+            p_bin = _get_probability_of_drawing_bins(P_CONTACT_HOUSE, valid_grandparent_bins, age=avg_age_of_kids)
+            grandparents = _sample_n_parents(valid_grandparent_bins, conf, unassigned_humans, rng, n=n_grandparents, p_bin=p_bin)
 
         sampled_humans = kids + parents + grandparents
         assert len(sampled_humans) == housetype.n_humans
@@ -417,7 +430,8 @@ def _sample_other_residents(housetype, unassigned_humans, rng, conf, with_kid=No
 
         elif housetype.living_arrangement == "other":
             # (no-source) all other type of housing is resided by adults only
-            valid_other_bins = _get_valid_bins(valid_age_bins, min_age=MAX_AGE_CHILDREN)
+            # Note: valid bins for other is decided via conf['MAX_AGE_CHILDREN'] and not via MAX_AGE_CHILDREN_ADJUSTED
+            valid_other_bins = _get_valid_bins(valid_age_bins, min_age=conf['MAX_AGE_CHILDREN'])
             sampled_humans = _sample_random_humans(valid_other_bins, conf, unassigned_humans, rng, size=housetype.n_humans)
 
         else:
@@ -425,7 +439,7 @@ def _sample_other_residents(housetype, unassigned_humans, rng, conf, with_kid=No
 
     return sampled_humans, unassigned_humans
 
-def _sample_n_parents(valid_age_bins, conf, unassigned_humans, rng, n):
+def _sample_n_parents(valid_age_bins, conf, unassigned_humans, rng, n, p_bin):
     """
     Samples parents in  unassigned humans of `valid_age_bins`.
 
@@ -435,32 +449,37 @@ def _sample_n_parents(valid_age_bins, conf, unassigned_humans, rng, n):
         unassigned_humans (dict): keys are age bin (tuple) and values are humans that do not have a household allocated
         rng (np.random.RandomState): Random number generator
         n (int): number of kids to sample. Defaults to 0.
+        p_bin (list): probability to sample a bin in `valid_age_bins`. Defaults to None.
 
     Returns:
         list: humans belonging to a same household (length = n + 2 if succesful else 0)
     """
     MIN_AGE_PARENT = conf['MIN_AGE_PARENT']
+    if p_bin is None:
+        p_bin = np.ones_like(valid_age_bins)
+        p_bin /= p_bin.sum()
 
     assert all(MIN_AGE_PARENT <= x[0] for x in  valid_age_bins), "not a valid parent bins"
     assert n in [1, 2], f"can not sample {n} parents"
+    assert abs(p_bin.sum() - 1) < 1e-2, "probabilities do not sum to 1"
 
     # single parent
     if n == 1:
         # sampled_humans = _sample_random_humans(valid_age_bins, conf, unassigned_humans, rng, size=housetype.n_humans)
-        older_bin = _random_choice_tuples(valid_age_bins, rng, size=1)[0]
+        older_bin = _random_choice_tuples(valid_age_bins, rng, size=1, P=p_bin)[0]
         parent = rng.choice(unassigned_humans[older_bin], size=1).item()
         unassigned_humans[older_bin].remove(parent)
         sampled_parents = [parent]
 
     # n=2 couple parent
     if n==2:
-        sampled_parents = _sample_couple(valid_age_bins, conf, unassigned_humans, rng)
+        sampled_parents = _sample_couple(valid_age_bins, conf, unassigned_humans, rng, p_bin=p_bin)
 
     assert len(sampled_parents) == n, "not a valid allocation"
 
     return sampled_parents
 
-def _sample_couple(valid_couple_bins, conf, unassigned_humans, rng, return_bins=False):
+def _sample_couple(valid_age_bins, conf, unassigned_humans, rng, p_bin=None, return_bins=False):
     """
     Samples two humans to live together.
 
@@ -470,6 +489,7 @@ def _sample_couple(valid_couple_bins, conf, unassigned_humans, rng, return_bins=
         unassigned_humans (dict): keys are age bin (tuple) and values are humans that do not have a household allocated
         rng (np.random.RandomState): Random number generator
         n (int): number of kids to sample. Defaults to 0.
+        p_bin (list): probability to sample a bin in `valid_age_bins`. Defaults to None.
         return_bins (bool): return potential bins to draw couples from if True.
 
     Returns:
@@ -478,37 +498,48 @@ def _sample_couple(valid_couple_bins, conf, unassigned_humans, rng, return_bins=
     ASSORTATIVITY_STRENGTH = conf['ASSORTATIVITY_STRENGTH']
 
     # couple can be in two consecutive bins
-    min_couple_single_bins = [(x,x) for x in valid_couple_bins if len(unassigned_humans[x]) >= 2]
+    min_couple_single_bins = [(x,x) for x in valid_age_bins if len(unassigned_humans[x]) >= 2]
 
     age_bins = sorted(unassigned_humans.keys(), key=lambda x:x[0])
     sequential_couple_bins = [
                             (x,y) for x,y in zip(age_bins, age_bins[1:]) \
                             if (len(unassigned_humans[x]) >= 1
                                 and len(unassigned_humans[y]) >= 1
-                                and x in valid_couple_bins
-                                and y in valid_couple_bins)
+                                and x in valid_age_bins
+                                and y in valid_age_bins)
                             ]
 
     valid_couple_bins = min_couple_single_bins + sequential_couple_bins
     if return_bins:
         return  valid_couple_bins
 
-    sampled_humans = []
-    if valid_couple_bins:
+    if len(valid_couple_bins) == 0:
+        return []
 
+    sampled_humans = []
+    if p_bin is not None:
+        p_couple = np.zeros(len(valid_couple_bins))
+        # sample couple from same bins according to the contact probability.
+        for j, (x,y) in enumerate(valid_couple_bins):
+            idxs = [i for i, bin in enumerate(valid_age_bins) if bin in [x,y]]
+            p_couple[j] += np.max(p_bin[idxs])
+
+    else:
         # couples are more likley to be in the same age bin
         p_couple = np.ones(len(valid_couple_bins))
-        p_couple[:len(min_couple_single_bins)] += ASSORTATIVITY_STRENGTH
-        p_couple /= p_couple.sum()
-        two_bins = _random_choice_tuples(valid_couple_bins, rng, size=1, P=p_couple)[0]
 
-        human1 = rng.choice(unassigned_humans[two_bins[0]], size=1).item()
-        unassigned_humans[two_bins[0]].remove(human1)
+    p_couple[:len(min_couple_single_bins)] += ASSORTATIVITY_STRENGTH
+    p_couple /= p_couple.sum()
 
-        human2 = rng.choice(unassigned_humans[two_bins[1]], size=1).item()
-        unassigned_humans[two_bins[1]].remove(human2)
+    two_bins = _random_choice_tuples(valid_couple_bins, rng, size=1, P=p_couple)[0]
 
-        sampled_humans += [human1, human2]
+    human1 = rng.choice(unassigned_humans[two_bins[0]], size=1).item()
+    unassigned_humans[two_bins[0]].remove(human1)
+
+    human2 = rng.choice(unassigned_humans[two_bins[1]], size=1).item()
+    unassigned_humans[two_bins[1]].remove(human2)
+
+    sampled_humans += [human1, human2]
 
     return sampled_humans
 
@@ -604,23 +635,26 @@ def _sample_n_kids(valid_younger_bins, conf, unassigned_humans, rng, size, with_
         (list): list of `Human`s sampled
     """
     ASSORTATIVITY_STRENGTH = conf['ASSORTATIVITY_STRENGTH']
+    P_CONTACT_HOUSE = np.array(conf['P_CONTACT_MATRIX_HOUSEHOLD'])
 
     kids, total_kids = [], size
     valid_younger_bins = sorted(valid_younger_bins, key=lambda x: x[0])
-    p_bin = np.ones(len(valid_younger_bins))
+
+    # to balance unsampled bins
+    p_bin = np.array([len(unassigned_humans[bin]) for bin in valid_younger_bins])
     if with_kid is not None:
         kid_bin = with_kid.age_bin_width_5.bin
         assert with_kid not in unassigned_humans[kid_bin],  "kid has been sampled but not removed from unassigned_humans"
 
         total_kids += 1
         kids += [with_kid]
-        if kid_bin in valid_younger_bins:
-            p_bin[valid_younger_bins.index(kid_bin)] += ASSORTATIVITY_STRENGTH
-
+        # if kid_bin in valid_younger_bins:
+        #     p_bin[valid_younger_bins.index(kid_bin)] += ASSORTATIVITY_STRENGTH
+        p_bin = _get_probability_of_drawing_bins(P_CONTACT_HOUSE, valid_younger_bins, with_kid.age)
 
     while len(kids) < total_kids:
-        p = p_bin / p_bin.sum()
-        bin = _random_choice_tuples(valid_younger_bins, rng=rng, size=1, P=p)[0]
+        p_bin = p_bin / p_bin.sum()
+        bin = _random_choice_tuples(valid_younger_bins, rng=rng, size=1, P=p_bin)[0]
         kid = rng.choice(unassigned_humans[bin], size=1).item()
         kids.append(kid)
         unassigned_humans[bin].remove(kid)
@@ -900,3 +934,20 @@ def _random_choice_tuples(tuples, rng, size, P=None, replace=False):
     total = len(tuples)
     idxs = rng.choice(range(total), size=size, p=P, replace=replace)
     return [tuples[x] for x in idxs]
+
+def _get_probability_of_drawing_bins(P_CONTACT, valid_bins, age):
+    """
+    Returns the probability corresponding to valid_bins as indexed by age.
+
+    Args:
+        P_CONTACT (np.array): 2D square matrix
+        valid_bins (list): age bins to consider
+        age (int): age of the concerned person. corresp. to column in the matrix (refer to the definition of contact matrices).
+
+    Returns:
+        (np.array): probabilities corresp. to valid_bins
+    """
+    idx = [i for i, x in enumerate(AGE_BIN_WIDTH_5) if x[0] <= math.floor(age) <= x[1]][0]
+    valid_bins_idx = [i for i, x in enumerate(AGE_BIN_WIDTH_5) if x in valid_bins]
+    p_bin = P_CONTACT[valid_bins_idx, idx]
+    return p_bin / p_bin.sum()
