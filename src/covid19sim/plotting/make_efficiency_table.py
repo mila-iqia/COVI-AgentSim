@@ -138,7 +138,7 @@ def run(data, path, comparison_key):
             results.append(result)
 
     print("\n\n\n")
-    print("| Method | Restriction | % Infected | infection over baseline | restriction over baseline | Efficiency |")
+    print("| Method | Restriction | % Infected | infection (baseline - method)  | restriction (method - baseline) | Efficiency |")
     print("|---|---|---|---|---|---|")
     baseline_restriction = 1.6
     baseline_infection = 88.0
@@ -164,7 +164,7 @@ def run(data, path, comparison_key):
             infected = f" {round(float(y * 100), 1)}% +/- {round(float(ye * 100), 1)}% |"
             result += infected
 
-            infection_over_baseline = f" {float(((y * 100) - baseline_infection))} |"
+            infection_over_baseline = f" {float((baseline_infection - (y * 100)))} |"
             result += infection_over_baseline
 
             restriction_over_basleine = f" {float((method_restriction - baseline_restriction))} |"
