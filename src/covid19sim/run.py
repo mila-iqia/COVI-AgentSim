@@ -75,7 +75,7 @@ def main(conf: DictConfig):
     # -----  Filter-Out Warnings  -----
     # ---------------------------------
     import warnings
-    warnings.filterwarnings("ignore")
+    # warnings.filterwarnings("ignore")
 
     # ----------------------------
     # -----  Run Simulation  -----

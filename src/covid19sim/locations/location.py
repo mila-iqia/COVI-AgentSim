@@ -3,6 +3,7 @@ import datetime
 from orderedset import OrderedSet
 from collections import namedtuple
 import numpy as np
+import warnings
 
 from covid19sim.utils.constants import SECONDS_PER_MINUTE, SECONDS_PER_HOUR, AGE_BIN_WIDTH_5
 from covid19sim.epidemiology.p_infection import get_environment_human_p_transmission
@@ -65,7 +66,7 @@ class Location(simpy.Resource):
 
         if location_type == "household":
             self.P_CONTACT = np.array(conf['P_CONTACT_MATRIX_HOUSEHOLD'])
-        elif location_type in ["workplace", "store", "misc"]:
+        elif location_type in "workplace":
             self.P_CONTACT = np.array(conf['P_CONTACT_MATRIX_WORK'])
         elif location_type == "school":
             self.P_CONTACT = np.array(conf['P_CONTACT_MATRIX_SCHOOL'])
@@ -185,31 +186,28 @@ class Location(simpy.Resource):
         if len(self.humans) == 1:
             return None
 
+        MAX_AGE_SUPERVISION = self.conf['MAX_AGE_CHILDREN_WITHOUT_PARENT_SUPERVISION']
         if type == "known":
             human_bin = human.age_bin_width_5.index
-            # sample human whom to interact with
-            p = self.P_CONTACT[:, human_bin]
 
-            # valid humans for interaction
-            remaining_bins = []
-            for i, bin in enumerate(AGE_BIN_WIDTH_5):
-                if len(self.binned_humans[bin]) > 0:
-                    if not (i == human_bin and len(self.binned_humans[bin]) > 1):
-                        continue
-                    remaining_bins.append(i)
-
-            # TODO - P - with improved mobility, it should not happen
-            if p[remaining_bins].sum() == 0:
-                # print(f"bad allocation/mobility... {human} should not interact with anyone at {self}")
-                # normalized_p = [1/len(remaining_bins)] * len(remaining_bins)
-                return None
+            if human.age <= MAX_AGE_SUPERVISION:
+                valid_interactions = [h for h in self.humans if human != h and h.age > MAX_AGE_SUPERVISION]
+                if not valid_interactions:
+                    return None
+                hs, h_vector = list(zip(*[(h, h.age_bin_width_5.index) for h in self.humans if human != h and h.age > MAX_AGE_SUPERVISION]))
             else:
-                normalized_p = p[remaining_bins]/p[remaining_bins].sum()
-            other_bin = self.rng.choice(remaining_bins, p=normalized_p, size=1).item()
-            other_humans = self.binned_humans[AGE_BIN_WIDTH_5[other_bin]]
-            if human in other_humans:
-                other_humans = [x for x in other_humans if x != human]
-            other_human = self.rng.choice(other_humans, size=1).item()
+                hs, h_vector = list(zip(*[(h, h.age_bin_width_5.index) for h in self.humans if human != h]))
+
+            p_contact = self.P_CONTACT[h_vector, human_bin]
+            if p_contact.sum() == 0:
+                return None
+                warnings.warn("bad mobility...")
+                p_contact = [1/len(hs)] * len(hs)
+            else:
+                p_contact /= p_contact.sum()
+
+            # sample
+            other_human = self.rng.choice(hs, size=1, p=p_contact).item()
 
         elif type == "unknown":
             other_humans = [x for x in self.humans if x != human]
@@ -278,8 +276,12 @@ class Location(simpy.Resource):
                 scale_duration = self.CONTACT_DURATION_GAMMA_SCALE_MATRIX[other_bin, age_bin]
                 shape_duration = self.CONTACT_DURATION_GAMMA_SHAPE_MATRIX[other_bin, age_bin]
                 duration = self.rng.gamma(shape_duration, scale_duration)
-            if type == "unknown":
+
+            elif type == "unknown":
                 duration = self.rng.gamma(mean_interaction_time/scale_factor_interaction_time, scale_factor_interaction_time)
+
+            else:
+                raise ValueError
 
             # /!\ clipping changes the distribution.
             duration = min(t_overlap, duration) * max(human.time_encounter_reduction_factor, other_human.time_encounter_reduction_factor)

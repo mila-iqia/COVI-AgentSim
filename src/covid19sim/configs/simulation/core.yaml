@@ -3,9 +3,6 @@ GLOBAL_MOBILITY_SCALING_FACTOR: 1.0 # Mobility reduction factor
 # NOISE IN SIM PARAMETERS
 LOCATION_TECH: "gps" # &location-tech
 
-# CITY PARAMETERS
-MIN_AVG_HOUSE_AGE: 15
-
 # n - people per location
 LOCATION_DISTRIBUTION:
   {

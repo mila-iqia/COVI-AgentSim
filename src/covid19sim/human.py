@@ -1339,7 +1339,7 @@ class Human(object):
             to_location = next_activity = self.decide_next_activity(hour, day)
             duration = 60
             while next_activity == "household":
-                duration += 60
+                duration += self.rng.uniform(50, 70) # QKFIX: add randomness here to prevent some humans never exiting their house
                 fake_time = (self.env.timestamp + datetime.timedelta(minutes=duration))
                 fake_hour = fake_time.hour
                 fake_day = fake_time.day

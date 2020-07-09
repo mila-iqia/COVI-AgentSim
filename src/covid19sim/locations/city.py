@@ -393,7 +393,7 @@ class City:
             human.obs_sex = human.sex if human.has_logged_info else None
             human.obs_preexisting_conditions = human.preexisting_conditions if human.has_logged_info else []
 
-        print("Downloading the app...")
+        log("Downloading the app...", self.logfile)
         # app users
         all_has_app = self.conf.get('APP_UPTAKE') < 0
         # The dict below keeps track of an app quota for each age group
@@ -539,10 +539,10 @@ class City:
                 if isinstance(self.intervention, NonMLRiskComputer):
                     self.have_some_humans_download_the_app()
                 _ = [h.notify(self.intervention) for h in self.humans]
-                print(self.intervention)
+                log(f"Humans notfied of {self.intervention}", self.logfile)
                 self.conf["GLOBAL_MOBILITY_SCALING_FACTOR"] = tmp_M
                 if self.conf.get('COLLECT_TRAINING_DATA'):
-                    print("naive risk calculation without changing behavior... Humans notified!")
+                    log("naive risk calculation without changing behavior... Humans notified!", self.logfile)
                 humans_notified = True
 
             # run city testing routine, providing test results for those who need them
@@ -663,13 +663,13 @@ class City:
                     Event.log_daily(self.conf.get('COLLECT_LOGS'), human, human.env.timestamp)
                 self.tracker.increment_day()
                 if self.conf.get("USE_GAEN"):
-                    print(
+                    log(
                         "cur_day: {}, budget spent: {} / {} ".format(
                             current_day,
                             self.sent_messages_by_day.get(current_day, 0),
                             int(self.conf["n_people"] * self.conf["MESSAGE_BUDGET_GAEN"])
                         ),
-                    )
+                    self.logfile)
 
 
 class EmptyCity(City):

@@ -28,8 +28,7 @@ P_AGE_REGION: [
     [60, 64, 0.057],
     [65, 69, 0.049],
     [70, 74, 0.037],
-    [75, 79, 0.029],
-    [80, 110, 0.051],
+    [75, 110, 0.08]
 ]
 
 AVERAGE_AGE_REGION: 40.6
@@ -102,13 +101,14 @@ P_FAMILY_TYPE_SIZE_MORE_THAN_5: [0.044, 0.003, 0.014]
 # multi-generation households (D)
 # https://www12.statcan.gc.ca/census-recensement/2016/dp-pd/hlt-fst/fam/Table.cfm?Lang=E&T=24&Geo=00&SO=18D
 # Total private households  - 779,800 (D.1)
-# multi-generation households - 11,410 (D.2)
-# Total non-one-census family households - ("other census family households") 17,465 + ("non census family households") 48,770 - D.3 = 66235
-# fraction of **all** households that are multigenerational - (D.2 / D.1)  = 0.015
-# fraction of **others** (category used in housing allocation in `demographics.py`) - D.2 / (D.3 + D.2) = 0.147
-# Minimum age sampled for grandparent = 45
-# ref: https://www150.statcan.gc.ca/n1/pub/75-006-x/2015001/article/14154-eng.htm
-P_MULTIGENERATIONAL_FAMILY: 0.015
+# multi-generation households  - 11,410 (D.2)
+# to account for discrepancy in D.1 and B.1 we scale D.2 as B.1 * D.2 / D.1
+# thus, multi-generation households -  12735 (D.3)
+# Total non-one-census family households - ("other census family households") 17,465 + ("non census family households") 48,770 - (D.4) = 66235
+# apply same standardization here - B.1 * D.4 / D.1 = 73928 (D.5)
+# fraction of **all** households that are multigenerational - (D.3 / D.1)  = 0.016
+# fraction of **others** (category used in housing allocation in `demographics.py`) - D.3 / (D.3 + D.5) = 0.147
+P_MULTIGENERATIONAL_FAMILY: 0.016
 P_MULTIGENERTIONAL_FAMILY_GIVEN_OTHER_HOUSEHOLDS: 0.147
 
 # Senior residency & long term care centers
@@ -123,19 +123,40 @@ N_COLLECTIVE: 32935
 N_COLLECTIVE_60_79: 9750
 N_COLLECTIVE_80_above: 23185
 
-# (no-source) these values are assumed
-MIN_AGE_COUPLE: 25
-MAX_AGE_COUPLE_WITH_CHILDREN: 65
-MIN_AGE_SINGLE_PARENT: 30
-MAX_AGE_SINGLE_PARENT: 65
-MAX_AGE_CHILDREN: 20
-MIN_AGE_GRANDPARENT: 60
+# (no-source) these values are assumed.
+# Use upper limit of a bin in AGE_BIN_WIDTH_5 to define the below values.
+# For min: Use the lower limit of a bin just before the desired bin (i.e bin in which minimum should lie)
+# For max: Use the upper limit of the desired bin (i.e bin in which minimum should lie)
+MIN_AGE_COUPLE: 29
+MAX_AGE_COUPLE_WITH_CHILDREN: 64
+
+MIN_AGE_PARENT: 29
+MAX_AGE_SINGLE_PARENT: 64
+
+MAX_AGE_CHILDREN: 14
+MIN_AGE_GRANDPARENT: 59
+
+AGE_DIFFERENCE_BETWEEN_PARENT_AND_KID: 18
+
+# Adjust MAX_AGE_CHILDREN to MAX_AGE_CHILDREN_ADJUSTED everytime there is a failure due to shortage of kids.
+# It takes care of the discrepancy in definition of census family where kid is defined irrespective of the age
+# This parameter is automatically computed in the housing allocation algorithm. It is here for reference only.
+MAX_AGE_CHILDREN_ADJUSTED: 24
+
+# this factor influences the strength of assortativity in contacts at home.
+# higher the value, more likely that people of the same age group live together.
+ASSORTATIVITY_STRENGTH: 5
 
 #########################################################
 ###########       Occupation data             ###########
 #########################################################
 
 
+#########################################################
+###########       Mobility data             ###########
+#########################################################
+
+MAX_AGE_CHILDREN_WITHOUT_PARENT_SUPERVISION: 3
 ######################################################################
 ## Pre-computed using utils/precompute_and_project/demographics.py  ##
 ######################################################################
@@ -163,8 +184,7 @@ P_AGE_SOLO_DWELLERS_GIVEN_HOUSESIZE_1: [[0, 4, 0.0],
     [60, 64, 0.08991688613071544],
     [65, 69, 0.08616853066878354],
     [70, 74, 0.07314565348534839],
-    [75, 79, 0.06486543408681548],
-    [80, 110, 0.12921865562593535]]
+    [75, 110, 0.19408408971275082]]
 
 # Normalized P_FAMILY_TYPE_
 # P_FAMILIY_TYPE_ are proportion of **all** households that are of particular type
@@ -185,13 +205,7 @@ P_COLLECTIVE: 0.016958927316308325
 P_COLLECTIVE_60_64: 0.005501525724849727
 P_COLLECTIVE_65_69: 0.01920971061380122
 P_COLLECTIVE_70_74: 0.04239053385700348
-P_COLLECTIVE_75_79: 0.07576442926630575
-P_COLLECTIVE_80_above: 0.23408718291144381
-
-# MAX_AGE_CHILDREN_ADJUSTED = MAX_AGE_CHILDREN
-# Adjust MAX_AGE_CHILDREN to MAX_AGE_CHILDREN_ADJUSTED everytime there is a failure due to shortage of kids.
-# It takes care of the discrepancy in definition of census family where kid is defined irrespective of the age
-MAX_AGE_CHILDREN_ADJUSTED: 20
+P_COLLECTIVE_75_above: 0.17669518471508125
 
 # *********************** Overwrite P_AGE_SOLO_DWELLERS_GIVEN_HOUSESIZE_1 because a more accurate datasource is available ***********************
 # ref: https://www12.statcan.gc.ca/census-recensement/2016/dp-pd/dt-td/Rp-eng.cfm?TABID=2&LANG=E&APATH=3&DETAIL=0&DIM=0&FL=A&FREE=0&GC=0&GID=1161337&GK=0&GRP=1&PID=109648&PRID=10&PTYPE=109445&S=0&SHOWALL=0&SUB=0&Temporal=2016&THEME=117&VID=0&VNAMEE=&VNAMEF=&D1=0&D2=0&D3=0&D4=0&D5=0&D6=0
@@ -210,8 +224,7 @@ P_AGE_SOLO_DWELLERS_GIVEN_HOUSESIZE_1: [[0, 4, 0.0],
     [60, 64, 0.091547445],
     [65, 69, 0.086321168],
     [70, 74, 0.069109489],
-    [75, 79, 0.055226277],
-    [80, 110, 0.093970803]
+    [75, 110, 0.14919708]
   ]
 
 #######################################################################################

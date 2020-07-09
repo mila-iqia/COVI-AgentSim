@@ -110,6 +110,7 @@ class Tracker(object):
                     'total': np.zeros((len(AGE_BIN_WIDTH_5), len(AGE_BIN_WIDTH_5))),
                     'n_people': defaultdict(lambda : set()),
                     'avg_daily': (0, np.zeros((len(AGE_BIN_WIDTH_5), len(AGE_BIN_WIDTH_5)))),
+                    "unique_avg_daily": (0, np.zeros((len(AGE_BIN_WIDTH_5), len(AGE_BIN_WIDTH_5)))),
                 })
         self.contact_matrices = {
                             "known": deepcopy(contact_matrices_fmt),
@@ -303,13 +304,14 @@ class Tracker(object):
             # multigenerational house
             children, older, old = False, False, False
             for human in house.residents:
-                if human.age <= self.conf['MAX_AGE_CHILDREN']:
+                if human.age <= self.conf['MAX_AGE_CHILDREN_ADJUSTED']:
                     children = True
-                if human.age >= self.conf['MAX_AGE_COUPLE_WITH_CHILDREN']:
+                if human.age >= self.conf['MIN_AGE_GRANDPARENT']:
                     older = True
                 if self.conf['MIN_AGE_COUPLE'] <= human.age < self.conf['MAX_AGE_COUPLE_WITH_CHILDREN']:
                     old = True
-            multigenerationals[i] = children and older
+
+            multigenerationals[i] = house.allocation_type.multigenerational
             two_generations[i] = children and (old or older)
             only_adults[i] = not children
 
@@ -354,9 +356,10 @@ class Tracker(object):
         log(str_to_print, self.logfile)
 
         # allocation types
-        allocation_types, census = list(zip(*[res.allocation_type for res in self.city.households]))
-        allocation_types = np.array(allocation_types)
-        census = np.array([x.probability for x in census])
+        allocation_types = [res.allocation_type for res in self.city.households]
+        living_arrangements = [res.basestr for res in allocation_types]
+        census = np.array([x.probability for x in allocation_types])
+        allocation_types = np.array(living_arrangements)
         str_to_print = "Allocation types: "
         for atype in np.unique(allocation_types):
             p = (allocation_types == atype).mean()
@@ -1026,17 +1029,26 @@ class Tracker(object):
                     D = self.contact_duration_matrices[interaction_type][location_type]
 
                     # number of contacts per age group
-                    # mean daily contacts (symmetric matrix)
+                    # mean daily contacts per age group (symmetric matrix)
                     n, M = C['avg_daily']
                     C['avg_daily'] = (n+1, (n*M + C['total'])/(n+1))
 
                     # /!\ Storing number of people per age group might lead to memory problems. It might not be sutiable for larger simulations.
                     # mean daily contacts per person in an age group (similar to survey matrices)
-                    n, M = C['avg']
+                    n, M = C['unique_avg_daily']
                     n_people = np.zeros_like(M)
                     for i, j in C['n_people'].keys():
                         n_people[i, j] = len(C['n_people'][(i,j)])
-                    m = np.divide(C['total'], n_people, where= n_people!=0)
+
+                    # number of unique people age group i met in a day = n_people[i, :].sum()
+                    # number of unique people in age group i = n_people[:, i].sum()
+                    # number of unique people age group i met in an age group j = n_people[i, j] (NOTE: the difference wrt C['n_people'])
+                    # we follow the same convention of i,j==> j reporting about i so we take transpose here.
+                    C['unique_avg_daily'] = (n+1, (n*M + n_people.transpose()) / (n+1))
+
+                    n, M = C['avg']
+                    m = np.zeros_like(C['total'])
+                    np.divide(C['total'], n_people, where=(n_people!=0), out=m)
                     C['avg'] = (n+1, (n*M + m)/(n+1))
 
                     # mean duration per contact (minutes) (symmetric matrix)
@@ -1045,13 +1057,9 @@ class Tracker(object):
 
                     # mean duration per contact per person (minutes) (similar to survey matrices)
                     n, M = D['avg']
-                    m = np.divide(D['total'], n_people, where= n_people!=0)
+                    m = np.zeros_like(D['total'])
+                    np.divide(D['total'], n_people, where=(n_people!=0), out=m)
                     D['avg'] = (n+1, (n*M + m)/(n+1))
-
-                    # reset the matrices for counting the next day's events
-                    C['total'] = np.zeros((len(AGE_BIN_WIDTH_5), len(AGE_BIN_WIDTH_5)))
-                    C['n_people'] = defaultdict(lambda : set())
-                    D['total'] = np.zeros((len(AGE_BIN_WIDTH_5), len(AGE_BIN_WIDTH_5)))
 
                     # mean dailies per age group or otherwise for "known" contacts only. This is what is available via surveys.
                     if interaction_type == "known":
@@ -1060,15 +1068,18 @@ class Tracker(object):
                         n, Da = self.mean_daily_contact_duration_per_agegroup[type_of_day][location_type]
                         n, Ca = self.mean_daily_contacts_per_agegroup[type_of_day][location_type]
 
-                        ## total for yesterday per age group
+                        ## total for yesterday's contacts per age group
                         contacts_per_agegroup = C["total"].sum(axis=0)
                         contact_duration_per_agegroup = D["total"].sum(axis=0)
                         n_unique_people_per_agegroup = n_people.sum(axis=0)
 
-                        m = np.divide(contacts_per_agegroup, n_unique_people_per_agegroup, where=n_unique_people_per_agegroup!=0)
+                        # update averages
+                        m = np.zeros_like(contacts_per_agegroup)
+                        np.divide(contacts_per_agegroup, n_unique_people_per_agegroup, where=(n_unique_people_per_agegroup!=0), out=m)
                         self.mean_daily_contacts_per_agegroup[type_of_day][location_type] = (n+1, (n * Ca + m)/(n+1))
 
-                        m = np.divide(contact_duration_per_agegroup, n_unique_people_per_agegroup, where=n_unique_people_per_agegroup!=0)
+                        m = np.zeros_like(contact_duration_per_agegroup)
+                        np.divide(contact_duration_per_agegroup, n_unique_people_per_agegroup, where=(n_unique_people_per_agegroup!=0), out=m)
                         self.mean_daily_contact_duration_per_agegroup[type_of_day][location_type] = (n+1, (n * Da + m)/(n+1))
 
                         # mean daily contacts
@@ -1078,11 +1089,16 @@ class Tracker(object):
                         total_contact_duration = D["total"].sum() / 2
                         total_unique_people = n_people.sum() / 2
 
-                        m = total_contact_duration / total_unique_people
+                        m = total_contact_duration / total_unique_people if total_unique_people else 0.0
                         self.mean_daily_contact_duration[type_of_day][location_type] = (n+1, (d*n + m) / (n+1))
 
-                        m = total_contacts / total_unique_people
+                        m = total_contacts / total_unique_people if total_unique_people else 0.0
                         self.mean_daily_contacts[type_of_day][location_type] = (n+1, (c*n + m) / (n+1))
+
+                    # reset the matrices for counting the next day's events
+                    C['total'] = np.zeros((len(AGE_BIN_WIDTH_5), len(AGE_BIN_WIDTH_5)))
+                    C['n_people'] = defaultdict(lambda : set())
+                    D['total'] = np.zeros((len(AGE_BIN_WIDTH_5), len(AGE_BIN_WIDTH_5)))
 
             self.outside_daily_contacts.append(1.0 * self.n_outside_daily_contacts/len(self.city.humans))
             self.n_outside_daily_contacts = 0
@@ -1110,8 +1126,9 @@ class Tracker(object):
 
                 C['total'][i, j] += 1
                 C['total'][j, i] += 1
-                C['n_people'][(j,i)].add(human1.name) # in surveys, ij ==> j is the participant and i is the reported contact
-                C['n_people'][(i,j)].add(human2.name)
+                # in surveys, ij ==> j is the participant and i is the reported contact
+                C['n_people'][(j,i)].add(human1.name) # i reports about j; len of this set is number of unique people in i that met j
+                C['n_people'][(i,j)].add(human2.name) # j reports about i
                 D['total'][i,j] += duration
                 D['total'][j,i] += duration
 

@@ -129,20 +129,17 @@ if __name__ == "__main__":
     N_COLLECTIVE_60_79 = region['N_COLLECTIVE_60_79']
     N_COLLECTIVE_80_above = region['N_COLLECTIVE_80_above']
 
-    assert P_AGE_REGION[-5][0] == 60 and P_AGE_REGION[-5][1] == 64, "misalignment in age groupings detected"
-    N_60_64 = P_AGE_REGION[-5][2] * POPULATION_SIZE_REGION
+    assert P_AGE_REGION[-4][0] == 60 and P_AGE_REGION[-4][1] == 64, "misalignment in age groupings detected"
+    N_60_64 = P_AGE_REGION[-4][2] * POPULATION_SIZE_REGION
 
-    assert P_AGE_REGION[-4][0] == 65 and P_AGE_REGION[-4][1] == 69, "misalignment in age groupings detected"
-    N_65_69 = P_AGE_REGION[-4][2] * POPULATION_SIZE_REGION
+    assert P_AGE_REGION[-3][0] == 65 and P_AGE_REGION[-3][1] == 69, "misalignment in age groupings detected"
+    N_65_69 = P_AGE_REGION[-3][2] * POPULATION_SIZE_REGION
 
-    assert P_AGE_REGION[-3][0] == 70 and P_AGE_REGION[-3][1] == 74, "misalignment in age groupings detected"
-    N_70_74 = P_AGE_REGION[-3][2] * POPULATION_SIZE_REGION
+    assert P_AGE_REGION[-2][0] == 70 and P_AGE_REGION[-2][1] == 74, "misalignment in age groupings detected"
+    N_70_74 = P_AGE_REGION[-2][2] * POPULATION_SIZE_REGION
 
-    assert P_AGE_REGION[-2][0] == 75 and P_AGE_REGION[-2][1] == 79, "misalignment in age groupings detected"
-    N_75_79 = P_AGE_REGION[-2][2] * POPULATION_SIZE_REGION
-
-    assert P_AGE_REGION[-1][0] == 80, "misalignment in age groupings detected"
-    N_80_above = P_AGE_REGION[-1][2] * POPULATION_SIZE_REGION
+    assert P_AGE_REGION[-1][0] == 75, "misalignment in age groupings detected"
+    N_75_above = P_AGE_REGION[-1][2] * POPULATION_SIZE_REGION
 
     # (assumption) distribution of people aged 60-79 living in collective is assumed to be skewed towards larger range [1/16 ,3/16, 5/16, 7/16]
     N_COLLECTIVE_60_64 = N_COLLECTIVE_60_79 // 16
@@ -154,8 +151,7 @@ if __name__ == "__main__":
     P_COLLECTIVE_60_64 = N_COLLECTIVE_60_64 / N_60_64
     P_COLLECTIVE_65_69 = N_COLLECTIVE_65_69 / N_65_69
     P_COLLECTIVE_70_74 = N_COLLECTIVE_70_74 / N_70_74
-    P_COLLECTIVE_75_79 = N_COLLECTIVE_75_79 / N_75_79
-    P_COLLECTIVE_80_above = N_COLLECTIVE_80_above / N_80_above
+    P_COLLECTIVE_75_above = (N_COLLECTIVE_75_79 + N_COLLECTIVE_80_above) / N_75_above
 
     comment = """
 # P_COLLECTIVE_
@@ -180,11 +176,9 @@ if __name__ == "__main__":
             + "P_COLLECTIVE_70_74: "
             + str(P_COLLECTIVE_70_74)
             + "\n"
-            + "P_COLLECTIVE_75_79: "
-            + str(P_COLLECTIVE_75_79)
+            + "P_COLLECTIVE_75_above: "
+            + str(P_COLLECTIVE_75_above)
             + "\n"
-            + "P_COLLECTIVE_80_above: "
-            + str(P_COLLECTIVE_80_above)
         )
 
     # precompute 4
@@ -194,9 +188,9 @@ if __name__ == "__main__":
 
     MAX_AGE_CHILDREN = region["MAX_AGE_CHILDREN"]
     comment = """
-    # MAX_AGE_CHILDREN_ADJUSTED = MAX_AGE_CHILDREN
-    # Adjust MAX_AGE_CHILDREN to MAX_AGE_CHILDREN_ADJUSTED everytime there is a failure due to shortage of kids.
-    # It takes care of the discrepancy in definition of census family where kid is defined irrespective of the age
+# Adjust MAX_AGE_CHILDREN to MAX_AGE_CHILDREN_ADJUSTED everytime there is a failure due to shortage of kids.
+# It takes care of the discrepancy in definition of census family where kid is defined irrespective of the age
+# This parameter is automatically computed in the housing allocation algorithm. It is here for reference only.
     """
     with region_path.open("a") as f:
         f.write(
