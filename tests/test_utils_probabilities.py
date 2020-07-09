@@ -4,8 +4,8 @@ import numpy as np
 
 from covid19sim.epidemiology.symptoms import _get_allergy_progression, _get_cold_progression, \
     _get_covid_fatigue_probability, _get_covid_fever_probability, _get_covid_gastro_probability, \
-    _get_covid_progression, _get_covid_sickness_severity, _get_covid_trouble_breathing_severity, \
-    _get_flu_progression, SYMPTOMS, DISEASES_PHASES
+    _get_covid_progression, _get_covid_sickness_severity, _get_covid_trouble_breathing_probability, \
+    _get_covid_trouble_breathing_severity, _get_flu_progression, SYMPTOMS, DISEASES_PHASES
 from covid19sim.epidemiology.human_properties import _get_preexisting_conditions, PREEXISTING_CONDITIONS, \
     HEART_DISEASE_IF_SMOKER_OR_DIABETES_MODIFIER, CANCER_OR_COPD_IF_SMOKER_MODIFIER, \
     IMMUNO_SUPPRESSED_IF_CANCER_MODIFIER
@@ -493,6 +493,43 @@ class CovidProgression(unittest.TestCase):
 
                         self.assertEqual(prob, expected_prob)
 
+    def test_covid_trouble_breathing_probability(self):
+        disease_phases = self.disease_phases
+
+        preexisting_conditions_options = [[], ['smoker'], ['lung_disease'], ['smoker', 'lung_disease']]
+
+        for initial_viral_load in self.initial_viral_load_options:
+            for age in self.ages_options:
+                for preexisting_conditions in preexisting_conditions_options:
+                    for carefulness in self.carefulness_options:
+                        for phase_idx in disease_phases:
+                            prob = _get_covid_trouble_breathing_probability(
+                                phase_idx, age, initial_viral_load, carefulness,
+                                list(preexisting_conditions))
+
+                            expected_prob = 0.
+
+                            # covid_onset phase
+                            if phase_idx == 1:
+                                expected_prob = 0.5 * initial_viral_load - carefulness * 0.25
+                            # covid_plateau phase
+                            elif phase_idx == 2:
+                                expected_prob = 2 * (initial_viral_load - carefulness * 0.25)
+                            # covid_post_plateau_1 phase
+                            elif phase_idx == 3:
+                                expected_prob = initial_viral_load - carefulness * 0.25
+                            # covid_post_plateau_2 phase
+                            elif phase_idx == 4:
+                                expected_prob = 0.5 * (initial_viral_load - carefulness * 0.25)
+
+                            if 'smoker' in preexisting_conditions or 'lung_disease' in preexisting_conditions:
+                                expected_prob = (expected_prob * 4.) + age / 200
+
+                            # TODO: Make sure that it ok to have a expected_prob >= to 1.
+                            expected_prob = min(expected_prob, 1.0)
+
+                            self.assertEqual(prob, expected_prob)
+
     def test_covid_progression(self):
         """
             Test the distribution of the covid symptoms
@@ -575,9 +612,7 @@ class CovidProgression(unittest.TestCase):
 
                         _get_id('unusual'),
 
-
-                        _get_id('trouble_breathing'), _get_id('sneezing'), _get_id('cough'),
-                        _get_id('runny_nose'), _get_id('sore_throat'), _get_id('severe_chest_pain'),
+                        # Trouble breathing severities tested in test_covid_trouble_breathing_severity()
                         _get_id('light_trouble_breathing'), _get_id('moderate_trouble_breathing'),
                         _get_id('heavy_trouble_breathing')}:
                 # Skip this test as maintaining of the tests would be
@@ -588,34 +623,12 @@ class CovidProgression(unittest.TestCase):
                                                                if d_p in disease_phases.values()):
                 prob = probs[i][s_id]
 
-                # covid_onset
-                if i == 1:
-                    if s_id == _get_id('severe_chest_pain') and \
-                            not extremely_sick:
-                        expected_prob = 0
-
                 # covid_plateau
-                elif i == 2:
-                    if s_id == _get_id('severe_chest_pain') and \
-                            not extremely_sick:
-                        expected_prob = 0
-
-                    elif s_id == _get_id('loss_of_taste'):
+                if i == 2:
+                    if s_id == _get_id('loss_of_taste'):
                         p0 = _get_probability('loss_of_taste', 0)
                         p1 = p0 + (1 - p0) * _get_probability('loss_of_taste', 1)
                         expected_prob = p1 + (1 - p1) * expected_prob
-
-                # covid_post_plateau_1
-                elif i == 3:
-                    if s_id == _get_id('severe_chest_pain') and \
-                            not extremely_sick:
-                        expected_prob = 0
-
-                # covid_post_plateau_2
-                elif i == 4:
-                    if s_id == _get_id('severe_chest_pain') and \
-                            not extremely_sick:
-                        expected_prob = 0
 
                 if s_id in (_get_id('fever'), _get_id('chills')):
                     fever_prob = _get_covid_fever_probability(i, really_sick, extremely_sick,
@@ -678,6 +691,24 @@ class CovidProgression(unittest.TestCase):
                     else:
                         # Other symptoms are dependent on fatigue
                         expected_prob *= fatigue_prob
+
+                if s_id in (_get_id('trouble_breathing'),
+                            _get_id('sneezing'), _get_id('cough'), _get_id('runny_nose'),
+                            _get_id('sore_throat'), _get_id('severe_chest_pain')):
+                    trouble_breathing_prob = _get_covid_trouble_breathing_probability(
+                        i, age, initial_viral_load, carefulness,
+                        preexisting_conditions)
+                    # TODO: Make sure that it ok to have a trouble_breathing_prob >= to 1.
+                    trouble_breathing_prob = min(trouble_breathing_prob, 1.0)
+
+                    if s_id == _get_id('severe_chest_pain') and not extremely_sick:
+                        expected_prob = 0
+
+                    if s_id == _get_id('trouble_breathing'):
+                        expected_prob = trouble_breathing_prob
+                    else:
+                        # Other symptoms are dependent on trouble_breathing
+                        expected_prob *= trouble_breathing_prob
 
                 self.assertAlmostEqual(
                     prob, expected_prob,
