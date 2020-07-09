@@ -489,6 +489,125 @@ def _get_covid_trouble_breathing_severity(sickness_severity: str, symptoms: list
         raise ValueError(f"Invalid sickness_severity [{sickness_severity}]")
 
 
+def _get_covid_symptoms(symptoms_progression: list, phase_idx: int, rng, really_sick: bool,
+                        extremely_sick: bool, age: int, initial_viral_load: float,
+                        carefulness: float, preexisting_conditions: list):
+    disease_phases = DISEASES_PHASES['covid']
+
+    symptoms = []
+
+    # covid_incubation phase is symptoms-free
+    if phase_idx == 0:
+        return symptoms
+
+    phase = disease_phases[phase_idx]
+
+    sickness_severity = _get_covid_sickness_severity(
+        rng, phase_idx, really_sick, extremely_sick,
+        preexisting_conditions, initial_viral_load)
+
+    symptoms.append(sickness_severity)
+
+    # fever related computations
+    # covid_onset phase
+    if phase_idx == 1:
+        p_fever = _get_covid_fever_probability(phase_idx,
+                                               really_sick, extremely_sick,
+                                               preexisting_conditions,
+                                               initial_viral_load)
+
+        if rng.rand() < p_fever:
+            symptoms.append('fever')
+
+            if extremely_sick and rng.rand() < SYMPTOMS['chills'].probabilities[phase]:
+                symptoms.append('chills')
+
+    # covid_plateau phase
+    elif phase_idx == 2:
+        if 'fever' in symptoms_progression[-1]:
+            p_fever = 1.
+        else:
+            p_fever = _get_covid_fever_probability(phase_idx,
+                                                   really_sick, extremely_sick,
+                                                   preexisting_conditions,
+                                                   initial_viral_load)
+
+        if rng.rand() < p_fever:
+            symptoms.append('fever')
+
+            if rng.rand() < SYMPTOMS['chills'].probabilities[phase]:
+                symptoms.append('chills')
+
+    # gastro related computations
+    if 'gastro' in symptoms_progression[-1]:
+        p_gastro = 1.
+    else:
+        p_gastro = _get_covid_gastro_probability(phase_idx,
+                                                 initial_viral_load)
+
+    # gastro symptoms are more likely to show extreme symptoms later
+    if rng.rand() < p_gastro:
+        symptoms.append('gastro')
+
+        for symptom in ('diarrhea', 'nausea_vomiting'):
+            rand = rng.rand()
+            if rand < SYMPTOMS[symptom].probabilities[phase]:
+                symptoms.append(symptom)
+
+    # fatigue related computations
+    p_lethargy = _get_covid_fatigue_probability(phase_idx,
+                                                age,
+                                                initial_viral_load,
+                                                carefulness)
+
+    if rng.rand() < p_lethargy:
+        symptoms.append('fatigue')
+
+        if age > 75 and rng.rand() < SYMPTOMS['unusual'].probabilities[phase]:
+            symptoms.append('unusual')
+        if (really_sick or extremely_sick or len(preexisting_conditions) > 2) and \
+                rng.rand() < SYMPTOMS['lost_consciousness'].probabilities[phase]:
+            symptoms.append('lost_consciousness')
+
+        for symptom in ('hard_time_waking_up', 'headache', 'confused'):
+            rand = rng.rand()
+            if rand < SYMPTOMS[symptom].probabilities[phase]:
+                symptoms.append(symptom)
+
+    # trouble_breathing related computations
+    p_respiratory = _get_covid_trouble_breathing_probability(phase_idx,
+                                                             age,
+                                                             initial_viral_load,
+                                                             carefulness,
+                                                             preexisting_conditions)
+
+    if rng.rand() < p_respiratory:
+        symptoms.append('trouble_breathing')
+
+        if extremely_sick and rng.rand() < SYMPTOMS['severe_chest_pain'].probabilities[phase]:
+            symptoms.append('severe_chest_pain')
+
+        for symptom in ('sneezing', 'cough', 'runny_nose', 'sore_throat'):
+            rand = rng.rand()
+            if rand < SYMPTOMS[symptom].probabilities[phase]:
+                symptoms.append(symptom)
+
+    trouble_breathing_severity = _get_covid_trouble_breathing_severity(sickness_severity, symptoms)
+    if trouble_breathing_severity is not None:
+        symptoms.append(trouble_breathing_severity)
+
+    # loss_of_taste related computations
+    if phase_idx in (1, 2) and 'loss_of_taste' in symptoms_progression[-1]:
+        p_loss_of_taste = 1.
+    else:
+        p_loss_of_taste = SYMPTOMS['loss_of_taste'].probabilities[phase]
+
+    if rng.rand() < p_loss_of_taste:
+        symptoms.append('loss_of_taste')
+
+    return symptoms
+
+
 # 2D Array of symptoms; first axis is days after exposure (infection), second is an array of symptoms
 def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_load_plateau_end,
                            recovery_days, age, incubation_days, infectiousness_onset_days,
@@ -512,292 +631,48 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
     Returns:
         [type]: [description]
     """
-    disease_phases = DISEASES_PHASES['covid']
     progression = []
-    symptoms_per_phase = [[] for i in range(len(disease_phases))]
-
+    symptoms_per_phase = []
 
     # Phase 0 - Before onset of symptoms (incubation)
     # ====================================================
-    phase_i = 0
-    symptoms_per_phase[phase_i]= []
-    # for day in range(math.ceil(incubation_days)):
-    #     progression.append([])
-
+    symptoms = _get_covid_symptoms(
+        symptoms_per_phase, 0, rng, really_sick,
+        extremely_sick, age, initial_viral_load,
+        carefulness, preexisting_conditions)
+    symptoms_per_phase.append(symptoms)
 
     # Phase 1 - Onset of symptoms (including plateau Part 1)
     # ====================================================
-    phase_i = 1
-    phase = disease_phases[phase_i]
-
-    sickness_severity = _get_covid_sickness_severity(
-        rng, phase_i, really_sick, extremely_sick,
-        preexisting_conditions, initial_viral_load)
-
-    symptoms_per_phase[phase_i].append(sickness_severity)
-
-    p_fever = _get_covid_fever_probability(phase_i,
-                                           really_sick, extremely_sick,
-                                           preexisting_conditions,
-                                           initial_viral_load)
-
-    if rng.rand() < p_fever:
-        symptoms_per_phase[phase_i].append('fever')
-
-        if extremely_sick and rng.rand() < 0.8:
-            symptoms_per_phase[phase_i].append('chills')
-
-    # gastro symptoms are more likely to show extreme symptoms later
-    p_gastro = _get_covid_gastro_probability(phase_i,
-                                             initial_viral_load)
-    if rng.rand() < p_gastro:
-        symptoms_per_phase[phase_i].append('gastro')
-
-        for symptom in ('diarrhea', 'nausea_vomiting'):
-            rand = rng.rand()
-            if rand < SYMPTOMS[symptom].probabilities[phase]:
-                symptoms_per_phase[phase_i].append(symptom)
-
-    p_lethargy = _get_covid_fatigue_probability(phase_i,
-                                                age,
-                                                initial_viral_load,
-                                                carefulness)
-    if rng.rand() < p_lethargy:
-        symptoms_per_phase[phase_i].append('fatigue')
-
-        if age > 75 and rng.rand() < SYMPTOMS['unusual'].probabilities[phase]:
-            symptoms_per_phase[phase_i].append('unusual')
-        if (really_sick or extremely_sick or len(preexisting_conditions) > 2) and \
-                rng.rand() < SYMPTOMS['lost_consciousness'].probabilities[phase]:
-            symptoms_per_phase[phase_i].append('lost_consciousness')
-
-        for symptom in ('hard_time_waking_up', 'headache', 'confused'):
-            rand = rng.rand()
-            if rand < SYMPTOMS[symptom].probabilities[phase]:
-                symptoms_per_phase[phase_i].append(symptom)
-
-    p_respiratory = _get_covid_trouble_breathing_probability(phase_i,
-                                                             age,
-                                                             initial_viral_load,
-                                                             carefulness,
-                                                             preexisting_conditions)
-    if rng.rand() < p_respiratory:
-        symptoms_per_phase[phase_i].append('trouble_breathing')
-
-        if extremely_sick and rng.rand() < SYMPTOMS['severe_chest_pain'].probabilities[phase]:
-            symptoms_per_phase[phase_i].append('severe_chest_pain')
-
-        for symptom in ('sneezing', 'cough', 'runny_nose', 'sore_throat'):
-            rand = rng.rand()
-            if rand < SYMPTOMS[symptom].probabilities[phase]:
-                symptoms_per_phase[phase_i].append(symptom)
-
-    if rng.rand() < SYMPTOMS['loss_of_taste'].probabilities[phase]:
-        symptoms_per_phase[phase_i].append('loss_of_taste')
-
-    trouble_breathing_severity = _get_covid_trouble_breathing_severity(sickness_severity, symptoms_per_phase[phase_i])
-    if trouble_breathing_severity is not None:
-        symptoms_per_phase[phase_i].append(trouble_breathing_severity)
-
+    symptoms = _get_covid_symptoms(
+        symptoms_per_phase, 1, rng, really_sick,
+        extremely_sick, age, initial_viral_load,
+        carefulness, preexisting_conditions)
+    symptoms_per_phase.append(symptoms)
 
     # During the symptoms plateau Part 2 (worst part of the disease)
     # ====================================================
-    phase_i = 2
-    phase = disease_phases[phase_i]
-
-    sickness_severity = _get_covid_sickness_severity(
-        rng, phase_i, really_sick, extremely_sick,
-        preexisting_conditions, initial_viral_load)
-
-    symptoms_per_phase[phase_i].append(sickness_severity)
-
-    if 'fever' in symptoms_per_phase[phase_i - 1]:
-        p_fever = 1.
-    else:
-        p_fever = _get_covid_fever_probability(phase_i,
-                                               really_sick, extremely_sick,
-                                               preexisting_conditions,
-                                               initial_viral_load)
-
-    if 'fever' in symptoms_per_phase[phase_i-1] or rng.rand() < p_fever:
-        symptoms_per_phase[phase_i].append('fever')
-        if rng.rand() < SYMPTOMS['chills'].probabilities[phase]:
-            symptoms_per_phase[phase_i].append('chills')
-
-    # gastro symptoms are more likely to show extreme symptoms later
-    p_gastro = _get_covid_gastro_probability(phase_i,
-                                             initial_viral_load)
-    if 'gastro' in symptoms_per_phase[phase_i-1] or rng.rand() < p_gastro:
-        symptoms_per_phase[phase_i].append('gastro')
-
-        for symptom in ('diarrhea', 'nausea_vomiting'):
-            rand = rng.rand()
-            if rand < SYMPTOMS[symptom].probabilities[phase]:
-                symptoms_per_phase[phase_i].append(symptom)
-
-    p_lethargy = _get_covid_fatigue_probability(phase_i,
-                                                age,
-                                                initial_viral_load,
-                                                carefulness)
-    if rng.rand() < p_lethargy:
-        symptoms_per_phase[phase_i].append('fatigue')
-
-        if age > 75 and rng.rand() < SYMPTOMS['unusual'].probabilities[phase]:
-            symptoms_per_phase[phase_i].append('unusual')
-        if (really_sick or extremely_sick or len(preexisting_conditions) > 2) and \
-                rng.rand() < SYMPTOMS['lost_consciousness'].probabilities[phase]:
-            symptoms_per_phase[phase_i].append('lost_consciousness')
-
-        for symptom in ('hard_time_waking_up', 'headache', 'confused'):
-            rand = rng.rand()
-            if rand < SYMPTOMS[symptom].probabilities[phase]:
-                symptoms_per_phase[phase_i].append(symptom)
-
-    p_respiratory = _get_covid_trouble_breathing_probability(phase_i,
-                                                             age,
-                                                             initial_viral_load,
-                                                             carefulness,
-                                                             preexisting_conditions)
-    if rng.rand() < p_respiratory:
-        symptoms_per_phase[phase_i].append('trouble_breathing')
-
-        if extremely_sick and rng.rand() < SYMPTOMS['severe_chest_pain'].probabilities[phase]:
-            symptoms_per_phase[phase_i].append('severe_chest_pain')
-
-        for symptom in ('sneezing', 'cough', 'runny_nose', 'sore_throat'):
-            rand = rng.rand()
-            if rand < SYMPTOMS[symptom].probabilities[phase]:
-                symptoms_per_phase[phase_i].append(symptom)
-
-    trouble_breathing_severity = _get_covid_trouble_breathing_severity(sickness_severity, symptoms_per_phase[phase_i])
-    if trouble_breathing_severity is not None:
-        symptoms_per_phase[phase_i].append(trouble_breathing_severity)
-
-    if 'loss_of_taste' in symptoms_per_phase[phase_i-1] or \
-            rng.rand() < SYMPTOMS['loss_of_taste'].probabilities[phase]:
-        symptoms_per_phase[phase_i].append('loss_of_taste')
-
+    symptoms = _get_covid_symptoms(
+        symptoms_per_phase, 2, rng, really_sick,
+        extremely_sick, age, initial_viral_load,
+        carefulness, preexisting_conditions)
+    symptoms_per_phase.append(symptoms)
 
     # After the plateau (recovery part 1)
     # ====================================================
-    phase_i = 3
-    phase = disease_phases[phase_i]
-
-    sickness_severity = _get_covid_sickness_severity(
-        rng, phase_i, really_sick, extremely_sick,
-        preexisting_conditions, initial_viral_load)
-
-    symptoms_per_phase[phase_i].append(sickness_severity)
-
-    # gastro symptoms are more likely to show extreme symptoms later
-    p_gastro = _get_covid_gastro_probability(phase_i,
-                                             initial_viral_load)
-    if 'gastro' in symptoms_per_phase[phase_i-1] or rng.rand() < p_gastro:
-        symptoms_per_phase[phase_i].append('gastro')
-
-        for symptom in ('diarrhea', 'nausea_vomiting'):
-            rand = rng.rand()
-            if rand < SYMPTOMS[symptom].probabilities[phase]:
-                symptoms_per_phase[phase_i].append(symptom)
-
-    p_lethargy = _get_covid_fatigue_probability(phase_i,
-                                                age,
-                                                initial_viral_load,
-                                                carefulness)
-    if rng.rand() < p_lethargy:
-        symptoms_per_phase[phase_i].append('fatigue')
-
-        if age > 75 and rng.rand() < SYMPTOMS['unusual'].probabilities[phase]:
-            symptoms_per_phase[phase_i].append('unusual')
-        if (really_sick or extremely_sick or len(preexisting_conditions) > 2) and \
-                rng.rand() < SYMPTOMS['lost_consciousness'].probabilities[phase]:
-            symptoms_per_phase[phase_i].append('lost_consciousness')
-
-        for symptom in ('hard_time_waking_up', 'headache', 'confused'):
-            rand = rng.rand()
-            if rand < SYMPTOMS[symptom].probabilities[phase]:
-                symptoms_per_phase[phase_i].append(symptom)
-
-    p_respiratory = _get_covid_trouble_breathing_probability(phase_i,
-                                                             age,
-                                                             initial_viral_load,
-                                                             carefulness,
-                                                             preexisting_conditions)
-    if rng.rand() < p_respiratory:
-        symptoms_per_phase[phase_i].append('trouble_breathing')
-
-        if extremely_sick and rng.rand() < SYMPTOMS['severe_chest_pain'].probabilities[phase]:
-            symptoms_per_phase[phase_i].append('severe_chest_pain')
-
-        for symptom in ('sneezing', 'cough', 'runny_nose', 'sore_throat'):
-            rand = rng.rand()
-            if rand < SYMPTOMS[symptom].probabilities[phase]:
-                symptoms_per_phase[phase_i].append(symptom)
-
-    trouble_breathing_severity = _get_covid_trouble_breathing_severity(sickness_severity, symptoms_per_phase[phase_i])
-    if trouble_breathing_severity is not None:
-        symptoms_per_phase[phase_i].append(trouble_breathing_severity)
-
+    symptoms = _get_covid_symptoms(
+        symptoms_per_phase, 3, rng, really_sick,
+        extremely_sick, age, initial_viral_load,
+        carefulness, preexisting_conditions)
+    symptoms_per_phase.append(symptoms)
 
     # After the plateau (recovery part 2)
     # ====================================================
-    phase_i = 4
-    phase = disease_phases[phase_i]
-
-    sickness_severity = _get_covid_sickness_severity(
-        rng, phase_i, really_sick, extremely_sick,
-        preexisting_conditions, initial_viral_load)
-
-    symptoms_per_phase[phase_i].append(sickness_severity)
-
-    # gastro symptoms are more likely to show extreme symptoms later
-    p_gastro = _get_covid_gastro_probability(phase_i,
-                                             initial_viral_load)
-    if 'gastro' in symptoms_per_phase[phase_i-1] or rng.rand() < p_gastro:
-        symptoms_per_phase[phase_i].append('gastro')
-
-        for symptom in ('diarrhea', 'nausea_vomiting'):
-            rand = rng.rand()
-            if rand < SYMPTOMS[symptom].probabilities[phase]:
-                symptoms_per_phase[phase_i].append(symptom)
-
-    p_lethargy = _get_covid_fatigue_probability(phase_i,
-                                                age,
-                                                initial_viral_load,
-                                                carefulness)
-    if rng.rand() < p_lethargy:
-        symptoms_per_phase[phase_i].append('fatigue')
-
-        if age > 75 and rng.rand() < SYMPTOMS['unusual'].probabilities[phase]:
-            symptoms_per_phase[phase_i].append('unusual')
-        if (really_sick or extremely_sick or len(preexisting_conditions) > 2) and \
-                rng.rand() < SYMPTOMS['lost_consciousness'].probabilities[phase]:
-            symptoms_per_phase[phase_i].append('lost_consciousness')
-
-        for symptom in ('hard_time_waking_up', 'headache', 'confused'):
-            rand = rng.rand()
-            if rand < SYMPTOMS[symptom].probabilities[phase]:
-                symptoms_per_phase[phase_i].append(symptom)
-
-    p_respiratory = _get_covid_trouble_breathing_probability(phase_i,
-                                                             age,
-                                                             initial_viral_load,
-                                                             carefulness,
-                                                             preexisting_conditions)
-    if rng.rand() < p_respiratory:
-        symptoms_per_phase[phase_i].append('trouble_breathing')
-
-        if extremely_sick and rng.rand() < SYMPTOMS['severe_chest_pain'].probabilities[phase]:
-            symptoms_per_phase[phase_i].append('severe_chest_pain')
-
-        for symptom in ('sneezing', 'cough', 'runny_nose', 'sore_throat'):
-            rand = rng.rand()
-            if rand < SYMPTOMS[symptom].probabilities[phase]:
-                symptoms_per_phase[phase_i].append(symptom)
-
-    trouble_breathing_severity = _get_covid_trouble_breathing_severity(sickness_severity, symptoms_per_phase[phase_i])
-    if trouble_breathing_severity is not None:
-        symptoms_per_phase[phase_i].append(trouble_breathing_severity)
+    symptoms = _get_covid_symptoms(
+        symptoms_per_phase, 4, rng, really_sick,
+        extremely_sick, age, initial_viral_load,
+        carefulness, preexisting_conditions)
+    symptoms_per_phase.append(symptoms)
 
     viral_load_plateau_duration = math.ceil(viral_load_plateau_end - viral_load_plateau_start)
     recovery_duration = math.ceil(recovery_days - viral_load_plateau_end)
@@ -1022,4 +897,3 @@ def _reported_symptoms(all_symptoms, rng, carefulness):
             reported_symptoms.append(symptom)
         all_reported_symptoms.append(reported_symptoms)
     return all_reported_symptoms
-
