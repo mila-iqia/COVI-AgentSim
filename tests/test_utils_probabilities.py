@@ -3,8 +3,9 @@ import unittest
 import numpy as np
 
 from covid19sim.epidemiology.symptoms import _get_allergy_progression, _get_cold_progression, \
-    _get_covid_fever_probability, _get_covid_progression, _get_covid_sickness_severity, \
-    _get_covid_trouble_breathing_severity, _get_flu_progression, SYMPTOMS, DISEASES_PHASES
+    _get_covid_fever_probability, _get_covid_gastro_probability, _get_covid_progression, \
+    _get_covid_sickness_severity, _get_covid_trouble_breathing_severity, _get_flu_progression, \
+    SYMPTOMS, DISEASES_PHASES
 from covid19sim.epidemiology.human_properties import _get_preexisting_conditions, PREEXISTING_CONDITIONS, \
     HEART_DISEASE_IF_SMOKER_OR_DIABETES_MODIFIER, CANCER_OR_COPD_IF_SMOKER_MODIFIER, \
     IMMUNO_SUPPRESSED_IF_CANCER_MODIFIER
@@ -434,6 +435,32 @@ class CovidProgression(unittest.TestCase):
 
                             self.assertEqual(prob, expected_prob)
 
+    def test_covid_gastro_probability(self):
+        disease_phases = self.disease_phases
+
+        for initial_viral_load in self.initial_viral_load_options:
+            for phase_idx in disease_phases:
+                prob = _get_covid_gastro_probability(phase_idx, initial_viral_load)
+
+                expected_prob = initial_viral_load - 0.15
+
+                # covid_onset phase
+                if phase_idx == 1:
+                    pass
+                # covid_plateau phase
+                elif phase_idx == 2:
+                    expected_prob *= 0.25
+                # covid_post_plateau_1 phase
+                elif phase_idx == 3:
+                    expected_prob *= 0.1
+                # covid_post_plateau_2 phase
+                elif phase_idx == 4:
+                    expected_prob *= 0.1
+                else:
+                    expected_prob = 0.
+
+                self.assertEqual(prob, expected_prob)
+
     def test_covid_progression(self):
         """
             Test the distribution of the covid symptoms
@@ -514,8 +541,6 @@ class CovidProgression(unittest.TestCase):
                         _get_id('mild'), _get_id('moderate'), _get_id('severe'),
                         _get_id('extremely-severe'),
 
-                        _get_id('gastro'), _get_id('diarrhea'), _get_id('nausea_vomiting'),
-
                         _get_id('fatigue'), _get_id('unusual'), _get_id('hard_time_waking_up'),
                         _get_id('headache'), _get_id('confused'), _get_id('lost_consciousness'),
 
@@ -594,6 +619,36 @@ class CovidProgression(unittest.TestCase):
                     else:
                         # Other symptoms are dependent on fever
                         expected_prob *= fever_prob
+
+                if s_id in (_get_id('gastro'), _get_id('diarrhea'), _get_id('nausea_vomiting')):
+                    gastro_prob = 0
+                    # covid_onset
+                    if i == 1:
+                        gastro_prob = _get_covid_gastro_probability(1, initial_viral_load)
+
+                    # covid_plateau
+                    elif i == 2:
+                        gastro_prob = _get_covid_gastro_probability(2, initial_viral_load) + \
+                                      _get_covid_gastro_probability(1, initial_viral_load)
+
+                    # covid_post_plateau_1
+                    elif i == 3:
+                        gastro_prob = _get_covid_gastro_probability(3, initial_viral_load) + \
+                                      _get_covid_gastro_probability(2, initial_viral_load) + \
+                                      _get_covid_gastro_probability(1, initial_viral_load)
+
+                    # covid_post_plateau_2
+                    elif i == 4:
+                        gastro_prob = _get_covid_gastro_probability(4, initial_viral_load) + \
+                                      _get_covid_gastro_probability(3, initial_viral_load) + \
+                                      _get_covid_gastro_probability(2, initial_viral_load) + \
+                                      _get_covid_gastro_probability(1, initial_viral_load)
+
+                    if s_id == _get_id('gastro'):
+                        expected_prob = gastro_prob
+                    else:
+                        # Other symptoms are dependent on gastro
+                        expected_prob *= gastro_prob
 
                 self.assertAlmostEqual(
                     prob, expected_prob,
