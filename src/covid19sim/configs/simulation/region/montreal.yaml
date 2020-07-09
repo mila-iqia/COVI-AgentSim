@@ -127,25 +127,13 @@ N_COLLECTIVE_80_above: 23185
 # Use upper limit of a bin in AGE_BIN_WIDTH_5 to define the below values.
 # For min: Use the lower limit of a bin just before the desired bin (i.e bin in which minimum should lie)
 # For max: Use the upper limit of the desired bin (i.e bin in which minimum should lie)
-MIN_AGE_COUPLE: 29
-MAX_AGE_COUPLE_WITH_CHILDREN: 64
-
-MIN_AGE_PARENT: 29
-MAX_AGE_SINGLE_PARENT: 64
-
-MAX_AGE_CHILDREN: 14
-MIN_AGE_GRANDPARENT: 59
-
-AGE_DIFFERENCE_BETWEEN_PARENT_AND_KID: 18
-
-# Adjust MAX_AGE_CHILDREN to MAX_AGE_CHILDREN_ADJUSTED everytime there is a failure due to shortage of kids.
-# It takes care of the discrepancy in definition of census family where kid is defined irrespective of the age
-# This parameter is automatically computed in the housing allocation algorithm. It is here for reference only.
-MAX_AGE_CHILDREN_ADJUSTED: 24
+MAX_AGE_CHILDREN: 14 # used in prioritizing the allocation of houses so that no housing only has children as residents
+MAX_AGE_WITH_PARENT: 54 # used in expanding the search for census family households and restricting the age of parents in multigenerational family
+AGE_DIFFERENCE_BETWEEN_PARENT_AND_KID: 25 # used in sampling for parents
 
 # this factor influences the strength of assortativity in contacts at home.
 # higher the value, more likely that people of the same age group live together.
-ASSORTATIVITY_STRENGTH: 5
+ASSORTATIVITY_STRENGTH: 3
 
 #########################################################
 ###########       Occupation data             ###########
@@ -185,15 +173,6 @@ P_AGE_SOLO_DWELLERS_GIVEN_HOUSESIZE_1: [[0, 4, 0.0],
     [65, 69, 0.08616853066878354],
     [70, 74, 0.07314565348534839],
     [75, 110, 0.19408408971275082]]
-
-# Normalized P_FAMILY_TYPE_
-# P_FAMILIY_TYPE_ are proportion of **all** households that are of particular type
-# normalized values - proportion of households of size that are of some type
-
-NORMALIZED_P_FAMILY_TYPE_SIZE_2: [0.6644295302013422, 0.2348993288590604, 0.1006711409395973]
-NORMALIZED_P_FAMILY_TYPE_SIZE_3: [0.6691176470588235, 0.2205882352941176, 0.1102941176470588]
-NORMALIZED_P_FAMILY_TYPE_SIZE_4: [0.857142857142857, 0.07142857142857142, 0.07142857142857142]
-NORMALIZED_P_FAMILY_TYPE_SIZE_MORE_THAN_5: [0.7213114754098361, 0.04918032786885246, 0.22950819672131148]
 
 
 # P_COLLECTIVE_

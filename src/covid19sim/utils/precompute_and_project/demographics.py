@@ -82,46 +82,6 @@ if __name__ == "__main__":
             + "[{}]".format(",\n    ".join(map(str, P_AGE_SOLO_DWELLERS_GIVEN_HOUSESIZE_1)))
         )
 
-
-    # precompute 2
-    # P_FAMILIY_TYPE_ are proportion of **all** households that are of particular type
-    # normalize them here to proportion of households of size that are of some type
-    P_FAMILY_TYPE_SIZE_2 = region['P_FAMILY_TYPE_SIZE_2']
-    NORMALIZED_P_FAMILY_TYPE_SIZE_2 = [x/sum(P_FAMILY_TYPE_SIZE_2) for x in P_FAMILY_TYPE_SIZE_2]
-
-    P_FAMILY_TYPE_SIZE_3 = region['P_FAMILY_TYPE_SIZE_3']
-    NORMALIZED_P_FAMILY_TYPE_SIZE_3 = [x/sum(P_FAMILY_TYPE_SIZE_3) for x in P_FAMILY_TYPE_SIZE_3]
-
-    P_FAMILY_TYPE_SIZE_4 = region['P_FAMILY_TYPE_SIZE_4']
-    NORMALIZED_P_FAMILY_TYPE_SIZE_4 = [x/sum(P_FAMILY_TYPE_SIZE_4) for x in P_FAMILY_TYPE_SIZE_4]
-
-    P_FAMILY_TYPE_SIZE_MORE_THAN_5 = region['P_FAMILY_TYPE_SIZE_MORE_THAN_5']
-    NORMALIZED_P_FAMILY_TYPE_SIZE_MORE_THAN_5 = [x/sum(P_FAMILY_TYPE_SIZE_MORE_THAN_5) for x in P_FAMILY_TYPE_SIZE_MORE_THAN_5]
-
-    comment = """
-# Normalized P_FAMILY_TYPE_
-# P_FAMILIY_TYPE_ are proportion of **all** households that are of particular type
-# normalized values - proportion of households of size that are of some type
-    """
-    with region_path.open("a") as f:
-        f.write(
-            "\n"
-            + (comment if not args.no_comments else "")
-            + "\n"
-            + "NORMALIZED_P_FAMILY_TYPE_SIZE_2: "
-            + str(NORMALIZED_P_FAMILY_TYPE_SIZE_2)
-            + "\n"
-            + "NORMALIZED_P_FAMILY_TYPE_SIZE_3: "
-            + str(NORMALIZED_P_FAMILY_TYPE_SIZE_3)
-            + "\n"
-            + "NORMALIZED_P_FAMILY_TYPE_SIZE_4: "
-            + str(NORMALIZED_P_FAMILY_TYPE_SIZE_4)
-            + "\n"
-            + "NORMALIZED_P_FAMILY_TYPE_SIZE_MORE_THAN_5: "
-            + str(NORMALIZED_P_FAMILY_TYPE_SIZE_MORE_THAN_5)
-            + "\n"
-        )
-
     # precompute 3
     # P_COLLECTIVE_60_64, P_COLLECTIVE_65_69, P_COLLECTIVE_70_74, P_COLLECTIVE_75_79, P_COLLECTIVE_80_above
     # probability of living in a collective given age ranges
@@ -178,26 +138,5 @@ if __name__ == "__main__":
             + "\n"
             + "P_COLLECTIVE_75_above: "
             + str(P_COLLECTIVE_75_above)
-            + "\n"
-        )
-
-    # precompute 4
-    # MAX_AGE_CHILDREN_ADJUSTED = MAX_AGE_CHILDREN
-    # Adjust MAX_AGE_CHILDREN to MAX_AGE_CHILDREN_ADJUSTED everytime there is a failure due to shortage of kids.
-    # It takes care of the discrepancy in definition of census family where kid is defined irrespective of the age
-
-    MAX_AGE_CHILDREN = region["MAX_AGE_CHILDREN"]
-    comment = """
-# Adjust MAX_AGE_CHILDREN to MAX_AGE_CHILDREN_ADJUSTED everytime there is a failure due to shortage of kids.
-# It takes care of the discrepancy in definition of census family where kid is defined irrespective of the age
-# This parameter is automatically computed in the housing allocation algorithm. It is here for reference only.
-    """
-    with region_path.open("a") as f:
-        f.write(
-            "\n"
-            + (comment if not args.no_comments else "")
-            + "\n"
-            + "MAX_AGE_CHILDREN_ADJUSTED: "
-            + str(MAX_AGE_CHILDREN)
             + "\n"
         )

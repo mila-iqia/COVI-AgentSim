@@ -300,25 +300,12 @@ class Tracker(object):
         # house allocation
         n_houses = len(self.city.households)
         sizes = np.zeros(n_houses)
-        multigenerationals, two_generations, only_adults = np.zeros(n_houses), np.zeros(n_houses), np.zeros(n_houses)
+        multigenerationals, only_adults = np.zeros(n_houses), np.zeros(n_houses)
         solo_ages = []
         for i, house in enumerate(self.city.households):
             sizes[i] = len(house.residents)
-
-            # multigenerational house
-            children, older, old = False, False, False
-            for human in house.residents:
-                if human.age <= self.conf['MAX_AGE_CHILDREN_ADJUSTED']:
-                    children = True
-                if human.age >= self.conf['MIN_AGE_GRANDPARENT']:
-                    older = True
-                if self.conf['MIN_AGE_COUPLE'] <= human.age < self.conf['MAX_AGE_COUPLE_WITH_CHILDREN']:
-                    old = True
-
             multigenerationals[i] = house.allocation_type.multigenerational
-            two_generations[i] = children and (old or older)
-            only_adults[i] = not children
-
+            only_adults[i] = min(h.age for h in house.residents) > self.conf['MAX_AGE_CHILDREN']
             # solo dwellers
             if len(house.residents) == 1:
                 solo_ages.append(house.residents[0].age)
@@ -356,8 +343,6 @@ class Tracker(object):
 
         ## type
         str_to_print = "Household type: "
-        p = 100 * two_generations.mean()
-        str_to_print += f"Two generations: {p:2.2f}% | "
         p = 100 * multigenerationals.mean()
         cns = 100*self.conf['P_MULTIGENERATIONAL_FAMILY']
         warn = "(*)" if abs(p-cns) > WARN_PERCENTAGE_THRESHOLD else ""
