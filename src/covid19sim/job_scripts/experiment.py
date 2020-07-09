@@ -1,16 +1,19 @@
+import datetime
+import itertools
 import os
+import shutil
 import subprocess
-from pathlib import Path
 import tempfile
+from collections import defaultdict
+from pathlib import Path
+
 import hydra
 import numpy as np
 import yaml
 from omegaconf import DictConfig
-import datetime
-import itertools
-from covid19sim.utils.utils import parse_search_configuration
+
 from covid19sim.plotting.utils import env_to_path
-from collections import defaultdict
+from covid19sim.utils.utils import parse_search_configuration
 
 SAMPLE_KEYS = {"list", "uniform", "range", "cartesian", "sequential", "chain"}
 
@@ -723,12 +726,13 @@ def main(conf: DictConfig) -> None:
     # load experimental configuration
     # override with exp_file=<X>
     # where <X> is in configs/search and is ".yaml"
-    conf = load_search_conf(
+    exp_file_path = (
         Path(__file__).resolve().parent.parent
         / "configs"
         / "search"
         / (overrides.get("exp_file", "randomization") + ".yaml")
     )
+    conf = load_search_conf(exp_file_path)
     # override experimental parametrization with the commandline conf
     conf.update(overrides)
     check_conf(conf)
@@ -785,6 +789,10 @@ def main(conf: DictConfig) -> None:
         )
 
     home = os.environ["HOME"]
+    copy_dest = conf["outdir"] if "outdir" in conf else conf["base_dir"]
+    if not dev:
+        Path(copy_dest).mkdir(parents=True, exist_ok=True)
+        shutil.copy(exp_file_path, Path(copy_dest) / exp_file_path.name)
 
     # run n_search jobs
     printlines()
