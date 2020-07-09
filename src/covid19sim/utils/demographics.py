@@ -224,8 +224,10 @@ def assign_households_to_humans(humans, city, conf, logfile=None):
                 n_people_generation = [[2, 1, 2], [2, 2, 1], [1, 2, 2], [1, 1, 3]]
             n_grandparents, n_parents, n_kids = _random_choice_tuples(n_people_generation, rng=city.rng, size=1)[0]
             housetype.set_generations(n_grandparents, n_parents, n_kids)
+            unallocated_houses['multigenerational'].append(housetype)
 
         unallocated_houses[housetype.n_kids].append(housetype)
+
 
     # check if ages satisfy the house constraints and adjust the assumptions if needed
     conf = _check_house_constraints_and_adjust_assumptions(housetypes, unassigned_humans,  conf, logfile)
@@ -235,11 +237,11 @@ def assign_households_to_humans(humans, city, conf, logfile=None):
 
     # Step 1: start by allocating kids to house so that age difference between parents and kids are respected
     # YOUNGER_BINS = _get_valid_bins(AGE_BIN_WIDTH_5, max_age=MAX_AGE_CHILDREN_ADJUSTED)
-    YOUNGER_BINS = _get_valid_bins(AGE_BIN_WIDTH_5, min_age=MAX_AGE_CHILDREN, max_age=MAX_AGE_CHILDREN+AGE_DIFFERENCE_BETWEEN_PARENT_AND_KID)
+    YOUNGER_BINS = _get_valid_bins(AGE_BIN_WIDTH_5, min_age=MAX_AGE_CHILDREN, max_age=MAX_AGE_CHILDREN+AGE_DIFFERENCE_BETWEEN_PARENT_AND_KID+15)
     KID_BINS = _get_valid_bins(AGE_BIN_WIDTH_5, max_age=MAX_AGE_CHILDREN)
     SEARCH_BINS = KID_BINS
+    kid_keys = [n for n, houses in unallocated_houses.items() if  type(n) == int and n > 0 and len(houses) > 0]
     while True:
-        kid_keys = [n for n, houses in unallocated_houses.items() if n > 0 and len(houses) > 0]
         n_kids_needed = sum(len(unallocated_houses[kid_key]) for kid_key in kid_keys)
 
         # sample a young kid from SEARCH_BINS.
@@ -348,11 +350,17 @@ def _sample_house_type(unallocated_houses, rng, kid=True):
         (HouseType): sampled house from `unallocated_houses`
     """
     if kid:
+        # send multigenerational households first
+        if unallocated_houses['multigenerational']:
+            housetype = unallocated_houses['multigenerational'].pop()
+            return housetype
+        else:
+            unallocated_houses.pop('multigenerational')
+        #
         n_kids, count = list(zip(*[(n,len(houses)) for n, houses in unallocated_houses.items() if n > 0 and len(houses) > 0]))
         count = np.array(count)
         p = count / count.sum()
         n_kids = rng.choice(n_kids, size=1, p=p).item()
-
         return unallocated_houses[n_kids][0]
     else:
         return all_housetypes['unallocated'][0][0]
