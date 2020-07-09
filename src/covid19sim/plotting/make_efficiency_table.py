@@ -138,31 +138,38 @@ def run(data, path, comparison_key):
             results.append(result)
 
     print("\n\n\n")
-    print("| Method | Restriction | % Infected | Efficiency |")
-    print("|---|---|---|")
-    baseline = (1.6, 88.0)
+    print("| Method | Restriction | % Infected | infection over baseline | restriction over baseline | Efficiency |")
+    print("|---|---|---|---|---|---|")
+    baseline_restriction = 1.6
+    baseline_infection = 88.0
     for idx, method in enumerate(sorted(base_methods)):
         current_labels = sorted([lab for lab in labels if lab.startswith(method)])
         for i, lab in enumerate(current_labels):
             result = f"{lab} | "
-            total_restriction = 0
+            method_restriction = 0
 
             for axis_idx, xmetric in enumerate(xmetrics):
                 x, xe = get_metrics(df, lab, xmetric)
                 y, ye = get_metrics(df, lab, ymetric)
                 if xmetric == "f1":
-                    total_restriction += 0.25 * round(float(x * 100), 1)
+                    method_restriction += 0.25 * round(float(x * 100), 1)
 
                 elif xmetric == "f2":
-                    total_restriction += 0.5 * round(float(x * 100), 1)
+                    method_restriction += 0.5 * round(float(x * 100), 1)
 
                 elif xmetric == "f3":
-                    total_restriction += 1 * round(float(x * 100), 1)
+                    method_restriction += 1 * round(float(x * 100), 1)
 
-            result += f"{total_restriction}% | "
+            result += f"{method_restriction}% | "
             infected = f" {round(float(y * 100), 1)}% +/- {round(float(ye * 100), 1)}% |"
             result += infected
-            efficiency = f" {float((y-baseline[1]) / (total_restriction - baseline[0]) )}"
+            infection_over_baseline = f" {float((y - baseline_infection))} |"
+            result += infection_over_baseline
+
+            restriction_over_basleine = f" {float((method_restriction - baseline_restriction))} |"
+            result += restriction_over_basleine
+
+            efficiency = f" {float((y - baseline_infection) / (method_restriction - baseline_restriction) )}"
             result += efficiency
             print(result)
             results.append(result)
