@@ -10,6 +10,7 @@ import inspect
 import json
 import pickle
 import os
+import xdelta3
 import zipfile
 from typing import Dict, List, Tuple
 
@@ -61,10 +62,12 @@ class DebugDataLoader():
         else:
             self.hdf5fd = h5py.File(self.path, "r")
         self.conf = parse_configuration(json.loads(self.hdf5fd.attrs["config"]))
-        self.hdf5data = self.hdf5fd["dataset"]
-        self.simulation_days = self.hdf5data.shape[0]
-        assert self.hdf5data.shape[1] == 24  # 24 potential timeslots per day
-        self.n_people = self.hdf5data.shape[2]
+        self.dataset = self.hdf5fd["dataset"]
+        self.is_delta = self.hdf5fd["is_delta"]
+        assert self.dataset.shape == self.is_delta.shape
+        self.simulation_days = self.dataset.shape[0]
+        assert self.dataset.shape[1] == 24  # 24 potential timeslots per day
+        self.n_people = self.dataset.shape[2]
 
     def get_nb_humans(self):
         return self.n_people
@@ -96,12 +99,22 @@ class DebugDataLoader():
 
         human_backups = {}
         humans_events = {}
+        latest_human_buffers = [None] * self.get_nb_humans()
 
         # first, quickly load all the raw data, we'll rebuild the full objects afterwards
         for day_idx in range(self.get_nb_days()):
             for hour_idx in range(24):
                 for human_idx in range(start_idx, end_idx):
-                    human_data = pickle.loads(self.hdf5data[day_idx, hour_idx, human_idx])
+                    # here, we assume the data is always encoded in a delta-since-last format
+                    if latest_human_buffers[human_idx] is None or not self.is_delta[day_idx, hour_idx, human_idx]:
+                        assert not self.is_delta[day_idx, hour_idx, human_idx]
+                        latest_human_buffers[human_idx] = self.dataset[day_idx, hour_idx, human_idx]
+                        human_buffer = latest_human_buffers[human_idx]
+                    else:
+                        human_delta = self.dataset[day_idx, hour_idx, human_idx]
+                        human_buffer = xdelta3.decode(latest_human_buffers[human_idx], human_delta)
+                        latest_human_buffers[human_idx] = human_buffer
+                    human_data = pickle.loads(human_buffer)
                     timestamp = human_data.env.timestamp
                     human_data.conf = self.conf
                     if timestamp not in human_backups:

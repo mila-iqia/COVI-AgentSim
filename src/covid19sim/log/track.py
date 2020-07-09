@@ -104,6 +104,7 @@ class Tracker(object):
                 human_count=city.conf["n_people"],
                 simulation_days=city.conf["simulation_days"],
                 config_backup=city.conf,
+                encode_deltas=True,
             )
             self.collection_server.start()
             self.collection_client = DataCollectionClient(
