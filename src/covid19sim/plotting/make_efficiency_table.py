@@ -138,8 +138,9 @@ def run(data, path, comparison_key):
             results.append(result)
 
     print("\n\n\n")
-    print("| Method | Restriction | % Infected |")
+    print("| Method | Restriction | % Infected | Efficiency |")
     print("|---|---|---|")
+    baseline = (1.6, 88.0)
     for idx, method in enumerate(sorted(base_methods)):
         current_labels = sorted([lab for lab in labels if lab.startswith(method)])
         for i, lab in enumerate(current_labels):
@@ -157,8 +158,11 @@ def run(data, path, comparison_key):
 
                 elif xmetric == "f3":
                     total_restriction += 1 * round(float(x * 100), 1)
+
             result += f"{total_restriction}% | "
             infected = f" {round(float(y * 100), 1)}% +/- {round(float(ye * 100), 1)}% |"
             result += infected
+            efficiency = f" {float((y-baseline[1]) / (total_restriction - baseline[0]) )}"
+            result += efficiency
             print(result)
             results.append(result)
