@@ -15,6 +15,7 @@ import subprocess
 import sys
 import time
 import typing
+import xdelta3
 import zmq
 from pathlib import Path
 from ctt.inference.infer import InferenceEngine
@@ -432,6 +433,7 @@ class DataCollectionWorker(BaseWorker):
             backend_address: typing.AnyStr,
             human_count: int,
             simulation_days: int,
+            encode_deltas: bool = False,
             compression: typing.Optional[typing.AnyStr] = "lzf",
             compression_opts: typing.Optional[typing.Any] = None,
             config_backup: typing.Optional[typing.Dict] = None,
@@ -447,6 +449,7 @@ class DataCollectionWorker(BaseWorker):
         self.data_output_path = data_output_path
         self.human_count = human_count
         self.simulation_days = simulation_days
+        self.encode_deltas = encode_deltas
         self.compression = compression
         self.compression_opts = compression_opts
         self.config_backup = config_backup
@@ -484,8 +487,16 @@ class DataCollectionWorker(BaseWorker):
                 compression=self.compression,
                 compression_opts=self.compression_opts,
             )
+            is_delta = fd.create_dataset(
+                "is_delta",
+                shape=(self.simulation_days, 24, self.human_count,),
+                maxshape=(self.simulation_days, 24, self.human_count,),
+                dtype=bool,
+                fillvalue=False,
+            )
             total_dataset_bytes = 0
             sample_idx = 0
+            latest_human_samples = [None] * self.human_count
             while not self.stop_flag.is_set():
                 if self.reset_flag.is_set():
                     self.time_counter.value = 0.0
@@ -498,8 +509,29 @@ class DataCollectionWorker(BaseWorker):
                     continue
                 proc_start_time = time.time()
                 day_idx, hour_idx, human_idx, buffer = pickle.loads(buffer)
-                dataset[day_idx, hour_idx, human_idx] = np.frombuffer(buffer, dtype=np.uint8)
-                total_dataset_bytes += len(buffer)
+                if self.encode_deltas:
+                    if latest_human_samples[human_idx] is not None:
+                        prev_day_idx, prev_hour_idx = latest_human_samples[human_idx][0:2]
+                        if hour_idx == 0:
+                            assert prev_day_idx == day_idx - 1 and prev_hour_idx == 23
+                        else:
+                            assert prev_day_idx == day_idx and prev_hour_idx == hour_idx - 1
+                        prev_buffer = latest_human_samples[human_idx][-1]
+                        delta = xdelta3.encode(prev_buffer, buffer)
+                        try:
+                            # xdelta3-python is pretty 'unfinished' and will sometimes fail to decode...
+                            xdelta3.decode(prev_buffer, delta)
+                            is_delta[day_idx, hour_idx, human_idx] = True
+                        except:
+                            delta = buffer
+                    else:
+                        delta = buffer
+                    latest_human_samples[human_idx] = (day_idx, hour_idx, buffer)
+                    dataset[day_idx, hour_idx, human_idx] = np.frombuffer(delta, dtype=np.uint8)
+                    total_dataset_bytes += len(delta)
+                else:
+                    dataset[day_idx, hour_idx, human_idx] = np.frombuffer(buffer, dtype=np.uint8)
+                    total_dataset_bytes += len(buffer)
                 socket.send(str(sample_idx).encode())
                 sample_idx += 1
                 with self.time_counter.get_lock():
@@ -523,6 +555,7 @@ class DataCollectionBroker(BaseBroker):
             data_buffer_size: int = default_data_buffer_size,  # NOTE: in bytes!
             frontend_address: typing.AnyStr = default_datacollect_frontend_address,
             backend_address: typing.AnyStr = default_datacollect_backend_address,
+            encode_deltas: bool = False,
             compression: typing.Optional[typing.AnyStr] = "lzf",
             compression_opts: typing.Optional[typing.Any] = None,
             verbose: bool = False,
@@ -551,6 +584,7 @@ class DataCollectionBroker(BaseBroker):
         self.human_count = human_count
         self.simulation_days = simulation_days
         self.data_buffer_size = data_buffer_size
+        self.encode_deltas = encode_deltas
         self.compression = compression
         self.compression_opts = compression_opts
         self.config_backup = config_backup
@@ -576,6 +610,7 @@ class DataCollectionBroker(BaseBroker):
             backend_address=worker_backend_address,
             human_count=self.human_count,
             simulation_days=self.simulation_days,
+            encode_deltas=self.encode_deltas,
             compression=self.compression,
             compression_opts=self.compression_opts,
             config_backup=self.config_backup,
