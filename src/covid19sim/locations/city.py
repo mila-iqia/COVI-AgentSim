@@ -682,6 +682,7 @@ class City:
                     behaviors = self.intervention.get_behaviors(human)
                 human.apply_behaviors(behaviors)
 
+            # for debugging/plotting a posteriori, track all human/location attributes...
             self.tracker.track_humans(hd=self.hd, current_timestamp=self.env.timestamp)
             # self.tracker.track_locations() # TODO
 
@@ -793,9 +794,6 @@ class City:
             # map so that the next call can look at the proper difference between the two
             for day_idx, risk_val in human.risk_history_map.items():
                 human.prev_risk_history_map[day_idx] = risk_val
-
-        # once we get here, the risk of humans with this timeslot should be updated, no matter the method
-        self.tracker.track_risk_attributes(self.hd)
 
         return backup_human_init_risks, update_messages
 
