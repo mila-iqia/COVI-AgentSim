@@ -14,6 +14,7 @@ import covid19sim.plotting.plot_jellybeans as jellybeans
 import covid19sim.plotting.plot_pareto_adoption as pareto_adoption
 import covid19sim.plotting.plot_presymptomatic as presymptomatic
 import covid19sim.plotting.plot_spy_human as spy_human
+import covid19sim.plotting.make_efficiency_table as efficiency
 from covid19sim.plotting.utils import get_all_data
 
 
@@ -134,6 +135,7 @@ def main(conf):
         "jellybeans": jellybeans,
         "presymptomatic": presymptomatic,
         "spy_human": spy_human,
+        "efficiency": efficiency,
     }
 
     conf = OmegaConf.to_container(conf)
@@ -178,6 +180,22 @@ def main(conf):
     # --------------------------------------
     keep_pkl_keys = set()
     if "pareto_adoption" in plots:
+        keep_pkl_keys.update(
+            [
+                "intervention_day",
+                "outside_daily_contacts",
+                "effective_contacts_since_intervention",
+                "intervention_day",
+                "cases_per_day",
+                "n_humans",
+                "generation_times",
+                "humans_state",
+                "humans_intervention_level",
+                "humans_rec_level",
+            ]
+        )
+    if "efficiency" in plots:
+        # Same as pareto
         keep_pkl_keys.update(
             [
                 "intervention_day",
