@@ -401,7 +401,7 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
 
         if age > 75 and rng.rand() < SYMPTOMS['unusual'].probabilities[phase]:
             symptoms_per_phase[phase_i].append('unusual')
-        if really_sick or extremely_sick or len(preexisting_conditions) > 2 and \
+        if (really_sick or extremely_sick or len(preexisting_conditions) > 2) and \
                 rng.rand() < SYMPTOMS['lost_consciousness'].probabilities[phase]:
             symptoms_per_phase[phase_i].append('lost_consciousness')
 
@@ -476,7 +476,7 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
 
         if age > 75 and rng.rand() < SYMPTOMS['unusual'].probabilities[phase]:
             symptoms_per_phase[phase_i].append('unusual')
-        if really_sick or extremely_sick or len(preexisting_conditions) > 2 and \
+        if (really_sick or extremely_sick or len(preexisting_conditions) > 2) and \
                 rng.rand() < SYMPTOMS['lost_consciousness'].probabilities[phase]:
             symptoms_per_phase[phase_i].append('lost_consciousness')
 
@@ -545,7 +545,7 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
 
         if age > 75 and rng.rand() < SYMPTOMS['unusual'].probabilities[phase]:
             symptoms_per_phase[phase_i].append('unusual')
-        if really_sick or extremely_sick or len(preexisting_conditions) > 2 and \
+        if (really_sick or extremely_sick or len(preexisting_conditions) > 2) and \
                 rng.rand() < SYMPTOMS['lost_consciousness'].probabilities[phase]:
             symptoms_per_phase[phase_i].append('lost_consciousness')
 
@@ -608,7 +608,7 @@ def _get_covid_progression(initial_viral_load, viral_load_plateau_start, viral_l
 
         if age > 75 and rng.rand() < SYMPTOMS['unusual'].probabilities[phase]:
             symptoms_per_phase[phase_i].append('unusual')
-        if really_sick or extremely_sick or len(preexisting_conditions) > 2 and \
+        if (really_sick or extremely_sick or len(preexisting_conditions) > 2) and \
                 rng.rand() < SYMPTOMS['lost_consciousness'].probabilities[phase]:
             symptoms_per_phase[phase_i].append('lost_consciousness')
 
