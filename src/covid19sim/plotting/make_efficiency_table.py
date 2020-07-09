@@ -170,7 +170,7 @@ def run(data, path, comparison_key):
             restriction_over_basleine = f" {float((method_restriction - baseline_restriction))} |"
             result += restriction_over_basleine
 
-            efficiency = f" {float(((y * 100)- baseline_infection) / (method_restriction - baseline_restriction) )}"
+            efficiency = f" {float((baseline_infection - (y * 100)) / (method_restriction - baseline_restriction) )}"
             result += efficiency
             print(result)
             results.append(result)
