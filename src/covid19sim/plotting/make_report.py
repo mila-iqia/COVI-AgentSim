@@ -2,6 +2,10 @@ from pathlib import Path
 
 from imgurpython import ImgurClient
 import json
+import hydra
+from omegaconf import OmegaConf
+
+HYDRA_CONF_PATH = Path(__file__).parent.parent / "configs" / "plot"
 
 
 def init_imgur_client():
@@ -40,4 +44,17 @@ def make_report(plot_path):
     client = init_imgur_client()
     addresses = upload_plots(plots, client)
     print("\n".join("{}: {}".format(k, v) for k, v in addresses.items()))
+    with (plot_path / "imgur_uploads.json").open("w") as f:
+        json.dump(addresses, f)
     return
+
+
+@hydra.main(config_path=str(HYDRA_CONF_PATH.resolve() / "config.yaml"), strict=False)
+def main(conf):
+    conf = OmegaConf.to_container(conf)
+    assert "path" in conf
+    make_report(conf["path"])
+
+
+if __name__ == "__main__":
+    main()
