@@ -306,9 +306,9 @@ def main(args):
     with global_conf_path.open("w") as f:
         yaml.safe_dump(global_dict, f)
 
-    print(
-        "Writing in {}:\n{}".format(str(global_conf_path), yaml.safe_dump(global_dict))
-    )
+    print(f"Writing in {str(global_conf_path)}:\n{yaml.safe_dump(global_dict)}\n\n")
+    print("Don't forget to add the infrastructure parameters to that file and then:")
+    print(f"   $ python jobs_scripts/experiment.py exp_file={global_conf_path.stem}")
 
 
 def run(args):
