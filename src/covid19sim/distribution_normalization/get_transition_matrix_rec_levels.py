@@ -7,7 +7,9 @@ on the mobility follow the recommendations (in expectation) from the target (e.g
 Transformer).
 
 How to use:
-    python src/covid19sim/other/get_transition_matrix_rec_levels.py --source path/to/binary_tracing/experiment --target path/to/transformer/experiment
+    python src/covid19sim/other/get_transition_matrix_rec_levels.py \
+        --source path/to/binary_tracing/experiment \
+        --target path/to/transformer/experiment
 
 This script returns a new configuration file that can be run to apply the updates
 of the recommendation levels of source, but with the interventions from target.
@@ -22,6 +24,13 @@ import logging
 from datetime import datetime
 from collections import defaultdict
 from pathlib import Path
+
+
+def print_title(i, method_dir, to_normalize):
+    s = f"Normalizing {method_dir.name} ({i + 1}/{len(to_normalize)})"
+    print("\n" + "#" * len(s))
+    print(s)
+    print("#" * len(s) + "\n")
 
 
 def generate_name(source_config, target_config):
@@ -118,7 +127,7 @@ def get_rec_levels_distributions(data, config, num_rec_levels=4):
     )
     assert np.all(is_valid), "Some recommendation levels are invalid"
 
-    bincount = lambda x: np.bincount(x, minlength=num_rec_levels)
+    bincount = lambda x: np.bincount(x, minlength=num_rec_levels)  # noqa: E731
     counts = np.apply_along_axis(bincount, axis=1, arr=rec_levels_per_day)
 
     return counts / np.sum(counts, axis=1, keepdims=True)
@@ -228,7 +237,24 @@ def get_model(conf):
 
 
 def main(args):
+    """
+    executes `run()` for all folders that it will discover in args.discover, which
+    should be a path.
+
+    discovering logic:
+        - not unmitigated
+        - not a normalized run (checks for DAILY_TARGET_REC_LEVEL_DIST)
+        - has subfolders containing `full_configuration.yaml`
+
+    creates an (almost ready-to-use) yaml file with all the runs that experiment.py
+    should run to normalize discovered folders.
+
+    /!\ folders which already have a normalized counterpart will match again if
+    you re-run the script with new data in the path to discover. Just delete out
+    the runs you don't want from the global yaml file that is created by this method
+    """
     if args.discover is None:
+        # standard, single folder transition matrix computations
         run(args)
 
     parent = Path(args.discover).resolve()
@@ -241,38 +267,49 @@ def main(args):
 
     print("Discovering runs to normalize in {}".format(str(parent)))
 
+    # ---------------------------------
+    # -----  Discovering Folders  -----
+    # ---------------------------------
     to_normalize = []
     for method_dir in parent.iterdir():
-        stop = True
+        no_a_method_dir = True
         if not method_dir.is_dir():
             continue
         for run_dir in method_dir.iterdir():
-            stop = False
+            no_a_method_dir = False
             if not run_dir.is_dir():
                 continue
             conf_path = run_dir / "full_configuration.yaml"
             if conf_path.exists():
                 with (run_dir / "full_configuration.yaml").open("r") as f:
                     run_conf = yaml.safe_load(f)
+                # Found a configuration file: this is a valid method_dir
                 break
             else:
-                stop = True
+                no_a_method_dir = True
                 break
 
-        if stop:
+        if no_a_method_dir:
+            # don't do anything in dirs which don't hold runs such as parent/plots/
             continue
 
+        # check that at least one configuration for the current method was found
         assert (
             run_conf is not None
         ), "run_conf is None: could not find full config in subdirs of {}".format(
             str(method_dir)
         )
+
+        # find out the original tracing_method arg
+        # (bdt1, bdt2, transformer...)
         tracing_method = get_model(run_conf)
+
         if (
             tracing_method != "unmitigated"
             and "DAILY_TARGET_REC_LEVEL_DIST" not in run_conf
             and method_dir != Path(args.target).resolve()
         ):
+            # store the method_dir in to_normalize
             print(f"Found config for {method_dir.name}")
             to_normalize.append(
                 {"tracing_method": tracing_method, "method_dir": method_dir}
@@ -282,30 +319,49 @@ def main(args):
     if "transformer" in target_name:
         target_name = target_name.replace("transformer", "")
 
+    # ---------------------------------------------
+    # -----  Compute all transition matrices  -----
+    # ---------------------------------------------
+
     for i, norm_dict in enumerate(to_normalize):
         tracing_method = norm_dict["tracing_method"]
         method_dir = norm_dict["method_dir"]
-        s = f"Normalizing {method_dir.name} ({i + 1}/{len(to_normalize)})"
-        print("\n#" + "#" * (len(s) - 1))
-        print(s)
-        print("#" * (len(s) - 1) + "\n#")
+
+        print_title(i, method_dir, to_normalize)
+
+        # set arguments for run()
         args.source = str(method_dir)
         args.config_folder = f"{target_name}_{tracing_method}"
+
+        # execute run()
         output_dict = run(args)
+
         for k, v in output_dict.items():
             if isinstance(v, dict) and "sample" in v:
+                # flag for experiment.py
                 output_dict[k]["normalized"] = True
+
+        # store run()'s output for the global config
         global_dict.update(output_dict)
 
-    global_dict["USE_INFERENCE_SERVER"] = False
+    # ------------------------------------------------------------
+    # -----  Store global config for all discovered folders  -----
+    # ------------------------------------------------------------
+
+    # sensible defaults for experiment.py which the user may want to change
     global_dict["base_dir"] = str(parent)
     global_dict["n_search"] = -1
+    global_dict["infra"] = "beluga"
+    global_dict["use_tmpdir"] = False
+    global_dict["USE_INFERENCE_SERVER"] = False
+    global_dict["tune"] = True
 
-    search_path = Path(__file__).parent.parent / "configs" / "search"
-    global_conf_path = search_path / f"normalize_{parent.name}.yaml"
+    exp_path = Path(__file__).parent.parent / "configs" / "experiment"
+    global_conf_path = exp_path / f"normalize_{parent.name}.yaml"
     with global_conf_path.open("w") as f:
         yaml.safe_dump(global_dict, f)
 
+    # user prints
     print(f"Writing in {str(global_conf_path)}:\n{yaml.safe_dump(global_dict)}\n\n")
     print("Don't forget to add the infrastructure parameters to that file and then:")
     print(f"   $ python jobs_scripts/experiment.py exp_file={global_conf_path.stem}")
@@ -349,7 +405,7 @@ def run(args):
             output_dict = {args.config_folder: {"sample": "chain", "from": new_configs}}
             logging.info(
                 "Use the following snippet inside a configuration file "
-                "to use in combination with `random_search.py`\n"
+                "to use in combination with `experiment.py`\n"
                 "{0}.".format(yaml.dump(output_dict, Dumper=yaml.Dumper, indent=4))
             )
 
@@ -427,7 +483,8 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--discover",
-        help="Discover subfolders for which to run the normalization as if they were `target`",
+        help="Path to a folder where subfolders for which to run "
+        + "the normalization as if they were `--source` will be discovered",
         default=None,
     )
 
