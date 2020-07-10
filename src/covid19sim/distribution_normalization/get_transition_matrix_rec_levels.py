@@ -288,14 +288,13 @@ def main(args):
         print("\n#" + "#" * 39)
         print(f"Normalizing {method_dir.name} ({i + 1}/{len(to_normalize)})")
         print("#" * 39 + "#\n")
-        if tracing_method != "transformer":
-            args.source = str(method_dir)
-            args.config_folder = f"{target_name}_{tracing_method}"
-            output_dict = run(args)
-            for k, v in output_dict.items():
-                if isinstance(v, dict) and "sample" in v:
-                    output_dict[k]["normalized"] = True
-            global_dict.update(output_dict)
+        args.source = str(method_dir)
+        args.config_folder = f"{target_name}_{tracing_method}"
+        output_dict = run(args)
+        for k, v in output_dict.items():
+            if isinstance(v, dict) and "sample" in v:
+                output_dict[k]["normalized"] = True
+        global_dict.update(output_dict)
 
     global_dict["USE_INFERENCE_SERVER"] = False
     global_dict["base_dir"] = str(parent)
