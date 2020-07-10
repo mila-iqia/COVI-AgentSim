@@ -308,8 +308,6 @@ def main(conf):
                 print("Ignoring " + plot)
         print_footer()
 
-    #make_report(plot_path)
-
 
 if __name__ == "__main__":
     main()
