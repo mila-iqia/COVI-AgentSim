@@ -12,7 +12,6 @@ import covid19sim
 from covid19sim.utils.constants import SECONDS_PER_DAY
 from covid19sim.locations.city import City
 from covid19sim.utils.env import Env
-from covid19sim.human import Human
 from covid19sim.utils.utils import parse_configuration
 from covid19sim.epidemiology.viral_load import compute_covid_properties, viral_load_for_day
 from covid19sim.native import Environment
@@ -76,7 +75,6 @@ def test_incubation_days():
             rng,
             city_x_range,
             city_y_range,
-            Human,
             conf,
         )
 
@@ -165,7 +163,6 @@ def test_human_compute_covid_properties():
         np.random.RandomState(42),
         city_x_range,
         city_y_range,
-        Human,
         conf,
     )
 
@@ -320,7 +317,6 @@ def test_viral_load_for_day():
         np.random.RandomState(42),
         city_x_range,
         city_y_range,
-        Human,
         conf,
     )
 
@@ -410,7 +406,6 @@ def test_human_cold_symptoms():
         np.random.RandomState(42),
         city_x_range,
         city_y_range,
-        Human,
         conf
     )
 
@@ -449,7 +444,6 @@ def test_human_flu_symptoms():
         np.random.RandomState(42),
         city_x_range,
         city_y_range,
-        Human,
         conf
     )
 
@@ -488,7 +482,6 @@ def test_human_allergies_symptoms():
         np.random.RandomState(42),
         city_x_range,
         city_y_range,
-        Human,
         conf
     )
 
