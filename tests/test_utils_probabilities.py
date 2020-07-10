@@ -2,16 +2,33 @@ import unittest
 
 import numpy as np
 
-from covid19sim.epidemiology.symptoms import _get_allergy_progression, _get_cold_progression, \
-    _get_covid_fatigue_probability, _get_covid_fever_probability, _get_covid_gastro_probability, \
-    _get_covid_progression, _get_covid_sickness_severity, _get_covid_trouble_breathing_probability, \
-    _get_covid_trouble_breathing_severity, _get_flu_progression, SYMPTOMS, DISEASES_PHASES
+from covid19sim.epidemiology.symptoms import _disease_phase_id_to_idx, _disease_phase_idx_to_id,\
+    _get_allergy_progression, _get_cold_progression, _get_covid_fatigue_probability, \
+    _get_covid_fever_probability, _get_covid_gastro_probability, _get_covid_progression, \
+    _get_covid_sickness_severity, _get_covid_trouble_breathing_probability, \
+    _get_covid_trouble_breathing_severity, _get_flu_progression, \
+    SYMPTOMS, DISEASES_PHASES, \
+    COVID_INCUBATION, \
+    COVID_ONSET, \
+    COVID_PLATEAU, \
+    COVID_POST_PLATEAU_1, \
+    COVID_POST_PLATEAU_2
 from covid19sim.epidemiology.human_properties import _get_preexisting_conditions, PREEXISTING_CONDITIONS, \
     HEART_DISEASE_IF_SMOKER_OR_DIABETES_MODIFIER, CANCER_OR_COPD_IF_SMOKER_MODIFIER, \
     IMMUNO_SUPPRESSED_IF_CANCER_MODIFIER
 
 
 class Symptoms(unittest.TestCase):
+    def test_disease_phase_idx_to_id(self):
+        for disease in DISEASES_PHASES:
+            for phase_idx, phase_id in DISEASES_PHASES[disease].items():
+                self.assertEqual(_disease_phase_idx_to_id(disease, phase_idx), phase_id)
+
+    def test_disease_phase_id_to_idx(self):
+        for disease in DISEASES_PHASES:
+            for phase_idx, phase_id in DISEASES_PHASES[disease].items():
+                self.assertEqual(_disease_phase_id_to_idx(disease, phase_id), phase_idx)
+
     def test_symptoms_structure(self):
         for s_name, s_prob in SYMPTOMS.items():
             self.assertEqual(s_name, s_prob.name)
@@ -228,16 +245,13 @@ class CovidProgression(unittest.TestCase):
         return SYMPTOMS[symptom].id
 
     @staticmethod
-    def _get_probability(symptom_probs, disease_phase):
+    def _get_probability(symptom_probs, disease_phase_id):
         if isinstance(symptom_probs, str):
             symptom_probs = SYMPTOMS[symptom_probs]
-        if isinstance(disease_phase, int):
-            disease_phase = CovidProgression.disease_phases[disease_phase]
-        return symptom_probs.probabilities[disease_phase]
+        return symptom_probs.probabilities[disease_phase_id]
 
     def test_covid_sickness_severity(self):
         _get_id = self._get_id
-        _get_probability = self._get_probability
         rng = np.random.RandomState(1234)
 
         disease_phases = self.disease_phases
@@ -246,16 +260,16 @@ class CovidProgression(unittest.TestCase):
             for really_sick in self.really_sick_options:
                 for extremely_sick in self.extremely_sick_options if really_sick else (False,):
                     for preexisting_conditions in self.preexisting_conditions_options:
-                        for phase_idx in disease_phases:
+                        for phase_id in disease_phases.values():
                             computed_severities = [_get_covid_sickness_severity(
-                                rng, phase_idx, really_sick, extremely_sick,
+                                rng, phase_id, really_sick, extremely_sick,
                                 list(preexisting_conditions), initial_viral_load)
                                 for _ in range(self.n_people)]
 
                             probs = [0] * len(self.sickness_severities_options)
 
                             for severity in computed_severities:
-                                if phase_idx == 0:
+                                if phase_id == COVID_INCUBATION:
                                     self.assertIs(severity, None)
                                     continue
 
@@ -275,7 +289,7 @@ class CovidProgression(unittest.TestCase):
                             expected_probs = [0] * len(self.sickness_severities_options)
 
                             # covid_onset
-                            if phase_idx == 1:
+                            if phase_id == COVID_ONSET:
                                 if really_sick or extremely_sick or len(preexisting_conditions) > 2 \
                                         or initial_viral_load > 0.6:
                                     # extremely-severe
@@ -297,7 +311,7 @@ class CovidProgression(unittest.TestCase):
                                     expected_probs[0] = 1
 
                             # covid_plateau
-                            elif phase_idx == 2:
+                            elif phase_id == COVID_PLATEAU:
                                 if extremely_sick:
                                     # extremely-severe
                                     expected_probs[3] = 1
@@ -327,7 +341,7 @@ class CovidProgression(unittest.TestCase):
                                     expected_probs[0] = 1 - (initial_viral_load - .15)
 
                             # covid_post_plateau_1
-                            elif phase_idx == 3:
+                            elif phase_id == COVID_POST_PLATEAU_1:
                                 if extremely_sick:
                                     # extremely-severe
                                     expected_probs[3] = 0
@@ -357,7 +371,7 @@ class CovidProgression(unittest.TestCase):
                                     expected_probs[0] = 1
 
                             # covid_post_plateau_2
-                            elif phase_idx == 4:
+                            elif phase_id == COVID_POST_PLATEAU_2:
                                 if extremely_sick:
                                     # extremely-severe
                                     expected_probs[3] = 0
@@ -385,9 +399,6 @@ class CovidProgression(unittest.TestCase):
                                 self.assertAlmostEqual(prob, expected_prob, delta=delta)
 
     def test_covid_trouble_breathing_severity(self):
-        _get_id = self._get_id
-        _get_probability = self._get_probability
-
         symptoms_list_options = [[''], ['trouble_breathing']]
 
         for sickness_severity in self.sickness_severities_options:
@@ -413,23 +424,21 @@ class CovidProgression(unittest.TestCase):
             for really_sick in self.really_sick_options:
                 for extremely_sick in self.extremely_sick_options if really_sick else (False,):
                     for preexisting_conditions in self.preexisting_conditions_options:
-                        for phase_idx in disease_phases:
-                            phase = disease_phases[phase_idx]
-
-                            prob = _get_covid_fever_probability(phase_idx, really_sick, extremely_sick,
+                        for phase_id in disease_phases.values():
+                            prob = _get_covid_fever_probability(phase_id, really_sick, extremely_sick,
                                                                 list(preexisting_conditions), initial_viral_load)
 
-                            expected_prob = SYMPTOMS['fever'].probabilities[phase]
+                            expected_prob = SYMPTOMS['fever'].probabilities[phase_id]
 
                             # covid_onset
-                            if phase_idx == 1:
+                            if phase_id == COVID_ONSET:
                                 if really_sick or extremely_sick or \
                                         len(preexisting_conditions) > 2 or \
                                         initial_viral_load > 0.6:
                                     expected_prob *= 2.
 
                             # covid_plateau
-                            elif phase_idx == 2:
+                            elif phase_id == COVID_PLATEAU:
                                 if initial_viral_load > 0.6:
                                     expected_prob = 1.
 
@@ -439,22 +448,22 @@ class CovidProgression(unittest.TestCase):
         disease_phases = self.disease_phases
 
         for initial_viral_load in self.initial_viral_load_options:
-            for phase_idx in disease_phases:
-                prob = _get_covid_gastro_probability(phase_idx, initial_viral_load)
+            for phase_id in disease_phases.values():
+                prob = _get_covid_gastro_probability(phase_id, initial_viral_load)
 
                 expected_prob = initial_viral_load - 0.15
 
                 # covid_onset phase
-                if phase_idx == 1:
+                if phase_id == COVID_ONSET:
                     pass
                 # covid_plateau phase
-                elif phase_idx == 2:
+                elif phase_id == COVID_PLATEAU:
                     expected_prob *= 0.25
                 # covid_post_plateau_1 phase
-                elif phase_idx == 3:
+                elif phase_id == COVID_POST_PLATEAU_1:
                     expected_prob *= 0.1
                 # covid_post_plateau_2 phase
-                elif phase_idx == 4:
+                elif phase_id == COVID_POST_PLATEAU_2:
                     expected_prob *= 0.1
                 else:
                     expected_prob = 0.
@@ -467,23 +476,23 @@ class CovidProgression(unittest.TestCase):
         for initial_viral_load in self.initial_viral_load_options:
             for age in self.ages_options:
                 for carefulness in self.carefulness_options:
-                    for phase_idx in disease_phases:
+                    for phase_id in disease_phases.values():
                         prob = _get_covid_fatigue_probability(
-                            phase_idx, age, initial_viral_load, carefulness)
+                            phase_id, age, initial_viral_load, carefulness)
 
                         expected_prob = age / 200 + initial_viral_load * 0.6 - carefulness / 2
 
                         # covid_onset phase
-                        if phase_idx == 1:
+                        if phase_id == COVID_ONSET:
                             pass
                         # covid_plateau phase
-                        elif phase_idx == 2:
+                        elif phase_id == COVID_PLATEAU:
                             expected_prob = expected_prob + initial_viral_load - 0.15
                         # covid_post_plateau_1 phase
-                        elif phase_idx == 3:
+                        elif phase_id == COVID_POST_PLATEAU_1:
                             expected_prob = expected_prob * 1.5 + initial_viral_load - 0.15
                         # covid_post_plateau_2 phase
-                        elif phase_idx == 4:
+                        elif phase_id == COVID_POST_PLATEAU_2:
                             expected_prob = expected_prob * 2. + initial_viral_load - 0.15
                         else:
                             expected_prob = 0.
@@ -502,24 +511,24 @@ class CovidProgression(unittest.TestCase):
             for age in self.ages_options:
                 for preexisting_conditions in preexisting_conditions_options:
                     for carefulness in self.carefulness_options:
-                        for phase_idx in disease_phases:
+                        for phase_id in disease_phases.values():
                             prob = _get_covid_trouble_breathing_probability(
-                                phase_idx, age, initial_viral_load, carefulness,
+                                phase_id, age, initial_viral_load, carefulness,
                                 list(preexisting_conditions))
 
                             expected_prob = 0.
 
                             # covid_onset phase
-                            if phase_idx == 1:
+                            if phase_id == COVID_ONSET:
                                 expected_prob = 0.5 * initial_viral_load - carefulness * 0.25
                             # covid_plateau phase
-                            elif phase_idx == 2:
+                            elif phase_id == COVID_PLATEAU:
                                 expected_prob = 2 * (initial_viral_load - carefulness * 0.25)
                             # covid_post_plateau_1 phase
-                            elif phase_idx == 3:
+                            elif phase_id == COVID_POST_PLATEAU_1:
                                 expected_prob = initial_viral_load - carefulness * 0.25
                             # covid_post_plateau_2 phase
-                            elif phase_idx == 4:
+                            elif phase_id == COVID_POST_PLATEAU_2:
                                 expected_prob = 0.5 * (initial_viral_load - carefulness * 0.25)
 
                             if 'smoker' in preexisting_conditions or 'lung_disease' in preexisting_conditions:
@@ -623,12 +632,14 @@ class CovidProgression(unittest.TestCase):
                                                                if d_p in disease_phases.values()):
                 prob = probs[i][s_id]
 
+                phase_id = _disease_phase_idx_to_id('covid', i)
+
                 if s_id in (_get_id('fever'), _get_id('chills')):
-                    fever_prob = _get_covid_fever_probability(i, really_sick, extremely_sick,
+                    fever_prob = _get_covid_fever_probability(phase_id, really_sick, extremely_sick,
                                                               list(preexisting_conditions), initial_viral_load)
 
                     # covid_onset
-                    if i == 1:
+                    if phase_id == COVID_ONSET:
                         if s_id == _get_id('chills') and not extremely_sick:
                             expected_prob = 0
 
@@ -639,28 +650,28 @@ class CovidProgression(unittest.TestCase):
                         expected_prob *= fever_prob
 
                 if s_id in (_get_id('gastro'), _get_id('diarrhea'), _get_id('nausea_vomiting')):
-                    gastro_prob = 0
+                    gastro_prob = _get_covid_gastro_probability(phase_id, initial_viral_load)
                     # covid_onset
-                    if i == 1:
-                        gastro_prob = _get_covid_gastro_probability(1, initial_viral_load)
+                    if phase_id == COVID_ONSET:
+                        gastro_prob += _get_covid_gastro_probability(COVID_INCUBATION, initial_viral_load)
 
                     # covid_plateau
-                    elif i == 2:
-                        gastro_prob = _get_covid_gastro_probability(2, initial_viral_load) + \
-                                      _get_covid_gastro_probability(1, initial_viral_load)
+                    elif phase_id == COVID_PLATEAU:
+                        gastro_prob += _get_covid_gastro_probability(COVID_ONSET, initial_viral_load) + \
+                                       _get_covid_gastro_probability(COVID_INCUBATION, initial_viral_load)
 
                     # covid_post_plateau_1
-                    elif i == 3:
-                        gastro_prob = _get_covid_gastro_probability(3, initial_viral_load) + \
-                                      _get_covid_gastro_probability(2, initial_viral_load) + \
-                                      _get_covid_gastro_probability(1, initial_viral_load)
+                    elif phase_id == COVID_POST_PLATEAU_1:
+                        gastro_prob += _get_covid_gastro_probability(COVID_PLATEAU, initial_viral_load) + \
+                                       _get_covid_gastro_probability(COVID_ONSET, initial_viral_load) + \
+                                       _get_covid_gastro_probability(COVID_INCUBATION, initial_viral_load)
 
                     # covid_post_plateau_2
-                    elif i == 4:
-                        gastro_prob = _get_covid_gastro_probability(4, initial_viral_load) + \
-                                      _get_covid_gastro_probability(3, initial_viral_load) + \
-                                      _get_covid_gastro_probability(2, initial_viral_load) + \
-                                      _get_covid_gastro_probability(1, initial_viral_load)
+                    elif phase_id == COVID_POST_PLATEAU_2:
+                        gastro_prob += _get_covid_gastro_probability(COVID_POST_PLATEAU_1, initial_viral_load) + \
+                                       _get_covid_gastro_probability(COVID_PLATEAU, initial_viral_load) + \
+                                       _get_covid_gastro_probability(COVID_ONSET, initial_viral_load) + \
+                                       _get_covid_gastro_probability(COVID_INCUBATION, initial_viral_load)
 
                     if s_id == _get_id('gastro'):
                         expected_prob = gastro_prob
@@ -671,7 +682,7 @@ class CovidProgression(unittest.TestCase):
                 if s_id in (_get_id('fatigue'),
                             _get_id('headache'), _get_id('confused'), _get_id('hard_time_waking_up'),
                             _get_id('lost_consciousness')):
-                    fatigue_prob = _get_covid_fatigue_probability(i, age, initial_viral_load, carefulness)
+                    fatigue_prob = _get_covid_fatigue_probability(phase_id, age, initial_viral_load, carefulness)
                     # TODO: Make sure that it ok to have a fatigue_prob >= to 1.
                     fatigue_prob = min(fatigue_prob, 1.0)
 
@@ -689,7 +700,7 @@ class CovidProgression(unittest.TestCase):
                             _get_id('sneezing'), _get_id('cough'), _get_id('runny_nose'),
                             _get_id('sore_throat'), _get_id('severe_chest_pain')):
                     trouble_breathing_prob = _get_covid_trouble_breathing_probability(
-                        i, age, initial_viral_load, carefulness,
+                        phase_id, age, initial_viral_load, carefulness,
                         preexisting_conditions)
                     # TODO: Make sure that it ok to have a trouble_breathing_prob >= to 1.
                     trouble_breathing_prob = min(trouble_breathing_prob, 1.0)
@@ -705,13 +716,13 @@ class CovidProgression(unittest.TestCase):
 
                 if s_id == _get_id('loss_of_taste'):
                     # covid_onset
-                    if i == 1:
-                        expected_prob += _get_probability('loss_of_taste', 0)
+                    if phase_id == COVID_ONSET:
+                        expected_prob += _get_probability('loss_of_taste', COVID_INCUBATION)
 
                     # covid_plateau
-                    elif i == 2:
-                        expected_prob += _get_probability('loss_of_taste', 1) + \
-                                         _get_probability('loss_of_taste', 0)
+                    elif phase_id == COVID_PLATEAU:
+                        expected_prob += _get_probability('loss_of_taste', COVID_ONSET) + \
+                                         _get_probability('loss_of_taste', COVID_INCUBATION)
 
                 self.assertAlmostEqual(
                     prob, expected_prob,
@@ -720,7 +731,7 @@ class CovidProgression(unittest.TestCase):
                     f"probability for initial_viral_load {initial_viral_load}, "
                     f"age {age}, really_sick {really_sick}, extremely_sick {extremely_sick}, "
                     f"preexisting_conditions {len(preexisting_conditions)} and "
-                    f"carefulness {carefulness} in disease_phase {i}:{disease_phase}")
+                    f"carefulness {carefulness} in disease_phase {phase_id}:{disease_phase}")
 
             if s_id in self.out_of_context_symptoms:
                 prob = sum(probs[i][s_id] for i in range(len(probs))) / len(probs)
