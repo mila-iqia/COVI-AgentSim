@@ -382,5 +382,5 @@ def run(data, path, comparison_key, wandb=False, num_chains=1):
         for k in range(num_chains):
             rand_index = random.randint(0, len(pkls) - 1)
             pkl = pkls[rand_index]
-            output_file = os.path.join(path, f"infection_chain_{label}_chain:{k}.html")
+            output_file = path / "spy_human" / f"infection_chain_{label}_chain:{k}.html"
             plot(pkl, output_file)

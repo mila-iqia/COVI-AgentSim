@@ -7,7 +7,6 @@ from collections import defaultdict
 from covid19sim.plotting.utils import get_all_rec_levels, get_title
 
 
-
 def get_transformer_name(method_dict):
     for comparison in method_dict.values():
         for run in comparison.values():
@@ -44,7 +43,10 @@ def run(data, path, comparison_key):
     max_cols = 2
 
     data_rec_levels = {
-        mk: {ck: get_all_rec_levels(data=cv, normalized="_norm" in mk) for ck, cv in mv.items()}
+        mk: {
+            ck: get_all_rec_levels(data=cv, normalized="_norm" in mk)
+            for ck, cv in mv.items()
+        }
         for mk, mv in data.items()
     }
 
@@ -123,8 +125,11 @@ def run(data, path, comparison_key):
                     rotation=90,
                 )
         plt.suptitle("{} {}".format(comparison_key, comparison_value), size=47)
-        save_path = path / "comparison-recommendation-levels-{}-{}.png".format(
-            comparison_key, comparison_value
+        save_path = (
+            path
+            / "jellybeans/comparison-recommendation-levels-{}-{}.png".format(
+                comparison_key, comparison_value
+            )
         )
         print("Saving Figure {}...".format(save_path.name), end="", flush=True)
         plt.savefig(

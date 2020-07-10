@@ -1,7 +1,7 @@
 print("Loading imports...", end="", flush=True)
 from pathlib import Path
 import time
-
+from collections import defaultdict
 from imgurpython import ImgurClient
 import json
 import hydra
@@ -9,6 +9,26 @@ from omegaconf import OmegaConf
 
 print("Ok.")
 HYDRA_CONF_PATH = Path(__file__).parent.parent / "configs" / "plot"
+
+
+def get_markdown(path, plots, addresses):
+    with open(Path(__file__).parent / "experiment_template.md", "r") as f:
+        template = f.read()
+
+    plots_md = defaultdict(list)
+
+    for p in plots:
+        relative_path = p.relative_to(path)
+        plot_type = relative_path.parts[0]
+        plots_md[plot_type].append(p)
+
+    md = ""
+    for pt in sorted(plots_md.keys()):
+        md += "\n## {}\n".format(pt.capitalize())
+        for p in sorted(plots_md[pt]):
+            md += f"[{p.name}]({str(p) if addresses is None else addresses[p]})\n"
+
+    return template.format(exp_title=path.parent.name, plots=md)
 
 
 def init_imgur_client():
@@ -26,7 +46,7 @@ def rprint(*args):
 
 def get_plots(plot_path):
     return [
-        str(f)
+        str(f.resolve())
         for f in plot_path.glob("**/*")
         if f.is_file() and f.suffix in {".png", ".html"}
     ]
@@ -53,11 +73,16 @@ def upload_plots(plot_path, plots, client):
     return addresses
 
 
-def make_report(plot_path):
+def make_report(plot_path, upload=False):
     path = Path(plot_path).resolve()
     plots = get_plots(path)
-    client = init_imgur_client()
-    _ = upload_plots(plot_path, plots, client)
+
+    addresses = None
+    if upload:
+        client = init_imgur_client()
+        addresses = upload_plots(plot_path, plots, client)
+
+    md = get_markdown(plot_path, plots, addresses)
     return
 
 
@@ -98,7 +123,7 @@ def main(conf):
     conf = OmegaConf.to_container(conf)
     if not conf.get("delete_imgs"):
         assert "path" in conf
-        make_report(conf["path"])
+        make_report(conf["path"], conf.get("upload", False))
     else:
         assert Path(conf["delete_imgs"]).exists()
         delete_imgs(Path(conf["delete_imgs"]))

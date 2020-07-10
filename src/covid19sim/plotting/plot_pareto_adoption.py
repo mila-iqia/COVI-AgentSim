@@ -301,7 +301,7 @@ def run(data, path, comparison_key):
         bbox_to_anchor=(0.5, 1.1),
     )
     plt.tight_layout()
-    save_path = Path(path) / "pareto_adoption_all_metrics.png"
+    save_path = Path(path) / "pareto_adoption/pareto_adoption_all_metrics.png"
     print("Saving Figure {}...".format(save_path.name), end="", flush=True)
     fig.savefig(
         str(save_path),
