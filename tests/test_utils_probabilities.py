@@ -7,12 +7,39 @@ from covid19sim.epidemiology.symptoms import _disease_phase_id_to_idx, _disease_
     _get_covid_fever_probability, _get_covid_gastro_probability, _get_covid_symptoms, \
     _get_covid_sickness_severity, _get_covid_trouble_breathing_probability, \
     _get_covid_trouble_breathing_severity, _get_flu_progression, \
-    SYMPTOMS, DISEASES_PHASES, \
+    Symptom, SYMPTOMS, DISEASES_PHASES, \
     COVID_INCUBATION, \
     COVID_ONSET, \
     COVID_PLATEAU, \
     COVID_POST_PLATEAU_1, \
-    COVID_POST_PLATEAU_2
+    COVID_POST_PLATEAU_2, \
+    MILD, \
+    MODERATE, \
+    SEVERE, \
+    EXTREMELY_SEVERE, \
+    FEVER, \
+    CHILLS, \
+    GASTRO, \
+    DIARRHEA, \
+    NAUSEA_VOMITING, \
+    FATIGUE, \
+    UNUSUAL, \
+    HARD_TIME_WAKING_UP, \
+    HEADACHE, \
+    CONFUSED, \
+    LOST_CONSCIOUSNESS, \
+    TROUBLE_BREATHING, \
+    SNEEZING, \
+    COUGH, \
+    RUNNY_NOSE, \
+    SORE_THROAT, \
+    SEVERE_CHEST_PAIN, \
+    LIGHT_TROUBLE_BREATHING, \
+    MILD_TROUBLE_BREATHING, \
+    MODERATE_TROUBLE_BREATHING, \
+    HEAVY_TROUBLE_BREATHING, \
+    LOSS_OF_TASTE, \
+    ACHES
 from covid19sim.epidemiology.human_properties import _get_preexisting_conditions, PREEXISTING_CONDITIONS, \
     HEART_DISEASE_IF_SMOKER_OR_DIABETES_MODIFIER, CANCER_OR_COPD_IF_SMOKER_MODIFIER, \
     IMMUNO_SUPPRESSED_IF_CANCER_MODIFIER
@@ -81,7 +108,7 @@ class AllergyProgression(unittest.TestCase):
             s_id = s_prob.id
 
             for i, (disease_phase, expected_prob) in enumerate((c, p) for c, p in s_prob.probabilities.items()
-                                                         if c in disease_phases.values()):
+                                                               if c in disease_phases.values()):
                 prob = probs[s_id]
 
                 self.assertAlmostEqual(prob, expected_prob,
@@ -174,7 +201,7 @@ class ColdProgression(unittest.TestCase):
                         s_id = s_prob.id
 
                         for i, (disease_phase, expected_prob) in enumerate((c, p) for c, p in s_prob.probabilities.items()
-                                                                     if c in disease_phases.values()):
+                                                                           if c in disease_phases.values()):
                             prob = probs[i][s_id]
 
                             if i == 0:
@@ -635,7 +662,6 @@ class CovidProgression(unittest.TestCase):
 
             else:
                 prob = probs[s_id]
-
                 expected_prob = s_prob.probabilities[phase_id]
 
                 if s_id in (_get_id('fever'), _get_id('chills')):
