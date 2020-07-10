@@ -18,20 +18,12 @@ def _get_demographics_adjusted_to_contact_matrix_agebins(P_AGE, POPULATION_SIZE)
         (list): each element is a list of 3 elements - min age in the group, max age in the group, number of people in this age group
             The list has a total of 16 elements (age groups) in this list.
     """
-    assert len(P_AGE) == 17, "Unknown age breakdown"
+    assert len(P_AGE) == 16, "Unknown age breakdown"
     contact_matrix_age_bins = [[0,4], [5,9], [10,14], [15,19], [20,24], [25,29], [30,34], [35,39], [40,44], \
                          [45,49], [50,54], [55,59], [60,64], [65,69], [70,74], [75, 110]]
     N = []
     for i, x in enumerate(P_AGE):
-        if x[1] <= 74:
-            N += [[x[0], x[1], x[2] * POPULATION_SIZE]]
-        elif x[0] == 75:
-            # aggregate the age groups above 75
-            total_proportion = sum(x[2] for x in P_AGE[i+1:]) + x[2]
-            N += [[x[0], 110, total_proportion * POPULATION_SIZE]] # 75+ yo
-            break
-        else:
-            raise
+        N += [[x[0], x[1], x[2] * POPULATION_SIZE]]
 
     assert len(N) == len(contact_matrix_age_bins), "age bins of contact matrix do not align with internal age bins"
     assert abs(sum(x[2] for x in N) - POPULATION_SIZE) < 1e-02, f"populations do not sum up, {sum(x[2] for x in N)} != {POPULATION_SIZE}"

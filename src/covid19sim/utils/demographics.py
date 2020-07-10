@@ -155,7 +155,6 @@ def assign_households_to_humans(humans, city, conf, logfile=None):
 
     AVG_HOUSEHOLD_SIZE = conf['AVG_HOUSEHOLD_SIZE']
 
-    P_COLLECTIVE_60_64 = conf['P_COLLECTIVE_60_64']
     P_COLLECTIVE_65_69 = conf['P_COLLECTIVE_65_69']
     P_COLLECTIVE_70_74 = conf['P_COLLECTIVE_70_74']
     P_COLLECTIVE_75_above = conf['P_COLLECTIVE_75_above']
@@ -181,7 +180,6 @@ def assign_households_to_humans(humans, city, conf, logfile=None):
 
     # allocate senior residencies
     collectives = [
-        [(60,64), P_COLLECTIVE_60_64],
         [(65,69), P_COLLECTIVE_65_69],
         [(70,74), P_COLLECTIVE_70_74],
         [(75,110), P_COLLECTIVE_75_above]
