@@ -166,7 +166,7 @@ ACHES = Symptom('aches', 19)
 
 def _get_covid_fever_probability(phase_id: int, really_sick: bool, extremely_sick: bool,
                                  preexisting_conditions: list, initial_viral_load: float):
-    p_fever = SYMPTOMS[FEVER.name].probabilities[phase_id]
+    p_fever = SYMPTOMS[FEVER].probabilities[phase_id]
     # covid_onset phase
     if phase_id == COVID_ONSET and \
             (really_sick or extremely_sick or
@@ -272,7 +272,7 @@ SYMPTOMS: typing.Dict[Symptom, SymptomProbability] = OrderedDict([
     # A lot of symptoms are dependent on the sickness severity so severity
     # level needs to be first
     (
-        MILD.name,
+        MILD,
         SymptomProbability('mild', 1, {COVID_INCUBATION: 0.0,
                                        COVID_ONSET: -1,
                                        COVID_PLATEAU: -1,
@@ -285,7 +285,7 @@ SYMPTOMS: typing.Dict[Symptom, SymptomProbability] = OrderedDict([
                                        FLU_LAST_DAY: 1.0})
     ),
     (
-        MODERATE.name,
+        MODERATE,
         SymptomProbability('moderate', 0, {COVID_INCUBATION: 0.0,
                                            COVID_ONSET: -1,
                                            COVID_PLATEAU: -1,
@@ -298,7 +298,7 @@ SYMPTOMS: typing.Dict[Symptom, SymptomProbability] = OrderedDict([
                                            FLU_LAST_DAY: 0.0})
     ),
     (
-        SEVERE.name,
+        SEVERE,
         SymptomProbability('severe', 2, {COVID_INCUBATION: 0.0,
                                          COVID_ONSET: 0.0,
                                          COVID_PLATEAU: -1,
@@ -306,7 +306,7 @@ SYMPTOMS: typing.Dict[Symptom, SymptomProbability] = OrderedDict([
                                          COVID_POST_PLATEAU_2: 0.0})
     ),
     (
-        EXTREMELY_SEVERE.name,
+        EXTREMELY_SEVERE,
         SymptomProbability('extremely-severe', 3, {COVID_INCUBATION: 0.0,
                                                    COVID_ONSET: 0.0,
                                                    COVID_PLATEAU: -1,
@@ -317,7 +317,7 @@ SYMPTOMS: typing.Dict[Symptom, SymptomProbability] = OrderedDict([
     # Symptoms
 
     (
-        FEVER.name,
+        FEVER,
         SymptomProbability('fever', 4, {COVID_INCUBATION: 0.0,
                                         COVID_ONSET: 0.2,
                                         COVID_PLATEAU: 0.8,
@@ -330,7 +330,7 @@ SYMPTOMS: typing.Dict[Symptom, SymptomProbability] = OrderedDict([
     # 'fever' is a dependency of 'chills' so it needs to be inserted before
     # this position
     (
-        CHILLS.name,
+        CHILLS,
         SymptomProbability('chills', 5, {COVID_INCUBATION: 0.0,
                                          COVID_ONSET: 0.8,
                                          COVID_PLATEAU: 0.5,
@@ -339,7 +339,7 @@ SYMPTOMS: typing.Dict[Symptom, SymptomProbability] = OrderedDict([
     ),
 
     (
-        GASTRO.name,
+        GASTRO,
         SymptomProbability('gastro', 6, {COVID_INCUBATION: 0.0,
                                          COVID_ONSET: -1,
                                          COVID_PLATEAU: -1,
@@ -352,7 +352,7 @@ SYMPTOMS: typing.Dict[Symptom, SymptomProbability] = OrderedDict([
     # 'gastro' is a dependency of 'diarrhea' so it needs to be inserted before
     # this position
     (
-        DIARRHEA.name,
+        DIARRHEA,
         SymptomProbability('diarrhea', 7, {COVID_INCUBATION: 0.0,
                                            COVID_ONSET: 0.9,
                                            COVID_PLATEAU: 0.9,
@@ -365,7 +365,7 @@ SYMPTOMS: typing.Dict[Symptom, SymptomProbability] = OrderedDict([
     # 'gastro' is a dependency of 'nausea_vomiting' so it needs to be inserted
     # before this position
     (
-        NAUSEA_VOMITING.name,
+        NAUSEA_VOMITING,
         SymptomProbability('nausea_vomiting', 8, {COVID_INCUBATION: 0.0,
                                                   COVID_ONSET: 0.7,
                                                   COVID_PLATEAU: 0.7,
@@ -380,7 +380,7 @@ SYMPTOMS: typing.Dict[Symptom, SymptomProbability] = OrderedDict([
     # 'gastro' is a dependency of so it needs to be inserted before this
     # position
     (
-        FATIGUE.name,
+        FATIGUE,
         SymptomProbability('fatigue', 9, {COVID_INCUBATION: 0.0,
                                           COVID_ONSET: -1,
                                           COVID_PLATEAU: -1,
@@ -394,7 +394,7 @@ SYMPTOMS: typing.Dict[Symptom, SymptomProbability] = OrderedDict([
                                           FLU_LAST_DAY: 0.8})
     ),
     (
-        UNUSUAL.name,
+        UNUSUAL,
         SymptomProbability('unusual', 10, {COVID_INCUBATION: 0.0,
                                            COVID_ONSET: 0.2,
                                            COVID_PLATEAU: 0.5,
@@ -402,7 +402,7 @@ SYMPTOMS: typing.Dict[Symptom, SymptomProbability] = OrderedDict([
                                            COVID_POST_PLATEAU_2: 0.5})
     ),
     (
-        HARD_TIME_WAKING_UP.name,
+        HARD_TIME_WAKING_UP,
         SymptomProbability('hard_time_waking_up', 11, {COVID_INCUBATION: 0.0,
                                                        COVID_ONSET: 0.6,
                                                        COVID_PLATEAU: 0.6,
@@ -414,7 +414,7 @@ SYMPTOMS: typing.Dict[Symptom, SymptomProbability] = OrderedDict([
                                                        FLU_LAST_DAY: 0.4})
     ),
     (
-        HEADACHE.name,
+        HEADACHE,
         SymptomProbability('headache', 12, {COVID_INCUBATION: 0.0,
                                             COVID_ONSET: 0.5,
                                             COVID_PLATEAU: 0.5,
@@ -423,7 +423,7 @@ SYMPTOMS: typing.Dict[Symptom, SymptomProbability] = OrderedDict([
                                             ALLERGY_MAIN: 0.6})
     ),
     (
-        CONFUSED.name,
+        CONFUSED,
         SymptomProbability('confused', 13, {COVID_INCUBATION: 0.0,
                                             COVID_ONSET: 0.1,
                                             COVID_PLATEAU: 0.1,
@@ -431,7 +431,7 @@ SYMPTOMS: typing.Dict[Symptom, SymptomProbability] = OrderedDict([
                                             COVID_POST_PLATEAU_2: 0.1})
     ),
     (
-        LOST_CONSCIOUSNESS.name,
+        LOST_CONSCIOUSNESS,
         SymptomProbability('lost_consciousness', 14, {COVID_INCUBATION: 0.0,
                                                       COVID_ONSET: 0.1,
                                                       COVID_PLATEAU: 0.1,
@@ -443,7 +443,7 @@ SYMPTOMS: typing.Dict[Symptom, SymptomProbability] = OrderedDict([
     # 'trouble_breathing' is a dependency of all this category so it should be
     # inserted before them
     (
-        TROUBLE_BREATHING.name,
+        TROUBLE_BREATHING,
         SymptomProbability('trouble_breathing', 15, {COVID_INCUBATION: 0.0,
                                                      COVID_ONSET: -1,
                                                      COVID_PLATEAU: -1,
@@ -451,7 +451,7 @@ SYMPTOMS: typing.Dict[Symptom, SymptomProbability] = OrderedDict([
                                                      COVID_POST_PLATEAU_2: -1})
     ),
     (
-        SNEEZING.name,
+        SNEEZING,
         SymptomProbability('sneezing', 16, {COVID_INCUBATION: 0.0,
                                             COVID_ONSET: 0.2,
                                             COVID_PLATEAU: 0.3,
@@ -462,7 +462,7 @@ SYMPTOMS: typing.Dict[Symptom, SymptomProbability] = OrderedDict([
                                             COLD_LAST_DAY: 0.0})
     ),
     (
-        COUGH.name,
+        COUGH,
         SymptomProbability('cough', 17, {COVID_INCUBATION: 0.0,
                                          COVID_ONSET: 0.6,
                                          COVID_PLATEAU: 0.9,
@@ -472,7 +472,7 @@ SYMPTOMS: typing.Dict[Symptom, SymptomProbability] = OrderedDict([
                                          COLD_LAST_DAY: 0.8})
     ),
     (
-        RUNNY_NOSE.name,
+        RUNNY_NOSE,
         SymptomProbability('runny_nose', 18, {COVID_INCUBATION: 0.0,
                                               COVID_ONSET: 0.1,
                                               COVID_PLATEAU: 0.2,
@@ -482,7 +482,7 @@ SYMPTOMS: typing.Dict[Symptom, SymptomProbability] = OrderedDict([
                                               COLD_LAST_DAY: 0.8})
     ),
     (
-        SORE_THROAT.name,
+        SORE_THROAT,
         SymptomProbability('sore_throat', 20, {COVID_INCUBATION: 0.0,
                                                COVID_ONSET: 0.5,
                                                COVID_PLATEAU: 0.8,
@@ -493,7 +493,7 @@ SYMPTOMS: typing.Dict[Symptom, SymptomProbability] = OrderedDict([
                                                COLD_LAST_DAY: 0.6})
     ),
     (
-        SEVERE_CHEST_PAIN.name,
+        SEVERE_CHEST_PAIN,
         SymptomProbability('severe_chest_pain', 21, {COVID_INCUBATION: 0.0,
                                                      COVID_ONSET: 0.4,
                                                      COVID_PLATEAU: 0.5,
@@ -504,7 +504,7 @@ SYMPTOMS: typing.Dict[Symptom, SymptomProbability] = OrderedDict([
     # 'trouble_breathing' is a dependency of any '*_trouble_breathing' so it
     # needs to be inserted before this position
     (
-        LIGHT_TROUBLE_BREATHING.name,
+        LIGHT_TROUBLE_BREATHING,
         SymptomProbability('light_trouble_breathing', 24, {COVID_INCUBATION: 0.0,
                                                            COVID_ONSET: -1,
                                                            COVID_PLATEAU: -1,
@@ -514,11 +514,11 @@ SYMPTOMS: typing.Dict[Symptom, SymptomProbability] = OrderedDict([
     ),
     # This symptoms was in fact a mislabeled light_trouble_breathing
     (
-        MILD_TROUBLE_BREATHING.name,
+        MILD_TROUBLE_BREATHING,
         SymptomProbability('mild_trouble_breathing', 23, {})
     ),
     (
-        MODERATE_TROUBLE_BREATHING.name,
+        MODERATE_TROUBLE_BREATHING,
         SymptomProbability('moderate_trouble_breathing', 25, {COVID_INCUBATION: 0.0,
                                                               COVID_ONSET: -1,
                                                               COVID_PLATEAU: -1,
@@ -526,7 +526,7 @@ SYMPTOMS: typing.Dict[Symptom, SymptomProbability] = OrderedDict([
                                                               COVID_POST_PLATEAU_2: -1})
     ),
     (
-        HEAVY_TROUBLE_BREATHING.name,
+        HEAVY_TROUBLE_BREATHING,
         SymptomProbability('heavy_trouble_breathing', 26, {COVID_INCUBATION: 0.0,
                                                            COVID_ONSET: 0,
                                                            COVID_PLATEAU: -1,
@@ -535,7 +535,7 @@ SYMPTOMS: typing.Dict[Symptom, SymptomProbability] = OrderedDict([
     ),
 
     (
-        LOSS_OF_TASTE.name,
+        LOSS_OF_TASTE,
         SymptomProbability('loss_of_taste', 22, {COVID_INCUBATION: 0.0,
                                                  COVID_ONSET: 0.25,
                                                  COVID_PLATEAU: 0.35,
@@ -544,7 +544,7 @@ SYMPTOMS: typing.Dict[Symptom, SymptomProbability] = OrderedDict([
     ),
 
     (
-        ACHES.name,
+        ACHES,
         SymptomProbability('aches', 19, {FLU_FIRST_DAY: 0.3,
                                          FLU_MAIN: 0.5,
                                          FLU_LAST_DAY: 0.8})
@@ -552,11 +552,11 @@ SYMPTOMS: typing.Dict[Symptom, SymptomProbability] = OrderedDict([
 
     # commented out because these are not used elsewhere for now
     # (
-    #     HIVES.name,
+    #     HIVES,
     #     SymptomProbability('hives', __, {ALLERGY_MAIN: 0.4})
     # ),
     # (
-    #     SWELLING.name,
+    #     SWELLING,
     #     SymptomProbability('swelling', __, {ALLERGY_MAIN: 0.3})
     # )
 ])
@@ -570,49 +570,49 @@ def _get_covid_sickness_severity(rng, phase_id: int, really_sick: bool, extremel
     # covid_onset phase
     elif phase_id == COVID_ONSET:
         if really_sick or extremely_sick or len(preexisting_conditions) > 2 or initial_viral_load > 0.6:
-            return MODERATE.name
+            return MODERATE
         else:
-            return MILD.name
+            return MILD
     # covid_plateau phase
     elif phase_id == COVID_PLATEAU:
         if extremely_sick:
-            return EXTREMELY_SEVERE.name
+            return EXTREMELY_SEVERE
         elif really_sick or len(preexisting_conditions) > 2 or initial_viral_load > 0.6:
-            return SEVERE.name
+            return SEVERE
         # initial_viral_load - .15 is the same probaility than p_gastro
         # (previous code version was using p_gastro)
         elif rng.rand() < initial_viral_load - .15:
-            return MODERATE.name
+            return MODERATE
         else:
-            return MILD.name
+            return MILD
     # covid_post_plateau_1 phase
     elif phase_id == COVID_POST_PLATEAU_1:
         if extremely_sick:
-            return SEVERE.name
+            return SEVERE
         elif really_sick:
-            return MODERATE.name
+            return MODERATE
         else:
-            return MILD.name
+            return MILD
     # covid_post_plateau_2 phase
     elif phase_id == COVID_POST_PLATEAU_2:
         if extremely_sick:
-            return MODERATE.name
+            return MODERATE
         else:
-            return MILD.name
+            return MILD
     else:
         raise ValueError(f"Invalid phase_id [{phase_id}]")
 
 
 def _get_covid_trouble_breathing_severity(sickness_severity: str, symptoms: list):
-    if TROUBLE_BREATHING.name not in symptoms:
+    if TROUBLE_BREATHING not in symptoms:
         return None
 
-    if sickness_severity == MILD.name:
-        return LIGHT_TROUBLE_BREATHING.name
-    elif sickness_severity == MODERATE.name:
-        return MODERATE_TROUBLE_BREATHING.name
-    elif sickness_severity in (SEVERE.name, EXTREMELY_SEVERE.name):
-        return HEAVY_TROUBLE_BREATHING.name
+    if sickness_severity == MILD:
+        return LIGHT_TROUBLE_BREATHING
+    elif sickness_severity == MODERATE:
+        return MODERATE_TROUBLE_BREATHING
+    elif sickness_severity in (SEVERE, EXTREMELY_SEVERE):
+        return HEAVY_TROUBLE_BREATHING
     else:
         raise ValueError(f"Invalid sickness_severity [{sickness_severity}]")
 
@@ -641,14 +641,14 @@ def _get_covid_symptoms(symptoms_progression: list, phase_id: int, rng, really_s
                                                initial_viral_load)
 
         if rng.rand() < p_fever:
-            symptoms.append(FEVER.name)
+            symptoms.append(FEVER)
 
-            if extremely_sick and rng.rand() < SYMPTOMS[CHILLS.name].probabilities[phase_id]:
-                symptoms.append(CHILLS.name)
+            if extremely_sick and rng.rand() < SYMPTOMS[CHILLS].probabilities[phase_id]:
+                symptoms.append(CHILLS)
 
     # covid_plateau phase
     elif phase_id == COVID_PLATEAU:
-        if FEVER.name in symptoms_progression[-1]:
+        if FEVER in symptoms_progression[-1]:
             p_fever = 1.
         else:
             p_fever = _get_covid_fever_probability(phase_id,
@@ -657,13 +657,13 @@ def _get_covid_symptoms(symptoms_progression: list, phase_id: int, rng, really_s
                                                    initial_viral_load)
 
         if rng.rand() < p_fever:
-            symptoms.append(FEVER.name)
+            symptoms.append(FEVER)
 
-            if rng.rand() < SYMPTOMS[CHILLS.name].probabilities[phase_id]:
-                symptoms.append(CHILLS.name)
+            if rng.rand() < SYMPTOMS[CHILLS].probabilities[phase_id]:
+                symptoms.append(CHILLS)
 
     # gastro related computations
-    if GASTRO.name in symptoms_progression[-1]:
+    if GASTRO in symptoms_progression[-1]:
         p_gastro = 1.
     else:
         p_gastro = _get_covid_gastro_probability(phase_id,
@@ -671,12 +671,12 @@ def _get_covid_symptoms(symptoms_progression: list, phase_id: int, rng, really_s
 
     # gastro symptoms are more likely to show extreme symptoms later
     if rng.rand() < p_gastro:
-        symptoms.append(GASTRO.name)
+        symptoms.append(GASTRO)
 
         for symptom in (DIARRHEA, NAUSEA_VOMITING):
             rand = rng.rand()
-            if rand < SYMPTOMS[symptom.name].probabilities[phase_id]:
-                symptoms.append(symptom.name)
+            if rand < SYMPTOMS[symptom].probabilities[phase_id]:
+                symptoms.append(symptom)
 
     # fatigue related computations
     p_lethargy = _get_covid_fatigue_probability(phase_id,
@@ -685,18 +685,18 @@ def _get_covid_symptoms(symptoms_progression: list, phase_id: int, rng, really_s
                                                 carefulness)
 
     if rng.rand() < p_lethargy:
-        symptoms.append(FATIGUE.name)
+        symptoms.append(FATIGUE)
 
-        if age > 75 and rng.rand() < SYMPTOMS[UNUSUAL.name].probabilities[phase_id]:
-            symptoms.append(UNUSUAL.name)
+        if age > 75 and rng.rand() < SYMPTOMS[UNUSUAL].probabilities[phase_id]:
+            symptoms.append(UNUSUAL)
         if (really_sick or extremely_sick or len(preexisting_conditions) > 2) and \
-                rng.rand() < SYMPTOMS[LOST_CONSCIOUSNESS.name].probabilities[phase_id]:
-            symptoms.append(LOST_CONSCIOUSNESS.name)
+                rng.rand() < SYMPTOMS[LOST_CONSCIOUSNESS].probabilities[phase_id]:
+            symptoms.append(LOST_CONSCIOUSNESS)
 
         for symptom in (HARD_TIME_WAKING_UP, HEADACHE, CONFUSED):
             rand = rng.rand()
-            if rand < SYMPTOMS[symptom.name].probabilities[phase_id]:
-                symptoms.append(symptom.name)
+            if rand < SYMPTOMS[symptom].probabilities[phase_id]:
+                symptoms.append(symptom)
 
     # trouble_breathing related computations
     p_respiratory = _get_covid_trouble_breathing_probability(phase_id,
@@ -706,15 +706,15 @@ def _get_covid_symptoms(symptoms_progression: list, phase_id: int, rng, really_s
                                                              preexisting_conditions)
 
     if rng.rand() < p_respiratory:
-        symptoms.append(TROUBLE_BREATHING.name)
+        symptoms.append(TROUBLE_BREATHING)
 
-        if extremely_sick and rng.rand() < SYMPTOMS[SEVERE_CHEST_PAIN.name].probabilities[phase_id]:
-            symptoms.append(SEVERE_CHEST_PAIN.name)
+        if extremely_sick and rng.rand() < SYMPTOMS[SEVERE_CHEST_PAIN].probabilities[phase_id]:
+            symptoms.append(SEVERE_CHEST_PAIN)
 
         for symptom in (SNEEZING, COUGH, RUNNY_NOSE, SORE_THROAT):
             rand = rng.rand()
-            if rand < SYMPTOMS[symptom.name].probabilities[phase_id]:
-                symptoms.append(symptom.name)
+            if rand < SYMPTOMS[symptom].probabilities[phase_id]:
+                symptoms.append(symptom)
 
     trouble_breathing_severity = _get_covid_trouble_breathing_severity(sickness_severity, symptoms)
     if trouble_breathing_severity is not None:
@@ -722,13 +722,13 @@ def _get_covid_symptoms(symptoms_progression: list, phase_id: int, rng, really_s
 
     # loss_of_taste related computations
     if phase_id in (COVID_ONSET, COVID_PLATEAU) and \
-            LOSS_OF_TASTE.name in symptoms_progression[-1]:
+            LOSS_OF_TASTE in symptoms_progression[-1]:
         p_loss_of_taste = 1.
     else:
-        p_loss_of_taste = SYMPTOMS[LOSS_OF_TASTE.name].probabilities[phase_id]
+        p_loss_of_taste = SYMPTOMS[LOSS_OF_TASTE].probabilities[phase_id]
 
     if rng.rand() < p_loss_of_taste:
-        symptoms.append(LOSS_OF_TASTE.name)
+        symptoms.append(LOSS_OF_TASTE)
 
     return symptoms
 
@@ -841,8 +841,8 @@ def _get_allergy_progression(rng):
     for symptom in (SNEEZING, LIGHT_TROUBLE_BREATHING, SORE_THROAT, FATIGUE,
                     HARD_TIME_WAKING_UP, HEADACHE):
         rand = rng.rand()
-        if rand < SYMPTOMS[symptom.name].probabilities[phase]:
-            symptoms.append(symptom.name)
+        if rand < SYMPTOMS[symptom].probabilities[phase]:
+            symptoms.append(symptom)
 
             # commented out because these are not used elsewhere for now
             # if symptom == 'light_trouble_breathing':
@@ -876,55 +876,55 @@ def _get_flu_progression(age, rng, carefulness, preexisting_conditions, really_s
     phase_i = 0
     phase = disease_phases[phase_i]
 
-    symptoms_per_phase[phase_i].append(MILD.name)
+    symptoms_per_phase[phase_i].append(MILD)
 
     for symptom in (FATIGUE, FEVER, ACHES, HARD_TIME_WAKING_UP, GASTRO):
         rand = rng.rand()
-        if rand < SYMPTOMS[symptom.name].probabilities[phase]:
-            symptoms_per_phase[phase_i].append(symptom.name)
+        if rand < SYMPTOMS[symptom].probabilities[phase]:
+            symptoms_per_phase[phase_i].append(symptom)
 
             if symptom == GASTRO:
                 for symptom in (DIARRHEA, NAUSEA_VOMITING):
                     rand = rng.rand()
-                    if rand < SYMPTOMS[symptom.name].probabilities[phase]:
-                        symptoms_per_phase[phase_i].append(symptom.name)
+                    if rand < SYMPTOMS[symptom].probabilities[phase]:
+                        symptoms_per_phase[phase_i].append(symptom)
 
     # Day 2-4ish if it's a longer flu, if 2 days long this doesn't get added
     phase_i = 1
     phase = disease_phases[phase_i]
 
     if really_sick or extremely_sick or any(preexisting_conditions):
-        symptoms_per_phase[phase_i].append(MODERATE.name)
+        symptoms_per_phase[phase_i].append(MODERATE)
     else:
-        symptoms_per_phase[phase_i].append(MILD.name)
+        symptoms_per_phase[phase_i].append(MILD)
 
     for symptom in (FATIGUE, FEVER, ACHES, HARD_TIME_WAKING_UP, GASTRO):
         rand = rng.rand()
-        if rand < SYMPTOMS[symptom.name].probabilities[phase]:
-            symptoms_per_phase[phase_i].append(symptom.name)
+        if rand < SYMPTOMS[symptom].probabilities[phase]:
+            symptoms_per_phase[phase_i].append(symptom)
 
             if symptom == GASTRO:
                 for symptom in (DIARRHEA, NAUSEA_VOMITING):
                     rand = rng.rand()
-                    if rand < SYMPTOMS[symptom.name].probabilities[phase]:
-                        symptoms_per_phase[phase_i].append(symptom.name)
+                    if rand < SYMPTOMS[symptom].probabilities[phase]:
+                        symptoms_per_phase[phase_i].append(symptom)
 
     # Last day
     phase_i = 2
     phase = disease_phases[phase_i]
 
-    symptoms_per_phase[phase_i].append(MILD.name)
+    symptoms_per_phase[phase_i].append(MILD)
 
     for symptom in (FATIGUE, FEVER, ACHES, HARD_TIME_WAKING_UP, GASTRO):
         rand = rng.rand()
-        if rand < SYMPTOMS[symptom.name].probabilities[phase]:
-            symptoms_per_phase[phase_i].append(symptom.name)
+        if rand < SYMPTOMS[symptom].probabilities[phase]:
+            symptoms_per_phase[phase_i].append(symptom)
 
             if symptom == GASTRO:
                 for symptom in (DIARRHEA, NAUSEA_VOMITING):
                     rand = rng.rand()
-                    if rand < SYMPTOMS[symptom.name].probabilities[phase]:
-                        symptoms_per_phase[phase_i].append(symptom.name)
+                    if rand < SYMPTOMS[symptom].probabilities[phase]:
+                        symptoms_per_phase[phase_i].append(symptom)
 
     if age < 12 or age > 40 or any(preexisting_conditions) or really_sick or extremely_sick:
         mean = AVG_FLU_DURATION + 2 - 2 * carefulness
@@ -970,25 +970,25 @@ def _get_cold_progression(age, rng, carefulness, preexisting_conditions, really_
     phase = disease_phases[phase_i]
 
     if really_sick or extremely_sick or any(preexisting_conditions):
-        symptoms_per_phase[phase_i].append(MODERATE.name)
+        symptoms_per_phase[phase_i].append(MODERATE)
     else:
-        symptoms_per_phase[phase_i].append(MILD.name)
+        symptoms_per_phase[phase_i].append(MILD)
 
     for symptom in (RUNNY_NOSE, COUGH, FATIGUE, SNEEZING):
         rand = rng.rand()
-        if rand < SYMPTOMS[symptom.name].probabilities[phase]:
-            symptoms_per_phase[phase_i].append(symptom.name)
+        if rand < SYMPTOMS[symptom].probabilities[phase]:
+            symptoms_per_phase[phase_i].append(symptom)
 
     # Last day
     phase_i = 1
     phase = disease_phases[phase_i]
 
-    symptoms_per_phase[phase_i].append(MILD.name)
+    symptoms_per_phase[phase_i].append(MILD)
 
     for symptom in (RUNNY_NOSE, COUGH, FATIGUE, SORE_THROAT):
         rand = rng.rand()
-        if rand < SYMPTOMS[symptom.name].probabilities[phase]:
-            symptoms_per_phase[phase_i].append(symptom.name)
+        if rand < SYMPTOMS[symptom].probabilities[phase]:
+            symptoms_per_phase[phase_i].append(symptom)
 
     if age < 12 or age > 40 or any(preexisting_conditions) or really_sick or extremely_sick:
         mean = 4 - round(carefulness)
