@@ -4,7 +4,7 @@ import numpy as np
 
 from covid19sim.epidemiology.symptoms import _disease_phase_id_to_idx, _disease_phase_idx_to_id,\
     _get_allergy_progression, _get_cold_progression, _get_covid_fatigue_probability, \
-    _get_covid_fever_probability, _get_covid_gastro_probability, _get_covid_progression, \
+    _get_covid_fever_probability, _get_covid_gastro_probability, _get_covid_symptoms, \
     _get_covid_sickness_severity, _get_covid_trouble_breathing_probability, \
     _get_covid_trouble_breathing_severity, _get_flu_progression, \
     SYMPTOMS, DISEASES_PHASES, \
@@ -543,6 +543,7 @@ class CovidProgression(unittest.TestCase):
         """
             Test the distribution of the covid symptoms
         """
+        disease_phases = self.disease_phases
         rng = np.random.RandomState(1234)
 
         for initial_viral_load in self.initial_viral_load_options:
@@ -551,66 +552,60 @@ class CovidProgression(unittest.TestCase):
                     for extremely_sick in self.extremely_sick_options if really_sick else (False,):
                         for preexisting_conditions in self.preexisting_conditions_options:
                             for carefulness in self.carefulness_options:
-                                self._test_covid_progression(
-                                    rng, initial_viral_load, age, really_sick,
-                                    extremely_sick, preexisting_conditions,
-                                    carefulness)
+                                population_symptoms_per_phase = [[] for _ in range(self.n_people)]
+                                for phase_id in disease_phases.values():
+                                    population_symptoms = []
+                                    for i in range(self.n_people):
+                                        symptoms = _get_covid_symptoms(population_symptoms_per_phase[i], phase_id,
+                                                                       rng, really_sick, extremely_sick,
+                                                                       age, initial_viral_load, carefulness,
+                                                                       list(preexisting_conditions))
+                                        symptoms = set(symptoms)
+                                        population_symptoms.append(symptoms)
+                                        population_symptoms_per_phase[i].append(symptoms)
 
-    def _test_covid_progression(self, rng, initial_viral_load, age, really_sick,
-                                extremely_sick, preexisting_conditions,
-                                carefulness):
+                                    if phase_id == COVID_INCUBATION:
+                                        self.assertEqual(sum([len(symptoms) for symptoms in population_symptoms]), 0)
+
+                                    else:
+                                        self._test_covid_symptoms(
+                                            population_symptoms, phase_id, initial_viral_load, age, really_sick,
+                                            extremely_sick, preexisting_conditions, carefulness)
+
+    def _test_covid_symptoms(self, population_symptoms, phase_id, initial_viral_load, age, really_sick,
+                             extremely_sick, preexisting_conditions, carefulness):
         _get_id = self._get_id
         _get_probability = self._get_probability
-        disease_phases = self.disease_phases
 
-        # List of list of set of symptoms (str). Each set contains the list of symptoms in a day
-        computed_dist = [[set(day_symptoms) for day_symptoms in
-                          _get_covid_progression(initial_viral_load, self.viral_load_plateau_start,
-                                                 self.viral_load_plateau_end, self.viral_load_recovered,
-                                                 age, self.incubation_days, self.infectiousness_onset_days,
-                                                 really_sick, extremely_sick, rng, preexisting_conditions,
-                                                 carefulness)]
-                         for _ in range(self.n_people)]
+        probs = [0] * len(SYMPTOMS)
 
-        probs = [[0] * len(SYMPTOMS) for _ in disease_phases]
+        for human_symptoms in population_symptoms:
+            # There should be exactly 1 occurrence of any of the sickness level
+            self.assertEqual(len([s for s in ('mild', 'moderate', 'severe', 'extremely-severe')
+                                  if s in human_symptoms]), 1)
+            if 'trouble_breathing' in human_symptoms:
+                # There should be exactly 1 occurrence of any of the trouble_breathing level
+                self.assertEqual(
+                    len([s for s in ('light_trouble_breathing', 'moderate_trouble_breathing',
+                                     'heavy_trouble_breathing')
+                         if s in human_symptoms]),
+                    1
+                )
+            else:
+                # There should be no occurrence of any of the trouble_breathing level
+                self.assertEqual(
+                    len([s for s in ('light_trouble_breathing', 'moderate_trouble_breathing',
+                                     'heavy_trouble_breathing')
+                         if s in human_symptoms]),
+                    0
+                )
 
-        for human_symptoms in computed_dist:
-            # To simplify the tests, we expect each stage to last 1 day
-            self.assertEqual(len(human_symptoms), len(disease_phases))
+            for s_name, s_prob in SYMPTOMS.items():
+                # probs[0] are the probability for the incubation period
+                probs[s_prob.id] += int(s_name in human_symptoms)
 
-            # The covid incubation period should not have any symptoms
-            for day_symptoms in human_symptoms[:self.incubation_days]:
-                self.assertEqual(len(day_symptoms), 0)
-
-            # The covid incubation period should not have any symptoms
-            for i, day_symptoms in enumerate(human_symptoms[self.incubation_days:]):
-                # There should be exactly 1 occurrence of any of the sickness level
-                self.assertEqual(len([s for s in ('mild', 'moderate', 'severe', 'extremely-severe')
-                                      if s in day_symptoms]), 1)
-                if 'trouble_breathing' in day_symptoms:
-                    # There should be exactly 1 occurrence of any of the trouble_breathing level
-                    self.assertEqual(
-                        len([s for s in ('light_trouble_breathing', 'moderate_trouble_breathing',
-                                         'heavy_trouble_breathing')
-                             if s in day_symptoms]),
-                        1
-                    )
-                else:
-                    # There should be no occurrence of any of the trouble_breathing level
-                    self.assertEqual(
-                        len([s for s in ('light_trouble_breathing', 'moderate_trouble_breathing',
-                                         'heavy_trouble_breathing')
-                             if s in day_symptoms]),
-                        0
-                    )
-
-                for s_name, s_prob in SYMPTOMS.items():
-                    # probs[0] are the probability for the incubation period
-                    probs[i+1][s_prob.id] += int(s_name in day_symptoms)
-
-        for symptoms_probs in probs:
-            for i in range(len(symptoms_probs)):
-                symptoms_probs[i] /= self.n_people
+        for i in range(len(probs)):
+            probs[i] /= self.n_people
 
         for s_name, s_prob in SYMPTOMS.items():
             s_id = s_prob.id
@@ -628,11 +623,20 @@ class CovidProgression(unittest.TestCase):
                 # as complex as maintaining the code
                 continue
 
-            for i, (disease_phase, expected_prob) in enumerate((d_p, p) for d_p, p in s_prob.probabilities.items()
-                                                               if d_p in disease_phases.values()):
-                prob = probs[i][s_id]
+            if s_id in self.out_of_context_symptoms:
+                prob = probs[s_id]
 
-                phase_id = _disease_phase_idx_to_id('covid', i)
+                self.assertEqual(prob, 0.0,
+                                 msg=f"Symptom [{s_name}] should not be present is the "
+                                 f"list of symptoms. initial_viral_load {initial_viral_load}, "
+                                 f"age {age}, really_sick {really_sick}, extremely_sick {extremely_sick}, "
+                                 f"preexisting_conditions {len(preexisting_conditions)} "
+                                 f"and carefulness {carefulness}")
+
+            else:
+                prob = probs[s_id]
+
+                expected_prob = s_prob.probabilities[phase_id]
 
                 if s_id in (_get_id('fever'), _get_id('chills')):
                     fever_prob = _get_covid_fever_probability(phase_id, really_sick, extremely_sick,
@@ -731,17 +735,7 @@ class CovidProgression(unittest.TestCase):
                     f"probability for initial_viral_load {initial_viral_load}, "
                     f"age {age}, really_sick {really_sick}, extremely_sick {extremely_sick}, "
                     f"preexisting_conditions {len(preexisting_conditions)} and "
-                    f"carefulness {carefulness} in disease_phase {phase_id}:{disease_phase}")
-
-            if s_id in self.out_of_context_symptoms:
-                prob = sum(probs[i][s_id] for i in range(len(probs))) / len(probs)
-
-                self.assertEqual(prob, 0.0,
-                                 msg=f"Symptom [{s_name}] should not be present is the "
-                                 f"list of symptoms. initial_viral_load {initial_viral_load}, "
-                                 f"age {age}, really_sick {really_sick}, extremely_sick {extremely_sick}, "
-                                 f"preexisting_conditions {len(preexisting_conditions)} "
-                                 f"and carefulness {carefulness}")
+                    f"carefulness {carefulness} in phase_id {phase_id}")
 
 
 class FluProgression(unittest.TestCase):
