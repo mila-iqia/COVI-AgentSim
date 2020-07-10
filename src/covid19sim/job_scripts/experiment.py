@@ -16,6 +16,7 @@ from covid19sim.plotting.utils import env_to_path
 from covid19sim.utils.utils import parse_search_configuration
 
 SAMPLE_KEYS = {"list", "uniform", "range", "cartesian", "sequential", "chain"}
+HYDRA_CONF_PATH = Path(__file__).parent.parent / "configs/exp/config.yaml"
 
 
 class RandomSearchError(Exception):
@@ -142,7 +143,7 @@ def check_conf(conf):
             if not (hydra_configs / "simulation" / "run_type" / f"{v}.yaml").exists():
                 raise RandomSearchError(f"Unknown run_type {v}")
 
-    if not (hydra_configs / "search" / f"{exp_file}.yaml").exists():
+    if not (hydra_configs / "experiment" / f"{exp_file}.yaml").exists():
         raise RandomSearchError(f"Unknown exp_file {exp_file}")
 
     weights_dir = conf.get("weights_dir", "None")
@@ -311,8 +312,8 @@ def sample_cartesians(cartesian_keys, exp, idx):
     be sampled.
 
     Args:
-        cartesian_keys (list): keys in the experimental configuration that are to be used in the full
-           cartesian product
+        cartesian_keys (list): keys in the experimental configuration that
+            are to be used in the full cartesian product
         exp (dict): experimental configuration
         idx (int): index of the current sample
 
@@ -332,8 +333,8 @@ def sample_chains(chain_keys, exp, idx):
     Returns the `idx`th item in the chain of all chain keys to be sampled.
 
     Args:
-        chain_keys (list): keys in the experimental configuration that are to be used in the full
-           chain
+        chain_keys (list): keys in the experimental configuration
+            that are to be used in the full chain
         exp (dict): experimental configuration
         idx (int): index of the current sample
 
@@ -352,9 +353,10 @@ def sample_chains(chain_keys, exp, idx):
 
 def sample_sequentials(sequential_keys, exp, idx):
     """
-    Samples sequentially from the "from" values specified in each key of the experimental
-    configuration which have sample == "sequential"
-    Unlike `cartesian` sampling, `sequential` sampling iterates *independently* over each keys
+    Samples sequentially from the "from" values specified in each key
+    of the experimental configuration which have sample == "sequential"
+    Unlike `cartesian` sampling, `sequential` sampling iterates *independently*
+    over each keys
 
     Args:
         sequential_keys (list): keys to be sampled sequentially
@@ -662,7 +664,7 @@ def printlines():
     print("=" * 80)
 
 
-@hydra.main(config_path="../configs/search/config.yaml", strict=False)
+@hydra.main(config_path=HYDRA_CONF_PATH, strict=False)
 def main(conf: DictConfig) -> None:
 
     """
@@ -701,19 +703,19 @@ def main(conf: DictConfig) -> None:
         "gres",  # sbatch gres arg, may be nothing or gpu:1
         "env_name",  # conda environment to load
         "code_loc",  # where to find the source code, will cd there
-        "weights",  # where to find the transformer's weights. default is /network/tmp1/<user>/FRESH-SNOWFLAKE-224B
+        "weights",  # where to find the transformer's weights
         "infra",  # using Mila or Intel cluster?
         "now_str",  # naming scheme
         "parallel_search",  # run with & at the end instead of ; to run in subshells
         "ipc",  # run with & at the end instead of ; to run in subshells
-        "start_index",  # ignore the first runs, to continue a cartesian or sequential exploration for instance
+        "start_index",  # ignore the first runs, to continue an exploration for instance
         "use_transformer",  # defaults to True
         "use_server",  # defaults to True
         "use_tmpdir",  # use SLURM_TMPDIR and copy files to outdir after
         "test_capacity",  # change TEST_TYPES.lab.capacity to that value
         "weights_dir",  # where are the weights
         "base_dir",  # output dir will be base_dir/tracing_method
-        "normalization_folder",  # if this is a normalization run, the name of the normalization folder
+        "normalization_folder",  # if this is a normalization run
         "exp_name",  # folder name in base_dir => base_dir/exp_name/method/...
     }
 
@@ -725,11 +727,11 @@ def main(conf: DictConfig) -> None:
 
     # load experimental configuration
     # override with exp_file=<X>
-    # where <X> is in configs/search and is ".yaml"
+    # where <X> is in configs/exp and is ".yaml"
     exp_file_path = (
         Path(__file__).resolve().parent.parent
         / "configs"
-        / "search"
+        / "experiment"
         / (overrides.get("exp_file", "randomization") + ".yaml")
     )
     conf = load_search_conf(exp_file_path)
@@ -915,7 +917,7 @@ def main(conf: DictConfig) -> None:
             command_suffix = "&\nsleep 5;\n" if parallel_search else ";\n"
             # intel doesn't have a log file so let's make one
             if infra == "intel":
-                job_out = Path(home) / f"job_logs"
+                job_out = Path(home) / "job_logs"
                 if not dev:
                     job_out.mkdir(exist_ok=True)
                 job_out = job_out / f"{now_str()}.out"

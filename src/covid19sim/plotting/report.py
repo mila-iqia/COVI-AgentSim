@@ -49,8 +49,7 @@ def make_report(plot_path):
     path = Path(plot_path).resolve()
     plots = get_plots(path)
     client = init_imgur_client()
-    addresses = upload_plots(plot_path, plots, client)
-
+    _ = upload_plots(plot_path, plots, client)
     return
 
 
