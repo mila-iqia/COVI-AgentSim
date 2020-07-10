@@ -702,7 +702,8 @@ class City:
         # target distribution of recommendation levels
         self.daily_rec_level_mapping = self.compute_daily_rec_level_mapping(current_day)
         self.cleanup_global_mailbox(self.env.timestamp)
-        # TODO: this is an assumption which will break in reality, instead of updating once per day everyone at the same time, it should be throughout the day
+        # TODO: this is an assumption which will break in reality, instead of updating once per day everyone
+        #       at the same time, it should be throughout the day
         for human in alive_humans:
             # recover from cold/flu/allergies if it's time
             human.recover_health()
