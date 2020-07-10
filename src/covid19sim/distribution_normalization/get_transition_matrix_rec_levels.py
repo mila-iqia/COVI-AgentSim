@@ -285,9 +285,10 @@ def main(args):
     for i, norm_dict in enumerate(to_normalize):
         tracing_method = norm_dict["tracing_method"]
         method_dir = norm_dict["method_dir"]
-        print("\n#" + "#" * 39)
-        print(f"Normalizing {method_dir.name} ({i + 1}/{len(to_normalize)})")
-        print("#" * 39 + "#\n")
+        s = f"Normalizing {method_dir.name} ({i + 1}/{len(to_normalize)})"
+        print("\n#" + "#" * (len(s) - 1))
+        print(s)
+        print("#" * (len(s) - 1) + "\n#")
         args.source = str(method_dir)
         args.config_folder = f"{target_name}_{tracing_method}"
         output_dict = run(args)
