@@ -34,11 +34,19 @@ def get_plots(plot_path):
 
 def upload_plots(plot_path, plots, client):
     addresses = {}
+    uploaded = 0
     for p in plots:
         rprint("Uploading (allow up to 10 seconds)", p)
-        addresses[p] = client.upload_from_path(p).get("link")
-        time.sleep(8)
-    print("\nDone.")
+        try:
+            link = client.upload_from_path(p).get("link")
+            addresses[p] = link
+            uploaded += 1
+            time.sleep(8)
+        except Exception as e:
+            print("\n*** Error:")
+            print(e)
+            print("Ignoring", p)
+    print(f"\nDone. Uploaded {uploaded} images:")
     print("\n".join("{}: {}".format(k, v) for k, v in addresses.items()))
     with (plot_path / "imgur_uploads.json").open("w") as f:
         json.dump(addresses, f)
