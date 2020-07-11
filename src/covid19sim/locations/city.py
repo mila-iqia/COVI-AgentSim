@@ -11,7 +11,7 @@ from collections import defaultdict, Counter
 from orderedset import OrderedSet
 
 from covid19sim.utils.utils import compute_distance, _get_random_area, relativefreq2absolutefreq, calculate_average_infectiousness, log
-from covid19sim.utils.demographics import get_humans_with_age, assign_profession_to_humans, assign_workplace_to_humans, assign_households_to_humans
+from covid19sim.utils.demographics import get_humans_with_age, assign_profession_to_humans, assign_workplace_to_humans, assign_households_to_humans, create_locations_and_assign_workplace_to_humans
 from covid19sim.log.track import Tracker
 from covid19sim.interventions.recommendation_manager import NonMLRiskComputer
 from covid19sim.interventions.behaviors import *
@@ -76,8 +76,8 @@ class City:
         self.daily_rec_level_mapping = None
         self.covid_testing_facility = TestFacility(self.test_type_preference, self.max_capacity_per_test_type, env, conf)
 
-        log("Initializing locations ...", self.logfile)
-        self.initialize_locations()
+        # log("Initializing locations ...", self.logfile)
+        # self.initialize_locations()
 
         self.humans = []
         self.hd = {}
@@ -85,7 +85,7 @@ class City:
         self.age_histogram = None
 
         log("Initializing humans ...", self.logfile)
-        self.initialize_humans(human_type)
+        self.initialize_humans_and_locations(human_type)
         for human in self.humans:
             human.track_this_guy = False
 
@@ -321,7 +321,7 @@ class City:
             locs = [self.create_location(specs, location, i, area[i]) for i in range(n)]
             setattr(self, f"{location}s", locs)
 
-    def initialize_humans(self, human_type):
+    def initialize_humans_and_locations(self, human_type):
         """
         `Human`s are created based on the statistics captured in HUMAN_DSITRIBUTION. Age distribution is specified via 'p'.
         SMARTPHONE_OWNER_FRACTION_BY_AGE defines the fraction of population in the age bin that owns smartphone.
@@ -357,23 +357,14 @@ class City:
         # self.households is initialized within this function through calls to `self.create_location`
         self.humans = assign_households_to_humans(self.humans, self, self.conf, self.logfile)
 
-        # assign profession to humans
-        for human in self.humans:
-            human.profession="other"
-            human.assign_workplace(self.rng.choice(self.workplaces + self.stores + self.miscs))
-
+        # # assign profession to humans
+        # for human in self.humans:
+        #     human.profession="other"
+        #     human.assign_workplace(self.rng.choice(self.workplaces + self.stores + self.miscs))
         # assign workplace to humans
-        # self.humans = assign_profession_to_humans(self.humans, self, self.conf)
-        # self.humans = assign_workplace_to_humans(self.humans, self, self.conf)
+        self.humans, self = create_locations_and_assign_workplace_to_humans(self.humans, self, self.conf, self.logfile)
 
-        # assign area to house
-        area = _get_random_area(
-            len(self.households),
-            self.conf.get("LOCATION_DISTRIBUTION")['household']['area'] * self.total_area,
-            self.rng
-        )
-        for i,house in enumerate(self.households):
-            house.area = area[i]
+
 
         self.hd = {human.name: human for human in self.humans}
 

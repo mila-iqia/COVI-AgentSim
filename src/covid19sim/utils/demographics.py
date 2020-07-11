@@ -10,7 +10,8 @@ from copy import deepcopy
 from collections import defaultdict
 from covid19sim.utils.utils import log, relativefreq2absolutefreq, _get_random_area
 from covid19sim.utils.constants import AGE_BIN_WIDTH_5
-from covid19sim.locations.location import Location, Household
+from covid19sim.locations.location import Location, Household, School
+from covid19sim.locations.hospital import Hospital
 
 MAX_FAILED_ATTEMPTS_ALLOWED = 10000
 
@@ -120,14 +121,67 @@ def create_locations_and_assign_workplace_to_humans(humans, city, conf, logfile=
     Returns:
         list: a list of humans with a residence
     """
-    #
-    workplaces = _create_locations("WORKPLACE", humans, city, conf, city.rng)
-    stores = _create_locations("STORE", humans, city, conf, city.rng)
-    miscs = _create_locations("MISC", humans, city, conf, city.rng)
+    MIN_WORKING_AGE = conf['MIN_WORKING_AGE']
+    # P_EMPLOYED_BY_AGEGROUP = conf['P_EMPLOYED_BY_AGE']
 
-    breakpoint()
+    # either you are at school, workplace or retired.
+
     # create schools
+    humans, city = _build_and_allocate_schools(humans, city, conf, city.rng)
 
+    # allocate seniors to social common room as their workplace and allocate some nurses to these senior residences
+    humans, city = _assign_senior_residences(humans, city, conf, city.rng)
+
+    # allocate doctors and nurses to hospitals
+    humans, city = _build_and_allocate_hospitals(humans, city, conf, city.rng)
+    breakpoint()
+
+    # create stores and miscs
+    all_stores = _create_locations("STORE", humans, city, conf, city.rng)
+    all_miscs = _create_locations("MISC", humans, city, conf, city.rng)
+
+    # allocate some workforce to stores and miscs
+    all_workplaces = _create_locations("WORKPLACE", humans, city, conf, city.rng)
+
+    # allocate rest of the work force to workplaces
+
+    # create workplaces
+
+    # workplaces comprise of hospital, stores, miscs, and workpalce
+    # hospitals should be based on doctors and nurses combined - find some hospitals, and how many doctors and nurses should be there.
+    # for the rest of the population assign them X to each store and miscs
+    # remaining to workplaces in a CONTACT PATTERN satisfiying way.
+
+    # workplace - a typical workplace comprises of employed people coming together for some duration
+    # during this duration they interact with their colleagues with `PREFERENTIAL_ATTACHEMENT_FACTOR` as the probability of
+    # interacting with previously known colleagues
+    # In order to obtain the contact pattern, allocate people as per their age groups.
+    # pick a human, put him into the workplace, find other humans like him and put them in that workplace
+    WORKING_BINS = _get_valid_bins(AGE_BIN_WIDTH_5, min_age=MIN_WORKING_AGE)
+    unassigned_humans = [human for human in unassigned_humans if human.age_bin_width_5.bin in WORKING_BINS and human.workplace is None]
+    breakpoint()
+
+    for bin, workplaces in all_workplaces.items():
+        for workplace in workplaces:
+            capacity = workplace.capacity
+            sampled_humans = city.rng.choice(unassigned_humans, size=capacity, replace=False)
+            for human in sampled_humans:
+                human.assign_workplace(workplace)
+                unassigned_humans.remove(human)
+
+    random_location = Location(
+                            env=city.env,
+                            rng=np.random.RandomState(city.rng.randint(2 ** 16)),
+                            conf=conf,
+                            name=f"RANDOM:0",
+                            location_type="RANDOM",
+                            lat=rng.randint(*city.x_range),
+                            lon=rng.randint(*city.y_range),
+                            area=city.total_area,
+                            capacity=None
+                        )
+    for human in unassigned_humans:
+        human.assign_workplace(random_location)
 
     # create parks
 
@@ -139,8 +193,197 @@ def create_locations_and_assign_workplace_to_humans(humans, city, conf, logfile=
 
     # assign schools to children
 
-    # return city
+    return humans, city
 
+def _build_and_allocate_hospitals(humans, city, conf, rng):
+    """
+    """
+
+    HOSPITAL_PROPORTION_AREA = conf['HOSPITAL_PROPORTION_AREA']
+
+    N_DOCTOR_PER_100K_PEOPLE = conf['N_DOCTOR_PER_100K_PEOPLE']
+    N_HOSPITALS_PER_100K_PEOPLE = conf['N_HOSPITALS_PER_100K_PEOPLE']
+    HOSPITAL_BEDS_PER_1K_PEOPLE = conf['HOSPITAL_BEDS_PER_1K_PEOPLE']
+    ICU_BEDS_PER_1K_PEOPLE = conf['ICU_BEDS_PER_1K_PEOPLE']
+
+    NURSE_TO_DOCTOR_RATIO = conf['NURSE_TO_DOCTOR_RATIO']
+
+    ICU_BEDS_OCCUPANCY = conf['ICU_BEDS_OCCUPANCY']
+    HOSPITAL_BEDS_OCCUPANCY = conf['HOSPITAL_BEDS_OCCUPANCY']
+
+    MIN_AGE_HEALTHCARE_WORKER = conf['MIN_AGE_HEALTHCARE_WORKER']
+    MAX_AGE_HEALTHCARE_WORKER = conf['MAX_AGE_HEALTHCARE_WORKER']
+
+    #
+    n_doctors = math.ceil(city.n_people * N_DOCTOR_PER_100K_PEOPLE / 100000)
+    n_nurses = math.ceil(NURSE_TO_DOCTOR_RATIO * n_doctors)
+    n_icu_beds = math.ceil(city.n_people * ICU_BEDS_PER_1K_PEOPLE / 1000)
+    n_hospital_beds = math.ceil(city.n_people * HOSPITAL_BEDS_PER_1K_PEOPLE / 1000)
+
+    # create one big hospital and control interactions there
+    area = _get_random_area(1, HOSPITAL_PROPORTION_AREA * city.total_area, rng)
+    hospital = Hospital(
+                    env=city.env,
+                    rng=np.random.RandomState(city.rng.randint(2 ** 16)),
+                    conf=conf,
+                    name=f"HOSPITAL:0",
+                    location_type="HOSPITAL",
+                    lat=rng.randint(*city.x_range),
+                    lon=rng.randint(*city.y_range),
+                    area=area,
+                    capacity=n_hospital_beds,
+                    icu_capacity=n_icu_beds,
+                    hospital_bed_occupany=HOSPITAL_BEDS_OCCUPANCY,
+                    icu_bed_occupancy=ICU_BEDS_OCCUPANCY
+                )
+
+
+    # select and allocate doctors and nurses to this hospital
+    WORKING_BINS = _get_valid_bins(AGE_BIN_WIDTH_5, min_age=MIN_AGE_HEALTHCARE_WORKER, max_age=MAX_AGE_HEALTHCARE_WORKER)
+    doctors_and_nurses = [human for human in humans if human.workplace is None and human.age_bin_width_5.bin in WORKING_BINS]
+    doctors = rng.choice(doctors_and_nurses, size=n_doctors, replace=False)
+    for doctor in doctors:
+        doctor.assign_workplace(hospital)
+        hospital.assign_worker(doctor, doctor=True)
+        doctors_and_nurses.remove(doctor)
+
+    nurses = rng.choice(doctors_and_nurses, size=n_nurses, replace=False)
+    for nurse in nurses:
+        nurse.assign_workplace(hospital)
+        hospital.assign_worker(nurse, doctor=False)
+        doctors_and_nurses.remove(nurse)
+
+    city.hospitals = [hospital]
+    return humans, city
+
+
+def _assign_senior_residences(humans, city, conf, rng):
+    """
+    """
+    RESIDENT_TO_STAFF_RATIO = conf['RESIDENT_TO_STAFF_RATIO']
+
+    senior_residents = [human for human in humans if human.household.location_type == "SENIOR_RESDENCY"]
+    n_senior_residents = len(senior_residents)
+
+    # assign social common room as workplace for seniors
+    for senior in senior_residents:
+        assert senior.workplace is None, "senior already has a common room"
+        senior.assign_workplace(senior.household.social_common_room)
+
+    # assign nurses for senior residences to look after seniors
+    potential_nurses = [human for human in humans if human.workplace is None]
+    for senior_residence in city.senior_residences:
+        senior_residence.n_nurses = math.ceil(len(senior_residence.residents) / RESIDENT_TO_STAFF_RATIO)
+        nurses = rng.choice(potential_nurses, size=senior_residence.n_nurses, replace=False)
+        for nurse in nurses:
+            nurse.assign_workplace(senior_residence)
+
+    return humans, city
+
+def _build_and_allocate_schools(humans, city, conf, rng):
+    """
+    """
+    def _build_school(city, conf, name, area, rng):
+        return School(
+                    env=city.env,
+                    rng=np.random.RandomState(rng.randint(2 ** 16)),
+                    conf=conf,
+                    name=name,
+                    location_type="SCHOOL",
+                    lat=rng.randint(*city.x_range),
+                    lon=rng.randint(*city.y_range),
+                    area=city.total_area,
+                    capacity=None
+                )
+
+    N_STUDENTS_PER_SCHOOL_5_12 = conf['N_STUDENTS_PER_SCHOOL_5_12']
+    N_STUDENTS_PER_SCHOOL_12_17 = conf['N_STUDENTS_PER_SCHOOL_12_17']
+    N_STUDENTS_PER_SCHOOL_17_29 = conf['N_STUDENTS_PER_SCHOOL_17_29']
+    P_SCHOOL_FOR_AGE_17_19 = conf['P_SCHOOL_FOR_AGE_17_19']
+    P_SCHOOL_FOR_AGE_19_24 = conf['P_SCHOOL_FOR_AGE_19_24']
+    P_SCHOOL_FOR_AGE_25_29 = conf['P_SCHOOL_FOR_AGE_25_29']
+    SCHOOL_PROPORTION_AREA = conf['SCHOOL_PROPORTION_AREA']
+    STUDENT_TEACHER_RATIO_SCHOOL_5_12 = conf['STUDENT_TEACHER_RATIO_SCHOOL_5_12']
+    STUDENT_TEACHER_RATIO_SCHOOL_12_17 = conf['STUDENT_TEACHER_RATIO_SCHOOL_12_17']
+    STUDENT_TEACHER_RATIO_SCHOOL_17_29 = conf['STUDENT_TEACHER_RATIO_SCHOOL_17_29']
+
+    kids_5_12 = [human for human in humans if 5 <= human.age <= 12]
+    kids_12_17 = [human for human in humans if 12 < human.age <= 17]
+    kids_17_29 = [human for human in humans if 17 < human.age <= 29]
+
+    n_schools_5_12 = math.ceil(len(kids_5_12) / N_STUDENTS_PER_SCHOOL_5_12)
+    n_schools_12_17 = math.ceil(len(kids_12_17) / N_STUDENTS_PER_SCHOOL_5_12)
+    n_schools_17_29 = math.ceil(len(kids_17_29) / N_STUDENTS_PER_SCHOOL_17_29)
+    n_schools = n_schools_5_12 + n_schools_12_17 + n_schools_17_29
+
+    area = _get_random_area(n_schools, SCHOOL_PROPORTION_AREA * city.total_area, rng)
+    area_idx = -1
+
+    # 5-12
+    rng.shuffle(kids_5_12)
+    schools_for_5_12 = []
+    for i in range(n_schools_5_12):
+        area_idx += 1
+        school = _build_school(city, conf, f"SCHOOL(5-12):{i}", area[area_idx], rng)
+        schools_for_5_12.append(school)
+        while school.n_students < N_STUDENTS_PER_SCHOOL_5_12 and len(kids_5_12) > 0:
+            kid = kids_5_12.pop()
+            kid.assign_workplace(school)
+            school.n_students += 1
+
+    # 12-17
+    rng.shuffle(kids_12_17)
+    schools_for_12_17 = []
+    for i in range(n_schools_12_17):
+        area_idx += 1
+        school = _build_school(city, conf, f"SCHOOL(12-17):{i}", area[area_idx], rng)
+        schools_for_12_17.append(school)
+        enrolled = 0
+        while school.n_students < N_STUDENTS_PER_SCHOOL_12_17 and len(kids_12_17) > 0:
+            kid = kids_12_17.pop()
+            kid.assign_workplace(school)
+            school.n_students += 1
+
+    # 17-29
+    rng.shuffle(kids_17_29)
+    schools_for_17_29 = []
+    for i in range(n_schools_17_29):
+        area_idx += 1
+        school = _build_school(city, conf, f"SCHOOL(17-29):{i}", area[area_idx], rng)
+        schools_for_17_29.append(school)
+        enrolled_17_29 = 0
+        while school.n_students < N_STUDENTS_PER_SCHOOL_17_29 and len(kids_17_29) > 0:
+            kid = kids_17_29.pop()
+            if 17 < kid.age <= 19 and rng.uniform() < P_SCHOOL_FOR_AGE_17_19:
+                kid.assign_workplace(school)
+                school.n_students += 1
+            elif 20 <= kid.age <= 24 and rng.uniform() < P_SCHOOL_FOR_AGE_19_24:
+                kid.assign_workplace(school)
+                school.n_students += 1
+            elif 25 <= kid.age <= 29 and rng.uniform() < P_SCHOOL_FOR_AGE_25_29:
+                kid.assign_workplace(school)
+                school.n_students += 1
+
+    # teachers
+    potential_teachers = [human for human in humans if 30 <= human.age <= 50]
+    all_schools = [
+        [STUDENT_TEACHER_RATIO_SCHOOL_5_12, schools_for_5_12],
+        [STUDENT_TEACHER_RATIO_SCHOOL_12_17, schools_for_12_17],
+        [STUDENT_TEACHER_RATIO_SCHOOL_17_29, schools_for_17_29],
+    ]
+    for STUDENT_TEACHER_RATIO, schools_x_x in all_schools:
+        for school in schools_x_x:
+            n_teachers = math.ceil(school.n_students / STUDENT_TEACHER_RATIO)
+            teachers = rng.choice(potential_teachers, size=n_teachers, replace=False)
+            for teacher in teachers:
+                teacher.assign_workplace(school)
+                potential_teachers.remove(teacher)
+                school.n_teachers += 1
+
+    # add schools to city
+    city.schools = schools_for_5_12 + schools_for_12_17 + schools_for_17_29
+
+    return humans, city
 
 def _create_locations(type, humans, city, conf, rng, logfile=None):
     """
@@ -204,37 +447,6 @@ def _create_locations(type, humans, city, conf, rng, logfile=None):
                                 )
 
     return initialized_locations
-
-def assign_profession_to_humans(humans, city, conf):
-    p_profession = conf['PROFESSION_PROFILE']
-    professions = conf['PROFESSIONS']
-    for age_bin, specs in p_profession:
-        p = [specs[x] for x in professions]
-        assigned_profession = city.rng.choice(professions, p=p, size=len(humans[age_bin]))
-        for i, profession in enumerate(assigned_profession):
-            humans[age_bin][i].profession = profession
-
-    return humans
-
-def assign_workplace_to_humans(humans, city, conf):
-    """
-    Considered workplaces are - "hospital", "senior_residency", "school" for children,
-    "others" for rest that includes workplace, stores, and miscs, "senior_residency_social_activities"
-
-    """
-    for age_bin, humans in humans:
-        for human in humans:
-            if human.profession == "healthcare":
-                workplace = city.rng.choice(city.hospitals + city.senior_residencys)
-            elif profession == "school":
-                workplace = city.rng.choice(city.schools)
-            elif profession == "others":
-                workplace = city.rng.choice(city.workplace + city.stores + city.miscs)
-            elif profession == "retired":
-                sr = city.rng.choice(city.senior_residencys)
-                workplace = sr.social_common_room
-            human.workplace = workplace
-    return humans
 
 def _create_senior_residences(n_senior_residents, city, rng, conf):
     """

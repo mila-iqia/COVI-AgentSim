@@ -19,4 +19,4 @@
 
 7. Step 3. Create more houses randomly.
   - If there are more humans that available houses, sample more houses
-  - Sample residents for them. 
+  - Sample residents for them.

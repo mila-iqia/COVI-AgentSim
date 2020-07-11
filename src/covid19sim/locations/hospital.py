@@ -6,7 +6,7 @@ class Hospital(Location):
     Hospital location class, inheriting from covid19sim.base.Location
     """
     ICU_AREA = 0.10
-    ICU_CAPACITY = 0.10
+
     def __init__(self, **kwargs):
         """
         Create the Hospital and its ICU
@@ -21,34 +21,48 @@ class Hospital(Location):
         lat = kwargs.get('lat')
         lon = kwargs.get('lon')
         area = kwargs.get('area')
-        surface_prob = kwargs.get('surface_prob')
-        social_contact_factor = kwargs.get('social_contact_factor')
+        n_icu_beds = kwargs.get('icu_capacity')
+
 
         super(Hospital, self).__init__( env=env,
                                         rng=rng,
+                                        conf=kwargs.get('conf'),
                                         area=area * (1-self.ICU_AREA),
                                         name=name,
-                                        conf=kwargs.get('conf'),
-                                        location_type="hospital",
+                                        location_type="HOSPITAL",
                                         lat=lat,
                                         lon=lon,
-                                        social_contact_factor=social_contact_factor,
-                                        capacity=math.ceil(capacity* (1- self.ICU_CAPACITY)),
-                                        surface_prob=surface_prob,
+                                        capacity=capacity,
                                         )
-        self.location_contamination = 1
+
         self.icu = ICU( env=env,
                         rng=rng,
                         conf=kwargs.get('conf'),
                         area=area * (self.ICU_AREA),
                         name=f"{name}-icu",
-                        location_type="hospital",
+                        location_type="HOSPITAL",
                         lat=lat,
                         lon=lon,
-                        social_contact_factor=social_contact_factor,
-                        capacity=math.ceil(capacity* (self.ICU_CAPACITY)),
-                        surface_prob=surface_prob,
-                        )
+                        capacity=n_icu_beds,
+                    )
+        self.hospital_bed_occupany = kwargs.get("hospital_bed_occupany")
+        self.icu_bed_occupancy = kwargs.get("icu_bed_occupancy")
+
+        self.doctors = set()
+        self.nurses = set()
+
+    def assign_worker(self, human, doctor):
+        """
+        Adds `human` to the list of doctors or nurses
+
+        Args:
+            human (covi19sim.human.Human): `human` to add to the list of doctors
+            doctor (bool): add `human` to doctor's list if True, nurse's list otherwise
+        """
+        if doctor:
+            self.doctors.add(human)
+            return
+        self.nurses.add(human)
 
     def add_human(self, human):
         """

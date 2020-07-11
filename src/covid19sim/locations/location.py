@@ -16,8 +16,7 @@ class Location(simpy.Resource):
     Class representing generic locations used in the simulator
     """
 
-    def __init__(self, env, rng, conf, area, name, location_type, lat, lon,
-                 social_contact_factor, capacity, surface_prob):
+    def __init__(self, env, rng, conf, area, name, location_type, lat, lon, capacity):
         """
         Locations are created with city.create_location(), not instantiated directly
 
@@ -39,6 +38,7 @@ class Location(simpy.Resource):
                 Surfaces: aerosol, copper, cardboard, steel, plastic
         """
 
+        assert location_type in ["HOUSEHOLD", "SENIOR_RESIDENCY", "WORKPLACE", "STORE", "MISC", "HOSPITAL", "PARK", "RANDOM", "SCHOOL"], "not a valid location"
         if capacity is None:
             capacity = simpy.core.Infinity
 
@@ -51,18 +51,21 @@ class Location(simpy.Resource):
         self.lon = lon
         self.area = area
         self.location_type = location_type
-        self.social_contact_factor = social_contact_factor
         self.env = env
         self.contamination_timestamp = datetime.datetime.min
-        self.contaminated_surface_probability = surface_prob
         self.max_day_contamination = 0
         self.is_open_for_business = True
-
-        self.MEAN_DAILY_KNOWN_CONTACTS = conf['LOCATION_DISTRIBUTION'][location_type]['mean_daily_interactions']
-        self.MEAN_DAILY_UNKNOWN_CONTACTS = conf['MEAN_DAILY_UNKNOWN_CONTACTS']
         self.binned_humans = {bin:OrderedSet() for bin in AGE_BIN_WIDTH_5}
+
+        # self.MEAN_DAILY_KNOWN_CONTACTS = conf['LOCATION_DISTRIBUTION'][location_type]['mean_daily_interactions'] $
         self.CONTACT_DURATION_GAMMA_SCALE_MATRIX = np.array(conf['CONTACT_DURATION_GAMMA_SCALE_MATRIX'])
         self.CONTACT_DURATION_GAMMA_SHAPE_MATRIX = np.array(conf['CONTACT_DURATION_GAMMA_SHAPE_MATRIX'])
+        self.MEAN_DAILY_UNKNOWN_CONTACTS = conf['MEAN_DAILY_UNKNOWN_CONTACTS']
+
+        #
+        self.social_contact_factor = conf[f'{location_type}_CONTACT_FACTOR']
+        self.contaminated_surface_probability = conf[f'{location_type}_SURFACE_PROB']
+        self.MEAN_DAILY_KNOWN_CONTACTS = conf[f'{location_type}_MEAN_DAILY_INTERACTIONS']
 
         if location_type == "household":
             self.P_CONTACT = np.array(conf['P_CONTACT_MATRIX_HOUSEHOLD'])
@@ -401,10 +404,10 @@ class Household(Location):
         self.residents = []
         self.allocation_type = None
 
-        location_type = kwargs.get("location_type", "household")
-        # for seniors, social common room serves as a workplace where they spend
-        # time hanging out with others
-        if location_type == "senior_residency":
+        location_type = kwargs['location_type']
+        # for seniors, social common room serves as a workplace where they spend time hanging out with others
+        if location_type == "SENIOR_RESIDENCY":
+            self.n_nurses = 0
             name = kwargs.get("name")
             self.social_common_room = Location(
                 env=kwargs.get("env"),
@@ -415,7 +418,21 @@ class Household(Location):
                 lat=kwargs.get("lat"),
                 lon=kwargs.get("lon"),
                 area=kwargs.get("area"),
-                social_contact_factor=kwargs.get("social_contact_factor"),
-                capacity=None,
-                surface_prob=kwargs.get("surface_prob")
+                capacity=None
             )
+
+class School(Location):
+    """
+    School location class, inheriting from covid19sim.base.Location
+    """
+    def __init__(self, **kwargs):
+        """
+        Args:
+            kwargs (dict): all the args necessary for a Location's init
+        """
+        super(School, self).__init__(**kwargs)
+        self.n_students = 0
+        self.n_teachers = 0
+
+    def __repr__(self):
+        return self.name + f"| Students:{self.n_students} Teachers:{self.n_teachers}"

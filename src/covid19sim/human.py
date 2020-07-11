@@ -81,10 +81,12 @@ class Human(object):
         self.rng = np.random.RandomState(rng.randint(2 ** 16))  # RNG for this particular human
         self.profession = profession  # The job this human has (e.g. healthcare worker, retired, school, etc)
         self.is_healthcare_worker = True if profession == "healthcare" else False  # convenience boolean to check if is healthcare worker
+        self.known_connections = set() # keeps track of all otehr humans that this human knows of
+        self._workplace = (None,) # initialized this way to be consistent with the final deque assignment
 
         # Logging / Tracking
-        self.track_this_human = False  # TODO: @PRATEEK plz comment this
-        self.my_history = []  # TODO: @PRATEEK plz comment this
+        self.track_this_human = False  # tracks transition of human everytime there is a change in it's location. see `self.track_me`
+        self.my_history = []  # if `track_this_human` is True, records of transition is stored in this list
         self.r0 = []  # TODO: @PRATEEK plz comment this
         self._events = []  # TODO: @PRATEEK plz comment this
 
@@ -1560,6 +1562,11 @@ class Human(object):
             type (string): type of interaction to sample. expects "known", "unknown"
         """
         for other_human, distance_profile, t_near in interaction_profile:
+
+            # keeping known connections help in bringing two people together resulting in repeated contacts of known ones
+            if type  == "known":
+                human.known_connections.add(other_human)
+                other_human.known_connections.add(human)
 
             # compute detected bluetooth distance and exchange bluetooth messages if conditions are satisfied
             h1_msg, h2_msg = self._exchange_app_messages(other_human, distance_profile.distance, t_near)
