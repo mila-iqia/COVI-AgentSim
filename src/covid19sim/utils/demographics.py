@@ -8,8 +8,11 @@ from collections import namedtuple
 from copy import deepcopy
 
 from collections import defaultdict
-from covid19sim.utils.utils import log, relativefreq2absolutefreq
+from covid19sim.utils.utils import log, relativefreq2absolutefreq, _get_random_area
 from covid19sim.utils.constants import AGE_BIN_WIDTH_5
+from covid19sim.locations.location import Location, Household
+
+MAX_FAILED_ATTEMPTS_ALLOWED = 10000
 
 class HouseType(object):
     """
@@ -104,6 +107,104 @@ def get_humans_with_age(city, age_histogram, conf, rng, chosen_infected, human_t
 
     return humans
 
+def create_locations_and_assign_workplace_to_humans(humans, city, conf, logfile=None):
+    """
+    Builds locations like workplaces, stores, and schools in the city and assign them to humans.
+
+    Args:
+        humans (dict): keys are age bins (tuple) and values are a list of covid19sim.Human object of that age
+        city (covid19sim.location.City): simulator's city object
+        conf (dict): yaml configuration of the experiment
+        logfile (str): filepath where the console output and final tracked metrics will be logged.
+
+    Returns:
+        list: a list of humans with a residence
+    """
+    #
+    workplaces = _create_locations("WORKPLACE", humans, city, conf, city.rng)
+    stores = _create_locations("STORE", humans, city, conf, city.rng)
+    miscs = _create_locations("MISC", humans, city, conf, city.rng)
+
+    breakpoint()
+    # create schools
+
+
+    # create parks
+
+    # create hospitals
+
+    # assign workplaces to humans
+
+    # assign stores or miscs to some humans
+
+    # assign schools to children
+
+    # return city
+
+
+def _create_locations(type, humans, city, conf, rng, logfile=None):
+    """
+    Initializes the locations of type `type`.
+
+    Args:
+        type (str): type of location to initialize
+        humans (dict): keys are age bins (tuple) and values are a list of covid19sim.Human object of that age
+        city (covid19sim.location.City): simulator's city object
+        conf (dict): yaml configuration of the experiment
+        logfile (str): filepath where the console output and final tracked metrics will be logged.
+
+    Returns:
+
+    """
+    AVERAGE_N_EMPLOYEES_PER_TYPE = conf[f'AVERAGE_N_EMPLOYEES_PER_{type}']
+    P_EMPLOYEES_1_4_PER_TYPE = conf[f'P_EMPLOYEES_1_4_PER_{type}']
+    P_EMPLOYEES_5_99_PER_TYPE = conf[f'P_EMPLOYEES_5_99_PER_{type}']
+    P_EMPLOYEES_100_499_PER_TYPE = conf[f'P_EMPLOYEES_100_499_PER_{type}']
+    P_EMPLOYEES_500_above_PER_TYPE = conf[f'P_EMPLOYEES_500_above_PER_{type}']
+
+    TYPE_CONTACT_FACTOR = conf[f'{type}_CONTACT_FACTOR']
+    TYPE_PROPORTION_AREA = conf[f'{type}_PROPORTION_AREA']
+
+    # number of locations needed
+    n_locations = math.ceil(city.n_people / AVERAGE_N_EMPLOYEES_PER_TYPE)
+    n_locations_1_4 = math.ceil(P_EMPLOYEES_1_4_PER_TYPE * n_locations)
+    n_locations_5_99 = math.ceil(P_EMPLOYEES_5_99_PER_TYPE * n_locations)
+    n_locations_100_499 = math.ceil(P_EMPLOYEES_100_499_PER_TYPE * n_locations)
+    n_locations = n_locations_1_4 + n_locations_5_99 + n_locations_100_499 # to avoid rounding errors
+
+    # calculate area for each location
+    area = _get_random_area(n_locations, TYPE_PROPORTION_AREA * city.total_area, rng)
+
+    # all workplaces
+    all_locations = [
+        [(1, 4), n_locations_1_4],
+        [(5, 99), n_locations_5_99],
+        [(100, 499), n_locations_100_499],
+    ]
+
+    ## create them with some capacity
+    initialized_locations = defaultdict(list)
+    idx = -1
+    for capacity_range, n_locations_of_capacity in all_locations:
+        for _ in range(n_locations_of_capacity):
+            idx += 1
+            capacity = rng.randint(*capacity_range)
+            initialized_locations[capacity_range].append(
+                                    Location(
+                                            env=city.env,
+                                            rng=np.random.RandomState(rng.randint(2 ** 16)),
+                                            conf=conf,
+                                            name=f"{type}:{idx}",
+                                            location_type=type,
+                                            lat=rng.randint(*city.x_range),
+                                            lon=rng.randint(*city.y_range),
+                                            area=area[idx],
+                                            capacity=capacity
+                                    )
+                                )
+
+    return initialized_locations
+
 def assign_profession_to_humans(humans, city, conf):
     p_profession = conf['PROFESSION_PROFILE']
     professions = conf['PROFESSIONS']
@@ -135,6 +236,46 @@ def assign_workplace_to_humans(humans, city, conf):
             human.workplace = workplace
     return humans
 
+def _create_senior_residences(n_senior_residents, city, rng, conf):
+    """
+    Creates senior residences for `n_senior_residents` according to the configuration.
+
+    Args:
+        n_senior_residents (int): number of senior residents
+        city (covid19sim.location.City): simulator's city object
+        rng (np.random.RandomState): Random number generator
+        conf (dict): yaml configuration of the experiment
+
+    Returns:
+        (list): list of initialized locations of type "SENIOR_RESDENCY"
+
+    """
+    N_RESIDENTS_PER_COLLECTIVE = conf['N_RESIDENTS_PER_COLLECTIVE']
+    SENIOR_RESIDENCY_PROPORTION_AREA = conf['SENIOR_RESIDENCY_PROPORTION_AREA']
+
+    n_senior_residences = math.ceil(n_senior_residents/N_RESIDENTS_PER_COLLECTIVE)
+
+    # calculate area for each location
+    area = _get_random_area(n_senior_residences, SENIOR_RESIDENCY_PROPORTION_AREA * city.total_area, rng)
+
+    senior_residences = []
+    for i in range(n_senior_residences):
+        senior_residences.append(
+            Household(
+                    env=city.env,
+                    rng=np.random.RandomState(rng.randint(2 ** 16)),
+                    conf=conf,
+                    name=f"SENIOR_RESIDENCY:{i}",
+                    location_type="SENIOR_RESIDENCY",
+                    lat=rng.randint(*city.x_range),
+                    lon=rng.randint(*city.y_range),
+                    area=area[i],
+                    capacity=None,
+            )
+        )
+
+    return senior_residences
+
 def assign_households_to_humans(humans, city, conf, logfile=None):
     """
     Finds a best grouping of humans to assign to households based on regional configuration.
@@ -151,8 +292,7 @@ def assign_households_to_humans(humans, city, conf, logfile=None):
         list: a list of humans with a residence
     """
 
-    MAX_FAILED_ATTEMPTS_ALLOWED = 10000
-
+    P_HOUSEHOLD_SIZE = conf['P_HOUSEHOLD_SIZE']
     AVG_HOUSEHOLD_SIZE = conf['AVG_HOUSEHOLD_SIZE']
 
     P_COLLECTIVE_65_69 = conf['P_COLLECTIVE_65_69']
@@ -191,8 +331,11 @@ def assign_households_to_humans(humans, city, conf, logfile=None):
             if city.rng.random() < P:
                 assigned_to_collectives.append((bin, human))
 
+    n_senior_residents = len(assigned_to_collectives)
+    city.senior_residences = _create_senior_residences(n_senior_residents, city, city.rng, conf)
+
     for bin, human in assigned_to_collectives:
-        res = city.rng.choice(city.senior_residencys, size=1).item()
+        res = city.rng.choice(city.senior_residences, size=1).item()
         allocated_humans = _assign_household(human, res, allocated_humans)
         unassigned_humans[bin].remove(human)
 
@@ -234,16 +377,24 @@ def assign_households_to_humans(humans, city, conf, logfile=None):
     OTHER_MID_BINS = _get_valid_bins(AGE_BIN_WIDTH_5, min_age=MAX_AGE_CHILDREN, max_age=MAX_AGE_WITH_PARENT)
     KID_BINS = _get_valid_bins(AGE_BIN_WIDTH_5, max_age=MAX_AGE_CHILDREN)
     SEARCH_BINS = KID_BINS
-    kid_keys = [n for n, houses in unallocated_houses.items() if  type(n) == int and n > 0 and len(houses) > 0]
-    while True:
+    kid_keys = [n for n, houses in unallocated_houses.items() if type(n) == int and n > 0 and len(houses) > 0]
+
+    # failure mode
+    start_search_for_kids = sum(len(unassigned_humans[bin]) for bin in KID_BINS + OTHER_MID_BINS) > 0
+    random_allocation_of_kids = False
+
+    while start_search_for_kids and n_failed_attempts < MAX_FAILED_ATTEMPTS_ALLOWED:
         n_kids_needed = sum(len(unallocated_houses[kid_key]) for kid_key in kid_keys)
         valid_kid_bins = [bin for bin in SEARCH_BINS if len(unassigned_humans[bin]) > 0]
 
         # expand the search to middle generation
         if n_kids_needed != 0 and len(valid_kid_bins) == 0:
+            if SEARCH_BINS != OTHER_MID_BINS:
+                log("expanding the search for kids to middle generation for census family households", logfile)
             SEARCH_BINS = OTHER_MID_BINS
             continue
 
+        # allocation succesful in regards to parent-kid constraints
         _valid_bins = [bin for bin in KID_BINS if len(unassigned_humans[bin]) > 0]
         if n_kids_needed == 0 and len(_valid_bins) == 0:
             break
@@ -255,16 +406,21 @@ def assign_households_to_humans(humans, city, conf, logfile=None):
         housetype = _sample_house_type(unallocated_houses, city.rng, kid=True)
         # find other residents
         humans_with_same_house, unassigned_humans = _sample_other_residents(housetype, unassigned_humans, city.rng, conf, with_kid=kid)
-
         if humans_with_same_house:
             allocated_humans = create_and_assign_household(humans_with_same_house, housetype, conf, city, allocated_humans)
             unallocated_houses[housetype.n_kids].remove(housetype)
         else:
             n_failed_attempts += 1
-            unassigned_humans[kid.age_bin_width_5.bin].append(kid)
+            unassigned_humans = _revert_allocation([kid], unassigned_humans)
 
-    assert sum(len(houses) for n_kids, houses in unallocated_houses.items() if n_kids > 0) == 0, "kids remain to be allocated"
-    assert sum(len(unassigned_humans[kid_bin]) for kid_bin in KID_BINS) == 0, "kids remain to be allocated"
+    if start_search_for_kids and n_failed_attempts < MAX_FAILED_ATTEMPTS_ALLOWED:
+        assert sum(len(houses) for n_kids, houses in unallocated_houses.items() if n_kids > 0) == 0, "kids remain to be allocated"
+        assert sum(len(unassigned_humans[kid_bin]) for kid_bin in KID_BINS) == 0, "kids remain to be allocated"
+    elif not start_search_for_kids:
+        log("Not searching for kids because there are none", logfile)
+    else:
+        random_allocation_of_kids = True
+        log(f"kids allocation failed. not satisfying the parent-kid constraints anymore. Allocating randomly...", logfile)
 
     # Step 2: remaining living arrangements are - "couple" (with 0 kids), "other" (not multigenerational), "solo"
     while len(unallocated_houses[0]) > 0:
@@ -278,7 +434,7 @@ def assign_households_to_humans(humans, city, conf, logfile=None):
     # Step 3: if there are more humans than the presampled housetypes;
     # create more households with the distribution only towards solo, couple and others because there are no more kids
     FAMILY_TYPES, P_TYPES = _get_family_types(conf, without_kids=True)
-    while len(allocated_humans) < city.n_people and n_failed_attempts < MAX_FAILED_ATTEMPTS_ALLOWED:
+    while len(allocated_humans) < city.n_people and n_failed_attempts < 2 * MAX_FAILED_ATTEMPTS_ALLOWED:
         # sample house
         housetype = _random_choice_tuples(FAMILY_TYPES, city.rng, 1, P=P_TYPES, replace=True)[0]
         # sample humans (without kids)
@@ -291,18 +447,30 @@ def assign_households_to_humans(humans, city, conf, logfile=None):
             allocated_humans = create_and_assign_household(humans_with_same_house, housetype, conf, city, allocated_humans)
         else:
             n_failed_attempts += 1
-            if n_failed_attempts % 100 == 0:
+            if n_failed_attempts % 1000 == 0:
                 log(f"Failed attempt - {n_failed_attempts}. Total allocated:{len(allocated_humans)}", logfile)
 
+    if not start_search_for_kids or n_failed_attempts == 2 * MAX_FAILED_ATTEMPTS_ALLOWED or random_allocation_of_kids:
         # something is wrong with the algo.
-        if n_failed_attempts > 100000:
-            log(f"Could not find suitable housing for the population. Exiting...\nFailed attempt - {n_failed_attempts}. Total allocated:{len(allocated_humans)}", logfile)
-            sys.exit()
+        log(f"Could not find suitable housing for the population. Allocating solo residences.\nFailed attempt - {n_failed_attempts}. Total allocated:{len(allocated_humans)}", logfile)
+        for bin, humans in unassigned_humans.items():
+            for human in humans:
+                unassigned_humans[bin].remove(human)
+                housetype = HouseType("solo", 0, 1, P_HOUSEHOLD_SIZE[0])
+                housetype.random = True
+                allocated_humans = create_and_assign_household([human], housetype, conf, city, allocated_humans)
+    else:
+        assert len(allocated_humans) == city.n_people, "assigned humans and total population do not add up"
+        assert sum(len(val) for x,val in unassigned_humans.items()) == 0, "there are unassigned humans in the list"
+        assert len(city.households) > 0, "no house generated"
+        assert all(not all(human.age < MAX_AGE_CHILDREN for human in house.residents) for house in city.households), "house with only children allocated"
 
-    assert len(allocated_humans) == city.n_people, "assigned humans and total population do not add up"
-    assert sum(len(val) for x,val in unassigned_humans.items()) == 0, "there are unassigned humans in the list"
-    assert len(city.households) > 0, "no house generated"
-    assert all(not all(human.age < MAX_AGE_CHILDREN for human in house.residents) for house in city.households), "house with only children allocated"
+    # assign area to houses
+    HOUSEHOLD_PROPORTION_AREA = conf['HOUSEHOLD_PROPORTION_AREA']
+    area = _get_random_area(len(city.households), HOUSEHOLD_PROPORTION_AREA * city.total_area, city.rng)
+    for i,house in enumerate(city.households):
+        house.area = area[i]
+
     # shuffle the list of humans so that the simulation is not dependent on the order of house allocation
     city.rng.shuffle(allocated_humans)
     log(f"Housing allocated with failed attempts: {n_failed_attempts} ", logfile)
@@ -328,8 +496,13 @@ def _sample_house_type(unallocated_houses, rng, kid=True):
         else:
             unallocated_houses.pop('multigenerational')
 
+        # failure mode
+        remaining_kids_houses = [(n,len(houses)) for n, houses in unallocated_houses.items() if n > 0 and len(houses) > 0]
+        if not remaining_kids_houses:
+            return None
+
         # rest afterwards
-        n_kids, count = list(zip(*[(n,len(houses)) for n, houses in unallocated_houses.items() if n > 0 and len(houses) > 0]))
+        n_kids, count = list(zip(*remaining_kids_houses))
         count = np.array(count)
         p = count / count.sum()
         n_kids = rng.choice(n_kids, size=1, p=p).item()
@@ -351,6 +524,10 @@ def _sample_other_residents(housetype, unassigned_humans, rng, conf, with_kid=No
     Returns:
         (list): list of sampled humans. Returns an empty list if unsuccessful.
     """
+    # failure mode
+    if housetype is None:
+        return [], unassigned_humans
+
     MAX_AGE_CHILDREN = conf['MAX_AGE_CHILDREN']
     MAX_AGE_WITH_PARENT = conf['MAX_AGE_WITH_PARENT']
     AGE_DIFFERENCE_BETWEEN_PARENT_AND_KID = conf['AGE_DIFFERENCE_BETWEEN_PARENT_AND_KID']
@@ -362,9 +539,12 @@ def _sample_other_residents(housetype, unassigned_humans, rng, conf, with_kid=No
 
         # NOTE: ASSORTATIVITY handles samples not being far away
         if with_kid.age > MAX_AGE_CHILDREN:
-            valid_younger_bins = _get_valid_bins(AGE_BIN_WIDTH_5, min_age=MAX_AGE_CHILDREN, max_age=MAX_AGE_WITH_PARENT)
+            valid_younger_bins = _get_valid_bins(valid_age_bins, min_age=MAX_AGE_CHILDREN, max_age=MAX_AGE_WITH_PARENT)
         else:
             valid_younger_bins = _get_valid_bins(valid_age_bins, max_age=MAX_AGE_CHILDREN + 5, inclusive=True)
+        # check if there are enough kids
+        if sum(len(unassigned_humans[bin]) for bin in valid_younger_bins) < n_kids-1:
+            return [], unassigned_humans
 
         kids = _sample_n_kids(valid_younger_bins, conf, unassigned_humans, rng, size=n_kids-1, with_kid=with_kid)
         assert with_kid in kids, "kid not present in sampled kids"
@@ -387,6 +567,9 @@ def _sample_other_residents(housetype, unassigned_humans, rng, conf, with_kid=No
             p_bin = _get_probability_of_drawing_bins(P_CONTACT_HOUSE, valid_parent_bins, age=ref_age)
 
             parents = _sample_n_parents(valid_parent_bins, conf, unassigned_humans, rng, n=n_parents, p_bin=p_bin)
+            if len(parents) == 0:
+                unassigned_humans = _revert_allocation(kids, unassigned_humans)
+                return [], unassigned_humans
 
             max_age_parent = max(p.age for p in parents)
             min_age_grandparent = max_age_parent + AGE_DIFFERENCE_BETWEEN_PARENT_AND_KID
@@ -400,6 +583,10 @@ def _sample_other_residents(housetype, unassigned_humans, rng, conf, with_kid=No
             ref_age = np.min([p.age for p in parents]) if parents else min_age_parent
             p_bin = _get_probability_of_drawing_bins(P_CONTACT_HOUSE, valid_grandparent_bins, age=ref_age)
             grandparents = _sample_n_parents(valid_grandparent_bins, conf, unassigned_humans, rng, n=n_grandparents, p_bin=p_bin)
+
+            if len(grandparents) == 0:
+                unassigned_humans = _revert_allocation(kids + parents, unassigned_humans)
+                return [], unassigned_humans
 
         sampled_humans = kids + parents + grandparents
         assert len(sampled_humans) == housetype.n_humans
@@ -438,6 +625,10 @@ def _sample_n_parents(valid_age_bins, conf, unassigned_humans, rng, n, p_bin):
     Returns:
         list: humans belonging to a same household (length = n + 2 if succesful else 0)
     """
+    # failure mode
+    if len(valid_age_bins) == 0:
+        return []
+
     if p_bin is None:
         p_bin = np.ones_like(valid_age_bins)
         p_bin /= p_bin.sum()
@@ -445,6 +636,7 @@ def _sample_n_parents(valid_age_bins, conf, unassigned_humans, rng, n, p_bin):
     assert n in [1, 2], f"can not sample {n} parents"
     assert abs(p_bin.sum() - 1) < 1e-2, "probabilities do not sum to 1"
 
+    sampled_parents = []
     # single parent
     if n == 1:
         older_bin = _random_choice_tuples(valid_age_bins, rng, size=1, P=p_bin)[0]
@@ -456,7 +648,8 @@ def _sample_n_parents(valid_age_bins, conf, unassigned_humans, rng, n, p_bin):
     if n==2:
         sampled_parents = _sample_couple(valid_age_bins, conf, unassigned_humans, rng, p_bin=p_bin)
 
-    assert len(sampled_parents) == n, "not a valid allocation"
+    if sampled_parents:
+        assert len(sampled_parents) == n, "not a valid allocation"
 
     return sampled_parents
 
@@ -738,11 +931,17 @@ def create_and_assign_household(humans_with_same_house, housetype, conf, city, a
         allocated_humans (list): a list of humans that have been allocated a household
     """
     assert all(human not in allocated_humans for human in humans_with_same_house), f"reassigning household to human"
-    res = city.create_location(
-        specs = conf.get("LOCATION_DISTRIBUTION")["household"],
-        type = "household",
-        name = len(city.households)
-    )
+    res =  Household(
+            env=city.env,
+            rng=np.random.RandomState(city.rng.randint(2 ** 16)),
+            conf=conf,
+            name=f"HOUSEHOLD:{len(city.households)}",
+            location_type="HOUSEHOLD",
+            lat=city.rng.randint(*city.x_range),
+            lon=city.rng.randint(*city.y_range),
+            area=None,
+            capacity=None,
+        )
 
     for human in humans_with_same_house:
         allocated_humans = _assign_household(human, res, allocated_humans)
@@ -806,3 +1005,19 @@ def _get_probability_of_drawing_bins(P_CONTACT, valid_bins, age):
     valid_bins_idx = [i for i, x in enumerate(AGE_BIN_WIDTH_5) if x in valid_bins]
     p_bin = P_CONTACT[valid_bins_idx, idx]
     return p_bin / p_bin.sum()
+
+def _revert_allocation(humans, unassigned_humans):
+    """
+    Puts the humans back in their respective bins.
+
+    Args:
+        humans (list): list of humans to be put back in their respective bins
+        unassigned_humans (dict): keys are age bin (tuple) and values are humans that do not have a household allocated
+
+    Returns:
+        unassigned_humans (dict): keys are age bin (tuple) and values are humans that do not have a household allocated
+    """
+    for human in humans:
+        if human not in unassigned_humans[human.age_bin_width_5.bin]:
+            unassigned_humans[human.age_bin_width_5.bin].append(human)
+    return unassigned_humans
