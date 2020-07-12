@@ -7,7 +7,7 @@ from covid19sim.epidemiology.symptoms import _disease_phase_id_to_idx, _disease_
     _get_covid_fever_probability, _get_covid_gastro_probability, _get_covid_symptoms, \
     _get_covid_sickness_severity, _get_covid_trouble_breathing_probability, \
     _get_covid_trouble_breathing_severity, _get_flu_progression, \
-    Symptom, SYMPTOMS, DISEASES_PHASES, \
+    Symptom, SYMPTOMS, STR_TO_SYMPTOMS, DISEASES_PHASES, \
     COVID_INCUBATION, \
     COVID_ONSET, \
     COVID_PLATEAU, \
@@ -59,7 +59,7 @@ class Symptoms(unittest.TestCase):
     def test_legacy_str_symptoms_compatibility(self):
         symptoms_list = list(SYMPTOMS.keys())
         symptoms_set = set(SYMPTOMS.keys())
-        symptoms_str_list = [str(symptom) for symptom in SYMPTOMS.keys()]
+        symptoms_str_list = [str(symptom) for symptom in SYMPTOMS]
         for symptom in symptoms_list:
             self.assertEqual(symptom, symptom.name)
             self.assertEqual(str(symptom), symptom.name)
@@ -76,6 +76,10 @@ class Symptoms(unittest.TestCase):
 
             self.assertIn(symptom.id, symptoms_set)
             self.assertIn(symptom, symptoms_set)
+
+            self.assertEqual(STR_TO_SYMPTOMS[str(symptom)], symptom)
+
+        self.assertEqual(len(SYMPTOMS), len(STR_TO_SYMPTOMS))
 
     def test_symptoms_structure(self):
         for symptom, s_prob in SYMPTOMS.items():

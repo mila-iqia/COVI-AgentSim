@@ -562,6 +562,11 @@ SYMPTOMS: typing.Dict[Symptom, SymptomProbability] = OrderedDict([
 ])
 
 
+STR_TO_SYMPTOMS: typing.Dict[str, Symptom] = {
+    str(symptom): symptom for symptom in SYMPTOMS
+}
+
+
 def _get_covid_sickness_severity(rng, phase_id: int, really_sick: bool, extremely_sick: bool,
                                  preexisting_conditions: list, initial_viral_load: float):
     # covid_incubation
