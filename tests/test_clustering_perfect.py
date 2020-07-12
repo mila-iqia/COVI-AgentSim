@@ -1,18 +1,26 @@
 import unittest
 import numpy as np
 import covid19sim.inference.clustering.perfect as clu
-from tests.utils import MessageContext
+from tests.utils import MessageContextManager
 
 
 class PerfectClusteringTests(unittest.TestCase):
-    # here, we will run random encounter scenarios and verify that cluster
-    # are always homogenous
+    """
+    testcase for a blind clustering algorithm
+
+    In this testcase will run random encounter scenarios and verify that
+    cluster are always homogenous
+    """
 
     def setUp(self):
         self.max_tick = 30
-        self.message_context = MessageContext(max_tick=self.max_tick)
+        self.message_context = MessageContextManager(max_tick=self.max_tick)
 
     def test_linear_saturation_history(self):
+        """
+        test if perfect clustering can perfectly homogenize all clusters in
+        linear saturation evolution trend for their risk levels
+        """
         n_trial = 5
         n_human = 200
         n_encounter = 40
@@ -41,6 +49,10 @@ class PerfectClusteringTests(unittest.TestCase):
                 self.assertTrue(cluster._is_homogenous())
 
     def test_random_history(self):
+        """
+        test if perfect clustering can perfectly homogenize all clusters in
+        a scenario that the protagonist receives random risk levels and messages
+        """
         n_trial = 5
         n_human = 200
         n_encounter = 30

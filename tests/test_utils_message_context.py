@@ -1,11 +1,11 @@
 import unittest
 import covid19sim.inference.message_utils as mu
-from tests.utils import MessageContext, ObservedRisk
+from tests.utils import MessageContextManager, ObservedRisk
 
-class TestMessageContext(unittest.TestCase):
+class TestMessageContextManager(unittest.TestCase):
 
     def setUp(self):
-        self.message_context = MessageContext(max_tick=30)
+        self.message_context = MessageContextManager(max_tick=30)
         self.maxDiff = None
 
     def test_insert_messages_smoke_test(self):

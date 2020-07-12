@@ -4,24 +4,27 @@ import unittest
 import covid19sim.inference.clustering.blind as clu
 import covid19sim.inference.message_utils as mu
 
-from tests.utils import MessageContext, ObservedRisk, \
+from tests.utils import MessageContextManager, ObservedRisk, \
                         RiskLevelBoundsCheckedType
 
 
 class BlindClusteringTests(unittest.TestCase):
-    # note: we only ever build & test clusters for a single human, assuming it
-    # would also work for others
+    """
+    testcase for a blind clustering algorithm
+    """
     def setUp(self):
         self.max_tick = 20
-        self.message_context = MessageContext(max_tick=self.max_tick)
+        self.message_context = MessageContextManager(max_tick=self.max_tick)
 
     def test_same_day_visit_same_risk_clusters(self):
+        """
+        first scenario: single day visits, same risk for n visitors,
+        should give one cluster
+        """
         n_human = 3
         encounter_tick = 2
         encounter_risk_level = 1
         assert encounter_tick <= self.max_tick
-        # first scenario: single day visits, same risk for n visitors,
-        # should give one cluster
         for idx in range(n_human):
             self.message_context.insert_messages(
                 ObservedRisk(
@@ -47,8 +50,10 @@ class BlindClusteringTests(unittest.TestCase):
         self.assertTrue((embeddings[:, 3] == 0).all())  # timestamp offset
 
     def test_same_day_visit_diff_risk_clusters(self):
-        # 2nd scenario: single day visits, diff risk for n visitors,
-        # should give n cluster
+        """
+        2nd scenario: single day visits, diff risk for n visitors,
+        should give n cluster
+        """
         n_human = 3
         encounter_tick = 0
         assert encounter_tick <= self.max_tick
@@ -83,7 +88,9 @@ class BlindClusteringTests(unittest.TestCase):
         self.assertTrue((embeddings[:, 3] == 0).all())  # timestamp offset
 
     def test_cluster_single_encounter_functional(self):
-        # functional test for BlindClusterManager, single encounter
+        """
+        functional test for BlindClusterManager, single encounter
+        """
         encounter_tick = 0
         encounter_risk_level = 7
         assert encounter_tick <= self.max_tick
@@ -103,7 +110,9 @@ class BlindClusteringTests(unittest.TestCase):
         )
 
     def test_cluster_single_encounter_and_update_functional(self):
-        # functional test for BlindClusterManager, single encounter and update
+        """
+        functional test for BlindClusterManager, single encounter and update
+        """
         encounter_tick = 0
         encounter_risk_level = 7
         update_tick1 = 1
@@ -133,8 +142,11 @@ class BlindClusteringTests(unittest.TestCase):
         )
 
     def test_cluster_eventual_same_risk_functional(self):
-        # scenario: single encounter that gets updated (should remain at
-        # one cluster), add a new encounter: it should not match the existing cluster due to diff risk
+        """
+        scenario: single encounter that gets updated (should remain at
+        one cluster), add a new encounter: it should not match the
+        existing cluster due to diff risk
+        """
         encounter_tick_a = encounter_tick_b = 0
         encounter_risk_level_a = update_risk_level_b = 7
         encounter_risk_level_b = 1
@@ -165,7 +177,12 @@ class BlindClusteringTests(unittest.TestCase):
         )
 
     def test_cluster_same_risk_repeated_contact_functional(self):
-        #
+        """
+        scenario: a same user with unchanging risk making a couple of contacts
+        over days. With the message cluster expiring messages with older ticks
+        than max_tick_day_offset, the remaining messages each constitute a
+        distinct cluster
+        """
         encounter_ticks = [2, 5, 8]
         max_tick_day_offset = 5
         encounter_risk_level = 0
@@ -191,8 +208,11 @@ class BlindClusteringTests(unittest.TestCase):
         self.assertEqual(clustered_first_update_time, expected_ticks)
 
     def test_cluster_cleanup_outdated_functional(self):
-        # scenario: a new encounter is added that is waaay outdated; it should not create a cluster
-        # new manually added encounters that are outdated should also be ignored
+        """
+        scenario: a new encounter is added that is waaay outdated; it should
+        not create a cluster new manually added encounters that are outdated
+        should also be ignored
+        """
         encounter_tick_a = 0
         encounter_risk_level_a = 7
         update_tick_a = 1
@@ -224,6 +244,10 @@ class BlindClusteringTests(unittest.TestCase):
             cluster_manager.clusters[0].risk_level, encounter_risk_level_b)
 
     def test_random_large_scale(self):
+        """
+        test if random large tests cover all the event space for clusters
+        and its corresponding homogeneity
+        """
         n_trial = 5
         n_human = 50
         n_encounter = 30

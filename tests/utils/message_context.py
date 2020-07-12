@@ -38,35 +38,49 @@ class ObservedRisk:
     signatures, i.e., update_risk_levels, update_ticks, and update_reasons
     for update messages to be related to the former encountered message.
     """
-
     start_time = mu.TimestampDefault
     time_offset = datetime.timedelta(days=1)
 
     @staticmethod
-    def toff(t: int or np.int64):
+    def toff(t: typing.Union[int, np.int64]):
+        """
+        translates discrete time according to daily time offsets
+        """
         return ObservedRisk.start_time + t * ObservedRisk.time_offset
 
     @dataclasses.dataclass
-    class UpdateSignature:
-        update_tick: int or np.int64
+    class _UpdateMessage:
+        """
+        container for update messages of observed risks
+        """
+        update_tick: typing.Union[int, np.int64]
         update_risk_level: RiskLevelBoundsCheckedType
         update_reason: typing.Optional[str] = None
 
-    encounter_tick: int or np.int64
+    encounter_tick: typing.Union[int, np.int64]
     encounter_risk_level: RiskLevelBoundsCheckedType
-    update_signatures: typing.List[UpdateSignature] = \
+    update_signatures: typing.List[_UpdateMessage] = \
         dataclasses.field(default_factory=list, init=False)
 
     def __post_init__(self):
+        """
+        post initialization of encounter_risk_level to make sure
+        the its bounds are checked
+        """
         self.encounter_risk_level = RiskLevelBoundsCheckedType(
                                             self.encounter_risk_level)
 
     def update(self,
-               update_tick: int or np.int64,
-               update_risk_level: int or RiskLevelBoundsCheckedType,
+               update_tick: typing.Union[int, np.int64],
+               update_risk_level: typing.Union[int, RiskLevelBoundsCheckedType],
                update_reason: typing.Optional[str] = None,
                ):
-        # argument validation
+        """
+        adds an update message following an encounter message and the updates
+        that followed it
+        """
+        # validate the passed update tick does not belong to a time older than
+        # the last update
         if len(self.update_signatures) > 0:
             if update_tick < self.update_signatures[-1].update_tick:
                 raise ValueError(
@@ -83,10 +97,11 @@ class ObservedRisk:
                         self.encounter_tick
                     )
                 )
+        # validate the bounds of the passed update_risk_level
         update_risk_level = RiskLevelBoundsCheckedType(update_risk_level)
 
         self.update_signatures.append(
-            ObservedRisk.UpdateSignature(
+            ObservedRisk._UpdateMessage(
                 update_tick=update_tick,
                 update_risk_level=update_risk_level,
                 update_reason=update_reason
@@ -96,10 +111,10 @@ class ObservedRisk:
     def to_user_messages(self,
                          uid: mu.UIDType,
                          real_uid_counter: mu.RealUserIDType,
-                         exposure_tick: int or np.int64 = np.inf,
+                         exposure_tick: typing.Union[int, np.int64] = np.inf,
                          ) -> typing.List[mu.GenericMessageType]:
         """
-        converting observed risk levels for a new contacted user
+        converting observed risk levels for a contacted user
         into a list of encounter and update messages
         """
         encounter_time = ObservedRisk.toff(self.encounter_tick)
@@ -140,14 +155,12 @@ class ObservedRisk:
         return messages
 
 
-class MessageContext():
+class MessageContextManager():
     """
-    A class to generate batch of encounter and update messages
-    that interface.
+    A context manager to generate batch of encounter and update
+    messages that interface.
     Each public method call counts as one distinct user sending
     messages to a protagonist receiving these messages.
-    All generated messages in this class could be accessed with
-    self.contact_messages.
     """
 
     def __init__(self, max_tick):
@@ -158,12 +171,18 @@ class MessageContext():
 
     def insert_messages(
         self,
-        observed_risks: ObservedRisk or typing.List[ObservedRisk],
+        observed_risks: typing.Union[ObservedRisk, typing.List[ObservedRisk]],
         tick_to_uid_map: typing.Dict[int, mu.UIDType] = {},
-        exposure_tick: int or np.int64 = np.inf,
+        exposure_tick: typing.Union[int, np.int64] = np.inf,
     ) -> typing.List[mu.GenericMessageType]:
         """
-        
+        inserting a batch of observed_risks to the message context
+        :param tick_to_uid_map: the uids to force ticks to adopt,
+        random otherwise
+        :param exposure_tick: the tick on which all the following messages
+        (inclusive) are set in _exposition_event flag in messages' debugging
+        attributes this doesn't ensure the risk levels that are passed
+        via observed_risks reflect this
         """
         if isinstance(observed_risks, ObservedRisk):
             observed_risks = [observed_risks]
@@ -177,26 +196,31 @@ class MessageContext():
             self._contact_messages.extend(
                 observed_risk.to_user_messages(
                     uid,
-                    self.real_uid_counter
+                    self.real_uid_counter,
+                    exposure_tick=exposure_tick
                 )
             )
         self.real_uid_counter += 1
 
     @staticmethod
-    def _chronological_key(message):
+    def _chronological_key(message: mu.GenericMessageType):
         """
         Returns a message key that is used to generate chronological sorting
         of messages (from old to new)
         """
         if isinstance(message, mu.UpdateMessage):
             return (message.update_time, 1)
-        else:
+        else: # mu.EncounterMessage
             return (message.encounter_time, 0)
 
     @property
     def contact_messages(self, sort=True):
         """
         Returns a batch of contact messages sorted in chronological order
+        by default. If sort is otherwise set to False, then returns unsorted
+        contact messages.
+        All generated messages in this manager are to be accessed using this
+        property
         """
         if sort:
             self._contact_messages.sort(key=self._chronological_key)
@@ -206,12 +230,16 @@ class MessageContext():
             self,
             n_encounter: int,
             n_update: int,
-            exposure_tick: int or np.int64 = np.inf,
+            exposure_tick: typing.Union[int, np.int64] = np.inf,
             min_risk_level: RiskLevelBoundsCheckedType = 0,
             max_risk_level: RiskLevelBoundsCheckedType = mu.risk_level_mask
     ) -> typing.List[mu.GenericMessageType]:
         """
         Returns a set of random encounter/update messages from a single user
+        :param exposure_tick: the tick on which all the following messages
+        (inclusive) are set in _exposition_event flag in messages' debugging
+        attributes this doesn't ensure the risk levels that are passed
+        via observed_risks reflect this
         """
         # argument validation
         if n_encounter < 1:
@@ -262,45 +290,54 @@ class MessageContext():
 
     def _generate_linear_saturation_observed_risks(
         self,
-        exposure_tick: int or np.int64,
-        risk_level_low: RiskLevelBoundsCheckedType,
-        risk_level_high: RiskLevelBoundsCheckedType,
+        negative_saturation_tick: typing.Union[int, np.int64],
+        init_risk_level: RiskLevelBoundsCheckedType,
+        final_risk_level: RiskLevelBoundsCheckedType,
         rate: int = 1
     ) -> typing.List[mu.GenericMessageType]:
         """
         Returns the observed risks belonging to a linear saturation curve (_/¯)
+        :param negative_saturation_tick: the last tick before observing an
+        increase in the risk levels
+        :param init_risk_level: the initial risk level
+        :param final_risk_level: the final risk level if reachable given
+        negative_saturation_tick and rate
+        :param rate: the rate of increase of ticks over a unit of
+        increase of init_risk_level to final_risk_level
         """
-        if not exposure_tick:
-            exposure_tick = self.max_tick + 1
-        positive_test_tick = exposure_tick + \
-            (risk_level_high - risk_level_low) * rate
+        if not negative_saturation_tick:
+            negative_saturation_tick = self.max_tick + 1
+        # setting the last tick of the increasing pattern in the risk levels
+        positive_saturation_tick = negative_saturation_tick + \
+            (final_risk_level - init_risk_level) * rate
 
-        if positive_test_tick <= self.max_tick:
+        if positive_saturation_tick <= self.max_tick:
             observed_risks = [None] * self.max_tick
             for t in range(self.max_tick):
-                if t <= exposure_tick:
+                if t <= negative_saturation_tick:
                     observed_risks[t] = ObservedRisk(
                         encounter_tick=t,
-                        encounter_risk_level=risk_level_low,
+                        encounter_risk_level=init_risk_level,
                     )
-                elif t >= positive_test_tick:
+                elif t >= positive_saturation_tick:
                     observed_risks[t] = ObservedRisk(
                         encounter_tick=t,
-                        encounter_risk_level=risk_level_high,
+                        encounter_risk_level=final_risk_level,
                     )
                 else:
                     observed_risks[t] = ObservedRisk(
                         encounter_tick=t,
-                        encounter_risk_level=(t - exposure_tick) / rate,
+                        encounter_risk_level= \
+                            (t - negative_saturation_tick) / rate,
                     ).update(
-                        update_tick=positive_test_tick,
-                        update_risk_level=risk_level_high
+                        update_tick=positive_saturation_tick,
+                        update_risk_level=final_risk_level
                     )
         else:
             observed_risks = [
                 ObservedRisk(
                     encounter_tick=t,
-                    encounter_risk_level=risk_level_low
+                    encounter_risk_level=init_risk_level
                 )
                 for t in range(self.max_tick)
             ]
@@ -309,13 +346,19 @@ class MessageContext():
     def insert_linear_saturation_risk_messages(
             self,
             n_encounter: int,
-            exposure_tick: int or np.int64 = np.inf,
+            exposure_tick: typing.Union[int, np.int64] = np.inf,
             init_risk_level: RiskLevelBoundsCheckedType = 0,
             final_risk_level: RiskLevelBoundsCheckedType = mu.risk_level_mask,
     ) -> typing.List[mu.GenericMessageType]:
         """
         Returns a set of random encounter/update messages from a single user
         with observed risks belonging to a linear saturation curve (_/¯)
+        :param exposure_tick: the tick on which the risk level start rising
+        this tick also marks the debugging flag of _exposition_event in all
+        messages happening on and following ticks (inclusive)
+        :param init_risk_level: the initial risk level
+        :param final_risk_level: the final risk level if reachable given
+        negative_saturation_tick and rate
         """
         # argument validation
         if not init_risk_level <= final_risk_level <= mu.risk_level_mask:
@@ -329,9 +372,9 @@ class MessageContext():
         # create at least one encounter
         linear_saturation_risks = \
             self._generate_linear_saturation_observed_risks(
-                exposure_tick=exposure_tick,
-                risk_level_low=init_risk_level,
-                risk_level_high=final_risk_level,
+                negative_saturation_tick=exposure_tick,
+                init_risk_level=init_risk_level,
+                final_risk_level=final_risk_level,
             )
 
         idxs = np.random.choice(
