@@ -16,7 +16,7 @@ class SimpleClusteringTests(unittest.TestCase):
         self.message_context = MessageContext(max_tick=self.max_tick)
 
     def test_same_day_visit_clusters(self):
-        n_human = n_human = 3
+        n_human = 3
         encounter_tick = 2
         encounter_risk_level = 1
         assert encounter_tick <= self.max_tick
