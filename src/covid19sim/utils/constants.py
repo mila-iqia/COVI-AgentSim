@@ -1,5 +1,5 @@
 """
-[summary]
+A list of constants to be consistent across different scripts.
 """
 
 #
@@ -53,8 +53,9 @@ SECONDS_PER_YEAR          = int(365.00000*SECONDS_PER_EPHEMERIS_DAY) # 365 ephem
 SECONDS_PER_TROPICAL_YEAR = int(365.24219*SECONDS_PER_EPHEMERIS_DAY) # ~365 1/4 ephemeris days
 SECONDS_PER_LEAP_YEAR     = int(366.00000*SECONDS_PER_EPHEMERIS_DAY) # 366 ephemeris days
 
-
-
 # age bins
 AGE_BIN_WIDTH_5           = [(0,4), (5,9), (10,14), (15,19), (20,24), (25,29), (30,34), (35,39), (40,44), (45,49), (50,54), (55,59), (60,64), (65,69), (70,74), (75,110)]
 AGE_BIN_WIDTH_10          = [(0,9), (10,19), (20,29), (30,39), (40,49), (50,59), (60,69), (70,79), (80,110)]
+
+# locations
+ALL_LOCATIONS             = ["HOUSEHOLD", "SENIOR_RESIDENCE", "WORKPLACE", "STORE", "MISC", "HOSPITAL", "PARK", "SCHOOL"]

@@ -17,7 +17,7 @@ import pandas as pd
 
 from covid19sim.plotting.plot_rt import PlotRt
 from covid19sim.utils.utils import log
-from covid19sim.utils.constants import AGE_BIN_WIDTH_5
+from covid19sim.utils.constants import AGE_BIN_WIDTH_5, ALL_LOCATIONS
 LOCATION_TYPES_TO_TRACK_MIXING = ["house", "work", "school", "other", "all"]
 
 def print_dict(title, dic, is_sorted=None, top_k=None, logfile=None):
@@ -47,14 +47,23 @@ def normalize_counter(counter, normalizer=None):
         counter[key] /= total
     return counter
 
-def _get_location_type_to_track_mixing(location):
-    if location.location_type == "household":
+def _get_location_type_to_track_mixing(human, location):
+    """
+    Maps a location to a corresponding label in POLYMOD study.
+
+    Args:
+        human (covid19sim.human.Human): `human` who is at a `location`
+        location (covid19sim.locations.location.Location): `location` where an interaction took place
+    Returns
+        (str): a corresponding label for POLYMOD study.
+    """
+    if location.location_type == "HOUSEHOLD":
         return "house"
 
-    if location.location_type == "workplace":
+    if location.location_type == "WORKPLACE":
         return "work"
 
-    if location.location_type == "school":
+    if location.location_type == "SCHOOL":
         return "school"
 
     return "other"
@@ -266,7 +275,7 @@ class Tracker(object):
         WARN_PERCENTAGE_THRESHOLD = 4
 
         log("\n######## DEMOGRAPHICS / SYNTHETIC POPULATION #########", self.logfile)
-        log("NOTE: census numbers are in brackets\n", self.logfile)
+        log("NB: census numbers are in brackets. (*) shows a significant deviation from census\n", self.logfile)
         # age distribution
         x = np.array([h.age for h in self.city.humans])
         cns_avg = self.conf['AVERAGE_AGE_REGION']
@@ -289,9 +298,10 @@ class Tracker(object):
             str_to_print += f"{z}: {p:2.3f}% | "
         log(str_to_print, self.logfile)
 
+        ###### house initialization
         log("\n*** House allocation *** ", self.logfile)
         # senior residencies
-        self.n_senior_residency_residents = sum(len(sr.residents) for sr in self.city.senior_residencys)
+        self.n_senior_residency_residents = sum(len(sr.residents) for sr in self.city.senior_residences)
         p = 100*self.n_senior_residency_residents / self.n_people
         cns = 100*self.conf['P_COLLECTIVE']
         warn = "(*)" if abs(p-cns) > 2 else ""
@@ -364,15 +374,15 @@ class Tracker(object):
             str_to_print += f"{warn}{atype}: {p:2.3f}%  ({cns: 2.2f})| "
         log(str_to_print, self.logfile)
 
+        ###### location initialization
         log("\n *** Other locations *** ", self.logfile)
         ## collectives
-        n_senior_residencies = len(self.city.senior_residencys)
-        log(f"(Collectives) Senior Residencies: {n_senior_residencies}", self.logfile)
+        n_senior_residences = len(self.city.senior_residences)
+        log(f"(Collectives) Senior Residencies: {n_senior_residences}", self.logfile)
 
-        # location initialization
         str_to_print = "Other locations (count): "
-        for location_type in self.conf['LOCATION_DISTRIBUTION'].keys():
-            n_locations = len(getattr(self.city, f"{location_type}s"))
+        for location_type in ALL_LOCATIONS:
+            n_locations = len(getattr(self.city, f"{location_type.lower()}s"))
             str_to_print += f"{location_type}: {n_locations} | "
         log(str_to_print, self.logfile)
 
@@ -1105,7 +1115,10 @@ class Tracker(object):
             return
 
         # record the values
-        type_of_place = _get_location_type_to_track_mixing(location)
+        human1_type_of_place = _get_location_type_to_track_mixing(human1, location)
+        human2_type_of_place = _get_location_type_to_track_mixing(human2, location)
+        type_of_place = human1_type_of_place # currently, no context is considered to determine the type of place
+
         i = human1.age_bin_width_5.index
         j = human2.age_bin_width_5.index
 

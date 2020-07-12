@@ -11,7 +11,7 @@ from collections import defaultdict, Counter
 from orderedset import OrderedSet
 
 from covid19sim.utils.utils import compute_distance, _get_random_area, relativefreq2absolutefreq, calculate_average_infectiousness, log
-from covid19sim.utils.demographics import get_humans_with_age, assign_profession_to_humans, assign_workplace_to_humans, assign_households_to_humans, create_locations_and_assign_workplace_to_humans
+from covid19sim.utils.demographics import get_humans_with_age, assign_households_to_humans, create_locations_and_assign_workplace_to_humans
 from covid19sim.log.track import Tracker
 from covid19sim.interventions.recommendation_manager import NonMLRiskComputer
 from covid19sim.interventions.behaviors import *

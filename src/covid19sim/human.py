@@ -1565,8 +1565,8 @@ class Human(object):
 
             # keeping known connections help in bringing two people together resulting in repeated contacts of known ones
             if type  == "known":
-                human.known_connections.add(other_human)
-                other_human.known_connections.add(human)
+                self.known_connections.add(other_human)
+                other_human.known_connections.add(self)
 
             # compute detected bluetooth distance and exchange bluetooth messages if conditions are satisfied
             h1_msg, h2_msg = self._exchange_app_messages(other_human, distance_profile.distance, t_near)

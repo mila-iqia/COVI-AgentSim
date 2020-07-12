@@ -5,7 +5,7 @@ from collections import namedtuple
 import numpy as np
 import warnings
 
-from covid19sim.utils.constants import SECONDS_PER_MINUTE, SECONDS_PER_HOUR, AGE_BIN_WIDTH_5
+from covid19sim.utils.constants import SECONDS_PER_MINUTE, SECONDS_PER_HOUR, AGE_BIN_WIDTH_5, ALL_LOCATIONS
 from covid19sim.epidemiology.p_infection import get_environment_human_p_transmission
 from covid19sim.epidemiology.viral_load import compute_covid_properties
 from covid19sim.log.event import Event
@@ -38,7 +38,7 @@ class Location(simpy.Resource):
                 Surfaces: aerosol, copper, cardboard, steel, plastic
         """
 
-        assert location_type in ["HOUSEHOLD", "SENIOR_RESIDENCY", "WORKPLACE", "STORE", "MISC", "HOSPITAL", "PARK", "RANDOM", "SCHOOL"], "not a valid location"
+        assert location_type in ALL_LOCATIONS, "not a valid location"
         if capacity is None:
             capacity = simpy.core.Infinity
 
@@ -436,3 +436,55 @@ class School(Location):
 
     def __repr__(self):
         return self.name + f"| Students:{self.n_students} Teachers:{self.n_teachers}"
+
+
+class WorkplaceA(Location):
+    """
+    Stores location class, inheriting from covid19sim.base.Location
+    """
+    def __init__(self, **kwargs):
+        """
+        Args:
+            kwargs (dict): all the args necessary for a Location's init
+        """
+        super(WorkplaceA, self).__init__(**kwargs)
+        self.workers = set()
+        self.n_workers = 0
+
+    def assign_worker(self, human):
+        """
+        Adds `human` to the set of workers.
+
+        Args:
+            human (covi19sim.human.Human): `human` to add to the set of workers
+        """
+        self.workers.add(human)
+        self.n_workers += 1
+
+    def __repr__(self):
+        return self.name + f"| {self.n_workers} workers"
+
+
+class WorkplaceB(Location):
+    """
+    Stores location class, inheriting from covid19sim.base.Location
+    """
+    def __init__(self, **kwargs):
+        """
+        Args:
+            kwargs (dict): all the args necessary for a Location's init
+        """
+        super(WorkplaceB, self).__init__(**kwargs)
+        self.n_workers = 0
+
+    def assign_worker(self, human):
+        """
+        Adds `human` to the set of workers.
+
+        Args:
+            human (covi19sim.human.Human): `human` to add to the set of workers
+        """
+        self.n_workers += 1
+
+    def __repr__(self):
+        return self.name + f"| {self.n_workers} workers"
