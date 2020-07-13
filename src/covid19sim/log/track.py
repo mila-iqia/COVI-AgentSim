@@ -272,10 +272,11 @@ class Tracker(object):
         Logs statistics related to demographics.
         """
         # warn by (*) string if something is off in percentage from census by this much amount
-        WARN_PERCENTAGE_THRESHOLD = 4
+        WARN_RELATIVE_PERCENTAGE_THRESHOLD = 25
+        WARN_SIGNAL = " (**#@#**) "
 
         log("\n######## DEMOGRAPHICS / SYNTHETIC POPULATION #########", self.logfile)
-        log("NB: census numbers are in brackets. (*) shows a significant deviation from census\n", self.logfile)
+        log(f"NB: (i) census numbers are in brackets. (ii) {WARN_SIGNAL} marks a {WARN_RELATIVE_PERCENTAGE_THRESHOLD}% realtive deviation from census\n", self.logfile)
         # age distribution
         x = np.array([h.age for h in self.city.humans])
         cns_avg = self.conf['AVERAGE_AGE_REGION']
@@ -304,7 +305,7 @@ class Tracker(object):
         self.n_senior_residency_residents = sum(len(sr.residents) for sr in self.city.senior_residences)
         p = 100*self.n_senior_residency_residents / self.n_people
         cns = 100*self.conf['P_COLLECTIVE']
-        warn = "(*)" if abs(p-cns) > 2 else ""
+        warn = WARN_SIGNAL if 100*abs(p-cns)/cns > WARN_RELATIVE_PERCENTAGE_THRESHOLD else ""
         log(f"{warn}Total (%) number of residents in senior residencies (census): {self.n_senior_residency_residents} ({p:2.2f}%) ({cns:2.2f})", self.logfile)
 
         # house allocation
@@ -324,7 +325,7 @@ class Tracker(object):
         log(f"Total houses: {n_houses}", self.logfile)
         p = sizes.mean()
         cns = self.conf['AVG_HOUSEHOLD_SIZE']
-        warn = "(*)" if abs(p-cns) > 2 else ""
+        warn = WARN_SIGNAL if 100*abs(p-cns)/cns > WARN_RELATIVE_PERCENTAGE_THRESHOLD else ""
         log(f"{warn}Average house size - {p: 2.3f} ({cns: 2.3f})", self.logfile)
         ## size
         census = self.conf['P_HOUSEHOLD_SIZE']
@@ -332,7 +333,7 @@ class Tracker(object):
         for i,z in enumerate(sorted(np.unique(sizes))):
             p = 100 * (sizes == z).sum() / n_houses
             cns = 100*census[i]
-            warn = "(*)" if abs(p-cns) > WARN_PERCENTAGE_THRESHOLD else ""
+            warn = WARN_SIGNAL if 100*abs(p-cns)/cns > WARN_RELATIVE_PERCENTAGE_THRESHOLD else ""
             str_to_print += f"{warn} {z}: {p:2.2f}% ({cns: 3.2f}) | "
         log(str_to_print, self.logfile)
 
@@ -346,7 +347,7 @@ class Tracker(object):
                     simulated_solo_dwellers_age_given_housesize1[i][2] += 1
         simulated_solo_dwellers_age_given_housesize1 = [[x[0], x[1], x[2]/n_solo_houses] for x in simulated_solo_dwellers_age_given_housesize1]
         simulated_solo_dwellers_mean_age = sum([x[2] * (x[0] + x[1]) / 2 for x in simulated_solo_dwellers_age_given_housesize1])
-        warn = "(*)" if abs(estimated_solo_dwellers_mean_age-simulated_solo_dwellers_mean_age) > 10 else ""
+        warn = WARN_SIGNAL if 100*abs(estimated_solo_dwellers_mean_age-simulated_solo_dwellers_mean_age)/estimated_solo_dwellers_mean_age > WARN_RELATIVE_PERCENTAGE_THRESHOLD else ""
         str_to_print = f"{warn}Solo dwellers : Average age absolute: {np.mean(solo_ages): 2.2f} (Average with mid point of age groups - simulated:{simulated_solo_dwellers_mean_age: 2.2f} census:{estimated_solo_dwellers_mean_age: 2.2f}) | "
         # str_to_print += f"Median age: {np.median(solo_ages)}"
         log(str_to_print, self.logfile)
@@ -355,7 +356,7 @@ class Tracker(object):
         str_to_print = "Household type: "
         p = 100 * multigenerationals.mean()
         cns = 100*self.conf['P_MULTIGENERATIONAL_FAMILY']
-        warn = "(*)" if abs(p-cns) > WARN_PERCENTAGE_THRESHOLD else ""
+        warn = WARN_SIGNAL if 100*abs(p-cns)/cns > WARN_RELATIVE_PERCENTAGE_THRESHOLD else ""
         str_to_print += f"{warn}multi-generation: {p:2.2f}% ({cns:2.2f}) | "
         p = 100 * only_adults.mean()
         str_to_print += f"Only adults: {p:2.2f}% | "
@@ -370,21 +371,82 @@ class Tracker(object):
         for atype in np.unique(allocation_types):
             p = 100*(allocation_types == atype).mean()
             cns = 100*census[allocation_types == atype][0].item()
-            warn = "(*)" if abs(p-cns) > WARN_PERCENTAGE_THRESHOLD else ""
+            warn = WARN_SIGNAL if 100*abs(p-cns)/cns > WARN_RELATIVE_PERCENTAGE_THRESHOLD else ""
             str_to_print += f"{warn}{atype}: {p:2.3f}%  ({cns: 2.2f})| "
         log(str_to_print, self.logfile)
 
         ###### location initialization
-        log("\n *** Other locations *** ", self.logfile)
-        ## collectives
-        n_senior_residences = len(self.city.senior_residences)
-        log(f"(Collectives) Senior Residencies: {n_senior_residences}", self.logfile)
+        log("\n *** Locations *** ", self.logfile)
 
-        str_to_print = "Other locations (count): "
+        # counts
+        str_to_print = "Counts: "
         for location_type in ALL_LOCATIONS:
             n_locations = len(getattr(self.city, f"{location_type.lower()}s"))
             str_to_print += f"{location_type}: {n_locations} | "
         log(str_to_print, self.logfile)
+
+        ####### work force
+        log("\n *** Workforce *** ", self.logfile)
+
+        # workplaces, stores, miscs
+        all_workplaces = [self.city.workplaces, self.city.stores, self.city.miscs]
+        for workplaces in all_workplaces:
+            subnames = defaultdict(lambda : {'count': 0, 'n_workers':0})
+            n_workers = np.zeros_like(workplaces)
+            avg_workers_age = np.zeros_like(workplaces)
+            for i, workplace in enumerate(workplaces):
+                n_workers[i] = workplace.n_workers
+                avg_workers_age[i] = np.mean([worker.age for worker in workplace.workers])
+                name = workplace.location_type
+                if name == "WORKPLACE":
+                    subnames[workplace.name.split(":")[0]]['count'] += 1
+                    subnames[workplace.name.split(":")[0]]['n_workers'] += workplace.n_workers
+            log(f"{name} - Total workforce: {n_workers.sum()} | Average number of workers: {n_workers.mean(): 2.2f} | Average age of workers: {avg_workers_age.mean(): 2.2f}", self.logfile)
+            if subnames:
+                for workplace_type, val in subnames.items():
+                    log(f"\tNumber of {workplace_type} - {val['count']}. Total number of workers - {val['n_workers']}", self.logfile)
+
+
+
+
+        # hospitals
+        n_nurses = np.zeros_like(self.city.hospitals)
+        n_doctors = np.zeros_like(self.city.hospitals)
+        for i,hospital in enumerate(self.city.hospitals):
+            n_nurses[i] = hospital.n_nurses
+            n_doctors[i] = hospital.n_doctors
+
+        n_nurses_senior_residences = np.zeros_like(self.city.senior_residences)
+        for i,senior_residence in enumerate(self.city.senior_residences):
+            n_nurses_senior_residences[i] = senior_residence.n_nurses
+
+        total_workforce = n_nurses.sum() + n_doctors.sum() + n_nurses_senior_residences.sum()
+        str_to_print = f"HOSPITALS - Total workforce: {total_workforce} "
+        str_to_print += f"| Number of doctors: {n_doctors.sum()} "
+        str_to_print += f"| Number of nurses: {n_nurses.sum()} "
+        str_to_print += f"| Number of nurses at SENIOR_RESIDENCES: {n_nurses_senior_residences.sum()}"
+        log(str_to_print, self.logfile)
+
+        # schools
+        n_teachers = np.zeros_like(self.city.schools)
+        n_students = np.zeros_like(self.city.schools)
+        subnames = defaultdict(lambda : {'count':0, 'n_teachers':0, 'n_students':0})
+        for i, school in enumerate(self.city.schools):
+            n_teachers[i] = school.n_teachers
+            n_students[i] = school.n_students
+            subname = school.name.split(":")[0]
+            subnames[subname]['count'] += 1
+            subnames[subname]['n_teachers'] += school.n_teachers
+            subnames[subname]['n_students'] += school.n_students
+
+        str_to_print = f"SCHOOL - Number of teachers: {n_teachers.sum()} "
+        str_to_print += f"| Number of students: {n_students.sum()}"
+        str_to_print += f"| Average number of teachers: {n_teachers.mean(): 2.2f}"
+        str_to_print += f"| Average number of students: {n_students.mean(): 2.2f}"
+        log(str_to_print, self.logfile)
+
+        for subname, val in subnames.items():
+            log(f"\tNumber of {subname} - {val['count']}. Number of students: {val['n_students']}. Number of teachers: {val['n_teachers']}", self.logfile)
 
         log("\n *** Disease related initialization stats *** ", self.logfile)
         # disease related
@@ -1118,6 +1180,9 @@ class Tracker(object):
         human1_type_of_place = _get_location_type_to_track_mixing(human1, location)
         human2_type_of_place = _get_location_type_to_track_mixing(human2, location)
         type_of_place = human1_type_of_place # currently, no context is considered to determine the type of place
+
+        # if type_of_place == "work" and self.env.is_weekend() and human1.name == "human:439":
+        #     breakpoint()
 
         i = human1.age_bin_width_5.index
         j = human2.age_bin_width_5.index
