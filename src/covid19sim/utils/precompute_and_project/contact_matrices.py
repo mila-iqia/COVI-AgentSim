@@ -51,10 +51,10 @@ if __name__ == "__main__":
         region = yaml.safe_load(f)
 
     # check for existence in region
-    adjusted_matrix_keys = ["ADJUSTED_CONTACT_MATRIX_HOUSEHOLD", "ADJUSTED_CONTACT_MATRIX_WORK", "ADJUSTED_CONTACT_MATRIX_SCHOOL", "ADJUSTED_CONTACT_MATRIX_OTHER", "ADJUSTED_CONTACT_MATRIX_ALL"]
+    adjusted_matrix_keys = ["ADJUSTED_CONTACT_MATRIX_HOUSEHOLD", "ADJUSTED_CONTACT_MATRIX_WORKPLACE", "ADJUSTED_CONTACT_MATRIX_SCHOOL", "ADJUSTED_CONTACT_MATRIX_OTHER", "ADJUSTED_CONTACT_MATRIX_ALL"]
     assert all(k not in region for k in adjusted_matrix_keys), "Adjusted matrices already exist. Delete it if you want to overwrite it."
 
-    p_matrix_keys = ["P_CONTACT_MATRIX_HOUSEHOLD", "P_CONTACT_MATRIX_WORK", "P_CONTACT_MATRIX_SCHOOL", "P_CONTACT_MATRIX_OTHER", "P_CONTACT_MATRIX_ALL"]
+    p_matrix_keys = ["P_CONTACT_MATRIX_HOUSEHOLD", "P_CONTACT_MATRIX_WORKPLACE", "P_CONTACT_MATRIX_SCHOOL", "P_CONTACT_MATRIX_OTHER", "P_CONTACT_MATRIX_ALL"]
     assert all(k not in region for k in p_matrix_keys), "Adjusted matrices already exist. Delete it if you want to overwrite it."
 
     # check for existence in country
