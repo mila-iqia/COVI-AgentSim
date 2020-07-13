@@ -26,9 +26,11 @@ model_mapping:
   SOFT-YOGHURT-518A: transformer
   SWEET-BIRD-443: linreg
   WINTER-MOON-285: diurnal
+  TWILIGHT-RAIN-696: transformer
 
 compare: APP_UPTAKE
 multithread: False
+use_wandb: False
 
 hydra:
   run:

@@ -1,163 +1,16 @@
 import math
-import pickle
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from matplotlib.lines import Line2D
-from scipy import stats as sps
 
-from covid19sim.plotting.utils.extract_data import (
-    get_data,
-    get_human_rec_levels,
-    get_human_states,
+from covid19sim.plotting.utils import (
+    get_title,
+    get_all,
+    get_metrics,
 )
-
-
-def get_all_false(filename=None, data=None, normalized=False):
-    data = get_data(filename, data)
-    intervention_day = data["intervention_day"]
-    if intervention_day < 0:
-        intervention_day = 0
-    states = get_human_states(data=data)
-    states = states[:, intervention_day:]
-    rec_levels = get_human_rec_levels(data=data, normalized=normalized)
-
-    false_level3 = np.sum(((states == 0) | (states == 3)) & (rec_levels == 3), axis=0)
-    false_level2 = np.sum(((states == 0) | (states == 3)) & (rec_levels == 2), axis=0)
-    false_level1 = np.sum(((states == 0) | (states == 3)) & (rec_levels == 1), axis=0)
-    false_level1_above = np.sum(
-        ((states == 0) | (states == 3))
-        & ((rec_levels == 1) | (rec_levels == 2) | (rec_levels == 3)),
-        axis=0,
-    )
-    false_level2_above = np.sum(
-        ((states == 0) | (states == 3)) & ((rec_levels == 2) | (rec_levels == 3)),
-        axis=0,
-    )
-    return (
-        false_level3 / states.shape[0],
-        false_level2 / states.shape[0],
-        false_level1 / states.shape[0],
-        false_level1_above / states.shape[0],
-        false_level2_above / states.shape[0],
-    )
-
-
-def get_proxy_r(data):
-    total_infected = 0
-    for k in data["humans_state"].keys():
-        total_infected += any(z == "I" for z in data["humans_state"][k][5:])
-    return sum(data["cases_per_day"][5:]) / total_infected
-
-
-def get_fq_r(filename=None, data=None, normalized=False):
-    assert filename is not None or data is not None
-    if data is None:
-        data = pickle.load(open(filename, "rb"))
-
-    f3, f2, f1, f1_up, f2_up = get_all_false(data=data, normalized=normalized)
-    x = [i[-5:].mean() for i in [f3, f2, f1, f1_up, f2_up]]
-
-    intervention_day = data["intervention_day"]
-    od = np.mean(data["outside_daily_contacts"][intervention_day:])
-    ec = data["effective_contacts_since_intervention"]
-
-    # percent_infected
-    y = sum(data["cases_per_day"]) / data["n_humans"]
-
-    # R
-    z = get_effective_R(data)
-
-    # proxy_r
-    a = get_proxy_r(data)
-
-    return x, y, z, a, od, ec
-
-
-def get_mean_fq_r(filenames=None, pkls=None, normalized=False):
-    assert filenames is not None or pkls is not None
-    if pkls is not None:
-        _tmp = [(None, {"pkl": pkl}) for pkl in pkls]
-    elif filenames is not None:
-        _tmp = [(filename, None) for filename in filenames]
-    else:
-        raise ValueError("filenames and pkls are None")
-
-    metrics = {
-        "f3": [],
-        "f2": [],
-        "f1": [],
-        "f1_up": [],
-        "f2_up": [],
-        "percent_infected": [],
-        "r": [],
-        "proxy_r": [],
-        "outside_daily_contacts": [],
-        "effective_contacts": [],
-    }
-    for filename, pkl in _tmp:
-        x, y, z, a, od, ec = get_fq_r(
-            filename=filename, data=pkl["pkl"], normalized=normalized
-        )
-        metrics["f3"].append(x[0])
-        metrics["f2"].append(x[1])
-        metrics["f1"].append(x[2])
-        metrics["f1_up"].append(x[3])
-        metrics["f2_up"].append(x[4])
-        metrics["percent_infected"].append(y)
-        metrics["r"].append(z)
-        metrics["proxy_r"].append(a)
-        metrics["outside_daily_contacts"].append(od)
-        metrics["effective_contacts"].append(ec)
-
-    return metrics
-
-
-def get_effective_R(data):
-    GT = data["generation_times"]
-    a = 4
-    b = 0.5
-    window_size = 5
-    ws = [sps.gamma.pdf(x, a=GT, loc=0, scale=0.9) for x in range(window_size)]
-    last_ws = ws[::-1]
-    cases_per_day = data["cases_per_day"]
-
-    lambda_s = []
-    rt = []
-    for i in range(len(cases_per_day)):
-        if i < window_size:
-            last_Is = cases_per_day[:i]
-        else:
-            last_Is = cases_per_day[(i - window_size) : i]
-
-        lambda_s.append(sum(x * y for x, y in zip(last_Is, last_ws)))
-        last_lambda_s = sum(lambda_s[-window_size:])
-        rt.append((a + sum(last_Is)) / (1 / b + last_lambda_s))
-    return np.mean(rt[-5:])
-
-
-def get_all(filename_types=None, pkl_types=None, labels=[], normalized=False):
-    if pkl_types is not None:
-        tmp = [(None, pkls) for pkls in pkl_types]
-    elif filename_types is not None:
-        tmp = [(filenames, None) for filenames in filename_types]
-    else:
-        raise ValueError("filename_types and pkl_types are None")
-
-    _rows = []
-    for i, (filenames, pkls) in enumerate(tmp):
-        metrics = get_mean_fq_r(filenames=filenames, pkls=pkls, normalized=normalized)
-        for key, val in metrics.items():
-            _rows.append([labels[i], key] + val)
-    return _rows
-
-
-def get_metrics(data, label, metric):
-    tmp = data[(data["type"] == label) & (data["metric"] == metric)]
-    return tmp["mean"], tmp["stderr"]
-
 
 def plot_all_metrics(
     axs,
@@ -193,22 +46,7 @@ def plot_all_metrics(
     return axs
 
 
-def get_line2D(value, color, marker, is_method=True, compare="APP_UPTAKE"):
-    legends = {
-        "APP_UPTAKE": lambda x: f"{float(x) * 100 * 0.71203:.0f}% Adoption Rate",
-        "method": {
-            "bdt1": "1st Order Binary Tracing",
-            "bdt2": "2nd Order Binary Tracing",
-            "heuristicv1": "Heuristic (v1)",
-            "heuristicv2": "Heuristic (v2)",
-            "transformer": "Transformer",
-            "linreg": "Linear Regression",
-            "mlp": "MLP",
-            "unmitigated": "Unmitigated",
-            "oracle": "Oracle",
-        },
-        "REC_LEVEL_THRESHOLDS": lambda x: f"{''.join(x)} Thresholds",
-    }
+def get_line2D(value, color, marker, is_method=True):
 
     if is_method:
         return Line2D(
@@ -219,7 +57,7 @@ def get_line2D(value, color, marker, is_method=True, compare="APP_UPTAKE"):
             markeredgecolor="k",
             markerfacecolor=color,
             markersize=15,
-            label=legends["method"][value],
+            label=get_title(value),
         )
 
     return Line2D(
@@ -230,7 +68,7 @@ def get_line2D(value, color, marker, is_method=True, compare="APP_UPTAKE"):
         marker=marker,
         markerfacecolor="black",
         markersize=15,
-        label=legends[compare](value),
+        label=get_title(value),
     )
 
 
@@ -268,6 +106,7 @@ def run(data, path, comparison_key):
     labels = []
     pkls_norm = []
     labels_norm = []
+
     for method in data:
         for key in data[method]:
             if "_norm" in method:
@@ -276,6 +115,9 @@ def run(data, path, comparison_key):
             else:
                 pkls.append([r["pkl"] for r in data[method][key].values()])
                 labels.append(f"{method}_{key}")
+
+    for idx, label in enumerate(labels):
+        print(f"{len(pkls[idx])} seeds for {label}")
 
     rows = get_all(pkl_types=pkls, labels=labels, normalized=False)
     lrows = set([r[0] for r in rows])
@@ -294,7 +136,6 @@ def run(data, path, comparison_key):
             break
         break
     assert n_seeds is not None, "Could not find the number of seeds"
-
     df = pd.DataFrame(rows, columns=["type", "metric"] + list(np.arange(n_seeds) + 1))
     df["mean"] = df[list(np.arange(n_seeds) + 1)].mean(axis=1)
     df["stderr"] = df[list(np.arange(n_seeds) + 1)].sem(axis=1)
@@ -318,7 +159,6 @@ def run(data, path, comparison_key):
     markers = ["P", "s", "X", "d", ".", "h", "^", "*", "v"]
     colormap = [
         "mediumvioletred",
-        "royalblue",
         "darkorange",
         "green",
         "red",
@@ -330,18 +170,19 @@ def run(data, path, comparison_key):
         "orange",
         "pink",
         "purple",
+        "royalblue",
     ]
 
     fig, axs = plt.subplots(
         nrows=math.ceil(len(xmetrics) / 2),
         ncols=2,
-        figsize=(30, 30),
-        dpi=500,
+        figsize=(20, 20),
+        dpi=100,
         sharey=True,
     )
     axs = [i for j in axs for i in j]
 
-    base_methods = set([lab.split("_")[0] for lab in labels + labels_norm])
+    base_methods = sorted(data.keys())
 
     method_legend = []
     compare_legend = []
@@ -353,9 +194,10 @@ def run(data, path, comparison_key):
         )
         current_color = colormap[idx] if method != "unmitigated" else "#34495e"
         method_legend.append(
-            get_line2D(method, current_color, None, True, comparison_key)
+            get_line2D(method, current_color, None, True)
         )
         for i, lab in enumerate(current_labels):
+
             current_marker = markers[i]
             if idx == 0:
                 compare_legend.append(
@@ -364,7 +206,6 @@ def run(data, path, comparison_key):
                         current_color,
                         current_marker,
                         False,
-                        comparison_key,
                     )
                 )
             plot_all_metrics(
@@ -380,6 +221,7 @@ def run(data, path, comparison_key):
                 normalized=False,
             )
         for i, lab in enumerate(current_labels_norm):
+            current_marker = markers[i]
             plot_all_metrics(
                 axs,
                 df,
@@ -430,7 +272,7 @@ def run(data, path, comparison_key):
     spttl = fig.suptitle(
         "Comparison of tracing methods across different adoption rates",
         fontsize=50,
-        y=1.1,
+        y=1.15,
     )
     if len(method_legend) % 2 != 0:
         legend = (
@@ -454,17 +296,16 @@ def run(data, path, comparison_key):
     lgd = fig.legend(
         handles=legend,
         loc="upper center",
-        ncol=idx + 1,
-        fontsize=30,
-        bbox_to_anchor=(0.5, 1.08),
+        ncol= 3,# idx, # + 1,
+        fontsize=25,
+        bbox_to_anchor=(0.5, 1.1),
     )
-
     plt.tight_layout()
-    save_path = Path(path) / "pareto_adoption_all_metrics.png"
-    print("Saving Figure {} ...".format(save_path.name))
+    save_path = Path(path) / "pareto_adoption/pareto_adoption_all_metrics.png"
+    print("Saving Figure {}...".format(save_path.name), end="", flush=True)
     fig.savefig(
         str(save_path),
-        dpi=200,
+        dpi=100,
         bbox_extra_artists=(lgd, ylab, spttl),
         bbox_inches="tight",
     )
