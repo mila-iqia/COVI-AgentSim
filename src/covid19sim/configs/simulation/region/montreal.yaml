@@ -125,16 +125,21 @@ N_COLLECTIVE_RESIDENTS_65_79: 9750
 N_COLLECTIVE_RESIDENTS_80_above: 23185
 
 #/!\ (no-source) these values are assumed.
-# Use upper limit of a bin in AGE_BIN_WIDTH_5 to define the below values.
+# Use one of the limits of a bin in AGE_BIN_WIDTH_5 to define the below values.
 # For min: Use the lower limit of a bin just before the desired bin (i.e bin in which minimum should lie)
-# For max: Use the upper limit of the desired bin (i.e bin in which minimum should lie)
+# For max: Use the upper limit of the desired bin (i.e bin in which maximum should lie)
 MAX_AGE_CHILDREN: 14 # used in prioritizing the allocation of houses so that no housing only has children as residents
 MAX_AGE_WITH_PARENT: 54 # used in expanding the search for census family households and restricting the age of parents in multigenerational family
 AGE_DIFFERENCE_BETWEEN_PARENT_AND_KID: 25 # used in sampling for parents
 
+#########################################################
+#####       Assortativity Knobs                     #####
+#########################################################
+# These needs to be calibrated to achieve the region specific mixing pattern
 # this factor influences the strength of assortativity in contacts at home.
 # higher the value, more likely that people of the same age group live together.
-ASSORTATIVITY_STRENGTH: 3
+HOUSEHOLD_ASSORTATIVITY_STRENGTH: 0.5
+WORKPLACE_ASSORTATIVITY_STRENGTH: 0.5
 
 #########################################################
 ###########       Location data               ###########
@@ -147,7 +152,7 @@ ASSORTATIVITY_STRENGTH: 3
 # total number of residents in these centers: 32935 (E.1)
 # Number of residents per residence - E.1 / F.1 = 125.22
 N_RESIDENTS_PER_COLLECTIVE: 125.2
-RESIDENT_TO_STAFF_RATIO: 13 # (source?)
+RESIDENT_TO_STAFF_RATIO: 13 # /!\ (no-source) (source?)
 
 # workplace
 # this type of location is used to model uniform interactions with colleagues
@@ -228,13 +233,14 @@ N_MISC_PER_1K_PEOPLE: 1.946
 # ref: https://www.emsb.qc.ca/emsb/about/school-board/school-system
 # ref: https://prod.education.gouv.qc.ca/gdunojrecherche/rechercheOrganisme.do?methode=rechercheBase&typeRecherche=base
 # - 393 preschools (H.1)
-# - 417 primary schools (H.2)
-# total preschools and primary schools - H.1  + H.2 = = 810 (H.3)
-# Population aged 5-12 in Montreal  (H.4) - (0.054 + 0.047/2) * a.1 = 150508 (assuming uniform distribution within each age group)
-# Number of students per schools - H.4 / H.3 = 185.81
+# population aged 4-5 (H.2) - (0.057/5) * a.1 = 22139 (assuming uniform distribution within each age group)
+# Number of students per preschool - H.2 / H.1 = 56.33
+# - 417 primary schools (H.3)
+# population aged 5-12 (H.4) - (0.054 + 3 * 0.047 / 5) * a.1 = 159636 (assuming uniform distribution within each age group)
+# Number of students per primary school - H.4 / H.3 = 382.82
 # - 214 secondary schools (H.5)
-# Population aged 12-17 in Montreal (H.6) - (0.047/2 + 0.05/2) * a.1 = 94189 (assuming uniform distribution within each age group)
-# Number of students per schools - H.6 / H.5 = 440.14
+# Population aged 12-17 in Montreal (H.6) - (2 * 0.047 / 5 + 3 * 0.05 / 5) * a.1 = 94771 (assuming uniform distribution within each age group)
+# Number of students per school - H.6 / H.5 = 442.86
 # - 8 universities
 # - 131 collège
 # - 43 adult education
@@ -250,9 +256,10 @@ N_MISC_PER_1K_PEOPLE: 1.946
 # (Montreal) proportion of population aged 25-29 yo enrolled in schools - H.8.c * H.7.Montreal / H.7.Quebec = 0.222 (H.8.f)
 # Proportion of population from 15-29 going to school/university in Montreal - (H.8.d * 0.05/2 + H.8.e * 0.072 + H.8.f * 0.079) * a.1  = 147628 (H.8.e)
 # Number of students per schools - H.8.e / H.9 = 811
-N_STUDENTS_PER_SCHOOL_4_5: 30 #/!\ (no-source)
-N_STUDENTS_PER_SCHOOL_5_12: 185.81
-N_STUDENTS_PER_SCHOOL_12_17: 440.14
+N_STUDENTS_PER_SCHOOL_2_4: 15 # /!\ (no-source)
+N_STUDENTS_PER_SCHOOL_4_5: 56.33
+N_STUDENTS_PER_SCHOOL_5_12: 382.82
+N_STUDENTS_PER_SCHOOL_12_17: 442.86
 N_STUDENTS_PER_SCHOOL_17_29: 811
 #
 P_SCHOOL_FOR_AGE_17_19: 0.812
@@ -260,13 +267,15 @@ P_SCHOOL_FOR_AGE_19_24: 0.465
 P_SCHOOL_FOR_AGE_25_29: 0.161
 #
 #/!\ (no-source) these values are assumed.
-STUDENT_TEACHER_RATIO_SCHOOL_4_5: 3
+STUDENT_TEACHER_RATIO_SCHOOL_2_4: 5
+STUDENT_TEACHER_RATIO_SCHOOL_4_5: 5
 STUDENT_TEACHER_RATIO_SCHOOL_5_12: 5
 STUDENT_TEACHER_RATIO_SCHOOL_12_17: 10
 STUDENT_TEACHER_RATIO_SCHOOL_17_29: 15
 
 #/!\ (no-source) these values are assumed.
-P_STUDENT_4_5: 1 # proportion of children 4-5 yo who are enrolled in a daycare.
+P_STUDENT_4_5: 1 # proportion of children 4-5 yo who are enrolled in a preschool.
+P_STUDENT_2_4: 0.5 #
 
 # hospitals
 # in modeling interactions between patients, doctors, and nurses we only care about number of wards or clinics.
@@ -285,7 +294,6 @@ HOSPITAL_BEDS_PER_1K_PEOPLE: 2.8
 ICU_BEDS_PER_1K_PEOPLE: 0.32
 ICU_BEDS_OCCUPANCY: 0.68
 
-# parks
 
 
 
@@ -312,9 +320,6 @@ MIN_AGE_HEALTHCARE_WORKER: 30
 MAX_AGE_HEALTHCARE_WORKER: 65
 MIN_WORKING_AGE: 15
 MAX_WORKING_AGE: 65
-
-
-
 
 
 
@@ -442,7 +447,7 @@ ADJUSTED_CONTACT_MATRIX_HOUSEHOLD: [
     [0.09177890975222304, 0.09802597643282863, 0.1390818432027901, 0.10959257445512516, 0.038870118433885076, 0.041526671844310456, 0.04848064642491298, 0.09089371085230989, 0.10663001107045193, 0.11043611126649416, 0.1284780743094491, 0.056090239209483674, 0.021843754607145098, 0.042640802794922425, 0.15641624196368475, 0.3764598290410959]
 ]
 
-ADJUSTED_CONTACT_MATRIX_WORK: [
+ADJUSTED_CONTACT_MATRIX_WORKPLACE: [
 [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 4.667828231292518e-06, 5.57705625e-06, 1.7339178082191778e-125],
     [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 7.660016965628356e-06, 5.453051351351349e-42, 1.3062575342465754e-65],
     [0.0, 0.0, 0.14227929043636364, 0.034211279397435734, 0.03891553850845959, 0.029469773143418608, 0.0741298823541958, 0.03034260990718624, 0.06270404399426653, 0.05318879912051978, 0.03898024917105967, 0.04745644042298768, 0.011719817791866045, 3.1346283766233765e-06, 3.6761741458845207e-06, 2.978058329547524e-90],
@@ -541,7 +546,7 @@ P_CONTACT_MATRIX_HOUSEHOLD: [
     [0.022146364989018997, 0.021264088460814925, 0.029945776961014647, 0.027289612626046535, 0.011242464645303216, 0.012843898477031363, 0.013642636690897023, 0.023958454606189256, 0.03257394941017269, 0.03736900600813576, 0.0496157274792814, 0.022371066954945507, 0.00997062407389853, 0.018708423356676017, 0.07467756768800286, 0.28642573903288276]
 ]
 
-P_CONTACT_MATRIX_WORK: [
+P_CONTACT_MATRIX_WORKPLACE: [
 [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.009075283423317933, 0.013952304050766863, 8.424880427534233e-122],
     [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.014892755591233913, 1.364207693951431e-38, 6.346934947796553e-62],
     [0.0, 0.0, 0.18776007718342733, 0.009215970153890762, 0.007066508735914629, 0.003853622528621574, 0.009528037538973836, 0.003728172448460136, 0.00744191256362581, 0.007836852405046092, 0.007126055920845585, 0.01580574789456938, 0.017737719153026306, 0.0060944061210142265, 0.0091968051114688, 1.4469996913192052e-86],
