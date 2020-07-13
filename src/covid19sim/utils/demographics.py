@@ -119,7 +119,7 @@ def create_locations_and_assign_workplace_to_humans(humans, city, conf, logfile=
         logfile (str): filepath where the console output and final tracked metrics will be logged.
 
     Returns:
-        humans (list): a list of `human`s with a residence
+        humans (list): a list of `human`s with assigned workplaces
         city (covid19sim.locations.city.City): city object containing the locations and humans in it.
     """
     MIN_WORKING_AGE = conf['MIN_WORKING_AGE']
@@ -191,6 +191,19 @@ def _assign_random_workplace(humans, city, conf, rng, logfile=None):
 
 def _build_and_allocate_workplace_type_B(humans, city, conf, rng, logfile=None):
     """
+    Initializes the locations of type `type` that falls in type B.
+    Refer the detailed explanation of docs/workplace_modeling.md
+
+    Args:
+        humans (dict): keys are age bins (tuple) and values are a list of covid19sim.Human object of that age
+        city (covid19sim.location.City): simulator's city object
+        conf (dict): yaml configuration of the experiment
+        rng (np.random.RandomState): Random number generator
+        logfile (str): filepath where the console output and final tracked metrics will be logged.
+
+    Returns:
+        humans (list): a list of `human`s. some of them are assigned workplace of type A
+        city (covid19sim.locations.city.City): city object containing the locations and humans in it.
     """
 
     AVERAGE_N_EMPLOYEES_PER_WORKPLACE = conf['AVERAGE_N_EMPLOYEES_PER_WORKPLACE']
@@ -202,9 +215,15 @@ def _build_and_allocate_workplace_type_B(humans, city, conf, rng, logfile=None):
     MIN_WORKING_AGE = conf['MIN_WORKING_AGE']
     MAX_WORKING_AGE = conf['MAX_WORKING_AGE']
 
+    ASSORTATIVITY_STRENGTH = conf['WORKPLACE_ASSORTATIVITY_STRENGTH']
+
     # If unemployment need to be modeled, filter out unemployed population here
-    WORKING_BINS = _get_valid_bins(AGE_BIN_WIDTH_5, min_age=MIN_WORKING_AGE, max_age=MAX_WORKING_AGE)
-    potential_workers = [human for human in humans if human.workplace is None and human.age_bin_width_5.bin in WORKING_BINS]
+    valid_worker_bins = _get_valid_bins(AGE_BIN_WIDTH_5, min_age=MIN_WORKING_AGE, max_age=MAX_WORKING_AGE)
+    potential_workers = defaultdict(list)
+    for human in humans:
+        if human.workplace is None and human.age_bin_width_5.bin in valid_worker_bins:
+            potential_workers[human.age_bin_width_5.bin].append(human)
+
 
     CAPACITIES = [(1, 4), (5, 99), (100, 499), (500, 750)]
     P_WORKPLACES = [
@@ -218,7 +237,7 @@ def _build_and_allocate_workplace_type_B(humans, city, conf, rng, logfile=None):
 
     # create workplaces
     idx, workplaces = -1, []
-    while len(potential_workers) > 0:
+    while sum(len(val) for val in potential_workers.values()) > 0:
         idx += 1
         _capacity = _random_choice_tuples(CAPACITIES, size=1, P=P_WORKPLACES, rng=rng)[0]
         capacity = rng.randint(*_capacity)
@@ -226,7 +245,7 @@ def _build_and_allocate_workplace_type_B(humans, city, conf, rng, logfile=None):
                     env=city.env,
                     rng=np.random.RandomState(city.rng.randint(2 ** 16)),
                     conf=conf,
-                    name=f"WORKPLACE:{idx}",
+                    name=f"WORKPLACE{_capacity}:{idx}",
                     location_type="WORKPLACE",
                     lat=rng.randint(*city.x_range),
                     lon=rng.randint(*city.y_range),
@@ -236,11 +255,27 @@ def _build_and_allocate_workplace_type_B(humans, city, conf, rng, logfile=None):
         workplaces.append(workplace)
 
         # sample workers for this location
-        while workplace.n_workers < capacity and len(potential_workers) > 0:
-            worker = rng.choice(potential_workers, size=1).item()
-            potential_workers.remove(worker)
+        p_bin = np.array([len(potential_workers[x]) for x in valid_worker_bins])
+        while workplace.n_workers < capacity and p_bin.sum() > 0:
+            p = p_bin / p_bin.sum()
+            bin = _random_choice_tuples(valid_worker_bins, rng=rng, size=1, P=p)[0]
+            worker = rng.choice(potential_workers[bin], size=1).item()
+            #
             worker.assign_workplace(workplace)
             workplace.assign_worker(worker)
+            potential_workers[bin].remove(worker)
+
+            # reassign probabilities
+            idx = valid_worker_bins.index(bin)
+            p_bin[idx] += ASSORTATIVITY_STRENGTH
+
+            if idx < len(valid_worker_bins) - 1:
+                p_bin[idx+1] += ASSORTATIVITY_STRENGTH
+
+            if idx > 0:
+                p_bin[idx-1] += ASSORTATIVITY_STRENGTH
+
+            p_bin[[i for i, bin in enumerate(valid_worker_bins) if len(potential_workers[bin]) == 0]] = 0
 
     city.workplaces = workplaces
     return humans, city
@@ -251,14 +286,16 @@ def _build_and_allocate_workplace_type_A(type, humans, city, conf, rng, logfile=
     Refer the detailed explanation of docs/workplace_modeling.md
 
     Args:
-        type (str): type of location to initialize
+        type (str): type of location to initialize. either of "STORE" or "MISC"
         humans (dict): keys are age bins (tuple) and values are a list of covid19sim.Human object of that age
         city (covid19sim.location.City): simulator's city object
         conf (dict): yaml configuration of the experiment
+        rng (np.random.RandomState): Random number generator
         logfile (str): filepath where the console output and final tracked metrics will be logged.
 
     Returns:
-
+        humans (list): a list of `human`s. some of them are assigned workplace of type A
+        city (covid19sim.locations.city.City): city object containing the locations and humans in it.
     """
     assert type in ["STORE", "MISC"], "Unkown type A workplace"
 
@@ -305,8 +342,8 @@ def _build_and_allocate_workplace_type_A(type, humans, city, conf, rng, logfile=
         city.stores = locations
     else:
         city.miscs = locations
-    return humans, city
 
+    return humans, city
 
 def _build_and_allocate_hospitals(humans, city, conf, rng):
     """
@@ -376,7 +413,7 @@ def _assign_senior_residences(humans, city, conf, rng):
     MIN_AGE_HEALTHCARE_WORKER = conf['MIN_AGE_HEALTHCARE_WORKER']
     MAX_AGE_HEALTHCARE_WORKER = conf['MAX_AGE_HEALTHCARE_WORKER']
 
-    senior_residents = [human for human in humans if human.household.location_type == "SENIOR_RESDENCY"]
+    senior_residents = [human for human in humans if human.household.location_type == "SENIOR_RESIDENCE"]
     n_senior_residents = len(senior_residents)
 
     # assign social common room as workplace for seniors
@@ -400,28 +437,16 @@ def _build_and_allocate_schools(humans, city, conf, rng):
     Builds schools and allocates kids to them as their workplace.
 
     Args:
-        type (str): type of location to initialize
         humans (dict): keys are age bins (tuple) and values are a list of covid19sim.Human object of that age
         city (covid19sim.location.City): simulator's city object
         conf (dict): yaml configuration of the experiment
+        rng (np.random.RandomState): Random number generator
 
     Returns:
         humans (list): a list of `human`s with proper allocation of schools to those in relevant age groups
         city (covid19sim.locations.city.City): city object containing the locations and humans in it.
     """
-    def _build_school(city, conf, name, area, rng):
-        return School(
-                    env=city.env,
-                    rng=np.random.RandomState(rng.randint(2 ** 16)),
-                    conf=conf,
-                    name=name,
-                    location_type="SCHOOL",
-                    lat=rng.randint(*city.x_range),
-                    lon=rng.randint(*city.y_range),
-                    area=city.total_area,
-                    capacity=None
-                )
-
+    N_STUDENTS_PER_SCHOOL_2_4 = conf['N_STUDENTS_PER_SCHOOL_2_4']
     N_STUDENTS_PER_SCHOOL_4_5 = conf['N_STUDENTS_PER_SCHOOL_4_5']
     N_STUDENTS_PER_SCHOOL_5_12 = conf['N_STUDENTS_PER_SCHOOL_5_12']
     N_STUDENTS_PER_SCHOOL_12_17 = conf['N_STUDENTS_PER_SCHOOL_12_17']
@@ -432,6 +457,9 @@ def _build_and_allocate_schools(humans, city, conf, rng):
     P_SCHOOL_FOR_AGE_25_29 = conf['P_SCHOOL_FOR_AGE_25_29']
 
     P_STUDENT_4_5 = conf['P_STUDENT_4_5']
+    P_STUDENT_2_4 = conf['P_STUDENT_2_4']
+
+    STUDENT_TEACHER_RATIO_SCHOOL_2_4 = conf['STUDENT_TEACHER_RATIO_SCHOOL_2_4']
     STUDENT_TEACHER_RATIO_SCHOOL_4_5 = conf['STUDENT_TEACHER_RATIO_SCHOOL_4_5']
     STUDENT_TEACHER_RATIO_SCHOOL_5_12 = conf['STUDENT_TEACHER_RATIO_SCHOOL_5_12']
     STUDENT_TEACHER_RATIO_SCHOOL_12_17 = conf['STUDENT_TEACHER_RATIO_SCHOOL_12_17']
@@ -441,58 +469,40 @@ def _build_and_allocate_schools(humans, city, conf, rng):
     SCHOOL_PROPORTION_AREA = conf['SCHOOL_PROPORTION_AREA']
 
     #
+    kids_2_4 = [human for human in humans if 2 <= human.age < 4 and rng.uniform() < P_STUDENT_2_4]
     kids_4_5 = [human for human in humans if 4 <= human.age < 5 and rng.uniform() < P_STUDENT_4_5]
     kids_5_12 = [human for human in humans if 5 <= human.age <= 12]
     kids_12_17 = [human for human in humans if 12 < human.age <= 17]
     kids_17_29 = [human for human in humans if 17 < human.age <= 29]
 
     #
+    n_schools_2_4 = math.ceil(len(kids_2_4) / N_STUDENTS_PER_SCHOOL_2_4)
     n_schools_4_5 = math.ceil(len(kids_4_5) / N_STUDENTS_PER_SCHOOL_4_5 )
     n_schools_5_12 = math.ceil(len(kids_5_12) / N_STUDENTS_PER_SCHOOL_5_12)
     n_schools_12_17 = math.ceil(len(kids_12_17) / N_STUDENTS_PER_SCHOOL_5_12)
     n_schools_17_29 = math.ceil(len(kids_17_29) / N_STUDENTS_PER_SCHOOL_17_29)
-    n_schools = n_schools_4_5 + n_schools_5_12 + n_schools_12_17 + n_schools_17_29
+    n_schools = n_schools_2_4 + n_schools_4_5 + n_schools_5_12 + n_schools_12_17 + n_schools_17_29
 
     area = _get_random_area(n_schools, SCHOOL_PROPORTION_AREA * city.total_area, rng)
     area_idx = -1
 
-    # 4-5 yo
-    rng.shuffle(kids_4_5)
-    schools_for_4_5 = []
-    for i in range(n_schools_4_5):
-        area_idx += 1
-        school = _build_school(city, conf, f"SCHOOL(4-5):{i}", area[area_idx], rng)
-        schools_for_4_5.append(school)
-        while school.n_students < N_STUDENTS_PER_SCHOOL_4_5 and len(kids_4_5) > 0:
-            kid = kids_4_5.pop()
-            kid.assign_workplace(school)
-            school.n_students += 1
+    n_schools = 0
 
+    # 2-4 yo (daycares)
+    schools_for_2_4 = _build_schools_and_enroll_students(city, conf, kids_2_4, n_schools_2_4, "(2-4)", area[:n_schools_2_4], rng, N_STUDENTS_PER_SCHOOL_2_4)
+    n_schools += n_schools_2_4
+
+    # 4-5 yo
+    schools_for_4_5 = _build_schools_and_enroll_students(city, conf, kids_4_5, n_schools_4_5, "(4-5)", area[n_schools:n_schools + n_schools_4_5], rng, N_STUDENTS_PER_SCHOOL_4_5)
+    n_schools += n_schools_4_5
 
     # 5-12
-    rng.shuffle(kids_5_12)
-    schools_for_5_12 = []
-    for i in range(n_schools_5_12):
-        area_idx += 1
-        school = _build_school(city, conf, f"SCHOOL(5-12):{i}", area[area_idx], rng)
-        schools_for_5_12.append(school)
-        while school.n_students < N_STUDENTS_PER_SCHOOL_5_12 and len(kids_5_12) > 0:
-            kid = kids_5_12.pop()
-            kid.assign_workplace(school)
-            school.n_students += 1
+    schools_for_5_12 = _build_schools_and_enroll_students(city, conf, kids_5_12, n_schools_5_12, "(5-12)", area[n_schools:n_schools + n_schools_5_12], rng, N_STUDENTS_PER_SCHOOL_5_12)
+    n_schools += n_schools_5_12
 
     # 12-17
-    rng.shuffle(kids_12_17)
-    schools_for_12_17 = []
-    for i in range(n_schools_12_17):
-        area_idx += 1
-        school = _build_school(city, conf, f"SCHOOL(12-17):{i}", area[area_idx], rng)
-        schools_for_12_17.append(school)
-        enrolled = 0
-        while school.n_students < N_STUDENTS_PER_SCHOOL_12_17 and len(kids_12_17) > 0:
-            kid = kids_12_17.pop()
-            kid.assign_workplace(school)
-            school.n_students += 1
+    schools_for_12_17 = _build_schools_and_enroll_students(city, conf, kids_12_17, n_schools_12_17, "(12-17)", area[n_schools:n_schools + n_schools_12_17], rng, N_STUDENTS_PER_SCHOOL_12_17)
+    n_schools += n_schools_12_17
 
     # 17-29
     rng.shuffle(kids_17_29)
@@ -517,6 +527,7 @@ def _build_and_allocate_schools(humans, city, conf, rng):
     # teachers
     potential_teachers = [human for human in humans if 30 <= human.age <= 50]
     all_schools = [
+        [STUDENT_TEACHER_RATIO_SCHOOL_2_4, schools_for_2_4],
         [STUDENT_TEACHER_RATIO_SCHOOL_4_5, schools_for_4_5],
         [STUDENT_TEACHER_RATIO_SCHOOL_5_12, schools_for_5_12],
         [STUDENT_TEACHER_RATIO_SCHOOL_12_17, schools_for_12_17],
@@ -532,9 +543,57 @@ def _build_and_allocate_schools(humans, city, conf, rng):
                 school.n_teachers += 1
 
     # add schools to city
-    city.schools = schools_for_4_5 + schools_for_5_12 + schools_for_12_17 + schools_for_17_29
+    city.schools = schools_for_2_4 + schools_for_4_5 + schools_for_5_12 + schools_for_12_17 + schools_for_17_29
 
     return humans, city
+
+def _build_schools_and_enroll_students(city, conf, kids, n_schools, name, area, rng, N_STUDENTS_PER_SCHOOL):
+    """
+    Builds `n_schools` and allocates all of the `kids` to them in a batch of `N_STUDENTS_PER_SCHOOL`.
+
+    Args:
+        city (covid19sim.location.City): simulator's city object
+        conf (dict): yaml configuration of the experiment
+        kids (list): list of `human`s that are to be assigned to schools
+        n_schools (int): number of schools to build
+        name (str): an identifier of the school
+        area (np.array): ith value in this array is the area to be alloted to ith school
+        rng (np.random.RandomState): Random number generator
+        N_STUDENTS_PER_SCHOOL (int): maximum limit to the number of enrolled students.
+
+    Returns:
+        (list): list of `School`s with enrolled students.
+    """
+    rng.shuffle(kids)
+    schools = []
+    idx = -1
+    for i in range(n_schools):
+        idx += 1
+        school = _build_school(city, conf, f"SCHOOL{name}:{i}", area[idx], rng)
+        schools.append(school)
+        while school.n_students < N_STUDENTS_PER_SCHOOL and len(kids) > 0:
+            kid = kids.pop()
+            assert kid.workplace is None, "Already assigned a workplace"
+            kid.assign_workplace(school)
+            school.n_students += 1
+
+    return schools
+
+def _build_school(city, conf, name, area, rng):
+    """
+    Initializes the School object.
+    """
+    return School(
+                env=city.env,
+                rng=np.random.RandomState(rng.randint(2 ** 16)),
+                conf=conf,
+                name=name,
+                location_type="SCHOOL",
+                lat=rng.randint(*city.x_range),
+                lon=rng.randint(*city.y_range),
+                area=city.total_area,
+                capacity=None
+            )
 
 def _create_senior_residences(n_senior_residents, city, rng, conf):
     """
@@ -548,7 +607,6 @@ def _create_senior_residences(n_senior_residents, city, rng, conf):
 
     Returns:
         (list): list of initialized locations of type "SENIOR_RESDENCY"
-
     """
     N_RESIDENTS_PER_COLLECTIVE = conf['N_RESIDENTS_PER_COLLECTIVE']
     SENIOR_RESIDENCE_PROPORTION_AREA = conf['SENIOR_RESIDENCE_PROPORTION_AREA']
@@ -969,7 +1027,7 @@ def _sample_couple(valid_age_bins, conf, unassigned_humans, rng, p_bin=None, ret
     Returns:
         list: humans belonging to a same household (length = n + 2 if succesful else 0). Returns potential bins to draw couples from if return_bins is True.
     """
-    ASSORTATIVITY_STRENGTH = conf['ASSORTATIVITY_STRENGTH']
+    ASSORTATIVITY_STRENGTH = conf['HOUSEHOLD_ASSORTATIVITY_STRENGTH']
 
     # couple can be in two consecutive bins
     min_couple_single_bins = [(x,x) for x in valid_age_bins if len(unassigned_humans[x]) >= 2]
@@ -1061,7 +1119,7 @@ def _sample_random_humans(valid_other_bins, conf, unassigned_humans, rng, size):
     Returns:
         humans (list): humans belonging to a same household (length = size if succesful else 0)
     """
-    ASSORTATIVITY_STRENGTH = conf['ASSORTATIVITY_STRENGTH']
+    ASSORTATIVITY_STRENGTH = conf['HOUSEHOLD_ASSORTATIVITY_STRENGTH']
 
     all_humans = [(y,x) for x in valid_other_bins for y in unassigned_humans[x]]
     if len(all_humans) < size:
@@ -1080,16 +1138,15 @@ def _sample_random_humans(valid_other_bins, conf, unassigned_humans, rng, size):
 
         # reassign probabilities
         idx = valid_other_bins.index(bin)
-        if len(unassigned_humans[bin]) > 0:
-            p_bin[idx] += ASSORTATIVITY_STRENGTH
-        else:
-            p_bin[idx] = 0.0
+        p_bin[idx] += ASSORTATIVITY_STRENGTH
 
         if idx < len(valid_other_bins) - 1:
             p_bin[idx+1] += ASSORTATIVITY_STRENGTH
 
         if idx > 0:
             p_bin[idx-1] += ASSORTATIVITY_STRENGTH
+
+        p_bin[[i for i, bin in enumerate(valid_other_bins) if len(unassigned_humans[bin]) == 0]] = 0
 
     assert len(humans) == size, "number of humans sampled doesn't equal the expected size"
     return humans
@@ -1108,7 +1165,7 @@ def _sample_n_kids(valid_age_bins, conf, unassigned_humans, rng, size, with_kid=
     Returns:
         (list): list of `Human`s sampled
     """
-    ASSORTATIVITY_STRENGTH = conf['ASSORTATIVITY_STRENGTH']
+    ASSORTATIVITY_STRENGTH = conf['HOUSEHOLD_ASSORTATIVITY_STRENGTH']
     P_CONTACT_HOUSE = np.array(conf['P_CONTACT_MATRIX_HOUSEHOLD'])
 
     kids, total_kids = [], size
