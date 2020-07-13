@@ -49,7 +49,9 @@ class Hospital(Location):
         self.icu_bed_occupancy = kwargs.get("icu_bed_occupancy")
 
         self.doctors = set()
+        self.n_doctors = 0
         self.nurses = set()
+        self.n_nurses = 0
 
     def assign_worker(self, human, doctor):
         """
@@ -61,8 +63,10 @@ class Hospital(Location):
         """
         if doctor:
             self.doctors.add(human)
+            self.n_doctors += 1
             return
         self.nurses.add(human)
+        self.n_nurses += 1
 
     def add_human(self, human):
         """

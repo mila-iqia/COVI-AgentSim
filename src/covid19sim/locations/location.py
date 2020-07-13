@@ -57,7 +57,6 @@ class Location(simpy.Resource):
         self.is_open_for_business = True
         self.binned_humans = {bin:OrderedSet() for bin in AGE_BIN_WIDTH_5}
 
-        # self.MEAN_DAILY_KNOWN_CONTACTS = conf['LOCATION_DISTRIBUTION'][location_type]['mean_daily_interactions'] $
         self.CONTACT_DURATION_GAMMA_SCALE_MATRIX = np.array(conf['CONTACT_DURATION_GAMMA_SCALE_MATRIX'])
         self.CONTACT_DURATION_GAMMA_SHAPE_MATRIX = np.array(conf['CONTACT_DURATION_GAMMA_SHAPE_MATRIX'])
         self.MEAN_DAILY_UNKNOWN_CONTACTS = conf['MEAN_DAILY_UNKNOWN_CONTACTS']
@@ -67,16 +66,17 @@ class Location(simpy.Resource):
         self.contaminated_surface_probability = conf[f'{location_type}_SURFACE_PROB']
         self.MEAN_DAILY_KNOWN_CONTACTS = conf[f'{location_type}_MEAN_DAILY_INTERACTIONS']
 
-        if location_type == "household":
-            self.P_CONTACT = np.array(conf['P_CONTACT_MATRIX_HOUSEHOLD'])
-        elif location_type in "workplace":
-            self.P_CONTACT = np.array(conf['P_CONTACT_MATRIX_WORK'])
-        elif location_type == "school":
-            self.P_CONTACT = np.array(conf['P_CONTACT_MATRIX_SCHOOL'])
-        else:
-            self.P_CONTACT = np.array(conf['P_CONTACT_MATRIX_OTHER'])
+        key = location_type
+        if location_type not in ['HOUSEHOLD', 'WORKPLACE', 'SCHOOL']:
+            key = "OTHER"
+        elif location_type == "SENIOR_RESIDENCE":
+            key = "HOUSEHOLD"
 
-        for matrix in [self.CONTACT_DURATION_GAMMA_SCALE_MATRIX, self.CONTACT_DURATION_GAMMA_SHAPE_MATRIX, self.P_CONTACT]:
+        self.P_CONTACT = np.array(conf[f'P_CONTACT_MATRIX_{key}'])
+        self.ADJUSTED_CONTACT_MATRIX = np.array(conf[f'ADJUSTED_CONTACT_MATRIX_{key}'])
+        self.MEAN_DAILY_KNOWN_CONTACTS_FOR_AGEGROUP = self.ADJUSTED_CONTACT_MATRIX.sum(axis=0)
+
+        for matrix in [self.CONTACT_DURATION_GAMMA_SCALE_MATRIX, self.CONTACT_DURATION_GAMMA_SHAPE_MATRIX, self.P_CONTACT, self.ADJUSTED_CONTACT_MATRIX ]:
             assert matrix.shape[0] == matrix.shape[1], "contact matrix is not square"
 
     def infectious_human(self):
@@ -238,7 +238,7 @@ class Location(simpy.Resource):
         """
 
         if type == "known":
-            mean_daily_interactions = self.MEAN_DAILY_KNOWN_CONTACTS
+            mean_daily_interactions = self.MEAN_DAILY_KNOWN_CONTACTS_FOR_AGEGROUP[human.age_bin_width_5.index]
             min_dist_encounter = self.conf['MIN_DIST_KNOWN_CONTACT']
             max_dist_encounter = self.conf['MAX_DIST_KNOWN_CONTACT']
             mean_interaction_time = None
@@ -255,7 +255,6 @@ class Location(simpy.Resource):
         packing_term = 100 * np.sqrt(self.area/len(self.humans))
 
         interactions = []
-        # what if there is no human as of now (solo house)
         n_interactions = self.rng.negative_binomial(mean_daily_interactions, 0.5)
         for i in range(n_interactions):
             # sample other human
@@ -297,7 +296,7 @@ class Location(simpy.Resource):
 
     def sample_interactions(self, human):
         """
-        samples how `human` interacts with other `human`s at this location at this time.
+        samples how `human` interacts with other `human`s at this location (`self`) at this time.
 
         Args:
             human (covid19sim.human.Human): human for whom interactions need to be sampled
@@ -406,7 +405,7 @@ class Household(Location):
 
         location_type = kwargs['location_type']
         # for seniors, social common room serves as a workplace where they spend time hanging out with others
-        if location_type == "SENIOR_RESIDENCY":
+        if location_type == "SENIOR_RESIDENCE":
             self.n_nurses = 0
             name = kwargs.get("name")
             self.social_common_room = Location(
@@ -475,6 +474,7 @@ class WorkplaceB(Location):
             kwargs (dict): all the args necessary for a Location's init
         """
         super(WorkplaceB, self).__init__(**kwargs)
+        self.workers = set()
         self.n_workers = 0
 
     def assign_worker(self, human):
@@ -484,6 +484,7 @@ class WorkplaceB(Location):
         Args:
             human (covi19sim.human.Human): `human` to add to the set of workers
         """
+        self.workers.add(human)
         self.n_workers += 1
 
     def __repr__(self):

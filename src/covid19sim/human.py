@@ -329,7 +329,7 @@ class Human(object):
 
         # leisure hours on weekends
         self.misc_hours = self.rng.choice(range(7, 24), self.number_of_misc_hours)
-        self.work_start_hour = self.rng.choice(range(7, 17), 3)
+        self.work_start_hour = self.rng.choice(range(7, 12), 3)
         self.location_leaving_time = self.env.ts_initial + SECONDS_PER_HOUR
         self.location_start_time = self.env.ts_initial
 
@@ -1273,8 +1273,7 @@ class Human(object):
         # with probs depending on state of lockdown of city
         # Lockdown should also close a fraction of the shops
 
-        if (not self.profession=="retired" and
-            not self.env.is_weekend() and
+        if (not self.env.is_weekend() and
             hour in self.work_start_hour and
             not self.rest_at_home):
             next_location  = "work"
@@ -1311,7 +1310,7 @@ class Human(object):
             city (covid19sim.locations.City): City object to which this human belongs
 
         Yields:
-            [type]: [description]
+            simpy.events.Process
         """
         self.household.humans.add(self)
         while True:
@@ -1323,17 +1322,13 @@ class Human(object):
 
             self.assert_state_changes()
 
-            # self.how_am_I_feeling = 1.0 (great) --> rest_at_home = False
+            # self.how_am_I_feeling = 1.0 (great) will make rest_at_home = False
             if not self.rest_at_home:
-                # set it once for the rest of the disease path
                 i_feel = self.how_am_I_feeling()
                 if self.rng.random() > i_feel:
                     self.rest_at_home = True
-                    # print(f"{self} C:{self.has_cold} A:{self.has_allergy_symptoms} staying home because I feel {i_feel} {self.symptoms}")
-            # happens when recovered
             elif self.rest_at_home and self.how_am_I_feeling() == 1.0 and self.is_removed:
                 self.rest_at_home = False
-                # print(f"{self} C:{self.has_cold} A:{self.has_allergy_symptoms} going out because I recovered {self.symptoms}")
 
             self.move_to_hospital_if_required()
 
@@ -1349,6 +1344,9 @@ class Human(object):
                 to_location = "household"
                 if duration > 720:
                     break
+
+            # if self.name == "human:439":
+            #     print(f"{self.env.is_weekend()} going to {to_location}")
 
             if to_location == "household":
                 yield self.env.process(self.at(self.household, city, duration))
@@ -1380,25 +1378,21 @@ class Human(object):
 
     def excursion(self, city, location_type):
         """
-        [summary]
+        Redirects `self` to a relevant location corresponding to `location_type`.
 
         Args:
-            city ([type]): [description]
-            type ([type]): [description]
+            city (covid19sim.locations.city): `City` object in which `self` resides
+            location_type (str): type of location `self` will be moved to.
 
         Raises:
-            ValueError: [description]
-
-        Returns:
-            [type]: [description]
+            ValueError: Can't redirect `self` to an unknown location type
 
         Yields:
-            [type]: [description]
+            simpy.events.Process
         """
         if location_type == "shopping":
             grocery_store = self._select_location(location_type="stores", city=city)
             if grocery_store is None:
-                print("ads")
                 # Either grocery stores are not open, or all queues are too long, so return
                 return
             t = draw_random_discrete_gaussian(self.avg_shopping_time, self.scale_shopping_time, self.rng)
@@ -1456,24 +1450,23 @@ class Human(object):
         elif location_type == "leisure":
             S = 0
             p_exp = 1.0
-            leisure_count = 0
-            while True:
+            while self.count_misc <= self.max_misc_per_week:
                 if self.rng.random() > p_exp:  # return home
                     yield self.env.process(self.at(self.household, city, 60))
                     break
 
                 loc = self._select_location(location_type='miscs', city=city)
                 if loc is None:
-                    # No leisure spots are open, or without long queues, so return
-                    return
+                    return # No leisure spots are open, or without long queues, so return
+
                 S += 1
                 p_exp = self.rho * S ** (-self.gamma * self.adjust_gamma)
                 with loc.request() as request:
                     yield request
-                    leisure_count += 1 # If we make it here, it counts as a leisure visit
+                    self.count_misc += 1 # If we make it here, it counts as a leisure visit
                     t = draw_random_discrete_gaussian(self.avg_misc_time, self.scale_misc_time, self.rng)
                     yield self.env.process(self.at(loc, city, t))
-            self.count_misc+=leisure_count
+
         else:
             raise ValueError(f'Unknown excursion type:{location_type}')
 
@@ -1519,6 +1512,9 @@ class Human(object):
         Yields:
             [type]: [description]
         """
+
+        # if self.name == "human:439":
+        #     print(f"{self.location} --> {location}")
 
         # track transitions & locations visited
         city.tracker.track_trip(from_location=self.location.location_type, to_location=location.location_type, age=self.age, hour=self.env.hour_of_day())
@@ -1612,19 +1608,17 @@ class Human(object):
 
     def _select_location(self, location_type, city):
         """
-        Preferential exploration treatment to visit places
-        rho, gamma are treated in the paper for normal trips
-        Here gamma is multiplied by a factor to supress exploration for parks, stores.
+        Preferential exploration treatment to visit places in the city.
 
         Args:
-            location_type ([type]): [description]
-            city ([type]): [description]
+            location_type (str): type of location to sample from
+            city (covid19sim.locations.city): `City` object in which `self` resides
 
         Raises:
-            ValueError: [description]
+            ValueError: when location_type is not one of "park", "stores", "hospital", "hospital-icu", "miscs"
 
         Returns:
-            [type]: [description]
+            (covid19sim.locations.location.Location): a `Location` object
         """
         if location_type == "park":
             S = self.visits.n_parks
