@@ -1,5 +1,5 @@
-Welcome to Covi-Canada simulator documentation!
-=======================================================
+Welcome to the Mila-IQIA Covid-19 simulator documentation!
+==========================================================
 This is a sub-project of `Peer-to-Peer AI Tracing App <https://mila.quebec/en/peer-to-peer-ai-tracing-of-covid-19/>`_
 delegated by `Prof. Yoshua Bengio <https://yoshuabengio.org/>`_.
 Read more about the app in Prof. Bengio's `blog post <https://yoshuabengio.org/2020/03/23/peer-to-peer-ai-tracing-of-covid-19/>`_.
