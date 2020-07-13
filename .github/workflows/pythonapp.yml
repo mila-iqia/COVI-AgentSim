@@ -30,15 +30,15 @@ jobs:
     - name: Machine learning source code checkout
       uses: actions/checkout@v2
       with:
-        repository: Covi-Canada/machine-learning
+        repository: Covi-Canada/covi-machine-learning
         ref: littlecrunch  # TODO: auto-select the name of the current simulator branch?
         token: ${{ secrets.ORG_REPOS_AUTH_TOKEN }}  # TODO: ONCE PUBLIC, REMOVE + DELETE TOKEN @@@
-        path: downloads/machine-learning
+        path: downloads/covi-machine-learning
     - name: Machine learning package installation
       run: |
         # TODO: ctt should self-install its own requirements.txt...
-        pip install -r downloads/machine-learning/requirements-minimal.txt
-        pip install -e downloads/machine-learning
+        pip install -r downloads/covi-machine-learning/requirements-minimal.txt
+        pip install -e downloads/covi-machine-learning
     - name: Simulator package installation
       run: |
         pip install -e .
