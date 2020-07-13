@@ -17,9 +17,9 @@ sys.path.insert(0, os.path.abspath('../../src/covid19sim'))
 
 # -- Project information -----------------------------------------------------
 
-project = 'Covi-Canada simulator'
-copyright = '2020, Covi-Canada'
-author = 'Covi-Canada'
+project = 'Mila-IQIA Covid-19 simulator'
+copyright = '2020, Mila'
+author = 'Mila'
 
 
 # -- General configuration ---------------------------------------------------
