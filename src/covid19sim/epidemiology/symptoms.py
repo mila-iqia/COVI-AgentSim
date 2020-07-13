@@ -11,6 +11,41 @@ from collections import namedtuple, OrderedDict
 """
 
 
+# Utility dict to avoid storing the string symptom's name in its instance
+_INT_TO_SYMPTOMS_NAME = {
+    1: 'mild',
+    0: 'moderate',
+    2: 'severe',
+    3: 'extremely-severe',
+    4: 'fever',
+    5: 'chills',
+    6: 'gastro',
+    7: 'diarrhea',
+    8: 'nausea_vomiting',
+    9: 'fatigue',
+    10: 'unusual',
+    11: 'hard_time_waking_up',
+    12: 'headache',
+    13: 'confused',
+    14: 'lost_consciousness',
+    15: 'trouble_breathing',
+    16: 'sneezing',
+    17: 'cough',
+    18: 'runny_nose',
+    20: 'sore_throat',
+    21: 'severe_chest_pain',
+    24: 'light_trouble_breathing',
+    23: 'mild_trouble_breathing',
+    25: 'moderate_trouble_breathing',
+    26: 'heavy_trouble_breathing',
+    22: 'loss_of_taste',
+    19: 'aches'
+    # commented out because these are not used elsewhere for now
+    # __: 'hives',
+    # __: 'swelling'
+}
+
+
 @dataclasses.dataclass(frozen=True)
 class Symptom:
     """A symptom
@@ -24,11 +59,14 @@ class Symptom:
             This attribute should never change once set. It is used to define the
             position of the symptom in a multi-hot encoding
     """
-    name: str
     id: int
 
+    @property
+    def name(self):
+        return _INT_TO_SYMPTOMS_NAME[self.id]
+
     def __repr__(self):
-        return f"{self.name}:{self.id}"
+        return f"{self.id}:{self.name}"
 
     def __str__(self):
         return self.name
@@ -50,29 +88,46 @@ class Symptom:
             raise ValueError(f"Could not compare {self} with {other}")
 
 
-SymptomProbability = namedtuple('SymptomProbability', ['name', 'id', 'probabilities'])
-SymptomProbability.__doc__ = """A symptom probabilities collection given a disease phase
+STR_TO_SYMPTOMS: typing.Dict[str, Symptom] = {
+    name: Symptom(id) for id, name in _INT_TO_SYMPTOMS_NAME.items()
+}
 
-Attributes
-    ----------
-    name : str
-        name of the symptom
-    id : positive int
-        id of the symptom
-        This attribute should never change once set. It is used to define the
-        position of the symptom in a multi-hot encoding
-    probabilities : dict
-        probabilities of the symptom per disease phase
-        A probability of `-1` is assigned when it is heavily variable given
-        multiple factors and is handled entirely in the code
-        A probability of `None` is assigned when the symptom can be skipped
-        entirely in the disease phase. The disease phase can also be removed 
-        from the dict
-"""
+MILD = STR_TO_SYMPTOMS['mild']
+MODERATE = STR_TO_SYMPTOMS['moderate']
+SEVERE = STR_TO_SYMPTOMS['severe']
+EXTREMELY_SEVERE = STR_TO_SYMPTOMS['extremely-severe']
+FEVER = STR_TO_SYMPTOMS['fever']
+CHILLS = STR_TO_SYMPTOMS['chills']
+GASTRO = STR_TO_SYMPTOMS['gastro']
+DIARRHEA = STR_TO_SYMPTOMS['diarrhea']
+NAUSEA_VOMITING = STR_TO_SYMPTOMS['nausea_vomiting']
+FATIGUE = STR_TO_SYMPTOMS['fatigue']
+UNUSUAL = STR_TO_SYMPTOMS['unusual']
+HARD_TIME_WAKING_UP = STR_TO_SYMPTOMS['hard_time_waking_up']
+HEADACHE = STR_TO_SYMPTOMS['headache']
+CONFUSED = STR_TO_SYMPTOMS['confused']
+LOST_CONSCIOUSNESS = STR_TO_SYMPTOMS['lost_consciousness']
+TROUBLE_BREATHING = STR_TO_SYMPTOMS['trouble_breathing']
+SNEEZING = STR_TO_SYMPTOMS['sneezing']
+COUGH = STR_TO_SYMPTOMS['cough']
+RUNNY_NOSE = STR_TO_SYMPTOMS['runny_nose']
+SORE_THROAT = STR_TO_SYMPTOMS['sore_throat']
+SEVERE_CHEST_PAIN = STR_TO_SYMPTOMS['severe_chest_pain']
+LIGHT_TROUBLE_BREATHING = STR_TO_SYMPTOMS['light_trouble_breathing']
+MILD_TROUBLE_BREATHING = STR_TO_SYMPTOMS['mild_trouble_breathing']
+MODERATE_TROUBLE_BREATHING = STR_TO_SYMPTOMS['moderate_trouble_breathing']
+HEAVY_TROUBLE_BREATHING = STR_TO_SYMPTOMS['heavy_trouble_breathing']
+LOSS_OF_TASTE = STR_TO_SYMPTOMS['loss_of_taste']
+ACHES = STR_TO_SYMPTOMS['aches']
+# commented out because these are not used elsewhere for now
+# HIVES = STR_TO_SYMPTOMS['hives']
+# SWELLING = STR_TO_SYMPTOMS['swelling']
+
 
 #
 # DISEASES PHASES
 #
+
 
 COVID_FIRST_PHASE = 10  # Used to delimit COVID from other diseases
 COVID_INCUBATION = 10 + 0
@@ -124,44 +179,29 @@ def _disease_phase_id_to_idx(disease: str, phase_id: int):
 
 
 #
-# DISEASES SYMPTOMS
-#
-
-MILD = Symptom('mild', 1)
-MODERATE = Symptom('moderate', 0)
-SEVERE = Symptom('severe', 2)
-EXTREMELY_SEVERE = Symptom('extremely-severe', 3)
-FEVER = Symptom('fever', 4)
-CHILLS = Symptom('chills', 5)
-GASTRO = Symptom('gastro', 6)
-DIARRHEA = Symptom('diarrhea', 7)
-NAUSEA_VOMITING = Symptom('nausea_vomiting', 8)
-FATIGUE = Symptom('fatigue', 9)
-UNUSUAL = Symptom('unusual', 10)
-HARD_TIME_WAKING_UP = Symptom('hard_time_waking_up', 11)
-HEADACHE = Symptom('headache', 12)
-CONFUSED = Symptom('confused', 13)
-LOST_CONSCIOUSNESS = Symptom('lost_consciousness', 14)
-TROUBLE_BREATHING = Symptom('trouble_breathing', 15)
-SNEEZING = Symptom('sneezing', 16)
-COUGH = Symptom('cough', 17)
-RUNNY_NOSE = Symptom('runny_nose', 18)
-SORE_THROAT = Symptom('sore_throat', 20)
-SEVERE_CHEST_PAIN = Symptom('severe_chest_pain', 21)
-LIGHT_TROUBLE_BREATHING = Symptom('light_trouble_breathing', 24)
-MILD_TROUBLE_BREATHING = Symptom('mild_trouble_breathing', 23)
-MODERATE_TROUBLE_BREATHING = Symptom('moderate_trouble_breathing', 25)
-HEAVY_TROUBLE_BREATHING = Symptom('heavy_trouble_breathing', 26)
-LOSS_OF_TASTE = Symptom('loss_of_taste', 22)
-ACHES = Symptom('aches', 19)
-# commented out because these are not used elsewhere for now
-# HIVES = Symptom('hives', __)
-# SWELLING = Symptom('swelling', __)
-
-
-#
 # DISEASES SYMPTOMS PROBABILITIES
 #
+
+
+SymptomProbability = namedtuple('SymptomProbability', ['name', 'id', 'probabilities'])
+SymptomProbability.__doc__ = """A symptom probabilities collection given a disease phase
+
+Attributes
+    ----------
+    name : str
+        name of the symptom
+    id : positive int
+        id of the symptom
+        This attribute should never change once set. It is used to define the
+        position of the symptom in a multi-hot encoding
+    probabilities : dict
+        probabilities of the symptom per disease phase
+        A probability of `-1` is assigned when it is heavily variable given
+        multiple factors and is handled entirely in the code
+        A probability of `None` is assigned when the symptom can be skipped
+        entirely in the disease phase. The disease phase can also be removed 
+        from the dict
+"""
 
 
 def _get_covid_fever_probability(phase_id: int, really_sick: bool, extremely_sick: bool,
@@ -560,11 +600,6 @@ SYMPTOMS: typing.Dict[Symptom, SymptomProbability] = OrderedDict([
     #     SymptomProbability('swelling', __, {ALLERGY_MAIN: 0.3})
     # )
 ])
-
-
-STR_TO_SYMPTOMS: typing.Dict[str, Symptom] = {
-    str(symptom): symptom for symptom in SYMPTOMS
-}
 
 
 def _get_covid_sickness_severity(rng, phase_id: int, really_sick: bool, extremely_sick: bool,

@@ -65,7 +65,7 @@ class Symptoms(unittest.TestCase):
             self.assertEqual(str(symptom), symptom.name)
             self.assertEqual(symptom, symptom.id)
             self.assertEqual(int(symptom), symptom.id)
-            self.assertEqual(symptom, Symptom(symptom.name, symptom.id))
+            self.assertEqual(symptom, Symptom(symptom.id))
 
             self.assertIn(symptom.name, symptoms_list)
             self.assertIn(symptom.id, symptoms_list)
@@ -82,9 +82,14 @@ class Symptoms(unittest.TestCase):
         self.assertEqual(len(SYMPTOMS), len(STR_TO_SYMPTOMS))
 
     def test_symptoms_structure(self):
+        existing_ids = set()
+
         for symptom, s_prob in SYMPTOMS.items():
             self.assertEqual(symptom.name, s_prob.name)
             self.assertEqual(symptom.id, s_prob.id)
+
+            self.assertNotIn(symptom.id, existing_ids)
+            existing_ids.add(symptom.id)
 
             s_prob_diseases_phases = set(s_prob.probabilities.keys())
             if s_prob_diseases_phases:
