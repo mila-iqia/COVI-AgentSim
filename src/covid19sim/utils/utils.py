@@ -596,3 +596,8 @@ def zip_outdir(outdir):
         str(path.parent), path.name, path.name
     )
     subprocess_cmd(command)
+
+
+def normal_pdf(x, mean, std):
+    proba = np.exp(-(((x - mean) ** 2) / (2 * std ** 2))) / (std * (2 * np.pi) ** 0.5)
+    return proba

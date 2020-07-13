@@ -14,6 +14,7 @@ PREEXISTING_CONDITIONS_META = {
     'immuno-suppressed': 0,
     'lung_disease': 8,
     'pregnant': 9,
+    'allergies': 10,
 }
 
 # NOTE: THIS MAP SHOULD ALWAYS MATCH THE NAME/IDS PROVIDED IN utils.py

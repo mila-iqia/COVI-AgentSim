@@ -254,12 +254,16 @@ def compute_covid_properties(human):
 def viral_load_for_day(human, timestamp):
     """ Calculates the elapsed time since infection, returning this person's current viral load"""
 
-    if human.infection_timestamp is None:
+    if not human.has_covid:
         return 0.
 
     # calculates the time since infection in days
-    days_infectious = (timestamp - human.infection_timestamp).total_seconds() / SECONDS_PER_DAY - \
-                      human.infectiousness_onset_days
+    if isinstance(timestamp, (int, float)):
+        days_infectious = (timestamp - human.ts_covid19_infection) / SECONDS_PER_DAY - \
+                          human.infectiousness_onset_days
+    else:
+        days_infectious = (timestamp - human.infection_timestamp).total_seconds() / SECONDS_PER_DAY - \
+                          human.infectiousness_onset_days
 
     if days_infectious < 0:
         return 0.

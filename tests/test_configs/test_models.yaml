@@ -17,8 +17,8 @@ GLOBAL_MOBILITY_SCALING_FACTOR : 1
 
 # PATHS
 CLUSTER_PATH : "output/clusters"
-# RADIANT-RESONANCE-561
-TRANSFORMER_EXP_PATH : "https://drive.google.com/file/d/1QhiZehbxNOhA-7n37h6XEHTORIXweXc6"
+# TWILIGHT-RAIN-696
+TRANSFORMER_EXP_PATH: "https://drive.google.com/file/d/1kXA-0juviQOL0R08YlQpaS5gKumQ8zrT"
 
 # Inference & Training
 TRACING_N_DAYS_HISTORY : 14

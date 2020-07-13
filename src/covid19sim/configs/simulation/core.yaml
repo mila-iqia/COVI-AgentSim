@@ -321,35 +321,37 @@ INFECTION_DISTANCE_FACTOR: 0.0
 INFECTION_DURATION_FACTOR: 0.0
 
 # normalized susceptibility to infection broken down age group
+# Bin boundaries are inclusive
 # refer Oxford COVID-19 model
 # They normalise the fitted attack rate across age groups so that average age has a susceptiblity of 1.0
 # UK's average age = 40; Canada's average age = 42. Just taking the normalized susceptiblity from Table 5.
 NORMALIZED_SUSCEPTIBILITY_BY_AGE: {
-    "0-10": 0.71,
-    "10-20": 0.74,
-    "20-30": 0.79,
-    "30-40": 0.87,
-    "40-50": 0.98,
-    "50-60": 1.11,
-    "60-70": 1.26,
-    "70-80": 1.45,
-    "80-150": 1.66,
+    "1-10": 0.71,
+    "11-20": 0.74,
+    "21-30": 0.79,
+    "31-40": 0.87,
+    "41-50": 0.98,
+    "51-60": 1.11,
+    "61-70": 1.26,
+    "71-80": 1.45,
+    "81-150": 1.66,
   }
 
 # these numbers are taken for daily_mean_work_interactions from Oxford study (Table 3)
 # I_as used in the probability of transmission denotes mean daily interactions
 # The report doesn't have a table for I_as so the numbers in Table 3 are used as a proxy
 # TODO: check the updated version of the report for these numbers.
+# Bin boundaries are inclusive
 MEAN_DAILY_INTERACTION_FOR_AGE_GROUP: {
-  "0-10": 10,
-  "10-20": 10,
-  "20-30": 7,
-  "30-40": 7,
-  "40-50": 7,
-  "50-60": 7,
-  "60-70": 7,
-  "70-80": 3,
-  "80-150": 3,
+  "1-10": 10,
+  "11-20": 10,
+  "21-30": 7,
+  "31-40": 7,
+  "41-50": 7,
+  "51-60": 7,
+  "61-70": 7,
+  "71-80": 3,
+  "81-150": 3,
 
   }
 
@@ -374,9 +376,9 @@ P_TEST_MILD: 0.1
 P_TEST_SEVERE: 1.0
 GET_TESTED_SYMPTOMS_CHECKED_IN_HOSPITAL: ["mild", "moderate", "severe", "fever", "chills", "gastro", "diarrhea", "cough", "fatigue", "trouble_breathing", "loss_of_taste", "light_trouble_breathing", "moderate_trouble_breathing", "heavy_trouble_breathing" ]
 GET_TESTED_SYMPTOMS_CHECKED_BY_SELF: ["cough", "fever", "trouble_breathing", "chills", "loss_of_taste", ""]
+TEST_REPORT_PROB: 0.8  # the probability that a user with the app will report their test result
 
 # SEASONAL ALLERGIES
-P_ALLERGIES: 0.4 # proportion of population; https://www.healthline.com/health/allergies/statistics#1
 # P_HAS_ALLERGIES_TODAY: 0.005 # likelihood to start allergy any day (2-3 times per year) # produces too many allergies (experimental)
 P_HAS_ALLERGIES_TODAY: 0.005
 
@@ -470,7 +472,7 @@ EFFECTIVE_R_WINDOW: 10 # days
 # MASK
 MASK_EFFICACY_NORMIE: 0.32
 MASK_EFFICACY_HEALTHWORKER: 0.98
-BASELINE_P_MASK: 0.5 # FIXME:unused
+BASELINE_P_MASK: 0.5
 MASKS_SUPPLY: 1000000
 MASK_EFFICACY_FACTOR: 0.4 # used in reduction of probability of transmission (no-source)
 

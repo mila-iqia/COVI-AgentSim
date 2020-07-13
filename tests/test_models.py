@@ -15,6 +15,7 @@ from covid19sim.inference.helper import (conditions_to_np, symptoms_to_np, encod
 from covid19sim.inference.human_as_message import get_test_results_array
 from covid19sim.run import simulate
 from covid19sim.inference.heavy_jobs import DummyMemManager
+from covid19sim.native import Environment
 
 
 class MakeHumanAsMessageProxy:
@@ -69,16 +70,10 @@ class MakeHumanAsMessageProxy:
     def _take_human_snapshot(human, personal_mailbox, message_fields):
         trimmed_human = {}
         for k in message_fields:
-            if k == 'infectiousnesses':
-                trimmed_human[k] = human.infectiousnesses
-            elif k == 'infection_timestamp':
-                trimmed_human[k] = human.infection_timestamp
-            elif k == 'update_messages':
+            if k == 'update_messages':
                 trimmed_human[k] = personal_mailbox
-            elif k == 'test_results':
-                trimmed_human[k] = human.test_results
             else:
-                trimmed_human[k] = human.__dict__[k]
+                trimmed_human[k] = getattr(human, k)
         return pickle.loads(pickle.dumps(trimmed_human))
 
 
@@ -527,10 +522,8 @@ class ModelsTest(unittest.TestCase):
 
 
 class HumanAsMessageTest(unittest.TestCase):
-    class EnvMock:
-        def __init__(self, timestamp):
-            self.timestamp = timestamp
-            self.ts_initial = 0
+    class EnvMock(Environment):
+        pass
 
     def test_human_as_message(self):
         from covid19sim.human import Human
@@ -559,13 +552,9 @@ class HumanAsMessageTest(unittest.TestCase):
             if k == 'update_messages':
                 self.assertEqual(len(message.update_messages), 1)
                 self.assertEqual(message.update_messages[0], "fake_message")
-            elif k == 'infection_timestamp':
-                self.assertIn(f'_{k}', human.__dict__)
-            elif k == "infectiousnesses":  # everything works except that one, it's a property
+            elif k == "infectiousnesses":
                 self.assertEqual(len(human.infectiousnesses), dummy_conf["TRACING_N_DAYS_HISTORY"])
-            elif k == 'test_results':
-                self.assertTrue(hasattr(human, k))
             else:
-                self.assertIn(k, human.__dict__)
+                self.assertTrue(hasattr(human, k))
 
         validate_human_message(self, message, human)

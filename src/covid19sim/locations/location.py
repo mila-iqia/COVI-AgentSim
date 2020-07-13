@@ -55,7 +55,10 @@ class Location(simpy.Resource):
         Returns:
             bool: Is there an infectious human currently at that location
         """
-        return any([h.is_infectious for h in self.humans])
+        for h in self.humans:
+            if h.is_infectious:
+                return True
+        return False
 
     def __repr__(self):
         """

@@ -1,4 +1,9 @@
-from setuptools import setup, find_packages
+import glob
+import os
+from setuptools import setup, find_packages, Extension
+
+
+cloneroot = os.path.dirname(__file__)
 
 
 with open('requirements.txt', 'r') as f:
@@ -7,7 +12,7 @@ with open('requirements.txt', 'r') as f:
 setup(
     name                 = "covid19sim",
     version              = "0.0.0.dev0",
-    url                  = "https://github.com/covi-canada/simulator",
+    url                  = "https://github.com/mila-iqia/covi-simulator",
     description          = "Simulation of COVID-19 spread.",
     long_description     = "Simulation of COVID-19 spread.",
     classifiers          = [
@@ -31,12 +36,20 @@ setup(
     install_requires     = requirements,
     extras_require       = {
         "ctt": [
-            "ctt @ git+https://github.com/covi-canada/machine-learning@bunchacrunch#egg=ctt",
+            "ctt @ git+https://github.com/mila-iqia/covi-machine-learning@bunchacrunch#egg=ctt",
         ],
         "ctt-tf": [
-            "ctt[tensorflow] @ git+https://github.com/covi-canada/machine-learning@master#egg=ctt"
+            "ctt[tensorflow] @ git+https://github.com/mila-iqia/covi-machine-learning@master#egg=ctt"
         ],
     },
     packages             = find_packages("src"),
     package_dir          = {'': 'src'},
+    ext_modules          = [
+        Extension("covid19sim.native._native",
+                  glob.glob(os.path.join(cloneroot, "src", "covid19sim", "native", "**", "*.c"),
+                            recursive=True),
+                  include_dirs=[os.path.join(cloneroot, "src", "covid19sim", "native")],
+                  define_macros=[("PY_SSIZE_T_CLEAN", None),],
+        ),
+    ],
 )

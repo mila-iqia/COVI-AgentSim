@@ -1,4 +1,5 @@
 from collections import OrderedDict, namedtuple
+from covid19sim.utils.utils import normal_pdf
 
 # NOTE: THE PREEXISTING CONDITION NAMES/IDs BELOW MUST MATCH THOSE IN frozen/helper.py
 ConditionProbability = namedtuple('ConditionProbability', ['name', 'id', 'age', 'sex', 'probability'])
@@ -109,6 +110,9 @@ PREEXISTING_CONDITIONS = OrderedDict([
     ]),
     ('pregnant', [
         ConditionProbability('pregnant', 9, -1, 'f', -1)
+    ]),
+    ('allergies', [
+        ConditionProbability('allergies', 10, 1000, 'a', 0.2) # proportion of population; https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6121311/
     ])
 ])
 
@@ -281,8 +285,8 @@ def _get_preexisting_conditions(age, sex, rng):
         conditions.append('lung_disease')
 
     if sex.lower().startswith('f') and age > 18 and age < 50:
-        p_pregnant = rng.normal(27, 5)
-        if rng.rand() < p_pregnant:
+        p_pregnant_at_age = normal_pdf(age, 27, 5)
+        if rng.rand() < p_pregnant_at_age:
             conditions.append('pregnant')
 
     return conditions
@@ -310,8 +314,7 @@ def get_age_bin(age, conf):
     # required for Oxford COVID-19 infection model
     age_bins = conf['NORMALIZED_SUSCEPTIBILITY_BY_AGE'].keys()
     for l, u in age_bins:
-        # NOTE  & FIXME: lower limit is exclusive
-        if l < age <= u:
+        if l <= age <= u:
             bin = (l, u)
             break
     return bin

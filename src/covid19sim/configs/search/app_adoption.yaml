@@ -8,6 +8,8 @@ DROPOUT_RATE: 0.02
 INTERVENTION_DAY: 5
 tune: true
 COLD_CONTAGIOUSNESS: 0
+P_CAREFUL_PERSON: 0.3
+init_percent_sick: 0.002
 
 # ---------------------------------------
 # -----  Experimental Fixed Params  -----
@@ -22,7 +24,7 @@ time: "'02:50:00'"
 # -------------------------
 # -----  Directories  -----
 # -------------------------
-base_dir: /scratch/vsch/covid_sims/hail_mary # if outdir is not provided, runs will be stored in base_dir/${tracing_method}
+base_dir: /scratch/vsch/covid_sims/app_adopation/moar # if outdir is not provided, runs will be stored in base_dir/${tracing_method}
 code_loc: /home/vsch/simulator/src/covid19sim/
 weights_dir: /scratch/vsch
 use_tmpdir: false
@@ -37,7 +39,7 @@ tracing_method:
     - no_intervention
     - heuristicv1
     - transformer>MILD-SOUND-646A
-    - transformer>ETERNAL-RESONANCE-650A
+    - transformer>DISTINCTIVE-SILENCE-690B
     - oracle>RADIANT-RESONANCE-561
     - binary_digital_tracing_order_1
     - binary_digital_tracing_order_2
@@ -51,17 +53,6 @@ APP_UPTAKE:
     - 0.8415 # 60%
     - 0.9831 # 70%
     # - -1     # 100%
-
-P_CAREFUL_PERSON:
-  sample: cartesian
-  from:
-    - 0.3
-
-init_percent_sick:
-  sample: cartesian
-  from:
-    - 0.002
-    - 0.01
 
 seed:
   sample: cartesian

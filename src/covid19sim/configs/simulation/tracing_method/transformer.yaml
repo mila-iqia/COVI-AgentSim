@@ -10,8 +10,8 @@ USE_ORACLE: False
 # NOTE: INTERVENTION is only valid if INTERVENTION_DAY >= 0
 INTERVENTION: "Tracing"
 
-# RADIANT-RESONANCE-561
-TRANSFORMER_EXP_PATH: "https://drive.google.com/file/d/1QhiZehbxNOhA-7n37h6XEHTORIXweXc6"
+# TWILIGHT-RAIN-696
+TRANSFORMER_EXP_PATH: "https://drive.google.com/file/d/1kXA-0juviQOL0R08YlQpaS5gKumQ8zrT"
 CLUSTER_PATH: "output/clusters"
 
 RISK_MAPPING:
@@ -34,3 +34,7 @@ RISK_MAPPING:
     0.26276696,
     1.0,
   ]
+
+# Uncomment one of these and perform some experiments @nasim @victor
+#REC_LEVEL_THRESHOLDS: [0, 1, 2] # More conservative
+#REC_LEVEL_THRESHOLDS: [0, 0, 1] # Binary

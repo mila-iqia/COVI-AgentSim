@@ -20,8 +20,8 @@ import sys
 import covid19sim.inference.server_utils
 
 default_workers = 6
-# RADIANT-RESONANCE-561
-default_model_exp_path = "https://drive.google.com/file/d/1QhiZehbxNOhA-7n37h6XEHTORIXweXc6"
+# TWILIGHT-RAIN-696
+default_model_exp_path = "https://drive.google.com/file/d/1kXA-0juviQOL0R08YlQpaS5gKumQ8zrT"
 
 
 def parse_args(args=None):
