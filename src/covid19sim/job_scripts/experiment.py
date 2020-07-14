@@ -663,7 +663,7 @@ def printlines():
     print("=" * 80)
     print("=" * 80)
 
-
+HYDRA_CONF_PATH = "../configs/experiment/config.yaml"
 @hydra.main(config_path=HYDRA_CONF_PATH, strict=False)
 def main(conf: DictConfig) -> None:
 
