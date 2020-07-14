@@ -315,10 +315,6 @@ def main(args):
                 {"tracing_method": tracing_method, "method_dir": method_dir}
             )
 
-    target_name = f"{parent.name}_{Path(args.target).name}"
-    if "transformer" in target_name:
-        target_name = target_name.replace("transformer", "")
-
     # ---------------------------------------------
     # -----  Compute all transition matrices  -----
     # ---------------------------------------------
@@ -326,6 +322,11 @@ def main(args):
     for i, norm_dict in enumerate(to_normalize):
         tracing_method = norm_dict["tracing_method"]
         method_dir = norm_dict["method_dir"]
+        
+        target_name = f"{method_dir.name}_{Path(args.target).name}"
+        if "transformer" in target_name:
+            target_name = target_name.replace("transformer", "").replace("_012_", "")
+
 
         print_title(i, method_dir, to_normalize)
 
@@ -489,5 +490,4 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-
     main(args)
