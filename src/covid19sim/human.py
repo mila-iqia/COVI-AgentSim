@@ -12,8 +12,7 @@ import warnings
 from collections import defaultdict
 from orderedset import OrderedSet
 
-from covid19sim.interventions.behaviors import Behavior
-from covid19sim.interventions.recommendation_manager import NonMLRiskComputer
+from covid19sim.interventions.behaviors import Behavior, Quarantine
 from covid19sim.utils.utils import compute_distance, proba_to_risk_fn
 from covid19sim.locations.city import PersonalMailboxType
 from covid19sim.locations.hospital import Hospital, ICU
@@ -84,7 +83,9 @@ class Human(BaseHuman):
         self.rng = np.random.RandomState(rng.randint(2 ** 16))  # RNG for this particular human
         self.profession = profession  # The job this human has (e.g. healthcare worker, retired, school, etc)
         self.is_healthcare_worker = True if profession == "healthcare" else False  # convenience boolean to check if is healthcare worker
-        self._workplace = deque((workplace,))  # Created as a list because we sometimes modify human's workplace to WFH if in quarantine, then go back to work when released
+        self.workplace = workplace  # we sometimes modify human's workplace to WFH if in quarantine, then go back to work when released
+        self.household = None  # assigned later
+        self.location = None  # assigned later
 
         # Logging / Tracking
         self.track_this_human = False  # TODO: @PRATEEK plz comment this
@@ -181,18 +182,16 @@ class Human(BaseHuman):
 
 
         """ Interventions """
-        self.tracing = False  # A reference to the NonMLRiskComputer logic engine which implements tracing methods
-        self.WEAR_MASK = False  # A boolean value determining whether this person will try to wear a mask during encounters
-        self.wearing_mask = False  # A bolean value that represents whether this person is currently wearing a mask
+        self.will_wear_mask = False  # A boolean value determining whether this person will try to wear a mask during encounters
+        self.wearing_mask = False  # A boolean value that represents whether this person is currently wearing a mask
         self.mask_efficacy = 0.  # A float value representing how good this person is at wearing a mask (i.e. healthcare workers are better than others)
-        self.notified = False  # Value indicating whether this person has been "notified" to start following some interventions
-        self.tracing_method = None  # Type of contact tracing to do, e.g. Transformer or binary contact tracing or heuristic
-        self._maintain_extra_distance = deque((0,))  # Represents the extra distance this person could take as a result of an intervention
+        self.intervention = None  # Type of contact tracing to do, e.g. Transformer or binary contact tracing or heuristic
+        self.maintain_extra_distance = 0  # Represents the extra distance this person could take as a result of an intervention
         self._follows_recommendations_today = None  # Whether this person will follow app recommendations today
         self._rec_level = -1  # Recommendation level used for Heuristic / ML methods
         self._intervention_level = -1  # Intervention level (level of behaviour modification to apply), for logging purposes
         self.recommendations_to_follow = OrderedSet()  # which recommendations this person will follow now
-        self._time_encounter_reduction_factor = deque((1.0,))  # how much does this person try to reduce the amount of time they are in contact with others
+        self.time_encounter_reduction_factor = 1.0  # how much does this person try to reduce the amount of time they are in contact with others
         self.hygiene = 0  # start everyone with a baseline hygiene. Only increase it once the intervention is introduced.
         self._test_recommended = False  # does the app recommend that this person should get a covid-19 test
         self.effective_contacts = 0  # A scaled number of the high-risk contacts (under 2m for over 15 minutes) that this person had
@@ -356,43 +355,7 @@ class Human(BaseHuman):
         self.household = location
         self.location = location
         if self.profession == "retired":
-            self._workplace[-1] = location
-
-    @property
-    def workplace(self):
-        return self._workplace[0]
-
-    def set_temporary_workplace(self, new_workplace):
-        self._workplace.appendleft(new_workplace)
-
-    def revert_workplace(self):
-        workplace = self._workplace[-1]
-        self._workplace.clear()
-        self._workplace.appendleft(workplace)
-
-    @property
-    def maintain_extra_distance(self):
-        return self._maintain_extra_distance[0]
-
-    def set_temporary_maintain_extra_distance(self, new_maintain_extra_distance):
-        self._maintain_extra_distance.appendleft(new_maintain_extra_distance)
-
-    def revert_maintain_extra_distance(self):
-        maintain_extra_distance = self._maintain_extra_distance[-1]
-        self._maintain_extra_distance.clear()
-        self._maintain_extra_distance.appendleft(maintain_extra_distance)
-
-    @property
-    def time_encounter_reduction_factor(self):
-        return self._time_encounter_reduction_factor[0]
-
-    def set_temporary_time_encounter_reduction_factor(self, new_time_encounter_reduction_factor):
-        self._time_encounter_reduction_factor.appendleft(new_time_encounter_reduction_factor)
-
-    def revert_time_encounter_reduction_factor(self):
-        time_encounter_reduction_factor = self._time_encounter_reduction_factor[-1]
-        self._time_encounter_reduction_factor.clear()
-        self._time_encounter_reduction_factor.appendleft(time_encounter_reduction_factor)
+            self.workplace = location
 
     ########### MEMORY OPTIMIZATION ###########
     @property
@@ -439,6 +402,15 @@ class Human(BaseHuman):
     @property
     def is_extremely_sick(self):
         return self.can_get_extremely_sick and 'severe' in self.symptoms
+
+    @property
+    def is_quarantined(self):
+        """
+        Returns True if the human currently has a quarantine recommendation to follow, otherwise False.
+        Returns:
+            bool: True if quarantining, False if not.
+        """
+        return any([isinstance(rec, Quarantine) for rec in self.recommendations_to_follow])
 
     @property
     def viral_load(self):
@@ -631,7 +603,7 @@ class Human(BaseHuman):
         self.test_type = test_type
         self.test_time = self.env.timestamp
         self.hidden_test_result = unobserved_result
-        self._will_report_test_result = self.rng.random() < self.carefulness
+        self._will_report_test_result = self.rng.random() < self.conf.get("TEST_REPORT_PROB")
         if isinstance(self.location, (Hospital, ICU)):
             self.time_to_test_result = self.conf['TEST_TYPES'][test_type]['time_to_result']['in-patient']
         else:
@@ -783,13 +755,11 @@ class Human(BaseHuman):
         self.risk_history_map[current_day_idx] = self.baseline_risk
 
         # if you're dead, not tracing, or using the transformer you don't need to update your risk here
-        if self.is_dead or\
-                not isinstance(self.tracing_method, NonMLRiskComputer) or\
-                self.tracing_method.risk_model == "transformer":
+        if self.is_dead or self.conf.get("RISK_MODEL") == "transformer":
             return
 
         # All tracing methods that are _not ML_ (heuristic, bdt1, bdt2, etc) will compute new risks here
-        risks = self.tracing_method.compute_risk(self, personal_mailbox, self.city.hd)
+        risks = self.intervention.compute_risk(self, personal_mailbox, self.city.hd)
         for day_offset, risk in enumerate(risks):
             if current_day_idx - day_offset in self.risk_history_map:
                 self.risk_history_map[current_day_idx - day_offset] = risk
@@ -806,18 +776,18 @@ class Human(BaseHuman):
             current_timestamp: the current timestamp of the simulation.
             risk_history: the risk history vector predicted by the transformer.
         """
-        assert self.tracing_method.risk_model == "transformer"
+        assert self.conf.get("RISK_MODEL") == "transformer"
         assert len(risk_history) == self.contact_book.tracing_n_days_history, \
             "unexpected transformer history coverage; what's going on?"
         for day_offset_idx in range(len(risk_history)):  # note: idx:0 == today
             self.risk_history_map[current_day_idx - day_offset_idx] = risk_history[day_offset_idx]
 
-    def wear_mask(self):
+    def compute_mask_efficacy(self):
         """
         Determines whether this human wears a mask given their carefulness and how good at masks they are (mask_efficacy)
         """
         # if you don't wear a mask, then it is not effective
-        if not self.WEAR_MASK:
+        if not self.will_wear_mask:
             self.wearing_mask, self.mask_efficacy = False, 0
             return
 
@@ -899,7 +869,7 @@ class Human(BaseHuman):
         if not current_symptoms:
             return 1.0
 
-        if getattr(self, "_quarantine", None) and self.follows_recommendations_today:
+        if self.is_quarantined and self.follows_recommendations_today:
             return 0.1
 
         if current_symptoms & {"severe", "extremely_severe"}:
@@ -948,10 +918,9 @@ class Human(BaseHuman):
 
             self.last_state = self.state
 
-    def notify(self, intervention=None):
+    def set_intervention(self, intervention):
         """
         This function is called once on the intervention day to notify `Human`.
-        `self.notified` is a flag that is used debugging interventions.
         If the interevention is of type `Tracing`, everyone is initalized from 0 recommendation level
         and associated behavior modifications. Subsequent changes in behavior are dependent on recommendation level
         changes during the course of simulation.
@@ -962,48 +931,31 @@ class Human(BaseHuman):
         Args:
             intervention (BehaviorIntervention, optional): intervention that `Human` should follow. Defaults to None.
         """
-        if (
-            intervention is not None
-            and not self.notified
-        ):
-            self.tracing = False
-            if isinstance(intervention, NonMLRiskComputer):
-                self.tracing = True
-                self.tracing_method = intervention
-            self.update_recommendations_level(intervention_start=True)
-            recommendations = intervention.get_recommendations(self)
-            self.apply_intervention(recommendations)
-            self.notified = True
+        self.intervention = intervention
+        self.update_recommendations_level(intervention_start=True)
+        behaviors = intervention.get_behaviors(self)
+        self.apply_behaviors(behaviors)
 
-    def apply_intervention(self, new_recommendations: list):
+    def apply_behaviors(self, new_behaviors: list):
         """ We provide a list of recommendations and a human, we revert the human's existing recommendations
             and apply the new ones"""
-        for old_rec in self.recommendations_to_follow:
+        for old_rec in reversed(self.recommendations_to_follow):
             old_rec.revert(self)
         self.recommendations_to_follow = OrderedSet()
 
-        for new_rec in new_recommendations:
-            assert isinstance(new_rec, Behavior)
+        for new_behavior in new_behaviors:
+            assert isinstance(new_behavior, Behavior)
             if self.follows_recommendations_today:
-                new_rec.modify(self)
-                self.recommendations_to_follow.add(new_rec)
+                new_behavior.modify(self)
+                self.recommendations_to_follow.add(new_behavior)
 
     def run(self, city):
-        """
-        [summary]
-
-        Args:
-            city (City): [description]
-
-        Yields:
-            [type]: [description]
-        """
         self.household.humans.add(self)
         while True:
             hour, day = self.env.hour_of_day, self.env.day_of_week
             # BUG: Every time this loop is re-entered on Monday, the following
             #      code will execute.
-            if day==0:
+            if day == 0:
                 self.count_exercise = 0
                 self.count_shop = 0
                 self.count_misc = 0
@@ -1284,7 +1236,7 @@ class Human(BaseHuman):
         # add the human to the location
         self.location = location
         location.add_human(self)
-        self.wear_mask()
+        self.compute_mask_efficacy()
 
         self.location_start_time = self.env.now
         self.location_leaving_time = self.location_start_time + duration*SECONDS_PER_MINUTE
@@ -1352,7 +1304,6 @@ class Human(BaseHuman):
             # encounter message is under 2 meters for at least 5 minutes.
             if approximated_bluetooth_distance < self.conf.get("MAX_MESSAGE_PASSING_DISTANCE") and \
                     t_near > self.conf.get("MIN_MESSAGE_PASSING_DURATION") and \
-                    self.tracing and \
                     self.has_app and \
                     h.has_app:
                 remaining_time_in_contact = t_near
@@ -1648,12 +1599,6 @@ class Human(BaseHuman):
 
     @property
     def risk(self):
-        """
-        [summary]
-
-        Returns:
-            [type]: [description]
-        """
         if self.risk_history_map:
             cur_day = int(self.env.now - self.env.ts_initial) // SECONDS_PER_DAY
             if cur_day in self.risk_history_map:
@@ -1666,31 +1611,22 @@ class Human(BaseHuman):
 
     @property
     def risk_level(self):
-        """
-        [summary]
-
-        Returns:
-            [type]: [description]
-        """
         return min(self.proba_to_risk_level_map(self.risk), 15)
 
     def update_recommendations_level(self, intervention_start=False):
-        if not self.has_app or not isinstance(self.tracing_method, NonMLRiskComputer):
+        if not self.has_app:
             self._rec_level = -1
-        else:
-            # FIXME: maybe merge Quarantine in RiskBasedRecommendationGetter with 2 levels
-            if self.tracing_method.risk_model in ["manual", "digital"]:
-                if self.risk == 1.0:
-                    self._rec_level = 3
-                else:
-                    self._rec_level = 0
-            else:
-                self._rec_level = self.tracing_method.recommendation_getter.get_recommendations_level(
-                    self,
-                    self.conf.get("REC_LEVEL_THRESHOLDS"),
-                    self.conf.get("MAX_RISK_LEVEL"),
-                    intervention_start=intervention_start,
-                )
+            return
+
+        self._rec_level = self.intervention.get_recommendations_level(
+            self,
+            self.conf.get("REC_LEVEL_THRESHOLDS"),
+            self.conf.get("MAX_RISK_LEVEL"),
+            intervention_start=intervention_start,
+        )
+
+        if self.conf.get("RISK_MODEL") == "digital":
+            assert self._rec_level == 0 or self._rec_level == 3
 
     @property
     def rec_level(self):

@@ -26,7 +26,11 @@ model_mapping:
   SOFT-YOGHURT-518A: transformer
   SWEET-BIRD-443: linreg
   WINTER-MOON-285: diurnal
-  TWILIGHT-RAIN-696: transformer
+  TWILIGHT-RAIN-696: transformer>twilight
+  ROSY-FOREST-704: transformer>rosy
+  VAGUE-THUNDER-705: transformer>vague
+  CRIMSON-BREEZE-712: transformer>crimson
+  CRISP-UNIVERSE-707: transformer>crisp
 
 compare: APP_UPTAKE
 multithread: False

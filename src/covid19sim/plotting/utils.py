@@ -48,7 +48,13 @@ def get_title(method):
             return method_title[method.replace("_norm", "")] + " (Norm.)"
     if method in method_title:
         return method_title[method]
-
+    if "transformer_012_" in method:
+        method = method.replace("transformer_012_", "")
+        if "_normed" in method:
+            method = "-".join(method.split("-")[:-1])
+            method += " (Norm.)"
+        else:
+            method = "-".join(method.split("-")[:-1])
     return method.replace("_", " ").capitalize()
 
 

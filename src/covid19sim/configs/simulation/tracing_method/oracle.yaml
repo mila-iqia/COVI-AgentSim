@@ -3,7 +3,7 @@ COLLECT_LOGS: True
 COLLECT_TRAINING_DATA: False
 USE_INFERENCE_SERVER: False
 RISK_MODEL: "transformer" # "naive"  "manual", "digital", "transformer"
-SHOULD_MODIFY_BEHAVIOR: False
+SHOULD_MODIFY_BEHAVIOR: True
 USE_ORACLE: True
 
 ## INTERVENTIONS
