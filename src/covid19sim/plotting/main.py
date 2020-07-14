@@ -9,6 +9,7 @@ import os
 import shutil
 import hydra
 from omegaconf import OmegaConf
+import random
 
 import covid19sim.plotting.plot_jellybeans as jellybeans
 import covid19sim.plotting.plot_pareto_adoption as pareto_adoption
@@ -214,6 +215,8 @@ def main(conf):
                 "humans_rec_level",
             ]
         )
+    # Stop loading data for spy_human
+    '''
     if "spy_human" in plots:
         keep_pkl_keys.update(
             [
@@ -224,6 +227,7 @@ def main(conf):
                 "human_has_app",
             ]
         )
+    '''
     if "jellybeans" in plots:
         keep_pkl_keys.update(
             ["humans_intervention_level", "humans_rec_level", "intervention_day"]
@@ -304,7 +308,42 @@ def main(conf):
             # -------------------------------
             # -----  Run Plot Function  -----
             # -------------------------------
-            func(data, plot_path, conf["compare"], **options[plot])
+
+            # For plot other than spy_human, we use the loaded pkl files.
+            if plot != 'spy_human':
+                func(data, plot_path, conf["compare"], **options[plot])
+            # For spy_human, we randomly load a file to print.
+            else:
+                # Get all the methods.
+                method_path = Path(root_path).resolve()
+                assert method_path.exists()
+                methods = [
+                    m
+                    for m in method_path.iterdir()
+                    if m.is_dir()
+                    and not m.name.startswith(".")
+                    and len(list(m.glob("**/tracker*.pkl"))) > 0
+                ]
+
+                # For each method, load a random pkl file and plot the infection chains.
+                for m in methods:
+                    sm = str(m)
+                    runs = [
+                        r
+                        for r in m.iterdir()
+                        if r.is_dir()
+                        and not r.name.startswith(".")
+                        and len(list(r.glob("tracker*.pkl"))) == 1
+                    ]
+                    rand_index = random.randint(0, len(runs)-1)
+                    rand_run = runs[rand_index]
+
+                    with open(str(list(rand_run.glob("tracker*.pkl"))[0]), "rb") as f:
+                        pkl = pickle.load(f)
+
+                    func(dict([(m, pkl)]), plot_path, None, **options[plot])
+                print("Done.")
+
         except Exception as e:
             if isinstance(e, KeyboardInterrupt):
                 print("Interrupting.")
@@ -315,6 +354,7 @@ def main(conf):
                 print("*" * len(str(e)))
                 print("Ignoring " + plot)
         print_footer()
+
 
 
 if __name__ == "__main__":
