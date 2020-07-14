@@ -5,6 +5,8 @@ import datetime
 import matplotlib
 import matplotlib.pyplot as plt
 from covid19sim.utils.constants import SECONDS_PER_DAY
+from pathlib import Path
+
 
 def run(data, path, comparison_key):
 
@@ -28,6 +30,8 @@ def run(data, path, comparison_key):
         ax.set(title=f"Statistics of Generation Time {label}")
         ax.set_xlabel("Generation Time")
         ax.set_ylabel("Frequency")
-
-        output_file = os.path.join(path, f"GenerationTime_{label}.png")
+        output_dir = os.path.join(path, "generation_times")
+        Path(output_dir).mkdir(parents=True, exist_ok=True)
+        output_file = os.path.join(output_dir, f"GenerationTime_{label}.png")
+        print(f"printing: {output_file}")
         plt.savefig(output_file)

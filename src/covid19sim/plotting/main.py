@@ -4,7 +4,7 @@ import traceback
 from collections import defaultdict
 from pathlib import Path
 from time import time
-import pickle
+import dill
 import os
 import shutil
 import hydra
@@ -15,6 +15,8 @@ import covid19sim.plotting.plot_pareto_adoption as pareto_adoption
 import covid19sim.plotting.plot_presymptomatic as presymptomatic
 import covid19sim.plotting.plot_spy_human as spy_human
 import covid19sim.plotting.make_efficiency_table as efficiency
+import covid19sim.plotting.plot_generation_time as generation_time
+import covid19sim.plotting.plot_epi_table as epi_table
 from covid19sim.plotting.utils import get_all_data
 
 
@@ -136,6 +138,8 @@ def main(conf):
         "presymptomatic": presymptomatic,
         "spy_human": spy_human,
         "efficiency": efficiency,
+        "generation_time": generation_time,
+        "epi_table": epi_table,
     }
 
     conf = OmegaConf.to_container(conf)
@@ -226,7 +230,11 @@ def main(conf):
         )
     if "presymptomatic" in plots:
         keep_pkl_keys.update(["human_monitor"])
-
+    if "generation_time" in plots:
+        keep_pkl_keys.update(["infection_monitor"])
+    if "epi_table" in plots:
+        keep_pkl_keys.update(["covid_properties", "generation_times", "daily_age_group_encounters", "age_histogram",
+                              "r_0", "contacts"])
     # ------------------------------------
     # -----  Load pre-computed data  -----
     # ------------------------------------
@@ -240,7 +248,7 @@ def main(conf):
                 )
             )
             with cache_path.open("rb") as f:
-                cache = pickle.load(f)
+                cache = dill.load(f)
 
             # check that the loaded data contains what is required by current `plots`
             if "plots" not in cache or not all(p in cache["plots"] for p in plots):
@@ -286,7 +294,7 @@ def main(conf):
                 else:
                     cache["plots"] = list(set(cache["plots"] + plots))
                     cache["data"] = {**cache["data"], **data}
-                pickle.dump(cache, f)
+                dill.dump(cache, f)
             print("Done in {}s ({})".format(int(time() - t), sizeof(cache_path)))
 
     for plot in plots:

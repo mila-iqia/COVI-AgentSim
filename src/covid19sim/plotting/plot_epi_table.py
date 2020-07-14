@@ -35,11 +35,17 @@ def run(data, path, comparison_key):
             u = sum(x[1] for x in data["daily_age_group_encounters"].values())
             v = sum(x for x in data["age_histogram"].values())
             daily_contact.append(float(u)/float(v))
-
-            total = data["r_0"]["symptomatic"]["infection_count"] + data["r_0"]["presymptomatic"]["infection_count"] + data["r_0"]["asymptomatic"]["infection_count"]
+            symptomatic = data["r_0"].get("symptomatic", {"infection_count": 0})["infection_count"]
+            presymptomatic = data["r_0"].get("presymptomatic", {"infection_count": 0})["infection_count"]
+            asymptomatic = data["r_0"].get("asymptomatic", {"infection_count": 0})["infection_count"]
+            total = symptomatic + presymptomatic + asymptomatic
             total += sum([x for x in data["contacts"]["env_infection"].values()])
-            presymptomatic_transmission.append(data["r_0"]["presymptomatic"]["infection_count"]/float(total))
-            asymptomatic_transmission.append(data["r_0"]["asymptomatic"]["infection_count"]/float(total))
+            if total:
+                presymptomatic_transmission.append(presymptomatic/float(total))
+                asymptomatic_transmission.append(asymptomatic/float(total))
+            else:
+                presymptomatic_transmission.append(0.)
+                asymptomatic_transmission.append(0.)
 
         result = [
             [round(np.array(incubation).mean(), 2), round(np.array(incubation).std(), 2)],
@@ -66,4 +72,5 @@ def run(data, path, comparison_key):
             plt.gca().spines[pos].set_visible(False)
 
         output_file = os.path.join(path, f"Table_{label}.png")
+        print(f"saving fig: {output_file}")
         plt.savefig(output_file)
