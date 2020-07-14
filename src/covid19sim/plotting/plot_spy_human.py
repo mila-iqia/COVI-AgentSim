@@ -6,6 +6,7 @@ import datetime
 import matplotlib
 import matplotlib.pyplot as plt
 import random
+import imgkit
 
 
 def load_humans(data):
@@ -364,6 +365,7 @@ def plot(data, output_file):
 
     with open(output_file, "w") as fo:
         fo.write(df.render())
+    imgkit.from_file(output_file, output_file.replace(".html", ".jpg"))
 
 
 def run(data, path, comparison_key, wandb=False, num_chains=1):
