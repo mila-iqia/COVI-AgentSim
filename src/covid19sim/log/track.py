@@ -985,7 +985,10 @@ class Tracker(object):
         """
         total_infections = sum(x[0] for x in self.p_infection)
         total_contacts = len(self.p_infection)
-        return total_infections / total_contacts
+        try:
+            return total_infections / total_contacts
+        except Exception:
+            return 0.
 
     def compute_effective_contacts(self, since_intervention=True):
         """
