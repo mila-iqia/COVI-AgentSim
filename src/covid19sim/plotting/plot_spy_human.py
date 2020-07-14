@@ -371,16 +371,19 @@ def run(data, path, comparison_key, wandb=False, num_chains=1):
     # Options:
     # 1. "num_chains" is an integer, specifying how many infection chains we want to generate.
 
-    label2pkls = list()
-    for method in data:
-        for key in data[method]:
-            label = f"{method}_{key}"
-            pkls = [r["pkl"] for r in data[method][key].values()]
-            label2pkls.append((label, pkls))
-
-    for label, pkls in label2pkls:
+    for method, pkl in data.items():
+        dir_path = (
+            path
+            / "infection_chain"
+        )
+        os.makedirs(dir_path, exist_ok=True)
         for k in range(num_chains):
-            rand_index = random.randint(0, len(pkls) - 1)
-            pkl = pkls[rand_index]
-            output_file = path / "spy_human" / f"infection_chain_{label}_chain:{k}.html"
-            plot(pkl, output_file)
+            if str(method)[-1] == '/':
+                m = str(method).split('/')[-2]
+            else:
+                m = str(method).split('/')[-1]
+            fig_path = os.path.join(dir_path, '{}_chain:{}.html'.format(m, k))
+
+            print(fig_path)
+            
+            plot(pkl, fig_path)
