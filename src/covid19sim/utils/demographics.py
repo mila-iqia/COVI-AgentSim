@@ -8,7 +8,7 @@ from collections import namedtuple
 from copy import deepcopy
 
 from collections import defaultdict
-from covid19sim.utils.utils import log, relativefreq2absolutefreq, _get_random_area, _random_choice_tuples
+from covid19sim.utils.utils import log, relativefreq2absolutefreq, _get_random_area, _random_choice
 from covid19sim.utils.constants import AGE_BIN_WIDTH_5
 from covid19sim.locations.location import Location, Household, School, WorkplaceA, WorkplaceB
 from covid19sim.locations.hospital import Hospital
@@ -215,7 +215,7 @@ def _build_and_allocate_workplace_type_B(humans, city, conf, rng, logfile=None):
     idx, workplaces = -1, []
     while sum(len(val) for val in potential_workers.values()) > 0:
         idx += 1
-        _capacity = _random_choice_tuples(CAPACITIES, size=1, P=P_WORKPLACES, rng=rng)[0]
+        _capacity = _random_choice(CAPACITIES, size=1, P=P_WORKPLACES, rng=rng)[0]
         capacity = rng.randint(*_capacity)
         workplace = WorkplaceB(
                     env=city.env,
@@ -234,7 +234,7 @@ def _build_and_allocate_workplace_type_B(humans, city, conf, rng, logfile=None):
         p_bin = np.array([len(potential_workers[x]) for x in valid_worker_bins])
         while workplace.n_workers < capacity and p_bin.sum() > 0:
             p = p_bin / p_bin.sum()
-            bin = _random_choice_tuples(valid_worker_bins, rng=rng, size=1, P=p)[0]
+            bin = _random_choice(valid_worker_bins, rng=rng, size=1, P=p)[0]
             worker = rng.choice(potential_workers[bin], size=1).item()
             #
             worker.assign_workplace(workplace)
@@ -380,13 +380,13 @@ def _build_and_allocate_hospitals(humans, city, conf, rng):
     # select and allocate doctors and nurses to this hospital
     WORKING_BINS = _get_valid_bins(AGE_BIN_WIDTH_5, min_age=MIN_AGE_HEALTHCARE_WORKER, max_age=MAX_AGE_HEALTHCARE_WORKER)
     doctors_and_nurses = [human for human in humans if human.workplace is None and human.age_bin_width_5.bin in WORKING_BINS]
-    doctors = rng.choice(doctors_and_nurses, size=n_doctors, replace=False)
+    doctors = _random_choice(doctors_and_nurses, size=n_doctors, replace=False, rng=rng)
     for doctor in doctors:
         doctor.assign_workplace(hospital)
         hospital.assign_worker(doctor, doctor=True)
         doctors_and_nurses.remove(doctor)
 
-    nurses = rng.choice(doctors_and_nurses, size=n_nurses, replace=False)
+    nurses = _random_choice(doctors_and_nurses, size=n_nurses, replace=False, rng=rng)
     for nurse in nurses:
         nurse.assign_workplace(hospital)
         hospital.assign_worker(nurse, doctor=False)
@@ -427,7 +427,7 @@ def _assign_senior_residences(humans, city, conf, rng):
     potential_nurses = [human for human in humans if human.workplace is None]
     for senior_residence in city.senior_residences:
         senior_residence.n_nurses = math.ceil(len(senior_residence.residents) / RESIDENT_TO_STAFF_RATIO)
-        nurses = rng.choice(potential_nurses, size=senior_residence.n_nurses, replace=False)
+        nurses = _random_choice(potential_nurses, size=senior_residence.n_nurses, replace=False, rng=rng)
         for nurse in nurses:
             nurse.assign_workplace(senior_residence.social_common_room)
 
@@ -537,7 +537,7 @@ def _build_and_allocate_schools(humans, city, conf, rng):
     for STUDENT_TEACHER_RATIO, schools_x_x in all_schools:
         for school in schools_x_x:
             n_teachers = math.ceil(school.n_students / STUDENT_TEACHER_RATIO)
-            teachers = rng.choice(potential_teachers, size=n_teachers, replace=False)
+            teachers = _random_choice(potential_teachers, size=n_teachers, replace=False, rng=rng)
             for teacher in teachers:
                 teacher.assign_workplace(school)
                 potential_teachers.remove(teacher)
@@ -723,7 +723,7 @@ def assign_households_to_humans(humans, city, conf, logfile=None):
                 n_people_generation = [[2, 1, 1], [1, 2 ,1], [1, 1, 2]]
             elif size == 5:
                 n_people_generation = [[2, 1, 2], [2, 2, 1], [1, 2, 2], [1, 1, 3]]
-            n_grandparents, n_parents, n_kids = _random_choice_tuples(n_people_generation, rng=city.rng, size=1)[0]
+            n_grandparents, n_parents, n_kids = _random_choice(n_people_generation, rng=city.rng, size=1)[0]
             housetype.set_generations(n_grandparents, n_parents, n_kids)
             unallocated_houses['multigenerational'].append(housetype) # needed to prioritize these houses to fill first
 
@@ -795,7 +795,7 @@ def assign_households_to_humans(humans, city, conf, logfile=None):
     FAMILY_TYPES, P_TYPES = _get_family_types(conf, without_kids=True)
     while len(allocated_humans) < city.n_people and n_failed_attempts < 2 * MAX_FAILED_ATTEMPTS_ALLOWED:
         # sample house
-        housetype = _random_choice_tuples(FAMILY_TYPES, city.rng, 1, P=P_TYPES, replace=True)[0]
+        housetype = _random_choice(FAMILY_TYPES, city.rng, 1, P=P_TYPES, replace=True)[0]
         # sample humans (without kids)
         humans_with_same_house, unassigned_humans = _sample_other_residents(housetype, unassigned_humans, city.rng, conf, with_kid=None)
 
@@ -998,7 +998,7 @@ def _sample_n_parents(valid_age_bins, conf, unassigned_humans, rng, n, p_bin):
     sampled_parents = []
     # single parent
     if n == 1:
-        older_bin = _random_choice_tuples(valid_age_bins, rng, size=1, P=p_bin)[0]
+        older_bin = _random_choice(valid_age_bins, rng, size=1, P=p_bin)[0]
         parent = rng.choice(unassigned_humans[older_bin], size=1).item()
         unassigned_humans[older_bin].remove(parent)
         sampled_parents = [parent]
@@ -1064,7 +1064,7 @@ def _sample_couple(valid_age_bins, conf, unassigned_humans, rng, p_bin=None, ret
     p_couple[:len(min_couple_single_bins)] += ASSORTATIVITY_STRENGTH
     p_couple /= p_couple.sum()
 
-    two_bins = _random_choice_tuples(valid_couple_bins, rng, size=1, P=p_couple)[0]
+    two_bins = _random_choice(valid_couple_bins, rng, size=1, P=p_couple)[0]
 
     human1 = rng.choice(unassigned_humans[two_bins[0]], size=1).item()
     unassigned_humans[two_bins[0]].remove(human1)
@@ -1100,7 +1100,7 @@ def _sample_solo_dweller(valid_age_bins, conf, unassigned_humans, rng):
     if valid_age_bins:
         P = [P_AGE_SOLO[i] for i in valid_idx]
         P = [i / sum(P) for i in P]
-        age_bin = _random_choice_tuples(valid_age_bins, rng, 1, P)[0]
+        age_bin = _random_choice(valid_age_bins, rng, 1, P)[0]
         human = rng.choice(unassigned_humans[age_bin], size=1).tolist()
         unassigned_humans[age_bin].remove(human[0])
 
@@ -1132,7 +1132,7 @@ def _sample_random_humans(valid_other_bins, conf, unassigned_humans, rng, size):
     humans = []
     while len(humans) < size:
         p = p_bin / p_bin.sum()
-        bin = _random_choice_tuples(valid_other_bins, rng=rng, size=1, P=p)[0]
+        bin = _random_choice(valid_other_bins, rng=rng, size=1, P=p)[0]
         human = rng.choice(unassigned_humans[bin], size=1).item()
         humans.append(human)
         unassigned_humans[bin].remove(human)
@@ -1184,7 +1184,7 @@ def _sample_n_kids(valid_age_bins, conf, unassigned_humans, rng, size, with_kid=
 
     while len(kids) < total_kids:
         p_bin = p_bin / p_bin.sum()
-        bin = _random_choice_tuples(valid_younger_bins, rng=rng, size=1, P=p_bin)[0]
+        bin = _random_choice(valid_younger_bins, rng=rng, size=1, P=p_bin)[0]
         kid = rng.choice(unassigned_humans[bin], size=1).item()
         kids.append(kid)
         unassigned_humans[bin].remove(kid)
