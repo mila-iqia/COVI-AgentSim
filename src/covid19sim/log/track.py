@@ -397,17 +397,15 @@ class Tracker(object):
             for i, workplace in enumerate(workplaces):
                 n_workers[i] = workplace.n_workers
                 avg_workers_age[i] = np.mean([worker.age for worker in workplace.workers])
-                name = workplace.location_type
-                if name == "WORKPLACE":
+                if workplace.location_type == "WORKPLACE":
                     subnames[workplace.name.split(":")[0]]['count'] += 1
                     subnames[workplace.name.split(":")[0]]['n_workers'] += workplace.n_workers
-            log(f"{name} - Total workforce: {n_workers.sum()} | Average number of workers: {n_workers.mean(): 2.2f} | Average age of workers: {avg_workers_age.mean(): 2.2f}", self.logfile)
+            if len(workplaces) > 0:
+                name = workplaces[0].location_type
+                log(f"{name} - Total workforce: {n_workers.sum()} | Average number of workers: {n_workers.mean(): 2.2f} | Average age of workers: {avg_workers_age.mean(): 2.2f}", self.logfile)
             if subnames:
                 for workplace_type, val in subnames.items():
                     log(f"\tNumber of {workplace_type} - {val['count']}. Total number of workers - {val['n_workers']}", self.logfile)
-
-
-
 
         # hospitals
         n_nurses = np.zeros_like(self.city.hospitals)
@@ -1321,9 +1319,6 @@ class Tracker(object):
             "contact_distance_profile": self.contact_distance_profile,
             "contact_duration_profile": self.contact_duration_profile,
         }
-
-
-
 
     def track_p_infection(self, infection, p_infection, viral_load):
         """

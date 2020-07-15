@@ -409,7 +409,9 @@ class Event:
         obs_payload = {key:getattr(human, key) for key in h_obs_keys}
         unobs_payload = {key:getattr(human, key) for key in h_unobs_keys}
 
-        if human.workplace.location_type in ['HOSPITAL', 'STORE', 'MISC', 'SENIOR_RESIDENCE']:
+        if human.does_not_work:
+            obs_payload['n_people_workplace'] = 'no people outside my household'
+        elif human.workplace.location_type in ['HOSPITAL', 'STORE', 'MISC', 'SENIOR_RESIDENCE']:
             obs_payload['n_people_workplace'] = 'many people'
         elif "WORKPLACE" == human.workplace.location_type:
             obs_payload['n_people_workplace'] = 'few people'

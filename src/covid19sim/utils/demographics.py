@@ -165,27 +165,6 @@ def create_locations_and_assign_workplace_to_humans(humans, city, conf, logfile=
     city.parks = [park]
     return humans, city
 
-def _assign_random_workplace(humans, city, conf, rng, logfile=None):
-    """
-    """
-    random_location = Location(
-                            env=city.env,
-                            rng=np.random.RandomState(city.rng.randint(2 ** 16)),
-                            conf=conf,
-                            name=f"RANDOM:0",
-                            location_type="RANDOM",
-                            lat=rng.randint(*city.x_range),
-                            lon=rng.randint(*city.y_range),
-                            area=city.total_area,
-                            capacity=None
-                        )
-    for human in unassigned_humans:
-        human.assign_workplace(random_location)
-
-
-    city.randoms = random_location
-    return humans, city
-
 def _build_and_allocate_workplace_type_B(humans, city, conf, rng, logfile=None):
     """
     Initializes the locations of type `type` that falls in type B.
@@ -294,7 +273,7 @@ def _build_and_allocate_workplace_type_A(type, humans, city, conf, rng, logfile=
         humans (list): a list of `human`s. some of them are assigned workplace of type A
         city (covid19sim.locations.city.City): city object containing the locations and humans in it.
     """
-    assert type in ["STORE", "MISC"], "Unkown type A workplace"
+    assert type in ["STORE", "MISC"], "Unknown type A workplace"
 
     AVERAGE_N_EMPLOYEES_PER_TYPE = conf[f'AVERAGE_N_EMPLOYEES_PER_{type}']
     N_TYPES_PER_1K_PEOPLE = conf[f'N_{type}_PER_1K_PEOPLE']
@@ -328,6 +307,7 @@ def _build_and_allocate_workplace_type_A(type, humans, city, conf, rng, logfile=
                         capacity=AVERAGE_N_EMPLOYEES_PER_TYPE
                     )
         locations.append(location)
+
         # sample workers for this location
         while location.n_workers < AVERAGE_N_EMPLOYEES_PER_TYPE and len(potential_workers) > 0:
             worker = rng.choice(potential_workers, size=1).item()

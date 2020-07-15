@@ -59,3 +59,8 @@ AGE_BIN_WIDTH_10          = [(0,9), (10,19), (20,29), (30,39), (40,49), (50,59),
 
 # locations
 ALL_LOCATIONS             = ["HOUSEHOLD", "SENIOR_RESIDENCE", "WORKPLACE", "STORE", "MISC", "HOSPITAL", "PARK", "SCHOOL"]
+
+# day of week lists
+WEEKDAYS = [0, 1, 2, 3, 4]
+WEEKENDS = [5, 6]
+ALL_DAYS = [0, 1, 2, 3, 4, 5, 6]
