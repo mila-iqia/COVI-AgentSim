@@ -1,5 +1,5 @@
 """
-Contains the `Human` class that defines the behavior of human.
+This module implements the `Human` class which is the focal point of the agent-based simulation.
 """
 
 import math
@@ -33,39 +33,51 @@ from covid19sim.inference.message_utils import ContactBook, exchange_encounter_m
 from covid19sim.utils.visits import Visits
 from covid19sim.native._native import BaseHuman
 
+if typing.TYPE_CHECKING:
+    from covid19sim.utils.env import Env
+    from covid19sim.locations.city import City
+    from covid19sim.locations.location import Location
+
+
 class Human(BaseHuman):
     """
-    [summary]
+    Human agent class. Human objects can only be instantiated by a city at the start of a simulation.
+    See `covid19sim.locations.city.py` for more information.
     """
 
-    def __init__(self, env, city, name, age, rng, has_app, infection_timestamp, household, workplace, profession, rho=0.3, gamma=0.21, conf={}):
+    def __init__(
+            self,
+            env: "Env",
+            city: "City",
+            name: typing.Union[typing.AnyStr, int],
+            age: int,
+            rng: np.random.RandomState,
+            has_app: bool,
+            infection_timestamp: typing.Optional[datetime.datetime],
+            household: "Location",
+            workplace: "Location",
+            profession: "Location",
+            rho: float,
+            gamma: float,
+            conf: typing.Dict,
+    ):
         """
-        [summary]
+        Constructs a human agent.
 
         Args:
-            env ([type]): [description]
-            city ([type]): [description]
-            name ([type]): [description]
-            age ([type]): [description]
-            rng ([type]): [description]
-            infection_timestamp ([type]): [description]
-            household ([type]): [description]
-            workplace ([type]): [description]
-            profession ([type]): [description]
-            rho (float, optional): [description]. Defaults to 0.3.
-            gamma (float, optional): [description]. Defaults to 0.21.
-            conf (dict): yaml experiment configuration
+            env: simpy environment object holding simulation state/timestamps.
+            city: meta-location that currently owns this agent.
+            name: unique name or identifier used to refer to this agent.
+            age: age of this agent.
+            rng: random number generator to use in this agent.
+            infection_timestamp: timestamp of when this agent has been exposed (or `None` if not exposed yet).
+            household: household tied to this agent where they will rest.
+            workplace: workplace tied to this agent where they will spend most days.
+            profession: profession of this agent.
+            rho: TODO @@@@ DOCUMENT ME
+            gamma: TODO @@@@ DOCUMENT ME
+            conf: configuration dictionary holding the experimental settings.
         """
-
-        """
-        Biological Properties
-        Covid-19
-        App-related
-        Interventions
-        Risk prediction
-        Mobility
-        """
-
         super().__init__(env)
 
         # Utility References

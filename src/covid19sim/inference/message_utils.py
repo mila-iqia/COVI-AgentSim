@@ -601,7 +601,6 @@ def convert_json_to_messages(
         block: typing.Union[typing.List[typing.Dict], typing.Dict],
         extract_self_reported_risks: bool,  # TODO: what should we use by default...?
         timestamp_offset: typing.Optional[datetime.datetime] = None,  # default = offset from epoch
-
 ) -> typing.List[GenericMessageType]:
     """Converts a JSON contact block (as defined in the data spec) into a list of
     messages that can be ingested by the clustering algorithm.
