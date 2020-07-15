@@ -15,7 +15,7 @@ import random
 import covid19sim.plotting.plot_jellybeans as jellybeans
 import covid19sim.plotting.plot_pareto_adoption as pareto_adoption
 import covid19sim.plotting.plot_presymptomatic as presymptomatic
-import covid19sim.plotting.plot_spy_human as spy_human
+import covid19sim.plotting.plot_infection_chains as infection_chains
 import covid19sim.plotting.make_efficiency_table as efficiency
 import covid19sim.plotting.plot_generation_time as generation_time
 import covid19sim.plotting.plot_epi_table as epi_table
@@ -138,7 +138,7 @@ def main(conf):
         "pareto_adoption": pareto_adoption,
         "jellybeans": jellybeans,
         "presymptomatic": presymptomatic,
-        "spy_human": spy_human,
+        "infection_chains": infection_chains,
         "efficiency": efficiency,
         "generation_time": generation_time,
         "epi_table": epi_table,
@@ -216,19 +216,6 @@ def main(conf):
                 "humans_rec_level",
             ]
         )
-    # Stop loading data for spy_human
-    '''
-    if "spy_human" in plots:
-        keep_pkl_keys.update(
-            [
-                "risk_attributes",
-                "infection_monitor",
-                "infector_infectee_update_messages",
-                "to_human_max_msg_per_day",
-                "human_has_app",
-            ]
-        )
-    '''
     if "jellybeans" in plots:
         keep_pkl_keys.update(
             ["humans_intervention_level", "humans_rec_level", "intervention_day"]
@@ -310,11 +297,8 @@ def main(conf):
             # -----  Run Plot Function  -----
             # -------------------------------
 
-            # For plot other than spy_human, we use the loaded pkl files.
-            if plot != 'spy_human':
-                func(data, plot_path, conf["compare"], **options[plot])
-            # For spy_human, we randomly load a file to print.
-            else:
+            # For infection_chains, we randomly load a file to print.
+            if plot == "infection_chains":
                 # Get all the methods.
                 method_path = Path(root_path).resolve()
                 assert method_path.exists()
@@ -328,7 +312,6 @@ def main(conf):
 
                 # For each method, load a random pkl file and plot the infection chains.
                 for m in methods:
-                    sm = str(m)
                     runs = [
                         r
                         for r in m.iterdir()
@@ -341,9 +324,12 @@ def main(conf):
 
                     with open(str(list(rand_run.glob("tracker*.pkl"))[0]), "rb") as f:
                         pkl = pickle.load(f)
-
-                    func(dict([(m, pkl)]), plot_path, None, **options[plot])
+                    adoption_rate = float(rand_run.name.split("_uptake")[-1].split("_")[0][1:])
+                    func(dict([(m, pkl)]), plot_path, None, adoption_rate, **options[plot])
                 print("Done.")
+            else:
+                # For plot other than spy_human, we use the loaded pkl files.
+                func(data, plot_path, conf["compare"], **options[plot])
 
         except Exception as e:
             if isinstance(e, KeyboardInterrupt):

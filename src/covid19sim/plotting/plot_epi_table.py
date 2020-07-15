@@ -1,11 +1,8 @@
-import covid19sim
 import numpy as np
-import scipy
 import os
-import datetime
-import matplotlib
 import matplotlib.pyplot as plt
-from covid19sim.utils.constants import SECONDS_PER_DAY
+import pandas as pd
+
 
 def run(data, path, comparison_key):
 
@@ -26,7 +23,7 @@ def run(data, path, comparison_key):
         asymptomatic_transmission = list()
 
         for data in pkls:
-            if not any(data['covid_properties']):
+            if not any(data.get('covid_properties')):
                 print("no covid!")
                 return
             incubation.append(data["covid_properties"]["incubation_days"][1])
@@ -61,18 +58,10 @@ def run(data, path, comparison_key):
 
         col_labels = ["Average", "Std Err"]
         row_labels = ["Incubation", "Infectiousness", "Recovery", "Generation Time", "Daily Contact", "Presymptomatic Transmission", "Asymptomatic Transmission"]
+        df = pd.DataFrame(result, columns=col_labels, index=row_labels)
 
-        table = plt.table(cellText=result, rowLabels=row_labels, colLabels=col_labels, loc="best", colWidths=[0.1, 0.1])
-        table.auto_set_font_size(False)
-        table.set_fontsize(12)
-        table.scale(1.5, 1.5)
-
-        plt.title(f"{label}")
-        plt.tick_params(axis="x", which="both", bottom=False, top=False, labelbottom=False)
-        plt.tick_params(axis="y", which="both", right=False, left=False, labelleft=False)
-        for pos in ["right", "top", "bottom", "left"]:
-            plt.gca().spines[pos].set_visible(False)
-
-        output_file = os.path.join(path, f"Table_{label}.png")
-        print(f"saving fig: {output_file}")
-        plt.savefig(output_file)
+        with open(os.path.join(path, "epi_table.md"), 'a+') as f:
+            f.write("\n\n")
+            f.write(label)
+            f.write("\n")
+            f.write(df.to_markdown())

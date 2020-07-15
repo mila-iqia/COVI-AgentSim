@@ -192,7 +192,7 @@ def spy(ids, humans):
     return df
 
 
-def spy_pro(
+def make_df(
     ids,
     humans,
     human_risk_each_day,
@@ -201,6 +201,8 @@ def spy_pro(
     human_has_app,
     infector_infectee_update_messages,
     human_is_asymptomatic,
+    method,
+    adoption_rate,
 ):
     df = humans.loc[
         (
@@ -269,15 +271,15 @@ def spy_pro(
         dict(
             selector="caption",
             props=[
-                ("caption-side", "bottom"),
-                ("font-size", "150%"),
+                ("caption-side", "top"),
+                ("font-size", "200%"),
                 ("font-weight", 600),
             ],
         ),
     ]
 
     df = df.set_table_styles(styles).set_caption(
-        "Risk Propagation among individuals in a chain"
+        f"{method}, Adoption: {adoption_rate*100}%"
     )
     return df
 
@@ -312,7 +314,7 @@ def get_random_chain(infection_chain, depth=0):
     return infector_chain
 
 
-def plot(data, output_file):
+def plot(data, output_file, method, adoption_rate):
     human_risk_each_day = defaultdict(lambda: defaultdict(lambda: -1))
     for x in data["risk_attributes"]:
         date = x["timestamp"].date()
@@ -351,7 +353,7 @@ def plot(data, output_file):
     from IPython.display import HTML
 
     ids = get_random_chain(infection_chain)
-    df = spy_pro(
+    df = make_df(
         ids,
         humans,
         human_risk_each_day,
@@ -360,33 +362,37 @@ def plot(data, output_file):
         human_has_app,
         infector_infectee_update_messages,
         human_is_asymptomatic,
+        method,
+        adoption_rate,
     )
 
     with open(output_file, "w") as fo:
         fo.write(df.render())
-    try:    
-        imgkit.from_file(output_file, output_file.replace(".html", ".jpg"))
-    except Exception:
-        print("no imgkit (wkhtmltopdf required), convert html to jpg locally") 
+    # try:
+    #     import imgkit
+    #     imgkit.from_file(output_file, output_file.replace(".html", ".jpg"))
+    #     # os.remove(output_file)
+    # except Exception:
+    #     print("no imgkit (wkhtmltopdf required), convert html to jpg locally")
 
-def run(data, path, comparison_key, wandb=False, num_chains=1):
+def run(data, path, comparison_key, adoption_rate, wandb=False, num_chains=3):
 
     # Options:
     # 1. "num_chains" is an integer, specifying how many infection chains we want to generate.
-
     for method, pkl in data.items():
+        if str(method)[-1] == '/':
+            m = str(method).split('/')[-2]
+        else:
+            m = str(method).split('/')[-1]
+
         dir_path = (
             path
-            / "infection_chain"
+            / "infection_chain" / m
         )
         os.makedirs(dir_path, exist_ok=True)
-        for k in range(num_chains):
-            if str(method)[-1] == '/':
-                m = str(method).split('/')[-2]
-            else:
-                m = str(method).split('/')[-1]
-            fig_path = os.path.join(dir_path, '{}_chain:{}.html'.format(m, k))
+        for chain in range(num_chains):
+            fig_path = os.path.join(dir_path, f'{m}_{adoption_rate}_{chain}.html')
 
             print(fig_path)
             
-            plot(pkl, fig_path)
+            plot(pkl, fig_path, m, adoption_rate)
