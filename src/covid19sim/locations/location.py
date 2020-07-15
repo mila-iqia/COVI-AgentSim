@@ -5,7 +5,7 @@ from collections import namedtuple
 import numpy as np
 import warnings
 
-from covid19sim.utils.constants import SECONDS_PER_MINUTE, SECONDS_PER_HOUR, AGE_BIN_WIDTH_5, ALL_LOCATIONS
+from covid19sim.utils.constants import SECONDS_PER_MINUTE, SECONDS_PER_HOUR, AGE_BIN_WIDTH_5, ALL_LOCATIONS, WEEKDAYS, ALL_DAYS
 from covid19sim.epidemiology.p_infection import get_environment_human_p_transmission
 from covid19sim.epidemiology.viral_load import compute_covid_properties
 from covid19sim.log.event import Event
@@ -57,11 +57,19 @@ class Location(simpy.Resource):
         self.is_open_for_business = True
         self.binned_humans = {bin:OrderedSet() for bin in AGE_BIN_WIDTH_5}
 
+        # occupation related constants
+        OPEN_CLOSE_TIMES = conf[f'{location_type}_OPEN_CLOSE_HOUR_MINUTE']
+        OPEN_DAYS = conf[f'{location_type}_OPEN_DAYS']
+        self.opening_time = datetime.timedelta(hours=OPEN_CLOSE_TIMES[0][0], minutes=OPEN_CLOSE_TIMES[0][1])
+        self.closing_time = datetime.timedelta(hours=OPEN_CLOSE_TIMES[1][0], minutes=OPEN_CLOSE_TIMES[1][1])
+        self.open_days = OPEN_DAYS
+
+        # parameters related to sampling contacts
         self.CONTACT_DURATION_GAMMA_SCALE_MATRIX = np.array(conf['CONTACT_DURATION_GAMMA_SCALE_MATRIX'])
         self.CONTACT_DURATION_GAMMA_SHAPE_MATRIX = np.array(conf['CONTACT_DURATION_GAMMA_SHAPE_MATRIX'])
         self.MEAN_DAILY_UNKNOWN_CONTACTS = conf['MEAN_DAILY_UNKNOWN_CONTACTS']
 
-        #
+        # contact related constants
         self.social_contact_factor = conf[f'{location_type}_CONTACT_FACTOR']
         self.contaminated_surface_probability = conf[f'{location_type}_SURFACE_PROB']
         self.MEAN_DAILY_KNOWN_CONTACTS = conf[f'{location_type}_MEAN_DAILY_INTERACTIONS']
@@ -256,6 +264,8 @@ class Location(simpy.Resource):
 
         interactions = []
         n_interactions = self.rng.negative_binomial(mean_daily_interactions, 0.5)
+        # if human.name == "human:947":
+            # print(human, f"sampled {type} {n_interactions} interactions when there are {len(self.humans)} human here: {self.humans}")
         for i in range(n_interactions):
             # sample other human
             other_human = self._sample_interactee(type, human)
@@ -287,6 +297,8 @@ class Location(simpy.Resource):
 
             # /!\ clipping changes the distribution.
             duration = min(t_overlap, duration) * max(human.time_encounter_reduction_factor, other_human.time_encounter_reduction_factor)
+            # if human.name == "human:947":
+                # print(self.env.timestamp, human, f"sampled an {type} interaction with {other_human} for {duration} mins")
 
             # add to the list
             interactions.append((other_human, distance_profile, duration))
@@ -356,6 +368,18 @@ class Location(simpy.Resource):
             compute_covid_properties(human)
             human.city.tracker.track_infection('env', from_human=None, to_human=human, location=self, timestamp=self.env.timestamp)
             Event.log_exposed(self.conf.get('COLLECT_LOGS'), human, self, p_transmission, self.env.timestamp)
+
+    def is_open(self, date):
+        """
+        Checks if `self` is open on `date`.
+
+        Args:
+            date (datetime.date): date for which this is to be checked.
+
+        Returns:
+            (bool): True if its open
+        """
+        return date.day_of_week() in self.opened_days
 
     def __hash__(self):
         """

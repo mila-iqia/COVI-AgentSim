@@ -201,6 +201,9 @@ P_EMPLOYEES_500_above_PER_STORE: 0.0003
 AVERAGE_N_EMPLOYEES_PER_STORE: 45.642
 N_STORE_PER_1K_PEOPLE: 0.747
 
+# *************** OVERWRITTEN ********************
+AVERAGE_N_EMPLOYEES_PER_STORE: 10 # for smaller population size
+
 # misc (leisure activities)
 # There are two types of interactions at these locations - among the workers (like a normal workplace above), and one to many (customer facing)
 # We use NAICS code 722 - Food Services and Drinking Places to represent a typical entertainment place
@@ -224,6 +227,9 @@ P_EMPLOYEES_100_499_PER_MISC: 0.078
 P_EMPLOYEES_500_above_PER_MISC: 0.0001
 AVERAGE_N_EMPLOYEES_PER_MISC: 75.127
 N_MISC_PER_1K_PEOPLE: 1.946
+
+# *************** OVERWRITTEN ********************
+AVERAGE_N_EMPLOYEES_PER_MISC: 10 # for smaller population size
 
 # schools
 # (assumption) 100% enrolment in schools for children aged 5-15 yo
@@ -294,9 +300,6 @@ HOSPITAL_BEDS_PER_1K_PEOPLE: 2.8
 ICU_BEDS_PER_1K_PEOPLE: 0.32
 ICU_BEDS_OCCUPANCY: 0.68
 
-
-
-
 ###########################################################
 ###########       Occupation data               ###########
 ###########################################################
@@ -321,14 +324,66 @@ MAX_AGE_HEALTHCARE_WORKER: 65
 MIN_WORKING_AGE: 15
 MAX_WORKING_AGE: 65
 
-
-
 #########################################################
 ###########       Mobility data             ###########
 #########################################################
 
 #/!\ (no-source) these values are assumed.
 MAX_AGE_CHILDREN_WITHOUT_PARENT_SUPERVISION: 3
+
+# How often people go out to food stores?
+# this is needed to decide the time when a human visits a store.
+# ref: https://www.statista.com/statistics/944310/how-often-consumers-visit-food-stores-canada/
+# daily - 1.4%; every other day - 12.3%; weekly - 62.3%; 10 days - 10.8%; 15 days - 9.4%; 30 days - 3.8%
+# Note the above stats is for Canada which we use for Montreal without any corrections.
+P_GROCERY_SHOPPING_DAYS: [
+  [1, 0.014],
+  [2, 0.123],
+  [7, 0.623],
+  [10, 0.108],
+  [15, 0.094],
+  [30, 0.038]
+]
+
+# How often do people socialize?
+# this is needed to bring people together for a social activity
+# ref: https://www150.statcan.gc.ca/n1/pub/89-652-x/89-652-x2014006-eng.htm
+# Face-to-face contacts. We assume that "once a week" excludes "daily" and so on.
+# "Not in the last month" as 30 days gap.
+# Note: these values are normalized before being used.
+P_SOCIALIZE_DAYS: [
+  [1, 0.16],
+  [7, 0.47],
+  [10, 0.28],
+  [30, 0.07],
+  [40, 0.02]
+]
+
+# How much time do people do grocery shopping for? Quebec data
+# ref: https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=4510001401&pickMembers%5B0%5D=1.3&pickMembers%5B1%5D=3.1&pickMembers%5B2%5D=4.1&pickMembers%5B3%5D=5.1
+#  Table  45-10-0014-01   Daily average time spent in hours on various activities by age group and sex, 15 years and over, Canada and provinces
+# 15 years and over
+AVERAGE_TIME_SPENT_GROCERY: 0.5 # hours
+
+# How much time do people spend on socializing? Quebec data
+# ref: https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=4510001401&pickMembers%5B0%5D=1.3&pickMembers%5B1%5D=3.1&pickMembers%5B2%5D=4.1&pickMembers%5B3%5D=5.1
+#  Table  45-10-0014-01   Daily average time spent in hours on various activities by age group and sex, 15 years and over, Canada and provinces
+# 15 years and over
+AVERAGE_TIME_SPENT_SOCIALIZING: 0.7 # hours
+
+# How much time do people spend on exercise? Quebec data
+# ref: https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=4510001401&pickMembers%5B0%5D=1.3&pickMembers%5B1%5D=3.1&pickMembers%5B2%5D=4.1&pickMembers%5B3%5D=5.1
+#  Table  45-10-0014-01   Daily average time spent in hours on various activities by age group and sex, 15 years and over, Canada and provinces
+# 15 years and over
+AVERAGE_TIME_SPENT_EXERCISING: 0.4 # hours
+
+# How much time do people spend on work? Quebec data
+# ref: https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=4510001401&pickMembers%5B0%5D=1.3&pickMembers%5B1%5D=3.1&pickMembers%5B2%5D=4.1&pickMembers%5B3%5D=5.1
+#  Table  45-10-0014-01   Daily average time spent in hours on various activities by age group and sex, 15 years and over, Canada and provinces
+AVERAGE_TIME_SPENT_WORK: 8 # hours
+
+AVERAGE_SLEEPING_MINUTES:
+SCALE_SLEEPING_MINUTES:
 
 # *********************** Overwrite P_AGE_SOLO_DWELLERS_GIVEN_HOUSESIZE_1 because a more accurate datasource is available ***********************
 # *********************** NOTE: this needs to go after any precompuation done for  P_AGE_SOLO_DWELLERS_GIVEN_HOUSESIZE_1 ***********************
@@ -351,7 +406,6 @@ P_AGE_SOLO_DWELLERS_GIVEN_HOUSESIZE_1_MORE_ACCURATE: [[0, 4, 0.0],
     [70, 74, 0.069109489],
     [75, 110, 0.14919708]
   ]
-
 
 ######################################################################
 ## Pre-computed using utils/precompute_and_project/demographics.py  ##

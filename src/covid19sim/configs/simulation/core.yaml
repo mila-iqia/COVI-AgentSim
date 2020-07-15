@@ -14,66 +14,90 @@ GLOBAL_MOBILITY_SCALING_FACTOR: 1.0 # Mobility reduction factor
 # _CONTACT_FACTOR: It amplifies the environmental transmission based on the location type. For example, if the location is `household`, environmental transmission is more likely to take place
 ## It is a knob on reproductive number of a location
 # _PROPORTION_AREA: proportion of city's area that is allocated to this location.
+# _OPEN_CLOSE_HOUR_MINUTE: hour, minute at which the place opens. We use 0,0 and 23, 59.99 to imply all-time open.
+# _OPEN_DAYS: refer to the day of the week on which the location is open. 0=Monday, 6=Sunday
 
 # workplace
 WORKPLACE_PROPORTION_AREA: 0.2
 WORKPLACE_CONTACT_FACTOR: 1
 WORKPLACE_SURFACE_PROB: [0.1, 0.1, 0.3, 0.2, 0.3]
 WORKPLACE_MEAN_DAILY_INTERACTIONS: 10
+WORKPLACE_OPEN_CLOSE_HOUR_MINUTE: [[8, 0], [22, 0]]
+WORKPLACE_OPEN_DAYS: [0, 1, 2, 3, 4]
 
 # stores
 STORE_PROPORTION_AREA: 0.15
 STORE_CONTACT_FACTOR: 1
 STORE_SURFACE_PROB: [0.1, 0.1, 0.3, 0.2, 0.3]
 STORE_MEAN_DAILY_INTERACTIONS: 3.1
+STORE_OPEN_CLOSE_HOUR_MINUTE: [[8, 0], [16, 0]]
+STORE_OPEN_DAYS: [0, 1, 2, 3, 4, 5, 6]
 
 # misc
 MISC_PROPORTION_AREA: 0.15
 MISC_CONTACT_FACTOR: 1
 MISC_SURFACE_PROB: [0.1, 0.1, 0.3, 0.2, 0.3]
 MISC_MEAN_DAILY_INTERACTIONS: 3.1
+MISC_OPEN_CLOSE_HOUR_MINUTE: [[8, 0], [16, 0]]
+MISC_OPEN_DAYS: [0, 1, 2, 3, 4, 5, 6]
 
 # park
 PARK_PROPORTION_AREA: 0.05
 PARK_CONTACT_FACTOR: 0.1
 PARK_SURFACE_PROB: [0.8, 0.05, 0.05, 0.05, 0.05]
 PARK_MEAN_DAILY_INTERACTIONS: 3.1
+PARK_OPEN_CLOSE_HOUR_MINUTE: [[0, 0], [23, 59.99]]
+PARK_OPEN_DAYS: [0, 1, 2, 3, 4, 5, 6]
 
 # hospitals
 HOSPITAL_PROPORTION_AREA: 0.05
 HOSPITAL_CONTACT_FACTOR: 2
 HOSPITAL_SURFACE_PROB: [0.0, 0.0, 0.0, 0.0, 1.0]
 HOSPITAL_MEAN_DAILY_INTERACTIONS: 3.1
+HOSPITAL_OPEN_CLOSE_HOUR_MINUTE: [[0, 0], [23, 59.99]]
+HOSPITAL_OPEN_DAYS: [0, 1, 2, 3, 4, 5, 6]
 
 # households
 HOUSEHOLD_PROPORTION_AREA: 0.30
 HOUSEHOLD_CONTACT_FACTOR: 2
 HOUSEHOLD_SURFACE_PROB: [0.1, 0.1, 0.3, 0.2, 0.3]
 HOUSEHOLD_MEAN_DAILY_INTERACTIONS: 2.7
+HOUSEHOLD_OPEN_CLOSE_HOUR_MINUTE: [[0, 0], [23, 59.99]]
+HOUSEHOLD_OPEN_DAYS: [0, 1, 2, 3, 4, 5, 6]
 
 # senior_residency
 SENIOR_RESIDENCE_PROPORTION_AREA: 0.05
 SENIOR_RESIDENCE_CONTACT_FACTOR: 3
 SENIOR_RESIDENCE_SURFACE_PROB: [0.1, 0.1, 0.3, 0.2, 0.3]
 SENIOR_RESIDENCE_MEAN_DAILY_INTERACTIONS: 2.7
+SENIOR_RESIDENCE_OPEN_CLOSE_HOUR_MINUTE: [[0, 0], [23, 59.99]]
+SENIOR_RESIDENCE_OPEN_DAYS: [0, 1, 2, 3, 4, 5, 6]
 
 # schools
 SCHOOL_PROPORTION_AREA: 0.05
 SCHOOL_CONTACT_FACTOR: 1
 SCHOOL_SURFACE_PROB: [0.1, 0.1, 0.3, 0.2, 0.3]
 SCHOOL_MEAN_DAILY_INTERACTIONS: 1.6
+SCHOOL_OPEN_CLOSE_HOUR_MINUTE: [[8, 0], [16, 0]]
+SCHOOL_OPEN_DAYS: [0, 1, 2, 3, 4]
 
-######################
-# MOBILITY CONSTANTS #
-######################
-AVG_SUSTENANCE_PERIOD: 10
-AVG_ENTERTAINMENT_PERIOD: 10
+################################################
+#####  Mobility / Social Mixing CONSTANTS  #####
+################################################
+
+# /!\ (no-source) This factor is used in scaling the average time spent on various activities.
+# Scaling is done in an mean preserving manner. For example, if mean is X and the distribution is gamma,
+# we scale the location parameter to X / SCALE_FACTOR while using the shape parameter as SCALE_FACTOR.
+# Note: mean of a gamma distribution is location * shape = X (here).
+TIME_SPENT_SCALE_FACTOR: 0.1
 
 
-##############################
-## SOCIAL MIXING CONSTANTS  ##
-##############################
-PREFERENTIAL_ATTACHEMENT_FACTOR: 1.0
+################################################
+#####       Occupation CONSTANTS           #####
+################################################
+
+# /!\ (no-source)
+N_WORKING_DAYS: 5
 
 #########################################################
 #####       Viral Load Parameters                   #####
@@ -252,6 +276,11 @@ P_TRAVELLED_INTERNATIONALLY_RECENTLY: 0.05
 RHO: 0.40
 GAMMA: 0.1
 
+AVG_SLEEPING_MINUTES: 480
+SCALE_SLEEPING_MINUTES: 0.1
+AVG_AWAKE_MINUTES: 960
+SCALE_AWAKE_MINUTES: 0.1
+
 ## SHOP
 AVG_SHOP_TIME_MINUTES: 30 # @param
 SCALE_SHOP_TIME_MINUTES: 15
@@ -360,16 +389,22 @@ SCALE_FACTOR_CONTACT_DURATION: 1.0
 #####                 Knobs                         #####
 #########################################################
 
-# Assortativity knobs
+# Assortativity knobs (A)
 # These needs to be calibrated to acheive the region specific mixing pattern
 # this factor influences the strength of assortativity in contacts at home.
 # higher the value, more likely that people of the same age group live together.
 HOUSEHOLD_ASSORTATIVITY_STRENGTH: 0.5
 WORKPLACE_ASSORTATIVITY_STRENGTH: 0.4
 
-# Infection knobs
+# social mixing knob (B)
+# Defines the probability of accepting inivitaton from peers to "socialize"
+P_INVITATION_ACCEPTANCE: 0.0
+PREFERENTIAL_ATTACHEMENT_FACTOR: 1.0
+
+# Infection knobs ()
 CONTAGION_KNOB: 1
 ENVIRONMENTAL_INFECTION_KNOB: 0.0017
+
 
 #########################################################
 #####           Intervention Parameters             #####
