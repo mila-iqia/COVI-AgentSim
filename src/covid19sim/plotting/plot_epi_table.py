@@ -23,7 +23,7 @@ def run(data, path, comparison_key):
         asymptomatic_transmission = list()
 
         for data in pkls:
-            if not any(data.get('covid_properties')):
+            if not any(data.get('covid_properties', [])):
                 print("no covid!")
                 return
             incubation.append(data["covid_properties"]["incubation_days"][1])
