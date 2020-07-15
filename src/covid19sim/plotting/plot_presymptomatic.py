@@ -1,5 +1,6 @@
 import numpy as np
 import os
+import time
 import matplotlib
 import matplotlib.pyplot as plt
 
@@ -43,10 +44,10 @@ def statistics(pkl_data, times, mode):
             human_day2risk_level[(human, day)] = item["risk_level"]
             human_day2rec_level[(human, day)] = item["rec_level"]
 
-    for k, time in enumerate(times):
+    for k, t in enumerate(times):
 
         for human, day in human2symptom_day.items():
-            past_day = day + time
+            past_day = day + t
             if past_day < 0:
                 continue
             if human_day2infectious.get((human, past_day), False) is True:
@@ -89,6 +90,7 @@ def run(data, path, comparison_key, times=[-1, -2, -3], mode=None):
             for key in data[method]:
                 label = f"{key}"
                 pkls = [r["pkl"] for r in data[method][key].values()]
+                print(label)
                 label2pkls.append((label, pkls))
 
         results = list()
@@ -103,10 +105,11 @@ def run(data, path, comparison_key, times=[-1, -2, -3], mode=None):
             all_positive = np.concatenate(all_positive, 0).sum(0)
             all_negative = np.concatenate(all_negative, 0).sum(0)
             all_positive = all_positive / np.expand_dims(all_positive.sum(1), 1)
+            print(f"{method} {label}: {all_positive}")
             all_negative = all_negative / np.expand_dims(all_negative.sum(1), 1)
             results.append((all_positive, all_negative, all_positive - all_negative))
 
-        for k, time in enumerate(times):
+        for k, t in enumerate(times):
             i = 0
             j = 0
 
@@ -154,7 +157,7 @@ def run(data, path, comparison_key, times=[-1, -2, -3], mode=None):
                         list(range(length)),
                         result[0][k],
                         color="darkorange",
-                        label="Day{}".format(time),
+                        label="Day{}".format(t),
                     )
                     axs[0].set_title(
                         f"Presymptomatic Rec Levels (Adoption: {float(label)*100}%)",
@@ -173,7 +176,7 @@ def run(data, path, comparison_key, times=[-1, -2, -3], mode=None):
                         list(range(length)),
                         result[1][k],
                         color="darkorange",
-                        label="Day{}".format(time),
+                        label="Day{}".format(t),
                     )
                     axs[1].set_title(
                         f"Susceptible Rec Levels (Adoption Rate: {float(label)*100}%)",
@@ -192,7 +195,7 @@ def run(data, path, comparison_key, times=[-1, -2, -3], mode=None):
                         list(range(length)),
                         result[2][k],
                         color="darkorange",
-                        label="Day{}".format(time),
+                        label="Day{}".format(t),
                     )
                     axs[2].set_title(
                         f"Delta Rec Levels (Adoption Rate: {float(label)*100}%)", y=1.06
@@ -213,13 +216,12 @@ def run(data, path, comparison_key, times=[-1, -2, -3], mode=None):
                     dir_path = (
                         path
                         / "presymptomatic"
-                        / f"statistics_day{time}"
+                        / f"statistics_day{t}"
                         / f"adoption_{label}"
                     )
                     fig_path = dir_path / f"{method}_{mode}.png"
                     print(f"Saving Figure {str(fig_path)}...", end="", flush=True)
                     os.makedirs(dir_path, exist_ok=True)
-                    plt.gcf()
                     plt.savefig(fig_path)
                     plt.close("all")
                     print("Done.")

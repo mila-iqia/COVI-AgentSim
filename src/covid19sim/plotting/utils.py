@@ -495,7 +495,9 @@ def get_proxy_r(data):
     total_infected = 0
     for k in data["humans_state"].keys():
         total_infected += any(z == "I" for z in data["humans_state"][k][5:])
-    return sum(data["cases_per_day"][5:]) / total_infected
+    if total_infected > 0:
+        return sum(data["cases_per_day"][5:]) / total_infected
+    return 0.
 
 
 def get_effective_R(data):
