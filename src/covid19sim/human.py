@@ -83,6 +83,8 @@ class Human(object):
         self.is_healthcare_worker = True if profession == "healthcare" else False  # convenience boolean to check if is healthcare worker
         self.known_connections = set() # keeps track of all otehr humans that this human knows of
         self._workplace = (None,) # initialized this way to be consistent with the final deque assignment
+        self.does_not_work = False # to identify those who weren't assigned any workplace from the beginning
+        self.work_start_time, self.work_end_time, self.working_days = None, None, []
 
         # Logging / Tracking
         self.track_this_human = False  # tracks transition of human everytime there is a change in it's location. see `self.track_me`
@@ -349,10 +351,15 @@ class Human(object):
             self.household = location
             self.location = location
             location.add_human(self)
-            self.last_location = location  # tracks the last place this person was
-            self.last_duration = 0  # tracks how long this person was somewhere
 
     def assign_workplace(self, workplace):
+        """
+        Initilizes work related attributes for `human`
+        """
+        N_WORKING_DAYS = self.conf['N_WORKING_DAYS']
+        self.work_start_time = workplace.closing_time
+        self.work_end_time = workplace.opening_time
+        self.working_days = self.rng.choice(workplace.open_days, size=N_WORKING_DAYS, replace=False)
         self._workplace = deque((workplace,))  # Created as a list because we sometimes modify human's workplace to WFH if in quarantine, then go back to work when released
 
     @property
@@ -1267,6 +1274,31 @@ class Human(object):
                 new_rec.modify(self)
                 self.recommendations_to_follow.add(new_rec)
 
+    def run_mobility_reduction_check(self):
+        # self.how_am_I_feeling = 1.0 (great) will make rest_at_home = False
+        if not self.rest_at_home:
+            i_feel = self.how_am_I_feeling()
+            if self.rng.random() > i_feel:
+                self.rest_at_home = True
+        elif self.rest_at_home and self.how_am_I_feeling() == 1.0 and self.is_removed:
+            self.rest_at_home = False
+
+
+    def run_2(self, city):
+        """
+        """
+        from covid19sim.utils.mobility_planner import MobilityPlanner
+        self.mobility_planner = MobilityPlanner(self, self.env, self.conf)
+        print(self)
+        self.env.process(self.mobility_planner.run())
+        print(self.mobility_planner.schedule_for_day)
+        while True:
+            self.run_mobility_reduction_check()
+            self.move_to_hospital_if_required()
+            next_activity = self.mobility_planner.get_next_activity()
+            start_time, end_time, duration, type_of_activity = next_activity
+            yield self.env.process(self.go_to(type_of_activity, duration=duration))
+            assert self.env.timestamp == end_time, "times do not align..."
 
     def decide_next_activity(self, hour, day):
         # TODO (EM) These optional and erratic behaviours should be more probabalistic,
@@ -1276,30 +1308,30 @@ class Human(object):
         if (not self.env.is_weekend() and
             hour in self.work_start_hour and
             not self.rest_at_home):
-            next_location  = "work"
+            next_activity  = "work"
 
         elif ( hour in self.shopping_hours and
                day in self.shopping_days and
                self.count_shop<=self.max_shop_per_week and
                not self.rest_at_home):
-               next_location = "shopping"
+               next_activity = "grocery"
 
         elif ( hour in self.exercise_hours and
                 day in self.exercise_days and
                 self.count_exercise<=self.max_exercise_per_week and
                 not self.rest_at_home):
-                next_location = "exercise"
+                next_activity = "exercise"
 
         elif ( self.env.is_weekend() and
                 self.rng.random() < 0.5 and
                 not self.rest_at_home and
                 hour in self.misc_hours and
                 self.count_misc < self.max_misc_per_week):
-                next_location = "leisure"
+                next_activity = "socialize"
         else:
-            next_location = 'household'
+            next_activity = 'household'
 
-        return next_location
+        return next_activity
 
 
     def run(self, city):
@@ -1345,9 +1377,6 @@ class Human(object):
                 if duration > 720:
                     break
 
-            # if self.name == "human:439":
-            #     print(f"{self.env.is_weekend()} going to {to_location}")
-
             if to_location == "household":
                 yield self.env.process(self.at(self.household, city, duration))
             else:
@@ -1390,8 +1419,8 @@ class Human(object):
         Yields:
             simpy.events.Process
         """
-        if location_type == "shopping":
-            grocery_store = self._select_location(location_type="stores", city=city)
+        if location_type == "grocery":
+            grocery_store = self._select_location(activity="grocery", city=city)
             if grocery_store is None:
                 # Either grocery stores are not open, or all queues are too long, so return
                 return
@@ -1403,7 +1432,7 @@ class Human(object):
                 yield self.env.process(self.at(grocery_store, city, t))
 
         elif location_type == "exercise":
-            park = self._select_location(location_type="park", city=city)
+            park = self._select_location(activity="exercise", city=city)
             if park is None:
                 # No parks are open, so return
                 return
@@ -1413,7 +1442,8 @@ class Human(object):
 
         elif location_type == "work":
             t = draw_random_discrete_gaussian(self.avg_working_minutes, self.scale_working_minutes, self.rng)
-            if self.workplace.is_open_for_business:
+            if (not self.does_not_work
+                and self.workplace.is_open_for_business):
                 yield self.env.process(self.at(self.workplace, city, t))
             else:
                 # work from home
@@ -1447,7 +1477,7 @@ class Human(object):
 
             yield self.env.process(self.at(icu, city, t * 24 * 60))
 
-        elif location_type == "leisure":
+        elif location_type == "socialize":
             S = 0
             p_exp = 1.0
             while self.count_misc <= self.max_misc_per_week:
@@ -1455,7 +1485,7 @@ class Human(object):
                     yield self.env.process(self.at(self.household, city, 60))
                     break
 
-                loc = self._select_location(location_type='miscs', city=city)
+                loc = self._select_location(activity='socialize', city=city)
                 if loc is None:
                     return # No leisure spots are open, or without long queues, so return
 
@@ -1512,9 +1542,6 @@ class Human(object):
         Yields:
             [type]: [description]
         """
-
-        # if self.name == "human:439":
-        #     print(f"{self.location} --> {location}")
 
         # track transitions & locations visited
         city.tracker.track_trip(from_location=self.location.location_type, to_location=location.location_type, age=self.age, hour=self.env.hour_of_day())
@@ -1606,13 +1633,14 @@ class Human(object):
                     time=self.env.timestamp
                 )
 
-    def _select_location(self, location_type, city):
+    def _select_location(self, activity, city, additional_visits=0):
         """
         Preferential exploration treatment to visit places in the city.
 
         Args:
             location_type (str): type of location to sample from
             city (covid19sim.locations.city): `City` object in which `self` resides
+            additional_visits (int): number of additional visits for `activity`. Used to decide location after some number of these visits.
 
         Raises:
             ValueError: when location_type is not one of "park", "stores", "hospital", "hospital-icu", "miscs"
@@ -1620,14 +1648,14 @@ class Human(object):
         Returns:
             (covid19sim.locations.location.Location): a `Location` object
         """
-        if location_type == "park":
+        if activity == "exercise":
             S = self.visits.n_parks
             self.adjust_gamma = 1.0
             pool_pref = self.parks_preferences
             locs = filter_open(city.parks)
             visited_locs = self.visits.parks
 
-        elif location_type == "stores":
+        elif activity == "grocery":
             S = self.visits.n_stores
             self.adjust_gamma = 1.0
             pool_pref = self.stores_preferences
@@ -1635,19 +1663,19 @@ class Human(object):
             locs = filter_queue_max(filter_open(city.stores), self.conf.get("MAX_STORE_QUEUE_LENGTH"))
             visited_locs = self.visits.stores
 
-        elif location_type == "hospital":
+        elif activity == "hospital":
             for hospital in sorted(filter_open(city.hospitals), key=lambda x:compute_distance(self.location, x)):
                 if len(hospital.humans) < hospital.capacity:
                     return hospital
             return None
 
-        elif location_type == "hospital-icu":
+        elif activity == "hospital-icu":
             for hospital in sorted(filter_open(city.hospitals), key=lambda x:compute_distance(self.location, x)):
                 if len(hospital.icu.humans) < hospital.icu.capacity:
                     return hospital.icu
             return None
 
-        elif location_type == "miscs":
+        elif activity == "socialize":
             S = self.visits.n_miscs
             self.adjust_gamma = 1.0
             pool_pref = [(compute_distance(self.location, m) + 1e-1) ** -1 for m in city.miscs if
@@ -1655,6 +1683,9 @@ class Human(object):
             # Only consider locations open for business and not too long queues
             locs = filter_queue_max(filter_open(city.miscs), self.conf.get("MAX_MISC_QUEUE_LENGTH"))
             visited_locs = self.visits.miscs
+
+        elif activity == "work":
+            return self.workplace
 
         else:
             raise ValueError(f'Unknown location_type:{location_type}')
