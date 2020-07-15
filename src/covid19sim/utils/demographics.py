@@ -8,7 +8,7 @@ from collections import namedtuple
 from copy import deepcopy
 
 from collections import defaultdict
-from covid19sim.utils.utils import log, relativefreq2absolutefreq, _get_random_area
+from covid19sim.utils.utils import log, relativefreq2absolutefreq, _get_random_area, _random_choice_tuples
 from covid19sim.utils.constants import AGE_BIN_WIDTH_5
 from covid19sim.locations.location import Location, Household, School, WorkplaceA, WorkplaceB
 from covid19sim.locations.hospital import Hospital
@@ -145,12 +145,9 @@ def create_locations_and_assign_workplace_to_humans(humans, city, conf, logfile=
     # during this duration they interact with their colleagues with `PREFERENTIAL_ATTACHEMENT_FACTOR` as the probability of
     # interacting with previously known colleagues
     # In order to obtain the contact pattern, allocate people as per their age groups.
-    # pick a human, put him into the workplace, find other humans like him and put them in that workplace
     unassigned_humans = [human for human in humans if human.workplace is None]
     for human in unassigned_humans:
-        human.assign_workplace(human.household)
-
-    # breakpoint()
+        human.does_not_work = True
 
     # create parks
     PARK_PROPORTION_AREA = conf['PARK_PROPORTION_AREA']
@@ -347,6 +344,18 @@ def _build_and_allocate_workplace_type_A(type, humans, city, conf, rng, logfile=
 
 def _build_and_allocate_hospitals(humans, city, conf, rng):
     """
+    Builds hospitals as per the configuration file.
+    Assigns doctors and nurses to it.
+
+    Args:
+        humans (dict): keys are age bins (tuple) and values are a list of covid19sim.Human object of that age
+        city (covid19sim.location.City): simulator's city object
+        conf (dict): yaml configuration of the experiment
+        rng (np.random.RandomState): Random number generator
+
+    Returns:
+        humans (list): a list of `human`s. some of them are assigned workplace as one of the created hospitals
+        city (covid19sim.locations.city.City): city object containing the hospitals and humans
     """
 
     HOSPITAL_PROPORTION_AREA = conf['HOSPITAL_PROPORTION_AREA']
@@ -408,6 +417,18 @@ def _build_and_allocate_hospitals(humans, city, conf, rng):
 
 def _assign_senior_residences(humans, city, conf, rng):
     """
+    Assigns social common rooms as a workplace for seniors to socialize.
+    Assigns nurses to senior residences.
+
+    Args:
+        humans (dict): keys are age bins (tuple) and values are a list of covid19sim.Human object of that age
+        city (covid19sim.location.City): simulator's city object
+        conf (dict): yaml configuration of the experiment
+        rng (np.random.RandomState): Random number generator
+
+    Returns:
+        humans (list): a list of `human`s. some of them are assigned social common room as a workplace
+        city (covid19sim.locations.city.City): city object containing the locations and humans in it.
     """
     RESIDENT_TO_STAFF_RATIO = conf['RESIDENT_TO_STAFF_RATIO']
     MIN_AGE_HEALTHCARE_WORKER = conf['MIN_AGE_HEALTHCARE_WORKER']
@@ -428,7 +449,7 @@ def _assign_senior_residences(humans, city, conf, rng):
         senior_residence.n_nurses = math.ceil(len(senior_residence.residents) / RESIDENT_TO_STAFF_RATIO)
         nurses = rng.choice(potential_nurses, size=senior_residence.n_nurses, replace=False)
         for nurse in nurses:
-            nurse.assign_workplace(senior_residence)
+            nurse.assign_workplace(senior_residence.social_common_room)
 
     return humans, city
 
@@ -581,7 +602,7 @@ def _build_schools_and_enroll_students(city, conf, kids, n_schools, name, area, 
 
 def _build_school(city, conf, name, area, rng):
     """
-    Initializes the School object.
+    Initializes a School object.
     """
     return School(
                 env=city.env,
@@ -1326,25 +1347,6 @@ def _get_valid_bins(valid_age_bins, min_age=-1, max_age=200, inclusive=False):
         filtered = [x for x in valid_age_bins if x[0] >= min_age]
         filtered = [x for x in filtered if x[1] <= max_age]
     return filtered
-
-def _random_choice_tuples(tuples, rng, size, P=None, replace=False):
-    """
-    samples `size` random elements from `tuples` with probability `P`.
-    NOTE: This function work arounds the internal conversion of the elements
-            in `tuples` to np.ndarray.
-    Args:
-        tuples (list): a list of tuples
-        rng (np.random.RandomState): Random number generator
-        size (int): number of elements to sample from `tuples`
-        P (list): probability with which to sample. Defaults to None.
-        replace (bool): True if sampling is to be done with replace.
-
-    Returns:
-        list: sampled elements from tuples
-    """
-    total = len(tuples)
-    idxs = rng.choice(range(total), size=size, p=P, replace=replace)
-    return [tuples[x] for x in idxs]
 
 def _get_probability_of_drawing_bins(P_CONTACT, valid_bins, age):
     """

@@ -1,5 +1,5 @@
 """
-[summary]
+Utility functions perform generic operations.
 """
 import datetime
 import math
@@ -372,6 +372,12 @@ def extract_tracker_data(tracker, conf):
     data['covid_properties'] = tracker.covid_properties
     data['human_has_app'] = tracker.human_has_app
     data['to_human_max_msg_per_day'] = tracker.to_human_max_msg_per_day
+
+    # known connections
+    data['known_connections'] = {
+        human.name: set(h.name for h in human.known_connections)
+        for human in tracker.city.humans
+    }
     return data
 
 
@@ -591,3 +597,22 @@ def zip_outdir(outdir):
         str(path.parent), path.name, path.name
     )
     subprocess_cmd(command)
+
+def _random_choice_tuples(tuples, rng, size, P=None, replace=False):
+    """
+    samples `size` random elements from `tuples` with probability `P`.
+    NOTE: This function work arounds the internal conversion of the elements
+            in `tuples` to np.ndarray.
+    Args:
+        tuples (list): a list of tuples
+        rng (np.random.RandomState): Random number generator
+        size (int): number of elements to sample from `tuples`
+        P (list): probability with which to sample. Defaults to None.
+        replace (bool): True if sampling is to be done with replace.
+
+    Returns:
+        list: sampled elements from tuples
+    """
+    total = len(tuples)
+    idxs = rng.choice(range(total), size=size, p=P, replace=replace)
+    return [tuples[x] for x in idxs]
