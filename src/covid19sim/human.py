@@ -24,7 +24,9 @@ from covid19sim.epidemiology.human_properties import may_develop_severe_illness,
     _get_preexisting_conditions, _get_random_sex, get_carefulness, get_age_bin
 from covid19sim.epidemiology.viral_load import compute_covid_properties, viral_load_for_day
 from covid19sim.epidemiology.symptoms import _get_cold_progression, _get_flu_progression,\
-    _get_allergy_progression
+    _get_allergy_progression, \
+    MILD, MODERATE, SEVERE, EXTREMELY_SEVERE, \
+    ACHES, COUGH, FATIGUE, FEVER, GASTRO, TROUBLE_BREATHING
 from covid19sim.epidemiology.p_infection import get_p_infection, infectiousness_delta
 from covid19sim.utils.constants import SECONDS_PER_MINUTE, SECONDS_PER_HOUR, SECONDS_PER_DAY
 from covid19sim.inference.message_utils import ContactBook, exchange_encounter_messages, RealUserIDType
@@ -397,11 +399,12 @@ class Human(BaseHuman):
 
     @property
     def is_really_sick(self):
-        return self.can_get_really_sick and 'severe' in self.symptoms
+        return self.can_get_really_sick and SEVERE in self.symptoms
 
     @property
     def is_extremely_sick(self):
-        return self.can_get_extremely_sick and 'severe' in self.symptoms
+        return self.can_get_extremely_sick and (SEVERE in self.symptoms or
+                                                EXTREMELY_SEVERE in self.symptoms)
 
     @property
     def is_quarantined(self):
@@ -439,7 +442,7 @@ class Human(BaseHuman):
         severity_multiplier = 1
         if 'immuno-compromised' in self.preexisting_conditions:
             severity_multiplier += self.conf['IMMUNOCOMPROMISED_SEVERITY_MULTIPLIER_ADDITION']
-        if 'cough' in self.symptoms:
+        if COUGH in self.symptoms:
             severity_multiplier += self.conf['COUGH_SEVERITY_MULTIPLIER_ADDITION']
         return severity_multiplier
 
@@ -518,10 +521,10 @@ class Human(BaseHuman):
         if self.has_allergy_symptoms:
             self.allergy_symptoms = self.allergy_progression[0]
 
-        all_symptoms = set(self.flu_symptoms + self.cold_symptoms + self.allergy_symptoms + self.covid_symptoms)
+        all_symptoms = self.flu_symptoms + self.cold_symptoms + self.allergy_symptoms + self.covid_symptoms
         # self.new_symptoms = list(all_symptoms - set(self.all_symptoms))
         # TODO: remove self.all_symptoms in favor of self.rolling_all_symptoms[0]
-        self.all_symptoms = list(all_symptoms)
+        self.all_symptoms = OrderedSet(all_symptoms)
         self.rolling_all_symptoms.appendleft(self.all_symptoms)
         self.city.tracker.track_symptoms(self)
 
@@ -651,13 +654,13 @@ class Human(BaseHuman):
             TEST_SYMPTOMS_FOR_HOSPITAL = set(self.conf['GET_TESTED_SYMPTOMS_CHECKED_IN_HOSPITAL'])
             should_get_test = any(TEST_SYMPTOMS_FOR_HOSPITAL & set(self.symptoms))
         else:
-            if "severe" in self.symptoms:
+            if SEVERE in self.symptoms or EXTREMELY_SEVERE in self.symptoms:
                 should_get_test = self.rng.rand() < self.conf['P_TEST_SEVERE']
 
-            elif "moderate" in self.symptoms:
+            elif MODERATE in self.symptoms:
                 should_get_test = self.rng.rand() < self.conf['P_TEST_MODERATE']
 
-            elif "mild" in self.symptoms:
+            elif MILD in self.symptoms:
                 should_get_test = self.rng.rand() < self.conf['P_TEST_MILD']
 
             # has been recommended the test by an intervention
@@ -872,15 +875,15 @@ class Human(BaseHuman):
         if self.is_quarantined and self.follows_recommendations_today:
             return 0.1
 
-        if current_symptoms & {"severe", "extremely_severe"}:
+        if current_symptoms & {SEVERE, EXTREMELY_SEVERE}:
             return 0.2
         elif self.test_result == "positive":
             return 0.1
-        elif current_symptoms & {"trouble_breathing"}:
+        elif current_symptoms & {TROUBLE_BREATHING}:
             return 0.3
-        elif current_symptoms & {"moderate", "fever"}:
+        elif current_symptoms & {MODERATE, FEVER}:
             return 0.5
-        elif current_symptoms & {"cough", "fatigue", "gastro", "aches", "mild"}:
+        elif current_symptoms & {COUGH, FATIGUE, GASTRO, ACHES, MILD}:
             return 0.6
 
         return 1.0

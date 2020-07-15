@@ -1,5 +1,6 @@
 from scipy.stats import gamma, truncnorm
-from covid19sim.epidemiology.symptoms import _get_covid_progression
+from covid19sim.epidemiology.symptoms import _get_covid_progression, \
+    MODERATE, SEVERE, EXTREMELY_SEVERE
 from covid19sim.utils.constants import SECONDS_PER_DAY
 
 def _sample_viral_load_gamma(rng, shape_mean=4.5, shape_std=.15, scale_mean=1., scale_std=.15):
@@ -241,7 +242,7 @@ def compute_covid_properties(human):
     if human.is_asymptomatic:
         human.infection_ratio = human.conf['ASYMPTOMATIC_INFECTION_RATIO']
 
-    elif sum(x in all_symptoms for x in ['moderate', 'severe', 'extremely-severe']) > 0:
+    elif sum(x in all_symptoms for x in [MODERATE, SEVERE, EXTREMELY_SEVERE]) > 0:
         human.infection_ratio = 1.0
 
     else:
