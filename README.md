@@ -81,8 +81,8 @@ properties (sorry about the naming) in `train_config.yaml`:
 
 The above commands only run one simulation each. This is useful for debugging, but in order to run
 multiple simulations with domain randomization (e.g. to create a training dataset), we make use of
-a special config file (`src/covid19sim/configs/search/experiment.yaml`) with a special module
-(`covid19sim.job_scripts.random_search.py`) to run over 100 simulations. Note that this takes several
+a special config files in (`src/covid19sim/configs/experiment/`, e.g. `app_adoption.yaml`) with a special module
+(`covid19sim.job_scripts.experiment.py`) to run over 100 simulations. Note that this takes several
 hours on a CPU cluster.
 
 For more information on settings and outputs, we suggest to dig into the code and look at the docstrings.
