@@ -1,5 +1,5 @@
 """
-Contains the `Human` class that defines the behavior of human.
+This module implements the `Human` class which is the focal point of the agent-based simulation.
 """
 
 import math
@@ -24,46 +24,60 @@ from covid19sim.epidemiology.human_properties import may_develop_severe_illness,
     _get_preexisting_conditions, _get_random_sex, get_carefulness, get_age_bin
 from covid19sim.epidemiology.viral_load import compute_covid_properties, viral_load_for_day
 from covid19sim.epidemiology.symptoms import _get_cold_progression, _get_flu_progression,\
-    _get_allergy_progression
+    _get_allergy_progression, \
+    MILD, MODERATE, SEVERE, EXTREMELY_SEVERE, \
+    ACHES, COUGH, FATIGUE, FEVER, GASTRO, TROUBLE_BREATHING
 from covid19sim.epidemiology.p_infection import get_p_infection, infectiousness_delta
 from covid19sim.utils.constants import SECONDS_PER_MINUTE, SECONDS_PER_HOUR, SECONDS_PER_DAY
 from covid19sim.inference.message_utils import ContactBook, exchange_encounter_messages, RealUserIDType
 from covid19sim.utils.visits import Visits
 from covid19sim.native._native import BaseHuman
 
+if typing.TYPE_CHECKING:
+    from covid19sim.utils.env import Env
+    from covid19sim.locations.city import City
+    from covid19sim.locations.location import Location
+
+
 class Human(BaseHuman):
     """
-    [summary]
+    Human agent class. Human objects can only be instantiated by a city at the start of a simulation.
+    See `covid19sim.locations.city.py` for more information.
     """
 
-    def __init__(self, env, city, name, age, rng, has_app, infection_timestamp, household, workplace, profession, rho=0.3, gamma=0.21, conf={}):
+    def __init__(
+            self,
+            env: "Env",
+            city: "City",
+            name: typing.Union[typing.AnyStr, int],
+            age: int,
+            rng: np.random.RandomState,
+            has_app: bool,
+            infection_timestamp: typing.Optional[datetime.datetime],
+            household: "Location",
+            workplace: "Location",
+            profession: "Location",
+            rho: float,
+            gamma: float,
+            conf: typing.Dict,
+    ):
         """
-        [summary]
+        Constructs a human agent.
 
         Args:
-            env ([type]): [description]
-            city ([type]): [description]
-            name ([type]): [description]
-            age ([type]): [description]
-            rng ([type]): [description]
-            infection_timestamp ([type]): [description]
-            household ([type]): [description]
-            workplace ([type]): [description]
-            profession ([type]): [description]
-            rho (float, optional): [description]. Defaults to 0.3.
-            gamma (float, optional): [description]. Defaults to 0.21.
-            conf (dict): yaml experiment configuration
+            env: simpy environment object holding simulation state/timestamps.
+            city: meta-location that currently owns this agent.
+            name: unique name or identifier used to refer to this agent.
+            age: age of this agent.
+            rng: random number generator to use in this agent.
+            infection_timestamp: timestamp of when this agent has been exposed (or `None` if not exposed yet).
+            household: household tied to this agent where they will rest.
+            workplace: workplace tied to this agent where they will spend most days.
+            profession: profession of this agent.
+            rho: TODO @@@@ DOCUMENT ME
+            gamma: TODO @@@@ DOCUMENT ME
+            conf: configuration dictionary holding the experimental settings.
         """
-
-        """
-        Biological Properties
-        Covid-19
-        App-related
-        Interventions
-        Risk prediction
-        Mobility
-        """
-
         super().__init__(env)
 
         # Utility References
@@ -397,11 +411,12 @@ class Human(BaseHuman):
 
     @property
     def is_really_sick(self):
-        return self.can_get_really_sick and 'severe' in self.symptoms
+        return self.can_get_really_sick and SEVERE in self.symptoms
 
     @property
     def is_extremely_sick(self):
-        return self.can_get_extremely_sick and 'severe' in self.symptoms
+        return self.can_get_extremely_sick and (SEVERE in self.symptoms or
+                                                EXTREMELY_SEVERE in self.symptoms)
 
     @property
     def is_quarantined(self):
@@ -439,7 +454,7 @@ class Human(BaseHuman):
         severity_multiplier = 1
         if 'immuno-compromised' in self.preexisting_conditions:
             severity_multiplier += self.conf['IMMUNOCOMPROMISED_SEVERITY_MULTIPLIER_ADDITION']
-        if 'cough' in self.symptoms:
+        if COUGH in self.symptoms:
             severity_multiplier += self.conf['COUGH_SEVERITY_MULTIPLIER_ADDITION']
         return severity_multiplier
 
@@ -518,10 +533,10 @@ class Human(BaseHuman):
         if self.has_allergy_symptoms:
             self.allergy_symptoms = self.allergy_progression[0]
 
-        all_symptoms = set(self.flu_symptoms + self.cold_symptoms + self.allergy_symptoms + self.covid_symptoms)
+        all_symptoms = self.flu_symptoms + self.cold_symptoms + self.allergy_symptoms + self.covid_symptoms
         # self.new_symptoms = list(all_symptoms - set(self.all_symptoms))
         # TODO: remove self.all_symptoms in favor of self.rolling_all_symptoms[0]
-        self.all_symptoms = list(all_symptoms)
+        self.all_symptoms = OrderedSet(all_symptoms)
         self.rolling_all_symptoms.appendleft(self.all_symptoms)
         self.city.tracker.track_symptoms(self)
 
@@ -651,13 +666,13 @@ class Human(BaseHuman):
             TEST_SYMPTOMS_FOR_HOSPITAL = set(self.conf['GET_TESTED_SYMPTOMS_CHECKED_IN_HOSPITAL'])
             should_get_test = any(TEST_SYMPTOMS_FOR_HOSPITAL & set(self.symptoms))
         else:
-            if "severe" in self.symptoms:
+            if SEVERE in self.symptoms or EXTREMELY_SEVERE in self.symptoms:
                 should_get_test = self.rng.rand() < self.conf['P_TEST_SEVERE']
 
-            elif "moderate" in self.symptoms:
+            elif MODERATE in self.symptoms:
                 should_get_test = self.rng.rand() < self.conf['P_TEST_MODERATE']
 
-            elif "mild" in self.symptoms:
+            elif MILD in self.symptoms:
                 should_get_test = self.rng.rand() < self.conf['P_TEST_MILD']
 
             # has been recommended the test by an intervention
@@ -872,15 +887,15 @@ class Human(BaseHuman):
         if self.is_quarantined and self.follows_recommendations_today:
             return 0.1
 
-        if current_symptoms & {"severe", "extremely_severe"}:
+        if current_symptoms & {SEVERE, EXTREMELY_SEVERE}:
             return 0.2
         elif self.test_result == "positive":
             return 0.1
-        elif current_symptoms & {"trouble_breathing"}:
+        elif current_symptoms & {TROUBLE_BREATHING}:
             return 0.3
-        elif current_symptoms & {"moderate", "fever"}:
+        elif current_symptoms & {MODERATE, FEVER}:
             return 0.5
-        elif current_symptoms & {"cough", "fatigue", "gastro", "aches", "mild"}:
+        elif current_symptoms & {COUGH, FATIGUE, GASTRO, ACHES, MILD}:
             return 0.6
 
         return 1.0
@@ -1535,7 +1550,7 @@ class Human(BaseHuman):
         Returns:
             [type]: [description]
         """
-        warnings.warn("Deprecated in favor of frozen.helper.exposure_array()", DeprecationWarning)
+        warnings.warn("Deprecated in favor of inference.helper.exposure_array()", DeprecationWarning)
         # dont change the logic in here, it needs to remain FROZEN
         exposed = False
         exposure_day = None
@@ -1557,7 +1572,7 @@ class Human(BaseHuman):
         Returns:
             [type]: [description]
         """
-        warnings.warn("Deprecated in favor of frozen.helper.recovered_array()", DeprecationWarning)
+        warnings.warn("Deprecated in favor of inference.helper.recovered_array()", DeprecationWarning)
         is_recovered = False
         recovery_day = (date - self.recovered_timestamp).days
         if recovery_day >= 0 and recovery_day < 14:
