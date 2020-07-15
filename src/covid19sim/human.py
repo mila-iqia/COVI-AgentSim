@@ -1535,7 +1535,7 @@ class Human(BaseHuman):
         Returns:
             [type]: [description]
         """
-        warnings.warn("Deprecated in favor of frozen.helper.exposure_array()", DeprecationWarning)
+        warnings.warn("Deprecated in favor of inference.helper.exposure_array()", DeprecationWarning)
         # dont change the logic in here, it needs to remain FROZEN
         exposed = False
         exposure_day = None
@@ -1557,7 +1557,7 @@ class Human(BaseHuman):
         Returns:
             [type]: [description]
         """
-        warnings.warn("Deprecated in favor of frozen.helper.recovered_array()", DeprecationWarning)
+        warnings.warn("Deprecated in favor of inference.helper.recovered_array()", DeprecationWarning)
         is_recovered = False
         recovery_day = (date - self.recovered_timestamp).days
         if recovery_day >= 0 and recovery_day < 14:
