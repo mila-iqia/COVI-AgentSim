@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -131,6 +132,7 @@ def run(data, path, comparison_key):
                 comparison_key, comparison_value
             )
         )
+        os.makedirs(save_path.parent, exist_ok=True)
         print("Saving Figure {}...".format(save_path.name), end="", flush=True)
         plt.savefig(
             str(save_path), bbox_inches="tight",

@@ -1,6 +1,6 @@
 import math
 from pathlib import Path
-
+import os
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -302,6 +302,7 @@ def run(data, path, comparison_key):
     )
     plt.tight_layout()
     save_path = Path(path) / "pareto_adoption/pareto_adoption_all_metrics.png"
+    os.makedirs(save_path.parent, exist_ok=True)
     print("Saving Figure {}...".format(save_path.name), end="", flush=True)
     fig.savefig(
         str(save_path),
