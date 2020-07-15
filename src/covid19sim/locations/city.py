@@ -18,6 +18,7 @@ from covid19sim.interventions.tracing import BaseMethod
 from covid19sim.interventions.behaviors import *
 from covid19sim.inference.message_utils import UIDType, UpdateMessage, RealUserIDType
 from covid19sim.distribution_normalization.dist_utils import get_rec_level_transition_matrix
+from covid19sim.online_normalization.get_daily_rec_levels import get_recommendation_thresholds, compute_prevalence
 from covid19sim.interventions.tracing_utils import get_intervention
 from covid19sim.log.event import Event
 from covid19sim.locations.test_facility import TestFacility
@@ -765,6 +766,22 @@ class City:
                 city_hash=self.hash,
             )
 
+        if self.conf.get("USE_ONORM"):
+            prevalence,  all_risk_levels = compute_prevalence(
+                humans=self.humans,
+                risk_level_threshold=self.conf.get("ONORM_INFECTIOUSNESS_THRESHOLD"),
+            )
+            rec_level_thresholds = get_recommendation_thresholds(
+                prevalence=prevalence,
+                all_risk_levels=all_risk_levels,
+                leeway=self.conf.get("ONORM_LEEWAY"),
+                relative_fraction_orange_to_red=self.conf.get("ONORM_O2R_REL_FRAC"),
+                relative_fraction_yellow_to_red=self.conf.get("ONORM_Y2R_REL_FRAC"),
+            )
+        else:
+            # Will be handled downstream inside `human.update_recommendations_level`
+            rec_level_thresholds = None
+
         # iterate over humans again, and if it's their timeslot, then prepare risk update messages
         update_messages = []
         for human in alive_humans:
@@ -777,7 +794,7 @@ class City:
                     human.risk_history_map[current_day - day_offset] = 1.0
 
             # using the risk history map & the risk level map, update the human's rec level
-            human.update_recommendations_level()
+            human.update_recommendations_level(rec_level_thresholds=rec_level_thresholds)
 
             # if we had any encounters for which we have not sent an initial message, do it now
             update_messages.extend(human.contact_book.generate_initial_updates(
