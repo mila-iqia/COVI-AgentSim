@@ -26,7 +26,7 @@ def compute_prevalence(
         prevalence = None
     else:
         prevalence = infectious_count / total_count
-    return dict(prevalence=prevalence, all_risk_levels=all_risk_levels)
+    return prevalence, all_risk_levels
 
 
 def get_recommendation_thresholds(
@@ -47,8 +47,8 @@ def get_recommendation_thresholds(
     # Compute the percentiles of the risk level
     # (this is how we'll split the histogram)
     percentile_in_green = 100 * (fraction_in_green)
-    percentile_in_yellow = 100 * (percentile_in_green + fraction_in_yellow)
-    percentile_in_orange = 100 * (percentile_in_yellow + fraction_in_orange)
+    percentile_in_yellow = percentile_in_green + (100 * fraction_in_yellow)
+    percentile_in_orange = percentile_in_yellow + (100 * fraction_in_orange)
 
     # We have green_threshold < yellow_threshold < orange_threshold < 1.
     # We now split the histogram accordingly.

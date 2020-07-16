@@ -1628,7 +1628,9 @@ class Human(BaseHuman):
     def risk_level(self):
         return min(self.proba_to_risk_level_map(self.risk), 15)
 
-    def update_recommendations_level(self, intervention_start=False, rec_level_thresholds=None):
+    def update_recommendations_level(self, intervention_start=False,
+                                     rec_level_thresholds=None,
+                                     use_human_attribute="risk_level"):
         if not self.has_app:
             self._rec_level = -1
             return
@@ -1638,6 +1640,7 @@ class Human(BaseHuman):
             rec_level_thresholds or self.conf.get("REC_LEVEL_THRESHOLDS"),
             self.conf.get("MAX_RISK_LEVEL"),
             intervention_start=intervention_start,
+            use_human_attribute=use_human_attribute,
         )
 
         if self.conf.get("RISK_MODEL") == "digital":

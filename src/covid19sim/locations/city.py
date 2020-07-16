@@ -767,7 +767,7 @@ class City:
             )
 
         if self.conf.get("USE_ONORM"):
-            prevalence,  all_risk_levels = compute_prevalence(
+            prevalence, all_risk_levels = compute_prevalence(
                 humans=self.humans,
                 risk_level_threshold=self.conf.get("ONORM_INFECTIOUSNESS_THRESHOLD"),
             )
@@ -777,7 +777,7 @@ class City:
                 leeway=self.conf.get("ONORM_LEEWAY"),
                 relative_fraction_orange_to_red=self.conf.get("ONORM_O2R_REL_FRAC"),
                 relative_fraction_yellow_to_red=self.conf.get("ONORM_Y2R_REL_FRAC"),
-            )
+            ) if prevalence is not None else None
         else:
             # Will be handled downstream inside `human.update_recommendations_level`
             rec_level_thresholds = None

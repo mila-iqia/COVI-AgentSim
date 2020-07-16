@@ -67,7 +67,8 @@ class BaseMethod(object):
         return behaviors
 
     @staticmethod
-    def get_recommendations_level(human, thresholds, max_risk_level, intervention_start=False):
+    def get_recommendations_level(human, thresholds, max_risk_level, intervention_start=False,
+                                  use_human_attribute="risk_level"):
         """
         Converts the risk level to recommendation level.
 
@@ -75,17 +76,20 @@ class BaseMethod(object):
             human (Human): the human for which we want to compute the recommendation.
             thresholds (list|tuple): exactly 3 values to convert risk_level to rec_level
             max_risk_level (int): maximum allowed risk_level for sanity check (assert risk_level <= max_risk_level)
-
+            intervention_start (bool): whether this function is being called at intervention day.
+            use_human_attribute (str): which attribute of human to use in order to generate a recommendation level.
         Returns:
             recommendation level (int): App recommendation level which takes on a range of 0-3.
         """
-        if human.risk_level <= thresholds[0]:
+        use_human_attribute = "risk_level" if use_human_attribute is None else use_human_attribute
+        thresholdee = getattr(human, use_human_attribute)
+        if thresholdee <= thresholds[0]:
             return 0
-        elif thresholds[0] < human.risk_level <= thresholds[1]:
+        elif thresholds[0] < thresholdee <= thresholds[1]:
             return 1
-        elif thresholds[1] < human.risk_level <= thresholds[2]:
+        elif thresholds[1] < thresholdee <= thresholds[2]:
             return 2
-        elif thresholds[2] < human.risk_level <= max_risk_level:
+        elif thresholds[2] < thresholdee <= max_risk_level:
             return 3
         else:
             raise
@@ -172,12 +176,16 @@ class Heuristic(BaseMethod):
 
         self.risk_mapping = conf.get("RISK_MAPPING")
 
-    def get_recommendations_level(self, human, thresholds, max_risk_level, intervention_start=False):
+    def get_recommendations_level(self, human, thresholds, max_risk_level, intervention_start=False,
+                                  use_human_attribute=None):
         """
         /!\ Overwrites _heuristic_rec_level on the very first day of intervention; note that
         the `_heuristic_rec_level` attribute must be set in each human before calling this via
         the `intervention_start` kwarg.
         """
+        assert use_human_attribute is None, ("This function does not use the `use_human_attribute` "
+                                             "argument -- you either mean to call the super method, "
+                                             "or you're using heuristic with ONORM.")
         # Most of the logic for recommendations level update is given in the
         # "BaseMEthod" class (with "heuristic" tracing method). The recommendations
         # level for the heuristic tracing algorithm are dependent on messages
