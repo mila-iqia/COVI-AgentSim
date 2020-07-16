@@ -1,79 +1,114 @@
-# Covid-19 Spread Simulator for Tracing App
+# Covid-19 Spread Simulator for Risk Tracing App
 
-The simulator is built using [`simpy`](!https://simpy.readthedocs.io/en/latest/simpy_intro/index.html).
-It simulates human mobility along with infectious disease (COVID-19) spreading in a city, where city has houses, grocery stores, parks, workplaces, and other non-essential establishments.
+This simulator is built using [`simpy`](!https://simpy.readthedocs.io/en/latest/simpy_intro/index.html).
+It simulates the spread of Covid-19 in a city block while taking human mobility into account. The "city"
+contains houses, grocery stores, parks, workplaces, senior residences, and other non-essential
+establishments for humans to visit. The current framework can handle simulations with 1k-10k humans
+fairly well, and it is expected to scale to the size of real cities with future updates.
 
-Human mobility simulation is based on Spatial-EPR model. More details on this model are [here](https://www.nature.com/articles/ncomms9166) and [here](https://www.nature.com/articles/nphys1760).
+The human mobility simulation is based on a Spatial-EPR model. More details on this model are
+[here](https://www.nature.com/articles/ncomms9166) and [here](https://www.nature.com/articles/nphys1760).
+The infection spread is modeled based on what is currently known about Covid-19. Our understanding is
+based on published research as well as working closely with epidemiologists and other experts. We plan
+to update and tune the simulator as more information about COVID-19 becomes available.
 
-The infection spread in this simulator is modeled according to what is known about COVID-19.
-Our understanding is based on the published research as well as working closely with epidemiologists and other experts.
-We plan to update the simulator as more and more about COVID-19 will be known.
+
+## Installation
+
+For now, we recommend that all users install the simulator's source code as an editable package
+in order to properly be able to adjust it to their experimental needs. To do so:
+  - Clone the repository to your computer (`git clone https://github.com/mila-iqia/covi-simulator`)
+  - Activate your conda/virtualenv environment where the package will be installed
+    - Note: the minimal Python verion is 3.7.4!
+  - Install the `covid19sim` package (`pip install -e <root_to_covi_simulator>`)
+    - Note: this should install all dependencies required for basic (non-ML-enabled) simulations
+
+If you wish to run simulations with the
+[ML models for risk inference](https://github.com/mila-iqia/covi-machine-learning), you will have to
+install the package for those as well:
+  - Clone the repository to your computer (`git clone https://github.com/mila-iqia/covi-machine-learning`)
+    - Note: clone it OUTSIDE the `<root_to_covi_simulator>` where the simulator is!
+  - Activate the conda/virtualenv environment where the simulator is already installed
+  - Install the `ctt` dependencies (`pip install -r <root_to_covi_machine_learning>/requirements-minimal.txt`)
+    - The 'minimal' dependencies might not be sufficient to train and export a model, but they should
+      be sufficient to use a model for inference in the simulator
+  - Install the `ctt` package (`pip install -e <root_to_covi_simulator>`)
+    - Note: this should install all dependencies required for basic (non-ML-enabled) simulations
 
 
-## Dependencies
+## Running a simulation
 
-To run all experiments, including Transformer, clone the `machine-learning` repository in addition to this one, and install this simulator with `ctt`:
+To run an "unmitigated" 1k-human simulation for 30 days while logging Covid-19 progression and various
+statistics, use:
 ```
-pip install '.[ctt]'
-```
-
-If you want to run only the simulator, or the simulator with BCT baselines, you don't need to clone the `machine-learning` repository and don't need to install `ctt`; it is only required for the transformer and other ML baselines. To install the simulator without `ctt`: (*note that this usage is not what we use for paper experiments, and may not be fully supported/explained by this README*)
-
-```
-pip install .
-```
-
-Please checkout `setup.py` for external dependencies.
-
-## How to run it using command line?
-Run the simulator in the 'unmitigated' scenario with console logging of infection progression and various statistics use `tune=True`
-```
-python run.py tune=True 
-```
-
-The simulator will output a logfile and pickle to `output/sim_people-{N_PEOPLE}_days-{SIMULATION_DAYS}_init-{INIT_PERCENT_SICK}_seed-{SEED}_{DATE}-{TIME}/data.zip`. The `.pkl` contains all the activity of a population of humans in `simulator.py`. For a thousand people for 30 days (the default), this takes around 15 minutes on a 2-year old laptop (X1 carbon).
-
-In order to train with a risk predictor in the loop, set the type of intervention (`binary_digital_tracing_order_1`, `binary_digital_tracing_order_2`, `transformer`, `oracle`, `no_intervention`)  and the day that intervention should start. 
-```
-python run.py tune=True tracing_method=`transformer` INTERVENTION_DAY=5
-```
-Note that for MLP and linear regression, the tracing method should be set to `transformer`; transformer, MLP, and linear regression use the same intervention codepath but the weights of the inference method are different. In order to change between these you need to modify the following properties (sorry about the naming) in `train_config.yaml`: 
-
-| Property | Transformer | MLP | Linear Regression |
-|:--|:--|:--|:--|
-| `model.name =`| `MixSetNet`    | `MomentNet` | `MomentNet` |
-| `model.kwargs.block_type =` | `sssss`   | `nrrrn` | `l` |
-
-The above commands only produces one run of the simulator. This is useful for debugging, but in order to run multiple simulations with domain randomization, suitable for creating a training dataset, we make use of a config file located at `simulator/src/covid19sim/configs/search/expriment.yaml` to run 100 train and 20 validation. Note that this takes several hours on a CPU cluster.
-
-```
-python random_search.py
+python -m covid19sim.run tune=True 
 ```
 
-All experiments are reproducible given a random seed. Use the random seeds given in the config files (don't change anything) in order to reproduce the same results in the paper.
+Note that depending on the size of the simulation and the initial number of infected people, you might see
+an explosion in the number of cases, or nothing at all. The latter is possible if the initially infected
+human does not go out much, or lives alone in their house. You can try to run the experiment again with
+a different seed (it is 0 by default):
+```
+python -m covid19sim.run tune=True seed=13 
+```
+
+In any case, the simulator will output some data to the `output` directory in your current folder. In
+there, you will find a backup of the configuration used for the simulation (`full_configuration.yaml`),
+the simulation log (`log_<current_datetime>.txt`), and a pickle file containing the tracker data
+(`tracker_data_n_<nb_people>_seed_<seed>_<current_datetime>.pkl`).
+
+A simulation in an unmitigated scenario will be CPU-bound (and run on a single core due to simpy). With
+the default settings (1000 people, 30 days), it should take 3-4 minutes on a modern desktop PC, and require
+a maximum of 3GB of RAM (with tracking enabled).
+
+To run a simulation with a risk predictor in the loop, you will have to set the type of intervention
+(`binary_digital_tracing_order_1`, `binary_digital_tracing_order_2`, `transformer`, `oracle`,
+`heuristicv1`, `heuristicv2`) and the day that intervention should start. For example, to run with the
+first version of the heuristic risk prediction, use:
+```
+python -m covid19sim.run tracing_method=heuristicv1 INTERVENTION_DAY=5
+```
+
+Note that for risk prediction via MLP or linear regression, the tracing method should be set to
+`transformer`; transformer, MLP, and linear regression use the same inference codepath but the models
+and weights used are different. In order to change between these you need to modify the following
+properties (sorry about the naming) in `train_config.yaml`: 
+
+| Property                    | Transformer | MLP         | Linear Regression |
+| :--                         | :--         | :--         | :--               |
+| `model.name =`              | `MixSetNet` | `MomentNet` | `MomentNet`       |
+| `model.kwargs.block_type =` | `sssss`     | `nrrrn`     | `l`               |
+
+The above commands only run one simulation each. This is useful for debugging, but in order to run
+multiple simulations with domain randomization (e.g. to create a training dataset), we make use of
+a special config files in (`src/covid19sim/configs/experiment/`, e.g. `app_adoption.yaml`) with a special module
+(`covid19sim.job_scripts.experiment.py`) to run over 100 simulations. Note that this takes several
+hours on a CPU cluster.
+
+For more information on settings and outputs, we suggest to dig into the code and look at the docstrings.
+If you feel lost or are looking into undocumented areas of the code, feel free to contact one of the
+developers.
 
 
 ## How to run tests?
-From the root of `simulator`, run:
+
+From the root of the repository, run:
 ```
-pytest
+pytest tests/
 ```
 
-### Accessing Simulation Data
-Load the output of the simulator as following
-```
-data = pickle.load(open("output/data.pkl", 'rb'))
-```
+## License
 
-## How to run it as a function?
-Although not designed with this usage in mind one, can still call the simulator like this :
-```
-from run import simulate
-city, monitors, tracker = simulate(n_stores=100, n_parks=50, n_people=100, n_misc=100, print_progress=False, seed=0)
-```
-
-`data` is a `list` of `dict`.
+This project is currently distributed under the [Affero GPL (AGPL) license](LICENSE).
 
 
-## Semantics of code
-`Human` class, located in `simulator.py`, builds people with individual properties, and the `City` and `Location` classes, located in `base.py` build stores, parks, workplaces, households, and non-essential establishments. 
+## Contributing
+
+If you have an idea to contribute, we suggest that you first sync up with one of the developers working
+on the project to minimize potential issues. Then, we will be happy to work on a PR with you.
+
+
+## About
+
+This simulator is part of an academic research project at Mila. The other useful component of this
+project is the machine learning code, located [here](https://github.com/mila-iqia/covi-machine-learning).

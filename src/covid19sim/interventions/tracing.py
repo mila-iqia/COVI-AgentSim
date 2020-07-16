@@ -8,6 +8,7 @@ import copy
 import numpy as np
 from itertools import islice
 from covid19sim.interventions.behaviors import Quarantine
+from covid19sim.epidemiology.symptoms import MODERATE, SEVERE, EXTREMELY_SEVERE
 from covid19sim.interventions.tracing_utils import _get_behaviors_for_level, create_behavior
 
 if typing.TYPE_CHECKING:
@@ -271,15 +272,15 @@ class Heuristic(BaseMethod):
 
         elif human.all_reported_symptoms:
             # for some symptoms set R for now and all past 7 days
-            if "extremely-severe" in human.all_reported_symptoms:
+            if EXTREMELY_SEVERE in human.all_reported_symptoms:
                 new_risk_level = self.severe_symptoms_risk_level
                 new_rec_level = self.severe_symptoms_rec_level
 
-            elif "severe" in human.all_reported_symptoms:
+            elif SEVERE in human.all_reported_symptoms:
                 new_risk_level = self.severe_symptoms_risk_level
                 new_rec_level = self.severe_symptoms_rec_level
 
-            elif "moderate" in human.all_reported_symptoms:
+            elif MODERATE in human.all_reported_symptoms:
                 new_risk_level = self.moderate_symptoms_risk_level
                 new_rec_level = self.moderate_symptoms_rec_level
 
