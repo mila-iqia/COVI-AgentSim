@@ -115,19 +115,21 @@ def main(conf: DictConfig):
 
     dump_conf(city.conf, "{}/full_configuration.yaml".format(city.conf["outdir"]))
 
+    monitors[0].dump()
+    monitors[0].join_iothread()
+
+    # write values to train with
+    train_priors = os.path.join(f"{conf['outdir']}/train_priors.pkl")
+    tracker.write_for_training(city.humans, train_priors, conf)
+
     if not conf["tune"]:
         # ----------------------------------------------
         # -----  Not Tune: Write Logs And Metrics  -----
         # ----------------------------------------------
-        monitors[0].dump()
-        monitors[0].join_iothread()
+        
         # write metrics
         logfile = os.path.join(f"{conf['outdir']}/logs.txt")
         tracker.write_metrics(logfile)
-
-        # write values to train with
-        train_priors = os.path.join(f"{conf['outdir']}/train_priors.pkl")
-        tracker.write_for_training(city.humans, train_priors, conf)
 
         if conf["zip_outdir"]:
             zip_outdir(conf["outdir"])

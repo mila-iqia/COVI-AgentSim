@@ -80,6 +80,7 @@ class Tracker(object):
         self.fully_initialized = False
         self.env = env
         self.city = city
+        self.adoption_rate = 0
         # filename to store intermediate results; useful for bigger simulations;
         timenow = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
         if city.conf.get('INTERVENTION_DAY') == -1:
