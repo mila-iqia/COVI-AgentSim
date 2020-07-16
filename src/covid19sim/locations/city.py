@@ -625,8 +625,6 @@ class City:
             simpy.Timeout
         """
         humans_notified = False
-        tmp_M = self.conf.get("GLOBAL_MOBILITY_SCALING_FACTOR")
-        self.conf["GLOBAL_MOBILITY_SCALING_FACTOR"] = 1
         last_day_idx = 0
         self.intervention = BaseMethod(self.conf)
         while True:
@@ -637,7 +635,6 @@ class City:
                 self.have_some_humans_download_the_app()
                 for human in self.humans:
                     human.set_intervention(self.intervention)
-                self.conf["GLOBAL_MOBILITY_SCALING_FACTOR"] = tmp_M
                 humans_notified = True
 
             # run city testing routine, providing test results for those who need them
