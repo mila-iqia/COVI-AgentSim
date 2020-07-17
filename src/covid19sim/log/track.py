@@ -25,12 +25,11 @@ def print_dict(title, dic, is_sorted=None, top_k=None, logfile=None):
         items = sorted(dic.items(), key=lambda x: x[1])[:top_k]
         if is_sorted == "desc":
             items = reversed(items)
-
-    ml = max([len(k) for k in dic.keys()] + [0]) + 2
+    ml = max([len(str(k)) for k in dic.keys()] + [0]) + 2
     aligned = "{:" + str(ml) + "}"
     log(
         "{}:\n   ".format(title) +
-        "\n    ".join((aligned + ": {:5.4f}").format(k, v) for k, v in items),
+        "\n    ".join((aligned + ": {:5.4f}").format(str(k), v) for k, v in items),
         logfile
     )
 
