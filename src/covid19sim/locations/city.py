@@ -23,6 +23,7 @@ from covid19sim.log.event import Event
 from covid19sim.locations.test_facility import TestFacility
 from covid19sim.locations.location import Location
 from covid19sim.locations.hospital import Hospital
+import covid19sim.utils.utils
 
 if typing.TYPE_CHECKING:
     from covid19sim.human import Human
@@ -331,7 +332,14 @@ class City:
             locs = [self.create_location(specs, location, i, area[i]) for i in range(n)]
             setattr(self, f"{location}s", locs)
 
-    def initialize_humans(self):
+    def get_all_locations(self):
+        """Returns a list of all concatenated locations held by this city."""
+        output = []
+        for location_name in self.conf.get("LOCATION_DISTRIBUTION"):
+            output.extend(getattr(self, f"{location_name}s"))
+        return output
+
+    def initialize_humans(self, human_type):
         """
         `Human`s are created based on the statistics captured in HUMAN_DSITRIBUTION. Age distribution is specified via 'p'.
         SMARTPHONE_OWNER_FRACTION_BY_AGE defines the fraction of population in the age bin that owns smartphone.
@@ -682,6 +690,10 @@ class City:
                     behaviors = self.intervention.get_behaviors(human)
                 human.apply_behaviors(behaviors)
 
+            # for debugging/plotting a posteriori, track all human/location attributes...
+            self.tracker.track_humans(hd=self.hd, current_timestamp=self.env.timestamp)
+            # self.tracker.track_locations() # TODO
+
             yield self.env.timeout(int(duration))
 
             # finally, run end-of-day activities (if possible); these include mailbox cleanups, symptom updates, ...
@@ -811,9 +823,6 @@ class City:
             for day_idx, risk_val in human.risk_history_map.items():
                 human.prev_risk_history_map[day_idx] = risk_val
 
-        # once we get here, the risk of humans with this timeslot should be updated, no matter the method
-        self.tracker.track_risk_attributes(self.hd)
-
         return backup_human_init_risks, update_messages
 
 
@@ -875,6 +884,7 @@ class EmptyCity(City):
         )[0]
 
         self.humans = []
+        self.hd = {}
         self.households = OrderedSet()
         self.stores = []
         self.senior_residencys = []
