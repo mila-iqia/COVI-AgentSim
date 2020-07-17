@@ -9,10 +9,10 @@ from matplotlib import pyplot as plt
 quebec_population = 8485000
 csv_path = "COVID19Tracker.ca Data - QC.csv"
 #sim_dir_path = "output/sim_v2_people-100_days-150_init-0.02_uptake--1.0_seed-0_20200716-101430_440062/"
-sim_dir_path = "output/sim_v2_people-1000_days-150_init-0.004_uptake--1.0_seed-0_20200716-101640_592894/"
+sim_dir_path = "/home/mweiss10/simulator/results/mob_pop_sick/no_intervention/sim_v2_people-10000_days-30_init-0.002_uptake--1.0_seed-5000_20200716-181334_330660//" 
 sim_priors_path = os.path.join(sim_dir_path, "train_priors.pkl")
 # sim_tracker_path = os.path.join(sim_dir_path, "tracker_data_n_100_seed_0_20200716-101538_.pkl")
-sim_tracker_path = os.path.join(sim_dir_path, "tracker_data_n_1000_seed_0_20200716-102933_.pkl")
+sim_tracker_path = os.path.join(sim_dir_path, "tracker_data_n_10000_seed_5000_20200716-185958_.pkl")
 
 
 
