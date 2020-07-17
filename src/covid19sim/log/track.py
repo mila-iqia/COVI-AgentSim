@@ -9,6 +9,7 @@ import typing
 import warnings
 from collections import Counter, defaultdict
 from copy import deepcopy
+from runstats import Statistics
 
 import dill
 import networkx as nx
@@ -17,7 +18,7 @@ import pandas as pd
 
 from covid19sim.plotting.plot_rt import PlotRt
 from covid19sim.utils.utils import log
-from covid19sim.utils.constants import AGE_BIN_WIDTH_5, ALL_LOCATIONS
+from covid19sim.utils.constants import AGE_BIN_WIDTH_5, ALL_LOCATIONS, SECONDS_PER_DAY
 LOCATION_TYPES_TO_TRACK_MIXING = ["house", "work", "school", "other", "all"]
 
 def print_dict(title, dic, is_sorted=None, top_k=None, logfile=None):
@@ -185,6 +186,24 @@ class Tracker(object):
                 'location_human_infection': defaultdict(lambda: np.zeros((150,150))),
                 }
 
+        # mobility
+        self.n_outside_daily_contacts = 0
+        self.transition_probability = {
+                                    "weekday":get_nested_dict(2),
+                                    "weekend":get_nested_dict(2)
+                                    }
+
+        self.day_fraction_spent_activity = {
+                                        "weekday": defaultdict(lambda :(0,0)),
+                                        "weekend": defaultdict(lambda :(0,0))
+                                        }
+        self.socialize_activity_data = {
+            "group_size": Statistics(),
+            "location_frequency": defaultdict(int),
+        }
+        self.rec_feelings = []
+        self.outside_daily_contacts = []
+
         # infection
         self.p_infection = []
 
@@ -227,11 +246,6 @@ class Tracker(object):
         self.symptoms = {'covid': defaultdict(int), 'all':defaultdict(int)}
         self.symptoms_set = {'covid': defaultdict(set), 'all': defaultdict(set)}
 
-        # mobility
-        self.n_outside_daily_contacts = 0
-        self.transition_probability = {"weekday":get_nested_dict(2), "weekend":get_nested_dict(2)}
-        self.rec_feelings = []
-        self.outside_daily_contacts = []
 
         # risk model
         self.ei_per_day = []
@@ -1038,7 +1052,7 @@ class Tracker(object):
             next_activity (covid19sim.utils.mobility_planner.Activity): [description]
             human (covid19sim.human.Human): human for which sleep schedule needs to be added.
         """
-        if not (self.conf['track_all'] or self.conf['track_trip']):
+        if not (self.conf['track_all'] or self.conf['track_trip']) or current_activity is None:
             return
 
         # forms a transition probability on weekdays and weekends
@@ -1046,6 +1060,16 @@ class Tracker(object):
         from_location = current_activity.location.location_type
         to_location = current_activity.location.location_type
         self.transition_probability[type_of_day][from_location][to_location] += 1
+
+        # proportion of day spend in activity.name broken down by age groups
+        n, avg = self.day_fraction_spent_activity[type_of_day][current_activity.name]
+        m = current_activity.duration / SECONDS_PER_DAY
+        self.day_fraction_spent_activity[type_of_day][current_activity.name] = (n+1, (n*avg + m)/(n+1))
+
+        # histogram of number of people with whom socialization happens
+        if next_activity.name == "socialize":
+            self.socialize_activity_data['group_size'].push(len(next_activity.social_group))
+            self.socialize_activity_data["location_frequency"][next_activity.location.location_type] += 1
 
     def track_mixing(self, human1, human2, duration, distance_profile, timestamp, location, interaction_type, contact_condition):
         """
@@ -1176,9 +1200,6 @@ class Tracker(object):
         human1_type_of_place = _get_location_type_to_track_mixing(human1, location)
         human2_type_of_place = _get_location_type_to_track_mixing(human2, location)
         type_of_place = human1_type_of_place # currently, no context is considered to determine the type of place
-
-        # if type_of_place == "work" and self.env.is_weekend() and human1.name == "human:439":
-        #     breakpoint()
 
         i = human1.age_bin_width_5.index
         j = human2.age_bin_width_5.index
@@ -1445,6 +1466,43 @@ class Tracker(object):
         for location_type in LOCATION_TYPES_TO_TRACK_MIXING:
             x = self.mean_daily_contacts["weekend"][location_type][1]
             str_to_print += f"| {location_type}: {x:2.3f}"
+        log(str_to_print, self.logfile)
+
+        log("\n######## MOBILITY STATISTICS #########", self.logfile)
+        activities = ["work", "socialize", "grocery", "exercise", "idle", "sleep"]
+
+        # unsupervised
+        for type_of_day in ["weekday", "weekend"]:
+            str_to_print = f"{type_of_day} - "
+            for activity in activities:
+                x = self.day_fraction_spent_activity[type_of_day][activity][1]
+                str_to_print += f"| {activity}: {x:2.3f}"
+            log(str_to_print, self.logfile)
+
+        # supervised
+        log(f"\nSupervised activities - ", self.logfile)
+        for type_of_day in ["weekday", "weekend"]:
+            str_to_print = f"{type_of_day} - "
+            for activity in activities:
+                x = self.day_fraction_spent_activity[type_of_day][f"supervised-{activity}"][1]
+                str_to_print += f"| {activity}: {x:2.3f}"
+            log(str_to_print, self.logfile)
+
+        str_to_print = "socialize group size - "
+        group_sizes = self.socialize_activity_data['group_size']
+        str_to_print += f"mean: {group_sizes.mean():2.2f} | "
+        str_to_print += f"std: {group_sizes.stddev(): 2.2f} | "
+        str_to_print += f"min: {group_sizes.minimum(): 2.2f} | "
+        str_to_print += f"max: {group_sizes.maximum(): 2.2f} | "
+        log(str_to_print, self.logfile)
+
+        str_to_print = "socialize location - "
+        locations = self.socialize_activity_data["location_frequency"].keys()
+        total = sum(self.socialize_activity_data["location_frequency"].values())
+        str_to_print += f"total visits {total} | "
+        for location in locations:
+            m = self.socialize_activity_data["location_frequency"][location]
+            str_to_print += f"{location}: {m} {m/total:2.2f}%"
         log(str_to_print, self.logfile)
 
         # for until_days in [30, None]:

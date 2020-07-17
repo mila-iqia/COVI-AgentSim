@@ -1300,12 +1300,14 @@ class Human(object):
         """
         """
         self.mobility_planner.initialize()
+        next_activity = None
         while True:
             self.run_mobility_reduction_check()
             self.move_to_hospital_if_required()
-            next_activity = self.mobility_planner.get_next_activity()
+            previous_activity, next_activity = next_activity, self.mobility_planner.get_next_activity()
             # print("A\t", self.env.timestamp, self, next_activity)
-            yield self.env.process(self.at(next_activity.location, self.city, next_activity.duration))
+            yield self.env.process(self.transition_to(next_activity, previous_activity))
+            # yield self.env.process(self.at(next_activity.location, self.city, next_activity.duration))
             # print("B\t", self.env.timestamp, self, next_activity)
             assert abs(self.env.timestamp - next_activity.end_time).seconds == 0, "times do not align..."
 
@@ -1555,6 +1557,56 @@ class Human(object):
 
         # track transitions & locations visited
         # city.tracker.track_mobility(self.mobility_planner.current_activity, next_activity, self)
+        if self.track_this_human:
+            self.track_me(location)
+
+        # add human to the location
+        self.location = location
+        location.add_human(self)
+        self.location_start_time = self.env.now
+        self.location_leaving_time = self.location_start_time + duration * SECONDS_PER_MINUTE
+
+        # do regular checks on whether to wear a mask
+        # check if human needs a test if it's a hospital
+        self.check_if_needs_covid_test(at_hospital=isinstance(location, (Hospital, ICU)))
+        self.wear_mask()
+
+        yield self.env.timeout(duration)
+        # print("after", self.env.timestamp, self, location, duration)
+        if duration > min(self.conf['MIN_MESSAGE_PASSING_DURATION'], self.conf['INFECTION_DURATION']):
+            # sample interactions with other humans at this location
+            # unknown are the ones that self is not aware of e.g. person sitting next to self in a cafe
+            known_interactions, unknown_interactions = location.sample_interactions(self)
+            self.interact_with(known_interactions, type="known")
+            self.interact_with(unknown_interactions, type="unknown")
+
+        # environmental transmission
+        location.check_environmental_infection(self)
+
+        # remove human from this location
+        location.remove_human(self)
+
+    def transition_to(self, next_activity, previous_activity):
+        """
+        Enter/Exit human to/from a `location` for some `duration`.
+        Once human is at a location, encounters are sampled.
+        During the stay, human is likely to be infected either by a contagion or
+        through environmental transmission.
+        Cold/Flu/Allergy onset also takes place in this function.
+
+        Args:
+            next_activity (covid19sim.utils.mobility_planner.Acitvity): next activity to do
+            previous_activity (covid19sim.utils.mobility_planner.Acitvity): previous activity where human was
+            
+        Yields:
+            (simpy.events.Timeout)
+        """
+        # print("before", self.env.timestamp, self, location, duration)
+        location = next_activity.location
+        duration = next_activity.duration
+
+        # track transitions & locations visited
+        self.city.tracker.track_mobility(previous_activity, next_activity, self)
         if self.track_this_human:
             self.track_me(location)
 

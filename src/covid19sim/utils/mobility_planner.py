@@ -21,7 +21,7 @@ class Activity(object):
         self.start_time = None # (datetime.datetime) object to be initialized in _patch_schedule
         self.end_time = None # (datetime.datetime) object to be initialized in _patch_schedule
 
-        self.social_group = None # (set) used only when name = "socialize" to coordinate between people.
+        self.social_group = set() # (set) used only when name = "socialize" to coordinate between people.
 
     def __repr__(self):
         if self.start_time:
