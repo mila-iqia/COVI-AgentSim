@@ -1,21 +1,114 @@
+import datetime
+import itertools
 import os
+import shutil
 import subprocess
-from pathlib import Path
 import tempfile
+from collections import defaultdict
+from pathlib import Path
+
 import hydra
 import numpy as np
 import yaml
 from omegaconf import DictConfig
-import datetime
-import itertools
-from covid19sim.utils.utils import parse_search_configuration
-from collections import defaultdict
 
-SAMPLE_KEYS = {"list", "uniform", "range", "cartesian", "sequential"}
+from covid19sim.plotting.utils import env_to_path
+from covid19sim.utils.utils import parse_search_configuration
+
+SAMPLE_KEYS = {"list", "uniform", "range", "cartesian", "sequential", "chain"}
+HYDRA_CONF_PATH = Path(__file__).parent.parent / "configs/exp/config.yaml"
 
 
 class RandomSearchError(Exception):
     pass
+
+
+def first_key(d):
+    """get the first key of a dict"""
+    return list(d.keys())[0]
+
+
+def first_value(d):
+    """get the first value of a dict"""
+    return list(d.values())[0]
+
+
+def get_extension(x):
+    """Map a key, value tuple to a string to create the folder
+    name in base_dir
+    """
+    k, v = x
+    if k == "REC_LEVEL_THRESHOLDS":
+        return "".join(map(str, v))
+    return str(v)
+
+
+def get_model(conf):
+    if conf["RISK_MODEL"] == "":
+        if conf.get("DAILY_TARGET_REC_LEVEL_DIST", False):
+            return "unmitigated_normed"
+        return "unmitigated"
+
+    if conf["RISK_MODEL"] == "digital":
+        if conf["TRACING_ORDER"] == 1:
+            if conf.get("DAILY_TARGET_REC_LEVEL_DIST", False):
+                return "binary_digital_tracing_order_1_normed"
+            return "binary_digital_tracing_order_1"
+        elif conf["TRACING_ORDER"] == 2:
+            if conf.get("DAILY_TARGET_REC_LEVEL_DIST", False):
+                return "binary_digital_tracing_order_2_normed"
+            return "binary_digital_tracing_order_2"
+        else:
+            raise ValueError(
+                "Unknown binary digital tracing order: {}".format(conf["TRACING_ORDER"])
+            )
+
+    if conf["RISK_MODEL"] == "transformer":
+        if conf["USE_ORACLE"]:
+            if conf.get("DAILY_TARGET_REC_LEVEL_DIST", False):
+                return "oracle_normed"
+            return "oracle"
+        # FIXME this won't work if the run used the inference server
+        if conf.get("DAILY_TARGET_REC_LEVEL_DIST", False):
+            return "transformer_normed"
+        return "transformer"
+
+    if conf["RISK_MODEL"] == "heuristicv1":
+        if conf.get("DAILY_TARGET_REC_LEVEL_DIST", False):
+            return "heuristicv1_normed"
+        return "heuristicv1"
+
+    if conf["RISK_MODEL"] == "heuristicv2":
+        if conf.get("DAILY_TARGET_REC_LEVEL_DIST", False):
+            return "heuristicv2_normed"
+        return "heuristicv2"
+
+    raise ValueError("Unknown RISK_MODEL {}".format(conf["RISK_MODEL"]))
+
+
+def normalize(opts):
+    if "normalization_folder" not in opts:
+        return opts
+
+    folder = opts["normalization_folder"]
+    run = opts[folder]
+
+    sim_configs = Path(__file__).resolve().parent.parent / "configs" / "simulation"
+    run_yaml = sim_configs / folder / f"{run}.yaml"
+
+    if not run_yaml.exists():
+        raise RandomSearchError(
+            f"Unknown normalized run: \nFolder: {folder}\nFile: {run_yaml.name}"
+        )
+
+    with run_yaml.open("r") as f:
+        run_conf = yaml.safe_load(f)
+
+    opts["tracing_method"] = get_model(run_conf)
+    if "TRANSFORMER_EXP_PATH" in run_conf:
+        weights = Path(run_conf["TRANSFORMER_EXP_PATH"]).name
+        opts["tracing_method"] += f">{weights}"
+    return opts
 
 
 def check_conf(conf):
@@ -50,25 +143,26 @@ def check_conf(conf):
             if not (hydra_configs / "simulation" / "run_type" / f"{v}.yaml").exists():
                 raise RandomSearchError(f"Unknown run_type {v}")
 
-    if not (hydra_configs / "search" / f"{exp_file}.yaml").exists():
+    if not (hydra_configs / "experiment" / f"{exp_file}.yaml").exists():
         raise RandomSearchError(f"Unknown exp_file {exp_file}")
 
     weights_dir = conf.get("weights_dir", "None")
     for tm in tracing_methods:
         weights = conf.get("weights", None)
-        if "oracle" in tm or "transformer" in tm:
-            if weights is None and ">" not in tm:
+        if isinstance(tm, dict):
+            model = first_key(tm)
+            if weights is None and "weights" not in tm[model]:
                 raise RandomSearchError(
-                    f"Unknown {tm} weights. Please specify '>' or 'weights: ...'"
+                    f"Unknown {tm[model]} weights. Please specify '>' or 'weights: ...'"
                 )
-            elif ">" in tm:
+            elif "weights" in tm[model]:
                 if not Path(weights_dir).exists():
                     raise RandomSearchError(
                         "No 'weights' specified and unknown 'weights_dir' {}".format(
                             weights_dir
                         )
                     )
-                w = tm.split(">")[-1].strip()
+                w = tm[model]["weights"]
                 weights = Path(weights_dir) / w
             elif weights is not None:
                 weights = Path(weights)
@@ -120,6 +214,9 @@ def compute_n_search(conf):
     if "sequential" in samples:
         total = max(map(len, [s["from"] for s in samples["sequential"]]))
         return total
+    if "chain" in samples:
+        total = sum(map(len, [s["from"] for s in samples["chain"]]))
+        return total
 
     raise RandomSearchError(
         "Used n_search=-1 without any field being 'cartesian' or 'sequential'"
@@ -170,6 +267,14 @@ def sample_param(sample_dict):
         )
         return "__sequential__"
 
+    if sample_dict["sample"] == "chain":
+        assert isinstance(
+            sample_dict["from"], list
+        ), "{}'s `from` field MUST be a list, found {}".format(
+            sample_dict["sample"], sample_dict["from"]
+        )
+        return "__chain__"
+
     if sample_dict["sample"] == "range":
         return np.random.choice(np.arange(*sample_dict["from"]))
 
@@ -207,8 +312,8 @@ def sample_cartesians(cartesian_keys, exp, idx):
     be sampled.
 
     Args:
-        cartesian_keys (list): keys in the experimental configuration that are to be used in the full
-           cartesian product
+        cartesian_keys (list): keys in the experimental configuration that
+            are to be used in the full cartesian product
         exp (dict): experimental configuration
         idx (int): index of the current sample
 
@@ -223,11 +328,35 @@ def sample_cartesians(cartesian_keys, exp, idx):
     return conf
 
 
+def sample_chains(chain_keys, exp, idx):
+    """
+    Returns the `idx`th item in the chain of all chain keys to be sampled.
+
+    Args:
+        chain_keys (list): keys in the experimental configuration
+            that are to be used in the full chain
+        exp (dict): experimental configuration
+        idx (int): index of the current sample
+
+    Returns:
+        dict: sampled point in the cartesian space (with keys = chain_keys)
+    """
+    conf = {}
+    chain_values = [[(key, value) for value in exp[key]["from"]] for key in chain_keys]
+    chain = list(itertools.chain(*chain_values))
+    k, v = chain[idx % len(chain)]
+    conf[k] = v
+    if exp[k].get("normalized"):
+        conf["normalization_folder"] = k
+    return conf
+
+
 def sample_sequentials(sequential_keys, exp, idx):
     """
-    Samples sequentially from the "from" values specified in each key of the experimental
-    configuration which have sample == "sequential"
-    Unlike `cartesian` sampling, `sequential` sampling iterates *independently* over each keys
+    Samples sequentially from the "from" values specified in each key
+    of the experimental configuration which have sample == "sequential"
+    Unlike `cartesian` sampling, `sequential` sampling iterates *independently*
+    over each keys
 
     Args:
         sequential_keys (list): keys to be sampled sequentially
@@ -271,16 +400,21 @@ def sample_search_conf(exp, idx=0):
     conf = {}
     cartesians = []
     sequentials = []
+    chains = []
     for k, v in exp.items():
         candidate = sample_param(v)
         if candidate == "__cartesian__":
             cartesians.append(k)
         elif candidate == "__sequential__":
             sequentials.append(k)
+        elif candidate == "__chain__":
+            chains.append(k)
         else:
             conf[k] = candidate
     if sequentials:
         conf.update(sample_sequentials(sequentials, exp, idx))
+    if chains:
+        conf.update(sample_chains(chains, exp, idx))
     if cartesians:
         conf.update(sample_cartesians(cartesians, exp, idx))
     return conf
@@ -378,7 +512,7 @@ def fill_mila_template(template_str, conf):
     code_loc = conf.get("code_loc", str(Path(home) / "simulator/src/covid19sim/"))
     ipc = conf.get("ipc", {"frontend": "", "backend": ""})
 
-    use_transformer = str(conf.get("use_transformer", True)).lower()
+    use_transformer = conf.get("use_transformer", True)
     workers = cpu - 1
     if "%j.out" not in slurm_log:
         slurm_log = str(Path(slurm_log).resolve() / "covi-slurm-%j.out")
@@ -454,9 +588,9 @@ def fill_beluga_template(template_str, conf):
     user = os.environ.get("USER")
     home = os.environ.get("HOME")
 
-    cpu = conf.get("cpus", 6)
-    mem = conf.get("mem", 16)
-    time = str(conf.get("time", "3:00:00"))
+    cpu = conf.get("cpus", 4)
+    mem = conf.get("mem", 12)
+    time = str(conf.get("time", "2:50:00"))
     slurm_log = conf.get(
         "slurm_log", conf.get("base_dir", f"/scratch/{user}/covi-slurm-%j.out")
     )
@@ -519,6 +653,8 @@ def get_hydra_args(opts, exclude=set()):
     hydra_args = ""
     for k, v in opts.items():
         if k not in exclude:
+            if isinstance(v, list):
+                v = f'"{v}"'
             hydra_args += f" {k}={v}"
     return hydra_args
 
@@ -527,8 +663,8 @@ def printlines():
     print("=" * 80)
     print("=" * 80)
 
-
-@hydra.main(config_path="../configs/search/config.yaml", strict=False)
+HYDRA_CONF_PATH = "../configs/experiment/config.yaml"
+@hydra.main(config_path=HYDRA_CONF_PATH, strict=False)
 def main(conf: DictConfig) -> None:
 
     """
@@ -567,18 +703,20 @@ def main(conf: DictConfig) -> None:
         "gres",  # sbatch gres arg, may be nothing or gpu:1
         "env_name",  # conda environment to load
         "code_loc",  # where to find the source code, will cd there
-        "weights",  # where to find the transformer's weights. default is /network/tmp1/<user>/FRESH-SNOWFLAKE-224B
+        "weights",  # where to find the transformer's weights
         "infra",  # using Mila or Intel cluster?
         "now_str",  # naming scheme
         "parallel_search",  # run with & at the end instead of ; to run in subshells
         "ipc",  # run with & at the end instead of ; to run in subshells
-        "start_index",  # ignore the first runs, to continue a cartesian or sequential exploration for instance
+        "start_index",  # ignore the first runs, to continue an exploration for instance
         "use_transformer",  # defaults to True
         "use_server",  # defaults to True
         "use_tmpdir",  # use SLURM_TMPDIR and copy files to outdir after
         "test_capacity",  # change TEST_TYPES.lab.capacity to that value
         "weights_dir",  # where are the weights
         "base_dir",  # output dir will be base_dir/tracing_method
+        "normalization_folder",  # if this is a normalization run
+        "exp_name",  # folder name in base_dir => base_dir/exp_name/method/...
     }
 
     # move back to original directory because hydra moved
@@ -589,16 +727,21 @@ def main(conf: DictConfig) -> None:
 
     # load experimental configuration
     # override with exp_file=<X>
-    # where <X> is in configs/search and is ".yaml"
-    conf = load_search_conf(
+    # where <X> is in configs/exp and is ".yaml"
+    exp_file_path = (
         Path(__file__).resolve().parent.parent
         / "configs"
-        / "search"
-        / (overrides.get("exp_file", "experiment") + ".yaml")
+        / "experiment"
+        / (overrides.get("exp_file", "randomization") + ".yaml")
     )
+    conf = load_search_conf(exp_file_path)
     # override experimental parametrization with the commandline conf
     conf.update(overrides)
     check_conf(conf)
+
+    for k in ["code_loc", "base_dir", "outdir", "weights_dir"]:
+        if k in conf and conf[k]:
+            conf[k] = env_to_path(conf[k])
 
     # -------------------------------------
     # -----  Compute Specific Values  -----
@@ -618,6 +761,13 @@ def main(conf: DictConfig) -> None:
                 total_runs, conf["n_runs_per_search"]
             )
         )
+
+    if "exp_name" in conf:
+        if "base_dir" in conf:
+            conf["base_dir"] = str(Path(conf["base_dir"]) / conf["exp_name"])
+            print(f"Running experiments in base_dir: {conf['base_dir']}")
+        else:
+            print(f"Ignoring 'exp_name' {conf['exp_name']} as no base_dir was provided")
 
     print(f"Running {total_runs} scripts")
 
@@ -641,6 +791,10 @@ def main(conf: DictConfig) -> None:
         )
 
     home = os.environ["HOME"]
+    copy_dest = conf["outdir"] if "outdir" in conf else conf["base_dir"]
+    if not dev:
+        Path(copy_dest).mkdir(parents=True, exist_ok=True)
+        shutil.copy(exp_file_path, Path(copy_dest) / exp_file_path.name)
 
     # run n_search jobs
     printlines()
@@ -663,25 +817,57 @@ def main(conf: DictConfig) -> None:
         for k in range(conf.get("n_runs_per_search", 1)):
 
             opts = sample_search_conf(conf, run_idx)
+            opts = normalize(opts)
+            run_idx += 1
+            extension = ""
             # specify server frontend
 
-            use_transformer = opts["tracing_method"].split(">")[0].strip() in {
-                "oracle",
-                "transformer",
-            }
+            tracing_dict = None
+            tracing_name = None
+            if isinstance(opts.get("tracing_method", ""), dict):
+                tracing_dict = first_value(opts["tracing_method"])
+                tracing_name = first_key(opts["tracing_method"])
+
+            use_transformer = (
+                tracing_dict is not None
+                and "weights" in tracing_dict
+                and tracing_dict["weights"]
+            )
             use_server = use_transformer and opts.get("USE_INFERENCE_SERVER", True)
 
             if use_transformer:
-                if "weights" not in opts:
-                    if ">" not in opts["tracing_method"]:
-                        raise RandomSearchError("Unknown weights for transformer")
-                    weights_name = opts["tracing_method"].split(">")[-1].strip()
-                    opts["weights"] = str(Path(opts["weights_dir"]) / weights_name)
-                if ">" in opts["tracing_method"]:
-                    opts["tracing_method"] = (
-                        opts["tracing_method"].split(">")[0].strip()
-                    )
+                # -------------------------
+                # -----  Set Weights  -----
+                # -------------------------
 
+                if "weights" not in opts:
+                    weights_name = tracing_dict["weights"]
+                    weights_name = weights_name.strip()
+                    opts["weights"] = str(Path(opts["weights_dir"]) / weights_name)
+
+            if tracing_dict is not None:
+                # Create folder name extension based on keys in tracing_method dict
+                extensions = sorted(tracing_dict.items())
+
+                extension = "_" + "_".join(map(get_extension, extensions))
+
+                # Add tracing_method dict's keys and values to opts
+                for k, v in tracing_dict.items():
+                    if k != "weights":
+                        if k in opts:
+                            print(
+                                "Warning, overriding opts[{}]={} to opts[{}]={}".format(
+                                    k, opts[k], k, v
+                                )
+                            )
+                        opts[k] = v
+
+                # set true tracing_method
+                opts["tracing_method"] = tracing_name
+
+            # -----------------------------------------------------
+            # -----  Inference Server / Transformer Exp Path  -----
+            # -----------------------------------------------------
             if use_server:
                 if ipcf is None:
                     ipcf, ipcb = ipc_addresses()
@@ -693,25 +879,34 @@ def main(conf: DictConfig) -> None:
                 if use_transformer:
                     opts["TRANSFORMER_EXP_PATH"] = opts["weights"]
 
+            # ----------------------------------------------
+            # -----  Set outdir from basedir (if any)  -----
+            # ----------------------------------------------
             if not opts.get("outdir"):
-                extension = ""
-                if opts["tracing_method"] == "transformer":
-                    extension = Path(opts["weights"]).name
-                opts["outdir"] = str(
-                    Path(opts["base_dir"]) / (opts["tracing_method"] + extension)
-                )
+                opts["outdir"] = Path(opts["base_dir"]).resolve()
+                opts["outdir"] = opts["outdir"] / (opts["tracing_method"] + extension)
+                opts["outdir"] = str(opts["outdir"])
 
+            opts["outdir"] = opts["outdir"]
+
+            # --------------------------------
+            # -----  Use SLURM_TMPDIR ?  -----
+            # --------------------------------
             if use_tmpdir:
                 outdir = str(opts["outdir"])
                 if not dev:
                     Path(outdir).resolve().mkdir(parents=True, exist_ok=True)
                 opts["outdir"] = "$SLURM_TMPDIR"
 
+            # overwrite intervention day if no_intervention
             if opts["tracing_method"] == "no_intervention":
                 opts["INTERVENTION_DAY"] = -1
 
             # convert params to string command-line args
-            hydra_args = get_hydra_args(opts, RANDOM_SEARCH_SPECIFIC_PARAMS)
+            exclude = RANDOM_SEARCH_SPECIFIC_PARAMS
+            if opts.get("normalization_folder"):
+                exclude.add("tracing_method")
+            hydra_args = get_hydra_args(opts, exclude)
             if opts.get("test_capacity") is not None:
                 hydra_args += f" TEST_TYPES.lab.capacity={opts.get('test_capacity')}"
 
@@ -722,7 +917,7 @@ def main(conf: DictConfig) -> None:
             command_suffix = "&\nsleep 5;\n" if parallel_search else ";\n"
             # intel doesn't have a log file so let's make one
             if infra == "intel":
-                job_out = Path(home) / f"job_logs"
+                job_out = Path(home) / "job_logs"
                 if not dev:
                     job_out.mkdir(exist_ok=True)
                 job_out = job_out / f"{now_str()}.out"
@@ -731,7 +926,6 @@ def main(conf: DictConfig) -> None:
 
             # append run command
             job_str += "\n{}{}".format("python run.py" + hydra_args, command_suffix)
-            run_idx += 1
             # sample next params
 
         # output in slurm_tmpdir and move zips to original outdir specified
@@ -765,7 +959,7 @@ def main(conf: DictConfig) -> None:
             _ = subprocess.call(command.split(), cwd=home)
             print("In", opts["outdir"])
             print("With Sampled Params:")
-            print(sampled_str.format(**{k: opts[k] for k in sampled_keys}))
+            print(sampled_str.format(**{k: opts.get(k) for k in sampled_keys}))
 
         # prints
         print()

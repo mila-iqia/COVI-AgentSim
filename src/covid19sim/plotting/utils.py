@@ -1,9 +1,3 @@
-# ***********************
-# This file is a duplicate of data.py with improved functions.
-# Manually copied in a rush.
-# Some functions are also added.
-# **********************
-
 import numpy as np
 import os
 import multiprocessing as mp
@@ -12,6 +6,56 @@ from covid19sim.plotting.plot_rt import PlotRt
 from pathlib import Path
 import yaml
 import concurrent.futures
+from scipy import stats as sps
+from collections import defaultdict
+
+
+def env_to_path(path):
+    """Transorms an environment variable mention in a json
+    into its actual value. E.g. $HOME/clouds -> /home/vsch/clouds
+
+    Args:
+        path (str): path potentially containing the env variable
+
+    """
+    path_elements = path.split("/")
+    new_path = []
+    for el in path_elements:
+        if "$" in el:
+            new_path.append(os.environ[el.replace("$", "")])
+        else:
+            new_path.append(el)
+    return "/".join(new_path)
+
+
+def get_title(method):
+    method_title = {
+        "bdt1": "1st Order Binary Tracing",
+        "bdt2": "2nd Order Binary Tracing",
+        "heuristicv1": "Heuristic (v1)",
+        "heuristicv2": "Heuristic (v2)",
+        "transformer": "Transformer",
+        "transformer-[1, 3, 5]": "Transformer-[1, 3, 5]",
+        "transformer-[0, 1, 2]": "Transformer-[0, 1, 2]",
+        "transformer-[0, 0, 0]": "Transformer-[0, 0, 0]",
+        "linreg": "Linear Regression",
+        "mlp": "MLP",
+        "unmitigated": "Unmitigated",
+        "oracle": "Oracle",
+    }
+    if "_norm" in method:
+        if method.replace("_norm", "") in method_title:
+            return method_title[method.replace("_norm", "")] + " (Norm.)"
+    if method in method_title:
+        return method_title[method]
+    if "transformer_012_" in method:
+        method = method.replace("transformer_012_", "")
+        if "_normed" in method:
+            method = "-".join(method.split("-")[:-1])
+            method += " (Norm.)"
+        else:
+            method = "-".join(method.split("-")[:-1])
+    return method.replace("_", " ").capitalize()
 
 
 def get_data(filename=None, data=None):
@@ -100,7 +144,7 @@ def get_all_states(filenames):
     return all_states
 
 
-def get_rec_levels(filename=None, data=None):
+def get_rec_levels(filename=None, data=None, normalized=False):
     if data is None:
         if filename is not None:
             with open(filename, "rb") as f:
@@ -108,7 +152,9 @@ def get_rec_levels(filename=None, data=None):
         else:
             raise ValueError("filename and data arguments are None")
 
-    rec_levels = get_human_rec_levels(filename, data) + 1  # account for rec_levels `-1`
+    rec_levels = (
+        get_human_rec_levels(filename, data, normalized=normalized) + 1
+    )  # account for rec_levels `-1`
 
     def bincount(x):
         return np.bincount(x, minlength=5)
@@ -136,7 +182,7 @@ def get_human_rec_levels(filename=None, data=None, normalized=False):
     return rec_levels
 
 
-def get_all_rec_levels(filenames=None, data=None):
+def get_all_rec_levels(filenames=None, data=None, normalized=False):
     if data is not None:
         data = [d["pkl"] for d in data.values()]
         filenames = [None] * len(data)
@@ -145,7 +191,7 @@ def get_all_rec_levels(filenames=None, data=None):
     else:
         raise ValueError("filenames and data arguments are None")
 
-    rec_levels = get_rec_levels(filenames[0], data[0])
+    rec_levels = get_rec_levels(filenames[0], data[0], normalized=normalized)
     all_rec_levels = np.zeros(
         (len(filenames),) + rec_levels.shape, dtype=rec_levels.dtype
     )
@@ -282,13 +328,23 @@ def get_all_data(base_path, keep_pkl_keys, multi_thread=False):
     return all_data
 
 
+def default_to_regular_dict(d):
+    if isinstance(d, defaultdict):
+        d = {k: default_to_regular_dict(v) for k, v in d.items()}
+    return d
+
+
 def thread_read_run(args):
     r, keep_pkl_keys = args
     with (r / "full_configuration.yaml").open("r") as f:
         conf = yaml.safe_load(f)
     with open(str(list(r.glob("tracker*.pkl"))[0]), "rb") as f:
         pkl_data = pickle.load(f)
-        pkl = {k: v for k, v in pkl_data.items() if k in keep_pkl_keys}
+        pkl = {
+            k: default_to_regular_dict(v)
+            for k, v in pkl_data.items()
+            if k in keep_pkl_keys
+        }
 
     return (r, conf, pkl)
 
@@ -324,3 +380,148 @@ def truncate_seeds(data):
                 if rv["conf"]["seed"] not in seeds:
                     del data[mk][ck][rk]
     return data
+
+def get_all(filename_types=None, pkl_types=None, labels=[], normalized=False):
+    if pkl_types is not None:
+        tmp = [(None, pkls) for pkls in pkl_types]
+    elif filename_types is not None:
+        tmp = [(filenames, None) for filenames in filename_types]
+    else:
+        raise ValueError("filename_types and pkl_types are None")
+
+    _rows = []
+
+    for i, (filenames, pkls) in enumerate(tmp):
+        metrics = get_mean_fq_r(filenames=filenames, pkls=pkls, normalized=normalized)
+        for key, val in metrics.items():
+            _rows.append([labels[i], key] + val)
+    return _rows
+
+def get_fq_r(filename=None, data=None, normalized=False):
+    assert filename is not None or data is not None
+    if data is None:
+        data = pickle.load(open(filename, "rb"))
+
+    f3, f2, f1, f1_up, f2_up = get_all_false(data=data, normalized=normalized)
+    x = [i[-5:].mean() for i in [f3, f2, f1, f1_up, f2_up]]
+
+    intervention_day = data["intervention_day"]
+    od = np.mean(data["outside_daily_contacts"][intervention_day:])
+    ec = data["effective_contacts_since_intervention"]
+
+    # percent_infected
+    y = sum(data["cases_per_day"]) / data["n_humans"]
+
+    # R
+    z = get_effective_R(data)
+
+    # proxy_r
+    a = get_proxy_r(data)
+
+    return x, y, z, a, od, ec
+
+
+def get_mean_fq_r(filenames=None, pkls=None, normalized=False):
+    assert filenames is not None or pkls is not None
+    if pkls is not None:
+        _tmp = [(None, {"pkl": pkl}) for pkl in pkls]
+    elif filenames is not None:
+        _tmp = [(filename, None) for filename in filenames]
+    else:
+        raise ValueError("filenames and pkls are None")
+
+    metrics = {
+        "f3": [],
+        "f2": [],
+        "f1": [],
+        "f1_up": [],
+        "f2_up": [],
+        "percent_infected": [],
+        "r": [],
+        "proxy_r": [],
+        "outside_daily_contacts": [],
+        "effective_contacts": [],
+    }
+    for filename, pkl in _tmp:
+        x, y, z, a, od, ec = get_fq_r(
+            filename=filename, data=pkl["pkl"], normalized=normalized
+        )
+        metrics["f3"].append(x[0])
+        metrics["f2"].append(x[1])
+        metrics["f1"].append(x[2])
+        metrics["f1_up"].append(x[3])
+        metrics["f2_up"].append(x[4])
+        metrics["percent_infected"].append(y)
+        metrics["r"].append(z)
+        metrics["proxy_r"].append(a)
+        metrics["outside_daily_contacts"].append(od)
+        metrics["effective_contacts"].append(ec)
+
+    return metrics
+
+
+
+def get_all_false(filename=None, data=None, normalized=False):
+    data = get_data(filename, data)
+    intervention_day = data["intervention_day"]
+    if intervention_day < 0:
+        intervention_day = 0
+    states = get_human_states(data=data)
+    states = states[:, intervention_day:]
+    rec_levels = get_human_rec_levels(data=data, normalized=normalized)
+
+    false_level3 = np.sum(((states == 0) | (states == 3)) & (rec_levels == 3), axis=0)
+    false_level2 = np.sum(((states == 0) | (states == 3)) & (rec_levels == 2), axis=0)
+    false_level1 = np.sum(((states == 0) | (states == 3)) & (rec_levels == 1), axis=0)
+    false_level1_above = np.sum(
+        ((states == 0) | (states == 3))
+        & ((rec_levels == 1) | (rec_levels == 2) | (rec_levels == 3)),
+        axis=0,
+    )
+    false_level2_above = np.sum(
+        ((states == 0) | (states == 3)) & ((rec_levels == 2) | (rec_levels == 3)),
+        axis=0,
+    )
+    return (
+        false_level3 / states.shape[0],
+        false_level2 / states.shape[0],
+        false_level1 / states.shape[0],
+        false_level1_above / states.shape[0],
+        false_level2_above / states.shape[0],
+    )
+
+
+def get_proxy_r(data):
+    total_infected = 0
+    for k in data["humans_state"].keys():
+        total_infected += any(z == "I" for z in data["humans_state"][k][5:])
+    if total_infected > 0:
+        return sum(data["cases_per_day"][5:]) / total_infected
+    return 0.
+
+
+def get_effective_R(data):
+    GT = data["generation_times"]
+    a = 4
+    b = 0.5
+    window_size = 5
+    ws = [sps.gamma.pdf(x, a=GT, loc=0, scale=0.9) for x in range(window_size)]
+    last_ws = ws[::-1]
+    cases_per_day = data["cases_per_day"]
+
+    lambda_s = []
+    rt = []
+    for i in range(len(cases_per_day)):
+        if i < window_size:
+            last_Is = cases_per_day[:i]
+        else:
+            last_Is = cases_per_day[(i - window_size) : i]
+
+        lambda_s.append(sum(x * y for x, y in zip(last_Is, last_ws)))
+        last_lambda_s = sum(lambda_s[-window_size:])
+        rt.append((a + sum(last_Is)) / (1 / b + last_lambda_s))
+    return np.mean(rt[-5:])
+
+def get_metrics(data, label, metric):
+    tmp = data[(data["type"] == label) & (data["metric"] == metric)]
+    return tmp["mean"], tmp["stderr"]

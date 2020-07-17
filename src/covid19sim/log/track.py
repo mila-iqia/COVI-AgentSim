@@ -986,7 +986,10 @@ class Tracker(object):
         """
         total_infections = sum(x[0] for x in self.p_infection)
         total_contacts = len(self.p_infection)
-        return total_infections / total_contacts
+        try:
+            return total_infections / total_contacts
+        except Exception:
+            return 0.
 
     def compute_effective_contacts(self, since_intervention=True):
         """
@@ -1062,13 +1065,16 @@ class Tracker(object):
         total += self.n_env_infection
 
         x = self.r_0['asymptomatic']['infection_count']
-        log(f"% asymptomatic transmission {100*x/total :5.2f}%", logfile)
+        if total > 0:
+            log(f"% asymptomatic transmission {100*x/total :5.2f}%", logfile)
 
         x = self.r_0['presymptomatic']['infection_count']
-        log(f"% presymptomatic transmission {100*x/total :5.2f}%", logfile)
+        if total > 0:
+            log(f"% presymptomatic transmission {100*x/total :5.2f}%", logfile)
 
         x = self.r_0['symptomatic']['infection_count']
-        log(f"% symptomatic transmission {100*x/total :5.2f}%", logfile)
+        if total > 0:
+            log(f"% symptomatic transmission {100*x/total :5.2f}%", logfile)
 
         log("******** R0 LOCATIONS *********", logfile)
         for loc_type, v in self.r_0.items():
@@ -1085,7 +1091,10 @@ class Tracker(object):
         for s,v in self.symptoms['covid'].items():
             if s == 'n':
                 continue
-            tmp_s[s] = v/total
+            if total > 0:
+                tmp_s[s] = v/total
+            else:
+                tmp_s[s] = 0.
         print_dict("P(symptoms = x | covid patient), where x is", tmp_s, is_sorted="desc", top_k=10, logfile=logfile)
 
         total = self.symptoms['all']['n']
@@ -1093,17 +1102,20 @@ class Tracker(object):
         for s,v in self.symptoms['covid'].items():
             if s == 'n':
                 continue
-            tmp_s[s] = v/total
+            if total > 0:
+                tmp_s[s] = v/total
+            else:
+                tmp_s[s] = 0.
         print_dict("P(symptoms = x | human had some sickness e.g. cold, flu, allergies, covid), where x is", tmp_s, is_sorted="desc", top_k=10, logfile=logfile)
 
-        #
         log("######## MOBILITY #########", logfile)
         log("Day - ", logfile)
         total = sum(v[1] for v in self.day_encounters.values())
         x = ['Mon', "Tue", "Wed", "Thurs", "Fri", "Sat", "Sun"]
         for c,day in enumerate(x):
             v = self.day_encounters[c]
-            log(f"{day} #avg: {v[1]/self.n_people} %:{100*v[1]/total:5.2f} ", logfile)
+            if total > 0:
+                log(f"{day} #avg: {v[1]/self.n_people} %:{100*v[1]/total:5.2f} ", logfile)
         #
         # log("Hour - ", logfile)
         # total = sum(v[1] for v in self.hour_encounters.values())
@@ -1129,7 +1141,8 @@ class Tracker(object):
         for bin in self.age_bins:
             x = self.city.age_histogram[bin]
             v = self.daily_age_group_encounters[bin][1]
-            log(f"{bin} #avg: {v/x} %:{100*v/total:5.2f} ", logfile)
+            if total > 0:
+                log(f"{bin} #avg: {v/x} %:{100*v/total:5.2f} ", logfile)
         #
         # for until_days in [30, None]:
         #     log("******** Risk Precision/Recall *********", logfile)
