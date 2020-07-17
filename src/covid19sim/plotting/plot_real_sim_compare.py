@@ -3,6 +3,7 @@ import pickle
 import yaml
 import shutil
 import glob
+import tqdm
 import numpy as np
 import pandas as pd
 from collections import Counter
@@ -45,7 +46,7 @@ def parse_tracker(sim_tracker_data):
 from collections import defaultdict
 results = defaultdict(list)
 
-for d in os.listdir(sim_dir_path):
+for d in tqdm.tqdm(os.listdir(sim_dir_path)):
     source_path = os.path.join(sim_dir_path, d)
     config_path = os.path.join(sim_dir_path, d, "full_configuration.yaml")
     config = yaml.load(open(config_path, "rb"))
@@ -63,7 +64,11 @@ for d in os.listdir(sim_dir_path):
     sim_dates, sim_deaths, sim_tests, sim_cases = parse_tracker(sim_tracker_data)
     sim_hospitalizations = [float(x)*100/sim_tracker_data['n_humans'] for x in sim_prior_data['hospitalization_per_day']]
     results[name].append({"sim_dates": sim_dates, "sim_deaths": sim_deaths, "sim_tests": sim_tests, "sim_cases": sim_cases, "sim_hospitalizations": sim_hospitalizations})
-    import pdb; pdb.set_trace()
+
+pickle.dump(results, open(os.path.join(sim_dir_path, "cache_sim.pkl"), "wb"))
+
+import pdb; pdb.set_trace()
+
 
 # Load data
 qc_data = pd.read_csv(csv_path)
