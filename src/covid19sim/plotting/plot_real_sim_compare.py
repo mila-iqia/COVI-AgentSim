@@ -1,5 +1,8 @@
 import os
 import pickle
+import yaml
+import shutil
+import glob
 import numpy as np
 import pandas as pd
 from collections import Counter
@@ -8,18 +11,10 @@ from matplotlib import pyplot as plt
 # Constants
 quebec_population = 8485000
 csv_path = "COVID19Tracker.ca Data - QC.csv"
-#sim_dir_path = "output/sim_v2_people-100_days-150_init-0.02_uptake--1.0_seed-0_20200716-101430_440062/"
-sim_dir_path = "/home/mweiss10/simulator/results/mob_pop_sick/no_intervention/sim_v2_people-10000_days-30_init-0.002_uptake--1.0_seed-5000_20200716-181334_330660//" 
-sim_priors_path = os.path.join(sim_dir_path, "train_priors.pkl")
-# sim_tracker_path = os.path.join(sim_dir_path, "tracker_data_n_100_seed_0_20200716-101538_.pkl")
-sim_tracker_path = os.path.join(sim_dir_path, "tracker_data_n_10000_seed_5000_20200716-185958_.pkl")
+sim_dir_path = "/home/mweiss10/simulator/results/mob_pop_sick/no_intervention/" #sim_v2_people-10000_days-30_init-0.002_uptake--1.0_seed-5000_20200716-181334_330660//" 
 
 
-
-# Load data
-qc_data = pd.read_csv(csv_path)
-sim_tracker_data = pickle.load(open(sim_tracker_path, "rb"))
-sim_prior_data = pickle.load(open(sim_priors_path, "rb"))
+# Util function
 
 # Utility Functions
 
@@ -46,9 +41,33 @@ def parse_tracker(sim_tracker_data):
 
     return dates, deaths, tests, cases
 
-# Parse data
-sim_dates, sim_deaths, sim_tests, sim_cases = parse_tracker(sim_tracker_data)
-sim_hospitalizations = [float(x)*100/sim_tracker_data['n_humans'] for x in sim_prior_data['hospitalization_per_day']]
+
+from collections import defaultdict
+results = defaultdict(list)
+
+for d in os.listdir(sim_dir_path):
+    source_path = os.path.join(sim_dir_path, d)
+    config_path = os.path.join(sim_dir_path, d, "full_configuration.yaml")
+    config = yaml.load(open(config_path, "rb"))
+    mob = config['GLOBAL_MOBILITY_SCALING_FACTOR']
+    sick = config['init_percent_sick']
+    pop = config['n_people']
+    days = config['simulation_days']
+    name = f"mob_{mob}_sick_{sick}_pop_{pop}_days_{days}"
+
+    sim_priors_path = os.path.join(source_path, "train_priors.pkl")
+    sim_tracker_path = glob.glob(os.path.join(source_path, "*_.pkl"))[0]
+
+    sim_tracker_data = pickle.load(open(sim_tracker_path, "rb"))
+    sim_prior_data = pickle.load(open(sim_priors_path, "rb"))
+    sim_dates, sim_deaths, sim_tests, sim_cases = parse_tracker(sim_tracker_data)
+    sim_hospitalizations = [float(x)*100/sim_tracker_data['n_humans'] for x in sim_prior_data['hospitalization_per_day']]
+    results[name].append({"sim_dates": sim_dates, "sim_deaths": sim_deaths, "sim_tests": sim_tests, "sim_cases": sim_cases, "sim_hospitalizations": sim_hospitalizations})
+    import pdb; pdb.set_trace()
+
+# Load data
+qc_data = pd.read_csv(csv_path)
+
 
 # Plot cases
 fig, ax = plt.subplots(figsize=(7.5, 7.5))
