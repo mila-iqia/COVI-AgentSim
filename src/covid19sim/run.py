@@ -1,11 +1,16 @@
 """
-Main file to run the simulations
+Main entrypoint for the execution of simulations.
+
+The experimental settings of the simulations are managed via [Hydra](https://github.com/facebookresearch/hydra).
+The root configuration file is located at `src/covid19sim/configs/simulation/config.yaml`. All settings
+provided via commandline will override the ones loaded through the configuration files.
 """
 import datetime
 import logging
 import os
 import shutil
 import time
+import typing
 from pathlib import Path
 
 import hydra
@@ -16,7 +21,6 @@ from covid19sim.locations.city import City
 from covid19sim.utils.env import Env
 from covid19sim.utils.constants import SECONDS_PER_DAY, SECONDS_PER_HOUR
 from covid19sim.log.monitors import EventMonitor, SEIRMonitor, TimeMonitor
-from covid19sim.human import Human
 from covid19sim.utils.utils import (dump_conf, dump_tracker_data,
                                     extract_tracker_data, parse_configuration,
                                     zip_outdir)
@@ -161,36 +165,42 @@ def main(conf: DictConfig):
 
 
 def simulate(
-    n_people=None,
-    init_percent_sick=0.01,
-    start_time=datetime.datetime(2020, 2, 28, 0, 0),
-    simulation_days=10,
-    outfile=None,
-    out_chunk_size=None,
-    print_progress=False,
-    seed=0,
-    other_monitors=[],
-    return_city=False,
-    conf={},
+    n_people: int = 1000,
+    init_percent_sick: float = 0.01,
+    start_time: datetime.datetime = datetime.datetime(2020, 2, 28, 0, 0),
+    simulation_days: int = 30,
+    outfile: typing.Optional[typing.AnyStr] = None,
+    out_chunk_size: typing.Optional[int] = None,
+    print_progress: bool = False,
+    seed: int = 0,
+    other_monitors: typing.Optional[typing.List] = None,
+    return_city: bool = False,
+    conf: typing.Optional[typing.Dict] = None,
 ):
     """
-    Run the simulation.
+    Runs a simulation.
 
     Args:
-        n_people ([type], optional): [description]. Defaults to None.
-        init_percent_sick (float, optional): [description]. Defaults to 0.0.
-        start_time ([type], optional): [description]. Defaults to datetime.datetime(2020, 2, 28, 0, 0).
-        simulation_days (int, optional): [description]. Defaults to 10.
-        outfile (str, optional): [description]. Defaults to None.
-        out_chunk_size ([type], optional): [description]. Defaults to None.
-        print_progress (bool, optional): [description]. Defaults to False.
-        seed (int, optional): [description]. Defaults to 0.
-        other_monitors (list, optional): [description]. Defaults to [].
-        return_city (bool, optional): Returns an additional city object if set to True.
+        n_people: total number of humans (agents) to simulate.
+        init_percent_sick: initial percentage of the population that will be exposed to Covid-19.
+        start_time: initial starting day of the simulation.
+        simulation_days: number of days to run the simulation for.
+        outfile: output file/folder path where data should be saved.
+        out_chunk_size: TODO @@@@ DOCUMENT ME
+        print_progress: toggles whether to print monitoring results to console or not.
+        seed: seed used to initialize the global RNG for the simulation.
+        other_monitors: TODO @@@@ DOCUMENT ME
+        return_city: toggles whether to return the city object as the output of this function or not.
+        conf: global configuration dictionary for the simulation.
 
     Returns:
-        [type]: [description]
+        A tuple of the monitors and tracker, with the city as extra (if requested).
     """
+
+    if other_monitors is None:
+        other_monitors = []
+    if conf is None:
+        conf = {}
 
     conf["n_people"] = n_people
     conf["init_percent_sick"] = init_percent_sick
@@ -209,7 +219,7 @@ def simulate(
     city_x_range = (0, 1000)
     city_y_range = (0, 1000)
     city = City(
-        env, n_people, init_percent_sick, rng, city_x_range, city_y_range, Human, conf
+        env, n_people, init_percent_sick, rng, city_x_range, city_y_range, conf
     )
 
     # Add monitors

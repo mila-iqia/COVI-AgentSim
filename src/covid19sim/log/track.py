@@ -14,6 +14,7 @@ import networkx as nx
 import numpy as np
 import pandas as pd
 
+from covid19sim.epidemiology.symptoms import MILD, MODERATE, SEVERE, EXTREMELY_SEVERE
 from covid19sim.utils.utils import log
 from covid19sim.utils.constants import SECONDS_PER_DAY
 
@@ -769,7 +770,7 @@ class Tracker(object):
         # log(f"infected - tests daily Avg: {np.mean(infected_minus_tests_per_day): 4.3f}", logfile)
 
         log(f"P(tested | symptoms = x), where x is ", logfile)
-        for x in ["severe", "moderate", "mild"]:
+        for x in [EXTREMELY_SEVERE, SEVERE, MODERATE, MILD]:
             # total number of humans who has symptom x
             n_humans_who_experienced_symptom_x = self.symptoms["all"][x]
             if n_humans_who_experienced_symptom_x:

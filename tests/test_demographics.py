@@ -8,7 +8,6 @@ import pytest
 from covid19sim.utils import utils
 from covid19sim.locations.city import City
 from covid19sim.utils.env import Env
-from covid19sim.human import Human
 from tests.utils import get_test_conf
 
 
@@ -57,7 +56,6 @@ def test_basic_demographics(
         rng=rng,
         x_range=city_x_range,
         y_range=city_y_range,
-        human_type=Human,
         conf=conf,
     )
     city.have_some_humans_download_the_app()
@@ -204,7 +202,6 @@ def test_household_distribution(
         rng=rng,
         x_range=city_x_range,
         y_range=city_y_range,
-        human_type=Human,
         conf=conf,
     )
 
@@ -285,7 +282,6 @@ def test_app_distribution(
         rng=rng,
         x_range=city_x_range,
         y_range=city_y_range,
-        human_type=Human,
         conf=conf,
     )
     city.have_some_humans_download_the_app()
@@ -376,7 +372,6 @@ def test_app_distribution(
         rng=rng,
         x_range=city_x_range,
         y_range=city_y_range,
-        human_type=Human,
         conf=conf,
     )
     city.have_some_humans_download_the_app()

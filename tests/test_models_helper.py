@@ -3,23 +3,15 @@ import unittest
 import warnings
 
 from covid19sim.epidemiology.human_properties import PREEXISTING_CONDITIONS
-from covid19sim.epidemiology.symptoms import SYMPTOMS
+from covid19sim.epidemiology.symptoms import SYMPTOMS, STR_TO_SYMPTOMS
 
 from covid19sim.inference.helper import conditions_to_np, symptoms_to_np, \
-    encode_age, encode_sex, encode_test_result, PREEXISTING_CONDITIONS_META, \
-    SYMPTOMS_META
+    encode_age, encode_sex, encode_test_result, PREEXISTING_CONDITIONS_META
 
 
 class ModelsHelperTest(unittest.TestCase):
 
-    def test_frozen_symptoms_names_and_ids(self):
-        self.assertEqual(len(SYMPTOMS_META), len(SYMPTOMS))
-        self.assertTrue(np.array_equal(np.unique(np.asarray(list(SYMPTOMS_META.values()))),
-                                       np.arange(len(SYMPTOMS_META))))
-        for symp_meta, symp in zip(SYMPTOMS_META.items(), SYMPTOMS.items()):
-            self.assertEqual(symp_meta[0], symp[0])
-            self.assertEqual(symp_meta[1], symp[1].id)
-
+    def test_legacy_all_possible_symptoms(self):
         # Legacy all_possible_symptoms
         all_possible_symptoms = ['moderate', 'mild', 'severe', 'extremely-severe', 'fever',
                                  'chills', 'gastro', 'diarrhea', 'nausea_vomiting', 'fatigue',
@@ -30,12 +22,12 @@ class ModelsHelperTest(unittest.TestCase):
                                  'moderate_trouble_breathing',
                                  'heavy_trouble_breathing']
 
-        for s_name, s_id in SYMPTOMS_META.items():
-            if s_id < len(all_possible_symptoms):
-                self.assertEqual(s_name, all_possible_symptoms[s_id])
+        for symptom in SYMPTOMS:
+            if symptom.id < len(all_possible_symptoms):
+                self.assertEqual(str(symptom), all_possible_symptoms[symptom.id])
 
         for s_name in all_possible_symptoms:
-            self.assertIn(s_name, SYMPTOMS_META)
+            self.assertIn(s_name, STR_TO_SYMPTOMS)
 
     def test_frozen_conditions_names_and_ids(self):
         self.assertEqual(len(PREEXISTING_CONDITIONS_META), len(PREEXISTING_CONDITIONS))
@@ -70,47 +62,47 @@ class ModelsHelperTest(unittest.TestCase):
             self.assertEqual(np_conditions.min(), 0)
 
     def test_symptoms_to_np(self):
-        np_symptoms = symptoms_to_np([[s for s in SYMPTOMS_META]] * 14, {"TRACING_N_DAYS_HISTORY": 14})
+        np_symptoms = symptoms_to_np([[s for s in SYMPTOMS]] * 14, {"TRACING_N_DAYS_HISTORY": 14})
 
-        self.assertEqual(np_symptoms.shape, (14, len(SYMPTOMS_META)))
-        self.assertEqual(np_symptoms.sum(), len(SYMPTOMS_META) * 14)
+        self.assertEqual(np_symptoms.shape, (14, len(SYMPTOMS)))
+        self.assertEqual(np_symptoms.sum(), len(SYMPTOMS) * 14)
         self.assertEqual(np_symptoms.max(), 1)
         self.assertEqual(np_symptoms.min(), 1)
 
         np_symptoms = symptoms_to_np([[]] * 14, {"TRACING_N_DAYS_HISTORY": 14})
 
-        self.assertEqual(np_symptoms.shape, (14, len(SYMPTOMS_META)))
+        self.assertEqual(np_symptoms.shape, (14, len(SYMPTOMS)))
         self.assertEqual(np_symptoms.sum(), 0)
         self.assertEqual(np_symptoms.max(), 0)
         self.assertEqual(np_symptoms.min(), 0)
 
-        for symptom, s_id in SYMPTOMS_META.items():
+        for symptom in SYMPTOMS:
             np_symptoms = symptoms_to_np([[symptom]] * 14, {"TRACING_N_DAYS_HISTORY": 14})
 
-            self.assertEqual(np_symptoms.shape, (14, len(SYMPTOMS_META)))
+            self.assertEqual(np_symptoms.shape, (14, len(SYMPTOMS)))
 
             for i in range(np_symptoms.shape[0]):
                 self.assertTrue((np_symptoms[i] == np_symptoms[0]).all())
 
-            self.assertEqual(np_symptoms[0][s_id], 1)
+            self.assertEqual(np_symptoms[0][symptom.id], 1)
             self.assertEqual(np_symptoms[0].sum(), 1)
             self.assertEqual(np_symptoms[0].max(), 1)
             self.assertEqual(np_symptoms[0].min(), 0)
 
         raw_symptoms = [[] for _ in range(14)]
 
-        for i, symptom in zip(range(len(raw_symptoms)), SYMPTOMS_META):
+        for i, symptom in zip(range(len(raw_symptoms)), SYMPTOMS):
             raw_symptoms[i].append(symptom)
 
         np_symptoms = symptoms_to_np(raw_symptoms, {"TRACING_N_DAYS_HISTORY": 14})
 
-        self.assertEqual(np_symptoms.shape, (14, len(SYMPTOMS_META)))
+        self.assertEqual(np_symptoms.shape, (14, len(SYMPTOMS)))
         self.assertEqual(np_symptoms.sum(), 14)
         self.assertEqual(np_symptoms.max(), 1)
         self.assertEqual(np_symptoms.min(), 0)
 
-        for i, symptom_id in zip(range(len(raw_symptoms)), SYMPTOMS_META.values()):
-            self.assertEqual(np_symptoms[i][symptom_id], 1)
+        for i, symptom in zip(range(len(raw_symptoms)), SYMPTOMS):
+            self.assertEqual(np_symptoms[i][symptom.id], 1)
 
         self.assertEqual(np_symptoms.sum(), 14)
         self.assertEqual(np_symptoms.max(), 1)
