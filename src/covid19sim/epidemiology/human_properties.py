@@ -29,6 +29,11 @@ Attributes
 '''
 
 
+HEART_DISEASE_IF_SMOKER_OR_DIABETES_MODIFIER = 4.
+CANCER_OR_COPD_IF_SMOKER_MODIFIER = 1.3 / 0.95  # 1.3684210526
+IMMUNO_SUPPRESSED_IF_CANCER_MODIFIER = 1.2 / 0.98  # 1.2244897959
+
+
 PREEXISTING_CONDITIONS = OrderedDict([
     ('smoker', [
         ConditionProbability('smoker', 5, 12, 'a', 0.0),
@@ -46,33 +51,33 @@ PREEXISTING_CONDITIONS = OrderedDict([
     # 'smoker' and 'diabetes' are dependencies of 'heart_disease' so they
     # need to be inserted before this position
     ('heart_disease', [
-        ConditionProbability('heart_disease', 2, 20, 'a', 0.001),
-        ConditionProbability('heart_disease', 2, 35, 'a', 0.005),
-        ConditionProbability('heart_disease', 2, 50, 'f', 0.013),
-        ConditionProbability('heart_disease', 2, 50, 'm', 0.021),
-        ConditionProbability('heart_disease', 2, 50, 'a', 0.017),
-        ConditionProbability('heart_disease', 2, 75, 'f', 0.13),
-        ConditionProbability('heart_disease', 2, 75, 'm', 0.178),
-        ConditionProbability('heart_disease', 2, 75, 'a', 0.15),
-        ConditionProbability('heart_disease', 2, 1000, 'f', 0.311),
-        ConditionProbability('heart_disease', 2, 1000, 'm', 0.44),
-        ConditionProbability('heart_disease', 2, 1000, 'a', 0.375)
+        ConditionProbability('heart_disease', 2, 20, 'a', 0.0005),
+        ConditionProbability('heart_disease', 2, 35, 'a', 0.0025),
+        ConditionProbability('heart_disease', 2, 50, 'f', 0.0065),
+        ConditionProbability('heart_disease', 2, 50, 'm', 0.0105),
+        ConditionProbability('heart_disease', 2, 50, 'a', 0.0085),
+        ConditionProbability('heart_disease', 2, 75, 'f', 0.065),
+        ConditionProbability('heart_disease', 2, 75, 'm', 0.089),
+        ConditionProbability('heart_disease', 2, 75, 'a', 0.075),
+        ConditionProbability('heart_disease', 2, 1000, 'f', 0.1555),
+        ConditionProbability('heart_disease', 2, 1000, 'm', 0.22),
+        ConditionProbability('heart_disease', 2, 1000, 'a', 0.1875)
     ]),
     # 'smoker' is a dependency of 'cancer' so it needs to be inserted
     # before this position
     ('cancer', [
-        ConditionProbability('cancer', 6, 30, 'a', 0.00029),
-        ConditionProbability('cancer', 6, 60, 'a', 0.0029),
-        ConditionProbability('cancer', 6, 90, 'a', 0.029),
-        ConditionProbability('cancer', 6, 1000, 'a', 0.05)
+        ConditionProbability('cancer', 6, 30, 'a', 0.0002755),
+        ConditionProbability('cancer', 6, 60, 'a', 0.002755),
+        ConditionProbability('cancer', 6, 90, 'a', 0.02755),
+        ConditionProbability('cancer', 6, 1000, 'a', 0.0475)
     ]),
     # 'smoker' is a dependency of 'COPD' so it needs to be inserted
     # before this position
     ('COPD', [
         ConditionProbability('COPD', 3, 35, 'a', 0.0),
-        ConditionProbability('COPD', 3, 50, 'a', 0.015),
-        ConditionProbability('COPD', 3, 65, 'a', 0.037),
-        ConditionProbability('COPD', 3, 1000, 'a', 0.075)
+        ConditionProbability('COPD', 3, 50, 'a', 0.01425),
+        ConditionProbability('COPD', 3, 65, 'a', 0.03515),
+        ConditionProbability('COPD', 3, 1000, 'a', 0.07125)
     ]),
     ('asthma', [
         ConditionProbability('asthma', 4, 10, 'f', 0.07),
@@ -100,10 +105,10 @@ PREEXISTING_CONDITIONS = OrderedDict([
     # 'cancer' is a dependency of 'immuno-suppressed' so it needs to be inserted
     # before this position
     ('immuno-suppressed', [  # (3.6% on average)
-        ConditionProbability('immuno-suppressed', 0, 40, 'a', 0.005),
-        ConditionProbability('immuno-suppressed', 0, 65, 'a', 0.036),
-        ConditionProbability('immuno-suppressed', 0, 85, 'a', 0.045),
-        ConditionProbability('immuno-suppressed', 0, 1000, 'a', 0.20)
+        ConditionProbability('immuno-suppressed', 0, 40, 'a', 0.0049),
+        ConditionProbability('immuno-suppressed', 0, 65, 'a', 0.03528),
+        ConditionProbability('immuno-suppressed', 0, 85, 'a', 0.0441),
+        ConditionProbability('immuno-suppressed', 0, 1000, 'a', 0.196)
     ]),
     ('lung_disease', [
         ConditionProbability('lung_disease', 8, -1, 'a', -1)
@@ -251,28 +256,26 @@ def _get_preexisting_conditions(age, sex, rng):
     for c_name, c_prob in PREEXISTING_CONDITIONS.items():
         rand = rng.rand()
         modifier = 1.
-        # 'diabetes' and 'smoker' are dependencies of 'heart_disease'
+        # 'diabetes' and 'smoker' are dependencies of 'heart_disease' so their
+        # attribution to the list of pre-existing conditions need to be already
+        # computed at this point
         if c_name == 'heart_disease':
             if 'diabetes' in conditions or 'smoker' in conditions:
-                modifier = 2
-            else:
-                modifier = 0.5
-        # 'smoker' is a dependencies of 'cancer' and 'COPD' so it's execution
-        # needs to be already done at this point
+                modifier = HEART_DISEASE_IF_SMOKER_OR_DIABETES_MODIFIER
+        # 'smoker' is a dependencies of 'cancer' and 'COPD' so its attribution
+        # to the list of pre-existing conditions need to be already computed at
+        # this point
         if c_name in ('cancer', 'COPD'):
             if 'smoker' in conditions:
-                modifier = 1.3
-            else:
-                modifier = 0.95
+                modifier = CANCER_OR_COPD_IF_SMOKER_MODIFIER
         # TODO: 'immuno-suppressed' condiction is currently excluded when
         #  setting the 'stroke' modifier value. Is that wanted?
         if c_name == 'stroke':
             modifier = len(conditions)
         if c_name == 'immuno-suppressed':
             if 'cancer' in conditions:
-                modifier = 1.2
-            else:
-                modifier = 0.98
+                modifier = IMMUNO_SUPPRESSED_IF_CANCER_MODIFIER
+        # Randomly append the pre-existing condition to the list
         for p in c_prob:
             if age < p.age:
                 if p.sex == 'a' or sex.lower().startswith(p.sex):

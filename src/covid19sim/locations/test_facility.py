@@ -1,6 +1,7 @@
 import logging
 from collections import defaultdict
 from orderedset import OrderedSet
+from covid19sim.epidemiology.symptoms import MILD, MODERATE, SEVERE, EXTREMELY_SEVERE
 from covid19sim.utils.utils import get_test_false_negative_rate
 from covid19sim.locations.hospital import Hospital, ICU
 
@@ -113,11 +114,11 @@ class TestFacility(object):
         """
         score = 0
 
-        if 'severe' in human.symptoms:
+        if SEVERE in human.symptoms or EXTREMELY_SEVERE in human.symptoms:
             score += self.conf['P_TEST_SEVERE']
-        elif 'moderate' in human.symptoms:
+        elif MODERATE in human.symptoms:
             score += self.conf['P_TEST_MODERATE']
-        elif 'mild' in human.symptoms:
+        elif MILD in human.symptoms:
             score += self.conf['P_TEST_MILD']
 
         if isinstance(human.location, (Hospital, ICU)):

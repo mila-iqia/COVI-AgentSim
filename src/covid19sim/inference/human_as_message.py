@@ -99,11 +99,10 @@ class HumanAsMessage:
 
     # Medical fields
     infectiousnesses: typing.Iterable
-    # TODO: Should be reformatted to int timestamp
+    # TODO: Should be reformatted to POD timestamp
     infection_timestamp: datetime.datetime
-    # TODO: Should be reformatted to int timestamp
+    # TODO: Should be reformatted to POD timestamp
     recovered_timestamp: datetime.datetime
-    # TODO: Should be reformatted to deque of (int, int timestamp)
     test_results: collections.deque
     rolling_all_symptoms: np.array
     rolling_all_reported_symptoms: np.array

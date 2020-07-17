@@ -1,5 +1,6 @@
 """
-Contains base classes that define environment of the simulator.
+This module implements the `City` class which is responsible for running the environment in which all
+humans will interact. Its `run` loop also contains the tracing application logic that runs every hour.
 """
 import numpy as np
 import copy
@@ -25,6 +26,7 @@ from covid19sim.locations.hospital import Hospital
 
 if typing.TYPE_CHECKING:
     from covid19sim.human import Human
+    from covid19sim.utils.env import Env
 
 PersonalMailboxType = typing.Dict[UIDType, typing.List[UpdateMessage]]
 SimulatorMailboxType = typing.Dict[RealUserIDType, PersonalMailboxType]
@@ -32,20 +34,31 @@ SimulatorMailboxType = typing.Dict[RealUserIDType, PersonalMailboxType]
 
 class City:
     """
-    City
+    City agent/environment class. Currently, a single city object will be instantiated at the start of
+    a simulation. In the future, multiple 'cities' may be executed in parallel to simulate larger populations.
     """
 
-    def __init__(self, env, n_people, init_percent_sick, rng, x_range, y_range, human_type, conf):
+    def __init__(
+            self,
+            env: "Env",
+            n_people: int,
+            init_percent_sick: float,
+            rng: np.random.RandomState,
+            x_range: typing.Tuple,
+            y_range: typing.Tuple,
+            conf: typing.Dict,
+    ):
         """
+        Constructs a city object.
+
         Args:
-            env (simpy.Environment): [description]
-            n_people (int): Number of people in the city
-            init_percent_sick: % of population to be infected on day 0
-            rng (np.random.RandomState): Random number generator
-            x_range (tuple): (min_x, max_x)
-            y_range (tuple): (min_y, max_y)
-            human_type (covid19.simulator.Human): Class for the city's human instances
-            conf (dict): yaml configuration of the experiment
+            env: simpy environment object holding simulation state/timestamps.
+            n_people: number of people to instantiate in the city.
+            init_percent_sick: percentage of the population to be infected on day zero.
+            rng: random number generator to use in this city. Will also initialize RNGs for humans.
+            x_range: (min_x, max_x) TODO @@@@ DOCUMENT ME
+            y_range: (min_y, max_y) TODO @@@@ DOCUMENT ME
+            conf: configuration dictionary holding the experimental settings.
         """
         self.conf = conf
         self.env = env
@@ -75,13 +88,13 @@ class City:
 
         print("Initializing locations ...")
         self.initialize_locations()
-
         self.humans = []
         self.hd = {}
         self.households = OrderedSet()
         self.age_histogram = None
+
         print("Initializing humans ...")
-        self.initialize_humans(human_type)
+        self.initialize_humans()
         for human in self.humans:
             human.track_this_guy = False
             if human.is_exposed:
@@ -318,7 +331,7 @@ class City:
             locs = [self.create_location(specs, location, i, area[i]) for i in range(n)]
             setattr(self, f"{location}s", locs)
 
-    def initialize_humans(self, human_type):
+    def initialize_humans(self):
         """
         `Human`s are created based on the statistics captured in HUMAN_DSITRIBUTION. Age distribution is specified via 'p'.
         SMARTPHONE_OWNER_FRACTION_BY_AGE defines the fraction of population in the age bin that owns smartphone.
@@ -332,9 +345,6 @@ class City:
             3. age occupancy distribution follows HUMAN_DSITRIBUTION.residence_preference.house_size (no-source)
 
         current implementation is an approximate heuristic
-
-        Args:
-            human_type (Class): Class for the city's human instances
         """
         # make humans
         count_humans = 0
@@ -349,6 +359,7 @@ class City:
             rng=self.rng
         )
 
+        from covid19sim.human import Human
         for age_bin, specs in self.conf.get("HUMAN_DISTRIBUTION").items():
             n = self.age_histogram[age_bin]
             ages = self.rng.randint(low=age_bin[0], high=age_bin[1]+1, size=n)  # high is exclusive
@@ -385,7 +396,7 @@ class City:
                 else:
                     workplace = res
 
-                self.humans.append(human_type(
+                self.humans.append(Human(
                         env=self.env,
                         city=self,
                         rng=self.rng,
@@ -678,12 +689,18 @@ class City:
                 last_day_idx = current_day
                 self.do_daily_activies(current_day, alive_humans)
 
-    def do_daily_activies(self, current_day, alive_humans):
+    def do_daily_activies(
+            self,
+            current_day: int,
+            alive_humans: typing.Iterable["Human"],
+    ):
+        """Runs all activities that should be completed only once per day."""
         # Compute the transition matrix of recommendation levels to
         # target distribution of recommendation levels
         self.daily_rec_level_mapping = self.compute_daily_rec_level_mapping(current_day)
         self.cleanup_global_mailbox(self.env.timestamp)
-        # TODO: this is an assumption which will break in reality, instead of updating once per day everyone at the same time, it should be throughout the day
+        # TODO: this is an assumption which will break in reality, instead of updating once per day everyone
+        #       at the same time, it should be throughout the day
         for human in alive_humans:
             # recover from cold/flu/allergies if it's time
             human.recover_health()
@@ -700,7 +717,21 @@ class City:
                 ),
             )
 
-    def run_app(self, current_day, outfile, alive_humans):
+    def run_app(
+            self,
+            current_day: int,
+            outfile: typing.AnyStr,
+            alive_humans: typing.Iterable["Human"]
+    ) -> typing.Tuple[typing.Dict, typing.List[UpdateMessage]]:
+        """Runs the application logic for all humans that are still alive.
+
+        The logic is split into three parts. First, 'lightweight' jobs will run. These include
+        daily risk level initialization, symptoms reporting updates, and digital (binary) contact
+        tracing (if necessary). Then, if a risk inference model is being used or if we are collecting
+        training data, batches of humans will be used to do clustering and to call the model. Finally,
+        the recommendation level of all humans will be updated, they will generate update messages
+        (if necessary), and the tracker will be updated with the state of all humans.
+        """
         backup_human_init_risks = {}  # backs up human risks before any update takes place
 
         # iterate over humans, and if it's their timeslot, then update their state
