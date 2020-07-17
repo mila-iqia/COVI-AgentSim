@@ -359,6 +359,17 @@ P_SOCIALIZE_DAYS: [
   [40, 0.02]
 ]
 
+# How often do people exercise?
+# /!\ (no-source)
+# Note: these values are normalized before being used.
+P_EXERCISE_DAYS: [
+  [1, 0.16],
+  [7, 0.47],
+  [10, 0.28],
+  [30, 0.07],
+  [40, 0.02]
+]
+
 # How much time do people do grocery shopping for? Quebec data
 # ref: https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=4510001401&pickMembers%5B0%5D=1.3&pickMembers%5B1%5D=3.1&pickMembers%5B2%5D=4.1&pickMembers%5B3%5D=5.1
 #  Table  45-10-0014-01   Daily average time spent in hours on various activities by age group and sex, 15 years and over, Canada and provinces
@@ -381,9 +392,6 @@ AVERAGE_TIME_SPENT_EXERCISING: 0.4 # hours
 # ref: https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=4510001401&pickMembers%5B0%5D=1.3&pickMembers%5B1%5D=3.1&pickMembers%5B2%5D=4.1&pickMembers%5B3%5D=5.1
 #  Table  45-10-0014-01   Daily average time spent in hours on various activities by age group and sex, 15 years and over, Canada and provinces
 AVERAGE_TIME_SPENT_WORK: 8 # hours
-
-AVERAGE_SLEEPING_MINUTES:
-SCALE_SLEEPING_MINUTES:
 
 # *********************** Overwrite P_AGE_SOLO_DWELLERS_GIVEN_HOUSESIZE_1 because a more accurate datasource is available ***********************
 # *********************** NOTE: this needs to go after any precompuation done for  P_AGE_SOLO_DWELLERS_GIVEN_HOUSESIZE_1 ***********************

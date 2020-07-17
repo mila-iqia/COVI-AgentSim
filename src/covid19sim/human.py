@@ -12,6 +12,7 @@ import warnings
 from collections import defaultdict
 from orderedset import OrderedSet
 
+from covid19sim.utils.mobility_planner import MobilityPlanner
 from covid19sim.interventions.behaviors import Behavior
 from covid19sim.interventions.recommendation_manager import NonMLRiskComputer
 from covid19sim.utils.utils import compute_distance, proba_to_risk_fn
@@ -27,7 +28,7 @@ from covid19sim.epidemiology.viral_load import compute_covid_properties, viral_l
 from covid19sim.epidemiology.symptoms import _get_cold_progression, _get_flu_progression,\
     _get_allergy_progression
 from covid19sim.epidemiology.p_infection import get_human_human_p_transmission, infectiousness_delta
-from covid19sim.utils.constants import SECONDS_PER_MINUTE, SECONDS_PER_HOUR
+from covid19sim.utils.constants import SECONDS_PER_MINUTE, SECONDS_PER_HOUR, SECONDS_PER_DAY
 from covid19sim.inference.message_utils import ContactBook, exchange_encounter_messages, RealUserIDType
 from covid19sim.utils.visits import Visits
 
@@ -335,6 +336,7 @@ class Human(object):
         self.location_leaving_time = self.env.ts_initial + SECONDS_PER_HOUR
         self.location_start_time = self.env.ts_initial
 
+        self.mobility_planner = MobilityPlanner(self, self.env, self.conf)
 
     @property
     def follows_recommendations_today(self):
@@ -354,11 +356,21 @@ class Human(object):
 
     def assign_workplace(self, workplace):
         """
-        Initilizes work related attributes for `human`
+        Initializes work related attributes for `human`
         """
         N_WORKING_DAYS = self.conf['N_WORKING_DAYS']
-        self.work_start_time = workplace.closing_time
-        self.work_end_time = workplace.opening_time
+        AVERAGE_TIME_SPENT_WORK = self.conf['AVERAGE_TIME_SPENT_WORK']
+        WORKING_START_HOUR = self.conf['WORKING_START_HOUR']
+
+        # /!\ all humans are given a work start time same as workplace opening time
+        self.work_start_time = workplace.opening_time
+        if workplace.opening_time == 0:
+            self.work_start_time = WORKING_START_HOUR * SECONDS_PER_HOUR
+
+        self.work_end_time = workplace.closing_time
+        if workplace.closing_time == SECONDS_PER_DAY:
+            self.work_end_time = self.work_start_time + AVERAGE_TIME_SPENT_WORK * SECONDS_PER_HOUR
+
         self.working_days = self.rng.choice(workplace.open_days, size=N_WORKING_DAYS, replace=False)
         self._workplace = deque((workplace,))  # Created as a list because we sometimes modify human's workplace to WFH if in quarantine, then go back to work when released
 
@@ -1287,18 +1299,15 @@ class Human(object):
     def run_2(self, city):
         """
         """
-        from covid19sim.utils.mobility_planner import MobilityPlanner
-        self.mobility_planner = MobilityPlanner(self, self.env, self.conf)
-        print(self)
-        self.env.process(self.mobility_planner.run())
-        print(self.mobility_planner.schedule_for_day)
+        self.mobility_planner.initialize()
         while True:
             self.run_mobility_reduction_check()
             self.move_to_hospital_if_required()
             next_activity = self.mobility_planner.get_next_activity()
-            start_time, end_time, duration, type_of_activity = next_activity
-            yield self.env.process(self.go_to(type_of_activity, duration=duration))
-            assert self.env.timestamp == end_time, "times do not align..."
+            # print("A\t", self.env.timestamp, self, next_activity)
+            yield self.env.process(self.at(next_activity.location, self.city, next_activity.duration))
+            # print("B\t", self.env.timestamp, self, next_activity)
+            assert abs(self.env.timestamp - next_activity.end_time).seconds == 0, "times do not align..."
 
     def decide_next_activity(self, hour, day):
         # TODO (EM) These optional and erratic behaviours should be more probabalistic,
@@ -1542,9 +1551,10 @@ class Human(object):
         Yields:
             [type]: [description]
         """
+        # print("before", self.env.timestamp, self, location, duration)
 
         # track transitions & locations visited
-        city.tracker.track_trip(from_location=self.location.location_type, to_location=location.location_type, age=self.age, hour=self.env.hour_of_day())
+        # city.tracker.track_mobility(self.mobility_planner.current_activity, next_activity, self)
         if self.track_this_human:
             self.track_me(location)
 
@@ -1559,13 +1569,14 @@ class Human(object):
         self.check_if_needs_covid_test(at_hospital=isinstance(location, (Hospital, ICU)))
         self.wear_mask()
 
-        yield self.env.timeout(duration * SECONDS_PER_MINUTE)
-
-        # sample interactions with other humans at this location
-        # unknown are the ones that self is not aware of e.g. person sitting next to self in a cafe
-        known_interactions, unknown_interactions = location.sample_interactions(self)
-        self.interact_with(known_interactions, type="known")
-        self.interact_with(unknown_interactions, type="unknown")
+        yield self.env.timeout(duration)
+        # print("after", self.env.timestamp, self, location, duration)
+        if duration > min(self.conf['MIN_MESSAGE_PASSING_DURATION'], self.conf['INFECTION_DURATION']):
+            # sample interactions with other humans at this location
+            # unknown are the ones that self is not aware of e.g. person sitting next to self in a cafe
+            known_interactions, unknown_interactions = location.sample_interactions(self)
+            self.interact_with(known_interactions, type="known")
+            self.interact_with(unknown_interactions, type="unknown")
 
         # environmental transmission
         location.check_environmental_infection(self)

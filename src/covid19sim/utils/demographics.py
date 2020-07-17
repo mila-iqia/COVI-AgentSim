@@ -380,13 +380,13 @@ def _build_and_allocate_hospitals(humans, city, conf, rng):
     # select and allocate doctors and nurses to this hospital
     WORKING_BINS = _get_valid_bins(AGE_BIN_WIDTH_5, min_age=MIN_AGE_HEALTHCARE_WORKER, max_age=MAX_AGE_HEALTHCARE_WORKER)
     doctors_and_nurses = [human for human in humans if human.workplace is None and human.age_bin_width_5.bin in WORKING_BINS]
-    doctors = _random_choice(doctors_and_nurses, size=n_doctors, replace=False, rng=rng)
+    doctors = _random_choice(doctors_and_nurses, size=n_doctors, replace=False, rng=rng, catch_size_error=True)
     for doctor in doctors:
         doctor.assign_workplace(hospital)
         hospital.assign_worker(doctor, doctor=True)
         doctors_and_nurses.remove(doctor)
 
-    nurses = _random_choice(doctors_and_nurses, size=n_nurses, replace=False, rng=rng)
+    nurses = _random_choice(doctors_and_nurses, size=n_nurses, replace=False, rng=rng, catch_size_error=True)
     for nurse in nurses:
         nurse.assign_workplace(hospital)
         hospital.assign_worker(nurse, doctor=False)
@@ -427,7 +427,7 @@ def _assign_senior_residences(humans, city, conf, rng):
     potential_nurses = [human for human in humans if human.workplace is None]
     for senior_residence in city.senior_residences:
         senior_residence.n_nurses = math.ceil(len(senior_residence.residents) / RESIDENT_TO_STAFF_RATIO)
-        nurses = _random_choice(potential_nurses, size=senior_residence.n_nurses, replace=False, rng=rng)
+        nurses = _random_choice(potential_nurses, size=senior_residence.n_nurses, replace=False, rng=rng, catch_size_error=True)
         for nurse in nurses:
             nurse.assign_workplace(senior_residence.social_common_room)
 
@@ -537,7 +537,7 @@ def _build_and_allocate_schools(humans, city, conf, rng):
     for STUDENT_TEACHER_RATIO, schools_x_x in all_schools:
         for school in schools_x_x:
             n_teachers = math.ceil(school.n_students / STUDENT_TEACHER_RATIO)
-            teachers = _random_choice(potential_teachers, size=n_teachers, replace=False, rng=rng)
+            teachers = _random_choice(potential_teachers, size=n_teachers, replace=False, rng=rng, catch_size_error=True)
             for teacher in teachers:
                 teacher.assign_workplace(school)
                 potential_teachers.remove(teacher)

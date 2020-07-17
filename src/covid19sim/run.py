@@ -215,9 +215,15 @@ def simulate(
     # Initiate city process, which runs every hour
     env.process(city.run(SECONDS_PER_HOUR, outfile))
 
-    # Initiate human processes
-    for human in city.humans:
-        env.process(human.run(city=city))
+    # /!\ Initiate adults first because kids schedule depends on their parents.
+    MAX_AGE_WITHOUT_SUPERVISION = conf['MAX_AGE_CHILDREN_WITHOUT_PARENT_SUPERVISION']
+    adults = [human for human in city.humans if human.age > MAX_AGE_WITHOUT_SUPERVISION]
+    for adult in adults:
+        env.process(adult.run_2(city=city))
+
+    kids = [human for human in city.humans if human.age <= MAX_AGE_WITHOUT_SUPERVISION]
+    for kid in kids:
+        env.process(kid.run_2(city=city))
 
     # Initiate monitor processes
     for m in monitors:

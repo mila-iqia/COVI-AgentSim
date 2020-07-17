@@ -598,7 +598,7 @@ def zip_outdir(outdir):
     )
     subprocess_cmd(command)
 
-def _random_choice_tuples(tuples, rng, size, P=None, replace=False):
+def _random_choice(a_list, rng, size, P=None, replace=False, catch_size_error=False):
     """
     samples `size` random elements from `tuples` with probability `P`.
     NOTE: This function work arounds the internal conversion of the elements
@@ -609,10 +609,15 @@ def _random_choice_tuples(tuples, rng, size, P=None, replace=False):
         size (int): number of elements to sample from `tuples`
         P (list): probability with which to sample. Defaults to None.
         replace (bool): True if sampling is to be done with replace.
+        catch_size_error (bool): uses permutation trick to prevent errors when length of a_list < size.
 
     Returns:
         list: sampled elements from tuples
     """
-    total = len(tuples)
-    idxs = rng.choice(range(total), size=size, p=P, replace=replace)
-    return [tuples[x] for x in idxs]
+    total = len(a_list)
+    if catch_size_error:
+        idxs = rng.permutation(np.arange(total))[:size] # returns empty list if size > total
+    else:
+        idxs = rng.choice(range(total), size=size, p=P, replace=replace)
+
+    return [a_list[x] for x in idxs]

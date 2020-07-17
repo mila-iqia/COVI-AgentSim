@@ -229,7 +229,7 @@ class Tracker(object):
 
         # mobility
         self.n_outside_daily_contacts = 0
-        self.transition_probability = get_nested_dict(4)
+        self.transition_probability = {"weekday":get_nested_dict(2), "weekend":get_nested_dict(2)}
         self.rec_feelings = []
         self.outside_daily_contacts = []
 
@@ -1029,25 +1029,23 @@ class Tracker(object):
         n, total = self.recovered_stats[-1]
         self.recovered_stats[-1] = [n+1, total + n_infectious_contacts]
 
-    def track_trip(self, from_location, to_location, age, hour):
+    def track_mobility(self, current_activity, next_activity, human):
         """
-        [summary]
+        Aggregates information about mobility pattern of humans.
 
         Args:
-            from_location ([type]): [description]
-            to_location ([type]): [description]
-            age ([type]): [description]
-            hour ([type]): [description]
+            current_activity (covid19sim.utils.mobility_planner.Activity): [description]
+            next_activity (covid19sim.utils.mobility_planner.Activity): [description]
+            human (covid19sim.human.Human): human for which sleep schedule needs to be added.
         """
         if not (self.conf['track_all'] or self.conf['track_trip']):
             return
 
-        bin = None
-        for i, (l,u) in enumerate(self.age_bins):
-            if l <= age <= u:
-                bin = i
-
-        self.transition_probability[hour][bin][from_location][to_location] += 1
+        # forms a transition probability on weekdays and weekends
+        type_of_day = ['weekday', 'weekend'][self.env.is_weekend()]
+        from_location = current_activity.location.location_type
+        to_location = current_activity.location.location_type
+        self.transition_probability[type_of_day][from_location][to_location] += 1
 
     def track_mixing(self, human1, human2, duration, distance_profile, timestamp, location, interaction_type, contact_condition):
         """

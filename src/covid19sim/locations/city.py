@@ -521,7 +521,7 @@ class City:
         tmp_M = self.conf.get("GLOBAL_MOBILITY_SCALING_FACTOR")
         self.conf["GLOBAL_MOBILITY_SCALING_FACTOR"] = 1
         last_day_idx = 0
-        self.intervention = RecommendationGetter()
+        self.intervention = None
         while True:
             current_day = (self.env.timestamp - self.start_time).days
             # Notify humans to follow interventions on intervention day
@@ -631,10 +631,10 @@ class City:
                     prev_human_risk_history_maps=backup_human_init_risks,
                     new_human_risk_history_maps={h: h.risk_history_map for h in self.humans},
                 )
-
-            for human in alive_humans:
-                recommendations = self.intervention.get_recommendations(human)
-                human.apply_intervention(recommendations)
+            if self.intervention:
+                for human in alive_humans:
+                    recommendations = self.intervention.get_recommendations(human)
+                    human.apply_intervention(recommendations)
 
             yield self.env.timeout(int(duration))
 

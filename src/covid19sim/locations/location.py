@@ -60,8 +60,9 @@ class Location(simpy.Resource):
         # occupation related constants
         OPEN_CLOSE_TIMES = conf[f'{location_type}_OPEN_CLOSE_HOUR_MINUTE']
         OPEN_DAYS = conf[f'{location_type}_OPEN_DAYS']
-        self.opening_time = datetime.timedelta(hours=OPEN_CLOSE_TIMES[0][0], minutes=OPEN_CLOSE_TIMES[0][1])
-        self.closing_time = datetime.timedelta(hours=OPEN_CLOSE_TIMES[1][0], minutes=OPEN_CLOSE_TIMES[1][1])
+        # /!\ opening and closing time are in seconds relative to midnight
+        self.opening_time = OPEN_CLOSE_TIMES[0][0] * SECONDS_PER_HOUR +  OPEN_CLOSE_TIMES[0][1] * SECONDS_PER_MINUTE
+        self.closing_time = OPEN_CLOSE_TIMES[1][0] * SECONDS_PER_HOUR +  OPEN_CLOSE_TIMES[1][1] * SECONDS_PER_MINUTE
         self.open_days = OPEN_DAYS
 
         # parameters related to sampling contacts
@@ -264,8 +265,6 @@ class Location(simpy.Resource):
 
         interactions = []
         n_interactions = self.rng.negative_binomial(mean_daily_interactions, 0.5)
-        # if human.name == "human:947":
-            # print(human, f"sampled {type} {n_interactions} interactions when there are {len(self.humans)} human here: {self.humans}")
         for i in range(n_interactions):
             # sample other human
             other_human = self._sample_interactee(type, human)
@@ -297,8 +296,6 @@ class Location(simpy.Resource):
 
             # /!\ clipping changes the distribution.
             duration = min(t_overlap, duration) * max(human.time_encounter_reduction_factor, other_human.time_encounter_reduction_factor)
-            # if human.name == "human:947":
-                # print(self.env.timestamp, human, f"sampled an {type} interaction with {other_human} for {duration} mins")
 
             # add to the list
             interactions.append((other_human, distance_profile, duration))
@@ -379,7 +376,7 @@ class Location(simpy.Resource):
         Returns:
             (bool): True if its open
         """
-        return date.day_of_week() in self.opened_days
+        return date.weekday() in self.open_days
 
     def __hash__(self):
         """
