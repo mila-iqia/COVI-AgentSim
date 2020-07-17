@@ -18,6 +18,7 @@ seaborn
 pandas
 pyyaml
 pytest
+pytest-timeout
 pytest-cov==2.8.1
 hydra-core==0.11
 omegaconf==1.4.1
@@ -25,3 +26,4 @@ cached_property
 requests
 recommonmark
 sphinx
+h5py

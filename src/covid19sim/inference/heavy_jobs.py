@@ -40,7 +40,6 @@ def batch_run_timeslot_heavy_jobs(
         global_mailbox: "SimulatorMailboxType",
         time_slot: int,
         conf: typing.Dict,
-        data_path: typing.Optional[typing.AnyStr] = None,
         city_hash: int = 0,
 ) -> typing.Iterable["Human"]:
     """
@@ -58,7 +57,6 @@ def batch_run_timeslot_heavy_jobs(
             that is delegated to the caller (see the return values).
         time_slot: the current timeslot of the day (i.e. an integer that corresponds to the hour).
         conf: YAML configuration dictionary with all relevant settings for the simulation.
-        data_path: Root path where to save the 'daily outputs', i.e. the training data for ML models.
         city_hash: a hash used to tag this city's humans on an inference server that may be used by
             multiple cities in parallel. Bad mojo will happen if two cities have the same hash...
     Returns:
@@ -74,8 +72,6 @@ def batch_run_timeslot_heavy_jobs(
         if not human.has_app or time_slot not in human.time_slots or human.is_dead:
             continue
 
-        log_path = f"{os.path.dirname(data_path)}/daily_outputs/{current_day_idx}/{human.name[6:]}/" \
-            if data_path else None
         all_params.append({
             "start": init_timestamp,
             "current_day": current_day_idx,
@@ -84,7 +80,6 @@ def batch_run_timeslot_heavy_jobs(
                 personal_mailbox=global_mailbox[human.name],
                 conf=conf
             ),
-            "log_path": log_path,
             "time_slot": time_slot,
             "conf": conf,
             "city_hash": city_hash,
