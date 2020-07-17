@@ -19,6 +19,8 @@ import yaml
 from omegaconf import DictConfig, OmegaConf
 from scipy.stats import norm
 
+from covid19sim.epidemiology.symptoms import STR_TO_SYMPTOMS
+
 
 def log(str, logfile=None, timestamp=False):
     """
@@ -459,6 +461,16 @@ def parse_configuration(conf):
             for k, v in conf["MEAN_DAILY_INTERACTION_FOR_AGE_GROUP"].items()
         }
 
+    if "GET_TESTED_SYMPTOMS_CHECKED_IN_HOSPITAL" in conf:
+        conf["GET_TESTED_SYMPTOMS_CHECKED_IN_HOSPITAL"] = \
+            [STR_TO_SYMPTOMS[symptom] for symptom in conf["GET_TESTED_SYMPTOMS_CHECKED_IN_HOSPITAL"]
+             if symptom]
+
+    if "GET_TESTED_SYMPTOMS_CHECKED_BY_SELF" in conf:
+        conf["GET_TESTED_SYMPTOMS_CHECKED_BY_SELF"] = \
+            [STR_TO_SYMPTOMS[symptom] for symptom in conf["GET_TESTED_SYMPTOMS_CHECKED_BY_SELF"]
+             if symptom]
+
     if "start_time" in conf:
         conf["start_time"] = datetime.datetime.strptime(
             conf["start_time"], "%Y-%m-%d %H:%M:%S"
@@ -518,6 +530,14 @@ def dumps_conf(
                 "-".join([str(i) for i in k]): v
                 for k, v in copy_conf["MEAN_DAILY_INTERACTION_FOR_AGE_GROUP"].items()
             }
+
+    if "GET_TESTED_SYMPTOMS_CHECKED_IN_HOSPITAL" in copy_conf:
+        copy_conf["GET_TESTED_SYMPTOMS_CHECKED_IN_HOSPITAL"] = \
+            [str(symptom) for symptom in copy_conf["GET_TESTED_SYMPTOMS_CHECKED_IN_HOSPITAL"]]
+
+    if "GET_TESTED_SYMPTOMS_CHECKED_BY_SELF" in copy_conf:
+        copy_conf["GET_TESTED_SYMPTOMS_CHECKED_BY_SELF"] = \
+            [str(symptom) for symptom in copy_conf["GET_TESTED_SYMPTOMS_CHECKED_BY_SELF"]]
 
     if "start_time" in copy_conf:
         copy_conf["start_time"] = copy_conf["start_time"].strftime("%Y-%m-%d %H:%M:%S")

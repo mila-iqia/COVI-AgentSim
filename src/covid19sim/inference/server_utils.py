@@ -747,11 +747,6 @@ def _proc_human(params, inference_engine):
     cluster_mgr.set_current_timestamp(todays_date)
     update_messages = covid19sim.inference.message_utils.batch_messages(human.update_messages)
     cluster_mgr.add_messages(messages=update_messages, current_timestamp=todays_date)
-    # FIXME: there are messages getting duplicated somewhere, this is pretty bad @@@@@
-    # uids = []
-    # for c in cluster_mgr.clusters:
-    #     uids.extend(c.get_encounter_uids())
-    # assert len(np.unique(uids)) == len(uids), "found collision"
 
     # Format for supervised learning / transformer inference
     is_exposed, exposure_day = covid19sim.inference.helper.exposure_array(human.infection_timestamp, todays_date, conf)
