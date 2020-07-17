@@ -8,6 +8,7 @@ from tempfile import TemporaryDirectory
 
 from tests.utils import get_test_conf
 
+from covid19sim.inference.server_utils import DataCollectionServer
 from covid19sim.locations.city import Event
 from covid19sim.run import simulate
 
@@ -40,6 +41,15 @@ class ClusteringCodePaths(unittest.TestCase):
                 data = []
                 with TemporaryDirectory() as d:
                     outfile = os.path.join(d, "data")
+                    os.makedirs(outfile, exist_ok=True)
+                    hdf5file = os.path.join(outfile, "train.hdf5")
+                    collection_server = DataCollectionServer(
+                        data_output_path=hdf5file,
+                        config_backup=self.config,
+                        human_count=self.n_people,
+                        simulation_days=self.simulation_days,
+                    )
+                    collection_server.start()
                     monitors, _ = simulate(
                         n_people=self.n_people,
                         start_time=self.location_start_time,
@@ -52,6 +62,9 @@ class ClusteringCodePaths(unittest.TestCase):
                     )
                     monitors[0].dump()
                     monitors[0].join_iothread()
+                    collection_server.stop_gracefully()
+                    collection_server.join()
+                    assert os.path.exists(hdf5file)
 
                     with zipfile.ZipFile(f"{outfile}.zip", 'r') as zf:
                         for pkl in zf.namelist():

@@ -14,6 +14,7 @@ import typing
 from pathlib import Path
 
 import hydra
+import multiprocessing
 import numpy as np
 from omegaconf import DictConfig
 
@@ -21,6 +22,8 @@ from covid19sim.locations.city import City
 from covid19sim.utils.env import Env
 from covid19sim.utils.constants import SECONDS_PER_DAY, SECONDS_PER_HOUR
 from covid19sim.log.monitors import EventMonitor, SEIRMonitor, TimeMonitor
+from covid19sim.human import Human
+from covid19sim.inference.server_utils import DataCollectionServer
 from covid19sim.utils.utils import (dump_conf, dump_tracker_data,
                                     extract_tracker_data, parse_configuration,
                                     zip_outdir)
@@ -66,8 +69,16 @@ def main(conf: DictConfig):
 
     os.makedirs(conf["outdir"])
 
-    if not conf["tune"]:
-        outfile = os.path.join(conf["outdir"], "data")
+    collection_server = None
+    outfile = os.path.join(conf["outdir"], "data")
+    if conf['COLLECT_TRAINING_DATA']:
+        collection_server = DataCollectionServer(
+            data_output_path=os.path.join(conf["outdir"], "train.hdf5"),
+            human_count=conf["n_people"],
+            simulation_days=conf["simulation_days"],
+            config_backup=conf,
+        )
+        collection_server.start()
 
     # ---------------------------------
     # -----  Filter-Out Warnings  -----
@@ -125,6 +136,9 @@ def main(conf: DictConfig):
     # write values to train with
     train_priors = os.path.join(f"{conf['outdir']}/train_priors.pkl")
     tracker.write_for_training(city.humans, train_priors, conf)
+    if conf['COLLECT_TRAINING_DATA']:
+        collection_server.stop_gracefully()
+        collection_server.join()
 
     if not conf["tune"]:
         # ----------------------------------------------
@@ -140,9 +154,9 @@ def main(conf: DictConfig):
             if conf["delete_outdir"]:
                 shutil.rmtree(conf["outdir"])
     else:
-        # ------------------------------------------------------
-        # -----  Tune: Create Plots And Write Tacker Data  -----
-        # ------------------------------------------------------
+        # -------------------------------------------------------
+        # -----  Tune: Create Plots And Write Tracker Data  -----
+        # -------------------------------------------------------
         from covid19sim.plotting.plot_rt import PlotRt
 
         cases_per_day = tracker.cases_per_day
