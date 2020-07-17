@@ -255,10 +255,6 @@ class GAENCluster(ClusterBase):
             if timestamp not in self.messages_by_timestamp:
                 self.messages_by_timestamp[timestamp] = []
             self.messages_by_timestamp[timestamp].extend(encounters)
-            # FIXME: there are messages getting duplicated somewhere, this is pretty bad @@@@@
-            # assert len(self.messages_by_timestamp[timestamp]) == \
-            #     len(np.unique([m.uid for m in self.messages_by_timestamp[timestamp]])), \
-            #     "found uid collision while merging cluster; go buy a lottery ticket?"
         # we can make sure whoever tries to use the other cluster again will have a bad surprise...
         cluster.messages_by_timestamp = None
         self._real_encounter_uids.update(cluster._real_encounter_uids)
