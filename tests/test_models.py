@@ -1,5 +1,7 @@
 import datetime
 import glob
+import h5py
+import json
 import os
 import pickle
 import unittest
@@ -12,9 +14,10 @@ from tests.utils import get_test_conf
 from covid19sim.inference.helper import (conditions_to_np, symptoms_to_np, encode_age, encode_sex,
                                          encode_test_result, recovered_array, candidate_exposures,
                                          exposure_array)
-from covid19sim.inference.human_as_message import get_test_results_array
-from covid19sim.run import simulate
 from covid19sim.inference.heavy_jobs import DummyMemManager
+from covid19sim.inference.human_as_message import get_test_results_array
+from covid19sim.inference.server_utils import DataCollectionServer
+from covid19sim.run import simulate
 from covid19sim.native import Environment
 
 
@@ -145,33 +148,31 @@ class ModelsTest(unittest.TestCase):
 
             ModelsTest.make_human_as_message_proxy.set_start_time(start_time)
 
-            try:
-                city, monitors, tracker = simulate(
-                    n_people=n_people,
-                    start_time=start_time,
-                    simulation_days=n_days,
-                    init_percent_sick=0.25,
-                    outfile=os.path.join(d, "output"),
-                    out_chunk_size=1,
-                    seed=0,
-                    return_city=True,
-                    conf=conf,
-                )
-                sim_humans = tracker.city.humans
-            except RuntimeError as e:
-                if str(e) == ("size mismatch, m1: [14 x 28], m2: [29 x 128] " +
-                              "at /pytorch/aten/src/TH/generic/THTensorMath.cpp:41"):
-                    # TODO FIXME @@@@@@ GET RID OF THIS THING AS SOON AS WE HAVE A NEW
-                    #   WORKING TRANSFORMER THAT DOES NOT EXPECT THE MAGICAL EXTRA SYMPTOM
-                    warnings.warn("AVOIDING TRANSFORMER EXPLOSION BASED ON MISSING EXTRA SYMPTOM")
-                    return
-                else:
-                    raise
+            hdf5_path = os.path.join(d, "daily_output.hdf5")
+            collection_server = DataCollectionServer(
+                data_output_path=hdf5_path,
+                config_backup=conf,
+                human_count=n_people,
+                simulation_days=n_days,
+            )
+            collection_server.start()
 
-            days_output = glob.glob(f"{d}/daily_outputs/*/")
-            days_output.sort(key=lambda p: int(p.split(os.path.sep)[-2]))
-            self.assertEqual(len(days_output), n_days - conf.get('INTERVENTION_DAY'))
-            output = [[] for _ in days_output]
+            city, monitors, tracker = simulate(
+                n_people=n_people,
+                start_time=start_time,
+                simulation_days=n_days,
+                init_percent_sick=0.25,
+                outfile=os.path.join(d, "output"),
+                out_chunk_size=1,
+                seed=0,
+                return_city=True,
+                conf=conf,
+            )
+            sim_humans = tracker.city.humans
+
+            collection_server.stop_gracefully()
+            collection_server.join()
+            assert os.path.exists(hdf5_path)
 
             for h in sim_humans:
                 # Ensure that the human has a reasonnable recommendation level.
@@ -184,21 +185,25 @@ class ModelsTest(unittest.TestCase):
                     assert h.location.is_contaminated
                     assert h.location.contamination_probability == 1.0
 
-            for i, day_output in enumerate(days_output):
-                current_day = i + conf.get('INTERVENTION_DAY')
-                for hour in range(0, 24):
-                    pkls = glob.glob(f"{day_output}*/daily_human-{hour}.pkl")
-                    pkls.sort(key=lambda p: (int(p.split(os.path.sep)[-3]), int(p.split(os.path.sep)[-2])))
-                    hour_humans = {}
-                    for pkl in pkls:
-                        with open(pkl, 'rb') as f:
-                            hour_human = pickle.load(f)
-                        human_id = int(pkl.split(os.path.sep)[-2])
-                        hour_humans[human_id] = hour_human
-                        self.assertEqual(hour_human['current_day'], current_day)
-                    output[i].append(hour_humans)
-                    self.assertEqual(len(output[i][hour]), len(output[0][hour]))
-
+            with h5py.File(hdf5_path, "r") as fd:
+                dataset = fd["dataset"]
+                assert dataset.shape[0] == n_days
+                assert dataset.shape[1] == 24
+                assert dataset.shape[2] == n_people
+                output = []
+                for day_idx in range(conf.get('INTERVENTION_DAY'), n_days):
+                    hour_outputs = []
+                    for hour_idx in range(24):
+                        valid_outputs = {}
+                        for b in dataset[day_idx, hour_idx]:
+                            if len(b):
+                                human = pickle.loads(b)
+                                assert human["current_day"] == day_idx
+                                assert human["unobserved"]["human_id"] not in valid_outputs
+                                valid_outputs[human["unobserved"]["human_id"]] = human
+                        hour_outputs.append(valid_outputs)
+                    output.append(hour_outputs)
+            self.assertEqual(len(output), n_days - conf.get('INTERVENTION_DAY'))
             self.assertGreaterEqual(sum(len(h_h) for h_h in output[0]), n_people)
 
             for i in range(1, len(output)):

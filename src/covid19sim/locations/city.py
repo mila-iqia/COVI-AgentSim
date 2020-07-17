@@ -727,7 +727,6 @@ class City:
                 global_mailbox=self.global_mailbox,
                 time_slot=self.env.timestamp.hour,
                 conf=self.conf,
-                data_path=outfile,
                 city_hash=self.hash,
             )
 
