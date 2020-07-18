@@ -339,7 +339,7 @@ class City:
             output.extend(getattr(self, f"{location_name}s"))
         return output
 
-    def initialize_humans(self, human_type):
+    def initialize_humans(self):
         """
         `Human`s are created based on the statistics captured in HUMAN_DSITRIBUTION. Age distribution is specified via 'p'.
         SMARTPHONE_OWNER_FRACTION_BY_AGE defines the fraction of population in the age bin that owns smartphone.
