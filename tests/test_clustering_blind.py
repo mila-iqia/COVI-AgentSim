@@ -233,6 +233,7 @@ class BlindClusteringTests(unittest.TestCase):
             encounter_tick=encounter_tick_b,
             encounter_risk_level=encounter_risk_level_b
         )
+
         self.message_context.insert_messages(observed_risks=o_a)
         self.message_context.insert_messages(observed_risks=o_b)
         cluster_manager = clu.BlindClusterManager(
