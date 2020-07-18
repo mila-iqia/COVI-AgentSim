@@ -189,7 +189,7 @@ def may_develop_severe_illness(age, sex, rng):
     if age > 90:
         age = 90
     
-    index_of_age_category = (age - (age % 10))/10 # round down to nearest 10, then divide by 10
+    index_of_age_category = (age - (age % 10))//10 # round down to nearest 10, then floor divide by 10
     return rng.rand() < hospitalization_likelihood[index_of_age_category]
 
 
