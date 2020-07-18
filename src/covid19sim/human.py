@@ -12,7 +12,7 @@ import warnings
 from collections import defaultdict
 from orderedset import OrderedSet
 
-from covid19sim.utils.mobility_planner import MobilityPlanner
+from covid19sim.utils.mobility_planner_v2 import MobilityPlanner
 from covid19sim.interventions.behaviors import Behavior
 from covid19sim.interventions.recommendation_manager import NonMLRiskComputer
 from covid19sim.utils.utils import compute_distance, proba_to_risk_fn
@@ -1299,7 +1299,6 @@ class Human(object):
     def run_2(self, city):
         """
         """
-        self.mobility_planner.initialize()
         next_activity = None
         while True:
             self.run_mobility_reduction_check()
@@ -1637,11 +1636,6 @@ class Human(object):
 
         # remove human from this location
         location.remove_human(self)
-
-        # initiate another "socialize" activity
-        # if next_activity.name == "socialize":
-        #     breakpoint()
-        #     next_activity.plan_next()
 
     def interact_with(self, interaction_profile, type):
         """

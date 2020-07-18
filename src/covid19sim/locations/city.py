@@ -364,7 +364,12 @@ class City:
         # assign workplace to humans
         self.humans, self = create_locations_and_assign_workplace_to_humans(self.humans, self, self.conf, self.logfile)
 
-
+        log("Preparing schedule...", self.logfile)
+        start_time = datetime.datetime.now()
+        for human in self.humans:
+            human.mobility_planner.initialize()
+        timedelta = ( datetime.datetime.now() - start_time).total_seconds()
+        log(f"Took {timedelta:2.3f}s", self.logfile)
 
         self.hd = {human.name: human for human in self.humans}
 
