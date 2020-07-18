@@ -166,7 +166,7 @@ def _get_random_sex(rng, conf):
 
 def may_develop_severe_illness(age, sex, rng):
     """
-    Liklihood of getting really sick (i.e., requiring hospitalization) from Covid-19
+    Likelihood of getting really sick (i.e., requiring hospitalization) from Covid-19
     Args:
         age ([int]): [description]
         sex ([int]): [description]
@@ -175,63 +175,22 @@ def may_develop_severe_illness(age, sex, rng):
     Returns:
         Boolean: returns True if this person would likely require hospitalization given that they contracted Covid-19
     """
+    # age     < 10  < 20  < 30  < 40   < 50  < 60  < 70  < 80  < 90  default
+    female = [0.02, 0.002, 0.05, 0.05, 0.13, 0.18, 0.16, 0.24, 0.17, 0.03]
+    male = [0.002, 0.02, 0.03, 0.07, 0.13, 0.17, 0.22, 0.22, 0.15, 0.03]
+    other = [0.02, 0.02, 0.04, 0.07, 0.13, 0.18, 0.24, 0.24, 0.18, 0.03]
+
+    hospitalization_likelihood = other
     if sex.lower().startswith('f'):
-        if age < 10:
-            return rng.rand() < 0.02
-        if age < 20:
-            return rng.rand() < 0.002
-        if age < 40:
-            return rng.rand() < 0.05
-        if age < 50:
-            return rng.rand() < 0.13
-        if age < 60:
-            return rng.rand() < 0.18
-        if age < 70:
-            return rng.rand() < 0.16
-        if age < 80:
-            return rng.rand() < 0.24
-        if age < 90:
-            return rng.rand() < 0.17
-        else:
-            return rng.rand() < 0.03
-
+        hospitalization_likelihood = female
     elif sex.lower().startswith('m'):
-        if age < 10:
-            return rng.rand() < 0.002
-        if age < 20:
-            return rng.rand() < 0.02
-        if age < 30:
-            return rng.rand() < 0.03
-        if age < 40:
-            return rng.rand() < 0.07
-        if age < 50:
-            return rng.rand() < 0.13
-        if age < 60:
-            return rng.rand() < 0.17
-        if age < 80:
-            return rng.rand() < 0.22
-        if age < 90:
-            return rng.rand() < 0.15
-        else:
-            return rng.rand() < 0.03
+        hospitalization_likelihood = male
 
-    else:
-        if age < 20:
-            return rng.rand() < 0.02
-        if age < 30:
-            return rng.rand() < 0.04
-        if age < 40:
-            return rng.rand() < 0.07
-        if age < 50:
-            return rng.rand() < 0.13
-        if age < 60:
-            return rng.rand() < 0.18
-        if age < 80:
-            return rng.rand() < 0.24
-        if age < 90:
-            return rng.rand() < 0.18
-        else:
-            return rng.rand() < 0.03
+    if age > 90:
+        age = 90
+    
+    index_of_age_category = (age - (age % 10))/10 # round down to nearest 10, then divide by 10
+    return rng.rand() < hospitalization_likelihood[index_of_age_category]
 
 
 # &preexisting-conditions
@@ -297,19 +256,15 @@ def _get_preexisting_conditions(age, sex, rng):
 def _get_inflammatory_disease_level(rng, preexisting_conditions, inflammatory_conditions):
     cond_count = 0
     for cond in inflammatory_conditions:
-        if cond in preexisting_conditions:
+        if cond in preexisting_conditions and cond_count < 3:
           cond_count += 1
-    if cond_count > 3:
-        cond_count = 3
     return cond_count
 
 
 def get_carefulness(age, rng, conf):
     # &carefulness
-    if rng.rand() < conf.get("P_CAREFUL_PERSON"):
-        carefulness = min((max(round(rng.normal(55, 10)), 0) + age / 2) / 100, 1)
-    else:
-        carefulness = min((max(round(rng.normal(25, 10)), 0) + age / 2) / 100, 1)
+    loc = 55 if rng.rand() < conf.get("P_CAREFUL_PERSON") else 25
+    carefulness = min((max(round(rng.normal(loc, 10)), 0) + age / 2) / 100, 1)
     return carefulness
 
 def get_age_bin(age, conf):
