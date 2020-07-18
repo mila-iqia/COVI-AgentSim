@@ -357,19 +357,25 @@ class City:
         # self.households is initialized within this function through calls to `self.create_location`
         self.humans = assign_households_to_humans(self.humans, self, self.conf, self.logfile)
 
-        # # assign profession to humans
-        # for human in self.humans:
-        #     human.profession="other"
-        #     human.assign_workplace(self.rng.choice(self.workplaces + self.stores + self.miscs))
         # assign workplace to humans
         self.humans, self = create_locations_and_assign_workplace_to_humans(self.humans, self, self.conf, self.logfile)
 
-        log("Preparing schedule...", self.logfile)
+        # prepare schedule
+        log("Preparing schedule ... ")
         start_time = datetime.datetime.now()
-        for human in self.humans:
-            human.mobility_planner.initialize()
+        # TODO - parallelize this for speedup in initialization
+        # /!\ Initiate adults first because kids schedule depends on their parents.
+        MAX_AGE_WITHOUT_SUPERVISION = self.conf['MAX_AGE_CHILDREN_WITHOUT_PARENT_SUPERVISION']
+        adults = [human for human in self.humans if human.age > MAX_AGE_WITHOUT_SUPERVISION]
+        for adult in adults:
+            adult.mobility_planner.initialize()
+
+        kids = [human for human in self.humans if human.age <= MAX_AGE_WITHOUT_SUPERVISION]
+        for kid in kids:
+            kid.mobility_planner.initialize()
+
         timedelta = ( datetime.datetime.now() - start_time).total_seconds()
-        log(f"Took {timedelta:2.3f}s", self.logfile)
+        log(f"Schedule prepared (Took {timedelta:2.3f}s)", self.logfile)
 
         self.hd = {human.name: human for human in self.humans}
 

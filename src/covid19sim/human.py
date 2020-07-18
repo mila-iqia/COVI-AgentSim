@@ -1299,16 +1299,21 @@ class Human(object):
     def run_2(self, city):
         """
         """
-        next_activity = None
+        previous_activity, next_activity = None, self.mobility_planner.get_next_activity()
         while True:
             self.run_mobility_reduction_check()
             self.move_to_hospital_if_required()
-            previous_activity, next_activity = next_activity, self.mobility_planner.get_next_activity()
-            # print("A\t", self.env.timestamp, self, next_activity)
-            yield self.env.process(self.transition_to(next_activity, previous_activity))
-            # yield self.env.process(self.at(next_activity.location, self.city, next_activity.duration))
-            # print("B\t", self.env.timestamp, self, next_activity)
-            assert abs(self.env.timestamp - next_activity.end_time).seconds == 0, "times do not align..."
+            # previous_activity, next_activity = next_activity, self.mobility_planner.get_next_activity()
+            if next_activity.location is None:
+                next_activity.refresh_location()
+                yield self.env.timeout(0.01)
+            else:
+                # print("A\t", self.env.timestamp, self, next_activity)
+                yield self.env.process(self.transition_to(next_activity, previous_activity))
+                # print("B\t", self.env.timestamp, self, next_activity)
+                assert abs(self.env.timestamp - next_activity.end_time).seconds == 0, "times do not align..."
+                previous_activity, next_activity = next_activity, self.mobility_planner.get_next_activity()
+
 
     def decide_next_activity(self, hour, day):
         # TODO (EM) These optional and erratic behaviours should be more probabalistic,
