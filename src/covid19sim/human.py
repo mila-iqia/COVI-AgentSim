@@ -1597,7 +1597,7 @@ class Human(object):
         Args:
             next_activity (covid19sim.utils.mobility_planner.Acitvity): next activity to do
             previous_activity (covid19sim.utils.mobility_planner.Acitvity): previous activity where human was
-            
+
         Yields:
             (simpy.events.Timeout)
         """
@@ -1623,6 +1623,8 @@ class Human(object):
 
         yield self.env.timeout(duration)
         # print("after", self.env.timestamp, self, location, duration)
+
+        # only sample interactions if there is a possibility of infection or message exchanges
         if duration > min(self.conf['MIN_MESSAGE_PASSING_DURATION'], self.conf['INFECTION_DURATION']):
             # sample interactions with other humans at this location
             # unknown are the ones that self is not aware of e.g. person sitting next to self in a cafe
@@ -1635,6 +1637,11 @@ class Human(object):
 
         # remove human from this location
         location.remove_human(self)
+
+        # initiate another "socialize" activity
+        # if next_activity.name == "socialize":
+        #     breakpoint()
+        #     next_activity.plan_next()
 
     def interact_with(self, interaction_profile, type):
         """

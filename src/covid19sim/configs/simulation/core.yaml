@@ -405,7 +405,7 @@ WORKPLACE_ASSORTATIVITY_STRENGTH: 0.4
 
 # social mixing knob (B)
 # Defines the probability of accepting inivitaton from peers to "socialize"
-P_INVITATION_ACCEPTANCE: 0.0
+P_INVITATION_ACCEPTANCE: 0.5
 PREFERENTIAL_ATTACHEMENT_FACTOR: 1.0
 
 # Infection knobs ()

@@ -18,7 +18,7 @@ import pandas as pd
 
 from covid19sim.plotting.plot_rt import PlotRt
 from covid19sim.utils.utils import log
-from covid19sim.utils.constants import AGE_BIN_WIDTH_5, ALL_LOCATIONS, SECONDS_PER_DAY
+from covid19sim.utils.constants import AGE_BIN_WIDTH_5, ALL_LOCATIONS, SECONDS_PER_DAY, SECONDS_PER_HOUR
 LOCATION_TYPES_TO_TRACK_MIXING = ["house", "work", "school", "other", "all"]
 
 def print_dict(title, dic, is_sorted=None, top_k=None, logfile=None):
@@ -200,6 +200,7 @@ class Tracker(object):
         self.socialize_activity_data = {
             "group_size": Statistics(),
             "location_frequency": defaultdict(int),
+            "start_time": Statistics()
         }
         self.rec_feelings = []
         self.outside_daily_contacts = []
@@ -1045,14 +1046,19 @@ class Tracker(object):
 
     def track_mobility(self, current_activity, next_activity, human):
         """
-        Aggregates information about mobility pattern of humans.
+        Aggregates information about mobility pattern of humans. Following information is being aggregated -
+            1. transition_probabilities from one location type to another on weekends and weekdays
+            2. fraction of day spent doing a certain activity on weekends or weekdays
+            3. statistics on group size of "socialize" activities
+            4. fraction of time "socialize" activity took place at a location_type
+            5.
 
         Args:
             current_activity (covid19sim.utils.mobility_planner.Activity): [description]
             next_activity (covid19sim.utils.mobility_planner.Activity): [description]
             human (covid19sim.human.Human): human for which sleep schedule needs to be added.
         """
-        if not (self.conf['track_all'] or self.conf['track_trip']) or current_activity is None:
+        if not (self.conf['track_all'] or self.conf['track_mobility']) or current_activity is None:
             return
 
         # forms a transition probability on weekdays and weekends
@@ -1068,8 +1074,9 @@ class Tracker(object):
 
         # histogram of number of people with whom socialization happens
         if next_activity.name == "socialize":
-            self.socialize_activity_data['group_size'].push(len(next_activity.social_group))
+            self.socialize_activity_data['group_size'].push(len(next_activity.rsvp))
             self.socialize_activity_data["location_frequency"][next_activity.location.location_type] += 1
+            self.socialize_activity_data["start_time"].push(next_activity.start_in_seconds)
 
     def track_mixing(self, human1, human2, duration, distance_profile, timestamp, location, interaction_type, contact_condition):
         """
@@ -1471,7 +1478,9 @@ class Tracker(object):
         log("\n######## MOBILITY STATISTICS #########", self.logfile)
         activities = ["work", "socialize", "grocery", "exercise", "idle", "sleep"]
 
+        log("Proportion of day spent in activities - ", self.logfile)
         # unsupervised
+        log("\nUnsupervised activities - ", self.logfile)
         for type_of_day in ["weekday", "weekend"]:
             str_to_print = f"{type_of_day} - "
             for activity in activities:
@@ -1488,7 +1497,8 @@ class Tracker(object):
                 str_to_print += f"| {activity}: {x:2.3f}"
             log(str_to_print, self.logfile)
 
-        str_to_print = "socialize group size - "
+        log("\nSocial groups -", self.logfile)
+        str_to_print = "size - "
         group_sizes = self.socialize_activity_data['group_size']
         str_to_print += f"mean: {group_sizes.mean():2.2f} | "
         str_to_print += f"std: {group_sizes.stddev(): 2.2f} | "
@@ -1496,15 +1506,30 @@ class Tracker(object):
         str_to_print += f"max: {group_sizes.maximum(): 2.2f} | "
         log(str_to_print, self.logfile)
 
-        str_to_print = "socialize location - "
+        str_to_print = "location - "
         locations = self.socialize_activity_data["location_frequency"].keys()
         total = sum(self.socialize_activity_data["location_frequency"].values())
         str_to_print += f"total visits {total} | "
         for location in locations:
             m = self.socialize_activity_data["location_frequency"][location]
-            str_to_print += f"{location}: {m} {m/total:2.2f}%"
+            str_to_print += f"{location}: {m} {100*m/total:2.2f}%"
         log(str_to_print, self.logfile)
 
+        str_to_print = "Start time - "
+        start_times = self.socialize_activity_data["start_time"]
+        str_to_print += f"mean: {start_times.mean()/SECONDS_PER_HOUR: 2.2f} | "
+        str_to_print += f"std: {start_times.stddev()/SECONDS_PER_HOUR: 2.2f} | "
+        str_to_print += f"min: {start_times.minimum()/SECONDS_PER_HOUR: 2.2f} | "
+        str_to_print += f"max: {start_times.maximum()/SECONDS_PER_HOUR: 2.2f} | "
+        log(str_to_print, self.logfile)
+
+        str_to_print = "Social network properties (degree statistics) - "
+        degrees = Statistics([len(h.known_connections) for h in self.city.humans])
+        str_to_print += f"mean {degrees.mean(): 2.2f} | "
+        str_to_print += f"std. {degrees.stddev(): 2.2f} | "
+        str_to_print += f"min {degrees.minimum(): 2.2f} | "
+        str_to_print += f"max {degrees.maximum(): 2.2f} | "
+        log(str_to_print, self.logfile)
         # for until_days in [30, None]:
         #     log("******** Risk Precision/Recall *********", self.logfile)
         #     prec, lift, recall = self.compute_risk_precision(daily=False, until_days=until_days)

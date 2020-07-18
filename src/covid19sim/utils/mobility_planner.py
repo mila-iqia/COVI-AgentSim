@@ -4,6 +4,7 @@ Class and functions to plan human's schedule.
 import datetime
 from collections import defaultdict, deque
 import numpy as np
+from copy import deepcopy
 
 from covid19sim.utils.utils import _random_choice
 from covid19sim.utils.constants import SECONDS_PER_DAY, SECONDS_PER_HOUR, SECONDS_PER_MINUTE
@@ -20,13 +21,23 @@ class Activity(object):
         # absolute times (starting from simulation start time)
         self.start_time = None # (datetime.datetime) object to be initialized in _patch_schedule
         self.end_time = None # (datetime.datetime) object to be initialized in _patch_schedule
+        self.rsvp = set()
 
-        self.social_group = set() # (set) used only when name = "socialize" to coordinate between people.
+    @property
+    def date(self):
+        return self.start_time.date()
 
     def __repr__(self):
         if self.start_time:
             return f"<{self.name} on {self.start_time.date()} from {self.start_time.time()} to {self.end_time.time()} at {self.location}>"
         return f"<TBD: {self.name} at {self.location} for {self.duration} seconds>"
+
+    def clone(self):
+        x = Activity(self.start_in_seconds, self.end_in_seconds, self.duration,
+                f"clone-{self.name}", self.location)
+        x.start_time = self.start_time
+        x.end_time = self.end_time
+        return x
 
 
 class MobilityPlanner(object):
@@ -44,8 +55,8 @@ class MobilityPlanner(object):
         self.conf = conf
         self.rng = human.rng
 
-        self.restrictions = {"socialize":None}
-        self.next_date = {activity: _sample_next_date(activity, conf, self.human, self.rng, self.env.timestamp.date()) for activity in ACTIVITIES}
+        self.invitations = defaultdict(list)
+        self.next_date = {activity: _sample_next_date(activity, conf, self.rng, self.env.timestamp.date()) for activity in ACTIVITIES}
         self.schedule_for_day = []
         self.current_activity = None
         self.follows_adult_schedule, self.adults_in_house = False, []
@@ -95,27 +106,7 @@ class MobilityPlanner(object):
         self.current_activity = schedule.popleft()
         return self.current_activity
 
-    def add_restrictions(self, activity):
-        """
-        Applies restrictions to mobility by accepting / rejecting invitations from others.
-
-        Args:
-            activity (Activity): activty and its attributes
-        """
-        assert activity.name == "socialize", "coordination for other activities is not implemented."
-
-        P_INVITATION_ACCEPTANCE = self.conf['P_INVITATION_ACCEPTANCE']
-
-        if (activity.start_time > self.human.work_end_time
-            and activity.end_time < self.human.work_start_time):
-            if self.restrictions["socialize"] is None and self.rng.uniform() < P_INVITATION_ACCEPTANCE:
-                self.next_time["socialize"] = activity.start_time.date()
-                self.next_location["socialize"] = activity.location
-                self.restrictions["socialize"] = activity
-                return True
-        return False
-
-    def do_activity_on_date(self, activity, date):
+    def schedule_activity_on_date(self, activity, date):
         """
         Decides if the activity is scheduled on `date`.
 
@@ -129,29 +120,63 @@ class MobilityPlanner(object):
         if activity == "work":
             return not self.human.does_not_work and date.weekday() in self.human.working_days
 
+        # if there are invites, then don't schedule this event
+        if activity == "socialize" and len(self.invitations[date]) > 0:
+            return False
+
         return self.next_date[activity] is not None and self.next_date[activity] >= date
 
-    def _notify_others_if_required(self, activity):
+    def invite(self, activity, connections):
         """
-        Notifies other `human`s in known connections to coordinate for group activities.
+        Sends `activity` to connections.
 
         Args:
-            activity (Activtiy): type of activity
+            activity (Activity):  activity object defining the activity.
+            connections (list): list of humans that are to be sent a request
         """
         assert activity.name == "socialize", "coordination for other activities is not implemented."
         group = set()
-        for human in self.human.known_connections:
-            if human.mobility_planner.add_restrictions(activity):
+        for human in connections:
+            if human.mobility_planner.receive(activity, self):
                 group.add(human)
 
-        activity.social_group = group
+        # doing it here to avoid incomplete rsvp set to the invitees.
+        activity.rsvp = group
+
+    def receive(self, activity, human):
+        """
+        Receives the invite from `human`.
+
+        Args:
+            activity (Activity): attributes of activity
+            human (covid19sim.human.Human): `human` from which invitation is received.
+
+        Returns:
+            (bool): True if `self` adds `activity` to its schedule. False o.w.
+        """
+        assert activity.name == "socialize", "coordination for other activities is not implemented."
+
+        if self.follows_adult_schedule:
+            return False
+
+        if self.schedule_prepared.get(activity.date, False):
+            return False
+
+        P_INVITATION_ACCEPTANCE = self.conf['P_INVITATION_ACCEPTANCE']
+
+        if self.rng.random() < P_INVITATION_ACCEPTANCE:
+            x = activity.clone()
+            self.invitations[self.env.timestamp.date()].append(x)
+            return True
+
+        return False
 
     def prepare_schedule(self):
         """
         Prepares schedule for `human`. Following cases are considered -
             1. `human` is a kid that can't be without parent supervision
             2. `human` is a kid that can go to school, but needs parent supervision at other times
-            3. `human` that is free to do anything.
+            3. `human` who is free to do anything.
 
         Returns:
             schedule (deque): a deque of `Activity`s where the activities are arranged in increasing order of their starting time.
@@ -166,21 +191,33 @@ class MobilityPlanner(object):
         # otherwise just use adult's schedule all the time.
         if self.follows_adult_schedule:
             adult = self.rng.choice(self.adults_in_house, size=1).item()
-            if self.human.does_not_work or not self.do_activity_on_date("work", today):
+            if self.human.does_not_work or not self.schedule_activity_on_date("work", today):
                 schedule = adult.mobility_planner.get_schedule()
                 return _patch_supervised_schedule(self.human, schedule, self.current_activity, self.conf)
             else:
                 ALL_ACTIVITIES = ["work"]
 
         # without supervision
+        last_activity_scheduled = None
         for activity in ALL_ACTIVITIES:
-            if self.do_activity_on_date(activity, today):
+            if self.schedule_activity_on_date(activity, today):
                 location = self.human._select_location(activity, self.human.city)
                 duration = _sample_activity_duration(activity, self.conf, self.rng)
                 schedule[activity] = Activity(None, None, duration, activity, location)
-                self.next_date[activity] = _sample_next_date(activity, self.conf, self.human, self.rng, self.env.timestamp.date())
+                self.next_date[activity] = _sample_next_date(activity, self.conf, self.rng, self.env.timestamp.date())
 
-        return _patch_schedule(self.human, schedule, self.current_activity, self.rng, self.conf, self.env.timestamp, adult_to_follow=adult)
+        # prepare a full schedule
+        schedule = _patch_schedule(self.human, schedule, self.current_activity,
+                        self.rng, self.conf, self.env.timestamp, adult_to_follow=adult,
+                        invitations=self.invitations.pop(today, []))
+
+        # if a social event is organized, send the invite to connections
+        for activity in schedule:
+            if activity.name == "socialize":
+                self.invite(activity, self.human.known_connections)
+                break
+
+        return schedule
 
 def _patch_supervised_schedule(human, adult_schedule, last_activity, conf):
     """
@@ -211,12 +248,21 @@ def _patch_supervised_schedule(human, adult_schedule, last_activity, conf):
 
     return deque(kid_schedule)
 
-
-def _patch_schedule(human, schedule, last_activity, rng, conf, today, adult_to_follow):
+def _patch_schedule(human, schedule, last_activity, rng, conf, today, adult_to_follow, invitations):
     """
     Makes a continuous schedule out of the list of activities.
 
     Args:
+        human (covid19sim.human.Human): human for which sleep schedule needs to be added.
+        schedule (list): list of `Activity`s
+        last_activity (Activity): last activity that `human` was doing
+        rng (np.random.RandomState): Random number generator
+        conf (dict): yaml configuration of the experiment
+        today (datetime.date):
+        adult_to_follow (covid19sim.human.Human):
+        invitations (list): inivitations that will be considered while preparing the full schedule
+
+    Returns:
         schedule (deque): a deque of `Activity`s where the activities are arranged in increasing order of their starting time.
     """
     # start from the last activity
@@ -229,6 +275,14 @@ def _patch_schedule(human, schedule, last_activity, rng, conf, today, adult_to_f
     PRIORITIZED_ACTIVITIES = ["work", "socialize", "grocery", "exercise"]
     for type_of_activity in PRIORITIZED_ACTIVITIES:
         activity = schedule[type_of_activity]
+
+        # accept one pending invite if it follows the scheduling constraints
+        # Note: if schedule["socialize"] is not None, it still follows the invited activity
+        if type_of_activity == "socialize":
+            for x in invitations:
+                if  current_activity.end_in_seconds < x.start_in_seconds:
+                    activity = x
+                    break
 
         if activity is None:
             continue
@@ -306,6 +360,7 @@ def _add_sleep_to_schedule(human, schedule, wake_up_time_in_seconds, last_activi
     max_awake_duration  = rng.gamma(AVG_AWAKE_MINUTES / SCALE_AWAKE_MINUTES, SCALE_AWAKE_MINUTES) * SECONDS_PER_MINUTE
 
     # add idle time if its before bed time
+    # Note: # if  start_sleep_time_in_seconds > last_activity.end_in_seconds we cut short the last_activity
     start_sleep_time_in_seconds = wake_up_time_in_seconds + max(awake_duration, max_awake_duration)
     sleep_duration = rng.gamma(AVG_SLEEPING_MINUTES / SCALE_SLEEPING_MINUTES, SCALE_SLEEPING_MINUTES) * SECONDS_PER_MINUTE
     activity = Activity(start_sleep_time_in_seconds, None, sleep_duration, "sleep", human.household)
@@ -401,19 +456,18 @@ def _sample_days_to_next_activity(P_ACTIVITY_DAYS, rng):
     sampled_day = _random_choice(P_ACTIVITY_DAYS, size=1, P=p/p.sum(), rng=rng)[0]
     return sampled_day[0]
 
-def _sample_next_date(activity, conf, human, rng, today):
+def _sample_next_date(activity, conf, rng, today):
     """
     Samples number of days after which `activity` will take place again.
 
     Args:
         activity (str): type of activity
         conf (dict): yaml configuration of the experiment
-        human (covid19sim.human.Human): human object for which next activity needs to be sampled
         rng (np.random.RandomState): Random number generator
         today (datetime.date): today's date
 
     Returns:
-        days (datetime.date): date on which it takes place next
+        (datetime.date): date on which it takes place next
     """
     if activity == "work":
         return None
