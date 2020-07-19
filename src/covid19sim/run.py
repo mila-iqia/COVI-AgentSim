@@ -140,6 +140,13 @@ def main(conf: DictConfig):
         collection_server.stop_gracefully()
         collection_server.join()
 
+    if hasattr(city, "tracker") and \
+            hasattr(city.tracker, "collection_server") and \
+            isinstance(city.tracker.collection_server, DataCollectionServer) and \
+            city.tracker.collection_server is not None:
+        city.tracker.collection_server.stop_gracefully()
+        city.tracker.collection_server.join()
+
     if not conf["tune"]:
         # ----------------------------------------------
         # -----  Not Tune: Write Logs And Metrics  -----

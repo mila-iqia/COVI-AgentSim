@@ -1,15 +1,21 @@
 """
 [summary]
 """
+import copy
+import dataclasses
 import datetime
+import functools
+import gc
 import math
 import os
 import pathlib
 import subprocess
+import sys
+import textwrap
+import types
 import typing
 import zipfile
-from copy import deepcopy
-from functools import lru_cache
+from orderedset import OrderedSet
 from pathlib import Path
 import time
 import dill
@@ -20,6 +26,8 @@ from omegaconf import DictConfig, OmegaConf
 from scipy.stats import norm
 
 from covid19sim.epidemiology.symptoms import STR_TO_SYMPTOMS
+if typing.TYPE_CHECKING:
+    from covid19sim.human import Human
 
 
 def log(str, logfile=None, timestamp=False):
@@ -114,7 +122,7 @@ def compute_distance(loc1, loc2):
     return np.sqrt((loc1.lat - loc2.lat) ** 2 + (loc1.lon - loc2.lon) ** 2)
 
 
-@lru_cache(500)
+@functools.lru_cache(500)
 def _get_integer_pdf(avg, scale, num_sigmas=2):
     """
     [summary]
@@ -193,6 +201,12 @@ def probas_to_risk_mapping(probas,
 
     return cutoffs
 
+
+def _proba_to_risk(probas, mapping):
+    """Probability to risk mapping operation. Non-lambda version, because why use a lambda?"""
+    return np.maximum(np.searchsorted(mapping, probas, side='left') - 1, 0)
+
+
 def proba_to_risk_fn(mapping):
     """
     Create a callable, based on a mapping, that takes probabilities (in
@@ -205,10 +219,8 @@ def proba_to_risk_fn(mapping):
     Returns:
         callable: Function taking probabilities and returning discrete risk levels.
     """
-    def _proba_to_risk(probas):
-        return np.maximum(np.searchsorted(mapping, probas, side='left') - 1, 0)
+    return functools.partial(_proba_to_risk, mapping=mapping)
 
-    return _proba_to_risk
 
 def calculate_average_infectiousness(human):
     """ This is only used for the infectiousness value for a human that is written out for the ML predictor.
@@ -230,6 +242,7 @@ def filter_open(locations):
         list
     """
     return [loc for loc in locations if loc.is_open_for_business]
+
 
 def filter_queue_max(locations, max_len):
     """Given an iterable of locations, will return a list of those
@@ -499,7 +512,7 @@ def dumps_conf(
         conf (dict): configuration dictionary to be written in a file
     """
 
-    copy_conf = deepcopy(conf)
+    copy_conf = copy.deepcopy(conf)
 
     if "AGE_GROUP_CONTACT_AVG" in copy_conf:
         copy_conf['AGE_GROUP_CONTACT_AVG']['age_groups'] = \
@@ -634,3 +647,188 @@ def zip_outdir(outdir):
 def normal_pdf(x, mean, std):
     proba = np.exp(-(((x - mean) ** 2) / (2 * std ** 2))) / (std * (2 * np.pi) ** 0.5)
     return proba
+
+
+def copy_obj_array_except_env(array):
+    """Copies a Human/City/Location object array, calling the child function below for each object."""
+    if isinstance(array, dict):
+        return {k: copy_obj_except_env(v) for k, v in array.items()}
+    elif isinstance(array, list):
+        return [copy_obj_except_env(v) for v in array]
+    else:
+        raise NotImplementedError
+
+
+@dataclasses.dataclass(init=False)
+class DummyEnv:
+    """Dummy picklable constant version of the `Env` class."""
+    initial_timestamp: datetime.datetime
+    timestamp: datetime.datetime
+    ts_initial: int
+    now: int
+
+    def __init__(self, env):
+        self.initial_timestamp = env.initial_timestamp
+        self.timestamp = env.timestamp
+        self.ts_initial = env.ts_initial
+        self.now = env.now
+
+    def minutes(self):
+        return self.timestamp.minute
+
+    def hour_of_day(self):
+        return self.timestamp.hour
+
+    def day_of_week(self):
+        return self.timestamp.weekday()
+
+    def is_weekend(self):
+        return self.day_of_week() >= 5
+
+    def time_of_day(self):
+        return self.timestamp.isoformat()
+
+
+class DummyHuman:
+    """Dummy picklable constant version of the `Human` class."""
+    # note: since we're talking about a metric s*-ton of attributes, most will be dynamically added
+
+    def __init__(self, human: "Human"):
+        import pickle
+        # "dummy" attributes replace the original attribute by a less-complex one
+        self.dummy_attribs = [
+            "env", "location", "last_location", "household", "workplace", "last_date",
+            "recommendations_to_follow",  # the old states contained in behaviors might break serialization
+        ]
+        self.env = DummyEnv(human.env)
+        self.location = human.location.name if human.location else ""
+        self.last_location = human.last_location.name if human.last_location else ""
+        self.household = human.household.name if human.household else ""
+        self.workplace = human.workplace.name if human.workplace else ""
+        self.last_date = dict(human.last_date)
+        self.recommendations_to_follow = [str(rec) for rec in human.recommendations_to_follow]
+        # "blacklisted" attributes are overriden with `None`, no matter their original value
+        self.blacklisted_attribs = [
+            "conf", "city", "my_history", "visits", "proba_to_risk_level_map",
+        ]
+        for attr_name in self.blacklisted_attribs:
+            setattr(self, attr_name, None)
+        # all other attributes will be copied as-is
+        for attr_name in human.__dict__.keys():
+            if attr_name not in self.dummy_attribs and \
+                    attr_name not in self.blacklisted_attribs and \
+                    not attr_name.startswith("__"):
+                setattr(self, attr_name, getattr(human, attr_name))
+        from covid19sim.native._native import BaseHuman
+        for attr_name in BaseHuman.__dict__.keys():
+            if attr_name not in self.dummy_attribs and \
+                    attr_name not in self.blacklisted_attribs and \
+                    not attr_name.startswith("__"):
+                setattr(self, attr_name, getattr(human, attr_name))
+
+
+def copy_obj_except_env(obj):
+    """Copies a Human/City/Location object without its env part (which fails due to the generator)."""
+    from covid19sim.human import Human
+    from covid19sim.locations.location import Location
+    from covid19sim.locations.city import City, Household, Hospital
+    assert isinstance(obj, (Human, Location, City))
+    if isinstance(obj, Human):
+        return DummyHuman(obj)
+    elif isinstance(obj, Location):
+        # Replace the Location's attributes with values that can be deepcopied
+        # while still keeping the vital information
+        backup_location_attribs = (obj.env, obj.humans, obj.infectious_human,
+                                   obj.users, obj._env)
+
+        obj.env = DummyEnv(obj.env)  # should replicate the env's behavior perfectly
+        obj.infectious_human = obj.infectious_human()  # fct broken by changing obj.humans at next line
+        obj.humans = OrderedSet([h.name for h in obj.humans])  # this will break lookups, but still provide basic info
+        obj._env = DummyEnv(obj._env)  # should replicate the env's behavior perfectly
+        obj.users = None
+
+        if isinstance(obj, Household):
+            backup_residents = obj.residents
+            obj.residents = [h.name for h in obj.residents]  # will break lookups, but still provide basic info
+        elif isinstance(obj, Hospital):
+            # The hospical contains a sublocation which must be deepcopied too
+            backup_icu = obj.icu
+            obj.icu = copy_obj_except_env(obj.icu)
+
+        # Copy the Location
+        obj_copy = copy.deepcopy(obj)
+
+        # Restore the Location's original attributes
+        obj.env, obj.humans, obj.infectious_human, obj.users, obj._env = backup_location_attribs
+
+        if isinstance(obj, Household):
+            obj.residents = backup_residents
+        elif isinstance(obj, Hospital):
+            obj.icu = backup_icu
+
+    else:  # isinstance(obj, City):
+        raise NotImplementedError
+
+
+def get_approx_object_size_tree(obj, tree=None, seen_obj_ids=None):
+    """Returns a tree structure that contains the approximate size of an object and its children.
+
+    This function is recursive and will avoid loops, but it might still be very slow for large objects.
+
+    TODO: make faster/more accurate with `gc.get_referents`?
+    """
+    if tree is None:
+        tree = {None: 0}
+    else:
+        assert None in tree  # root cumulative size key, should always exist
+    if seen_obj_ids is None:
+        seen_obj_ids = set()
+    obj_id = id(obj)
+    if obj_id in seen_obj_ids:
+        return tree
+    seen_obj_ids.add(obj_id)
+    obj_size = sys.getsizeof(obj)
+    obj_name = textwrap.shorten(str(type(obj)) + ": " + str(obj), width=100) + " |> " + str(obj_id)
+    assert obj_name not in tree
+    tree[obj_name] = {None: obj_size}
+    if isinstance(obj, dict):
+        for attr_key, attr_val in obj.items():
+            tree[obj_name][attr_key] = {None: 0}
+            tree[obj_name][attr_key] = \
+                get_approx_object_size_tree(attr_key, tree[obj_name][attr_key], seen_obj_ids)
+            tree[obj_name][attr_key] = \
+                get_approx_object_size_tree(attr_val, tree[obj_name][attr_key], seen_obj_ids)
+            tree[obj_name][None] += tree[obj_name][attr_key][None]
+    elif hasattr(obj, "__dict__"):
+        for attr_key, attr_val in obj.__dict__.items():
+            tree[obj_name][attr_key] = {None: 0}
+            tree[obj_name][attr_key] = \
+                get_approx_object_size_tree(attr_val, tree[obj_name][attr_key], seen_obj_ids)
+            tree[obj_name][None] += tree[obj_name][attr_key][None]
+    elif hasattr(obj, "__iter__") and not isinstance(obj, (str, bytes, bytearray)):
+        for idx, attr_val in enumerate(obj):
+            tree[obj_name][f"#{idx}"] = {None: 0}
+            tree[obj_name][f"#{idx}"] = \
+                get_approx_object_size_tree(attr_val, tree[obj_name][f"#{idx}"], seen_obj_ids)
+            tree[obj_name][None] += tree[obj_name][f"#{idx}"][None]
+    tree[None] += tree[obj_name][None]
+    return tree
+
+
+def get_approx_object_size(obj):
+    """Returns the approximate size of an object and its children."""
+    blacklisted_types = (type, types.ModuleType, types.FunctionType)
+    if isinstance(obj, blacklisted_types):
+        raise TypeError('getsize() does not take argument of type: ' + str(type(obj)))
+    seen_ids = set()
+    size = 0
+    objects = [obj]
+    while objects:
+        need_referents = []
+        for obj in objects:
+            if not isinstance(obj, blacklisted_types) and id(obj) not in seen_ids:
+                seen_ids.add(id(obj))
+                size += sys.getsizeof(obj)
+                need_referents.append(obj)
+        objects = gc.get_referents(*need_referents)
+    return size
