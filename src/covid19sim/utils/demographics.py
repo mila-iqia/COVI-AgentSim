@@ -750,7 +750,10 @@ def assign_households_to_humans(humans, city, conf, logfile=None):
         if n_kids_needed != 0 and len(valid_kid_bins) == 0:
             if SEARCH_BINS != OTHER_MID_BINS:
                 log("expanding the search for kids to middle generation for census family households", logfile)
-            SEARCH_BINS = OTHER_MID_BINS
+                SEARCH_BINS = OTHER_MID_BINS
+            else:
+                n_failed_attempts += 1
+
             continue
 
         # allocation succesful in regards to parent-kid constraints
