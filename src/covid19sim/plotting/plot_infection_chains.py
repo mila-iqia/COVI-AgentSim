@@ -6,6 +6,8 @@ import datetime
 import matplotlib
 import matplotlib.pyplot as plt
 import random
+import weasyprint
+from PIL import Image, ImageDraw, ImageFilter
 
 
 def load_humans(data):
@@ -366,8 +368,18 @@ def plot(data, output_file, method, adoption_rate):
         adoption_rate,
     )
 
-    with open(output_file, "w") as fo:
-        fo.write(df.render())
+    png = weasyprint.HTML(string=df.render()).write_png(stylesheets=['plotting/png.css'], presentational_hints=True)
+    with open(output_file, "wb") as fo:
+        fo.write(png)
+
+    img = Image.open(output_file)
+    pixels = img.load()
+    for y in range(img.size[1]): 
+        for x in range(img.size[0]): 
+            if pixels[x,y][3] == 0:    # check alpha
+                pixels[x,y] = (255, 255, 255, 255)
+    img.save(output_file)
+    
     # try:
     #     import imgkit
     #     imgkit.from_file(output_file, output_file.replace(".html", ".jpg"))
@@ -387,11 +399,11 @@ def run(data, path, comparison_key, adoption_rate, wandb=False, num_chains=3):
 
         dir_path = (
             path
-            / "infection_chain" / m
+            / "infection_chain" / m / ("adoption_" + str(adoption_rate))
         )
         os.makedirs(dir_path, exist_ok=True)
         for chain in range(num_chains):
-            fig_path = os.path.join(dir_path, f'{m}_{adoption_rate}_{chain}.html')
+            fig_path = os.path.join(dir_path, f'{m}_{adoption_rate}_{chain}.png')
 
             print(fig_path)
             
