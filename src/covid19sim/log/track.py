@@ -981,7 +981,7 @@ class Tracker(object):
 
         """
         tests_per_human = Counter([m["name"] for m in self.test_monitor])
-        max_tests_per_human = max(tests_per_human.values())
+        max_tests_per_human = max(tests_per_human.values(), default=0)
 
         # percent of population tested
         n_tests = len(self.test_monitor)
@@ -993,7 +993,7 @@ class Tracker(object):
         # positivity rate
         n_positives = sum(x["positive"] for x in self.test_results_per_day.values())
         n_negatives = sum(x["negative"] for x in self.test_results_per_day.values())
-        positivity_rate = n_positives/(n_positives + n_negatives)
+        positivity_rate = n_positives/(n_positives + n_negatives + 1e-6)
 
         # symptoms | tests
         # count of humans who has symptom x given a test was administered
@@ -1011,8 +1011,8 @@ class Tracker(object):
         log(f"Maximum tests given to an individual: {max_tests_per_human}", logfile)
         log(f"Proportion of population tested until end: {100 * percent_tested: 4.3f}%", logfile)
         log(f"Proportion of population tested daily Avg: {100 * np.mean(daily_percent_test_results): 4.3f}%", logfile)
-        log(f"Proportion of population tested daily Max: {100 * max(daily_percent_test_results): 4.3f}%", logfile)
-        log(f"Proportion of population tested daily Min: {100 * min(daily_percent_test_results): 4.3f}%", logfile)
+        log(f"Proportion of population tested daily Max: {100 * max(daily_percent_test_results, default=0): 4.3f}%", logfile)
+        log(f"Proportion of population tested daily Min: {100 * min(daily_percent_test_results, default=0): 4.3f}%", logfile)
         # log(f"infected - tests daily Avg: {np.mean(infected_minus_tests_per_day): 4.3f}", logfile)
 
         log(f"P(tested | symptoms = x), where x is ", logfile)
@@ -1504,6 +1504,8 @@ class Tracker(object):
         str_to_print += f"std: {group_sizes.stddev(): 2.2f} | "
         str_to_print += f"min: {group_sizes.minimum(): 2.2f} | "
         str_to_print += f"max: {group_sizes.maximum(): 2.2f} | "
+        str_to_print += f"skewness: {group_sizes.skewness(): 2.2f} | "
+        str_to_print += f"kurtosis: {group_sizes.kurtosis(): 2.2f} | "
         log(str_to_print, self.logfile)
 
         str_to_print = "location - "

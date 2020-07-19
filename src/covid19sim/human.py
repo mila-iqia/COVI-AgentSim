@@ -1303,17 +1303,30 @@ class Human(object):
         while True:
             self.run_mobility_reduction_check()
             self.move_to_hospital_if_required()
-            # previous_activity, next_activity = next_activity, self.mobility_planner.get_next_activity()
-            if next_activity.location is None:
-                next_activity.refresh_location()
-                yield self.env.timeout(0.01)
-            else:
+            if next_activity.location is not None:
+                # Note: use -O command line option to avoid checking for assertions
                 # print("A\t", self.env.timestamp, self, next_activity)
+                try:
+                    assert abs(self.env.timestamp - next_activity.start_time).seconds == 0, "start times do not align..."
+                except:
+                    breakpoint()
                 yield self.env.process(self.transition_to(next_activity, previous_activity))
                 # print("B\t", self.env.timestamp, self, next_activity)
-                assert abs(self.env.timestamp - next_activity.end_time).seconds == 0, "times do not align..."
+                assert abs(self.env.timestamp - next_activity.end_time).seconds == 0, " end times do not align..."
                 previous_activity, next_activity = next_activity, self.mobility_planner.get_next_activity()
-
+            else:
+                next_activity.refresh_location()
+                # print("C\t", self.env.timestamp, self, next_activity, "depends on", next_activity.parent_activity_pointer)
+                # because this activity depends on parent_activity, we need to give a full 1 second to guarantee
+                # that parent activity will have its location confirmed. This creates a discrepancy in env.timestamp and
+                # next_activity.start_time.
+                yield self.env.timeout(1)
+                next_activity.start_in_seconds += 1
+                next_activity.start_time += datetime.timedelta(seconds=1)
+                next_activity.duration -= 1
+                previous_activity.end_in_seconds += 1
+                previous_activity.end_time += datetime.timedelta(seconds=1)
+                previous_activity.duration += 1
 
     def decide_next_activity(self, hour, day):
         # TODO (EM) These optional and erratic behaviours should be more probabalistic,

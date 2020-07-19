@@ -76,9 +76,6 @@ class City:
         self.daily_rec_level_mapping = None
         self.covid_testing_facility = TestFacility(self.test_type_preference, self.max_capacity_per_test_type, env, conf)
 
-        # log("Initializing locations ...", self.logfile)
-        # self.initialize_locations()
-
         self.humans = []
         self.hd = {}
         self.households = OrderedSet()
@@ -364,20 +361,37 @@ class City:
         log("Preparing schedule ... ")
         start_time = datetime.datetime.now()
         # TODO - parallelize this for speedup in initialization
-        # /!\ Initiate adults first because kids schedule depends on their parents.
-        MAX_AGE_WITHOUT_SUPERVISION = self.conf['MAX_AGE_CHILDREN_WITHOUT_PARENT_SUPERVISION']
-        adults = [human for human in self.humans if human.age > MAX_AGE_WITHOUT_SUPERVISION]
-        for adult in adults:
-            adult.mobility_planner.initialize()
+        for human in self.humans:
+            human.mobility_planner.initialize()
 
-        kids = [human for human in self.humans if human.age <= MAX_AGE_WITHOUT_SUPERVISION]
-        for kid in kids:
-            kid.mobility_planner.initialize()
-
-        timedelta = ( datetime.datetime.now() - start_time).total_seconds()
+        # # /!\ Initiate adults first because kids schedule depends on their parents.
+        # MAX_AGE_WITHOUT_SUPERVISION = self.conf['MAX_AGE_CHILDREN_WITHOUT_PARENT_SUPERVISION']
+        # adults = [human for human in self.humans if human.age > MAX_AGE_WITHOUT_SUPERVISION]
+        # for adult in adults:
+        #     _ = adult.mobility_planner.initialize()
+        #
+        # kids = [human for human in self.humans if human.age <= MAX_AGE_WITHOUT_SUPERVISION]
+        # for kid in kids:
+        #     _ = kid.mobility_planner.initialize()
+        timedelta = (datetime.datetime.now() - start_time).total_seconds()
         log(f"Schedule prepared (Took {timedelta:2.3f}s)", self.logfile)
 
         self.hd = {human.name: human for human in self.humans}
+
+    def update_human_schedules(self):
+        """
+        Runs the mobility_planner's schedule functionf for each human.
+        """
+        # TODO - parallelize this for speedup in initialization
+        # /!\ Update adults first because the schedule of kids depend on their parents.
+        MAX_AGE_WITHOUT_SUPERVISION = self.conf['MAX_AGE_CHILDREN_WITHOUT_PARENT_SUPERVISION']
+        adults = [human for human in self.humans if human.age > MAX_AGE_WITHOUT_SUPERVISION]
+        for adult in adults:
+            _ = adult.mobility_planner.get_schedule()
+
+        kids = [human for human in self.humans if human.age <= MAX_AGE_WITHOUT_SUPERVISION]
+        for kid in kids:
+            _ = kid.mobility_planner.get_schedule()
 
     def have_some_humans_download_the_app(self):
         """
@@ -662,6 +676,7 @@ class City:
                     human.recover_health()
                     human.catch_other_disease_at_random()
                     human.update_symptoms()
+                    human.mobility_planner.send_social_invites()
                     Event.log_daily(self.conf.get('COLLECT_LOGS'), human, human.env.timestamp)
                 self.tracker.increment_day()
                 if self.conf.get("USE_GAEN"):
