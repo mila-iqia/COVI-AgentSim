@@ -27,3 +27,4 @@ requests
 recommonmark
 sphinx
 h5py
+weasyprint

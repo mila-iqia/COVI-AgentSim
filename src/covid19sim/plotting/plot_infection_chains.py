@@ -368,7 +368,7 @@ def plot(data, output_file, method, adoption_rate):
         adoption_rate,
     )
 
-    png = weasyprint.HTML(string=df.render()).write_png(stylesheets=['plotting/png.css'], presentational_hints=True)
+    png = weasyprint.HTML(string=df.render()).write_png(stylesheets=[os.path.join(os.path.dirname(__file__), 'png.css')], presentational_hints=True)
     with open(output_file, "wb") as fo:
         fo.write(png)
 
