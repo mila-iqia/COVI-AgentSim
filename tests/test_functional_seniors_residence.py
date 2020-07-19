@@ -75,6 +75,7 @@ def test_functional_seniors_residence():
         humans[np.random.randint(N)].never_recovers = True
 
         city.humans = humans
+        city.hd = {h.name: h for h in humans}
         city.initWorld()
 
         outfile = os.path.join(output_dir, "test1")

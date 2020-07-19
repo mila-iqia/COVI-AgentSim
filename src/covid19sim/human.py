@@ -92,9 +92,19 @@ class Human(BaseHuman):
         self.n_infectious_contacts = 0  # number of high-risk contacts with an infected individual.
         self.exposure_source = None  # source that exposed this human to covid (and infected them). None if not infected.
 
+        # rng stuff
+        # note: the seed is the important part, if one is not given directly, it will be generated...
+        # note2: keeping the initial seed value is important for when we serialize/deserialize this object
+        # note3: any call to self.rng after construction is not guaranteed to return the same behavior as during the run
+        if isinstance(rng, np.random.RandomState):
+            self.init_seed = rng.randint(2 ** 16)
+        else:
+            assert isinstance(rng, int)
+            self.init_seed = rng
+        self.rng = np.random.RandomState(self.init_seed)  # RNG for this particular human
+
         # Human-related properties
         self.name: RealUserIDType = f"human:{name}"  # Name of this human
-        self.rng = np.random.RandomState(rng.randint(2 ** 16))  # RNG for this particular human
         self.profession = profession  # The job this human has (e.g. healthcare worker, retired, school, etc)
         self.is_healthcare_worker = True if profession == "healthcare" else False  # convenience boolean to check if is healthcare worker
         self.workplace = workplace  # we sometimes modify human's workplace to WFH if in quarantine, then go back to work when released
@@ -106,7 +116,6 @@ class Human(BaseHuman):
         self.my_history = []  # TODO: @PRATEEK plz comment this
         self.r0 = []  # TODO: @PRATEEK plz comment this
         self._events = []  # TODO: @PRATEEK plz comment this
-
 
         """ Biological Properties """
         # Individual Characteristics
@@ -130,7 +139,6 @@ class Human(BaseHuman):
         len_allergies = self.rng.normal(1/self.carefulness, 1)   # determines the number of symptoms this persons allergies would present with (if they start experiencing symptoms)
         self.len_allergies = 7 if len_allergies > 7 else math.ceil(len_allergies)
         self.allergy_progression = _get_allergy_progression(self.rng)  # if this human starts having allergy symptoms, then there is a progression of symptoms over one or multiple days
-
 
         """ Covid-19 """
         # Covid-19 properties
@@ -175,10 +183,9 @@ class Human(BaseHuman):
             maxlen=self.conf.get('TRACING_N_DAYS_HISTORY')
         )  # stores the Covid-19 symptoms this person had reported in the app until the current simulation day (empty if they do not have the app)
 
-
         """App-related"""
         self.has_app = has_app  # Does this prson have the app
-        time_slot = rng.randint(0, 24)  # Assign this person to some timeslot
+        time_slot = self.rng.randint(0, 24)  # Assign this person to some timeslot
         self.time_slots = [
             int((time_slot + i * 24 / self.conf.get('UPDATES_PER_DAY')) % 24)
             for i in range(self.conf.get('UPDATES_PER_DAY'))
@@ -193,7 +200,6 @@ class Human(BaseHuman):
         self.obs_preexisting_conditions = self.preexisting_conditions if self.has_app and self.has_logged_info else []  # the preexisting conditions of this human reported to the app
         self.obs_hospitalized = False  # Whether this person was hospitalized (as reported to the app)
         self.obs_in_icu = False  # Whether this person was put in the ICU (as reported to the app)
-
 
         """ Interventions """
         self.will_wear_mask = False  # A boolean value determining whether this person will try to wear a mask during encounters
@@ -211,7 +217,6 @@ class Human(BaseHuman):
         self.effective_contacts = 0  # A scaled number of the high-risk contacts (under 2m for over 15 minutes) that this person had
         self.num_contacts = 0  # unscaled number of high-risk contacts
 
-
         """Risk prediction"""
         self.contact_book = ContactBook(tracing_n_days_history=self.conf.get("TRACING_N_DAYS_HISTORY"))  # Used for tracking high-risk contacts (for app-based contact tracing methods)
         self.infectiousness_history_map = dict()  # Stores the (predicted) 14-day history of Covid-19 infectiousness (based on viral load and symptoms)
@@ -222,8 +227,8 @@ class Human(BaseHuman):
         assert len(risk_mapping_array) > 0, "risk mapping must always be defined!"
         self.proba_to_risk_level_map = proba_to_risk_fn(risk_mapping_array)
 
-
         """Mobility"""
+        self.household, self.location = None, None
         self.assign_household(household)  # assigns this person to the specified household
         self.rho = rho  # controls mobility (how often this person goes out and visits new places)
         self.gamma = gamma  # controls mobility (how often this person goes out and visits new places)
@@ -279,7 +284,7 @@ class Human(BaseHuman):
             self.rng
         )
 
-        #getting the number of shopping days and hours from a distribution
+        # getting the number of shopping days and hours from a distribution
         self.number_of_shopping_days = draw_random_discrete_gaussian(
             self.conf.get("AVG_NUM_SHOPPING_DAYS"),
             self.conf.get("SCALE_NUM_SHOPPING_DAYS"),
@@ -291,7 +296,7 @@ class Human(BaseHuman):
             self.rng
         )
 
-        #getting the number of exercise days and hours from a distribution
+        # getting the number of exercise days and hours from a distribution
         self.number_of_exercise_days = draw_random_discrete_gaussian(
             self.conf.get("AVG_NUM_EXERCISE_DAYS"),
             self.conf.get("SCALE_NUM_EXERCISE_DAYS"),
@@ -303,22 +308,22 @@ class Human(BaseHuman):
             self.rng
         )
 
-        #getting the number of misc hours from a distribution
+        # getting the number of misc hours from a distribution
         self.number_of_misc_hours = draw_random_discrete_gaussian(
             self.conf.get("AVG_NUM_MISC_HOURS", 5),
             self.conf.get("SCALE_NUM_MISC_HOURS", 1),
             self.rng
         )
 
-        #Multiple shopping days and hours
+        # Multiple shopping days and hours
         self.shopping_days = self.rng.choice(range(7), self.number_of_shopping_days)
         self.shopping_hours = self.rng.choice(range(7, 20), self.number_of_shopping_hours)
 
-        #Multiple exercise days and hours
+        # Multiple exercise days and hours
         self.exercise_days = self.rng.choice(range(7), self.number_of_exercise_days)
         self.exercise_hours = self.rng.choice(range(7, 20), self.number_of_exercise_hours)
 
-        #Limiting the number of hours spent shopping per week
+        # Limiting the number of hours spent shopping per week
         self.max_misc_per_week = draw_random_discrete_gaussian(
             self.conf.get("AVG_MAX_NUM_MISC_PER_WEEK"),
             self.conf.get("SCALE_MAX_NUM_MISC_PER_WEEK"),
@@ -334,7 +339,7 @@ class Human(BaseHuman):
         )
         self.count_exercise = 0
 
-        #Limiting the number of hours spent shopping per week
+        # Limiting the number of hours spent shopping per week
         self.max_shop_per_week = draw_random_discrete_gaussian(
             self.conf.get("AVG_MAX_NUM_SHOP_PER_WEEK"),
             self.conf.get("SCALE_MAX_NUM_SHOP_PER_WEEK"),
@@ -347,7 +352,6 @@ class Human(BaseHuman):
         self.work_start_hour = self.rng.choice(range(7, 17), 3)
         self.location_leaving_time = self.env.ts_initial + SECONDS_PER_HOUR
         self.location_start_time = self.env.ts_initial
-
 
     @property
     def follows_recommendations_today(self):
@@ -1405,7 +1409,14 @@ class Human(BaseHuman):
 
                         if infectee_msg is not None:  # could be None if we are not currently tracing
                             infectee_msg._exposition_event = True
-                        city.tracker.track_infection('human', from_human=infector, to_human=infectee, location=location, timestamp=env_timestamp)
+                        city.tracker.track_infection(
+                            type='human',
+                            from_human=infector,
+                            to_human=infectee,
+                            location=location,
+                            timestamp=env_timestamp,
+                            p_infection=p_infection,
+                        )
                     else:
                         infector, infectee = None, None
 
@@ -1454,8 +1465,21 @@ class Human(BaseHuman):
             self.ts_covid19_infection = self.env.now
             self.initial_viral_load = self.rng.random()
             compute_covid_properties(self)
-            city.tracker.track_infection('env', from_human=None, to_human=self, location=location, timestamp=self.env.timestamp)
-            Event.log_exposed(self.conf.get('COLLECT_LOGS'), self, location, p_infection, self.env.timestamp)
+            city.tracker.track_infection(
+                type='env',
+                from_human=None,
+                to_human=self,
+                location=location,
+                timestamp=self.env.timestamp,
+                p_infection=p_infection,
+            )
+            Event.log_exposed(
+                self.conf.get('COLLECT_LOGS'),
+                self,
+                location,
+                p_infection,
+                self.env.timestamp,
+            )
 
         location.remove_human(self)
 

@@ -118,7 +118,6 @@ class ObservedRisk:
         into a list of encounter and update messages
         """
         encounter_time = ObservedRisk.toff(self.encounter_tick)
-
         encounter_message = mu.EncounterMessage(
             uid=uid,
             risk_level=self.encounter_risk_level,
@@ -128,7 +127,6 @@ class ObservedRisk:
             _real_encounter_time=encounter_time,
             _exposition_event=(
                 self.encounter_tick >= exposure_tick),
-            _applied_updates=[]
         )
 
         messages: typing.List[mu.GenericMessageType] = [encounter_message]
@@ -150,7 +148,6 @@ class ObservedRisk:
             )
 
             messages.append(update_message)
-            encounter_message._applied_updates.append(update_message)
             last_risk = update_signature.update_risk_level
         return messages
 
@@ -166,7 +163,7 @@ class MessageContextManager():
     def __init__(self, max_tick):
         self.max_tick = max_tick
         self.max_history_offset = ObservedRisk.time_offset * max_tick
-        self.real_uid_counter: mu.RealUserIDType = 0
+        self.real_uid_counter: mu.RealUserIDTypel = 0
         self._contact_messages = []
 
     def insert_messages(

@@ -71,7 +71,7 @@ class EncounterMessage:
     _exposition_event: typing.Optional[bool] = None
     """Flags whether this encounter corresponds to an exposition event for the receiver."""
 
-    _applied_updates: typing.Optional[typing.List["UpdateMessage"]] = None  # note: not used in clustering
+    _applied_update_count: typing.Optional[int] = None
     """List of update messages which have been applied to this encounter."""
 
 
@@ -261,7 +261,8 @@ def create_updated_encounter_with_message(
         assert encounter_message.uid == update_message.uid
     assert encounter_message.risk_level == update_message.old_risk_level
     assert encounter_message.encounter_time == update_message.encounter_time
-    old_updates = encounter_message._applied_updates if encounter_message._applied_updates else []
+    old_update_count = encounter_message._applied_update_count \
+        if encounter_message._applied_update_count else 0
     return EncounterMessage(
         uid=update_message.uid,
         risk_level=update_message.new_risk_level,
@@ -273,7 +274,7 @@ def create_updated_encounter_with_message(
         _real_encounter_time=update_message._real_encounter_time if
             update_message._real_encounter_time == encounter_message._real_encounter_time else None,
         _exposition_event=encounter_message._exposition_event,
-        _applied_updates=[*old_updates, update_message],
+        _applied_update_count=old_update_count + 1,
     )
 
 

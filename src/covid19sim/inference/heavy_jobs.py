@@ -28,7 +28,9 @@ class DummyMemManager:
 
     @classmethod
     def get_engine(cls, conf) -> InferenceEngineWrapper:
-        if cls.global_inference_engine is None and not conf.get('USE_ORACLE', False):
+        if cls.global_inference_engine is None and \
+                not conf.get('USE_ORACLE', False) and \
+                conf.get('TRANSFORMER_EXP_PATH') is not None:
             cls.global_inference_engine = InferenceEngineWrapper(conf.get('TRANSFORMER_EXP_PATH'))
         return cls.global_inference_engine
 
