@@ -312,20 +312,25 @@ def main(conf):
 
                 # For each method, load a random pkl file and plot the infection chains.
                 for m in methods:
-                    runs = [
+                    all_runs = [
                         r
                         for r in m.iterdir()
                         if r.is_dir()
                         and not r.name.startswith(".")
                         and len(list(r.glob("tracker*.pkl"))) == 1
                     ]
-                    rand_index = random.randint(0, len(runs)-1)
-                    rand_run = runs[rand_index]
-
-                    with open(str(list(rand_run.glob("tracker*.pkl"))[0]), "rb") as f:
-                        pkl = pickle.load(f)
-                    adoption_rate = float(rand_run.name.split("_uptake")[-1].split("_")[0][1:])
-                    func(dict([(m, pkl)]), plot_path, None, adoption_rate, **options[plot])
+                    adoption_rate2runs = dict()
+                    for run in all_runs:
+                        adoption_rate = float(run.name.split("_uptake")[-1].split("_")[0][1:])
+                        if adoption_rate not in adoption_rate2runs:
+                            adoption_rate2runs[adoption_rate] = list()
+                        adoption_rate2runs[adoption_rate].append(run)
+                    for adoption_rate, runs in adoption_rate2runs.items():
+                        rand_index = random.randint(0, len(runs)-1)
+                        rand_run = runs[rand_index]
+                        with open(str(list(rand_run.glob("tracker*.pkl"))[0]), "rb") as f:
+                            pkl = pickle.load(f)
+                        func(dict([(m, pkl)]), plot_path, None, adoption_rate, **options[plot])
                 print("Done.")
             else:
                 # For plot other than spy_human, we use the loaded pkl files.
