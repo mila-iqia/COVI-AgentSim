@@ -329,7 +329,7 @@ MAX_WORKING_AGE: 65
 #########################################################
 
 #/!\ (no-source) these values are assumed.
-MAX_AGE_CHILDREN_WITHOUT_PARENT_SUPERVISION: 3
+MAX_AGE_CHILDREN_WITHOUT_PARENT_SUPERVISION: 8
 
 # How often people go out to food stores?
 # this is needed to decide the time when a human visits a store.
@@ -690,7 +690,7 @@ P_CONTACT_MATRIX_ALL: [
 ################################################################################################
 # contact duration matrices (procedure)
 # We use the survey data provdided in us.yaml without density corrections (until we find some study doing it)
-# Survey data has mean and 95%CI. We parameterize the duration as a gamma distribution with shape and scale inferred from
+# Survey data has mean and 95%CI in minutes per day. We parameterize the duration as a gamma distribution with shape and scale inferred from
 # mean and 95% CI.
 
 CONTACT_DURATION_GAMMA_SCALE_MATRIX: [

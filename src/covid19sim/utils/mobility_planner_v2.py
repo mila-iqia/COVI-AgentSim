@@ -309,7 +309,8 @@ class MobilityPlanner(object):
             adult = self.adult_to_follow.popleft()
             adult_schedule = adult.mobility_planner.get_schedule(force_today=True)
             work = 0
-            if not self.human.does_not_work:
+            if (not self.human.does_not_work
+                and self.env.timestamp.weekday() in self.human.working_days):
                 work = _sample_activity_duration("work", self.conf, self.rng)
 
             remaining_schedule = [self.current_activity] + list(self.schedule_for_day)

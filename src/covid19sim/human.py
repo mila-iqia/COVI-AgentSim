@@ -1642,7 +1642,7 @@ class Human(object):
         # print("after", self.env.timestamp, self, location, duration)
 
         # only sample interactions if there is a possibility of infection or message exchanges
-        # sleep is an inactive stage
+        # sleep is an inactive stage; phone is also assumed to be in background mode.
         if (duration > min(self.conf['MIN_MESSAGE_PASSING_DURATION'], self.conf['INFECTION_DURATION'])
             and "sleep" not in type_of_activity):
             # sample interactions with other humans at this location
@@ -1665,7 +1665,7 @@ class Human(object):
             interaction_profile: each element is expected as follows -
                 human (covid19sim.human.Human): other human with whom to interact
                 distance_profile (covid19sim.locations.location.DistanceProfile): distance from which this encounter took place (cms)
-                duration (float): duration for which this encounter took place (minutes)
+                t_near (float): duration for which this encounter took place (seconds)
             type (string): type of interaction to sample. expects "known", "unknown"
         """
         for other_human, distance_profile, t_near in interaction_profile:

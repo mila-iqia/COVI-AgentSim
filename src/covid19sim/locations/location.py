@@ -5,7 +5,7 @@ from collections import namedtuple
 import numpy as np
 import warnings
 
-from covid19sim.utils.constants import SECONDS_PER_MINUTE, SECONDS_PER_HOUR, AGE_BIN_WIDTH_5, ALL_LOCATIONS, WEEKDAYS, ALL_DAYS
+from covid19sim.utils.constants import SECONDS_PER_MINUTE, SECONDS_PER_HOUR, AGE_BIN_WIDTH_5, ALL_LOCATIONS, WEEKDAYS, ALL_DAYS, SECONDS_PER_DAY
 from covid19sim.epidemiology.p_infection import get_environment_human_p_transmission
 from covid19sim.epidemiology.viral_load import compute_covid_properties
 from covid19sim.log.event import Event
@@ -253,7 +253,8 @@ class Location(simpy.Resource):
             mean_interaction_time = self.conf["GAMMA_UNKNOWN_CONTACT_DURATION"]
         else:
             raise
-        mean_daily_interactions += 1e-6 # to avoid error in sampling with 0 mean from negative binomial 
+
+        mean_daily_interactions += 1e-6 # to avoid error in sampling with 0 mean from negative binomial
         scale_factor_interaction_time = self.conf['SCALE_FACTOR_CONTACT_DURATION']
         # (assumption) maximum allowable distance is when humans are uniformly spaced
         packing_term = 100 * np.sqrt(self.area/len(self.humans))
@@ -274,20 +275,23 @@ class Location(simpy.Resource):
 
             # sample duration of encounter
             t_overlap = (min(human.location_leaving_time, other_human.location_leaving_time) -
-                         max(human.location_start_time,   other_human.location_start_time)) / SECONDS_PER_MINUTE
+                         max(human.location_start_time,   other_human.location_start_time))
 
             if type == "known":
                 age_bin = human.age_bin_width_5.index
                 other_bin = other_human.age_bin_width_5.index
                 scale_duration = self.CONTACT_DURATION_GAMMA_SCALE_MATRIX[other_bin, age_bin]
                 shape_duration = self.CONTACT_DURATION_GAMMA_SHAPE_MATRIX[other_bin, age_bin]
-                duration = self.rng.gamma(shape_duration, scale_duration)
+                duration = (self.rng.gamma(shape_duration, scale_duration) / SECONDS_PER_DAY) * t_overlap
 
             elif type == "unknown":
                 duration = self.rng.gamma(mean_interaction_time/scale_factor_interaction_time, scale_factor_interaction_time)
 
             else:
                 raise ValueError
+
+            if duration > t_overlap:
+                warnings.warn(f"sampled time {duration} is more than the duration for which {human} is at a location {t_overlap}")
 
             # /!\ clipping changes the distribution.
             duration = min(t_overlap, duration) * max(human.time_encounter_reduction_factor, other_human.time_encounter_reduction_factor)

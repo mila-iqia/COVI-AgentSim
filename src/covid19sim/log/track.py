@@ -58,7 +58,7 @@ def _get_location_type_to_track_mixing(human, location):
     Returns
         (str): a corresponding label for POLYMOD study.
     """
-    if location.location_type == "HOUSEHOLD":
+    if location.location_type in ["HOUSEHOLD", "SENIOR_RESIDENCE"]:
         return "house"
 
     # if location.location_type == "WORKPLACE":
@@ -1055,7 +1055,6 @@ class Tracker(object):
             2. fraction of day spent doing a certain activity on weekends or weekdays
             3. statistics on group size of "socialize" activities
             4. fraction of time "socialize" activity took place at a location_type
-            5.
 
         Args:
             current_activity (covid19sim.utils.mobility_planner.Activity): [description]
@@ -1210,7 +1209,6 @@ class Tracker(object):
         # record the values
         human1_type_of_place = _get_location_type_to_track_mixing(human1, location)
         human2_type_of_place = _get_location_type_to_track_mixing(human2, location)
-        type_of_place = human1_type_of_place # currently, no context is considered to determine the type of place
 
         i = human1.age_bin_width_5.index
         j = human2.age_bin_width_5.index
