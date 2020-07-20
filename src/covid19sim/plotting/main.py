@@ -4,15 +4,23 @@ import traceback
 from collections import defaultdict
 from pathlib import Path
 from time import time
+import dill
 import pickle
-
+import os
+import shutil
 import hydra
 from omegaconf import OmegaConf
+import random
 
 import covid19sim.plotting.plot_jellybeans as jellybeans
 import covid19sim.plotting.plot_pareto_adoption as pareto_adoption
 import covid19sim.plotting.plot_presymptomatic as presymptomatic
-from covid19sim.plotting.utils.extract_data import get_all_data
+import covid19sim.plotting.plot_infection_chains as infection_chains
+import covid19sim.plotting.make_efficiency_table as efficiency
+import covid19sim.plotting.plot_generation_time as generation_time
+import covid19sim.plotting.plot_epi_table as epi_table
+from covid19sim.plotting.utils import get_all_data
+
 
 print("Ok.")
 HYDRA_CONF_PATH = Path(__file__).parent.parent / "configs" / "plot"
@@ -94,60 +102,18 @@ def summarize_configs(all_paths):
     )
 
 
-def get_model(conf, mapping):
-    if conf["RISK_MODEL"] == "":
-        if conf.get("DAILY_TARGET_REC_LEVEL_DIST", False):
-            return "unmitigated_norm"
-        return "unmitigated"
-
-    if conf["RISK_MODEL"] == "digital":
-        if conf["TRACING_ORDER"] == 1:
-            if conf.get("DAILY_TARGET_REC_LEVEL_DIST", False):
-                return "btd1_norm"
-            return "bdt1"
-        elif conf["TRACING_ORDER"] == 2:
-            if conf.get("DAILY_TARGET_REC_LEVEL_DIST", False):
-                return "btd2_norm"
-            return "bdt2"
-        else:
-            raise ValueError(
-                "Unknown binary digital tracing order: {}".format(conf["TRACING_ORDER"])
-            )
-
-    if conf["RISK_MODEL"] == "transformer":
-        # FIXME this won't work if the run used the inference server
-        model = Path(conf["TRANSFORMER_EXP_PATH"]).name
-        if model not in mapping:
-            print(
-                "Warning: unknown model name {}. Defaulting to `transformer`".format(
-                    model
-                )
-            )
-        if conf.get("DAILY_TARGET_REC_LEVEL_DIST", False):
-            return mapping.get(model, "transformer") + "_norm"
-        return mapping.get(model, "transformer")
-
-    if conf["RISK_MODEL"] == "heuristicv1":
-        if conf.get("DAILY_TARGET_REC_LEVEL_DIST", False):
-            return "heuristicv1_norm"
-        return "heuristicv1"
-
-    if conf["RISK_MODEL"] == "heuristicv2":
-        if conf.get("DAILY_TARGET_REC_LEVEL_DIST", False):
-            return "heuristicv2_norm"
-        return "heuristicv2"
-
-    raise ValueError("Unknown RISK_MODEL {}".format(conf["RISK_MODEL"]))
-
-
 def map_conf_to_models(all_paths, plot_conf):
-    new_data = defaultdict(lambda: defaultdict(dict))
+    new_data = {}  # defaultdict(lambda: defaultdict(dict))
     key = plot_conf["compare"]
     for mk, mv in all_paths.items():
         for rk, rv in mv.items():
             sim_conf = rv["conf"]
             compare_value = str(sim_conf[key])
-            model = get_model(sim_conf, plot_conf["model_mapping"])
+            model = Path(rk).parent.name
+            if model not in new_data:
+                new_data[model] = {}
+            if compare_value not in new_data[model]:
+                new_data[model][compare_value] = {}
             new_data[model][compare_value][rk] = rv
     return dict(new_data)
 
@@ -172,13 +138,26 @@ def main(conf):
         "pareto_adoption": pareto_adoption,
         "jellybeans": jellybeans,
         "presymptomatic": presymptomatic,
+        "infection_chains": infection_chains,
+        "efficiency": efficiency,
+        "generation_time": generation_time,
+        "epi_table": epi_table,
     }
 
     conf = OmegaConf.to_container(conf)
     options = parse_options(conf, all_plots)
-    path = Path(conf.get("path", ".")).resolve()
-    assert path.exists()
-    cache_path = path / "cache.pkl"
+
+    root_path = conf.get("path", ".")
+    plot_path = os.path.join(root_path, "plots")
+
+    root_path = Path(root_path).resolve()
+    plot_path = Path(plot_path).resolve()
+
+    if plot_path.exists() and conf.get("clear_plots"):
+        shutil.rmtree(plot_path)
+    plot_path.mkdir(parents=True, exist_ok=True)
+    assert plot_path.exists()
+    cache_path = root_path / "cache.pkl"
 
     # -------------------
     # -----  Help?  -----
@@ -195,6 +174,8 @@ def main(conf):
         plots = list(all_plots.keys())
     if not isinstance(plots, list):
         plots = [plots]
+
+    plots = [p for p in plots if p not in conf.get("exclude", [])]
 
     assert all(p in all_plots for p in plots), "Allowed plots are {}".format(
         "\n   ".join(all_plots.keys())
@@ -219,18 +200,38 @@ def main(conf):
                 "humans_rec_level",
             ]
         )
+    if "efficiency" in plots:
+        # Same as pareto
+        keep_pkl_keys.update(
+            [
+                "intervention_day",
+                "outside_daily_contacts",
+                "effective_contacts_since_intervention",
+                "intervention_day",
+                "cases_per_day",
+                "n_humans",
+                "generation_times",
+                "humans_state",
+                "humans_intervention_level",
+                "humans_rec_level",
+            ]
+        )
     if "jellybeans" in plots:
         keep_pkl_keys.update(
             ["humans_intervention_level", "humans_rec_level", "intervention_day"]
         )
     if "presymptomatic" in plots:
         keep_pkl_keys.update(["human_monitor"])
-
+    if "generation_time" in plots:
+        keep_pkl_keys.update(["infection_monitor"])
+    if "epi_table" in plots:
+        keep_pkl_keys.update(["covid_properties", "generation_times", "daily_age_group_encounters", "age_histogram",
+                              "r_0", "contacts"])
     # ------------------------------------
     # -----  Load pre-computed data  -----
     # ------------------------------------
     cache = None
-    use_cache = cache_path.exists() and not conf.get("use_cache", False)
+    use_cache = cache_path.exists() and conf.get("use_cache", True)
     if use_cache:
         try:
             print(
@@ -239,7 +240,7 @@ def main(conf):
                 )
             )
             with cache_path.open("rb") as f:
-                cache = pickle.load(f)
+                cache = dill.load(f)
 
             # check that the loaded data contains what is required by current `plots`
             if "plots" not in cache or not all(p in cache["plots"] for p in plots):
@@ -263,9 +264,11 @@ def main(conf):
         # --------------------------
         # -----  Compute Data  -----
         # --------------------------
-        print("Reading configs from {}:".format(str(path)))
+        print("Reading configs from {}:".format(str(root_path)))
         rtime = time()
-        all_data = get_all_data(path, keep_pkl_keys, conf.get("multithreading", False))
+        all_data = get_all_data(
+            root_path, keep_pkl_keys, conf.get("multithreading", False)
+        )
         print("\nDone in {:.2f}s.\n".format(time() - rtime))
         summarize_configs(all_data)
         data = map_conf_to_models(all_data, conf)
@@ -283,7 +286,7 @@ def main(conf):
                 else:
                     cache["plots"] = list(set(cache["plots"] + plots))
                     cache["data"] = {**cache["data"], **data}
-                pickle.dump(cache, f)
+                dill.dump(cache, f)
             print("Done in {}s ({})".format(int(time() - t), sizeof(cache_path)))
 
     for plot in plots:
@@ -293,7 +296,46 @@ def main(conf):
             # -------------------------------
             # -----  Run Plot Function  -----
             # -------------------------------
-            func(data, path, conf["compare"], **options[plot])
+
+            # For infection_chains, we randomly load a file to print.
+            if plot == "infection_chains":
+                # Get all the methods.
+                method_path = Path(root_path).resolve()
+                assert method_path.exists()
+                methods = [
+                    m
+                    for m in method_path.iterdir()
+                    if m.is_dir()
+                    and not m.name.startswith(".")
+                    and len(list(m.glob("**/tracker*.pkl"))) > 0
+                ]
+
+                # For each method, load a random pkl file and plot the infection chains.
+                for m in methods:
+                    all_runs = [
+                        r
+                        for r in m.iterdir()
+                        if r.is_dir()
+                        and not r.name.startswith(".")
+                        and len(list(r.glob("tracker*.pkl"))) == 1
+                    ]
+                    adoption_rate2runs = dict()
+                    for run in all_runs:
+                        adoption_rate = float(run.name.split("_uptake")[-1].split("_")[0][1:])
+                        if adoption_rate not in adoption_rate2runs:
+                            adoption_rate2runs[adoption_rate] = list()
+                        adoption_rate2runs[adoption_rate].append(run)
+                    for adoption_rate, runs in adoption_rate2runs.items():
+                        rand_index = random.randint(0, len(runs)-1)
+                        rand_run = runs[rand_index]
+                        with open(str(list(rand_run.glob("tracker*.pkl"))[0]), "rb") as f:
+                            pkl = pickle.load(f)
+                        func(dict([(m, pkl)]), plot_path, None, adoption_rate, **options[plot])
+                print("Done.")
+            else:
+                # For plot other than spy_human, we use the loaded pkl files.
+                func(data, plot_path, conf["compare"], **options[plot])
+
         except Exception as e:
             if isinstance(e, KeyboardInterrupt):
                 print("Interrupting.")
@@ -304,6 +346,7 @@ def main(conf):
                 print("*" * len(str(e)))
                 print("Ignoring " + plot)
         print_footer()
+
 
 
 if __name__ == "__main__":

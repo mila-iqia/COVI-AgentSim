@@ -13,6 +13,7 @@ jobs:
   test:
     name: Test on Python ${{ matrix.python_version }}
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     strategy:
       matrix:
         python_version: ['3.7', '3.8']
@@ -51,7 +52,7 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Test
       run: |
-        pytest --cov-report=xml --cov=covid19sim tests/
+        pytest --cov-report=xml --cov=covid19sim --timeout=600 tests/
     - uses: codecov/codecov-action@v1
       with:
         file: ./coverage.xml # optional

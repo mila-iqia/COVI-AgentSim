@@ -24,6 +24,7 @@ from covid19sim.log.event import Event
 from covid19sim.locations.test_facility import TestFacility
 from covid19sim.locations.location import Location
 from covid19sim.locations.hospital import Hospital
+import covid19sim.utils.utils
 
 if typing.TYPE_CHECKING:
     from covid19sim.human import Human
@@ -332,6 +333,13 @@ class City:
             locs = [self.create_location(specs, location, i, area[i]) for i in range(n)]
             setattr(self, f"{location}s", locs)
 
+    def get_all_locations(self):
+        """Returns a list of all concatenated locations held by this city."""
+        output = []
+        for location_name in self.conf.get("LOCATION_DISTRIBUTION"):
+            output.extend(getattr(self, f"{location_name}s"))
+        return output
+
     def initialize_humans(self):
         """
         `Human`s are created based on the statistics captured in HUMAN_DSITRIBUTION. Age distribution is specified via 'p'.
@@ -637,8 +645,6 @@ class City:
             simpy.Timeout
         """
         humans_notified = False
-        tmp_M = self.conf.get("GLOBAL_MOBILITY_SCALING_FACTOR")
-        self.conf["GLOBAL_MOBILITY_SCALING_FACTOR"] = 1
         last_day_idx = 0
         self.intervention = BaseMethod(self.conf)
         while True:
@@ -649,7 +655,6 @@ class City:
                 self.have_some_humans_download_the_app()
                 for human in self.humans:
                     human.set_intervention(self.intervention)
-                self.conf["GLOBAL_MOBILITY_SCALING_FACTOR"] = tmp_M
                 humans_notified = True
 
             # run city testing routine, providing test results for those who need them
@@ -685,6 +690,10 @@ class City:
                 if self.conf.get("SHOULD_MODIFY_BEHAVIOR"):
                     behaviors = self.intervention.get_behaviors(human)
                 human.apply_behaviors(behaviors)
+
+            # for debugging/plotting a posteriori, track all human/location attributes...
+            self.tracker.track_humans(hd=self.hd, current_timestamp=self.env.timestamp)
+            # self.tracker.track_locations() # TODO
 
             yield self.env.timeout(int(duration))
 
@@ -762,7 +771,6 @@ class City:
                 global_mailbox=self.global_mailbox,
                 time_slot=self.env.timestamp.hour,
                 conf=self.conf,
-                data_path=outfile,
                 city_hash=self.hash,
             )
 
@@ -832,9 +840,6 @@ class City:
             for day_idx, risk_val in human.risk_history_map.items():
                 human.prev_risk_history_map[day_idx] = risk_val
 
-        # once we get here, the risk of humans with this timeslot should be updated, no matter the method
-        self.tracker.track_risk_attributes(self.hd)
-
         return backup_human_init_risks, update_messages
 
 
@@ -896,6 +901,7 @@ class EmptyCity(City):
         )[0]
 
         self.humans = []
+        self.hd = {}
         self.households = OrderedSet()
         self.stores = []
         self.senior_residencys = []

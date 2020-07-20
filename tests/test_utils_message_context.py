@@ -45,7 +45,6 @@ class TestMessageContextManager(unittest.TestCase):
             _real_encounter_time=encounter_time,
             _sender_uid=0,
             _exposition_event=False,
-            _applied_updates=[expected_update_message]
         )
         self.assertEqual(self.message_context.contact_messages,
                          [expected_encounter_message, expected_update_message])
