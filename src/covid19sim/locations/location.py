@@ -238,7 +238,7 @@ class Location(simpy.Resource):
             interactions (list): each element is as follows -
                 human (covid19sim.human.Human): other human with whom to have `type` of interaction
                 distance_profile (covid19sim.locations.location.DistanceProfile): distance from which these two humans met (cms)
-                duration (float): duration for which this encounter took place (minutes)
+                duration (float): duration for which this encounter took place (seconds)
         """
 
         if type == "known":
@@ -273,7 +273,7 @@ class Location(simpy.Resource):
             distance = np.clip(encounter_term + social_distancing_term, a_min=0, a_max=packing_term)
             distance_profile = DistanceProfile(encounter_term=encounter_term, packing_term=packing_term, social_distancing_term=social_distancing_term, distance=distance)
 
-            # sample duration of encounter
+            # sample duration of encounter (seconds)
             t_overlap = (min(human.location_leaving_time, other_human.location_leaving_time) -
                          max(human.location_start_time,   other_human.location_start_time))
 

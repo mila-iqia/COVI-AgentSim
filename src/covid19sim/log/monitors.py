@@ -6,6 +6,7 @@ import pickle
 import threading
 import time
 import zipfile
+import numpy as np
 from datetime import datetime, timedelta
 
 from covid19sim.locations.city import City
@@ -36,6 +37,7 @@ Legend -
 P3: Projected number of cases (E+I+R) if the cases were to grow with a doubling rate of 3 days.
 TestQueue: Total number of people present in the test queue at the time of this print out.
 H/C/D: Total number of people in hospital (H)/ ICU (C) at this point in simulation-time. Total died upto this day (D).
+MC: Mean number of known connections of a person in the population (average degree of the social network). The attributes for known connections are drawn from surveyed data on mean contacts.
         """
         if self.conf['INTERVENTION_DAY'] >= 0 and self.conf['RISK_MODEL'] is not None:
             self.legend += """
@@ -94,14 +96,18 @@ RiskP: Top 1% risk precision of the risk predictor computed for people with no t
             day = "Day {:2}:".format((city.env.timestamp - city.start_time).days)
             proc_time = "{:8}".format("({}s)".format(int(time.time() - process_start)))
 
+            # social network
+            average_degree = np.mean([len(h.known_connections) for h in city.humans])
+
             # prepare string
             nd = str(len(str(city.n_people)))
             SEIR = f"| S:{S:<{nd}} E:{E:<{nd}} I:{I:<{nd}} E+I+R:{T:<{nd}} +Test:{t_P}/{t_T}"
             stats = f"| P3:{Projected3:5.2f} TestQueue:{test_queue_length}"
             other_diseases = f"| cold:{cold} allergies:{allergies}"
             hospitalizations = f"| H:{H} C:{C} D:{D}"
+            social_network = f"| MC: {average_degree: 3.3f}"
 
-            str_to_print = f"{proc_time} {day} {env_time} {SEIR} {stats} {other_diseases} {hospitalizations}"
+            str_to_print = f"{proc_time} {day} {env_time} {SEIR} {stats} {other_diseases} {hospitalizations} {social_network}"
             # conditional prints
             colors, risk = "", ""
             if self.conf['INTERVENTION_DAY'] >= 0 and self.conf['RISK_MODEL'] is not None:

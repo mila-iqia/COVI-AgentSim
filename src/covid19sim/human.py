@@ -925,7 +925,7 @@ class Human(object):
 
         Args:
             other_human (covid19sim.human.Human): other_human with whom the encounter took place
-            t_near (float): duration for which this encounter took place (minutes)
+            t_near (float): duration for which this encounter took place (seconds)
             h1_msg ():
             h2_msg ():
 
@@ -1327,88 +1327,6 @@ class Human(object):
                 previous_activity.end_time += datetime.timedelta(seconds=1)
                 previous_activity.duration += 1
 
-    def decide_next_activity(self, hour, day):
-        # TODO (EM) These optional and erratic behaviours should be more probabalistic,
-        # with probs depending on state of lockdown of city
-        # Lockdown should also close a fraction of the shops
-
-        if (not self.env.is_weekend() and
-            hour in self.work_start_hour and
-            not self.rest_at_home):
-            next_activity  = "work"
-
-        elif ( hour in self.shopping_hours and
-               day in self.shopping_days and
-               self.count_shop<=self.max_shop_per_week and
-               not self.rest_at_home):
-               next_activity = "grocery"
-
-        elif ( hour in self.exercise_hours and
-                day in self.exercise_days and
-                self.count_exercise<=self.max_exercise_per_week and
-                not self.rest_at_home):
-                next_activity = "exercise"
-
-        elif ( self.env.is_weekend() and
-                self.rng.random() < 0.5 and
-                not self.rest_at_home and
-                hour in self.misc_hours and
-                self.count_misc < self.max_misc_per_week):
-                next_activity = "socialize"
-        else:
-            next_activity = 'household'
-
-        return next_activity
-
-
-    def run(self, city):
-        """
-        Moves `self` from one location to other via logic implemented in this function.
-
-        Args:
-            city (covid19sim.locations.City): City object to which this human belongs
-
-        Yields:
-            simpy.events.Process
-        """
-        self.household.humans.add(self)
-        while True:
-            hour, day = self.env.hour_of_day(), self.env.day_of_week()
-            if day==0:
-                self.count_exercise = 0
-                self.count_shop = 0
-                self.count_misc = 0
-
-            self.assert_state_changes()
-
-            # self.how_am_I_feeling = 1.0 (great) will make rest_at_home = False
-            if not self.rest_at_home:
-                i_feel = self.how_am_I_feeling()
-                if self.rng.random() > i_feel:
-                    self.rest_at_home = True
-            elif self.rest_at_home and self.how_am_I_feeling() == 1.0 and self.is_removed:
-                self.rest_at_home = False
-
-            self.move_to_hospital_if_required()
-
-            fake_hour, fake_day = hour, day
-            to_location = next_activity = self.decide_next_activity(hour, day)
-            duration = 60
-            while next_activity == "household":
-                duration += self.rng.uniform(50, 70) # QKFIX: add randomness here to prevent some humans never exiting their house
-                fake_time = (self.env.timestamp + datetime.timedelta(minutes=duration))
-                fake_hour = fake_time.hour
-                fake_day = fake_time.day
-                next_activity = self.decide_next_activity(fake_hour, fake_day)
-                to_location = "household"
-                if duration > 720:
-                    break
-
-            if to_location == "household":
-                yield self.env.process(self.at(self.household, city, duration))
-            else:
-                yield self.env.process(self.excursion(city, to_location))
-
     ############################## MOBILITY ##################################
     @property
     def lat(self):
@@ -1553,55 +1471,6 @@ class Human(object):
         }
         self.my_history.append(row)
 
-    def at(self, location, city, duration):
-        """
-        Enter/Exit human to/from a `location` for some `duration`.
-        Once human is at a location, encounters are sampled.
-        During the stay, human is likely to be infected either by a contagion or
-        through environmental transmission.
-        Cold/Flu/Allergy onset also takes place in this function.
-
-        Args:
-            location (Location): next location to enter
-            city (City): city to which human belongs
-            duration (float): time duration for which human stays at this location (minutes)
-
-        Yields:
-            [type]: [description]
-        """
-        # print("before", self.env.timestamp, self, location, duration)
-
-        # track transitions & locations visited
-        # city.tracker.track_mobility(self.mobility_planner.current_activity, next_activity, self)
-        if self.track_this_human:
-            self.track_me(location)
-
-        # add human to the location
-        self.location = location
-        location.add_human(self)
-        self.location_start_time = self.env.now
-        self.location_leaving_time = self.location_start_time + duration * SECONDS_PER_MINUTE
-
-        # do regular checks on whether to wear a mask
-        # check if human needs a test if it's a hospital
-        self.check_if_needs_covid_test(at_hospital=isinstance(location, (Hospital, ICU)))
-        self.wear_mask()
-
-        yield self.env.timeout(duration)
-        # print("after", self.env.timestamp, self, location, duration)
-        if duration > min(self.conf['MIN_MESSAGE_PASSING_DURATION'], self.conf['INFECTION_DURATION']):
-            # sample interactions with other humans at this location
-            # unknown are the ones that self is not aware of e.g. person sitting next to self in a cafe
-            known_interactions, unknown_interactions = location.sample_interactions(self)
-            self.interact_with(known_interactions, type="known")
-            self.interact_with(unknown_interactions, type="unknown")
-
-        # environmental transmission
-        location.check_environmental_infection(self)
-
-        # remove human from this location
-        location.remove_human(self)
-
     def transition_to(self, next_activity, previous_activity):
         """
         Enter/Exit human to/from a `location` for some `duration`.
@@ -1631,7 +1500,7 @@ class Human(object):
         self.location = location
         location.add_human(self)
         self.location_start_time = self.env.now
-        self.location_leaving_time = self.location_start_time + duration * SECONDS_PER_MINUTE
+        self.location_leaving_time = self.location_start_time + duration
 
         # do regular checks on whether to wear a mask
         # check if human needs a test if it's a hospital
@@ -1665,7 +1534,7 @@ class Human(object):
             interaction_profile: each element is expected as follows -
                 human (covid19sim.human.Human): other human with whom to interact
                 distance_profile (covid19sim.locations.location.DistanceProfile): distance from which this encounter took place (cms)
-                t_near (float): duration for which this encounter took place (seconds)
+                duration or t_near (float): duration for which this encounter took place (seconds)
             type (string): type of interaction to sample. expects "known", "unknown"
         """
         for other_human, distance_profile, t_near in interaction_profile:
@@ -1716,89 +1585,6 @@ class Human(object):
                     p_infection=p_infection,
                     time=self.env.timestamp
                 )
-
-    def _select_location(self, activity, city, additional_visits=0):
-        """
-        Preferential exploration treatment to visit places in the city.
-
-        Args:
-            location_type (str): type of location to sample from
-            city (covid19sim.locations.city): `City` object in which `self` resides
-            additional_visits (int): number of additional visits for `activity`. Used to decide location after some number of these visits.
-
-        Raises:
-            ValueError: when location_type is not one of "park", "stores", "hospital", "hospital-icu", "miscs"
-
-        Returns:
-            (covid19sim.locations.location.Location): a `Location` object
-        """
-        if activity == "exercise":
-            S = self.visits.n_parks
-            self.adjust_gamma = 1.0
-            pool_pref = self.parks_preferences
-            locs = filter_open(city.parks)
-            visited_locs = self.visits.parks
-
-        elif activity == "grocery":
-            S = self.visits.n_stores
-            self.adjust_gamma = 1.0
-            pool_pref = self.stores_preferences
-            # Only consider locations open for business and not too long queues
-            locs = filter_queue_max(filter_open(city.stores), self.conf.get("MAX_STORE_QUEUE_LENGTH"))
-            visited_locs = self.visits.stores
-
-        elif activity == "hospital":
-            for hospital in sorted(filter_open(city.hospitals), key=lambda x:compute_distance(self.location, x)):
-                if len(hospital.humans) < hospital.capacity:
-                    return hospital
-            return None
-
-        elif activity == "hospital-icu":
-            for hospital in sorted(filter_open(city.hospitals), key=lambda x:compute_distance(self.location, x)):
-                if len(hospital.icu.humans) < hospital.icu.capacity:
-                    return hospital.icu
-            return None
-
-        elif activity == "socialize":
-            S = self.visits.n_miscs
-            self.adjust_gamma = 1.0
-            pool_pref = [(compute_distance(self.location, m) + 1e-1) ** -1 for m in city.miscs if
-                         m != self.location]
-            # Only consider locations open for business and not too long queues
-            locs = filter_queue_max(filter_open(city.miscs), self.conf.get("MAX_MISC_QUEUE_LENGTH"))
-            visited_locs = self.visits.miscs
-
-        elif activity == "work":
-            return self.workplace
-
-        else:
-            raise ValueError(f'Unknown location_type:{location_type}')
-
-        if S == 0:
-            p_exp = 1.0
-        else:
-            p_exp = self.rho * S ** (-self.gamma * self.adjust_gamma)
-
-        if self.rng.random() < p_exp and S != len(locs):
-            # explore
-            cands = [i for i in locs if i not in visited_locs]
-            cands = [(loc, pool_pref[i]) for i, loc in enumerate(cands)]
-        else:
-            # exploit, but can only return to locs that are open
-            cands = [
-                (i, count)
-                for i, count in visited_locs.items()
-                if i.is_open_for_business
-                and len(i.queue)<=self.conf.get("MAX_STORE_QUEUE_LENGTH")
-            ]
-
-        if cands:
-            cands, scores = zip(*cands)
-            loc = self.rng.choice(cands, p=_normalize_scores(scores))
-            visited_locs[loc] += 1
-            return loc
-        else:
-            return None
 
     def exposure_array(self, date):
         """
@@ -1867,7 +1653,7 @@ class Human(object):
         Args:
             other_human (covid19sim.human.Human) other human that self is communiciating via bluetooth
             distance (float): actual distance of encounter with other_human (cms)
-            duration (float): time duration of encounter (minutes)
+            duration (float): time duration of encounter (seconds)
 
         Returns:
             h1_msg ():
@@ -1876,6 +1662,7 @@ class Human(object):
         if not other_human.has_app or not self.has_app:
             return None, None
 
+        t_near_in_minutes = duration / SECONDS_PER_MINUTE
         # phone_bluetooth_noise is a value selected between 0 and 2 meters to approximate the noise in the manufacturers bluetooth chip
         # distance is the "average" distance of the encounter
         # self.rng.random() - 0.5 gives a uniform random variable centered at 0
@@ -1889,12 +1676,12 @@ class Human(object):
         # The maximum distance of a message which we would consider to be "high risk" and therefore meriting an
         # encounter message is under 2 meters for at least 5 minutes.
         if approximated_bluetooth_distance < self.conf.get("MAX_MESSAGE_PASSING_DISTANCE") and \
-                t_near > self.conf.get("MIN_MESSAGE_PASSING_DURATION") and \
+                t_near_in_minutes > self.conf.get("MIN_MESSAGE_PASSING_DURATION") and \
                 self.tracing and \
                 self.has_app and \
                 h.has_app:
 
-            remaining_time_in_contact = duration
+            remaining_time_in_contact = t_near_in_minutes
             encounter_time_granularity = self.conf.get("MIN_MESSAGE_PASSING_DURATION")
             exchanged = False
             while remaining_time_in_contact > encounter_time_granularity:
