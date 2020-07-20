@@ -198,19 +198,14 @@ class Location(simpy.Resource):
         if len(self.humans) == 1:
             return None
 
-        MAX_AGE_SUPERVISION = self.conf['MAX_AGE_CHILDREN_WITHOUT_PARENT_SUPERVISION']
+        PREFERENTIAL_ATTACHEMENT_FACTOR = self.conf['PREFERENTIAL_ATTACHEMENT_FACTOR']
+
         if type == "known":
             human_bin = human.age_bin_width_5.index
+            hs, h_vector, known_vector = list(zip(*[(h, h.age_bin_width_5.index, h in human.known_connections) for h in self.humans if human != h]))
 
-            if human.age <= MAX_AGE_SUPERVISION:
-                valid_interactions = [h for h in self.humans if human != h and h.age > MAX_AGE_SUPERVISION]
-                if not valid_interactions:
-                    return None
-                hs, h_vector = list(zip(*[(h, h.age_bin_width_5.index) for h in self.humans if human != h and h.age > MAX_AGE_SUPERVISION]))
-            else:
-                hs, h_vector = list(zip(*[(h, h.age_bin_width_5.index) for h in self.humans if human != h]))
-
-            p_contact = self.P_CONTACT[h_vector, human_bin]
+            p_contact = self.P_CONTACT[h_vector, human_bin] * (1 - PREFERENTIAL_ATTACHEMENT_FACTOR)
+            p_contact += np.array(known_vector) * PREFERENTIAL_ATTACHEMENT_FACTOR
             if p_contact.sum() == 0:
                 return None
                 warnings.warn("bad mobility...")
@@ -258,7 +253,7 @@ class Location(simpy.Resource):
             mean_interaction_time = self.conf["GAMMA_UNKNOWN_CONTACT_DURATION"]
         else:
             raise
-
+        mean_daily_interactions += 1e-6 # to avoid error in sampling with 0 mean from negative binomial 
         scale_factor_interaction_time = self.conf['SCALE_FACTOR_CONTACT_DURATION']
         # (assumption) maximum allowable distance is when humans are uniformly spaced
         packing_term = 100 * np.sqrt(self.area/len(self.humans))

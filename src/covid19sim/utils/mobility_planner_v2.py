@@ -75,10 +75,7 @@ class Activity(object):
 
         x.duration = (x.end_time - x.start_time).total_seconds()
 
-        try:
-            assert x.duration >= 0, "negative duration encountered"
-        except:
-            breakpoint()
+        assert x.duration >= 0, "negative duration encountered"
         return x
 
     def refresh_location(self):
@@ -135,8 +132,8 @@ class MobilityPlanner(object):
             3. `human` who is free to do anything.
         """
         # start human from the activity of sleeping. (assuming everyone sleeps for same amount of time)
-        AVG_SLEEPING_MINUTES = self.conf['AVG_SLEEPING_MINUTES']
-        duration = AVG_SLEEPING_MINUTES * SECONDS_PER_MINUTE
+        AVERAGE_TIME_SLEEPING = self.conf['AVERAGE_TIME_SLEEPING']
+        duration = AVERAGE_TIME_SLEEPING * SECONDS_PER_HOUR
         self.current_activity = Activity(0, duration, duration, "sleep", self.human.household)
         self.current_activity.start_time = self.env.timestamp
         self.current_activity.end_time = self.env.timestamp + datetime.timedelta(seconds=duration)
@@ -160,14 +157,8 @@ class MobilityPlanner(object):
             adults_in_house = [h for h in self.human.household.residents if h.age > MAX_AGE_CHILDREN_WITHOUT_SUPERVISION]
             assert len(adults_in_house) > 0, "No adult found"
 
-            adult_schedule = []
-            # random sampling of human
             adult_to_follow = self.rng.choice(adults_in_house , size=n_days, replace=True)
             self.adult_to_follow = deque(adult_to_follow.tolist())
-            # for day, adult in enumerate(self.adult_to_follow):
-            #     assert len(adult.mobility_planner.full_schedule) > 0, "adult schedule not prepared yet"
-            #     adult_schedule.append(adult.mobility_planner.full_schedule[day])
-            # self.full_schedule = _patch_kid_schedule(self.human, adult_schedule, does_work, self.current_activity, self.conf)
         else:
             ## other activities
             does_grocery = _presample_activity("grocery", self.conf, self.rng, n_days)
@@ -195,12 +186,12 @@ class MobilityPlanner(object):
 
             self.full_schedule = deque(full_schedule)
 
-    def get_schedule(self, force_today=False, for_rsvp=False):
+    def get_schedule(self, force_today=False):
         """
         Moves the schedule pointer to the schedule for the current simulation day.
 
         Args:
-            for_rsvp (bool): True if schedule is being asked while RSVPing an invitation.
+            force_today (bool): return schedule for today even if it hasn't been prepared yet
 
         Returns:
             schedule (deque): a deque of `Activity`s where the activities are arranged in increasing order of their starting time.
@@ -216,7 +207,7 @@ class MobilityPlanner(object):
                 return self.schedule_for_day
 
         if len(self.schedule_for_day) == 0 and today not in self.schedule_prepared:
-            self.schedule_for_day = self._prepare_schedule(for_rsvp=for_rsvp)
+            self.schedule_for_day = self._prepare_schedule()
             self.schedule_prepared.add(today)
 
         return self.schedule_for_day
@@ -249,6 +240,8 @@ class MobilityPlanner(object):
         assert activity.name == "socialize", "coordination for other activities is not implemented."
         group = set()
         for human in connections:
+            if human == self.human:
+                continue
             if human.mobility_planner.receive(activity, self.human):
                 group.add(human)
 
@@ -285,10 +278,7 @@ class MobilityPlanner(object):
         # only accept this activity if it fits in the schedule of the day on which it is sent
         # and leave the current schedule unchanged
         new_schedule = self.get_schedule(force_today=True)
-        # if today not in self.schedule_prepared:
         remaining_schedule = [self.current_activity] + list(self.schedule_for_day)
-        # else:
-            # remaining_schedule = [self.current_activity]
 
         # /!\ by accepting the invite, `self` doesn't invite others to its social
         # thus, if there is a non-overlapping social on the schedule, `self` will go alone.
@@ -307,12 +297,9 @@ class MobilityPlanner(object):
 
         return False
 
-    def _prepare_schedule(self, for_rsvp=False):
+    def _prepare_schedule(self):
         """
-        TODO
-
-        Args:
-            for_rsvp (bool): True if schedule is being asked while RSVPing an invitation.
+        Prepares schedule for the next day. Retruns presampled schedule if its an adult.
 
         Returns:
             schedule (deque): a deque of `Activity`s where the activities are arranged in increasing order of their starting time.
@@ -334,7 +321,8 @@ class MobilityPlanner(object):
 
     def send_social_invites(self):
         """
-        To be called once per day at midnight. This helps in modifying schedules of those who accept the invitation.
+        Sends invitation for "socialize" activity to `self.human.known_connections`.
+        To be called once per day at midnight. By calling it at midnight helps in modifying schedules of those who accept the invitation.
         """
         today = self.env.timestamp.date()
 
@@ -354,14 +342,20 @@ class MobilityPlanner(object):
 
 def _modify_schedule(remaining_schedule, new_activity, new_schedule):
     """
+    Finds space for `new_activity` while keeping `remaining_schedule` unchanged
+
+    Args:
+        remaining_schedule (list): list of `Activity`s to precede the new schedule
+        new_activity (Activity): activity which needs to be fit in `new_schedule`
+        new_schedule (list): list of activities that follow `remaining_schedule`
+
+    Returns:
+        schedule (deque): a deque of `Activity`s where the activities are arranged in increasing order of their starting time.
     """
     valid = True
     assert len(remaining_schedule) > 0, "Empty remaining_schedule. Human should be doing something all the time."
     assert remaining_schedule[-1].name == "sleep", "sleep not found as the last activity"
-    try:
-        assert remaining_schedule[-1].end_time == new_schedule[0].start_time, "two schedules are not aligned"
-    except:
-        breakpoint()
+    assert remaining_schedule[-1].end_time == new_schedule[0].start_time, "two schedules are not aligned"
 
     last_activity = remaining_schedule[-1]
     # if new_activity completely overlaps with last_activity, do not accept
@@ -405,7 +399,9 @@ def _modify_schedule(remaining_schedule, new_activity, new_schedule):
 
         if activity.start_time >= new_activity.start_time:
             if activity.end_time <= new_activity.end_time:
-                # discard
+                # discard but if both ends are equal add new_activity before discarding or there will be a gap
+                if new_activity not in partial_schedule:
+                    partial_schedule.append(new_activity)
                 continue
 
             if new_activity.end_time <= activity.start_time:
@@ -427,10 +423,8 @@ def _modify_schedule(remaining_schedule, new_activity, new_schedule):
     full_schedule = [x for idx, x in enumerate(new_schedule) if idx <= work_activity_idx]
     full_schedule += partial_schedule
 
-    try:
-        assert remaining_schedule[-1].end_time == full_schedule[0].start_time, "times do not align"
-    except:
-        breakpoint()
+    assert remaining_schedule[-1].end_time == full_schedule[0].start_time, "times do not align"
+
     # uncomment for rigorous checks
     for a1, a2 in zip(full_schedule, full_schedule[1:]):
         assert a1.end_time == a2.start_time, "times do not align"
@@ -531,10 +525,8 @@ def _patch_schedule(human, last_activity, activities, conf):
     # finally, close the schedule by adding sleep
     schedule, current_activity, awake_duration = _add_sleep_to_schedule(human, schedule, wake_up_time_in_seconds, current_activity, human.rng, conf, awake_duration)
 
-    # full_schedule.append(deque(schedule))
     for a1, a2 in zip(schedule, schedule[1:]):
         assert a1.end_time == a2.start_time, "times do not align"
-
 
     return deque(schedule)
 
@@ -565,6 +557,7 @@ def _fill_time_constraints(human, activity, current_activity, wake_up_time_in_se
     ## if wake up late, then start the activity then
     activity.start_in_seconds = max(activity.start_in_seconds, wake_up_time_in_seconds)
     activity.start_in_seconds = max(activity.start_in_seconds, opening_time)
+    activity.start_in_seconds = min(closing_time, activity.start_in_seconds)
 
     # set ending time
     ## if it is an all time open location, end_in_seconds can exceed closing time to next day
@@ -600,12 +593,15 @@ def _add_to_the_schedule(human, schedule, activity, last_activity, awake_duratio
 
     # if there is time between now and next activity add idle activity at household
     idle_time = activity.start_in_seconds - last_activity.end_in_seconds
+    # if idle_time <= 0:
+    #     warnings.warn(f"Negative idle time {idle_time} encountered.skipping the activity")
+    #     return schedule, last_activity, awake_duration
+
     if idle_time > 0:
         schedule, last_activity, awake_duration = _add_idle_activity(human, schedule, activity, last_activity, awake_duration)
         idle_time = 0
 
-    assert idle_time == 0, "non-zero idle time encountered."
-
+    assert idle_time == 0, "non-zero idle time encountered"
     activity.start_time = last_activity.end_time
     activity.end_time = activity.start_time + datetime.timedelta(seconds=activity.duration) # only place where datetime operation is required
     schedule.append(activity)
@@ -783,14 +779,12 @@ def _sample_activity_duration(activity, conf, rng):
         AVERAGE_TIME = conf['AVERAGE_TIME_SPENT_SOCIALIZING']
 
     elif activity == "sleep":
-        AVERAGE_TIME = conf['AVG_SLEEPING_MINUTES']
-        SCALE_FACTOR = conf['SCALE_SLEEPING_MINUTES']
-        SECONDS_CONVERSION_FACTOR = SECONDS_PER_MINUTE
+        AVERAGE_TIME = conf['AVERAGE_TIME_SLEEPING']
+        SCALE_FACTOR = conf['TIME_SPENT_SCALE_FACTOR_SLEEP_AWAKE']
 
     elif activity == "awake":
-        AVERAGE_TIME = conf['AVG_AWAKE_MINUTES']
-        SCALE_FACTOR = conf['SCALE_AWAKE_MINUTES']
-        SECONDS_CONVERSION_FACTOR = SECONDS_PER_MINUTE
+        AVERAGE_TIME = conf['AVERAGE_TIME_AWAKE']
+        SCALE_FACTOR = conf['TIME_SPENT_SCALE_FACTOR_SLEEP_AWAKE']
 
     else:
         raise ValueError
@@ -801,6 +795,10 @@ def _sample_activity_duration(activity, conf, rng):
 def _select_location(human, activity, city, rng, conf):
     """
     Preferential exploration treatment to visit places in the city.
+
+    Reference -
+    Pappalardo, L., Simini, F. Rinzivillo, S., Pedreschi, D. Giannotti, F. & Barabasi, A. L. (2015)
+    Returners and Explorers dichotomy in human mobility. Nature Communications 6, https://www.nature.com/articles/ncomms9166
 
     Args:
         activity (str): type of activity to sample from
@@ -841,11 +839,16 @@ def _select_location(human, activity, city, rng, conf):
     elif activity == "socialize":
         # Note 1: a candidate location is human's household
         # Note 2: if human works at one of miscs, we still consider that as a candidate location
+        P_HOUSE_OVER_MISC_FOR_SOCIALS = conf['P_HOUSE_OVER_MISC_FOR_SOCIALS']
+        if rng.random() < P_HOUSE_OVER_MISC_FOR_SOCIALS:
+            return human.household
+
         S = human.visits.n_miscs
-        candidate_locs = city.miscs + [human.household]
+        candidate_locs = city.miscs
         pool_pref = [(compute_distance(human.location, m) + 1e-1) ** -1 for m in candidate_locs]
+
         # Only consider locations open for business and not too long queues
-        locs = filter_queue_max(filter_open(city.miscs), conf.get("MAX_MISC_QUEUE_LENGTH"))
+        locs = filter_queue_max(filter_open(candidate_locs), conf.get("MAX_MISC_QUEUE_LENGTH"))
         visited_locs = human.visits.miscs
 
     elif activity == "work":
@@ -872,13 +875,13 @@ def _select_location(human, activity, city, rng, conf):
             and len(i.queue) <= conf.get("MAX_STORE_QUEUE_LENGTH")
         ]
 
-    if cands:
-        cands, scores = zip(*cands)
-        loc = human.rng.choice(cands, p=_normalize_scores(scores))
-        visited_locs[loc] += 1
-        return loc
-    else:
+    if len(cands) == 0:
         return None
+
+    cands, scores = zip(*cands)
+    loc = rng.choice(cands, p=_normalize_scores(scores))
+    visited_locs[loc] += 1
+    return loc
 
 def _patch_kid_schedule_presmapled(human, adult_schedule, work, current_activity, conf):
     """

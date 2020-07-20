@@ -1306,10 +1306,7 @@ class Human(object):
             if next_activity.location is not None:
                 # Note: use -O command line option to avoid checking for assertions
                 # print("A\t", self.env.timestamp, self, next_activity)
-                try:
-                    assert abs(self.env.timestamp - next_activity.start_time).seconds == 0, "start times do not align..."
-                except:
-                    breakpoint()
+                assert abs(self.env.timestamp - next_activity.start_time).seconds == 0, "start times do not align..."
                 yield self.env.process(self.transition_to(next_activity, previous_activity))
                 # print("B\t", self.env.timestamp, self, next_activity)
                 assert abs(self.env.timestamp - next_activity.end_time).seconds == 0, " end times do not align..."
@@ -1321,6 +1318,8 @@ class Human(object):
                 # that parent activity will have its location confirmed. This creates a discrepancy in env.timestamp and
                 # next_activity.start_time.
                 yield self.env.timeout(1)
+
+                # realign the activities
                 next_activity.start_in_seconds += 1
                 next_activity.start_time += datetime.timedelta(seconds=1)
                 next_activity.duration -= 1
@@ -1621,6 +1620,7 @@ class Human(object):
         # print("before", self.env.timestamp, self, location, duration)
         location = next_activity.location
         duration = next_activity.duration
+        type_of_activity = next_activity.name
 
         # track transitions & locations visited
         self.city.tracker.track_mobility(previous_activity, next_activity, self)
@@ -1642,7 +1642,9 @@ class Human(object):
         # print("after", self.env.timestamp, self, location, duration)
 
         # only sample interactions if there is a possibility of infection or message exchanges
-        if duration > min(self.conf['MIN_MESSAGE_PASSING_DURATION'], self.conf['INFECTION_DURATION']):
+        # sleep is an inactive stage
+        if (duration > min(self.conf['MIN_MESSAGE_PASSING_DURATION'], self.conf['INFECTION_DURATION'])
+            and "sleep" not in type_of_activity):
             # sample interactions with other humans at this location
             # unknown are the ones that self is not aware of e.g. person sitting next to self in a cafe
             known_interactions, unknown_interactions = location.sample_interactions(self)

@@ -61,11 +61,15 @@ def _get_location_type_to_track_mixing(human, location):
     if location.location_type == "HOUSEHOLD":
         return "house"
 
-    if location.location_type == "WORKPLACE":
-        return "work"
+    # if location.location_type == "WORKPLACE":
+        # return "work"
 
     if location.location_type == "SCHOOL":
         return "school"
+
+    if location == human.workplace:
+        return "work"
+
 
     return "other"
 
@@ -1219,7 +1223,7 @@ class Tracker(object):
             interaction_types.append("within_contact_condition")
 
         for interaction_type in interaction_types:
-            for location_type in ['all', type_of_place]:
+            for location_type in ['all', human1_type_of_place, human2_type_of_place]:
                 C = self.contact_matrices[interaction_type][location_type]
                 D = self.contact_duration_matrices[interaction_type][location_type]
 
@@ -1514,7 +1518,7 @@ class Tracker(object):
         str_to_print += f"total visits {total} | "
         for location in locations:
             m = self.socialize_activity_data["location_frequency"][location]
-            str_to_print += f"{location}: {m} {100*m/total:2.2f}%"
+            str_to_print += f"{location}: {m} {100*m/total:2.2f}% | "
         log(str_to_print, self.logfile)
 
         str_to_print = "Start time - "
@@ -1526,11 +1530,12 @@ class Tracker(object):
         log(str_to_print, self.logfile)
 
         str_to_print = "Social network properties (degree statistics) - "
-        degrees = Statistics([len(h.known_connections) for h in self.city.humans])
-        str_to_print += f"mean {degrees.mean(): 2.2f} | "
-        str_to_print += f"std. {degrees.stddev(): 2.2f} | "
-        str_to_print += f"min {degrees.minimum(): 2.2f} | "
-        str_to_print += f"max {degrees.maximum(): 2.2f} | "
+        degrees = np.array([len(h.known_connections) for h in self.city.humans])
+        str_to_print += f"mean {np.mean(degrees): 2.2f} | "
+        str_to_print += f"std. {np.std(degrees): 2.2f} | "
+        str_to_print += f"min {min(degrees): 2.2f} | "
+        str_to_print += f"max {max(degrees): 2.2f} | "
+        str_to_print += f"median {np.median(degrees): 2.2f}"
         log(str_to_print, self.logfile)
         # for until_days in [30, None]:
         #     log("******** Risk Precision/Recall *********", self.logfile)
