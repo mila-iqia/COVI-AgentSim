@@ -380,12 +380,6 @@ def plot(data, output_file, method, adoption_rate):
                 pixels[x,y] = (255, 255, 255, 255)
     img.save(output_file)
     
-    # try:
-    #     import imgkit
-    #     imgkit.from_file(output_file, output_file.replace(".html", ".jpg"))
-    #     # os.remove(output_file)
-    # except Exception:
-    #     print("no imgkit (wkhtmltopdf required), convert html to jpg locally")
 
 def run(data, path, comparison_key, adoption_rate, wandb=False, num_chains=3):
 
