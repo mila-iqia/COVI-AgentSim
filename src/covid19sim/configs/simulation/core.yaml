@@ -81,9 +81,9 @@ SCHOOL_MEAN_DAILY_INTERACTIONS: 1.6
 SCHOOL_OPEN_CLOSE_HOUR_MINUTE: [[8, 0], [16, 0]]
 SCHOOL_OPEN_DAYS: [0, 1, 2, 3, 4]
 
-################################################
-#####  Mobility / Social Mixing CONSTANTS  #####
-################################################
+#############################################################
+#####  Mobility / Social Mixing / Occupation CONSTANTS  #####
+#############################################################
 
 # /!\ (no-source) This factor is used in scaling the average time spent on various activities.
 # Scaling is done in an mean preserving manner. For example, if mean is X and the distribution is gamma,
@@ -91,13 +91,95 @@ SCHOOL_OPEN_DAYS: [0, 1, 2, 3, 4]
 # Note: mean of a gamma distribution is location * shape = X (here).
 TIME_SPENT_SCALE_FACTOR: 0.1
 
-
-################################################
-#####       Occupation CONSTANTS           #####
-################################################
+# Preferential exploration of places in a city.
+RHO: 0.40 # higher the value more exploration of new places
+GAMMA: 0.1 # lower the value higher the exploration of new places
 
 # /!\ (no-source)
+# daily routine
+AVERAGE_TIME_SLEEPING: 8 # hours; no interactions are sampled during this time
+AVERAGE_TIME_AWAKE: 16 # hours; human moves through different networks during this time
+TIME_SPENT_SCALE_FACTOR_SLEEP_AWAKE: 0.01 # /!\ 0.1 scale creates a lot of variation in sleep schedule which breaks the assumptions in MobilityPlanner
+
+# work routine
 N_WORKING_DAYS: 5
+WORKING_START_HOUR: 8 # 8 AM in the morning
+
+#########################################################
+#####       Interaction Parameters                  #####
+#########################################################
+
+# Contacts are broadly of two types - "known" and "unknown"
+# known contacts) are assumed to be those which we are aware of, for example, meeting a friend.
+# unknown contacts are those which are not known to us consciously ,i.e. strangers standing next to us in a metro.
+
+# known
+MIN_DIST_KNOWN_CONTACT: 0
+MAX_DIST_KNOWN_CONTACT: 200 # cms
+
+# unknown (all the numbers below are assumed because no data is available about them)
+# A distance greater than INFECTION_RADIUS is useless to model, however, in the context of tracing apps
+# distance between two bluetooth devices can be underesimated depending on the noise in the signals.
+# Thus, a distance of greater than 200 cms can potentially be visible as a risky contacts.
+# Here, we sample distances up to 300 cms to allow for bluetooth devices to record no-risk contacts
+MEAN_DAILY_UNKNOWN_CONTACTS: 1.0
+MIN_DIST_UNKNOWN_CONTACT: 100
+MAX_DIST_UNKNOWN_CONTACT: 300 # cms
+GAMMA_UNKNOWN_CONTACT_DURATION: 15
+
+# both: known and unknown
+# we sample duration as a gamma distribution with mean as MEAN_DAILY_CONTACT_DURATION / SCALE_FACTOR_CONTACT_DURATION
+# and variance as SCALE_FACTOR_CONTACT_DURATION. This ensures that the mean is MEAN_DAILY_CONTACT_DURATION and the variance is
+# MEAN_DAILY_CONTACT_DURATION * SCALE_FACTOR_CONTACT_DURATION
+# This way we are left with just one parameter to control the uncertainty around contact duration.
+SCALE_FACTOR_CONTACT_DURATION: 1.0
+
+#########################################################
+#####                 Knobs                         #####
+#########################################################
+
+# Assortativity knobs (A)
+# These needs to be calibrated to acheive the region specific mixing pattern
+# this factor influences the strength of assortativity in contacts at home.
+# higher the value, more likely that people of the same age group live together.
+HOUSEHOLD_ASSORTATIVITY_STRENGTH: 0.5
+WORKPLACE_ASSORTATIVITY_STRENGTH: 0.8
+
+# social mixing knob (B)
+P_INVITATION_ACCEPTANCE: 0.8 # probability of accepting inivitaton from peers to "socialize"
+PREFERENTIAL_ATTACHEMENT_FACTOR: 0 # probability to interact with only the known connections
+P_HOUSE_OVER_MISC_FOR_SOCIALS: 1.0 # probability to prefer household as a location for socials as compared to MISC
+
+# Infection knobs ()
+CONTAGION_KNOB: 1
+ENVIRONMENTAL_INFECTION_KNOB: 0.0017
+
+#########################################################
+#####       Smartphone Parameters                   #####
+#########################################################
+
+LOCATION_TECH: "gps" # &location-tech
+
+# Source: COVID-19 individual-based model with instantaneous contract tracing (Table 9)
+# TODO: link to the document
+SMARTPHONE_OWNER_FRACTION_BY_AGE:
+  {
+    '0-9': 0.0,
+    '10-19': 0.90,
+    '20-29': 0.96,
+    '30-39': 0.95,
+    '40-49': 0.91,
+    '50-59': 0.81,
+    '60-69': 0.64,
+    '70-79': 0.41,
+    '80-110': 0.27,
+  }
+
+# BLUETOOTH MESSAGE EXCHANGE PARAMETERS
+# bluetooth messages are recorded when the devices are within MAX_MESSAGE_PASSING_DISTANCE radius
+# for more than MIN_MESSAGE_PASSING_DURATION mins
+MAX_MESSAGE_PASSING_DISTANCE: 200 # cms
+MIN_MESSAGE_PASSING_DURATION: 15 # mins
 
 #########################################################
 #####       Viral Load Parameters                   #####
@@ -272,19 +354,6 @@ AVG_COLD_DURATION: 3 # FIXME:unused
 P_CAREFUL_PERSON: 0.3 # &carefulness
 P_TRAVELLED_INTERNATIONALLY_RECENTLY: 0.05
 
-# LIFESTYLE PARAMETERS
-RHO: 0.40
-GAMMA: 0.1
-
-AVG_SLEEPING_MINUTES: 480
-SCALE_SLEEPING_MINUTES: 0.1
-AVG_AWAKE_MINUTES: 960
-SCALE_AWAKE_MINUTES: 0.1
-
-# work related
-N_WORKING_DAYS: 5
-WORKING_START_HOUR: 8 # 8 AM in the morning
-
 
 ######################################### $
 ## WORK
@@ -335,83 +404,6 @@ MAX_MISC_QUEUE_LENGTH: 10
 # Biological sex
 P_FEMALE: 0.45
 P_MALE: 0.45
-
-#########################################################
-#####       Smartphone Parameters                   #####
-#########################################################
-
-LOCATION_TECH: "gps" # &location-tech
-
-# Source: COVID-19 individual-based model with instantaneous contract tracing (Table 9)
-# TODO: link to the document
-SMARTPHONE_OWNER_FRACTION_BY_AGE:
-  {
-    '0-9': 0.0,
-    '10-19': 0.90,
-    '20-29': 0.96,
-    '30-39': 0.95,
-    '40-49': 0.91,
-    '50-59': 0.81,
-    '60-69': 0.64,
-    '70-79': 0.41,
-    '80-110': 0.27,
-  }
-
-# BLUETOOTH MESSAGE EXCHANGE PARAMETERS
-# bluetooth messages are recorded when the devices are within MAX_MESSAGE_PASSING_DISTANCE radius
-# for more than MIN_MESSAGE_PASSING_DURATION mins
-MAX_MESSAGE_PASSING_DISTANCE: 200 # cms
-MIN_MESSAGE_PASSING_DURATION: 15 # mins
-
-#########################################################
-#####       Interaction Parameters                  #####
-#########################################################
-
-# Contacts are broadly of two types - "known" and "unknown"
-# known contacts) are assumed to be those which we are aware of, for example, meeting a friend.
-# unknown contacts are those which are not known to us consciously ,i.e. strangers standing next to us in a metro.
-
-# known
-MIN_DIST_KNOWN_CONTACT: 0
-MAX_DIST_KNOWN_CONTACT: 200 # cms
-
-# unknown (all the numbers below are assumed because no data is available about them)
-# A distance greater than INFECTION_RADIUS is useless to model, however, in the context of tracing apps
-# distance between two bluetooth devices can be underesimated depending on the noise in the signals.
-# Thus, a distance of greater than 200 cms can potentially be visible as a risky contacts.
-# Here, we sample distances up to 300 cms to allow for bluetooth devices to record no-risk contacts
-MEAN_DAILY_UNKNOWN_CONTACTS: 1.0
-MIN_DIST_UNKNOWN_CONTACT: 100
-MAX_DIST_UNKNOWN_CONTACT: 300 # cms
-GAMMA_UNKNOWN_CONTACT_DURATION: 15
-
-# both: known and unknown
-# we sample duration as a gamma distribution with mean as MEAN_DAILY_CONTACT_DURATION / SCALE_FACTOR_CONTACT_DURATION
-# and variance as SCALE_FACTOR_CONTACT_DURATION. This ensures that the mean is MEAN_DAILY_CONTACT_DURATION and the variance is
-# MEAN_DAILY_CONTACT_DURATION * SCALE_FACTOR_CONTACT_DURATION
-# This way we are left with just one parameter to control the uncertainty around contact duration.
-SCALE_FACTOR_CONTACT_DURATION: 1.0
-
-#########################################################
-#####                 Knobs                         #####
-#########################################################
-
-# Assortativity knobs (A)
-# These needs to be calibrated to acheive the region specific mixing pattern
-# this factor influences the strength of assortativity in contacts at home.
-# higher the value, more likely that people of the same age group live together.
-HOUSEHOLD_ASSORTATIVITY_STRENGTH: 0.5
-WORKPLACE_ASSORTATIVITY_STRENGTH: 0.4
-
-# social mixing knob (B)
-# Defines the probability of accepting inivitaton from peers to "socialize"
-P_INVITATION_ACCEPTANCE: 0.5
-PREFERENTIAL_ATTACHEMENT_FACTOR: 1.0
-
-# Infection knobs ()
-CONTAGION_KNOB: 1
-ENVIRONMENTAL_INFECTION_KNOB: 0.0017
-
 
 #########################################################
 #####           Intervention Parameters             #####
