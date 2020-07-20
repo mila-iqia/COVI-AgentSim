@@ -8,30 +8,22 @@ if typing.TYPE_CHECKING:
 
 
 def compute_prevalence(
-    humans: Iterable["Human"], risk_level_threshold: float,
+    humans: Iterable["Human"],
+    rng: np.random.RandomState,
+    laplace_noise_scale: float = 0.1,
 ):
-    infectious_count = 0
-    total_count = 0
-    all_risk_levels = []
-    for human in humans:
-        if human.is_dead or not human.has_app:
-            continue
-        current_risk_level = human.risk_level
-        all_risk_levels.append(current_risk_level)
-        # fmt: off
-        total_count += 1
-        infectious_count += (1 if current_risk_level > risk_level_threshold else 0)
-        # fmt: on
-    if total_count == 0:
-        prevalence = None
-    else:
-        prevalence = infectious_count / total_count
-    return prevalence, all_risk_levels
+    all_risks = np.asarray(
+        [human.risk for human in humans if not human.is_dead and human.has_app]
+    )
+    all_risks += rng.laplace(0, laplace_noise_scale, size=all_risks.shape)
+    all_risks = np.abs(all_risks)
+    prevalence = all_risks.mean()
+    return prevalence, list(all_risks)
 
 
 def get_recommendation_thresholds(
     prevalence: float,
-    all_risk_levels: Iterable[int],
+    all_risks: Iterable[float],
     leeway: float,
     relative_fraction_orange_to_red: float,
     relative_fraction_yellow_to_red: float,
@@ -52,8 +44,8 @@ def get_recommendation_thresholds(
 
     # We have green_threshold < yellow_threshold < orange_threshold < 1.
     # We now split the histogram accordingly.
-    green_threshold = np.percentile(all_risk_levels, percentile_in_green)
-    yellow_threshold = np.percentile(all_risk_levels, percentile_in_yellow)
-    orange_threshold = np.percentile(all_risk_levels, percentile_in_orange)
+    green_threshold = np.percentile(all_risks, percentile_in_green)
+    yellow_threshold = np.percentile(all_risks, percentile_in_yellow)
+    orange_threshold = np.percentile(all_risks, percentile_in_orange)
 
     return green_threshold, yellow_threshold, orange_threshold

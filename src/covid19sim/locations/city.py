@@ -777,18 +777,21 @@ class City:
         if self.conf.get("USE_ONORM"):
             prevalence, all_risk_levels = compute_prevalence(
                 humans=self.humans,
-                risk_level_threshold=self.conf.get("ONORM_INFECTIOUSNESS_THRESHOLD"),
+                rng=self.rng,
+                laplace_noise_scale=self.conf.get("ONORM_LAPNOISE_SCALE"),
             )
             rec_level_thresholds = get_recommendation_thresholds(
                 prevalence=prevalence,
-                all_risk_levels=all_risk_levels,
+                all_risks=all_risk_levels,
                 leeway=self.conf.get("ONORM_LEEWAY"),
                 relative_fraction_orange_to_red=self.conf.get("ONORM_O2R_REL_FRAC"),
                 relative_fraction_yellow_to_red=self.conf.get("ONORM_Y2R_REL_FRAC"),
             ) if prevalence is not None else None
+            use_human_attribute = "risk"
         else:
             # Will be handled downstream inside `human.update_recommendations_level`
             rec_level_thresholds = None
+            use_human_attribute = "risk_level"
 
         # iterate over humans again, and if it's their timeslot, then prepare risk update messages
         update_messages = []
@@ -802,7 +805,8 @@ class City:
                     human.risk_history_map[current_day - day_offset] = 1.0
 
             # using the risk history map & the risk level map, update the human's rec level
-            human.update_recommendations_level(rec_level_thresholds=rec_level_thresholds)
+            human.update_recommendations_level(rec_level_thresholds=rec_level_thresholds,
+                                               use_human_attribute=use_human_attribute)
 
             # if we had any encounters for which we have not sent an initial message, do it now
             update_messages.extend(human.contact_book.generate_initial_updates(

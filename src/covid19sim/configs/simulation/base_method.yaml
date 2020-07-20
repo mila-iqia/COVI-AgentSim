@@ -35,7 +35,7 @@ REC_LEVEL_THRESHOLDS: [1, 3, 5] # how to convert risk_levels to rec_levels
 MAX_RISK_LEVEL: 15 # maximum allowed risk_level => assert risk_level in range(0, MAX_RISK_LEVEL + 1)
 
 USE_ONORM: False  # whether to use online normalization
-ONORM_INFECTIOUSNESS_THRESHOLD: 1 # infectiousness threshold for ONORM (not used if USE_ONORM is False)
+ONORM_LAPNOISE_SCALE: 0.05 # scale of the laplace norm to use when aggregating risk for ONORM
 ONORM_LEEWAY: 1.0
 ONORM_O2R_REL_FRAC: 1.0
 ONORM_Y2R_REL_FRAC: 2.0
