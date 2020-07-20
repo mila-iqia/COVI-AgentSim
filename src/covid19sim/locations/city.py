@@ -364,34 +364,10 @@ class City:
         for human in self.humans:
             human.mobility_planner.initialize()
 
-        # # /!\ Initiate adults first because kids schedule depends on their parents.
-        # MAX_AGE_WITHOUT_SUPERVISION = self.conf['MAX_AGE_CHILDREN_WITHOUT_PARENT_SUPERVISION']
-        # adults = [human for human in self.humans if human.age > MAX_AGE_WITHOUT_SUPERVISION]
-        # for adult in adults:
-        #     _ = adult.mobility_planner.initialize()
-        #
-        # kids = [human for human in self.humans if human.age <= MAX_AGE_WITHOUT_SUPERVISION]
-        # for kid in kids:
-        #     _ = kid.mobility_planner.initialize()
         timedelta = (datetime.datetime.now() - start_time).total_seconds()
         log(f"Schedule prepared (Took {timedelta:2.3f}s)", self.logfile)
 
         self.hd = {human.name: human for human in self.humans}
-
-    def update_human_schedules(self):
-        """
-        Runs the mobility_planner's schedule functionf for each human.
-        """
-        # TODO - parallelize this for speedup in initialization
-        # /!\ Update adults first because the schedule of kids depend on their parents.
-        MAX_AGE_WITHOUT_SUPERVISION = self.conf['MAX_AGE_CHILDREN_WITHOUT_PARENT_SUPERVISION']
-        adults = [human for human in self.humans if human.age > MAX_AGE_WITHOUT_SUPERVISION]
-        for adult in adults:
-            _ = adult.mobility_planner.get_schedule()
-
-        kids = [human for human in self.humans if human.age <= MAX_AGE_WITHOUT_SUPERVISION]
-        for kid in kids:
-            _ = kid.mobility_planner.get_schedule()
 
     def have_some_humans_download_the_app(self):
         """
