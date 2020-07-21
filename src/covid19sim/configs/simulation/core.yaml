@@ -256,8 +256,9 @@ SMARTPHONE_OWNER_FRACTION_BY_AGE:
 INFECTION_RADIUS: 200 # cms
 INFECTION_DURATION: 15 # minutes
 
-#                   0-9 10-19 20-29  30-39  40-49  50-59 60-69 70-79  80-  # Assuming dath rate to be same for 80 and above
-P_NEVER_RECOVERS: [0, 0.002, 0.002, 0.002, 0.004, 0.02, 0.04, 0.08, 0.15] # &never_recovers
+# Ref: https://www.quebec.ca/en/health/health-issues/a-z/2019-coronavirus/situation-coronavirus-in-quebec/ 
+#                  0-9 10-19 20-29  30-39  40-49  50-59 60-69 70-79  80-  # Assuming death rate to be same for 80 and above
+P_NEVER_RECOVERS: [0, 0, 0.0001, 0.0001, 0.0004, 0.0018, 0.0059, 0.0176, 0.0728] # &never_recovers
 REINFECTION_POSSIBLE: False # [0, 1]
 
 # aerosol    copper      cardboard       steel       plastic
@@ -396,7 +397,6 @@ AVG_FLU_DURATION: 5
 # non-Covid19 symtpoms via influenza etc. is 0.002%. This seems like a typo. assuming 0.002 here.
 P_COLD_TODAY: 0.002
 COLD_CONTAGIOUSNESS: 0.000 # likelihood of transmitting at an encounter (no-source)
-AVG_COLD_DURATION: 3 # FIXME:unused
 
 # LIFESTYLE PARAMETERS
 RHO: 0.40
@@ -407,7 +407,6 @@ AVG_SHOP_TIME_MINUTES: 30 # @param
 SCALE_SHOP_TIME_MINUTES: 15
 AVG_SCALE_SHOP_TIME_MINUTES: 10
 SCALE_SCALE_SHOP_TIME_MINUTES: 5
-NUM_WEEKLY_GROCERY_RUNS: 2 # @param FIXME:unused
 
 AVG_MAX_NUM_SHOP_PER_WEEK: 5
 SCALE_MAX_NUM_SHOP_PER_WEEK: 1
@@ -460,7 +459,6 @@ ENVIRONMENTAL_INFECTION_KNOB: 0.0017
 
 ## INTERVENTIONS
 # WASH HANDS
-HYGIENE_EFFECT: 0.2 # FIXME:unused
 HYGIENE_EFFICACY_FACTOR: 0.5 # used in reduction of probability of transmission (no-source)
 
 # RISK RECOMMENDATIONS
