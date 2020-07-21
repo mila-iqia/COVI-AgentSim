@@ -18,7 +18,7 @@ import requests
 import yaml
 from omegaconf import DictConfig, OmegaConf
 from scipy.stats import norm
-
+from covid19sim.utils.constants import SECONDS_PER_HOUR, SECONDS_PER_MINUTE
 
 def log(str, logfile=None, timestamp=False):
     """
@@ -621,3 +621,10 @@ def _random_choice(a_list, rng, size, P=None, replace=False, catch_size_error=Fa
         idxs = rng.choice(range(total), size=size, p=P, replace=replace)
 
     return [a_list[x] for x in idxs]
+
+def _get_seconds_since_midnight(time):
+    """
+    Returns:
+        (float): number of seconds since midnight
+    """
+    return time.hour *  SECONDS_PER_HOUR + time.minute * SECONDS_PER_MINUTE + time.second

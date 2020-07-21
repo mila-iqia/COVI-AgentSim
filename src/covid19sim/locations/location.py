@@ -198,14 +198,14 @@ class Location(simpy.Resource):
         if len(self.humans) == 1:
             return None
 
-        PREFERENTIAL_ATTACHEMENT_FACTOR = self.conf['PREFERENTIAL_ATTACHEMENT_FACTOR']
+        PREFERENTIAL_ATTACHMENT_FACTOR = self.conf['PREFERENTIAL_ATTACHMENT_FACTOR']
 
         if type == "known":
             human_bin = human.age_bin_width_5.index
             hs, h_vector, known_vector = list(zip(*[(h, h.age_bin_width_5.index, h in human.known_connections) for h in self.humans if human != h]))
 
-            p_contact = self.P_CONTACT[h_vector, human_bin] * (1 - PREFERENTIAL_ATTACHEMENT_FACTOR)
-            p_contact += np.array(known_vector) * PREFERENTIAL_ATTACHEMENT_FACTOR
+            p_contact = self.P_CONTACT[h_vector, human_bin] * (1 - PREFERENTIAL_ATTACHMENT_FACTOR)
+            p_contact += np.array(known_vector) * PREFERENTIAL_ATTACHMENT_FACTOR
             if p_contact.sum() == 0:
                 return None
                 warnings.warn("bad mobility...")
@@ -282,7 +282,8 @@ class Location(simpy.Resource):
                 other_bin = other_human.age_bin_width_5.index
                 scale_duration = self.CONTACT_DURATION_GAMMA_SCALE_MATRIX[other_bin, age_bin]
                 shape_duration = self.CONTACT_DURATION_GAMMA_SHAPE_MATRIX[other_bin, age_bin]
-                duration = (self.rng.gamma(shape_duration, scale_duration) / SECONDS_PER_DAY) * t_overlap
+                # surveyed data gives us minutes per day. Here we use it to sample rate of minutes spend per second of overlap in an encounter.
+                duration = (self.rng.gamma(shape_duration, scale_duration) / SECONDS_PER_DAY) * t_overlap * SECONDS_PER_MINUTE
 
             elif type == "unknown":
                 duration = self.rng.gamma(mean_interaction_time/scale_factor_interaction_time, scale_factor_interaction_time)
@@ -290,8 +291,13 @@ class Location(simpy.Resource):
             else:
                 raise ValueError
 
-            if duration > t_overlap:
-                warnings.warn(f"sampled time {duration} is more than the duration for which {human} is at a location {t_overlap}")
+            # if self.location_type ==  "MISC" and human.workplace != self:
+            #     print(human, "-->", other_human, "for", duration, "tota humans", len(self.humans), "t_overlap", t_overlap, human.mobility_planner.current_activity)
+
+            if self.location_type in ["MISC", "EXERCISE"]:
+                duration *= 100
+            # if duration > t_overlap:
+            #     warnings.warn(f"sampled time {duration} is more than the duration for which {human} is at a location {t_overlap}")
 
             # /!\ clipping changes the distribution.
             duration = min(t_overlap, duration) * max(human.time_encounter_reduction_factor, other_human.time_encounter_reduction_factor)

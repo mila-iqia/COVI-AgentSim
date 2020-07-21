@@ -12,7 +12,7 @@ import warnings
 from collections import defaultdict
 from orderedset import OrderedSet
 
-from covid19sim.utils.mobility_planner import MobilityPlanner
+from covid19sim.utils.mobility_planner_v2 import MobilityPlanner
 from covid19sim.interventions.behaviors import Behavior
 from covid19sim.interventions.recommendation_manager import NonMLRiskComputer
 from covid19sim.utils.utils import compute_distance, proba_to_risk_fn
@@ -884,7 +884,6 @@ class Human(object):
             self.city.tracker.track_hospitalization(self)
             yield self.env.process(self.excursion(city, "hospital"))
 
-
     def initialize_daily_risk(self, current_day_idx: int):
         """Initializes the risk history map with a new/copied risk value for the given day, if needed.
 
@@ -1183,7 +1182,6 @@ class Human(object):
         elif self.rest_at_home and self.how_am_I_feeling() == 1.0 and self.is_removed:
             self.rest_at_home = False
 
-
     def run_2(self, city):
         """
         """
@@ -1193,27 +1191,31 @@ class Human(object):
             self.move_to_hospital_if_required()
             if next_activity.location is not None:
                 # Note: use -O command line option to avoid checking for assertions
-                # print("A\t", self.env.timestamp, self, next_activity)
-                assert abs(self.env.timestamp - next_activity.start_time).seconds == 0, "start times do not align..."
+                if self.name == "human:110": print("A\t", self.env.timestamp, self, next_activity)
+                try:
+                    assert abs(self.env.timestamp - next_activity.start_time).seconds == 0, "start times do not align..."
+                except:
+                    breakpoint()
                 yield self.env.process(self.transition_to(next_activity, previous_activity))
-                # print("B\t", self.env.timestamp, self, next_activity)
+                if self.name == "human:110": print("B\t", self.env.timestamp, self, next_activity)
                 assert abs(self.env.timestamp - next_activity.end_time).seconds == 0, " end times do not align..."
                 previous_activity, next_activity = next_activity, self.mobility_planner.get_next_activity()
             else:
                 next_activity.refresh_location()
-                # print("C\t", self.env.timestamp, self, next_activity, "depends on", next_activity.parent_activity_pointer)
+                if self.name == "human:110": print("C\t", self.env.timestamp, self, next_activity, "depends on", next_activity.parent_activity_pointer)
                 # because this activity depends on parent_activity, we need to give a full 1 second to guarantee
                 # that parent activity will have its location confirmed. This creates a discrepancy in env.timestamp and
                 # next_activity.start_time.
                 yield self.env.timeout(1)
 
                 # realign the activities
-                next_activity.start_in_seconds += 1
-                next_activity.start_time += datetime.timedelta(seconds=1)
-                next_activity.duration -= 1
-                previous_activity.end_in_seconds += 1
-                previous_activity.end_time += datetime.timedelta(seconds=1)
-                previous_activity.duration += 1
+                next_activity.adjust_time(seconds=1, start=True)
+                if next_activity.duration <= 0:
+                    # keep the previous as is
+                    next_activity = self.mobility_planner.get_next_activity()
+                    continue
+                previous_activity.adjust_time(seconds=1, start=False)
+
 
     ############################## MOBILITY ##################################
     @property
@@ -1400,7 +1402,7 @@ class Human(object):
 
         # only sample interactions if there is a possibility of infection or message exchanges
         # sleep is an inactive stage; phone is also assumed to be in background mode.
-        if (duration > min(self.conf['MIN_MESSAGE_PASSING_DURATION'], self.conf['INFECTION_DURATION'])
+        if (duration >= min(self.conf['MIN_MESSAGE_PASSING_DURATION'], self.conf['INFECTION_DURATION'])
             and "sleep" not in type_of_activity):
             # sample interactions with other humans at this location
             # unknown are the ones that self is not aware of e.g. person sitting next to self in a cafe
@@ -1437,7 +1439,7 @@ class Human(object):
 
             contact_condition = (
                 distance_profile.distance <= self.conf.get("INFECTION_RADIUS")
-                and t_near > self.conf.get("INFECTION_DURATION")
+                and t_near >= self.conf.get("INFECTION_DURATION")
             )
             self.city.tracker.track_mixing(human1=self, human2=other_human, duration=t_near,
                             distance_profile=distance_profile, timestamp=self.env.timestamp, location=self.location,

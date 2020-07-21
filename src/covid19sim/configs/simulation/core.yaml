@@ -85,12 +85,6 @@ SCHOOL_OPEN_DAYS: [0, 1, 2, 3, 4]
 #####  Mobility / Social Mixing / Occupation CONSTANTS  #####
 #############################################################
 
-# /!\ (no-source) This factor is used in scaling the average time spent on various activities.
-# Scaling is done in an mean preserving manner. For example, if mean is X and the distribution is gamma,
-# we scale the location parameter to X / SCALE_FACTOR while using the shape parameter as SCALE_FACTOR.
-# Note: mean of a gamma distribution is location * shape = X (here).
-TIME_SPENT_SCALE_FACTOR: 0.1
-
 # Preferential exploration of places in a city.
 RHO: 0.40 # higher the value more exploration of new places
 GAMMA: 0.1 # lower the value higher the exploration of new places
@@ -99,11 +93,27 @@ GAMMA: 0.1 # lower the value higher the exploration of new places
 # daily routine
 AVERAGE_TIME_SLEEPING: 8 # hours; no interactions are sampled during this time
 AVERAGE_TIME_AWAKE: 16 # hours; human moves through different networks during this time
-TIME_SPENT_SCALE_FACTOR_SLEEP_AWAKE: 0.01 # /!\ 0.1 scale creates a lot of variation in sleep schedule which breaks the assumptions in MobilityPlanner
 
 # work routine
 N_WORKING_DAYS: 5
 WORKING_START_HOUR: 8 # 8 AM in the morning
+
+# /!\ (no-source) these parameters are used to assure proper behavior in mobility_planner by clipping the random draws at these values
+MAX_TIME_WORK: 16
+MAX_TIME_SLEEP: 16
+MAX_TIME_AWAKE: 24
+MAX_TIME_SHORT_ACTVITIES: 4
+
+# /!\ (no-source) These factors are used in scaling the average time spent on various activities to introduce variance via gamma distribution
+# /!\ These factors also influence mixing patterns.
+# /!\ (CAUTION) A large value of these factor may violate the assumption in mobility planner by sampling activities spanning over more than a day.
+# /!\ (CAUTION) mobility planner needs to change to accommodate variation in these parameters
+# Scaling is done in an mean preserving manner. For example, if mean is X and the distribution is gamma,
+# we scale the location parameter to X / SCALE_FACTOR while using the shape parameter as SCALE_FACTOR.
+# Note: mean of a gamma distribution is location * shape = X (here).
+TIME_SPENT_SCALE_FACTOR_FOR_SHORT_ACTIVITIES: 1.0 # e.g. grocery, misc, or park
+TIME_SPENT_SCALE_FACTOR_FOR_WORK: 1.0
+TIME_SPENT_SCALE_FACTOR_SLEEP_AWAKE: 0.01 # /!\ 0.1 scale creates a lot of variation in sleep schedule which breaks the assumptions in MobilityPlanner. Longer the simulation days lesser this value is preferred.
 
 #########################################################
 #####       Interaction Parameters                  #####
@@ -121,17 +131,16 @@ MAX_DIST_KNOWN_CONTACT: 200 # cms
 # A distance greater than INFECTION_RADIUS is useless to model, however, in the context of tracing apps
 # distance between two bluetooth devices can be underesimated depending on the noise in the signals.
 # Thus, a distance of greater than 200 cms can potentially be visible as a risky contacts.
-# Here, we sample distances up to 300 cms to allow for bluetooth devices to record no-risk contacts
+# Here, we sample distances up to 400 cms to allow for bluetooth devices to record no-risk contacts
 MEAN_DAILY_UNKNOWN_CONTACTS: 1.0
-MIN_DIST_UNKNOWN_CONTACT: 100
-MAX_DIST_UNKNOWN_CONTACT: 300 # cms
-GAMMA_UNKNOWN_CONTACT_DURATION: 15
+MIN_DIST_UNKNOWN_CONTACT: 100 # cms
+MAX_DIST_UNKNOWN_CONTACT: 400 # cms
 
-# both: known and unknown
 # we sample duration as a gamma distribution with mean as MEAN_DAILY_CONTACT_DURATION / SCALE_FACTOR_CONTACT_DURATION
 # and variance as SCALE_FACTOR_CONTACT_DURATION. This ensures that the mean is MEAN_DAILY_CONTACT_DURATION and the variance is
 # MEAN_DAILY_CONTACT_DURATION * SCALE_FACTOR_CONTACT_DURATION
 # This way we are left with just one parameter to control the uncertainty around contact duration.
+GAMMA_UNKNOWN_CONTACT_DURATION: 900 # seconds
 SCALE_FACTOR_CONTACT_DURATION: 1.0
 
 #########################################################
@@ -143,15 +152,15 @@ SCALE_FACTOR_CONTACT_DURATION: 1.0
 # this factor influences the strength of assortativity in contacts at home.
 # higher the value, more likely that people of the same age group live together.
 HOUSEHOLD_ASSORTATIVITY_STRENGTH: 0.5
-WORKPLACE_ASSORTATIVITY_STRENGTH: 0.8
+WORKPLACE_ASSORTATIVITY_STRENGTH: 10
 
 # social mixing knob (B)
-P_INVITATION_ACCEPTANCE: 0.8 # probability of accepting inivitaton from peers to "socialize"
-PREFERENTIAL_ATTACHEMENT_FACTOR: 0 # probability to interact with only the known connections
-P_HOUSE_OVER_MISC_FOR_SOCIALS: 1.0 # probability to prefer household as a location for socials as compared to MISC
+P_INVITATION_ACCEPTANCE: 0.5 # probability of accepting inivitaton from peers to "socialize"
+PREFERENTIAL_ATTACHMENT_FACTOR: 0.5 # probability to interact with only the known connections
+P_HOUSE_OVER_MISC_FOR_SOCIALS: 0.5 # probability to prefer household as a location for socials as compared to MISC
 
 # Infection knobs ()
-CONTAGION_KNOB: 1
+CONTAGION_KNOB: 120
 ENVIRONMENTAL_INFECTION_KNOB: 0.0017
 
 #########################################################
@@ -245,7 +254,7 @@ MAX_DAYS_CONTAMINATION: [0.125, 0.333333, 1, 2, 3] # days # https://www.nejm.org
 
 # DISEASE PARAMETERS
 INFECTION_RADIUS: 200 # cms
-INFECTION_DURATION: 15 # minutes
+INFECTION_DURATION: 900 # seconds
 
 # ASYMPTOMATIC
 BASELINE_P_ASYMPTOMATIC: 0.18 # p-asymptomatic [Mizumoto 2020 https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7078829/] probability of never showing symptoms yet testing positive

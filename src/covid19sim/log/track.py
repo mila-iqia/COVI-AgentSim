@@ -17,7 +17,7 @@ import numpy as np
 import pandas as pd
 
 from covid19sim.plotting.plot_rt import PlotRt
-from covid19sim.utils.utils import log
+from covid19sim.utils.utils import log, _get_seconds_since_midnight
 from covid19sim.utils.constants import AGE_BIN_WIDTH_5, ALL_LOCATIONS, SECONDS_PER_DAY, SECONDS_PER_HOUR
 LOCATION_TYPES_TO_TRACK_MIXING = ["house", "work", "school", "other", "all"]
 
@@ -58,12 +58,13 @@ def _get_location_type_to_track_mixing(human, location):
     Returns
         (str): a corresponding label for POLYMOD study.
     """
-    if location.location_type in ["HOUSEHOLD", "SENIOR_RESIDENCE"]:
+    if location == human.household:
         return "house"
 
     # if location.location_type == "WORKPLACE":
         # return "work"
 
+    # doing this first matters because kids are assigned their workplace as schools
     if location.location_type == "SCHOOL":
         return "school"
 
@@ -1079,7 +1080,7 @@ class Tracker(object):
         if next_activity.name == "socialize":
             self.socialize_activity_data['group_size'].push(len(next_activity.rsvp))
             self.socialize_activity_data["location_frequency"][next_activity.location.location_type] += 1
-            self.socialize_activity_data["start_time"].push(next_activity.start_in_seconds)
+            self.socialize_activity_data["start_time"].push(_get_seconds_since_midnight(next_activity.start_time))
 
     def track_mixing(self, human1, human2, duration, distance_profile, timestamp, location, interaction_type, contact_condition):
         """
@@ -1102,7 +1103,7 @@ class Tracker(object):
         Args:
             human1 (covid19sim.human.Human): one of the two `human`s involved in the encounter.
             human2 (covid19sim.human.Human): other of the two `human`s involved in the encounter
-            duration (float): time duration got which this encounter took place (minutes)
+            duration (float): time duration got which this encounter took place (seconds)
             distance_profile (covid19sim.locations.location.DistanceProfile): distance from which these two humans met (cms)
             timestamp (datetime.datetime): timestamp at which this event took place
             location (Location): `Location` where this encounter took place
@@ -1362,7 +1363,7 @@ class Tracker(object):
         """
         total_infections = sum(x[0] for x in self.p_infection)
         total_contacts = len(self.p_infection)
-        return total_infections / total_contacts
+        return 0 if total_contacts == 0 else total_infections / total_contacts
 
     def compute_effective_contacts(self, since_intervention=True):
         """
@@ -1506,8 +1507,6 @@ class Tracker(object):
         str_to_print += f"std: {group_sizes.stddev(): 2.2f} | "
         str_to_print += f"min: {group_sizes.minimum(): 2.2f} | "
         str_to_print += f"max: {group_sizes.maximum(): 2.2f} | "
-        str_to_print += f"skewness: {group_sizes.skewness(): 2.2f} | "
-        str_to_print += f"kurtosis: {group_sizes.kurtosis(): 2.2f} | "
         log(str_to_print, self.logfile)
 
         str_to_print = "location - "
