@@ -47,7 +47,13 @@ def get_recommendation_thresholds(
     fraction_in_yellow = relative_fraction_yellow_to_red * fraction_in_red
     fraction_in_green = 1 - (fraction_in_red + fraction_in_orange + fraction_in_yellow)
 
-    assert fraction_in_green >= 0
+    assert fraction_in_green >= 0, (
+        f"Invalid thresholds: `fraction_in_green` = {fraction_in_green} "
+        f"for `prevalence` = {prevalence},"
+        f"`max_prevalence`= {max_prevalence}, `leeway` = {leeway}, "
+        f"`fraction_in_orange` = {fraction_in_orange}, "
+        f"`fraction_in_yellow` = {fraction_in_yellow}."
+    )
 
     # Compute the percentiles of the risk level
     # (this is how we'll split the histogram)
