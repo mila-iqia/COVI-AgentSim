@@ -27,7 +27,20 @@ def get_recommendation_thresholds(
     leeway: float,
     relative_fraction_orange_to_red: float,
     relative_fraction_yellow_to_red: float,
+    eps: float = 1e-7,
 ):
+    # First things first, we need to validate prevalence
+    # (in order to not hit the assert below).
+    # In other words, we must satisfy the constraint that:
+    #   P * (1 + L) (1 + O2R + Y2R) < 1
+    # where:
+    #   P: Prevalence; L: Leeway;
+    #   O2R: `relative_fraction_orange_to_red`; Y2R: `relative_fraction_yellow_to_red`
+    max_prevalence = 1 / (
+        (1 + leeway)
+        * (1 + relative_fraction_orange_to_red + relative_fraction_yellow_to_red)
+    )
+    prevalence = np.clip(prevalence, a_max=max_prevalence - eps, a_min=0)
     # Compute the fraction of folks to put in red, orange, yellow, and green
     fraction_in_red = prevalence * (1 + leeway)
     fraction_in_orange = relative_fraction_orange_to_red * fraction_in_red
