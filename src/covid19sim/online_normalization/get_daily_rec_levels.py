@@ -29,6 +29,9 @@ def get_recommendation_thresholds(
     relative_fraction_yellow_to_red: float,
     eps: float = 1e-7,
 ):
+    # Prevalence might be nan, which is a consequence of no one having the app.
+    if np.isnan(prevalence):
+        return 0.0, 0.0, 0.0
     # First things first, we need to validate prevalence
     # (in order to not hit the assert below).
     # In other words, we must satisfy the constraint that:
