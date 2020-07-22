@@ -12,7 +12,7 @@ import warnings
 from collections import defaultdict
 from orderedset import OrderedSet
 
-from covid19sim.utils.mobility_planner_v2 import MobilityPlanner
+from covid19sim.utils.mobility_planner import MobilityPlanner
 from covid19sim.interventions.behaviors import Behavior
 from covid19sim.interventions.recommendation_manager import NonMLRiskComputer
 from covid19sim.utils.utils import compute_distance, proba_to_risk_fn
