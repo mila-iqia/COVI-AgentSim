@@ -66,8 +66,9 @@ class Activity(object):
         """
         x = self.clone(append_name)
         if cut_left:
+            duration_decrease = (new_activity.end_time - x.start_time).total_seconds()
             x.start_time = new_activity.end_time
-            x.duration = (x.end_time - x.start_time).total_seconds()
+            x.duration = x.duration - duration_decrease
         else:
             # keep the start_time unchanged
             x.duration = (new_activity.start_time - x.start_time).total_seconds()
@@ -121,14 +122,17 @@ class MobilityPlanner(object):
         self.rng = human.rng
 
         self.invitation = {
-            "accepted": {},
+            "accepted": set(),
             "sent": set(),
             "received": set()
         }
         self.schedule_for_day = []
+        self.full_schedule = []
         self.current_activity = None
         self.follows_adult_schedule, self.adult_to_follow = False, []
         self.schedule_prepared = set()
+        # since we pop the elements from full_schedule, we keep count of days passed
+        self.schedule_day = -1 # denotes the number of schedules that full_schedule has already popped
 
     def __repr__(self):
         return f"<MobilityPlanner for {self.human}>"
@@ -264,6 +268,11 @@ class MobilityPlanner(object):
             connections (list): list of humans that are to be sent a request
         """
         assert activity.name == "socialize", "coordination for other activities is not implemented."
+
+        # don't simulate gatherings which will not impact any message passing or transmissions
+        if activity.duration < min(self.conf['MIN_MESSAGE_PASSING_DURATION'], self.conf['INFECTION_DURATION']):
+            return None
+
         group = set()
         for human in connections:
             if human == self.human:
@@ -300,11 +309,30 @@ class MobilityPlanner(object):
         if self.rng.random() > P_INVITATION_ACCEPTANCE:
             return False
 
+        # I can't change the last activity of my schedule because that is in alignment with next schedule
+        # invite is received for an activity on today
+        # I can be at current activity that is form previous day
+        # next activity can be sleep today
+        # full next schedule can be the place where I can fit this invitation (i changet the full_schedule[0])
+        # I can be on next days scheduel with sleep at the end  (I change the schedule_for_day)
+
+
         # invitations are sent on the day of the event
         # only accept this activity if it fits in the schedule of the day on which it is sent
         # and leave the current schedule unchanged
-        new_schedule = self.get_schedule(force_today=True)
-        remaining_schedule = [self.current_activity] + list(self.schedule_for_day)
+
+        days_passed = self.env.days_since_start()
+        add_to_new = False
+        if days_passed == self.schedule_day:
+            # I am on the latest schedule
+            remaining_schedule = [self.current_activity]
+            new_schedule = list(self.schedule_for_day)
+            add_to_new = True
+        else:
+            # I am a bit behind
+            remaining_schedule = [self.current_activity] + list(self.schedule_for_day)
+            new_schedule = list(self.full_schedule[0])
+
 
         # /!\ by accepting the invite, `self` doesn't invite others to its social
         # thus, if there is a non-overlapping social on the schedule, `self` will go alone.
@@ -314,11 +342,11 @@ class MobilityPlanner(object):
 
         new_schedule, valid = _modify_schedule(remaining_schedule, new_activity, new_schedule)
         if valid:
-            self.invitation["accepted"][today] = new_activity
-            if today not in self.schedule_prepared:
-                self.full_schedule[0] = new_schedule
+            self.invitation["accepted"].add(today)
+            if add_to_new:
+                slf.schedule_for_day = new_schedule
             else:
-                self.schedule_for_day = new_schedule
+                self.full_schedule[0] = new_schedule
             return True
 
         return False
@@ -345,15 +373,15 @@ class MobilityPlanner(object):
             schedule = _patch_kid_schedule(self.human, adult_schedule, work_activity, self.current_activity, self.conf)
         else:
             schedule = self.full_schedule.popleft()
+            self.schedule_day += 1
 
         return schedule
 
     def send_social_invites(self):
         """
         Sends invitation for "socialize" activity to `self.human.known_connections`.
-        To be called once per day at midnight. By calling it at midnight helps in modifying schedules of those who accept the invitation.
+        NOTE (IMPORTANT): To be called once per day at midnight. By calling it at midnight helps in modifying schedules of those who accept the invitation.
         """
-        return None
         today = self.env.timestamp.date()
 
         # invite others
@@ -362,8 +390,12 @@ class MobilityPlanner(object):
             and today not in self.invitation["received"]
             and today not in self.invitation["accepted"]):
 
-            schedule = self.get_schedule(force_today=True)
-            socials = [x for x in schedule if x.name == "socialize"]
+            todays_activities = []
+            for activity in [self.current_activity] + list(self.schedule_for_day) + list(self.full_schedule[0]):
+                if activity.start_time.day == today.day or activity.end_time.day == today.day:
+                    todays_activities.append(activity)
+
+            socials = [x for x in todays_activities if x.name == "socialize"]
             assert len(socials) <=1, "more than one socials on one day"
             if socials:
                 self.invitation["sent"].add(today)
@@ -372,7 +404,7 @@ class MobilityPlanner(object):
 
 def _modify_schedule(remaining_schedule, new_activity, new_schedule):
     """
-    Finds space for `new_activity` while keeping `remaining_schedule` unchanged
+    Finds space for `new_activity` while keeping `remaining_schedule` unchanged and maintaining its alignment with the `new_schedule`
 
     Args:
         remaining_schedule (list): list of `Activity`s to precede the new schedule
@@ -381,12 +413,13 @@ def _modify_schedule(remaining_schedule, new_activity, new_schedule):
 
     Returns:
         schedule (deque): a deque of `Activity`s where the activities are arranged in increasing order of their starting time.
+        valid (bool): True if its possible to safely edit the current schedule
     """
-    valid = True
     assert len(remaining_schedule) > 0, "Empty remaining_schedule. Human should be doing something all the time."
     assert remaining_schedule[-1].name == "sleep", "sleep not found as the last activity"
     assert remaining_schedule[-1].end_time == new_schedule[0].start_time, "two schedules are not aligned"
 
+    valid = True
     last_activity = remaining_schedule[-1]
     # if new_activity completely overlaps with last_activity, do not accept
     if new_activity.end_time <= last_activity.end_time:
@@ -430,7 +463,7 @@ def _modify_schedule(remaining_schedule, new_activity, new_schedule):
 
         if activity.start_time >= new_activity.start_time:
             if activity.end_time <= new_activity.end_time:
-                # discard but if both ends are equal add new_activity before discarding or there will be a gap
+                # discard, but if both ends are equal, add new_activity before discarding or there will be a gap
                 if new_activity not in partial_schedule:
                     partial_schedule.append(new_activity)
                 continue
@@ -443,18 +476,19 @@ def _modify_schedule(remaining_schedule, new_activity, new_schedule):
             cut_left = True
 
         if cut_right:
-            partial_schedule.append(activity.align(new_activity, cut_left=False, append_name=""))
+            partial_schedule.append(activity.align(new_activity, cut_left=False, append_name="modified-cut-right"))
 
         if new_activity not in partial_schedule:
             partial_schedule.append(new_activity)
 
         if cut_left:
-            partial_schedule.append(activity.align(new_activity, cut_left=True, append_name=""))
+            partial_schedule.append(activity.align(new_activity, cut_left=True, append_name="modified-cut-left"))
 
     full_schedule = [x for idx, x in enumerate(new_schedule) if idx < work_activity_idx]
     full_schedule += partial_schedule
 
     assert remaining_schedule[-1].end_time == full_schedule[0].start_time, "times do not align"
+    assert full_schedule[-1].name == "sleep", "sleep not found as the last activity"
 
     # uncomment for rigorous checks
     for a1, a2 in zip(full_schedule, full_schedule[1:]):
@@ -664,9 +698,13 @@ def _make_hard_changes_to_activity_for_scheduling(next_activity, last_activity, 
     Makes changes to either of the activities if next_activity starts before last_activity.
 
     Args:
+        next_activity (Activity): activity that is in conflict with the last activity
+        last_activity (Activity): previous activity that starts after `next_activity`
+        keep_last_unchanged (bool): if True, doesn't affect last_activity
 
     Returns:
-
+        next_activity (Activity): activity in alignment with `last_activity`
+        last_activity (Activity): activity in alignment with `next_activity`
     """
     def _assert_positive_duration(next_activity, last_activity):
         assert next_activity.duration >= 0 and last_activity.duration >= 0, "negative duration encountered"
@@ -955,57 +993,6 @@ def _select_location(human, activity, city, rng, conf):
     visited_locs[loc] += 1
     return loc
 
-def _patch_kid_schedule_presmapled(human, adult_schedule, work, current_activity, conf):
-    """
-    Makes a schedule that copies `Activity`s in `adult_schedule`.
-    Patches between two schedule by adding "idle" activities.
-
-    Args:
-        human (covid19sim.human.Human): human for which `activities`  needs to be scheduled
-        adult_schedule (list): list of `Activity`s which have been presampled for adult
-        work (np.array): each element is the duration in seconds for which `human` works on that day
-        current_activity (Activity): last activity that `human` was doing
-        conf (dict): yaml configuration of the experiment
-
-    Returns:
-        schedule (deque): a deque of deques where each deque is a priority queue of `Activity`
-    """
-    full_schedule = []
-    for day, day_schedule in enumerate(adult_schedule):
-        schedule, awake_duration = [], 0
-        wake_up_time_in_seconds = current_activity.end_in_seconds # relative to midnight
-
-        if work[day] > 0:
-            new_activity = Activity(None, None, work[day].item(), "work", human.workplace)
-            new_activity = _fill_time_constraints(human, new_activity, current_activity, wake_up_time_in_seconds, conf)
-            schedule, current_activity, awake_duration = _add_to_the_schedule(human, schedule, new_activity, current_activity, awake_duration)
-
-        assert day_schedule[-1].name == "sleep", "day_schedule doesn't have sleep as its last element"
-        for activity in day_schedule:
-            # deques do not allow slicing.
-            if activity.name == "sleep":
-                continue
-            name = f"supervised-{activity.name}"
-            if current_activity.end_in_seconds >= activity.end_in_seconds:
-                continue
-
-            elif activity.end_in_seconds > current_activity.end_in_seconds > activity.start_in_seconds:
-                duration = activity.end_in_seconds - current_activity.end_in_seconds
-                new_activity = Activity(current_activity.end_in_seconds, activity.end_in_seconds, duration, name, activity.location)
-
-            else:
-                new_activity = Activity(activity.start_in_seconds, activity.end_in_seconds, activity.duration, name, activity.location)
-
-            new_activity.parent_activity_pointer = activity
-            schedule, current_activity, awake_duration = _add_to_the_schedule(human, schedule, new_activity, current_activity, awake_duration)
-
-        # finally, close the schedule by adding sleep
-        schedule, current_activity, awake_duration = _add_sleep_to_schedule(human, schedule, wake_up_time_in_seconds, current_activity, human.rng, conf, awake_duration)
-
-        full_schedule.append(deque(schedule))
-
-    return deque(full_schedule)
-
 def _get_datetime_for_seconds_since_midnight(seconds_since_midnight, date):
     """
     Adds `seconds_since_midnight` to the `date` object.
@@ -1018,79 +1005,3 @@ def _get_datetime_for_seconds_since_midnight(seconds_since_midnight, date):
         (datetime.datetime): datetime obtained after adding seconds_since_midnight to date
     """
     return datetime.datetime(date.year, date.month, date.day) + datetime.timedelta(seconds=seconds_since_midnight)
-
-
-# Human schedule has 6 parts to it -
-## work @ working hours and days (workplaces, stores, miscs, hospital, schools, SCR)
-#>> WORK OPENING HOURS AND DAYS
-## shopping when sustenance runs out (stores)
-#>> AVERAGE SUSTENANCE PERIOD
-## misc when entertainment runs out (miscs)
-#>> AVERAGE ENTERTAINMENT PERIOD
-## hospital when health runs out (hospital)
-#>>
-## sleep when energy runs out (household or senior_residences)
-#>> AVERAGE ENERGY
-## exercise @ exercise hours (parks)
-#>> PROPORTION REGULAR EXERCISE
-
-# Sensible checks --> (requires interaction between two MobilityPlanners)
-## Can't leave home if there is a kid below SUPERVISON_AGE
-## Can't go out to a restaurant if the other human is not coming out
-
-# Location centeric mobility patterns
-
-# Mobility pattern of human is motivated from the demands of the locations.
-# Going to a grocery shop
-# Households running out of food stock generates demand for residents to go for shopping.
-# A following procedure can be used to simulate the behavior -
-#   residents are notified about the urge to stock up
-#   In the mobility planner of human, at the next time slot if the shop is open they go out
-#   Who goes? Everyone? or just one person?
-#       (a) houses like 'couple', 'single_person', etc. a group of person can go.
-#           Constraints that need to be satisfied - kids not left alone
-# For "other" houses, humans have their own sustenance period that is a part of their mobility planner.
-
-# Going to a workplace - hospitals, misc, stores, workplaces, schools, SCR
-# miscs - workplaces are busy on weekends to enable leisure time of people
-# stores - they open regular hours on weekdays
-# workplaces - they open regular hours on weekdays
-
-# to go to a workplace, human should yield until the next time period.
-#   For example, human enters house from work. we check when will the next activity take place, and we yield until then.
-#   This is an example of an oracle that can give a peek into the future.
-#   Human's workplace opening hours are predfined so we can have a random noise to when he will reach there.
-
-# This planner will also help in modeling the sleep schedule as well as the time when the phone is on or off.
-# fatigue level which makes human go to sleep. When human wakes up, fatigue level is Y hours. AVERAGE_TIME_HUMAN_IS_AWAKE (break it down by age)
-# After this much time, he should be home to get to bed for AVERAGE_SLEEP_TIME. (break it down by age)
-# this defines the time for which human sleeps and he should be at home after that.
-
-# stores as a workplace
-# these have a slightly different operation as compared to restaurants
-# workers reach there on time and people only come here when these are open.
-
-# miscs as a workplace
-# same operation.
-
-
-
-## requirements for the MobilityPlanner
-# Make a schedule for the day
-# Peek into the future so that yielding is prespecified.
-# Define the sleep schedule at which there are no known interactions sampled.
-
-
-
-# What happens if it is sick?
-
-# Desire centric mobility pattern
-# Human's entertainment level is refreshed for X minutes every time they go out to MISC.
-# After X minutes, human gets an urge to go out with one of the known connections.
-# this requires two mobility planners to interact and make a decision.
-# If known connection can go out, they meet otherwise human doesn't go out.
-
-
-# (B) Workplaces open at certain times. This notifies human to be at work.
-#
-# this creates a flag in human that is checked in the mobility planner

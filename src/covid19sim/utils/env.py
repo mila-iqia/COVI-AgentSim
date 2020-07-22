@@ -72,3 +72,9 @@ class Env(simpy.Environment):
         """
         return self.timestamp.isoformat()
 
+    def days_since_start(self):
+        """
+        Returns:
+            (int): days since the start of the simulation
+        """
+        return (self.timestamp - self.initial_timestamp).days
