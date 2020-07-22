@@ -16,30 +16,25 @@ from covid19sim.utils.constants import SECONDS_PER_DAY, SECONDS_PER_HOUR, SECOND
 ACTIVITIES = ["work", "socialize", "exercise", "grocery"]
 
 class Activity(object):
-    def __init__(self, start_time, duration, name, location, tentative_date=None, prepend_name="", append_name=""):
+    def __init__(self, start_time, duration, name, location, owner, tentative_date=None, prepend_name="", append_name=""):
         self.start_time = start_time # (datetime.datetime) object to be initialized in _patch_schedule
         self.duration = duration # (float) in seconds
         self.name = name # (str) type of activity
-        self.location = location
+        self.location = location# (Location) where this activity will take place
         self.tentative_date = tentative_date
         self.prepend_name = prepend_name # (str) used to denote activity modifier
         self.append_name = append_name # (str) used to denote activity modifier
         self.is_cancelled = False # (bool) to dynamically change the status of this activity
-        self.default_location = None # carries a location which owner should goto in case of cancellation
+        self.owner = owner # (Location) location where owner should goto in case of cancellation
 
         # to organize socials, these attributes are used
         self.rsvp = set() # keeps record of who is coming, if someone gets sick, they can remvoe themselves from this list
         self.parent_activity_pointer = None # stores pointer to the parent Activity for kids with supervision and those who are invited to know the location
-        self.sender = None # pointer to human who sent this activity
 
     @property
     def end_time(self):
         assert self.start_time is not None, "start time has not been initialized"
         return self.start_time + datetime.timedelta(seconds=self.duration) # (datetime.datetime) object to be initialized in _patch_schedule
-
-    @property
-    def date(self):
-        return self.start_time.date()
 
     def __repr__(self):
         name = f"{self.prepend_name}-{self.name}" if self.append_name else self.name
@@ -48,12 +43,15 @@ class Activity(object):
             return f"<{name} on {self.start_time.date()} from {self.start_time.time()} to {self.end_time.time()} at {self.location}>"
         return f"<TBD: {name} at {self.location} for {self.duration} seconds>"
 
-    def clone(self, prepend_name="clone"):
-        x = Activity(self.start_time, self.duration, self.name, self.location, prepend_name=prepend_name)
+    def clone(self, prepend_name="clone", new_owner=None):
+        if new_owner is None:
+            new_owner = self.owner
+
+        x = Activity(self.start_time, self.duration, self.name, self.location, new_owner, prepend_name=prepend_name)
         x.parent_activity_pointer = self.parent_activity_pointer
         return x
 
-    def align(self, new_activity, cut_left=True, prepend_name=""):
+    def align(self, new_activity, cut_left=True, prepend_name="", new_owner=None):
         """
         Cuts short the duration of `self` to match the starting time of `activity`
         if - = activity (`x`), . = new_activity, then
@@ -69,7 +67,7 @@ class Activity(object):
         Returns:
             (Activity): new activity object with aligned time with `activity`
         """
-        x = self.clone(prepend_name)
+        x = self.clone(prepend_name, new_owner)
         if cut_left:
             duration_decrease = (new_activity.end_time - x.start_time).total_seconds()
             x.start_time = new_activity.end_time
@@ -81,28 +79,32 @@ class Activity(object):
         assert x.duration >= 0, "negative duration encountered"
         return x
 
-    def refresh_location(self):
-        assert self.is_cancelled or self.parent_activity_pointer is not None,  "refresh shouldn't be called without supervision or invitation"
-        if self.is_cancelled or self.parent_activity_pointer.is_cancelled:
-            assert self.default_location is not None, "None default location found when location is needed"
-            self.location = self.default_location
+    def refresh_location(self, location=None):
+        """
+        Sets the location to `location` if not None. Otherwise, it checks for the parent activity's location
+
+        Args:
+            (covid19sim.locations.Location): location where activity should take place if not None
+        """
+        if location is not None:
+            self.location = location
+            return
+
+        assert self.parent_activity_pointer is not None,  "refresh shouldn't be called without supervision or invitation"
+        if self.parent_activity_pointer.is_cancelled:
+            self.location = self.owner.household
         else:
             self.location = self.parent_activity_pointer.location
 
-    def set_sender(self, human):
-        self.sender = human
-
     def set_location_tracker(self, activity):
         """
-        Sets the `parent_activity_pointer` to activity.location for future reference.
+        Sets the `parent_activity_pointer` to activity.location for future lookup for location.
+        Useful for activities like `supervised` and `invitation` where location is not decided until the time of activity.
 
         Args:
             activity (Activity): activity to follow
         """
         self.parent_activity_pointer = activity
-
-    def set_default_location(self, household):
-        self.default_location = household
 
     def adjust_time(self, seconds, start=True):
         """
@@ -118,9 +120,34 @@ class Activity(object):
         else:
             self.duration += seconds
 
-    def cancel(self, reason):
+    def cancel_and_stay_at_home(self, reason):
+        """
+        Sets the flag `is_cancelled` to True and sets the location of this activity to `owner.household`
+
+        Args:
+            reason (str): reason to append to the the name of the activity
+        """
         self.is_cancelled = True
         self.append_name = reason
+        self.refresh_location(self.owner.household)
+
+        # (A) Socials
+        # (A.1) if the plan was to go to someone else's invitation, then remove `self` from rsvp list as well
+        # location of this activity will be refreshed to self houeshold
+        if self.name == "socialize" and self.prepend_name == "invitation":
+            assert self.owner in self.parent_activity_pointer.rsvp, f"{self.owner} didnt' accept the {self.parent_activity_pointer}"
+            self.parent_activity_pointer.rsvp.remove(self.owner)
+            self.parent_activity_pointer = None
+
+        # (A.2) if the plan was to invite others, it will be taken care by is_cancelled flag because that is checked at the time of deciding the location
+        # pass
+
+        # (B) Supervised
+
+
+        # (C) Being supervised
+
+
 
 class MobilityPlanner(object):
     """
@@ -149,7 +176,11 @@ class MobilityPlanner(object):
         self.schedule_prepared = set()
         # since we pop the elements from full_schedule, we keep count of days passed
         self.schedule_day = -1 # denotes the number of schedules that full_schedule has already popped
-        self.rest_at_home = False # (bool) used as a flag to restrict human to home
+
+        # flags affected by health
+        self.human_to_rest_at_home = False # (bool) used as a flag to restrict human to home
+        self.human_is_hospitalized = False # (bool) indicator of whether the person is at hospital or not
+        self.human_is_dead = False # (bool)
 
     def __repr__(self):
         return f"<MobilityPlanner for {self.human}>"
@@ -166,7 +197,7 @@ class MobilityPlanner(object):
         # start human from the activity of sleeping. (assuming everyone sleeps for same amount of time)
         AVERAGE_TIME_SLEEPING = self.conf['AVERAGE_TIME_SLEEPING']
         duration = AVERAGE_TIME_SLEEPING * SECONDS_PER_HOUR
-        self.current_activity = Activity(self.env.timestamp, duration, "sleep", self.human.household)
+        self.current_activity = Activity(self.env.timestamp, duration, "sleep", self.human.household, self.human)
         self.schedule_for_day = deque([self.current_activity])
 
         # presample activities for the entire simulation
@@ -177,11 +208,8 @@ class MobilityPlanner(object):
         MAX_AGE_CHILDREN_WITHOUT_SUPERVISION = self.conf['MAX_AGE_CHILDREN_WITHOUT_PARENT_SUPERVISION']
         if self.human.age <= MAX_AGE_CHILDREN_WITHOUT_SUPERVISION:
             self.follows_adult_schedule = True
-            adults_in_house = [h for h in self.human.household.residents if h.age > MAX_AGE_CHILDREN_WITHOUT_SUPERVISION]
-            assert len(adults_in_house) > 0, "No adult found"
-
-            adult_to_follow = self.rng.choice(adults_in_house , size=n_days, replace=True)
-            self.adult_to_follow = deque(adult_to_follow.tolist())
+            self.adults_in_house = [h for h in self.human.household.residents if h.age > MAX_AGE_CHILDREN_WITHOUT_SUPERVISION]
+            assert len(self.adults_in_house) > 0, "No adult found"
         else:
             ## work
             if self.human.does_not_work:
@@ -208,10 +236,10 @@ class MobilityPlanner(object):
                 # might result in duration spanning two or more days which will violate the assumptions in this planner.
                 to_schedule = []
                 tentative_date = (self.env.timestamp + datetime.timedelta(days=i)).date()
-                to_schedule.append(Activity(None, does_work[i].item(), "work", self.human.workplace, tentative_date))
-                to_schedule.append(Activity(None, does_socialize[i].item(), "socialize", None, tentative_date))
-                to_schedule.append(Activity(None, does_grocery[i].item(), "grocery", None, tentative_date))
-                to_schedule.append(Activity(None, does_exercise[i].item(), "exercise", None, tentative_date))
+                to_schedule.append(Activity(None, does_work[i].item(), "work", self.human.workplace, self.human, tentative_date))
+                to_schedule.append(Activity(None, does_socialize[i].item(), "socialize", None, self.human, tentative_date))
+                to_schedule.append(Activity(None, does_grocery[i].item(), "grocery", None, self.human, tentative_date))
+                to_schedule.append(Activity(None, does_exercise[i].item(), "exercise", None, self.human, tentative_date))
 
                 # adds idle and sleep acivities too
                 schedule = _patch_schedule(self.human, last_activity, to_schedule, self.conf)
@@ -277,19 +305,18 @@ class MobilityPlanner(object):
         for human in connections:
             if human == self.human:
                 continue
-            if human.mobility_planner.receive(activity, self.human):
+            if human.mobility_planner.receive(activity):
                 group.add(human)
 
         # print(self.human, "invited", len(group), "others")
         activity.rsvp = group
 
-    def receive(self, activity, human):
+    def receive(self, activity):
         """
         Receives the invite from `human`.
 
         Args:
             activity (Activity): attributes of activity
-            human (covid19sim.human.Human): `human` who sent the invitation
 
         Returns:
             (bool): True if `self` adds `activity` to its schedule. False o.w.
@@ -297,16 +324,13 @@ class MobilityPlanner(object):
         assert activity.name == "socialize", "coordination for other activities is not implemented."
         today = self.env.timestamp.date()
 
-        if (self.follows_adult_schedule
-            or today in self.invitation["accepted"]
-            or today in self.invitation["sent"]
-            or today in self.invitation["received"]):
+        if not _can_accept_invite(today, self):
             return False
 
         self.invitation["received"].add(today)
 
         P_INVITATION_ACCEPTANCE = self.conf['P_INVITATION_ACCEPTANCE']
-        if self.rng.random() > P_INVITATION_ACCEPTANCE:
+        if self.rng.random() < 1 - P_INVITATION_ACCEPTANCE:
             return False
 
         # invitations are sent on the day of the event
@@ -314,31 +338,27 @@ class MobilityPlanner(object):
         # and leave the current schedule unchanged
 
         days_passed = self.env.days_since_start()
-        add_to_new = False
+        update_next_schedule = False
         if days_passed == self.schedule_day:
-            # I am on the latest schedule
             remaining_schedule = [self.current_activity]
             new_schedule = list(self.schedule_for_day)
-            add_to_new = True
         else:
-            # I am a bit behind
+            update_next_schedule = True
             remaining_schedule = [self.current_activity] + list(self.schedule_for_day)
             new_schedule = list(self.full_schedule[0])
 
-
         # /!\ by accepting the invite, `self` doesn't invite others to its social
         # thus, if there is a non-overlapping social on the schedule, `self` will go alone.
-        new_activity = activity.clone(prepend_name="invitation")
+        new_activity = activity.clone(prepend_name="invitation", new_owner=self.human)
         new_activity.set_location_tracker(activity)
-        new_activity.set_sender(human)
 
-        new_schedule, valid = _modify_schedule(remaining_schedule, new_activity, new_schedule)
+        new_schedule, valid = _modify_schedule(self.human, remaining_schedule, new_activity, new_schedule)
         if valid:
             self.invitation["accepted"].add(today)
-            if add_to_new:
-                slf.schedule_for_day = new_schedule
-            else:
+            if update_next_schedule:
                 self.full_schedule[0] = new_schedule
+            else:
+                slf.schedule_for_day = new_schedule
             return True
 
         return False
@@ -354,13 +374,18 @@ class MobilityPlanner(object):
         assert self.current_activity.name == "sleep", "_prepare_schedule should only be called if current_activity is 'sleep' "
         # if it's a kid that needs supervision, follow athe next schedule (until "sleep") of a random adult in the household
         if self.follows_adult_schedule:
-            adult = self.adult_to_follow.popleft()
+            adults = _can_supervise_kid(self.adults_in_house)
+            # when there is no alive human in the house
+            if len(adults) == 0:
+                raise NotImplementedError
+
+            adult = self.rng.choice(adults, size=1).item()
             adult_schedule = adult.mobility_planner.get_schedule(for_kids = True)
 
             work_activity = None
             if not self.human.does_not_work and self.env.timestamp.weekday() in self.human.working_days:
                 work = _sample_activity_duration("work", self.conf, self.rng)
-                work_activity = Activity(None, work, "work", self.human.workplace, self.env.timestamp.date())
+                work_activity = Activity(None, work, "work", self.human.workplace, self.human, self.env.timestamp.date())
 
             schedule = _patch_kid_schedule(self.human, adult_schedule, work_activity, self.current_activity, self.conf)
         else:
@@ -377,11 +402,7 @@ class MobilityPlanner(object):
         today = self.env.timestamp.date()
 
         # invite others
-        if (not self.follows_adult_schedule
-            and today not in self.invitation["sent"]
-            and today not in self.invitation["received"]
-            and today not in self.invitation["accepted"]):
-
+        if _can_send_invite(today, self):
             todays_activities = []
             for activity in [self.current_activity] + list(self.schedule_for_day) + list(self.full_schedule[0]):
                 if activity.start_time.day == today.day or activity.end_time.day == today.day:
@@ -395,62 +416,59 @@ class MobilityPlanner(object):
 
     def _modify_activity_location_if_needed(self, activity):
         """
+
         """
-        activity.set_default_location(self.human.household)
-
+        assert not self.human_is_dead, "processing activities for a dead human"
         # health / intervention related checks; set the location to household
-        rest_at_home = self._check_rest_at_home()
-        if rest_at_home:
-            activity.cancel(reason="sick-rest-at_home")
+        if self._should_rest_at_home():
+            activity.cancel_and_stay_at_home(reason="sick-rest-at_home")
 
-            # do not go to the socials by removing self from rsvp
-            if activity.name == "socialize" and activity.prepend_name == "invitation":
-                activity.parent_activity_pointer.rsvp.remove(self.human)
-                activity.parent_activity_pointer = None # to make sure human doesn't go to someones house
-
-            activity.refresh_location()
-
-        # if the location is still None
         # (a) check the status of the parent_pointer (it has to be the invitation or supervised activity)
         # otherwise (b) find a location. if there is no location available, cancel the activity and stay at home
-        if activity.location is None:
-            if (
-                activity.parent_activity_pointer is not None
-                and not activity.parent_activity_pointer.is_cancelled
-            ):
-                activity.refresh_location()
-            else:
-                location = _select_location(self.human, activity.name, self.human.city, self.rng, self.conf)
-                if location is None:
-                    activity.cancel(reason="canceled-no-location")
-                    activity.refresh_location()
-                else:
-                    activity.location = location
+        if activity.parent_activity_pointer is not None:
+            activity.refresh_location()
 
-        # assert activity.location is not None, f"no location on activity: {activity}"
+        elif activity.location is None:
+            activity.location = _select_location(self.human, activity.name, self.human.city, self.rng, self.conf)
+            if activity.location is None:
+                activity.cancel_and_stay_at_home(reason="cancelled-no-location")
+
         return activity
 
-    def _check_rest_at_home(self):
+    def _should_rest_at_home(self):
         """
-        Runs check on `human` to decide if saying at home is the right course of action
+        Runs check on `human` to decide if saying at home is the right course of action.
+        Note: It's a stateful function i.e. it needs to remember the state of `human_to_rest_at_home`.
         """
         # once rest_at_home is set to True, it is only switched back if human is recovered and feels completely fine
         # TODO - P - Change this to check everytime.
         if (
-            not self.rest_at_home
+            not self.human_to_rest_at_home
             and self.rng.random() < 1 - _get_likelihood_to_go_out(self.human, self.conf)
         ):
-            self.rest_at_home = True
+            self.human_to_rest_at_home = True
 
         elif (
-            self.rest_at_home
+            self.human_to_rest_at_home
             and _get_likelihood_to_go_out(self.human, self.conf) == 1.0
             and self.human.is_removed
         ):
-            self.rest_at_home = False
+            self.human_to_rest_at_home = False
 
-        return self.rest_at_home
+        return self.human_to_rest_at_home
 
+    def _cancel_all_events(self):
+        """
+        Empties the remaining schedule.
+        """
+        self.schedule_for_day = []
+        self.current_activity = None
+        while len(self.full_schedule) > 0:
+            schedule = self.full_schedule.popleft()
+            while len(schedule) > 0:
+                activity = schedule.popleft()
+
+        self.human_is_dead = True
 
 def _get_likelihood_to_go_out(human, conf):
     """
@@ -499,11 +517,12 @@ def _get_likelihood_to_go_out(human, conf):
 
     return 1.0
 
-def _modify_schedule(remaining_schedule, new_activity, new_schedule):
+def _modify_schedule(human, remaining_schedule, new_activity, new_schedule):
     """
     Finds space for `new_activity` while keeping `remaining_schedule` unchanged and maintaining its alignment with the `new_schedule`
 
     Args:
+        human (covid19sim.human.Human): `human` for whom this modification needs be done
         remaining_schedule (list): list of `Activity`s to precede the new schedule
         new_activity (Activity): activity which needs to be fit in `new_schedule`
         new_schedule (list): list of activities that follow `remaining_schedule`
@@ -573,13 +592,13 @@ def _modify_schedule(remaining_schedule, new_activity, new_schedule):
             cut_left = True
 
         if cut_right:
-            partial_schedule.append(activity.align(new_activity, cut_left=False, prepend_name="modified-cut-right"))
+            partial_schedule.append(activity.align(new_activity, cut_left=False, prepend_name="modified-cut-right", new_owner=human))
 
         if new_activity not in partial_schedule:
             partial_schedule.append(new_activity)
 
         if cut_left:
-            partial_schedule.append(activity.align(new_activity, cut_left=True, prepend_name="modified-cut-left"))
+            partial_schedule.append(activity.align(new_activity, cut_left=True, prepend_name="modified-cut-left", new_owner=human))
 
     full_schedule = [x for idx, x in enumerate(new_schedule) if idx < work_activity_idx]
     full_schedule += partial_schedule
@@ -640,11 +659,11 @@ def _patch_kid_schedule(human, adult_schedule, work_activity, current_activity, 
 
         # 2.
         elif activity.start_time < last_activity.end_time < activity.end_time:
-            new_activity = activity.align(last_activity, cut_left=True, prepend_name="supervised")
+            new_activity = activity.align(last_activity, cut_left=True, prepend_name="supervised", new_owner=human)
 
         # 3.
         else:
-            new_activity = activity.clone(prepend_name="supervised")
+            new_activity = activity.clone(prepend_name="supervised", new_owner=human)
 
         new_activity.set_location_tracker(activity)
         schedule, last_activity, awake_duration = _add_to_the_schedule(human, schedule, new_activity, last_activity, awake_duration)
@@ -781,7 +800,7 @@ def _add_sleep_to_schedule(human, schedule, last_sleep_activity, last_activity, 
     sleep_duration = _sample_activity_duration("sleep", conf, rng)
 
     start_time = last_sleep_activity.end_time + datetime.timedelta(seconds=max_awake_duration)
-    sleep_activity = Activity(start_time, sleep_duration, "sleep", human.household)
+    sleep_activity = Activity(start_time, sleep_duration, "sleep", human.household, human)
 
     if sleep_activity.start_time >= last_activity.end_time:
         schedule, last_activity, awake_duration = _add_idle_activity(human, schedule, sleep_activity, last_activity, awake_duration)
@@ -852,7 +871,7 @@ def _add_idle_activity(human, schedule, next_activity, last_activity, awake_dura
         return schedule, last_activity, awake_duration
 
     assert duration > 0, "negative duration for idle activity is not allowed"
-    idle_activity = Activity(last_activity.end_time, duration, "idle", human.household)
+    idle_activity = Activity(last_activity.end_time, duration, "idle", human.household, human)
 
     idle_time = (idle_activity.end_time - next_activity.start_time).total_seconds()
     assert idle_time == 0,  "non-zero idle time after adding idle_activity"
@@ -1104,7 +1123,7 @@ def _get_datetime_for_seconds_since_midnight(seconds_since_midnight, date):
     return datetime.datetime(date.year, date.month, date.day) + datetime.timedelta(seconds=seconds_since_midnight)
 
 
-# kept here for future reference 
+# kept here for future reference
 # def run_mobility_reduction_check(self):
 #     # self.how_am_I_feeling = 1.0 (great) will make rest_at_home = False
 #     if not self.rest_at_home:
@@ -1144,6 +1163,60 @@ def _get_datetime_for_seconds_since_midnight(seconds_since_midnight, date):
 #         return 0.6
 #
 #     return 1.0
+
+def _can_accept_invite(today, mobility_planner):
+    """
+    """
+    accept = True
+
+    # health related checks
+    if (
+        mobility_planner.human_to_rest_at_home
+        or mobility_planner.human_is_hospitalized
+        or mobility_planner.human_is_dead
+    ):
+        accept = False
+
+    # behavior related checks
+    if (
+        mobility_planner.follows_adult_schedule
+        or today in mobility_planner.invitation["accepted"]
+        or today in mobility_planner.invitation["sent"]
+        or today in mobility_planner.invitation["received"]
+    ):
+        accept = False
+
+    return accept
+
+def _can_send_invite(today, mobility_planner):
+    """
+    """
+    # can accept --> can send
+    send = _can_accept_invite(today, mobility_planner)
+    return send
+
+def _can_supervise_kid(adults):
+    """
+    """
+    valid_adults = []
+    for adult in adults:
+
+        assert not adult.mobility_planner.follows_adult_schedule, "invlaid adult to consider for supervision"
+
+        if (
+            not adult.mobility_planner.human_to_rest_at_home
+            or not adult.mobility_planner.human_is_hospitalized
+            or not adult.mobility_planner.human_is_dead
+        ):
+            valid_adults.append(adult)
+
+    # if there is no option, then the kid has to stay with someone
+    if len(valid_adults) == 0:
+        return [adult for adult in adults if not adult.mobility_planner.human_is_dead]
+
+    # what happens when only adult in the house is dead?
+
+    return valid_adults
 
 def move_to_hospital_if_required(self):
     """

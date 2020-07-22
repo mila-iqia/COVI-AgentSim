@@ -38,8 +38,8 @@ Legend -
 * [ TestQueue ]: Total number of people present in the test queue at the time of this print out.
 * [ H/C/D ]: Total number of people in hospital (H)/ ICU (C) at this point in simulation-time. Total died upto this day (D).
 * [ MC ]: Mean number of known connections of a person in the population (average degree of the social network). The attributes for known connections are drawn from surveyed data on mean contacts.
-* [ Ho ]: Number of people constrained to be at home. It can be due to sickness, a positive test result, or intervention related reasons.
         """
+        # * [ Ho ]: Number of people constrained to be at home. It can be due to sickness, a positive test result, or intervention related reasons.
         if self.conf['INTERVENTION_DAY'] >= 0 and self.conf['RISK_MODEL'] is not None:
             self.legend += """
 G/B/O/R: Number of people in each of the 4 recommendation levels - Green, Blue, Orange, and Red.
