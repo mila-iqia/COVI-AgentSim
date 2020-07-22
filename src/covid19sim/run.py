@@ -86,9 +86,6 @@ def main(conf: DictConfig):
     import warnings
 
     warnings.filterwarnings("ignore")
-    if conf["tune"]:
-        print("Using Tune")
-        outfile = None
 
     # ----------------------------
     # -----  Run Simulation  -----
@@ -127,7 +124,6 @@ def main(conf: DictConfig):
         print(
             f"effective contacts per contacts (GLOBAL_MOBILITY_SCALING_FACTOR): {all_effective_contacts / all_contacts}"
         )
-
     dump_conf(city.conf, "{}/full_configuration.yaml".format(city.conf["outdir"]))
 
     monitors[0].dump()

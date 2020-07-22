@@ -12,6 +12,7 @@ import pickle
 import os
 import xdelta3
 import zipfile
+import tqdm
 from typing import Dict, List, Tuple
 
 from matplotlib import pyplot as plt
@@ -75,7 +76,7 @@ class DebugDataLoader():
     def get_nb_days(self):
         return self.simulation_days
 
-    def load_human_data(self, start_idx=None, end_idx=None):
+    def load_human_data(self, start_idx=None, end_idx=None, ids=[]):
         """
         Load human backups and event data for the specified humans.
 
@@ -97,23 +98,29 @@ class DebugDataLoader():
             end_idx = self.get_nb_humans()
         assert start_idx < end_idx
 
+        # If we pass in a specfic set of human ids, go get those ones, otherwise batch
+        if ids:
+            idxs = [int(i.split(":")[-1])-1 for i in ids]
+        else:
+            idxs = range(start_idx, end_idx)
+
         human_backups = {}
         humans_events = {}
         latest_human_buffers = [None] * self.get_nb_humans()
-
+        print("loading humans from delta buffer...")
         # first, quickly load all the raw data, we'll rebuild the full objects afterwards
-        for day_idx in range(self.get_nb_days()):
+        for day_idx in tqdm.tqdm(range(self.get_nb_days())):
             for hour_idx in range(24):
-                for human_idx in range(start_idx, end_idx):
+                for idx in idxs:
                     # here, we assume the data is always encoded in a delta-since-last format
-                    if latest_human_buffers[human_idx] is None or not self.is_delta[day_idx, hour_idx, human_idx]:
-                        assert not self.is_delta[day_idx, hour_idx, human_idx]
-                        latest_human_buffers[human_idx] = self.dataset[day_idx, hour_idx, human_idx]
-                        human_buffer = latest_human_buffers[human_idx]
+                    if latest_human_buffers[idx] is None or not self.is_delta[day_idx, hour_idx, idx]:
+                        assert not self.is_delta[day_idx, hour_idx, idx]
+                        latest_human_buffers[idx] = self.dataset[day_idx, hour_idx, idx]
+                        human_buffer = latest_human_buffers[idx]
                     else:
-                        human_delta = self.dataset[day_idx, hour_idx, human_idx]
-                        human_buffer = xdelta3.decode(latest_human_buffers[human_idx], human_delta)
-                        latest_human_buffers[human_idx] = human_buffer
+                        human_delta = self.dataset[day_idx, hour_idx, idx]
+                        human_buffer = xdelta3.decode(latest_human_buffers[idx], human_delta)
+                        latest_human_buffers[idx] = human_buffer
                     human_data = pickle.loads(human_buffer)
                     timestamp = human_data.env.timestamp
                     human_data.conf = self.conf
@@ -520,7 +527,7 @@ def get_infection_history(humans_events: Dict[str, List], human_key: str):
     return infectee_events, infector_events
 
 
-def generate_human_centric_plots(human_backups, humans_events, nb_humans_in_sim, output_folder):
+def generate_human_centric_plots(human_backups, humans_events, nb_humans_in_sim, output_folder, ids=set()):
     def split_location(location_name: str):
         # Split location type from id and suffix "location_type:id-suffix"
         parts = location_name.split(':')
@@ -535,6 +542,7 @@ def generate_human_centric_plots(human_backups, humans_events, nb_humans_in_sim,
             "%s:%i-%s" % (location_parts[0], location_parts[1], location_parts[2])
 
     timestamps = sorted(list(human_backups.keys()))
+    # Pass in a subset of humans to look at
     human_names = list(human_backups[timestamps[0]].keys())
     begin = timestamps[0]
     end = timestamps[-1]
@@ -552,6 +560,8 @@ def generate_human_centric_plots(human_backups, humans_events, nb_humans_in_sim,
 
     # Treat each human individually
     for h_key in human_names:
+        if h_key not in ids:
+            continue
 
         # Get all the backups of this human for all the timestamps
         h_backup = [human_backups[t][h_key] for t in timestamps]
@@ -651,7 +661,7 @@ def generate_human_centric_plots(human_backups, humans_events, nb_humans_in_sim,
         plt.axis('off')
 
         fig.set_size_inches(15, 10)
-
+        plt.title(f"{h_key}")
         plot_path = os.path.join(output_folder, f"{str(begin)}-{str(end)}_{h_key}.png")
         fig.savefig(plot_path, bbox_inches='tight', pad_inches=0.1)
         fig.clf()
@@ -662,18 +672,17 @@ def generate_location_centric_plots(debug_data, output_folder):
     pass
 
 
-def generate_debug_plots(data_loader, output_folder, batch_size=10):
+def generate_debug_plots(data_loader, output_folder, ids=set()):
     # Generate human-centric plots (break it down in batches to reduce mem usage)
     nb_humans_in_sim = data_loader.get_nb_humans()
-    for i in range(0, nb_humans_in_sim, batch_size):
-        human_backups, human_events = data_loader.load_human_data(start_idx=i, end_idx=i + batch_size)
-        generate_human_centric_plots(human_backups, human_events, nb_humans_in_sim, output_folder)
+    human_backups, human_events = data_loader.load_human_data(ids=ids)
+    generate_human_centric_plots(human_backups, human_events, nb_humans_in_sim, output_folder, ids=ids)
 
     # Generate location-centric plots
     generate_location_centric_plots(data_loader, output_folder)
 
 
-def main(debug_data_path, output_folder):
+def run(debug_data_path, output_folder):
     # Load the debug data
     assert os.path.isfile(debug_data_path), \
         f"invalid debug data dump file path: {debug_data_path}"
@@ -693,4 +702,4 @@ if __name__ == '__main__':
     parser.add_argument("--output_folder")
     args = parser.parse_args()
 
-    main(args.debug_data, args.output_folder)
+    run(args.debug_data, args.output_folder)

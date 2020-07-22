@@ -8,6 +8,8 @@ import matplotlib.pyplot as plt
 import random
 import weasyprint
 from PIL import Image, ImageDraw, ImageFilter
+import networkx as nx
+import math
 
 
 def load_humans(data):
@@ -78,6 +80,7 @@ def summarize(
     n_symptoms = x.xs("n_symptoms", level=1)
     n_reported_symptoms = x.xs("n_reported_symptoms", level=1)
     infection_timestamp = x.xs("infection_timestamp", level=1)
+    symptom_severity = x.xs("symptom_severity", level=1)
     risks = x.xs("risk", level=1)
 
     columns = risk_levels.columns
@@ -99,7 +102,9 @@ def summarize(
         Rec = rec_levels[infector_column].item()
         test = test_results[infector_column].item()
         reported_test_result = reported_test_results[infector_column].item()
+        obs_symptoms = n_reported_symptoms[infector_column].item()
         symptoms = n_symptoms[infector_column].item()
+        severity = symptom_severity[infector_column].item()
         cell = f"Rec:{Rec} R:{RL}"
         if max_risk_level >= 0:
             # use the carried message here
@@ -120,7 +125,7 @@ def summarize(
         cell += test_content
 
         if symptoms > 0:
-            cell += f"  S:{symptoms}"
+            cell += f"  S:{obs_symptoms}/{symptoms}  Sev:{severity}"
 
         infectors_infection_timestamp = infection_timestamp[infector_column].item()
         if (
@@ -203,8 +208,7 @@ def make_df(
     human_has_app,
     infector_infectee_update_messages,
     human_is_asymptomatic,
-    method,
-    adoption_rate,
+    caption,
 ):
     df = humans.loc[
         (
@@ -218,6 +222,7 @@ def make_df(
                 "rec_level",
                 "reported_test_result",
                 "n_reported_symptoms",
+                "symptom_severity",
             ),
         ),
         ids,
@@ -280,43 +285,137 @@ def make_df(
         ),
     ]
 
-    df = df.set_table_styles(styles).set_caption(
-        f"{method}, Adoption: {adoption_rate*100}%"
-    )
+    df = df.set_table_styles(styles).set_caption(caption)
     return df
 
 
-def get_random_chain(infection_chain, depth=0):
-    max_depth = 5
-    start = random.choice(range(len(infection_chain)))
+def hierarchy_pos(G, root=None, width=1., vert_gap = 0.2, vert_loc = 0, xcenter = 0.5):
 
-    # location contamination
-    if not infection_chain[start]["from"]:
-        return get_random_chain(infection_chain)
+    '''
+    From Joel's answer at https://stackoverflow.com/a/29597209/2966723.
+    Licensed under Creative Commons Attribution-Share Alike
 
-    infector_chain = []
-    infector_chain.append(infection_chain[start]["from"])
-    infectee = infection_chain[start]["to"]
-    # /!\ It only considers the first infection by a human in the chain
-    # TODO: randomize above
-    for idx in range(start + 1, len(infection_chain)):
-        if infection_chain[idx]["from"] == infectee:
-            infector_chain.append(infectee)
-            infectee = infection_chain[idx]["to"]
+    If the graph is a tree this will return the positions to plot this in a
+    hierarchical layout.
 
-        if len(infector_chain) > 10:
-            return infector_chain
+    G: the graph (must be a tree)
 
-    if len(infector_chain) < 3 and depth <= max_depth:
-        return get_random_chain(infection_chain, depth=depth + 1)
+    root: the root node of current branch
+    - if the tree is directed and this is not given,
+      the root will be found and used
+    - if the tree is directed and this is given, then
+      the positions will be just for the descendants of this node.
+    - if the tree is undirected and not given,
+      then a random choice will be used.
 
-    if depth > max_depth:
-        print("maximum recursion depth reached...")
+    width: horizontal space allocated for this branch - avoids overlap with other branches
 
-    return infector_chain
+    vert_gap: gap between levels of hierarchy
+
+    vert_loc: vertical location of root
+
+    xcenter: horizontal location of root
+    '''
+    if not nx.is_tree(G):
+        raise TypeError('cannot use hierarchy_pos on a graph that is not a tree')
+
+    if root is None:
+        if isinstance(G, nx.DiGraph):
+            root = next(iter(nx.topological_sort(G)))  #allows back compatibility with nx version 1.11
+        else:
+            root = random.choice(list(G.nodes))
+
+    def _hierarchy_pos(G, root, width=1., vert_gap = 0.2, vert_loc = 0, xcenter = 0.5, pos = None, parent = None):
+        '''
+        see hierarchy_pos docstring for most arguments
+
+        pos: a dict saying where all nodes go if they have been assigned
+        parent: parent of this branch. - only affects it if non-directed
+
+        '''
+
+        if pos is None:
+            pos = {root:(xcenter,vert_loc)}
+        else:
+            pos[root] = (xcenter, vert_loc)
+        children = list(G.neighbors(root))
+        if not isinstance(G, nx.DiGraph) and parent is not None:
+            children.remove(parent)
+        if len(children)!=0:
+            dx = width/len(children)
+            nextx = xcenter - width/2 - dx/2
+            for child in children:
+                nextx += dx
+                pos = _hierarchy_pos(G,child, width = dx, vert_gap = vert_gap,
+                                    vert_loc = vert_loc-vert_gap, xcenter=nextx,
+                                    pos=pos, parent = root)
+        return pos
 
 
-def plot(data, output_file, method, adoption_rate):
+    return _hierarchy_pos(G, root, width, vert_gap, vert_loc, xcenter)
+
+def construct_infection_tree(infection_chain, draw_fig=False):
+    """ Returns a DFS tree of infections and infection chains for each leaf"""
+    root = "ROOT"
+    start_date = datetime.datetime(2020, 2, 28, 0, 0)
+    G = nx.DiGraph()
+    G.add_node(root)
+
+    # add nodes
+    for node in infection_chain:
+        # from
+        if G.nodes.get(node['from']):
+            G.nodes.get(node['from'])['data'].append(node)
+
+        # handling None
+        elif node['from']:
+            G.add_node(node['from'], data=[node])
+
+        # to
+        if G.nodes.get(node['to']):
+            G.nodes.get(node['to'])['data'].append(node)
+        else:
+            G.add_node(node['to'], data=[node])
+
+    # Add edges
+    for node in infection_chain:
+        if not node.get('from_infection_timestamp'):
+            G.add_edge(root, node['to'], time="1")
+        if node.get('infection_timestamp') and node.get('from_infection_timestamp'):
+            G.add_edge(node['from'], node['to'], time=str(node['infection_timestamp'] - node['from_infection_timestamp']))
+        if node.get('from_infection_timestamp') == start_date:
+            G.add_edge(root, node['from'], time="1")
+
+
+    # make DFS tree
+    dfs_tree = nx.dfs_tree(G, root)
+
+    # find shortest paths to all leaves (these are infection chains)
+    paths = []
+    for node in dfs_tree:
+        if dfs_tree.out_degree(node)==0: #it's a leaf
+            paths.append(nx.shortest_path(dfs_tree, root, node))
+
+    # remove "root" from this
+    for path in paths:
+        path.remove(root)
+
+    # Sort paths by longest to shortest
+    paths.sort(key=len, reverse=True)
+
+    if draw_fig:
+        # TODO: change vert-gap in hierarchy_pos to reflect the time between infections
+        pos = hierarchy_pos(G, 'ROOT', width=2 * math.pi, xcenter=0)
+        new_pos = {u: (r * math.cos(theta), r * math.sin(theta)) for u, (theta, r) in pos.items()}
+        nx.draw(G, pos=new_pos, node_size=50)
+        nx.draw_networkx_nodes(G, pos=new_pos, nodelist=['ROOT'], node_color='blue', node_size=200)
+        plt.savefig("graph.png")
+    return dfs_tree, paths
+
+def plot(data, output_path, num_chains=10):
+    all_ids = set()
+    caption = "heuristicv1 adoption 100%"
+
     human_risk_each_day = defaultdict(lambda: defaultdict(lambda: -1))
     for x in data["risk_attributes"]:
         date = x["timestamp"].date()
@@ -351,37 +450,50 @@ def plot(data, output_file, method, adoption_rate):
     init_infected = _infected_humans - set(infectee_location.keys())
     for x in init_infected:
         infectee_location[x] = "unknown"
+    tree, paths = construct_infection_tree(infection_chain)
+    # get the longest 50% of lists
+    candidates = paths[:int(len(paths) / 2)]
 
-    from IPython.display import HTML
+    for chain in range(num_chains):
+        fig_path = os.path.join(output_path, f'chain_{chain}.png')
+        ids = random.choice(candidates)
+        candidates.remove(ids) # we are not sampling with replacement
 
-    ids = get_random_chain(infection_chain)
-    df = make_df(
-        ids,
-        humans,
-        human_risk_each_day,
-        to_human_max_msg_per_day,
-        infectee_location,
-        human_has_app,
-        infector_infectee_update_messages,
-        human_is_asymptomatic,
-        method,
-        adoption_rate,
-    )
+        df = make_df(
+            ids,
+            humans,
+            human_risk_each_day,
+            to_human_max_msg_per_day,
+            infectee_location,
+            human_has_app,
+            infector_infectee_update_messages,
+            human_is_asymptomatic,
+            caption,
+        )
 
-    png = weasyprint.HTML(string=df.render()).write_png(stylesheets=[os.path.join(os.path.dirname(__file__), 'png.css')], presentational_hints=True)
-    with open(output_file, "wb") as fo:
-        fo.write(png)
+        css_path = os.path.join(os.path.dirname(__file__), 'png.css')
+        with open(css_path, "w") as css_file:
+            width = len(ids) * 5
+            height = 15
+            css = f"@page {{ size: {width}in {height}in; margin: 0in 0.44in 0.2in 0.44in;}}"
+            css_file.write(css)
 
-    img = Image.open(output_file)
-    pixels = img.load()
-    for y in range(img.size[1]): 
-        for x in range(img.size[0]): 
-            if pixels[x,y][3] == 0:    # check alpha
-                pixels[x,y] = (255, 255, 255, 255)
-    img.save(output_file)
-    
+        png = weasyprint.HTML(string=df.render()).write_png(stylesheets=[css_path], presentational_hints=True)
+        with open(fig_path, "wb") as fo:
+            fo.write(png)
+        os.remove(css_path)
+        img = Image.open(fig_path)
+        pixels = img.load()
+        for y in range(img.size[1]):
+            for x in range(img.size[0]):
+                if pixels[x,y][3] == 0:    # check alpha
+                    pixels[x,y] = (255, 255, 255, 255)
+        img.save(fig_path)
+        all_ids = all_ids.union(ids)
 
-def run(data, path, comparison_key, adoption_rate, wandb=False, num_chains=3):
+    return all_ids
+
+def run(data, path, comparison_key, adoption_rate=None, num_chains=5):
 
     # Options:
     # 1. "num_chains" is an integer, specifying how many infection chains we want to generate.
@@ -396,9 +508,10 @@ def run(data, path, comparison_key, adoption_rate, wandb=False, num_chains=3):
             / "infection_chain" / m / ("adoption_" + str(adoption_rate))
         )
         os.makedirs(dir_path, exist_ok=True)
+
         for chain in range(num_chains):
             fig_path = os.path.join(dir_path, f'{m}_{adoption_rate}_{chain}.png')
 
             print(fig_path)
-            
-            plot(pkl, fig_path, m, adoption_rate)
+            caption = f"{m}, Adoption: {adoption_rate * 100}%"
+            plot(pkl, fig_path, caption=caption)
