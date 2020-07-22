@@ -104,17 +104,6 @@ MAX_TIME_SLEEP: 16
 MAX_TIME_AWAKE: 24
 MAX_TIME_SHORT_ACTVITIES: 4
 
-# /!\ (no-source) These factors are used in scaling the average time spent on various activities to introduce variance via gamma distribution
-# /!\ These factors also influence mixing patterns.
-# /!\ (CAUTION) A large value of these factor may violate the assumption in mobility planner by sampling activities spanning over more than a day.
-# /!\ (CAUTION) mobility planner needs to change to accommodate variation in these parameters
-# Scaling is done in an mean preserving manner. For example, if mean is X and the distribution is gamma,
-# we scale the location parameter to X / SCALE_FACTOR while using the shape parameter as SCALE_FACTOR.
-# Note: mean of a gamma distribution is location * shape = X (here).
-TIME_SPENT_SCALE_FACTOR_FOR_SHORT_ACTIVITIES: 1.0 # e.g. grocery, misc, or park
-TIME_SPENT_SCALE_FACTOR_FOR_WORK: 1.0
-TIME_SPENT_SCALE_FACTOR_SLEEP_AWAKE: 0.01 # /!\ 0.1 scale creates a lot of variation in sleep schedule which breaks the assumptions in MobilityPlanner. Longer the simulation days lesser this value is preferred.
-
 #########################################################
 #####       Interaction Parameters                  #####
 #########################################################
@@ -162,6 +151,37 @@ P_HOUSE_OVER_MISC_FOR_SOCIALS: 0.5 # probability to prefer household as a locati
 # Infection knobs ()
 CONTAGION_KNOB: 120
 ENVIRONMENTAL_INFECTION_KNOB: 0.0017
+
+# Time scheduling knobs.
+# /!\ (no-source) These factors are used in scaling the average time spent on various activities to introduce variance via gamma distribution
+# /!\ These factors also influence mixing patterns.
+# /!\ (CAUTION) A large value of these factor may violate the assumption in mobility planner by sampling activities spanning over more than a day.
+# /!\ (CAUTION) mobility planner needs to change to accommodate variation in these parameters
+# Scaling is done in an mean preserving manner. For example, if mean is X and the distribution is gamma,
+# we scale the location parameter to X / SCALE_FACTOR while using the shape parameter as SCALE_FACTOR.
+# Note: mean of a gamma distribution is location * shape = X (here).
+TIME_SPENT_SCALE_FACTOR_FOR_SHORT_ACTIVITIES: 1.0 # e.g. grocery, misc, or park
+TIME_SPENT_SCALE_FACTOR_FOR_WORK: 1.0
+TIME_SPENT_SCALE_FACTOR_SLEEP_AWAKE: 0.01 # /!\ 0.1 scale creates a lot of variation in sleep schedule which breaks the assumptions in MobilityPlanner. Longer the simulation days lesser this value is preferred.
+
+
+#############################################################
+#####         Mobility when SICK CONSTANTS             #####
+#############################################################
+
+# P_MOBILE_WHEN_X is the likelihood to go out of house when X is the situation.
+
+P_MOBILE_GIVEN_QUARANTINED: 0.1
+P_MOBILE_GIVEN_POSITIVE_TEST_RESULT: 0.1
+
+SEVERE_SYMPTOMS: ["severe", "extremely_severe", "trouble_breathing"]
+P_MOBILE_GIVEN_SEVERE_SYMPTOMS: 0.2
+
+MODERATE_SYMPTOMS: ["moderate", "fever"]
+P_MOBILE_GIVEN_MODERATE_SYMPTOMS: 0.5
+
+MILD_SYMPTOMS: ["cough", "fatigue", "gastro", "aches", "mild"]
+P_MOBILE_GIVEN_MILD_SYMPTOMS: 0.6
 
 #########################################################
 #####       Smartphone Parameters                   #####

@@ -130,7 +130,7 @@ N_COLLECTIVE_RESIDENTS_80_above: 23185
 # For max: Use the upper limit of the desired bin (i.e bin in which maximum should lie)
 MAX_AGE_CHILDREN: 14 # used in prioritizing the allocation of houses so that no housing only has children as residents
 MAX_AGE_WITH_PARENT: 54 # used in expanding the search for census family households and restricting the age of parents in multigenerational family
-AGE_DIFFERENCE_BETWEEN_PARENT_AND_KID: 25 # used in sampling for parents
+AGE_DIFFERENCE_BETWEEN_PARENT_AND_KID: 20 # used in sampling for parents
 
 #########################################################
 #####       Assortativity Knobs                     #####
@@ -138,8 +138,9 @@ AGE_DIFFERENCE_BETWEEN_PARENT_AND_KID: 25 # used in sampling for parents
 # These needs to be calibrated to achieve the region specific mixing pattern
 # this factor influences the strength of assortativity in contacts at home.
 # higher the value, more likely that people of the same age group live together.
-HOUSEHOLD_ASSORTATIVITY_STRENGTH: 0.5
-WORKPLACE_ASSORTATIVITY_STRENGTH: 0.5
+# HOUSEHOLD_ASSORTATIVITY_STRENGTH: 0.5
+# WORKPLACE_ASSORTATIVITY_STRENGTH: 0.5
+# Place the above knobs in core.yaml
 
 #########################################################
 ###########       Location data               ###########
@@ -228,8 +229,9 @@ P_EMPLOYEES_500_above_PER_MISC: 0.0001
 AVERAGE_N_EMPLOYEES_PER_MISC: 75.127
 N_MISC_PER_1K_PEOPLE: 1.946
 
-# *************** OVERWRITTEN ********************
+# *************** NOTE: OVERWRITTEN ********************
 AVERAGE_N_EMPLOYEES_PER_MISC: 10 # for smaller population size
+# *************** ***************** ********************
 
 # schools
 # (assumption) 100% enrolment in schools for children aged 5-15 yo
@@ -370,6 +372,8 @@ P_EXERCISE_DAYS: [
   [40, 0.02]
 ]
 
+# /!\ commented and duplicated parameters are so as to correct for mixing patterns.
+
 # How much time do people do grocery shopping for? Quebec data
 # ref: https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=4510001401&pickMembers%5B0%5D=1.3&pickMembers%5B1%5D=3.1&pickMembers%5B2%5D=4.1&pickMembers%5B3%5D=5.1
 #  Table  45-10-0014-01   Daily average time spent in hours on various activities by age group and sex, 15 years and over, Canada and provinces
@@ -380,13 +384,15 @@ AVERAGE_TIME_SPENT_GROCERY: 0.5 # hours
 # ref: https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=4510001401&pickMembers%5B0%5D=1.3&pickMembers%5B1%5D=3.1&pickMembers%5B2%5D=4.1&pickMembers%5B3%5D=5.1
 #  Table  45-10-0014-01   Daily average time spent in hours on various activities by age group and sex, 15 years and over, Canada and provinces
 # 15 years and over
-AVERAGE_TIME_SPENT_SOCIALIZING: 0.7 # hours
+# AVERAGE_TIME_SPENT_SOCIALIZING: 0.7 # hours
+AVERAGE_TIME_SPENT_SOCIALIZING: 2.0 # hours
 
 # How much time do people spend on exercise? Quebec data
 # ref: https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=4510001401&pickMembers%5B0%5D=1.3&pickMembers%5B1%5D=3.1&pickMembers%5B2%5D=4.1&pickMembers%5B3%5D=5.1
 #  Table  45-10-0014-01   Daily average time spent in hours on various activities by age group and sex, 15 years and over, Canada and provinces
 # 15 years and over
-AVERAGE_TIME_SPENT_EXERCISING: 0.4 # hours
+# AVERAGE_TIME_SPENT_EXERCISING: 0.4 # hours
+AVERAGE_TIME_SPENT_EXERCISING: 1.0 # hours
 
 # How much time do people spend on work? Quebec data
 # ref: https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=4510001401&pickMembers%5B0%5D=1.3&pickMembers%5B1%5D=3.1&pickMembers%5B2%5D=4.1&pickMembers%5B3%5D=5.1

@@ -1068,37 +1068,6 @@ class Human(object):
             # print("caught allergy")
             return
 
-    def how_am_I_feeling(self):
-        """
-        [summary]
-
-        Returns:
-            [type]: [description]
-        """
-        current_symptoms = self.symptoms
-        if current_symptoms == []:
-            return 1.0
-
-        if getattr(self, "_quarantine", None) and self.follows_recommendations_today:
-            return 0.1
-
-        if sum(x in current_symptoms for x in ["severe", "extremely_severe"]) > 0:
-            return 0.2
-
-        elif self.test_result == "positive":
-            return 0.1
-
-        elif sum(x in current_symptoms for x in ["trouble_breathing"]) > 0:
-            return 0.3
-
-        elif sum(x in current_symptoms for x in ["moderate", "fever"]) > 0:
-            return 0.5
-
-        elif sum(x in current_symptoms for x in ["cough", "fatigue", "gastro", "aches", "mild"]) > 0:
-            return 0.6
-
-        return 1.0
-
     def expire(self):
         """
         This function (generator) will cause the human to expire, after which self.is_dead==True.
@@ -1111,9 +1080,11 @@ class Human(object):
         self.recovered_timestamp = datetime.datetime.max
         self.all_symptoms, self.covid_symptoms = [], []
         Event.log_recovery(self.conf.get('COLLECT_LOGS'), self, self.env.timestamp, death=True)
+        # important to remove this human from the location or else there will be sampled interactions
         if self in self.location.humans:
             self.location.remove_human(self)
         self.tracker.track_deaths(self)
+        self.mobility_planner.cancel_all_events()
         yield self.env.timeout(np.inf)
 
     def assert_state_changes(self):
@@ -1173,36 +1144,23 @@ class Human(object):
                 new_rec.modify(self)
                 self.recommendations_to_follow.add(new_rec)
 
-    def run_mobility_reduction_check(self):
-        # self.how_am_I_feeling = 1.0 (great) will make rest_at_home = False
-        if not self.rest_at_home:
-            i_feel = self.how_am_I_feeling()
-            if self.rng.random() > i_feel:
-                self.rest_at_home = True
-        elif self.rest_at_home and self.how_am_I_feeling() == 1.0 and self.is_removed:
-            self.rest_at_home = False
-
-    def run_2(self, city):
+    def run(self, city):
         """
         """
         previous_activity, next_activity = None, self.mobility_planner.get_next_activity()
         while True:
-            self.run_mobility_reduction_check()
             self.move_to_hospital_if_required()
             if next_activity.location is not None:
                 # Note: use -O command line option to avoid checking for assertions
-                if self.name == "human:110": print("A\t", self.env.timestamp, self, next_activity)
-                try:
-                    assert abs(self.env.timestamp - next_activity.start_time).seconds == 0, "start times do not align..."
-                except:
-                    breakpoint()
+                # if self.name == "human:110": print("A\t", self.env.timestamp, self, next_activity)
+                assert abs(self.env.timestamp - next_activity.start_time).seconds == 0, "start times do not align..."
                 yield self.env.process(self.transition_to(next_activity, previous_activity))
-                if self.name == "human:110": print("B\t", self.env.timestamp, self, next_activity)
+                # if self.name == "human:110": print("B\t", self.env.timestamp, self, next_activity)
                 assert abs(self.env.timestamp - next_activity.end_time).seconds == 0, " end times do not align..."
                 previous_activity, next_activity = next_activity, self.mobility_planner.get_next_activity()
             else:
                 next_activity.refresh_location()
-                if self.name == "human:110": print("C\t", self.env.timestamp, self, next_activity, "depends on", next_activity.parent_activity_pointer)
+                # if self.name == "human:110": print("C\t", self.env.timestamp, self, next_activity, "depends on", next_activity.parent_activity_pointer)
                 # because this activity depends on parent_activity, we need to give a full 1 second to guarantee
                 # that parent activity will have its location confirmed. This creates a discrepancy in env.timestamp and
                 # next_activity.start_time.
@@ -1259,7 +1217,6 @@ class Human(object):
             if grocery_store is None:
                 # Either grocery stores are not open, or all queues are too long, so return
                 return
-            t = draw_random_discrete_gaussian(self.avg_shopping_time, self.scale_shopping_time, self.rng)
             with grocery_store.request() as request:
                 yield request
                 # If we make it here, it counts as a visit to the shop

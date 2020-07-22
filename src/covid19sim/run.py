@@ -217,7 +217,7 @@ def simulate(
 
     # initiate humans
     for human in city.humans:
-        env.process(human.run_2(city=city))
+        env.process(human.run(city=city))
 
     # Initiate monitor processes
     for m in monitors:

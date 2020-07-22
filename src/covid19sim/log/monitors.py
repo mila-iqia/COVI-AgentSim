@@ -33,11 +33,12 @@ class SimulationMonitor(object):
         self.legend = """
 #################### SIMULATION PROGRESS ##################
 Legend -
-+Test: Total positive test results observed this day (Note: test results are available after some delay from the test time) / total tests administered on this day
-P3: Projected number of cases (E+I+R) if the cases were to grow with a doubling rate of 3 days.
-TestQueue: Total number of people present in the test queue at the time of this print out.
-H/C/D: Total number of people in hospital (H)/ ICU (C) at this point in simulation-time. Total died upto this day (D).
-MC: Mean number of known connections of a person in the population (average degree of the social network). The attributes for known connections are drawn from surveyed data on mean contacts.
+* [ +Test ]: Total positive test results observed this day (Note: test results are available after some delay from the test time) / total tests administered on this day
+* [ P3 ]: Projected number of cases (E+I+R) if the cases were to grow with a doubling rate of 3 days.
+* [ TestQueue ]: Total number of people present in the test queue at the time of this print out.
+* [ H/C/D ]: Total number of people in hospital (H)/ ICU (C) at this point in simulation-time. Total died upto this day (D).
+* [ MC ]: Mean number of known connections of a person in the population (average degree of the social network). The attributes for known connections are drawn from surveyed data on mean contacts.
+* [ Ho ]: Number of people constrained to be at home. It can be due to sickness, a positive test result, or intervention related reasons.
         """
         if self.conf['INTERVENTION_DAY'] >= 0 and self.conf['RISK_MODEL'] is not None:
             self.legend += """
@@ -91,13 +92,15 @@ RiskP: Top 1% risk precision of the risk predictor computed for people with no t
             cold = sum(h.has_cold for h in city.humans)
             allergies = sum(h.has_allergy_symptoms for h in city.humans)
 
+            # social network & mobility
+            average_degree = np.mean([len(h.known_connections) for h in city.humans])
+            # constrained_at_home = sum(h.mobility_planner.rest_at_home for h in city.humans) # not correct as of now
+
             # simulation time related
             env_time = str(env.timestamp).split()[0]
             day = "Day {:2}:".format((city.env.timestamp - city.start_time).days)
             proc_time = "{:8}".format("({}s)".format(int(time.time() - process_start)))
 
-            # social network
-            average_degree = np.mean([len(h.known_connections) for h in city.humans])
 
             # prepare string
             nd = str(len(str(city.n_people)))
@@ -105,9 +108,10 @@ RiskP: Top 1% risk precision of the risk predictor computed for people with no t
             stats = f"| P3:{Projected3:5.2f} TestQueue:{test_queue_length}"
             other_diseases = f"| cold:{cold} allergies:{allergies}"
             hospitalizations = f"| H:{H} C:{C} D:{D}"
-            social_network = f"| MC: {average_degree: 3.3f}"
+            mobility = f"| MC: {average_degree: 3.3f} "
+            # mobility +=   f" Ho: {constrained_at_home}" # not correct as of now
 
-            str_to_print = f"{proc_time} {day} {env_time} {SEIR} {stats} {other_diseases} {hospitalizations} {social_network}"
+            str_to_print = f"{proc_time} {day} {env_time} {SEIR} {stats} {other_diseases} {hospitalizations} {mobility}"
             # conditional prints
             colors, risk = "", ""
             if self.conf['INTERVENTION_DAY'] >= 0 and self.conf['RISK_MODEL'] is not None:

@@ -207,7 +207,6 @@ class Tracker(object):
             "location_frequency": defaultdict(int),
             "start_time": Statistics()
         }
-        self.rec_feelings = []
         self.outside_daily_contacts = []
 
         # infection
@@ -275,12 +274,11 @@ class Tracker(object):
         self.i_per_day = [sum(h.is_infectious for h in self.city.humans)]
         self.r_per_day = [sum(h.is_removed for h in self.city.humans)]
 
-        M, G, B, O, R, EM, F = self.compute_mobility()
+        M, G, B, O, R, EM = self.compute_mobility()
         self.recommended_levels_daily = [[G, B, O, R]]
         self.mobility = [M]
         self.expected_mobility = [EM]
         self.summarize_population()
-        self.feelings = [F]
 
         # risk model
         self.risk_precision_daily = [self.compute_risk_precision()]
@@ -294,6 +292,19 @@ class Tracker(object):
         # warn by (*) string if something is off in percentage from census by this much amount
         WARN_RELATIVE_PERCENTAGE_THRESHOLD = 25
         WARN_SIGNAL = " (**#@#**) "
+
+        log("\n######## SIMULATOR KNOBS #########", self.logfile)
+        log(f"HOUSEHOLD_ASSORTATIVITY_STRENGTH: {self.conf['HOUSEHOLD_ASSORTATIVITY_STRENGTH']}", self.logfile)
+        log(f"WORKPLACE_ASSORTATIVITY_STRENGTH: {self.conf['WORKPLACE_ASSORTATIVITY_STRENGTH']}", self.logfile)
+        log(f"P_INVITATION_ACCEPTANCE: {self.conf['P_INVITATION_ACCEPTANCE']}", self.logfile)
+        log(f"PREFERENTIAL_ATTACHMENT_FACTOR: {self.conf['PREFERENTIAL_ATTACHMENT_FACTOR']}", self.logfile)
+        log(f"P_HOUSE_OVER_MISC_FOR_SOCIALS: {self.conf['P_HOUSE_OVER_MISC_FOR_SOCIALS']}", self.logfile)
+        log(f"CONTAGION_KNOB: {self.conf['CONTAGION_KNOB']}", self.logfile)
+        log(f"ENVIRONMENTAL_INFECTION_KNOB: {self.conf['ENVIRONMENTAL_INFECTION_KNOB']}", self.logfile)
+        log(f"TIME_SPENT_SCALE_FACTOR_FOR_SHORT_ACTIVITIES: {self.conf['TIME_SPENT_SCALE_FACTOR_FOR_SHORT_ACTIVITIES']}", self.logfile)
+        log(f"TIME_SPENT_SCALE_FACTOR_FOR_WORK: {self.conf['TIME_SPENT_SCALE_FACTOR_FOR_WORK']}", self.logfile)
+        log(f"TIME_SPENT_SCALE_FACTOR_SLEEP_AWAKE: {self.conf['TIME_SPENT_SCALE_FACTOR_SLEEP_AWAKE']}", self.logfile)
+
 
         log("\n######## DEMOGRAPHICS / SYNTHETIC POPULATION #########", self.logfile)
         log(f"NB: (i) census numbers are in brackets. (ii) {WARN_SIGNAL} marks a {WARN_RELATIVE_PERCENTAGE_THRESHOLD}% realtive deviation from census\n", self.logfile)
@@ -637,11 +648,9 @@ class Tracker(object):
         self.deaths_per_day.append(0)
 
         # mobility
-        M, G, B, O, R, EM, F = self.compute_mobility()
+        M, G, B, O, R, EM = self.compute_mobility()
         self.mobility.append(M)
         self.expected_mobility.append(EM)
-        self.feelings.append(F)
-        self.rec_feelings.extend([(h.rec_level, h.how_am_I_feeling()) for h in self.city.humans])
 
         # risk model
         prec, lift, recall = self.compute_risk_precision(daily=True)
@@ -677,7 +686,7 @@ class Tracker(object):
         Returns:
             [type]: [description]
         """
-        EM, M, G, B, O, R, F = 0, 0, 0, 0, 0, 0, 0
+        EM, M, G, B, O, R= 0, 0, 0, 0, 0, 0
         for h in self.city.humans:
             G += h.rec_level == 0
             B += h.rec_level == 1
@@ -685,10 +694,9 @@ class Tracker(object):
             R += h.rec_level == 3
             M +=  1.0 * (h.rec_level == 0) + 0.8 * (h.rec_level == 1) + \
                     0.20 * (h.rec_level == 2) + 0.05 * (h.rec_level == 3) + 1*(h.rec_level==-1)
-            F += h.how_am_I_feeling()
 
             EM += (1-h.risk) # proxy for mobility
-        return M, G, B, O, R, EM/len(self.city.humans), F/len(self.city.humans)
+        return M, G, B, O, R, EM/len(self.city.humans)
 
     def compute_risk_precision(self, daily=True, until_days=None):
         """
