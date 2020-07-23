@@ -125,7 +125,7 @@ class Activity(object):
             reason (str): reason to append to the the name of the activity
         """
         self.is_cancelled = True
-        self.append_name = reason
+        self.append_name += f"-{reason}"
         self.location = location if location is not None else self.owner.household# @1
 
         # (A) Socials
@@ -335,7 +335,7 @@ class MobilityPlanner(object):
             if human.mobility_planner.receive(activity):
                 group.add(human)
 
-        print(self.human, "invited", len(group), "others")
+        # print(self.human, "invited", len(group), "others")
         activity.rsvp = group
 
     def receive(self, activity):
@@ -408,7 +408,6 @@ class MobilityPlanner(object):
 
             adult = self.rng.choice(adults, size=1).item()
             adult_schedule = adult.mobility_planner.get_schedule(for_kids = True)
-            self.adult_to_follow_today = adult
 
             work_activity = None
             if not self.human.does_not_work and self.env.timestamp.weekday() in self.human.working_days:
@@ -416,6 +415,15 @@ class MobilityPlanner(object):
                 work_activity = Activity(None, work, "work", self.human.workplace, self.human, self.env.timestamp.date())
 
             schedule = _patch_kid_schedule(self.human, adult_schedule, work_activity, self.current_activity, self.conf)
+
+            # set up leader and follower through inverted_supervision
+            # kid follows adult's location all the time except for when kid is hospitalized or has to stay_at_home
+            # adult checks inverted_supervision everytime before finalizing the location
+            # thus, if kid needs to be followed, adult follows kid to their location
+            self.adult_to_follow_today.mobilty_planner.inverted_supervision.remove(self.human)
+            self.adult_to_follow_today = adult
+            self.adult_to_follow_today.mobilty_planner.inverted_supervision.add(adult)
+
         else:
             schedule = self.full_schedule.popleft()
             self.schedule_day += 1
@@ -454,6 +462,26 @@ class MobilityPlanner(object):
         """
         assert self.death_timestamp is None, "processing activities for a dead human"
 
+        # (a) set back to normal routine if self.human was hospitalized
+        # (b) if human is still recovering in hospital then return the activity as is because these were determined at the time hospitalization occured
+        # Note 1: after recovery from hospitalization, infection_timestamp will always be None
+        # Note 2: hospitalization_recovery_timestamp will take into account hospitalization recovery due to critical condition
+        if (
+            (self.hospitalization_timestamp is not None
+            or self.critical_condition_timestamp is not None)
+            and not self.human_will_die_if_critical
+            and self.env.timestamp >= self.hospitalization_recovery_timestamp
+        ):
+            self.hospitalization_timestamp = None
+            self.critical_condition_timestamp = None
+        elif (
+            (self.hospitalization_timestamp is not None
+            or self.critical_condition_timestamp is not None)
+            and not self.human_will_die_if_critical
+            and self.env.timestamp < self.hospitalization_recovery_timestamp
+        ):
+            return activity # while in hospital, these activities are predetermined until hospitalization recovery time
+
         AVERAGE_TIME_TO_HOSPITAL_GIVEN_SYMPTOMS = self.conf['AVERAGE_DAYS_TO_HOSPITAL_GIVEN_SYMPTOMS']
         AVERAGE_TIME_TO_CRITICAL_IF_HOSPITALIZED = self.conf['AVERAGE_DAYS_TO_CRITICAL_IF_HOSPITALIZED']
         AVERAGE_TIME_DEATH_IF_CRITICAL = self.conf['AVERAGE_DAYS_DEATH_IF_CRITICAL']
@@ -474,7 +502,7 @@ class MobilityPlanner(object):
             if location is None:
                 self.human.expire() # timeout for infinity
 
-            activity, schedule = _move_relevant_activities_to_hospital(self.human, self, activity, self.rng, self.conf, hospital, critical=False)
+            activity, self = _move_relevant_activities_to_hospital(self.human, self, activity, self.rng, self.conf, hospital, critical=False)
             print(self.human,  "is hospitalized", activity)
 
             # change the schedule
@@ -493,10 +521,9 @@ class MobilityPlanner(object):
             location = _select_location(self.human, "hospital-icu", self.human.city, self.rng, self.conf)
             if location is None:
                 self.human.expire() # timeout for infinity
-            activity, schedule = _move_relevant_activities_to_hospital(self.human, self, activity, self.rng, self.conf, critical=True)
-            print(self.human,  "is critical", activity)
 
-            # change the schedule
+            activity, self = _move_relevant_activities_to_hospital(self.human, self, activity, self.rng, self.conf, critical=True)
+            print(self.human,  "is critical", activity)
             return activity
 
         # 3. death given critical
@@ -506,7 +533,7 @@ class MobilityPlanner(object):
             and self.hospitalization_timestamp is not None
             and self.critical_condition_timestamp is not None
             and self.death_timestamp is None
-            and (self.env.timestamp - self.hospitalization_timestamp).total_seconds() >= AVERAGE_TIME_DEATH_IF_CRITICAL * SECONDS_PER_DAY
+            and (self.env.timestamp - self.critical_condition_timestamp).total_seconds() >= AVERAGE_TIME_DEATH_IF_CRITICAL * SECONDS_PER_DAY
         ):
             self.human.city.tracker.track_deaths(self.human) # track
             self.death_timestamp = self.env.timestamp
@@ -517,15 +544,27 @@ class MobilityPlanner(object):
         # 4. for adults, if there is a kid that needs supervision because the kid has to stay at home or is hospitalized,
         # /!\ It doesn't let a single adult attend to two kids: one in hospital and another in house or 3 kids: in different hospitals etc..
         for kid in self.inverted_supervision:
-            location = kid.mobility_planner.bound_to_location
-            activity = self._cancel_and_stay_at_location(activity, reason="inverted-supervision", location=location)
-            return activity
+            if (
+                kid.hospitalization_timestamp is not None
+                or kid.critical_condition_timestamp is not None
+            ):
+                location = kid.current_activity.location # in hospitalization, kid's activities have location
+                reason = "inverted-supervision-hospitalization"
+                activity.cancel_and_go_to_location(reason=reason, location=location)
+                return activity
+
+            kid_to_stay_at_home = kid.mobility_planner._update_rest_at_home()
+            if kid_to_stay_at_home:
+                location = kid.household #
+                reason = "inverted-supervision-stay-at-home"
+                activity.cancel_and_go_to_location(reason=reason, location=location)
+                return activity
 
         # 5. health / intervention related checks; set the location to household
         # rest_at_home needs to be checked everytime. It is different from hospitalization which is for prespecified period of time
         rest_at_home = self._update_rest_at_home()
         if rest_at_home:
-            activity = self._cancel_and_stay_at_location(activity, reason="sick-rest-at_home", location=self.human.household)
+            activity.cancel_and_go_to_location(reason="sick-rest-at_home", location=self.human.household)
             # print(self.human,  "is sick", activity)
             return activity
 
@@ -538,30 +577,10 @@ class MobilityPlanner(object):
         if activity.location is None:
             activity.location = _select_location(self.human, activity.name, self.human.city, self.rng, self.conf)
             if activity.location is None:
-                activity = self._cancel_and_stay_at_location(activity, reason="cancelled-no-location", location=self.human.household)
+                activity.cancel_and_go_to_location(reason="cancelled-no-location", location=self.human.household)
                 print(self.human,  "can't get a location", activity)
 
         return activity
-
-    def _cancel_and_stay_at_location(activity, reason, location):
-        """
-        Cancels the activity and if there is an adult who needs to supervise a kid, adds `self.human` to inverted_supervision.
-
-        Args:
-            activity (Activity):
-            reason (str):
-            location (covid19sim.locations.Location):
-
-        Returns:
-            (Activity): activity with modified attributes.
-        """
-        # Inverted supervision
-        if self.follows_adult_schedule:
-            assert self.adult_to_follow_today is not None, f"kid {self.human} is not following any adult today"
-            self.adult_to_follow_today.mobility_planner.inverted_supervision.add(self.human)
-            self.bound_to_location = location
-
-        activity.cancel_and_stay_at_location(reason, location)
 
     def _update_rest_at_home(self):
         """
@@ -572,15 +591,17 @@ class MobilityPlanner(object):
         # TODO - P - Change this to check everytime.
 
         if (
+            self.hospitalization_timestamp is not None
+            or self.critical_condition_timestamp is not None
+        ):
+            self.human_to_rest_at_home = False
+            return self.human_to_rest_at_home
+
+        if (
             not self.human_to_rest_at_home
             and self.rng.random() < 1 - _get_likelihood_to_go_out(self.human, self.conf)
         ):
             self.human_to_rest_at_home = True
-            # Inverted supervision
-            if self.follows_adult_schedule:
-                assert self.adult_to_follow_today is not None, f"kid {self.human} is not following any adult today"
-                self.adult_to_follow_today.mobility_planner.inverted_supervision.add(self.human)
-                self.bound_to_location = self.human.household
 
         elif (
             self.human_to_rest_at_home
@@ -588,10 +609,6 @@ class MobilityPlanner(object):
             and self.human.is_removed
         ):
             self.human_to_rest_at_home = False
-            if self.follows_adult_schedule:
-                assert self.adult_to_follow_today is not None, f"kid {self.human} is not following any adult today"
-                self.adult_to_follow_today.mobility_planner.inverted_supervision.remove(self.human)
-                self.bound_to_location = None
 
         return self.human_to_rest_at_home
 
@@ -619,8 +636,10 @@ def _move_relevant_activities_to_hospital(human, mobility_planner, current_activ
     if critical:
         AVERAGE_TIME_RECOVERY = conf['AVERAGE_DAYS_RECOEVRY_IF_CRITICAL'] * SECONDS_PER_DAY
 
-    activities_to_modify = []
     recovery_time = human.env.timestamp + datetime.timedelta(seconds=AVERAGE_TIME_RECOVERY)
+    mobility_planner.hospitalization_recovery_timestamp = recovery_time
+
+    activities_to_modify = []
     for activity in [current_activity] + list(mobility_planner.schedule_for_day):
         if activity.end_time < recovery_time:
             activities_to_modify.append(activity)
@@ -635,7 +654,7 @@ def _move_relevant_activities_to_hospital(human, mobility_planner, current_activ
         reason = "hospitalized" if not critical else "ICU"
         activity.cancel_and_go_to_location(reason=reason, location=hospital)
 
-    return current_activity
+    return current_activity, mobility_planner
 
 def _get_likelihood_to_go_out(human, conf):
     """
