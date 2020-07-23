@@ -451,6 +451,7 @@ def plot(data, output_path, num_chains=10):
     for x in init_infected:
         infectee_location[x] = "unknown"
     tree, paths = construct_infection_tree(infection_chain)
+    import pdb; pdb.set_trace()
     # get the longest 50% of lists
     candidates = paths[:int(len(paths) / 2)]
 
