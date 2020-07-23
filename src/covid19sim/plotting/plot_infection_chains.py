@@ -354,7 +354,7 @@ def hierarchy_pos(G, root=None, width=1., vert_gap = 0.2, vert_loc = 0, xcenter 
 
     return _hierarchy_pos(G, root, width, vert_gap, vert_loc, xcenter)
 
-def construct_infection_tree(infection_chain, draw_fig=False):
+def construct_infection_tree(infection_chain, draw_fig=True):
     """ Returns a DFS tree of infections and infection chains for each leaf"""
     root = "ROOT"
     start_date = datetime.datetime(2020, 2, 28, 0, 0)
@@ -451,7 +451,7 @@ def plot(data, output_path, num_chains=10):
     for x in init_infected:
         infectee_location[x] = "unknown"
     tree, paths = construct_infection_tree(infection_chain)
-    import pdb; pdb.set_trace()
+
     # get the longest 50% of lists
     candidates = paths[:int(len(paths) / 2)]
 

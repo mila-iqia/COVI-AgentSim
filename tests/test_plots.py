@@ -7,7 +7,7 @@ from tempfile import TemporaryDirectory
 from tests.utils import get_test_conf
 
 from covid19sim.inference.server_utils import DataCollectionServer
-from covid19sim.plotting import debug_plots
+from covid19sim.plotting import debug
 from covid19sim.run import simulate
 
 
@@ -58,5 +58,5 @@ class PlotTest(unittest.TestCase):
             assert os.path.exists(hdf5_path)
 
             # Ensure that baseball plots can be produced from the simulation outputs
-            debug_plots.main(debug_data_path=hdf5_path,
+            debug.main(debug_data_path=hdf5_path,
                              output_folder=os.path.join(d, "plots"))

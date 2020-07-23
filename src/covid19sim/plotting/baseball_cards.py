@@ -13,6 +13,7 @@ import os
 import xdelta3
 import zipfile
 import tqdm
+from more_itertools import chunked
 from typing import Dict, List, Tuple
 
 from matplotlib import pyplot as plt
@@ -675,8 +676,9 @@ def generate_location_centric_plots(debug_data, output_folder):
 def generate_debug_plots(data_loader, output_folder, ids=set()):
     # Generate human-centric plots (break it down in batches to reduce mem usage)
     nb_humans_in_sim = data_loader.get_nb_humans()
-    human_backups, human_events = data_loader.load_human_data(ids=ids)
-    generate_human_centric_plots(human_backups, human_events, nb_humans_in_sim, output_folder, ids=ids)
+    for batched_ids in chunked(ids, 5):
+        human_backups, human_events = data_loader.load_human_data(ids=batched_ids)
+        generate_human_centric_plots(human_backups, human_events, nb_humans_in_sim, output_folder, ids=ids)
 
     # Generate location-centric plots
     generate_location_centric_plots(data_loader, output_folder)
