@@ -98,9 +98,9 @@ class Human(object):
         # Individual Characteristics
         self.sex = _get_random_sex(self.rng, self.conf)  # The sex of this person conforming with Canadian statistics
         self.age = age  # The age of this person, conforming with Canadian statistics
-        _age_bin = get_age_bin(age, width=10)  # Age bins of width 10 are required for Oxford-like COVID-19 infection model and social mixing tracker
-        self.normalized_susceptibility = self.conf['NORMALIZED_SUSCEPTIBILITY_BY_AGE'][_age_bin.bin]  # Susceptibility to Covid-19 by age
-        self.mean_daily_interaction_age_group = self.conf['MEAN_DAILY_INTERACTION_FOR_AGE_GROUP'][_age_bin.bin]  # Social mixing is determined by age
+        self.age_bin_width_10 = get_age_bin(age, width=10)  # Age bins of width 10 are required for Oxford-like COVID-19 infection model and social mixing tracker
+        self.normalized_susceptibility = self.conf['NORMALIZED_SUSCEPTIBILITY_BY_AGE'][self.age_bin_width_10.index][2]  # Susceptibility to Covid-19 by age
+        self.mean_daily_interaction_age_group = self.conf['MEAN_DAILY_INTERACTION_FOR_AGE_GROUP'][self.age_bin_width_10.index][2]  # Social mixing is determined by age
         self.age_bin_width_5 = get_age_bin(age, width=5)
         self.preexisting_conditions = _get_preexisting_conditions(self.age, self.sex, self.rng)  # Which pre-existing conditions does this person have? E.g. COPD, asthma
         self.inflammatory_disease_level = _get_inflammatory_disease_level(self.rng, self.preexisting_conditions, self.conf.get("INFLAMMATORY_CONDITIONS"))  # how many pre-existing conditions are inflammatory (e.g. smoker)
@@ -217,7 +217,6 @@ class Human(object):
         self.assign_household(household)  # assigns this person to the specified household
         self.rho = rho  # controls mobility (how often this person goes out and visits new places)
         self.gamma = gamma  # controls mobility (how often this person goes out and visits new places)
-        self.rest_at_home = False  # determines whether people rest at home due to feeling sick (used to track mobility due to symptoms)
         self.visits = Visits()  # used to help implement mobility
         self.travelled_recently = self.rng.rand() > self.conf.get("P_TRAVELLED_INTERNATIONALLY_RECENTLY")
         self.last_date = defaultdict(lambda : self.env.initial_timestamp.date())  # used to track the last time this person did various things (like record smptoms)
@@ -859,31 +858,6 @@ class Human(object):
             infector, infectee = None, None
         return infector, infectee, p_infection
 
-    def move_to_hospital_if_required(self):
-        """
-        decision to move `self` to the hospital is made here.
-        """
-        # Behavioral imperatives
-        if self.is_extremely_sick:
-            if self.age < 80 or (self.denied_icu is None and self.rng.rand() < 0.5): # oxf study: 80+ 50% no ICU
-                self.city.tracker.track_hospitalization(self, "icu")
-                if self.age >= 80:
-                    self.denied_icu = False
-                yield self.env.process(self.excursion(self.city, "hospital-icu"))
-            else:
-                if self.denied_icu:
-                    time_since_denial = (self.env.timestamp.date() - self.last_date["denied_icu"]).days
-                    if time_since_denial >= self.denied_icu_days:
-                        yield self.env.process(self.expire())
-                else:
-                    self.last_date["denied_icu"] = self.env.timestamp.date()
-                    self.denied_icu = True
-                    self.denied_icu_days = int(scipy.stats.gamma.rvs(1, loc=2.5))
-
-        elif self.is_really_sick:
-            self.city.tracker.track_hospitalization(self)
-            yield self.env.process(self.excursion(city, "hospital"))
-
     def initialize_daily_risk(self, current_day_idx: int):
         """Initializes the risk history map with a new/copied risk value for the given day, if needed.
 
@@ -1083,26 +1057,8 @@ class Human(object):
         # important to remove this human from the location or else there will be sampled interactions
         if self in self.location.humans:
             self.location.remove_human(self)
-        self.tracker.track_deaths(self)
         self.mobility_planner.cancel_all_events()
         yield self.env.timeout(np.inf)
-
-    def assert_state_changes(self):
-        """
-        [summary]
-        """
-        next_state = {0:[1], 1:[2], 2:[0, 3], 3:[3]}
-        assert sum(self.state) == 1, f"invalid compartment for {self.name}: {self.state}"
-        if self.last_state != self.state:
-            # can skip the compartment if hospitalized in exposed
-            # can also skip the compartment if incubation days is very small
-            if not self.obs_hospitalized:
-                if not self.state.index(1) in next_state[self.last_state.index(1)]:
-                    warnings.warn(f"invalid compartment transition for {self.name}: {self.last_state} to {self.state}"
-                        f"incubation days:{self.incubation_days:3.3f} infectiousness onset days {self.infectiousness_onset_days}"
-                        f"recovery days {self.recovery_days: 3.3f}", RuntimeWarning)
-
-            self.last_state = self.state
 
     def notify(self, intervention=None):
         """
@@ -1144,32 +1100,49 @@ class Human(object):
                 new_rec.modify(self)
                 self.recommendations_to_follow.add(new_rec)
 
-    def run(self, city):
+    def run(self):
         """
+        Transitions `self` from one `Activity` to other
+        Note: use -O command line option to avoid checking for assertions
+
+        Yields:
+            simpy.events.Event:
         """
+
         previous_activity, next_activity = None, self.mobility_planner.get_next_activity()
         while True:
-            self.move_to_hospital_if_required()
+
             if next_activity.location is not None:
-                # Note: use -O command line option to avoid checking for assertions
-                # if self.name == "human:110": print("A\t", self.env.timestamp, self, next_activity)
+
+                # (debug) to print the schedule for someone
+                # if self.name == "human:110":
+                #       print("A\t", self.env.timestamp, self, next_activity)
+
+                # /!\ TODO - P - check for the capacity at a location; it requires adjustment of timestamps
+                # with next_activity.location.request() as request:
+                #     yield request
+                #     yield self.env.process(self.transition_to(next_activity, previous_activity))
+
                 assert abs(self.env.timestamp - next_activity.start_time).seconds == 0, "start times do not align..."
                 yield self.env.process(self.transition_to(next_activity, previous_activity))
-                # if self.name == "human:110": print("B\t", self.env.timestamp, self, next_activity)
                 assert abs(self.env.timestamp - next_activity.end_time).seconds == 0, " end times do not align..."
                 previous_activity, next_activity = next_activity, self.mobility_planner.get_next_activity()
+
             else:
                 next_activity.refresh_location()
-                # if self.name == "human:110": print("C\t", self.env.timestamp, self, next_activity, "depends on", next_activity.parent_activity_pointer)
+
+                # (debug) to print the schedule for someone
+                # if self.name == "human:110":
+                #       print("A\t", self.env.timestamp, self, next_activity)
+
                 # because this activity depends on parent_activity, we need to give a full 1 second to guarantee
                 # that parent activity will have its location confirmed. This creates a discrepancy in env.timestamp and
                 # next_activity.start_time.
                 yield self.env.timeout(1)
 
-                # realign the activities
+                # realign the activities and keep the previous_activity as it is if this next_activity can't be scheduled
                 next_activity.adjust_time(seconds=1, start=True)
                 if next_activity.duration <= 0:
-                    # keep the previous as is
                     next_activity = self.mobility_planner.get_next_activity()
                     continue
                 previous_activity.adjust_time(seconds=1, start=False)
@@ -1197,100 +1170,6 @@ class Human(object):
             return round(self.lon + self.rng.normal(0, 2))
         else:
             return round(self.lon + self.rng.normal(0, 10))
-
-    def excursion(self, city, location_type):
-        """
-        Redirects `self` to a relevant location corresponding to `location_type`.
-
-        Args:
-            city (covid19sim.locations.city): `City` object in which `self` resides
-            location_type (str): type of location `self` will be moved to.
-
-        Raises:
-            ValueError: Can't redirect `self` to an unknown location type
-
-        Yields:
-            simpy.events.Process
-        """
-        if location_type == "grocery":
-            grocery_store = self._select_location(activity="grocery", city=city)
-            if grocery_store is None:
-                # Either grocery stores are not open, or all queues are too long, so return
-                return
-            with grocery_store.request() as request:
-                yield request
-                # If we make it here, it counts as a visit to the shop
-                self.count_shop+=1
-                yield self.env.process(self.at(grocery_store, city, t))
-
-        elif location_type == "exercise":
-            park = self._select_location(activity="exercise", city=city)
-            if park is None:
-                # No parks are open, so return
-                return
-            self.count_exercise+=1
-            t = draw_random_discrete_gaussian(self.avg_exercise_time, self.scale_exercise_time, self.rng)
-            yield self.env.process(self.at(park, city, t))
-
-        elif location_type == "work":
-            t = draw_random_discrete_gaussian(self.avg_working_minutes, self.scale_working_minutes, self.rng)
-            if (not self.does_not_work
-                and self.workplace.is_open_for_business):
-                yield self.env.process(self.at(self.workplace, city, t))
-            else:
-                # work from home
-                yield self.env.process(self.at(self.household, city, t))
-
-        elif location_type == "hospital":
-            hospital = self._select_location(location_type=location_type, city=city)
-            if hospital is None: # no more hospitals
-                # The patient dies
-                yield self.env.process(self.expire())
-
-            self.obs_hospitalized = True
-            if self.infection_timestamp is not None:
-                t = self.recovery_days - (self.env.timestamp - self.infection_timestamp).total_seconds() / 86400 # DAYS
-                t = max(t * 24 * 60,0)
-            else:
-                t = len(self.symptoms)/10 * 60 # FIXME: better model
-            yield self.env.process(self.at(hospital, city, t))
-
-        elif location_type == "hospital-icu":
-            icu = self._select_location(location_type=location_type, city=city)
-            if icu is None:
-                # The patient dies
-                yield self.env.process(self.expire())
-
-            if len(self.preexisting_conditions) < 2:
-                extra_time = self.rng.choice([1, 2, 3], p=[0.5, 0.3, 0.2])
-            else:
-                extra_time = self.rng.choice([1, 2, 3], p=[0.2, 0.3, 0.5]) # DAYS
-            t = self.viral_load_plateau_end - self.viral_load_plateau_start + extra_time
-
-            yield self.env.process(self.at(icu, city, t * 24 * 60))
-
-        elif location_type == "socialize":
-            S = 0
-            p_exp = 1.0
-            while self.count_misc <= self.max_misc_per_week:
-                if self.rng.random() > p_exp:  # return home
-                    yield self.env.process(self.at(self.household, city, 60))
-                    break
-
-                loc = self._select_location(activity='socialize', city=city)
-                if loc is None:
-                    return # No leisure spots are open, or without long queues, so return
-
-                S += 1
-                p_exp = self.rho * S ** (-self.gamma * self.adjust_gamma)
-                with loc.request() as request:
-                    yield request
-                    self.count_misc += 1 # If we make it here, it counts as a leisure visit
-                    t = draw_random_discrete_gaussian(self.avg_misc_time, self.scale_misc_time, self.rng)
-                    yield self.env.process(self.at(loc, city, t))
-
-        else:
-            raise ValueError(f'Unknown excursion type:{location_type}')
 
     def track_me(self, new_location):
         row = {

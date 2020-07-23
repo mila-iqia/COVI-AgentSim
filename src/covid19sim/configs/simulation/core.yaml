@@ -1,8 +1,6 @@
-GLOBAL_MOBILITY_SCALING_FACTOR: 1.0 # Mobility reduction factor
-
-######################
-# LOCATION CONSTANTS #
-######################
+#############################################################
+#######            LOCATION CONSTANTS                 #######
+#############################################################
 
 # _SURFACE_PROB is an experimental feature to model environmental transmission. Proportion of environmental transmissions can be just maintained by ENVIRONMENTAL_INFECTION_KNOB.
 # _SURFACE_PROB: environmental transmission is modeled via surfaces. When an infected person enters a location, a random surface is drawn from the distribution defined by `surface_prob`. Assume that
@@ -32,6 +30,7 @@ STORE_SURFACE_PROB: [0.1, 0.1, 0.3, 0.2, 0.3]
 STORE_MEAN_DAILY_INTERACTIONS: 3.1
 STORE_OPEN_CLOSE_HOUR_MINUTE: [[8, 0], [22, 0]]
 STORE_OPEN_DAYS: [0, 1, 2, 3, 4, 5, 6]
+MAX_STORE_QUEUE_LENGTH: 10
 
 # misc
 MISC_PROPORTION_AREA: 0.15
@@ -40,6 +39,7 @@ MISC_SURFACE_PROB: [0.1, 0.1, 0.3, 0.2, 0.3]
 MISC_MEAN_DAILY_INTERACTIONS: 3.1
 MISC_OPEN_CLOSE_HOUR_MINUTE: [[8, 0], [22, 0]]
 MISC_OPEN_DAYS: [0, 1, 2, 3, 4, 5, 6]
+MAX_MISC_QUEUE_LENGTH: 10
 
 # park
 PARK_PROPORTION_AREA: 0.05
@@ -164,6 +164,9 @@ TIME_SPENT_SCALE_FACTOR_FOR_SHORT_ACTIVITIES: 1.0 # e.g. grocery, misc, or park
 TIME_SPENT_SCALE_FACTOR_FOR_WORK: 1.0
 TIME_SPENT_SCALE_FACTOR_SLEEP_AWAKE: 0.01 # /!\ 0.1 scale creates a lot of variation in sleep schedule which breaks the assumptions in MobilityPlanner. Longer the simulation days lesser this value is preferred.
 
+# Contact controlling knobs
+GLOBAL_MOBILITY_SCALING_FACTOR: 1.0 # Mobility reduction factor
+
 
 #############################################################
 #####         Mobility when SICK CONSTANTS             #####
@@ -182,6 +185,70 @@ P_MOBILE_GIVEN_MODERATE_SYMPTOMS: 0.5
 
 MILD_SYMPTOMS: ["cough", "fatigue", "gastro", "aches", "mild"]
 P_MOBILE_GIVEN_MILD_SYMPTOMS: 0.6
+
+
+#############################################################
+#####          Hospitalization Parameters               #####
+#############################################################
+
+# All parameters below are from the following reference
+# ref: https://github.com/BDI-pathogens/OpenABM-Covid19/blob/master/documentation/parameters/parameter_dictionary.md
+
+P_HOSPITALIZED_GIVEN_SYMPTOMS: [
+  [0, 9, 0.001],
+  [10, 19, 0.006],
+  [20, 29, 0.015],
+  [30, 39, 0.069],
+  [40, 49, 0.219],
+  [50, 59, 0.279],
+  [60, 69, 0.370],
+  [70, 79, 0.391],
+  [80, 110, 0.379 ]
+]
+
+P_CRITICAL_GIVEN_HOSPITALIZED: [
+  [0, 9, 0.05],
+  [10, 19, 0.05],
+  [20, 29, 0.05],
+  [30, 39, 0.05],
+  [40, 49, 0.063],
+  [50, 59, 0.122],
+  [60, 69, 0.274],
+  [70, 79, 0.432],
+  [80, 110, 0.709]
+]
+
+
+P_FATALITY_GIVEN_CRITICAL: [
+  [0, 9, 0.33],
+  [10, 19, 0.25],
+  [20, 29, 0.5],
+  [30, 39, 0.5],
+  [40, 49, 0.5],
+  [50, 59, 0.69],
+  [60, 69, 0.65],
+  [70, 79, 0.88],
+  [80, 110, 1.0]
+]
+
+# if hospitalized, how much time it will take to recover
+AVERAGE_DAYS_RECOVERY_IF_HOSPITALIZED: 8.75
+STDDEV_DAYS_RECOVERY_IF_HOSPITALIZED: 8.75
+
+# if critical, how much time it will take to recover
+AVERAGE_DAYS_RECOVERY_IF_CRITICAL: 4
+STDDEV_DAYS_RECOVERY_IF_CRITICAL: 2
+
+# after hospitalization, how much to critical stage
+AVERAGE_DAYS_TO_CRITICAL_IF_HOSPITALIZED: 2.27
+STDDEV_DAYS_TO_CRITICAL_IF_HOSPITALIZED: 2.27
+
+# if critical, how much time will it take to death
+AVERAGE_DAYS_DEATH_IF_CRITICAL: 18.8
+STDDEV_DAYS_DEATH_IF_CRITICAL: 12.21
+
+# If symptoms show up, how much time to go to hospital
+AVERAGE_DAYS_TO_HOSPITAL_GIVEN_SYMPTOMS: 5.14
 
 #########################################################
 #####       Smartphone Parameters                   #####
@@ -294,34 +361,33 @@ COUGH_SEVERITY_MULTIPLIER_ADDITION: 0.25
 # refer Oxford COVID-19 model
 # They normalise the fitted attack rate across age groups so that average age has a susceptiblity of 1.0
 # UK's average age = 40; Canada's average age = 42. We use the same normalized susceptiblity from Table 5.
-NORMALIZED_SUSCEPTIBILITY_BY_AGE: {
-    "0-9": 0.71,
-    "10-19": 0.74,
-    "20-29": 0.79,
-    "30-39": 0.87,
-    "40-49": 0.98,
-    "50-59": 1.11,
-    "60-69": 1.26,
-    "70-79": 1.45,
-    "80-110": 1.66,
-  }
+NORMALIZED_SUSCEPTIBILITY_BY_AGE: [
+  [0, 9, 0.71],
+  [10, 19, 0.74],
+  [20, 29, 0.79],
+  [30, 39, 0.87],
+  [40, 49, 0.98],
+  [50, 59, 1.11],
+  [60, 69, 1.26],
+  [70, 79, 1.45],
+  [80, 110, 1.66]
+]
 
 # these numbers are taken for daily_mean_work_interactions from Oxford study (Table 3)
 # I_as used in the probability of transmission denotes mean daily interactions
 # The report doesn't have a table for I_as so the numbers in Table 3 are used as a proxy
 # TODO: check the updated version of the report for these numbers.
-MEAN_DAILY_INTERACTION_FOR_AGE_GROUP: {
-  "0-9": 10,
-  "10-19": 10,
-  "20-29": 7,
-  "30-39": 7,
-  "40-49": 7,
-  "50-59": 7,
-  "60-69": 7,
-  "70-79": 3,
-  "80-110": 3,
-
-  }
+MEAN_DAILY_INTERACTION_FOR_AGE_GROUP: [
+  [0, 9, 10],
+  [10, 19, 10],
+  [20, 29, 7],
+  [30, 39, 7],
+  [40, 49, 7],
+  [50, 59, 7],
+  [60, 69, 7],
+  [70, 79, 3],
+  [80, 110, 3]
+]
 
 #########################################################
 #####               Testing Parameters              #####
@@ -382,53 +448,6 @@ AVG_COLD_DURATION: 3 # FIXME:unused
 # INDIVIDUAL DIFFERENCES PARAMETERS
 P_CAREFUL_PERSON: 0.3 # &carefulness
 P_TRAVELLED_INTERNATIONALLY_RECENTLY: 0.05
-
-
-######################################### $
-## WORK
-AVG_WORKING_MINUTES: 480 # 8 * 60
-SCALE_WORKING_MINUTES: 60 # 1 * 60
-
-AVG_SCALE_WORKING_MINUTES: 120 # 2 * 60
-SCALE_SCALE_WORKING_MINUTES: 60 # 1 * 60
-
-## SHOP
-AVG_SHOP_TIME_MINUTES: 30 # @param
-SCALE_SHOP_TIME_MINUTES: 15
-AVG_SCALE_SHOP_TIME_MINUTES: 10
-SCALE_SCALE_SHOP_TIME_MINUTES: 5
-NUM_WEEKLY_GROCERY_RUNS: 2 # @param FIXME:unused
-
-AVG_MAX_NUM_SHOP_PER_WEEK: 5
-SCALE_MAX_NUM_SHOP_PER_WEEK: 1
-
-AVG_NUM_SHOPPING_DAYS: 3
-SCALE_NUM_SHOPPING_DAYS: 1
-AVG_NUM_SHOPPING_HOURS: 3
-SCALE_NUM_SHOPPING_HOURS: 1
-MAX_STORE_QUEUE_LENGTH: 10
-
-## EXERCISE
-AVG_EXERCISE_MINUTES: 60
-SCALE_EXERCISE_MINUTES: 15
-AVG_SCALE_EXERCISE_MINUTES: 15
-SCALE_SCALE_EXERCISE_MINUTES: 5
-
-AVG_MAX_NUM_EXERCISE_PER_WEEK: 5
-SCALE_MAX_NUM_EXERCISE_PER_WEEK: 2
-AVG_NUM_EXERCISE_DAYS: 3
-SCALE_NUM_EXERCISE_DAYS: 1
-AVG_NUM_EXERCISE_HOURS: 3
-SCALE_NUM_EXERCISE_HOURS: 1
-
-## MISC
-AVG_MISC_MINUTES: 60
-SCALE_MISC_MINUTES: 15
-AVG_SCALE_MISC_MINUTES: 15
-SCALE_SCALE_MISC_MINUTES: 5
-AVG_MAX_NUM_MISC_PER_WEEK: 5
-SCALE_MAX_NUM_MISC_PER_WEEK: 2
-MAX_MISC_QUEUE_LENGTH: 10
 
 # Biological sex
 P_FEMALE: 0.45

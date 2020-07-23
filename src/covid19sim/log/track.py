@@ -202,6 +202,7 @@ class Tracker(object):
                                         "weekday": defaultdict(lambda :(0,0)),
                                         "weekend": defaultdict(lambda :(0,0))
                                         }
+                                        
         self.socialize_activity_data = {
             "group_size": Statistics(),
             "location_frequency": defaultdict(int),
