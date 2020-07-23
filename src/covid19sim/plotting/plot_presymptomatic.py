@@ -114,8 +114,8 @@ def run(data, path, comparison_key, times=[-1, -2, -3], mode=None):
             j = 0
 
             for method in data:
-                fig, axs = plt.subplots(nrows=3, ncols=1, figsize=(7.5, 20))
-                fig.suptitle(method, fontsize=30)
+                fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(7.5, 10))
+                fig.suptitle(f"{method} Day{t} (Adoption: {float(label)*100}%)", fontsize=30)
                 j = j + i if i == 0 else j + i + 1
 
                 for i, adoption in enumerate(data[method].keys()):
@@ -153,61 +153,33 @@ def run(data, path, comparison_key, times=[-1, -2, -3], mode=None):
                         xlabel = "Rec Level"
                         xticklabels = [0, 1, 2, 3]
 
-                    axs[0].bar(
-                        list(range(length)),
+                    ax.bar(
+                        [_ * 7 + 2 for _ in range(length)],
                         result[0][k],
                         color="darkorange",
-                        label="Day{}".format(t),
+                        label=f"Presymptomatic Rec Levels",
                     )
-                    axs[0].set_title(
-                        f"Presymptomatic Rec Levels (Adoption: {float(label)*100}%)",
-                        y=1.06,
-                    )
-                    axs[0].set_xlabel(xlabel)
-                    axs[0].set_ylabel("% Population", size="medium")
-                    axs[0].set_xticks(list(range(length)))
-                    axs[0].set_xticklabels(xticklabels)
-                    axs[0].set_ylim(0, 1)
-                    axs[0].set_yticks(list(range(0, 5)))
-                    axs[0].set_yticklabels(["0", "20", "40", "60", "80", "100"])
-                    axs[0].plot([0, length - 1], [0, 0], color="b", linewidth=1.0)
-
-                    axs[1].bar(
-                        list(range(length)),
+                    ax.bar(
+                        [_ * 7 + 3 for _ in range(length)],
                         result[1][k],
-                        color="darkorange",
-                        label="Day{}".format(t),
+                        color="darkslateblue",
+                        label=f"Susceptible Rec Levels",
                     )
-                    axs[1].set_title(
-                        f"Susceptible Rec Levels (Adoption Rate: {float(label)*100}%)",
-                        y=1.06,
-                    )
-                    axs[1].set_xlabel(xlabel)
-                    axs[1].set_ylabel("% Population", size="medium")
-                    axs[1].set_xticks(list(range(length)))
-                    axs[1].set_xticklabels(xticklabels)
-                    axs[1].set_ylim(0, 1)
-                    axs[1].set_yticks(list(range(0, 5)))
-                    axs[1].set_yticklabels(["0", "20", "40", "60", "80", "100"])
-                    axs[1].plot([0, length - 1], [0, 0], color="b", linewidth=1.0)
-
-                    axs[2].bar(
-                        list(range(length)),
+                    ax.bar(
+                        [_ * 7 + 4 for _ in range(length)],
                         result[2][k],
-                        color="darkorange",
-                        label="Day{}".format(t),
+                        color="orangered",
+                        label=f"Delta Rec Levels",
                     )
-                    axs[2].set_title(
-                        f"Delta Rec Levels (Adoption Rate: {float(label)*100}%)", y=1.06
-                    )
-                    axs[2].set_xlabel(xlabel)
-                    axs[2].set_ylabel("% Population", size="medium")
-                    axs[2].set_xticks(list(range(length)))
-                    axs[2].set_xticklabels(xticklabels)
-                    axs[2].set_ylim(-1, 1)
-                    # axs[0].set_yticks(list(range(0, 5)))
-                    # axs[0].set_yticklabels(["0", "20", "40", "60", "80", "100"])
-                    axs[2].plot([0, length - 1], [0, 0], color="b", linewidth=1.0)
+                    ax.set_xlabel(xlabel)
+                    ax.set_ylabel("% Population", size="medium")
+                    ax.set_xticks([_ * 7 + 3 for _ in range(length)])
+                    ax.set_xticklabels(xticklabels)
+                    ax.set_ylim(-1, 1)
+                    ax.set_yticks([-1.0, -0.8, -0.6, -0.4, -0.2, 0, 0.2, 0.4, 0.6, 0.8, 1.0])
+                    ax.set_yticklabels(["-100", "-80", "-60", "-40", "-20", "0", "20", "40", "60", "80", "100"])
+                    ax.plot([0, length * 7 - 1], [0, 0], color="b", linewidth=1.0)
+                    ax.legend()
 
                     plt.subplots_adjust(
                         wspace=0.5,
