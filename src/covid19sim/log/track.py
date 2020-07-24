@@ -202,7 +202,7 @@ class Tracker(object):
                                         "weekday": defaultdict(lambda :(0,0)),
                                         "weekend": defaultdict(lambda :(0,0))
                                         }
-                                        
+
         self.socialize_activity_data = {
             "group_size": Statistics(),
             "location_frequency": defaultdict(int),
@@ -318,14 +318,6 @@ class Tracker(object):
         # gender distribution
         str_to_print = "Gender: "
         x = np.array([h.sex for h in self.city.humans])
-        for z in np.unique(x):
-            p = 100 * x[x==z].shape[0]/self.n_people
-            str_to_print += f"{z}: {p:2.3f}% | "
-        log(str_to_print, self.logfile)
-
-        # profession distribution
-        str_to_print = "Profession: "
-        x = np.array([h.profession for h in self.city.humans])
         for z in np.unique(x):
             p = 100 * x[x==z].shape[0]/self.n_people
             str_to_print += f"{z}: {p:2.3f}% | "

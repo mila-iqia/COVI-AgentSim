@@ -34,27 +34,19 @@ from covid19sim.utils.visits import Visits
 
 class Human(object):
     """
-    [summary]
+    Defines various attributes of `human` concerned with COVID spread and contact patterns.
+
+    Args:
+        env (simpy.Environment): environment to schedule events
+        city (covid19sim.locations.city.City): `City` to carry out regular checks on human and update its attributes
+        name (str): identifier for this `human`
+        age (int): age of the `human`
+        rng (np.random.RandomState): Random number generator
+        infection_timestamp (datetime.datetime): initial timestamp when the human was infected. None if not infected
+        conf (dict): yaml configuration of the experiment
     """
 
-    def __init__(self, env, city, name, age, rng, has_app, infection_timestamp, household, workplace, profession, rho=0.3, gamma=0.21, conf={}):
-        """
-        [summary]
-
-        Args:
-            env ([type]): [description]
-            city ([type]): [description]
-            name ([type]): [description]
-            age ([type]): [description]
-            rng ([type]): [description]
-            infection_timestamp ([type]): [description]
-            household ([type]): [description]
-            workplace ([type]): [description]
-            profession ([type]): [description]
-            rho (float, optional): [description]. Defaults to 0.3.
-            gamma (float, optional): [description]. Defaults to 0.21.
-            conf (dict): yaml experiment configuration
-        """
+    def __init__(self, env, city, name, age, rng, infection_timestamp, conf):
 
         """
         Biological Properties
@@ -80,9 +72,7 @@ class Human(object):
         # Human-related properties
         self.name: RealUserIDType = f"human:{name}"  # Name of this human
         self.rng = np.random.RandomState(rng.randint(2 ** 16))  # RNG for this particular human
-        self.profession = profession  # The job this human has (e.g. healthcare worker, retired, school, etc)
-        self.is_healthcare_worker = True if profession == "healthcare" else False  # convenience boolean to check if is healthcare worker
-        self.known_connections = set() # keeps track of all otehr humans that this human knows of
+        self.known_connections = set() # keeps track of all other humans that this human knows of
         self._workplace = (None,) # initialized this way to be consistent with the final deque assignment
         self.does_not_work = False # to identify those who weren't assigned any workplace from the beginning
         self.work_start_time, self.work_end_time, self.working_days = None, None, []
@@ -128,12 +118,10 @@ class Human(object):
         self.infectiousness_onset_days = None  # number of days after exposure that this person becomes infectious
         self.can_get_really_sick = may_develop_severe_illness(self.age, self.sex, self.rng)  # boolean representing whether this person may need to go to the hospital
         self.can_get_extremely_sick = self.can_get_really_sick and self.rng.random() >= 0.7  # &severe; 30% of severe cases need ICU
-        self.never_recovers = self.rng.random() <= self.conf.get("P_NEVER_RECOVERS")[min(math.floor(self.age/10), 8)]  # boolean representing that this person will die if they are infected with Covid-19
         self.initial_viral_load = self.rng.rand() if infection_timestamp is not None else 0  # starting value for Covid-19 viral load if this person is one of the initially exposed people
         self.is_immune = False  # whether this person is immune to Covid-19 (happens after recovery)
         if self.infection_timestamp is not None:  # if this is an initially Covid-19 sick person
             compute_covid_properties(self)  # then we pre-calculate the course of their disease
-        self.last_state = self.state  # And we set their SEIR state (starts as either Susceptible or Exposed)
 
         # Covid-19 testing
         self.test_type = None  # E.g. PCR, Antibody, Physician
@@ -165,7 +153,7 @@ class Human(object):
 
 
         """App-related"""
-        self.has_app = has_app  # Does this prson have the app
+        self.has_app = False  # Does this prson have the app
         time_slot = rng.randint(0, 24)  # Assign this person to some timeslot
         self.time_slots = [
             int((time_slot + i * 24 / self.conf.get('UPDATES_PER_DAY')) % 24)
@@ -175,13 +163,10 @@ class Human(object):
 
         # Observed attributes; whether people enter stuff in the app
         self.has_logged_info = self.has_app and self.rng.rand() < self.carefulness  # Determines whether this person writes their demographic data into the app
-        self.obs_is_healthcare_worker = True if self.is_healthcare_worker and self.rng.random()<0.9 else False  # 90% of the time, healthcare workers will declare it
+        self.obs_is_healthcare_worker = None # 90% of the time, healthcare workers will declare it
         self.obs_age = self.age if self.has_app and self.has_logged_info else None  # The age of this human reported to the app
         self.obs_sex = self.sex if self.has_app and self.has_logged_info else None  # The sex of this human reported to the app
         self.obs_preexisting_conditions = self.preexisting_conditions if self.has_app and self.has_logged_info else []  # the preexisting conditions of this human reported to the app
-        self.obs_hospitalized = False  # Whether this person was hospitalized (as reported to the app)
-        self.obs_in_icu = False  # Whether this person was put in the ICU (as reported to the app)
-
 
         """ Interventions """
         self.tracing = False  # A reference to the NonMLRiskComputer logic engine which implements tracing methods
@@ -212,18 +197,17 @@ class Human(object):
         assert len(risk_mapping_array) > 0, "risk mapping must always be defined!"
         self.proba_to_risk_level_map = proba_to_risk_fn(risk_mapping_array)
 
-
         """Mobility"""
-        self.assign_household(household)  # assigns this person to the specified household
-        self.rho = rho  # controls mobility (how often this person goes out and visits new places)
-        self.gamma = gamma  # controls mobility (how often this person goes out and visits new places)
+        self.rho = conf['RHO']  # controls mobility (how often this person goes out and visits new places)
+        self.gamma = conf['GAMMA']  # controls mobility (how often this person goes out and visits new places)
         self.visits = Visits()  # used to help implement mobility
-        self.travelled_recently = self.rng.rand() > self.conf.get("P_TRAVELLED_INTERNATIONALLY_RECENTLY")
         self.last_date = defaultdict(lambda : self.env.initial_timestamp.date())  # used to track the last time this person did various things (like record smptoms)
         self.mobility_planner = MobilityPlanner(self, self.env, self.conf)
 
         self.location_leaving_time = self.env.ts_initial + SECONDS_PER_HOUR
         self.location_start_time = self.env.ts_initial
+
+        self.last_state = self.state  # And we set their SEIR state (starts as either Susceptible or Exposed)
 
     @property
     def follows_recommendations_today(self):
@@ -393,7 +377,8 @@ class Human(object):
         Returns:
             bool: True if dead, False if not.
         """
-        return self.recovered_timestamp == datetime.datetime.max
+        # return self.recovered_timestamp == datetime.datetime.max
+        return self.mobility_planner.death_timestamp is not None
 
     @property
     def is_incubated(self):
@@ -745,12 +730,11 @@ class Human(object):
             self.covid_symptom_start_time = self.env.timestamp
             self.city.tracker.track_serial_interval(self.name)
 
-
     def check_covid_recovery(self):
         """
         If `self` has covid, this function will check when can `self` recover and set necessary variables accordingly.
         """
-        if self.is_infectious and self.days_since_covid >= self.recovery_days:
+        if self.is_infectious and (self.env.timestamp - self.infection_timestamp).total_seconds() >= self.recovery_days * SECONDS_PER_DAY:
             self.city.tracker.track_recovery(self.n_infectious_contacts, self.recovery_days)
 
             # TO DISCUSS: Should the test result be reset here? We don't know in reality
@@ -759,18 +743,9 @@ class Human(object):
             self.infection_timestamp = None
             self.all_symptoms, self.covid_symptoms = [], []
 
-            if self.never_recovers:
-                yield self.env.process(self.expire())
-            else:
-                self.recovered_timestamp = self.env.timestamp
-                self.is_immune = not self.conf.get("REINFECTION_POSSIBLE")
-
-                # "resample" the chance probability of never recovering again (experimental)
-                if not self.is_immune:
-                    self.never_recovers = self.rng.random() < self.conf.get("P_NEVER_RECOVERS")[
-                        min(math.floor(self.age / 10), 8)]
-
-                Event.log_recovery(self.conf.get('COLLECT_LOGS'), self, self.env.timestamp, death=False)
+            self.recovered_timestamp = self.env.timestamp
+            self.is_immune = not self.conf.get("REINFECTION_POSSIBLE")
+            Event.log_recovery(self.conf.get('COLLECT_LOGS'), self, self.env.timestamp, death=False)
 
     def check_cold_and_flu_contagion(self, other_human):
         """
@@ -1057,7 +1032,9 @@ class Human(object):
         # important to remove this human from the location or else there will be sampled interactions
         if self in self.location.humans:
             self.location.remove_human(self)
+        self.household.residents.remove(self) # remove from the house
         self.mobility_planner.cancel_all_events()
+        self.city.tracker.track_deaths(self) # track
         yield self.env.timeout(np.inf)
 
     def notify(self, intervention=None):
@@ -1112,6 +1089,11 @@ class Human(object):
         previous_activity, next_activity = None, self.mobility_planner.get_next_activity()
         while True:
 
+            #
+            if next_activity.human_dies:
+                yield self.env.process(self.expire())
+
+            #
             if next_activity.location is not None:
 
                 # (debug) to print the schedule for someone
@@ -1126,18 +1108,20 @@ class Human(object):
                 assert abs(self.env.timestamp - next_activity.start_time).seconds == 0, "start times do not align..."
                 yield self.env.process(self.transition_to(next_activity, previous_activity))
                 assert abs(self.env.timestamp - next_activity.end_time).seconds == 0, " end times do not align..."
+
                 previous_activity, next_activity = next_activity, self.mobility_planner.get_next_activity()
 
             else:
+                # supervised or invitation type of activities (prepend_name) will require to refresh their location
+                # because this activity depends on parent_activity, we need to give a full 1 second to guarantee
+                # that parent activity will have its location confirmed. This creates a discrepancy in env.timestamp and
+                # next_activity.start_time.
                 next_activity.refresh_location()
 
                 # (debug) to print the schedule for someone
                 # if self.name == "human:110":
                 #       print("A\t", self.env.timestamp, self, next_activity)
 
-                # because this activity depends on parent_activity, we need to give a full 1 second to guarantee
-                # that parent activity will have its location confirmed. This creates a discrepancy in env.timestamp and
-                # next_activity.start_time.
                 yield self.env.timeout(1)
 
                 # realign the activities and keep the previous_activity as it is if this next_activity can't be scheduled

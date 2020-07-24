@@ -320,21 +320,10 @@ class City:
 
     def initialize_humans_and_locations(self, human_type):
         """
-        `Human`s are created based on the statistics captured in HUMAN_DSITRIBUTION. Age distribution is specified via 'p'.
-        SMARTPHONE_OWNER_FRACTION_BY_AGE defines the fraction of population in the age bin that owns smartphone.
-        APP_UPTAKE is the percentage of people in an age-bin who will adopt an app. (source: refer comments in core.yaml)
-
-        Profession of `Human` is determined via `profession_profile` in each age bin. (no-source)
-
-        Allocate humans to houses such that (unsolved)
-            1. average number of residents in a house is (approx.) 2.5 (enforced via HOUSE_SIZE_PREFERENCE in core.yaml)
-            2. not all residents are below MIN_AVG_HOUSE_AGE years of age
-            3. age occupancy distribution follows HUMAN_DSITRIBUTION.residence_preference.house_size (no-source)
-
-        current implementation is an approximate heuristic
+        Samples a synthetic population along with their dwellings and workplaces according to census.
 
         Args:
-            human_type (Class): Class for the city's human instances
+            human_type (covid19sim.human.Human): `Human` class to use for agents
         """
         # initial infections
         self.n_init_infected = math.ceil(self.init_fraction_sick * self.n_people)
@@ -379,7 +368,14 @@ class City:
             if not human.has_app:
                 return
             # (assumption) 90% of the time, healthcare workers will declare it
-            human.obs_is_healthcare_worker = True if human.is_healthcare_worker and human.rng.random() < 0.9 else False
+            human.obs_is_healthcare_worker = False
+            if (
+                human.workplace is not None
+                and human.workplace.location_type == "HOSPITAL"
+                and human.rng.random() < 0.9
+            ):
+                human.obs_is_healthcare_worker = True
+
             human.has_logged_info = human.rng.rand() < human.carefulness
             human.obs_age = human.age if human.has_logged_info else None
             human.obs_sex = human.sex if human.has_logged_info else None
@@ -641,6 +637,7 @@ class City:
 
             # daily activities
             if current_day != last_day_idx:
+                alive_humans = [human for human in self.humans if not human.is_dead]
                 last_day_idx = current_day
                 # Compute the transition matrix of recommendation levels to
                 # target distribution of recommendation levels

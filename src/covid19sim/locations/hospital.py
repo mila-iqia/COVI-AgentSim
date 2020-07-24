@@ -1,3 +1,6 @@
+"""
+Hospitalization model is stil a WIP.
+"""
 import math
 from covid19sim.locations.location import Location
 
@@ -7,51 +10,47 @@ class Hospital(Location):
     """
     ICU_AREA = 0.10
 
-    def __init__(self, **kwargs):
+    def __init__(self, env, rng, conf, name, lat, lon, area, hospital_bed_capacity, icu_bed_capacity):
         """
         Create the Hospital and its ICU
 
         Args:
             kwargs (dict): all the args necessary for a Location's init
         """
-        env = kwargs.get('env')
-        rng = kwargs.get('rng')
-        capacity = kwargs.get('capacity')
-        name = kwargs.get("name")
-        lat = kwargs.get('lat')
-        lon = kwargs.get('lon')
-        area = kwargs.get('area')
-        n_icu_beds = kwargs.get('icu_capacity')
-
 
         super(Hospital, self).__init__( env=env,
                                         rng=rng,
-                                        conf=kwargs.get('conf'),
+                                        conf=conf,
                                         area=area * (1-self.ICU_AREA),
                                         name=name,
                                         location_type="HOSPITAL",
                                         lat=lat,
                                         lon=lon,
-                                        capacity=capacity,
+                                        capacity=hospital_bed_capacity,
                                         )
 
-        self.icu = ICU( env=env,
+        self.icu = ICU(
+                        env=env,
                         rng=rng,
-                        conf=kwargs.get('conf'),
+                        conf=conf,
                         area=area * (self.ICU_AREA),
-                        name=f"{name}-icu",
-                        location_type="HOSPITAL",
+                        name=f"{name}-ICU",
                         lat=lat,
                         lon=lon,
-                        capacity=n_icu_beds,
+                        icu_bed_capacity=icu_bed_capacity,
+                        hospital=self
                     )
-        self.hospital_bed_occupany = kwargs.get("hospital_bed_occupany")
-        self.icu_bed_occupancy = kwargs.get("icu_bed_occupancy")
 
+        self.bed_capacity = hospital_bed_capacity
+        self.bed_occupany = conf['HOSPITAL_BEDS_OCCUPANCY']
+        self.patients = {}
         self.doctors = set()
-        self.n_doctors = 0
         self.nurses = set()
+        self.nurses_on_duty = set()
+        self.doctors_on_duty = set()
+
         self.n_nurses = 0
+        self.n_doctors = 0
 
     def assign_worker(self, human, doctor):
         """
@@ -65,8 +64,29 @@ class Hospital(Location):
             self.doctors.add(human)
             self.n_doctors += 1
             return
+
         self.nurses.add(human)
         self.n_nurses += 1
+
+    @property
+    def n_patients(self):
+        count = 0
+        for patient, until in self.patients.items():
+            if self.env.timestamp < until:
+                count += 1
+        return count
+
+    def admit_patient(self, human, until):
+        if self.n_patients == self.bed_capacity:
+            raise NotImplementedError(f"{self} is at capacity. Can't admit {human}!")
+
+        self.patients[human] = until
+
+    def discharge(self, human):
+        self.patients.pop(human)
+
+    def __repr__(self):
+        return f"{self.name}. Occupancy: {self.n_patients}/{self.capacity}"
 
     def add_human(self, human):
         """
@@ -77,7 +97,14 @@ class Hospital(Location):
         Args:
             human (covid19sim.human.Human): human to add
         """
-        human.obs_hospitalized = True
+
+        if human in self.doctors:
+            self.doctors_on_duty.add(human)
+
+        if human in self.nurses:
+            self.nurses_on_duty.add(human)
+
+        # also add to self.humans for interaction sampling
         super().add_human(human)
 
     def remove_human(self, human):
@@ -89,44 +116,56 @@ class Hospital(Location):
         Args:
             human (covid19sim.human.Human): human to remove
         """
-        human.obs_hospitalized = False
+        if human in self.doctors_on_duty:
+            self.doctors_on_duty.remove(human)
+
+        if human in self.nurses_on_duty:
+            self.nurses_on_duty.remove(human)
+
         super().remove_human(human)
+
 
 class ICU(Location):
     """
-    Hospital location class, inheriting from covid19sim.base.Location
+    A separate class for ICU is needed to sample interactions independently.
+    This is still WIP. # we do not add doctors and nurses to ICU as of now
     """
-    def __init__(self, **kwargs):
-        """
-        Create a Hospital's ICU Location
+    def __init__(self, env, rng, conf, name, lat, lon, area, hospital, icu_bed_capacity):
 
-        Args:
-            kwargs (dict): all the args necessary for a Location's init
-        """
-        super().__init__(**kwargs)
+        super(ICU, self).__init__(
+            env=env,
+            rng=rng,
+            conf=conf,
+            name=name,
+            location_type="HOSPITAL",
+            lat=lat,
+            lon=lon,
+            area=area,
+            capacity=icu_bed_capacity
+        )
 
-    def add_human(self, human):
-        """
-        Add a human to the ICU's OrderedSet through the Location's
-        default add_human() method + set the human's obs_hospitalized and
-        obs_in_icu attributes are set to True
+        self.bed_occupany = conf['ICU_BEDS_OCCUPANCY']
+        self.hospital = hospital
+        self.bed_capacity = icu_bed_capacity
 
-        Args:
-            human (covid19sim.human.Human): human to add
-        """
-        human.obs_hospitalized = True
-        human.obs_in_icu = True
-        super().add_human(human)
+        self.patients = {}
 
-    def remove_human(self, human):
-        """
-        Remove a human from the ICU's Ordered set.
-        On top of Location.remove_human(), the human's obs_hospitalized and
-        obs_in_icu attributes are set to False
+    def __repr__(self):
+        return f"{self.name}. Occupancy: {self.n_patients}/{self.capacity}"
 
-        Args:
-            human (covid19sim.human.Human): human to remove
-        """
-        human.obs_hospitalized = False
-        human.obs_in_icu = False
-        super().remove_human(human)
+    @property
+    def n_patients(self):
+        count = 0
+        for patient, until in self.patients.items():
+            if self.env.timestamp < until:
+                count += 1
+        return count
+
+    def admit_patient(self, human, until):
+        if self.n_patients == self.bed_capacity:
+            raise NotImplementedError(f"{self} is at capacity. Can't admit {human}!")
+
+        self.patients[human] = until
+
+    def discharge(self, human):
+        self.patients.pop(human)

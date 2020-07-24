@@ -94,14 +94,8 @@ def get_humans_with_age(city, age_histogram, conf, rng, chosen_infected, human_t
                 env=city.env,
                 city=city,
                 rng=np.random.RandomState(rng.randint(2 ** 16)),
-                has_app=False, # to be initialized at the start of app-based intervention
                 name=human_id,
                 age=ages[i],
-                household=None, # to be initialized separately
-                workplace=None, # to be initialized separately
-                profession="", # to be initialized separately
-                rho=conf.get("RHO"),
-                gamma=conf.get("GAMMA"),
                 infection_timestamp=city.start_time if human_id in chosen_infected else None,
                 conf=conf
                 ))
@@ -366,14 +360,11 @@ def _build_and_allocate_hospitals(humans, city, conf, rng):
                     rng=np.random.RandomState(city.rng.randint(2 ** 16)),
                     conf=conf,
                     name=f"HOSPITAL:0",
-                    location_type="HOSPITAL",
                     lat=rng.randint(*city.x_range),
                     lon=rng.randint(*city.y_range),
                     area=area[0],
-                    capacity=n_hospital_beds,
-                    icu_capacity=n_icu_beds,
-                    hospital_bed_occupany=HOSPITAL_BEDS_OCCUPANCY,
-                    icu_bed_occupancy=ICU_BEDS_OCCUPANCY
+                    hospital_bed_capacity=n_hospital_beds,
+                    icu_bed_capacity=n_icu_beds,
                 )
 
 
