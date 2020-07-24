@@ -1,3 +1,5 @@
+import math
+import numpy as np
 from scipy.stats import gamma, truncnorm
 from covid19sim.epidemiology.symptoms import _get_covid_progression, \
     MODERATE, SEVERE, EXTREMELY_SEVERE
@@ -21,7 +23,25 @@ def _sample_viral_load_gamma(rng, shape_mean=4.5, shape_std=.15, scale_mean=1., 
     scale = rng.normal(scale_mean, scale_std)
     return gamma(shape, scale=scale)
 
-def _get_disease_days(rng, conf, age, inflammatory_disease_level):
+def debug_infectiousness(infectiousness_onset_days, infectiousness_onset_days_wrt_incubation, incubation_days, scaling_factor):
+    """Saves some numpy arrays to disk for later plotting and analysis"""
+    try:
+        incubation_days_np = np.load("incubation_days.npy")
+        infectiousness_onset_days_wrt_incubation_np = np.load("infectiousness_onset_days_wrt_incubation.npy")
+        infectiousness_onset_days_np = np.load("infectiousness_onset_days.npy")
+    except Exception:
+        incubation_days_np = []
+        infectiousness_onset_days_wrt_incubation_np = []
+        infectiousness_onset_days_np = []
+    incubation_days_np = np.array(list(incubation_days_np) + [incubation_days])
+    infectiousness_onset_days_wrt_incubation_np = np.array(list(infectiousness_onset_days_wrt_incubation_np) + [scaling_factor * infectiousness_onset_days_wrt_incubation])
+    infectiousness_onset_days_np = np.array(list(infectiousness_onset_days_np) + [infectiousness_onset_days])
+    np.save("incubation_days.npy", incubation_days_np)
+    np.save("infectiousness_onset_days_wrt_incubation.npy", infectiousness_onset_days_wrt_incubation_np)
+    np.save("infectiousness_onset_days.npy", infectiousness_onset_days_np)
+
+
+def _get_disease_days(rng, conf, age, inflammatory_disease_level, debug_plot=False):
     """
     Defines viral load curve parameters.
     It is based on the study here https://www.medrxiv.org/content/10.1101/2020.04.10.20061325v2.full.pdf (Figure 1).
@@ -61,27 +81,34 @@ def _get_disease_days(rng, conf, age, inflammatory_disease_level):
     RECOVERY_CLIP_LOW = conf.get("RECOVERY_CLIP_LOW")
     RECOVERY_CLIP_HIGH = conf.get("RECOVERY_CLIP_HIGH")
 
-    # days after exposure when symptoms show up
-    incubation_days = rng.gamma(
-        shape=conf['INCUBATION_DAYS_GAMMA_SHAPE'],
-        scale=conf['INCUBATION_DAYS_GAMMA_SCALE']
-    )
     # (no-source) assumption is that there is at least two days to remain exposed
     # Comparitively, we set infectiousness_onset_days to be at least one day to remain exposed
-    incubation_days = max(2.0, incubation_days)
+    # resample until we get into the correct range
+    incubation_days = -math.inf
+    while incubation_days < 2.0:
+
+        # days after exposure when symptoms show up
+        incubation_days = rng.gamma(
+            shape=conf['INCUBATION_DAYS_GAMMA_SHAPE'],
+            scale=conf['INCUBATION_DAYS_GAMMA_SCALE']
+        )
 
     # days after exposure when viral shedding starts, i.e., person is infectious
-    infectiousness_onset_days = \
-        incubation_days - \
-        truncnorm((INFECTIOUSNESS_ONSET_WRT_SYMPTOM_ONSET_CLIP_LOW - INFECTIOUSNESS_ONSET_WRT_SYMPTOM_ONSET_AVG) /
-                  INFECTIOUSNESS_ONSET_WRT_SYMPTOM_ONSET_STD,
-                  (INFECTIOUSNESS_ONSET_WRT_SYMPTOM_ONSET_CLIP_HIGH - INFECTIOUSNESS_ONSET_WRT_SYMPTOM_ONSET_AVG) /
-                  INFECTIOUSNESS_ONSET_WRT_SYMPTOM_ONSET_STD,
+    # resample until we get into the correct range in order to further truncate the range
+    # (expert opinion) we assume that there is at least one day spent in the exposed state before becoming infectious
+    infectiousness_onset_days_wrt_incubation = -math.inf
+
+    # We scale the infectiousness onset days wrt the incubation days by a factor derived from the scale of the incubation days wrt to the shape parameter of the gamma
+    scaling_factor = incubation_days / conf['INCUBATION_DAYS_GAMMA_SHAPE']
+    while infectiousness_onset_days_wrt_incubation < 1.0:
+        infectiousness_onset_days_wrt_incubation = scaling_factor * truncnorm((INFECTIOUSNESS_ONSET_WRT_SYMPTOM_ONSET_CLIP_LOW - INFECTIOUSNESS_ONSET_WRT_SYMPTOM_ONSET_AVG) / INFECTIOUSNESS_ONSET_WRT_SYMPTOM_ONSET_STD,
+                  (INFECTIOUSNESS_ONSET_WRT_SYMPTOM_ONSET_CLIP_HIGH - INFECTIOUSNESS_ONSET_WRT_SYMPTOM_ONSET_AVG) / INFECTIOUSNESS_ONSET_WRT_SYMPTOM_ONSET_STD,
                   loc=INFECTIOUSNESS_ONSET_WRT_SYMPTOM_ONSET_AVG,
                   scale=INFECTIOUSNESS_ONSET_WRT_SYMPTOM_ONSET_STD).rvs(1, random_state=rng).item()
+        infectiousness_onset_days = incubation_days - infectiousness_onset_days_wrt_incubation
 
-    # (no-source) assumption is that there is at least one day to remain exposed
-    infectiousness_onset_days = max(1.0, infectiousness_onset_days)
+    if debug_plot:
+        debug_infectiousness(infectiousness_onset_days, infectiousness_onset_days_wrt_incubation, incubation_days, scaling_factor)
 
     # viral load peaks INFECTIOUSNESS_PEAK_AVG days before incubation days
     viral_load_peak_wrt_incubation_days = \
