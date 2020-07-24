@@ -280,6 +280,7 @@ INFECTIOUSNESS_PEAK_CLIP_HIGH: 2.2
 # &infectiousness-onset [He 2020 https://www.nature.com/articles/s41591-020-0869-5#ref-CR1] infectiousness started from 2.3 days (95% CI, 0.8–3.0 days) before symptom onset and peaked at 0.7 days (95% CI, −0.2–2.0 days) before symptom onset (Fig. 1c).
 INFECTIOUSNESS_ONSET_DAYS_WRT_SYMPTOM_ONSET_AVG: 2.3
 INFECTIOUSNESS_ONSET_DAYS_WRT_SYMPTOM_ONSET_STD: 0.5
+# we set these to be even more conservative than the 95% CI, more like 98% CI
 INFECTIOUSNESS_ONSET_DAYS_WRT_SYMPTOM_ONSET_CLIP_LOW: 0.5
 INFECTIOUSNESS_ONSET_DAYS_WRT_SYMPTOM_ONSET_CLIP_HIGH: 3.3
 
