@@ -141,7 +141,7 @@ SCALE_FACTOR_CONTACT_DURATION: 1.0
 # this factor influences the strength of assortativity in contacts at home.
 # higher the value, more likely that people of the same age group live together.
 HOUSEHOLD_ASSORTATIVITY_STRENGTH: 0.5
-WORKPLACE_ASSORTATIVITY_STRENGTH: 10
+WORKPLACE_ASSORTATIVITY_STRENGTH: 5
 
 # social mixing knob (B)
 P_INVITATION_ACCEPTANCE: 0.5 # probability of accepting inivitaton from peers to "socialize"
