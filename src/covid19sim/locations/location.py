@@ -308,12 +308,13 @@ class Location(simpy.Resource):
         return interactions
 
 
-    def sample_interactions(self, human):
+    def sample_interactions(self, human, unknown_only=False):
         """
         samples how `human` interacts with other `human`s at this location (`self`) at this time.
 
         Args:
             human (covid19sim.human.Human): human for whom interactions need to be sampled
+            unknown_only (bool): whether to sample interactions of type `unknown` only
 
         Returns:
             known_interactions (list): each element is as follows -
@@ -330,8 +331,10 @@ class Location(simpy.Resource):
             assert human == self.humans[0]
             return [], []
 
-        known_interactions = self._sample_interaction_with_type("known", human)
+        known_interactions = []
         unknown_interactions = self._sample_interaction_with_type("unknown", human)
+        if not unknown_only:
+            known_interactions = self._sample_interaction_with_type("known", human)
 
         return known_interactions, unknown_interactions
 

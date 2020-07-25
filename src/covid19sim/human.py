@@ -1221,12 +1221,11 @@ class Human(object):
         # print("after", self.env.timestamp, self, location, duration)
 
         # only sample interactions if there is a possibility of infection or message exchanges
-        # sleep is an inactive stage; phone is also assumed to be in background mode.
-        if (duration >= min(self.conf['MIN_MESSAGE_PASSING_DURATION'], self.conf['INFECTION_DURATION'])
-            and "sleep" not in type_of_activity):
+        if duration >= min(self.conf['MIN_MESSAGE_PASSING_DURATION'], self.conf['INFECTION_DURATION']):
             # sample interactions with other humans at this location
             # unknown are the ones that self is not aware of e.g. person sitting next to self in a cafe
-            known_interactions, unknown_interactions = location.sample_interactions(self)
+            # sleep is an inactive stage so we sample only unknown interactions 
+            known_interactions, unknown_interactions = location.sample_interactions(self, unknown_only = type_of_activity == "sleep")
             self.interact_with(known_interactions, type="known")
             self.interact_with(unknown_interactions, type="unknown")
 
