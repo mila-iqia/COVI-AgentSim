@@ -202,6 +202,10 @@ class Tracker(object):
                                         "weekday": defaultdict(lambda :(0,0)),
                                         "weekend": defaultdict(lambda :(0,0))
                                         }
+        self.activity_attributes = {
+            "end_time": defaultdict(lambda: Statistics()),
+            "duration": defaultdict(lambda: Statistics())
+        }
 
         self.socialize_activity_data = {
             "group_size": Statistics(),
@@ -1083,6 +1087,12 @@ class Tracker(object):
             self.socialize_activity_data["location_frequency"][next_activity.location.location_type] += 1
             self.socialize_activity_data["start_time"].push(_get_seconds_since_midnight(next_activity.start_time))
 
+        # if "-cancel-" not in next_activity.append_name and next_activity.prepend_name == "":
+        #     self.start_time_activity[next_activity.name].push(_get_seconds_since_midnight(next_activity.start_time))
+
+        self.activity_attributes["end_time"][next_activity.name].push(_get_seconds_since_midnight(next_activity.end_time))
+        self.activity_attributes["duration"][next_activity.name].push(next_activity.duration)
+
     def track_mixing(self, human1, human2, duration, distance_profile, timestamp, location, interaction_type, contact_condition):
         """
         Stores counts and statistics to generate various aspects of contacts and social mixing.
@@ -1519,14 +1529,6 @@ class Tracker(object):
             str_to_print += f"{location}: {m} {100*m/total:2.2f}% | "
         log(str_to_print, self.logfile)
 
-        str_to_print = "Start time - "
-        start_times = self.socialize_activity_data["start_time"]
-        str_to_print += f"mean: {start_times.mean()/SECONDS_PER_HOUR: 2.2f} | "
-        str_to_print += f"std: {start_times.stddev()/SECONDS_PER_HOUR: 2.2f} | "
-        str_to_print += f"min: {start_times.minimum()/SECONDS_PER_HOUR: 2.2f} | "
-        str_to_print += f"max: {start_times.maximum()/SECONDS_PER_HOUR: 2.2f} | "
-        log(str_to_print, self.logfile)
-
         str_to_print = "Social network properties (degree statistics) - "
         degrees = np.array([len(h.known_connections) for h in self.city.humans])
         str_to_print += f"mean {np.mean(degrees): 2.2f} | "
@@ -1535,6 +1537,19 @@ class Tracker(object):
         str_to_print += f"max {max(degrees): 2.2f} | "
         str_to_print += f"median {np.median(degrees): 2.2f}"
         log(str_to_print, self.logfile)
+
+        # start time of activities
+        for attr in ["end_time", "duration"]:
+            str_to_print = f"\n{attr} - "
+            log(str_to_print, self.logfile)
+            for type_of_activty, metrics in self.activity_attributes[attr].items():
+                str_to_print = f"{type_of_activty} - "
+                str_to_print += f"mean: {metrics.mean()/SECONDS_PER_HOUR: 2.2f} | "
+                str_to_print += f"std: {metrics.stddev()/SECONDS_PER_HOUR: 2.2f} | "
+                str_to_print += f"min: {metrics.minimum()/SECONDS_PER_HOUR: 2.2f} | "
+                str_to_print += f"max: {metrics.maximum()/SECONDS_PER_HOUR: 2.2f} | "
+                log(str_to_print, self.logfile)
+
         # for until_days in [30, None]:
         #     log("******** Risk Precision/Recall *********", self.logfile)
         #     prec, lift, recall = self.compute_risk_precision(daily=False, until_days=until_days)
