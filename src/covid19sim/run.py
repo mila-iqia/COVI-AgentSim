@@ -73,16 +73,7 @@ def main(conf: DictConfig):
     os.makedirs(conf["outdir"])
     logfile = f"{conf['outdir']}/log_{timenow}.txt"
 
-    collection_server = None
     outfile = os.path.join(conf["outdir"], "data")
-    if conf['COLLECT_TRAINING_DATA']:
-        collection_server = DataCollectionServer(
-            data_output_path=os.path.join(conf["outdir"], "train.hdf5"),
-            human_count=conf["n_people"],
-            simulation_days=conf["simulation_days"],
-            config_backup=conf,
-        )
-        collection_server.start()
 
     # ---------------------------------
     # -----  Filter-Out Warnings  -----
@@ -130,8 +121,6 @@ def main(conf: DictConfig):
         # write values to train with
         train_priors = os.path.join(f"{conf['outdir']}/train_priors.pkl")
         tracker.write_for_training(city.humans, train_priors, conf)
-        collection_server.stop_gracefully()
-        collection_server.join()
 
     else:
         # ------------------------------------------------------

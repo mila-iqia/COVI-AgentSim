@@ -565,14 +565,10 @@ class City:
             )
 
             # given the 'intervention' method and the risk estimated by each human, assign them behavior modifiers
-            if self.intervention:
+            if self.conf.get("SHOULD_MODIFY_BEHAVIOR"):
                 for human in alive_humans:
-                    recommendations = self.intervention.get_recommendations(human)
-                    human.apply_intervention(recommendations)
-                behaviors = []
-                if self.conf.get("SHOULD_MODIFY_BEHAVIOR"):
                     behaviors = self.intervention.get_behaviors(human)
-                human.apply_behaviors(behaviors)
+                    human.apply_behaviors(behaviors)
 
             # for debugging/plotting a posteriori, track all human/location attributes...
             self.tracker.track_humans(hd=self.hd, current_timestamp=self.env.timestamp)

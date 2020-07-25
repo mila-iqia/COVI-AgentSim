@@ -244,6 +244,7 @@ class Tracker(object):
             "start_time": Statistics()
         }
         self.outside_daily_contacts = []
+        self.encounter_distances = []
 
         # infection
         self.p_infection = []
@@ -1112,7 +1113,7 @@ class Tracker(object):
             return
 
         # forms a transition probability on weekdays and weekends
-        type_of_day = ['weekday', 'weekend'][self.env.is_weekend()]
+        type_of_day = ['weekday', 'weekend'][self.env.is_weekend]
         from_location = current_activity.location.location_type
         to_location = current_activity.location.location_type
         self.transition_probability[type_of_day][from_location][to_location] += 1

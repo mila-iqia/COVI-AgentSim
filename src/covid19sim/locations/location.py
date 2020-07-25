@@ -374,7 +374,7 @@ class Location(simpy.Resource):
         if x_environment and human.is_susceptible:
             human.infection_timestamp = human.env.timestamp
             compute_covid_properties(human)
-            human.city.tracker.track_infection('env', from_human=None, to_human=human, location=self, timestamp=self.env.timestamp)
+            human.city.tracker.track_infection('env', from_human=None, to_human=human, location=self, timestamp=self.env.timestamp, p_infection=p_transmission)
             Event.log_exposed(self.conf.get('COLLECT_LOGS'), human, self, p_transmission, self.env.timestamp)
 
     def is_open(self, date):

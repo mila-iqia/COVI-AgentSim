@@ -10,7 +10,6 @@ from covid19sim.utils.utils import log, relativefreq2absolutefreq, _get_random_a
 from covid19sim.utils.constants import AGE_BIN_WIDTH_5
 from covid19sim.locations.location import Location, Household, School, WorkplaceA, WorkplaceB
 from covid19sim.locations.hospital import Hospital
-from covid19sim.human import Human
 
 MAX_FAILED_ATTEMPTS_ALLOWED = 10000
 
@@ -80,6 +79,7 @@ def get_humans_with_age(city, age_histogram, conf, rng, chosen_infected):
         dict: keys are age bins (tuple) and values are a list of human_type objects
     """
     # TODO - parallelize this
+    from covid19sim.human import Human
     humans = defaultdict(list)
     human_id = -1
     for age_bin, n in age_histogram.items():

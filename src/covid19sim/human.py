@@ -683,7 +683,7 @@ class Human(BaseHuman):
 
             # logging & tracker
             Event.log_exposed(self.conf.get('COLLECT_LOGS'), infectee, infector, p_infection, self.env.timestamp)
-            self.city.tracker.track_infection('human', from_human=infector, to_human=infectee, location=self.location, timestamp=self.env.timestamp)
+            self.city.tracker.track_infection('human', from_human=infector, to_human=infectee, location=self.location, timestamp=self.env.timestamp, p_infection=p_infection)
         else:
             infector, infectee = None, None
         return infector, infectee, p_infection
