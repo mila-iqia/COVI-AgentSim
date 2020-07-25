@@ -1,5 +1,6 @@
 import numpy as np
 
+from covid19sim.epidemiology.symptoms import SYMPTOMS
 from covid19sim.inference.clustering.base import ClusterManagerBase
 
 # NOTE: THIS MAP SHOULD ALWAYS MATCH THE NAME/IDS PROVIDED IN utils.py
@@ -14,43 +15,8 @@ PREEXISTING_CONDITIONS_META = {
     'immuno-suppressed': 0,
     'lung_disease': 8,
     'pregnant': 9,
+    'allergies': 10,
 }
-
-# NOTE: THIS MAP SHOULD ALWAYS MATCH THE NAME/IDS PROVIDED IN utils.py
-SYMPTOMS_META = {
-    'mild': 1,
-    'moderate': 0,
-    'severe': 2,
-    'extremely-severe': 3,
-    'fever': 4,
-    'chills': 5,
-    'gastro': 6,
-    'diarrhea': 7,
-    'nausea_vomiting': 8,
-    'fatigue': 9,
-    'unusual': 10,
-    'hard_time_waking_up': 11,
-    'headache': 12,
-    'confused': 13,
-    'lost_consciousness': 14,
-    'trouble_breathing': 15,
-    'sneezing': 16,
-    'cough': 17,
-    'runny_nose': 18,
-    'sore_throat': 20,
-    'severe_chest_pain': 21,
-    'light_trouble_breathing': 24,
-    'mild_trouble_breathing': 23,
-    'moderate_trouble_breathing': 25,
-    'heavy_trouble_breathing': 26,
-    'loss_of_taste': 22,
-    'aches': 19
-}
-
-# Index SYMPTOMS_META by ID
-SYMPTOMS_META_IDMAP = [""] * len(SYMPTOMS_META)
-for k, v in SYMPTOMS_META.items():
-    SYMPTOMS_META_IDMAP[v] = k
 
 def exposure_array(human_infection_timestamp, date, conf):
     # identical to human.exposure_array
@@ -110,10 +76,10 @@ def conditions_to_np(conditions):
 
 def symptoms_to_np(all_symptoms, conf):
     rolling_window = conf.get("TRACING_N_DAYS_HISTORY")
-    symptoms_enc = np.zeros((rolling_window, len(SYMPTOMS_META)))
+    symptoms_enc = np.zeros((rolling_window, len(SYMPTOMS)))
     for day, symptoms in zip(range(rolling_window), all_symptoms):
         for symptom in symptoms:
-            symptoms_enc[day, SYMPTOMS_META[symptom]] = 1.
+            symptoms_enc[day, symptom.id] = 1.
     return symptoms_enc
 
 

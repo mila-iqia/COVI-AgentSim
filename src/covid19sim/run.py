@@ -1,14 +1,20 @@
 """
-Main file to run the simulations
+Main entrypoint for the execution of simulations.
+
+The experimental settings of the simulations are managed via [Hydra](https://github.com/facebookresearch/hydra).
+The root configuration file is located at `src/covid19sim/configs/simulation/config.yaml`. All settings
+provided via commandline will override the ones loaded through the configuration files.
 """
 import datetime
 import logging
 import os
 import shutil
 import time
+import typing
 from pathlib import Path
 
 import hydra
+import multiprocessing
 import numpy as np
 from omegaconf import DictConfig
 
@@ -17,6 +23,7 @@ from covid19sim.utils.env import Env
 from covid19sim.utils.constants import SECONDS_PER_DAY, SECONDS_PER_HOUR
 from covid19sim.log.monitors import EventMonitor, SimulationMonitor
 from covid19sim.human import Human
+from covid19sim.inference.server_utils import DataCollectionServer
 from covid19sim.utils.utils import (dump_conf, dump_tracker_data,
                                     extract_tracker_data, parse_configuration,
                                     zip_outdir, log)
@@ -66,10 +73,16 @@ def main(conf: DictConfig):
     os.makedirs(conf["outdir"])
     logfile = f"{conf['outdir']}/log_{timenow}.txt"
 
-    if conf.get("COLLECT_TRAINING_DATA"):
-        datadir = os.path.join(conf["outdir"], "data")
-    else:
-        datadir = None
+    collection_server = None
+    outfile = os.path.join(conf["outdir"], "data")
+    if conf['COLLECT_TRAINING_DATA']:
+        collection_server = DataCollectionServer(
+            data_output_path=os.path.join(conf["outdir"], "train.hdf5"),
+            human_count=conf["n_people"],
+            simulation_days=conf["simulation_days"],
+            config_backup=conf,
+        )
+        collection_server.start()
 
     # ---------------------------------
     # -----  Filter-Out Warnings  -----
@@ -80,7 +93,7 @@ def main(conf: DictConfig):
     # ----------------------------
     # -----  Run Simulation  -----
     # ----------------------------
-    conf["outfile"] = datadir
+    conf["outfile"] = outfile
     log(f"RISK_MODEL = {conf['RISK_MODEL']}", logfile)
     log(f"INTERVENTION_DAY = {conf['INTERVENTION_DAY']}", logfile)
 
@@ -100,27 +113,33 @@ def main(conf: DictConfig):
     dump_conf(city.conf, "{}/full_configuration.yaml".format(city.conf["outdir"]))
     tracker.write_metrics()
 
+    monitors[0].dump()
+    monitors[0].join_iothread()
+
+    if hasattr(city, "tracker") and \
+            hasattr(city.tracker, "collection_server") and \
+            isinstance(city.tracker.collection_server, DataCollectionServer) and \
+            city.tracker.collection_server is not None:
+        city.tracker.collection_server.stop_gracefully()
+        city.tracker.collection_server.join()
+
     if not conf["tune"]:
         # ----------------------------------------------
         # -----  Not Tune: Collect Training Data   -----
         # ----------------------------------------------
-        monitors[0].dump()
-        monitors[0].join_iothread()
-
         # write values to train with
         train_priors = os.path.join(f"{conf['outdir']}/train_priors.pkl")
         tracker.write_for_training(city.humans, train_priors, conf)
+        collection_server.stop_gracefully()
+        collection_server.join()
 
-        if conf["zip_outdir"]:
-            zip_outdir(conf["outdir"])
-            if conf["delete_outdir"]:
-                shutil.rmtree(conf["outdir"])
     else:
         # ------------------------------------------------------
         # -----     Tune: Write logs And Tacker Data       -----
         # ------------------------------------------------------
         timenow = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
         log("Dumping Tracker Data in {}".format(conf["outdir"]), logfile)
+
         Path(conf["outdir"]).mkdir(parents=True, exist_ok=True)
         filename = f"tracker_data_n_{conf['n_people']}_seed_{conf['seed']}_{timenow}.pkl"
         data = extract_tracker_data(tracker, conf)
@@ -129,20 +148,20 @@ def main(conf: DictConfig):
 
 
 def simulate(
-    n_people=None,
-    init_fraction_sick=0.01,
-    start_time=datetime.datetime(2020, 2, 28, 0, 0),
-    simulation_days=10,
-    outfile=None,
-    out_chunk_size=None,
-    print_progress=False,
-    seed=0,
-    other_monitors=[],
-    conf={},
-    logfile=None
+    n_people: int = 1000,
+    init_fraction_sick: float = 0.01,
+    start_time: datetime.datetime = datetime.datetime(2020, 2, 28, 0, 0),
+    simulation_days: int = 30,
+    outfile: typing.Optional[typing.AnyStr] = None,
+    out_chunk_size: typing.Optional[int] = None,
+    print_progress: bool = False,
+    seed: int = 0,
+    other_monitors: typing.Optional[typing.List] = None,
+    conf: typing.Optional[typing.Dict] = None,
+    logfile: str = None,
 ):
     """
-    Run the simulation.
+    Runs a simulation.
 
     Args:
         n_people ([type], optional): [description]. Defaults to None.
@@ -162,6 +181,11 @@ def simulate(
         tracker (covid19sim.log.track.Tracker):
     """
 
+    if other_monitors is None:
+        other_monitors = []
+    if conf is None:
+        conf = {}
+
     conf["n_people"] = n_people
     conf["init_percent_sick"] = init_fraction_sick
     conf["start_time"] = start_time
@@ -180,7 +204,7 @@ def simulate(
     city_x_range = (0, 1000)
     city_y_range = (0, 1000)
     city = City(
-        env, n_people, init_fraction_sick, rng, city_x_range, city_y_range, Human, conf, logfile
+        env, n_people, init_fraction_sick, rng, city_x_range, city_y_range, conf, logfile
     )
 
     # Add monitors

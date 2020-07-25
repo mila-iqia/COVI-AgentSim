@@ -1,5 +1,6 @@
 """
-Contains base classes that define environment of the simulator.
+This module implements the `City` class which is responsible for running the environment in which all
+humans will interact. Its `run` loop also contains the tracing application logic that runs every hour.
 """
 import numpy as np
 import copy
@@ -13,19 +14,21 @@ from orderedset import OrderedSet
 from covid19sim.utils.utils import compute_distance, _get_random_area, relativefreq2absolutefreq, calculate_average_infectiousness, log
 from covid19sim.utils.demographics import get_humans_with_age, assign_households_to_humans, create_locations_and_assign_workplace_to_humans
 from covid19sim.log.track import Tracker
-from covid19sim.interventions.recommendation_manager import NonMLRiskComputer
+from covid19sim.inference.heavy_jobs import batch_run_timeslot_heavy_jobs
+from covid19sim.interventions.tracing import BaseMethod
 from covid19sim.interventions.behaviors import *
-from covid19sim.interventions.recommendation_getters import RecommendationGetter
 from covid19sim.inference.message_utils import UIDType, UpdateMessage, RealUserIDType
 from covid19sim.distribution_normalization.dist_utils import get_rec_level_transition_matrix
-from covid19sim.interventions.intervention_utils import get_intervention
+from covid19sim.interventions.tracing_utils import get_intervention
 from covid19sim.log.event import Event
 from covid19sim.locations.test_facility import TestFacility
 from covid19sim.locations.location import Location, Household
 from covid19sim.locations.hospital import Hospital
+import covid19sim.utils.utils
 
 if typing.TYPE_CHECKING:
     from covid19sim.human import Human
+    from covid19sim.utils.env import Env
 
 PersonalMailboxType = typing.Dict[UIDType, typing.List[UpdateMessage]]
 SimulatorMailboxType = typing.Dict[RealUserIDType, PersonalMailboxType]
@@ -33,11 +36,24 @@ SimulatorMailboxType = typing.Dict[RealUserIDType, PersonalMailboxType]
 
 class City:
     """
-    City
+    City agent/environment class. Currently, a single city object will be instantiated at the start of
+    a simulation. In the future, multiple 'cities' may be executed in parallel to simulate larger populations.
     """
 
-    def __init__(self, env, n_people, init_fraction_sick, rng, x_range, y_range, human_type, conf, logfile):
+    def __init__(
+            self,
+            env: "Env",
+            n_people: int,
+            init_fraction_sick: float,
+            rng: np.random.RandomState,
+            x_range: typing.Tuple,
+            y_range: typing.Tuple,
+            conf: typing.Dict,
+            logfile: str
+    ):
         """
+        Constructs a city object.
+
         Args:
             env (simpy.Environment): Keeps track of events and their schedule
             n_people (int): Number of people in the city
@@ -82,7 +98,7 @@ class City:
         self.age_histogram = None
 
         log("Initializing humans ...", self.logfile)
-        self.initialize_humans_and_locations(human_type)
+        self.initialize_humans_and_locations()
         for human in self.humans:
             human.track_this_guy = False
 
@@ -318,12 +334,9 @@ class City:
             locs = [self.create_location(specs, location, i, area[i]) for i in range(n)]
             setattr(self, f"{location}s", locs)
 
-    def initialize_humans_and_locations(self, human_type):
+    def initialize_humans_and_locations(self):
         """
         Samples a synthetic population along with their dwellings and workplaces according to census.
-
-        Args:
-            human_type (covid19sim.human.Human): `Human` class to use for agents
         """
         # initial infections
         self.n_init_infected = math.ceil(self.init_fraction_sick * self.n_people)
@@ -336,7 +349,7 @@ class City:
         )
 
         # initalize human objects
-        self.humans = get_humans_with_age(self, self.age_histogram, self.conf, self.rng, chosen_infected, human_type)
+        self.humans = get_humans_with_age(self, self.age_histogram, self.conf, self.rng, chosen_infected)
 
         # find best grouping to put humans together in a house
         # /!\ households are created at the time of allocation.
@@ -360,9 +373,7 @@ class City:
 
     def have_some_humans_download_the_app(self):
         """
-        This method is called on intervention day if the intervention type is
-        `NonMLRiskComputer`. It simulates the process of downloading the app on for smartphone
-        users according to `APP_UPTAKE` and `SMARTPHONE_OWNER_FRACTION_BY_AGE`.
+        Simulates the process of downloading the app on for smartphone users according to `APP_UPTAKE` and `SMARTPHONE_OWNER_FRACTION_BY_AGE`.
         """
         def _log_app_info(human):
             if not human.has_app:
@@ -515,22 +526,16 @@ class City:
             simpy.Timeout
         """
         humans_notified = False
-        tmp_M = self.conf.get("GLOBAL_MOBILITY_SCALING_FACTOR")
-        self.conf["GLOBAL_MOBILITY_SCALING_FACTOR"] = 1
         last_day_idx = 0
-        self.intervention = None
+        self.intervention = BaseMethod(self.conf)
         while True:
             current_day = (self.env.timestamp - self.start_time).days
             # Notify humans to follow interventions on intervention day
             if current_day == self.conf.get('INTERVENTION_DAY') and not humans_notified:
                 self.intervention = get_intervention(conf=self.conf)
-                if isinstance(self.intervention, NonMLRiskComputer):
-                    self.have_some_humans_download_the_app()
-                _ = [h.notify(self.intervention) for h in self.humans]
-                log(f"Humans notfied of {self.intervention}", self.logfile)
-                self.conf["GLOBAL_MOBILITY_SCALING_FACTOR"] = tmp_M
-                if self.conf.get('COLLECT_TRAINING_DATA'):
-                    log("naive risk calculation without changing behavior... Humans notified!", self.logfile)
+                self.have_some_humans_download_the_app()
+                for human in self.humans:
+                    human.set_intervention(self.intervention)
                 humans_notified = True
 
             # run city testing routine, providing test results for those who need them
@@ -538,128 +543,173 @@ class City:
             # TODO: testing budget is used up at hour 0 if its small
             self.covid_testing_facility.clear_test_queue()
 
-            all_new_update_messages = []  # accumulate everything here so we can filter if needed
-            backup_human_init_risks = {}  # backs up human risks before any update takes place
+            alive_humans = []
+            # run non-app-related-stuff for all humans here (test seeking, infectiousness updates)
+            for human in self.humans:
+                if not human.is_dead:
+                    human.check_if_needs_covid_test()  # humans can decide to get tested whenever
+                    human.check_covid_symptom_start()
+                    human.check_covid_recovery()
+                    alive_humans.append(human)
 
-            alive_humans = [human for human in self.humans if not human.is_dead]
-            # iterate over humans, and if it's their timeslot, then update their state
-            for human in alive_humans:
-                human.check_if_needs_covid_test()  # humans can decide to get tested whenever
-                human.check_covid_symptom_start()
-                human.check_covid_recovery()
-                if current_day not in human.infectiousness_history_map:
-                    # contrarily to risk, infectiousness only changes once a day (human behavior has no impact)
-                    human.infectiousness_history_map[current_day] = calculate_average_infectiousness(human)
+            # now, run app-related stuff (risk assessment, message preparation, ...)
+            prev_risk_history_maps, update_messages = self.run_app(current_day, outfile, alive_humans)
 
-                if not human.has_app or self.env.timestamp.hour not in human.time_slots:
-                    continue
-                human.initialize_daily_risk(current_day)
-                backup_human_init_risks[human] = copy.deepcopy(human.risk_history_map)
-                human.run_timeslot_lightweight_jobs(
-                    init_timestamp=self.start_time,
-                    current_timestamp=self.env.timestamp,
-                    personal_mailbox=self.global_mailbox[human.name],
-                )
+            # update messages may not be sent if the distribution strategy (e.g. GAEN) chooses to filter them
+            self.register_new_messages(
+                current_day_idx=current_day,
+                current_timestamp=self.env.timestamp,
+                update_messages=update_messages,
+                prev_human_risk_history_maps=prev_risk_history_maps,
+                new_human_risk_history_maps={h: h.risk_history_map for h in self.humans},
+            )
 
-            if isinstance(self.intervention, NonMLRiskComputer) and self.intervention.app:
-                # time to run the cluster+risk prediction via transformer (if we need it)
-                if self.intervention.risk_model == "transformer" or self.conf.get("COLLECT_TRAINING_DATA"):
-                    from covid19sim.inference.heavy_jobs import batch_run_timeslot_heavy_jobs
-                    self.humans = batch_run_timeslot_heavy_jobs(
-                        humans=self.humans,
-                        init_timestamp=self.start_time,
-                        current_timestamp=self.env.timestamp,
-                        global_mailbox=self.global_mailbox,
-                        time_slot=self.env.timestamp.hour,
-                        conf=self.conf,
-                        data_path=outfile,
-                        # let's hope there are no collisions on the server with this hash...
-                        city_hash=self.hash,
-                    )
-
-                # finally, iterate over humans again, and if it's their timeslot, then send update messages
-                self.tracker.track_risk_attributes(self.hd)
-                update_messages = []
-                for human in alive_humans:
-                    if not human.has_app or self.env.timestamp.hour not in human.time_slots:
-                        continue
-
-                    # overwrite risk values to 1.0 if human has positive test result (for all tracing methods)
-                    if human.reported_test_result == "positive":
-                        for day_offset in range(self.conf.get("TRACING_N_DAYS_HISTORY")):
-                            human.risk_history_map[current_day - day_offset] = 1.0
-
-                    # if we had any encounters for which we have not sent an initial message, do it now
-                    update_messages.extend(human.contact_book.generate_initial_updates(
-                        current_day_idx=current_day,
-                        current_timestamp=self.env.timestamp,
-                        risk_history_map=human.risk_history_map,
-                        proba_to_risk_level_map=human.proba_to_risk_level_map,
-                        tracing_method=human.tracing_method,
-                    ))
-
-                    # then, generate risk level update messages for all other encounters (if needed)
-                    update_messages.extend(human.contact_book.generate_updates(
-                        current_day_idx=current_day,
-                        current_timestamp=self.env.timestamp,
-                        prev_risk_history_map=human.prev_risk_history_map,
-                        curr_risk_history_map=human.risk_history_map,
-                        proba_to_risk_level_map=human.proba_to_risk_level_map,
-                        update_reason="unknown",
-                        tracing_method=human.tracing_method,
-                    ))
-                    human.update_recommendations_level()
-                    Event.log_risk_update(
-                        self.conf['COLLECT_LOGS'],
-                        human=human,
-                        tracing_description=str(human.tracing_method),
-                        prev_risk_history_map=human.prev_risk_history_map,
-                        risk_history_map=human.risk_history_map,
-                        current_day_idx=current_day,
-                        time=self.env.timestamp,
-                    )
-                    for day_idx, risk_val in human.risk_history_map.items():
-                        human.prev_risk_history_map[day_idx] = risk_val
-
-                self.register_new_messages(
-                    current_day_idx=current_day,
-                    current_timestamp=self.env.timestamp,
-                    update_messages=update_messages,
-                    prev_human_risk_history_maps=backup_human_init_risks,
-                    new_human_risk_history_maps={h: h.risk_history_map for h in self.humans},
-                )
+            # given the 'intervention' method and the risk estimated by each human, assign them behavior modifiers
             if self.intervention:
                 for human in alive_humans:
                     recommendations = self.intervention.get_recommendations(human)
                     human.apply_intervention(recommendations)
+                behaviors = []
+                if self.conf.get("SHOULD_MODIFY_BEHAVIOR"):
+                    behaviors = self.intervention.get_behaviors(human)
+                human.apply_behaviors(behaviors)
+
+            # for debugging/plotting a posteriori, track all human/location attributes...
+            self.tracker.track_humans(hd=self.hd, current_timestamp=self.env.timestamp)
+            # self.tracker.track_locations() # TODO
 
             yield self.env.timeout(int(duration))
 
-            # daily activities
+            # finally, run end-of-day activities (if possible); these include mailbox cleanups, symptom updates, ...
             if current_day != last_day_idx:
                 alive_humans = [human for human in self.humans if not human.is_dead]
                 last_day_idx = current_day
-                # Compute the transition matrix of recommendation levels to
-                # target distribution of recommendation levels
-                self.daily_rec_level_mapping = self.compute_daily_rec_level_mapping(current_day)
-                self.cleanup_global_mailbox(self.env.timestamp)
-                # TODO: this is an assumption which will break in reality, instead of updating once per day everyone at the same time, it should be throughout the day
-                for human in alive_humans:
-                    # recover from cold/flu/allergies if it's time
-                    human.recover_health()
-                    human.catch_other_disease_at_random()
-                    human.update_symptoms()
-                    human.mobility_planner.send_social_invites()
-                    Event.log_daily(self.conf.get('COLLECT_LOGS'), human, human.env.timestamp)
-                self.tracker.increment_day()
-                if self.conf.get("USE_GAEN"):
-                    log(
-                        "cur_day: {}, budget spent: {} / {} ".format(
-                            current_day,
-                            self.sent_messages_by_day.get(current_day, 0),
-                            int(self.conf["n_people"] * self.conf["MESSAGE_BUDGET_GAEN"])
-                        ),
-                    self.logfile)
+                self.do_daily_activies(current_day, alive_humans)
+
+    def do_daily_activies(
+            self,
+            current_day: int,
+            alive_humans: typing.Iterable["Human"],
+    ):
+        """Runs all activities that should be completed only once per day."""
+        # Compute the transition matrix of recommendation levels to
+        # target distribution of recommendation levels
+        self.daily_rec_level_mapping = self.compute_daily_rec_level_mapping(current_day)
+        self.cleanup_global_mailbox(self.env.timestamp)
+        # TODO: this is an assumption which will break in reality, instead of updating once per day everyone
+        #       at the same time, it should be throughout the day
+        for human in alive_humans:
+            # recover from cold/flu/allergies if it's time
+            human.recover_health()
+            human.catch_other_disease_at_random()
+            human.update_symptoms()
+            human.mobility_planner.send_social_invites()
+            Event.log_daily(self.conf.get('COLLECT_LOGS'), human, human.env.timestamp)
+        self.tracker.increment_day()
+        if self.conf.get("USE_GAEN"):
+            print(
+                "cur_day: {}, budget spent: {} / {} ".format(
+                    current_day,
+                    self.sent_messages_by_day.get(current_day, 0),
+                    int(self.conf["n_people"] * self.conf["MESSAGE_BUDGET_GAEN"])
+                ),
+            )
+
+    def run_app(
+            self,
+            current_day: int,
+            outfile: typing.AnyStr,
+            alive_humans: typing.Iterable["Human"]
+    ) -> typing.Tuple[typing.Dict, typing.List[UpdateMessage]]:
+        """Runs the application logic for all humans that are still alive.
+
+        The logic is split into three parts. First, 'lightweight' jobs will run. These include
+        daily risk level initialization, symptoms reporting updates, and digital (binary) contact
+        tracing (if necessary). Then, if a risk inference model is being used or if we are collecting
+        training data, batches of humans will be used to do clustering and to call the model. Finally,
+        the recommendation level of all humans will be updated, they will generate update messages
+        (if necessary), and the tracker will be updated with the state of all humans.
+        """
+        backup_human_init_risks = {}  # backs up human risks before any update takes place
+
+        # iterate over humans, and if it's their timeslot, then update their state
+        for human in alive_humans:
+            if not human.has_app or self.env.timestamp.hour not in human.time_slots:
+                continue
+            # set the human's risk to a correct value for the day (if it does not exist already)
+            human.initialize_daily_risk(current_day)
+            # keep a backup of the current risk map before infering anything, in case GAEN needs it
+            backup_human_init_risks[human] = copy.deepcopy(human.risk_history_map)
+            # run 'lightweight' app jobs (e.g. contact book cleanup, symptoms reporting, bdt) without batching
+            human.run_timeslot_lightweight_jobs(
+                init_timestamp=self.start_time,
+                current_timestamp=self.env.timestamp,
+                personal_mailbox=self.global_mailbox[human.name],
+            )
+
+        # now, batch-run the clustering + risk prediction using an ML model (if we need it)
+        if self.conf.get("RISK_MODEL") == "transformer" or self.conf.get("COLLECT_TRAINING_DATA"):
+            self.humans = batch_run_timeslot_heavy_jobs(
+                humans=self.humans,
+                init_timestamp=self.start_time,
+                current_timestamp=self.env.timestamp,
+                global_mailbox=self.global_mailbox,
+                time_slot=self.env.timestamp.hour,
+                conf=self.conf,
+                city_hash=self.hash,
+            )
+
+        # iterate over humans again, and if it's their timeslot, then prepare risk update messages
+        update_messages = []
+        for human in alive_humans:
+            if not human.has_app or self.env.timestamp.hour not in human.time_slots:
+                continue
+
+            # overwrite risk values to 1.0 if human has positive test result (for all tracing methods)
+            if human.reported_test_result == "positive":
+                for day_offset in range(self.conf.get("TRACING_N_DAYS_HISTORY")):
+                    human.risk_history_map[current_day - day_offset] = 1.0
+
+            # using the risk history map & the risk level map, update the human's rec level
+            human.update_recommendations_level()
+
+            # if we had any encounters for which we have not sent an initial message, do it now
+            update_messages.extend(human.contact_book.generate_initial_updates(
+                current_day_idx=current_day,
+                current_timestamp=self.env.timestamp,
+                risk_history_map=human.risk_history_map,
+                proba_to_risk_level_map=human.proba_to_risk_level_map,
+                intervention=human.intervention,
+            ))
+
+            # then, generate risk level update messages for all other encounters (if needed)
+            update_messages.extend(human.contact_book.generate_updates(
+                current_day_idx=current_day,
+                current_timestamp=self.env.timestamp,
+                prev_risk_history_map=human.prev_risk_history_map,
+                curr_risk_history_map=human.risk_history_map,
+                proba_to_risk_level_map=human.proba_to_risk_level_map,
+                update_reason="unknown",
+                intervention=human.intervention,
+            ))
+
+            # if we are collecting logs for debugging/drawing baseball plots, log risk here
+            Event.log_risk_update(
+                self.conf['COLLECT_LOGS'],
+                human=human,
+                tracing_description=str(human.intervention),
+                prev_risk_history_map=human.prev_risk_history_map,
+                risk_history_map=human.risk_history_map,
+                current_day_idx=current_day,
+                time=self.env.timestamp,
+            )
+
+            # finally, override the 'previous' risk history map with the updated values of the current
+            # map so that the next call can look at the proper difference between the two
+            for day_idx, risk_val in human.risk_history_map.items():
+                human.prev_risk_history_map[day_idx] = risk_val
+
+        return backup_human_init_risks, update_messages
 
 
 class EmptyCity(City):
@@ -707,6 +757,7 @@ class EmptyCity(City):
         )[0]
 
         self.humans = []
+        self.hd = {}
         self.households = OrderedSet()
         self.stores = []
         self.senior_residencys = []
@@ -733,4 +784,4 @@ class EmptyCity(City):
         self.tracker = Tracker(self.env, self)
         self.tracker.initialize()
         # self.tracker.track_initialized_covid_params(self.humans)
-        self.intervention = RecommendationGetter()
+        self.intervention = BaseMethod(self.conf)

@@ -28,7 +28,7 @@ class HydraTests(unittest.TestCase):
             if f.is_file() and not f.name.startswith(".")
         ] + [
             f
-            for f in (Path(__file__).parent / "test_configs").glob("**/*")
+            for f in (Path(__file__).parent / "utils" / "test_configs").glob("**/*")
             if f.is_file() and not f.name.startswith(".")
         ]
         for f in all_files:
@@ -67,7 +67,7 @@ class HydraTests(unittest.TestCase):
             with fname.open("r") as f:
                 self.assertIsInstance(yaml.safe_load(f), dict)
 
-        for fname in (Path(__file__).parent / "test_configs").glob("**/*.yaml"):
+        for fname in (Path(__file__).parent / "utils" / "test_configs").glob("**/*.yaml"):
             with fname.open("r") as f:
                 self.assertIsInstance(yaml.safe_load(f), dict)
 
@@ -79,7 +79,7 @@ class HydraTests(unittest.TestCase):
         self.assertIsInstance(get_test_conf(conf_name), dict)
         test_conf = get_test_conf(conf_name)
 
-        path = Path(__file__).parent / "test_configs" / conf_name
+        path = Path(__file__).parent / "utils" / "test_configs" / conf_name
         with path.open("r") as f:
             reference_conf = yaml.safe_load(f)
 

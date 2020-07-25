@@ -139,6 +139,7 @@ class Event:
                               p_infection=p_infection if p_infection else 0.0
                       ))
 
+    @staticmethod
     def log_encounter_messages(COLLECT_LOGS, human1, human2, location, duration, distance, time):
         """
         Logs the encounter between `human1` and `human2` at `location` for `duration`
@@ -212,12 +213,12 @@ class Event:
                     unobs_payload = { **loc_obs, **loc_unobs, **other_obs, 'human1':{**obs[i], **unobs[i]},
                                         'human2': {**obs[1-i], **unobs[1-i]} }
 
-            human.events.append({
-                'human_id':human.name,
-                'event_type':Event.encounter_message,
-                'time':time,
-                'payload':{'observed':obs_payload, 'unobserved':unobs_payload}
-            })
+                human.events.append({
+                    'human_id':human.name,
+                    'event_type':Event.encounter_message,
+                    'time':time,
+                    'payload':{'observed':obs_payload, 'unobserved':unobs_payload}
+                })
 
         logging.info(f"{time} - {human1.name} and {human2.name} {Event.encounter_message} event")
         logging.debug("{time} - {human1.name} and {human2.name} exchanged encounter "
@@ -230,6 +231,7 @@ class Event:
                               location=location,
                               distance=distance))
 
+    @staticmethod
     def log_risk_update(COLLECT_LOGS, human, tracing_description,
                         prev_risk_history_map, risk_history_map, current_day_idx,
                         time):

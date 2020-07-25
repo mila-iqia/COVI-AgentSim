@@ -3,8 +3,6 @@ Functions to intialize a synthetic population using constants in configuration f
 """
 import numpy as np
 import math
-import sys
-from collections import namedtuple
 from copy import deepcopy
 
 from collections import defaultdict
@@ -12,6 +10,7 @@ from covid19sim.utils.utils import log, relativefreq2absolutefreq, _get_random_a
 from covid19sim.utils.constants import AGE_BIN_WIDTH_5
 from covid19sim.locations.location import Location, Household, School, WorkplaceA, WorkplaceB
 from covid19sim.locations.hospital import Hospital
+from covid19sim.human import Human
 
 MAX_FAILED_ATTEMPTS_ALLOWED = 10000
 
@@ -66,9 +65,9 @@ class HouseType(object):
         self.n_people_generation = [n_grandparents, n_parents, n_kids]
         assert sum(self.n_people_generation) == self.n_humans, "size does not match"
 
-def get_humans_with_age(city, age_histogram, conf, rng, chosen_infected, human_type):
+def get_humans_with_age(city, age_histogram, conf, rng, chosen_infected):
     """
-    Creats human_type objects corresponding to the numbers in `age_histogram`.
+    Creats human objects corresponding to the numbers in `age_histogram`.
 
     Args:
         city (covid19sim.location.City): simulator's city object
@@ -76,7 +75,6 @@ def get_humans_with_age(city, age_histogram, conf, rng, chosen_infected, human_t
         conf (dict): yaml configuration of the experiment
         rng (np.random.RandomState): Random number generator
         chosen_infected (set): human ids that are initialized to be infected
-        human_type (covid19.simulator.Human): Class for the city's human instances
 
     Returns:
         dict: keys are age bins (tuple) and values are a list of human_type objects
@@ -90,7 +88,7 @@ def get_humans_with_age(city, age_histogram, conf, rng, chosen_infected, human_t
 
         for i in range(n):
             human_id += 1
-            humans[age_bin].append(human_type(
+            humans[age_bin].append(Human(
                 env=city.env,
                 city=city,
                 rng=np.random.RandomState(rng.randint(2 ** 16)),

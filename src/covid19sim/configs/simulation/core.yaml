@@ -332,8 +332,10 @@ INFLAMMATORY_CONDITIONS: ["smoker", "diabetes", "heart_disease", "COPD", "immuno
 #########################################################
 #####       Infection Model Parameters              #####
 #########################################################
-#                   0-9 10-19 20-29  30-39  40-49  50-59 60-69 70-79  80-  # Assuming death rate to be same for 80 and above
-P_NEVER_RECOVERS: [0, 0.002, 0.002, 0.002, 0.004, 0.02, 0.04, 0.08, 0.15] # &never_recovers
+
+# Ref: https://www.quebec.ca/en/health/health-issues/a-z/2019-coronavirus/situation-coronavirus-in-quebec/
+#                  0-9 10-19 20-29  30-39  40-49  50-59 60-69 70-79  80-  # Assuming death rate to be same for 80 and above
+P_NEVER_RECOVERS: [0, 0, 0.0001, 0.0001, 0.0004, 0.0018, 0.0059, 0.0176, 0.0728] # &never_recovers
 REINFECTION_POSSIBLE: False # [0, 1]
 
 # aerosol    copper      cardboard       steel       plastic
@@ -358,8 +360,10 @@ COUGH_SEVERITY_MULTIPLIER_ADDITION: 0.25
 # children are 50% less susceptible as compared to adults
 
 # normalized susceptibility to infection broken down age group
+# Bin boundaries are inclusive
 # refer Oxford COVID-19 model
 # They normalise the fitted attack rate across age groups so that average age has a susceptiblity of 1.0
+
 # UK's average age = 40; Canada's average age = 42. We use the same normalized susceptiblity from Table 5.
 NORMALIZED_SUSCEPTIBILITY_BY_AGE: [
   [0, 9, 0.71],
@@ -414,6 +418,7 @@ P_TEST_MILD: 0.1
 P_TEST_SEVERE: 1.0
 GET_TESTED_SYMPTOMS_CHECKED_IN_HOSPITAL: ["mild", "moderate", "severe", "fever", "chills", "gastro", "diarrhea", "cough", "fatigue", "trouble_breathing", "loss_of_taste", "light_trouble_breathing", "moderate_trouble_breathing", "heavy_trouble_breathing" ]
 GET_TESTED_SYMPTOMS_CHECKED_BY_SELF: ["cough", "fever", "trouble_breathing", "chills", "loss_of_taste", ""]
+TEST_REPORT_PROB: 0.8  # the probability that a user with the app will report their test result
 
 
 #########################################################
@@ -421,7 +426,6 @@ GET_TESTED_SYMPTOMS_CHECKED_BY_SELF: ["cough", "fever", "trouble_breathing", "ch
 #########################################################
 
 # SEASONAL ALLERGIES
-P_ALLERGIES: 0.4 # proportion of population; https://www.healthline.com/health/allergies/statistics#1
 # P_HAS_ALLERGIES_TODAY: 0.005 # likelihood to start allergy any day (2-3 times per year) # produces too many allergies (experimental)
 P_HAS_ALLERGIES_TODAY: 0.005
 
@@ -439,11 +443,11 @@ AVG_FLU_DURATION: 5
 # non-Covid19 symtpoms via influenza etc. is 0.002%. This seems like a typo. assuming 0.002 here.
 P_COLD_TODAY: 0.002
 COLD_CONTAGIOUSNESS: 0.000 # likelihood of transmitting at an encounter (no-source)
-AVG_COLD_DURATION: 3 # FIXME:unused
 
 #########################################################
 #####       Individual Parameters                   #####
 #########################################################
+
 
 # INDIVIDUAL DIFFERENCES PARAMETERS
 P_CAREFUL_PERSON: 0.3 # &carefulness
@@ -457,7 +461,6 @@ P_MALE: 0.45
 #########################################################
 
 # WASH HANDS
-HYGIENE_EFFECT: 0.2 # FIXME:unused
 HYGIENE_EFFICACY_FACTOR: 0.5 # used in reduction of probability of transmission (no-source)
 
 # RISK RECOMMENDATIONS
@@ -465,11 +468,12 @@ DEFAULT_DISTANCE: 100 # cms
 
 # TRACKER
 EFFECTIVE_R_WINDOW: 10 # days
+KEEP_FULL_OBJ_COPIES: False
 
 # MASK
 MASK_EFFICACY_NORMIE: 0.32
 MASK_EFFICACY_HEALTHWORKER: 0.98
-BASELINE_P_MASK: 0.5 # FIXME:unused
+BASELINE_P_MASK: 0.5
 MASKS_SUPPLY: 1000000
 MASK_EFFICACY_FACTOR: 0.4 # used in reduction of probability of transmission (no-source)
 

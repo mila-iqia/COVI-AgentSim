@@ -7,7 +7,7 @@ import numpy as np
 
 if typing.TYPE_CHECKING:
     from covid19sim.human import Human
-    from covid19sim.interventions.recommendation_manager import NonMLRiskComputer
+    from covid19sim.interventions.tracing import BaseMethod
 
 TimestampType = datetime.datetime
 TimeOffsetType = datetime.timedelta
@@ -71,7 +71,7 @@ class EncounterMessage:
     _exposition_event: typing.Optional[bool] = None
     """Flags whether this encounter corresponds to an exposition event for the receiver."""
 
-    _applied_updates: typing.Optional[typing.List["UpdateMessage"]] = None  # note: not used in clustering
+    _applied_update_count: typing.Optional[int] = None
     """List of update messages which have been applied to this encounter."""
 
 
@@ -261,7 +261,8 @@ def create_updated_encounter_with_message(
         assert encounter_message.uid == update_message.uid
     assert encounter_message.risk_level == update_message.old_risk_level
     assert encounter_message.encounter_time == update_message.encounter_time
-    old_updates = encounter_message._applied_updates if encounter_message._applied_updates else []
+    old_update_count = encounter_message._applied_update_count \
+        if encounter_message._applied_update_count else 0
     return EncounterMessage(
         uid=update_message.uid,
         risk_level=update_message.new_risk_level,
@@ -273,7 +274,7 @@ def create_updated_encounter_with_message(
         _real_encounter_time=update_message._real_encounter_time if
             update_message._real_encounter_time == encounter_message._real_encounter_time else None,
         _exposition_event=encounter_message._exposition_event,
-        _applied_updates=[*old_updates, update_message],
+        _applied_update_count=old_update_count + 1,
     )
 
 
@@ -380,17 +381,12 @@ class ContactBook:
     def get_positive_contacts_counts(
             self,
             humans_map: typing.Dict[str, "Human"],
-            tracing_delay: datetime.timedelta = datetime.timedelta(days=0),
-            tracing_probability: float = 1.0,
             max_order: int = 1,
             curr_order: int = 0,
             count_map: typing.Optional[typing.Dict[int, int]] = None,
             make_sure_15min_minimum_between_contacts: bool = False,
     ) -> typing.Dict[int, int]:  # returns order-to-count mapping
         """Traces and returns the number of Nth-order contacts that have been tested positive."""
-        # FIXME: the 'delay' is only applicable for real-life tracing where all humans would
-        #   instantly be contacted after N days; for digital tracing, each hop would need to
-        #   take the timeslot delay into account, which it does not do right now
         if curr_order == 0:
             for human in humans_map.values():
                 human.contact_book._is_being_traced = False
@@ -405,17 +401,13 @@ class ContactBook:
                 make_sure_15min_minimum_between_contacts=make_sure_15min_minimum_between_contacts,
         ):
             assert contact.has_app, "how can we be tracing this person without an app?"
-            if tracing_probability < 1.0 and contact.rng.rand() > tracing_probability:
-                continue  # skip that person without flagging so we might still contact them
             if not contact.contact_book._is_being_traced and \
-                    contact.reported_test_result == "positive" and \
-                    (contact.env.timestamp - contact.test_results[0][1]) >= tracing_delay:
+                    contact.reported_test_result == "positive":
                 count_map[curr_order + 1] += 1
                 contact.contact_book._is_being_traced = True
             if max_order > curr_order + 1:
                 contact.contact_book.get_positive_contacts_counts(
                     humans_map=humans_map,
-                    tracing_delay=tracing_delay,
                     max_order=max_order,
                     curr_order=curr_order + 1,
                     count_map=count_map,
@@ -470,7 +462,7 @@ class ContactBook:
             current_timestamp: datetime.datetime,
             risk_history_map: typing.Dict[int, float],
             proba_to_risk_level_map: typing.Callable,
-            tracing_method: typing.Optional["NonMLRiskComputer"],
+            intervention: typing.Optional["BaseMethod"],
     ):
         """
         Generates and returns the update messages needed to communicate the initial risk
@@ -483,13 +475,13 @@ class ContactBook:
             current_timestamp: the current timestamp of the simulation.
             risk_history_map: the risk history map of the human who owns this contact book.
             proba_to_risk_level_map: the risk-probability-to-risk-level mapping function.
-            tracing_method: intervention object that holds the settings used for tracing.
+            intervention: intervention object that holds the settings used for tracing.
 
         Returns:
             A list of update messages to send out to contacts (if any).
         """
         update_messages = []
-        if tracing_method is None:
+        if intervention is None:
             return update_messages  # no need to generate update messages until tracing is enabled
         assert current_day_idx >= 0
         for encounter_day_idx, encounter_messages in self.encounters_by_day.items():
@@ -519,7 +511,7 @@ class ContactBook:
             curr_risk_history_map: typing.Dict[int, float],
             proba_to_risk_level_map: typing.Callable,
             update_reason: str,
-            tracing_method: typing.Optional["NonMLRiskComputer"],
+            intervention: typing.Optional["BaseMethod"],
     ):
         """
         Will check the human's previously registered risk level over the past 'TRACING_N_DAYS_HISTORY'
@@ -534,13 +526,13 @@ class ContactBook:
             curr_risk_history_map: the current risk history map of the human who owns this contact book.
             proba_to_risk_level_map: the risk-probability-to-risk-level mapping function.
             update_reason: defines the root cause of the updates (as a string).
-            tracing_method: intervention object that holds the settings used for tracing.
+            intervention: intervention object that holds the settings used for tracing.
 
         Returns:
             A list of update messages to send out to contacts (if any).
         """
         update_messages = []
-        if tracing_method is None:
+        if intervention is None:
             return update_messages  # no need to generate update messages until tracing is enabled
         assert current_day_idx >= 0
         for encounter_day_idx, encounter_messages in self.encounters_by_day.items():
@@ -610,7 +602,6 @@ def convert_json_to_messages(
         block: typing.Union[typing.List[typing.Dict], typing.Dict],
         extract_self_reported_risks: bool,  # TODO: what should we use by default...?
         timestamp_offset: typing.Optional[datetime.datetime] = None,  # default = offset from epoch
-
 ) -> typing.List[GenericMessageType]:
     """Converts a JSON contact block (as defined in the data spec) into a list of
     messages that can be ingested by the clustering algorithm.

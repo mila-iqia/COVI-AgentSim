@@ -78,6 +78,7 @@ def make_human_as_message(
         rolling_all_reported_symptoms=rolling_all_reported_symptoms,
         incubation_days=human.incubation_days,
         recovery_days=human.recovery_days,
+        viral_load_to_infectiousness_multiplier=human.viral_load_to_infectiousness_multiplier,
 
         update_messages=update_messages,
         carefulness=human.carefulness,
@@ -98,16 +99,16 @@ class HumanAsMessage:
 
     # Medical fields
     infectiousnesses: typing.Iterable
-    # TODO: Should be reformatted to int timestamp
+    # TODO: Should be reformatted to POD timestamp
     infection_timestamp: datetime.datetime
-    # TODO: Should be reformatted to int timestamp
+    # TODO: Should be reformatted to POD timestamp
     recovered_timestamp: datetime.datetime
-    # TODO: Should be reformatted to deque of (int, int timestamp)
     test_results: collections.deque
     rolling_all_symptoms: np.array
     rolling_all_reported_symptoms: np.array
     incubation_days: int  # NOTE: FOR NOW, USED FOR TESTING/DEBUGGING ONLY
     recovery_days: int  # NOTE: FOR NOW, USED FOR TESTING/DEBUGGING ONLY
+    viral_load_to_infectiousness_multiplier: float
 
     # Risk-level-related fields
     update_messages: typing.List[UpdateMessage]

@@ -3,14 +3,14 @@ COLLECT_LOGS: True
 COLLECT_TRAINING_DATA: False
 USE_INFERENCE_SERVER: False
 RISK_MODEL: "transformer" # "naive"  "manual", "digital", "transformer"
-SHOULD_MODIFY_BEHAVIOR: False
+SHOULD_MODIFY_BEHAVIOR: True
 USE_ORACLE: True
 
 ## INTERVENTIONS
 INTERVENTION: "Tracing"
 
-# RADIANT-RESONANCE-561
-TRANSFORMER_EXP_PATH: "https://drive.google.com/file/d/1QhiZehbxNOhA-7n37h6XEHTORIXweXc6"
+# TWILIGHT-RAIN-696
+TRANSFORMER_EXP_PATH: "https://drive.google.com/file/d/1kXA-0juviQOL0R08YlQpaS5gKumQ8zrT"
 CLUSTER_PATH: "output/clusters"
 
 RISK_MAPPING:
