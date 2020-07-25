@@ -293,7 +293,7 @@ class MobilityPlanner(object):
             time_left_to_simulation_end = (full_schedule[-1][-1].end_time -  self.env.timestamp).total_seconds()
             assert time_left_to_simulation_end > SECONDS_PER_DAY, "A full day's schedule has not been planned"
             if time_left_to_simulation_end < n_days * SECONDS_PER_DAY:
-                filler_schedule = deque([Activity(full_schedule[-1][-1].end_time, time_left_to_simulation_end, "sleep-filler", self.human.household, self.human)])
+                filler_schedule = deque([Activity(full_schedule[-1][-1].end_time, time_left_to_simulation_end, "sleep", self.human.household, self.human, prepend_name="filler")])
                 full_schedule.append(filler_schedule)
 
             self.full_schedule = deque(full_schedule)
