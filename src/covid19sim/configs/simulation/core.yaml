@@ -160,9 +160,9 @@ ENVIRONMENTAL_INFECTION_KNOB: 0.0017
 # Scaling is done in an mean preserving manner. For example, if mean is X and the distribution is gamma,
 # we scale the location parameter to X / SCALE_FACTOR while using the shape parameter as SCALE_FACTOR.
 # Note: mean of a gamma distribution is location * shape = X (here).
-TIME_SPENT_SCALE_FACTOR_FOR_SHORT_ACTIVITIES: 1.0 # e.g. grocery, misc, or park
+TIME_SPENT_SCALE_FACTOR_FOR_SHORT_ACTIVITIES: 1.5 # e.g. grocery, misc, or park
 TIME_SPENT_SCALE_FACTOR_FOR_WORK: 1.0
-TIME_SPENT_SCALE_FACTOR_SLEEP_AWAKE: 0.01 # /!\ 0.1 scale creates a lot of variation in sleep schedule which breaks the assumptions in MobilityPlanner. Longer the simulation days lesser this value is preferred.
+TIME_SPENT_SCALE_FACTOR_SLEEP_AWAKE: 0.01 # /!\ 0.1 scale creates a lot of variation in sleep schedule which breaks the assumptions in MobilityPlanner. Lower values are preferred for longer simulation days
 
 # Contact controlling knobs
 GLOBAL_MOBILITY_SCALING_FACTOR: 1.0 # Mobility reduction factor
@@ -191,7 +191,7 @@ P_MOBILE_GIVEN_MILD_SYMPTOMS: 0.6
 #####          Hospitalization Parameters               #####
 #############################################################
 
-# All parameters below are from the following reference
+# All parameters below are from the following reference (these are default parameters unless regional configuration overwrites them)
 # ref: https://github.com/BDI-pathogens/OpenABM-Covid19/blob/master/documentation/parameters/parameter_dictionary.md
 
 P_HOSPITALIZED_GIVEN_SYMPTOMS: [
@@ -447,7 +447,6 @@ AVG_COLD_DURATION: 3 # FIXME:unused
 
 # INDIVIDUAL DIFFERENCES PARAMETERS
 P_CAREFUL_PERSON: 0.3 # &carefulness
-P_TRAVELLED_INTERNATIONALLY_RECENTLY: 0.05
 
 # Biological sex
 P_FEMALE: 0.45
