@@ -50,9 +50,9 @@ class Activity(object):
             new_owner = self.owner
 
         prepend_name = f"{self.prepend_name}-{prepend_name}" if self.prepend_name else prepend_name
-        append_name = f"{self.append_name}-{append_name}" if self.append_name else append_name
-
-        x = Activity(self.start_time, self.duration, self.name, self.location, new_owner, prepend_name=prepend_name, append_name=append_name)
+        # append_name = f"{self.append_name}-{append_name}" if self.append_name else append_name
+        x = Activity(self.start_time, self.duration, self.name, self.location, new_owner, prepend_name=prepend_name, append_name=self.append_name)
+        x._add_to_append_name(append_name)
         x.parent_activity_pointer = self.parent_activity_pointer
         return x
 
@@ -122,6 +122,9 @@ class Activity(object):
         else:
             self.duration += seconds
 
+    def _add_to_append_name(self, name):
+        self.append_name += f"{name}"
+
     def cancel_and_go_to_location(self, reason, location=None):
         """
         Sets the flag `is_cancelled` to True and sets the location of this activity to `owner.household`
@@ -130,7 +133,7 @@ class Activity(object):
             reason (str): reason to append to the the name of the activity
         """
         self.is_cancelled = True
-        self.append_name += f"-{reason}"
+        self._add_to_append_name(f"-cancel-{reason}")
         self.location = location if location is not None else self.owner.household # @1
 
         # (A) Socials
@@ -159,7 +162,7 @@ class Activity(object):
         # a somewhat-correct solution is to add to adult.mobility_planner.inverted_supervision (mobility_planner._cancel_and_stay_at_location does that)
         if self.prepend_name == "supervised":
             self.parent_activity_pointer.set_location_tracker(self)
-            self.parent_activity_pointer.append_name += f"-cancel-for-kid-{reason}"
+            self.parent_activity_pointer._add_to_append_name( f"-cancel-for-kid-{reason}")
             self.parent_activity_pointer = None
 
             # Note: above will change the parent_activity_pointer of invitation-socialize activities
@@ -596,11 +599,13 @@ class MobilityPlanner(object):
         # 4. for adults, if there is a kid that needs supervision because the kid has to stay at home or is hospitalized,
         # /!\ It doesn't let a single adult attend to two kids: one in hospital and another in house or 3 kids: in different hospitals etc..
         for kid in self.inverted_supervision:
+            assert not self.follows_adult_schedule, "a kid should not go into inverted supervision"
             if (
-                kid.mobility_planner.hospitalization_timestamp is not None
+                kid.mobility_planner.location_of_hospitalization is not None
+                or kid.mobility_planner.hospitalization_timestamp is not None
                 or kid.mobility_planner.critical_condition_timestamp is not None
             ):
-                location = kid.mobility_planner.current_activity.location # in hospitalization, kid's activities have location
+                location = kid.mobility_planner.location_of_hospitalization # in hospitalization, kid's activities have location
                 reason = "inverted-supervision-hospitalization"
                 activity.cancel_and_go_to_location(reason=reason, location=location) # Note: this activity can't be supervised
                 # print(self.human, activity, "for hospitalization of", kid)
@@ -608,7 +613,11 @@ class MobilityPlanner(object):
 
             # if activity is already at home - no need to update
             kid_to_stay_at_home = kid.mobility_planner._update_rest_at_home()
-            if kid_to_stay_at_home:
+            if (
+                kid_to_stay_at_home
+                and activity.location is not None
+                and activity.location != kid.household
+            ):
                 location = kid.household #
                 reason = "inverted-supervision-stay-at-home"
                 activity.cancel_and_go_to_location(reason=reason, location=location)
@@ -618,7 +627,11 @@ class MobilityPlanner(object):
         # 5. health / intervention related checks; set the location to household
         # rest_at_home needs to be checked everytime. It is different from hospitalization which is for prespecified period of time
         rest_at_home = self._update_rest_at_home()
-        if rest_at_home:
+        if (
+            rest_at_home
+            and activity.location is not None
+            and activity.location != self.human.household
+        ):
             activity.cancel_and_go_to_location(reason="sick-rest-at_home", location=self.human.household)
             # print(self.human,  "is sick", activity)
             return activity
@@ -632,7 +645,7 @@ class MobilityPlanner(object):
         if activity.location is None:
             activity.location = _select_location(self.human, activity.name, self.human.city, self.rng, self.conf)
             if activity.location is None:
-                activity.cancel_and_go_to_location(reason="cancelled-no-location", location=self.human.household)
+                activity.cancel_and_go_to_location(reason="no-location", location=self.human.household)
                 print(self.human,  "can't get a location", activity)
 
         return activity
@@ -681,9 +694,10 @@ class MobilityPlanner(object):
 def _move_relevant_activities_to_hospital(human, mobility_planner, current_activity, rng, conf, hospital, critical=False):
     """
     Changes the schedule so that `human`s future activities are at a hospital.
-    Note [/!\ IMPORTANT]: human.recovery_days is updated here too
+    Note 1: [IMPORTANT]: human.recovery_days and mobility_planner.location_of_hospitalization is updated here too
     If the recovery time after being critical is less than the previous hospitalized recovery time, then activities are put back to normal routine.
 
+    Note 2: This function should be called only at the beginning of hospitalzation because it also discharges and admits the patient
     """
     # modify the schedule until the recovery time
     AVERAGE_DAYS_RECOVERY = conf['AVERAGE_DAYS_RECOVERY_IF_HOSPITALIZED']
@@ -696,6 +710,7 @@ def _move_relevant_activities_to_hospital(human, mobility_planner, current_activ
     human.recovery_days = AVERAGE_DAYS_RECOVERY + (human.env.timestamp - human.infection_timestamp).total_seconds() / SECONDS_PER_DAY
 
     # admit this human to the list of patients at the hospital/ICU
+    # this assumes that call to this function is only at the beginning and the end of hospitalization / ICU
     if mobility_planner.location_of_hospitalization is not None:
         mobility_planner.location_of_hospitalization.discharge(human)
     hospital.admit_patient(human, until=recovery_time)
@@ -728,7 +743,7 @@ def _move_relevant_activities_to_hospital(human, mobility_planner, current_activ
         activity.cancel_and_go_to_location(reason=reason, location=hospital)
 
     for activity in acitivities_to_revert_back_to_normal:
-        activity.append_name += "-recovered"
+        activity._add_to_append_name("-recovered")
         activity.location = None
         if activity.name == "work":
             activity.location = human.workplace
@@ -903,7 +918,12 @@ def _patch_kid_schedule(human, adult_schedule, work_activity, current_activity, 
     max_awake_duration = _sample_activity_duration("awake", conf, human.rng)
     schedule, awake_duration = [], 0
     # add work just after the current_activity on the remaining_schedule
-    if work_activity is not None:
+    if (
+        work_activity is not None
+        and human.mobility_planner.hospitalization_timestamp is None
+        and human.mobility_planner.critical_condition_timestamp is None
+        and human.mobility_planner.death_timestamp is None
+    ):
         work_activity.start_time = _get_datetime_for_seconds_since_midnight(human.work_start_time, work_activity.tentative_date)
         # adjust activities if there is a conflict while keeping the last_activity unchanged because it's should be the current_activity of the kid
         if work_activity.start_time < last_activity.end_time:
@@ -937,6 +957,12 @@ def _patch_kid_schedule(human, adult_schedule, work_activity, current_activity, 
 
     # finally, close the schedule by adding sleep
     schedule, last_activity, awake_duration = _add_sleep_to_schedule(human, schedule, last_sleep_activity, last_activity, human.rng, conf, awake_duration, max_awake_duration=max_awake_duration)
+
+    # if kid is hospitalized, all the activities should take place at the hospital
+    if human.mobility_planner.location_of_hospitalization is not None:
+        for activity in schedule:
+            activity.location = human.mobility_planner.location_of_hospitalization
+            activity._add_to_append_name("-patched-hospitalized")
 
     full_schedule = [current_activity] + schedule
     for a1, a2 in zip(full_schedule, full_schedule[1:]):
