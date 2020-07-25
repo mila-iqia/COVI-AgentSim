@@ -38,8 +38,8 @@ Legend -
 * [ TestQueue ]: Total number of people present in the test queue at the time of this print out.
 * [ H/C/D ]: Total number of people in hospital (H)/ ICU (C) at this point in simulation-time. Total died upto this day (D).
 * [ MC ]: Mean number of known connections of a person in the population (average degree of the social network). The attributes for known connections are drawn from surveyed data on mean contacts.
+* [ Ho ]: Number of people constrained to be at home. It can be due to sickness, a positive test result, or intervention related reasons.
         """
-        # * [ Ho ]: Number of people constrained to be at home. It can be due to sickness, a positive test result, or intervention related reasons.
         if self.conf['INTERVENTION_DAY'] >= 0 and self.conf['RISK_MODEL'] is not None:
             self.legend += """
 G/B/O/R: Number of people in each of the 4 recommendation levels - Green, Blue, Orange, and Red.
@@ -94,7 +94,7 @@ RiskP: Top 1% risk precision of the risk predictor computed for people with no t
 
             # social network & mobility
             average_degree = np.mean([len(h.known_connections) for h in city.humans])
-            # constrained_at_home = sum(h.mobility_planner.rest_at_home for h in city.humans) # not correct as of now
+            constrained_at_home = sum(h.mobility_planner.human_to_rest_at_home for h in city.humans)
 
             # simulation time related
             env_time = str(env.timestamp).split()[0]
@@ -109,7 +109,7 @@ RiskP: Top 1% risk precision of the risk predictor computed for people with no t
             other_diseases = f"| cold:{cold} allergies:{allergies}"
             hospitalizations = f"| H:{H} C:{C} D:{D}"
             mobility = f"| MC: {average_degree: 3.3f} "
-            # mobility +=   f" Ho: {constrained_at_home}" # not correct as of now
+            mobility +=   f" Ho: {constrained_at_home}"
 
             str_to_print = f"{proc_time} {day} {env_time} {SEIR} {stats} {other_diseases} {hospitalizations} {mobility}"
             # conditional prints
