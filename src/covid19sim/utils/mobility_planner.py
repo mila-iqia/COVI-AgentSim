@@ -45,9 +45,12 @@ class Activity(object):
             return f"<{name} on {self.start_time.date()} from {self.start_time.time()} to {self.end_time.time()} at {self.location}>"
         return f"<TBD: {name} at {self.location} for {self.duration} seconds>"
 
-    def clone(self, prepend_name="clone", append_name="clone", new_owner=None):
+    def clone(self, prepend_name="", append_name="", new_owner=None):
         if new_owner is None:
             new_owner = self.owner
+
+        prepend_name = f"{self.prepend_name}-{prepend_name}" if self.prepend_name else prepend_name
+        append_name = f"{self.append_name}-{append_name}" if self.append_name else append_name
 
         x = Activity(self.start_time, self.duration, self.name, self.location, new_owner, prepend_name=prepend_name, append_name=append_name)
         x.parent_activity_pointer = self.parent_activity_pointer
@@ -88,7 +91,7 @@ class Activity(object):
         This is being done in `MobilityPlanner._modify_activity_location_if_needed`
 
         """
-        assert self.prepend_name in ["invitation", "supervised"],  "refresh shouldn't be called without supervision or invitation"
+        assert any(x in self.prepend_name for x in ["invitation", "supervised"]),  f"{self.prepend_name} not recognized. refresh shouldn't be called without supervision or invitation"
         assert self.parent_activity_pointer is not None,  "refresh shouldn't be called without supervision or invitation"
         if self.parent_activity_pointer.is_cancelled:
             self.location = self.owner.household
@@ -133,7 +136,11 @@ class Activity(object):
         # (A) Socials
         # (A.1) if the plan was to go to someone else's invitation, then remove `self` from rsvp list
         # location of this activity has already been refreshed to self houeshold @1
-        if self.name == "socialize" and self.prepend_name == "invitation":
+        if (
+            self.name == "socialize"
+            and self.prepend_name == "invitation"
+            and not "-cancel-for-kid-" not in self.parent_activity_pointer.append_name
+        ):
             assert self.owner in self.parent_activity_pointer.rsvp, f"{self.owner} didnt' accept the {self.parent_activity_pointer}"
             self.parent_activity_pointer.rsvp.remove(self.owner)
             self.parent_activity_pointer = None
@@ -152,8 +159,11 @@ class Activity(object):
         # a somewhat-correct solution is to add to adult.mobility_planner.inverted_supervision (mobility_planner._cancel_and_stay_at_location does that)
         if self.prepend_name == "supervised":
             self.parent_activity_pointer.set_location_tracker(self)
-            self.parent_activity_pointer.append_name += "for-kid-stay-at-home"
+            self.parent_activity_pointer.append_name += f"-cancel-for-kid-{reason}"
             self.parent_activity_pointer = None
+
+            # Note: above will change the parent_activity_pointer of invitation-socialize activities
+            # Thus, (A.1) will result in an error
 
 
 class MobilityPlanner(object):
@@ -299,10 +309,7 @@ class MobilityPlanner(object):
 
         if for_kids:
             assert not self.follows_adult_schedule, "kids do not have preplanned schedule"
-            try:
-                return [self.current_activity]  + list(self.schedule_for_day) + list(self.full_schedule[0])
-            except:
-                breakpoint()
+            return [self.current_activity]  + list(self.schedule_for_day) + list(self.full_schedule[0])
 
         if len(self.schedule_for_day) == 0:
             self.schedule_for_day = self._prepare_schedule()
@@ -360,7 +367,17 @@ class MobilityPlanner(object):
         assert activity.name == "socialize", "coordination for other activities is not implemented."
         today = self.env.timestamp.date()
 
-        if not _can_accept_invite(today, self):
+        current_schedule = [self.current_activity] + list(self.schedule_for_day)
+        if (
+            not _can_accept_invite(today, self)
+            or ( # Feature NotImplmented - Schedule an event that modifies both the current_schedule and the next_schedule
+                activity.start_time < current_schedule[-1].end_time
+                and activity.end_time > current_schedule[-1].end_time
+            )
+            or ( # can't schedule an event before the current_event ends
+                activity.start_time < self.current_activity.end_time
+            )
+        ):
             return False
 
         self.invitation["received"].add(today)
@@ -373,15 +390,23 @@ class MobilityPlanner(object):
         # only accept this activity if it fits in the schedule of the day on which it is sent
         # and leave the current schedule unchanged
 
-        days_passed = self.env.days_since_start()
         update_next_schedule = False
-        if days_passed == self.schedule_day:
-            remaining_schedule = [self.current_activity]
-            new_schedule = list(self.schedule_for_day)
-        else:
+        next_schedule = list(self.full_schedule[0])
+        # find schedule such that the invitation activity ends before it ends
+        # that schedule needs to be updated
+        if (
+            self.current_activity.name == "sleep"
+            or activity.start_time > current_schedule[-1].end_time
+        ):
             update_next_schedule = True
             remaining_schedule = [self.current_activity] + list(self.schedule_for_day)
             new_schedule = list(self.full_schedule[0])
+        elif activity.end_time < current_schedule[-1].end_time:
+            remaining_schedule = [self.current_activity]
+            new_schedule = list(self.schedule_for_day)
+        else:
+            remaining_schedule = [self.current_activity]
+            new_schedule = list(self.schedule_for_day)
 
         # /!\ by accepting the invite, `self` doesn't invite others to its social
         # thus, if there is a non-overlapping social on the schedule, `self` will go alone.
@@ -394,7 +419,7 @@ class MobilityPlanner(object):
             if update_next_schedule:
                 self.full_schedule[0] = new_schedule
             else:
-                slf.schedule_for_day = new_schedule
+                self.schedule_for_day = new_schedule
             return True
 
         return False
@@ -465,9 +490,10 @@ class MobilityPlanner(object):
                 if activity.start_time.day == today.day or activity.end_time.day == today.day:
                     todays_activities.append(activity)
 
+            MIN_DURATION = min(self.conf['INFECTION_DURATION'], self.conf['MIN_MESSAGE_PASSING_DURATION'])
             socials = [x for x in todays_activities if x.name == "socialize"]
             assert len(socials) <=1, "more than one socials on one day are not allowed in preplanned scheduling"
-            if socials:
+            if socials and socials[0].duration >= MIN_DURATION:
                 self.invitation["sent"].add(today)
                 self.invite(socials[0], self.human.known_connections)
 
@@ -526,11 +552,11 @@ class MobilityPlanner(object):
             hospital = _select_location(self.human, "hospital", self.human.city, self.rng, self.conf)
             if hospital is None:
                 self, human, activity = _human_dies(self, self.human, activity, self.env)
-                print(self.human,  "died because of the lack of hospital capacity")
+                # print(self.human,  "died because of the lack of hospital capacity")
                 return activity
 
             activity, self = _move_relevant_activities_to_hospital(self.human, self, activity, self.rng, self.conf, hospital, critical=False)
-            print(self.human,  "is hospitalized", activity)
+            # print(self.human,  "is hospitalized", activity)
             return activity
 
         # 2. critical given hospitalized
@@ -547,11 +573,11 @@ class MobilityPlanner(object):
             ICU = _select_location(self.human, "hospital-icu", self.human.city, self.rng, self.conf)
             if ICU is None:
                 self, human, activity = _human_dies(self, self.human, activity, self.env)
-                print(self.human,  "died because of the lack of ICU capacity")
+                # print(self.human,  "died because of the lack of ICU capacity")
                 return activity
 
             activity, self = _move_relevant_activities_to_hospital(self.human, self, activity, self.rng, self.conf, ICU, critical=True)
-            print(self.human,  "is critical", activity)
+            # print(self.human,  "is critical", activity)
             return activity
 
         # 3. death given critical
@@ -576,14 +602,17 @@ class MobilityPlanner(object):
             ):
                 location = kid.mobility_planner.current_activity.location # in hospitalization, kid's activities have location
                 reason = "inverted-supervision-hospitalization"
-                activity.cancel_and_go_to_location(reason=reason, location=location)
+                activity.cancel_and_go_to_location(reason=reason, location=location) # Note: this activity can't be supervised
+                # print(self.human, activity, "for hospitalization of", kid)
                 return activity
 
+            # if activity is already at home - no need to update
             kid_to_stay_at_home = kid.mobility_planner._update_rest_at_home()
             if kid_to_stay_at_home:
                 location = kid.household #
                 reason = "inverted-supervision-stay-at-home"
                 activity.cancel_and_go_to_location(reason=reason, location=location)
+                # print(self.human, activity, "for sick", kid)
                 return activity
 
         # 5. health / intervention related checks; set the location to household
@@ -686,7 +715,7 @@ def _move_relevant_activities_to_hospital(human, mobility_planner, current_activ
             ):
                 acitivities_to_revert_back_to_normal.append(activity)
 
-            elif(
+            elif (
                 activity.start_time > recovery_time
                 and "Hospitalized" not in activity.append_name
             ):
@@ -701,6 +730,8 @@ def _move_relevant_activities_to_hospital(human, mobility_planner, current_activ
     for activity in acitivities_to_revert_back_to_normal:
         activity.append_name += "-recovered"
         activity.location = None
+        if activity.name == "work":
+            activity.location = human.workplace
 
     return current_activity, mobility_planner
 
@@ -766,7 +797,6 @@ def _modify_schedule(human, remaining_schedule, new_activity, new_schedule):
         valid (bool): True if its possible to safely edit the current schedule
     """
     assert len(remaining_schedule) > 0, "Empty remaining_schedule. Human should be doing something all the time."
-    assert remaining_schedule[-1].name == "sleep", "sleep not found as the last activity"
     assert remaining_schedule[-1].end_time == new_schedule[0].start_time, "two schedules are not aligned"
 
     valid = True
@@ -1362,14 +1392,23 @@ def _get_datetime_for_seconds_since_midnight(seconds_since_midnight, date):
 
 def _can_accept_invite(today, mobility_planner):
     """
+    Decides if `mobility_planner` can accept invite of a socialize activity
+
+    Args:
+        today (datetime.date): date on which an invite is received
+        mobility_planner (MobilityPlanner): schedule planning object
+
+    Returns:
+        (bool): True if mobility_planner can accommodate an invite
     """
     accept = True
 
     # health related checks
     if (
         mobility_planner.human_to_rest_at_home
-        or mobility_planner.hospitalization_timestamp is None
-        or mobility_planner.death_timestamp is None
+        or mobility_planner.hospitalization_timestamp is not None
+        or mobility_planner.critical_condition_timestamp is not None
+        or mobility_planner.death_timestamp is not None
     ):
         accept = False
 
@@ -1386,6 +1425,14 @@ def _can_accept_invite(today, mobility_planner):
 
 def _can_send_invite(today, mobility_planner):
     """
+    Decides if `mobility_planner` can send invites to other `human`s
+
+    Args:
+        today (datetime.date): date on which an invite is to be sent
+        mobility_planner (MobilityPlanner): schedule planning object
+
+    Returns:
+        (bool): True if mobility_planner can send an invite to other `human`s
     """
     # can accept is treated as can send as well
     send = _can_accept_invite(today, mobility_planner)
@@ -1393,6 +1440,13 @@ def _can_send_invite(today, mobility_planner):
 
 def _can_supervise_kid(adults):
     """
+    Filters out adults that are a best fit to supervise kids
+
+    Args:
+        adults (list): list of `Human`s who live at the same household and are eligile to supervise kids
+
+    Returns:
+        (list): list of filtered adults who can take a kid for supervision
     """
     valid_adults = []
     for adult in adults:
@@ -1415,6 +1469,18 @@ def _can_supervise_kid(adults):
 
 def _human_dies(mobility_planner, human, activity, env):
     """
+    Implements cleaning up of `human` object and setting up relevant flags before `human` timesout for infinity
+
+    Args:
+        mobility_planner (MobilityPlanner): schedule planning object
+        human (covid19sim.human.Human): `human` object that needs to timeout for infinity (dies)
+        activity (Activity): activity that human is about to do
+        env (simpy.Environment): event scheduling object
+
+    Returns:
+        mobility_planner (MobilityPlanner): schedule planning object with relevant flags updated
+        human (covid19sim.human.Human): `human` object that needs to timeout for infinity (dies)
+        activity (Activity): activity with a flag to indicate `human` should be timedout for infinity
     """
     mobility_planner.death_timestamp = env.timestamp
     activity.human_dies = True
@@ -1425,6 +1491,16 @@ def _human_dies(mobility_planner, human, activity, env):
 
 def _reallocate_residence(human, households, rng, conf):
     """
+    Finds a random house for a kid.
+
+    Args:
+        human (covid19sim.human.Human): `human` for whom a house with adult needs to be searched for
+        households (list): list of `Household` that are available for search
+        rng (np.random.RandomState): Random number generator
+        conf (dict): yaml configuration of the experiment
+
+    Returns:
+        household (covid19sim.locations.Household or None): None if the search is unsuccessful else a relevant household is returned
     """
     MAX_AGE_CHILDREN_WITHOUT_SUPERVISION = conf['MAX_AGE_CHILDREN_WITHOUT_PARENT_SUPERVISION']
 
