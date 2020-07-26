@@ -218,6 +218,7 @@ class Event:
                     'time':time,
                     'payload':{'observed':obs_payload, 'unobserved':unobs_payload}
                 })
+
         logging.info(f"{time} - {human1.name} and {human2.name} {Event.encounter_message} event")
         logging.debug("{time} - {human1.name} and {human2.name} exchanged encounter "
                       "messages for {duration:.2f}min at ({location.lat}, {location.lon}) "

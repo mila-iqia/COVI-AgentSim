@@ -455,14 +455,7 @@ class ModelsTest(unittest.TestCase):
 
                                 self.assertTrue((symptoms_to_np(s_human.rolling_all_reported_symptoms, conf) ==
                                                  observed['reported_symptoms']).all())
-                                try:
-                                    self.assertTrue((test_results == observed['test_results']).all())
-                                except Exception:
-                                    pass
-                                    # FIXME
-                                    # import pdb;
-                                    # pdb.set_trace()
-                                    test_results = get_test_results_array(s_human, date_at_update)
+                                self.assertTrue((test_results == observed['test_results']).all())
 
                                 self.assertTrue((conditions_to_np(s_human.obs_preexisting_conditions) ==
                                                  observed['preexisting_conditions']).all())

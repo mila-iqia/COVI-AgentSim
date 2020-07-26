@@ -219,14 +219,13 @@ class Heuristic(BaseMethod):
         moderate_risk_message, moderate_risk_num_days = -1, -1
         mild_risk_message, mild_risk_num_days = -1, -1
 
-        # Check if the user recereceivedreceivedived messages with specific risk level
+        # Check if the user received messages with specific risk level
         # TODO: mailbox only contains update messages, and not encounter messages
         # TODO: use the result of the clustering algorithm to find the number of
         #       encounters with another user with high risk level
         for _, update_messages in mailbox.items():
             for update_message in update_messages:
                 encounter_day = (human.env.timestamp - update_message.encounter_time).days
-
                 risk_level = update_message.new_risk_level
 
                 if (encounter_day < 7) and (risk_level >= 3):
