@@ -27,6 +27,7 @@ from scipy.stats import norm
 from covid19sim.utils.constants import SECONDS_PER_HOUR, SECONDS_PER_MINUTE, AGE_BIN_WIDTH_5, AGE_BIN_WIDTH_10
 
 from covid19sim.epidemiology.symptoms import STR_TO_SYMPTOMS
+from covid19sim.utils.constants import AGE_BIN_WIDTH_5, AGE_BIN_WIDTH_10
 if typing.TYPE_CHECKING:
     from covid19sim.human import Human
 
@@ -379,8 +380,6 @@ def extract_tracker_data(tracker, conf):
     data['humans_intervention_level'] = tracker.humans_intervention_level
     data['humans_has_app'] = dict((human.name, human.has_app) for human in tracker.city.humans)
 
-
-    data['tracked_humans'] = dict({human.name:human.my_history for human in tracker.city.humans})
     data['age_histogram'] = tracker.city.age_histogram
 
     data['covid_properties'] = tracker.covid_properties
@@ -444,19 +443,6 @@ def parse_configuration(conf):
     elif not isinstance(conf, dict):
         raise ValueError("Unknown configuration type {}".format(type(conf)))
 
-    if "AGE_GROUP_CONTACT_AVG" in conf:
-        conf['AGE_GROUP_CONTACT_AVG']['age_groups'] = [
-            eval(age_group) for age_group in conf['AGE_GROUP_CONTACT_AVG']['age_groups']
-        ]
-        conf['AGE_GROUP_CONTACT_AVG']['contact_avg'] = np.array(conf['AGE_GROUP_CONTACT_AVG']['contact_avg'])
-
-    if "SMARTPHONE_OWNER_FRACTION_BY_AGE" in conf:
-        conf["SMARTPHONE_OWNER_FRACTION_BY_AGE"] = {
-            tuple(int(i) for i in k.split("-")): v
-            for k, v in conf["SMARTPHONE_OWNER_FRACTION_BY_AGE"].items()
-        }
-
-
     if "GET_TESTED_SYMPTOMS_CHECKED_IN_HOSPITAL" in conf:
         conf["GET_TESTED_SYMPTOMS_CHECKED_IN_HOSPITAL"] = \
             [STR_TO_SYMPTOMS[symptom] for symptom in conf["GET_TESTED_SYMPTOMS_CHECKED_IN_HOSPITAL"]
@@ -496,18 +482,6 @@ def dumps_conf(
     """
 
     copy_conf = copy.deepcopy(conf)
-
-    if "AGE_GROUP_CONTACT_AVG" in copy_conf:
-        copy_conf['AGE_GROUP_CONTACT_AVG']['age_groups'] = \
-            ["(" + ", ".join([str(i) for i in age_group]) + ")"
-             for age_group in copy_conf["AGE_GROUP_CONTACT_AVG"]['age_groups']]
-        copy_conf['AGE_GROUP_CONTACT_AVG']['contact_avg'] = copy_conf['AGE_GROUP_CONTACT_AVG']['contact_avg'].tolist()
-
-    if "SMARTPHONE_OWNER_FRACTION_BY_AGE" in copy_conf:
-        copy_conf["SMARTPHONE_OWNER_FRACTION_BY_AGE"] = {
-            "-".join([str(i) for i in k]): v
-            for k, v in copy_conf["SMARTPHONE_OWNER_FRACTION_BY_AGE"].items()
-        }
 
     if "GET_TESTED_SYMPTOMS_CHECKED_IN_HOSPITAL" in copy_conf:
         copy_conf["GET_TESTED_SYMPTOMS_CHECKED_IN_HOSPITAL"] = \
@@ -836,7 +810,7 @@ def _convert_bin_5s_to_bin_10s(histogram_bin_5s):
         histogram_bin_5s (dict): keys are a tuple of (lower limit, upper limit) according to AGE_BIN_WIDTH_5 both inclusive and values are counts
 
     Returns:
-        (dict): keys are a tuple of (lower limit, upper limit) according to AGE_BIN_WIDTH_10 both inclusive and values are counts 
+        (dict): keys are a tuple of (lower limit, upper limit) according to AGE_BIN_WIDTH_10 both inclusive and values are counts
     """
     histogram_bin_10s = {}
     # combine two consecutive bins until the last one

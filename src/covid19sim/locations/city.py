@@ -97,8 +97,6 @@ class City:
 
         log("Initializing humans ...", self.logfile)
         self.initialize_humans_and_locations()
-        for human in self.humans:
-            human.track_this_guy = False
 
         self.log_static_info()
 
@@ -271,7 +269,6 @@ class City:
     def start_time(self):
         return datetime.datetime.fromtimestamp(self.env.ts_initial)
 
-
     def initialize_humans_and_locations(self):
         """
         Samples a synthetic population along with their dwellings and workplaces according to census.
@@ -333,16 +330,11 @@ class City:
         log("Downloading the app...", self.logfile)
         # app users
         all_has_app = self.conf.get('APP_UPTAKE') < 0
-        age_histogram_rebinned = relativefreq2absolutefreq(
-            bins_fractions=_convert_bin_5s_to_bin_10s({(x[0], x[1]): x[2] for x in self.conf.get('P_AGE_REGION')}),
-            n_elements=self.n_people,
-            rng=self.rng,
-        )
-
         # The dict below keeps track of an app quota for each age group
+        age_histogram_bin_10s = _convert_bin_5s_to_bin_10s(self.age_histogram)
         n_apps_per_age = {
-            k: math.ceil(age_histogram_rebinned[k] * v * self.conf.get('APP_UPTAKE'))
-            for k, v in self.conf.get("SMARTPHONE_OWNER_FRACTION_BY_AGE").items()
+            (x[0], x[1]): math.ceil(age_histogram_bin_10s[(x[0], x[1])] * x[2] * self.conf.get('APP_UPTAKE'))
+            for x in self.conf.get("SMARTPHONE_OWNER_FRACTION_BY_AGE")
         }
         for human in self.humans:
             if all_has_app:
@@ -351,14 +343,7 @@ class City:
                 _log_app_info(human)
                 continue
 
-            # Find what age bin the human is in
-            age_bin = None
-            for x in n_apps_per_age:
-                if x[0] <= human.age <= x[1]:
-                    age_bin = x
-                    break
-            assert age_bin is not None
-
+            age_bin = human.age_bin_width_10.bin
             if n_apps_per_age[age_bin] > 0:
                 # This human gets an app If there's quota left in his age group
                 human.has_app = True
@@ -509,7 +494,10 @@ class City:
             )
 
             # given the 'intervention' method and the risk estimated by each human, assign them behavior modifiers
-            if self.conf.get("SHOULD_MODIFY_BEHAVIOR"):
+            if (
+                self.conf.get("SHOULD_MODIFY_BEHAVIOR")
+                and self.conf['INTERVENTION_DAY'] >= 0
+            ):
                 for human in alive_humans:
                     behaviors = self.intervention.get_behaviors(human)
                     human.apply_behaviors(behaviors)
