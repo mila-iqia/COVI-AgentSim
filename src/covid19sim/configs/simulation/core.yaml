@@ -256,20 +256,21 @@ AVERAGE_DAYS_TO_HOSPITAL_GIVEN_SYMPTOMS: 5.14
 
 LOCATION_TECH: "gps" # &location-tech
 
-# Source: COVID-19 individual-based model with instantaneous contract tracing (Table 9)
-# TODO: link to the document
-SMARTPHONE_OWNER_FRACTION_BY_AGE:
-  {
-    '0-9': 0.0,
-    '10-19': 0.90,
-    '20-29': 0.96,
-    '30-39': 0.95,
-    '40-49': 0.91,
-    '50-59': 0.81,
-    '60-69': 0.64,
-    '70-79': 0.41,
-    '80-110': 0.27,
-  }
+# /!\ Below numbers are for the U.K population
+# Source: COVID-19 individual-based model with instantaneous contract tracing
+# ref: https://github.com/BDI-pathogens/OpenABM-Covid19/blob/master/documentation/parameters/parameter_dictionary.md
+
+SMARTPHONE_OWNER_FRACTION_BY_AGE: [
+  [0, 9, 0.0],
+  [10, 19, 0.90],
+  [20, 29, 0.96],
+  [30, 39, 0.95],
+  [40, 49, 0.91],
+  [50, 59, 0.81],
+  [60, 69, 0.64],
+  [70, 79, 0.41],
+  [80, 110, 0.27]
+]
 
 # BLUETOOTH MESSAGE EXCHANGE PARAMETERS
 # bluetooth messages are recorded when the devices are within MAX_MESSAGE_PASSING_DISTANCE radius
