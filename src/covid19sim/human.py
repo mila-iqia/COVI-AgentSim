@@ -91,11 +91,8 @@ class Human(BaseHuman):
         self.household = None  # assigned later
         self.location = None  # assigned later
 
-        # Logging / Tracking
-        self.track_this_human = False  # tracks transition of human everytime there is a change in it's location. see `self.track_me`
-        self.my_history = []  # if `track_this_human` is True, records of transition is stored in this list
-        self.r0 = []  # TODO: @PRATEEK plz comment this
-        self._events = []  # TODO: @PRATEEK plz comment this
+        # Logging data
+        self._events = []
 
         """ Biological Properties """
         # Individual Characteristics
@@ -1024,8 +1021,6 @@ class Human(BaseHuman):
 
         # track transitions & locations visited
         self.city.tracker.track_mobility(previous_activity, next_activity, self)
-        if self.track_this_human:
-            self.track_me(location)
 
         # add human to the location
         self.location = location
@@ -1046,7 +1041,7 @@ class Human(BaseHuman):
         if duration >= min(self.conf['MIN_MESSAGE_PASSING_DURATION'], self.conf['INFECTION_DURATION']):
             # sample interactions with other humans at this location
             # unknown are the ones that self is not aware of e.g. person sitting next to self in a cafe
-            # sleep is an inactive stage so we sample only unknown interactions 
+            # sleep is an inactive stage so we sample only unknown interactions
             known_interactions, unknown_interactions = location.sample_interactions(self, unknown_only = type_of_activity == "sleep")
             self.interact_with(known_interactions, type="known")
             self.interact_with(unknown_interactions, type="unknown")

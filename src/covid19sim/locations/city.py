@@ -11,7 +11,7 @@ import time
 from collections import defaultdict, Counter
 from orderedset import OrderedSet
 
-from covid19sim.utils.utils import compute_distance, _get_random_area, relativefreq2absolutefreq, calculate_average_infectiousness, log
+from covid19sim.utils.utils import compute_distance, _get_random_area, relativefreq2absolutefreq, calculate_average_infectiousness, log, _convert_bin_5s_to_bin_10s
 from covid19sim.utils.demographics import get_humans_with_age, assign_households_to_humans, create_locations_and_assign_workplace_to_humans
 from covid19sim.log.track import Tracker
 from covid19sim.inference.heavy_jobs import batch_run_timeslot_heavy_jobs
@@ -99,8 +99,6 @@ class City:
 
         log("Initializing humans ...", self.logfile)
         self.initialize_humans_and_locations()
-        for human in self.humans:
-            human.track_this_guy = False
 
         self.log_static_info()
 
@@ -273,67 +271,6 @@ class City:
     def start_time(self):
         return datetime.datetime.fromtimestamp(self.env.ts_initial)
 
-    def create_location(self, specs, type, name, area=None):
-        """
-        Create a location instance based on `type`
-
-        Specs is a dict like:
-        {
-            "n" : (int) number of such locations,
-            "area": (float) locations' typical area,
-            "social_contact_factor": (float(0:1)) how much people are close to each other
-                see contamination_probability(),
-            "surface_prob": [0.1, 0.1, 0.3, 0.2, 0.3], distribution over types of surfaces
-                in that location
-            "rnd_capacity": (tuple, optional) Either None or a tuple of ints (min, max)
-            describing the args of np.random.randint,
-        }
-
-        Args:
-            specs (dict): location's parameters
-            type (str): "household" and "senior_residency" create a Household instance,
-                "hospital" creates a Hospital, other strings create a generic Location
-            name (str): Location's name, created as `type:name`
-            area (float, optional): Location's area. Defaults to None.
-
-        Returns:
-            Location | Household | Hospital: new location instance
-        """
-        _cls = Location
-        if type in ['household', 'senior_residency']:
-            _cls = Household
-        if type == 'hospital':
-            _cls = Hospital
-
-        return   _cls(
-                        env=self.env,
-                        rng=self.rng,
-                        conf=self.conf,
-                        name=f"{type}:{name}",
-                        location_type=type,
-                        lat=self.rng.randint(*self.x_range),
-                        lon=self.rng.randint(*self.y_range),
-                        area=area,
-                        social_contact_factor=specs['social_contact_factor'],
-                        capacity=None if not specs['rnd_capacity'] else self.rng.randint(*specs['rnd_capacity']),
-                        surface_prob = specs['surface_prob']
-                        )
-
-    def initialize_locations(self):
-        """
-        Create locations according to config.py / LOCATION_DISTRIBUTION.
-        The City instance will have attributes <location_type>s = list(location(*args))
-        """
-        for location, specs in self.conf.get("LOCATION_DISTRIBUTION").items():
-            # household distribution is separate
-            if location in ['household']:
-                continue
-
-            n = math.ceil(self.n_people/specs["n"])
-            area = _get_random_area(n, specs['area'] * self.total_area, self.rng)
-            locs = [self.create_location(specs, location, i, area[i]) for i in range(n)]
-            setattr(self, f"{location}s", locs)
-
     def initialize_humans_and_locations(self):
         """
         Samples a synthetic population along with their dwellings and workplaces according to census.
@@ -396,9 +333,10 @@ class City:
         # app users
         all_has_app = self.conf.get('APP_UPTAKE') < 0
         # The dict below keeps track of an app quota for each age group
+        age_histogram_bin_10s = _convert_bin_5s_to_bin_10s(self.age_histogram)
         n_apps_per_age = {
-            k: math.ceil(self.age_histogram[k] * v * self.conf.get('APP_UPTAKE'))
-            for k, v in self.conf.get("SMARTPHONE_OWNER_FRACTION_BY_AGE").items()
+            (x[0], x[1]): math.ceil(age_histogram_bin_10s[(x[0], x[1])] * x[2] * self.conf.get('APP_UPTAKE'))
+            for x in self.conf.get("SMARTPHONE_OWNER_FRACTION_BY_AGE")
         }
         for human in self.humans:
             if all_has_app:
@@ -407,14 +345,7 @@ class City:
                 _log_app_info(human)
                 continue
 
-            # Find what age bin the human is in
-            age_bin = None
-            for x in n_apps_per_age:
-                if x[0] <= human.age <= x[1]:
-                    age_bin = x
-                    break
-            assert age_bin is not None
-
+            age_bin = human.age_bin_width_10.bin
             if n_apps_per_age[age_bin] > 0:
                 # This human gets an app If there's quota left in his age group
                 human.has_app = True
@@ -565,7 +496,10 @@ class City:
             )
 
             # given the 'intervention' method and the risk estimated by each human, assign them behavior modifiers
-            if self.conf.get("SHOULD_MODIFY_BEHAVIOR"):
+            if (
+                self.conf.get("SHOULD_MODIFY_BEHAVIOR")
+                and self.conf['INTERVENTION_DAY'] >= 0
+            ):
                 for human in alive_humans:
                     behaviors = self.intervention.get_behaviors(human)
                     human.apply_behaviors(behaviors)
