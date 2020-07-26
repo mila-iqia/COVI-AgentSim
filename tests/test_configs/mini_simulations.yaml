@@ -202,3 +202,4 @@ TEST_TYPES: { "lab": {
 
 # Console logging (Conditional with COLLECT_LOGS)
 LOGGING_LEVEL: "DEBUG"
+TRANSFORMER_EXP_PATH: "https://drive.google.com/file/d/1kXA-0juviQOL0R08YlQpaS5gKumQ8zrT"

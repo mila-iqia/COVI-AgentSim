@@ -8,13 +8,11 @@ provided via commandline will override the ones loaded through the configuration
 import datetime
 import logging
 import os
-import shutil
 import time
 import typing
 from pathlib import Path
 
 import hydra
-import multiprocessing
 import numpy as np
 from omegaconf import DictConfig
 
@@ -22,11 +20,8 @@ from covid19sim.locations.city import City
 from covid19sim.utils.env import Env
 from covid19sim.utils.constants import SECONDS_PER_DAY, SECONDS_PER_HOUR
 from covid19sim.log.monitors import EventMonitor, SimulationMonitor
-from covid19sim.human import Human
 from covid19sim.inference.server_utils import DataCollectionServer
-from covid19sim.utils.utils import (dump_conf, dump_tracker_data,
-                                    extract_tracker_data, parse_configuration,
-                                    zip_outdir, log)
+from covid19sim.utils.utils import dump_conf, dump_tracker_data, extract_tracker_data, parse_configuration, log
 
 
 @hydra.main(config_path="configs/simulation/config.yaml")

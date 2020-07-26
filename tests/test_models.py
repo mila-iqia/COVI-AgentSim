@@ -456,6 +456,7 @@ class ModelsTest(unittest.TestCase):
                                 self.assertTrue((symptoms_to_np(s_human.rolling_all_reported_symptoms, conf) ==
                                                  observed['reported_symptoms']).all())
                                 self.assertTrue((test_results == observed['test_results']).all())
+
                                 self.assertTrue((conditions_to_np(s_human.obs_preexisting_conditions) ==
                                                  observed['preexisting_conditions']).all())
                                 self.assertEqual(encode_age(s_human.obs_age), observed['age'])

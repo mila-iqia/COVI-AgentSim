@@ -138,7 +138,6 @@ def main(conf):
         "pareto_adoption": pareto_adoption,
         "jellybeans": jellybeans,
         "presymptomatic": presymptomatic,
-        "infection_chains": infection_chains,
         "efficiency": efficiency,
         "generation_time": generation_time,
         "epi_table": epi_table,

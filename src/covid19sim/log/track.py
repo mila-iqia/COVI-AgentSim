@@ -697,6 +697,7 @@ class Tracker(object):
                 "state": h.state.index(1),
                 "test_result": h.test_result,
                 "n_symptoms": len(h.symptoms),
+                "symptom_severity": self.compute_severity(h.reported_symptoms),
                 "name": h.name,
                 "dead": h.is_dead,
                 "reported_test_result": h.reported_test_result,
@@ -707,6 +708,19 @@ class Tracker(object):
 
         #
         self.avg_infectiousness_per_day.append(np.mean([h.infectiousness for h in self.city.humans]))
+
+    def compute_severity(self, symptoms):
+        severity = 0
+        for s in symptoms:
+            if "extremely-severe" == s:
+                severity = 4
+            elif "severe" == s and severity < 4:
+                severity = 3
+            elif "moderate" == s and severity < 3:
+                severity = 2
+            elif "mild" == s and severity < 2:
+                severity = 1
+        return severity
 
     def compute_mobility(self):
         """
