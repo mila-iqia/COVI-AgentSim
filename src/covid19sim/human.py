@@ -209,6 +209,7 @@ class Human(BaseHuman):
         self.gamma = conf['GAMMA']  # controls mobility (how often this person goes out and visits new places)
 
         self.household, self.location = None, None
+        self.obs_hospitalized, self.obs_in_icu = None, None
         self.visits = Visits()  # used to help implement mobility
         self.last_date = defaultdict(lambda : self.env.initial_timestamp.date())  # used to track the last time this person did various things (like record smptoms)
         self.mobility_planner = MobilityPlanner(self, self.env, self.conf)
@@ -1208,7 +1209,6 @@ class Human(BaseHuman):
         # encounter message is under 2 meters for at least 5 minutes.
         if approximated_bluetooth_distance < self.conf.get("MAX_MESSAGE_PASSING_DISTANCE") and \
                 t_near_in_minutes > self.conf.get("MIN_MESSAGE_PASSING_DURATION") and \
-                self.tracing and \
                 self.has_app and \
                 other_human.has_app:
 
@@ -1232,7 +1232,7 @@ class Human(BaseHuman):
                 remaining_time_in_contact -= encounter_time_granularity
 
             if exchanged:
-                self.city.tracker.track_bluetooth_communications(human1=self, human2=h, timestamp=self.env.timestamp)
+                self.city.tracker.track_bluetooth_communications(human1=self, human2=other_human, location=self.location, timestamp=self.env.timestamp)
 
             Event.log_encounter_messages(
                 self.conf['COLLECT_LOGS'],

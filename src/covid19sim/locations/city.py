@@ -22,9 +22,7 @@ from covid19sim.distribution_normalization.dist_utils import get_rec_level_trans
 from covid19sim.interventions.tracing_utils import get_intervention
 from covid19sim.log.event import Event
 from covid19sim.locations.test_facility import TestFacility
-from covid19sim.locations.location import Location, Household
-from covid19sim.locations.hospital import Hospital
-import covid19sim.utils.utils
+
 
 if typing.TYPE_CHECKING:
     from covid19sim.human import Human
@@ -273,66 +271,6 @@ class City:
     def start_time(self):
         return datetime.datetime.fromtimestamp(self.env.ts_initial)
 
-    def create_location(self, specs, type, name, area=None):
-        """
-        Create a location instance based on `type`
-
-        Specs is a dict like:
-        {
-            "n" : (int) number of such locations,
-            "area": (float) locations' typical area,
-            "social_contact_factor": (float(0:1)) how much people are close to each other
-                see contamination_probability(),
-            "surface_prob": [0.1, 0.1, 0.3, 0.2, 0.3], distribution over types of surfaces
-                in that location
-            "rnd_capacity": (tuple, optional) Either None or a tuple of ints (min, max)
-            describing the args of np.random.randint,
-        }
-
-        Args:
-            specs (dict): location's parameters
-            type (str): "household" and "senior_residency" create a Household instance,
-                "hospital" creates a Hospital, other strings create a generic Location
-            name (str): Location's name, created as `type:name`
-            area (float, optional): Location's area. Defaults to None.
-
-        Returns:
-            Location | Household | Hospital: new location instance
-        """
-        _cls = Location
-        if type in ['household', 'senior_residency']:
-            _cls = Household
-        if type == 'hospital':
-            _cls = Hospital
-
-        return   _cls(
-                        env=self.env,
-                        rng=self.rng,
-                        conf=self.conf,
-                        name=f"{type}:{name}",
-                        location_type=type,
-                        lat=self.rng.randint(*self.x_range),
-                        lon=self.rng.randint(*self.y_range),
-                        area=area,
-                        social_contact_factor=specs['social_contact_factor'],
-                        capacity=None if not specs['rnd_capacity'] else self.rng.randint(*specs['rnd_capacity']),
-                        surface_prob = specs['surface_prob']
-                        )
-
-    def initialize_locations(self):
-        """
-        Create locations according to config.py / LOCATION_DISTRIBUTION.
-        The City instance will have attributes <location_type>s = list(location(*args))
-        """
-        for location, specs in self.conf.get("LOCATION_DISTRIBUTION").items():
-            # household distribution is separate
-            if location in ['household']:
-                continue
-
-            n = math.ceil(self.n_people/specs["n"])
-            area = _get_random_area(n, specs['area'] * self.total_area, self.rng)
-            locs = [self.create_location(specs, location, i, area[i]) for i in range(n)]
-            setattr(self, f"{location}s", locs)
 
     def initialize_humans_and_locations(self):
         """
@@ -395,9 +333,8 @@ class City:
         log("Downloading the app...", self.logfile)
         # app users
         all_has_app = self.conf.get('APP_UPTAKE') < 0
-
         age_histogram_rebinned = relativefreq2absolutefreq(
-            bins_fractions={(x[0], x[1]): x[2] for x in _convert_bin_5s_to_bin_10s(self.conf.get('P_AGE_REGION'))},
+            bins_fractions=_convert_bin_5s_to_bin_10s({(x[0], x[1]): x[2] for x in self.conf.get('P_AGE_REGION')}),
             n_elements=self.n_people,
             rng=self.rng,
         )

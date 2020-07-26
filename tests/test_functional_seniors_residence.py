@@ -6,11 +6,12 @@ import unittest.mock
 import numpy as np
 from tests.utils import get_test_conf
 
-from covid19sim.locations.city import EmptyCity
+from covid19sim.locations.city import City
 from covid19sim.utils.env import Env
 from covid19sim.log.monitors import EventMonitor
 from covid19sim.human import Human
 from covid19sim.utils.constants import SECONDS_PER_DAY, SECONDS_PER_HOUR
+from covid19sim.utils.demographics import assign_households_to_humans, create_locations_and_assign_workplace_to_humans
 
 
 def fake_run_app(*args, **kwargs):
@@ -34,15 +35,7 @@ def test_functional_seniors_residence():
         conf = get_test_conf("naive_local.yaml")
 
         env = Env(start_time)
-        city = EmptyCity(env, rng, city_x_range, city_y_range, conf)
-
-        sr = city.create_location(
-            conf.get("LOCATION_DISTRIBUTION")["senior_residency"],
-            "senior_residency",
-            0,
-            area=1000,
-        )
-        city.senior_residencys.append(sr)
+        city = City(env, 1000, 0.01, rng, city_x_range, city_y_range, conf)
 
         N = 10
 
@@ -60,19 +53,24 @@ def test_functional_seniors_residence():
                 name=i,
                 age=ages[i],
                 rng=rng,
-                has_app=False,
                 infection_timestamp=infection[i],
-                household=sr,
-                workplace=sr,
-                profession="retired",
-                rho=conf.get("RHO"),
-                gamma=conf.get("GAMMA"),
                 conf=conf,
             )
             for i in range(N)
         ]
         # pick one human randomly and make sure it cannot recover (for later checks)
         humans[np.random.randint(N)].never_recovers = True
+
+        city.initialize_humans_and_locations()
+        # TODO: Add way to just add senior residencies -- below won't work anymore. Also maybe switch this back to empty city?
+
+        # sr = city.create_location(
+        #     conf.get("LOCATION_DISTRIBUTION")["senior_residency"],
+        #     "senior_residency",
+        #     0,
+        #     area=1000,
+        # )
+        # city.senior_residencys.append(sr)
 
         city.humans = humans
         city.hd = {h.name: h for h in humans}
@@ -96,7 +94,7 @@ def test_functional_seniors_residence():
             env.process(m.run(env, city=city))
 
         with unittest.mock.patch.object(
-                EmptyCity, "run_app",
+                City, "run_app",
                 new=fake_run_app) as mock:
             env.run(until=env.ts_initial+simulation_days*SECONDS_PER_DAY)
 

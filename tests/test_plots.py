@@ -48,7 +48,6 @@ class PlotTest(unittest.TestCase):
                 outfile=outfile,
                 out_chunk_size=1,
                 seed=0,
-                return_city=True,
                 conf=conf,
             )
 

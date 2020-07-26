@@ -147,7 +147,7 @@ def _run_simulation(test_case, intervention_properties):
 
     with TemporaryDirectory() as d:
         outfile = os.path.join(d, "data")
-        monitors, _ = simulate(
+        _, monitors, _ = simulate(
             n_people=test_case.n_people,
             start_time=test_case.start_time,
             simulation_days=test_case.simulation_days,
@@ -157,6 +157,7 @@ def _run_simulation(test_case, intervention_properties):
             seed=test_case.test_seed,
             conf=test_case.config
         )
+
         monitors[0].dump()
         monitors[0].join_iothread()
 
