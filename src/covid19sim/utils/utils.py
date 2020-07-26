@@ -24,7 +24,7 @@ import requests
 import yaml
 from omegaconf import DictConfig, OmegaConf
 from scipy.stats import norm
-from covid19sim.utils.constants import SECONDS_PER_HOUR, SECONDS_PER_MINUTE
+from covid19sim.utils.constants import SECONDS_PER_HOUR, SECONDS_PER_MINUTE, AGE_BIN_WIDTH_5, AGE_BIN_WIDTH_10
 
 from covid19sim.epidemiology.symptoms import STR_TO_SYMPTOMS
 if typing.TYPE_CHECKING:
@@ -549,7 +549,7 @@ def dump_conf(
 def relativefreq2absolutefreq(
         bins_fractions: dict,
         n_elements: int,
-        rng
+        rng,
 ) -> dict:
     """
     Convert relative frequencies to absolute frequencies such that the number of elements sum to n_entity.
@@ -827,3 +827,39 @@ def get_approx_object_size(obj):
                 need_referents.append(obj)
         objects = gc.get_referents(*need_referents)
     return size
+
+def _convert_bin_5s_to_bin_10s(histogram_bin_5s):
+    """
+    """
+    histogram_bin_10s = {}
+    # combine two consecutive bins until the last one
+    for i in range(0, len(histogram_bin_5s), 2):
+        bin5_1 = AGE_BIN_WIDTH_5[i]
+        bin5_2 = AGE_BIN_WIDTH_5[i+1]
+
+        # AGE_BIN_WIDTH_5 have groupings of 5 years of age until the age of 74 and the last being 75 - 110
+        # AGE_BIN_WIDTH_10 have groupings of 10 years of age all through i.e. 70-80
+        # (assumption) break 75-110 to 75-79 and the rest assuming uniform distribution
+        # 75-79 = 5/35th of 75-110
+        c1 = histogram_bin_5s[bin5_1]
+        if bin5_2[1] < 70:
+            c2 = histogram_bin_5s[bin5_2]
+
+            bin10 = (bin5_1[0], bin5_2[1])
+            assert bin10 == AGE_BIN_WIDTH_10[i//2], f"not the right bin 10 {bin10}"
+            histogram_bin_10s[bin10] = c1 + c2
+        else:
+            assert bin5_1[0] == 70, f"Not the right penultimate last bin {bin5_1}"
+            assert bin5_2 == (75, 110), f"Not the right last bin {bin_5_2}"
+
+            bin10 = (bin5_1[0], 79)
+            assert bin10 == AGE_BIN_WIDTH_10[i//2], f"not the right bin 10 {bin10}"
+            c2 = histogram_bin_5s[bin5_2] * (5/35)
+            histogram_bin_10s[bin10] = c1 + c2
+
+            bin10 = (80, 110)
+            assert bin10 == AGE_BIN_WIDTH_10[i//2+1], f"not the right bin 10 {bin10}"
+            histogram_bin_10s[bin10] = c2 * 30 / 35
+            break
+
+    return histogram_bin_10s

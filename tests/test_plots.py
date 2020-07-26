@@ -44,7 +44,7 @@ class PlotTest(unittest.TestCase):
                 n_people=n_people,
                 start_time=start_time,
                 simulation_days=n_days,
-                init_percent_sick=0.5,
+                init_fraction_sick=0.5,
                 outfile=outfile,
                 out_chunk_size=1,
                 seed=0,

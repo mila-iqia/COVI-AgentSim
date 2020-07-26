@@ -60,14 +60,14 @@ if __name__ == "__main__":
     # ----------------------------
     n_people = 100
     simulation_days = 20
-    init_percent_sick = 0.01
+    init_fraction_sick = 0.01
     start_time = datetime.datetime(2020, 2, 28, 0, 0)
     monitors, tracker = simulate(
         n_people=n_people,
         start_time=start_time,
         simulation_days=simulation_days,
         outfile=outfile,
-        init_percent_sick=init_percent_sick,
+        init_fraction_sick=init_fraction_sick,
         out_chunk_size=500,
         conf=conf,
     )

@@ -117,7 +117,7 @@ class Human(BaseHuman):
         self.allergy_timestamp = None  # time when this person started having allergy symptoms
 
         # Allergies
-        len_allergies = self.rng.normal(1/self.carefulness, 1)   # determines the number of symptoms this persons allergies would present with (if they start experiencing symptoms)
+        len_allergies = self.rng.normal(1/self.carefulness+0.0000001, 1)   # determines the number of symptoms this persons allergies would present with (if they start experiencing symptoms)
         self.len_allergies = 7 if len_allergies > 7 else math.ceil(len_allergies)
         self.allergy_progression = _get_allergy_progression(self.rng)  # if this human starts having allergy symptoms, then there is a progression of symptoms over one or multiple days
 

@@ -31,7 +31,6 @@ P_AGE_REGION: [
     [70, 74, 0.037],
     [75, 110, 0.08]
 ]
-
 AVERAGE_AGE_REGION: 40.6
 MEDIAN_AGE_REGION: 39.1
 
@@ -153,7 +152,6 @@ AGE_DIFFERENCE_BETWEEN_PARENT_AND_KID: 20 # used in sampling for parents
 # total number of residents in these centers: 32935 (E.1)
 # Number of residents per residence - E.1 / F.1 = 125.22
 N_RESIDENTS_PER_COLLECTIVE: 125.2
-RESIDENT_TO_STAFF_RATIO: 13 # /!\ (no-source) (source?)
 
 # workplace
 # this type of location is used to model uniform interactions with colleagues

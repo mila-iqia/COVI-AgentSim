@@ -11,7 +11,7 @@ import time
 from collections import defaultdict, Counter
 from orderedset import OrderedSet
 
-from covid19sim.utils.utils import compute_distance, _get_random_area, relativefreq2absolutefreq, calculate_average_infectiousness, log
+from covid19sim.utils.utils import compute_distance, _get_random_area, relativefreq2absolutefreq, _convert_bin_5s_to_bin_10s, calculate_average_infectiousness, log
 from covid19sim.utils.demographics import get_humans_with_age, assign_households_to_humans, create_locations_and_assign_workplace_to_humans
 from covid19sim.log.track import Tracker
 from covid19sim.inference.heavy_jobs import batch_run_timeslot_heavy_jobs
@@ -49,7 +49,7 @@ class City:
             x_range: typing.Tuple,
             y_range: typing.Tuple,
             conf: typing.Dict,
-            logfile: str
+            logfile: str = None,
     ):
         """
         Constructs a city object.
@@ -345,7 +345,7 @@ class City:
         self.age_histogram = relativefreq2absolutefreq(
             bins_fractions={(x[0], x[1]): x[2] for x in self.conf.get('P_AGE_REGION')},
             n_elements=self.n_people,
-            rng=self.rng
+            rng=self.rng,
         )
 
         # initalize human objects
@@ -395,9 +395,16 @@ class City:
         log("Downloading the app...", self.logfile)
         # app users
         all_has_app = self.conf.get('APP_UPTAKE') < 0
+
+        age_histogram_rebinned = relativefreq2absolutefreq(
+            bins_fractions={(x[0], x[1]): x[2] for x in _convert_bin_5s_to_bin_10s(self.conf.get('P_AGE_REGION'))},
+            n_elements=self.n_people,
+            rng=self.rng,
+        )
+
         # The dict below keeps track of an app quota for each age group
         n_apps_per_age = {
-            k: math.ceil(self.age_histogram[k] * v * self.conf.get('APP_UPTAKE'))
+            k: math.ceil(age_histogram_rebinned[k] * v * self.conf.get('APP_UPTAKE'))
             for k, v in self.conf.get("SMARTPHONE_OWNER_FRACTION_BY_AGE").items()
         }
         for human in self.humans:

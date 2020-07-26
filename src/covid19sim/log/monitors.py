@@ -10,7 +10,6 @@ import numpy as np
 from datetime import datetime, timedelta
 
 from covid19sim.locations.city import City
-from covid19sim.human import Human
 from covid19sim.utils.utils import _json_serialize
 from covid19sim.utils.constants import SECONDS_PER_HOUR, SECONDS_PER_DAY
 from covid19sim.utils.utils import log

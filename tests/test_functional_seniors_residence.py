@@ -8,7 +8,7 @@ from tests.utils import get_test_conf
 
 from covid19sim.locations.city import EmptyCity
 from covid19sim.utils.env import Env
-from covid19sim.log.monitors import EventMonitor, SEIRMonitor, TimeMonitor
+from covid19sim.log.monitors import EventMonitor
 from covid19sim.human import Human
 from covid19sim.utils.constants import SECONDS_PER_DAY, SECONDS_PER_HOUR
 
@@ -82,8 +82,6 @@ def test_functional_seniors_residence():
 
         monitors = [
             EventMonitor(f=SECONDS_PER_HOUR*30, dest=outfile, chunk_size=None),
-            SEIRMonitor(f=SECONDS_PER_DAY),
-            TimeMonitor(SECONDS_PER_DAY),
         ]
 
         monitors[0].dump()

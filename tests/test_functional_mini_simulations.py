@@ -153,7 +153,7 @@ def _run_simulation(test_case, intervention_properties):
             simulation_days=test_case.simulation_days,
             outfile=outfile,
             out_chunk_size=0,
-            init_percent_sick=test_case.init_percent_sick,
+            init_fraction_sick=test_case.init_fraction_sick,
             seed=test_case.test_seed,
             conf=test_case.config
         )
@@ -187,7 +187,7 @@ class MiniSimulationTest(unittest.TestCase):
 
         self.test_seed = 0
         self.n_people = 10
-        self.init_percent_sick = 0.1
+        self.init_fraction_sick = 0.1
         self.start_time = datetime.datetime(2020, 2, 28, 0, 0)
         self.simulation_days = 5
         self.intervention_day = 0
