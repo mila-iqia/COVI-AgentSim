@@ -195,7 +195,6 @@ class MiniSimulationTest(unittest.TestCase):
         self.config['COLLECT_LOGS'] = True
         self.config['INTERVENTION_DAY'] = self.intervention_day
         self.config['APP_UPTAKE'] = -1
-        self.config['TRANSFORMER_EXP_PATH'] = "https://drive.google.com/file/d/1QhiZehbxNOhA-7n37h6XEHTORIXweXc6"
         self.config['LOGGING_LEVEL'] = "DEBUG"
 
     def tearDown(self):

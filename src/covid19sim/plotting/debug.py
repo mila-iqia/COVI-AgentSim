@@ -6,8 +6,7 @@ from pathlib import Path
 import covid19sim.plotting.plot_infection_chains as infection_chains
 from covid19sim.plotting.baseball_cards import DebugDataLoader, generate_debug_plots
 
-def main(data_path, output_path):
-    num_chains = 10
+def main(data_path, output_path, num_chains=10):
 
     data_path = Path(data_path).resolve()
     assert data_path.exists()

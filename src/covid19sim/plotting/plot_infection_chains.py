@@ -415,7 +415,6 @@ def construct_infection_tree(infection_chain, draw_fig=True):
 def plot(data, output_path, num_chains=10):
     all_ids = set()
     caption = "heuristicv1 adoption 100%"
-
     human_risk_each_day = defaultdict(lambda: defaultdict(lambda: -1))
     for x in data["risk_attributes"]:
         date = x["timestamp"].date()
