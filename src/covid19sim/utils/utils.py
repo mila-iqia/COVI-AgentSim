@@ -830,6 +830,13 @@ def get_approx_object_size(obj):
 
 def _convert_bin_5s_to_bin_10s(histogram_bin_5s):
     """
+    Maps the count as per age ranges of 5 to age range of 10.
+
+    Args:
+        histogram_bin_5s (dict): keys are a tuple of (lower limit, upper limit) according to AGE_BIN_WIDTH_5 both inclusive and values are counts
+
+    Returns:
+        (dict): keys are a tuple of (lower limit, upper limit) according to AGE_BIN_WIDTH_10 both inclusive and values are counts 
     """
     histogram_bin_10s = {}
     # combine two consecutive bins until the last one
