@@ -49,6 +49,7 @@ def test_basic_demographics(
     env = Env(start_time)
     city_x_range = (0, 1000)
     city_y_range = (0, 1000)
+    conf['simulation_days'] = 1
     city = City(
         env=env,
         n_people=n_people,
@@ -92,16 +93,6 @@ def test_basic_demographics(
     maximum_age = 117  # Canadian record: Marie-Louise Meilleur
     assert df.age.max() < maximum_age, f'There is a person older than the Canadian longevity record.'
 
-    # For now, this test is not relevant for a population of 5,000.
-    # Ref: https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1710000501
-    canstat_fraction_over_100 = 0.000287183
-    fraction_over_100 = df.age[df.age > 100].count() / n_people
-
-    # TODO: Investigate why the variance on this is so high (it's putting like 1/10th of 1 percent of people as over 100)
-    assert math.fabs(fraction_over_100 - canstat_fraction_over_100) < fraction_over_100_error_tol, \
-        f'The simulated fraction over 100 ({fraction_over_100}) is too different ' \
-        f'from the Canadian statistic ({canstat_fraction_over_100})'
-
     # Check basic statistics about sex
     canstat_sex_rel_diff = 0.018
     sex_grouped = df.groupby('sex').count()
@@ -118,8 +109,8 @@ def test_basic_demographics(
 
     # Check that the simulated age distribution is similar to the one specified in HUMAN_DISTRIBUTION
     age_histogram = {}
-    for key, item in conf.get('HUMAN_DISTRIBUTION').items():
-        age_histogram[key] = item['p']
+    for x1, x2, p in conf.get('P_AGE_REGION'):
+        age_histogram[(x1, x2)] = p
     intervals = pd.IntervalIndex.from_tuples(age_histogram.keys(), closed='both')
     age_grouped = df.groupby(pd.cut(df['age'], intervals))
     age_grouped = age_grouped.agg({'age': 'count'})
@@ -183,10 +174,34 @@ def test_household_distribution(
     conf = get_test_conf(test_conf_name)
 
     # Test that all house_size preferences sum to 1
-    for key, value in conf['HUMAN_DISTRIBUTION'].items():
-        val = np.sum(value['residence_preference']['house_size'])
-        assert math.fabs(np.sum(value['residence_preference']['house_size']) - 1.) < 1e-6, \
-            f'The house_size preferences for age group {key} does not sum to 1. (actual value= {val})'
+    P_HOUSEHOLD_SIZE = conf['P_HOUSEHOLD_SIZE']
+    P_FAMILY_TYPE_SIZE_2 = conf['P_FAMILY_TYPE_SIZE_2']
+    P_FAMILY_TYPE_SIZE_3 = conf['P_FAMILY_TYPE_SIZE_3']
+    P_FAMILY_TYPE_SIZE_4 = conf['P_FAMILY_TYPE_SIZE_4']
+    P_FAMILY_TYPE_SIZE_MORE_THAN_5 = conf['P_FAMILY_TYPE_SIZE_MORE_THAN_5']
+
+    # household size
+    val = np.sum(P_HOUSEHOLD_SIZE)
+    assert math.fabs(np.sum(P_HOUSEHOLD_SIZE) - 1.) < 1e-6, \
+        f'The P_HOUSEHOLD_SIZE does not sum to 1. (actual value= {val})'
+
+    # household sizes
+    val = np.sum(P_FAMILY_TYPE_SIZE_2)
+    assert math.fabs(np.sum(P_FAMILY_TYPE_SIZE_2) - P_HOUSEHOLD_SIZE[1]) < 1e-6, \
+        f'The P_FAMILY_TYPE_SIZE_2 does not sum to P_HOUSEHOLD_SIZE[1]. (actual value= {val}, expected value={P_HOUSEHOLD_SIZE[1]})'
+
+    val = np.sum(P_FAMILY_TYPE_SIZE_3)
+    assert math.fabs(np.sum(P_FAMILY_TYPE_SIZE_3) - P_HOUSEHOLD_SIZE[2]) < 1e-6, \
+        f'The P_FAMILY_TYPE_SIZE_3 does not sum to P_HOUSEHOLD_SIZE[2]. (actual value= {val}, expected value={P_HOUSEHOLD_SIZE[2]})'
+
+    val = np.sum(P_FAMILY_TYPE_SIZE_4)
+    assert math.fabs(np.sum(P_FAMILY_TYPE_SIZE_4) - P_HOUSEHOLD_SIZE[3]) < 1e-6, \
+        f'The P_FAMILY_TYPE_SIZE_4 does not sum to P_HOUSEHOLD_SIZE[3]. (actual value= {val}, expected value={P_HOUSEHOLD_SIZE[3]})'
+
+    val = np.sum(P_FAMILY_TYPE_SIZE_MORE_THAN_5)
+    assert math.fabs(np.sum(P_FAMILY_TYPE_SIZE_MORE_THAN_5) - P_HOUSEHOLD_SIZE[4]) < 1e-6, \
+        f'The P_FAMILY_TYPE_SIZE_MORE_THAN_5 does not sum to P_HOUSEHOLD_SIZE[4]. (actual value= {val}, expected value={P_HOUSEHOLD_SIZE[4]})'
+
 
     n_people = 5000
     init_fraction_sick = 0.01
@@ -195,6 +210,7 @@ def test_household_distribution(
     env = Env(start_time)
     city_x_range = (0, 1000)
     city_y_range = (0, 1000)
+    conf['simulation_days'] = 1
     city = City(
         env=env,
         n_people=n_people,
@@ -203,7 +219,7 @@ def test_household_distribution(
         x_range=city_x_range,
         y_range=city_y_range,
         conf=conf,
-        logfile="logfile.txt",
+        logfile="logfile.txt"
     )
 
     # Verify that each human is associated to a household
@@ -224,7 +240,7 @@ def test_household_distribution(
     sim_avg_household_size = n_resident_in_households / len(city.households)
 
     # Average number of resident per household
-    avg_household_size = 2.4  # Value from CanStats
+    avg_household_size = conf['AVG_HOUSEHOLD_SIZE']  # Value from CanStats
     assert math.fabs(sim_avg_household_size - avg_household_size) < avg_household_size_error_tol, \
         f'The empirical average household size is {sim_avg_household_size:.2f}' \
         f' while the statistics for Canada is {avg_household_size:.2f}'
@@ -237,7 +253,7 @@ def test_household_distribution(
         f' while the statistics for Canada is {fraction_in_households:.2f}'
 
     # Household size distribution from
-    household_size_distribution = [0.282, 0.364, 0.152, 0.138, 0.084]
+    household_size_distribution = conf['P_HOUSEHOLD_SIZE']
     assert np.allclose(
         sim_household_size_distribution,
         household_size_distribution,
@@ -276,6 +292,7 @@ def test_app_distribution(
     env = Env(start_time)
     city_x_range = (0, 1000)
     city_y_range = (0, 1000)
+    conf['simulation_days'] = 1
     city = City(
         env=env,
         n_people=n_people,
@@ -301,10 +318,6 @@ def test_app_distribution(
         columns=['age', 'sex', 'has_app']
     )
 
-    # Check that the age groups are the same for the two statistics
-    assert conf.get('SMARTPHONE_OWNER_FRACTION_BY_AGE') == conf.get('HUMAN_DISTRIBUTION'), \
-        f'The age groups between SMARTPHONE_OWNER_FRACTION_BY_AGE and HUMAN_DISTRIBUTION do not agree.'
-
     # Check the age distribution of the app users
     if conf.get('APP_UPTAKE') < 0:
         age_app_histogram = conf.get('SMARTPHONE_OWNER_FRACTION_BY_AGE')
@@ -318,13 +331,14 @@ def test_app_distribution(
         assert np.allclose(age_stats.to_numpy(), app_stats.to_numpy())
     else:
         abs_age_histogram = utils.relativefreq2absolutefreq(
-            bins_fractions={age_bin: specs['p'] for age_bin, specs in conf.get('HUMAN_DISTRIBUTION').items()},
+            bins_fractions={(x1, x2): p for x1, x2, p in conf.get('P_AGE_REGION')},
             n_elements=n_people,
             rng=city.rng
         )
+        age_histogram_bin_10s = utils._convert_bin_5s_to_bin_10s(abs_age_histogram)
         n_apps_per_age = {
-            k: math.ceil(abs_age_histogram[k] * v * conf.get('APP_UPTAKE'))
-            for k, v in conf.get("SMARTPHONE_OWNER_FRACTION_BY_AGE").items()
+            (x[0], x[1]): math.ceil(age_histogram_bin_10s[(x[0], x[1])] * x[2] * conf.get('APP_UPTAKE'))
+            for x in conf.get("SMARTPHONE_OWNER_FRACTION_BY_AGE")
         }
         n_apps = np.sum(list(n_apps_per_age.values()))
 
@@ -367,6 +381,7 @@ def test_app_distribution(
     env = Env(start_time)
     city_x_range = (0, 1000)
     city_y_range = (0, 1000)
+    conf['simulation_days'] = 1
     city = City(
         env=env,
         n_people=n_people,
@@ -395,7 +410,7 @@ def test_app_distribution(
     # Check the age distribution of the app users
     if conf.get('APP_UPTAKE') < 0:
         age_app_histogram = conf.get('SMARTPHONE_OWNER_FRACTION_BY_AGE')
-        age_app_groups = [(low, up) for low, up in age_app_histogram]  # make the age groups contiguous
+        age_app_groups = [(low, up) for low, up, p in age_app_histogram]  # make the age groups contiguous
         intervals = pd.IntervalIndex.from_tuples(age_app_groups, closed='both')
         age_grouped = df.groupby(pd.cut(df['age'], intervals))
         age_grouped = age_grouped.agg({'age': 'count', 'has_app': 'sum'})
@@ -405,13 +420,14 @@ def test_app_distribution(
         assert np.allclose(age_stats.to_numpy(), app_stats.to_numpy())
     else:
         abs_age_histogram = utils.relativefreq2absolutefreq(
-            bins_fractions={age_bin: specs['p'] for age_bin, specs in conf.get('HUMAN_DISTRIBUTION').items()},
+            bins_fractions={(x1, x2): p for x1, x2, p in conf.get('P_AGE_REGION')},
             n_elements=n_people,
             rng=city.rng
         )
+        age_histogram_bin_10s = utils._convert_bin_5s_to_bin_10s(abs_age_histogram)
         n_apps_per_age = {
-            k: math.ceil(abs_age_histogram[k] * v * conf.get('APP_UPTAKE'))
-            for k, v in conf.get("SMARTPHONE_OWNER_FRACTION_BY_AGE").items()
+            (x[0], x[1]): math.ceil(age_histogram_bin_10s[(x[0], x[1])] * x[2] * conf.get('APP_UPTAKE'))
+            for x in conf.get("SMARTPHONE_OWNER_FRACTION_BY_AGE")
         }
         n_apps = np.sum(list(n_apps_per_age.values()))
 
