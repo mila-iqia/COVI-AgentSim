@@ -31,7 +31,6 @@ P_AGE_REGION: [
     [70, 74, 0.037],
     [75, 110, 0.08]
 ]
-
 AVERAGE_AGE_REGION: 40.6
 MEDIAN_AGE_REGION: 39.1
 
@@ -92,12 +91,12 @@ P_FAMILY_TYPE_SIZE_4: [0.096, 0.008, 0.008]
 # 5 or more person families
 #   5 person families in private households - 41,555 (C.5)
 #   fraction of **all** households that are 5 person families = (C.5 / C.1) * (B.2 / B.1) = 0.046 (C.5.a)
-#   fraction of **all** households that are of size more than 5 and not more than 5 person families = (C.5.a - A.5) = 0.014
+#   fraction of **all** households that are of size more than 5 and not more than 5 person families = (C.5.a - A.5) = 0.014 (used as 0.013 so that numbers sum up to 0.06 P_HOUSEHOLD_SIZE[4])
 #      couples with 3 or more children - 39,180 (C.5.1)
 #      fraction of **all** households that are "couples with 3 or more children" = (C.5.1 / C.1) * (B.2 / B.1) = 0.044
 #      single parent with 4 or more children - (C.4.2 - C.4.3) = 2370 (C.5.2)
 #      fraction of **all** households that are "single parent with 4 or more children" = (C.5.2 / C.1) * (B.2 / B.1) = 0.003
-P_FAMILY_TYPE_SIZE_MORE_THAN_5: [0.044, 0.003, 0.014]
+P_FAMILY_TYPE_SIZE_MORE_THAN_5: [0.044, 0.003, 0.013]
 
 # multi-generation households (D)
 # https://www12.statcan.gc.ca/census-recensement/2016/dp-pd/hlt-fst/fam/Table.cfm?Lang=E&T=24&Geo=00&SO=18D
@@ -153,7 +152,6 @@ AGE_DIFFERENCE_BETWEEN_PARENT_AND_KID: 20 # used in sampling for parents
 # total number of residents in these centers: 32935 (E.1)
 # Number of residents per residence - E.1 / F.1 = 125.22
 N_RESIDENTS_PER_COLLECTIVE: 125.2
-RESIDENT_TO_STAFF_RATIO: 13 # /!\ (no-source) (source?)
 
 # workplace
 # this type of location is used to model uniform interactions with colleagues

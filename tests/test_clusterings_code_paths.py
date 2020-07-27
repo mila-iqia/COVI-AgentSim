@@ -56,7 +56,7 @@ class ClusteringCodePaths(unittest.TestCase):
                         simulation_days=self.simulation_days,
                         outfile=outfile,
                         out_chunk_size=0,
-                        init_percent_sick=0.25,
+                        init_fraction_sick=0.25,
                         seed=self.test_seed,
                         conf=self.config
                     )

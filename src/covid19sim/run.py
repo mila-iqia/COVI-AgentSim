@@ -51,7 +51,7 @@ def main(conf: DictConfig):
         conf["outdir"],
         conf["n_people"],
         conf["simulation_days"],
-        conf["init_percent_sick"],
+        conf["init_fraction_sick"],
         conf["APP_UPTAKE"],
         conf["seed"],
         timenow,
@@ -85,7 +85,7 @@ def main(conf: DictConfig):
 
     city, monitors, tracker = simulate(
         n_people=conf["n_people"],
-        init_fraction_sick=conf["init_percent_sick"],
+        init_fraction_sick=conf["init_fraction_sick"],
         start_time=conf["start_time"],
         simulation_days=conf["simulation_days"],
         outfile=conf["outfile"],
@@ -171,7 +171,7 @@ def simulate(
         conf = {}
 
     conf["n_people"] = n_people
-    conf["init_percent_sick"] = init_fraction_sick
+    conf["init_fraction_sick"] = init_fraction_sick
     conf["start_time"] = start_time
     conf["simulation_days"] = simulation_days
     conf["outfile"] = outfile

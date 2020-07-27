@@ -417,9 +417,15 @@ class Event:
 
         if human.does_not_work:
             obs_payload['n_people_workplace'] = 'no people outside my household'
-        elif human.workplace.location_type in ['HOSPITAL', 'STORE', 'MISC', 'SENIOR_RESIDENCE']:
+        elif (
+            human.workplace is not None
+            and human.workplace.location_type in ['HOSPITAL', 'STORE', 'MISC', 'SENIOR_RESIDENCE']
+        ):
             obs_payload['n_people_workplace'] = 'many people'
-        elif "WORKPLACE" == human.workplace.location_type:
+        elif (
+            human.workplace is not None
+            and human.workplace.location_type == "WORKPLACE"
+        ):
             obs_payload['n_people_workplace'] = 'few people'
         else:
             obs_payload['n_people_workplace'] = 'no people outside my household'

@@ -28,7 +28,7 @@ class HydraTests(unittest.TestCase):
             if f.is_file() and not f.name.startswith(".")
         ] + [
             f
-            for f in (Path(__file__).parent / "utils" / "test_configs").glob("**/*")
+            for f in (Path(__file__).parent / "test_configs").glob("**/*")
             if f.is_file() and not f.name.startswith(".")
         ]
         for f in all_files:
@@ -41,7 +41,11 @@ class HydraTests(unittest.TestCase):
         self.assertTrue("defaults" in config)
 
         for key in config["defaults"]:
-            self.assertTrue((HYDRA_SIM_PATH / (key + ".yaml")).exists())
+            if type(key) == str:
+                self.assertTrue((HYDRA_SIM_PATH / (key + ".yaml")).exists())
+            elif type(key) == dict:
+                self.assertTrue((HYDRA_SIM_PATH / list(key.keys())[0] / (list(key.values())[0] + ".yaml")).exists())
+
 
     def test_no_nested_dirs(self):
         """
@@ -67,7 +71,7 @@ class HydraTests(unittest.TestCase):
             with fname.open("r") as f:
                 self.assertIsInstance(yaml.safe_load(f), dict)
 
-        for fname in (Path(__file__).parent / "utils" / "test_configs").glob("**/*.yaml"):
+        for fname in (Path(__file__).parent / "test_configs").glob("**/*.yaml"):
             with fname.open("r") as f:
                 self.assertIsInstance(yaml.safe_load(f), dict)
 
@@ -79,7 +83,7 @@ class HydraTests(unittest.TestCase):
         self.assertIsInstance(get_test_conf(conf_name), dict)
         test_conf = get_test_conf(conf_name)
 
-        path = Path(__file__).parent / "utils" / "test_configs" / conf_name
+        path = Path(__file__).parent /"test_configs" / conf_name
         with path.open("r") as f:
             reference_conf = yaml.safe_load(f)
 
@@ -108,31 +112,6 @@ class HydraTests(unittest.TestCase):
         self.assertDictEqual(
             parsed_conf["SMARTPHONE_OWNER_FRACTION_BY_AGE"], {(1, 15): "something"}
         )
-        self.assertDictEqual(
-            parsed_conf["HUMAN_DISTRIBUTION"], {(0, 20): "something_else"}
-        )
         self.assertEqual(
             parsed_conf["start_time"], datetime.datetime(2020, 2, 28, 0, 0, 0)
         )
-
-    def test_dump_conf(self):
-        """
-        asserts that a conf that is dumped and parsed again yields identical results
-        """
-
-        conf = get_test_conf("naive_local.yaml")
-
-        with TemporaryDirectory() as d:
-            dump_conf(conf, Path(d) / "dumped.yaml")
-            with (Path(d) / "dumped.yaml").open("r") as f:
-                loaded_conf = yaml.safe_load(f)
-            parsed_conf = parse_configuration(loaded_conf)
-
-            # assertDictEqual cannot handle equality with np.array, e.g. by using np.all,
-            # so we need to do it manually.
-            age_group_contact_avg1 = conf.pop('AGE_GROUP_CONTACT_AVG')
-            age_group_contact_avg2 = parsed_conf.pop('AGE_GROUP_CONTACT_AVG')
-            self.assertListEqual(age_group_contact_avg1['age_groups'], age_group_contact_avg2['age_groups'])
-            np.testing.assert_almost_equal(age_group_contact_avg1['contact_avg'], age_group_contact_avg2['contact_avg'])
-
-            self.assertDictEqual(conf, parsed_conf)

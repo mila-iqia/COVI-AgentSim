@@ -1088,7 +1088,7 @@ def _sample_solo_dweller(valid_age_bins, conf, unassigned_humans, rng):
     human = []
     age_bins = sorted(unassigned_humans.keys(), key=lambda x:x[0])
     valid_idx = [i for i,bin in enumerate(age_bins) if len(unassigned_humans[bin]) >= 1 and P_AGE_SOLO[i] > 0]
-    valid_age_bins =  [age_bins[i] for i in valid_idx]
+    valid_age_bins = [age_bins[i] for i in valid_idx]
     if valid_age_bins:
         P = [P_AGE_SOLO[i] for i in valid_idx]
         P = [i / sum(P) for i in P]

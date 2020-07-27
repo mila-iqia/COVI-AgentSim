@@ -400,7 +400,7 @@ class Tracker(object):
         # solo dwellers
         estimated_solo_dwellers_mean_age = sum([x[2] * (x[0] + x[1]) / 2 for x in self.conf['P_AGE_SOLO_DWELLERS_GIVEN_HOUSESIZE_1']])
         simulated_solo_dwellers_age_given_housesize1 = [[x[0], x[1], 0] for x in self.conf['P_AGE_SOLO_DWELLERS_GIVEN_HOUSESIZE_1']]
-        n_solo_houses = len(solo_ages)
+        n_solo_houses = len(solo_ages) + 1e-6 # to avoid ZeroDivisionError
         for age in solo_ages:
             for i,x in enumerate(self.conf['P_AGE_SOLO_DWELLERS_GIVEN_HOUSESIZE_1']):
                 if x[0] <= age <= x[1]:
@@ -1328,7 +1328,7 @@ class Tracker(object):
             if human1.location != human1.household:
                 self.n_outside_daily_contacts += 1
 
-    def track_bluetooth_communications(self, human1, human2, timestamp):
+    def track_bluetooth_communications(self, human1, human2, location, timestamp):
         """
         Keeps track of mean daily unique bluetooth encounters between two age groups.
         It is used to visualize the subset of contacts that are captured by bluetooth communication.
@@ -1364,7 +1364,7 @@ class Tracker(object):
             return
 
         # record the new values
-        type_of_place = _get_location_type_to_track_mixing(location)
+        type_of_place = _get_location_type_to_track_mixing(human1, location)
         i = human1.age_bin_width_5.index
         j = human2.age_bin_width_5.index
         for location_type in ['all', type_of_place]:

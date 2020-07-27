@@ -91,11 +91,8 @@ class Human(BaseHuman):
         self.household = None  # assigned later
         self.location = None  # assigned later
 
-        # Logging / Tracking
-        self.track_this_human = False  # tracks transition of human everytime there is a change in it's location. see `self.track_me`
-        self.my_history = []  # if `track_this_human` is True, records of transition is stored in this list
-        self.r0 = []  # TODO: @PRATEEK plz comment this
-        self._events = []  # TODO: @PRATEEK plz comment this
+        # Logging data
+        self._events = []
 
         """ Biological Properties """
         # Individual Characteristics
@@ -129,6 +126,7 @@ class Human(BaseHuman):
         self.infectiousness_onset_days = 0  # number of days after exposure that this person becomes infectious
         self.can_get_really_sick = may_develop_severe_illness(self.age, self.sex, self.rng)  # boolean representing whether this person may need to go to the hospital
         self.can_get_extremely_sick = self.can_get_really_sick and self.rng.random() >= 0.7  # &severe; 30% of severe cases need ICU
+        self.never_recovers = self.rng.random() <= self.conf.get("P_NEVER_RECOVERS")[min(math.floor(self.age/10), 8)]  # boolean representing that this person will die if they are infected with Covid-19
         self.initial_viral_load = self.rng.rand() if infection_timestamp is not None else 0  # starting value for Covid-19 viral load if this person is one of the initially exposed people
         self.is_immune = False  # whether this person is immune to Covid-19 (happens after recovery)
         if self.infection_timestamp is not None:  # if this is an initially Covid-19 sick person
@@ -209,6 +207,7 @@ class Human(BaseHuman):
         self.gamma = conf['GAMMA']  # controls mobility (how often this person goes out and visits new places)
 
         self.household, self.location = None, None
+        self.obs_hospitalized, self.obs_in_icu = None, None
         self.visits = Visits()  # used to help implement mobility
         self.last_date = defaultdict(lambda : self.env.initial_timestamp.date())  # used to track the last time this person did various things (like record smptoms)
         self.mobility_planner = MobilityPlanner(self, self.env, self.conf)
@@ -597,10 +596,19 @@ class Human(BaseHuman):
             # self.reset_test_result()
             self.infection_timestamp = None
             self.all_symptoms, self.covid_symptoms = [], []
+            if self.never_recovers:
+                self.mobility_planner.human_dies_in_next_activity = True
+                return
+            else:
+                self.recovered_timestamp = self.env.timestamp
+                self.is_immune = not self.conf.get("REINFECTION_POSSIBLE")
 
-            self.recovered_timestamp = self.env.timestamp
-            self.is_immune = not self.conf.get("REINFECTION_POSSIBLE")
-            Event.log_recovery(self.conf.get('COLLECT_LOGS'), self, self.env.timestamp, death=False)
+                # "resample" the chance probability of never recovering again (experimental)
+                if not self.is_immune:
+                    self.never_recovers = self.rng.random() < self.conf.get("P_NEVER_RECOVERS")[
+                        min(math.floor(self.age / 10), 8)]
+
+                Event.log_recovery(self.conf.get('COLLECT_LOGS'), self, self.env.timestamp, death=False)
 
     def check_cold_and_flu_contagion(self, other_human):
         """
@@ -882,6 +890,7 @@ class Human(BaseHuman):
         Yields:
             generator
         """
+        self.infection_timestamp = None
         self.recovered_timestamp = datetime.datetime.max
         self.all_symptoms, self.covid_symptoms = [], []
         Event.log_recovery(self.conf.get('COLLECT_LOGS'), self, self.env.timestamp, death=True)
@@ -944,7 +953,7 @@ class Human(BaseHuman):
             if next_activity.location is not None:
 
                 # (debug) to print the schedule for someone
-                # if self.name == "human:110":
+                # if self.name == "human:1":
                 #       print("A\t", self.env.timestamp, self, next_activity)
 
                 # /!\ TODO - P - check for the capacity at a location; it requires adjustment of timestamps
@@ -1024,8 +1033,6 @@ class Human(BaseHuman):
 
         # track transitions & locations visited
         self.city.tracker.track_mobility(previous_activity, next_activity, self)
-        if self.track_this_human:
-            self.track_me(location)
 
         # add human to the location
         self.location = location
@@ -1046,7 +1053,7 @@ class Human(BaseHuman):
         if duration >= min(self.conf['MIN_MESSAGE_PASSING_DURATION'], self.conf['INFECTION_DURATION']):
             # sample interactions with other humans at this location
             # unknown are the ones that self is not aware of e.g. person sitting next to self in a cafe
-            # sleep is an inactive stage so we sample only unknown interactions 
+            # sleep is an inactive stage so we sample only unknown interactions
             known_interactions, unknown_interactions = location.sample_interactions(self, unknown_only = type_of_activity == "sleep")
             self.interact_with(known_interactions, type="known")
             self.interact_with(unknown_interactions, type="unknown")
@@ -1208,7 +1215,6 @@ class Human(BaseHuman):
         # encounter message is under 2 meters for at least 5 minutes.
         if approximated_bluetooth_distance < self.conf.get("MAX_MESSAGE_PASSING_DISTANCE") and \
                 t_near_in_minutes > self.conf.get("MIN_MESSAGE_PASSING_DURATION") and \
-                self.tracing and \
                 self.has_app and \
                 other_human.has_app:
 
@@ -1232,7 +1238,7 @@ class Human(BaseHuman):
                 remaining_time_in_contact -= encounter_time_granularity
 
             if exchanged:
-                self.city.tracker.track_bluetooth_communications(human1=self, human2=h, timestamp=self.env.timestamp)
+                self.city.tracker.track_bluetooth_communications(human1=self, human2=other_human, location=self.location, timestamp=self.env.timestamp)
 
             Event.log_encounter_messages(
                 self.conf['COLLECT_LOGS'],
