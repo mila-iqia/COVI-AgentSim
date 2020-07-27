@@ -256,8 +256,9 @@ SMARTPHONE_OWNER_FRACTION_BY_AGE:
 INFECTION_RADIUS: 200 # cms
 INFECTION_DURATION: 15 # minutes
 
-#                   0-9 10-19 20-29  30-39  40-49  50-59 60-69 70-79  80-  # Assuming dath rate to be same for 80 and above
-P_NEVER_RECOVERS: [0, 0.002, 0.002, 0.002, 0.004, 0.02, 0.04, 0.08, 0.15] # &never_recovers
+# Ref: https://www.quebec.ca/en/health/health-issues/a-z/2019-coronavirus/situation-coronavirus-in-quebec/ 
+#                  0-9 10-19 20-29  30-39  40-49  50-59 60-69 70-79  80-  # Assuming death rate to be same for 80 and above
+P_NEVER_RECOVERS: [0, 0, 0.0001, 0.0001, 0.0004, 0.0018, 0.0059, 0.0176, 0.0728] # &never_recovers
 REINFECTION_POSSIBLE: False # [0, 1]
 
 # aerosol    copper      cardboard       steel       plastic
@@ -279,6 +280,7 @@ INFECTIOUSNESS_PEAK_CLIP_HIGH: 2.2
 # &infectiousness-onset [He 2020 https://www.nature.com/articles/s41591-020-0869-5#ref-CR1] infectiousness started from 2.3 days (95% CI, 0.8–3.0 days) before symptom onset and peaked at 0.7 days (95% CI, −0.2–2.0 days) before symptom onset (Fig. 1c).
 INFECTIOUSNESS_ONSET_DAYS_WRT_SYMPTOM_ONSET_AVG: 2.3
 INFECTIOUSNESS_ONSET_DAYS_WRT_SYMPTOM_ONSET_STD: 0.5
+# we set these to be even more conservative than the 95% CI, more like 98% CI
 INFECTIOUSNESS_ONSET_DAYS_WRT_SYMPTOM_ONSET_CLIP_LOW: 0.5
 INFECTIOUSNESS_ONSET_DAYS_WRT_SYMPTOM_ONSET_CLIP_HIGH: 3.3
 
@@ -396,7 +398,6 @@ AVG_FLU_DURATION: 5
 # non-Covid19 symtpoms via influenza etc. is 0.002%. This seems like a typo. assuming 0.002 here.
 P_COLD_TODAY: 0.002
 COLD_CONTAGIOUSNESS: 0.000 # likelihood of transmitting at an encounter (no-source)
-AVG_COLD_DURATION: 3 # FIXME:unused
 
 # LIFESTYLE PARAMETERS
 RHO: 0.40
@@ -407,7 +408,6 @@ AVG_SHOP_TIME_MINUTES: 30 # @param
 SCALE_SHOP_TIME_MINUTES: 15
 AVG_SCALE_SHOP_TIME_MINUTES: 10
 SCALE_SCALE_SHOP_TIME_MINUTES: 5
-NUM_WEEKLY_GROCERY_RUNS: 2 # @param FIXME:unused
 
 AVG_MAX_NUM_SHOP_PER_WEEK: 5
 SCALE_MAX_NUM_SHOP_PER_WEEK: 1
@@ -460,7 +460,6 @@ ENVIRONMENTAL_INFECTION_KNOB: 0.0017
 
 ## INTERVENTIONS
 # WASH HANDS
-HYGIENE_EFFECT: 0.2 # FIXME:unused
 HYGIENE_EFFICACY_FACTOR: 0.5 # used in reduction of probability of transmission (no-source)
 
 # RISK RECOMMENDATIONS

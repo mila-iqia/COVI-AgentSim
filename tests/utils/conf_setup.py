@@ -23,7 +23,7 @@ def get_test_conf(conf_name):
     Returns:
         dict: full overwritten config, using covid19sim.utils.parse_configuration
     """
-    config_path = Path(__file__).parent / "test_configs" / conf_name
+    config_path = Path(__file__).parent.parent / "test_configs" / conf_name
     config_path = config_path.resolve()
 
     assert config_path.suffix == ".yaml"
