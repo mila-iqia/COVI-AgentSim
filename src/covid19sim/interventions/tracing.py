@@ -200,29 +200,107 @@ class Heuristic(BaseMethod):
         risk_level = min(risk_level, 15)
         return self.risk_mapping[risk_level + 1]
 
+
     def compute_risk(self, human, mailbox, humans_map: typing.Dict[str, "Human"]):
         """
-        Computes risk according to heuristic.
+         Computes risk according to heuristic.
 
-        /!\ Note 0: for heuristic float risk values do not mean anything, therefore, self.risk_level_to_risk is used
-        to convert desired risk_level to float risk value.
+         /!\ Note 0: for heuristic float risk values do not mean anything, therefore, self.risk_level_to_risk is used
+         to convert desired risk_level to float risk value.
 
-        /!\ Note 1: Side-effect - we set `_heuristic_rec_level` attribute in this function. This is required because
-        heuristic doesn't have a concept of risk_level to rec_level mapping. The function `self.get_recommendations_level`
-        will overwrite rec_level attribute of human via `update_recommendations_level`.
-        """
-
+         /!\ Note 1: Side-effect - we set `_heuristic_rec_level` attribute in this function. This is required because
+         heuristic doesn't have a concept of risk_level to rec_level mapping. The function `self.get_recommendations_level`
+         will overwrite rec_level attribute of human via `update_recommendations_level`.
+         """
         no_message_gt3_past_7_days = True
-        no_positive_test_result_past_14_days = True
-        latest_negative_test_result_num_days = None
-        high_risk_message, high_risk_num_days = -1, -1
-        moderate_risk_message, moderate_risk_num_days = -1, -1
-        mild_risk_message, mild_risk_num_days = -1, -1
+
+        risk_histories = [[human.risk_history_map]]
+        rec_levels = [human.rec_level]
+        message_risk_history, message_rec_level = self.handle_risk_messages(human, mailbox)
+        test_risk_history, test_rec_level = self.handle_tests(human)
+        symptoms_risk_history, symptoms_rec_level = self.handle_symptoms(human)
+        self.handle_multi(human, mailbox)
+
+    def handle_risk_messages(self, human, mailbox):
+        """ The core idea here is that we want to approximate the day when we would have become infectious, given
+            risk signals from other agents. We """
+
+        high_risk_message, high_risk_earliest_day = -1, -1
+        moderate_risk_message, moderate_risk_earliest_day = -1, -1
+        mild_risk_message, mild_risk_earliest_day = -1, -1
+        approx_infectiousness_onset_days = 1
+        message_risk_history = []
+        message_rec_level = 0
 
         # Check if the user received messages with specific risk level
-        # TODO: mailbox only contains update messages, and not encounter messages
-        # TODO: use the result of the clustering algorithm to find the number of
-        #       encounters with another user with high risk level
+        for _, update_messages in mailbox.items():
+            for update_message in update_messages:
+                encounter_day = (human.env.timestamp - update_message.encounter_time).days
+                risk_level = update_message.new_risk_level
+
+                # conservative approach - keep max risk above threshold along with max days in the past
+                if (risk_level >= self.high_risk_threshold):
+                    high_risk_message = max(high_risk_message, risk_level)
+                    high_risk_earliest_day = max(encounter_day - approx_infectiousness_onset_days, high_risk_earliest_day)
+
+                elif (risk_level >= self.moderate_risk_threshold):
+                    moderate_risk_message = max(moderate_risk_message, risk_level)
+                    moderate_risk_earliest_day = max(encounter_day - approx_infectiousness_onset_days, moderate_risk_earliest_day)
+
+                elif (risk_level >= self.mild_risk_threshold):
+                    mild_risk_message = max(mild_risk_message, risk_level)
+                    mild_risk_earliest_day = max(encounter_day - approx_infectiousness_onset_days, mild_risk_earliest_day)
+
+        if high_risk_message > 0 and high_risk_earliest_day > 0:
+            updated_risk = self.risk_level_to_risk(max(human.risk_level, high_risk_message - 5))
+            message_risk_history = [updated_risk] * high_risk_earliest_day
+            message_rec_level = max(human.rec_level, self.high_risk_rec_level)
+
+        elif moderate_risk_message > 0 and moderate_risk_earliest_day > 0:
+            updated_risk = self.risk_level_to_risk(max(human.risk_level, moderate_risk_message - 5))
+            message_risk_history = [updated_risk] * moderate_risk_earliest_day
+            message_rec_level = max(human.rec_level, self.moderate_risk_rec_level)
+
+        elif mild_risk_message > 0 and mild_risk_earliest_day > 0:
+            updated_risk = self.risk_level_to_risk(max(human.risk_level, mild_risk_message - 5))
+            message_risk_history = [updated_risk] * mild_risk_earliest_day
+            message_rec_level = max(human.rec_level, self.mild_risk_rec_level)
+        return message_risk_history, message_rec_level
+
+    def extract_test_results(self, human):
+        latest_negative_test_result_num_days = None
+        no_positive_test_result_past_14_days = True
+        for test_result, test_time, _ in human.test_results:
+            result_day = (human.env.timestamp - test_time).days
+            if result_day >= 0 and result_day < human.conf.get("TRACING_N_DAYS_HISTORY"):
+                no_positive_test_result_past_14_days &= (test_result != "positive")
+                # keep the date of latest negative test result
+                if (test_result == "negative" and ((latest_negative_test_result_num_days is None)
+                        or (latest_negative_test_result_num_days > result_day))):
+                    latest_negative_test_result_num_days = result_day
+        return no_positive_test_result_past_14_days, latest_negative_test_result_num_days
+
+    def handle_tests(self, human):
+        no_positive_test_result_past_14_days, latest_negative_test_result_num_days = self.extract_test_results(human)
+        if (no_positive_test_result_past_14_days
+              and latest_negative_test_result_num_days is not None):
+            test_risk_history = [self.risk_level_to_risk(1)] * max(latest_negative_test_result_num_days, 2)
+            test_rec_level = 0
+
+        if human.reported_test_result == "positive":
+            test_risk_history = [self.risk_level_to_risk(15)] * human.conf.get("TRACING_N_DAYS_HISTORY")
+            test_rec_level = 3
+        return test_risk_history, test_rec_level
+
+
+    def handle_multi(self, human, mailbox):
+        no_symptoms_past_7_days = \
+            not any(islice(human.rolling_all_reported_symptoms, (human.conf.get("TRACING_N_DAYS_HISTORY") // 2)))
+        assert human.rec_level == getattr(human, '_heuristic_rec_level'), "rec level mismatch"
+
+        no_positive_test_result_past_14_days, latest_negative_test_result_num_days = self.extract_test_results(human)
+
+        no_message_gt3_past_7_days = True
         for _, update_messages in mailbox.items():
             for update_message in update_messages:
                 encounter_day = (human.env.timestamp - update_message.encounter_time).days
@@ -231,104 +309,55 @@ class Heuristic(BaseMethod):
                 if (encounter_day < 7) and (risk_level >= 3):
                     no_message_gt3_past_7_days = False
 
-                # conservative approach - keep max risk above threshold along with max days in the past
-                if (risk_level >= self.high_risk_threshold):
-                    high_risk_message = max(high_risk_message, risk_level)
-                    high_risk_num_days = max(encounter_day, high_risk_num_days)
-
-                elif (risk_level >= self.moderate_risk_threshold):
-                    moderate_risk_message = max(moderate_risk_message, risk_level)
-                    moderate_risk_num_days = max(encounter_day, moderate_risk_message)
-
-                elif (risk_level >= self.mild_risk_threshold):
-                    mild_risk_message = max(mild_risk_message, risk_level)
-                    mild_risk_num_days = max(encounter_day, mild_risk_message)
-
-        for test_result, test_time, _ in human.test_results:
-            result_day = (human.env.timestamp - test_time).days
-            if result_day >= 0 and result_day < human.conf.get("TRACING_N_DAYS_HISTORY"):
-                no_positive_test_result_past_14_days &= (test_result != "positive")
-
-                # keep the date of latest negative test result
-                if (test_result == "negative" and ((latest_negative_test_result_num_days is None)
-                        or (latest_negative_test_result_num_days > result_day))):
-                    latest_negative_test_result_num_days = result_day
-
-        no_symptoms_past_7_days = \
-            not any(islice(human.rolling_all_reported_symptoms, (human.conf.get("TRACING_N_DAYS_HISTORY") // 2)))
-        assert human.rec_level == getattr(human, '_heuristic_rec_level'), "rec level mismatch"
-
-        risk_histories = [[human.risk]]
-        rec_levels = [0]
-        if human.reported_test_result == "positive":
-            risk_histories.append([self.risk_level_to_risk(15)] * human.conf.get("TRACING_N_DAYS_HISTORY"))
-            rec_levels.append(3)
-
-        if (no_positive_test_result_past_14_days
-              and latest_negative_test_result_num_days is not None):
-            risk_histories.append([self.risk_level_to_risk(1)] * max(latest_negative_test_result_num_days, 2))
-            rec_levels.append(0)
-
-        if human.all_reported_symptoms:
-            # for some symptoms set R for now and all past 7 days
-            if EXTREMELY_SEVERE in human.all_reported_symptoms:
-                new_risk_level = self.severe_symptoms_risk_level
-                new_rec_level = self.severe_symptoms_rec_level
-
-            elif SEVERE in human.all_reported_symptoms:
-                new_risk_level = self.severe_symptoms_risk_level
-                new_rec_level = self.severe_symptoms_rec_level
-
-            elif MODERATE in human.all_reported_symptoms:
-                new_risk_level = self.moderate_symptoms_risk_level
-                new_rec_level = self.moderate_symptoms_rec_level
-
-            else:
-                new_risk_level = self.mild_symptoms_risk_level
-                new_rec_level = self.mild_symptoms_rec_level
-
-            # if it's more conservative to go with the number of experienced symptoms, do that.
-            if len(human.all_reported_symptoms) > 2 * new_rec_level:
-                new_risk_level = len(human.all_reported_symptoms)
-                new_rec_level = min(new_risk_level // 2, 3)
-
-            risk_histories.append([self.risk_level_to_risk(new_risk_level)] * (human.conf.get("TRACING_N_DAYS_HISTORY") // 2))
-            rec_levels.append(new_rec_level)
-
-        if high_risk_message > 0:
-            # TODO: Decrease the risk level depending on the number of encounters (N > 5)
-            updated_risk = self.risk_level_to_risk(max(human.risk_level, high_risk_message - 5))
-            risk_histories.append([updated_risk] * max(high_risk_num_days - 2, 1)) # Update at least 1 day
-            rec_levels.append(max(human.rec_level, self.high_risk_rec_level))
-
-        elif moderate_risk_message > 0:
-            # Set the risk level to max(R' - 5, R) for all days after day D + 2
-            # (with at least 1 update for the current day)
-            updated_risk = self.risk_level_to_risk(max(human.risk_level, moderate_risk_message - 5))
-            risk_histories.append([updated_risk] * max(moderate_risk_num_days - 2, 1))
-            rec_levels.append(max(human.rec_level, self.moderate_risk_rec_level))
-
-        elif mild_risk_message > 0:
-            # Set the risk level to max(R' - 5, R) for all days after day D + 2
-            # (with at least 1 update for the current day)
-            updated_risk = self.risk_level_to_risk(max(human.risk_level, mild_risk_message - 5))
-            risk_histories.append([updated_risk] * max(mild_risk_num_days - 2, 1))
-            rec_levels.append(max(human.rec_level, self.mild_risk_rec_level))
-
         # If we don't actually appear risky, then set to low risk
         if (human.rec_level > 0 and no_positive_test_result_past_14_days
               and no_symptoms_past_7_days and no_message_gt3_past_7_days):
             # Set risk level R = 0 for now and all past 7 days
             risk_history = [self.risk_level_to_risk(0)] * (human.conf.get("TRACING_N_DAYS_HISTORY") // 2)
             setattr(human, '_heuristic_rec_level', 0)
-        # if no rules applied, don't change rec level and return baseline risk
+            return risk_history
 
-        # apply most conservative rec level and risk history
+    def compute_max_risk_history(self, risk_histories):
+        # find the longest risk history
+        # for i in range(len(longest_history))
+            # max_risk_history[i] = max()
+
+        #     setattr(human, '_heuristic_rec_level', max(rec_levels))
+        #     most_conservative_risk_history = [0.]
+        #     for risk_history in risk_histories:
+        #         if sum(risk_history) > sum(most_conservative_risk_history):
+        #             most_conservative_risk_history = risk_history
+        #     risk_history = most_conservative_risk_history
+        # return risk_history if type(risk_history) == list else [risk_history]
+        return risk_histories[0]
+
+
+    def handle_symptoms(self, human):
+        if not any(human.all_reported_symptoms):
+            return [], 0
+
+        # for some symptoms set R for now and all past 7 days
+        if EXTREMELY_SEVERE in human.all_reported_symptoms:
+            new_risk_level = self.severe_symptoms_risk_level
+            new_rec_level = self.severe_symptoms_rec_level
+
+        elif SEVERE in human.all_reported_symptoms:
+            new_risk_level = self.severe_symptoms_risk_level
+            new_rec_level = self.severe_symptoms_rec_level
+
+        elif MODERATE in human.all_reported_symptoms:
+            new_risk_level = self.moderate_symptoms_risk_level
+            new_rec_level = self.moderate_symptoms_rec_level
+
         else:
-            setattr(human, '_heuristic_rec_level', max(rec_levels))
-            most_conservative_risk_history = [0.]
-            for risk_history in risk_histories:
-                if sum(risk_history) > sum(most_conservative_risk_history):
-                    most_conservative_risk_history = risk_history
-            risk_history = most_conservative_risk_history
-        return risk_history if type(risk_history) == list else [risk_history]
+            new_risk_level = self.mild_symptoms_risk_level
+            new_rec_level = self.mild_symptoms_rec_level
+
+        # if it's more conservative to go with the number of experienced symptoms, do that.
+        if len(human.all_reported_symptoms) > 2 * new_rec_level:
+            new_risk_level = len(human.all_reported_symptoms)
+            new_rec_level = min(new_risk_level // 2, 3)
+
+        risk_history = [self.risk_level_to_risk(new_risk_level)] * (human.conf.get("TRACING_N_DAYS_HISTORY") // 2)
+        return risk_history, new_rec_level
+
