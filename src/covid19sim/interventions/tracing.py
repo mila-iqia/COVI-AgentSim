@@ -152,7 +152,7 @@ class Heuristic(BaseMethod):
         if self.version == 1:
             self.high_risk_threshold, self.high_risk_rec_level = 12, 3
             self.moderate_risk_threshold, self.moderate_risk_rec_level = 10, 2
-            self.mild_risk_threshold, self.mild_risk_rec_level = 6, 1
+            self.mild_risk_threshold, self.mild_risk_rec_level = 6, 2
 
             self.severe_symptoms_risk_level, self.severe_symptoms_rec_level = 12, 3
             self.moderate_symptoms_risk_level, self.moderate_symptoms_rec_level = 10, 3
@@ -242,7 +242,7 @@ class Heuristic(BaseMethod):
 
                 elif (risk_level >= self.mild_risk_threshold):
                     mild_risk_message = max(mild_risk_message, risk_level)
-                    mild_risk_num_days = max(encounter_day, moderate_risk_message)
+                    mild_risk_num_days = max(encounter_day, mild_risk_message)
 
         for test_result, test_time, _ in human.test_results:
             result_day = (human.env.timestamp - test_time).days
@@ -299,21 +299,21 @@ class Heuristic(BaseMethod):
             # TODO: Decrease the risk level depending on the number of encounters (N > 5)
             updated_risk = self.risk_level_to_risk(max(human.risk_level, high_risk_message - 5))
             risk_histories.append([updated_risk] * max(high_risk_num_days - 2, 1)) # Update at least 1 day
-            rec_levels.append(self.high_risk_rec_level)
+            rec_levels.append(max(human.rec_level, self.high_risk_rec_level))
 
         elif moderate_risk_message > 0:
             # Set the risk level to max(R' - 5, R) for all days after day D + 2
             # (with at least 1 update for the current day)
             updated_risk = self.risk_level_to_risk(max(human.risk_level, moderate_risk_message - 5))
             risk_histories.append([updated_risk] * max(moderate_risk_num_days - 2, 1))
-            rec_levels.append(self.moderate_risk_rec_level)
+            rec_levels.append(max(human.rec_level, self.moderate_risk_rec_level))
 
         elif mild_risk_message > 0:
             # Set the risk level to max(R' - 5, R) for all days after day D + 2
             # (with at least 1 update for the current day)
             updated_risk = self.risk_level_to_risk(max(human.risk_level, mild_risk_message - 5))
             risk_histories.append([updated_risk] * max(mild_risk_num_days - 2, 1))
-            rec_levels.append(self.mild_risk_rec_level)
+            rec_levels.append(max(human.rec_level, self.mild_risk_rec_level))
 
         # If we don't actually appear risky, then set to low risk
         if (human.rec_level > 0 and no_positive_test_result_past_14_days
