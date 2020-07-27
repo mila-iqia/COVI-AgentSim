@@ -870,6 +870,7 @@ class EmptyCity(City):
         }
 
         self.daily_target_rec_level_dists = None
+        self.daily_rec_level_mapping = None
         self.covid_testing_facility = TestFacility(self.test_type_preference, self.max_capacity_per_test_type, env, conf)
 
         # Get the test type with the lowest preference?
