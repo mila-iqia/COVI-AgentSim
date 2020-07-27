@@ -24,9 +24,10 @@ import requests
 import yaml
 from omegaconf import DictConfig, OmegaConf
 from scipy.stats import norm
-from covid19sim.utils.constants import SECONDS_PER_HOUR, SECONDS_PER_MINUTE
+from covid19sim.utils.constants import SECONDS_PER_HOUR, SECONDS_PER_MINUTE, AGE_BIN_WIDTH_5, AGE_BIN_WIDTH_10
 
 from covid19sim.epidemiology.symptoms import STR_TO_SYMPTOMS
+from covid19sim.utils.constants import AGE_BIN_WIDTH_5, AGE_BIN_WIDTH_10
 if typing.TYPE_CHECKING:
     from covid19sim.human import Human
 
@@ -379,8 +380,6 @@ def extract_tracker_data(tracker, conf):
     data['humans_intervention_level'] = tracker.humans_intervention_level
     data['humans_has_app'] = dict((human.name, human.has_app) for human in tracker.city.humans)
 
-
-    data['tracked_humans'] = dict({human.name:human.my_history for human in tracker.city.humans})
     data['age_histogram'] = tracker.city.age_histogram
 
     data['covid_properties'] = tracker.covid_properties
@@ -444,19 +443,6 @@ def parse_configuration(conf):
     elif not isinstance(conf, dict):
         raise ValueError("Unknown configuration type {}".format(type(conf)))
 
-    if "AGE_GROUP_CONTACT_AVG" in conf:
-        conf['AGE_GROUP_CONTACT_AVG']['age_groups'] = [
-            eval(age_group) for age_group in conf['AGE_GROUP_CONTACT_AVG']['age_groups']
-        ]
-        conf['AGE_GROUP_CONTACT_AVG']['contact_avg'] = np.array(conf['AGE_GROUP_CONTACT_AVG']['contact_avg'])
-
-    if "SMARTPHONE_OWNER_FRACTION_BY_AGE" in conf:
-        conf["SMARTPHONE_OWNER_FRACTION_BY_AGE"] = {
-            tuple(int(i) for i in k.split("-")): v
-            for k, v in conf["SMARTPHONE_OWNER_FRACTION_BY_AGE"].items()
-        }
-
-
     if "GET_TESTED_SYMPTOMS_CHECKED_IN_HOSPITAL" in conf:
         conf["GET_TESTED_SYMPTOMS_CHECKED_IN_HOSPITAL"] = \
             [STR_TO_SYMPTOMS[symptom] for symptom in conf["GET_TESTED_SYMPTOMS_CHECKED_IN_HOSPITAL"]
@@ -496,18 +482,6 @@ def dumps_conf(
     """
 
     copy_conf = copy.deepcopy(conf)
-
-    if "AGE_GROUP_CONTACT_AVG" in copy_conf:
-        copy_conf['AGE_GROUP_CONTACT_AVG']['age_groups'] = \
-            ["(" + ", ".join([str(i) for i in age_group]) + ")"
-             for age_group in copy_conf["AGE_GROUP_CONTACT_AVG"]['age_groups']]
-        copy_conf['AGE_GROUP_CONTACT_AVG']['contact_avg'] = copy_conf['AGE_GROUP_CONTACT_AVG']['contact_avg'].tolist()
-
-    if "SMARTPHONE_OWNER_FRACTION_BY_AGE" in copy_conf:
-        copy_conf["SMARTPHONE_OWNER_FRACTION_BY_AGE"] = {
-            "-".join([str(i) for i in k]): v
-            for k, v in copy_conf["SMARTPHONE_OWNER_FRACTION_BY_AGE"].items()
-        }
 
     if "GET_TESTED_SYMPTOMS_CHECKED_IN_HOSPITAL" in copy_conf:
         copy_conf["GET_TESTED_SYMPTOMS_CHECKED_IN_HOSPITAL"] = \
@@ -549,7 +523,7 @@ def dump_conf(
 def relativefreq2absolutefreq(
         bins_fractions: dict,
         n_elements: int,
-        rng
+        rng,
 ) -> dict:
     """
     Convert relative frequencies to absolute frequencies such that the number of elements sum to n_entity.
@@ -692,19 +666,18 @@ class DummyHuman:
         import pickle
         # "dummy" attributes replace the original attribute by a less-complex one
         self.dummy_attribs = [
-            "env", "location", "last_location", "household", "workplace", "last_date",
+            "env", "location", "household", "workplace", "last_date",
             "recommendations_to_follow",  # the old states contained in behaviors might break serialization
         ]
         self.env = DummyEnv(human.env)
         self.location = human.location.name if human.location else ""
-        self.last_location = human.last_location.name if human.last_location else ""
         self.household = human.household.name if human.household else ""
         self.workplace = human.workplace.name if human.workplace else ""
         self.last_date = dict(human.last_date)
         self.recommendations_to_follow = [str(rec) for rec in human.recommendations_to_follow]
         # "blacklisted" attributes are overriden with `None`, no matter their original value
         self.blacklisted_attribs = [
-            "conf", "city", "my_history", "visits", "proba_to_risk_level_map",
+            "conf", "city", "my_history", "visits", "proba_to_risk_level_map",  "mobility_planner"
         ]
         for attr_name in self.blacklisted_attribs:
             setattr(self, attr_name, None)
@@ -726,7 +699,7 @@ def copy_obj_except_env(obj):
     """Copies a Human/City/Location object without its env part (which fails due to the generator)."""
     from covid19sim.human import Human
     from covid19sim.locations.location import Location
-    from covid19sim.locations.city import City, Household, Hospital
+    from covid19sim.locations.city import City
     assert isinstance(obj, (Human, Location, City))
     if isinstance(obj, Human):
         return DummyHuman(obj)
@@ -755,6 +728,7 @@ def copy_obj_except_env(obj):
 
         # Restore the Location's original attributes
         obj.env, obj.humans, obj.infectious_human, obj.users, obj._env = backup_location_attribs
+        # TODO: Re-add (removed due to Prateek's mobility changes which removed Household obj)
 
         if isinstance(obj, Household):
             obj.residents = backup_residents
@@ -827,3 +801,46 @@ def get_approx_object_size(obj):
                 need_referents.append(obj)
         objects = gc.get_referents(*need_referents)
     return size
+
+def _convert_bin_5s_to_bin_10s(histogram_bin_5s):
+    """
+    Maps the count as per age ranges of 5 to age range of 10.
+
+    Args:
+        histogram_bin_5s (dict): keys are a tuple of (lower limit, upper limit) according to AGE_BIN_WIDTH_5 both inclusive and values are counts
+
+    Returns:
+        (dict): keys are a tuple of (lower limit, upper limit) according to AGE_BIN_WIDTH_10 both inclusive and values are counts
+    """
+    histogram_bin_10s = {}
+    # combine two consecutive bins until the last one
+    for i in range(0, len(histogram_bin_5s), 2):
+        bin5_1 = AGE_BIN_WIDTH_5[i]
+        bin5_2 = AGE_BIN_WIDTH_5[i+1]
+
+        # AGE_BIN_WIDTH_5 have groupings of 5 years of age until the age of 74 and the last being 75 - 110
+        # AGE_BIN_WIDTH_10 have groupings of 10 years of age all through i.e. 70-80
+        # (assumption) break 75-110 to 75-79 and the rest assuming uniform distribution
+        # 75-79 = 5/35th of 75-110
+        c1 = histogram_bin_5s[bin5_1]
+        if bin5_2[1] < 70:
+            c2 = histogram_bin_5s[bin5_2]
+
+            bin10 = (bin5_1[0], bin5_2[1])
+            assert bin10 == AGE_BIN_WIDTH_10[i//2], f"not the right bin 10 {bin10}"
+            histogram_bin_10s[bin10] = c1 + c2
+        else:
+            assert bin5_1[0] == 70, f"Not the right penultimate last bin {bin5_1}"
+            assert bin5_2 == (75, 110), f"Not the right last bin {bin_5_2}"
+
+            bin10 = (bin5_1[0], 79)
+            assert bin10 == AGE_BIN_WIDTH_10[i//2], f"not the right bin 10 {bin10}"
+            c2 = histogram_bin_5s[bin5_2] * (5/35)
+            histogram_bin_10s[bin10] = c1 + c2
+
+            bin10 = (80, 110)
+            assert bin10 == AGE_BIN_WIDTH_10[i//2+1], f"not the right bin 10 {bin10}"
+            histogram_bin_10s[bin10] = c2 * 30 / 35
+            break
+
+    return histogram_bin_10s

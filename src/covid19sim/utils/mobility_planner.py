@@ -218,6 +218,7 @@ class MobilityPlanner(object):
         self.critical_condition_timestamp = None
         self.death_timestamp = None
         self.location_of_hospitalization = None # stores `Location` where self.human is hospitalized or is in ICU, when hospitalized.
+        self.human_dies_in_next_activity = False
 
     def __repr__(self):
         return f"<MobilityPlanner for {self.human}>"
@@ -247,10 +248,14 @@ class MobilityPlanner(object):
         if self.human.age <= MAX_AGE_CHILDREN_WITHOUT_SUPERVISION:
             self.follows_adult_schedule = True
             self.adults_in_house = [h for h in self.human.household.residents if h.age > MAX_AGE_CHILDREN_WITHOUT_SUPERVISION]
-            assert len(self.adults_in_house) > 0, "No adult found"
-            self.adult_to_follow_today = self.rng.choice(self.adults_in_house, size=1).item()
-            self.adult_to_follow_today.mobility_planner.inverted_supervision.add(self.human)
-        else:
+            if len(self.adults_in_house) > 0:
+                self.adult_to_follow_today = self.rng.choice(self.adults_in_house, size=1).item()
+                self.adult_to_follow_today.mobility_planner.inverted_supervision.add(self.human)
+            else:
+                self.follows_adult_schedule = False
+                log(f"Improper housing allocation has led to {self.human} living without adult. MobilityPlanner will not keep them supervised.", self.human.city.logfile)
+
+        if not self.follows_adult_schedule:
             ## work
             if self.human.does_not_work:
                 does_work = np.zeros(n_days)
@@ -489,7 +494,9 @@ class MobilityPlanner(object):
         # invite others
         if _can_send_invite(today, self):
             todays_activities = []
-            for activity in [self.current_activity] + list(self.schedule_for_day) + list(self.full_schedule[0]):
+            all_activities = [self.current_activity] + list(self.schedule_for_day)
+            all_activities += [] if len(self.full_schedule) == 0 else list(self.full_schedule[0])
+            for activity in all_activities:
                 if activity.start_time.day == today.day or activity.end_time.day == today.day:
                     todays_activities.append(activity)
 
@@ -512,6 +519,12 @@ class MobilityPlanner(object):
         """
         assert self.death_timestamp is None, "processing activities for a dead human"
 
+        # for `human`s dying because of `human.never_recovers` we check the flag here
+        if self.human_dies_in_next_activity:
+            self, human, activity = _human_dies(self, self.human, activity, self.env)
+            print(self.human,  "is dead because never recovers", activity)
+            return activity
+
         # (a) set back to normal routine if self.human was hospitalized
         # (b) if human is still recovering in hospital then return the activity as is because these were determined at the time hospitalization occured
         # Note 1: after recovery from hospitalization, infection_timestamp will always be None
@@ -525,7 +538,8 @@ class MobilityPlanner(object):
             self.hospitalization_timestamp = None
             self.critical_condition_timestamp = None
             self.human.check_covid_recovery()
-            assert self.human.infection_timestamp is None, f"{self.human} is out of hospital and still has COVID"
+            # Hospital can discharge patient once the symptoms are not severe. patient needs to be careful after treatment to not infect others and practice isolation for some time
+            # assert self.human.infection_timestamp is None, f"{self.human} is out of hospital and still has COVID"
 
         elif (
             (self.hospitalization_timestamp is not None

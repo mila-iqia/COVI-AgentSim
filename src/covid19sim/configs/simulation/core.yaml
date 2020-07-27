@@ -256,20 +256,21 @@ AVERAGE_DAYS_TO_HOSPITAL_GIVEN_SYMPTOMS: 5.14
 
 LOCATION_TECH: "gps" # &location-tech
 
-# Source: COVID-19 individual-based model with instantaneous contract tracing (Table 9)
-# TODO: link to the document
-SMARTPHONE_OWNER_FRACTION_BY_AGE:
-  {
-    '0-9': 0.0,
-    '10-19': 0.90,
-    '20-29': 0.96,
-    '30-39': 0.95,
-    '40-49': 0.91,
-    '50-59': 0.81,
-    '60-69': 0.64,
-    '70-79': 0.41,
-    '80-110': 0.27,
-  }
+# /!\ Below numbers are for the U.K population
+# Source: COVID-19 individual-based model with instantaneous contract tracing
+# ref: https://github.com/BDI-pathogens/OpenABM-Covid19/blob/master/documentation/parameters/parameter_dictionary.md
+
+SMARTPHONE_OWNER_FRACTION_BY_AGE: [
+  [0, 9, 0.0],
+  [10, 19, 0.90],
+  [20, 29, 0.96],
+  [30, 39, 0.95],
+  [40, 49, 0.91],
+  [50, 59, 0.81],
+  [60, 69, 0.64],
+  [70, 79, 0.41],
+  [80, 110, 0.27]
+]
 
 # BLUETOOTH MESSAGE EXCHANGE PARAMETERS
 # bluetooth messages are recorded when the devices are within MAX_MESSAGE_PASSING_DISTANCE radius
@@ -297,6 +298,7 @@ INFECTIOUSNESS_PEAK_CLIP_HIGH: 2.2
 # &infectiousness-onset [He 2020 https://www.nature.com/articles/s41591-020-0869-5#ref-CR1] infectiousness started from 2.3 days (95% CI, 0.8–3.0 days) before symptom onset and peaked at 0.7 days (95% CI, −0.2–2.0 days) before symptom onset (Fig. 1c).
 INFECTIOUSNESS_ONSET_DAYS_WRT_SYMPTOM_ONSET_AVG: 2.3
 INFECTIOUSNESS_ONSET_DAYS_WRT_SYMPTOM_ONSET_STD: 0.5
+# we set these to be even more conservative than the 95% CI, more like 98% CI
 INFECTIOUSNESS_ONSET_DAYS_WRT_SYMPTOM_ONSET_CLIP_LOW: 0.5
 INFECTIOUSNESS_ONSET_DAYS_WRT_SYMPTOM_ONSET_CLIP_HIGH: 3.3
 

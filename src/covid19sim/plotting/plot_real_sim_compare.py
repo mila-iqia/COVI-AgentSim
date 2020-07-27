@@ -13,9 +13,7 @@ from matplotlib import pyplot as plt
 quebec_population = 8485000
 csv_path = "COVID19Tracker.ca Data - QC.csv"
 sim_dir_path = "/home/mweiss10/simulator/results/mob_pop_sick/no_intervention/" #sim_v2_people-10000_days-30_init-0.002_uptake--1.0_seed-5000_20200716-181334_330660//" 
-
-
-# Util function
+use_cache = True
 
 # Utility Functions
 
@@ -45,29 +43,63 @@ def parse_tracker(sim_tracker_data):
 
 from collections import defaultdict
 results = defaultdict(list)
+if not use_cache:
+    for d in tqdm.tqdm(os.listdir(sim_dir_path)):
+        source_path = os.path.join(sim_dir_path, d)
+        config_path = os.path.join(sim_dir_path, d, "full_configuration.yaml")
+        try:
+            config = yaml.load(open(config_path, "rb"))
+        except Exception as e:
+            print(f"{e}, {config_path}")
+            continue
+        mob = config['GLOBAL_MOBILITY_SCALING_FACTOR']
+        sick = config['init_fraction_sick']
+        pop = config['n_people']
+        days = config['simulation_days']
+        name = f"mob_{mob}_sick_{sick}_pop_{pop}_days_{days}"
 
-for d in tqdm.tqdm(os.listdir(sim_dir_path)):
-    source_path = os.path.join(sim_dir_path, d)
-    config_path = os.path.join(sim_dir_path, d, "full_configuration.yaml")
-    config = yaml.load(open(config_path, "rb"))
-    mob = config['GLOBAL_MOBILITY_SCALING_FACTOR']
-    sick = config['init_percent_sick']
-    pop = config['n_people']
-    days = config['simulation_days']
-    name = f"mob_{mob}_sick_{sick}_pop_{pop}_days_{days}"
+        sim_priors_path = os.path.join(source_path, "train_priors.pkl")
+        sim_tracker_path = glob.glob(os.path.join(source_path, "*_.pkl"))[0]
 
-    sim_priors_path = os.path.join(source_path, "train_priors.pkl")
-    sim_tracker_path = glob.glob(os.path.join(source_path, "*_.pkl"))[0]
+        sim_tracker_data = pickle.load(open(sim_tracker_path, "rb"))
+        sim_prior_data = pickle.load(open(sim_priors_path, "rb"))
+        sim_dates, sim_deaths, sim_tests, sim_cases = parse_tracker(sim_tracker_data)
+        sim_hospitalizations = [float(x)*100/sim_tracker_data['n_humans'] for x in sim_prior_data['hospitalization_per_day']]
+        results[name].append({"sim_dates": sim_dates, "sim_deaths": sim_deaths, "sim_tests": sim_tests, "sim_cases": sim_cases, "sim_hospitalizations": sim_hospitalizations})
+    pickle.dump(results, open("cache_sim.pkl", "wb"))
+else:
+    data = pickle.load(open("cache_sim.pkl", "rb"))
 
-    sim_tracker_data = pickle.load(open(sim_tracker_path, "rb"))
-    sim_prior_data = pickle.load(open(sim_priors_path, "rb"))
-    sim_dates, sim_deaths, sim_tests, sim_cases = parse_tracker(sim_tracker_data)
-    sim_hospitalizations = [float(x)*100/sim_tracker_data['n_humans'] for x in sim_prior_data['hospitalization_per_day']]
-    results[name].append({"sim_dates": sim_dates, "sim_deaths": sim_deaths, "sim_tests": sim_tests, "sim_cases": sim_cases, "sim_hospitalizations": sim_hospitalizations})
+for k, v in data.items():
+    print(k)
+    sim_dates = v[0]['sim_dates']
+    sim_deaths = np.array([x['sim_deaths'] for x in v])#.mean(axis=0)
+    sim_cases = np.array([x['sim_cases'] for x in v])
+    sim_hospitalizations = np.array([x['sim_hospitalizations'] for x in v])
+   
+    # Parse sim tests
+    sim_tests = []
+    min_length = min([len(x['sim_tests']) for x in v])
+    for x in v:
+        sim_test = x['sim_tests']
+        sim_tests.append(list(sim_test.values())[:min_length])
+    sim_tests = np.array(sim_tests)
 
-pickle.dump(results, open(os.path.join(sim_dir_path, "cache_sim.pkl"), "wb"))
+    fig, ax = plt.subplots(figsize=(7.5, 7.5))
+    
+    ax.errorbar(sim_dates, sim_deaths.mean(axis=0), yerr=sim_deaths.std(axis=0), label="Simulated Mortalities (per Day)")
+    ax.errorbar(sim_dates, sim_hospitalizations.mean(axis=0)[1:], yerr=sim_hospitalizations.std(axis=0)[1:], label="Simulated Hospital Utilization (per Day)")
+    ax.errorbar(sim_dates, sim_cases.mean(axis=0)[1:], yerr=sim_cases.std(axis=0)[1:], label="Simulated Cases (per Day)")
+    ax.errorbar(sim_dates[:min_length], sim_tests.mean(axis=0), yerr=sim_tests.std(axis=0), label="Simulated Tests (per Day)")
 
-import pdb; pdb.set_trace()
+    ax.legend()
+    plt.ylabel("Percentage of Population")
+    plt.xlabel("Date")
+    plt.yticks(plt.yticks()[0], [str(round(x, 2)) + "%" for x in plt.yticks()[0]])
+    plt.xticks([x for i, x in enumerate(sim_dates) if i % 10 == 0], rotation=45)
+    plt.title("Quebec COVID Statistics")
+
+    plt.savefig(f"{k}_sim_stats.png")
 
 
 # Load data

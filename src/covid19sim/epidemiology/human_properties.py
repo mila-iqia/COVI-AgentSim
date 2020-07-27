@@ -266,7 +266,8 @@ def _get_inflammatory_disease_level(rng, preexisting_conditions, inflammatory_co
 def get_carefulness(age, rng, conf):
     # &carefulness
     loc = 55 if rng.rand() < conf.get("P_CAREFUL_PERSON") else 25
-    carefulness = min((max(round(rng.normal(loc, 10)), 0) + age / 2) / 100, 1)
+    carefulness = (max(round(rng.normal(loc, 10)), 0) + age / 2) / 100
+    carefulness = min(carefulness + 0.01, 1)
     return carefulness
 
 def get_age_bin(age, width=10):

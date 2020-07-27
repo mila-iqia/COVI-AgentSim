@@ -147,16 +147,17 @@ def _run_simulation(test_case, intervention_properties):
 
     with TemporaryDirectory() as d:
         outfile = os.path.join(d, "data")
-        monitors, _ = simulate(
+        _, monitors, _ = simulate(
             n_people=test_case.n_people,
             start_time=test_case.start_time,
             simulation_days=test_case.simulation_days,
             outfile=outfile,
             out_chunk_size=0,
-            init_percent_sick=test_case.init_percent_sick,
+            init_fraction_sick=test_case.init_fraction_sick,
             seed=test_case.test_seed,
             conf=test_case.config
         )
+
         monitors[0].dump()
         monitors[0].join_iothread()
 
@@ -187,7 +188,7 @@ class MiniSimulationTest(unittest.TestCase):
 
         self.test_seed = 0
         self.n_people = 10
-        self.init_percent_sick = 0.1
+        self.init_fraction_sick = 0.1
         self.start_time = datetime.datetime(2020, 2, 28, 0, 0)
         self.simulation_days = 5
         self.intervention_day = 0
@@ -195,7 +196,6 @@ class MiniSimulationTest(unittest.TestCase):
         self.config['COLLECT_LOGS'] = True
         self.config['INTERVENTION_DAY'] = self.intervention_day
         self.config['APP_UPTAKE'] = -1
-        self.config['TRANSFORMER_EXP_PATH'] = "https://drive.google.com/file/d/1QhiZehbxNOhA-7n37h6XEHTORIXweXc6"
         self.config['LOGGING_LEVEL'] = "DEBUG"
 
     def tearDown(self):

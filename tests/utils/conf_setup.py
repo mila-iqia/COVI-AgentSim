@@ -23,7 +23,7 @@ def get_test_conf(conf_name):
     Returns:
         dict: full overwritten config, using covid19sim.utils.parse_configuration
     """
-    config_path = Path(__file__).parent / "test_configs" / conf_name
+    config_path = Path(__file__).parent.parent / "test_configs" / conf_name
     config_path = config_path.resolve()
 
     assert config_path.suffix == ".yaml"
@@ -35,15 +35,12 @@ def get_test_conf(conf_name):
         defaults = yaml.safe_load(f)["defaults"]
 
     default_confs = []
-    for key in defaults:
-        if type(key) == dict:
-            folder_name = list(key.keys())[0]
-            subfolder_name = key[folder_name]
-            filename = str(HYDRA_SIM_PATH / folder_name / (subfolder_name + ".yaml"))
+    for d in defaults:
+        if type(d) == str:
+            conf = OmegaConf.load(str(HYDRA_SIM_PATH / (d + ".yaml")))
         else:
-            filename = str(HYDRA_SIM_PATH / (key + ".yaml"))
-        default_confs.append(OmegaConf.load(filename))
-
+            conf = OmegaConf.load(str(HYDRA_SIM_PATH / list(d.keys())[0] / (list(d.values())[0] + ".yaml")))
+        default_confs.append(conf)
     conf = OmegaConf.merge(*default_confs, OmegaConf.load(str(config_path)))
 
     return parse_configuration(conf)

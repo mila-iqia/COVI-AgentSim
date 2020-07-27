@@ -400,7 +400,7 @@ class Tracker(object):
         # solo dwellers
         estimated_solo_dwellers_mean_age = sum([x[2] * (x[0] + x[1]) / 2 for x in self.conf['P_AGE_SOLO_DWELLERS_GIVEN_HOUSESIZE_1']])
         simulated_solo_dwellers_age_given_housesize1 = [[x[0], x[1], 0] for x in self.conf['P_AGE_SOLO_DWELLERS_GIVEN_HOUSESIZE_1']]
-        n_solo_houses = len(solo_ages)
+        n_solo_houses = len(solo_ages) + 1e-6 # to avoid ZeroDivisionError
         for age in solo_ages:
             for i,x in enumerate(self.conf['P_AGE_SOLO_DWELLERS_GIVEN_HOUSESIZE_1']):
                 if x[0] <= age <= x[1]:
@@ -697,6 +697,7 @@ class Tracker(object):
                 "state": h.state.index(1),
                 "test_result": h.test_result,
                 "n_symptoms": len(h.symptoms),
+                "symptom_severity": self.compute_severity(h.reported_symptoms),
                 "name": h.name,
                 "dead": h.is_dead,
                 "reported_test_result": h.reported_test_result,
@@ -707,6 +708,19 @@ class Tracker(object):
 
         #
         self.avg_infectiousness_per_day.append(np.mean([h.infectiousness for h in self.city.humans]))
+
+    def compute_severity(self, symptoms):
+        severity = 0
+        for s in symptoms:
+            if "extremely-severe" == s:
+                severity = 4
+            elif "severe" == s and severity < 4:
+                severity = 3
+            elif "moderate" == s and severity < 3:
+                severity = 2
+            elif "mild" == s and severity < 2:
+                severity = 1
+        return severity
 
     def compute_mobility(self):
         """
@@ -1314,7 +1328,7 @@ class Tracker(object):
             if human1.location != human1.household:
                 self.n_outside_daily_contacts += 1
 
-    def track_bluetooth_communications(self, human1, human2, timestamp):
+    def track_bluetooth_communications(self, human1, human2, location, timestamp):
         """
         Keeps track of mean daily unique bluetooth encounters between two age groups.
         It is used to visualize the subset of contacts that are captured by bluetooth communication.
@@ -1350,7 +1364,7 @@ class Tracker(object):
             return
 
         # record the new values
-        type_of_place = _get_location_type_to_track_mixing(location)
+        type_of_place = _get_location_type_to_track_mixing(human1, location)
         i = human1.age_bin_width_5.index
         j = human2.age_bin_width_5.index
         for location_type in ['all', type_of_place]:

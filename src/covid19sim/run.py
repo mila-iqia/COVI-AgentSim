@@ -8,13 +8,11 @@ provided via commandline will override the ones loaded through the configuration
 import datetime
 import logging
 import os
-import shutil
 import time
 import typing
 from pathlib import Path
 
 import hydra
-import multiprocessing
 import numpy as np
 from omegaconf import DictConfig
 
@@ -22,11 +20,8 @@ from covid19sim.locations.city import City
 from covid19sim.utils.env import Env
 from covid19sim.utils.constants import SECONDS_PER_DAY, SECONDS_PER_HOUR
 from covid19sim.log.monitors import EventMonitor, SimulationMonitor
-from covid19sim.human import Human
 from covid19sim.inference.server_utils import DataCollectionServer
-from covid19sim.utils.utils import (dump_conf, dump_tracker_data,
-                                    extract_tracker_data, parse_configuration,
-                                    zip_outdir, log)
+from covid19sim.utils.utils import dump_conf, dump_tracker_data, extract_tracker_data, parse_configuration, log
 
 
 @hydra.main(config_path="configs/simulation/config.yaml")
@@ -56,7 +51,7 @@ def main(conf: DictConfig):
         conf["outdir"],
         conf["n_people"],
         conf["simulation_days"],
-        conf["init_percent_sick"],
+        conf["init_fraction_sick"],
         conf["APP_UPTAKE"],
         conf["seed"],
         timenow,
@@ -90,7 +85,7 @@ def main(conf: DictConfig):
 
     city, monitors, tracker = simulate(
         n_people=conf["n_people"],
-        init_fraction_sick=conf["init_percent_sick"],
+        init_fraction_sick=conf["init_fraction_sick"],
         start_time=conf["start_time"],
         simulation_days=conf["simulation_days"],
         outfile=conf["outfile"],
@@ -176,7 +171,7 @@ def simulate(
         conf = {}
 
     conf["n_people"] = n_people
-    conf["init_percent_sick"] = init_fraction_sick
+    conf["init_fraction_sick"] = init_fraction_sick
     conf["start_time"] = start_time
     conf["simulation_days"] = simulation_days
     conf["outfile"] = outfile
