@@ -6,7 +6,8 @@ import unittest.mock
 import numpy as np
 from tests.utils import get_test_conf
 
-from covid19sim.locations.city import City
+from covid19sim.locations.city import City, EmptyCity
+from covid19sim.locations.location import Household
 from covid19sim.utils.env import Env
 from covid19sim.log.monitors import EventMonitor
 from covid19sim.human import Human
@@ -27,15 +28,28 @@ def test_functional_seniors_residence():
 
         # Config
         start_time = datetime.datetime(2020, 2, 28, 0, 0)
-        simulation_days = 40
+        simulation_days = 100
         city_x_range = (0, 1000)
         city_y_range = (0, 1000)
 
         # Find the test_configs directory, and load the required config yaml
         conf = get_test_conf("naive_local.yaml")
+        conf['simulation_days'] = simulation_days
 
         env = Env(start_time)
-        city = City(env, 1000, 0.01, rng, city_x_range, city_y_range, conf)
+        city = EmptyCity(env, rng, city_x_range, city_y_range, conf)
+        sr =  Household(
+                        env=env,
+                        rng=np.random.RandomState(rng.randint(2 ** 16)),
+                        conf=conf,
+                        name=f"SENIOR_RESIDENCE:0",
+                        location_type="SENIOR_RESIDENCE",
+                        lat=rng.randint(*city_x_range),
+                        lon=rng.randint(*city_y_range),
+                        area=1000,
+                        capacity=None,
+                    )
+        city.senior_residences.append(sr)
 
         N = 10
 
@@ -45,6 +59,7 @@ def test_functional_seniors_residence():
         infection = [None] * N
         # One initial infection
         infection[0] = city.start_time
+        city.n_init_infected = 1
 
         humans = [
             Human(
@@ -58,19 +73,14 @@ def test_functional_seniors_residence():
             )
             for i in range(N)
         ]
+
+        for human in humans:
+            human.assign_household(sr)
+            sr.residents.append(human)
+            human.mobility_planner.initialize()
+
         # pick one human randomly and make sure it cannot recover (for later checks)
         humans[np.random.randint(N)].never_recovers = True
-
-        city.initialize_humans_and_locations()
-        # TODO: Add way to just add senior residencies -- below won't work anymore. Also maybe switch this back to empty city?
-
-        # sr = city.create_location(
-        #     conf.get("LOCATION_DISTRIBUTION")["senior_residency"],
-        #     "senior_residency",
-        #     0,
-        #     area=1000,
-        # )
-        # city.senior_residencys.append(sr)
 
         city.humans = humans
         city.hd = {h.name: h for h in humans}
@@ -88,7 +98,7 @@ def test_functional_seniors_residence():
         env.process(city.run(SECONDS_PER_HOUR, outfile))
 
         for human in city.humans:
-            env.process(human.run(city=city))
+            env.process(human.run())
 
         for m in monitors:
             env.process(m.run(env, city=city))
@@ -99,13 +109,14 @@ def test_functional_seniors_residence():
             env.run(until=env.ts_initial+simulation_days*SECONDS_PER_DAY)
 
         # Check dead humans are removed from the residence
-        assert sum([h.is_dead for h in city.humans]) == N - len(sr.humans)
-
-        # Check there are no humans that are infectious
-        assert not any([h.is_infectious for h in city.humans])
+        assert sum([h.is_dead for h in city.humans]) == N - len(sr.residents)
 
         # Check there are some dead
         assert sum([h.is_dead for h in city.humans]) > 0
+
+        # Check there are no humans that are infectious
+        breakpoint()
+        assert not any([h.is_infectious for h in city.humans])
 
         # Check some stats on number dead
         # len([h for h in city.humans if h.dead])/len(city.humans)

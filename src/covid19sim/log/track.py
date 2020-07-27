@@ -400,7 +400,7 @@ class Tracker(object):
         # solo dwellers
         estimated_solo_dwellers_mean_age = sum([x[2] * (x[0] + x[1]) / 2 for x in self.conf['P_AGE_SOLO_DWELLERS_GIVEN_HOUSESIZE_1']])
         simulated_solo_dwellers_age_given_housesize1 = [[x[0], x[1], 0] for x in self.conf['P_AGE_SOLO_DWELLERS_GIVEN_HOUSESIZE_1']]
-        n_solo_houses = len(solo_ages)
+        n_solo_houses = len(solo_ages) + 1e-6 # to avoid ZeroDivisionError
         for age in solo_ages:
             for i,x in enumerate(self.conf['P_AGE_SOLO_DWELLERS_GIVEN_HOUSESIZE_1']):
                 if x[0] <= age <= x[1]:

@@ -663,6 +663,7 @@ class EmptyCity(City):
         self.y_range = y_range
         self.total_area = (x_range[1] - x_range[0]) * (y_range[1] - y_range[0])
         self.n_people = 0
+        self.logfile = None
 
         self.test_type_preference = list(zip(*sorted(conf.get("TEST_TYPES").items(), key=lambda x:x[1]['preference'])))[0]
         self.max_capacity_per_test_type = {
@@ -688,13 +689,15 @@ class EmptyCity(City):
         self.hd = {}
         self.households = OrderedSet()
         self.stores = []
-        self.senior_residencys = []
+        self.senior_residences = []
         self.hospitals = []
         self.miscs = []
         self.parks = []
         self.schools = []
         self.workplaces = []
         self.global_mailbox: SimulatorMailboxType = defaultdict(dict)
+        self.n_init_infected  = 0
+        self.init_fraction_sick = 0
 
     @property
     def start_time(self):
@@ -706,10 +709,16 @@ class EmptyCity(City):
         object in preparation for simulation.
         """
         self.log_static_info()
-
+        self.n_people = len(self.humans)
+        self.n_init_infected = sum(1 for h in self.humans if h.infection_timestamp is not None)
+        self.init_fraction_sick = self.n_init_infected /  self.n_people
         print("Computing preferences")
+        # self.initialize_humans_and_locations()
+        # assign workplace to humans
+        self.humans, self = create_locations_and_assign_workplace_to_humans(self.humans, self, self.conf, self.logfile)
+
         self._compute_preferences()
-        self.tracker = Tracker(self.env, self)
+        self.tracker = Tracker(self.env, self, self.conf, None)
         self.tracker.initialize()
         # self.tracker.track_initialized_covid_params(self.humans)
         self.intervention = BaseMethod(self.conf)

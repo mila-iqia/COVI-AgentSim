@@ -126,6 +126,7 @@ class Human(BaseHuman):
         self.infectiousness_onset_days = 0  # number of days after exposure that this person becomes infectious
         self.can_get_really_sick = may_develop_severe_illness(self.age, self.sex, self.rng)  # boolean representing whether this person may need to go to the hospital
         self.can_get_extremely_sick = self.can_get_really_sick and self.rng.random() >= 0.7  # &severe; 30% of severe cases need ICU
+        self.never_recovers = self.rng.random() <= self.conf.get("P_NEVER_RECOVERS")[min(math.floor(self.age/10), 8)]  # boolean representing that this person will die if they are infected with Covid-19
         self.initial_viral_load = self.rng.rand() if infection_timestamp is not None else 0  # starting value for Covid-19 viral load if this person is one of the initially exposed people
         self.is_immune = False  # whether this person is immune to Covid-19 (happens after recovery)
         if self.infection_timestamp is not None:  # if this is an initially Covid-19 sick person
@@ -595,10 +596,19 @@ class Human(BaseHuman):
             # self.reset_test_result()
             self.infection_timestamp = None
             self.all_symptoms, self.covid_symptoms = [], []
+            if self.never_recovers:
+                self.mobility_planner.human_dies_in_next_activity = True
+                return
+            else:
+                self.recovered_timestamp = self.env.timestamp
+                self.is_immune = not self.conf.get("REINFECTION_POSSIBLE")
 
-            self.recovered_timestamp = self.env.timestamp
-            self.is_immune = not self.conf.get("REINFECTION_POSSIBLE")
-            Event.log_recovery(self.conf.get('COLLECT_LOGS'), self, self.env.timestamp, death=False)
+                # "resample" the chance probability of never recovering again (experimental)
+                if not self.is_immune:
+                    self.never_recovers = self.rng.random() < self.conf.get("P_NEVER_RECOVERS")[
+                        min(math.floor(self.age / 10), 8)]
+
+                Event.log_recovery(self.conf.get('COLLECT_LOGS'), self, self.env.timestamp, death=False)
 
     def check_cold_and_flu_contagion(self, other_human):
         """
@@ -880,6 +890,7 @@ class Human(BaseHuman):
         Yields:
             generator
         """
+        self.infection_timestamp = None
         self.recovered_timestamp = datetime.datetime.max
         self.all_symptoms, self.covid_symptoms = [], []
         Event.log_recovery(self.conf.get('COLLECT_LOGS'), self, self.env.timestamp, death=True)
@@ -942,7 +953,7 @@ class Human(BaseHuman):
             if next_activity.location is not None:
 
                 # (debug) to print the schedule for someone
-                # if self.name == "human:110":
+                # if self.name == "human:1":
                 #       print("A\t", self.env.timestamp, self, next_activity)
 
                 # /!\ TODO - P - check for the capacity at a location; it requires adjustment of timestamps

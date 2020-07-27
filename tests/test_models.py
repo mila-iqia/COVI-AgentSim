@@ -543,10 +543,9 @@ class HumanAsMessageTest(unittest.TestCase):
 
         env = self.EnvMock(today)
 
-        human = Human(env=env, city={'city': 'city'}, name=1, age=25, rng=rng, has_app=True,
-                      infection_timestamp=today, household={'household': 'household'},
-                      workplace={'workplace': 'workplace'}, profession="profession", rho=0.3,
-                      gamma=0.21, conf=conf)
+        human = Human(env=env, city={'city': 'city'}, name=1, age=25, rng=rng,
+                      infection_timestamp=today, conf=conf)
+        human.has_app = True
         human.contact_book.mailbox_keys_by_day[0] = [0, 1]  # add two dummy encounter keys
         personal_mailbox = {1: ["fake_message"]}  # create a dummy personal mailbox with one update
         dummy_conf = {"TRACING_N_DAYS_HISTORY": 14}  # create a dummy config (only needs 1 setting)
