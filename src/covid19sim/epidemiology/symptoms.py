@@ -10,6 +10,7 @@ from collections import namedtuple, OrderedDict
 ---------------------------------------
 """
 
+CONDITIONS_CAUSING_MODERATE = ['smoker','diabetes','heart_disease','cancer','COPD','asthma','stroke','immuno-suppressed','lung_disease']
 
 # Utility dict to avoid storing the string symptom's name in its instance
 _INT_TO_SYMPTOMS_NAME = {
@@ -609,7 +610,8 @@ def _get_covid_sickness_severity(rng, phase_id: int, really_sick: bool, extremel
         return None
     # covid_onset phase
     elif phase_id == COVID_ONSET:
-        if really_sick or extremely_sick or len(preexisting_conditions) > 2 or initial_viral_load > 0.6:
+        if really_sick or extremely_sick or len([i for i in CONDITIONS_CAUSING_MODERATE if
+                                                 i in preexisting_conditions]) > 2 or initial_viral_load > 0.6:
             return MODERATE
         else:
             return MILD
@@ -619,8 +621,6 @@ def _get_covid_sickness_severity(rng, phase_id: int, really_sick: bool, extremel
             return EXTREMELY_SEVERE
         elif really_sick or len(preexisting_conditions) > 2 or initial_viral_load > 0.6:
             return SEVERE
-        # initial_viral_load - .15 is the same probaility than p_gastro
-        # (previous code version was using p_gastro)
         elif rng.rand() < initial_viral_load - .15:
             return MODERATE
         else:
@@ -933,7 +933,7 @@ def _get_flu_progression(age, rng, carefulness, preexisting_conditions, really_s
     phase_i = 1
     phase = disease_phases[phase_i]
 
-    if really_sick or extremely_sick or any(preexisting_conditions):
+    if really_sick or extremely_sick or any([i for i in CONDITIONS_CAUSING_MODERATE if i in preexisting_conditions]):
         symptoms_per_phase[phase_i].append(MODERATE)
     else:
         symptoms_per_phase[phase_i].append(MILD)
@@ -1009,7 +1009,7 @@ def _get_cold_progression(age, rng, carefulness, preexisting_conditions, really_
     phase_i = 0
     phase = disease_phases[phase_i]
 
-    if really_sick or extremely_sick or any(preexisting_conditions):
+    if really_sick or extremely_sick or any([i for i in CONDITIONS_CAUSING_MODERATE if i in preexisting_conditions]):
         symptoms_per_phase[phase_i].append(MODERATE)
     else:
         symptoms_per_phase[phase_i].append(MILD)
