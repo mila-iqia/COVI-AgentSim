@@ -370,6 +370,7 @@ class Heuristic(BaseMethod):
             risk_history = [self.risk_level_to_risk(0)] * (human.conf.get("TRACING_N_DAYS_HISTORY") // 2)
             return risk_history, 0
         return [], 0
+
     def compute_max_risk_history(self, risk_histories):
         longest_length = max([len(x) for x in risk_histories])
         risk_history = []
