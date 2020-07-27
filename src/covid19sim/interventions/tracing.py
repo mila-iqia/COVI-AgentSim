@@ -212,14 +212,46 @@ class Heuristic(BaseMethod):
          heuristic doesn't have a concept of risk_level to rec_level mapping. The function `self.get_recommendations_level`
          will overwrite rec_level attribute of human via `update_recommendations_level`.
          """
-        no_message_gt3_past_7_days = True
 
-        risk_histories = [[human.risk_history_map]]
-        rec_levels = [human.rec_level]
-        message_risk_history, message_rec_level = self.handle_risk_messages(human, mailbox)
+        # if you have a test result, it over-rides everything else (we ignore symptoms and risk messages)
+        # => This basically acts as "recovered" in pseudocode.
         test_risk_history, test_rec_level = self.handle_tests(human)
+        if any(test_risk_history):
+            _heuristic_rec_level = test_rec_level
+            setattr(human, '_heuristic_rec_level', _heuristic_rec_level)
+            return test_risk_history, _heuristic_rec_level
+
+        message_risk_history, message_rec_level = self.handle_risk_messages(human, mailbox)
+
         symptoms_risk_history, symptoms_rec_level = self.handle_symptoms(human)
-        self.handle_multi(human, mailbox)
+
+        recovery_risk_history, recovery_rec_level = self.handle_recovery(human, mailbox)
+
+        # if we recovered, ignore the other signals
+        if len(recovery_risk_history) == 7:
+            setattr(human, '_heuristic_rec_level', recovery_rec_level)
+            return recovery_risk_history, recovery_rec_level
+
+        # Pick the max of the other signals
+        _heuristic_rec_level = max(message_rec_level, symptoms_rec_level, human.rec_level)
+        setattr(human, '_heuristic_rec_level', _heuristic_rec_level)
+        risk_history = self.compute_max_risk_history([list(human.risk_history_map.values()), message_risk_history, symptoms_risk_history])
+        return risk_history, _heuristic_rec_level
+
+
+    def handle_tests(self, human):
+        test_risk_history = []
+        test_rec_level = 0
+        no_positive_test_result_past_14_days, latest_negative_test_result_num_days = self.extract_test_results(human)
+        if (no_positive_test_result_past_14_days
+              and latest_negative_test_result_num_days is not None):
+            test_risk_history = [self.risk_level_to_risk(1)] * max(latest_negative_test_result_num_days, 2)
+            test_rec_level = 0
+
+        if human.reported_test_result == "positive":
+            test_risk_history = [self.risk_level_to_risk(15)] * human.conf.get("TRACING_N_DAYS_HISTORY")
+            test_rec_level = 3
+        return test_risk_history, test_rec_level
 
     def handle_risk_messages(self, human, mailbox):
         """ The core idea here is that we want to approximate the day when we would have become infectious, given
@@ -280,58 +312,6 @@ class Heuristic(BaseMethod):
                     latest_negative_test_result_num_days = result_day
         return no_positive_test_result_past_14_days, latest_negative_test_result_num_days
 
-    def handle_tests(self, human):
-        no_positive_test_result_past_14_days, latest_negative_test_result_num_days = self.extract_test_results(human)
-        if (no_positive_test_result_past_14_days
-              and latest_negative_test_result_num_days is not None):
-            test_risk_history = [self.risk_level_to_risk(1)] * max(latest_negative_test_result_num_days, 2)
-            test_rec_level = 0
-
-        if human.reported_test_result == "positive":
-            test_risk_history = [self.risk_level_to_risk(15)] * human.conf.get("TRACING_N_DAYS_HISTORY")
-            test_rec_level = 3
-        return test_risk_history, test_rec_level
-
-
-    def handle_multi(self, human, mailbox):
-        no_symptoms_past_7_days = \
-            not any(islice(human.rolling_all_reported_symptoms, (human.conf.get("TRACING_N_DAYS_HISTORY") // 2)))
-        assert human.rec_level == getattr(human, '_heuristic_rec_level'), "rec level mismatch"
-
-        no_positive_test_result_past_14_days, latest_negative_test_result_num_days = self.extract_test_results(human)
-
-        no_message_gt3_past_7_days = True
-        for _, update_messages in mailbox.items():
-            for update_message in update_messages:
-                encounter_day = (human.env.timestamp - update_message.encounter_time).days
-                risk_level = update_message.new_risk_level
-
-                if (encounter_day < 7) and (risk_level >= 3):
-                    no_message_gt3_past_7_days = False
-
-        # If we don't actually appear risky, then set to low risk
-        if (human.rec_level > 0 and no_positive_test_result_past_14_days
-              and no_symptoms_past_7_days and no_message_gt3_past_7_days):
-            # Set risk level R = 0 for now and all past 7 days
-            risk_history = [self.risk_level_to_risk(0)] * (human.conf.get("TRACING_N_DAYS_HISTORY") // 2)
-            setattr(human, '_heuristic_rec_level', 0)
-            return risk_history
-
-    def compute_max_risk_history(self, risk_histories):
-        # find the longest risk history
-        # for i in range(len(longest_history))
-            # max_risk_history[i] = max()
-
-        #     setattr(human, '_heuristic_rec_level', max(rec_levels))
-        #     most_conservative_risk_history = [0.]
-        #     for risk_history in risk_histories:
-        #         if sum(risk_history) > sum(most_conservative_risk_history):
-        #             most_conservative_risk_history = risk_history
-        #     risk_history = most_conservative_risk_history
-        # return risk_history if type(risk_history) == list else [risk_history]
-        return risk_histories[0]
-
-
     def handle_symptoms(self, human):
         if not any(human.all_reported_symptoms):
             return [], 0
@@ -354,10 +334,54 @@ class Heuristic(BaseMethod):
             new_rec_level = self.mild_symptoms_rec_level
 
         # if it's more conservative to go with the number of experienced symptoms, do that.
-        if len(human.all_reported_symptoms) > 2 * new_rec_level:
-            new_risk_level = len(human.all_reported_symptoms)
-            new_rec_level = min(new_risk_level // 2, 3)
+        # if len(human.all_reported_symptoms) > 2 * new_rec_level:
+        #     new_risk_level = len(human.all_reported_symptoms)
+        #     new_rec_level = min(new_risk_level // 2, 3)
 
         risk_history = [self.risk_level_to_risk(new_risk_level)] * (human.conf.get("TRACING_N_DAYS_HISTORY") // 2)
         return risk_history, new_rec_level
+
+
+
+    def handle_recovery(self, human, mailbox):
+        ##### Precompute some conditions
+        # No symptoms in last 7 days
+        no_symptoms_past_7_days = \
+            not any(islice(human.rolling_all_reported_symptoms, (human.conf.get("TRACING_N_DAYS_HISTORY") // 2)))
+        assert human.rec_level == getattr(human, '_heuristic_rec_level'), "rec level mismatch"
+
+        # No positive test results
+        no_positive_test_result_past_14_days, _ = self.extract_test_results(human)
+
+        # No large risk message
+        no_message_gt3_past_7_days = True
+        for _, update_messages in mailbox.items():
+            for update_message in update_messages:
+                encounter_day = (human.env.timestamp - update_message.encounter_time).days
+                risk_level = update_message.new_risk_level
+
+                if (encounter_day < 7) and (risk_level >= 3):
+                    no_message_gt3_past_7_days = False
+
+        # set to low risk
+        if (human.rec_level > 0 and no_positive_test_result_past_14_days
+              and no_symptoms_past_7_days and no_message_gt3_past_7_days):
+            # Set risk level R = 0 for now and all past 7 days
+            risk_history = [self.risk_level_to_risk(0)] * (human.conf.get("TRACING_N_DAYS_HISTORY") // 2)
+            return risk_history, 0
+        return [], 0
+    def compute_max_risk_history(self, risk_histories):
+        longest_length = max([len(x) for x in risk_histories])
+        risk_history = []
+        for i in range(longest_length):
+            vals = []
+            for r in risk_histories:
+                try:
+                     vals.append(r[i])
+                except IndexError:
+                    pass
+
+            risk_history.append(max(vals))
+        return risk_history
+
 
