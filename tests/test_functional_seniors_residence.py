@@ -115,7 +115,6 @@ def test_functional_seniors_residence():
         assert sum([h.is_dead for h in city.humans]) > 0
 
         # Check there are no humans that are infectious
-        breakpoint()
         assert not any([h.is_infectious for h in city.humans])
 
         # Check some stats on number dead
