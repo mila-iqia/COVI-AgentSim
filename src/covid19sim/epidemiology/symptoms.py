@@ -1,6 +1,8 @@
 import dataclasses
 import math
 import typing
+import datetime
+import networkx as nx
 from collections import namedtuple, OrderedDict
 
 
@@ -602,6 +604,20 @@ SYMPTOMS: typing.Dict[Symptom, SymptomProbability] = OrderedDict([
     # )
 ])
 
+@dataclasses.dataclass
+class SymptomsProgression(object):
+    starts_at: datetime.datetime
+    progression: list
+    G: nx.Graph
+
+    # def init_progression(self):
+    #     """ Creates the set of symptoms this person would have if they caught this disease """
+    #     raise NotImplementedError
+    #
+    # def get_symptom_at(self, current_time: datetime.datetime):
+    #     """ Gets an array of symptoms this person has at the current time """
+    #     raise NotImplementedError
+
 
 def _get_covid_sickness_severity(rng, phase_id: int, really_sick: bool, extremely_sick: bool,
                                  preexisting_conditions: list, initial_viral_load: float):
@@ -685,7 +701,6 @@ def _get_covid_symptoms(symptoms_progression: list, phase_id: int, rng, really_s
 
             if extremely_sick and rng.rand() < SYMPTOMS[CHILLS].probabilities[phase_id]:
                 symptoms.append(CHILLS)
-
     # covid_plateau phase
     elif phase_id == COVID_PLATEAU:
         if FEVER in symptoms_progression[-1]:
