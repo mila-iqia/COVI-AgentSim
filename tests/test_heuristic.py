@@ -72,17 +72,17 @@ class HeuristicTest(unittest.TestCase):
         self.human1.set_test_info("lab", "positive")
         self.env = Env(self.start_time + datetime.timedelta(days=1))
         self.human1.env = self.env
-        risk_history, rec_level = self.heuristic.handle_tests(self.human1)
+        risk_history, rec_level= self.heuristic.handle_tests(self.human1)
         assert rec_level == 0
         assert risk_history == []
 
-    def test_handle_tests_negative(self):
+    def test_handle_tests_negative_3_days(self):
         self.human1.set_test_info("lab", "negative")
         self.env = Env(self.start_time + datetime.timedelta(days=3))
         self.human1.env = self.env
         risk_history, rec_level = self.heuristic.handle_tests(self.human1)
         assert rec_level == 0
-        assert risk_history == [0.20009698, 0.20009698, 0.20009698]
+        assert risk_history == [0.20009698, 0.20009698, 0.20009698, 0.20009698, 0.20009698, 0.20009698, 0.20009698]
 
 
 ##################################
@@ -257,9 +257,9 @@ class HeuristicTest(unittest.TestCase):
         self.human1.rolling_all_reported_symptoms.appendleft(reported_symptoms)
         mailbox = {}
 
-        risk_history, rec_level = self.heuristic.compute_risk(self.human1, mailbox, self.hd)
-        assert rec_level == 0
-        assert risk_history == [0.20009698, 0.20009698, 0.20009698]
+        risk_history = self.heuristic.compute_risk(self.human1, mailbox, self.hd)
+        assert self.human1._heuristic_rec_level == 0
+        assert risk_history == [0.20009698, 0.20009698, 0.20009698, 0.20009698, 0.20009698, 0.20009698, 0.20009698]
 
 
     def test_low_risk_message_and_severe_symptoms(self):
@@ -283,8 +283,8 @@ class HeuristicTest(unittest.TestCase):
 
         mailbox = {None: [m1]}
 
-        risk_history, rec_level = self.heuristic.compute_risk(self.human1, mailbox, self.hd)
-        assert rec_level == 3
+        risk_history = self.heuristic.compute_risk(self.human1, mailbox, self.hd)
+        assert self.human1._heuristic_rec_level == 3
         assert risk_history == [0.94996601, 0.94996601, 0.94996601, 0.94996601, 0.94996601, 0.94996601, 0.94996601]
 
 
@@ -309,13 +309,105 @@ class HeuristicTest(unittest.TestCase):
 
         mailbox = {None: [m1]}
 
-        risk_history, rec_level = self.heuristic.compute_risk(self.human1, mailbox, self.hd)
-        assert rec_level == 3
+        risk_history = self.heuristic.compute_risk(self.human1, mailbox, self.hd)
+        assert self.human1._heuristic_rec_level == 3
         # We get a hetereogenous array here because of the mixed signals between symptoms and risk messages
         assert risk_history == [0.8408014, 0.79687407, 0.79687407, 0.79687407, 0.79687407, 0.79687407, 0.79687407]
 
-
-
     def test_recovered(self):
-        assert True
+        # they were at a rec level of 1, then they recovered
+        mailbox = {None: []}
+        self.env = Env(self.start_time + datetime.timedelta(days=3))
+        self.human1.env = self.env
+        self.human1._rec_level = 1
+        self.human1._heuristic_rec_level = 1
+
+        risk_history = self.heuristic.compute_risk(self.human1, mailbox, self.hd)
+        assert self.human1._heuristic_rec_level == 0
+        assert risk_history == [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
+
+
+    def test_high_risk_history_no_new_signal(self):
+        # they were at a rec level of 1, then they recovered
+        mailbox = {None: []}
+        self.env = Env(self.start_time + datetime.timedelta(days=3))
+        self.human1.env = self.env
+        self.human1._rec_level = 3
+        self.human1._heuristic_rec_level = 3
+        self.human1.risk_history_map = {1: 0.9, 2: 0.9, 3: 0.9}
+
+        risk_history = self.heuristic.compute_risk(self.human1, mailbox, self.hd)
+        assert self.human1._heuristic_rec_level == 0
+        assert risk_history == [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
+
+    def test_high_risk_history_mild_symptom(self):
+        # they were at a rec level of 1, then they recovered
+        mailbox = {None: []}
+        self.env = Env(self.start_time + datetime.timedelta(days=3))
+        self.human1.env = self.env
+        self.human1._rec_level = 3
+        self.human1._heuristic_rec_level = 3
+        self.human1.risk_history_map = {1: 0.9, 2: 0.9, 3: 0.9}
+        reported_symptoms = ["mild"]
+        self.human1.rolling_all_reported_symptoms.appendleft(reported_symptoms)
+
+        risk_history = self.heuristic.compute_risk(self.human1, mailbox, self.hd)
+        assert self.human1._heuristic_rec_level == 3
+        # This basically says for the last three days you maintain the high risk signal, but then you update older signals.
+        # not sure this would ever happen in the real algorithm since the only time we are really writing signals higher
+        # than 0.79 is for positive test result that writes for 14 days.
+        assert risk_history == [0.9, 0.9, 0.9, 0.79687407, 0.79687407,0.79687407,0.79687407]
+
+
+    def test_handle_tests_negative_8_days(self):
+        # The scenario is you get a negative lab test 8 days ago, but you got a moderate risk message two days ago.
+        self.human1.set_test_info("lab", "negative")
+        self.env = Env(self.start_time + datetime.timedelta(days=8))
+        self.human1.env = self.env
+        m1 = UpdateMessage(
+            uid=None,
+            new_risk_level=8,
+            old_risk_level=0,
+            update_time=self.env.timestamp.date(),
+            encounter_time=self.env.timestamp - datetime.timedelta(days=2),
+            _sender_uid=self.human2.name,
+            _receiver_uid=self.human1.name,
+            _real_encounter_time=self.env.timestamp,
+            _exposition_event=None,  # we don't decide this here, it will be done in the caller
+        )
+
+        mailbox = {None: [m1]}
+        risk_history = self.heuristic.compute_risk(self.human1, mailbox, self.hd)
+
+        assert self.human1._heuristic_rec_level == 2
+        assert risk_history == [0.42782824, 0.01, 0.01, 0.01, 0.20009698, 0.20009698, 0.20009698, 0.20009698, 0.20009698, 0.20009698, 0.20009698, 0.20009698]
+
+
+    def test_handle_tests_negative_8_days_but_high_risk_before(self):
+        # The scenario is you get a negative lab test 8 days ago, but you got a moderate risk message 12 days ago.
+        # This triggers the "recovery" mode so you get 7 baseline risks instead of
+        # [0.9, 0.9, 0.9, 0.9, 0.20009698, 0.20009698, 0.20009698, 0.20009698, 0.9]
+        self.human1.set_test_info("lab", "negative")
+        self.env = Env(self.start_time + datetime.timedelta(days=8))
+        self.human1.env = self.env
+        self.human1.risk_history_map = {1: 0.9, 2: 0.9, 3: 0.9, 4: 0.9, 5: 0.9, 6: 0.9, 7: 0.9, 8: 0.9, 9: 0.9}
+
+        m1 = UpdateMessage(
+            uid=None,
+            new_risk_level=8,
+            old_risk_level=0,
+            update_time=self.env.timestamp.date(),
+            encounter_time=self.env.timestamp - datetime.timedelta(days=12),
+            _sender_uid=self.human2.name,
+            _receiver_uid=self.human1.name,
+            _real_encounter_time=self.env.timestamp,
+            _exposition_event=None,  # we don't decide this here, it will be done in the caller
+        )
+
+        mailbox = {None: [m1]}
+
+        risk_history = self.heuristic.compute_risk(self.human1, mailbox, self.hd)
+
+        assert self.human1._heuristic_rec_level == 0
+        assert risk_history == [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
 

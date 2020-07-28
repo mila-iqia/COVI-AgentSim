@@ -212,14 +212,14 @@ class Heuristic(BaseMethod):
          heuristic doesn't have a concept of risk_level to rec_level mapping. The function `self.get_recommendations_level`
          will overwrite rec_level attribute of human via `update_recommendations_level`.
          """
-
-        # if you have a test result, it over-rides everything else (we ignore symptoms and risk messages)
-        # => This basically acts as "recovered" in pseudocode.
+        cur_risk_history = list(human.risk_history_map.values())
+        test_protection_window = 8
+        # if you have a positive test result, it over-rides everything else (we ignore symptoms and risk messages)
         test_risk_history, test_rec_level = self.handle_tests(human)
-        if any(test_risk_history):
+        if test_rec_level == 3:
             _heuristic_rec_level = test_rec_level
             setattr(human, '_heuristic_rec_level', _heuristic_rec_level)
-            return test_risk_history, _heuristic_rec_level
+            return test_risk_history
 
         message_risk_history, message_rec_level = self.handle_risk_messages(human, mailbox)
 
@@ -230,27 +230,54 @@ class Heuristic(BaseMethod):
         # if we recovered, ignore the other signals
         if len(recovery_risk_history) == 7:
             setattr(human, '_heuristic_rec_level', recovery_rec_level)
-            return recovery_risk_history, recovery_rec_level
+            return recovery_risk_history
 
-        # Pick the max of the other signals
-        _heuristic_rec_level = max(message_rec_level, symptoms_rec_level, human.rec_level)
-        setattr(human, '_heuristic_rec_level', _heuristic_rec_level)
-        risk_history = self.compute_max_risk_history([list(human.risk_history_map.values()), message_risk_history, symptoms_risk_history])
-        return risk_history, _heuristic_rec_level
+        # compute max risk history and rec level
+        risk_history = self.compute_max_risk_history([cur_risk_history, message_risk_history, symptoms_risk_history])
+        rec_level = max(message_rec_level, symptoms_rec_level, human.rec_level)
+
+        # if you have a negative test result, we want to overwrite the above
+        if len(test_risk_history) > 0:
+            rec_level, risk_history = self.apply_negative_test(rec_level, risk_history, test_risk_history, test_protection_window)
+        setattr(human, '_heuristic_rec_level', rec_level)
+
+        return risk_history
 
 
-    def handle_tests(self, human):
+
+    def apply_negative_test(self, rec_level, risk_history, test_risk_history, test_protection_window):
+        offset = max(len(test_risk_history) - test_protection_window, 0)
+        # pad if we need to pad
+        if len(test_risk_history) - test_protection_window > len(risk_history):
+            padding = len(test_risk_history) - test_protection_window - len(risk_history)
+            risk_history.extend([0.01] * padding)
+
+        for i in range(0, test_protection_window):
+            if i >= len(test_risk_history):
+                continue
+            try:
+                risk_history[i + offset] = test_risk_history[i]
+            except IndexError:
+                risk_history.append(test_risk_history[i])
+
+        # if the test was within the last test_protection_window days, it drives the rec level
+        if len(test_risk_history) <= test_protection_window:
+            rec_level = 0
+        return rec_level, risk_history
+
+    def handle_tests(self, human, test_protection_window=8):
         test_risk_history = []
         test_rec_level = 0
+
         no_positive_test_result_past_14_days, latest_negative_test_result_num_days = self.extract_test_results(human)
-        if (no_positive_test_result_past_14_days
-              and latest_negative_test_result_num_days is not None):
-            test_risk_history = [self.risk_level_to_risk(1)] * max(latest_negative_test_result_num_days, 2)
+        if no_positive_test_result_past_14_days and latest_negative_test_result_num_days is not None:
+            test_risk_history = [self.risk_level_to_risk(1)] * (latest_negative_test_result_num_days + test_protection_window//2)
             test_rec_level = 0
 
         if human.reported_test_result == "positive":
             test_risk_history = [self.risk_level_to_risk(15)] * human.conf.get("TRACING_N_DAYS_HISTORY")
             test_rec_level = 3
+
         return test_risk_history, test_rec_level
 
     def handle_risk_messages(self, human, mailbox):
@@ -344,7 +371,6 @@ class Heuristic(BaseMethod):
 
 
     def handle_recovery(self, human, mailbox):
-        ##### Precompute some conditions
         # No symptoms in last 7 days
         no_symptoms_past_7_days = \
             not any(islice(human.rolling_all_reported_symptoms, (human.conf.get("TRACING_N_DAYS_HISTORY") // 2)))
@@ -363,13 +389,12 @@ class Heuristic(BaseMethod):
                 if (encounter_day < 7) and (risk_level >= 3):
                     no_message_gt3_past_7_days = False
 
+        risk_history = []
         # set to low risk
-        if (human.rec_level > 0 and no_positive_test_result_past_14_days
-              and no_symptoms_past_7_days and no_message_gt3_past_7_days):
+        if no_positive_test_result_past_14_days and no_symptoms_past_7_days and no_message_gt3_past_7_days:
             # Set risk level R = 0 for now and all past 7 days
             risk_history = [self.risk_level_to_risk(0)] * (human.conf.get("TRACING_N_DAYS_HISTORY") // 2)
-            return risk_history, 0
-        return [], 0
+        return risk_history, 0
 
     def compute_max_risk_history(self, risk_histories):
         longest_length = max([len(x) for x in risk_histories])
