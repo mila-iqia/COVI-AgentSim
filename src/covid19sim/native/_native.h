@@ -79,10 +79,10 @@ extern "C" {
 
 /* Data Structures Forward Declaration & Typedef */
 typedef struct BaseEnvironmentObject BaseEnvironmentObject;
-typedef struct BaseHumanObject       BaseHumanObject;
+// typedef struct BaseHumanObject       BaseHumanObject;
 
 extern PyTypeObject BaseEnvironmentType;
-extern PyTypeObject BaseHumanType;
+// extern PyTypeObject BaseHumanType;
 
 
 /* Data Structure and Constant Definitions */
@@ -104,25 +104,25 @@ struct BaseEnvironmentObject{
 };
 
 
-/**
- * @brief The BaseHumanObject struct
- */
+// /**
+//  * @brief The BaseHumanObject struct
+//  */
 
-struct BaseHumanObject{
-    PyObject_HEAD
-    PyObject*              __dict__;
-    PyObject*              __weaklist__;
-    BaseEnvironmentObject* env;
-    PyObject*              name;
-    double                 ts_birth;
-    double                 ts_death;
-    double                 ts_cold_symptomatic,  ts_flu_symptomatic,    ts_allergy_symptomatic;
-    double                 ts_covid19_infection, ts_covid19_infectious, ts_covid19_symptomatic,
-                           ts_covid19_recovery,  ts_covid19_immunity;
-    double                 infectiousness_onset_days;
-    double                 incubation_days;
-    char                   is_asymptomatic;
-};
+// struct BaseHumanObject{
+//     PyObject_HEAD
+//     PyObject*              __dict__;
+//     PyObject*              __weaklist__;
+//     BaseEnvironmentObject* env;
+//     PyObject*              name;
+//     double                 ts_birth;
+//     double                 ts_death;
+//     double                 ts_cold_symptomatic,  ts_flu_symptomatic,    ts_allergy_symptomatic;
+//     double                 ts_covid19_infection, ts_covid19_infectious, ts_covid19_symptomatic,
+//                            ts_covid19_recovery,  ts_covid19_immunity;
+//     double                 infectiousness_onset_days;
+//     double                 incubation_days;
+//     char                   is_asymptomatic;
+// };
 
 
 /* End Extern "C" Guard */

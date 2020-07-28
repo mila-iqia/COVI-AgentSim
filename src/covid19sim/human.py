@@ -31,7 +31,6 @@ from covid19sim.epidemiology.p_infection import get_p_infection, infectiousness_
 from covid19sim.utils.constants import SECONDS_PER_MINUTE, SECONDS_PER_HOUR, SECONDS_PER_DAY
 from covid19sim.inference.message_utils import ContactBook, exchange_encounter_messages, RealUserIDType
 from covid19sim.utils.visits import Visits
-from covid19sim.native._native import BaseHuman
 
 if typing.TYPE_CHECKING:
     from covid19sim.utils.env import Env
@@ -39,7 +38,7 @@ if typing.TYPE_CHECKING:
     from covid19sim.locations.location import Location
 
 
-class Human(BaseHuman):
+class Human(object):
     """
     Human agent class. Human objects can only be instantiated by a city at the start of a simulation.
     See `covid19sim.locations.city.py` for more information.
@@ -77,20 +76,19 @@ class Human(BaseHuman):
             rho: TODO @@@@ DOCUMENT ME
             gamma: TODO @@@@ DOCUMENT ME
             conf: configuration dictionary holding the experimental settings.
+            
+            Biological Properties
+            Covid-19
+            App-related
+            Interventions
+            Risk prediction
+            Mobility
         """
-        super().__init__(env)
 
         # Utility References
         self.conf = conf  # Simulation-level Configurations
         self.env = env  # Simpy Environment (primarily used for timing / syncronization)
         self.city = city  # Manages lots of things inc. initializing humans and locations, tracking/updating humans
-
-        # SEIR Tracking
-        self.recovered_timestamp = datetime.datetime.min  # Time of recovery from covid -- min if not yet recovered
-        self._infection_timestamp = None  # private time of infection with covid - implemented this way to ensure only infected 1 time
-        self.infection_timestamp = infection_timestamp  # time of infection with covid
-        self.n_infectious_contacts = 0  # number of high-risk contacts with an infected individual.
-        self.exposure_source = None  # source that exposed this human to covid (and infected them). None if not infected.
 
         # rng stuff
         # note: the seed is the important part, if one is not given directly, it will be generated...
@@ -102,20 +100,6 @@ class Human(BaseHuman):
             assert isinstance(rng, int)
             self.init_seed = rng
         self.rng = np.random.RandomState(self.init_seed)  # RNG for this particular human
-
-        # Human-related properties
-        self.name: RealUserIDType = f"human:{name}"  # Name of this human
-        self.profession = profession  # The job this human has (e.g. healthcare worker, retired, school, etc)
-        self.is_healthcare_worker = True if profession == "healthcare" else False  # convenience boolean to check if is healthcare worker
-        self.workplace = workplace  # we sometimes modify human's workplace to WFH if in quarantine, then go back to work when released
-        self.household = None  # assigned later
-        self.location = None  # assigned later
-
-        # Logging / Tracking
-        self.track_this_human = False  # TODO: @PRATEEK plz comment this
-        self.my_history = []  # TODO: @PRATEEK plz comment this
-        self.r0 = []  # TODO: @PRATEEK plz comment this
-        self._events = []  # TODO: @PRATEEK plz comment this
 
         """ Biological Properties """
         # Individual Characteristics
@@ -131,9 +115,30 @@ class Human(BaseHuman):
         # Illness Properties
         self.is_asymptomatic = self.rng.rand() < self.conf.get("BASELINE_P_ASYMPTOMATIC") - (self.age - 50) * 0.5 / 100  # e.g. 70: baseline-0.1, 20: baseline+0.15
         self.infection_ratio = None  # Ratio that helps make asymptomatic people less infectious than symptomatic. see `ASYMPTOMATIC_INFECTION_RATIO` in core.yaml
-        self.cold_timestamp = None  # time when this person was infected with cold
-        self.flu_timestamp = None  # time when this person was infected with flu
-        self.allergy_timestamp = None  # time when this person started having allergy symptoms
+        self.ts_cold_symptomatic = float('inf')  # time when this person was infected with cold
+        self.ts_flu_symptomatic = float('inf')  # time when this person was infected with flu
+        self.ts_covid19_infection = float('inf') # time of infection with covid - TODO: to make private to ensure only infected 1 time
+        self.ts_allergy_symptomatic = float('inf')  # time when this person started having allergy symptoms
+
+        # SEIR Tracking
+        self.recovered_timestamp = datetime.datetime.min  # Time of recovery from covid -- min if not yet recovered
+        self.infection_timestamp = infection_timestamp  # time of infection with covid
+        self.n_infectious_contacts = 0  # number of high-risk contacts with an infected individual.
+        self.exposure_source = None  # source that exposed this human to covid (and infected them). None if not infected.
+
+        # Human-related properties
+        self.name: RealUserIDType = f"human:{name}"  # Name of this human
+        self.profession = profession  # The job this human has (e.g. healthcare worker, retired, school, etc)
+        self.is_healthcare_worker = True if profession == "healthcare" else False  # convenience boolean to check if is healthcare worker
+        self.workplace = workplace  # we sometimes modify human's workplace to WFH if in quarantine, then go back to work when released
+        self.household = None  # assigned later
+        self.location = None  # assigned later
+
+        # Logging / Tracking
+        self.track_this_human = False  # TODO: @PRATEEK plz comment this
+        self.my_history = []  # TODO: @PRATEEK plz comment this
+        self.r0 = []  # TODO: @PRATEEK plz comment this
+        self._events = []  # TODO: @PRATEEK plz comment this
 
         # Allergies
         len_allergies = self.rng.normal(1/self.carefulness, 1)   # determines the number of symptoms this persons allergies would present with (if they start experiencing symptoms)
@@ -404,6 +409,175 @@ class Human(BaseHuman):
     ########### EPI ###########
 
     @property
+    def infection_timestamp(self):
+        """
+        Returns the timestamp when the human was infected by COVID.
+        Returns None if human is not exposed or infectious.
+        """
+        if self.has_covid:
+            return datetime.datetime.fromtimestamp(self.ts_covid19_infection)
+        else:
+            return None
+
+    @infection_timestamp.setter
+    def infection_timestamp(self, val):
+        """
+        Sets the infection_timestamp to val.
+        Raises AssertError at an attempt to overwrite infection_timestamp.
+        """
+        if self.infection_timestamp is not None:
+            raise AssertionError(f"{self}: attempt to overwrite infection_timestamp")
+
+        if isinstance(val, datetime.datetime):
+            self.ts_covid19_infection = val.timestamp()
+        elif val is None:
+            pass
+        else:
+            raise TypeError(f"{self}: improper type {type(val)} being assigned to infection_timestamp")
+
+    @property
+    def flu_timestamp(self):
+        """
+        Returns the timestamp when the human was infected with flu.
+        Returns None if human is not exposed to flu.
+        """
+        if self.has_covid:
+            return datetime.datetime.fromtimestamp(self.ts_flu_symptomatic)
+        else:
+            return None
+
+    @flu_timestamp.setter
+    def flu_timestamp(self, val):
+        """
+        Sets the flu_timestamp to val.
+        Raises AssertError at an attempt to overwrite flu_timestamp.
+        """
+        if self.flu_timestamp is not None:
+            raise AssertionError(f"{self}: attempt to overwrite flu_timestamp")
+
+        if isinstance(val, datetime.datetime):
+            self.ts_flu_symptomatic = val.timestamp()
+        elif val is None:
+            pass
+        else:
+            raise TypeError(f"{self}: improper type {type(val)} being assigned to flu_timestamp")
+
+    @property
+    def cold_timestamp(self):
+        """
+        Returns the timestamp when the human was infected with cold.
+        Returns None if human is not exposed to cold.
+        """
+        if self.has_covid:
+            return datetime.datetime.fromtimestamp(self.ts_cold_symptomatic)
+        else:
+            return None
+
+    @cold_timestamp.setter
+    def cold_timestamp(self, val):
+        """
+        Sets the cold_timestamp to val.
+        Raises AssertError at an attempt to overwrite cold_timestamp.
+        """
+        if self.cold_timestamp is not None:
+            raise AssertionError(f"{self}: attempt to overwrite cold_timestamp")
+
+        if isinstance(val, datetime.datetime):
+            self.ts_cold_symptomatic = val.timestamp()
+        elif val is None:
+            pass
+        else:
+            raise TypeError(f"{self}: improper type {type(val)} being assigned to cold_timestamp")
+
+    @property
+    def allergy_timestamp(self):
+        """
+        Returns the timestamp when the human was infected with allergy.
+        Returns None if human is not exposed to allergy.
+        """
+        if self.has_covid:
+            return datetime.datetime.fromtimestamp(self.ts_allergy_symptomatic)
+        else:
+            return None
+
+    @allergy_timestamp.setter
+    def allergy_timestamp(self, val):
+        """
+        Sets the allergy_timestamp to val.
+        Raises AssertError at an attempt to overwrite allergy_timestamp.
+        """
+        if self.allergy_timestamp is not None:
+            raise AssertionError(f"{self}: attempt to overwrite allergy_timestamp")
+
+        if isinstance(val, datetime.datetime):
+            self.ts_allergy_symptomatic = val.timestamp()
+        elif val is None:
+            pass
+        else:
+            raise TypeError(f"{self}: improper type {type(val)} being assigned to allergy_timestamp")
+
+    @property
+    def is_susceptible(self):
+        """
+        Returns True if human is susceptible to being infected by Covid-19
+
+        Returns:
+            bool: if human is susceptible, False if not
+        """
+        return not self.is_exposed and not self.is_infectious and not self.is_removed
+
+    @property
+    def is_exposed(self):
+        """
+        Returns True if human has been exposed to Covid-19 but cannot yet infect anyone else
+
+        Returns:
+            bool: if human is exposed, False if not
+        """
+        return self.infection_timestamp is not None and self.env.timestamp - self.infection_timestamp < datetime.timedelta(days=self.infectiousness_onset_days)
+
+    @property
+    def is_infectious(self):
+        """
+        Returns True if human is infectious i.e. is able to infect others
+
+        Returns:
+            bool: if human is infectious, False if not
+        """
+        return not self.is_removed and self.infection_timestamp is not None and self.env.timestamp - self.infection_timestamp >= datetime.timedelta(days=self.infectiousness_onset_days)
+
+    @property
+    def is_removed(self):
+        """
+        Returns True if human is either dead or has recovered from COVID and can't be reinfected i.e is immune
+
+        Returns:
+            bool: True if human is immune or dead, False if not
+        """
+        return self.is_immune or self.is_dead
+
+    @property
+    def is_dead(self):
+        """
+        Returns True if the human is dead, otherwise False.
+
+        Returns:
+            bool: True if dead, False if not.
+        """
+        return self.recovered_timestamp == datetime.datetime.max
+
+    @property
+    def is_incubated(self):
+        """
+        Returns True if the human has spent sufficient time to culture the virus, otherwise False.
+
+        Returns:
+            bool: True if Covid-19 incubated, False if not.
+        """
+        return (not self.is_asymptomatic and self.infection_timestamp is not None and
+                self.env.timestamp - self.infection_timestamp >= datetime.timedelta(days=self.incubation_days))
+
+    @property
     def state(self):
         """
         The state (SEIR) that this person is in (True if in state, False otherwise)
@@ -412,6 +586,70 @@ class Human(BaseHuman):
             bool: True for the state this person is in (Susceptible, Exposed, Infectious, Removed)
         """
         return [int(self.is_susceptible), int(self.is_exposed), int(self.is_infectious), int(self.is_removed)]
+
+    @property
+    def has_cold(self):
+        return self.ts_cold_symptomatic != float('inf')
+
+    @property
+    def has_flu(self):
+        return self.ts_flu_symptomatic != float('inf')
+
+    @property
+    def has_covid(self):
+        return self.ts_covid19_infection != float('inf')
+
+    @property
+    def has_allergy_symptoms(self):
+        return self.ts_allergy_symptomatic != float('inf')
+
+    @property
+    def days_since_covid(self):
+        """
+        The number of days since infection with Covid-19 for this person
+
+        Returns:
+            Int or None: Returns an Integer representing the number of days since infection, or None if not infected.
+        """
+        if self.ts_covid19_infection == float('inf'):
+            return
+        return int( (self.env.now-self.ts_covid19_infection) / SECONDS_PER_DAY )
+
+    @property
+    def days_since_cold(self):
+        """
+        The number of days since infection with cold for this person
+
+        Returns:
+            Int or None: Returns an Integer representing the number of days since infection, or None if not infected.
+        """
+        if self.ts_cold_symptomatic == float('inf'):
+            return
+        return int( (self.env.now-self.ts_cold_symptomatic) / SECONDS_PER_DAY )
+
+    @property
+    def days_since_flu(self):
+        """
+        The number of days since infection with flu for this person
+
+        Returns:
+            Int or None: Returns an Integer representing the number of days since infection, or None if not infected.
+        """
+        if self.ts_flu_symptomatic == float('inf'):
+            return
+        return int( (self.env.now-self.ts_flu_symptomatic) / SECONDS_PER_DAY )
+
+    @property
+    def days_since_allergies(self):
+        """
+        The number of days since allergies began for this person
+
+        Returns:
+            Int or None: Returns an Integer representing the number of days since allgergies started, or None if no allergies.
+        """
+        if self.ts_allergy_symptomatic == float('inf'):
+            return
+        return int( (self.env.now-self.ts_allergy_symptomatic) / SECONDS_PER_DAY )
 
     @property
     def is_really_sick(self):
@@ -839,17 +1077,17 @@ class Human(BaseHuman):
         """
         if (self.has_cold and
             self.days_since_cold >= len(self.cold_progression)):
-            self.cold_timestamp = None
+            self.ts_cold_symptomatic = float('inf')
             self.cold_symptoms = []
 
         if (self.has_flu and
             self.days_since_flu >= len(self.flu_progression)):
-            self.flu_timestamp = None
+            self.ts_flu_symptomatic = float('inf')
             self.flu_symptoms = []
 
         if (self.has_allergy_symptoms and
             self.days_since_allergies >= len(self.allergy_progression)):
-            self.allergy_timestamp = None
+            self.ts_allergy_symptomatic = float('inf')
             self.allergy_symptoms = []
 
     def catch_other_disease_at_random(self):
@@ -998,7 +1236,6 @@ class Human(BaseHuman):
                 # TO DISCUSS: Should the test result be reset here? We don't know in reality
                 # when the person has recovered; currently not reset
                 # self.reset_test_result()
-                self.ts_covid19_infection = float('inf')
                 self.all_symptoms, self.covid_symptoms = [], []
 
                 if self.never_recovers:

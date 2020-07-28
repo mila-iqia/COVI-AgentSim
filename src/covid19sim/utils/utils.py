@@ -673,17 +673,21 @@ class DummyEnv:
         self.ts_initial = env.ts_initial
         self.now = env.now
 
+    @property
     def minutes(self):
         return self.timestamp.minute
 
+    @property
     def hour_of_day(self):
         return self.timestamp.hour
 
+    @property
     def day_of_week(self):
         return self.timestamp.weekday()
 
+    @property
     def is_weekend(self):
-        return self.day_of_week() >= 5
+        return self.day_of_week >= 5
 
     def time_of_day(self):
         return self.timestamp.isoformat()

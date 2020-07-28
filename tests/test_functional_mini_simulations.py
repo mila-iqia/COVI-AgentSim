@@ -118,9 +118,13 @@ def _init_infector(human):
     except AttributeError:
         human.city.tracker = TrackerMock()
     # Make the human at his most infectious (Peak viral load day)
-    human._infection_timestamp = human.infection_timestamp + \
-                                 datetime.timedelta(days=-(human.viral_load_peak_start +
-                                                           human.infectiousness_onset_days))
+    human.ts_flu_symptomatic = (
+        human.infection_timestamp + datetime.timedelta(
+            days=-(
+                human.viral_load_peak_start + human.infectiousness_onset_days
+            )
+        )
+    ).timestamp()
     # Mark the human as tested
     human.set_test_info("lab", "positive")
     # Make the test available now
