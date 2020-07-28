@@ -361,6 +361,8 @@ class Location(simpy.Resource):
         Returns:
             (bool): whether `human` was infected via environmental contamination.
         """
+        if not human.is_susceptible:
+            return
 
         p_transmission = get_environment_human_p_transmission(
                                         self.contamination_probability,
@@ -371,10 +373,19 @@ class Location(simpy.Resource):
                                         )
 
         x_environment = self.contamination_probability > 0 and self.rng.random() < p_transmission
-        if x_environment and human.is_susceptible:
+        # track infection related stats
+        human.city.tracker.track_infection(source="environment",
+                                    from_human=None,
+                                    to_human=human,
+                                    location=self,
+                                    timestamp=self.env.timestamp,
+                                    p_infection=p_transmission,
+                                    success=x_environment
+                                )
+        #
+        if x_environment:
             human.infection_timestamp = human.env.timestamp
             compute_covid_properties(human)
-            human.city.tracker.track_infection('env', from_human=None, to_human=human, location=self, timestamp=self.env.timestamp, p_infection=p_transmission)
             Event.log_exposed(self.conf.get('COLLECT_LOGS'), human, self, p_transmission, self.env.timestamp)
 
     def is_open(self, date):

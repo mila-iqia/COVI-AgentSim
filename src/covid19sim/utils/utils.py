@@ -337,6 +337,7 @@ def extract_tracker_data(tracker, conf):
     """
     timenow = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
     data = dict()
+
     # scalars
     data['intervention_day'] = conf.get('INTERVENTION_DAY')
     data['intervention'] = conf.get('INTERVENTION')
@@ -344,53 +345,56 @@ def extract_tracker_data(tracker, conf):
     data['n_humans'] = tracker.n_humans
     data['n_init_infected'] = tracker.n_infected_init
     data['adoption_rate'] = getattr(tracker, 'adoption_rate', 1.0)
-    data['generation_times'] = tracker.get_generation_time()
+    data['generation_times'] = tracker.compute_generation_time()
     data['p_transmission'] = tracker.compute_probability_of_transmission()
 
-    # contacts
-    data['contact_patterns'] = tracker.get_contact_data()
-    data['expected_mobility'] = tracker.expected_mobility
-    data['serial_interval'] = tracker.get_serial_interval()
-    data['all_serial_intervals'] = tracker.serial_intervals
-    data['mobility'] = tracker.mobility
-    data['contacts'] = dict(tracker.contacts) ##
-    data['cases_per_day'] = tracker.cases_per_day
-    data['ei_per_day'] = tracker.ei_per_day
-    data['r_0'] = tracker.r_0
-    data['R'] = tracker.r
-
-    data['s'] = tracker.s_per_day
-    data['e'] = tracker.e_per_day
-    data['i'] = tracker.i_per_day
-    data['r'] = tracker.r_per_day
-    data['avg_infectiousness_per_day'] = tracker.avg_infectiousness_per_day
-    data['risk_precision_global'] = tracker.compute_risk_precision(False)
-    data['risk_precision'] = tracker.risk_precision_daily
-    data['human_monitor'] = tracker.human_monitor
-    data['infection_monitor'] = tracker.infection_monitor
-    data['infector_infectee_update_messages'] = tracker.infector_infectee_update_messages
-    data['risk_attributes'] = tracker.risk_attributes
-    data['outside_daily_contacts'] = tracker.outside_daily_contacts
-    data['test_monitor'] = tracker.test_monitor
-    data['encounter_distances'] = tracker.encounter_distances
-    data['effective_contacts_since_intervention'] = tracker.compute_effective_contacts(since_intervention=True)
-    data['effective_contacts_all_days'] = tracker.compute_effective_contacts(since_intervention=False)
-    data['humans_state'] = tracker.humans_state
-    data['humans_rec_level'] = tracker.humans_rec_level
-    data['humans_intervention_level'] = tracker.humans_intervention_level
-    data['humans_has_app'] = dict((human.name, human.has_app) for human in tracker.city.humans)
-
+    # demographics
     data['age_histogram'] = tracker.city.age_histogram
-
-    data['covid_properties'] = tracker.covid_properties
+    data['humans_has_app'] = dict((human.name, human.has_app) for human in tracker.city.humans)
     data['human_has_app'] = tracker.human_has_app
-    data['to_human_max_msg_per_day'] = tracker.to_human_max_msg_per_day
-
-    # known connections
     data['known_connections'] = {
         human.name: set(h.name for h in human.known_connections)
         for human in tracker.city.humans
     }
+
+    # contacts
+    data['contact_patterns'] = tracker.get_contact_data()
+    data['infectious_contact_patterns'] = tracker.get_infectious_contact_data()
+    data['expected_mobility'] = tracker.expected_mobility
+    data['mobility'] = tracker.mobility
+    data['effective_contacts_since_intervention'] = tracker.compute_effective_contacts(since_intervention=True)
+    data['effective_contacts_all_days'] = tracker.compute_effective_contacts(since_intervention=False)
+    data['infection_monitor'] = tracker.infection_monitor
+    data['encounter_distances'] = tracker.encounter_distances
+    data['outside_daily_contacts'] = tracker.outside_daily_contacts
+
+    # spread related
+    data['serial_interval'] = tracker.compute_serial_interval()
+    data['all_serial_intervals'] = tracker.serial_intervals
+    data['cases_per_day'] = tracker.cases_per_day
+    data['ei_per_day'] = tracker.ei_per_day
+    data['R'] = tracker.r
+    data['s'] = tracker.s_per_day
+    data['e'] = tracker.e_per_day
+    data['i'] = tracker.i_per_day
+    data['r'] = tracker.r_per_day
+
+    # epi related
+    data['avg_infectiousness_per_day'] = tracker.avg_infectiousness_per_day
+    data['covid_properties'] = tracker.covid_properties
+    data['test_monitor'] = tracker.test_monitor
+
+    # tracing related
+    data['risk_precision_global'] = tracker.compute_risk_precision(False)
+    data['risk_precision'] = tracker.risk_precision_daily
+    data['human_monitor'] = tracker.human_monitor
+    data['infector_infectee_update_messages'] = tracker.infector_infectee_update_messages
+    data['risk_attributes'] = tracker.risk_attributes
+    data['humans_state'] = tracker.humans_state
+    data['humans_rec_level'] = tracker.humans_rec_level
+    data['humans_intervention_level'] = tracker.humans_intervention_level
+    data['to_human_max_msg_per_day'] = tracker.to_human_max_msg_per_day
+
     return data
 
 

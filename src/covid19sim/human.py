@@ -658,7 +658,10 @@ class Human(BaseHuman):
             infector (covid19sim.human.Human): one who infected the infectee. None if contagion didn't occur.
             infectee (covid19sim.human.Human): one who got infected by the infector. None if contagion didn't occur.
         """
-        if not (self.is_infectious ^ other_human.is_infectious):
+        if not (
+            (self.is_infectious and other_human.is_susceptible)
+            or (self.is_susceptible and other_human.is_infectious)
+        ):
             return None, None, 0
 
         infector, infectee, p_infection = None, None, None
@@ -666,7 +669,7 @@ class Human(BaseHuman):
             infector, infectee = self, other_human
             infectee_msg = h2_msg
         else:
-            assert other_human.is_infectious
+            assert other_human.is_infectious, "expected other_human to be infectious"
             infector, infectee = other_human, self
             infectee_msg = h1_msg
 
@@ -681,7 +684,17 @@ class Human(BaseHuman):
                                       other_human)
 
         x_human = infector.rng.random() < p_infection
-        self.city.tracker.track_p_infection(x_human, p_infection, infector.viral_load)
+
+        # track infection related parameters
+        self.city.tracker.track_infection(source="human",
+                                    from_human=infector,
+                                    to_human=infectee,
+                                    location=self.location,
+                                    timestamp=self.env.timestamp,
+                                    p_infection=p_infection,
+                                    success=x_human,
+                                    viral_load=infector.viral_load)
+        # infection
         if x_human and infectee.is_susceptible:
             infector.n_infectious_contacts += 1
             infectee.infection_timestamp = self.env.timestamp
@@ -691,9 +704,9 @@ class Human(BaseHuman):
 
             # logging & tracker
             Event.log_exposed(self.conf.get('COLLECT_LOGS'), infectee, infector, p_infection, self.env.timestamp)
-            self.city.tracker.track_infection('human', from_human=infector, to_human=infectee, location=self.location, timestamp=self.env.timestamp, p_infection=p_infection)
         else:
             infector, infectee = None, None
+
         return infector, infectee, p_infection
 
     def initialize_daily_risk(self, current_day_idx: int):
