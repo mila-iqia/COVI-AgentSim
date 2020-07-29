@@ -1,5 +1,6 @@
 from enum import Enum, IntEnum, auto
 import dataclasses
+import copy
 from typing import Union, Iterable, FrozenSet, Callable, List
 from itertools import product
 from collections import defaultdict
@@ -21,6 +22,7 @@ class Severity(IntEnum):
     HEAVY = 2
     SEVERE = 3
     EXTREMELY_SEVERE = 4
+    WILDCARD = 5
 
 
 class BaseSymptom(Enum):
@@ -50,7 +52,7 @@ class BaseSymptom(Enum):
     LOSS_OF_TASTE = auto()
     ACHES = auto()
     MISC = auto()
-
+    WILDCARD = auto()
 
 class DiseaseContext(IntEnum):
     """
@@ -122,6 +124,10 @@ class Symptoms(object):
             Symptoms(severity, base_symptom)
             for severity, base_symptom in product(Severity, BaseSymptom)
         ]
+
+    @classmethod
+    def get_wildcard_symptoms(cls):
+        return Symptoms(Severity.WILDCARD, BaseSymptom.WILDCARD)
 
     def __repr__(self):
         return f"Symptoms({self.severity.name}, {self.base_symptom.name})"
@@ -324,6 +330,7 @@ class TransitionRuleSet(object):
         ALL_HEALTH_STATES = auto()
         ALL_SYMPTOMS = auto()
         ALL_DISEASE_PHASES = auto()
+        ANY_SYMPTOMS_STATE = auto()
 
     def __init__(self):
         self.rule_set = defaultdict(set)
@@ -345,6 +352,7 @@ class TransitionRuleSet(object):
         proba_score_value: float = None,
         proba_fn: Callable = None,
     ):
+
         # First priority goes to `transition_rule`, in the sense that only if it's not
         # provided, we dig deeper in to the other args.
         if transition_rule is None:
@@ -361,7 +369,6 @@ class TransitionRuleSet(object):
                     "Neither `transition_rule` nor `from_health_state` "
                     "is provided -- please provide `from_symptoms`."
                 )
-
                 from_symptoms: List[Symptoms] = self._validate_symptoms(from_symptoms)
                 # if both `from_disease_phase` and `at_disease_phase` is provided,
                 # priority goes to `from_disease_phase`.
@@ -436,22 +443,27 @@ class TransitionRuleSet(object):
         rng: np.random.RandomState = np.random,
         **proba_fn_kwargs,
     ) -> HealthState:
-        if current_health_state not in self.rule_set:
-            raise ValueError(
-                f"No forward rule defined for health-state {current_health_state}."
-            )
+        # if current_health_state not in self.rule_set:
+        #     raise ValueError(
+        #         f"No forward rule defined for health-state {current_health_state}."
+        #     )
         # Given the current state, pull all possible transition rules that tell
         # us what next state to go to, and compute the probability of going to the
         # said next state.
-        candidate_next_health_states, next_state_probas = zip(
-            *[
-                (
-                    transition_rule.to_health_state,
-                    transition_rule.get_proba(**proba_fn_kwargs),
-                )
-                for transition_rule in self.rule_set[current_health_state]
-            ]
-        )
+        try:
+            candidate_next_health_states, next_state_probas = zip(
+                *[
+                    (
+                        transition_rule.to_health_state,
+                        transition_rule.get_proba(**proba_fn_kwargs),
+                    )
+                    for transition_rule in self.rule_set[current_health_state]
+                ]
+            )
+        except ValueError:
+            candidate_next_health_states, next_state_probas = self.check_wildcards(current_health_state, proba_fn_kwargs)
+            assert len(candidate_next_health_states) > 0, "must have at least one matching rule"
+
         # Make sure the next state probas sum to one?
         next_state_probas = np.array(next_state_probas)
         next_state_probas = next_state_probas / next_state_probas.sum()
@@ -461,6 +473,19 @@ class TransitionRuleSet(object):
         )
         # ... and done.
         return next_health_state
+
+    def check_wildcards(self, health_state, proba_fn_kwargs):
+        # TODO: improve this function by handling other wildcards... also add the ability to have other wildcards
+        candidate = copy.deepcopy(health_state)
+        candidate.symptoms = frozenset({Symptoms(Severity.WILDCARD, BaseSymptom.WILDCARD)})
+
+        candidate_next_health_states = []
+        next_state_probas = []
+        if candidate in self.rule_set:
+            for h in self.rule_set[candidate]:
+                candidate_next_health_states.append(h.to_health_state)
+                next_state_probas.append(h.get_proba(**proba_fn_kwargs))
+        return candidate_next_health_states, next_state_probas
 
     def _validate_disease_phase(self, disease_phase, allow_none=False):
         if disease_phase == self.WildCards.ALL_DISEASE_PHASES:
@@ -492,6 +517,8 @@ class TransitionRuleSet(object):
     def _validate_symptoms(self, symptoms):
         if symptoms == self.WildCards.ALL_SYMPTOMS:
             symptoms = Symptoms.get_all_possible_symptoms()
+        elif symptoms == self.WildCards.ANY_SYMPTOMS_STATE:
+            symptoms = [Symptoms.get_wildcard_symptoms()]
         elif isinstance(symptoms, Iterable):
             symptoms = list(symptoms)
         elif isinstance(symptoms, Symptoms):
@@ -575,7 +602,6 @@ if __name__ == "__main__":
         proba_score_value=0.7,
     )
     test_ruleset.add_transition_rule(transition_rule)
-    import pdb; pdb.set_trace()
 
     transition_rule.assert_validity()
     health_state = HealthState.parse("no_symptoms at covid onset")
@@ -584,7 +610,6 @@ if __name__ == "__main__":
         health_state = test_ruleset.sample_next_health_state(current_health_state=health_state)
 
     health_state = HealthState.parse("severe fever at covid onset")
-    # import pdb; pdb.set_trace()
     # test_ruleset.add_transition_rule(from_symptoms=test_ruleset.WildCards.ALL_SYMPTOMS, from_disease_phase=test_ruleset.WildCards.ALL_DISEASE_PHASES, to_health_state=health_state, proba_score_value=0.3)
 
     # default_rules = TransitionRuleSet()

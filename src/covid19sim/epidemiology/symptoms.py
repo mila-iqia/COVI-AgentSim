@@ -207,18 +207,39 @@ Attributes
 """
 
 
+# def _get_covid_fever_probability(phase_id: int, really_sick: bool, extremely_sick: bool,
+#                                  preexisting_conditions: list, initial_viral_load: float):
+#     p_fever = SYMPTOMS[FEVER].probabilities[phase_id]
+#     # covid_onset phase
+#     if phase_id == COVID_ONSET and \
+#             (really_sick or extremely_sick or
+#              len(preexisting_conditions) > 2 or initial_viral_load > 0.6):
+#         p_fever *= 2.
+#     # covid_plateau phase
+#     elif phase_id == COVID_PLATEAU and initial_viral_load > 0.6:
+#         p_fever = 1.
+#     return p_fever
+
 def _get_covid_fever_probability(phase_id: int, really_sick: bool, extremely_sick: bool,
                                  preexisting_conditions: list, initial_viral_load: float):
-    p_fever = SYMPTOMS[FEVER].probabilities[phase_id]
-    # covid_onset phase
-    if phase_id == COVID_ONSET and \
-            (really_sick or extremely_sick or
-             len(preexisting_conditions) > 2 or initial_viral_load > 0.6):
-        p_fever *= 2.
-    # covid_plateau phase
-    elif phase_id == COVID_PLATEAU and initial_viral_load > 0.6:
-        p_fever = 1.
+    p_fever = None
+    from covid19sim.epidemiology._refactored_symptom_helpers import (TransitionRule, TransitionRuleSet, HealthState,
+                                                                     DiseasePhase, Disease, CovidContext, Severity)
+    fever_ruleset = TransitionRuleSet()
+
+
+    cur_health_state = HealthState.parse("mild fever at covid onset")
+    # really sick, extremely sick, initial viral load, num_preexisting_conditions
+    fever_ruleset.add_transition_rule(
+        from_symptoms=fever_ruleset.WildCards.ANY_SYMPTOMS_STATE,
+        at_disease_phase=DiseasePhase.make(disease="covid", context="onset"),
+        to_health_state=HealthState.parse("fever at covid onset"),
+        proba_score_value=0.2,
+    )
+
+    fever_ruleset.sample_next_health_state(cur_health_state)
     return p_fever
+
 
 
 def _get_covid_gastro_probability(phase_id: int, initial_viral_load: float):
