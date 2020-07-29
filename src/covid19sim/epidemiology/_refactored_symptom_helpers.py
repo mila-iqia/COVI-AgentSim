@@ -1,7 +1,7 @@
 from enum import Enum, IntEnum, auto
 import dataclasses
 import copy
-from typing import Union, Iterable, FrozenSet, Callable, List
+from typing import Union, Iterable, FrozenSet, Callable, List, Tuple
 from itertools import product
 from collections import defaultdict
 import numpy as np
@@ -54,6 +54,7 @@ class BaseSymptom(Enum):
     MISC = auto()
     WILDCARD = auto()
 
+
 class DiseaseContext(IntEnum):
     """
     Phase (context?) of the disease. Supports comparisons, for instance:
@@ -91,12 +92,17 @@ class HealthyContext(DiseaseContext):
     HEALTHY = 0
 
 
+class WildcardContext(DiseaseContext):
+    WILDCARD = 0
+
+
 class Disease(Enum):
     COVID = CovidContext
     ALLERGY = AllergyContext
     COLD = ColdContext
     FLU = FluContext
     HEALTHY = HealthyContext
+    WILDCARD = WildcardContext
 
 
 @dataclasses.dataclass(unsafe_hash=True)
@@ -179,6 +185,10 @@ class DiseasePhase(object):
             for disease in Disease
             for context in Disease(disease).value
         ]
+
+    @classmethod
+    def get_wildcard_disease_phase(cls):
+        return DiseasePhase(disease=Disease.WILDCARD, context=WildcardContext.WILDCARD)
 
     def __str__(self):
         return f"{self.disease.name} ({self.context.name})"
@@ -266,12 +276,77 @@ class HealthState(object):
 
 
 @dataclasses.dataclass
+class WildcardHealthState(HealthState):
+    """
+    A special `HealthState` object that equals all other `HealthState` objects.
+
+    Note
+    ----
+    This class can be much more general than it currently is. As of now, the
+    wildcard must apply for both symptoms and disease phase simultaneously,
+    which need not be the case. In other words, we should be able to have
+    WildCardHealthState(* at covid onset) which equals (say)
+    HealthState(mild fever at covid onset) but not
+    HealthState(mild fever at covid incubation).
+    """
+
+    def __init__(self):
+        super(WildcardHealthState, self).__init__(
+            symptoms=Symptoms.get_wildcard_symptoms(),
+            disease_phase=DiseasePhase.get_wildcard_disease_phase(),
+        )
+
+    def __eq__(self, other):
+        if isinstance(other, HealthState):
+            return True
+        else:
+            return False
+
+    def __hash__(self):
+        # Don't delete this function, it's doing its job
+        # (even though it doesn't look like it).
+        return super(WildcardHealthState, self).__hash__()
+
+
+@dataclasses.dataclass(unsafe_hash=True)
+class SelectionOfHealthStates(object):
+    health_states: Tuple[HealthState]
+
+    def __init__(self, health_states: Iterable[HealthState]):
+        self.health_states = tuple(health_states)
+
+    def __str__(self):
+        return (
+            "["
+            + " OR ".join([str(health_state) for health_state in self.health_states])
+            + "]"
+        )
+
+    def __contains__(self, item):
+        return item in self.health_states
+
+    @classmethod
+    def parse(cls, desc: str):
+        health_state_descs = desc.split(" or ")
+        return cls(
+            (
+                HealthState.parse(health_state_desc)
+                for health_state_desc in health_state_descs
+            )
+        )
+
+    @classmethod
+    def any_health_state(cls):
+        return cls([WildcardHealthState()])
+
+
+@dataclasses.dataclass
 class TransitionRule(object):
     """
     Specifies one step in the progression of the disease together with its probability.
     """
 
-    from_health_state: HealthState
+    from_health_state: Union[HealthState, SelectionOfHealthStates]
     to_health_state: HealthState
 
     proba_score_value: float = None
@@ -286,24 +361,42 @@ class TransitionRule(object):
         else:
             return self.proba_default
 
-    def assert_validity(self):
-        assert (
-            self.to_health_state.disease_phase.disease
-            == self.from_health_state.disease_phase.disease
-        ), (
-            f"Inconsistent transition rule: going from disease "
-            f"{self.from_health_state.disease_phase.disease} to "
-            f"disease {self.to_health_state.disease_phase.disease}."
-        )
-        assert (
-            self.from_health_state.disease_phase.context
-            <= self.to_health_state.disease_phase.context
-        ), (
-            f"Inconsistent transition rule: transitioning from phase "
-            f"{self.from_health_state.disease_phase.context.name} to phase "
-            f"{self.to_health_state.disease_phase.context.name} of disease "
-            f"{self.from_health_state.disease_phase.disease}."
-        )
+    def assert_validity(
+        self,
+        from_health_state: Union[HealthState, SelectionOfHealthStates] = None,
+        to_health_state: Union[HealthState] = None,
+    ):
+        from_health_state = from_health_state or self.from_health_state
+        to_health_state = to_health_state or self.to_health_state
+        if isinstance(from_health_state, SelectionOfHealthStates):
+            for health_state in from_health_state.health_states:
+                self.assert_validity(from_health_state=health_state)
+        wildcards = (
+            [from_health_state.disease_phase]
+            if isinstance(from_health_state, HealthState)
+            else []
+        ) + [to_health_state.disease_phase]
+        if (
+            not isinstance(from_health_state, SelectionOfHealthStates)
+            and DiseasePhase.get_wildcard_disease_phase() not in wildcards
+        ):
+            assert (
+                to_health_state.disease_phase.disease
+                == from_health_state.disease_phase.disease
+            ), (
+                f"Inconsistent transition rule: going from disease "
+                f"{from_health_state.disease_phase.disease} to "
+                f"disease {to_health_state.disease_phase.disease}."
+            )
+            assert (
+                from_health_state.disease_phase.context
+                <= to_health_state.disease_phase.context
+            ), (
+                f"Inconsistent transition rule: transitioning from phase "
+                f"{from_health_state.disease_phase.context.name} to phase "
+                f"{to_health_state.disease_phase.context.name} of disease "
+                f"{from_health_state.disease_phase.disease}."
+            )
         return self
 
     def __hash__(self):
@@ -334,15 +427,33 @@ class TransitionRuleSet(object):
 
     def __init__(self):
         self.rule_set = defaultdict(set)
+        self.auxiliary_rule_set = defaultdict(set)
 
     def add_rule(self, transition_rule: TransitionRule):
-        self.rule_set[transition_rule.from_health_state].add(transition_rule)
+        if isinstance(transition_rule.from_health_state, HealthState):
+            self.rule_set[transition_rule.from_health_state].add(transition_rule)
+        elif isinstance(transition_rule.from_health_state, SelectionOfHealthStates):
+            self.auxiliary_rule_set[transition_rule.from_health_state].add(
+                transition_rule
+            )
+        else:
+            raise TypeError
         return self
 
+    def get_applicable_rules(self, health_state: HealthState):
+        # Fast look-up from the primary rule-set via hashing
+        rules = list(self.rule_set[health_state])
+        # Slower lookup via iteration
+        for selection, rule in self.auxiliary_rule_set.items():
+            if health_state in selection:
+                rules.extend(list(rule))
+        return set(rules)
+
     def add_transition_rule(
+        # fmt: off
         self,
         transition_rule: TransitionRule = None,
-        from_health_state: Union[HealthState, WildCards] = None,
+        from_health_state: Union[HealthState, SelectionOfHealthStates, WildCards] = None,
         to_health_state: Union[HealthState, WildCards] = None,
         from_symptoms: Union[Symptoms, Iterable[Symptoms], WildCards] = None,
         to_symptoms: Union[Symptoms, Iterable[Symptoms], WildCards] = None,
@@ -351,8 +462,8 @@ class TransitionRuleSet(object):
         to_disease_phase: Union[DiseasePhase, WildCards] = None,
         proba_score_value: float = None,
         proba_fn: Callable = None,
+        # fmt: on
     ):
-
         # First priority goes to `transition_rule`, in the sense that only if it's not
         # provided, we dig deeper in to the other args.
         if transition_rule is None:
@@ -389,7 +500,7 @@ class TransitionRuleSet(object):
                 ]
             else:
                 from_health_state = self._validate_health_state(from_health_state)
-            from_health_state: List[HealthState]
+            from_health_state: List[Union[HealthState, SelectionOfHealthStates]]
 
             if to_health_state is None:
                 assert to_symptoms is not None, (
@@ -450,20 +561,15 @@ class TransitionRuleSet(object):
         # Given the current state, pull all possible transition rules that tell
         # us what next state to go to, and compute the probability of going to the
         # said next state.
-        try:
-            candidate_next_health_states, next_state_probas = zip(
-                *[
-                    (
-                        transition_rule.to_health_state,
-                        transition_rule.get_proba(**proba_fn_kwargs),
-                    )
-                    for transition_rule in self.rule_set[current_health_state]
-                ]
-            )
-        except ValueError:
-            candidate_next_health_states, next_state_probas = self.check_wildcards(current_health_state, proba_fn_kwargs)
-            assert len(candidate_next_health_states) > 0, "must have at least one matching rule"
-
+        candidate_next_health_states, next_state_probas = zip(
+            *[
+                (
+                    transition_rule.to_health_state,
+                    transition_rule.get_proba(**proba_fn_kwargs),
+                )
+                for transition_rule in self.get_applicable_rules(current_health_state)
+            ]
+        )
         # Make sure the next state probas sum to one?
         next_state_probas = np.array(next_state_probas)
         next_state_probas = next_state_probas / next_state_probas.sum()
@@ -473,19 +579,6 @@ class TransitionRuleSet(object):
         )
         # ... and done.
         return next_health_state
-
-    def check_wildcards(self, health_state, proba_fn_kwargs):
-        # TODO: improve this function by handling other wildcards... also add the ability to have other wildcards
-        candidate = copy.deepcopy(health_state)
-        candidate.symptoms = frozenset({Symptoms(Severity.WILDCARD, BaseSymptom.WILDCARD)})
-
-        candidate_next_health_states = []
-        next_state_probas = []
-        if candidate in self.rule_set:
-            for h in self.rule_set[candidate]:
-                candidate_next_health_states.append(h.to_health_state)
-                next_state_probas.append(h.get_proba(**proba_fn_kwargs))
-        return candidate_next_health_states, next_state_probas
 
     def _validate_disease_phase(self, disease_phase, allow_none=False):
         if disease_phase == self.WildCards.ALL_DISEASE_PHASES:
@@ -538,7 +631,7 @@ class TransitionRuleSet(object):
     def _validate_health_state(self, health_state):
         if isinstance(health_state, Iterable):
             health_state = list(health_state)
-        elif isinstance(health_state, HealthState):
+        elif isinstance(health_state, (HealthState, SelectionOfHealthStates)):
             health_state = [health_state]
         else:
             raise TypeError(
@@ -547,7 +640,10 @@ class TransitionRuleSet(object):
                 f"{type(health_state)} instead."
             )
         assert all(
-            [isinstance(hs, HealthState) for hs in health_state]
+            [
+                isinstance(hs, (SelectionOfHealthStates, HealthState))
+                for hs in health_state
+            ]
         ), "`health_state` is not an iterable of HealthState instances."
         return health_state
 
@@ -583,33 +679,46 @@ class TransitionRuleSet(object):
 if __name__ == "__main__":
     test_ruleset = TransitionRuleSet()
     transition_rule = TransitionRule(
-        from_health_state=HealthState.parse("mild fever at covid onset"),
+        from_health_state=SelectionOfHealthStates.any_health_state(),
         to_health_state=HealthState.parse("mild fever at covid onset"),
-        proba_score_value=0.9,
+        proba_score_value=0.5,
     )
     test_ruleset.add_transition_rule(transition_rule)
 
     transition_rule = TransitionRule(
-        from_health_state=HealthState.parse("no_symptoms at covid onset"),
-        to_health_state=HealthState.parse("mild fever at covid onset"),
-        proba_score_value=0.3,
+        from_health_state=SelectionOfHealthStates.any_health_state(),
+        to_health_state=HealthState.parse("mild gastro at covid onset"),
+        proba_score_value=0.5,
     )
     test_ruleset.add_transition_rule(transition_rule)
 
-    transition_rule = TransitionRule(
-        from_health_state=HealthState.parse("no_symptoms at covid onset"),
-        to_health_state=HealthState.parse("no_symptoms at covid onset"),
-        proba_score_value=0.7,
+    test_ruleset.sample_next_health_state(
+        HealthState.parse("undefined no_symptoms at healthy healthy")
     )
-    test_ruleset.add_transition_rule(transition_rule)
 
-    transition_rule.assert_validity()
-    health_state = HealthState.parse("no_symptoms at covid onset")
-    for i in range(10):
-        print(health_state)
-        health_state = test_ruleset.sample_next_health_state(current_health_state=health_state)
-
-    health_state = HealthState.parse("severe fever at covid onset")
+    # transition_rule = TransitionRule(
+    #     from_health_state=HealthState.parse("no_symptoms at covid onset"),
+    #     to_health_state=HealthState.parse("mild fever at covid onset"),
+    #     proba_score_value=0.3,
+    # )
+    # test_ruleset.add_transition_rule(transition_rule)
+    #
+    # transition_rule = TransitionRule(
+    #     from_health_state=HealthState.parse("no_symptoms at covid onset"),
+    #     to_health_state=HealthState.parse("no_symptoms at covid onset"),
+    #     proba_score_value=0.7,
+    # )
+    # test_ruleset.add_transition_rule(transition_rule)
+    #
+    # transition_rule.assert_validity()
+    # health_state = HealthState.parse("no_symptoms at covid onset")
+    # for i in range(10):
+    #     print(health_state)
+    #     health_state = test_ruleset.sample_next_health_state(
+    #         current_health_state=health_state
+    #     )
+    #
+    # health_state = HealthState.parse("severe fever at covid onset")
     # test_ruleset.add_transition_rule(from_symptoms=test_ruleset.WildCards.ALL_SYMPTOMS, from_disease_phase=test_ruleset.WildCards.ALL_DISEASE_PHASES, to_health_state=health_state, proba_score_value=0.3)
 
     # default_rules = TransitionRuleSet()
@@ -644,4 +753,3 @@ if __name__ == "__main__":
 #  * Export to networkx graph (visualization)
 #  * Pretty printing
 #  * Parse ruleset from a text file
-
