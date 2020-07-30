@@ -289,7 +289,7 @@ def make_df(
     return df
 
 
-def hierarchy_pos(G, root=None, width=1., vert_gap = 0.2, vert_loc = 0, xcenter = 0.5):
+def hierarchy_pos(G, root=None, width=1., vert_gap = 0.0, vert_loc = 0, xcenter = 0.5):
 
     '''
     From Joel's answer at https://stackoverflow.com/a/29597209/2966723.
@@ -325,7 +325,7 @@ def hierarchy_pos(G, root=None, width=1., vert_gap = 0.2, vert_loc = 0, xcenter 
         else:
             root = random.choice(list(G.nodes))
 
-    def _hierarchy_pos(G, root, width=1., vert_gap = 0.2, vert_loc = 0, xcenter = 0.5, pos = None, parent = None):
+    def _hierarchy_pos(G, root, width=2., vert_gap = 0.0, vert_loc = 0, xcenter = 0.5, pos = None, parent = None, first=False):
         '''
         see hierarchy_pos docstring for most arguments
 
@@ -335,59 +335,47 @@ def hierarchy_pos(G, root=None, width=1., vert_gap = 0.2, vert_loc = 0, xcenter 
         '''
 
         if pos is None:
-            pos = {root:(xcenter,vert_loc)}
+            pos = {root: (xcenter, vert_loc)}
         else:
             pos[root] = (xcenter, vert_loc)
         children = list(G.neighbors(root))
+
         if not isinstance(G, nx.DiGraph) and parent is not None:
             children.remove(parent)
-        if len(children)!=0:
+        if len(children) != 0:
             dx = width/len(children)
             nextx = xcenter - width/2 - dx/2
             for child in children:
                 nextx += dx
-                pos = _hierarchy_pos(G,child, width = dx, vert_gap = vert_gap,
-                                    vert_loc = vert_loc-vert_gap, xcenter=nextx,
+                temp_vert_gap = 0.05
+                day_u_was_infected = max(G.nodes[child].get('days', 1), 1)
+                temp_vert_gap = temp_vert_gap + 0.05 * day_u_was_infected
+                print(f"child: {child} gap: {temp_vert_gap}, day: {day_u_was_infected}")
+                pos = _hierarchy_pos(G, child, width = dx, vert_gap = vert_gap,
+                                    vert_loc = temp_vert_gap, xcenter=nextx,
                                     pos=pos, parent = root)
         return pos
 
 
-    return _hierarchy_pos(G, root, width, vert_gap, vert_loc, xcenter)
+    return _hierarchy_pos(G, root, width, vert_gap, vert_loc, xcenter, first=True)
 
-def construct_infection_tree(infection_chain, draw_fig=True):
+def construct_infection_tree(infection_chain, draw_fig=True, init_infected={}, output_path=""):
     """ Returns a DFS tree of infections and infection chains for each leaf"""
     root = "ROOT"
     start_date = datetime.datetime(2020, 2, 28, 0, 0)
     G = nx.DiGraph()
     G.add_node(root)
+    G.add_nodes_from(init_infected)
+    G.add_edges_from([(root, x) for x in init_infected])
 
     # add nodes
-    for node in infection_chain:
-        # from
-        if G.nodes.get(node['from']):
-            G.nodes.get(node['from'])['data'].append(node)
-
-        # handling None
-        elif node['from']:
-            G.add_node(node['from'], data=[node])
-
-        # to
-        if G.nodes.get(node['to']):
-            G.nodes.get(node['to'])['data'].append(node)
-        else:
-            G.add_node(node['to'], data=[node])
-
-    # Add edges
-    for node in infection_chain:
-        if not node.get('from_infection_timestamp'):
-            G.add_edge(root, node['to'], time="1")
-        if node.get('infection_timestamp') and node.get('from_infection_timestamp'):
-            G.add_edge(node['from'], node['to'], time=str(node['infection_timestamp'] - node['from_infection_timestamp']))
-        if node.get('from_infection_timestamp') == start_date:
-            G.add_edge(root, node['from'], time="1")
+    for n1 in infection_chain:
+        if n1['from'] in G.nodes:
+            G.add_node(n1['from'], days=(n1['from_infection_timestamp'] - start_date).days)
+            G.add_node(n1['to'], days=(n1['infection_timestamp'] - start_date).days)
+            G.add_edge(n1['from'], n1['to'])
 
 
-    # make DFS tree
     dfs_tree = nx.dfs_tree(G, root)
 
     # find shortest paths to all leaves (these are infection chains)
@@ -404,15 +392,35 @@ def construct_infection_tree(infection_chain, draw_fig=True):
     paths.sort(key=len, reverse=True)
 
     if draw_fig:
-        # TODO: change vert-gap in hierarchy_pos to reflect the time between infections
-        pos = hierarchy_pos(G, 'ROOT', width=2 * math.pi, xcenter=0)
-        new_pos = {u: (r * math.cos(theta), r * math.sin(theta)) for u, (theta, r) in pos.items()}
-        nx.draw(G, pos=new_pos, node_size=50)
-        nx.draw_networkx_nodes(G, pos=new_pos, nodelist=['ROOT'], node_color='blue', node_size=200)
-        plt.savefig("graph.png")
+        labels_params = {"font_size": 5}
+        pos = hierarchy_pos(G, 'ROOT', width=2 * math.pi, vert_gap=0.2, xcenter=0)
+
+        new_pos = {"h:" + u.split(":")[-1]: (r * math.cos(theta), r * math.sin(theta)) for u, (theta, r) in pos.items() if u != "ROOT"}
+        new_pos['ROOT'] = (0.0, 0.0)
+        rename_map = {node: "h:" + node.split(":")[-1] for node in G.nodes if node != 'ROOT'}
+        G_renamed = nx.relabel_nodes(G, rename_map, copy=True)
+
+        plt.figure(1, figsize=(12.8, 10.6), dpi=200)
+        nx.draw(G_renamed, pos=new_pos, node_size=20, with_labels=True, **labels_params)
+        nx.draw_networkx_nodes(G_renamed, pos=new_pos, nodelist=['ROOT'], node_color='blue', node_size=200, with_labels=True)
+
+        ax = plt.gca()
+        ax.margins(.5)  # Default margin is 0.05, value 0 means fit
+
+        circle2 = plt.Circle((0, 0), 0.45, color='r', fill=False)
+        circle3 = plt.Circle((0, 0), .95, color='r', fill=False)
+        circle4 = plt.Circle((0, 0), 1.45, color='r', fill=False)
+        ax.add_artist(circle2)
+        ax.add_artist(circle3)
+        ax.add_artist(circle4)
+        outf = os.path.join(output_path, "starplot.png")
+        print(f"saving star plot to {outf}")
+        plt.savefig(outf)
+
     return dfs_tree, paths
 
-def plot(data, output_path, num_chains=10):
+
+def plot(data, output_path, num_chains=10, init_infected={}):
     all_ids = set()
     caption = "heuristicv1 adoption 100%"
     human_risk_each_day = defaultdict(lambda: defaultdict(lambda: -1))
@@ -449,7 +457,8 @@ def plot(data, output_path, num_chains=10):
     init_infected = _infected_humans - set(infectee_location.keys())
     for x in init_infected:
         infectee_location[x] = "unknown"
-    tree, paths = construct_infection_tree(infection_chain)
+
+    tree, paths = construct_infection_tree(infection_chain, init_infected=init_infected, output_path=output_path)
 
     # get the longest 50% of lists
     candidates = paths[:int(len(paths) / 2)]
