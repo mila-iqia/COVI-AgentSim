@@ -69,7 +69,7 @@ def statistics(pkl_data, times, mode):
     return positive, negative
 
 
-def run(data, path, comparison_key, times=[-1, -2, -3], mode=None):
+def run(data, path, comparison_key, times=[-1, -2, -3], mode="rec"):
 
     # Options:
     # 1. "times" is a list, indicating the times we are interested in.
@@ -106,94 +106,94 @@ def run(data, path, comparison_key, times=[-1, -2, -3], mode=None):
             all_positive = all_positive / np.expand_dims(all_positive.sum(1), 1)
             all_negative = all_negative / np.expand_dims(all_negative.sum(1), 1)
             results.append((all_positive, all_negative, all_positive - all_negative))
+        i = 0
+        j = 0
+        k = 0
+        t = -1
+        for method in data:
+            j = j + i if i == 0 else j + i + 1
 
-        for k, t in enumerate(times):
-            i = 0
-            j = 0
+            for i, adoption in enumerate(data[method].keys()):
 
-            for method in data:
-                j = j + i if i == 0 else j + i + 1
+                label = label2pkls[i + j][0]
+                result = results[i + j]
 
-                for i, adoption in enumerate(data[method].keys()):
-                    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(7.5, 10))
-                    ax.set_title(f"{method} Day{t} (Adoption: {float(label) * 100}%)", fontsize=30)
+                fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(7.5, 10))
+                ax.set_title(f"{method} Day{t} (Adoption: {float(label) * 100}%)", fontsize=15)
 
-                    label = label2pkls[i + j][0]
-                    result = results[i + j]
+                # change the font size
+                font = {"family": "DejaVu Sans", "size": 18}
+                matplotlib.rc("font", **font)
+                plt.rcParams["axes.labelsize"] = 18
 
-                    # change the font size
-                    font = {"family": "DejaVu Sans", "size": 18}
-                    matplotlib.rc("font", **font)
-                    plt.rcParams["axes.labelsize"] = 18
+                if mode == "risk":
+                    length = 16
+                    xlabel = "Risk Level"
+                    xticklabels = [
+                        0,
+                        "",
+                        "",
+                        "",
+                        4,
+                        "",
+                        "",
+                        "",
+                        8,
+                        "",
+                        "",
+                        "",
+                        12,
+                        "",
+                        "",
+                        "",
+                    ]
+                if mode == "rec":
+                    length = 4
+                    xlabel = "Rec Level"
+                    xticklabels = [0, 1, 2, 3]
 
-                    if mode == "risk":
-                        length = 16
-                        xlabel = "Risk Level"
-                        xticklabels = [
-                            0,
-                            "",
-                            "",
-                            "",
-                            4,
-                            "",
-                            "",
-                            "",
-                            8,
-                            "",
-                            "",
-                            "",
-                            12,
-                            "",
-                            "",
-                            "",
-                        ]
-                    if mode == "rec":
-                        length = 4
-                        xlabel = "Rec Level"
-                        xticklabels = [0, 1, 2, 3]
+                ax.bar(
+                    [_ * 7 + 2 for _ in range(length)],
+                    result[0][k],
+                    color="darkorange",
+                    label=f"Presymptomatic Rec Levels",
+                )
+                ax.bar(
+                    [_ * 7 + 3 for _ in range(length)],
+                    result[1][k],
+                    color="darkslateblue",
+                    label=f"Susceptible Rec Levels",
+                )
+                ax.bar(
+                    [_ * 7 + 4 for _ in range(length)],
+                    result[2][k],
+                    color="orangered",
+                    label=f"Delta Rec Levels",
+                )
+                ax.set_xlabel(xlabel)
+                ax.set_ylabel("% Population", size="medium")
+                ax.set_xticks([_ * 7 + 3 for _ in range(length)])
+                ax.set_xticklabels(xticklabels)
+                ax.set_ylim(-1, 1)
+                ax.set_yticks([-1.0, -0.8, -0.6, -0.4, -0.2, 0, 0.2, 0.4, 0.6, 0.8, 1.0])
+                ax.set_yticklabels(["-100", "-80", "-60", "-40", "-20", "0", "20", "40", "60", "80", "100"])
+                ax.plot([0, length * 7 - 1], [0, 0], color="b", linewidth=1.0)
+                ax.legend()
 
-                    ax.bar(
-                        [_ * 7 + 2 for _ in range(length)],
-                        result[0][k],
-                        color="darkorange",
-                        label=f"Presymptomatic Rec Levels",
-                    )
-                    ax.bar(
-                        [_ * 7 + 3 for _ in range(length)],
-                        result[1][k],
-                        color="darkslateblue",
-                        label=f"Susceptible Rec Levels",
-                    )
-                    ax.bar(
-                        [_ * 7 + 4 for _ in range(length)],
-                        result[2][k],
-                        color="orangered",
-                        label=f"Delta Rec Levels",
-                    )
-                    ax.set_xlabel(xlabel)
-                    ax.set_ylabel("% Population", size="medium")
-                    ax.set_xticks([_ * 7 + 3 for _ in range(length)])
-                    ax.set_xticklabels(xticklabels)
-                    ax.set_ylim(-1, 1)
-                    ax.set_yticks([-1.0, -0.8, -0.6, -0.4, -0.2, 0, 0.2, 0.4, 0.6, 0.8, 1.0])
-                    ax.set_yticklabels(["-100", "-80", "-60", "-40", "-20", "0", "20", "40", "60", "80", "100"])
-                    ax.plot([0, length * 7 - 1], [0, 0], color="b", linewidth=1.0)
-                    ax.legend()
-
-                    plt.subplots_adjust(
-                        wspace=0.5,
-                        hspace=0.3,  # left=0.05, bottom=0.05, right=0.99, top=0.95,
-                    )
-                    dir_path = (
-                        path
-                        / "presymptomatic"
-                        / f"statistics_day{t}"
-                        / f"adoption_{label}"
-                    )
-                    fig_path = dir_path / f"{method}_{mode}.png"
-                    print(f"Saving Figure {str(fig_path)}...", end="", flush=True)
-                    os.makedirs(dir_path, exist_ok=True)
-                    plt.savefig(fig_path)
-                    plt.close("all")
-                    plt.clf()
-                    print("Done.")
+                plt.subplots_adjust(
+                    wspace=0.5,
+                    hspace=0.3,  # left=0.05, bottom=0.05, right=0.99, top=0.95,
+                )
+                dir_path = (
+                    path
+                    / "presymptomatic"
+                    / f"statistics_day{t}"
+                    / f"adoption_{label}"
+                )
+                fig_path = dir_path / f"{method}_{mode}.png"
+                print(f"Saving Figure {str(fig_path)}...", end="", flush=True)
+                os.makedirs(dir_path, exist_ok=True)
+                plt.savefig(fig_path)
+                plt.close("all")
+                plt.clf()
+                print("Done.")
