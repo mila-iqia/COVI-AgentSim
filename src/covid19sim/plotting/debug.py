@@ -18,7 +18,10 @@ def main(data_path, output_path, num_chains=10):
     with open(tracker_path, "rb") as f:
         pkl = pickle.load(f)
 
-    ids = infection_chains.plot(pkl, output_path, num_chains=num_chains)
+    import datetime
+    init_infected = [x['name'] for x in pkl['human_monitor'][datetime.date(2020, 2, 28)] if x['infection_timestamp'] == datetime.datetime(2020, 2, 28, 0, 0)]
+
+    ids = infection_chains.plot(pkl, output_path, num_chains=num_chains, init_infected=init_infected)
 
     print(ids)
     # Baseball Cards

@@ -90,7 +90,6 @@ def run(data, path, comparison_key, times=[-1, -2, -3], mode=None):
             for key in data[method]:
                 label = f"{key}"
                 pkls = [r["pkl"] for r in data[method][key].values()]
-                print(label)
                 label2pkls.append((label, pkls))
 
         results = list()
@@ -105,7 +104,6 @@ def run(data, path, comparison_key, times=[-1, -2, -3], mode=None):
             all_positive = np.concatenate(all_positive, 0).sum(0)
             all_negative = np.concatenate(all_negative, 0).sum(0)
             all_positive = all_positive / np.expand_dims(all_positive.sum(1), 1)
-            print(f"{method} {label}: {all_positive}")
             all_negative = all_negative / np.expand_dims(all_negative.sum(1), 1)
             results.append((all_positive, all_negative, all_positive - all_negative))
 
@@ -114,11 +112,12 @@ def run(data, path, comparison_key, times=[-1, -2, -3], mode=None):
             j = 0
 
             for method in data:
-                fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(7.5, 10))
-                fig.suptitle(f"{method} Day{t} (Adoption: {float(label)*100}%)", fontsize=30)
                 j = j + i if i == 0 else j + i + 1
 
                 for i, adoption in enumerate(data[method].keys()):
+                    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(7.5, 10))
+                    ax.set_title(f"{method} Day{t} (Adoption: {float(label) * 100}%)", fontsize=30)
+
                     label = label2pkls[i + j][0]
                     result = results[i + j]
 
@@ -196,4 +195,5 @@ def run(data, path, comparison_key, times=[-1, -2, -3], mode=None):
                     os.makedirs(dir_path, exist_ok=True)
                     plt.savefig(fig_path)
                     plt.close("all")
+                    plt.clf()
                     print("Done.")
