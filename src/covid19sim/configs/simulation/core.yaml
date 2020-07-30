@@ -19,7 +19,6 @@
 WORKPLACE_PROPORTION_AREA: 0.2
 WORKPLACE_CONTACT_FACTOR: 1
 WORKPLACE_SURFACE_PROB: [0.1, 0.1, 0.3, 0.2, 0.3]
-WORKPLACE_MEAN_DAILY_INTERACTIONS: 10
 WORKPLACE_OPEN_CLOSE_HOUR_MINUTE: [[8, 0], [22, 0]]
 WORKPLACE_OPEN_DAYS: [0, 1, 2, 3, 4]
 
@@ -27,7 +26,6 @@ WORKPLACE_OPEN_DAYS: [0, 1, 2, 3, 4]
 STORE_PROPORTION_AREA: 0.15
 STORE_CONTACT_FACTOR: 1
 STORE_SURFACE_PROB: [0.1, 0.1, 0.3, 0.2, 0.3]
-STORE_MEAN_DAILY_INTERACTIONS: 3.1
 STORE_OPEN_CLOSE_HOUR_MINUTE: [[8, 0], [22, 0]]
 STORE_OPEN_DAYS: [0, 1, 2, 3, 4, 5, 6]
 MAX_STORE_QUEUE_LENGTH: 10
@@ -36,7 +34,6 @@ MAX_STORE_QUEUE_LENGTH: 10
 MISC_PROPORTION_AREA: 0.15
 MISC_CONTACT_FACTOR: 1
 MISC_SURFACE_PROB: [0.1, 0.1, 0.3, 0.2, 0.3]
-MISC_MEAN_DAILY_INTERACTIONS: 3.1
 MISC_OPEN_CLOSE_HOUR_MINUTE: [[8, 0], [22, 0]]
 MISC_OPEN_DAYS: [0, 1, 2, 3, 4, 5, 6]
 MAX_MISC_QUEUE_LENGTH: 10
@@ -45,7 +42,6 @@ MAX_MISC_QUEUE_LENGTH: 10
 PARK_PROPORTION_AREA: 0.05
 PARK_CONTACT_FACTOR: 0.1
 PARK_SURFACE_PROB: [0.8, 0.05, 0.05, 0.05, 0.05]
-PARK_MEAN_DAILY_INTERACTIONS: 3.1
 PARK_OPEN_CLOSE_HOUR_MINUTE: [[0, 0], [24, 0]]
 PARK_OPEN_DAYS: [0, 1, 2, 3, 4, 5, 6]
 
@@ -53,7 +49,6 @@ PARK_OPEN_DAYS: [0, 1, 2, 3, 4, 5, 6]
 HOSPITAL_PROPORTION_AREA: 0.05
 HOSPITAL_CONTACT_FACTOR: 2
 HOSPITAL_SURFACE_PROB: [0.0, 0.0, 0.0, 0.0, 1.0]
-HOSPITAL_MEAN_DAILY_INTERACTIONS: 3.1
 HOSPITAL_OPEN_CLOSE_HOUR_MINUTE: [[0, 0], [24, 0]]
 HOSPITAL_OPEN_DAYS: [0, 1, 2, 3, 4, 5, 6]
 
@@ -61,7 +56,6 @@ HOSPITAL_OPEN_DAYS: [0, 1, 2, 3, 4, 5, 6]
 HOUSEHOLD_PROPORTION_AREA: 0.30
 HOUSEHOLD_CONTACT_FACTOR: 2
 HOUSEHOLD_SURFACE_PROB: [0.1, 0.1, 0.3, 0.2, 0.3]
-HOUSEHOLD_MEAN_DAILY_INTERACTIONS: 2.7
 HOUSEHOLD_OPEN_CLOSE_HOUR_MINUTE: [[0, 0], [24, 0]]
 HOUSEHOLD_OPEN_DAYS: [0, 1, 2, 3, 4, 5, 6]
 
@@ -69,7 +63,6 @@ HOUSEHOLD_OPEN_DAYS: [0, 1, 2, 3, 4, 5, 6]
 SENIOR_RESIDENCE_PROPORTION_AREA: 0.05
 SENIOR_RESIDENCE_CONTACT_FACTOR: 3
 SENIOR_RESIDENCE_SURFACE_PROB: [0.1, 0.1, 0.3, 0.2, 0.3]
-SENIOR_RESIDENCE_MEAN_DAILY_INTERACTIONS: 2.7
 SENIOR_RESIDENCE_OPEN_CLOSE_HOUR_MINUTE: [[0, 0], [24, 0]]
 SENIOR_RESIDENCE_OPEN_DAYS: [0, 1, 2, 3, 4, 5, 6]
 
@@ -77,7 +70,6 @@ SENIOR_RESIDENCE_OPEN_DAYS: [0, 1, 2, 3, 4, 5, 6]
 SCHOOL_PROPORTION_AREA: 0.05
 SCHOOL_CONTACT_FACTOR: 1
 SCHOOL_SURFACE_PROB: [0.1, 0.1, 0.3, 0.2, 0.3]
-SCHOOL_MEAN_DAILY_INTERACTIONS: 1.6
 SCHOOL_OPEN_CLOSE_HOUR_MINUTE: [[8, 0], [16, 0]]
 SCHOOL_OPEN_DAYS: [0, 1, 2, 3, 4]
 
@@ -107,7 +99,6 @@ MAX_TIME_SHORT_ACTVITIES: 4
 #########################################################
 #####       Interaction Parameters                  #####
 #########################################################
-
 # Contacts are broadly of two types - "known" and "unknown"
 # known contacts) are assumed to be those which we are aware of, for example, meeting a friend.
 # unknown contacts are those which are not known to us consciously ,i.e. strangers standing next to us in a metro.
@@ -115,6 +106,13 @@ MAX_TIME_SHORT_ACTVITIES: 4
 # known
 MIN_DIST_KNOWN_CONTACT: 0
 MAX_DIST_KNOWN_CONTACT: 200 # cms
+
+# Pre confinement contacts statistics (Montreal)
+WORKPLACE_MEAN_DAILY_INTERACTIONS: 10
+OTHER_MEAN_DAILY_INTERACTIONS: 3.1
+HOUSEHOLD_MEAN_DAILY_INTERACTIONS: 2.7
+SCHOOL_MEAN_DAILY_INTERACTIONS: 6
+HOSPITAL_MEAN_DAILY_INTERACTIONS: 10
 
 # unknown (all the numbers below are assumed because no data is available about them)
 # A distance greater than INFECTION_RADIUS is useless to model, however, in the context of tracing apps
@@ -450,7 +448,6 @@ COLD_CONTAGIOUSNESS: 0.000 # likelihood of transmitting at an encounter (no-sour
 #####       Individual Parameters                   #####
 #########################################################
 
-
 # INDIVIDUAL DIFFERENCES PARAMETERS
 P_CAREFUL_PERSON: 0.3 # &carefulness
 
@@ -462,15 +459,47 @@ P_MALE: 0.45
 #####           Intervention Parameters             #####
 #########################################################
 
+# Number of levels for behavior stratification. Levels will be 1, ..., N_LEVELS
+# Level 0 is assumed to be unmitigated behavior with pre-confinement level of contacts.
+N_LEVELS: 3
+
+# Quarantine
+# Quarantine is the most-extreme form of intervention in which individual cuts down
+# all its interactions and spends majority of the time at household.
+
+# If other individuals living in the household should quarantine?
+QUARANTINE_HOUSEHOLD_UPON_INDIVIDUAL_QUARANTINE: True
+
+# hospitals were assumed to be a source of spread in the beginning.
+# Post-lockdown, hospitals can be assumed to be safe
+ASSUME_SAFE_HOSPITAL_DAILY_INTERACTIONS: True
+
+# Lockdown statistics (Montreal)
+# Following numbers (eyballed) are from CONNECT2 study
+# ref: http://www.marc-brisson.net/covid19-response/Epidemiologie-et-modelisation-evolution-COVID-19-au-Quebec_29-juin.pdf
+LOCKDOWN_FRACTION_REDUCTION_IN_CONTACTS_AT_HOUSEHOLD: 0.30
+LOCKDOWN_FRACTION_REDUCTION_IN_CONTACTS_AT_WORKPLACE: 0.80
+LOCKDOWN_FRACTION_REDUCTION_IN_CONTACTS_AT_OTHER: 0.50
+
+# non-risk tracing quarantine length
+QUARANTINE_POSITIVE_TEST_DAYS: 14
+QUARANTINE_TRACED_DAYS: 14
+QUARANTINE_SELF_REPORTED_SYMPTOMS: 14
+QUARATINE_TRACED_SYMPTOMS: 14
+QUARANTINE_HOUSEHOLD_MEMBERS_POSITIVE_TEST_DAYS: 14
+QUARANTINE_HOUSEHOLD_MEMBERS_OF_CONTACT_TEST_DAYS: 14
+
+
+# (WIP) If no one in the network has developed symptoms in the past QUARANTINE_SMART_RELEASE_DAYS, then release them
+QUARANTINE_SMART_RELEASE: False
+QUARANTINE_SMART_RELEASE_DAYS: 7
+
+###
 # WASH HANDS
 HYGIENE_EFFICACY_FACTOR: 0.5 # used in reduction of probability of transmission (no-source)
 
 # RISK RECOMMENDATIONS
 DEFAULT_DISTANCE: 100 # cms
-
-# TRACKER
-EFFECTIVE_R_WINDOW: 10 # days
-KEEP_FULL_OBJ_COPIES: False
 
 # MASK
 MASK_EFFICACY_NORMIE: 0.32
@@ -497,3 +526,7 @@ BUNDLED_INTERVENTION_RECOMMENDATION_LEVEL: 0
 
 # Console logging (Condition with COLLECT_LOGS)
 LOGGING_LEVEL: "WARNING"
+
+# TRACKER
+EFFECTIVE_R_WINDOW: 10 # days
+KEEP_FULL_OBJ_COPIES: False

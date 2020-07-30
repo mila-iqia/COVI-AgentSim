@@ -1,6 +1,6 @@
 #FORMER COMMAND-LINE ARGS
 n_people: 1000
-init_percent_sick: 0.001
+init_fraction_sick: 0.001
 start_time:
   "2020-02-28 00:00:00" # in utils.py/parse_configuration, this will be parsed
   # into a datetime object with the following schema: '%Y-%m-%d %H:%M:%S'

@@ -1539,7 +1539,7 @@ class Tracker(object):
         log("\n******** Locations and Disease Spread *********", self.logfile)
 
         log("\nR0 ( % Transmission ) of all human-human transmission", self.logfile)
-        all_locations = [x for x in self.average_infectious_contacts.keys() if x not in ['asymptomatic', 'presymptomatic', 'symptomatic']]
+        all_locations = [x for x in self.average_infectious_contacts.keys() if x not in ['asymptomatic', 'presymptomatic', 'symptomatic', "all"]]
         for key in all_locations:
             count = self.average_infectious_contacts[key]["infection_count"]
             n_humans = len(self.average_infectious_contacts[key]["humans"]) + 1e-6 # to avoid ZeroDivisionError
@@ -1547,6 +1547,7 @@ class Tracker(object):
 
         log("\n% Transmission of all environmental transmissions", self.logfile)
         total = all_environmental_transmissions + 1e-6 # to avoid ZeroDivisionError
+        all_locations = self.environment_human_infection_histogram.keys()
         for key in all_locations:
             x = self.environment_human_infection_histogram[key]['caused_infection'].sum()
             log(f"* % {key} transmission {100 * x / total :2.3f}%", self.logfile)
@@ -1568,7 +1569,6 @@ class Tracker(object):
                 continue
             tmp_s[s] = v/total
         print_dict("P(symptoms = x | human had some sickness e.g. cold, flu, allergies, covid), where x is", tmp_s, is_sorted="desc", top_k=10, logfile=self.logfile)
-
 
         log("\n######## CONTACT PATTERNS #########", self.logfile)
         str_to_print = "weekday - "

@@ -75,11 +75,14 @@ class Location(simpy.Resource):
         self.contaminated_surface_probability = conf[f'{location_type}_SURFACE_PROB']
         self.MEAN_DAILY_KNOWN_CONTACTS = conf[f'{location_type}_MEAN_DAILY_INTERACTIONS']
 
-        key = location_type
-        if location_type not in ['HOUSEHOLD', 'WORKPLACE', 'SCHOOL']:
-            key = "OTHER"
-        elif location_type == "SENIOR_RESIDENCE":
+        if location_type in ["SENIOR_RESIDENCE", "HOUSEHOLD"]:
             key = "HOUSEHOLD"
+        elif location_type == "SCHOOL":
+            key = "SCHOOL"
+        elif location_type == "WORKPLACE":
+            key = "WORKPLACE"
+        else:
+            key = "OTHER"
 
         self.P_CONTACT = np.array(conf[f'P_CONTACT_MATRIX_{key}'])
         self.ADJUSTED_CONTACT_MATRIX = np.array(conf[f'ADJUSTED_CONTACT_MATRIX_{key}'])
@@ -87,6 +90,29 @@ class Location(simpy.Resource):
 
         for matrix in [self.CONTACT_DURATION_GAMMA_SCALE_MATRIX, self.CONTACT_DURATION_GAMMA_SHAPE_MATRIX, self.P_CONTACT, self.ADJUSTED_CONTACT_MATRIX ]:
             assert matrix.shape[0] == matrix.shape[1], "contact matrix is not square"
+
+        # intervened contacts
+        N_LEVELS = self.conf['N_LEVELS']
+
+        # if hospitals are assumed to be safe, we reduce the number of interactions to 0
+        if location_type == "HOSPITAL" and conf['ASSUME_SAFE_HOSPITAL_DAILY_INTERACTIONS']:
+            self.DAILY_INTERACTION_REDUCTION_FACTOR = [0] * N_LEVELS
+
+        # there are a total of N_LEVELS. Last one is known to have a reduction factor with respect to the unconfined scenario
+        penultimate_level = self.conf[f"LOCKDOWN_FRACTION_REDUCTION_IN_CONTACTS_AT_{key}"]
+        reduction_level = []
+        for i in range(N_LEVELS + 1):
+            if i == 0:
+                x = 0
+            elif i == N_LEVELS:
+                x = 1
+            elif i == N_LEVELS - 1:
+                x = penultimate_level
+            else:
+                x = (N_LEVELS - 1 + i) * penultimate_level / (N_LEVELS - 1)
+            reduction_level.append(x)
+
+        self.DAILY_INTERACTION_REDUCTION_FACTOR = reduction_level
 
     def infectious_human(self):
         """
@@ -189,7 +215,7 @@ class Location(simpy.Resource):
 
     def _sample_interactee(self, type, human):
         """
-        returns a function that samples encounter partner for a human
+        Samples encounter partner of `type` for `human`
 
         Args:
             type (string): type of interaction to sample. expects "known", "unknown"
@@ -203,18 +229,27 @@ class Location(simpy.Resource):
 
         PREFERENTIAL_ATTACHMENT_FACTOR = self.conf['PREFERENTIAL_ATTACHMENT_FACTOR']
 
+        def _extract_attrs(human, candidate):
+            return (
+                candidate,
+                candidate.age_bin_width_5.index,
+                candidate in human.known_connections,
+                _get_daily_interaction_reduction_factor(candidate)
+            )
+
         if type == "known":
             human_bin = human.age_bin_width_5.index
-            hs, h_vector, known_vector = list(zip(*[(h, h.age_bin_width_5.index, h in human.known_connections) for h in self.humans if human != h]))
+            candidate_humans = [h for h in self.humans if human != h]
+            hs, h_vector, known_vector, reduction_factor = list(zip(*[_extract_attrs(human, h) for h in candidate_humans]))
 
             p_contact = self.P_CONTACT[h_vector, human_bin] * (1 - PREFERENTIAL_ATTACHMENT_FACTOR)
             p_contact += np.array(known_vector) * PREFERENTIAL_ATTACHMENT_FACTOR
+            # reduction factor is due to mutual interaction sampling where other_human's reduction factor is taken into account
+            p_contact *= (1 - np.array(reduction_factor))
             if p_contact.sum() == 0:
                 return None
-                warnings.warn("bad mobility...")
-                p_contact = [1/len(hs)] * len(hs)
-            else:
-                p_contact /= p_contact.sum()
+
+            p_contact /= p_contact.sum()
 
             # sample
             other_human = self.rng.choice(hs, size=1, p=p_contact).item()
@@ -227,7 +262,6 @@ class Location(simpy.Resource):
 
         assert other_human != human, "interaction with oneself should not happen"
         return other_human
-
 
     def _sample_interaction_with_type(self, type, human):
         """
@@ -258,6 +292,7 @@ class Location(simpy.Resource):
             raise
 
         mean_daily_interactions += 1e-6 # to avoid error in sampling with 0 mean from negative binomial
+        mean_daily_interactions *= 1 - self.DAILY_INTERACTION_REDUCTION_FACTOR[human.behavior_level]
         scale_factor_interaction_time = self.conf['SCALE_FACTOR_CONTACT_DURATION']
         # (assumption) maximum allowable distance is when humans are uniformly spaced
         packing_term = 100 * np.sqrt(self.area/len(self.humans))
@@ -310,7 +345,6 @@ class Location(simpy.Resource):
 
         return interactions
 
-
     def sample_interactions(self, human, unknown_only=False):
         """
         samples how `human` interacts with other `human`s at this location (`self`) at this time.
@@ -343,7 +377,7 @@ class Location(simpy.Resource):
 
     def check_environmental_infection(self, human):
         """
-        determines whether `human` gets infected due to the environment.
+        Determines whether `human` gets infected due to the virus in environment.
 
         Environmental infection is modeled via surfaces. We consider the following study -
         https://www.nejm.org/doi/pdf/10.1056/NEJMc2004973?articleTools=true
@@ -361,18 +395,21 @@ class Location(simpy.Resource):
         Returns:
             (bool): whether `human` was infected via environmental contamination.
         """
-        if not human.is_susceptible:
+        p_contamination = self.contamination_probability
+        if not (human.is_susceptible and p_contamination > 0):
             return
 
+        #
         p_transmission = get_environment_human_p_transmission(
-                                        self.contamination_probability,
+                                        p_contamination,
                                         human,
                                         self.conf.get("ENVIRONMENTAL_INFECTION_KNOB"),
                                         self.conf['MASK_EFFICACY_FACTOR'],
                                         self.conf['HYGIENE_EFFICACY_FACTOR'],
                                         )
 
-        x_environment = self.contamination_probability > 0 and self.rng.random() < p_transmission
+        x_environment =  self.rng.random() < p_transmission
+
         # track infection related stats
         human.city.tracker.track_infection(source="environment",
                                     from_human=None,
@@ -387,6 +424,8 @@ class Location(simpy.Resource):
             human.infection_timestamp = human.env.timestamp
             compute_covid_properties(human)
             Event.log_exposed(self.conf.get('COLLECT_LOGS'), human, self, p_transmission, self.env.timestamp)
+
+        return
 
     def is_open(self, date):
         """

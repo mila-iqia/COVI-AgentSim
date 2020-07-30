@@ -58,7 +58,7 @@ class BaseMethod(object):
             behaviors.extend(_get_behaviors_for_level(intervention_level))
 
         if not any([isinstance(rec, Quarantine) for rec in behaviors]) and \
-                any([h.test_result == "positive" for h in human.household.humans]):
+                any([h.test_result == "positive" for h in human.household.residents]):
             # in short, if we are not already quarantining and if there is a member
             # of the household that got a positive test (even if they didn't tell their
             # app, whether because they don't have one or don't care), the housemates should
@@ -134,7 +134,7 @@ class BinaryDigitalTracing(BaseMethod):
             make_sure_15min_minimum_between_contacts=False,
         )
         for order, count in positive_test_counts.items():
-            t += count * np.exp(-2 * (order - 1))
+            t += count
 
         if t > 0:
             risk = 1.0

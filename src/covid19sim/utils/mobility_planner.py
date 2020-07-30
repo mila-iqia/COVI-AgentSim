@@ -525,6 +525,8 @@ class MobilityPlanner(object):
             print(self.human,  "is dead because never recovers", activity)
             return activity
 
+        # activity = self._intervention_related_behavior_changes(activity)
+
         # (a) set back to normal routine if self.human was hospitalized
         # (b) if human is still recovering in hospital then return the activity as is because these were determined at the time hospitalization occured
         # Note 1: after recovery from hospitalization, infection_timestamp will always be None
@@ -693,6 +695,35 @@ class MobilityPlanner(object):
             self.human_to_rest_at_home = False
 
         return self.human_to_rest_at_home
+
+    def _intervention_related_behavior_changes(self, activity):
+        """
+        Determines location of activity based on the restrictions imposed on `self.human` via interventions
+
+        Args:
+            activity (Activity): activity for which location needs to be determined
+
+        Returns:
+            activity (Activity): activity with a new location
+
+        Implements basic intervention related behavior changes by modifying
+            (a) `human`s network profile (amount of time spent in each network)
+            (b) `human`s interaction profile (interactions sampled at each network)
+        """
+        # Quarantine / Recommendation level 3
+        if self.quarantine or self.household_member_quarantined:
+            reason = "quarantine" if sel.quarantine else "household_member_quarantined"
+            activity.cancel_and_go_to_location(reason=reason, location=self.human.household)
+            return activity
+
+        # Recommendation level 2
+
+        # Recommendation level 1
+
+        # Recommendation level 0
+
+        # no interventions
+        return activity
 
     def cancel_all_events(self):
         """

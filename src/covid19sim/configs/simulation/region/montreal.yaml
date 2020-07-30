@@ -1,10 +1,12 @@
+#############################################################################
+########     Contributors:                                           ########
+########         - Nanor                                             ########
+########         - Soren                                             ########
+########         - Prateek Gupta  (pgupta@robots.ox.ac.uk)           ########
+##############################################################################
+
 # Region
 # Région de Montréal Quebec
-
-#########################################################
-###############       Statcan data         ##############
-#########################################################
-
 
 #########################################################
 ###############       Housing data         ##############
@@ -321,6 +323,8 @@ ICU_BEDS_PER_1K_PEOPLE: 1000 # Since there were no deaths because of the capacit
 P_HEALTHCARE_WORKERS: 0.119
 NURSE_TO_DOCTOR_RATIO: 5.81
 N_DOCTOR_PER_100K_PEOPLE: 142
+
+# for SENIOR_RESIDENCY
 RESIDENT_TO_STAFF_RATIO: 13
 
 
@@ -378,8 +382,6 @@ P_EXERCISE_DAYS: [
   [40, 0.02]
 ]
 
-# /!\ commented and duplicated parameters are so as to correct for mixing patterns.
-
 # How much time do people do grocery shopping for? Quebec data
 # ref: https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=4510001401&pickMembers%5B0%5D=1.3&pickMembers%5B1%5D=3.1&pickMembers%5B2%5D=4.1&pickMembers%5B3%5D=5.1
 #  Table  45-10-0014-01   Daily average time spent in hours on various activities by age group and sex, 15 years and over, Canada and provinces
@@ -430,6 +432,25 @@ P_AGE_SOLO_DWELLERS_GIVEN_HOUSESIZE_1_MORE_ACCURATE: [[0, 4, 0.0],
     [70, 74, 0.069109489],
     [75, 110, 0.14919708]
   ]
+
+######################################################################
+######             Intervention Related Data                    ######
+######################################################################
+
+# Pre confinement contacts statistics
+WORKPLACE_MEAN_DAILY_INTERACTIONS: 10
+OTHER_MEAN_DAILY_INTERACTIONS: 3.1
+HOUSEHOLD_MEAN_DAILY_INTERACTIONS: 2.7
+SCHOOL_MEAN_DAILY_INTERACTIONS: 6
+HOSPITAL_MEAN_DAILY_INTERACTIONS: 10
+
+# Lockdown contact statistics
+# Following numbers (eyballed) are from CONNECT2 study
+# ref: http://www.marc-brisson.net/covid19-response/Epidemiologie-et-modelisation-evolution-COVID-19-au-Quebec_29-juin.pdf
+LOCKDOWN_FRACTION_REDUCTION_IN_CONTACTS_AT_HOUSEHOLD: 0.30
+LOCKDOWN_FRACTION_REDUCTION_IN_CONTACTS_AT_WORKPLACE: 0.80
+LOCKDOWN_FRACTION_REDUCTION_IN_CONTACTS_AT_OTHERS: 0.50
+LOCKDOWN_FRACTION_REDUCTION_IN_CONTACTS_AT_HOSPITAL: 1.0 # no contacts
 
 ######################################################################
 ## Pre-computed using utils/precompute_and_project/demographics.py  ##

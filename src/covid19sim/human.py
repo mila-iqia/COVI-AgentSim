@@ -191,6 +191,7 @@ class Human(BaseHuman):
         self._test_recommended = False  # does the app recommend that this person should get a covid-19 test
         self.effective_contacts = 0  # A scaled number of the high-risk contacts (under 2m for over 15 minutes) that this person had
         self.num_contacts = 0  # unscaled number of high-risk contacts
+        self.behavior_level = -1 # default behavior level describes the unmitigated scenario 
 
         """Risk prediction"""
         self.contact_book = ContactBook(tracing_n_days_history=self.conf.get("TRACING_N_DAYS_HISTORY"))  # Used for tracking high-risk contacts (for app-based contact tracing methods)
@@ -488,7 +489,7 @@ class Human(BaseHuman):
         """
         sets test related attributes such as
             test_type (str): type of test used
-            time_time (str): time of testing
+            test_time (str): time of testing
             time_to_test_result (str): delay in getting results back
             hidden_test_result (str): test results are not immediately available
             test_result_validated (str): whether these results will be validated by an agency
@@ -506,14 +507,18 @@ class Human(BaseHuman):
         else:
             self.time_to_test_result = self.conf['TEST_TYPES'][test_type]['time_to_result']['out-patient']
         self.test_result_validated = self.test_type == "lab"
-        Event.log_test(self.conf.get('COLLECT_LOGS'), self, self.test_time)
+
         self._test_results.appendleft((
             self.hidden_test_result,
             self._will_report_test_result,
             self.env.timestamp,  # for result availability checking later
             self.time_to_test_result,  # in days
         ))
+
+        # log
         self.city.tracker.track_tested_results(self)
+        Event.log_test(self.conf.get('COLLECT_LOGS'), self, self.test_time)
+
 
     def check_if_needs_covid_test(self, at_hospital=False):
         """
@@ -702,7 +707,7 @@ class Human(BaseHuman):
             if infectee_msg is not None:  # could be None if we are not currently tracing
                 infectee_msg._exposition_event = True
 
-            # logging & tracker
+            # log
             Event.log_exposed(self.conf.get('COLLECT_LOGS'), infectee, infector, p_infection, self.env.timestamp)
         else:
             infector, infectee = None, None
