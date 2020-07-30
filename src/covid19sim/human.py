@@ -557,6 +557,7 @@ class Human(BaseHuman):
 
         reported_symptoms = [s for s in self.rolling_all_symptoms[0] if self.rng.random() < self.carefulness]
         self.rolling_all_reported_symptoms.appendleft(reported_symptoms)
+        self.city.tracker.track_symptoms(self)
 
     @property
     def test_result(self):
