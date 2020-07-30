@@ -3,6 +3,7 @@
 defaults:
   - core
   - base_method
+  - symptom_prevalence
 
 hydra:
   run:

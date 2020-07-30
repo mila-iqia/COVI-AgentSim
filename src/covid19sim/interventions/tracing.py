@@ -171,6 +171,7 @@ class Heuristic(BaseMethod):
             raise NotImplementedError()
 
         self.risk_mapping = conf.get("RISK_MAPPING")
+        self.conf = conf
 
     def get_recommendations_level(self, human, thresholds, max_risk_level, intervention_start=False):
         """
@@ -211,7 +212,7 @@ class Heuristic(BaseMethod):
          /!\ Note 1: Side-effect - we set `_heuristic_rec_level` attribute in this function. This is required because
          heuristic doesn't have a concept of risk_level to rec_level mapping. The function `self.get_recommendations_level`
          will overwrite rec_level attribute of human via `update_recommendations_level`.
-         """
+        """
         cur_risk_history = list(human.risk_history_map.values())
         test_protection_window = 8
         # if you have a positive test result, it over-rides everything else (we ignore symptoms and risk messages)
@@ -242,8 +243,6 @@ class Heuristic(BaseMethod):
         setattr(human, '_heuristic_rec_level', rec_level)
 
         return risk_history
-
-
 
     def apply_negative_test(self, rec_level, risk_history, test_risk_history, test_protection_window):
         offset = max(len(test_risk_history) - test_protection_window, 0)
@@ -343,6 +342,8 @@ class Heuristic(BaseMethod):
         if not any(human.all_reported_symptoms):
             return [], 0
 
+        # p_covid = self.compute_p_covid_given_symptoms(human)
+        
         # for some symptoms set R for now and all past 7 days
         if EXTREMELY_SEVERE in human.all_reported_symptoms:
             new_risk_level = self.severe_symptoms_risk_level
@@ -367,8 +368,6 @@ class Heuristic(BaseMethod):
 
         risk_history = [self.risk_level_to_risk(new_risk_level)] * (human.conf.get("TRACING_N_DAYS_HISTORY") // 2)
         return risk_history, new_rec_level
-
-
 
     def handle_recovery(self, human, mailbox):
         # No symptoms in last 7 days
@@ -410,4 +409,32 @@ class Heuristic(BaseMethod):
             risk_history.append(max(vals))
         return risk_history
 
+    def compute_p_covid_given_symptoms(self, human, correction_factor=2):
+        """
+        Computes probability of COVID given symptoms being experienced by `human`.
 
+        Args:
+            human (covid19sim.human.Human): `human` object
+            correction_factor (float): factor to correct for underestimation of prevalence via hospitalization, deaths or testing. Needs to be calibrated.
+
+        Returns:
+            (float): probability of having COVID
+        """
+        symptoms = human.all_reported_symptoms
+        p_each_symptom_given_covid = self.conf['P_SYMPTOM_GIVEN_COVID']
+        p_each_symptom = self.conf['P_SYMPTOM']
+
+        # (experimental) joint probability of observing symptoms
+        p_symptoms_given_covid = max(p_each_symptom_given_covid.get(x.name, 0) for x in symptoms)
+        p_symptoms = max(p_each_symptom.get(x.name, 0) for x in symptoms)
+        p_symptoms_given_not_covid = max(0, p_symptoms - p_symptoms_given_covid)
+
+        # probability of having covid
+        covid_prevalence = human.city.tracker.get_estimated_covid_prevalence()
+        p_covid = correction_factor * max(covid_prevalence['estimation_by_test'], covid_prevalence['estimation_by_hospitalization'])
+
+        # probability of covid given symptoms
+        p_covid_given_symptoms = p_symptoms_given_covid * p_covid
+        p_not_covid_given_symptoms = p_symptoms_given_not_covid * (1 - p_covid)
+
+        return p_covid_given_symptoms / (p_covid_given_symptoms + p_not_covid_given_symptoms + 1e-6)
