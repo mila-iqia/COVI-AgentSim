@@ -153,6 +153,7 @@ class Heuristic(BaseMethod):
             raise NotImplementedError()
 
         self.risk_mapping = conf.get("RISK_MAPPING")
+        self.conf = conf
 
     def get_recommendations_level(self, human, thresholds, max_risk_level, intervention_start=False):
         """
@@ -193,7 +194,7 @@ class Heuristic(BaseMethod):
          /!\ Note 1: Side-effect - we set `_heuristic_rec_level` attribute in this function. This is required because
          heuristic doesn't have a concept of risk_level to rec_level mapping. The function `self.get_recommendations_level`
          will overwrite rec_level attribute of human via `update_recommendations_level`.
-         """
+        """
         cur_risk_history = list(human.risk_history_map.values())
         test_protection_window = 8
         # if you have a positive test result, it over-rides everything else (we ignore symptoms and risk messages)
@@ -233,8 +234,6 @@ class Heuristic(BaseMethod):
 
     def debug_heuristic_plot(self, message_rec_level, symptoms_rec_level, human_rec_level, negative_test_rec_level):
         print("A")
-
-
 
     def apply_negative_test(self, rec_level, risk_history, test_risk_history, test_protection_window):
         offset = max(len(test_risk_history) - test_protection_window, 0)
@@ -348,6 +347,8 @@ class Heuristic(BaseMethod):
         if not any(human.all_reported_symptoms):
             return [], 0
 
+        # p_covid = self.compute_p_covid_given_symptoms(human, self.conf)
+
         # for some symptoms set R for now and all past 7 days
         if EXTREMELY_SEVERE in human.all_reported_symptoms:
             new_risk_level = self.severe_symptoms_risk_level
@@ -372,8 +373,6 @@ class Heuristic(BaseMethod):
 
         risk_history = [self.risk_level_to_risk(new_risk_level)] * (human.conf.get("TRACING_N_DAYS_HISTORY") // 2)
         return risk_history, new_rec_level
-
-
 
     def handle_recovery(self, human, mailbox):
         # No symptoms in last 7 days

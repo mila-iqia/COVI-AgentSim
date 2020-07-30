@@ -1,0 +1,55 @@
+# Following values are extracted by running heuristicv1 on 1000 people with APP_UPTAKE=0.845 for 24 days.
+# The tracker file for this run has an attribute - `symptoms`. These values are 'symptom_prevalance' of that attribute.
+# /!\ OUTDATED
+
+# key = "covid"
+P_REPORTED_SYMPTOM_GIVEN_COVID: {
+  'mild': 0.21348314546774397,
+  'fever': 0.2162921342238985,
+  'chills': 0.07865168517232672,
+  'moderate': 0.15449438158849893,
+  'severe': 0.0646067413915541,
+  'gastro': 0.13202247153926272,
+  'diarrhea': 0.12640449402695367,
+  'nausea_vomiting': 0.11235955024618104,
+  'fatigue': 0.13202247153926272,
+  'hard_time_waking_up': 0.0758426964161722,
+  'headache': 0.07022471890386316,
+  'trouble_breathing': 0.1741573028815806,
+  'cough': 0.1404494378077263,
+  'sore_throat': 0.13483146029541726,
+  'loss_of_taste': 0.13202247153926272,
+  'light_trouble_breathing': 0.07022471890386316,
+  'moderate_trouble_breathing': 0.07865168517232672,
+  'heavy_trouble_breathing': 0.0646067413915541,
+  'sneezing': 0.04775280885462694,
+  'confused': 0.011235955024618103,
+  'runny_nose': 0.01404494378077263,
+  'unusual': 0.005617977512309052,
+  'lost_consciousness': 0.002808988756154526,
+  }
+
+# key = "all"
+P_REPORTED_SYMPTOM: {
+  'sneezing': 0.24050632606954017,
+  'mild': 0.46835442445120984,
+  'runny_nose': 0.27848100913315177,
+  'fatigue': 0.4556961967633393,
+  'sore_throat': 0.354430375260375,
+  'moderate': 0.3797468306361161,
+  'cough': 0.4556961967633393,
+  'hard_time_waking_up': 0.11392404919083482,
+  'fever': 0.27848100913315177,
+  'loss_of_taste': 0.16455695994231698,
+  'headache': 0.12658227687870535,
+  'trouble_breathing': 0.1772151876301875,
+  'moderate_trouble_breathing': 0.12658227687870535,
+  'chills': 0.08860759381509375,
+  'gastro': 0.18987341531805804,
+  'severe': 0.07594936612722322,
+  'diarrhea': 0.15189873225444644,
+  'nausea_vomiting': 0.12658227687870535,
+  'heavy_trouble_breathing': 0.08860759381509375,
+  'light_trouble_breathing': 0.06329113843935268,
+  'confused': 0.012658227687870536,
+  }

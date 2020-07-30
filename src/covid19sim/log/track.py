@@ -49,7 +49,7 @@ def _compute_ngm(next_generation_matrix):
     return m
 
 def print_dict(title, dic, is_sorted=None, top_k=None, logfile=None):
-    if not is_sorted:
+    if is_sorted is None:
         items = dic.items()
     else:
         items = sorted(dic.items(), key=lambda x: x[1])[:top_k]
@@ -62,7 +62,6 @@ def print_dict(title, dic, is_sorted=None, top_k=None, logfile=None):
         "\n    ".join((aligned + ": {:5.4f}").format(str(k), v) for k, v in items),
         logfile
     )
-
 
 def normalize_counter(counter, normalizer=None):
     if normalizer:
@@ -1047,39 +1046,79 @@ class Tracker(object):
                                         It is used at the end of simulation to aggregate information.
                                         destroys self.symptoms_set to avoid any errors.
         """
+        def _aggregate_symptoms_count(symptoms_set, symptoms):
+            symptoms['n'] += 1
+            for s in symptoms_set:
+                symptoms[s] += 1
+
+            return symptoms
+
+        # clear up the current count of symptoms
         if count_all:
-            for human in self.symptoms_set['covid']:
-                self.symptoms['covid']['n'] += 1
-                for s in self.symptoms_set['covid'][human]:
-                    self.symptoms['covid'][s] += 1
+            for key in ["all", "covid"]:
+                remaining_humans = list(self.symptoms_set[key].keys())
+                for human in remaining_humans:
+                    self.symptoms[key] = _aggregate_symptoms_count(self.symptoms_set[key][human], self.symptoms[key])
+                    self.symptoms_set[key].pop(human)
 
-            for human in self.symptoms_set['all']:
-                self.symptoms['all']['n'] += 1
-                for s in self.symptoms_set['all'][human]:
-                    self.symptoms['all'][s] += 1
+            return self.symptoms
 
-            delattr(self, "symptoms_set")
-            return
-
-        if human.covid_symptoms:
+        # track COVID symptoms to estimate P(symptom = x | COVID = 1)
+        # if infected with COVID, keep accumulating symptoms until recovery
+        if  human.infection_timestamp is not None:
             self.symptoms_set['covid'][human.name].update(human.covid_symptoms)
         else:
+            # once human has recovered, count the symptoms into `self.symptoms` and remove this human from symptoms_set
             if human.name in self.symptoms_set['covid']:
-                self.symptoms['covid']['n'] += 1
-                for s in self.symptoms_set['covid'][human.name]:
-                    self.symptoms['covid'][s] += 1
+                self.symptoms["covid"] = _aggregate_symptoms_count(self.symptoms_set['covid'][human.name], self.symptoms['covid'])
                 self.symptoms_set['covid'].pop(human.name)
 
-        if human.all_symptoms:
-            self.symptoms_set['all'][human.name].update(human.all_symptoms)
+        # track reported symptoms to estimate P(symptom = x)
+        # Note 1: `human` can be experiencing COVID, cold, flu or allergy.
+        # Note 2: `human` can experience it multiple times in the simulation.
+        # Accumulate symptoms everytime human starts experiencing them, and aggregate them at the end. Restart if `human` experiences them again.
+        if len(human.all_reported_symptoms) > 0:
+            self.symptoms_set['all'][human.name].update(human.all_reported_symptoms)
         else:
             if human.name in self.symptoms_set['all']:
-                self.symptoms['all']['n'] += 1
-                for s in self.symptoms_set['all'][human.name]:
-                    self.symptoms['all'][s] += 1
+                self.symptoms["all"] = _aggregate_symptoms_count(self.symptoms_set['all'][human.name], self.symptoms['all'])
                 self.symptoms_set['all'].pop(human.name)
 
-    @check_if_tracking
+    def compute_symptom_prevalence(self):
+        """
+        Aggregates symptom statistics.
+        """
+        self.symptoms = self.track_symptoms(count_all = True)
+        symptom_raw_counts, symptom_prevalence = {}, {}
+        for key in ["all", "covid"]:
+            total_incidence = self.symptoms[key]['n'] + 1e-6  # to avoid ZeroDivisionError
+            symptom_raw_counts[key] = {'incidence':total_incidence}
+            symptom_prevalence[key] = {}
+            for s,v in self.symptoms[key].items():
+                if s == 'n':
+                    continue
+                symptom_raw_counts[key][s] = v
+                symptom_prevalence[key][s] = v / total_incidence
+
+        return {
+            "counts": symptom_raw_counts,
+            "symptom_prevalence": symptom_prevalence
+        }
+
+    def get_estimated_covid_prevalence(self):
+        """
+        Uses observable statistic to compute prevalence of COVID.
+        """
+        past_14_days_hospital_cases = sum(self.hospitalization_per_day[:-14])
+        past_14_days_tests = sum(self.tested_per_day[:-14])
+        actual_cases = sum(h.is_exposed or h.is_infectious for h in self.city.humans)
+
+        return {
+            "cases": actual_cases,
+            "estimation_by_hospitalization": past_14_days_hospital_cases,
+            "estimation_by_test": past_14_days_tests,
+        }
+
     def track_tested_results(self, human):
         """
         Keeps count of tests on a particular day. It is called every time someone is tested.
