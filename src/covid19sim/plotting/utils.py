@@ -167,6 +167,7 @@ def get_human_rec_levels(filename=None, data=None, normalized=False):
 
     key = "humans_rec_level"
     if normalized:
+        print(filename)
         key = "humans_intervention_level"
 
     humans_rec_level = data[key]
@@ -190,7 +191,6 @@ def get_all_rec_levels(filenames=None, data=None, normalized=False):
         data = [None] * len(filenames)
     else:
         raise ValueError("filenames and data arguments are None")
-
     rec_levels = get_rec_levels(filenames[0], data[0], normalized=normalized)
     all_rec_levels = np.zeros(
         (len(filenames),) + rec_levels.shape, dtype=rec_levels.dtype
@@ -198,7 +198,7 @@ def get_all_rec_levels(filenames=None, data=None, normalized=False):
     all_rec_levels[0] = rec_levels
 
     for i, filename in enumerate(filenames[1:]):
-        all_rec_levels[i + 1] = get_rec_levels(filename, data[i + 1])
+        all_rec_levels[i + 1] = get_rec_levels(filename, data[i + 1], normalized=normalized)
 
     return all_rec_levels
 
@@ -259,7 +259,7 @@ def absolute_file_paths(directory):
     return to_return
 
 
-def get_all_data(base_path, keep_pkl_keys, multi_thread=False):
+def get_all_data(base_path, keep_pkl_keys, multi_thread=False, limit=100000):
     base_path = Path(base_path).resolve()
     assert base_path.exists()
     methods = [
@@ -287,6 +287,7 @@ def get_all_data(base_path, keep_pkl_keys, multi_thread=False):
         print(" " * 100, end="\r")
 
         try:
+            runs = runs[:limit]
             if multi_thread:
                 print("Loading runs in", m.name, "...", end="\r")
                 with concurrent.futures.ThreadPoolExecutor() as executor:

@@ -42,7 +42,6 @@ def run(data, path, comparison_key):
     colors = ["#007FA1", "#4CAF50", "#FFEB3B", "#FF9800", "#F44336"]
 
     max_cols = 2
-
     data_rec_levels = {
         mk: {
             ck: get_all_rec_levels(data=cv, normalized="_norm" in mk)
@@ -50,14 +49,13 @@ def run(data, path, comparison_key):
         }
         for mk, mv in data.items()
     }
-
     tmp_data = defaultdict(dict)
     for mk, mrl in data_rec_levels.items():
         if "unmitigated" not in mk and "no_intervention" not in mk:
             for ck, crl in mrl.items():
                 tmp_data[ck][mk] = crl
     data_rec_levels = tmp_data
-
+    
     legend_handles = [
         Line2D(
             [0],
@@ -83,7 +81,6 @@ def run(data, path, comparison_key):
         method_names = sorted(comparison_dict.keys())
         for j, method_name in enumerate(method_names):
             method_risk_levels = comparison_dict[method_name]
-
             col = j % max_cols
             row = j // max_cols
             title = get_title(method_name)
