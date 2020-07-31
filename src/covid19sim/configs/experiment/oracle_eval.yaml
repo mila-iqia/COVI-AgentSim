@@ -22,6 +22,8 @@ P_CAREFUL_PERSON: 0.5
 GLOBAL_MOBILITY_SCALING_FACTOR: 1
 tune: true
 
+n_search: -1.
+
 ORACLE_NOISE:
   sample: cartesian
   from:
