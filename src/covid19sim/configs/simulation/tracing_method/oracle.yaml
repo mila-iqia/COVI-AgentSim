@@ -5,6 +5,7 @@ USE_INFERENCE_SERVER: False
 RISK_MODEL: "transformer" # "naive"  "manual", "digital", "transformer"
 SHOULD_MODIFY_BEHAVIOR: True
 USE_ORACLE: True
+ORACLE_NOISE: 0.0
 
 ## INTERVENTIONS
 INTERVENTION: "Tracing"
