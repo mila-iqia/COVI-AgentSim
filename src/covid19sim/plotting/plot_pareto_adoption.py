@@ -156,7 +156,7 @@ def run(data, path, comparison_key):
 
     ms = 6 * 2 * 1.5
     capsize = 4
-    markers = ["P", "s", "X", "d", ".", "h", "^", "*", "v"]
+    markers = ["P", "s", "X", "d", ".", "h", "^", "*", "v", "p", "x", "1"]
     colormap = [
         "mediumvioletred",
         "darkorange",

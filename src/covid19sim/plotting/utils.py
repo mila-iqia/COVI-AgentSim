@@ -259,7 +259,7 @@ def absolute_file_paths(directory):
     return to_return
 
 
-def get_all_data(base_path, keep_pkl_keys, multi_thread=False):
+def get_all_data(base_path, keep_pkl_keys, multi_thread=False, limit=100000):
     base_path = Path(base_path).resolve()
     assert base_path.exists()
     methods = [
@@ -287,6 +287,7 @@ def get_all_data(base_path, keep_pkl_keys, multi_thread=False):
         print(" " * 100, end="\r")
 
         try:
+            runs = runs[:limit]
             if multi_thread:
                 print("Loading runs in", m.name, "...", end="\r")
                 with concurrent.futures.ThreadPoolExecutor() as executor:
