@@ -456,15 +456,16 @@ class City:
         """
         humans_notified = False
         last_day_idx = 0
-        self.intervention = BaseMethod(self.conf)
+        # self.intervention = BaseMethod(self.conf)
         while True:
             current_day = (self.env.timestamp - self.start_time).days
             # Notify humans to follow interventions on intervention day
             if current_day == self.conf.get('INTERVENTION_DAY') and not humans_notified:
-                self.intervention = get_intervention(conf=self.conf)
+                # self.intervention = get_intervention(conf=self.conf)
                 self.have_some_humans_download_the_app()
                 for human in self.humans:
-                    human.set_intervention(self.intervention)
+                    # human.set_intervention(self.intervention)
+                    human.intervened_behavior.initialize()
                 humans_notified = True
 
             # run city testing routine, providing test results for those who need them
@@ -494,13 +495,13 @@ class City:
             )
 
             # given the 'intervention' method and the risk estimated by each human, assign them behavior modifiers
-            if (
-                self.conf.get("SHOULD_MODIFY_BEHAVIOR")
-                and self.conf['INTERVENTION_DAY'] >= 0
-            ):
-                for human in alive_humans:
-                    behaviors = self.intervention.get_behaviors(human)
-                    human.apply_behaviors(behaviors)
+            # if (
+            #     self.conf.get("SHOULD_MODIFY_BEHAVIOR")
+            #     and self.conf['INTERVENTION_DAY'] >= 0
+            # ):
+            #     for human in alive_humans:
+            #         behaviors = self.intervention.get_behaviors(human)
+            #         human.apply_behaviors(behaviors)
 
             # for debugging/plotting a posteriori, track all human/location attributes...
             self.tracker.track_humans(hd=self.hd, current_timestamp=self.env.timestamp)
