@@ -33,6 +33,7 @@ from covid19sim.utils.constants import SECONDS_PER_MINUTE, SECONDS_PER_HOUR, SEC
 from covid19sim.inference.message_utils import ContactBook, exchange_encounter_messages, RealUserIDType
 from covid19sim.utils.visits import Visits
 from covid19sim.native._native import BaseHuman
+from covid19sim.interventions.intervened_behavior import IntervenedBehavior
 
 if typing.TYPE_CHECKING:
     from covid19sim.utils.env import Env
@@ -191,7 +192,7 @@ class Human(BaseHuman):
         self._test_recommended = False  # does the app recommend that this person should get a covid-19 test
         self.effective_contacts = 0  # A scaled number of the high-risk contacts (under 2m for over 15 minutes) that this person had
         self.num_contacts = 0  # unscaled number of high-risk contacts
-        self.behavior_level = -1 # default behavior level describes the unmitigated scenario 
+        self.intervened_behavior = IntervenedBehavior(self, self.env, self.conf) # keeps track of behavior level of human
 
         """Risk prediction"""
         self.contact_book = ContactBook(tracing_n_days_history=self.conf.get("TRACING_N_DAYS_HISTORY"))  # Used for tracking high-risk contacts (for app-based contact tracing methods)
@@ -515,6 +516,8 @@ class Human(BaseHuman):
             self.time_to_test_result,  # in days
         ))
 
+        self.city.trigger_intervention(reason="test_taken", self)
+
         # log
         self.city.tracker.track_tested_results(self)
         Event.log_test(self.conf.get('COLLECT_LOGS'), self, self.test_time)
@@ -571,6 +574,9 @@ class Human(BaseHuman):
                 SUSPICIOUS_SYMPTOMS = set(self.conf['GET_TESTED_SYMPTOMS_CHECKED_BY_SELF'])
                 if set(self.symptoms) & SUSPICIOUS_SYMPTOMS:
                     should_get_test = self.rng.rand() < self.carefulness
+                    if should_get_test:
+                        # self.city.trigger_intervention("self_diagnosed_symptoms", self)
+                        pass
 
         if should_get_test:
             self.city.add_to_test_queue(self)
@@ -1311,6 +1317,8 @@ class Human(BaseHuman):
 
         if self.conf.get("RISK_MODEL") == "digital":
             assert self._rec_level == 0 or self._rec_level == 3
+
+        self.trigger_intervention(reason="risk_level_update", self)
 
     @property
     def rec_level(self):
