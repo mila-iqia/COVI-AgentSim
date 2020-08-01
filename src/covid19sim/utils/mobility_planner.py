@@ -525,8 +525,6 @@ class MobilityPlanner(object):
             print(self.human,  "is dead because never recovers", activity)
             return activity
 
-        # activity = self._intervention_related_behavior_changes(activity)
-
         # (a) set back to normal routine if self.human was hospitalized
         # (b) if human is still recovering in hospital then return the activity as is because these were determined at the time hospitalization occured
         # Note 1: after recovery from hospitalization, infection_timestamp will always be None
@@ -640,7 +638,12 @@ class MobilityPlanner(object):
                 # print(self.human, activity, "for sick", kid)
                 return activity
 
-        # 5. health / intervention related checks; set the location to household
+        # 5. if human is quarantined,
+        activity, quarantined = self._intervention_related_behavior_changes(activity)
+        if quarantined:
+            return activity
+
+        # 6. health / intervention related checks; set the location to household
         # rest_at_home needs to be checked everytime. It is different from hospitalization which is for prespecified period of time
         rest_at_home = self._update_rest_at_home()
         if (
@@ -652,7 +655,7 @@ class MobilityPlanner(object):
             # print(self.human,  "is sick", activity)
             return activity
 
-        # 6. (a) check the status of the parent_pointer (it has to be the invitation or supervised activity)
+        # 7. (a) check the status of the parent_pointer (it has to be the invitation or supervised activity)
         # otherwise (b) find a location. if there is no location available, cancel the activity and stay at home
         if activity.parent_activity_pointer is not None:
             activity.refresh_location()
@@ -699,31 +702,22 @@ class MobilityPlanner(object):
     def _intervention_related_behavior_changes(self, activity):
         """
         Determines location of activity based on the restrictions imposed on `self.human` via interventions
+        Implements basic intervention related behavior changes by modifying `human`s network profile (presence of `human` in various networks)
 
         Args:
             activity (Activity): activity for which location needs to be determined
 
         Returns:
             activity (Activity): activity with a new location
-
-        Implements basic intervention related behavior changes by modifying
-            (a) `human`s network profile (amount of time spent in each network)
-            (b) `human`s interaction profile (interactions sampled at each network)
         """
-        # Quarantine / Recommendation level 3
-        if self.quarantine or self.household_member_quarantined:
-            reason = "quarantine" if sel.quarantine else "household_member_quarantined"
+        # Quarantine / Max behavior restriction
+        # (assumption) only the last level changes the mobility pattern i.e. network presence of humans
+        if self.human.intervened_behavior.is_quarantined():
+            reason = self.human.intervened_behavior.quarantine_reason
             activity.cancel_and_go_to_location(reason=reason, location=self.human.household)
-            return activity
+            return activity, True
 
-        # Recommendation level 2
-
-        # Recommendation level 1
-
-        # Recommendation level 0
-
-        # no interventions
-        return activity
+        return activity, False
 
     def cancel_all_events(self):
         """
