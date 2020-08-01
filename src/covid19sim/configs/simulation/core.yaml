@@ -467,6 +467,8 @@ P_MALE: 0.45
 # While comparing binary vs non-binary tracing, use same N_BEHAVIOR_LEVELS. It's upto the method to use levels.
 N_BEHAVIOR_LEVELS: 4
 INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS: True
+# /!\ tracing of symptoms is not working now.
+TRACE_SELF_REPORTED_INDIVIDUAL: False
 
 # Lockdown statistics (Montreal)
 # Following numbers (eyballed) are from CONNECT2 study
@@ -482,6 +484,8 @@ ASSUME_SAFE_HOSPITAL_DAILY_INTERACTIONS: True
 ##### Quarantine
 # Quarantine is the most-extreme form of intervention in which individual cuts down all its interactions and spends majority of the time at household.
 
+### FLAGS
+# (non-tracing)
 # Quarantine household members of an individual who got a positive test?
 QUARANTINE_HOUSEHOLD_UPON_INDIVIDUAL_POSITIVE_TEST: True
 
@@ -489,28 +493,37 @@ QUARANTINE_HOUSEHOLD_UPON_INDIVIDUAL_POSITIVE_TEST: True
 QUARANTINE_SELF_REPORTED_INDIVIDUALS: False
 QUARANTINE_HOUSEHOLD_UPON_SELF_REPORTED_INDIVIDUAL: False
 
-# quarantine duration
+# (tracing)
+QUARANTINE_HOUSEHOLD_UPON_TRACED_POSITIVE_TEST: True
+QUARANTINE_HOUSEHOLD_UPON_TRACED_SELF_REPORTED_INDIVIDUAL: False
+
+### DURATION
+# (non-tracing) quarantine duration
 QUARANTINE_DAYS_ON_POSITIVE_TEST: 14
 QUARANTINE_DAYS_ON_SELF_REPORTED_SYMPTOMS: 14
 QUARANTINE_DAYS_HOUSEHOLD_ON_INDIVIDUAL_POSITIVE_TEST: 14
 QUARANTINE_DAYS_HOUSEHOLD_ON_INDIVIDUAL_CONTACT_WITH_POSITIVE_TEST: 14
 
-# quarantine duration when traced
+# (tracing) quarantine duration when traced
 QUARANTINE_DAYS_ON_TRACED_POSITIVE: 14
 QUARANTINE_DAYS_ON_TRACED_SELF_REPORTED_SYMPTOMS: 14
+QUARANTINE_DAYS_HOUSEHOLD_ON_TRACED_POSITIVE: 14
+QUARANTINE_DAYS_HOUSEHOLD_ON_TRACED_SELF_REPORTED_SYMPTOMS: 14
 
-# compliance to quarantine
-QUARANTINE_COMPLIANCE_TRACED_POSITIVE: 0.9
-QUARANTINE_COMPLIANCE_TRACED_SYMPTOMS: 0.5
-
-# dropout (adherence)
+### DROPOUT
+# (non-tracing) dropout (adherence)
 QUARANTINE_DROPOUT_POSITIVE: 0.01
 QUARANTINE_DROPOUT_SELF_REPORTED_SYMPTOMS: 0.02
+
+# (tracing)
 QUARANTINE_DROPOUT_TRACED_POSITIVE: 0.03
 QUARANTINE_DROPOUT_TRACED_SELF_REPORTED_SYMPTOMS: 0.04
+ALL_LEVELS_DROPOUT: 0.02 # daily adherence to recommendations. Failing to adhere, human returns to level 0 (unmitigated case).
 
-# daily adherence to recommendations. Failing to adhere, human returns to level 0 (unmitigated case).
-ALL_LEVELS_DROPOUT: 0.02
+# OTHERS
+# (WIP) compliance to quarantine
+QUARANTINE_COMPLIANCE_TRACED_POSITIVE: 0.9
+QUARANTINE_COMPLIANCE_TRACED_SYMPTOMS: 0.5
 
 # (WIP) If no one in the network has developed symptoms in the past QUARANTINE_SMART_RELEASE_DAYS, then release them
 QUARANTINE_SMART_RELEASE: False
