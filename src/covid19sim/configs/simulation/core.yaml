@@ -165,7 +165,6 @@ TIME_SPENT_SCALE_FACTOR_SLEEP_AWAKE: 0.01 # /!\ 0.1 scale creates a lot of varia
 # Contact controlling knobs
 GLOBAL_MOBILITY_SCALING_FACTOR: 1.0 # Mobility reduction factor
 
-
 #############################################################
 #####         Mobility when SICK CONSTANTS             #####
 #############################################################
@@ -459,20 +458,15 @@ P_MALE: 0.45
 #####           Intervention Parameters             #####
 #########################################################
 
-# Number of levels for behavior stratification. Levels will be 1, ..., N_LEVELS
+# Number of levels for behavior stratification. Levels will be 0, 1, ..., N_BEHAVIOR_LEVELS
 # Level 0 is assumed to be unmitigated behavior with pre-confinement level of contacts.
-N_LEVELS: 3
-
-# Quarantine
-# Quarantine is the most-extreme form of intervention in which individual cuts down
-# all its interactions and spends majority of the time at household.
-
-# If other individuals living in the household should quarantine?
-QUARANTINE_HOUSEHOLD_UPON_INDIVIDUAL_QUARANTINE: True
-
-# hospitals were assumed to be a source of spread in the beginning.
-# Post-lockdown, hospitals can be assumed to be safe
-ASSUME_SAFE_HOSPITAL_DAILY_INTERACTIONS: True
+# Unmitigated - RISK_MODEL = "" and N_BEHAVIOR_LEVELS = 2
+# Lockdown - RISK_MODEL = "" and N_BEHAVIOR_LEVELS = 2  and INTERPOLATE_USING_LOCKDOWN_CONTACTS: True
+# binary Tracing - RISK_MODEL = "digital" and N_BEHAVIOR_LEVELS > 1.
+# NOTE: [IMPORTANT] even thouhg only 2 levels are used, the baseline behavior is based on N_BEHAVIOR_LEVELS
+# While comparing binary vs non-binary tracing, use same N_BEHAVIOR_LEVELS. It's upto the method to use levels.
+N_BEHAVIOR_LEVELS: 4
+INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS: True
 
 # Lockdown statistics (Montreal)
 # Following numbers (eyballed) are from CONNECT2 study
@@ -481,32 +475,61 @@ LOCKDOWN_FRACTION_REDUCTION_IN_CONTACTS_AT_HOUSEHOLD: 0.30
 LOCKDOWN_FRACTION_REDUCTION_IN_CONTACTS_AT_WORKPLACE: 0.80
 LOCKDOWN_FRACTION_REDUCTION_IN_CONTACTS_AT_OTHER: 0.50
 
-# non-risk tracing quarantine length
-QUARANTINE_POSITIVE_TEST_DAYS: 14
-QUARANTINE_TRACED_DAYS: 14
-QUARANTINE_SELF_REPORTED_SYMPTOMS: 14
-QUARATINE_TRACED_SYMPTOMS: 14
-QUARANTINE_HOUSEHOLD_MEMBERS_POSITIVE_TEST_DAYS: 14
-QUARANTINE_HOUSEHOLD_MEMBERS_OF_CONTACT_TEST_DAYS: 14
+# hospitals were assumed to be a source of spread in the beginning.
+# Post-lockdown, hospitals can be assumed to be safe
+ASSUME_SAFE_HOSPITAL_DAILY_INTERACTIONS: True
 
+##### Quarantine
+# Quarantine is the most-extreme form of intervention in which individual cuts down all its interactions and spends majority of the time at household.
+
+# Quarantine household members of an individual who got a positive test?
+QUARANTINE_HOUSEHOLD_UPON_INDIVIDUAL_POSITIVE_TEST: True
+
+# whether to quarantine individuals who self-diagnose COVID
+QUARANTINE_SELF_REPORTED_INDIVIDUALS: False
+QUARANTINE_HOUSEHOLD_UPON_SELF_REPORTED_INDIVIDUAL: False
+
+# quarantine duration
+QUARANTINE_DAYS_ON_POSITIVE_TEST: 14
+QUARANTINE_DAYS_ON_SELF_REPORTED_SYMPTOMS: 14
+QUARANTINE_DAYS_HOUSEHOLD_ON_INDIVIDUAL_POSITIVE_TEST: 14
+QUARANTINE_DAYS_HOUSEHOLD_ON_INDIVIDUAL_CONTACT_WITH_POSITIVE_TEST: 14
+
+# quarantine duration when traced
+QUARANTINE_DAYS_ON_TRACED_POSITIVE: 14
+QUARANTINE_DAYS_ON_TRACED_SELF_REPORTED_SYMPTOMS: 14
+
+# compliance to quarantine
+QUARANTINE_COMPLIANCE_TRACED_POSITIVE: 0.9
+QUARANTINE_COMPLIANCE_TRACED_SYMPTOMS: 0.5
+
+# dropout (adherence)
+QUARANTINE_DROPOUT_POSITIVE: 0.01
+QUARANTINE_DROPOUT_SELF_REPORTED_SYMPTOMS: 0.02
+QUARANTINE_DROPOUT_TRACED_POSITIVE: 0.03
+QUARANTINE_DROPOUT_TRACED_SELF_REPORTED_SYMPTOMS: 0.04
+
+# daily adherence to recommendations. Failing to adhere, human returns to level 0 (unmitigated case).
+ALL_LEVELS_DROPOUT: 0.02
 
 # (WIP) If no one in the network has developed symptoms in the past QUARANTINE_SMART_RELEASE_DAYS, then release them
 QUARANTINE_SMART_RELEASE: False
 QUARANTINE_SMART_RELEASE_DAYS: 7
 
-###
-# WASH HANDS
-HYGIENE_EFFICACY_FACTOR: 0.5 # used in reduction of probability of transmission (no-source)
+########
+# How does interventions affect behavior?
 
-# RISK RECOMMENDATIONS
-DEFAULT_DISTANCE: 100 # cms
+# mean daily interactions affect interactions in two ways -
+# (a) Number of interactions are reduced
+# (b) probability vector of humans is reduced by a factor
 
-# MASK
-MASK_EFFICACY_NORMIE: 0.32
-MASK_EFFICACY_HEALTHWORKER: 0.98
-BASELINE_P_MASK: 0.5
-MASKS_SUPPLY: 1000000
-MASK_EFFICACY_FACTOR: 0.4 # used in reduction of probability of transmission (no-source)
+# mobility reduction i.e presence of human in various networks
+# In quarantine, (i) all activities are moved to human's household
+# (ii) social activities are cancelled
+# (iii) if human is a kid, an adult is moved to house (cancelling their activities)
+# (iv) if human is an adult and a kid lives there, kid needs to stay at house as well
+# (iii) and (iv) are not a problem, if household members are also quarantined.
+# For all other levels, human maintain its normal routine and interact with less humans than normal.
 
 # naive tracing
 RISK_TRANSMISSION_PROBA: 0.03
@@ -516,9 +539,6 @@ BASELINE_RISK_VALUE: 0.01
 MANUAL_TRACING_P_CONTACT: 0.50
 MANUAL_TRACING_DELAY_AVG: 3 # days
 MANUAL_TRACING_DELAY_STD: 0.5 # days
-
-# bundled recommendations
-BUNDLED_INTERVENTION_RECOMMENDATION_LEVEL: 0
 
 #########################################################
 #####             Other Parameters                  #####
