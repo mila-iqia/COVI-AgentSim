@@ -292,7 +292,7 @@ class Location(simpy.Resource):
             raise
 
         mean_daily_interactions += 1e-6 # to avoid error in sampling with 0 mean from negative binomial
-        mean_daily_interactions *= 1 - self.DAILY_INTERACTION_REDUCTION_FACTOR[human.behavior_level]
+        mean_daily_interactions *= 1 - human.intervened_behavior.mean_daily_interaction_reduction_factor(location)
         scale_factor_interaction_time = self.conf['SCALE_FACTOR_CONTACT_DURATION']
         # (assumption) maximum allowable distance is when humans are uniformly spaced
         packing_term = 100 * np.sqrt(self.area/len(self.humans))
