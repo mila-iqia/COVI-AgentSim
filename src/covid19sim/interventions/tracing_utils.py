@@ -13,8 +13,6 @@ def get_intervention(conf):
         return Heuristic(version=2, conf=conf)
     elif key == "digital":
         return BinaryDigitalTracing(conf)
-    elif key == "BundledInterventions":
-        return BundledInterventions(conf["BUNDLED_INTERVENTION_RECOMMENDATION_LEVEL"])
     else:
         raise NotImplementedError
 
@@ -32,34 +30,6 @@ def create_behavior(key, conf):
         return StandApart()
     else:
         raise NotImplementedError
-
-
-class BundledInterventions(Behavior):
-    """
-    Used for tuning the "strength" of parameters associated with interventions.
-    At the start of this intervention, everyone is initialized with these interventions.
-    DROPOUT might affect their ability to follow.
-    """
-
-    def __init__(self, level):
-        super(BundledInterventions, self).__init__()
-        self.recommendations = _get_behaviors_for_level(level)
-
-    def modify(self, human):
-        self.revert(human)
-        for rec in self.recommendations:
-            if isinstance(rec, Behavior) and human.follows_recommendations_today:
-                rec.modify(human)
-                human.recommendations_to_follow.add(rec)
-
-    def revert(self, human):
-        for rec in reversed(human.recommendations_to_follow):
-            rec.revert(human)
-        human.recommendations_to_follow = OrderedSet()
-
-    def __repr__(self):
-        return "\t".join([str(x) for x in self.recommendations])
-
 
 def _get_behaviors_for_level(level):
     """
