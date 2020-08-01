@@ -516,7 +516,7 @@ class Human(BaseHuman):
             self.time_to_test_result,  # in days
         ))
 
-        self.city.trigger_intervention(reason="test_taken", self)
+        self.city.trigger_intervention(reason="test-taken", self)
 
         # log
         self.city.tracker.track_tested_results(self)
@@ -575,7 +575,7 @@ class Human(BaseHuman):
                 if set(self.symptoms) & SUSPICIOUS_SYMPTOMS:
                     should_get_test = self.rng.rand() < self.carefulness
                     if should_get_test:
-                        # self.city.trigger_intervention("self_diagnosed_symptoms", self)
+                        # self.city.trigger_intervention("self-diagnosed-symptoms", self)
                         pass
 
         if should_get_test:
@@ -1318,7 +1318,7 @@ class Human(BaseHuman):
         if self.conf.get("RISK_MODEL") == "digital":
             assert self._rec_level == 0 or self._rec_level == 3
 
-        self.trigger_intervention(reason="risk_level_update", self)
+        self.trigger_intervention(reason="risk-level-update", self)
 
     @property
     def rec_level(self):
