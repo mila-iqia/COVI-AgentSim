@@ -1,5 +1,7 @@
 """
 Functions to intialize a synthetic population using constants in configuration file.
+
+Note: For the description of housing allocation algorithm see `docs/housing_allocation.md`
 """
 import numpy as np
 import math
