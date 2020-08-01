@@ -81,6 +81,8 @@ def summarize(
     n_reported_symptoms = x.xs("n_reported_symptoms", level=1)
     infection_timestamp = x.xs("infection_timestamp", level=1)
     symptom_severity = x.xs("symptom_severity", level=1)
+    reported_symptom_severity = x.xs("reported_symptom_severity", level=1)
+
     risks = x.xs("risk", level=1)
 
     columns = risk_levels.columns
@@ -105,6 +107,7 @@ def summarize(
         obs_symptoms = n_reported_symptoms[infector_column].item()
         symptoms = n_symptoms[infector_column].item()
         severity = symptom_severity[infector_column].item()
+        reported_severity = reported_symptom_severity[infector_column].item()
         cell = f"Rec:{Rec} R:{RL}"
         if max_risk_level >= 0:
             # use the carried message here
@@ -125,7 +128,7 @@ def summarize(
         cell += test_content
 
         if symptoms > 0:
-            cell += f"  S:{obs_symptoms}/{symptoms}  Sev:{severity}"
+            cell += f"  S:{obs_symptoms}/{symptoms}  Sev:{reported_severity}/{severity}"
 
         infectors_infection_timestamp = infection_timestamp[infector_column].item()
         if (
@@ -223,6 +226,7 @@ def make_df(
                 "reported_test_result",
                 "n_reported_symptoms",
                 "symptom_severity",
+                "reported_symptom_severity",
             ),
         ),
         ids,
