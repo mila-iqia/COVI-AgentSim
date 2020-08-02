@@ -848,3 +848,18 @@ def _convert_bin_5s_to_bin_10s(histogram_bin_5s):
             break
 
     return histogram_bin_10s
+
+
+def _sample_positive_normal(mean, sigma, rng):
+    """
+    Samples a positive number from gaussian distributed as (mean, sigma) by throwing away negative samples.
+
+    Args:
+        mean (float): mean of gaussian
+        sigma (float): stdandard deviation of gaussian
+
+    Returns:
+        (float): sample
+    """
+    x = rng.normal(mean, sigma)
+    return x if x >= 0 else _sample_positive_normal(mean, sigma, rng)

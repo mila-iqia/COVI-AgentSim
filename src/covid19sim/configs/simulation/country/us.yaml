@@ -3,7 +3,7 @@
 # ref: https://pubmed.ncbi.nlm.nih.gov/18801889/
 # the participants in the survey were from California, U.S. The survey itself several was conducted during the years 1988-2003.
 # We use these matrices as it is.
-# (assumption) duration of contacts are similar.
+# (assumption) duration (minutes) of contacts are similar.
 
 MEAN_DURATION_MATRIX: [
     [154, 111, 110, 50, 134, 239, 254, 169, 77, 38, 20, 11, 12, 9, 14, 1],
@@ -42,3 +42,18 @@ MEAN_MINUS_95_CI_MATRIX: [
     [0.89, 0.79, 0.78, 9.29, 9.26, 9.23, 17.29, 13.27, 15.45, 23.65, 18.31, 14.42, 13.68, 60.145, 165.27900000000002, 59.145],
     [0.72, 0.61, 0.58, 9.18, 7.14, 7.14, 8.18, 8.28, 10.34, 19.33, 12.24, 0.43, 5.26, 19.6, 82.2, 120.226]
     ]
+
+
+# Average duration per location
+# ref: https://www.researchgate.net/publication/228649013_Mixing_patterns_between_age_groups_in_social_networks
+MEAN_HOUSEHOLD_CONTACT_MINUTES: 744
+STDDEV_HOUSEHOLD_CONTACT_MINUTES: 308
+
+MEAN_SCHOOL_CONTACT_MINUTES: 227
+STDDEV_SCHOOL_CONTACT_MINUTES: 160
+
+MEAN_WORKPLACE_CONTACT_MINUTES: 184
+STDDEV_WORKPLACE_CONTACT_MINUTES: 149
+
+MEAN_OTHER_CONTACT_MINUTES: 59
+STDDEV_OTHER_CONTACT_MINUTES: 58

@@ -2,6 +2,13 @@ import argparse
 import yaml
 from pathlib import Path
 import pandas as pd
+import numpy as np
+
+def _get_mean_and_sigma_of_product_of_two_gaussians(mean1, mean2, var1, var2):
+    """
+    product of two gaussian pdfs is a gaussian with mean = (var1 * mean2 + var2 * mean1) / (var1 + var2) and var = (1/var1 + 1/var2)^ -1
+    """
+    return (mean2 * var1 + mean1 * var2) / (var1 + var2), ((1 / var1) + (1 / var2)) ** -1
 
 if __name__ == "__main__":
 
@@ -46,6 +53,51 @@ if __name__ == "__main__":
     CONTACT_DURATION_GAMMA_SCALE_MATRIX = sigma ** 2 / mu
     CONTACT_DURATION_GAMMA_SHAPE_MATRIX = mu ** 2 / (sigma ** 2)
 
+    CONTACT_DURATION_NORMAL_MEAN_MATRIX = mu
+    CONTACT_DURATION_NORMAL_SIGMA_MATRIX = sigma
+
+    # location based duration matrices obtained by multiplying two gaussian distributions
+    # product of two gaussian pdfs is a gaussian with mean = (var1 * mean2 + var2 * mean1) / (var1 + var2) and var = (1/var1 + 1/var2)^ -1
+    mean1 = CONTACT_DURATION_NORMAL_MEAN_MATRIX
+    var1 = CONTACT_DURATION_NORMAL_SIGMA_MATRIX ** 2
+
+    # household
+    MEAN_HOUSEHOLD_CONTACT_MINUTES = country['MEAN_HOUSEHOLD_CONTACT_MINUTES']
+    STDDEV_HOUSEHOLD_CONTACT_MINUTES = country['STDDEV_HOUSEHOLD_CONTACT_MINUTES']
+
+    mean2 = np.ones_like(CONTACT_DURATION_NORMAL_MEAN_MATRIX) * MEAN_HOUSEHOLD_CONTACT_MINUTES
+    var2 = np.ones_like(CONTACT_DURATION_NORMAL_MEAN_MATRIX) * (STDDEV_HOUSEHOLD_CONTACT_MINUTES ** 2)
+
+    HOUSEHOLD_CONTACT_DURATION_NORMAL_MEAN_MATRIX, HOUSEHOLD_CONTACT_DURATION_NORMAL_SIGMA_MATRIX = _get_mean_and_sigma_of_product_of_two_gaussians(mean1, mean2, var1, var2)
+
+    # school
+    MEAN_SCHOOL_CONTACT_MINUTES = country['MEAN_SCHOOL_CONTACT_MINUTES']
+    STDDEV_SCHOOL_CONTACT_MINUTES = country['STDDEV_SCHOOL_CONTACT_MINUTES']
+
+    mean2 = np.ones_like(CONTACT_DURATION_NORMAL_MEAN_MATRIX) * MEAN_SCHOOL_CONTACT_MINUTES
+    var2 = np.ones_like(CONTACT_DURATION_NORMAL_MEAN_MATRIX) * (STDDEV_SCHOOL_CONTACT_MINUTES ** 2)
+
+    SCHOOL_CONTACT_DURATION_NORMAL_MEAN_MATRIX, SCHOOL_CONTACT_DURATION_NORMAL_SIGMA_MATRIX = _get_mean_and_sigma_of_product_of_two_gaussians(mean1, mean2, var1, var2)
+
+    # workplace
+    MEAN_WORKPLACE_CONTACT_MINUTES = country['MEAN_WORKPLACE_CONTACT_MINUTES']
+    STDDEV_WORKPLACE_CONTACT_MINUTES = country['STDDEV_WORKPLACE_CONTACT_MINUTES']
+
+    mean2 = np.ones_like(CONTACT_DURATION_NORMAL_MEAN_MATRIX) * MEAN_WORKPLACE_CONTACT_MINUTES
+    var2 = np.ones_like(CONTACT_DURATION_NORMAL_MEAN_MATRIX) * (STDDEV_WORKPLACE_CONTACT_MINUTES ** 2)
+
+    WORKPLACE_CONTACT_DURATION_NORMAL_MEAN_MATRIX, WORKPLACE_CONTACT_DURATION_NORMAL_SIGMA_MATRIX = _get_mean_and_sigma_of_product_of_two_gaussians(mean1, mean2, var1, var2)
+
+    # other locations
+    MEAN_OTHER_CONTACT_MINUTES = country['MEAN_OTHER_CONTACT_MINUTES']
+    STDDEV_OTHER_CONTACT_MINUTES = country['STDDEV_OTHER_CONTACT_MINUTES']
+
+    mean2 = np.ones_like(CONTACT_DURATION_NORMAL_MEAN_MATRIX) * MEAN_OTHER_CONTACT_MINUTES
+    var2 = np.ones_like(CONTACT_DURATION_NORMAL_MEAN_MATRIX) * (STDDEV_OTHER_CONTACT_MINUTES ** 2)
+
+    OTHER_CONTACT_DURATION_NORMAL_MEAN_MATRIX, OTHER_CONTACT_DURATION_NORMAL_SIGMA_MATRIX = _get_mean_and_sigma_of_product_of_two_gaussians(mean1, mean2, var1, var2)
+
+
     comment = """
 ################################################################################################
 ## projected and precomputed using utils/precompute_and_project/contact_duration_matrices.py  ##
@@ -54,6 +106,11 @@ if __name__ == "__main__":
 # We use the survey data provdided in us.yaml without density corrections (until we find some study doing it)
 # Survey data has mean and 95%CI. We parameterize the duration as a gamma distribution with shape and scale inferred from
 # mean and 95% CI.
+# Since gamma distribution is not assumed in the survey, we use the survey data as gaussian distribution with sigma inferred from 95% CI.
+# We combine this duration data with location based duration distribution which is assumed to be gaussian.
+# We obtain location and age based duration matrices via product of two gaussian pdfs as -
+# product of two gaussian pdfs is a gaussian with mean = (var1 * mean2 + var2 * mean1) / (var1 + var2) and var = (1/var1 + 1/var2)^ -1
+
     """
     with region_path.open("a") as f:
         f.write(
@@ -65,4 +122,35 @@ if __name__ == "__main__":
             + "\n\n"
             + "CONTACT_DURATION_GAMMA_SHAPE_MATRIX: "
             + "[\n{}\n]".format(",\n    ".join(map(str, CONTACT_DURATION_GAMMA_SHAPE_MATRIX.values.tolist())))
+            + "\n\n"
+            + "CONTACT_DURATION_NORMAL_MEAN_MATRIX: "
+            + "[\n{}\n]".format(",\n    ".join(map(str, CONTACT_DURATION_NORMAL_MEAN_MATRIX.values.tolist())))
+            + "\n\n"
+            + "CONTACT_DURATION_NORMAL_SIGMA_MATRIX: "
+            + "[\n{}\n]".format(",\n    ".join(map(str, CONTACT_DURATION_NORMAL_SIGMA_MATRIX.values.tolist())))
+            + "\n\n"
+            + "HOUSEHOLD_CONTACT_DURATION_NORMAL_MEAN_MATRIX: "
+            + "[\n{}\n]".format(",\n    ".join(map(str, HOUSEHOLD_CONTACT_DURATION_NORMAL_MEAN_MATRIX.values.tolist())))
+            + "\n\n"
+            + "HOUSEHOLD_CONTACT_DURATION_NORMAL_SIGMA_MATRIX: "
+            + "[\n{}\n]".format(",\n    ".join(map(str, HOUSEHOLD_CONTACT_DURATION_NORMAL_SIGMA_MATRIX.values.tolist())))
+            + "\n\n"
+            + "SCHOOL_CONTACT_DURATION_NORMAL_MEAN_MATRIX: "
+            + "[\n{}\n]".format(",\n    ".join(map(str, SCHOOL_CONTACT_DURATION_NORMAL_MEAN_MATRIX.values.tolist())))
+            + "\n\n"
+            + "SCHOOL_CONTACT_DURATION_NORMAL_SIGMA_MATRIX: "
+            + "[\n{}\n]".format(",\n    ".join(map(str, SCHOOL_CONTACT_DURATION_NORMAL_SIGMA_MATRIX.values.tolist())))
+            + "\n\n"
+            + "WORKPLACE_CONTACT_DURATION_NORMAL_MEAN_MATRIX: "
+            + "[\n{}\n]".format(",\n    ".join(map(str, WORKPLACE_CONTACT_DURATION_NORMAL_MEAN_MATRIX.values.tolist())))
+            + "\n\n"
+            + "WORKPLACE_CONTACT_DURATION_NORMAL_SIGMA_MATRIX: "
+            + "[\n{}\n]".format(",\n    ".join(map(str, WORKPLACE_CONTACT_DURATION_NORMAL_SIGMA_MATRIX.values.tolist())))
+            + "\n\n"
+            + "OTHER_CONTACT_DURATION_NORMAL_MEAN_MATRIX: "
+            + "[\n{}\n]".format(",\n    ".join(map(str, OTHER_CONTACT_DURATION_NORMAL_MEAN_MATRIX.values.tolist())))
+            + "\n\n"
+            + "OTHER_CONTACT_DURATION_NORMAL_SIGMA_MATRIX: "
+            + "[\n{}\n]".format(",\n    ".join(map(str, OTHER_CONTACT_DURATION_NORMAL_SIGMA_MATRIX.values.tolist())))
+            + "\n\n"
         )
