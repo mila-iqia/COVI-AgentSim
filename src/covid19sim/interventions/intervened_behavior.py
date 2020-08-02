@@ -126,7 +126,7 @@ class IntervenedBehavior(object):
         # ):
         #     return 1.0
 
-        # if its an experimental simulatoin where humans are graded based on their risk, but are not allowed to change their behavior
+        # if its an experimental simulation where humans are graded based on their risk, but are not allowed to change their behavior
         if (
             self.conf["RISK_MODEL"] != ""
             and not self.conf['SHOULD_MODIFY_BEHAVIOR']
@@ -171,6 +171,7 @@ class IntervenedBehavior(object):
         self.quarantine_timestamp = self.env.timestamp
         self.quarantine_duration = until
         self.quarantine_reason = reason
+        # print(reason)
 
     def _unset_quarantine(self):
         """
@@ -278,6 +279,9 @@ class IntervenedBehavior(object):
 
         else:
             raise ValueError(f"Unknown reason for intervention:{reason}")
+
+    def __repr__(self):
+        return f"IntervenedBehavior for {self.human}"
 
 
 def _get_location_type(human, location):
