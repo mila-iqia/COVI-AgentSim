@@ -119,6 +119,10 @@ class IntervenedBehavior(object):
         ):
             return 1.0
 
+        # if its an experimental simulatoin where humans are graded based on their risk, but are not allowed to change their behavior
+        if not self.conf['SHOULD_MODIFY_BEHAVIOR']:
+            return 0.0
+
         # if `human` is not following any recommendations today, then set the number of interactions to level 0
         if not self.follow_recommendation_today:
             return 0.0
@@ -257,7 +261,7 @@ class IntervenedBehavior(object):
                     self._quarantine_household_members(until = duration * SECONDS_PER_DAY, reason=reason)
 
             # TODO - trigger quarantine for self-reported symptoms in digital tracing
-            
+
             # in alternative methods, max level is still quarantine, but human can be put back in lower levels due to re-evaluation.
             self.set_behavior(level = behavior_level, until = SECONDS_PER_DAY, reason=reason)
             assert 0 < self.behavior_level <= self.n_behavior_levels, f"behavior_level: {self.behavior_level} can't be outside the range [1,{self.n_behavior_levels}]"
