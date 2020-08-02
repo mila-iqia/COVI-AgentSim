@@ -481,7 +481,7 @@ LOCKDOWN_FRACTION_REDUCTION_IN_CONTACTS_AT_SCHOOL: 1.0
 
 # hospitals were assumed to be a source of spread in the beginning.
 # Post-lockdown, hospitals can be assumed to be safe
-ASSUME_SAFE_HOSPITAL_DAILY_INTERACTIONS: False
+ASSUME_SAFE_HOSPITAL_DAILY_INTERACTIONS_AFTER_INTERVENTION_START: True
 
 ##### Quarantine
 # Quarantine is the most-extreme form of intervention in which individual cuts down all its interactions and spends majority of the time at household.
