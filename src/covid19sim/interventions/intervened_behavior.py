@@ -228,8 +228,7 @@ class IntervenedBehavior(object):
         # default behavior even in unmitigated case (no app required)
         if reason == "test-taken":
             result = human.hidden_test_result
-            duration = human.time_to_test_result
-            duration += 0 if result == "negative" else self.conf['QUARANTINE_DAYS_ON_POSITIVE_TEST']
+            duration = human.time_to_test_result if result == "negative" else self.conf['QUARANTINE_DAYS_ON_POSITIVE_TEST']
             self.set_behavior(level = self.quarantine_level, until = duration * SECONDS_PER_DAY, reason = f"{reason}-{result}")
 
             if self.conf['QUARANTINE_HOUSEHOLD_UPON_INDIVIDUAL_POSITIVE_TEST']:
