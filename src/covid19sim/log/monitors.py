@@ -38,6 +38,7 @@ Legend -
 * [ H/C/D ]: Total number of people in hospital (H)/ ICU (C) at this point in simulation-time. Total died upto this day (D).
 * [ MC ]: Mean number of known connections of a person in the population (average degree of the social network). The attributes for known connections are drawn from surveyed data on mean contacts.
 * [ Ho ]: Number of people constrained to be at home. It can be due to sickness, a positive test result, or intervention related reasons.
+* [ Q ]: Number of people quarantined as of midnight on a particular day.
         """
         if self.conf['INTERVENTION_DAY'] >= 0 and self.conf['RISK_MODEL'] is not None:
             self.legend += """
@@ -100,6 +101,8 @@ RiskP: Top 1% risk precision of the risk predictor computed for people with no t
             day = "Day {:2}:".format((city.env.timestamp - city.start_time).days)
             proc_time = "{:8}".format("({}s)".format(int(time.time() - process_start)))
 
+            # intervention related
+            n_quarantine = sum(h.intervened_behavior.quarantine_timestamp is not None for h in city.humans)
 
             # prepare string
             nd = str(len(str(city.n_people)))
@@ -107,10 +110,10 @@ RiskP: Top 1% risk precision of the risk predictor computed for people with no t
             stats = f"| P3:{Projected3:5.2f} TestQueue:{test_queue_length}"
             other_diseases = f"| cold:{cold} allergies:{allergies}"
             hospitalizations = f"| H:{H} C:{C} D:{D}"
-            mobility = f"| MC: {average_degree: 3.3f} "
-            mobility +=   f" Ho: {constrained_at_home}"
+            mobility = f"| MC: {average_degree: 3.3f} Ho: {constrained_at_home}"
+            quarantines = f"| Q: {n_quarantine}"
 
-            str_to_print = f"{proc_time} {day} {env_time} {SEIR} {stats} {other_diseases} {hospitalizations} {mobility}"
+            str_to_print = f"{proc_time} {day} {env_time} {SEIR} {stats} {other_diseases} {hospitalizations} {mobility} {quarantines}"
             # conditional prints
             colors, risk = "", ""
             if self.conf['INTERVENTION_DAY'] >= 0 and self.conf['RISK_MODEL'] is not None:
