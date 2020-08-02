@@ -112,7 +112,6 @@ WORKPLACE_MEAN_DAILY_INTERACTIONS: 10
 OTHER_MEAN_DAILY_INTERACTIONS: 3.1
 HOUSEHOLD_MEAN_DAILY_INTERACTIONS: 2.7
 SCHOOL_MEAN_DAILY_INTERACTIONS: 6
-HOSPITAL_MEAN_DAILY_INTERACTIONS: 10
 
 # unknown (all the numbers below are assumed because no data is available about them)
 # A distance greater than INFECTION_RADIUS is useless to model, however, in the context of tracing apps
@@ -465,10 +464,12 @@ P_MALE: 0.45
 # binary Tracing - RISK_MODEL = "digital" and N_BEHAVIOR_LEVELS > 1.
 # NOTE: [IMPORTANT] even thouhg only 2 levels are used, the baseline behavior is based on N_BEHAVIOR_LEVELS
 # While comparing binary vs non-binary tracing, use same N_BEHAVIOR_LEVELS. It's upto the method to use levels.
-N_BEHAVIOR_LEVELS: 4
-INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS: True
-# /!\ tracing of symptoms is not working now.
+N_BEHAVIOR_LEVELS: 2
+INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS: False
+
+# (WIP) /!\ tracing of symptoms is not working now
 TRACE_SELF_REPORTED_INDIVIDUAL: False
+TRACED_DAYS_FOR_SELF_REPORTED_INDIVIDUAL: 7 # days for which contacts need to be traced
 
 # Lockdown statistics (Montreal)
 # Following numbers (eyballed) are from CONNECT2 study
@@ -476,10 +477,11 @@ TRACE_SELF_REPORTED_INDIVIDUAL: False
 LOCKDOWN_FRACTION_REDUCTION_IN_CONTACTS_AT_HOUSEHOLD: 0.30
 LOCKDOWN_FRACTION_REDUCTION_IN_CONTACTS_AT_WORKPLACE: 0.80
 LOCKDOWN_FRACTION_REDUCTION_IN_CONTACTS_AT_OTHER: 0.50
+LOCKDOWN_FRACTION_REDUCTION_IN_CONTACTS_AT_SCHOOL: 1.0
 
 # hospitals were assumed to be a source of spread in the beginning.
 # Post-lockdown, hospitals can be assumed to be safe
-ASSUME_SAFE_HOSPITAL_DAILY_INTERACTIONS: True
+ASSUME_SAFE_HOSPITAL_DAILY_INTERACTIONS: False
 
 ##### Quarantine
 # Quarantine is the most-extreme form of intervention in which individual cuts down all its interactions and spends majority of the time at household.
@@ -487,7 +489,7 @@ ASSUME_SAFE_HOSPITAL_DAILY_INTERACTIONS: True
 ### FLAGS
 # (non-tracing)
 # Quarantine household members of an individual who got a positive test?
-QUARANTINE_HOUSEHOLD_UPON_INDIVIDUAL_POSITIVE_TEST: True
+QUARANTINE_HOUSEHOLD_UPON_INDIVIDUAL_POSITIVE_TEST: False
 
 # whether to quarantine individuals who self-diagnose COVID
 QUARANTINE_SELF_REPORTED_INDIVIDUALS: False
@@ -544,6 +546,9 @@ QUARANTINE_SMART_RELEASE_DAYS: 7
 # (iii) and (iv) are not a problem, if household members are also quarantined.
 # For all other levels, human maintain its normal routine and interact with less humans than normal.
 
+
+MASK_EFFICACY_FACTOR: 0.5
+HYGIENE_EFFICACY_FACTOR: 0.5
 # naive tracing
 RISK_TRANSMISSION_PROBA: 0.03
 BASELINE_RISK_VALUE: 0.01
