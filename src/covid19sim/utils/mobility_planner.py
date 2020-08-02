@@ -91,8 +91,11 @@ class Activity(object):
         This is being done in `MobilityPlanner._modify_activity_location_if_needed`
 
         """
-        assert any(x in self.prepend_name for x in ["invitation", "supervised"]),  f"{self.prepend_name} not recognized. refresh shouldn't be called without supervision or invitation"
-        assert self.parent_activity_pointer is not None,  "refresh shouldn't be called without supervision or invitation"
+        try:
+            assert any(x in self.prepend_name for x in ["invitation", "supervised"]),  f"{self.prepend_name} not recognized. refresh shouldn't be called without supervision or invitation"
+            assert self.parent_activity_pointer is not None,  "refresh shouldn't be called without supervision or invitation"
+        except:
+            breakpoint()
         if self.parent_activity_pointer.is_cancelled:
             self.location = self.owner.household
         else:
@@ -625,6 +628,12 @@ class MobilityPlanner(object):
                 # print(self.human, activity, "for hospitalization of", kid)
                 return activity
 
+            # if kid is quarantined
+            if kid.intervened_behavior.is_quarantined():
+                location = kid.household
+                reason = "inverted-supervision-quarantined"
+                activity.cancel_and_go_to_location(reason=reason, location=location)
+
             # if activity is already at home - no need to update
             kid_to_stay_at_home = kid.mobility_planner._update_rest_at_home()
             if (
@@ -714,7 +723,7 @@ class MobilityPlanner(object):
         # (assumption) only the last level changes the mobility pattern i.e. network presence of humans
         if self.human.intervened_behavior.is_quarantined():
             reason = self.human.intervened_behavior.quarantine_reason
-            activity.cancel_and_go_to_location(reason=reason, location=self.human.household)
+            activity.cancel_and_go_to_location(reason=f"quarantine-{reason}", location=self.human.household)
             return activity, True
 
         return activity, False
@@ -1466,8 +1475,6 @@ def _can_accept_invite(today, mobility_planner):
     Returns:
         (bool): True if mobility_planner can accommodate an invite
     """
-    accept = True
-
     # health related checks
     if (
         mobility_planner.human_to_rest_at_home
@@ -1475,7 +1482,7 @@ def _can_accept_invite(today, mobility_planner):
         or mobility_planner.critical_condition_timestamp is not None
         or mobility_planner.death_timestamp is not None
     ):
-        accept = False
+        return False
 
     # behavior related checks
     if (
@@ -1484,9 +1491,13 @@ def _can_accept_invite(today, mobility_planner):
         or today in mobility_planner.invitation["sent"]
         or today in mobility_planner.invitation["received"]
     ):
-        accept = False
+        return False
 
-    return accept
+    # intervention related checks
+    if mobility_planner.human.intervened_behavior.is_quarantined():
+        return False
+
+    return True
 
 def _can_send_invite(today, mobility_planner):
     """
