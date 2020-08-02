@@ -38,7 +38,7 @@ Legend -
 * [ H/C/D ]: Total number of people in hospital (H)/ ICU (C) at this point in simulation-time. Total died upto this day (D).
 * [ MC ]: Mean number of known connections of a person in the population (average degree of the social network). The attributes for known connections are drawn from surveyed data on mean contacts.
 * [ Ho ]: Number of people constrained to be at home. It can be due to sickness, a positive test result, or intervention related reasons.
-* [ Q ]: Number of people quarantined as of midnight on a particular day.
+* [ Q ]: Number of people quarantined as of midnight on that day.
         """
         if self.conf['INTERVENTION_DAY'] >= 0 and self.conf['RISK_MODEL'] is not None:
             self.legend += """

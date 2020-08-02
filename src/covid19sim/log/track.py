@@ -233,6 +233,12 @@ class Tracker(object):
         self.outside_daily_contacts = []
         self.encounter_distances = []
 
+        # infection stats
+        self.n_infected_init = 0 # to be initialized in `initialize`
+        self.cases_per_day = [self.n_infected_init]
+        self.cumulative_incidence = []
+        self.r = []
+
         # infection
         self.humans_state = defaultdict(list)
         self.humans_rec_level = defaultdict(list)
@@ -248,12 +254,6 @@ class Tracker(object):
         self.serial_interval_book_from = defaultdict(dict)
         self.recovered_stats = []
         self.covid_properties = defaultdict(lambda : [0,0])
-
-        # cumulative incidence
-        self.cumulative_incidence = []
-        self.cases_per_day = [0]
-
-        self.r = []
 
         # testing & hospitalization
         self.hospitalization_per_day = [0]
@@ -308,6 +308,8 @@ class Tracker(object):
             )
 
     def initialize(self):
+        self.n_init_infected = self.city.n_init_infected
+        self.cases_per_day[-1] = self.n_init_infected
         self.s_per_day = [sum(h.is_susceptible for h in self.city.humans)]
         self.e_per_day = [sum(h.is_exposed for h in self.city.humans)]
         self.i_per_day = [sum(h.is_infectious for h in self.city.humans)]
@@ -632,7 +634,6 @@ class Tracker(object):
         for to_name in remove:
             self.serial_interval_book_from[human_name].pop(to_name)
             self.serial_interval_book_to[to_name].pop(human_name)
-
 
     def increment_day(self):
         """
@@ -1042,7 +1043,6 @@ class Tracker(object):
                     self.symptoms['all'][s] += 1
                 self.symptoms_set['all'].pop(human.name)
 
-
     def track_tested_results(self, human):
         """
         Keeps count of tests on a particular day. It is called every time someone is tested.
@@ -1082,7 +1082,7 @@ class Tracker(object):
         n_people = len(self.city.humans)
         percent_tested = 1.0 * n_tests/n_people
         daily_percent_test_results = [sum(x.values())/n_people for x in self.test_results_per_day.values()]
-        proportion_infected = sum(not h.is_susceptible for h in self.city.humans)/n_people
+        # proportion_infected = sum(not h.is_susceptible for h in self.city.humans)/n_people
 
         # positivity rate
         n_positives = sum(x["positive"] for x in self.test_results_per_day.values())
@@ -1099,7 +1099,7 @@ class Tracker(object):
         infected_minus_tests_per_day = [x - y for x,y in zip(self.e_per_day, self.tested_per_day)]
 
         log("\n######## COVID Testing Statistics #########", logfile)
-        log(f"Proportion infected : {100*proportion_infected: 2.3f}%", logfile)
+        # log(f"Proportion infected : {100*proportion_infected: 2.3f}%", logfile)
         log(f"Positivity rate: {100*positivity_rate: 2.3f}%", logfile)
         log(f"Total Tests: {n_positives + n_negatives} Total positive tests: {n_positives} Total negative tests: {n_negatives}", logfile)
         log(f"Maximum tests given to an individual: {max_tests_per_human}", logfile)
@@ -1644,6 +1644,7 @@ class Tracker(object):
                 str_to_print += f"max: {metrics.maximum()/SECONDS_PER_HOUR: 2.2f} | "
                 log(str_to_print, self.logfile)
 
+        breakpoint()
         self.compute_test_statistics(self.logfile)
 
         log("\n######## Effective Contacts & % infected #########", self.logfile)
