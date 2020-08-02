@@ -977,7 +977,7 @@ class Human(BaseHuman):
             if next_activity.location is not None:
 
                 # (debug) to print the schedule for someone
-                # if self.name == "human:1":
+                # if self.name == "human:7":
                 #       print("A\t", self.env.timestamp, self, next_activity)
 
                 # /!\ TODO - P - check for the capacity at a location; it requires adjustment of timestamps

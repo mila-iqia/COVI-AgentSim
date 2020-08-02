@@ -633,6 +633,7 @@ class MobilityPlanner(object):
                 location = kid.household
                 reason = "inverted-supervision-quarantined"
                 activity.cancel_and_go_to_location(reason=reason, location=location)
+                return activity
 
             # if activity is already at home - no need to update
             kid_to_stay_at_home = kid.mobility_planner._update_rest_at_home()
@@ -647,7 +648,7 @@ class MobilityPlanner(object):
                 # print(self.human, activity, "for sick", kid)
                 return activity
 
-        # 5. if human is quarantined,
+        # 5. if human is quarantined
         activity, quarantined = self._intervention_related_behavior_changes(activity)
         if quarantined:
             return activity
