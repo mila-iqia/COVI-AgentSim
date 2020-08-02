@@ -73,6 +73,9 @@ class IntervenedBehavior(object):
         self._follow_recommendation_today = None
         self.last_date_to_decide_dropout = None
 
+        #
+        self.intervention_started = False
+
     def initialize(self, check_has_app=False):
         """
         Sets up a baseline behavior.
@@ -93,6 +96,7 @@ class IntervenedBehavior(object):
             return
 
         self.set_behavior(level = 1, until = None, reason="intervention-start")
+        self.intervention_started = True
 
     @property
     def follow_recommendation_today(self):
@@ -120,15 +124,16 @@ class IntervenedBehavior(object):
         Returns:
             (float): fraction by which  unmiitgated contacts should be reduced
         """
-        # if (
-        #     isinstance(location, (Hospital, ICU))
-        #     and self.conf['ASSUME_SAFE_HOSPITAL_DAILY_INTERACTIONS']
-        # ):
-        #     return 1.0
+        if (
+            self.intervention_started
+            and isinstance(location, (Hospital, ICU))
+            and self.conf['ASSUME_SAFE_HOSPITAL_DAILY_INTERACTIONS']
+        ):
+            return 1.0
 
         # if its an experimental simulation where humans are graded based on their risk, but are not allowed to change their behavior
         if (
-            self.conf["RISK_MODEL"] != ""
+            self.current_behavior_reason == "risk-level-update"
             and not self.conf['SHOULD_MODIFY_BEHAVIOR']
         ):
             return 0.0
@@ -171,12 +176,13 @@ class IntervenedBehavior(object):
         self.quarantine_timestamp = self.env.timestamp
         self.quarantine_duration = until
         self.quarantine_reason = reason
-        # print(reason)
+        print("quarantining", self.human, "because", reason, "for" ,until / SECONDS_PER_DAY, "days")
 
     def _unset_quarantine(self):
         """
         Resets quarantine related attributes.
         """
+        print("unsetting quarantine", self.human)
         self.quarantine_timestamp = None
         self.quarantine_duration = -1
         self.quarantine_reason = ""
