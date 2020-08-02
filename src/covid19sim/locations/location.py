@@ -6,6 +6,7 @@ import numpy as np
 import warnings
 
 from covid19sim.utils.constants import SECONDS_PER_MINUTE, SECONDS_PER_HOUR, AGE_BIN_WIDTH_5, ALL_LOCATIONS, WEEKDAYS, ALL_DAYS, SECONDS_PER_DAY
+from covid19sim.utils.utils import _sample_positive_normal
 from covid19sim.epidemiology.p_infection import get_environment_human_p_transmission
 from covid19sim.epidemiology.viral_load import compute_covid_properties
 from covid19sim.log.event import Event
@@ -56,6 +57,8 @@ class Location(simpy.Resource):
         self.max_day_contamination = 0
         self.is_open_for_business = True
         self.binned_humans = {bin:OrderedSet() for bin in AGE_BIN_WIDTH_5}
+        self.social_contact_factor = conf[f'{location_type}_CONTACT_FACTOR']
+        self.contaminated_surface_probability = conf[f'{location_type}_SURFACE_PROB']
 
         # occupation related constants
         OPEN_CLOSE_TIMES = conf[f'{location_type}_OPEN_CLOSE_HOUR_MINUTE']
@@ -66,12 +69,7 @@ class Location(simpy.Resource):
         self.open_days = OPEN_DAYS
 
         # parameters related to sampling contacts
-        self.CONTACT_DURATION_GAMMA_SCALE_MATRIX = np.array(conf['CONTACT_DURATION_GAMMA_SCALE_MATRIX'])
-        self.CONTACT_DURATION_GAMMA_SHAPE_MATRIX = np.array(conf['CONTACT_DURATION_GAMMA_SHAPE_MATRIX'])
         self.MEAN_DAILY_UNKNOWN_CONTACTS = conf['MEAN_DAILY_UNKNOWN_CONTACTS']
-
-        self.social_contact_factor = conf[f'{location_type}_CONTACT_FACTOR']
-        self.contaminated_surface_probability = conf[f'{location_type}_SURFACE_PROB']
 
         if location_type in ["SENIOR_RESIDENCE", "HOUSEHOLD"]:
             key = "HOUSEHOLD"
@@ -87,8 +85,11 @@ class Location(simpy.Resource):
         self.P_CONTACT = np.array(conf[f'P_CONTACT_MATRIX_{key}'])
         self.ADJUSTED_CONTACT_MATRIX = np.array(conf[f'ADJUSTED_CONTACT_MATRIX_{key}'])
         self.MEAN_DAILY_KNOWN_CONTACTS_FOR_AGEGROUP = self.ADJUSTED_CONTACT_MATRIX.sum(axis=0)
+        # duration matrices
+        self.MEAN_DAILY_CONTACT_DURATION_MINUTES = np.array(conf[f'{key}_CONTACT_DURATION_NORMAL_MEAN_MATRIX'])
+        self.STDDEV_DAILY_CONTACT_DURATION_MINUTES = np.array(conf[f'{key}_CONTACT_DURATION_NORMAL_SIGMA_MATRIX'])
 
-        for matrix in [self.CONTACT_DURATION_GAMMA_SCALE_MATRIX, self.CONTACT_DURATION_GAMMA_SHAPE_MATRIX, self.P_CONTACT, self.ADJUSTED_CONTACT_MATRIX ]:
+        for matrix in [self.P_CONTACT, self.ADJUSTED_CONTACT_MATRIX]:
             assert matrix.shape[0] == matrix.shape[1], "contact matrix is not square"
 
     def infectious_human(self):
@@ -190,19 +191,20 @@ class Location(simpy.Resource):
 
         return p_infection
 
-    def _sample_interactee(self, type, human):
+    def _sample_interactee(self, type, human, n=1):
         """
         Samples encounter partner of `type` for `human`
 
         Args:
             type (string): type of interaction to sample. expects "known", "unknown"
             human (covid19sim.human.Human): human who will interact with the sampled human
+            n (int): number of `other_human`s to sample
 
         Returns:
             other_human (covid19sim.human.Human): `human` with whom this `human` will interact
         """
         if len(self.humans) == 1:
-            return None
+            return [None]
 
         PREFERENTIAL_ATTACHMENT_FACTOR = self.conf['PREFERENTIAL_ATTACHMENT_FACTOR']
 
@@ -217,28 +219,25 @@ class Location(simpy.Resource):
         if type == "known":
             human_bin = human.age_bin_width_5.index
             candidate_humans = [h for h in self.humans if human != h]
-            hs, h_vector, known_vector, reduction_factor = list(zip(*[_extract_attrs(human, h) for h in candidate_humans]))
+            other_humans, h_vector, known_vector, reduction_factor = list(zip(*[_extract_attrs(human, h) for h in candidate_humans]))
 
             p_contact = self.P_CONTACT[h_vector, human_bin] * (1 - PREFERENTIAL_ATTACHMENT_FACTOR)
-            p_contact += np.array(known_vector) * PREFERENTIAL_ATTACHMENT_FACTOR
+            p_contact += np.array(known_vector) * self.P_CONTACT[h_vector, human_bin] * PREFERENTIAL_ATTACHMENT_FACTOR
             # reduction factor is due to mutual interaction sampling where other_human's reduction factor is taken into account
             p_contact *= (1 - np.array(reduction_factor))
             if p_contact.sum() == 0:
-                return None
+                return [None]
 
             p_contact /= p_contact.sum()
 
-            # sample
-            other_human = self.rng.choice(hs, size=1, p=p_contact).item()
-
         elif type == "unknown":
             other_humans = [x for x in self.humans if x != human]
-            other_human = self.rng.choice(other_humans, size=1).item()
+            p_contact = np.ones_like(other_humans, dtype=np.float) / len(other_humans)
+            
         else:
             raise
 
-        assert other_human != human, "interaction with oneself should not happen"
-        return other_human
+        return self.rng.choice(other_humans, size=n, p=p_contact, replace=True).tolist()
 
     def _sample_interaction_with_type(self, type, human):
         """
@@ -276,9 +275,8 @@ class Location(simpy.Resource):
 
         interactions = []
         n_interactions = self.rng.negative_binomial(mean_daily_interactions, 0.5)
-        for i in range(n_interactions):
-            # sample other human
-            other_human = self._sample_interactee(type, human)
+        interactees = self._sample_interactee(type, human, n=n_interactions)
+        for other_human in interactees:
             if other_human is None:
                 continue
 
@@ -295,10 +293,10 @@ class Location(simpy.Resource):
             if type == "known":
                 age_bin = human.age_bin_width_5.index
                 other_bin = other_human.age_bin_width_5.index
-                scale_duration = self.CONTACT_DURATION_GAMMA_SCALE_MATRIX[other_bin, age_bin]
-                shape_duration = self.CONTACT_DURATION_GAMMA_SHAPE_MATRIX[other_bin, age_bin]
+                mean_duration = self.MEAN_DAILY_CONTACT_DURATION_MINUTES[other_bin, age_bin]
+                sigma_duration = self.STDDEV_DAILY_CONTACT_DURATION_MINUTES[other_bin, age_bin]
                 # surveyed data gives us minutes per day. Here we use it to sample rate of minutes spend per second of overlap in an encounter.
-                duration = (self.rng.gamma(shape_duration, scale_duration) / SECONDS_PER_DAY) * t_overlap * SECONDS_PER_MINUTE
+                duration = (_sample_positive_normal(mean_duration, sigma_duration, self.rng) / SECONDS_PER_DAY) * t_overlap * SECONDS_PER_MINUTE
 
             elif type == "unknown":
                 duration = self.rng.gamma(mean_interaction_time/scale_factor_interaction_time, scale_factor_interaction_time)
@@ -309,8 +307,6 @@ class Location(simpy.Resource):
             # if self.location_type ==  "MISC" and human.workplace != self:
             #     print(human, "-->", other_human, "for", duration, "tota humans", len(self.humans), "t_overlap", t_overlap, human.mobility_planner.current_activity)
 
-            if self.location_type in ["MISC", "EXERCISE"]:
-                duration *= 100
             # if duration > t_overlap:
             #     warnings.warn(f"sampled time {duration} is more than the duration for which {human} is at a location {t_overlap}")
 
