@@ -237,7 +237,6 @@ class Tracker(object):
         self.n_infected_init = 0 # to be initialized in `initialize`
         self.cases_per_day = [self.n_infected_init]
         self.cumulative_incidence = []
-        self.r = []
 
         # infection
         self.humans_state = defaultdict(list)
@@ -551,24 +550,6 @@ class Tracker(object):
                 return 1.0 * sum(total)/sum(n)
             return 0
 
-    def get_R0(self, logfile=None):
-        """
-        [summary]
-
-        Args:
-            logfile ([type], optional): [description]. Defaults to None.
-
-        Returns:
-            [type]: [description]
-        """
-        if len(self.r) > 0:
-            for idx,x in enumerate(self.r):
-                if x >0:
-                    return np.mean(self.r[idx:idx+5])
-        else:
-            log("not enough data points to estimate r0. Falling back to average")
-            return self.get_R()
-
     def compute_generation_time(self):
         """
         Generation time is the time from exposure day until an infection occurs.
@@ -667,9 +648,6 @@ class Tracker(object):
             self.humans_state[human.name].append(state)
             self.humans_rec_level[human.name].append(human.rec_level)
             self.humans_intervention_level[human.name].append(human._intervention_level)
-
-        # Rt
-        self.r.append(self.get_R())
 
         # recovery stats
         self.recovered_stats.append([0,0])
@@ -1082,7 +1060,6 @@ class Tracker(object):
         n_people = len(self.city.humans)
         percent_tested = 1.0 * n_tests/n_people
         daily_percent_test_results = [sum(x.values())/n_people for x in self.test_results_per_day.values()]
-        # proportion_infected = sum(not h.is_susceptible for h in self.city.humans)/n_people
 
         # positivity rate
         n_positives = sum(x["positive"] for x in self.test_results_per_day.values())
@@ -1099,7 +1076,6 @@ class Tracker(object):
         infected_minus_tests_per_day = [x - y for x,y in zip(self.e_per_day, self.tested_per_day)]
 
         log("\n######## COVID Testing Statistics #########", logfile)
-        # log(f"Proportion infected : {100*proportion_infected: 2.3f}%", logfile)
         log(f"Positivity rate: {100*positivity_rate: 2.3f}%", logfile)
         log(f"Total Tests: {n_positives + n_negatives} Total positive tests: {n_positives} Total negative tests: {n_negatives}", logfile)
         log(f"Maximum tests given to an individual: {max_tests_per_human}", logfile)
@@ -1644,7 +1620,6 @@ class Tracker(object):
                 str_to_print += f"max: {metrics.maximum()/SECONDS_PER_HOUR: 2.2f} | "
                 log(str_to_print, self.logfile)
 
-        breakpoint()
         self.compute_test_statistics(self.logfile)
 
         log("\n######## Effective Contacts & % infected #########", self.logfile)
@@ -1652,19 +1627,16 @@ class Tracker(object):
         effective_contacts, scale_factor = self.compute_effective_contacts()
         p_transmission = self.compute_probability_of_transmission()
         NGM = self.human_human_infection_matrix["all"]["caused_infection"]
-
+        # R0 = max(np.linalg.eigvals(NGM))
         log(f"Eff. contacts: {effective_contacts:5.3f} \t % infected: {p_infected: 2.3f}%", self.logfile)
         if scale_factor:
             log(f"effective contacts per contacts (GLOBAL_MOBILITY_SCALING_FACTOR): {scale_factor}", self.logfile)
         log(f"Probability of transmission: {p_transmission:2.3f}", self.logfile)
-        try:
-            log(f"Serial interval: {SIMULATION_SERIAL_INTERVAL: 5.3f}", self.logfile)
-        except:
-            breakpoint()
+        log(f"Serial interval: {SIMULATION_SERIAL_INTERVAL: 5.3f}", self.logfile)
 
         log("\n######## Bayesian Estimates of Rt #########", self.logfile)
         cases_per_day = self.cases_per_day
-        serial_interval = SIMULATION_GENERATION_TIME # generation time is used with simulations
+        serial_interval = SIMULATION_GENERATION_TIME # generation time is used in simulations
         if serial_interval == 0:
             serial_interval = 7.0
             log("WARNING: serial_interval is 0", self.logfile)
