@@ -70,49 +70,26 @@ class Location(simpy.Resource):
         self.CONTACT_DURATION_GAMMA_SHAPE_MATRIX = np.array(conf['CONTACT_DURATION_GAMMA_SHAPE_MATRIX'])
         self.MEAN_DAILY_UNKNOWN_CONTACTS = conf['MEAN_DAILY_UNKNOWN_CONTACTS']
 
-        # contact related constants
         self.social_contact_factor = conf[f'{location_type}_CONTACT_FACTOR']
         self.contaminated_surface_probability = conf[f'{location_type}_SURFACE_PROB']
-        self.MEAN_DAILY_KNOWN_CONTACTS = conf[f'{location_type}_MEAN_DAILY_INTERACTIONS']
 
         if location_type in ["SENIOR_RESIDENCE", "HOUSEHOLD"]:
             key = "HOUSEHOLD"
         elif location_type == "SCHOOL":
             key = "SCHOOL"
-        elif location_type == "WORKPLACE":
+        elif location_type in ["WORKPLACE", "HOSPITAL"]:
             key = "WORKPLACE"
         else:
             key = "OTHER"
 
+        # contact related constants
+        self.MEAN_DAILY_KNOWN_CONTACTS = conf[f'{key}_MEAN_DAILY_INTERACTIONS']
         self.P_CONTACT = np.array(conf[f'P_CONTACT_MATRIX_{key}'])
         self.ADJUSTED_CONTACT_MATRIX = np.array(conf[f'ADJUSTED_CONTACT_MATRIX_{key}'])
         self.MEAN_DAILY_KNOWN_CONTACTS_FOR_AGEGROUP = self.ADJUSTED_CONTACT_MATRIX.sum(axis=0)
 
         for matrix in [self.CONTACT_DURATION_GAMMA_SCALE_MATRIX, self.CONTACT_DURATION_GAMMA_SHAPE_MATRIX, self.P_CONTACT, self.ADJUSTED_CONTACT_MATRIX ]:
             assert matrix.shape[0] == matrix.shape[1], "contact matrix is not square"
-
-        # intervened contacts
-        N_LEVELS = self.conf['N_LEVELS']
-
-        # if hospitals are assumed to be safe, we reduce the number of interactions to 0
-        if location_type == "HOSPITAL" and conf['ASSUME_SAFE_HOSPITAL_DAILY_INTERACTIONS']:
-            self.DAILY_INTERACTION_REDUCTION_FACTOR = [0] * N_LEVELS
-
-        # there are a total of N_LEVELS. Last one is known to have a reduction factor with respect to the unconfined scenario
-        penultimate_level = self.conf[f"LOCKDOWN_FRACTION_REDUCTION_IN_CONTACTS_AT_{key}"]
-        reduction_level = []
-        for i in range(N_LEVELS + 1):
-            if i == 0:
-                x = 0
-            elif i == N_LEVELS:
-                x = 1
-            elif i == N_LEVELS - 1:
-                x = penultimate_level
-            else:
-                x = (N_LEVELS - 1 + i) * penultimate_level / (N_LEVELS - 1)
-            reduction_level.append(x)
-
-        self.DAILY_INTERACTION_REDUCTION_FACTOR = reduction_level
 
     def infectious_human(self):
         """
@@ -234,7 +211,7 @@ class Location(simpy.Resource):
                 candidate,
                 candidate.age_bin_width_5.index,
                 candidate in human.known_connections,
-                _get_daily_interaction_reduction_factor(candidate)
+                human.intervened_behavior.daily_interaction_reduction_factor(self)
             )
 
         if type == "known":
@@ -280,6 +257,7 @@ class Location(simpy.Resource):
 
         if type == "known":
             mean_daily_interactions = self.MEAN_DAILY_KNOWN_CONTACTS_FOR_AGEGROUP[human.age_bin_width_5.index]
+            mean_daily_interactions *= (1 - human.intervened_behavior.daily_interaction_reduction_factor(self))
             min_dist_encounter = self.conf['MIN_DIST_KNOWN_CONTACT']
             max_dist_encounter = self.conf['MAX_DIST_KNOWN_CONTACT']
             mean_interaction_time = None
@@ -292,7 +270,6 @@ class Location(simpy.Resource):
             raise
 
         mean_daily_interactions += 1e-6 # to avoid error in sampling with 0 mean from negative binomial
-        mean_daily_interactions *= 1 - human.intervened_behavior.mean_daily_interaction_reduction_factor(location)
         scale_factor_interaction_time = self.conf['SCALE_FACTOR_CONTACT_DURATION']
         # (assumption) maximum allowable distance is when humans are uniformly spaced
         packing_term = 100 * np.sqrt(self.area/len(self.humans))
