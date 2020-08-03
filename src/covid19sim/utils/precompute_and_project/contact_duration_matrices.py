@@ -4,6 +4,8 @@ from pathlib import Path
 import pandas as pd
 import numpy as np
 
+from covid19sim.utils.constants import SECONDS_PER_MINUTE
+
 def _get_mean_and_sigma_of_product_of_two_gaussians(mean1, mean2, var1, var2):
     """
     product of two gaussian pdfs is a gaussian with mean = (var1 * mean2 + var2 * mean1) / (var1 + var2) and var = (1/var1 + 1/var2)^ -1
@@ -53,8 +55,8 @@ if __name__ == "__main__":
     CONTACT_DURATION_GAMMA_SCALE_MATRIX = sigma ** 2 / mu
     CONTACT_DURATION_GAMMA_SHAPE_MATRIX = mu ** 2 / (sigma ** 2)
 
-    CONTACT_DURATION_NORMAL_MEAN_MATRIX = mu
-    CONTACT_DURATION_NORMAL_SIGMA_MATRIX = sigma
+    CONTACT_DURATION_NORMAL_MEAN_MATRIX = mu * SECONDS_PER_MINUTE
+    CONTACT_DURATION_NORMAL_SIGMA_MATRIX = sigma * SECONDS_PER_MINUTE
 
     # location based duration matrices obtained by multiplying two gaussian distributions
     # product of two gaussian pdfs is a gaussian with mean = (var1 * mean2 + var2 * mean1) / (var1 + var2) and var = (1/var1 + 1/var2)^ -1
@@ -62,38 +64,38 @@ if __name__ == "__main__":
     var1 = CONTACT_DURATION_NORMAL_SIGMA_MATRIX ** 2
 
     # household
-    MEAN_HOUSEHOLD_CONTACT_MINUTES = country['MEAN_HOUSEHOLD_CONTACT_MINUTES']
-    STDDEV_HOUSEHOLD_CONTACT_MINUTES = country['STDDEV_HOUSEHOLD_CONTACT_MINUTES']
+    MEAN_HOUSEHOLD_CONTACT_SECONDS = country['MEAN_HOUSEHOLD_CONTACT_MINUTES'] * SECONDS_PER_MINUTE
+    STDDEV_HOUSEHOLD_CONTACT_SECONDS = country['STDDEV_HOUSEHOLD_CONTACT_MINUTES'] * SECONDS_PER_MINUTE
 
-    mean2 = np.ones_like(CONTACT_DURATION_NORMAL_MEAN_MATRIX) * MEAN_HOUSEHOLD_CONTACT_MINUTES
-    var2 = np.ones_like(CONTACT_DURATION_NORMAL_MEAN_MATRIX) * (STDDEV_HOUSEHOLD_CONTACT_MINUTES ** 2)
+    mean2 = np.ones_like(CONTACT_DURATION_NORMAL_MEAN_MATRIX) * MEAN_HOUSEHOLD_CONTACT_SECONDS
+    var2 = np.ones_like(CONTACT_DURATION_NORMAL_MEAN_MATRIX) * (STDDEV_HOUSEHOLD_CONTACT_SECONDS ** 2)
 
     HOUSEHOLD_CONTACT_DURATION_NORMAL_MEAN_MATRIX, HOUSEHOLD_CONTACT_DURATION_NORMAL_SIGMA_MATRIX = _get_mean_and_sigma_of_product_of_two_gaussians(mean1, mean2, var1, var2)
 
     # school
-    MEAN_SCHOOL_CONTACT_MINUTES = country['MEAN_SCHOOL_CONTACT_MINUTES']
-    STDDEV_SCHOOL_CONTACT_MINUTES = country['STDDEV_SCHOOL_CONTACT_MINUTES']
+    MEAN_SCHOOL_CONTACT_SECONDS = country['MEAN_SCHOOL_CONTACT_MINUTES']
+    STDDEV_SCHOOL_CONTACT_SECONDS = country['STDDEV_SCHOOL_CONTACT_MINUTES']
 
-    mean2 = np.ones_like(CONTACT_DURATION_NORMAL_MEAN_MATRIX) * MEAN_SCHOOL_CONTACT_MINUTES
-    var2 = np.ones_like(CONTACT_DURATION_NORMAL_MEAN_MATRIX) * (STDDEV_SCHOOL_CONTACT_MINUTES ** 2)
+    mean2 = np.ones_like(CONTACT_DURATION_NORMAL_MEAN_MATRIX) * MEAN_SCHOOL_CONTACT_SECONDS
+    var2 = np.ones_like(CONTACT_DURATION_NORMAL_MEAN_MATRIX) * (STDDEV_SCHOOL_CONTACT_SECONDS ** 2)
 
     SCHOOL_CONTACT_DURATION_NORMAL_MEAN_MATRIX, SCHOOL_CONTACT_DURATION_NORMAL_SIGMA_MATRIX = _get_mean_and_sigma_of_product_of_two_gaussians(mean1, mean2, var1, var2)
 
     # workplace
-    MEAN_WORKPLACE_CONTACT_MINUTES = country['MEAN_WORKPLACE_CONTACT_MINUTES']
-    STDDEV_WORKPLACE_CONTACT_MINUTES = country['STDDEV_WORKPLACE_CONTACT_MINUTES']
+    MEAN_WORKPLACE_CONTACT_SECONDS = country['MEAN_WORKPLACE_CONTACT_MINUTES']
+    STDDEV_WORKPLACE_CONTACT_SECONDS = country['STDDEV_WORKPLACE_CONTACT_MINUTES']
 
-    mean2 = np.ones_like(CONTACT_DURATION_NORMAL_MEAN_MATRIX) * MEAN_WORKPLACE_CONTACT_MINUTES
-    var2 = np.ones_like(CONTACT_DURATION_NORMAL_MEAN_MATRIX) * (STDDEV_WORKPLACE_CONTACT_MINUTES ** 2)
+    mean2 = np.ones_like(CONTACT_DURATION_NORMAL_MEAN_MATRIX) * MEAN_WORKPLACE_CONTACT_SECONDS
+    var2 = np.ones_like(CONTACT_DURATION_NORMAL_MEAN_MATRIX) * (STDDEV_WORKPLACE_CONTACT_SECONDS ** 2)
 
     WORKPLACE_CONTACT_DURATION_NORMAL_MEAN_MATRIX, WORKPLACE_CONTACT_DURATION_NORMAL_SIGMA_MATRIX = _get_mean_and_sigma_of_product_of_two_gaussians(mean1, mean2, var1, var2)
 
     # other locations
-    MEAN_OTHER_CONTACT_MINUTES = country['MEAN_OTHER_CONTACT_MINUTES']
-    STDDEV_OTHER_CONTACT_MINUTES = country['STDDEV_OTHER_CONTACT_MINUTES']
+    MEAN_OTHER_CONTACT_SECONDS = country['MEAN_OTHER_CONTACT_MINUTES']
+    STDDEV_OTHER_CONTACT_SECONDS = country['STDDEV_OTHER_CONTACT_MINUTES']
 
-    mean2 = np.ones_like(CONTACT_DURATION_NORMAL_MEAN_MATRIX) * MEAN_OTHER_CONTACT_MINUTES
-    var2 = np.ones_like(CONTACT_DURATION_NORMAL_MEAN_MATRIX) * (STDDEV_OTHER_CONTACT_MINUTES ** 2)
+    mean2 = np.ones_like(CONTACT_DURATION_NORMAL_MEAN_MATRIX) * MEAN_OTHER_CONTACT_SECONDS
+    var2 = np.ones_like(CONTACT_DURATION_NORMAL_MEAN_MATRIX) * (STDDEV_OTHER_CONTACT_SECONDS ** 2)
 
     OTHER_CONTACT_DURATION_NORMAL_MEAN_MATRIX, OTHER_CONTACT_DURATION_NORMAL_SIGMA_MATRIX = _get_mean_and_sigma_of_product_of_two_gaussians(mean1, mean2, var1, var2)
 
@@ -123,34 +125,34 @@ if __name__ == "__main__":
             + "CONTACT_DURATION_GAMMA_SHAPE_MATRIX: "
             + "[\n{}\n]".format(",\n    ".join(map(str, CONTACT_DURATION_GAMMA_SHAPE_MATRIX.values.tolist())))
             + "\n\n"
-            + "CONTACT_DURATION_NORMAL_MEAN_MATRIX: "
+            + "CONTACT_DURATION_NORMAL_MEAN_SECONDS_MATRIX: "
             + "[\n{}\n]".format(",\n    ".join(map(str, CONTACT_DURATION_NORMAL_MEAN_MATRIX.values.tolist())))
             + "\n\n"
-            + "CONTACT_DURATION_NORMAL_SIGMA_MATRIX: "
+            + "CONTACT_DURATION_NORMAL_SIGMA_SECONDS_MATRIX: "
             + "[\n{}\n]".format(",\n    ".join(map(str, CONTACT_DURATION_NORMAL_SIGMA_MATRIX.values.tolist())))
             + "\n\n"
-            + "HOUSEHOLD_CONTACT_DURATION_NORMAL_MEAN_MATRIX: "
+            + "HOUSEHOLD_CONTACT_DURATION_NORMAL_MEAN_SECONDS_MATRIX: "
             + "[\n{}\n]".format(",\n    ".join(map(str, HOUSEHOLD_CONTACT_DURATION_NORMAL_MEAN_MATRIX.values.tolist())))
             + "\n\n"
-            + "HOUSEHOLD_CONTACT_DURATION_NORMAL_SIGMA_MATRIX: "
+            + "HOUSEHOLD_CONTACT_DURATION_NORMAL_SIGMA_SECONDS_MATRIX: "
             + "[\n{}\n]".format(",\n    ".join(map(str, HOUSEHOLD_CONTACT_DURATION_NORMAL_SIGMA_MATRIX.values.tolist())))
             + "\n\n"
-            + "SCHOOL_CONTACT_DURATION_NORMAL_MEAN_MATRIX: "
+            + "SCHOOL_CONTACT_DURATION_NORMAL_MEAN_SECONDS_MATRIX: "
             + "[\n{}\n]".format(",\n    ".join(map(str, SCHOOL_CONTACT_DURATION_NORMAL_MEAN_MATRIX.values.tolist())))
             + "\n\n"
-            + "SCHOOL_CONTACT_DURATION_NORMAL_SIGMA_MATRIX: "
+            + "SCHOOL_CONTACT_DURATION_NORMAL_SIGMA_SECONDS_MATRIX: "
             + "[\n{}\n]".format(",\n    ".join(map(str, SCHOOL_CONTACT_DURATION_NORMAL_SIGMA_MATRIX.values.tolist())))
             + "\n\n"
-            + "WORKPLACE_CONTACT_DURATION_NORMAL_MEAN_MATRIX: "
+            + "WORKPLACE_CONTACT_DURATION_NORMAL_MEAN_SECONDS_MATRIX: "
             + "[\n{}\n]".format(",\n    ".join(map(str, WORKPLACE_CONTACT_DURATION_NORMAL_MEAN_MATRIX.values.tolist())))
             + "\n\n"
-            + "WORKPLACE_CONTACT_DURATION_NORMAL_SIGMA_MATRIX: "
+            + "WORKPLACE_CONTACT_DURATION_NORMAL_SIGMA_SECONDS_MATRIX: "
             + "[\n{}\n]".format(",\n    ".join(map(str, WORKPLACE_CONTACT_DURATION_NORMAL_SIGMA_MATRIX.values.tolist())))
             + "\n\n"
-            + "OTHER_CONTACT_DURATION_NORMAL_MEAN_MATRIX: "
+            + "OTHER_CONTACT_DURATION_NORMAL_MEAN_SECONDS_MATRIX: "
             + "[\n{}\n]".format(",\n    ".join(map(str, OTHER_CONTACT_DURATION_NORMAL_MEAN_MATRIX.values.tolist())))
             + "\n\n"
-            + "OTHER_CONTACT_DURATION_NORMAL_SIGMA_MATRIX: "
+            + "OTHER_CONTACT_DURATION_NORMAL_SIGMA_SECONDS_MATRIX: "
             + "[\n{}\n]".format(",\n    ".join(map(str, OTHER_CONTACT_DURATION_NORMAL_SIGMA_MATRIX.values.tolist())))
             + "\n\n"
         )
