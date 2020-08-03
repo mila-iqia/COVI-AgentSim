@@ -384,8 +384,6 @@ class Location(simpy.Resource):
                                         p_contamination,
                                         human,
                                         self.conf.get("ENVIRONMENTAL_INFECTION_KNOB"),
-                                        self.conf['MASK_EFFICACY_FACTOR'],
-                                        self.conf['HYGIENE_EFFICACY_FACTOR'],
                                         )
 
         x_environment =  self.rng.random() < p_transmission

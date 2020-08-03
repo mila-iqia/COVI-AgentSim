@@ -2,7 +2,7 @@ import datetime
 import numpy as np
 from covid19sim.utils.constants import SECONDS_PER_DAY
 
-def get_human_human_p_transmission(infector, infectors_infectiousness, infectee, social_contact_factor, contagion_knob, mask_efficacy_factor, hygiene_efficacy_factor, self, h):
+def get_human_human_p_transmission(infector, infectors_infectiousness, infectee, social_contact_factor, contagion_knob, self, h):
     """
     Computes probability of virus transmission from infector to infectee.
 
@@ -22,8 +22,6 @@ def get_human_human_p_transmission(infector, infectors_infectiousness, infectee,
         infectee (covid19sim.human.Human):
         social_contact_factor (float):
         contagion_knob (float):
-        mask_efficacy_factor (float):
-        hygiene_efficacy_factor (float):
         self (covid19sim.human.Human):
         h (covid19sim.human.Human):
 
@@ -35,17 +33,9 @@ def get_human_human_p_transmission(infector, infectors_infectiousness, infectee,
     rate_of_infection *= infectors_infectiousness
     rate_of_infection *= contagion_knob
     p_infection = 1 - np.exp(-rate_of_infection)
-
-    # factors that can reduce probability of transmission.
-    # (no-source) How to reduce the transmission probability mathematically?
-    # we assume exponential reduction in p_infection
-    mask_efficacy = (self.mask_efficacy + h.mask_efficacy)
-    hygiene_efficacy = self.hygiene + h.hygiene
-    reduction_factor = mask_efficacy * mask_efficacy_factor + hygiene_efficacy * hygiene_efficacy_factor
-    p_infection *= np.exp(-reduction_factor)
     return p_infection
 
-def get_environment_human_p_transmission(contamination_probability, human, environmental_infection_knob, mask_efficacy_factor, hygiene_efficacy_factor):
+def get_environment_human_p_transmission(contamination_probability, human, environmental_infection_knob):
     """
     computes probability of virus transmission to human via environmental contamination.
     NOTE: the forumlation used here is completely experimental. We assume it to be proportional to
@@ -57,19 +47,11 @@ def get_environment_human_p_transmission(contamination_probability, human, envir
         contamination_probability (float): current virus strength at a location. It is used as a proxy for probability.
         human (covid19sim.human.Human): `human` for whom we need to compute this probability of transmission.
         environmental_infection_knob (float): a global factor to calibrate probabilities such that total fraction of environmental transmission is as observed in the real world.
-        mask_efficacy_factor (float): a global factor to determine the effect of wearing mask on reducing the transmission probability
-        hygiene_efficacy_factor (float):a global factor to determine the effect of personal hygiene on reducing the transmission probability
 
     Returns:
         (float): probability of environmetal contamination
     """
     p_infection = contamination_probability * human.normalized_susceptibility
-
-    mask_efficacy = human.mask_efficacy
-    hygiene_efficacy = human.hygiene
-    reduction_factor = mask_efficacy * mask_efficacy_factor + hygiene_efficacy * hygiene_efficacy_factor
-
-    p_infection *= np.exp(-reduction_factor)
     p_infection *= environmental_infection_knob
     return p_infection
 

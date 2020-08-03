@@ -689,8 +689,6 @@ class Human(BaseHuman):
                                       infectee,
                                       self.location.social_contact_factor,
                                       self.conf['CONTAGION_KNOB'],
-                                      self.conf['MASK_EFFICACY_FACTOR'],
-                                      self.conf['HYGIENE_EFFICACY_FACTOR'],
                                       self,
                                       other_human)
 
