@@ -928,39 +928,40 @@ class Human(BaseHuman):
         """
         """
         self.intervention = tracing_method
+        # (delete) remove intervention_start
         self.update_recommendations_level(intervention_start=True)
 
-
-    def set_intervention(self, intervention):
-        """
-        This function is called once on the intervention day to notify `Human`.
-        If the interevention is of type `Tracing`, everyone is initalized from 0 recommendation level
-        and associated behavior modifications. Subsequent changes in behavior are dependent on recommendation level
-        changes during the course of simulation.
-
-        All other interventions modify behavior only once on intervention day.
-        NOTE: DROPOUT_RATE might affect the behavior modifications.
-
-        Args:
-            intervention (BehaviorIntervention, optional): intervention that `Human` should follow. Defaults to None.
-        """
-        self.intervention = intervention
-        self.update_recommendations_level(intervention_start=True)
-        behaviors = intervention.get_behaviors(self)
-        self.apply_behaviors(behaviors)
-
-    def apply_behaviors(self, new_behaviors: list):
-        """ We provide a list of recommendations and a human, we revert the human's existing recommendations
-            and apply the new ones"""
-        for old_rec in reversed(self.recommendations_to_follow):
-            old_rec.revert(self)
-        self.recommendations_to_follow = OrderedSet()
-
-        for new_behavior in new_behaviors:
-            assert isinstance(new_behavior, Behavior)
-            if self.follows_recommendations_today:
-                new_behavior.modify(self)
-                self.recommendations_to_follow.add(new_behavior)
+    # (delete)
+    # def set_intervention(self, intervention):
+    #     """
+    #     This function is called once on the intervention day to notify `Human`.
+    #     If the interevention is of type `Tracing`, everyone is initalized from 0 recommendation level
+    #     and associated behavior modifications. Subsequent changes in behavior are dependent on recommendation level
+    #     changes during the course of simulation.
+    #
+    #     All other interventions modify behavior only once on intervention day.
+    #     NOTE: DROPOUT_RATE might affect the behavior modifications.
+    #
+    #     Args:
+    #         intervention (BehaviorIntervention, optional): intervention that `Human` should follow. Defaults to None.
+    #     """
+    #     self.intervention = intervention
+    #     self.update_recommendations_level(intervention_start=True)
+    #     behaviors = intervention.get_behaviors(self)
+    #     self.apply_behaviors(behaviors)
+    #
+    # def apply_behaviors(self, new_behaviors: list):
+    #     """ We provide a list of recommendations and a human, we revert the human's existing recommendations
+    #         and apply the new ones"""
+    #     for old_rec in reversed(self.recommendations_to_follow):
+    #         old_rec.revert(self)
+    #     self.recommendations_to_follow = OrderedSet()
+    #
+    #     for new_behavior in new_behaviors:
+    #         assert isinstance(new_behavior, Behavior)
+    #         if self.follows_recommendations_today:
+    #             new_behavior.modify(self)
+    #             self.recommendations_to_follow.add(new_behavior)
 
     def run(self):
         """
