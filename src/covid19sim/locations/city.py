@@ -456,15 +456,12 @@ class City:
         """
         humans_notified = False
         last_day_idx = 0
-        # self.intervention = BaseMethod(self.conf)
         while True:
             current_day = (self.env.timestamp - self.start_time).days
             # Notify humans to follow interventions on intervention day
             if current_day == self.conf.get('INTERVENTION_DAY') and not humans_notified:
-                # self.intervention = get_intervention(conf=self.conf)
                 self.have_some_humans_download_the_app()
                 for human in self.humans:
-                    # human.set_intervention(self.intervention)
                     human.intervened_behavior.initialize()
                 humans_notified = True
 
@@ -494,15 +491,6 @@ class City:
                 new_human_risk_history_maps={h: h.risk_history_map for h in self.humans},
             )
 
-            # given the 'intervention' method and the risk estimated by each human, assign them behavior modifiers
-            # if (
-            #     self.conf.get("SHOULD_MODIFY_BEHAVIOR")
-            #     and self.conf['INTERVENTION_DAY'] >= 0
-            # ):
-            #     for human in alive_humans:
-            #         behaviors = self.intervention.get_behaviors(human)
-            #         human.apply_behaviors(behaviors)
-
             # for debugging/plotting a posteriori, track all human/location attributes...
             self.tracker.track_humans(hd=self.hd, current_timestamp=self.env.timestamp)
             # self.tracker.track_locations() # TODO
@@ -528,9 +516,8 @@ class City:
         # TODO: this is an assumption which will break in reality, instead of updating once per day everyone
         #       at the same time, it should be throughout the day
         for human in alive_humans:
-            # recover from cold/flu/allergies if it's time
-            human.recover_health()
-            human.catch_other_disease_at_random()
+            human.recover_health() # recover from cold/flu/allergies if it's time
+            human.catch_other_disease_at_random() # catch cold/flu/allergies at random
             human.update_symptoms()
             human.mobility_planner.send_social_invites()
             Event.log_daily(self.conf.get('COLLECT_LOGS'), human, human.env.timestamp)
