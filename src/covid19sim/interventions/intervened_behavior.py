@@ -85,7 +85,7 @@ class IntervenedBehavior(object):
         Sets up a baseline behavior.
 
         Args:
-            check_has_app (bool): whether to initialize a baseline beahvior for humans with app
+            check_has_app (bool): whether to initialize a baseline beahvior only for humans with the app
         """
         assert self.conf['INTERVENTION_DAY'] >= 0, "negative intervention day and yet intialization is called."
         assert self.n_behavior_levels >= 2, "with 2 behavior levels and a risk model, behavior level 1 will quarantine everyone"

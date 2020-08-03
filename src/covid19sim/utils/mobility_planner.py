@@ -155,14 +155,13 @@ class Activity(object):
         # pass
 
         # (B) Supervised
-        # if adult is supervising someone, they will follow the location of an adult's schedule
-        # thus, if adult goes to home, kid will follow them
+        # if adult is supervising a kid, that kid will follow the location of an adult's schedule
+        # thus, if adult goes to home, kid will go to home as well
 
         # (C) Being supervised
         # Inverted supervision - change the parent_activity_pointer of adult to `self`.
-        # this way, kids already following the adult will follow him to home
-        # below will not be helpful if adult's events are processed before kid's events.
-        # a somewhat-correct solution is to add to adult.mobility_planner.inverted_supervision (mobility_planner._cancel_and_stay_at_location does that)
+        # this way, kids already following the adult will tell adult to follow them
+        # below will not be helpful if adult's events are processed before kid's events, which is checked via adult.mobility_planner.inverted_supervision
         if self.prepend_name == "supervised":
             self.parent_activity_pointer.set_location_tracker(self)
             self.parent_activity_pointer._add_to_append_name( f"-cancel-for-kid-{reason}")
@@ -529,7 +528,7 @@ class MobilityPlanner(object):
             return activity
 
         # (a) set back to normal routine if self.human was hospitalized
-        # (b) if human is still recovering in hospital then return the activity as is because these were determined at the time hospitalization occured
+        # (b) if human is still recovering in hospital then return the activity as it is because these were determined at the time when hospitalization occured
         # Note 1: after recovery from hospitalization, infection_timestamp will always be None
         # Note 2: hospitalization_recovery_timestamp will take into account hospitalization recovery due to critical condition
         if (
