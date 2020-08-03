@@ -272,7 +272,7 @@ SMARTPHONE_OWNER_FRACTION_BY_AGE: [
 # bluetooth messages are recorded when the devices are within MAX_MESSAGE_PASSING_DISTANCE radius
 # for more than MIN_MESSAGE_PASSING_DURATION mins
 MAX_MESSAGE_PASSING_DISTANCE: 200 # cms
-MIN_MESSAGE_PASSING_DURATION: 15 # mins
+MIN_MESSAGE_PASSING_DURATION: 900 # seconds
 
 #########################################################
 #####       Viral Load Parameters                   #####
