@@ -231,7 +231,6 @@ class Tracker(object):
             "start_time": Statistics()
         }
         self.outside_daily_contacts = []
-        self.encounter_distances = []
 
         # infection stats
         self.n_infected_init = 0 # to be initialized in `initialize`
@@ -1322,19 +1321,6 @@ class Tracker(object):
                 duration_category = math.ceil(duration / SECONDS_PER_MINUTE)
                 Dp = self.contact_duration_profile[interaction_type][location_type]
                 Dp[duration_category] = Dp.get(duration_category, 0) + 1
-
-            # replacement of track_encounter_distance.
-            # TODO: Clean Up. How exactly is this being used?
-            packing_term = distance_profile.packing_term
-            encounter_term = distance_profile.encounter_term
-            social_distancing_term = distance_profile.social_distancing_term
-            distance = distance_profile.distance
-            if contact_condition:
-                str = 'B\t{}\t{}\t{}\t{}'.format(packing_term, encounter_term, social_distancing_term, distance)
-            else:
-                type = "A\t1" if distance == packing_term else "A\t0"
-                str = '{}\t{}\t{}\t{}\t{}\t{}'.format(type, location, packing_term, encounter_term, social_distancing_term, distance)
-            self.encounter_distances.append(str)
 
             if human1.location != human1.household:
                 self.n_outside_daily_contacts += 1

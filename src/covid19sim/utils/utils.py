@@ -354,22 +354,22 @@ def extract_tracker_data(tracker, conf):
     data['known_connections'] = {
         human.name: set(h.name for h in human.known_connections)
         for human in tracker.city.humans
-    }
+    } # 3MB
 
     # contacts
-    data['contact_patterns'] = tracker.get_contact_data()
-    data['infectious_contact_patterns'] = tracker.get_infectious_contact_data()
+    data['contact_patterns'] = tracker.get_contact_data() # 0.7MB
+    data['infectious_contact_patterns'] = tracker.get_infectious_contact_data() # 2MB
     data['expected_mobility'] = tracker.expected_mobility
     data['mobility'] = tracker.mobility
     data['effective_contacts_since_intervention'] = tracker.compute_effective_contacts(since_intervention=True)
     data['effective_contacts_all_days'] = tracker.compute_effective_contacts(since_intervention=False)
-    data['infection_monitor'] = tracker.infection_monitor
-    data['encounter_distances'] = tracker.encounter_distances
+    data['infection_monitor'] = tracker.infection_monitor # 0.8MB
+    data['encounter_distances'] = tracker.encounter_distances # 50MB
     data['outside_daily_contacts'] = tracker.outside_daily_contacts
 
     # spread related
     data['serial_interval'] = tracker.compute_serial_interval()
-    data['all_serial_intervals'] = tracker.serial_intervals
+    data['all_serial_intervals'] = tracker.serial_intervals #0.1MB
     data['cases_per_day'] = tracker.cases_per_day
     data['ei_per_day'] = tracker.ei_per_day
     data['R'] = tracker.r
@@ -381,15 +381,15 @@ def extract_tracker_data(tracker, conf):
     # epi related
     data['avg_infectiousness_per_day'] = tracker.avg_infectiousness_per_day
     data['covid_properties'] = tracker.covid_properties
-    data['test_monitor'] = tracker.test_monitor
+    data['test_monitor'] = tracker.test_monitor #0.14MB
 
     # tracing related
     data['risk_precision_global'] = tracker.compute_risk_precision(False)
     data['risk_precision'] = tracker.risk_precision_daily
-    data['human_monitor'] = tracker.human_monitor
+    data['human_monitor'] = tracker.human_monitor # 20MB
     data['infector_infectee_update_messages'] = tracker.infector_infectee_update_messages
-    data['risk_attributes'] = tracker.risk_attributes
-    data['humans_state'] = tracker.humans_state
+    data['risk_attributes'] = tracker.risk_attributes # 524MB
+    data['humans_state'] = tracker.humans_state #0.4MB
     data['humans_rec_level'] = tracker.humans_rec_level
     data['humans_intervention_level'] = tracker.humans_intervention_level
     data['to_human_max_msg_per_day'] = tracker.to_human_max_msg_per_day
