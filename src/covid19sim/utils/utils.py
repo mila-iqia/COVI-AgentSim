@@ -350,7 +350,6 @@ def extract_tracker_data(tracker, conf):
 
     # demographics
     data['age_histogram'] = tracker.city.age_histogram
-    data['humans_has_app'] = dict((human.name, human.has_app) for human in tracker.city.humans)
     data['human_has_app'] = tracker.human_has_app
     data['known_connections'] = {
         human.name: set(h.name for h in human.known_connections)
@@ -395,6 +394,7 @@ def extract_tracker_data(tracker, conf):
     data['humans_intervention_level'] = tracker.humans_intervention_level
     data['to_human_max_msg_per_day'] = tracker.to_human_max_msg_per_day
 
+    breakpoint()
     return data
 
 
@@ -858,7 +858,7 @@ def _sample_positive_normal(mean, sigma, rng, upper_limit=None):
         mean (float): mean of gaussian
         sigma (float): stdandard deviation of gaussian
         upper_limit (float): upper limit above which x will be rejected. None if there is no upper limit.
-        
+
     Returns:
         (float): sample
     """

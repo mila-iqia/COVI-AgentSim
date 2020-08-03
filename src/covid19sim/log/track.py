@@ -265,8 +265,8 @@ class Tracker(object):
         # demographics
         self.age_bins = [(x[0], x[1]) for x in sorted(self.conf.get("P_AGE_REGION"), key = lambda x:x[0])]
         self.n_people = self.n_humans = self.city.n_people
-        self.human_has_app = None
         self.adoption_rate = 0.0
+        self.human_has_app = set()
 
         # symptoms
         self.symptoms = {'covid': defaultdict(int), 'all':defaultdict(int)}
@@ -286,7 +286,6 @@ class Tracker(object):
         # update messages
         self.infector_infectee_update_messages = defaultdict(lambda :defaultdict(lambda : defaultdict(lambda :{'unknown':{}, 'contact':{}})))
         self.to_human_max_msg_per_day = defaultdict(lambda : defaultdict(lambda :-1))
-        self.human_has_app = set()
         self.infection_graph = set()
 
         # (debug) track all humans all the time
