@@ -1411,10 +1411,8 @@ class Tracker(object):
         # bluetooth contact matrices
         bcm = {}
         for key0, value0 in self.bluetooth_contact_matrices.items():
-            bcm[key0] = {}
-            for key1, value1 in value0.items():
-                value1.pop("total")
-                bcm[key0][key1] = value1
+            value0.pop("total")
+            bcm[key0] = value0['avg_daily'][1]
 
         return {
             "contact_matrices": cm,
