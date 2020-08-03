@@ -762,7 +762,7 @@ class City:
             )
 
         # now, batch-run the clustering + risk prediction using an ML model (if we need it)
-        if self.conf.get("RISK_MODEL") == "transformer" or self.conf.get("COLLECT_TRAINING_DATA"):
+        if self.conf.get("RISK_MODEL") == "transformer" or "heuristic" in self.conf.get("RISK_MODEL") or self.conf.get("COLLECT_TRAINING_DATA"):
             self.humans = batch_run_timeslot_heavy_jobs(
                 humans=self.humans,
                 init_timestamp=self.start_time,

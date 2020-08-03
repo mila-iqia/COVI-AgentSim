@@ -1371,13 +1371,14 @@ class Human(BaseHuman):
 
                 # used for matching "mobility" between methods
                 scale_factor_passed = self.rng.random() < self.conf.get("GLOBAL_MOBILITY_SCALING_FACTOR")
+                home_scale_factor = self.rng.random() < 0.1 if location == self.household and self.rec_level == 3 else True
                 cur_day = int(self.env.now - self.env.ts_initial) // SECONDS_PER_DAY
                 if cur_day > self.conf.get("INTERVENTION_DAY"):
                     self.num_contacts += 1
                     self.effective_contacts += self.conf.get("GLOBAL_MOBILITY_SCALING_FACTOR")
 
                 infector, infectee, p_infection = None, None, None
-                if (self.is_infectious ^ h.is_infectious) and scale_factor_passed:
+                if (self.is_infectious ^ h.is_infectious) and scale_factor_passed and home_scale_factor:
                     if self.is_infectious:
                         infector, infectee = self, h
                         infectee_msg = h2_msg

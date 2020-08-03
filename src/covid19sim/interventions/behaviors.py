@@ -98,8 +98,8 @@ class Quarantine(Behavior):
             they do not explore i.e. do not go to more than one location. (reduce RHO and GAMMA)
 
     """
-    _RHO = 0.1
-    _GAMMA = 1
+    _RHO = 0.1 #0.01
+    _GAMMA = 1 #0.01
 
     def __init__(self):
         self.old_RHO = None
@@ -141,8 +141,8 @@ class SocialDistancing(Behavior):
     def __init__(self, default_distance=100, time_encounter_reduction_factor=0.5):
         self.default_distance = default_distance  # cm
         self.time_encounter_reduction_factor = time_encounter_reduction_factor
-        self._RHO = 0.2
-        self._GAMMA = 0.5
+        self._RHO = 0.2 # 0.1
+        self._GAMMA = 0.5 # 0.25
         self.old_RHO = None
         self.old_GAMMA = None
         self.old_maintain_extra_distance = None
