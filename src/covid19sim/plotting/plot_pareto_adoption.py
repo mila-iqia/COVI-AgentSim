@@ -152,7 +152,7 @@ def run(data, path, comparison_key):
         "effective_contacts",
         "outside_daily_contacts",
     ]
-    ymetric = "percent_infected"
+    ymetric = "r" # "percent_infected"
 
     ms = 6 * 2 * 1.5
     capsize = 4
@@ -310,4 +310,21 @@ def run(data, path, comparison_key):
         bbox_extra_artists=(lgd, ylab, spttl),
         bbox_inches="tight",
     )
+    
+    # Make a lineplot version of the plot 
+    
+    fig, axs = plt.subplots(figsize=(20, 20), dpi=100, sharey=True)
+    save_path = Path(path) / "pareto_adoption/pareto_front.png" 
+    xs = []
+    ys = []
+    import pdb;pdb.set_trace()
+    for i, lab in enumerate(current_labels):
+        print(lab)
+        x, xe = get_metrics(df, lab, "effective_contacts")
+        y, ye = get_metrics(df, lab, "r")
+        xs.append(x)
+        ys.append(y)
+    plt.plot(xs, ys)
+    plt.savefig(str(save_path))
+
     print("Done.")
