@@ -91,7 +91,7 @@ class IntervenedBehavior(object):
         assert self.n_behavior_levels >= 2, "with 2 behavior levels and a risk model, behavior level 1 will quarantine everyone"
 
         if self.conf['RISK_MODEL'] == "":
-            self.set_behavior(level = self.baseline_behavior_idx, until = None, reason="lockdown-start")
+            self.set_behavior(level = self.baseline_behavior_idx, until = None, reason="intervention-start")
             return
 
         if check_has_app and self.human.has_app:
