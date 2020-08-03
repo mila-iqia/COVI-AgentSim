@@ -684,30 +684,14 @@ class MobilityPlanner(object):
         Runs check on `human` to decide if saying at home is the right course of action.
         Note: It's a stateful function i.e. it needs to remember the state of `human_to_rest_at_home`.
         """
-        # once rest_at_home is set to True, it is only switched back if human is recovered and feels completely fine
-        # TODO - P - Change this to check everytime.
-
         if (
             self.hospitalization_timestamp is not None
             or self.critical_condition_timestamp is not None
         ):
             self.human_to_rest_at_home = False
-            return self.human_to_rest_at_home
+            return False
 
-        if (
-            not self.human_to_rest_at_home
-            and self.rng.random() < 1 - _get_likelihood_to_go_out(self.human, self.conf)
-        ):
-            self.human_to_rest_at_home = True
-
-        elif (
-            self.human_to_rest_at_home
-            and _get_likelihood_to_go_out(self.human, self.conf) == 1.0
-            and self.human.is_removed
-        ):
-            self.human_to_rest_at_home = False
-
-        return self.human_to_rest_at_home
+        return self.rng.random() < 1 - _get_likelihood_to_go_out(self.human, self.conf)
 
     def _intervention_related_behavior_changes(self, activity):
         """
