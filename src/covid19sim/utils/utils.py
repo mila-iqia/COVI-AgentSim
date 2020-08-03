@@ -393,7 +393,6 @@ def extract_tracker_data(tracker, conf):
     data['humans_intervention_level'] = tracker.humans_intervention_level
     data['to_human_max_msg_per_day'] = tracker.to_human_max_msg_per_day
 
-    breakpoint()
     return data
 
 
