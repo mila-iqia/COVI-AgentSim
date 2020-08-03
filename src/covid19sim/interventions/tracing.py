@@ -7,9 +7,9 @@ import typing
 import copy
 import numpy as np
 from itertools import islice
-from covid19sim.interventions.behaviors import Quarantine
+# from covid19sim.interventions.behaviors import Quarantine
 from covid19sim.epidemiology.symptoms import MODERATE, SEVERE, EXTREMELY_SEVERE
-from covid19sim.interventions.tracing_utils import _get_behaviors_for_level, create_behavior
+# from covid19sim.interventions.tracing_utils import _get_behaviors_for_level, create_behavior
 
 if typing.TYPE_CHECKING:
     from covid19sim.human import Human
@@ -42,30 +42,6 @@ class BaseMethod(object):
         """
         self.default_behaviors = [create_behavior(key, conf) for key in conf.get("DEFAULT_BEHAVIORS", [])]
 
-    def get_behaviors(self, human: "Human"):
-        # note: if there is overlap between default behaviors & recommended ones, the latter will override
-        # the former due to the use of list extend calls below + the modify/revert logic in behaviors
-        behaviors = copy.deepcopy(self.default_behaviors)
-
-        if human.has_app:
-            if human.city.daily_rec_level_mapping is None:
-                intervention_level = human.rec_level
-            else:
-                # QKFIX: There are 4 recommendation levels, the value is hard-coded here
-                probas = human.city.daily_rec_level_mapping[human.rec_level]
-                intervention_level = human.rng.choice(4, p=probas)
-            human._intervention_level = intervention_level
-            behaviors.extend(_get_behaviors_for_level(intervention_level))
-
-        if not any([isinstance(rec, Quarantine) for rec in behaviors]) and \
-                any([h.test_result == "positive" for h in human.household.residents]):
-            # in short, if we are not already quarantining and if there is a member
-            # of the household that got a positive test (even if they didn't tell their
-            # app, whether because they don't have one or don't care), the housemates should
-            # know and get the same (max-level) recommendations, including quarantine
-            behaviors.extend(_get_behaviors_for_level(level=3))
-        return behaviors
-
     @staticmethod
     def get_recommendations_level(human, thresholds, max_risk_level, intervention_start=False):
         """
@@ -89,7 +65,7 @@ class BaseMethod(object):
             return 3
         else:
             raise
-
+    #
     def compute_risk(
             self,
             human: "Human",

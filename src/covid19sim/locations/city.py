@@ -8,6 +8,7 @@ import datetime
 import itertools
 import math
 import time
+import typing
 from collections import defaultdict, Counter
 from orderedset import OrderedSet
 
@@ -16,10 +17,10 @@ from covid19sim.utils.demographics import get_humans_with_age, assign_households
 from covid19sim.log.track import Tracker
 from covid19sim.inference.heavy_jobs import batch_run_timeslot_heavy_jobs
 from covid19sim.interventions.tracing import BaseMethod
-from covid19sim.interventions.behaviors import *
+# from covid19sim.interventions.behaviors import *
 from covid19sim.inference.message_utils import UIDType, UpdateMessage, RealUserIDType
 from covid19sim.distribution_normalization.dist_utils import get_rec_level_transition_matrix
-from covid19sim.interventions.tracing_utils import get_intervention
+from covid19sim.interventions.tracing_utils import get_tracing_method
 from covid19sim.log.event import Event
 from covid19sim.locations.test_facility import TestFacility
 
@@ -102,7 +103,7 @@ class City:
 
         log("Computing their preferences", self.logfile)
         self._compute_preferences()
-        self.intervention = None
+        self.tracing_method = None
 
         # GAEN summary statistics that enable the individual to determine whether they should send their info
         self.risk_change_histogram = Counter()
@@ -459,10 +460,20 @@ class City:
         while True:
             current_day = (self.env.timestamp - self.start_time).days
             # Notify humans to follow interventions on intervention day
-            if current_day == self.conf.get('INTERVENTION_DAY') and not humans_notified:
-                self.have_some_humans_download_the_app()
+            if (
+                not humans_notified
+                and current_day == self.conf.get('INTERVENTION_DAY')
+            ):
+                # if its a tracing method, load the class that can compute risk
+                if self.conf['RISK_MODEL'] != "":
+                    self.tracing_method = get_tracing_method(risk_model=self.conf['RISK_MODEL'], conf=self.conf)
+                    self.have_some_humans_download_the_app()
+
+                # initialize everyone from the baseline behavior
                 for human in self.humans:
                     human.intervened_behavior.initialize()
+                    human.set_tracing_method(self.tracing_method)
+
                 humans_notified = True
 
             # run city testing routine, providing test results for those who need them
@@ -550,7 +561,10 @@ class City:
 
         # iterate over humans, and if it's their timeslot, then update their state
         for human in alive_humans:
-            if not human.has_app or self.env.timestamp.hour not in human.time_slots:
+            if (
+                not human.has_app
+                or self.env.timestamp.hour not in human.time_slots
+            ):
                 continue
             # set the human's risk to a correct value for the day (if it does not exist already)
             human.initialize_daily_risk(current_day)
@@ -709,4 +723,4 @@ class EmptyCity(City):
         self.tracker = Tracker(self.env, self, self.conf, None)
         self.tracker.initialize()
         # self.tracker.track_initialized_covid_params(self.humans)
-        self.intervention = BaseMethod(self.conf)
+        self.tracing_method = BaseMethod(self.conf)

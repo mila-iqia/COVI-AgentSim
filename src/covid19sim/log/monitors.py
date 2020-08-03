@@ -41,8 +41,8 @@ Legend -
         """
         if self.conf['INTERVENTION_DAY'] >= 0 and self.conf['RISK_MODEL'] is not None:
             self.legend += """
-G/B/O/R: Number of people in each of the 4 recommendation levels - Green, Blue, Orange, and Red.
-RiskP: Top 1% risk precision of the risk predictor computed for people with no test.
+* [ G/B/O/R ]: Number of people in each of the 4 recommendation levels - Green, Blue, Orange, and Red.
+* [ RiskP ]: Top 1% risk precision of the risk predictor computed for people with no test.
             """
 
         self.print_legend = True

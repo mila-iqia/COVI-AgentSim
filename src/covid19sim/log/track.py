@@ -287,6 +287,7 @@ class Tracker(object):
         self.infector_infectee_update_messages = defaultdict(lambda :defaultdict(lambda : defaultdict(lambda :{'unknown':{}, 'contact':{}})))
         self.to_human_max_msg_per_day = defaultdict(lambda : defaultdict(lambda :-1))
         self.human_has_app = set()
+        self.infection_graph = set()
 
         # (debug) track all humans all the time
         self.keep_full_human_copies = city.conf.get("KEEP_FULL_OBJ_COPIES", False)
@@ -906,6 +907,10 @@ class Tracker(object):
                 "p_infection": p_infection,
             })
 
+            # bookkeeping needed for track_update_messages
+            if from_human is not None:
+                self.infection_graph.add((from_human.name, to_human.name))
+
         #
         type_of_location = location.location_type
         y = to_human.age_bin_width_5.index
@@ -957,8 +962,10 @@ class Tracker(object):
             return
 
     def track_update_messages(self, from_human, to_human, payload):
-        """ Track which update messages are sent and when (used for plotting) """
-        if self.infection_graph.has_edge(from_human.name, to_human.name):
+        """
+        Track which update messages are sent and when (used for plotting)
+        """
+        if (from_human.name, to_human.name) in self.infection_graph:
             reason = payload['reason']
             assert reason in ['unknown', 'contact'], "improper reason for sending a message"
             model = self.city.conf.get("RISK_MODEL")
