@@ -924,6 +924,13 @@ class Human(BaseHuman):
         self.city.tracker.track_deaths() # track
         yield self.env.timeout(np.inf)
 
+    def set_tracing_method(self, tracing_method):
+        """
+        """
+        self.intervention = tracing_method
+        self.update_recommendations_level(intervention_start=True)
+
+
     def set_intervention(self, intervention):
         """
         This function is called once on the intervention day to notify `Human`.
