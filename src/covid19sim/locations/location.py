@@ -64,8 +64,8 @@ class Location(simpy.Resource):
         OPEN_CLOSE_TIMES = conf[f'{location_type}_OPEN_CLOSE_HOUR_MINUTE']
         OPEN_DAYS = conf[f'{location_type}_OPEN_DAYS']
         # /!\ opening and closing time are in seconds relative to midnight
-        self.opening_time = OPEN_CLOSE_TIMES[0][0] * SECONDS_PER_HOUR +  OPEN_CLOSE_TIMES[0][1] * SECONDS_PER_MINUTE
-        self.closing_time = OPEN_CLOSE_TIMES[1][0] * SECONDS_PER_HOUR +  OPEN_CLOSE_TIMES[1][1] * SECONDS_PER_MINUTE
+        self.opening_time = OPEN_CLOSE_TIMES[0][0] * SECONDS_PER_HOUR +  OPEN_CLOSE_TIMES[0][1]
+        self.closing_time = OPEN_CLOSE_TIMES[1][0] * SECONDS_PER_HOUR +  OPEN_CLOSE_TIMES[1][1]
         self.open_days = OPEN_DAYS
 
         # parameters related to sampling contacts
@@ -85,9 +85,12 @@ class Location(simpy.Resource):
         self.P_CONTACT = np.array(conf[f'P_CONTACT_MATRIX_{key}'])
         self.ADJUSTED_CONTACT_MATRIX = np.array(conf[f'ADJUSTED_CONTACT_MATRIX_{key}'])
         self.MEAN_DAILY_KNOWN_CONTACTS_FOR_AGEGROUP = self.ADJUSTED_CONTACT_MATRIX.sum(axis=0)
+
         # duration matrices
-        self.MEAN_DAILY_CONTACT_DURATION_MINUTES = np.array(conf[f'{key}_CONTACT_DURATION_NORMAL_MEAN_MATRIX'])
-        self.STDDEV_DAILY_CONTACT_DURATION_MINUTES = np.array(conf[f'{key}_CONTACT_DURATION_NORMAL_SIGMA_MATRIX'])
+        # self.MEAN_DAILY_CONTACT_DURATION_SECONDS = np.array(conf[f'{key}_CONTACT_DURATION_NORMAL_MEAN_SECONDS_MATRIX'])
+        # self.STDDEV_DAILY_CONTACT_DURATION_SECONDS = np.array(conf[f'{key}_CONTACT_DURATION_NORMAL_SIGMA_SECONDS_MATRIX'])
+        self.MEAN_DAILY_CONTACT_DURATION_SECONDS = np.array(conf[f'CONTACT_DURATION_NORMAL_MEAN_SECONDS_MATRIX'])
+        self.STDDEV_DAILY_CONTACT_DURATION_SECONDS = np.array(conf[f'CONTACT_DURATION_NORMAL_MEAN_SECONDS_MATRIX'])
 
         for matrix in [self.P_CONTACT, self.ADJUSTED_CONTACT_MATRIX]:
             assert matrix.shape[0] == matrix.shape[1], "contact matrix is not square"
@@ -206,6 +209,9 @@ class Location(simpy.Resource):
         if len(self.humans) == 1:
             return [None]
 
+        if len(self.humans) - 1 == n:
+            return [h for h in self.humans if h != human]
+
         PREFERENTIAL_ATTACHMENT_FACTOR = self.conf['PREFERENTIAL_ATTACHMENT_FACTOR']
 
         def _extract_attrs(human, candidate):
@@ -233,7 +239,7 @@ class Location(simpy.Resource):
         elif type == "unknown":
             other_humans = [x for x in self.humans if x != human]
             p_contact = np.ones_like(other_humans, dtype=np.float) / len(other_humans)
-            
+
         else:
             raise
 
@@ -274,10 +280,19 @@ class Location(simpy.Resource):
         packing_term = 100 * np.sqrt(self.area/len(self.humans))
 
         interactions = []
-        n_interactions = self.rng.negative_binomial(mean_daily_interactions, 0.5)
+        n_interactions = min(len(self.humans) - 1, self.rng.negative_binomial(mean_daily_interactions, 0.5))
         interactees = self._sample_interactee(type, human, n=n_interactions)
         for other_human in interactees:
             if other_human is None:
+                continue
+
+            assert other_human != human, "sampling with self is not allowed"
+            # sample duration of encounter (seconds)
+            t_overlap = (min(human.location_leaving_time, other_human.location_leaving_time) -
+                         max(human.location_start_time,   other_human.location_start_time))
+
+            # if the overlap duration is less than a relevant duration for infection, it is of no use.
+            if t_overlap < min(self.conf['MIN_MESSAGE_PASSING_DURATION'], self.conf['INFECTION_DURATION']):
                 continue
 
             # sample distance of encounter
@@ -286,32 +301,24 @@ class Location(simpy.Resource):
             distance = np.clip(encounter_term + social_distancing_term, a_min=0, a_max=packing_term)
             distance_profile = DistanceProfile(encounter_term=encounter_term, packing_term=packing_term, social_distancing_term=social_distancing_term, distance=distance)
 
-            # sample duration of encounter (seconds)
-            t_overlap = (min(human.location_leaving_time, other_human.location_leaving_time) -
-                         max(human.location_start_time,   other_human.location_start_time))
 
             if type == "known":
                 age_bin = human.age_bin_width_5.index
                 other_bin = other_human.age_bin_width_5.index
-                mean_duration = self.MEAN_DAILY_CONTACT_DURATION_MINUTES[other_bin, age_bin]
-                sigma_duration = self.STDDEV_DAILY_CONTACT_DURATION_MINUTES[other_bin, age_bin]
+                mean_duration = self.MEAN_DAILY_CONTACT_DURATION_SECONDS[other_bin, age_bin]
+                sigma_duration = self.STDDEV_DAILY_CONTACT_DURATION_SECONDS[other_bin, age_bin]
                 # surveyed data gives us minutes per day. Here we use it to sample rate of minutes spend per second of overlap in an encounter.
-                duration = (_sample_positive_normal(mean_duration, sigma_duration, self.rng) / SECONDS_PER_DAY) * t_overlap * SECONDS_PER_MINUTE
+                # duration = (_sample_positive_normal(mean_duration, sigma_duration, self.rng) / SECONDS_PER_DAY) * t_overlap * SECONDS_PER_MINUTE
+                duration = _sample_positive_normal(mean_duration, sigma_duration, self.rng, upper_limit=t_overlap)
 
             elif type == "unknown":
                 duration = self.rng.gamma(mean_interaction_time/scale_factor_interaction_time, scale_factor_interaction_time)
 
             else:
-                raise ValueError
+                raise ValueError(f"Unknown interaction type: {type}")
 
-            # if self.location_type ==  "MISC" and human.workplace != self:
-            #     print(human, "-->", other_human, "for", duration, "tota humans", len(self.humans), "t_overlap", t_overlap, human.mobility_planner.current_activity)
-
-            # if duration > t_overlap:
-            #     warnings.warn(f"sampled time {duration} is more than the duration for which {human} is at a location {t_overlap}")
-
-            # /!\ clipping changes the distribution.
-            duration = min(t_overlap, duration) * max(human.time_encounter_reduction_factor, other_human.time_encounter_reduction_factor)
+            # if self.location_type ==  "HOUSEHOLD" and type == "known" and human.mobility_planner.current_activity.name != "socialize":# and human.workplace != self:
+            #     print(human, "-->", other_human, "for", duration / SECONDS_PER_MINUTE, "tota humans", len(self.humans), "t_overlap", t_overlap / SECONDS_PER_MINUTE, human.mobility_planner.current_activity)
 
             # add to the list
             interactions.append((other_human, distance_profile, duration))

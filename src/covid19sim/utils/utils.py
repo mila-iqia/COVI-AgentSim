@@ -850,16 +850,21 @@ def _convert_bin_5s_to_bin_10s(histogram_bin_5s):
     return histogram_bin_10s
 
 
-def _sample_positive_normal(mean, sigma, rng):
+def _sample_positive_normal(mean, sigma, rng, upper_limit=None):
     """
     Samples a positive number from gaussian distributed as (mean, sigma) by throwing away negative samples.
 
     Args:
         mean (float): mean of gaussian
         sigma (float): stdandard deviation of gaussian
-
+        upper_limit (float): upper limit above which x will be rejected. None if there is no upper limit.
+        
     Returns:
         (float): sample
     """
+    _filter = lambda x: 0 <= x
+    if upper_limit > 0:
+        _filter = lambda x: 0 <= x <= upper_limit
+
     x = rng.normal(mean, sigma)
-    return x if x >= 0 else _sample_positive_normal(mean, sigma, rng)
+    return x if _filter(x) else _sample_positive_normal(mean, sigma, rng, upper_limit)
