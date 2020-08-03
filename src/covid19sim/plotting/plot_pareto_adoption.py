@@ -310,21 +310,51 @@ def run(data, path, comparison_key):
         bbox_extra_artists=(lgd, ylab, spttl),
         bbox_inches="tight",
     )
-    
-    # Make a lineplot version of the plot 
-    
+
+    print("\n\nLine Plot")
     fig, axs = plt.subplots(figsize=(20, 20), dpi=100, sharey=True)
-    save_path = Path(path) / "pareto_adoption/pareto_front.png" 
-    xs = []
-    ys = []
-    import pdb;pdb.set_trace()
-    for i, lab in enumerate(current_labels):
-        print(lab)
-        x, xe = get_metrics(df, lab, "effective_contacts")
-        y, ye = get_metrics(df, lab, "r")
-        xs.append(x)
-        ys.append(y)
-    plt.plot(xs, ys)
+    save_path = Path(path) / "pareto_adoption/pareto_front.png"
+    method_legend = []
+
+    # Make a lineplot version of the plot
+    for idx, method in enumerate(sorted(base_methods)):
+        print("Plotting", method, "...")
+        xs = []
+        ys = []
+
+        current_labels = sorted([lab for lab in labels if lab.startswith(method)])
+        current_color = colormap[idx] if method != "unmitigated" else "#34495e"
+        method_legend.append(
+            get_line2D(method, current_color, None, True)
+        )
+        for i, lab in enumerate(current_labels):
+            x, xe = get_metrics(df, lab, "effective_contacts")
+            y, ye = get_metrics(df, lab, "proxy_r")
+            xs.append(x.item())
+            ys.append(y.item())
+
+        axs.plot(xs, ys, label="method")
+
+    lgd = axs.legend(
+        handles=method_legend,
+        loc="upper center",
+        ncol= 3,# idx, # + 1,
+        fontsize=25,
+        bbox_to_anchor=(0.5, 1.1),
+    )
+    spttl = plt.suptitle(
+        "Comparison of tracing methods across different adoption rates",
+        fontsize=50,
+        y=1.15,
+    )
+    axs.set_xlabel("Effective Contacts", size=40)
+    axs.set_ylabel("R_t (infectees / recovered infectors)", size=40)
+    for tick in axs.xaxis.get_major_ticks():
+        tick.label.set_fontsize(30)
+
+    for tick in axs.yaxis.get_major_ticks():
+        tick.label.set_fontsize(30)
+
     plt.savefig(str(save_path))
 
     print("Done.")

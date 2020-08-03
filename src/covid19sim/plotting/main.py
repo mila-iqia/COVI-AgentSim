@@ -198,6 +198,7 @@ def main(conf):
                 "humans_intervention_level",
                 "humans_rec_level",
                 "GLOBAL_MOBILITY_SCALING_FACTOR",
+                "infection_monitor",
             ]
         )
     if "efficiency" in plots:
