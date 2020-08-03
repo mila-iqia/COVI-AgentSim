@@ -1224,7 +1224,7 @@ class Human(BaseHuman):
         if not other_human.has_app or not self.has_app:
             return None, None
 
-        t_near_in_minutes = duration / SECONDS_PER_MINUTE
+        t_near = duration
         # phone_bluetooth_noise is a value selected between 0 and 2 meters to approximate the noise in the manufacturers bluetooth chip
         # distance is the "average" distance of the encounter
         # self.rng.random() - 0.5 gives a uniform random variable centered at 0
@@ -1238,11 +1238,11 @@ class Human(BaseHuman):
         # The maximum distance of a message which we would consider to be "high risk" and therefore meriting an
         # encounter message is under 2 meters for at least 5 minutes.
         if approximated_bluetooth_distance < self.conf.get("MAX_MESSAGE_PASSING_DISTANCE") and \
-                t_near_in_minutes > self.conf.get("MIN_MESSAGE_PASSING_DURATION") and \
+                t_near > self.conf.get("MIN_MESSAGE_PASSING_DURATION") and \
                 self.has_app and \
                 other_human.has_app:
 
-            remaining_time_in_contact = t_near_in_minutes
+            remaining_time_in_contact = t_near
             encounter_time_granularity = self.conf.get("MIN_MESSAGE_PASSING_DURATION")
             exchanged = False
             while remaining_time_in_contact > encounter_time_granularity:
