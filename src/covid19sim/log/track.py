@@ -784,6 +784,19 @@ class Tracker(object):
         return top_k_prec, lift, recall
 
     def track_humans(self, hd: typing.Dict, current_timestamp: datetime.datetime):
+        """
+        Keeps record of humans and their attributes at each hour (called hourly from city)
+
+        Args:
+            hd (dict):
+            current_timestamp: (datetime.datetime):
+        """
+        if (
+            self.conf['RISK_MODEL'] == ""
+            or not (self.conf['track_all'] or self.conf['track_humans'])
+        ):
+            return
+
         for name, h in hd.items():
             order_1_contacts = h.contact_book.get_contacts(hd)
             self.risk_attributes.append({

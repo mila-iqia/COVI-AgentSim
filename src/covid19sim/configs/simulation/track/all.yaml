@@ -4,3 +4,4 @@ track_all: True
 track_mixing: True
 track_mobility: True
 track_bluetooth_communications: True
+track_humans: True

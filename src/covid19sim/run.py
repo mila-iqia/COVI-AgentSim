@@ -79,10 +79,23 @@ def main(conf: DictConfig):
     # ----------------------------
     # -----  Run Simulation  -----
     # ----------------------------
-    conf["outfile"] = outfile
+    # correctness of configuration file
+    assert not conf['RISK_MODEL'] != "" or conf['INTERVENTION_DAY'] >= 0, "risk model is given, but no intervnetion day specified"
+    assert conf['N_BEHAVIOR_LEVELS'] >= 2, "At least 2 behavior levels are required to model behavior changes"
+    assert not conf['RISK_MODEL'] == "" or conf['N_BEHAVIOR_LEVELS'] == 2, "number of behavior levels (N_BEHAVIOR_LEVELS) in unmitigated or lockdown scenario should be 2"
+
+    if conf['RISK_MODEL'] == "":
+        type_of_run = "Unmitigated"
+        if conf['INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS']:
+            type_of_run = "Lockdown"
+    else:
+        type_of_run = f"{conf['RISK_MODEL']} with {conf['N_BEHAVIOR_LEVELS']} behavior levels (Only relevant ones are used)"
+
     log(f"RISK_MODEL = {conf['RISK_MODEL']}", logfile)
     log(f"INTERVENTION_DAY = {conf['INTERVENTION_DAY']}", logfile)
+    log(f"Type of run: {type_of_run}", logfile)
 
+    conf["outfile"] = outfile
     city, monitors, tracker = simulate(
         n_people=conf["n_people"],
         init_fraction_sick=conf["init_fraction_sick"],

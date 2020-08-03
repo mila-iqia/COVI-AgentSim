@@ -364,7 +364,6 @@ def extract_tracker_data(tracker, conf):
     data['effective_contacts_since_intervention'] = tracker.compute_effective_contacts(since_intervention=True)
     data['effective_contacts_all_days'] = tracker.compute_effective_contacts(since_intervention=False)
     data['infection_monitor'] = tracker.infection_monitor # 0.8MB
-    data['encounter_distances'] = tracker.encounter_distances # 50MB
     data['outside_daily_contacts'] = tracker.outside_daily_contacts
 
     # spread related

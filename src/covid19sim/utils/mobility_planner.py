@@ -525,7 +525,7 @@ class MobilityPlanner(object):
         # for `human`s dying because of `human.never_recovers` we check the flag here
         if self.human_dies_in_next_activity:
             self, human, activity = _human_dies(self, self.human, activity, self.env)
-            print(self.human,  "is dead because never recovers", activity)
+            # print(self.human,  "is dead because never recovers", activity)
             return activity
 
         # (a) set back to normal routine if self.human was hospitalized
