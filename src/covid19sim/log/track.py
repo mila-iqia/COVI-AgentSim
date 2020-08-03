@@ -24,7 +24,7 @@ from covid19sim.epidemiology.symptoms import MILD, MODERATE, SEVERE, EXTREMELY_S
 from covid19sim.inference.server_utils import DataCollectionServer, DataCollectionClient, \
     default_datacollect_frontend_address
 from covid19sim.utils.utils import log, copy_obj_array_except_env
-from covid19sim.utils.constants import SECONDS_PER_DAY
+from covid19sim.utils.constants import SECONDS_PER_DAY, SECONDS_PER_MINUTE
 if typing.TYPE_CHECKING:
     from covid19sim.human import Human
 
@@ -237,6 +237,7 @@ class Tracker(object):
         self.n_infected_init = 0 # to be initialized in `initialize`
         self.cases_per_day = [self.n_infected_init]
         self.cumulative_incidence = []
+        self.r = []
 
         # infection
         self.humans_state = defaultdict(list)
@@ -347,7 +348,7 @@ class Tracker(object):
 
 
         log("\n######## DEMOGRAPHICS / SYNTHETIC POPULATION #########", self.logfile)
-        log(f"NB: (i) census numbers are in brackets. (ii) {WARN_SIGNAL} marks a {WARN_RELATIVE_PERCENTAGE_THRESHOLD}% realtive deviation from census\n", self.logfile)
+        log(f"NB: (i) census numbers are in brackets. (ii) {WARN_SIGNAL} marks a {WARN_RELATIVE_PERCENTAGE_THRESHOLD} % realtive deviation from census\n", self.logfile)
         # age distribution
         x = np.array([h.age for h in self.city.humans])
         cns_avg = self.conf['AVERAGE_AGE_REGION']
@@ -359,7 +360,7 @@ class Tracker(object):
         x = np.array([h.sex for h in self.city.humans])
         for z in np.unique(x):
             p = 100 * x[x==z].shape[0]/self.n_people
-            str_to_print += f"{z}: {p:2.3f}% | "
+            str_to_print += f"{z}: {p:2.3f} % | "
         log(str_to_print, self.logfile)
 
         ###### house initialization
@@ -369,7 +370,7 @@ class Tracker(object):
         p = 100*self.n_senior_residency_residents / self.n_people
         cns = 100*self.conf['P_COLLECTIVE']
         warn = WARN_SIGNAL if 100*abs(p-cns)/cns > WARN_RELATIVE_PERCENTAGE_THRESHOLD else ""
-        log(f"{warn}Total (%) number of residents in senior residencies (census): {self.n_senior_residency_residents} ({p:2.2f}%) ({cns:2.2f})", self.logfile)
+        log(f"{warn}Total ( %) number of residents in senior residencies (census): {self.n_senior_residency_residents} ({p:2.2f} %) ({cns:2.2f})", self.logfile)
 
         # house allocation
         n_houses = len(self.city.households)
@@ -397,7 +398,7 @@ class Tracker(object):
             p = 100 * (sizes == z).sum() / n_houses
             cns = 100*census[i]
             warn = WARN_SIGNAL if 100*abs(p-cns)/cns > WARN_RELATIVE_PERCENTAGE_THRESHOLD else ""
-            str_to_print += f"{warn} {z}: {p:2.2f}% ({cns: 3.2f}) | "
+            str_to_print += f"{warn} {z}: {p:2.2f} % ({cns: 3.2f}) | "
         log(str_to_print, self.logfile)
 
         # solo dwellers
@@ -420,9 +421,9 @@ class Tracker(object):
         p = 100 * multigenerationals.mean()
         cns = 100*self.conf['P_MULTIGENERATIONAL_FAMILY']
         warn = WARN_SIGNAL if 100*abs(p-cns)/cns > WARN_RELATIVE_PERCENTAGE_THRESHOLD else ""
-        str_to_print += f"{warn}multi-generation: {p:2.2f}% ({cns:2.2f}) | "
+        str_to_print += f"{warn}multi-generation: {p:2.2f} % ({cns:2.2f}) | "
         p = 100 * only_adults.mean()
-        str_to_print += f"Only adults: {p:2.2f}% | "
+        str_to_print += f"Only adults: {p:2.2f} % | "
         log(str_to_print, self.logfile)
 
         # allocation types
@@ -435,7 +436,7 @@ class Tracker(object):
             p = 100*(allocation_types == atype).mean()
             cns = 100*census[allocation_types == atype][0].item()
             warn = WARN_SIGNAL if 100*abs(p-cns)/cns > WARN_RELATIVE_PERCENTAGE_THRESHOLD else ""
-            str_to_print += f"{warn}{atype}: {p:2.3f}%  ({cns: 2.2f})| "
+            str_to_print += f"{warn}{atype}: {p:2.3f} %  ({cns: 2.2f})| "
         log(str_to_print, self.logfile)
 
         ###### location initialization
@@ -649,6 +650,8 @@ class Tracker(object):
             self.humans_rec_level[human.name].append(human.rec_level)
             self.humans_intervention_level[human.name].append(human._intervention_level)
 
+        self.r.append(self.get_R())
+
         # recovery stats
         self.recovered_stats.append([0,0])
         if len(self.recovered_stats) > self.city.conf.get("EFFECTIVE_R_WINDOW"):
@@ -817,7 +820,7 @@ class Tracker(object):
 
     def track_app_adoption(self):
         self.adoption_rate = sum(h.has_app for h in self.city.humans) / self.n_people
-        print(f"adoption rate: {100*self.adoption_rate:3.2f}%")
+        print(f"adoption rate: {100*self.adoption_rate:3.2f} %")
         self.human_has_app = set([h.name for h in self.city.humans if h.has_app])
 
     def track_covid_properties(self, human):
@@ -924,10 +927,8 @@ class Tracker(object):
                 self.human_human_infection_matrix["all"]["caused_infection"][x, y] += 1
 
                 # for serial interval
-                # Keep records of the infection so that serial intervals
-                # can be registered when symptoms appear
-                # Note: We need a bidirectional record (to/from), because we can't
-                # anticipate which (to or from) will manifest symptoms first
+                # Keep records of the infection so that serial intervals can be registered when symptoms appear
+                # Note: We need a bidirectional record (to/from), because we can't anticipate which (to or from) will manifest symptoms first
                 self.serial_interval_book_to[to_human.name][from_human.name] = (to_human, from_human)
                 self.serial_interval_book_from[from_human.name][to_human.name] = (to_human, from_human)
 
@@ -944,7 +945,7 @@ class Tracker(object):
                     self.average_infectious_contacts[key]['humans'].add(from_human.name)
                 return
 
-        elif source == "environmental":
+        elif source == "environment":
 
             self.environment_human_infection_histogram["all"]["risky_contact"][y] += 1
             self.environment_human_infection_histogram[type_of_location]["risky_contact"][y] += 1
@@ -1076,13 +1077,13 @@ class Tracker(object):
         infected_minus_tests_per_day = [x - y for x,y in zip(self.e_per_day, self.tested_per_day)]
 
         log("\n######## COVID Testing Statistics #########", logfile)
-        log(f"Positivity rate: {100*positivity_rate: 2.3f}%", logfile)
+        log(f"Positivity rate: {100*positivity_rate: 2.3f} %", logfile)
         log(f"Total Tests: {n_positives + n_negatives} Total positive tests: {n_positives} Total negative tests: {n_negatives}", logfile)
         log(f"Maximum tests given to an individual: {max_tests_per_human}", logfile)
-        log(f"Proportion of population tested until end: {100 * percent_tested: 4.3f}%", logfile)
-        log(f"Proportion of population tested daily Avg: {100 * np.mean(daily_percent_test_results): 4.3f}%", logfile)
-        log(f"Proportion of population tested daily Max: {100 * max(daily_percent_test_results, default=0): 4.3f}%", logfile)
-        log(f"Proportion of population tested daily Min: {100 * min(daily_percent_test_results, default=0): 4.3f}%", logfile)
+        log(f"Proportion of population tested until end: {100 * percent_tested: 4.3f} %", logfile)
+        log(f"Proportion of population tested daily Avg: {100 * np.mean(daily_percent_test_results): 4.3f} %", logfile)
+        log(f"Proportion of population tested daily Max: {100 * max(daily_percent_test_results, default=0): 4.3f} %", logfile)
+        log(f"Proportion of population tested daily Min: {100 * min(daily_percent_test_results, default=0): 4.3f} %", logfile)
         # log(f"infected - tests daily Avg: {np.mean(infected_minus_tests_per_day): 4.3f}", logfile)
 
         log(f"P(tested | symptoms = x), where x is ", logfile)
@@ -1302,8 +1303,8 @@ class Tracker(object):
                 # in surveys, ij ==> j is the participant and i is the reported contact
                 C['n_people'][(j,i)].add(human1.name) # i reports about j; len of this set is number of unique people in i that met j
                 C['n_people'][(i,j)].add(human2.name) # j reports about i
-                D['total'][i,j] += duration
-                D['total'][j,i] += duration
+                D['total'][i,j] += duration / SECONDS_PER_MINUTE
+                D['total'][j,i] += duration / SECONDS_PER_MINUTE
 
                 # Note that the use of math.ceil makes the upper limit inclusive.
                 # record distance profile/frequency counts (per 10 cms). It keeps counts for (distance_category - 10,  distance_category].
@@ -1312,7 +1313,7 @@ class Tracker(object):
                 Cp[distance_category] = Cp.get(distance_category, 0) + 1
 
                 # record duration profile/frequency counts (per 1 min)
-                duration_category = math.ceil(duration)
+                duration_category = math.ceil(duration / SECONDS_PER_MINUTE)
                 Dp = self.contact_duration_profile[interaction_type][location_type]
                 Dp[duration_category] = Dp.get(duration_category, 0) + 1
 
@@ -1491,12 +1492,12 @@ class Tracker(object):
         all_human_transmissions = self.human_human_infection_matrix["all"]["caused_infection"].sum()
         all_environmental_transmissions = self.environment_human_infection_histogram["all"]["caused_infection"].sum()
         total_transmissions = all_human_transmissions + all_environmental_transmissions + 1e-6 # to prevent ZeroDivisionError
-        percentage_environmental_transmission = 100 * all_environmental_transmissions/total_transmissions
+        percentage_environmental_transmission = 100 * all_environmental_transmissions / total_transmissions
         R0 = self.average_infectious_contacts["all"]['infection_count'] / len(self.average_infectious_contacts["all"]['humans'])
 
         log(f"# human-human transmissions {all_human_transmissions}", self.logfile )
         log(f"# environment-human transmissions {all_environmental_transmissions}", self.logfile )
-        log(f"environmental transmission ratio {percentage_environmental_transmission:2.3f}%", self.logfile )
+        log(f"environmental transmission ratio {percentage_environmental_transmission:2.3f} %", self.logfile )
         log(f"Average generation time {SIMULATION_GENERATION_TIME} ", self.logfile)
         log(f"Average serial interval {SIMULATION_SERIAL_INTERVAL} ", self.logfile)
         log(f"Empirical Ro {R0: 2.3f} (WARNING: It is an underestimate because it doesn't consider all infectious contacts during the recovery period of infected humans towards the end of the simulation) ", self.logfile)
@@ -1510,7 +1511,7 @@ class Tracker(object):
         for key in ["asymptomatic", "presymptomatic", "symptomatic"]:
             count = self.average_infectious_contacts[key]["infection_count"]
             n_humans = len(self.average_infectious_contacts[key]["humans"]) + 1e-6 # to avoid ZeroDivisionError
-            log(f"* {key} R0 {count/n_humans: 2.3f} ({100 * count / total: 2.3f}%)", self.logfile)
+            log(f"* {key} R0 {count/n_humans: 2.3f} ({100 * count / total: 2.3f} %)", self.logfile)
 
         log("\n******** Locations and Disease Spread *********", self.logfile)
 
@@ -1526,7 +1527,7 @@ class Tracker(object):
         all_locations = self.environment_human_infection_histogram.keys()
         for key in all_locations:
             x = self.environment_human_infection_histogram[key]['caused_infection'].sum()
-            log(f"* % {key} transmission {100 * x / total :2.3f}%", self.logfile)
+            log(f"* % {key} transmission {100 * x / total :2.3f} %", self.logfile)
 
         log("\n######## SYMPTOMS #########", self.logfile)
         self.track_symptoms(count_all=True)
@@ -1596,7 +1597,7 @@ class Tracker(object):
         str_to_print += f"total visits {total} | "
         for location in locations:
             m = self.socialize_activity_data["location_frequency"][location]
-            str_to_print += f"{location}: {m} {100*m/total:2.2f}% | "
+            str_to_print += f"{location}: {m} {100*m/total:2.2f} % | "
         log(str_to_print, self.logfile)
 
         str_to_print = "Social network properties (degree statistics) - "
@@ -1628,7 +1629,7 @@ class Tracker(object):
         p_transmission = self.compute_probability_of_transmission()
         NGM = self.human_human_infection_matrix["all"]["caused_infection"]
         # R0 = max(np.linalg.eigvals(NGM))
-        log(f"Eff. contacts: {effective_contacts:5.3f} \t % infected: {p_infected: 2.3f}%", self.logfile)
+        log(f"Eff. contacts: {effective_contacts:5.3f} \t % infected: {p_infected: 2.3f} %", self.logfile)
         if scale_factor:
             log(f"effective contacts per contacts (GLOBAL_MOBILITY_SCALING_FACTOR): {scale_factor}", self.logfile)
         log(f"Probability of transmission: {p_transmission:2.3f}", self.logfile)
