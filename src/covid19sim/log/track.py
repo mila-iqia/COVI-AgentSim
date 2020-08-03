@@ -238,6 +238,11 @@ class Tracker(object):
         self.cumulative_incidence = []
         self.r = []
 
+        # tracing related stats
+        self.recommended_levels_daily = []
+        self.mobility = []
+        self.expected_mobility = []
+
         # infection
         self.humans_state = defaultdict(list)
         self.humans_rec_level = defaultdict(list)
@@ -276,6 +281,7 @@ class Tracker(object):
         self.risk_values = []
         self.avg_infectiousness_per_day = []
         self.risk_attributes = []
+        self.tracing_started = False
 
         # monitors
         self.human_monitor = {}
@@ -314,10 +320,6 @@ class Tracker(object):
         self.i_per_day = [sum(h.is_infectious for h in self.city.humans)]
         self.r_per_day = [sum(h.is_removed for h in self.city.humans)]
 
-        M, G, B, O, R, EM = self.compute_mobility()
-        self.recommended_levels_daily = [[G, B, O, R]]
-        self.mobility = [M]
-        self.expected_mobility = [EM]
         self.summarize_population()
 
         # risk model
@@ -662,15 +664,12 @@ class Tracker(object):
         self.critical_per_day.append(0)
         self.deaths_per_day.append(0)
 
-        # mobility
-        M, G, B, O, R, EM = self.compute_mobility()
-        self.mobility.append(M)
-        self.expected_mobility.append(EM)
+        # recommendation levels related statistics
+        self.track_daily_recommendation_levels()
 
         # risk model
         prec, lift, recall = self.compute_risk_precision(daily=True)
         self.risk_precision_daily.append((prec, lift, recall))
-        self.recommended_levels_daily.append([G, B, O, R])
         self.risk_values.append([(h.risk, h.is_exposed or h.is_infectious, h.test_result, len(h.symptoms) == 0) for h in self.city.humans])
         row = []
         for h in self.city.humans:
@@ -708,24 +707,29 @@ class Tracker(object):
                 severity = 1
         return severity
 
-    def compute_mobility(self):
+    def track_daily_recommendation_levels(self, set_tracing_started_true=False):
         """
-        [summary]
-
-        Returns:
-            [type]: [description]
+        Tracks aggregate recommendation levels of humans in the city.
         """
-        EM, M, G, B, O, R= 0, 0, 0, 0, 0, 0
-        for h in self.city.humans:
-            G += h.rec_level == 0
-            B += h.rec_level == 1
-            O += h.rec_level == 2
-            R += h.rec_level == 3
-            M +=  1.0 * (h.rec_level == 0) + 0.8 * (h.rec_level == 1) + \
-                    0.20 * (h.rec_level == 2) + 0.05 * (h.rec_level == 3) + 1*(h.rec_level==-1)
+        if set_tracing_started_true:
+            self.tracing_started = True
 
-            EM += (1-h.risk) # proxy for mobility
-        return M, G, B, O, R, EM/len(self.city.humans)
+        G, B, O, R, M, EM = 0,0,0,0,0,0
+        if self.tracing_started:
+            rec_levels = np.array([h.rec_level for h in self.city.humans if not h.is_dead])
+            G = sum(rec_levels == 0)
+            B = sum(rec_levels == 1)
+            O = sum(rec_levels == 2)
+            R = sum(rec_levels == 3)
+            no_app = sum(rec_levels == -1)
+
+            M = 1.0 * G + 0.8 * B + 0.20 * O + 0.05 * R + 1 * no_app
+            EM = np.mean([1-h.risk for h in self.city.humans if not h.is_dead])
+
+        #
+        self.recommended_levels_daily.append([G, B, O, R])
+        self.mobility.append(M)
+        self.expected_mobility.append(EM)
 
     def compute_risk_precision(self, daily=True, until_days=None):
         """

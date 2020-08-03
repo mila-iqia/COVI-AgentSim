@@ -471,10 +471,12 @@ class City:
 
                 # initialize everyone from the baseline behavior
                 for human in self.humans:
-                    human.intervened_behavior.initialize()
                     human.set_tracing_method(self.tracing_method)
+                    human.intervened_behavior.initialize()
 
                 humans_notified = True
+                if self.tracing_method is not None:
+                    self.tracker.track_daily_recommendation_levels(set_tracing_started_true=True)
 
             # run city testing routine, providing test results for those who need them
             # TODO: running this every hour of the day might not be correct.

@@ -96,7 +96,8 @@ Legend -
             constrained_at_home = sum(h.mobility_planner.human_to_rest_at_home for h in city.humans)
 
             # simulation time related
-            env_time = str(env.timestamp).split()[0]
+            # env_time = str(env.timestamp).split()[0]
+            env_time = env.timestamp
             day = "Day {:2}:".format((city.env.timestamp - city.start_time).days)
             proc_time = "{:8}".format("({}s)".format(int(time.time() - process_start)))
 
@@ -115,8 +116,12 @@ Legend -
             str_to_print = f"{proc_time} {day} {env_time} {SEIR} {stats} {other_diseases} {hospitalizations} {mobility} {quarantines}"
             # conditional prints
             colors, risk = "", ""
-            if self.conf['INTERVENTION_DAY'] >= 0 and self.conf['RISK_MODEL'] is not None:
-                green, blue, orange, red = city.tracker.recommended_levels_daily[-1]
+            if self.conf['INTERVENTION_DAY'] >= 0 and self.conf['RISK_MODEL'] != "":
+                # on day 1, if tracker is not informed about tracing, recommended levels daily are not appended.
+                # this will throw an error about list out of index.
+                green, blue, orange, red = 0, 0, 0, 0
+                if len(city.tracker.recommended_levels_daily) > 0:
+                    green, blue, orange, red = city.tracker.recommended_levels_daily[-1]
                 colors = f"| G:{green} B:{blue} O:{orange} R:{red}"
 
                 prec, _, _ = city.tracker.risk_precision_daily[-1]
