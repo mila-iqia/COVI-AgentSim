@@ -107,23 +107,9 @@ class HydraTests(unittest.TestCase):
         toy_conf["RISK_MODEL"] = ""
         parsed_conf = parse_configuration(toy_conf)
 
-<<<<<<< HEAD
-||||||| merged common ancestors
-        self.assertDictEqual(
-            parsed_conf["SMARTPHONE_OWNER_FRACTION_BY_AGE"], {(1, 15): "something"}
-        )
-        self.assertDictEqual(
-            parsed_conf["HUMAN_DISTRIBUTION"], {(0, 20): "something_else"}
-        )
-=======
-        self.assertDictEqual(
-            parsed_conf["SMARTPHONE_OWNER_FRACTION_BY_AGE"], {(1, 15): "something"}
-        )
->>>>>>> cfc3881b91f54ac3aab062a6515c02c2ecd19263
         self.assertEqual(
             parsed_conf["start_time"], datetime.datetime(2020, 2, 28, 0, 0, 0)
         )
-<<<<<<< HEAD
 
     def test_dump_conf(self):
         """
@@ -137,28 +123,3 @@ class HydraTests(unittest.TestCase):
             with (Path(d) / "dumped.yaml").open("r") as f:
                 loaded_conf = yaml.safe_load(f)
             parsed_conf = parse_configuration(loaded_conf)
-||||||| merged common ancestors
-
-    def test_dump_conf(self):
-        """
-        asserts that a conf that is dumped and parsed again yields identical results
-        """
-
-        conf = get_test_conf("naive_local.yaml")
-
-        with TemporaryDirectory() as d:
-            dump_conf(conf, Path(d) / "dumped.yaml")
-            with (Path(d) / "dumped.yaml").open("r") as f:
-                loaded_conf = yaml.safe_load(f)
-            parsed_conf = parse_configuration(loaded_conf)
-
-            # assertDictEqual cannot handle equality with np.array, e.g. by using np.all,
-            # so we need to do it manually.
-            age_group_contact_avg1 = conf.pop('AGE_GROUP_CONTACT_AVG')
-            age_group_contact_avg2 = parsed_conf.pop('AGE_GROUP_CONTACT_AVG')
-            self.assertListEqual(age_group_contact_avg1['age_groups'], age_group_contact_avg2['age_groups'])
-            np.testing.assert_almost_equal(age_group_contact_avg1['contact_avg'], age_group_contact_avg2['contact_avg'])
-
-            self.assertDictEqual(conf, parsed_conf)
-=======
->>>>>>> cfc3881b91f54ac3aab062a6515c02c2ecd19263
