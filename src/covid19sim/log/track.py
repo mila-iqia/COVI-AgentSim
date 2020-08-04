@@ -1555,6 +1555,9 @@ class Tracker(object):
         print_dict("P(symptoms = x | human had some sickness e.g. cold, flu, allergies, covid), where x is", tmp_s, is_sorted="desc", top_k=10, logfile=self.logfile)
 
         log("\n######## CONTACT PATTERNS #########", self.logfile)
+        if not (self.conf['track_all'] or self.conf['track_mixing']):
+            log(f"CAUTION: NOT TRACKED", self.logfile)
+
         str_to_print = "weekday - "
         for location_type in LOCATION_TYPES_TO_TRACK_MIXING:
             x = self.mean_daily_contacts["weekday"][location_type][1]
@@ -1568,6 +1571,9 @@ class Tracker(object):
         log(str_to_print, self.logfile)
 
         log("\n######## MOBILITY STATISTICS #########", self.logfile)
+        if not (self.conf['track_all'] or self.conf['track_mobility']):
+            log(f"CAUTION: NOT TRACKED", self.logfile)
+
         activities = ["work", "socialize", "grocery", "exercise", "idle", "sleep"]
 
         log("Proportion of day spent in activities - ", self.logfile)
@@ -1594,8 +1600,8 @@ class Tracker(object):
         group_sizes = self.socialize_activity_data['group_size']
         str_to_print += f"mean: {group_sizes.mean():2.2f} | "
         str_to_print += f"std: {group_sizes.stddev(): 2.2f} | "
-        str_to_print += f"min: {group_sizes.minimum(): 2.2f} | "
-        str_to_print += f"max: {group_sizes.maximum(): 2.2f} | "
+        str_to_print += f"min: {str(group_sizes.minimum()): 2.2f} | " # without str it throws an error when group_sizes is empty
+        str_to_print += f"max: {str(group_sizes.maximum()): 2.2f} | " # without str it throws an error when group_sizes is empty
         log(str_to_print, self.logfile)
 
         str_to_print = "location - "
@@ -1624,8 +1630,8 @@ class Tracker(object):
                 str_to_print = f"{type_of_activty} - "
                 str_to_print += f"mean: {metrics.mean()/SECONDS_PER_HOUR: 2.2f} | "
                 str_to_print += f"std: {metrics.stddev()/SECONDS_PER_HOUR: 2.2f} | "
-                str_to_print += f"min: {metrics.minimum()/SECONDS_PER_HOUR: 2.2f} | "
-                str_to_print += f"max: {metrics.maximum()/SECONDS_PER_HOUR: 2.2f} | "
+                str_to_print += f"min: {str(metrics.minimum()/SECONDS_PER_HOUR): 2.2f} | " # without str it throws an error when group_sizes is empty
+                str_to_print += f"max: {str(metrics.maximum()/SECONDS_PER_HOUR): 2.2f} | " # without str it throws an error when group_sizes is empty
                 log(str_to_print, self.logfile)
 
         self.compute_test_statistics(self.logfile)
