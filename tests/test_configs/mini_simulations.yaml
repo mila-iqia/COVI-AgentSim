@@ -4,6 +4,7 @@ COLLECT_LOGS : True
 COLLECT_TRAINING_DATA : False
 USE_INFERENCE_SERVER : False
 RISK_MODEL : "transformer" # "naive", "manual", "digital", "transformer"
+N_BEHAVIOR_LEVELS: 4
 INIT_PERCENT_SICK : 0.1
 SHOULD_MODIFY_BEHAVIOR : True
 USE_ORACLE : False
