@@ -1,0 +1,62 @@
+# ----------------------------
+# -----  Infrastructure  -----
+# ----------------------------
+cpus: 4
+env_name: covid
+infra: beluga
+mem: 8
+n_search: -1 # -1 figures out the size of cartesian product for you
+time: "'06:50:00'"
+USE_INFERENCE_SERVER: False
+
+# -------------------------
+# -----  Directories  -----
+# -------------------------
+base_dir: $HOME/simulator/results/heuristic_debug_rev4/heuristic_debug_singles # if outdir is not provided, runs will be stored in base_dir/${tracing_method}
+code_loc: $HOME/simulator/src/covid19sim/
+use_tmpdir: false
+weights_dir: /home/mweiss10/scratch/weights
+
+# -------------------------------------
+# -----  Simulation Fixed Params  -----
+# -------------------------------------
+COLD_CONTAGIOUSNESS: 0
+DROPOUT_RATE: 0.02
+init_percent_sick: 0.005
+INTERVENTION_DAY: 5
+n_people: 1000
+P_CAREFUL_PERSON: 0.6
+simulation_days: 30
+test_capacity: 0.005
+tune: true
+KEEP_FULL_OBJ_COPIES: True 
+COLLECT_LOGS: True
+
+# --------------------------------------
+# -----  Sampling Parametrization  -----
+# --------------------------------------
+tracing_method:
+  sample: cartesian
+  from:
+          #- no_intervention
+    - heuristicv1
+    - binary_digital_tracing_order_1
+    - heuristicv3
+APP_UPTAKE:
+  sample: cartesian
+  from:
+    # - 0.0150 # 1%
+    # - 0.4215 # 30%
+    #- 0.5618 # 40%
+    #- 0.8415 # 60%
+      #- 0.9831 # 70%
+    - -1     # 100%
+
+seed:
+  sample: cartesian
+  from:
+    - 5000
+      #- 5001
+      #- 5002
+      # - 5003
+      #- 5004
