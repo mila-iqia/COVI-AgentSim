@@ -513,23 +513,25 @@ def get_proxy_r(data):
         if recovered:
             all_recovered.add(k)
 
-    dfs_tree, paths = construct_infection_tree(infection_chain, init_infected=init_infected, draw_fig=True)
+    dfs_tree, paths = construct_infection_tree(infection_chain, init_infected=init_infected, draw_fig=False)
 
     infectees = 0
-    infectors = len(init_infected)
-    candidates = (dfs_tree.nodes - init_infected - {"ROOT"}).intersection(all_recovered)
-    for c in candidates:
-        if dfs_tree.out_degree(c) == 0:
-            infectees += 1
-        else:
-            infectors += 1
+    recovered_infectors = all_recovered
+    # Average out degree
+    for node in dfs_tree.nodes:
+        if node == "ROOT":
+            continue
+        if node in recovered_infectors:
+
+            infectees += dfs_tree.out_degree(node)
+
     print(f"len(recovered): {len(all_recovered)}")
     print(f"len(dfsnodes): {len(dfs_tree.nodes)}")
-    print(f"infectors: {infectors}")
+    print(f"infectors: {len(recovered_infectors)}")
     print(f"infectees: {infectees}")
     print("-------------------------")
 
-    return infectees / infectors
+    return infectees / len(recovered_infectors)
 
 def get_effective_R(data):
     GT = data["generation_times"]
@@ -574,7 +576,6 @@ def construct_infection_tree(infection_chain, init_infected={}, draw_fig=True, o
             G.add_node(n1['to'], days=(n1['infection_timestamp'] - start_date).days)
             G.add_edge(n1['from'], n1['to'])
 
-    # import pdb; pdb.set_trace()
 
     dfs_tree = nx.dfs_tree(G, root)
 
@@ -616,7 +617,6 @@ def construct_infection_tree(infection_chain, init_infected={}, draw_fig=True, o
         outf = os.path.join(output_path, "starplot.png")
         print(f"saving star plot to {outf}")
         plt.savefig(outf)
-        import pdb; pdb.set_trace()
 
     return dfs_tree, paths
 
