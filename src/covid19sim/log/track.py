@@ -313,8 +313,8 @@ class Tracker(object):
             )
 
     def initialize(self):
-        self.n_init_infected = self.city.n_init_infected
-        self.cases_per_day[-1] = self.n_init_infected
+        # self.n_init_infected = self.city.n_init_infected
+        # self.cases_per_day[-1] = self.n_init_infected
         self.s_per_day = [sum(h.is_susceptible for h in self.city.humans)]
         self.e_per_day = [sum(h.is_exposed for h in self.city.humans)]
         self.i_per_day = [sum(h.is_infectious for h in self.city.humans)]
@@ -339,7 +339,8 @@ class Tracker(object):
         log(f"HOUSEHOLD_ASSORTATIVITY_STRENGTH: {self.conf['HOUSEHOLD_ASSORTATIVITY_STRENGTH']}", self.logfile)
         log(f"WORKPLACE_ASSORTATIVITY_STRENGTH: {self.conf['WORKPLACE_ASSORTATIVITY_STRENGTH']}", self.logfile)
         log(f"P_INVITATION_ACCEPTANCE: {self.conf['P_INVITATION_ACCEPTANCE']}", self.logfile)
-        log(f"PREFERENTIAL_ATTACHMENT_FACTOR: {self.conf['PREFERENTIAL_ATTACHMENT_FACTOR']}", self.logfile)
+        log(f"BEGIN_PREFERENTIAL_ATTACHMENT_FACTOR: {self.conf['BEGIN_PREFERENTIAL_ATTACHMENT_FACTOR']}", self.logfile)
+        log(f"END_PREFERENTIAL_ATTACHMENT_FACTOR: {self.conf['END_PREFERENTIAL_ATTACHMENT_FACTOR']}", self.logfile)
         log(f"P_HOUSE_OVER_MISC_FOR_SOCIALS: {self.conf['P_HOUSE_OVER_MISC_FOR_SOCIALS']}", self.logfile)
         log(f"CONTAGION_KNOB: {self.conf['CONTAGION_KNOB']}", self.logfile)
         log(f"ENVIRONMENTAL_INFECTION_KNOB: {self.conf['ENVIRONMENTAL_INFECTION_KNOB']}", self.logfile)
@@ -516,11 +517,20 @@ class Tracker(object):
         self.frac_asymptomatic = sum(h.is_asymptomatic for h in self.city.humans)/self.n_people
         log(f"Percentage of population that is asymptomatic {100*self.frac_asymptomatic: 2.3f}", self.logfile)
 
+    def log_seed_infections(self):
+        """
+        Logs who is seeded as infected.
+        """
+        log("\n *** ****** *** ****** *** COVID infection seeded *** *** ****** *** ******\n", self.logfile)
+
         self.n_infected_init = self.city.n_init_infected
         log(f"Total number of infected humans {self.n_infected_init}", self.logfile)
         for human in self.city.humans:
             if human.is_exposed:
                 log(f"\t{human} @ {human.household} living with {len(human.household.residents) - 1} other residents", self.logfile)
+
+        log(f"\nPREFERENTIAL_ATTACHMENT_FACTOR: {self.conf['END_PREFERENTIAL_ATTACHMENT_FACTOR']}", self.logfile)
+        log("\n*** *** ****** *** ****** *** ****** *** ****** *** ****** *** ****** *** ****** *** ***\n", self.logfile)
 
     def get_R(self):
         """
@@ -1176,7 +1186,7 @@ class Tracker(object):
         self.activity_attributes["end_time"][next_activity.name].push(_get_seconds_since_midnight(next_activity.end_time))
         self.activity_attributes["duration"][next_activity.name].push(next_activity.duration)
 
-    def track_mixing(self, human1, human2, duration, distance_profile, timestamp, location, interaction_type, contact_condition):
+    def track_mixing(self, human1, human2, duration, distance_profile, timestamp, location, interaction_type, contact_condition, global_mbility_factor):
         """
         Stores counts and statistics to generate various aspects of contacts and social mixing.
         Following are being tracked -
@@ -1190,7 +1200,6 @@ class Tracker(object):
             8. (scalar) Mean daily contact duration per person per day for each location type(only for "known" contacts)
             9. (histogram) counts of encounter distance in bins of 10 cms for each location type and interaction type ("known", "all", "within_contact_condition")
             10.(histogram) counts of encounter duration in bins of 1 min for each location type and interaction type ("known", "all", "within_contact_condition")
-            11. TODO: Clean Up. (list of strings) Records distance terms related to encounters i.e. packing term, social distancing distance, and total distance
 
         NOTE: These values are aggregated every simulation day. At the end of the simulation one needs to call this function with all arguments as None to perform updates.
 
@@ -1203,6 +1212,7 @@ class Tracker(object):
             location (Location): `Location` where this encounter took place
             interaction_type (string): type of interaction i.e. "known" or "unknown". We keep track of "known" contacts and "all" contacts (that combines "known" and "unknown")
             contact_condition (bool): whether the encounter was within the contact conditions for infection to happen
+            global_mobility_factor (bool): A globally influenced factor that along with contact_condition determines infection when there is a chance of one.
         """
         if not (self.conf['track_all'] or self.conf['track_mixing']):
             return

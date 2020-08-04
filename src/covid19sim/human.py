@@ -53,11 +53,11 @@ class Human(BaseHuman):
         name (str): identifier for this `human`
         age (int): age of the `human`
         rng (np.random.RandomState): Random number generator
-        infection_timestamp (datetime.datetime): initial timestamp when the human was infected. None if not infected
+        #? infection_timestamp (datetime.datetime): initial timestamp when the human was infected. None if not infected
         conf (dict): yaml configuration of the experiment
     """
 
-    def __init__(self, env, city, name, age, rng, infection_timestamp, conf):
+    def __init__(self, env, city, name, age, rng, conf):
         super().__init__(env)
 
         # Utility References
@@ -68,7 +68,7 @@ class Human(BaseHuman):
         # SEIR Tracking
         self.recovered_timestamp = datetime.datetime.min  # Time of recovery from covid -- min if not yet recovered
         self._infection_timestamp = None  # private time of infection with covid - implemented this way to ensure only infected 1 time
-        self.infection_timestamp = infection_timestamp  # time of infection with covid
+        self.infection_timestamp = None  # time of infection with covid
         self.n_infectious_contacts = 0  # number of high-risk (infected someone) contacts with an infected individual.
         self.exposure_source = None  # source that exposed this human to covid (and infected them). None if not infected.
 
@@ -128,10 +128,7 @@ class Human(BaseHuman):
         self.can_get_really_sick = may_develop_severe_illness(self.age, self.sex, self.rng)  # boolean representing whether this person may need to go to the hospital
         self.can_get_extremely_sick = self.can_get_really_sick and self.rng.random() >= 0.7  # &severe; 30% of severe cases need ICU
         self.never_recovers = self.rng.random() <= self.conf.get("P_NEVER_RECOVERS")[min(math.floor(self.age/10), 8)]  # boolean representing that this person will die if they are infected with Covid-19
-        self.initial_viral_load = self.rng.rand() if infection_timestamp is not None else 0  # starting value for Covid-19 viral load if this person is one of the initially exposed people
         self.is_immune = False  # whether this person is immune to Covid-19 (happens after recovery)
-        if self.infection_timestamp is not None:  # if this is an initially Covid-19 sick person
-            compute_covid_properties(self)  # then we pre-calculate the course of their disease
 
         # Covid-19 testing
         self.test_type = None  # E.g. PCR, Antibody, Physician
@@ -706,8 +703,7 @@ class Human(BaseHuman):
         # infection
         if x_human and infectee.is_susceptible:
             infector.n_infectious_contacts += 1
-            infectee.infection_timestamp = self.env.timestamp
-            compute_covid_properties(infectee)
+            infectee._get_infected(initial_viral_load=infector.rng.random())
             if infectee_msg is not None:  # could be None if we are not currently tracing
                 infectee_msg._exposition_event = True
 
@@ -717,6 +713,17 @@ class Human(BaseHuman):
             infector, infectee = None, None
 
         return infector, infectee, p_infection
+
+    def _get_infected(self, initial_viral_load):
+        """
+        Initializes necessary attributes for COVID progression.
+
+        Args:
+            initial_viral_load (float): initial value of viral load
+        """
+        self.infection_timestamp = self.env.timestamp
+        self.initial_viral_load = initial_viral_load
+        compute_covid_properties(self)
 
     def initialize_daily_risk(self, current_day_idx: int):
         """Initializes the risk history map with a new/copied risk value for the given day, if needed.
@@ -1119,16 +1126,17 @@ class Human(BaseHuman):
                 distance_profile.distance <= self.conf.get("INFECTION_RADIUS")
                 and t_near >= self.conf.get("INFECTION_DURATION")
             )
+
+            # used for matching "mobility" between methods
+            scale_factor_passed = contact_condition and self.rng.random() < self.conf.get("GLOBAL_MOBILITY_SCALING_FACTOR")
+
             self.city.tracker.track_mixing(human1=self, human2=other_human, duration=t_near,
                             distance_profile=distance_profile, timestamp=self.env.timestamp, location=self.location,
-                            interaction_type=type, contact_condition=contact_condition)
+                            interaction_type=type, contact_condition=contact_condition, global_mbility_factor=scale_factor_passed)
 
-            # Conditions met for possible infection
-            # https://www.cdc.gov/coronavirus/2019-ncov/hcp/guidance-risk-assesment-hcp.html
+            # Conditions met for possible infection (https://www.cdc.gov/coronavirus/2019-ncov/hcp/guidance-risk-assesment-hcp.html)
             if contact_condition:
 
-                # used for matching "mobility" between methods
-                scale_factor_passed = self.rng.random() < self.conf.get("GLOBAL_MOBILITY_SCALING_FACTOR")
                 cur_day = int(self.env.now - self.env.ts_initial) // SECONDS_PER_DAY
                 if cur_day > self.conf.get("INTERVENTION_DAY"):
                     self.num_contacts += 1

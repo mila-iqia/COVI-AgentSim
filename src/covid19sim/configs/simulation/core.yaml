@@ -142,8 +142,9 @@ WORKPLACE_ASSORTATIVITY_STRENGTH: 5
 
 # social mixing knob (B)
 P_INVITATION_ACCEPTANCE: 0.5 # probability of accepting inivitaton from peers to "socialize"
-PREFERENTIAL_ATTACHMENT_FACTOR: 0.5 # probability to interact with only the known connections
 P_HOUSE_OVER_MISC_FOR_SOCIALS: 0.5 # probability to prefer household as a location for socials as compared to MISC
+BEGIN_PREFERENTIAL_ATTACHMENT_FACTOR: 0.5 # probability to interact with only the known connections at the start of the simulation
+END_PREFERENTIAL_ATTACHMENT_FACTOR: 0.9 # probability to interact with only the known connections at the start of seeding COVID infections
 
 # Infection knobs ()
 CONTAGION_KNOB: 120
@@ -561,6 +562,9 @@ MANUAL_TRACING_DELAY_STD: 0.5 # days
 #########################################################
 #####             Other Parameters                  #####
 #########################################################
+
+COVID_START_DAY: 7 # COVID infection is seeded in the population on these many days after the simulation starts
+INTERVENTION_DAY: -1 # intervention starts on these many days after COVID_START_DAY. It never starts if its negative.
 
 # Console logging (Condition with COLLECT_LOGS)
 LOGGING_LEVEL: "WARNING"

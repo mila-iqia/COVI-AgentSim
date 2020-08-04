@@ -212,7 +212,7 @@ class Location(simpy.Resource):
         if len(self.humans) - 1 == n:
             return [h for h in self.humans if h != human]
 
-        PREFERENTIAL_ATTACHMENT_FACTOR = self.conf['PREFERENTIAL_ATTACHMENT_FACTOR']
+        PREFERENTIAL_ATTACHMENT_FACTOR = self.conf['_CURRENT_PREFERENTIAL_ATTACHMENT_FACTOR']
 
         def _extract_attrs(human, candidate):
             return (
@@ -399,8 +399,7 @@ class Location(simpy.Resource):
                                 )
         #
         if x_environment:
-            human.infection_timestamp = human.env.timestamp
-            compute_covid_properties(human)
+            human._get_infected(initial_viral_load=self.rng.random())
             Event.log_exposed(self.conf.get('COLLECT_LOGS'), human, self, p_transmission, self.env.timestamp)
 
         return

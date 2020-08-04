@@ -66,7 +66,7 @@ class HouseType(object):
         self.n_people_generation = [n_grandparents, n_parents, n_kids]
         assert sum(self.n_people_generation) == self.n_humans, "size does not match"
 
-def get_humans_with_age(city, age_histogram, conf, rng, chosen_infected):
+def get_humans_with_age(city, age_histogram, conf, rng):
     """
     Creats human objects corresponding to the numbers in `age_histogram`.
 
@@ -75,7 +75,6 @@ def get_humans_with_age(city, age_histogram, conf, rng, chosen_infected):
         age_histogram (dict): a dictionary with keys as age bins (a tuple) and values as number of humans in that bin (int)
         conf (dict): yaml configuration of the experiment
         rng (np.random.RandomState): Random number generator
-        chosen_infected (set): human ids that are initialized to be infected
 
     Returns:
         dict: keys are age bins (tuple) and values are a list of human_type objects
@@ -96,7 +95,6 @@ def get_humans_with_age(city, age_histogram, conf, rng, chosen_infected):
                 rng=np.random.RandomState(rng.randint(2 ** 16)),
                 name=human_id,
                 age=ages[i],
-                infection_timestamp=city.start_time if human_id in chosen_infected else None,
                 conf=conf
                 ))
 

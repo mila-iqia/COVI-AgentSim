@@ -194,6 +194,23 @@ def simulate(
     conf["other_monitors"] = other_monitors
     conf['logfile'] = logfile
 
+    # set days and mixing constants
+    conf['_CURRENT_PREFERENTIAL_ATTACHMENT_FACTOR'] = conf['BEGIN_PREFERENTIAL_ATTACHMENT_FACTOR']
+    start_time_offset_days = conf['COVID_START_DAY']
+    intervention_start_days = conf['INTERVENTION_DAY']
+
+    # start of COVID spread
+    conf['COVID_SPREAD_START_TIME'] = start_time
+
+    # start of intervention
+    conf['INTERVENTION_START_TIME'] = None
+    if intervention_start_days >= 0:
+        conf['INTERVENTION_START_TIME'] = start_time + datetime.timedelta(days=intervention_start_days)
+
+    # start of simulation without COVID
+    start_time -= datetime.timedelta(days=start_time_offset_days)
+    conf['SIMULATION_START_TIME'] = str(start_time)
+
     logging.root.setLevel(getattr(logging, conf["LOGGING_LEVEL"].upper()))
 
     rng = np.random.RandomState(seed)

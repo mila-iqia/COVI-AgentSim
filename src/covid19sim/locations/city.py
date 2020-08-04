@@ -274,10 +274,6 @@ class City:
         """
         Samples a synthetic population along with their dwellings and workplaces according to census.
         """
-        # initial infections
-        self.n_init_infected = math.ceil(self.init_fraction_sick * self.n_people)
-        chosen_infected = set(self.rng.choice(self.n_people, self.n_init_infected, replace=False).tolist())
-
         self.age_histogram = relativefreq2absolutefreq(
             bins_fractions={(x[0], x[1]): x[2] for x in self.conf.get('P_AGE_REGION')},
             n_elements=self.n_people,
@@ -285,7 +281,7 @@ class City:
         )
 
         # initalize human objects
-        self.humans = get_humans_with_age(self, self.age_histogram, self.conf, self.rng, chosen_infected)
+        self.humans = get_humans_with_age(self, self.age_histogram, self.conf, self.rng)
 
         # find best grouping to put humans together in a house
         # /!\ households are created at the time of allocation.
@@ -293,6 +289,7 @@ class City:
         self.humans = assign_households_to_humans(self.humans, self, self.conf, self.logfile)
 
         # assign workplace to humans
+        # self.`location_type`s are created in this function
         self.humans, self = create_locations_and_assign_workplace_to_humans(self.humans, self, self.conf, self.logfile)
 
         # prepare schedule
@@ -306,6 +303,21 @@ class City:
         log(f"Schedule prepared (Took {timedelta:2.3f}s)", self.logfile)
 
         self.hd = {human.name: human for human in self.humans}
+
+    def _initiate_infection_spread_and_modify_mixing_if_needed(self):
+        """
+        Seeds infection in the population and sets other attributes corresponding to social mixing dynamics.
+        """
+        # seed infection
+        self.n_init_infected = math.ceil(self.init_fraction_sick * self.n_people)
+        chosen_infected = self.rng.choice(self.humans, size=self.n_init_infected, replace=False)
+        for human in chosen_infected:
+            human._get_infected(initial_viral_load=human.rng.random())
+
+        # modify likelihood of meeting new people
+        self.conf['_CURRENT_PREFERENTIAL_ATTACHMENT_FACTOR'] = self.conf['END_PREFERENTIAL_ATTACHMENT_FACTOR']
+
+        self.tracker.log_seed_infections()
 
     def have_some_humans_download_the_app(self):
         """
@@ -455,14 +467,23 @@ class City:
         Yields:
             simpy.Timeout
         """
-        humans_notified = False
+        humans_notified, infections_seeded = False, False
         last_day_idx = 0
         while True:
             current_day = (self.env.timestamp - self.start_time).days
+
+            # seed infections and change mixing constants (end of burn-in period)
+            if (
+                not infections_seeded
+                and self.env.timestamp == self.conf['COVID_SPREAD_START_TIME']
+            ):
+                self._initiate_infection_spread_and_modify_mixing_if_needed()
+                infections_seeded = True
+
             # Notify humans to follow interventions on intervention day
             if (
                 not humans_notified
-                and current_day == self.conf.get('INTERVENTION_DAY')
+                and self.env.timestamp == self.conf.get('INTERVENTION_START_TIME')
             ):
                 # if its a tracing method, load the class that can compute risk
                 if self.conf['RISK_MODEL'] != "":
