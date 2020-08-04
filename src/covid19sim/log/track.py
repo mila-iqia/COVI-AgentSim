@@ -1537,7 +1537,7 @@ class Tracker(object):
         all_environmental_transmissions = self.environment_human_infection_histogram["all"]["caused_infection"].sum()
         total_transmissions = all_human_transmissions + all_environmental_transmissions + 1e-6 # to prevent ZeroDivisionError
         percentage_environmental_transmission = 100 * all_environmental_transmissions / total_transmissions
-        R0 = self.average_infectious_contacts["all"]['infection_count'] / len(self.average_infectious_contacts["all"]['humans'])
+        R0 = self.average_infectious_contacts["all"]['infection_count'] / (len(self.average_infectious_contacts["all"]['humans']) + 1e-6)
 
         log(f"# human-human transmissions {all_human_transmissions}", self.logfile )
         log(f"# environment-human transmissions {all_environmental_transmissions}", self.logfile )

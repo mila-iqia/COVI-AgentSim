@@ -12,6 +12,15 @@ from covid19sim.epidemiology.viral_load import compute_covid_properties
 from covid19sim.log.event import Event
 
 DistanceProfile = namedtuple("DistanceProfile", ['encounter_term', 'social_distancing_term', 'packing_term', 'distance'])
+
+def _extract_attrs(human, candidate, location):
+    return (
+        candidate,
+        candidate.age_bin_width_5.index,
+        candidate in human.known_connections,
+        human.intervened_behavior.daily_interaction_reduction_factor(location)
+    )
+
 class Location(simpy.Resource):
     """
     Class representing generic locations used in the simulator
@@ -209,23 +218,15 @@ class Location(simpy.Resource):
         if len(self.humans) == 1:
             return [None]
 
-        if len(self.humans) - 1 == n:
-            return [h for h in self.humans if h != human]
-
         PREFERENTIAL_ATTACHMENT_FACTOR = self.conf['_CURRENT_PREFERENTIAL_ATTACHMENT_FACTOR']
 
-        def _extract_attrs(human, candidate):
-            return (
-                candidate,
-                candidate.age_bin_width_5.index,
-                candidate in human.known_connections,
-                human.intervened_behavior.daily_interaction_reduction_factor(self)
-            )
-
         if type == "known":
+            if len(self.humans) - 1 == n:
+                return [h for h in self.humans if h != human and h in human.known_connections]
+
             human_bin = human.age_bin_width_5.index
             candidate_humans = [h for h in self.humans if human != h]
-            other_humans, h_vector, known_vector, reduction_factor = list(zip(*[_extract_attrs(human, h) for h in candidate_humans]))
+            other_humans, h_vector, known_vector, reduction_factor = list(zip(*[_extract_attrs(human, h, self) for h in candidate_humans]))
 
             p_contact = self.P_CONTACT[h_vector, human_bin] * (1 - PREFERENTIAL_ATTACHMENT_FACTOR)
             p_contact += np.array(known_vector) * self.P_CONTACT[h_vector, human_bin] * PREFERENTIAL_ATTACHMENT_FACTOR
@@ -237,6 +238,9 @@ class Location(simpy.Resource):
             p_contact /= p_contact.sum()
 
         elif type == "unknown":
+            if len(self.humans) - 1 == n:
+                return [h for h in self.humans if h != human]
+
             other_humans = [x for x in self.humans if x != human]
             p_contact = np.ones_like(other_humans, dtype=np.float) / len(other_humans)
 
@@ -300,7 +304,6 @@ class Location(simpy.Resource):
             social_distancing_term = np.mean([human.maintain_extra_distance, other_human.maintain_extra_distance]) #* self.rng.rand()
             distance = np.clip(encounter_term + social_distancing_term, a_min=0, a_max=packing_term)
             distance_profile = DistanceProfile(encounter_term=encounter_term, packing_term=packing_term, social_distancing_term=social_distancing_term, distance=distance)
-
 
             if type == "known":
                 age_bin = human.age_bin_width_5.index

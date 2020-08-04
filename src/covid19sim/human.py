@@ -650,7 +650,6 @@ class Human(BaseHuman):
                 if self.rng.random() < self.conf.get("FLU_CONTAGIOUSNESS"):
                     flu_infectee.flu_timestamp = self.env.timestamp
 
-
     def check_covid_contagion(self, other_human, t_near, h1_msg, h2_msg):
         """
         Determines if covid contagion takes place.
@@ -868,7 +867,7 @@ class Human(BaseHuman):
 
     def recover_health(self):
         """
-        [summary]
+        Implements basic functionalities to recover from non-COVID diseases
         """
         if (self.has_cold and
             self.days_since_cold >= len(self.cold_progression)):
@@ -933,42 +932,11 @@ class Human(BaseHuman):
 
     def set_tracing_method(self, tracing_method):
         """
+        Sets tracing method and initializes recommendation levels.
         """
         self.intervention = tracing_method
         # (delete) remove intervention_start
         self.update_recommendations_level(intervention_start=True)
-
-    # (delete)
-    # def set_intervention(self, intervention):
-    #     """
-    #     This function is called once on the intervention day to notify `Human`.
-    #     If the interevention is of type `Tracing`, everyone is initalized from 0 recommendation level
-    #     and associated behavior modifications. Subsequent changes in behavior are dependent on recommendation level
-    #     changes during the course of simulation.
-    #
-    #     All other interventions modify behavior only once on intervention day.
-    #     NOTE: DROPOUT_RATE might affect the behavior modifications.
-    #
-    #     Args:
-    #         intervention (BehaviorIntervention, optional): intervention that `Human` should follow. Defaults to None.
-    #     """
-    #     self.intervention = intervention
-    #     self.update_recommendations_level(intervention_start=True)
-    #     behaviors = intervention.get_behaviors(self)
-    #     self.apply_behaviors(behaviors)
-    #
-    # def apply_behaviors(self, new_behaviors: list):
-    #     """ We provide a list of recommendations and a human, we revert the human's existing recommendations
-    #         and apply the new ones"""
-    #     for old_rec in reversed(self.recommendations_to_follow):
-    #         old_rec.revert(self)
-    #     self.recommendations_to_follow = OrderedSet()
-    #
-    #     for new_behavior in new_behaviors:
-    #         assert isinstance(new_behavior, Behavior)
-    #         if self.follows_recommendations_today:
-    #             new_behavior.modify(self)
-    #             self.recommendations_to_follow.add(new_behavior)
 
     def run(self):
         """
@@ -1023,7 +991,6 @@ class Human(BaseHuman):
                     next_activity = self.mobility_planner.get_next_activity()
                     continue
                 previous_activity.adjust_time(seconds=1, start=False)
-
 
     ############################## MOBILITY ##################################
     @property
