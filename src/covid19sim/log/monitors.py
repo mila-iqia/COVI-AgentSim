@@ -96,8 +96,7 @@ Legend -
             constrained_at_home = sum(h.mobility_planner.human_to_rest_at_home for h in city.humans)
 
             # simulation time related
-            # env_time = str(env.timestamp).split()[0]
-            env_time = env.timestamp
+            env_time = str(env.timestamp).split()[0]
             day = "Day {:2}:".format((city.env.timestamp - city.start_time).days)
             proc_time = "{:8}".format("({}s)".format(int(time.time() - process_start)))
 

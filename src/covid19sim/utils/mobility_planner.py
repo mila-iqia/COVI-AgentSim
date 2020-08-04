@@ -316,7 +316,11 @@ class MobilityPlanner(object):
 
         if for_kids:
             assert not self.follows_adult_schedule, "kids do not have preplanned schedule"
-            return [self.current_activity]  + list(self.schedule_for_day) + list(self.full_schedule[0])
+            # on the last simulation day, at the time of this function call, adult might not have next_schedule.
+            next_schedule = []
+            if len(self.full_schedule) > 0:
+                next_schedule = list(self.full_schedule[0])
+            return [self.current_activity]  + list(self.schedule_for_day) + next_schedule
 
         if len(self.schedule_for_day) == 0:
             self.schedule_for_day = self._prepare_schedule()
