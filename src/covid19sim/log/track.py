@@ -1601,10 +1601,10 @@ class Tracker(object):
         str_to_print += f"mean: {group_sizes.mean():2.2f} | "
         str_to_print += f"std: {group_sizes.stddev(): 2.2f} | "
 
-        min_size = 0 if np.isnan(group_sizes.minimum()) else group_sizes.minimum()
+        min_size = 0 if len(group_sizes) else group_sizes.minimum()
         str_to_print += f"min: {min_size: 2.2f} | "
 
-        max_size = 0 if np.isnan(group_sizes.maximum()) else group_sizes.maximum()
+        max_size = 0 if len(group_sizes) else group_sizes.maximum()
         str_to_print += f"max: {max_size: 2.2f} | "
         log(str_to_print, self.logfile)
 
@@ -1635,10 +1635,10 @@ class Tracker(object):
                 str_to_print += f"mean: {metrics.mean()/SECONDS_PER_HOUR: 2.2f} | "
                 str_to_print += f"std: {metrics.stddev()/SECONDS_PER_HOUR: 2.2f} | "
 
-                min_value = 0 if np.isnan(metrics.minimum()) else metrics.minimum()
+                min_value = 0 if len(group_sizes) else metrics.minimum()
                 str_to_print += f"min: {min_value / SECONDS_PER_HOUR : 2.2f} | "
 
-                max_value = 0 if np.isnan(metrics.maximum()) else metrics.maximum()
+                max_value = 0 if len(group_sizes) else metrics.maximum()
                 str_to_print += f"max: {max_value / SECONDS_PER_HOUR : 2.2f} | "
 
                 log(str_to_print, self.logfile)
