@@ -80,7 +80,6 @@ Legend -
                 str_to_print = f"{proc_time} {day} {env_time} {mobility}"
                 log(str_to_print, self.logfile)
                 yield env.timeout(self.frequency)
-                n_days += 1
                 continue
 
             # test stats
