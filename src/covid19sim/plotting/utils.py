@@ -513,7 +513,7 @@ def get_proxy_r(data):
         if recovered:
             all_recovered.add(k)
 
-    dfs_tree, paths = construct_infection_tree(infection_chain, init_infected=init_infected, draw_fig=False)
+    dfs_tree, paths = construct_infection_tree(infection_chain, init_infected=init_infected, draw_fig=True)
 
     infectees = 0
     infectors = len(init_infected)
@@ -523,6 +523,12 @@ def get_proxy_r(data):
             infectees += 1
         else:
             infectors += 1
+    print(f"len(recovered): {len(all_recovered)}")
+    print(f"len(dfsnodes): {len(dfs_tree.nodes)}")
+    print(f"infectors: {infectors}")
+    print(f"infectees: {infectees}")
+    print("-------------------------")
+
     return infectees / infectors
 
 def get_effective_R(data):
@@ -568,6 +574,7 @@ def construct_infection_tree(infection_chain, init_infected={}, draw_fig=True, o
             G.add_node(n1['to'], days=(n1['infection_timestamp'] - start_date).days)
             G.add_edge(n1['from'], n1['to'])
 
+    # import pdb; pdb.set_trace()
 
     dfs_tree = nx.dfs_tree(G, root)
 
@@ -609,6 +616,7 @@ def construct_infection_tree(infection_chain, init_infected={}, draw_fig=True, o
         outf = os.path.join(output_path, "starplot.png")
         print(f"saving star plot to {outf}")
         plt.savefig(outf)
+        import pdb; pdb.set_trace()
 
     return dfs_tree, paths
 
