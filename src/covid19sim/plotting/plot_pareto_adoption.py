@@ -332,7 +332,6 @@ def run(data, path, comparison_key):
             y, ye = get_metrics(df, lab, "proxy_r")
             xs.append(x.item())
             ys.append(y.item())
-
         axs.plot(xs, ys, label="method")
 
     lgd = axs.legend(

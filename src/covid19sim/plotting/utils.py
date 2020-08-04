@@ -523,6 +523,12 @@ def get_proxy_r(data):
             infectees += 1
         else:
             infectors += 1
+
+    print(f"len(recovered): {len(all_recovered)}")
+    print(f"len(dfsnodes): {len(dfs_tree.nodes)}")
+    print(f"infectors: {infectors}")
+    print(f"infectees: {infectees}")
+    print("-------------------------")
     return infectees / infectors
 
 def get_effective_R(data):
