@@ -912,9 +912,9 @@ def _modify_schedule(human, remaining_schedule, new_activity, new_schedule):
     full_schedule += partial_schedule
 
     assert remaining_schedule[-1].end_time == full_schedule[0].start_time, "times do not align"
-    assert full_schedule[-1].name == "sleep", "sleep not found as the last activity"
+    assert full_schedule[-1].name == "sleep", f"sleep not found as the last activity. \nfull_schedule:\n{full_schedule}"
 
-    # uncomment for rigorous checks
+    # comment for rigorous checks or use -O as an option to run python scripts to avoid checking for assertions
     for a1, a2 in zip(full_schedule, full_schedule[1:]):
         assert a1.end_time == a2.start_time, "times do not align"
         assert a1.duration >= 0, "negative duration encountered"
