@@ -67,6 +67,22 @@ Legend -
                 log(self.legend, self.logfile)
                 self.print_legend = False
 
+            # social network & mobility
+            average_degree = np.mean([len(h.known_connections) for h in city.humans])
+            mobility = f"| MC: {average_degree: 3.3f}"
+
+            # simulation time related
+            env_time = str(env.timestamp).split()[0]
+            day = "Day {:2}:".format((city.env.timestamp - city.start_time).days)
+            proc_time = "{:8}".format("({}s)".format(int(time.time() - process_start)))
+
+            if not city.tracker.start_tracking:
+                str_to_print = f"{proc_time} {day} {env_time} {mobility}"
+                log(str_to_print, self.logfile)
+                yield env.timeout(self.frequency)
+                n_days += 1
+                continue
+
             # test stats
             t_P = city.tracker.test_results_per_day[env.timestamp.date()]['positive']
             t_T = 0 if len(city.tracker.tested_per_day) < 2 else city.tracker.tested_per_day[-2]
@@ -91,15 +107,6 @@ Legend -
             cold = sum(h.has_cold for h in city.humans)
             allergies = sum(h.has_allergy_symptoms for h in city.humans)
 
-            # social network & mobility
-            average_degree = np.mean([len(h.known_connections) for h in city.humans])
-            constrained_at_home = sum(h.mobility_planner.human_to_rest_at_home for h in city.humans)
-
-            # simulation time related
-            env_time = str(env.timestamp).split()[0]
-            day = "Day {:2}:".format((city.env.timestamp - city.start_time).days)
-            proc_time = "{:8}".format("({}s)".format(int(time.time() - process_start)))
-
             # intervention related
             n_quarantine = sum(h.intervened_behavior.quarantine_timestamp is not None for h in city.humans)
 
@@ -109,7 +116,6 @@ Legend -
             stats = f"| P3:{Projected3:5.2f} TestQueue:{test_queue_length}"
             other_diseases = f"| cold:{cold} allergies:{allergies}"
             hospitalizations = f"| H:{H} C:{C} D:{D}"
-            mobility = f"| MC: {average_degree: 3.3f}"
             quarantines = f"| Q: {n_quarantine}"
 
             str_to_print = f"{proc_time} {day} {env_time} {SEIR} {stats} {other_diseases} {hospitalizations} {mobility} {quarantines}"

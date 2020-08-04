@@ -211,6 +211,10 @@ def simulate(
     start_time -= datetime.timedelta(days=start_time_offset_days)
     conf['SIMULATION_START_TIME'] = str(start_time)
 
+    # adjust the simulation days
+    conf['simulation_days'] += conf['COVID_START_DAY']
+    simulation_days = conf['simulation_days']
+
     logging.root.setLevel(getattr(logging, conf["LOGGING_LEVEL"].upper()))
 
     rng = np.random.RandomState(seed)

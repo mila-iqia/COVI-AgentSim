@@ -29,6 +29,12 @@ if typing.TYPE_CHECKING:
     from covid19sim.human import Human
 
 
+def check_if_tracking(f):
+    def wrapper(*args, **kwargs):
+        if args[0].start_tracking:
+            return f(*args, **kwargs)
+    return wrapper
+
 def print_dict(title, dic, is_sorted=None, top_k=None, logfile=None):
     if not is_sorted:
         items = dic.items()
@@ -120,6 +126,9 @@ class Tracker(object):
         self.conf = conf
         self.logfile = logfile
         today = self.env.timestamp.date()
+        self.start_tracking = False # flag to indicate if infections have been seeded in the population
+        self.init_infected = []
+
         self.last_day = {
                 'track_recovery': today,
                 "track_infection": today,
@@ -234,7 +243,7 @@ class Tracker(object):
 
         # infection stats
         self.n_infected_init = 0 # to be initialized in `initialize`
-        self.cases_per_day = [self.n_infected_init]
+        self.cases_per_day = []
         self.cumulative_incidence = []
         self.r = []
 
@@ -313,18 +322,7 @@ class Tracker(object):
             )
 
     def initialize(self):
-        # self.n_init_infected = self.city.n_init_infected
-        # self.cases_per_day[-1] = self.n_init_infected
-        self.s_per_day = [sum(h.is_susceptible for h in self.city.humans)]
-        self.e_per_day = [sum(h.is_exposed for h in self.city.humans)]
-        self.i_per_day = [sum(h.is_infectious for h in self.city.humans)]
-        self.r_per_day = [sum(h.is_removed for h in self.city.humans)]
-
         self.summarize_population()
-
-        # risk model
-        self.risk_precision_daily = [self.compute_risk_precision()]
-        self.init_infected = [human for human in self.city.humans if human.is_exposed]
         self.fully_initialized = True
 
     def summarize_population(self):
@@ -527,10 +525,23 @@ class Tracker(object):
         log(f"Total number of infected humans {self.n_infected_init}", self.logfile)
         for human in self.city.humans:
             if human.is_exposed:
+                self.init_infected.append(human)
                 log(f"\t{human} @ {human.household} living with {len(human.household.residents) - 1} other residents", self.logfile)
 
         log(f"\nPREFERENTIAL_ATTACHMENT_FACTOR: {self.conf['END_PREFERENTIAL_ATTACHMENT_FACTOR']}", self.logfile)
         log("\n*** *** ****** *** ****** *** ****** *** ****** *** ****** *** ****** *** ****** *** ***\n", self.logfile)
+
+        self.start_tracking = True
+
+        #
+        self.cases_per_day = [self.n_infected_init]
+        self.s_per_day = [sum(h.is_susceptible for h in self.city.humans)]
+        self.e_per_day = [sum(h.is_exposed for h in self.city.humans)]
+        self.i_per_day = [sum(h.is_infectious for h in self.city.humans)]
+        self.r_per_day = [sum(h.is_removed for h in self.city.humans)]
+
+        # risk model
+        self.risk_precision_daily = [self.compute_risk_precision()]
 
     def get_R(self):
         """
@@ -586,6 +597,7 @@ class Tracker(object):
         """
         return np.mean(self.serial_intervals)
 
+    @check_if_tracking
     def track_serial_interval(self, human_name):
         """
         tracks serial interval ("time duration between a primary case-patient (infector) having symptom onset and a secondary case-patient (infectee) having symptom onset")
@@ -628,6 +640,7 @@ class Tracker(object):
             self.serial_interval_book_from[human_name].pop(to_name)
             self.serial_interval_book_to[to_name].pop(human_name)
 
+    @check_if_tracking
     def increment_day(self):
         """
         [summary]
@@ -717,6 +730,7 @@ class Tracker(object):
                 severity = 1
         return severity
 
+    @check_if_tracking
     def track_daily_recommendation_levels(self, set_tracing_started_true=False):
         """
         Tracks aggregate recommendation levels of humans in the city.
@@ -797,6 +811,7 @@ class Tracker(object):
             idx += 1
         return top_k_prec, lift, recall
 
+    @check_if_tracking
     def track_humans(self, hd: typing.Dict, current_timestamp: datetime.datetime):
         """
         Keeps record of humans and their attributes at each hour (called hourly from city)
@@ -845,10 +860,14 @@ class Tracker(object):
             # location_backups = copy_obj_array_except_env(self.city.get_all_locations())
 
     def track_app_adoption(self):
+        """
+        Stores app adoption rate and humans who have the app.
+        """
         self.adoption_rate = sum(h.has_app for h in self.city.humans) / self.n_people
-        print(f"adoption rate: {100*self.adoption_rate:3.2f} %")
+        log(f"adoption rate: {100*self.adoption_rate:3.2f} %\n", self.logfile)
         self.human_has_app = set([h.name for h in self.city.humans if h.has_app])
 
+    @check_if_tracking
     def track_covid_properties(self, human):
         """
         [summary]
@@ -865,6 +884,7 @@ class Tracker(object):
         n, avg = self.covid_properties['infectiousness_onset_days']
         self.covid_properties['infectiousness_onset_days'] = (n+1, (n*avg +human.infectiousness_onset_days)/(n+1))
 
+    @check_if_tracking
     def track_hospitalization(self, human, type=None):
         """
         [summary]
@@ -877,6 +897,7 @@ class Tracker(object):
         if type == "icu":
             self.critical_per_day[-1] += 1
 
+    @check_if_tracking
     def track_deaths(self):
         """
         Keeps count of deaths per day.
@@ -885,6 +906,7 @@ class Tracker(object):
         """
         self.deaths_per_day[-1] += 1
 
+    @check_if_tracking
     def track_infection(self, source, from_human, to_human, location, timestamp, p_infection, success, viral_load=-1):
         """
         Called every time someone is infected either by other `Human` or through envrionmental contamination.
@@ -906,7 +928,6 @@ class Tracker(object):
             success (bool): whether it was successful to infect the infectee
             viral_load (int, optional): viral load of `from_human` who infected `to_human`. -1 if its environmental infection.
         """
-
         assert source in ["human", "environment"], f"Unknown infection type: {type}"
 
         if success:
@@ -986,6 +1007,7 @@ class Tracker(object):
                 self.environment_human_infection_histogram[type_of_location]["caused_infection"][y] += 1
             return
 
+    @check_if_tracking
     def track_update_messages(self, from_human, to_human, payload):
         """
         Track which update messages are sent and when (used for plotting)
@@ -1001,6 +1023,7 @@ class Tracker(object):
             old_max_risk_level = self.to_human_max_msg_per_day[to_human.name][self.env.timestamp.date()]
             self.to_human_max_msg_per_day[to_human.name][self.env.timestamp.date()] = max(old_max_risk_level, payload['new_risk_level'])
 
+    @check_if_tracking
     def track_symptoms(self, human=None, count_all=False):
         """
         Keeps a set of symptoms experienced by `Human` until it stops experiencing them.
@@ -1054,6 +1077,7 @@ class Tracker(object):
                     self.symptoms['all'][s] += 1
                 self.symptoms_set['all'].pop(human.name)
 
+    @check_if_tracking
     def track_tested_results(self, human):
         """
         Keeps count of tests on a particular day. It is called every time someone is tested.
@@ -1067,7 +1091,6 @@ class Tracker(object):
             test_result (str): "positive" or "negative"
             test_type (str): type of test administered to `Human`
         """
-
         test_result_arrival_time = human.test_time + datetime.timedelta(days=human.time_to_test_result)
         test_result_arrival_date = test_result_arrival_time.date()
         self.test_results_per_day[test_result_arrival_date][human.hidden_test_result] += 1
@@ -1132,6 +1155,7 @@ class Tracker(object):
         # positive_test_given_symptoms = normalize_counter(positive_test_given_symptoms, normalizer=n_tests)
         # print_dict("P(symptoms = x | test is +), where x is", positive_test_given_symptoms, is_sorted="desc", logfile=logfile)
 
+    @check_if_tracking
     def track_recovery(self, n_infectious_contacts, duration):
         """
         [summary]
@@ -1147,6 +1171,7 @@ class Tracker(object):
         n, total = self.recovered_stats[-1]
         self.recovered_stats[-1] = [n+1, total + n_infectious_contacts]
 
+    @check_if_tracking
     def track_mobility(self, current_activity, next_activity, human):
         """
         Aggregates information about mobility pattern of humans. Following information is being aggregated -
@@ -1186,6 +1211,7 @@ class Tracker(object):
         self.activity_attributes["end_time"][next_activity.name].push(_get_seconds_since_midnight(next_activity.end_time))
         self.activity_attributes["duration"][next_activity.name].push(next_activity.duration)
 
+    @check_if_tracking
     def track_mixing(self, human1, human2, duration, distance_profile, timestamp, location, interaction_type, contact_condition, global_mbility_factor):
         """
         Stores counts and statistics to generate various aspects of contacts and social mixing.
@@ -1352,6 +1378,7 @@ class Tracker(object):
             if human1.location != human1.household:
                 self.n_outside_daily_contacts += 1
 
+    @check_if_tracking
     def track_bluetooth_communications(self, human1, human2, location, timestamp):
         """
         Keeps track of mean daily unique bluetooth encounters between two age groups.
