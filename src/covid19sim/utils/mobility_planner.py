@@ -86,16 +86,13 @@ class Activity(object):
 
     def refresh_location(self):
         """
-        Sets the location to `location` if not None. Otherwise, it checks for the parent activity's location.
-        NOTE: It needs to be called just before the `yield`ing for this activity even though the `self.location` might not be none.
+        Checks for the parent activity's location.
+        NOTE: It needs to be called just before `yield`ing for this activity even though the `self.location` might not be none.
         This is being done in `MobilityPlanner._modify_activity_location_if_needed`
-
         """
-        try:
-            assert any(x in self.prepend_name for x in ["invitation", "supervised"]),  f"{self.prepend_name} not recognized. refresh shouldn't be called without supervision or invitation"
-            assert self.parent_activity_pointer is not None,  "refresh shouldn't be called without supervision or invitation"
-        except:
-            breakpoint()
+        assert any(x in self.prepend_name for x in ["invitation", "supervised"]),  f"{self.prepend_name} not recognized. refresh shouldn't be called without supervision or invitation. Activity: {self}"
+        assert self.parent_activity_pointer is not None,  f"refresh shouldn't be called without supervision or invitation. Activity: {self}"
+
         if self.parent_activity_pointer.is_cancelled:
             self.location = self.owner.household
         else:
@@ -648,10 +645,7 @@ class MobilityPlanner(object):
                 return activity
 
         # 5. if human is quarantined
-        try:
-            activity, quarantined = self._intervention_related_behavior_changes(activity)
-        except:
-            breakpoint()
+        activity, quarantined = self._intervention_related_behavior_changes(activity)
         if quarantined:
             return activity
 
