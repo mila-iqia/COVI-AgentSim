@@ -1600,13 +1600,17 @@ class Tracker(object):
         group_sizes = self.socialize_activity_data['group_size']
         str_to_print += f"mean: {group_sizes.mean():2.2f} | "
         str_to_print += f"std: {group_sizes.stddev(): 2.2f} | "
-        str_to_print += f"min: {str(group_sizes.minimum()): 2.2f} | " # without str it throws an error when group_sizes is empty
-        str_to_print += f"max: {str(group_sizes.maximum()): 2.2f} | " # without str it throws an error when group_sizes is empty
+
+        min_size = 0 if np.isnan(group_sizes.minimum()) else group_sizes.minimum()
+        str_to_print += f"min: {min_size: 2.2f} | "
+
+        max_size = 0 if np.isnan(group_sizes.maximum()) else group_sizes.maximum()
+        str_to_print += f"max: {max_size: 2.2f} | "
         log(str_to_print, self.logfile)
 
         str_to_print = "location - "
         locations = self.socialize_activity_data["location_frequency"].keys()
-        total = sum(self.socialize_activity_data["location_frequency"].values())
+        total = sum(self.socialize_activity_data["location_frequency"].values()) + 1e-6 # to avoid ZeroDivisionError
         str_to_print += f"total visits {total} | "
         for location in locations:
             m = self.socialize_activity_data["location_frequency"][location]
@@ -1630,8 +1634,13 @@ class Tracker(object):
                 str_to_print = f"{type_of_activty} - "
                 str_to_print += f"mean: {metrics.mean()/SECONDS_PER_HOUR: 2.2f} | "
                 str_to_print += f"std: {metrics.stddev()/SECONDS_PER_HOUR: 2.2f} | "
-                str_to_print += f"min: {str(metrics.minimum()/SECONDS_PER_HOUR): 2.2f} | " # without str it throws an error when group_sizes is empty
-                str_to_print += f"max: {str(metrics.maximum()/SECONDS_PER_HOUR): 2.2f} | " # without str it throws an error when group_sizes is empty
+
+                min_value = 0 if np.isnan(metrics.minimum()) else metrics.minimum()
+                str_to_print += f"min: {min_value / SECONDS_PER_HOUR : 2.2f} | "
+
+                max_value = 0 if np.isnan(metrics.maximum()) else metrics.maximum()
+                str_to_print += f"max: {max_value / SECONDS_PER_HOUR : 2.2f} | "
+
                 log(str_to_print, self.logfile)
 
         self.compute_test_statistics(self.logfile)
