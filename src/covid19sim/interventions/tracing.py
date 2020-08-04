@@ -233,7 +233,7 @@ class Heuristic(BaseMethod):
             setattr(human, '_heuristic_rec_level', _heuristic_rec_level)
             return test_risk_history
 
-        message_risk_history, message_rec_level = self.handle_risk_messages(human, mailbox)
+        message_risk_history, message_rec_level, risk_override = self.handle_risk_messages(human, mailbox)
 
         symptoms_risk_history, symptoms_rec_level = self.handle_symptoms(human)
 
@@ -249,7 +249,7 @@ class Heuristic(BaseMethod):
         rec_level = max(message_rec_level,  symptoms_rec_level, human.rec_level)
 
         # if you have a negative test result, we want to overwrite the above
-        if len(test_risk_history) > 0:
+        if len(test_risk_history) > 0 and not risk_override:
             rec_level, risk_history = self.apply_negative_test(rec_level, risk_history, test_risk_history, test_protection_window)
         setattr(human, '_heuristic_rec_level', rec_level)
 
@@ -321,22 +321,29 @@ class Heuristic(BaseMethod):
                 encounter_day = (human.env.timestamp - c.first_update_time).days
                 processed.append(self.cluster_tup(encounter_day, c.risk_level, len(c._real_encounter_times)))
         except (IndexError, KeyError):
-            return [], 0
+            return [], 0, False
 
+        override = False
+        override_limit = 10
         for rel_encounter_day, risk_level, num_encounters in processed:
             # conservative approach - keep max risk above threshold along with max days in the past
             if (risk_level >= self.high_risk_threshold):
                 high_risk_message = max(high_risk_message, risk_level)
                 high_risk_earliest_day = max(rel_encounter_day - approx_infectiousness_onset_days, high_risk_earliest_day)
-
+                if num_encounters > override_limit:
+                    override = True
             elif (risk_level >= self.moderate_risk_threshold):
                 moderate_risk_message = max(moderate_risk_message, risk_level)
                 moderate_risk_earliest_day = max(rel_encounter_day - approx_infectiousness_onset_days,
                                                  moderate_risk_earliest_day)
+                if num_encounters > override_limit:
+                    override = True
 
             elif (risk_level >= self.mild_risk_threshold):
                 mild_risk_message = max(mild_risk_message, risk_level)
                 mild_risk_earliest_day = max(rel_encounter_day - approx_infectiousness_onset_days, mild_risk_earliest_day)
+                if num_encounters > override_limit:
+                    override = True
 
         if high_risk_message > 0 and high_risk_earliest_day > 0:
             updated_risk = self.risk_level_to_risk(max(human.risk_level, high_risk_message - 5))
@@ -352,7 +359,7 @@ class Heuristic(BaseMethod):
             updated_risk = self.risk_level_to_risk(max(human.risk_level, mild_risk_message - 5))
             message_risk_history = [updated_risk] * min(mild_risk_earliest_day, 5)
             message_rec_level = max(human.rec_level, self.mild_risk_rec_level)
-        return message_risk_history, message_rec_level
+        return message_risk_history, message_rec_level, override
 
     def extract_test_results(self, human):
         latest_negative_test_result_num_days = None
