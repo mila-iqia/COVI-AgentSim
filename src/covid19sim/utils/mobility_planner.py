@@ -531,6 +531,7 @@ class MobilityPlanner(object):
         # (b) if human is still recovering in hospital then return the activity as it is because these were determined at the time when hospitalization occured
         # Note 1: after recovery from hospitalization, infection_timestamp will always be None
         # Note 2: hospitalization_recovery_timestamp will take into account hospitalization recovery due to critical condition
+        # Note 3: patient dies in hospital so while recovering it is necessary to check for `human_will_die_if_critical`
         if (
             (self.hospitalization_timestamp is not None
             or self.critical_condition_timestamp is not None)
@@ -546,7 +547,6 @@ class MobilityPlanner(object):
         elif (
             (self.hospitalization_timestamp is not None
             or self.critical_condition_timestamp is not None)
-            and not self.human_will_die_if_critical
             and self.env.timestamp < self.hospitalization_recovery_timestamp
         ):
             return activity # while in hospital, these activities are predetermined until hospitalization recovery time
@@ -648,7 +648,10 @@ class MobilityPlanner(object):
                 return activity
 
         # 5. if human is quarantined
-        activity, quarantined = self._intervention_related_behavior_changes(activity)
+        try:
+            activity, quarantined = self._intervention_related_behavior_changes(activity)
+        except:
+            breakpoint()
         if quarantined:
             return activity
 
