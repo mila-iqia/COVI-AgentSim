@@ -413,6 +413,7 @@ def get_fq_r(filename=None, data=None, normalized=False):
     intervention_day = data["intervention_day"]
     od = np.mean(data["outside_daily_contacts"][intervention_day:])
     ec = data["effective_contacts_since_intervention"]
+    hec = data["healthy_effective_contacts_since_intervention"]
 
     # percent_infected
     y = sum(data["cases_per_day"]) / data["n_humans"]
@@ -423,7 +424,7 @@ def get_fq_r(filename=None, data=None, normalized=False):
     # proxy_r
     a = get_proxy_r(data)
 
-    return x, y, z, a, od, ec
+    return x, y, z, a, od, ec, hec
 
 
 def get_mean_fq_r(filenames=None, pkls=None, normalized=False):
@@ -448,7 +449,7 @@ def get_mean_fq_r(filenames=None, pkls=None, normalized=False):
         "effective_contacts": [],
     }
     for filename, pkl in _tmp:
-        x, y, z, a, od, ec = get_fq_r(
+        x, y, z, a, od, ec, hec = get_fq_r(
             filename=filename, data=pkl["pkl"], normalized=normalized
         )
         metrics["f3"].append(x[0])
@@ -461,6 +462,7 @@ def get_mean_fq_r(filenames=None, pkls=None, normalized=False):
         metrics["proxy_r"].append(a)
         metrics["outside_daily_contacts"].append(od)
         metrics["effective_contacts"].append(ec)
+        metrics["healthy_effective_contacts"].append(hec)
 
     return metrics
 
