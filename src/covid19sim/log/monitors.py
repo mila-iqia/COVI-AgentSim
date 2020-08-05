@@ -38,6 +38,7 @@ Legend -
 * [ H/C/D ]: Total number of people in hospital (H)/ ICU (C) at this point in simulation-time. Total died upto this day (D).
 * [ MC ]: Mean number of known connections of a person in the population (average degree of the social network). The attributes for known connections are drawn from surveyed data on mean contacts.
 * [ Q ]: Number of people quarantined as of midnight on that day.
+* [ 2x ]: Number of days to double the initial infections to the current level.
         """
         if self.conf['INTERVENTION_DAY'] >= 0 and self.conf['RISK_MODEL'] is not None:
             self.legend += """
@@ -92,15 +93,16 @@ Legend -
             C = sum(len(hospital.icu.humans) for hospital in city.hospitals)
             D = sum(city.tracker.deaths_per_day)
 
-            # projections
-            Projected3 = min(1.0*city.tracker.n_infected_init * 2 ** (n_days/3), len(city.humans))
-
             # SEIR stats
             S = city.tracker.s_per_day[-1]
             E = city.tracker.e_per_day[-1]
             I = city.tracker.i_per_day[-1]
             R = city.tracker.r_per_day[-1]
             T = E + I + R
+
+            # projections
+            Projected3 = min(1.0*city.tracker.n_infected_init * 2 ** (n_days/3), len(city.humans))
+            doubling_rate_days =  n_days / np.log2(1.0 * T / (city.tracker.n_infected_init + 1e-6))
 
             # other diseases
             cold = sum(h.has_cold for h in city.humans)
@@ -111,8 +113,9 @@ Legend -
 
             # prepare string
             nd = str(len(str(city.n_people)))
-            SEIR = f"| S:{S:<{nd}} E:{E:<{nd}} I:{I:<{nd}} E+I+R:{T:<{nd}} +Test:{t_P}/{t_T}"
-            stats = f"| P3:{Projected3:5.2f} TestQueue:{test_queue_length}"
+            SEIR = f"| S:{S:<{nd}} E:{E:<{nd}} I:{I:<{nd}} E+I+R:{T:<{nd}} +Test:{t_P}/{t_T} TestQueue:{test_queue_length}"
+            stats = f"| P3:{Projected3:5.2f}"
+            stats += f" 2x:{doubling_rate_days: 2.2f}" if doubling_rate > 0 else ""
             other_diseases = f"| cold:{cold} allergies:{allergies}"
             hospitalizations = f"| H:{H} C:{C} D:{D}"
             quarantines = f"| Q: {n_quarantine}"

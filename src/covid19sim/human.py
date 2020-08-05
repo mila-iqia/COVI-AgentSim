@@ -180,7 +180,6 @@ class Human(BaseHuman):
         self.mask_efficacy = 0.  # A float value representing how good this person is at wearing a mask (i.e. healthcare workers are better than others)
         self.intervention = None  # Type of contact tracing to do, e.g. Transformer or binary contact tracing or heuristic
         self.maintain_extra_distance = 0  # Represents the extra distance this person could take as a result of an intervention
-        self._follows_recommendations_today = None  # Whether this person will follow app recommendations today
         self._rec_level = -1  # Recommendation level used for Heuristic / ML methods
         self._intervention_level = -1  # Intervention level (level of behaviour modification to apply), for logging purposes
         self.recommendations_to_follow = OrderedSet()  # which recommendations this person will follow now
@@ -215,16 +214,6 @@ class Human(BaseHuman):
         self.location_start_time = self.env.ts_initial
 
         self.last_state = self.state  # And we set their SEIR state (starts as either Susceptible or Exposed)
-
-    @property
-    def follows_recommendations_today(self):
-        last_date = self.last_date["follow_recommendations"]
-        current_date = self.env.timestamp.date()
-        if last_date is None or (current_date - last_date).days > 0:
-            proba = self.conf.get("DROPOUT_RATE")
-            self.last_date["follow_recommendations"] = current_date
-            self._follows_recommendations_today = self.rng.rand() < (1 - proba)
-        return self._follows_recommendations_today
 
     def assign_household(self, location):
         if location is not None:
@@ -564,7 +553,7 @@ class Human(BaseHuman):
 
             # has been recommended the test by an intervention
             if not should_get_test and self._test_recommended:
-                should_get_test = self.rng.random() < self.follows_recommendations_today
+                should_get_test = self.intervened_behavior.follow_recommendation_today
 
             if not should_get_test:
                 # Has symptoms that a careful person would fear to be covid

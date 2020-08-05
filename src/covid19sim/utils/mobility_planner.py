@@ -793,15 +793,6 @@ def _get_likelihood_to_go_out(human, conf):
     Returns:
         (float): likelihood to go out of home
     """
-
-    P_MOBILE_GIVEN_QUARANTINED = conf['P_MOBILE_GIVEN_QUARANTINED']
-    if getattr(human, "_quarantine", None) and human.folllows_recommendations_today:
-        return P_MOBILE_GIVEN_QUARANTINED
-
-    P_MOBILE_GIVEN_POSITIVE_TEST_RESULT = conf['P_MOBILE_GIVEN_POSITIVE_TEST_RESULT']
-    if human.test_result == "positive":
-        return P_MOBILE_GIVEN_POSITIVE_TEST_RESULT
-
     current_symptoms = human.symptoms
     if len(current_symptoms) == 0:
         return 1.0

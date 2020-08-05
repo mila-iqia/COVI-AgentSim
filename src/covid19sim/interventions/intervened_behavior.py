@@ -180,6 +180,7 @@ class IntervenedBehavior(object):
         self.quarantine_timestamp = self.env.timestamp
         self.quarantine_duration = until
         self.quarantine_reason = reason
+        self.human._test_recommended = True
         # if self.human.name == "human:7":
         #     print(self.env.timestamp, "quarantining", self.human, "because", reason, "for" ,until / SECONDS_PER_DAY, "days")
 
