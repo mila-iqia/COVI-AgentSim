@@ -169,10 +169,8 @@ GLOBAL_MOBILITY_SCALING_FACTOR: 1.0 # Mobility reduction factor
 #####         Mobility when SICK CONSTANTS             #####
 #############################################################
 
+# /!\ (no-source)
 # P_MOBILE_WHEN_X is the likelihood to go out of house when X is the situation.
-
-P_MOBILE_GIVEN_QUARANTINED: 0.1
-P_MOBILE_GIVEN_POSITIVE_TEST_RESULT: 0.1
 
 SEVERE_SYMPTOMS: ["severe", "extremely_severe", "trouble_breathing"]
 P_MOBILE_GIVEN_SEVERE_SYMPTOMS: 0.05
@@ -494,7 +492,7 @@ ASSUME_SAFE_HOSPITAL_DAILY_INTERACTIONS_AFTER_INTERVENTION_START: True
 ### FLAGS
 # (non-tracing)
 # Quarantine household members of an individual who got a positive test?
-QUARANTINE_HOUSEHOLD_UPON_INDIVIDUAL_POSITIVE_TEST: False
+QUARANTINE_HOUSEHOLD_UPON_INDIVIDUAL_POSITIVE_TEST: True
 
 # whether to quarantine individuals who self-diagnose COVID
 QUARANTINE_SELF_REPORTED_INDIVIDUALS: False
