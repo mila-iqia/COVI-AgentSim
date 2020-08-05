@@ -315,13 +315,12 @@ def run(data, path, comparison_key):
     fig, axs = plt.subplots(figsize=(20, 20), dpi=100, sharey=True)
     save_path = Path(path) / "pareto_adoption/pareto_front.png"
     method_legend = []
-
     # Make a lineplot version of the plot
     for idx, method in enumerate(sorted(base_methods)):
         print("Plotting", method, "...")
         xs = []
         ys = []
-
+        yerrs = []
         current_labels = sorted([lab for lab in labels if lab.startswith(method)])
         current_color = colormap[idx] if method != "unmitigated" else "#34495e"
         method_legend.append(
@@ -332,13 +331,14 @@ def run(data, path, comparison_key):
             y, ye = get_metrics(df, lab, "proxy_r")
             xs.append(x.item())
             ys.append(y.item())
-
-        axs.plot(xs, ys, label="method")
-
+            yerrs.append(ye.item())
+        
+        plt.errorbar(xs, ys, yerr=yerrs, label=lab)
+        axs.fill_between(xs, ys - np.array(yerrs)/2, ys + np.array(yerrs)/2, alpha=0.2)
+   
     lgd = axs.legend(
-        handles=method_legend,
         loc="upper center",
-        ncol= 3,# idx, # + 1,
+        ncol= 3,
         fontsize=25,
         bbox_to_anchor=(0.5, 1.1),
     )
