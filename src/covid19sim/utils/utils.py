@@ -367,8 +367,10 @@ def extract_tracker_data(tracker, conf):
     data['outside_daily_contacts'] = tracker.outside_daily_contacts
     data['test_monitor'] = tracker.test_monitor
     data['encounter_distances'] = tracker.encounter_distances
-    data['effective_contacts_since_intervention'] = tracker.compute_effective_contacts(since_intervention=True)
-    data['effective_contacts_all_days'] = tracker.compute_effective_contacts(since_intervention=False)
+    data['effective_contacts_since_intervention'], data['healthy_effective_contacts_since_intervention'] \
+        = tracker.compute_effective_contacts(since_intervention=True)
+    data['effective_contacts_all_days'], data['healthy_effective_contacts_all_days'] = \
+        tracker.compute_effective_contacts(since_intervention=False)
     data['humans_state'] = tracker.humans_state
     data['humans_rec_level'] = tracker.humans_rec_level
     data['humans_intervention_level'] = tracker.humans_intervention_level

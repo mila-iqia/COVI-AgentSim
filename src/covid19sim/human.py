@@ -215,6 +215,8 @@ class Human(BaseHuman):
         self.hygiene = 0  # start everyone with a baseline hygiene. Only increase it once the intervention is introduced.
         self._test_recommended = False  # does the app recommend that this person should get a covid-19 test
         self.effective_contacts = 0  # A scaled number of the high-risk contacts (under 2m for over 15 minutes) that this person had
+        self.healthy_effective_contacts = 0  # A scaled number of the high-risk contacts (under 2m for over 15 minutes) that this person had while healthy
+        self.healthy_days = 0
         self.num_contacts = 0  # unscaled number of high-risk contacts
 
         """Risk prediction"""
@@ -1085,6 +1087,10 @@ class Human(BaseHuman):
 
             yield self.env.process(self.at(self.household, city, 60))
 
+    def increment_healthy_day(self):
+        if not self.state[2]: # not infectious
+            self.healthy_days += 1
+
     ############################## MOBILITY ##################################
     @property
     def lat(self):
@@ -1376,6 +1382,8 @@ class Human(BaseHuman):
                 if cur_day > self.conf.get("INTERVENTION_DAY"):
                     self.num_contacts += 1
                     self.effective_contacts += self.conf.get("GLOBAL_MOBILITY_SCALING_FACTOR")
+                    if not self.state[2]: # if not infectious, then you are "healthy"
+                        self.healthy_effective_contacts += self.conf.get("GLOBAL_MOBILITY_SCALING_FACTOR")
 
                 infector, infectee, p_infection = None, None, None
                 if (self.is_infectious ^ h.is_infectious) and scale_factor_passed and home_scale_factor:
