@@ -458,6 +458,11 @@ P_MALE: 0.45
 #####           Intervention Parameters             #####
 #########################################################
 
+#
+ASSUME_NO_ENVIRONMENTAL_INFECTION_AFTER_INTERVENTION_START: False
+ASSUME_NO_UNKNOWN_INTERACTIONS_AFTER_INTERVENTION_START: False
+
+
 # Number of levels for behavior stratification. Levels will be 0, 1, ..., N_BEHAVIOR_LEVELS
 # Level 0 is assumed to be unmitigated behavior with pre-confinement level of contacts.
 # Unmitigated - RISK_MODEL = "" and N_BEHAVIOR_LEVELS = 2

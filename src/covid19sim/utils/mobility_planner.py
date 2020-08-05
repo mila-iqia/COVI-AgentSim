@@ -381,12 +381,19 @@ class MobilityPlanner(object):
         current_schedule = [self.current_activity] + list(self.schedule_for_day)
         if (
             not _can_accept_invite(today, self)
-            or ( # Feature NotImplmented - Schedule an event that modifies both the current_schedule and the next_schedule
+            or (
+                # Feature NotImplmented - to Schedule an event that modifies both the current_schedule and the next_schedule
+                # ignoring the equality (in second cond. of `and`) here will make `activity` to be the last `schedule_for_day` which breaks the invariant that `last_activity` in `schedule_for_day` should be sleep.
                 activity.start_time < current_schedule[-1].end_time
-                and activity.end_time > current_schedule[-1].end_time
+                and activity.end_time >= current_schedule[-1].end_time
             )
             or ( # can't schedule an event before the current_event ends
                 activity.start_time < self.current_activity.end_time
+            )
+            or (
+                # can only modify remaining schedule (sleep) if currently human is not sleeping (not waking up early)
+                self.current_activity.name == "sleep"
+                and activity.end_time <= current_schedule[-1].end_time
             )
         ):
             return False
@@ -403,21 +410,19 @@ class MobilityPlanner(object):
 
         update_next_schedule = False
         next_schedule = list(self.full_schedule[0])
-        # find schedule such that the invitation activity ends before it ends
+        # find schedule such that the invitation activity ends before the schedule ends
         # that schedule needs to be updated
-        if (
-            self.current_activity.name == "sleep"
-            or activity.start_time > current_schedule[-1].end_time
-        ):
-            update_next_schedule = True
-            remaining_schedule = [self.current_activity] + list(self.schedule_for_day)
-            new_schedule = list(self.full_schedule[0])
-        elif activity.end_time < current_schedule[-1].end_time:
-            remaining_schedule = [self.current_activity]
-            new_schedule = list(self.schedule_for_day)
+        if activity.end_time <= current_schedule[-1].end_time:
+            # its a double check wrt to the above condition (kept it here for better readability)
+            if self.current_activity.name == "sleep":
+                return False
+            else:
+                remaining_schedule = [self.current_activity]
+                new_schedule = list(self.schedule_for_day)
         else:
-            remaining_schedule = [self.current_activity]
-            new_schedule = list(self.schedule_for_day)
+            update_next_schedule = True
+            remaining_schedule = [self.current_activity] + list(self.schedule_for_day) # this is only [current_activity] if current_activity.name == "sleep"
+            new_schedule = list(self.full_schedule[0])
 
         # /!\ by accepting the invite, `self` doesn't invite others to its social
         # thus, if there is a non-overlapping social on the schedule, `self` will go alone.
@@ -863,7 +868,7 @@ def _modify_schedule(human, remaining_schedule, new_activity, new_schedule):
     partial_schedule = []
     other_activities = [x for idx,x in enumerate(new_schedule) if idx >=  work_activity_idx]
 
-    # fit thie new_activity into the schedule
+    # fit the new_activity into the schedule
     # - = activity, . = new_activity
     for activity in other_activities:
         cut_right, cut_left = False, False
@@ -907,7 +912,7 @@ def _modify_schedule(human, remaining_schedule, new_activity, new_schedule):
     full_schedule += partial_schedule
 
     assert remaining_schedule[-1].end_time == full_schedule[0].start_time, "times do not align"
-    assert full_schedule[-1].name == "sleep", f"sleep not found as the last activity. \nfull_schedule:\n{full_schedule}"
+    assert full_schedule[-1].name == "sleep", f"sleep not found as the last activity. \nfull_schedule:\n{full_schedule}\nnew_schedule:{new_schedule}\nremaining_schedule:{remaining_schedule}"
 
     # comment for rigorous checks or use -O as an option to run python scripts to avoid checking for assertions
     for a1, a2 in zip(full_schedule, full_schedule[1:]):

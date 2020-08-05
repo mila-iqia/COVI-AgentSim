@@ -586,7 +586,7 @@ class Human(BaseHuman):
         If `self` has covid, this function will check when can `self` recover and set necessary variables accordingly.
         """
         if self.is_infectious and (self.env.timestamp - self.infection_timestamp).total_seconds() >= self.recovery_days * SECONDS_PER_DAY:
-            self.city.tracker.track_recovery(self.n_infectious_contacts, self.recovery_days)
+            self.city.tracker.track_recovery(self)
 
             # TO DISCUSS: Should the test result be reset here? We don't know in reality
             # when the person has recovered; currently not reset
@@ -669,8 +669,9 @@ class Human(BaseHuman):
             infector, infectee = other_human, self
             infectee_msg = h1_msg
 
+        infectiousness = infectiousness_delta(infector, t_near)
         p_infection = get_human_human_p_transmission(infector,
-                                      infectiousness_delta(infector, t_near),
+                                      infectiousness,
                                       infectee,
                                       self.location.social_contact_factor,
                                       self.conf['CONTAGION_KNOB'],
@@ -687,7 +688,8 @@ class Human(BaseHuman):
                                     timestamp=self.env.timestamp,
                                     p_infection=p_infection,
                                     success=x_human,
-                                    viral_load=infector.viral_load)
+                                    viral_load=infector.viral_load,
+                                    infectiousness=infectiousness)
         # infection
         if x_human and infectee.is_susceptible:
             infector.n_infectious_contacts += 1
@@ -1093,8 +1095,10 @@ class Human(BaseHuman):
             # Conditions met for possible infection (https://www.cdc.gov/coronavirus/2019-ncov/hcp/guidance-risk-assesment-hcp.html)
             if contact_condition:
 
-                cur_day = int(self.env.now - self.env.ts_initial) // SECONDS_PER_DAY
-                if cur_day > self.conf.get("INTERVENTION_DAY"):
+                if (
+                    self.conf['INTERVENTION_START_TIME'] is not None
+                    and self.env.timestamp >= self.conf['INTERVENTION_START_TIME']
+                ):
                     self.num_contacts += 1
                     self.effective_contacts += self.conf.get("GLOBAL_MOBILITY_SCALING_FACTOR")
 

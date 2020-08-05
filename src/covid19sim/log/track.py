@@ -199,6 +199,17 @@ class Tracker(object):
             "within_contact_condition": defaultdict(dict)
         }
 
+        self.contact_attributes = {
+            "SEIR": np.zeros((4, 4)),
+            "SI": {
+                "p_infection": 0,
+                "viral_load": 0,
+                "infectiousness": 0,
+                "infection": 0,
+                "total": 0
+            }
+        }
+
         # infection related contacts
         infection_matrix_fmt = {
             "caused_infection": np.zeros((len(AGE_BIN_WIDTH_5), len(AGE_BIN_WIDTH_5))),
@@ -257,16 +268,24 @@ class Tracker(object):
         self.humans_rec_level = defaultdict(list)
         self.humans_intervention_level = defaultdict(list)
 
-        # R0 and Generation times
-        self.avg_infectious_duration = 0
-        self.n_recovery = 0
-        self.n_infectious_contacts = 0
-        self.n_contacts = 0
+        # epi related
+        # self.avg_infectious_duration = 0
+        # self.n_recovery = 0
+        # self.n_infectious_contacts = 0
         self.serial_intervals = []
         self.serial_interval_book_to = defaultdict(dict)
         self.serial_interval_book_from = defaultdict(dict)
-        self.recovered_stats = []
-        self.covid_properties = defaultdict(lambda : [0,0])
+        self.recovery_stats = {
+            'n_recovered': 0,
+            'timestamps': []
+        }
+        # keeps running average
+        self.covid_properties = {
+            'incubation_days': [0, 0],
+            'recovery_days': [0, 0],
+            'infectiousness_onset_days': [0, 0]
+        }
+
 
         # testing & hospitalization
         self.hospitalization_per_day = [0]
@@ -543,36 +562,6 @@ class Tracker(object):
         # risk model
         self.risk_precision_daily = [self.compute_risk_precision()]
 
-    def get_R(self):
-        """
-        [summary]
-
-        Returns:
-            [type]: [description]
-        """
-        # https://web.stanford.edu/~jhj1/teachingdocs/Jones-on-R0.pdf; vlaid over a long time horizon
-        # average infectious contacts (transmission) * average number of contacts * average duration of infection
-        time_since_start =  (self.env.now - self.env.ts_initial) / SECONDS_PER_DAY # DAYS
-        if time_since_start == 0:
-            return -1
-
-        if time_since_start > 365:
-            # tau= self.n_infectious_contacts / self.n_contacts
-            # c_bar = self.n_contacts / time_since_start
-            tau_times_c_bar = self.n_infectious_contacts / time_since_start
-            d = self.avg_infectious_duration
-            return tau_times_c_bar * d
-        else:
-            # x = [h.n_infectious_contacts for h in self.city.humans if h.n_infectious_contacts > 0]
-            if self.recovered_stats:
-                n, total = zip(*self.recovered_stats)
-            else:
-                n, total = [0], [0]
-
-            if sum(n):
-                return 1.0 * sum(total)/sum(n)
-            return 0
-
     def compute_generation_time(self):
         """
         Generation time is the time from exposure day until an infection occurs.
@@ -673,13 +662,6 @@ class Tracker(object):
             self.humans_state[human.name].append(state)
             self.humans_rec_level[human.name].append(human.rec_level)
             self.humans_intervention_level[human.name].append(human._intervention_level)
-
-        self.r.append(self.get_R())
-
-        # recovery stats
-        self.recovered_stats.append([0,0])
-        if len(self.recovered_stats) > self.city.conf.get("EFFECTIVE_R_WINDOW"):
-            self.recovered_stats = self.recovered_stats[1:]
 
         # test_per_day
         self.tested_per_day.append(0)
@@ -870,10 +852,10 @@ class Tracker(object):
     @check_if_tracking
     def track_covid_properties(self, human):
         """
-        [summary]
+        Keeps a running average of various covid related properties.
 
         Args:
-            human ([type]): [description]
+            human (covid19sim.human.Human): `human` who got infected
         """
         n, avg = self.covid_properties['incubation_days']
         self.covid_properties['incubation_days'] = (n+1, (avg*n + human.incubation_days)/(n+1))
@@ -907,7 +889,7 @@ class Tracker(object):
         self.deaths_per_day[-1] += 1
 
     @check_if_tracking
-    def track_infection(self, source, from_human, to_human, location, timestamp, p_infection, success, viral_load=-1):
+    def track_infection(self, source, from_human, to_human, location, timestamp, p_infection, success, viral_load=-1, infectiousness=-1):
         """
         Called every time someone is infected either by other `Human` or through envrionmental contamination.
         It tracks the following -
@@ -926,7 +908,8 @@ class Tracker(object):
             timestamp (datetime.datetime): time at which this event took place.
             p_infection: the probability of infection computed at the time of infection .
             success (bool): whether it was successful to infect the infectee
-            viral_load (int, optional): viral load of `from_human` who infected `to_human`. -1 if its environmental infection.
+            viral_load (float, optional): viral load of `from_human` who infected `to_human`. -1 if its environmental infection.
+            infectiousness (float, optional): infectiousness of `from_human` who infected `to_human`. -1 if its environmental infection.
         """
         assert source in ["human", "environment"], f"Unknown infection type: {type}"
 
@@ -965,12 +948,15 @@ class Tracker(object):
             x = from_human.age_bin_width_5.index
 
         # self.p_infection.append([infection, p_infection, viral_load])
-        self.p_infection_at_contact[source].append((success, p_infection, viral_load))
+        self.p_infection_at_contact[source].append((success, p_infection, viral_load, infectiousness))
 
         if source == "human":
 
             self.human_human_infection_matrix[type_of_location]["risky_contact"][x, y] += 1
             self.human_human_infection_matrix["all"]["risky_contact"][x, y] += 1
+
+            infection_attrs = [success, p_infection, viral_load, infectiousness]
+            self.track_contact_attributes(from_human, to_human, infection_attrs=infection_attrs)
 
             if success:
                 # for transmission matrix
@@ -1151,25 +1137,19 @@ class Tracker(object):
 
         test_given_symptoms_statistics = normalize_counter(test_given_symptoms_statistics, normalizer=n_tests)
         print_dict("P(symptoms = x | tested), where x is", test_given_symptoms_statistics, is_sorted="desc", logfile=logfile, top_k=10)
-
         # positive_test_given_symptoms = normalize_counter(positive_test_given_symptoms, normalizer=n_tests)
         # print_dict("P(symptoms = x | test is +), where x is", positive_test_given_symptoms, is_sorted="desc", logfile=logfile)
 
     @check_if_tracking
-    def track_recovery(self, n_infectious_contacts, duration):
+    def track_recovery(self, human):
         """
-        [summary]
+        Keeps record of attributes related to recovery like recovery timeperiod and infectious contacts during the disease.
 
         Args:
-            n_infectious_contacts ([type]): [description]
-            duration ([type]): [description]
+            human (covid19sim.human.Human): `human` who just recovered
         """
-        self.n_infectious_contacts += n_infectious_contacts
-        self.avg_infectious_duration = (self.n_recovery * self.avg_infectious_duration + duration) / (self.n_recovery + 1)
-        self.n_recovery += 1
-
-        n, total = self.recovered_stats[-1]
-        self.recovered_stats[-1] = [n+1, total + n_infectious_contacts]
+        self.recovery_stats['n_recovered'] += 1
+        self.recovery_stats['timestamps'].append((self.env.timestamp, human.n_infectious_contacts))
 
     @check_if_tracking
     def track_mobility(self, current_activity, next_activity, human):
@@ -1350,6 +1330,7 @@ class Tracker(object):
             interaction_types.append("known")
         if contact_condition:
             interaction_types.append("within_contact_condition")
+            self.track_contact_attributes(human1, human2)
 
         for interaction_type in interaction_types:
             for location_type in ['all', human1_type_of_place, human2_type_of_place]:
@@ -1377,6 +1358,31 @@ class Tracker(object):
 
             if human1.location != human1.household:
                 self.n_outside_daily_contacts += 1
+
+    @check_if_tracking
+    def track_contact_attributes(self, human1, human2, infection_attrs=[]):
+        """
+        Keeps record of contacts among susceptibles, exposed, infectious, and recovered.
+
+        Args:
+            human1 (covid19sim.human.Human): one of the two humans involved in the contact
+            human2 (covid19sim.human.Human): other human
+            infection_attrs (list): elements are attributes of infection
+        """
+        assert human1 is not None and human2 is not None, f"not a contact since one of {human1} or {human2} is None"
+
+        state1 = human1.state.index(1)
+        state2 = human2.state.index(1)
+        self.contact_attributes["SEIR"][state1, state2] += 1
+        self.contact_attributes["SEIR"][state2, state1] += 1
+
+        if len(infection_attrs) > 0:
+            success, p_infection, viral_load, infectiousness = infection_attrs
+            self.contact_attributes['SI']['p_infection'] += p_infection
+            self.contact_attributes['SI']['viral_load'] += viral_load
+            self.contact_attributes['SI']['infectiousness'] += infectiousness
+            self.contact_attributes['SI']['infection'] += success
+            self.contact_attributes['SI']['total'] += 1
 
     @check_if_tracking
     def track_bluetooth_communications(self, human1, human2, location, timestamp):
@@ -1463,6 +1469,7 @@ class Tracker(object):
             "mean_daily_contact_duration": self.mean_daily_contact_duration,
             "contact_distance_profile": self.contact_distance_profile,
             "contact_duration_profile": self.contact_duration_profile,
+            "contact_attributes": self.contact_attributes
         }
 
     def get_infectious_contact_data(self):
@@ -1511,7 +1518,7 @@ class Tracker(object):
             all_contacts += human.num_contacts
 
         days = self.conf['simulation_days']
-        if since_intervention and self.conf['INTERVENTION_DAY'] > 0 :
+        if since_intervention and self.conf['INTERVENTION_DAY'] >= 0 :
             days = self.conf['simulation_days'] - self.conf['INTERVENTION_DAY']
 
         # recover GLOBAL_MOBILITY_SCALING_FACTOR

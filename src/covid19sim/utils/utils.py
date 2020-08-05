@@ -371,7 +371,6 @@ def extract_tracker_data(tracker, conf):
     data['all_serial_intervals'] = tracker.serial_intervals #0.1MB
     data['cases_per_day'] = tracker.cases_per_day
     data['ei_per_day'] = tracker.ei_per_day
-    data['R'] = tracker.r
     data['s'] = tracker.s_per_day
     data['e'] = tracker.e_per_day
     data['i'] = tracker.i_per_day
@@ -381,6 +380,7 @@ def extract_tracker_data(tracker, conf):
     data['avg_infectiousness_per_day'] = tracker.avg_infectiousness_per_day
     data['covid_properties'] = tracker.covid_properties
     data['test_monitor'] = tracker.test_monitor #0.14MB
+    data['recovered_stats'] = tracker.recovery_stats
 
     # tracing related
     data['risk_precision_global'] = tracker.compute_risk_precision(False)

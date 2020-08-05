@@ -94,6 +94,7 @@ def main(conf: DictConfig):
     log(f"RISK_MODEL = {conf['RISK_MODEL']}", logfile)
     log(f"INTERVENTION_DAY = {conf['INTERVENTION_DAY']}", logfile)
     log(f"Type of run: {type_of_run}", logfile)
+    log(f"seed: {conf['seed']}", logfile)
 
     conf["outfile"] = outfile
     city, monitors, tracker = simulate(
@@ -195,6 +196,8 @@ def simulate(
     conf['logfile'] = logfile
 
     # set days and mixing constants
+    conf['_MEAN_DAILY_UNKNOWN_CONTACTS'] = conf['MEAN_DAILY_UNKNOWN_CONTACTS']
+    conf['_ENVIRONMENTAL_INFECTION_KNOB'] = conf['ENVIRONMENTAL_INFECTION_KNOB']
     conf['_CURRENT_PREFERENTIAL_ATTACHMENT_FACTOR'] = conf['BEGIN_PREFERENTIAL_ATTACHMENT_FACTOR']
     start_time_offset_days = conf['COVID_START_DAY']
     intervention_start_days = conf['INTERVENTION_DAY']

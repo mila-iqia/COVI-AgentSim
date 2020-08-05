@@ -78,8 +78,6 @@ class Location(simpy.Resource):
         self.open_days = OPEN_DAYS
 
         # parameters related to sampling contacts
-        self.MEAN_DAILY_UNKNOWN_CONTACTS = conf['MEAN_DAILY_UNKNOWN_CONTACTS']
-
         if location_type in ["SENIOR_RESIDENCE", "HOUSEHOLD"]:
             key = "HOUSEHOLD"
         elif location_type == "SCHOOL":
@@ -271,7 +269,7 @@ class Location(simpy.Resource):
             max_dist_encounter = self.conf['MAX_DIST_KNOWN_CONTACT']
             mean_interaction_time = None
         elif type == "unknown":
-            mean_daily_interactions = self.MEAN_DAILY_UNKNOWN_CONTACTS
+            mean_daily_interactions = self.conf['_MEAN_DAILY_UNKNOWN_CONTACTS']
             min_dist_encounter = self.conf['MIN_DIST_UNKNOWN_CONTACT']
             max_dist_encounter = self.conf['MAX_DIST_UNKNOWN_CONTACT']
             mean_interaction_time = self.conf["GAMMA_UNKNOWN_CONTACT_DURATION"]
@@ -386,7 +384,7 @@ class Location(simpy.Resource):
         p_transmission = get_environment_human_p_transmission(
                                         p_contamination,
                                         human,
-                                        self.conf.get("ENVIRONMENTAL_INFECTION_KNOB"),
+                                        self.conf.get("_ENVIRONMENTAL_INFECTION_KNOB"),
                                         )
 
         x_environment =  self.rng.random() < p_transmission
