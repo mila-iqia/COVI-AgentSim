@@ -151,7 +151,6 @@ class Heuristic(BaseMethod):
     def __init__(self, version, conf):
         super().__init__(conf)
         self.version = version
-        self.cluster_tup = namedtuple("cluster_tup", ["encounter_day", "risk_level", "num_encounters"])
         if self.version == 1:
             self.high_risk_threshold, self.high_risk_rec_level = 12, 3
             self.moderate_risk_threshold, self.moderate_risk_rec_level = 10, 2
@@ -319,7 +318,7 @@ class Heuristic(BaseMethod):
             processed = []
             for c in clusters:
                 encounter_day = (human.env.timestamp - c.first_update_time).days
-                processed.append(self.cluster_tup(encounter_day, c.risk_level, len(c._real_encounter_times)))
+                processed.append((encounter_day, c.risk_level, len(c._real_encounter_times)))
         except (IndexError, KeyError):
             return [], 0, False
 
