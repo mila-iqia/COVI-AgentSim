@@ -516,20 +516,22 @@ def get_proxy_r(data):
     dfs_tree, paths = construct_infection_tree(infection_chain, init_infected=init_infected, draw_fig=False)
 
     infectees = 0
-    infectors = len(init_infected)
-    candidates = (dfs_tree.nodes - init_infected - {"ROOT"}).intersection(all_recovered)
-    for c in candidates:
-        if dfs_tree.out_degree(c) == 0:
-            infectees += 1
-        else:
-            infectors += 1
+    recovered_infectors = all_recovered
+    # Average out degree
+    for node in dfs_tree.nodes:
+        if node == "ROOT":
+            continue
+        if node in recovered_infectors:
+
+            infectees += dfs_tree.out_degree(node)
 
     print(f"len(recovered): {len(all_recovered)}")
     print(f"len(dfsnodes): {len(dfs_tree.nodes)}")
-    print(f"infectors: {infectors}")
+    print(f"infectors: {len(recovered_infectors)}")
     print(f"infectees: {infectees}")
     print("-------------------------")
-    return infectees / infectors
+
+    return infectees / len(recovered_infectors)
 
 def get_effective_R(data):
     GT = data["generation_times"]
