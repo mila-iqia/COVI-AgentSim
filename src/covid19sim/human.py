@@ -216,6 +216,7 @@ class Human(BaseHuman):
         self._test_recommended = False  # does the app recommend that this person should get a covid-19 test
         self.effective_contacts = 0  # A scaled number of the high-risk contacts (under 2m for over 15 minutes) that this person had
         self.healthy_effective_contacts = 0  # A scaled number of the high-risk contacts (under 2m for over 15 minutes) that this person had while healthy
+        self.healthy_days = 0
         self.num_contacts = 0  # unscaled number of high-risk contacts
 
         """Risk prediction"""
@@ -1085,6 +1086,10 @@ class Human(BaseHuman):
                 yield  self.env.process(self.excursion(city, "leisure"))
 
             yield self.env.process(self.at(self.household, city, 60))
+
+    def increment_healthy_day(self):
+        if not self.state[2]: # not infectious
+            self.healthy_days += 1
 
     ############################## MOBILITY ##################################
     @property

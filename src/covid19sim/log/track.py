@@ -1043,10 +1043,12 @@ class Tracker(object):
         """
         all_effective_contacts = 0
         all_healthy_effective_contacts = 0
+        all_healthy_days = 0
         all_contacts = 0
         for human in self.city.humans:
             all_effective_contacts += human.effective_contacts
             all_healthy_effective_contacts += human.healthy_effective_contacts
+            all_healthy_days += human.healthy_days
             all_contacts += human.num_contacts
 
         conf = self.city.conf
@@ -1054,7 +1056,7 @@ class Tracker(object):
         if since_intervention and conf['INTERVENTION_DAY'] > 0 :
             days = conf['simulation_days'] - conf['INTERVENTION_DAY']
 
-        return all_effective_contacts / (days * self.n_people), all_healthy_effective_contacts / (days * self.n_people)
+        return all_effective_contacts / (days * self.n_people), all_healthy_effective_contacts / all_healthy_days
 
 
     def write_metrics(self, logfile=None):
