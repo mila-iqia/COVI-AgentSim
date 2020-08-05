@@ -44,7 +44,7 @@ class ReproducibilityTest(unittest.TestCase):
                         simulation_days=self.simulation_days,
                         outfile=outfile,
                         out_chunk_size=0,
-                        init_percent_sick=0.1,
+                        init_fraction_sick=0.1,
                         seed=seed,
                         conf=self.config
                     )

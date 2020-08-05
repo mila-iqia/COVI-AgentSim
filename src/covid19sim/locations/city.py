@@ -8,22 +8,22 @@ import datetime
 import itertools
 import math
 import time
+import typing
 from collections import defaultdict, Counter
 from orderedset import OrderedSet
 
-from covid19sim.utils.utils import compute_distance, _get_random_area, relativefreq2absolutefreq, calculate_average_infectiousness
+from covid19sim.utils.utils import compute_distance, _get_random_area, relativefreq2absolutefreq, _convert_bin_5s_to_bin_10s, calculate_average_infectiousness, log
+from covid19sim.utils.demographics import get_humans_with_age, assign_households_to_humans, create_locations_and_assign_workplace_to_humans
 from covid19sim.log.track import Tracker
 from covid19sim.inference.heavy_jobs import batch_run_timeslot_heavy_jobs
 from covid19sim.interventions.tracing import BaseMethod
-from covid19sim.interventions.behaviors import *
+# from covid19sim.interventions.behaviors import *
 from covid19sim.inference.message_utils import UIDType, UpdateMessage, RealUserIDType
 from covid19sim.distribution_normalization.dist_utils import get_rec_level_transition_matrix
-from covid19sim.interventions.tracing_utils import get_intervention
+from covid19sim.interventions.tracing_utils import get_tracing_method
 from covid19sim.log.event import Event
 from covid19sim.locations.test_facility import TestFacility
-from covid19sim.locations.location import Location
-from covid19sim.locations.hospital import Hospital
-import covid19sim.utils.utils
+
 
 if typing.TYPE_CHECKING:
     from covid19sim.human import Human
@@ -43,34 +43,38 @@ class City:
             self,
             env: "Env",
             n_people: int,
-            init_percent_sick: float,
+            init_fraction_sick: float,
             rng: np.random.RandomState,
             x_range: typing.Tuple,
             y_range: typing.Tuple,
             conf: typing.Dict,
+            logfile: str = None,
     ):
         """
         Constructs a city object.
 
         Args:
-            env: simpy environment object holding simulation state/timestamps.
-            n_people: number of people to instantiate in the city.
-            init_percent_sick: percentage of the population to be infected on day zero.
-            rng: random number generator to use in this city. Will also initialize RNGs for humans.
-            x_range: (min_x, max_x) TODO @@@@ DOCUMENT ME
-            y_range: (min_y, max_y) TODO @@@@ DOCUMENT ME
-            conf: configuration dictionary holding the experimental settings.
+            env (simpy.Environment): Keeps track of events and their schedule
+            n_people (int): Number of people in the city
+            init_fraction_sick (float): fraction of population to be infected on day 0
+            rng (np.random.RandomState): Random number generator
+            x_range (tuple): (min_x, max_x)
+            y_range (tuple): (min_y, max_y)
+            human_type (covid19.simulator.Human): Class for the city's human instances
+            conf (dict): yaml configuration of the experiment
+            logfile (str): filepath where the console output and final tracked metrics will be logged. Prints to the console only if None.
         """
         self.conf = conf
+        self.logfile = logfile
         self.env = env
         self.rng = np.random.RandomState(rng.randint(2 ** 16))
         self.x_range = x_range
         self.y_range = y_range
         self.total_area = (x_range[1] - x_range[0]) * (y_range[1] - y_range[0])
         self.n_people = n_people
-        self.init_percent_sick = init_percent_sick
+        self.init_fraction_sick = init_fraction_sick
         self.hash = int(time.time_ns())  # real-life time used as hash for inference server data hashing
-        self.tracker = Tracker(env, self)
+        self.tracker = Tracker(env, self, conf, logfile)
 
         self.test_type_preference = list(zip(*sorted(conf.get("TEST_TYPES").items(), key=lambda x:x[1]['preference'])))[0]
         self.max_capacity_per_test_type = {
@@ -87,25 +91,19 @@ class City:
         self.daily_rec_level_mapping = None
         self.covid_testing_facility = TestFacility(self.test_type_preference, self.max_capacity_per_test_type, env, conf)
 
-        print("Initializing locations ...")
-        self.initialize_locations()
         self.humans = []
         self.hd = {}
         self.households = OrderedSet()
         self.age_histogram = None
 
-        print("Initializing humans ...")
-        self.initialize_humans()
-        for human in self.humans:
-            human.track_this_guy = False
-            if human.is_exposed:
-                print(human, human.household, human.household.residents)
+        log("Initializing humans ...", self.logfile)
+        self.initialize_humans_and_locations()
 
         self.log_static_info()
 
-        print("Computing their preferences")
+        log("Computing their preferences", self.logfile)
         self._compute_preferences()
-        self.intervention = None
+        self.tracing_method = None
 
         # GAEN summary statistics that enable the individual to determine whether they should send their info
         self.risk_change_histogram = Counter()
@@ -272,222 +270,62 @@ class City:
     def start_time(self):
         return datetime.datetime.fromtimestamp(self.env.ts_initial)
 
-    def create_location(self, specs, type, name, area=None):
+    def initialize_humans_and_locations(self):
         """
-        Create a location instance based on `type`
-
-        Specs is a dict like:
-        {
-            "n" : (int) number of such locations,
-            "area": (float) locations' typical area,
-            "social_contact_factor": (float(0:1)) how much people are close to each other
-                see contamination_probability(),
-            "surface_prob": [0.1, 0.1, 0.3, 0.2, 0.3], distribution over types of surfaces
-                in that location
-            "rnd_capacity": (tuple, optional) Either None or a tuple of ints (min, max)
-            describing the args of np.random.randint,
-        }
-
-        Args:
-            specs (dict): location's parameters
-            type (str): "household" and "senior_residency" create a Household instance,
-                "hospital" creates a Hospital, other strings create a generic Location
-            name (str): Location's name, created as `type:name`
-            area (float, optional): Location's area. Defaults to None.
-
-        Returns:
-            Location | Household | Hospital: new location instance
+        Samples a synthetic population along with their dwellings and workplaces according to census.
         """
-        _cls = Location
-        if type in ['household', 'senior_residency']:
-            _cls = Household
-        if type == 'hospital':
-            _cls = Hospital
-
-        return   _cls(
-                        env=self.env,
-                        rng=self.rng,
-                        name=f"{type}:{name}",
-                        location_type=type,
-                        lat=self.rng.randint(*self.x_range),
-                        lon=self.rng.randint(*self.y_range),
-                        area=area,
-                        social_contact_factor=specs['social_contact_factor'],
-                        capacity=None if not specs['rnd_capacity'] else self.rng.randint(*specs['rnd_capacity']),
-                        surface_prob = specs['surface_prob']
-                        )
-
-    def initialize_locations(self):
-        """
-        Create locations according to config.py / LOCATION_DISTRIBUTION.
-        The City instance will have attributes <location_type>s = list(location(*args))
-        """
-        for location, specs in self.conf.get("LOCATION_DISTRIBUTION").items():
-            # household distribution is separate
-            if location in ['household']:
-                continue
-
-            n = math.ceil(self.n_people/specs["n"])
-            area = _get_random_area(n, specs['area'] * self.total_area, self.rng)
-            locs = [self.create_location(specs, location, i, area[i]) for i in range(n)]
-            setattr(self, f"{location}s", locs)
-
-    def get_all_locations(self):
-        """Returns a list of all concatenated locations held by this city."""
-        output = []
-        for location_name in self.conf.get("LOCATION_DISTRIBUTION"):
-            output.extend(getattr(self, f"{location_name}s"))
-        return output
-
-    def initialize_humans(self):
-        """
-        `Human`s are created based on the statistics captured in HUMAN_DSITRIBUTION. Age distribution is specified via 'p'.
-        SMARTPHONE_OWNER_FRACTION_BY_AGE defines the fraction of population in the age bin that owns smartphone.
-        APP_UPTAKE is the percentage of people in an age-bin who will adopt an app. (source: refer comments in core.yaml)
-
-        Profession of `Human` is determined via `profession_profile` in each age bin. (no-source)
-
-        Allocate humans to houses such that (unsolved)
-            1. average number of residents in a house is (approx.) 2.5 (enforced via HOUSE_SIZE_PREFERENCE in core.yaml)
-            2. not all residents are below MIN_AVG_HOUSE_AGE years of age
-            3. age occupancy distribution follows HUMAN_DSITRIBUTION.residence_preference.house_size (no-source)
-
-        current implementation is an approximate heuristic
-        """
-        # make humans
-        count_humans = 0
-
-        # initial infections
-        init_infected = math.ceil(self.init_percent_sick * self.n_people)
-        chosen_infected = set(self.rng.choice(self.n_people, init_infected, replace=False).tolist())
-
         self.age_histogram = relativefreq2absolutefreq(
-            bins_fractions={age_bin: specs['p'] for age_bin, specs in self.conf.get('HUMAN_DISTRIBUTION').items()},
+            bins_fractions={(x[0], x[1]): x[2] for x in self.conf.get('P_AGE_REGION')},
             n_elements=self.n_people,
-            rng=self.rng
+            rng=self.rng,
         )
 
-        from covid19sim.human import Human
-        for age_bin, specs in self.conf.get("HUMAN_DISTRIBUTION").items():
-            n = self.age_histogram[age_bin]
-            ages = self.rng.randint(low=age_bin[0], high=age_bin[1]+1, size=n)  # high is exclusive
+        # initalize human objects
+        self.humans = get_humans_with_age(self, self.age_histogram, self.conf, self.rng)
 
-            senior_residency_preference = specs['residence_preference']['senior_residency']
+        # find best grouping to put humans together in a house
+        # /!\ households are created at the time of allocation.
+        # self.households is initialized within this function through calls to `self.create_location`
+        self.humans = assign_households_to_humans(self.humans, self, self.conf, self.logfile)
 
-            # draw professions randomly for everyone
-            professions = ['healthcare', 'school', 'others', 'retired']
-            p = [specs['profession_profile'][x] for x in professions]
-            profession = self.rng.choice(professions, p=p, size=n)
+        # assign workplace to humans
+        # self.`location_type`s are created in this function
+        self.humans, self = create_locations_and_assign_workplace_to_humans(self.humans, self, self.conf, self.logfile)
 
-            for i in range(n):
-                count_humans += 1
-                age = ages[i]
+        # prepare schedule
+        log("Preparing schedule ... ")
+        start_time = datetime.datetime.now()
+        # TODO - parallelize this for speedup in initialization
+        for human in self.humans:
+            human.mobility_planner.initialize()
 
-                # select if residence is one of senior residency
-                res = None
-                if self.rng.random() < senior_residency_preference:
-                    res = self.rng.choice(self.senior_residencys)
-
-                # workplace
-                if profession[i] == "healthcare":
-                    workplace = self.rng.choice(self.hospitals + self.senior_residencys)
-                elif profession[i] == 'school':
-                    workplace = self.rng.choice(self.schools)
-                elif profession[i] == 'others':
-                    type_of_workplace = self.rng.choice(
-                        [0, 1, 2],
-                        p=self.conf.get("OTHERS_WORKPLACE_CHOICE"),
-                        size=1
-                    ).item()
-                    type_of_workplace = [self.workplaces, self.stores, self.miscs][type_of_workplace]
-                    workplace = self.rng.choice(type_of_workplace)
-                else:
-                    workplace = res
-
-                self.humans.append(Human(
-                        env=self.env,
-                        city=self,
-                        rng=self.rng,
-                        has_app=False,      # has_app gets set later when we intervene
-                        name=count_humans,
-                        age=age,
-                        household=res,
-                        workplace=workplace,
-                        profession=profession[i],
-                        rho=self.conf.get("RHO"),
-                        gamma=self.conf.get("GAMMA"),
-                        infection_timestamp=self.start_time if count_humans - 1 in chosen_infected else None,
-                        conf=self.conf
-                        )
-                    )
-
-        # assign houses; above only assigns senior residence
-        # stores tuples - (location, current number of residents, maximum number of residents allowed)
-        remaining_houses = []
-        # for cases when human is below certain age and can't live in a single house
-        house_size_preference = copy.deepcopy(self.conf.get('HOUSE_SIZE_PREFERENCE'))
-        house_size_preference[0] = 0.0
-        house_size_preference = np.array(house_size_preference)
-        renormalized_house_size_preference = house_size_preference / house_size_preference.sum()
-
-        permuted_humans = [self.humans[x] for x in self.rng.permutation(len(self.humans))]
-        for human in permuted_humans:
-            if human.household is not None:
-                continue
-
-            # if all of the available houses are at a capacity, create a new one with predetermined capacity
-            if len(remaining_houses) == 0:
-                cap = self.rng.choice(range(1,6), p=self.conf.get("HOUSE_SIZE_PREFERENCE"), size=1)
-                x = self.create_location(
-                    self.conf.get("LOCATION_DISTRIBUTION")['household'],
-                    'household',
-                    len(self.households)
-                )
-
-                remaining_houses.append((x, cap))
-
-            # if there are houses that are ready to accommodate human, find a best match
-            res = None
-            for  c, (house, n_vacancy) in enumerate(remaining_houses):
-                new_avg_age = (human.age + sum(x.age for x in house.residents))/(len(house.residents) + 1)
-                if new_avg_age > self.conf.get("MIN_AVG_HOUSE_AGE"):
-                    res = house
-                    n_vacancy -= 1
-                    if n_vacancy == 0:
-                        remaining_houses = remaining_houses[:c] + remaining_houses[c+1:]
-                    break
-
-            # if there was no best match because of the check on MIN_AVG_HOUSE_AGE, allocate a new house based on
-            # residence_preference of that age bin
-            if res is None:
-                if human.age <= self.conf.get("MIN_AVG_HOUSE_AGE"):
-                    house_size_preference = renormalized_house_size_preference
-
-                cap = self.rng.choice(range(1,6), p=house_size_preference, size=1)
-                res = self.create_location(
-                    self.conf.get("LOCATION_DISTRIBUTION")['household'],
-                    'household',
-                    len(self.households)
-                )
-                if cap - 1 > 0:
-                    remaining_houses.append((res, cap-1))
-
-            # FIXME: there is some circular reference here
-            res.residents.append(human)
-            human.assign_household(res)
-            self.households.add(res)
-
-        # assign area to house
-        area = _get_random_area(
-            len(self.households),
-            self.conf.get("LOCATION_DISTRIBUTION")['household']['area'] * self.total_area,
-            self.rng
-        )
-
-        for i,house in enumerate(self.households):
-            house.area = area[i]
+        timedelta = (datetime.datetime.now() - start_time).total_seconds()
+        log(f"Schedule prepared (Took {timedelta:2.3f}s)", self.logfile)
 
         self.hd = {human.name: human for human in self.humans}
+
+    def _initiate_infection_spread_and_modify_mixing_if_needed(self):
+        """
+        Seeds infection in the population and sets other attributes corresponding to social mixing dynamics.
+        """
+        # seed infection
+        self.n_init_infected = math.ceil(self.init_fraction_sick * self.n_people)
+        chosen_infected = self.rng.choice(self.humans, size=self.n_init_infected, replace=False)
+        for human in chosen_infected:
+            human._get_infected(initial_viral_load=human.rng.random())
+
+        # modify likelihood of meeting new people
+        self.conf['_CURRENT_PREFERENTIAL_ATTACHMENT_FACTOR'] = self.conf['END_PREFERENTIAL_ATTACHMENT_FACTOR']
+
+        # modify knobs because now people are more aware
+        if self.conf['ASSUME_NO_ENVIRONMENTAL_INFECTION_AFTER_INTERVENTION_START']:
+            self.conf['_ENVIRONMENTAL_INFECTION_KNOB'] = 0.0
+
+        if self.conf['ASSUME_NO_UNKNOWN_INTERACTIONS_AFTER_INTERVENTION_START']:
+            self.conf['_MEAN_DAILY_UNKNOWN_CONTACTS'] = 0.0
+
+
+        self.tracker.log_seed_infections()
 
     def have_some_humans_download_the_app(self):
         """
@@ -497,26 +335,27 @@ class City:
             if not human.has_app:
                 return
             # (assumption) 90% of the time, healthcare workers will declare it
-            human.obs_is_healthcare_worker = True if human.is_healthcare_worker and human.rng.random() < 0.9 else False
+            human.obs_is_healthcare_worker = False
+            if (
+                human.workplace is not None
+                and human.workplace.location_type == "HOSPITAL"
+                and human.rng.random() < 0.9
+            ):
+                human.obs_is_healthcare_worker = True
+
             human.has_logged_info = human.rng.rand() < human.carefulness
             human.obs_age = human.age if human.has_logged_info else None
             human.obs_sex = human.sex if human.has_logged_info else None
             human.obs_preexisting_conditions = human.preexisting_conditions if human.has_logged_info else []
 
-        print("Downloading the app...")
-        age_histogram = relativefreq2absolutefreq(
-            bins_fractions={age_bin: specs['p']
-                            for age_bin, specs
-                            in self.conf.get('HUMAN_DISTRIBUTION').items()},
-            n_elements=self.n_people,
-            rng=self.rng
-        )
+        log("Downloading the app...", self.logfile)
         # app users
         all_has_app = self.conf.get('APP_UPTAKE') < 0
         # The dict below keeps track of an app quota for each age group
+        age_histogram_bin_10s = _convert_bin_5s_to_bin_10s(self.age_histogram)
         n_apps_per_age = {
-            k: math.ceil(self.age_histogram[k] * v * self.conf.get('APP_UPTAKE'))
-            for k, v in self.conf.get("SMARTPHONE_OWNER_FRACTION_BY_AGE").items()
+            (x[0], x[1]): math.ceil(age_histogram_bin_10s[(x[0], x[1])] * x[2] * self.conf.get('APP_UPTAKE'))
+            for x in self.conf.get("SMARTPHONE_OWNER_FRACTION_BY_AGE")
         }
         for human in self.humans:
             if all_has_app:
@@ -525,14 +364,7 @@ class City:
                 _log_app_info(human)
                 continue
 
-            # Find what age bin the human is in
-            age_bin = None
-            for x in n_apps_per_age:
-                if x[0] <= human.age <= x[1]:
-                    age_bin = x
-                    break
-            assert age_bin is not None
-
+            age_bin = human.age_bin_width_10.bin
             if n_apps_per_age[age_bin] > 0:
                 # This human gets an app If there's quota left in his age group
                 human.has_app = True
@@ -643,18 +475,37 @@ class City:
         Yields:
             simpy.Timeout
         """
-        humans_notified = False
+        humans_notified, infections_seeded = False, False
         last_day_idx = 0
-        self.intervention = BaseMethod(self.conf)
         while True:
             current_day = (self.env.timestamp - self.start_time).days
+
+            # seed infections and change mixing constants (end of burn-in period)
+            if (
+                not infections_seeded
+                and self.env.timestamp == self.conf['COVID_SPREAD_START_TIME']
+            ):
+                self._initiate_infection_spread_and_modify_mixing_if_needed()
+                infections_seeded = True
+
             # Notify humans to follow interventions on intervention day
-            if current_day == self.conf.get('INTERVENTION_DAY') and not humans_notified:
-                self.intervention = get_intervention(conf=self.conf)
-                self.have_some_humans_download_the_app()
+            if (
+                not humans_notified
+                and self.env.timestamp == self.conf.get('INTERVENTION_START_TIME')
+            ):
+                # if its a tracing method, load the class that can compute risk
+                if self.conf['RISK_MODEL'] != "":
+                    self.tracing_method = get_tracing_method(risk_model=self.conf['RISK_MODEL'], conf=self.conf)
+                    self.have_some_humans_download_the_app()
+
+                # initialize everyone from the baseline behavior
                 for human in self.humans:
-                    human.set_intervention(self.intervention)
+                    human.set_tracing_method(self.tracing_method)
+                    human.intervened_behavior.initialize()
+
                 humans_notified = True
+                if self.tracing_method is not None:
+                    self.tracker.track_daily_recommendation_levels(set_tracing_started_true=True)
 
             # run city testing routine, providing test results for those who need them
             # TODO: running this every hour of the day might not be correct.
@@ -666,9 +517,8 @@ class City:
             for human in self.humans:
                 if not human.is_dead:
                     human.check_if_needs_covid_test()  # humans can decide to get tested whenever
-                    if current_day not in human.infectiousness_history_map:
-                        # contrarily to risk, infectiousness only changes once a day (human behavior has no impact)
-                        human.infectiousness_history_map[current_day] = calculate_average_infectiousness(human)
+                    human.check_covid_symptom_start()
+                    human.check_covid_recovery()
                     alive_humans.append(human)
 
             # now, run app-related stuff (risk assessment, message preparation, ...)
@@ -683,13 +533,6 @@ class City:
                 new_human_risk_history_maps={h: h.risk_history_map for h in self.humans},
             )
 
-            # given the 'intervention' method and the risk estimated by each human, assign them behavior modifiers
-            for human in alive_humans:
-                behaviors = []
-                if self.conf.get("SHOULD_MODIFY_BEHAVIOR"):
-                    behaviors = self.intervention.get_behaviors(human)
-                human.apply_behaviors(behaviors)
-
             # for debugging/plotting a posteriori, track all human/location attributes...
             self.tracker.track_humans(hd=self.hd, current_timestamp=self.env.timestamp)
             # self.tracker.track_locations() # TODO
@@ -698,6 +541,7 @@ class City:
 
             # finally, run end-of-day activities (if possible); these include mailbox cleanups, symptom updates, ...
             if current_day != last_day_idx:
+                alive_humans = [human for human in self.humans if not human.is_dead]
                 last_day_idx = current_day
                 self.do_daily_activies(current_day, alive_humans)
 
@@ -714,11 +558,11 @@ class City:
         # TODO: this is an assumption which will break in reality, instead of updating once per day everyone
         #       at the same time, it should be throughout the day
         for human in alive_humans:
-            # recover from cold/flu/allergies if it's time
-            human.recover_health()
-            human.catch_other_disease_at_random()
+            human.recover_health() # recover from cold/flu/allergies if it's time
+            human.catch_other_disease_at_random() # catch cold/flu/allergies at random
             human.update_symptoms()
             human.increment_healthy_day()
+            human.mobility_planner.send_social_invites()
             Event.log_daily(self.conf.get('COLLECT_LOGS'), human, human.env.timestamp)
         self.tracker.increment_day()
         if self.conf.get("USE_GAEN"):
@@ -749,7 +593,10 @@ class City:
 
         # iterate over humans, and if it's their timeslot, then update their state
         for human in alive_humans:
-            if not human.has_app or self.env.timestamp.hour not in human.time_slots:
+            if (
+                not human.has_app
+                or self.env.timestamp.hour not in human.time_slots
+            ):
                 continue
             # set the human's risk to a correct value for the day (if it does not exist already)
             human.initialize_daily_risk(current_day)
@@ -827,19 +674,6 @@ class City:
         return backup_human_init_risks, update_messages
 
 
-class Household(Location):
-    """
-    Household location class, inheriting from covid19sim.base.Location
-    """
-    def __init__(self, **kwargs):
-        """
-        Args:
-            kwargs (dict): all the args necessary for a Location's init
-        """
-        super(Household, self).__init__(**kwargs)
-        self.residents = []
-
-
 class EmptyCity(City):
     """
     An empty City environment (no humans or locations) that the user can build with
@@ -863,6 +697,7 @@ class EmptyCity(City):
         self.y_range = y_range
         self.total_area = (x_range[1] - x_range[0]) * (y_range[1] - y_range[0])
         self.n_people = 0
+        self.logfile = None
 
         self.test_type_preference = list(zip(*sorted(conf.get("TEST_TYPES").items(), key=lambda x:x[1]['preference'])))[0]
         self.max_capacity_per_test_type = {
@@ -889,13 +724,15 @@ class EmptyCity(City):
         self.hd = {}
         self.households = OrderedSet()
         self.stores = []
-        self.senior_residencys = []
+        self.senior_residences = []
         self.hospitals = []
         self.miscs = []
         self.parks = []
         self.schools = []
         self.workplaces = []
         self.global_mailbox: SimulatorMailboxType = defaultdict(dict)
+        self.n_init_infected  = 0
+        self.init_fraction_sick = 0
 
     @property
     def start_time(self):
@@ -907,10 +744,16 @@ class EmptyCity(City):
         object in preparation for simulation.
         """
         self.log_static_info()
-
+        self.n_people = len(self.humans)
+        self.n_init_infected = sum(1 for h in self.humans if h.infection_timestamp is not None)
+        self.init_fraction_sick = self.n_init_infected /  self.n_people
         print("Computing preferences")
+        # self.initialize_humans_and_locations()
+        # assign workplace to humans
+        self.humans, self = create_locations_and_assign_workplace_to_humans(self.humans, self, self.conf, self.logfile)
+
         self._compute_preferences()
-        self.tracker = Tracker(self.env, self)
+        self.tracker = Tracker(self.env, self, self.conf, None)
         self.tracker.initialize()
         # self.tracker.track_initialized_covid_params(self.humans)
-        self.intervention = BaseMethod(self.conf)
+        self.tracing_method = BaseMethod(self.conf)

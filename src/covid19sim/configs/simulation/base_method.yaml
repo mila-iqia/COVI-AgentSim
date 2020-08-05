@@ -1,6 +1,6 @@
 #FORMER COMMAND-LINE ARGS
 n_people: 1000
-init_percent_sick: 0.001
+init_fraction_sick: 0.001
 start_time:
   "2020-02-28 00:00:00" # in utils.py/parse_configuration, this will be parsed
   # into a datetime object with the following schema: '%Y-%m-%d %H:%M:%S'
@@ -9,7 +9,6 @@ outdir: ./output
 out_chunk_size: null
 seed: 0
 tune: False
-name: ""
 print_progress: True
 zip_outdir: False
 delete_outdir: False
@@ -24,6 +23,7 @@ USE_ORACLE: False
 INFERENCE_SERVER_ADDRESS: null
 
 ## INTERVENTIONS
+N_BEHAVIOR_LEVELS: 2
 INTERVENTION: ""
 INTERVENTION_DAY: -1
 # NOTE: INTERVENTION is only valid if INTERVENTION_DAY >= 0

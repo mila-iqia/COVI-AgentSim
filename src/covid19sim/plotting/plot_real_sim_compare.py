@@ -53,7 +53,7 @@ if not use_cache:
             print(f"{e}, {config_path}")
             continue
         mob = config['GLOBAL_MOBILITY_SCALING_FACTOR']
-        sick = config['init_percent_sick']
+        sick = config['init_fraction_sick']
         pop = config['n_people']
         days = config['simulation_days']
         name = f"mob_{mob}_sick_{sick}_pop_{pop}_days_{days}"

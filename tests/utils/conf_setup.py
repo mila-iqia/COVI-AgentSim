@@ -34,10 +34,13 @@ def get_test_conf(conf_name):
     with config.open("r") as f:
         defaults = yaml.safe_load(f)["defaults"]
 
-    default_confs = [
-        OmegaConf.load(str(HYDRA_SIM_PATH / (d + ".yaml")))
-        for d in defaults
-    ]
+    default_confs = []
+    for d in defaults:
+        if type(d) == str:
+            conf = OmegaConf.load(str(HYDRA_SIM_PATH / (d + ".yaml")))
+        else:
+            conf = OmegaConf.load(str(HYDRA_SIM_PATH / list(d.keys())[0] / (list(d.values())[0] + ".yaml")))
+        default_confs.append(conf)
     conf = OmegaConf.merge(*default_confs, OmegaConf.load(str(config_path)))
 
     return parse_configuration(conf)
