@@ -28,7 +28,7 @@ n_people: 1000
 P_CAREFUL_PERSON: 0.6
 simulation_days: 30
 test_capacity: 0.005
-tune: true
+tune: True
 KEEP_FULL_OBJ_COPIES: True 
 COLLECT_LOGS: True
 

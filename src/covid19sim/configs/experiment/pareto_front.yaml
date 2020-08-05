@@ -12,7 +12,7 @@ USE_INFERENCE_SERVER: False
 # -------------------------
 # -----  Directories  -----
 # -------------------------
-base_dir: $HOME/simulator/results/heuristic_pareto_mobility # if outdir is not provided, runs will be stored in base_dir/${tracing_method}
+base_dir: $HOME/simulator/results/pareto_front # if outdir is not provided, runs will be stored in base_dir/${tracing_method}
 code_loc: $HOME/simulator/src/covid19sim/
 use_tmpdir: false
 weights_dir: $SCRATCH/weights
@@ -38,6 +38,7 @@ tracing_method:
   from:
     - no_intervention
     - heuristicv1
+    - heuristicv3
     - binary_digital_tracing_order_1
 
 APP_UPTAKE: 0.8415 # 60%
