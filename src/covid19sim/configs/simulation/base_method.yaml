@@ -1,5 +1,4 @@
 #FORMER COMMAND-LINE ARGS
-COVID_START_DAY: 7
 n_people: 1000
 init_fraction_sick: 0.001
 start_time:
