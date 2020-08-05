@@ -90,7 +90,7 @@ class Activity(object):
         NOTE: It needs to be called just before `yield`ing for this activity even though the `self.location` might not be none.
         This is being done in `MobilityPlanner._modify_activity_location_if_needed`
         """
-        assert any(x in self.prepend_name for x in ["invitation", "supervised"]),  f"{self.prepend_name} not recognized. refresh shouldn't be called without supervision or invitation. Activity: {self}"
+        assert any(x in self.prepend_name for x in ["invitation", "supervised"]),  f"{self.prepend_name} not recognized. refresh shouldn't be called without supervision or invitation.\nActivity: {self}\nParent:{self.parent_activity_pointer}\nOwner:{self.owner}\nParent owner:{self.parent_activity_pointer.owner}"
         assert self.parent_activity_pointer is not None,  f"refresh shouldn't be called without supervision or invitation. Activity: {self}"
 
         if self.parent_activity_pointer.is_cancelled:
@@ -641,7 +641,9 @@ class MobilityPlanner(object):
                 return activity
 
             # if activity is already at home - no need to update
-            kid_to_stay_at_home = kid.mobility_planner._update_rest_at_home()
+            # /!\ if for some reason, this condition is not valid while the kid's activity was canceled due to sickness
+            # then this activity will call refresh_location and raise AssertionError due to prepend_name
+            kid_to_stay_at_home = kid.mobility_planner.human_to_rest_at_home
             if (
                 kid_to_stay_at_home
                 and activity.location is not None
