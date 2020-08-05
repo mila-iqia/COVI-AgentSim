@@ -30,3 +30,4 @@ sphinx
 h5py
 weasyprint
 xdelta3
+runstats

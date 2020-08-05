@@ -100,15 +100,15 @@ def get_rec_levels_distributions(data, config, num_rec_levels=4):
     rec_levels = data["humans_rec_level"]
     intervention_day = data["intervention_day"]
     num_days = len(next(iter(rec_levels.values())))
-    if "humans_has_app" in data:
-        has_app = data["humans_has_app"]
+    if "human_has_app" in data:
+        has_app = data["human_has_app"]
         rec_levels_with_app = [
-            value for (key, value) in rec_levels.items() if has_app[key]
+            value for (key, value) in rec_levels.items() if key in has_app
         ]
     else:
         if config.get("APP_UPTAKE", -1) >= 0:
             logging.warning(
-                "`humans_has_app` is not available even though "
+                "`human_has_app` is not available even though "
                 "APP_UPTAKE is not -1 (APP_UPTAKE={0}).".format(
                     config.get("APP_UPTAKE", -1)
                 )
@@ -322,7 +322,7 @@ def main(args):
     for i, norm_dict in enumerate(to_normalize):
         tracing_method = norm_dict["tracing_method"]
         method_dir = norm_dict["method_dir"]
-        
+
         target_name = f"{method_dir.name}_{Path(args.target).name}"
         if "transformer" in target_name:
             target_name = target_name.replace("transformer", "").replace("_012_", "")

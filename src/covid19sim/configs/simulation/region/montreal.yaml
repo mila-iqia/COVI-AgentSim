@@ -1,0 +1,964 @@
+#############################################################################
+########     Contributors:                                           ########
+########         - Nanor                                             ########
+########         - Soren                                             ########
+########         - Prateek Gupta  (pgupta@robots.ox.ac.uk)           ########
+##############################################################################
+
+# Region
+# Région de Montréal Quebec
+
+#########################################################
+###############       Housing data         ##############
+#########################################################
+
+# https://www12.statcan.gc.ca/census-recensement/2016/dp-pd/prof/details/page.cfm?Lang=E&Geo1=HR&Code1=2406&Geo2=PR&Code2=01&SearchText=montreal&SearchType=Contains&SearchPR=01&B1=All&TABID=1&type=1
+# population of Montreal - 1942045 (a.1)
+POPULATION_SIZE_REGION: 1942045
+P_AGE_REGION: [
+    [0, 4, 0.057],
+    [5, 9, 0.054],
+    [10, 14, 0.047],
+    [15, 19, 0.05],
+    [20, 24, 0.072],
+    [25, 29, 0.079],
+    [30, 34, 0.078],
+    [35, 39, 0.076],
+    [40, 44, 0.066],
+    [45, 49, 0.065],
+    [50, 54, 0.068],
+    [55, 59, 0.065],
+    [60, 64, 0.057],
+    [65, 69, 0.049],
+    [70, 74, 0.037],
+    [75, 110, 0.08]
+]
+AVERAGE_AGE_REGION: 40.6
+MEDIAN_AGE_REGION: 39.1
+
+# https://www12.statcan.gc.ca/census-recensement/2016/dp-pd/prof/details/page.cfm?Lang=E&Geo1=HR&Code1=2406&Geo2=PR&Code2=01&SearchText=montreal&SearchType=Contains&SearchPR=01&B1=Families,%20households%20and%20marital%20status&TABID=1&type=0
+# Household and Dwelling characteristic
+# household size distribution
+# fraction of **all** households that are 1 person households 0.394 (A.1)
+# fraction of **all** households that are 2 persons households 0.298 (A.2)
+# fraction of **all** households that are 3 persons households 0.136 (A.3)
+# fraction of **all** households that are 4 persons households 0.112 (A.4)
+# fraction of **all** households that are more than 5 persons households 0.06 (A.5)
+# average household size 2.2
+AVG_HOUSEHOLD_SIZE: 2.2
+P_HOUSEHOLD_SIZE:  [0.394, 0.298, 0.136, 0.112, 0.06]
+
+# Total number of 1 person private households in Montreal - 342,510
+# ref: https://www12.statcan.gc.ca/census-recensement/2016/dp-pd/prof/details/page.cfm?Lang=E&Geo1=HR&Code1=2406&Geo2=PR&Code2=01&SearchText=montreal&SearchType=Contains&SearchPR=01&B1=All&TABID=1&type=0
+N_HOUSESIZE_1: 342510
+
+# Household type (B)
+# total private households - 870,375 (B.1)
+# one census-family households - 469,260 (0.539) (B.2)
+
+# Family characteristics (C)
+# age-household size distribution
+# number of at least one census family households 485,285 (C.1)
+# 2 person families
+#   2 person families in private households - 241,425 (C.2)
+#   fraction of **all** households that are 2 person families = (C.2 / C.1) * (B.2 / B.1) = 0.268 (C.2.a)
+#   fraction of **all** households that are of size 2 and not 2 person families = (C.2.a - A.2) = 0.03
+#       couples without children - 178,110 (C.2.1)
+#       fraction of **all** households that are "couples without children" = (C.2.1 / C.1) * (B.2 / B.1) = 0.198
+#       single parent with a child - 63,315 (C.2.2)
+#       fraction of **all** households that are "single parent with a child" - (C.2.2 / C.1) * (B.2 / B.1) = 0.070
+P_FAMILY_TYPE_SIZE_2: [0.198, 0.070, 0.03]
+
+# 3 person families
+#   3 person families in private households - 109,085 (C.3)
+#   fraction of **all** households that are 3 person families = (C.3 / C.1) * (B.2 / B.1) = 0.121 (C.3.a)
+#   fraction of **all** households that are of size 3 and not 3 person families = (C.3.a - A.3) = 0.015
+#       couples with 1 child - 82,310 (C.3.1)
+#       fraction of **all** households that are "couples with 1 child" = (C.3.1 / C.1) * (B.2 / B.1) = 0.091
+#       single parent with 2 children - 26,780 (C.3.2)
+#       fraction of **all** households that are "single parent with 2 children" = (C.3.2 / C.1) * (B.2 / B.1) = 0.03
+P_FAMILY_TYPE_SIZE_3: [0.091, 0.03, 0.015]
+
+# 4 person families
+#   4 person families in private households - 93,225 (C.4)
+#   fraction of **all** households that are 4 person families = (C.4 / C.1) * (B.2 / B.1) = 0.104 (C.4.a)
+#   fraction of **all** households that are of size 4 and not 4 person families = (C.4.a - A.4) = 0.008 (C.4.b)
+#       couples with 2 children - 85,985 (C.4.1)
+#       fraction of **all** households that are "couples with 2 children" = (C.4.1 / C.1) * (B.2 / B.1) = 0.096 (C.4.1.a)
+#       single parent with 3 or more children - 9,610 (C.4.2)
+#       single parent with 3 children - 9,610 (C.4 - C.4.1) = 7240 (C.4.3)
+#       fraction of **all** households that are "single parent with 3 children" = (C.4.3 / C.1) * (B.2 / B.1) = 0.008
+P_FAMILY_TYPE_SIZE_4: [0.096, 0.008, 0.008]
+
+# 5 or more person families
+#   5 person families in private households - 41,555 (C.5)
+#   fraction of **all** households that are 5 person families = (C.5 / C.1) * (B.2 / B.1) = 0.046 (C.5.a)
+#   fraction of **all** households that are of size more than 5 and not more than 5 person families = (C.5.a - A.5) = 0.014 (used as 0.013 so that numbers sum up to 0.06 P_HOUSEHOLD_SIZE[4])
+#      couples with 3 or more children - 39,180 (C.5.1)
+#      fraction of **all** households that are "couples with 3 or more children" = (C.5.1 / C.1) * (B.2 / B.1) = 0.044
+#      single parent with 4 or more children - (C.4.2 - C.4.3) = 2370 (C.5.2)
+#      fraction of **all** households that are "single parent with 4 or more children" = (C.5.2 / C.1) * (B.2 / B.1) = 0.003
+P_FAMILY_TYPE_SIZE_MORE_THAN_5: [0.044, 0.003, 0.013]
+
+# multi-generation households (D)
+# https://www12.statcan.gc.ca/census-recensement/2016/dp-pd/hlt-fst/fam/Table.cfm?Lang=E&T=24&Geo=00&SO=18D
+# Total private households  - 779,800 (D.1)
+# multi-generation households  - 11,410 (D.2)
+# to account for discrepancy in D.1 and B.1 we scale D.2 as B.1 * D.2 / D.1
+# thus, multi-generation households -  12735 (D.3)
+# Total non-one-census family households - ("other census family households") 17,465 + ("non census family households") 48,770 - (D.4) = 66235
+# apply same standardization here - B.1 * D.4 / D.1 = 73928 (D.5)
+# fraction of **all** households that are multigenerational - (D.3 / D.1)  = 0.016
+# fraction of **others** (category used in housing allocation in `demographics.py`) - D.3 / (D.3 + D.5) = 0.147
+P_MULTIGENERATIONAL_FAMILY: 0.016
+P_MULTIGENERTIONAL_FAMILY_GIVEN_OTHER_HOUSEHOLDS: 0.147
+
+# Senior residency & long term care centers
+# ref: https://www12.statcan.gc.ca/census-recensement/2016/dp-pd/prof/details/page.cfm?Lang=E&Geo1=HR&Code1=2406&Geo2=PR&Code2=01&SearchText=montreal&SearchType=Contains&SearchPR=01&B1=All&TABID=1&type=0
+# total population = 1,942,045 (E)
+# ref: https://www12.statcan.gc.ca/census-recensement/2016/dp-pd/covid19/table2-eng.cfm?geo=A0002&S=1&O=A
+# total population living in collectives for seniors (2011)- 32935 (E.1)
+# total population aged 0 to 79 living in collectives for seniors - 9750 (E.2)
+# total population aged 80 or above living in collectives for seniors - 23185 (E.3)
+# probability of living in a senior residency - 0.017 E.1/E
+N_COLLECTIVE_RESIDENTS: 32935
+N_COLLECTIVE_RESIDENTS_65_79: 9750
+N_COLLECTIVE_RESIDENTS_80_above: 23185
+
+#/!\ (no-source) these values are assumed.
+# Use one of the limits of a bin in AGE_BIN_WIDTH_5 to define the below values.
+# For min: Use the lower limit of a bin just before the desired bin (i.e bin in which minimum should lie)
+# For max: Use the upper limit of the desired bin (i.e bin in which maximum should lie)
+MAX_AGE_CHILDREN: 14 # used in prioritizing the allocation of houses so that no housing only has children as residents
+MAX_AGE_WITH_PARENT: 54 # used in expanding the search for census family households and restricting the age of parents in multigenerational family
+AGE_DIFFERENCE_BETWEEN_PARENT_AND_KID: 20 # used in sampling for parents
+
+#########################################################
+#####       Assortativity Knobs                     #####
+#########################################################
+# These needs to be calibrated to achieve the region specific mixing pattern
+# this factor influences the strength of assortativity in contacts at home.
+# higher the value, more likely that people of the same age group live together.
+# HOUSEHOLD_ASSORTATIVITY_STRENGTH: 0.5
+# WORKPLACE_ASSORTATIVITY_STRENGTH: 0.5
+# Place the above knobs in core.yaml
+
+#########################################################
+###########       Location data               ###########
+#########################################################
+# senior residences
+# ref: https://assets.cmhc-schl.gc.ca/sf/project/cmhc/pubsandreports/seniors-housing-report/2019/seniors-housing-report-quebec-65987-2019-a01-en.pdf?rev=b2d3d7dc-51a1-4617-8296-05da60210c37
+# number of private senior residences in the region of Montreal (MSSS registry of private residences): 203 (source: http://k10.pub.msss.rtss.qc.ca/K10accueil.asp)
+# number of public senior residences: 60 https://santemontreal.qc.ca/en/public/montreals-institutions-at-a-glance/residential-and-long-term-care-centres-chslds/
+# total number of senior residences: 263 (F.1)
+# total number of residents in these centers: 32935 (E.1)
+# Number of residents per residence - E.1 / F.1 = 125.22
+N_RESIDENTS_PER_COLLECTIVE: 125.2
+
+# workplace
+# this type of location is used to model uniform interactions with colleagues
+# We use NAICS code 54 - Professional, Scientific and Technical Services to represent a typical workplace distribution.
+# population of Quebec - 8,522,800 (G.1) (source: https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1710000901)
+# source for the numbers below : https://www.ic.gc.ca/app/scr/app/cis/businesses-entreprises/54
+# number of employers - 24,968 (G.2)
+# number of employers with 1-4 employees in Quebec - 17,046 (G.2.1)
+# number of employers with 1-4 employees in Montreal - G.2.1 * a.1 / G.1 = 3884 (G.2.1.a)
+# number of employers with 5-99 employees  - 7591 (G.2.2)
+# number of employers with 5-99 employees in Montreal -  G.2.2 * a.1 / G.1 = 1730 (G.2.1.b)
+# number of employers with 100-499 employees - 296 (G.2.3)
+# number of employers with 100-499 employees in Montreal - G.2.3 * a.1 / G.1 = 67.5 (G.2.1.c)
+# number of employers with >= 500 employees - 35 (G.2.4)
+# number of employers with >= 500 employees  in Montreal - G.2.4 * a.1 / G.1 = 8 (G.2.1.d)
+# number of employers in Montreal (projected) - G.2 * a.1 / G.1 = 5689 (G.2.a)
+# probability of number of employers in Montreal - [G.2.1.a / G.2.a, G.2.1.b / G.2.a, G.2.1.c / G.2.a, G.2.1.c / G.2.a] = [0.683, 0.304, 0.012, 0.0014]
+# assuming number of employees to be a midpoint of the range, average number of employees = 21.82
+P_EMPLOYEES_1_4_PER_WORKPLACE: 0.683
+P_EMPLOYEES_5_99_PER_WORKPLACE: 0.304
+P_EMPLOYEES_100_499_PER_WORKPLACE: 0.012
+P_EMPLOYEES_500_above_PER_WORKPLACE: 0.0014
+AVERAGE_N_EMPLOYEES_PER_WORKPLACE: 21.82
+
+# stores
+# There are two types of interactions at these locations - among the workers (like a normal workplace above), and one to many (customer facing)
+# We use NAICS code 445 - Food and Beverage Stores  to represent a typical store
+# source for the numbers below : https://www.ic.gc.ca/app/scr/app/cis/businesses-entreprises/445
+# number of employers - 6,369 (GS.2)
+# number of employers with 1-4 employees in Quebec - 2,342 (GS.2.1)
+# number of employers with 1-4 employees in Montreal - GS.2.1 * a.1 / G.1 = 534 (GS.2.1.a)
+# number of employers with 5-99 employees  - 3,729 (GS.2.2)
+# number of employers with 5-99 employees in Montreal -  GS.2.2 * a.1 / G.1 = 850 (GS.2.1.b)
+# number of employers with 100-499 employees - 296 (GS.2.3)
+# number of employers with 100-499 employees in Montreal - GS.2.3 * a.1 / G.1 = 67.5 (GS.2.1.c)
+# number of employers with >= 500 employees - 2 (GS.2.4)
+# number of employers with >= 500 employees  in Montreal - GS.2.4 * a.1 / G.1 = 0.46 (GS.2.1.d)
+# number of employers in Montreal (projected) - GS.2 * a.1 / G.1 = 1451 (GS.2.a)
+# number of stores per 1000 people - 1000 * GS.2.a / a.1 = 1000 * 1451 / 1942045 = 0.747
+# probability of number of employers in Montreal - [GS.2.1.a / GS.2.a, GS.2.1.b / GS.2.a, GS.2.1.c / GS.2.a, GS.2.1.c / GS.2.a] = [0.368, 0.586, 0.047, 0.0003]
+# assuming number of employees to be a midpoint of the range, average number of employees =
+P_EMPLOYEES_1_4_PER_STORE: 0.368
+P_EMPLOYEES_5_99_PER_STORE: 0.586
+P_EMPLOYEES_100_499_PER_STORE: 0.047
+P_EMPLOYEES_500_above_PER_STORE: 0.0003
+AVERAGE_N_EMPLOYEES_PER_STORE: 45.642
+N_STORE_PER_1K_PEOPLE: 0.747
+
+# *************** NOTE: OVERWRITTEN ********************
+AVERAGE_N_EMPLOYEES_PER_STORE: 10 # for smaller population size
+# *************** ***************** ********************
+
+# misc (leisure activities)
+# There are two types of interactions at these locations - among the workers (like a normal workplace above), and one to many (customer facing)
+# We use NAICS code 722 - Food Services and Drinking Places to represent a typical entertainment place
+# source for the numbers below : https://www.ic.gc.ca/app/scr/app/cis/businesses-entreprises/722
+# number of employers - 16,586 (GM.2) 1942045
+# number of employers with 1-4 employees in Quebec - 3,428 (GM.2.1)
+# number of employers with 1-4 employees in Montreal - GM.2.1 * a.1 / G.1 = 793 (GM.2.1.a)
+# number of employers with 5-99 employees  - 12,983 (GM.2.2)
+# number of employers with 5-99 employees in Montreal -  GM.2.2 * a.1 / G.1 = 2958 (GM.2.1.b)
+# number of employers with 100-499 employees - 170 (GM.2.3)
+# number of employers with 100-499 employees in Montreal - GM.2.3 * a.1 / G.1 = 39 (GM.2.1.c)
+# number of employers with >= 500 employees - 5 (GM.2.4)
+# number of employers with >= 500 employees  in Montreal - GM.2.4 * a.1 / G.1 = 1.14 (GM.2.1.d)
+# number of employers in Montreal (projected) - GM.2 * a.1 / G.1 = 3779 (GM.2.a)
+# number of such places per 1000 people in Montreal - 1000 * GM.2.a / a.1 = 1.946
+# probability of number of employers in Montreal - [GM.2.1.a / GM.2.a, GM.2.1.b / GM.2.a, GM.2.1.c / GM.2.a, GM.2.1.c / GM.2.a] = [0.141, 0.987, 0.078, 0.0001]
+# assuming number of employees to be a midpoint of the range, average number of employees = 75.127
+P_EMPLOYEES_1_4_PER_MISC: 0.141
+P_EMPLOYEES_5_99_PER_MISC: 0.783
+P_EMPLOYEES_100_499_PER_MISC: 0.078
+P_EMPLOYEES_500_above_PER_MISC: 0.0001
+AVERAGE_N_EMPLOYEES_PER_MISC: 75.127
+N_MISC_PER_1K_PEOPLE: 1.946
+
+# *************** NOTE: OVERWRITTEN ********************
+AVERAGE_N_EMPLOYEES_PER_MISC: 10 # for smaller population size
+# *************** ***************** ********************
+
+# schools
+# (assumption) 100% enrolment in schools for children aged 5-15 yo
+# Allocation of children to schools is done in the age groups of 5-9 and 10-14 for simplification
+# preschools & primary schools are for children aged 5-12 yo
+# secondary schools are for children aged 13-17 yo
+# ref: https://www.emsb.qc.ca/emsb/about/school-board/school-system
+# ref: https://prod.education.gouv.qc.ca/gdunojrecherche/rechercheOrganisme.do?methode=rechercheBase&typeRecherche=base
+# - 393 preschools (H.1)
+# population aged 4-5 (H.2) - (0.057/5) * a.1 = 22139 (assuming uniform distribution within each age group)
+# Number of students per preschool - H.2 / H.1 = 56.33
+# - 417 primary schools (H.3)
+# population aged 5-12 (H.4) - (0.054 + 3 * 0.047 / 5) * a.1 = 159636 (assuming uniform distribution within each age group)
+# Number of students per primary school - H.4 / H.3 = 382.82
+# - 214 secondary schools (H.5)
+# Population aged 12-17 in Montreal (H.6) - (2 * 0.047 / 5 + 3 * 0.05 / 5) * a.1 = 94771 (assuming uniform distribution within each age group)
+# Number of students per school - H.6 / H.5 = 442.86
+# - 8 universities
+# - 131 collège
+# - 43 adult education
+# total schools for 17-29 yo = 182 (H.9)
+# proportion aged 15-19, 20-24, 24-29 in Quebec vs Montreal
+# ref: https://www12.statcan.gc.ca/census-recensement/2016/dp-pd/prof/details/page.cfm?Lang=E&Geo1=PR&Code1=24&Geo2=CSD&Code2=2466023&SearchText=Montreal&SearchType=Begins&SearchPR=01&B1=All&TABID=1&type=1
+# Quebec - 5.3, 6.1, 6.1; Montreal - 4.8, 7.3, 8.4 (H.7)
+# (Quebec) proportion of population aged 15-19 yo enrolled in schools - 0.812 (H.8.a)
+# (Quebec) proportion of population aged 20-24 yo enrolled in schools - 0.465  (H.8.b)
+# (Quebec) proportion of population aged 25-29 yo enrolled in schools - 0.161 (H.8.c)
+# (Montreal) proportion of population aged 15-19 yo enrolled in schools - H.8.a * H.7.Montreal / H.7.Quebec = 0.735 (H.8.d)
+# (Montreal) proportion of population aged 20-24 yo enrolled in schools - H.8.b * H.7.Montreal / H.7.Quebec = 0.557 (H.8.e)
+# (Montreal) proportion of population aged 25-29 yo enrolled in schools - H.8.c * H.7.Montreal / H.7.Quebec = 0.222 (H.8.f)
+# Proportion of population from 15-29 going to school/university in Montreal - (H.8.d * 0.05/2 + H.8.e * 0.072 + H.8.f * 0.079) * a.1  = 147628 (H.8.e)
+# Number of students per schools - H.8.e / H.9 = 811
+N_STUDENTS_PER_SCHOOL_2_4: 15 # /!\ (no-source)
+N_STUDENTS_PER_SCHOOL_4_5: 56.33
+N_STUDENTS_PER_SCHOOL_5_12: 382.82
+N_STUDENTS_PER_SCHOOL_12_17: 442.86
+N_STUDENTS_PER_SCHOOL_17_29: 811
+#
+P_SCHOOL_FOR_AGE_17_19: 0.812
+P_SCHOOL_FOR_AGE_19_24: 0.465
+P_SCHOOL_FOR_AGE_25_29: 0.161
+#
+#/!\ (no-source) these values are assumed.
+STUDENT_TEACHER_RATIO_SCHOOL_2_4: 5
+STUDENT_TEACHER_RATIO_SCHOOL_4_5: 5
+STUDENT_TEACHER_RATIO_SCHOOL_5_12: 5
+STUDENT_TEACHER_RATIO_SCHOOL_12_17: 10
+STUDENT_TEACHER_RATIO_SCHOOL_17_29: 15
+
+#/!\ (no-source) these values are assumed.
+P_STUDENT_4_5: 1 # proportion of children 4-5 yo who are enrolled in a preschool.
+P_STUDENT_2_4: 0.5 #
+
+# hospitals
+# in modeling interactions between patients, doctors, and nurses we only care about number of wards or clinics.
+# number of hospitals in Quebec -  170 (I.1)
+# number of hospitals in Montreal - a.1 * I.1 / G.1 = 38.74 (I.2)
+# number of hospital per 100K population - I.2 * a.1 / 100,000 = 1.99
+N_HOSPITALS_PER_100K_PEOPLE: 1.99
+
+# /!\ (more justification needed. Verify!)
+# https://www.cdc.gov/nchs/data/hus/2017/089.pdf
+HOSPITAL_BEDS_OCCUPANCY: 0.66
+HOSPITAL_BEDS_PER_1K_PEOPLE: 2.8
+
+# /!\ (more justification needed. Verify!)
+# https://www.sccm.org/Communications/Critical-Care-Statistics
+ICU_BEDS_PER_1K_PEOPLE: 0.32
+ICU_BEDS_OCCUPANCY: 0.68
+
+# *************** NOTE: OVERWRITTEN ********************
+HOSPITAL_BEDS_PER_1K_PEOPLE: 1000 # Since there were no deaths because of the capacity of beds, put it to maximum
+ICU_BEDS_PER_1K_PEOPLE: 1000 # Since there were no deaths because of the capacity of beds, put it to maximum
+# *************** ***************** ********************
+
+###########################################################
+###########       Occupation data               ###########
+###########################################################
+# Total labor force = 2,189,300 (O.1)
+# ref: https://www12.statcan.gc.ca/census-recensement/2016/dp-pd/dt-td/Rp-eng.cfm?TABID=2&LANG=E&APATH=3&DETAIL=0&DIM=0&FL=A&FREE=0&GC=0&GK=0&GRP=1&PID=110698&PRID=10&PTYPE=109445&S=0&SHOWALL=0&SUB=0&Temporal=2017&THEME=124&VID=0&VNAMEE=&VNAMEF=
+# Total labor force in healthcare = 259,490 (O.2)
+# proportion of labor force particiapting in healthcare - O.2/O.1 = 0.119
+# doctors to nurse ratio (note: data is from 2006)
+# ref: https://www150.statcan.gc.ca/n1/pub/91-550-x/2008001/t022-eng.htm
+# number of doctors per 100,000 population = 142
+# number of nurses per 100,000 population = 825
+# nurses to doctors ratio: 5.81
+P_HEALTHCARE_WORKERS: 0.119
+NURSE_TO_DOCTOR_RATIO: 5.81
+N_DOCTOR_PER_100K_PEOPLE: 142
+
+# for SENIOR_RESIDENCY
+RESIDENT_TO_STAFF_RATIO: 13
+
+
+#/!\ (no-source) these values are assumed.
+MIN_AGE_HEALTHCARE_WORKER: 30
+MAX_AGE_HEALTHCARE_WORKER: 65
+MIN_WORKING_AGE: 15
+MAX_WORKING_AGE: 65
+
+#########################################################
+###########       Mobility data             ###########
+#########################################################
+
+#/!\ (no-source) these values are assumed.
+# CAUTION 1: Use an upper limit of one of the bins in utils.constants.AGE_BIN_WIDTH_5 to be consistent with household allocation
+# CAUTION 2: Too high a value of this parameter might break the mobility_planner.
+MAX_AGE_CHILDREN_WITHOUT_PARENT_SUPERVISION: 14
+
+# How often people go out to food stores?
+# this is needed to decide the time when a human visits a store.
+# ref: https://www.statista.com/statistics/944310/how-often-consumers-visit-food-stores-canada/
+# daily - 1.4%; every other day - 12.3%; weekly - 62.3%; 10 days - 10.8%; 15 days - 9.4%; 30 days - 3.8%
+# Note the above stats is for Canada which we use for Montreal without any corrections.
+P_GROCERY_SHOPPING_DAYS: [
+  [1, 0.014],
+  [2, 0.123],
+  [7, 0.623],
+  [10, 0.108],
+  [15, 0.094],
+  [30, 0.038]
+]
+
+# How often do people socialize?
+# this is needed to bring people together for a social activity
+# ref: https://www150.statcan.gc.ca/n1/pub/89-652-x/89-652-x2014006-eng.htm
+# Face-to-face contacts. We assume that "once a week" excludes "daily" and so on.
+# "Not in the last month" as 30 days gap.
+# Note: these values are normalized before being used.
+P_SOCIALIZE_DAYS: [
+  [1, 0.16],
+  [7, 0.47],
+  [10, 0.28],
+  [30, 0.07],
+  [40, 0.02]
+]
+
+# How often do people exercise?
+# /!\ (no-source)
+# Note: these values are normalized before being used.
+P_EXERCISE_DAYS: [
+  [1, 0.16],
+  [7, 0.47],
+  [10, 0.28],
+  [30, 0.07],
+  [40, 0.02]
+]
+
+# How much time do people do grocery shopping for? Quebec data
+# ref: https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=4510001401&pickMembers%5B0%5D=1.3&pickMembers%5B1%5D=3.1&pickMembers%5B2%5D=4.1&pickMembers%5B3%5D=5.1
+#  Table  45-10-0014-01   Daily average time spent in hours on various activities by age group and sex, 15 years and over, Canada and provinces
+# 15 years and over
+AVERAGE_TIME_SPENT_GROCERY: 0.5 # hours
+
+# How much time do people spend on socializing? Quebec data
+# ref: https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=4510001401&pickMembers%5B0%5D=1.3&pickMembers%5B1%5D=3.1&pickMembers%5B2%5D=4.1&pickMembers%5B3%5D=5.1
+#  Table  45-10-0014-01   Daily average time spent in hours on various activities by age group and sex, 15 years and over, Canada and provinces
+# 15 years and over
+AVERAGE_TIME_SPENT_SOCIALIZING: 0.7 # hours
+
+# How much time do people spend on exercise? Quebec data
+# ref: https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=4510001401&pickMembers%5B0%5D=1.3&pickMembers%5B1%5D=3.1&pickMembers%5B2%5D=4.1&pickMembers%5B3%5D=5.1
+#  Table  45-10-0014-01   Daily average time spent in hours on various activities by age group and sex, 15 years and over, Canada and provinces
+# 15 years and over
+AVERAGE_TIME_SPENT_EXERCISING: 0.4 # hours
+
+# How much time do people spend on work? Quebec data
+# ref: https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=4510001401&pickMembers%5B0%5D=1.3&pickMembers%5B1%5D=3.1&pickMembers%5B2%5D=4.1&pickMembers%5B3%5D=5.1
+#  Table  45-10-0014-01   Daily average time spent in hours on various activities by age group and sex, 15 years and over, Canada and provinces
+AVERAGE_TIME_SPENT_WORK: 8 # hours
+
+# *************** NOTE: OVERWRITTEN ********************
+# to get substantial interactions in the random networks we increase the duration
+AVERAGE_TIME_SPENT_SOCIALIZING: 2.0 # hours
+AVERAGE_TIME_SPENT_EXERCISING: 1.0 # hours
+# *************** ***************** ********************
+
+# *********************** Overwrite P_AGE_SOLO_DWELLERS_GIVEN_HOUSESIZE_1 because a more accurate datasource is available ***********************
+# *********************** NOTE: this needs to go after any precompuation done for  P_AGE_SOLO_DWELLERS_GIVEN_HOUSESIZE_1 ***********************
+# *********************** NOTE: change the name to  P_AGE_SOLO_DWELLERS_GIVEN_HOUSESIZE_1 ***********************
+# ref: https://www12.statcan.gc.ca/census-recensement/2016/dp-pd/dt-td/Rp-eng.cfm?TABID=2&LANG=E&APATH=3&DETAIL=0&DIM=0&FL=A&FREE=0&GC=0&GID=1161337&GK=0&GRP=1&PID=109648&PRID=10&PTYPE=109445&S=0&SHOWALL=0&SUB=0&Temporal=2016&THEME=117&VID=0&VNAMEE=&VNAMEF=&D1=0&D2=0&D3=0&D4=0&D5=0&D6=0
+P_AGE_SOLO_DWELLERS_GIVEN_HOUSESIZE_1_MORE_ACCURATE: [[0, 4, 0.0],
+    [5, 9, 0.0],
+    [10, 14, 0.0],
+    [15, 19, 0.005576642],
+    [20, 24, 0.047080292],
+    [25, 29, 0.084919708],
+    [30, 34, 0.090948905],
+    [35, 39, 0.078277372],
+    [40, 44, 0.061708029],
+    [45, 49, 0.063343066],
+    [50, 54, 0.080321168],
+    [55, 59, 0.091649635],
+    [60, 64, 0.091547445],
+    [65, 69, 0.086321168],
+    [70, 74, 0.069109489],
+    [75, 110, 0.14919708]
+  ]
+
+######################################################################
+######             Intervention Related Data                    ######
+######################################################################
+
+# Pre confinement contacts statistics
+WORKPLACE_MEAN_DAILY_INTERACTIONS: 10
+OTHER_MEAN_DAILY_INTERACTIONS: 3.1
+HOUSEHOLD_MEAN_DAILY_INTERACTIONS: 2.7
+SCHOOL_MEAN_DAILY_INTERACTIONS: 6
+HOSPITAL_MEAN_DAILY_INTERACTIONS: 10
+
+# Lockdown contact statistics
+# Following numbers (eyballed) are from CONNECT2 study
+# ref: http://www.marc-brisson.net/covid19-response/Epidemiologie-et-modelisation-evolution-COVID-19-au-Quebec_29-juin.pdf
+LOCKDOWN_FRACTION_REDUCTION_IN_CONTACTS_AT_HOUSEHOLD: 0.30
+LOCKDOWN_FRACTION_REDUCTION_IN_CONTACTS_AT_WORKPLACE: 0.80
+LOCKDOWN_FRACTION_REDUCTION_IN_CONTACTS_AT_OTHERS: 0.50
+LOCKDOWN_FRACTION_REDUCTION_IN_CONTACTS_AT_HOSPITAL: 1.0 # no contacts
+
+######################################################################
+## Pre-computed using utils/precompute_and_project/demographics.py  ##
+######################################################################
+
+# Solo dwellers
+# procedure -
+# Data for solo dwellers for country is from country.yaml
+# project it back per age group as per region's demographics
+# Multiply by a correction term to make number of solo houses equal to A.1 * TOTAL_HOUSES
+# Normalize it to get probabilities given housesize of 1
+# Keys to read the list - lower age limit, upper age limit, proportion of population in this age bin that live in household of size 1
+
+P_AGE_SOLO_DWELLERS_GIVEN_HOUSESIZE_1: [[0, 4, 0.0],
+    [5, 9, 0.0],
+    [10, 14, 0.0],
+    [15, 19, 0.0028602309028165226],
+    [20, 24, 0.031342278891661954],
+    [25, 29, 0.06372954768366591],
+    [30, 34, 0.06218163733528465],
+    [35, 39, 0.05154921715668182],
+    [40, 44, 0.04215243019364608],
+    [45, 49, 0.04732777213267344],
+    [50, 54, 0.06112454291194006],
+    [55, 59, 0.06847170923128242],
+    [60, 64, 0.06957391288759304],
+    [65, 69, 0.06667359274081809],
+    [70, 74, 0.05659703691582012],
+    [75, 110, 0.3764160910161159]]
+
+# P_COLLECTIVE_
+# Probability of living in a collective given an age range.
+# (procedure) use N_COLLECTIVE_, P_AGE_REGION, and POPULATION_SIZE_REGION to compute the ratios.
+# (assumption) distribution of people aged 60-79 living in collective is assumed to be skewed towards larger range [1/6, 2/6, 3/6]
+
+P_COLLECTIVE: 0.016958927316308325
+P_COLLECTIVE_65_69: 0.01707646594498194
+P_COLLECTIVE_70_74: 0.04522955844887108
+P_COLLECTIVE_75_above: 0.18060858527994975
+
+
+P_AGE_SOLO_DWELLERS_GIVEN_HOUSESIZE_1: [[0, 4, 0.0],
+    [5, 9, 0.0],
+    [10, 14, 0.0],
+    [15, 19, 0.005576642],
+    [20, 24, 0.047080292],
+    [25, 29, 0.084919708],
+    [30, 34, 0.090948905],
+    [35, 39, 0.078277372],
+    [40, 44, 0.061708029],
+    [45, 49, 0.063343066],
+    [50, 54, 0.080321168],
+    [55, 59, 0.091649635],
+    [60, 64, 0.091547445],
+    [65, 69, 0.086321168],
+    [70, 74, 0.069109489],
+    [75, 110, 0.14919708]
+  ]
+
+#######################################################################################
+## projected and precomputed using utils/precompute_and_project/contact_matrices.py  ##
+#######################################################################################
+# ---- Adjusted Contact Matrix (procedure) ----
+# Raw contact matrix at the level of country is read from configs/simulation/country/country_name.yaml
+# Density correction is performed using the method M2 in "Projecting social contact matrices to different demographic structures"
+# ref: https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1006638#sec018
+# Reciprocity is ensured via correction used in the BBC Pandemic study
+# ref: https://www.medrxiv.org/content/10.1101/2020.02.16.20023754v2.full.pdf
+# ---- probability of contact between two age groups (procedure) ----
+# Resulting contact matrix is converted to likelihood via column normalization.
+# Thus, P_ij = probability of someone from age group j contacting someone in age group i
+
+
+
+####### Adjusted contact matrices
+
+ADJUSTED_CONTACT_MATRIX_HOUSEHOLD: [
+[0.6249653744444444, 0.35865216281765755, 0.16521832116847196, 0.07156272929419541, 0.12430334152314812, 0.32831367411669915, 0.5453946124121989, 0.49418028453269225, 0.18545286370265154, 0.08183359883134328, 0.09843263301251291, 0.12962407386923078, 0.15197410405555556, 0.11930341188350342, 0.06709911082387389, 0.06539247319845891],
+    [0.33977573319567556, 0.805148118, 0.36376606377179066, 0.10899560307749545, 0.03809263458552631, 0.12885914708150464, 0.4280178803536988, 0.5759763851525675, 0.393518542234674, 0.15452804811006102, 0.07247367600928792, 0.1079923159553306, 0.11203033362126567, 0.15348607816702464, 0.1702138893011913, 0.06616753409215932],
+    [0.13623265078803828, 0.31661120365322526, 1.162127070018182, 0.32031001644141066, 0.0479690866074495, 0.02533125272547579, 0.13330626372960375, 0.36890804374313585, 0.4637929625913654, 0.24387043767020355, 0.11373187550346187, 0.06374318451645687, 0.06626683737281315, 0.11254154882068645, 0.12795320273012903, 0.08171058288163918],
+    [0.06277432394227667, 0.10092185470138468, 0.34075533663979857, 1.0634858612068967, 0.21912018707686778, 0.040719157401685524, 0.027939703265694067, 0.16200569236619433, 0.3369186626661932, 0.42305007446444826, 0.2177362511127629, 0.11490415100159151, 0.06500336506826748, 0.07351425578976073, 0.11610146057720178, 0.06849535903445322],
+    [0.15701474718713446, 0.05079017944736841, 0.07348455820715666, 0.3155330693906896, 1.4466277001249999, 0.2544643349825706, 0.05680677329720278, 0.02527763534787449, 0.12506496780681814, 0.42084135275384604, 0.3483271773184984, 0.22467194554871794, 0.09025168991902834, 0.08236859915561223, 0.041153980931756755, 0.03498310659049656],
+    [0.45503123254770583, 0.1885161596192383, 0.04257806309175717, 0.06433626869466312, 0.27920392310587605, 1.352636084553846, 0.26174291906655905, 0.03716838411396761, 0.02428386735505536, 0.08536242475248432, 0.24940399439608238, 0.28859354948769234, 0.16186543699568146, 0.10549043359593799, 0.09026529007198546, 0.04100758844625657],
+    [0.7463294696166931, 0.6182480493997873, 0.22123167172147, 0.043585937094482746, 0.061540671071969685, 0.25842971755938743, 1.2064942842727273, 0.22083679629641145, 0.08719018511118284, 0.02720167888860244, 0.0705978187844779, 0.19376892296666665, 0.22410141432153108, 0.17275308024895641, 0.08116042523639434, 0.04726863026429016],
+    [0.6589070460435896, 0.8106334309554655, 0.5965321558399642, 0.24624865239661534, 0.026681948422756403, 0.03575692648938656, 0.21517431434009315, 1.1677411668923074, 0.2035484946461028, 0.07291218052972179, 0.04028306579616575, 0.05452600246946744, 0.13677999714102562, 0.20768594541550234, 0.19005678997702696, 0.08634902530969439],
+    [0.21473489481359653, 0.4809671071757127, 0.6512837347027685, 0.44473263471937496, 0.11464288715624997, 0.020287787916881697, 0.07377631047869318, 0.17676579798214193, 0.83644927471875, 0.15483765396966848, 0.057123047780016444, 0.02073828490192308, 0.05865489677322873, 0.16256733759375, 0.1917657638775338, 0.08796975913312284],
+    [0.09331901621118094, 0.18600598383618458, 0.3372676265651751, 0.5499650968037828, 0.3799262212361111, 0.07023490644191749, 0.022668065740502036, 0.06235910176884102, 0.15249162890952198, 0.8199448710447761, 0.1553780297125422, 0.07347756970149255, 0.026779062257503976, 0.046643968761422475, 0.11558653853218535, 0.08972934040402651],
+    [0.11742840429562942, 0.09126314756725146, 0.164548245409264, 0.2961213015133575, 0.32897566746747076, 0.21467685593586838, 0.061546816376211504, 0.036042743080779885, 0.058854049227895736, 0.1625493233915826, 0.7514527778421054, 0.17948412314278006, 0.060450648148440936, 0.040212562013694955, 0.06401185460650784, 0.10920636316303173],
+    [0.14781692634210528, 0.12999075068697202, 0.08815546794829142, 0.14937539630206897, 0.2028288397314815, 0.23745038881898736, 0.16147410247222221, 0.04663408105941295, 0.020424068464015156, 0.07347756970149255, 0.17156570594530446, 0.7814653166666666, 0.16737037281039135, 0.07192619463180273, 0.030207696332770276, 0.045573319357705484],
+    [0.15197410405555556, 0.11825424104466935, 0.08036616447341169, 0.07410383617782493, 0.07144925451923077, 0.11678898618675752, 0.16376641815804194, 0.10258499785576923, 0.05065650175869755, 0.023483177671965026, 0.05067186683031079, 0.14677094231065088, 0.6899637889846154, 0.12410419484678178, 0.07824314068097714, 0.015563675157590884],
+    [0.10255907337353802, 0.13927440426267054, 0.11733055089816247, 0.07204397067396552, 0.056056407758680545, 0.0654307752683666, 0.10852437092562645, 0.13390278059683705, 0.1206939324559659, 0.035162376450918485, 0.028976699098103718, 0.05422128518397437, 0.10668606223670715, 0.661074462125, 0.13629586523141893, 0.02611749171188998],
+    [0.043555563166374274, 0.11662803526192739, 0.10072911704286752, 0.0859150808271293, 0.021148573534374996, 0.042276148514727364, 0.038499176073674236, 0.09252764775197365, 0.10750504944649622, 0.06579541424139781, 0.03482997971236456, 0.017195150220192308, 0.05078940710870445, 0.10291728599107143, 0.43802333634999996, 0.07234251190820419],
+    [0.09177890975222304, 0.09802597643282863, 0.1390818432027901, 0.10959257445512516, 0.038870118433885076, 0.041526671844310456, 0.04848064642491298, 0.09089371085230989, 0.10663001107045193, 0.11043611126649416, 0.1284780743094491, 0.056090239209483674, 0.021843754607145098, 0.042640802794922425, 0.15641624196368475, 0.3764598290410959]
+]
+
+ADJUSTED_CONTACT_MATRIX_WORKPLACE: [
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 4.667828231292518e-06, 5.57705625e-06, 1.7339178082191778e-125],
+    [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 7.660016965628356e-06, 5.453051351351349e-42, 1.3062575342465754e-65],
+    [0.0, 0.0, 0.14227929043636364, 0.034211279397435734, 0.03891553850845959, 0.029469773143418608, 0.0741298823541958, 0.03034260990718624, 0.06270404399426653, 0.05318879912051978, 0.03898024917105967, 0.04745644042298768, 0.011719817791866045, 3.1346283766233765e-06, 3.6761741458845207e-06, 2.978058329547524e-90],
+    [0.0, 0.0, 0.03639497808237844, 0.6499449810344827, 0.4814065437480842, 0.32099893263503004, 0.2570390475313881, 0.29838250395338545, 0.2617190444797054, 0.24135738990260894, 0.14617387910633073, 0.08021089334526967, 0.00943957153673042, 1.3663336074947219e-05, 1.650482456582013e-05, 2.532149785517969e-22],
+    [0.0, 0.0, 0.05961529303423597, 0.6932254229972413, 0.9639372881249999, 0.9143468581539433, 0.7031678854790209, 0.6930591913109311, 0.6309506070255682, 0.46246512574557974, 0.34049115385371514, 0.18818761183589738, 0.049019625559919025, 3.0344420905612233e-05, 2.4526295979729727e-05, 2.5642307534246566e-05],
+    [0.0, 0.0, 0.049534299538937655, 0.5071783135633475, 1.0032416915855769, 1.6590812703384616, 1.15851254556083, 1.1132202377539473, 1.0805995764526513, 0.7910340719018898, 0.6837802401454811, 0.3635552190983432, 0.0931014366534413, 8.436188961734694e-05, 3.224482241943867e-05, 2.9836098465753424e-05],
+    [0.0, 0.0, 0.12302406007717602, 0.4009809141489655, 0.7617652092689393, 1.1438478297942374, 1.460690206181818, 1.2046768933312846, 1.2121904032945503, 0.9919500691507462, 0.7276354431822404, 0.4739715626454546, 0.09730514699985277, 7.528778019480519e-05, 4.640160066308354e-05, 2.89539547882939e-05],
+    [0.0, 0.0, 0.04906464580736497, 0.45354140600914583, 0.7315624797170939, 1.0709460515101266, 1.1737877422202256, 1.5218720086153847, 1.3850965931050117, 1.0678883994121133, 0.7999127900017383, 0.42992433507266264, 0.10333443715641026, 3.1835030100078486e-05, 5.25436993297817e-05, 5.00727653361433e-05],
+    [0.0, 0.0, 0.08805248731109767, 0.34546913871321117, 0.5783713897734375, 0.9027793929857593, 1.0256995720184658, 1.202847041380668, 1.3733269079062498, 1.030726286984608, 0.876803985459704, 0.4272165669607372, 0.09251622556912956, 5.2251799872448974e-05, 3.7531448074324325e-05, 1.8912950682791094e-05],
+    [0.0, 0.0, 0.07355897750710182, 0.31376460687339164, 0.41750323852031507, 0.6508508186534536, 0.8266250576256218, 0.9133256047603602, 1.0151092220302957, 0.9248640835820894, 0.7540506373020136, 0.3615985467363184, 0.08327234070349467, 4.5453777052238804e-05, 3.140350212384026e-05, 7.408984270854631e-06],
+    [0.0, 0.0, 0.05639695624749058, 0.19879647558460978, 0.3215749786396199, 0.5885703332897811, 0.6343488479024659, 0.715711443685766, 0.9033738032009071, 0.7888529744082604, 0.6997257531578949, 0.3625670127878542, 0.06670432680438952, 5.301477701396349e-05, 2.298501638869133e-05, 9.629198248017304e-06],
+    [0.0, 0.0, 0.0656312473934936, 0.10427416134885058, 0.1698915940185185, 0.29912771191635834, 0.39497630220454544, 0.36769844447004046, 0.4207435886734533, 0.3615985467363184, 0.34657140928250774, 0.22569030900000003, 0.047949755177013054, 3.6410822193877555e-05, 3.728127655405406e-05, 3.647764383561644e-06],
+    [0.0, 0.0, 0.014213396045454565, 0.010761111551872678, 0.03880720356826923, 0.06717445429425511, 0.07110760742296933, 0.07750082786730769, 0.0799003766278846, 0.07302343723229532, 0.0559139209977971, 0.042048246847534526, 0.006312463246153846, 3.265184980376766e-05, 2.1475287903846153e-05, 8.131397260273972e-06],
+    [4.012694444444445e-06, 6.9507561354775845e-06, 3.2680168181818183e-06, 1.3390069353448274e-05, 2.0651064227430553e-05, 5.2325729003164555e-05, 4.72961696095571e-05, 2.0525216775050605e-05, 3.8793002935606056e-05, 3.42651550086108e-05, 3.820182461300311e-05, 2.744815826923077e-05, 2.8069134041835355e-05, 1.2392887499999999e-05, 2.1268498108108112e-05, 9.282096797945206e-06],
+    [3.620194407894736e-06, 3.736349999999998e-42, 2.894009433994197e-06, 1.2213570178706897e-05, 1.2603790989583331e-05, 1.5102005436952285e-05, 2.201101569915501e-05, 2.55804852000253e-05, 2.1040357253787878e-05, 1.7875839670493682e-05, 1.2506553035023221e-05, 2.1221649730769233e-05, 1.3940099165654518e-05, 1.6059886326530615e-05, 1.5402545e-05, 1.4291671232876711e-05],
+    [2.433568853640951e-125, 1.9351963470319637e-65, 5.069035454548977e-90, 4.0514396568287506e-22, 2.8491452815829526e-05, 3.0213770598231317e-05, 2.9696363885429636e-05, 5.270817403804558e-05, 2.2924788706413452e-05, 9.118749871821084e-06, 1.1328468527079181e-05, 4.489556164383562e-06, 1.1412487382840661e-05, 1.5154443751747275e-05, 3.090091077378749e-05, 9.074421917808218e-43]
+]
+
+ADJUSTED_CONTACT_MATRIX_SCHOOL: [
+[1.8158998281666667, 0.30813558725860946, 0.02275751137343649, 0.04056463047235632, 0.018358891550925925, 0.05230507435587471, 0.09586342178894715, 0.08718748409871795, 0.03560825171259469, 0.1362570162513586, 0.04165917393214655, 0.09417117545384618, 0.04385184655470086, 0.001711505385204082, 1.0453551801801805e-28, 1.0622349791666666e-94],
+    [0.29191792477131423, 2.491019845578947, 0.3854882690592385, 0.024768558745626133, 0.015908768763157895, 0.055527635861246344, 0.12337922513801985, 0.08825565842478159, 0.06781871164705441, 0.10812095324932622, 0.16077681165015478, 0.14373933578974357, 0.0337960498258683, 0.014293135581968312, 0.00016088525000000002, 0.006764378530263156],
+    [0.018764965518447634, 0.33551756751452244, 3.031612106109091, 0.6026948745265267, 0.00871238357739899, 0.03166176613027352, 0.06994407197913753, 0.07033917903021715, 0.06048174520650827, 0.0746903324562885, 0.16361292947146075, 0.10677617301114221, 0.015553487258078768, 0.004523270964888683, 2.286613875000001e-25, 9.994301369863012e-05],
+    [0.03558300918627748, 0.022933850690394567, 0.6411647601346029, 4.964621852586206, 0.21918032374257662, 0.07418592447205788, 0.07410139839321597, 0.07226427190004886, 0.15246375941847895, 0.24937355242854028, 0.2212963228033255, 0.15366264956472142, 0.0781712617762111, 0.00047992, 0.004440772949673813, 0.005740289062499999],
+    [0.023190178801169588, 0.021211691684210523, 0.013346630161121855, 0.31561966618931026, 0.34156331887499997, 0.12234825751061341, 0.033319474643356634, 0.025047053870850197, 0.014462497994318181, 0.01580433350413318, 0.009867108419891642, 0.008558673046153847, 0.010273470721457486, 0.0021480079681122444, 8.1979975e-05, 2.4808882500066847e-36],
+    [0.07249299779147547, 0.08123487468589742, 0.053218713282800166, 0.11721376066585146, 0.13424322699081193, 0.1447844521846154, 0.05337633664396628, 0.04339266177601214, 0.03385957601414627, 0.03735674887647796, 0.015173023842766132, 0.051003119795226814, 0.0037268846350877187, 0.0029115995895604395, 0.000214321575, 0.0052639058804294],
+    [0.1311815245532961, 0.17821443631047315, 0.11607739605048356, 0.11559818149341693, 0.03609609753030303, 0.05270068681303, 0.07257344072727272, 0.06168869568535149, 0.04017181414036673, 0.0539049061944369, 0.04084655088404166, 0.018489040581818182, 0.017188515012808242, 0.011844409553339517, 1.5691214004914006e-26, 1.706268493150741e-55],
+    [0.11624997879829059, 0.12421166741265555, 0.11373994907013835, 0.10984169328807425, 0.026438556863675203, 0.04174483917692307, 0.060106934257521956, 0.05300288873846153, 0.047062638689270096, 0.047084977491039466, 0.03089836339807096, 0.031686850714595656, 0.039083530587179484, 0.005839071939678178, 0.009158862702702702, 1.2399966547202103e-60],
+    [0.041230607246162274, 0.08288953645751095, 0.08493181241764991, 0.20125216243239222, 0.013257289828125001, 0.02828774704979308, 0.03399153504184878, 0.04087018623015562, 0.06861252646874999, 0.03763289272947043, 0.042184619468822564, 0.03103389020128205, 0.009659399984286436, 0.00404489318494898, 0.007226728168074326, 6.118563515625001e-49],
+    [0.15538080800593526, 0.13014559187418898, 0.10329514063103729, 0.3241856181571024, 0.014267801080120232, 0.03073656553127934, 0.04492075516203075, 0.040270046538389025, 0.03706269738508452, 0.030258667089552237, 0.057195965393310164, 0.02759077120696518, 0.012228183527894936, 0.0065738130460897045, 0.018047817799515933, 3.37742637593463e-60],
+    [0.049698663638350266, 0.20245968874463935, 0.23671657880977298, 0.3009629990125227, 0.009318935729897662, 0.01306032432035566, 0.0356098135912158, 0.027645904093010862, 0.04346294127090809, 0.0598357791806937, 0.04033214836842106, 0.027587860971659918, 0.01088186591964628, 0.0012835542320085932, 0.028992826964438122, 1.7873471184210525e-42],
+    [0.10738818253508774, 0.1730195708580247, 0.14766917544094135, 0.1997614444341379, 0.007726579833333335, 0.04196459223657903, 0.015407533818181815, 0.027100596005904184, 0.030563679743686865, 0.02759077120696518, 0.026370749458204334, 0.03516506933333333, 0.008993793717813767, 0.009058418969387754, 0.01670026540641892, 0.00041820219178082186],
+    [0.04385184655470086, 0.03567360814952765, 0.01886273986618063, 0.08911523842488064, 0.008133164321153845, 0.002689018027848101, 0.012560837893975253, 0.029312647940384615, 0.008342209077338287, 0.010723176324461714, 0.009121564079703501, 0.007886865260236686, 0.021928519984615386, 0.009336533086401099, 0.005231436453430355, 1.1627397260273972e-37],
+    [0.0014712941030701756, 0.012969697102156431, 0.004715750580415861, 0.0004703216, 0.0014618387560763888, 0.0018059288593476144, 0.007440718821969696, 0.003764664803213562, 0.003003026758522727, 0.004955643680898392, 0.0009249140789473687, 0.0068286543, 0.0080261424777834, 0.015324584624999998, 0.009788818903378379, 2.3740691406249992e-107],
+    [6.78563888888889e-29, 0.00011023618981481483, 1.8001002845744686e-25, 0.0032861719827586206, 4.212859826388889e-05, 0.00010037845917721518, 7.443268181818181e-27, 0.00445892, 0.004051347609375, 0.010273373208955223, 0.015775508789473685, 0.009506304923653848, 0.0033958447153846156, 0.007391557131122448, 0.0073194038249999975, 0.011716505205479453],
+    [1.490856111111111e-94, 0.010021301526315788, 0.0001701157679976683, 0.009184462499999999, 2.7565425000074278e-36, 0.005330537600434835, 1.7500189673340935e-55, 1.30525963654759e-60, 7.416440625000001e-49, 4.156832462688776e-60, 2.1027613157894738e-42, 0.0005147103898840884, 1.6319154049507329e-37, 3.876031249999999e-107, 0.025332984228063685, 7.248328767123286e-113]
+]
+
+ADJUSTED_CONTACT_MATRIX_OTHER: [
+[0.5895047603333334, 0.2625903882582846, 0.10736306964935527, 0.07617907738120688, 0.14080268390625, 0.23134772369360598, 0.26458281033624703, 0.22300074352467947, 0.14999066422427398, 0.09713926710612322, 0.12561710184397573, 0.12524015131666666, 0.09077955488675213, 0.08994582756420069, 0.04706416186576577, 0.028969738403652967],
+    [0.24876984150784856, 0.9495957713684211, 0.40365670808728493, 0.1344141777401089, 0.0962617483717105, 0.152140966159714, 0.19295956911667278, 0.22123308398124863, 0.1797116830236244, 0.08982731432886579, 0.0960047956501548, 0.0889476453834008, 0.08654004813062006, 0.08560619762882653, 0.04801271265346728, 0.02734750101674477],
+    [0.08852744339508242, 0.3513308385204147, 1.3684808511636364, 0.4311708444437681, 0.1573732510203283, 0.12203812972169602, 0.1639667951745921, 0.1719238343152742, 0.2088976673844008, 0.12505848218000415, 0.10466867627509852, 0.0688996287704429, 0.0517149673921114, 0.05526087112430427, 0.05483961154668305, 0.03512929437680573],
+    [0.06682375208877797, 0.1244575719815823, 0.4586923877061362, 2.249970976724138, 0.7218638331439176, 0.2761495767200987, 0.16560539020018486, 0.17242676324492529, 0.18244263798442398, 0.18165169372609763, 0.12480182930097683, 0.06629799928328912, 0.060610634616250166, 0.048193252796666086, 0.08417002895157269, 0.017478295098901746],
+    [0.17785602177631576, 0.12834899782894735, 0.24108242709497094, 1.0394839197272412, 2.2167575718749997, 0.9309221875279454, 0.5007765203741258, 0.3164032527642712, 0.29698710392045446, 0.3051343278824339, 0.3423257706575077, 0.2501915634153846, 0.18783034988259106, 0.17591437091581627, 0.1596576451885135, 0.05624803246335615],
+    [0.3206398275753486, 0.2225765986410631, 0.20512792017051032, 0.4363163312177559, 1.0214285113153845, 1.3839555883692305, 0.7755510704099335, 0.5369064869909919, 0.39602738884052296, 0.36216985751788744, 0.49726648589613, 0.43666538781495057, 0.3214022707265856, 0.30760453726934844, 0.2499484459048337, 0.061947467330026325],
+    [0.3620606878285486, 0.27871937761297183, 0.27211510688549323, 0.2583444087122884, 0.5425078970719697, 0.7657339682528459, 0.9458553697272727, 0.6754238429032204, 0.5163134829137397, 0.40963287399660786, 0.4269321802628765, 0.495210517690909, 0.3571278774218624, 0.40245569592486097, 0.2632123776958538, 0.12441936281583124],
+    [0.2973343246995726, 0.31136508115879435, 0.2780044980417199, 0.26208868013228637, 0.3339812112511752, 0.5165176330546251, 0.6581052828287788, 0.8007587462153846, 0.5896707277080345, 0.4445582111692236, 0.3660367455880209, 0.39342794248674545, 0.42796296320769217, 0.3680864576413461, 0.35322441235662677, 0.09377641915719705],
+    [0.1736734006807383, 0.21964761258442983, 0.29334566058235007, 0.24082428213943965, 0.27223817859374994, 0.3308583248541078, 0.43688063938854893, 0.5120824740622405, 0.5775201434062499, 0.39458039008293627, 0.35235407478158864, 0.29349181461089735, 0.2970055750540992, 0.2777556887015306, 0.3313060643621622, 0.07551809755580052],
+    [0.11077284845435105, 0.10812547095141253, 0.17295322003617597, 0.2361472018439269, 0.27546849044941957, 0.2979878574514264, 0.3413607283305065, 0.38021425955262556, 0.38860189932410394, 0.44624886567164174, 0.4377176758607563, 0.2552542125880597, 0.2630235208592906, 0.23791297048829196, 0.2744399293189542, 0.11023822175162287],
+    [0.1498589986910588, 0.12089492785575048, 0.15143553163205742, 0.16973048784932848, 0.3233076722876462, 0.4280268486194537, 0.3721972853573795, 0.3275065618419135, 0.3630314709870913, 0.4579200301312526, 0.4359336761578948, 0.4461591699728745, 0.30651175189230057, 0.2940309741995838, 0.2472301856818101, 0.09225394680769647],
+    [0.1428177164137427, 0.10706661018372321, 0.09528672063997422, 0.08618739906827587, 0.2258673836388889, 0.35928164820217456, 0.41267543140909085, 0.33648442449524285, 0.2890449689349747, 0.2552542125880597, 0.4264756771799536, 0.4942794809333334, 0.4040532058250112, 0.3438144067053572, 0.25569845341092345, 0.09022495867659819],
+    [0.09077955488675213, 0.09134782858232118, 0.06271815194362446, 0.0690961234625252, 0.1486990269903846, 0.23189784090399215, 0.2609780642698225, 0.32097222240576917, 0.2565048148194493, 0.2306513952150702, 0.2569289684979579, 0.3543235804927022, 0.37768931441538467, 0.3589010342450942, 0.40420980589459465, 0.09729558669068361],
+    [0.07732185176571638, 0.07767969784837964, 0.05761239755512573, 0.047229387740732764, 0.11971950242881943, 0.19079268767339333, 0.2528247320553613, 0.23731890032139424, 0.2062125567632576, 0.1793497777527124, 0.21187526082028835, 0.2591831681317308, 0.3085289592633266, 0.33796738062500004, 0.3368008892226351, 0.11956523423363656],
+    [0.030550420860233914, 0.03289759941070906, 0.04317160908994197, 0.062285821424163786, 0.08204628988854165, 0.11706446200606134, 0.12485715352239218, 0.17196451654204198, 0.1857321875969697, 0.15621965207386623, 0.13452230691510256, 0.14555142732621795, 0.26238180382631576, 0.2543190388007653, 0.327587988725, 0.10826192342894263],
+    [0.04065928197003925, 0.04051481632110336, 0.059794543620094856, 0.0279652721582428, 0.0624978138481735, 0.06273161248610262, 0.12760960288803203, 0.0987120201654706, 0.09153708794642486, 0.13567781138661278, 0.10853405506787821, 0.11104610298658238, 0.13655520939043314, 0.1952085456875699, 0.2340798344409571, 0.12907933479452055]
+]
+
+ADJUSTED_CONTACT_MATRIX_ALL: [
+[3.030369962944444, 0.9293781388082358, 0.2953389021912637, 0.18830643714775863, 0.28346491698032406, 0.6119664717853781, 0.9058408451283022, 0.8043685121560897, 0.37105177963952024, 0.31522988267389973, 0.2657089083412668, 0.3490354006397436, 0.2866055054970086, 0.21096541266113944, 0.11416885032770273, 0.09436221197815356],
+    [0.8804634999235919, 4.245763734947368, 1.152911040918314, 0.26817833956323045, 0.15026315228289472, 0.3365277497101573, 0.7443566746083914, 0.8854651275585979, 0.6410489372929127, 0.352476315688253, 0.3292552833095975, 0.34067929669514163, 0.2323664320162156, 0.25339307151335927, 0.2183874872046586, 0.1002794127714852],
+    [0.24352505970156835, 1.0034596096881623, 5.704499317727273, 1.3883870143781065, 0.25297025971363635, 0.20850092111317162, 0.4413470138284382, 0.6415136667315791, 0.795876419176541, 0.49680805142701595, 0.42099373026903325, 0.2868754269737063, 0.14525510981486936, 0.17232882528518093, 0.18279648982100738, 0.11693982027214353],
+    [0.16518108521733213, 0.24831327737336154, 1.4770074621043687, 8.928023672413792, 1.641570887448276, 0.7120535915016788, 0.5246855391141789, 0.7050792317655941, 0.9335441037066352, 1.0954327097050556, 0.7100082830877015, 0.4150756935264367, 0.21322483305782025, 0.12220109183453554, 0.20472876812686394, 0.09171394319585498],
+    [0.3580609477646198, 0.2003508697105263, 0.38752890849748545, 2.363862077925517, 4.968885878999998, 2.2220816376624146, 1.2940706538653846, 1.0597871332422064, 1.067465177262784, 1.2042451398859928, 1.0410112096540247, 0.6716097927897434, 0.33737513635506067, 0.2604613225931122, 0.20091813287533777, 0.09125678176900681],
+    [0.848164057386752, 0.49232763383523015, 0.35045899506256506, 1.1250446745726523, 2.4381173524351496, 4.540457395446154, 2.2491828717058633, 1.7306877706349189, 1.534770408662376, 1.2759231025636648, 1.445623743127096, 1.1398172761962126, 0.5800960302914978, 0.4160909317794152, 0.3404603026247401, 0.10824879787961933],
+    [1.2395716828071504, 1.0751818633232322, 0.7324482357152804, 0.8185094410181191, 1.4019098750208334, 2.2207122024437638, 3.6856133020909088, 2.162626228216268, 1.8558658847614926, 1.4826895282303933, 1.266011992666268, 1.1814400445939395, 0.6957229537560545, 0.587128473903293, 0.34441920523992636, 0.1717169468042964],
+    [1.0724913495414528, 1.2462101795269156, 1.0373412483319149, 1.0717204322837028, 1.1186641962001067, 1.6649654502310611, 2.1071742736466197, 3.5433748116307693, 2.225378454664044, 1.6324437686020983, 1.2371309654373897, 0.9095651307434712, 0.7071609280923076, 0.5816433102517268, 0.5524926078349791, 0.18017551812984187],
+    [0.4296389027404971, 0.7835042566913377, 1.117613695013866, 1.2322782168927584, 0.9785097458242187, 1.282213252806542, 1.5703480563366476, 1.9325655001029858, 2.8559088525000003, 1.6177772232431256, 1.3284657274901317, 0.7724805566748398, 0.45783609678370446, 0.4444201700452806, 0.5303360875793919, 0.16350676908011558],
+    [0.3594726732246225, 0.42427704666178606, 0.68707496473949, 1.4240625226165722, 1.0871657512859658, 1.049810147678965, 1.2355746068586613, 1.3961690126202155, 1.5932654471333814, 2.221316488358209, 1.4043423087159908, 0.7179211002845771, 0.3853031073481841, 0.2911762054423165, 0.4081056899051533, 0.19997497113569565],
+    [0.31698606609133584, 0.4146177641676413, 0.6090973118786013, 0.9656112649992741, 0.9831772535621345, 1.2443343611726903, 1.1037027628372593, 1.1069066532860856, 1.3687222646868022, 1.4691581075798055, 1.9274443564210526, 1.0157981673085024, 0.4445485922310747, 0.33558010503605007, 0.34025785216123766, 0.20146993978069574],
+    [0.3980228252909357, 0.41007693120711497, 0.396742611772147, 0.5395984015843678, 0.6063143962685184, 0.9378243411740992, 0.9845333704949495, 0.7779175460306006, 0.76077630581613, 0.7179211002845771, 0.970983542280186, 1.5366001759333334, 0.6283671280243814, 0.42483543089370757, 0.30264369707905414, 0.13622012789731736],
+    [0.2866055054970086, 0.2452756782393387, 0.17616045232867134, 0.2430763096859151, 0.267088649614423, 0.41855030033690355, 0.5084129277448091, 0.5303706960692308, 0.3954039017677447, 0.3378811864437922, 0.37263631995840085, 0.5510296353444576, 1.0958940866307691, 0.4923744140280808, 0.4877058591182173, 0.11286739335512382],
+    [0.181356231936769, 0.22993075007693714, 0.17966196678667798, 0.11975706999784483, 0.17725840009809027, 0.2580817171796373, 0.3688371182212995, 0.37500687108335024, 0.32994830806392045, 0.2195020625642078, 0.2418150756877419, 0.3202605555967949, 0.42326923311185893, 1.01437882, 0.4829068416929055, 0.14569200804352528],
+    [0.07410960459868421, 0.14963587086245125, 0.14390361964632495, 0.1514992884138793, 0.10324959606093746, 0.15945609110272635, 0.1633783409471445, 0.26897666434071354, 0.2973096248551136, 0.23230631579216415, 0.18514030191126166, 0.17227410449115385, 0.31658099626971997, 0.3646439416864796, 0.772946132, 0.1923352325974208],
+    [0.13243819225004005, 0.14856209299479292, 0.19904650259088263, 0.146742309113368, 0.10139642418778537, 0.10961903582746262, 0.17611994544030396, 0.18965844013667568, 0.19819002312741282, 0.2461230413977793, 0.23702345856552443, 0.16765554202746752, 0.15841037663877028, 0.23786450292820452, 0.41585996237280176, 0.5055391638356165]
+]
+
+
+
+####### Probability of contact  matrices
+
+P_CONTACT_MATRIX_HOUSEHOLD: [
+[0.15080492158069406, 0.07779990156020729, 0.035573234303276, 0.01781981279854765, 0.03595244827319056, 0.10154503868707669, 0.15347610023798441, 0.1302597924898047, 0.05665320803756173, 0.027690582467327737, 0.03801276381878158, 0.05169934869899903, 0.06936887397598925, 0.05234373161656923, 0.03203502607816142, 0.049753216726377246],
+    [0.0819883067044246, 0.17465514171075336, 0.07832264198435462, 0.02714096097035409, 0.011017591785902616, 0.03985519978958911, 0.12044584529039362, 0.15182022989838226, 0.12021430888015051, 0.05228868974130872, 0.02798792072208155, 0.04307172450867089, 0.051136462641166114, 0.0673411929769412, 0.08126495739923925, 0.050342914144662465],
+    [0.03287310794951325, 0.06868025075762053, 0.25021812508179214, 0.07976029683021932, 0.013874173323372527, 0.007834772782221201, 0.03751288521906608, 0.09723958387219249, 0.14168214322198158, 0.08252007197639744, 0.04392103299350518, 0.02542337256600602, 0.030247626193088958, 0.049377000491279216, 0.061088502305242744, 0.06216868914883942],
+    [0.015147522385238395, 0.02189227104991184, 0.07336819152168214, 0.2648182810733895, 0.06337647158122359, 0.012594140115496975, 0.007862337840228528, 0.04270269075939141, 0.10292385195177775, 0.14315028474930208, 0.0840854951760177, 0.04582844522836606, 0.029670911813946172, 0.03225398514845942, 0.05543014313656085, 0.05211401673782367],
+    [0.03788785363927901, 0.01101755787609594, 0.01582199472969069, 0.07857079074189678, 0.4184103735427198, 0.07870397360026402, 0.015985640184814822, 0.006662871098066357, 0.038205566082446664, 0.14240290480331122, 0.1345171648653118, 0.0896083027565057, 0.04119555856584944, 0.03613878077555889, 0.019648082309608034, 0.02661655078676471],
+    [0.10979960194134454, 0.04089349007590311, 0.009167502755328683, 0.016020354108950256, 0.08075458374758628, 0.41836053251541977, 0.0736554442765217, 0.009797124963099342, 0.007418375547051933, 0.028884654909181212, 0.09631496023512674, 0.1151028362393389, 0.07388379204339443, 0.04628336153246941, 0.043095219681808496, 0.031200218245312814],
+    [0.18009022858099383, 0.1341122189399649, 0.04763349510995444, 0.010853320538963226, 0.01779950374866149, 0.07993043767689824, 0.3395120404483385, 0.05820983993095909, 0.02663535950492165, 0.009204414119278808, 0.027263501233725555, 0.07728292142391241, 0.10229152436541673, 0.0757944867269749, 0.03874829795862944, 0.03596387001239229],
+    [0.15899508912137877, 0.17584503222921402, 0.12843961855474204, 0.061318299775330744, 0.0077172613281554295, 0.011059358077193878, 0.060550863328552106, 0.3078020852754834, 0.06218116551388311, 0.024671782454441616, 0.015556534648539065, 0.021747185771026932, 0.0624334944632636, 0.0911210938206679, 0.09073852318590525, 0.06569780221198157],
+    [0.05181579699801699, 0.10433282570497818, 0.140228206706384, 0.1107427340218416, 0.033158340072513226, 0.0062748656888494, 0.020760931928053117, 0.04659327149447483, 0.2555233379921727, 0.052393453147907734, 0.022059807377038346, 0.008271270841597957, 0.026773141171797035, 0.07132554680780326, 0.09155443598709478, 0.06693092151805342],
+    [0.02251799459165983, 0.04034897522539687, 0.07261725102798251, 0.13694663643262506, 0.10988665026415534, 0.021723147264626725, 0.006378879164946984, 0.01643708563554093, 0.04658402034950238, 0.2774502330897316, 0.060003965812228846, 0.029305840992042663, 0.012223354804295395, 0.020464790937945808, 0.05518430469045059, 0.06826968153181305],
+    [0.02833561990036719, 0.019797075364122875, 0.03542895997695026, 0.07373707250511935, 0.09515014256925694, 0.06639799484403795, 0.017319506178666056, 0.009500419950798629, 0.017979073648099208, 0.055002902336722996, 0.29019641241790306, 0.07158556270692322, 0.027592815363090623, 0.01764304574721509, 0.03056108205388236, 0.08308858173723005],
+    [0.03566840803802322, 0.028197983047785386, 0.018980795194267687, 0.03719592062886348, 0.0586644999193314, 0.07344168342593886, 0.04543942124264195, 0.012292165251991158, 0.006239261969664105, 0.024863096972080254, 0.06625533077706397, 0.31168012774603787, 0.07639653065205189, 0.031557231839140644, 0.014422014359051199, 0.03467400946991191],
+    [0.036671540186954156, 0.02565206421752365, 0.017303676605895935, 0.01845257302742634, 0.0206653787081203, 0.03612198654979979, 0.04608448751936578, 0.027040132824998526, 0.015474839672424922, 0.007946159978380399, 0.0195684870670126, 0.05853821669772551, 0.31493530706108597, 0.054450049374058174, 0.03735550324551446, 0.011841468372430386],
+    [0.024747631868779502, 0.0302118209921438, 0.025262496002345654, 0.017939646563735163, 0.0162132817640267, 0.020237264329081937, 0.03053916714867993, 0.035295111845357253, 0.036870277049280725, 0.01189812862645917, 0.011190236259595894, 0.02162565213358539, 0.04869705962265315, 0.2900428720163331, 0.06507152693118207, 0.019871235356818513],
+    [0.010510011524313542, 0.025299302787563205, 0.021688033484338655, 0.021393687356691077, 0.006116834726480709, 0.013075706176473984, 0.010833813300849683, 0.024389140103270347, 0.032841261168908176, 0.022263634620033362, 0.013450659116786617, 0.0068581247343161246, 0.023182923189012456, 0.045154406831907516, 0.2091248129896663, 0.055041084966705824],
+    [0.022146364989018997, 0.021264088460814925, 0.029945776961014647, 0.027289612626046535, 0.011242464645303216, 0.012843898477031363, 0.013642636690897023, 0.023958454606189256, 0.03257394941017269, 0.03736900600813576, 0.0496157274792814, 0.022371066954945507, 0.00997062407389853, 0.018708423356676017, 0.07467756768800286, 0.28642573903288276]
+]
+
+P_CONTACT_MATRIX_WORKPLACE: [
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.009075283423317933, 0.013952304050766863, 8.424880427534233e-122],
+    [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.014892755591233913, 1.364207693951431e-38, 6.346934947796553e-62],
+    [0.0, 0.0, 0.18776007718342733, 0.009215970153890762, 0.007066508735914629, 0.003853622528621574, 0.009528037538973836, 0.003728172448460136, 0.00744191256362581, 0.007836852405046092, 0.007126055920845585, 0.01580574789456938, 0.017737719153026306, 0.0060944061210142265, 0.0091968051114688, 1.4469996913192052e-86],
+    [0.0, 0.0, 0.04802894274267489, 0.1750847572024405, 0.08741658672365016, 0.04197550868293969, 0.033037657906420874, 0.03666202194683645, 0.03106163687674997, 0.03556166472659073, 0.026722333972456696, 0.026714881000628354, 0.014286610237202815, 0.02656452663723131, 0.04129065950283156, 1.2303385469871542e-18],
+    [0.0, 0.0, 0.07867182909818608, 0.18674381434386625, 0.17503731230465755, 0.11956480405901236, 0.09037934226083055, 0.08515563394517117, 0.07488319652684997, 0.06813973981132763, 0.06224585667133774, 0.06267739263727978, 0.07419026188033519, 0.05899621973849521, 0.06135823692800124, 0.12459262707726891],
+    [0.0, 0.0, 0.06536836018884805, 0.13662570599013626, 0.182174433389432, 0.21695019262875562, 0.14890555161997968, 0.1367804889611546, 0.1282489461921631, 0.11655117940924002, 0.12500320886772462, 0.12108497998598067, 0.1409072363947624, 0.16401804446692111, 0.08066792700163143, 0.14496971010193124],
+    [0.0, 0.0, 0.1623497484747474, 0.10801782927047406, 0.13832573599989156, 0.14957555814081264, 0.187744950825813, 0.1480176957998117, 0.1438665581538761, 0.14615419813286612, 0.1330204646807533, 0.157860028303773, 0.1472694712732831, 0.14637598251791842, 0.11608440221373183, 0.14068348905542452],
+    [0.0, 0.0, 0.06474857764270854, 0.12217678306550658, 0.13284134954638824, 0.14004253819508683, 0.15086889814858362, 0.18699120840158184, 0.16438760694614857, 0.1573429727618159, 0.1462336284290365, 0.14318974607727378, 0.15639468613484409, 0.06189429144184044, 0.13145029136135922, 0.24329703439995065],
+    [0.0, 0.0, 0.11619921467853361, 0.09306384699865805, 0.10502402472340504, 0.11805218147606199, 0.13183487839905073, 0.14779286333985134, 0.1629907438003107, 0.1518674968163225, 0.160290258910017, 0.14228790220207838, 0.14002153065742884, 0.10158897665556486, 0.09389365133237476, 0.09189556003119695],
+    [0.0, 0.0, 0.09707273104826725, 0.08452315444564126, 0.07581265467096418, 0.08510867611123356, 0.10624749870883264, 0.1122195937184141, 0.1204763455698396, 0.13626973042459276, 0.13784947820581944, 0.12043329457108691, 0.12603108843883568, 0.08837212702986487, 0.07856316849784728, 0.03599928801443046],
+    [0.0, 0.0, 0.07442472355226795, 0.0535525831817842, 0.05839344598339426, 0.07696455228907464, 0.08153391646759303, 0.0879388982542649, 0.10721523569207077, 0.116229815899982, 0.12791823942369637, 0.12075584995279247, 0.10095571758539756, 0.10307237181529633, 0.057502367358564975, 0.04678701808587298],
+    [0.0, 0.0, 0.0866108344963849, 0.02808978722044012, 0.030849899019882377, 0.03911551283296312, 0.05076696353608842, 0.04517881666106079, 0.049935168438263476, 0.05327803010236483, 0.06335740010987402, 0.07516796655008971, 0.07257103360228999, 0.07079063639708429, 0.09326778905679645, 0.017724011261461284],
+    [0.0, 0.0, 0.01875682912353844, 0.0028988709171800567, 0.007046836650403244, 0.008784084938706535, 0.009139579496369165, 0.009522465340706152, 0.009482827243484614, 0.010759293482109612, 0.010221733730729066, 0.014004505672086212, 0.00955379189442585, 0.06348236836957204, 0.05372543022355518, 0.03950939848581801],
+    [0.5257111065117517, 1.0, 4.312666222446471e-06, 3.6070699983572132e-06, 3.7499397763016726e-06, 6.842387524729713e-06, 6.079055640967533e-06, 2.521917129524589e-06, 4.604075232430894e-06, 5.048637436428072e-06, 6.9837505983083205e-06, 9.141829136505398e-06, 4.248209531450849e-05, 0.024094495539021033, 0.05320809742729136, 0.04510049742196414],
+    [0.4742888934882483, 5.375458334567617e-37, 3.819104193096543e-06, 3.290139983711039e-06, 2.2886693220028673e-06, 1.97481765794325e-06, 2.829112595247778e-06, 3.143053957213808e-06, 2.497135575569204e-06, 2.6338311717942346e-06, 2.286347527269379e-06, 7.068040555964597e-06, 2.109807237253526e-05, 0.031223946755893395, 0.03853305065653927, 0.06944136606468088],
+    [3.188267117102272e-120, 2.7841522696422395e-60, 6.689395802246668e-90, 1.0913928860673308e-22, 5.1736429184499625e-06, 3.9509115487694495e-06, 3.816923228334052e-06, 6.476211600068844e-06, 2.720785809418048e-06, 1.3435591336076109e-06, 2.0709795842310903e-06, 1.495282668912171e-06, 1.727258048113839e-05, 0.029463567499730784, 0.07730581927723978, 4.4091432272126626e-39]
+]
+
+P_CONTACT_MATRIX_SCHOOL: [
+[0.6252448771406593, 0.07319537138695456, 0.004575508458792175, 0.005467563831471987, 0.02147969072194602, 0.07480342011159664, 0.13085450574519664, 0.1292430670937015, 0.05503360512911048, 0.15074961313563268, 0.04755419369596218, 0.12486214869211114, 0.13843923834701405, 0.01768736840787439, 7.877754277132866e-28, 3.5404028022727542e-93],
+    [0.10051225523440303, 0.5917236770720672, 0.07750429328157936, 0.00333846689537976, 0.018613075405543914, 0.07941212443121298, 0.16841384569189644, 0.13082648388245643, 0.104815822671487, 0.11962093639364597, 0.18352768241357054, 0.1905848815392612, 0.10669332684074607, 0.14771087308721878, 0.001212424724481334, 0.22545505630934176],
+    [0.006461093491030195, 0.07969976197673642, 0.6095203736323255, 0.08123512180446023, 0.010193387992645648, 0.04528066201003232, 0.09547434045059054, 0.10426784679811531, 0.09347632425427788, 0.08263456101215641, 0.1867651276984585, 0.14157519354556702, 0.04910198996893988, 0.046745257512051434, 1.7231829502033725e-24, 0.003331075823202546],
+    [0.012251829017149421, 0.005447769709272658, 0.12890929659820427, 0.6691639135387649, 0.25643844309811314, 0.10609603261231651, 0.10114913155426473, 0.10712152367053838, 0.23563724498634933, 0.2758974736795326, 0.2526110627141586, 0.20374226514542657, 0.2467848173149191, 0.004959681646163733, 0.03346548499624691, 0.19132240870729159],
+    [0.00798476891208583, 0.005038683341915693, 0.0026834049732636614, 0.042541264428229704, 0.39962513156337065, 0.17497476524398245, 0.04548140786946897, 0.03712870141159916, 0.022352217969699977, 0.017485317286116922, 0.011263362681719144, 0.011347997955274318, 0.032433103132494194, 0.022198357424695267, 0.0006177977695429608, 8.268738918143922e-35],
+    [0.02496055938473776, 0.01929675463683671, 0.010699881406000923, 0.015798830431948865, 0.15706302252944068, 0.20706159652322018, 0.072859220124779, 0.06432346058915468, 0.052330975169514814, 0.041330095110444505, 0.017320096551784278, 0.06762535454125596, 0.011765686301149028, 0.030089612946576038, 0.0016151187042925347, 0.17544467557067897],
+    [0.04516800702892187, 0.04233354533409991, 0.023337925610068866, 0.01558107219904441, 0.0422320165174136, 0.07536920010901374, 0.09906345443732667, 0.09144473335596634, 0.06208672569956576, 0.059638350952389264, 0.04662657967523472, 0.024514734186714147, 0.054263733768226075, 0.12240477719483328, 1.1824835288931403e-25, 5.68695050818202e-54],
+    [0.04002682448883977, 0.0295055796954468, 0.022867970514581958, 0.014805175405672279, 0.030932805664821584, 0.05970083745979207, 0.08204655151412414, 0.07856925768873872, 0.07273669864120826, 0.052093039584692934, 0.03527066475953966, 0.04201379293019092, 0.12338577805730588, 0.06034326123072914, 0.069020818184928, 4.132878051732337e-59],
+    [0.01419639209288776, 0.019689807526217518, 0.01707595438537734, 0.027126070951656703, 0.01551087572631606, 0.04045535261415008, 0.04639877686834763, 0.06058424871046085, 0.1060426869330474, 0.041635610232921595, 0.04815399288709517, 0.04114802851437561, 0.030494496395851847, 0.04180151377330435, 0.05446033062744415, 2.0393020227592932e-47],
+    [0.053500227658356644, 0.030915140365177392, 0.02076799092633253, 0.043695838958204614, 0.01669316220062171, 0.04395749843658661, 0.06131726893047599, 0.059694626819768816, 0.057281493890052854, 0.03347704568354232, 0.06528953313791439, 0.03658277557194282, 0.038604085049362774, 0.06793636420654028, 0.13600762358928128, 1.125687822407205e-58],
+    [0.01711208644806549, 0.04809282900554372, 0.04759302064744647, 0.04056574382289998, 0.010903046993912804, 0.018678052540031218, 0.048607742872103316, 0.040981127904934925, 0.06717325992185257, 0.06620004467526845, 0.046039386158019155, 0.03657891687280624, 0.03435379232733058, 0.01326475322209703, 0.21848876913386328, 5.957183552415442e-41],
+    [0.036975558868408594, 0.04109954276568479, 0.029689606664178275, 0.026925142317147533, 0.009040009016778297, 0.06001511443281404, 0.021031433939102735, 0.0401727860836608, 0.047237070100572195, 0.030525386508471135, 0.030102366640435262, 0.046625584683489624, 0.028393193216873214, 0.09361325701311438, 0.1258525233614804, 0.013938575180973398],
+    [0.015098928909072235, 0.008474006590565948, 0.003792445685183597, 0.012011529472132697, 0.009515708163782895, 0.0038456640718298953, 0.017145666237329917, 0.04345183902959861, 0.01289313061400123, 0.011863717017813831, 0.01041231940323308, 0.010457243823201089, 0.0692278169166858, 0.09648739745670938, 0.039423893120667707, 3.875382627270227e-36],
+    [0.0005065913253819949, 0.003080857373906343, 0.0009481246132840516, 6.339299383171876e-05, 0.001710334432706613, 0.002582725611635869, 0.010156653764993044, 0.005580581098040672, 0.004641266584908942, 0.005482736876869095, 0.001055794897278207, 0.00905415531307144, 0.02533834122818342, 0.15837027233642156, 0.07376814258563917, 7.912713479697255e-106],
+    [2.3364096893426286e-29, 2.6185806467742695e-05, 3.619189261774255e-26, 0.0004429315605172806, 4.928997258616121e-05, 0.00014355494461016163, 1.0160133666051392e-26, 0.006609715863264846, 0.00626147743435121, 0.011366071850502093, 0.018007836685597255, 0.012604468970142137, 0.010720601134918064, 0.07638725254167084, 0.05515873062256014, 0.39050820840851164],
+    [5.133268540298101e-95, 0.002380487413106627, 3.420260338113242e-05, 0.0012379413886373755, 3.225122834775568e-36, 0.007623398847175216, 2.3887929592100706e-55, 1.9348621023404576e-60, 1.1462328117484602e-48, 4.5989623350036043e-60, 2.400314491840346e-42, 0.0006824577151697504, 5.151918184934906e-37, 4.0056428260089326e-106, 0.19090834257957204, 2.4158499750262022e-111]
+]
+
+P_CONTACT_MATRIX_OTHER: [
+[0.19862349930312723, 0.07662042343781712, 0.02513862599405568, 0.013072489926073337, 0.020888061339403394, 0.03616250696246204, 0.044120765804440215, 0.04052104036648036, 0.03074696606677805, 0.02274352151315202, 0.02824128487443467, 0.029233237094227742, 0.023042145333823778, 0.023466308743868805, 0.012818843957571753, 0.02285124068291101],
+    [0.08381872338644669, 0.27707956326811023, 0.09451457608038784, 0.023065755648840162, 0.014280418873018733, 0.02378151234940557, 0.03217716203068121, 0.0401998423176244, 0.03683955297023553, 0.021031551058289247, 0.021583834871747875, 0.020761932807727413, 0.021966051372574593, 0.022334126199604162, 0.01307720029605405, 0.021571624814222964],
+    [0.029827800850239422, 0.10251372029550376, 0.3204242241748927, 0.07398982390141406, 0.023346302991515848, 0.019076067165421824, 0.027342443601717663, 0.031239952477908763, 0.042822461809311645, 0.02928033497262996, 0.023531651827046186, 0.016082375838543023, 0.013126565734647455, 0.014417218656779527, 0.014936639583974499, 0.0277098795177245],
+    [0.022515115007608586, 0.03631508345953552, 0.10740095657216694, 0.38609975256066437, 0.10708841342432467, 0.04316559001050381, 0.027615689120882803, 0.03133133873580977, 0.03739937834299373, 0.04253068122952287, 0.028057994989545153, 0.015475110110821252, 0.015384510899455165, 0.012573320854607394, 0.022925351780657945, 0.01378682549586243],
+    [0.05992553036784615, 0.03745055036744344, 0.05644846955543492, 0.17837762724469355, 0.3288557210084301, 0.14551463723314836, 0.0835074793699188, 0.05749303242088888, 0.06088013846554522, 0.07144205795802078, 0.07696181066975238, 0.05839907741571162, 0.04767608990258708, 0.04589496869599105, 0.04348587883371225, 0.04436827526196327],
+    [0.10803408022177076, 0.06494492562482163, 0.04802986802581548, 0.07487280025568392, 0.15152879764974556, 0.21632935393141176, 0.1293277787149268, 0.09756025512972968, 0.08118265726183543, 0.08479596553754573, 0.11179564152136298, 0.10192532249949941, 0.0815800192228495, 0.08025211661347145, 0.06807834238353318, 0.04886397198107594],
+    [0.12199012733322137, 0.08132665050948219, 0.06371464528415688, 0.04433244397866531, 0.08048098173110917, 0.11969367805412535, 0.15772703903013943, 0.12272998004482336, 0.105840408275221, 0.09590863056500115, 0.09598305603199694, 0.1155907775822616, 0.0906480811079131, 0.10499819582581986, 0.07169103333887003, 0.09814161128084195],
+    [0.10018169149536207, 0.09085223766328943, 0.06509362226472024, 0.044974968830646285, 0.04954607279693428, 0.08073808638942978, 0.10974299132076148, 0.14550434660597814, 0.12087809564134902, 0.10408580938262273, 0.08229252112106436, 0.09183294815038025, 0.10862781612035209, 0.09603147464826568, 0.09620756950732337, 0.07397055143143594],
+    [0.05851626806130782, 0.06409028599619225, 0.0686856930641344, 0.04132595340408141, 0.04038650127706329, 0.05171724313990249, 0.07285245912408234, 0.09304953102161637, 0.11838731659752878, 0.09238434525880304, 0.07921637783790282, 0.06850611175039141, 0.07538752127491631, 0.07246473708615048, 0.09023767922116124, 0.05956844342596997],
+    [0.037323007833451945, 0.03154959107094906, 0.04049629287944967, 0.04052335658684023, 0.04086571765500929, 0.046579183048664596, 0.056923942754871004, 0.06908800892647393, 0.07966048736298646, 0.10448164762798488, 0.09840785527684827, 0.05958078808943556, 0.0667620170798861, 0.06207001893071992, 0.07474907637154105, 0.08695557076155042],
+    [0.05049241452308214, 0.035275550736003414, 0.03545801367586122, 0.029126108753651434, 0.04796265456658896, 0.06690588368970184, 0.06206612303887693, 0.05951059356541869, 0.07441874050855878, 0.10721425399694896, 0.09800677578142258, 0.10414133694714889, 0.07780042920939696, 0.0767108581651891, 0.06733797110624586, 0.07276962991786343],
+    [0.048119975452851724, 0.031240629418086703, 0.022310998001376186, 0.014789938980705585, 0.03350739938424035, 0.0561601596815498, 0.06881609594859024, 0.06114194388842788, 0.05925206010374011, 0.05976346999794555, 0.09588042483432056, 0.11537345735395216, 0.10255891541693389, 0.08969904704672652, 0.06964446926337985, 0.07116917031134347],
+    [0.030586611118443678, 0.02665409557648485, 0.014685200133513503, 0.011857040134190585, 0.02205948289276098, 0.036248497077830996, 0.04351965284181399, 0.05832325119213648, 0.05258157151318509, 0.05400313514185248, 0.05776286895121883, 0.08270530758485621, 0.09586709347328592, 0.09363505463416606, 0.1100944375183312, 0.07674645997402213],
+    [0.02605226930079442, 0.022665914701380015, 0.013489708514196258, 0.008104662286283511, 0.017760373885494035, 0.02982325387179343, 0.042160035938875844, 0.043122765366868376, 0.042272034183826974, 0.04199172641730507, 0.04763387716190866, 0.06049787488415212, 0.07831244742175354, 0.08817359419415058, 0.09173430212207438, 0.09431268956287638],
+    [0.010293439349008424, 0.009599087055908971, 0.010108456641730743, 0.01068837797851109, 0.01217155730499721, 0.018298621463670218, 0.020820676984153328, 0.031247344767849145, 0.038073711447890776, 0.0365761974901202, 0.030243356484009967, 0.03397424340116036, 0.06659913307857719, 0.06635026043518223, 0.08922498868284529, 0.08539667271409324],
+    [0.013699446395437522, 0.0118216908189913, 0.01400064913810742, 0.004798899529055133, 0.009271543219364128, 0.009805725930978133, 0.021279664375267824, 0.017936773171965622, 0.018764419449013386, 0.031766671852255464, 0.024400667765417997, 0.025920098489730845, 0.0346611633510475, 0.050928699269307154, 0.06375621603272412, 0.10181738286624305]
+]
+
+P_CONTACT_MATRIX_ALL: [
+[0.30253908814532166, 0.07588701972548995, 0.020164007954385315, 0.008977807499058755, 0.01711743971482706, 0.034041342087513984, 0.050148474977098456, 0.04441454807450892, 0.021542060544482003, 0.021131925808593927, 0.019853328215114343, 0.033089827394299, 0.04032144602442553, 0.03397469800977271, 0.019353493408764515, 0.03612228561374848],
+    [0.08790168450366383, 0.3466816604023886, 0.07871400356435404, 0.012785826891975442, 0.009073858161928607, 0.01871974491740197, 0.041208510602486675, 0.048892432861196974, 0.03721721812668794, 0.023628798416031042, 0.024601407784605605, 0.03229763830199231, 0.032690755644008286, 0.04080741470291694, 0.03702026237489791, 0.03838741709604257],
+    [0.024312493327072426, 0.08193603444534045, 0.38946975411978374, 0.06619354886683397, 0.015275975653074852, 0.011598104648557362, 0.024433519197357107, 0.03542224634717571, 0.046205998592657095, 0.03330430095908248, 0.03145595213842647, 0.02719683546375745, 0.020435392753588917, 0.027752510345604074, 0.03098700434261736, 0.04476509716059582],
+    [0.016490968268425416, 0.020275659380472568, 0.10084140624072496, 0.4256576625422318, 0.09912863645648773, 0.03960880376703465, 0.02904724353137994, 0.03893212496800706, 0.05419853698729055, 0.07343403662571261, 0.05305063939175698, 0.03935068772160184, 0.029997796386705418, 0.019679743419417927, 0.03470488537946081, 0.03510851623159039],
+    [0.03574726319287494, 0.016359358765677737, 0.02645820085170176, 0.11270086679664483, 0.30005337305830254, 0.1236058585911845, 0.07164135968584406, 0.058517912955048546, 0.06197355932388013, 0.08072844723847511, 0.07778262817718527, 0.06367105479558914, 0.047464033626757274, 0.041945713596857344, 0.03405892017956668, 0.03493351274994223],
+    [0.08467704724412507, 0.04020029662863296, 0.02392728459304364, 0.05363828591918478, 0.14722924883462496, 0.25256818887681143, 0.1245175590913921, 0.09556280986781454, 0.08910378248934528, 0.08553349102609932, 0.10801460450472583, 0.10805882973830952, 0.08161151940825603, 0.06700891664415744, 0.05771360755478375, 0.04143813410454829],
+    [0.12375349914135629, 0.08779241071360577, 0.05000726941679301, 0.03902373338335091, 0.08465635898411918, 0.12352968217483806, 0.20404013293194825, 0.11941301173368929, 0.10774554238982716, 0.09939440018177573, 0.0945943128951945, 0.11200481979957334, 0.09787863453349276, 0.09455347368169559, 0.05838470650558361, 0.0657340313156468],
+    [0.10707291812605822, 0.10175747903553696, 0.07082357599213511, 0.051095968250417526, 0.06755215828320635, 0.09261562694742634, 0.11665578661269786, 0.19565334612034058, 0.1291982414188445, 0.1094334087624785, 0.0924363705200441, 0.0862300876215115, 0.09948779994023615, 0.09367012140017501, 0.09365656230603947, 0.06897201104185707],
+    [0.042893297998693736, 0.06397590012046665, 0.07630410781982033, 0.058750814810784285, 0.05908872873209717, 0.07132459371604162, 0.0869364200478059, 0.10670982517874236, 0.16580478732603413, 0.10845021406733976, 0.09926075220826933, 0.07323397064874075, 0.06441123115372424, 0.0715711683554161, 0.08990066857936316, 0.06259113779423216],
+    [0.035888203783827, 0.0346437249431999, 0.046909448607938595, 0.0678944352000224, 0.06565007905000786, 0.05839690246399066, 0.06840294582390308, 0.07709179908714152, 0.0924998143356779, 0.14890940805238145, 0.10493012430543286, 0.06806153544196361, 0.054206838835988085, 0.046892158874517226, 0.06918061062179398, 0.07655133205903525],
+    [0.03164652387752154, 0.033855010284915374, 0.04158559184242181, 0.04603704571864276, 0.05937058294944925, 0.06921753660187992, 0.06110235664683365, 0.06111969579041462, 0.07946356684532985, 0.09848730033817078, 0.14401544029246208, 0.09630136645760119, 0.06254186232673999, 0.05404313713262891, 0.05767928887942046, 0.07712361288253686],
+    [0.039736884966857754, 0.03348423517620936, 0.027087258469039636, 0.02572620803410446, 0.03661317328760838, 0.05216756258356133, 0.054504990981491086, 0.04295401389292006, 0.04416820007337027, 0.04812695832942976, 0.0725502772063776, 0.1456752939744468, 0.08840259782247216, 0.06841716510018282, 0.05130307242134296, 0.0521456869555733],
+    [0.028613459528302354, 0.02002762864273936, 0.012027202429644966, 0.011589047878535107, 0.016128535082903392, 0.02328234406867498, 0.028146371542158356, 0.02928530197525494, 0.022955865619834235, 0.02265039121128059, 0.027842766775078097, 0.05223961663851764, 0.15417719972246272, 0.07929390800762406, 0.0826741453800026, 0.043206153541599686],
+    [0.01810582526574081, 0.018774660859744555, 0.012266265298978438, 0.005709607899640264, 0.010704005313773508, 0.014356093717706481, 0.020419281260303627, 0.02070662942704865, 0.019155726555920648, 0.014714662396834492, 0.018068020733521817, 0.030361867267550597, 0.059548149666992144, 0.1633595462037452, 0.08186063318431412, 0.0557715659252156],
+    [0.0073987838027245205, 0.012218299322535212, 0.009824895094023846, 0.007222968413750693, 0.006234876453074507, 0.008869929310554425, 0.009044828003563104, 0.014851994836619645, 0.01726083067249608, 0.015573015440500508, 0.01383337578945139, 0.01633221263995366, 0.04453858460015384, 0.058723691450742486, 0.13102705184517582, 0.07362680526267511],
+    [0.013222058827434493, 0.01213062155304488, 0.013589727705210717, 0.006996171894821887, 0.006122969984514604, 0.006097685526822134, 0.009750219063736361, 0.010472306884076703, 0.011506268698322353, 0.01649924114581412, 0.01770999906235389, 0.015894356094591635, 0.022286157553996332, 0.03830663307454597, 0.07049508703687253, 0.19352270026516022]
+]
+
+
+################################################################################################
+## projected and precomputed using utils/precompute_and_project/contact_duration_matrices.py  ##
+################################################################################################
+# contact duration matrices (procedure)
+# We use the survey data provdided in us.yaml without density corrections (until we find some study doing it)
+# Survey data has mean and 95%CI. We parameterize the duration as a gamma distribution with shape and scale inferred from
+# mean and 95% CI.
+# Since gamma distribution is not assumed in the survey, we use the survey data as gaussian distribution with sigma inferred from 95% CI.
+# We combine this duration data with location based duration distribution which is assumed to be gaussian.
+# We obtain location and age based duration matrices via product of two gaussian pdfs as -
+# product of two gaussian pdfs is a gaussian with mean = (var1 * mean2 + var2 * mean1) / (var1 + var2) and var = (1/var1 + 1/var2)^ -1
+
+
+CONTACT_DURATION_GAMMA_SCALE_MATRIX: [
+[6.245395967656873, 3.9131611851856, 7.377482926148195, 12.962361536859646, 7.419970396740785, 4.146027025873107, 5.264746025278183, 6.460734471152307, 12.114334949723332, 9.438874153313312, 4.833050031236984, 2.6040309908750143, 2.853865142995975, 2.129216992919617, 3.3987029214017968, 0.11685235318617242],
+    [4.06984375, 8.230090079589557, 12.802222748793397, 10.07285986394558, 10.26734751723819, 5.639996878400801, 4.462058814779556, 4.74045882242943, 6.042485312249991, 8.94193070595585, 7.673658321129636, 5.183882955514567, 4.923762234485631, 2.1591003748438156, 2.399000416493128, 0.6419547410801055],
+    [4.014560923239913, 10.14377873254565, 16.070264619788706, 6.286370958563776, 10.244898594081736, 7.00360583452547, 5.547385699425403, 4.859318833886418, 4.797059944834557, 5.843211008893355, 9.700287139973728, 6.474514825553456, 4.678839957035446, 2.9289965986394555, 2.6589299912915068, 0.3985969387755102],
+    [12.961841987713454, 10.98028165347772, 7.291570528141683, 2.1318194037704776, 1.4869256467399328, 0.8621491417266612, 0.45442003331945025, 0.7622805401595494, 0.8586219417123205, 1.2885581528529777, 0.8338539497431624, 0.40556514150849854, 0.23990004164931278, 0.1913265306122449, 0.10204081632653061, 0.021692350409551576],
+    [8.347942994431332, 11.75510259466357, 11.224504257485306, 1.7305892094047575, 1.597790761876741, 1.3175503407145177, 0.7979196168263227, 0.4467390819301484, 0.8809805810079133, 1.3375075526042557, 1.2018759273479798, 0.5130998345284059, 0.5097891197295245, 0.4309431255495397, 0.1913265306122449, 0.12755102040816327],
+    [4.784317295479503, 6.851177136249004, 8.613478044278935, 1.1676749271137026, 1.069966891432368, 1.1697446962203242, 0.7984803039056307, 0.3975358403296871, 1.1079190488811477, 0.4600166597251144, 0.5488772039428014, 0.4723969179508538, 0.30911599333611, 0.435420426674071, 0.20998195196445932, 0.021692350409551576],
+    [5.1190076077635, 4.300768193312311, 5.9721445416373, 0.9596001665972511, 0.7210432045158484, 0.7474478437014881, 1.001754796178675, 0.7145903427919523, 0.4973973123572247, 0.46099593919200293, 0.3396120075937354, 0.5273526077097505, 0.45454744733554003, 0.23823696145124723, 0.1913265306122449, 0.5003123698458977],
+    [5.654615970367738, 4.406212560544783, 4.797059944834557, 0.7628227821740939, 0.49842787544663425, 0.5745905192564322, 0.825389447105373, 0.7946797825291796, 0.6416916128696373, 0.3890086206896553, 0.6001937357661254, 0.3436068304872971, 1.1639012018801687, 0.7372991288352075, 0.4923762234485631, 0.016269262807163683],
+    [9.93921516048686, 5.100285350994263, 4.475985006247398, 1.4345452580065325, 0.5876896996043312, 0.6304872969595998, 0.5060183256976264, 0.6416054537461237, 0.7013128965242792, 0.8862007879030898, 0.5499363010510329, 0.312116045397751, 0.45297052763103096, 0.5543523531861724, 0.04499613256381267, 0.25197834235735117],
+    [9.433789238036784, 10.699018414946151, 6.089744063441703, 1.1191344186299195, 0.940949490446689, 0.49355321807402924, 0.4714043468282774, 0.47706460311077303, 0.6276575090994687, 0.9655823707033816, 0.7269399067261075, 0.4467390819301484, 0.2936601936693045, 0.5566454318276476, 0.2717650197834235, 0.88921654667698],
+    [4.813006299458559, 8.163493273004937, 13.745408546628298, 0.8384579341940861, 1.0260665577195942, 0.4914641062677786, 0.4704040195836765, 0.45903842149104546, 0.7097632659568931, 0.8861017129387584, 0.9832383378730222, 0.925456644777005, 0.8306919530655332, 1.2456154336734695, 0.4309431255495397, 0.659881299458559],
+    [2.7993891434124674, 5.6383028810459415, 7.423664618908788, 0.9336650269594876, 0.7936524752283446, 0.6156000443655723, 0.45903842149104546, 0.4050146678014597, 0.4404434850863425, 1.041475655120869, 1.2621827132213432, 1.2486585034013604, 1.2004779909412744, 1.3470819450229072, 0.8000850340136053, 0.659881299458559],
+    [3.4893863667916145, 6.3327229439656545, 6.847775480454573, 1.3445581386543488, 0.8013336457031792, 1.0213460384153663, 0.6221427749402662, 0.3999712957438904, 0.587320387338609, 0.6794099928601177, 0.9694143282312923, 1.3763431929667342, 2.1258081972877547, 2.381620308327413, 1.1021579550187424, 0.435420426674071],
+    [2.7210884353741496, 3.0293867939640537, 4.048368326922606, 1.6910414311497195, 3.590638275718451, 0.5895056747188673, 1.4107621824239902, 0.6432397959183672, 0.7239439375007884, 1.0889416193773427, 1.2020183073229291, 2.2646573543075013, 4.014963839904896, 2.77145189648989, 3.071533311362983, 2.269894240495032],
+    [4.233654090888056, 4.02350889335326, 4.288265306122448, 1.291732885420549, 1.104684390763108, 0.7456674953144522, 0.36900498886333605, 0.5895056747188673, 1.8369299250312374, 2.449988286130779, 0.3511568530473415, 1.7144679300291548, 4.738767383508904, 4.641449519920906, 3.772442602040813, 4.686953926978955],
+    [0.45106205747605177, 0.7478719804248232, 0.7611672219908372, 0.43197030998988534, 0.21292169929196172, 0.21292169929196172, 0.46519879537372266, 1.3663057059558519, 1.6086526447313618, 0.44541637298561515, 0.47980008329862556, 5.244899198746555, 1.6463209773705398, 2.5120409231196406, 6.382978723404255, 4.190653755780948]
+]
+
+CONTACT_DURATION_GAMMA_SHAPE_MATRIX: [
+[24.65816431776658, 28.36581340431938, 14.910234439191214, 3.8573218203967294, 18.05937124208196, 57.6455480170608, 48.24544218855818, 26.158016670488227, 6.356106242692136, 4.0259038718787155, 4.138173590328248, 4.2242200797709195, 4.20482377362879, 4.226905961171695, 4.119218514757887, 8.557807975050123],
+    [27.519484009674816, 24.422575944639487, 7.967366448893685, 7.445750364149532, 4.382826228921152, 21.98582777144368, 39.21956371806492, 41.346208740940455, 23.003779540548308, 7.15729098161902, 4.039794150677861, 4.051017389900826, 4.061934562948963, 4.168402777777777, 4.168402777777778, 4.673226643598616],
+    [25.656604039496013, 9.36534623879351, 13.25429325772985, 20.520583473405484, 4.001991783860588, 6.568045245098625, 18.567304597311256, 31.89747478990447, 32.728379842127374, 17.45615550161653, 5.360666055514398, 4.015744916883013, 4.060835629017447, 4.096966177964872, 4.137002491990033, 5.0176],
+    [3.8574764333182787, 6.739353537125563, 18.103095826961887, 104.60548375044685, 41.69677221987144, 32.47697949791292, 72.62003780718337, 68.21635508249513, 90.84324102462053, 62.08489684603926, 57.564037460978156, 51.77959802435326, 37.515625, 31.360000000000003, 49.0, 138.2976],
+    [16.171648523481117, 3.998263700508786, 4.009085743808308, 42.18216524365631, 68.21919527934324, 54.646868339735576, 62.66295369309504, 94.01460874776807, 68.10592797783934, 53.08381239549353, 53.25008891826323, 72.11072292394519, 33.34712205905764, 20.884426427555095, 31.360000000000003, 31.36],
+    [50.581929469572486, 18.53696050683811, 5.9209531547914205, 29.974095689897318, 73.83406031773794, 136.78198372430458, 116.47125113181416, 143.38329835299473, 49.64261608782948, 108.69171570846541, 92.91695780704116, 84.67455751724746, 61.465599999999995, 20.669677967903073, 28.573884297520653, 138.2976],
+    [49.618992481039285, 40.690405093705074, 17.414179994291928, 37.515625, 65.18333396063086, 117.73396731497562, 159.71972443789736, 128.74509280457085, 132.690704915992, 108.4608252463916, 126.61507555244992, 68.26552002149961, 41.79981674382716, 37.777513384889936, 31.360000000000003, 9.993756503642038],
+    [30.06393376506245, 44.70959975104855, 32.728379842127374, 78.65522818943103, 76.23971666100884, 85.27812130177516, 109.03943625112788, 196.30548483756334, 140.254287565831, 149.0969529085872, 78.30804821714143, 96.03999999999995, 18.042768549492475, 16.275619393390194, 16.24773825179585, 245.86239999999998],
+    [7.6464789998848595, 26.861242179968, 34.852663666715046, 66.22307624648492, 81.67575513458301, 71.37336504161716, 108.69171570846528, 140.27312186098098, 208.18097132332647, 106.07077005925585, 92.7380132981389, 115.34171514355411, 41.94533383742911, 19.842975206611573, 155.5689256198348, 19.842975206611566],
+    [4.02807387796889, 5.888390650117138, 16.749472381332442, 82.20638957081614, 68.01640327114458, 95.22782605573116, 103.94473519322396, 121.57682549030486, 146.57675351004235, 158.4535971680455, 111.42599168175636, 94.01460874776807, 68.10592797783933, 19.761232862153257, 29.43719543587841, 7.872098226420932],
+    [4.155406985910221, 4.042387112527488, 4.001336141695934, 65.59661225326137, 57.501143133566245, 95.63261975919688, 104.16577656663449, 108.92334423247262, 90.17091059751603, 106.08262982389323, 165.77872700998182, 78.87997823775942, 34.91065477759864, 12.845056, 20.884426427555095, 9.092544378698223],
+    [4.286649474310652, 4.0792416592798135, 4.041130834976989, 39.628773630401234, 54.17988520432487, 74.72384126841133, 108.92334423247262, 113.57613355017907, 118.06282022722202, 70.0928530024333, 71.30504883108561, 120.12892203224361, 53.312097750179234, 16.33159740673823, 18.748007227122972, 9.092544378698223],
+    [4.298750101953327, 4.105658850080433, 4.088919106638304, 16.362252674337967, 37.43758939969963, 33.28940312213039, 61.079227358460436, 92.50663833559655, 68.10592797783933, 61.81834303495046, 49.51443217017079, 71.92973417233503, 73.85426408662404, 35.68998790562658, 16.331597406738226, 20.669677967903073],
+    [4.41, 4.291297508097031, 4.199222656433206, 12.418382904860197, 6.962550410343896, 33.92673023807262, 17.720917325019776, 46.638905413444384, 45.583640238667044, 29.386332040736598, 28.28575887144596, 17.22114823499453, 25.65402930314805, 64.94790698982519, 33.53374017431511, 15.419220585522519],
+    [4.251646358813481, 4.225167745517747, 4.197501487209995, 14.708923349748256, 16.294246710199037, 21.457285050695027, 62.329780610414005, 33.92673023807262, 16.331597406738226, 17.95926953981008, 68.34552648404221, 16.331597406738226, 8.65203895483066, 22.19134336330242, 58.84781384875216, 21.762535239117575],
+    [6.650969529085871, 5.3485089757311535, 5.255087035327109, 32.409634820337104, 46.96562179079661, 46.96562179079661, 27.945042268555973, 13.17421124828532, 13.676041295834818, 58.37234905785486, 37.515625, 4.003890104316715, 9.111224485493468, 15.525224784780528, 22.09, 41.28234163019288]
+]
+
+CONTACT_DURATION_NORMAL_MEAN_SECONDS_MATRIX: [
+[9240, 6660, 6600, 3000, 8040, 14340, 15240, 10140, 4620, 2280, 1200, 660, 720, 540, 840, 60],
+    [6720, 12060, 6120, 4500, 2700, 7440, 10500, 11760, 8340, 3840, 1860, 1260, 1200, 540, 600, 180],
+    [6180, 5700, 12780, 7740, 2460, 2760, 6180, 9300, 9420, 6120, 3120, 1560, 1140, 720, 660, 120],
+    [3000, 4440, 7920, 13380, 3720, 1680, 1980, 3120, 4680, 4800, 2880, 1260, 540, 360, 300, 180],
+    [8100, 2820, 2700, 4380, 6540, 4320, 3000, 2520, 3600, 4260, 3840, 2220, 1020, 540, 360, 240],
+    [14520, 7620, 3060, 2100, 4740, 9600, 5580, 3420, 3300, 3000, 3060, 2400, 1140, 540, 360, 180],
+    [15240, 10500, 6240, 2160, 2820, 5280, 9600, 5520, 3960, 3000, 2580, 2160, 1140, 540, 360, 300],
+    [10200, 11820, 9420, 3600, 2280, 2940, 5400, 9360, 5400, 3480, 2820, 1980, 1260, 720, 480, 240],
+    [4560, 8220, 9360, 5700, 2880, 2700, 3300, 5400, 8760, 5640, 3060, 2160, 1140, 660, 420, 300],
+    [2280, 3780, 6120, 5520, 3840, 2820, 2940, 3480, 5520, 9180, 4860, 2520, 1200, 660, 480, 420],
+    [1200, 1980, 3300, 3300, 3540, 2820, 2940, 3000, 3840, 5640, 9780, 4380, 1740, 960, 540, 360],
+    [720, 1380, 1800, 2220, 2580, 2760, 3000, 2760, 3120, 4380, 5400, 9000, 3840, 1320, 900, 360],
+    [900, 1560, 1680, 1320, 1800, 2040, 2280, 2220, 2400, 2520, 2880, 5940, 9420, 5100, 1080, 540],
+    [720, 780, 1020, 1260, 1500, 1200, 1500, 1800, 1980, 1920, 2040, 2340, 6180, 10800, 6180, 2100],
+    [1080, 1020, 1080, 1140, 1080, 960, 1380, 1200, 1800, 2640, 1440, 1680, 2460, 6180, 13320, 6120],
+    [180, 240, 240, 840, 600, 600, 780, 1080, 1320, 1560, 1080, 1260, 900, 2340, 8460, 10380]
+]
+
+CONTACT_DURATION_NORMAL_SIGMA_SECONDS_MATRIX: [
+[1860.7653061224487, 1250.4795918367342, 1709.234693877551, 1527.4897959183677, 1891.9285714285713, 1888.714285714285, 2194.1020408163267, 1982.6020408163267, 1832.5102040816328, 1136.3265306122448, 589.8979591836734, 321.1224489795918, 351.12244897959187, 262.6530612244898, 413.8775510204082, 20.51020408163265],
+    [1281.0, 2440.34693877551, 2168.173469387755, 1649.1428571428573, 1289.6938775510205, 1586.7244897959183, 1676.6326530612243, 1828.8979591836735, 1738.8673469387754, 1435.3469387755101, 925.4081632653061, 626.0204081632653, 595.4081632653061, 264.48979591836735, 293.8775510204082, 83.26530612244898],
+    [1220.0816326530612, 1862.5714285714287, 3510.367346938776, 1708.6224489795918, 1229.6938775510205, 1076.938775510204, 1434.214285714286, 1646.6632653061224, 1646.6020408163267, 1464.795918367347, 1347.5510204081631, 778.469387755102, 565.7142857142858, 355.71428571428567, 324.48979591836735, 53.57142857142858],
+    [1527.4591836734694, 1710.3061224489797, 1861.438775510204, 1308.214285714286, 576.0918367346937, 294.79591836734687, 232.3469387755102, 377.75510204081644, 491.02040816326524, 609.1836734693877, 379.59183673469386, 175.10204081632656, 88.16326530612245, 64.28571428571428, 42.85714285714286, 15.306122448979592],
+    [2014.2244897959183, 1410.3061224489795, 1348.469387755102, 674.3877551020408, 791.8163265306123, 584.387755102041, 378.9795918367348, 259.89795918367355, 436.2244897959184, 584.6938775510205, 526.2244897959183, 261.4285714285714, 176.6326530612245, 118.16326530612247, 64.28571428571428, 42.85714285714286],
+    [2041.5918367346942, 1769.8469387755104, 1257.5510204081631, 383.5714285714286, 551.6326530612246, 820.8367346938774, 517.0408163265306, 285.61224489795916, 468.3673469387754, 287.75510204081627, 317.44897959183663, 260.81632653061223, 145.40816326530611, 118.77551020408163, 67.34693877551021, 15.306122448979592],
+    [2163.520408163266, 1646.0510204081634, 1495.3163265306123, 352.6530612244898, 349.28571428571416, 486.6122448979592, 759.6122448979589, 486.4897959183673, 343.7755102040815, 288.0612244897958, 229.28571428571436, 261.4285714285714, 176.3265306122449, 87.85714285714286, 64.28571428571428, 94.89795918367348],
+    [1860.2755102040815, 1767.7346938775513, 1646.6020408163267, 405.91836734693874, 261.12244897959187, 318.3673469387755, 517.1326530612246, 668.0510204081626, 455.96938775510193, 285.00000000000006, 318.673469387755, 202.04081632653066, 296.63265306122446, 178.46938775510205, 119.08163265306122, 15.306122448979592],
+    [1649.0510204081634, 1586.0204081632653, 1585.4693877551022, 700.4387755102041, 318.673469387755, 319.5918367346938, 316.53061224489807, 455.93877551020387, 607.1326530612245, 547.6224489795917, 317.7551020408164, 201.12244897959187, 176.0204081632653, 148.16326530612244, 33.67346938775509, 67.34693877551021],
+    [1136.0204081632653, 1557.7346938775509, 1495.3775510204082, 608.8163265306125, 465.6122448979592, 288.97959183673464, 288.36734693877554, 315.6122448979593, 455.93877551020387, 729.275510204081, 460.4081632653063, 259.89795918367355, 145.40816326530611, 148.46938775510205, 88.46938775510203, 149.69387755102042],
+    [588.6734693877552, 984.7959183673471, 1649.7244897959183, 407.4489795918368, 466.8367346938776, 288.36734693877554, 288.0612244897958, 287.44897959183675, 404.38775510204084, 547.5918367346941, 759.5816326530609, 493.1632653061224, 294.48979591836735, 267.8571428571429, 118.16326530612247, 119.38775510204083],
+    [347.7551020408163, 683.265306122449, 895.4081632653061, 352.6530612244898, 350.51020408163265, 319.2857142857143, 287.44897959183675, 258.97959183673476, 287.1428571428572, 523.1632653061225, 639.4897959183675, 821.1428571428571, 525.9183673469388, 326.6326530612245, 207.85714285714283, 119.38775510204083],
+    [434.0816326530612, 769.8979591836734, 830.8163265306123, 326.32653061224494, 294.18367346938777, 353.5714285714286, 291.734693877551, 230.81632653061223, 290.81632653061223, 320.51020408163265, 409.2857142857142, 700.3775510204079, 1096.1326530612246, 853.6836734693877, 267.24489795918373, 118.77551020408163],
+    [342.8571428571429, 376.530612244898, 497.7551020408163, 357.5510204081633, 568.469387755102, 206.02040816326533, 356.32653061224494, 263.57142857142856, 293.2653061224489, 354.18367346938777, 383.5714285714286, 563.8775510204083, 1220.1428571428573, 1340.1122448979597, 1067.204081632653, 534.795918367347],
+    [523.7755102040816, 496.22448979591843, 527.1428571428571, 297.24489795918373, 267.5510204081633, 207.24489795918367, 174.79591836734699, 206.02040816326533, 445.40816326530614, 622.9591836734694, 174.1836734693878, 415.7142857142857, 836.3265306122448, 1311.8877551020407, 1736.3571428571422, 1311.8877551020407],
+    [69.79591836734696, 103.77551020408164, 104.6938775510204, 147.55102040816328, 87.55102040816328, 87.55102040816328, 147.55102040816328, 297.5510204081633, 356.9387755102041, 204.1836734693878, 176.3265306122449, 629.6938775510205, 298.1632653061224, 593.8775510204082, 1800.0, 1615.5306122448978]
+]
+
+HOUSEHOLD_CONTACT_DURATION_NORMAL_MEAN_SECONDS_MATRIX: [
+[9595.305187772808, 6833.10923825914, 6922.656605878708, 3282.557200731631, 8419.628179430076, 14653.2263845608, 15648.674723678938, 10532.569153300909, 5009.687403374803, 2439.5582837095567, 1244.2178247591503, 673.275824712396, 735.8496193798413, 548.9065983699234, 861.9581698142713, 60.05491304908416],
+    [6901.334676740507, 12618.395996104386, 6643.037703033121, 4817.135687615614, 2903.2767423497758, 7712.240089779864, 10778.724547323813, 12078.914227925847, 8658.571828328066, 4084.657153308415, 1967.0078932996655, 1309.7238223439545, 1245.046894768682, 549.0315761306799, 611.1343889081979, 180.90257827123108],
+    [6346.914553673682, 6091.587158289004, 13889.564293129364, 8052.764803616302, 2645.942184798245, 2901.746507436303, 6410.263688315367, 9578.3797510275, 9697.41402104348, 6360.5008168145505, 3339.604236494655, 1636.31059874273, 1180.726100072818, 736.2667252609148, 673.5556235578584, 120.3741226722494],
+    [3282.545952300347, 4781.401785382114, 8288.818006429638, 13535.873344004014, 3759.7276877582713, 1690.929310635417, 1986.7425190233146, 3137.341739493986, 4708.191237136662, 4843.24543140197, 2897.6119354828693, 1263.8942967342753, 541.0036911732651, 360.5358304261006, 300.23847115144457, 180.03049970181308],
+    [8528.994175272124, 3062.1502236880656, 2922.126519882008, 4433.544049308665, 6609.818958104183, 4360.279561013194, 3017.5047465129123, 2528.3292189241215, 3622.8550186900743, 4300.381732072012, 3873.0556984230743, 2228.4876199550845, 1023.9845936467146, 541.8029424633124, 360.5358304261006, 240.23879384583083],
+    [14883.178761504656, 7956.464055364137, 3251.657284583036, 2118.31888315336, 4775.5207472026295, 9668.995020402057, 5610.5518936522385, 3429.8436003837396, 3326.5375533510423, 3010.093634292789, 3072.265924527036, 2408.412072852486, 1142.692997891367, 541.8216734335736, 360.5880762363546, 180.03049970181308],
+    [15637.514772734596, 10768.728759625254, 6489.780915389568, 2175.463854934792, 2834.9343602337344, 5307.271950619116, 9659.103189668376, 5547.092027900821, 3974.072673671125, 3010.115116314097, 2586.473698634096, 2168.499625075247, 1143.9598716708254, 540.9967333537641, 360.5358304261006, 301.1692141121334],
+    [10545.489665715959, 12117.586349956136, 9697.41402104348, 3619.791164085159, 2288.455781201095, 2952.372580312834, 5430.703581488277, 9406.04439092012, 5423.87438122884, 3489.787186673561, 2832.4320511295628, 1985.0985095683702, 1271.1740765827326, 724.0958624383497, 481.8335664718295, 240.0304585416217],
+    [4876.626654602244, 8486.297073647203, 9617.783677293535, 5755.861026645617, 2892.414214614312, 2712.5396662700155, 3312.124688236259, 5423.871177595862, 8798.68540772247, 5674.217002380383, 3072.289585494331, 2165.030952703108, 1143.9461352980086, 662.8268610176334, 420.1468213087058, 300.58887308762337],
+    [2439.472649990007, 4068.274699311088, 6370.581865757567, 5562.412745679981, 3865.88388179109, 2830.2237037546856, 2950.151227236619, 3492.0019680204914, 5543.798177052756, 9235.136887373334, 4884.676149480865, 2528.3292189241215, 1202.689283411517, 662.8385535741999, 481.01204825723744, 422.90131167353223],
+    [1244.034629511563, 2100.803031640851, 3626.8451813361844, 3320.0863922800363, 3566.2114396356624, 2830.1804394013284, 2950.1296914096506, 3010.07217509041, 3859.5273951245085, 5674.213180363546, 9838.794846255158, 4408.6511526574395, 1750.8913969928474, 969.1747434543447, 541.8029424633124, 361.84801343842867],
+    [735.547181046826, 1439.0565450619333, 1900.3388777925502, 2235.4420133317767, 2595.125525004249, 2772.4977574943737, 3010.07217509041, 2768.2233455341375, 3130.0217740421695, 4412.240101401943, 5446.9323781280555, 9070.22869171887, 3873.0172815048986, 1333.5290735361082, 905.5328616695382, 361.84801343842867],
+    [924.1200448317376, 1634.642292146855, 1766.6549707368526, 1333.5037342325465, 1810.8535701797196, 2055.588382142236, 2290.554069707304, 2226.6165566443615, 2410.4580329504215, 2532.6659431217277, 2900.4737197653803, 5995.507045849706, 9543.477090858056, 5184.197829283457, 1089.1077681922134, 541.8216734335736],
+    [735.112466064049, 798.2005712047961, 1051.622646178948, 1276.2330120839629, 1540.7830415290782, 1205.398242582044, 1516.0328633603017, 1808.7127219454135, 1990.7406097313835, 1935.6864578657342, 2058.3447207882728, 2379.3461178515563, 6346.931233144767, 10977.023503221753, 6307.836347909253, 2135.596406770937],
+    [1114.9643596465146, 1051.4286038880284, 1115.4150090660314, 1151.2512764649146, 1089.1286412157958, 965.492774567698, 1383.8699584567146, 1205.398242582044, 1824.8719398226256, 2687.6728710768957, 1443.8375683411762, 1701.7285387813297, 2546.211624299281, 6372.848187941709, 13594.080857379786, 6313.149043149106],
+    [180.63418998828882, 241.40008723413942, 241.4249763877161, 842.792074008926, 600.9884530668864, 600.9884530668864, 782.7958987678422, 1091.2900079807307, 1336.1551123853194, 1565.2584866064778, 1083.9653335627852, 1310.3084116057935, 911.3833496747171, 2383.63972154854, 8800.023390835804, 10639.840833033233]
+]
+
+HOUSEHOLD_CONTACT_DURATION_NORMAL_SIGMA_SECONDS_MATRIX: [
+[3427695.389784367, 1556572.0168924166, 2896703.116095692, 2317392.474657533, 3542266.978372601, 3530365.2766307583, 4747165.590254545, 3885984.0165639007, 3325394.827623447, 1286374.2514864036, 347625.3918192283, 103088.49949659442, 123242.48302043143, 68972.6977766866, 171208.75243241363, 420.66795329641127],
+    [1633113.870978935, 5853224.06347473, 4637144.734629344, 2698184.7417011266, 1655248.4880917731, 2499269.407439709, 2788146.796906098, 3312424.742842075, 2997123.7609104486, 2047866.7227749557, 854238.1590445575, 391452.3388246382, 354143.25624333636, 69940.52555598592, 86342.1800589067, 6932.970455227792],
+    [1482138.7413135902, 3434285.74889936, 11893526.226375578, 2894645.885878719, 1505481.0314680499, 1155871.6918141048, 2044655.3380669954, 2690140.9203537703, 2689942.4557685135, 2132230.7931117346, 1806289.2737712944, 604941.1119050424, 319733.02819099143, 126485.78894683733, 105261.17379476319, 2869.873842070162],
+    [2317300.2206645664, 2900304.982252731, 3430152.094307947, 1702890.8528518449, 331559.5928006433, 86882.52436744815, 53976.56747913258, 142639.3157824454, 240930.9477236282, 370701.9220948625, 144029.19376265982, 30657.972232388685, 7772.584445765211, 4132.603052162819, 1836.7248154779718, 234.27722370812404],
+    [4009468.319508849, 1977446.6702965272, 1808739.0714237592, 454193.9815455031, 625824.1551113651, 341167.88178175234, 143565.1533026709, 67533.5917963987, 190185.83272063284, 341525.0488510579, 276687.8625182186, 68331.22314730844, 31196.244156969053, 13961.986435891378, 4132.603052162819, 1836.7248154779718],
+    [4117839.445981394, 3103889.09057344, 1574145.164042003, 147063.6839035524, 304027.6838463312, 672446.261858289, 267122.10501621943, 81554.87395659731, 219227.15190943176, 82782.92710816386, 100744.12678205704, 68011.6090123465, 21142.224990343304, 14107.039069593911, 4535.549925653778, 234.27722370812404],
+    [4617531.600085068, 2688156.5961079192, 2221426.571017127, 124318.90970627667, 121956.94254343862, 236627.40764010337, 576037.498428181, 236508.41731136758, 118140.71815376927, 82959.11187497008, 52563.84712338845, 68331.22314730844, 31088.2151322363, 7718.703091548555, 4132.603052162819, 9005.385185392612],
+    [3425909.2315483033, 3096551.9015253126, 2689942.4557685135, 164690.2622609206, 68171.32248107801, 101327.6942846063, 267216.931587518, 445709.70410677075, 207781.5872378607, 81205.68600005932, 101522.59096311459, 40815.612801171155, 87968.2656385345, 31848.351996034125, 14179.846449752416, 234.27722370812404],
+    [2697886.613370127, 2497068.0982999825, 2495345.996201426, 489910.671652677, 101522.59096311459, 102108.40352263876, 100162.24309240427, 207753.7056379683, 368212.6272425838, 299627.2351211652, 100938.4621934373, 40445.44891759582, 30980.373427057177, 21950.942175452386, 1133.89877577192, 4535.549925653778],
+    [1285683.864191392, 2409417.7158984193, 2221607.3003014815, 370255.46375942504, 216657.22607911233, 83488.78906609374, 83135.48379061425, 99582.04323287687, 207753.7056379683, 531015.8054603017, 211844.18500930033, 67533.5917963987, 21142.224990343304, 22041.736392597424, 7826.653196296521, 22406.78675153016],
+    [346185.1735346625, 967076.6914411522, 2700073.2611560943, 165934.00730798705, 217797.5482859119, 83135.48379061425, 82959.11187497008, 82606.92949077515, 163451.1892139409, 299593.76695452165, 575991.149240904, 243036.92509943835, 86702.2224612152, 71732.3788230467, 13961.986435891378, 14252.841205129675],
+    [120890.80187099252, 466214.15457047784, 799877.9246144949, 124318.90970627667, 122813.22145532555, 101912.94558277301, 82606.92949077515, 67057.25937682595, 82431.11902338303, 273480.6240888762, 408458.08428805246, 672946.9304261662, 276366.2993541835, 106655.57052044687, 43199.126701158064, 14252.841205129675],
+    [188322.9574418061, 591715.8553386574, 688863.4478196201, 106455.80977033125, 86522.10769150384, 124967.00987670786, 85087.92651957723, 53267.866719436446, 84553.19640415772, 102695.89985466453, 167432.66826060417, 489825.1532545555, 1197294.4545647602, 727223.9341862662, 71404.90262695178, 14107.039069593911],
+    [117510.57218852044, 141716.4695024708, 247580.52603463954, 127794.89280772272, 322851.94311108364, 42439.134058262935, 126921.40888553459, 69455.76929661377, 85982.88620742252, 125400.01171137836, 147063.6839035524, 317662.13820170227, 1482286.8487717886, 1786506.1286838641, 1135138.9055909629, 285767.3510791096],
+    [274120.5796286741, 246061.32703443806, 277653.67107768595, 88331.67646077042, 71568.54713183956, 42945.04669698601, 30550.87980896805, 42439.134058262935, 198273.25204483478, 387637.6493004579, 30337.256926446225, 172730.95834793916, 698012.4774560713, 1712419.7036726016, 2988552.466031718, 1712419.7036726016],
+    [4871.4007327152185, 10769.01692265392, 10960.45621980802, 21769.915790362647, 7665.009133823971, 7665.009133823971, 21769.915790362647, 88513.66256892777, 127357.77684107672, 41685.88357411461, 31088.2151322363, 396054.5359810777, 88878.19617632736, 352326.6846792115, 3209550.144104256, 2590144.3907037987]
+]
+
+SCHOOL_CONTACT_DURATION_NORMAL_MEAN_SECONDS_MATRIX: [
+[293.14955741898257, 330.6210167382083, 282.35941362448244, 257.09498275356543, 282.482149365289, 327.55906574456634, 306.4127919552513, 291.1437969556251, 260.23610577581934, 266.91136391239223, 293.67601723981034, 313.1158491350228, 311.767657276452, 311.7138750123842, 306.7015145617924, 62.699839737497626],
+    [326.7388034401381, 277.6487560975663, 258.91756439090744, 266.8462496592286, 264.48499851220333, 299.60377917947847, 319.7095121747413, 314.5975746774864, 295.1125334744711, 271.3435977162542, 274.3987927922174, 290.3406029486257, 292.53035246488855, 310.8555010042401, 312.2845443291115, 190.01614092585007],
+    [327.6451469347612, 267.0909664232952, 253.0244202718762, 292.308458105852, 264.17438485806554, 281.7030177203253, 300.17725446167276, 311.85945259435925, 312.988142726827, 296.4818157061135, 267.2177850971853, 281.02788451385766, 294.6232404345772, 309.9591790193843, 311.68555878980106, 130.78609702335083],
+    [257.09617595762364, 263.55101532343735, 283.4210673230929, 420.8468785285769, 477.1408432857246, 557.6246049378318, 790.8844460016435, 667.0551190007463, 654.4329019228884, 522.1030976659971, 627.2405268593824, 697.0401593106408, 467.09999999999997, 341.5138307364953, 295.11306158881285, 180.42621811727267],
+    [276.366543077467, 259.9504652722304, 261.3328853794048, 448.3094416787384, 474.6547091016661, 512.4214585051718, 646.4922572761469, 857.1956265000696, 626.9633047717331, 507.9635138454207, 532.7489774732094, 770.0928247127061, 584.4141509096726, 429.53493589304946, 341.5138307364953, 239.1297232966379],
+    [314.2501709404647, 286.93138249819276, 272.1295830234107, 504.5986885052208, 577.2070200666215, 570.091338759381, 694.8122279606954, 989.6899217674105, 548.1391246822126, 881.8601128957154, 800.8908590258919, 821.1650969331922, 727.0220999102522, 428.7950114330068, 339.9826136470432, 180.42621811727267],
+    [308.66138052963004, 323.15383062251465, 295.0645470298941, 556.9774617845715, 676.7328627673294, 719.9916228066955, 625.1820685796549, 743.6416311418077, 891.6524941911983, 880.7969965917572, 997.5680701227668, 753.7428149371103, 639.2838066578897, 467.4882933925427, 341.5138307364953, 281.0027849956853],
+    [300.23359849520784, 321.20159458073755, 312.988142726827, 680.5847379996881, 787.3970501065547, 774.0543576392535, 678.9350442010619, 722.4623469320513, 794.1272640442147, 1006.5628364146967, 749.0554356119062, 902.6469127565595, 459.80731832451164, 446.6781463038898, 389.81370381412125, 239.88210988245652],
+    [267.4102156249237, 307.52574154277835, 319.07403083902034, 498.41586667264977, 761.1353917001107, 722.6108055658083, 852.389789014643, 794.195071400666, 781.1329941689457, 652.7355139292424, 800.0091753444084, 976.1994031653047, 640.0697198453734, 460.10728612318826, 411.81402004421375, 289.01301350551995],
+    [266.93245813468616, 264.09286472744935, 293.70079887538367, 568.9515384296116, 608.5792016638778, 835.3886350866051, 865.6128073988261, 892.0912517329125, 807.3525058812537, 638.1575437404048, 726.2295574903507, 857.1956265000696, 759.882259816731, 459.6629931622815, 420.7605062185525, 329.915629751841],
+    [293.93458746555154, 272.0831455194891, 255.63608794803216, 637.5572898024105, 575.2549316568479, 837.3660190140641, 866.6506497488054, 882.9255563221219, 716.0449204643493, 652.7793711172312, 632.8601174819001, 622.5090864517606, 571.8302880524157, 419.7610861578293, 429.53493589304946, 312.4330350377947],
+    [313.12904516762774, 286.9384940154401, 275.6716851804124, 567.219907571987, 632.7514055591415, 735.4137368242094, 882.9255563221219, 926.7356190986404, 912.4243460194539, 582.2184105391337, 531.751245156427, 547.8981747893152, 533.0748551632983, 438.51284881375665, 477.4018923748861, 312.4330350377947],
+    [307.49830611710746, 282.18750484649917, 278.9613051126047, 438.8329234796498, 586.0810733169965, 535.1598233068316, 701.7286807765432, 873.8467692496159, 731.91705342457, 684.4321509869969, 578.6913330074901, 510.36497474456223, 418.7851007931561, 392.36691344988054, 452.07562387412884, 428.7950114330068],
+    [315.16423357664235, 311.5811767592401, 301.2639357757447, 399.34312516285934, 320.44259308161463, 593.0668160676727, 440.60096877787873, 650.5704556797631, 629.1055065540888, 513.9376124369376, 495.7060449866339, 384.44886429279313, 327.6352175592277, 375.59658348861393, 357.8661116310974, 380.8760365365983],
+    [299.803703549288, 301.67956804419345, 298.954756060657, 432.1063712052592, 451.6964669661181, 500.7370888353381, 752.6438256085255, 593.0668160676727, 406.7807130386607, 376.32575195919804, 782.1095206993127, 414.46651581383384, 305.8434253624429, 314.2509347591945, 337.2374008856028, 313.37153679421016],
+    [187.51388425685465, 236.15056057794746, 236.10264346538318, 558.272285110143, 514.0508941438367, 514.0508941438367, 525.8475916246477, 418.3216105560461, 409.8747234703729, 734.1230021856442, 612.1895805905585, 289.64842253421415, 377.46811754936124, 369.99273568507175, 291.5409113179814, 325.6199727302557]
+]
+
+SCHOOL_CONTACT_DURATION_NORMAL_SIGMA_SECONDS_MATRIX: [
+[25412.1126517335, 25187.642153194756, 25377.624197585636, 25322.166765780283, 25418.207727665253, 25417.59285176356, 25464.58619369517, 25434.350731154642, 25406.318163473486, 25102.322982875186, 23845.72863171722, 20508.624161994034, 21198.271751973287, 18671.325238603717, 22271.519130861525, 413.8676483828693],
+    [25206.75906852494, 25490.424393129575, 25461.345724010313, 25361.276856710447, 25211.962813622158, 25342.318487869867, 25368.97074742788, 25405.55814517093, 25385.075698638426, 25285.802352190392, 24856.94482824203, 24030.281282202497, 23875.871507604163, 18741.5309082794, 19746.690791353205, 5455.600163867267],
+    [25167.190364265094, 25412.474193232894, 25546.927016732254, 25377.466188272352, 25173.8180688014, 25047.138865519017, 25285.311991564115, 25360.564092757017, 25360.546453409468, 25298.161465793906, 25244.115002250972, 24562.405218638592, 23703.882853094, 21292.1805620766, 20593.18636254294, 2580.598913997958],
+    [25322.155750264996, 25377.90031040114, 25412.24758566604, 25222.711161686948, 23766.731867130104, 19774.817696897113, 17365.292745212737, 21705.976133280637, 23142.71675517046, 23947.990531325275, 21737.897667696874, 13951.376497238716, 5962.428115015975, 3558.2400988400022, 1713.7756620053556, 232.15284685489317],
+    [25439.478787910182, 25274.68881181292, 25244.592856565803, 24235.800215031133, 24595.72935957506, 23814.808370942486, 21727.298310036294, 18564.235482598437, 22564.405395150796, 23816.54699865044, 23433.608130829183, 18623.995829079136, 14061.7878142653, 9034.842303955063, 3558.2400988400022, 1713.7756620053556],
+    [25443.727392704408, 25392.473503049678, 25192.192966678675, 21805.805432069592, 23613.45009667505, 24662.932009789805, 23362.751160882908, 19485.104291498366, 22924.711489793477, 19554.41078610519, 20414.117193412345, 18600.171890708825, 11579.665106569051, 9095.360087268456, 3852.9706062834125, 232.15284685489317],
+    [25460.75192556061, 25360.387611804108, 25310.21912456922, 21229.889797369357, 21159.906946840096, 23102.35789751605, 24512.46549070317, 23101.223170748108, 21041.975930539866, 19564.225347007217, 17216.428986339637, 18623.995829079136, 14039.796877938688, 5930.66993338948, 3558.2400988400022, 6662.03704260899],
+    [25412.01442680464, 25391.98129722532, 25360.546453409468, 22157.435727010965, 18612.097183279202, 20437.9684645909, 23363.4762939209, 24211.208137363352, 22793.416207320337, 19465.106482564945, 20445.885402366064, 15733.165449761595, 19830.52531548161, 14192.777798418703, 9125.569890745039, 232.15284685489317],
+    [25361.250514655425, 25342.091957525943, 25341.91446518352, 24330.450175987604, 20445.885402366064, 20469.536343516094, 20390.114351195945, 22793.0806441413, 23937.536077496192, 23586.545509590134, 20422.084402111945, 15677.855809088567, 14017.760319779236, 11818.137356227206, 1085.8087402493602, 3852.9706062834125],
+    [25102.059947273276, 25332.739280320093, 25310.242584216896, 23946.125187266567, 22896.31121987399, 19593.54066401192, 19574.018477917452, 20365.95879361741, 22793.0806441413, 24424.34568080483, 22841.46844986985, 18564.235482598437, 11579.665106569051, 11844.405023199988, 5994.193837174131, 11949.014913745446],
+    [23838.925550752192, 24941.626625613848, 25361.443588848153, 22179.802597155318, 22908.98694524138, 19574.018477917452, 19564.225347007217, 19544.574741490687, 22134.860236953406, 23586.338093367613, 24512.381554743362, 23161.99551813988, 19765.46240968814, 18867.82564032683, 9034.842303955063, 9155.74663934178],
+    [21127.578993323998, 24269.188684479388, 24807.886115309244, 21229.889797369357, 21185.535069139813, 20461.669300158006, 19544.574741490687, 18528.05690922811, 19534.717159316275, 23410.356053503052, 24091.85542702406, 24663.60500688402, 23431.299116473725, 20645.993659988864, 16075.054316794825, 9155.74663934178],
+    [22537.954477566196, 24540.134940682387, 24684.508320108274, 20638.496943203078, 19756.086791535214, 21248.708507085004, 19680.34377599634, 17291.28083653278, 19651.598450221354, 20493.038349207534, 22206.370853753582, 24330.239216968177, 25065.930753801284, 24731.25528743752, 18845.092648091795, 9095.360087268456],
+    [21021.89781021898, 21684.48801982541, 23202.57660042993, 21328.960305741337, 23720.87165523226, 15968.642866050954, 21304.489551678165, 18706.545667258786, 19727.83743994029, 21261.191448088834, 21805.805432069592, 23692.43212215073, 25167.233064082608, 25240.208783003072, 25037.229555223235, 23496.835806013394],
+    [23415.035391721252, 23189.15896351658, 23440.513768871257, 19848.934169929205, 18856.47180031345, 16039.741508615747, 13929.157037659797, 15968.642866050954, 22674.134612975387, 24015.77320756093, 13884.58060189414, 22297.07996914374, 24696.107617877948, 25224.790201606687, 25384.45906494528, 25224.790201606687],
+    [4092.6688718187056, 7580.434554195882, 7674.794406630023, 11765.464112855367, 5898.919865731312, 5898.919865731312, 11765.464112855367, 19858.10875705184, 21316.74938623829, 15860.80355892536, 14039.796877938688, 24047.43502722567, 19876.398500351195, 23867.574995959378, 25399.314061734443, 25351.33740747616]
+]
+
+WORKPLACE_CONTACT_DURATION_NORMAL_MEAN_SECONDS_MATRIX: [
+[241.6965666948114, 274.6574544411265, 232.38889107897637, 210.5421261232368, 232.42606389362118, 271.55603205750384, 253.11467628694305, 239.91654058115165, 213.1346306323991, 219.42859360862525, 244.93300368241296, 268.32511257604676, 265.7918873864309, 270.6735537544341, 259.26710658963606, 62.30588166067829],
+    [271.24690439055246, 228.10862946751095, 211.90179800693343, 218.94673542297932, 217.13992381608688, 247.4240460854354, 264.8335415796974, 260.3271544050086, 243.44833884148449, 222.9771441354269, 226.35109184342085, 241.6868602164118, 243.8765718435295, 269.76293112204695, 269.0699094964567, 180.9518891659606],
+    [272.1103913352534, 219.07522815432907, 206.65261371746436, 241.02720657349565, 216.9322128553293, 232.38398194757218, 248.02415023818952, 258.0330865424429, 259.01316625130124, 244.7913224604557, 219.46179320064437, 232.6275358324273, 246.0165661972555, 264.0070176122254, 266.88722587263976, 127.32616237706291],
+    [210.54317998249144, 216.05846576601536, 233.25130098523684, 352.9894248611411, 405.7072815597133, 488.4086261984564, 707.3631334560728, 579.2830125039354, 563.0919946258219, 444.5601787298489, 543.9347498778135, 635.9011843910685, 447.68248908968707, 332.3795655283958, 291.13638505445095, 180.04176946518805],
+    [227.08167092309617, 213.09848503311864, 214.348041676531, 379.29439501195236, 401.3678171933225, 436.4630166965523, 561.0085257899141, 761.8576164615876, 540.8996880735219, 432.55602054603264, 455.35830947273826, 683.2079930597833, 531.5656045793448, 402.55029198237105, 332.3795655283958, 235.7210134745625],
+    [259.9548649513305, 236.33271155487873, 223.81582676082593, 435.2112925592805, 493.79444072964276, 484.36270394162483, 597.7591384373685, 876.2880330372419, 470.3708675801196, 779.3870018658698, 703.2124535124879, 729.2677813201692, 673.6616497786792, 401.67711366900545, 330.1432835449823, 180.04176946518805],
+    [255.07308609616234, 267.8403839402468, 243.5389815205013, 483.31512739784785, 589.8337247451627, 620.8323642481581, 532.8660087267418, 641.6158535712163, 781.1607247221145, 778.389200198469, 895.4017032245101, 668.4965590796326, 582.2612384567193, 448.15736449865426, 332.3795655283958, 266.5246624182083],
+    [247.84620353374444, 266.08570029157636, 259.01316625130124, 589.6176048037029, 698.8289592153183, 679.1972020281585, 583.825788640741, 618.8331861413526, 687.2413962403791, 891.5058109179507, 656.889280284367, 816.688866529146, 400.7878883063245, 404.1521688465954, 364.6277283316321, 239.41522748736747],
+    [219.43647125779873, 254.30378932369428, 264.33251978561844, 422.8007406108548, 667.6530727035863, 633.2338910028403, 749.216360286838, 687.30245409909, 671.181137537607, 560.0692650352305, 702.392760808804, 884.2124197641696, 583.06894057261, 423.3402819360387, 408.53215696453753, 280.32170960919285],
+    [219.44736705033247, 216.60241958301376, 242.35448139345692, 485.54518851931323, 523.6162974496509, 737.6063077149529, 764.7503504495728, 784.7162057797858, 698.8814982884862, 544.4772887854532, 627.305786972416, 761.8576164615876, 704.3935524844541, 422.84906425785067, 402.8468310102861, 301.4517657352669],
+    [245.17148063525244, 224.1935799602825, 209.21266871435907, 551.5481198952277, 494.26617901702053, 739.4636878755712, 765.7246575806038, 780.3870929046379, 621.0142492504117, 560.1084147202205, 539.5626659432763, 534.9854294179771, 501.1418858631937, 367.3769070923394, 402.55029198237105, 291.1851994275465],
+    [267.1366775460122, 238.29355164233672, 227.54210915093785, 492.40364341195254, 550.7046847287172, 644.6715328467153, 780.3870929046379, 824.627988689838, 806.846417544324, 498.8196805083824, 452.5861062300651, 465.02023570360114, 455.6508225695645, 379.67350077678987, 427.03603948236344, 291.1851994275465],
+    [259.4691981996486, 233.67701543467876, 230.61713871172455, 379.9774271671787, 513.9168225660468, 463.8994969691441, 617.6337613332198, 782.8729049006382, 644.7572319351538, 599.1320984537687, 499.4924222849346, 433.2325927625945, 351.563234585092, 329.330872957414, 396.47509592179983, 401.67711366900545],
+    [269.1489371333977, 264.69334313581504, 252.75076868275153, 343.2087563442318, 268.5976591528818, 532.9221662536252, 379.8610648653825, 575.3653820209561, 552.4931111926102, 445.0342000806509, 427.34455062109845, 324.7146984807982, 272.1016790495178, 313.63290188168236, 298.6449630597808, 322.01446085430047],
+    [251.08024636053645, 253.1404175274042, 250.28917877775552, 375.97733593547576, 396.10419321313344, 448.4296727122055, 687.3189412421505, 532.9221662536252, 346.6406836013585, 316.8989219361307, 714.7185135355354, 354.3046033418554, 254.02003953792567, 260.3614852687692, 280.0221168002238, 259.59736099990226],
+    [180.71976737712086, 221.70829712796169, 221.4905976213636, 515.2052087309776, 493.2332409702973, 493.2332409702973, 484.9120493958272, 363.6327015332697, 352.5780463546884, 662.1285472838347, 557.2657632397704, 241.05134603078312, 327.0745476043356, 311.6778752709067, 240.32254910105172, 269.9989902959297]
+]
+
+WORKPLACE_CONTACT_DURATION_NORMAL_SIGMA_SECONDS_MATRIX: [
+[22059.55549059281, 21890.208439461483, 22033.56206813523, 21991.7451200064, 22064.1482886326, 22063.684976850196, 22099.086149824227, 22076.311056906172, 22055.188923654216, 21825.737496801004, 20869.529906738924, 18268.01297415795, 18813.19833607061, 16795.832677241033, 19653.73622957849, 412.845796360634],
+    [21904.646186601185, 22118.543307274485, 22096.645583296508, 22021.238073881934, 21908.57573583428, 22006.943047527184, 22027.03863351969, 22054.61617528113, 22039.1789393551, 21964.311931906286, 21639.99964796194, 21010.752803285726, 20892.614398131693, 16852.62125325684, 17661.007065550875, 5283.2228433728915],
+    [21874.759373243167, 22059.82792961308, 22161.073779204395, 22033.442957498915, 21879.76623128244, 21784.007459930883, 21963.941934716804, 22020.70068513287, 22020.687385887275, 21973.636767192627, 21932.850384588724, 21416.421567575784, 20760.801478927544, 18887.127242520495, 18335.077097482193, 2541.3770458308445],
+    [21991.736811508774, 22033.770207126105, 22059.657169962094, 21916.69155643057, 20808.996787922173, 17683.502733802186, 15731.520642617887, 19212.008800885604, 20329.06464130608, 20947.816176780467, 19237.01209865084, 12876.968220570527, 5757.137808201846, 3484.0981005913895, 1696.3889259149519, 231.83097415990514],
+    [22080.17430821581, 21955.925847412647, 21933.21109965792, 21167.699031539476, 21441.75158755366, 20845.84249669242, 19228.71083769109, 16709.126308619987, 19881.465464016317, 20847.17462901313, 20553.181119090736, 16757.524236777874, 12970.971307098045, 8571.68811151511, 3484.0981005913895, 1696.3889259149519],
+    [22083.374863505545, 22044.75490462213, 21893.64562937514, 19290.174370507, 20691.398073169712, 21492.806245729822, 20498.65258850111, 17451.467669511803, 20160.653520171298, 17507.04160922437, 18192.990375371788, 16738.233748606013, 10829.683800484876, 8626.141571444972, 3766.187284192327, 231.83097415990514],
+    [22096.198353850894, 22020.567626613276, 21982.73300384137, 18838.097599514364, 18782.974763631504, 20297.91614625719, 21378.445384479353, 20297.040186444046, 18689.9922538253, 17514.90815567961, 15609.25158043099, 16757.524236777874, 12952.257578475286, 5727.523457206117, 3484.0981005913895, 6406.775600459972],
+    [22059.48147317765, 22044.38392642031, 22020.687385887275, 19564.841790325816, 16747.89039907477, 18211.93139251555, 20499.210825610986, 21148.936838979494, 20059.040215120272, 17435.42460309787, 18218.217408348548, 14380.106054669504, 17728.03725995473, 13082.346454173015, 8653.310146315658, 231.83097415990514],
+    [22021.218213346805, 22006.772221655632, 22006.638374917122, 21239.865982178828, 18218.217408348548, 18236.99299914386, 18173.92412877789, 20058.780332926784, 20939.816647099764, 20670.737215350597, 18199.317912824667, 14333.886674501857, 12933.500471074776, 11037.988236844549, 1078.8033187724627, 3766.187284192327],
+    [21825.538647001704, 21999.719044170608, 21982.750700570057, 20946.388918606208, 20138.685607308613, 17538.399985743676, 17522.756701621565, 18154.73164911498, 20058.780332926784, 21311.387251186545, 20096.245556763344, 16709.126308619987, 10829.683800484876, 11060.899000864405, 5786.7483268264805, 11152.07351233618],
+    [20864.31885670941, 21704.15274571368, 22021.36378108874, 19582.278623301045, 20148.491227545626, 17522.756701621565, 17514.90815567961, 17499.157013644934, 19547.238143433155, 20670.57791143629, 21378.38153953661, 20343.93910426394, 17676.021203053493, 16954.671759849192, 8571.68811151511, 8680.439701755919],
+    [18757.49742873318, 21193.164598652576, 21602.807942289623, 18838.097599514364, 18803.16581566684, 18230.74817518248, 17499.157013644934, 16679.81134436992, 17491.254320197026, 20535.29177145696, 21057.809788264247, 21493.317348814013, 20551.404838110804, 18376.9265926536, 14665.185597000067, 8680.439701755919],
+    [19860.92783627039, 21399.48879384789, 21509.190443489977, 18370.98691854002, 17668.522662259402, 18852.91339859269, 17607.916443054, 15670.755716257825, 17584.90284016591, 18255.645668761936, 19602.98543503419, 21239.705213356086, 21798.22050985019, 21544.67560811075, 16936.312941339424, 8626.141571444972],
+    [18674.15008712955, 19195.17296819089, 20375.239455112718, 18916.06171041051, 20773.832347376043, 14576.569869097704, 18896.811929273284, 16824.327446629177, 17645.92452027442, 18862.739472355683, 19290.174370507, 20752.017151682652, 21874.79163165805, 21929.90165272464, 21776.51153687622, 20601.80425604054],
+    [20538.89224391711, 20364.89185463409, 20558.493238789117, 17742.74808043567, 16945.50313222681, 14635.789737263309, 12858.036944383792, 14576.569869097704, 19966.602836241487, 20999.660844501614, 12820.04321735476, 19673.638704015688, 21517.996969340293, 21918.26128511475, 22038.71414318805, 21918.26128511475],
+    [3994.888884865021, 7251.680276109346, 7337.986468001903, 10992.026160005436, 5697.905810621227, 5697.905810621227, 10992.026160005436, 17750.078563906114, 18906.456683872853, 14486.659972203186, 12952.257578475286, 21023.865303690134, 17764.689900329813, 20886.261359513264, 22049.910474553835, 22013.743861949788]
+]
+
+OTHER_CONTACT_DURATION_NORMAL_MEAN_SECONDS_MATRIX: [
+[67.91129935426369, 73.170305233358, 66.52310196185447, 63.23417369315494, 66.49369231827039, 72.45465970424718, 69.60081738001932, 67.6201928721851, 63.56444959490712, 64.77122860256644, 69.92470156117732, 77.98661843542232, 76.55694351695186, 81.36447681573648, 74.04239465028043, 59.888849320715586],
+    [72.62723549176714, 65.77524528927852, 63.33412618177399, 64.48634799696725, 64.3305699930495, 68.84891185623516, 71.47966247700545, 70.7561050120058, 68.20286301618431, 65.16368359876203, 66.04693735219364, 69.22139163231623, 69.72532386327285, 81.06913982779363, 79.28267314424279, 98.52992173718754],
+    [72.80130832540446, 64.4646869652647, 62.47179093167897, 67.84059282748152, 64.329531641052, 66.81161250608872, 68.99402904102769, 70.45056438866459, 70.60011844658709, 68.4878029817632, 64.66011274942556, 67.28608701085419, 70.24465564370436, 76.11825476328434, 77.60673791274601, 91.91744608968084],
+    [63.234343167065376, 64.03248368761886, 66.62456083855913, 85.13257607770413, 95.73604215209191, 119.40906779477127, 171.68257051450067, 129.49841399299535, 122.58800391911852, 101.59026710308439, 123.3580127525893, 177.7420041118639, 204.29214995539905, 194.06880893786615, 214.88643676717575, 172.1219070997923],
+    [65.6617810262124, 63.661886490673034, 63.876851128224736, 90.72637018259192, 93.58797550439029, 100.56313191218788, 126.30767783772097, 175.74930451248073, 120.51080247444946, 99.93539354007832, 104.38124671323482, 160.3765963066093, 152.53340844079116, 152.38750768489956, 194.06880893786615, 176.07653549733945],
+    [70.66181377296473, 67.1114341404154, 65.37012437916226, 104.62347341580168, 110.18231732696603, 106.39945772551849, 127.61090852608983, 192.11305681776054, 107.94997300045914, 173.81801784282558, 155.94230819831384, 169.31260797649253, 207.38228963718782, 151.61212360692767, 187.1789834155851, 172.1219070997923],
+    [69.90240646660897, 71.94710374291182, 68.28529441836648, 114.33441337661539, 133.08798538661387, 132.13363920672657, 114.30206698905123, 135.53343411821018, 166.9674117953252, 173.58361616755855, 210.6135097693753, 157.56188285061828, 164.54285905069133, 204.99854528312656, 194.06880893786615, 124.54153044647538],
+    [68.84827730613007, 71.64732826930094, 70.60011844658709, 129.84791755468513, 163.42425412958218, 151.54698638502492, 125.35072196043569, 128.5833091481682, 144.04258481035805, 195.04894253389915, 147.5273451195164, 205.2559324819588, 103.22491442850317, 122.14308234664944, 139.7232595979474, 228.2154147525819],
+    [64.56108972496858, 69.89937049502454, 71.43051435002447, 97.41528494860493, 149.45115558933568, 143.20925352916964, 164.28374130093485, 144.05382304274946, 137.68872395259584, 120.91002440314317, 155.7616311390002, 220.31203196289235, 164.87429788931993, 138.8600013648202, 328.99340004281703, 161.62835549221265],
+    [64.77433127013254, 64.1514205971518, 68.10428217904132, 108.11699693216173, 116.7732353227832, 165.9144859298978, 171.01704351872067, 170.75755318380067, 145.96478705045024, 116.32932715409454, 134.00040977074613, 175.74930451248073, 215.6181243996589, 138.5745794330139, 185.55394414770018, 106.12059177116882],
+    [69.96976000155617, 65.64029009272497, 63.00106586390793, 123.36893109111388, 111.91484677882653, 166.3512867598708, 171.24597013897863, 174.05312974154563, 135.21199937094843, 120.9168697622614, 115.34990821916809, 117.95124235202492, 121.77050152466555, 99.35288948857222, 152.38750768489956, 116.47510568928249],
+    [76.88935428599636, 68.45065443974269, 66.27435116352825, 115.91464412511465, 126.18863669175433, 145.28232030590337, 174.05312974154563, 188.00174148580263, 178.99302629100652, 111.46388696890604, 102.57660922121103, 103.38572415533633, 104.43345740355893, 97.54513950732311, 119.7517618294892, 116.47510568928249],
+    [73.75108847129803, 67.47056840782422, 66.8617194148666, 97.61527516851643, 124.14127555276079, 110.91036332631263, 143.448734478854, 187.34712808588534, 148.553001441739, 137.03508606329183, 114.53552709098862, 99.05664274907232, 85.1359177931392, 82.1621387987175, 104.92762563881952, 151.61212360692767],
+    [77.38980792042176, 75.71114554974177, 71.87333021550226, 89.79235289541387, 73.84595905408769, 142.79081742857264, 96.19348906736425, 139.4120631204185, 131.31005470451893, 107.60181955301631, 103.28226400622397, 82.88036476204559, 72.79992643494361, 79.08193758868674, 77.02613180933177, 82.72708988757286],
+    [71.36796837653517, 71.95179670164731, 71.21234580873171, 98.64830253238101, 104.82730279719597, 124.44316403516878, 190.01877156849756, 142.79081742857264, 88.02926098459618, 81.18075933182325, 196.83795994495463, 89.95113365835215, 70.49245061045123, 70.94089713116679, 73.77984365862105, 70.8238486378046],
+    [108.4257145117037, 102.08134442228749, 101.50556099192578, 163.52565202135332, 224.00989250280875, 224.00989250280875, 155.495512301403, 96.37346258632158, 91.43883955803854, 171.0711814598574, 158.68479101827555, 69.10348197821318, 89.66291438851563, 80.55086655877466, 67.71347280169601, 72.28580799326483]
+]
+
+OTHER_CONTACT_DURATION_NORMAL_SIGMA_SECONDS_MATRIX: [
+[3360.734820713676, 3356.778532524615, 3360.130910411301, 3359.156830906572, 3360.8414007068463, 3360.8306508476235, 3361.650935401727, 3361.1234670348153, 3360.6334557252217, 3355.2587064299714, 3331.79080100631, 3257.7254834995665, 3274.6481724795376, 3207.588149671232, 3299.2079185614043, 373.9108851127694],
+    [3357.1178471409244, 3362.1008311679752, 3361.5944562818863, 3359.8441624269767, 3357.210133488596, 3359.5112126426807, 3359.979160561954, 3360.6201574856523, 3360.2615105438426, 3358.516098485524, 3350.837369654204, 3335.3698905486167, 3332.3786244732255, 3209.653666568196, 3237.8800139422688, 2265.0028369925712],
+    [3356.415030026685, 3360.741143954769, 3363.0819035693607, 3360.1281403109433, 3356.532884447939, 3354.270912820999, 3358.507447525892, 3359.8316525696937, 3359.831342970375, 3358.7340423641895, 3357.7796082035065, 3345.4294492308372, 3329.0073805870297, 3276.880773035267, 3259.851803097375, 1548.6837926936664],
+    [3359.156637057461, 3360.135750941532, 3360.7371806817314, 3357.4006466537503, 3330.244183064836, 3238.6353460446576, 3166.6735204524834, 3286.523141237362, 3317.709144084849, 3333.7798653164364, 3287.2540393833, 3031.4037453519486, 2347.8611383576667, 1854.4602217043794, 1188.0582021378457, 219.02400426693137],
+    [3361.2130044307705, 3358.3199615521103, 3357.7880624023674, 3339.300275562546, 3346.0469141186904, 3331.186487737011, 3287.011551089394, 3204.41257197075, 3305.5638690979818, 3331.2205037208228, 3323.623773090896, 3206.188398900771, 3036.584405832652, 2710.8699046735924, 1854.4602217043794, 1188.0582021378457],
+    [3361.2871626075475, 3360.3911037629473, 3356.859347413695, 3288.80285910301, 3327.217834760113, 3347.2877291910027, 3322.1946936638715, 3230.7681276004328, 3313.1923143555864, 3232.6678639839292, 3255.3315812132196, 3205.481583411824, 2902.244197650787, 2716.2927571440655, 1931.4614610962517, 219.02400426693137],
+    [3361.584105437477, 3359.8285550243127, 3358.9464924084477, 3275.4017293674756, 3273.7312630059514, 3316.878459626235, 3344.5013988731616, 3316.8550682340856, 3270.8950594002886, 3232.935979330953, 3161.6882797048083, 3206.188398900771, 3035.5576523158875, 2342.920776855639, 1854.4602217043794, 2449.1381393280367],
+    [3360.7331027652285, 3360.3824834369593, 3359.831342970375, 3296.6934779288454, 3205.835573664154, 3255.9375001044, 3322.2093561739557, 3338.8330016154787, 3310.4363873240886, 3230.2178770289283, 3256.1383596588003, 3107.880813706762, 3240.126051509172, 3042.6485188893666, 2718.980890053456, 219.02400426693137],
+    [3359.8437001033562, 3359.507231669494, 3359.5041124316226, 3341.091115304537, 3256.1383596588003, 3256.7376263263436, 3254.7206091526245, 3310.4293089841212, 3333.577190279677, 3326.683153181836, 3255.534112911831, 3105.716479998491, 3034.5262367255577, 2916.9965980178786, 848.0504217616723, 1931.4614610962517],
+    [3355.254007027139, 3359.342816745816, 3358.9469055848385, 3333.7437140304355, 3312.59847563453, 3233.7354832784586, 3233.203285526909, 3254.1045282343453, 3310.4293089841212, 3342.8558429397685, 3311.4481611187693, 3204.41257197075, 2902.244197650787, 2918.5942009772734, 2352.7708595893982, 2924.90395922933],
+    [3331.6579556132915, 3352.371714798581, 3359.847088686768, 3297.188187537641, 3312.8636757931713, 3233.203285526909, 3232.935979330953, 3232.398936262986, 3296.1932912235206, 3326.679027077541, 3344.499836308067, 3318.1050730682227, 3238.3843146169097, 3213.3372694344544, 2710.8699046735924, 2721.6536360838995],
+    [3272.9564480815557, 3339.9333826379307, 3349.944332387072, 3275.4017293674756, 3274.3440801939464, 3256.5384207667316, 3232.398936262986, 3203.332892129493, 3232.1291929294525, 3323.1556316215233, 3336.5535080658765, 3347.3001257064593, 3323.5773206279896, 3261.17220515255, 3120.9929526820433, 2721.6536360838995],
+    [3304.995646114808, 3345.015994587661, 3347.684870998389, 3260.9851025639264, 3238.132538219709, 3275.849337592269, 3236.091155881646, 3164.203730272597, 3235.3129872490344, 3257.331966876508, 3297.774720618899, 3341.0871371862136, 3354.607709918159, 3348.5432582981784, 3212.677245201774, 2716.2927571440655],
+    [3270.4095100691397, 3286.0301059232575, 3318.9366463632164, 3277.7506451788745, 3329.342257975052, 3116.9602893692218, 3277.1721740301086, 3208.625973384786, 3237.3727100333153, 3276.1458780352787, 3288.80285910301, 3328.781434870881, 3356.4157894907453, 3357.7104889630077, 3354.0931371660527, 3324.8927337668815],
+    [3323.2499063480273, 3318.6619728362734, 3323.7626529867057, 3240.617123294237, 3213.0077898043414, 3119.659485222744, 3030.353408360011, 3116.9602893692218, 3307.9089983043186, 3335.0902462641407, 3028.238307563485, 3299.7682827719336, 3347.8981241759448, 3357.437481138826, 3360.250705522389, 3357.437481138826],
+    [1989.88344117875, 2563.305841786878, 2574.007142669402, 2913.7768330347853, 2337.949577856842, 2337.949577856842, 2913.7768330347853, 3240.861578706772, 3277.4621282527823, 3112.829144283171, 3035.5576523158875, 3335.7001553915834, 3241.3483424459378, 3332.2169596213425, 3360.5108769783474, 3359.6696581640017]
+]

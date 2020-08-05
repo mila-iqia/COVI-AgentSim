@@ -1,0 +1,11 @@
+RISK_MODEL : "digital"
+SHOULD_MODIFY_BEHAVIOR : True
+
+## INTERVENTIONS
+INTERVENTION : "Tracing"
+N_BEHAVIOR_LEVELS: 4
+
+# TRACING RISK MODEL PARAMETERS  (non-ML)
+TRACING_ORDER : 1
+REC_LEVEL_THRESHOLDS: [0, 0, 1] # Binary
+INTERVENTION_DAY: 0 # overwrite it if needs to be run from other day

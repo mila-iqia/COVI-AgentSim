@@ -6,6 +6,9 @@ RISK_MODEL: "transformer" # "naive"  "manual", "digital", "transformer"
 SHOULD_MODIFY_BEHAVIOR: True
 USE_ORACLE: True
 
+N_BEHAVIOR_LEVELS: 4
+INTERVENTION_DAY: 0 # overwrite it if needs to be run from other day
+
 ## INTERVENTIONS
 INTERVENTION: "Tracing"
 

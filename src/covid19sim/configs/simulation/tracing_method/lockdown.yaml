@@ -1,6 +1,5 @@
-RISK_MODEL: "" # "naive"  "manual", "digital", "transformer"
+# refer core.yaml for detailed explanation of parameters below
+RISK_MODEL: ""
+N_BEHAVIOR_LEVELS: 2
+INTERPOLATE_USING_LOCKDOWN_CONTACTS: True
 SHOULD_MODIFY_BEHAVIOR: True
-
-INTERVENTION: "Lockdown"
-
-TRACING_ORDER: 1

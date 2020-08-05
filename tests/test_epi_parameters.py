@@ -1,38 +1,15 @@
 import datetime
-import os
 from scipy.optimize import curve_fit
 from scipy.stats import lognorm, norm, gamma
-import yaml
-from omegaconf import OmegaConf
 import numpy as np
-
 import matplotlib.pyplot as plt
 
-import covid19sim
 from covid19sim.utils.constants import SECONDS_PER_DAY
 from covid19sim.locations.city import City
 from covid19sim.utils.env import Env
-from covid19sim.utils.utils import parse_configuration
 from covid19sim.epidemiology.viral_load import compute_covid_properties, viral_load_for_day
 from covid19sim.native import Environment
-
-
-def load_config():
-    HYDRA_PATH = os.path.dirname(covid19sim.__file__) + "/configs/simulation/"
-    assert os.path.isdir(HYDRA_PATH)
-
-    config_path = os.path.join(HYDRA_PATH, "config.yaml")
-
-    with open(config_path, "r") as fd:
-        defaults = yaml.safe_load(fd)["defaults"]
-
-    default_confs = [
-        OmegaConf.load(os.path.join(HYDRA_PATH, d + ".yaml"))
-        for d in defaults
-    ]
-
-    conf = OmegaConf.merge(*default_confs)
-    return parse_configuration(conf)
+from tests.utils import get_test_conf
 
 
 def test_incubation_days():
@@ -42,7 +19,7 @@ def test_incubation_days():
     Refer Table 2 (Appendix) in https://www.acpjournals.org/doi/10.7326/M20-0504 for parameters of lognormal fit
     Reference values: mu= 1.621 (1.504 - 1.755) sigma=0.418 (0.271 - 0.542)
     """
-    conf = load_config()
+    conf = get_test_conf("test_covid_testing.yaml")
 
     def lognormal_func(x, mu, sigma):
         return lognorm.pdf(x, s=sigma, loc=0, scale=np.exp(mu))
@@ -53,7 +30,7 @@ def test_incubation_days():
     def gamma_func(x, shape, scale):
         return gamma.pdf(x, a=shape, scale=scale)
 
-    N = 20
+    N = 2
     rng = np.random.RandomState(42)
     fitted_incubation_params = []
     fitted_infectiousness_onset_params = []
@@ -62,7 +39,7 @@ def test_incubation_days():
     fig, ax = plt.subplots()
     for i in range(N):
         n_people = rng.randint(500,1000)
-        init_percent_sick = rng.uniform(0.01, 0.05)
+        init_fraction_sick = rng.uniform(0.01, 0.05)
         start_time = datetime.datetime(2020, 2, 28, 0, 0)
 
         env = Env(start_time)
@@ -71,7 +48,7 @@ def test_incubation_days():
         city = City(
             env,
             n_people,
-            init_percent_sick,
+            init_fraction_sick,
             rng,
             city_x_range,
             city_y_range,
@@ -146,10 +123,10 @@ def test_human_compute_covid_properties():
     """
     Test the covid properties of the class Human over a population for 3 ages
     """
-    conf = load_config()
+    conf = get_test_conf("test_covid_testing.yaml")
 
-    n_people = 10000
-    init_percent_sick = 0
+    n_people = 1000
+    init_fraction_sick = 0
     start_time = datetime.datetime(2020, 2, 28, 0, 0)
     city_x_range = (0, 1000)
     city_y_range = (0, 1000)
@@ -158,8 +135,8 @@ def test_human_compute_covid_properties():
 
     city = City(
         env,
-        1,  # This test directly calls Human.compute_covid_properties() on a Human
-        init_percent_sick,
+        10,  # This test directly calls Human.compute_covid_properties() on a Human
+        init_fraction_sick,
         np.random.RandomState(42),
         city_x_range,
         city_y_range,
@@ -301,9 +278,9 @@ def test_viral_load_for_day():
     """
     Test the sample over the viral load curve
     """
-    conf = load_config()
+    conf = get_test_conf("test_covid_testing.yaml")
 
-    init_percent_sick = 0
+    init_fraction_sick = 0
     start_time = datetime.datetime(2020, 2, 28, 0, 0)
     city_x_range = (0, 1000)
     city_y_range = (0, 1000)
@@ -312,8 +289,8 @@ def test_viral_load_for_day():
 
     city = City(
         env,
-        1,  # This test force the call Human.compute_covid_properties()
-        init_percent_sick,
+        10,  # This test force the call Human.compute_covid_properties()
+        init_fraction_sick,
         np.random.RandomState(42),
         city_x_range,
         city_y_range,
@@ -383,13 +360,13 @@ class EnvMock(Environment):
 
 
 def test_human_cold_symptoms():
-    conf = load_config()
+    conf = get_test_conf("test_covid_testing.yaml")
 
     # Test cold symptoms
     conf["P_COLD_TODAY"] = 1.0
     conf["P_FLU_TODAY"] = 0.0
     conf["P_HAS_ALLERGIES_TODAY"] = 0.0
-    init_percent_sick = 0
+    init_fraction_sick = 0
 
     n_people = 10000
     start_time = datetime.datetime(2020, 2, 28, 0, 0)
@@ -402,7 +379,7 @@ def test_human_cold_symptoms():
     city = City(
         env,
         n_people,
-        init_percent_sick,
+        init_fraction_sick,
         np.random.RandomState(42),
         city_x_range,
         city_y_range,
@@ -421,13 +398,13 @@ def test_human_cold_symptoms():
 
 
 def test_human_flu_symptoms():
-    conf = load_config()
+    conf = get_test_conf("test_covid_testing.yaml")
 
     # Test flu symptoms
     conf["P_COLD_TODAY"] = 0.0
     conf["P_FLU_TODAY"] = 1.0
     conf["P_HAS_ALLERGIES_TODAY"] = 0.0
-    init_percent_sick = 0
+    init_fraction_sick = 0
 
     n_people = 10000
     start_time = datetime.datetime(2020, 2, 28, 0, 0)
@@ -440,7 +417,7 @@ def test_human_flu_symptoms():
     city = City(
         env,
         n_people,
-        init_percent_sick,
+        init_fraction_sick,
         np.random.RandomState(42),
         city_x_range,
         city_y_range,
@@ -459,15 +436,15 @@ def test_human_flu_symptoms():
 
 
 def test_human_allergies_symptoms():
-    conf = load_config()
+    conf = get_test_conf("test_covid_testing.yaml")
 
     # Test allergies symptoms
     conf["P_COLD_TODAY"] = 0.0
     conf["P_FLU_TODAY"] = 0.0
     conf["P_HAS_ALLERGIES_TODAY"] = 1.0
-    init_percent_sick = 0
+    init_fraction_sick = 0
 
-    n_people = 10000
+    n_people = 1000
     start_time = datetime.datetime(2020, 2, 28, 0, 0)
     city_x_range = (0, 1000)
     city_y_range = (0, 1000)
@@ -478,7 +455,7 @@ def test_human_allergies_symptoms():
     city = City(
         env,
         n_people,
-        init_percent_sick,
+        init_fraction_sick,
         np.random.RandomState(42),
         city_x_range,
         city_y_range,
@@ -498,8 +475,8 @@ def test_human_allergies_symptoms():
 
 if __name__ == "__main__":
     test_incubation_days()
-    test_human_compute_covid_properties()
-    test_viral_load_for_day()
-    test_human_cold_symptoms()
-    test_human_flu_symptoms()
-    test_human_allergies_symptoms()
+    # test_human_compute_covid_properties()
+    # test_viral_load_for_day()
+    # test_human_cold_symptoms()
+    # test_human_flu_symptoms()
+    # test_human_allergies_symptoms()
