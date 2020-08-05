@@ -115,7 +115,7 @@ Legend -
             nd = str(len(str(city.n_people)))
             SEIR = f"| S:{S:<{nd}} E:{E:<{nd}} I:{I:<{nd}} E+I+R:{T:<{nd}} +Test:{t_P}/{t_T} TestQueue:{test_queue_length}"
             stats = f"| P3:{Projected3:5.2f}"
-            stats += f" 2x:{doubling_rate_days: 2.2f}" if doubling_rate > 0 else ""
+            stats += f" 2x:{doubling_rate_days: 2.2f}" if doubling_rate_days > 0 else ""
             other_diseases = f"| cold:{cold} allergies:{allergies}"
             hospitalizations = f"| H:{H} C:{C} D:{D}"
             quarantines = f"| Q: {n_quarantine}"
