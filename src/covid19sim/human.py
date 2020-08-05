@@ -53,7 +53,6 @@ class Human(BaseHuman):
         name (str): identifier for this `human`
         age (int): age of the `human`
         rng (np.random.RandomState): Random number generator
-        #? infection_timestamp (datetime.datetime): initial timestamp when the human was infected. None if not infected
         conf (dict): yaml configuration of the experiment
     """
 
@@ -168,11 +167,11 @@ class Human(BaseHuman):
         self.phone_bluetooth_noise = self.rng.rand()  # Error in distance estimation using Bluetooth with a specific type of phone is sampled from a uniform distribution between 0 and 1
 
         # Observed attributes; whether people enter stuff in the app
-        self.has_logged_info = self.has_app and self.rng.rand() < self.carefulness  # Determines whether this person writes their demographic data into the app
+        self.has_logged_info = False # Determines whether this person writes their demographic data into the app
         self.obs_is_healthcare_worker = None # 90% of the time, healthcare workers will declare it
-        self.obs_age = self.age if self.has_app and self.has_logged_info else None  # The age of this human reported to the app
-        self.obs_sex = self.sex if self.has_app and self.has_logged_info else None  # The sex of this human reported to the app
-        self.obs_preexisting_conditions = self.preexisting_conditions if self.has_app and self.has_logged_info else []  # the preexisting conditions of this human reported to the app
+        self.obs_age = None  # The age of this human reported to the app
+        self.obs_sex = None  # The sex of this human reported to the app
+        self.obs_preexisting_conditions = []  # the preexisting conditions of this human reported to the app
 
         """ Interventions """
         self.will_wear_mask = False  # A boolean value determining whether this person will try to wear a mask during encounters
@@ -212,8 +211,6 @@ class Human(BaseHuman):
 
         self.location_leaving_time = self.env.ts_initial + SECONDS_PER_HOUR
         self.location_start_time = self.env.ts_initial
-
-        self.last_state = self.state  # And we set their SEIR state (starts as either Susceptible or Exposed)
 
     def assign_household(self, location):
         if location is not None:
