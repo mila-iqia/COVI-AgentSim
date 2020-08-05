@@ -718,6 +718,7 @@ class City:
             human.recover_health()
             human.catch_other_disease_at_random()
             human.update_symptoms()
+            human.increment_healthy_day()
             Event.log_daily(self.conf.get('COLLECT_LOGS'), human, human.env.timestamp)
         self.tracker.increment_day()
         if self.conf.get("USE_GAEN"):

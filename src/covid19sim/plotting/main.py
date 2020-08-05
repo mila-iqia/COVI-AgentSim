@@ -190,6 +190,7 @@ def main(conf):
                 "intervention_day",
                 "outside_daily_contacts",
                 "effective_contacts_since_intervention",
+                "healthy_effective_contacts_since_intervention",
                 "intervention_day",
                 "cases_per_day",
                 "n_humans",
@@ -198,6 +199,7 @@ def main(conf):
                 "humans_intervention_level",
                 "humans_rec_level",
                 "GLOBAL_MOBILITY_SCALING_FACTOR",
+                "infection_monitor",
             ]
         )
     if "efficiency" in plots:

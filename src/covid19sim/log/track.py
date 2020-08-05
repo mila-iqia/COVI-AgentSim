@@ -1043,9 +1043,13 @@ class Tracker(object):
         These are major candidates for infectious contacts.
         """
         all_effective_contacts = 0
+        all_healthy_effective_contacts = 0
+        all_healthy_days = 0
         all_contacts = 0
         for human in self.city.humans:
             all_effective_contacts += human.effective_contacts
+            all_healthy_effective_contacts += human.healthy_effective_contacts
+            all_healthy_days += human.healthy_days
             all_contacts += human.num_contacts
 
         conf = self.city.conf
@@ -1053,7 +1057,8 @@ class Tracker(object):
         if since_intervention and conf['INTERVENTION_DAY'] > 0 :
             days = conf['simulation_days'] - conf['INTERVENTION_DAY']
 
-        return all_effective_contacts / (days * self.n_people)
+        return all_effective_contacts / (days * self.n_people), all_healthy_effective_contacts / all_healthy_days
+
 
     def write_metrics(self, logfile=None):
         """
@@ -1244,7 +1249,7 @@ class Tracker(object):
 
         log("######## Effective Contacts & % infected #########", logfile)
         p_infected = 100 * sum(self.cases_per_day) / len(self.city.humans)
-        effective_contacts = self.compute_effective_contacts()
+        effective_contacts, healthy_effective_contacts = self.compute_effective_contacts()
         p_transmission = self.compute_probability_of_transmission()
         infectiousness_duration = self.covid_properties['recovery_days'][1] - self.covid_properties['infectiousness_onset_days'][1]
         # R0 = Susceptible population x Duration of infectiousness x p_transmission
@@ -1252,7 +1257,7 @@ class Tracker(object):
         # valid only when small portion of population is infected
         r0 = p_transmission * effective_contacts * infectiousness_duration
 
-        log(f"Eff. contacts: {effective_contacts:5.3f} \t % infected: {p_infected: 2.3f}%", logfile)
+        log(f"Eff. contacts: {effective_contacts:5.3f} \t Healthy Eff. Contacts {healthy_effective_contacts:5.3f} \th % infected: {p_infected: 2.3f}%", logfile)
         # log(f"Probability of transmission: {p_transmission:2.3f}", logfile)
         # log(f"Ro (valid only when small proportion of population is infected): {r0: 2.3f}", logfile)
         # log("definition of small might be blurry for a population size of less than 1000  ", logfile)
