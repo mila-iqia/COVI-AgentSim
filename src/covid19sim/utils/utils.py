@@ -399,7 +399,6 @@ def extract_tracker_data(tracker, conf):
     data['risk_attributes'] = tracker.risk_attributes
     data['outside_daily_contacts'] = tracker.outside_daily_contacts
     data['test_monitor'] = tracker.test_monitor
-    data['encounter_distances'] = tracker.encounter_distances
     data['effective_contacts_since_intervention'], data['healthy_effective_contacts_since_intervention'] \
         = tracker.compute_effective_contacts(since_intervention=True)
     data['effective_contacts_all_days'], data['healthy_effective_contacts_all_days'] = \
@@ -687,7 +686,7 @@ class DummyHuman:
         # "dummy" attributes replace the original attribute by a less-complex one
         self.dummy_attribs = [
             "env", "location", "household", "workplace", "last_date",
-            "recommendations_to_follow", "recovered_timestamp", "intervened_behavior" # the old states contained in behaviors might break serialization
+            "recommendations_to_follow", "recovered_timestamp", "intervened_behavior", "known_connections"# the old states contained in behaviors might break serialization
         ]
         self.env = DummyEnv(human.env)
         self.location = human.location.name if human.location else ""
