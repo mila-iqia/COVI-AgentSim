@@ -13,7 +13,6 @@ from collections import defaultdict
 from orderedset import OrderedSet
 
 from covid19sim.utils.mobility_planner import MobilityPlanner
-from covid19sim.interventions.behaviors import Behavior, Quarantine
 from covid19sim.utils.utils import compute_distance, proba_to_risk_fn
 from covid19sim.locations.city import PersonalMailboxType
 from covid19sim.locations.hospital import Hospital, ICU

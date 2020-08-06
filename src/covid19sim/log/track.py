@@ -1719,33 +1719,6 @@ class Tracker(object):
         most_likely, _ = plotrt.compute(cases_per_day, r0_estimate=2.5)
         log(f"Rt: {most_likely[:20]}", self.logfile)
 
-    def _get_metrics_data(self):
-        data = dict()
-        data['intervention_day'] = self.city.conf.get('INTERVENTION_DAY')
-        data['intervention'] = self.city.conf.get('INTERVENTION')
-        data['risk_model'] = self.city.conf.get('RISK_MODEL')
-        data['expected_mobility'] = self.expected_mobility
-        data['mobility'] = self.mobility
-        data['n_init_infected'] = self.n_infected_init
-        data['contacts'] = dict(self.contacts)
-        data['cases_per_day'] = self.cases_per_day
-        data['ei_per_day'] = self.ei_per_day
-        data['r_0'] = self.r_0
-        data['R'] = self.r
-        data['n_humans'] = self.n_humans
-        data['s'] = self.s_per_day
-        data['e'] = self.e_per_day
-        data['i'] = self.i_per_day
-        data['r'] = self.r_per_day
-        data['avg_infectiousness_per_day'] = self.avg_infectiousness_per_day
-        data['risk_precision_global'] = self.compute_risk_precision(False)
-        data['risk_precision'] = self.risk_precision_daily
-        data['human_monitor'] = self.human_monitor
-        data['infection_monitor'] = self.infection_monitor
-        data['infector_infectee_update_messages'] = self.infector_infectee_update_messages
-        data['encounter_distances'] = self.encounter_distances
-        return data
-
     def write_for_training(self, humans, outfile, conf):
         """ Writes some data out for the ML predictor """
         data = dict()

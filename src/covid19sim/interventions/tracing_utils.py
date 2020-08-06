@@ -1,4 +1,6 @@
-
+"""
+Utility functions to interface between interventions and rest of the code.
+"""
 
 def get_tracing_method(risk_model, conf):
     """
@@ -24,5 +26,3 @@ def get_tracing_method(risk_model, conf):
         return BinaryDigitalTracing(conf)
     else:
         raise NotImplementedError
-
-

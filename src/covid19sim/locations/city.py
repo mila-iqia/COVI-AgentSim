@@ -17,7 +17,6 @@ from covid19sim.utils.demographics import get_humans_with_age, assign_households
 from covid19sim.log.track import Tracker
 from covid19sim.inference.heavy_jobs import batch_run_timeslot_heavy_jobs
 from covid19sim.interventions.tracing import BaseMethod
-# from covid19sim.interventions.behaviors import *
 from covid19sim.inference.message_utils import UIDType, UpdateMessage, RealUserIDType
 from covid19sim.distribution_normalization.dist_utils import get_rec_level_transition_matrix
 from covid19sim.interventions.tracing_utils import get_tracing_method

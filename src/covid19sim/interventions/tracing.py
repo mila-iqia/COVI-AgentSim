@@ -37,6 +37,7 @@ class BaseMethod(object):
         Args:
             conf (dict): configuration to parse settings from.
         """
+        pass
 
     @staticmethod
     def get_recommendations_level(human, thresholds, max_risk_level, intervention_start=False):
@@ -425,5 +426,3 @@ class Heuristic(BaseMethod):
 
             risk_history.append(max(vals))
         return risk_history
-
-
