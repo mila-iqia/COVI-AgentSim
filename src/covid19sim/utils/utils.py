@@ -687,7 +687,7 @@ class DummyHuman:
         # "dummy" attributes replace the original attribute by a less-complex one
         self.dummy_attribs = [
             "env", "location", "household", "workplace", "last_date",
-            "recommendations_to_follow",  # the old states contained in behaviors might break serialization
+            "recommendations_to_follow", "recovered_timestamp", "intervened_behavior" # the old states contained in behaviors might break serialization
         ]
         self.env = DummyEnv(human.env)
         self.location = human.location.name if human.location else ""
@@ -723,39 +723,7 @@ def copy_obj_except_env(obj):
     assert isinstance(obj, (Human, Location, City))
     if isinstance(obj, Human):
         return DummyHuman(obj)
-    elif isinstance(obj, Location):
-        # Replace the Location's attributes with values that can be deepcopied
-        # while still keeping the vital information
-        backup_location_attribs = (obj.env, obj.humans, obj.infectious_human,
-                                   obj.users, obj._env)
-
-        obj.env = DummyEnv(obj.env)  # should replicate the env's behavior perfectly
-        obj.infectious_human = obj.infectious_human()  # fct broken by changing obj.humans at next line
-        obj.humans = OrderedSet([h.name for h in obj.humans])  # this will break lookups, but still provide basic info
-        obj._env = DummyEnv(obj._env)  # should replicate the env's behavior perfectly
-        obj.users = None
-
-        if isinstance(obj, Household):
-            backup_residents = obj.residents
-            obj.residents = [h.name for h in obj.residents]  # will break lookups, but still provide basic info
-        elif isinstance(obj, Hospital):
-            # The hospical contains a sublocation which must be deepcopied too
-            backup_icu = obj.icu
-            obj.icu = copy_obj_except_env(obj.icu)
-
-        # Copy the Location
-        obj_copy = copy.deepcopy(obj)
-
-        # Restore the Location's original attributes
-        obj.env, obj.humans, obj.infectious_human, obj.users, obj._env = backup_location_attribs
-        # TODO: Re-add (removed due to Prateek's mobility changes which removed Household obj)
-
-        if isinstance(obj, Household):
-            obj.residents = backup_residents
-        elif isinstance(obj, Hospital):
-            obj.icu = backup_icu
-
-    else:  # isinstance(obj, City):
+    else:
         raise NotImplementedError
 
 
