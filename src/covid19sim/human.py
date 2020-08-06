@@ -1106,6 +1106,8 @@ class Human(BaseHuman):
                 ):
                     self.num_contacts += 1
                     self.effective_contacts += self.conf.get("GLOBAL_MOBILITY_SCALING_FACTOR")
+                    if not self.state[2]: # if not infectious, then you are "healthy"
+                        self.healthy_effective_contacts += self.conf.get("GLOBAL_MOBILITY_SCALING_FACTOR")
 
                 infector, infectee, p_infection = None, None, 0
                 if scale_factor_passed:
