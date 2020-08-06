@@ -342,6 +342,9 @@ def extract_tracker_data(tracker, conf):
     data['intervention_day'] = conf.get('INTERVENTION_DAY')
     data['intervention'] = conf.get('INTERVENTION')
     data['risk_model'] = conf.get('RISK_MODEL')
+    data['COVID_SPREAD_START_TIME'] = conf['COVID_SPREAD_START_TIME']
+    data['INTERVENTION_START_TIME'] = conf['INTERVENTION_START_TIME']
+    data['SIMULATION_START_TIME'] = conf['SIMULATION_START_TIME']
     data['n_humans'] = tracker.n_humans
     data['n_init_infected'] = tracker.n_infected_init
     data['adoption_rate'] = getattr(tracker, 'adoption_rate', 1.0)
@@ -361,10 +364,16 @@ def extract_tracker_data(tracker, conf):
     data['infectious_contact_patterns'] = tracker.get_infectious_contact_data() # 2MB
     data['expected_mobility'] = tracker.expected_mobility
     data['mobility'] = tracker.mobility
-    data['effective_contacts_since_intervention'] = tracker.compute_effective_contacts(since_intervention=True)
-    data['effective_contacts_all_days'] = tracker.compute_effective_contacts(since_intervention=False)
     data['infection_monitor'] = tracker.infection_monitor # 0.8MB
     data['outside_daily_contacts'] = tracker.outside_daily_contacts
+
+    x, y, _ = tracker.compute_effective_contacts(since_intervention=True)
+    data['effective_contacts_since_intervention'] = x
+    data['healthy_effective_contacts_since_intervention'] = y
+
+    x, y, _ = tracker.compute_effective_contacts(since_intervention=False)
+    data['effective_contacts_all_days'] = x
+    data['healthy_effective_contacts_all_days'] = y
 
     # spread related
     data['serial_interval'] = tracker.compute_serial_interval()

@@ -13,7 +13,6 @@ from collections import defaultdict
 from orderedset import OrderedSet
 
 from covid19sim.utils.mobility_planner import MobilityPlanner
-from covid19sim.interventions.behaviors import Behavior, Quarantine
 from covid19sim.utils.utils import compute_distance, proba_to_risk_fn
 from covid19sim.locations.city import PersonalMailboxType
 from covid19sim.locations.hospital import Hospital, ICU
@@ -1099,11 +1098,16 @@ class Human(BaseHuman):
             if contact_condition:
 
                 if (
-                    self.conf['INTERVENTION_START_TIME'] is not None
-                    and self.env.timestamp >= self.conf['INTERVENTION_START_TIME']
+                    self.conf['RISK_MODEL'] == ""
+                    or  (
+                        self.conf['INTERVENTION_START_TIME'] is not None
+                        and self.env.timestamp >= self.conf['INTERVENTION_START_TIME']
+                    )
                 ):
                     self.num_contacts += 1
                     self.effective_contacts += self.conf.get("GLOBAL_MOBILITY_SCALING_FACTOR")
+                    if not self.state[2]: # if not infectious, then you are "healthy"
+                        self.healthy_effective_contacts += self.conf.get("GLOBAL_MOBILITY_SCALING_FACTOR")
 
                 infector, infectee, p_infection = None, None, 0
                 if scale_factor_passed:

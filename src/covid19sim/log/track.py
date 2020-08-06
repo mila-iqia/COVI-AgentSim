@@ -28,12 +28,25 @@ from covid19sim.utils.constants import SECONDS_PER_DAY, SECONDS_PER_MINUTE
 if typing.TYPE_CHECKING:
     from covid19sim.human import Human
 
+# used by - next_generation_matrix,
+SNAPSHOT_PERCENT_INFECTED_THRESHOLD = 2 # take a snapshot every time percent infected of population increases by this amount
+
 
 def check_if_tracking(f):
     def wrapper(*args, **kwargs):
         if args[0].start_tracking:
             return f(*args, **kwargs)
     return wrapper
+
+def _compute_ngm(next_generation_matrix):
+    """
+    Computes Next Generation Matrix.
+    """
+    unique_n_humans = [len(next_generation_matrix['infectious_people'][idx]) for idx in range(len(AGE_BIN_WIDTH_5))]
+    unique_n_humans = np.expand_dims(unique_n_humans, axis=1)
+    m = np.zeros_like(next_generation_matrix["total"])
+    np.divide(next_generation_matrix["total"], unique_n_humans, where=unique_n_humans!=0, out=m)
+    return m
 
 def print_dict(title, dic, is_sorted=None, top_k=None, logfile=None):
     if not is_sorted:
@@ -86,26 +99,6 @@ def _get_location_type_to_track_mixing(human, location):
 
 
     return "other"
-
-def get_nested_dict(nesting):
-    """
-    [summary]
-
-    Args:
-        nesting ([type]): [description]
-
-    Returns:
-        [type]: [description]
-    """
-    if nesting == 1:
-        return defaultdict(int)
-    elif nesting == 2:
-        return defaultdict(lambda : defaultdict(int))
-    elif nesting == 3:
-        return defaultdict(lambda : defaultdict(lambda : defaultdict(int)))
-    elif nesting == 4:
-        return defaultdict(lambda : defaultdict(lambda : defaultdict(lambda : defaultdict(int))))
-
 
 class Tracker(object):
     """
@@ -217,6 +210,13 @@ class Tracker(object):
         }
         self.human_human_infection_matrix = defaultdict(lambda : deepcopy(infection_matrix_fmt))
 
+        self.next_generation_matrix = {
+            "total": np.zeros((len(AGE_BIN_WIDTH_5), len(AGE_BIN_WIDTH_5))),
+            'infectious_people': defaultdict(lambda : set()),
+            "last_snapshot_percent_infected": 0.0,
+            "snapshots": [] # stores NGMs at different times during the simulation
+        }
+
         infection_histogram_fmt = {
             "caused_infection": np.zeros(len(AGE_BIN_WIDTH_5)),
             "risky_contact": np.zeros(len(AGE_BIN_WIDTH_5))
@@ -230,10 +230,9 @@ class Tracker(object):
         }
 
         # mobility
-        self.n_outside_daily_contacts = 0
         self.transition_probability = {
-                                    "weekday":get_nested_dict(2),
-                                    "weekend":get_nested_dict(2)
+                                    "weekday": defaultdict(lambda : defaultdict(int)),
+                                    "weekend": defaultdict(lambda : defaultdict(int))
                                     }
 
         self.day_fraction_spent_activity = {
@@ -251,6 +250,7 @@ class Tracker(object):
             "start_time": Statistics()
         }
         self.outside_daily_contacts = []
+        self.n_outside_daily_contacts = 0
 
         # infection stats
         self.n_infected_init = 0 # to be initialized in `initialize`
@@ -964,6 +964,19 @@ class Tracker(object):
                 self.human_human_infection_matrix[type_of_location]["caused_infection"][x, y] += 1
                 self.human_human_infection_matrix["all"]["caused_infection"][x, y] += 1
 
+                # for next generation matrix
+                self.next_generation_matrix["total"][x, y] += 1
+                self.next_generation_matrix['infectious_people'][x].add(from_human)
+                # snapshot
+                last_percent_infected = 0.0
+                if len(self.next_generation_matrix["snapshots"]) > 0:
+                    last_percent_infected = self.next_generation_matrix["snapshots"][-1][0]
+
+                percent_infected = 100 * sum(self.cases_per_day) / self.n_people
+                if percent_infected - last_percent_infected > SNAPSHOT_PERCENT_INFECTED_THRESHOLD:
+                    ngm = _compute_ngm(self.next_generation_matrix)
+                    self.next_generation_matrix['snapshots'].append((percent_infected, ngm))
+
                 # for serial interval
                 # Keep records of the infection so that serial intervals can be registered when symptoms appear
                 # Note: We need a bidirectional record (to/from), because we can't anticipate which (to or from) will manifest symptoms first
@@ -1487,12 +1500,18 @@ class Tracker(object):
             aic[key]['infection_count'] = val['infection_count']
             aic[key]['unique_humans'] = len(val['humans'])
 
+        # add a final NGM
+        percent_infected = sum(self.cases_per_day) / self.n_people
+        ngm = _compute_ngm(self.next_generation_matrix)
+        self.next_generation_matrix['snapshots'].append((percent_infected, ngm))
+
         return {
             "human_human_infection_matrix": self.human_human_infection_matrix,
             "environment_human_infection_histogram": self.environment_human_infection_histogram,
             "average_infectious_contacts": aic,
             "p_infection_at_contact_human": self.p_infection_at_contact["human"],
             "p_infection_at_contact_environment": self.p_infection_at_contact["environment"],
+            "next_generation_matrix_snapshots": self.next_generation_matrix['snapshots']
         }
 
     def compute_probability_of_transmission(self):
@@ -1699,8 +1718,6 @@ class Tracker(object):
 
         effective_contacts, healthy_effective_contacts, scale_factor = self.compute_effective_contacts()
         p_transmission = self.compute_probability_of_transmission()
-        NGM = self.human_human_infection_matrix["all"]["caused_infection"]
-        # R0 = max(np.linalg.eigvals(NGM))
         log(f"Eff. contacts: {effective_contacts:5.3f} \t Healthy Eff. Contacts {healthy_effective_contacts:5.3f} \th % infected: {p_infected: 2.3f}%", self.logfile)
         if scale_factor:
             log(f"effective contacts per contacts (GLOBAL_MOBILITY_SCALING_FACTOR): {scale_factor}", self.logfile)
@@ -1718,33 +1735,6 @@ class Tracker(object):
         plotrt = PlotRt(R_T_MAX=4, sigma=0.25, GAMMA=1.0 / serial_interval)
         most_likely, _ = plotrt.compute(cases_per_day, r0_estimate=2.5)
         log(f"Rt: {most_likely[:20]}", self.logfile)
-
-    def _get_metrics_data(self):
-        data = dict()
-        data['intervention_day'] = self.city.conf.get('INTERVENTION_DAY')
-        data['intervention'] = self.city.conf.get('INTERVENTION')
-        data['risk_model'] = self.city.conf.get('RISK_MODEL')
-        data['expected_mobility'] = self.expected_mobility
-        data['mobility'] = self.mobility
-        data['n_init_infected'] = self.n_infected_init
-        data['contacts'] = dict(self.contacts)
-        data['cases_per_day'] = self.cases_per_day
-        data['ei_per_day'] = self.ei_per_day
-        data['r_0'] = self.r_0
-        data['R'] = self.r
-        data['n_humans'] = self.n_humans
-        data['s'] = self.s_per_day
-        data['e'] = self.e_per_day
-        data['i'] = self.i_per_day
-        data['r'] = self.r_per_day
-        data['avg_infectiousness_per_day'] = self.avg_infectiousness_per_day
-        data['risk_precision_global'] = self.compute_risk_precision(False)
-        data['risk_precision'] = self.risk_precision_daily
-        data['human_monitor'] = self.human_monitor
-        data['infection_monitor'] = self.infection_monitor
-        data['infector_infectee_update_messages'] = self.infector_infectee_update_messages
-        data['encounter_distances'] = self.encounter_distances
-        return data
 
     def write_for_training(self, humans, outfile, conf):
         """ Writes some data out for the ML predictor """
