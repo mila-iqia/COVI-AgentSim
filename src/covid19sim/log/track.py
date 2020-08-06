@@ -1718,8 +1718,6 @@ class Tracker(object):
 
         effective_contacts, healthy_effective_contacts, scale_factor = self.compute_effective_contacts()
         p_transmission = self.compute_probability_of_transmission()
-        NGM = self.human_human_infection_matrix["all"]["caused_infection"]
-        # R0 = max(np.linalg.eigvals(NGM))
         log(f"Eff. contacts: {effective_contacts:5.3f} \t Healthy Eff. Contacts {healthy_effective_contacts:5.3f} \th % infected: {p_infected: 2.3f}%", self.logfile)
         if scale_factor:
             log(f"effective contacts per contacts (GLOBAL_MOBILITY_SCALING_FACTOR): {scale_factor}", self.logfile)

@@ -1098,8 +1098,11 @@ class Human(BaseHuman):
             if contact_condition:
 
                 if (
-                    self.conf['INTERVENTION_START_TIME'] is not None
-                    and self.env.timestamp >= self.conf['INTERVENTION_START_TIME']
+                    self.conf['RISK_MODEL'] == ""
+                    or  (
+                        self.conf['INTERVENTION_START_TIME'] is not None
+                        and self.env.timestamp >= self.conf['INTERVENTION_START_TIME']
+                    )
                 ):
                     self.num_contacts += 1
                     self.effective_contacts += self.conf.get("GLOBAL_MOBILITY_SCALING_FACTOR")
