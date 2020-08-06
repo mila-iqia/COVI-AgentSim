@@ -388,8 +388,6 @@ def extract_tracker_data(tracker, conf):
     data['human_monitor'] = tracker.human_monitor # 20MB
     data['infector_infectee_update_messages'] = tracker.infector_infectee_update_messages
     data['risk_attributes'] = tracker.risk_attributes
-    data['feelings'] = tracker.feelings
-    data['rec_feelings'] = tracker.rec_feelings
     data['outside_daily_contacts'] = tracker.outside_daily_contacts
     data['test_monitor'] = tracker.test_monitor
     data['encounter_distances'] = tracker.encounter_distances

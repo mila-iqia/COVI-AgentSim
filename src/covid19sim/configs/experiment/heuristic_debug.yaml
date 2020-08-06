@@ -22,7 +22,7 @@ weights_dir: /home/mweiss10/scratch/weights
 # -------------------------------------
 COLD_CONTAGIOUSNESS: 0
 DROPOUT_RATE: 0.02
-init_percent_sick: 0.005
+init_fraction_sick: 0.005
 INTERVENTION_DAY: 5
 n_people: 1000
 P_CAREFUL_PERSON: 0.6
@@ -40,7 +40,7 @@ tracing_method:
   from:
     - no_intervention
     - heuristicv1
-    - heuristicv4
+    - heuristicv3
     - binary_digital_tracing_order_1
 
 APP_UPTAKE:

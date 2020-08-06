@@ -1,0 +1,42 @@
+USE_INFERENCE_SERVER: false
+base_dir: /home/mweiss10/simulator/results/transformers
+infra: beluga
+n_search: -1
+transformers_012_TWILIGHT-RAIN-696_012_ROSY-FOREST-704:
+  from:
+  - transformer_to_transformer_seed-5004_20200710-131249
+  - transformer_to_transformer_seed-5001_20200710-131253
+  - transformer_to_transformer_seed-5003_20200710-131257
+  - transformer_to_transformer_seed-5000_20200710-131301
+  - transformer_to_transformer_seed-5002_20200710-131305
+  - transformer_to_transformer_seed-5003_20200710-131308
+  - transformer_to_transformer_seed-5000_20200710-131312
+  - transformer_to_transformer_seed-5001_20200710-131316
+  - transformer_to_transformer_seed-5002_20200710-131320
+  - transformer_to_transformer_seed-5004_20200710-131324
+  - transformer_to_transformer_seed-5002_20200710-131328
+  - transformer_to_transformer_seed-5000_20200710-131332
+  - transformer_to_transformer_seed-5004_20200710-131336
+  - transformer_to_transformer_seed-5001_20200710-131340
+  - transformer_to_transformer_seed-5003_20200710-131344
+  normalized: true
+  sample: chain
+transformers_012_TWILIGHT-RAIN-696_012_VAGUE-THUNDER-705:
+  from:
+  - transformer_to_transformer_seed-5004_20200710-131149
+  - transformer_to_transformer_seed-5001_20200710-131153
+  - transformer_to_transformer_seed-5003_20200710-131157
+  - transformer_to_transformer_seed-5000_20200710-131201
+  - transformer_to_transformer_seed-5002_20200710-131205
+  - transformer_to_transformer_seed-5003_20200710-131208
+  - transformer_to_transformer_seed-5000_20200710-131212
+  - transformer_to_transformer_seed-5001_20200710-131216
+  - transformer_to_transformer_seed-5002_20200710-131220
+  - transformer_to_transformer_seed-5004_20200710-131224
+  - transformer_to_transformer_seed-5002_20200710-131227
+  - transformer_to_transformer_seed-5000_20200710-131231
+  - transformer_to_transformer_seed-5004_20200710-131235
+  - transformer_to_transformer_seed-5001_20200710-131239
+  - transformer_to_transformer_seed-5003_20200710-131243
+  normalized: true
+  sample: chain
