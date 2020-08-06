@@ -399,9 +399,9 @@ def extract_tracker_data(tracker, conf):
     data['risk_attributes'] = tracker.risk_attributes
     data['outside_daily_contacts'] = tracker.outside_daily_contacts
     data['test_monitor'] = tracker.test_monitor
-    data['effective_contacts_since_intervention'], data['healthy_effective_contacts_since_intervention'] \
+    data['effective_contacts_since_intervention'], data['healthy_effective_contacts_since_intervention'], _ \
         = tracker.compute_effective_contacts(since_intervention=True)
-    data['effective_contacts_all_days'], data['healthy_effective_contacts_all_days'] = \
+    data['effective_contacts_all_days'], data['healthy_effective_contacts_all_days'], _ = \
         tracker.compute_effective_contacts(since_intervention=False)
     data['humans_state'] = tracker.humans_state
     data['risk_attributes'] = tracker.risk_attributes # 524MB
