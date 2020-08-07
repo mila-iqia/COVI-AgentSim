@@ -139,7 +139,7 @@ class DebugDataLoader():
                 human_obj = Human(*[getattr(human_dump, k) for k in human_constr_args])
                 # override all attributes except the blacklist/dummy ones
                 for attr_name in human_obj.__dict__.keys():
-                    if attr_name != "env" and attr_name not in human_dump.blacklisted_attribs:
+                    if attr_name != "env" and attr_name not in human_dump.blacklisted_attribs and attr_name != "known_connections" and attr_name != "intervened_behavior":
                         setattr(human_obj, attr_name, getattr(human_dump, attr_name))
                 human_obj.name = human_dump.name
                 humans[human_name] = human_obj
@@ -587,11 +587,11 @@ def generate_human_centric_plots(human_backups, humans_events, nb_humans_in_sim,
         fig.add_subplot(4, 4, 2)
         plot_risks(risks, timestamps)
 
-        fig.add_subplot(4, 4, 3)
-        plot_locations(locations, sorted_all_locations, timestamps)
+        #fig.add_subplot(4, 4, 3)
+        #plot_locations(locations, sorted_all_locations, timestamps)
 
-        fig.add_subplot(4, 4, 4)
-        plot_mapping("Location legend", LOCATION_TO_COLOR)
+        #fig.add_subplot(4, 4, 4)
+        #plot_mapping("Location legend", LOCATION_TO_COLOR)
 
         # Second row (columns 2+)
         fig.add_subplot(4, 4, 6)
@@ -639,10 +639,10 @@ def generate_human_centric_plots(human_backups, humans_events, nb_humans_in_sim,
             ["asymptomatic", human.is_asymptomatic],
             ["gets +/++ sick",
              str([human.can_get_really_sick, human.can_get_extremely_sick])],
-            ["E/M/S/W mins",
-             str([human.avg_exercise_time, human.avg_misc_time,
-                  human.avg_shopping_time, human.avg_working_minutes])],
-            ["infected by:", "\n".join(", ".join([str(i) for i in e]) for e in infectee_events)],
+            #["E/M/S/W mins",
+             #str([human.avg_exercise_time, human.avg_misc_time,
+            #      human.avg_shopping_time, human.avg_working_minutes])],
+            #["infected by:", "\n".join(", ".join([str(i) for i in e]) for e in infectee_events)],
         ]
 
         if len(infector_events) == 1:

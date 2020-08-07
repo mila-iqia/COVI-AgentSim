@@ -692,7 +692,7 @@ class DummyHuman:
         # "dummy" attributes replace the original attribute by a less-complex one
         self.dummy_attribs = [
             "env", "location", "household", "workplace", "last_date",
-            "recommendations_to_follow", "recovered_timestamp", "intervened_behavior", "known_connections"# the old states contained in behaviors might break serialization
+            "recommendations_to_follow", "recovered_timestamp", "intervened_behavior"# the old states contained in behaviors might break serialization
         ]
         self.env = DummyEnv(human.env)
         self.location = human.location.name if human.location else ""
@@ -702,7 +702,7 @@ class DummyHuman:
         self.recommendations_to_follow = [str(rec) for rec in human.recommendations_to_follow]
         # "blacklisted" attributes are overriden with `None`, no matter their original value
         self.blacklisted_attribs = [
-            "conf", "city", "my_history", "visits", "proba_to_risk_level_map",  "mobility_planner"
+            "conf", "city", "known_contacts", "my_history", "visits", "proba_to_risk_level_map",  "mobility_planner"
         ]
         for attr_name in self.blacklisted_attribs:
             setattr(self, attr_name, None)
