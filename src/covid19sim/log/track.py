@@ -977,8 +977,8 @@ class Tracker(object):
                 if percent_infected - last_percent_infected > SNAPSHOT_PERCENT_INFECTED_THRESHOLD:
                     ngm = _compute_ngm(self.next_generation_matrix)
                     self.next_generation_matrix['snapshots'].append((percent_infected, ngm))
-                    R = np.linalg.eigvals(ngm).max().real
-                    print(f"% infected: {percent_infected: 2.2f} R:{R: 2.2f}")
+                    # R = np.linalg.eigvals(ngm).max().real
+                    # print(f"% infected: {percent_infected: 2.2f} R:{R: 2.2f}")
                 # for serial interval
                 # Keep records of the infection so that serial intervals can be registered when symptoms appear
                 # Note: We need a bidirectional record (to/from), because we can't anticipate which (to or from) will manifest symptoms first

@@ -410,9 +410,11 @@ TEST_TYPES: { "lab": {
         "preference": 1, # TODO: preference might depend on symptoms
       } }
 
+# /!\ (no-source)
 P_TEST_MODERATE: 0.4
 P_TEST_MILD: 0.1
 P_TEST_SEVERE: 1.0
+
 GET_TESTED_SYMPTOMS_CHECKED_IN_HOSPITAL: ["mild", "moderate", "severe", "fever", "chills", "gastro", "diarrhea", "cough", "fatigue", "trouble_breathing", "loss_of_taste", "light_trouble_breathing", "moderate_trouble_breathing", "heavy_trouble_breathing" ]
 GET_TESTED_SYMPTOMS_CHECKED_BY_SELF: ["cough", "fever", "trouble_breathing", "chills", "loss_of_taste", ""]
 TEST_REPORT_PROB: 0.8  # the probability that a user with the app will report their test result
@@ -463,7 +465,7 @@ ASSUME_NO_UNKNOWN_INTERACTIONS_AFTER_INTERVENTION_START: False
 # Number of levels for behavior stratification. Levels will be 0, 1, ..., N_BEHAVIOR_LEVELS
 # Level 0 is assumed to be unmitigated behavior with pre-confinement level of contacts.
 # Unmitigated - RISK_MODEL = "" and N_BEHAVIOR_LEVELS = 2
-# Lockdown - RISK_MODEL = "" and N_BEHAVIOR_LEVELS = 2  and INTERPOLATE_USING_LOCKDOWN_CONTACTS: True
+# Lockdown - RISK_MODEL = "" and N_BEHAVIOR_LEVELS = 2  and INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS: True
 # binary Tracing - RISK_MODEL = "digital" and N_BEHAVIOR_LEVELS > 1.
 # NOTE: [IMPORTANT] even though only 2 levels are used, the baseline behavior is based on N_BEHAVIOR_LEVELS
 # While comparing binary vs non-binary tracing, use same N_BEHAVIOR_LEVELS. It's upto the method to use levels.
@@ -546,17 +548,13 @@ QUARANTINE_SMART_RELEASE_DAYS: 7
 # (ii) social activities are cancelled
 # (iii) if human is a kid, an adult is moved to house (cancelling their activities)
 # (iv) if human is an adult and a kid lives there, kid needs to stay at house as well
-# (iii) and (iv) are not a problem, if household members are also quarantined.
 # For all other levels, human maintain its normal routine and interact with less humans than normal.
 
-
-MASK_EFFICACY_FACTOR: 0.5
-HYGIENE_EFFICACY_FACTOR: 0.5
-# naive tracing
+# naive tracing (not-used)
 RISK_TRANSMISSION_PROBA: 0.03
 BASELINE_RISK_VALUE: 0.01
 
-# manual tracing
+# (WIP) manual tracing (not-used)
 MANUAL_TRACING_P_CONTACT: 0.50
 MANUAL_TRACING_DELAY_AVG: 3 # days
 MANUAL_TRACING_DELAY_STD: 0.5 # days

@@ -1,0 +1,17 @@
+# more details in core.yaml about the choice of these parameters
+# risk model
+RISK_MODEL : ""
+
+# behavior level specifications
+N_BEHAVIOR_LEVELS: 2
+INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS: True 
+SHOULD_MODIFY_BEHAVIOR : True
+
+# tracing parameters (not used in lockdown)
+TRACING_ORDER : 1
+
+# behavior modification (not used in lockdown)
+REC_LEVEL_THRESHOLDS: [0, 0, 1] # Binary
+
+# when to start (overwrite it if needs to be run from other day)
+INTERVENTION_DAY: 0

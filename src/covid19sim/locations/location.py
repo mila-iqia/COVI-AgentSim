@@ -340,9 +340,10 @@ class Location(simpy.Resource):
             else:
                 raise ValueError(f"Unknown interaction type: {type}")
 
+            # (debug)
             # if self.location_type ==  "HOUSEHOLD" and type == "known" and human.mobility_planner.current_activity.name != "socialize":# and human.workplace != self:
             #     print(human, "-->", other_human, "for", duration / SECONDS_PER_MINUTE, "tota humans", len(self.humans), "t_overlap", t_overlap / SECONDS_PER_MINUTE, human.mobility_planner.current_activity)
-            #
+
             # add to the list
             interactions.append((other_human, distance_profile, duration))
 
