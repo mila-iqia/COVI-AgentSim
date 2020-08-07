@@ -41,7 +41,7 @@ tracing_method:
     - no_intervention
     - heuristicv1
     - heuristicv3
-    - binary_digital_tracing_order_1
+    - bdt1
 
 APP_UPTAKE:
   sample: cartesian
