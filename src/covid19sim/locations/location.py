@@ -21,6 +21,26 @@ def _extract_attrs(human, candidate, location):
         human.intervened_behavior.daily_interaction_reduction_factor(location)
     )
 
+def _adjust_surveyed_contacts_to_regional_contacts(MEAN_DAILY_KNOWN_CONTACTS_FOR_AGEGROUP, conf, MEAN_DAILY_KNOWN_CONTACTS=None):
+    """
+    Computes mean daily interactions for the population given mean daily interactions broken down by age groups.
+
+    Args:
+        MEAN_DAILY_KNOWN_CONTACTS_FOR_AGEGROUP (np.ndarray): 1-D array containing mean daily interactions for each age group
+        MEAN_DAILY_KNOWN_CONTACTS (float): daily known contacts for the region
+        conf (dict): yaml configuration of the experiment
+
+    Returns:
+        (float): population wide mean daily interactions. No adjustment if MEAN_DAILY_KNOWN_CONTACTS is None
+    """
+    if MEAN_DAILY_KNOWN_CONTACTS is None:
+        return MEAN_DAILY_KNOWN_CONTACTS_FOR_AGEGROUP
+
+    age_proportion = np.array([x[2] for x in conf['P_AGE_REGION']])
+    surveyed_mean = np.sum(age_proportion * MEAN_DAILY_KNOWN_CONTACTS_FOR_AGEGROUP)
+    return MEAN_DAILY_KNOWN_CONTACTS_FOR_AGEGROUP * MEAN_DAILY_KNOWN_CONTACTS / surveyed_mean
+
+
 class Location(simpy.Resource):
     """
     Class representing generic locations used in the simulator
@@ -33,6 +53,7 @@ class Location(simpy.Resource):
         Args:
             env (covid19sim.Env): Shared environment
             rng (np.random.RandomState): Random number generator
+            conf (dict): yaml configuration of the experiment
             area (float): Area of the location
             name (str): The location's name
             type (str): Location's type, see
@@ -88,10 +109,11 @@ class Location(simpy.Resource):
             key = "OTHER"
 
         # contact related constants
-        self.MEAN_DAILY_KNOWN_CONTACTS = conf[f'{key}_MEAN_DAILY_INTERACTIONS']
+        self.MEAN_DAILY_KNOWN_CONTACTS = conf.get(f'{key}_MEAN_DAILY_INTERACTIONS', None)
         self.P_CONTACT = np.array(conf[f'P_CONTACT_MATRIX_{key}'])
         self.ADJUSTED_CONTACT_MATRIX = np.array(conf[f'ADJUSTED_CONTACT_MATRIX_{key}'])
         self.MEAN_DAILY_KNOWN_CONTACTS_FOR_AGEGROUP = self.ADJUSTED_CONTACT_MATRIX.sum(axis=0)
+        self.MEAN_DAILY_KNOWN_CONTACTS_FOR_AGEGROUP = _adjust_surveyed_contacts_to_regional_contacts(self.MEAN_DAILY_KNOWN_CONTACTS_FOR_AGEGROUP, conf, self.MEAN_DAILY_KNOWN_CONTACTS)
 
         # duration matrices
         # self.MEAN_DAILY_CONTACT_DURATION_SECONDS = np.array(conf[f'{key}_CONTACT_DURATION_NORMAL_MEAN_SECONDS_MATRIX'])
@@ -320,7 +342,7 @@ class Location(simpy.Resource):
 
             # if self.location_type ==  "HOUSEHOLD" and type == "known" and human.mobility_planner.current_activity.name != "socialize":# and human.workplace != self:
             #     print(human, "-->", other_human, "for", duration / SECONDS_PER_MINUTE, "tota humans", len(self.humans), "t_overlap", t_overlap / SECONDS_PER_MINUTE, human.mobility_planner.current_activity)
-
+            #
             # add to the list
             interactions.append((other_human, distance_profile, duration))
 
