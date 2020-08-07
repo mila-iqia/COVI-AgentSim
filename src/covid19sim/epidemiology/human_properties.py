@@ -1,4 +1,7 @@
 from collections import OrderedDict, namedtuple
+from covid19sim.utils.constants import AGE_BIN_WIDTH_5, AGE_BIN_WIDTH_10
+
+AGE_BIN_ID = namedtuple("AGE_BIN_ID", ['index', 'bin'])
 from covid19sim.utils.utils import normal_pdf
 
 # NOTE: THE PREEXISTING CONDITION NAMES/IDs BELOW MUST MATCH THOSE IN frozen/helper.py
@@ -260,19 +263,43 @@ def _get_inflammatory_disease_level(rng, preexisting_conditions, inflammatory_co
           cond_count += 1
     return cond_count
 
-
 def get_carefulness(age, rng, conf):
     # &carefulness
     loc = 55 if rng.rand() < conf.get("P_CAREFUL_PERSON") else 25
-    carefulness = min((max(round(rng.normal(loc, 10)), 0) + age / 2) / 100, 1)
+    carefulness = (max(round(rng.normal(loc, 10)), 0) + age / 2) / 100
+    carefulness = min(carefulness + 0.01, 1)
     return carefulness
 
-def get_age_bin(age, conf):
-    # normalized susceptibility and mean daily interaction for this age group
-    # required for Oxford COVID-19 infection model
-    age_bins = conf['NORMALIZED_SUSCEPTIBILITY_BY_AGE'].keys()
-    for l, u in age_bins:
+def get_age_bin(age, width=10):
+    """
+    Various data sources like demographics and epidemiological parameters are available per age group.
+    The range of age groups vary from one source to another.
+    This function returns an appropriate group for a particular age.
+
+    Args:
+        age (int): age of `human`
+        width (int): number of ages included in each age group. For example,
+            age bins of the form 0-9 have a width of 10 (both limits inclusive)
+            age bins of the form 0-4 have a width of 5 (both limits inclusive)
+
+    Returns:
+        age_bin (AGE_BIN_ID): a namedtuple with the following keys:
+            bin: idenitfier for the age group that can be used to look up values in various data sources
+                ranges from 0-9 if width = 10
+                ranges from 0-16 if width = 5
+            index (int): ordering of this bin in the list
+
+    """
+    if width == 10:
+        age_bins = AGE_BIN_WIDTH_10
+    elif width == 5:
+        age_bins = AGE_BIN_WIDTH_5
+    else:
+        raise
+
+    for i, (l, u) in enumerate(age_bins):
         if l <= age <= u:
             bin = (l, u)
             break
-    return bin
+
+    return AGE_BIN_ID(index=i, bin=bin)
