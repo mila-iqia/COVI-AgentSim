@@ -60,8 +60,7 @@ class Event:
             time (datetime.datetime): timestamp of encounter
         """
         if COLLECT_LOGS:
-            h_obs_keys   = ['obs_hospitalized', 'obs_in_icu',
-                            'obs_lat', 'obs_lon']
+            h_obs_keys   = ['obs_lat', 'obs_lon']
 
             h_unobs_keys = ['carefulness', 'viral_load', 'infectiousness',
                             'symptoms', 'is_exposed', 'is_infectious',
@@ -85,6 +84,8 @@ class Event:
                 u['exposed_other'] = infectee != human.name if infectee else False
                 u['same_household'] = same_household
                 u['infectiousness_start_time'] = None if not u['got_exposed'] else human.infection_timestamp + datetime.timedelta(days=human.infectiousness_onset_days)
+                u['obs_hospitalized'] = human.mobility_planner.hospitalization_timestamp is not None
+                u['obs_in_icu'] = human.mobility_planner.critical_condition_timestamp is not None
                 unobs.append(u)
 
             loc_obs = {key:getattr(location, key) for key in loc_obs_keys}
@@ -406,14 +407,25 @@ class Event:
             human ([type]): [description]
             time ([type]): [description]
         """
-        h_obs_keys = ['obs_preexisting_conditions',  "obs_age", "obs_sex", "obs_is_healthcare_worker"]
-        h_unobs_keys = ['preexisting_conditions', "age", "sex", "is_healthcare_worker"]
+        h_obs_keys = ['obs_preexisting_conditions',  "obs_age", "obs_sex"]
+        h_unobs_keys = ['preexisting_conditions', "age", "sex"]
         obs_payload = {key:getattr(human, key) for key in h_obs_keys}
         unobs_payload = {key:getattr(human, key) for key in h_unobs_keys}
+        #
+        unobs_payload['is_healthare_worker'] = human.workplace is not None and human.workplace.location_type == "HOSPITAL"
+        obs_payload['obs_is_healthcare_worker'] = human.obs_is_healthcare_worker
 
-        if human.workplace.location_type in ['healthcare', 'store', 'misc', 'senior_residency']:
+        if human.does_not_work:
+            obs_payload['n_people_workplace'] = 'no people outside my household'
+        elif (
+            human.workplace is not None
+            and human.workplace.location_type in ['HOSPITAL', 'STORE', 'MISC', 'SENIOR_RESIDENCE']
+        ):
             obs_payload['n_people_workplace'] = 'many people'
-        elif "workplace" == human.workplace.location_type:
+        elif (
+            human.workplace is not None
+            and human.workplace.location_type == "WORKPLACE"
+        ):
             obs_payload['n_people_workplace'] = 'few people'
         else:
             obs_payload['n_people_workplace'] = 'no people outside my household'
@@ -433,4 +445,3 @@ class Event:
             human.events.append(event)
         logging.info(f"{time} - {human.name} {Event.static_info} event")
         logging.debug(f"{time} - {human} static info:\n{event}")
-

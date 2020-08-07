@@ -676,16 +676,16 @@ def main(conf: DictConfig) -> None:
     running them
 
     NOTE: ALL parameters used in run.py may be overridden from this commandline.
-    For instance you can change init_percent_sick
+    For instance you can change init_fraction_sick
 
-    $ python random_search.py exp_file=experiment n_search=20 init_percent_sick=0.1
+    $ python random_search.py exp_file=experiment n_search=20 init_fraction_sick=0.1
 
     NOTE: you may also pass arguments overridding the default `sbatch` job's
     parametrization like partition, gres, code_loc (=where is the simulator's code),
     env_name (= what conda env to load). For instance:
 
     $ python random_search.py partition=unkillable gres=gpu:1 env_name=covid-env\
-                              n_search=20 init_percent_sick=0.1
+                              n_search=20 init_fraction_sick=0.1
 
     """
 

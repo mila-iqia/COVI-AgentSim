@@ -1,5 +1,6 @@
 import numpy as np
 import os
+import math
 import multiprocessing as mp
 import pickle
 from covid19sim.plotting.plot_rt import PlotRt
@@ -8,7 +9,10 @@ import yaml
 import concurrent.futures
 from scipy import stats as sps
 from collections import defaultdict
-
+import datetime
+import networkx as nx
+import random
+import matplotlib.pyplot as plt
 
 def env_to_path(path):
     """Transorms an environment variable mention in a json
@@ -409,6 +413,7 @@ def get_fq_r(filename=None, data=None, normalized=False):
     intervention_day = data["intervention_day"]
     od = np.mean(data["outside_daily_contacts"][intervention_day:])
     ec = data["effective_contacts_since_intervention"]
+    hec = data["healthy_effective_contacts_since_intervention"]
 
     # percent_infected
     y = sum(data["cases_per_day"]) / data["n_humans"]
@@ -419,7 +424,7 @@ def get_fq_r(filename=None, data=None, normalized=False):
     # proxy_r
     a = get_proxy_r(data)
 
-    return x, y, z, a, od, ec
+    return x, y, z, a, od, ec, hec
 
 
 def get_mean_fq_r(filenames=None, pkls=None, normalized=False):
@@ -442,9 +447,10 @@ def get_mean_fq_r(filenames=None, pkls=None, normalized=False):
         "proxy_r": [],
         "outside_daily_contacts": [],
         "effective_contacts": [],
+        "healthy_effective_contacts": [],
     }
     for filename, pkl in _tmp:
-        x, y, z, a, od, ec = get_fq_r(
+        x, y, z, a, od, ec, hec = get_fq_r(
             filename=filename, data=pkl["pkl"], normalized=normalized
         )
         metrics["f3"].append(x[0])
@@ -457,6 +463,7 @@ def get_mean_fq_r(filenames=None, pkls=None, normalized=False):
         metrics["proxy_r"].append(a)
         metrics["outside_daily_contacts"].append(od)
         metrics["effective_contacts"].append(ec)
+        metrics["healthy_effective_contacts"].append(hec)
 
     return metrics
 
@@ -492,14 +499,42 @@ def get_all_false(filename=None, data=None, normalized=False):
     )
 
 
-def get_proxy_r(data):
-    total_infected = 0
-    for k in data["humans_state"].keys():
-        total_infected += any(z == "I" for z in data["humans_state"][k][5:])
-    if total_infected > 0:
-        return sum(data["cases_per_day"][5:]) / total_infected
-    return 0.
+# def get_proxy_r(data):
+#     total_infected = 0
+#     for k in data["humans_state"].keys():
+#         total_infected += any(z == "R" for z in data["humans_state"][k][5:])
+#     if total_infected > 0:
+#         return sum(data["cases_per_day"][5:]) / total_infected
+#     return 0.
 
+def get_proxy_r(data):
+    infection_chain = data["infection_monitor"]
+    init_infected = {k for k, v in data["humans_state"].items() if v[0] == "E"}
+    all_recovered = set()
+    for k in data["humans_state"].keys():
+        recovered = any(z == "R" for z in data["humans_state"][k][5:])
+        if recovered:
+            all_recovered.add(k)
+
+    dfs_tree, paths = construct_infection_tree(infection_chain, init_infected=init_infected, draw_fig=False)
+
+    infectees = 0
+    recovered_infectors = all_recovered
+    # Average out degree
+    for node in dfs_tree.nodes:
+        if node == "ROOT":
+            continue
+        if node in recovered_infectors:
+
+            infectees += dfs_tree.out_degree(node)
+
+    print(f"len(recovered): {len(all_recovered)}")
+    print(f"len(dfsnodes): {len(dfs_tree.nodes)}")
+    print(f"infectors: {len(recovered_infectors)}")
+    print(f"infectees: {infectees}")
+    print("-------------------------")
+
+    return infectees / len(recovered_infectors)
 
 def get_effective_R(data):
     GT = data["generation_times"]
@@ -526,3 +561,148 @@ def get_effective_R(data):
 def get_metrics(data, label, metric):
     tmp = data[(data["type"] == label) & (data["metric"] == metric)]
     return tmp["mean"], tmp["stderr"]
+
+
+def construct_infection_tree(infection_chain, init_infected={}, draw_fig=True, output_path=""):
+    """ Returns a DFS tree of infections and infection chains for each leaf"""
+    root = "ROOT"
+    start_date = datetime.datetime(2020, 2, 28, 0, 0)
+    G = nx.DiGraph()
+    G.add_node(root)
+    G.add_nodes_from(init_infected)
+    G.add_edges_from([(root, x) for x in init_infected])
+
+    # add nodes
+    for n1 in infection_chain:
+        if n1['from'] in G.nodes:
+            G.add_node(n1['from'], days=(n1['from_infection_timestamp'] - start_date).days)
+            G.add_node(n1['to'], days=(n1['infection_timestamp'] - start_date).days)
+            G.add_edge(n1['from'], n1['to'])
+
+
+    dfs_tree = nx.dfs_tree(G, root)
+
+    # find shortest paths to all leaves (these are infection chains)
+    paths = []
+    for node in dfs_tree:
+        if dfs_tree.out_degree(node)==0: #it's a leaf
+            paths.append(nx.shortest_path(dfs_tree, root, node))
+
+    # remove "root" from this
+    for path in paths:
+        path.remove(root)
+
+    # Sort paths by longest to shortest
+    paths.sort(key=len, reverse=True)
+
+    if draw_fig:
+        labels_params = {"font_size": 5}
+        pos = hierarchy_pos(G, 'ROOT', width=2 * math.pi, vert_gap=0.2, xcenter=0)
+
+        new_pos = {"h:" + u.split(":")[-1]: (r * math.cos(theta), r * math.sin(theta)) for u, (theta, r) in pos.items() if u != "ROOT"}
+        new_pos['ROOT'] = (0.0, 0.0)
+        rename_map = {node: "h:" + node.split(":")[-1] for node in G.nodes if node != 'ROOT'}
+        G_renamed = nx.relabel_nodes(G, rename_map, copy=True)
+
+        plt.figure(1, figsize=(12.8, 10.6), dpi=200)
+        nx.draw(G_renamed, pos=new_pos, node_size=20, with_labels=True, **labels_params)
+        nx.draw_networkx_nodes(G_renamed, pos=new_pos, nodelist=['ROOT'], node_color='blue', node_size=200, with_labels=True)
+
+        ax = plt.gca()
+        ax.margins(.5)  # Default margin is 0.05, value 0 means fit
+
+        circle2 = plt.Circle((0, 0), 0.45, color='r', fill=False)
+        circle3 = plt.Circle((0, 0), .95, color='r', fill=False)
+        circle4 = plt.Circle((0, 0), 1.45, color='r', fill=False)
+        ax.add_artist(circle2)
+        ax.add_artist(circle3)
+        ax.add_artist(circle4)
+        outf = os.path.join(output_path, "starplot.png")
+        print(f"saving star plot to {outf}")
+        plt.savefig(outf)
+
+    return dfs_tree, paths
+
+def hierarchy_pos(G, root=None, width=1., vert_gap = 0.0, vert_loc = 0, xcenter = 0.5):
+
+    '''
+    From Joel's answer at https://stackoverflow.com/a/29597209/2966723.
+    Licensed under Creative Commons Attribution-Share Alike
+
+    If the graph is a tree this will return the positions to plot this in a
+    hierarchical layout.
+
+    G: the graph (must be a tree)
+
+    root: the root node of current branch
+    - if the tree is directed and this is not given,
+      the root will be found and used
+    - if the tree is directed and this is given, then
+      the positions will be just for the descendants of this node.
+    - if the tree is undirected and not given,
+      then a random choice will be used.
+
+    width: horizontal space allocated for this branch - avoids overlap with other branches
+
+    vert_gap: gap between levels of hierarchy
+
+    vert_loc: vertical location of root
+
+    xcenter: horizontal location of root
+    '''
+    if not nx.is_tree(G):
+        raise TypeError('cannot use hierarchy_pos on a graph that is not a tree')
+
+    if root is None:
+        if isinstance(G, nx.DiGraph):
+            root = next(iter(nx.topological_sort(G)))  #allows back compatibility with nx version 1.11
+        else:
+            root = random.choice(list(G.nodes))
+
+    def _hierarchy_pos(G, root, width=2., vert_gap = 0.0, vert_loc = 0, xcenter = 0.5, pos = None, parent = None, first=False):
+        '''
+        see hierarchy_pos docstring for most arguments
+
+        pos: a dict saying where all nodes go if they have been assigned
+        parent: parent of this branch. - only affects it if non-directed
+
+        '''
+
+        if pos is None:
+            pos = {root: (xcenter, vert_loc)}
+        else:
+            pos[root] = (xcenter, vert_loc)
+        children = list(G.neighbors(root))
+
+        if not isinstance(G, nx.DiGraph) and parent is not None:
+            children.remove(parent)
+        if len(children) != 0:
+            dx = width/len(children)
+            nextx = xcenter - width/2 - dx/2
+            for child in children:
+                nextx += dx
+                temp_vert_gap = 0.05
+                day_u_was_infected = max(G.nodes[child].get('days', 1), 1)
+                temp_vert_gap = temp_vert_gap + 0.05 * day_u_was_infected
+                print(f"child: {child} gap: {temp_vert_gap}, day: {day_u_was_infected}")
+                pos = _hierarchy_pos(G, child, width = dx, vert_gap = vert_gap,
+                                    vert_loc = temp_vert_gap, xcenter=nextx,
+                                    pos=pos, parent = root)
+        return pos
+
+
+    return _hierarchy_pos(G, root, width, vert_gap, vert_loc, xcenter, first=True)
+
+
+def get_infected(infection_chain):
+    infectee_locations = {}
+    _infected_humans = set()
+    for x in infection_chain:
+        if x["from"]:
+            _infected_humans.add(x["from"])
+        _infected_humans.add(x["to"])
+        infectee_locations[x["to"]] = x["location_type"]
+    init_infected = _infected_humans - set(infectee_locations.keys())
+    for x in init_infected:
+        infectee_locations[x] = "unknown"
+    return init_infected, _infected_humans, infectee_locations

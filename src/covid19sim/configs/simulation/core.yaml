@@ -1,268 +1,281 @@
+#############################################################
+#######            LOCATION CONSTANTS                 #######
+#############################################################
+
+# _SURFACE_PROB is an experimental feature to model environmental transmission. Proportion of environmental transmissions can be just maintained by ENVIRONMENTAL_INFECTION_KNOB.
+# _SURFACE_PROB: environmental transmission is modeled via surfaces. When an infected person enters a location, a random surface is drawn from the distribution defined by `surface_prob`. Assume that
+## virus lives on this for the max duration empirically observed for this type of surface.
+##    ** MAX_DAYS_CONTAMINATION defines the maximum days that virus can live on any of these surfaces.
+##    ** __SURFACE_PROB defines a probability over these surfaces.
+## probability of infection at `t` due to virus on this surface is computed based on the time lapse between the time when location contamination took place and `t`.
+
+# _CONTACT_FACTOR: It amplifies the environmental transmission based on the location type. For example, if the location is `household`, environmental transmission is more likely to take place
+## It is a knob on reproductive number of a location
+# _PROPORTION_AREA: proportion of city's area that is allocated to this location.
+# _OPEN_CLOSE_HOUR_MINUTE: hour, minute at which the place opens. We use 0,0 and 24, 0 to imply all-time open.
+# _OPEN_DAYS: refer to the day of the week on which the location is open. 0=Monday, 6=Sunday
+
+# workplace
+WORKPLACE_PROPORTION_AREA: 0.2
+WORKPLACE_CONTACT_FACTOR: 1
+WORKPLACE_SURFACE_PROB: [0.1, 0.1, 0.3, 0.2, 0.3]
+WORKPLACE_OPEN_CLOSE_HOUR_MINUTE: [[8, 0], [22, 0]]
+WORKPLACE_OPEN_DAYS: [0, 1, 2, 3, 4]
+
+# stores
+STORE_PROPORTION_AREA: 0.15
+STORE_CONTACT_FACTOR: 1
+STORE_SURFACE_PROB: [0.1, 0.1, 0.3, 0.2, 0.3]
+STORE_OPEN_CLOSE_HOUR_MINUTE: [[8, 0], [22, 0]]
+STORE_OPEN_DAYS: [0, 1, 2, 3, 4, 5, 6]
+MAX_STORE_QUEUE_LENGTH: 10
+
+# misc
+MISC_PROPORTION_AREA: 0.15
+MISC_CONTACT_FACTOR: 1
+MISC_SURFACE_PROB: [0.1, 0.1, 0.3, 0.2, 0.3]
+MISC_OPEN_CLOSE_HOUR_MINUTE: [[8, 0], [22, 0]]
+MISC_OPEN_DAYS: [0, 1, 2, 3, 4, 5, 6]
+MAX_MISC_QUEUE_LENGTH: 10
+
+# park
+PARK_PROPORTION_AREA: 0.05
+PARK_CONTACT_FACTOR: 0.1
+PARK_SURFACE_PROB: [0.8, 0.05, 0.05, 0.05, 0.05]
+PARK_OPEN_CLOSE_HOUR_MINUTE: [[0, 0], [24, 0]]
+PARK_OPEN_DAYS: [0, 1, 2, 3, 4, 5, 6]
+
+# hospitals
+HOSPITAL_PROPORTION_AREA: 0.05
+HOSPITAL_CONTACT_FACTOR: 2
+HOSPITAL_SURFACE_PROB: [0.0, 0.0, 0.0, 0.0, 1.0]
+HOSPITAL_OPEN_CLOSE_HOUR_MINUTE: [[0, 0], [24, 0]]
+HOSPITAL_OPEN_DAYS: [0, 1, 2, 3, 4, 5, 6]
+
+# households
+HOUSEHOLD_PROPORTION_AREA: 0.30
+HOUSEHOLD_CONTACT_FACTOR: 2
+HOUSEHOLD_SURFACE_PROB: [0.1, 0.1, 0.3, 0.2, 0.3]
+HOUSEHOLD_OPEN_CLOSE_HOUR_MINUTE: [[0, 0], [24, 0]]
+HOUSEHOLD_OPEN_DAYS: [0, 1, 2, 3, 4, 5, 6]
+
+# senior_residency
+SENIOR_RESIDENCE_PROPORTION_AREA: 0.05
+SENIOR_RESIDENCE_CONTACT_FACTOR: 3
+SENIOR_RESIDENCE_SURFACE_PROB: [0.1, 0.1, 0.3, 0.2, 0.3]
+SENIOR_RESIDENCE_OPEN_CLOSE_HOUR_MINUTE: [[0, 0], [24, 0]]
+SENIOR_RESIDENCE_OPEN_DAYS: [0, 1, 2, 3, 4, 5, 6]
+
+# schools
+SCHOOL_PROPORTION_AREA: 0.05
+SCHOOL_CONTACT_FACTOR: 1
+SCHOOL_SURFACE_PROB: [0.1, 0.1, 0.3, 0.2, 0.3]
+SCHOOL_OPEN_CLOSE_HOUR_MINUTE: [[8, 0], [16, 0]]
+SCHOOL_OPEN_DAYS: [0, 1, 2, 3, 4]
+
+#############################################################
+#####  Mobility / Social Mixing / Occupation CONSTANTS  #####
+#############################################################
+
+# Preferential exploration of places in a city.
+RHO: 0.40 # higher the value more exploration of new places
+GAMMA: 0.1 # lower the value higher the exploration of new places
+
+# /!\ (no-source)
+# daily routine
+AVERAGE_TIME_SLEEPING: 8 # hours; no interactions are sampled during this time
+AVERAGE_TIME_AWAKE: 16 # hours; human moves through different networks during this time
+
+# work routine
+N_WORKING_DAYS: 5
+WORKING_START_HOUR: 8 # 8 AM in the morning
+
+# /!\ (no-source) these parameters are used to assure proper behavior in mobility_planner by clipping the random draws at these values
+MAX_TIME_WORK: 16
+MAX_TIME_SLEEP: 16
+MAX_TIME_AWAKE: 24
+MAX_TIME_SHORT_ACTVITIES: 4
+
+#########################################################
+#####       Interaction Parameters                  #####
+#########################################################
+# Contacts are broadly of two types - "known" and "unknown"
+# known contacts) are assumed to be those which we are aware of, for example, meeting a friend.
+# unknown contacts are those which are not known to us consciously ,i.e. strangers standing next to us in a metro.
+
+# known
+MIN_DIST_KNOWN_CONTACT: 0
+MAX_DIST_KNOWN_CONTACT: 200 # cms
+
+# Pre confinement contacts statistics (Montreal)
+WORKPLACE_MEAN_DAILY_INTERACTIONS: 10
+OTHER_MEAN_DAILY_INTERACTIONS: 3.1
+HOUSEHOLD_MEAN_DAILY_INTERACTIONS: 2.7
+SCHOOL_MEAN_DAILY_INTERACTIONS: 6
+
+# unknown (all the numbers below are assumed because no data is available about them)
+# A distance greater than INFECTION_RADIUS is useless to model, however, in the context of tracing apps
+# distance between two bluetooth devices can be underesimated depending on the noise in the signals.
+# Thus, a distance of greater than 200 cms can potentially be visible as a risky contacts.
+# Here, we sample distances up to 400 cms to allow for bluetooth devices to record no-risk contacts
+MEAN_DAILY_UNKNOWN_CONTACTS: 1.0
+MIN_DIST_UNKNOWN_CONTACT: 100 # cms
+MAX_DIST_UNKNOWN_CONTACT: 400 # cms
+
+# we sample duration as a gamma distribution with mean as MEAN_DAILY_CONTACT_DURATION / SCALE_FACTOR_CONTACT_DURATION
+# and variance as SCALE_FACTOR_CONTACT_DURATION. This ensures that the mean is MEAN_DAILY_CONTACT_DURATION and the variance is
+# MEAN_DAILY_CONTACT_DURATION * SCALE_FACTOR_CONTACT_DURATION
+# This way we are left with just one parameter to control the uncertainty around contact duration.
+GAMMA_UNKNOWN_CONTACT_DURATION: 900 # seconds
+SCALE_FACTOR_CONTACT_DURATION: 1.0
+
+#########################################################
+#####                 Knobs                         #####
+#########################################################
+
+# Assortativity knobs (A)
+# These needs to be calibrated to acheive the region specific mixing pattern
+# this factor influences the strength of assortativity in contacts at home.
+# higher the value, more likely that people of the same age group live together.
+HOUSEHOLD_ASSORTATIVITY_STRENGTH: 0.5
+WORKPLACE_ASSORTATIVITY_STRENGTH: 5
+
+# social mixing knob (B)
+P_INVITATION_ACCEPTANCE: 0.5 # probability of accepting inivitaton from peers to "socialize"
+P_HOUSE_OVER_MISC_FOR_SOCIALS: 0.5 # probability to prefer household as a location for socials as compared to MISC
+BEGIN_PREFERENTIAL_ATTACHMENT_FACTOR: 0.5 # probability to interact with only the known connections at the start of the simulation
+END_PREFERENTIAL_ATTACHMENT_FACTOR: 0.5 # probability to interact with only the known connections at the start of seeding COVID infections
+
+# Infection knobs ()
+CONTAGION_KNOB: 120
+ENVIRONMENTAL_INFECTION_KNOB: 0.0017
+
+# Time scheduling knobs.
+# /!\ (no-source) These factors are used in scaling the average time spent on various activities to introduce variance via gamma distribution
+# /!\ These factors also influence mixing patterns.
+# /!\ (CAUTION) A large value of these factor may violate the assumption in mobility planner by sampling activities spanning over more than a day.
+# /!\ (CAUTION) mobility planner needs to change to accommodate variation in these parameters
+# Scaling is done in an mean preserving manner. For example, if mean is X and the distribution is gamma,
+# we scale the location parameter to X / SCALE_FACTOR while using the shape parameter as SCALE_FACTOR.
+# Note: mean of a gamma distribution is location * shape = X (here).
+TIME_SPENT_SCALE_FACTOR_FOR_SHORT_ACTIVITIES: 1.5 # e.g. grocery, misc, or park
+TIME_SPENT_SCALE_FACTOR_FOR_WORK: 1.0
+TIME_SPENT_SCALE_FACTOR_SLEEP_AWAKE: 0.01 # /!\ 0.1 scale creates a lot of variation in sleep schedule which breaks the assumptions in MobilityPlanner. Lower values are preferred for longer simulation days
+
+# Contact controlling knobs
 GLOBAL_MOBILITY_SCALING_FACTOR: 1.0 # Mobility reduction factor
 
-# NOISE IN SIM PARAMETERS
+#############################################################
+#####         Mobility when SICK CONSTANTS             #####
+#############################################################
+
+# /!\ (no-source)
+# P_MOBILE_WHEN_X is the likelihood to go out of house when X is the situation.
+
+SEVERE_SYMPTOMS: ["severe", "extremely_severe", "trouble_breathing"]
+P_MOBILE_GIVEN_SEVERE_SYMPTOMS: 0.05
+
+MODERATE_SYMPTOMS: ["moderate", "fever"]
+P_MOBILE_GIVEN_MODERATE_SYMPTOMS: 0.3
+
+MILD_SYMPTOMS: ["cough", "fatigue", "gastro", "aches", "mild"]
+P_MOBILE_GIVEN_MILD_SYMPTOMS: 0.5
+
+
+#############################################################
+#####          Hospitalization Parameters               #####
+#############################################################
+
+# All parameters below are from the following reference (these are default parameters unless regional configuration overwrites them)
+# ref: https://github.com/BDI-pathogens/OpenABM-Covid19/blob/master/documentation/parameters/parameter_dictionary.md
+
+P_HOSPITALIZED_GIVEN_SYMPTOMS: [
+  [0, 9, 0.001],
+  [10, 19, 0.006],
+  [20, 29, 0.015],
+  [30, 39, 0.069],
+  [40, 49, 0.219],
+  [50, 59, 0.279],
+  [60, 69, 0.370],
+  [70, 79, 0.391],
+  [80, 110, 0.379 ]
+]
+
+P_CRITICAL_GIVEN_HOSPITALIZED: [
+  [0, 9, 0.05],
+  [10, 19, 0.05],
+  [20, 29, 0.05],
+  [30, 39, 0.05],
+  [40, 49, 0.063],
+  [50, 59, 0.122],
+  [60, 69, 0.274],
+  [70, 79, 0.432],
+  [80, 110, 0.709]
+]
+
+
+P_FATALITY_GIVEN_CRITICAL: [
+  [0, 9, 0.33],
+  [10, 19, 0.25],
+  [20, 29, 0.5],
+  [30, 39, 0.5],
+  [40, 49, 0.5],
+  [50, 59, 0.69],
+  [60, 69, 0.65],
+  [70, 79, 0.88],
+  [80, 110, 1.0]
+]
+
+# if hospitalized, how much time it will take to recover
+AVERAGE_DAYS_RECOVERY_IF_HOSPITALIZED: 8.75
+STDDEV_DAYS_RECOVERY_IF_HOSPITALIZED: 8.75
+
+# if critical, how much time it will take to recover
+AVERAGE_DAYS_RECOVERY_IF_CRITICAL: 4
+STDDEV_DAYS_RECOVERY_IF_CRITICAL: 2
+
+# after hospitalization, how much to critical stage
+AVERAGE_DAYS_TO_CRITICAL_IF_HOSPITALIZED: 2.27
+STDDEV_DAYS_TO_CRITICAL_IF_HOSPITALIZED: 2.27
+
+# if critical, how much time will it take to death
+AVERAGE_DAYS_DEATH_IF_CRITICAL: 18.8
+STDDEV_DAYS_DEATH_IF_CRITICAL: 12.21
+
+# If symptoms show up, how much time to go to hospital
+AVERAGE_DAYS_TO_HOSPITAL_GIVEN_SYMPTOMS: 5.14
+
+#########################################################
+#####       Smartphone Parameters                   #####
+#########################################################
+
 LOCATION_TECH: "gps" # &location-tech
 
-# CITY PARAMETERS
-MIN_AVG_HOUSE_AGE: 15
+# /!\ Below numbers are for the U.K population
+# Source: COVID-19 individual-based model with instantaneous contract tracing
+# ref: https://github.com/BDI-pathogens/OpenABM-Covid19/blob/master/documentation/parameters/parameter_dictionary.md
 
-# n - people per location
-LOCATION_DISTRIBUTION:
-  {
-    "store":
-      {
-        "n": 500,
-        "area": 0.15,
-        "social_contact_factor": 1,
-        "surface_prob": [0.1, 0.1, 0.3, 0.2, 0.3],
-        "rnd_capacity": [30, 100],
-      },
-    "workplace":
-      {
-        "n": 50,
-        "area": 0.2,
-        "social_contact_factor": 1,
-        "surface_prob": [0.1, 0.1, 0.3, 0.2, 0.3],
-        "rnd_capacity": null,
-      },
-    "school":
-      {
-        "n": 500,
-        "area": 0.05,
-        "social_contact_factor": 1,
-        "surface_prob": [0.1, 0.1, 0.3, 0.2, 0.3],
-        "rnd_capacity": null,
-      },
-    "senior_residency":
-      {
-        "n": 500,
-        "area": 0.05,
-        "social_contact_factor": 3,
-        "surface_prob": [0.1, 0.1, 0.3, 0.2, 0.3],
-        "rnd_capacity": null,
-      },
-    "household":
-      {
-        "n": 2.6,
-        "area": 0.30,
-        "social_contact_factor": 2,
-        "surface_prob": [0.1, 0.1, 0.3, 0.2, 0.3],
-        "rnd_capacity": null,
-      },
-    "park":
-      {
-        "n": 250,
-        "area": 0.05,
-        "social_contact_factor": 0.1,
-        "surface_prob": [0.8, 0.05, 0.05, 0.05, 0.05],
-        "rnd_capacity": null,
-      },
-    "misc":
-      {
-        "n": 40,
-        "area": 0.15,
-        "social_contact_factor": 1,
-        "surface_prob": [0.1, 0.1, 0.3, 0.2, 0.3],
-        "rnd_capacity": [30, 50],
-      },
-    "hospital":
-      {
-        "n": 1000,
-        "area": 0.05,
-        "social_contact_factor": 2,
-        "surface_prob": [0.0, 0.0, 0.0, 0.0, 1.0],
-        "rnd_capacity": [2, 5],
-      },
-  }
+SMARTPHONE_OWNER_FRACTION_BY_AGE: [
+  [0, 9, 0.0],
+  [10, 19, 0.90],
+  [20, 29, 0.96],
+  [30, 39, 0.95],
+  [40, 49, 0.91],
+  [50, 59, 0.81],
+  [60, 69, 0.64],
+  [70, 79, 0.41],
+  [80, 110, 0.27]
+]
 
-# house_size: 1 2 3 4 5
-OTHERS_WORKPLACE_CHOICE: [1.0, 0.0, 0.0]
+# BLUETOOTH MESSAGE EXCHANGE PARAMETERS
+# bluetooth messages are recorded when the devices are within MAX_MESSAGE_PASSING_DISTANCE radius
+# for more than MIN_MESSAGE_PASSING_DURATION mins
+MAX_MESSAGE_PASSING_DISTANCE: 200 # cms
+MIN_MESSAGE_PASSING_DURATION: 900 # seconds
 
-# The group age proportion (p) are taken from Statistics Canada
-# ref: https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1710000501
-# ref: https://www12.statcan.gc.ca/census-recensement/2011/as-sa/98-312-x/2011003/fig/fig3_4-4-eng.cfm
-# TODO: senior_residency should be adjusted w.r.t. to the actual number of people per bin to combine them.
-HOUSE_SIZE_PREFERENCE: [0.282, 0.344, 0.152, 0.138, 0.084]
-HUMAN_DISTRIBUTION: # this is parsed into tuple keys in utils.py/parse_configuration e.g. "0-10" => (0, 10)
-  {
-    "1-10":
-      {
-        "p": 0.106,
-        "residence_preference":
-          {
-            "house_size": [0.0, 0.2, 0.25, 0.35, 0.2],
-            "senior_residency": 0.0,
-          },
-        "profession_profile":
-          {
-            "healthcare": 0.0, "school": 1.0, "others": 0.0, "retired": 0.0
-          },
-      },
-    "11-20":
-      {
-        "p": 0.110,
-        "residence_preference":
-          {
-            "house_size": [0.00, 0.2, 0.55, 0.15, 0.1],
-            "senior_residency": 0.0,
-          },
-        "profession_profile":
-          {
-            "healthcare": 0.0, "school": 0.85, "others": 0.15, "retired": 0.0
-          },
-      },
-    "21-30":
-      {
-        "p": 0.136,
-        "residence_preference":
-          {
-            "house_size": [0.2, 0.3, 0.3, 0.1, 0.1],
-            "senior_residency": 0.0,
-          },
-        "profession_profile":
-          {
-            "healthcare": 0.06, "school": 0.02, "others": 0.92, "retired": 0.0
-          },
-      },
-    "31-40":
-      {
-        "p": 0.138,
-        "residence_preference":
-          {
-            "house_size": [0.1, 0.3, 0.30, 0.10, 0.2],
-            "senior_residency": 0.0,
-          },
-        "profession_profile":
-          {
-            "healthcare": 0.06, "school": 0.02, "others": 0.92, "retired": 0.0
-          },
-      },
-    "41-50":
-      {
-        "p": 0.128,
-        "residence_preference":
-          {
-            "house_size": [0.1, 0.4, 0.2, 0.2, 0.1],
-            "senior_residency": 0.0,
-          },
-        "profession_profile":
-          {
-            "healthcare": 0.06, "school": 0.02, "others": 0.92, "retired": 0.0
-          },
-      },
-    "51-60":
-      {
-        "p": 0.140,
-        "residence_preference":
-          {
-            "house_size": [0.2, 0.6, 0.1, 0.05, 0.05],
-            "senior_residency": 0.0,
-          },
-        "profession_profile":
-          {
-            "healthcare": 0.06, "school": 0.02, "others": 0.92, "retired": 0.0
-          },
-      },
-    "61-70":
-      {
-        "p": 0.123,
-        "residence_preference":
-          {
-            "house_size": [0.25, 0.6, 0.05, 0.05, 0.05],
-            "senior_residency": 0.009,
-          },
-        "profession_profile":
-          {
-            "healthcare": 0.01, "school": 0.01, "others": 0.68, "retired": 0.3
-          },
-      },
-    "71-80":
-      {
-        "p": 0.076,
-        "residence_preference":
-          {
-            "house_size": [0.1, 0.6, 0.15, 0.05, 0.1],
-            "senior_residency": 0.07,
-          },
-        "profession_profile":
-          {
-            "healthcare": 0.01, "school": 0.0, "others": 0.04, "retired": 0.95
-          },
-      },
-    "81-101":
-      {
-        "p": 0.043,
-        "residence_preference":
-          {
-            "house_size": [0.15, 0.5, 0.1, 0.15, 0.1],
-            "senior_residency": 0.4,
-          },
-        "profession_profile":
-          {
-            "healthcare": 0.0, "school": 0.0, "others": 0.0, "retired": 1.0
-          },
-      },
-  }
-
-# Ref: Mossong, Joël, Niel Hens, Mark Jit, Philippe Beutels, Kari Auranen, Rafael Mikolajczyk, Marco Massari et al.
-#    "Social contacts and mixing patterns relevant to the spread of infectious diseases." PLoS medicine 5, no. 3 (2008).
-#    Link: https://journals.plos.org/plosmedicine/article/file?type=printable&id=10.1371/journal.pmed.0050074
-#    Notes: the following matrix is generated with a preprocessing step implemented in `other/compute_contact_matrix.py`
-AGE_GROUP_CONTACT_AVG:
-  {
-      'age_groups': [
-          '(0, 4)', '(5, 9)', '(10, 14)', '(15, 19)', '(20, 24)', '(25, 29)', '(30, 34)', '(35, 39)', '(40, 44)',
-          '(45, 49)', '(50, 54)', '(55, 59)', '(60, 64)', '(65, 69)', '(70, 100)'
-      ],
-      'contact_avg': [
-      [1.920,0.800,0.445,0.285,0.455,0.760,0.820,0.925,0.395,0.255,0.345,0.255,0.230,0.175,0.135],
-      [0.800,6.640,1.200,0.535,0.455,0.705,1.010,1.185,0.950,0.350,0.340,0.215,0.375,0.295,0.175],
-      [0.445,1.200,6.850,1.275,0.245,0.375,0.550,1.010,1.070,0.630,0.360,0.345,0.230,0.265,0.270],
-      [0.285,0.535,1.275,6.710,1.255,0.735,0.460,0.825,0.895,0.965,0.555,0.315,0.220,0.340,0.365],
-      [0.455,0.455,0.245,1.255,2.590,1.390,0.815,0.695,0.750,0.920,0.660,0.500,0.360,0.280,0.285],
-      [0.760,0.705,0.375,0.735,1.390,1.830,1.080,0.830,0.810,0.890,0.865,0.700,0.505,0.480,0.250],
-      [0.820,1.010,0.550,0.460,0.815,1.080,1.670,1.210,0.920,0.740,0.760,0.645,0.580,0.380,0.210],
-      [0.925,1.185,1.010,0.825,0.695,0.830,1.210,1.500,1.275,0.945,0.720,0.610,0.705,0.630,0.305],
-      [0.395,0.950,1.070,0.895,0.750,0.810,0.920,1.275,1.350,1.295,0.800,0.610,0.705,0.520,0.650],
-      [0.255,0.350,0.630,0.965,0.920,0.890,0.740,0.945,1.295,1.870,0.780,0.655,0.580,0.360,0.640],
-      [0.345,0.340,0.360,0.555,0.660,0.865,0.760,0.720,0.800,0.780,0.740,0.940,0.500,0.385,0.550],
-      [0.255,0.215,0.345,0.315,0.500,0.700,0.645,0.610,0.610,0.655,0.940,1.170,0.815,0.565,0.545],
-      [0.230,0.375,0.230,0.220,0.360,0.505,0.580,0.705,0.705,0.580,0.500,0.815,0.650,0.605,0.520],
-      [0.175,0.295,0.265,0.340,0.280,0.480,0.380,0.630,0.520,0.360,0.385,0.565,0.605,0.700,0.670],
-      [0.135,0.175,0.270,0.365,0.285,0.250,0.210,0.305,0.650,0.640,0.550,0.545,0.520,0.670,1.470]
-      ]
-  }
-
-# INDIVIDUAL DIFFERENCES PARAMETERS
-P_CAREFUL_PERSON: 0.3 # &carefulness
-P_TRAVELLED_INTERNATIONALLY_RECENTLY: 0.05
-
-# Source: COVID-19 individual-based model with instantaneous contract tracing (Table 9)
-# TODO: link to the document
-SMARTPHONE_OWNER_FRACTION_BY_AGE:
-  {
-    '1-10': 0.0,
-    '11-20': 0.90,
-    '21-30': 0.96,
-    '31-40': 0.95,
-    '41-50': 0.91,
-    '51-60': 0.81,
-    '61-70': 0.64,
-    '71-80': 0.41,
-    '81-101': 0.27,
-  }
-
-# DISEASE PARAMETERS
-INFECTION_RADIUS: 200 # cms
-INFECTION_DURATION: 15 # minutes
-
-# Ref: https://www.quebec.ca/en/health/health-issues/a-z/2019-coronavirus/situation-coronavirus-in-quebec/ 
-#                  0-9 10-19 20-29  30-39  40-49  50-59 60-69 70-79  80-  # Assuming death rate to be same for 80 and above
-P_NEVER_RECOVERS: [0, 0, 0.0001, 0.0001, 0.0004, 0.0018, 0.0059, 0.0176, 0.0728] # &never_recovers
-REINFECTION_POSSIBLE: False # [0, 1]
-
-# aerosol    copper      cardboard       steel       plastic
-MAX_DAYS_CONTAMINATION: [0.125, 0.333333, 1, 2, 3] # days # https://www.nejm.org/doi/pdf/10.1056/NEJMc2004973?articleTools=true
+#########################################################
+#####       Viral Load Parameters                   #####
+#########################################################
 
 VIRAL_LOAD_RECOVERY_FACTOR: 3 # higher initial viral load means longer recovery
 
@@ -313,49 +326,73 @@ AGE_FACTOR_VIRAL_LOAD_HEIGHT:  0.2
 # OTHER CONDITIONS
 INFLAMMATORY_CONDITIONS: ["smoker", "diabetes", "heart_disease", "COPD", "immuno-suppressed"]
 
+#########################################################
+#####       Infection Model Parameters              #####
+#########################################################
+
+# Ref: https://www.quebec.ca/en/health/health-issues/a-z/2019-coronavirus/situation-coronavirus-in-quebec/
+#                  0-9 10-19 20-29  30-39  40-49  50-59 60-69 70-79  80-  # Assuming death rate to be same for 80 and above
+P_NEVER_RECOVERS: [0, 0, 0.0001, 0.0001, 0.0004, 0.0018, 0.0059, 0.0176, 0.0728] # &never_recovers
+REINFECTION_POSSIBLE: False # [0, 1]
+
+# aerosol    copper      cardboard       steel       plastic
+MAX_DAYS_CONTAMINATION: [0.125, 0.333333, 1, 2, 3] # days # https://www.nejm.org/doi/pdf/10.1056/NEJMc2004973?articleTools=true
+
+# DISEASE PARAMETERS
+INFECTION_RADIUS: 200 # cms
+INFECTION_DURATION: 900 # seconds
+
 # ASYMPTOMATIC
 BASELINE_P_ASYMPTOMATIC: 0.18 # p-asymptomatic [Mizumoto 2020 https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7078829/] probability of never showing symptoms yet testing positive
 MILD_INFECTION_RATIO: 0.48 # &prob_infectious_mild [Luo 2020 https://www.medrxiv.org/content/10.1101/2020.03.24.20042606v1]
 ASYMPTOMATIC_INFECTION_RATIO: 0.29 # &prob_infectious_asymp [Luo 2020 https://www.medrxiv.org/content/10.1101/2020.03.24.20042606v1]
 
-# convex combination - if it sums to 1. Unused, because there is no data on it.
-INFECTION_DISTANCE_FACTOR: 0.0
-INFECTION_DURATION_FACTOR: 0.0
+# /!\ (no-source) Infectiousness multipliers
+INFECTIOUSNESS_NORMALIZATION_CONST: 1.45
+IMMUNOCOMPROMISED_SEVERITY_MULTIPLIER_ADDITION: 0.2
+COUGH_SEVERITY_MULTIPLIER_ADDITION: 0.25
+
+# /!\ (update-numbers)
+# https://www.nature.com/articles/s41591-020-0962-9/figures/8
+# children are 50% less susceptible as compared to adults
 
 # normalized susceptibility to infection broken down age group
 # Bin boundaries are inclusive
 # refer Oxford COVID-19 model
 # They normalise the fitted attack rate across age groups so that average age has a susceptiblity of 1.0
-# UK's average age = 40; Canada's average age = 42. Just taking the normalized susceptiblity from Table 5.
-NORMALIZED_SUSCEPTIBILITY_BY_AGE: {
-    "1-10": 0.71,
-    "11-20": 0.74,
-    "21-30": 0.79,
-    "31-40": 0.87,
-    "41-50": 0.98,
-    "51-60": 1.11,
-    "61-70": 1.26,
-    "71-80": 1.45,
-    "81-150": 1.66,
-  }
+
+# UK's average age = 40; Canada's average age = 42. We use the same normalized susceptiblity from Table 5.
+NORMALIZED_SUSCEPTIBILITY_BY_AGE: [
+  [0, 9, 0.71],
+  [10, 19, 0.74],
+  [20, 29, 0.79],
+  [30, 39, 0.87],
+  [40, 49, 0.98],
+  [50, 59, 1.11],
+  [60, 69, 1.26],
+  [70, 79, 1.45],
+  [80, 110, 1.66]
+]
 
 # these numbers are taken for daily_mean_work_interactions from Oxford study (Table 3)
 # I_as used in the probability of transmission denotes mean daily interactions
 # The report doesn't have a table for I_as so the numbers in Table 3 are used as a proxy
 # TODO: check the updated version of the report for these numbers.
-# Bin boundaries are inclusive
-MEAN_DAILY_INTERACTION_FOR_AGE_GROUP: {
-  "1-10": 10,
-  "11-20": 10,
-  "21-30": 7,
-  "31-40": 7,
-  "41-50": 7,
-  "51-60": 7,
-  "61-70": 7,
-  "71-80": 3,
-  "81-150": 3,
+MEAN_DAILY_INTERACTION_FOR_AGE_GROUP: [
+  [0, 9, 10],
+  [10, 19, 10],
+  [20, 29, 7],
+  [30, 39, 7],
+  [40, 49, 7],
+  [50, 59, 7],
+  [60, 69, 7],
+  [70, 79, 3],
+  [80, 110, 3]
+]
 
-  }
+#########################################################
+#####               Testing Parameters              #####
+#########################################################
 
 # TESTING
 # capacity is proportion of population tested per day
@@ -380,6 +417,11 @@ GET_TESTED_SYMPTOMS_CHECKED_IN_HOSPITAL: ["mild", "moderate", "severe", "fever",
 GET_TESTED_SYMPTOMS_CHECKED_BY_SELF: ["cough", "fever", "trouble_breathing", "chills", "loss_of_taste", ""]
 TEST_REPORT_PROB: 0.8  # the probability that a user with the app will report their test result
 
+
+#########################################################
+#####       Cold/Flu/Allergy Parameters             #####
+#########################################################
+
 # SEASONAL ALLERGIES
 # P_HAS_ALLERGIES_TODAY: 0.005 # likelihood to start allergy any day (2-3 times per year) # produces too many allergies (experimental)
 P_HAS_ALLERGIES_TODAY: 0.005
@@ -399,83 +441,117 @@ AVG_FLU_DURATION: 5
 P_COLD_TODAY: 0.002
 COLD_CONTAGIOUSNESS: 0.000 # likelihood of transmitting at an encounter (no-source)
 
-# LIFESTYLE PARAMETERS
-RHO: 0.40
-GAMMA: 0.1
+#########################################################
+#####       Individual Parameters                   #####
+#########################################################
 
-## SHOP
-AVG_SHOP_TIME_MINUTES: 30 # @param
-SCALE_SHOP_TIME_MINUTES: 15
-AVG_SCALE_SHOP_TIME_MINUTES: 10
-SCALE_SCALE_SHOP_TIME_MINUTES: 5
+# INDIVIDUAL DIFFERENCES PARAMETERS
+P_CAREFUL_PERSON: 0.3 # &carefulness
 
-AVG_MAX_NUM_SHOP_PER_WEEK: 5
-SCALE_MAX_NUM_SHOP_PER_WEEK: 1
+# Biological sex
+P_FEMALE: 0.45
+P_MALE: 0.45
 
-AVG_NUM_SHOPPING_DAYS: 3
-SCALE_NUM_SHOPPING_DAYS: 1
-AVG_NUM_SHOPPING_HOURS: 3
-SCALE_NUM_SHOPPING_HOURS: 1
-MAX_STORE_QUEUE_LENGTH: 10
+#########################################################
+#####           Intervention Parameters             #####
+#########################################################
 
-## WORK
-AVG_WORKING_MINUTES: 480 # 8 * 60
-SCALE_WORKING_MINUTES: 60 # 1 * 60
-AVG_SCALE_WORKING_MINUTES: 120 # 2 * 60
-SCALE_SCALE_WORKING_MINUTES: 60 # 1 * 60
+#
+ASSUME_NO_ENVIRONMENTAL_INFECTION_AFTER_INTERVENTION_START: True
+ASSUME_NO_UNKNOWN_INTERACTIONS_AFTER_INTERVENTION_START: False
 
-## EXERCISE
-AVG_EXERCISE_MINUTES: 60
-SCALE_EXERCISE_MINUTES: 15
-AVG_SCALE_EXERCISE_MINUTES: 15
-SCALE_SCALE_EXERCISE_MINUTES: 5
+# Number of levels for behavior stratification. Levels will be 0, 1, ..., N_BEHAVIOR_LEVELS
+# Level 0 is assumed to be unmitigated behavior with pre-confinement level of contacts.
+# Unmitigated - RISK_MODEL = "" and N_BEHAVIOR_LEVELS = 2
+# Lockdown - RISK_MODEL = "" and N_BEHAVIOR_LEVELS = 2  and INTERPOLATE_USING_LOCKDOWN_CONTACTS: True
+# binary Tracing - RISK_MODEL = "digital" and N_BEHAVIOR_LEVELS > 1.
+# NOTE: [IMPORTANT] even though only 2 levels are used, the baseline behavior is based on N_BEHAVIOR_LEVELS
+# While comparing binary vs non-binary tracing, use same N_BEHAVIOR_LEVELS. It's upto the method to use levels.
+N_BEHAVIOR_LEVELS: 2
+INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS: False
 
-AVG_MAX_NUM_EXERCISE_PER_WEEK: 5
-SCALE_MAX_NUM_EXERCISE_PER_WEEK: 2
-AVG_NUM_EXERCISE_DAYS: 3
-SCALE_NUM_EXERCISE_DAYS: 1
-AVG_NUM_EXERCISE_HOURS: 3
-SCALE_NUM_EXERCISE_HOURS: 1
+# (WIP) /!\ tracing of symptoms is not working now
+TRACE_SELF_REPORTED_INDIVIDUAL: False
+TRACED_DAYS_FOR_SELF_REPORTED_INDIVIDUAL: 7 # days for which contacts need to be traced
 
-## MISC
-AVG_MISC_MINUTES: 60
-SCALE_MISC_MINUTES: 15
-AVG_SCALE_MISC_MINUTES: 15
-SCALE_SCALE_MISC_MINUTES: 5
-AVG_MAX_NUM_MISC_PER_WEEK: 5
-SCALE_MAX_NUM_MISC_PER_WEEK: 2
-MAX_MISC_QUEUE_LENGTH: 10
+# Lockdown statistics (Montreal)
+# Following numbers (eyballed) are from CONNECT2 study
+# ref: http://www.marc-brisson.net/covid19-response/Epidemiologie-et-modelisation-evolution-COVID-19-au-Quebec_29-juin.pdf
+LOCKDOWN_FRACTION_REDUCTION_IN_CONTACTS_AT_HOUSEHOLD: 0.30
+LOCKDOWN_FRACTION_REDUCTION_IN_CONTACTS_AT_WORKPLACE: 0.80
+LOCKDOWN_FRACTION_REDUCTION_IN_CONTACTS_AT_OTHER: 0.50
+LOCKDOWN_FRACTION_REDUCTION_IN_CONTACTS_AT_SCHOOL: 1.0
 
-# ENCOUNTER CONDITIONS
-MAX_MESSAGE_PASSING_DISTANCE: 200 # high-risk contacts are within 200cm for more than 5 minutes
-MIN_MESSAGE_PASSING_DURATION: 15
+# hospitals were assumed to be a source of spread in the beginning.
+# Post-lockdown, hospitals can be assumed to be safe
+ASSUME_SAFE_HOSPITAL_DAILY_INTERACTIONS_AFTER_INTERVENTION_START: True
 
-# DISTANCE_ENCOUNTER PARAMETERS cms
-MIN_DIST_ENCOUNTER: 0
-MAX_DIST_ENCOUNTER: 300 # cms
+##### Quarantine
+# Quarantine is the most-extreme form of intervention in which individual cuts down all its interactions and spends majority of the time at household.
 
-# KNOBS
-CONTAGION_KNOB: 1
-ENVIRONMENTAL_INFECTION_KNOB: 0.0017
+### FLAGS
+# (non-tracing)
+# Quarantine household members of an individual who got a positive test?
+QUARANTINE_HOUSEHOLD_UPON_INDIVIDUAL_POSITIVE_TEST: True
 
-## INTERVENTIONS
-# WASH HANDS
-HYGIENE_EFFICACY_FACTOR: 0.5 # used in reduction of probability of transmission (no-source)
+# whether to quarantine individuals who self-diagnose COVID
+QUARANTINE_SELF_REPORTED_INDIVIDUALS: False
+QUARANTINE_HOUSEHOLD_UPON_SELF_REPORTED_INDIVIDUAL: False
 
-# RISK RECOMMENDATIONS
-DEFAULT_DISTANCE: 100 # cms
+# (tracing)
+QUARANTINE_HOUSEHOLD_UPON_TRACED_POSITIVE_TEST: True
+QUARANTINE_HOUSEHOLD_UPON_TRACED_SELF_REPORTED_INDIVIDUAL: False
 
-# TRACKER
-EFFECTIVE_R_WINDOW: 10 # days
-KEEP_FULL_OBJ_COPIES: False
+### DURATION
+# (non-tracing) quarantine duration
+QUARANTINE_DAYS_ON_POSITIVE_TEST: 14
+QUARANTINE_DAYS_ON_SELF_REPORTED_SYMPTOMS: 14
+QUARANTINE_DAYS_HOUSEHOLD_ON_INDIVIDUAL_POSITIVE_TEST: 14
+QUARANTINE_DAYS_HOUSEHOLD_ON_INDIVIDUAL_CONTACT_WITH_POSITIVE_TEST: 14
 
-# MASK
-MASK_EFFICACY_NORMIE: 0.32
-MASK_EFFICACY_HEALTHWORKER: 0.98
-BASELINE_P_MASK: 0.5
-MASKS_SUPPLY: 1000000
-MASK_EFFICACY_FACTOR: 0.4 # used in reduction of probability of transmission (no-source)
+# (tracing) quarantine duration when traced
+QUARANTINE_DAYS_ON_TRACED_POSITIVE: 14
+QUARANTINE_DAYS_ON_TRACED_SELF_REPORTED_SYMPTOMS: 14
+QUARANTINE_DAYS_HOUSEHOLD_ON_TRACED_POSITIVE: 14
+QUARANTINE_DAYS_HOUSEHOLD_ON_TRACED_SELF_REPORTED_SYMPTOMS: 14
 
+### DROPOUT
+# (non-tracing) dropout (adherence)
+QUARANTINE_DROPOUT_POSITIVE: 0.01
+QUARANTINE_DROPOUT_SELF_REPORTED_SYMPTOMS: 0.02
+
+# (tracing)
+QUARANTINE_DROPOUT_TRACED_POSITIVE: 0.03
+QUARANTINE_DROPOUT_TRACED_SELF_REPORTED_SYMPTOMS: 0.04
+ALL_LEVELS_DROPOUT: 0.02 # daily adherence to recommendations. Failing to adhere, human returns to level 0 (unmitigated case).
+
+# OTHERS
+# (WIP) compliance to quarantine
+QUARANTINE_COMPLIANCE_TRACED_POSITIVE: 0.9
+QUARANTINE_COMPLIANCE_TRACED_SYMPTOMS: 0.5
+
+# (WIP) If no one in the network has developed symptoms in the past QUARANTINE_SMART_RELEASE_DAYS, then release them
+QUARANTINE_SMART_RELEASE: False
+QUARANTINE_SMART_RELEASE_DAYS: 7
+
+########
+# How does interventions affect behavior?
+
+# mean daily interactions affect interactions in two ways -
+# (a) Number of interactions are reduced
+# (b) probability vector of humans is reduced by a factor
+
+# mobility reduction i.e presence of human in various networks
+# In quarantine, (i) all activities are moved to human's household
+# (ii) social activities are cancelled
+# (iii) if human is a kid, an adult is moved to house (cancelling their activities)
+# (iv) if human is an adult and a kid lives there, kid needs to stay at house as well
+# (iii) and (iv) are not a problem, if household members are also quarantined.
+# For all other levels, human maintain its normal routine and interact with less humans than normal.
+
+
+MASK_EFFICACY_FACTOR: 0.5
+HYGIENE_EFFICACY_FACTOR: 0.5
 # naive tracing
 RISK_TRANSMISSION_PROBA: 0.03
 BASELINE_RISK_VALUE: 0.01
@@ -485,17 +561,16 @@ MANUAL_TRACING_P_CONTACT: 0.50
 MANUAL_TRACING_DELAY_AVG: 3 # days
 MANUAL_TRACING_DELAY_STD: 0.5 # days
 
-# bundled recommendations
-BUNDLED_INTERVENTION_RECOMMENDATION_LEVEL: 0
+#########################################################
+#####             Other Parameters                  #####
+#########################################################
+
+COVID_START_DAY: 0 # COVID infection is seeded in the population on these many days after the simulation starts
+INTERVENTION_DAY: -1 # intervention starts on these many days after COVID_START_DAY. It never starts if its negative.
 
 # Console logging (Condition with COLLECT_LOGS)
 LOGGING_LEVEL: "WARNING"
 
-# Infectiousness
-INFECTIOUSNESS_NORMALIZATION_CONST: 1.45
-IMMUNOCOMPROMISED_SEVERITY_MULTIPLIER_ADDITION: 0.2
-COUGH_SEVERITY_MULTIPLIER_ADDITION: 0.25
-
-# Biological sex
-P_FEMALE: 0.45
-P_MALE: 0.45
+# TRACKER
+EFFECTIVE_R_WINDOW: 10 # days
+KEEP_FULL_OBJ_COPIES: False
