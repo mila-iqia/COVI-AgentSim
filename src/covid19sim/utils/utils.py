@@ -512,6 +512,12 @@ def dumps_conf(
 
     if "start_time" in copy_conf:
         copy_conf["start_time"] = copy_conf["start_time"].strftime("%Y-%m-%d %H:%M:%S")
+    if "COVID_SPREAD_START_TIME" in copy_conf:
+        copy_conf["COVID_SPREAD_START_TIME"] = str(copy_conf.get("COVID_SPREAD_START_TIME", datetime.datetime.min))#.strftime("%Y-%m-%d %H:%M:%S")
+    if "SIMULATION_START_TIME" in copy_conf:
+        copy_conf["SIMULATION_START_TIME"] = str(copy_conf.get("SIMULATION_START_TIME", datetime.datetime.min))#.strftime("%Y-%m-%d %H:%M:%S")
+    if "INTERVENTION_START_TIME" in copy_conf:
+        copy_conf["INTERVENTION_START_TIME"] = str(copy_conf.get("INTERVENTION_START_TIME", datetime.datetime.min))#.strftime("%Y-%m-%d %H:%M:%S")
 
     return copy_conf
 
