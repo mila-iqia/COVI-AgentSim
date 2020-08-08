@@ -321,9 +321,8 @@ class Location(simpy.Resource):
 
             # sample distance of encounter
             encounter_term = self.rng.uniform(min_dist_encounter, max_dist_encounter)
-            social_distancing_term = np.mean([human.maintain_extra_distance, other_human.maintain_extra_distance]) #* self.rng.rand()
-            distance = np.clip(encounter_term + social_distancing_term, a_min=0, a_max=packing_term)
-            distance_profile = DistanceProfile(encounter_term=encounter_term, packing_term=packing_term, social_distancing_term=social_distancing_term, distance=distance)
+            distance = np.clip(encounter_term, a_min=0, a_max=packing_term)
+            distance_profile = DistanceProfile(encounter_term=encounter_term, packing_term=packing_term, social_distancing_term=None, distance=distance)
 
             if type == "known":
                 age_bin = human.age_bin_width_5.index

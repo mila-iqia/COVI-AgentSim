@@ -173,16 +173,10 @@ class Human(BaseHuman):
         self.obs_preexisting_conditions = []  # the preexisting conditions of this human reported to the app
 
         """ Interventions """
-        self.will_wear_mask = False  # A boolean value determining whether this person will try to wear a mask during encounters
-        self.wearing_mask = False  # A boolean value that represents whether this person is currently wearing a mask
-        self.mask_efficacy = 0.  # A float value representing how good this person is at wearing a mask (i.e. healthcare workers are better than others)
         self.intervention = None  # Type of contact tracing to do, e.g. Transformer or binary contact tracing or heuristic
-        self.maintain_extra_distance = 0  # Represents the extra distance this person could take as a result of an intervention
         self._rec_level = -1  # Recommendation level used for Heuristic / ML methods
         self._intervention_level = -1  # Intervention level (level of behaviour modification to apply), for logging purposes
         self.recommendations_to_follow = OrderedSet()  # which recommendations this person will follow now
-        self.time_encounter_reduction_factor = 1.0  # how much does this person try to reduce the amount of time they are in contact with others
-        self.hygiene = 0  # start everyone with a baseline hygiene. Only increase it once the intervention is introduced.
         self._test_recommended = False  # does the app recommend that this person should get a covid-19 test
         self.effective_contacts = 0  # A scaled number of the high-risk contacts (under 2m for over 15 minutes) that this person had
         self.healthy_effective_contacts = 0  # A scaled number of the high-risk contacts (under 2m for over 15 minutes) that this person had while healthy
@@ -821,38 +815,6 @@ class Human(BaseHuman):
             "unexpected transformer history coverage; what's going on?"
         for day_offset_idx in range(len(risk_history)):  # note: idx:0 == today
             self.risk_history_map[current_day_idx - day_offset_idx] = risk_history[day_offset_idx]
-
-    def compute_mask_efficacy(self):
-        """
-        Determines whether this human wears a mask given their carefulness and how good at masks they are (mask_efficacy)
-        """
-        # if you don't wear a mask, then it is not effective
-        if not self.will_wear_mask:
-            self.wearing_mask, self.mask_efficacy = False, 0
-            return
-
-        # people do not wear masks at home
-        self.wearing_mask = True
-        if self.location == self.household:
-            self.wearing_mask = False
-
-        # if they go to a store, they are more likely to wear a mask
-        if self.location.location_type == 'store':
-            if self.carefulness > 0.6:
-                self.wearing_mask = True
-            elif self.rng.rand() < self.carefulness * self.conf.get("BASELINE_P_MASK"):
-                self.wearing_mask = True
-        elif self.rng.rand() < self.carefulness * self.conf.get("BASELINE_P_MASK"):
-            self.wearing_mask = True
-
-        # efficacy - people do not wear it properly
-        if self.wearing_mask:
-            if self.workplace.location_type == 'hospital':
-              self.mask_efficacy = self.conf.get("MASK_EFFICACY_HEALTHWORKER")
-            else:
-              self.mask_efficacy = self.conf.get("MASK_EFFICACY_NORMIE")
-        else:
-            self.mask_efficacy = 0
 
     def recover_health(self):
         """
