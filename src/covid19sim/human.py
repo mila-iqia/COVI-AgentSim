@@ -1000,10 +1000,8 @@ class Human(BaseHuman):
         self.location_start_time = self.env.now
         self.location_leaving_time = self.location_start_time + duration
 
-        # do regular checks on whether to wear a mask
         # check if human needs a test if it's a hospital
         self.check_if_needs_covid_test(at_hospital=isinstance(location, (Hospital, ICU)))
-        self.compute_mask_efficacy()
 
         yield self.env.timeout(duration)
         # print("after", self.env.timestamp, self, location, duration)
