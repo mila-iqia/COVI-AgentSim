@@ -53,7 +53,7 @@ class IntervenedBehavior(object):
             last_filled_index -= 1
         else:
             # if its a non-tracing scenario, and lockdown is not desired, its an unmitigated scenario with 0% reduction in the first level
-            if conf["RISK_MODEL"] == 0:
+            if conf["RISK_MODEL"] == "":
                 last_filled_index -= 1
                 assert last_filled_index == self.baseline_behavior_idx, "unmitigated scenario should not have non-zero reduction in baseline_behavior"
 
@@ -82,13 +82,16 @@ class IntervenedBehavior(object):
 
     def initialize(self, check_has_app=False):
         """
-        Sets up a baseline behavior.
+        Sets up a baseline behavior on the day intervention starts.
 
         Args:
             check_has_app (bool): whether to initialize a baseline beahvior only for humans with the app
         """
         assert self.conf['INTERVENTION_DAY'] >= 0, "negative intervention day and yet intialization is called."
         assert self.n_behavior_levels >= 2, "with 2 behavior levels and a risk model, behavior level 1 will quarantine everyone"
+
+        # compute the reduction levels
+        self.update_reduction_levels()
 
         if self.conf['RISK_MODEL'] == "":
             self.set_behavior(level = self.baseline_behavior_idx, until = None, reason="intervention-start")
