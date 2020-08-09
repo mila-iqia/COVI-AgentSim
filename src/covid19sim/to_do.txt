@@ -1,0 +1,5 @@
+Issues with intervention scheduler -
+
+1. Post lockdown scenarios work with DAYS_SINCE_OUTBREAK as a trigger. PERCENT_INFECTED throws error because of misalignment of current_day_idx in generate_initial_updates.
+2. Post lockdown scneraios do not necessarily have to be triggered by PERCENT_INFECTED. One can have LOCKDOWN for 3 months after PERCENT_INFECTED is 5%
+3. PREVALENCE is a more realistic trigger. There is no logic for it now.
