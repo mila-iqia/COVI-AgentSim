@@ -1650,22 +1650,13 @@ class Tracker(object):
             log(f"* % {key} transmission {100 * x / total :2.3f} %", self.logfile)
 
         log("\n######## SYMPTOMS #########", self.logfile)
-        self.track_symptoms(count_all=True)
-        total = self.symptoms['covid']['n']
-        tmp_s = {}
-        for s,v in self.symptoms['covid'].items():
-            if s == 'n':
-                continue
-            tmp_s[s] = v/total
-        print_dict("P(symptoms = x | covid patient), where x is", tmp_s, is_sorted="desc", top_k=10, logfile=self.logfile)
+        x = self.compute_symptom_prevalence()['symptom_prevalence']
 
-        total = self.symptoms['all']['n']
-        tmp_s = {}
-        for s,v in self.symptoms['covid'].items():
-            if s == 'n':
-                continue
-            tmp_s[s] = v/total
-        print_dict("P(symptoms = x | human had some sickness e.g. cold, flu, allergies, covid), where x is", tmp_s, is_sorted="desc", top_k=10, logfile=self.logfile)
+        TITLE = "P(symptoms = x | covid patient), where x is"
+        print_dict(TITLE, x['covid'], is_sorted="desc", top_k=10, logfile=logfile)
+
+        TITLE = "P(symptoms = x | human had some sickness e.g. cold, flu, allergies, covid), where x is"
+        print_dict(TITLE, x['all'], is_sorted="desc", top_k=10, logfile=logfile)
 
         log("\n######## CONTACT PATTERNS #########", self.logfile)
         if not (self.conf['track_all'] or self.conf['track_mixing']):
