@@ -1,0 +1,17 @@
+# risk model (initialized explicitly in interventions.utils.get_intervention_conf)
+RISK_MODEL : "digital"
+
+# behavior specifications
+SHOULD_MODIFY_BEHAVIOR : True
+
+# tracing parameters
+TRACING_ORDER : 1
+TRACE_SELF_REPORTED_INDIVIDUAL: False
+
+# sequence
+INTERVENTION_TRIGGER: "DAYS_SINCE_OUTBREAK"
+INTERVENTION_SEQUENCE: [
+  [ 0, "UNMITIGATED" ],
+  [ 5, "LOCKDOWN" ],
+  [ 10, "BDT" ],
+]
