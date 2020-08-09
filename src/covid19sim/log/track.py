@@ -1654,10 +1654,10 @@ class Tracker(object):
         x = self.compute_symptom_prevalence()['symptom_prevalence']
 
         TITLE = "P(symptoms = x | covid patient), where x is"
-        print_dict(TITLE, x['covid'], is_sorted="desc", top_k=10, logfile=logfile)
+        print_dict(TITLE, x['covid'], is_sorted="desc", top_k=10, logfile=self.logfile)
 
         TITLE = "P(symptoms = x | human had some sickness e.g. cold, flu, allergies, covid), where x is"
-        print_dict(TITLE, x['all'], is_sorted="desc", top_k=10, logfile=logfile)
+        print_dict(TITLE, x['all'], is_sorted="desc", top_k=10, logfile=self.logfile)
 
         log("\n######## CONTACT PATTERNS #########", self.logfile)
         if not (self.conf['track_all'] or self.conf['track_mixing']):
