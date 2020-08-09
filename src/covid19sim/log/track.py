@@ -1049,7 +1049,7 @@ class Tracker(object):
         def _aggregate_symptoms_count(symptoms_set, symptoms):
             symptoms['n'] += 1
             for s in symptoms_set:
-                symptoms[s] += 1
+                symptoms[s.name] += 1
 
             return symptoms
 
@@ -1111,12 +1111,13 @@ class Tracker(object):
         """
         past_14_days_hospital_cases = sum(self.hospitalization_per_day[:-14])
         past_14_days_tests = sum(self.tested_per_day[:-14])
+        past_14_days_positive_test_results = sum(result['positive'] for date, result in self.test_results_per_day.items() if date <= self.env.timestamp.date())
         actual_cases = sum(h.is_exposed or h.is_infectious for h in self.city.humans)
 
         return {
-            "cases": actual_cases,
-            "estimation_by_hospitalization": past_14_days_hospital_cases,
-            "estimation_by_test": past_14_days_tests,
+            "cases": actual_cases / self.n_people,
+            "estimation_by_hospitalization": past_14_days_hospital_cases / self.n_people,
+            "estimation_by_test": past_14_days_positive_test_results / self.n_people,
         }
 
     def track_tested_results(self, human):

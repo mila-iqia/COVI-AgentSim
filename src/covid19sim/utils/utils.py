@@ -390,7 +390,8 @@ def extract_tracker_data(tracker, conf):
     data['covid_properties'] = tracker.covid_properties
     data['test_monitor'] = tracker.test_monitor #0.14MB
     data['recovered_stats'] = tracker.recovery_stats
-
+    data['symptoms'] = tracker.compute_symptom_prevalence()
+    
     # tracing related
     data['risk_precision_global'] = tracker.compute_risk_precision(False)
     data['risk_precision'] = tracker.risk_precision_daily
