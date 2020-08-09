@@ -178,11 +178,11 @@ class Human(BaseHuman):
         self._intervention_level = -1  # Intervention level (level of behaviour modification to apply), for logging purposes
         self.recommendations_to_follow = OrderedSet()  # which recommendations this person will follow now
         self._test_recommended = False  # does the app recommend that this person should get a covid-19 test
-        self.effective_contact_days = [0] #
-        self.effective_contacts = [0]  # A scaled number of the high-risk contacts (under 2m for over 15 minutes) that this person had
-        self.healthy_effective_contacts = [0]  # A scaled number of the high-risk contacts (under 2m for over 15 minutes) that this person had while healthy
-        self.healthy_days = [0] #
-        self.num_contacts = [0]  # unscaled number of high-risk contacts
+        self.effective_contact_days = [] #
+        self.effective_contacts = []  # A scaled number of the high-risk contacts (under 2m for over 15 minutes) that this person had
+        self.healthy_effective_contacts = []  # A scaled number of the high-risk contacts (under 2m for over 15 minutes) that this person had while healthy
+        self.healthy_days = [] #
+        self.num_contacts = []  # unscaled number of high-risk contacts
         self.intervened_behavior = IntervenedBehavior(self, self.env, self.conf) # keeps track of behavior level of human
 
         """Risk prediction"""
