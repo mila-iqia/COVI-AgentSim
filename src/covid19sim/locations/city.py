@@ -484,6 +484,9 @@ class City:
                 not humans_notified
                 and self.env.timestamp == self.conf.get('INTERVENTION_START_TIME')
             ):
+                log("\n *** ****** *** ****** *** INITIATING INTERVENTION *** *** ****** *** ******\n", self.logfile)
+                log(self.conf['INTERVENTION'], self.logfile)
+                
                 # if its a tracing method, load the class that can compute risk
                 if self.conf['RISK_MODEL'] != "":
                     self.tracing_method = get_tracing_method(risk_model=self.conf['RISK_MODEL'], conf=self.conf)
@@ -493,6 +496,11 @@ class City:
                 for human in self.humans:
                     human.set_tracing_method(self.tracing_method)
                     human.intervened_behavior.initialize()
+
+                # log reduction levels
+                log("\nCONTACT REDUCTION LEVELS (first one is not used) -", self.logfile)
+                for location_type, value in human.intervened_behavior.reduction_levels.items():
+                    log(f"{location_type}: {value} ", self.logfile)
 
                 humans_notified = True
                 if self.tracing_method is not None:
@@ -505,6 +513,7 @@ class City:
                 if self.conf['ASSUME_NO_UNKNOWN_INTERACTIONS_AFTER_INTERVENTION_START']:
                     self.conf['_MEAN_DAILY_UNKNOWN_CONTACTS'] = 0.0
 
+                log("\n*** *** ****** *** ****** *** ****** *** ****** *** ****** *** ****** *** ****** *** ***\n", self.logfile)
             # run city testing routine, providing test results for those who need them
             # TODO: running this every hour of the day might not be correct.
             # TODO: testing budget is used up at hour 0 if its small
