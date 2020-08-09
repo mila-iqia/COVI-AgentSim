@@ -316,14 +316,6 @@ class City:
         # modify likelihood of meeting new people
         self.conf['_CURRENT_PREFERENTIAL_ATTACHMENT_FACTOR'] = self.conf['END_PREFERENTIAL_ATTACHMENT_FACTOR']
 
-        # modify knobs because now people are more aware
-        if self.conf['ASSUME_NO_ENVIRONMENTAL_INFECTION_AFTER_INTERVENTION_START']:
-            self.conf['_ENVIRONMENTAL_INFECTION_KNOB'] = 0.0
-
-        if self.conf['ASSUME_NO_UNKNOWN_INTERACTIONS_AFTER_INTERVENTION_START']:
-            self.conf['_MEAN_DAILY_UNKNOWN_CONTACTS'] = 0.0
-
-
         self.tracker.log_seed_infections()
 
     def have_some_humans_download_the_app(self):
@@ -505,6 +497,13 @@ class City:
                 humans_notified = True
                 if self.tracing_method is not None:
                     self.tracker.track_daily_recommendation_levels(set_tracing_started_true=True)
+
+                # modify knobs because now people are more aware
+                if self.conf['ASSUME_NO_ENVIRONMENTAL_INFECTION_AFTER_INTERVENTION_START']:
+                    self.conf['_ENVIRONMENTAL_INFECTION_KNOB'] = 0.0
+
+                if self.conf['ASSUME_NO_UNKNOWN_INTERACTIONS_AFTER_INTERVENTION_START']:
+                    self.conf['_MEAN_DAILY_UNKNOWN_CONTACTS'] = 0.0
 
             # run city testing routine, providing test results for those who need them
             # TODO: running this every hour of the day might not be correct.
