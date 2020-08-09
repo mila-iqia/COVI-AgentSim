@@ -40,7 +40,8 @@ Legend -
 * [ Q ]: Number of people quarantined as of midnight on that day.
 * [ 2x ]: Number of days to double the initial infections to the current level.
         """
-        if self.conf['INTERVENTION_DAY'] >= 0 and self.conf['RISK_MODEL'] is not None:
+        tracing_used = any(x[1] in ['BDT', 'HEURISTIC', 'TRANSFORMER'] for x in self.conf['INTERVENTION_SEQUENCE'])
+        if tracing_used:
             self.legend += """
 * [ G/B/O/R ]: Number of people in each of the 4 recommendation levels - Green, Blue, Orange, and Red.
 * [ RiskP ]: Top 1% risk precision of the risk predictor computed for people with no test.
@@ -123,7 +124,7 @@ Legend -
             str_to_print = f"{proc_time} {day} {env_time} {SEIR} {stats} {other_diseases} {hospitalizations} {mobility} {quarantines}"
             # conditional prints
             colors, risk = "", ""
-            if self.conf['INTERVENTION_DAY'] >= 0 and self.conf['RISK_MODEL'] != "":
+            if city.intervention_scheduler.current_intervention['RISK_MODEL'] != "":
                 # on day 1, if tracker is not informed about tracing, recommended levels daily are not appended.
                 # this will throw an error about list out of index.
                 green, blue, orange, red = 0, 0, 0, 0

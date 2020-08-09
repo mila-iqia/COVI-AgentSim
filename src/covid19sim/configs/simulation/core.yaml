@@ -461,6 +461,7 @@ P_MALE: 0.45
 #
 ASSUME_NO_ENVIRONMENTAL_INFECTION_AFTER_INTERVENTION_START: True
 ASSUME_NO_UNKNOWN_INTERACTIONS_AFTER_INTERVENTION_START: False
+ASSUME_SCHOOL_CLOSURE_DURING_LOCKDOWN: True
 
 # Number of levels for behavior stratification. Levels will be 0, 1, ..., N_BEHAVIOR_LEVELS
 # Level 0 is assumed to be unmitigated behavior with pre-confinement level of contacts.
@@ -471,10 +472,7 @@ ASSUME_NO_UNKNOWN_INTERACTIONS_AFTER_INTERVENTION_START: False
 # While comparing binary vs non-binary tracing, use same N_BEHAVIOR_LEVELS. It's upto the method to use levels.
 N_BEHAVIOR_LEVELS: 2
 INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS: False
-
-# (WIP) /!\ tracing of symptoms is not working now
-TRACE_SELF_REPORTED_INDIVIDUAL: False
-TRACED_DAYS_FOR_SELF_REPORTED_INDIVIDUAL: 7 # days for which contacts need to be traced
+ALL_LEVELS_DROPOUT: 0.02 # daily adherence to recommendations. Failing to adhere, human returns to level 0 (unmitigated case).
 
 # Lockdown statistics (Montreal)
 # Following numbers (eyballed) are from CONNECT2 study
@@ -487,6 +485,10 @@ LOCKDOWN_FRACTION_REDUCTION_IN_CONTACTS_AT_SCHOOL: 1.0
 # hospitals were assumed to be a source of spread in the beginning.
 # Post-lockdown, hospitals can be assumed to be safe
 ASSUME_SAFE_HOSPITAL_DAILY_INTERACTIONS_AFTER_INTERVENTION_START: True
+
+# (WIP) /!\ tracing of symptoms is not working now
+TRACE_SELF_REPORTED_INDIVIDUAL: False
+TRACED_DAYS_FOR_SELF_REPORTED_INDIVIDUAL: 7 # days for which contacts need to be traced
 
 ##### Quarantine
 # Quarantine is the most-extreme form of intervention in which individual cuts down all its interactions and spends majority of the time at household.
@@ -525,7 +527,6 @@ QUARANTINE_DROPOUT_SELF_REPORTED_SYMPTOMS: 0.02
 # (tracing)
 QUARANTINE_DROPOUT_TRACED_POSITIVE: 0.03
 QUARANTINE_DROPOUT_TRACED_SELF_REPORTED_SYMPTOMS: 0.04
-ALL_LEVELS_DROPOUT: 0.02 # daily adherence to recommendations. Failing to adhere, human returns to level 0 (unmitigated case).
 
 # OTHERS
 # (WIP) compliance to quarantine
@@ -559,6 +560,16 @@ MANUAL_TRACING_P_CONTACT: 0.50
 MANUAL_TRACING_DELAY_AVG: 3 # days
 MANUAL_TRACING_DELAY_STD: 0.5 # days
 
+# *** TO IMPLEMENT INTERVENTION
+# intervention scheduler takes the following and triggers NAME intervention when INTERVENTION_TRIGGER >= TRIGGER_THRESHOLD
+# "DAYS_SINCE_OUTBREAK", "PERCENT_INFECTED"
+INTERVENTION_TRIGGER: "DAYS_SINCE_OUTBREAK"
+# INTERVENTION_SEQUENCE is a sequence of [TRIGGER_THRESHOLD, NAME]
+INTERVENTION_SEQUENCE: [
+          [ 0, "UNMITIGATED" ],
+          [ 5, "BDT" ]
+      ]
+
 #########################################################
 #####             Other Parameters                  #####
 #########################################################
@@ -570,5 +581,4 @@ INTERVENTION_DAY: -1 # intervention starts on these many days after COVID_START_
 LOGGING_LEVEL: "WARNING"
 
 # TRACKER
-EFFECTIVE_R_WINDOW: 10 # days
 KEEP_FULL_OBJ_COPIES: False

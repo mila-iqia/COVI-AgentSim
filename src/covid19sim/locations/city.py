@@ -17,9 +17,9 @@ from covid19sim.utils.demographics import get_humans_with_age, assign_households
 from covid19sim.log.track import Tracker
 from covid19sim.inference.heavy_jobs import batch_run_timeslot_heavy_jobs
 from covid19sim.interventions.tracing import BaseMethod
+from covid19sim.interventions.intervention_scheduler import InterventionScheduler
 from covid19sim.inference.message_utils import UIDType, UpdateMessage, RealUserIDType
 from covid19sim.distribution_normalization.dist_utils import get_rec_level_transition_matrix
-from covid19sim.interventions.tracing_utils import get_tracing_method
 from covid19sim.log.event import Event
 from covid19sim.locations.test_facility import TestFacility
 
@@ -102,7 +102,7 @@ class City:
 
         log("Computing their preferences", self.logfile)
         self._compute_preferences()
-        self.tracing_method = None
+        self.intervention_scheduler = InterventionScheduler(self, self.humans, self.conf)
 
         # GAEN summary statistics that enable the individual to determine whether they should send their info
         self.risk_change_histogram = Counter()
@@ -316,14 +316,7 @@ class City:
         # modify likelihood of meeting new people
         self.conf['_CURRENT_PREFERENTIAL_ATTACHMENT_FACTOR'] = self.conf['END_PREFERENTIAL_ATTACHMENT_FACTOR']
 
-        # modify knobs because now people are more aware
-        if self.conf['ASSUME_NO_ENVIRONMENTAL_INFECTION_AFTER_INTERVENTION_START']:
-            self.conf['_ENVIRONMENTAL_INFECTION_KNOB'] = 0.0
-
-        if self.conf['ASSUME_NO_UNKNOWN_INTERACTIONS_AFTER_INTERVENTION_START']:
-            self.conf['_MEAN_DAILY_UNKNOWN_CONTACTS'] = 0.0
-
-
+        # log these infections
         self.tracker.log_seed_infections()
 
     def have_some_humans_download_the_app(self):
@@ -487,24 +480,8 @@ class City:
                 self._initiate_infection_spread_and_modify_mixing_if_needed()
                 infections_seeded = True
 
-            # Notify humans to follow interventions on intervention day
-            if (
-                not humans_notified
-                and self.env.timestamp == self.conf.get('INTERVENTION_START_TIME')
-            ):
-                # if its a tracing method, load the class that can compute risk
-                if self.conf['RISK_MODEL'] != "":
-                    self.tracing_method = get_tracing_method(risk_model=self.conf['RISK_MODEL'], conf=self.conf)
-                    self.have_some_humans_download_the_app()
-
-                # initialize everyone from the baseline behavior
-                for human in self.humans:
-                    human.set_tracing_method(self.tracing_method)
-                    human.intervened_behavior.initialize()
-
-                humans_notified = True
-                if self.tracing_method is not None:
-                    self.tracker.track_daily_recommendation_levels(set_tracing_started_true=True)
+            # check the trigger for intervention and apply it
+            self.intervention_scheduler.check_and_apply_intervention_if_applicable()
 
             # run city testing routine, providing test results for those who need them
             # TODO: running this every hour of the day might not be correct.
@@ -560,7 +537,7 @@ class City:
             human.recover_health() # recover from cold/flu/allergies if it's time
             human.catch_other_disease_at_random() # catch cold/flu/allergies at random
             human.update_symptoms()
-            human.increment_healthy_day()
+            human.increment_day_for_effective_contacts()
             human.mobility_planner.send_social_invites()
             Event.log_daily(self.conf.get('COLLECT_LOGS'), human, human.env.timestamp)
         self.tracker.increment_day()
@@ -609,7 +586,10 @@ class City:
             )
 
         # now, batch-run the clustering + risk prediction using an ML model (if we need it)
-        if self.conf.get("RISK_MODEL") == "transformer" or "heuristic" in self.conf.get("RISK_MODEL") or self.conf.get("COLLECT_TRAINING_DATA"):
+        if (
+            self.intervention_scheduler.current_intervention.get("RISK_MODEL") in ["transformer", "heuristic"]
+            or self.conf.get("COLLECT_TRAINING_DATA")
+        ):
             self.humans = batch_run_timeslot_heavy_jobs(
                 humans=self.humans,
                 init_timestamp=self.start_time,
@@ -640,7 +620,7 @@ class City:
                 current_timestamp=self.env.timestamp,
                 risk_history_map=human.risk_history_map,
                 proba_to_risk_level_map=human.proba_to_risk_level_map,
-                intervention=human.intervention,
+                intervention=human.tracing_method,
             ))
 
             # then, generate risk level update messages for all other encounters (if needed)
@@ -651,14 +631,14 @@ class City:
                 curr_risk_history_map=human.risk_history_map,
                 proba_to_risk_level_map=human.proba_to_risk_level_map,
                 update_reason="unknown",
-                intervention=human.intervention,
+                intervention=human.tracing_method,
             ))
 
             # if we are collecting logs for debugging/drawing baseball plots, log risk here
             Event.log_risk_update(
                 self.conf['COLLECT_LOGS'],
                 human=human,
-                tracing_description=str(human.intervention),
+                tracing_description=str(human.tracing_method),
                 prev_risk_history_map=human.prev_risk_history_map,
                 risk_history_map=human.risk_history_map,
                 current_day_idx=current_day,

@@ -1571,29 +1571,46 @@ class Tracker(object):
         all_infectious_contacts = self.human_human_infection_matrix["all"]["caused_infection"].sum()
         return all_infectious_contacts/ (all_human_contacts + 1e-6) # to avoid ZeroDivisionError
 
-    def compute_effective_contacts(self, since_intervention=True):
+    def compute_effective_contacts(self):
         """
         Effective contacts are those that qualify to be within contact_condition in `Human.at`.
         These are major candidates for infectious contacts.
+
+        Returns:
+            phase_names (list):
+            effective_contacts (list):
+            healthy_effective_contacts (list):
+            scale_factor (list)
         """
-        all_effective_contacts = 0
-        all_healthy_effective_contacts = 0
-        all_healthy_days = 0
-        all_contacts = 0
-        for human in self.city.humans:
-            all_effective_contacts += human.effective_contacts
-            all_healthy_effective_contacts += human.healthy_effective_contacts
-            all_healthy_days += human.healthy_days
-            all_contacts += human.num_contacts
+        _phase_names, _scale_factors = [], []
+        _effective_contacts, _healthy_effective_contacts = [], []
+        for i, phase in enumerate(self.conf['INTERVENTION_SEQUENCE']):
+            name = phase[1]
+            _phase_names.append(name)
 
-        days = self.conf['simulation_days']
-        if since_intervention and self.conf['INTERVENTION_DAY'] >= 0 :
-            days = self.conf['simulation_days'] - self.conf['INTERVENTION_DAY']
+            all_contacts = 0
+            all_effective_contacts, all_effective_contact_days = 0, 0
+            all_healthy_effective_contacts, all_healthy_days = 0, 0
+            for human in self.city.humans:
+                all_effective_contacts += human.effective_contacts[i]
+                all_healthy_effective_contacts += human.healthy_effective_contacts[i]
+                all_healthy_days += human.healthy_days[i]
+                all_contacts += human.num_contacts[i]
+                all_effective_contact_days += human.effective_contact_days[i]
 
-        # recover GLOBAL_MOBILITY_SCALING_FACTOR
-        scale_factor = 0 if all_contacts == 0 else all_effective_contacts / all_contacts
+            _effective_contacts.append(all_effective_contacts / all_effective_contact_days)
+            _healthy_effective_contacts.append(all_healthy_effective_contacts / all_healthy_days)
 
-        return all_effective_contacts / (days * self.n_people), all_healthy_effective_contacts / all_healthy_days, scale_factor
+            # recover GLOBAL_MOBILITY_SCALING_FACTOR
+            scale_factor = 0 if all_contacts == 0 else all_effective_contacts / all_contacts
+            _scale_factors.append(scale_factor)
+
+        return {
+                "phase_names": _phase_names,
+                "effective_contacts": _effective_contacts,
+                "healthy_effective_contacts": _healthy_effective_contacts,
+                "scale_factors": _scale_factors
+            }
 
     def write_metrics(self):
         """
@@ -1759,12 +1776,23 @@ class Tracker(object):
         self.compute_test_statistics(self.logfile)
 
         log("\n######## Effective Contacts & % infected #########", self.logfile)
+        # percent infected
         p_infected = 100 * sum(self.cases_per_day) / len(self.city.humans)
-        effective_contacts, healthy_effective_contacts, scale_factor = self.compute_effective_contacts()
+        log(f"% infected: {p_infected: 2.3f}%", self.logfile)
+
+        # contacts
+        contact_statistics = self.compute_effective_contacts()
+        for i, phase_name in enumerate(contact_statistics['phase_names']):
+            effective_contacts = contact_statistics['effective_contacts'][i]
+            healthy_effective_contacts = contact_statistics["healthy_effective_contacts"][i]
+            scale_factor = contact_statistics['scale_factors'][i]
+            log(f"Phase {i}: {phase_name}", self.logfile)
+            log(f"Eff. contacts: {effective_contacts:5.3f} \t Healthy Eff. Contacts {healthy_effective_contacts:5.3f}", self.logfile)
+            if scale_factor:
+                log(f"effective contacts per contacts (GLOBAL_MOBILITY_SCALING_FACTOR): {scale_factor}", self.logfile)
+
+        # transmission
         p_transmission = self.compute_probability_of_transmission()
-        log(f"Eff. contacts: {effective_contacts:5.3f} \t Healthy Eff. Contacts {healthy_effective_contacts:5.3f} \th % infected: {p_infected: 2.3f}%", self.logfile)
-        if scale_factor:
-            log(f"effective contacts per contacts (GLOBAL_MOBILITY_SCALING_FACTOR): {scale_factor}", self.logfile)
         log(f"Probability of transmission: {p_transmission:2.3f}", self.logfile)
         log(f"Serial interval: {SIMULATION_SERIAL_INTERVAL: 5.3f}", self.logfile)
 

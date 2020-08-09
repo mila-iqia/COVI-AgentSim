@@ -173,15 +173,16 @@ class Human(BaseHuman):
         self.obs_preexisting_conditions = []  # the preexisting conditions of this human reported to the app
 
         """ Interventions """
-        self.intervention = None  # Type of contact tracing to do, e.g. Transformer or binary contact tracing or heuristic
+        self.tracing_method = None  # Type of contact tracing to do, e.g. Transformer or binary contact tracing or heuristic
         self._rec_level = -1  # Recommendation level used for Heuristic / ML methods
         self._intervention_level = -1  # Intervention level (level of behaviour modification to apply), for logging purposes
         self.recommendations_to_follow = OrderedSet()  # which recommendations this person will follow now
         self._test_recommended = False  # does the app recommend that this person should get a covid-19 test
-        self.effective_contacts = 0  # A scaled number of the high-risk contacts (under 2m for over 15 minutes) that this person had
-        self.healthy_effective_contacts = 0  # A scaled number of the high-risk contacts (under 2m for over 15 minutes) that this person had while healthy
-        self.healthy_days = 0
-        self.num_contacts = 0  # unscaled number of high-risk contacts
+        self.effective_contact_days = [0] #
+        self.effective_contacts = [0]  # A scaled number of the high-risk contacts (under 2m for over 15 minutes) that this person had
+        self.healthy_effective_contacts = [0]  # A scaled number of the high-risk contacts (under 2m for over 15 minutes) that this person had while healthy
+        self.healthy_days = [0] #
+        self.num_contacts = [0]  # unscaled number of high-risk contacts
         self.intervened_behavior = IntervenedBehavior(self, self.env, self.conf) # keeps track of behavior level of human
 
         """Risk prediction"""
@@ -789,11 +790,11 @@ class Human(BaseHuman):
         self.risk_history_map[current_day_idx] = self.baseline_risk
 
         # if you're dead, not tracing, or using the transformer you don't need to update your risk here
-        if self.is_dead or self.conf.get("RISK_MODEL") == "transformer":
+        if self.is_dead or self.intervened_behavior.intervention.get("RISK_MODEL") == "transformer":
             return
 
         # All tracing methods that are _not ML_ (heuristic, bdt1, bdt2, etc) will compute new risks here
-        risks = self.intervention.compute_risk(self, personal_mailbox, self.city.hd)
+        risks = self.tracing_method.compute_risk(self, personal_mailbox, self.city.hd)
         for day_offset, risk in enumerate(risks):
             if current_day_idx - day_offset in self.risk_history_map:
                 self.risk_history_map[current_day_idx - day_offset] = risk
@@ -810,7 +811,7 @@ class Human(BaseHuman):
             current_timestamp: the current timestamp of the simulation.
             risk_history: the risk history vector predicted by the transformer.
         """
-        assert self.conf.get("RISK_MODEL") == "transformer"
+        assert self.intervened_behavior.intervention.get("RISK_MODEL") == "transformer"
         assert len(risk_history) == self.contact_book.tracing_n_days_history, \
             "unexpected transformer history coverage; what's going on?"
         for day_offset_idx in range(len(risk_history)):  # note: idx:0 == today
@@ -885,9 +886,10 @@ class Human(BaseHuman):
         """
         Sets tracing method and initializes recommendation levels.
         """
-        self.intervention = tracing_method
-        # (delete) remove intervention_start
-        self.update_recommendations_level(intervention_start=True)
+        self.tracing_method = tracing_method
+        # tracing_start is required to initialize _heuristic_rec_level attribute
+        # TODO - clean up the above mess
+        self.update_recommendations_level(tracing_start=True)
 
     def run(self):
         """
@@ -943,9 +945,24 @@ class Human(BaseHuman):
                     continue
                 previous_activity.adjust_time(seconds=1, start=False)
 
-    def increment_healthy_day(self):
+    def increment_day_for_effective_contacts(self, reset=False):
+        """
+        Increases / resets days for compuation of effective contacts.
+
+        Args:
+            reset (bool): Appends another element to relevant attributes to mark the beginning of new phase.
+        """
+        if reset:
+            self.effective_contact_days.append(0)
+            self.effective_contacts.append(0)
+            self.healthy_effective_contacts.append(0)
+            self.healthy_days.append(0)
+            self.num_contacts.append(0)
+            return
+
+        self.effective_contact_days[-1] += 1
         if not self.state[2]: # not infectious
-            self.healthy_days += 1
+            self.healthy_days[-1] += 1
 
     ############################## MOBILITY ##################################
     @property
@@ -1058,15 +1075,8 @@ class Human(BaseHuman):
             if contact_condition:
 
                 # increment effective contacts
-                if (
-                    self.conf['RISK_MODEL'] == ""
-                    or  (
-                        self.conf['INTERVENTION_START_TIME'] is not None
-                        and self.env.timestamp >= self.conf['INTERVENTION_START_TIME']
-                    )
-                ):
-                    self._increment_effective_contacts(other_human)
-                    other_human._increment_effective_contacts(self)
+                self._increment_effective_contacts(other_human)
+                other_human._increment_effective_contacts(self)
 
                 # infection
                 infector, infectee, p_infection = None, None, 0
@@ -1091,16 +1101,17 @@ class Human(BaseHuman):
 
     def _increment_effective_contacts(self, other_human):
         """
-        Increments attributs related to count effective contacts of `self`.
+        Increments attributs related to count effective contacts of `self` in the current intervention phase.
+        New element to these attributes is added in `self.increment_day_for_effective_contacts(reset=True)`
 
         Args:
             other_human (covid19sim.human.Human): `human` with whom contact just happened
         """
-        self.num_contacts += 1
-        self.effective_contacts += self.conf.get("GLOBAL_MOBILITY_SCALING_FACTOR")
-        # if not other_human.state.index(1) in [1,2]:
+        self.num_contacts[-1] += 1
+        self.effective_contacts[-1] += self.conf.get("GLOBAL_MOBILITY_SCALING_FACTOR")
+        # if not self.state.index(1) in [1,2]:
         if not self.state[2]: # if not infectious, then you are "healthy"
-            self.healthy_effective_contacts += self.conf.get("GLOBAL_MOBILITY_SCALING_FACTOR")
+            self.healthy_effective_contacts[-1] += self.conf.get("GLOBAL_MOBILITY_SCALING_FACTOR")
 
     def exposure_array(self, date):
         """
@@ -1257,19 +1268,19 @@ class Human(BaseHuman):
     def risk_level(self):
         return min(self.proba_to_risk_level_map(self.risk), 15)
 
-    def update_recommendations_level(self, intervention_start=False):
+    def update_recommendations_level(self, tracing_start=False):
         if not self.has_app:
             self._rec_level = -1
             return
 
-        self._rec_level = self.intervention.get_recommendations_level(
+        self._rec_level = self.tracing_method.get_recommendations_level(
             self,
-            self.conf.get("REC_LEVEL_THRESHOLDS"),
-            self.conf.get("MAX_RISK_LEVEL"),
-            intervention_start=intervention_start,
+            self.intervened_behavior.intervention.get("REC_LEVEL_THRESHOLDS"),
+            self.intervened_behavior.intervention.get("MAX_RISK_LEVEL"),
+            tracing_start=tracing_start,
         )
 
-        if self.conf.get("RISK_MODEL") == "digital":
+        if self.intervened_behavior.intervention.get("RISK_MODEL") == "digital":
             assert self._rec_level == 0 or self._rec_level == 3
 
         self.intervened_behavior.trigger_intervention(reason="risk-level-update", human=self)

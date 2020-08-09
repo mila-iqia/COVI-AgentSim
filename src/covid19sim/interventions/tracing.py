@@ -40,7 +40,7 @@ class BaseMethod(object):
         pass
 
     @staticmethod
-    def get_recommendations_level(human, thresholds, max_risk_level, intervention_start=False):
+    def get_recommendations_level(human, thresholds, max_risk_level, tracing_start=False):
         """
         Converts the risk level to recommendation level.
 
@@ -48,7 +48,8 @@ class BaseMethod(object):
             human (Human): the human for which we want to compute the recommendation.
             thresholds (list|tuple): exactly 3 values to convert risk_level to rec_level
             max_risk_level (int): maximum allowed risk_level for sanity check (assert risk_level <= max_risk_level)
-
+            tracing_start (bool):
+            
         Returns:
             recommendation level (int): App recommendation level which takes on a range of 0-3.
         """
@@ -150,16 +151,16 @@ class Heuristic(BaseMethod):
             self.mild_symptoms_risk_level, self.mild_symptoms_rec_level = 5, 1
 
         else:
-            raise NotImplementedError()
+            raise NotImplementedError(f"Heauristic version: {self.version} not found.")
 
         self.risk_mapping = conf.get("RISK_MAPPING")
         self.conf = conf
 
-    def get_recommendations_level(self, human, thresholds, max_risk_level, intervention_start=False):
+    def get_recommendations_level(self, human, thresholds, max_risk_level, tracing_start=False):
         """
         /!\ Overwrites _heuristic_rec_level on the very first day of intervention; note that
         the `_heuristic_rec_level` attribute must be set in each human before calling this via
-        the `intervention_start` kwarg.
+        the `tracing_start` kwarg.
         """
         # Most of the logic for recommendations level update is given in the
         # "BaseMEthod" class (with "heuristic" tracing method). The recommendations
@@ -167,7 +168,7 @@ class Heuristic(BaseMethod):
         # received in the mailbox, which get_recommendations_level does not have
         # access to under the current API.
 
-        if intervention_start:
+        if tracing_start:
             setattr(human, "_heuristic_rec_level", 0)
         else:
             assert hasattr(human, '_heuristic_rec_level'), f"heuristic recommendation level not set for {human}"

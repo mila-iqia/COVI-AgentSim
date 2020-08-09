@@ -23,56 +23,6 @@ from covid19sim.log.monitors import EventMonitor, SimulationMonitor
 from covid19sim.inference.server_utils import DataCollectionServer
 from covid19sim.utils.utils import dump_conf, dump_tracker_data, extract_tracker_data, parse_configuration, log
 
-def _get_intervention_string(conf):
-    """
-    Consolidates all the parameters to one single string.
-
-    Args:
-        conf (dict): yaml configuration of the experiment
-
-    Returns:
-        (str): a string to identify type of intervention being run
-
-    Raises:
-        (ValueError): if RISK_MODEL is unknown
-    """
-    if conf['RISK_MODEL'] == "":
-        type_of_run = "Unmitigated"
-        if conf['INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS']:
-            type_of_run = "Lockdown"
-
-        return type_of_run
-
-    risk_model = conf['RISK_MODEL']
-    n_behavior_levels = conf['N_BEHAVIOR_LEVELS']
-    type_of_run = f"{risk_model} | N_BEHAVIOR_LEVELS:{n_behavior_levels} |"
-    if risk_model == "digital":
-        type_of_run += f" N_LEVELS_USED: 2 (1st and last) |"
-        type_of_run += f" TRACING_ORDER:{conf['TRACING_ORDER']} |"
-        type_of_run += f" TRACE_SYMPTOMS: {conf['TRACE_SYMPTOMS']} |"
-        type_of_run += f" INTERPOLATE_USING_LOCKDOWN_CONTACTS:{conf['INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS']} |"
-        type_of_run += f" MODIFY_BEHAVIOR: {conf['SHOULD_MODIFY_BEHAVIOR']}"
-        return type_of_run
-
-    if risk_model == "transformer":
-        type_of_run += f" USE_ORACLE: {conf['USE_ORACLE']}"
-        type_of_run += f" N_LEVELS_USED: {n_behavior_levels} |"
-        type_of_run += f" INTERPOLATE_USING_LOCKDOWN_CONTACTS:{conf['INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS']} |"
-        type_of_run += f" REC_LEVEL_THRESHOLDS: {conf['REC_LEVEL_THRESHOLDS']} |"
-        type_of_run += f" MAX_RISK_LEVEL: {conf['MAX_RISK_LEVEL']} |"
-        type_of_run += f" MODIFY_BEHAVIOR: {conf['SHOULD_MODIFY_BEHAVIOR']} "
-        type_of_run += f"\n RISK_MAPPING: {conf['RISK_MAPPING']}"
-        return type_of_run
-
-    if risk_model in ['heuristicv1', 'heuristicv2', 'heuristicv3']:
-        type_of_run += f" N_LEVELS_USED: {n_behavior_levels} |"
-        type_of_run += f" INTERPOLATE_USING_LOCKDOWN_CONTACTS:{conf['INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS']} |"
-        type_of_run += f" MAX_RISK_LEVEL: {conf['MAX_RISK_LEVEL']} |"
-        type_of_run += f" MODIFY_BEHAVIOR: {conf['SHOULD_MODIFY_BEHAVIOR']}"
-        return type_of_run
-
-    raise ValueError(f"Unknown risk model:{risk_model}")
-
 @hydra.main(config_path="configs/simulation/config.yaml")
 def main(conf: DictConfig):
     """
@@ -127,19 +77,7 @@ def main(conf: DictConfig):
     # ----------------------------
     # -----  Run Simulation  -----
     # ----------------------------
-    # correctness of configuration file
-    assert not conf['RISK_MODEL'] != "" or conf['INTERVENTION_DAY'] >= 0, "risk model is given, but no intervnetion day specified"
-    assert conf['N_BEHAVIOR_LEVELS'] >= 2, "At least 2 behavior levels are required to model behavior changes"
-    assert not conf['RISK_MODEL'] == "" or conf['N_BEHAVIOR_LEVELS'] == 2, "number of behavior levels (N_BEHAVIOR_LEVELS) in unmitigated or lockdown scenario should be 2"
-
-    log(f"RISK_MODEL = {conf['RISK_MODEL']}", logfile)
-    log(f"INTERVENTION_DAY = {conf['INTERVENTION_DAY']}", logfile)
     log(f"seed: {conf['seed']}", logfile)
-
-    # complete decsription of intervention
-    type_of_run = _get_intervention_string(conf)
-    conf['INTERVENTION'] = type_of_run
-    log(f"Type of run: {type_of_run}", logfile)
 
     conf["outfile"] = outfile
     city, monitors, tracker = simulate(
@@ -249,15 +187,9 @@ def simulate(
     conf['_ENVIRONMENTAL_INFECTION_KNOB'] = conf['ENVIRONMENTAL_INFECTION_KNOB']
     conf['_CURRENT_PREFERENTIAL_ATTACHMENT_FACTOR'] = conf['BEGIN_PREFERENTIAL_ATTACHMENT_FACTOR']
     start_time_offset_days = conf['COVID_START_DAY']
-    intervention_start_days = conf['INTERVENTION_DAY']
 
     # start of COVID spread
     conf['COVID_SPREAD_START_TIME'] = start_time
-
-    # start of intervention
-    conf['INTERVENTION_START_TIME'] = None
-    if intervention_start_days >= 0:
-        conf['INTERVENTION_START_TIME'] = start_time + datetime.timedelta(days=intervention_start_days)
 
     # start of simulation without COVID
     start_time -= datetime.timedelta(days=start_time_offset_days)

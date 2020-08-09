@@ -472,7 +472,11 @@ class MobilityPlanner(object):
             adult_schedule = adult.mobility_planner.get_schedule(for_kids = True)
 
             work_activity = None
-            if not self.human.does_not_work and self.env.timestamp.weekday() in self.human.working_days:
+            if (
+                not self.human.does_not_work
+                and self.env.timestamp.weekday() in self.human.working_days
+                # and not self.mobility_planner.schools_closed
+            ):
                 work = _sample_activity_duration("work", self.conf, self.rng)
                 work_activity = Activity(None, work, "work", self.human.workplace, self.human, self.env.timestamp.date())
 

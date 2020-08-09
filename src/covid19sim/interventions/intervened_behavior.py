@@ -22,11 +22,112 @@ class IntervenedBehavior(object):
         self.conf = conf
         self.rng = human.rng
 
-        assert conf['N_BEHAVIOR_LEVELS'] >= 2, "At least 2 behavior levels are required to model behavior changes"
-        assert not conf['RISK_MODEL'] == "" or conf['N_BEHAVIOR_LEVELS'] == 2, "number of behavior levels (N_BEHAVIOR_LEVELS) in unmitigated scenario should be 2"
+        # assert conf['N_BEHAVIOR_LEVELS'] >= 2, "At least 2 behavior levels are required to model behavior changes"
+        # assert not conf['RISK_MODEL'] == "" or conf['N_BEHAVIOR_LEVELS'] == 2, "number of behavior levels (N_BEHAVIOR_LEVELS) in unmitigated scenario should be 2"
 
-        # we reserve 0-index
-        self.n_behavior_levels = conf['N_BEHAVIOR_LEVELS'] + 1
+        # we reserve 0-index for a pre-virus behavior
+        # self.n_behavior_levels = conf['N_BEHAVIOR_LEVELS'] + 1
+        # self.quarantine_idx = self.n_behavior_levels - 1
+        # self.baseline_behavior_idx = 1
+        self.n_behavior_levels = 3
+        self.quarantine_idx = 2
+        self.baseline_behavior_idx = 1
+
+        #
+        self.reduction_levels = {
+            "HOUSEHOLD": np.array([0, 0, 1]),
+            "WORKPLACE": np.array([0, 0, 1]),
+            "OTHER": np.array([0, 0, 1]),
+            "SCHOOL": np.array([0, 0, 1]),
+        }
+
+
+        # start filling the reduction levels from the end
+        # reduction_levels = {
+        #     "HOUSEHOLD": np.zeros(self.n_behavior_levels),
+        #     "WORKPLACE": np.zeros(self.n_behavior_levels),
+        #     "OTHER": np.zeros(self.n_behavior_levels),
+        #     "SCHOOL": np.zeros(self.n_behavior_levels),
+        # }
+        #
+        # reduction_levels["HOUSEHOLD"][-1] = 1.0
+        # reduction_levels["WORKPLACE"][-1] = 1.0
+        # reduction_levels["OTHER"][-1] = 1.0
+        # reduction_levels["SCHOOL"][-1] = 1.0
+        # last_filled_index = self.quarantine_idx
+        #
+        # # if number of behavior levels is 2 and interpolation is with respect to lockdown contacts, it is a Lockdown scenario
+        # if conf['INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS']:
+        #     reduction_levels["HOUSEHOLD"][-2] = conf['LOCKDOWN_FRACTION_REDUCTION_IN_CONTACTS_AT_HOUSEHOLD']
+        #     reduction_levels["WORKPLACE"][-2] = conf['LOCKDOWN_FRACTION_REDUCTION_IN_CONTACTS_AT_WORKPLACE']
+        #     reduction_levels["OTHER"][-2] = conf['LOCKDOWN_FRACTION_REDUCTION_IN_CONTACTS_AT_OTHER']
+        #     reduction_levels["SCHOOL"][-2] = conf['LOCKDOWN_FRACTION_REDUCTION_IN_CONTACTS_AT_SCHOOL']
+        #     last_filled_index -= 1
+        # else:
+        #     # if its a non-tracing scenario, and lockdown is not desired, its an unmitigated scenario with 0% reduction in the first level
+        #     if conf["RISK_MODEL"] == "":
+        #         last_filled_index -= 1
+        #         assert last_filled_index == self.baseline_behavior_idx, "unmitigated scenario should not have non-zero reduction in baseline_behavior"
+        #
+        # # in a non-tracing scenario, baseline_behavior is not defined so we populate levels until baseline_behavior
+        # while last_filled_index > self.baseline_behavior_idx:
+        #     to_fill_index = last_filled_index - 1
+        #     for location_type in ["HOUSEHOLD", "WORKPLACE", "OTHER", "SCHOOL"]:
+        #         reduction_levels[location_type][to_fill_index] = reduction_levels[location_type][last_filled_index] / 2
+        #
+        #     last_filled_index = to_fill_index
+        #
+        # self.reduction_levels = reduction_levels
+
+        # start everyone at the zero level by default (unmitigated scenario i.e. no reduction in contacts)
+        self.quarantine_timestamp = None
+        self.quarantine_duration = -1
+        self.quarantine_reason = ""
+        self.set_behavior(level=0, until=None, reason="initialization")
+
+        # dropout
+        self._follow_recommendation_today = None
+        self.last_date_to_decide_dropout = None
+
+        #
+        self.intervention = {}
+
+    def _initialize(self, check_has_app=False):
+        """
+        Sets up a baseline behavior on the day intervention starts.
+
+        Args:
+            check_has_app (bool): whether to initialize a baseline beahvior only for humans with the app
+        """
+        assert self.n_behavior_levels >= 2, "with 2 behavior levels and a risk model, behavior level 1 will quarantine everyone"
+
+        reason = "intervention-start"
+        if self.intervention['RISK_MODEL'] == "":
+            self.set_behavior(level=self.baseline_behavior_idx, until=None, reason=reason)
+            return
+
+        if check_has_app and self.human.has_app:
+            warnings.warn("An unrealistic scenario - initilization of baseline behavior is only for humans with an app")
+            self.set_behavior(level=self.baseline_behavior_idx, until=None, reason=reason)
+            return
+
+        self.set_behavior(level=self.baseline_behavior_idx, until=None, reason=reason)
+
+    def update(self, intervention, check_has_app=False):
+        """
+        """
+        self.intervention = intervention
+        self.update_interaction_reduction_levels(intervention)
+        self._initialize(check_has_app)
+        self.human.increment_day_for_effective_contacts(reset=True) # increment effective contacts to the next phase
+
+    def update_interaction_reduction_levels(self, intervention):
+        """
+        """
+        assert intervention['N_BEHAVIOR_LEVELS'] >= 2, "At least 2 behavior levels are required to model behavior changes"
+
+        # we reserve 0-index for a pre-virus behavior
+        self.n_behavior_levels = intervention['N_BEHAVIOR_LEVELS'] + 1
         self.quarantine_idx = self.n_behavior_levels - 1
         self.baseline_behavior_idx = 1
 
@@ -45,17 +146,17 @@ class IntervenedBehavior(object):
         last_filled_index = self.quarantine_idx
 
         # if number of behavior levels is 2 and interpolation is with respect to lockdown contacts, it is a Lockdown scenario
-        if conf['INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS']:
-            reduction_levels["HOUSEHOLD"][-2] = conf['LOCKDOWN_FRACTION_REDUCTION_IN_CONTACTS_AT_HOUSEHOLD']
-            reduction_levels["WORKPLACE"][-2] = conf['LOCKDOWN_FRACTION_REDUCTION_IN_CONTACTS_AT_WORKPLACE']
-            reduction_levels["OTHER"][-2] = conf['LOCKDOWN_FRACTION_REDUCTION_IN_CONTACTS_AT_OTHER']
-            reduction_levels["SCHOOL"][-2] = conf['LOCKDOWN_FRACTION_REDUCTION_IN_CONTACTS_AT_SCHOOL']
+        if intervention['INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS']:
+            reduction_levels["HOUSEHOLD"][-2] = self.conf['LOCKDOWN_FRACTION_REDUCTION_IN_CONTACTS_AT_HOUSEHOLD']
+            reduction_levels["WORKPLACE"][-2] = self.conf['LOCKDOWN_FRACTION_REDUCTION_IN_CONTACTS_AT_WORKPLACE']
+            reduction_levels["OTHER"][-2] = self.conf['LOCKDOWN_FRACTION_REDUCTION_IN_CONTACTS_AT_OTHER']
+            reduction_levels["SCHOOL"][-2] = self.conf['LOCKDOWN_FRACTION_REDUCTION_IN_CONTACTS_AT_SCHOOL']
             last_filled_index -= 1
         else:
             # if its a non-tracing scenario, and lockdown is not desired, its an unmitigated scenario with 0% reduction in the first level
-            if conf["RISK_MODEL"] == "":
+            if intervention["RISK_MODEL"] == "":
                 last_filled_index -= 1
-                assert last_filled_index == self.baseline_behavior_idx, "unmitigated scenario should not have non-zero reduction in baseline_behavior"
+                assert last_filled_index == self.baseline_behavior_idx, "UNMITIGATED scenario should not have non-zero reduction in baseline_behavior"
 
         # in a non-tracing scenario, baseline_behavior is not defined so we populate levels until baseline_behavior
         while last_filled_index > self.baseline_behavior_idx:
@@ -65,45 +166,8 @@ class IntervenedBehavior(object):
 
             last_filled_index = to_fill_index
 
+        # update
         self.reduction_levels = reduction_levels
-
-        # start everyone at the zero level by default (unmitigated scenario i.e. no reduction in contacts)
-        self.quarantine_timestamp = None
-        self.quarantine_duration = -1
-        self.quarantine_reason = ""
-        self.set_behavior(level=0, until=None, reason="initialization")
-
-        # dropout
-        self._follow_recommendation_today = None
-        self.last_date_to_decide_dropout = None
-
-        #
-        self.intervention_started = False
-
-    def initialize(self, check_has_app=False):
-        """
-        Sets up a baseline behavior on the day intervention starts.
-
-        Args:
-            check_has_app (bool): whether to initialize a baseline beahvior only for humans with the app
-        """
-        assert self.conf['INTERVENTION_DAY'] >= 0, "negative intervention day and yet intialization is called."
-        assert self.n_behavior_levels >= 2, "with 2 behavior levels and a risk model, behavior level 1 will quarantine everyone"
-
-        # compute the reduction levels
-        self.update_reduction_levels()
-
-        if self.conf['RISK_MODEL'] == "":
-            self.set_behavior(level = self.baseline_behavior_idx, until = None, reason="intervention-start")
-            return
-
-        if check_has_app and self.human.has_app:
-            warnings.warn("An unrealistic scenario - initilization of baseline behavior is only for humans with an app")
-            self.set_behavior(level = self.baseline_behavior_idx, until = None, reason="intervention-start")
-            return
-
-        self.set_behavior(level = self.baseline_behavior_idx, until = None, reason="intervention-start")
-        self.intervention_started = True
 
     @property
     def follow_recommendation_today(self):
@@ -132,16 +196,15 @@ class IntervenedBehavior(object):
             (float): fraction by which unmiitgated contacts should be reduced. 1.0 means 0 interactions, and 0.0 means interactions under unmitigated scenario.
         """
         if (
-            self.intervention_started
-            and isinstance(location, (Hospital, ICU))
-            and self.conf['ASSUME_SAFE_HOSPITAL_DAILY_INTERACTIONS_AFTER_INTERVENTION_START']
+            isinstance(location, (Hospital, ICU))
+            and self.intervention['ASSUME_SAFE_HOSPITAL_DAILY_INTERACTIONS_AFTER_INTERVENTION_START']
         ):
             return 1.0
 
         # if its an experimental simulation where humans are graded based on their risk, but are not allowed to change their behavior
         if (
             self.current_behavior_reason == "risk-level-update"
-            and not self.conf['SHOULD_MODIFY_BEHAVIOR']
+            and not self.intervention['SHOULD_MODIFY_BEHAVIOR']
         ):
             return 0.0
 
@@ -241,7 +304,7 @@ class IntervenedBehavior(object):
             duration = human.time_to_test_result if result == "negative" else self.conf['QUARANTINE_DAYS_ON_POSITIVE_TEST']
             self.set_behavior(level = self.quarantine_idx, until = duration * SECONDS_PER_DAY, reason = f"{reason}-{result}")
 
-            if self.conf['QUARANTINE_HOUSEHOLD_UPON_INDIVIDUAL_POSITIVE_TEST']:
+            if self.intervention['QUARANTINE_HOUSEHOLD_UPON_INDIVIDUAL_POSITIVE_TEST']:
                 duration = human.time_to_test_result
                 duration += 0 if human.time_to_test_result == "neagative" else self.conf['QUARANTINE_DAYS_HOUSEHOLD_ON_INDIVIDUAL_POSITIVE_TEST']
                 self._quarantine_household_members(until = duration * SECONDS_PER_DAY, reason = f"{reason}-{result}")
@@ -249,18 +312,18 @@ class IntervenedBehavior(object):
         # (no app required)
         elif (
             reason == "self-diagnosed-symptoms"
-            and self.conf['QUARANTINE_SELF_REPORTED_INDIVIDUALS']
+            and self.intervention['QUARANTINE_SELF_REPORTED_INDIVIDUALS']
         ):
             duration = self.conf['QUARANTINE_DAYS_ON_SELF_REPORTED_SYMPTOMS']
             self.set_behavior(level = self.quarantine_idx, until = duration * SECONDS_PER_DAY, reason = reason)
 
-            if self.conf['QUARANTINE_HOUSEHOLD_UPON_SELF_REPORTED_INDIVIDUAL']:
+            if self.intervention['QUARANTINE_HOUSEHOLD_UPON_SELF_REPORTED_INDIVIDUAL']:
                 duration = self.conf['QUARANTINE_DAYS_HOUSEHOLD_ON_INDIVIDUAL_CONTACT_WITH_POSITIVE_TEST']
                 self._quarantine_household_members(until = duration * SECONDS_PER_DAY, reason=reason)
 
         # tracing based behavioral changes
         elif reason == "risk-level-update":
-            assert self.conf['RISK_MODEL'] != "", "risk model is empty but behavior change due to risk changes is being called."
+            assert self.intervention['RISK_MODEL'] != "", "risk model is empty but behavior change due to risk changes is being called."
             assert human.has_app, "human doesn't have an app, but the behavior changes are being called."
 
             # if its a normalization method, we check daily recommendation mappings.
@@ -276,13 +339,13 @@ class IntervenedBehavior(object):
             # in digital tracing, human is quarantined once behavior level is max
             # /!\ when tracing will be because of symptoms, a reason will need to be passed
             if (
-                self.conf['RISK_MODEL'] == "digital"
+                self.intervention['RISK_MODEL'] == "digital"
                 and behavior_level == self.n_behavior_levels
             ):
                 duration = self.conf['QUARANTINE_DAYS_ON_TRACED_POSITIVE']
                 self.set_behavior(level = behavior_level, until = duration * SECONDS_PER_DAY, reason="0-1-tracing-positive-test")
 
-                if self.conf['QUARANTINE_HOUSEHOLD_UPON_TRACED_POSITIVE_TEST']:
+                if self.intervention['QUARANTINE_HOUSEHOLD_UPON_TRACED_POSITIVE_TEST']:
                     duration = self.conf['QUARANTINE_DAYS_HOUSEHOLD_ON_TRACED_POSITIVE']
                     self._quarantine_household_members(until = duration * SECONDS_PER_DAY, reason=reason)
 
