@@ -804,7 +804,7 @@ class Tracker(object):
             current_timestamp: (datetime.datetime):
         """
         if (
-            self.conf['RISK_MODEL'] == ""
+            self.city.intervention_scheduler.current_intervention['RISK_MODEL'] == ""
             or not (self.conf['track_all'] or self.conf['track_humans'])
         ):
             return
@@ -1016,7 +1016,7 @@ class Tracker(object):
         if (from_human.name, to_human.name) in self.infection_graph:
             reason = payload['reason']
             assert reason in ['unknown', 'contact'], "improper reason for sending a message"
-            model = self.city.conf.get("RISK_MODEL")
+            model = self.city.intervention_scheduler.current_intervention.get("RISK_MODEL")
             count = self.infector_infectee_update_messages[from_human.name][to_human.name][self.env.timestamp][reason].get('count', 0)
             x = {'method':model, 'new_risk_level':payload['new_risk_level'], 'count':count+1}
             self.infector_infectee_update_messages[from_human.name][to_human.name][self.env.timestamp][reason] = x
@@ -1589,8 +1589,8 @@ class Tracker(object):
             _phase_names.append(name)
 
             all_contacts = 0
-            all_effective_contacts, all_effective_contact_days = 0, 0
-            all_healthy_effective_contacts, all_healthy_days = 0, 0
+            all_effective_contacts, all_effective_contact_days = 0, 1e-6
+            all_healthy_effective_contacts, all_healthy_days = 0, 1e-6
             for human in self.city.humans:
                 all_effective_contacts += human.effective_contacts[i]
                 all_healthy_effective_contacts += human.healthy_effective_contacts[i]
@@ -1667,22 +1667,13 @@ class Tracker(object):
             log(f"* % {key} transmission {100 * x / total :2.3f} %", self.logfile)
 
         log("\n######## SYMPTOMS #########", self.logfile)
-        self.track_symptoms(count_all=True)
-        total = self.symptoms['covid']['n']
-        tmp_s = {}
-        for s,v in self.symptoms['covid'].items():
-            if s == 'n':
-                continue
-            tmp_s[s] = v/total
-        print_dict("P(symptoms = x | covid patient), where x is", tmp_s, is_sorted="desc", top_k=10, logfile=self.logfile)
+        x = self.compute_symptom_prevalence()['symptom_prevalence']
 
-        total = self.symptoms['all']['n']
-        tmp_s = {}
-        for s,v in self.symptoms['covid'].items():
-            if s == 'n':
-                continue
-            tmp_s[s] = v/total
-        print_dict("P(symptoms = x | human had some sickness e.g. cold, flu, allergies, covid), where x is", tmp_s, is_sorted="desc", top_k=10, logfile=self.logfile)
+        TITLE = "P(symptoms = x | covid patient), where x is"
+        print_dict(TITLE, x['covid'], is_sorted="desc", top_k=10, logfile=self.logfile)
+
+        TITLE = "P(symptoms = x | human had some sickness e.g. cold, flu, allergies, covid), where x is"
+        print_dict(TITLE, x['all'], is_sorted="desc", top_k=10, logfile=self.logfile)
 
         log("\n######## CONTACT PATTERNS #########", self.logfile)
         if not (self.conf['track_all'] or self.conf['track_mixing']):

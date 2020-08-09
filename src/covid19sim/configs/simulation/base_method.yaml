@@ -19,6 +19,9 @@ USE_INFERENCE_SERVER: False
 INFERENCE_SERVER_ADDRESS: null
 
 # (tracing) default parameters
+REC_LEVEL_THRESHOLDS: [1, 3, 5]
+MAX_RISK_LEVEL: 15
+
 # NOTE: HAS_APP params are only used when an app based INTERVENTION = "Tracing" is used
 APP_UPTAKE: -1.0
 TRACING_N_DAYS_HISTORY: 14

@@ -1,18 +1,15 @@
-# risk model
+# risk model (initialized explicitly in interventions.utils.get_intervention_conf)
 RISK_MODEL : "digital"
 
-# behavior level specifications
-N_BEHAVIOR_LEVELS: 4
-INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS: True
+# behavior specifications
 SHOULD_MODIFY_BEHAVIOR : True
 
 # tracing parameters
 TRACING_ORDER : 2
-TRACE_SYMPTOMS : False
+TRACE_SELF_REPORTED_INDIVIDUAL: False
 
-# behavior modification
-REC_LEVEL_THRESHOLDS: [0, 0, 1] # Binary
-MAX_RISK_LEVEL: 15
-
-# when to start (overwrite it if needs to be run from other day)
-INTERVENTION_DAY: 0
+# sequence
+INTERVENTION_TRIGGER: "DAYS_SINCE_OUTBREAK"
+INTERVENTION_SEQUENCE: [
+  [ 0, "BDT" ]
+]

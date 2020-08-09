@@ -466,7 +466,7 @@ def parse_configuration(conf):
             conf["start_time"], "%Y-%m-%d %H:%M:%S"
         )
 
-    assert "RISK_MODEL" in conf and conf["RISK_MODEL"] is not None
+    # assert "RISK_MODEL" in conf and conf["RISK_MODEL"] is not None
 
     try:
         conf["GIT_COMMIT_HASH"] = get_git_revision_hash()

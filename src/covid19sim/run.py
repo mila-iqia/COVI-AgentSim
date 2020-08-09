@@ -199,6 +199,18 @@ def simulate(
     conf['simulation_days'] += conf['COVID_START_DAY']
     simulation_days = conf['simulation_days']
 
+    # (preserve old behavior of intervention day)
+    intervention_day = conf.get("INTERVENTION_DAY", 0)
+    if intervention_day > 0:
+        assert len(conf['INTERVENTION_SEQUENCE']) == 1, "INTERVENTION_DAY specified for a sequence of multiple interventions"
+        assert conf['INTERVENTION_SEQUENCE'][0][1] != "UNMITIGATED", "INTERVENTION_DAY specified for a UNMITIGATED"
+        log(f"Inserting UNMITIGATED before INTERVENTION_DAY:{intervention_day}", logfile)
+        x = [intervention_day, conf['INTERVENTION_SEQUENCE'][0][1]]
+        conf['INTERVENTION_SEQUENCE'] = [ [0, "UNMITIGATED"], x ]
+
+        log(f"Overwriting INTERVENTION_TRIGGER to DAYS_SINCE_OUTBREAK", logfile)
+        conf['INTERVENTION_TRIGGER'] = "DAYS_SINCE_OUTBREAK"
+
     logging.root.setLevel(getattr(logging, conf["LOGGING_LEVEL"].upper()))
 
     rng = np.random.RandomState(seed)

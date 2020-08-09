@@ -31,7 +31,7 @@ def get_intervention_conf(conf, name=None):
         "ASSUME_SAFE_HOSPITAL_DAILY_INTERACTIONS_AFTER_INTERVENTION_START": False
     }
 
-    # unmitigated scenario  only requires behavior modifications
+    # unmitigated scenario
     if (
         name is None
         or name == ""
@@ -62,10 +62,15 @@ def get_intervention_conf(conf, name=None):
         })
         return base_parameters
 
+    # load base parameters for tracing
+    base_parameters.update({
+        # (behavior specification)
+        "N_BEHAVIOR_LEVELS": conf['N_BEHAVIOR_LEVELS'],
+        "INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS": conf['INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS'],
+    })
+
     if name == "POST_LOCKDOWN_NO_TRACING":
         base_parameters.update({
-            "N_BEHAVIOR_LEVELS": conf['N_BEHAVIOR_LEVELS'],
-            "INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS": conf['INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS'],
             "SHOULD_MODIFY_BEHAVIOR": True,
             "APP_REQUIRED": False
         })
@@ -73,16 +78,14 @@ def get_intervention_conf(conf, name=None):
 
     # load base parameters for tracing
     base_parameters.update({
-        # (behavior specification)
-        "N_BEHAVIOR_LEVELS": conf['N_BEHAVIOR_LEVELS'],
-        "INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS": conf['INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS'],
         "SHOULD_MODIFY_BEHAVIOR": conf['SHOULD_MODIFY_BEHAVIOR'],
-
-        # risk levels and other common parameters
+        # risk /rec levels
         "REC_LEVEL_THRESHOLDS" : conf['REC_LEVEL_THRESHOLDS'],
         "MAX_RISK_LEVEL": conf["MAX_RISK_LEVEL"],
         "RISK_MAPPING": conf["RISK_MAPPING"],
+        #
         "TRACING_N_DAYS_HISTORY": conf["TRACING_N_DAYS_HISTORY"],
+        #
         "APP_UPTAKE": conf["APP_UPTAKE"]
     })
 
@@ -95,6 +98,8 @@ def get_intervention_conf(conf, name=None):
                     "TRACING_ORDER": conf['TRACING_ORDER'],
                     "TRACE_SELF_REPORTED_INDIVIDUAL": conf['TRACE_SELF_REPORTED_INDIVIDUAL'],
                     "TRACED_DAYS_FOR_SELF_REPORTED_INDIVIDUAL": conf["TRACED_DAYS_FOR_SELF_REPORTED_INDIVIDUAL"],
+                    # (recommendation levels)
+                    "REC_LEVEL_THRESHOLDS": [0, 0, 1],
                     # (app flag)
                     "APP_REQUIRED": True
                 })
@@ -105,7 +110,7 @@ def get_intervention_conf(conf, name=None):
                     # (risk model)
                     "RISK_MODEL": "heuristic",
                     # (heuristic parameters)
-                    "VERSION": conf['HEURISTIC_VERSION'],
+                    "HEURISTIC_VERSION": conf['HEURISTIC_VERSION'],
                     # (app flag)
                     "APP_REQUIRED": True
                 })
@@ -116,10 +121,21 @@ def get_intervention_conf(conf, name=None):
                     # (risk model)
                     "RISK_MODEL": "transformer",
                     # (transformer parameters)
-                    "USE_ORACLE": conf['USE_ORACLE'],
+                    "USE_ORACLE": False,
                     # (app flag)
                     "APP_REQUIRED": True
                 })
+
+    if name == "ORACLE":
+        base_parameters.update({
+                    # (risk model)
+                    "RISK_MODEL": "transformer",
+                    # (transformer parameters)
+                    "USE_ORACLE": True,
+                    # (app flag)
+                    "APP_REQUIRED": True
+                })
+
         return base_parameters
 
     raise ValueError(f"Unknown intervention name:{name}")

@@ -460,18 +460,20 @@ P_MALE: 0.45
 
 #
 ASSUME_NO_ENVIRONMENTAL_INFECTION_AFTER_INTERVENTION_START: True
-ASSUME_NO_UNKNOWN_INTERACTIONS_AFTER_INTERVENTION_START: False
+ASSUME_NO_UNKNOWN_INTERACTIONS_AFTER_INTERVENTION_START: True
 ASSUME_SCHOOL_CLOSURE_DURING_LOCKDOWN: True
 
 # Number of levels for behavior stratification. Levels will be 0, 1, ..., N_BEHAVIOR_LEVELS
-# Level 0 is assumed to be unmitigated behavior with pre-confinement level of contacts.
-# Unmitigated - RISK_MODEL = "" and N_BEHAVIOR_LEVELS = 2
-# Lockdown - RISK_MODEL = "" and N_BEHAVIOR_LEVELS = 2  and INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS: True
+# Level 0 is assumed to be unmitigated behavior with pre-confinement level of contacts. It is not used.
+# We use levels 1 to N_BEHAVIOR_LEVELS and reserve level 0 for dropout.
+# Intervention can be specified via INTERVENTION_SEQUENCE.
+# Look at `covid19sim.interventions.get_intervention_conf` for how UNMITIGATED and LOCKDOWN are loaded.
 # binary Tracing - RISK_MODEL = "digital" and N_BEHAVIOR_LEVELS > 1.
-# NOTE: [IMPORTANT] even though only 2 levels are used, the baseline behavior is based on N_BEHAVIOR_LEVELS
 # While comparing binary vs non-binary tracing, use same N_BEHAVIOR_LEVELS. It's upto the method to use levels.
-N_BEHAVIOR_LEVELS: 2
-INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS: False
+# these behavior levels are only for POST-LOCKDOWN scnearios.
+# /!\ only 4 will work for now.
+N_BEHAVIOR_LEVELS: 4
+INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS: True
 ALL_LEVELS_DROPOUT: 0.02 # daily adherence to recommendations. Failing to adhere, human returns to level 0 (unmitigated case).
 
 # Lockdown statistics (Montreal)
@@ -566,8 +568,7 @@ MANUAL_TRACING_DELAY_STD: 0.5 # days
 INTERVENTION_TRIGGER: "DAYS_SINCE_OUTBREAK"
 # INTERVENTION_SEQUENCE is a sequence of [TRIGGER_THRESHOLD, NAME]
 INTERVENTION_SEQUENCE: [
-          [ 0, "UNMITIGATED" ],
-          [ 5, "BDT" ]
+          [ 0, "UNMITIGATED" ]
       ]
 
 #########################################################

@@ -22,62 +22,12 @@ class IntervenedBehavior(object):
         self.conf = conf
         self.rng = human.rng
 
-        # assert conf['N_BEHAVIOR_LEVELS'] >= 2, "At least 2 behavior levels are required to model behavior changes"
-        # assert not conf['RISK_MODEL'] == "" or conf['N_BEHAVIOR_LEVELS'] == 2, "number of behavior levels (N_BEHAVIOR_LEVELS) in unmitigated scenario should be 2"
-
-        # we reserve 0-index for a pre-virus behavior
-        # self.n_behavior_levels = conf['N_BEHAVIOR_LEVELS'] + 1
-        # self.quarantine_idx = self.n_behavior_levels - 1
-        # self.baseline_behavior_idx = 1
-        self.n_behavior_levels = 3
-        self.quarantine_idx = 2
-        self.baseline_behavior_idx = 1
+        self.n_behavior_levels = 0
+        self.quarantine_idx = -1
+        self.baseline_behavior_idx = -1
 
         #
-        self.reduction_levels = {
-            "HOUSEHOLD": np.array([0, 0, 1]),
-            "WORKPLACE": np.array([0, 0, 1]),
-            "OTHER": np.array([0, 0, 1]),
-            "SCHOOL": np.array([0, 0, 1]),
-        }
-
-
-        # start filling the reduction levels from the end
-        # reduction_levels = {
-        #     "HOUSEHOLD": np.zeros(self.n_behavior_levels),
-        #     "WORKPLACE": np.zeros(self.n_behavior_levels),
-        #     "OTHER": np.zeros(self.n_behavior_levels),
-        #     "SCHOOL": np.zeros(self.n_behavior_levels),
-        # }
-        #
-        # reduction_levels["HOUSEHOLD"][-1] = 1.0
-        # reduction_levels["WORKPLACE"][-1] = 1.0
-        # reduction_levels["OTHER"][-1] = 1.0
-        # reduction_levels["SCHOOL"][-1] = 1.0
-        # last_filled_index = self.quarantine_idx
-        #
-        # # if number of behavior levels is 2 and interpolation is with respect to lockdown contacts, it is a Lockdown scenario
-        # if conf['INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS']:
-        #     reduction_levels["HOUSEHOLD"][-2] = conf['LOCKDOWN_FRACTION_REDUCTION_IN_CONTACTS_AT_HOUSEHOLD']
-        #     reduction_levels["WORKPLACE"][-2] = conf['LOCKDOWN_FRACTION_REDUCTION_IN_CONTACTS_AT_WORKPLACE']
-        #     reduction_levels["OTHER"][-2] = conf['LOCKDOWN_FRACTION_REDUCTION_IN_CONTACTS_AT_OTHER']
-        #     reduction_levels["SCHOOL"][-2] = conf['LOCKDOWN_FRACTION_REDUCTION_IN_CONTACTS_AT_SCHOOL']
-        #     last_filled_index -= 1
-        # else:
-        #     # if its a non-tracing scenario, and lockdown is not desired, its an unmitigated scenario with 0% reduction in the first level
-        #     if conf["RISK_MODEL"] == "":
-        #         last_filled_index -= 1
-        #         assert last_filled_index == self.baseline_behavior_idx, "unmitigated scenario should not have non-zero reduction in baseline_behavior"
-        #
-        # # in a non-tracing scenario, baseline_behavior is not defined so we populate levels until baseline_behavior
-        # while last_filled_index > self.baseline_behavior_idx:
-        #     to_fill_index = last_filled_index - 1
-        #     for location_type in ["HOUSEHOLD", "WORKPLACE", "OTHER", "SCHOOL"]:
-        #         reduction_levels[location_type][to_fill_index] = reduction_levels[location_type][last_filled_index] / 2
-        #
-        #     last_filled_index = to_fill_index
-        #
-        # self.reduction_levels = reduction_levels
+        self.reduction_levels = {}
 
         # start everyone at the zero level by default (unmitigated scenario i.e. no reduction in contacts)
         self.quarantine_timestamp = None
@@ -154,7 +104,7 @@ class IntervenedBehavior(object):
             last_filled_index -= 1
         else:
             # if its a non-tracing scenario, and lockdown is not desired, its an unmitigated scenario with 0% reduction in the first level
-            if intervention["RISK_MODEL"] == "":
+            if intervention["NAME"] == "UNMITIGATED":
                 last_filled_index -= 1
                 assert last_filled_index == self.baseline_behavior_idx, "UNMITIGATED scenario should not have non-zero reduction in baseline_behavior"
 

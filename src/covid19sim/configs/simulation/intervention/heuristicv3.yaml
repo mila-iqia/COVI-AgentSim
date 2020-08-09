@@ -1,16 +1,12 @@
-# risk model
-RISK_MODEL : "heuristicv3"
+# risk model (initialized explicitly in interventions.utils.get_intervention_conf)
+RISK_MODEL : "heuristic"
+HEURISTIC_VERSION: 3
 
-# behavior level specifications
-N_BEHAVIOR_LEVELS: 4
-INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS: True
+# behavior specifications
 SHOULD_MODIFY_BEHAVIOR : True
 
-# tracing parameters (not used in heuristic)
-TRACING_ORDER : 1
-
-# behavior modification (not used in heuristic)
-REC_LEVEL_THRESHOLDS: [0, 0, 1] # Binary
-
-# when to start (overwrite it if needs to be run from other day)
-INTERVENTION_DAY: 0
+# sequence
+INTERVENTION_TRIGGER: "DAYS_SINCE_OUTBREAK"
+INTERVENTION_SEQUENCE: [
+  [ 0, "HEURISTIC" ]
+]
