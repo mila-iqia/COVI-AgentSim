@@ -109,10 +109,7 @@ class BinaryDigitalTracing(BaseMethod):
         for order, count in positive_test_counts.items():
             t += count
 
-        if t > 0:
-            risk = 1.0
-        else:
-            risk = 0.0
+        risk = 1.0 * (t > 0)
 
         return risk if isinstance(risk, list) else [risk]
 
