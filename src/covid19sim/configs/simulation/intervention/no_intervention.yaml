@@ -1,0 +1,16 @@
+# risk model
+RISK_MODEL : ""
+
+# behavior level specifications
+N_BEHAVIOR_LEVELS: 2
+INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS: False
+SHOULD_MODIFY_BEHAVIOR : True
+
+# tracing parameters (not used in unmitigated)
+TRACING_ORDER : 1
+
+# behavior modification (not used in unmitigated)
+REC_LEVEL_THRESHOLDS: []
+
+# when to start (unmitigated requires this to be negative)
+INTERVENTION_DAY: -1
