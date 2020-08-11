@@ -281,15 +281,6 @@ class Human(BaseHuman):
                                                 EXTREMELY_SEVERE in self.symptoms)
 
     @property
-    def is_quarantined(self):
-        """
-        Returns True if the human currently has a quarantine recommendation to follow, otherwise False.
-        Returns:
-            bool: True if quarantining, False if not.
-        """
-        return any([isinstance(rec, Quarantine) for rec in self.recommendations_to_follow])
-
-    @property
     def viral_load(self):
         """
         Calculates the elapsed time since infection, returning this person's current viral load
@@ -500,7 +491,6 @@ class Human(BaseHuman):
         # log
         self.city.tracker.track_tested_results(self)
         Event.log_test(self.conf.get('COLLECT_LOGS'), self, self.test_time)
-
 
     def check_if_needs_covid_test(self, at_hospital=False):
         """
