@@ -14,7 +14,7 @@ USE_INFERENCE_SERVER: False
 # -------------------------
 base_dir: $HOME/covi-simulator/results/no_self_test # if outdir is not provided, runs will be stored in base_dir/${tracing_method}
 code_loc: $HOME/covi-simulator/src/covid19sim/
-use_tmpdir: false
+use_tmpdir: False
 weights_dir: /home/mweiss10/scratch/weights
 
 # -------------------------------------
@@ -28,7 +28,8 @@ n_people: 1000
 P_CAREFUL_PERSON: 0.6
 simulation_days: 30
 test_capacity: 0.005
-tune: true
+tune: True
+self_test: False
 #KEEP_FULL_OBJ_COPIES: True 
 #COLLECT_LOGS: True
 GLOBAL_MOBILITY_SCALING_FACTOR: 0.3
