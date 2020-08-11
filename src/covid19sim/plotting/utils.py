@@ -506,7 +506,7 @@ def get_all_false(filename=None, data=None, normalized=False):
 #         return sum(data["cases_per_day"][5:]) / total_infected
 #     return 0.
 
-def get_proxy_r(data):
+def get_proxy_r(data, verbose=True):
     infection_chain = data["infection_monitor"]
     init_infected = {k for k, v in data["humans_state"].items() if v[0] == "E"}
     all_recovered = set()
@@ -526,12 +526,12 @@ def get_proxy_r(data):
         if node in recovered_infectors:
 
             infectees += dfs_tree.out_degree(node)
-
-    print(f"len(recovered): {len(all_recovered)}")
-    print(f"len(dfsnodes): {len(dfs_tree.nodes)}")
-    print(f"infectors: {len(recovered_infectors)}")
-    print(f"infectees: {infectees}")
-    print("-------------------------")
+    if verbose:
+        print(f"len(recovered): {len(all_recovered)}")
+        print(f"len(dfsnodes): {len(dfs_tree.nodes)}")
+        print(f"infectors: {len(recovered_infectors)}")
+        print(f"infectees: {infectees}")
+        print("-------------------------")
 
     return infectees / len(recovered_infectors)
 
