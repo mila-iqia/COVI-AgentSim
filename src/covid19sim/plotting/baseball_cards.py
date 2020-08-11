@@ -332,13 +332,13 @@ def get_events_history(all_human_events: List[Dict],
             timestamp_encounters.append(0)
             timestamp_risky_encounters.append(0)
             timestamp_encounters_contamination_encounters.append(0)
-
         while events_i < len(all_human_events) and \
                 all_human_events[events_i]["time"] <= timestamp:
             event = all_human_events[events_i]
             if event["event_type"] == Event.encounter:
                 events["Encounters"][-1] += 1
                 other_human = event["payload"]["unobserved"]["human2"]
+                other_human['human_id'] = ":".join([other_human['human_id'].split(":")[0], str(int(other_human['human_id'].split(":")[-1]) + 1)]) # TODO DELETE THIS ITS FIXED UPSTREAM
                 if contamination_encounters[other_human["human_id"]][-1] == 0:
                     if other_human["is_infectious"]:
                         risky_encounters[other_human["human_id"]][-1] += 1
