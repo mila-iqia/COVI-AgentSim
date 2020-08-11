@@ -139,7 +139,7 @@ class DebugDataLoader():
                 human_obj = Human(*[getattr(human_dump, k) for k in human_constr_args])
                 # override all attributes except the blacklist/dummy ones
                 for attr_name in human_obj.__dict__.keys():
-                    if attr_name != "env" and attr_name not in human_dump.blacklisted_attribs:
+                    if attr_name != "env" and attr_name not in human_dump.blacklisted_attribs and attr_name != "known_connections" and attr_name != "intervened_behavior":
                         setattr(human_obj, attr_name, getattr(human_dump, attr_name))
                 human_obj.name = human_dump.name
                 humans[human_name] = human_obj
@@ -332,13 +332,13 @@ def get_events_history(all_human_events: List[Dict],
             timestamp_encounters.append(0)
             timestamp_risky_encounters.append(0)
             timestamp_encounters_contamination_encounters.append(0)
-
         while events_i < len(all_human_events) and \
                 all_human_events[events_i]["time"] <= timestamp:
             event = all_human_events[events_i]
             if event["event_type"] == Event.encounter:
                 events["Encounters"][-1] += 1
                 other_human = event["payload"]["unobserved"]["human2"]
+                other_human['human_id'] = ":".join([other_human['human_id'].split(":")[0], str(int(other_human['human_id'].split(":")[-1]) + 1)]) # TODO DELETE THIS ITS FIXED UPSTREAM
                 if contamination_encounters[other_human["human_id"]][-1] == 0:
                     if other_human["is_infectious"]:
                         risky_encounters[other_human["human_id"]][-1] += 1
@@ -587,11 +587,11 @@ def generate_human_centric_plots(human_backups, humans_events, nb_humans_in_sim,
         fig.add_subplot(4, 4, 2)
         plot_risks(risks, timestamps)
 
-        fig.add_subplot(4, 4, 3)
-        plot_locations(locations, sorted_all_locations, timestamps)
+        #fig.add_subplot(4, 4, 3)
+        #plot_locations(locations, sorted_all_locations, timestamps)
 
-        fig.add_subplot(4, 4, 4)
-        plot_mapping("Location legend", LOCATION_TO_COLOR)
+        #fig.add_subplot(4, 4, 4)
+        #plot_mapping("Location legend", LOCATION_TO_COLOR)
 
         # Second row (columns 2+)
         fig.add_subplot(4, 4, 6)
@@ -639,10 +639,10 @@ def generate_human_centric_plots(human_backups, humans_events, nb_humans_in_sim,
             ["asymptomatic", human.is_asymptomatic],
             ["gets +/++ sick",
              str([human.can_get_really_sick, human.can_get_extremely_sick])],
-            ["E/M/S/W mins",
-             str([human.avg_exercise_time, human.avg_misc_time,
-                  human.avg_shopping_time, human.avg_working_minutes])],
-            ["infected by:", "\n".join(", ".join([str(i) for i in e]) for e in infectee_events)],
+            #["E/M/S/W mins",
+             #str([human.avg_exercise_time, human.avg_misc_time,
+            #      human.avg_shopping_time, human.avg_working_minutes])],
+            #["infected by:", "\n".join(", ".join([str(i) for i in e]) for e in infectee_events)],
         ]
 
         if len(infector_events) == 1:

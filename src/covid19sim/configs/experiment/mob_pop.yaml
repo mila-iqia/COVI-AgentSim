@@ -1,0 +1,65 @@
+# ----------------------------
+# -----  Infrastructure  -----
+# ----------------------------
+cpus: 4
+env_name: covid
+infra: beluga
+mem: 32
+n_search: -1 # -1 figures out the size of cartesian product for you
+time: "'02:50:00'"
+USE_INFERENCE_SERVER: False
+
+# -------------------------
+# -----  Directories  -----
+# -------------------------
+base_dir: $HOME/simulator/results/mob_pop_sick # if outdir is not provided, runs will be stored in base_dir/${tracing_method}
+code_loc: $HOME/simulator/src/covid19sim/
+use_tmpdir: false
+weights_dir: /home/mweiss10/scratch/weights
+
+# -------------------------------------
+# -----  Simulation Fixed Params  -----
+# -------------------------------------
+COLD_CONTAGIOUSNESS: 0
+DROPOUT_RATE: 0.02
+INTERVENTION_DAY: -1
+P_CAREFUL_PERSON: 0.6
+simulation_days: 30
+test_capacity: 0.005
+tune: true
+
+# --------------------------------------
+# -----  Sampling Parametrization  -----
+# --------------------------------------
+tracing_method:
+  sample: cartesian
+  from:
+    - no_intervention
+
+
+n_people:
+  sample: cartesian
+  from:
+    - 5000
+    - 10000
+
+init_percent_sick:
+  sample: cartesian
+  from:
+    - 0.002
+    - 0.005
+
+GLOBAL_MOBILITY_SCALING_FACTOR:
+  sample: cartesian
+  from:
+    - 0.2
+    - 0.15
+    - 0.10
+    - 0.05
+    - 0.02
+seed:
+  sample: cartesian
+  from:
+    - 5000
+    - 5001
+    - 5002
