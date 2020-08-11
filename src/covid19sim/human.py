@@ -19,7 +19,7 @@ from covid19sim.locations.hospital import Hospital, ICU
 from covid19sim.log.event import Event
 from collections import deque
 
-from covid19sim.utils.utils import _normalize_scores, draw_random_discrete_gaussian, filter_open, filter_queue_max
+from covid19sim.utils.utils import _normalize_scores, draw_random_discrete_gaussian, filter_open, filter_queue_max, calculate_average_infectiousness
 from covid19sim.epidemiology.human_properties import may_develop_severe_illness, _get_inflammatory_disease_level,\
     _get_preexisting_conditions, _get_random_sex, get_carefulness, get_age_bin
 from covid19sim.epidemiology.viral_load import compute_covid_properties, viral_load_for_day
@@ -1151,6 +1151,22 @@ class Human(BaseHuman):
                 result.append(result[-1])
         assert len(result) == expected_history_len
         return result[::-1]  # index 0 = latest day
+
+    def fill_infectiousness_history_map(self, current_day):
+        """
+        Populates past infectiousness values in the map.
+
+        Args:
+            current_day (int): day for which it infectiousness value need to be updated.
+        """
+        if (
+            self.conf['RISK_MODEL'] == "transformer"
+            or self.conf['COLLECT_TRAINING_DATA']
+        ):
+            # /!\ Only used for oracle and transformer
+            if current_day not in self.infectiousness_history_map:
+                # contrarily to risk, infectiousness only changes once a day (human behavior has no impact)
+                self.infectiousness_history_map[current_day] = calculate_average_infectiousness(self)
 
     ############################## RISK PREDICTION #################################
     def _exchange_app_messages(self, other_human, distance, duration):

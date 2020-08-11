@@ -12,7 +12,7 @@ import typing
 from collections import defaultdict, Counter
 from orderedset import OrderedSet
 
-from covid19sim.utils.utils import compute_distance, _get_random_area, relativefreq2absolutefreq, _convert_bin_5s_to_bin_10s, calculate_average_infectiousness, log
+from covid19sim.utils.utils import compute_distance, _get_random_area, relativefreq2absolutefreq, _convert_bin_5s_to_bin_10s, log
 from covid19sim.utils.demographics import get_humans_with_age, assign_households_to_humans, create_locations_and_assign_workplace_to_humans
 from covid19sim.log.track import Tracker
 from covid19sim.inference.heavy_jobs import batch_run_timeslot_heavy_jobs
@@ -527,6 +527,7 @@ class City:
                     human.check_if_needs_covid_test()  # humans can decide to get tested whenever
                     human.check_covid_symptom_start()
                     human.check_covid_recovery()
+                    human.fill_infectiousness_history_map(current_day)
                     alive_humans.append(human)
 
             # now, run app-related stuff (risk assessment, message preparation, ...)
@@ -618,7 +619,11 @@ class City:
             )
 
         # now, batch-run the clustering + risk prediction using an ML model (if we need it)
-        if self.conf.get("RISK_MODEL") == "transformer" or "heuristic" in self.conf.get("RISK_MODEL") or self.conf.get("COLLECT_TRAINING_DATA"):
+        if (
+            self.conf.get("RISK_MODEL") == "transformer"
+            or "heuristic" in self.conf.get("RISK_MODEL")
+            or self.conf.get("COLLECT_TRAINING_DATA")
+        ):
             self.humans = batch_run_timeslot_heavy_jobs(
                 humans=self.humans,
                 init_timestamp=self.start_time,
