@@ -8,11 +8,12 @@
 
 module purge
 module load python/3.8.2
-source ~/{env_name}/bin/activate
+
+conda activate covid
 
 export PYTHONUNBUFFERED=1
 
-# where is simulator's code? default: $HOME/simulator/src/covid19sim/
+# where is simulator's code? default: $HOME/covi-simulator/src/covid19sim/
 cd {code_loc}
 
 echo $(pwd)

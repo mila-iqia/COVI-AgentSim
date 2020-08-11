@@ -600,7 +600,7 @@ def fill_beluga_template(template_str, conf):
             Path(slurm_log).parent.mkdir(parents=True)
     env_name = conf.get("env_name", "covid")
     weights = conf.get("weights")
-    code_loc = conf.get("code_loc", str(Path(home) / "simulator/src/covid19sim/"))
+    code_loc = conf.get("code_loc", str(Path(home) / "covi-simulator/src/covid19sim/"))
     ipc = conf.get("ipc", {"frontend": "", "backend": ""})
     use_transformer = conf.get("use_transformer", True)
 
