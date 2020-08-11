@@ -23,6 +23,55 @@ from covid19sim.log.monitors import EventMonitor, SimulationMonitor
 from covid19sim.inference.server_utils import DataCollectionServer
 from covid19sim.utils.utils import dump_conf, dump_tracker_data, extract_tracker_data, parse_configuration, log
 
+def _get_intervention_string(conf):
+    """
+    Consolidates all the parameters to one single string.
+
+    Args:
+        conf (dict): yaml configuration of the experiment
+
+    Returns:
+        (str): a string to identify type of intervention being run
+
+    Raises:
+        (ValueError): if RISK_MODEL is unknown
+    """
+    if conf['RISK_MODEL'] == "":
+        type_of_run = "Unmitigated"
+        if conf['INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS']:
+            type_of_run = "Lockdown"
+
+        return type_of_run
+
+    risk_model = conf['RISK_MODEL']
+    n_behavior_levels = conf['N_BEHAVIOR_LEVELS']
+    type_of_run = f"{risk_model} | N_BEHAVIOR_LEVELS:{n_behavior_levels} |"
+    if risk_model == "digital":
+        type_of_run += f" N_LEVELS_USED: 2 (1st and last) |"
+        type_of_run += f" TRACING_ORDER:{conf['TRACING_ORDER']} |"
+        type_of_run += f" TRACE_SYMPTOMS: {conf['TRACE_SYMPTOMS']} |"
+        type_of_run += f" INTERPOLATE_USING_LOCKDOWN_CONTACTS:{conf['INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS']} |"
+        type_of_run += f" MODIFY_BEHAVIOR: {conf['SHOULD_MODIFY_BEHAVIOR']}"
+        return type_of_run
+
+    if risk_model == "transformer":
+        type_of_run += f" USE_ORACLE: {conf['USE_ORACLE']}"
+        type_of_run += f" N_LEVELS_USED: {n_behavior_levels} |"
+        type_of_run += f" INTERPOLATE_USING_LOCKDOWN_CONTACTS:{conf['INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS']} |"
+        type_of_run += f" REC_LEVEL_THRESHOLDS: {conf['REC_LEVEL_THRESHOLDS']} |"
+        type_of_run += f" MAX_RISK_LEVEL: {conf['MAX_RISK_LEVEL']} |"
+        type_of_run += f" MODIFY_BEHAVIOR: {conf['SHOULD_MODIFY_BEHAVIOR']} "
+        type_of_run += f"\n RISK_MAPPING: {conf['RISK_MAPPING']}"
+        return type_of_run
+
+    if risk_model in ['heuristicv1', 'heuristicv2', 'heuristicv3']:
+        type_of_run += f" N_LEVELS_USED: {n_behavior_levels} |"
+        type_of_run += f" INTERPOLATE_USING_LOCKDOWN_CONTACTS:{conf['INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS']} |"
+        type_of_run += f" MAX_RISK_LEVEL: {conf['MAX_RISK_LEVEL']} |"
+        type_of_run += f" MODIFY_BEHAVIOR: {conf['SHOULD_MODIFY_BEHAVIOR']}"
+        return type_of_run
+
+    raise ValueError(f"Unknown risk model:{risk_model}")
 
 @hydra.main(config_path="configs/simulation/config.yaml")
 def main(conf: DictConfig):
@@ -67,7 +116,6 @@ def main(conf: DictConfig):
 
     os.makedirs(conf["outdir"])
     logfile = f"{conf['outdir']}/log_{timenow}.txt"
-
     outfile = os.path.join(conf["outdir"], "data")
 
     # ---------------------------------
@@ -84,17 +132,14 @@ def main(conf: DictConfig):
     assert conf['N_BEHAVIOR_LEVELS'] >= 2, "At least 2 behavior levels are required to model behavior changes"
     assert not conf['RISK_MODEL'] == "" or conf['N_BEHAVIOR_LEVELS'] == 2, "number of behavior levels (N_BEHAVIOR_LEVELS) in unmitigated or lockdown scenario should be 2"
 
-    if conf['RISK_MODEL'] == "":
-        type_of_run = "Unmitigated"
-        if conf['INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS']:
-            type_of_run = "Lockdown"
-    else:
-        type_of_run = f"{conf['RISK_MODEL']} with {conf['N_BEHAVIOR_LEVELS']} behavior levels (Only relevant ones are used)"
-
     log(f"RISK_MODEL = {conf['RISK_MODEL']}", logfile)
     log(f"INTERVENTION_DAY = {conf['INTERVENTION_DAY']}", logfile)
-    log(f"Type of run: {type_of_run}", logfile)
     log(f"seed: {conf['seed']}", logfile)
+
+    # complete decsription of intervention
+    type_of_run = _get_intervention_string(conf)
+    conf['INTERVENTION'] = type_of_run
+    log(f"Type of run: {type_of_run}", logfile)
 
     conf["outfile"] = outfile
     city, monitors, tracker = simulate(
@@ -104,18 +149,22 @@ def main(conf: DictConfig):
         simulation_days=conf["simulation_days"],
         outfile=conf["outfile"],
         out_chunk_size=conf["out_chunk_size"],
-        print_progress=conf["print_progress"],
         seed=conf["seed"],
         conf=conf,
         logfile=logfile
     )
 
+    # write the full configuration file along with git commit hash
     dump_conf(city.conf, "{}/full_configuration.yaml".format(city.conf["outdir"]))
+
+    # log the simulation statistics
     tracker.write_metrics()
 
+    # if COLLECT_LOGS is True
     monitors[0].dump()
     monitors[0].join_iothread()
 
+    # (baseball-cards) write full simulation data
     if hasattr(city, "tracker") and \
             hasattr(city.tracker, "collection_server") and \
             isinstance(city.tracker.collection_server, DataCollectionServer) and \
@@ -123,6 +172,7 @@ def main(conf: DictConfig):
         city.tracker.collection_server.stop_gracefully()
         city.tracker.collection_server.join()
 
+    # if COLLECT_TRAINING_DATA is true
     if not conf["tune"]:
         # ----------------------------------------------
         # -----  Not Tune: Collect Training Data   -----
@@ -152,7 +202,6 @@ def simulate(
     simulation_days: int = 30,
     outfile: typing.Optional[typing.AnyStr] = None,
     out_chunk_size: typing.Optional[int] = None,
-    print_progress: bool = False,
     seed: int = 0,
     other_monitors: typing.Optional[typing.List] = None,
     conf: typing.Optional[typing.Dict] = None,
@@ -181,6 +230,7 @@ def simulate(
 
     if other_monitors is None:
         other_monitors = []
+
     if conf is None:
         conf = {}
 
@@ -190,7 +240,6 @@ def simulate(
     conf["simulation_days"] = simulation_days
     conf["outfile"] = outfile
     conf["out_chunk_size"] = out_chunk_size
-    conf["print_progress"] = print_progress
     conf["seed"] = seed
     conf["other_monitors"] = other_monitors
     conf['logfile'] = logfile

@@ -194,6 +194,7 @@ class Tracker(object):
 
         self.contact_attributes = {
             "SEIR": np.zeros((4, 4)),
+            "SEIR_snapshots": [],
             "SI": {
                 "p_infection": 0,
                 "viral_load": 0,
@@ -976,7 +977,8 @@ class Tracker(object):
                 if percent_infected - last_percent_infected > SNAPSHOT_PERCENT_INFECTED_THRESHOLD:
                     ngm = _compute_ngm(self.next_generation_matrix)
                     self.next_generation_matrix['snapshots'].append((percent_infected, ngm))
-
+                    # R = np.linalg.eigvals(ngm).max().real
+                    # print(f"% infected: {percent_infected: 2.2f} R:{R: 2.2f}")
                 # for serial interval
                 # Keep records of the infection so that serial intervals can be registered when symptoms appear
                 # Note: We need a bidirectional record (to/from), because we can't anticipate which (to or from) will manifest symptoms first
@@ -1189,9 +1191,10 @@ class Tracker(object):
         self.transition_probability[type_of_day][from_location][to_location] += 1
 
         # proportion of day spend in activity.name broken down by age groups
-        n, avg = self.day_fraction_spent_activity[type_of_day][current_activity.name]
+        name = current_activity.name if "supervised" not in current_activity.prepend_name else f"supervised-{current_activity.name}"
+        n, avg = self.day_fraction_spent_activity[type_of_day][name]
         m = current_activity.duration / SECONDS_PER_DAY
-        self.day_fraction_spent_activity[type_of_day][current_activity.name] = (n+1, (n*avg + m)/(n+1))
+        self.day_fraction_spent_activity[type_of_day][name] = (n+1, (n*avg + m)/(n+1))
 
         # histogram of number of people with whom socialization happens
         if next_activity.name == "socialize":
@@ -1370,8 +1373,9 @@ class Tracker(object):
                 Dp = self.contact_duration_profile[interaction_type][location_type]
                 Dp[duration_category] = Dp.get(duration_category, 0) + 1
 
-            if human1.location != human1.household:
-                self.n_outside_daily_contacts += 1
+            # outside daily contacts
+            self.n_outside_daily_contacts += 1 if human1_type_of_place != "HOUSEHOLD" else 0
+            self.n_outside_daily_contacts += 1 if human2_type_of_place != "HOUSEHOLD" else 0
 
     @check_if_tracking
     def track_contact_attributes(self, human1, human2, infection_attrs=[]):
@@ -1390,6 +1394,8 @@ class Tracker(object):
         self.contact_attributes["SEIR"][state1, state2] += 1
         self.contact_attributes["SEIR"][state2, state1] += 1
 
+        # snapshot
+        # TODO
         if len(infection_attrs) > 0:
             success, p_infection, viral_load, infectiousness = infection_attrs
             self.contact_attributes['SI']['p_infection'] += p_infection
@@ -1501,7 +1507,7 @@ class Tracker(object):
             aic[key]['unique_humans'] = len(val['humans'])
 
         # add a final NGM
-        percent_infected = sum(self.cases_per_day) / self.n_people
+        percent_infected = 100 * sum(self.cases_per_day) / self.n_people
         ngm = _compute_ngm(self.next_generation_matrix)
         self.next_generation_matrix['snapshots'].append((percent_infected, ngm))
 
@@ -1669,10 +1675,10 @@ class Tracker(object):
         str_to_print += f"mean: {group_sizes.mean():2.2f} | "
         str_to_print += f"std: {group_sizes.stddev(): 2.2f} | "
 
-        min_size = 0 if len(group_sizes) else group_sizes.minimum()
+        min_size = 0 if len(group_sizes) == 0 else group_sizes.minimum()
         str_to_print += f"min: {min_size: 2.2f} | "
 
-        max_size = 0 if len(group_sizes) else group_sizes.maximum()
+        max_size = 0 if len(group_sizes) == 0 else group_sizes.maximum()
         str_to_print += f"max: {max_size: 2.2f} | "
         log(str_to_print, self.logfile)
 
@@ -1703,10 +1709,10 @@ class Tracker(object):
                 str_to_print += f"mean: {metrics.mean()/SECONDS_PER_HOUR: 2.2f} | "
                 str_to_print += f"std: {metrics.stddev()/SECONDS_PER_HOUR: 2.2f} | "
 
-                min_value = 0 if len(group_sizes) else metrics.minimum()
+                min_value = 0 if len(group_sizes) == 0 else metrics.minimum()
                 str_to_print += f"min: {min_value / SECONDS_PER_HOUR : 2.2f} | "
 
-                max_value = 0 if len(group_sizes) else metrics.maximum()
+                max_value = 0 if len(group_sizes) == 0 else metrics.maximum()
                 str_to_print += f"max: {max_value / SECONDS_PER_HOUR : 2.2f} | "
 
                 log(str_to_print, self.logfile)
@@ -1715,7 +1721,6 @@ class Tracker(object):
 
         log("\n######## Effective Contacts & % infected #########", self.logfile)
         p_infected = 100 * sum(self.cases_per_day) / len(self.city.humans)
-
         effective_contacts, healthy_effective_contacts, scale_factor = self.compute_effective_contacts()
         p_transmission = self.compute_probability_of_transmission()
         log(f"Eff. contacts: {effective_contacts:5.3f} \t Healthy Eff. Contacts {healthy_effective_contacts:5.3f} \th % infected: {p_infected: 2.3f}%", self.logfile)

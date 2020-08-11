@@ -1097,6 +1097,7 @@ class Human(BaseHuman):
             # Conditions met for possible infection (https://www.cdc.gov/coronavirus/2019-ncov/hcp/guidance-risk-assesment-hcp.html)
             if contact_condition:
 
+                # increment effective contacts
                 if (
                     self.conf['RISK_MODEL'] == ""
                     or  (
@@ -1104,11 +1105,10 @@ class Human(BaseHuman):
                         and self.env.timestamp >= self.conf['INTERVENTION_START_TIME']
                     )
                 ):
-                    self.num_contacts += 1
-                    self.effective_contacts += self.conf.get("GLOBAL_MOBILITY_SCALING_FACTOR")
-                    if not self.state[2]: # if not infectious, then you are "healthy"
-                        self.healthy_effective_contacts += self.conf.get("GLOBAL_MOBILITY_SCALING_FACTOR")
+                    self._increment_effective_contacts(other_human)
+                    other_human._increment_effective_contacts(self)
 
+                # infection
                 infector, infectee, p_infection = None, None, 0
                 if scale_factor_passed:
                     infector, infectee, p_infection = self.check_covid_contagion(other_human, t_near, h1_msg, h2_msg)
@@ -1128,6 +1128,19 @@ class Human(BaseHuman):
                     p_infection=p_infection,
                     time=self.env.timestamp
                 )
+
+    def _increment_effective_contacts(self, other_human):
+        """
+        Increments attributs related to count effective contacts of `self`.
+
+        Args:
+            other_human (covid19sim.human.Human): `human` with whom contact just happened
+        """
+        self.num_contacts += 1
+        self.effective_contacts += self.conf.get("GLOBAL_MOBILITY_SCALING_FACTOR")
+        # if not other_human.state.index(1) in [1,2]:
+        if not self.state[2]: # if not infectious, then you are "healthy"
+            self.healthy_effective_contacts += self.conf.get("GLOBAL_MOBILITY_SCALING_FACTOR")
 
     def exposure_array(self, date):
         """

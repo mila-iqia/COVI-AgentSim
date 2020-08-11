@@ -1,0 +1,16 @@
+# risk model
+RISK_MODEL : "heuristicv1"
+
+# behavior level specifications
+N_BEHAVIOR_LEVELS: 4
+INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS: True
+SHOULD_MODIFY_BEHAVIOR : True
+
+# tracing parameters (not used in heuristic)
+TRACING_ORDER : 1
+
+# behavior modification (not used in heuristic)
+REC_LEVEL_THRESHOLDS: []
+
+# when to start (overwrite it if needs to be run from other day)
+INTERVENTION_DAY: 0
