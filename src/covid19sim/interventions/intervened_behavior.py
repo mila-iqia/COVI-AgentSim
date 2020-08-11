@@ -191,6 +191,7 @@ class IntervenedBehavior(object):
         self.quarantine_timestamp = None
         self.quarantine_duration = -1
         self.quarantine_reason = ""
+        self.human._test_recommended = False
         self.set_behavior(level = self.baseline_behavior_idx, until = None, reason = "unset-quarantine")
         # if self.human.name == "human:7":
         #     print(self.env.timestamp, "unsetting quarantine", self.human)

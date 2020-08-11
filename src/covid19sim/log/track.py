@@ -1414,8 +1414,8 @@ class Tracker(object):
                 Dp[duration_category] = Dp.get(duration_category, 0) + 1
 
             # outside daily contacts
-            self.n_outside_daily_contacts += 1 if human1_type_of_place != "HOUSEHOLD" else 0
-            self.n_outside_daily_contacts += 1 if human2_type_of_place != "HOUSEHOLD" else 0
+            self.n_outside_daily_contacts += 0.5 if human1_type_of_place != "HOUSEHOLD" else 0
+            self.n_outside_daily_contacts += 0.5 if human2_type_of_place != "HOUSEHOLD" else 0
 
     @check_if_tracking
     def track_contact_attributes(self, human1, human2, infection_attrs=[]):
