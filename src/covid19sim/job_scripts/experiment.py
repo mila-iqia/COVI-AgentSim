@@ -104,10 +104,10 @@ def normalize(opts):
     with run_yaml.open("r") as f:
         run_conf = yaml.safe_load(f)
 
-    opts["tracing_method"] = get_model(run_conf)
+    opts["intervention"] = get_model(run_conf)
     if "TRANSFORMER_EXP_PATH" in run_conf:
         weights = Path(run_conf["TRANSFORMER_EXP_PATH"]).name
-        opts["tracing_method"] += f">{weights}"
+        opts["intervention"] += f">{weights}"
     return opts
 
 
@@ -129,7 +129,7 @@ def check_conf(conf):
             if v["sample"] == "cartesian" and not isinstance(v["from"], list):
                 raise RandomSearchError(f"'from' field for {k} should be a list")
 
-        if k == "tracing_method":
+        if k == "intervention":
             if isinstance(v, dict) and "sample" in v:
                 tracing_methods += v["from"]
             else:
@@ -824,9 +824,9 @@ def main(conf: DictConfig) -> None:
 
             tracing_dict = None
             tracing_name = None
-            if isinstance(opts.get("tracing_method", ""), dict):
-                tracing_dict = first_value(opts["tracing_method"])
-                tracing_name = first_key(opts["tracing_method"])
+            if isinstance(opts.get("intervention", ""), dict):
+                tracing_dict = first_value(opts["intervention"])
+                tracing_name = first_key(opts["intervention"])
 
             use_transformer = (
                 tracing_dict is not None
@@ -863,7 +863,7 @@ def main(conf: DictConfig) -> None:
                         opts[k] = v
 
                 # set true tracing_method
-                opts["tracing_method"] = tracing_name
+                opts["intervention"] = tracing_name
 
             # -----------------------------------------------------
             # -----  Inference Server / Transformer Exp Path  -----
@@ -884,7 +884,7 @@ def main(conf: DictConfig) -> None:
             # ----------------------------------------------
             if not opts.get("outdir"):
                 opts["outdir"] = Path(opts["base_dir"]).resolve()
-                opts["outdir"] = opts["outdir"] / (opts["tracing_method"] + extension)
+                opts["outdir"] = opts["outdir"] / (opts["intervention"] + extension)
                 opts["outdir"] = str(opts["outdir"])
 
             opts["outdir"] = opts["outdir"]
@@ -899,13 +899,13 @@ def main(conf: DictConfig) -> None:
                 opts["outdir"] = "$SLURM_TMPDIR"
 
             # overwrite intervention day if no_intervention
-            if opts["tracing_method"] == "no_intervention":
+            if opts["intervention"] == "no_intervention":
                 opts["INTERVENTION_DAY"] = -1
 
             # convert params to string command-line args
             exclude = RANDOM_SEARCH_SPECIFIC_PARAMS
             if opts.get("normalization_folder"):
-                exclude.add("tracing_method")
+                exclude.add("intervention")
             hydra_args = get_hydra_args(opts, exclude)
             if opts.get("test_capacity") is not None:
                 hydra_args += f" TEST_TYPES.lab.capacity={opts.get('test_capacity')}"

@@ -12,16 +12,15 @@ USE_INFERENCE_SERVER: False
 # -------------------------
 # -----  Directories  -----
 # -------------------------
-base_dir: $HOME/simulator/results/pareto_front # if outdir is not provided, runs will be stored in base_dir/${tracing_method}
+base_dir: $HOME/simulator/results/heuristic_rev_5 # if outdir is not provided, runs will be stored in base_dir/${tracing_method}
 code_loc: $HOME/simulator/src/covid19sim/
 use_tmpdir: false
-weights_dir: $SCRATCH/weights
+weights_dir: /scratch/mweiss10/weights #$SCRATCH/weights
 
 # -------------------------------------
 # -----  Simulation Fixed Params  -----
 # -------------------------------------
 COLD_CONTAGIOUSNESS: 0
-DROPOUT_RATE: 0.02
 init_fraction_sick: 0.005
 INTERVENTION_DAY: 5
 n_people: 1000
@@ -33,30 +32,26 @@ tune: true
 # --------------------------------------
 # -----  Sampling Parametrization  -----
 # --------------------------------------
-tracing_method:
+intervention:
   sample: cartesian
   from:
-          #- no_intervention
-      # - heuristicv1
-      #- heuristicv3
+    - no_intervention
+    - heuristicv1
+    - oracle:
+        weights: ROSY-FOREST-704
     - bdt1
+    - bdt2
+    - post-lockdown-no_tracing
 
-APP_UPTAKE: 0.8415 # 60%
-
-GLOBAL_MOBILITY_SCALING_FACTOR:
+APP_UPTAKE:
   sample: cartesian
   from:
-    - 0.01
-    - 0.1
-    - 0.2
-    - 0.3
-    - 0.4
-    - 0.5
-    - 0.6
-    - 0.7
-    - 0.8 
-    - 0.9 
-    - 1.0
+    # - 0.0150 # 1%
+    # - 0.4215 # 30%
+    - 0.5618 # 40%
+    - 0.8415 # 60%
+    - 0.9831 # 70%
+    # - -1     # 100%
 
 seed:
   sample: cartesian

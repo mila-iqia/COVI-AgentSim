@@ -422,6 +422,7 @@ P_TEST_SEVERE: 1.0
 GET_TESTED_SYMPTOMS_CHECKED_IN_HOSPITAL: ["mild", "moderate", "severe", "fever", "chills", "gastro", "diarrhea", "cough", "fatigue", "trouble_breathing", "loss_of_taste", "light_trouble_breathing", "moderate_trouble_breathing", "heavy_trouble_breathing" ]
 GET_TESTED_SYMPTOMS_CHECKED_BY_SELF: ["cough", "fever", "trouble_breathing", "chills", "loss_of_taste", ""]
 
+SELF_TEST: True # If true, people take themselves to get tested based on their symptoms. If False, tests only happen to hospicalized people or from app recommendations
 # /!\ (no-source)
 TEST_REPORT_PROB: 0.8  # the probability that a user with the app will report their test result
 
