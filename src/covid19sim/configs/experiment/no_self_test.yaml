@@ -2,7 +2,7 @@
 # -----  Infrastructure  -----
 # ----------------------------
 cpus: 4
-env_name:
+env_name: covid
 infra: beluga
 mem: 8
 n_search: -1 # -1 figures out the size of cartesian product for you
@@ -46,11 +46,8 @@ tracing_method:
 APP_UPTAKE:
   sample: cartesian
   from:
-    # - 0.0150 # 1%
     - 0.4215 # 30%
-    #- 0.5618 # 40%
     - 0.8415 # 60%
-      #- 0.9831 # 70%
     - -1     # 100%
 
 seed:
@@ -59,5 +56,3 @@ seed:
     - 5000
     - 5001
     - 5002
-      # - 5003
-      #- 5004
