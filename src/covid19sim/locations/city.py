@@ -76,8 +76,9 @@ class City:
         self.tracker = Tracker(env, self, conf, logfile)
 
         self.test_type_preference = list(zip(*sorted(conf.get("TEST_TYPES").items(), key=lambda x:x[1]['preference'])))[0]
+        assert len(self.test_type_preference) == 1, "WARNING: Do not know how to handle multiple test types"
         self.max_capacity_per_test_type = {
-            test_type: max([int(conf['TEST_TYPES'][test_type]['capacity'] * self.n_people), 1])
+            test_type: max(int(self.conf['PROPORTION_LAB_TEST_PER_DAY'] * self.n_people), 1)
             for test_type in self.test_type_preference
         }
 
@@ -486,7 +487,7 @@ class City:
             ):
                 log("\n *** ****** *** ****** *** INITIATING INTERVENTION *** *** ****** *** ******\n", self.logfile)
                 log(self.conf['INTERVENTION'], self.logfile)
-                
+
                 # if its a tracing method, load the class that can compute risk
                 if self.conf['RISK_MODEL'] != "":
                     self.tracing_method = get_tracing_method(risk_model=self.conf['RISK_MODEL'], conf=self.conf)

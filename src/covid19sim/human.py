@@ -416,7 +416,7 @@ class Human(BaseHuman):
         reported_symptoms = [s for s in self.rolling_all_symptoms[0] if self.rng.random() < self.carefulness]
         self.rolling_all_reported_symptoms.appendleft(reported_symptoms)
         self.city.tracker.track_symptoms(self)
-        
+
     @property
     def test_result(self):
         if self.test_time is None:
@@ -483,9 +483,9 @@ class Human(BaseHuman):
         self.hidden_test_result = unobserved_result
         self._will_report_test_result = self.rng.random() < self.conf.get("TEST_REPORT_PROB")
         if isinstance(self.location, (Hospital, ICU)):
-            self.time_to_test_result = self.conf['TEST_TYPES'][test_type]['time_to_result']['in-patient']
+            self.time_to_test_result = self.conf['DAYS_TO_LAB_TEST_RESULT_IN_PATIENT']
         else:
-            self.time_to_test_result = self.conf['TEST_TYPES'][test_type]['time_to_result']['out-patient']
+            self.time_to_test_result = self.conf['DAYS_TO_LAB_TEST_RESULT_OUT_PATIENT']
         self.test_result_validated = self.test_type == "lab"
 
         self._test_results.appendleft((

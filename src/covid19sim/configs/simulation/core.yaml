@@ -396,6 +396,10 @@ MEAN_DAILY_INTERACTION_FOR_AGE_GROUP: [
 
 # TESTING
 # capacity is proportion of population tested per day
+PROPORTION_LAB_TEST_PER_DAY: 0.001
+DAYS_TO_LAB_TEST_RESULT_IN_PATIENT: 0.33
+DAYS_TO_LAB_TEST_RESULT_OUT_PATIENT: 2.0
+
 TEST_TYPES: { "lab": {
         "capacity": 0.001,  # ! /!\ This is now a proportion of population, not an absolute (int) value
         "time_to_result": {
