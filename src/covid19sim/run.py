@@ -133,7 +133,6 @@ def main(conf: DictConfig):
     # correctness of configuration file
     assert not conf['RISK_MODEL'] != "" or conf['INTERVENTION_DAY'] >= 0, "risk model is given, but no intervnetion day specified"
     assert conf['N_BEHAVIOR_LEVELS'] >= 2, "At least 2 behavior levels are required to model behavior changes"
-    # assert not conf['RISK_MODEL'] == "" or conf['N_BEHAVIOR_LEVELS'] == 2, "number of behavior levels (N_BEHAVIOR_LEVELS) in unmitigated or lockdown scenario should be 2"
 
     log(f"RISK_MODEL = {conf['RISK_MODEL']}", logfile)
     log(f"INTERVENTION_DAY = {conf['INTERVENTION_DAY']}", logfile)

@@ -23,7 +23,6 @@ class IntervenedBehavior(object):
         self.rng = human.rng
 
         assert conf['N_BEHAVIOR_LEVELS'] >= 2, "At least 2 behavior levels are required to model behavior changes"
-        # assert not conf['RISK_MODEL'] == "" or conf['N_BEHAVIOR_LEVELS'] == 2, "number of behavior levels (N_BEHAVIOR_LEVELS) in unmitigated scenario should be 2"
 
         # we reserve 0-index
         self.n_behavior_levels = conf['N_BEHAVIOR_LEVELS'] + 1
@@ -89,10 +88,6 @@ class IntervenedBehavior(object):
         """
         assert self.conf['INTERVENTION_DAY'] >= 0, "negative intervention day and yet intialization is called."
         assert self.n_behavior_levels >= 2, "with 2 behavior levels and a risk model, behavior level 1 will quarantine everyone"
-
-        # if self.conf['RISK_MODEL'] == "":
-        #     self.set_behavior(level = self.baseline_behavior_idx, until = None, reason="intervention-start")
-        #     return
 
         if check_has_app and self.human.has_app:
             warnings.warn("An unrealistic scenario - initilization of baseline behavior is only for humans with an app")
