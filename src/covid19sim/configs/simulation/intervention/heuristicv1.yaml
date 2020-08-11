@@ -10,7 +10,7 @@ SHOULD_MODIFY_BEHAVIOR : True
 TRACING_ORDER : 1
 
 # behavior modification (not used in heuristic)
-REC_LEVEL_THRESHOLDS: [0, 0, 1] # Binary
+REC_LEVEL_THRESHOLDS: []
 
 # when to start (overwrite it if needs to be run from other day)
 INTERVENTION_DAY: 0

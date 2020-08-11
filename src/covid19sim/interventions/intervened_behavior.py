@@ -270,15 +270,18 @@ class IntervenedBehavior(object):
                 intervention_level = self.rng.choice(4, p=probas)
             human._intervention_level = intervention_level
 
+            # map rec levels to intervention levels by shifting them by 1 (because 1st index is reserved for no reduction)
             behavior_level = intervention_level + 1
+
             # in digital tracing, human is quarantined once behavior level is max
             # /!\ when tracing will be because of symptoms, a reason will need to be passed
             if (
                 self.conf['RISK_MODEL'] == "digital"
-                and behavior_level == self.n_behavior_levels
+                and behavior_level == self.quarantine_idx
             ):
+                reason = "0-1-tracing-positive-test"
                 duration = self.conf['QUARANTINE_DAYS_ON_TRACED_POSITIVE']
-                self.set_behavior(level = behavior_level, until = duration * SECONDS_PER_DAY, reason="0-1-tracing-positive-test")
+                self.set_behavior(level = self.quarantine_idx, until = duration * SECONDS_PER_DAY, reason=reason)
 
                 if self.conf['QUARANTINE_HOUSEHOLD_UPON_TRACED_POSITIVE_TEST']:
                     duration = self.conf['QUARANTINE_DAYS_HOUSEHOLD_ON_TRACED_POSITIVE']
@@ -286,9 +289,9 @@ class IntervenedBehavior(object):
 
             # TODO - trigger quarantine for self-reported symptoms in digital tracing
 
-            # in alternative methods, max level is still quarantine, but human can be put back in lower levels due to re-evaluation.
+            # in alternative methods, max level is still quarantine, but human can be put in lower levels due to re-evaluation.
             self.set_behavior(level = behavior_level, until = SECONDS_PER_DAY, reason=reason)
-            assert 0 < self.behavior_level <= self.n_behavior_levels, f"behavior_level: {self.behavior_level} can't be outside the range [1,{self.n_behavior_levels}]"
+            assert 0 < self.behavior_level < self.n_behavior_levels, f"behavior_level: {self.behavior_level} can't be outside the range [1,{self.n_behavior_levels}]. Total number of levels:{self.n_behavior_levels}"
 
         else:
             raise ValueError(f"Unknown reason for intervention:{reason}")

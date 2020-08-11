@@ -398,7 +398,7 @@ MEAN_DAILY_INTERACTION_FOR_AGE_GROUP: [
 # capacity is proportion of population tested per day
 PROPORTION_LAB_TEST_PER_DAY: 0.001
 DAYS_TO_LAB_TEST_RESULT_IN_PATIENT: 0.33
-DAYS_TO_LAB_TEST_RESULT_OUT_PATIENT: 2.0
+DAYS_TO_LAB_TEST_RESULT_OUT_PATIENT: 2.0 # verbal communication with H&A (find-source)
 
 TEST_TYPES: { "lab": {
         "capacity": 0.001,  # ! /!\ This is now a proportion of population, not an absolute (int) value
@@ -421,6 +421,8 @@ P_TEST_SEVERE: 1.0
 
 GET_TESTED_SYMPTOMS_CHECKED_IN_HOSPITAL: ["mild", "moderate", "severe", "fever", "chills", "gastro", "diarrhea", "cough", "fatigue", "trouble_breathing", "loss_of_taste", "light_trouble_breathing", "moderate_trouble_breathing", "heavy_trouble_breathing" ]
 GET_TESTED_SYMPTOMS_CHECKED_BY_SELF: ["cough", "fever", "trouble_breathing", "chills", "loss_of_taste", ""]
+
+# /!\ (no-source)
 TEST_REPORT_PROB: 0.8  # the probability that a user with the app will report their test result
 
 

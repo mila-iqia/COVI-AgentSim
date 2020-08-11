@@ -397,7 +397,15 @@ def extract_tracker_data(tracker, conf):
     data['risk_precision'] = tracker.risk_precision_daily
     data['human_monitor'] = tracker.human_monitor # 20MB
     data['infector_infectee_update_messages'] = tracker.infector_infectee_update_messages
-    data['risk_attributes'] = tracker.risk_attributes # 524MB (heavy)
+    data['risk_attributes'] = tracker.risk_attributes
+    data['outside_daily_contacts'] = tracker.outside_daily_contacts
+    data['test_monitor'] = tracker.test_monitor
+    data['effective_contacts_since_intervention'], data['healthy_effective_contacts_since_intervention'], _ \
+        = tracker.compute_effective_contacts(since_intervention=True)
+    data['effective_contacts_all_days'], data['healthy_effective_contacts_all_days'], _ = \
+        tracker.compute_effective_contacts(since_intervention=False)
+    data['humans_state'] = tracker.humans_state
+    data['risk_attributes'] = tracker.risk_attributes # 524MB
     data['humans_state'] = tracker.humans_state #0.4MB
     data['humans_rec_level'] = tracker.humans_rec_level
     data['humans_intervention_level'] = tracker.humans_intervention_level
@@ -505,6 +513,12 @@ def dumps_conf(
 
     if "start_time" in copy_conf:
         copy_conf["start_time"] = copy_conf["start_time"].strftime("%Y-%m-%d %H:%M:%S")
+    if "COVID_SPREAD_START_TIME" in copy_conf:
+        copy_conf["COVID_SPREAD_START_TIME"] = str(copy_conf.get("COVID_SPREAD_START_TIME", datetime.datetime.min))#.strftime("%Y-%m-%d %H:%M:%S")
+    if "SIMULATION_START_TIME" in copy_conf:
+        copy_conf["SIMULATION_START_TIME"] = str(copy_conf.get("SIMULATION_START_TIME", datetime.datetime.min))#.strftime("%Y-%m-%d %H:%M:%S")
+    if "INTERVENTION_START_TIME" in copy_conf:
+        copy_conf["INTERVENTION_START_TIME"] = str(copy_conf.get("INTERVENTION_START_TIME", datetime.datetime.min))#.strftime("%Y-%m-%d %H:%M:%S")
 
     return copy_conf
 
@@ -679,7 +693,7 @@ class DummyHuman:
         # "dummy" attributes replace the original attribute by a less-complex one
         self.dummy_attribs = [
             "env", "location", "household", "workplace", "last_date",
-            "recommendations_to_follow",  # the old states contained in behaviors might break serialization
+            "recommendations_to_follow", "recovered_timestamp", "intervened_behavior"# the old states contained in behaviors might break serialization
         ]
         self.env = DummyEnv(human.env)
         self.location = human.location.name if human.location else ""
@@ -689,7 +703,7 @@ class DummyHuman:
         self.recommendations_to_follow = [str(rec) for rec in human.recommendations_to_follow]
         # "blacklisted" attributes are overriden with `None`, no matter their original value
         self.blacklisted_attribs = [
-            "conf", "city", "my_history", "visits", "proba_to_risk_level_map",  "mobility_planner"
+            "conf", "city", "known_contacts", "my_history", "visits", "proba_to_risk_level_map",  "mobility_planner"
         ]
         for attr_name in self.blacklisted_attribs:
             setattr(self, attr_name, None)
@@ -715,39 +729,7 @@ def copy_obj_except_env(obj):
     assert isinstance(obj, (Human, Location, City))
     if isinstance(obj, Human):
         return DummyHuman(obj)
-    elif isinstance(obj, Location):
-        # Replace the Location's attributes with values that can be deepcopied
-        # while still keeping the vital information
-        backup_location_attribs = (obj.env, obj.humans, obj.infectious_human,
-                                   obj.users, obj._env)
-
-        obj.env = DummyEnv(obj.env)  # should replicate the env's behavior perfectly
-        obj.infectious_human = obj.infectious_human()  # fct broken by changing obj.humans at next line
-        obj.humans = OrderedSet([h.name for h in obj.humans])  # this will break lookups, but still provide basic info
-        obj._env = DummyEnv(obj._env)  # should replicate the env's behavior perfectly
-        obj.users = None
-
-        if isinstance(obj, Household):
-            backup_residents = obj.residents
-            obj.residents = [h.name for h in obj.residents]  # will break lookups, but still provide basic info
-        elif isinstance(obj, Hospital):
-            # The hospical contains a sublocation which must be deepcopied too
-            backup_icu = obj.icu
-            obj.icu = copy_obj_except_env(obj.icu)
-
-        # Copy the Location
-        obj_copy = copy.deepcopy(obj)
-
-        # Restore the Location's original attributes
-        obj.env, obj.humans, obj.infectious_human, obj.users, obj._env = backup_location_attribs
-        # TODO: Re-add (removed due to Prateek's mobility changes which removed Household obj)
-
-        if isinstance(obj, Household):
-            obj.residents = backup_residents
-        elif isinstance(obj, Hospital):
-            obj.icu = backup_icu
-
-    else:  # isinstance(obj, City):
+    else:
         raise NotImplementedError
 
 
