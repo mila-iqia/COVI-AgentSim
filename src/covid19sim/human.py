@@ -33,11 +33,9 @@ from covid19sim.inference.message_utils import ContactBook, exchange_encounter_m
 from covid19sim.utils.visits import Visits
 from covid19sim.native._native import BaseHuman
 from covid19sim.interventions.intervened_behavior import IntervenedBehavior
-
-if typing.TYPE_CHECKING:
-    from covid19sim.utils.env import Env
-    from covid19sim.locations.city import City
-    from covid19sim.locations.location import Location
+from covid19sim.utils.env import Env
+from covid19sim.locations.city import City
+from covid19sim.locations.location import Location
 
 
 class Human(BaseHuman):
@@ -55,7 +53,10 @@ class Human(BaseHuman):
         conf (dict): yaml configuration of the experiment
     """
 
-    def __init__(self, env, city, name, age, rng, conf):
+    def __init__(
+        self, env: Env, city: City, name: str, age: int,
+        rng: np.random.RandomState, conf: typing.Dict
+        ):
         super().__init__(env)
 
         # Utility References
@@ -1322,3 +1323,23 @@ class Human(BaseHuman):
 
     def __repr__(self):
         return f"H:{self.name} age:{self.age}, SEIR:{int(self.is_susceptible)}{int(self.is_exposed)}{int(self.is_infectious)}{int(self.is_removed)}"
+
+    def __reduce__(self):
+        """
+        Helper function for pickling
+        """
+        state: typing.Dict = self.__dict__.copy()
+        del state['last_date'], state['city']
+        name_id: int = int(self.name.split(":",1)[1])
+        args = (name_id, self.age, self.rng, self.conf)
+        return (Human._reconstruct, args, state)
+
+    @classmethod
+    def _reconstruct(cls, name_id, age, rng, conf):
+        """
+        Reconstruct human and its attributes
+        """
+        city: City = Location.city
+        env: Env = city.env
+        
+        return cls(env, city, name_id, age, rng, conf)

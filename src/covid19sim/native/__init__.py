@@ -48,3 +48,10 @@ class Environment(BaseEnvironment, simpy.Environment):
         """
         return self.timestamp.isoformat()
 
+    def __reduce__(self):
+        """
+        Helper function for pickling
+        """
+        args = (self.initial_timestamp, )
+        state = {'_now': self._now}
+        return (self.__class__, args, state)

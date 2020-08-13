@@ -46,6 +46,8 @@ class Location(simpy.Resource):
     Class representing generic locations used in the simulator
     """
 
+    city: "City"
+
     def __init__(self, env, rng, conf, area, name, location_type, lat, lon, capacity):
         """
         Locations are created with city.create_location(), not instantiated directly
@@ -472,6 +474,27 @@ class Location(simpy.Resource):
             del s['humans']
         return s
 
+    def __reduce__(self):
+        """
+        Helper function for pickling
+        """
+        args = (self.name, self.location_type)
+        return (self._reconstruct, args)
+
+    @classmethod
+    def _reconstruct(
+        cls,
+        location_name: str,
+        location_type: str
+        ):
+        """
+        Find and return location object from city by name
+        """
+        return next(
+            loc for loc in getattr(cls.city, f"{location_type.lower()}s") \
+            if loc.name == location_name
+            )
+ 
 
 class Household(Location):
     """
