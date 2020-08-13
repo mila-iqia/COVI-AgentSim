@@ -269,9 +269,6 @@ class Tracker(object):
         self.humans_intervention_level = defaultdict(list)
 
         # epi related
-        # self.avg_infectious_duration = 0
-        # self.n_recovery = 0
-        # self.n_infectious_contacts = 0
         self.serial_intervals = []
         self.serial_interval_book_to = defaultdict(dict)
         self.serial_interval_book_from = defaultdict(dict)
@@ -285,7 +282,6 @@ class Tracker(object):
             'recovery_days': [0, 0],
             'infectiousness_onset_days': [0, 0]
         }
-
 
         # testing & hospitalization
         self.hospitalization_per_day = [0]
@@ -305,11 +301,18 @@ class Tracker(object):
         self.symptoms_set = {'covid': defaultdict(set), 'all': defaultdict(set)}
 
         # risk model
-        self.ei_per_day = []
         self.risk_values = []
         self.avg_infectiousness_per_day = []
         self.risk_attributes = []
         self.tracing_started = False
+
+        # behavior
+        self.daily_quarantine = {
+            "app_users": [],
+            "all": [],
+            "false_app_users": [],
+            "false_all": []
+        }
 
         # monitors
         self.human_monitor = {}
@@ -554,10 +557,11 @@ class Tracker(object):
 
         #
         self.cases_per_day = [self.n_infected_init]
-        self.s_per_day = [sum(h.is_susceptible for h in self.city.humans)]
-        self.e_per_day = [sum(h.is_exposed for h in self.city.humans)]
-        self.i_per_day = [sum(h.is_infectious for h in self.city.humans)]
-        self.r_per_day = [sum(h.is_removed for h in self.city.humans)]
+        self.s_per_day = [self.n_people - self.n_infected_init]
+        self.e_per_day = [self.n_infected_init]
+        self.i_per_day = [0]
+        self.r_per_day = [0]
+        self.ei_per_day = [self.n_infected_init]
 
         # risk model
         self.risk_precision_daily = [self.compute_risk_precision()]
@@ -697,8 +701,20 @@ class Tracker(object):
 
         self.human_monitor[self.env.timestamp.date()-datetime.timedelta(days=1)] = row
 
-        #
+        # epi
         self.avg_infectiousness_per_day.append(np.mean([h.infectiousness for h in self.city.humans]))
+
+        # behavior
+        # /!\ `intervened_behavior.is_quarantined()` has dropout
+        x = np.array([(human.has_app, human.intervened_behavior.quarantine_timestamp is not None, human.is_susceptible or human.is_removed) for human in self.city.humans])
+        n_quarantined_app_users = (x[:, 0] * x[:, 1]).sum()
+        n_quarantined = x[:, 1].sum()
+        n_false_quarantined = (x[:, 1] * x[:, 2]).sum()
+        n_false_quarantined_app_users = (x[:, 0] * x[:, 1] * x[:, 2]).sum()
+        self.daily_quarantine['app_users'].append(n_quarantined_app_users)
+        self.daily_quarantine['all'].append(n_quarantined)
+        self.daily_quarantine['false_app_users'].append(n_false_quarantined_app_users)
+        self.daily_quarantine['false_all'].append(n_false_quarantined)
 
     def compute_severity(self, symptoms):
         severity = 0
@@ -1389,6 +1405,11 @@ class Tracker(object):
             interaction_types.append("within_contact_condition")
             self.track_contact_attributes(human1, human2)
 
+            # outside daily contacts
+            self.n_outside_daily_contacts += 0.5 if human1_type_of_place != "HOUSEHOLD" else 0
+            self.n_outside_daily_contacts += 0.5 if human2_type_of_place != "HOUSEHOLD" else 0
+
+
         for interaction_type in interaction_types:
             for location_type in ['all', human1_type_of_place, human2_type_of_place]:
                 C = self.contact_matrices[interaction_type][location_type]
@@ -1412,10 +1433,6 @@ class Tracker(object):
                 duration_category = math.ceil(duration / SECONDS_PER_MINUTE)
                 Dp = self.contact_duration_profile[interaction_type][location_type]
                 Dp[duration_category] = Dp.get(duration_category, 0) + 1
-
-            # outside daily contacts
-            self.n_outside_daily_contacts += 0.5 if human1_type_of_place != "HOUSEHOLD" else 0
-            self.n_outside_daily_contacts += 0.5 if human2_type_of_place != "HOUSEHOLD" else 0
 
     @check_if_tracking
     def track_contact_attributes(self, human1, human2, infection_attrs=[]):
