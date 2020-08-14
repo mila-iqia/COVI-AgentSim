@@ -910,8 +910,8 @@ def _modify_schedule(human, remaining_schedule, new_activity, new_schedule):
         if cut_left:
             partial_schedule.append(activity.align(new_activity, cut_left=True, prepend_name="modified-cut-left", new_owner=human))
 
-    full_schedule = [x for idx, x in enumerate(new_schedule) if idx < work_activity_idx]
-    full_schedule += partial_schedule
+    full_schedule = [x for idx, x in enumerate(new_schedule) if idx < work_activity_idx and x.duration > 0]
+    full_schedule += [x for x in partial_schedule if x.duration > 0]
 
     assert remaining_schedule[-1].end_time == full_schedule[0].start_time, "times do not align"
     assert full_schedule[-1].name == "sleep", f"sleep not found as the last activity. \nfull_schedule:\n{full_schedule}\nnew_schedule:{new_schedule}\nremaining_schedule:{remaining_schedule}"
