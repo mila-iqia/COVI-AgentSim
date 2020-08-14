@@ -264,6 +264,7 @@ class Tracker(object):
         self.expected_mobility = []
 
         # infection
+        self.humans_quarantined_state = defaultdict(list)
         self.humans_state = defaultdict(list)
         self.humans_rec_level = defaultdict(list)
         self.humans_intervention_level = defaultdict(list)
@@ -313,6 +314,7 @@ class Tracker(object):
             "false_app_users": [],
             "false_all": []
         }
+        self.quarantine_monitor = []
 
         # monitors
         self.human_monitor = {}
@@ -662,7 +664,9 @@ class Tracker(object):
             elif human.is_removed:
                 state = 'R'
             else:
-                state = 'N/A'
+                raise ValueError(f"{human} is not in any of SEIR states")
+
+            self.humans_quarantined_state[human.name].append(human.intervened_behavior.quarantine_timestamp is not None)
             self.humans_state[human.name].append(state)
             self.humans_rec_level[human.name].append(human.rec_level)
             self.humans_intervention_level[human.name].append(human._intervention_level)
@@ -906,6 +910,28 @@ class Tracker(object):
         self.deaths_per_day[-1] += 1
 
     @check_if_tracking
+    def track_quarantine(self, human, unquarantine=False):
+        """
+        Keeps record of quarantined and unquarantined individuals.
+
+        Args:
+            human (covid19sim.human.Human): human who is about to quarantine or release from one.
+            unquarantine (bool): if `human` is about to be released from quarantine
+        """
+        # /!\ redundant information being logged on unquarantine
+        self.quarantine_monitor.append({
+                "name": human.name,
+                "infection_timestamp": human.infection_timestamp,
+                "infectiousness_onset_days": human.infectiousness_onset_days,
+                "incubation_days": human.incubation_days,
+                "reason": human.intervened_behavior.quarantine_reason,
+                "duration": human.intervened_behavior.quarantine_duration,
+                "timestamp": self.env.timestamp,
+                "unquarantine": unquarantine
+            })
+
+
+    @check_if_tracking
     def track_infection(self, source, from_human, to_human, location, timestamp, p_infection, success, viral_load=-1, infectiousness=-1):
         """
         Called every time someone is infected either by other `Human` or through envrionmental contamination.
@@ -951,6 +977,7 @@ class Tracker(object):
                 "location_type": location.location_type,
                 "location": location.name,
                 "p_infection": p_infection,
+                "to_human_infectiousness_onset_days": to_human.infectiousness_onset_days
             })
 
             # bookkeeping needed for track_update_messages
@@ -1160,6 +1187,8 @@ class Tracker(object):
             "result_time": test_result_arrival_time,
             "test_type": human.test_type,
             "test_result": human.hidden_test_result,
+            "infection_timestamp": human.infection_timestamp,
+            "infectiousness_onset_days": human.infectiousness_onset_days
         })
 
     def compute_test_statistics(self, logfile=False):

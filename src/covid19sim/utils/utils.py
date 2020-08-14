@@ -405,6 +405,8 @@ def extract_tracker_data(tracker, conf):
 
     # behavior related
     data['daily_quarantine'] = tracker.daily_quarantine
+    data['quarantine_monitor'] = tracker.quarantine_monitor
+    data['humans_quarantined_state'] = tracker.humans_quarantined_state
 
     return data
 

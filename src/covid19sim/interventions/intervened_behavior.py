@@ -176,6 +176,10 @@ class IntervenedBehavior(object):
         self.quarantine_duration = until
         self.quarantine_reason = reason
         self.human._test_recommended = True
+
+        if "0-1-tracing-positive-test" in reason:
+            self.human.city.tracker.track_quarantine(self.human)
+
         # if self.human.name == "human:7":
         #     print(self.env.timestamp, "quarantining", self.human, "because", reason, "for" ,until / SECONDS_PER_DAY, "days")
 
@@ -183,6 +187,9 @@ class IntervenedBehavior(object):
         """
         Resets quarantine related attributes.
         """
+        if "0-1-tracing-positive-test" in self.quarantine_reason:
+            self.human.city.tracker.track_quarantine(self.human, unquarantine=True)
+
         self.quarantine_timestamp = None
         self.quarantine_duration = -1
         self.quarantine_reason = ""
@@ -281,6 +288,8 @@ class IntervenedBehavior(object):
                 if self.conf['QUARANTINE_HOUSEHOLD_UPON_TRACED_POSITIVE_TEST']:
                     duration = self.conf['QUARANTINE_DAYS_HOUSEHOLD_ON_TRACED_POSITIVE']
                     self._quarantine_household_members(until = duration * SECONDS_PER_DAY, reason=reason)
+
+            # /!\ unquarantine household ? release household on unquarantining
 
             # TODO - trigger quarantine for self-reported symptoms in digital tracing
 
