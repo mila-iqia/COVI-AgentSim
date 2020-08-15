@@ -7,6 +7,7 @@ There are three types of functions -
 """
 import datetime
 import math
+import warnings
 import numpy as np
 from copy import deepcopy
 from collections import defaultdict, deque
@@ -289,6 +290,9 @@ class MobilityPlanner(object):
                 schedule = _patch_schedule(self.human, last_activity, to_schedule, self.conf)
                 last_activity = schedule[-1]
                 full_schedule.append(schedule)
+                # (debug)
+                if last_activity.duration == 0:
+                    warnings.warn(f"{self.human} has 0 duration {last_activity}\nschedule:{schedule}\npenultimate:{full_schedule[-2]}")
 
             assert all(schedule[-1].name == "sleep" for schedule in full_schedule), "sleep not found as last element in a schedule"
             assert len(full_schedule) == n_days, "not enough schedule prepared"
