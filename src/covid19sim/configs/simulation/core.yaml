@@ -42,7 +42,7 @@ MAX_MISC_QUEUE_LENGTH: 10
 PARK_PROPORTION_AREA: 0.05
 PARK_CONTACT_FACTOR: 0.1
 PARK_SURFACE_PROB: [0.8, 0.05, 0.05, 0.05, 0.05]
-PARK_OPEN_CLOSE_HOUR_MINUTE: [[0, 0], [24, 0]]
+PARK_OPEN_CLOSE_HOUR_MINUTE: [[0, 0], [23, 0]]
 PARK_OPEN_DAYS: [0, 1, 2, 3, 4, 5, 6]
 
 # hospitals
@@ -91,9 +91,10 @@ N_WORKING_DAYS: 5
 WORKING_START_HOUR: 8 # 8 AM in the morning
 
 # /!\ (no-source) these parameters are used to assure proper behavior in mobility_planner by clipping the random draws at these values
-MAX_TIME_WORK: 16
-MAX_TIME_SLEEP: 16
-MAX_TIME_AWAKE: 24
+# hours
+MAX_TIME_WORK: 14
+MAX_TIME_SLEEP: 12
+MAX_TIME_AWAKE: 20
 MAX_TIME_SHORT_ACTVITIES: 4
 
 #########################################################
