@@ -49,7 +49,7 @@ def _compute_ngm(next_generation_matrix):
     return m
 
 def print_dict(title, dic, is_sorted=None, top_k=None, logfile=None):
-    if not is_sorted:
+    if is_sorted is None:
         items = dic.items()
     else:
         items = sorted(dic.items(), key=lambda x: x[1])[:top_k]
@@ -62,7 +62,6 @@ def print_dict(title, dic, is_sorted=None, top_k=None, logfile=None):
         "\n    ".join((aligned + ": {:5.4f}").format(str(k), v) for k, v in items),
         logfile
     )
-
 
 def normalize_counter(counter, normalizer=None):
     if normalizer:
@@ -265,14 +264,12 @@ class Tracker(object):
         self.expected_mobility = []
 
         # infection
+        self.humans_quarantined_state = defaultdict(list)
         self.humans_state = defaultdict(list)
         self.humans_rec_level = defaultdict(list)
         self.humans_intervention_level = defaultdict(list)
 
         # epi related
-        # self.avg_infectious_duration = 0
-        # self.n_recovery = 0
-        # self.n_infectious_contacts = 0
         self.serial_intervals = []
         self.serial_interval_book_to = defaultdict(dict)
         self.serial_interval_book_from = defaultdict(dict)
@@ -286,7 +283,6 @@ class Tracker(object):
             'recovery_days': [0, 0],
             'infectiousness_onset_days': [0, 0]
         }
-
 
         # testing & hospitalization
         self.hospitalization_per_day = [0]
@@ -306,11 +302,19 @@ class Tracker(object):
         self.symptoms_set = {'covid': defaultdict(set), 'all': defaultdict(set)}
 
         # risk model
-        self.ei_per_day = []
         self.risk_values = []
         self.avg_infectiousness_per_day = []
         self.risk_attributes = []
         self.tracing_started = False
+
+        # behavior
+        self.daily_quarantine = {
+            "app_users": [],
+            "all": [],
+            "false_app_users": [],
+            "false_all": []
+        }
+        self.quarantine_monitor = []
 
         # monitors
         self.human_monitor = {}
@@ -555,10 +559,11 @@ class Tracker(object):
 
         #
         self.cases_per_day = [self.n_infected_init]
-        self.s_per_day = [sum(h.is_susceptible for h in self.city.humans)]
-        self.e_per_day = [sum(h.is_exposed for h in self.city.humans)]
-        self.i_per_day = [sum(h.is_infectious for h in self.city.humans)]
-        self.r_per_day = [sum(h.is_removed for h in self.city.humans)]
+        self.s_per_day = [self.n_people - self.n_infected_init]
+        self.e_per_day = [self.n_infected_init]
+        self.i_per_day = [0]
+        self.r_per_day = [0]
+        self.ei_per_day = [self.n_infected_init]
 
         # risk model
         self.risk_precision_daily = [self.compute_risk_precision()]
@@ -659,7 +664,9 @@ class Tracker(object):
             elif human.is_removed:
                 state = 'R'
             else:
-                state = 'N/A'
+                raise ValueError(f"{human} is not in any of SEIR states")
+
+            self.humans_quarantined_state[human.name].append(human.intervened_behavior.quarantine_timestamp is not None)
             self.humans_state[human.name].append(state)
             self.humans_rec_level[human.name].append(human.rec_level)
             self.humans_intervention_level[human.name].append(human._intervention_level)
@@ -698,8 +705,20 @@ class Tracker(object):
 
         self.human_monitor[self.env.timestamp.date()-datetime.timedelta(days=1)] = row
 
-        #
+        # epi
         self.avg_infectiousness_per_day.append(np.mean([h.infectiousness for h in self.city.humans]))
+
+        # behavior
+        # /!\ `intervened_behavior.is_quarantined()` has dropout
+        x = np.array([(human.has_app, human.intervened_behavior.quarantine_timestamp is not None, human.is_susceptible or human.is_removed) for human in self.city.humans])
+        n_quarantined_app_users = (x[:, 0] * x[:, 1]).sum()
+        n_quarantined = x[:, 1].sum()
+        n_false_quarantined = (x[:, 1] * x[:, 2]).sum()
+        n_false_quarantined_app_users = (x[:, 0] * x[:, 1] * x[:, 2]).sum()
+        self.daily_quarantine['app_users'].append(n_quarantined_app_users)
+        self.daily_quarantine['all'].append(n_quarantined)
+        self.daily_quarantine['false_app_users'].append(n_false_quarantined_app_users)
+        self.daily_quarantine['false_all'].append(n_false_quarantined)
 
     def compute_severity(self, symptoms):
         severity = 0
@@ -891,6 +910,28 @@ class Tracker(object):
         self.deaths_per_day[-1] += 1
 
     @check_if_tracking
+    def track_quarantine(self, human, unquarantine=False):
+        """
+        Keeps record of quarantined and unquarantined individuals.
+
+        Args:
+            human (covid19sim.human.Human): human who is about to quarantine or release from one.
+            unquarantine (bool): if `human` is about to be released from quarantine
+        """
+        # /!\ redundant information being logged on unquarantine
+        self.quarantine_monitor.append({
+                "name": human.name,
+                "infection_timestamp": human.infection_timestamp,
+                "infectiousness_onset_days": human.infectiousness_onset_days,
+                "incubation_days": human.incubation_days,
+                "reason": human.intervened_behavior.quarantine_reason,
+                "duration": human.intervened_behavior.quarantine_duration,
+                "timestamp": self.env.timestamp,
+                "unquarantine": unquarantine
+            })
+
+
+    @check_if_tracking
     def track_infection(self, source, from_human, to_human, location, timestamp, p_infection, success, viral_load=-1, infectiousness=-1):
         """
         Called every time someone is infected either by other `Human` or through envrionmental contamination.
@@ -936,6 +977,7 @@ class Tracker(object):
                 "location_type": location.location_type,
                 "location": location.name,
                 "p_infection": p_infection,
+                "to_human_infectiousness_onset_days": to_human.infectiousness_onset_days
             })
 
             # bookkeeping needed for track_update_messages
@@ -1047,39 +1089,80 @@ class Tracker(object):
                                         It is used at the end of simulation to aggregate information.
                                         destroys self.symptoms_set to avoid any errors.
         """
+        def _aggregate_symptoms_count(symptoms_set, symptoms):
+            symptoms['n'] += 1
+            for s in symptoms_set:
+                symptoms[s.name] += 1
+
+            return symptoms
+
+        # clear up the current count of symptoms
         if count_all:
-            for human in self.symptoms_set['covid']:
-                self.symptoms['covid']['n'] += 1
-                for s in self.symptoms_set['covid'][human]:
-                    self.symptoms['covid'][s] += 1
+            for key in ["all", "covid"]:
+                remaining_humans = list(self.symptoms_set[key].keys())
+                for human in remaining_humans:
+                    self.symptoms[key] = _aggregate_symptoms_count(self.symptoms_set[key][human], self.symptoms[key])
+                    self.symptoms_set[key].pop(human)
 
-            for human in self.symptoms_set['all']:
-                self.symptoms['all']['n'] += 1
-                for s in self.symptoms_set['all'][human]:
-                    self.symptoms['all'][s] += 1
+            return self.symptoms
 
-            delattr(self, "symptoms_set")
-            return
-
-        if human.covid_symptoms:
+        # track COVID symptoms to estimate P(symptom = x | COVID = 1)
+        # if infected with COVID, keep accumulating symptoms until recovery
+        if  human.infection_timestamp is not None:
             self.symptoms_set['covid'][human.name].update(human.covid_symptoms)
         else:
+            # once human has recovered, count the symptoms into `self.symptoms` and remove this human from symptoms_set
             if human.name in self.symptoms_set['covid']:
-                self.symptoms['covid']['n'] += 1
-                for s in self.symptoms_set['covid'][human.name]:
-                    self.symptoms['covid'][s] += 1
+                self.symptoms["covid"] = _aggregate_symptoms_count(self.symptoms_set['covid'][human.name], self.symptoms['covid'])
                 self.symptoms_set['covid'].pop(human.name)
 
-        if human.all_symptoms:
-            self.symptoms_set['all'][human.name].update(human.all_symptoms)
+        # track reported symptoms to estimate P(symptom = x)
+        # Note 1: `human` can be experiencing COVID, cold, flu or allergy.
+        # Note 2: `human` can experience it multiple times in the simulation.
+        # Accumulate symptoms everytime human starts experiencing them, and aggregate them at the end. Restart if `human` experiences them again.
+        if len(human.all_reported_symptoms) > 0:
+            self.symptoms_set['all'][human.name].update(human.all_reported_symptoms)
         else:
             if human.name in self.symptoms_set['all']:
-                self.symptoms['all']['n'] += 1
-                for s in self.symptoms_set['all'][human.name]:
-                    self.symptoms['all'][s] += 1
+                self.symptoms["all"] = _aggregate_symptoms_count(self.symptoms_set['all'][human.name], self.symptoms['all'])
                 self.symptoms_set['all'].pop(human.name)
 
-    @check_if_tracking
+    def compute_symptom_prevalence(self):
+        """
+        Aggregates symptom statistics.
+        """
+        self.symptoms = self.track_symptoms(count_all = True)
+        symptom_raw_counts, symptom_prevalence = {}, {}
+        for key in ["all", "covid"]:
+            total_incidence = self.symptoms[key]['n'] + 1e-6  # to avoid ZeroDivisionError
+            symptom_raw_counts[key] = {'incidence':total_incidence}
+            symptom_prevalence[key] = {}
+            for s,v in self.symptoms[key].items():
+                if s == 'n':
+                    continue
+                symptom_raw_counts[key][s] = v
+                symptom_prevalence[key][s] = v / total_incidence
+
+        return {
+            "counts": symptom_raw_counts,
+            "symptom_prevalence": symptom_prevalence
+        }
+
+    def get_estimated_covid_prevalence(self):
+        """
+        Uses observable statistic to compute prevalence of COVID.
+        """
+        past_14_days_hospital_cases = sum(self.hospitalization_per_day[:-14])
+        past_14_days_tests = sum(self.tested_per_day[:-14])
+        past_14_days_positive_test_results = sum(result['positive'] for date, result in self.test_results_per_day.items() if date <= self.env.timestamp.date())
+        actual_cases = sum(h.is_exposed or h.is_infectious for h in self.city.humans)
+
+        return {
+            "cases": actual_cases / self.n_people,
+            "estimation_by_hospitalization": past_14_days_hospital_cases / self.n_people,
+            "estimation_by_test": past_14_days_positive_test_results / self.n_people,
+        }
+
     def track_tested_results(self, human):
         """
         Keeps count of tests on a particular day. It is called every time someone is tested.
@@ -1104,6 +1187,8 @@ class Tracker(object):
             "result_time": test_result_arrival_time,
             "test_type": human.test_type,
             "test_result": human.hidden_test_result,
+            "infection_timestamp": human.infection_timestamp,
+            "infectiousness_onset_days": human.infectiousness_onset_days
         })
 
     def compute_test_statistics(self, logfile=False):
@@ -1349,6 +1434,11 @@ class Tracker(object):
             interaction_types.append("within_contact_condition")
             self.track_contact_attributes(human1, human2)
 
+            # outside daily contacts
+            self.n_outside_daily_contacts += 0.5 if human1_type_of_place != "HOUSEHOLD" else 0
+            self.n_outside_daily_contacts += 0.5 if human2_type_of_place != "HOUSEHOLD" else 0
+
+
         for interaction_type in interaction_types:
             for location_type in ['all', human1_type_of_place, human2_type_of_place]:
                 C = self.contact_matrices[interaction_type][location_type]
@@ -1372,10 +1462,6 @@ class Tracker(object):
                 duration_category = math.ceil(duration / SECONDS_PER_MINUTE)
                 Dp = self.contact_duration_profile[interaction_type][location_type]
                 Dp[duration_category] = Dp.get(duration_category, 0) + 1
-
-            # outside daily contacts
-            self.n_outside_daily_contacts += 1 if human1_type_of_place != "HOUSEHOLD" else 0
-            self.n_outside_daily_contacts += 1 if human2_type_of_place != "HOUSEHOLD" else 0
 
     @check_if_tracking
     def track_contact_attributes(self, human1, human2, infection_attrs=[]):
@@ -1611,22 +1697,13 @@ class Tracker(object):
             log(f"* % {key} transmission {100 * x / total :2.3f} %", self.logfile)
 
         log("\n######## SYMPTOMS #########", self.logfile)
-        self.track_symptoms(count_all=True)
-        total = self.symptoms['covid']['n']
-        tmp_s = {}
-        for s,v in self.symptoms['covid'].items():
-            if s == 'n':
-                continue
-            tmp_s[s] = v/total
-        print_dict("P(symptoms = x | covid patient), where x is", tmp_s, is_sorted="desc", top_k=10, logfile=self.logfile)
+        x = self.compute_symptom_prevalence()['symptom_prevalence']
 
-        total = self.symptoms['all']['n']
-        tmp_s = {}
-        for s,v in self.symptoms['covid'].items():
-            if s == 'n':
-                continue
-            tmp_s[s] = v/total
-        print_dict("P(symptoms = x | human had some sickness e.g. cold, flu, allergies, covid), where x is", tmp_s, is_sorted="desc", top_k=10, logfile=self.logfile)
+        TITLE = "P(symptoms = x | covid patient), where x is"
+        print_dict(TITLE, x['covid'], is_sorted="desc", top_k=10, logfile=self.logfile)
+
+        TITLE = "P(symptoms = x | human had some sickness e.g. cold, flu, allergies, covid), where x is"
+        print_dict(TITLE, x['all'], is_sorted="desc", top_k=10, logfile=self.logfile)
 
         log("\n######## CONTACT PATTERNS #########", self.logfile)
         if not (self.conf['track_all'] or self.conf['track_mixing']):
