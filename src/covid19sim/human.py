@@ -131,6 +131,7 @@ class Human(BaseHuman):
         # Covid-19 testing
         self.test_type = None  # E.g. PCR, Antibody, Physician
         self.test_time = None  # Time when this person was tested
+        self.self_test = self.conf.get('SELF_TEST')  # Whether or not this person will use their symptoms to choose to get a test
         self.hidden_test_result = None  # Test results (that will be reported to this person but have not yet been)
         self._will_report_test_result = None  # Determines whether this individual will report their test (given that they received a test result)
         self.time_to_test_result = None  # How long does it take for this person to receive their test after it has been administered
@@ -502,7 +503,7 @@ class Human(BaseHuman):
             1. if `Human` is at a hospital, TEST_SYMPTOMS_FOR_HOSPITAL are checked for
             2. elsewhere there is a proability related to whether symptoms are "severe", "moderate", or "mild"
             3. if _test_recommended is true (set by app recommendations)
-            4. if the `Human` is careful enough to check symptoms itself
+            4. if the `Human` is careful enough to check symptoms itself, if this is enabled in the config 
 
         Args:
             at_hospital (bool, optional): follows the check for testing needs at a hospital.
@@ -525,7 +526,7 @@ class Human(BaseHuman):
             # Is in a hospital and has symptoms that hospitals check for
             TEST_SYMPTOMS_FOR_HOSPITAL = set(self.conf['GET_TESTED_SYMPTOMS_CHECKED_IN_HOSPITAL'])
             should_get_test = any(TEST_SYMPTOMS_FOR_HOSPITAL & set(self.symptoms))
-        else:
+        elif self.self_test:
             if SEVERE in self.symptoms or EXTREMELY_SEVERE in self.symptoms:
                 should_get_test = self.rng.rand() < self.conf['P_TEST_SEVERE']
 
@@ -547,7 +548,8 @@ class Human(BaseHuman):
                     if should_get_test:
                         # self.intervened_behavior.trigger_intervention("self-diagnosed-symptoms", human=self)
                         pass
-
+        else:
+            pass
         if should_get_test:
             self.city.add_to_test_queue(self)
 

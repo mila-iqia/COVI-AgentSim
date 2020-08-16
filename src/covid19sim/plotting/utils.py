@@ -448,6 +448,7 @@ def get_mean_fq_r(filenames=None, pkls=None, normalized=False):
         "proxy_r": [],
         "outside_daily_contacts": [],
         "effective_contacts": [],
+        "healthy_effective_contacts": [],
     }
     for filename, pkl in _tmp:
         x, y, z, a, od, ec, hec = get_fq_r(
