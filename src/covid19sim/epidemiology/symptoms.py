@@ -2,6 +2,7 @@ import dataclasses
 import math
 import typing
 from collections import namedtuple, OrderedDict
+import numpy as np
 
 
 """
@@ -123,6 +124,53 @@ ACHES = STR_TO_SYMPTOMS['aches']
 # commented out because these are not used elsewhere for now
 # HIVES = STR_TO_SYMPTOMS['hives']
 # SWELLING = STR_TO_SYMPTOMS['swelling']
+
+
+class SymptomGroups:
+    DROP_IN_GROUPS = [
+        [MILD],
+        [MODERATE],
+        [SEVERE],
+        [EXTREMELY_SEVERE],
+        [FEVER],
+        [FEVER, MODERATE],
+        [FEVER, CHILLS],
+        [GASTRO],
+        [GASTRO, DIARRHEA],
+        [GASTRO, DIARRHEA, NAUSEA_VOMITING],
+        [GASTRO, NAUSEA_VOMITING],
+        [FATIGUE],
+        [FATIGUE, UNUSUAL],
+        [FATIGUE, LOST_CONSCIOUSNESS],
+        [FATIGUE, HARD_TIME_WAKING_UP],
+        [FATIGUE, HEADACHE],
+        [FATIGUE, CONFUSED],
+        [TROUBLE_BREATHING],
+        [TROUBLE_BREATHING, SEVERE_CHEST_PAIN],
+        [TROUBLE_BREATHING, SNEEZING],
+        [TROUBLE_BREATHING, COUGH],
+        [TROUBLE_BREATHING, RUNNY_NOSE],
+        [TROUBLE_BREATHING, SORE_THROAT],
+        [LOSS_OF_TASTE],
+        [GASTRO, MODERATE],
+        [FATIGUE, GASTRO],
+        [MILD, MILD_TROUBLE_BREATHING, MILD_TROUBLE_BREATHING, LIGHT_TROUBLE_BREATHING],
+        [MODERATE, TROUBLE_BREATHING, MODERATE_TROUBLE_BREATHING],
+        [SEVERE, TROUBLE_BREATHING, HEAVY_TROUBLE_BREATHING],
+        [EXTREMELY_SEVERE, TROUBLE_BREATHING, HEAVY_TROUBLE_BREATHING],
+    ]
+
+    @classmethod
+    def sample(cls, rng: np.random.RandomState, p_num_drops: typing.List[int]):
+        assert len(cls.DROP_IN_GROUPS) >= len(p_num_drops) > 0
+        p_num_drops = np.array(p_num_drops) / sum(p_num_drops)
+        # Sample the number of symptom groups to drop-in
+        num_drops = rng.choice(list(range(1, len(p_num_drops) + 1)),
+                               p=p_num_drops)
+        # Sample that many symptom groups
+        dropin_groups = rng.choice(cls.DROP_IN_GROUPS,
+                                   size=num_drops, replace=False).tolist()
+        return dropin_groups
 
 
 #
