@@ -24,7 +24,7 @@ from covid19sim.epidemiology.human_properties import may_develop_severe_illness,
     _get_preexisting_conditions, _get_random_sex, get_carefulness, get_age_bin
 from covid19sim.epidemiology.viral_load import compute_covid_properties, viral_load_for_day
 from covid19sim.epidemiology.symptoms import _get_cold_progression, _get_flu_progression, \
-    _get_allergy_progression, \
+    _get_allergy_progression, SymptomGroups, \
     MILD, MODERATE, SEVERE, EXTREMELY_SEVERE, \
     ACHES, COUGH, FATIGUE, FEVER, GASTRO, TROUBLE_BREATHING
 from covid19sim.epidemiology.p_infection import get_human_human_p_transmission, infectiousness_delta
@@ -352,7 +352,7 @@ class Human(BaseHuman):
 
     @property
     def reported_symptoms(self):
-        self.update_symptoms()
+        self.update_reported_symptoms()
         return self.rolling_all_reported_symptoms[0]
 
     @property
@@ -424,6 +424,11 @@ class Human(BaseHuman):
         self.last_date['reported_symptoms'] = current_date
 
         reported_symptoms = [s for s in self.rolling_all_symptoms[0] if self.rng.random() > self.proba_dropout_symptoms]
+        if self.rng.random() < self.proba_dropin_symptoms:
+            # Drop some bad boys in
+            dropped_in_symptoms = \
+                SymptomGroups.sample(self.rng, self.conf["P_NUM_DROPIN_GROUPS"])
+            reported_symptoms += dropped_in_symptoms
         self.rolling_all_reported_symptoms.appendleft(reported_symptoms)
 
     @property
