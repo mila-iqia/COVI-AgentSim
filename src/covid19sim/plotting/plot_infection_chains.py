@@ -332,7 +332,7 @@ def plot(data, output_path, num_chains=10, init_infected={}):
             humans,
             human_risk_each_day,
             to_human_max_msg_per_day,
-            infectee_location,
+            infectee_locations,
             human_has_app,
             infector_infectee_update_messages,
             human_is_asymptomatic,

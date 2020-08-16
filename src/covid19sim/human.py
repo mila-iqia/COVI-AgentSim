@@ -131,6 +131,7 @@ class Human(BaseHuman):
         # Covid-19 testing
         self.test_type = None  # E.g. PCR, Antibody, Physician
         self.test_time = None  # Time when this person was tested
+        self.self_test = self.conf.get('SELF_TEST')  # Whether or not this person will use their symptoms to choose to get a test
         self.hidden_test_result = None  # Test results (that will be reported to this person but have not yet been)
         self._will_report_test_result = None  # Determines whether this individual will report their test (given that they received a test result)
         self.time_to_test_result = None  # How long does it take for this person to receive their test after it has been administered
@@ -516,7 +517,7 @@ class Human(BaseHuman):
             1. if `Human` is at a hospital, TEST_SYMPTOMS_FOR_HOSPITAL are checked for
             2. elsewhere there is a proability related to whether symptoms are "severe", "moderate", or "mild"
             3. if _test_recommended is true (set by app recommendations)
-            4. if the `Human` is careful enough to check symptoms itself
+            4. if the `Human` is careful enough to check symptoms itself, if this is enabled in the config 
 
         Args:
             at_hospital (bool, optional): follows the check for testing needs at a hospital.
@@ -539,7 +540,7 @@ class Human(BaseHuman):
             # Is in a hospital and has symptoms that hospitals check for
             TEST_SYMPTOMS_FOR_HOSPITAL = set(self.conf['GET_TESTED_SYMPTOMS_CHECKED_IN_HOSPITAL'])
             should_get_test = any(TEST_SYMPTOMS_FOR_HOSPITAL & set(self.symptoms))
-        else:
+        elif self.self_test:
             if SEVERE in self.symptoms or EXTREMELY_SEVERE in self.symptoms:
                 should_get_test = self.rng.rand() < self.conf['P_TEST_SEVERE']
 
@@ -561,7 +562,8 @@ class Human(BaseHuman):
                     if should_get_test:
                         # self.intervened_behavior.trigger_intervention("self-diagnosed-symptoms", human=self)
                         pass
-
+        else:
+            pass
         if should_get_test:
             self.city.add_to_test_queue(self)
 
@@ -1097,6 +1099,7 @@ class Human(BaseHuman):
             # Conditions met for possible infection (https://www.cdc.gov/coronavirus/2019-ncov/hcp/guidance-risk-assesment-hcp.html)
             if contact_condition:
 
+                # increment effective contacts
                 if (
                     self.conf['RISK_MODEL'] == ""
                     or  (
@@ -1104,11 +1107,10 @@ class Human(BaseHuman):
                         and self.env.timestamp >= self.conf['INTERVENTION_START_TIME']
                     )
                 ):
-                    self.num_contacts += 1
-                    self.effective_contacts += self.conf.get("GLOBAL_MOBILITY_SCALING_FACTOR")
-                    if not self.state[2]: # if not infectious, then you are "healthy"
-                        self.healthy_effective_contacts += self.conf.get("GLOBAL_MOBILITY_SCALING_FACTOR")
+                    self._increment_effective_contacts(other_human)
+                    other_human._increment_effective_contacts(self)
 
+                # infection
                 infector, infectee, p_infection = None, None, 0
                 if scale_factor_passed:
                     infector, infectee, p_infection = self.check_covid_contagion(other_human, t_near, h1_msg, h2_msg)
@@ -1128,6 +1130,19 @@ class Human(BaseHuman):
                     p_infection=p_infection,
                     time=self.env.timestamp
                 )
+
+    def _increment_effective_contacts(self, other_human):
+        """
+        Increments attributs related to count effective contacts of `self`.
+
+        Args:
+            other_human (covid19sim.human.Human): `human` with whom contact just happened
+        """
+        self.num_contacts += 1
+        self.effective_contacts += self.conf.get("GLOBAL_MOBILITY_SCALING_FACTOR")
+        # if not other_human.state.index(1) in [1,2]:
+        if not self.state[2]: # if not infectious, then you are "healthy"
+            self.healthy_effective_contacts += self.conf.get("GLOBAL_MOBILITY_SCALING_FACTOR")
 
     def exposure_array(self, date):
         """

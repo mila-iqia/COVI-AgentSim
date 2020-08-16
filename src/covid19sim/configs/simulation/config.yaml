@@ -5,6 +5,7 @@ defaults:
   - base_method
   - region: montreal
   - track: all
+  - intervention: no_intervention
 
 hydra:
   run:

@@ -1,16 +1,29 @@
+# risk model
+RISK_MODEL : "transformer"
+USE_ORACLE: True
+ORACLE_NOISE: 0.0
+
+# behavior level specifications
+N_BEHAVIOR_LEVELS: 4
+INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS: True
+SHOULD_MODIFY_BEHAVIOR : True
+
+# tracing parameters (not used in oracle)
+TRACING_ORDER : 1
+
+# behavior modification
+REC_LEVEL_THRESHOLDS: [1, 3, 5]
+MAX_RISK_LEVEL: 15
+
+# when to start (overwrite it if needs to be run from other day)
+INTERVENTION_DAY: 0
+
 # EXPERIMENTAL PARAMETERS
 COLLECT_LOGS: False
 COLLECT_TRAINING_DATA: False
 USE_INFERENCE_SERVER: False
-RISK_MODEL: "transformer" # "naive"  "manual", "digital", "transformer"
-SHOULD_MODIFY_BEHAVIOR: True
-USE_ORACLE: False
 
-## INTERVENTIONS
-# NOTE: INTERVENTION is only valid if INTERVENTION_DAY >= 0
-INTERVENTION: "Tracing"
-
-# TWILIGHT-RAIN-696
+# TWILIGHT-RAIN-696 (not used in oracle)
 TRANSFORMER_EXP_PATH: "https://drive.google.com/file/d/1kXA-0juviQOL0R08YlQpaS5gKumQ8zrT"
 CLUSTER_PATH: "output/clusters"
 
@@ -34,7 +47,3 @@ RISK_MAPPING:
     0.26276696,
     1.0,
   ]
-
-# Uncomment one of these and perform some experiments @nasim @victor
-#REC_LEVEL_THRESHOLDS: [0, 1, 2] # More conservative
-#REC_LEVEL_THRESHOLDS: [0, 0, 1] # Binary
