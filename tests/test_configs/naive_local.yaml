@@ -3,7 +3,7 @@
 COLLECT_LOGS : True
 COLLECT_TRAINING_DATA : True
 USE_INFERENCE_SERVER : False
-RISK_MODEL : "naive" # "naive", "manual", "digital", "transformer"
+RISK_MODEL : "digital" # "naive", "manual", "digital", "transformer"
 INIT_PERCENT_SICK : 0.0025
 SHOULD_MODIFY_BEHAVIOR : True
 USE_ORACLE : False
