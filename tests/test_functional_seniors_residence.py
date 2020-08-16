@@ -35,6 +35,9 @@ def test_functional_seniors_residence():
         # Find the test_configs directory, and load the required config yaml
         conf = get_test_conf("naive_local.yaml")
         conf['simulation_days'] = simulation_days
+        conf['COVID_SPREAD_START_TIME'] = start_time
+        conf['_MEAN_DAILY_UNKNOWN_CONTACTS'] = 0.5
+        conf['INTERVENTION_START_TIME'] = start_time
 
         env = Env(start_time)
         city = EmptyCity(env, rng, city_x_range, city_y_range, conf)
@@ -68,7 +71,6 @@ def test_functional_seniors_residence():
                 name=i,
                 age=ages[i],
                 rng=rng,
-                infection_timestamp=infection[i],
                 conf=conf,
             )
             for i in range(N)
