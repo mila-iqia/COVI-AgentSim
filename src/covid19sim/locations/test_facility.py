@@ -110,7 +110,7 @@ class TestFacility(object):
             human (Human): `Human` object.
 
         Returns:
-            float: score value indicating chances of `Human` getting a test.
+            (float): score value indicating chances of `Human` getting a test.
         """
         score = 0
 
@@ -128,4 +128,3 @@ class TestFacility(object):
             score += 0.3  # @@@@@@ FIXME THIS IS ARBITRARY
 
         return score
-

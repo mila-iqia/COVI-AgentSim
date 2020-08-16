@@ -469,6 +469,7 @@ class Human(BaseHuman):
 
         NOTE: these values can be overwritten by subsequent test results
         """
+        print(self, "tested", self.intervened_behavior.quarantine_reason, "quarantine reason", self.symptoms, "symptoms", self.has_cold, self.has_allergy_symptoms)
         self.test_type = test_type
         self.test_time = self.env.timestamp
         self.hidden_test_result = unobserved_result

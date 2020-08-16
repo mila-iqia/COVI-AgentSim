@@ -264,38 +264,48 @@ class IntervenedBehavior(object):
             assert human.has_app, "human doesn't have an app, but the behavior changes are being called."
 
             # if its a normalization method, we check daily recommendation mappings.
+            normalized_model = False
             if self.human.city.daily_rec_level_mapping is None:
                 intervention_level = human.rec_level
             else:
                 # QKFIX: There are 4 recommendation levels, the value is hard-coded here
                 probas = self.human.city.daily_rec_level_mapping[human.rec_level]
                 intervention_level = self.rng.choice(4, p=probas)
+                normalized_model = True
             human._intervention_level = intervention_level
 
             # map rec levels to intervention levels by shifting them by 1 (because 1st index is reserved for no reduction)
             behavior_level = intervention_level + 1
+            assert 0 < behavior_level < self.n_behavior_levels, f"behavior_level: {self.behavior_level} can't be outside the range [1,{self.n_behavior_levels}]. Total number of levels:{self.n_behavior_levels}"
+
+            # non-digital tracing; normalized model has RISK_MODEL == "digital"
+            if (
+                conf['RISK_MODEL'] != "digital"
+                or normalized_model
+            ):
+                # in alternative methods, max level is still quarantine, but human can be put in lower levels due to re-evaluation.
+                self.set_behavior(level = behavior_level, until = SECONDS_PER_DAY, reason=reason)
+                return
 
             # in digital tracing, human is quarantined once behavior level is max
             # /!\ when tracing will be because of symptoms, a reason will need to be passed
-            if (
-                self.conf['RISK_MODEL'] == "digital"
-                and behavior_level == self.quarantine_idx
-            ):
+            if behavior_level == self.quarantine_idx:
                 reason = "0-1-tracing-positive-test"
                 duration = self.conf['QUARANTINE_DAYS_ON_TRACED_POSITIVE']
                 self.set_behavior(level = self.quarantine_idx, until = duration * SECONDS_PER_DAY, reason=reason)
 
+                # /!\ Hhld members may not have the app 
                 if self.conf['QUARANTINE_HOUSEHOLD_UPON_TRACED_POSITIVE_TEST']:
                     duration = self.conf['QUARANTINE_DAYS_HOUSEHOLD_ON_TRACED_POSITIVE']
                     self._quarantine_household_members(until = duration * SECONDS_PER_DAY, reason=reason)
 
+            assert behavior_level == 1,
+            if behavior_level == 1:
+                print(self.human, "QR", self.quarantine_reason, )
+
             # /!\ unquarantine household ? release household on unquarantining
 
             # TODO - trigger quarantine for self-reported symptoms in digital tracing
-
-            # in alternative methods, max level is still quarantine, but human can be put in lower levels due to re-evaluation.
-            self.set_behavior(level = behavior_level, until = SECONDS_PER_DAY, reason=reason)
-            assert 0 < self.behavior_level < self.n_behavior_levels, f"behavior_level: {self.behavior_level} can't be outside the range [1,{self.n_behavior_levels}]. Total number of levels:{self.n_behavior_levels}"
 
         else:
             raise ValueError(f"Unknown reason for intervention:{reason}")
