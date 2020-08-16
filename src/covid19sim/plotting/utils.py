@@ -437,6 +437,7 @@ def get_mean_fq_r(filenames=None, pkls=None, normalized=False):
         raise ValueError("filenames and pkls are None")
 
     metrics = {
+        "fq": [],
         "f3": [],
         "f2": [],
         "f1": [],
@@ -452,11 +453,12 @@ def get_mean_fq_r(filenames=None, pkls=None, normalized=False):
         x, y, z, a, od, ec, hec = get_fq_r(
             filename=filename, data=pkl["pkl"], normalized=normalized
         )
-        metrics["f3"].append(x[0])
-        metrics["f2"].append(x[1])
-        metrics["f1"].append(x[2])
-        metrics["f1_up"].append(x[3])
-        metrics["f2_up"].append(x[4])
+        metrics['fq'].append(x[0])
+        metrics["f3"].append(x[1])
+        metrics["f2"].append(x[2])
+        metrics["f1"].append(x[3])
+        metrics["f1_up"].append(x[4])
+        metrics["f2_up"].append(x[5])
         metrics["percent_infected"].append(y)
         metrics["r"].append(z)
         metrics["proxy_r"].append(a)
@@ -477,6 +479,7 @@ def get_all_false(filename=None, data=None, normalized=False):
     states = states[:, intervention_day:]
     rec_levels = get_human_rec_levels(data=data, normalized=normalized)
 
+    daily_false_quarantine = np.array(data['daily_quarantine']['false_all'])
     false_level3 = np.sum(((states == 0) | (states == 3)) & (rec_levels == 3), axis=0)
     false_level2 = np.sum(((states == 0) | (states == 3)) & (rec_levels == 2), axis=0)
     false_level1 = np.sum(((states == 0) | (states == 3)) & (rec_levels == 1), axis=0)
@@ -490,6 +493,7 @@ def get_all_false(filename=None, data=None, normalized=False):
         axis=0,
     )
     return (
+        daily_false_quarantine / states.shape[0],
         false_level3 / states.shape[0],
         false_level2 / states.shape[0],
         false_level1 / states.shape[0],
