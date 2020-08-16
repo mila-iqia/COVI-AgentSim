@@ -450,6 +450,13 @@ COLD_CONTAGIOUSNESS: 0.000 # likelihood of transmitting at an encounter (no-sour
 
 # INDIVIDUAL DIFFERENCES PARAMETERS
 P_CAREFUL_PERSON: 0.3 # &carefulness
+AGE_AFFECTS_CAREFULNESS: false
+
+# These values were pulled out of the posterior, but they do what you think they do
+P_DROPOUT_SYMPTOM: 0.2
+P_DROPIN_SYMPTOM: 0.05
+P_REPORT_AGE_AND_SEX_TO_APP: 0.7
+P_SELF_TEST: 0.8
 
 # Biological sex
 P_FEMALE: 0.45

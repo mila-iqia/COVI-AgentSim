@@ -104,6 +104,9 @@ class Human(BaseHuman):
         self.preexisting_conditions = _get_preexisting_conditions(self.age, self.sex, self.rng)  # Which pre-existing conditions does this person have? E.g. COPD, asthma
         self.inflammatory_disease_level = _get_inflammatory_disease_level(self.rng, self.preexisting_conditions, self.conf.get("INFLAMMATORY_CONDITIONS"))  # how many pre-existing conditions are inflammatory (e.g. smoker)
         self.carefulness = get_carefulness(self.age, self.rng, self.conf)  # How careful is this person? Determines their liklihood of contracting Covid / getting really sick, etc
+        self.proba_dropout_symptoms = self.conf["P_DROPOUT_SYMPTOM"]
+        self.proba_dropin_symptoms = self.conf["P_DROPIN_SYMPTOM"]
+        self.proba_report_age_and_sex = self.conf["P_REPORT_AGE_AND_SEX_TO_APP"]
 
         # Illness Properties
         self.is_asymptomatic = self.rng.rand() < self.conf.get("BASELINE_P_ASYMPTOMATIC") - (self.age - 50) * 0.5 / 100  # e.g. 70: baseline-0.1, 20: baseline+0.15
@@ -420,7 +423,7 @@ class Human(BaseHuman):
 
         self.last_date['reported_symptoms'] = current_date
 
-        reported_symptoms = [s for s in self.rolling_all_symptoms[0] if self.rng.random() < self.carefulness]
+        reported_symptoms = [s for s in self.rolling_all_symptoms[0] if self.rng.random() > self.proba_dropout_symptoms]
         self.rolling_all_reported_symptoms.appendleft(reported_symptoms)
 
     @property
@@ -558,7 +561,7 @@ class Human(BaseHuman):
                 # Has symptoms that a careful person would fear to be covid
                 SUSPICIOUS_SYMPTOMS = set(self.conf['GET_TESTED_SYMPTOMS_CHECKED_BY_SELF'])
                 if set(self.symptoms) & SUSPICIOUS_SYMPTOMS:
-                    should_get_test = self.rng.rand() < self.carefulness
+                    should_get_test = self.rng.rand() < self.conf["P_SELF_TEST"]
                     if should_get_test:
                         # self.intervened_behavior.trigger_intervention("self-diagnosed-symptoms", human=self)
                         pass

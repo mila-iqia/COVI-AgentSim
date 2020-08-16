@@ -342,7 +342,7 @@ class City:
             ):
                 human.obs_is_healthcare_worker = True
 
-            human.has_logged_info = human.rng.rand() < human.carefulness
+            human.has_logged_info = human.rng.rand() < human.proba_report_age_and_sex
             human.obs_age = human.age if human.has_logged_info else None
             human.obs_sex = human.sex if human.has_logged_info else None
             human.obs_preexisting_conditions = human.preexisting_conditions if human.has_logged_info else []
