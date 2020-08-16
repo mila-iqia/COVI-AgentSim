@@ -329,7 +329,7 @@ def run(data, path, comparison_key):
             get_line2D(method, current_color, None, True)
         )
         for i, lab in enumerate(current_labels):
-            x, xe = get_metrics(df, lab, "effective_contacts")
+            x, xe = get_metrics(df, lab, "healthy_effective_contacts")
             y, ye = get_metrics(df, lab, "proxy_r")
             xs.append(x.item())
             ys.append(y.item())
@@ -344,12 +344,12 @@ def run(data, path, comparison_key):
         fontsize=25,
         bbox_to_anchor=(0.5, 1.1),
     )
-    spttl = plt.suptitle(
-        "Comparison of tracing methods across different adoption rates",
+    spttl = plt.title(
+        "Comparison of tracing methods across different GLOBAL_EFFECTIVE_MOBILITY_SCALES",
         fontsize=50,
         y=1.15,
     )
-    axs.set_xlabel("Effective Contacts", size=40)
+    axs.set_xlabel("Healthy Effective Contacts", size=40)
     axs.set_ylabel("R_t (infectees / recovered infectors)", size=40)
     for tick in axs.xaxis.get_major_ticks():
         tick.label.set_fontsize(30)
