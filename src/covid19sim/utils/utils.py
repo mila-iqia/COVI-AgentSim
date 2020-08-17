@@ -390,6 +390,7 @@ def extract_tracker_data(tracker, conf):
     data['covid_properties'] = tracker.covid_properties
     data['test_monitor'] = tracker.test_monitor #0.14MB
     data['recovered_stats'] = tracker.recovery_stats
+    data['symptoms'] = tracker.compute_symptom_prevalence()
 
     # tracing related
     data['risk_precision_global'] = tracker.compute_risk_precision(False)
@@ -409,6 +410,11 @@ def extract_tracker_data(tracker, conf):
     data['humans_rec_level'] = tracker.humans_rec_level
     data['humans_intervention_level'] = tracker.humans_intervention_level
     data['to_human_max_msg_per_day'] = tracker.to_human_max_msg_per_day
+
+    # behavior related
+    data['daily_quarantine'] = tracker.daily_quarantine
+    data['quarantine_monitor'] = tracker.quarantine_monitor
+    data['humans_quarantined_state'] = tracker.humans_quarantined_state
 
     return data
 

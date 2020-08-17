@@ -145,9 +145,10 @@ def run(data, path, comparison_key):
     ############
 
     xmetrics = [
+        "fq",
         "f3",
         "f2",
-        "f1",
+        # "f1",
         "f2_up",
         "effective_contacts",
         "outside_daily_contacts",
@@ -236,6 +237,7 @@ def run(data, path, comparison_key):
             )
 
     metric_name_map = {
+        "fq": "False Quarantine",
         "f3": "False level-3",
         "f2": "False level-2",
         "f1": "False level-1",
@@ -267,7 +269,7 @@ def run(data, path, comparison_key):
 
     if ymetric in ["proxy_r", "r"]:
         for ax in axs:
-            ax.plot([0, 1.0], [1.0, 1.0], "-.", c="gray", alpha=0.3, label="Rt = 1.0")
+            ax.plot([0, ax.get_xlim()[1]], [1.0, 1.0], "-.", c="gray", alpha=0.3, label="Rt = 1.0")
 
     spttl = fig.suptitle(
         "Comparison of tracing methods across different adoption rates",
@@ -332,10 +334,10 @@ def run(data, path, comparison_key):
             xs.append(x.item())
             ys.append(y.item())
             yerrs.append(ye.item())
-        
+
         plt.errorbar(xs, ys, yerr=yerrs, label=lab)
         axs.fill_between(xs, ys - np.array(yerrs)/2, ys + np.array(yerrs)/2, alpha=0.2)
-   
+
     lgd = axs.legend(
         loc="upper center",
         ncol= 3,
