@@ -543,8 +543,8 @@ class HumanAsMessageTest(unittest.TestCase):
 
         env = self.EnvMock(today)
 
-        human = Human(env=env, city={'city': 'city'}, name=1, age=25, rng=rng,
-                      infection_timestamp=today, conf=conf)
+        human = Human(env=env, city={'city': 'city'}, name=1, age=25, rng=rng, conf=conf)
+        toay
         human.has_app = True
         human.contact_book.mailbox_keys_by_day[0] = [0, 1]  # add two dummy encounter keys
         personal_mailbox = {1: ["fake_message"]}  # create a dummy personal mailbox with one update
