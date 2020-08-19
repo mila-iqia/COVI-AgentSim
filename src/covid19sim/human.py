@@ -801,6 +801,12 @@ class Human(BaseHuman):
             return
 
         # All tracing methods that are _not ML_ (heuristic, bdt1, bdt2, etc) will compute new risks here
+        from covid19sim.interventions.tracing import Heuristic
+
+        if isinstance(self.intervention, Heuristic):
+            # then we use clusters as the mailbox
+            personal_mailbox = self.intervention.extract_clusters(self)
+
         risks = self.intervention.compute_risk(self, personal_mailbox, self.city.hd)
         for day_offset, risk in enumerate(risks):
             if current_day_idx - day_offset in self.risk_history_map:

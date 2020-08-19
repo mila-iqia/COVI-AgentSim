@@ -232,7 +232,6 @@ class City:
 
         # if people uniformly send messages in the population, then 1 / days_between_messages people
         # won't send messages today anyway
-        # FIXME this overestimates messages but it's ok (??) because we have a hard daily cap
         message_budget = days_between_messages * message_budget
         # but if we don't have that we underestimate the number of available messages in the budget
         # because some people will have already sent a message the day before and won't be able to
@@ -300,7 +299,6 @@ class City:
 
         timedelta = (datetime.datetime.now() - start_time).total_seconds()
         log(f"Schedule prepared (Took {timedelta:2.3f}s)", self.logfile)
-
         self.hd = {human.name: human for human in self.humans}
 
     def _initiate_infection_spread_and_modify_mixing_if_needed(self):
@@ -756,3 +754,8 @@ class EmptyCity(City):
         self.tracker.initialize()
         # self.tracker.track_initialized_covid_params(self.humans)
         self.tracing_method = BaseMethod(self.conf)
+        self.age_histogram = relativefreq2absolutefreq(
+            bins_fractions={(x[0], x[1]): x[2] for x in self.conf.get('P_AGE_REGION')},
+            n_elements=self.n_people,
+            rng=self.rng,
+        )

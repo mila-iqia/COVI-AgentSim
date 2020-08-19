@@ -5,9 +5,12 @@ from covid19sim.interventions.tracing import Heuristic
 from tests.utils import get_test_conf
 from covid19sim.human import Human
 from covid19sim.utils.env import Env
+from covid19sim.utils.demographics import _create_senior_residences, assign_households_to_humans, get_humans_with_age
+from covid19sim.locations.location import Household
 from covid19sim.locations.city import EmptyCity
 from covid19sim.inference.message_utils import UpdateMessage
 from covid19sim.epidemiology.symptoms import MODERATE, SEVERE, EXTREMELY_SEVERE
+from covid19sim.inference.heavy_jobs import DummyMemManager
 
 class TrackerMock:
     def track_tested_results(self, *args, **kwargs):
@@ -34,23 +37,30 @@ class HeuristicTest(unittest.TestCase):
         except AttributeError:
             self.city.tracker = TrackerMock()
 
-        self.sr = self.city.create_location(
-            self.conf.get("LOCATION_DISTRIBUTION")["senior_residency"],
-            "senior_residency",
-            0,
-            area=1000,
+        self.sr = _create_senior_residences(2, self.city, self.city.rng, self.conf)
+
+        house = Household(
+            env=self.city.env,
+            rng=np.random.RandomState(self.city.rng.randint(2 ** 16)),
+            conf=self.conf,
+            name=f"HOUSEHOLD:{len(self.city.households)}",
+            location_type="HOUSEHOLD",
+            lat=self.city.rng.randint(*self.city.x_range),
+            lon=self.city.rng.randint(*self.city.y_range),
+            area=None,
+            capacity=None,
         )
 
-        self.human1 = Human(env=self.city.env, city=self.city, name=1, age=42, rng=self.rng, has_app=True, infection_timestamp=self.start_time,
-            household=self.sr, workplace=self.sr, profession="retired", rho=self.conf.get("RHO"), gamma=self.conf.get("GAMMA"),
-            conf=self.conf)
-        self.human1.set_intervention(self.heuristic)
+        self.human1 = Human(env=self.city.env, city=self.city, name=1, age=42, rng=self.rng, conf=self.conf)
+        self.human1.assign_household(house)
+        self.human1.has_app = True
+        self.human1._rec_level = 0
         setattr(self.human1, "_heuristic_rec_level", 0)
 
-        self.human2 = Human(env=self.city.env, city=self.city, name=2, age=6*9, rng=self.rng, has_app=True, infection_timestamp=self.start_time,
-            household=self.sr, workplace=self.sr, profession="retired", rho=self.conf.get("RHO"), gamma=self.conf.get("GAMMA"),
-            conf=self.conf)
-        self.human2.set_intervention(self.heuristic)
+        self.human2 = Human(env=self.city.env, city=self.city, name=2, age=6*9, rng=self.rng, conf=self.conf)
+        self.human2.assign_household(house)
+        self.human2.has_app = True
+        self.human1._rec_level = 0
         setattr(self.human2, "_heuristic_rec_level", 0)
 
         self.humans = [self.human1, self.human2]
@@ -92,119 +102,70 @@ class HeuristicTest(unittest.TestCase):
     def test_handle_risk_messages_lev_5(self):
 
         # Risk Level 5
-        m1 = UpdateMessage(
-            uid=None,
-            new_risk_level=5,
-            old_risk_level=0,
-            update_time=self.env.timestamp.date(),
-            encounter_time=datetime.datetime.combine(self.env.timestamp.date(), datetime.datetime.min.time()),
-            _sender_uid=self.human2.name,
-            _receiver_uid=self.human1.name,
-            _real_encounter_time=self.env.timestamp,
-            _exposition_event=None,  # we don't decide this here, it will be done in the caller
-        )
+        rel_encounter_day = 1
+        num_encounters = 1
+        new_risk_level = 5
+        clusters = [(rel_encounter_day, new_risk_level, num_encounters)]
+        message_risk_history, message_rec_level, _ = self.heuristic.handle_risk_messages(self.human1, clusters)
 
-        mailbox = {None: [m1]}
-        risk_history, rec_level = self.heuristic.handle_risk_messages(self.human1, mailbox)
-        assert rec_level == 0
-        assert risk_history == []
+        assert message_rec_level == 0
+        assert message_risk_history == []
 
     def test_handle_risk_messages_lev_6(self):
         # Risk Level 6 today
-        m1 = UpdateMessage(
-            uid=None,
-            new_risk_level=6,
-            old_risk_level=0,
-            update_time=self.env.timestamp,
-            encounter_time=self.env.timestamp,
-            _sender_uid=self.human2.name,
-            _receiver_uid=self.human1.name,
-            _real_encounter_time=self.env.timestamp,
-            _exposition_event=None,  # we don't decide this here, it will be done in the caller
-        )
+        rel_encounter_day = 1
+        num_encounters = 1
+        new_risk_level = 6
+        clusters = [(rel_encounter_day, new_risk_level, num_encounters)]
+        message_risk_history, message_rec_level, _ = self.heuristic.handle_risk_messages(self.human1, clusters)
 
-        mailbox = {None: [m1]}
-        risk_history, rec_level = self.heuristic.handle_risk_messages(self.human1, mailbox)
-        assert rec_level == 0
-        assert risk_history == []
+        assert message_rec_level == 0
+        assert message_risk_history == []
 
     def test_handle_risk_messages_lev_6_2_days_elapsed(self):
 
         # Risk level 6, but 2 days have elapsed
-        m1 = UpdateMessage(
-            uid=None,
-            new_risk_level=6,
-            old_risk_level=0,
-            update_time=self.env.timestamp.date(),
-            encounter_time=self.env.timestamp - datetime.timedelta(days=2),
-            _sender_uid=self.human2.name,
-            _receiver_uid=self.human1.name,
-            _real_encounter_time=self.env.timestamp,
-            _exposition_event=None,  # we don't decide this here, it will be done in the caller
-        )
+        rel_encounter_day = 2
+        num_encounters = 1
+        new_risk_level = 6
+        clusters = [(rel_encounter_day, new_risk_level, num_encounters)]
+        message_risk_history, message_rec_level, _ = self.heuristic.handle_risk_messages(self.human1, clusters)
 
-        mailbox = {None: [m1]}
-        risk_history, rec_level = self.heuristic.handle_risk_messages(self.human1, mailbox)
-        assert rec_level == 2
-        assert risk_history == [0.20009698]
+        assert message_rec_level == 2
+        assert message_risk_history == [0.20009698]
 
     def test_handle_risk_messages_lev_8_2_days_elapsed(self):
 
         # Risk Level 8
-        m1 = UpdateMessage(
-            uid=None,
-            new_risk_level=8,
-            old_risk_level=0,
-            update_time=self.env.timestamp,
-            encounter_time=self.env.timestamp - datetime.timedelta(days=2),
-            _sender_uid=self.human2.name,
-            _receiver_uid=self.human1.name,
-            _real_encounter_time=self.env.timestamp,
-            _exposition_event=None,  # we don't decide this here, it will be done in the caller
-        )
+        rel_encounter_day = 2
+        num_encounters = 1
+        new_risk_level = 8
+        clusters = [(rel_encounter_day, new_risk_level, num_encounters)]
+        message_risk_history, message_rec_level, _ = self.heuristic.handle_risk_messages(self.human1, clusters)
 
-        mailbox = {None: [m1]}
-        risk_history, rec_level = self.heuristic.handle_risk_messages(self.human1, mailbox)
-        assert rec_level == 2
-        assert risk_history == [0.42782824]
+        assert message_rec_level == 2
+        assert message_risk_history == [0.42782824]
 
     def test_handle_risk_messages_lev_8_5_days_elapsed(self):
 
         # Risk Level 8
-        m1 = UpdateMessage(
-            uid=None,
-            new_risk_level=8,
-            old_risk_level=0,
-            update_time=self.env.timestamp,
-            encounter_time=self.env.timestamp - datetime.timedelta(days=5),
-            _sender_uid=self.human2.name,
-            _receiver_uid=self.human1.name,
-            _real_encounter_time=self.env.timestamp,
-            _exposition_event=None,  # we don't decide this here, it will be done in the caller
-        )
+        rel_encounter_day = 5
+        num_encounters = 1
+        new_risk_level = 8
+        clusters = [(rel_encounter_day, new_risk_level, num_encounters)]
+        message_risk_history, message_rec_level, _ = self.heuristic.handle_risk_messages(self.human1, clusters)
 
-        mailbox = {None: [m1]}
-        risk_history, rec_level = self.heuristic.handle_risk_messages(self.human1, mailbox)
-        assert rec_level == 2
-        assert risk_history == [0.42782824, 0.42782824, 0.42782824, 0.42782824]
+        assert message_rec_level == 2
+        assert message_risk_history == [0.42782824, 0.42782824, 0.42782824, 0.42782824]
 
     def test_handle_risk_messages_lev_12_5_days_elapsed(self):
 
         # Risk Level 12
-        m1 = UpdateMessage(
-            uid=None,
-            new_risk_level=12,
-            old_risk_level=0,
-            update_time=self.env.timestamp,
-            encounter_time=self.env.timestamp - datetime.timedelta(days=5),
-            _sender_uid=self.human2.name,
-            _receiver_uid=self.human1.name,
-            _real_encounter_time=self.env.timestamp,
-            _exposition_event=None,  # we don't decide this here, it will be done in the caller
-        )
-
-        mailbox = {None: [m1]}
-        risk_history, rec_level = self.heuristic.handle_risk_messages(self.human1, mailbox)
+        rel_encounter_day = 5
+        num_encounters = 1
+        new_risk_level = 12
+        clusters = [(rel_encounter_day, new_risk_level, num_encounters)]
+        risk_history, rec_level, _ = self.heuristic.handle_risk_messages(self.human1, clusters)
         assert rec_level == 3
         assert risk_history == [0.79687407, 0.79687407, 0.79687407, 0.79687407]
 
@@ -256,7 +217,6 @@ class HeuristicTest(unittest.TestCase):
         reported_symptoms = [SEVERE]
         self.human1.rolling_all_reported_symptoms.appendleft(reported_symptoms)
         mailbox = {}
-
         risk_history = self.heuristic.compute_risk(self.human1, mailbox, self.hd)
         assert self.human1._heuristic_rec_level == 0
         assert risk_history == [0.20009698, 0.20009698, 0.20009698, 0.20009698, 0.20009698, 0.20009698, 0.20009698]
@@ -269,21 +229,12 @@ class HeuristicTest(unittest.TestCase):
         self.human1.rolling_all_reported_symptoms.appendleft(reported_symptoms)
 
         # Risk Level 1
-        m1 = UpdateMessage(
-            uid=None,
-            new_risk_level=1,
-            old_risk_level=0,
-            update_time=self.env.timestamp,
-            encounter_time=self.env.timestamp - datetime.timedelta(days=5),
-            _sender_uid=self.human2.name,
-            _receiver_uid=self.human1.name,
-            _real_encounter_time=self.env.timestamp,
-            _exposition_event=None,  # we don't decide this here, it will be done in the caller
-        )
+        rel_encounter_day = 5
+        num_encounters = 1
+        new_risk_level = 1
+        clusters = [(rel_encounter_day, new_risk_level, num_encounters)]
 
-        mailbox = {None: [m1]}
-
-        risk_history = self.heuristic.compute_risk(self.human1, mailbox, self.hd)
+        risk_history = self.heuristic.compute_risk(self.human1, clusters, self.hd)
         assert self.human1._heuristic_rec_level == 3
         assert risk_history == [0.94996601, 0.94996601, 0.94996601, 0.94996601, 0.94996601, 0.94996601, 0.94996601]
 
@@ -294,55 +245,45 @@ class HeuristicTest(unittest.TestCase):
         reported_symptoms = ["mild"]
         self.human1.rolling_all_reported_symptoms.appendleft(reported_symptoms)
 
-        # Risk Level 1
-        m1 = UpdateMessage(
-            uid=None,
-            new_risk_level=13,
-            old_risk_level=0,
-            update_time=self.env.timestamp,
-            encounter_time=self.env.timestamp - datetime.timedelta(days=2),
-            _sender_uid=self.human2.name,
-            _receiver_uid=self.human1.name,
-            _real_encounter_time=self.env.timestamp,
-            _exposition_event=None,  # we don't decide this here, it will be done in the caller
-        )
+        rel_encounter_day = 2
+        num_encounters = 1
+        new_risk_level = 13
+        clusters = [(rel_encounter_day, new_risk_level, num_encounters)]
 
-        mailbox = {None: [m1]}
-
-        risk_history = self.heuristic.compute_risk(self.human1, mailbox, self.hd)
+        risk_history = self.heuristic.compute_risk(self.human1, clusters, self.hd)
         assert self.human1._heuristic_rec_level == 3
         # We get a hetereogenous array here because of the mixed signals between symptoms and risk messages
         assert risk_history == [0.8408014, 0.79687407, 0.79687407, 0.79687407, 0.79687407, 0.79687407, 0.79687407]
 
     def test_recovered(self):
         # they were at a rec level of 1, then they recovered
-        mailbox = {None: []}
+        clusters = []
         self.env = Env(self.start_time + datetime.timedelta(days=3))
         self.human1.env = self.env
         self.human1._rec_level = 1
         self.human1._heuristic_rec_level = 1
 
-        risk_history = self.heuristic.compute_risk(self.human1, mailbox, self.hd)
+        risk_history = self.heuristic.compute_risk(self.human1, clusters, self.hd)
         assert self.human1._heuristic_rec_level == 0
         assert risk_history == [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
 
 
     def test_high_risk_history_no_new_signal(self):
         # they were at a rec level of 1, then they recovered
-        mailbox = {None: []}
+        clusters = []
         self.env = Env(self.start_time + datetime.timedelta(days=3))
         self.human1.env = self.env
         self.human1._rec_level = 3
         self.human1._heuristic_rec_level = 3
         self.human1.risk_history_map = {1: 0.9, 2: 0.9, 3: 0.9}
 
-        risk_history = self.heuristic.compute_risk(self.human1, mailbox, self.hd)
+        risk_history = self.heuristic.compute_risk(self.human1, clusters, self.hd)
         assert self.human1._heuristic_rec_level == 0
         assert risk_history == [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
 
     def test_high_risk_history_mild_symptom(self):
         # they were at a rec level of 1, then they recovered
-        mailbox = {None: []}
+        clusters = []
         self.env = Env(self.start_time + datetime.timedelta(days=3))
         self.human1.env = self.env
         self.human1._rec_level = 3
@@ -351,7 +292,7 @@ class HeuristicTest(unittest.TestCase):
         reported_symptoms = ["mild"]
         self.human1.rolling_all_reported_symptoms.appendleft(reported_symptoms)
 
-        risk_history = self.heuristic.compute_risk(self.human1, mailbox, self.hd)
+        risk_history = self.heuristic.compute_risk(self.human1, clusters, self.hd)
         assert self.human1._heuristic_rec_level == 3
         # This basically says for the last three days you maintain the high risk signal, but then you update older signals.
         # not sure this would ever happen in the real algorithm since the only time we are really writing signals higher
@@ -364,20 +305,13 @@ class HeuristicTest(unittest.TestCase):
         self.human1.set_test_info("lab", "negative")
         self.env = Env(self.start_time + datetime.timedelta(days=8))
         self.human1.env = self.env
-        m1 = UpdateMessage(
-            uid=None,
-            new_risk_level=8,
-            old_risk_level=0,
-            update_time=self.env.timestamp.date(),
-            encounter_time=self.env.timestamp - datetime.timedelta(days=2),
-            _sender_uid=self.human2.name,
-            _receiver_uid=self.human1.name,
-            _real_encounter_time=self.env.timestamp,
-            _exposition_event=None,  # we don't decide this here, it will be done in the caller
-        )
 
-        mailbox = {None: [m1]}
-        risk_history = self.heuristic.compute_risk(self.human1, mailbox, self.hd)
+        rel_encounter_day = 2
+        num_encounters = 1
+        new_risk_level = 8
+        clusters = [(rel_encounter_day, new_risk_level, num_encounters)]
+
+        risk_history = self.heuristic.compute_risk(self.human1, clusters, self.hd)
 
         assert self.human1._heuristic_rec_level == 2
         assert risk_history == [0.42782824, 0.01, 0.01, 0.01, 0.20009698, 0.20009698, 0.20009698, 0.20009698, 0.20009698, 0.20009698, 0.20009698, 0.20009698]
@@ -392,21 +326,12 @@ class HeuristicTest(unittest.TestCase):
         self.human1.env = self.env
         self.human1.risk_history_map = {1: 0.9, 2: 0.9, 3: 0.9, 4: 0.9, 5: 0.9, 6: 0.9, 7: 0.9, 8: 0.9, 9: 0.9}
 
-        m1 = UpdateMessage(
-            uid=None,
-            new_risk_level=8,
-            old_risk_level=0,
-            update_time=self.env.timestamp.date(),
-            encounter_time=self.env.timestamp - datetime.timedelta(days=12),
-            _sender_uid=self.human2.name,
-            _receiver_uid=self.human1.name,
-            _real_encounter_time=self.env.timestamp,
-            _exposition_event=None,  # we don't decide this here, it will be done in the caller
-        )
+        rel_encounter_day = 12
+        num_encounters = 1
+        new_risk_level = 8
+        clusters = [(rel_encounter_day, new_risk_level, num_encounters)]
 
-        mailbox = {None: [m1]}
-
-        risk_history = self.heuristic.compute_risk(self.human1, mailbox, self.hd)
+        risk_history = self.heuristic.compute_risk(self.human1, clusters, self.hd)
 
         assert self.human1._heuristic_rec_level == 0
         assert risk_history == [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]

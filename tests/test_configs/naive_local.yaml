@@ -9,9 +9,9 @@ SHOULD_MODIFY_BEHAVIOR : True
 USE_ORACLE : False
 
 ## INTERVENTIONS
-INTERVENTION_DAY : -1
+INTERVENTION_DAY : 1
 N_BEHAVIOR_LEVELS: 2
-INTERVENTION : "Tracing"
+#INTERVENTION : "Tracing"
 DROPOUT_RATE: 0.02
 APP_UPTAKE : 1.0
 GLOBAL_MOBILITY_SCALING_FACTOR : 1
@@ -23,7 +23,7 @@ CLUSTER_PATH : "output/clusters.json"
 TRACING_N_DAYS_HISTORY : 14
 DUMP_CLUSTERS : False
 CLUSTER_ALGO_TYPE: "blind" # should be in ["gaen", "blind"]
-RESET_INFERENCE_SERVER: True
+RESET_INFERENCE_SERVER: False
 
 # TRACING RISK MODEL PARAMETERS  (non-ML)
 TRACE_SYMPTOMS : True
@@ -38,3 +38,21 @@ RISK_MAPPING : [0., 0.01, 0.20009698, 0.3337032 , 0.42782824,
 
 # Console logging (Conditional with COLLECT_LOGS)
 LOGGING_LEVEL: "WARNING"
+REC_LEVEL_THRESHOLDS: [0, 0, 1] # Binary
+# risk model
+#RISK_MODEL : "digital"
+#
+## behavior level specifications
+#N_BEHAVIOR_LEVELS: 4
+#INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS: True
+#SHOULD_MODIFY_BEHAVIOR : True
+#
+## tracing parameters
+#TRACING_ORDER : 1
+#TRACE_SYMPTOMS : False
+#
+## behavior modification
+#REC_LEVEL_THRESHOLDS: [0, 0, 1] # Binary
+#
+## when to start (overwrite it if needs to be run from other day)
+#INTERVENTION_DAY: 0
