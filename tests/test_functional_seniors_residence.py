@@ -80,8 +80,9 @@ def test_functional_seniors_residence():
             sr.residents.append(human)
             human.mobility_planner.initialize()
 
-        # pick one human randomly and make sure it cannot recover (for later checks)
-        humans[np.random.randint(N)].never_recovers = True
+        # pick some humans and make sure they cannot recover (for later checks)
+        for i in range(int(N/2)):
+            humans[i].never_recovers = True
         # Infect one of the humans
         humans[np.random.randint(N)]._get_infected(1)
 
