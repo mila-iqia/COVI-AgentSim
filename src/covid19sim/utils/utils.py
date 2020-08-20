@@ -708,7 +708,7 @@ class DummyHuman:
         self.recommendations_to_follow = [str(rec) for rec in human.recommendations_to_follow]
         # "blacklisted" attributes are overriden with `None`, no matter their original value
         self.blacklisted_attribs = [
-            "conf", "city", "known_contacts", "my_history", "visits", "proba_to_risk_level_map",  "mobility_planner"
+            "conf", "city", "known_connections", "my_history", "visits", "proba_to_risk_level_map",  "mobility_planner"
         ]
         for attr_name in self.blacklisted_attribs:
             setattr(self, attr_name, None)

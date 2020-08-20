@@ -696,7 +696,12 @@ class DataCollectionClient:
 
     def write(self, day_idx, hour_idx, human_idx, sample):
         """Forwards a data sample for the data writer using pickle."""
-        self.socket.send_pyobj((day_idx, hour_idx, human_idx, pickle.dumps(sample)))
+        try:
+            self.socket.send_pyobj((day_idx, hour_idx, human_idx, pickle.dumps(sample)))
+        except Exception:
+            import pdb;
+            pdb.set_trace()
+
         response = self.socket.recv()
         assert response == b"GOTCHA"
 
