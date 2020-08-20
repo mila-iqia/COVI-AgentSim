@@ -1,4 +1,3 @@
-
 import datetime
 from scipy.optimize import curve_fit
 from scipy.stats import lognorm, norm, gamma
