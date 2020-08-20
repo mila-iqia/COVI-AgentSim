@@ -110,7 +110,7 @@ def test_functional_seniors_residence():
                 City, "run_app",
                 new=fake_run_app) as mock:
             env.run(until=env.ts_initial+simulation_days*SECONDS_PER_DAY)
-        import pdb; pdb.set_trace()
+
         # Check dead humans are removed from the residence
         assert sum([h.is_dead for h in city.humans]) == N - len(sr.residents)
 
