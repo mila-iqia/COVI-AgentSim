@@ -46,8 +46,6 @@ class Location(simpy.Resource):
     Class representing generic locations used in the simulator
     """
 
-    city: "City"
-
     def __init__(self, env, rng, conf, area, name, location_type, lat, lon, capacity):
         """
         Locations are created with city.create_location(), not instantiated directly
