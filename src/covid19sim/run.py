@@ -1,11 +1,15 @@
 """
-Main file to run the simulations
+Main entrypoint for the execution of simulations.
+
+The experimental settings of the simulations are managed via [Hydra](https://github.com/facebookresearch/hydra).
+The root configuration file is located at `src/covid19sim/configs/simulation/config.yaml`. All settings
+provided via commandline will override the ones loaded through the configuration files.
 """
 import datetime
 import logging
 import os
-import shutil
 import time
+import typing
 from pathlib import Path
 
 import hydra
@@ -15,12 +19,62 @@ from omegaconf import DictConfig
 from covid19sim.locations.city import City
 from covid19sim.utils.env import Env
 from covid19sim.utils.constants import SECONDS_PER_DAY, SECONDS_PER_HOUR
-from covid19sim.log.monitors import EventMonitor, SEIRMonitor, TimeMonitor
-from covid19sim.human import Human
-from covid19sim.utils.utils import (dump_conf, dump_tracker_data,
-                                    extract_tracker_data, parse_configuration,
-                                    zip_outdir)
+from covid19sim.log.monitors import EventMonitor, SimulationMonitor
+from covid19sim.inference.server_utils import DataCollectionServer
+from covid19sim.utils.utils import dump_conf, dump_tracker_data, extract_tracker_data, parse_configuration, log
 
+def _get_intervention_string(conf):
+    """
+    Consolidates all the parameters to one single string.
+
+    Args:
+        conf (dict): yaml configuration of the experiment
+
+    Returns:
+        (str): a string to identify type of intervention being run
+
+    Raises:
+        (ValueError): if RISK_MODEL is unknown
+    """
+    if conf['RISK_MODEL'] == "":
+        type_of_run = "UNMITIGATED"
+        if conf['INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS']:
+            type_of_run = "LOCKDOWN"
+
+        if conf['N_BEHAVIOR_LEVELS'] > 2:
+            type_of_run = "POST-LOCKDOWN NO TRACING"
+
+        return type_of_run
+
+    risk_model = conf['RISK_MODEL']
+    n_behavior_levels = conf['N_BEHAVIOR_LEVELS']
+    type_of_run = f"{risk_model} | N_BEHAVIOR_LEVELS:{n_behavior_levels} |"
+    if risk_model == "digital":
+        type_of_run += f" N_LEVELS_USED: 2 (1st and last) |"
+        type_of_run += f" TRACING_ORDER:{conf['TRACING_ORDER']} |"
+        type_of_run += f" TRACE_SYMPTOMS: {conf['TRACE_SYMPTOMS']} |"
+        type_of_run += f" INTERPOLATE_USING_LOCKDOWN_CONTACTS:{conf['INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS']} |"
+        type_of_run += f" MODIFY_BEHAVIOR: {conf['SHOULD_MODIFY_BEHAVIOR']}"
+        return type_of_run
+
+    if risk_model == "transformer":
+        type_of_run += f" USE_ORACLE: {conf['USE_ORACLE']}"
+        type_of_run += f" N_LEVELS_USED: {n_behavior_levels} |"
+        type_of_run += f" INTERPOLATE_USING_LOCKDOWN_CONTACTS:{conf['INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS']} |"
+        type_of_run += f" REC_LEVEL_THRESHOLDS: {conf['REC_LEVEL_THRESHOLDS']} |"
+        type_of_run += f" MAX_RISK_LEVEL: {conf['MAX_RISK_LEVEL']} |"
+        type_of_run += f" MODIFY_BEHAVIOR: {conf['SHOULD_MODIFY_BEHAVIOR']} "
+        type_of_run += f"\n RISK_MAPPING: {conf['RISK_MAPPING']}"
+        return type_of_run
+
+    if risk_model in ['heuristicv1', 'heuristicv2', 'heuristicv3']:
+        type_of_run += f" N_LEVELS_USED: {n_behavior_levels} |"
+        type_of_run += f" INTERPOLATE_USING_LOCKDOWN_CONTACTS:{conf['INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS']} |"
+        type_of_run += f" MAX_RISK_LEVEL: {conf['MAX_RISK_LEVEL']} |"
+        type_of_run += f" MODIFY_BEHAVIOR: {conf['SHOULD_MODIFY_BEHAVIOR']}"
+        return type_of_run
+
+    raise ValueError(f"Unknown risk model:{risk_model}")
 
 @hydra.main(config_path="configs/simulation/config.yaml")
 def main(conf: DictConfig):
@@ -41,18 +95,21 @@ def main(conf: DictConfig):
     # -------------------------------------
     if conf["outdir"] is None:
         conf["outdir"] = str(Path(__file__) / "output")
+
+    timenow = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     conf[
         "outdir"
     ] = "{}/sim_v2_people-{}_days-{}_init-{}_uptake-{}_seed-{}_{}_{}".format(
         conf["outdir"],
         conf["n_people"],
         conf["simulation_days"],
-        conf["init_percent_sick"],
+        conf["init_fraction_sick"],
         conf["APP_UPTAKE"],
         conf["seed"],
-        datetime.datetime.now().strftime("%Y%m%d-%H%M%S"),
+        timenow,
         str(time.time_ns())[-6:],
     )
+
     if Path(conf["outdir"]).exists():
         out_path = Path(conf["outdir"])
         out_idx = 1
@@ -61,144 +118,156 @@ def main(conf: DictConfig):
         conf["outdir"] = str(out_path.parent / (out_path.name + f"_{out_idx}"))
 
     os.makedirs(conf["outdir"])
-
-    if not conf["tune"]:
-        outfile = os.path.join(conf["outdir"], "data")
+    logfile = f"{conf['outdir']}/log_{timenow}.txt"
+    outfile = os.path.join(conf["outdir"], "data")
 
     # ---------------------------------
     # -----  Filter-Out Warnings  -----
     # ---------------------------------
     import warnings
-
-    warnings.filterwarnings("ignore")
-    if conf["tune"]:
-        print("Using Tune")
-        outfile = None
+    # warnings.filterwarnings("ignore")
 
     # ----------------------------
     # -----  Run Simulation  -----
     # ----------------------------
+    # correctness of configuration file
+    assert not conf['RISK_MODEL'] != "" or conf['INTERVENTION_DAY'] >= 0, "risk model is given, but no intervnetion day specified"
+    assert conf['N_BEHAVIOR_LEVELS'] >= 2, "At least 2 behavior levels are required to model behavior changes"
+
+    log(f"RISK_MODEL = {conf['RISK_MODEL']}", logfile)
+    log(f"INTERVENTION_DAY = {conf['INTERVENTION_DAY']}", logfile)
+    log(f"seed: {conf['seed']}", logfile)
+
+    # complete decsription of intervention
+    type_of_run = _get_intervention_string(conf)
+    conf['INTERVENTION'] = type_of_run
+    log(f"Type of run: {type_of_run}", logfile)
+
     conf["outfile"] = outfile
-
-    print("RISK_MODEL ==> ", conf.get("RISK_MODEL"))
-
     city, monitors, tracker = simulate(
         n_people=conf["n_people"],
-        init_percent_sick=conf["init_percent_sick"],
+        init_fraction_sick=conf["init_fraction_sick"],
         start_time=conf["start_time"],
         simulation_days=conf["simulation_days"],
         outfile=conf["outfile"],
         out_chunk_size=conf["out_chunk_size"],
-        print_progress=conf["print_progress"],
         seed=conf["seed"],
-        return_city=True,
         conf=conf,
+        logfile=logfile
     )
 
-    # ----------------------------------------
-    # -----  Compute Effective Contacts  -----
-    # ----------------------------------------
-    timenow = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-    all_effective_contacts = 0
-    all_contacts = 0
-    for human in city.humans:
-        all_effective_contacts += human.effective_contacts
-        all_contacts += human.num_contacts
-    print(f"all_effective_contacts: {all_effective_contacts}")
-    print(
-        f"all_effective_contacts/(sim days * len(city.humans)): {all_effective_contacts / (conf['simulation_days'] * len(city.humans))}"
-    )
-    if all_contacts != 0:
-        print(
-            f"effective contacts per contacts (GLOBAL_MOBILITY_SCALING_FACTOR): {all_effective_contacts / all_contacts}"
-        )
-
+    # write the full configuration file along with git commit hash
     dump_conf(city.conf, "{}/full_configuration.yaml".format(city.conf["outdir"]))
 
+    # log the simulation statistics
+    tracker.write_metrics()
+
+    # if COLLECT_LOGS is True
+    monitors[0].dump()
+    monitors[0].join_iothread()
+
+    # (baseball-cards) write full simulation data
+    if hasattr(city, "tracker") and \
+            hasattr(city.tracker, "collection_server") and \
+            isinstance(city.tracker.collection_server, DataCollectionServer) and \
+            city.tracker.collection_server is not None:
+        city.tracker.collection_server.stop_gracefully()
+        city.tracker.collection_server.join()
+
+    # if COLLECT_TRAINING_DATA is true
     if not conf["tune"]:
         # ----------------------------------------------
-        # -----  Not Tune: Write Logs And Metrics  -----
+        # -----  Not Tune: Collect Training Data   -----
         # ----------------------------------------------
-        monitors[0].dump()
-        monitors[0].join_iothread()
-        # write metrics
-        logfile = os.path.join(f"{conf['outdir']}/logs.txt")
-        tracker.write_metrics(logfile)
-
         # write values to train with
         train_priors = os.path.join(f"{conf['outdir']}/train_priors.pkl")
         tracker.write_for_training(city.humans, train_priors, conf)
 
-        if conf["zip_outdir"]:
-            zip_outdir(conf["outdir"])
-            if conf["delete_outdir"]:
-                shutil.rmtree(conf["outdir"])
     else:
         # ------------------------------------------------------
-        # -----  Tune: Create Plots And Write Tacker Data  -----
+        # -----     Tune: Write logs And Tacker Data       -----
         # ------------------------------------------------------
-        from covid19sim.plotting.plot_rt import PlotRt
+        timenow = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+        log("Dumping Tracker Data in {}".format(conf["outdir"]), logfile)
 
-        cases_per_day = tracker.cases_per_day
-        serial_interval = tracker.get_generation_time()
-        if serial_interval == 0:
-            serial_interval = 7.0
-            print("WARNING: serial_interval is 0")
-        print(f"using serial interval :{serial_interval}")
-        plotrt = PlotRt(R_T_MAX=4, sigma=0.25, GAMMA=1.0 / serial_interval)
-        most_likely, _ = plotrt.compute(cases_per_day, r0_estimate=2.5)
-        print("Rt", most_likely[:20])
-
-        print("Dumping Tracker Data in", conf["outdir"])
         Path(conf["outdir"]).mkdir(parents=True, exist_ok=True)
-        filename = f"tracker_data_n_{conf['n_people']}_seed_{conf['seed']}_{timenow}_{conf['name']}.pkl"
+        filename = f"tracker_data_n_{conf['n_people']}_seed_{conf['seed']}_{timenow}.pkl"
         data = extract_tracker_data(tracker, conf)
         dump_tracker_data(data, conf["outdir"], filename)
-        tracker.write_metrics(f"{conf['outdir']}/log_{timenow}_{conf['name']}.txt")
     return conf
 
 
 def simulate(
-    n_people=None,
-    init_percent_sick=0.01,
-    start_time=datetime.datetime(2020, 2, 28, 0, 0),
-    simulation_days=10,
-    outfile=None,
-    out_chunk_size=None,
-    print_progress=False,
-    seed=0,
-    other_monitors=[],
-    return_city=False,
-    conf={},
+    n_people: int = 1000,
+    init_fraction_sick: float = 0.01,
+    start_time: datetime.datetime = datetime.datetime(2020, 2, 28, 0, 0),
+    simulation_days: int = 30,
+    outfile: typing.Optional[typing.AnyStr] = None,
+    out_chunk_size: typing.Optional[int] = None,
+    seed: int = 0,
+    other_monitors: typing.Optional[typing.List] = None,
+    conf: typing.Optional[typing.Dict] = None,
+    logfile: str = None,
 ):
     """
-    Run the simulation.
+    Runs a simulation.
 
     Args:
         n_people ([type], optional): [description]. Defaults to None.
-        init_percent_sick (float, optional): [description]. Defaults to 0.0.
+        init_fraction_sick (float, optional): fraction of population initialized as sick. Defaults to 0.01.
         start_time ([type], optional): [description]. Defaults to datetime.datetime(2020, 2, 28, 0, 0).
         simulation_days (int, optional): [description]. Defaults to 10.
         outfile (str, optional): [description]. Defaults to None.
         out_chunk_size ([type], optional): [description]. Defaults to None.
-        print_progress (bool, optional): [description]. Defaults to False.
         seed (int, optional): [description]. Defaults to 0.
         other_monitors (list, optional): [description]. Defaults to [].
-        return_city (bool, optional): Returns an additional city object if set to True.
+        conf (dict): yaml configuration of the experiment
+        logfile (str): filepath where the console output and final tracked metrics will be logged. Prints to the console only if None.
 
     Returns:
-        [type]: [description]
+        city (covid19sim.locations.city.City): [description]
+        monitors (list):
+        tracker (covid19sim.log.track.Tracker):
     """
 
+    if other_monitors is None:
+        other_monitors = []
+
+    if conf is None:
+        conf = {}
+
     conf["n_people"] = n_people
-    conf["init_percent_sick"] = init_percent_sick
+    conf["init_fraction_sick"] = init_fraction_sick
     conf["start_time"] = start_time
     conf["simulation_days"] = simulation_days
     conf["outfile"] = outfile
     conf["out_chunk_size"] = out_chunk_size
-    conf["print_progress"] = print_progress
     conf["seed"] = seed
     conf["other_monitors"] = other_monitors
+    conf['logfile'] = logfile
+
+    # set days and mixing constants
+    conf['_MEAN_DAILY_UNKNOWN_CONTACTS'] = conf['MEAN_DAILY_UNKNOWN_CONTACTS']
+    conf['_ENVIRONMENTAL_INFECTION_KNOB'] = conf['ENVIRONMENTAL_INFECTION_KNOB']
+    conf['_CURRENT_PREFERENTIAL_ATTACHMENT_FACTOR'] = conf['BEGIN_PREFERENTIAL_ATTACHMENT_FACTOR']
+    start_time_offset_days = conf['COVID_START_DAY']
+    intervention_start_days = conf['INTERVENTION_DAY']
+
+    # start of COVID spread
+    conf['COVID_SPREAD_START_TIME'] = start_time
+
+    # start of intervention
+    conf['INTERVENTION_START_TIME'] = None
+    if intervention_start_days >= 0:
+        conf['INTERVENTION_START_TIME'] = start_time + datetime.timedelta(days=intervention_start_days)
+
+    # start of simulation without COVID
+    start_time -= datetime.timedelta(days=start_time_offset_days)
+    conf['SIMULATION_START_TIME'] = str(start_time)
+
+    # adjust the simulation days
+    conf['simulation_days'] += conf['COVID_START_DAY']
+    simulation_days = conf['simulation_days']
 
     logging.root.setLevel(getattr(logging, conf["LOGGING_LEVEL"].upper()))
 
@@ -207,16 +276,15 @@ def simulate(
     city_x_range = (0, 1000)
     city_y_range = (0, 1000)
     city = City(
-        env, n_people, init_percent_sick, rng, city_x_range, city_y_range, Human, conf
+        env, n_people, init_fraction_sick, rng, city_x_range, city_y_range, conf, logfile
     )
 
     # Add monitors
     monitors = [
         EventMonitor(f=SECONDS_PER_HOUR * 30, dest=outfile, chunk_size=out_chunk_size),
-        SEIRMonitor(f=SECONDS_PER_DAY),
+        SimulationMonitor(frequency=SECONDS_PER_DAY, logfile=logfile, conf=conf),
     ]
-    if print_progress:
-        monitors.append(TimeMonitor(SECONDS_PER_DAY))
+
     if other_monitors:
         monitors += other_monitors
 
@@ -243,9 +311,9 @@ def simulate(
     # Initiate city process, which runs every hour
     env.process(city.run(SECONDS_PER_HOUR, outfile))
 
-    # Initiate human processes
+    # initiate humans
     for human in city.humans:
-        env.process(human.run(city=city))
+        env.process(human.run())
 
     # Initiate monitor processes
     for m in monitors:
@@ -254,10 +322,7 @@ def simulate(
     # Run simulation until termination
     env.run(until=env.ts_initial + simulation_days * SECONDS_PER_DAY)
 
-    if not return_city:
-        return monitors, city.tracker
-    else:
-        return city, monitors, city.tracker
+    return city, monitors, city.tracker
 
 
 if __name__ == "__main__":

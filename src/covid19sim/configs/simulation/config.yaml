@@ -3,6 +3,10 @@
 defaults:
   - core
   - base_method
+  - region: montreal
+  - track: all
+  - intervention: no_intervention
+  - symptom_prevalence
 
 hydra:
   run:

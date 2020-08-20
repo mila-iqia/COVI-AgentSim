@@ -1,4 +1,7 @@
 import numpy as np
+import os
+import time
+import matplotlib
 import matplotlib.pyplot as plt
 
 
@@ -41,13 +44,13 @@ def statistics(pkl_data, times, mode):
             human_day2risk_level[(human, day)] = item["risk_level"]
             human_day2rec_level[(human, day)] = item["rec_level"]
 
-    for k, time in enumerate(times):
+    for k, t in enumerate(times):
 
         for human, day in human2symptom_day.items():
-            past_day = day + time
+            past_day = day + t
             if past_day < 0:
                 continue
-            if human_day2infectious.get((human, past_day), False) == True:
+            if human_day2infectious.get((human, past_day), False) is True:
                 if mode == "risk":
                     r = human_day2risk_level[(human, past_day)]
                 if mode == "rec":
@@ -66,12 +69,13 @@ def statistics(pkl_data, times, mode):
     return positive, negative
 
 
-def run(data, path, comparison_key, times=[-1, -2, -3], mode=None):
+def run(data, path, comparison_key, times=[-1, -2, -3], mode="rec"):
 
     # Options:
     # 1. "times" is a list, indicating the times we are interested in.
     # For example, [-1, -2, -3] means we want to get the plot for Day-1, Day-2, Day-3.
-    # 2. "mode" is a string, which can be either 'risk' or 'rec' if None, it will be both.
+    # 2. "mode" is a string, which can be either 'risk' or 'rec' if None,
+    # it will be both.
     if mode in {"rec", "risk"}:
         modes = [mode]
     elif mode is None:
@@ -84,7 +88,7 @@ def run(data, path, comparison_key, times=[-1, -2, -3], mode=None):
         label2pkls = list()
         for method in data:
             for key in data[method]:
-                label = f"{method}_{key}"
+                label = f"{key}"
                 pkls = [r["pkl"] for r in data[method][key].values()]
                 label2pkls.append((label, pkls))
 
@@ -102,13 +106,25 @@ def run(data, path, comparison_key, times=[-1, -2, -3], mode=None):
             all_positive = all_positive / np.expand_dims(all_positive.sum(1), 1)
             all_negative = all_negative / np.expand_dims(all_negative.sum(1), 1)
             results.append((all_positive, all_negative, all_positive - all_negative))
+        i = 0
+        j = 0
+        k = 0
+        t = -1
+        for method in data:
+            j = j + i if i == 0 else j + i + 1
 
-        for k, time in enumerate(times):
-            fig, axs = plt.subplots(nrows=3, ncols=len(label2pkls), figsize=(30, 20))
+            for i, adoption in enumerate(data[method].keys()):
 
-            for i in range(len(label2pkls)):
-                label = label2pkls[i][0]
-                result = results[i]
+                label = label2pkls[i + j][0]
+                result = results[i + j]
+
+                fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(7.5, 10))
+                ax.set_title(f"{method} Day{t} (Adoption: {float(label) * 100}%)", fontsize=15)
+
+                # change the font size
+                font = {"family": "DejaVu Sans", "size": 18}
+                matplotlib.rc("font", **font)
+                plt.rcParams["axes.labelsize"] = 18
 
                 if mode == "risk":
                     length = 16
@@ -136,55 +152,48 @@ def run(data, path, comparison_key, times=[-1, -2, -3], mode=None):
                     xlabel = "Rec Level"
                     xticklabels = [0, 1, 2, 3]
 
-                axs[0, i].bar(
-                    list(range(length)),
+                ax.bar(
+                    [_ * 7 + 2 for _ in range(length)],
                     result[0][k],
                     color="darkorange",
-                    label="Day{}".format(time),
+                    label=f"Presymptomatic Rec Levels",
                 )
-                axs[0, i].set_title("{} @ Day{}".format(label, time))
-                axs[0, i].set_xlabel(xlabel)
-                axs[0, i].set_ylabel("Percentage")
-                axs[0, i].set_xticks(list(range(length)))
-                axs[0, i].set_xticklabels(xticklabels)
-                axs[0, i].set_ylim(0, 1)
-                axs[0, i].plot([0, length - 1], [0, 0], color="b", linewidth=0.5)
-
-                axs[1, i].bar(
-                    list(range(length)),
+                ax.bar(
+                    [_ * 7 + 3 for _ in range(length)],
                     result[1][k],
-                    color="darkorange",
-                    label="Day{}".format(time),
+                    color="darkslateblue",
+                    label=f"Susceptible Rec Levels",
                 )
-                axs[1, i].set_title("{} @ Day{}".format(label, time))
-                axs[1, i].set_xlabel(xlabel)
-                axs[1, i].set_ylabel("Percentage")
-                axs[1, i].set_xticks(list(range(length)))
-                axs[1, i].set_xticklabels(xticklabels)
-                axs[1, i].set_ylim(0, 1)
-                axs[1, i].plot([0, length - 1], [0, 0], color="b", linewidth=0.5)
-
-                axs[2, i].bar(
-                    list(range(length)),
+                ax.bar(
+                    [_ * 7 + 4 for _ in range(length)],
                     result[2][k],
-                    color="darkorange",
-                    label="Day{}".format(time),
+                    color="orangered",
+                    label=f"Delta Rec Levels",
                 )
-                axs[2, i].set_title("{} @ Day{}".format(label, time))
-                axs[2, i].set_xlabel(xlabel)
-                axs[2, i].set_ylabel("Delta of Percentage")
-                axs[2, i].set_xticks(list(range(length)))
-                axs[2, i].set_xticklabels(xticklabels)
-                axs[2, i].set_ylim(-1, 0.5)
-                axs[2, i].plot([0, length - 1], [0, 0], color="b", linewidth=0.5)
+                ax.set_xlabel(xlabel)
+                ax.set_ylabel("% Population", size="medium")
+                ax.set_xticks([_ * 7 + 3 for _ in range(length)])
+                ax.set_xticklabels(xticklabels)
+                ax.set_ylim(-1, 1)
+                ax.set_yticks([-1.0, -0.8, -0.6, -0.4, -0.2, 0, 0.2, 0.4, 0.6, 0.8, 1.0])
+                ax.set_yticklabels(["-100", "-80", "-60", "-40", "-20", "0", "20", "40", "60", "80", "100"])
+                ax.plot([0, length * 7 - 1], [0, 0], color="b", linewidth=1.0)
+                ax.legend()
 
-            plt.subplots_adjust(
-                left=0.05, bottom=0.05, right=0.99, top=0.95, wspace=0.5, hspace=0.3
-            )
-            print(
-                "Saving Figure",
-                "presymptomatic_{}_statistics_day{}.png".format(mode, time),
-            )
-            plt.savefig(
-                str(path / "presymptomatic_{}_statistics_day{}.png".format(mode, time))
-            )
+                plt.subplots_adjust(
+                    wspace=0.5,
+                    hspace=0.3,  # left=0.05, bottom=0.05, right=0.99, top=0.95,
+                )
+                dir_path = (
+                    path
+                    / "presymptomatic"
+                    / f"statistics_day{t}"
+                    / f"adoption_{label}"
+                )
+                fig_path = dir_path / f"{method}_{mode}.png"
+                print(f"Saving Figure {str(fig_path)}...", end="", flush=True)
+                os.makedirs(dir_path, exist_ok=True)
+                plt.savefig(fig_path)
+                plt.close("all")
+                plt.clf()
+                print("Done.")

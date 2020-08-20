@@ -7,11 +7,12 @@ from covid19sim.human import Human
 from covid19sim.log.track import Tracker
 from tests.utils import get_test_conf
 from covid19sim.locations.city import EmptyCity
+from covid19sim.locations.location import Household
 import tempfile
 
 def test_track_serial_interval():
     """
-    Test the various cases of serial interval tracking    
+    Test the various cases of serial interval tracking
     """
 
     with tempfile.TemporaryDirectory() as output_dir:
@@ -30,21 +31,24 @@ def test_track_serial_interval():
         env = Env(start_time)
         city = EmptyCity(env, rng, city_x_range, city_y_range, conf)
 
-        sr = city.create_location(
-            conf.get("LOCATION_DISTRIBUTION")["senior_residency"],
-            "senior_residency",
-            0,
-            area=1000,
-        )
-        city.senior_residencys.append(sr)
+        sr =  Household(
+                        env=env,
+                        rng=np.random.RandomState(rng.randint(2 ** 16)),
+                        conf=conf,
+                        name=f"SENIOR_RESIDENCE:0",
+                        location_type="SENIOR_RESIDENCE",
+                        lat=rng.randint(*city_x_range),
+                        lon=rng.randint(*city_y_range),
+                        area=1000,
+                        capacity=None,
+                    )
+        city.senior_residences.append(sr)
 
         N = 10
 
         # Create humans
         ages = city.rng.randint(*(65, 100), size=N)
 
-        infection = [None] * N
-        
         humans = [
             Human(
                 env=city.env,
@@ -52,23 +56,21 @@ def test_track_serial_interval():
                 name=i,
                 age=ages[i],
                 rng=rng,
-                has_app=False,
-                infection_timestamp=infection[i],
-                household=sr,
-                workplace=sr,
-                profession="retired",
-                rho=conf.get("RHO"),
-                gamma=conf.get("GAMMA"),
                 conf=conf,
             )
             for i in range(N)
         ]
+        city.n_init_infected = 0
+
+        for human in humans:
+            human.assign_household(sr)
+            sr.residents.append(human)
 
         city.humans = humans
         city.initWorld()
 
-        t = Tracker(env, city)
-
+        t = Tracker(env, city, conf, None)
+        t.start_tracking = True
         # Create some infections
         infections = [(0,1), (0,2), (1,3), (2,5)]
         for infector, infectee in infections:
@@ -77,7 +79,7 @@ def test_track_serial_interval():
             t.serial_interval_book_to[to_human.name][from_human.name] = (to_human, from_human)
             t.serial_interval_book_from[from_human.name][to_human.name] = (to_human, from_human)
 
-        # check no interval is registered for only to_human symptoms 
+        # check no interval is registered for only to_human symptoms
         # or only from_human symptoms
         humans[1].covid_symptom_start_time = datetime.datetime(2020, 2, 28, 0, 0).timestamp()
         t.track_serial_interval(humans[1].name)
@@ -117,8 +119,3 @@ def test_track_serial_interval():
         for i in [5,0,2]:
             assert len(t.serial_interval_book_from[humans[i].name])==0
             assert len(t.serial_interval_book_to[humans[i].name])==0
-
-
-
-        
-

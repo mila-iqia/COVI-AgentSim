@@ -1,15 +1,21 @@
 """
-[summary]
+Utility functions perform generic operations.
 """
+import copy
+import dataclasses
 import datetime
+import functools
+import gc
 import math
 import os
 import pathlib
 import subprocess
+import sys
+import textwrap
+import types
 import typing
 import zipfile
-from copy import deepcopy
-from functools import lru_cache
+from orderedset import OrderedSet
 from pathlib import Path
 import time
 import dill
@@ -18,6 +24,12 @@ import requests
 import yaml
 from omegaconf import DictConfig, OmegaConf
 from scipy.stats import norm
+from covid19sim.utils.constants import SECONDS_PER_HOUR, SECONDS_PER_MINUTE, AGE_BIN_WIDTH_5, AGE_BIN_WIDTH_10
+
+from covid19sim.epidemiology.symptoms import STR_TO_SYMPTOMS
+from covid19sim.utils.constants import AGE_BIN_WIDTH_5, AGE_BIN_WIDTH_10
+if typing.TYPE_CHECKING:
+    from covid19sim.human import Human
 
 
 def log(str, logfile=None, timestamp=False):
@@ -112,7 +124,7 @@ def compute_distance(loc1, loc2):
     return np.sqrt((loc1.lat - loc2.lat) ** 2 + (loc1.lon - loc2.lon) ** 2)
 
 
-@lru_cache(500)
+@functools.lru_cache(500)
 def _get_integer_pdf(avg, scale, num_sigmas=2):
     """
     [summary]
@@ -191,6 +203,12 @@ def probas_to_risk_mapping(probas,
 
     return cutoffs
 
+
+def _proba_to_risk(probas, mapping):
+    """Probability to risk mapping operation. Non-lambda version, because why use a lambda?"""
+    return np.maximum(np.searchsorted(mapping, probas, side='left') - 1, 0)
+
+
 def proba_to_risk_fn(mapping):
     """
     Create a callable, based on a mapping, that takes probabilities (in
@@ -203,10 +221,8 @@ def proba_to_risk_fn(mapping):
     Returns:
         callable: Function taking probabilities and returning discrete risk levels.
     """
-    def _proba_to_risk(probas):
-        return np.maximum(np.searchsorted(mapping, probas, side='left') - 1, 0)
+    return functools.partial(_proba_to_risk, mapping=mapping)
 
-    return _proba_to_risk
 
 def calculate_average_infectiousness(human):
     """ This is only used for the infectiousness value for a human that is written out for the ML predictor.
@@ -228,6 +244,7 @@ def filter_open(locations):
         list
     """
     return [loc for loc in locations if loc.is_open_for_business]
+
 
 def filter_queue_max(locations, max_len):
     """Given an iterable of locations, will return a list of those
@@ -320,63 +337,85 @@ def extract_tracker_data(tracker, conf):
     """
     timenow = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
     data = dict()
+
+    # scalars
     data['intervention_day'] = conf.get('INTERVENTION_DAY')
     data['intervention'] = conf.get('INTERVENTION')
     data['risk_model'] = conf.get('RISK_MODEL')
-    data['adoption_rate'] = getattr(tracker, 'adoption_rate', 1.0)
-    data['expected_mobility'] = tracker.expected_mobility
-    data['serial_interval'] = tracker.get_serial_interval()
-    data['all_serial_intervals'] = tracker.serial_intervals
-    data['generation_times'] = tracker.get_generation_time()
-    data['mobility'] = tracker.mobility
+    data['COVID_SPREAD_START_TIME'] = conf['COVID_SPREAD_START_TIME']
+    data['INTERVENTION_START_TIME'] = conf['INTERVENTION_START_TIME']
+    data['SIMULATION_START_TIME'] = conf['SIMULATION_START_TIME']
+    data['n_humans'] = tracker.n_humans
     data['n_init_infected'] = tracker.n_infected_init
-    data['contacts'] = dict(tracker.contacts)
+    data['adoption_rate'] = getattr(tracker, 'adoption_rate', 1.0)
+    data['generation_times'] = tracker.compute_generation_time()
+    data['p_transmission'] = tracker.compute_probability_of_transmission()
+
+    # demographics
+    data['age_histogram'] = tracker.city.age_histogram
+    data['human_has_app'] = tracker.human_has_app
+    data['known_connections'] = {
+        human.name: set(h.name for h in human.known_connections)
+        for human in tracker.city.humans
+    } # 3MB
+
+    # contacts
+    data['contact_patterns'] = tracker.get_contact_data() # 0.7MB
+    data['infectious_contact_patterns'] = tracker.get_infectious_contact_data() # 2MB
+    data['expected_mobility'] = tracker.expected_mobility
+    data['mobility'] = tracker.mobility
+    data['infection_monitor'] = tracker.infection_monitor # 0.8MB
+    data['outside_daily_contacts'] = tracker.outside_daily_contacts
+
+    x, y, _ = tracker.compute_effective_contacts(since_intervention=True)
+    data['effective_contacts_since_intervention'] = x
+    data['healthy_effective_contacts_since_intervention'] = y
+
+    x, y, _ = tracker.compute_effective_contacts(since_intervention=False)
+    data['effective_contacts_all_days'] = x
+    data['healthy_effective_contacts_all_days'] = y
+
+    # spread related
+    data['serial_interval'] = tracker.compute_serial_interval()
+    data['all_serial_intervals'] = tracker.serial_intervals #0.1MB
     data['cases_per_day'] = tracker.cases_per_day
     data['ei_per_day'] = tracker.ei_per_day
-    data['r_0'] = tracker.r_0
-    data['R'] = tracker.r
-    data['n_humans'] = tracker.n_humans
     data['s'] = tracker.s_per_day
     data['e'] = tracker.e_per_day
     data['i'] = tracker.i_per_day
     data['r'] = tracker.r_per_day
+
+    # epi related
     data['avg_infectiousness_per_day'] = tracker.avg_infectiousness_per_day
+    data['covid_properties'] = tracker.covid_properties
+    data['test_monitor'] = tracker.test_monitor #0.14MB
+    data['recovered_stats'] = tracker.recovery_stats
+    data['symptoms'] = tracker.compute_symptom_prevalence()
+
+    # tracing related
     data['risk_precision_global'] = tracker.compute_risk_precision(False)
     data['risk_precision'] = tracker.risk_precision_daily
-    data['human_monitor'] = tracker.human_monitor
-    data['infection_monitor'] = tracker.infection_monitor
+    data['human_monitor'] = tracker.human_monitor # 20MB
     data['infector_infectee_update_messages'] = tracker.infector_infectee_update_messages
     data['risk_attributes'] = tracker.risk_attributes
-    data['feelings'] = tracker.feelings
-    data['rec_feelings'] = tracker.rec_feelings
     data['outside_daily_contacts'] = tracker.outside_daily_contacts
     data['test_monitor'] = tracker.test_monitor
-    data['encounter_distances'] = tracker.encounter_distances
-    data['effective_contacts_since_intervention'] = tracker.compute_effective_contacts(since_intervention=True)
-    data['effective_contacts_all_days'] = tracker.compute_effective_contacts(since_intervention=False)
+    data['effective_contacts_since_intervention'], data['healthy_effective_contacts_since_intervention'], _ \
+        = tracker.compute_effective_contacts(since_intervention=True)
+    data['effective_contacts_all_days'], data['healthy_effective_contacts_all_days'], _ = \
+        tracker.compute_effective_contacts(since_intervention=False)
     data['humans_state'] = tracker.humans_state
+    data['risk_attributes'] = tracker.risk_attributes # 524MB
+    data['humans_state'] = tracker.humans_state #0.4MB
     data['humans_rec_level'] = tracker.humans_rec_level
     data['humans_intervention_level'] = tracker.humans_intervention_level
-    data['humans_has_app'] = dict((human.name, human.has_app) for human in tracker.city.humans)
-    data['day_encounters'] = dict(tracker.day_encounters)
-    data['daily_age_group_encounters'] = dict(tracker.daily_age_group_encounters)
-    data['tracked_humans'] = dict({human.name:human.my_history for human in tracker.city.humans})
-    data['age_histogram'] = tracker.city.age_histogram
-    data['p_transmission'] = tracker.compute_probability_of_transmission()
-    data['covid_properties'] = tracker.covid_properties
-    data['human_has_app'] = tracker.human_has_app
     data['to_human_max_msg_per_day'] = tracker.to_human_max_msg_per_day
-    # data['dist_encounters'] = dict(tracker.dist_encounters)
-    # data['time_encounters'] = dict(tracker.time_encounters)
-    # data['day_encounters'] = dict(tracker.day_encounters)
-    # data['hour_encounters'] = dict(tracker.hour_encounters)
-    # data['daily_age_group_encounters'] = dict(tracker.daily_age_group_encounters)
-    # data['age_distribution'] = tracker.age_distribution
-    # data['sex_distribution'] = tracker.sex_distribution
-    # data['house_size'] = tracker.house_size
-    # data['house_age'] = tracker.house_age
-    # data['symptoms'] = dict(tracker.symptoms)
-    # data['transition_probability'] = dict(tracker.transition_probability)
+
+    # behavior related
+    data['daily_quarantine'] = tracker.daily_quarantine
+    data['quarantine_monitor'] = tracker.quarantine_monitor
+    data['humans_quarantined_state'] = tracker.humans_quarantined_state
+
     return data
 
 
@@ -429,35 +468,15 @@ def parse_configuration(conf):
     elif not isinstance(conf, dict):
         raise ValueError("Unknown configuration type {}".format(type(conf)))
 
-    if "AGE_GROUP_CONTACT_AVG" in conf:
-        conf['AGE_GROUP_CONTACT_AVG']['age_groups'] = [
-            eval(age_group) for age_group in conf['AGE_GROUP_CONTACT_AVG']['age_groups']
-        ]
-        conf['AGE_GROUP_CONTACT_AVG']['contact_avg'] = np.array(conf['AGE_GROUP_CONTACT_AVG']['contact_avg'])
+    if "GET_TESTED_SYMPTOMS_CHECKED_IN_HOSPITAL" in conf:
+        conf["GET_TESTED_SYMPTOMS_CHECKED_IN_HOSPITAL"] = \
+            [STR_TO_SYMPTOMS[symptom] for symptom in conf["GET_TESTED_SYMPTOMS_CHECKED_IN_HOSPITAL"]
+             if symptom]
 
-    if "SMARTPHONE_OWNER_FRACTION_BY_AGE" in conf:
-        conf["SMARTPHONE_OWNER_FRACTION_BY_AGE"] = {
-            tuple(int(i) for i in k.split("-")): v
-            for k, v in conf["SMARTPHONE_OWNER_FRACTION_BY_AGE"].items()
-        }
-
-    if "NORMALIZED_SUSCEPTIBILITY_BY_AGE" in conf:
-        conf["NORMALIZED_SUSCEPTIBILITY_BY_AGE"] = {
-            tuple(int(i) for i in k.split("-")): v
-            for k, v in conf["NORMALIZED_SUSCEPTIBILITY_BY_AGE"].items()
-        }
-
-    if "HUMAN_DISTRIBUTION" in conf:
-        conf["HUMAN_DISTRIBUTION"] = {
-            tuple(int(i) for i in k.split("-")): v
-            for k, v in conf["HUMAN_DISTRIBUTION"].items()
-        }
-
-    if "MEAN_DAILY_INTERACTION_FOR_AGE_GROUP" in conf:
-        conf["MEAN_DAILY_INTERACTION_FOR_AGE_GROUP"] = {
-            tuple(int(i) for i in k.split("-")): v
-            for k, v in conf["MEAN_DAILY_INTERACTION_FOR_AGE_GROUP"].items()
-        }
+    if "GET_TESTED_SYMPTOMS_CHECKED_BY_SELF" in conf:
+        conf["GET_TESTED_SYMPTOMS_CHECKED_BY_SELF"] = \
+            [STR_TO_SYMPTOMS[symptom] for symptom in conf["GET_TESTED_SYMPTOMS_CHECKED_BY_SELF"]
+             if symptom]
 
     if "start_time" in conf:
         conf["start_time"] = datetime.datetime.strptime(
@@ -476,6 +495,39 @@ def parse_configuration(conf):
     return conf
 
 
+def dumps_conf(
+        conf: dict,
+):
+    """
+    Perform a deep copy of the configuration dictionary, preprocess the elements into strings
+    to reverse the preprocessing performed by `parse_configuration`, returning the resulting dict.
+
+    Args:
+        conf (dict): configuration dictionary to be written in a file
+    """
+
+    copy_conf = copy.deepcopy(conf)
+
+    if "GET_TESTED_SYMPTOMS_CHECKED_IN_HOSPITAL" in copy_conf:
+        copy_conf["GET_TESTED_SYMPTOMS_CHECKED_IN_HOSPITAL"] = \
+            [str(symptom) for symptom in copy_conf["GET_TESTED_SYMPTOMS_CHECKED_IN_HOSPITAL"]]
+
+    if "GET_TESTED_SYMPTOMS_CHECKED_BY_SELF" in copy_conf:
+        copy_conf["GET_TESTED_SYMPTOMS_CHECKED_BY_SELF"] = \
+            [str(symptom) for symptom in copy_conf["GET_TESTED_SYMPTOMS_CHECKED_BY_SELF"]]
+
+    if "start_time" in copy_conf:
+        copy_conf["start_time"] = copy_conf["start_time"].strftime("%Y-%m-%d %H:%M:%S")
+    if "COVID_SPREAD_START_TIME" in copy_conf:
+        copy_conf["COVID_SPREAD_START_TIME"] = str(copy_conf.get("COVID_SPREAD_START_TIME", datetime.datetime.min))#.strftime("%Y-%m-%d %H:%M:%S")
+    if "SIMULATION_START_TIME" in copy_conf:
+        copy_conf["SIMULATION_START_TIME"] = str(copy_conf.get("SIMULATION_START_TIME", datetime.datetime.min))#.strftime("%Y-%m-%d %H:%M:%S")
+    if "INTERVENTION_START_TIME" in copy_conf:
+        copy_conf["INTERVENTION_START_TIME"] = str(copy_conf.get("INTERVENTION_START_TIME", datetime.datetime.min))#.strftime("%Y-%m-%d %H:%M:%S")
+
+    return copy_conf
+
+
 def dump_conf(
         conf: dict,
         path: typing.Union[str, Path],
@@ -488,57 +540,21 @@ def dump_conf(
         conf (dict): configuration dictionary to be written in a file
         path (str | Path): `.yaml` file where the configuration is written
     """
-
-    copy_conf = deepcopy(conf)
-
-    if "AGE_GROUP_CONTACT_AVG" in copy_conf:
-        copy_conf['AGE_GROUP_CONTACT_AVG']['age_groups'] = \
-            ["(" + ", ".join([str(i) for i in age_group]) + ")"
-             for age_group in copy_conf["AGE_GROUP_CONTACT_AVG"]['age_groups']]
-        copy_conf['AGE_GROUP_CONTACT_AVG']['contact_avg'] = copy_conf['AGE_GROUP_CONTACT_AVG']['contact_avg'].tolist()
-
-    if "SMARTPHONE_OWNER_FRACTION_BY_AGE" in copy_conf:
-        copy_conf["SMARTPHONE_OWNER_FRACTION_BY_AGE"] = {
-            "-".join([str(i) for i in k]): v
-            for k, v in copy_conf["SMARTPHONE_OWNER_FRACTION_BY_AGE"].items()
-        }
-
-    if "HUMAN_DISTRIBUTION" in copy_conf:
-        copy_conf["HUMAN_DISTRIBUTION"] = {
-            "-".join([str(i) for i in k]): v
-            for k, v in copy_conf["HUMAN_DISTRIBUTION"].items()
-        }
-
-    if "NORMALIZED_SUSCEPTIBILITY_BY_AGE" in copy_conf:
-        copy_conf["NORMALIZED_SUSCEPTIBILITY_BY_AGE"] = {
-                "-".join([str(i) for i in k]): v
-                for k, v in copy_conf["NORMALIZED_SUSCEPTIBILITY_BY_AGE"].items()
-            }
-
-    if "MEAN_DAILY_INTERACTION_FOR_AGE_GROUP" in copy_conf:
-        copy_conf["MEAN_DAILY_INTERACTION_FOR_AGE_GROUP"] = {
-                "-".join([str(i) for i in k]): v
-                for k, v in copy_conf["MEAN_DAILY_INTERACTION_FOR_AGE_GROUP"].items()
-            }
-
-    if "start_time" in copy_conf:
-        copy_conf["start_time"] = copy_conf["start_time"].strftime("%Y-%m-%d %H:%M:%S")
-
+    stringified_conf = dumps_conf(conf)
     path = Path(path).resolve()
     path.parent.mkdir(parents=True, exist_ok=True)
     if path.exists():
         print("WARNING configuration already exists in {}. Overwriting.".format(
             str(path.parent)
         ))
-
     with path.open("w") as f:
-        yaml.safe_dump(copy_conf, f)
+        yaml.safe_dump(stringified_conf, f)
 
 
 def relativefreq2absolutefreq(
         bins_fractions: dict,
         n_elements: int,
-        rng
+        rng,
 ) -> dict:
     """
     Convert relative frequencies to absolute frequencies such that the number of elements sum to n_entity.
@@ -597,7 +613,252 @@ def zip_outdir(outdir):
     )
     subprocess_cmd(command)
 
+def _random_choice(a_list, rng, size, P=None, replace=False, catch_size_error=False):
+    """
+    samples `size` random elements from `tuples` with probability `P`.
+    NOTE: This function work arounds the internal conversion of the elements
+            in `tuples` to np.ndarray.
+    Args:
+        tuples (list): a list of tuples
+        rng (np.random.RandomState): Random number generator
+        size (int): number of elements to sample from `tuples`
+        P (list): probability with which to sample. Defaults to None.
+        replace (bool): True if sampling is to be done with replace.
+        catch_size_error (bool): uses permutation trick to prevent errors when length of a_list < size.
+
+    Returns:
+        list: sampled elements from tuples
+    """
+    total = len(a_list)
+    if catch_size_error:
+        idxs = rng.permutation(np.arange(total))[:size] # returns empty list if size > total
+    else:
+        idxs = rng.choice(range(total), size=size, p=P, replace=replace)
+
+    return [a_list[x] for x in idxs]
+
+def _get_seconds_since_midnight(time):
+    """
+    Returns:
+        (float): number of seconds since midnight
+    """
+    return time.hour *  SECONDS_PER_HOUR + time.minute * SECONDS_PER_MINUTE + time.second
 
 def normal_pdf(x, mean, std):
     proba = np.exp(-(((x - mean) ** 2) / (2 * std ** 2))) / (std * (2 * np.pi) ** 0.5)
     return proba
+
+
+def copy_obj_array_except_env(array):
+    """Copies a Human/City/Location object array, calling the child function below for each object."""
+    if isinstance(array, dict):
+        return {k: copy_obj_except_env(v) for k, v in array.items()}
+    elif isinstance(array, list):
+        return [copy_obj_except_env(v) for v in array]
+    else:
+        raise NotImplementedError
+
+
+@dataclasses.dataclass(init=False)
+class DummyEnv:
+    """Dummy picklable constant version of the `Env` class."""
+    initial_timestamp: datetime.datetime
+    timestamp: datetime.datetime
+    ts_initial: int
+    now: int
+
+    def __init__(self, env):
+        self.initial_timestamp = env.initial_timestamp
+        self.timestamp = env.timestamp
+        self.ts_initial = env.ts_initial
+        self.now = env.now
+
+    def minutes(self):
+        return self.timestamp.minute
+
+    def hour_of_day(self):
+        return self.timestamp.hour
+
+    def day_of_week(self):
+        return self.timestamp.weekday()
+
+    def is_weekend(self):
+        return self.day_of_week() >= 5
+
+    def time_of_day(self):
+        return self.timestamp.isoformat()
+
+
+class DummyHuman:
+    """Dummy picklable constant version of the `Human` class."""
+    # note: since we're talking about a metric s*-ton of attributes, most will be dynamically added
+
+    def __init__(self, human: "Human"):
+        import pickle
+        # "dummy" attributes replace the original attribute by a less-complex one
+        self.dummy_attribs = [
+            "env", "location", "household", "workplace", "last_date",
+            "recommendations_to_follow", "recovered_timestamp", "intervened_behavior"# the old states contained in behaviors might break serialization
+        ]
+        self.env = DummyEnv(human.env)
+        self.location = human.location.name if human.location else ""
+        self.household = human.household.name if human.household else ""
+        self.workplace = human.workplace.name if human.workplace else ""
+        self.last_date = dict(human.last_date)
+        self.recommendations_to_follow = [str(rec) for rec in human.recommendations_to_follow]
+        # "blacklisted" attributes are overriden with `None`, no matter their original value
+        self.blacklisted_attribs = [
+            "conf", "city", "known_connections", "my_history", "visits", "proba_to_risk_level_map",  "mobility_planner"
+        ]
+        for attr_name in self.blacklisted_attribs:
+            setattr(self, attr_name, None)
+        # all other attributes will be copied as-is
+        for attr_name in human.__dict__.keys():
+            if attr_name not in self.dummy_attribs and \
+                    attr_name not in self.blacklisted_attribs and \
+                    not attr_name.startswith("__"):
+                setattr(self, attr_name, getattr(human, attr_name))
+        from covid19sim.native._native import BaseHuman
+        for attr_name in BaseHuman.__dict__.keys():
+            if attr_name not in self.dummy_attribs and \
+                    attr_name not in self.blacklisted_attribs and \
+                    not attr_name.startswith("__"):
+                setattr(self, attr_name, getattr(human, attr_name))
+
+
+def copy_obj_except_env(obj):
+    """Copies a Human/City/Location object without its env part (which fails due to the generator)."""
+    from covid19sim.human import Human
+    from covid19sim.locations.location import Location
+    from covid19sim.locations.city import City
+    assert isinstance(obj, (Human, Location, City))
+    if isinstance(obj, Human):
+        return DummyHuman(obj)
+    else:
+        raise NotImplementedError
+
+
+def get_approx_object_size_tree(obj, tree=None, seen_obj_ids=None):
+    """Returns a tree structure that contains the approximate size of an object and its children.
+
+    This function is recursive and will avoid loops, but it might still be very slow for large objects.
+
+    TODO: make faster/more accurate with `gc.get_referents`?
+    """
+    if tree is None:
+        tree = {None: 0}
+    else:
+        assert None in tree  # root cumulative size key, should always exist
+    if seen_obj_ids is None:
+        seen_obj_ids = set()
+    obj_id = id(obj)
+    if obj_id in seen_obj_ids:
+        return tree
+    seen_obj_ids.add(obj_id)
+    obj_size = sys.getsizeof(obj)
+    obj_name = textwrap.shorten(str(type(obj)) + ": " + str(obj), width=100) + " |> " + str(obj_id)
+    assert obj_name not in tree
+    tree[obj_name] = {None: obj_size}
+    if isinstance(obj, dict):
+        for attr_key, attr_val in obj.items():
+            tree[obj_name][attr_key] = {None: 0}
+            tree[obj_name][attr_key] = \
+                get_approx_object_size_tree(attr_key, tree[obj_name][attr_key], seen_obj_ids)
+            tree[obj_name][attr_key] = \
+                get_approx_object_size_tree(attr_val, tree[obj_name][attr_key], seen_obj_ids)
+            tree[obj_name][None] += tree[obj_name][attr_key][None]
+    elif hasattr(obj, "__dict__"):
+        for attr_key, attr_val in obj.__dict__.items():
+            tree[obj_name][attr_key] = {None: 0}
+            tree[obj_name][attr_key] = \
+                get_approx_object_size_tree(attr_val, tree[obj_name][attr_key], seen_obj_ids)
+            tree[obj_name][None] += tree[obj_name][attr_key][None]
+    elif hasattr(obj, "__iter__") and not isinstance(obj, (str, bytes, bytearray)):
+        for idx, attr_val in enumerate(obj):
+            tree[obj_name][f"#{idx}"] = {None: 0}
+            tree[obj_name][f"#{idx}"] = \
+                get_approx_object_size_tree(attr_val, tree[obj_name][f"#{idx}"], seen_obj_ids)
+            tree[obj_name][None] += tree[obj_name][f"#{idx}"][None]
+    tree[None] += tree[obj_name][None]
+    return tree
+
+
+def get_approx_object_size(obj):
+    """Returns the approximate size of an object and its children."""
+    blacklisted_types = (type, types.ModuleType, types.FunctionType)
+    if isinstance(obj, blacklisted_types):
+        raise TypeError('getsize() does not take argument of type: ' + str(type(obj)))
+    seen_ids = set()
+    size = 0
+    objects = [obj]
+    while objects:
+        need_referents = []
+        for obj in objects:
+            if not isinstance(obj, blacklisted_types) and id(obj) not in seen_ids:
+                seen_ids.add(id(obj))
+                size += sys.getsizeof(obj)
+                need_referents.append(obj)
+        objects = gc.get_referents(*need_referents)
+    return size
+
+def _convert_bin_5s_to_bin_10s(histogram_bin_5s):
+    """
+    Maps the count as per age ranges of 5 to age range of 10.
+
+    Args:
+        histogram_bin_5s (dict): keys are a tuple of (lower limit, upper limit) according to AGE_BIN_WIDTH_5 both inclusive and values are counts
+
+    Returns:
+        (dict): keys are a tuple of (lower limit, upper limit) according to AGE_BIN_WIDTH_10 both inclusive and values are counts
+    """
+    histogram_bin_10s = {}
+    # combine two consecutive bins until the last one
+    for i in range(0, len(histogram_bin_5s), 2):
+        bin5_1 = AGE_BIN_WIDTH_5[i]
+        bin5_2 = AGE_BIN_WIDTH_5[i+1]
+
+        # AGE_BIN_WIDTH_5 have groupings of 5 years of age until the age of 74 and the last being 75 - 110
+        # AGE_BIN_WIDTH_10 have groupings of 10 years of age all through i.e. 70-80
+        # (assumption) break 75-110 to 75-79 and the rest assuming uniform distribution
+        # 75-79 = 5/35th of 75-110
+        c1 = histogram_bin_5s[bin5_1]
+        if bin5_2[1] < 70:
+            c2 = histogram_bin_5s[bin5_2]
+
+            bin10 = (bin5_1[0], bin5_2[1])
+            assert bin10 == AGE_BIN_WIDTH_10[i//2], f"not the right bin 10 {bin10}"
+            histogram_bin_10s[bin10] = c1 + c2
+        else:
+            assert bin5_1[0] == 70, f"Not the right penultimate last bin {bin5_1}"
+
+            bin10 = (bin5_1[0], 79)
+            assert bin10 == AGE_BIN_WIDTH_10[i//2], f"not the right bin 10 {bin10}"
+            c2 = histogram_bin_5s[bin5_2] * (5/35)
+            histogram_bin_10s[bin10] = c1 + c2
+
+            bin10 = (80, 110)
+            assert bin10 == AGE_BIN_WIDTH_10[i//2+1], f"not the right bin 10 {bin10}"
+            histogram_bin_10s[bin10] = c2 * 30 / 35
+            break
+
+    return histogram_bin_10s
+
+
+def _sample_positive_normal(mean, sigma, rng, upper_limit=None):
+    """
+    Samples a positive number from gaussian distributed as (mean, sigma) by throwing away negative samples.
+
+    Args:
+        mean (float): mean of gaussian
+        sigma (float): stdandard deviation of gaussian
+        upper_limit (float): upper limit above which x will be rejected. None if there is no upper limit.
+
+    Returns:
+        (float): sample
+    """
+    _filter = lambda x: 0 <= x
+    if upper_limit > 0:
+        _filter = lambda x: 0 <= x <= upper_limit
+
+    x = rng.normal(mean, sigma)
+    return x if _filter(x) else _sample_positive_normal(mean, sigma, rng, upper_limit)

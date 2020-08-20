@@ -1,82 +1,59 @@
-from orderedset import OrderedSet
-from covid19sim.interventions.behaviors import *
+"""
+Utility functions to interface between interventions and rest of the code.
+"""
 
-
-def get_intervention(conf):
-    from covid19sim.interventions.tracing import BaseMethod, Heuristic, BinaryDigitalTracing
-    key = conf.get("RISK_MODEL")
-    if key == "" or key == "transformer":
-        return BaseMethod(conf)
-    elif key == "heuristicv1":
-        return Heuristic(version=1, conf=conf)
-    elif key == "heuristicv2":
-        return Heuristic(version=2, conf=conf)
-    elif key == "digital":
-        return BinaryDigitalTracing(conf)
-    elif key == "BundledInterventions":
-        return BundledInterventions(conf["BUNDLED_INTERVENTION_RECOMMENDATION_LEVEL"])
-    else:
-        raise NotImplementedError
-
-
-def create_behavior(key, conf):
-    if key == "WearMask":
-        return WearMask(conf.get("MASKS_SUPPLY"))
-    elif key == "SocialDistancing":
-        return SocialDistancing()
-    elif key == "Quarantine":
-        return Quarantine()
-    elif key == "WashHands":
-        return WashHands()
-    elif key == "StandApart":
-        return StandApart()
-    else:
-        raise NotImplementedError
-
-
-class BundledInterventions(Behavior):
+def get_tracing_method(risk_model, conf):
     """
-    Used for tuning the "strength" of parameters associated with interventions.
-    At the start of this intervention, everyone is initialized with these interventions.
-    DROPOUT might affect their ability to follow.
-    """
-
-    def __init__(self, level):
-        super(BundledInterventions, self).__init__()
-        self.recommendations = _get_behaviors_for_level(level)
-
-    def modify(self, human):
-        self.revert(human)
-        for rec in self.recommendations:
-            if isinstance(rec, Behavior) and human.follows_recommendations_today:
-                rec.modify(human)
-                human.recommendations_to_follow.add(rec)
-
-    def revert(self, human):
-        for rec in reversed(human.recommendations_to_follow):
-            rec.revert(human)
-        human.recommendations_to_follow = OrderedSet()
-
-    def __repr__(self):
-        return "\t".join([str(x) for x in self.recommendations])
-
-
-def _get_behaviors_for_level(level):
-    """
-    Maps recommendation level to a list of `Behavior` objects.
+    Returns an appropriate `BaseMethod` corresponding to `risk_model`
 
     Args:
-        level (int): recommendation level.
+        risk_model (str): risk model that tracing method uses
+        conf (dict): yaml configuration of the experiment
 
     Returns:
-        list: a list of `Behavior`.
+        (covid19sim.interventions.tracing.BaseMethod): Tracing method with relevant implementatoin of compute_risk
     """
-    if level == 0:
-        return [WashHands(), StandApart(default_distance=25)]
-    if level == 1:
-        return [WashHands(), StandApart(default_distance=75), WearMask()]
-    if level == 2:
-        return [WashHands(), SocialDistancing(default_distance=100), WearMask()]
-    if level == 3:
-        return [WashHands(), SocialDistancing(default_distance=150), WearMask(), GetTested(), Quarantine()]
-    raise AssertionError(f"cannot generate behavior modifiers for rec level: {level}")
+    from covid19sim.interventions.tracing import BaseMethod, Heuristic, BinaryDigitalTracing
+    if risk_model == "transformer":
+        return BaseMethod(conf)
+    elif risk_model == "heuristicv1":
+        return Heuristic(version=1, conf=conf)
+    elif risk_model == "heuristicv2":
+        return Heuristic(version=2, conf=conf)
+    elif risk_model == "heuristicv3":
+        return Heuristic(version=3, conf=conf)
+    elif risk_model == "digital":
+        return BinaryDigitalTracing(conf)
+    else:
+        raise NotImplementedError
+
+
+def compute_p_covid_given_symptoms(human, conf, correction_factor=2):
+    """
+    Computes probability of COVID given symptoms being experienced by `human`.
+
+    Args:
+        human (covid19sim.human.Human): `human` object
+        correction_factor (float): factor to correct for underestimation of prevalence via hospitalization, deaths or testing. Needs to be calibrated.
+
+    Returns:
+        (float): probability of having COVID
+    """
+    symptoms = human.all_reported_symptoms
+    p_each_symptom_given_covid = conf['P_REPORTED_SYMPTOM_GIVEN_COVID']
+    p_each_symptom = conf['P_REPORTED_SYMPTOM']
+
+    # (experimental) joint probability of observing symptoms
+    p_symptoms_given_covid = max(p_each_symptom_given_covid.get(x.name, 0) for x in symptoms)
+    p_symptoms = max(p_each_symptom.get(x.name, 0) for x in symptoms)
+    p_symptoms_given_not_covid = max(0, p_symptoms - p_symptoms_given_covid)
+
+    # probability of having covid
+    covid_prevalence = human.city.tracker.get_estimated_covid_prevalence()
+    p_covid = correction_factor * max(covid_prevalence['estimation_by_test'], covid_prevalence['estimation_by_hospitalization'])
+
+    # probability of covid given symptoms
+    p_covid_given_symptoms = p_symptoms_given_covid * p_covid
+    p_not_covid_given_symptoms = p_symptoms_given_not_covid * (1 - p_covid)
+
+    return p_covid_given_symptoms / (p_covid_given_symptoms + p_not_covid_given_symptoms + 1e-6)
