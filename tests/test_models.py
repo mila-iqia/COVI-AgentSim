@@ -437,7 +437,7 @@ class ModelsTest(unittest.TestCase):
                             # We can compare the pkls for the last daily_output to the state of the humans
                             # at the end of the simulation.
                             if current_day == n_days - 1:
-                                s_human = sim_humans[h_i - 1]
+                                s_human = [s for s in sim_humans if int(s.name.split(":")[-1]) == h_i][0]
 
                                 date_at_update = start_time + datetime.timedelta(days=n_days - 1, hours=hour)
                                 is_exposed, exposure_day = exposure_array(s_human.infection_timestamp, date_at_update, conf)
@@ -451,7 +451,6 @@ class ModelsTest(unittest.TestCase):
                                 cluster_mgr = next(iter([c for k, c in target_cluster_mgrs.items() if k.endswith(s_human.name)]))
                                 candidate_encounters, exposure_encounters = candidate_exposures(cluster_mgr)
                                 test_results = get_test_results_array(s_human, date_at_update)
-
                                 self.assertTrue((symptoms_to_np(s_human.rolling_all_reported_symptoms, conf) ==
                                                  observed['reported_symptoms']).all())
                                 self.assertTrue((test_results == observed['test_results']).all())
@@ -543,8 +542,7 @@ class HumanAsMessageTest(unittest.TestCase):
 
         env = self.EnvMock(today)
 
-        human = Human(env=env, city={'city': 'city'}, name=1, age=25, rng=rng,
-                      infection_timestamp=today, conf=conf)
+        human = Human(env=env, city={'city': 'city'}, name=1, age=25, rng=rng, conf=conf)
         human.has_app = True
         human.contact_book.mailbox_keys_by_day[0] = [0, 1]  # add two dummy encounter keys
         personal_mailbox = {1: ["fake_message"]}  # create a dummy personal mailbox with one update

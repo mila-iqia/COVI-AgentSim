@@ -50,7 +50,7 @@ class ClusteringCodePaths(unittest.TestCase):
                         simulation_days=self.simulation_days,
                     )
                     collection_server.start()
-                    monitors, _ = simulate(
+                    _, monitors, _ = simulate(
                         n_people=self.n_people,
                         start_time=self.location_start_time,
                         simulation_days=self.simulation_days,

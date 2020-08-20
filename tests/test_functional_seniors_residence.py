@@ -12,7 +12,6 @@ from covid19sim.utils.env import Env
 from covid19sim.log.monitors import EventMonitor
 from covid19sim.human import Human
 from covid19sim.utils.constants import SECONDS_PER_DAY, SECONDS_PER_HOUR
-from covid19sim.utils.demographics import assign_households_to_humans, create_locations_and_assign_workplace_to_humans
 
 
 def fake_run_app(*args, **kwargs):
@@ -35,10 +34,13 @@ def test_functional_seniors_residence():
         # Find the test_configs directory, and load the required config yaml
         conf = get_test_conf("naive_local.yaml")
         conf['simulation_days'] = simulation_days
+        conf['COVID_SPREAD_START_TIME'] = start_time
+        conf['INTERVENTION_START_TIME'] = start_time
+        conf['_MEAN_DAILY_UNKNOWN_CONTACTS'] = 0.5
 
         env = Env(start_time)
         city = EmptyCity(env, rng, city_x_range, city_y_range, conf)
-        sr =  Household(
+        sr = Household(
                         env=env,
                         rng=np.random.RandomState(rng.randint(2 ** 16)),
                         conf=conf,
@@ -68,7 +70,6 @@ def test_functional_seniors_residence():
                 name=i,
                 age=ages[i],
                 rng=rng,
-                infection_timestamp=infection[i],
                 conf=conf,
             )
             for i in range(N)
@@ -81,6 +82,8 @@ def test_functional_seniors_residence():
 
         # pick one human randomly and make sure it cannot recover (for later checks)
         humans[np.random.randint(N)].never_recovers = True
+        # Infect one of the humans
+        humans[np.random.randint(N)]._get_infected(1)
 
         city.humans = humans
         city.hd = {h.name: h for h in humans}

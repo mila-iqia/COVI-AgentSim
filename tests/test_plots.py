@@ -30,7 +30,7 @@ class PlotTest(unittest.TestCase):
 
             # Run the simulation
             start_time = datetime.datetime(2020, 2, 28, 0, 0)
-            n_people = 10
+            n_people = 20
             n_days = 14
 
             outfile=os.path.join(d, "output")

@@ -605,7 +605,7 @@ class Tracker(object):
         """
 
         def register_serial_interval(infector, infectee):
-            serial_interval = (infectee.covid_symptom_start_time - infector.covid_symptom_start_time).total_seconds() / SECONDS_PER_DAY # DAYS
+            serial_interval = (infectee.covid_symptom_start_time - infector.covid_symptom_start_time) / SECONDS_PER_DAY # DAYS
             self.serial_intervals.append(serial_interval)
 
         # Pending intervals which manifested symptoms?
