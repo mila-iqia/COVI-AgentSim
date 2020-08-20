@@ -49,8 +49,6 @@ def test_track_serial_interval():
         # Create humans
         ages = city.rng.randint(*(65, 100), size=N)
 
-        infection = [None] * N
-
         humans = [
             Human(
                 env=city.env,
@@ -58,7 +56,6 @@ def test_track_serial_interval():
                 name=i,
                 age=ages[i],
                 rng=rng,
-                infection_timestamp=infection[i],
                 conf=conf,
             )
             for i in range(N)
@@ -73,7 +70,7 @@ def test_track_serial_interval():
         city.initWorld()
 
         t = Tracker(env, city, conf, None)
-
+        t.start_tracking = True
         # Create some infections
         infections = [(0,1), (0,2), (1,3), (2,5)]
         for infector, infectee in infections:

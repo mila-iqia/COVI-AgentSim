@@ -1,4 +1,3 @@
-
 """
 Handles querying the inference server with serialized humans and their messages.
 """
@@ -72,7 +71,11 @@ def batch_run_timeslot_heavy_jobs(
     all_params = []
 
     for human in humans:
-        if not human.has_app or time_slot not in human.time_slots or human.is_dead:
+        if (
+            not human.has_app
+            or time_slot not in human.time_slots
+            or human.is_dead
+        ):
             continue
 
         all_params.append({

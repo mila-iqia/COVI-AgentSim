@@ -57,6 +57,7 @@ def test_incubation_days():
 
         incubation_data, infectiousness_onset_data, recovery_data = [], [], []
         for human in city.humans:
+            human.initial_viral_load = human.rng.random()
             compute_covid_properties(human)
             assert human.incubation_days >= 0, "negative incubation days"
             assert human.infectiousness_onset_days >= 0, "negative infectiousness onset days"

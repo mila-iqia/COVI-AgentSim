@@ -16,8 +16,8 @@ from tests.utils import get_test_conf
 def test_basic_demographics(
         seed: int,
         test_conf_name: str,
-        age_error_tol: float = 2.3,
-        age_distribution_error_tol: float = 0.01,
+        age_error_tol: float = 3.21,
+        age_distribution_error_tol: float = 0.20,
         sex_diff_error_tol: float = 0.1,
         profession_error_tol: float = 0.03,
         fraction_over_100_error_tol: float = 0.01):

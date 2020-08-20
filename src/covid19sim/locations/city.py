@@ -12,7 +12,7 @@ import typing
 from collections import defaultdict, Counter
 from orderedset import OrderedSet
 
-from covid19sim.utils.utils import compute_distance, _get_random_area, relativefreq2absolutefreq, _convert_bin_5s_to_bin_10s, calculate_average_infectiousness, log
+from covid19sim.utils.utils import compute_distance, _get_random_area, relativefreq2absolutefreq, _convert_bin_5s_to_bin_10s, log
 from covid19sim.utils.demographics import get_humans_with_age, assign_households_to_humans, create_locations_and_assign_workplace_to_humans
 from covid19sim.log.track import Tracker
 from covid19sim.inference.heavy_jobs import batch_run_timeslot_heavy_jobs
@@ -76,8 +76,9 @@ class City:
         self.tracker = Tracker(env, self, conf, logfile)
 
         self.test_type_preference = list(zip(*sorted(conf.get("TEST_TYPES").items(), key=lambda x:x[1]['preference'])))[0]
+        assert len(self.test_type_preference) == 1, "WARNING: Do not know how to handle multiple test types"
         self.max_capacity_per_test_type = {
-            test_type: max([int(conf['TEST_TYPES'][test_type]['capacity'] * self.n_people), 1])
+            test_type: max(int(self.conf['PROPORTION_LAB_TEST_PER_DAY'] * self.n_people), 1)
             for test_type in self.test_type_preference
         }
 
@@ -232,7 +233,6 @@ class City:
 
         # if people uniformly send messages in the population, then 1 / days_between_messages people
         # won't send messages today anyway
-        # FIXME this overestimates messages but it's ok (??) because we have a hard daily cap
         message_budget = days_between_messages * message_budget
         # but if we don't have that we underestimate the number of available messages in the budget
         # because some people will have already sent a message the day before and won't be able to
@@ -300,7 +300,6 @@ class City:
 
         timedelta = (datetime.datetime.now() - start_time).total_seconds()
         log(f"Schedule prepared (Took {timedelta:2.3f}s)", self.logfile)
-
         self.hd = {human.name: human for human in self.humans}
 
     def _initiate_infection_spread_and_modify_mixing_if_needed(self):
@@ -315,14 +314,6 @@ class City:
 
         # modify likelihood of meeting new people
         self.conf['_CURRENT_PREFERENTIAL_ATTACHMENT_FACTOR'] = self.conf['END_PREFERENTIAL_ATTACHMENT_FACTOR']
-
-        # modify knobs because now people are more aware
-        if self.conf['ASSUME_NO_ENVIRONMENTAL_INFECTION_AFTER_INTERVENTION_START']:
-            self.conf['_ENVIRONMENTAL_INFECTION_KNOB'] = 0.0
-
-        if self.conf['ASSUME_NO_UNKNOWN_INTERACTIONS_AFTER_INTERVENTION_START']:
-            self.conf['_MEAN_DAILY_UNKNOWN_CONTACTS'] = 0.0
-
 
         self.tracker.log_seed_infections()
 
@@ -492,6 +483,9 @@ class City:
                 not humans_notified
                 and self.env.timestamp == self.conf.get('INTERVENTION_START_TIME')
             ):
+                log("\n *** ****** *** ****** *** INITIATING INTERVENTION *** *** ****** *** ******\n", self.logfile)
+                log(self.conf['INTERVENTION'], self.logfile)
+
                 # if its a tracing method, load the class that can compute risk
                 if self.conf['RISK_MODEL'] != "":
                     self.tracing_method = get_tracing_method(risk_model=self.conf['RISK_MODEL'], conf=self.conf)
@@ -502,10 +496,23 @@ class City:
                     human.set_tracing_method(self.tracing_method)
                     human.intervened_behavior.initialize()
 
+                # log reduction levels
+                log("\nCONTACT REDUCTION LEVELS (first one is not used) -", self.logfile)
+                for location_type, value in human.intervened_behavior.reduction_levels.items():
+                    log(f"{location_type}: {value} ", self.logfile)
+
                 humans_notified = True
                 if self.tracing_method is not None:
                     self.tracker.track_daily_recommendation_levels(set_tracing_started_true=True)
 
+                # modify knobs because now people are more aware
+                if self.conf['ASSUME_NO_ENVIRONMENTAL_INFECTION_AFTER_INTERVENTION_START']:
+                    self.conf['_ENVIRONMENTAL_INFECTION_KNOB'] = 0.0
+
+                if self.conf['ASSUME_NO_UNKNOWN_INTERACTIONS_AFTER_INTERVENTION_START']:
+                    self.conf['_MEAN_DAILY_UNKNOWN_CONTACTS'] = 0.0
+
+                log("\n*** *** ****** *** ****** *** ****** *** ****** *** ****** *** ****** *** ****** *** ***\n", self.logfile)
             # run city testing routine, providing test results for those who need them
             # TODO: running this every hour of the day might not be correct.
             # TODO: testing budget is used up at hour 0 if its small
@@ -518,6 +525,7 @@ class City:
                     human.check_if_needs_covid_test()  # humans can decide to get tested whenever
                     human.check_covid_symptom_start()
                     human.check_covid_recovery()
+                    human.fill_infectiousness_history_map(current_day)
                     alive_humans.append(human)
 
             # now, run app-related stuff (risk assessment, message preparation, ...)
@@ -609,7 +617,11 @@ class City:
             )
 
         # now, batch-run the clustering + risk prediction using an ML model (if we need it)
-        if self.conf.get("RISK_MODEL") == "transformer" or "heuristic" in self.conf.get("RISK_MODEL") or self.conf.get("COLLECT_TRAINING_DATA"):
+        if (
+            self.conf.get("RISK_MODEL") == "transformer"
+            or "heuristic" in self.conf.get("RISK_MODEL")
+            or self.conf.get("COLLECT_TRAINING_DATA")
+        ):
             self.humans = batch_run_timeslot_heavy_jobs(
                 humans=self.humans,
                 init_timestamp=self.start_time,
@@ -756,3 +768,8 @@ class EmptyCity(City):
         self.tracker.initialize()
         # self.tracker.track_initialized_covid_params(self.humans)
         self.tracing_method = BaseMethod(self.conf)
+        self.age_histogram = relativefreq2absolutefreq(
+            bins_fractions={(x[0], x[1]): x[2] for x in self.conf.get('P_AGE_REGION')},
+            n_elements=self.n_people,
+            rng=self.rng,
+        )

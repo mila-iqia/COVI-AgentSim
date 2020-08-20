@@ -19,7 +19,7 @@ from covid19sim.locations.hospital import Hospital, ICU
 from covid19sim.log.event import Event
 from collections import deque
 
-from covid19sim.utils.utils import _normalize_scores, draw_random_discrete_gaussian, filter_open, filter_queue_max
+from covid19sim.utils.utils import _normalize_scores, draw_random_discrete_gaussian, filter_open, filter_queue_max, calculate_average_infectiousness
 from covid19sim.epidemiology.human_properties import may_develop_severe_illness, _get_inflammatory_disease_level,\
     _get_preexisting_conditions, _get_random_sex, get_carefulness, get_age_bin
 from covid19sim.epidemiology.viral_load import compute_covid_properties, viral_load_for_day
@@ -175,16 +175,10 @@ class Human(BaseHuman):
         self.obs_preexisting_conditions = []  # the preexisting conditions of this human reported to the app
 
         """ Interventions """
-        self.will_wear_mask = False  # A boolean value determining whether this person will try to wear a mask during encounters
-        self.wearing_mask = False  # A boolean value that represents whether this person is currently wearing a mask
-        self.mask_efficacy = 0.  # A float value representing how good this person is at wearing a mask (i.e. healthcare workers are better than others)
         self.intervention = None  # Type of contact tracing to do, e.g. Transformer or binary contact tracing or heuristic
-        self.maintain_extra_distance = 0  # Represents the extra distance this person could take as a result of an intervention
         self._rec_level = -1  # Recommendation level used for Heuristic / ML methods
         self._intervention_level = -1  # Intervention level (level of behaviour modification to apply), for logging purposes
         self.recommendations_to_follow = OrderedSet()  # which recommendations this person will follow now
-        self.time_encounter_reduction_factor = 1.0  # how much does this person try to reduce the amount of time they are in contact with others
-        self.hygiene = 0  # start everyone with a baseline hygiene. Only increase it once the intervention is introduced.
         self._test_recommended = False  # does the app recommend that this person should get a covid-19 test
         self.effective_contacts = 0  # A scaled number of the high-risk contacts (under 2m for over 15 minutes) that this person had
         self.healthy_effective_contacts = 0  # A scaled number of the high-risk contacts (under 2m for over 15 minutes) that this person had while healthy
@@ -287,15 +281,6 @@ class Human(BaseHuman):
     def is_extremely_sick(self):
         return self.can_get_extremely_sick and (SEVERE in self.symptoms or
                                                 EXTREMELY_SEVERE in self.symptoms)
-
-    @property
-    def is_quarantined(self):
-        """
-        Returns True if the human currently has a quarantine recommendation to follow, otherwise False.
-        Returns:
-            bool: True if quarantining, False if not.
-        """
-        return any([isinstance(rec, Quarantine) for rec in self.recommendations_to_follow])
 
     @property
     def viral_load(self):
@@ -423,6 +408,7 @@ class Human(BaseHuman):
 
         reported_symptoms = [s for s in self.rolling_all_symptoms[0] if self.rng.random() < self.carefulness]
         self.rolling_all_reported_symptoms.appendleft(reported_symptoms)
+        self.city.tracker.track_symptoms(self)
 
     @property
     def test_result(self):
@@ -490,9 +476,9 @@ class Human(BaseHuman):
         self.hidden_test_result = unobserved_result
         self._will_report_test_result = self.rng.random() < self.conf.get("TEST_REPORT_PROB")
         if isinstance(self.location, (Hospital, ICU)):
-            self.time_to_test_result = self.conf['TEST_TYPES'][test_type]['time_to_result']['in-patient']
+            self.time_to_test_result = self.conf['DAYS_TO_LAB_TEST_RESULT_IN_PATIENT']
         else:
-            self.time_to_test_result = self.conf['TEST_TYPES'][test_type]['time_to_result']['out-patient']
+            self.time_to_test_result = self.conf['DAYS_TO_LAB_TEST_RESULT_OUT_PATIENT']
         self.test_result_validated = self.test_type == "lab"
 
         self._test_results.appendleft((
@@ -507,7 +493,6 @@ class Human(BaseHuman):
         # log
         self.city.tracker.track_tested_results(self)
         Event.log_test(self.conf.get('COLLECT_LOGS'), self, self.test_time)
-
 
     def check_if_needs_covid_test(self, at_hospital=False):
         """
@@ -802,6 +787,12 @@ class Human(BaseHuman):
             return
 
         # All tracing methods that are _not ML_ (heuristic, bdt1, bdt2, etc) will compute new risks here
+        from covid19sim.interventions.tracing import Heuristic
+
+        if isinstance(self.intervention, Heuristic):
+            # then we use clusters as the mailbox
+            personal_mailbox = self.intervention.extract_clusters(self)
+
         risks = self.intervention.compute_risk(self, personal_mailbox, self.city.hd)
         for day_offset, risk in enumerate(risks):
             if current_day_idx - day_offset in self.risk_history_map:
@@ -824,38 +815,6 @@ class Human(BaseHuman):
             "unexpected transformer history coverage; what's going on?"
         for day_offset_idx in range(len(risk_history)):  # note: idx:0 == today
             self.risk_history_map[current_day_idx - day_offset_idx] = risk_history[day_offset_idx]
-
-    def compute_mask_efficacy(self):
-        """
-        Determines whether this human wears a mask given their carefulness and how good at masks they are (mask_efficacy)
-        """
-        # if you don't wear a mask, then it is not effective
-        if not self.will_wear_mask:
-            self.wearing_mask, self.mask_efficacy = False, 0
-            return
-
-        # people do not wear masks at home
-        self.wearing_mask = True
-        if self.location == self.household:
-            self.wearing_mask = False
-
-        # if they go to a store, they are more likely to wear a mask
-        if self.location.location_type == 'store':
-            if self.carefulness > 0.6:
-                self.wearing_mask = True
-            elif self.rng.rand() < self.carefulness * self.conf.get("BASELINE_P_MASK"):
-                self.wearing_mask = True
-        elif self.rng.rand() < self.carefulness * self.conf.get("BASELINE_P_MASK"):
-            self.wearing_mask = True
-
-        # efficacy - people do not wear it properly
-        if self.wearing_mask:
-            if self.workplace.location_type == 'hospital':
-              self.mask_efficacy = self.conf.get("MASK_EFFICACY_HEALTHWORKER")
-            else:
-              self.mask_efficacy = self.conf.get("MASK_EFFICACY_NORMIE")
-        else:
-            self.mask_efficacy = 0
 
     def recover_health(self):
         """
@@ -958,9 +917,9 @@ class Human(BaseHuman):
                 #     yield request
                 #     yield self.env.process(self.transition_to(next_activity, previous_activity))
 
-                assert abs(self.env.timestamp - next_activity.start_time).seconds == 0, "start times do not align..."
+                assert abs(self.env.timestamp - next_activity.start_time).seconds == 0, f"start times do not align...\n{self}\n{self.intervened_behavior.quarantine_timestamp}\n{self.intervened_behavior.quarantine_reason}\ncurrent timestamp:{self.env.timestamp}\nnext_activity:{next_activity}"
                 yield self.env.process(self.transition_to(next_activity, previous_activity))
-                assert abs(self.env.timestamp - next_activity.end_time).seconds == 0, " end times do not align..."
+                assert abs(self.env.timestamp - next_activity.end_time).seconds == 0, f"end times do not align...\n{self}\n{self.intervened_behavior.quarantine_timestamp}\n{self.intervened_behavior.quarantine_reason}\ncurrent timestamp:{self.env.timestamp}\nnext_activity:{next_activity}"
 
                 previous_activity, next_activity = next_activity, self.mobility_planner.get_next_activity()
 
@@ -1041,10 +1000,8 @@ class Human(BaseHuman):
         self.location_start_time = self.env.now
         self.location_leaving_time = self.location_start_time + duration
 
-        # do regular checks on whether to wear a mask
         # check if human needs a test if it's a hospital
         self.check_if_needs_covid_test(at_hospital=isinstance(location, (Hospital, ICU)))
-        self.compute_mask_efficacy()
 
         yield self.env.timeout(duration)
         # print("after", self.env.timestamp, self, location, duration)
@@ -1203,6 +1160,22 @@ class Human(BaseHuman):
                 result.append(result[-1])
         assert len(result) == expected_history_len
         return result[::-1]  # index 0 = latest day
+
+    def fill_infectiousness_history_map(self, current_day):
+        """
+        Populates past infectiousness values in the map.
+
+        Args:
+            current_day (int): day for which it infectiousness value need to be updated.
+        """
+        if (
+            self.conf['RISK_MODEL'] == "transformer"
+            or self.conf['COLLECT_TRAINING_DATA']
+        ):
+            # /!\ Only used for oracle and transformer
+            if current_day not in self.infectiousness_history_map:
+                # contrarily to risk, infectiousness only changes once a day (human behavior has no impact)
+                self.infectiousness_history_map[current_day] = calculate_average_infectiousness(self)
 
     ############################## RISK PREDICTION #################################
     def _exchange_app_messages(self, other_human, distance, duration):
