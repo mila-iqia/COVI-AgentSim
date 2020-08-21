@@ -566,6 +566,7 @@ class Household(Location):
             duration = get_household_quarantine_duration(human, self.index_cases[human]['reasons'], self.conf)
             self.index_cases[human]['suggested_quarantine_end_timestamp'] = self.quarantine_start_timestamp + datetime.timedelta(seconds=duration*SECONDS_PER_DAY)
 
+        # update quarantine timestamps
         quarantine_end_timestamp = self.env.timestamp
         secondary_cases = []
         for other_human, attrs in self.index_cases.items():

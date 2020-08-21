@@ -1,18 +1,28 @@
 """
 Implements modification of human attributes at different levels.
 
-Quarantining logic:
-* quarantine of index case is straightforward
-- if the trigger is test-taken quarantine until the result comes if its a negative test else d_max days
-- if the trigger is traced, quarantine until d_max days
-* household quarantine determines quarantine for secondary cases
-- there can be multiple index cases in the same household
-- end of household is determined by the max end of index cases
-- there can be more than one index case in one household i.e. test-taken or traced
-- Every index case has a potential to change household.quarantine_end_timestamp based on the trigger
-- A way out for an individual from household quarantine is negative test for that individual.
-    - if all those individuals were index cases, release household
-    - else maintain quarantining as it is
+###################### Quarantining logic ########################
+
+There are two types of quarantining triggers:
+    (i) Conclusive - due to test results
+    (ii) inconclusive - rest. E.g. getting traced or being recommended to quarantine by a non-binary tracing method.
+Each trigger has a suggested duration for quarantine.
+To consider household quarantine, residents are divided into two groups:
+    (i) index cases - they have a quarantine trigger i.e. a reason to believe that they should quarantine
+    (ii) secondary cases - rest.
+    
+Anyone who has had a positive test in the past is not quarantined after 14 days of the positive test result.
+For index cases -
+    * A conclusive quarantining trigger has a final say on the duration of quarantining.
+    * If the index case is already quarantining, an inconclusive trigger is used only if the total time alraedy spent quarantining is less than the suggested duration.
+
+For secondary cases -
+    * All of them quarantine for the same duration unless someone is converted to an index case, in which case, they quarantine and influence household quarantine according to their triggers.
+    * Duration is defined by the index case who has maximum quarantining restrictions.
+
+Dropout enables non-adherence to quarantine at any time.
+
+########################################################################
 """
 import numpy as np
 import warnings
