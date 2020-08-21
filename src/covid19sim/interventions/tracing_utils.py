@@ -1,6 +1,11 @@
 """
 Utility functions to interface between interventions and rest of the code.
 """
+from covid19sim.utils.constants import TEST_TAKEN, SELF_DIAGNOSIS, RISK_LEVEL_UPDATE
+from covid19sim.utils.constants import QUARANTINE_UNTIL_TEST_RESULT, QUARANTINE_DUE_TO_POSITIVE_TEST_RESULT
+from covid19sim.utils.constants import TRACED_BY_POSITIVE_TEST, TRACED_BY_SELF_REPORTED_SYMPTOMS, MAX_RISK_LEVEL_TRACED
+from covid19sim.utils.constants import UNSET_QUARANTINE, QUARANTINE_HOUSEHOLD
+
 
 def get_tracing_method(risk_model, conf):
     """
@@ -26,6 +31,40 @@ def get_tracing_method(risk_model, conf):
         return BinaryDigitalTracing(conf)
     else:
         raise NotImplementedError
+
+
+def get_household_quarantine_duration(human, triggers, conf):
+    """
+    Returns quarantine duration required for secondary cases in household. It is determined based on the quarantine triggers.
+
+    Args:
+        human (covid19sim.human.Human): `human` for whom quarantine duration for household members need to be determined
+        triggers (list): list of quarantine reasons that `human` has had in the past
+        conf (dict): yaml configuration of the experiment
+
+    Returns:
+        (float): duration (days) for which household needs to quarantine due to the triggers of `human`
+    """
+    assert len(triggers) > 0, "no quarantine trigger for index case found"
+    assert QUARANTINE_UNTIL_TEST_RESULT not in triggers, "quarantining for negative test reult should be handled separately"
+    assert not QUARANTINE_HOUSEHOLD in triggers, f"no household quarantine requirements for household quarantine trigger are defined . Triggers:{triggers}"
+    assert not UNSET_QUARANTINE in triggers, f"no household quarantine requirements for unset quarantine trigger are defined. Triggers:{triggers}"
+
+    if QUARANTINE_DUE_TO_POSITIVE_TEST_RESULT in triggers:
+        return conf['QUARANTINE_DAYS_HOUSEHOLD_ON_INDIVIDUAL_POSITIVE_TEST']
+
+    # inconclusive triggers
+    for trigger in triggers:
+        if trigger == TRACED_BY_POSITIVE_TEST:
+            duration = max(duration, conf['QUARANTINE_DAYS_HOUSEHOLD_ON_TRACED_POSITIVE_TEST'])
+        elif trigger == TRACED_BY_SELF_REPORTED_SYMPTOMS:
+            duration = max(duration, conf['QUARANTINE_DAYS_HOUSEHOLD_ON_TRACED_SELF_REPORTED_SYMPTOMS'])
+        elif trigger == SELF_DIAGNOSIS:
+            duration = max(duration, conf['QUARANTINE_DAYS_HOUSEHOLD_ON_INDIVIDUAL_SELF_REPORTED_SYMPTOMS'])
+        else:
+            raise ValueError(f"{trigger} not found")
+
+    return duration
 
 
 def compute_p_covid_given_symptoms(human, conf, correction_factor=2):

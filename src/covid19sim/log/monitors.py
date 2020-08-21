@@ -109,7 +109,7 @@ Legend -
             allergies = sum(h.has_allergy_symptoms for h in city.humans)
 
             # intervention related
-            n_quarantine = sum(h.intervened_behavior.quarantine_timestamp is not None for h in city.humans)
+            n_quarantine = sum(h.intervened_behavior.quarantine.start_timestamp is not None for h in city.humans)
 
             # prepare string
             nd = str(len(str(city.n_people)))

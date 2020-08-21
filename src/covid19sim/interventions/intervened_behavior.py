@@ -1,10 +1,198 @@
 """
 Implements modification of human attributes at different levels.
+
+Quarantining logic:
+* quarantine of index case is straightforward
+- if the trigger is test-taken quarantine until the result comes if its a negative test else d_max days
+- if the trigger is traced, quarantine until d_max days
+* household quarantine determines quarantine for secondary cases
+- there can be multiple index cases in the same household
+- end of household is determined by the max end of index cases
+- there can be more than one index case in one household i.e. test-taken or traced
+- Every index case has a potential to change household.quarantine_end_timestamp based on the trigger
+- A way out for an individual from household quarantine is negative test for that individual.
+    - if all those individuals were index cases, release household
+    - else maintain quarantining as it is
 """
 import numpy as np
 import warnings
+import datetime
+
 from covid19sim.locations.hospital import Hospital, ICU
 from covid19sim.utils.constants import SECONDS_PER_DAY
+from covid19sim.utils.constants import TEST_TAKEN, SELF_DIAGNOSIS, RISK_LEVEL_UPDATE
+from covid19sim.utils.constants import NEGATIVE_TEST_RESULT, POSITIVE_TEST_RESULT
+from covid19sim.utils.constants import QUARANTINE_UNTIL_TEST_RESULT, QUARANTINE_DUE_TO_POSITIVE_TEST_RESULT
+from covid19sim.utils.constants import TRACED_BY_POSITIVE_TEST, TRACED_BY_SELF_REPORTED_SYMPTOMS, MAX_RISK_LEVEL_TRACED
+from covid19sim.utils.constants import UNSET_QUARANTINE, QUARANTINE_HOUSEHOLD
+from covid19sim.utils.constants import INITIALIZED_BEHAVIOR, INTERVENTION_START_BEHAVIOR
+
+def convert_intervention_to_behavior_level(intervention_level):
+    """
+    Maps `human._intervention_level` to `IntervenedBehavior.behavior_level`
+    """
+    return intervention_level + 1 if intervention_level >= 0 else -1
+
+class Quarantine(object):
+    """
+    Contains logic to handle different combinations of quarantine triggers.
+
+    Args:
+        human (covid19sim.human.Human): `human` whose behavior needs to be changed
+        env (simpy.Environment): environment to schedule events
+        conf (dict): yaml configuration of the experiment
+    """
+    def __init__(self, human, env, conf):
+        self.human = human
+        self.env = env
+        self.conf = conf
+        self.start_timestamp = None
+        self.end_timestamp = None
+        self.reasons = []
+
+        self.human_no_longer_needs_quarantining = False # once human has recovered (infered from 14 days after positive test), human no longer quarantines
+
+    def update(self, trigger):
+        """
+        Updates quarantine start and end timestamp based on the new `trigger` and previous triggers.
+
+        Note 1: `human_no_longer_needs_quarantining` is set in `reset_quarantine`. if its True, all calls to this function  are ignored.
+        Note 2: Test results are treated to have conclusive and ultimate say on the duration of quarantine.
+        Note 3: There can be quarantining due to several reasons, so all those combinations are treated in this function through rules described in Quaranining Logic at the top.
+
+        Args:
+            trigger (str): reason for quarantine trigger.
+        """
+        assert trigger != MAX_RISK_LEVEL_TRACED, "quarantine due to risk-level-update is implemented in `set_recommended_behavior`"
+        if self.human_no_longer_needs_quarantining:
+            return
+
+        # if `human` is already quarantining due to TEST_TAKEN, then do not change anything
+        if (
+            QUARANTINE_UNTIL_TEST_RESULT in self.reasons
+            or QUARANTINE_DUE_TO_POSITIVE_TEST_RESULT in self.reasons
+        ):
+            return
+
+        #
+        if (
+            trigger != UNSET_QUARANTINE
+            and self.start_timestamp is None
+        ):
+            self.start_timestamp = self.env.timestamp
+
+            # self is no longer a secondary household case
+            if QUARANTINE_HOUSEHOLD in self.reasons:
+                self.reason.remove(QUARANTINE_HOUSEHOLD)
+
+        # traced positive test
+        if trigger == TRACED_BY_POSITIVE_TEST:
+            duration = self.conf['QUARANTINE_DAYS_ON_TRACED_POSITIVE_TEST']
+            self.end_timestamp = self.start_timestamp + datetime.timedelta(seconds=duration * SECONDS_PER_DAY)
+            self.reasons.append(trigger)
+            self.human.intervened_behavior._set_quarantine_behavior(self.reasons, test_recommended=True)
+
+            if self.conf['QUARANTINE_HOUSEHOLD_UPON_TRACED_POSITIVE_TEST']:
+                self.human.household.add_to_index_case(self.human, trigger)
+
+        # negative test result - quarantine until the test result
+        elif trigger == QUARANTINE_UNTIL_TEST_RESULT:
+            duration = self.human.time_to_test_result * SECONDS_PER_DAY
+            self.end_timestamp = self.env.timestamp + datetime.timedelta(seconds=duration)
+            self.reasons.append(QUARANTINE_UNTIL_TEST_RESULT)
+            self.human.intervened_behavior._set_quarantine_behavior(self.reasons, test_recommended=False)
+
+            if self.conf['QUARANTINE_HOUSEHOLD_UPON_INDIVIDUAL_TEST_TAKEN']:
+                self.human.household.add_to_index_case(self.human, trigger)
+
+        # positive test result - quarantine until max duration
+        elif trigger == QUARANTINE_DUE_TO_POSITIVE_TEST_RESULT:
+            duration = self.conf['QUARANTINE_DAYS_ON_POSITIVE_TEST'] * SECONDS_PER_DAY
+            self.end_timestamp = self.start_timestamp + datetime.timedelta(seconds=duration)
+            self.reasons.append(QUARANTINE_DUE_TO_POSITIVE_TEST_RESULT)
+            self.human.intervened_behavior._set_quarantine_behavior(self.reasons, test_recommended=False)
+
+            if self.conf['QUARANTINE_HOUSEHOLD_UPON_INDIVIDUAL_POSITIVE_TEST']:
+                self.human.household.add_to_index_case(self.human, trigger)
+
+        elif trigger == QUARANTINE_HOUSEHOLD:
+            self.end_timestamp = self.human.household.quarantine_end_timestamp
+            self.reasons.append(QUARANTINE_HOUSEHOLD)
+            self.human.intervened_behavior._set_quarantine_behavior(self.reasons, test_recommended=False)
+
+        elif trigger == TRACED_BY_SELF_REPORTED_SYMPTOMS:
+            assert False, NotImplementedError(f"{trigger} quarantine not implemented")
+
+        elif trigger == SELF_DIAGNOSIS:
+            assert False, NotImplementedError(f"{trigger} quarantine not implemented")
+            duration = self.conf['QUARANTINE_DAYS_ON_SELF_REPORTED_SYMPTOMS']
+            if self.conf['QUARANTINE_HOUSEHOLD_UPON_SELF_REPORTED_INDIVIDUAL']:
+                self.human.household.add_to_index_case(self.human, trigger)
+
+        else:
+            raise ValueError(f"Unknown trigger for quarantine: {trigger}")
+
+    def reset_quarantine(self):
+        """
+        Resets quarantine related attributes and puts `human` into a relevant behavior level.
+
+        Note 1: Specific to non-binary risk tracing, reset doesn't work if the recommendation is still to quarantine.
+        Note 2: It also sets the flag for no more need to quarantine once the test results are positive.
+        """
+        assert self.start_timestamp is not None, "unsetting quarantine twice not allowed"
+        assert not self.human_no_longer_needs_quarantining,  f"{self.human} was quarantined while it shouldn't have"
+
+        # if `human` uses an app, level is reset to the recommended level
+        # only if the last reason for quarantining was not TEST_TAKEN
+        last_reason = self.reasons[-1]
+        if (
+            last_reason == QUARANTINE_DUE_TO_POSITIVE_TEST_RESULT
+            or last_reason == QUARANTINE_UNTIL_TEST_RESULT
+            or self.human._intervention_level == -1
+        ):
+            to_level = self.human.intervened_behavior.baseline_behavior_idx
+        else:
+            to_level = convert_intervention_to_behavior_level(self.human._intervention_level)
+
+        if to_level == self.human.intervened_behavior.quarantine_idx:
+            assert self.conf['RISK_MODEL'] != "digital" or self.human.city.daily_rec_level_mapping is not None, "unsetting quarantine to quarantine_idx should only happen in non-binary tracing methods"
+            self.set_recommended_quarantine(force=True)
+            return
+
+        self.start_timestamp = None
+        self.end_timestamp = None
+        self.reasons = []
+        self.human.intervened_behavior._unset_quarantine_behavior(to_level)
+        self.human.household.reset_index_case(self.human)
+
+        if self.human.has_had_positive_test:
+            self.human_no_longer_needs_quarantining = True
+
+    def set_recommended_quarantine(self, force=False):
+        """
+        Quarantining for non-binary tracing is set through this function call.
+
+        Note 1: Any non-app based quarantining like TEST_TAKEN or SELF_DIAGNOSIS takes priority over the recommendations.
+
+        Args:
+            force (bool): if True, it doesn't look at non-app based quarantining. Called from `reset_quarantine` when quarantining is being reset from inconclusive triggers however the app still recommends quarantine.
+        """
+        if not force:
+            assert MAX_RISK_LEVEL_TRACED not in self.reasons, f"{self.human} is already quarantining under max recommendation"
+
+            # any non-app quarantining takes priority over the app
+            if len(self.reasons) > 0:
+                return
+
+            self.start_timestamp = self.env.timestamp
+
+        self.reasons.apppend(MAX_RISK_LEVEL_TRACED)
+        self.end_timestamp = datetime.datetime.max
+        self.human.intervened_behavior.set_quarantine_behavior(self.reasons, test_recommended=True)
+
+        if self.conf['QUARANTINE_HOUSEHOLD_UPON_INDIVIDUAL_MAX_RISK_LEVEL_TRACED']:
+            assert False
+
 
 class IntervenedBehavior(object):
     """
@@ -15,7 +203,6 @@ class IntervenedBehavior(object):
         env (simpy.Environment): environment to schedule events
         conf (dict): yaml configuration of the experiment
     """
-
     def __init__(self, human, env, conf):
         self.human = human
         self.env = env
@@ -28,6 +215,7 @@ class IntervenedBehavior(object):
         self.n_behavior_levels = conf['N_BEHAVIOR_LEVELS'] + 1
         self.quarantine_idx = self.n_behavior_levels - 1
         self.baseline_behavior_idx = 1
+        self.behavior_level = 0
 
         # start filling the reduction levels from the end
         reduction_levels = {
@@ -67,10 +255,8 @@ class IntervenedBehavior(object):
         self.reduction_levels = reduction_levels
 
         # start everyone at the zero level by default (unmitigated scenario i.e. no reduction in contacts)
-        self.quarantine_timestamp = None
-        self.quarantine_duration = -1
-        self.quarantine_reason = ""
-        self.set_behavior(level=0, until=None, reason="initialization")
+        self.quarantine = Quarantine(self.human, self.env, self.conf)
+        self.set_behavior(level=0, reasons=[INITIALIZED_BEHAVIOR])
 
         # dropout
         self._follow_recommendation_today = None
@@ -91,10 +277,10 @@ class IntervenedBehavior(object):
 
         if check_has_app and self.human.has_app:
             warnings.warn("An unrealistic scenario - initilization of baseline behavior is only for humans with an app")
-            self.set_behavior(level = self.baseline_behavior_idx, until = None, reason="intervention-start")
+            self.set_behavior(level=self.baseline_behavior_idx, reasons=[INTERVENTION_START_BEHAVIOR])
             return
 
-        self.set_behavior(level = self.baseline_behavior_idx, until = None, reason="intervention-start")
+        self.set_behavior(level=self.baseline_behavior_idx, reasons=[INTERVENTION_START_BEHAVIOR])
         self.intervention_started = True
 
     @property
@@ -130,13 +316,6 @@ class IntervenedBehavior(object):
         ):
             return 1.0
 
-        # if its an experimental simulation where humans are graded based on their risk, but are not allowed to change their behavior
-        if (
-            self.current_behavior_reason == "risk-level-update"
-            and not self.conf['SHOULD_MODIFY_BEHAVIOR']
-        ):
-            return 0.0
-
         # if `human` is not following any recommendations today, then set the number of interactions to level 0
         if not self.follow_recommendation_today:
             return 0.0
@@ -144,175 +323,156 @@ class IntervenedBehavior(object):
         location_type = _get_location_type(self.human, location)
         return self.reduction_levels[location_type][self.behavior_level]
 
-    def set_behavior(self, level, until, reason):
+    def set_behavior(self, level, reasons):
         """
         Sets `self.behavior_level` to level for duration `until`.
 
         Args:
             level (int): behvaior level to put `human` on
-            until (float): duration for which the restrictions corresponding to level are put on `human` (seconds)
-            reason (str): reason for this level.
+            reasons (list): reasons for this level.
         """
-        assert reason is not None, "reason is None"
+        assert reasons is not None and type(reasons) == list, f"reasons: {reasons} is None or it is not a list."
 
-        if level == self.quarantine_idx:
-            assert not reason != "risk-level-update" or until is not None, "quarantine needs to be of a non-zero duration"
-            assert until > 0, "non-positive quarantine duration is not allowed"
-            self._quarantine(until, reason)
-
-        # `until` is not required for non-quarantine behavior
         self.behavior_level = level
-        self.current_behavior_reason = reason
+        self.current_behavior_reason = reasons
 
-    def _quarantine(self, until, reason):
+        # (debug)
+        if self.human.name in ["human:71", "human:77", "human:34"]:
+            print(self.env.timestamp, "behavior level of", self.human, "because", self.current_behavior_reason)
+
+    def _set_quarantine_behavior(self, reasons, test_recommended):
         """
-        Sets quarantine related attributes.
+        Sets behavior level for quarantining and whether test is recommended or not. Check Quarantine.update for more.
+
+        Note: It is to be called from `Quarantine.update`
 
         Args:
-            until (float): duration for which to quarantine `human` (seconds)
-            reason (str): reason for which `human` is quarantined
+            reasons (list): reasons for quarantining.
+            test_recommended (bool): whether `human` should get a test or not.
         """
-        self.quarantine_timestamp = self.env.timestamp
-        self.quarantine_duration = until
-        self.quarantine_reason = reason
-        self.human._test_recommended = True
+        self.set_behavior(level=self.quarantine_idx, reasons=reasons)
+        self.human._test_recommended = test_recommended
 
-        if "0-1-tracing-positive-test" in reason:
-            self.human.city.tracker.track_quarantine(self.human)
-
-        # if self.human.name == "human:7":
-        #     print(self.env.timestamp, "quarantining", self.human, "because", reason, "for" ,until / SECONDS_PER_DAY, "days")
-
-    def _unset_quarantine(self):
+    def _unset_quarantine_behavior(self, to_level):
         """
-        Resets quarantine related attributes.
-        """
-        if "0-1-tracing-positive-test" in self.quarantine_reason:
-            self.human.city.tracker.track_quarantine(self.human, unquarantine=True)
+        Resets `human` from `quarantine_idx` to `to_level`.
 
-        self.quarantine_timestamp = None
-        self.quarantine_duration = -1
-        self.quarantine_reason = ""
+        Note: It is to be called from `Quarantine.update`
+
+        Args:
+            to_level (int): the level to which `human`s behavior level should be reset to.
+        """
+        assert to_level != self.quarantine_idx, "unsetting the quarantine to quarantine_level. Something is wrong."
+        self.set_behavior(level=to_level, reasons=[UNSET_QUARANTINE])
         self.human._test_recommended = False
-        self.set_behavior(level = self.baseline_behavior_idx, until = None, reason = "unset-quarantine")
-        # if self.human.name == "human:7":
-        #     print(self.env.timestamp, "unsetting quarantine", self.human)
 
-    def _quarantine_household_members(self, until, reason):
+    def set_recommended_behavior(self, level):
         """
-        Sets household members to quarantine.
+        Non-binary tracing methods use recommendation level to control `human`s behavior.
+        This function is called to set `behavior_level` recommended by those methods.
 
         Args:
-            until (float): duration for which to quarantine household members (seconds)
-            reason (str): reason for which to quarantine them
+            level (int): the level to which `human`s behavior should be set to.
         """
-        for h in self.human.household.residents:
-            h.intervened_behavior.set_behavior(level = self.quarantine_idx, until = until, reason = f"{reason}-household-member")
+        if level == self.quarantine_idx:
+            self.quarantine.set_recommended_quarantine()
+
+        elif (
+            self.behavior_level == self.quarantine_idx
+            and level != self.quarantine_idx
+        ):
+            self.quarantine.reset_quarantine()
+
+        else:
+            self.set_behavior(level=level, reasons=[RISK_LEVEL_UPDATE])
+            if self.conf['SET_HOUSEHOLD_BEHAVIOR_UPON_INDIVIDUAL_RISK_LEVEL_UPDATES']:
+                assert False
+
+    def reset_quarantine_timestamp_if_its_time(self):
+        """
+        Resets the `Quaratnine.x_timestamp`s.
+        """
+        if self.quarantine.start_timestamp is not None:
+            if self.quarantine.end_timestamp < self.env.timestamp:
+                self.quarantine.reset_quarantine()
 
     def is_quarantined(self):
         """
-        Returns True if `human` is currently quarantining.
+        Returns True if `human` is currently quarantining. It accounts for dropout (non-adherence).
         """
-        if self.quarantine_timestamp is not None:
-            if (
-                self.quarantine_reason != "risk-level-update"
-                and (self.env.timestamp - self.quarantine_timestamp).total_seconds() > self.quarantine_duration
-            ):
-                self._unset_quarantine()
-                return False
-
+        self.reset_quarantine_timestamp_if_its_time()
+        if self.quarantine.start_timestamp is not None:
             if self.follow_recommendation_today:
                 return True
 
         return False
 
-    def trigger_intervention(self, reason, human):
+    def trigger_intervention(self, reason):
         """
         Changes the necessary attributes in human depending on reason.
 
         Args:
             reason (str): reason for the change in behavior of human
-            human (covid19sim.human.Human): `human` whose behavior needs to change
         """
-        # If someone went for a test, they are assumed to be put in quarantine
-        # default behavior even in unmitigated case (no app required)
-        if reason == "test-taken":
-            result = human.hidden_test_result
-            duration = human.time_to_test_result if result == "negative" else self.conf['QUARANTINE_DAYS_ON_POSITIVE_TEST']
-            self.set_behavior(level = self.quarantine_idx, until = duration * SECONDS_PER_DAY, reason = f"{reason}-{result}")
+        # (no app required)
+        # If someone went for a test, they need to quarantine
+        if reason == TEST_TAKEN:
+            result = self.human.hidden_test_result
 
-            if self.conf['QUARANTINE_HOUSEHOLD_UPON_INDIVIDUAL_POSITIVE_TEST']:
-                duration = human.time_to_test_result
-                duration += 0 if human.time_to_test_result == "neagative" else self.conf['QUARANTINE_DAYS_HOUSEHOLD_ON_INDIVIDUAL_POSITIVE_TEST']
-                self._quarantine_household_members(until = duration * SECONDS_PER_DAY, reason = f"{reason}-{result}")
+            if result == NEGATIVE_TEST_RESULT:
+                self.quarantine.update(QUARANTINE_UNTIL_TEST_RESULT)
+            elif result == POSITIVE_TEST_RESULT:
+                self.quarantine.update(QUARANTINE_DUE_TO_POSITIVE_TEST_RESULT)
+            else:
+                raise ValueError(f"Unknown test result:{result}")
 
         # (no app required)
-        elif (
-            reason == "self-diagnosed-symptoms"
-            and self.conf['QUARANTINE_SELF_REPORTED_INDIVIDUALS']
-        ):
-            duration = self.conf['QUARANTINE_DAYS_ON_SELF_REPORTED_SYMPTOMS']
-            self.set_behavior(level = self.quarantine_idx, until = duration * SECONDS_PER_DAY, reason = reason)
+        elif reason == SELF_DIAGNOSIS:
+            assert self.conf['QUARANTINE_SELF_REPORTED_INDIVIDUALS'], "configs do not allow for quarantining self-reported individuals"
+            self.quarantine.update(SELF_DIAGNOSIS)
 
-            if self.conf['QUARANTINE_HOUSEHOLD_UPON_SELF_REPORTED_INDIVIDUAL']:
-                duration = self.conf['QUARANTINE_DAYS_HOUSEHOLD_ON_INDIVIDUAL_CONTACT_WITH_POSITIVE_TEST']
-                self._quarantine_household_members(until = duration * SECONDS_PER_DAY, reason=reason)
-
-        # tracing based behavioral changes
-        elif reason == "risk-level-update":
+        # (app required) tracing based behavioral changes
+        elif reason == RISK_LEVEL_UPDATE:
             assert self.conf['RISK_MODEL'] != "", "risk model is empty but behavior change due to risk changes is being called."
-            assert human.has_app, "human doesn't have an app, but the behavior changes are being called."
+            assert self.human.has_app, "human doesn't have an app, but the behavior changes are being called."
 
-            # if its a normalization method, we check daily recommendation mappings.
             normalized_model = False
             if self.human.city.daily_rec_level_mapping is None:
-                intervention_level = human.rec_level
+                intervention_level = self.human.rec_level
             else:
                 # QKFIX: There are 4 recommendation levels, the value is hard-coded here
                 probas = self.human.city.daily_rec_level_mapping[human.rec_level]
                 intervention_level = self.rng.choice(4, p=probas)
                 normalized_model = True
-            human._intervention_level = intervention_level
+            self.human._intervention_level = intervention_level
 
             # map rec levels to intervention levels by shifting them by 1 (because 1st index is reserved for no reduction)
-            behavior_level = intervention_level + 1
+            behavior_level = convert_intervention_to_behavior_level(intervention_level)
             assert 0 < behavior_level < self.n_behavior_levels, f"behavior_level: {self.behavior_level} can't be outside the range [1,{self.n_behavior_levels}]. Total number of levels:{self.n_behavior_levels}"
 
-            # non-digital tracing; normalized model has RISK_MODEL == "digital"
+            # (non-binary tracing) normalized model has RISK_MODEL == "digital"
             if (
                 conf['RISK_MODEL'] != "digital"
                 or normalized_model
             ):
                 # in alternative methods, max level is still quarantine, but human can be put in lower levels due to re-evaluation.
-                self.set_behavior(level = behavior_level, until = SECONDS_PER_DAY, reason=reason)
+                self.set_recommended_behavior(level=behavior_level)
                 return
 
-            # in digital tracing, human is quarantined once behavior level is max
-            # /!\ when tracing will be because of symptoms, a reason will need to be passed
+            # (binary tracing)
+            # in binary tracing, human is quarantined once behavior level is max
             if behavior_level == self.quarantine_idx:
-                reason = "0-1-tracing-positive-test"
-                duration = self.conf['QUARANTINE_DAYS_ON_TRACED_POSITIVE']
-                self.set_behavior(level = self.quarantine_idx, until = duration * SECONDS_PER_DAY, reason=reason)
-
-                # /!\ Hhld members may not have the app 
-                if self.conf['QUARANTINE_HOUSEHOLD_UPON_TRACED_POSITIVE_TEST']:
-                    duration = self.conf['QUARANTINE_DAYS_HOUSEHOLD_ON_TRACED_POSITIVE']
-                    self._quarantine_household_members(until = duration * SECONDS_PER_DAY, reason=reason)
-
-            assert behavior_level == 1,
-            if behavior_level == 1:
-                print(self.human, "QR", self.quarantine_reason, )
-
-            # /!\ unquarantine household ? release household on unquarantining
-
-            # TODO - trigger quarantine for self-reported symptoms in digital tracing
+                self.quarantine.update(TRACED_BY_POSITIVE_TEST)
+            elif behavior_level == self.baseline_behavior_idx:
+                self.quarantine.reset_quarantine()
+            else:
+                raise ValueError(f"found non-binary recommendations in binary tracing. Behavior level:{behavior_level}. Allowed values: 1 and {self.quarantine_idx}")
 
         else:
             raise ValueError(f"Unknown reason for intervention:{reason}")
 
     def __repr__(self):
         return f"IntervenedBehavior for {self.human}"
-
 
 def _get_location_type(human, location):
     """
@@ -344,32 +504,42 @@ def _get_location_type(human, location):
     else:
         return "OTHER"
 
-def _get_dropout_rate(reason, conf):
+def _get_dropout_rate(reasons, conf):
     """
-    Returns a probability of not following an intervention due to `reason`
+    Returns a probability of not following an intervention due to `reasons`
+
+    Args:
+        reasons (list): list of strings that define the current behavior
+        conf (dict): yaml configuration of the experiment
 
     Returns:
-        (float): dropout rate for a type of intervention
+        (float): dropout rate for the current behavior
     """
+    _reason = reasons[-1]
 
-    if reason in ["initialization", "intervention-start"]:
+    if (
+        INITIALIZED_BEHAVIOR == _reason
+        or INTERVENTION_START_BEHAVIOR == _reason
+    ):
         return 0.0
 
-    _reason = reason.replace("-household-member", "")
-    if _reason in ["test-taken-positive", "test-taken-negative"]:
-        return conf['QUARANTINE_DROPOUT_POSITIVE']
+    if _reason in [QUARANTINE_UNTIL_TEST_RESULT, QUARANTINE_DUE_TO_POSITIVE_TEST_RESULT]:
+        return conf['QUARANTINE_DROPOUT_TEST']
 
-    elif _reason == "self-diagnosed-symptoms":
-        return conf['QUARANTINE_DROPOUT_SELF_REPORTED_SYMPTOMS']
-
-    elif _reason == "0-1-tracing-symptoms":
-        return conf['QUARANTINE_DROPOUT_TRACED_SELF_REPORTED_SYMPTOMS']
-
-    elif _reason == "0-1-tracing-positive-test":
+    elif _reason == TRACED_BY_POSITIVE_TEST:
         return conf['QUARANTINE_DROPOUT_TRACED_POSITIVE']
 
-    elif _reason in ["risk-level-update", "unset-quarantine"]:
+    elif _reason in [QUARANTINE_HOUSEHOLD, UNSET_QUARANTINE, RISK_LEVEL_UPDATE]:
         return conf['ALL_LEVELS_DROPOUT']
+
+    elif _reason == MAX_RISK_LEVEL_TRACED:
+        return conf['QUARANTINE_DROPOUT_MAX_RISK_LEVEL_TRACED']
+
+    elif _reason == SELF_DIAGNOSIS:
+        return conf['QUARANTINE_DROPOUT_SELF_REPORTED_SYMPTOMS']
+
+    elif _reason == TRACED_BY_SELF_REPORTED_SYMPTOMS:
+        return conf['QUARANTINE_DROPOUT_TRACED_SELF_REPORTED_SYMPTOMS']
 
     else:
         raise ValueError(f"Unknown value:{reason}")

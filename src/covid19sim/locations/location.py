@@ -5,11 +5,15 @@ from collections import namedtuple
 import numpy as np
 import warnings
 
-from covid19sim.utils.constants import SECONDS_PER_MINUTE, SECONDS_PER_HOUR, AGE_BIN_WIDTH_5, ALL_LOCATIONS, WEEKDAYS, ALL_DAYS, SECONDS_PER_DAY
 from covid19sim.utils.utils import _sample_positive_normal
 from covid19sim.epidemiology.p_infection import get_environment_human_p_transmission
 from covid19sim.epidemiology.viral_load import compute_covid_properties
 from covid19sim.log.event import Event
+
+from covid19sim.interventions.tracing_utils import get_household_quarantine_duration
+from covid19sim.utils.constants import SECONDS_PER_MINUTE, SECONDS_PER_HOUR, AGE_BIN_WIDTH_5, ALL_LOCATIONS, WEEKDAYS, ALL_DAYS, SECONDS_PER_DAY
+from covid19sim.utils.constants import QUARANTINE_UNTIL_TEST_RESULT, QUARANTINE_DUE_TO_POSITIVE_TEST_RESULT
+from covid19sim.utils.constants import QUARANTINE_HOUSEHOLD
 
 DistanceProfile = namedtuple("DistanceProfile", ['encounter_term', 'social_distancing_term', 'packing_term', 'distance'])
 
@@ -501,6 +505,90 @@ class Household(Location):
                 area=kwargs.get("area"),
                 capacity=None
             )
+
+        # quarantine related attrs for residents who need to quarantine due to index cases
+        self.index_cases = {}
+        self.quarantine_start_timestamp = None
+        self.quarantine_end_timestamp = None
+
+    def reset_index_case(self, human):
+        """
+        Resets the keys for `index_cases` corresponding to `human`.
+
+        Args:
+            human (covid19sim.human.Human): `human` who needs to be added to the index cases of the household
+        """
+        assert human in self.residents, "non-resident being added to index_cases"
+        self.index_cases[human] = {
+            "reasons": [],
+            "suggested_quarantine_end_timestamp": None
+        }
+
+    def add_to_index_case(self, human, trigger):
+        """
+        Index cases for household are defined as those residents wwho have reason to quarantine.
+        All others are secondary cases who needs to quarantine because of index cases.
+
+        Adds `human` to index cases.
+
+        Args:
+            human (covid19sim.human.Human): `human` who needs to be added to the index cases of the household
+            trigger (str): reason for adding to the index case.
+        """
+        assert human in self.residents, f"{human} does not reside at {self}. Trigger: {trigger}, residents: {self.residents}"
+
+        # (happens only once) residents are assigned after initialization of the household object, so initialization of index_cases is done here.
+        if len(self.index_cases) == 0:
+            for h in self.residents:
+                self.reset_index_case(h)
+
+        # test results are conclusive, so we don't add any other triggers
+        # Note 1: QUARANTINE_X_TEST_RESULT will always be the last element in the list if it existis
+        # Note 2: Only one of QUARANTINE_X_TEST_RESULT will be in the list
+        if (
+            QUARANTINE_UNTIL_TEST_RESULT in self.index_cases[human]
+            or QUARANTINE_DUE_TO_POSITIVE_TEST_RESULT in self.index_cases[human]
+        ):
+            return
+
+        # update quarantine requirements for secondary cases
+        if (
+            self.quarantine_start_timestamp is None
+            or self.quarantine_end_timestamp > self.env.timestamp
+        ):
+            self.quarantine_start_timestamp = self.env.timestamp
+
+        self.index_cases[human]['reasons'].append(trigger)
+        if trigger == QUARANTINE_UNTIL_TEST_RESULT:
+            self.index_cases[human]['suggested_quarantine_end_timestamp'] = self.env.timestamp + datetime.timedelta(seconds=human.time_to_test_result * SECONDS_PER_DAY)
+
+        else:
+            duration = get_household_quarantine_duration(human, self.index_cases[human]['reasons'], self.conf)
+            self.index_cases[human]['suggested_quarantine_end_timestamp'] = self.quarantine_start_timestamp + datetime.timedelta(seconds=duration*SECONDS_PER_DAY)
+
+        quarantine_end_timestamp = self.env.timestamp
+        secondary_cases = []
+        for other_human, attrs in self.index_cases.items():
+            triggers = attrs['reasons']
+            suggested_quarantine_end_timestamp = attrs['suggested_quarantine_end_timestamp']
+
+            # find maximum duration for which to quarantine secondary cases
+            if suggested_quarantine_end_timestamp is not None:
+                if suggested_quarantine_end_timestamp > quarantine_end_timestamp:
+                    quarantine_end_timestamp = suggested_quarantine_end_timestamp
+
+            # secondary cases
+            if len(triggers) == 0:
+                secondary_cases.append(other_human)
+
+        self.quarantine_end_timestamp = quarantine_end_timestamp
+        for other_human in secondary_cases:
+            if (
+                other_human.intervened_behavior.quarantine.end_timestamp is None
+                or other_human.intervened_behavior.quarantine.end_timestamp < quarantine_end_timestamp
+            ):
+                other_human.intervened_behavior.quarantine.update(QUARANTINE_HOUSEHOLD)
+
 
 class School(Location):
     """
