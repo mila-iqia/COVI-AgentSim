@@ -121,10 +121,10 @@ class TestFacility(object):
         elif MILD in human.symptoms:
             score += self.conf['P_TEST_MILD']
 
-        if isinstance(human.location, (Hospital, ICU)):
-            score += 1
-
         if human._test_recommended:
             score += 0.3  # @@@@@@ FIXME THIS IS ARBITRARY
+
+        # if score == 0:
+        #     self.test_queue.remove(human)
 
         return score
