@@ -495,8 +495,9 @@ class City:
 
                 # initialize everyone from the baseline behavior
                 for human in self.humans:
-                    human.set_tracing_method(self.tracing_method)
                     human.intervened_behavior.initialize()
+                    if self.tracing_method is not None:
+                        human.set_tracing_method(self.tracing_method)
 
                 # log reduction levels
                 log("\nCONTACT REDUCTION LEVELS (first one is not used) -", self.logfile)
