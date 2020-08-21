@@ -93,10 +93,6 @@ class Quarantine(object):
         if self.start_timestamp is None:
             self.start_timestamp = self.env.timestamp
 
-            # self is no longer a secondary household case
-            if QUARANTINE_HOUSEHOLD in self.reasons:
-                self.reason.remove(QUARANTINE_HOUSEHOLD)
-
         # traced positive test
         if trigger == TRACED_BY_POSITIVE_TEST:
             duration = self.conf['QUARANTINE_DAYS_ON_TRACED_POSITIVE_TEST']
@@ -128,6 +124,11 @@ class Quarantine(object):
                 self.human.household.add_to_index_case(self.human, trigger)
 
         elif trigger == QUARANTINE_HOUSEHOLD:
+            if (
+                self.end_timestamp is not None
+                and self.end_timestamp >= self.human.household.quarantine_end_timestamp
+            ):
+                return
             self.end_timestamp = self.human.household.quarantine_end_timestamp
             self.reasons.append(QUARANTINE_HOUSEHOLD)
             self.human.intervened_behavior._set_quarantine_behavior(self.reasons, test_recommended=False)
@@ -156,7 +157,7 @@ class Quarantine(object):
 
         last_reason = self.reasons[-1]
 
-        # 
+        #
         if (
             not self.human_no_longer_needs_quarantining
             and (
@@ -167,36 +168,33 @@ class Quarantine(object):
         ):
             self.human_no_longer_needs_quarantining = True
 
-        # if `human` uses an app, level is reset to the recommended level
-        # only if the last reason for quarantining was not TEST_TAKEN
-        if (
-            last_reason == QUARANTINE_DUE_TO_POSITIVE_TEST_RESULT
-            or last_reason == QUARANTINE_UNTIL_TEST_RESULT
-            or self.human._intervention_level == -1
-        ):
-            to_level = self.human.intervened_behavior.baseline_behavior_idx
-        else:
-            to_level = convert_intervention_to_behavior_level(self.human._intervention_level)
-
-        if to_level == self.human.intervened_behavior.quarantine_idx:
-            if (
-                self.conf['RISK_MODEL'] != "digital"
-                or self.human.city.daily_rec_level_mapping is not None
-            ):
-                self.set_recommended_quarantine(force=True)
-            else:
-                self.update(TRACED_BY_POSITIVE_TEST)
-            return
-
         self.start_timestamp = None
         self.end_timestamp = None
         self.reasons = []
-        self.human.intervened_behavior._unset_quarantine_behavior(to_level)
+        self.human.intervened_behavior._unset_quarantine_behavior(self.human.intervened_behavior.baseline_behavior_idx)
         self.human.household.reset_index_case(self.human)
+
+        # if `human` uses an app, level is reset to the recommended level
+        # only if the last reason for quarantining was not TEST_TAKEN
+        if (
+            not last_reason == QUARANTINE_DUE_TO_POSITIVE_TEST_RESULT
+            and not last_reason == QUARANTINE_UNTIL_TEST_RESULT
+            and not self.human._intervention_level == -1
+        ):
+            to_level = convert_intervention_to_behavior_level(self.human._intervention_level)
+
+            if to_level == self.human.intervened_behavior.quarantine_idx:
+                if (
+                    self.conf['RISK_MODEL'] != "digital"
+                    or self.human.city.daily_rec_level_mapping is not None
+                ):
+                    self.set_recommended_quarantine(force=True)
+                else:
+                    self.update(TRACED_BY_POSITIVE_TEST)
 
     def set_recommended_quarantine(self, force=False):
         """
-        Quarantining for non-binary tracing is set through this function call.
+        Quarantining for non-binary tracing is set through this function call. It is separate from other `update` because end_timestamp is set to max.
 
         Note 1: Any non-app based quarantining like TEST_TAKEN or SELF_DIAGNOSIS takes priority over the recommendations.
 
@@ -214,10 +212,19 @@ class Quarantine(object):
 
         self.reasons.apppend(MAX_RISK_LEVEL_TRACED)
         self.end_timestamp = datetime.datetime.max
-        self.human.intervened_behavior.set_quarantine_behavior(self.reasons, test_recommended=True)
+        self.human.intervened_behavior._set_quarantine_behavior(self.reasons, test_recommended=True)
 
         if self.conf['QUARANTINE_HOUSEHOLD_UPON_INDIVIDUAL_MAX_RISK_LEVEL_TRACED']:
             assert False
+
+    def reset_if_its_time(self):
+        """
+        Resets `timestamp`s.
+        It is called everytime a new activity is to be decided or a trigger is added.
+        """
+        if self.start_timestamp is not None:
+            if self.end_timestamp <= self.env.timestamp:
+                self.reset_quarantine()
 
 
 class IntervenedBehavior(object):
@@ -364,7 +371,7 @@ class IntervenedBehavior(object):
 
         # (debug)
         if self.human.name in ["human:71", "human:77", "human:34"]:
-            print(self.env.timestamp, "behavior level of", self.human, "because", self.current_behavior_reason)
+            print(self.env.timestamp, "set behavior level of", self.human, f"to {level}", "because", self.current_behavior_reason, self.quarantine.start_timestamp, self.quarantine.end_timestamp)
 
     def _set_quarantine_behavior(self, reasons, test_recommended):
         """
@@ -414,19 +421,11 @@ class IntervenedBehavior(object):
             if self.conf['SET_HOUSEHOLD_BEHAVIOR_UPON_INDIVIDUAL_RISK_LEVEL_UPDATES']:
                 assert False
 
-    def reset_quarantine_timestamp_if_its_time(self):
-        """
-        Resets the `Quaratnine.x_timestamp`s.
-        """
-        if self.quarantine.start_timestamp is not None:
-            if self.quarantine.end_timestamp < self.env.timestamp:
-                self.quarantine.reset_quarantine()
-
     def is_quarantined(self):
         """
         Returns True if `human` is currently quarantining. It accounts for dropout (non-adherence).
         """
-        self.reset_quarantine_timestamp_if_its_time()
+        self.quarantine.reset_if_its_time()
         if self.quarantine.start_timestamp is not None:
             if self.follow_recommendation_today:
                 return True

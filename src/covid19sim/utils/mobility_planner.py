@@ -538,7 +538,7 @@ class MobilityPlanner(object):
             return activity
 
         #
-        self.human.intervened_behavior.reset_quarantine_timestamp_if_its_time()
+        self.human.intervened_behavior.quarantine.reset_if_its_time()
 
         # (a) set back to normal routine if self.human was hospitalized
         # (b) if human is still recovering in hospital then return the activity as it is because these were determined at the time when hospitalization occured
