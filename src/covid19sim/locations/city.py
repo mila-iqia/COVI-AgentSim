@@ -100,6 +100,7 @@ class City:
         self.initialize_humans_and_locations()
 
         self.log_static_info()
+        self.tracker.track_static_info()
 
         log("Computing their preferences", self.logfile)
         self._compute_preferences()

@@ -358,6 +358,7 @@ def extract_tracker_data(tracker, conf):
         human.name: set(h.name for h in human.known_connections)
         for human in tracker.city.humans
     } # 3MB
+    data['humans_demographics'] = tracker.humans_demographics
 
     # contacts
     data['contact_patterns'] = tracker.get_contact_data() # 0.7MB
