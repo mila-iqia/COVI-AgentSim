@@ -10,7 +10,7 @@ Each trigger has a suggested duration for quarantine.
 To consider household quarantine, residents are divided into two groups:
     (i) index cases - they have a quarantine trigger i.e. a reason to believe that they should quarantine
     (ii) secondary cases - rest.
-    
+
 Anyone who has had a positive test in the past is not quarantined after 14 days of the positive test result.
 For index cases -
     * A conclusive quarantining trigger has a final say on the duration of quarantining.
@@ -19,6 +19,11 @@ For index cases -
 For secondary cases -
     * All of them quarantine for the same duration unless someone is converted to an index case, in which case, they quarantine and influence household quarantine according to their triggers.
     * Duration is defined by the index case who has maximum quarantining restrictions.
+
+Scenarios -
+    * (binary-tracing) Secondary case is coming out of a quarantine of 2 days due to negative test result of the index. This person has also been traced.
+      We put this secondary case back in quarantine for a maximum of duration required for a traced index.
+    *
 
 Dropout enables non-adherence to quarantine at any time.
 
@@ -85,10 +90,7 @@ class Quarantine(object):
             return
 
         #
-        if (
-            trigger != UNSET_QUARANTINE
-            and self.start_timestamp is None
-        ):
+        if self.start_timestamp is None:
             self.start_timestamp = self.env.timestamp
 
             # self is no longer a secondary household case
@@ -165,8 +167,13 @@ class Quarantine(object):
             to_level = convert_intervention_to_behavior_level(self.human._intervention_level)
 
         if to_level == self.human.intervened_behavior.quarantine_idx:
-            assert self.conf['RISK_MODEL'] != "digital" or self.human.city.daily_rec_level_mapping is not None, "unsetting quarantine to quarantine_idx should only happen in non-binary tracing methods"
-            self.set_recommended_quarantine(force=True)
+            if (
+                self.conf['RISK_MODEL'] != "digital"
+                or self.human.city.daily_rec_level_mapping is not None
+            ):
+                self.set_recommended_quarantine(force=True)
+            else:
+                self.quarantine.update(TRACED_BY_POSITIVE_TEST)
             return
 
         self.start_timestamp = None
@@ -419,7 +426,7 @@ class IntervenedBehavior(object):
 
     def trigger_intervention(self, reason):
         """
-        Changes the necessary attributes in human depending on reason.
+        Changes the necessary attributes in `human`, `self.quarantine`, and `self` depending on the reason.
 
         Args:
             reason (str): reason for the change in behavior of human
@@ -460,9 +467,13 @@ class IntervenedBehavior(object):
             behavior_level = convert_intervention_to_behavior_level(intervention_level)
             assert 0 < behavior_level < self.n_behavior_levels, f"behavior_level: {self.behavior_level} can't be outside the range [1,{self.n_behavior_levels}]. Total number of levels:{self.n_behavior_levels}"
 
+            #
+            if self.behavior_level == behavior_level:
+                return
+
             # (non-binary tracing) normalized model has RISK_MODEL == "digital"
             if (
-                conf['RISK_MODEL'] != "digital"
+                self.conf['RISK_MODEL'] != "digital"
                 or normalized_model
             ):
                 # in alternative methods, max level is still quarantine, but human can be put in lower levels due to re-evaluation.
