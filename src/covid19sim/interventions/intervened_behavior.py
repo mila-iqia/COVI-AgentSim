@@ -23,7 +23,7 @@ For secondary cases -
 Scenarios -
     * (binary-tracing) Secondary case is coming out of a quarantine of 2 days due to negative test result of the index. This person has also been traced.
       We put this secondary case back in quarantine for a maximum of duration required for a traced index.
-    *
+    * (no-tracing) Secondary case who is also infected goes for a test. Test result turn out to be negative. This case is released from quarantine because test-results are taken as conclusive evidence.
 
 Dropout enables non-adherence to quarantine at any time.
 
@@ -154,9 +154,21 @@ class Quarantine(object):
         assert self.start_timestamp is not None, "unsetting quarantine twice not allowed"
         assert not self.human_no_longer_needs_quarantining,  f"{self.human} was quarantined while it shouldn't have"
 
+        last_reason = self.reasons[-1]
+
+        # 
+        if (
+            not self.human_no_longer_needs_quarantining
+            and (
+                self.human.has_had_positive_test
+                or last_reason == QUARANTINE_DUE_TO_POSITIVE_TEST_RESULT
+                or self.human.test_result == POSITIVE_TEST_RESULT
+            )
+        ):
+            self.human_no_longer_needs_quarantining = True
+
         # if `human` uses an app, level is reset to the recommended level
         # only if the last reason for quarantining was not TEST_TAKEN
-        last_reason = self.reasons[-1]
         if (
             last_reason == QUARANTINE_DUE_TO_POSITIVE_TEST_RESULT
             or last_reason == QUARANTINE_UNTIL_TEST_RESULT
@@ -181,9 +193,6 @@ class Quarantine(object):
         self.reasons = []
         self.human.intervened_behavior._unset_quarantine_behavior(to_level)
         self.human.household.reset_index_case(self.human)
-
-        if self.human.has_had_positive_test:
-            self.human_no_longer_needs_quarantining = True
 
     def set_recommended_quarantine(self, force=False):
         """
