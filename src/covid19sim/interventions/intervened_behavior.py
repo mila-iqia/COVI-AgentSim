@@ -173,7 +173,7 @@ class Quarantine(object):
             ):
                 self.set_recommended_quarantine(force=True)
             else:
-                self.quarantine.update(TRACED_BY_POSITIVE_TEST)
+                self.update(TRACED_BY_POSITIVE_TEST)
             return
 
         self.start_timestamp = None

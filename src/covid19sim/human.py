@@ -1321,7 +1321,6 @@ class Human(BaseHuman):
         if self.conf.get("RISK_MODEL") == "digital":
             assert self._rec_level == 0 or self._rec_level == 3
 
-
         if self.rec_level != old_rec_level:
             self.intervened_behavior.trigger_intervention(reason=RISK_LEVEL_UPDATE)
 
