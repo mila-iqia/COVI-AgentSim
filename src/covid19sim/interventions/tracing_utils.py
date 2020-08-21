@@ -53,6 +53,7 @@ def get_household_quarantine_duration(human, triggers, conf):
     if QUARANTINE_DUE_TO_POSITIVE_TEST_RESULT in triggers:
         return conf['QUARANTINE_DAYS_HOUSEHOLD_ON_INDIVIDUAL_POSITIVE_TEST']
 
+    duration = 0
     # inconclusive triggers
     for trigger in triggers:
         if trigger == TRACED_BY_POSITIVE_TEST:
