@@ -510,6 +510,10 @@ class Household(Location):
         self.index_cases = {}
         self.quarantine_start_timestamp = None
         self.quarantine_end_timestamp = None
+        self.max_behavior_level = -1
+
+    def update_max_behavior_level(self):
+        self.max_behavior_level =  max(human.intervened_behavior.behavior_level for human in self.residents)
 
     def reset_index_case(self, human):
         """
@@ -585,7 +589,6 @@ class Household(Location):
         self.quarantine_end_timestamp = quarantine_end_timestamp
         for other_human in secondary_cases:
             other_human.intervened_behavior.quarantine.update(QUARANTINE_HOUSEHOLD)
-
 
 class School(Location):
     """

@@ -1,7 +1,7 @@
 """
 Implements modification of human attributes at different levels.
 
-###################### Quarantining logic ########################
+###################### Quarantining / Behavior change logic ########################
 
 Following orders takes care of the person faced with multiple quarantining triggers (each trigger has a suggested duration for quarantine) -
     (i)   (non-app based) QUARANTINE_DUE_TO_POSITIVE_TEST_RESULT, QUARANTINE_UNTIL_TEST_RESULT
@@ -9,26 +9,25 @@ Following orders takes care of the person faced with multiple quarantining trigg
         -ve result: person is quarantined until the test results come out
 
     (ii)  (non-app based) SELF_DIAGNOSIS
-    (iii) (app based) TRACED_BY_POSITIVE_TEST, TRACED_BY_SELF_REPORTED_SYMPTOMS, MAX_RISK_LEVEL_TRACED
+    (iii) (app based) RISK_LEVEL_UPDATE: x->MAX LEVEL
 Dropout enables non-adherence to quarantine at any time.
 
 To consider household quarantine, residents are divided into two groups:
     (i) index cases - they have a quarantine trigger i.e. a reason to believe that they should quarantine
     (ii) secondary cases - rest of the residents
 
-Quarantining for index cases -
+non-app quarantining for index cases -
     * A trigger higher in precedence overwrites other triggers i.e. quarantining duration is changed based on the trigger
-    * `human` might already be quarantining at the time of this trigger, so the duration is changed only if trigger requirements are as such.
+    * `human` might already be quarantining at the time of this trigger, so the duration is changed only if trigger requirements require so.
     * if there are no  non-app triggers, app-based triggers are checked every `human.time_slot` and behavior levels are adjusted accordingly
 
-Quarantining for secondary cases -
+non-app quarantining for secondary cases -
     * All of them quarantine for the same duration unless someone is converted to an index case, in which case, they quarantine and influence household quarantine according to their triggers.
     * this duration is defined by the index case who has maximum quarantining restrictions.
 
-Scenarios -
-    * (binary-tracing) Secondary case is coming out of a quarantine of 2 days due to negative test result of the index. This person has also been traced.
-      We put this secondary case back in quarantine for a maximum of duration required for a traced index.
-    * (no-tracing) Secondary case who is also infected goes for a test. Test result turn out to be negative. This case is released from quarantine because test-results are taken as conclusive evidence.
+app-based recommendations -
+Behavior changes for non-app recommendation for household members -
+
 
 ########################################################################
 """
@@ -52,7 +51,7 @@ def convert_intervention_to_behavior_level(intervention_level):
 
 class Quarantine(object):
     """
-    Contains logic to handle different combinations of quarantine triggers.
+    Contains logic to handle different combinations of non-app quarantine triggers.
 
     Args:
         human (covid19sim.human.Human): `human` whose behavior needs to be changed
@@ -220,7 +219,8 @@ class IntervenedBehavior(object):
         self.n_behavior_levels = conf['N_BEHAVIOR_LEVELS'] + 1
         self.quarantine_idx = self.n_behavior_levels - 1
         self.baseline_behavior_idx = 1
-        self.behavior_level = 0
+        self._behavior_level = 0
+        self.behavior_level = 0 # its a property.setter
 
         # start filling the reduction levels from the end
         reduction_levels = {
@@ -288,6 +288,23 @@ class IntervenedBehavior(object):
 
         self.set_behavior(level=self.baseline_behavior_idx, reasons=[INTERVENTION_START_BEHAVIOR])
         self.intervention_started = True
+
+    @property
+    def behavior_level(self):
+        """
+        """
+        if (
+            self.quarantine.start_timestamp is None
+            and self.pay_no_attention_to_triggers
+            and RISK_LEVEL_UPDATE in self.current_behavior_reason
+            and self.conf['MAKE_HOUSEHOLD_BEHAVE_SAME_AS_MAX_RISK_RESIDENT']
+        ):
+            return self.human.household.max_behavior_level
+        return self._behavior_level
+
+    @behavior_level.setter
+    def behavior_level(self, val):
+        self._behavior_level = val
 
     @property
     def follow_recommendation_today(self):
@@ -361,8 +378,26 @@ class IntervenedBehavior(object):
         self.current_behavior_reason = reasons
 
         # (debug)
-        if self.human.name in ["human:71", "human:77", "human:34"]:
-            print(self.env.timestamp, "set behavior level of", self.human, f"to {level}", "because", self.current_behavior_reason, self.quarantine.start_timestamp, self.quarantine.end_timestamp)
+        # if self.human.name in ["human:71", "human:77", "human:34"]:
+        #     print(self.env.timestamp, "set behavior level of", self.human, f"to {level}", "because", self.current_behavior_reason, self.quarantine.start_timestamp, self.quarantine.end_timestamp)
+
+    def set_recommended_behavior(self, level):
+        """
+        All app-based behavior changes happen through here. It sets _test_recommended attribute of human according to the behavior level.
+
+        Args:
+            level (int): behvaior level to put `human` on
+        """
+        if level == self.quarantine_idx:
+            self.human._test_recommended = True
+
+        elif (
+            level != self.quarantine_idx
+            and self._behavior_level == self.quarantine_idx
+        ):
+            self.human._test_recommended = False
+
+        self.set_behavior(level=level, reasons=[RISK_LEVEL_UPDATE, f"{RISK_LEVEL_UPDATE}: {self._behavior_level}->{level}"])
 
     def trigger_intervention(self, reason):
         """
@@ -425,23 +460,22 @@ class IntervenedBehavior(object):
 
             # map intervention level to behavior levels by shifting them by 1 (because 1st index is reserved for no reduction in contacts)
             behavior_level = convert_intervention_to_behavior_level(intervention_level)
-            assert 0 < behavior_level < self.n_behavior_levels, f"behavior_level: {self.behavior_level} can't be outside the range [1,{self.n_behavior_levels}]. Total number of levels:{self.n_behavior_levels}"
+            assert 0 < behavior_level < self.n_behavior_levels, f"behavior_level: {behavior_level} can't be outside the range [1,{self.n_behavior_levels}]. Total number of levels:{self.n_behavior_levels}"
 
             # if there is no change in the recommendation, don't do anything
             if (
                 RISK_LEVEL_UPDATE in self.current_behavior_reason
-                and self.behavior_level == behavior_level
+                and self._behavior_level == behavior_level
             ):
                 return
 
             # (debug)
-            # if self.human.name == "human:71" and self.behavior_level==1 and behavior_level==4:
+            # if self.human.name == "human:71" and self._behavior_level==1 and behavior_level==4:
             #     breakpoint()
 
-            self.set_behavior(level=behavior_level, reasons=[RISK_LEVEL_UPDATE, f"{RISK_LEVEL_UPDATE}: {self.behavior_level}->{behavior_level}"])
-            if self.conf['SET_HOUSEHOLD_BEHAVIOR_UPON_INDIVIDUAL_RISK_LEVEL_UPDATES']:
-                assert False
-
+            self.set_recommended_behavior(level=behavior_level)
+            if self.conf['MAKE_HOUSEHOLD_BEHAVE_SAME_AS_MAX_RISK_RESIDENT']:
+                self.human.household.update_max_behavior_level()
         else:
             raise ValueError(f"Unknown reason for intervention:{reason}")
 
