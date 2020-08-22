@@ -291,8 +291,6 @@ class IntervenedBehavior(object):
 
     @property
     def behavior_level(self):
-        """
-        """
         if (
             self.quarantine.start_timestamp is None
             and self.pay_no_attention_to_triggers
