@@ -554,7 +554,7 @@ class Household(Location):
         # update quarantine requirements for secondary cases
         if (
             self.quarantine_start_timestamp is None
-            or self.quarantine_end_timestamp > self.env.timestamp
+            or self.quarantine_end_timestamp < self.env.timestamp
         ):
             self.quarantine_start_timestamp = self.env.timestamp
 
@@ -584,11 +584,7 @@ class Household(Location):
 
         self.quarantine_end_timestamp = quarantine_end_timestamp
         for other_human in secondary_cases:
-            if (
-                other_human.intervened_behavior.quarantine.end_timestamp is None
-                or other_human.intervened_behavior.quarantine.end_timestamp < quarantine_end_timestamp
-            ):
-                other_human.intervened_behavior.quarantine.update(QUARANTINE_HOUSEHOLD)
+            other_human.intervened_behavior.quarantine.update(QUARANTINE_HOUSEHOLD)
 
 
 class School(Location):

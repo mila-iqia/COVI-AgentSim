@@ -3,7 +3,6 @@ Utility functions to interface between interventions and rest of the code.
 """
 from covid19sim.utils.constants import TEST_TAKEN, SELF_DIAGNOSIS, RISK_LEVEL_UPDATE
 from covid19sim.utils.constants import QUARANTINE_UNTIL_TEST_RESULT, QUARANTINE_DUE_TO_POSITIVE_TEST_RESULT
-from covid19sim.utils.constants import TRACED_BY_POSITIVE_TEST, TRACED_BY_SELF_REPORTED_SYMPTOMS, MAX_RISK_LEVEL_TRACED
 from covid19sim.utils.constants import UNSET_QUARANTINE, QUARANTINE_HOUSEHOLD
 
 
@@ -53,17 +52,8 @@ def get_household_quarantine_duration(human, triggers, conf):
     if QUARANTINE_DUE_TO_POSITIVE_TEST_RESULT in triggers:
         return conf['QUARANTINE_DAYS_HOUSEHOLD_ON_INDIVIDUAL_POSITIVE_TEST']
 
-    duration = 0
-    # inconclusive triggers
-    for trigger in triggers:
-        if trigger == TRACED_BY_POSITIVE_TEST:
-            duration = max(duration, conf['QUARANTINE_DAYS_HOUSEHOLD_ON_TRACED_POSITIVE_TEST'])
-        elif trigger == TRACED_BY_SELF_REPORTED_SYMPTOMS:
-            duration = max(duration, conf['QUARANTINE_DAYS_HOUSEHOLD_ON_TRACED_SELF_REPORTED_SYMPTOMS'])
-        elif trigger == SELF_DIAGNOSIS:
-            duration = max(duration, conf['QUARANTINE_DAYS_HOUSEHOLD_ON_INDIVIDUAL_SELF_REPORTED_SYMPTOMS'])
-        else:
-            raise ValueError(f"{trigger} not found")
+    if QUARANTINE_DUE_TO_SELF_DIAGNOSIS in triggers:
+        return conf['QUARANTINE_DAYS_HOUSEHOLD_ON_INDIVIDUAL_SELF_REPORTED_SYMPTOMS']
 
     return duration
 

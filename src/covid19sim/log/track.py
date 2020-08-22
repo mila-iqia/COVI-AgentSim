@@ -666,7 +666,7 @@ class Tracker(object):
             else:
                 raise ValueError(f"{human} is not in any of SEIR states")
 
-            self.humans_quarantined_state[human.name].append(human.intervened_behavior.quarantine.start_timestamp is not None)
+            self.humans_quarantined_state[human.name].append(human.intervened_behavior.is_under_quarantine)
             self.humans_state[human.name].append(state)
             self.humans_rec_level[human.name].append(human.rec_level)
             self.humans_intervention_level[human.name].append(human._intervention_level)
@@ -710,7 +710,7 @@ class Tracker(object):
 
         # behavior
         # /!\ `intervened_behavior.is_quarantined()` has dropout
-        x = np.array([(human.has_app, human.intervened_behavior.quarantine.start_timestamp is not None, human.is_susceptible or human.is_removed) for human in self.city.humans])
+        x = np.array([(human.has_app, human.intervened_behavior.is_under_quarantine, human.is_susceptible or human.is_removed) for human in self.city.humans])
         n_quarantined_app_users = (x[:, 0] * x[:, 1]).sum()
         n_quarantined = x[:, 1].sum()
         n_false_quarantined = (x[:, 1] * x[:, 2]).sum()
