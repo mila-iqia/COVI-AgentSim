@@ -455,12 +455,12 @@ class Human(BaseHuman):
                                   datetime.timedelta(days=self.time_to_test_result)).days
         if (
             self.test_result == NEGATIVE_TEST_RESULT
-            and days_since_test_result >= self.conf.get("RESET_NEGATIVE_TEST_RESULT_DELAY", 2)
+            and days_since_test_result >= self.conf["RESET_DAYS_NEGATIVE_TEST_RESULT"]
         ):
             self.reset_test_result()
         elif (
             self.test_result == POSITIVE_TEST_RESULT
-            and days_since_test_result >= self.conf.get("RESET_POSITIVE_TEST_RESULT_DELAY", self.conf.get("TRACING_N_DAYS_HISTORY") + 1)
+            and days_since_test_result >= self.conf["RESET_DAYS_POSITIVE_TEST_RESULT"]
         ):
             self.reset_test_result()
             if not self.has_had_positive_test:
@@ -1310,7 +1310,6 @@ class Human(BaseHuman):
             self._rec_level = -1
             return
 
-        old_rec_level = self.rec_level
         self._rec_level = self.intervention.get_recommendations_level(
             self,
             self.conf.get("REC_LEVEL_THRESHOLDS"),
@@ -1321,8 +1320,7 @@ class Human(BaseHuman):
         if self.conf.get("RISK_MODEL") == "digital":
             assert self._rec_level == 0 or self._rec_level == 3
 
-        if self.rec_level != old_rec_level:
-            self.intervened_behavior.trigger_intervention(reason=RISK_LEVEL_UPDATE)
+        self.intervened_behavior.trigger_intervention(reason=RISK_LEVEL_UPDATE)
 
     @property
     def rec_level(self):
