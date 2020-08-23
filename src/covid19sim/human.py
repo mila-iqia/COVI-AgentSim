@@ -80,6 +80,7 @@ class Human(BaseHuman):
             assert isinstance(rng, int)
             self.init_seed = rng
         self.rng = np.random.RandomState(self.init_seed)  # RNG for this particular human
+        self.oracle_noise_random_seed = None
 
         # Human-related properties
         self.name: RealUserIDType = f"human:{name}"  # Name of this human

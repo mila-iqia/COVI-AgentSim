@@ -83,7 +83,7 @@ def make_human_as_message(
         update_messages=update_messages,
         carefulness=human.carefulness,
         has_app=human.has_app,
-        rng_seed=human.rng.randint(1000)
+        oracle_noise_random_seed=human.rng.randint(1000)
     )
 
 
@@ -115,4 +115,4 @@ class HumanAsMessage:
     update_messages: typing.List[UpdateMessage]
     carefulness: float
     has_app: bool
-    rng_seed: int = None
+    oracle_noise_random_seed: int = None

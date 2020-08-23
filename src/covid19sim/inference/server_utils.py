@@ -847,7 +847,7 @@ def _proc_human(params, inference_engine):
     if conf.get("USE_ORACLE"):
         human_infectiousnesses = np.asarray(human.infectiousnesses)
         if conf.get("ORACLE_NOISE") > 0:
-            rng = np.random.RandomState(human.rng_seed)
+            rng = np.random.RandomState(human.oracle_noise_random_seed)
             noise_mask = rng.uniform(-conf.get("ORACLE_NOISE"), conf.get("ORACLE_NOISE"),
                                      size=human_infectiousnesses.shape)
             noise_mask = 1 + noise_mask
