@@ -24,7 +24,7 @@ from covid19sim.epidemiology.human_properties import may_develop_severe_illness,
     _get_preexisting_conditions, _get_random_sex, get_carefulness, get_age_bin
 from covid19sim.epidemiology.viral_load import compute_covid_properties, viral_load_for_day
 from covid19sim.epidemiology.symptoms import _get_cold_progression, _get_flu_progression, \
-    _get_allergy_progression, \
+    _get_allergy_progression, SymptomGroups, \
     MILD, MODERATE, SEVERE, EXTREMELY_SEVERE, \
     ACHES, COUGH, FATIGUE, FEVER, GASTRO, TROUBLE_BREATHING
 from covid19sim.epidemiology.p_infection import get_human_human_p_transmission, infectiousness_delta
@@ -80,6 +80,7 @@ class Human(BaseHuman):
             assert isinstance(rng, int)
             self.init_seed = rng
         self.rng = np.random.RandomState(self.init_seed)  # RNG for this particular human
+        self.oracle_noise_random_seed = None
 
         # Human-related properties
         self.name: RealUserIDType = f"human:{name}"  # Name of this human
@@ -104,6 +105,9 @@ class Human(BaseHuman):
         self.preexisting_conditions = _get_preexisting_conditions(self.age, self.sex, self.rng)  # Which pre-existing conditions does this person have? E.g. COPD, asthma
         self.inflammatory_disease_level = _get_inflammatory_disease_level(self.rng, self.preexisting_conditions, self.conf.get("INFLAMMATORY_CONDITIONS"))  # how many pre-existing conditions are inflammatory (e.g. smoker)
         self.carefulness = get_carefulness(self.age, self.rng, self.conf)  # How careful is this person? Determines their liklihood of contracting Covid / getting really sick, etc
+        self.proba_dropout_symptoms = self.conf["P_DROPOUT_SYMPTOM"]
+        self.proba_dropin_symptoms = self.conf["P_DROPIN_SYMPTOM"]
+        self.proba_report_age_and_sex = self.conf["P_REPORT_AGE_AND_SEX_TO_APP"]
 
         # Illness Properties
         self.is_asymptomatic = self.rng.rand() < self.conf.get("BASELINE_P_ASYMPTOMATIC") - (self.age - 50) * 0.5 / 100  # e.g. 70: baseline-0.1, 20: baseline+0.15
@@ -334,7 +338,7 @@ class Human(BaseHuman):
 
     @property
     def reported_symptoms(self):
-        self.update_symptoms()
+        self.update_reported_symptoms()
         return self.rolling_all_reported_symptoms[0]
 
     @property
@@ -405,7 +409,12 @@ class Human(BaseHuman):
 
         self.last_date['reported_symptoms'] = current_date
 
-        reported_symptoms = [s for s in self.rolling_all_symptoms[0] if self.rng.random() < self.carefulness]
+        reported_symptoms = [s for s in self.rolling_all_symptoms[0] if self.rng.random() > self.proba_dropout_symptoms]
+        if self.rng.random() < self.proba_dropin_symptoms:
+            # Drop some bad boys in
+            dropped_in_symptoms = \
+                SymptomGroups.sample(self.rng, self.conf["P_NUM_DROPIN_GROUPS"])
+            reported_symptoms += dropped_in_symptoms
         self.rolling_all_reported_symptoms.appendleft(reported_symptoms)
         self.city.tracker.track_symptoms(self)
 
@@ -543,7 +552,7 @@ class Human(BaseHuman):
                 # Has symptoms that a careful person would fear to be covid
                 SUSPICIOUS_SYMPTOMS = set(self.conf['GET_TESTED_SYMPTOMS_CHECKED_BY_SELF'])
                 if set(self.symptoms) & SUSPICIOUS_SYMPTOMS:
-                    should_get_test = self.rng.rand() < self.carefulness
+                    should_get_test = self.rng.rand() < self.conf["P_SELF_TEST"]
                     if should_get_test:
                         # self.intervened_behavior.trigger_intervention("self-diagnosed-symptoms", human=self)
                         pass

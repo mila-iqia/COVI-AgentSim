@@ -845,8 +845,16 @@ def _proc_human(params, inference_engine):
         data_collect_client.write(params["current_day"], params["time_slot"], human_id, daily_output)
     inference_result, risk_history = None, None
     if conf.get("USE_ORACLE"):
+        human_infectiousnesses = np.asarray(human.infectiousnesses)
+        if conf.get("ORACLE_NOISE") > 0:
+            rng = np.random.RandomState(human.oracle_noise_random_seed)
+            noise_mask = rng.uniform(-conf.get("ORACLE_NOISE"), conf.get("ORACLE_NOISE"),
+                                     size=human_infectiousnesses.shape)
+            noise_mask = 1 + noise_mask
+        else:
+            noise_mask = 1
         # return ground truth infectiousnesses
-        risk_history = human.infectiousnesses
+        risk_history = (human_infectiousnesses * noise_mask).tolist()
     elif conf.get("RISK_MODEL") == "transformer":
         # no need to do actual inference if the cluster count is zero
         inference_result = inference_engine.infer(daily_output)

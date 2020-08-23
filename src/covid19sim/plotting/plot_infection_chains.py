@@ -25,7 +25,7 @@ def load_humans(data):
 
     humans = pd.DataFrame.from_dict(humans, orient="index")
     humans.index = pd.MultiIndex.from_tuples(humans.index)
-    humans.columns = [f"human:{x}" for x in range(1, humans.shape[1] + 1)]
+    humans.columns = [f"human:{x}" for x in range(0, humans.shape[1])]
     return humans
 
 
@@ -316,7 +316,6 @@ def plot(data, output_path, num_chains=10, init_infected={}):
         else:
             pass
     init_infected, _infected_humans, infectee_locations = get_infected(infection_chain)
-
     tree, paths = construct_infection_tree(infection_chain, init_infected=init_infected, output_path=output_path)
 
     # get the longest 50% of lists
