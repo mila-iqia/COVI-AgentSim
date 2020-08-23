@@ -138,7 +138,6 @@ class Human(BaseHuman):
         self.hidden_test_result = None  # Test results (that will be reported to this person but have not yet been)
         self._will_report_test_result = None  # Determines whether this individual will report their test (given that they received a test result)
         self.time_to_test_result = None  # How long does it take for this person to receive their test after it has been administered
-        self.test_result_validated = None  # Represents whether a test result is validated by some public health agency (True for PCR Tests, some antiody tests)
         self._test_results = deque()  # History of test results (e.g. if you get a negative PCR test, you can still get more tests)
         self.denied_icu = None  # Used because some older people have been denied use of ICU for younger / better candidates
         self.denied_icu_days = None  # number of days the person would be denied ICU access (Note: denied ICU logic could probably be improved)
@@ -442,7 +441,6 @@ class Human(BaseHuman):
         self.hidden_test_result = None
         self._will_report_test_result = None
         self.time_to_test_result = None
-        self.test_result_validated = None
 
     def check_if_test_results_should_be_reset(self):
         """
@@ -490,7 +488,6 @@ class Human(BaseHuman):
             test_time (str): time of testing
             time_to_test_result (str): delay in getting results back
             hidden_test_result (str): test results are not immediately available
-            test_result_validated (str): whether these results will be validated by an agency
             reported_test_result (str): test result reported by self
             reported_test_type (str): test type reported by self
 
@@ -504,7 +501,6 @@ class Human(BaseHuman):
             self.time_to_test_result = self.conf['DAYS_TO_LAB_TEST_RESULT_IN_PATIENT']
         else:
             self.time_to_test_result = self.conf['DAYS_TO_LAB_TEST_RESULT_OUT_PATIENT']
-        self.test_result_validated = self.test_type == "lab"
 
         self._test_results.appendleft((
             self.hidden_test_result,
