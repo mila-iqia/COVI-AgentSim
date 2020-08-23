@@ -27,8 +27,8 @@ non-app quarantining for secondary cases -
 
 app-based recommendations -
 Behavior changes for non-app recommendation for household members -
-
-
+    * if there are no non-app quarantining triggers, humans are put on app recommendation
+    * if MAKE_HOUSEHOLD_BEHAVE_SAME_AS_MAX_RISK_RESIDENT is True, other residents follow the same behavior as the max risk individual in the house
 ########################################################################
 """
 import numpy as np
