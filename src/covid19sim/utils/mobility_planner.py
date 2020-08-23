@@ -537,6 +537,9 @@ class MobilityPlanner(object):
             # print(self.human,  "is dead because never recovers", activity)
             return activity
 
+        #
+        self.human.intervened_behavior.quarantine.reset_if_its_time()
+
         # (a) set back to normal routine if self.human was hospitalized
         # (b) if human is still recovering in hospital then return the activity as it is because these were determined at the time when hospitalization occured
         # Note 1: after recovery from hospitalization, infection_timestamp will always be None
@@ -718,7 +721,7 @@ class MobilityPlanner(object):
         # Quarantine / Max behavior restriction
         # (assumption) only the last level changes the mobility pattern i.e. network presence of humans
         if self.human.intervened_behavior.is_quarantined():
-            reason = self.human.intervened_behavior.quarantine_reason
+            reason = self.human.intervened_behavior.quarantine.reasons[-1]
             activity.cancel_and_go_to_location(reason=f"quarantine-{reason}", location=self.human.household)
             return activity, True
 

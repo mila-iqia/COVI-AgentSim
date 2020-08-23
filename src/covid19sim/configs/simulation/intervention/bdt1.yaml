@@ -13,5 +13,8 @@ TRACE_SYMPTOMS : False
 # behavior modification
 REC_LEVEL_THRESHOLDS: [0, 0, 1] # Binary
 
+# household members
+MAKE_HOUSEHOLD_BEHAVE_SAME_AS_MAX_RISK_RESIDENT: True
+
 # when to start (overwrite it if needs to be run from other day)
 INTERVENTION_DAY: 0

@@ -666,7 +666,7 @@ class Tracker(object):
             else:
                 raise ValueError(f"{human} is not in any of SEIR states")
 
-            self.humans_quarantined_state[human.name].append(human.intervened_behavior.quarantine_timestamp is not None)
+            self.humans_quarantined_state[human.name].append(human.intervened_behavior.is_under_quarantine)
             self.humans_state[human.name].append(state)
             self.humans_rec_level[human.name].append(human.rec_level)
             self.humans_intervention_level[human.name].append(human._intervention_level)
@@ -710,7 +710,7 @@ class Tracker(object):
 
         # behavior
         # /!\ `intervened_behavior.is_quarantined()` has dropout
-        x = np.array([(human.has_app, human.intervened_behavior.quarantine_timestamp is not None, human.is_susceptible or human.is_removed) for human in self.city.humans])
+        x = np.array([(human.has_app, human.intervened_behavior.is_under_quarantine, human.is_susceptible or human.is_removed) for human in self.city.humans])
         n_quarantined_app_users = (x[:, 0] * x[:, 1]).sum()
         n_quarantined = x[:, 1].sum()
         n_false_quarantined = (x[:, 1] * x[:, 2]).sum()
@@ -1188,7 +1188,11 @@ class Tracker(object):
             "test_type": human.test_type,
             "test_result": human.hidden_test_result,
             "infection_timestamp": human.infection_timestamp,
-            "infectiousness_onset_days": human.infectiousness_onset_days
+            "infectiousness_onset_days": human.infectiousness_onset_days,
+            "symptom_start_time": human.covid_symptom_start_time,
+            "cold_timestamp": human.cold_timestamp,
+            "flu_timestamp": human.flu_timestamp,
+            "allegy_symptom_onset": human.allergy_timestamp
         })
 
     def compute_test_statistics(self, logfile=False):
@@ -1268,6 +1272,14 @@ class Tracker(object):
         """
         if not (self.conf['track_all'] or self.conf['track_mobility']) or current_activity is None:
             return
+
+        # economic model
+        # if (
+        #     current_activity.owner.age > 25
+        #     and curernt_activity.name == "work"
+        #     and current_activity.location.location_type == "WORKPLACE"
+        # ):
+        #     pass
 
         # forms a transition probability on weekdays and weekends
         type_of_day = ['weekday', 'weekend'][self.env.is_weekend]

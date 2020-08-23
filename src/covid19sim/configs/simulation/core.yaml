@@ -180,7 +180,7 @@ MODERATE_SYMPTOMS: ["moderate", "fever"]
 P_MOBILE_GIVEN_MODERATE_SYMPTOMS: 0.3
 
 MILD_SYMPTOMS: ["cough", "fatigue", "gastro", "aches", "mild"]
-P_MOBILE_GIVEN_MILD_SYMPTOMS: 0.5
+P_MOBILE_GIVEN_MILD_SYMPTOMS: 0.80
 
 
 #############################################################
@@ -213,7 +213,6 @@ P_CRITICAL_GIVEN_HOSPITALIZED: [
   [70, 79, 0.432],
   [80, 110, 0.709]
 ]
-
 
 P_FATALITY_GIVEN_CRITICAL: [
   [0, 9, 0.33],
@@ -397,7 +396,7 @@ MEAN_DAILY_INTERACTION_FOR_AGE_GROUP: [
 
 # TESTING
 # capacity is proportion of population tested per day
-PROPORTION_LAB_TEST_PER_DAY: 0.01
+PROPORTION_LAB_TEST_PER_DAY: 0.001
 DAYS_TO_LAB_TEST_RESULT_IN_PATIENT: 0.33
 DAYS_TO_LAB_TEST_RESULT_OUT_PATIENT: 2.0 # verbal communication with H&A (find-source)
 
@@ -415,15 +414,23 @@ TEST_TYPES: { "lab": {
         "preference": 1, # TODO: preference might depend on symptoms
       } }
 
-# /!\ (no-source)
-P_TEST_MODERATE: 0.4
-P_TEST_MILD: 0.1
-P_TEST_SEVERE: 1.0
+# /!\ (verbal-communication) Epidemiologists suggested these probabilities from their experience
+# A success on below is also used as a positive self-diagnosis
+P_TEST_MODERATE: 0.20
+P_TEST_MILD: 0.02
+P_TEST_SEVERE: 0.80
+P_TEST_SUSPICIOUS: 0.80
 
 GET_TESTED_SYMPTOMS_CHECKED_IN_HOSPITAL: ["mild", "moderate", "severe", "fever", "chills", "gastro", "diarrhea", "cough", "fatigue", "trouble_breathing", "loss_of_taste", "light_trouble_breathing", "moderate_trouble_breathing", "heavy_trouble_breathing" ]
 GET_TESTED_SYMPTOMS_CHECKED_BY_SELF: ["cough", "fever", "trouble_breathing", "chills", "loss_of_taste", ""]
 SELF_TEST: True # If true, people take themselves to get tested based on their symptoms. If False, tests only happen to hospicalized people or from app recommendations
 TEST_REPORT_PROB: 0.8  # the probability that a user with the app will report their test result
+
+# after these many days, one can go again for a test
+RESET_DAYS_NEGATIVE_TEST_RESULT: 2 # days after getting the test result
+
+# after these many days one will not have to quarantine again, ever
+RESET_DAYS_POSITIVE_TEST_RESULT: 15 # days after getting the test result
 
 
 #########################################################
@@ -439,7 +446,7 @@ P_HAS_ALLERGIES_TODAY: 0.005
 
 # https://www.webmd.com/cold-and-flu/flu-statistics
 # Flu season is December to February. Assuming simulation runs form March, we are switching off Flu
-P_FLU_TODAY: 0.000
+P_FLU_TODAY: 0.002
 FLU_CONTAGIOUSNESS: 0.000
 AVG_FLU_DURATION: 5
 
@@ -499,6 +506,8 @@ ASSUME_SAFE_HOSPITAL_DAILY_INTERACTIONS_AFTER_INTERVENTION_START: True
 
 ### FLAGS
 # (non-tracing)
+# Quarantine household members of an individual who took a test until the test results come out?
+QUARANTINE_HOUSEHOLD_UPON_INDIVIDUAL_TEST_TAKEN: True
 # Quarantine household members of an individual who got a positive test?
 QUARANTINE_HOUSEHOLD_UPON_INDIVIDUAL_POSITIVE_TEST: True
 
@@ -506,31 +515,34 @@ QUARANTINE_HOUSEHOLD_UPON_INDIVIDUAL_POSITIVE_TEST: True
 QUARANTINE_SELF_REPORTED_INDIVIDUALS: False
 QUARANTINE_HOUSEHOLD_UPON_SELF_REPORTED_INDIVIDUAL: False
 
-# (tracing)
-QUARANTINE_HOUSEHOLD_UPON_TRACED_POSITIVE_TEST: True
-QUARANTINE_HOUSEHOLD_UPON_TRACED_SELF_REPORTED_INDIVIDUAL: False
+# (binary tracing)
+# QUARANTINE_HOUSEHOLD_UPON_TRACED_POSITIVE_TEST: True
+# QUARANTINE_HOUSEHOLD_UPON_TRACED_SELF_REPORTED_INDIVIDUAL: False
+
+# (non-binary tracing)
+# QUARANTINE_HOUSEHOLD_UPON_INDIVIDUAL_MAX_RISK_LEVEL_TRACED: False
+MAKE_HOUSEHOLD_BEHAVE_SAME_AS_MAX_RISK_RESIDENT: False
 
 ### DURATION
 # (non-tracing) quarantine duration
 QUARANTINE_DAYS_ON_POSITIVE_TEST: 14
-QUARANTINE_DAYS_ON_SELF_REPORTED_SYMPTOMS: 14
+QUARANTINE_DAYS_ON_SELF_REPORTED_SYMPTOMS: 7
 QUARANTINE_DAYS_HOUSEHOLD_ON_INDIVIDUAL_POSITIVE_TEST: 14
-QUARANTINE_DAYS_HOUSEHOLD_ON_INDIVIDUAL_CONTACT_WITH_POSITIVE_TEST: 14
+QUARANTINE_DAYS_HOUSEHOLD_ON_INDIVIDUAL_SELF_REPORTED_SYMPTOMS: 7
 
 # (tracing) quarantine duration when traced
-QUARANTINE_DAYS_ON_TRACED_POSITIVE: 14
-QUARANTINE_DAYS_ON_TRACED_SELF_REPORTED_SYMPTOMS: 14
-QUARANTINE_DAYS_HOUSEHOLD_ON_TRACED_POSITIVE: 14
-QUARANTINE_DAYS_HOUSEHOLD_ON_TRACED_SELF_REPORTED_SYMPTOMS: 14
+# QUARANTINE_DAYS_ON_TRACED_POSITIVE_TEST: 14
+# QUARANTINE_DAYS_ON_TRACED_SELF_REPORTED_SYMPTOMS: 14
+# QUARANTINE_DAYS_HOUSEHOLD_ON_TRACED_POSITIVE_TEST: 14
+# QUARANTINE_DAYS_HOUSEHOLD_ON_TRACED_SELF_REPORTED_SYMPTOMS: 14
 
-### DROPOUT
-# (non-tracing) dropout (adherence)
-QUARANTINE_DROPOUT_POSITIVE: 0.01
+### DROPOUT(adherence)
+# (non-tracing)
+QUARANTINE_DROPOUT_TEST: 0.01
 QUARANTINE_DROPOUT_SELF_REPORTED_SYMPTOMS: 0.02
+QUARANTINE_DROPOUT_HOUSEHOLD: 0.03
 
 # (tracing)
-QUARANTINE_DROPOUT_TRACED_POSITIVE: 0.03
-QUARANTINE_DROPOUT_TRACED_SELF_REPORTED_SYMPTOMS: 0.04
 ALL_LEVELS_DROPOUT: 0.02 # daily adherence to recommendations. Failing to adhere, human returns to level 0 (unmitigated case).
 
 # OTHERS

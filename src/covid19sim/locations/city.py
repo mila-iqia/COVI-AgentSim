@@ -493,8 +493,9 @@ class City:
 
                 # initialize everyone from the baseline behavior
                 for human in self.humans:
-                    human.set_tracing_method(self.tracing_method)
                     human.intervened_behavior.initialize()
+                    if self.tracing_method is not None:
+                        human.set_tracing_method(self.tracing_method)
 
                 # log reduction levels
                 log("\nCONTACT REDUCTION LEVELS (first one is not used) -", self.logfile)
@@ -569,6 +570,7 @@ class City:
             human.catch_other_disease_at_random() # catch cold/flu/allergies at random
             human.update_symptoms()
             human.increment_healthy_day()
+            human.check_if_test_results_should_be_reset() # reset test results if its time
             human.mobility_planner.send_social_invites()
             Event.log_daily(self.conf.get('COLLECT_LOGS'), human, human.env.timestamp)
         self.tracker.increment_day()
