@@ -156,7 +156,7 @@ class Quarantine(object):
             to_level (int): the level to which `human`s behavior level should be reset to.
         """
         assert to_level != self.quarantine_idx, "unsetting the quarantine to quarantine_level. Something is wrong."
-        self.intervened_behavior.set_behavior(level=to_level, reasons=[UNSET_QUARANTINE, f"{UNSET_QUARANTINE}: {self.intervened_behavior.behavior_level}->{to_level}"])
+        self.intervened_behavior.set_behavior(level=to_level, reasons=[UNSET_QUARANTINE, f"{UNSET_QUARANTINE}: {self.intervened_behavior._behavior_level}->{to_level}"])
         self.human._test_recommended = False
 
     def reset_quarantine(self):
@@ -297,7 +297,12 @@ class IntervenedBehavior(object):
             and not self.pay_no_attention_to_triggers # hasn't had a positive test in the past
             and self.conf['MAKE_HOUSEHOLD_BEHAVE_SAME_AS_MAX_RISK_RESIDENT']
         ):
-            return self.human.household.max_behavior_level
+            for human in self.human.household.residents:
+                human.intervened_behavior.quarantine.reset_if_its_time()
+
+            # Note: some people in recovery phase who haven't reset their test_results yet, will still come here
+            return max(human.intervened_behavior._behavior_level for human in self.human.household.residents)
+
         return self._behavior_level
 
     @behavior_level.setter
@@ -472,8 +477,8 @@ class IntervenedBehavior(object):
             #     breakpoint()
 
             self.set_recommended_behavior(level=behavior_level)
-            if self.conf['MAKE_HOUSEHOLD_BEHAVE_SAME_AS_MAX_RISK_RESIDENT']:
-                self.human.household.update_max_behavior_level()
+            # if self.conf['MAKE_HOUSEHOLD_BEHAVE_SAME_AS_MAX_RISK_RESIDENT']:
+            #     self.human.household.update_max_behavior_level()
         else:
             raise ValueError(f"Unknown reason for intervention:{reason}")
 

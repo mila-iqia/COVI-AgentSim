@@ -512,9 +512,6 @@ class Household(Location):
         self.quarantine_end_timestamp = None
         self.max_behavior_level = -1
 
-    def update_max_behavior_level(self):
-        self.max_behavior_level =  max(human.intervened_behavior.behavior_level for human in self.residents)
-
     def reset_index_case(self, human):
         """
         Resets the keys for `index_cases` corresponding to `human`.
