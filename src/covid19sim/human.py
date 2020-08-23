@@ -537,7 +537,7 @@ class Human(BaseHuman):
         """
         # if there was a positive test in the past, no need to take any other test
         if (
-            self.test_result == "positive"
+            self.test_result == POSITIVE_TEST_RESULT
             or self.has_had_positive_test
         ):
             return
@@ -1282,9 +1282,9 @@ class Human(BaseHuman):
     def baseline_risk(self):
         if self.is_removed:
             return 0.0
-        elif self.reported_test_result == "positive":
+        elif self.reported_test_result == POSITIVE_TEST_RESULT:
             return 1.0
-        elif self.reported_test_result == "negative":
+        elif self.reported_test_result == NEGATIVE_TEST_RESULT:
             return 0.2
         else:
             return self.conf.get("BASELINE_RISK_VALUE")
