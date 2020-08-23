@@ -291,9 +291,10 @@ class IntervenedBehavior(object):
 
     @property
     def behavior_level(self):
+        # if currently following app Rx
         if (
             self.quarantine.start_timestamp is None
-            and self.pay_no_attention_to_triggers
+            and not self.pay_no_attention_to_triggers
             and RISK_LEVEL_UPDATE in self.current_behavior_reason
             and self.conf['MAKE_HOUSEHOLD_BEHAVE_SAME_AS_MAX_RISK_RESIDENT']
         ):
@@ -332,7 +333,7 @@ class IntervenedBehavior(object):
         Returns True if `human` is currently quarantining. It accounts for dropout (non-adherence).
         """
         self.quarantine.reset_if_its_time()
-        if self.quarantine.start_timestamp is not None:
+        if self.is_under_quarantine:
             if self.follow_recommendation_today:
                 return True
 
