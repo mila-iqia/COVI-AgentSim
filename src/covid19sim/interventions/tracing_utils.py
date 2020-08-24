@@ -2,7 +2,7 @@
 Utility functions to interface between interventions and rest of the code.
 """
 from covid19sim.utils.constants import TEST_TAKEN, SELF_DIAGNOSIS, RISK_LEVEL_UPDATE
-from covid19sim.utils.constants import QUARANTINE_UNTIL_TEST_RESULT, QUARANTINE_DUE_TO_POSITIVE_TEST_RESULT
+from covid19sim.utils.constants import QUARANTINE_UNTIL_TEST_RESULT, QUARANTINE_DUE_TO_POSITIVE_TEST_RESULT, QUARANTINE_DUE_TO_SELF_DIAGNOSIS
 from covid19sim.utils.constants import UNSET_QUARANTINE, QUARANTINE_HOUSEHOLD
 
 
@@ -32,7 +32,7 @@ def get_tracing_method(risk_model, conf):
         raise NotImplementedError
 
 
-def get_household_quarantine_duration(human, triggers, conf):
+def get_household_quarantine_duration(triggers, conf):
     """
     Returns quarantine duration required for secondary cases in household. It is determined based on the quarantine triggers.
 
@@ -55,7 +55,7 @@ def get_household_quarantine_duration(human, triggers, conf):
     if QUARANTINE_DUE_TO_SELF_DIAGNOSIS in triggers:
         return conf['QUARANTINE_DAYS_HOUSEHOLD_ON_INDIVIDUAL_SELF_REPORTED_SYMPTOMS']
 
-    return duration
+    raise ValueError(f"Household quaranting duration unknown for triggers: {triggers}")
 
 
 def compute_p_covid_given_symptoms(human, conf, correction_factor=2):

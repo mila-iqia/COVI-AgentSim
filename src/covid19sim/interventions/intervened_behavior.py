@@ -314,6 +314,9 @@ class IntervenedBehavior(object):
         Returns:
             (int): Behavior level of `human` that determines the number of interactions that a human can have
         """
+        if self.human.is_dead:
+            return -1
+
         # if currently someone in the house is following app Rx (someone in the house has to have an app)
         if (
             self.quarantine.start_timestamp is None # currently no non-app quarantining
