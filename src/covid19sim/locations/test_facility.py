@@ -125,7 +125,4 @@ class TestFacility(object):
         if human._test_recommended:
             score += 0.3  # @@@@@@ FIXME THIS IS ARBITRARY
 
-        # if score == 0:
-        #     self.test_queue.remove(human)
-
         return score

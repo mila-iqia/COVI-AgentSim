@@ -895,16 +895,21 @@ class Human(BaseHuman):
         for the remainder of the simulation.
 
         Yields:
-            generator
+            simpy.events.Timeout
         """
         self.infection_timestamp = None
+        self.cold_timestamp = None
+        self.flu_timestamp = None
+        self.allergy_timestamp = None
         self.recovered_timestamp = datetime.datetime.max
         self.all_symptoms, self.covid_symptoms = [], []
         Event.log_recovery(self.conf.get('COLLECT_LOGS'), self, self.env.timestamp, death=True)
         # important to remove this human from the location or else there will be sampled interactions
         if self in self.location.humans:
             self.location.remove_human(self)
-        self.household.residents.remove(self) # remove from the house
+        if self in self.city.covid_testing_facility.test_queue:
+            self.city.covid_testing_facility.test_queue.remove(self)
+        self.household.remove_resident(self)
         self.mobility_planner.cancel_all_events()
         self.city.tracker.track_deaths() # track
         yield self.env.timeout(np.inf)
