@@ -528,34 +528,27 @@ class Human(BaseHuman):
         if self in self.city.covid_testing_facility.test_queue:
             return
 
-        should_get_test = False
-        if at_hospital:
-            assert isinstance(self.location, (Hospital, ICU)), "Not at hospital; wrong argument"
-            # Is in a hospital and has symptoms that hospitals check for
-            TEST_SYMPTOMS_FOR_HOSPITAL = set(self.conf['GET_TESTED_SYMPTOMS_CHECKED_IN_HOSPITAL'])
-            should_get_test = any(TEST_SYMPTOMS_FOR_HOSPITAL & set(self.symptoms))
+        # self-motivated tests
         elif self.self_test:
-            if SEVERE in self.symptoms or EXTREMELY_SEVERE in self.symptoms:
-                should_get_test = self.rng.rand() < self.conf['P_TEST_SEVERE']
-
-            elif MODERATE in self.symptoms:
-                should_get_test = self.rng.rand() < self.conf['P_TEST_MODERATE']
-
-            elif MILD in self.symptoms:
-                should_get_test = self.rng.rand() < self.conf['P_TEST_MILD']
-
-            # has been recommended the test by an intervention
-            if not should_get_test and self._test_recommended:
-                should_get_test = self.intervened_behavior.follow_recommendation_today
+            
+            # if symptoms are severe or particilarly indicative of covid
+            SUSPICIOUS_SYMPTOMS = set(self.conf['GET_TESTED_SYMPTOMS_CHECKED_BY_SELF'])
+            if SEVERE in self.symptoms or EXTREMELY_SEVERE in self.symptoms or set(self.symptoms) & SUSPICIOUS_SYMPTOMS:
+                should_get_test = self.rng.rand() < self.conf['P_TEST_SEVERE_OR_SUSPICIOUS']
 
             if not should_get_test:
-                # Has symptoms that a careful person would fear to be covid
-                SUSPICIOUS_SYMPTOMS = set(self.conf['GET_TESTED_SYMPTOMS_CHECKED_BY_SELF'])
-                if set(self.symptoms) & SUSPICIOUS_SYMPTOMS:
-                    should_get_test = self.rng.rand() < self.conf["P_SELF_TEST"]
-                    if should_get_test:
-                        # self.intervened_behavior.trigger_intervention("self-diagnosed-symptoms", human=self)
-                        pass
+                # TODO is this still necessary?
+                if should_get_test:
+                    # self.intervened_behavior.trigger_intervention("self-diagnosed-symptoms", human=self)
+                    pass
+                
+                #  if this person gets a test for other reasons e.g. family visiting, travelling, hypochondriac, etc.
+                should_get_test = self.rng.rand() < self.conf['P_TEST_OTHER_REASON']
+                
+        # has been recommended the test by an intervention
+        if not should_get_test and self._test_recommended:
+            should_get_test = self.intervened_behavior.follow_recommendation_today
+       
         else:
             pass
         if should_get_test:
