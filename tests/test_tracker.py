@@ -49,8 +49,6 @@ def test_track_serial_interval():
         # Create humans
         ages = city.rng.randint(*(65, 100), size=N)
 
-        infection = [None] * N
-
         humans = [
             Human(
                 env=city.env,
@@ -58,7 +56,6 @@ def test_track_serial_interval():
                 name=i,
                 age=ages[i],
                 rng=rng,
-                infection_timestamp=infection[i],
                 conf=conf,
             )
             for i in range(N)
@@ -73,7 +70,7 @@ def test_track_serial_interval():
         city.initWorld()
 
         t = Tracker(env, city, conf, None)
-
+        t.start_tracking = True
         # Create some infections
         infections = [(0,1), (0,2), (1,3), (2,5)]
         for infector, infectee in infections:
@@ -84,22 +81,22 @@ def test_track_serial_interval():
 
         # check no interval is registered for only to_human symptoms
         # or only from_human symptoms
-        humans[1].covid_symptom_start_time = datetime.datetime(2020, 2, 28, 0, 0).timestamp()
+        humans[1].covid_symptom_start_time = datetime.datetime(2020, 2, 28, 0, 0)
         t.track_serial_interval(humans[1].name)
         assert len(t.serial_intervals)==0
 
-        humans[5].covid_symptom_start_time = (datetime.datetime(2020, 2, 28, 0, 0)+datetime.timedelta(days=4)).timestamp()
+        humans[5].covid_symptom_start_time = (datetime.datetime(2020, 2, 28, 0, 0)+datetime.timedelta(days=4))
         t.track_serial_interval(humans[5].name)
         assert len(t.serial_intervals)==0
 
         # check a negative interval is registered for subsequent infector symptoms
-        humans[0].covid_symptom_start_time = (datetime.datetime(2020, 2, 28, 0, 0)+datetime.timedelta(days=1)).timestamp()
+        humans[0].covid_symptom_start_time = (datetime.datetime(2020, 2, 28, 0, 0)+datetime.timedelta(days=1))
         t.track_serial_interval(humans[0].name)
         assert len(t.serial_intervals)==1
         assert t.serial_intervals[0]==-1.0
 
         # check infector and infectee intervals are registered
-        humans[2].covid_symptom_start_time = (datetime.datetime(2020, 2, 28, 0, 0)+datetime.timedelta(days=2)).timestamp()
+        humans[2].covid_symptom_start_time = (datetime.datetime(2020, 2, 28, 0, 0)+datetime.timedelta(days=2))
         t.track_serial_interval(humans[2].name)
         assert len(t.serial_intervals)==3
         # Intervals (2,5) and (0,2) should be registered

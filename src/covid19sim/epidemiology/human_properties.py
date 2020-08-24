@@ -264,6 +264,8 @@ def _get_inflammatory_disease_level(rng, preexisting_conditions, inflammatory_co
     return cond_count
 
 def get_carefulness(age, rng, conf):
+    if not conf["AGE_AFFECTS_CAREFULNESS"]:
+        age = conf["MEDIAN_AGE_REGION"]
     # &carefulness
     loc = 55 if rng.rand() < conf.get("P_CAREFUL_PERSON") else 25
     carefulness = (max(round(rng.normal(loc, 10)), 0) + age / 2) / 100

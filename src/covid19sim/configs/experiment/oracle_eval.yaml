@@ -1,0 +1,45 @@
+# `sample` can be
+# - `uniform` (from np.random.uniform(*from))
+# - `range` (np.choice(np.arange(*from)))
+# - `list` (np.choice(from))
+# - `cartesian` special case where a cartesian product of all keys with the `cartesian` sampling scheme
+#               is created and iterated over in order. `from` MUST be a list
+#               As we iterate over the cartesian product of all
+#               such keys, others are sampled as usual. If n_search is larger than the size of the cartesian
+#               product, it will cycle again through the product in the same order
+#               example with A being `cartesian` from [1, 2] and B from [y, z] and 5 searches:
+#                  => {A:1, B: y}, {A:1, B: z}, {A:2, B: y}, {A:2, B: z}, {A:1, B: y}
+# - `sequential` samples will loop through the values in `from`. `from` MUST be a list
+
+tracing_method: oracle
+n_people: 1000
+simulation_days: 30
+INTERVENTION_DAY: 5
+APP_UPTAKE: 1.
+init_percent_sick: 0.005
+DROPOUT_RATE: 0.02
+P_CAREFUL_PERSON: 0.5
+GLOBAL_MOBILITY_SCALING_FACTOR: 1
+tune: true
+
+n_search: -1.
+
+ORACLE_NOISE:
+  sample: cartesian
+  from:
+    - 0.0
+    - 0.01
+    - 0.05
+    - 0.10
+    - 0.20
+    - 0.50
+    - 0.99
+
+seed: # for sole reproducibility purposes
+  sample: cartesian # loop through list sequentially, in order
+  from:
+    - 2000
+    - 2001
+    - 2002
+    - 2003
+    - 2004

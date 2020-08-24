@@ -605,7 +605,7 @@ class Tracker(object):
         """
 
         def register_serial_interval(infector, infectee):
-            serial_interval = (infectee.covid_symptom_start_time - infector.covid_symptom_start_time).total_seconds() / SECONDS_PER_DAY # DAYS
+            serial_interval = (infectee.covid_symptom_start_time - infector.covid_symptom_start_time).days # DAYS
             self.serial_intervals.append(serial_interval)
 
         # Pending intervals which manifested symptoms?
@@ -856,7 +856,7 @@ class Tracker(object):
             assert self.collection_client is not None
             human_backups = copy_obj_array_except_env(hd)
             for name, human in human_backups.items():
-                human_id = int(name.split(":")[-1]) #- 1
+                human_id = int(name.split(":")[-1]) - 1
                 current_day = (current_timestamp - self.city.start_time).days
                 self.collection_client.write(current_day, current_timestamp.hour, human_id, human)
             # @@@@@ TODO: do something with location backups

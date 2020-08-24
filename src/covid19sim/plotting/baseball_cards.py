@@ -543,6 +543,7 @@ def generate_human_centric_plots(human_backups, humans_events, nb_humans_in_sim,
             "%s:%i-%s" % (location_parts[0], location_parts[1], location_parts[2])
 
     timestamps = sorted(list(human_backups.keys()))
+
     # Pass in a subset of humans to look at
     human_names = list(human_backups[timestamps[0]].keys())
     begin = timestamps[0]

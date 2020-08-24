@@ -701,7 +701,7 @@ class DummyHuman:
         self.recommendations_to_follow = [str(rec) for rec in human.recommendations_to_follow]
         # "blacklisted" attributes are overriden with `None`, no matter their original value
         self.blacklisted_attribs = [
-            "conf", "city", "known_contacts", "my_history", "visits", "proba_to_risk_level_map",  "mobility_planner"
+            "conf", "city", "known_connections", "my_history", "visits", "proba_to_risk_level_map",  "mobility_planner"
         ]
         for attr_name in self.blacklisted_attribs:
             setattr(self, attr_name, None)
@@ -823,7 +823,6 @@ def _convert_bin_5s_to_bin_10s(histogram_bin_5s):
             histogram_bin_10s[bin10] = c1 + c2
         else:
             assert bin5_1[0] == 70, f"Not the right penultimate last bin {bin5_1}"
-            assert bin5_2 == (75, 110), f"Not the right last bin {bin_5_2}"
 
             bin10 = (bin5_1[0], 79)
             assert bin10 == AGE_BIN_WIDTH_10[i//2], f"not the right bin 10 {bin10}"
