@@ -24,7 +24,7 @@ from covid19sim.epidemiology.human_properties import may_develop_severe_illness,
     _get_preexisting_conditions, _get_random_sex, get_carefulness, get_age_bin
 from covid19sim.epidemiology.viral_load import compute_covid_properties, viral_load_for_day
 from covid19sim.epidemiology.symptoms import _get_cold_progression, _get_flu_progression, \
-    _get_allergy_progression, \
+    _get_allergy_progression, SymptomGroups, \
     MILD, MODERATE, SEVERE, EXTREMELY_SEVERE, \
     ACHES, COUGH, FATIGUE, FEVER, GASTRO, TROUBLE_BREATHING
 from covid19sim.epidemiology.p_infection import get_human_human_p_transmission, infectiousness_delta
@@ -84,6 +84,7 @@ class Human(BaseHuman):
             assert isinstance(rng, int)
             self.init_seed = rng
         self.rng = np.random.RandomState(self.init_seed)  # RNG for this particular human
+        self.oracle_noise_random_seed = None
 
         # Human-related properties
         self.name: RealUserIDType = f"human:{name}"  # Name of this human
@@ -108,6 +109,9 @@ class Human(BaseHuman):
         self.preexisting_conditions = _get_preexisting_conditions(self.age, self.sex, self.rng)  # Which pre-existing conditions does this person have? E.g. COPD, asthma
         self.inflammatory_disease_level = _get_inflammatory_disease_level(self.rng, self.preexisting_conditions, self.conf.get("INFLAMMATORY_CONDITIONS"))  # how many pre-existing conditions are inflammatory (e.g. smoker)
         self.carefulness = get_carefulness(self.age, self.rng, self.conf)  # How careful is this person? Determines their liklihood of contracting Covid / getting really sick, etc
+        self.proba_dropout_symptoms = self.conf["P_DROPOUT_SYMPTOM"]
+        self.proba_dropin_symptoms = self.conf["P_DROPIN_SYMPTOM"]
+        self.proba_report_age_and_sex = self.conf["P_REPORT_AGE_AND_SEX_TO_APP"]
 
         # Illness Properties
         self.is_asymptomatic = self.rng.rand() < self.conf.get("BASELINE_P_ASYMPTOMATIC") - (self.age - 50) * 0.5 / 100  # e.g. 70: baseline-0.1, 20: baseline+0.15
@@ -138,7 +142,6 @@ class Human(BaseHuman):
         self.hidden_test_result = None  # Test results (that will be reported to this person but have not yet been)
         self._will_report_test_result = None  # Determines whether this individual will report their test (given that they received a test result)
         self.time_to_test_result = None  # How long does it take for this person to receive their test after it has been administered
-        self.test_result_validated = None  # Represents whether a test result is validated by some public health agency (True for PCR Tests, some antiody tests)
         self._test_results = deque()  # History of test results (e.g. if you get a negative PCR test, you can still get more tests)
         self.denied_icu = None  # Used because some older people have been denied use of ICU for younger / better candidates
         self.denied_icu_days = None  # number of days the person would be denied ICU access (Note: denied ICU logic could probably be improved)
@@ -338,7 +341,7 @@ class Human(BaseHuman):
 
     @property
     def reported_symptoms(self):
-        self.update_symptoms()
+        self.update_reported_symptoms()
         return self.rolling_all_reported_symptoms[0]
 
     @property
@@ -409,7 +412,12 @@ class Human(BaseHuman):
 
         self.last_date['reported_symptoms'] = current_date
 
-        reported_symptoms = [s for s in self.rolling_all_symptoms[0] if self.rng.random() < self.carefulness]
+        reported_symptoms = [s for s in self.rolling_all_symptoms[0] if self.rng.random() > self.proba_dropout_symptoms]
+        if self.rng.random() < self.proba_dropin_symptoms:
+            # Drop some bad boys in
+            dropped_in_symptoms = \
+                SymptomGroups.sample(self.rng, self.conf["P_NUM_DROPIN_GROUPS"])
+            reported_symptoms += dropped_in_symptoms
         self.rolling_all_reported_symptoms.appendleft(reported_symptoms)
         self.city.tracker.track_symptoms(self)
 
@@ -442,7 +450,6 @@ class Human(BaseHuman):
         self.hidden_test_result = None
         self._will_report_test_result = None
         self.time_to_test_result = None
-        self.test_result_validated = None
 
     def check_if_test_results_should_be_reset(self):
         """
@@ -490,7 +497,6 @@ class Human(BaseHuman):
             test_time (str): time of testing
             time_to_test_result (str): delay in getting results back
             hidden_test_result (str): test results are not immediately available
-            test_result_validated (str): whether these results will be validated by an agency
             reported_test_result (str): test result reported by self
             reported_test_type (str): test type reported by self
 
@@ -504,7 +510,6 @@ class Human(BaseHuman):
             self.time_to_test_result = self.conf['DAYS_TO_LAB_TEST_RESULT_IN_PATIENT']
         else:
             self.time_to_test_result = self.conf['DAYS_TO_LAB_TEST_RESULT_OUT_PATIENT']
-        self.test_result_validated = self.test_type == "lab"
 
         self._test_results.appendleft((
             self.hidden_test_result,

@@ -641,7 +641,7 @@ class MobilityPlanner(object):
                 return activity
 
             # if kid is quarantined
-            if kid.intervened_behavior.is_quarantined():
+            if kid.intervened_behavior.is_quarantining():
                 location = kid.household
                 reason = "inverted-supervision-quarantined"
                 activity.cancel_and_go_to_location(reason=reason, location=location)
@@ -720,8 +720,8 @@ class MobilityPlanner(object):
         """
         # Quarantine / Max behavior restriction
         # (assumption) only the last level changes the mobility pattern i.e. network presence of humans
-        if self.human.intervened_behavior.is_quarantined():
-            reason = self.human.intervened_behavior.quarantine.reasons[-1]
+        if self.human.intervened_behavior.is_quarantining():
+            reason = self.human.intervened_behavior.current_behavior_reason[-1]
             activity.cancel_and_go_to_location(reason=f"quarantine-{reason}", location=self.human.household)
             return activity, True
 
@@ -1484,7 +1484,7 @@ def _can_accept_invite(today, mobility_planner):
         return False
 
     # intervention related checks
-    if mobility_planner.human.intervened_behavior.is_quarantined():
+    if mobility_planner.human.intervened_behavior.is_quarantining():
         return False
 
     return True

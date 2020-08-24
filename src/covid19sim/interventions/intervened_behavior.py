@@ -156,7 +156,7 @@ class Quarantine(object):
             to_level (int): the level to which `human`s behavior level should be reset to.
         """
         assert to_level != self.quarantine_idx, "unsetting the quarantine to quarantine_level. Something is wrong."
-        self.intervened_behavior.set_behavior(level=to_level, reasons=[UNSET_QUARANTINE, f"{UNSET_QUARANTINE}: {self.intervened_behavior.behavior_level}->{to_level}"])
+        self.intervened_behavior.set_behavior(level=to_level, reasons=[UNSET_QUARANTINE, f"{UNSET_QUARANTINE}: {self.intervened_behavior._behavior_level}->{to_level}"])
         self.human._test_recommended = False
 
     def reset_quarantine(self):
@@ -219,7 +219,7 @@ class IntervenedBehavior(object):
         self.n_behavior_levels = conf['N_BEHAVIOR_LEVELS'] + 1
         self.quarantine_idx = self.n_behavior_levels - 1
         self.baseline_behavior_idx = 1
-        self._behavior_level = 0
+        self._behavior_level = 0 # true behavior level
         self.behavior_level = 0 # its a property.setter
 
         # start filling the reduction levels from the end
@@ -289,16 +289,41 @@ class IntervenedBehavior(object):
         self.set_behavior(level=self.baseline_behavior_idx, reasons=[INTERVENTION_START_BEHAVIOR])
         self.intervention_started = True
 
+    def update_and_get_true_behavior_level(self):
+        """
+        Returns the true underlying behavior of human.
+        Updates the underlying behavior level if this function is called past the `quarantine.end_timestamp`.
+        (WIP) A true behavior of such kind can only be achieved by using Quarantine as a simpy.Event.
+
+        Note: if `human` uses the app and follows recommendation of someone else in the hosuehold, _behavior_level will be different then what behavior_level is.
+
+        Returns:
+            (int): Behavior level of `human` that determines the number of interactions that a human can have
+        """
+        self.quarantine.reset_if_its_time()
+        return self._behavior_level
+
     @property
     def behavior_level(self):
+        """
+        Returns appropriate behavior according to which `human` is supposed to act. Dropout, not used here, can further affect this level.
+
+        Note: It updates the underlying behavior level if this function is called past the `quarantine.end_timestamp`.
+        It can not be considered as a side effect. A true behavior of such kind can only be achieved by using Quarantine as a simpy.Event.
+
+        Returns:
+            (int): Behavior level of `human` that determines the number of interactions that a human can have
+        """
+        # if currently someone in the house is following app Rx (someone in the house has to have an app)
         if (
-            self.quarantine.start_timestamp is None
-            and self.pay_no_attention_to_triggers
-            and RISK_LEVEL_UPDATE in self.current_behavior_reason
+            self.quarantine.start_timestamp is None # currently no non-app quarantining
+            and not self.pay_no_attention_to_triggers # hasn't had a positive test in the past
             and self.conf['MAKE_HOUSEHOLD_BEHAVE_SAME_AS_MAX_RISK_RESIDENT']
         ):
-            return self.human.household.max_behavior_level
-        return self._behavior_level
+            # Note: some `human`s in recovery phase who haven't reset their test_results yet will also come here
+            return max(resident.intervened_behavior.update_and_get_true_behavior_level() for resident in self.human.household.residents)
+
+        return self.update_and_get_true_behavior_level()
 
     @behavior_level.setter
     def behavior_level(self, val):
@@ -327,12 +352,12 @@ class IntervenedBehavior(object):
         """
         return self.behavior_level == self.quarantine_idx
 
-    def is_quarantined(self):
+    def is_quarantining(self):
         """
         Returns True if `human` is currently quarantining. It accounts for dropout (non-adherence).
         """
         self.quarantine.reset_if_its_time()
-        if self.quarantine.start_timestamp is not None:
+        if self.is_under_quarantine:
             if self.follow_recommendation_today:
                 return True
 
@@ -472,8 +497,8 @@ class IntervenedBehavior(object):
             #     breakpoint()
 
             self.set_recommended_behavior(level=behavior_level)
-            if self.conf['MAKE_HOUSEHOLD_BEHAVE_SAME_AS_MAX_RISK_RESIDENT']:
-                self.human.household.update_max_behavior_level()
+            # if self.conf['MAKE_HOUSEHOLD_BEHAVE_SAME_AS_MAX_RISK_RESIDENT']:
+            #     self.human.household.update_max_behavior_level()
         else:
             raise ValueError(f"Unknown reason for intervention:{reason}")
 

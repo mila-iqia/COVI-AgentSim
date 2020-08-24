@@ -107,6 +107,7 @@ Legend -
             # other diseases
             cold = sum(h.has_cold for h in city.humans)
             allergies = sum(h.has_allergy_symptoms for h in city.humans)
+            flu = sum(h.has_flu for h in city.humans)
 
             # intervention related
             n_quarantine = sum(h.intervened_behavior.is_under_quarantine for h in city.humans)
@@ -116,7 +117,7 @@ Legend -
             SEIR = f"| S:{S:<{nd}} E:{E:<{nd}} I:{I:<{nd}} E+I+R:{T:<{nd}} +Test:{t_P}/{t_T} TestQueue:{test_queue_length}"
             stats = f"| P3:{Projected3:5.2f}"
             stats += f" 2x:{doubling_rate_days: 2.2f}" if doubling_rate_days > 0 else ""
-            other_diseases = f"| cold:{cold} allergies:{allergies}"
+            other_diseases = f"| cold:{cold} allergies:{allergies} flu:{flu}"
             hospitalizations = f"| H:{H} C:{C} D:{D}"
             quarantines = f"| Q: {n_quarantine}"
 
