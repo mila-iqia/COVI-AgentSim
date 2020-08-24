@@ -148,7 +148,7 @@ BEGIN_PREFERENTIAL_ATTACHMENT_FACTOR: 0.5 # probability to interact with only th
 END_PREFERENTIAL_ATTACHMENT_FACTOR: 0.5 # probability to interact with only the known connections at the start of seeding COVID infections
 
 # Infection knobs ()
-CONTAGION_KNOB: 30
+CONTAGION_KNOB: 22.5
 ENVIRONMENTAL_INFECTION_KNOB: 0.0017
 
 # Time scheduling knobs.

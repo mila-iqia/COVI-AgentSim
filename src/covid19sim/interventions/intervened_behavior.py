@@ -301,7 +301,7 @@ class IntervenedBehavior(object):
             (int): Behavior level of `human` that determines the number of interactions that a human can have
         """
         self.quarantine.reset_if_its_time()
-        return human._behavior_level
+        return self._behavior_level
 
     @property
     def behavior_level(self):
@@ -321,7 +321,7 @@ class IntervenedBehavior(object):
             and self.conf['MAKE_HOUSEHOLD_BEHAVE_SAME_AS_MAX_RISK_RESIDENT']
         ):
             # Note: some `human`s in recovery phase who haven't reset their test_results yet will also come here
-            return max(human.update_and_get_true_behavior_level() for human in self.human.household.residents)
+            return max(resident.intervened_behavior.update_and_get_true_behavior_level() for resident in self.human.household.residents)
 
         return self.update_and_get_true_behavior_level()
 
