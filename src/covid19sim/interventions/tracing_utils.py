@@ -2,7 +2,7 @@
 Utility functions to interface between interventions and rest of the code.
 """
 from covid19sim.utils.constants import TEST_TAKEN, SELF_DIAGNOSIS, RISK_LEVEL_UPDATE
-from covid19sim.utils.constants import QUARANTINE_UNTIL_TEST_RESULT, QUARANTINE_DUE_TO_POSITIVE_TEST_RESULT
+from covid19sim.utils.constants import QUARANTINE_UNTIL_TEST_RESULT, QUARANTINE_DUE_TO_POSITIVE_TEST_RESULT, QUARANTINE_DUE_TO_SELF_DIAGNOSIS
 from covid19sim.utils.constants import UNSET_QUARANTINE, QUARANTINE_HOUSEHOLD
 
 
