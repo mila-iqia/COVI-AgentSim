@@ -71,23 +71,35 @@ class HeuristicTest(unittest.TestCase):
 ##################################
 
     def test_handle_tests_positive(self):
+        house = Household(env=self.env, rng=self.rng, conf=self.conf, area=10, name="household:1", location_type="HOUSEHOLD", lat=0, lon=0, capacity=5)
+        house.residents = [self.human1]
+        self.human1.household = house
         self.human1.set_test_info("lab", "positive")
         self.env = Env(self.start_time + datetime.timedelta(days=3))
         self.human1.env = self.env
+
         risk_history, rec_level = self.heuristic.handle_tests(self.human1)
         assert rec_level == 3
         assert risk_history == [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
 
     def test_handle_tests_positive_lt_2_days(self):
+        house = Household(env=self.env, rng=self.rng, conf=self.conf, area=10, name="household:1", location_type="HOUSEHOLD", lat=0, lon=0, capacity=5)
+        house.residents = [self.human1]
+        self.human1.household = house
         self.human1.set_test_info("lab", "positive")
         self.env = Env(self.start_time + datetime.timedelta(days=1))
         self.human1.env = self.env
+
         risk_history, rec_level= self.heuristic.handle_tests(self.human1)
         assert rec_level == 0
         assert risk_history == []
 
     def test_handle_tests_negative_3_days(self):
+        house = Household(env=self.env, rng=self.rng, conf=self.conf, area=10, name="household:1", location_type="HOUSEHOLD", lat=0, lon=0, capacity=5)
+        house.residents = [self.human1]
+        self.human1.household = house
         self.human1.set_test_info("lab", "negative")
+
         self.env = Env(self.start_time + datetime.timedelta(days=3))
         self.human1.env = self.env
         risk_history, rec_level = self.heuristic.handle_tests(self.human1)
@@ -211,9 +223,15 @@ class HeuristicTest(unittest.TestCase):
 
     def test_negative_test_and_symptoms(self):
         # Should hit "recovered" and just default to lab results
+        house = Household(env=self.env, rng=self.rng, conf=self.conf, area=10, name="household:1", location_type="HOUSEHOLD", lat=0, lon=0, capacity=5)
+        house.residents = [self.human1]
+        self.human1.household = house
         self.human1.set_test_info("lab", "negative")
+
+        # modify the time and set the env
         self.env = Env(self.start_time + datetime.timedelta(days=3))
         self.human1.env = self.env
+
         reported_symptoms = [SEVERE]
         self.human1.rolling_all_reported_symptoms.appendleft(reported_symptoms)
         mailbox = {}
@@ -302,7 +320,12 @@ class HeuristicTest(unittest.TestCase):
 
     def test_handle_tests_negative_8_days(self):
         # The scenario is you get a negative lab test 8 days ago, but you got a moderate risk message two days ago.
+        house = Household(env=self.env, rng=self.rng, conf=self.conf, area=10, name="household:1", location_type="HOUSEHOLD", lat=0, lon=0, capacity=5)
+        house.residents = [self.human1]
+        self.human1.household = house
         self.human1.set_test_info("lab", "negative")
+
+        # modify the time
         self.env = Env(self.start_time + datetime.timedelta(days=8))
         self.human1.env = self.env
 
@@ -321,16 +344,18 @@ class HeuristicTest(unittest.TestCase):
         # The scenario is you get a negative lab test 8 days ago, but you got a moderate risk message 12 days ago.
         # This triggers the "recovery" mode so you get 7 baseline risks instead of
         # [0.9, 0.9, 0.9, 0.9, 0.20009698, 0.20009698, 0.20009698, 0.20009698, 0.9]
-        self.human1.set_test_info("lab", "negative")
         self.env = Env(self.start_time + datetime.timedelta(days=8))
+        house = Household(env=self.env, rng=self.rng, conf=self.conf, area=10, name="household:1", location_type="HOUSEHOLD", lat=0, lon=0, capacity=5)
+        house.residents = [self.human1]
+        self.human1.household = house
         self.human1.env = self.env
         self.human1.risk_history_map = {1: 0.9, 2: 0.9, 3: 0.9, 4: 0.9, 5: 0.9, 6: 0.9, 7: 0.9, 8: 0.9, 9: 0.9}
+        self.human1.set_test_info("lab", "negative")
 
         rel_encounter_day = 12
         num_encounters = 1
         new_risk_level = 8
         clusters = [(rel_encounter_day, new_risk_level, num_encounters)]
-
         risk_history = self.heuristic.compute_risk(self.human1, clusters, self.hd)
 
         assert self.human1._heuristic_rec_level == 0
