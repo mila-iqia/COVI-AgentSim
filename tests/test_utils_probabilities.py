@@ -39,7 +39,8 @@ from covid19sim.epidemiology.symptoms import _disease_phase_id_to_idx, _disease_
     MODERATE_TROUBLE_BREATHING, \
     HEAVY_TROUBLE_BREATHING, \
     LOSS_OF_TASTE, \
-    ACHES
+    ACHES, \
+    CONDITIONS_CAUSING_MODERATE
 from covid19sim.epidemiology.human_properties import _get_preexisting_conditions, PREEXISTING_CONDITIONS, \
     HEART_DISEASE_IF_SMOKER_OR_DIABETES_MODIFIER, CANCER_OR_COPD_IF_SMOKER_MODIFIER, \
     IMMUNO_SUPPRESSED_IF_CANCER_MODIFIER
@@ -220,7 +221,6 @@ class ColdProgression(unittest.TestCase):
 
                     self.assertEqual(phases_occurrence_count[1], n_people)
                     self.assertLess(phases_occurrence_count[0], phases_occurrence_count[1])
-
                     for symptoms_probs, phase_occurrence_count in zip(probs, phases_occurrence_count):
                         for i in range(len(symptoms_probs)):
                             symptoms_probs[i] /= phase_occurrence_count
@@ -233,7 +233,7 @@ class ColdProgression(unittest.TestCase):
                             prob = probs[i][s_id]
 
                             if i == 0:
-                                if really_sick or extremely_sick or any(preexisting_conditions):
+                                if really_sick or extremely_sick or any([i for i in CONDITIONS_CAUSING_MODERATE if i in preexisting_conditions]):
                                     if s_id == MODERATE.id:
                                         expected_prob = 1
                                     elif s_id == MILD.id:
@@ -248,7 +248,6 @@ class ColdProgression(unittest.TestCase):
                                     expected_prob = 1
                                 elif s_id == MODERATE.id:
                                     expected_prob = 0
-
                             self.assertAlmostEqual(prob, expected_prob,
                                                    delta=0 if expected_prob in (0, 1)
                                                    else max(0.015, expected_prob * 0.05),
@@ -257,7 +256,6 @@ class ColdProgression(unittest.TestCase):
                                                    f"extremely_sick {extremely_sick}, "
                                                    f"preexisting_conditions {len(preexisting_conditions)} "
                                                    f"and carefulness {carefulness} in disease_phase {disease_phase}")
-
                         if s_id in out_of_context_symptoms:
                             prob = sum(probs[i][s_id] for i in range(len(probs))) / len(probs)
 
@@ -282,7 +280,7 @@ class CovidProgression(unittest.TestCase):
     infectiousness_onset_days = 1
     really_sick_options = (True, False)
     extremely_sick_options = (True, False)
-    preexisting_conditions_options = (tuple(), ('pre1', 'pre2'), ('pre1', 'pre2', 'pre3'))
+    preexisting_conditions_options = (tuple(), ('smoker','diabetes'), ('smoker','diabetes','heart_disease'))
     carefulness_options = (0.50,)  # This test doesn't do checks on carefulness
     sickness_severities_options = [MILD, MODERATE, SEVERE, EXTREMELY_SEVERE]
 
@@ -339,7 +337,8 @@ class CovidProgression(unittest.TestCase):
 
                             # covid_onset
                             if phase_id == COVID_ONSET:
-                                if really_sick or extremely_sick or len(preexisting_conditions) > 2 \
+                                if really_sick or extremely_sick or len([i for i in CONDITIONS_CAUSING_MODERATE if
+                                                 i in preexisting_conditions]) > 2 \
                                         or initial_viral_load > 0.6:
                                     # extremely-severe
                                     expected_probs[3] = 0
@@ -370,7 +369,8 @@ class CovidProgression(unittest.TestCase):
                                     expected_probs[1] = 0
                                     # mild
                                     expected_probs[0] = 0
-                                elif really_sick or len(preexisting_conditions) > 2 or initial_viral_load > 0.6:
+                                elif really_sick or len([i for i in CONDITIONS_CAUSING_MODERATE if
+                                                 i in preexisting_conditions]) > 2 or initial_viral_load > 0.6:
                                     # extremely-severe
                                     expected_probs[3] = 0
                                     # severe
@@ -445,7 +445,10 @@ class CovidProgression(unittest.TestCase):
                                     delta = 0
                                 else:
                                     delta = 0.1
-                                self.assertAlmostEqual(prob, expected_prob, delta=delta)
+                                try:
+                                    self.assertAlmostEqual(prob, expected_prob, delta=delta)
+                                except Exception as e:
+                                    import pdb; pdb.set_trace()
 
     def test_covid_trouble_breathing_severity(self):
         symptoms_list_options = [[], [TROUBLE_BREATHING]]
@@ -878,7 +881,7 @@ class FluProgression(unittest.TestCase):
                                     expected_prob = 0
 
                             elif i == 1:
-                                if really_sick or extremely_sick or any(preexisting_conditions):
+                                if really_sick or extremely_sick or any([i for i in CONDITIONS_CAUSING_MODERATE if i in preexisting_conditions]):
                                     if s_id == MODERATE.id:
                                         expected_prob = 1
                                     elif s_id == MILD.id:

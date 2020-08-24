@@ -754,7 +754,7 @@ def assign_households_to_humans(humans, city, conf, logfile=None):
         # Note: We sample from broader set of bins while sampling for other kids in _sample_other_residents
         kid = _sample_n_kids(valid_kid_bins, conf, unassigned_humans, city.rng, size=1, with_kid=None)[0]
         # find a house and other residents
-        housetype = _sample_house_type(unallocated_houses, city.rng, kid=True)
+        housetype = _sample_house_type(unallocated_houses, city.rng, housetypes, kid=True)
         # find other residents
         humans_with_same_house, unassigned_humans = _sample_other_residents(housetype, unassigned_humans, city.rng, conf, with_kid=kid)
         if humans_with_same_house:
@@ -827,7 +827,7 @@ def assign_households_to_humans(humans, city, conf, logfile=None):
     log(f"Housing allocated with failed attempts: {n_failed_attempts} ", logfile)
     return allocated_humans
 
-def _sample_house_type(unallocated_houses, rng, kid=True):
+def _sample_house_type(unallocated_houses, rng, housetypes, kid=True):
     """
     Samples house type from `unallocated_houses`.
 
@@ -859,7 +859,7 @@ def _sample_house_type(unallocated_houses, rng, kid=True):
         n_kids = rng.choice(n_kids, size=1, p=p).item()
         return unallocated_houses[n_kids][0]
     else:
-        return all_housetypes['unallocated'][0][0]
+        return housetypes['unallocated'][0][0]
 
 def _sample_other_residents(housetype, unassigned_humans, rng, conf, with_kid=None):
     """

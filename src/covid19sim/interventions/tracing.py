@@ -180,8 +180,20 @@ class Heuristic(BaseMethod):
         risk_level = min(risk_level, 15)
         return self.risk_mapping[risk_level + 1]
 
+    def extract_clusters(self, human):
+        try:
+            cluster_mgr_map = DummyMemManager.get_cluster_mgr_map()
+            prepend_str = list(cluster_mgr_map.keys())[0].split(":")[0]
+            clusters = cluster_mgr_map[":".join([prepend_str, human.name])].clusters
+            processed = []
+            for c in clusters:
+                encounter_day = (human.env.timestamp - c.first_update_time).days
+                processed.append((encounter_day, c.risk_level, len(c._real_encounter_times)))
+        except (IndexError, KeyError):
+            return []
+        return processed
 
-    def compute_risk(self, human, mailbox, humans_map: typing.Dict[str, "Human"]):
+    def compute_risk(self, human, clusters, humans_map: typing.Dict[str, "Human"]):
         """
          Computes risk according to heuristic.
 
@@ -201,11 +213,11 @@ class Heuristic(BaseMethod):
             setattr(human, '_heuristic_rec_level', _heuristic_rec_level)
             return test_risk_history
 
-        message_risk_history, message_rec_level, risk_override = self.handle_risk_messages(human, mailbox)
+        message_risk_history, message_rec_level, risk_override = self.handle_risk_messages(human, clusters)
 
         symptoms_risk_history, symptoms_rec_level = self.handle_symptoms(human)
 
-        recovery_risk_history, recovery_rec_level = self.handle_recovery(human, mailbox)
+        recovery_risk_history, recovery_rec_level = self.handle_recovery(human, clusters)
 
         # if we recovered, ignore the other signals
         if len(recovery_risk_history) == 7:
@@ -267,7 +279,7 @@ class Heuristic(BaseMethod):
 
         return test_risk_history, test_rec_level
 
-    def handle_risk_messages(self, human, mailbox):
+    def handle_risk_messages(self, human, clusters):
         """ The core idea here is that we want to approximate the day when we would have become infectious, given
             risk signals from other agents. We """
 
@@ -278,20 +290,9 @@ class Heuristic(BaseMethod):
         message_risk_history = []
         message_rec_level = 0
 
-        try:
-            cluster_mgr_map = DummyMemManager.get_cluster_mgr_map()
-            prepend_str = list(cluster_mgr_map.keys())[0].split(":")[0]
-            clusters = cluster_mgr_map[":".join([prepend_str, human.name])].clusters
-            processed = []
-            for c in clusters:
-                encounter_day = (human.env.timestamp - c.first_update_time).days
-                processed.append((encounter_day, c.risk_level, len(c._real_encounter_times)))
-        except (IndexError, KeyError):
-            return [], 0, False
-
         override = False
         override_limit = 10
-        for rel_encounter_day, risk_level, num_encounters in processed:
+        for rel_encounter_day, risk_level, num_encounters in clusters:
             # conservative approach - keep max risk above threshold along with max days in the past
             if (risk_level >= self.high_risk_threshold):
                 high_risk_message = max(high_risk_message, risk_level)
@@ -381,26 +382,17 @@ class Heuristic(BaseMethod):
         no_positive_test_result_past_14_days, _ = self.extract_test_results(human)
 
         if self.version == 1 or self.version == 2:
-            # No large risk message
             no_high_risk_message = True
-            for _, update_messages in mailbox.items():
-                for update_message in update_messages:
-                    encounter_day = (human.env.timestamp - update_message.encounter_time).days
-                    risk_level = update_message.new_risk_level
-
-                    if (encounter_day < 7) and (risk_level >= 3):
-                        no_high_risk_message = False
+            for rel_encounter_day, risk_level, num_encounters in mailbox:
+                if (rel_encounter_day < 7) and (risk_level >= 3):
+                    no_high_risk_message = False
 
         elif self.version == 3:
             # No large risk message
             no_high_risk_message = True
-            for _, update_messages in mailbox.items():
-                for update_message in update_messages:
-                    encounter_day = (human.env.timestamp - update_message.encounter_time).days
-                    risk_level = update_message.new_risk_level
-
-                    if (encounter_day < 7) and (risk_level >= 10):
-                        no_high_risk_message = False
+            for rel_encounter_day, risk_level, num_encounters in mailbox:
+                if (rel_encounter_day < 7) and (risk_level >= 10):
+                    no_high_risk_message = False
 
         risk_history = []
         # set to low risk
