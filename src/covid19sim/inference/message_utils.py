@@ -5,6 +5,7 @@ import typing
 
 import numpy as np
 
+from covid19sim.utils.constants import POSITIVE_TEST_RESULT, NEGATIVE_TEST_RESULT
 if typing.TYPE_CHECKING:
     from covid19sim.human import Human
     from covid19sim.interventions.tracing import BaseMethod
@@ -394,6 +395,7 @@ class ContactBook:
             count_map = collections.defaultdict(int)
         elif self._is_being_traced:
             return count_map
+
         for contact in self.get_contacts(
                 humans_map,
                 only_with_initial_update=True,
@@ -401,10 +403,14 @@ class ContactBook:
                 make_sure_15min_minimum_between_contacts=make_sure_15min_minimum_between_contacts,
         ):
             assert contact.has_app, "how can we be tracing this person without an app?"
-            if not contact.contact_book._is_being_traced and \
-                    contact.reported_test_result == "positive":
+
+            if (
+                not contact.contact_book._is_being_traced
+                and contact.reported_test_result == POSITIVE_TEST_RESULT
+            ):
                 count_map[curr_order + 1] += 1
                 contact.contact_book._is_being_traced = True
+
             if max_order > curr_order + 1:
                 contact.contact_book.get_positive_contacts_counts(
                     humans_map=humans_map,

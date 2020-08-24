@@ -15,6 +15,9 @@ TRACING_ORDER : 1
 REC_LEVEL_THRESHOLDS: [1, 3, 5]
 MAX_RISK_LEVEL: 15
 
+# household members
+MAKE_HOUSEHOLD_BEHAVE_SAME_AS_MAX_RISK_RESIDENT: False
+
 # when to start (overwrite it if needs to be run from other day)
 INTERVENTION_DAY: 0
 
