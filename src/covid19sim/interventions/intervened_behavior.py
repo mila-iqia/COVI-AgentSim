@@ -479,7 +479,7 @@ class IntervenedBehavior(object):
                 intervention_level = self.human.rec_level
             else:
                 # QKFIX: There are 4 recommendation levels, the value is hard-coded here
-                probas = self.human.city.daily_rec_level_mapping[human.rec_level]
+                probas = self.human.city.daily_rec_level_mapping[self.human.rec_level]
                 intervention_level = self.rng.choice(4, p=probas)
                 normalized_model = True
             self.human._intervention_level = intervention_level
