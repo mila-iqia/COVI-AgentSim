@@ -412,12 +412,11 @@ class Human(BaseHuman):
 
         self.last_date['reported_symptoms'] = current_date
 
-        reported_symptoms = [s for s in self.rolling_all_symptoms[0] if self.rng.random() > self.proba_dropout_symptoms]
+        reported_symptoms = set([s for s in self.rolling_all_symptoms[0] if self.rng.random() > self.proba_dropout_symptoms])
         if self.rng.random() < self.proba_dropin_symptoms:
             # Drop some bad boys in
-            dropped_in_symptoms = \
-                SymptomGroups.sample(self.rng, self.conf["P_NUM_DROPIN_GROUPS"])
-            reported_symptoms += dropped_in_symptoms
+            dropped_in_symptoms = SymptomGroups.sample(self.rng, self.conf["P_NUM_DROPIN_GROUPS"])
+            reported_symptoms = reported_symptoms.union(set([s for s in dropped_in_symptoms for s in s]))
         self.rolling_all_reported_symptoms.appendleft(reported_symptoms)
         self.city.tracker.track_symptoms(self)
 
