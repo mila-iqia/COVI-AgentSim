@@ -6,10 +6,11 @@ from pathlib import Path
 import covid19sim.plotting.plot_infection_chains as infection_chains
 from covid19sim.plotting.baseball_cards import DebugDataLoader, generate_debug_plots
 
-def main(data_path, output_path, num_chains=10):
+def main(path, num_chains=10):
 
-    data_path = Path(data_path).resolve()
+    data_path = Path(path).resolve()
     assert data_path.exists()
+    output_path = os.makedirs(os.path.join(path, "plots"))
 
     # Setup paths
     human_backups_path = os.path.join(data_path, "human_backups.hdf5")
@@ -29,8 +30,7 @@ def main(data_path, output_path, num_chains=10):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--debug_data")
-    parser.add_argument("--output_folder")
+    parser.add_argument("--path")
     args = parser.parse_args()
 
-    main(args.debug_data, args.output_folder)
+    main(args.path)
