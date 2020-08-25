@@ -37,7 +37,7 @@ Legend -
 * [ TestQueue ]: Total number of people present in the test queue at the time of this print out.
 * [ H/C/D ]: Total number of people in hospital (H)/ ICU (C) at this point in simulation-time. Total died upto this day (D).
 * [ MC ]: Mean number of known connections of a person in the population (average degree of the social network). The attributes for known connections are drawn from surveyed data on mean contacts.
-* [ Q ]: Number of people quarantined as of midnight on that day.
+* [ Q ]: Number of people (alive) quarantined as of midnight on that day.
 * [ 2x ]: Number of days to double the initial infections to the current level.
         """
         if self.conf['INTERVENTION_DAY'] >= 0 and self.conf['RISK_MODEL'] is not None:
@@ -107,16 +107,17 @@ Legend -
             # other diseases
             cold = sum(h.has_cold for h in city.humans)
             allergies = sum(h.has_allergy_symptoms for h in city.humans)
+            flu = sum(h.has_flu for h in city.humans)
 
             # intervention related
-            n_quarantine = sum(h.intervened_behavior.quarantine_timestamp is not None for h in city.humans)
+            n_quarantine = sum(h.intervened_behavior.is_under_quarantine for h in city.humans if not h.is_dead)
 
             # prepare string
             nd = str(len(str(city.n_people)))
             SEIR = f"| S:{S:<{nd}} E:{E:<{nd}} I:{I:<{nd}} E+I+R:{T:<{nd}} +Test:{t_P}/{t_T} TestQueue:{test_queue_length}"
             stats = f"| P3:{Projected3:5.2f}"
             stats += f" 2x:{doubling_rate_days: 2.2f}" if doubling_rate_days > 0 else ""
-            other_diseases = f"| cold:{cold} allergies:{allergies}"
+            other_diseases = f"| cold:{cold} allergies:{allergies} flu:{flu}"
             hospitalizations = f"| H:{H} C:{C} D:{D}"
             quarantines = f"| Q: {n_quarantine}"
 
