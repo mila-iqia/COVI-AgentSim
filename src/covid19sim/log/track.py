@@ -1192,7 +1192,7 @@ class Tracker(object):
             "symptom_start_time": human.covid_symptom_start_time,
             "cold_timestamp": human.cold_timestamp,
             "flu_timestamp": human.flu_timestamp,
-            "allegy_symptom_onset": human.allergy_timestamp
+            "allergy_symptom_onset": human.allergy_timestamp
         })
 
     def compute_test_statistics(self, logfile=False):
