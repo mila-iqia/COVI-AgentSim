@@ -352,26 +352,18 @@ INFECTIOUSNESS_NORMALIZATION_CONST: 1.45
 IMMUNOCOMPROMISED_SEVERITY_MULTIPLIER_ADDITION: 0.2
 COUGH_SEVERITY_MULTIPLIER_ADDITION: 0.25
 
-# /!\ (update-numbers)
-# https://www.nature.com/articles/s41591-020-0962-9/figures/8
-# children are 50% less susceptible as compared to adults
-
-# normalized susceptibility to infection broken down age group
-# Bin boundaries are inclusive
-# refer Oxford COVID-19 model
-# They normalise the fitted attack rate across age groups so that average age has a susceptiblity of 1.0
-
-# UK's average age = 40; Canada's average age = 42. We use the same normalized susceptiblity from Table 5.
+# normalized susceptibility to infection broken down by age group
+# relative_susceptibility_x_y from https://github.com/BDI-pathogens/OpenABM-Covid19/blob/master/documentation/parameters/parameter_dictionary.md
 NORMALIZED_SUSCEPTIBILITY_BY_AGE: [
-  [0, 9, 0.71],
-  [10, 19, 0.74],
-  [20, 29, 0.79],
-  [30, 39, 0.87],
-  [40, 49, 0.98],
-  [50, 59, 1.11],
-  [60, 69, 1.26],
-  [70, 79, 1.45],
-  [80, 110, 1.66]
+  [0, 9, 0.35],
+  [10, 19, 0.69],
+  [20, 29, 1.03],
+  [30, 39, 1.03],
+  [40, 49, 1.03],
+  [50, 59, 1.03],
+  [60, 69, 1.27],
+  [70, 79, 1.52],
+  [80, 110, 1.52]
 ]
 
 # these numbers are taken for daily_mean_work_interactions from Oxford study (Table 3)
