@@ -37,7 +37,9 @@ default_poll_delay_ms = 500
 default_data_buffer_size = ((10 * 1024) * 1024)  # 10MB
 
 # if on slurm
-if os.path.isdir("/Tmp"):
+if os.environ.get("COVID19SIM_IPC_PATH", None) is not None:
+    backend_path = frontend_path = os.environ.get("COVID19SIM_IPC_PATH")
+elif os.path.isdir("/Tmp"):
     frontend_path = Path("/Tmp/slurm.{}.0".format(os.environ.get("SLURM_JOB_ID")))
     backend_path = Path("/Tmp/slurm.{}.0".format(os.environ.get("SLURM_JOB_ID")))
 else:
