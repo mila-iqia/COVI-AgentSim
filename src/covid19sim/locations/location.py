@@ -514,10 +514,32 @@ class Household(Location):
 
     def remove_resident(self, human):
         """
-        Removes `human` from the list of residents and clears other attrs.
+        Removes `human` from the list of residents and clears other attrs. Happens on death or reallocation of residence.
+
+        Args:
+            human (covid19sim.human.Human): `human` who needs to be remove to this house
+
+        Returns:
+            index_case_history (dict): current index case value for `human` in this house.
         """
-        self.reset_index_case(human)
-        self.residents.remove(human) # remove from the house (note: needs to be the last thing)
+        # if `human` is being removed without any past triggers, there will be no entry in index_cases
+        index_case_history = None
+        if human in self.index_cases:
+            index_case_history = self.index_cases.pop(human)
+        self.residents.remove(human) # remove from the house
+        return index_case_history
+
+    def add_resident(self, human, index_case_history=None):
+        """
+        Adds a new resident to the house. Happens when a kid has to be reallocated a residence because no adult at their previous house is alive.
+
+        Args:
+            human (covid19sim.human.Human): `human` who needs to be added to this house
+            index_case_history (dict): current index case value for `human` in the previous house. Defaults to None.
+        """
+        self.resident.add(human)
+        if index_case_history:
+            self.index_cases[human] = index_case_history
 
     def reset_index_case(self, human):
         """
@@ -526,7 +548,7 @@ class Household(Location):
         Args:
             human (covid19sim.human.Human): `human` who needs to be added to the index cases of the household
         """
-        assert human.is_dead or human in self.residents, "non-resident being added to index_cases"
+        assert human in self.residents, "non-resident being added to index_cases"
         self.index_cases[human] = {
             "reasons": [],
             "suggested_quarantine_end_timestamp": None
@@ -545,10 +567,12 @@ class Household(Location):
         """
         assert human in self.residents, f"{human} does not reside at {self}. Trigger: {trigger}, residents: {self.residents}"
 
-        # (happens only once) residents are assigned after initialization of the household object, so initialization of index_cases is done here.
-        if len(self.index_cases) == 0:
-            for h in self.residents:
-                self.reset_index_case(h)
+        # (happens only once at the firs trigger of `human`)
+        if human not in self.index_cases:
+            self.index_cases[human] = {
+                "reasons": [],
+                "suggested_quarantine_end_timestamp": None
+            }
 
         # test results are conclusive, so we don't add any other triggers
         # Note 1: QUARANTINE_X_TEST_RESULT will always be the last element in the list if it existis
