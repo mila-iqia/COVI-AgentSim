@@ -11,16 +11,20 @@
 #                  => {A:1, B: y}, {A:1, B: z}, {A:2, B: y}, {A:2, B: z}, {A:1, B: y}
 # - `sequential` samples will loop through the values in `from`. `from` MUST be a list
 
-tracing_method: oracle>RADIANT-RESONANCE-561
-run_type: collect-all
+intervention: oracle
+run_type: collect-training-data
+track: none
 
 n_people: 1000
 simulation_days: 30
-test_capacity: 0.002
-COLD_CONTAGIOUSNESS: 0
+
+INTERVENTION_DAY: 0
+PROPORTION_LAB_TEST_PER_DAY: 0.001
 GLOBAL_MOBILITY_SCALING_FACTOR: 1
-SHOULD_MODIFY_BEHAVIOR: True
-ORACLE_NOISE: 0.05
+MAKE_HOUSEHOLD_BEHAVE_SAME_AS_MAX_RISK_RESIDENT: True
+
+ORACLE_MUL_NOISE: 0.05
+ORACLE_ADD_NOISE: 0.0
 
 outdir: /home/nrahaman/python/covi-simulator/exp/neodr0
 weights_dir: /home/nrahaman/python/ctt/exp/SHIPMENTS
@@ -38,23 +42,20 @@ mem: 8
 
 APP_UPTAKE:
   sample: uniform # uniform in range:
-  from: [0.4215, 1]
+  from: [0.4215, 0.8415]
 
 P_CAREFUL_PERSON:
   sample: uniform # uniform in range:
   from: [0.5, 0.8]
 
-DROPOUT_RATE:
-  sample: uniform # uniform in range:
-  from: [0.0, 0.04]
 
-init_percent_sick:
+# DROPOUT_RATE:
+#   sample: uniform # uniform in range:
+#   from: [0.0, 0.04]
+
+init_fraction_sick:
   sample: uniform
   from: [0.0015, 0.011]
-
-INTERVENTION_DAY:
-  sample: range
-  from: [3, 7]
 
 seed: # for sole reproducibility purposes
   sample: range # uniform int choice

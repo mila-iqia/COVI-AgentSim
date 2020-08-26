@@ -151,6 +151,8 @@ def main(conf: DictConfig):
             simulation_days=conf['simulation_days'],
         )
         collection_server.start()
+    else:
+        collection_server = None
 
     conf["outfile"] = outfile
     city, monitors, tracker = simulate(
@@ -203,6 +205,17 @@ def main(conf: DictConfig):
         filename = f"tracker_data_n_{conf['n_people']}_seed_{conf['seed']}_{timenow}.pkl"
         data = extract_tracker_data(tracker, conf)
         dump_tracker_data(data, conf["outdir"], filename)
+    # Shutdown the data collection server if one's running
+    if collection_server is not None:
+        collection_server.stop_gracefully()
+        collection_server.join()
+        # Remove the IPCs if they were stored somewhere custom
+        if os.environ.get("COVID19SIM_IPC_PATH", None) is not None:
+            print("<<<<<<<< Cleaning Up >>>>>>>>")
+            for file in Path(os.environ.get("COVID19SIM_IPC_PATH")).iterdir():
+                if file.name.endswith(".ipc"):
+                    print(f"Removing {str(file)}...")
+                    os.remove(str(file))
     return conf
 
 

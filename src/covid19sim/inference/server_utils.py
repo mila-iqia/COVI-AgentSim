@@ -23,6 +23,7 @@ from ctt.inference.infer import InferenceEngine
 import covid19sim.inference.clustering.base
 import covid19sim.inference.message_utils
 import covid19sim.inference.helper
+import covid19sim.inference.oracle
 import covid19sim.utils.utils
 
 
@@ -37,7 +38,9 @@ default_poll_delay_ms = 500
 default_data_buffer_size = ((10 * 1024) * 1024)  # 10MB
 
 # if on slurm
-if os.path.isdir("/Tmp"):
+if os.environ.get("COVID19SIM_IPC_PATH", None) is not None:
+    backend_path = frontend_path = os.environ.get("COVID19SIM_IPC_PATH")
+elif os.path.isdir("/Tmp"):
     frontend_path = Path("/Tmp/slurm.{}.0".format(os.environ.get("SLURM_JOB_ID")))
     backend_path = Path("/Tmp/slurm.{}.0".format(os.environ.get("SLURM_JOB_ID")))
 else:
@@ -494,6 +497,12 @@ class DataCollectionWorker(BaseWorker):
                 dtype=bool,
                 fillvalue=False,
             )
+            is_filled = fd.create_dataset(
+                "is_filled",
+                shape=(self.simulation_days, 24, self.human_count,),
+                dtype=bool,
+                fillvalue=False
+            )
             total_dataset_bytes = 0
             sample_idx = 0
             latest_human_samples = [None] * self.human_count
@@ -528,9 +537,11 @@ class DataCollectionWorker(BaseWorker):
                         delta = buffer
                     latest_human_samples[human_idx] = (day_idx, hour_idx, buffer)
                     dataset[day_idx, hour_idx, human_idx] = np.frombuffer(delta, dtype=np.uint8)
+                    is_filled[day_idx, hour_idx, human_idx] = True
                     total_dataset_bytes += len(delta)
                 else:
                     dataset[day_idx, hour_idx, human_idx] = np.frombuffer(buffer, dtype=np.uint8)
+                    is_filled[day_idx, hour_idx, human_idx] = True
                     total_dataset_bytes += len(buffer)
                 socket.send(str(sample_idx).encode())
                 sample_idx += 1
@@ -845,16 +856,7 @@ def _proc_human(params, inference_engine):
         data_collect_client.write(params["current_day"], params["time_slot"], human_id, daily_output)
     inference_result, risk_history = None, None
     if conf.get("USE_ORACLE"):
-        human_infectiousnesses = np.asarray(human.infectiousnesses)
-        if conf.get("ORACLE_NOISE") > 0:
-            rng = np.random.RandomState(human.oracle_noise_random_seed)
-            noise_mask = rng.uniform(-conf.get("ORACLE_NOISE"), conf.get("ORACLE_NOISE"),
-                                     size=human_infectiousnesses.shape)
-            noise_mask = 1 + noise_mask
-        else:
-            noise_mask = 1
-        # return ground truth infectiousnesses
-        risk_history = (human_infectiousnesses * noise_mask).tolist()
+        risk_history = covid19sim.inference.oracle.oracle(human, conf)
     elif conf.get("RISK_MODEL") == "transformer":
         # no need to do actual inference if the cluster count is zero
         inference_result = inference_engine.infer(daily_output)
