@@ -209,6 +209,13 @@ def main(conf: DictConfig):
     if collection_server is not None:
         collection_server.stop_gracefully()
         collection_server.join()
+        # Remove the IPCs if they were stored somewhere custom
+        if os.environ.get("COVID19SIM_IPC_PATH", None) is not None:
+            print("<<<<<<<< Cleaning Up >>>>>>>>")
+            for file in Path(os.environ.get("COVID19SIM_IPC_PATH")).iterdir():
+                if file.name.endswith(".ipc"):
+                    print(f"Removing {str(file)}...")
+                    os.remove(str(file))
     return conf
 
 
