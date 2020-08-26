@@ -392,19 +392,16 @@ PROPORTION_LAB_TEST_PER_DAY: 0.001
 DAYS_TO_LAB_TEST_RESULT_IN_PATIENT: 0.33
 DAYS_TO_LAB_TEST_RESULT_OUT_PATIENT: 2.0 # verbal communication with H&A (find-source)
 
-TEST_TYPES: { "lab": {
-        "capacity": 0.001,  # ! /!\ (not-used) This is now a proportion of population, not an absolute (int) value
-        "time_to_result": {
-          "in-patient": 0.33, # days (not-used)
-          "out-patient": 2.0, # verbal communication with H&A (find-source) (not-used)
-          },
+TEST_TYPES: {
+    "lab":{
         "P_FALSE_NEGATIVE": {
             "days_since_exposure": [1, 4, 5, 8, 9, 21],
             "rate": [1, 0.67, 0.38, 0.2, 0.21, 0.66],
             }, # https://www.acc.org/latest-in-cardiology/journal-scans/2020/05/18/13/42/variation-in-false-negative-rate-of-reverse?utm_source=journalscan&utm_medium=email_newsletter&utm_campaign=journalscan&utm_content=20200521
         "P_FALSE_POSITIVE": 0.00, # verbal communication with H&A (find-source)
         "preference": 1, # TODO: preference might depend on symptoms
-      } }
+      }
+    }
 
 # /!\ (verbal-communication) Epidemiologists suggested these probabilities from their experience
 # A success on below is also used as a positive self-diagnosis

@@ -410,6 +410,9 @@ def extract_tracker_data(tracker, conf):
     data['quarantine_monitor'] = tracker.quarantine_monitor
     data['humans_quarantined_state'] = tracker.humans_quarantined_state
 
+    # economics
+    data['work_hours'] = tracker.daily_work_hours_by_age_group
+
     return data
 
 
