@@ -537,7 +537,7 @@ class Household(Location):
             human (covid19sim.human.Human): `human` who needs to be added to this house
             index_case_history (dict): current index case value for `human` in the previous house. Defaults to None.
         """
-        self.resident.add(human)
+        self.residents.add(human)
         if index_case_history:
             self.index_cases[human] = index_case_history
 
