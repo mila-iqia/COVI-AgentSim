@@ -10,7 +10,9 @@ def main(path, num_chains=10):
 
     data_path = Path(path).resolve()
     assert data_path.exists()
-    output_path = os.makedirs(os.path.join(path, "plots"))
+    output_path = os.path.join(path, "plots")
+    if not os.path.exists(output_path):
+        os.makedirs(output_path)
 
     # Setup paths
     human_backups_path = os.path.join(data_path, "human_backups.hdf5")

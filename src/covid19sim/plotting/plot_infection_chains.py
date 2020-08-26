@@ -323,7 +323,11 @@ def plot(data, output_path, num_chains=10, init_infected={}):
 
     for chain in range(num_chains):
         fig_path = os.path.join(output_path, f'chain_{chain}.png')
-        ids = random.choice(candidates)
+        try:
+            ids = random.choice(candidates)
+        except IndexError:
+            print("RAN OUT OF CANDIDATE INFECTION CHAINS")
+            continue
         candidates.remove(ids) # we are not sampling with replacement
 
         df = make_df(
