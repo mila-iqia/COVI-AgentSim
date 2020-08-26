@@ -497,6 +497,12 @@ class DataCollectionWorker(BaseWorker):
                 dtype=bool,
                 fillvalue=False,
             )
+            is_filled = fd.create_dataset(
+                "is_filled",
+                shape=(self.simulation_days, 24, self.human_count,),
+                dtype=bool,
+                fillvalue=False
+            )
             total_dataset_bytes = 0
             sample_idx = 0
             latest_human_samples = [None] * self.human_count
@@ -531,9 +537,11 @@ class DataCollectionWorker(BaseWorker):
                         delta = buffer
                     latest_human_samples[human_idx] = (day_idx, hour_idx, buffer)
                     dataset[day_idx, hour_idx, human_idx] = np.frombuffer(delta, dtype=np.uint8)
+                    is_filled[day_idx, hour_idx, human_idx] = True
                     total_dataset_bytes += len(delta)
                 else:
                     dataset[day_idx, hour_idx, human_idx] = np.frombuffer(buffer, dtype=np.uint8)
+                    is_filled[day_idx, hour_idx, human_idx] = True
                     total_dataset_bytes += len(buffer)
                 socket.send(str(sample_idx).encode())
                 sample_idx += 1
