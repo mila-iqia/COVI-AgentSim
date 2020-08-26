@@ -123,6 +123,7 @@ def _get_work_status_category(human, work_activity):
         elif (
             "sick-rest-at_home" in activity_status
             or "Hospitalized" in activity_status
+            or "ICU" in activity_status
         ):
             return "WORK-CANCEL--ILL"
 
