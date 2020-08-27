@@ -345,6 +345,7 @@ def extract_tracker_data(tracker, conf):
     data['COVID_SPREAD_START_TIME'] = conf['COVID_SPREAD_START_TIME']
     data['INTERVENTION_START_TIME'] = conf['INTERVENTION_START_TIME']
     data['SIMULATION_START_TIME'] = conf['SIMULATION_START_TIME']
+    data['simulation_days'] = conf['simulation_days']
     data['n_humans'] = tracker.n_humans
     data['n_init_infected'] = tracker.n_infected_init
     data['adoption_rate'] = getattr(tracker, 'adoption_rate', 1.0)

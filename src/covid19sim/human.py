@@ -573,25 +573,19 @@ class Human(BaseHuman):
             else:
                 self_diagnosis_and_should_get_tested = self.rng.rand() < self.conf['P_TEST_OTHER_REASON']
 
-
             if self_diagnosis_and_should_get_tested:
                 should_get_test = True
                 if self.conf['QUARANTINE_SELF_REPORTED_INDIVIDUALS']:
                     self.intervened_behavior.trigger_intervention(reason=SELF_DIAGNOSIS)
-
-                reasons.append(TAKE_TEST_DUE_TO_SELF_DIAGNOSIS)
-                # self-reporting for tracing symptoms
-                # self.self_reporting_timestamp = self.env.timestamp
         else:
             pass
 
-        # has been recommended the test by an intervention
+        # has been recommended a test by an intervention
         if (
             self._test_recommended
             and self.intervened_behavior.follow_recommendation_today
         ):
             should_get_test = True
-            reasons += self.intervened_behavior.quarantine.reasons # its a list
 
         if should_get_test:
             self.city.add_to_test_queue(self)
