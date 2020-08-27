@@ -415,7 +415,7 @@ class IntervenedBehavior(object):
             level (int): behvaior level to put `human` on
         """
         if level == self.quarantine_idx:
-            self.human._test_recommended = True
+            self.human._test_recommended = False
 
         elif (
             level != self.quarantine_idx
@@ -500,8 +500,7 @@ class IntervenedBehavior(object):
             #     breakpoint()
 
             self.set_recommended_behavior(level=behavior_level)
-            # if self.conf['MAKE_HOUSEHOLD_BEHAVE_SAME_AS_MAX_RISK_RESIDENT']:
-            #     self.human.household.update_max_behavior_level()
+
         else:
             raise ValueError(f"Unknown reason for intervention:{reason}")
 

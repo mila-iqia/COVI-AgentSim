@@ -123,6 +123,6 @@ class TestFacility(object):
             score += self.conf['P_TEST_MILD']
 
         if human._test_recommended:
-            score += 0.3  # @@@@@@ FIXME THIS IS ARBITRARY
+            score += self.conf['P_TEST_RECOMMENDED']
 
         return score
