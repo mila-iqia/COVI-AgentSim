@@ -25,7 +25,26 @@ TRACING_N_DAYS_HISTORY: 14
 UPDATES_PER_DAY: 4
 
 # (risk mapping) by default, we use a roughly linear interpolation to map the risk values
-risk_mappings: calibrated
+RISK_MAPPING:
+  [
+    0.0,
+    0.04375,
+    0.0875,
+    0.13124999999999998,
+    0.175,
+    0.21875,
+    0.26249999999999996,
+    0.30624999999999997,
+    0.35,
+    0.39375,
+    0.4375,
+    0.48124999999999996,
+    0.5249999999999999,
+    0.56875,
+    0.6124999999999999,
+    0.65625,
+    0.7
+  ]
 MAX_RISK_LEVEL: 15 # maximum allowed risk_level => assert risk_level in range(0, MAX_RISK_LEVEL + 1)
 
 
