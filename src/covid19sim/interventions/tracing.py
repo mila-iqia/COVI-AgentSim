@@ -204,6 +204,7 @@ class Heuristic(BaseMethod):
          heuristic doesn't have a concept of risk_level to rec_level mapping. The function `self.get_recommendations_level`
          will overwrite rec_level attribute of human via `update_recommendations_level`.
         """
+        human.heuristic_reasons = set()
         cur_risk_history = list(human.risk_history_map.values())
         test_protection_window = 8
         # if you have a positive test result, it over-rides everything else (we ignore symptoms and risk messages)
@@ -211,17 +212,27 @@ class Heuristic(BaseMethod):
         if test_rec_level == 3:
             _heuristic_rec_level = test_rec_level
             setattr(human, '_heuristic_rec_level', _heuristic_rec_level)
+            human.heuristic_reasons.add("positive test")
             return test_risk_history
 
         message_risk_history, message_rec_level, risk_override = self.handle_risk_messages(human, clusters)
 
         symptoms_risk_history, symptoms_rec_level = self.handle_symptoms(human)
 
+        if message_rec_level > symptoms_rec_level:
+            human.heuristic_reasons.add("risk message")
+        if symptoms_rec_level > message_rec_level:
+            human.heuristic_reasons.add("symptoms")
+        if symptoms_rec_level == message_rec_level and message_rec_level != 0:
+            human.heuristic_reasons.add("risk message")
+            human.heuristic_reasons.add("symptoms")
+
         recovery_risk_history, recovery_rec_level = self.handle_recovery(human, clusters)
 
         # if we recovered, ignore the other signals
         if len(recovery_risk_history) == 7:
             setattr(human, '_heuristic_rec_level', recovery_rec_level)
+            human.heuristic_reasons.add("recovered")
             return recovery_risk_history
 
         # compute max risk history and rec level
@@ -230,19 +241,16 @@ class Heuristic(BaseMethod):
 
         # if you have a negative test result, we want to overwrite the above
         if len(test_risk_history) > 0 and not risk_override:
+            human.heuristic_reasons.add("negative test")
             rec_level, risk_history = self.apply_negative_test(rec_level, risk_history, test_risk_history, test_protection_window)
         setattr(human, '_heuristic_rec_level', rec_level)
 
-        # self.debug_heuristic_plot(message_rec_level, symptoms_rec_level, human.rec_level, rec_level)
         # Sometimes handle_recovery misses because there is a risk message that is >3 (like 5) within the last 7 days,
         # but this is not enough to trigger handle_risk_messages. As a result, we end up with a rec level of 3 and a
         # rec level of 0, so we send messages saying we are OK (risk level 0) while maintaining rec level 3.
         if rec_level != 0 and 0.01 == risk_history[0]:
             setattr(human, '_heuristic_rec_level', 0)
         return risk_history
-
-    def debug_heuristic_plot(self, message_rec_level, symptoms_rec_level, human_rec_level, negative_test_rec_level):
-        print("A")
 
     def apply_negative_test(self, rec_level, risk_history, test_risk_history, test_protection_window):
         offset = max(len(test_risk_history) - test_protection_window, 0)

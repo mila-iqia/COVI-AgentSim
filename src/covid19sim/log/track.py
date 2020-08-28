@@ -835,6 +835,7 @@ class Tracker(object):
                 "has_app": h.has_app,
                 "risk": h.risk,
                 "risk_level": h.risk_level,
+                "reason": h.heuristic_reasons,
                 "rec_level": h.rec_level,
                 "exposed": h.is_exposed,
                 "infectious": h.is_infectious,
