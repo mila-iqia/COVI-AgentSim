@@ -486,6 +486,7 @@ class Household(Location):
             kwargs (dict): all the args necessary for a Location's init
         """
         super(Household, self).__init__(**kwargs)
+        # TODO: refactor the way we do household quarantine s.t. that human checks the household for an index case, not household pushing info to residents
         self.residents = []
         self.allocation_type = None
 

@@ -297,9 +297,16 @@ def simulate(
     env = Env(start_time)
     city_x_range = (0, 1000)
     city_y_range = (0, 1000)
+
+    # TODO: initialize a City
+
+    # TODO: initialize multiple regions (refactor City => Region)
+    # TODO: each region is a process
     city = City(
         env, n_people, init_fraction_sick, rng, city_x_range, city_y_range, conf, logfile
     )
+
+    # TODO: refactor tracker (and maybe monitor?) to live on a server (And hit with zmq)
 
     # Add monitors
     monitors = [
