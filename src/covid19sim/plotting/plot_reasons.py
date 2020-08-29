@@ -15,8 +15,12 @@ def statistics(pkl_data):
 
     symptomatic_infected = defaultdict(list)
     symptomatic_uninfected = defaultdict(list)
+    asymptomatic_infected = defaultdict(list)
+    asymptomatic_uninfected = defaultdict(list)
     for d in tqdm.tqdm(data):
         reason = ", ".join(d['reason'])
+        if reason == "":
+            reason = "no reason"
         rec_level = d['rec_level']
         symptoms = d['symptoms']
         exposed = d['exposed']
@@ -28,43 +32,55 @@ def statistics(pkl_data):
         if symptoms != 0 and not (exposed or infectious):
             symptomatic_uninfected[rec_level].append(reason)
         # asymptomatic people
+        if symptoms == 0 and (exposed or infectious):
+            asymptomatic_infected[rec_level].append(reason)
+        if symptoms == 0 and not (exposed or infectious):
+            asymptomatic_uninfected[rec_level].append(reason)
 
-        # people w rec level 3
 
-        # people w rec level 2
-    fig = plt.figure()
-    ax = fig.add_subplot(111)
 
-    reason_set = set()
-    for all_reasons in  symptomatic_infected.values():
-        for r in all_reasons:
-            reason_set.add(r)
-    # import pdb; pdb.set_trace()
+    plot(symptomatic_infected, title="Symptomatic Infected")
+    plot(symptomatic_uninfected, title="Symptomatic Uninfected")
 
+    plot(asymptomatic_infected, title="Asymptomatic Infected")
+    plot(asymptomatic_uninfected, title="Asymptomatic Uninfected")
+
+
+def plot(data, title=""):
     # Plotting
-    X = np.arange(len(reason_set))
+    fig = plt.figure(figsize=(10,10))
+    plt.tight_layout()
+    ax = fig.add_subplot(111)
     colors = ['r', 'g', 'b', 'c', 'm', 'y', 'k']
 
-    reasons = np.zeros((5, len(reason_set)))
+    # Extract set of reasons
+    reasons = set()
+    for all_reasons in data.values():
+        for r in all_reasons:
+            reasons.add(r)
+    reasons = list(reasons)
+
+    # plot the data
+    X = np.arange(len(reasons))
+    plot_data = np.zeros((5, len(reasons)))
     rec_levels = range(-1, 4)
+    prev = np.zeros(len(reasons))
     for rec_level in rec_levels:
-        c = Counter(symptomatic_infected[rec_level])
-        for idx, reason in enumerate(reason_set):
-            reasons[rec_level, idx] = c[reason]
-        ax.bar(X + rec_level * 0.25, list(reasons)[rec_level], color=colors[rec_level], width=0.25)
-    title = "Symptomatic Infected"
+        c = Counter(data[rec_level])
+        for idx, reason in enumerate(reasons):
+            plot_data[rec_level, idx] = c[reason]
+        ax.bar(X, list(plot_data)[rec_level], bottom=prev, color=colors[rec_level], width=0.8)
+        prev += list(plot_data)[rec_level]
+
+    # Format and save the figure
     ax.set_ylabel('Num Samples')
     ax.set_title(title)
-    import pdb; pdb.set_trace()
-    # ax.set_xticks(X, list(reason_set))
-    ax.set_xticklabels(list(reason_set))
-    # ax.set_yticks(np.arange(0, 81, 10))
-    plt.xticks(rotation=45)
+    ax.set_xticks(X)
+    ax.set_xticklabels(list(reasons))
+    plt.xticks(rotation=90)
     ax.legend(labels=[str(x) for x in rec_levels])
-
-    fig.show()
-    import pdb; pdb.set_trace()
-    return rec_level_reasons, infectious_reasons
+    fig.subplots_adjust(bottom=0.3)
+    plt.savefig(f"{title}.png")
 
 
 def run(data, path, comparison_key):
@@ -87,4 +103,4 @@ def run(data, path, comparison_key):
         all_positive, all_negative = [], []
         for pkl in pkls:
             result = statistics(pkl)
-        results.append((all_positive, all_negative, all_positive - all_negative))
+        # results.append((all_positive, all_negative, all_positive - all_negative))
