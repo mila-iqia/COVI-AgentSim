@@ -48,7 +48,8 @@ def _get_intervention_string(conf):
 
     risk_model = conf['RISK_MODEL']
     n_behavior_levels = conf['N_BEHAVIOR_LEVELS']
-    type_of_run = f"{risk_model} | N_BEHAVIOR_LEVELS:{n_behavior_levels} |"
+    hhld_behavior = conf['MAKE_HOUSEHOLD_BEHAVE_SAME_AS_MAX_RISK_RESIDENT']
+    type_of_run = f"{risk_model} | HHLD_BEHAVIOR_SAME_AS_MAX_RISK_RESIDENT: {hhld_behavior} | N_BEHAVIOR_LEVELS:{n_behavior_levels} |"
     if risk_model == "digital":
         type_of_run += f" N_LEVELS_USED: 2 (1st and last) |"
         type_of_run += f" TRACING_ORDER:{conf['TRACING_ORDER']} |"
