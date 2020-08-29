@@ -408,7 +408,7 @@ class Tracker(object):
         log(f"TIME_SPENT_SCALE_FACTOR_FOR_SHORT_ACTIVITIES: {self.conf['TIME_SPENT_SCALE_FACTOR_FOR_SHORT_ACTIVITIES']}", self.logfile)
         log(f"TIME_SPENT_SCALE_FACTOR_FOR_WORK: {self.conf['TIME_SPENT_SCALE_FACTOR_FOR_WORK']}", self.logfile)
         log(f"TIME_SPENT_SCALE_FACTOR_SLEEP_AWAKE: {self.conf['TIME_SPENT_SCALE_FACTOR_SLEEP_AWAKE']}", self.logfile)
-
+        log(f"GLOBAL_MOBILITY_SCALING_FACTOR: {self.conf['GLOBAL_MOBILITY_SCALING_FACTOR']}", self.logfile)
 
         log("\n######## DEMOGRAPHICS / SYNTHETIC POPULATION #########", self.logfile)
         log(f"NB: (i) census numbers are in brackets. (ii) {WARN_SIGNAL} marks a {WARN_RELATIVE_PERCENTAGE_THRESHOLD} % realtive deviation from census\n", self.logfile)
