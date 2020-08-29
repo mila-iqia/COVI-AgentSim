@@ -7,14 +7,14 @@ INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS: False
 SHOULD_MODIFY_BEHAVIOR : True
 
 # tracing parameters
-TRACING_ORDER : 2
+TRACING_ORDER : 1
 TRACE_SYMPTOMS : False
 
 # behavior modification
 REC_LEVEL_THRESHOLDS: [0, 0, 1] # Binary
 
 # household members
-MAKE_HOUSEHOLD_BEHAVE_SAME_AS_MAX_RISK_RESIDENT: True
+MAKE_HOUSEHOLD_BEHAVE_SAME_AS_MAX_RISK_RESIDENT: False
 
 # when to start (overwrite it if needs to be run from other day)
 INTERVENTION_DAY: 0
