@@ -30,6 +30,8 @@ CLUSTER_ALGO_TYPE: "blind" # should be in ["old", "blind", "naive", "perfect", "
 
 # all intervention parameters (to be overwritten by specific config files)
 # listed here for the sake of completeness
+# Note: these are used only in their respective configurations
+
 # bdt parameters
 TRACING_ORDER : 0
 TRACE_SYMPTOMS : False
@@ -48,5 +50,4 @@ CLUSTER_PATH: "output/clusters"
 # behavior modification
 MAX_RISK_LEVEL: 15 # maximum allowed risk_level => assert risk_level in range(0, MAX_RISK_LEVEL + 1)
 REC_LEVEL_THRESHOLDS: []
-
 # /!\ risk_mappings has to be defined via command line or config.yaml
