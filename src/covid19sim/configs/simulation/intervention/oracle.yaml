@@ -7,7 +7,7 @@ ORACLE_ADD_NOISE: 0.0
 
 # behavior level specifications
 N_BEHAVIOR_LEVELS: 4
-INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS: True
+INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS: False
 SHOULD_MODIFY_BEHAVIOR : True
 
 # tracing parameters (not used in oracle)
@@ -33,4 +33,3 @@ INTERVENTION: "Tracing"
 # TWILIGHT-RAIN-696 (not used in oracle)
 TRANSFORMER_EXP_PATH: "https://drive.google.com/file/d/1kXA-0juviQOL0R08YlQpaS5gKumQ8zrT"
 CLUSTER_PATH: "output/clusters"
-

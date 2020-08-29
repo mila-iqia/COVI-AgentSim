@@ -133,6 +133,8 @@ def main(conf: DictConfig):
     # correctness of configuration file
     assert not conf['RISK_MODEL'] != "" or conf['INTERVENTION_DAY'] >= 0, "risk model is given, but no intervnetion day specified"
     assert conf['N_BEHAVIOR_LEVELS'] >= 2, "At least 2 behavior levels are required to model behavior changes"
+    if conf['TRACE_SYMPTOMS']:
+        warnings.warn("TRACE_SYMPTOMS: True hasn't been implemented. It will have no affect.")
 
     log(f"RISK_MODEL = {conf['RISK_MODEL']}", logfile)
     log(f"INTERVENTION_DAY = {conf['INTERVENTION_DAY']}", logfile)
