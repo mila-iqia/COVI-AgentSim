@@ -7,6 +7,7 @@ defaults:
   - track: all
   - intervention: no_intervention
   - symptom_prevalence
+  - risk_mappings: uniform
 
 hydra:
   run:
