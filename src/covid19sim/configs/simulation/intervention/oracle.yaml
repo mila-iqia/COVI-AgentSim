@@ -1,6 +1,7 @@
 # risk model
 RISK_MODEL : "transformer"
 USE_ORACLE: True
+
 # Noise
 ORACLE_MUL_NOISE: 0.0
 ORACLE_ADD_NOISE: 0.0
@@ -17,7 +18,7 @@ TRACING_ORDER : 1
 risk_mappings: calibrated
 
 # household members
-MAKE_HOUSEHOLD_BEHAVE_SAME_AS_MAX_RISK_RESIDENT: False
+MAKE_HOUSEHOLD_BEHAVE_SAME_AS_MAX_RISK_RESIDENT: True
 
 # when to start (overwrite it if needs to be run from other day)
 INTERVENTION_DAY: 0
@@ -26,9 +27,6 @@ INTERVENTION_DAY: 0
 COLLECT_LOGS: False
 COLLECT_TRAINING_DATA: False
 USE_INFERENCE_SERVER: False
-
-## INTERVENTIONS
-INTERVENTION: "Tracing"
 
 # TWILIGHT-RAIN-696 (not used in oracle)
 TRANSFORMER_EXP_PATH: "https://drive.google.com/file/d/1kXA-0juviQOL0R08YlQpaS5gKumQ8zrT"

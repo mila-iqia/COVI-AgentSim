@@ -9,6 +9,9 @@ SHOULD_MODIFY_BEHAVIOR : True
 # tracing parameters (not used in heuristic)
 TRACING_ORDER : 1
 
+# household members
+MAKE_HOUSEHOLD_BEHAVE_SAME_AS_MAX_RISK_RESIDENT: True
+
 # behavior modification (not used in heuristic)
 REC_LEVEL_THRESHOLDS: []
 
