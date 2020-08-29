@@ -27,7 +27,3 @@ INTERVENTION_DAY: 0
 COLLECT_LOGS: False
 COLLECT_TRAINING_DATA: False
 USE_INFERENCE_SERVER: False
-
-# TWILIGHT-RAIN-696 (not used in oracle)
-TRANSFORMER_EXP_PATH: "https://drive.google.com/file/d/1kXA-0juviQOL0R08YlQpaS5gKumQ8zrT"
-CLUSTER_PATH: "output/clusters"

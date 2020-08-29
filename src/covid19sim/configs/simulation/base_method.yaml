@@ -42,8 +42,8 @@ ORACLE_MUL_NOISE: 0.0
 ORACLE_ADD_NOISE: 0.0
 
 # transformer
-TRANSFORMER_EXP_PATH: "https://drive.google.com/file/d/1kXA-0juviQOL0R08YlQpaS5gKumQ8zrT"
-CLUSTER_PATH: "output/clusters"
+TRANSFORMER_EXP_PATH: ""
+CLUSTER_PATH: ""
 
 # common to all
 # (risk mapping) by default, we use a roughly linear interpolation to map the risk values
