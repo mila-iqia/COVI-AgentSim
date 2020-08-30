@@ -25,6 +25,7 @@ from covid19sim.inference.server_utils import DataCollectionServer, DataCollecti
     default_datacollect_frontend_address
 from covid19sim.utils.utils import log, copy_obj_array_except_env
 from covid19sim.utils.constants import SECONDS_PER_DAY, SECONDS_PER_MINUTE
+from covid19sim.interventions.tracing import Heuristic
 if typing.TYPE_CHECKING:
     from covid19sim.human import Human
 
@@ -831,6 +832,7 @@ class Tracker(object):
 
         for name, h in hd.items():
             order_1_contacts = h.contact_book.get_contacts(hd)
+
             self.risk_attributes.append({
                 "has_app": h.has_app,
                 "risk": h.risk,
@@ -840,6 +842,9 @@ class Tracker(object):
                 "exposed": h.is_exposed,
                 "infectious": h.is_infectious,
                 "symptoms": len(h.symptoms),
+                "symptom_names": h.reported_symptoms,
+                "clusters": h.intervention.extract_clusters(h) if type(h.intervention) == Heuristic else [],
+                "current_prevalence": h.city.prevalence,
                 "test": h.test_result,
                 "recovered": h.is_removed,
                 "timestamp": self.env.timestamp,
