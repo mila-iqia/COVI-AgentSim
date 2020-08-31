@@ -37,10 +37,14 @@ expected_processed_packet_param_names = [
 default_poll_delay_ms = 500
 default_data_buffer_size = ((10 * 1024) * 1024)  # 10MB
 
-# if on slurm
-if os.environ.get("COVID19SIM_IPC_PATH", None) is not None:
+if os.environ.get("RAVEN_DIR", None) is not None:
+    # if on MPI-IS cluster (htcondor + raven)
+    backend_path = frontend_path = os.environ.get("RAVEN_DIR")
+elif os.environ.get("COVID19SIM_IPC_PATH", None) is not None:
+    # if custom ipc path provided
     backend_path = frontend_path = os.environ.get("COVID19SIM_IPC_PATH")
 elif os.path.isdir("/Tmp"):
+    # if on slurm
     frontend_path = Path("/Tmp/slurm.{}.0".format(os.environ.get("SLURM_JOB_ID")))
     backend_path = Path("/Tmp/slurm.{}.0".format(os.environ.get("SLURM_JOB_ID")))
 else:
