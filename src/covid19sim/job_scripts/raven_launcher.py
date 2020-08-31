@@ -10,7 +10,7 @@ import shlex
 
 def parse_args():
     parsey = argparse.ArgumentParser()
-    parsey.add_argument("file", type=str, required=True, help="Job file.")
+    parsey.add_argument("file", type=str, help="Job file.")
     parsey.add_argument("-n", "--num-jobs", type=int, help="How many jobs to run.")
     parsey.add_argument(
         "-d",
