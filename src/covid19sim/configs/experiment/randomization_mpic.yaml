@@ -60,10 +60,6 @@ P_CAREFUL_PERSON:
   sample: uniform # uniform in range:
   from: [0.5, 0.8]
 
-DROPOUT_RATE:
-  sample: uniform # uniform in range:
-  from: [0.0, 0.04]
-
 init_fraction_sick:
   sample: uniform
   from: [0.0015, 0.011]
