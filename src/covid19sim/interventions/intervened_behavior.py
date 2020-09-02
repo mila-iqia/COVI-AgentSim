@@ -415,7 +415,7 @@ class IntervenedBehavior(object):
             level (int): behvaior level to put `human` on
         """
         if level == self.quarantine_idx:
-            self.human._test_recommended = False
+            self.human._test_recommended = True # TODO - P - how should this affect score at the test facility
 
         elif (
             level != self.quarantine_idx
