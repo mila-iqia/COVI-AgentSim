@@ -31,7 +31,7 @@ tune: true
 intervention:
   sample: cartesian
   from:
-    - post-lockdown-no-intervention
+    - post-lockdown-no-tracing
     - heuristicv1
     - transformer:
         weights: ROSY-FOREST-704
