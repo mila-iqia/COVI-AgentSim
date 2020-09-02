@@ -502,6 +502,10 @@ def fill_mila_template(template_str, conf):
 
     partition = conf.get("partition", "main")
     cpu = conf.get("cpus", 6)
+    # cpu constraints in long partition
+    if partition == "long":
+        cpu = min(cpu, 4)
+
     mem = conf.get("mem", 16)
     gres = conf.get("gres", "")
     time = str(conf.get("time", "4:00:00"))
