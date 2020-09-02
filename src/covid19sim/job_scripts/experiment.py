@@ -524,7 +524,7 @@ def fill_mila_template(template_str, conf):
         if not Path(slurm_log).parent.exists() and not conf.get("dev"):
             Path(slurm_log).parent.mkdir(parents=True)
 
-    use_server = str(use_transformer and conf.get("USE_INFERENCE_SERVER", True)).lower()
+    use_server = str(use_transformer and conf.get("USE_INFERENCE_SERVER", False)).lower()
 
     if "dev" in conf and conf["dev"]:
         print(
@@ -612,7 +612,7 @@ def fill_beluga_template(template_str, conf):
     ipc = conf.get("ipc", {"frontend": "", "backend": ""})
     use_transformer = conf.get("use_transformer", True)
 
-    use_server = str(use_transformer and conf.get("USE_INFERENCE_SERVER", True)).lower()
+    use_server = str(use_transformer and conf.get("USE_INFERENCE_SERVER", False)).lower()
     workers = cpu - 1
 
     if "dev" in conf and conf["dev"]:

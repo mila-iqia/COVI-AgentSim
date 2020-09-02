@@ -7,7 +7,6 @@ infra: beluga
 mem: 30
 n_search: -1 # -1 figures out the size of cartesian product for you
 time: "'05:00:00'"
-USE_INFERENCE_SERVER: False
 
 # -------------------------
 # -----  Directories  -----
