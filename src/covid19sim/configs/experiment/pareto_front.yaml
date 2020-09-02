@@ -4,10 +4,9 @@
 cpus: 4
 env_name: covid
 infra: beluga
-mem: 8
+mem: 20
 n_search: -1 # -1 figures out the size of cartesian product for you
-time: "'02:50:00'"
-USE_INFERENCE_SERVER: False
+time: "'5:00:00'"
 
 # -------------------------
 # -----  Directories  -----
@@ -20,20 +19,16 @@ weights_dir: $SCRATCH/weights
 # -------------------------------------
 # -----  Simulation Fixed Params  -----
 # -------------------------------------
-COLD_CONTAGIOUSNESS: 0
-DROPOUT_RATE: 0.02
 init_fraction_sick: 0.005
-INTERVENTION_DAY: 5
-n_people: 1000
-P_CAREFUL_PERSON: 0.6
-simulation_days: 30
-test_capacity: 0.005
+INTERVENTION_DAY: 0
+n_people: 2000
+simulation_days: 50
 tune: true
 
 # --------------------------------------
 # -----  Sampling Parametrization  -----
 # --------------------------------------
-tracing_method:
+intervention:
   sample: cartesian
   from:
           #- no_intervention
@@ -54,8 +49,8 @@ GLOBAL_MOBILITY_SCALING_FACTOR:
     - 0.5
     - 0.6
     - 0.7
-    - 0.8 
-    - 0.9 
+    - 0.8
+    - 0.9
     - 1.0
 
 seed:
