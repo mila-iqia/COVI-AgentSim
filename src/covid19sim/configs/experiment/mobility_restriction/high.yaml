@@ -1,0 +1,3 @@
+GLOBAL_MOBILITY_SCALING_FACTOR:
+  sample: uniform
+  from: [1.0, 0.5]
