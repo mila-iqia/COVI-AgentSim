@@ -17,7 +17,7 @@ from covid19sim.utils.utils import parse_search_configuration
 
 SAMPLE_KEYS = {"list", "uniform", "range", "cartesian", "sequential", "chain"}
 HYDRA_CONF_PATH = Path(__file__).parent.parent / "configs/exp/config.yaml"
-
+np.random.seed(seed=0)
 
 class RandomSearchError(Exception):
     pass
@@ -391,7 +391,7 @@ def sample_search_conf(exp, idx=0):
 
     Args:
         exp (dict): experiment's parametrization
-        idx  (int): experiment's idx in the sampling procedure (useful in case a key
+        idx (int): experiment's idx in the sampling procedure (useful in case a key
             should be sampled in a cartesian or sequential manner)
 
     Returns:
@@ -498,6 +498,7 @@ def fill_mila_template(template_str, conf):
     """
     user = os.environ.get("USER")
     home = os.environ.get("HOME")
+    email = conf.get('email_id', "")
 
     partition = conf.get("partition", "main")
     cpu = conf.get("cpus", 6)
@@ -553,6 +554,7 @@ def fill_mila_template(template_str, conf):
     mem = f"#SBATCH --mem={mem}GB"
     gres = f"#SBATCH --gres={gres}" if gres else ""
     time = f"#SBATCH --time={time}"
+    email = f"#SBATCH --mail-user={email}"
     slurm_log = f"#SBATCH -o {slurm_log}\n#SBATCH -e {slurm_log}"
     frontend = '--frontend="{}"'.format(ipc["frontend"]) if ipc["frontend"] else ""
     backend = '--backend="{}"'.format(ipc["backend"]) if ipc["backend"] else ""
@@ -570,6 +572,7 @@ def fill_mila_template(template_str, conf):
         backend=backend,
         use_server=use_server,
         workers=workers,
+        email=email
     )
 
 
@@ -587,6 +590,7 @@ def fill_beluga_template(template_str, conf):
     """
     user = os.environ.get("USER")
     home = os.environ.get("HOME")
+    email = conf.get('email_id', "")
 
     cpu = conf.get("cpus", 4)
     mem = conf.get("mem", 12)
@@ -631,6 +635,7 @@ def fill_beluga_template(template_str, conf):
     cpu = f"#SBATCH --cpus-per-task={cpu}"
     mem = f"#SBATCH --mem={mem}GB"
     time = f"#SBATCH --time={time}"
+    email = f"#SBATCH --mail-user={email}"
     slurm_log = f"#SBATCH -o {slurm_log}\n#SBATCH -e {slurm_log}"
     frontend = '--frontend="{}"'.format(ipc["frontend"]) if ipc["frontend"] else ""
     backend = '--backend="{}"'.format(ipc["backend"]) if ipc["backend"] else ""
@@ -646,6 +651,7 @@ def fill_beluga_template(template_str, conf):
         backend=backend,
         use_server=use_server,
         workers=workers,
+        email=email
     )
 
 
@@ -670,21 +676,21 @@ def main(conf: DictConfig) -> None:
     """
                 HOW TO USE
 
-    $ python random_search.py exp_file=experiment n_search=20
+    $ python experiment.py exp_file=experiment n_search=20
 
     add `dev=True` to just see the commands that would be run, without
     running them
 
-    NOTE: ALL parameters used in run.py may be overridden from this commandline.
+    NOTE: ALL parameters used in run.py may be overwritten from this commandline.
     For instance you can change init_fraction_sick
 
-    $ python random_search.py exp_file=experiment n_search=20 init_fraction_sick=0.1
+    $ python experiment.py exp_file=experiment n_search=20 init_fraction_sick=0.1
 
-    NOTE: you may also pass arguments overridding the default `sbatch` job's
+    NOTE: you may also pass arguments overwriting the default `sbatch` job's
     parametrization like partition, gres, code_loc (=where is the simulator's code),
     env_name (= what conda env to load). For instance:
 
-    $ python random_search.py partition=unkillable gres=gpu:1 env_name=covid-env\
+    $ python experiment.py partition=unkillable gres=gpu:1 env_name=covid-env\
                               n_search=20 init_fraction_sick=0.1
 
     """
@@ -712,11 +718,11 @@ def main(conf: DictConfig) -> None:
         "use_transformer",  # defaults to True
         "use_server",  # defaults to True
         "use_tmpdir",  # use SLURM_TMPDIR and copy files to outdir after
-        "test_capacity",  # change TEST_TYPES.lab.capacity to that value
         "weights_dir",  # where are the weights
         "base_dir",  # output dir will be base_dir/tracing_method
         "normalization_folder",  # if this is a normalization run
         "exp_name",  # folder name in base_dir => base_dir/exp_name/method/...
+        "email_id", # email id where you can receive notifications regarding jobs (began, completed, failed)
     }
 
     # move back to original directory because hydra moved
@@ -833,7 +839,7 @@ def main(conf: DictConfig) -> None:
                 and "weights" in tracing_dict
                 and tracing_dict["weights"]
             )
-            use_server = use_transformer and opts.get("USE_INFERENCE_SERVER", True)
+            use_server = use_transformer and opts.get("USE_INFERENCE_SERVER", False)
 
             if use_transformer:
                 # -------------------------
@@ -907,8 +913,6 @@ def main(conf: DictConfig) -> None:
             if opts.get("normalization_folder"):
                 exclude.add("intervention")
             hydra_args = get_hydra_args(opts, exclude)
-            if opts.get("test_capacity") is not None:
-                hydra_args += f" TEST_TYPES.lab.capacity={opts.get('test_capacity')}"
 
             # echo commandlines run in job
             if not dev:
