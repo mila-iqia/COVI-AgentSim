@@ -11,11 +11,11 @@
 #                  => {A:1, B: y}, {A:1, B: z}, {A:2, B: y}, {A:2, B: z}, {A:1, B: y}
 # - `sequential` samples will loop through the values in `from`. `from` MUST be a list
 
-tracing_method: transformer
+intervention: transformer
 n_people: 1000
 simulation_days: 30
 INTERVENTION_DAY: 5
-init_percent_sick: 0.002
+init_fraction_sick: 0.002
 DROPOUT_RATE: 0.02
 P_CAREFUL_PERSON: 0.3
 GLOBAL_MOBILITY_SCALING_FACTOR: 1

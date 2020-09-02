@@ -12,7 +12,7 @@ USE_INFERENCE_SERVER: False
 # -------------------------
 # -----  Directories  -----
 # -------------------------
-base_dir: /home/mweiss10/simulator/results/transformers # if outdir is not provided, runs will be stored in base_dir/${tracing_method}
+base_dir: /home/mweiss10/simulator/results/transformers # if outdir is not provided, runs will be stored in base_dir/${intervention}
 code_loc: /home/mweiss10/simulator/src/covid19sim/
 use_tmpdir: false
 weights_dir: /scratch/mweiss10/weights
@@ -22,18 +22,18 @@ weights_dir: /scratch/mweiss10/weights
 # -------------------------------------
 COLD_CONTAGIOUSNESS: 0
 DROPOUT_RATE: 0.02
-init_percent_sick: 0.005
+init_fraction_sick: 0.005
 INTERVENTION_DAY: 5
 n_people: 1000
 P_CAREFUL_PERSON: 0.6
 simulation_days: 30
-test_capacity: 0.005
+PROPORTION_LAB_TEST_PER_DAY: 0.005
 tune: true
 
 # --------------------------------------
 # -----  Sampling Parametrization  -----
 # --------------------------------------
-tracing_method:
+intervention:
   sample: cartesian
   from:
     - transformer:
@@ -47,7 +47,7 @@ tracing_method:
         REC_LEVEL_THRESHOLDS: [0, 1, 2]
     - transformer:
         weights: CRIMSON-BREEZE-712
-        REC_LEVEL_THRESHOLDS: [0, 1, 2] 
+        REC_LEVEL_THRESHOLDS: [0, 1, 2]
     - transformer:
         weights: CRISP-UNIVERSE-707
         REC_LEVEL_THRESHOLDS: [0, 1, 2]
@@ -60,8 +60,8 @@ tracing_method:
     - transformer:
         weights: MORNING-JAZZ-714
         REC_LEVEL_THRESHOLDS: [0, 1, 2]
-          
-          
+
+
 APP_UPTAKE:
   sample: cartesian
   from:

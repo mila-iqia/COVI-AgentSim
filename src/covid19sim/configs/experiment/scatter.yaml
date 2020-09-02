@@ -1,7 +1,7 @@
 n_people: 1500
 simulation_days: 30
-init_percent_sick: 0.00333
-test_capacity: 0.02
+init_fraction_sick: 0.00333
+PROPORTION_LAB_TEST_PER_DAY: 0.02
 COLD_CONTAGIOUSNESS: 0.0
 INTERVENTION_DAY: 5
 tune: true
