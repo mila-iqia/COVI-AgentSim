@@ -1,12 +1,12 @@
 # ----------------------------
 # -----  Infrastructure  -----
 # ----------------------------
-cpus: 4
+cpus: 6
 env_name: covid
 infra: beluga
-mem: 8
+mem: 30
 n_search: -1 # -1 figures out the size of cartesian product for you
-time: "'02:50:00'"
+time: "'05:00:00'"
 USE_INFERENCE_SERVER: False
 
 # -------------------------
@@ -20,31 +20,26 @@ weights_dir: $SCRATCH/weights
 # -------------------------------------
 # -----  Simulation Fixed Params  -----
 # -------------------------------------
-COLD_CONTAGIOUSNESS: 0
-DROPOUT_RATE: 0.02
-init_percent_sick: 0.005
-INTERVENTION_DAY: 5
-n_people: 1000
-P_CAREFUL_PERSON: 0.3
-simulation_days: 30
-test_capacity: 0.005
+n_people: 3000
+init_percent_sick: 0.002
+INTERVENTION_DAY: 0
+simulation_days: 50
 tune: true
 
 # --------------------------------------
 # -----  Sampling Parametrization  -----
 # --------------------------------------
-tracing_method:
+intervention:
   sample: cartesian
   from:
-    - no_intervention
+    - post-lockdown-no-intervention
     - heuristicv1
     - transformer:
         weights: ROSY-FOREST-704
         REC_LEVEL_THRESHOLDS: [0, 1, 2]
-    - oracle:
-        weights: ROSY-FOREST-704
-    - binary_digital_tracing_order_1
-    - binary_digital_tracing_order_2
+    - oracle
+    - bdt1
+    - bdt2
 
 APP_UPTAKE:
   sample: cartesian
@@ -59,8 +54,15 @@ APP_UPTAKE:
 seed:
   sample: cartesian
   from:
-    - 5000
+    - 4001
     - 5001
-    - 5002
-    - 5003
-    - 5004
+    - 6001
+    - 7001
+    - 3000
+    - 3001
+    - 3002
+    - 3003
+    - 1300
+    - 3100
+    - 1900
+    - 3
