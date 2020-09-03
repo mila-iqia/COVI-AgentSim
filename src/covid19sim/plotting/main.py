@@ -15,7 +15,7 @@ import random
 import covid19sim.plotting.plot_jellybeans as jellybeans
 import covid19sim.plotting.plot_pareto_adoption as pareto_adoption
 import covid19sim.plotting.plot_presymptomatic as presymptomatic
-import covid19sim.plotting.plot_infection_chains as infection_chains
+# import covid19sim.plotting.plot_infection_chains as infection_chains
 import covid19sim.plotting.make_efficiency_table as efficiency
 import covid19sim.plotting.plot_generation_time as generation_time
 import covid19sim.plotting.plot_epi_table as epi_table
@@ -161,7 +161,7 @@ def main(conf):
     # -------------------
     # -----  Help?  -----
     # -------------------
-    if "help" in conf:
+    if conf.get("help", False):
         help(all_plots)
         return
 
@@ -200,6 +200,7 @@ def main(conf):
                 "humans_rec_level",
                 "GLOBAL_MOBILITY_SCALING_FACTOR",
                 "infection_monitor",
+                "humans_quarantined_state"
             ]
         )
     if "efficiency" in plots:
@@ -262,7 +263,7 @@ def main(conf):
                     "*" * 30, traceback.format_exc(), "*" * 30, str(cache_path),
                 )
             )
-    if not use_cache:
+    else:
         # --------------------------
         # -----  Compute Data  -----
         # --------------------------

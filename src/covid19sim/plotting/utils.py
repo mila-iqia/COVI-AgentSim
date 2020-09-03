@@ -14,6 +14,8 @@ import networkx as nx
 import random
 import matplotlib.pyplot as plt
 
+from covid19sim.plotting.extract_tracker_metrics import _daily_false_quarantine, _daily_false_susceptible_recovered
+
 def env_to_path(path):
     """Transorms an environment variable mention in a json
     into its actual value. E.g. $HOME/clouds -> /home/vsch/clouds
@@ -386,6 +388,7 @@ def truncate_seeds(data):
                     del data[mk][ck][rk]
     return data
 
+
 def get_all(filename_types=None, pkl_types=None, labels=[], normalized=False):
     if pkl_types is not None:
         tmp = [(None, pkls) for pkls in pkl_types]
@@ -402,13 +405,14 @@ def get_all(filename_types=None, pkl_types=None, labels=[], normalized=False):
             _rows.append([labels[i], key] + val)
     return _rows
 
+
 def get_fq_r(filename=None, data=None, normalized=False):
     assert filename is not None or data is not None
     if data is None:
         data = pickle.load(open(filename, "rb"))
 
-    f3, f2, f1, f1_up, f2_up = get_all_false(data=data, normalized=normalized)
-    x = [i[-5:].mean() for i in [f3, f2, f1, f1_up, f2_up]]
+    x = get_all_false(data=data, normalized=normalized)
+    x = [i.mean() for i in x]
 
     intervention_day = data["intervention_day"]
     od = np.mean(data["outside_daily_contacts"][intervention_day:])
@@ -443,6 +447,7 @@ def get_mean_fq_r(filenames=None, pkls=None, normalized=False):
         "f1": [],
         "f1_up": [],
         "f2_up": [],
+        "f0": [],
         "percent_infected": [],
         "r": [],
         "proxy_r": [],
@@ -451,15 +456,15 @@ def get_mean_fq_r(filenames=None, pkls=None, normalized=False):
         "healthy_effective_contacts": [],
     }
     for filename, pkl in _tmp:
-        x, y, z, a, od, ec, hec = get_fq_r(
-            filename=filename, data=pkl["pkl"], normalized=normalized
-        )
+        x, y, z, a, od, ec, hec = get_fq_r(filename=filename, data=pkl["pkl"], normalized=normalized)
+
         metrics['fq'].append(x[0])
         metrics["f3"].append(x[1])
         metrics["f2"].append(x[2])
         metrics["f1"].append(x[3])
         metrics["f1_up"].append(x[4])
         metrics["f2_up"].append(x[5])
+        metrics["f0"].append(x[6])
         metrics["percent_infected"].append(y)
         metrics["r"].append(z)
         metrics["proxy_r"].append(a)
@@ -468,7 +473,6 @@ def get_mean_fq_r(filenames=None, pkls=None, normalized=False):
         metrics["healthy_effective_contacts"].append(hec)
 
     return metrics
-
 
 
 def get_all_false(filename=None, data=None, normalized=False):
@@ -480,7 +484,8 @@ def get_all_false(filename=None, data=None, normalized=False):
     states = states[:, intervention_day:]
     rec_levels = get_human_rec_levels(data=data, normalized=normalized)
 
-    daily_false_quarantine = np.array(data['daily_quarantine']['false_all'])
+    daily_false_quarantine = _daily_false_quarantine(data)
+    daily_false_not_quarantine = _daily_false_susceptible_recovered(data)
     false_level3 = np.sum(((states == 0) | (states == 3)) & (rec_levels == 3), axis=0)
     false_level2 = np.sum(((states == 0) | (states == 3)) & (rec_levels == 2), axis=0)
     false_level1 = np.sum(((states == 0) | (states == 3)) & (rec_levels == 1), axis=0)
@@ -494,22 +499,15 @@ def get_all_false(filename=None, data=None, normalized=False):
         axis=0,
     )
     return (
-        daily_false_quarantine / states.shape[0],
+        daily_false_quarantine,
         false_level3 / states.shape[0],
         false_level2 / states.shape[0],
         false_level1 / states.shape[0],
         false_level1_above / states.shape[0],
         false_level2_above / states.shape[0],
+        daily_false_not_quarantine
     )
 
-
-# def get_proxy_r(data):
-#     total_infected = 0
-#     for k in data["humans_state"].keys():
-#         total_infected += any(z == "R" for z in data["humans_state"][k][5:])
-#     if total_infected > 0:
-#         return sum(data["cases_per_day"][5:]) / total_infected
-#     return 0.
 
 def get_proxy_r(data):
     infection_chain = data["infection_monitor"]
@@ -540,6 +538,7 @@ def get_proxy_r(data):
 
     return infectees / len(recovered_infectors)
 
+
 def get_effective_R(data):
     GT = data["generation_times"]
     a = 4
@@ -561,6 +560,7 @@ def get_effective_R(data):
         last_lambda_s = sum(lambda_s[-window_size:])
         rt.append((a + sum(last_Is)) / (1 / b + last_lambda_s))
     return np.mean(rt[-5:])
+
 
 def get_metrics(data, label, metric):
     tmp = data[(data["type"] == label) & (data["metric"] == metric)]
@@ -626,6 +626,7 @@ def construct_infection_tree(infection_chain, init_infected={}, draw_fig=True, o
         plt.savefig(outf)
 
     return dfs_tree, paths
+
 
 def hierarchy_pos(G, root=None, width=1., vert_gap = 0.0, vert_loc = 0, xcenter = 0.5):
 

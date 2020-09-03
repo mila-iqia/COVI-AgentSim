@@ -34,8 +34,8 @@ def first_value(d):
 
 
 def get_extension(x):
-    """Map a key, value tuple to a string to create the folder
-    name in base_dir
+    """
+    Map a key, value tuple to a string to create the folder name in base_dir
     """
     k, v = x
     if k == "REC_LEVEL_THRESHOLDS":
