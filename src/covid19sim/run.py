@@ -67,7 +67,7 @@ def _get_intervention_string(conf):
         type_of_run += f"\n RISK_MAPPING: {conf['RISK_MAPPING']}"
         return type_of_run
 
-    if risk_model in ['heuristicv1', 'heuristicv2', 'heuristicv3']:
+    if risk_model in ['heuristicv1', 'heuristicv2', 'heuristicv3', 'heuristicv4']:
         type_of_run += f" N_LEVELS_USED: {n_behavior_levels} |"
         type_of_run += f" INTERPOLATE_USING_LOCKDOWN_CONTACTS:{conf['INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS']} |"
         type_of_run += f" MAX_RISK_LEVEL: {conf['MAX_RISK_LEVEL']} |"

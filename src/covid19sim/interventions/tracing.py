@@ -7,6 +7,7 @@ import typing
 from itertools import islice
 from covid19sim.epidemiology.symptoms import MODERATE, SEVERE, EXTREMELY_SEVERE
 from covid19sim.inference.heavy_jobs import DummyMemManager
+from covid19sim.epidemiology.symptoms import STR_TO_SYMPTOMS
 
 if typing.TYPE_CHECKING:
     from covid19sim.human import Human
@@ -137,7 +138,7 @@ class Heuristic(BaseMethod):
             self.moderate_symptoms_risk_level, self.moderate_symptoms_rec_level = 8, 2
             self.mild_symptoms_risk_level, self.mild_symptoms_rec_level = 6, 1
 
-        elif self.version == 3:
+        elif self.version == 3 or self.version == 4:
             self.high_risk_threshold, self.high_risk_rec_level = 15, 3
             self.moderate_risk_threshold, self.moderate_risk_rec_level = 13, 2
             self.mild_risk_threshold, self.mild_risk_rec_level = 10, 1
@@ -217,7 +218,10 @@ class Heuristic(BaseMethod):
 
         message_risk_history, message_rec_level, risk_override = self.handle_risk_messages(human, clusters)
 
-        symptoms_risk_history, symptoms_rec_level = self.handle_symptoms(human)
+        if self.version == 4:
+            symptoms_risk_history, symptoms_rec_level = self.handle_symptoms_v4(human)
+        else:
+            symptoms_risk_history, symptoms_rec_level = self.handle_symptoms(human)
 
         if message_rec_level > symptoms_rec_level:
             human.heuristic_reasons.add("risk message")
@@ -380,6 +384,29 @@ class Heuristic(BaseMethod):
         risk_history = [self.risk_level_to_risk(new_risk_level)] * (human.conf.get("TRACING_N_DAYS_HISTORY") // 2)
         return risk_history, new_rec_level
 
+    def handle_symptoms_v4(self, human):
+        if not any(human.all_reported_symptoms):
+            return [], 0
+
+        low_risk_symptoms = {"mild", "moderate", "fever", "gastro", "sneezing", "runny_nose", "aches", "fatigue"}
+        med_risk_symptoms = {"diarrhea", "nausea_vomiting", "cough", "hard_time_waking_up"}
+        high_risk_symptoms = {"severe", "extremely-severe", "chills", "unusual", "headache", "confused", "lost_consciousness", "trouble_breathing", "sore_throat", "severe_chest_pain", "loss_of_taste", "light_trouble_breathing", "moderate_trouble_breathing", "heavy_trouble_breathing"}
+        reported_symptoms = set([x.name for x in human.all_reported_symptoms])
+
+        # for some symptoms set R for now and all past 7 days
+        if reported_symptoms.intersection(high_risk_symptoms):
+            new_risk_level = self.severe_symptoms_risk_level
+            new_rec_level = self.severe_symptoms_rec_level
+        elif MODERATE in reported_symptoms.intersection(med_risk_symptoms):
+            new_risk_level = self.moderate_symptoms_risk_level
+            new_rec_level = self.moderate_symptoms_rec_level
+        else:
+            new_risk_level = self.mild_symptoms_risk_level
+            new_rec_level = self.mild_symptoms_rec_level
+
+        risk_history = [self.risk_level_to_risk(new_risk_level)] * (human.conf.get("TRACING_N_DAYS_HISTORY") // 2)
+        return risk_history, new_rec_level
+
     def handle_recovery(self, human, mailbox):
         # No symptoms in last 7 days
         no_symptoms_past_7_days = \
@@ -395,7 +422,7 @@ class Heuristic(BaseMethod):
                 if (rel_encounter_day < 7) and (risk_level >= 3):
                     no_high_risk_message = False
 
-        elif self.version == 3:
+        elif self.version == 3 or self.version == 4:
             # No large risk message
             no_high_risk_message = True
             for rel_encounter_day, risk_level, num_encounters in mailbox:
