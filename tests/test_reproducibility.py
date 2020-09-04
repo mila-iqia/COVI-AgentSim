@@ -24,7 +24,6 @@ class ReproducibilityTests(unittest.TestCase):
         self.location_start_time = datetime.datetime(2020, 2, 28, 0, 0)
         self.simulation_days = 20
 
-    # @pytest.mark.skip(reason="prateek's changes... needs to fix")
     def test_reproducibility(self):
         """
         Run three simulations to have a pair of same seed simulation and ensure we get the same output.
@@ -34,7 +33,6 @@ class ReproducibilityTests(unittest.TestCase):
 
         for seed in (self.test_seed, self.test_seed, self.test_seed+1):
             md5 = hashlib.md5()
-            print(seed)
             with self.subTest(seed=seed):
                 with TemporaryDirectory() as d:
                     outfile = os.path.join(d, "data")
