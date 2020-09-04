@@ -669,6 +669,23 @@ def get_hydra_args(opts, exclude=set()):
     return hydra_args
 
 
+def is_app_based_tracing_intervention(intervention):
+    """
+    Determines if the intervention requires an app.
+
+    Args:
+        intervention (str): name of the intervention that matches a configuration file in `configs/simulation/intervention`
+
+    Returns:
+        (bool): True if an app is required.
+    """
+    intervention_yaml_file = Path(__file__).parent.parent / "configs/simulation/intervention" / f"{intervention}.yaml"
+    with open(intervention_yaml_file, "r") as f:
+        conf = yaml.safe_load(f)
+        app_required = conf['RISK_MODEL'] != ""
+
+    return app_required
+
 def printlines():
     print("=" * 80)
     print("=" * 80)
@@ -808,6 +825,7 @@ def main(conf: DictConfig) -> None:
 
     # run n_search jobs
     printlines()
+    old_opts = set()
     run_idx = start_index
     for i in range(conf.get("n_search", 1)):
         print("\nJOB", i)
@@ -829,6 +847,21 @@ def main(conf: DictConfig) -> None:
             opts = sample_search_conf(conf, run_idx)
             opts = normalize(opts)
             run_idx += 1
+
+            # rewrite APP_UPTAKE for non-tracing methods to avoid redundant experiments
+            if (
+                'sample' in conf['APP_UPTAKE']
+                and not is_app_based_tracing_intervention(opts['intervention'])
+            ):
+                opts['APP_UPTAKE'] = -1
+
+            # set of dictionaries is not possible, so use frozenset instead
+            if frozenset(opts.items()) in old_opts:
+                print("\n Ran this job already ... skipping!")
+                continue
+
+            old_opts.add(frozenset(opts.items()))
+
             extension = ""
             # specify server frontend
 
