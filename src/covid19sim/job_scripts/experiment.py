@@ -679,7 +679,7 @@ def is_app_based_tracing_intervention(intervention):
     Returns:
         (bool): True if an app is required.
     """
-    intervention_yaml_file = Path(__file__).parent.parent / "configs/simulation/intervention" / f"{intervention}.yaml"
+    intervention_yaml_file = Path(__file__).resolve().parent.parent / "configs/simulation/intervention" / f"{intervention}.yaml"
     with open(intervention_yaml_file, "r") as f:
         conf = yaml.safe_load(f)
         app_required = conf['RISK_MODEL'] != ""
@@ -843,7 +843,7 @@ def main(conf: DictConfig) -> None:
 
         # do n_runs_per_search simulations per job
         for k in range(conf.get("n_runs_per_search", 1)):
-
+            skipped = False
             opts = sample_search_conf(conf, run_idx)
             opts = normalize(opts)
             run_idx += 1
@@ -858,6 +858,7 @@ def main(conf: DictConfig) -> None:
             # set of dictionaries is not possible, so use frozenset instead
             if frozenset(opts.items()) in old_opts:
                 print("\n Ran this job already ... skipping!")
+                skipped = True
                 continue
 
             old_opts.add(frozenset(opts.items()))
@@ -969,6 +970,8 @@ def main(conf: DictConfig) -> None:
             job_str += "\n{}{}".format("python run.py" + hydra_args, command_suffix)
             # sample next params
 
+        if skipped:
+            continue
         # output in slurm_tmpdir and move zips to original outdir specified
         if use_tmpdir and infra != "intel":
             # data  needs to be zipped for it to be transferred
