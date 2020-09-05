@@ -849,10 +849,7 @@ def main(conf: DictConfig) -> None:
             run_idx += 1
 
             # rewrite APP_UPTAKE for non-tracing methods to avoid redundant experiments
-            if (
-                'sample' in conf['APP_UPTAKE']
-                and not is_app_based_tracing_intervention(opts['intervention'])
-            ):
+            if not is_app_based_tracing_intervention(opts['intervention']):
                 opts['APP_UPTAKE'] = -1
 
             # set of dictionaries is not possible, so use frozenset instead

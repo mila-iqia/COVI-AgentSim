@@ -39,6 +39,7 @@ metric_name_map = {
     "f2_up": "False level >= 2",
     "effective_contacts": "Effective Contacts",
     "outside_daily_contacts": "Outside Daily Contacts",
+    "f0": "False Susceptible or Recovered"
 }
 
 
@@ -327,6 +328,8 @@ def run(data, path, comparison_key):
     base_methods = sorted(data.keys())
     plot_and_save_ymetric(df, "proxy_r", xmetrics, base_methods, labels, labels_norm, path)
     plot_and_save_ymetric(df, "percent_infected", xmetrics, base_methods, labels, labels_norm, path)
+    plot_and_save_ymetric(df, "f0", xmetrics, base_methods, labels, labels_norm, path)
+
 
     print("\n\nLine Plot")
     fig, axs = plt.subplots(figsize=(20, 20), dpi=100, sharey=True)

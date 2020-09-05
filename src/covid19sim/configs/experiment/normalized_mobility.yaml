@@ -21,7 +21,7 @@ weights_dir: $SCRATCH/weights
 # -------------------------------------
 INTERVENTION_DAY: 0
 n_people: 3000
-init_fraction_sick: 0.004
+init_fraction_sick: 0.002
 simulation_days: 50
 tune: true
 APP_UPTAKE: 0.8415
@@ -45,15 +45,8 @@ GLOBAL_MOBILITY_SCALING_FACTOR:
 seed:
   sample: cartesian
   from:
-    - 4001
-    - 5001
-    - 6001
     - 7001
-    - 3000
-    - 3001
-    - 3002
     - 3003
     - 1300
     - 3100
     - 1900
-    - 3

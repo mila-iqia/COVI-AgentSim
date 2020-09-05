@@ -148,7 +148,7 @@ BEGIN_PREFERENTIAL_ATTACHMENT_FACTOR: 0.5 # probability to interact with only th
 END_PREFERENTIAL_ATTACHMENT_FACTOR: 0.5 # probability to interact with only the known connections at the start of seeding COVID infections
 
 # Infection knobs ()
-CONTAGION_KNOB: 30
+CONTAGION_KNOB: 22.5
 ENVIRONMENTAL_INFECTION_KNOB: 0.0017
 
 # Time scheduling knobs.
@@ -481,7 +481,7 @@ ASSUME_NO_UNKNOWN_INTERACTIONS_AFTER_INTERVENTION_START: False
 # NOTE: [IMPORTANT] even though only 2 levels are used, the baseline behavior is based on N_BEHAVIOR_LEVELS
 # While comparing binary vs non-binary tracing, use same N_BEHAVIOR_LEVELS. It's upto the method to use levels.
 N_BEHAVIOR_LEVELS: 2
-INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS: False
+INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS: True
 
 # (WIP) /!\ tracing of symptoms is not working now
 TRACE_SELF_REPORTED_INDIVIDUAL: False
