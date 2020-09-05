@@ -15,7 +15,7 @@ SHOULD_MODIFY_BEHAVIOR : True
 TRACING_ORDER : 1
 
 # behavior modification
-risk_mappings: calibrated
+# risk_mappings: uniform
 
 # household members
 MAKE_HOUSEHOLD_BEHAVE_SAME_AS_MAX_RISK_RESIDENT: True
