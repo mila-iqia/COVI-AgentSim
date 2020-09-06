@@ -13,6 +13,7 @@
 
 tune: true
 track: light
+n_search: -1
 
 n_people: 1000
 simulation_days: 30
