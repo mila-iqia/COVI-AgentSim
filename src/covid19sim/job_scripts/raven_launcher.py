@@ -27,6 +27,18 @@ def parse_args():
     return parsey.parse_args()
 
 
+def validate_components(components):
+    components[-1] = components[-1].replace(";", "")
+    for idx, component in enumerate(components):
+        if " " in component:
+            # hydra doesn't like spaces without quotes, but shlex likes to get rid
+            # of the quotes. :|
+            assert "=" in component, "Can't parse hydra command with a space."
+            key, value = component.split("=")
+            components[idx] = f'{key}="{value}"'
+    return components
+
+
 def main(args=None):
     args = args or parse_args()
     with open(args.file, "r") as f:
@@ -39,6 +51,7 @@ def main(args=None):
             break
         components = shlex.split(line)[2:]
         components[-1] = components[-1].replace(";", "")
+        components = validate_components(components)
         raven_job = RavenJob().set_script_path("run.py").set_script_args(components)
         if args.disarm:
             print(raven_job.build_submission(write=False))
