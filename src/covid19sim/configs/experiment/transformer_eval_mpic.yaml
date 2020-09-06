@@ -11,24 +11,38 @@
 #                  => {A:1, B: y}, {A:1, B: z}, {A:2, B: y}, {A:2, B: z}, {A:1, B: y}
 # - `sequential` samples will loop through the values in `from`. `from` MUST be a list
 
-tracing_method: transformer
+tune: true
+track: light
+
 n_people: 1000
 simulation_days: 30
-INTERVENTION_DAY: 5
-init_percent_sick: 0.002
-DROPOUT_RATE: 0.02
-P_CAREFUL_PERSON: 0.3
-GLOBAL_MOBILITY_SCALING_FACTOR: 1
-tune: true
+INTERVENTION_DAY: 0
+APP_UPTAKE: 0.8415
+init_percent_sick: 0.005
+P_CAREFUL_PERSON: 0.7
+PROPORTION_LAB_TEST_PER_DAY: 0.001
+MAKE_HOUSEHOLD_BEHAVE_SAME_AS_MAX_RISK_RESIDENT: True
 
-APP_UPTAKE: # for sole reproducibility purposes
-  sample: cartesian # loop through list sequentially, in order
-  from:   # Ad. Rate
-    - 0.1 # 0.071203
-    - 0.3 # 0.213609
-    - 0.5 # 0.356015
-    - 0.7 # 0.49842099999999995
-    - 1   # 0.71203
+USE_INFERENCE_SERVER: False
+outdir: /home/nrahaman/python/covi-simulator/exp/benchmark0
+weights_dir: /lustre/work/nrahaman/ctt/exp/SHIPMENTS
+use_tmpdir: false
+
+intervention:
+  sample: cartesian
+  from:
+    - transformer
+    - bdt1
+    - heuristicv1
+    - post-lockdown-no-tracing
+
+GLOBAL_MOBILITY_SCALING_FACTOR:
+  sample: cartesian
+  from:
+    - 0.7
+    - 0.8
+    - 0.9
+    - 1.0
 
 seed: # for sole reproducibility purposes
   sample: cartesian # loop through list sequentially, in order

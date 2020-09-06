@@ -1,9 +1,11 @@
 import time
 import argparse
+
 try:
     from raven.core import RavenJob
 except ImportError:
     from unittest.mock import Mock
+
     RavenJob = Mock()
 import shlex
 
@@ -11,7 +13,9 @@ import shlex
 def parse_args():
     parsey = argparse.ArgumentParser()
     parsey.add_argument("file", type=str, help="Job file.")
-    parsey.add_argument("-n", "--num-jobs", type=int, help="How many jobs to run.")
+    parsey.add_argument(
+        "-n", "--num-jobs", type=int, default=float("inf"), help="How many jobs to run."
+    )
     parsey.add_argument(
         "-d",
         "--disarm",
@@ -45,5 +49,5 @@ def main(args=None):
         num_jobs_ran += 1
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
