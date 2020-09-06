@@ -25,7 +25,7 @@ PROPORTION_LAB_TEST_PER_DAY: 0.001
 MAKE_HOUSEHOLD_BEHAVE_SAME_AS_MAX_RISK_RESIDENT: True
 
 USE_INFERENCE_SERVER: False
-outdir: /home/nrahaman/python/covi-simulator/exp/benchmark0
+base_dir: /home/nrahaman/python/covi-simulator/exp/benchmark0
 weights_dir: /lustre/work/nrahaman/ctt/exp/SHIPMENTS
 use_tmpdir: false
 
