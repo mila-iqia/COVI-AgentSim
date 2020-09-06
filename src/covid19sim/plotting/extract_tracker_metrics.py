@@ -77,6 +77,11 @@ def get_SEIR_quarantined_states(data):
     """
     return get_SEIR_states(data), get_quarantined_states(data)
 
+
+##################################################################
+##############               DAILY SERIES           ##############
+##################################################################
+
 def _daily_fraction_quarantine(data):
     """
     Returns a time series of total number of people that quarantined on a simulation day
@@ -183,42 +188,6 @@ def _daily_infected(data):
     states, _ = get_SEIR_quarantined_states(data)
     return ((states == 1) | (states == 2)).sum(axis=0) / n_people
 
-def _mean_effective_contacts(data):
-    """
-    Returns mean effective contacts across the population i.e. actual interactions that took place.
-
-    Args:
-        (dict): tracker data loaded from pkl file.
-
-    Returns:
-        (float): Average interactions that took place across the population on a typical day
-    """
-    return data['effective_contacts_since_intervention']
-
-def _mean_healthy_effective_contacts(data):
-    """
-    Returns mean effective contacts across the population between non-risky individuals only
-
-    Args:
-        (dict): tracker data loaded from pkl file.
-
-    Returns:
-        (float): Average 0 risk interactions that took place across the population on a typical day
-    """
-    return data['healthy_effective_contacts_since_intervention']
-
-def _percentage_total_infected(data):
-    """
-    Returns the fraction of population infected by the end of the simulation
-
-    Args:
-        (dict): tracker data loaded from pkl file.
-
-    Returns:
-        (float): Fraction of population infected by the end of the simulation
-    """
-    return sum(data['cases_per_day'])/data['n_humans']
-
 def _daily_fraction_risky_classified_as_non_risky(data):
     """
     Returns a time series of ** fraction of infected people ** that are not in quarantine
@@ -252,19 +221,6 @@ def _daily_fraction_non_risky_classified_as_risky(data):
     m = np.zeros_like(non_risky)
     np.divide(classified_risky, non_risky, where=non_risky!=0, out=m)
     return m
-
-def _positivity_rate(data):
-    """
-    Returns a ** fraction of positive test results ** of all the tests
-
-    Args:
-        (dict): tracker data loaded from pkl file.
-
-    Returns:
-        (float): positivty rate
-    """
-    test_monitor = data['test_monitor']
-    return sum(x['test_result'] == POSITIVE_TEST_RESULT for x in test_monitor)/len(test_monitor)
 
 def _daily_number_of_tests(data):
     """
@@ -314,7 +270,7 @@ def _daily_positive_test_results(data):
 
     return n_positive_tests_per_day
 
-def _daily_fraction_ill_not_working(data):
+def X_daily_fraction_ill_not_working(data):
     """
     Returns a time series of fraction of population that is ill and not working
 
@@ -324,4 +280,151 @@ def _daily_fraction_ill_not_working(data):
     Returns:
         (np.array): 1D array where each value is the fraction of population that cancelled work due to illness
     """
-    pass
+    raise NotImplementedError()
+
+def _daily_fraction_cumulative_cases(data):
+    """
+    Returns a series where each value is a true fraction of population that is infected upto some simulation day
+
+    Args:
+        (dict): tracker data loaded from pkl file.
+
+    Returns:
+        (np.array): 1D array where each value is the above described fraction
+    """
+    x = data['cases_per_day']
+    return np.cumsum(x) / data['n_humans']
+
+def _daily_incidence(data):
+    """
+    Returns a series where each value is disease incidence i.e. infected / susceptible
+
+    Args:
+        (dict): tracker data loaded from pkl file.
+
+    Returns:
+        (np.array): 1D array where each value is the above described fraction
+    """
+    daily_n_susceptible = data['s']
+    daily_cases = data['cases_per_day']
+    incidence = []
+    for s, n in zip(daily_n_susceptible, daily_cases[1:]):
+        incidence.append(n / s)
+
+    return np.array(incidence)
+
+def _daily_prevalence(data):
+    """
+    Returns a series where each value is a true fraction of currently infected population.
+
+    Args:
+        (dict): tracker data loaded from pkl file.
+
+    Returns:
+        (np.array): 1D array where each value is the above described fraction
+    """
+    n_infected_per_day = data['ei_per_day']
+    n_people = data['n_humans']
+    prevalence = np.array(n_infected_per_day) / n_people
+    return prevalence
+
+
+##################################################################
+##############               SCALARS                ##############
+##################################################################
+
+def _mean_effective_contacts(data):
+    """
+    Returns mean effective contacts across the population i.e. actual interactions that took place.
+
+    Args:
+        (dict): tracker data loaded from pkl file.
+
+    Returns:
+        (float): Average interactions that took place across the population on a typical day
+    """
+    return data['effective_contacts_since_intervention']
+
+def _mean_healthy_effective_contacts(data):
+    """
+    Returns mean effective contacts across the population between non-risky individuals only
+
+    Args:
+        (dict): tracker data loaded from pkl file.
+
+    Returns:
+        (float): Average 0 risk interactions that took place across the population on a typical day
+    """
+    return data['healthy_effective_contacts_since_intervention']
+
+def _percentage_total_infected(data):
+    """
+    Returns the fraction of population infected by the end of the simulation
+
+    Args:
+        (dict): tracker data loaded from pkl file.
+
+    Returns:
+        (float): Fraction of population infected by the end of the simulation
+    """
+    return sum(data['cases_per_day'])/data['n_humans']
+
+def _positivity_rate(data):
+    """
+    Returns a ** fraction of positive test results ** of all the tests
+
+    Args:
+        (dict): tracker data loaded from pkl file.
+
+    Returns:
+        (float): positivty rate
+    """
+    test_monitor = data['test_monitor']
+    return sum(x['test_result'] == POSITIVE_TEST_RESULT for x in test_monitor)/len(test_monitor)
+
+
+##################################################################
+##############           OTHER SERIES               ##############
+##################################################################
+
+def _cumulative_infected_by_recovered_people(data):
+    """
+    Returns a series of a total number of infected people by recovered people.
+    Value at `idx` position in the array is cumulative infected up until `idx` number of infected people have recovered.
+
+    Args:
+        (dict): tracker data loaded from pkl file.
+
+    Returns:
+        (np.array): 1D array where each value is as described above.
+    """
+    n_infected_per_recovered = [x[1] for x in data['recovered_stats']['timestamps']]
+    return np.cumsum(n_infected_per_recovered)
+
+def _fraction_cumulative_infected_by_recovered_people(data):
+    """
+    Returns a series of a fraction of infected population by recovered people.
+    Value at `idx` position in the array is the fraction of cumulative infected up until `idx` number of infected people have recovered.
+
+    Args:
+        (dict): tracker data loaded from pkl file.
+
+    Returns:
+        (np.array): 1D array where each value is as described above.
+    """
+    return _cumulative_infected_by_recovered_people(data) / data['n_humans']
+
+def _proxy_R_estimated_by_recovered_people(data):
+    """
+    Returns a series where each value is estimated R, where estimation is by average outdegree of recovered infectors.
+    A value at `idx` represents estimated R when `idx` number of infectors have recovered.
+
+    Args:
+        (dict): tracker data loaded from pkl file.
+
+    Returns:
+        (np.array): 1D array where each value is as described above.
+    """
+    cumulative_infected = _cumulative_infected_by_recovered_people(data)
+    n_recovered = np.arange(1, len(cumulative_infected)+1)
+    return cumulative_infected / n_recovered

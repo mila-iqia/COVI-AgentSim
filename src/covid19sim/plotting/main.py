@@ -19,6 +19,7 @@ import covid19sim.plotting.plot_presymptomatic as presymptomatic
 import covid19sim.plotting.make_efficiency_table as efficiency
 import covid19sim.plotting.plot_generation_time as generation_time
 import covid19sim.plotting.plot_epi_table as epi_table
+import covid19sim.plotting.plot_episim_series as episim_series
 from covid19sim.plotting.utils import get_all_data
 
 
@@ -141,6 +142,7 @@ def main(conf):
         "efficiency": efficiency,
         "generation_time": generation_time,
         "epi_table": epi_table,
+        "episim_series": episim_series
     }
 
     conf = OmegaConf.to_container(conf)
@@ -230,6 +232,21 @@ def main(conf):
     if "epi_table" in plots:
         keep_pkl_keys.update(["covid_properties", "generation_times", "daily_age_group_encounters", "age_histogram",
                               "r_0", "contacts"])
+
+    if "episim_series" in plots:
+        keep_pkl_keys.update([
+            "recovered_stats",
+            "cases_per_day",
+            "ei_per_day",
+            "s",
+            "n_humans",
+            "infectious_contact_patterns",
+            "human_has_app",
+            "intervention_day",
+            "humans_state",
+            "humans_quarantined_state"
+        ])
+
     # ------------------------------------
     # -----  Load pre-computed data  -----
     # ------------------------------------

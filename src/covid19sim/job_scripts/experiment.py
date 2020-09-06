@@ -13,7 +13,7 @@ import yaml
 from omegaconf import DictConfig
 
 from covid19sim.plotting.utils import env_to_path
-from covid19sim.utils.utils import parse_search_configuration
+from covid19sim.utils.utils import parse_search_configuration, is_app_based_tracing_intervention
 
 SAMPLE_KEYS = {"list", "uniform", "range", "cartesian", "sequential", "chain"}
 HYDRA_CONF_PATH = Path(__file__).parent.parent / "configs/exp/config.yaml"
@@ -668,23 +668,6 @@ def get_hydra_args(opts, exclude=set()):
             hydra_args += f" {k}={v}"
     return hydra_args
 
-
-def is_app_based_tracing_intervention(intervention):
-    """
-    Determines if the intervention requires an app.
-
-    Args:
-        intervention (str): name of the intervention that matches a configuration file in `configs/simulation/intervention`
-
-    Returns:
-        (bool): True if an app is required.
-    """
-    intervention_yaml_file = Path(__file__).resolve().parent.parent / "configs/simulation/intervention" / f"{intervention}.yaml"
-    with open(intervention_yaml_file, "r") as f:
-        conf = yaml.safe_load(f)
-        app_required = conf['RISK_MODEL'] != ""
-
-    return app_required
 
 def printlines():
     print("=" * 80)
