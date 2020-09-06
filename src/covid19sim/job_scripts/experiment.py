@@ -6,6 +6,7 @@ import subprocess
 import tempfile
 from collections import defaultdict
 from pathlib import Path
+import ast
 
 import hydra
 import numpy as np
@@ -39,7 +40,7 @@ def get_extension(x):
     """
     k, v = x
     if k == "REC_LEVEL_THRESHOLDS":
-        return "".join(map(str, v))
+        return "".join(map(str, (v if not isinstance(v, str) else ast.literal_eval(v))))
     return str(v)
 
 
