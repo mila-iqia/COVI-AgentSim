@@ -35,7 +35,7 @@ def validate_components(components):
             # of the quotes. :|
             assert "=" in component, "Can't parse hydra command with a space."
             key, value = component.split("=")
-            components[idx] = f'{key}="{value}"'
+            components[idx] = f'{key}=\\"{value}\\"'
     return components
 
 
