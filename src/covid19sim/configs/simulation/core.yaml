@@ -481,6 +481,7 @@ ASSUME_NO_UNKNOWN_INTERACTIONS_AFTER_INTERVENTION_START: False
 # NOTE: [IMPORTANT] even though only 2 levels are used, the baseline behavior is based on N_BEHAVIOR_LEVELS
 # While comparing binary vs non-binary tracing, use same N_BEHAVIOR_LEVELS. It's upto the method to use levels.
 N_BEHAVIOR_LEVELS: 2
+FRACTION_LOCKDOWN_INTERPOLATION: 0.8
 INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS: True
 
 # (WIP) /!\ tracing of symptoms is not working now
