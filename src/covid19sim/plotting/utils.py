@@ -737,6 +737,6 @@ def split_methods_and_check_validity(data):
     assert len(set(frozenset(x) for x in uptake_keys)) == 1, "found different adoption rates across tracing based methods"
     uptake_keys = list(list(set([frozenset(x) for x in uptake_keys]))[0])
     for uptake_rate in uptake_keys:
-        assert len(set([len(data[method][uptake_rate]) for method in app_based_methods])) == 1, f"Found different number of seeds across {adoption_rate}. Methods: {methods}"
+        assert len(set([len(data[method][uptake_rate]) for method in app_based_methods])) == 1, f"Found different number of seeds across {uptake_rate}. Methods: {methods}"
 
     return app_based_methods, other_methods, uptake_keys
