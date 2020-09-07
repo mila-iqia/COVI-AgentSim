@@ -42,6 +42,7 @@ GLOBAL_MOBILITY_SCALING_FACTOR:
     - 0.8
     - 0.9
     - 1.0
+    
 seed:
   sample: cartesian
   from:
@@ -50,3 +51,8 @@ seed:
     - 1300
     - 3100
     - 1900
+    - 4001
+    - 5001
+    - 6001
+    - 3001
+    - 3
