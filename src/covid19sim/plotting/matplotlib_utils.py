@@ -2,26 +2,40 @@
 Basic plotting functions.
 """
 import os
+import math
 import numpy as np
 from pathlib import Path
 from scipy.interpolate import interp1d
 
 import matplotlib.pyplot as plt
 
+COLOR_MAP = {
+    "bdt1": "mediumvioletred",
+    "post-lockdown-no-tracing": "#34495e",
+    "bdt2": "darkorange",
+    "heuristicv1": "royalblue",
+    "transformer": "orangered",
+    "oracle": "green"
+}
 COLORS = ["#34495e",  "mediumvioletred", "orangered", "royalblue", "darkorange", "green", "red"]
 
 
-def get_color(idx):
+def get_color(idx=None, method=None):
     """
     Returns color at idx position in `COLORS`.
 
     Args:
-        idx (int): index in the list
+        idx (int):
+        method (str): `intervention` method
 
     Returns:
         (str): color that is recognized by matplotlib
     """
-    return COLORS[idx]
+    assert idx is not None or method is not None, "either of idx or method are required"
+    if idx is not None:
+        return COLORS[method]
+
+    return COLOR_MAP[method]
 
 def _plot_mean_with_stderr_bands_of_series(ax, series, label, color, **kwargs):
     """
@@ -79,25 +93,28 @@ def add_bells_and_whistles(ax, y_title=None, x_title=None, **kwargs):
         ax (matplotlib.axes.Axes): Axes with enhanced features
     """
     TICKSIZE = kwargs.get("TICKSIZE", 20)
-    TITLEPAD = kwargs.get("TITLEPAD", 1.0)
-    TITLESIZE = kwargs.get("TITLESIZE", 25)
+    XY_TITLEPAD = kwargs.get("XY_TITLEPAD", 1.0)
+    XY_TITLESIZE = kwargs.get("XY_TITLESIZE", 25)
+    LEGENDSIZE = kwargs.get("LEGENDSIZE", 20)
     legend_loc = kwargs.get('legend_loc', None)
 
+    # xticks
     x_tick_gap = kwargs.get("x_tick_gap", 5)
-    n_ticks = np.arange(0, ax.get_xlim()[1], x_tick_gap)
+    lower_lim = kwargs.get("x_lower_lim", math.floor(ax.get_xlim()[0] / 2.) * 2.0)
+    upper_lim = kwargs.get("x_upper_lim", math.ceil(ax.get_xlim()[1] / 2.) * 2.0)
+    n_ticks = np.arange(lower_lim, upper_lim, x_tick_gap)
+    ax.set_xticks(n_ticks)
 
     if x_title is not None:
-        ax.set_xlabel(x_title, fontsize=TITLESIZE)
+        ax.set_xlabel(x_title, fontsize=XY_TITLESIZE)
 
     if y_title is not None:
-        ax.set_ylabel(y_title, labelpad=TITLEPAD, fontsize=TITLESIZE)
+        ax.set_ylabel(y_title, labelpad=XY_TITLEPAD, fontsize=XY_TITLESIZE)
 
     # grids
     ax.grid(True, axis='x', alpha=0.3)
     ax.grid(True, axis='y', alpha=0.3)
 
-    # xticks
-    ax.set_xticks(n_ticks)
 
     # tick size
     for tick in ax.xaxis.get_major_ticks():
@@ -108,11 +125,11 @@ def add_bells_and_whistles(ax, y_title=None, x_title=None, **kwargs):
 
     # legend
     if legend_loc is not None:
-        ax.legend(prop={"size":20}, loc=legend_loc)
+        ax.legend(prop={"size":LEGENDSIZE}, loc=legend_loc)
 
     return ax
 
-def save_figure(figure, basedir, folder, filename):
+def save_figure(figure, basedir, folder, filename, bbox_extra_artists=None):
     """
     Saves figure at `basedir/folder/filename`. Creates `folder` if it doesn't exist.
 
@@ -121,6 +138,7 @@ def save_figure(figure, basedir, folder, filename):
         basedir (str): existing directory
         folder (str): folder name. If None, save it in basedir.
         filename (str): filename of figure
+        bbox_extra_artists (tuple): a tuple of out of canvas objects that need to be saved together
 
     Returns:
         filepath (str): A full path where figure is saved.
@@ -140,7 +158,8 @@ def save_figure(figure, basedir, folder, filename):
     os.makedirs(str(folder), exist_ok=True)
     #
     filepath = str(folder / filename)
-    figure.savefig(filepath)
+
+    figure.savefig(filepath, bbox_inches='tight', bbox_extra_artists=bbox_extra_artists)
     return filepath
 
 def get_adoption_rate_label_from_app_uptake(uptake):

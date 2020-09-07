@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from copy import deepcopy
 
-from covid19sim.utils.utils import is_app_based_tracing_intervention
+from covid19sim.plotting.utils import split_methods_and_check_validity
 from covid19sim.plotting.matplotlib_utils import _plot_mean_with_stderr_bands_of_series, add_bells_and_whistles, save_figure, get_color, get_adoption_rate_label_from_app_uptake, get_intervention_label
 from covid19sim.plotting.extract_tracker_metrics import _daily_fraction_cumulative_cases, _daily_incidence, _daily_prevalence, _daily_false_quarantine
 from covid19sim.plotting.extract_tracker_metrics import _cumulative_infected_by_recovered_people, _proxy_R_estimated_by_recovered_people
@@ -66,7 +66,7 @@ def plot_and_save_r_characteristics(list_of_all_data, list_of_all_methods, uptak
 
     # add title to the figure
     adoption_rate = get_adoption_rate_label_from_app_uptake(uptake_rate)
-    fig.suptitle(f"Infection statistics as per recovered infectors @ {adoption_rate}% Adoption", fontsize=TITLESIZE, y=1.0)
+    fig.suptitle(f"Infection statistics as per recovered infectors @ {adoption_rate}% Adoption", fontsize=TITLESIZE, y=1.05)
 
     # save
     fig.tight_layout()
@@ -106,7 +106,7 @@ def plot_and_save_epi_characteristics(list_of_all_data, list_of_all_methods, upt
 
     # add title to the figure
     adoption_rate = get_adoption_rate_label_from_app_uptake(uptake_rate)
-    fig.suptitle(f"Case curves @ {adoption_rate}% Adoption", fontsize=TITLESIZE, y=1.0)
+    fig.suptitle(f"Case curves @ {adoption_rate}% Adoption", fontsize=TITLESIZE, y=1.05)
 
     # save
     fig.tight_layout()
@@ -157,22 +157,10 @@ def run(data, plot_path, compare=None, **kwargs):
         6. (series) Cumulative infected vs number of recovered agents
 
     Args:
-        data (dict):
-        plot_path (str):
-        compare (str):
+        data (dict): intervention_name --> APP_UPTAKE --> folder_name --> {'conf': yaml file, 'pkl': tracker file}
+        plot_path (str): path where to save plots
     """
-    # prepare series broken down by adoption rates
-    methods = list(data.keys())
-    app_based_methods = [x for x in methods if is_app_based_tracing_intervention(x)]
-    other_methods = list(set(methods) - set(app_based_methods))
-
-    uptake_keys = [list(data[x].keys()) for x in app_based_methods]
-
-    ## experiment correctness checks
-    assert len(set(frozenset(x) for x in uptake_keys)) == 1, "found different adoption rates across tracing based methods"
-    uptake_keys = list(list(set([frozenset(x) for x in uptake_keys]))[0])
-    for uptake_rate in uptake_keys:
-        assert len(set([len(data[method][uptake_rate]) for method in app_based_methods])) == 1, f"Found different number of seeds across {adoption_rate}. Methods: {methods}"
+    app_based_methods, other_methods, uptake_keys = split_methods_and_check_validity(data)
 
     ## data preparation
     list_of_no_app_data = []

@@ -15,6 +15,7 @@ import random
 import matplotlib.pyplot as plt
 
 from covid19sim.plotting.extract_tracker_metrics import _daily_false_quarantine, _daily_false_susceptible_recovered
+from covid19sim.utils.utils import is_app_based_tracing_intervention
 
 def env_to_path(path):
     """Transorms an environment variable mention in a json
@@ -509,7 +510,7 @@ def get_all_false(filename=None, data=None, normalized=False):
     )
 
 
-def get_proxy_r(data):
+def get_proxy_r(data, verbose=True):
     infection_chain = data["infection_monitor"]
     init_infected = {k for k, v in data["humans_state"].items() if v[0] == "E"}
     all_recovered = set()
@@ -530,11 +531,12 @@ def get_proxy_r(data):
 
             infectees += dfs_tree.out_degree(node)
 
-    print(f"len(recovered): {len(all_recovered)}")
-    print(f"len(dfsnodes): {len(dfs_tree.nodes)}")
-    print(f"infectors: {len(recovered_infectors)}")
-    print(f"infectees: {infectees}")
-    print("-------------------------")
+    if verbose:
+        print(f"len(recovered): {len(all_recovered)}")
+        print(f"len(dfsnodes): {len(dfs_tree.nodes)}")
+        print(f"infectors: {len(recovered_infectors)}")
+        print(f"infectees: {infectees}")
+        print("-------------------------")
 
     return infectees / len(recovered_infectors)
 
@@ -711,3 +713,30 @@ def get_infected(infection_chain):
     for x in init_infected:
         infectee_locations[x] = "unknown"
     return init_infected, _infected_humans, infectee_locations
+
+
+def split_methods_and_check_validity(data):
+    """
+    Returns distinct methods in `data` and corresponding APP_UPTAKES. Also validates correctness of data.
+
+    Args:
+        data (dict): intervention_name --> APP_UPTAKE --> folder_name --> {'conf': yaml file, 'pkl': tracker file}
+
+    Returns:
+        app_based_methods (list): each element is a name of intervention that requires an app
+        other_methods (list): each element is a name of intervention that doesn't require an app
+        uptake_keys (list): each element is a value of APP_UPTAKE. Applicable only for app_based_methods
+    """
+    methods = list(data.keys())
+    app_based_methods = [x for x in methods if is_app_based_tracing_intervention(x)]
+    other_methods = list(set(methods) - set(app_based_methods))
+
+    uptake_keys = [list(data[x].keys()) for x in app_based_methods]
+
+    ## experiment correctness checks
+    assert len(set(frozenset(x) for x in uptake_keys)) == 1, "found different adoption rates across tracing based methods"
+    uptake_keys = list(list(set([frozenset(x) for x in uptake_keys]))[0])
+    for uptake_rate in uptake_keys:
+        assert len(set([len(data[method][uptake_rate]) for method in app_based_methods])) == 1, f"Found different number of seeds across {adoption_rate}. Methods: {methods}"
+
+    return app_based_methods, other_methods, uptake_keys

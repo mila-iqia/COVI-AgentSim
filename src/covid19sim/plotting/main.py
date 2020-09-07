@@ -20,6 +20,7 @@ import covid19sim.plotting.make_efficiency_table as efficiency
 import covid19sim.plotting.plot_generation_time as generation_time
 import covid19sim.plotting.plot_epi_table as epi_table
 import covid19sim.plotting.plot_episim_series as episim_series
+import covid19sim.plotting.plot_normalized_mobility_scatter as normalized_mobility
 from covid19sim.plotting.utils import get_all_data
 
 
@@ -142,7 +143,8 @@ def main(conf):
         "efficiency": efficiency,
         "generation_time": generation_time,
         "epi_table": epi_table,
-        "episim_series": episim_series
+        "episim_series": episim_series,
+        "normalized_mobility": normalized_mobility
     }
 
     conf = OmegaConf.to_container(conf)
@@ -245,6 +247,19 @@ def main(conf):
             "intervention_day",
             "humans_state",
             "humans_quarantined_state"
+        ])
+
+    if "normalized_mobility" in plots:
+        keep_pkl_keys.update([
+            "infection_monitor",
+            "humans_state",
+            "intervention_day",
+            "n_humans",
+            "humans_quarantined_state",
+            "effective_contacts_since_intervention",
+            "healthy_effective_contacts_since_intervention",
+            "cases_per_day",
+            "test_monitor"
         ])
 
     # ------------------------------------
