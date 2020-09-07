@@ -40,5 +40,5 @@ python experiment.py exp_file=normalized_mobility base_dir=/your/folder/path/fol
 Plot the frontier using the following command  -
 
 ```bash
-python plotting/main.py plot=normalized_mobility_frontier path=/your/folder/path/followed_by/ folder_name
+python plotting/main.py plot=normalized_mobility path=/your/folder/path/followed_by/folder_name
 ```
