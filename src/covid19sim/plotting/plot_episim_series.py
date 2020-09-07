@@ -28,7 +28,7 @@ def plot_all(ax, list_of_all_data, list_of_all_methods, key):
     list_of_all_series = [x[key] for x in list_of_all_data]
     for idx, all_series in enumerate(list_of_all_series):
         label = get_intervention_label(list_of_all_methods[idx])
-        color = get_color(idx)
+        color = get_color(idx=idx)
         ax = _plot_mean_with_stderr_bands_of_series(ax, all_series, label, color)
     return ax
 

@@ -194,6 +194,8 @@ def plot_and_save_ymetric(data, ymetric, xmetrics, base_methods, labels, labels_
         ylabel = "Proxy $\hat{R_t}$"
     elif ymetric == "r":
         ylabel = "$R_t$"
+    elif ymetric == "f0":
+        ylabel = "False Susceptible or Recoverd"
     ylab = fig.text(-0.05, 0.5, ylabel, va="center", rotation="vertical", size=50)
 
     if ymetric in ["proxy_r", "r"]:

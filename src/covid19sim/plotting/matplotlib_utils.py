@@ -33,7 +33,7 @@ def get_color(idx=None, method=None):
     """
     assert idx is not None or method is not None, "either of idx or method are required"
     if idx is not None:
-        return COLORS[method]
+        return COLORS[idx]
 
     return COLOR_MAP[method]
 
