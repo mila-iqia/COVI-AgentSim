@@ -4,7 +4,7 @@ RISK_MODEL : ""
 
 # behavior level specifications
 N_BEHAVIOR_LEVELS: 2
-INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS: True 
+INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS: True
 SHOULD_MODIFY_BEHAVIOR : True
 
 # tracing parameters (not used in lockdown)
