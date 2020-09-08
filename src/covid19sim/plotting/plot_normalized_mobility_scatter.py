@@ -170,14 +170,18 @@ def find_all_pairs_offsets_and_stddev(fitted_fns, inverse_fitted_fns, fitting_st
         x1, method1 = method_x[idx]
         mss1 = mss(fitting_stats[method1]['res'])
         pars1 = fitting_stats[method1]['parameters']
+        stddev_pars1 = fitting_stats[method1]['stddev_parameters']
         y1 = fitted_fns[method1](x1)
+        var_y1 = stddev_pars1[0]**2 * x1 ** 2 + stddev_pars1[1]**2 # linear stddev
         for x2, method2 in method_x[idx+1:]:
             mss2 = mss(fitting_stats[method2]['res'])
             pars2 = fitting_stats[method2]['parameters']
+            stddev_pars2 = fitting_stats[method2]['stddev_parameters']
             y2 = fitted_fns[method2](x1)
+            var_y2 = stddev_pars2[0]**2 * x1 ** 2 + stddev_pars2[1]**2 # linear stddev
             #
             offset = y2 - y1
-            stddev = np.sqrt(mss1 + mss2)
+            stddev = np.sqrt(var_y1 + var_y2)
             #
             all_pairs.append([(x1, y1), (x1, y2), offset, stddev, 1 - stats.norm.cdf(0.0, loc=offset, scale=stddev), method1, method2])
 
@@ -251,6 +255,7 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
     # compute and plot offset and its confidence bounds
     if ymetric == "r":
         points = find_all_pairs_offsets_and_stddev(fitted_fns, inverse_fitted_fns, fitting_stats)
+        table_to_save = []
         for p1, p2, offset, stddev, cdf, m1, m2 in points:
             perturbed_x = p1[0] + np.random.normal(0, 0.05)
             p1 = [perturbed_x, p1[1]]
@@ -261,6 +266,13 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
             ax.annotate(s='', xy=p1, xytext=p2, arrowprops=dict(arrowstyle='<|-|>', linestyle=":", linewidth=1, zorder=1000, mutation_scale=20))
             text=f"{offset:0.2f} $\pm$ {1.96*stddev: 0.2f}, \n{cdf:0.2f}"
             ax.annotate(s=text, xy=p3, fontsize=ANNOTATION_FONTSIZE, fontweight='black', bbox=dict(facecolor='none', edgecolor='black'), zorder=1000, verticalalignment="center")
+
+            #
+            table_to_save.append([m1, m2, offset, stddev, cdf])
+
+        # save the table
+        table_to_save = pd.DataFrame(table_to_save, columns=['method1', 'method2', 'advantage', 'stddev', 'P(advantage > 0)'])
+        table_to_save.to_csv(str(Path(path).resolve() / "normalized_mobility/all_advantages.csv"))
 
         # reference lines
         ax.plot(ax.get_xlim(), [1.0, 1.0], '-.', c="gray", alpha=0.5)
@@ -361,7 +373,7 @@ def save_relevant_csv_files(results, uptake_rate, path):
 
     # relevant mobility factors
     methods = results['method'].unique()
-    filename = str(folder_name / f"mobility_factor_vs_R_AR_{adoption_rate}.csv")
+    filename = str(folder_name / f"mobility_factor_vs_R_AR_{adoption_rate}.txt")
     with open(filename, "w") as f:
         for method in methods:
             f.write(method)
@@ -373,6 +385,11 @@ def save_relevant_csv_files(results, uptake_rate, path):
 def run(data, plot_path, compare=None, **kwargs):
     """
     Plots and saves mobility scatter with various configurations across different methods.
+    Outputs are -
+        1. CSV files of extracted metrics
+        2. A txt file for each adoption rate showing mobility factors for reasonable R
+        3. several plots for mobility and other metrics. Check the code down below.
+        4. all_advantages.csv containing pairwise advantages of methods derived from curve fit.
 
     Args:
         data (dict): intervention_name --> APP_UPTAKE --> folder_name --> {'conf': yaml file, 'pkl': tracker file}
@@ -394,7 +411,8 @@ def run(data, plot_path, compare=None, **kwargs):
 
         save_relevant_csv_files(all_data, uptake, path=plot_path)
         for ymetric in ['r', 'false_quarantine', 'percentage_infected', 'fraction_quarantine', 'false_sr']:
-            for plot_residuals in [True, False]:
-                for display_r_squared in [True, False]:
-                    plot_and_save_mobility_scatter(all_data, uptake, xmetric='effective_contacts', path=plot_path, \
-                            ymetric=ymetric, plot_residuals=plot_residuals, display_r_squared=display_r_squared)
+            for xmetric in ['effective_contacts', 'healthy_contacts']:
+                for plot_residuals in [True, False]:
+                    for display_r_squared in [True, False]:
+                        plot_and_save_mobility_scatter(all_data, uptake, xmetric=xmetric, path=plot_path, \
+                                ymetric=ymetric, plot_residuals=plot_residuals, display_r_squared=display_r_squared)
