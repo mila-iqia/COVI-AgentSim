@@ -1,6 +1,7 @@
 """
 Plots a scatter plot showing trade-off between metrics of different simulations across varying mobility.
 """
+import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -350,6 +351,7 @@ def save_relevant_csv_files(results, uptake_rate, path):
     R_UPPER = 1.5
 
     folder_name = Path(path).resolve() / "normalized_mobility"
+    os.makedirs(str(folder_name), exist_ok=True)
     adoption_rate = get_adoption_rate_label_from_app_uptake(uptake_rate)
 
     # full data
