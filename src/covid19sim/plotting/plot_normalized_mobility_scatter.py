@@ -272,7 +272,7 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
 
         # save the table
         table_to_save = pd.DataFrame(table_to_save, columns=['method1', 'method2', 'advantage', 'stddev', 'P(advantage > 0)'])
-        table_to_save.to_csv(str(Path(path).resolve() / "normalized_mobility/all_advantages.csv"))
+        table_to_save.to_csv(str(Path(path).resolve() / f"normalized_mobility/all_advantages_{xmetric}.csv"))
 
         # reference lines
         ax.plot(ax.get_xlim(), [1.0, 1.0], '-.', c="gray", alpha=0.5)
