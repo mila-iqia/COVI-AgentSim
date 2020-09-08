@@ -25,7 +25,7 @@ from covid19sim.plotting.utils import get_all_data
 
 
 print("Ok.")
-HYDRA_CONF_PATH = Path(__file__).parent.parent / "configs" / "plot"
+HYDRA_CONF_PATH = Path(__file__).resolve().parent.parent / "configs" / "plot"
 
 
 def sizeof(path, suffix="B"):
