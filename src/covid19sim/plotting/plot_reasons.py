@@ -7,8 +7,8 @@ from collections import defaultdict, Counter
 
 
 def run(data, path, comparison_key):
-    do_reasons = False
-    do_messages = False
+    do_reasons = True
+    do_messages = True
     do_symptoms = True
     limit = 10000000
 
@@ -26,7 +26,7 @@ def run(data, path, comparison_key):
             high_risk_threshold = 12
             moderate_risk_threshold = 10
             mild_risk_threshold = 6
-        elif "heuristicv3" in str(path):
+        elif "heuristicv3" in str(path) or "heuristicv4" in str(path):
             high_risk_threshold = 15
             moderate_risk_threshold = 13
             mild_risk_threshold = 10

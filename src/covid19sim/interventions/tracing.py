@@ -138,7 +138,15 @@ class Heuristic(BaseMethod):
             self.moderate_symptoms_risk_level, self.moderate_symptoms_rec_level = 8, 2
             self.mild_symptoms_risk_level, self.mild_symptoms_rec_level = 6, 1
 
-        elif self.version == 3 or self.version == 4:
+        elif self.version == 3:
+            self.high_risk_threshold, self.high_risk_rec_level = 15, 3
+            self.moderate_risk_threshold, self.moderate_risk_rec_level = 13, 2
+            self.mild_risk_threshold, self.mild_risk_rec_level = 10, 1
+
+            self.severe_symptoms_risk_level, self.severe_symptoms_rec_level = 13, 3
+            self.moderate_symptoms_risk_level, self.moderate_symptoms_rec_level = 10, 2
+            self.mild_symptoms_risk_level, self.mild_symptoms_rec_level = 5, 1
+        elif self.version == 4:
             self.high_risk_threshold, self.high_risk_rec_level = 15, 3
             self.moderate_risk_threshold, self.moderate_risk_rec_level = 13, 2
             self.mild_risk_threshold, self.mild_risk_rec_level = 10, 1
@@ -422,12 +430,24 @@ class Heuristic(BaseMethod):
                 if (rel_encounter_day < 7) and (risk_level >= 3):
                     no_high_risk_message = False
 
-        elif self.version == 3 or self.version == 4:
+        elif self.version == 3:
             # No large risk message
             no_high_risk_message = True
             for rel_encounter_day, risk_level, num_encounters in mailbox:
                 if (rel_encounter_day < 7) and (risk_level >= 10):
                     no_high_risk_message = False
+
+        elif self.version == 4:
+            # No large risk message
+            no_high_risk_message = False
+            high_risks = sum([encs for day, level, encs in mailbox if level >= self.high_risk_threshold and day < 7])
+            med_risks = sum([encs for day, level, encs in mailbox if
+                             level >= self.moderate_risk_threshold and level < self.high_risk_threshold and day < 4])
+            low_risks = sum([encs for day, level, encs in mailbox if
+                             level >= self.mild_risk_threshold and level < self.moderate_risk_threshold and day < 2])
+            if not (high_risks or med_risks or low_risks):
+                no_high_risk_message = True
+
 
         risk_history = []
         # set to low risk
