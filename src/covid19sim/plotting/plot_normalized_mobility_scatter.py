@@ -148,11 +148,10 @@ def find_all_pairs_offsets_and_stddev(fitted_fns, inverse_fitted_fns, fitting_st
         (list): list of lists where each list corresponds to pairwise comparison of methods has following elements -
             1. (x1, y1): lower point to indicate the start of offset
             2. (x1, y2): upper point to indicate the end of offset. Note: it's a vertical line.
-            3. offset: Offset value: y2 - y1
-            4. stddev: stddev of this offset
-            5. cdf: P(offset > 0)
-            6. method1: name of the reference method
-            7. method2: name of the method that reference method is being compared to.
+            3. (offset, stddev, cdf): Computed analytically. Offset value: y2 - y1, stderr of this offset, P(offset > 0)
+            4. method1: name of the reference method
+            5. method2: name of the method that reference method is being compared to.
+            6. (offset, stddev, cdf): Computed from random draws.
     """
     def mss(res):
         return np.mean(res ** 2)
