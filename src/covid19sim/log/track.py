@@ -308,6 +308,9 @@ class Tracker(object):
         self.humans_rec_level = defaultdict(list)
         self.humans_intervention_level = defaultdict(list)
 
+        # demographics
+        self.humans_demographics = []
+
         # epi related
         self.serial_intervals = []
         self.serial_interval_book_to = defaultdict(dict)
@@ -620,6 +623,13 @@ class Tracker(object):
                 times.append((x['infection_timestamp'] - x['from_infection_timestamp']).total_seconds() / SECONDS_PER_DAY)
 
         return np.mean(times).item()
+
+    def track_static_info(self):
+        for human in self.city.humans:
+            self.humans_demographics.append({"name": human.name,
+                                             "preexisting_conditions": human.preexisting_conditions,
+                                             "age": human.age,
+                                             "sex": human.sex})
 
     def compute_serial_interval(self):
         """
@@ -1868,6 +1878,7 @@ class Tracker(object):
         plotrt = PlotRt(R_T_MAX=4, sigma=0.25, GAMMA=1.0 / serial_interval)
         most_likely, _ = plotrt.compute(cases_per_day, r0_estimate=2.5)
         log(f"Rt: {most_likely[:20]}", self.logfile)
+
 
     def write_for_training(self, humans, outfile, conf):
         """ Writes some data out for the ML predictor """
