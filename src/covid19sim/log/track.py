@@ -26,6 +26,8 @@ from covid19sim.utils.utils import log, copy_obj_array_except_env
 from covid19sim.utils.constants import SECONDS_PER_DAY, SECONDS_PER_MINUTE
 if typing.TYPE_CHECKING:
     from covid19sim.human import Human
+from covid19sim.locations.hospital import Hospital, ICU
+
 
 # used by - next_generation_matrix,
 SNAPSHOT_PERCENT_INFECTED_THRESHOLD = 2 # take a snapshot every time percent infected of population increases by this amount
@@ -750,7 +752,9 @@ class Tracker(object):
                 "dead": h.is_dead,
                 "reported_test_result": h.reported_test_result,
                 "n_reported_symptoms": len(h.reported_symptoms),
-                "age": human.age
+                "age": human.age,
+                "is_in_hospital": isinstance(location, Hospital),
+                "in_in_ICU": isintance(location, ICU)
             })
 
         self.human_monitor[self.env.timestamp.date()-datetime.timedelta(days=1)] = row
@@ -901,6 +905,8 @@ class Tracker(object):
                 "order_1_is_symptomatic": any([c.is_infectious and
                                                len(c.symptoms) > 0 for c in order_1_contacts]),
                 "order_1_is_tested": any([c.test_result == "positive" for c in order_1_contacts]),
+                "in_hospital": isinstance(location, Hospital),
+                "in_ICU" : isinstance(location, ICU)
             })
         if self.keep_full_human_copies:
             assert self.collection_client is not None
