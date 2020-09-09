@@ -15,8 +15,8 @@ from covid19sim.plotting.utils import get_proxy_r, split_methods_and_check_valid
 from covid19sim.plotting.extract_tracker_metrics import _daily_false_quarantine, _daily_false_susceptible_recovered, _daily_fraction_risky_classified_as_non_risky, \
                                 _daily_fraction_non_risky_classified_as_risky, _daily_fraction_quarantine
 from covid19sim.plotting.extract_tracker_metrics import _mean_effective_contacts, _mean_healthy_effective_contacts, _percentage_total_infected, _positivity_rate
-from covid19sim.plotting.matplotlib_utils import add_bells_and_whistles, save_figure, get_color, get_adoption_rate_label_from_app_uptake, get_intervention_label
-from covid19sim.plotting.curve_fitting import _linear, get_fitted_fn, get_bounds_of_fitted_fn, get_offset_and_stddev_from_random_draws
+from covid19sim.plotting.matplotlib_utils import add_bells_and_whistles, save_figure, get_color, get_adoption_rate_label_from_app_uptake, get_intervention_label, plot_mean_and_stderr_bands
+from covid19sim.plotting.curve_fitting import _linear, get_fitted_fn, get_offset_and_stddev_from_random_draws, get_offset_and_stddev_analytical, get_stderr_of_fitted_fn_analytical
 
 TITLESIZE = 25
 LABELPAD = 0.50
@@ -169,24 +169,18 @@ def find_all_pairs_offsets_and_stddev(fitted_fns, inverse_fitted_fns, fitting_st
     for idx in range(len(method_x)):
         plot = True
         x1, method1 = method_x[idx]
-        stddev_pars1 = fitting_stats[method1]['stddev_parameters']
         y1 = fitted_fns[method1](x1, *fitting_stats[method1]['parameters'])
-        var_y1 = stddev_pars1[0]**2 * x1 ** 2 + stddev_pars1[1]**2 # linear stddev
         for x2, method2 in method_x[idx+1:]:
-            offset_rnd, sttdev_rnd, cdf_rnd = get_offset_and_stddev_from_random_draws(reference_fn=fitted_fns[method1], reference_inv_fn=inverse_fitted_fns[method1], reference_stats=fitting_stats[method1], \
+            y2 = fitted_fns[method2](x1, *fitting_stats[method2]['parameters'])
+            offset_rnd, stddev_rnd, cdf_rnd = get_offset_and_stddev_from_random_draws(reference_fn=fitted_fns[method1], reference_inv_fn=inverse_fitted_fns[method1], reference_stats=fitting_stats[method1], \
                                 other_method_fn=fitted_fns[method2], other_method_inv_fn=inverse_fitted_fns[method2], other_method_stats=fitting_stats[method2])
 
-            # analytical
-            stddev_pars2 = fitting_stats[method2]['stddev_parameters']
-            y2 = fitted_fns[method2](x1, *fitting_stats[method2]['parameters'])
-            var_y2 = stddev_pars2[0]**2 * x1 ** 2 + stddev_pars2[1]**2 # linear stddev
-            offset = y2 - y1
-            stddev = np.sqrt(var_y1 + var_y2)
-            cdf = 1 - stats.norm.cdf(0.0, loc=offset, scale=stddev)
-
+            offset, stddev, cdf = get_offset_and_stddev_analytical(reference_fn=fitted_fns[method1], reference_inv_fn=inverse_fitted_fns[method1], reference_stats=fitting_stats[method1], \
+                                other_method_fn=fitted_fns[method2], other_method_inv_fn=inverse_fitted_fns[method2], other_method_stats=fitting_stats[method2])
             #
-            all_pairs.append([(x1, y1), (x1, y2), (offset, stddev, cdf), method1, method2, (offset_rnd, sttdev_rnd, cdf_rnd), plot])
+            all_pairs.append([(x1, y1), (x1, y2), (offset, stddev, cdf), method1, method2, (offset_rnd, stddev_rnd, cdf_rnd), plot])
             plot = False
+
     return all_pairs
 
 def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path, plot_residuals=False, display_r_squared=False):
@@ -251,15 +245,9 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
     # plot fitted fns
     x = np.arange(results[xmetric].min(), results[xmetric].max(), 0.05)
     for method, fn in fitted_fns.items():
-        # prediction with mean parameters
         y = fn(x, *fitting_stats[method]['parameters'])
-        ax.plot(x, y, color=color_maps[method], alpha=0.8, linestyle='-.', linewidth=3)
-
-        # prediction with randomly drawn parameters
-        ub, lb = get_bounds_of_fitted_fn(fn, x, fitting_stats[method]['parameters'], fitting_stats[method]['covariance'])
-        ax.plot(x, ub, color=color_maps[method], alpha=0.5, linestyle='-', linewidth=1)
-        ax.plot(x, lb, color=color_maps[method], alpha=0.5, linestyle='-', linewidth=1)
-        ax.fill_between(x, lb, ub, color=color_maps[method], alpha=0.3, lw=0, zorder=3)
+        stderr = get_stderr_of_fitted_fn_analytical(fn, x, fitting_stats[method]['parameters'], fitting_stats[method]['covariance'])
+        ax = plot_mean_and_stderr_bands(ax, x, y, stderr, label=None, color=color_maps[method], confidence_level=1.96)
 
     # compute and plot offset and its confidence bounds
     if ymetric == "r":
@@ -269,19 +257,15 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
             table_to_save.append([m1, m2, *res1, *res2])
             if not plot:
                 continue
-            perturbed_x = p1[0] + np.random.normal(0, 0.05)
-            p1 = [perturbed_x, p1[1]]
-            p2 = [perturbed_x, p2[1]]
-            midpoint = [perturbed_x, (p1[1] + p2[1])/2.0]
-            p3 = [perturbed_x+0.1, (p1[1] + p2[1])/2.0]
+            p3 = [p1[0] + 0.1, (p1[1] + p2[1])/2.0]
             # arrow
             ax.annotate(s='', xy=p1, xytext=p2, arrowprops=dict(arrowstyle='<|-|>', linestyle=":", linewidth=1, zorder=1000, mutation_scale=20))
-            text=f"{res2[0]:0.2f} $\pm$ {res2[1]: 0.2f}, \n{res2[2]:0.2f}"
+            text=f"{res1[0]:0.2f} $\pm$ {res1[1]: 0.2f}, \n{res1[2]:0.2f}"
             ax.annotate(s=text, xy=p3, fontsize=ANNOTATION_FONTSIZE, fontweight='black', bbox=dict(facecolor='none', edgecolor='black'), zorder=1000, verticalalignment="center")
 
         # save the table
         table_to_save = pd.DataFrame(table_to_save, columns=['method1', 'method2', 'advantage', 'stddev', 'P(advantage > 0)', 'rnd_advantage', 'rnd_stderr', 'P(rnd_advantage > 0)'])
-        table_to_save.to_csv(str(Path(path).resolve() / f"normalized_mobility/all_advantages_{xmetric}.csv"))
+        table_to_save.to_csv(str(Path(path).resolve() / f"normalized_mobility/R_all_advantages_{xmetric}.csv"))
 
         # reference lines
         ax.plot(ax.get_xlim(), [1.0, 1.0], '-.', c="gray", alpha=0.5)
@@ -290,7 +274,6 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
         # add legend for the text box
         text = "offset $\pm$ stderr\nP(offset > 0)"
         ax.annotate(s=text, xy=(ax.get_xlim()[1]-2, 0.5), fontsize=ANNOTATION_FONTSIZE, fontweight='black', bbox=dict(facecolor='none', edgecolor='black'), zorder=10)
-
 
     xlabel = get_metric_label(xmetric)
     ylabel = get_metric_label(ymetric)
@@ -417,13 +400,11 @@ def run(data, plot_path, compare=None, **kwargs):
         all_data = deepcopy(no_app_df)
         for method in app_based_methods:
             all_data = pd.concat([all_data, _extract_data(data[method][uptake], method)], axis='index')
-            pass
 
         save_relevant_csv_files(all_data, uptake, path=plot_path)
-        # all_data = pd.read_csv("/Users/mac/Desktop/Workspace/covid/simulator/src/covid19sim/normalized_mobility_calibrate_ml/plots/normalized_mobility/full_extracted_data_AR_60.csv")
         for ymetric in ['r', 'false_quarantine', 'percentage_infected', 'fraction_quarantine', 'false_sr']:
             for xmetric in ['effective_contacts', 'healthy_contacts']:
-                for plot_residuals in [True, False]:
-                    for display_r_squared in [True, False]:
+                for plot_residuals in [False, True]:
+                    for display_r_squared in [False, True]:
                         plot_and_save_mobility_scatter(all_data, uptake, xmetric=xmetric, path=plot_path, \
                                 ymetric=ymetric, plot_residuals=plot_residuals, display_r_squared=display_r_squared)

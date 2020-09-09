@@ -41,23 +41,16 @@ def _plot_mean_with_stderr_bands_of_series(ax, series, label, color, **kwargs):
     """
     Plots mean of `series` and a band of standard error around the mean.
 
-    Data:
+    Args:
         ax (matplotlib.axes.Axes): Axes on which to plot the series
         series (list): each element is an np.array series
         label (str): label for the series to appear in legend
         color (str): color to plot this series with
-        **kwargs (key=value): see below for keyword arguments used
+        **kwargs (key=value): see `_plot_mean_and_stderr_bands` for keyword arguments used
 
     Returns:
         ax (matplotlib.axes.Axes): Axes with the plot of series
     """
-    # params
-    linestyle = kwargs.get("linestyle", "-")
-    alpha = kwargs.get("alpha", 0.8)
-    marker = kwargs.get("marker", None)
-    markersize = kwargs.get("markersize", 1)
-    linewidth = kwargs.get("linewidth", 1)
-
     # plot only up until minimum length
     min_len = min(len(x) for x in series)
     out = [x[:min_len] for x in series]
@@ -68,12 +61,40 @@ def _plot_mean_with_stderr_bands_of_series(ax, series, label, color, **kwargs):
     mean = df.mean(axis=0)
     #
     stderr = df.std(axis=0)/np.sqrt(df.shape[0])
-    lows = mean - stderr
-    highs = mean + stderr
+
+    ax = plot_mean_and_stderr_bands(ax, index, mean, stderr, label, color, **kwargs)
+    return ax
+
+def plot_mean_and_stderr_bands(ax, index, mean, stderr, label, color, **kwargs):
+    """
+    Plots a filled polygon using `mean` and `stderr` bounds on `ax`
+
+    Args:
+        ax (matplotlib.axes.Axes): Axes on which to plot the series
+        index (pd.Series or no.array): 1D. Values on x axis for which mean and stderr is to be plotted
+        mean (pd.Series): mean along x that is to be plotted
+        stderr (pd.Series): error bounds around mean. Pass `confidence_level` to decide the bounds.
+        label (str): label for the series to appear in legend
+        color (str): color of line and the filling of polygon
+        **kwargs (key=value): see below for keyword arguments used
+
+    Returns:
+        ax (matplotlib.axes.Axes): Axes with a filled polygon corresponding to mean and stderr bounds
+    """
+    # params
+    linestyle = kwargs.get("linestyle", "-")
+    alpha = kwargs.get("alpha", 0.8)
+    marker = kwargs.get("marker", None)
+    markersize = kwargs.get("markersize", 1)
+    linewidth = kwargs.get("linewidth", 1)
+    confidence_level = kwargs.get('confidence_level', 1.0) # z-value corresponding to a significance level
+
+    lows = mean - confidence_level * stderr
+    highs = mean + confidence_level * stderr
     lowfn = interp1d(index, lows, bounds_error=False, fill_value='extrapolate')
     highfn = interp1d(index, highs, bounds_error=False, fill_value='extrapolate')
     #
-    ax.plot(mean, color=color, alpha=alpha, linestyle=linestyle,
+    ax.plot(index, mean, color=color, alpha=alpha, linestyle=linestyle,
                 linewidth=linewidth, label=label, marker=marker, ms=markersize)
     ax.fill_between(index, lowfn(index), highfn(index), color=color, alpha=.3, lw=0, zorder=3)
 

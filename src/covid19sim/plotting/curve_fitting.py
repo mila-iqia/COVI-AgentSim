@@ -69,44 +69,9 @@ def get_fitted_fn(x, y, fn):
     fn_handle_inverse = get_inverse_function(fn)
     return fn, res, r_squared, (pars, stdevs, cov), fn_handle_inverse
 
-def get_offset_and_stddev_from_random_draws(reference_fn, reference_inv_fn, reference_stats, other_method_fn, other_method_inv_fn, other_method_stats):
+def get_stderr_of_fitted_fn_from_random_draws(function, x, parameters, covariance):
     """
-    Computes advantage of reference over other_method with confidence bounds.
-
-    Args:
-        reference_fn (function):
-        reference_inv_fn (function):
-        reference_stats (dict): {'res':residuals (np.array), 'parameters':, 'stddev_parameters': (), 'covariance': ()}
-        other_method_fn (function):
-        other_method_inv_fn (function):
-        other_method_stats (dict):
-
-    Returns:
-        advantage (float):
-        stddev (float):
-        cdf (float):
-    """
-    # from random draws
-    N = 1000
-    pars1 = reference_stats['parameters']
-    cov1 = reference_stats['covariance']
-    pars = np.random.multivariate_normal(mean=pars1, cov=cov1, size=N)
-    xs = [reference_inv_fn(1.0, *par) for par in pars]
-
-    #
-    pars2 = other_method_stats['parameters']
-    cov2 = other_method_stats['covariance']
-    pars = np.random.multivariate_normal(mean=pars2, cov=cov2, size=N)
-    ys = [other_method_fn(x, *par) for x in xs for par in pars]
-
-    offset = np.mean(ys) - 1.0
-    stderr = stats.sem(ys)
-    cdf = 1 - stats.norm.cdf(0.0, loc=offset, scale=stderr)
-    return offset, stderr, cdf
-
-
-def get_bounds_of_fitted_fn(function, x, parameters, covariance):
-    """
+    Computes stddev of function i.e. Var(E(y|x)) evaluated at x using random draws.
 
     Args:
         function (function): function to be used for prediction using x
@@ -115,8 +80,7 @@ def get_bounds_of_fitted_fn(function, x, parameters, covariance):
         covariance (np.array): 2D matrix representing covariance in parameters
 
     Returns:
-        upper_bound (np.array): Max prediction in all evalautions for each x
-        lower_bound (np.array): Min prediction in all evalautions for each x
+        stderr (np.array): stderr at each x
     """
     N = 1000
     pars = np.random.multivariate_normal(mean=parameters, cov=covariance, size=N)
@@ -124,4 +88,97 @@ def get_bounds_of_fitted_fn(function, x, parameters, covariance):
     for i, par in enumerate(pars):
         ys[i] = function(x, *par)
 
-    return ys.max(axis=0), ys.min(axis=0)
+    return np.std(ys, axis=0)
+
+def get_stderr_of_fitted_fn_analytical(function, x, parameters, covariance, return_var=False):
+    """
+    Computes stddev of function i.e. Var(E(y|x)) evaluated at x anlytically.
+
+    Args:
+        function (function): function to be used for prediction using x
+        x (np.array): value of x for which prediction is to be made
+        parameters (np.array): mean value of parameters
+        covariance (np.array): 2D matrix representing covariance in parameters
+        return_var (bool): returns variance if True.
+
+    Returns:
+        stderr (np.array): stderr at each x
+    """
+    assert function.__name__ == "_linear", f"Do not know how to compuate variance anlytically for {function.__name__}"
+    # E(y|x) = mx + c
+    # Var(E(y|x)) = Var(m) * x**2 + Var(c) + 2 * x * Cov(m, c)
+    var = covariance[0,0] * x**2 + covariance[1,1] +  2 * x * covariance[1,0]
+    return var if return_var else np.sqrt(var)
+
+def get_offset_and_stddev_from_random_draws(reference_fn, reference_inv_fn, reference_stats, other_method_fn, other_method_inv_fn, other_method_stats):
+    """
+    Computes Var(E(y|x)) by random sampling to estimate advantages of reference over other_method with confidence bounds.
+
+    Args:
+        reference_fn (function): function to which other function is to be compared. x for R = 1 is dervied from this function
+        reference_inv_fn (function): an inverse of `reference_fn`
+        reference_stats (dict): {'res':residuals (np.array), 'parameters': (np.array), 'stddev_parameters': (np.array), 'covariance': (no.array) 2D matrix}
+        other_method_fn (function): function which is to be compared to reference fn
+        other_method_inv_fn (function): an inverse of `other_method_fn`
+        other_method_stats (dict): {'res':residuals (np.array), 'parameters': (np.array), 'stddev_parameters': (np.array), 'covariance': (no.array) 2D matrix}
+
+    Returns:
+        advantage (float): mean difference in predictions of `other_method_fn` and `reference_fn` at x for which `reference_fn` is 1.0
+        stddev (float): standard deviation of advantage
+        cdf (float): probablity that advantage is greater than 0
+    """
+    # from random draws
+    N = 1000
+    pars1 = reference_stats['parameters']
+    x = reference_inv_fn(1.0, *pars1)
+
+    #
+    pars2 = other_method_stats['parameters']
+    cov2 = other_method_stats['covariance']
+    pars = np.random.multivariate_normal(mean=pars2, cov=cov2, size=N)
+    ys = np.array([other_method_fn(x, *par) for par in pars])
+
+    offsets = ys - 1.0
+    offset = np.mean(offsets)
+    stderr = np.std(offsets)
+    cdf = 1 - stats.norm.cdf(0.0, loc=offset, scale=stderr)
+    return offset, stderr, cdf
+
+def get_offset_and_stddev_analytical(reference_fn, reference_inv_fn, reference_stats, other_method_fn, other_method_inv_fn, other_method_stats):
+    """
+    Computes Var(E(y|x)) analytically to estimate advantages of reference over other_method with confidence bounds.
+    Following predictors are allowed - linear, .
+
+    Args:
+        reference_fn (function): function to which other function is to be compared. x for R = 1 is dervied from this function
+        reference_inv_fn (function): an inverse of `reference_fn`
+        reference_stats (dict): {'res':residuals (np.array), 'parameters': (np.array), 'stddev_parameters': (np.array), 'covariance': (no.array) 2D matrix}
+        other_method_fn (function): function which is to be compared to reference fn
+        other_method_inv_fn (function): an inverse of `other_method_fn`
+        other_method_stats (dict): {'res':residuals (np.array), 'parameters': (np.array), 'stddev_parameters': (np.array), 'covariance': (no.array) 2D matrix}
+
+    Returns:
+        advantage (float): mean difference in predictions of `other_method_fn` and `reference_fn` at x for which `reference_fn` is 1.0
+        stddev (float): standard deviation of advantage
+        cdf (float): probablity that advantage is greater than 0
+    """
+    assert reference_fn.__name__ == "_linear", f"Don't know how to compute variance analytically for {reference_fn.__name__} function"
+    assert other_method_fn.__name__ == "_linear", f"Don't know how to compute variance analytically for {other_method_fn.__name__} function"
+
+    pars1 = reference_stats['parameters']
+    x = reference_inv_fn(1.0, *pars1)
+    y1 = reference_fn(x, *reference_stats['parameters'])
+    assert y1 == 1.0, "incorrect inverse function"
+
+    cov1 = reference_stats['covariance']
+    var_y1 = get_stderr_of_fitted_fn_analytical(reference_fn, x, pars1, cov1, return_var=True)
+
+    pars2 = other_method_stats['parameters']
+    y2 = other_method_fn(x, *pars2)
+    cov2 = other_method_stats['covariance']
+    var_y2 = get_stderr_of_fitted_fn_analytical(other_method_fn, x, pars2, cov2, return_var=True)
+
+    offset = y2 - y1
+    stderr = np.sqrt(var_y2 + var_y1)
+    cdf = 1 - stats.norm.cdf(0.0, loc=offset, scale=stderr)
+    return offset, stderr, cdf
