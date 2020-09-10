@@ -65,4 +65,4 @@ class PlotTest(unittest.TestCase):
             dump_tracker_data(data, conf["outdir"], filename)
 
             # Ensure that baseball plots can be produced from the simulation outputs
-            debug.main(outfile, os.path.join(d, "plots"), num_chains=1)
+            debug.main(outfile, num_chains=1) # os.path.join(d, "plots"),

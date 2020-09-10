@@ -238,10 +238,10 @@ class IntervenedBehavior(object):
 
         # if number of behavior levels is 2 and interpolation is with respect to lockdown contacts, it is a Lockdown scenario
         if conf['INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS']:
-            reduction_levels["HOUSEHOLD"][-2] = conf['LOCKDOWN_FRACTION_REDUCTION_IN_CONTACTS_AT_HOUSEHOLD']
-            reduction_levels["WORKPLACE"][-2] = conf['LOCKDOWN_FRACTION_REDUCTION_IN_CONTACTS_AT_WORKPLACE']
-            reduction_levels["OTHER"][-2] = conf['LOCKDOWN_FRACTION_REDUCTION_IN_CONTACTS_AT_OTHER']
-            reduction_levels["SCHOOL"][-2] = conf['LOCKDOWN_FRACTION_REDUCTION_IN_CONTACTS_AT_SCHOOL']
+            reduction_levels["HOUSEHOLD"][-2] = conf['FRACTION_LOCKDOWN_INTERPOLATION'] * conf['LOCKDOWN_FRACTION_REDUCTION_IN_CONTACTS_AT_HOUSEHOLD']
+            reduction_levels["WORKPLACE"][-2] = conf['FRACTION_LOCKDOWN_INTERPOLATION'] * conf['LOCKDOWN_FRACTION_REDUCTION_IN_CONTACTS_AT_WORKPLACE']
+            reduction_levels["OTHER"][-2] = conf['FRACTION_LOCKDOWN_INTERPOLATION'] * conf['LOCKDOWN_FRACTION_REDUCTION_IN_CONTACTS_AT_OTHER']
+            reduction_levels["SCHOOL"][-2] = conf['FRACTION_LOCKDOWN_INTERPOLATION'] * conf['LOCKDOWN_FRACTION_REDUCTION_IN_CONTACTS_AT_SCHOOL']
             last_filled_index -= 1
         else:
             # if its a non-tracing scenario, and lockdown is not desired, its an unmitigated scenario with 0% reduction in the first level
@@ -415,7 +415,7 @@ class IntervenedBehavior(object):
             level (int): behvaior level to put `human` on
         """
         if level == self.quarantine_idx:
-            self.human._test_recommended = False
+            self.human._test_recommended = True # TODO - P - how should this affect score at the test facility
 
         elif (
             level != self.quarantine_idx

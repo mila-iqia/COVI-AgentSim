@@ -1,64 +1,58 @@
 # ----------------------------
 # -----  Infrastructure  -----
 # ----------------------------
-cpus: 4
+cpus: 6
 env_name: covid
 infra: beluga
-mem: 8
+mem: 30
 n_search: -1 # -1 figures out the size of cartesian product for you
-time: "'02:50:00'"
-USE_INFERENCE_SERVER: False
+time: "'5:00:00'"
 
 # -------------------------
 # -----  Directories  -----
 # -------------------------
-base_dir: $HOME/simulator/results/pop_sick # if outdir is not provided, runs will be stored in base_dir/${intervention}
+base_dir: $HOME/simulator/results/pareto_front # if outdir is not provided, runs will be stored in base_dir/${intervention}
 code_loc: $HOME/simulator/src/covid19sim/
 use_tmpdir: false
-weights_dir: /home/mweiss10/scratch/weights
+weights_dir: $SCRATCH/weights
 
 # -------------------------------------
 # -----  Simulation Fixed Params  -----
 # -------------------------------------
-COLD_CONTAGIOUSNESS: 0
-DROPOUT_RATE: 0.02
-init_fraction_sick: 0.00
-INTERVENTION_DAY: -1
-P_CAREFUL_PERSON: 0.6
-simulation_days: 30
-PROPORTION_LAB_TEST_PER_DAY: 0.005
+INTERVENTION_DAY: 0
+n_people: 3000
+init_fraction_sick: 0.002
+simulation_days: 50
 tune: true
+APP_UPTAKE: 0.8415
 
 # --------------------------------------
 # -----  Sampling Parametrization  -----
 # --------------------------------------
-intervention:
+# NOTE: for mobility restriction in specific range use mobility_restriction=x, where x=high, medium, low. Checkout mobility_restriction/x.yaml
+GLOBAL_MOBILITY_SCALING_FACTOR:
   sample: cartesian
   from:
-    - no_intervention
-
-
-n_people:
-  sample: cartesian
-  from:
-    - 1000
-    - 2500
-    - 5000
-    - 7500
-    - 10000
-
-init_fraction_sick:
-  sample: cartesian
-  from:
-    - 0.001
-    - 0.0025
-    - 0.005
-    - 0.0075
-    - 0.01
-
+    - 0.2
+    - 0.3
+    - 0.4
+    - 0.5
+    - 0.6
+    - 0.7
+    - 0.8
+    - 0.9
+    - 1.0
+    
 seed:
   sample: cartesian
   from:
-    - 5000
+    - 7001
+    - 3003
+    - 1300
+    - 3100
+    - 1900
+    - 4001
     - 5001
-    - 5002
+    - 6001
+    - 3001
+    - 3

@@ -3,7 +3,6 @@ RISK_MODEL : "heuristicv1"
 
 # behavior level specifications
 N_BEHAVIOR_LEVELS: 4
-INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS: False
 SHOULD_MODIFY_BEHAVIOR : True
 
 # tracing parameters (not used in heuristic)

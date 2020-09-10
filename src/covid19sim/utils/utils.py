@@ -860,3 +860,21 @@ def _sample_positive_normal(mean, sigma, rng, upper_limit=None):
 
     x = rng.normal(mean, sigma)
     return x if _filter(x) else _sample_positive_normal(mean, sigma, rng, upper_limit)
+
+
+def is_app_based_tracing_intervention(intervention):
+    """
+    Determines if the intervention requires an app.
+
+    Args:
+        intervention (str): name of the intervention that matches a configuration file in `configs/simulation/intervention`
+
+    Returns:
+        (bool): True if an app is required.
+    """
+    intervention_yaml_file = Path(__file__).resolve().parent.parent / "configs/simulation/intervention" / f"{intervention}.yaml"
+    with open(intervention_yaml_file, "r") as f:
+        conf = yaml.safe_load(f)
+        app_required = conf['RISK_MODEL'] != ""
+
+    return app_required

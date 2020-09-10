@@ -11,12 +11,12 @@
 #                  => {A:1, B: y}, {A:1, B: z}, {A:2, B: y}, {A:2, B: z}, {A:1, B: y}
 # - `sequential` samples will loop through the values in `from`. `from` MUST be a list
 
-tracing_method: oracle>RADIANT-RESONANCE-561
+intervention: oracle>RADIANT-RESONANCE-561
 run_type: collect-all
 
 n_people: 1000
 simulation_days: 30
-test_capacity: 0.002
+PROPORTION_LAB_TEST_PER_DAY: 0.002
 COLD_CONTAGIOUSNESS: 0
 GLOBAL_MOBILITY_SCALING_FACTOR: 1
 SHOULD_MODIFY_BEHAVIOR: True
@@ -47,7 +47,7 @@ DROPOUT_RATE:
   sample: uniform # uniform in range:
   from: [0.0, 0.04]
 
-init_percent_sick:
+init_fraction_sick:
   sample: uniform
   from: [0.0015, 0.011]
 
