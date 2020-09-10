@@ -146,9 +146,9 @@ def main(conf: DictConfig):
     conf['INTERVENTION'] = type_of_run
     log(f"Type of run: {type_of_run}", logfile)
     if conf['COLLECT_TRAINING_DATA']:
-        hdf5_path = os.path.join(conf["outdir"], "train.hdf5")
+        data_output_path = os.path.join(conf["outdir"], "train.zarr")
         collection_server = DataCollectionServer(
-            data_output_path=hdf5_path,
+            data_output_path=data_output_path,
             config_backup=conf,
             human_count=conf['n_people'],
             simulation_days=conf['simulation_days'],

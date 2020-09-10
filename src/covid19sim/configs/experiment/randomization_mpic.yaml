@@ -23,12 +23,12 @@ INTERVENTION_DAY: 0
 PROPORTION_LAB_TEST_PER_DAY: 0.001
 MAKE_HOUSEHOLD_BEHAVE_SAME_AS_MAX_RISK_RESIDENT: True
 
-outdir: /home/nrahaman/python/covi-simulator/exp/neodr0
+outdir: /home/nrahaman/python/covi-simulator/exp/neodr1
 weights_dir: /home/nrahaman/python/ctt/exp/SHIPMENTS
 zip_outdir: true
 delete_outdir: true
 use_tmpdir: false
-n_search: 120
+n_search: 240
 n_runs_per_search: 1
 USE_INFERENCE_SERVER: false
 env_name: covid38
