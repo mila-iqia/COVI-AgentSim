@@ -1883,7 +1883,7 @@ class Tracker(object):
         data['tested_per_day'] = self.tested_per_day
         data['i_per_day'] = self.i_per_day
         data['adoption_rate'] = self.adoption_rate
-        data['lab_test_capacity'] = conf['TEST_TYPES']['lab']['capacity']
+        data['lab_test_capacity'] = conf['PROPORTION_LAB_TEST_PER_DAY']
         data['n_people'] = conf['n_people']
 
         data['humans'] = {}
