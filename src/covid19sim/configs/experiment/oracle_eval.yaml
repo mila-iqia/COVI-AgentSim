@@ -11,12 +11,12 @@
 #                  => {A:1, B: y}, {A:1, B: z}, {A:2, B: y}, {A:2, B: z}, {A:1, B: y}
 # - `sequential` samples will loop through the values in `from`. `from` MUST be a list
 
-tracing_method: oracle
+intervention: oracle
 n_people: 1000
 simulation_days: 30
 INTERVENTION_DAY: 5
 APP_UPTAKE: 1.
-init_percent_sick: 0.005
+init_fraction_sick: 0.005
 DROPOUT_RATE: 0.02
 P_CAREFUL_PERSON: 0.5
 GLOBAL_MOBILITY_SCALING_FACTOR: 1

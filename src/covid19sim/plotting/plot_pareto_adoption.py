@@ -12,6 +12,37 @@ from covid19sim.plotting.utils import (
     get_metrics,
 )
 
+ms = 6 * 2 * 1.5
+capsize = 4
+markers = ["P", "s", "X", "d", ".", "h", "^", "*", "v", "p", "x", "1"]
+colormap = [
+    "mediumvioletred",
+    "darkorange",
+    "green",
+    "red",
+    "blue",
+    "brown",
+    "cyan",
+    "gray",
+    "olive",
+    "orange",
+    "pink",
+    "purple",
+    "royalblue",
+]
+
+metric_name_map = {
+    "fq": "False Quarantine",
+    "f3": "False level-3",
+    "f2": "False level-2",
+    "f1": "False level-1",
+    "f2_up": "False level >= 2",
+    "effective_contacts": "Effective Contacts",
+    "outside_daily_contacts": "Outside Daily Contacts",
+    "f0": "False Susceptible or Recovered"
+}
+
+
 def plot_all_metrics(
     axs,
     data,
@@ -70,6 +101,149 @@ def get_line2D(value, color, marker, is_method=True):
         markersize=15,
         label=get_title(value),
     )
+
+def plot_and_save_ymetric(data, ymetric, xmetrics, base_methods, labels, labels_norm, path):
+    """
+    Plots `ymetric` for all `xmetrics` in pareto.
+
+    Args:
+        data (pd.DataFrame): Dataframe with rows containing type, metric and values for each seed
+        ymetric (str): metric that should be in `metric` column of `data`
+        xmetrics (list): list of strings where each element will be plotted on the x-axis
+        base_methods (list): list of strings where each element is an intervention name (without any key for comparison)
+        labels (list): each element is a string representing the `method_key`
+        labels_norm (list): each element is a string representing the `method_key` for normalized runs
+        path (str): path where to save the figure
+    """
+    fig, axs = plt.subplots(
+        nrows=math.ceil(len(xmetrics) / 2),
+        ncols=2,
+        figsize=(20, 20),
+        dpi=100,
+        sharey=True,
+    )
+    axs = [i for j in axs for i in j]
+
+    method_legend = []
+    compare_legend = []
+    for idx, method in enumerate(sorted(base_methods)):
+        print("Plotting", method, "...")
+        current_labels = sorted([lab for lab in labels if lab.startswith(method)])
+        current_labels_norm = sorted(
+            [lab for lab in labels_norm if lab.startswith(method)]
+        )
+        current_color = colormap[idx] if method != "unmitigated" else "#34495e"
+        method_legend.append(
+            get_line2D(method, current_color, None, True)
+        )
+        for i, lab in enumerate(current_labels):
+
+            current_marker = markers[i]
+            if idx == 0:
+                compare_legend.append(
+                    get_line2D(
+                        lab.split("_")[-1],
+                        current_color,
+                        current_marker,
+                        False,
+                    )
+                )
+            plot_all_metrics(
+                axs,
+                data,
+                lab,
+                current_color,
+                current_marker,
+                xmetrics,
+                ymetric,
+                capsize=capsize,
+                ms=ms,
+                normalized=False,
+            )
+        for i, lab in enumerate(current_labels_norm):
+            current_marker = markers[i]
+            plot_all_metrics(
+                axs,
+                data,
+                lab,
+                current_color,
+                current_marker,
+                xmetrics,
+                ymetric,
+                capsize=capsize,
+                ms=ms,
+                normalized=True,
+            )
+
+    # grids
+    for axis_id, ax in enumerate(axs):
+        ax.grid(True, axis="x", alpha=0.3)
+        ax.grid(True, axis="y", alpha=0.3)
+
+        ax.set_xlabel(metric_name_map[xmetrics[axis_id]], size=40)
+        for tick in ax.xaxis.get_major_ticks():
+            tick.label.set_fontsize(30)
+
+        for tick in ax.yaxis.get_major_ticks():
+            tick.label.set_fontsize(30)
+
+    # ylabel
+    if ymetric == "percent_infected":
+        ylabel = "Fraction infected"
+    elif ymetric == "proxy_r":
+        ylabel = "Proxy $\hat{R_t}$"
+    elif ymetric == "r":
+        ylabel = "$R_t$"
+    elif ymetric == "f0":
+        ylabel = "False Susceptible or Recoverd"
+    ylab = fig.text(-0.05, 0.5, ylabel, va="center", rotation="vertical", size=50)
+
+    if ymetric in ["proxy_r", "r"]:
+        for ax in axs:
+            ax.plot([0, ax.get_xlim()[1]], [1.0, 1.0], "-.", c="gray", alpha=0.3, label="Rt = 1.0")
+
+    spttl = fig.suptitle(
+        "Comparison of tracing methods across different adoption rates",
+        fontsize=50,
+        y=1.15,
+    )
+    if len(method_legend) % 2 != 0:
+        legend = (
+            method_legend
+            + [
+                Line2D(
+                    [0],
+                    [0],
+                    color="none",
+                    marker="",
+                    markeredgecolor="k",
+                    markerfacecolor=None,
+                    markersize=1,
+                    label=" ",
+                )
+            ]
+            + compare_legend
+        )
+    else:
+        legend = method_legend + compare_legend
+    lgd = fig.legend(
+        handles=legend,
+        loc="upper center",
+        ncol= 3,# idx, # + 1,
+        fontsize=25,
+        bbox_to_anchor=(0.5, 1.1),
+    )
+    plt.tight_layout()
+    save_path = Path(path) / f"pareto_adoption/pareto_adoption_all_metrics_vs_{ymetric}.png"
+    os.makedirs(save_path.parent, exist_ok=True)
+    print("Saving Figure {}...".format(save_path.name), end="", flush=True)
+    fig.savefig(
+        str(save_path),
+        dpi=100,
+        bbox_extra_artists=(lgd, ylab, spttl),
+        bbox_inches="tight",
+    )
+
 
 
 def run(data, path, comparison_key):
@@ -153,165 +327,11 @@ def run(data, path, comparison_key):
         "effective_contacts",
         "outside_daily_contacts",
     ]
-    ymetric = "r" # "percent_infected"
-
-    ms = 6 * 2 * 1.5
-    capsize = 4
-    markers = ["P", "s", "X", "d", ".", "h", "^", "*", "v", "p", "x", "1"]
-    colormap = [
-        "mediumvioletred",
-        "darkorange",
-        "green",
-        "red",
-        "blue",
-        "brown",
-        "cyan",
-        "gray",
-        "olive",
-        "orange",
-        "pink",
-        "purple",
-        "royalblue",
-    ]
-
-    fig, axs = plt.subplots(
-        nrows=math.ceil(len(xmetrics) / 2),
-        ncols=2,
-        figsize=(20, 20),
-        dpi=100,
-        sharey=True,
-    )
-    axs = [i for j in axs for i in j]
-
     base_methods = sorted(data.keys())
+    plot_and_save_ymetric(df, "proxy_r", xmetrics, base_methods, labels, labels_norm, path)
+    plot_and_save_ymetric(df, "percent_infected", xmetrics, base_methods, labels, labels_norm, path)
+    plot_and_save_ymetric(df, "f0", xmetrics, base_methods, labels, labels_norm, path)
 
-    method_legend = []
-    compare_legend = []
-    for idx, method in enumerate(sorted(base_methods)):
-        print("Plotting", method, "...")
-        current_labels = sorted([lab for lab in labels if lab.startswith(method)])
-        current_labels_norm = sorted(
-            [lab for lab in labels_norm if lab.startswith(method)]
-        )
-        current_color = colormap[idx] if method != "unmitigated" else "#34495e"
-        method_legend.append(
-            get_line2D(method, current_color, None, True)
-        )
-        for i, lab in enumerate(current_labels):
-
-            current_marker = markers[i]
-            if idx == 0:
-                compare_legend.append(
-                    get_line2D(
-                        lab.split("_")[-1],
-                        current_color,
-                        current_marker,
-                        False,
-                    )
-                )
-            plot_all_metrics(
-                axs,
-                df,
-                lab,
-                current_color,
-                current_marker,
-                xmetrics,
-                ymetric,
-                capsize=capsize,
-                ms=ms,
-                normalized=False,
-            )
-        for i, lab in enumerate(current_labels_norm):
-            current_marker = markers[i]
-            plot_all_metrics(
-                axs,
-                df,
-                lab,
-                current_color,
-                current_marker,
-                xmetrics,
-                ymetric,
-                capsize=capsize,
-                ms=ms,
-                normalized=True,
-            )
-
-    metric_name_map = {
-        "fq": "False Quarantine",
-        "f3": "False level-3",
-        "f2": "False level-2",
-        "f1": "False level-1",
-        "f2_up": "False level >= 2",
-        "effective_contacts": "Effective Contacts",
-        "outside_daily_contacts": "Outside Daily Contacts",
-    }
-
-    # grids
-    for axis_id, ax in enumerate(axs):
-        ax.grid(True, axis="x", alpha=0.3)
-        ax.grid(True, axis="y", alpha=0.3)
-
-        ax.set_xlabel(metric_name_map[xmetrics[axis_id]], size=40)
-        for tick in ax.xaxis.get_major_ticks():
-            tick.label.set_fontsize(30)
-
-        for tick in ax.yaxis.get_major_ticks():
-            tick.label.set_fontsize(30)
-
-    # ylabel
-    if ymetric == "percent_infected":
-        ylabel = "Fraction infected"
-    elif ymetric == "proxy_r":
-        ylabel = "Proxy $\hat{R_t}$"
-    elif ymetric == "r":
-        ylabel = "$R_t$"
-    ylab = fig.text(-0.05, 0.5, ylabel, va="center", rotation="vertical", size=50)
-
-    if ymetric in ["proxy_r", "r"]:
-        for ax in axs:
-            ax.plot([0, ax.get_xlim()[1]], [1.0, 1.0], "-.", c="gray", alpha=0.3, label="Rt = 1.0")
-
-    spttl = fig.suptitle(
-        "Comparison of tracing methods across different adoption rates",
-        fontsize=50,
-        y=1.15,
-    )
-    if len(method_legend) % 2 != 0:
-        legend = (
-            method_legend
-            + [
-                Line2D(
-                    [0],
-                    [0],
-                    color="none",
-                    marker="",
-                    markeredgecolor="k",
-                    markerfacecolor=None,
-                    markersize=1,
-                    label=" ",
-                )
-            ]
-            + compare_legend
-        )
-    else:
-        legend = method_legend + compare_legend
-    lgd = fig.legend(
-        handles=legend,
-        loc="upper center",
-        ncol= 3,# idx, # + 1,
-        fontsize=25,
-        bbox_to_anchor=(0.5, 1.1),
-    )
-    plt.tight_layout()
-    save_path = Path(path) / "pareto_adoption/pareto_adoption_all_metrics.png"
-    os.makedirs(save_path.parent, exist_ok=True)
-    print("Saving Figure {}...".format(save_path.name), end="", flush=True)
-    fig.savefig(
-        str(save_path),
-        dpi=100,
-        bbox_extra_artists=(lgd, ylab, spttl),
-        bbox_inches="tight",
-    )
 
     print("\n\nLine Plot")
     fig, axs = plt.subplots(figsize=(20, 20), dpi=100, sharey=True)

@@ -1,0 +1,19 @@
+# risk model
+RISK_MODEL : "digital"
+
+# behavior level specifications
+N_BEHAVIOR_LEVELS: 4
+SHOULD_MODIFY_BEHAVIOR : True
+
+# tracing parameters
+TRACING_ORDER : 1
+TRACE_SYMPTOMS : False
+
+# behavior modification
+REC_LEVEL_THRESHOLDS: [0, 0, 1] # Binary
+
+# household members
+MAKE_HOUSEHOLD_BEHAVE_SAME_AS_MAX_RISK_RESIDENT: False
+
+# when to start (overwrite it if needs to be run from other day)
+INTERVENTION_DAY: 0

@@ -3,7 +3,7 @@
 # -------------------------------------
 n_people: 100
 simulation_days: 25
-test_capacity: 0.005
+PROPORTION_LAB_TEST_PER_DAY: 0.005
 DROPOUT_RATE: 0.02
 INTERVENTION_DAY: 5
 tune: true
@@ -20,7 +20,7 @@ n_search: -1 # figures out the size of cartesian product for you
 # -----  Directories  -----
 # -------------------------
 infra: beluga
-base_dir: /scratch/vsch/covid_sims/mini_adoption # if outdir is not provided, runs will be stored in base_dir/${tracing_method}
+base_dir: /scratch/vsch/covid_sims/mini_adoption # if outdir is not provided, runs will be stored in base_dir/${intervention}
 code_loc: /home/vsch/simulator/src/covid19sim/
 weights_dir: /scratch/vsch
 use_tmpdir: false
@@ -32,7 +32,7 @@ time: "'02:50:00'"
 # -----  Sampling Parametrization  -----
 # --------------------------------------
 
-tracing_method:
+intervention:
   sample: cartesian
   from:
     # - no_intervention
@@ -57,7 +57,7 @@ P_CAREFUL_PERSON:
   from:
     - 0.3
 
-init_percent_sick:
+init_fraction_sick:
   sample: cartesian
   from:
     - 0.01

@@ -463,9 +463,9 @@ class MobilityPlanner(object):
                     raise NotImplementedError(f"There is no house available to supervise {self.human}")
                 #
                 log(f"Transferring {self.human} to {household} because no adult at {self.human.household} is alive. Current residents at {household}: {household.residents}", self.human.city.logfile)
-                self.human.household.residents.remove(self.human)
+                index_case_history = self.human.household.remove_resident(self.human)
                 self.human.assign_household(household)
-                household.residents.append(self.human)
+                household.add_resident(self.human, index_case_history)
                 #
                 MAX_AGE_CHILDREN_WITHOUT_SUPERVISION = self.conf['MAX_AGE_CHILDREN_WITHOUT_PARENT_SUPERVISION']
                 self.adults_in_house = [h for h in self.human.household.residents if h.age > MAX_AGE_CHILDREN_WITHOUT_SUPERVISION]
@@ -569,7 +569,7 @@ class MobilityPlanner(object):
         AVERAGE_TIME_DEATH_IF_CRITICAL = self.conf['AVERAGE_DAYS_DEATH_IF_CRITICAL']
 
         # hospitalization related checks
-        # Note: because of the wide vairance we have used averages only
+        # Note: because of the wide variance we have used averages only
         # TODO - P - Find out which distribution these parameters belong to.
         # 1. hospitalized given symptoms
         if (

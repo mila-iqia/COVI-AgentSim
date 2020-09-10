@@ -560,48 +560,32 @@ class Human(BaseHuman):
             return
 
         should_get_test, reasons = False, []
-        # (WIP - testing while at hospital)
-        # if at_hospital:
-        #     assert isinstance(self.location, (Hospital, ICU)), "Not at hospital; wrong argument"
-        #     # Is in a hospital and has symptoms that hospitals check for
-        #     TEST_SYMPTOMS_FOR_HOSPITAL = set(self.conf['GET_TESTED_SYMPTOMS_CHECKED_IN_HOSPITAL'])
-        #     should_get_test = any(TEST_SYMPTOMS_FOR_HOSPITAL & set(self.symptoms))
         if self.conf['SELF_TEST']:
-            # (assumption) those who self-diagnosis gets a test
+            # (assumption) those who self-diagnose gets a test
             self_diagnosis_and_should_get_tested = False
-            if SEVERE in self.symptoms or EXTREMELY_SEVERE in self.symptoms:
-                self_diagnosis_and_should_get_tested = self.rng.rand() < self.conf['P_TEST_SEVERE']
-
-            elif MODERATE in self.symptoms:
-                self_diagnosis_and_should_get_tested = self.rng.rand() < self.conf['P_TEST_MODERATE']
-
-            elif MILD in self.symptoms:
-                self_diagnosis_and_should_get_tested = self.rng.rand() < self.conf['P_TEST_MILD']
-
-            if not self_diagnosis_and_should_get_tested:
-                # Has symptoms that a careful person would fear to be covid
-                SUSPICIOUS_SYMPTOMS = set(self.conf['GET_TESTED_SYMPTOMS_CHECKED_BY_SELF'])
-                if set(self.symptoms) & SUSPICIOUS_SYMPTOMS:
-                    self_diagnosis_and_should_get_tested = self.rng.rand() < self.conf['P_TEST_SUSPICIOUS']
+            SUSPICIOUS_SYMPTOMS = set(self.conf['GET_TESTED_SYMPTOMS_CHECKED_BY_SELF'])
+            if (
+                SEVERE in self.symptoms
+                or EXTREMELY_SEVERE in self.symptoms
+                or set(self.symptoms) & SUSPICIOUS_SYMPTOMS
+            ):
+                self_diagnosis_and_should_get_tested = self.rng.rand() < self.conf['P_TEST_SEVERE_OR_SUSPICIOUS']
+            else:
+                self_diagnosis_and_should_get_tested = self.rng.rand() < self.conf['P_TEST_OTHER_REASON']
 
             if self_diagnosis_and_should_get_tested:
                 should_get_test = True
                 if self.conf['QUARANTINE_SELF_REPORTED_INDIVIDUALS']:
                     self.intervened_behavior.trigger_intervention(reason=SELF_DIAGNOSIS)
-
-                reasons.append(TAKE_TEST_DUE_TO_SELF_DIAGNOSIS)
-                # self-reporting for tracing symptoms
-                # self.self_reporting_timestamp = self.env.timestamp
         else:
             pass
 
-        # has been recommended the test by an intervention
+        # has been recommended a test by an intervention
         if (
             self._test_recommended
             and self.intervened_behavior.follow_recommendation_today
         ):
             should_get_test = True
-            reasons += self.intervened_behavior.quarantine.reasons
 
         if should_get_test:
             self.city.add_to_test_queue(self)
