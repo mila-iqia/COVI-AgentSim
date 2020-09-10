@@ -63,7 +63,7 @@ P_CAREFUL_PERSON:
 
 init_fraction_sick:
   sample: uniform
-  from: [0.003, 0,0065]
+  from: [0.003, 0.0065]
 
 P_DROPOUT_SYMPTOM:
   sample: uniform
