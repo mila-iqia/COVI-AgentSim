@@ -754,7 +754,7 @@ class Tracker(object):
                 "n_reported_symptoms": len(h.reported_symptoms),
                 "age": human.age,
                 "is_in_hospital": isinstance(h.location, Hospital),
-                "in_in_ICU": isinstance(h.location, ICU)
+                "is_in_ICU": isinstance(h.location, ICU)
             })
 
         self.human_monitor[self.env.timestamp.date()-datetime.timedelta(days=1)] = row
