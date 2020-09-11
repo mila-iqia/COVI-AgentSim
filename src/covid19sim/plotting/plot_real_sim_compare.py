@@ -12,7 +12,7 @@ from matplotlib import pyplot as plt
 # Constants
 quebec_population = 8485000
 csv_path = "COVID19Tracker.ca Data - QC.csv"
-sim_dir_path = "/home/mweiss10/simulator/results/mob_pop_sick/no_intervention/" #sim_v2_people-10000_days-30_init-0.002_uptake--1.0_seed-5000_20200716-181334_330660//" 
+sim_dir_path = "/Users/akpateln/Desktop/Personal/covi-simulator/output/sim_v2_people-5000_days-30_init-0.002_uptake--1.0_seed-0_20200901-115548_654000" #sim_v2_people-10000_days-30_init-0.002_uptake--1.0_seed-5000_20200716-181334_330660//" 
 use_cache = True
 
 # Utility Functions

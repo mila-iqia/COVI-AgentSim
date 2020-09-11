@@ -1871,7 +1871,9 @@ class Tracker(object):
     def write_for_training(self, humans, outfile, conf):
         """ Writes some data out for the ML predictor """
         data = dict()
-        data['hospitalization_per_day'] = self.hospitalization_per_day
+        data['hospitalization_per_day'] = self.hospitalization_per_day # how many new people get admitted to the hospital
+        import pdb; pdb.set_trace()
+        # TODO: write total number of _currently hospitalized people_, not how many people _go into the hospital_.
 
         # parse test results
         data['positive_test_results_per_day'] = []
