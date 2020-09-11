@@ -5,6 +5,7 @@ import pickle
 import unittest
 from tempfile import TemporaryDirectory
 import warnings
+import zarr
 
 import numpy as np
 from tests.utils import get_test_conf
@@ -146,9 +147,8 @@ class ModelsTest(unittest.TestCase):
 
             ModelsTest.make_human_as_message_proxy.set_start_time(start_time)
 
-            hdf5_path = os.path.join(d, "daily_output.hdf5")
             collection_server = DataCollectionServer(
-                data_output_path=hdf5_path,
+                data_output_path=d,
                 config_backup=conf,
                 human_count=n_people,
                 simulation_days=n_days,
@@ -169,7 +169,8 @@ class ModelsTest(unittest.TestCase):
 
             collection_server.stop_gracefully()
             collection_server.join()
-            assert os.path.exists(hdf5_path)
+
+            assert os.path.exists(d)
 
             for h in sim_humans:
                 # Ensure that the human has a reasonnable recommendation level.
@@ -181,26 +182,27 @@ class ModelsTest(unittest.TestCase):
                 if h.is_infectious:
                     assert h.location.is_contaminated
                     assert h.location.contamination_probability == 1.0
+            import pdb; pdb.set_trace()
 
-            with h5py.File(hdf5_path, "r") as fd:
-                dataset = fd["dataset"]
-                assert dataset.shape[0] == n_days
-                assert dataset.shape[1] == 24
-                assert dataset.shape[2] == n_people
-                output = []
-                for day_idx in range(conf.get('INTERVENTION_DAY'), n_days):
-                    hour_outputs = []
-                    for hour_idx in range(24):
-                        valid_outputs = {}
-                        for b in dataset[day_idx, hour_idx]:
-                            if len(b):
-                                human = pickle.loads(b)
-                                assert human["current_day"] == day_idx
-                                assert human["unobserved"]["human_id"] not in valid_outputs
-                                human_id = int(human["unobserved"]["human_id"].split(":")[-1])
-                                valid_outputs[human_id] = human
-                        hour_outputs.append(valid_outputs)
-                    output.append(hour_outputs)
+            dataset = zarr.open(os.path.join(d, "dataset"), "r")
+            assert dataset.shape[0] == n_days
+            assert dataset.shape[1] == 24
+            assert dataset.shape[2] == n_people
+            output = []
+            for day_idx in range(conf.get('INTERVENTION_DAY'), n_days):
+                hour_outputs = []
+                for hour_idx in range(24):
+                    valid_outputs = {}
+                    for b in dataset[day_idx, hour_idx]:
+                        # TODO: @ nasim change dataset format
+                        if len(b):
+                            human = pickle.loads(b)
+                            assert human["current_day"] == day_idx
+                            assert human["unobserved"]["human_id"] not in valid_outputs
+                            human_id = int(human["unobserved"]["human_id"].split(":")[-1])
+                            valid_outputs[human_id] = human
+                    hour_outputs.append(valid_outputs)
+                output.append(hour_outputs)
             self.assertEqual(len(output), n_days - conf.get('INTERVENTION_DAY'))
             self.assertGreaterEqual(sum(len(h_h) for h_h in output[0]), n_people)
 
