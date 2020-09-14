@@ -7,6 +7,7 @@ import tempfile
 from collections import defaultdict
 from pathlib import Path
 import ast
+import json
 
 import hydra
 import numpy as np
@@ -836,13 +837,14 @@ def main(conf: DictConfig) -> None:
             if not is_app_based_tracing_intervention(opts['intervention']):
                 opts['APP_UPTAKE'] = -1
 
+            opts_str = json.dumps(opts, sort_keys=True)
             # set of dictionaries is not possible, so use frozenset instead
-            if frozenset(opts.items()) in old_opts:
+            if frozenset(opts_str) in old_opts:
                 print("\n Ran this job already ... skipping!")
                 skipped = True
                 continue
 
-            old_opts.add(frozenset(opts.items()))
+            old_opts.add(frozenset(opts_str))
 
             extension = ""
             # specify server frontend
