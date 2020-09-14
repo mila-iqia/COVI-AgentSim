@@ -326,6 +326,7 @@ class Tracker(object):
 
         # testing & hospitalization
         self.hospitalization_per_day = [0]
+        self.hospital_usage_per_day = [0]
         self.critical_per_day = [0]
         self.deaths_per_day = [0]
         self.test_results_per_day = defaultdict(lambda :{'positive':0, 'negative':0})
@@ -693,6 +694,7 @@ class Tracker(object):
         self.r_per_day.append(sum(h.is_removed for h in self.city.humans))
         self.ei_per_day.append(self.e_per_day[-1] + self.i_per_day[-1])
 
+        num_humans_in_hospital = 0
         for human in self.city.humans:
             if human.is_susceptible:
                 state = 'S'
@@ -704,7 +706,8 @@ class Tracker(object):
                 state = 'R'
             else:
                 raise ValueError(f"{human} is not in any of SEIR states")
-
+            if human.mobility_planner.hospitalization_timestamp is not None:
+                num_humans_in_hospital += 1
             self.humans_quarantined_state[human.name].append(human.intervened_behavior.is_under_quarantine)
             self.humans_state[human.name].append(state)
             self.humans_rec_level[human.name].append(human.rec_level)
@@ -713,6 +716,7 @@ class Tracker(object):
         # test_per_day
         self.tested_per_day.append(0)
         self.hospitalization_per_day.append(0)
+        self.hospital_usage_per_day.append(num_humans_in_hospital)
         self.critical_per_day.append(0)
         self.deaths_per_day.append(0)
 
@@ -1878,7 +1882,7 @@ class Tracker(object):
         """ Writes some data out for the ML predictor """
         data = dict()
         data['hospitalization_per_day'] = self.hospitalization_per_day # how many new people get admitted to the hospital
-        import pdb; pdb.set_trace()
+        data['hospital_usage_per_day'] = self.hospital_usage_per_day # how many people are in the hospital for covid
         # TODO: write total number of _currently hospitalized people_, not how many people _go into the hospital_.
 
         # parse test results
