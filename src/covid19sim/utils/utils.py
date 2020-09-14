@@ -872,6 +872,9 @@ def is_app_based_tracing_intervention(intervention):
     Returns:
         (bool): True if an app is required.
     """
+    if isinstance(intervention, dict):
+        # This can happen if intervention is transformer (with weights and rec levels specified)
+        intervention = next(iter(intervention.keys()))
     intervention_yaml_file = Path(__file__).resolve().parent.parent / "configs/simulation/intervention" / f"{intervention}.yaml"
     with open(intervention_yaml_file, "r") as f:
         conf = yaml.safe_load(f)
