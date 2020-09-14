@@ -442,7 +442,6 @@ class DataCollectionWorker(BaseWorker):
             backend_address: typing.AnyStr,
             human_count: int,
             simulation_days: int,
-            encode_deltas: bool = False,
             compression: typing.Optional[typing.AnyStr] = "lzf",
             compression_opts: typing.Optional[typing.Any] = None,
             config_backup: typing.Optional[typing.Dict] = None,
@@ -458,7 +457,6 @@ class DataCollectionWorker(BaseWorker):
         self.data_output_path = data_output_path
         self.human_count = human_count
         self.simulation_days = simulation_days
-        self.encode_deltas = encode_deltas
         self.config_backup = config_backup
         self.chunk_size = 20
         # These are not used anymore!
@@ -521,7 +519,6 @@ class DataCollectionWorker(BaseWorker):
             proc_start_time = time.time()
             day_idx, hour_idx, human_idx, buffer = pickle.loads(buffer)
             total_dataset_bytes += len(buffer)
-            assert not self.encode_deltas, "`encode_deltas` is deprecated."
             # We'll let zarr do the pickling, so we load buffer
             dataset[day_idx, hour_idx, human_idx] = pickle.loads(buffer)
             is_filled[day_idx, hour_idx, human_idx] = True
@@ -548,7 +545,6 @@ class DataCollectionBroker(BaseBroker):
             data_buffer_size: int = default_data_buffer_size,  # NOTE: in bytes!
             frontend_address: typing.AnyStr = default_datacollect_frontend_address,
             backend_address: typing.AnyStr = default_datacollect_backend_address,
-            encode_deltas: bool = False,
             compression: typing.Optional[typing.AnyStr] = "lzf",
             compression_opts: typing.Optional[typing.Any] = None,
             verbose: bool = False,
@@ -577,7 +573,6 @@ class DataCollectionBroker(BaseBroker):
         self.human_count = human_count
         self.simulation_days = simulation_days
         self.data_buffer_size = data_buffer_size
-        self.encode_deltas = encode_deltas
         self.compression = compression
         self.compression_opts = compression_opts
         self.config_backup = config_backup
@@ -603,7 +598,6 @@ class DataCollectionBroker(BaseBroker):
             backend_address=worker_backend_address,
             human_count=self.human_count,
             simulation_days=self.simulation_days,
-            encode_deltas=self.encode_deltas,
             compression=self.compression,
             compression_opts=self.compression_opts,
             config_backup=self.config_backup,
@@ -727,6 +721,7 @@ def proc_human_batch(
     """
     assert isinstance(sample, list) and all([isinstance(p, dict) for p in sample])
     ref_timestamp = None
+
     for params in sample:
         human_name = params["human"].name
         timestamp = params["start"] + datetime.timedelta(days=params["current_day"], hours=params["time_slot"])

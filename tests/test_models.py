@@ -182,7 +182,6 @@ class ModelsTest(unittest.TestCase):
                 if h.is_infectious:
                     assert h.location.is_contaminated
                     assert h.location.contamination_probability == 1.0
-            import pdb; pdb.set_trace()
 
             dataset = zarr.open(os.path.join(d, "dataset"), "r")
             assert dataset.shape[0] == n_days
@@ -193,10 +192,8 @@ class ModelsTest(unittest.TestCase):
                 hour_outputs = []
                 for hour_idx in range(24):
                     valid_outputs = {}
-                    for b in dataset[day_idx, hour_idx]:
-                        # TODO: @ nasim change dataset format
-                        if len(b):
-                            human = pickle.loads(b)
+                    for human in dataset[day_idx, hour_idx]:
+                        if type(human) == dict:
                             assert human["current_day"] == day_idx
                             assert human["unobserved"]["human_id"] not in valid_outputs
                             human_id = int(human["unobserved"]["human_id"].split(":")[-1])

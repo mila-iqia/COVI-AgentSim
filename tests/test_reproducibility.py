@@ -32,9 +32,9 @@ class ReproducibilityTests(unittest.TestCase):
         events_logs = []
 
         for seed in (self.test_seed, self.test_seed, self.test_seed+1):
-            md5 = hashlib.md5()
             with self.subTest(seed=seed):
                 with TemporaryDirectory() as d:
+                    md5 = hashlib.md5()
                     outfile = os.path.join(d, "data")
                     city, monitors, tracker = simulate(
                         n_people=self.n_people,

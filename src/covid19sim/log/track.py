@@ -377,7 +377,6 @@ class Tracker(object):
                 human_count=city.conf["n_people"],
                 simulation_days=city.conf["simulation_days"],
                 config_backup=city.conf,
-                encode_deltas=True,
             )
             self.collection_server.start()
             self.collection_client = DataCollectionClient(
@@ -891,6 +890,7 @@ class Tracker(object):
                                                len(c.symptoms) > 0 for c in order_1_contacts]),
                 "order_1_is_tested": any([c.test_result == "positive" for c in order_1_contacts]),
             })
+
         if self.keep_full_human_copies:
             assert self.collection_client is not None
             human_backups = copy_obj_array_except_env(hd)
@@ -898,8 +898,9 @@ class Tracker(object):
                 human_id = int(name.split(":")[-1]) - 1
                 current_day = (current_timestamp - self.city.start_time).days
                 self.collection_client.write(current_day, current_timestamp.hour, human_id, human)
-            # @@@@@ TODO: do something with location backups
-            # location_backups = copy_obj_array_except_env(self.city.get_all_locations())
+
+        # @@@@@ TODO: do something with location backups
+        # location_backups = copy_obj_array_except_env(self.city.get_all_locations())
 
     def track_app_adoption(self):
         """
