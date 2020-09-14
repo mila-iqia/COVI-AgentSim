@@ -73,7 +73,7 @@ avg_sim_cases = [sum(elem)/len(elem) for elem in zip(*all_sim_cases)]
 avg_sim_hospitalizations = [sum(elem)/len(elem) for elem in zip(*all_sim_hospitalizations)]
 avg_sim_deaths = [sum(elem)/len(elem) for elem in zip(*all_sim_deaths)]
 
-# Plot cases
+# Plot Quebec Data
 last_index = 63 # index of last day of Quebec data, use 63 for 30 days
 fig, ax = plt.subplots(figsize=(7.5, 7.5))
 real_dates = qc_data.loc[34:last_index, 'dates'].to_numpy()
@@ -94,7 +94,7 @@ plt.xticks([x for i, x in enumerate(real_dates) if i % 10 == 0], rotation=45)
 plt.title("Real Quebec COVID Statistics")
 plt.savefig("qc_stats.png")
 
-# Plot deaths and hospitalizations
+# Plot average across simulations data
 fig, ax = plt.subplots(figsize=(7.5, 7.5))
 # ax.set_ylim([0.,0.03])
 avg_sim_cases = np.array(sim_cases[1:])*.1 # adjust for unknown cases
