@@ -61,7 +61,7 @@ def main(args=None):
             break
         components = shlex.split(line)[2:]
         components[-1] = components[-1].replace(";", "")
-        components = validate_components(components)
+        components = validate_components(components, no_space=args.no_space)
         raven_job = RavenJob().set_script_path("run.py").set_script_args(components)
         if args.disarm:
             print(raven_job.build_submission(write=False))
