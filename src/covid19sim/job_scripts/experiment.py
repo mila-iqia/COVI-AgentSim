@@ -839,12 +839,12 @@ def main(conf: DictConfig) -> None:
 
             opts_str = json.dumps(opts, sort_keys=True)
             # set of dictionaries is not possible, so use frozenset instead
-            if frozenset(opts_str) in old_opts:
+            if opts_str in old_opts:
                 print("\n Ran this job already ... skipping!")
                 skipped = True
                 continue
 
-            old_opts.add(frozenset(opts_str))
+            old_opts.add(opts_str)
 
             extension = ""
             # specify server frontend
