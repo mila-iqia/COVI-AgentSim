@@ -11,6 +11,8 @@ from covid19sim.plotting import debug
 from covid19sim.run import simulate
 from covid19sim.utils.utils import dump_tracker_data, extract_tracker_data
 
+# TODO : re-add this test. There was a slowdown / conflict with zarr
+# introduced in this PR: https://github.com/mila-iqia/covi-simulator/pull/70/files
 #
 # class PlotTest(unittest.TestCase):
 #
@@ -23,15 +25,15 @@ from covid19sim.utils.utils import dump_tracker_data, extract_tracker_data
 #         conf = get_test_conf(conf_name)
 #         conf['KEEP_FULL_OBJ_COPIES'] = True
 #         conf['COLLECT_TRAINING_DATA'] = False
-#         conf['tune'] = True
-#         conf['INTERVENTION_DAY'] = 10
+#         conf['tune'] = False
+#         conf['INTERVENTION_DAY'] = 5
 #         conf['PROPORTION_LAB_TEST_PER_DAY'] = 0.
 #
 #         with TemporaryDirectory() as d:
 #
 #             # Run the simulation
 #             start_time = datetime.datetime(2020, 2, 28, 0, 0)
-#             n_people = 200
+#             n_people = 2
 #             n_days = 10
 #
 #             outfile = os.path.join(d, "output")
@@ -60,7 +62,7 @@ from covid19sim.utils.utils import dump_tracker_data, extract_tracker_data
 #             city.tracker.collection_server.stop_gracefully()
 #             city.tracker.collection_server.join()
 #             assert os.path.exists(hdf5_path)
-#
+#             import pdb; pdb.set_trace()
 #             filename = f"tracker_data.pkl"
 #             data = extract_tracker_data(tracker, conf)
 #             dump_tracker_data(data, conf["outdir"], filename)
