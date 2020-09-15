@@ -738,7 +738,7 @@ class Tracker(object):
         row = []
         for h in self.city.humans:
             row.append({
-                "infection_timestamp": h.infection_timestamp,
+                # "infection_timestamp": h.infection_timestamp,
                 "n_infectious_contacts": h.n_infectious_contacts,
                 "risk": h.risk,
                 "risk_level": h.risk_level,
