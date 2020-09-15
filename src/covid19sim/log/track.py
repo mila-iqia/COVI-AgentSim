@@ -905,8 +905,6 @@ class Tracker(object):
                 "order_1_is_symptomatic": any([c.is_infectious and
                                                len(c.symptoms) > 0 for c in order_1_contacts]),
                 "order_1_is_tested": any([c.test_result == "positive" for c in order_1_contacts]),
-                "in_hospital": isinstance(location, Hospital),
-                "in_ICU" : isinstance(location, ICU)
             })
         if self.keep_full_human_copies:
             assert self.collection_client is not None
