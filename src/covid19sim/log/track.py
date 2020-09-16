@@ -19,7 +19,6 @@ import pandas as pd
 from covid19sim.plotting.plot_rt import PlotRt
 from covid19sim.utils.utils import log, _get_seconds_since_midnight
 from covid19sim.utils.constants import AGE_BIN_WIDTH_5, ALL_LOCATIONS, SECONDS_PER_DAY, SECONDS_PER_HOUR
-LOCATION_TYPES_TO_TRACK_MIXING = ["house", "work", "school", "other", "all"]
 from covid19sim.epidemiology.symptoms import MILD, MODERATE, SEVERE, EXTREMELY_SEVERE
 from covid19sim.inference.server_utils import DataCollectionServer, DataCollectionClient, \
     default_datacollect_frontend_address
@@ -31,7 +30,8 @@ if typing.TYPE_CHECKING:
 
 # used by - next_generation_matrix,
 SNAPSHOT_PERCENT_INFECTED_THRESHOLD = 2 # take a snapshot every time percent infected of population increases by this amount
-
+LOCATION_TYPES_TO_TRACK_MIXING = ["house", "work", "school", "other", "all"]
+WORK_ACTIVITY_STATUS = ["WORK", "WORK-CANCEL--KID", "WORK-CANCEL--ILL", "WORK-CANCEL--QUARANTINE"]
 
 def check_if_tracking(f):
     def wrapper(*args, **kwargs):
@@ -99,6 +99,42 @@ def _get_location_type_to_track_mixing(human, location):
 
 
     return "other"
+
+def _get_work_status_category(human, work_activity):
+    """
+    Returns relevant categories for `work_activity` depending on its cancellation status.
+
+    Args:
+        work_activity (covid19sim.utils.mobility_planner.Activity): activity of type work
+
+    Returns:
+        (list): a list of str
+    """
+    assert work_activity.name == "work", f"Expected a work_activity. Got: {work_activity}"
+
+    # its a kid that is accompanying an adult to work
+    if work_activity.prepend_name == "supervised":
+        return []
+
+    activity_status = work_activity.append_name
+    if "-cancel-" in activity_status:
+        if "-inverted-supervision-" in activity_status:
+            return "WORK-CANCEL--KID"
+
+        elif (
+            "sick-rest-at_home" in activity_status
+            or "Hospitalized" in activity_status
+            or "ICU" in activity_status
+        ):
+            return "WORK-CANCEL--ILL"
+
+        elif "quarantine-" in activity_status:
+            return "WORK-CANCEL--QUARANTINE"
+
+        else:
+            return f"WORK-CANCEL--{activity_status}"
+
+    return "WORK"
 
 class Tracker(object):
     """
@@ -203,6 +239,8 @@ class Tracker(object):
                 "total": 0
             }
         }
+        self.outside_daily_contacts = []
+        self.n_outside_daily_contacts = 0
 
         # infection related contacts
         infection_matrix_fmt = {
@@ -250,8 +288,9 @@ class Tracker(object):
             "location_frequency": defaultdict(int),
             "start_time": Statistics()
         }
-        self.outside_daily_contacts = []
-        self.n_outside_daily_contacts = 0
+
+        self.daily_work_hours_by_age_group = {status: np.zeros((len(AGE_BIN_WIDTH_5), self.conf['simulation_days'])) for status in WORK_ACTIVITY_STATUS}
+        self.all_acitivty_names = set()
 
         # infection stats
         self.n_infected_init = 0 # to be initialized in `initialize`
@@ -339,7 +378,6 @@ class Tracker(object):
                 human_count=city.conf["n_people"],
                 simulation_days=city.conf["simulation_days"],
                 config_backup=city.conf,
-                encode_deltas=True,
             )
             self.collection_server.start()
             self.collection_client = DataCollectionClient(
@@ -370,7 +408,7 @@ class Tracker(object):
         log(f"TIME_SPENT_SCALE_FACTOR_FOR_SHORT_ACTIVITIES: {self.conf['TIME_SPENT_SCALE_FACTOR_FOR_SHORT_ACTIVITIES']}", self.logfile)
         log(f"TIME_SPENT_SCALE_FACTOR_FOR_WORK: {self.conf['TIME_SPENT_SCALE_FACTOR_FOR_WORK']}", self.logfile)
         log(f"TIME_SPENT_SCALE_FACTOR_SLEEP_AWAKE: {self.conf['TIME_SPENT_SCALE_FACTOR_SLEEP_AWAKE']}", self.logfile)
-
+        log(f"GLOBAL_MOBILITY_SCALING_FACTOR: {self.conf['GLOBAL_MOBILITY_SCALING_FACTOR']}", self.logfile)
 
         log("\n######## DEMOGRAPHICS / SYNTHETIC POPULATION #########", self.logfile)
         log(f"NB: (i) census numbers are in brackets. (ii) {WARN_SIGNAL} marks a {WARN_RELATIVE_PERCENTAGE_THRESHOLD} % realtive deviation from census\n", self.logfile)
@@ -844,7 +882,6 @@ class Tracker(object):
                 "symptoms": len(h.symptoms),
                 "symptom_names": h.reported_symptoms,
                 "clusters": h.intervention.extract_clusters(h) if type(h.intervention) == Heuristic else [],
-                "current_prevalence": h.city.prevalence,
                 "test": h.test_result,
                 "recovered": h.is_removed,
                 "timestamp": self.env.timestamp,
@@ -858,6 +895,7 @@ class Tracker(object):
                                                len(c.symptoms) > 0 for c in order_1_contacts]),
                 "order_1_is_tested": any([c.test_result == "positive" for c in order_1_contacts]),
             })
+
         if self.keep_full_human_copies:
             assert self.collection_client is not None
             human_backups = copy_obj_array_except_env(hd)
@@ -865,8 +903,9 @@ class Tracker(object):
                 human_id = int(name.split(":")[-1]) - 1
                 current_day = (current_timestamp - self.city.start_time).days
                 self.collection_client.write(current_day, current_timestamp.hour, human_id, human)
-            # @@@@@ TODO: do something with location backups
-            # location_backups = copy_obj_array_except_env(self.city.get_all_locations())
+
+        # @@@@@ TODO: do something with location backups
+        # location_backups = copy_obj_array_except_env(self.city.get_all_locations())
 
     def track_app_adoption(self):
         """
@@ -1198,7 +1237,7 @@ class Tracker(object):
             "symptom_start_time": human.covid_symptom_start_time,
             "cold_timestamp": human.cold_timestamp,
             "flu_timestamp": human.flu_timestamp,
-            "allegy_symptom_onset": human.allergy_timestamp
+            "allergy_symptom_onset": human.allergy_timestamp
         })
 
     def compute_test_statistics(self, logfile=False):
@@ -1263,7 +1302,7 @@ class Tracker(object):
         self.recovery_stats['timestamps'].append((self.env.timestamp, human.n_infectious_contacts))
 
     @check_if_tracking
-    def track_mobility(self, current_activity, next_activity, human):
+    def track_mobility(self, just_finished_activity, next_activity, human):
         """
         Aggregates information about mobility pattern of humans. Following information is being aggregated -
             1. transition_probabilities from one location type to another on weekends and weekdays
@@ -1272,44 +1311,43 @@ class Tracker(object):
             4. fraction of time "socialize" activity took place at a location_type
 
         Args:
-            current_activity (covid19sim.utils.mobility_planner.Activity): [description]
-            next_activity (covid19sim.utils.mobility_planner.Activity): [description]
+            just_finished_activity (covid19sim.utils.mobility_planner.Activity): activity just finished
+            next_activity (covid19sim.utils.mobility_planner.Activity): next activity that will be pursued
             human (covid19sim.human.Human): human for which sleep schedule needs to be added.
         """
-        if not (self.conf['track_all'] or self.conf['track_mobility']) or current_activity is None:
+        if not (self.conf['track_all'] or self.conf['track_mobility']) or just_finished_activity is None:
             return
 
-        # economic model
-        # if (
-        #     current_activity.owner.age > 25
-        #     and curernt_activity.name == "work"
-        #     and current_activity.location.location_type == "WORKPLACE"
-        # ):
-        #     pass
+        # attrs related to economic activity
+        if (
+            just_finished_activity.name == "work"
+            and just_finished_activity.prepend_name == ""
+        ):
+            category = _get_work_status_category(human, just_finished_activity)
+            self.all_acitivty_names.add(category)
+            n_sim_day = (just_finished_activity.start_time - self.conf['COVID_SPREAD_START_TIME']).days # tracking is on only since COVID_SPREAD_START_TIME
+            self.daily_work_hours_by_age_group[category][human.age_bin_width_5.index, n_sim_day] += just_finished_activity.duration / SECONDS_PER_HOUR
 
         # forms a transition probability on weekdays and weekends
         type_of_day = ['weekday', 'weekend'][self.env.is_weekend]
-        from_location = current_activity.location.location_type
-        to_location = current_activity.location.location_type
+        from_location = just_finished_activity.location.location_type
+        to_location = just_finished_activity.location.location_type
         self.transition_probability[type_of_day][from_location][to_location] += 1
 
         # proportion of day spend in activity.name broken down by age groups
-        name = current_activity.name if "supervised" not in current_activity.prepend_name else f"supervised-{current_activity.name}"
+        name = just_finished_activity.name if "supervised" not in just_finished_activity.prepend_name else f"supervised-{just_finished_activity.name}"
         n, avg = self.day_fraction_spent_activity[type_of_day][name]
-        m = current_activity.duration / SECONDS_PER_DAY
+        m = just_finished_activity.duration / SECONDS_PER_DAY
         self.day_fraction_spent_activity[type_of_day][name] = (n+1, (n*avg + m)/(n+1))
 
         # histogram of number of people with whom socialization happens
-        if next_activity.name == "socialize":
-            self.socialize_activity_data['group_size'].push(len(next_activity.rsvp))
-            self.socialize_activity_data["location_frequency"][next_activity.location.location_type] += 1
-            self.socialize_activity_data["start_time"].push(_get_seconds_since_midnight(next_activity.start_time))
+        if just_finished_activity.name == "socialize":
+            self.socialize_activity_data['group_size'].push(len(just_finished_activity.rsvp))
+            self.socialize_activity_data["location_frequency"][just_finished_activity.location.location_type] += 1
+            self.socialize_activity_data["start_time"].push(_get_seconds_since_midnight(just_finished_activity.start_time))
 
-        # if "-cancel-" not in next_activity.append_name and next_activity.prepend_name == "":
-        #     self.start_time_activity[next_activity.name].push(_get_seconds_since_midnight(next_activity.start_time))
-
-        self.activity_attributes["end_time"][next_activity.name].push(_get_seconds_since_midnight(next_activity.end_time))
-        self.activity_attributes["duration"][next_activity.name].push(next_activity.duration)
+        self.activity_attributes["end_time"][just_finished_activity.name].push(_get_seconds_since_midnight(just_finished_activity.end_time))
+        self.activity_attributes["duration"][just_finished_activity.name].push(just_finished_activity.duration)
 
     @check_if_tracking
     def track_mixing(self, human1, human2, duration, distance_profile, timestamp, location, interaction_type, contact_condition, global_mbility_factor):
@@ -1851,7 +1889,7 @@ class Tracker(object):
         data['tested_per_day'] = self.tested_per_day
         data['i_per_day'] = self.i_per_day
         data['adoption_rate'] = self.adoption_rate
-        data['lab_test_capacity'] = conf['TEST_TYPES']['lab']['capacity']
+        data['lab_test_capacity'] = conf['PROPORTION_LAB_TEST_PER_DAY']
         data['n_people'] = conf['n_people']
 
         data['humans'] = {}

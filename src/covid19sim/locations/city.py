@@ -74,7 +74,6 @@ class City:
         self.init_fraction_sick = init_fraction_sick
         self.hash = int(time.time_ns())  # real-life time used as hash for inference server data hashing
         self.tracker = Tracker(env, self, conf, logfile)
-        self.prevalence = init_fraction_sick
 
         self.test_type_preference = list(zip(*sorted(conf.get("TEST_TYPES").items(), key=lambda x:x[1]['preference'])))[0]
         assert len(self.test_type_preference) == 1, "WARNING: Do not know how to handle multiple test types"
@@ -469,6 +468,7 @@ class City:
         humans_notified, infections_seeded = False, False
         last_day_idx = 0
         while True:
+            start = time.time()
             current_day = (self.env.timestamp - self.start_time).days
 
             # seed infections and change mixing constants (end of burn-in period)
@@ -521,7 +521,7 @@ class City:
             self.covid_testing_facility.clear_test_queue()
 
             alive_humans = []
-            prevalence = 0
+
             # run non-app-related-stuff for all humans here (test seeking, infectiousness updates)
             for human in self.humans:
                 if not human.is_dead:
@@ -530,9 +530,6 @@ class City:
                     human.check_covid_recovery()
                     human.fill_infectiousness_history_map(current_day)
                     alive_humans.append(human)
-                    if human.state[1] or human.state[2]:
-                        prevalence += 1
-            self.prevalence = prevalence / self.n_people
 
             # now, run app-related stuff (risk assessment, message preparation, ...)
             prev_risk_history_maps, update_messages = self.run_app(current_day, outfile, alive_humans)
@@ -551,7 +548,6 @@ class City:
             # self.tracker.track_locations() # TODO
 
             yield self.env.timeout(int(duration))
-
             # finally, run end-of-day activities (if possible); these include mailbox cleanups, symptom updates, ...
             if current_day != last_day_idx:
                 alive_humans = [human for human in self.humans if not human.is_dead]
@@ -719,7 +715,7 @@ class EmptyCity(City):
 
         self.test_type_preference = list(zip(*sorted(conf.get("TEST_TYPES").items(), key=lambda x:x[1]['preference'])))[0]
         self.max_capacity_per_test_type = {
-            test_type: max([int(conf['TEST_TYPES'][test_type]['capacity'] * self.n_people), 1])
+            test_type: max(int(self.conf['PROPORTION_LAB_TEST_PER_DAY'] * self.n_people), 1)
             for test_type in self.test_type_preference
         }
 

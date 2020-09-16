@@ -3,7 +3,9 @@ Contains utility classes for remote inference inside the simulation.
 """
 
 import datetime
-import h5py
+# import h5py
+import zarr
+import numcodecs
 import json
 import multiprocessing
 import multiprocessing.managers
@@ -37,10 +39,14 @@ expected_processed_packet_param_names = [
 default_poll_delay_ms = 500
 default_data_buffer_size = ((10 * 1024) * 1024)  # 10MB
 
-# if on slurm
-if os.environ.get("COVID19SIM_IPC_PATH", None) is not None:
+if os.environ.get("RAVEN_DIR", None) is not None:
+    # if on MPI-IS cluster (htcondor + raven)
+    backend_path = frontend_path = os.environ.get("RAVEN_DIR")
+elif os.environ.get("COVID19SIM_IPC_PATH", None) is not None:
+    # if custom ipc path provided
     backend_path = frontend_path = os.environ.get("COVID19SIM_IPC_PATH")
 elif os.path.isdir("/Tmp"):
+    # if on slurm
     frontend_path = Path("/Tmp/slurm.{}.0".format(os.environ.get("SLURM_JOB_ID")))
     backend_path = Path("/Tmp/slurm.{}.0".format(os.environ.get("SLURM_JOB_ID")))
 else:
@@ -436,7 +442,6 @@ class DataCollectionWorker(BaseWorker):
             backend_address: typing.AnyStr,
             human_count: int,
             simulation_days: int,
-            encode_deltas: bool = False,
             compression: typing.Optional[typing.AnyStr] = "lzf",
             compression_opts: typing.Optional[typing.Any] = None,
             config_backup: typing.Optional[typing.Dict] = None,
@@ -452,10 +457,13 @@ class DataCollectionWorker(BaseWorker):
         self.data_output_path = data_output_path
         self.human_count = human_count
         self.simulation_days = simulation_days
-        self.encode_deltas = encode_deltas
+        self.config_backup = config_backup
+        self.chunk_size = 20
+        # These are not used anymore!
+        # It's because zarr uses a meta-compressor (Blosc) to figure out which
+        # compressor to use, and it appears to work well.
         self.compression = compression
         self.compression_opts = compression_opts
-        self.config_backup = config_backup
 
     def run(self):
         """Main loop of the data collection worker process.
@@ -471,88 +479,59 @@ class DataCollectionWorker(BaseWorker):
         self.time_counter.value = 0.0
         self.packet_counter.value = 0
         self.running_flag.value = 1
-        print(f"creating hdf5 collection file at: {self.data_output_path}", flush=True)
-        with h5py.File(self.data_output_path, "w") as fd:
+        print(f"creating zarr collection file at: {self.data_output_path}, "
+              f"but ignoring compression flag {self.compression}", flush=True)
+        fd = zarr.open(self.data_output_path, "w")
+        try:
+            fd.attrs["git_hash"] = covid19sim.utils.utils.get_git_revision_hash()
+        except subprocess.CalledProcessError:
+            fd.attrs["git_hash"] = "NO_GIT"
+        fd.attrs["creation_date"] = datetime.datetime.now().isoformat()
+        fd.attrs["creator"] = str(platform.node())
+        config_backup = json.dumps(covid19sim.utils.utils.dumps_conf(self.config_backup)) \
+            if self.config_backup else None
+        fd.attrs["config"] = config_backup
+        dataset = fd.create_dataset(
+            "dataset",
+            shape=(self.simulation_days, 24, self.human_count,),
+            chunks=(None, None, self.chunk_size),
+            dtype=object,
+            object_codec=numcodecs.Pickle(),
+        )
+        is_filled = fd.create_dataset(
+            "is_filled",
+            shape=(self.simulation_days, 24, self.human_count,),
+            dtype=bool,
+            fillvalue=False
+        )
+        total_dataset_bytes = 0
+        sample_idx = 0
+        while not self.stop_flag.is_set():
+            if self.reset_flag.is_set():
+                self.time_counter.value = 0.0
+                self.packet_counter.value = 0
+                self.time_init.value = 0.0
+                self.reset_flag.clear()
             try:
-                fd.attrs["git_hash"] = covid19sim.utils.utils.get_git_revision_hash()
-            except subprocess.CalledProcessError:
-                fd.attrs["git_hash"] = "NO_GIT"
-            fd.attrs["creation_date"] = datetime.datetime.now().isoformat()
-            fd.attrs["creator"] = str(platform.node())
-            config_backup = json.dumps(covid19sim.utils.utils.dumps_conf(self.config_backup)) \
-                if self.config_backup else None
-            fd.attrs["config"] = config_backup
-            dataset = fd.create_dataset(
-                "dataset",
-                shape=(self.simulation_days, 24, self.human_count, ),
-                maxshape=(self.simulation_days, 24, self.human_count, ),
-                dtype=h5py.special_dtype(vlen=np.uint8),
-                compression=self.compression,
-                compression_opts=self.compression_opts,
-            )
-            is_delta = fd.create_dataset(
-                "is_delta",
-                shape=(self.simulation_days, 24, self.human_count,),
-                maxshape=(self.simulation_days, 24, self.human_count,),
-                dtype=bool,
-                fillvalue=False,
-            )
-            is_filled = fd.create_dataset(
-                "is_filled",
-                shape=(self.simulation_days, 24, self.human_count,),
-                dtype=bool,
-                fillvalue=False
-            )
-            total_dataset_bytes = 0
-            sample_idx = 0
-            latest_human_samples = [None] * self.human_count
-            while not self.stop_flag.is_set():
-                if self.reset_flag.is_set():
-                    self.time_counter.value = 0.0
-                    self.packet_counter.value = 0
-                    self.time_init.value = 0.0
-                    self.reset_flag.clear()
-                try:
-                    buffer = socket.recv()
-                except zmq.error.Again:
-                    continue
-                proc_start_time = time.time()
-                day_idx, hour_idx, human_idx, buffer = pickle.loads(buffer)
-                if self.encode_deltas:
-                    if latest_human_samples[human_idx] is not None:
-                        prev_day_idx, prev_hour_idx = latest_human_samples[human_idx][0:2]
-                        if hour_idx == 0:
-                            assert prev_day_idx == day_idx - 1 and prev_hour_idx == 23
-                        else:
-                            assert prev_day_idx == day_idx and prev_hour_idx == hour_idx - 1
-                        prev_buffer = latest_human_samples[human_idx][-1]
-                        delta = xdelta3.encode(prev_buffer, buffer)
-                        try:
-                            # xdelta3-python is pretty 'unfinished' and will sometimes fail to decode...
-                            xdelta3.decode(prev_buffer, delta)
-                            is_delta[day_idx, hour_idx, human_idx] = True
-                        except:
-                            delta = buffer
-                    else:
-                        delta = buffer
-                    latest_human_samples[human_idx] = (day_idx, hour_idx, buffer)
-                    dataset[day_idx, hour_idx, human_idx] = np.frombuffer(delta, dtype=np.uint8)
-                    is_filled[day_idx, hour_idx, human_idx] = True
-                    total_dataset_bytes += len(delta)
-                else:
-                    dataset[day_idx, hour_idx, human_idx] = np.frombuffer(buffer, dtype=np.uint8)
-                    is_filled[day_idx, hour_idx, human_idx] = True
-                    total_dataset_bytes += len(buffer)
-                socket.send(str(sample_idx).encode())
-                sample_idx += 1
-                with self.time_counter.get_lock():
-                    self.time_counter.value += time.time() - proc_start_time
-                with self.packet_counter.get_lock():
-                    self.packet_counter.value += 1
-            self.running_flag.value = 0
-            socket.close()
-            dataset.attrs["total_samples"] = sample_idx
-            dataset.attrs["total_bytes"] = total_dataset_bytes
+                buffer = socket.recv()
+            except zmq.error.Again:
+                continue
+            proc_start_time = time.time()
+            day_idx, hour_idx, human_idx, buffer = pickle.loads(buffer)
+            total_dataset_bytes += len(buffer)
+            # We'll let zarr do the pickling, so we load buffer
+            dataset[day_idx, hour_idx, human_idx] = pickle.loads(buffer)
+            is_filled[day_idx, hour_idx, human_idx] = True
+            socket.send(str(sample_idx).encode())
+            sample_idx += 1
+            with self.time_counter.get_lock():
+                self.time_counter.value += time.time() - proc_start_time
+            with self.packet_counter.get_lock():
+                self.packet_counter.value += 1
+        self.running_flag.value = 0
+        socket.close()
+        dataset.attrs["total_samples"] = sample_idx
+        dataset.attrs["total_bytes"] = total_dataset_bytes
 
 
 class DataCollectionBroker(BaseBroker):
@@ -566,7 +545,6 @@ class DataCollectionBroker(BaseBroker):
             data_buffer_size: int = default_data_buffer_size,  # NOTE: in bytes!
             frontend_address: typing.AnyStr = default_datacollect_frontend_address,
             backend_address: typing.AnyStr = default_datacollect_backend_address,
-            encode_deltas: bool = False,
             compression: typing.Optional[typing.AnyStr] = "lzf",
             compression_opts: typing.Optional[typing.Any] = None,
             verbose: bool = False,
@@ -595,7 +573,6 @@ class DataCollectionBroker(BaseBroker):
         self.human_count = human_count
         self.simulation_days = simulation_days
         self.data_buffer_size = data_buffer_size
-        self.encode_deltas = encode_deltas
         self.compression = compression
         self.compression_opts = compression_opts
         self.config_backup = config_backup
@@ -621,7 +598,6 @@ class DataCollectionBroker(BaseBroker):
             backend_address=worker_backend_address,
             human_count=self.human_count,
             simulation_days=self.simulation_days,
-            encode_deltas=self.encode_deltas,
             compression=self.compression,
             compression_opts=self.compression_opts,
             config_backup=self.config_backup,
@@ -745,6 +721,7 @@ def proc_human_batch(
     """
     assert isinstance(sample, list) and all([isinstance(p, dict) for p in sample])
     ref_timestamp = None
+
     for params in sample:
         human_name = params["human"].name
         timestamp = params["start"] + datetime.timedelta(days=params["current_day"], hours=params["time_slot"])

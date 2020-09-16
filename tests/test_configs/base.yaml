@@ -1,0 +1,53 @@
+# simulation parameters
+n_people: 1000
+init_fraction_sick: 0.001
+seed: 0
+simulation_days: 30
+start_time: "2020-02-28 00:00:00"  # parsed into a datetime object with the following schema: '%Y-%m-%d %H:%M:%S'
+
+# (output) to store final output
+outdir: ./output
+out_chunk_size: null
+
+# (data collection and loggin)
+tune: False
+zip_outdir: False
+delete_outdir: False
+COLLECT_LOGS: True
+COLLECT_TRAINING_DATA: True
+USE_INFERENCE_SERVER: False
+INFERENCE_SERVER_ADDRESS: null
+
+# (tracing) default parameters
+# NOTE: HAS_APP params are only used when an app based INTERVENTION = "Tracing" is used
+APP_UPTAKE: -1.0
+TRACING_N_DAYS_HISTORY: 14
+UPDATES_PER_DAY: 4
+
+# clustering related parameters
+DUMP_CLUSTERS: False
+CLUSTER_ALGO_TYPE: "blind" # should be in ["old", "blind", "naive", "perfect", "simple"]
+
+# all intervention parameters (to be overwritten by specific config files)
+# listed here for the sake of completeness
+# Note: these are used only in their respective configurations
+
+# bdt parameters
+TRACING_ORDER : 0
+TRACE_SYMPTOMS : False
+
+# oracle
+USE_ORACLE: False
+ORACLE_MUL_NOISE: 0.0
+ORACLE_ADD_NOISE: 0.0
+
+# transformer
+TRANSFORMER_EXP_PATH: ""
+CLUSTER_PATH: ""
+
+# common to all
+# (risk mapping) by default, we use a roughly linear interpolation to map the risk values
+# behavior modification
+MAX_RISK_LEVEL: 15 # maximum allowed risk_level => assert risk_level in range(0, MAX_RISK_LEVEL + 1)
+REC_LEVEL_THRESHOLDS: []
+# /!\ risk_mappings has to be defined via command line or config.yaml

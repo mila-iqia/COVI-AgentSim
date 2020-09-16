@@ -15,7 +15,7 @@ n_people: 3000
 simulation_days: 30
 INTERVENTION_DAY: 5
 DROPOUT_RATE: 0.02
-init_percent_sick: 0.01
+init_fraction_sick: 0.01
 tune: true
 
 seed:

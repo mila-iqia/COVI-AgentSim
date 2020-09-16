@@ -3,8 +3,7 @@
 # -------------------------------------
 n_people: 1000
 simulation_days: 22
-# init_percent_sick: 0.002
-test_capacity: 0.02
+# init_fraction_sick: 0.002
 # COLD_CONTAGIOUSNESS: 0.0
 INTERVENTION_DAY: 5
 P_CAREFUL_PERSON: 0.3 # 0.6
@@ -26,7 +25,7 @@ cpus: 4
 infra: beluga
 time: '"2:50:00"'
 weights_dir: /scratch/vsch # where to find weights specified as transformer>RADIANT-RESONANCE-561
-base_dir: /scratch/vsch/covid_sims/plan_bb/validation3 # if outdir is not provided, runs will be stored in base_dir/${tracing_method}
+base_dir: /scratch/vsch/covid_sims/plan_bb/validation3 # if outdir is not provided, runs will be stored in base_dir/${intervention}
 code_loc: /home/vsch/simulator/src/covid19sim
 use_tmpdir: false
 
@@ -34,7 +33,7 @@ use_tmpdir: false
 # -----  Sampling Parametrization  -----
 # --------------------------------------
 
-tracing_method:
+intervention:
   sample: cartesian
   from:
     - oracle>HOPEFUL-STAR-324B # oracle needs weights
