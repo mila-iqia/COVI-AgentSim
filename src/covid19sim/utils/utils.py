@@ -22,6 +22,8 @@ import dill
 import numpy as np
 import requests
 import yaml
+import json
+
 from omegaconf import DictConfig, OmegaConf
 from scipy.stats import norm
 from covid19sim.utils.constants import SECONDS_PER_HOUR, SECONDS_PER_MINUTE, AGE_BIN_WIDTH_5, AGE_BIN_WIDTH_10
@@ -883,3 +885,15 @@ def is_app_based_tracing_intervention(intervention):
         app_required = conf['RISK_MODEL'] != ""
 
     return app_required
+
+
+class NpEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        else:
+            return super(NpEncoder, self).default(obj)
