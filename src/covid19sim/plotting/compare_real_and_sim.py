@@ -10,8 +10,6 @@ import scipy.stats as stats
 quebec_population = 8485000
 csv_path = "path/to/csv"
 sims_dir_path = "path/to/simulations/"
-csv_path = "/mnt/c/Users/aksha/OneDrive - University of Waterloo/Desktop/mila/covi-simulator/src/covid19sim/plotting/qcdata.csv"
-sims_dir_path = "/mnt/c/Users/aksha/OneDrive - University of Waterloo/Desktop/mila/covi-simulator/output/simz/"
 if len(sys.argv) > 1:
     sims_dir_path = sys.argv[1]
 
