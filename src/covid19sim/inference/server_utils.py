@@ -458,7 +458,7 @@ class DataCollectionWorker(BaseWorker):
         self.human_count = human_count
         self.simulation_days = simulation_days
         self.config_backup = config_backup
-        self.chunk_size = 20
+        self.chunk_size = 1
         # These are not used anymore!
         # It's because zarr uses a meta-compressor (Blosc) to figure out which
         # compressor to use, and it appears to work well.
@@ -494,7 +494,7 @@ class DataCollectionWorker(BaseWorker):
         dataset = fd.create_dataset(
             "dataset",
             shape=(self.simulation_days, 24, self.human_count,),
-            chunks=(None, None, self.chunk_size),
+            chunks=(1, 6, None),    # 1 x 6 x human_count
             dtype=object,
             object_codec=numcodecs.Pickle(),
         )

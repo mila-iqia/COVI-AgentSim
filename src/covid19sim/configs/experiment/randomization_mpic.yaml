@@ -16,7 +16,7 @@ run_type: collect-training-data
 track: none
 
 # Candidate for OOD testing
-n_people: 1500
+n_people: 3000
 simulation_days: 50
 
 INTERVENTION_DAY: 0
@@ -51,7 +51,7 @@ ORACLE_ADD_NOISE:
 # Other rando params
 GLOBAL_MOBILITY_SCALING_FACTOR:
   sample: uniform
-  from: [0.6, 1.0]
+  from: [0.3, 0.9]
 
 APP_UPTAKE:
   sample: uniform # uniform in range:
@@ -63,7 +63,7 @@ P_CAREFUL_PERSON:
 
 init_fraction_sick:
   sample: uniform
-  from: [0.003, 0.0065]
+  from: [0.002, 0.006]
 
 P_DROPOUT_SYMPTOM:
   sample: uniform
