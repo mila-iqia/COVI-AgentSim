@@ -191,6 +191,7 @@ class Human(BaseHuman):
         self.healthy_days = 0
         self.num_contacts = 0  # unscaled number of high-risk contacts
         self.intervened_behavior = IntervenedBehavior(self, self.env, self.conf) # keeps track of behavior level of human
+        self.heuristic_reasons = set() # Defined here so that we remember it's an attribute of human (gets re-initialized daily)
 
         """Risk prediction"""
         self.contact_book = ContactBook(tracing_n_days_history=self.conf.get("TRACING_N_DAYS_HISTORY"))  # Used for tracking high-risk contacts (for app-based contact tracing methods)

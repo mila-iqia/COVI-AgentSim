@@ -26,6 +26,8 @@ def get_tracing_method(risk_model, conf):
         return Heuristic(version=2, conf=conf)
     elif risk_model == "heuristicv3":
         return Heuristic(version=3, conf=conf)
+    elif risk_model == "heuristicv4":
+        return Heuristic(version=4, conf=conf)
     elif risk_model == "digital":
         return BinaryDigitalTracing(conf)
     else:
