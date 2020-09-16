@@ -10,6 +10,8 @@ import scipy.stats as stats
 quebec_population = 8485000
 csv_path = "path/to/csv"
 sims_dir_path = "path/to/simulations/"
+csv_path = "/mnt/c/Users/aksha/OneDrive - University of Waterloo/Desktop/mila/covi-simulator/src/covid19sim/plotting/qcdata.csv"
+sims_dir_path = "/mnt/c/Users/aksha/OneDrive - University of Waterloo/Desktop/mila/covi-simulator/output/simz/"
 if len(sys.argv) > 1:
     sims_dir_path = sys.argv[1]
 
@@ -105,10 +107,6 @@ ax.errorbar(sim_dates, avg_sim_cases, yerr=avg_sim_cases.std(axis=0), label="Dia
 # change caption below if using 'total_hospitalizations'
 ax.errorbar(sim_dates, avg_sim_hospitalizations[1:], yerr=avg_sim_hospitalizations.std(axis=0), label="Hospital utilization per day")
 ax.errorbar(sim_dates, avg_sim_deaths, yerr=avg_sim_deaths.std(axis=0), label="Mortalities per day")
-
-ax.plot(sim_dates, avg_sim_cases, label="Diagnoses per day")
-ax.plot(sim_dates, avg_sim_hospitalizations[1:], label="Hospital utilization")
-ax.plot(sim_dates, avg_sim_deaths, label="Mortalities per day")
 
 ax.legend()
 plt.ylabel("Percentage of Population")
