@@ -671,8 +671,8 @@ class Tracker(object):
             self.humans_rec_level[human.name].append(human.rec_level)
             self.humans_intervention_level[human.name].append(human._intervention_level)
 
-        num_humans_in_hospital = sum([len(hospital.patients) for hospital in self.city.hospitals])
-        
+        num_humans_in_hospital = sum([hospital.n_patients for hospital in self.city.hospitals])
+
         # test_per_day
         self.tested_per_day.append(0)
         self.hospitalization_per_day.append(0)
