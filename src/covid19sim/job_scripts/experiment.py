@@ -15,7 +15,7 @@ import yaml
 from omegaconf import DictConfig
 
 from covid19sim.plotting.utils import env_to_path
-from covid19sim.utils.utils import parse_search_configuration, is_app_based_tracing_intervention
+from covid19sim.utils.utils import parse_search_configuration, is_app_based_tracing_intervention, NpEncoder
 
 SAMPLE_KEYS = {"list", "uniform", "range", "cartesian", "sequential", "chain"}
 HYDRA_CONF_PATH = Path(__file__).parent.parent / "configs/exp/config.yaml"
@@ -837,10 +837,7 @@ def main(conf: DictConfig) -> None:
             if not is_app_based_tracing_intervention(opts['intervention']):
                 opts['APP_UPTAKE'] = -1
 
-            if isinstance(opts, dict):
-                opts_str = json.dumps(opts, sort_keys=True)
-            else:
-                opts_str = opts
+            opts_str = json.dumps(opts, sort_keys=True, cls=NpEncoder)
             # set of dictionaries is not possible, so use frozenset instead
             if opts_str in old_opts:
                 print("\n Ran this job already ... skipping!")
