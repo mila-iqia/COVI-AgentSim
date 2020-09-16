@@ -468,6 +468,7 @@ class City:
         humans_notified, infections_seeded = False, False
         last_day_idx = 0
         while True:
+            start = time.time()
             current_day = (self.env.timestamp - self.start_time).days
 
             # seed infections and change mixing constants (end of burn-in period)
@@ -520,6 +521,7 @@ class City:
             self.covid_testing_facility.clear_test_queue()
 
             alive_humans = []
+
             # run non-app-related-stuff for all humans here (test seeking, infectiousness updates)
             for human in self.humans:
                 if not human.is_dead:
@@ -546,7 +548,6 @@ class City:
             # self.tracker.track_locations() # TODO
 
             yield self.env.timeout(int(duration))
-
             # finally, run end-of-day activities (if possible); these include mailbox cleanups, symptom updates, ...
             if current_day != last_day_idx:
                 alive_humans = [human for human in self.humans if not human.is_dead]
