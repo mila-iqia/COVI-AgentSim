@@ -48,7 +48,8 @@ class ReproducibilityTests(unittest.TestCase):
                     )
                     monitors[0].dump()
                     monitors[0].join_iothread()
-
+                    import time
+                    time.sleep(3)
                     with zipfile.ZipFile(f"{outfile}.zip", 'r') as zf:
                         for pkl in zf.namelist():
                             pkl_bytes = zf.read(pkl)
