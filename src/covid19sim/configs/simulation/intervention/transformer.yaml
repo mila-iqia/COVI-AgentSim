@@ -13,10 +13,10 @@ TRACING_ORDER : 1
 MAKE_HOUSEHOLD_BEHAVE_SAME_AS_MAX_RISK_RESIDENT: True
 
 # behavior modification
-risk_mappings: calibrated
+# risk_mappings need to be provided explicity
 MAX_RISK_LEVEL: 15 # maximum allowed risk_level => assert risk_level in range(0, MAX_RISK_LEVEL + 1)
-# (experimental) Uncomment one of these and perform some experiments @nasim @victor
-#REC_LEVEL_THRESHOLDS: [0, 1, 2] # More conservative
+# (experimental) Uncomment one of these and perform some experiments
+REC_LEVEL_THRESHOLDS: [0, 1, 2] # More conservative
 #REC_LEVEL_THRESHOLDS: [0, 0, 1] # Binary
 
 # when to start (overwrite it if needs to be run from other day)
