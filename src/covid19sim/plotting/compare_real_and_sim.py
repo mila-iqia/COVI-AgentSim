@@ -85,7 +85,7 @@ real_hospitalizations = [100 * float(x if str(x) != "nan" else 0) / quebec_popul
 real_deaths = [100 * float(x if str(x) != "nan" else 0) / quebec_population for x in qc_data.loc[34:last_index,'change_fatalities']]
 
 ax.plot(real_dates, real_cases, label="Diagnoses per day")
-ax.plot(real_dates, real_hospitalizations, label="Hospital utilization")
+ax.plot(real_dates, real_hospitalizations, label="Hospital utilization per day")
 ax.plot(real_dates, real_deaths, label="Mortalities per day")
 
 ax.legend()
@@ -103,12 +103,8 @@ avg_sim_cases = np.array(sim_cases[1:])*.1 # adjust for unknown cases
 
 ax.errorbar(sim_dates, avg_sim_cases, yerr=avg_sim_cases.std(axis=0), label="Diagnoses per day")
 # change caption below if using 'total_hospitalizations'
-ax.errorbar(sim_dates, avg_sim_hospitalizations[1:], yerr=avg_sim_hospitalizations.std(axis=0), label="Hospital admissions")
+ax.errorbar(sim_dates, avg_sim_hospitalizations[1:], yerr=avg_sim_hospitalizations.std(axis=0), label="Hospital utilization per day")
 ax.errorbar(sim_dates, avg_sim_deaths, yerr=avg_sim_deaths.std(axis=0), label="Mortalities per day")
-
-ax.plot(sim_dates, avg_sim_cases, label="Diagnoses per day")
-ax.plot(sim_dates, avg_sim_hospitalizations[1:], label="Hospital utilization")
-ax.plot(sim_dates, avg_sim_deaths, label="Mortalities per day")
 
 ax.legend()
 plt.ylabel("Percentage of Population")

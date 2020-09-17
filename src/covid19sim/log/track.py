@@ -694,7 +694,6 @@ class Tracker(object):
         self.r_per_day.append(sum(h.is_removed for h in self.city.humans))
         self.ei_per_day.append(self.e_per_day[-1] + self.i_per_day[-1])
 
-        num_humans_in_hospital = 0
         for human in self.city.humans:
             if human.is_susceptible:
                 state = 'S'
@@ -706,12 +705,12 @@ class Tracker(object):
                 state = 'R'
             else:
                 raise ValueError(f"{human} is not in any of SEIR states")
-            if human.mobility_planner.hospitalization_timestamp is not None:
-                num_humans_in_hospital += 1
             self.humans_quarantined_state[human.name].append(human.intervened_behavior.is_under_quarantine)
             self.humans_state[human.name].append(state)
             self.humans_rec_level[human.name].append(human.rec_level)
             self.humans_intervention_level[human.name].append(human._intervention_level)
+
+        num_humans_in_hospital = sum([hospital.n_patients for hospital in self.city.hospitals])
 
         # test_per_day
         self.tested_per_day.append(0)
