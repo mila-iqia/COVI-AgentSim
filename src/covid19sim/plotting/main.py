@@ -15,7 +15,7 @@ import random
 import covid19sim.plotting.plot_jellybeans as jellybeans
 import covid19sim.plotting.plot_pareto_adoption as pareto_adoption
 import covid19sim.plotting.plot_presymptomatic as presymptomatic
-import covid19sim.plotting.plot_infection_chains as infection_chains
+import covid19sim.plotting.plot_reasons as reasons
 import covid19sim.plotting.make_efficiency_table as efficiency
 import covid19sim.plotting.plot_generation_time as generation_time
 import covid19sim.plotting.plot_epi_table as epi_table
@@ -139,6 +139,7 @@ def main(conf):
     all_plots = {
         "pareto_adoption": pareto_adoption,
         "jellybeans": jellybeans,
+        "reasons": reasons,
         "presymptomatic": presymptomatic,
         "efficiency": efficiency,
         "generation_time": generation_time,
@@ -229,6 +230,8 @@ def main(conf):
         )
     if "presymptomatic" in plots:
         keep_pkl_keys.update(["human_monitor"])
+    if "reasons" in plots:
+        keep_pkl_keys.update(["risk_attributes"])
     if "generation_time" in plots:
         keep_pkl_keys.update(["infection_monitor"])
     if "epi_table" in plots:
