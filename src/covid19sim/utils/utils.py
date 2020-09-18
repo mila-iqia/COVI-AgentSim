@@ -878,3 +878,17 @@ def is_app_based_tracing_intervention(intervention):
         app_required = conf['RISK_MODEL'] != ""
 
     return app_required
+
+class NpEncoder(json.JSONEncoder):
+    """
+    Class to convert `obj` into json encodable objects.
+    """
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        else:
+            return super(NpEncoder, self).default(obj)
