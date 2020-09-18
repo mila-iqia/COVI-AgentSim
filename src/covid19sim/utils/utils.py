@@ -22,6 +22,7 @@ import dill
 import numpy as np
 import requests
 import yaml
+import json
 from omegaconf import DictConfig, OmegaConf
 from scipy.stats import norm
 from covid19sim.utils.constants import SECONDS_PER_HOUR, SECONDS_PER_MINUTE, AGE_BIN_WIDTH_5, AGE_BIN_WIDTH_10
