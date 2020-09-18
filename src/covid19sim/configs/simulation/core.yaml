@@ -406,7 +406,7 @@ TEST_TYPES: {
 # /!\ (verbal-communication) Epidemiologists suggested these probabilities from their experience
 # A success on below is also used as a positive self-diagnosis
 P_TEST_SEVERE_OR_SUSPICIOUS: 0.75
-P_TEST_OTHER_REASON: 0.05
+P_TEST_OTHER_REASON: 0.0005
 
 # /!\ (no-source) for scoring to triage who gets a test
 P_TEST_SEVERE: 0.80
