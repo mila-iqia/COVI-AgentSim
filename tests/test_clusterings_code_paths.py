@@ -65,7 +65,7 @@ class ClusteringCodePaths(unittest.TestCase):
                     collection_server.stop_gracefully()
                     collection_server.join()
                     import time
-                    time.sleep(5)
+                    time.sleep(15)
                     assert os.path.exists(hdf5file)
 
                     with zipfile.ZipFile(f"{outfile}.zip", 'r') as zf:
