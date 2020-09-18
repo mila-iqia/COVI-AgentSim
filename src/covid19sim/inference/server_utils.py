@@ -506,9 +506,8 @@ class DataCollectionWorker(BaseWorker):
         total_dataset_bytes = 0
         sample_idx = 0
         current_day = 0
-        dataset_cache_factory = lambda: zarr.create(shape=(24, self.human_count),
-                                                    dtype=object, object_codec=numcodecs.Pickle(),
-                                                    compressor=None, chunks=False)
+        dataset_cache_factory = lambda: np.zeros(shape=(24, self.human_count),
+                                                 dtype=object)
         is_filled_cache_factory = lambda: np.zeros(shape=(24, self.human_count), dtype=bool)
         dataset_cache = dataset_cache_factory()
         is_filled_cache = is_filled_cache_factory()
