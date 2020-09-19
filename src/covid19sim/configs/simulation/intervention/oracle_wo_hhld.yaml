@@ -1,0 +1,28 @@
+# risk model
+RISK_MODEL : "transformer"
+USE_ORACLE: True
+
+# Noise
+ORACLE_MUL_NOISE: 0.0
+ORACLE_ADD_NOISE: 0.0
+
+# behavior level specifications
+N_BEHAVIOR_LEVELS: 4
+SHOULD_MODIFY_BEHAVIOR : True
+
+# tracing parameters (not used in oracle)
+TRACING_ORDER : 1
+
+# behavior modification
+# risk_mappings: uniform
+
+# household members
+MAKE_HOUSEHOLD_BEHAVE_SAME_AS_MAX_RISK_RESIDENT: False
+
+# when to start (overwrite it if needs to be run from other day)
+INTERVENTION_DAY: 0
+
+# EXPERIMENTAL PARAMETERS
+COLLECT_LOGS: False
+COLLECT_TRAINING_DATA: False
+USE_INFERENCE_SERVER: False

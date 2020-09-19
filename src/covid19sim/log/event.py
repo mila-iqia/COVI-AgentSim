@@ -260,7 +260,7 @@ class Event:
         """
         Adds an event to a human's `events` list if COLLECT_LOGS is True.
         Events contains the test resuts time, reported_test_result,
-        reported_test_type, test_result_validated, test_type, test_result
+        reported_test_type, test_type, test_result
         split across observed and unobserved data.
 
         Args:
@@ -278,7 +278,6 @@ class Event:
                         'observed':{
                             'result': human.reported_test_result,
                             'test_type':human.reported_test_type,
-                            'validated_test_result':human.test_result_validated
                         },
                         'unobserved':{
                             'test_type':human.test_type,

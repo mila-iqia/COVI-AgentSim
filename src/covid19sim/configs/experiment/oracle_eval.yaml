@@ -11,24 +11,29 @@
 #                  => {A:1, B: y}, {A:1, B: z}, {A:2, B: y}, {A:2, B: z}, {A:1, B: y}
 # - `sequential` samples will loop through the values in `from`. `from` MUST be a list
 
-tracing_method: transformer
+intervention: oracle
 n_people: 1000
 simulation_days: 30
 INTERVENTION_DAY: 5
-init_percent_sick: 0.002
+APP_UPTAKE: 1.
+init_fraction_sick: 0.005
 DROPOUT_RATE: 0.02
-P_CAREFUL_PERSON: 0.3
+P_CAREFUL_PERSON: 0.5
 GLOBAL_MOBILITY_SCALING_FACTOR: 1
 tune: true
 
-APP_UPTAKE: # for sole reproducibility purposes
-  sample: cartesian # loop through list sequentially, in order
-  from:   # Ad. Rate
-    - 0.1 # 0.071203
-    - 0.3 # 0.213609
-    - 0.5 # 0.356015
-    - 0.7 # 0.49842099999999995
-    - 1   # 0.71203
+n_search: -1.
+
+ORACLE_NOISE:
+  sample: cartesian
+  from:
+    - 0.0
+    - 0.01
+    - 0.05
+    - 0.10
+    - 0.20
+    - 0.50
+    - 0.99
 
 seed: # for sole reproducibility purposes
   sample: cartesian # loop through list sequentially, in order

@@ -463,9 +463,9 @@ class MobilityPlanner(object):
                     raise NotImplementedError(f"There is no house available to supervise {self.human}")
                 #
                 log(f"Transferring {self.human} to {household} because no adult at {self.human.household} is alive. Current residents at {household}: {household.residents}", self.human.city.logfile)
-                self.human.household.residents.remove(self.human)
+                index_case_history = self.human.household.remove_resident(self.human)
                 self.human.assign_household(household)
-                household.residents.append(self.human)
+                household.add_resident(self.human, index_case_history)
                 #
                 MAX_AGE_CHILDREN_WITHOUT_SUPERVISION = self.conf['MAX_AGE_CHILDREN_WITHOUT_PARENT_SUPERVISION']
                 self.adults_in_house = [h for h in self.human.household.residents if h.age > MAX_AGE_CHILDREN_WITHOUT_SUPERVISION]
@@ -537,6 +537,9 @@ class MobilityPlanner(object):
             # print(self.human,  "is dead because never recovers", activity)
             return activity
 
+        #
+        self.human.intervened_behavior.quarantine.reset_if_its_time()
+
         # (a) set back to normal routine if self.human was hospitalized
         # (b) if human is still recovering in hospital then return the activity as it is because these were determined at the time when hospitalization occured
         # Note 1: after recovery from hospitalization, infection_timestamp will always be None
@@ -566,7 +569,7 @@ class MobilityPlanner(object):
         AVERAGE_TIME_DEATH_IF_CRITICAL = self.conf['AVERAGE_DAYS_DEATH_IF_CRITICAL']
 
         # hospitalization related checks
-        # Note: because of the wide vairance we have used averages only
+        # Note: because of the wide variance we have used averages only
         # TODO - P - Find out which distribution these parameters belong to.
         # 1. hospitalized given symptoms
         if (
@@ -638,7 +641,7 @@ class MobilityPlanner(object):
                 return activity
 
             # if kid is quarantined
-            if kid.intervened_behavior.is_quarantined():
+            if kid.intervened_behavior.is_quarantining():
                 location = kid.household
                 reason = "inverted-supervision-quarantined"
                 activity.cancel_and_go_to_location(reason=reason, location=location)
@@ -717,8 +720,8 @@ class MobilityPlanner(object):
         """
         # Quarantine / Max behavior restriction
         # (assumption) only the last level changes the mobility pattern i.e. network presence of humans
-        if self.human.intervened_behavior.is_quarantined():
-            reason = self.human.intervened_behavior.quarantine_reason
+        if self.human.intervened_behavior.is_quarantining():
+            reason = self.human.intervened_behavior.current_behavior_reason[-1]
             activity.cancel_and_go_to_location(reason=f"quarantine-{reason}", location=self.human.household)
             return activity, True
 
@@ -1481,7 +1484,7 @@ def _can_accept_invite(today, mobility_planner):
         return False
 
     # intervention related checks
-    if mobility_planner.human.intervened_behavior.is_quarantined():
+    if mobility_planner.human.intervened_behavior.is_quarantining():
         return False
 
     return True

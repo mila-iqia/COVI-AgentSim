@@ -23,18 +23,31 @@ INFERENCE_SERVER_ADDRESS: null
 APP_UPTAKE: -1.0
 TRACING_N_DAYS_HISTORY: 14
 UPDATES_PER_DAY: 4
-# (risk mapping) by default, we use a roughly linear interpolation to map the risk values
-RISK_MAPPING: [
-  0.    , 0.0625, 0.125 , 0.1875, 0.25  , 0.3125, 0.375 , 0.4375,
-  0.5   , 0.5625, 0.625 , 0.6875, 0.75  , 0.8125, 0.875 , 0.9375,
-  1.    , 1.0625,
-]
-
-# (behavior modification)
-REC_LEVEL_THRESHOLDS: [1, 3, 5]
-MAX_RISK_LEVEL: 15
-
 
 # clustering related parameters
 DUMP_CLUSTERS: False
 CLUSTER_ALGO_TYPE: "blind" # should be in ["old", "blind", "naive", "perfect", "simple"]
+
+# all intervention parameters (to be overwritten by specific config files)
+# listed here for the sake of completeness
+# Note: these are used only in their respective configurations
+
+# bdt parameters
+TRACING_ORDER : 0
+TRACE_SYMPTOMS : False
+
+# oracle
+USE_ORACLE: False
+ORACLE_MUL_NOISE: 0.0
+ORACLE_ADD_NOISE: 0.0
+
+# transformer
+TRANSFORMER_EXP_PATH: ""
+CLUSTER_PATH: ""
+
+# common to all
+# (risk mapping) by default, we use a roughly linear interpolation to map the risk values
+# behavior modification
+MAX_RISK_LEVEL: 15 # maximum allowed risk_level => assert risk_level in range(0, MAX_RISK_LEVEL + 1)
+REC_LEVEL_THRESHOLDS: []
+# /!\ risk_mappings has to be defined via command line or config.yaml

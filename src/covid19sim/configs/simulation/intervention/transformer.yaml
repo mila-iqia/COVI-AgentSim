@@ -4,14 +4,16 @@ USE_ORACLE: False
 
 # behavior level specifications
 N_BEHAVIOR_LEVELS: 4
-INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS: True
 SHOULD_MODIFY_BEHAVIOR : True
 
 # tracing parameters (not used in transformer)
 TRACING_ORDER : 1
 
+# household members
+MAKE_HOUSEHOLD_BEHAVE_SAME_AS_MAX_RISK_RESIDENT: True
+
 # behavior modification
-REC_LEVEL_THRESHOLDS: [1, 3, 5]
+risk_mappings: calibrated
 MAX_RISK_LEVEL: 15 # maximum allowed risk_level => assert risk_level in range(0, MAX_RISK_LEVEL + 1)
 # (experimental) Uncomment one of these and perform some experiments @nasim @victor
 #REC_LEVEL_THRESHOLDS: [0, 1, 2] # More conservative
@@ -28,24 +30,3 @@ USE_INFERENCE_SERVER: False
 # TWILIGHT-RAIN-696
 TRANSFORMER_EXP_PATH: "https://drive.google.com/file/d/1kXA-0juviQOL0R08YlQpaS5gKumQ8zrT"
 CLUSTER_PATH: "output/clusters"
-
-RISK_MAPPING:
-  [
-    0.0,
-    0.010190361,
-    0.022800818,
-    0.033924844,
-    0.044960417,
-    0.0564146,
-    0.069076724,
-    0.08331901,
-    0.09839013,
-    0.115344636,
-    0.13295256,
-    0.15386948,
-    0.1748018,
-    0.19909734,
-    0.22582635,
-    0.26276696,
-    1.0,
-  ]

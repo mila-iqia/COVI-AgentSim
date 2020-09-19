@@ -1,6 +1,6 @@
 
 n_people: 1000
-tracing_method: oracle
+intervention: oracle
 simulation_days: 30
 INTERVENTION_DAY: 5
 run_type: collect-all

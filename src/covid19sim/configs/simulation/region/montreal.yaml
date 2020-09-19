@@ -402,13 +402,14 @@ AVERAGE_TIME_SPENT_EXERCISING: 0.4 # hours
 
 # How much time do people spend on work? Quebec data
 # ref: https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=4510001401&pickMembers%5B0%5D=1.3&pickMembers%5B1%5D=3.1&pickMembers%5B2%5D=4.1&pickMembers%5B3%5D=5.1
-#  Table  45-10-0014-01   Daily average time spent in hours on various activities by age group and sex, 15 years and over, Canada and provinces
-AVERAGE_TIME_SPENT_WORK: 8 # hours
+#  Table  45-10-0014-01   Daily average time spent in hours on various activities by age group and sex, 25 - 54 years , Canada and provinces
+AVERAGE_TIME_SPENT_WORK: 4.9 # hours
 
 # *************** NOTE: OVERWRITTEN ********************
 # to get substantial interactions in the random networks we increase the duration
 AVERAGE_TIME_SPENT_SOCIALIZING: 2.0 # hours
 AVERAGE_TIME_SPENT_EXERCISING: 1.0 # hours
+# AVERAGE_TIME_SPENT_WORK: 8 # hours
 # *************** ***************** ********************
 
 # *********************** Overwrite P_AGE_SOLO_DWELLERS_GIVEN_HOUSESIZE_1 because a more accurate datasource is available ***********************

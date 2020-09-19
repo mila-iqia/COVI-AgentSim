@@ -48,7 +48,8 @@ def _get_intervention_string(conf):
 
     risk_model = conf['RISK_MODEL']
     n_behavior_levels = conf['N_BEHAVIOR_LEVELS']
-    type_of_run = f"{risk_model} | N_BEHAVIOR_LEVELS:{n_behavior_levels} |"
+    hhld_behavior = conf['MAKE_HOUSEHOLD_BEHAVE_SAME_AS_MAX_RISK_RESIDENT']
+    type_of_run = f"{risk_model} | HHLD_BEHAVIOR_SAME_AS_MAX_RISK_RESIDENT: {hhld_behavior} | N_BEHAVIOR_LEVELS:{n_behavior_levels} |"
     if risk_model == "digital":
         type_of_run += f" N_LEVELS_USED: 2 (1st and last) |"
         type_of_run += f" TRACING_ORDER:{conf['TRACING_ORDER']} |"
@@ -67,7 +68,7 @@ def _get_intervention_string(conf):
         type_of_run += f"\n RISK_MAPPING: {conf['RISK_MAPPING']}"
         return type_of_run
 
-    if risk_model in ['heuristicv1', 'heuristicv2', 'heuristicv3']:
+    if risk_model in ['heuristicv1', 'heuristicv2', 'heuristicv3', 'heuristicv4']:
         type_of_run += f" N_LEVELS_USED: {n_behavior_levels} |"
         type_of_run += f" INTERPOLATE_USING_LOCKDOWN_CONTACTS:{conf['INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS']} |"
         type_of_run += f" MAX_RISK_LEVEL: {conf['MAX_RISK_LEVEL']} |"
@@ -133,6 +134,8 @@ def main(conf: DictConfig):
     # correctness of configuration file
     assert not conf['RISK_MODEL'] != "" or conf['INTERVENTION_DAY'] >= 0, "risk model is given, but no intervnetion day specified"
     assert conf['N_BEHAVIOR_LEVELS'] >= 2, "At least 2 behavior levels are required to model behavior changes"
+    if conf['TRACE_SYMPTOMS']:
+        warnings.warn("TRACE_SYMPTOMS: True hasn't been implemented. It will have no affect.")
 
     log(f"RISK_MODEL = {conf['RISK_MODEL']}", logfile)
     log(f"INTERVENTION_DAY = {conf['INTERVENTION_DAY']}", logfile)
@@ -142,6 +145,17 @@ def main(conf: DictConfig):
     type_of_run = _get_intervention_string(conf)
     conf['INTERVENTION'] = type_of_run
     log(f"Type of run: {type_of_run}", logfile)
+    if conf['COLLECT_TRAINING_DATA']:
+        data_output_path = os.path.join(conf["outdir"], "train.zarr")
+        collection_server = DataCollectionServer(
+            data_output_path=data_output_path,
+            config_backup=conf,
+            human_count=conf['n_people'],
+            simulation_days=conf['simulation_days'],
+        )
+        collection_server.start()
+    else:
+        collection_server = None
 
     conf["outfile"] = outfile
     city, monitors, tracker = simulate(
@@ -194,6 +208,17 @@ def main(conf: DictConfig):
         filename = f"tracker_data_n_{conf['n_people']}_seed_{conf['seed']}_{timenow}.pkl"
         data = extract_tracker_data(tracker, conf)
         dump_tracker_data(data, conf["outdir"], filename)
+    # Shutdown the data collection server if one's running
+    if collection_server is not None:
+        collection_server.stop_gracefully()
+        collection_server.join()
+        # Remove the IPCs if they were stored somewhere custom
+        if os.environ.get("COVID19SIM_IPC_PATH", None) is not None:
+            print("<<<<<<<< Cleaning Up >>>>>>>>")
+            for file in Path(os.environ.get("COVID19SIM_IPC_PATH")).iterdir():
+                if file.name.endswith(".ipc"):
+                    print(f"Removing {str(file)}...")
+                    os.remove(str(file))
     return conf
 
 
