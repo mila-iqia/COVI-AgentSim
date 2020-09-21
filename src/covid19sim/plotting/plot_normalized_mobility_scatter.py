@@ -108,7 +108,7 @@ def _get_interpolation_kind(xmetric, ymetric):
         return _linear
     return _linear
 
-def _filter_out_irrelevant_method(xmetric, ymetric, method):
+def _filter_out_irrelevant_method(xmetric, ymetric, method, results=None):
     """
     Checks whether `xmetric` and `ymetric` are suitable to be plotted for `method`.
     if any metric is specific to app-based methods, filter out non-app based method
@@ -117,6 +117,7 @@ def _filter_out_irrelevant_method(xmetric, ymetric, method):
         xmetric (str): one of `METRICS`
         ymetric (str): one of `METRICS`
         method (str): method for which validity is to be checked
+        results (pd.DataFrame, optional): Dataframe with rows as methods and corresponding simulation metrics. Only `app_based` column is used.
 
     Returns:
         (bool): True if `method` is not suitable to be plotted for `xmetric` and `ymetric` comparison
@@ -124,11 +125,18 @@ def _filter_out_irrelevant_method(xmetric, ymetric, method):
     assert xmetric != ymetric, "x and y can't be same"
     assert xmetric in METRICS and ymetric in METRICS, f"unknown metrics - xmetric: {xmetric} or ymetric:{ymetric}. Expected one of {METRICS}"
 
+    if results:
+        is_app_based = results[results['method'] == method]['app_based'].unique()
+        assert len(is_app_based) == 1, "Same method is expected to be app based and non app based. This can't happen!"
+        is_app_based = is_app_based.item()
+    else:
+        is_app_based = is_app_based_tracing_intervention(method)
+
     metrics = [xmetric, ymetric]
     # if any metric is specific to app-based methods, filter out non-app based method
     if (
         sum(metric in ["false_quarantine", "false_sr", "fraction_false_non_risky","fraction_false_risky" ] for metric in metrics) > 0
-        and not is_app_based_tracing_intervention(method)
+        and not is_app_based
     ):
         return True
 
@@ -213,7 +221,7 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
     fitted_fns, inverse_fitted_fns, fitting_stats = {}, {}, {}
     color_maps = {}
     for i, method in enumerate(methods):
-        if _filter_out_irrelevant_method(xmetric, ymetric, method):
+        if _filter_out_irrelevant_method(xmetric, ymetric, method, results):
             continue
 
         # function fitting
@@ -334,11 +342,12 @@ def _extract_data(simulation_runs, method):
     all_data = []
     for simname, sim in simulation_runs.items():
         data = sim['pkl']
+        intervention_name = get_base_intervention(sim['conf'])
         mobility_factor = sim['conf']['GLOBAL_MOBILITY_SCALING_FACTOR']
-        row =  [method, simname, mobility_factor] + _extract_metrics(data)
+        row =  [method, simname, mobility_factor, is_app_based_tracing_intervention(sim['conf'])] + _extract_metrics(data)
         all_data.append(row)
 
-    columns = ['method', 'dir', 'mobility_factor'] + METRICS
+    columns = ['method', 'dir', 'mobility_factor', 'app_based'] + METRICS
     return pd.DataFrame(all_data, columns=columns)
 
 def save_relevant_csv_files(results, uptake_rate, path):

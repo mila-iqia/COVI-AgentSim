@@ -1,3 +1,6 @@
+# name of this configuration file
+INTERVENTION_NAME: "bdt1_wo_hhld"
+
 # risk model
 RISK_MODEL : "digital"
 

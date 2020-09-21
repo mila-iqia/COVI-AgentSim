@@ -9,6 +9,7 @@ from scipy.interpolate import interp1d
 
 import matplotlib.pyplot as plt
 
+# base colors for each method
 COLOR_MAP = {
     "bdt1": "mediumvioletred",
     "post-lockdown-no-tracing": "#34495e",
@@ -18,7 +19,6 @@ COLOR_MAP = {
     "oracle": "green"
 }
 COLORS = ["#34495e",  "mediumvioletred", "orangered", "royalblue", "darkorange", "green", "red"]
-
 
 def get_color(idx=None, method=None):
     """
@@ -218,8 +218,7 @@ def get_intervention_label(intervention):
     """
     assert type(intervention) == str, f"improper intervention type: {type(intervention)}"
 
-    without_hhld = "wo_hhld" in intervention
-    without_hhld_string = "" if without_hhld else ""
+    without_hhld_string = " wo hhld" if "wo_hhld" in intervention else ""
     base_method = intervention.replace("_wo_hhld", "")
     if base_method == "bdt1":
         return "Binary Digital Tracing" + without_hhld_string
@@ -241,3 +240,41 @@ def get_intervention_label(intervention):
         return "Transformer" + without_hhld_string
 
     raise ValueError(f"Unknown raw intervention name: {intervention}")
+
+def get_base_intervention(intervention_conf):
+    """
+    Maps `conf` to the configuration filename in `configs/simulation/intervention/` folder.
+
+    Args:
+        intervention_conf (dict): an experimental configuration.
+
+    Returns:
+        (str): filename in `configs/simulation/intervention/` folder.
+    """
+
+    # this key is added later
+    if "INTERVENTION_NAME" in intervention_conf:
+        return intervention_conf['INTERVENTION_NAME']
+
+    # for old runs, base_intervention needs to be inferred.
+    if intervention_conf['RISK_MODEL'] == "":
+        if conf['N_BEHAVIOR_LEVELS'] > 2:
+            return "post-lockdown-no-tracing"
+
+        if conf['INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS']:
+            return "lockdown"
+
+        return "no_intervention"
+
+    risk_model = intervention_conf['RISK_MODEL']
+    hhld_behavior = intervention_conf['MAKE_HOUSEHOLD_BEHAVE_SAME_AS_MAX_RISK_RESIDENT']
+
+    if risk_model == "digital":
+        order = intervention_conf['TRACING_ORDER']
+        x = f"bdt{order}"
+    else:
+        x = f"{risk_model}"
+
+    if hhld_behavior:
+        return f"{x}"
+    return f"{x}_wo_hhld"
