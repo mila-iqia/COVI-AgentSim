@@ -727,8 +727,13 @@ def split_methods_and_check_validity(data):
         other_methods (list): each element is a name of intervention that doesn't require an app
         uptake_keys (list): each element is a value of APP_UPTAKE. Applicable only for app_based_methods
     """
+    def _get_any_conf_in_method(method_dict):
+        uptake = next(iter(method_dict.keys()))
+        sim = next(iter(method_dict[uptake].keys()))
+        return method_dict[uptake][sim]['conf']
+
     methods = list(data.keys())
-    app_based_methods = [x for x in methods if is_app_based_tracing_intervention(x)]
+    app_based_methods = [x for x in methods if is_app_based_tracing_intervention(x, _get_any_conf_in_method(data[x]))]
     other_methods = list(set(methods) - set(app_based_methods))
 
     uptake_keys = [list(data[x].keys()) for x in app_based_methods]
