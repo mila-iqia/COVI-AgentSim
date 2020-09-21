@@ -15,7 +15,7 @@ from covid19sim.plotting.utils import get_proxy_r, split_methods_and_check_valid
 from covid19sim.plotting.extract_tracker_metrics import _daily_false_quarantine, _daily_false_susceptible_recovered, _daily_fraction_risky_classified_as_non_risky, \
                                 _daily_fraction_non_risky_classified_as_risky, _daily_fraction_quarantine
 from covid19sim.plotting.extract_tracker_metrics import _mean_effective_contacts, _mean_healthy_effective_contacts, _percentage_total_infected, _positivity_rate
-from covid19sim.plotting.matplotlib_utils import add_bells_and_whistles, save_figure, get_color, get_adoption_rate_label_from_app_uptake, get_intervention_label, plot_mean_and_stderr_bands
+from covid19sim.plotting.matplotlib_utils import add_bells_and_whistles, save_figure, get_color, get_adoption_rate_label_from_app_uptake, get_intervention_label, plot_mean_and_stderr_bands, get_base_intervention
 from covid19sim.plotting.curve_fitting import _linear, get_fitted_fn, get_offset_and_stddev_from_random_draws, get_offset_and_stddev_analytical, get_stderr_of_fitted_fn_analytical
 
 TITLESIZE = 25
@@ -108,7 +108,7 @@ def _get_interpolation_kind(xmetric, ymetric):
         return _linear
     return _linear
 
-def _filter_out_irrelevant_method(xmetric, ymetric, method, results=None):
+def _filter_out_irrelevant_method(xmetric, ymetric, method, results):
     """
     Checks whether `xmetric` and `ymetric` are suitable to be plotted for `method`.
     if any metric is specific to app-based methods, filter out non-app based method
@@ -117,7 +117,7 @@ def _filter_out_irrelevant_method(xmetric, ymetric, method, results=None):
         xmetric (str): one of `METRICS`
         ymetric (str): one of `METRICS`
         method (str): method for which validity is to be checked
-        results (pd.DataFrame, optional): Dataframe with rows as methods and corresponding simulation metrics. Only `app_based` column is used.
+        results (pd.DataFrame): Dataframe with rows as methods and corresponding simulation metrics. Only `app_based` column is used.
 
     Returns:
         (bool): True if `method` is not suitable to be plotted for `xmetric` and `ymetric` comparison
@@ -125,12 +125,9 @@ def _filter_out_irrelevant_method(xmetric, ymetric, method, results=None):
     assert xmetric != ymetric, "x and y can't be same"
     assert xmetric in METRICS and ymetric in METRICS, f"unknown metrics - xmetric: {xmetric} or ymetric:{ymetric}. Expected one of {METRICS}"
 
-    if results:
-        is_app_based = results[results['method'] == method]['app_based'].unique()
-        assert len(is_app_based) == 1, "Same method is expected to be app based and non app based. This can't happen!"
-        is_app_based = is_app_based.item()
-    else:
-        is_app_based = is_app_based_tracing_intervention(method)
+    is_app_based = results[results['method'] == method]['app_based'].unique()
+    assert len(is_app_based) == 1, "Same method is expected to be app based and non app based. This can't happen!"
+    is_app_based = is_app_based.item()
 
     metrics = [xmetric, ymetric]
     # if any metric is specific to app-based methods, filter out non-app based method
@@ -234,10 +231,11 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
         inverse_fitted_fns[method] = fn_handle_inverse
         fitting_stats[method] = {'res': res, 'parameters': parameters[0], 'stddev_parameters': parameters[1], 'covariance': parameters[2]}
 
-        method_label = get_intervention_label(method)
+        base_intervention_name = results[selector]['intervention_conf_name'].unique().item()
+        method_label = get_intervention_label(method, base_intervention_name)
         if display_r_squared:
             method_label = f"{method_label} ($r^2 = {r_squared: 0.3f}$)"
-        color = get_color(method=method)
+        color = get_color(method=method) # ?
         color_maps[method] = color
 
         #
@@ -344,10 +342,10 @@ def _extract_data(simulation_runs, method):
         data = sim['pkl']
         intervention_name = get_base_intervention(sim['conf'])
         mobility_factor = sim['conf']['GLOBAL_MOBILITY_SCALING_FACTOR']
-        row =  [method, simname, mobility_factor, is_app_based_tracing_intervention(sim['conf'])] + _extract_metrics(data)
+        row =  [method, simname, mobility_factor, intervention_name, is_app_based_tracing_intervention(intervention_conf=sim['conf'])] + _extract_metrics(data)
         all_data.append(row)
 
-    columns = ['method', 'dir', 'mobility_factor', 'app_based'] + METRICS
+    columns = ['method', 'dir', 'mobility_factor', 'intervention_conf_name','app_based'] + METRICS
     return pd.DataFrame(all_data, columns=columns)
 
 def save_relevant_csv_files(results, uptake_rate, path):
