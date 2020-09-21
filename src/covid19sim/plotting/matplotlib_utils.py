@@ -206,20 +206,25 @@ def get_adoption_rate_label_from_app_uptake(uptake):
     if uptake == 0.4215:
      return "30"
 
-def get_intervention_label(intervention):
+def get_intervention_label(method_name, base_intervention_name):
     """
-    Maps raw intervention name to a readable name.
+    Maps raw method name to a readable name.
 
     Args:
-        intervention (str): raw intervention name
+        method_name (str): name of the folder in the experiments.
+        base_intervention_name (str): filename in `configs/simulation/intervention/` folder.
 
     Returns:
         (str): a readable name for the intervention
     """
-    assert type(intervention) == str, f"improper intervention type: {type(intervention)}"
+    assert type(method_name) == str, f"improper intervention type: {type(intervention)}"
 
-    without_hhld_string = " wo hhld" if "wo_hhld" in intervention else ""
-    base_method = intervention.replace("_wo_hhld", "")
+    # when experimental runs are named something else other than the intervention config filename
+    if base_intervention_name != method_name:
+        return method_name.upper()
+
+    without_hhld_string = " wo hhld" if "wo_hhld" in method_name else ""
+    base_method = method_name.replace("_wo_hhld", "")
     if base_method == "bdt1":
         return "Binary Digital Tracing" + without_hhld_string
 
@@ -233,10 +238,10 @@ def get_intervention_label(intervention):
         return "Oracle" + without_hhld_string
 
     if "heuristic" in base_method:
-        version = intervention.replace("heuristic", "")
+        version = method_name.replace("heuristic", "")
         return f"Heuristic{version}" + without_hhld_string
 
-    if base_method == "transformer":
+    if "transformer" in base_method:
         return "Transformer" + without_hhld_string
 
     raise ValueError(f"Unknown raw intervention name: {intervention}")
@@ -256,7 +261,7 @@ def get_base_intervention(intervention_conf):
     if "INTERVENTION_NAME" in intervention_conf:
         return intervention_conf['INTERVENTION_NAME']
 
-    # for old runs, base_intervention needs to be inferred.
+    # for old runs, base_intervention needs to be inferred from the conf parameters.
     if intervention_conf['RISK_MODEL'] == "":
         if conf['N_BEHAVIOR_LEVELS'] > 2:
             return "post-lockdown-no-tracing"
