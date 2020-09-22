@@ -2,6 +2,7 @@
 Plots a scatter plot showing trade-off between metrics of different simulations across varying mobility.
 """
 import os
+import yaml
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -201,6 +202,7 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
         plot_residuals (bool): If True, plot a scatter plot of residuals at the bottom.
         display_r_squared (bool): If True, show R-squared value in the legend.
         annotate_advantages (bool): if True, annotates the plot with advantages
+        plot_scatter (bool): if True, plots scatter points corresponding to each experiment.
     """
     assert xmetric in METRICS and ymetric in METRICS, f"Unknown metrics: {xmetric} or {ymetric}. Expected one of {METRICS}."
     TICKGAP=2
@@ -210,6 +212,13 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
     labelmap = get_labelmap(methods_and_base_confs, path)
     colormap = get_colormap(methods_and_base_confs, path)
     INTERPOLATION_KIND = _get_interpolation_kind(xmetric, ymetric)
+
+    # find if only specific folders need to be plotted
+    plot_these_methods = {}
+    include_methods = Path(path).resolve() / "PLOT_THESE_METHODS.yaml"
+    if include_methods.exists():
+        with open(str(include_methods), "rb") as f:
+            plot_these_methods = yaml.safe_load(f)
 
     # set up subplot grid
     fig = plt.figure(num=1, figsize=(15,10), dpi=100)
@@ -222,6 +231,14 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
 
     fitted_fns, inverse_fitted_fns, fitting_stats = {}, {}, {}
     for i, method in enumerate(methods):
+        # to include only certain methods to avoid busy plots
+        if (
+            len(plot_these_methods) > 0
+            and method not in plot_these_methods
+        ):
+            continue
+
+        #
         if _filter_out_irrelevant_method(xmetric, ymetric, method, results):
             continue
 
@@ -316,7 +333,7 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
     filename += "_w_residuals" if plot_residuals else ""
     filename += "_w_annotations" if annotate_advantages else ""
     filename += "_w_scatter" if plot_scatter else ""
-    filepath = save_figure(fig, basedir=path, folder='normalized_mobility', filename=f'{filename}_AR_{adoption_rate}')
+    filepath = save_figure(fig, basedir=path, folder="normalized_mobility", filename=f'{filename}_AR_{adoption_rate}')
     print(f"Scatter plot of mobility and R @ {adoption_rate}% Adoption saved at {filepath}")
 
 def _extract_metrics(data):
@@ -426,12 +443,11 @@ def run(data, plot_path, compare=None, **kwargs):
 
         all_data = pd.read_csv("/Users/mac/Desktop/Workspace/covid/simulator/src/covid19sim/evaluations_3000_init_0.002/normalized_mobility/plots/normalized_mobility/full_extracted_data_AR_60.csv")
         save_relevant_csv_files(all_data, uptake, path=plot_path)
-        for ymetric in ['r', 'false_quarantine', 'percentage_infected', 'fraction_quarantine', 'false_sr']:
+        # 'false_quarantine', 'percentage_infected', 'fraction_quarantine', 'false_sr'
+        for ymetric in ['r']:
             for xmetric in ['effective_contacts', 'healthy_contacts']:
-                for plot_residuals in [False, True]:
-                    for display_r_squared in [False, True]:
-                        for annotate_advantages in [False, True]:
-                            for plot_scatter in [False, True]:
-                                plot_and_save_mobility_scatter(all_data, uptake, xmetric=xmetric, path=plot_path, \
-                                    ymetric=ymetric, plot_residuals=plot_residuals, display_r_squared=display_r_squared, \
-                                    annotate_advantages=annotate_advantages, plot_scatter=plot_scatter)
+                for annotate_advantages in [False, True]:
+                    for plot_scatter in [False, True]:
+                        plot_and_save_mobility_scatter(all_data, uptake, xmetric=xmetric, path=plot_path, \
+                            ymetric=ymetric, plot_residuals=False, display_r_squared=False, \
+                            annotate_advantages=annotate_advantages, plot_scatter=plot_scatter)
