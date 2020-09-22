@@ -17,7 +17,7 @@ def plot_all(ax, list_of_all_data, list_of_all_methods, key):
     Args:
         ax (matplotlib.axes.Axes):Axes on which to plot the series
         list_of_all_data (list): a list of dicts where each dict contains a series specified by `key`
-        list_of_all_methods (list): a list of strings where each element is a raw method name
+        list_of_all_methods (list): a list of tuples of strings where each tuple is a raw method name (folder name) and intervention config name
         key (str): name of attribute extracted in `_extract_data`
 
     Returns:
@@ -27,7 +27,7 @@ def plot_all(ax, list_of_all_data, list_of_all_methods, key):
 
     list_of_all_series = [x[key] for x in list_of_all_data]
     for idx, all_series in enumerate(list_of_all_series):
-        label = get_intervention_label(list_of_all_methods[idx])
+        label = get_intervention_label(*list_of_all_methods[idx])
         color = get_color(idx=idx)
         ax = _plot_mean_with_stderr_bands_of_series(ax, all_series, label, color)
     return ax
@@ -38,7 +38,7 @@ def plot_and_save_r_characteristics(list_of_all_data, list_of_all_methods, uptak
 
     Args:
         list_of_all_data (list): a list of dicts where each dict contains a series specified by `key`
-        list_of_all_methods (list): a list of strings where each element is a raw method name
+        list_of_all_methods (list): a list of tuples of strings where each tuple is a raw method name (folder name) and intervention config name
         uptake_rate (str): APP_UPTAKE value
         path (str): path where to save the figure
     """
@@ -79,7 +79,7 @@ def plot_and_save_epi_characteristics(list_of_all_data, list_of_all_methods, upt
 
     Args:
         list_of_all_data (list): a list of dicts where each dict contains a series specified by `key`
-        list_of_all_methods (list): a list of strings where each element is a raw method name
+        list_of_all_methods (list): a list of tuples of strings where each tuple is a raw method name (folder name) and intervention config name
         uptake_rate (str): APP_UPTAKE value
         path (str): path where to save the figure
     """
@@ -164,17 +164,24 @@ def run(data, plot_path, compare=None, **kwargs):
 
     ## data preparation
     list_of_no_app_data = []
+    other_base_intervention_conf = []
     for method in other_methods:
         key = list(data[method].keys())[0]
         list_of_no_app_data.append(_extract_data(data[method][key]))
+        intervention_conf = next(iter(data[method][key].values()))['conf']
+        other_base_intervention_conf.append(get_base_intervention(intervention_conf))
 
     for uptake_rate in uptake_keys:
         extracted_data = {}
         list_of_all_data = deepcopy(list_of_no_app_data)
         list_of_all_methods = deepcopy(other_methods)
+        list_of_all_base_confs = deepcopy(other_base_intervention_conf)
         for method in app_based_methods:
             list_of_all_data.append(_extract_data(data[method][uptake_rate]))
             list_of_all_methods.append(method)
+            intervention_conf = next(iter(data[method][uptake_rate].values()))['conf']
+            list_of_all_base_confs.append(get_base_intervention(intervention_conf))
 
+        list_of_all_methods = zip(list_of_all_methods, list_of_all_base_confs)
         plot_and_save_r_characteristics(list_of_all_data, list_of_all_methods, uptake_rate=uptake_rate, path=plot_path)
         plot_and_save_epi_characteristics(list_of_all_data, list_of_all_methods, uptake_rate=uptake_rate, path=plot_path)
