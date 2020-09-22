@@ -290,7 +290,7 @@ class Tracker(object):
             "start_time": Statistics()
         }
 
-        self.daily_work_hours_by_age_group = {status: np.zeros((len(AGE_BIN_WIDTH_5), self.conf['simulation_days'])) for status in WORK_ACTIVITY_STATUS}
+        self.daily_work_hours_by_age_group = {status: np.zeros((len(AGE_BIN_WIDTH_5),3, self.conf['simulation_days'])) for status in WORK_ACTIVITY_STATUS}
         self.all_acitivty_names = set()
 
         # infection stats
@@ -1324,6 +1324,9 @@ class Tracker(object):
             next_activity (covid19sim.utils.mobility_planner.Activity): next activity that will be pursued
             human (covid19sim.human.Human): human for which sleep schedule needs to be added.
         """
+        sex_to_idx = {'male':0,
+                      'female':1,
+                      'other':2}
         if not (self.conf['track_all'] or self.conf['track_mobility']) or just_finished_activity is None:
             return
 
@@ -1335,7 +1338,7 @@ class Tracker(object):
             category = _get_work_status_category(human, just_finished_activity)
             self.all_acitivty_names.add(category)
             n_sim_day = (just_finished_activity.start_time - self.conf['COVID_SPREAD_START_TIME']).days # tracking is on only since COVID_SPREAD_START_TIME
-            self.daily_work_hours_by_age_group[category][human.age_bin_width_5.index, n_sim_day] += just_finished_activity.duration / SECONDS_PER_HOUR
+            self.daily_work_hours_by_age_group[category][human.age_bin_width_5.index,sex_to_idx[human.sex] n_sim_day] += just_finished_activity.duration / SECONDS_PER_HOUR
 
         # forms a transition probability on weekdays and weekends
         type_of_day = ['weekday', 'weekend'][self.env.is_weekend]
