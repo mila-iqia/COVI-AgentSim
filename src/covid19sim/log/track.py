@@ -1338,7 +1338,7 @@ class Tracker(object):
             category = _get_work_status_category(human, just_finished_activity)
             self.all_acitivty_names.add(category)
             n_sim_day = (just_finished_activity.start_time - self.conf['COVID_SPREAD_START_TIME']).days # tracking is on only since COVID_SPREAD_START_TIME
-            self.daily_work_hours_by_age_group[category][human.age_bin_width_5.index,sex_to_idx[human.sex] n_sim_day] += just_finished_activity.duration / SECONDS_PER_HOUR
+            self.daily_work_hours_by_age_group[category][human.age_bin_width_5.index,sex_to_idx[human.sex], n_sim_day] += just_finished_activity.duration / SECONDS_PER_HOUR
 
         # forms a transition probability on weekdays and weekends
         type_of_day = ['weekday', 'weekend'][self.env.is_weekend]
