@@ -842,7 +842,6 @@ def _convert_bin_5s_to_bin_10s(histogram_bin_5s):
 
     return histogram_bin_10s
 
-
 def _sample_positive_normal(mean, sigma, rng, upper_limit=None):
     """
     Samples a positive number from gaussian distributed as (mean, sigma) by throwing away negative samples.
@@ -862,7 +861,6 @@ def _sample_positive_normal(mean, sigma, rng, upper_limit=None):
     x = rng.normal(mean, sigma)
     return x if _filter(x) else _sample_positive_normal(mean, sigma, rng, upper_limit)
 
-
 def is_app_based_tracing_intervention(intervention=None, intervention_conf=None):
     """
     Determines if the intervention requires an app.
@@ -875,7 +873,7 @@ def is_app_based_tracing_intervention(intervention=None, intervention_conf=None)
         (bool): True if an app is required.
     """
     assert intervention is not None or intervention_conf is not None, "Expects non-None intervention_conf when internvention is None. "
-    if intervention_conf:
+    if intervention_conf is not None:
         return intervention_conf['RISK_MODEL'] != ""
 
     intervention_yaml_file = Path(__file__).resolve().parent.parent / "configs/simulation/intervention" / f"{intervention}.yaml"

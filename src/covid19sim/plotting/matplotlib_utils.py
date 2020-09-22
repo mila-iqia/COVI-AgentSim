@@ -2,7 +2,10 @@
 Basic plotting functions.
 """
 import os
+import yaml
 import math
+import colorsys
+import matplotlib
 import numpy as np
 from pathlib import Path
 from scipy.interpolate import interp1d
@@ -16,9 +19,20 @@ COLOR_MAP = {
     "bdt2": "darkorange",
     "heuristicv1": "royalblue",
     "transformer": "orangered",
-    "oracle": "green"
+    "oracle": "green",
+    "heuristicv4": "red"
 }
 COLORS = ["#34495e",  "mediumvioletred", "orangered", "royalblue", "darkorange", "green", "red"]
+
+def scale_lightness(rgb, scale_l):
+    """
+    Scales lightness of color `rgb`
+    https://stackoverflow.com/a/60562502/3413239
+    """
+    # convert rgb to hls
+    h, l, s = colorsys.rgb_to_hls(*rgb)
+    # manipulate h, l, s values and return as rgb
+    return colorsys.hls_to_rgb(h, min(1, l * scale_l), s = s)
 
 def get_color(idx=None, method=None):
     """
@@ -36,6 +50,76 @@ def get_color(idx=None, method=None):
         return COLORS[idx]
 
     return COLOR_MAP[method]
+
+def get_colormap(methods_and_base_confs, path):
+    """
+    Generates consistent colors for very method in folder_names.
+
+    Args:
+        methods_and_base_confs (list): list of tuples where each element in a tuple is as follows -
+            folder_name (str): method name as found in the experimental directory
+            base_intervention_name (str): intervention configuration filename (without .yaml) in `configs/simulation/intervention/` folder.
+        path (str): path of the folder where results will be saved. It looks for LABELMAP.yaml and uses label explicitly if present.
+
+    Returns:
+        (dict): a color (value) for each method (key)
+    """
+    colormap_file = Path(path).resolve() / "COLORMAP.yaml"
+    explicit_colormap = {}
+    if colormap_file.exists():
+        with open(str(colormap_file), "rb") as f:
+            explicit_colormap = yaml.safe_load(f)
+
+    # unique counts for each base conf
+    counts = {}
+    for method, base_conf in methods_and_base_confs:
+        counts[base_conf] = counts.get(base_conf, 0) + 1
+
+    # generate range of scales for each base conf
+    colors = {}
+    for base_conf, count in counts.items():
+        scale_range = np.linspace(1, 2, count)
+        base_color = matplotlib.colors.ColorConverter.to_rgb(COLOR_MAP[base_conf])
+        colors[base_conf] = iter([scale_lightness(base_color, scale) for scale in scale_range])
+
+    colormap = {}
+    for method, base_conf in methods_and_base_confs:
+        color = explicit_colormap.get(method, "")
+        if method not in explicit_colormap:
+            color = next(colors[base_conf])
+
+        colormap[method] = color
+
+    return colormap
+
+def get_labelmap(methods_and_base_confs, path):
+    """
+    Generates consistent labels for every method in folder_names.
+
+    Args:
+        methods_and_base_confs (list): list of tuples where each element in a tuple is as follows -
+            folder_name (str): method name as found in the experimental directory
+            base_intervention_name (str): intervention configuration filename (without .yaml) in `configs/simulation/intervention/` folder.
+        path (str): path of the folder where results will be saved. It looks for LABELMAP.yaml and uses label explicitly if present.
+
+    Returns:
+        (dict): a label (value) for each folder_name (key)
+    """
+    labelmap_file = Path(path).resolve() / "LABELMAP.yaml"
+    explicit_labelmap = {}
+    if labelmap_file.exists():
+        with open(str(labelmap_file), "rb") as f:
+            explicit_labelmap = yaml.safe_load(f)
+
+    labelmap = {}
+    for method, base_conf in methods_and_base_confs:
+        label = explicit_labelmap.get(method, "")
+        if method not in explicit_labelmap:
+            label = get_intervention_label(method, base_conf)
+
+        labelmap[method] = label
+
+    return labelmap
 
 def _plot_mean_with_stderr_bands_of_series(ax, series, label, color, **kwargs):
     """
@@ -263,10 +347,10 @@ def get_base_intervention(intervention_conf):
 
     # for old runs, base_intervention needs to be inferred from the conf parameters.
     if intervention_conf['RISK_MODEL'] == "":
-        if conf['N_BEHAVIOR_LEVELS'] > 2:
+        if intervention_conf['N_BEHAVIOR_LEVELS'] > 2:
             return "post-lockdown-no-tracing"
 
-        if conf['INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS']:
+        if intervention_conf['INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS']:
             return "lockdown"
 
         return "no_intervention"

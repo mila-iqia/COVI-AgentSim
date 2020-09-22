@@ -168,7 +168,7 @@ def get_offset_and_stddev_analytical(reference_fn, reference_inv_fn, reference_s
     pars1 = reference_stats['parameters']
     x = reference_inv_fn(1.0, *pars1)
     y1 = reference_fn(x, *reference_stats['parameters'])
-    assert y1 == 1.0, "incorrect inverse function"
+    assert abs(y1 - 1.0) < 1e-4, f"incorrect inverse function. y1 = {y1}"
 
     cov1 = reference_stats['covariance']
     var_y1 = get_stderr_of_fitted_fn_analytical(reference_fn, x, pars1, cov1, return_var=True)
