@@ -421,7 +421,7 @@ def lost_work_hours_per_thousand(tracker_data):
 
 def multiple_seeds_get_data(intervention,l_e_path):
     """
-        load data in nested dict 
+        load data into a nested dict 
         intervention[data_subset][seed] = loaded data
     """
     tracker_dict = {}
