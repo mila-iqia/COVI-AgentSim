@@ -367,7 +367,7 @@ def total_metrics_sex(daly_data):
                               for metric in iterables[1]]
                             ).transpose()
     
-    dalys_sex.index = [str(i) + ' - ' + str(i+4) for i in range(0,111,10)]
+    dalys_sex.index = [str(i) + ' - ' + str(i+9) for i in range(0,111,10)]
     dalys_sex.index.name = 'Age'
     dalys_sex.rename(index={'110 - 119': '110+'})
     columns = pd.MultiIndex.from_product(iterables, names = ['sex','metric'])
@@ -389,7 +389,7 @@ def dalys_per_thousand_sex_age(daly_data):
                                       ], 'hospitalization') for i in range(0,12)])
     
     daly_1000_df = pd.concat(daly_1000, axis = 1)
-    daly_1000_df.index = [str(i) + ' - ' + str(i+4) for i in range(0,111,10)]
+    daly_1000_df.index = [str(i) + ' - ' + str(i+9) for i in range(0,111,10)]
     daly_1000_df.index.name = 'Age'
     daly_1000_df.rename(index={'110 - 119': '110+'})
     daly_1000_df.columns = pd.MultiIndex.from_product([['DALYs per thousand'],
@@ -413,7 +413,7 @@ def total_dalys_sex_age(daly_data):
                                                 for i in range(0,12)])
     
     total_daly_df = pd.concat(total_dalys_sex_age, axis = 1)
-    total_daly_df.index = [str(i) + ' - ' + str(i+4) for i in range(0,111,10)]
+    total_daly_df.index = [str(i) + ' - ' + str(i+9) for i in range(0,111,10)]
     total_daly_df.index.name = 'Age'
     total_daly_df.rename(index={'110 - 119': '110+'})
     total_daly_df.columns = pd.MultiIndex.from_product([['Total DALYs'],
