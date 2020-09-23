@@ -179,6 +179,8 @@ def yll(human_name,
     elif discounting == False:
 
         yll = daly_data['life_expectancy'][human_name]
+        return yll
+
 
     else:
         raise NotImplementedError
