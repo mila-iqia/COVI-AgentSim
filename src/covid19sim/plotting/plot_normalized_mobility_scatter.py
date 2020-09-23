@@ -17,7 +17,7 @@ from covid19sim.plotting.extract_tracker_metrics import _daily_false_quarantine,
                                 _daily_fraction_non_risky_classified_as_risky, _daily_fraction_quarantine
 from covid19sim.plotting.extract_tracker_metrics import _mean_effective_contacts, _mean_healthy_effective_contacts, _percentage_total_infected, _positivity_rate
 from covid19sim.plotting.matplotlib_utils import add_bells_and_whistles, save_figure, get_color, get_adoption_rate_label_from_app_uptake, get_intervention_label, \
-                                plot_mean_and_stderr_bands, get_base_intervention, get_labelmap, get_colormap
+                                plot_mean_and_stderr_bands, get_base_intervention, get_labelmap, get_colormap, plot_heatmap_of_advantages
 from covid19sim.plotting.curve_fitting import _linear, get_fitted_fn, get_offset_and_stddev_from_random_draws, get_offset_and_stddev_analytical, get_stderr_of_fitted_fn_analytical
 
 TITLESIZE = 25
@@ -27,6 +27,10 @@ TICKSIZE = 15
 LEGENDSIZE = 20
 METRICS = ['r', 'false_quarantine', 'false_sr', 'effective_contacts', 'healthy_contacts', 'percentage_infected', \
             'fraction_false_non_risky', 'fraction_false_risky', 'positivity_rate', 'fraction_quarantine']
+
+# fix the seed
+np.random.seed(123)
+
 
 def get_metric_label(label):
     """
@@ -207,18 +211,20 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
     assert xmetric in METRICS and ymetric in METRICS, f"Unknown metrics: {xmetric} or {ymetric}. Expected one of {METRICS}."
     TICKGAP=2
     ANNOTATION_FONTSIZE=10
+    adoption_rate = get_adoption_rate_label_from_app_uptake(uptake_rate)
     methods = results['method'].unique()
     methods_and_base_confs = results.groupby(['method', 'intervention_conf_name']).size().index
     labelmap = get_labelmap(methods_and_base_confs, path)
     colormap = get_colormap(methods_and_base_confs, path)
     INTERPOLATION_KIND = _get_interpolation_kind(xmetric, ymetric)
 
-    # find if only specific folders need to be plotted
+    # find if only specific folders (methods) need to be plotted
     plot_these_methods = {}
     include_methods = Path(path).resolve() / "PLOT_THESE_METHODS.yaml"
     if include_methods.exists():
         with open(str(include_methods), "rb") as f:
             plot_these_methods = yaml.safe_load(f)
+        plot_these_methods = set([x for x, plot in plot_these_methods.items() if plot])
 
     # set up subplot grid
     fig = plt.figure(num=1, figsize=(15,10), dpi=100)
@@ -232,6 +238,7 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
     fitted_fns, inverse_fitted_fns, fitting_stats = {}, {}, {}
     for i, method in enumerate(methods):
         # to include only certain methods to avoid busy plots
+        # but still involve pairwise comparison of individual methods
         if (
             len(plot_these_methods) > 0
             and method not in plot_these_methods
@@ -283,7 +290,7 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
         points = find_all_pairs_offsets_and_stddev(fitted_fns, inverse_fitted_fns, fitting_stats)
         table_to_save = []
         for p1, p2, res1, m1, m2, res2, plot in points:
-            table_to_save.append([m1, m2, *res1, *res2])
+            table_to_save.append([m1, m2, labelmap[m1], labelmap[m2], *res1, *res2])
             if (
                 not annotate_advantages
                 or not plot
@@ -297,8 +304,13 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
             ax.annotate(s=text, xy=p3, fontsize=ANNOTATION_FONTSIZE, fontweight='black', bbox=dict(facecolor='none', edgecolor='black'), zorder=1000, verticalalignment="center")
 
         # save the table
-        table_to_save = pd.DataFrame(table_to_save, columns=['method1', 'method2', 'advantage', 'stddev', 'P(advantage > 0)', 'rnd_advantage', 'rnd_stderr', 'P(rnd_advantage > 0)'])
+        table_to_save = pd.DataFrame(table_to_save, columns=['method1', 'method2', 'label1', 'label2', 'advantage', 'stddev', 'P(advantage > 0)', 'rnd_advantage', 'rnd_stderr', 'P(rnd_advantage > 0)'])
         table_to_save.to_csv(str(Path(path).resolve() / f"normalized_mobility/R_all_advantages_{xmetric}.csv"))
+
+        # make a heatmap
+        heatmap = plot_heatmap_of_advantages(table_to_save, labelmap)
+        filepath = save_figure(heatmap, basedir=path, folder="normalized_mobility", filename=f'Heatmap_advantages_AR_{adoption_rate}')
+        print(f"Heatmap of advantages @ {adoption_rate}% Adoption saved at {filepath}")
 
         # reference lines
         ax.plot(ax.get_xlim(), [1.0, 1.0], '-.', c="gray", alpha=0.5)
@@ -323,7 +335,6 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
                         XY_TITLESIZE=LABELSIZE, TICKSIZE=TICKSIZE, x_tick_gap=TICKGAP)
 
     # figure title
-    adoption_rate = get_adoption_rate_label_from_app_uptake(uptake_rate)
     fig.suptitle(f"Tracing Operating Characteristics @ {adoption_rate}% Adoption Rate", fontsize=TITLESIZE, y=1.05)
 
     # save
@@ -432,16 +443,16 @@ def run(data, plot_path, compare=None, **kwargs):
     no_app_df = pd.DataFrame([])
     for method in other_methods:
         key = list(data[method].keys())[0]
-        # no_app_df = pd.concat([no_app_df, _extract_data(data[method][key], method)], axis='index')
+        no_app_df = pd.concat([no_app_df, _extract_data(data[method][key], method)], axis='index', ignore_index=True)
 
     for uptake in uptake_keys:
         extracted_data = {}
-        # all_data = deepcopy(no_app_df)
+        all_data = deepcopy(no_app_df)
         for method in app_based_methods:
-            # all_data = pd.concat([all_data, _extract_data(data[method][uptake], method)], axis='index')
+            all_data = pd.concat([all_data, _extract_data(data[method][uptake], method)], axis='index', ignore_index=True)
             pass
 
-        all_data = pd.read_csv("/Users/mac/Desktop/Workspace/covid/simulator/src/covid19sim/evaluations_3000_init_0.002/normalized_mobility/plots/normalized_mobility/full_extracted_data_AR_60.csv")
+        # all_data = pd.read_csv("/Users/mac/Desktop/Workspace/covid/simulator/src/covid19sim/evaluations_3000_init_0.002/normalized_mobility/plots/normalized_mobility/full_extracted_data_AR_60.csv")
         save_relevant_csv_files(all_data, uptake, path=plot_path)
         # 'false_quarantine', 'percentage_infected', 'fraction_quarantine', 'false_sr'
         for ymetric in ['r']:
