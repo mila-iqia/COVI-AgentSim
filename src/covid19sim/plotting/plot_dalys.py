@@ -55,12 +55,14 @@ def get_daly_data(demographics, human_monitor_data, life_expectancies):
     ICU_status = {i:{} for i in human_names}
     death_status = {i:{} for i in human_names}
     outpatient_status = {i:{} for i in human_names}
+    has_had_infection = {i:{} for i in human_names}
 
     days_in_hospital = {}
     days_in_ICU = {}
     has_died = {}
     days_with_symptoms = {}
     days_as_outpatient = {}
+    was_infected = {}
 
     for day in human_monitor_data.keys():
         for human in range(len(human_monitor_data[datetime.date(2020, 2, 28)])):
@@ -81,6 +83,7 @@ def get_daly_data(demographics, human_monitor_data, life_expectancies):
                                                  and is_infected \
                                                  and not is_in_hospital \
                                                  and not is_in_ICU
+            has_had_infection[human_name][day] = is_infected
 
     for human in human_names:
         
@@ -89,6 +92,7 @@ def get_daly_data(demographics, human_monitor_data, life_expectancies):
         has_died[human] = sum(death_status[human].values()) > 0 
         days_with_symptoms[human] = sum(symptom_status[human].values())
         days_as_outpatient[human] = sum(outpatient_status[human].values())
+        was_infected[human] = sum(has_had_infection[human].values()) > 0
 
     daly_df = pd.DataFrame([days_in_hospital,
                   days_in_ICU,
@@ -122,45 +126,60 @@ def yll(human_name,
         social_discount = social_discount,
         age_weighting_constant = age_weighting_constant,
         modulation_constant = modulation_constant,
-        adjustment_constant = adjustment_constant
+        adjustment_constant = adjustment_constant,
+        discounting = False
         ):
-    '''
-        YLL and YLD formulas
-        https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7345321/#B10-ijerph-17-04233 
-        HRQL scores
-        https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3320437/
-    '''
+        '''
+            Computes Years of Life Lost (YLL)
+            Without discounting: sum up years of life lost per human
+
+            With discounting: 
+            YLL and YLD formulas
+            https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7345321/#B10-ijerph-17-04233 
+            HRQL scores
+            https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3320437/
+        '''
     age = daly_data['age'][human_name]
     life_expectancy = daly_data['life_expectancy'][human_name]
     human_data = daly_data.loc[human_name]
 
     if daly_data['has_died'][human_name] == False:
         return 0
-    
-    yll = (
-              modulation_constant * adjustment_constant * np.exp(social_discount * age)
-              /
-              (social_discount + age_weighting_constant)**2
-          ) \
-          * \
-          (
-              np.exp(- (social_discount + age_weighting_constant) * (life_expectancy + age))
-              *
-              (
-                  - (social_discount + age_weighting_constant) 
-                  * (life_expectancy + age)
-                  - 1
-              )
-              - np.exp(- (social_discount + age_weighting_constant) * age) 
-              * 
-              (
-                  - (social_discount + age_weighting_constant) 
-                  * age 
-                  - 1
-              )
-          ) 
-          # the last part is 0 since modulation_constant = 1
-    return yll
+
+    if discounting == True:
+        
+        # TODO: make equation its own function
+        yll = (
+                modulation_constant * adjustment_constant * np.exp(social_discount * age)
+                /
+                (social_discount + age_weighting_constant)**2
+            ) \
+            * \
+            (
+                np.exp(- (social_discount + age_weighting_constant) * (life_expectancy + age))
+                *
+                (
+                    - (social_discount + age_weighting_constant) 
+                    * (life_expectancy + age)
+                    - 1
+                )
+                - np.exp(- (social_discount + age_weighting_constant) * age) 
+                * 
+                (
+                    - (social_discount + age_weighting_constant) 
+                    * age 
+                    - 1
+                )
+            ) 
+            # the last part is 0 since modulation_constant = 1
+        return yll
+
+    elif discouting == False:
+
+        yll = daly_data['life_expectancy'][human_name]
+
+    else:
+        raise NotImplementedError
 
 def yld(method, 
         human_name,
@@ -168,7 +187,8 @@ def yld(method,
         social_discount = social_discount,
         age_weighting_constant = age_weighting_constant,
         modulation_constant = modulation_constant,
-        adjustment_constant = adjustment_constant
+        adjustment_constant = adjustment_constant,
+        discounting = False
         ):
     
     age = daly_data['age'][human_name]
@@ -176,23 +196,29 @@ def yld(method,
     human_data = daly_data.loc[human_name]
     age_of_death = age + life_expectancy 
     
-    # TODO: implement disability weights
     # https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7345321/#B20-ijerph-17-04233
     if method == 'infection_and_symptomatic':
         
         disability_weight = 0.133 # everyone has severe DW, which is wrong
         duration_disability = daly_data['days_symptoms_and_infection'][human_name] / 365
+
+        if discounting == True: 
         
-        yld_total = yld_formula(
-                        social_discount, 
-                        age_weighting_constant, 
-                        modulation_constant,
-                        adjustment_constant,
-                        age_of_death,
-                        disability_weight,
-                        duration_disability
-                    )
-        return yld_total
+            yld_total = yld_formula(
+                            social_discount, 
+                            age_weighting_constant, 
+                            modulation_constant,
+                            adjustment_constant,
+                            age_of_death,
+                            disability_weight,
+                            duration_disability
+                        )
+            return yld_total
+        
+        elif discounting == False:
+            yld_total = disability_weight*duration_disability
+
+            return yld_total
     
     elif method == 'hospitalization': # outpatients = sick and not in hospital
         
@@ -207,18 +233,29 @@ def yld(method,
                                'critical':daly_data['days_in_ICU'][human_name]/365
                               }
         
-        yld_total = 0
-        for state in disability_weights.keys():
+        if discounting == True:
+            yld_total = 0
+
+            for state in disability_weights.keys():
+                
+                yld_total +=yld_formula(social_discount, 
+                                        age_weighting_constant, 
+                                        modulation_constant,
+                                        adjustment_constant,
+                                        age_of_death,
+                                        disability_weights[state],
+                                        duration_disability[state])
             
-            yld_total +=yld_formula(social_discount, 
-                                    age_weighting_constant, 
-                                    modulation_constant,
-                                    adjustment_constant,
-                                    age_of_death,
-                                    disability_weights[state],
-                                    duration_disability[state])
-        return yld_total
-        
+            return yld_total
+
+        elif discounting == False:
+            yld_total = 0
+
+            for state in disability_weights.keys():
+                yld_total += disability_weights[state]*duration_disability[state]
+            
+            return yld_total
+
     elif method == 'symptoms': #### TODO maybe, disability weight by symptom
         
         raise NotImplementedError
