@@ -356,6 +356,31 @@ def dalys_per_thousand_sex_age(daly_data):
     
     return daly_1000_df
 
+def total_dalys_sex_age(daly_data):
+    
+    sexes = ['male','female','other']
+    total_dalys_sex_age = {}
+    
+    for sex in sexes:
+        
+        total_dalys_sex_age[sex] = pd.DataFrame([total_dalys( 
+                                         daly_data[(daly_data.age.isin(range(i*5,(i+1)*5))) 
+                                         & 
+                                         (daly_data.sex == sex)
+                                                ], 
+                                        'hospitalization') 
+                                                for i in range(0,23)])
+    
+    total_daly_df = pd.concat(total_dalys_sex_age, axis = 1)
+    total_daly_df.index = [str(i) + ' - ' + str(i+4) for i in range(0,111,5)]
+    total_daly_df.index.name = 'Age'
+    total_daly_df.rename(index={'110 - 114': '110+'})
+    total_daly_df.columns = pd.MultiIndex.from_product([['Total DALYs'],
+                                                       ['male','female','other']])
+    
+    return total_daly_df
+
+
 def dalys_per_thousand_sex(daly_data):
     
     per_sex =  dalys_per_thousand_sex_age(daly_data) ### terrible implementation, just use dalys_per_thousand
