@@ -8,8 +8,8 @@ import scipy.stats as stats
 
 # Constants
 quebec_population = 8485000
-csv_path = "path/to/csv"
-sims_dir_path = "path/to/simulations/"
+csv_path = "qc.csv" #"path/to/csv"
+sims_dir_path = "results/qc_validation/no_intervention" #"path/to/simulations/"
 if len(sys.argv) > 1:
     sims_dir_path = sys.argv[1]
 
@@ -64,7 +64,7 @@ for sim in os.listdir(sims_dir_path):
     sim_prior_data = pickle.load(open(sim_priors_path, "rb"))
     # Parse data
     sim_dates, sim_deaths, sim_tests, sim_cases = parse_tracker(sim_tracker_data)
-    sim_hospitalizations = [float(x)*100/sim_tracker_data['n_humans'] for x in sim_prior_data['hospital_usage_per_day']]
+    sim_hospitalizations = [float(x)*100/sim_tracker_data['n_humans'] for x in sim_prior_data['hospitalization_per_day']]#sim_prior_data['hospital_usage_per_day']]
     # change key above in sim_prior_data['hospital_usage_per_day']
 
     all_sim_cases.append(sim_cases)
@@ -76,7 +76,7 @@ avg_sim_hospitalizations = np.array([sum(elem)/len(elem) for elem in zip(*all_si
 avg_sim_deaths = np.array([sum(elem)/len(elem) for elem in zip(*all_sim_deaths)])
 
 # Plot Quebec Data
-last_index = 63 # index of last day of Quebec data, use 63 for 30 days
+last_index = 134 #63 # index of last day of Quebec data, use 63 for 30 days
 fig, ax = plt.subplots(figsize=(7.5, 7.5))
 real_dates = qc_data.loc[34:last_index, 'dates'].to_numpy()
 real_cases = [100 * float(x if str(x) != "nan" else 0) / quebec_population for x in qc_data.loc[34:last_index, 'change_cases']]
@@ -100,6 +100,12 @@ plt.savefig("qc_stats.png")
 fig, ax = plt.subplots(figsize=(7.5, 7.5))
 # ax.set_ylim([0.,0.03])
 avg_sim_cases = np.array(sim_cases[1:])*.1 # adjust for unknown cases
+
+# Goodness of Fit
+deaths_fit = stats.chisquare(sim_deaths, real_deaths[1:])
+hospitalizations_fit = stats.chisquare(sim_hospitalizations, real_hospitalizations)
+cases_fit = stats.chisquare(sim_cases, real_cases)
+# fit_caption = "Chi-Square Goodness of Fit Test Results\nMortalities: {}\nHospitalizations: {}\nCases: {}\nTests: {}".format(deaths_fit, hospitalizations_fit, cases_fit, tests_fit)
 
 ax.errorbar(sim_dates, avg_sim_cases, yerr=avg_sim_cases.std(axis=0), label="Diagnoses per day")
 # change caption below if using 'total_hospitalizations'
