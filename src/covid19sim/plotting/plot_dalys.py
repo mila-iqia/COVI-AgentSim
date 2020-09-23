@@ -176,7 +176,7 @@ def yll(human_name,
             # the last part is 0 since modulation_constant = 1
         return yll
 
-    elif discouting == False:
+    elif discounting == False:
 
         yll = daly_data['life_expectancy'][human_name]
 
