@@ -376,32 +376,7 @@ def total_metrics_sex(daly_data):
     dalys_sex.columns = columns
     
     return dalys_sex
-
-def dalys_per_thousand_sex_age(daly_data):
     
-    # sexes = ['male','female','other']
-    sexes = ['male','female']
-    daly_1000 = {}
-    
-    for sex in sexes:
-        
-        daly_1000[sex] = pd.DataFrame([dalys_per_thousand( 
-                                         daly_data[(daly_data.age.isin(range(i*10,(i+1)*10))) 
-                                         & 
-                                         (daly_data.sex == sex)
-                                      ], 'hospitalization') for i in range(0,12)])
-    
-    daly_1000_df = pd.concat(daly_1000, axis = 1)
-    daly_1000_df.index = [str(i) + ' - ' + str(i+9) for i in range(0,111,10)]
-    daly_1000_df.index.name = 'Age'
-    daly_1000_df.rename(index={'110 - 119': '110+'})
-    # daly_1000_df.columns = pd.MultiIndex.from_product([['DALYs per thousand'],
-    #                                                    ['male','female','other']])
-    daly_1000_df.columns = pd.MultiIndex.from_product([['DALYs per thousand'],
-                                                       ['male','female']])
-    
-    return daly_1000_df
-
 def total_dalys_sex_age(daly_data):
     
     # sexes = ['male','female','other']
@@ -429,6 +404,32 @@ def total_dalys_sex_age(daly_data):
                                                        ['male','female']])
     
     return total_daly_df
+
+def dalys_per_thousand_sex_age(daly_data):
+    
+    # sexes = ['male','female','other']
+    sexes = ['male','female']
+    daly_1000 = {}
+    
+    for sex in sexes:
+        
+        daly_1000[sex] = pd.DataFrame([dalys_per_thousand( 
+                                         daly_data[(daly_data.age.isin(range(i*10,(i+1)*10))) 
+                                         & 
+                                         (daly_data.sex == sex)
+                                      ], 'hospitalization') for i in range(0,12)])
+    
+    daly_1000_df = pd.concat(daly_1000, axis = 1)
+    daly_1000_df.index = [str(i) + ' - ' + str(i+9) for i in range(0,111,10)]
+    daly_1000_df.index.name = 'Age'
+    daly_1000_df.rename(index={'110 - 119': '110+'})
+    # daly_1000_df.columns = pd.MultiIndex.from_product([['DALYs per thousand'],
+    #                                                    ['male','female','other']])
+    daly_1000_df.columns = pd.MultiIndex.from_product([['DALYs per thousand'],
+                                                       ['male','female']])
+    
+    return daly_1000_df
+
 
 
 def dalys_per_thousand_sex(daly_data):
