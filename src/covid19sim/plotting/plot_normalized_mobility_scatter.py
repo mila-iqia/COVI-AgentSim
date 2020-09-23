@@ -18,7 +18,7 @@ from covid19sim.plotting.extract_tracker_metrics import _daily_false_quarantine,
 from covid19sim.plotting.extract_tracker_metrics import _mean_effective_contacts, _mean_healthy_effective_contacts, _percentage_total_infected, _positivity_rate
 from covid19sim.plotting.matplotlib_utils import add_bells_and_whistles, save_figure, get_color, get_adoption_rate_label_from_app_uptake, get_intervention_label, \
                                 plot_mean_and_stderr_bands, get_base_intervention, get_labelmap, get_colormap, plot_heatmap_of_advantages
-from covid19sim.plotting.curve_fitting import _linear, get_fitted_fn, get_offset_and_stddev_from_random_draws, get_offset_and_stddev_analytical, get_stderr_of_fitted_fn_analytical
+from covid19sim.plotting.curve_fitting import LinearFit, GPRFit
 
 TITLESIZE = 25
 LABELPAD = 0.50
@@ -95,13 +95,14 @@ def _get_mobility_factor_counts_for_reasonable_r(results, method, lower_R=0.5, u
     correct_R = (lower_R <= results[selector]['r']) & (results[selector]['r'] <= upper_R)
     return results[selector][correct_R][['mobility_factor']].value_counts()
 
-def _get_interpolation_kind(xmetric, ymetric):
+def _get_interpolation_kind(xmetric, ymetric, use_gp=False):
     """
     Returns a valid interpolation function between xmetric and ymetric.
 
     Args:
         xmetric (str): one of `METRICS`
         ymetric (str): one of `METRICS`
+        use_gp (str): return GP regression fit if True.
 
     Returns:
         (function): a function that accepts an np.array. Examples - `_linear`
@@ -109,10 +110,13 @@ def _get_interpolation_kind(xmetric, ymetric):
     assert xmetric != ymetric, "x and y can't be same"
     assert xmetric in METRICS and ymetric in METRICS, f"unknown metrics - xmetric: {xmetric} or ymetric:{ymetric}. Expected one of {METRICS}"
 
+    if use_gp:
+        return GPRFit
+
     metrics = [xmetric, ymetric]
     if sum(metric in ["effective_contacts", "r"] for metric in metrics) == 2:
-        return _linear
-    return _linear
+        return LinearFit
+    return LinearFit
 
 def _filter_out_irrelevant_method(xmetric, ymetric, method, results):
     """
@@ -145,15 +149,13 @@ def _filter_out_irrelevant_method(xmetric, ymetric, method, results):
 
     return False
 
-def find_all_pairs_offsets_and_stddev(fitted_fns, inverse_fitted_fns, fitting_stats):
+def find_all_pairs_offsets_and_stddev(fitted_fns):
     """
     Computes offset estimates and their stddev for all pairs of methods.
     NOTE: Only applicable when ymetric is "r".
 
     Args:
-        fitted_fns (dict): method --> fn fit using get_fitted_fn
-        inverse_fitted_fns (dict): method --> corresponding inverse function
-        fitting_stats (dict): method --> {'res': residuals obtained from fitting, 'parameters': corresponding parameters, 'parameters_stddev': stddev of parameters, 'covariance': covariance matrix of parameters}
+        fitted_fns (dict): method --> FittedFn
 
     Returns:
         (list): list of lists where each list corresponds to pairwise comparison of methods has following elements -
@@ -169,31 +171,32 @@ def find_all_pairs_offsets_and_stddev(fitted_fns, inverse_fitted_fns, fitting_st
 
     # for R = 1, find the value on x-axis.
     method_x = []
-    for method, method_stats in fitting_stats.items():
-        x = inverse_fitted_fns[method](1.0, *fitting_stats[method]['parameters'])
+    for method, fn in fitted_fns.items():
+        x = fn.find_x_for_y(1.0)
         method_x.append((x, method))
 
     # for the x of reference method, how much is the offset from other methods.
     all_pairs = []
     method_x = sorted(method_x, key=lambda x:-x[0]) # larger x is the reference
-    for idx in range(len(method_x)):
+    for idx, (x1, method1) in enumerate(method_x):
         plot = True
-        x1, method1 = method_x[idx]
-        y1 = fitted_fns[method1](x1, *fitting_stats[method1]['parameters'])
+        reference_fn = fitted_fns[method1]
+        y1 = reference_fn.evaluate_y_for_x(x1)
         for x2, method2 in method_x[idx+1:]:
-            y2 = fitted_fns[method2](x1, *fitting_stats[method2]['parameters'])
-            offset_rnd, stddev_rnd, cdf_rnd = get_offset_and_stddev_from_random_draws(reference_fn=fitted_fns[method1], reference_inv_fn=inverse_fitted_fns[method1], reference_stats=fitting_stats[method1], \
-                                other_method_fn=fitted_fns[method2], other_method_inv_fn=inverse_fitted_fns[method2], other_method_stats=fitting_stats[method2])
+            comparator_fn = fitted_fns[method2]
 
-            offset, stddev, cdf = get_offset_and_stddev_analytical(reference_fn=fitted_fns[method1], reference_inv_fn=inverse_fitted_fns[method1], reference_stats=fitting_stats[method1], \
-                                other_method_fn=fitted_fns[method2], other_method_inv_fn=inverse_fitted_fns[method2], other_method_stats=fitting_stats[method2])
+            y2 = comparator_fn.evaluate_y_for_x(x1)
+
+            offset_rnd, stddev_rnd, cdf_rnd = reference_fn.find_offset_and_stderr_at_y(y1, other_fn=comparator_fn, analytical=False)
+            offset, stddev, cdf = reference_fn.find_offset_and_stderr_at_y(y1, other_fn=comparator_fn, analytical=True)
+
             #
             all_pairs.append([(x1, y1), (x1, y2), (offset, stddev, cdf), method1, method2, (offset_rnd, stddev_rnd, cdf_rnd), plot])
             plot = False
 
     return all_pairs
 
-def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path, plot_residuals=False, display_r_squared=False, annotate_advantages=True, plot_scatter=True):
+def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path, USE_GP=False, plot_residuals=False, display_r_squared=False, annotate_advantages=True, plot_scatter=True):
     """
     Plots and saves scatter plot for data obtained from `configs/experiment/normalized_mobility.yaml` showing a trade off between health and mobility.
 
@@ -203,6 +206,7 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
         xmetric (str): metric on the x-axis
         ymetric (str): metrix on the y-axis
         path (str): path of the folder where results will be saved
+        USE_GP (bool): if True, uses GP regression to fit x and y.
         plot_residuals (bool): If True, plot a scatter plot of residuals at the bottom.
         display_r_squared (bool): If True, show R-squared value in the legend.
         annotate_advantages (bool): if True, annotates the plot with advantages
@@ -216,7 +220,7 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
     methods_and_base_confs = results.groupby(['method', 'intervention_conf_name']).size().index
     labelmap = get_labelmap(methods_and_base_confs, path)
     colormap = get_colormap(methods_and_base_confs, path)
-    INTERPOLATION_KIND = _get_interpolation_kind(xmetric, ymetric)
+    INTERPOLATION_FN = _get_interpolation_kind(xmetric, ymetric, use_gp=USE_GP)
 
     # find if only specific folders (methods) need to be plotted
     plot_these_methods = {}
@@ -235,7 +239,7 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
     else:
         ax = plt.subplot2grid(shape=(3,1), loc=(0,0), rowspan=3, colspan=1, fig=fig)
 
-    fitted_fns, inverse_fitted_fns, fitting_stats = {}, {}, {}
+    fitted_fns = {}
     for i, method in enumerate(methods):
         # to include only certain methods to avoid busy plots
         # but still involve pairwise comparison of individual methods
@@ -254,14 +258,11 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
         x = results[selector][xmetric]
         y = results[selector][ymetric]
         size = results[selector]['mobility_factor']
-        fn_handle, res, r_squared, parameters, fn_handle_inverse = get_fitted_fn(x, y, fn=INTERPOLATION_KIND)
-        fitted_fns[method] = fn_handle
-        inverse_fitted_fns[method] = fn_handle_inverse
-        fitting_stats[method] = {'res': res, 'parameters': parameters[0], 'stddev_parameters': parameters[1], 'covariance': parameters[2]}
+        fitted_fns[method] = INTERPOLATION_FN().fit(x, y)
 
         method_label = labelmap[method]
         if display_r_squared:
-            method_label = f"{method_label} ($r^2 = {r_squared: 0.3f}$)"
+            method_label = f"{method_label} ($r^2 = {fitted_fns[method].r_squared: 0.3f}$)"
         color = colormap[method]
 
         #
@@ -280,14 +281,14 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
     # plot fitted fns
     x = np.arange(results[xmetric].min(), results[xmetric].max(), 0.05)
     for method, fn in fitted_fns.items():
-        y = fn(x, *fitting_stats[method]['parameters'])
+        y = fn.evaluate_y_for_x(x)
         label = labelmap[method] if not plot_scatter else None
-        stderr = get_stderr_of_fitted_fn_analytical(fn, x, fitting_stats[method]['parameters'], fitting_stats[method]['covariance'])
+        stderr = fn.stderr_for_x(x, analytical=True)
         ax = plot_mean_and_stderr_bands(ax, x, y, stderr, label=label, color=colormap[method], confidence_level=1.96)
 
     # compute and plot offset and its confidence bounds
     if ymetric == "r":
-        points = find_all_pairs_offsets_and_stddev(fitted_fns, inverse_fitted_fns, fitting_stats)
+        points = find_all_pairs_offsets_and_stddev(fitted_fns)
         table_to_save = []
         for p1, p2, res1, m1, m2, res2, plot in points:
             table_to_save.append([m1, m2, labelmap[m1], labelmap[m2], *res1, *res2])
