@@ -14,6 +14,7 @@ from collections import defaultdict, deque
 
 from covid19sim.utils.utils import _random_choice, filter_queue_max, filter_open, compute_distance, _normalize_scores, _get_seconds_since_midnight, log
 from covid19sim.utils.constants import SECONDS_PER_DAY, SECONDS_PER_HOUR, SECONDS_PER_MINUTE
+from covid19sim.log.track import get_estimated_covid_prevalence
 ACTIVITIES = ["work", "socialize", "exercise", "grocery"]
 
 class Activity(object):
@@ -666,6 +667,8 @@ class MobilityPlanner(object):
         activity, quarantined = self._intervention_related_behavior_changes(activity)
         if quarantined:
             return activity
+
+        # if prevalence is too high
 
         # 6. health / intervention related checks; set the location to household
         # rest_at_home needs to be checked everytime. It is different from hospitalization which is for prespecified period of time
