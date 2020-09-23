@@ -138,7 +138,7 @@ def yll(human_name,
         https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7345321/#B10-ijerph-17-04233 
         HRQL scores
         https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3320437/
-    ''' 
+    '''
     age = daly_data['age'][human_name]
     life_expectancy = daly_data['life_expectancy'][human_name]
     human_data = daly_data.loc[human_name]
