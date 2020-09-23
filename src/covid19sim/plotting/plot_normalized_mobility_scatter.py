@@ -309,7 +309,7 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
 
         # make a heatmap
         heatmap = plot_heatmap_of_advantages(table_to_save, labelmap)
-        filepath = save_figure(heatmap, basedir=path, folder="normalized_mobility", filename=f'Heatmap_advantages_AR_{adoption_rate}')
+        filepath = save_figure(heatmap, basedir=path, folder="normalized_mobility", filename=f'Heatmap_{xmetric}_advantages_AR_{adoption_rate}')
         print(f"Heatmap of advantages @ {adoption_rate}% Adoption saved at {filepath}")
 
         # reference lines
