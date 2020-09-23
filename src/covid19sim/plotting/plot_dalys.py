@@ -129,16 +129,16 @@ def yll(human_name,
         adjustment_constant = adjustment_constant,
         discounting = False
         ):
-        '''
-            Computes Years of Life Lost (YLL)
-            Without discounting: sum up years of life lost per human
+    '''
+        Computes Years of Life Lost (YLL)
+        Without discounting: sum up years of life lost per human
 
-            With discounting: 
-            YLL and YLD formulas
-            https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7345321/#B10-ijerph-17-04233 
-            HRQL scores
-            https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3320437/
-        '''
+        With discounting: 
+        YLL and YLD formulas
+        https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7345321/#B10-ijerph-17-04233 
+        HRQL scores
+        https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3320437/
+    ''' 
     age = daly_data['age'][human_name]
     life_expectancy = daly_data['life_expectancy'][human_name]
     human_data = daly_data.loc[human_name]
