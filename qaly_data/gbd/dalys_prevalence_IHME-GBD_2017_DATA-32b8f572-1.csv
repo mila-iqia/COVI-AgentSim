@@ -1,0 +1,715 @@
+measure,location,sex,age,cause,metric,year,val,upper,lower
+Prevalence,Canada,Male,1 to 4,"Endocrine, metabolic, blood, and immune disorders",Number,2017,3623.56457922,5495.36908363,2743.20011343
+Prevalence,Canada,Female,1 to 4,"Endocrine, metabolic, blood, and immune disorders",Number,2017,2554.90398273,3103.77143523,2058.2274107
+Prevalence,Canada,Both,1 to 4,"Endocrine, metabolic, blood, and immune disorders",Number,2017,6178.46856195,8046.88408624,4877.35668217
+Prevalence,Canada,Male,5 to 9,"Endocrine, metabolic, blood, and immune disorders",Number,2017,3434.49335131,8827.13115759,1835.64172692
+Prevalence,Canada,Female,5 to 9,"Endocrine, metabolic, blood, and immune disorders",Number,2017,2919.97275878,6711.1559098,1489.40610113
+Prevalence,Canada,Both,5 to 9,"Endocrine, metabolic, blood, and immune disorders",Number,2017,6354.46611008,13142.0383946,3603.79985913
+Prevalence,Canada,Male,10 to 14,"Endocrine, metabolic, blood, and immune disorders",Number,2017,1829.1848108,4440.86730922,1042.27485857
+Prevalence,Canada,Female,10 to 14,"Endocrine, metabolic, blood, and immune disorders",Number,2017,2740.97626262,5586.84231849,1381.44988946
+Prevalence,Canada,Both,10 to 14,"Endocrine, metabolic, blood, and immune disorders",Number,2017,4570.16107343,8123.95668494,2724.72191042
+Prevalence,Canada,Male,15 to 19,"Endocrine, metabolic, blood, and immune disorders",Number,2017,1833.28391778,4488.11946669,1100.76541287
+Prevalence,Canada,Female,15 to 19,"Endocrine, metabolic, blood, and immune disorders",Number,2017,12256.8007861,27276.7383412,3596.36808232
+Prevalence,Canada,Both,15 to 19,"Endocrine, metabolic, blood, and immune disorders",Number,2017,14090.0847039,29773.9795232,5146.42887838
+Prevalence,Canada,Male,20 to 24,"Endocrine, metabolic, blood, and immune disorders",Number,2017,2551.10076896,6337.21128755,1396.91105975
+Prevalence,Canada,Female,20 to 24,"Endocrine, metabolic, blood, and immune disorders",Number,2017,9275.90800678,17571.1347257,4443.18221373
+Prevalence,Canada,Both,20 to 24,"Endocrine, metabolic, blood, and immune disorders",Number,2017,11827.0087757,21790.2854478,6155.26082461
+Prevalence,Canada,Male,25 to 29,"Endocrine, metabolic, blood, and immune disorders",Number,2017,1997.22549672,2919.65209276,1425.03781829
+Prevalence,Canada,Female,25 to 29,"Endocrine, metabolic, blood, and immune disorders",Number,2017,14543.293397,22896.1717143,9066.20379355
+Prevalence,Canada,Both,25 to 29,"Endocrine, metabolic, blood, and immune disorders",Number,2017,16540.5188937,25113.4778647,10822.0800836
+Prevalence,Canada,Male,30 to 34,"Endocrine, metabolic, blood, and immune disorders",Number,2017,2152.64106439,3010.95674745,1518.98020548
+Prevalence,Canada,Female,30 to 34,"Endocrine, metabolic, blood, and immune disorders",Number,2017,16556.8293271,25317.1829466,10538.4496508
+Prevalence,Canada,Both,30 to 34,"Endocrine, metabolic, blood, and immune disorders",Number,2017,18709.4703915,27527.2304113,12387.7846847
+Prevalence,Canada,Male,35 to 39,"Endocrine, metabolic, blood, and immune disorders",Number,2017,3165.08138499,6509.02247237,1956.71782437
+Prevalence,Canada,Female,35 to 39,"Endocrine, metabolic, blood, and immune disorders",Number,2017,15813.1580376,23502.0813278,9985.04616785
+Prevalence,Canada,Both,35 to 39,"Endocrine, metabolic, blood, and immune disorders",Number,2017,18978.2394226,27689.2309018,12536.9306191
+Prevalence,Canada,Male,40 to 44,"Endocrine, metabolic, blood, and immune disorders",Number,2017,4365.8954782,10291.5972226,2518.17970164
+Prevalence,Canada,Female,40 to 44,"Endocrine, metabolic, blood, and immune disorders",Number,2017,17418.5286538,29698.027043,9546.39428897
+Prevalence,Canada,Both,40 to 44,"Endocrine, metabolic, blood, and immune disorders",Number,2017,21784.424132,34988.9816781,13168.8812519
+Prevalence,Canada,Male,45 to 49,"Endocrine, metabolic, blood, and immune disorders",Number,2017,5646.16967915,14269.2454664,3478.78898969
+Prevalence,Canada,Female,45 to 49,"Endocrine, metabolic, blood, and immune disorders",Number,2017,19462.3803926,34323.4263058,10731.299517
+Prevalence,Canada,Both,45 to 49,"Endocrine, metabolic, blood, and immune disorders",Number,2017,25108.5500717,40508.9267124,15324.6244833
+Prevalence,Canada,Male,50 to 54,"Endocrine, metabolic, blood, and immune disorders",Number,2017,9195.2037823,17643.3948987,5639.05487574
+Prevalence,Canada,Female,50 to 54,"Endocrine, metabolic, blood, and immune disorders",Number,2017,18012.1711368,28273.7153352,11348.1102874
+Prevalence,Canada,Both,50 to 54,"Endocrine, metabolic, blood, and immune disorders",Number,2017,27207.3749191,41271.5905961,18226.7215888
+Prevalence,Canada,Male,55 to 59,"Endocrine, metabolic, blood, and immune disorders",Number,2017,11516.0856057,19360.8199054,7846.0529657
+Prevalence,Canada,Female,55 to 59,"Endocrine, metabolic, blood, and immune disorders",Number,2017,22183.3325215,35054.2810694,14103.9021764
+Prevalence,Canada,Both,55 to 59,"Endocrine, metabolic, blood, and immune disorders",Number,2017,33699.4181272,49805.9872067,23103.4787901
+Prevalence,Canada,Male,60 to 64,"Endocrine, metabolic, blood, and immune disorders",Number,2017,16792.7135498,29036.3246318,10513.6501807
+Prevalence,Canada,Female,60 to 64,"Endocrine, metabolic, blood, and immune disorders",Number,2017,19968.6990261,29244.7429355,14365.4120349
+Prevalence,Canada,Both,60 to 64,"Endocrine, metabolic, blood, and immune disorders",Number,2017,36761.412576,52747.361586,26672.2455095
+Prevalence,Canada,Male,65 to 69,"Endocrine, metabolic, blood, and immune disorders",Number,2017,17909.4935461,31621.5027856,11654.9740835
+Prevalence,Canada,Female,65 to 69,"Endocrine, metabolic, blood, and immune disorders",Number,2017,22342.5866003,30568.2243671,16743.950742
+Prevalence,Canada,Both,65 to 69,"Endocrine, metabolic, blood, and immune disorders",Number,2017,40252.0801464,56502.2304494,28996.0552316
+Prevalence,Canada,Male,70 to 74,"Endocrine, metabolic, blood, and immune disorders",Number,2017,16270.4004763,23162.171763,12128.5013147
+Prevalence,Canada,Female,70 to 74,"Endocrine, metabolic, blood, and immune disorders",Number,2017,23223.1482399,30471.385853,17769.418535
+Prevalence,Canada,Both,70 to 74,"Endocrine, metabolic, blood, and immune disorders",Number,2017,39493.5487162,50284.8926503,30937.0912803
+Prevalence,Canada,Male,75 to 79,"Endocrine, metabolic, blood, and immune disorders",Number,2017,14697.5294837,20967.8990684,10753.1440418
+Prevalence,Canada,Female,75 to 79,"Endocrine, metabolic, blood, and immune disorders",Number,2017,19276.818353,24481.2498038,14974.7352316
+Prevalence,Canada,Both,75 to 79,"Endocrine, metabolic, blood, and immune disorders",Number,2017,33974.3478367,43533.0845004,26408.8135612
+Prevalence,Canada,Male,80 plus,"Endocrine, metabolic, blood, and immune disorders",Number,2017,26771.6202305,32956.303832,21542.4254059
+Prevalence,Canada,Female,80 plus,"Endocrine, metabolic, blood, and immune disorders",Number,2017,47683.9849805,57074.9412994,39001.3238361
+Prevalence,Canada,Both,80 plus,"Endocrine, metabolic, blood, and immune disorders",Number,2017,74455.6052111,89372.3863433,61310.2258686
+Prevalence,Canada,Male,1 to 4,Ischemic heart disease,Number,2017,0.0,0.0,0.0
+Prevalence,Canada,Female,1 to 4,Ischemic heart disease,Number,2017,0.0,0.0,0.0
+Prevalence,Canada,Both,1 to 4,Ischemic heart disease,Number,2017,0.0,0.0,0.0
+Prevalence,Canada,Male,5 to 9,Ischemic heart disease,Number,2017,0.0,0.0,0.0
+Prevalence,Canada,Female,5 to 9,Ischemic heart disease,Number,2017,0.0,0.0,0.0
+Prevalence,Canada,Both,5 to 9,Ischemic heart disease,Number,2017,0.0,0.0,0.0
+Prevalence,Canada,Male,10 to 14,Ischemic heart disease,Number,2017,0.0,0.0,0.0
+Prevalence,Canada,Female,10 to 14,Ischemic heart disease,Number,2017,0.0,0.0,0.0
+Prevalence,Canada,Both,10 to 14,Ischemic heart disease,Number,2017,0.0,0.0,0.0
+Prevalence,Canada,Male,15 to 19,Ischemic heart disease,Number,2017,117.285638518,143.289292061,90.8305397454
+Prevalence,Canada,Female,15 to 19,Ischemic heart disease,Number,2017,72.508697582,90.8078817606,57.4098939542
+Prevalence,Canada,Both,15 to 19,Ischemic heart disease,Number,2017,189.7943361,231.556219068,152.828268337
+Prevalence,Canada,Male,20 to 24,Ischemic heart disease,Number,2017,380.732649847,447.303403363,318.697058926
+Prevalence,Canada,Female,20 to 24,Ischemic heart disease,Number,2017,248.808120747,295.033217573,205.555417912
+Prevalence,Canada,Both,20 to 24,Ischemic heart disease,Number,2017,629.540770594,731.686594474,527.889590947
+Prevalence,Canada,Male,25 to 29,Ischemic heart disease,Number,2017,837.107468215,966.28891226,712.310064845
+Prevalence,Canada,Female,25 to 29,Ischemic heart disease,Number,2017,486.309326699,557.95401606,416.917737182
+Prevalence,Canada,Both,25 to 29,Ischemic heart disease,Number,2017,1323.41679491,1514.41356381,1156.71694339
+Prevalence,Canada,Male,30 to 34,Ischemic heart disease,Number,2017,1920.02904275,2212.26540877,1662.50405984
+Prevalence,Canada,Female,30 to 34,Ischemic heart disease,Number,2017,933.158610364,1084.19909342,802.029163142
+Prevalence,Canada,Both,30 to 34,Ischemic heart disease,Number,2017,2853.18765311,3283.17724164,2483.47387314
+Prevalence,Canada,Male,35 to 39,Ischemic heart disease,Number,2017,4533.63808322,5221.08260509,3929.18603929
+Prevalence,Canada,Female,35 to 39,Ischemic heart disease,Number,2017,1862.87421899,2162.23743509,1596.88438354
+Prevalence,Canada,Both,35 to 39,Ischemic heart disease,Number,2017,6396.51230222,7343.42042382,5588.18655858
+Prevalence,Canada,Male,40 to 44,Ischemic heart disease,Number,2017,9424.58247307,10914.2541897,8174.46153126
+Prevalence,Canada,Female,40 to 44,Ischemic heart disease,Number,2017,3533.9910814,4132.19191563,2996.32449935
+Prevalence,Canada,Both,40 to 44,Ischemic heart disease,Number,2017,12958.5735545,14951.0677065,11315.0689382
+Prevalence,Canada,Male,45 to 49,Ischemic heart disease,Number,2017,18772.0945024,21366.7076271,16553.627527
+Prevalence,Canada,Female,45 to 49,Ischemic heart disease,Number,2017,6515.38639147,7519.96812751,5599.89526485
+Prevalence,Canada,Both,45 to 49,Ischemic heart disease,Number,2017,25287.4808939,28679.3694806,22393.0517448
+Prevalence,Canada,Male,50 to 54,Ischemic heart disease,Number,2017,36507.5559076,41953.2295916,31891.964646
+Prevalence,Canada,Female,50 to 54,Ischemic heart disease,Number,2017,11951.5975631,14165.7941806,10063.7800992
+Prevalence,Canada,Both,50 to 54,Ischemic heart disease,Number,2017,48459.1534707,55728.4012425,42118.0431354
+Prevalence,Canada,Male,55 to 59,Ischemic heart disease,Number,2017,57986.410962,65677.3646234,51172.9694745
+Prevalence,Canada,Female,55 to 59,Ischemic heart disease,Number,2017,18624.4368715,22044.4509332,15544.3375025
+Prevalence,Canada,Both,55 to 59,Ischemic heart disease,Number,2017,76610.8478335,87205.0076605,67000.2929333
+Prevalence,Canada,Male,60 to 64,Ischemic heart disease,Number,2017,75198.5547465,84684.1741114,65991.8408843
+Prevalence,Canada,Female,60 to 64,Ischemic heart disease,Number,2017,24640.2056018,29315.8250601,20218.5359966
+Prevalence,Canada,Both,60 to 64,Ischemic heart disease,Number,2017,99838.7603484,112953.907501,87252.9053234
+Prevalence,Canada,Male,65 to 69,Ischemic heart disease,Number,2017,94310.159045,106340.883391,83267.6430083
+Prevalence,Canada,Female,65 to 69,Ischemic heart disease,Number,2017,32677.6289174,39455.0116198,26490.7683078
+Prevalence,Canada,Both,65 to 69,Ischemic heart disease,Number,2017,126987.787962,145284.389064,110286.811923
+Prevalence,Canada,Male,70 to 74,Ischemic heart disease,Number,2017,93491.6245561,107366.368511,79980.4953045
+Prevalence,Canada,Female,70 to 74,Ischemic heart disease,Number,2017,35738.4627634,44388.4269094,27782.8048652
+Prevalence,Canada,Both,70 to 74,Ischemic heart disease,Number,2017,129230.087319,151021.847688,108229.179246
+Prevalence,Canada,Male,75 to 79,Ischemic heart disease,Number,2017,78083.0374187,89309.7329093,65666.5505621
+Prevalence,Canada,Female,75 to 79,Ischemic heart disease,Number,2017,34427.4234092,43369.7964496,25778.6067811
+Prevalence,Canada,Both,75 to 79,Ischemic heart disease,Number,2017,112510.460828,131897.856594,92200.8076895
+Prevalence,Canada,Male,80 plus,Ischemic heart disease,Number,2017,111954.310988,130179.131029,93908.0910527
+Prevalence,Canada,Female,80 plus,Ischemic heart disease,Number,2017,85140.0919973,104898.811493,68617.0457574
+Prevalence,Canada,Both,80 plus,Ischemic heart disease,Number,2017,197094.402985,233010.640451,165324.495356
+Prevalence,Canada,Male,1 to 4,Stroke,Number,2017,644.68744092,1018.46357175,325.908342961
+Prevalence,Canada,Female,1 to 4,Stroke,Number,2017,644.945164207,1006.94014708,348.55620476
+Prevalence,Canada,Both,1 to 4,Stroke,Number,2017,1289.63260513,1791.07309188,822.681489151
+Prevalence,Canada,Male,5 to 9,Stroke,Number,2017,1470.19936706,2130.74300853,851.764850382
+Prevalence,Canada,Female,5 to 9,Stroke,Number,2017,1663.67534309,2375.74031918,1010.95332731
+Prevalence,Canada,Both,5 to 9,Stroke,Number,2017,3133.87471015,4191.25028165,2176.6875321
+Prevalence,Canada,Male,10 to 14,Stroke,Number,2017,1929.13789432,2718.25140637,1230.90629722
+Prevalence,Canada,Female,10 to 14,Stroke,Number,2017,1893.21320124,2632.03524192,1218.53483422
+Prevalence,Canada,Both,10 to 14,Stroke,Number,2017,3822.35109556,5012.16154708,2749.33762103
+Prevalence,Canada,Male,15 to 19,Stroke,Number,2017,2316.38508409,3192.34309633,1517.67130809
+Prevalence,Canada,Female,15 to 19,Stroke,Number,2017,2260.21246448,3083.64520724,1492.0863906
+Prevalence,Canada,Both,15 to 19,Stroke,Number,2017,4576.59754858,5928.6886257,3315.90188589
+Prevalence,Canada,Male,20 to 24,Stroke,Number,2017,2834.30918418,3761.55103889,1908.97630578
+Prevalence,Canada,Female,20 to 24,Stroke,Number,2017,2921.29555187,3870.51063976,1990.54832902
+Prevalence,Canada,Both,20 to 24,Stroke,Number,2017,5755.60473605,7401.77917481,4286.44796089
+Prevalence,Canada,Male,25 to 29,Stroke,Number,2017,3402.79195783,4566.39155009,2431.45524096
+Prevalence,Canada,Female,25 to 29,Stroke,Number,2017,3656.86380069,4819.08639201,2703.38992723
+Prevalence,Canada,Both,25 to 29,Stroke,Number,2017,7059.65575852,8739.40212583,5490.64116437
+Prevalence,Canada,Male,30 to 34,Stroke,Number,2017,4067.10908351,5252.83280267,3010.05025771
+Prevalence,Canada,Female,30 to 34,Stroke,Number,2017,5134.88455047,6388.99630662,3917.78075406
+Prevalence,Canada,Both,30 to 34,Stroke,Number,2017,9201.99363398,11097.0491887,7457.76339459
+Prevalence,Canada,Male,35 to 39,Stroke,Number,2017,5846.85062252,7196.62385667,4641.53220111
+Prevalence,Canada,Female,35 to 39,Stroke,Number,2017,6901.15544559,8449.82781665,5613.09990677
+Prevalence,Canada,Both,35 to 39,Stroke,Number,2017,12748.0060681,15053.2104195,10731.7426101
+Prevalence,Canada,Male,40 to 44,Stroke,Number,2017,7881.38413077,9587.23526125,6372.69167366
+Prevalence,Canada,Female,40 to 44,Stroke,Number,2017,9829.7716882,11745.1693912,8101.68602299
+Prevalence,Canada,Both,40 to 44,Stroke,Number,2017,17711.155819,20450.2287015,15065.2375861
+Prevalence,Canada,Male,45 to 49,Stroke,Number,2017,12562.0394485,15038.0436003,10355.9331476
+Prevalence,Canada,Female,45 to 49,Stroke,Number,2017,15174.6550561,17688.6904793,12903.0516168
+Prevalence,Canada,Both,45 to 49,Stroke,Number,2017,27736.6945046,31733.0277573,24005.8512237
+Prevalence,Canada,Male,50 to 54,Stroke,Number,2017,20956.6566292,24630.5004899,17611.7826722
+Prevalence,Canada,Female,50 to 54,Stroke,Number,2017,24351.1670436,27915.885556,21017.6612132
+Prevalence,Canada,Both,50 to 54,Stroke,Number,2017,45307.8236729,51499.4356851,39752.2532135
+Prevalence,Canada,Male,55 to 59,Stroke,Number,2017,31124.9205243,36129.094048,26459.8247549
+Prevalence,Canada,Female,55 to 59,Stroke,Number,2017,34606.1684631,39289.9351848,30414.1356027
+Prevalence,Canada,Both,55 to 59,Stroke,Number,2017,65731.0889875,73922.4053309,58033.8784469
+Prevalence,Canada,Male,60 to 64,Stroke,Number,2017,38941.7907807,44888.1426551,33403.5863627
+Prevalence,Canada,Female,60 to 64,Stroke,Number,2017,41666.0619451,47398.4814795,36945.3244954
+Prevalence,Canada,Both,60 to 64,Stroke,Number,2017,80607.8527258,91065.535771,71529.3285697
+Prevalence,Canada,Male,65 to 69,Stroke,Number,2017,44500.7888498,50994.6460487,38713.9278716
+Prevalence,Canada,Female,65 to 69,Stroke,Number,2017,46009.4294179,51423.3360642,40994.105256
+Prevalence,Canada,Both,65 to 69,Stroke,Number,2017,90510.2182677,101294.464139,80441.6256989
+Prevalence,Canada,Male,70 to 74,Stroke,Number,2017,44468.2387226,50733.9521186,38196.8270511
+Prevalence,Canada,Female,70 to 74,Stroke,Number,2017,44715.701814,50841.5909634,38993.8467451
+Prevalence,Canada,Both,70 to 74,Stroke,Number,2017,89183.9405366,100188.94149,78091.79081
+Prevalence,Canada,Male,75 to 79,Stroke,Number,2017,37606.8879622,42888.5940848,32907.9009582
+Prevalence,Canada,Female,75 to 79,Stroke,Number,2017,38611.5966492,43630.9310659,33482.8695696
+Prevalence,Canada,Both,75 to 79,Stroke,Number,2017,76218.4846114,85044.0504779,67394.3314337
+Prevalence,Canada,Male,80 plus,Stroke,Number,2017,69048.263579,77805.6110902,61305.2432895
+Prevalence,Canada,Female,80 plus,Stroke,Number,2017,99767.9531866,113062.644741,87661.815684
+Prevalence,Canada,Both,80 plus,Stroke,Number,2017,168816.216766,189251.184175,150352.428255
+Prevalence,Canada,Male,1 to 4,Chronic obstructive pulmonary disease,Number,2017,375.5674128,460.894089891,251.972986406
+Prevalence,Canada,Female,1 to 4,Chronic obstructive pulmonary disease,Number,2017,354.508353125,433.724740269,242.994020943
+Prevalence,Canada,Both,1 to 4,Chronic obstructive pulmonary disease,Number,2017,730.075765925,886.567540624,497.888303906
+Prevalence,Canada,Male,5 to 9,Chronic obstructive pulmonary disease,Number,2017,1207.16866392,1491.44289663,874.608366507
+Prevalence,Canada,Female,5 to 9,Chronic obstructive pulmonary disease,Number,2017,1108.32011744,1385.62776608,787.981723215
+Prevalence,Canada,Both,5 to 9,Chronic obstructive pulmonary disease,Number,2017,2315.48878136,2826.13997331,1693.46414987
+Prevalence,Canada,Male,10 to 14,Chronic obstructive pulmonary disease,Number,2017,1900.20637468,2355.43665649,1384.83371367
+Prevalence,Canada,Female,10 to 14,Chronic obstructive pulmonary disease,Number,2017,1687.07164414,2160.38666367,1139.70783227
+Prevalence,Canada,Both,10 to 14,Chronic obstructive pulmonary disease,Number,2017,3587.27801883,4424.75249149,2538.09445035
+Prevalence,Canada,Male,15 to 19,Chronic obstructive pulmonary disease,Number,2017,2661.52625186,3295.63108665,1955.03008015
+Prevalence,Canada,Female,15 to 19,Chronic obstructive pulmonary disease,Number,2017,2276.86213424,2867.67307423,1584.55087242
+Prevalence,Canada,Both,15 to 19,Chronic obstructive pulmonary disease,Number,2017,4938.3883861,6126.87810539,3594.35833233
+Prevalence,Canada,Male,20 to 24,Chronic obstructive pulmonary disease,Number,2017,3810.50019673,4952.61908814,2820.98679865
+Prevalence,Canada,Female,20 to 24,Chronic obstructive pulmonary disease,Number,2017,3205.47245914,4134.33303693,2273.44123591
+Prevalence,Canada,Both,20 to 24,Chronic obstructive pulmonary disease,Number,2017,7015.97265588,9020.82482442,5198.19522766
+Prevalence,Canada,Male,25 to 29,Chronic obstructive pulmonary disease,Number,2017,5273.70412886,6824.23502912,3919.97439282
+Prevalence,Canada,Female,25 to 29,Chronic obstructive pulmonary disease,Number,2017,4759.70781151,6202.06720387,3538.23779361
+Prevalence,Canada,Both,25 to 29,Chronic obstructive pulmonary disease,Number,2017,10033.4119404,12808.153513,7562.84161147
+Prevalence,Canada,Male,30 to 34,Chronic obstructive pulmonary disease,Number,2017,7410.93943822,9642.49211718,5509.63439435
+Prevalence,Canada,Female,30 to 34,Chronic obstructive pulmonary disease,Number,2017,7381.7944292,9822.67810287,5587.15010154
+Prevalence,Canada,Both,30 to 34,Chronic obstructive pulmonary disease,Number,2017,14792.7338674,19504.0229667,11082.178726
+Prevalence,Canada,Male,35 to 39,Chronic obstructive pulmonary disease,Number,2017,11476.6026654,14503.8377777,8983.54840266
+Prevalence,Canada,Female,35 to 39,Chronic obstructive pulmonary disease,Number,2017,12686.5935741,16071.7237594,9909.11634071
+Prevalence,Canada,Both,35 to 39,Chronic obstructive pulmonary disease,Number,2017,24163.1962394,30347.7642772,18962.8833032
+Prevalence,Canada,Male,40 to 44,Chronic obstructive pulmonary disease,Number,2017,19209.7414034,25134.8269378,14812.8139003
+Prevalence,Canada,Female,40 to 44,Chronic obstructive pulmonary disease,Number,2017,22274.2339393,28854.5375395,17258.2793156
+Prevalence,Canada,Both,40 to 44,Chronic obstructive pulmonary disease,Number,2017,41483.9753426,53810.2447397,32332.6292059
+Prevalence,Canada,Male,45 to 49,Chronic obstructive pulmonary disease,Number,2017,33775.7483896,42684.4938625,26810.5460972
+Prevalence,Canada,Female,45 to 49,Chronic obstructive pulmonary disease,Number,2017,38015.4648796,48844.3190552,30159.3079167
+Prevalence,Canada,Both,45 to 49,Chronic obstructive pulmonary disease,Number,2017,71791.2132692,90318.4879018,57296.5410654
+Prevalence,Canada,Male,50 to 54,Chronic obstructive pulmonary disease,Number,2017,59512.2295838,74676.9475714,47001.8841637
+Prevalence,Canada,Female,50 to 54,Chronic obstructive pulmonary disease,Number,2017,60762.3349382,76578.8609356,49095.4410882
+Prevalence,Canada,Both,50 to 54,Chronic obstructive pulmonary disease,Number,2017,120274.564522,148840.336116,97629.1147937
+Prevalence,Canada,Male,55 to 59,Chronic obstructive pulmonary disease,Number,2017,89480.4632277,108661.908629,70435.301003
+Prevalence,Canada,Female,55 to 59,Chronic obstructive pulmonary disease,Number,2017,82499.4937846,102767.594441,66320.9700277
+Prevalence,Canada,Both,55 to 59,Chronic obstructive pulmonary disease,Number,2017,171979.957012,210483.97098,138617.678682
+Prevalence,Canada,Male,60 to 64,Chronic obstructive pulmonary disease,Number,2017,115524.658223,143377.226984,92312.6955663
+Prevalence,Canada,Female,60 to 64,Chronic obstructive pulmonary disease,Number,2017,102173.230693,129343.168006,81597.3130412
+Prevalence,Canada,Both,60 to 64,Chronic obstructive pulmonary disease,Number,2017,217697.888916,269224.087531,174921.601563
+Prevalence,Canada,Male,65 to 69,Chronic obstructive pulmonary disease,Number,2017,141206.358315,173116.915117,113951.237987
+Prevalence,Canada,Female,65 to 69,Chronic obstructive pulmonary disease,Number,2017,125539.387726,155195.399238,100669.9603
+Prevalence,Canada,Both,65 to 69,Chronic obstructive pulmonary disease,Number,2017,266745.74604,326769.24326,215218.370446
+Prevalence,Canada,Male,70 to 74,Chronic obstructive pulmonary disease,Number,2017,148935.082718,181933.617535,123854.408682
+Prevalence,Canada,Female,70 to 74,Chronic obstructive pulmonary disease,Number,2017,130251.539447,160071.875792,106084.059216
+Prevalence,Canada,Both,70 to 74,Chronic obstructive pulmonary disease,Number,2017,279186.622164,331927.828972,233848.929448
+Prevalence,Canada,Male,75 to 79,Chronic obstructive pulmonary disease,Number,2017,124104.79473,150298.525941,104815.591061
+Prevalence,Canada,Female,75 to 79,Chronic obstructive pulmonary disease,Number,2017,109814.45644,134945.020579,88362.500435
+Prevalence,Canada,Both,75 to 79,Chronic obstructive pulmonary disease,Number,2017,233919.25117,278999.50741,197284.053133
+Prevalence,Canada,Male,80 plus,Chronic obstructive pulmonary disease,Number,2017,168096.675436,201504.68417,142933.539042
+Prevalence,Canada,Female,80 plus,Chronic obstructive pulmonary disease,Number,2017,186990.66162,232067.342991,149446.674195
+Prevalence,Canada,Both,80 plus,Chronic obstructive pulmonary disease,Number,2017,355087.337056,428624.135727,298304.057723
+Prevalence,Canada,Male,1 to 4,Asthma,Number,2017,92559.2771082,128174.658969,62910.3726116
+Prevalence,Canada,Female,1 to 4,Asthma,Number,2017,44930.2998623,65329.21171,28747.8120073
+Prevalence,Canada,Both,1 to 4,Asthma,Number,2017,137489.576971,189086.526303,92221.2075248
+Prevalence,Canada,Male,5 to 9,Asthma,Number,2017,126144.347141,177249.869776,86994.8699055
+Prevalence,Canada,Female,5 to 9,Asthma,Number,2017,67551.9296377,97047.7788947,44029.0645849
+Prevalence,Canada,Both,5 to 9,Asthma,Number,2017,193696.276779,271778.624702,130789.534089
+Prevalence,Canada,Male,10 to 14,Asthma,Number,2017,74919.5282371,97803.3010543,54034.5554304
+Prevalence,Canada,Female,10 to 14,Asthma,Number,2017,49142.571105,64491.9309292,34653.5465901
+Prevalence,Canada,Both,10 to 14,Asthma,Number,2017,124062.099342,160448.96582,90208.1919195
+Prevalence,Canada,Male,15 to 19,Asthma,Number,2017,42438.2251669,55775.5980759,30740.6940129
+Prevalence,Canada,Female,15 to 19,Asthma,Number,2017,45654.3839014,59152.496682,32758.1598711
+Prevalence,Canada,Both,15 to 19,Asthma,Number,2017,88092.6090683,113645.871571,65125.6732345
+Prevalence,Canada,Male,20 to 24,Asthma,Number,2017,32161.3926969,42340.1688979,22621.6006146
+Prevalence,Canada,Female,20 to 24,Asthma,Number,2017,47378.598936,62808.6008207,33814.9926693
+Prevalence,Canada,Both,20 to 24,Asthma,Number,2017,79539.9916329,103842.675947,56901.3759315
+Prevalence,Canada,Male,25 to 29,Asthma,Number,2017,31170.9205297,40851.5021931,23237.8032125
+Prevalence,Canada,Female,25 to 29,Asthma,Number,2017,51771.2970106,66922.7702646,38136.5160107
+Prevalence,Canada,Both,25 to 29,Asthma,Number,2017,82942.2175403,107789.222197,61108.4233006
+Prevalence,Canada,Male,30 to 34,Asthma,Number,2017,34173.3213128,44053.5315261,26451.6429279
+Prevalence,Canada,Female,30 to 34,Asthma,Number,2017,57531.5218331,74815.8398964,44852.2006377
+Prevalence,Canada,Both,30 to 34,Asthma,Number,2017,91704.8431459,118621.309627,71655.3585332
+Prevalence,Canada,Male,35 to 39,Asthma,Number,2017,34867.9780411,44108.8621023,27533.2091858
+Prevalence,Canada,Female,35 to 39,Asthma,Number,2017,60131.3081029,77084.4595961,47604.1872841
+Prevalence,Canada,Both,35 to 39,Asthma,Number,2017,94999.286144,120332.392463,75440.4490026
+Prevalence,Canada,Male,40 to 44,Asthma,Number,2017,33402.0381854,42705.3807477,25555.4241371
+Prevalence,Canada,Female,40 to 44,Asthma,Number,2017,59518.3436363,74909.783176,46297.6638897
+Prevalence,Canada,Both,40 to 44,Asthma,Number,2017,92920.3818217,117243.980465,72660.2200086
+Prevalence,Canada,Male,45 to 49,Asthma,Number,2017,35410.2434794,43636.7721007,27560.7656077
+Prevalence,Canada,Female,45 to 49,Asthma,Number,2017,64250.1918455,79520.931626,51310.5294857
+Prevalence,Canada,Both,45 to 49,Asthma,Number,2017,99660.4353249,122367.073539,79543.5477126
+Prevalence,Canada,Male,50 to 54,Asthma,Number,2017,42018.6733113,52392.5189128,32472.3579361
+Prevalence,Canada,Female,50 to 54,Asthma,Number,2017,76246.7303476,93479.2739439,61085.8684477
+Prevalence,Canada,Both,50 to 54,Asthma,Number,2017,118265.403659,145473.872351,94858.8809665
+Prevalence,Canada,Male,55 to 59,Asthma,Number,2017,46638.7208421,58019.5683994,37092.2643356
+Prevalence,Canada,Female,55 to 59,Asthma,Number,2017,83413.5959351,102088.020839,67373.2292533
+Prevalence,Canada,Both,55 to 59,Asthma,Number,2017,130052.316777,159522.49865,105534.986463
+Prevalence,Canada,Male,60 to 64,Asthma,Number,2017,46288.4288422,58881.5884016,36359.0205212
+Prevalence,Canada,Female,60 to 64,Asthma,Number,2017,80856.9342011,102645.140357,64210.3663197
+Prevalence,Canada,Both,60 to 64,Asthma,Number,2017,127145.363043,161431.717232,101132.918771
+Prevalence,Canada,Male,65 to 69,Asthma,Number,2017,44169.0318278,56615.7662707,34917.5751906
+Prevalence,Canada,Female,65 to 69,Asthma,Number,2017,74051.6236924,94720.442654,59154.5196994
+Prevalence,Canada,Both,65 to 69,Asthma,Number,2017,118220.65552,150942.151255,94437.4780832
+Prevalence,Canada,Male,70 to 74,Asthma,Number,2017,37513.1494331,48259.3197612,28805.8117674
+Prevalence,Canada,Female,70 to 74,Asthma,Number,2017,60443.8486147,76356.0359308,47626.5061329
+Prevalence,Canada,Both,70 to 74,Asthma,Number,2017,97956.9980478,122536.333293,76828.8726635
+Prevalence,Canada,Male,75 to 79,Asthma,Number,2017,25608.1856878,32200.5030507,20121.2960779
+Prevalence,Canada,Female,75 to 79,Asthma,Number,2017,41156.6553653,51794.8172049,32385.3882523
+Prevalence,Canada,Both,75 to 79,Asthma,Number,2017,66764.8410532,82925.9705108,52875.8326199
+Prevalence,Canada,Male,80 plus,Asthma,Number,2017,29659.9456242,36008.6819344,24241.6217097
+Prevalence,Canada,Female,80 plus,Asthma,Number,2017,54514.7539305,67740.7149838,44728.7463724
+Prevalence,Canada,Both,80 plus,Asthma,Number,2017,84174.6995547,102485.623422,69405.0133647
+Prevalence,Canada,Male,1 to 4,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,0.714799899048,1.0925567966,0.387817077019
+Prevalence,Canada,Female,1 to 4,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,0.813690502272,1.25444022597,0.443103430797
+Prevalence,Canada,Both,1 to 4,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,1.52849040132,2.33388217865,0.831910043778
+Prevalence,Canada,Male,5 to 9,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,1.5267836499,2.67018165887,0.782890079874
+Prevalence,Canada,Female,5 to 9,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,1.87928459426,3.14565962681,0.959036577403
+Prevalence,Canada,Both,5 to 9,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,3.40606824415,5.86302513121,1.75074790497
+Prevalence,Canada,Male,10 to 14,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,5.07035086073,8.1648348288,2.67470040294
+Prevalence,Canada,Female,10 to 14,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,6.63514043631,10.4621207504,3.71511774398
+Prevalence,Canada,Both,10 to 14,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,11.705491297,18.4010248852,6.40506129114
+Prevalence,Canada,Male,15 to 19,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,26.5054647604,38.9653734993,16.8637617403
+Prevalence,Canada,Female,15 to 19,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,33.729408639,48.7654864825,21.2997321707
+Prevalence,Canada,Both,15 to 19,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,60.2348733994,87.8841998368,38.2786431768
+Prevalence,Canada,Male,20 to 24,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,107.598677786,153.252328589,75.2637626138
+Prevalence,Canada,Female,20 to 24,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,125.495489564,176.190067763,88.1584273163
+Prevalence,Canada,Both,20 to 24,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,233.09416735,328.110788734,163.814157259
+Prevalence,Canada,Male,25 to 29,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,258.33738691,334.23673299,193.611146978
+Prevalence,Canada,Female,25 to 29,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,286.246561825,369.65066632,216.763387453
+Prevalence,Canada,Both,25 to 29,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,544.583948735,700.683362608,413.527628008
+Prevalence,Canada,Male,30 to 34,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,489.047197482,625.213997793,381.268606099
+Prevalence,Canada,Female,30 to 34,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,525.444461094,659.038229209,410.356794477
+Prevalence,Canada,Both,30 to 34,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,1014.49165858,1265.6331648,795.367347409
+Prevalence,Canada,Male,35 to 39,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,766.172830795,954.367214363,601.901824084
+Prevalence,Canada,Female,35 to 39,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,851.086321649,1058.30985074,672.355515387
+Prevalence,Canada,Both,35 to 39,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,1617.25915244,2009.77538386,1273.13604153
+Prevalence,Canada,Male,40 to 44,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,1049.83127095,1268.46735899,849.26690708
+Prevalence,Canada,Female,40 to 44,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,1255.24564415,1523.04651011,1019.77869958
+Prevalence,Canada,Both,40 to 44,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,2305.0769151,2790.83309172,1875.7834267
+Prevalence,Canada,Male,45 to 49,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,1444.09052829,1758.49010575,1192.72558514
+Prevalence,Canada,Female,45 to 49,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,1824.41977461,2205.90994484,1497.53241108
+Prevalence,Canada,Both,45 to 49,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,3268.5103029,3956.80669839,2683.67047206
+Prevalence,Canada,Male,50 to 54,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,2059.95962572,2445.83144449,1711.01393126
+Prevalence,Canada,Female,50 to 54,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,2647.29042105,3152.87343285,2190.84726683
+Prevalence,Canada,Both,50 to 54,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,4707.25004677,5602.04130504,3909.28522925
+Prevalence,Canada,Male,55 to 59,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,2661.01217861,3148.86614486,2237.90991151
+Prevalence,Canada,Female,55 to 59,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,3392.85200479,4000.08120465,2858.42407421
+Prevalence,Canada,Both,55 to 59,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,6053.86418341,7112.56418785,5088.31310829
+Prevalence,Canada,Male,60 to 64,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,3123.4602849,3729.84116454,2670.06846546
+Prevalence,Canada,Female,60 to 64,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,3838.95354596,4513.13267806,3259.46783267
+Prevalence,Canada,Both,60 to 64,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,6962.41383085,8170.5152674,5942.8762722
+Prevalence,Canada,Male,65 to 69,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,3722.33882383,4458.89760792,3058.53080639
+Prevalence,Canada,Female,65 to 69,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,4226.44279049,4900.69039379,3580.9460983
+Prevalence,Canada,Both,65 to 69,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,7948.78161433,9282.36851646,6730.9350845
+Prevalence,Canada,Male,70 to 74,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,4158.8125172,5042.48850108,3363.39054119
+Prevalence,Canada,Female,70 to 74,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,4288.45459519,5068.27442478,3645.89655976
+Prevalence,Canada,Both,70 to 74,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,8447.26711239,10086.8167146,7039.90571454
+Prevalence,Canada,Male,75 to 79,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,3910.78416623,4882.12694731,3118.22929401
+Prevalence,Canada,Female,75 to 79,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,3802.64055297,4535.43241761,3168.82536944
+Prevalence,Canada,Both,75 to 79,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,7713.42471919,9415.86296717,6322.69438627
+Prevalence,Canada,Male,80 plus,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,6263.47273109,7546.95146969,5131.78159831
+Prevalence,Canada,Female,80 plus,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,7161.08035175,8503.12275982,5970.5088634
+Prevalence,Canada,Both,80 plus,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,13424.5530828,16015.1708784,11112.2863706
+Prevalence,Canada,Male,1 to 4,Diabetes mellitus,Number,2017,184.909915495,288.651895845,108.36455097
+Prevalence,Canada,Female,1 to 4,Diabetes mellitus,Number,2017,149.610002995,234.792676589,88.6640836156
+Prevalence,Canada,Both,1 to 4,Diabetes mellitus,Number,2017,334.51991849,533.106732485,197.858116698
+Prevalence,Canada,Male,5 to 9,Diabetes mellitus,Number,2017,1795.76568741,2526.73381101,1271.9617452
+Prevalence,Canada,Female,5 to 9,Diabetes mellitus,Number,2017,1494.53239817,2078.98507948,1053.50182548
+Prevalence,Canada,Both,5 to 9,Diabetes mellitus,Number,2017,3290.29808559,4610.46788792,2342.63545011
+Prevalence,Canada,Male,10 to 14,Diabetes mellitus,Number,2017,4269.88775972,5414.93919805,3209.2009474
+Prevalence,Canada,Female,10 to 14,Diabetes mellitus,Number,2017,3684.32655909,4760.03082077,2748.42237808
+Prevalence,Canada,Both,10 to 14,Diabetes mellitus,Number,2017,7954.2143188,10147.4089682,5973.45304774
+Prevalence,Canada,Male,15 to 19,Diabetes mellitus,Number,2017,6704.94125703,8328.11164473,5111.53004902
+Prevalence,Canada,Female,15 to 19,Diabetes mellitus,Number,2017,5883.12356356,7379.44004969,4529.42234185
+Prevalence,Canada,Both,15 to 19,Diabetes mellitus,Number,2017,12588.0648206,15602.5555,9604.66908753
+Prevalence,Canada,Male,20 to 24,Diabetes mellitus,Number,2017,9905.78291271,12122.0079885,7738.41056029
+Prevalence,Canada,Female,20 to 24,Diabetes mellitus,Number,2017,8915.57707222,10892.1082374,7007.75120498
+Prevalence,Canada,Both,20 to 24,Diabetes mellitus,Number,2017,18821.3599849,22951.8044685,14677.2960213
+Prevalence,Canada,Male,25 to 29,Diabetes mellitus,Number,2017,14772.2765205,17793.2188666,11902.9488566
+Prevalence,Canada,Female,25 to 29,Diabetes mellitus,Number,2017,13938.9880798,16770.6568702,11224.2299057
+Prevalence,Canada,Both,25 to 29,Diabetes mellitus,Number,2017,28711.2646003,34450.9754438,23175.8939432
+Prevalence,Canada,Male,30 to 34,Diabetes mellitus,Number,2017,23703.165392,28622.3630141,19399.5624964
+Prevalence,Canada,Female,30 to 34,Diabetes mellitus,Number,2017,21878.3283603,26771.4381749,17960.1469066
+Prevalence,Canada,Both,30 to 34,Diabetes mellitus,Number,2017,45581.4937523,55131.6585628,37455.8989473
+Prevalence,Canada,Male,35 to 39,Diabetes mellitus,Number,2017,38205.4435388,45643.154898,31550.4953421
+Prevalence,Canada,Female,35 to 39,Diabetes mellitus,Number,2017,32579.0007537,38957.6050132,27217.399335
+Prevalence,Canada,Both,35 to 39,Diabetes mellitus,Number,2017,70784.4442925,83960.9296059,59072.7398045
+Prevalence,Canada,Male,40 to 44,Diabetes mellitus,Number,2017,57807.1442935,70319.392591,47135.8966045
+Prevalence,Canada,Female,40 to 44,Diabetes mellitus,Number,2017,45258.1329798,55210.94464,37486.9047611
+Prevalence,Canada,Both,40 to 44,Diabetes mellitus,Number,2017,103065.277273,125740.097025,85553.1311538
+Prevalence,Canada,Male,45 to 49,Diabetes mellitus,Number,2017,89076.41072,106921.561037,74963.5724024
+Prevalence,Canada,Female,45 to 49,Diabetes mellitus,Number,2017,65422.6432063,78473.1242579,55316.8612257
+Prevalence,Canada,Both,45 to 49,Diabetes mellitus,Number,2017,154499.053926,183723.763031,130704.8641
+Prevalence,Canada,Male,50 to 54,Diabetes mellitus,Number,2017,141425.203078,168656.388998,118611.206592
+Prevalence,Canada,Female,50 to 54,Diabetes mellitus,Number,2017,99730.1663063,118553.365212,84846.3877496
+Prevalence,Canada,Both,50 to 54,Diabetes mellitus,Number,2017,241155.369385,284633.612636,205511.235772
+Prevalence,Canada,Male,55 to 59,Diabetes mellitus,Number,2017,201383.567933,231693.706395,172793.379858
+Prevalence,Canada,Female,55 to 59,Diabetes mellitus,Number,2017,140199.00043,163129.85241,121313.843457
+Prevalence,Canada,Both,55 to 59,Diabetes mellitus,Number,2017,341582.568363,392257.208858,297672.747482
+Prevalence,Canada,Male,60 to 64,Diabetes mellitus,Number,2017,238370.154088,273330.463059,203187.170931
+Prevalence,Canada,Female,60 to 64,Diabetes mellitus,Number,2017,167867.142659,195482.146091,145390.857908
+Prevalence,Canada,Both,60 to 64,Diabetes mellitus,Number,2017,406237.296747,465849.25123,350780.711045
+Prevalence,Canada,Male,65 to 69,Diabetes mellitus,Number,2017,239353.860213,272329.53001,206533.266015
+Prevalence,Canada,Female,65 to 69,Diabetes mellitus,Number,2017,172372.8783,198370.558842,150503.24369
+Prevalence,Canada,Both,65 to 69,Diabetes mellitus,Number,2017,411726.738514,466330.02944,359205.742382
+Prevalence,Canada,Male,70 to 74,Diabetes mellitus,Number,2017,201023.891428,225835.242159,177896.907704
+Prevalence,Canada,Female,70 to 74,Diabetes mellitus,Number,2017,149806.454578,169162.096572,132606.79109
+Prevalence,Canada,Both,70 to 74,Diabetes mellitus,Number,2017,350830.346006,392067.017794,313485.776009
+Prevalence,Canada,Male,75 to 79,Diabetes mellitus,Number,2017,138829.804985,156044.878269,123058.774518
+Prevalence,Canada,Female,75 to 79,Diabetes mellitus,Number,2017,111211.534463,125579.159185,98383.5033777
+Prevalence,Canada,Both,75 to 79,Diabetes mellitus,Number,2017,250041.339448,278964.117202,223260.921463
+Prevalence,Canada,Male,80 plus,Diabetes mellitus,Number,2017,164046.70631,184849.970184,144748.522234
+Prevalence,Canada,Female,80 plus,Diabetes mellitus,Number,2017,169375.161968,192157.840461,149057.756602
+Prevalence,Canada,Both,80 plus,Diabetes mellitus,Number,2017,333421.868278,373756.187868,296702.878358
+DALYs (Disability-Adjusted Life Years),Canada,Male,1 to 4,Asthma,Number,2017,3777.045451854083,6009.507609412424,2092.886058271363
+DALYs (Disability-Adjusted Life Years),Canada,Female,1 to 4,Asthma,Number,2017,1851.6321072553028,3065.292283450133,987.532866145829
+DALYs (Disability-Adjusted Life Years),Canada,Both,1 to 4,Asthma,Number,2017,5628.6775591093865,8959.114463615922,3166.440674536054
+DALYs (Disability-Adjusted Life Years),Canada,Male,5 to 9,Asthma,Number,2017,5137.367588945226,8244.122719139059,2961.449654542885
+DALYs (Disability-Adjusted Life Years),Canada,Female,5 to 9,Asthma,Number,2017,2775.2837925381987,4518.797674909646,1536.9190992626886
+DALYs (Disability-Adjusted Life Years),Canada,Both,5 to 9,Asthma,Number,2017,7912.651381483425,12770.887744662505,4482.48854269686
+DALYs (Disability-Adjusted Life Years),Canada,Male,10 to 14,Asthma,Number,2017,3104.948831825371,4820.980609369604,1828.8450676440038
+DALYs (Disability-Adjusted Life Years),Canada,Female,10 to 14,Asthma,Number,2017,2059.235296470189,3196.1603374286433,1175.4853321090127
+DALYs (Disability-Adjusted Life Years),Canada,Both,10 to 14,Asthma,Number,2017,5164.184128295559,7919.555239362175,2999.779751954774
+DALYs (Disability-Adjusted Life Years),Canada,Male,15 to 19,Asthma,Number,2017,1789.7182228035765,2803.7511482773757,1076.0441847651593
+DALYs (Disability-Adjusted Life Years),Canada,Female,15 to 19,Asthma,Number,2017,1911.7022046354855,2968.8727865346114,1144.3902906591406
+DALYs (Disability-Adjusted Life Years),Canada,Both,15 to 19,Asthma,Number,2017,3701.4204274390618,5653.11964350058,2170.012889047821
+DALYs (Disability-Adjusted Life Years),Canada,Male,20 to 24,Asthma,Number,2017,1387.6541416613447,2132.363400983034,835.4706098255448
+DALYs (Disability-Adjusted Life Years),Canada,Female,20 to 24,Asthma,Number,2017,1984.0980627295532,3021.0484208687913,1220.0657744467385
+DALYs (Disability-Adjusted Life Years),Canada,Both,20 to 24,Asthma,Number,2017,3371.7522043908984,5127.354272454277,2098.678156105393
+DALYs (Disability-Adjusted Life Years),Canada,Male,25 to 29,Asthma,Number,2017,1348.4533712588964,2058.2136613635244,808.5728576914311
+DALYs (Disability-Adjusted Life Years),Canada,Female,25 to 29,Asthma,Number,2017,2153.4282672842414,3316.994881349902,1315.295841887117
+DALYs (Disability-Adjusted Life Years),Canada,Both,25 to 29,Asthma,Number,2017,3501.8816385431383,5310.476140672516,2140.8470022253723
+DALYs (Disability-Adjusted Life Years),Canada,Male,30 to 34,Asthma,Number,2017,1422.511721806136,2181.3236787321744,893.954618322474
+DALYs (Disability-Adjusted Life Years),Canada,Female,30 to 34,Asthma,Number,2017,2347.5183457849075,3712.06777522962,1486.9444752373956
+DALYs (Disability-Adjusted Life Years),Canada,Both,30 to 34,Asthma,Number,2017,3770.0300675910435,5832.04552190147,2411.915569235785
+DALYs (Disability-Adjusted Life Years),Canada,Male,35 to 39,Asthma,Number,2017,1446.7479369900002,2232.7069168281964,907.8430552683694
+DALYs (Disability-Adjusted Life Years),Canada,Female,35 to 39,Asthma,Number,2017,2436.3605531282788,3730.49223760025,1537.9060681489163
+DALYs (Disability-Adjusted Life Years),Canada,Both,35 to 39,Asthma,Number,2017,3883.108490118279,5916.706291327137,2488.896207221924
+DALYs (Disability-Adjusted Life Years),Canada,Male,40 to 44,Asthma,Number,2017,1388.7694322717614,2159.794030350765,874.3623671232851
+DALYs (Disability-Adjusted Life Years),Canada,Female,40 to 44,Asthma,Number,2017,2420.2666864594185,3673.8161729633493,1545.6502521094135
+DALYs (Disability-Adjusted Life Years),Canada,Both,40 to 44,Asthma,Number,2017,3809.0361187311796,5742.929350587203,2441.9859841277776
+DALYs (Disability-Adjusted Life Years),Canada,Male,45 to 49,Asthma,Number,2017,1491.714649163678,2229.0572208514386,960.7979515822302
+DALYs (Disability-Adjusted Life Years),Canada,Female,45 to 49,Asthma,Number,2017,2660.0339481422884,3884.182345996173,1729.3873285044622
+DALYs (Disability-Adjusted Life Years),Canada,Both,45 to 49,Asthma,Number,2017,4151.748597305966,6098.902731022913,2734.024949023239
+DALYs (Disability-Adjusted Life Years),Canada,Male,50 to 54,Asthma,Number,2017,1764.4932726144662,2580.9687072064144,1135.9948422042019
+DALYs (Disability-Adjusted Life Years),Canada,Female,50 to 54,Asthma,Number,2017,3185.4715000032834,4558.812000490187,2102.8941594780895
+DALYs (Disability-Adjusted Life Years),Canada,Both,50 to 54,Asthma,Number,2017,4949.96477261775,7136.897464692375,3287.6689196198176
+DALYs (Disability-Adjusted Life Years),Canada,Male,55 to 59,Asthma,Number,2017,1942.920977804316,2800.7966473083984,1267.5850225932786
+DALYs (Disability-Adjusted Life Years),Canada,Female,55 to 59,Asthma,Number,2017,3457.8110484735016,4990.406794191911,2297.4117089548054
+DALYs (Disability-Adjusted Life Years),Canada,Both,55 to 59,Asthma,Number,2017,5400.732026277818,7714.850795708758,3618.4299914246726
+DALYs (Disability-Adjusted Life Years),Canada,Male,60 to 64,Asthma,Number,2017,1920.9827868131683,2854.018950876845,1273.494991358515
+DALYs (Disability-Adjusted Life Years),Canada,Female,60 to 64,Asthma,Number,2017,3329.6472657986237,4926.730646825896,2208.103562012234
+DALYs (Disability-Adjusted Life Years),Canada,Both,60 to 64,Asthma,Number,2017,5250.630052611792,7666.7958458039675,3533.9739955226564
+DALYs (Disability-Adjusted Life Years),Canada,Male,65 to 69,Asthma,Number,2017,1795.4660655694943,2695.932004026391,1192.0588097435573
+DALYs (Disability-Adjusted Life Years),Canada,Female,65 to 69,Asthma,Number,2017,3016.1793132290168,4350.634738158103,2003.8275211986377
+DALYs (Disability-Adjusted Life Years),Canada,Both,65 to 69,Asthma,Number,2017,4811.645378798511,6996.928866454969,3249.8751741684064
+DALYs (Disability-Adjusted Life Years),Canada,Male,70 to 74,Asthma,Number,2017,1529.0587039510062,2271.7205579098136,1008.2995070618612
+DALYs (Disability-Adjusted Life Years),Canada,Female,70 to 74,Asthma,Number,2017,2468.8939319252845,3627.344788679028,1651.9936175466148
+DALYs (Disability-Adjusted Life Years),Canada,Both,70 to 74,Asthma,Number,2017,3997.952635876292,5804.2399671834955,2675.6760672719856
+DALYs (Disability-Adjusted Life Years),Canada,Male,75 to 79,Asthma,Number,2017,1054.6913218140103,1523.9603721303506,708.0735077665939
+DALYs (Disability-Adjusted Life Years),Canada,Female,75 to 79,Asthma,Number,2017,1728.1038650387773,2516.347366783359,1157.6858411509816
+DALYs (Disability-Adjusted Life Years),Canada,Both,75 to 79,Asthma,Number,2017,2782.7951868527875,3996.8622181086007,1897.5957410726055
+DALYs (Disability-Adjusted Life Years),Canada,Male,80 plus,Asthma,Number,2017,1319.1952630110018,1822.2895373671054,946.5924591460392
+DALYs (Disability-Adjusted Life Years),Canada,Female,80 plus,Asthma,Number,2017,2607.0053340424915,3560.8775482834185,1899.179975052343
+DALYs (Disability-Adjusted Life Years),Canada,Both,80 plus,Asthma,Number,2017,3926.2005970534933,5417.232359195638,2891.123858131433
+DALYs (Disability-Adjusted Life Years),Canada,Male,1 to 4,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,58.398082036557874,92.25547939621974,36.711597879679175
+DALYs (Disability-Adjusted Life Years),Canada,Female,1 to 4,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,38.99455528550931,67.87411949464986,21.52759872034084
+DALYs (Disability-Adjusted Life Years),Canada,Both,1 to 4,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,97.39263732206719,140.8583754477963,65.40265409011856
+DALYs (Disability-Adjusted Life Years),Canada,Male,5 to 9,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,28.004035492673907,42.14714536025568,16.91030732780298
+DALYs (Disability-Adjusted Life Years),Canada,Female,5 to 9,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,26.850112252066165,44.94416528323224,12.964135189144729
+DALYs (Disability-Adjusted Life Years),Canada,Both,5 to 9,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,54.85414774474007,77.48239284609066,35.8164261408061
+DALYs (Disability-Adjusted Life Years),Canada,Male,10 to 14,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,37.19241707836728,59.228132628418614,21.540865765665163
+DALYs (Disability-Adjusted Life Years),Canada,Female,10 to 14,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,27.926533228034785,46.23723534419705,13.705889391273992
+DALYs (Disability-Adjusted Life Years),Canada,Both,10 to 14,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,65.11895030640206,93.7357905544873,42.02783879053404
+DALYs (Disability-Adjusted Life Years),Canada,Male,15 to 19,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,42.883963674822226,67.89286659034384,24.875360987068127
+DALYs (Disability-Adjusted Life Years),Canada,Female,15 to 19,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,52.551085094574965,83.42662898661759,27.67915991887361
+DALYs (Disability-Adjusted Life Years),Canada,Both,15 to 19,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,95.43504876939718,132.6839377984636,66.56275834490147
+DALYs (Disability-Adjusted Life Years),Canada,Male,20 to 24,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,70.25033458975827,103.39757517955096,45.30642681362508
+DALYs (Disability-Adjusted Life Years),Canada,Female,20 to 24,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,78.21569432309788,114.03021117691294,46.40599648473017
+DALYs (Disability-Adjusted Life Years),Canada,Both,20 to 24,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,148.46602891285613,198.0080577945203,108.92342673743669
+DALYs (Disability-Adjusted Life Years),Canada,Male,25 to 29,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,122.32524099385375,173.99882471925247,84.65017855626424
+DALYs (Disability-Adjusted Life Years),Canada,Female,25 to 29,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,105.61756632519138,147.89147470603928,71.90615249228914
+DALYs (Disability-Adjusted Life Years),Canada,Both,25 to 29,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,227.94280731904513,297.5383699250451,167.84810769549375
+DALYs (Disability-Adjusted Life Years),Canada,Male,30 to 34,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,195.67111104138172,268.4268814293035,139.65016312300432
+DALYs (Disability-Adjusted Life Years),Canada,Female,30 to 34,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,167.54554433446373,240.01166707688813,117.45590379874103
+DALYs (Disability-Adjusted Life Years),Canada,Both,30 to 34,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,363.21665537584545,479.20415326033753,276.2446919888402
+DALYs (Disability-Adjusted Life Years),Canada,Male,35 to 39,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,240.8988527455247,374.53873288230886,138.68884235142647
+DALYs (Disability-Adjusted Life Years),Canada,Female,35 to 39,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,245.55170804084682,365.13510969840036,166.50982969196735
+DALYs (Disability-Adjusted Life Years),Canada,Both,35 to 39,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,486.45056078637145,678.967825190432,332.55345701695865
+DALYs (Disability-Adjusted Life Years),Canada,Male,40 to 44,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,361.44568122319373,531.5124418976812,232.79259115330066
+DALYs (Disability-Adjusted Life Years),Canada,Female,40 to 44,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,350.89542509190903,517.0860474016698,220.88897007005778
+DALYs (Disability-Adjusted Life Years),Canada,Both,40 to 44,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,712.3411063151027,970.3043637719948,501.70444151289166
+DALYs (Disability-Adjusted Life Years),Canada,Male,45 to 49,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,611.4510489377878,817.7985427487854,427.41025008610285
+DALYs (Disability-Adjusted Life Years),Canada,Female,45 to 49,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,560.9672538417768,770.2419353436833,383.68547024572194
+DALYs (Disability-Adjusted Life Years),Canada,Both,45 to 49,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,1172.4183027795646,1504.608402903248,902.9309537011893
+DALYs (Disability-Adjusted Life Years),Canada,Male,50 to 54,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,1075.8372776356798,1475.1099250958632,754.4118555669769
+DALYs (Disability-Adjusted Life Years),Canada,Female,50 to 54,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,868.7795511373545,1184.3136140019778,620.908489385846
+DALYs (Disability-Adjusted Life Years),Canada,Both,50 to 54,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,1944.6168287730343,2428.6885362029334,1512.4366961408514
+DALYs (Disability-Adjusted Life Years),Canada,Male,55 to 59,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,1645.4462040359128,2289.0619742087133,1136.1491482760182
+DALYs (Disability-Adjusted Life Years),Canada,Female,55 to 59,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,1197.1925364259807,1597.3804686137712,794.3141671800602
+DALYs (Disability-Adjusted Life Years),Canada,Both,55 to 59,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,2842.638740461894,3606.638651906921,2134.3469161249873
+DALYs (Disability-Adjusted Life Years),Canada,Male,60 to 64,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,2290.3802469010025,3188.08075408021,1485.3518900856732
+DALYs (Disability-Adjusted Life Years),Canada,Female,60 to 64,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,1520.411529620641,2131.8118861023145,957.6991803699705
+DALYs (Disability-Adjusted Life Years),Canada,Both,60 to 64,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,3810.7917765216434,4906.183120174307,2721.5008774210014
+DALYs (Disability-Adjusted Life Years),Canada,Male,65 to 69,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,3223.487296210387,4704.624497744542,1944.7460826830677
+DALYs (Disability-Adjusted Life Years),Canada,Female,65 to 69,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,1950.9662097626149,2750.353894724433,1104.863638273147
+DALYs (Disability-Adjusted Life Years),Canada,Both,65 to 69,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,5174.453505973002,6901.4805306502085,3420.1938725811715
+DALYs (Disability-Adjusted Life Years),Canada,Male,70 to 74,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,3513.3654711759714,5067.771329753554,2047.6574819283928
+DALYs (Disability-Adjusted Life Years),Canada,Female,70 to 74,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,2255.069866924795,3225.688735863393,1200.3521613817716
+DALYs (Disability-Adjusted Life Years),Canada,Both,70 to 74,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,5768.435338100766,7708.413320461711,3681.443620073315
+DALYs (Disability-Adjusted Life Years),Canada,Male,75 to 79,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,3182.580753281086,4814.05841689044,1833.2069690082842
+DALYs (Disability-Adjusted Life Years),Canada,Female,75 to 79,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,2170.3297320102533,3162.746615907424,1110.4047505890792
+DALYs (Disability-Adjusted Life Years),Canada,Both,75 to 79,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,5352.91048529134,7380.7370861860045,3260.2592012399164
+DALYs (Disability-Adjusted Life Years),Canada,Male,80 plus,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,4454.158178628362,6470.14745298116,2459.8527146100673
+DALYs (Disability-Adjusted Life Years),Canada,Female,80 plus,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,3991.6216355059487,5267.099678789834,2078.6987566713447
+DALYs (Disability-Adjusted Life Years),Canada,Both,80 plus,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,8445.77981413431,11103.892880308904,4932.62238540761
+DALYs (Disability-Adjusted Life Years),Canada,Male,1 to 4,Ischemic heart disease,Number,2017,0.0,0.0,0.0
+DALYs (Disability-Adjusted Life Years),Canada,Female,1 to 4,Ischemic heart disease,Number,2017,0.0,0.0,0.0
+DALYs (Disability-Adjusted Life Years),Canada,Both,1 to 4,Ischemic heart disease,Number,2017,0.0,0.0,0.0
+DALYs (Disability-Adjusted Life Years),Canada,Male,5 to 9,Ischemic heart disease,Number,2017,0.0,0.0,0.0
+DALYs (Disability-Adjusted Life Years),Canada,Female,5 to 9,Ischemic heart disease,Number,2017,0.0,0.0,0.0
+DALYs (Disability-Adjusted Life Years),Canada,Both,5 to 9,Ischemic heart disease,Number,2017,0.0,0.0,0.0
+DALYs (Disability-Adjusted Life Years),Canada,Male,10 to 14,Ischemic heart disease,Number,2017,0.0,0.0,0.0
+DALYs (Disability-Adjusted Life Years),Canada,Female,10 to 14,Ischemic heart disease,Number,2017,0.0,0.0,0.0
+DALYs (Disability-Adjusted Life Years),Canada,Both,10 to 14,Ischemic heart disease,Number,2017,0.0,0.0,0.0
+DALYs (Disability-Adjusted Life Years),Canada,Male,15 to 19,Ischemic heart disease,Number,2017,184.596665013526,250.66132904363425,131.88452978308428
+DALYs (Disability-Adjusted Life Years),Canada,Female,15 to 19,Ischemic heart disease,Number,2017,106.10987181598716,144.74882673750307,73.91487682808246
+DALYs (Disability-Adjusted Life Years),Canada,Both,15 to 19,Ischemic heart disease,Number,2017,290.7065368295132,370.34058227148296,223.3080023248921
+DALYs (Disability-Adjusted Life Years),Canada,Male,20 to 24,Ischemic heart disease,Number,2017,448.3707068041056,599.4900072395561,321.54738265111195
+DALYs (Disability-Adjusted Life Years),Canada,Female,20 to 24,Ischemic heart disease,Number,2017,201.37448635113984,271.82081893281077,146.44601794748007
+DALYs (Disability-Adjusted Life Years),Canada,Both,20 to 24,Ischemic heart disease,Number,2017,649.7451931552454,806.8765905519375,509.31252580351685
+DALYs (Disability-Adjusted Life Years),Canada,Male,25 to 29,Ischemic heart disease,Number,2017,1055.1252572920346,1360.0486130103025,787.67870067365
+DALYs (Disability-Adjusted Life Years),Canada,Female,25 to 29,Ischemic heart disease,Number,2017,355.24375503736763,469.4206681558048,260.2435066411278
+DALYs (Disability-Adjusted Life Years),Canada,Both,25 to 29,Ischemic heart disease,Number,2017,1410.3690123294023,1728.897114309626,1125.4755511753738
+DALYs (Disability-Adjusted Life Years),Canada,Male,30 to 34,Ischemic heart disease,Number,2017,1993.5850415036018,2514.2677915839727,1538.382373264915
+DALYs (Disability-Adjusted Life Years),Canada,Female,30 to 34,Ischemic heart disease,Number,2017,767.4384814547493,1014.3057598058202,574.8894684409097
+DALYs (Disability-Adjusted Life Years),Canada,Both,30 to 34,Ischemic heart disease,Number,2017,2761.0235229583514,3341.0800816439155,2248.1480591451223
+DALYs (Disability-Adjusted Life Years),Canada,Male,35 to 39,Ischemic heart disease,Number,2017,4277.714126510878,5368.187317403484,3317.1754233955344
+DALYs (Disability-Adjusted Life Years),Canada,Female,35 to 39,Ischemic heart disease,Number,2017,1182.5929865879873,1567.6870303565274,889.0412667757525
+DALYs (Disability-Adjusted Life Years),Canada,Both,35 to 39,Ischemic heart disease,Number,2017,5460.307113098864,6606.936947138301,4477.526351722751
+DALYs (Disability-Adjusted Life Years),Canada,Male,40 to 44,Ischemic heart disease,Number,2017,9157.201072621223,11079.998952181495,7545.314153605223
+DALYs (Disability-Adjusted Life Years),Canada,Female,40 to 44,Ischemic heart disease,Number,2017,2322.0416794614907,2868.761204724977,1855.3837916816858
+DALYs (Disability-Adjusted Life Years),Canada,Both,40 to 44,Ischemic heart disease,Number,2017,11479.242752082713,13469.27564839383,9755.020410521569
+DALYs (Disability-Adjusted Life Years),Canada,Male,45 to 49,Ischemic heart disease,Number,2017,17236.065300834674,20383.875264495113,14530.758607009459
+DALYs (Disability-Adjusted Life Years),Canada,Female,45 to 49,Ischemic heart disease,Number,2017,4339.340658818711,5428.053430956224,3492.6454147512327
+DALYs (Disability-Adjusted Life Years),Canada,Both,45 to 49,Ischemic heart disease,Number,2017,21575.405959653384,24961.151517740243,18607.866848929756
+DALYs (Disability-Adjusted Life Years),Canada,Male,50 to 54,Ischemic heart disease,Number,2017,32806.38012052937,37587.62052543483,28486.286832225567
+DALYs (Disability-Adjusted Life Years),Canada,Female,50 to 54,Ischemic heart disease,Number,2017,8095.125136610242,9769.490851337634,6524.656941728454
+DALYs (Disability-Adjusted Life Years),Canada,Both,50 to 54,Ischemic heart disease,Number,2017,40901.50525713961,45929.557521241644,36365.68200999691
+DALYs (Disability-Adjusted Life Years),Canada,Male,55 to 59,Ischemic heart disease,Number,2017,47328.228086999225,53480.26377846027,41228.17852604158
+DALYs (Disability-Adjusted Life Years),Canada,Female,55 to 59,Ischemic heart disease,Number,2017,12624.589094058301,15034.92749731468,10257.208428656091
+DALYs (Disability-Adjusted Life Years),Canada,Both,55 to 59,Ischemic heart disease,Number,2017,59952.81718105752,66856.5552427486,53211.13351289124
+DALYs (Disability-Adjusted Life Years),Canada,Male,60 to 64,Ischemic heart disease,Number,2017,54307.63880148953,61196.4625837324,47680.22288713699
+DALYs (Disability-Adjusted Life Years),Canada,Female,60 to 64,Ischemic heart disease,Number,2017,17176.648002283582,20305.09602847064,14251.492359307897
+DALYs (Disability-Adjusted Life Years),Canada,Both,60 to 64,Ischemic heart disease,Number,2017,71484.28680377311,79025.98560419185,63791.50347819049
+DALYs (Disability-Adjusted Life Years),Canada,Male,65 to 69,Ischemic heart disease,Number,2017,57854.22188423887,64949.419732687296,50850.7674517836
+DALYs (Disability-Adjusted Life Years),Canada,Female,65 to 69,Ischemic heart disease,Number,2017,22580.772487035287,26277.411308023504,19042.58985959807
+DALYs (Disability-Adjusted Life Years),Canada,Both,65 to 69,Ischemic heart disease,Number,2017,80434.99437127414,88530.68926528869,72335.05861436097
+DALYs (Disability-Adjusted Life Years),Canada,Male,70 to 74,Ischemic heart disease,Number,2017,54411.29482435462,61499.91834626994,48342.572845879564
+DALYs (Disability-Adjusted Life Years),Canada,Female,70 to 74,Ischemic heart disease,Number,2017,27013.196795949185,31262.81640963915,23390.804971820962
+DALYs (Disability-Adjusted Life Years),Canada,Both,70 to 74,Ischemic heart disease,Number,2017,81424.4916203038,89468.75762617376,74066.05218404984
+DALYs (Disability-Adjusted Life Years),Canada,Male,75 to 79,Ischemic heart disease,Number,2017,48222.11440103654,53992.232889093575,43020.37753032679
+DALYs (Disability-Adjusted Life Years),Canada,Female,75 to 79,Ischemic heart disease,Number,2017,29530.324411983303,33850.36652854141,25317.499505732783
+DALYs (Disability-Adjusted Life Years),Canada,Both,75 to 79,Ischemic heart disease,Number,2017,77752.43881301983,84778.78334348436,70647.32509696968
+DALYs (Disability-Adjusted Life Years),Canada,Male,80 plus,Ischemic heart disease,Number,2017,94521.32233243121,102550.0118642328,87444.05643073384
+DALYs (Disability-Adjusted Life Years),Canada,Female,80 plus,Ischemic heart disease,Number,2017,110999.18535462843,119997.49792381974,102674.96951904768
+DALYs (Disability-Adjusted Life Years),Canada,Both,80 plus,Ischemic heart disease,Number,2017,205520.50768705964,217309.2749449307,193687.5778789864
+DALYs (Disability-Adjusted Life Years),Canada,Male,1 to 4,Stroke,Number,2017,172.26671611942422,247.70011476141738,119.50127801875418
+DALYs (Disability-Adjusted Life Years),Canada,Female,1 to 4,Stroke,Number,2017,196.39515819174454,276.9341368158775,134.6772213390715
+DALYs (Disability-Adjusted Life Years),Canada,Both,1 to 4,Stroke,Number,2017,368.66187431116873,505.38682702361035,269.6587539699795
+DALYs (Disability-Adjusted Life Years),Canada,Male,5 to 9,Stroke,Number,2017,289.76080245675325,415.4410513934888,195.95733677359223
+DALYs (Disability-Adjusted Life Years),Canada,Female,5 to 9,Stroke,Number,2017,358.8533654281332,543.419936047777,210.07464507448682
+DALYs (Disability-Adjusted Life Years),Canada,Both,5 to 9,Stroke,Number,2017,648.6141678848865,903.5057048134075,442.8686207736727
+DALYs (Disability-Adjusted Life Years),Canada,Male,10 to 14,Stroke,Number,2017,380.8289344022494,560.6104534050606,234.381678186981
+DALYs (Disability-Adjusted Life Years),Canada,Female,10 to 14,Stroke,Number,2017,444.22955000901027,659.314767022802,282.62886056939897
+DALYs (Disability-Adjusted Life Years),Canada,Both,10 to 14,Stroke,Number,2017,825.0584844112597,1144.341501966005,564.1962995123035
+DALYs (Disability-Adjusted Life Years),Canada,Male,15 to 19,Stroke,Number,2017,521.8790982015406,745.9673871430409,343.6730563475956
+DALYs (Disability-Adjusted Life Years),Canada,Female,15 to 19,Stroke,Number,2017,572.5966533753045,817.5861952819236,386.5714225271195
+DALYs (Disability-Adjusted Life Years),Canada,Both,15 to 19,Stroke,Number,2017,1094.4757515768451,1451.0955169080346,815.5684571458996
+DALYs (Disability-Adjusted Life Years),Canada,Male,20 to 24,Stroke,Number,2017,774.9997374700205,1033.0906197882364,547.9066548657386
+DALYs (Disability-Adjusted Life Years),Canada,Female,20 to 24,Stroke,Number,2017,802.2045393576708,1075.1541182541469,581.54666297961
+DALYs (Disability-Adjusted Life Years),Canada,Both,20 to 24,Stroke,Number,2017,1577.204276827691,2000.2039915065868,1206.9356331203733
+DALYs (Disability-Adjusted Life Years),Canada,Male,25 to 29,Stroke,Number,2017,1028.4965237138467,1363.503351428366,763.8680494728773
+DALYs (Disability-Adjusted Life Years),Canada,Female,25 to 29,Stroke,Number,2017,1106.6936087556896,1471.95566925843,809.9679318028573
+DALYs (Disability-Adjusted Life Years),Canada,Both,25 to 29,Stroke,Number,2017,2135.190132469537,2714.6396624418576,1651.016626638251
+DALYs (Disability-Adjusted Life Years),Canada,Male,30 to 34,Stroke,Number,2017,1247.2383598069744,1630.281593396226,916.9576066841076
+DALYs (Disability-Adjusted Life Years),Canada,Female,30 to 34,Stroke,Number,2017,1582.0445989524187,1985.7917966112193,1198.1459038296234
+DALYs (Disability-Adjusted Life Years),Canada,Both,30 to 34,Stroke,Number,2017,2829.2829587593938,3452.1587834998086,2243.5715300214624
+DALYs (Disability-Adjusted Life Years),Canada,Male,35 to 39,Stroke,Number,2017,1738.0031641623345,2190.251404062947,1303.2959077222636
+DALYs (Disability-Adjusted Life Years),Canada,Female,35 to 39,Stroke,Number,2017,2123.475437489932,2682.954688412794,1651.167010835689
+DALYs (Disability-Adjusted Life Years),Canada,Both,35 to 39,Stroke,Number,2017,3861.4786016522667,4699.100570925016,3138.3585267892277
+DALYs (Disability-Adjusted Life Years),Canada,Male,40 to 44,Stroke,Number,2017,2847.111168867955,3561.619302385633,2227.262725909294
+DALYs (Disability-Adjusted Life Years),Canada,Female,40 to 44,Stroke,Number,2017,3139.9873025434463,3880.5966044109023,2516.8552070005658
+DALYs (Disability-Adjusted Life Years),Canada,Both,40 to 44,Stroke,Number,2017,5987.098471411401,7127.771276336187,4989.641188432793
+DALYs (Disability-Adjusted Life Years),Canada,Male,45 to 49,Stroke,Number,2017,4653.04556092256,5723.263798243716,3715.208635213394
+DALYs (Disability-Adjusted Life Years),Canada,Female,45 to 49,Stroke,Number,2017,4688.954533822707,5794.168029475868,3679.2627602119596
+DALYs (Disability-Adjusted Life Years),Canada,Both,45 to 49,Stroke,Number,2017,9342.000094745266,11052.897872714182,7791.221013925045
+DALYs (Disability-Adjusted Life Years),Canada,Male,50 to 54,Stroke,Number,2017,7991.7395624843375,9829.476501659685,6446.376767267598
+DALYs (Disability-Adjusted Life Years),Canada,Female,50 to 54,Stroke,Number,2017,7451.378747503753,9040.260956480324,6035.527545583406
+DALYs (Disability-Adjusted Life Years),Canada,Both,50 to 54,Stroke,Number,2017,15443.118309988093,18214.537268928943,12977.02684164292
+DALYs (Disability-Adjusted Life Years),Canada,Male,55 to 59,Stroke,Number,2017,11350.105300985917,13732.059873975477,9177.407105488339
+DALYs (Disability-Adjusted Life Years),Canada,Female,55 to 59,Stroke,Number,2017,10312.507797119599,12461.111843837212,8358.666212570673
+DALYs (Disability-Adjusted Life Years),Canada,Both,55 to 59,Stroke,Number,2017,21662.613098105514,25174.239287603355,18105.35853200708
+DALYs (Disability-Adjusted Life Years),Canada,Male,60 to 64,Stroke,Number,2017,14264.206521737695,17170.149125110016,11793.56630627807
+DALYs (Disability-Adjusted Life Years),Canada,Female,60 to 64,Stroke,Number,2017,12360.702708507479,14981.120122455704,9956.981017404478
+DALYs (Disability-Adjusted Life Years),Canada,Both,60 to 64,Stroke,Number,2017,26624.90923024517,31229.82146361248,22555.161195835004
+DALYs (Disability-Adjusted Life Years),Canada,Male,65 to 69,Stroke,Number,2017,17259.943800955625,20478.167317559783,14266.699278869155
+DALYs (Disability-Adjusted Life Years),Canada,Female,65 to 69,Stroke,Number,2017,15168.456252732267,18245.02981682826,12283.075572276535
+DALYs (Disability-Adjusted Life Years),Canada,Both,65 to 69,Stroke,Number,2017,32428.40005368789,37839.91589570189,27436.418966381494
+DALYs (Disability-Adjusted Life Years),Canada,Male,70 to 74,Stroke,Number,2017,19677.385354054386,23206.08973739037,16439.62300810685
+DALYs (Disability-Adjusted Life Years),Canada,Female,70 to 74,Stroke,Number,2017,18010.002797671048,21595.341131708978,14919.68824911605
+DALYs (Disability-Adjusted Life Years),Canada,Both,70 to 74,Stroke,Number,2017,37687.38815172544,43386.35436314073,32375.11364008643
+DALYs (Disability-Adjusted Life Years),Canada,Male,75 to 79,Stroke,Number,2017,20564.787762789147,24222.098352519668,17223.71958365089
+DALYs (Disability-Adjusted Life Years),Canada,Female,75 to 79,Stroke,Number,2017,20400.021891369455,23892.382224426747,17021.7560469596
+DALYs (Disability-Adjusted Life Years),Canada,Both,75 to 79,Stroke,Number,2017,40964.80965415859,46448.18580355962,35622.155728926366
+DALYs (Disability-Adjusted Life Years),Canada,Male,80 plus,Stroke,Number,2017,45781.57681048871,51040.77171152974,40430.743697046506
+DALYs (Disability-Adjusted Life Years),Canada,Female,80 plus,Stroke,Number,2017,70940.2590575905,79035.31919487736,63574.99157769712
+DALYs (Disability-Adjusted Life Years),Canada,Both,80 plus,Stroke,Number,2017,116721.8358680792,128447.04468035152,106067.31384598547
+DALYs (Disability-Adjusted Life Years),Canada,Male,1 to 4,Chronic obstructive pulmonary disease,Number,2017,37.613556161390704,49.13186395920749,27.154248122365157
+DALYs (Disability-Adjusted Life Years),Canada,Female,1 to 4,Chronic obstructive pulmonary disease,Number,2017,44.991849084568265,59.25446928458434,31.798540576731938
+DALYs (Disability-Adjusted Life Years),Canada,Both,1 to 4,Chronic obstructive pulmonary disease,Number,2017,82.60540524595898,103.06941616135977,60.21409822822437
+DALYs (Disability-Adjusted Life Years),Canada,Male,5 to 9,Chronic obstructive pulmonary disease,Number,2017,86.92657666666645,138.89004878580806,50.110385430465165
+DALYs (Disability-Adjusted Life Years),Canada,Female,5 to 9,Chronic obstructive pulmonary disease,Number,2017,94.48216912683752,181.08708657940048,28.266371983600077
+DALYs (Disability-Adjusted Life Years),Canada,Both,5 to 9,Chronic obstructive pulmonary disease,Number,2017,181.40874579350395,282.5366947924314,99.71380950793485
+DALYs (Disability-Adjusted Life Years),Canada,Male,10 to 14,Chronic obstructive pulmonary disease,Number,2017,129.3425471913368,237.9989721162141,50.761604137401335
+DALYs (Disability-Adjusted Life Years),Canada,Female,10 to 14,Chronic obstructive pulmonary disease,Number,2017,133.96229674745226,237.28839795331947,51.307740068767664
+DALYs (Disability-Adjusted Life Years),Canada,Both,10 to 14,Chronic obstructive pulmonary disease,Number,2017,263.304843938789,415.3684743919957,139.5206393822178
+DALYs (Disability-Adjusted Life Years),Canada,Male,15 to 19,Chronic obstructive pulmonary disease,Number,2017,219.35732988492737,347.96039748593694,121.26419230235477
+DALYs (Disability-Adjusted Life Years),Canada,Female,15 to 19,Chronic obstructive pulmonary disease,Number,2017,211.51116103265537,333.5741066555478,111.36912359112826
+DALYs (Disability-Adjusted Life Years),Canada,Both,15 to 19,Chronic obstructive pulmonary disease,Number,2017,430.8684909175828,619.4654648240439,275.4251026686578
+DALYs (Disability-Adjusted Life Years),Canada,Male,20 to 24,Chronic obstructive pulmonary disease,Number,2017,298.97846216106774,443.38595389164396,177.7071385080545
+DALYs (Disability-Adjusted Life Years),Canada,Female,20 to 24,Chronic obstructive pulmonary disease,Number,2017,274.90919968885987,441.23842883185665,137.33160223121217
+DALYs (Disability-Adjusted Life Years),Canada,Both,20 to 24,Chronic obstructive pulmonary disease,Number,2017,573.8876618499277,805.1077436009311,373.9744303515682
+DALYs (Disability-Adjusted Life Years),Canada,Male,25 to 29,Chronic obstructive pulmonary disease,Number,2017,377.64676852218145,585.2603141248926,223.2915308443822
+DALYs (Disability-Adjusted Life Years),Canada,Female,25 to 29,Chronic obstructive pulmonary disease,Number,2017,403.92209692479435,615.2779488633929,224.15373842278117
+DALYs (Disability-Adjusted Life Years),Canada,Both,25 to 29,Chronic obstructive pulmonary disease,Number,2017,781.5688654469757,1090.7788428375075,518.3777548133468
+DALYs (Disability-Adjusted Life Years),Canada,Male,30 to 34,Chronic obstructive pulmonary disease,Number,2017,529.5797568938974,781.7469045586404,332.6842256802924
+DALYs (Disability-Adjusted Life Years),Canada,Female,30 to 34,Chronic obstructive pulmonary disease,Number,2017,597.6025057151949,880.2154966630225,359.216106436886
+DALYs (Disability-Adjusted Life Years),Canada,Both,30 to 34,Chronic obstructive pulmonary disease,Number,2017,1127.1822626090923,1563.298003452578,765.8108761901432
+DALYs (Disability-Adjusted Life Years),Canada,Male,35 to 39,Chronic obstructive pulmonary disease,Number,2017,822.5140069270141,1154.8078871403277,558.2182830827238
+DALYs (Disability-Adjusted Life Years),Canada,Female,35 to 39,Chronic obstructive pulmonary disease,Number,2017,976.1689874250652,1365.91584297858,642.7982001486724
+DALYs (Disability-Adjusted Life Years),Canada,Both,35 to 39,Chronic obstructive pulmonary disease,Number,2017,1798.6829943520793,2408.7332613783,1313.398844151437
+DALYs (Disability-Adjusted Life Years),Canada,Male,40 to 44,Chronic obstructive pulmonary disease,Number,2017,1454.2212268253852,1944.5215609630177,1034.8834134208994
+DALYs (Disability-Adjusted Life Years),Canada,Female,40 to 44,Chronic obstructive pulmonary disease,Number,2017,1757.709906411053,2365.5381975356454,1230.1637746193792
+DALYs (Disability-Adjusted Life Years),Canada,Both,40 to 44,Chronic obstructive pulmonary disease,Number,2017,3211.931133236438,4167.259005884796,2406.671024860037
+DALYs (Disability-Adjusted Life Years),Canada,Male,45 to 49,Chronic obstructive pulmonary disease,Number,2017,2797.2022680670984,3565.53674329624,2126.6189254206024
+DALYs (Disability-Adjusted Life Years),Canada,Female,45 to 49,Chronic obstructive pulmonary disease,Number,2017,3228.5205245105885,4260.885203224425,2409.9382347434885
+DALYs (Disability-Adjusted Life Years),Canada,Both,45 to 49,Chronic obstructive pulmonary disease,Number,2017,6025.722792577686,7536.27133234902,4757.116501508548
+DALYs (Disability-Adjusted Life Years),Canada,Male,50 to 54,Chronic obstructive pulmonary disease,Number,2017,5882.112343721582,7314.650815607764,4730.202788973961
+DALYs (Disability-Adjusted Life Years),Canada,Female,50 to 54,Chronic obstructive pulmonary disease,Number,2017,5888.146164717031,7417.31796239462,4646.620607542942
+DALYs (Disability-Adjusted Life Years),Canada,Both,50 to 54,Chronic obstructive pulmonary disease,Number,2017,11770.258508438612,14159.128339501216,9733.389360629913
+DALYs (Disability-Adjusted Life Years),Canada,Male,55 to 59,Chronic obstructive pulmonary disease,Number,2017,10518.5436393209,12708.002091466766,8569.734019184007
+DALYs (Disability-Adjusted Life Years),Canada,Female,55 to 59,Chronic obstructive pulmonary disease,Number,2017,9392.147383292577,11423.883197987318,7664.590656490192
+DALYs (Disability-Adjusted Life Years),Canada,Both,55 to 59,Chronic obstructive pulmonary disease,Number,2017,19910.691022613482,23316.135896322176,16775.509873755025
+DALYs (Disability-Adjusted Life Years),Canada,Male,60 to 64,Chronic obstructive pulmonary disease,Number,2017,15490.166492291106,18604.180132272137,12892.696500733193
+DALYs (Disability-Adjusted Life Years),Canada,Female,60 to 64,Chronic obstructive pulmonary disease,Number,2017,13394.587067979663,16054.66729296789,11038.493684930705
+DALYs (Disability-Adjusted Life Years),Canada,Both,60 to 64,Chronic obstructive pulmonary disease,Number,2017,28884.75356027077,33461.45369703113,24776.17144327514
+DALYs (Disability-Adjusted Life Years),Canada,Male,65 to 69,Chronic obstructive pulmonary disease,Number,2017,21115.390313552205,24920.882053127512,17798.884341788013
+DALYs (Disability-Adjusted Life Years),Canada,Female,65 to 69,Chronic obstructive pulmonary disease,Number,2017,18997.655894471995,22795.615731348946,15800.323831977494
+DALYs (Disability-Adjusted Life Years),Canada,Both,65 to 69,Chronic obstructive pulmonary disease,Number,2017,40113.04620802421,45743.61073078946,35011.37617440522
+DALYs (Disability-Adjusted Life Years),Canada,Male,70 to 74,Chronic obstructive pulmonary disease,Number,2017,25046.532490357196,29120.444770249196,21248.072726970386
+DALYs (Disability-Adjusted Life Years),Canada,Female,70 to 74,Chronic obstructive pulmonary disease,Number,2017,22019.917951930256,25624.269663877563,18651.801878625378
+DALYs (Disability-Adjusted Life Years),Canada,Both,70 to 74,Chronic obstructive pulmonary disease,Number,2017,47066.450442287445,52805.58591918732,41394.84396162331
+DALYs (Disability-Adjusted Life Years),Canada,Male,75 to 79,Chronic obstructive pulmonary disease,Number,2017,23214.325299883498,26875.99291746852,19968.02615968535
+DALYs (Disability-Adjusted Life Years),Canada,Female,75 to 79,Chronic obstructive pulmonary disease,Number,2017,20553.289931832118,24475.13249326181,17297.634401614407
+DALYs (Disability-Adjusted Life Years),Canada,Both,75 to 79,Chronic obstructive pulmonary disease,Number,2017,43767.61523171562,49589.24761857101,38664.24864695346
+DALYs (Disability-Adjusted Life Years),Canada,Male,80 plus,Chronic obstructive pulmonary disease,Number,2017,40164.09301720219,45154.59905030565,35305.36471605976
+DALYs (Disability-Adjusted Life Years),Canada,Female,80 plus,Chronic obstructive pulmonary disease,Number,2017,38510.21683490601,43114.293977169305,34248.201130718946
+DALYs (Disability-Adjusted Life Years),Canada,Both,80 plus,Chronic obstructive pulmonary disease,Number,2017,78674.30985210821,85999.47642470208,71566.43279280893
+DALYs (Disability-Adjusted Life Years),Canada,Male,1 to 4,Diabetes mellitus,Number,2017,39.1840356012555,57.93286305730354,23.485860492321724
+DALYs (Disability-Adjusted Life Years),Canada,Female,1 to 4,Diabetes mellitus,Number,2017,33.744122992740884,49.868586564749364,20.66314287506733
+DALYs (Disability-Adjusted Life Years),Canada,Both,1 to 4,Diabetes mellitus,Number,2017,72.92815859399639,99.68390618572336,49.64645252075511
+DALYs (Disability-Adjusted Life Years),Canada,Male,5 to 9,Diabetes mellitus,Number,2017,99.24796935182158,166.5016756115896,52.71883726104382
+DALYs (Disability-Adjusted Life Years),Canada,Female,5 to 9,Diabetes mellitus,Number,2017,89.44578144037999,146.89618597939855,52.209812485942926
+DALYs (Disability-Adjusted Life Years),Canada,Both,5 to 9,Diabetes mellitus,Number,2017,188.69375079220154,306.8066935721176,111.61318537725609
+DALYs (Disability-Adjusted Life Years),Canada,Male,10 to 14,Diabetes mellitus,Number,2017,252.80405037122034,391.0638825330968,154.00871495553739
+DALYs (Disability-Adjusted Life Years),Canada,Female,10 to 14,Diabetes mellitus,Number,2017,230.5936141418951,349.7392196720938,143.3165572778523
+DALYs (Disability-Adjusted Life Years),Canada,Both,10 to 14,Diabetes mellitus,Number,2017,483.3976645131155,717.296217208958,307.95130636355236
+DALYs (Disability-Adjusted Life Years),Canada,Male,15 to 19,Diabetes mellitus,Number,2017,486.003291369995,700.1445202052722,320.90308220425743
+DALYs (Disability-Adjusted Life Years),Canada,Female,15 to 19,Diabetes mellitus,Number,2017,420.64339458145116,604.3674008067316,275.0509034804155
+DALYs (Disability-Adjusted Life Years),Canada,Both,15 to 19,Diabetes mellitus,Number,2017,906.6466859514462,1285.6671900328931,600.3475158027738
+DALYs (Disability-Adjusted Life Years),Canada,Male,20 to 24,Diabetes mellitus,Number,2017,904.4452473751526,1248.341331045787,617.6174299294227
+DALYs (Disability-Adjusted Life Years),Canada,Female,20 to 24,Diabetes mellitus,Number,2017,751.2604433634046,1073.9831164241732,511.5468843588648
+DALYs (Disability-Adjusted Life Years),Canada,Both,20 to 24,Diabetes mellitus,Number,2017,1655.7056907385575,2261.1942731230683,1155.3103055495458
+DALYs (Disability-Adjusted Life Years),Canada,Male,25 to 29,Diabetes mellitus,Number,2017,1550.592185798837,2132.550849181192,1075.6895968432734
+DALYs (Disability-Adjusted Life Years),Canada,Female,25 to 29,Diabetes mellitus,Number,2017,1268.4408458889607,1775.3977459124342,851.8942754089898
+DALYs (Disability-Adjusted Life Years),Canada,Both,25 to 29,Diabetes mellitus,Number,2017,2819.033031687797,3860.3288563825026,1951.6278654587434
+DALYs (Disability-Adjusted Life Years),Canada,Male,30 to 34,Diabetes mellitus,Number,2017,2618.390653388487,3543.401591656575,1871.1978653623826
+DALYs (Disability-Adjusted Life Years),Canada,Female,30 to 34,Diabetes mellitus,Number,2017,2107.4239385125675,2952.335209014809,1457.5007061554893
+DALYs (Disability-Adjusted Life Years),Canada,Both,30 to 34,Diabetes mellitus,Number,2017,4725.814591901055,6460.513664025369,3393.074413189048
+DALYs (Disability-Adjusted Life Years),Canada,Male,35 to 39,Diabetes mellitus,Number,2017,4268.212305783877,5862.462789105336,3053.746663554681
+DALYs (Disability-Adjusted Life Years),Canada,Female,35 to 39,Diabetes mellitus,Number,2017,3165.162825442215,4448.161820536874,2224.954907200008
+DALYs (Disability-Adjusted Life Years),Canada,Both,35 to 39,Diabetes mellitus,Number,2017,7433.375131226093,10149.160390481878,5359.175879569864
+DALYs (Disability-Adjusted Life Years),Canada,Male,40 to 44,Diabetes mellitus,Number,2017,6676.444867491414,9093.284205381926,4812.521244178523
+DALYs (Disability-Adjusted Life Years),Canada,Female,40 to 44,Diabetes mellitus,Number,2017,4599.792134700494,6363.587947169888,3215.3186429460593
+DALYs (Disability-Adjusted Life Years),Canada,Both,40 to 44,Diabetes mellitus,Number,2017,11276.237002191909,15372.763071059946,8135.522280711113
+DALYs (Disability-Adjusted Life Years),Canada,Male,45 to 49,Diabetes mellitus,Number,2017,10705.715170800808,14613.85152825851,7671.943581129503
+DALYs (Disability-Adjusted Life Years),Canada,Female,45 to 49,Diabetes mellitus,Number,2017,7019.535992050644,9696.475054566708,4984.985249703511
+DALYs (Disability-Adjusted Life Years),Canada,Both,45 to 49,Diabetes mellitus,Number,2017,17725.25116285145,24154.032652401696,12877.597554336322
+DALYs (Disability-Adjusted Life Years),Canada,Male,50 to 54,Diabetes mellitus,Number,2017,17384.03005393822,23188.936120806164,12737.243206207524
+DALYs (Disability-Adjusted Life Years),Canada,Female,50 to 54,Diabetes mellitus,Number,2017,10943.831052662856,15281.66373519417,7747.436226499908
+DALYs (Disability-Adjusted Life Years),Canada,Both,50 to 54,Diabetes mellitus,Number,2017,28327.861106601067,38149.28032950315,20769.397656869347
+DALYs (Disability-Adjusted Life Years),Canada,Male,55 to 59,Diabetes mellitus,Number,2017,24782.309696140343,32703.41930422061,18364.42112109246
+DALYs (Disability-Adjusted Life Years),Canada,Female,55 to 59,Diabetes mellitus,Number,2017,15210.342768828235,20421.34374580602,10934.47056282579
+DALYs (Disability-Adjusted Life Years),Canada,Both,55 to 59,Diabetes mellitus,Number,2017,39992.65246496857,52366.497874938716,29772.204643460285
+DALYs (Disability-Adjusted Life Years),Canada,Male,60 to 64,Diabetes mellitus,Number,2017,28916.010991625608,38476.30774543532,22027.428775977733
+DALYs (Disability-Adjusted Life Years),Canada,Female,60 to 64,Diabetes mellitus,Number,2017,18354.536052853695,24665.921442456125,13486.758968602164
+DALYs (Disability-Adjusted Life Years),Canada,Both,60 to 64,Diabetes mellitus,Number,2017,47270.547044479295,62135.22994054723,35657.20604917741
+DALYs (Disability-Adjusted Life Years),Canada,Male,65 to 69,Diabetes mellitus,Number,2017,28862.5569614743,38003.82021433889,21829.777311336104
+DALYs (Disability-Adjusted Life Years),Canada,Female,65 to 69,Diabetes mellitus,Number,2017,19513.153061073353,25806.019863759888,14615.437931727038
+DALYs (Disability-Adjusted Life Years),Canada,Both,65 to 69,Diabetes mellitus,Number,2017,48375.710022547646,63562.17052721242,36748.97455236252
+DALYs (Disability-Adjusted Life Years),Canada,Male,70 to 74,Diabetes mellitus,Number,2017,25293.63032461643,32909.16467836975,19569.834023221563
+DALYs (Disability-Adjusted Life Years),Canada,Female,70 to 74,Diabetes mellitus,Number,2017,17480.696333364052,22752.416702519782,13282.194052952002
+DALYs (Disability-Adjusted Life Years),Canada,Both,70 to 74,Diabetes mellitus,Number,2017,42774.326657980484,55288.475674470545,33188.922016850294
+DALYs (Disability-Adjusted Life Years),Canada,Male,75 to 79,Diabetes mellitus,Number,2017,19064.73883307165,24265.494042039474,15034.638316417733
+DALYs (Disability-Adjusted Life Years),Canada,Female,75 to 79,Diabetes mellitus,Number,2017,14230.124696735613,18453.59733157065,10987.92632107988
+DALYs (Disability-Adjusted Life Years),Canada,Both,75 to 79,Diabetes mellitus,Number,2017,33294.86352980726,42595.58284824135,26278.080103431166
+DALYs (Disability-Adjusted Life Years),Canada,Male,80 plus,Diabetes mellitus,Number,2017,25534.678645220767,31397.231087541866,20627.588782997835
+DALYs (Disability-Adjusted Life Years),Canada,Female,80 plus,Diabetes mellitus,Number,2017,26924.10168881826,32999.58389744007,22173.662505384207
+DALYs (Disability-Adjusted Life Years),Canada,Both,80 plus,Diabetes mellitus,Number,2017,52458.78033403903,64529.45166271084,43386.376233667615
+DALYs (Disability-Adjusted Life Years),Canada,Male,1 to 4,"Endocrine, metabolic, blood, and immune disorders",Number,2017,939.0483628516852,1313.1655857873295,572.7975518044624
+DALYs (Disability-Adjusted Life Years),Canada,Female,1 to 4,"Endocrine, metabolic, blood, and immune disorders",Number,2017,775.6732031174532,1135.11010967149,453.79856146905956
+DALYs (Disability-Adjusted Life Years),Canada,Both,1 to 4,"Endocrine, metabolic, blood, and immune disorders",Number,2017,1714.7215659691385,2267.2847857955667,1140.6985732275318
+DALYs (Disability-Adjusted Life Years),Canada,Male,5 to 9,"Endocrine, metabolic, blood, and immune disorders",Number,2017,519.8298278879173,805.6340181063622,340.3536456438794
+DALYs (Disability-Adjusted Life Years),Canada,Female,5 to 9,"Endocrine, metabolic, blood, and immune disorders",Number,2017,477.9844895860226,695.9928432378624,320.3349717589431
+DALYs (Disability-Adjusted Life Years),Canada,Both,5 to 9,"Endocrine, metabolic, blood, and immune disorders",Number,2017,997.81431747394,1346.4503802610673,727.7465167305132
+DALYs (Disability-Adjusted Life Years),Canada,Male,10 to 14,"Endocrine, metabolic, blood, and immune disorders",Number,2017,503.4671075159786,708.5056338739248,343.7343168873606
+DALYs (Disability-Adjusted Life Years),Canada,Female,10 to 14,"Endocrine, metabolic, blood, and immune disorders",Number,2017,435.3704359265297,632.581431070487,277.8123155110268
+DALYs (Disability-Adjusted Life Years),Canada,Both,10 to 14,"Endocrine, metabolic, blood, and immune disorders",Number,2017,938.8375434425085,1213.907564713103,708.6288672744904
+DALYs (Disability-Adjusted Life Years),Canada,Male,15 to 19,"Endocrine, metabolic, blood, and immune disorders",Number,2017,523.0096465251592,777.3136353954768,358.84664891541246
+DALYs (Disability-Adjusted Life Years),Canada,Female,15 to 19,"Endocrine, metabolic, blood, and immune disorders",Number,2017,780.3798945675816,1263.7711400416822,486.70011364294356
+DALYs (Disability-Adjusted Life Years),Canada,Both,15 to 19,"Endocrine, metabolic, blood, and immune disorders",Number,2017,1303.3895410927405,1780.7138593786842,964.9258968498685
+DALYs (Disability-Adjusted Life Years),Canada,Male,20 to 24,"Endocrine, metabolic, blood, and immune disorders",Number,2017,604.3368071121793,912.9847237088521,428.4559173748524
+DALYs (Disability-Adjusted Life Years),Canada,Female,20 to 24,"Endocrine, metabolic, blood, and immune disorders",Number,2017,753.0700131204047,1052.9355389808775,531.3725194568193
+DALYs (Disability-Adjusted Life Years),Canada,Both,20 to 24,"Endocrine, metabolic, blood, and immune disorders",Number,2017,1357.4068202325836,1773.913226366183,1063.4440127437801
+DALYs (Disability-Adjusted Life Years),Canada,Male,25 to 29,"Endocrine, metabolic, blood, and immune disorders",Number,2017,805.7235612218733,1208.4035765356873,552.2346730163779
+DALYs (Disability-Adjusted Life Years),Canada,Female,25 to 29,"Endocrine, metabolic, blood, and immune disorders",Number,2017,1005.148150355386,1365.1356157843131,682.1524923985335
+DALYs (Disability-Adjusted Life Years),Canada,Both,25 to 29,"Endocrine, metabolic, blood, and immune disorders",Number,2017,1810.871711577259,2324.9020483437857,1392.6221033464751
+DALYs (Disability-Adjusted Life Years),Canada,Male,30 to 34,"Endocrine, metabolic, blood, and immune disorders",Number,2017,858.1249541710006,1258.7762001108424,588.1811919454907
+DALYs (Disability-Adjusted Life Years),Canada,Female,30 to 34,"Endocrine, metabolic, blood, and immune disorders",Number,2017,1106.860943240121,1476.1421795118295,787.0530124425895
+DALYs (Disability-Adjusted Life Years),Canada,Both,30 to 34,"Endocrine, metabolic, blood, and immune disorders",Number,2017,1964.9858974111214,2566.425705364472,1504.6078904357414
+DALYs (Disability-Adjusted Life Years),Canada,Male,35 to 39,"Endocrine, metabolic, blood, and immune disorders",Number,2017,1035.946961170934,1505.6058003326466,728.901198299258
+DALYs (Disability-Adjusted Life Years),Canada,Female,35 to 39,"Endocrine, metabolic, blood, and immune disorders",Number,2017,1053.1925234250214,1534.8533948585132,747.9973110523794
+DALYs (Disability-Adjusted Life Years),Canada,Both,35 to 39,"Endocrine, metabolic, blood, and immune disorders",Number,2017,2089.1394845959553,2763.4260273572568,1630.7003597975804
+DALYs (Disability-Adjusted Life Years),Canada,Male,40 to 44,"Endocrine, metabolic, blood, and immune disorders",Number,2017,1232.1526846886877,1851.99176294303,895.2284202554206
+DALYs (Disability-Adjusted Life Years),Canada,Female,40 to 44,"Endocrine, metabolic, blood, and immune disorders",Number,2017,1196.871803482713,1713.407485094196,818.6835550425089
+DALYs (Disability-Adjusted Life Years),Canada,Both,40 to 44,"Endocrine, metabolic, blood, and immune disorders",Number,2017,2429.0244881714007,3272.5390362536386,1881.656101961335
+DALYs (Disability-Adjusted Life Years),Canada,Male,45 to 49,"Endocrine, metabolic, blood, and immune disorders",Number,2017,1745.9202975629237,2622.9010545872106,1240.342838432012
+DALYs (Disability-Adjusted Life Years),Canada,Female,45 to 49,"Endocrine, metabolic, blood, and immune disorders",Number,2017,1488.472108510058,2249.2586571793913,1053.5492700625337
+DALYs (Disability-Adjusted Life Years),Canada,Both,45 to 49,"Endocrine, metabolic, blood, and immune disorders",Number,2017,3234.3924060729814,4387.896810255783,2499.7791518182403
+DALYs (Disability-Adjusted Life Years),Canada,Male,50 to 54,"Endocrine, metabolic, blood, and immune disorders",Number,2017,2591.4931053938226,3618.665657858571,1947.9412320352228
+DALYs (Disability-Adjusted Life Years),Canada,Female,50 to 54,"Endocrine, metabolic, blood, and immune disorders",Number,2017,1820.8341874795676,2544.502132154142,1327.7291290137966
+DALYs (Disability-Adjusted Life Years),Canada,Both,50 to 54,"Endocrine, metabolic, blood, and immune disorders",Number,2017,4412.32729287339,5724.347746231957,3542.2856005608396
+DALYs (Disability-Adjusted Life Years),Canada,Male,55 to 59,"Endocrine, metabolic, blood, and immune disorders",Number,2017,3279.5190738599067,4288.2740925257285,2392.886426158945
+DALYs (Disability-Adjusted Life Years),Canada,Female,55 to 59,"Endocrine, metabolic, blood, and immune disorders",Number,2017,2208.3233257047227,3044.630497900054,1641.9652334600369
+DALYs (Disability-Adjusted Life Years),Canada,Both,55 to 59,"Endocrine, metabolic, blood, and immune disorders",Number,2017,5487.842399564631,6778.48838641246,4394.839017983756
+DALYs (Disability-Adjusted Life Years),Canada,Male,60 to 64,"Endocrine, metabolic, blood, and immune disorders",Number,2017,3183.6166179346665,4221.606202163425,2328.659271812132
+DALYs (Disability-Adjusted Life Years),Canada,Female,60 to 64,"Endocrine, metabolic, blood, and immune disorders",Number,2017,2424.230948919938,3216.2513017087126,1775.8246248937144
+DALYs (Disability-Adjusted Life Years),Canada,Both,60 to 64,"Endocrine, metabolic, blood, and immune disorders",Number,2017,5607.847566854604,6987.48559065172,4481.397824043639
+DALYs (Disability-Adjusted Life Years),Canada,Male,65 to 69,"Endocrine, metabolic, blood, and immune disorders",Number,2017,3416.3855384702906,4635.363342046618,2503.6202967142676
+DALYs (Disability-Adjusted Life Years),Canada,Female,65 to 69,"Endocrine, metabolic, blood, and immune disorders",Number,2017,2599.7805342135366,3395.995461262494,1814.1303144835829
+DALYs (Disability-Adjusted Life Years),Canada,Both,65 to 69,"Endocrine, metabolic, blood, and immune disorders",Number,2017,6016.166072683827,7506.509601596286,4632.177796513697
+DALYs (Disability-Adjusted Life Years),Canada,Male,70 to 74,"Endocrine, metabolic, blood, and immune disorders",Number,2017,2761.1929550397394,3636.1398298674,2033.3278731473317
+DALYs (Disability-Adjusted Life Years),Canada,Female,70 to 74,"Endocrine, metabolic, blood, and immune disorders",Number,2017,2442.5812268676386,3210.175919461821,1738.736650550928
+DALYs (Disability-Adjusted Life Years),Canada,Both,70 to 74,"Endocrine, metabolic, blood, and immune disorders",Number,2017,5203.774181907378,6406.766327080146,4085.8260402385104
+DALYs (Disability-Adjusted Life Years),Canada,Male,75 to 79,"Endocrine, metabolic, blood, and immune disorders",Number,2017,2220.3697758842604,2940.7611254153835,1513.7692849361633
+DALYs (Disability-Adjusted Life Years),Canada,Female,75 to 79,"Endocrine, metabolic, blood, and immune disorders",Number,2017,2058.348957536291,2735.9505677652373,1362.950891121992
+DALYs (Disability-Adjusted Life Years),Canada,Both,75 to 79,"Endocrine, metabolic, blood, and immune disorders",Number,2017,4278.718733420551,5335.583102829231,3215.452019295725
+DALYs (Disability-Adjusted Life Years),Canada,Male,80 plus,"Endocrine, metabolic, blood, and immune disorders",Number,2017,3371.484033627432,4138.176994792197,2446.1837919692525
+DALYs (Disability-Adjusted Life Years),Canada,Female,80 plus,"Endocrine, metabolic, blood, and immune disorders",Number,2017,4769.481233588088,6166.589395735508,2864.0646644572153
+DALYs (Disability-Adjusted Life Years),Canada,Both,80 plus,"Endocrine, metabolic, blood, and immune disorders",Number,2017,8140.96526721552,9927.030651164292,5736.874313301426

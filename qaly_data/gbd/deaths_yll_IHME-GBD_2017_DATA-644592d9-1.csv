@@ -1,0 +1,697 @@
+measure,location,sex,age,cause,metric,year,val,upper,lower
+YLLs (Years of Life Lost),Canada,Male,1 to 4,Diabetes mellitus,Number,2017,30.099977957927166,45.75418769101708,18.28834603880347
+YLLs (Years of Life Lost),Canada,Female,1 to 4,Diabetes mellitus,Number,2017,26.376395582603706,38.14637904492523,16.791891058473762
+YLLs (Years of Life Lost),Canada,Both,1 to 4,Diabetes mellitus,Number,2017,56.47637354053098,78.84326359872273,38.701559425176214
+YLLs (Years of Life Lost),Canada,Male,5 to 9,Diabetes mellitus,Number,2017,12.088127718287426,21.88399508324266,7.6932601205443945
+YLLs (Years of Life Lost),Canada,Female,5 to 9,Diabetes mellitus,Number,2017,16.763776710782594,25.761637080542606,11.020914032000958
+YLLs (Years of Life Lost),Canada,Both,5 to 9,Diabetes mellitus,Number,2017,28.851904429069993,45.150756490225916,21.057941244981286
+YLLs (Years of Life Lost),Canada,Male,10 to 14,Diabetes mellitus,Number,2017,30.257408677423506,54.43945600972195,19.030081557150062
+YLLs (Years of Life Lost),Canada,Female,10 to 14,Diabetes mellitus,Number,2017,39.30300341961422,62.43456812106325,25.396336548448797
+YLLs (Years of Life Lost),Canada,Both,10 to 14,Diabetes mellitus,Number,2017,69.56041209703783,106.8938351486676,50.86658880894541
+YLLs (Years of Life Lost),Canada,Male,15 to 19,Diabetes mellitus,Number,2017,94.23290920084783,124.78589344789856,68.85123472719727
+YLLs (Years of Life Lost),Canada,Female,15 to 19,Diabetes mellitus,Number,2017,81.16481503315177,109.80434072474037,58.793243900473556
+YLLs (Years of Life Lost),Canada,Both,15 to 19,Diabetes mellitus,Number,2017,175.3977242339997,216.73408464619627,140.90218391485058
+YLLs (Years of Life Lost),Canada,Male,20 to 24,Diabetes mellitus,Number,2017,248.79567387407369,324.6323946885268,185.8231292925484
+YLLs (Years of Life Lost),Canada,Female,20 to 24,Diabetes mellitus,Number,2017,172.31831346105778,231.2698760786703,126.4429295378561
+YLLs (Years of Life Lost),Canada,Both,20 to 24,Diabetes mellitus,Number,2017,421.11398733513164,506.7823825777608,340.79224535115776
+YLLs (Years of Life Lost),Canada,Male,25 to 29,Diabetes mellitus,Number,2017,456.9048184112418,584.945945643512,348.4977369974333
+YLLs (Years of Life Lost),Canada,Female,25 to 29,Diabetes mellitus,Number,2017,260.26075798052483,353.5501368901018,182.34307393409094
+YLLs (Years of Life Lost),Canada,Both,25 to 29,Diabetes mellitus,Number,2017,717.1655763917672,884.302484994557,581.4209669560123
+YLLs (Years of Life Lost),Canada,Male,30 to 34,Diabetes mellitus,Number,2017,732.2799653017441,959.0234924605513,553.2885013641794
+YLLs (Years of Life Lost),Canada,Female,30 to 34,Diabetes mellitus,Number,2017,403.09219704599053,527.7865747755741,303.8673248549039
+YLLs (Years of Life Lost),Canada,Both,30 to 34,Diabetes mellitus,Number,2017,1135.3721623477336,1402.6023625633252,930.3437442757539
+YLLs (Years of Life Lost),Canada,Male,35 to 39,Diabetes mellitus,Number,2017,1075.5210310830153,1358.3097782246755,839.8590714440771
+YLLs (Years of Life Lost),Canada,Female,35 to 39,Diabetes mellitus,Number,2017,514.8114344014847,685.3477945827085,387.18048199857765
+YLLs (Years of Life Lost),Canada,Both,35 to 39,Diabetes mellitus,Number,2017,1590.3324654845005,1924.548123813315,1319.6015042056588
+YLLs (Years of Life Lost),Canada,Male,40 to 44,Diabetes mellitus,Number,2017,1670.8136241575955,2154.452254709588,1267.9748810707022
+YLLs (Years of Life Lost),Canada,Female,40 to 44,Diabetes mellitus,Number,2017,780.6610436175242,1000.433346858087,605.3302001515909
+YLLs (Years of Life Lost),Canada,Both,40 to 44,Diabetes mellitus,Number,2017,2451.4746677751186,2988.5126842227446,2010.5458177894188
+YLLs (Years of Life Lost),Canada,Male,45 to 49,Diabetes mellitus,Number,2017,2726.538311999768,3415.3980920628983,2132.832267829076
+YLLs (Years of Life Lost),Canada,Female,45 to 49,Diabetes mellitus,Number,2017,1309.4829088834808,1695.2602712749406,979.8266031091766
+YLLs (Years of Life Lost),Canada,Both,45 to 49,Diabetes mellitus,Number,2017,4036.021220883243,4760.285956398471,3351.8978817871216
+YLLs (Years of Life Lost),Canada,Male,50 to 54,Diabetes mellitus,Number,2017,4692.080519974779,5880.251063150237,3681.5398927661813
+YLLs (Years of Life Lost),Canada,Female,50 to 54,Diabetes mellitus,Number,2017,2182.8905400226013,2811.938090083926,1677.682078403994
+YLLs (Years of Life Lost),Canada,Both,50 to 54,Diabetes mellitus,Number,2017,6874.971059997377,8362.729065175205,5689.978370126563
+YLLs (Years of Life Lost),Canada,Male,55 to 59,Diabetes mellitus,Number,2017,7202.335773546961,9093.649266211327,5664.30212541015
+YLLs (Years of Life Lost),Canada,Female,55 to 59,Diabetes mellitus,Number,2017,3206.3399477121,4141.864463600317,2426.4487246943168
+YLLs (Years of Life Lost),Canada,Both,55 to 59,Diabetes mellitus,Number,2017,10408.675721259073,12517.546002604218,8608.521699978317
+YLLs (Years of Life Lost),Canada,Male,60 to 64,Diabetes mellitus,Number,2017,8700.513370155259,11228.82573382774,6789.683508496033
+YLLs (Years of Life Lost),Canada,Female,60 to 64,Diabetes mellitus,Number,2017,4342.188609807674,5507.058736185852,3334.6211736995597
+YLLs (Years of Life Lost),Canada,Both,60 to 64,Diabetes mellitus,Number,2017,13042.70197996294,15685.570173079806,10777.582528604964
+YLLs (Years of Life Lost),Canada,Male,65 to 69,Diabetes mellitus,Number,2017,9131.114862850136,11453.889650927165,7122.808037585422
+YLLs (Years of Life Lost),Canada,Female,65 to 69,Diabetes mellitus,Number,2017,5545.6109257891285,7128.4117850815965,4322.52835672309
+YLLs (Years of Life Lost),Canada,Both,65 to 69,Diabetes mellitus,Number,2017,14676.725788639249,17373.338624393404,12090.776781048593
+YLLs (Years of Life Lost),Canada,Male,70 to 74,Diabetes mellitus,Number,2017,8804.005639851432,11062.894370745329,7017.942995229696
+YLLs (Years of Life Lost),Canada,Female,70 to 74,Diabetes mellitus,Number,2017,5384.930818242888,6855.181791144424,4184.10260180246
+YLLs (Years of Life Lost),Canada,Both,70 to 74,Diabetes mellitus,Number,2017,14188.93645809431,16715.477210576806,11992.316912751065
+YLLs (Years of Life Lost),Canada,Male,75 to 79,Diabetes mellitus,Number,2017,7455.454995268578,9267.08361160906,5895.07232904133
+YLLs (Years of Life Lost),Canada,Female,75 to 79,Diabetes mellitus,Number,2017,5100.007892494959,6545.647474341698,4028.876779655637
+YLLs (Years of Life Lost),Canada,Both,75 to 79,Diabetes mellitus,Number,2017,12555.462887763544,14783.803381124153,10565.822361386827
+YLLs (Years of Life Lost),Canada,Male,80 plus,Diabetes mellitus,Number,2017,11437.048263543022,13223.500243537119,9883.365659138592
+YLLs (Years of Life Lost),Canada,Female,80 plus,Diabetes mellitus,Number,2017,12696.928034357992,14680.857733091594,11026.92898404098
+YLLs (Years of Life Lost),Canada,Both,80 plus,Diabetes mellitus,Number,2017,24133.97629790104,26580.547061079087,21805.44254181335
+YLLs (Years of Life Lost),Canada,Male,1 to 4,"Endocrine, metabolic, blood, and immune disorders",Number,2017,814.3123239063606,1172.3285191741902,459.59700287078397
+YLLs (Years of Life Lost),Canada,Female,1 to 4,"Endocrine, metabolic, blood, and immune disorders",Number,2017,681.551684890394,1041.3850586708522,377.28253398783903
+YLLs (Years of Life Lost),Canada,Both,1 to 4,"Endocrine, metabolic, blood, and immune disorders",Number,2017,1495.8640087967515,2044.0863505063942,953.2043375787184
+YLLs (Years of Life Lost),Canada,Male,5 to 9,"Endocrine, metabolic, blood, and immune disorders",Number,2017,406.09806536362464,597.1845515793171,263.32096337153166
+YLLs (Years of Life Lost),Canada,Female,5 to 9,"Endocrine, metabolic, blood, and immune disorders",Number,2017,380.89845612022424,558.7420897310583,242.36496299250987
+YLLs (Years of Life Lost),Canada,Both,5 to 9,"Endocrine, metabolic, blood, and immune disorders",Number,2017,786.9965214838495,1026.3242773849806,570.6997461174749
+YLLs (Years of Life Lost),Canada,Male,10 to 14,"Endocrine, metabolic, blood, and immune disorders",Number,2017,440.70848943856197,628.5584891207527,290.4856758064919
+YLLs (Years of Life Lost),Canada,Female,10 to 14,"Endocrine, metabolic, blood, and immune disorders",Number,2017,352.09251612124206,519.3816092157161,218.6112290808631
+YLLs (Years of Life Lost),Canada,Both,10 to 14,"Endocrine, metabolic, blood, and immune disorders",Number,2017,792.801005559803,1037.6584017123243,581.1068510782678
+YLLs (Years of Life Lost),Canada,Male,15 to 19,"Endocrine, metabolic, blood, and immune disorders",Number,2017,468.85194814681694,718.546901388723,313.94705467159116
+YLLs (Years of Life Lost),Canada,Female,15 to 19,"Endocrine, metabolic, blood, and immune disorders",Number,2017,533.8135658276551,802.9372123452874,315.71893335861245
+YLLs (Years of Life Lost),Canada,Both,15 to 19,"Endocrine, metabolic, blood, and immune disorders",Number,2017,1002.6655139744734,1335.9578964964762,726.0921884541041
+YLLs (Years of Life Lost),Canada,Male,20 to 24,"Endocrine, metabolic, blood, and immune disorders",Number,2017,534.3257226772836,867.7208654616552,361.7669427917358
+YLLs (Years of Life Lost),Canada,Female,20 to 24,"Endocrine, metabolic, blood, and immune disorders",Number,2017,548.8708740297986,821.917793092079,360.38015439338886
+YLLs (Years of Life Lost),Canada,Both,20 to 24,"Endocrine, metabolic, blood, and immune disorders",Number,2017,1083.1965967070817,1480.541519297228,814.212574193039
+YLLs (Years of Life Lost),Canada,Male,25 to 29,"Endocrine, metabolic, blood, and immune disorders",Number,2017,734.8120399060545,1127.4937401805962,480.5194343444124
+YLLs (Years of Life Lost),Canada,Female,25 to 29,"Endocrine, metabolic, blood, and immune disorders",Number,2017,613.7705958010233,866.3229751832371,395.38613602164116
+YLLs (Years of Life Lost),Canada,Both,25 to 29,"Endocrine, metabolic, blood, and immune disorders",Number,2017,1348.5826357070807,1786.9981133174006,993.7551692281093
+YLLs (Years of Life Lost),Canada,Male,30 to 34,"Endocrine, metabolic, blood, and immune disorders",Number,2017,781.4491112520602,1180.4596655911619,518.2267250198408
+YLLs (Years of Life Lost),Canada,Female,30 to 34,"Endocrine, metabolic, blood, and immune disorders",Number,2017,663.6023159694179,985.4001926068978,434.23179459982066
+YLLs (Years of Life Lost),Canada,Both,30 to 34,"Endocrine, metabolic, blood, and immune disorders",Number,2017,1445.0514272214778,2007.8336990239657,1076.888426391138
+YLLs (Years of Life Lost),Canada,Male,35 to 39,"Endocrine, metabolic, blood, and immune disorders",Number,2017,938.1894886794662,1384.4467223651334,637.3392955499453
+YLLs (Years of Life Lost),Canada,Female,35 to 39,"Endocrine, metabolic, blood, and immune disorders",Number,2017,620.7868118604533,1045.032577094378,400.00086839007656
+YLLs (Years of Life Lost),Canada,Both,35 to 39,"Endocrine, metabolic, blood, and immune disorders",Number,2017,1558.9763005399188,2181.562200113805,1192.7626724734816
+YLLs (Years of Life Lost),Canada,Male,40 to 44,"Endocrine, metabolic, blood, and immune disorders",Number,2017,1106.2810617486193,1698.8732337973154,779.9634674294316
+YLLs (Years of Life Lost),Canada,Female,40 to 44,"Endocrine, metabolic, blood, and immune disorders",Number,2017,768.2061576623294,1218.4588521195105,521.7835241009877
+YLLs (Years of Life Lost),Canada,Both,40 to 44,"Endocrine, metabolic, blood, and immune disorders",Number,2017,1874.4872194109519,2631.8024639899013,1426.545218436008
+YLLs (Years of Life Lost),Canada,Male,45 to 49,"Endocrine, metabolic, blood, and immune disorders",Number,2017,1546.214694015879,2268.614366872026,1075.4519263766065
+YLLs (Years of Life Lost),Canada,Female,45 to 49,"Endocrine, metabolic, blood, and immune disorders",Number,2017,968.6097386384495,1559.8607451399926,667.7407010051434
+YLLs (Years of Life Lost),Canada,Both,45 to 49,"Endocrine, metabolic, blood, and immune disorders",Number,2017,2514.8244326543254,3470.7337791266896,1929.606841065769
+YLLs (Years of Life Lost),Canada,Male,50 to 54,"Endocrine, metabolic, blood, and immune disorders",Number,2017,2324.766300486991,3371.506694287573,1690.567534187081
+YLLs (Years of Life Lost),Canada,Female,50 to 54,"Endocrine, metabolic, blood, and immune disorders",Number,2017,1321.8626228426574,2061.5420013297066,917.6440145673217
+YLLs (Years of Life Lost),Canada,Both,50 to 54,"Endocrine, metabolic, blood, and immune disorders",Number,2017,3646.62892332965,4873.719503473309,2864.609268146029
+YLLs (Years of Life Lost),Canada,Male,55 to 59,"Endocrine, metabolic, blood, and immune disorders",Number,2017,2875.969592705994,3813.765251083849,2031.2259853028545
+YLLs (Years of Life Lost),Canada,Female,55 to 59,"Endocrine, metabolic, blood, and immune disorders",Number,2017,1571.176791627173,2382.39887370448,1080.0801406904754
+YLLs (Years of Life Lost),Canada,Both,55 to 59,"Endocrine, metabolic, blood, and immune disorders",Number,2017,4447.14638433317,5620.515136799551,3495.5169713502078
+YLLs (Years of Life Lost),Canada,Male,60 to 64,"Endocrine, metabolic, blood, and immune disorders",Number,2017,2725.371239898033,3691.8793955306423,1926.381851395249
+YLLs (Years of Life Lost),Canada,Female,60 to 64,"Endocrine, metabolic, blood, and immune disorders",Number,2017,1781.1645740186866,2501.6683621529774,1199.3595988491863
+YLLs (Years of Life Lost),Canada,Both,60 to 64,"Endocrine, metabolic, blood, and immune disorders",Number,2017,4506.535813916712,5735.038104302431,3390.4323643209023
+YLLs (Years of Life Lost),Canada,Male,65 to 69,"Endocrine, metabolic, blood, and immune disorders",Number,2017,2786.2956360546573,3862.9508535443265,1923.6108220676488
+YLLs (Years of Life Lost),Canada,Female,65 to 69,"Endocrine, metabolic, blood, and immune disorders",Number,2017,1847.1945403526577,2531.922820318043,1152.687827142039
+YLLs (Years of Life Lost),Canada,Both,65 to 69,"Endocrine, metabolic, blood, and immune disorders",Number,2017,4633.490176407322,5966.7298630460955,3344.962586587253
+YLLs (Years of Life Lost),Canada,Male,70 to 74,"Endocrine, metabolic, blood, and immune disorders",Number,2017,2197.066083090174,2915.401089150107,1531.9752772417623
+YLLs (Years of Life Lost),Canada,Female,70 to 74,"Endocrine, metabolic, blood, and immune disorders",Number,2017,1649.2777330177614,2288.8379840316,1020.8986962120134
+YLLs (Years of Life Lost),Canada,Both,70 to 74,"Endocrine, metabolic, blood, and immune disorders",Number,2017,3846.343816107938,4795.809047565647,2883.610699739174
+YLLs (Years of Life Lost),Canada,Male,75 to 79,"Endocrine, metabolic, blood, and immune disorders",Number,2017,1723.2328501666643,2388.513275089328,1103.417950593488
+YLLs (Years of Life Lost),Canada,Female,75 to 79,"Endocrine, metabolic, blood, and immune disorders",Number,2017,1360.5048486300618,1950.8686543830445,771.7145802684238
+YLLs (Years of Life Lost),Canada,Both,75 to 79,"Endocrine, metabolic, blood, and immune disorders",Number,2017,3083.7376987967364,3909.1545603553227,2109.0311800678132
+YLLs (Years of Life Lost),Canada,Male,80 plus,"Endocrine, metabolic, blood, and immune disorders",Number,2017,2496.068348321018,3072.2839758506148,1660.7063277304899
+YLLs (Years of Life Lost),Canada,Female,80 plus,"Endocrine, metabolic, blood, and immune disorders",Number,2017,3077.279557449963,4196.202973674699,1376.8858154212605
+YLLs (Years of Life Lost),Canada,Both,80 plus,"Endocrine, metabolic, blood, and immune disorders",Number,2017,5573.3479057709865,6839.8152002493825,3471.1651690222498
+YLLs (Years of Life Lost),Canada,Male,1 to 4,Asthma,Number,2017,22.418881062156963,36.353419189101814,13.057575380418708
+YLLs (Years of Life Lost),Canada,Female,1 to 4,Asthma,Number,2017,28.500750734963237,46.58052227947284,15.498081131708796
+YLLs (Years of Life Lost),Canada,Both,1 to 4,Asthma,Number,2017,50.91963179712023,72.46099170256171,33.00826449859627
+YLLs (Years of Life Lost),Canada,Male,5 to 9,Asthma,Number,2017,30.933830502329407,46.17704891837148,19.291797563868627
+YLLs (Years of Life Lost),Canada,Female,5 to 9,Asthma,Number,2017,35.92112891263225,55.964273794377505,20.804540689818957
+YLLs (Years of Life Lost),Canada,Both,5 to 9,Asthma,Number,2017,66.85495941496163,91.9698708685063,45.774159030758696
+YLLs (Years of Life Lost),Canada,Male,10 to 14,Asthma,Number,2017,86.51738256388153,127.1955404402448,53.581705618494844
+YLLs (Years of Life Lost),Canada,Female,10 to 14,Asthma,Number,2017,80.37881028783227,121.17408739171972,49.59922214258889
+YLLs (Years of Life Lost),Canada,Both,10 to 14,Asthma,Number,2017,166.89619285171352,225.26552044428354,118.77917924945346
+YLLs (Years of Life Lost),Canada,Male,15 to 19,Asthma,Number,2017,92.91712317802775,130.42108260964477,62.442044034050085
+YLLs (Years of Life Lost),Canada,Female,15 to 19,Asthma,Number,2017,93.8747828733765,138.60746270998584,60.7566956793643
+YLLs (Years of Life Lost),Canada,Both,15 to 19,Asthma,Number,2017,186.7919060514043,245.2924935079056,138.56268858962974
+YLLs (Years of Life Lost),Canada,Male,20 to 24,Asthma,Number,2017,103.231981838358,149.79131740214282,67.30262876051692
+YLLs (Years of Life Lost),Canada,Female,20 to 24,Asthma,Number,2017,117.82548941908215,171.24014534529437,78.85699563819432
+YLLs (Years of Life Lost),Canada,Both,20 to 24,Asthma,Number,2017,221.05747125744023,285.5664774802014,166.82809943539678
+YLLs (Years of Life Lost),Canada,Male,25 to 29,Asthma,Number,2017,109.01095247991776,155.9673226830281,70.80975842987196
+YLLs (Years of Life Lost),Canada,Female,25 to 29,Asthma,Number,2017,122.60489410548564,175.78534876105755,81.18211932732993
+YLLs (Years of Life Lost),Canada,Both,25 to 29,Asthma,Number,2017,231.61584658540346,302.38921263698506,171.81115945335935
+YLLs (Years of Life Lost),Canada,Male,30 to 34,Asthma,Number,2017,74.14085124410069,116.25846629479278,44.35946197851615
+YLLs (Years of Life Lost),Canada,Female,30 to 34,Asthma,Number,2017,97.8127063537547,151.53836800259953,59.318952162146495
+YLLs (Years of Life Lost),Canada,Both,30 to 34,Asthma,Number,2017,171.9535575978553,236.56234411508908,120.02463217207676
+YLLs (Years of Life Lost),Canada,Male,35 to 39,Asthma,Number,2017,75.08531428606761,115.56413606926931,44.10705050168426
+YLLs (Years of Life Lost),Canada,Female,35 to 39,Asthma,Number,2017,99.628598758584,146.14808652343226,62.88639585842299
+YLLs (Years of Life Lost),Canada,Both,35 to 39,Asthma,Number,2017,174.71391304465175,236.93333118864757,122.36761240955462
+YLLs (Years of Life Lost),Canada,Male,40 to 44,Asthma,Number,2017,71.73721394290517,108.83687618629807,43.63404397001203
+YLLs (Years of Life Lost),Canada,Female,40 to 44,Asthma,Number,2017,119.69300217215596,173.91762168706538,75.6117734408195
+YLLs (Years of Life Lost),Canada,Both,40 to 44,Asthma,Number,2017,191.4302161150609,256.7412763583623,138.47966853881272
+YLLs (Years of Life Lost),Canada,Male,45 to 49,Asthma,Number,2017,107.11834723632266,153.58967452469045,70.26917384957491
+YLLs (Years of Life Lost),Canada,Female,45 to 49,Asthma,Number,2017,187.55707921120162,268.7876114698004,124.8006580471593
+YLLs (Years of Life Lost),Canada,Both,45 to 49,Asthma,Number,2017,294.6754264475241,386.4567033572828,217.03479244722107
+YLLs (Years of Life Lost),Canada,Male,50 to 54,Asthma,Number,2017,137.18499064430324,206.3854450746277,85.9779108549378
+YLLs (Years of Life Lost),Canada,Female,50 to 54,Asthma,Number,2017,251.35794370849237,352.64973520479884,165.61328137404
+YLLs (Years of Life Lost),Canada,Both,50 to 54,Asthma,Number,2017,388.5429343527954,505.229739122405,290.4155034565769
+YLLs (Years of Life Lost),Canada,Male,55 to 59,Asthma,Number,2017,157.75610124860435,240.09065344291898,98.14003211132321
+YLLs (Years of Life Lost),Canada,Female,55 to 59,Asthma,Number,2017,265.15655320115343,383.4450660529106,166.62877503475877
+YLLs (Years of Life Lost),Canada,Both,55 to 59,Asthma,Number,2017,422.9126544497577,568.6784688938922,308.09603108449517
+YLLs (Years of Life Lost),Canada,Male,60 to 64,Asthma,Number,2017,163.06459864627305,244.05674251629276,104.24681163934682
+YLLs (Years of Life Lost),Canada,Female,60 to 64,Asthma,Number,2017,267.9043498101663,391.89559907022374,176.73465100508943
+YLLs (Years of Life Lost),Canada,Both,60 to 64,Asthma,Number,2017,430.96894845643925,569.222108716714,318.7443738527119
+YLLs (Years of Life Lost),Canada,Male,65 to 69,Asthma,Number,2017,141.80532372219795,205.7953925316655,95.44403896899371
+YLLs (Years of Life Lost),Canada,Female,65 to 69,Asthma,Number,2017,240.44516776873047,349.69258855759574,158.38305234985077
+YLLs (Years of Life Lost),Canada,Both,65 to 69,Asthma,Number,2017,382.2504914909287,504.9232474930761,284.9495804778771
+YLLs (Years of Life Lost),Canada,Male,70 to 74,Asthma,Number,2017,145.84581906611743,210.3866908464836,91.88783074859393
+YLLs (Years of Life Lost),Canada,Female,70 to 74,Asthma,Number,2017,230.82524014087488,335.091094067654,154.14002397632922
+YLLs (Years of Life Lost),Canada,Both,70 to 74,Asthma,Number,2017,376.6710592069924,505.7093477137743,277.6577207646396
+YLLs (Years of Life Lost),Canada,Male,75 to 79,Asthma,Number,2017,122.7431897521902,178.66415002802447,79.23149726420046
+YLLs (Years of Life Lost),Canada,Female,75 to 79,Asthma,Number,2017,226.32944138112995,324.74407423488,154.7899837156588
+YLLs (Years of Life Lost),Canada,Both,75 to 79,Asthma,Number,2017,349.0726311333203,456.2487668423694,254.31093764484464
+YLLs (Years of Life Lost),Canada,Male,80 plus,Asthma,Number,2017,271.2051809699381,346.2137234396493,210.95513733794343
+YLLs (Years of Life Lost),Canada,Female,80 plus,Asthma,Number,2017,673.708175933493,826.5355602088026,541.4570769798653
+YLLs (Years of Life Lost),Canada,Both,80 plus,Asthma,Number,2017,944.9133569034303,1116.4935245288596,796.111105808256
+YLLs (Years of Life Lost),Canada,Male,1 to 4,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,58.31761716437447,92.18881030349203,36.630925272445666
+YLLs (Years of Life Lost),Canada,Female,1 to 4,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,38.90290753336952,67.76985351092866,21.462098592144578
+YLLs (Years of Life Lost),Canada,Both,1 to 4,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,97.22052469774395,140.70466722020927,65.19047151696735
+YLLs (Years of Life Lost),Canada,Male,5 to 9,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,27.83194232336375,41.93812033210878,16.646186086992795
+YLLs (Years of Life Lost),Canada,Female,5 to 9,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,26.638238937200004,44.7605124640666,12.582219325238817
+YLLs (Years of Life Lost),Canada,Both,5 to 9,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,54.470181260563734,76.97109050256049,35.47139944064847
+YLLs (Years of Life Lost),Canada,Male,10 to 14,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,36.61902436803616,58.58334084503262,21.13605012924018
+YLLs (Years of Life Lost),Canada,Female,10 to 14,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,27.17557810586153,45.19370587921685,13.003403373276223
+YLLs (Years of Life Lost),Canada,Both,10 to 14,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,63.7946024738977,92.5048730145485,40.7307604475184
+YLLs (Years of Life Lost),Canada,Male,15 to 19,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,39.88681001976363,64.66441069776253,21.852596113703648
+YLLs (Years of Life Lost),Canada,Female,15 to 19,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,48.7353972309408,79.95056938635598,24.17915627165135
+YLLs (Years of Life Lost),Canada,Both,15 to 19,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,88.6222072507043,125.21025384948503,58.958192620195426
+YLLs (Years of Life Lost),Canada,Male,20 to 24,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,58.0928923790813,89.2993849046274,34.61695587788854
+YLLs (Years of Life Lost),Canada,Female,20 to 24,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,63.93201227598731,100.02211113335854,34.013559990870185
+YLLs (Years of Life Lost),Canada,Both,20 to 24,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,122.02490465506862,168.24350221467267,85.74554860754408
+YLLs (Years of Life Lost),Canada,Male,25 to 29,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,93.01148779697955,140.7484203577693,56.1175289615778
+YLLs (Years of Life Lost),Canada,Female,25 to 29,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,72.8696794731,113.21241410945687,44.21052382692614
+YLLs (Years of Life Lost),Canada,Both,25 to 29,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,165.88116727007966,231.15271062037797,113.39662146110922
+YLLs (Years of Life Lost),Canada,Male,30 to 34,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,140.112946772314,206.5921007135904,85.07677014163096
+YLLs (Years of Life Lost),Canada,Female,30 to 34,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,107.53537014285618,174.10973100243888,65.88735350446704
+YLLs (Years of Life Lost),Canada,Both,30 to 34,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,247.64831691517028,349.7761741988827,176.0776562758324
+YLLs (Years of Life Lost),Canada,Male,35 to 39,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,158.80778577299034,255.43897133972757,88.35829709558935
+YLLs (Years of Life Lost),Canada,Female,35 to 39,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,151.03625554560372,241.7222565934747,90.38903998687144
+YLLs (Years of Life Lost),Canada,Both,35 to 39,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,309.8440413185942,458.55577295365356,209.12130428718805
+YLLs (Years of Life Lost),Canada,Male,40 to 44,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,248.8242049173181,375.67156895823695,155.84523758859828
+YLLs (Years of Life Lost),Canada,Female,40 to 44,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,217.08456651534513,350.62390776410126,135.1815425280859
+YLLs (Years of Life Lost),Canada,Both,40 to 44,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,465.9087714326631,648.9466845623077,331.2419641020378
+YLLs (Years of Life Lost),Canada,Male,45 to 49,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,457.483849135761,639.8373357785798,321.41490647089825
+YLLs (Years of Life Lost),Canada,Female,45 to 49,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,364.58094589358444,538.1851551772327,237.67815899523563
+YLLs (Years of Life Lost),Canada,Both,45 to 49,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,822.0647950293447,1068.0793685431388,628.4886745194021
+YLLs (Years of Life Lost),Canada,Male,50 to 54,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,854.6028098481879,1182.341731009136,573.4546937572048
+YLLs (Years of Life Lost),Canada,Female,50 to 54,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,584.1145431885109,841.3942567949802,380.0240207895204
+YLLs (Years of Life Lost),Canada,Both,50 to 54,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,1438.717353036697,1847.300950314714,1069.441783326452
+YLLs (Years of Life Lost),Canada,Male,55 to 59,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,1353.2218611718072,1961.3325775642463,857.6679653738705
+YLLs (Years of Life Lost),Canada,Female,55 to 59,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,822.8884595853754,1174.4079393278964,453.8367693557694
+YLLs (Years of Life Lost),Canada,Both,55 to 59,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,2176.1103207571823,2853.997270331634,1491.5937575165442
+YLLs (Years of Life Lost),Canada,Male,60 to 64,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,1949.2942201891774,2837.2694525967277,1140.870511049515
+YLLs (Years of Life Lost),Canada,Female,60 to 64,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,1107.9174965169293,1637.6905817710751,561.7670768910311
+YLLs (Years of Life Lost),Canada,Both,60 to 64,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,3057.211716706106,4174.27638400251,1966.6411763455956
+YLLs (Years of Life Lost),Canada,Male,65 to 69,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,2821.3108025485103,4281.710497633965,1577.5470991724685
+YLLs (Years of Life Lost),Canada,Female,65 to 69,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,1494.6495989396035,2274.441843137477,703.1297068771969
+YLLs (Years of Life Lost),Canada,Both,65 to 69,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,4315.9604014881115,5983.672040719099,2644.9092466537127
+YLLs (Years of Life Lost),Canada,Male,70 to 74,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,3079.8121344440683,4668.799167371644,1665.7291181745927
+YLLs (Years of Life Lost),Canada,Female,70 to 74,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,1803.6489522403995,2734.9243341875726,775.2187866526237
+YLLs (Years of Life Lost),Canada,Both,70 to 74,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,4883.461086684467,6854.5947625895715,2866.6824504374954
+YLLs (Years of Life Lost),Canada,Male,75 to 79,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,2779.550261590418,4460.140694376398,1482.7236933836152
+YLLs (Years of Life Lost),Canada,Female,75 to 79,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,1775.8567482732085,2764.7590209099967,729.953286377026
+YLLs (Years of Life Lost),Canada,Both,75 to 79,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,4555.407009863626,6526.530591816127,2492.475771490779
+YLLs (Years of Life Lost),Canada,Male,80 plus,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,3834.9184930891834,5793.416431099061,1849.2099530240266
+YLLs (Years of Life Lost),Canada,Female,80 plus,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,3279.762601247043,4533.17195761506,1379.6455574383901
+YLLs (Years of Life Lost),Canada,Both,80 plus,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,7114.68109433623,9764.46779486766,3697.332745750759
+YLLs (Years of Life Lost),Canada,Male,15 to 19,Ischemic heart disease,Number,2017,180.03900440721787,244.55361893794037,126.9461835460002
+YLLs (Years of Life Lost),Canada,Female,15 to 19,Ischemic heart disease,Number,2017,102.87922361704867,141.78492138623918,70.8993696459359
+YLLs (Years of Life Lost),Canada,Both,15 to 19,Ischemic heart disease,Number,2017,282.91822802426645,361.3752650302495,215.80519789079216
+YLLs (Years of Life Lost),Canada,Male,20 to 24,Ischemic heart disease,Number,2017,430.85593072048107,583.2739635198853,304.11018381063764
+YLLs (Years of Life Lost),Canada,Female,20 to 24,Ischemic heart disease,Number,2017,188.24671246172286,258.5801936587255,132.814778745347
+YLLs (Years of Life Lost),Canada,Both,20 to 24,Ischemic heart disease,Number,2017,619.1026431822033,778.0432404066664,482.1731423891593
+YLLs (Years of Life Lost),Canada,Male,25 to 29,Ischemic heart disease,Number,2017,1022.4912733800544,1316.2702204662362,764.0561676329622
+YLLs (Years of Life Lost),Canada,Female,25 to 29,Ischemic heart disease,Number,2017,330.86736867730775,441.53478623875486,236.10304023264013
+YLLs (Years of Life Lost),Canada,Both,25 to 29,Ischemic heart disease,Number,2017,1353.3586420573629,1673.9681040494504,1070.1645701586478
+YLLs (Years of Life Lost),Canada,Male,30 to 34,Ischemic heart disease,Number,2017,1933.9373792343827,2453.7038336704313,1476.9014114575084
+YLLs (Years of Life Lost),Canada,Female,30 to 34,Ischemic heart disease,Number,2017,725.5774670982578,984.1604896002673,528.1732189978616
+YLLs (Years of Life Lost),Canada,Both,30 to 34,Ischemic heart disease,Number,2017,2659.5148463326373,3252.7292416454807,2159.817383607057
+YLLs (Years of Life Lost),Canada,Male,35 to 39,Ischemic heart disease,Number,2017,4166.423769562679,5248.754195100127,3232.9927582734863
+YLLs (Years of Life Lost),Canada,Female,35 to 39,Ischemic heart disease,Number,2017,1108.9077005656711,1481.1981802916735,816.8011078219773
+YLLs (Years of Life Lost),Canada,Both,35 to 39,Ischemic heart disease,Number,2017,5275.331470128341,6393.774052868445,4302.479518153416
+YLLs (Years of Life Lost),Canada,Male,40 to 44,Ischemic heart disease,Number,2017,8941.39409522171,10844.046639436396,7316.06356571007
+YLLs (Years of Life Lost),Canada,Female,40 to 44,Ischemic heart disease,Number,2017,2187.614942588684,2736.5564932876377,1721.1502481017135
+YLLs (Years of Life Lost),Canada,Both,40 to 44,Ischemic heart disease,Number,2017,11129.009037810409,13127.45106270343,9423.363081193384
+YLLs (Years of Life Lost),Canada,Male,45 to 49,Ischemic heart disease,Number,2017,16771.870952283232,19905.798811588225,14023.73556997967
+YLLs (Years of Life Lost),Canada,Female,45 to 49,Ischemic heart disease,Number,2017,4084.9463460088505,5140.434240740319,3232.2363007202616
+YLLs (Years of Life Lost),Canada,Both,45 to 49,Ischemic heart disease,Number,2017,20856.8172982921,24175.25611606973,17919.120108015766
+YLLs (Years of Life Lost),Canada,Male,50 to 54,Ischemic heart disease,Number,2017,31910.507286043267,36542.63266673262,27570.236072718424
+YLLs (Years of Life Lost),Canada,Female,50 to 54,Ischemic heart disease,Number,2017,7629.01907241431,9331.814467861264,6088.6816227345125
+YLLs (Years of Life Lost),Canada,Both,50 to 54,Ischemic heart disease,Number,2017,39539.5263584575,44649.972878433255,35092.1136926306
+YLLs (Years of Life Lost),Canada,Male,55 to 59,Ischemic heart disease,Number,2017,45916.627551217294,51754.02273686021,40037.48483629872
+YLLs (Years of Life Lost),Canada,Female,55 to 59,Ischemic heart disease,Number,2017,11901.402456576167,14330.655872924268,9570.937091802458
+YLLs (Years of Life Lost),Canada,Both,55 to 59,Ischemic heart disease,Number,2017,57818.03000779358,64573.32504994566,51120.46329324178
+YLLs (Years of Life Lost),Canada,Male,60 to 64,Ischemic heart disease,Number,2017,52369.23010786177,59251.96983463534,45848.63029628167
+YLLs (Years of Life Lost),Canada,Female,60 to 64,Ischemic heart disease,Number,2017,16151.60483548901,19244.91981087622,13307.96710807583
+YLLs (Years of Life Lost),Canada,Both,60 to 64,Ischemic heart disease,Number,2017,68520.83494335091,76049.14849020037,61117.44766875749
+YLLs (Years of Life Lost),Canada,Male,65 to 69,Ischemic heart disease,Number,2017,55309.622961131456,62398.7993927123,48333.55212756337
+YLLs (Years of Life Lost),Canada,Female,65 to 69,Ischemic heart disease,Number,2017,21089.046307133438,24636.047529799358,17549.35077982425
+YLLs (Years of Life Lost),Canada,Both,65 to 69,Ischemic heart disease,Number,2017,76398.66926826471,84491.8080314563,68610.9830580163
+YLLs (Years of Life Lost),Canada,Male,70 to 74,Ischemic heart disease,Number,2017,51672.629296425876,58682.68354538358,45542.5504624037
+YLLs (Years of Life Lost),Canada,Female,70 to 74,Ischemic heart disease,Number,2017,25205.154625426105,29375.80177249741,21531.77378237122
+YLLs (Years of Life Lost),Canada,Both,70 to 74,Ischemic heart disease,Number,2017,76877.78392185191,84575.42931832411,69900.37517261329
+YLLs (Years of Life Lost),Canada,Male,75 to 79,Ischemic heart disease,Number,2017,45849.84813945989,51732.786999791984,40668.17346517612
+YLLs (Years of Life Lost),Canada,Female,75 to 79,Ischemic heart disease,Number,2017,27666.675998138933,32002.607761408948,23543.07562063152
+YLLs (Years of Life Lost),Canada,Both,75 to 79,Ischemic heart disease,Number,2017,73516.52413759875,80601.94102956803,66706.59816518049
+YLLs (Years of Life Lost),Canada,Male,80 plus,Ischemic heart disease,Number,2017,90146.92658356264,97832.38780704215,83020.27351520113
+YLLs (Years of Life Lost),Canada,Female,80 plus,Ischemic heart disease,Number,2017,105209.28048433634,114413.28100693767,97425.21753147586
+YLLs (Years of Life Lost),Canada,Both,80 plus,Ischemic heart disease,Number,2017,195356.20706789888,206756.7447095095,184484.96177855044
+YLLs (Years of Life Lost),Canada,Male,1 to 4,Stroke,Number,2017,73.80989585717997,107.90419955671742,46.82312585532609
+YLLs (Years of Life Lost),Canada,Female,1 to 4,Stroke,Number,2017,66.71280885621475,99.01823538420786,43.49705396397535
+YLLs (Years of Life Lost),Canada,Both,1 to 4,Stroke,Number,2017,140.52270471339455,189.9767279422469,99.1022852805992
+YLLs (Years of Life Lost),Canada,Male,5 to 9,Stroke,Number,2017,57.67630390813572,84.32031063557345,39.08614302538478
+YLLs (Years of Life Lost),Canada,Female,5 to 9,Stroke,Number,2017,66.26022205616795,90.54622615557197,45.187019142731174
+YLLs (Years of Life Lost),Canada,Both,5 to 9,Stroke,Number,2017,123.93652596430383,159.13701728147424,93.54181242464765
+YLLs (Years of Life Lost),Canada,Male,10 to 14,Stroke,Number,2017,106.40955257779895,151.74229902902832,71.67438472175891
+YLLs (Years of Life Lost),Canada,Female,10 to 14,Stroke,Number,2017,97.10200963957384,133.21199784886608,67.59558884912549
+YLLs (Years of Life Lost),Canada,Both,10 to 14,Stroke,Number,2017,203.51156221737287,261.10627556277916,157.6419037175709
+YLLs (Years of Life Lost),Canada,Male,15 to 19,Stroke,Number,2017,195.0648005285735,269.62315538657293,137.54345058054665
+YLLs (Years of Life Lost),Canada,Female,15 to 19,Stroke,Number,2017,166.42700321335894,234.73538908733107,114.36590929394218
+YLLs (Years of Life Lost),Canada,Both,15 to 19,Stroke,Number,2017,361.49180374193196,460.3176940204982,274.5060164466102
+YLLs (Years of Life Lost),Canada,Male,20 to 24,Stroke,Number,2017,362.1979861446645,482.5937589167313,261.3589140686588
+YLLs (Years of Life Lost),Canada,Female,20 to 24,Stroke,Number,2017,281.0548368147897,383.1009254408581,198.83549377786403
+YLLs (Years of Life Lost),Canada,Both,20 to 24,Stroke,Number,2017,643.2528229594549,804.1328310595361,509.9962558359527
+YLLs (Years of Life Lost),Canada,Male,25 to 29,Stroke,Number,2017,530.2320875307557,729.8160406300793,373.23910764276366
+YLLs (Years of Life Lost),Canada,Female,25 to 29,Stroke,Number,2017,448.87781399906413,597.3233019720395,334.7602616553133
+YLLs (Years of Life Lost),Canada,Both,25 to 29,Stroke,Number,2017,979.1099015298186,1215.8216806632151,773.0568638686376
+YLLs (Years of Life Lost),Canada,Male,30 to 34,Stroke,Number,2017,650.5684988785755,890.7630640490815,459.88583228865195
+YLLs (Years of Life Lost),Canada,Female,30 to 34,Stroke,Number,2017,779.6547006073241,1020.5115908350222,574.0447293656084
+YLLs (Years of Life Lost),Canada,Both,30 to 34,Stroke,Number,2017,1430.2231994858996,1745.801625970166,1118.9615560385487
+YLLs (Years of Life Lost),Canada,Male,35 to 39,Stroke,Number,2017,973.5242903331102,1307.3353820604084,687.2608890587628
+YLLs (Years of Life Lost),Canada,Female,35 to 39,Stroke,Number,2017,1046.3805711915281,1385.8976604599281,767.500907620248
+YLLs (Years of Life Lost),Canada,Both,35 to 39,Stroke,Number,2017,2019.9048615246404,2519.223318806405,1614.561678792237
+YLLs (Years of Life Lost),Canada,Male,40 to 44,Stroke,Number,2017,1806.7509882040301,2410.642479927153,1333.350473233384
+YLLs (Years of Life Lost),Canada,Female,40 to 44,Stroke,Number,2017,1699.7348705831641,2184.2584668466957,1307.4286326024123
+YLLs (Years of Life Lost),Canada,Both,40 to 44,Stroke,Number,2017,3506.485858787197,4241.069142292659,2889.1008053026535
+YLLs (Years of Life Lost),Canada,Male,45 to 49,Stroke,Number,2017,3068.700495595922,4020.8176595270907,2352.421723997082
+YLLs (Years of Life Lost),Canada,Female,45 to 49,Stroke,Number,2017,2558.4147477137185,3300.618564679087,1920.877847539162
+YLLs (Years of Life Lost),Canada,Both,45 to 49,Stroke,Number,2017,5627.115243309637,6779.532298276854,4616.971317824121
+YLLs (Years of Life Lost),Canada,Male,50 to 54,Stroke,Number,2017,5374.990606514057,6800.567061824929,4157.095716891074
+YLLs (Years of Life Lost),Canada,Female,50 to 54,Stroke,Number,2017,3989.438568197124,4974.309755470557,3035.8783655710286
+YLLs (Years of Life Lost),Canada,Both,50 to 54,Stroke,Number,2017,9364.42917471117,11125.651113529444,7898.810324097975
+YLLs (Years of Life Lost),Canada,Male,55 to 59,Stroke,Number,2017,7370.5625992146615,9463.125647661745,5683.138788117555
+YLLs (Years of Life Lost),Canada,Female,55 to 59,Stroke,Number,2017,5227.285711357781,6631.653424952457,4037.2845882771844
+YLLs (Years of Life Lost),Canada,Both,55 to 59,Stroke,Number,2017,12597.848310572446,15040.45099773046,10441.281131899399
+YLLs (Years of Life Lost),Canada,Male,60 to 64,Stroke,Number,2017,9206.010168322351,11449.90358807491,7242.347744515674
+YLLs (Years of Life Lost),Canada,Female,60 to 64,Stroke,Number,2017,6050.459850301182,7639.3034233869785,4644.594860069215
+YLLs (Years of Life Lost),Canada,Both,60 to 64,Stroke,Number,2017,15256.470018623544,18075.166615214195,12773.766571848615
+YLLs (Years of Life Lost),Canada,Male,65 to 69,Stroke,Number,2017,11425.878742440955,13879.614960523604,9076.02508909851
+YLLs (Years of Life Lost),Canada,Female,65 to 69,Stroke,Number,2017,8013.710307690211,10022.38877265593,6259.193360422289
+YLLs (Years of Life Lost),Canada,Both,65 to 69,Stroke,Number,2017,19439.58905013114,22803.975555484336,16409.414606276394
+YLLs (Years of Life Lost),Canada,Male,70 to 74,Stroke,Number,2017,13282.949125389758,16240.121238102862,10685.764633310318
+YLLs (Years of Life Lost),Canada,Female,70 to 74,Stroke,Number,2017,10546.958986592532,13147.052963815895,8316.437927124367
+YLLs (Years of Life Lost),Canada,Both,70 to 74,Stroke,Number,2017,23829.908111982306,27719.699619405877,20562.504341721266
+YLLs (Years of Life Lost),Canada,Male,75 to 79,Stroke,Number,2017,14341.861922673243,17506.84177366342,11494.760097050103
+YLLs (Years of Life Lost),Canada,Female,75 to 79,Stroke,Number,2017,13272.970397348096,15852.685552943944,10886.58104985533
+YLLs (Years of Life Lost),Canada,Both,75 to 79,Stroke,Number,2017,27614.832320021353,31559.012114108922,24038.951824049844
+YLLs (Years of Life Lost),Canada,Male,80 plus,Stroke,Number,2017,32436.086182238098,36371.17402234589,28377.712796705466
+YLLs (Years of Life Lost),Canada,Female,80 plus,Stroke,Number,2017,49775.73259714389,55285.58835492732,45140.24659929046
+YLLs (Years of Life Lost),Canada,Both,80 plus,Stroke,Number,2017,82211.81877938197,88800.22180494644,76006.93857830967
+YLLs (Years of Life Lost),Canada,Male,1 to 4,Chronic obstructive pulmonary disease,Number,2017,13.091403627904402,20.14286049877257,7.832946186286569
+YLLs (Years of Life Lost),Canada,Female,1 to 4,Chronic obstructive pulmonary disease,Number,2017,18.4232048184049,29.734619474835668,10.035213568960183
+YLLs (Years of Life Lost),Canada,Both,1 to 4,Chronic obstructive pulmonary disease,Number,2017,31.514608446309317,44.95599554794254,20.82562006982024
+YLLs (Years of Life Lost),Canada,Male,5 to 9,Chronic obstructive pulmonary disease,Number,2017,9.826442487761145,14.36575191943866,6.464726010282221
+YLLs (Years of Life Lost),Canada,Female,5 to 9,Chronic obstructive pulmonary disease,Number,2017,13.338264967555647,20.766460868237115,8.167052405525597
+YLLs (Years of Life Lost),Canada,Both,5 to 9,Chronic obstructive pulmonary disease,Number,2017,23.164707455316798,31.79832366526179,16.19188852856516
+YLLs (Years of Life Lost),Canada,Male,10 to 14,Chronic obstructive pulmonary disease,Number,2017,13.126717784239565,19.969293498698345,8.170145299638495
+YLLs (Years of Life Lost),Canada,Female,10 to 14,Chronic obstructive pulmonary disease,Number,2017,13.63445367518302,22.33903611237651,7.651258576379958
+YLLs (Years of Life Lost),Canada,Both,10 to 14,Chronic obstructive pulmonary disease,Number,2017,26.761171459422563,37.56828599699294,18.294172163442628
+YLLs (Years of Life Lost),Canada,Male,15 to 19,Chronic obstructive pulmonary disease,Number,2017,54.84343006074401,79.36422891437364,36.8809099303724
+YLLs (Years of Life Lost),Canada,Female,15 to 19,Chronic obstructive pulmonary disease,Number,2017,53.529257473796854,79.09072254947829,33.88914304498956
+YLLs (Years of Life Lost),Canada,Both,15 to 19,Chronic obstructive pulmonary disease,Number,2017,108.37268753454079,142.45522918930197,81.07411613116095
+YLLs (Years of Life Lost),Canada,Male,20 to 24,Chronic obstructive pulmonary disease,Number,2017,68.29986369366449,99.34708011077777,43.52243962638942
+YLLs (Years of Life Lost),Canada,Female,20 to 24,Chronic obstructive pulmonary disease,Number,2017,56.003730141303414,81.83158103833998,36.09490832878829
+YLLs (Years of Life Lost),Canada,Both,20 to 24,Chronic obstructive pulmonary disease,Number,2017,124.30359383496781,163.73739133444408,90.34796101234522
+YLLs (Years of Life Lost),Canada,Male,25 to 29,Chronic obstructive pulmonary disease,Number,2017,64.53711766234736,93.6590323145386,42.440581874415564
+YLLs (Years of Life Lost),Canada,Female,25 to 29,Chronic obstructive pulmonary disease,Number,2017,80.26503963003827,115.39235136020984,53.00255487936837
+YLLs (Years of Life Lost),Canada,Both,25 to 29,Chronic obstructive pulmonary disease,Number,2017,144.80215729238583,190.89481049352543,107.05176320850455
+YLLs (Years of Life Lost),Canada,Male,30 to 34,Chronic obstructive pulmonary disease,Number,2017,89.5788851603913,131.83082274060052,58.65704068497854
+YLLs (Years of Life Lost),Canada,Female,30 to 34,Chronic obstructive pulmonary disease,Number,2017,98.91218176361872,145.33266349309466,61.13918491512402
+YLLs (Years of Life Lost),Canada,Both,30 to 34,Chronic obstructive pulmonary disease,Number,2017,188.4910669240101,251.12980991279872,132.8178068061533
+YLLs (Years of Life Lost),Canada,Male,35 to 39,Chronic obstructive pulmonary disease,Number,2017,146.79830367181884,214.94697622608643,93.57603229350536
+YLLs (Years of Life Lost),Canada,Female,35 to 39,Chronic obstructive pulmonary disease,Number,2017,131.0491965435219,189.2328335716179,82.17434167219287
+YLLs (Years of Life Lost),Canada,Both,35 to 39,Chronic obstructive pulmonary disease,Number,2017,277.84750021534126,365.2779651761453,195.8729769672845
+YLLs (Years of Life Lost),Canada,Male,40 to 44,Chronic obstructive pulmonary disease,Number,2017,328.94777859552136,440.2545358652191,229.82557788515402
+YLLs (Years of Life Lost),Canada,Female,40 to 44,Chronic obstructive pulmonary disease,Number,2017,302.23417591024605,417.5279582063583,202.6655806769303
+YLLs (Years of Life Lost),Canada,Both,40 to 44,Chronic obstructive pulmonary disease,Number,2017,631.1819545057687,795.5301548174364,467.86383227400216
+YLLs (Years of Life Lost),Canada,Male,45 to 49,Chronic obstructive pulmonary disease,Number,2017,816.4651571215286,1044.8451726860003,609.6375340327986
+YLLs (Years of Life Lost),Canada,Female,45 to 49,Chronic obstructive pulmonary disease,Number,2017,739.7265391876181,970.6781798884134,535.6968300795834
+YLLs (Years of Life Lost),Canada,Both,45 to 49,Chronic obstructive pulmonary disease,Number,2017,1556.1916963091487,1877.825555111941,1272.039157163041
+YLLs (Years of Life Lost),Canada,Male,50 to 54,Chronic obstructive pulmonary disease,Number,2017,2383.503483591969,3006.1365951525013,1829.4096477401622
+YLLs (Years of Life Lost),Canada,Female,50 to 54,Chronic obstructive pulmonary disease,Number,2017,1930.081056911373,2422.371821707564,1516.3275136560374
+YLLs (Years of Life Lost),Canada,Both,50 to 54,Chronic obstructive pulmonary disease,Number,2017,4313.5845405033415,5089.79712539487,3602.208923145063
+YLLs (Years of Life Lost),Canada,Male,55 to 59,Chronic obstructive pulmonary disease,Number,2017,5259.835275372684,6735.817003667991,4023.8444289805075
+YLLs (Years of Life Lost),Canada,Female,55 to 59,Chronic obstructive pulmonary disease,Number,2017,4037.469742028178,5047.718567747954,3162.0252876303502
+YLLs (Years of Life Lost),Canada,Both,55 to 59,Chronic obstructive pulmonary disease,Number,2017,9297.305017400848,11021.81931579108,7719.20333333599
+YLLs (Years of Life Lost),Canada,Male,60 to 64,Chronic obstructive pulmonary disease,Number,2017,8726.930333038705,10787.875640938239,6830.630092497788
+YLLs (Years of Life Lost),Canada,Female,60 to 64,Chronic obstructive pulmonary disease,Number,2017,6677.186295484737,8391.455719030198,5289.516835759533
+YLLs (Years of Life Lost),Canada,Both,60 to 64,Chronic obstructive pulmonary disease,Number,2017,15404.116628523443,18094.624702380886,12906.030977882516
+YLLs (Years of Life Lost),Canada,Male,65 to 69,Chronic obstructive pulmonary disease,Number,2017,12827.361159845746,15846.352276948384,10310.94657117304
+YLLs (Years of Life Lost),Canada,Female,65 to 69,Chronic obstructive pulmonary disease,Number,2017,10592.436568912117,13150.313888753253,8293.332642571615
+YLLs (Years of Life Lost),Canada,Both,65 to 69,Chronic obstructive pulmonary disease,Number,2017,23419.797728757836,27828.337762466876,19860.439351360423
+YLLs (Years of Life Lost),Canada,Male,70 to 74,Chronic obstructive pulmonary disease,Number,2017,16304.814128924912,19845.173107108658,12980.51705613623
+YLLs (Years of Life Lost),Canada,Female,70 to 74,Chronic obstructive pulmonary disease,Number,2017,13238.067967836314,16227.260726665776,10618.820782212337
+YLLs (Years of Life Lost),Canada,Both,70 to 74,Chronic obstructive pulmonary disease,Number,2017,29542.88209676122,34121.70101142583,25498.86813425875
+YLLs (Years of Life Lost),Canada,Male,75 to 79,Chronic obstructive pulmonary disease,Number,2017,15989.544840591656,19526.49693556826,13046.807619920633
+YLLs (Years of Life Lost),Canada,Female,75 to 79,Chronic obstructive pulmonary disease,Number,2017,13113.923618750852,16369.742715146464,10572.271016700583
+YLLs (Years of Life Lost),Canada,Both,75 to 79,Chronic obstructive pulmonary disease,Number,2017,29103.468459342486,33840.32589577407,24760.00187292115
+YLLs (Years of Life Lost),Canada,Male,80 plus,Chronic obstructive pulmonary disease,Number,2017,30630.044653593246,35205.44532479618,26550.130052669545
+YLLs (Years of Life Lost),Canada,Female,80 plus,Chronic obstructive pulmonary disease,Number,2017,25875.5618172493,29637.09045727365,22634.841729878095
+YLLs (Years of Life Lost),Canada,Both,80 plus,Chronic obstructive pulmonary disease,Number,2017,56505.60647084266,62430.27404573174,50902.14677550636
+Deaths,Canada,Male,1 to 4,Diabetes mellitus,Number,2017,0.3525873618461514,0.535958808805065,0.2142273888493998
+Deaths,Canada,Female,1 to 4,Diabetes mellitus,Number,2017,0.3086825481386024,0.4464264819266917,0.19651524044529153
+Deaths,Canada,Both,1 to 4,Diabetes mellitus,Number,2017,0.6612699099847528,0.9231331743730247,0.4530944126010071
+Deaths,Canada,Male,5 to 9,Diabetes mellitus,Number,2017,0.14989723217694392,0.27136959241332914,0.09539925663940992
+Deaths,Canada,Female,5 to 9,Diabetes mellitus,Number,2017,0.2075690807346087,0.31898058649202815,0.1364609559017918
+Deaths,Canada,Both,5 to 9,Diabetes mellitus,Number,2017,0.3574663129115519,0.5594622229196211,0.26088100359647726
+Deaths,Canada,Male,10 to 14,Diabetes mellitus,Number,2017,0.4019792234326972,0.7232453540284444,0.25282063932698484
+Deaths,Canada,Female,10 to 14,Diabetes mellitus,Number,2017,0.5214625812069699,0.828366491521212,0.33695234606793323
+Deaths,Canada,Both,10 to 14,Diabetes mellitus,Number,2017,0.9234418046396667,1.4189598875063387,0.6753371333688584
+Deaths,Canada,Male,15 to 19,Diabetes mellitus,Number,2017,1.3398333391606787,1.774245342909804,0.9789486551164066
+Deaths,Canada,Female,15 to 19,Diabetes mellitus,Number,2017,1.1520774358076329,1.558595350103815,0.8345287258771455
+Deaths,Canada,Both,15 to 19,Diabetes mellitus,Number,2017,2.4919107749683103,3.0787379358243196,2.0020279857616217
+Deaths,Canada,Male,20 to 24,Diabetes mellitus,Number,2017,3.794102116283773,4.950602381958701,2.8337788882140242
+Deaths,Canada,Female,20 to 24,Diabetes mellitus,Number,2017,2.626641916275024,3.5252384861417947,1.9273650726380769
+Deaths,Canada,Both,20 to 24,Diabetes mellitus,Number,2017,6.420744032558798,7.727157152251505,5.196063232436545
+Deaths,Canada,Male,25 to 29,Diabetes mellitus,Number,2017,7.529453975840864,9.639477192191444,5.742985334519093
+Deaths,Canada,Female,25 to 29,Diabetes mellitus,Number,2017,4.295211895383974,5.834812613965527,3.0092978529678778
+Deaths,Canada,Both,25 to 29,Diabetes mellitus,Number,2017,11.824665871224834,14.577738100955733,9.58654089936894
+Deaths,Canada,Male,30 to 34,Diabetes mellitus,Number,2017,13.149240462028141,17.220777719763994,9.93516673136743
+Deaths,Canada,Female,30 to 34,Diabetes mellitus,Number,2017,7.244576590711212,9.485646937676961,5.461257063417458
+Deaths,Canada,Both,30 to 34,Diabetes mellitus,Number,2017,20.393817052739323,25.192733387253956,16.712399469821282
+Deaths,Canada,Male,35 to 39,Diabetes mellitus,Number,2017,21.21663389215562,26.79516294321876,16.56776755159461
+Deaths,Canada,Female,35 to 39,Diabetes mellitus,Number,2017,10.157568532596693,13.522363193488909,7.639325814424905
+Deaths,Canada,Both,35 to 39,Diabetes mellitus,Number,2017,31.374202424752305,37.96731869642145,26.033345333130622
+Deaths,Canada,Male,40 to 44,Diabetes mellitus,Number,2017,36.50713999933955,47.074604221180955,27.70514666004896
+Deaths,Canada,Female,40 to 44,Diabetes mellitus,Number,2017,17.06828201448145,21.87335802198862,13.234868900582518
+Deaths,Canada,Both,40 to 44,Diabetes mellitus,Number,2017,53.57542201382104,65.3094359281883,43.93923425755455
+Deaths,Canada,Male,45 to 49,Diabetes mellitus,Number,2017,66.61921278917868,83.4505538592677,52.11282235382141
+Deaths,Canada,Female,45 to 49,Diabetes mellitus,Number,2017,32.01041000635446,41.44076717829333,23.951936361965302
+Deaths,Canada,Both,45 to 49,Diabetes mellitus,Number,2017,98.62962279553315,116.32444588639956,81.91248403188769
+Deaths,Canada,Male,50 to 54,Diabetes mellitus,Number,2017,129.71349291251175,162.56070230606943,101.7768976373027
+Deaths,Canada,Female,50 to 54,Diabetes mellitus,Number,2017,60.314951014166894,77.69602050523602,46.35565115199718
+Deaths,Canada,Both,50 to 54,Diabetes mellitus,Number,2017,190.0284439266788,231.15520485273635,157.27559195897913
+Deaths,Canada,Male,55 to 59,Diabetes mellitus,Number,2017,228.5812508177292,288.60605630229225,179.76852309374362
+Deaths,Canada,Female,55 to 59,Diabetes mellitus,Number,2017,101.75993161645467,131.45076674771744,77.00844586735563
+Deaths,Canada,Both,55 to 59,Diabetes mellitus,Number,2017,330.34118243418453,397.27060948098944,273.20951421062983
+Deaths,Canada,Male,60 to 64,Diabetes mellitus,Number,2017,323.58758800757187,417.62002778254833,252.52042222996013
+Deaths,Canada,Female,60 to 64,Diabetes mellitus,Number,2017,161.6038432580656,204.9569783323986,124.10506449728796
+Deaths,Canada,Both,60 to 64,Diabetes mellitus,Number,2017,485.19143126563756,583.478026893185,400.9434073856946
+Deaths,Canada,Male,65 to 69,Diabetes mellitus,Number,2017,407.723786476615,511.44064317505104,318.0485961518084
+Deaths,Canada,Female,65 to 69,Diabetes mellitus,Number,2017,247.81869507149054,318.5498820871175,193.16236770075997
+Deaths,Canada,Both,65 to 69,Diabetes mellitus,Number,2017,655.5424815481048,775.9698359929507,540.0165277309993
+Deaths,Canada,Male,70 to 74,Diabetes mellitus,Number,2017,486.92289538035936,611.8551916762858,388.14117830451806
+Deaths,Canada,Female,70 to 74,Diabetes mellitus,Number,2017,298.24248008024244,379.67180782815564,231.73503597190913
+Deaths,Canada,Both,70 to 74,Diabetes mellitus,Number,2017,785.1653754606026,924.9363499840033,663.6264325739878
+Deaths,Canada,Male,75 to 79,Diabetes mellitus,Number,2017,531.7620903421555,660.9769297530628,420.4674277289075
+Deaths,Canada,Female,75 to 79,Diabetes mellitus,Number,2017,364.36948440975823,467.65304007934515,287.8426437562661
+Deaths,Canada,Both,75 to 79,Diabetes mellitus,Number,2017,896.1315747519146,1055.1244011504787,754.1303894474662
+Deaths,Canada,Male,80 plus,Diabetes mellitus,Number,2017,1497.1086795788194,1694.6563939912876,1314.799356977661
+Deaths,Canada,Female,80 plus,Diabetes mellitus,Number,2017,1892.234202498641,2137.690919059947,1677.7790994046609
+Deaths,Canada,Both,80 plus,Diabetes mellitus,Number,2017,3389.3428820774625,3678.95657593582,3114.0461329582145
+Deaths,Canada,Male,1 to 4,Chronic obstructive pulmonary disease,Number,2017,0.15335105807977173,0.23595093834368897,0.09175414796535761
+Deaths,Canada,Female,1 to 4,Chronic obstructive pulmonary disease,Number,2017,0.21560648005959399,0.3479837902293827,0.1174419486499043
+Deaths,Canada,Both,1 to 4,Chronic obstructive pulmonary disease,Number,2017,0.36895753813936616,0.5263170486864085,0.24381070238471558
+Deaths,Canada,Male,5 to 9,Chronic obstructive pulmonary disease,Number,2017,0.12185150301092283,0.1781406104443074,0.08016498156762451
+Deaths,Canada,Female,5 to 9,Chronic obstructive pulmonary disease,Number,2017,0.16515439484047537,0.2571303153756914,0.10112444166808417
+Deaths,Canada,Both,5 to 9,Chronic obstructive pulmonary disease,Number,2017,0.2870058978513987,0.3939071132821543,0.20061874888252293
+Deaths,Canada,Male,10 to 14,Chronic obstructive pulmonary disease,Number,2017,0.17439258851885603,0.2652983663831024,0.10854295878058784
+Deaths,Canada,Female,10 to 14,Chronic obstructive pulmonary disease,Number,2017,0.1808985774165952,0.29638883594891197,0.10151501665467937
+Deaths,Canada,Both,10 to 14,Chronic obstructive pulmonary disease,Number,2017,0.35529116593545074,0.4987677650525119,0.2428373429450464
+Deaths,Canada,Male,15 to 19,Chronic obstructive pulmonary disease,Number,2017,0.7797812531999245,1.128425735107211,0.524384454670434
+Deaths,Canada,Female,15 to 19,Chronic obstructive pulmonary disease,Number,2017,0.7598101426820147,1.1226371524873,0.4810325386073087
+Deaths,Canada,Both,15 to 19,Chronic obstructive pulmonary disease,Number,2017,1.5395913958819405,2.023966954886331,1.1517493634595752
+Deaths,Canada,Male,20 to 24,Chronic obstructive pulmonary disease,Number,2017,1.0415641612530033,1.5150302295276155,0.6637116221558406
+Deaths,Canada,Female,20 to 24,Chronic obstructive pulmonary disease,Number,2017,0.8536628643951198,1.2473558759553158,0.5501934024088835
+Deaths,Canada,Both,20 to 24,Chronic obstructive pulmonary disease,Number,2017,1.8952270256481243,2.496418642026718,1.3775042406998637
+Deaths,Canada,Male,25 to 29,Chronic obstructive pulmonary disease,Number,2017,1.0635240373733739,1.5434316838378965,0.6993894462362621
+Deaths,Canada,Female,25 to 29,Chronic obstructive pulmonary disease,Number,2017,1.3246536115452474,1.9043769949974088,0.8747273540970785
+Deaths,Canada,Both,25 to 29,Chronic obstructive pulmonary disease,Number,2017,2.3881776489186217,3.148390129417763,1.7656118418304447
+Deaths,Canada,Male,30 to 34,Chronic obstructive pulmonary disease,Number,2017,1.6085300118910508,2.367230117799094,1.053279577900141
+Deaths,Canada,Female,30 to 34,Chronic obstructive pulmonary disease,Number,2017,1.7776996969731158,2.6119920443105413,1.0988243162661278
+Deaths,Canada,Both,30 to 34,Chronic obstructive pulmonary disease,Number,2017,3.386229708864168,4.511613860898961,2.386062320665453
+Deaths,Canada,Male,35 to 39,Chronic obstructive pulmonary disease,Number,2017,2.895867003045208,4.240225127185591,1.8459596426976725
+Deaths,Canada,Female,35 to 39,Chronic obstructive pulmonary disease,Number,2017,2.5856869255053194,3.7336883899166757,1.6213538615876333
+Deaths,Canada,Both,35 to 39,Chronic obstructive pulmonary disease,Number,2017,5.481553928550526,7.206320121604034,3.864324010156885
+Deaths,Canada,Male,40 to 44,Chronic obstructive pulmonary disease,Number,2017,7.187481854364954,9.619525328134285,5.021669937311364
+Deaths,Canada,Female,40 to 44,Chronic obstructive pulmonary disease,Number,2017,6.608012774591444,9.1287825847863,4.4310566204162525
+Deaths,Canada,Both,40 to 44,Chronic obstructive pulmonary disease,Number,2017,13.79549462895642,17.38733210222642,10.225748011560276
+Deaths,Canada,Male,45 to 49,Chronic obstructive pulmonary disease,Number,2017,19.949202913395208,25.52935441419201,14.895654473387314
+Deaths,Canada,Female,45 to 49,Chronic obstructive pulmonary disease,Number,2017,18.082671909148456,23.728302455618273,13.095150042525471
+Deaths,Canada,Both,45 to 49,Chronic obstructive pulmonary disease,Number,2017,38.031874822543664,45.892910885716105,31.088566684427413
+Deaths,Canada,Male,50 to 54,Chronic obstructive pulmonary disease,Number,2017,65.89242467380231,83.10524004636049,50.5743911183987
+Deaths,Canada,Female,50 to 54,Chronic obstructive pulmonary disease,Number,2017,53.329629803506094,66.9320037288159,41.89729994736718
+Deaths,Canada,Both,50 to 54,Chronic obstructive pulmonary disease,Number,2017,119.22205447730846,140.6751072169927,99.56190524909087
+Deaths,Canada,Male,55 to 59,Chronic obstructive pulmonary disease,Number,2017,166.93191821960866,213.77529795719366,127.70515310470583
+Deaths,Canada,Female,55 to 59,Chronic obstructive pulmonary disease,Number,2017,128.1375810276939,160.1999490539552,100.35351281711829
+Deaths,Canada,Both,55 to 59,Chronic obstructive pulmonary disease,Number,2017,295.06949924730253,349.80058202004665,244.98512825949103
+Deaths,Canada,Male,60 to 64,Chronic obstructive pulmonary disease,Number,2017,324.57008190629574,401.22030848790604,254.0432986155913
+Deaths,Canada,Female,60 to 64,Chronic obstructive pulmonary disease,Number,2017,248.50578002603507,312.305985894339,196.86069087515853
+Deaths,Canada,Both,60 to 64,Chronic obstructive pulmonary disease,Number,2017,573.0758619323307,673.1716059356277,480.1354600177864
+Deaths,Canada,Male,65 to 69,Chronic obstructive pulmonary disease,Number,2017,572.7690803533382,707.5734835497458,460.40579286334014
+Deaths,Canada,Female,65 to 69,Chronic obstructive pulmonary disease,Number,2017,473.34799416383595,587.6527710475107,370.60711629051735
+Deaths,Canada,Both,65 to 69,Chronic obstructive pulmonary disease,Number,2017,1046.1170745171746,1243.0489240855352,887.0985598434479
+Deaths,Canada,Male,70 to 74,Chronic obstructive pulmonary disease,Number,2017,901.7699021406681,1097.5764378089223,717.9130962726935
+Deaths,Canada,Female,70 to 74,Chronic obstructive pulmonary disease,Number,2017,733.1856908584385,898.741069733686,588.1196161119877
+Deaths,Canada,Both,70 to 74,Chronic obstructive pulmonary disease,Number,2017,1634.955592999105,1888.3606585538541,1411.080797609212
+Deaths,Canada,Male,75 to 79,Chronic obstructive pulmonary disease,Number,2017,1140.458066402202,1392.7320108708404,930.5666383425095
+Deaths,Canada,Female,75 to 79,Chronic obstructive pulmonary disease,Number,2017,936.9227829205614,1169.5344083321359,755.3347015529604
+Deaths,Canada,Both,75 to 79,Chronic obstructive pulmonary disease,Number,2017,2077.3808493227607,2415.622677511795,1767.1384900937567
+Deaths,Canada,Male,80 plus,Chronic obstructive pulmonary disease,Number,2017,4028.158541198926,4572.363368811688,3530.884824819929
+Deaths,Canada,Female,80 plus,Chronic obstructive pulmonary disease,Number,2017,3734.7216076082173,4215.75311673822,3310.4464332946336
+Deaths,Canada,Both,80 plus,Chronic obstructive pulmonary disease,Number,2017,7762.880148807135,8500.931619335657,7079.944550089422
+Deaths,Canada,Male,1 to 4,Asthma,Number,2017,0.26261195740067944,0.42583938712144326,0.15295479823687338
+Deaths,Canada,Female,1 to 4,Asthma,Number,2017,0.3335438435164368,0.5451311293017563,0.18137380295243588
+Deaths,Canada,Both,1 to 4,Asthma,Number,2017,0.5961558009171165,0.848304765899985,0.38644118317575754
+Deaths,Canada,Male,5 to 9,Asthma,Number,2017,0.38359088197877056,0.5726123998914754,0.23922538923600226
+Deaths,Canada,Female,5 to 9,Asthma,Number,2017,0.4447754128428956,0.6929496297816404,0.25760181972084273
+Deaths,Canada,Both,5 to 9,Asthma,Number,2017,0.8283662948216665,1.1395313151528534,0.5671630134671803
+Deaths,Canada,Male,10 to 14,Asthma,Number,2017,1.1494107320039033,1.6898328973036707,0.7118498693773799
+Deaths,Canada,Female,10 to 14,Asthma,Number,2017,1.0664462824772512,1.6077079838420478,0.6580702784516655
+Deaths,Canada,Both,10 to 14,Asthma,Number,2017,2.2158570144811542,2.9905750247726974,1.5769076909553315
+Deaths,Canada,Male,15 to 19,Asthma,Number,2017,1.3211250768823866,1.8543682466322389,0.8878207525551678
+Deaths,Canada,Female,15 to 19,Asthma,Number,2017,1.332486485622912,1.9674353986699613,0.8623985422480995
+Deaths,Canada,Both,15 to 19,Asthma,Number,2017,2.653611562505295,3.4845814640155006,1.9685721529930842
+Deaths,Canada,Male,20 to 24,Asthma,Number,2017,1.574274482599422,2.2842983782911674,1.026356456426906
+Deaths,Canada,Female,20 to 24,Asthma,Number,2017,1.796009739752478,2.610207438077239,1.20201437661823
+Deaths,Canada,Both,20 to 24,Asthma,Number,2017,3.370284222351902,4.353796122063802,2.54342170951746
+Deaths,Canada,Male,25 to 29,Asthma,Number,2017,1.7964199905227363,2.57022629343339,1.1668925247758193
+Deaths,Canada,Female,25 to 29,Asthma,Number,2017,2.023409151961282,2.901072473973248,1.3397886309595737
+Deaths,Canada,Both,25 to 29,Asthma,Number,2017,3.819829142484018,4.986695604261966,2.8332544227137597
+Deaths,Canada,Male,30 to 34,Asthma,Number,2017,1.331315790766478,2.0876039240359425,0.7965440268208774
+Deaths,Canada,Female,30 to 34,Asthma,Number,2017,1.7579393694978236,2.72352410061899,1.0661101737237892
+Deaths,Canada,Both,30 to 34,Asthma,Number,2017,3.089255160264303,4.2503325916050985,2.1561161722308633
+Deaths,Canada,Male,35 to 39,Asthma,Number,2017,1.481196162459773,2.279715500845183,0.8700928345536213
+Deaths,Canada,Female,35 to 39,Asthma,Number,2017,1.96573784510715,2.8835979653317385,1.2407899922474888
+Deaths,Canada,Both,35 to 39,Asthma,Number,2017,3.4469340075669206,4.674359515375253,2.414203287270284
+Deaths,Canada,Male,40 to 44,Asthma,Number,2017,1.5674522129280846,2.3780767756351495,0.9534002649479936
+Deaths,Canada,Female,40 to 44,Asthma,Number,2017,2.616953840513683,3.802514597740193,1.6531669964247417
+Deaths,Canada,Both,40 to 44,Asthma,Number,2017,4.184406053441767,5.612217011580112,3.026947655709562
+Deaths,Canada,Male,45 to 49,Asthma,Number,2017,2.6172894533536657,3.7527524056232435,1.7169305945938336
+Deaths,Canada,Female,45 to 49,Asthma,Number,2017,4.584847167088226,6.5705337499312275,3.050761644960032
+Deaths,Canada,Both,45 to 49,Asthma,Number,2017,7.202136620441898,9.44556955361464,5.304474026019943
+Deaths,Canada,Male,50 to 54,Asthma,Number,2017,3.792506167762539,5.705566401293811,2.376876330838091
+Deaths,Canada,Female,50 to 54,Asthma,Number,2017,6.945214056240519,9.743984461912646,4.5760228331317165
+Deaths,Canada,Both,50 to 54,Asthma,Number,2017,10.737720224003038,13.96222675707555,8.025960174164348
+Deaths,Canada,Male,55 to 59,Asthma,Number,2017,5.006721163983669,7.6197810820199,3.114680015015558
+Deaths,Canada,Female,55 to 59,Asthma,Number,2017,8.415300049721028,12.16943441323293,5.288314099373581
+Deaths,Canada,Both,55 to 59,Asthma,Number,2017,13.422021213704705,18.048205446114675,9.77807455408169
+Deaths,Canada,Male,60 to 64,Asthma,Number,2017,6.064662844651055,9.076904923648538,3.877124590322186
+Deaths,Canada,Female,60 to 64,Asthma,Number,2017,9.970633808279839,14.585233543891428,6.577558325031036
+Deaths,Canada,Both,60 to 64,Asthma,Number,2017,16.035296652930917,21.177014876226142,11.858875865929212
+Deaths,Canada,Male,65 to 69,Asthma,Number,2017,6.331910659210549,9.189203940893318,4.261780248037871
+Deaths,Canada,Female,65 to 69,Asthma,Number,2017,10.744859044400666,15.62683753552067,7.077719998756385
+Deaths,Canada,Both,65 to 69,Asthma,Number,2017,17.076769703611223,22.558192715275375,12.728904474253804
+Deaths,Canada,Male,70 to 74,Asthma,Number,2017,8.06629066402919,11.635850866877812,5.082037702906428
+Deaths,Canada,Female,70 to 74,Asthma,Number,2017,12.784173912042046,18.55890118568854,8.536990461342414
+Deaths,Canada,Both,70 to 74,Asthma,Number,2017,20.850464576071214,27.99596536462306,15.370151707233294
+Deaths,Canada,Male,75 to 79,Asthma,Number,2017,8.754687031081335,12.743262744983427,5.651205276255868
+Deaths,Canada,Female,75 to 79,Asthma,Number,2017,16.170081223628703,23.20130348586602,11.058952799125542
+Deaths,Canada,Both,75 to 79,Asthma,Number,2017,24.924768254710067,32.57657048307976,18.15871328256865
+Deaths,Canada,Male,80 plus,Asthma,Number,2017,36.80213654891493,45.717783227375776,29.105258597411915
+Deaths,Canada,Female,80 plus,Asthma,Number,2017,102.82662065589942,124.20626001019588,83.89306189586351
+Deaths,Canada,Both,80 plus,Asthma,Number,2017,139.62875720481438,162.9365124655811,119.19078477459519
+Deaths,Canada,Male,1 to 4,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,0.6831252439414293,1.0798881468311203,0.4290900585325398
+Deaths,Canada,Female,1 to 4,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,0.4552801230855485,0.7931095438426935,0.251170606729698
+Deaths,Canada,Both,1 to 4,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,1.1384053670269774,1.647895130325341,0.763424375727158
+Deaths,Canada,Male,5 to 9,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,0.34512632705469304,0.5200481254823591,0.2064188333291436
+Deaths,Canada,Female,5 to 9,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,0.3298346705505199,0.5542246586594246,0.15579303780998202
+Deaths,Canada,Both,5 to 9,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,0.674960997605214,0.9537634648080415,0.43959752246157374
+Deaths,Canada,Male,10 to 14,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,0.4864952955905156,0.7782981718639523,0.28079909644496354
+Deaths,Canada,Female,10 to 14,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,0.36055888537520997,0.5996189723842825,0.1725259572432593
+Deaths,Canada,Both,10 to 14,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,0.8470541809657244,1.2281237575054624,0.540716718674341
+Deaths,Canada,Male,15 to 19,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,0.5671232938732903,0.9194190654283781,0.3107071305412888
+Deaths,Canada,Female,15 to 19,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,0.6917646698505425,1.1348420732847262,0.34320610902714743
+Deaths,Canada,Both,15 to 19,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,1.258887963723835,1.7789645796723315,0.8375735544320269
+Deaths,Canada,Male,20 to 24,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,0.8859091578420181,1.3618041663416272,0.5279041372000544
+Deaths,Canada,Female,20 to 24,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,0.974513386668374,1.5246334784757,0.5184674838054584
+Deaths,Canada,Both,20 to 24,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,1.8604225445103912,2.565085057662507,1.3072845055451325
+Deaths,Canada,Male,25 to 29,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,1.5327606284105895,2.3194300225179103,0.924775433586719
+Deaths,Canada,Female,25 to 29,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,1.2026043284984858,1.8684004133441523,0.7296281211045238
+Deaths,Canada,Both,25 to 29,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,2.735364956909077,3.8119764378161256,1.8698534873920776
+Deaths,Canada,Male,30 to 34,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,2.5159487030255363,3.7096866479464046,1.527687443782558
+Deaths,Canada,Female,30 to 34,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,1.9326799946006297,3.1291880385652378,1.184160800730946
+Deaths,Canada,Both,30 to 34,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,4.44862869762617,6.283524464911181,3.163363667834033
+Deaths,Canada,Male,35 to 39,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,3.132776163918035,5.039004333784636,1.7430302026950686
+Deaths,Canada,Female,35 to 39,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,2.980044758319829,4.769339263135571,1.7834352675745893
+Deaths,Canada,Both,35 to 39,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,6.112820922237863,9.046811825268518,4.125716091785187
+Deaths,Canada,Male,40 to 44,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,5.436788372324216,8.208392823373524,3.405205598407698
+Deaths,Canada,Female,40 to 44,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,4.746311645199403,7.666000228479796,2.955593480532932
+Deaths,Canada,Both,40 to 44,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,10.183100017523632,14.183732723544505,7.240382326541066
+Deaths,Canada,Male,45 to 49,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,11.177988498842863,15.633545083557246,7.853331073163585
+Deaths,Canada,Female,45 to 49,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,8.912209147127275,13.155977340128588,5.810060801389196
+Deaths,Canada,Both,45 to 49,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,20.090197645970115,26.10296648998168,15.359721889621113
+Deaths,Canada,Male,50 to 54,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,23.62566350818957,32.68607072971645,15.853268297007311
+Deaths,Canada,Female,50 to 54,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,16.139535818737205,23.248372949412786,10.500357108098196
+Deaths,Canada,Both,50 to 54,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,39.765199326926805,51.05924211726999,29.559092622642872
+Deaths,Canada,Male,55 to 59,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,42.947337556329245,62.24700818529154,27.219894000430365
+Deaths,Canada,Female,55 to 59,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,26.116093346598664,37.272302233923575,14.403462941485492
+Deaths,Canada,Both,55 to 59,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,69.06343090292782,90.57759682335855,47.338860270484005
+Deaths,Canada,Male,60 to 64,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,72.49772377705803,105.52310417022618,42.43100621692289
+Deaths,Canada,Female,60 to 64,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,41.23352105101682,60.950160360138185,20.907364188738214
+Deaths,Canada,Both,60 to 64,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,113.73124482807448,155.31059019105152,73.1630964997702
+Deaths,Canada,Male,65 to 69,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,125.97755482438474,191.1875212297004,70.44084827326698
+Deaths,Canada,Female,65 to 69,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,66.79194017666015,101.63879455753917,31.42100820921033
+Deaths,Canada,Both,65 to 69,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,192.769495001045,267.2496177267433,118.13177569949806
+Deaths,Canada,Male,70 to 74,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,170.3350841738417,258.2171458677503,92.12643407105236
+Deaths,Canada,Female,70 to 74,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,99.89445637591895,151.4728125190771,42.93521706032173
+Deaths,Canada,Both,70 to 74,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,270.2295405497606,379.24854723683217,158.61495818888633
+Deaths,Canada,Male,75 to 79,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,198.25207961853704,318.1205896041041,105.75561801310397
+Deaths,Canada,Female,75 to 79,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,126.87588360522116,197.52789411339123,52.15142960696282
+Deaths,Canada,Both,75 to 79,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,325.1279632237581,465.751341694421,177.89138921191577
+Deaths,Canada,Male,80 plus,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,473.26989031388894,702.6830730909548,227.8836995941878
+Deaths,Canada,Female,80 plus,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,449.95834603565856,609.4832532504628,184.95730268541897
+Deaths,Canada,Both,80 plus,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,923.2282363495478,1236.6791340052278,474.3882140538284
+Deaths,Canada,Male,15 to 19,Ischemic heart disease,Number,2017,2.559851568839358,3.477140784936108,1.8049610315183993
+Deaths,Canada,Female,15 to 19,Ischemic heart disease,Number,2017,1.4602981857865134,2.01253718868362,1.0063666620653857
+Deaths,Canada,Both,15 to 19,Ischemic heart disease,Number,2017,4.020149754625878,5.134567198491626,3.06634177050741
+Deaths,Canada,Male,20 to 24,Ischemic heart disease,Number,2017,6.570497682316579,8.894853133515973,4.637641298230086
+Deaths,Canada,Female,20 to 24,Ischemic heart disease,Number,2017,2.869437935072845,3.9415286845644184,2.0244909432227014
+Deaths,Canada,Both,20 to 24,Ischemic heart disease,Number,2017,9.439935617389423,11.863603066247936,7.352138591991699
+Deaths,Canada,Male,25 to 29,Ischemic heart disease,Number,2017,16.84990105900938,21.691161146499727,12.591081374790335
+Deaths,Canada,Female,25 to 29,Ischemic heart disease,Number,2017,5.4604676815838395,7.286866759300035,3.896525141986411
+Deaths,Canada,Both,25 to 29,Ischemic heart disease,Number,2017,22.310368740593173,27.596431150438228,17.642313347768138
+Deaths,Canada,Male,30 to 34,Ischemic heart disease,Number,2017,34.726892504260704,44.060118070057996,26.520091656421688
+Deaths,Canada,Female,30 to 34,Ischemic heart disease,Number,2017,13.040444770226683,17.68782947601318,9.492595902956483
+Deaths,Canada,Both,30 to 34,Ischemic heart disease,Number,2017,47.76733727448741,58.42146562793124,38.793839040777456
+Deaths,Canada,Male,35 to 39,Ischemic heart disease,Number,2017,82.19038512838095,103.54134687186779,63.77673866517307
+Deaths,Canada,Female,35 to 39,Ischemic heart disease,Number,2017,21.879478993925666,29.225015260513423,16.116023607456054
+Deaths,Canada,Both,35 to 39,Ischemic heart disease,Number,2017,104.06986412230658,126.1340020412117,84.87932002535901
+Deaths,Canada,Male,40 to 44,Ischemic heart disease,Number,2017,195.36872413768262,236.941525434875,159.85538600818396
+Deaths,Canada,Female,40 to 44,Ischemic heart disease,Number,2017,47.82975797815153,59.83175202332505,37.63102829848358
+Deaths,Canada,Both,40 to 44,Ischemic heart disease,Number,2017,243.19848211583442,286.86696379399694,205.9325865662638
+Deaths,Canada,Male,45 to 49,Ischemic heart disease,Number,2017,409.7975938666721,486.3708098035673,342.65068637543897
+Deaths,Canada,Female,45 to 49,Ischemic heart disease,Number,2017,99.85682631107824,125.65830874196075,79.01226394141858
+Deaths,Canada,Both,45 to 49,Ischemic heart disease,Number,2017,509.65442017774996,590.7436146412105,437.8707470485309
+Deaths,Canada,Male,50 to 54,Ischemic heart disease,Number,2017,882.1722779610504,1010.2282992036587,762.184622832103
+Deaths,Canada,Female,50 to 54,Ischemic heart disease,Number,2017,210.7956872789642,257.8452387706612,168.23497426136973
+Deaths,Canada,Both,50 to 54,Ischemic heart disease,Number,2017,1092.9679652400143,1234.222702953639,970.0164318657869
+Deaths,Canada,Male,55 to 59,Ischemic heart disease,Number,2017,1457.2606011424823,1642.522596001481,1270.6736607713008
+Deaths,Canada,Female,55 to 59,Ischemic heart disease,Number,2017,377.71600013444356,454.8134587813387,303.75378776107794
+Deaths,Canada,Both,55 to 59,Ischemic heart disease,Number,2017,1834.976601276924,2049.3700756896724,1622.4152565711834
+Deaths,Canada,Male,60 to 64,Ischemic heart disease,Number,2017,1947.7049382563196,2203.6862869788247,1705.1922179575856
+Deaths,Canada,Female,60 to 64,Ischemic heart disease,Number,2017,601.1165453073653,716.2408831358052,495.2844806785664
+Deaths,Canada,Both,60 to 64,Ischemic heart disease,Number,2017,2548.8214835636822,2828.8308330825853,2273.4094927318592
+Deaths,Canada,Male,65 to 69,Ischemic heart disease,Number,2017,2469.69282952021,2786.2397026128556,2158.19636301934
+Deaths,Canada,Female,65 to 69,Ischemic heart disease,Number,2017,942.413740537046,1100.9198503563125,784.2341029341203
+Deaths,Canada,Both,65 to 69,Ischemic heart disease,Number,2017,3412.1065700572603,3773.5495504604587,3064.365662967937
+Deaths,Canada,Male,70 to 74,Ischemic heart disease,Number,2017,2857.8566732217896,3245.561548855364,2518.820573419575
+Deaths,Canada,Female,70 to 74,Ischemic heart disease,Number,2017,1395.9785334337766,1626.9683438261802,1192.5296406085542
+Deaths,Canada,Both,70 to 74,Ischemic heart disease,Number,2017,4253.835206655567,4679.723992920648,3867.8993352607063
+Deaths,Canada,Male,75 to 79,Ischemic heart disease,Number,2017,3270.2512595116523,3689.8532647159823,2900.667088187601
+Deaths,Canada,Female,75 to 79,Ischemic heart disease,Number,2017,1976.642523163251,2286.422675335857,1682.0323627210817
+Deaths,Canada,Both,75 to 79,Ischemic heart disease,Number,2017,5246.893782674896,5752.547603111179,4760.703365651359
+Deaths,Canada,Male,80 plus,Ischemic heart disease,Number,2017,12222.892896999987,13220.693898041936,11328.736352561615
+Deaths,Canada,Female,80 plus,Ischemic heart disease,Number,2017,16827.795058234387,18169.219425840874,15645.265436677328
+Deaths,Canada,Both,80 plus,Ischemic heart disease,Number,2017,29050.68795523436,30686.9514556734,27535.255678811136
+Deaths,Canada,Male,1 to 4,Stroke,Number,2017,0.8645998510297372,1.2639762430059813,0.548480216224605
+Deaths,Canada,Female,1 to 4,Stroke,Number,2017,0.7807389666540285,1.1588088719272993,0.5090453474612621
+Deaths,Canada,Both,1 to 4,Stroke,Number,2017,1.645338817683766,2.224333384675571,1.160340512887953
+Deaths,Canada,Male,5 to 9,Stroke,Number,2017,0.7152073935276589,1.0456028820287202,0.48468255734208904
+Deaths,Canada,Female,5 to 9,Stroke,Number,2017,0.8204340596247249,1.1211433587642106,0.5595056642910872
+Deaths,Canada,Both,5 to 9,Stroke,Number,2017,1.5356414531523848,1.9718580369757226,1.1588934760353808
+Deaths,Canada,Male,10 to 14,Stroke,Number,2017,1.413684488551738,2.0159443320436696,0.9522168212629099
+Deaths,Canada,Female,10 to 14,Stroke,Number,2017,1.2883255777284115,1.7674240185761567,0.8968416449792024
+Deaths,Canada,Both,10 to 14,Stroke,Number,2017,2.7020100662801485,3.4674039540510133,2.093079724465734
+Deaths,Canada,Male,15 to 19,Stroke,Number,2017,2.7734930955793837,3.833587391711138,1.955636329535687
+Deaths,Canada,Female,15 to 19,Stroke,Number,2017,2.3623142002218627,3.3319036708527086,1.623343606085427
+Deaths,Canada,Both,15 to 19,Stroke,Number,2017,5.135807295801249,6.53936026285886,3.899802383885243
+Deaths,Canada,Male,20 to 24,Stroke,Number,2017,5.52347283353787,7.359492926464895,3.985689917901993
+Deaths,Canada,Female,20 to 24,Stroke,Number,2017,4.2841088699280725,5.83959376525652,3.0308423516355254
+Deaths,Canada,Both,20 to 24,Stroke,Number,2017,9.80758170346595,12.260952634780843,7.775864268797671
+Deaths,Canada,Male,25 to 29,Stroke,Number,2017,8.73783321755974,12.02682936866877,6.150704850852937
+Deaths,Canada,Female,25 to 29,Stroke,Number,2017,7.408052374945457,9.857921616490179,5.524714018051642
+Deaths,Canada,Both,25 to 29,Stroke,Number,2017,16.145885592505202,20.04957172982015,12.748676506808819
+Deaths,Canada,Male,30 to 34,Stroke,Number,2017,11.681982348445269,15.995054185386511,8.257974655023691
+Deaths,Canada,Female,30 to 34,Stroke,Number,2017,14.012348128419228,18.341149830467558,10.317021859663427
+Deaths,Canada,Both,30 to 34,Stroke,Number,2017,25.694330476864497,31.365954618724817,20.102521168049098
+Deaths,Canada,Male,35 to 39,Stroke,Number,2017,19.20456026073184,25.78959906298304,13.557487255153154
+Deaths,Canada,Female,35 to 39,Stroke,Number,2017,20.64577756594017,27.344673262071883,15.143298200138721
+Deaths,Canada,Both,35 to 39,Stroke,Number,2017,39.850337826672025,49.70152103018653,31.854109761712376
+Deaths,Canada,Male,40 to 44,Stroke,Number,2017,39.47736020142012,52.672339530046145,29.13359796132805
+Deaths,Canada,Female,40 to 44,Stroke,Number,2017,37.162804981947424,47.75637238397151,28.5854671467366
+Deaths,Canada,Both,40 to 44,Stroke,Number,2017,76.64016518336757,92.69094481632575,63.14893134297715
+Deaths,Canada,Male,45 to 49,Stroke,Number,2017,74.97947503712926,98.24314812215478,57.47818862882781
+Deaths,Canada,Female,45 to 49,Stroke,Number,2017,62.54064446740123,80.68387362157175,46.9560061110531
+Deaths,Canada,Both,45 to 49,Stroke,Number,2017,137.52011950453047,165.6813888489474,112.83458286258535
+Deaths,Canada,Male,50 to 54,Stroke,Number,2017,148.59267716629577,188.0030199012505,114.92373234304202
+Deaths,Canada,Female,50 to 54,Stroke,Number,2017,110.23126785475274,137.44401917074245,83.88366321954443
+Deaths,Canada,Both,50 to 54,Stroke,Number,2017,258.82394502104853,307.51361416125013,218.3108963140419
+Deaths,Canada,Male,55 to 59,Stroke,Number,2017,233.92028240987594,300.33216517515774,180.36634414211855
+Deaths,Canada,Female,55 to 59,Stroke,Number,2017,165.8988894508825,210.46944804112925,128.13170478457997
+Deaths,Canada,Both,55 to 59,Stroke,Number,2017,399.8191718607584,477.3402976505329,331.37598361284665
+Deaths,Canada,Male,60 to 64,Stroke,Number,2017,342.3879142303365,425.8423069256531,269.35581137071296
+Deaths,Canada,Female,60 to 64,Stroke,Number,2017,225.1808139054099,284.3130282837978,172.85853914049306
+Deaths,Canada,Both,60 to 64,Stroke,Number,2017,567.5687281357452,672.396529271969,475.1920088284217
+Deaths,Canada,Male,65 to 69,Stroke,Number,2017,510.18989626821747,619.7544606043622,405.2639103839887
+Deaths,Canada,Female,65 to 69,Stroke,Number,2017,358.1115331941804,447.87406480113316,279.70680805726846
+Deaths,Canada,Both,65 to 69,Stroke,Number,2017,868.3014294623983,1018.5744090849581,732.9415212290933
+Deaths,Canada,Male,70 to 74,Stroke,Number,2017,734.6396983264475,898.1919342249035,590.9972877632449
+Deaths,Canada,Female,70 to 74,Stroke,Number,2017,584.1395760943772,728.144857198774,460.60295972906977
+Deaths,Canada,Both,70 to 74,Stroke,Number,2017,1318.7792744208236,1534.1147242953468,1137.8967303114764
+Deaths,Canada,Male,75 to 79,Stroke,Number,2017,1022.9366926953793,1248.6796289107306,819.8664817999824
+Deaths,Canada,Female,75 to 79,Stroke,Number,2017,948.2858619463402,1132.5933181272856,777.7905461593857
+Deaths,Canada,Both,75 to 79,Stroke,Number,2017,1971.2225546417187,2252.782196985467,1716.016531636204
+Deaths,Canada,Male,80 plus,Stroke,Number,2017,4440.219385607924,4916.282215584116,3936.488657467545
+Deaths,Canada,Female,80 plus,Stroke,Number,2017,7916.179012196101,8675.433388206762,7245.369978624851
+Deaths,Canada,Both,80 plus,Stroke,Number,2017,12356.398397804034,13234.586771836364,11478.934125207541
+Deaths,Canada,Male,1 to 4,"Endocrine, metabolic, blood, and immune disorders",Number,2017,9.538752300957626,13.732509052677656,5.383661575470706
+Deaths,Canada,Female,1 to 4,"Endocrine, metabolic, blood, and immune disorders",Number,2017,7.976188790513924,12.187313179212428,4.415331639792566
+Deaths,Canada,Both,1 to 4,"Endocrine, metabolic, blood, and immune disorders",Number,2017,17.514941091471577,23.93463459654763,11.16138640520391
+Deaths,Canada,Male,5 to 9,"Endocrine, metabolic, blood, and immune disorders",Number,2017,5.035765455913241,7.405308205434083,3.265276848774978
+Deaths,Canada,Female,5 to 9,"Endocrine, metabolic, blood, and immune disorders",Number,2017,4.716284626915414,6.91834447178077,3.000962935653667
+Deaths,Canada,Both,5 to 9,"Endocrine, metabolic, blood, and immune disorders",Number,2017,9.752050082828646,12.715199130143674,7.0711234663242895
+Deaths,Canada,Male,10 to 14,"Endocrine, metabolic, blood, and immune disorders",Number,2017,5.854951368551732,8.3505978992615,3.8591938795519782
+Deaths,Canada,Female,10 to 14,"Endocrine, metabolic, blood, and immune disorders",Number,2017,4.671476892491422,6.891027428145475,2.900480011164856
+Deaths,Canada,Both,10 to 14,"Endocrine, metabolic, blood, and immune disorders",Number,2017,10.526428261043161,13.778911819135953,7.716099836438158
+Deaths,Canada,Male,15 to 19,"Endocrine, metabolic, blood, and immune disorders",Number,2017,6.6662854472488995,10.216527351174575,4.46379862563464
+Deaths,Canada,Female,15 to 19,"Endocrine, metabolic, blood, and immune disorders",Number,2017,7.577107936078701,11.39712872302429,4.481408095751154
+Deaths,Canada,Both,15 to 19,"Endocrine, metabolic, blood, and immune disorders",Number,2017,14.243393383327605,18.9735976299751,10.315623303223434
+Deaths,Canada,Male,20 to 24,"Endocrine, metabolic, blood, and immune disorders",Number,2017,8.148398738720987,13.232631905239604,5.516899477690914
+Deaths,Canada,Female,20 to 24,"Endocrine, metabolic, blood, and immune disorders",Number,2017,8.366419188956295,12.528463653724222,5.493261861208158
+Deaths,Canada,Both,20 to 24,"Endocrine, metabolic, blood, and immune disorders",Number,2017,16.514817927677267,22.57272089306243,12.414085876332232
+Deaths,Canada,Male,25 to 29,"Endocrine, metabolic, blood, and immune disorders",Number,2017,12.109159747110802,18.58026416586726,7.91860540664485
+Deaths,Canada,Female,25 to 29,"Endocrine, metabolic, blood, and immune disorders",Number,2017,10.129359433890286,14.297356148213145,6.52525278066368
+Deaths,Canada,Both,25 to 29,"Endocrine, metabolic, blood, and immune disorders",Number,2017,22.238519181001077,29.46667531093039,16.39014565765561
+Deaths,Canada,Male,30 to 34,"Endocrine, metabolic, blood, and immune disorders",Number,2017,14.03214994207498,21.19701307434711,9.30557729833196
+Deaths,Canada,Female,30 to 34,"Endocrine, metabolic, blood, and immune disorders",Number,2017,11.926596046872325,17.71011004469471,7.8042331683772606
+Deaths,Canada,Both,30 to 34,"Endocrine, metabolic, blood, and immune disorders",Number,2017,25.95874598894729,36.06899787771513,19.34812488633849
+Deaths,Canada,Male,35 to 39,"Endocrine, metabolic, blood, and immune disorders",Number,2017,18.507516196812063,27.310762321437725,12.572691846993589
+Deaths,Canada,Female,35 to 39,"Endocrine, metabolic, blood, and immune disorders",Number,2017,12.24853249993504,20.619180754936377,7.892280478373691
+Deaths,Canada,Both,35 to 39,"Endocrine, metabolic, blood, and immune disorders",Number,2017,30.75604869674708,43.03835841960675,23.531356890946576
+Deaths,Canada,Male,40 to 44,"Endocrine, metabolic, blood, and immune disorders",Number,2017,24.172150032734912,37.120240157629574,17.04213748805944
+Deaths,Canada,Female,40 to 44,"Endocrine, metabolic, blood, and immune disorders",Number,2017,16.795969840485473,26.640242242197008,11.408214118891028
+Deaths,Canada,Both,40 to 44,"Endocrine, metabolic, blood, and immune disorders",Number,2017,40.96811987322036,57.511496651418064,31.17840796766683
+Deaths,Canada,Male,45 to 49,"Endocrine, metabolic, blood, and immune disorders",Number,2017,37.779628940129726,55.430471150206415,26.277188335295065
+Deaths,Canada,Female,45 to 49,"Endocrine, metabolic, blood, and immune disorders",Number,2017,23.677739250832456,38.130915391116275,16.322972581085562
+Deaths,Canada,Both,45 to 49,"Endocrine, metabolic, blood, and immune disorders",Number,2017,61.4573681909621,84.82017019581336,47.15735472934559
+Deaths,Canada,Male,50 to 54,"Endocrine, metabolic, blood, and immune disorders",Number,2017,64.2686236431182,93.20596861715994,46.73607346045225
+Deaths,Canada,Female,50 to 54,"Endocrine, metabolic, blood, and immune disorders",Number,2017,36.52408486931621,56.961997197789515,25.355212628526175
+Deaths,Canada,Both,50 to 54,"Endocrine, metabolic, blood, and immune disorders",Number,2017,100.79270851243439,134.7080539111273,79.17726562214574
+Deaths,Canada,Male,55 to 59,"Endocrine, metabolic, blood, and immune disorders",Number,2017,91.27493461621032,121.03784922382474,64.4652222573823
+Deaths,Canada,Female,55 to 59,"Endocrine, metabolic, blood, and immune disorders",Number,2017,49.86459498389339,75.6104313406554,34.278611453966214
+Deaths,Canada,Both,55 to 59,"Endocrine, metabolic, blood, and immune disorders",Number,2017,141.139529600104,178.37885105666453,110.93757173894417
+Deaths,Canada,Male,60 to 64,"Endocrine, metabolic, blood, and immune disorders",Number,2017,101.3614103472233,137.30757002368642,71.64557197426913
+Deaths,Canada,Female,60 to 64,"Endocrine, metabolic, blood, and immune disorders",Number,2017,66.2898520774491,93.10494273967939,44.63673461458995
+Deaths,Canada,Both,60 to 64,"Endocrine, metabolic, blood, and immune disorders",Number,2017,167.65126242467227,213.35844815017407,126.12930932818969
+Deaths,Canada,Male,65 to 69,"Endocrine, metabolic, blood, and immune disorders",Number,2017,124.41405283350883,172.4890084767315,85.89333283625007
+Deaths,Canada,Female,65 to 69,"Endocrine, metabolic, blood, and immune disorders",Number,2017,82.5462418224442,113.14493889844245,51.51057240938405
+Deaths,Canada,Both,65 to 69,"Endocrine, metabolic, blood, and immune disorders",Number,2017,206.9602946559529,266.5083278656885,149.39862699056675
+Deaths,Canada,Male,70 to 74,"Endocrine, metabolic, blood, and immune disorders",Number,2017,121.51307283105136,161.24200705850296,84.72891410577019
+Deaths,Canada,Female,70 to 74,"Endocrine, metabolic, blood, and immune disorders",Number,2017,91.34466124800444,126.76647851200958,56.54211156018287
+Deaths,Canada,Both,70 to 74,"Endocrine, metabolic, blood, and immune disorders",Number,2017,212.85773407905543,265.3887801540787,159.57413962369068
+Deaths,Canada,Male,75 to 79,"Endocrine, metabolic, blood, and immune disorders",Number,2017,122.909990487829,170.361274097629,78.70154622367383
+Deaths,Canada,Female,75 to 79,"Endocrine, metabolic, blood, and immune disorders",Number,2017,97.20111432804076,139.37958935215735,55.13506050406108
+Deaths,Canada,Both,75 to 79,"Endocrine, metabolic, blood, and immune disorders",Number,2017,220.11110481586962,279.01273417642176,150.54548762541154
+Deaths,Canada,Male,80 plus,"Endocrine, metabolic, blood, and immune disorders",Number,2017,325.2662455871898,392.73489618361066,213.98969296750582
+Deaths,Canada,Female,80 plus,"Endocrine, metabolic, blood, and immune disorders",Number,2017,460.2004659199963,624.2750661464737,196.1626224871441
+Deaths,Canada,Both,80 plus,"Endocrine, metabolic, blood, and immune disorders",Number,2017,785.4667115071876,970.6990683873368,466.74943704758647

@@ -1,0 +1,1429 @@
+measure,location,sex,age,cause,metric,year,val,upper,lower
+Prevalence,Canada,Male,1 to 4,Asthma,Number,2017,92559.2771082,128174.658969,62910.3726116
+Prevalence,Canada,Female,1 to 4,Asthma,Number,2017,44930.2998623,65329.21171,28747.8120073
+Prevalence,Canada,Both,1 to 4,Asthma,Number,2017,137489.576971,189086.526303,92221.2075248
+Prevalence,Canada,Male,1 to 4,Asthma,Percent,2017,0.157991244636,0.214392483009,0.110296867205
+Prevalence,Canada,Female,1 to 4,Asthma,Percent,2017,0.0779136683814,0.113184894626,0.0495849351462
+Prevalence,Canada,Both,1 to 4,Asthma,Percent,2017,0.118268908933,0.160336054111,0.0803490567537
+Prevalence,Canada,Male,5 to 9,Asthma,Number,2017,126144.347141,177249.869776,86994.8699055
+Prevalence,Canada,Female,5 to 9,Asthma,Number,2017,67551.9296377,97047.7788947,44029.0645849
+Prevalence,Canada,Both,5 to 9,Asthma,Number,2017,193696.276779,271778.624702,130789.534089
+Prevalence,Canada,Male,5 to 9,Asthma,Percent,2017,0.152288928074,0.210830841126,0.104035528225
+Prevalence,Canada,Female,5 to 9,Asthma,Percent,2017,0.0833460810566,0.117460573841,0.0550745216316
+Prevalence,Canada,Both,5 to 9,Asthma,Percent,2017,0.118187255867,0.164292580986,0.0801266872825
+Prevalence,Canada,Male,10 to 14,Asthma,Number,2017,74919.5282371,97803.3010543,54034.5554304
+Prevalence,Canada,Female,10 to 14,Asthma,Number,2017,49142.571105,64491.9309292,34653.5465901
+Prevalence,Canada,Both,10 to 14,Asthma,Number,2017,124062.099342,160448.96582,90208.1919195
+Prevalence,Canada,Male,10 to 14,Asthma,Percent,2017,0.0896283321322,0.117972982441,0.0641481154535
+Prevalence,Canada,Female,10 to 14,Asthma,Percent,2017,0.057945487078,0.0765013935192,0.0410200527966
+Prevalence,Canada,Both,10 to 14,Asthma,Percent,2017,0.073670413804,0.0954761227891,0.0536467478077
+Prevalence,Canada,Male,15 to 19,Asthma,Number,2017,42438.2251669,55775.5980759,30740.6940129
+Prevalence,Canada,Female,15 to 19,Asthma,Number,2017,45654.3839014,59152.496682,32758.1598711
+Prevalence,Canada,Both,15 to 19,Asthma,Number,2017,88092.6090683,113645.871571,65125.6732345
+Prevalence,Canada,Male,15 to 19,Asthma,Percent,2017,0.0468047424102,0.0609921137615,0.0337592603368
+Prevalence,Canada,Female,15 to 19,Asthma,Percent,2017,0.0484804953795,0.0629587089575,0.0348260838045
+Prevalence,Canada,Both,15 to 19,Asthma,Percent,2017,0.0476570205027,0.0614320958174,0.0353543829238
+Prevalence,Canada,Male,20 to 24,Asthma,Number,2017,32161.3926969,42340.1688979,22621.6006146
+Prevalence,Canada,Female,20 to 24,Asthma,Number,2017,47378.598936,62808.6008207,33814.9926693
+Prevalence,Canada,Both,20 to 24,Asthma,Number,2017,79539.9916329,103842.675947,56901.3759315
+Prevalence,Canada,Male,20 to 24,Asthma,Percent,2017,0.0308455466387,0.0404811443177,0.0217760596767
+Prevalence,Canada,Female,20 to 24,Asthma,Percent,2017,0.0441747858392,0.058251204474,0.0314734777436
+Prevalence,Canada,Both,20 to 24,Asthma,Percent,2017,0.037603505346,0.0485314808071,0.0269220985796
+Prevalence,Canada,Male,25 to 29,Asthma,Number,2017,31170.9205297,40851.5021931,23237.8032125
+Prevalence,Canada,Female,25 to 29,Asthma,Number,2017,51771.2970106,66922.7702646,38136.5160107
+Prevalence,Canada,Both,25 to 29,Asthma,Number,2017,82942.2175403,107789.222197,61108.4233006
+Prevalence,Canada,Male,25 to 29,Asthma,Percent,2017,0.0282705451334,0.0368004557101,0.0211375822137
+Prevalence,Canada,Female,25 to 29,Asthma,Percent,2017,0.0448979557038,0.0579665573104,0.0331494105294
+Prevalence,Canada,Both,25 to 29,Asthma,Percent,2017,0.0367700376851,0.0476182053007,0.0271324780491
+Prevalence,Canada,Male,30 to 34,Asthma,Number,2017,34173.3213128,44053.5315261,26451.6429279
+Prevalence,Canada,Female,30 to 34,Asthma,Number,2017,57531.5218331,74815.8398964,44852.2006377
+Prevalence,Canada,Both,30 to 34,Asthma,Number,2017,91704.8431459,118621.309627,71655.3585332
+Prevalence,Canada,Male,30 to 34,Asthma,Percent,2017,0.030630717482,0.0393524354001,0.0236267637123
+Prevalence,Canada,Female,30 to 34,Asthma,Percent,2017,0.0484103113623,0.0629093661567,0.0376681981153
+Prevalence,Canada,Both,30 to 34,Asthma,Percent,2017,0.0398009598693,0.0513632047355,0.0310636136404
+Prevalence,Canada,Male,35 to 39,Asthma,Number,2017,34867.9780411,44108.8621023,27533.2091858
+Prevalence,Canada,Female,35 to 39,Asthma,Number,2017,60131.3081029,77084.4595961,47604.1872841
+Prevalence,Canada,Both,35 to 39,Asthma,Number,2017,94999.286144,120332.392463,75440.4490026
+Prevalence,Canada,Male,35 to 39,Asthma,Percent,2017,0.0314673313033,0.0398590181321,0.0247341836856
+Prevalence,Canada,Female,35 to 39,Asthma,Percent,2017,0.0503842125822,0.0644818603166,0.0399242391052
+Prevalence,Canada,Both,35 to 39,Asthma,Percent,2017,0.041276221228,0.0523637437158,0.0328772333904
+Prevalence,Canada,Male,40 to 44,Asthma,Number,2017,33402.0381854,42705.3807477,25555.4241371
+Prevalence,Canada,Female,40 to 44,Asthma,Number,2017,59518.3436363,74909.783176,46297.6638897
+Prevalence,Canada,Both,40 to 44,Asthma,Number,2017,92920.3818217,117243.980465,72660.2200086
+Prevalence,Canada,Male,40 to 44,Asthma,Percent,2017,0.0307386366743,0.039462743942,0.0234635987326
+Prevalence,Canada,Female,40 to 44,Asthma,Percent,2017,0.0511231760303,0.0644311965954,0.0397916444892
+Prevalence,Canada,Both,40 to 44,Asthma,Percent,2017,0.0412819570587,0.0517679983383,0.0323624790469
+Prevalence,Canada,Male,45 to 49,Asthma,Number,2017,35410.2434794,43636.7721007,27560.7656077
+Prevalence,Canada,Female,45 to 49,Asthma,Number,2017,64250.1918455,79520.931626,51310.5294857
+Prevalence,Canada,Both,45 to 49,Asthma,Number,2017,99660.4353249,122367.073539,79543.5477126
+Prevalence,Canada,Male,45 to 49,Asthma,Percent,2017,0.0311979547571,0.0385570231518,0.0243506732025
+Prevalence,Canada,Female,45 to 49,Asthma,Percent,2017,0.0534290705145,0.0660609896986,0.0426264197245
+Prevalence,Canada,Both,45 to 49,Asthma,Percent,2017,0.0426344578718,0.0521359789175,0.0340593182934
+Prevalence,Canada,Male,50 to 54,Asthma,Number,2017,42018.6733113,52392.5189128,32472.3579361
+Prevalence,Canada,Female,50 to 54,Asthma,Number,2017,76246.7303476,93479.2739439,61085.8684477
+Prevalence,Canada,Both,50 to 54,Asthma,Number,2017,118265.403659,145473.872351,94858.8809665
+Prevalence,Canada,Male,50 to 54,Asthma,Percent,2017,0.0329920108802,0.0411564008511,0.0254680071912
+Prevalence,Canada,Female,50 to 54,Asthma,Percent,2017,0.0573931455505,0.0703513796713,0.0459495154958
+Prevalence,Canada,Both,50 to 54,Asthma,Percent,2017,0.0454499695914,0.0560195032173,0.0364177280831
+Prevalence,Canada,Male,55 to 59,Asthma,Number,2017,46638.7208421,58019.5683994,37092.2643356
+Prevalence,Canada,Female,55 to 59,Asthma,Number,2017,83413.5959351,102088.020839,67373.2292533
+Prevalence,Canada,Both,55 to 59,Asthma,Number,2017,130052.316777,159522.49865,105534.986463
+Prevalence,Canada,Male,55 to 59,Asthma,Percent,2017,0.0361761412175,0.0449140300164,0.0287481925226
+Prevalence,Canada,Female,55 to 59,Asthma,Percent,2017,0.0619846206909,0.0759162151239,0.0500927599262
+Prevalence,Canada,Both,55 to 59,Asthma,Percent,2017,0.0493570367773,0.0604687926245,0.0400944080065
+Prevalence,Canada,Male,60 to 64,Asthma,Number,2017,46288.4288422,58881.5884016,36359.0205212
+Prevalence,Canada,Female,60 to 64,Asthma,Number,2017,80856.9342011,102645.140357,64210.3663197
+Prevalence,Canada,Both,60 to 64,Asthma,Number,2017,127145.363043,161431.717232,101132.918771
+Prevalence,Canada,Male,60 to 64,Asthma,Percent,2017,0.0404177744408,0.0515063510132,0.0317769924794
+Prevalence,Canada,Female,60 to 64,Asthma,Percent,2017,0.0668587451792,0.0848657206584,0.0531070910255
+Prevalence,Canada,Both,60 to 64,Asthma,Percent,2017,0.0539983109565,0.0685584998101,0.0429718024912
+Prevalence,Canada,Male,65 to 69,Asthma,Number,2017,44169.0318278,56615.7662707,34917.5751906
+Prevalence,Canada,Female,65 to 69,Asthma,Number,2017,74051.6236924,94720.442654,59154.5196994
+Prevalence,Canada,Both,65 to 69,Asthma,Number,2017,118220.65552,150942.151255,94437.4780832
+Prevalence,Canada,Male,65 to 69,Asthma,Percent,2017,0.0458640781952,0.0587942224189,0.0362381018931
+Prevalence,Canada,Female,65 to 69,Asthma,Percent,2017,0.0719190390877,0.0919424595685,0.0574928793846
+Prevalence,Canada,Both,65 to 69,Asthma,Percent,2017,0.059327044546,0.0757345734098,0.0473884820137
+Prevalence,Canada,Male,70 to 74,Asthma,Number,2017,37513.1494331,48259.3197612,28805.8117674
+Prevalence,Canada,Female,70 to 74,Asthma,Number,2017,60443.8486147,76356.0359308,47626.5061329
+Prevalence,Canada,Both,70 to 74,Asthma,Number,2017,97956.9980478,122536.333293,76828.8726635
+Prevalence,Canada,Male,70 to 74,Asthma,Percent,2017,0.0511156214022,0.0657738912445,0.0392714609296
+Prevalence,Canada,Female,70 to 74,Asthma,Percent,2017,0.0753778004272,0.0951922248924,0.0593582017227
+Prevalence,Canada,Both,70 to 74,Asthma,Percent,2017,0.0637837460093,0.0797777624424,0.0499961149316
+Prevalence,Canada,Male,75 to 79,Asthma,Number,2017,25608.1856878,32200.5030507,20121.2960779
+Prevalence,Canada,Female,75 to 79,Asthma,Number,2017,41156.6553653,51794.8172049,32385.3882523
+Prevalence,Canada,Both,75 to 79,Asthma,Number,2017,66764.8410532,82925.9705108,52875.8326199
+Prevalence,Canada,Male,75 to 79,Asthma,Percent,2017,0.0521533966122,0.0655878128496,0.0409683551461
+Prevalence,Canada,Female,75 to 79,Asthma,Percent,2017,0.0718645086788,0.0904486933699,0.0565403612424
+Prevalence,Canada,Both,75 to 79,Asthma,Percent,2017,0.0627657334677,0.0779568892131,0.0497170804088
+Prevalence,Canada,Male,80 plus,Asthma,Number,2017,29659.9456242,36008.6819344,24241.6217097
+Prevalence,Canada,Female,80 plus,Asthma,Number,2017,54514.7539305,67740.7149838,44728.7463724
+Prevalence,Canada,Both,80 plus,Asthma,Number,2017,84174.6995547,102485.623422,69405.0133647
+Prevalence,Canada,Male,80 plus,Asthma,Percent,2017,0.0483793772551,0.0587315129276,0.0395415391772
+Prevalence,Canada,Female,80 plus,Asthma,Percent,2017,0.0581818709692,0.0723090264094,0.0477336435
+Prevalence,Canada,Both,80 plus,Asthma,Percent,2017,0.054304794267,0.0661134810494,0.044769426395
+Prevalence,Canada,Male,1 to 4,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,0.714799899048,1.0925567966,0.387817077019
+Prevalence,Canada,Female,1 to 4,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,0.813690502272,1.25444022597,0.443103430797
+Prevalence,Canada,Both,1 to 4,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,1.52849040132,2.33388217865,0.831910043778
+Prevalence,Canada,Male,1 to 4,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,1.22195560575e-06,1.87463711717e-06,6.61581764586e-07
+Prevalence,Canada,Female,1 to 4,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,1.41230671827e-06,2.17118106653e-06,7.69982698678e-07
+Prevalence,Canada,Both,1 to 4,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,1.31634256363e-06,2.00293690016e-06,7.19112084513e-07
+Prevalence,Canada,Male,5 to 9,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,1.5267836499,2.67018165887,0.782890079874
+Prevalence,Canada,Female,5 to 9,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,1.87928459426,3.14565962681,0.959036577403
+Prevalence,Canada,Both,5 to 9,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,3.40606824415,5.86302513121,1.75074790497
+Prevalence,Canada,Male,5 to 9,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,1.84565291294e-06,3.27801145907e-06,9.46403720123e-07
+Prevalence,Canada,Female,5 to 9,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,2.31998677185e-06,3.89615522901e-06,1.18550260881e-06
+Prevalence,Canada,Both,5 to 9,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,2.08021056946e-06,3.57130305434e-06,1.05144062689e-06
+Prevalence,Canada,Male,10 to 14,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,5.07035086073,8.1648348288,2.67470040294
+Prevalence,Canada,Female,10 to 14,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,6.63514043631,10.4621207504,3.71511774398
+Prevalence,Canada,Both,10 to 14,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,11.705491297,18.4010248852,6.40506129114
+Prevalence,Canada,Male,10 to 14,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,6.06747068464e-06,9.8032622158e-06,3.20009524016e-06
+Prevalence,Canada,Female,10 to 14,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,7.82486512513e-06,1.22443506636e-05,4.32590137655e-06
+Prevalence,Canada,Both,10 to 14,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,6.95237562063e-06,1.09794166235e-05,3.83332965349e-06
+Prevalence,Canada,Male,15 to 19,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,26.5054647604,38.9653734993,16.8637617403
+Prevalence,Canada,Female,15 to 19,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,33.729408639,48.7654864825,21.2997321707
+Prevalence,Canada,Both,15 to 19,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,60.2348733994,87.8841998368,38.2786431768
+Prevalence,Canada,Male,15 to 19,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,2.92402819922e-05,4.3122063282e-05,1.86055036446e-05
+Prevalence,Canada,Female,15 to 19,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,3.58213751405e-05,5.19809787699e-05,2.26531191555e-05
+Prevalence,Canada,Both,15 to 19,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,3.25923055094e-05,4.77920690629e-05,2.07652782991e-05
+Prevalence,Canada,Male,20 to 24,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,107.598677786,153.252328589,75.2637626138
+Prevalence,Canada,Female,20 to 24,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,125.495489564,176.190067763,88.1584273163
+Prevalence,Canada,Both,20 to 24,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,233.09416735,328.110788734,163.814157259
+Prevalence,Canada,Male,20 to 24,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.000103215036054,0.00014775263502,7.26615107554e-05
+Prevalence,Canada,Female,20 to 24,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.000117012012955,0.000164752840603,8.20324021122e-05
+Prevalence,Canada,Both,20 to 24,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.000110209733062,0.000155634737329,7.72752178095e-05
+Prevalence,Canada,Male,25 to 29,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,258.33738691,334.23673299,193.611146978
+Prevalence,Canada,Female,25 to 29,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,286.246561825,369.65066632,216.763387453
+Prevalence,Canada,Both,25 to 29,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,544.583948735,700.683362608,413.527628008
+Prevalence,Canada,Male,25 to 29,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.000234325317181,0.00030494787756,0.000176657567088
+Prevalence,Canada,Female,25 to 29,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.000248244668332,0.000321598415387,0.000188255840289
+Prevalence,Canada,Both,25 to 29,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.000241436700325,0.000311682078603,0.000183774361011
+Prevalence,Canada,Male,30 to 34,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,489.047197482,625.213997793,381.268606099
+Prevalence,Canada,Female,30 to 34,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,525.444461094,659.038229209,410.356794477
+Prevalence,Canada,Both,30 to 34,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,1014.49165858,1265.6331648,795.367347409
+Prevalence,Canada,Male,30 to 34,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.000438381655494,0.000559973147753,0.000341128000981
+Prevalence,Canada,Female,30 to 34,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.000442144517419,0.000553040826855,0.000345550088814
+Prevalence,Canada,Both,30 to 34,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.000440316086224,0.000550196232288,0.000345788573775
+Prevalence,Canada,Male,35 to 39,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,766.172830795,954.367214363,601.901824084
+Prevalence,Canada,Female,35 to 39,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,851.086321649,1058.30985074,672.355515387
+Prevalence,Canada,Both,35 to 39,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,1617.25915244,2009.77538386,1273.13604153
+Prevalence,Canada,Male,35 to 39,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.000691433996525,0.000858909406184,0.000545476313327
+Prevalence,Canada,Female,35 to 39,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.000713131565685,0.000886981398575,0.000563192947535
+Prevalence,Canada,Both,35 to 39,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.00070267961218,0.000875319921161,0.000553409453077
+Prevalence,Canada,Male,40 to 44,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,1049.83127095,1268.46735899,849.26690708
+Prevalence,Canada,Female,40 to 44,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,1255.24564415,1523.04651011,1019.77869958
+Prevalence,Canada,Both,40 to 44,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,2305.0769151,2790.83309172,1875.7834267
+Prevalence,Canada,Male,40 to 44,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.000966159013856,0.00117149352005,0.000784480213511
+Prevalence,Canada,Female,40 to 44,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.00107820117182,0.00131144240946,0.000875383881868
+Prevalence,Canada,Both,40 to 44,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.00102410545941,0.00124127792709,0.000832791727151
+Prevalence,Canada,Male,45 to 49,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,1444.09052829,1758.49010575,1192.72558514
+Prevalence,Canada,Female,45 to 49,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,1824.41977461,2205.90994484,1497.53241108
+Prevalence,Canada,Both,45 to 49,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,3268.5103029,3956.80669839,2683.67047206
+Prevalence,Canada,Male,45 to 49,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.00127232492509,0.00154498811835,0.00105281731203
+Prevalence,Canada,Female,45 to 49,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.00151716275692,0.00183534838068,0.00124460315738
+Prevalence,Canada,Both,45 to 49,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.00139827218321,0.00169592813683,0.00115256380144
+Prevalence,Canada,Male,50 to 54,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,2059.95962572,2445.83144449,1711.01393126
+Prevalence,Canada,Female,50 to 54,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,2647.29042105,3152.87343285,2190.84726683
+Prevalence,Canada,Both,50 to 54,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,4707.25004677,5602.04130504,3909.28522925
+Prevalence,Canada,Male,50 to 54,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.0016174476667,0.00191638803672,0.00134340439255
+Prevalence,Canada,Female,50 to 54,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.00199270930099,0.00237389985368,0.00164754898333
+Prevalence,Canada,Both,50 to 54,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.00180903607735,0.00215365924364,0.00150347549481
+Prevalence,Canada,Male,55 to 59,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,2661.01217861,3148.86614486,2237.90991151
+Prevalence,Canada,Female,55 to 59,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,3392.85200479,4000.08120465,2858.42407421
+Prevalence,Canada,Both,55 to 59,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,6053.86418341,7112.56418785,5088.31310829
+Prevalence,Canada,Male,55 to 59,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.00206410490445,0.00243827732544,0.00173261595044
+Prevalence,Canada,Female,55 to 59,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.00252125311958,0.00297406057005,0.00211915392802
+Prevalence,Canada,Both,55 to 59,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.00229757959453,0.00270498815198,0.00192564361502
+Prevalence,Canada,Male,60 to 64,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,3123.4602849,3729.84116454,2670.06846546
+Prevalence,Canada,Female,60 to 64,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,3838.95354596,4513.13267806,3259.46783267
+Prevalence,Canada,Both,60 to 64,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,6962.41383085,8170.5152674,5942.8762722
+Prevalence,Canada,Male,60 to 64,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.00272736132123,0.00326300824629,0.00232885463971
+Prevalence,Canada,Female,60 to 64,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.00317436902118,0.00372888559844,0.00269080805162
+Prevalence,Canada,Both,60 to 64,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.00295695038615,0.00347255995312,0.00252166962384
+Prevalence,Canada,Male,65 to 69,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,3722.33882383,4458.89760792,3058.53080639
+Prevalence,Canada,Female,65 to 69,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,4226.44279049,4900.69039379,3580.9460983
+Prevalence,Canada,Both,65 to 69,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,7948.78161433,9282.36851646,6730.9350845
+Prevalence,Canada,Male,65 to 69,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.00386520408966,0.00463186005135,0.00317496815618
+Prevalence,Canada,Female,65 to 69,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.00410474477948,0.00475680693524,0.00347849971267
+Prevalence,Canada,Both,65 to 69,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.00398897846396,0.00465536026697,0.00337919716648
+Prevalence,Canada,Male,70 to 74,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,4158.8125172,5042.48850108,3363.39054119
+Prevalence,Canada,Female,70 to 74,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,4288.45459519,5068.27442478,3645.89655976
+Prevalence,Canada,Both,70 to 74,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,8447.26711239,10086.8167146,7039.90571454
+Prevalence,Canada,Male,70 to 74,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.0056668150211,0.0068751229983,0.00458143623216
+Prevalence,Canada,Female,70 to 74,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.00534800755136,0.00631885422473,0.00454692734742
+Prevalence,Canada,Both,70 to 74,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.00550035345775,0.00656827076854,0.00458431506001
+Prevalence,Canada,Male,75 to 79,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,3910.78416623,4882.12694731,3118.22929401
+Prevalence,Canada,Female,75 to 79,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,3802.64055297,4535.43241761,3168.82536944
+Prevalence,Canada,Both,75 to 79,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,7713.42471919,9415.86296717,6322.69438627
+Prevalence,Canada,Male,75 to 79,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.00796465666689,0.00994613525746,0.00635147395379
+Prevalence,Canada,Female,75 to 79,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.00663988668904,0.00791846884715,0.00553040244443
+Prevalence,Canada,Both,75 to 79,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.00725141187713,0.00885159559743,0.00594550759446
+Prevalence,Canada,Male,80 plus,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,6263.47273109,7546.95146969,5131.78159831
+Prevalence,Canada,Female,80 plus,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,7161.08035175,8503.12275982,5970.5088634
+Prevalence,Canada,Both,80 plus,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,13424.5530828,16015.1708784,11112.2863706
+Prevalence,Canada,Male,80 plus,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.0102165632038,0.0123077610059,0.00837105613543
+Prevalence,Canada,Female,80 plus,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.00764279672278,0.00907468364367,0.00637136274263
+Prevalence,Canada,Both,80 plus,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.00866076938536,0.0103299857364,0.00716917590297
+Prevalence,Canada,Male,1 to 4,"Endocrine, metabolic, blood, and immune disorders",Number,2017,3623.56457922,5495.36908363,2743.20011343
+Prevalence,Canada,Female,1 to 4,"Endocrine, metabolic, blood, and immune disorders",Number,2017,2554.90398273,3103.77143523,2058.2274107
+Prevalence,Canada,Both,1 to 4,"Endocrine, metabolic, blood, and immune disorders",Number,2017,6178.46856195,8046.88408624,4877.35668217
+Prevalence,Canada,Male,1 to 4,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00618893706405,0.00911956349863,0.00465946031862
+Prevalence,Canada,Female,1 to 4,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00443397424737,0.00537992200505,0.00354548448686
+Prevalence,Canada,Both,1 to 4,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00531966035412,0.00696105128953,0.00423279110126
+Prevalence,Canada,Male,5 to 9,"Endocrine, metabolic, blood, and immune disorders",Number,2017,3434.49335131,8827.13115759,1835.64172692
+Prevalence,Canada,Female,5 to 9,"Endocrine, metabolic, blood, and immune disorders",Number,2017,2919.97275878,6711.1559098,1489.40610113
+Prevalence,Canada,Both,5 to 9,"Endocrine, metabolic, blood, and immune disorders",Number,2017,6354.46611008,13142.0383946,3603.79985913
+Prevalence,Canada,Male,5 to 9,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00411903921655,0.0102699032882,0.00224435219768
+Prevalence,Canada,Female,5 to 9,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00359076801037,0.00802997193788,0.00185777305348
+Prevalence,Canada,Both,5 to 9,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00386685518843,0.0077892253862,0.00223277608194
+Prevalence,Canada,Male,10 to 14,"Endocrine, metabolic, blood, and immune disorders",Number,2017,1829.1848108,4440.86730922,1042.27485857
+Prevalence,Canada,Female,10 to 14,"Endocrine, metabolic, blood, and immune disorders",Number,2017,2740.97626262,5586.84231849,1381.44988946
+Prevalence,Canada,Both,10 to 14,"Endocrine, metabolic, blood, and immune disorders",Number,2017,4570.16107343,8123.95668494,2724.72191042
+Prevalence,Canada,Male,10 to 14,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00218253720738,0.00520324009379,0.00124169310887
+Prevalence,Canada,Female,10 to 14,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00322918494519,0.00655625414095,0.00164125546536
+Prevalence,Canada,Both,10 to 14,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00271165970918,0.00484156541565,0.00161527708224
+Prevalence,Canada,Male,15 to 19,"Endocrine, metabolic, blood, and immune disorders",Number,2017,1833.28391778,4488.11946669,1100.76541287
+Prevalence,Canada,Female,15 to 19,"Endocrine, metabolic, blood, and immune disorders",Number,2017,12256.8007861,27276.7383412,3596.36808232
+Prevalence,Canada,Both,15 to 19,"Endocrine, metabolic, blood, and immune disorders",Number,2017,14090.0847039,29773.9795232,5146.42887838
+Prevalence,Canada,Male,15 to 19,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00201894383731,0.00490606176953,0.00121701597962
+Prevalence,Canada,Female,15 to 19,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.0129846160029,0.0287453010511,0.00386189241142
+Prevalence,Canada,Both,15 to 19,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00761429037822,0.0158765225452,0.00278133589916
+Prevalence,Canada,Male,20 to 24,"Endocrine, metabolic, blood, and immune disorders",Number,2017,2551.10076896,6337.21128755,1396.91105975
+Prevalence,Canada,Female,20 to 24,"Endocrine, metabolic, blood, and immune disorders",Number,2017,9275.90800678,17571.1347257,4443.18221373
+Prevalence,Canada,Both,20 to 24,"Endocrine, metabolic, blood, and immune disorders",Number,2017,11827.0087757,21790.2854478,6155.26082461
+Prevalence,Canada,Male,20 to 24,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00244307715224,0.00598236049738,0.00133282500264
+Prevalence,Canada,Female,20 to 24,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00864480684506,0.0162349405585,0.00414284350218
+Prevalence,Canada,Both,20 to 24,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00558920387531,0.010266398119,0.00291386996324
+Prevalence,Canada,Male,25 to 29,"Endocrine, metabolic, blood, and immune disorders",Number,2017,1997.22549672,2919.65209276,1425.03781829
+Prevalence,Canada,Female,25 to 29,"Endocrine, metabolic, blood, and immune disorders",Number,2017,14543.293397,22896.1717143,9066.20379355
+Prevalence,Canada,Both,25 to 29,"Endocrine, metabolic, blood, and immune disorders",Number,2017,16540.5188937,25113.4778647,10822.0800836
+Prevalence,Canada,Male,25 to 29,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00181141143734,0.00262377688006,0.0012908481016
+Prevalence,Canada,Female,25 to 29,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.0126100841791,0.0198104844624,0.00786395450968
+Prevalence,Canada,Both,25 to 29,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00733212229261,0.0111353167656,0.00480071018647
+Prevalence,Canada,Male,30 to 34,"Endocrine, metabolic, blood, and immune disorders",Number,2017,2152.64106439,3010.95674745,1518.98020548
+Prevalence,Canada,Female,30 to 34,"Endocrine, metabolic, blood, and immune disorders",Number,2017,16556.8293271,25317.1829466,10538.4496508
+Prevalence,Canada,Both,30 to 34,"Endocrine, metabolic, blood, and immune disorders",Number,2017,18709.4703915,27527.2304113,12387.7846847
+Prevalence,Canada,Male,30 to 34,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00192955564647,0.0026969264789,0.00135749704999
+Prevalence,Canada,Female,30 to 34,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.0139302844627,0.0213167394638,0.00883058932548
+Prevalence,Canada,Both,30 to 34,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00811968437862,0.0119406099022,0.0053815043865
+Prevalence,Canada,Male,35 to 39,"Endocrine, metabolic, blood, and immune disorders",Number,2017,3165.08138499,6509.02247237,1956.71782437
+Prevalence,Canada,Female,35 to 39,"Endocrine, metabolic, blood, and immune disorders",Number,2017,15813.1580376,23502.0813278,9985.04616785
+Prevalence,Canada,Both,35 to 39,"Endocrine, metabolic, blood, and immune disorders",Number,2017,18978.2394226,27689.2309018,12536.9306191
+Prevalence,Canada,Male,35 to 39,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00285537007729,0.00589596708555,0.00176326487104
+Prevalence,Canada,Female,35 to 39,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.0132488711974,0.0197039794858,0.00836120930098
+Prevalence,Canada,Both,35 to 39,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00824537817133,0.0120123695091,0.00543516534464
+Prevalence,Canada,Male,40 to 44,"Endocrine, metabolic, blood, and immune disorders",Number,2017,4365.8954782,10291.5972226,2518.17970164
+Prevalence,Canada,Female,40 to 44,"Endocrine, metabolic, blood, and immune disorders",Number,2017,17418.5286538,29698.027043,9546.39428897
+Prevalence,Canada,Both,40 to 44,"Endocrine, metabolic, blood, and immune disorders",Number,2017,21784.424132,34988.9816781,13168.8812519
+Prevalence,Canada,Male,40 to 44,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00401530457357,0.0094386383163,0.0023222983558
+Prevalence,Canada,Female,40 to 44,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.0149592667015,0.0254715491438,0.00819619314714
+Prevalence,Canada,Both,40 to 44,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00967702041769,0.0154902848879,0.00582120047787
+Prevalence,Canada,Male,45 to 49,"Endocrine, metabolic, blood, and immune disorders",Number,2017,5646.16967915,14269.2454664,3478.78898969
+Prevalence,Canada,Female,45 to 49,"Endocrine, metabolic, blood, and immune disorders",Number,2017,19462.3803926,34323.4263058,10731.299517
+Prevalence,Canada,Both,45 to 49,"Endocrine, metabolic, blood, and immune disorders",Number,2017,25108.5500717,40508.9267124,15324.6244833
+Prevalence,Canada,Male,45 to 49,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00497140818944,0.012552988783,0.00305100746108
+Prevalence,Canada,Female,45 to 49,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.0161825093447,0.0285268537265,0.00893249890272
+Prevalence,Canada,Both,45 to 49,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.0107402413163,0.0172441057178,0.00656448023787
+Prevalence,Canada,Male,50 to 54,"Endocrine, metabolic, blood, and immune disorders",Number,2017,9195.2037823,17643.3948987,5639.05487574
+Prevalence,Canada,Female,50 to 54,"Endocrine, metabolic, blood, and immune disorders",Number,2017,18012.1711368,28273.7153352,11348.1102874
+Prevalence,Canada,Both,50 to 54,"Endocrine, metabolic, blood, and immune disorders",Number,2017,27207.3749191,41271.5905961,18226.7215888
+Prevalence,Canada,Male,50 to 54,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00721713800459,0.0138014428348,0.00443053820568
+Prevalence,Canada,Female,50 to 54,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.0135573924707,0.0212829348786,0.00854122591697
+Prevalence,Canada,Both,50 to 54,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.0104549311839,0.0158486559589,0.00701465462187
+Prevalence,Canada,Male,55 to 59,"Endocrine, metabolic, blood, and immune disorders",Number,2017,11516.0856057,19360.8199054,7846.0529657
+Prevalence,Canada,Female,55 to 59,"Endocrine, metabolic, blood, and immune disorders",Number,2017,22183.3325215,35054.2810694,14103.9021764
+Prevalence,Canada,Both,55 to 59,"Endocrine, metabolic, blood, and immune disorders",Number,2017,33699.4181272,49805.9872067,23103.4787901
+Prevalence,Canada,Male,55 to 59,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00893159196811,0.0149437382328,0.00609294767834
+Prevalence,Canada,Female,55 to 59,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.0164834040032,0.026032405522,0.0104855646965
+Prevalence,Canada,Both,55 to 59,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.0127889697946,0.0189030945332,0.00878128419507
+Prevalence,Canada,Male,60 to 64,"Endocrine, metabolic, blood, and immune disorders",Number,2017,16792.7135498,29036.3246318,10513.6501807
+Prevalence,Canada,Female,60 to 64,"Endocrine, metabolic, blood, and immune disorders",Number,2017,19968.6990261,29244.7429355,14365.4120349
+Prevalence,Canada,Both,60 to 64,"Endocrine, metabolic, blood, and immune disorders",Number,2017,36761.412576,52747.361586,26672.2455095
+Prevalence,Canada,Male,60 to 64,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.0146609299577,0.0253087435834,0.00918353998037
+Prevalence,Canada,Female,60 to 64,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.0165112411378,0.0241904600016,0.0118809045368
+Prevalence,Canada,Both,60 to 64,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.015611956302,0.0223996880816,0.0113388979202
+Prevalence,Canada,Male,65 to 69,"Endocrine, metabolic, blood, and immune disorders",Number,2017,17909.4935461,31621.5027856,11654.9740835
+Prevalence,Canada,Female,65 to 69,"Endocrine, metabolic, blood, and immune disorders",Number,2017,22342.5866003,30568.2243671,16743.950742
+Prevalence,Canada,Both,65 to 69,"Endocrine, metabolic, blood, and immune disorders",Number,2017,40252.0801464,56502.2304494,28996.0552316
+Prevalence,Canada,Male,65 to 69,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.0185956078145,0.0328224420344,0.0121003095989
+Prevalence,Canada,Female,65 to 69,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.0216989848118,0.0296659519621,0.0162582383208
+Prevalence,Canada,Both,65 to 69,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.0201994718864,0.0283555883944,0.0145687926551
+Prevalence,Canada,Male,70 to 74,"Endocrine, metabolic, blood, and immune disorders",Number,2017,16270.4004763,23162.171763,12128.5013147
+Prevalence,Canada,Female,70 to 74,"Endocrine, metabolic, blood, and immune disorders",Number,2017,23223.1482399,30471.385853,17769.418535
+Prevalence,Canada,Both,70 to 74,"Endocrine, metabolic, blood, and immune disorders",Number,2017,39493.5487162,50284.8926503,30937.0912803
+Prevalence,Canada,Male,70 to 74,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.022169860913,0.0315570242139,0.0165148184106
+Prevalence,Canada,Female,70 to 74,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.0289608216838,0.0380016573814,0.0221618414133
+Prevalence,Canada,Both,70 to 74,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.025715768457,0.0327317656771,0.0201422952484
+Prevalence,Canada,Male,75 to 79,"Endocrine, metabolic, blood, and immune disorders",Number,2017,14697.5294837,20967.8990684,10753.1440418
+Prevalence,Canada,Female,75 to 79,"Endocrine, metabolic, blood, and immune disorders",Number,2017,19276.818353,24481.2498038,14974.7352316
+Prevalence,Canada,Both,75 to 79,"Endocrine, metabolic, blood, and immune disorders",Number,2017,33974.3478367,43533.0845004,26408.8135612
+Prevalence,Canada,Male,75 to 79,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.0299325805246,0.0426900695908,0.0219137216061
+Prevalence,Canada,Female,75 to 79,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.033659718508,0.042738597074,0.0261508454777
+Prevalence,Canada,Both,75 to 79,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.0319393159888,0.040936073024,0.0248295330452
+Prevalence,Canada,Male,80 plus,"Endocrine, metabolic, blood, and immune disorders",Number,2017,26771.6202305,32956.303832,21542.4254059
+Prevalence,Canada,Female,80 plus,"Endocrine, metabolic, blood, and immune disorders",Number,2017,47683.9849805,57074.9412994,39001.3238361
+Prevalence,Canada,Both,80 plus,"Endocrine, metabolic, blood, and immune disorders",Number,2017,74455.6052111,89372.3863433,61310.2258686
+Prevalence,Canada,Male,80 plus,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.043668001669,0.0537490137718,0.0351376292935
+Prevalence,Canada,Female,80 plus,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.0508915783981,0.0609124105088,0.0416165297405
+Prevalence,Canada,Both,80 plus,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.0480345512554,0.0576568674344,0.0395580391062
+Prevalence,Canada,Male,1 to 4,Diabetes mellitus,Number,2017,184.909915495,288.651895845,108.36455097
+Prevalence,Canada,Female,1 to 4,Diabetes mellitus,Number,2017,149.610002995,234.792676589,88.6640836156
+Prevalence,Canada,Both,1 to 4,Diabetes mellitus,Number,2017,334.51991849,533.106732485,197.858116698
+Prevalence,Canada,Male,1 to 4,Diabetes mellitus,Percent,2017,0.000316191984537,0.000499988929102,0.000180893987364
+Prevalence,Canada,Female,1 to 4,Diabetes mellitus,Percent,2017,0.000259705044877,0.00041421426154,0.000153219551297
+Prevalence,Canada,Both,1 to 4,Diabetes mellitus,Percent,2017,0.000288141364212,0.000458873172388,0.000169092671379
+Prevalence,Canada,Male,5 to 9,Diabetes mellitus,Number,2017,1795.76568741,2526.73381101,1271.9617452
+Prevalence,Canada,Female,5 to 9,Diabetes mellitus,Number,2017,1494.53239817,2078.98507948,1053.50182548
+Prevalence,Canada,Both,5 to 9,Diabetes mellitus,Number,2017,3290.29808559,4610.46788792,2342.63545011
+Prevalence,Canada,Male,5 to 9,Diabetes mellitus,Percent,2017,0.00217094893567,0.00304550587141,0.00152516484278
+Prevalence,Canada,Female,5 to 9,Diabetes mellitus,Percent,2017,0.00184546131207,0.00255740049431,0.0013018772646
+Prevalence,Canada,Both,5 to 9,Diabetes mellitus,Percent,2017,0.00200973260146,0.00280120605825,0.00142270905401
+Prevalence,Canada,Male,10 to 14,Diabetes mellitus,Number,2017,4269.88775972,5414.93919805,3209.2009474
+Prevalence,Canada,Female,10 to 14,Diabetes mellitus,Number,2017,3684.32655909,4760.03082077,2748.42237808
+Prevalence,Canada,Both,10 to 14,Diabetes mellitus,Number,2017,7954.2143188,10147.4089682,5973.45304774
+Prevalence,Canada,Male,10 to 14,Diabetes mellitus,Percent,2017,0.00510857027694,0.00656867588451,0.00382494951636
+Prevalence,Canada,Female,10 to 14,Diabetes mellitus,Percent,2017,0.00434431539002,0.00558801390326,0.00323411960632
+Prevalence,Canada,Both,10 to 14,Diabetes mellitus,Percent,2017,0.00472349380444,0.00604036901399,0.00356388996444
+Prevalence,Canada,Male,15 to 19,Diabetes mellitus,Number,2017,6704.94125703,8328.11164473,5111.53004902
+Prevalence,Canada,Female,15 to 19,Diabetes mellitus,Number,2017,5883.12356356,7379.44004969,4529.42234185
+Prevalence,Canada,Both,15 to 19,Diabetes mellitus,Number,2017,12588.0648206,15602.5555,9604.66908753
+Prevalence,Canada,Male,15 to 19,Diabetes mellitus,Percent,2017,0.00739656290185,0.0092341085772,0.00557394638605
+Prevalence,Canada,Female,15 to 19,Diabetes mellitus,Percent,2017,0.0062476800999,0.00784319075424,0.00478947611259
+Prevalence,Canada,Both,15 to 19,Diabetes mellitus,Percent,2017,0.00681092898483,0.00848067129111,0.00517341017579
+Prevalence,Canada,Male,20 to 24,Diabetes mellitus,Number,2017,9905.78291271,12122.0079885,7738.41056029
+Prevalence,Canada,Female,20 to 24,Diabetes mellitus,Number,2017,8915.57707222,10892.1082374,7007.75120498
+Prevalence,Canada,Both,20 to 24,Diabetes mellitus,Number,2017,18821.3599849,22951.8044685,14677.2960213
+Prevalence,Canada,Male,20 to 24,Diabetes mellitus,Percent,2017,0.00950177221239,0.0116511873988,0.00746207142345
+Prevalence,Canada,Female,20 to 24,Diabetes mellitus,Percent,2017,0.00831307934196,0.0101419865446,0.0065128166796
+Prevalence,Canada,Both,20 to 24,Diabetes mellitus,Percent,2017,0.0088988503424,0.0109033563572,0.00700800825739
+Prevalence,Canada,Male,25 to 29,Diabetes mellitus,Number,2017,14772.2765205,17793.2188666,11902.9488566
+Prevalence,Canada,Female,25 to 29,Diabetes mellitus,Number,2017,13938.9880798,16770.6568702,11224.2299057
+Prevalence,Canada,Both,25 to 29,Diabetes mellitus,Number,2017,28711.2646003,34450.9754438,23175.8939432
+Prevalence,Canada,Male,25 to 29,Diabetes mellitus,Percent,2017,0.0133989354328,0.0161805061769,0.0108213773608
+Prevalence,Canada,Female,25 to 29,Diabetes mellitus,Percent,2017,0.012088674318,0.0145102761863,0.00973048103398
+Prevalence,Canada,Both,25 to 29,Diabetes mellitus,Percent,2017,0.0127289592518,0.0153712616047,0.0102986025896
+Prevalence,Canada,Male,30 to 34,Diabetes mellitus,Number,2017,23703.165392,28622.3630141,19399.5624964
+Prevalence,Canada,Female,30 to 34,Diabetes mellitus,Number,2017,21878.3283603,26771.4381749,17960.1469066
+Prevalence,Canada,Both,30 to 34,Diabetes mellitus,Number,2017,45581.4937523,55131.6585628,37455.8989473
+Prevalence,Canada,Male,30 to 34,Diabetes mellitus,Percent,2017,0.0212465042832,0.0257030928063,0.0172784281164
+Prevalence,Canada,Female,30 to 34,Diabetes mellitus,Percent,2017,0.0184099654708,0.0225434293989,0.015093499319
+Prevalence,Canada,Both,30 to 34,Diabetes mellitus,Percent,2017,0.0197832659279,0.0240366582112,0.0161678884853
+Prevalence,Canada,Male,35 to 39,Diabetes mellitus,Number,2017,38205.4435388,45643.154898,31550.4953421
+Prevalence,Canada,Female,35 to 39,Diabetes mellitus,Number,2017,32579.0007537,38957.6050132,27217.399335
+Prevalence,Canada,Both,35 to 39,Diabetes mellitus,Number,2017,70784.4442925,83960.9296059,59072.7398045
+Prevalence,Canada,Male,35 to 39,Diabetes mellitus,Percent,2017,0.0344793987979,0.0409867184473,0.0284105512347
+Prevalence,Canada,Female,35 to 39,Diabetes mellitus,Percent,2017,0.0272984267197,0.0326304885065,0.0228546268772
+Prevalence,Canada,Both,35 to 39,Diabetes mellitus,Percent,2017,0.030755513872,0.0364579558413,0.0257206277006
+Prevalence,Canada,Male,40 to 44,Diabetes mellitus,Number,2017,57807.1442935,70319.392591,47135.8966045
+Prevalence,Canada,Female,40 to 44,Diabetes mellitus,Number,2017,45258.1329798,55210.94464,37486.9047611
+Prevalence,Canada,Both,40 to 44,Diabetes mellitus,Number,2017,103065.277273,125740.097025,85553.1311538
+Prevalence,Canada,Male,40 to 44,Diabetes mellitus,Percent,2017,0.0531986293487,0.0647289885355,0.0433606343126
+Prevalence,Canada,Female,40 to 44,Diabetes mellitus,Percent,2017,0.038874279139,0.0474618764261,0.0322350517347
+Prevalence,Canada,Both,40 to 44,Diabetes mellitus,Percent,2017,0.0457893444919,0.0558175649813,0.037937687814
+Prevalence,Canada,Male,45 to 49,Diabetes mellitus,Number,2017,89076.41072,106921.561037,74963.5724024
+Prevalence,Canada,Female,45 to 49,Diabetes mellitus,Number,2017,65422.6432063,78473.1242579,55316.8612257
+Prevalence,Canada,Both,45 to 49,Diabetes mellitus,Number,2017,154499.053926,183723.763031,130704.8641
+Prevalence,Canada,Male,45 to 49,Diabetes mellitus,Percent,2017,0.0784779577387,0.0943049875563,0.066029189876
+Prevalence,Canada,Female,45 to 49,Diabetes mellitus,Percent,2017,0.0544039208048,0.0651914319484,0.0460133450519
+Prevalence,Canada,Both,45 to 49,Diabetes mellitus,Percent,2017,0.0660932278061,0.0785652113815,0.0558264997733
+Prevalence,Canada,Male,50 to 54,Diabetes mellitus,Number,2017,141425.203078,168656.388998,118611.206592
+Prevalence,Canada,Female,50 to 54,Diabetes mellitus,Number,2017,99730.1663063,118553.365212,84846.3877496
+Prevalence,Canada,Both,50 to 54,Diabetes mellitus,Number,2017,241155.369385,284633.612636,205511.235772
+Prevalence,Canada,Male,50 to 54,Diabetes mellitus,Percent,2017,0.11104459782,0.132609616614,0.0929953661781
+Prevalence,Canada,Female,50 to 54,Diabetes mellitus,Percent,2017,0.0750701670422,0.0891643913202,0.0638188207426
+Prevalence,Canada,Both,50 to 54,Diabetes mellitus,Percent,2017,0.0926778121092,0.109253144161,0.0789560842915
+Prevalence,Canada,Male,55 to 59,Diabetes mellitus,Number,2017,201383.567933,231693.706395,172793.379858
+Prevalence,Canada,Female,55 to 59,Diabetes mellitus,Number,2017,140199.00043,163129.85241,121313.843457
+Prevalence,Canada,Both,55 to 59,Diabetes mellitus,Number,2017,341582.568363,392257.208858,297672.747482
+Prevalence,Canada,Male,55 to 59,Diabetes mellitus,Percent,2017,0.156208077625,0.179611106757,0.134313811976
+Prevalence,Canada,Female,55 to 59,Diabetes mellitus,Percent,2017,0.104182137348,0.121184832251,0.0900893458087
+Prevalence,Canada,Both,55 to 59,Diabetes mellitus,Percent,2017,0.129637150057,0.148789640787,0.112953570538
+Prevalence,Canada,Male,60 to 64,Diabetes mellitus,Number,2017,238370.154088,273330.463059,203187.170931
+Prevalence,Canada,Female,60 to 64,Diabetes mellitus,Number,2017,167867.142659,195482.146091,145390.857908
+Prevalence,Canada,Both,60 to 64,Diabetes mellitus,Number,2017,406237.296747,465849.25123,350780.711045
+Prevalence,Canada,Male,60 to 64,Diabetes mellitus,Percent,2017,0.208137933335,0.238666307126,0.177478968309
+Prevalence,Canada,Female,60 to 64,Diabetes mellitus,Percent,2017,0.138805385153,0.161707910614,0.120204025286
+Prevalence,Canada,Both,60 to 64,Diabetes mellitus,Percent,2017,0.172527680255,0.197778688944,0.14893562562
+Prevalence,Canada,Male,65 to 69,Diabetes mellitus,Number,2017,239353.860213,272329.53001,206533.266015
+Prevalence,Canada,Female,65 to 69,Diabetes mellitus,Number,2017,172372.8783,198370.558842,150503.24369
+Prevalence,Canada,Both,65 to 69,Diabetes mellitus,Number,2017,411726.738514,466330.02944,359205.742382
+Prevalence,Canada,Male,65 to 69,Diabetes mellitus,Percent,2017,0.248539025598,0.282752241635,0.214511222489
+Prevalence,Canada,Female,65 to 69,Diabetes mellitus,Percent,2017,0.16740906628,0.192558438128,0.146178232947
+Prevalence,Canada,Both,65 to 69,Diabetes mellitus,Percent,2017,0.206618245806,0.233914929871,0.180313321741
+Prevalence,Canada,Male,70 to 74,Diabetes mellitus,Number,2017,201023.891428,225835.242159,177896.907704
+Prevalence,Canada,Female,70 to 74,Diabetes mellitus,Number,2017,149806.454578,169162.096572,132606.79109
+Prevalence,Canada,Both,70 to 74,Diabetes mellitus,Number,2017,350830.346006,392067.017794,313485.776009
+Prevalence,Canada,Male,70 to 74,Diabetes mellitus,Percent,2017,0.27391510772,0.307738940731,0.242343473849
+Prevalence,Canada,Female,70 to 74,Diabetes mellitus,Percent,2017,0.186819186274,0.210940321319,0.165383595334
+Prevalence,Canada,Both,70 to 74,Diabetes mellitus,Percent,2017,0.228439364294,0.255234161625,0.204095349161
+Prevalence,Canada,Male,75 to 79,Diabetes mellitus,Number,2017,138829.804985,156044.878269,123058.774518
+Prevalence,Canada,Female,75 to 79,Diabetes mellitus,Number,2017,111211.534463,125579.159185,98383.5033777
+Prevalence,Canada,Both,75 to 79,Diabetes mellitus,Number,2017,250041.339448,278964.117202,223260.921463
+Prevalence,Canada,Male,75 to 79,Diabetes mellitus,Percent,2017,0.282739227401,0.317793742433,0.250618597178
+Prevalence,Canada,Female,75 to 79,Diabetes mellitus,Percent,2017,0.194189136125,0.219260943014,0.171786414985
+Prevalence,Canada,Both,75 to 79,Diabetes mellitus,Percent,2017,0.235064417365,0.262237785716,0.209791482424
+Prevalence,Canada,Male,80 plus,Diabetes mellitus,Number,2017,164046.70631,184849.970184,144748.522234
+Prevalence,Canada,Female,80 plus,Diabetes mellitus,Number,2017,169375.161968,192157.840461,149057.756602
+Prevalence,Canada,Both,80 plus,Diabetes mellitus,Number,2017,333421.868278,373756.187868,296702.878358
+Prevalence,Canada,Male,80 plus,Diabetes mellitus,Percent,2017,0.267582121594,0.301516123586,0.236157132154
+Prevalence,Canada,Female,80 plus,Diabetes mellitus,Percent,2017,0.180768671775,0.205050835377,0.159077428584
+Prevalence,Canada,Both,80 plus,Diabetes mellitus,Percent,2017,0.215105011591,0.241124034887,0.191424552859
+Prevalence,Canada,Male,1 to 4,Ischemic heart disease,Number,2017,0.0,0.0,0.0
+Prevalence,Canada,Female,1 to 4,Ischemic heart disease,Number,2017,0.0,0.0,0.0
+Prevalence,Canada,Both,1 to 4,Ischemic heart disease,Number,2017,0.0,0.0,0.0
+Prevalence,Canada,Male,1 to 4,Ischemic heart disease,Percent,2017,0.0,0.0,0.0
+Prevalence,Canada,Female,1 to 4,Ischemic heart disease,Percent,2017,0.0,0.0,0.0
+Prevalence,Canada,Both,1 to 4,Ischemic heart disease,Percent,2017,0.0,0.0,0.0
+Prevalence,Canada,Male,5 to 9,Ischemic heart disease,Number,2017,0.0,0.0,0.0
+Prevalence,Canada,Female,5 to 9,Ischemic heart disease,Number,2017,0.0,0.0,0.0
+Prevalence,Canada,Both,5 to 9,Ischemic heart disease,Number,2017,0.0,0.0,0.0
+Prevalence,Canada,Male,5 to 9,Ischemic heart disease,Percent,2017,0.0,0.0,0.0
+Prevalence,Canada,Female,5 to 9,Ischemic heart disease,Percent,2017,0.0,0.0,0.0
+Prevalence,Canada,Both,5 to 9,Ischemic heart disease,Percent,2017,0.0,0.0,0.0
+Prevalence,Canada,Male,10 to 14,Ischemic heart disease,Number,2017,0.0,0.0,0.0
+Prevalence,Canada,Female,10 to 14,Ischemic heart disease,Number,2017,0.0,0.0,0.0
+Prevalence,Canada,Both,10 to 14,Ischemic heart disease,Number,2017,0.0,0.0,0.0
+Prevalence,Canada,Male,10 to 14,Ischemic heart disease,Percent,2017,0.0,0.0,0.0
+Prevalence,Canada,Female,10 to 14,Ischemic heart disease,Percent,2017,0.0,0.0,0.0
+Prevalence,Canada,Both,10 to 14,Ischemic heart disease,Percent,2017,0.0,0.0,0.0
+Prevalence,Canada,Male,15 to 19,Ischemic heart disease,Number,2017,117.285638518,143.289292061,90.8305397454
+Prevalence,Canada,Female,15 to 19,Ischemic heart disease,Number,2017,72.508697582,90.8078817606,57.4098939542
+Prevalence,Canada,Both,15 to 19,Ischemic heart disease,Number,2017,189.7943361,231.556219068,152.828268337
+Prevalence,Canada,Male,15 to 19,Ischemic heart disease,Percent,2017,0.000129373274041,0.000158882284478,0.00010049834571
+Prevalence,Canada,Female,15 to 19,Ischemic heart disease,Percent,2017,7.7002655764e-05,9.63847412105e-05,6.09232113494e-05
+Prevalence,Canada,Both,15 to 19,Ischemic heart disease,Percent,2017,0.000102687579224,0.00012484573086,8.24064179163e-05
+Prevalence,Canada,Male,20 to 24,Ischemic heart disease,Number,2017,380.732649847,447.303403363,318.697058926
+Prevalence,Canada,Female,20 to 24,Ischemic heart disease,Number,2017,248.808120747,295.033217573,205.555417912
+Prevalence,Canada,Both,20 to 24,Ischemic heart disease,Number,2017,629.540770594,731.686594474,527.889590947
+Prevalence,Canada,Male,20 to 24,Ischemic heart disease,Percent,2017,0.000365191972973,0.000427229117278,0.000304817881102
+Prevalence,Canada,Female,20 to 24,Ischemic heart disease,Percent,2017,0.000231991696289,0.000275620133829,0.000192190540132
+Prevalence,Canada,Both,20 to 24,Ischemic heart disease,Percent,2017,0.00029764391305,0.000347194353149,0.00024935166285
+Prevalence,Canada,Male,25 to 29,Ischemic heart disease,Number,2017,837.107468215,966.28891226,712.310064845
+Prevalence,Canada,Female,25 to 29,Ischemic heart disease,Number,2017,486.309326699,557.95401606,416.917737182
+Prevalence,Canada,Both,25 to 29,Ischemic heart disease,Number,2017,1323.41679491,1514.41356381,1156.71694339
+Prevalence,Canada,Male,25 to 29,Ischemic heart disease,Percent,2017,0.00075929788998,0.000879767200811,0.000646920702522
+Prevalence,Canada,Female,25 to 29,Ischemic heart disease,Percent,2017,0.000421750928634,0.000485686295024,0.000362799054889
+Prevalence,Canada,Both,25 to 29,Ischemic heart disease,Percent,2017,0.000586727872514,0.000671965021958,0.000510416261424
+Prevalence,Canada,Male,30 to 34,Ischemic heart disease,Number,2017,1920.02904275,2212.26540877,1662.50405984
+Prevalence,Canada,Female,30 to 34,Ischemic heart disease,Number,2017,933.158610364,1084.19909342,802.029163142
+Prevalence,Canada,Both,30 to 34,Ischemic heart disease,Number,2017,2853.18765311,3283.17724164,2483.47387314
+Prevalence,Canada,Male,30 to 34,Ischemic heart disease,Percent,2017,0.00172106509783,0.00198328646629,0.00148513946517
+Prevalence,Canada,Female,30 to 34,Ischemic heart disease,Percent,2017,0.000785227913085,0.000911675877447,0.000674290962479
+Prevalence,Canada,Both,30 to 34,Ischemic heart disease,Percent,2017,0.00123835146967,0.00142878033698,0.00107617114382
+Prevalence,Canada,Male,35 to 39,Ischemic heart disease,Number,2017,4533.63808322,5221.08260509,3929.18603929
+Prevalence,Canada,Female,35 to 39,Ischemic heart disease,Number,2017,1862.87421899,2162.23743509,1596.88438354
+Prevalence,Canada,Both,35 to 39,Ischemic heart disease,Number,2017,6396.51230222,7343.42042382,5588.18655858
+Prevalence,Canada,Male,35 to 39,Ischemic heart disease,Percent,2017,0.00409155200457,0.00471474630411,0.00354582779147
+Prevalence,Canada,Female,35 to 39,Ischemic heart disease,Percent,2017,0.00156093327896,0.00181632208286,0.00134050960903
+Prevalence,Canada,Both,35 to 39,Ischemic heart disease,Percent,2017,0.00277927811804,0.00318366138669,0.00242396065154
+Prevalence,Canada,Male,40 to 44,Ischemic heart disease,Number,2017,9424.58247307,10914.2541897,8174.46153126
+Prevalence,Canada,Female,40 to 44,Ischemic heart disease,Number,2017,3533.9910814,4132.19191563,2996.32449935
+Prevalence,Canada,Both,40 to 44,Ischemic heart disease,Number,2017,12958.5735545,14951.0677065,11315.0689382
+Prevalence,Canada,Male,40 to 44,Ischemic heart disease,Percent,2017,0.00867365974367,0.0101138187481,0.0074974380887
+Prevalence,Canada,Female,40 to 44,Ischemic heart disease,Percent,2017,0.00303557179927,0.00355019078957,0.00257112746222
+Prevalence,Canada,Both,40 to 44,Ischemic heart disease,Percent,2017,0.00575736962959,0.00663841540986,0.00502542856156
+Prevalence,Canada,Male,45 to 49,Ischemic heart disease,Number,2017,18772.0945024,21366.7076271,16553.627527
+Prevalence,Canada,Female,45 to 49,Ischemic heart disease,Number,2017,6515.38639147,7519.96812751,5599.89526485
+Prevalence,Canada,Both,45 to 49,Ischemic heart disease,Number,2017,25287.4808939,28679.3694806,22393.0517448
+Prevalence,Canada,Male,45 to 49,Ischemic heart disease,Percent,2017,0.0165395094112,0.0188773144559,0.0145443369782
+Prevalence,Canada,Female,45 to 49,Ischemic heart disease,Percent,2017,0.00541812811784,0.00625985396998,0.00464967128588
+Prevalence,Canada,Both,45 to 49,Ischemic heart disease,Percent,2017,0.0108181172746,0.0122529755179,0.00954655953941
+Prevalence,Canada,Male,50 to 54,Ischemic heart disease,Number,2017,36507.5559076,41953.2295916,31891.964646
+Prevalence,Canada,Female,50 to 54,Ischemic heart disease,Number,2017,11951.5975631,14165.7941806,10063.7800992
+Prevalence,Canada,Both,50 to 54,Ischemic heart disease,Number,2017,48459.1534707,55728.4012425,42118.0431354
+Prevalence,Canada,Male,50 to 54,Ischemic heart disease,Percent,2017,0.0286656656039,0.0329539525008,0.0249774781182
+Prevalence,Canada,Female,50 to 54,Ischemic heart disease,Percent,2017,0.00899639294879,0.0106595032638,0.00757980739979
+Prevalence,Canada,Both,50 to 54,Ischemic heart disease,Percent,2017,0.0186234083791,0.0214460143015,0.0161770230318
+Prevalence,Canada,Male,55 to 59,Ischemic heart disease,Number,2017,57986.410962,65677.3646234,51172.9694745
+Prevalence,Canada,Female,55 to 59,Ischemic heart disease,Number,2017,18624.4368715,22044.4509332,15544.3375025
+Prevalence,Canada,Both,55 to 59,Ischemic heart disease,Number,2017,76610.8478335,87205.0076605,67000.2929333
+Prevalence,Canada,Male,55 to 59,Ischemic heart disease,Percent,2017,0.0449785836154,0.0508771737193,0.0396757936209
+Prevalence,Canada,Female,55 to 59,Ischemic heart disease,Percent,2017,0.0138398045396,0.0163677028622,0.0115703614177
+Prevalence,Canada,Both,55 to 59,Ischemic heart disease,Percent,2017,0.029075268134,0.0330670248517,0.0254350581842
+Prevalence,Canada,Male,60 to 64,Ischemic heart disease,Number,2017,75198.5547465,84684.1741114,65991.8408843
+Prevalence,Canada,Female,60 to 64,Ischemic heart disease,Number,2017,24640.2056018,29315.8250601,20218.5359966
+Prevalence,Canada,Both,60 to 64,Ischemic heart disease,Number,2017,99838.7603484,112953.907501,87252.9053234
+Prevalence,Canada,Male,60 to 64,Ischemic heart disease,Percent,2017,0.0656615041935,0.0740469162763,0.057631708552
+Prevalence,Canada,Female,60 to 64,Ischemic heart disease,Percent,2017,0.0203745130927,0.0242514515119,0.0167287764931
+Prevalence,Canada,Both,60 to 64,Ischemic heart disease,Percent,2017,0.0424013766623,0.0479866062552,0.0370513109192
+Prevalence,Canada,Male,65 to 69,Ischemic heart disease,Number,2017,94310.159045,106340.883391,83267.6430083
+Prevalence,Canada,Female,65 to 69,Ischemic heart disease,Number,2017,32677.6289174,39455.0116198,26490.7683078
+Prevalence,Canada,Both,65 to 69,Ischemic heart disease,Number,2017,126987.787962,145284.389064,110286.811923
+Prevalence,Canada,Male,65 to 69,Ischemic heart disease,Percent,2017,0.097929566457,0.110421981565,0.0864409242604
+Prevalence,Canada,Female,65 to 69,Ischemic heart disease,Percent,2017,0.0317366277345,0.0383012236654,0.0257212575117
+Prevalence,Canada,Both,65 to 69,Ischemic heart disease,Percent,2017,0.0637267806096,0.0729231334528,0.0553343165377
+Prevalence,Canada,Male,70 to 74,Ischemic heart disease,Number,2017,93491.6245561,107366.368511,79980.4953045
+Prevalence,Canada,Female,70 to 74,Ischemic heart disease,Number,2017,35738.4627634,44388.4269094,27782.8048652
+Prevalence,Canada,Both,70 to 74,Ischemic heart disease,Number,2017,129230.087319,151021.847688,108229.179246
+Prevalence,Canada,Male,70 to 74,Ischemic heart disease,Percent,2017,0.127391799531,0.146228801051,0.10900723664
+Prevalence,Canada,Female,70 to 74,Ischemic heart disease,Percent,2017,0.0445683770149,0.0553259588667,0.0346633736535
+Prevalence,Canada,Both,70 to 74,Ischemic heart disease,Percent,2017,0.084146781085,0.0982852844397,0.0704546241208
+Prevalence,Canada,Male,75 to 79,Ischemic heart disease,Number,2017,78083.0374187,89309.7329093,65666.5505621
+Prevalence,Canada,Female,75 to 79,Ischemic heart disease,Number,2017,34427.4234092,43369.7964496,25778.6067811
+Prevalence,Canada,Both,75 to 79,Ischemic heart disease,Number,2017,112510.460828,131897.856594,92200.8076895
+Prevalence,Canada,Male,75 to 79,Ischemic heart disease,Percent,2017,0.159022894572,0.181893608131,0.133700319952
+Prevalence,Canada,Female,75 to 79,Ischemic heart disease,Percent,2017,0.0601142589393,0.0757279308801,0.0450137575268
+Prevalence,Canada,Both,75 to 79,Ischemic heart disease,Percent,2017,0.105771129801,0.123992255903,0.0866946361205
+Prevalence,Canada,Male,80 plus,Ischemic heart disease,Number,2017,111954.310988,130179.131029,93908.0910527
+Prevalence,Canada,Female,80 plus,Ischemic heart disease,Number,2017,85140.0919973,104898.811493,68617.0457574
+Prevalence,Canada,Both,80 plus,Ischemic heart disease,Number,2017,197094.402985,233010.640451,165324.495356
+Prevalence,Canada,Male,80 plus,Ischemic heart disease,Percent,2017,0.182612373842,0.212291985942,0.153147417106
+Prevalence,Canada,Female,80 plus,Ischemic heart disease,Percent,2017,0.090867251839,0.11195163337,0.0732319892485
+Prevalence,Canada,Both,80 plus,Ischemic heart disease,Percent,2017,0.127154146711,0.150317492328,0.106655098548
+Prevalence,Canada,Male,1 to 4,Stroke,Number,2017,644.68744092,1018.46357175,325.908342961
+Prevalence,Canada,Female,1 to 4,Stroke,Number,2017,644.945164207,1006.94014708,348.55620476
+Prevalence,Canada,Both,1 to 4,Stroke,Number,2017,1289.63260513,1791.07309188,822.681489151
+Prevalence,Canada,Male,1 to 4,Stroke,Percent,2017,0.00110178683265,0.0017229639189,0.000560130563077
+Prevalence,Canada,Female,1 to 4,Stroke,Percent,2017,0.00111928558531,0.00174549318987,0.000599013674852
+Prevalence,Canada,Both,1 to 4,Stroke,Percent,2017,0.00111046808923,0.0015444957545,0.000699244392427
+Prevalence,Canada,Male,5 to 9,Stroke,Number,2017,1470.19936706,2130.74300853,851.764850382
+Prevalence,Canada,Female,5 to 9,Stroke,Number,2017,1663.67534309,2375.74031918,1010.95332731
+Prevalence,Canada,Both,5 to 9,Stroke,Number,2017,3133.87471015,4191.25028165,2176.6875321
+Prevalence,Canada,Male,5 to 9,Stroke,Percent,2017,0.00177784599039,0.00258922465803,0.00103767573702
+Prevalence,Canada,Female,5 to 9,Stroke,Percent,2017,0.00205417128674,0.00293792236666,0.00127230912428
+Prevalence,Canada,Both,5 to 9,Stroke,Percent,2017,0.00191429444435,0.00258421881767,0.00130833610209
+Prevalence,Canada,Male,10 to 14,Stroke,Number,2017,1929.13789432,2718.25140637,1230.90629722
+Prevalence,Canada,Female,10 to 14,Stroke,Number,2017,1893.21320124,2632.03524192,1218.53483422
+Prevalence,Canada,Both,10 to 14,Stroke,Number,2017,3822.35109556,5012.16154708,2749.33762103
+Prevalence,Canada,Male,10 to 14,Stroke,Percent,2017,0.00230818699429,0.00322845647169,0.0014700230313
+Prevalence,Canada,Female,10 to 14,Stroke,Percent,2017,0.00223233092796,0.00311699289915,0.00146307493286
+Prevalence,Canada,Both,10 to 14,Stroke,Percent,2017,0.00226990596388,0.00298511263418,0.00162673226735
+Prevalence,Canada,Male,15 to 19,Stroke,Number,2017,2316.38508409,3192.34309633,1517.67130809
+Prevalence,Canada,Female,15 to 19,Stroke,Number,2017,2260.21246448,3083.64520724,1492.0863906
+Prevalence,Canada,Both,15 to 19,Stroke,Number,2017,4576.59754858,5928.6886257,3315.90188589
+Prevalence,Canada,Male,15 to 19,Stroke,Percent,2017,0.00255536414577,0.00350591057866,0.00169573704072
+Prevalence,Canada,Female,15 to 19,Stroke,Percent,2017,0.00240036862657,0.00326759555453,0.00160018197574
+Prevalence,Canada,Both,15 to 19,Stroke,Percent,2017,0.00247631567531,0.00324077695684,0.00179989885235
+Prevalence,Canada,Male,20 to 24,Stroke,Number,2017,2834.30918418,3761.55103889,1908.97630578
+Prevalence,Canada,Female,20 to 24,Stroke,Number,2017,2921.29555187,3870.51063976,1990.54832902
+Prevalence,Canada,Both,20 to 24,Stroke,Number,2017,5755.60473605,7401.77917481,4286.44796089
+Prevalence,Canada,Male,20 to 24,Stroke,Percent,2017,0.00271854945109,0.0036628119402,0.00181295582995
+Prevalence,Canada,Female,20 to 24,Stroke,Percent,2017,0.00272370991494,0.00361109071961,0.00186557274778
+Prevalence,Canada,Both,20 to 24,Stroke,Percent,2017,0.00272109218731,0.00348364145486,0.00202966225652
+Prevalence,Canada,Male,25 to 29,Stroke,Number,2017,3402.79195783,4566.39155009,2431.45524096
+Prevalence,Canada,Female,25 to 29,Stroke,Number,2017,3656.86380069,4819.08639201,2703.38992723
+Prevalence,Canada,Both,25 to 29,Stroke,Number,2017,7059.65575852,8739.40212583,5490.64116437
+Prevalence,Canada,Male,25 to 29,Stroke,Percent,2017,0.00308641972414,0.00412348112044,0.00221268793886
+Prevalence,Canada,Female,25 to 29,Stroke,Percent,2017,0.00317140253568,0.00417154725003,0.00234239441099
+Prevalence,Canada,Both,25 to 29,Stroke,Percent,2017,0.00312982710622,0.00389798967533,0.00244519685051
+Prevalence,Canada,Male,30 to 34,Stroke,Number,2017,4067.10908351,5252.83280267,3010.05025771
+Prevalence,Canada,Female,30 to 34,Stroke,Number,2017,5134.88455047,6388.99630662,3917.78075406
+Prevalence,Canada,Both,30 to 34,Stroke,Number,2017,9201.99363398,11097.0491887,7457.76339459
+Prevalence,Canada,Male,30 to 34,Stroke,Percent,2017,0.00364561764798,0.00472978065737,0.00272632782893
+Prevalence,Canada,Female,30 to 34,Stroke,Percent,2017,0.00432086109208,0.00538650732906,0.00329139346027
+Prevalence,Canada,Both,30 to 34,Stroke,Percent,2017,0.00399389375742,0.00481206120077,0.00323162982188
+Prevalence,Canada,Male,35 to 39,Stroke,Number,2017,5846.85062252,7196.62385667,4641.53220111
+Prevalence,Canada,Female,35 to 39,Stroke,Number,2017,6901.15544559,8449.82781665,5613.09990677
+Prevalence,Canada,Both,35 to 39,Stroke,Number,2017,12748.0060681,15053.2104195,10731.7426101
+Prevalence,Canada,Male,35 to 39,Stroke,Percent,2017,0.00527681047962,0.00650865293206,0.00416798707213
+Prevalence,Canada,Female,35 to 39,Stroke,Percent,2017,0.00578264863066,0.00706513178145,0.0046943143459
+Prevalence,Canada,Both,35 to 39,Stroke,Percent,2017,0.00553906390532,0.00655429731802,0.00465460284554
+Prevalence,Canada,Male,40 to 44,Stroke,Number,2017,7881.38413077,9587.23526125,6372.69167366
+Prevalence,Canada,Female,40 to 44,Stroke,Number,2017,9829.7716882,11745.1693912,8101.68602299
+Prevalence,Canada,Both,40 to 44,Stroke,Number,2017,17711.155819,20450.2287015,15065.2375861
+Prevalence,Canada,Male,40 to 44,Stroke,Percent,2017,0.00725367710496,0.00885833054398,0.0058736123949
+Prevalence,Canada,Female,40 to 44,Stroke,Percent,2017,0.00844332219046,0.0101253638837,0.00694770304699
+Prevalence,Canada,Both,40 to 44,Stroke,Percent,2017,0.00786887665002,0.00910978564598,0.00670538494343
+Prevalence,Canada,Male,45 to 49,Stroke,Number,2017,12562.0394485,15038.0436003,10355.9331476
+Prevalence,Canada,Female,45 to 49,Stroke,Number,2017,15174.6550561,17688.6904793,12903.0516168
+Prevalence,Canada,Both,45 to 49,Stroke,Number,2017,27736.6945046,31733.0277573,24005.8512237
+Prevalence,Canada,Male,45 to 49,Stroke,Percent,2017,0.0110675607655,0.0132096839666,0.00917848351606
+Prevalence,Canada,Female,45 to 49,Stroke,Percent,2017,0.0126190172933,0.0147109003401,0.0107120899573
+Prevalence,Canada,Both,45 to 49,Stroke,Percent,2017,0.0118656766312,0.0135625280285,0.0102716552875
+Prevalence,Canada,Male,50 to 54,Stroke,Number,2017,20956.6566292,24630.5004899,17611.7826722
+Prevalence,Canada,Female,50 to 54,Stroke,Number,2017,24351.1670436,27915.885556,21017.6612132
+Prevalence,Canada,Both,50 to 54,Stroke,Number,2017,45307.8236729,51499.4356851,39752.2532135
+Prevalence,Canada,Male,50 to 54,Stroke,Percent,2017,0.0164548493928,0.0193972818561,0.0138206253125
+Prevalence,Canada,Female,50 to 54,Stroke,Percent,2017,0.0183299312909,0.0210275181371,0.0158238814929
+Prevalence,Canada,Both,50 to 54,Stroke,Percent,2017,0.017412141577,0.0198062864823,0.0152406710095
+Prevalence,Canada,Male,55 to 59,Stroke,Number,2017,31124.9205243,36129.094048,26459.8247549
+Prevalence,Canada,Female,55 to 59,Stroke,Number,2017,34606.1684631,39289.9351848,30414.1356027
+Prevalence,Canada,Both,55 to 59,Stroke,Number,2017,65731.0889875,73922.4053309,58033.8784469
+Prevalence,Canada,Male,55 to 59,Stroke,Percent,2017,0.0241428285991,0.0280053811024,0.0205505523358
+Prevalence,Canada,Female,55 to 59,Stroke,Percent,2017,0.0257157664606,0.0291693279775,0.0225853629285
+Prevalence,Canada,Both,55 to 59,Stroke,Percent,2017,0.0249461549495,0.028068957665,0.022049775112
+Prevalence,Canada,Male,60 to 64,Stroke,Number,2017,38941.7907807,44888.1426551,33403.5863627
+Prevalence,Canada,Female,60 to 64,Stroke,Number,2017,41666.0619451,47398.4814795,36945.3244954
+Prevalence,Canada,Both,60 to 64,Stroke,Number,2017,80607.8527258,91065.535771,71529.3285697
+Prevalence,Canada,Male,60 to 64,Stroke,Percent,2017,0.034003074652,0.0391587465116,0.0291924621963
+Prevalence,Canada,Female,60 to 64,Stroke,Percent,2017,0.0344528256046,0.0391906383733,0.0305676255329
+Prevalence,Canada,Both,60 to 64,Stroke,Percent,2017,0.0342340809179,0.038685870275,0.0303646195125
+Prevalence,Canada,Male,65 to 69,Stroke,Number,2017,44500.7888498,50994.6460487,38713.9278716
+Prevalence,Canada,Female,65 to 69,Stroke,Number,2017,46009.4294179,51423.3360642,40994.105256
+Prevalence,Canada,Both,65 to 69,Stroke,Number,2017,90510.2182677,101294.464139,80441.6256989
+Prevalence,Canada,Male,65 to 69,Stroke,Percent,2017,0.0462087733345,0.0529811392406,0.040217824308
+Prevalence,Canada,Female,65 to 69,Stroke,Percent,2017,0.044684605873,0.0499725928701,0.039805484534
+Prevalence,Canada,Both,65 to 69,Stroke,Percent,2017,0.0454211959273,0.0508201967288,0.0403593268568
+Prevalence,Canada,Male,70 to 74,Stroke,Number,2017,44468.2387226,50733.9521186,38196.8270511
+Prevalence,Canada,Female,70 to 74,Stroke,Number,2017,44715.701814,50841.5909634,38993.8467451
+Prevalence,Canada,Both,70 to 74,Stroke,Number,2017,89183.9405366,100188.94149,78091.79081
+Prevalence,Canada,Male,70 to 74,Stroke,Percent,2017,0.060592599371,0.0691459376602,0.0520837776746
+Prevalence,Canada,Female,70 to 74,Stroke,Percent,2017,0.0557637473526,0.063404996222,0.0486350505476
+Prevalence,Canada,Both,70 to 74,Stroke,Percent,2017,0.0580712743139,0.0652186098369,0.0508328863385
+Prevalence,Canada,Male,75 to 79,Stroke,Number,2017,37606.8879622,42888.5940848,32907.9009582
+Prevalence,Canada,Female,75 to 79,Stroke,Number,2017,38611.5966492,43630.9310659,33482.8695696
+Prevalence,Canada,Both,75 to 79,Stroke,Number,2017,76218.4846114,85044.0504779,67394.3314337
+Prevalence,Canada,Male,75 to 79,Stroke,Percent,2017,0.0765897891625,0.0873283071391,0.0670095609577
+Prevalence,Canada,Female,75 to 79,Stroke,Percent,2017,0.067420551276,0.0761648353207,0.0584933700741
+Prevalence,Canada,Both,75 to 79,Stroke,Percent,2017,0.0716531454368,0.0799450156409,0.0633669145098
+Prevalence,Canada,Male,80 plus,Stroke,Number,2017,69048.263579,77805.6110902,61305.2432895
+Prevalence,Canada,Female,80 plus,Stroke,Number,2017,99767.9531866,113062.644741,87661.815684
+Prevalence,Canada,Both,80 plus,Stroke,Number,2017,168816.216766,189251.184175,150352.428255
+Prevalence,Canada,Male,80 plus,Stroke,Percent,2017,0.112626960473,0.126912043012,0.100000046198
+Prevalence,Canada,Female,80 plus,Stroke,Percent,2017,0.10647913468,0.120652456481,0.0935660857258
+Prevalence,Canada,Both,80 plus,Stroke,Percent,2017,0.108910716069,0.122105899799,0.0970360230084
+Prevalence,Canada,Male,1 to 4,Chronic obstructive pulmonary disease,Number,2017,375.5674128,460.894089891,251.972986406
+Prevalence,Canada,Female,1 to 4,Chronic obstructive pulmonary disease,Number,2017,354.508353125,433.724740269,242.994020943
+Prevalence,Canada,Both,1 to 4,Chronic obstructive pulmonary disease,Number,2017,730.075765925,886.567540624,497.888303906
+Prevalence,Canada,Male,1 to 4,Chronic obstructive pulmonary disease,Percent,2017,0.000642174730326,0.000803324189778,0.000429160226984
+Prevalence,Canada,Female,1 to 4,Chronic obstructive pulmonary disease,Percent,2017,0.000615329673016,0.000763367964293,0.000423493240485
+Prevalence,Canada,Both,1 to 4,Chronic obstructive pulmonary disease,Percent,2017,0.000628819669346,0.000772465258877,0.000429644543783
+Prevalence,Canada,Male,5 to 9,Chronic obstructive pulmonary disease,Number,2017,1207.16866392,1491.44289663,874.608366507
+Prevalence,Canada,Female,5 to 9,Chronic obstructive pulmonary disease,Number,2017,1108.32011744,1385.62776608,787.981723215
+Prevalence,Canada,Both,5 to 9,Chronic obstructive pulmonary disease,Number,2017,2315.48878136,2826.13997331,1693.46414987
+Prevalence,Canada,Male,5 to 9,Chronic obstructive pulmonary disease,Percent,2017,0.00145943124586,0.00181775707076,0.00104369409372
+Prevalence,Canada,Female,5 to 9,Chronic obstructive pulmonary disease,Percent,2017,0.00136869900034,0.00172001966672,0.000958075279133
+Prevalence,Canada,Both,5 to 9,Chronic obstructive pulmonary disease,Percent,2017,0.00141447501264,0.00174649206666,0.00101946288355
+Prevalence,Canada,Male,10 to 14,Chronic obstructive pulmonary disease,Number,2017,1900.20637468,2355.43665649,1384.83371367
+Prevalence,Canada,Female,10 to 14,Chronic obstructive pulmonary disease,Number,2017,1687.07164414,2160.38666367,1139.70783227
+Prevalence,Canada,Both,10 to 14,Chronic obstructive pulmonary disease,Number,2017,3587.27801883,4424.75249149,2538.09445035
+Prevalence,Canada,Male,10 to 14,Chronic obstructive pulmonary disease,Percent,2017,0.00227376311727,0.002809352888,0.0016540583373
+Prevalence,Canada,Female,10 to 14,Chronic obstructive pulmonary disease,Percent,2017,0.00198961425907,0.00256294048733,0.00134218841831
+Prevalence,Canada,Both,10 to 14,Chronic obstructive pulmonary disease,Percent,2017,0.00213058345769,0.00264074300046,0.00150081499572
+Prevalence,Canada,Male,15 to 19,Chronic obstructive pulmonary disease,Number,2017,2661.52625186,3295.63108665,1955.03008015
+Prevalence,Canada,Female,15 to 19,Chronic obstructive pulmonary disease,Number,2017,2276.86213424,2867.67307423,1584.55087242
+Prevalence,Canada,Both,15 to 19,Chronic obstructive pulmonary disease,Number,2017,4938.3883861,6126.87810539,3594.35833233
+Prevalence,Canada,Male,15 to 19,Chronic obstructive pulmonary disease,Percent,2017,0.002935852543,0.00364459729296,0.00215062221359
+Prevalence,Canada,Female,15 to 19,Chronic obstructive pulmonary disease,Percent,2017,0.00241793609326,0.00304595127941,0.00167341294277
+Prevalence,Canada,Both,15 to 19,Chronic obstructive pulmonary disease,Percent,2017,0.00267189622786,0.00331066973308,0.00192946154121
+Prevalence,Canada,Male,20 to 24,Chronic obstructive pulmonary disease,Number,2017,3810.50019673,4952.61908814,2820.98679865
+Prevalence,Canada,Female,20 to 24,Chronic obstructive pulmonary disease,Number,2017,3205.47245914,4134.33303693,2273.44123591
+Prevalence,Canada,Both,20 to 24,Chronic obstructive pulmonary disease,Number,2017,7015.97265588,9020.82482442,5198.19522766
+Prevalence,Canada,Male,20 to 24,Chronic obstructive pulmonary disease,Percent,2017,0.00365480934475,0.00474963576442,0.00270306669318
+Prevalence,Canada,Female,20 to 24,Chronic obstructive pulmonary disease,Percent,2017,0.00298873451094,0.00386767401815,0.00212084700126
+Prevalence,Canada,Both,20 to 24,Chronic obstructive pulmonary disease,Percent,2017,0.00331701373356,0.0042610384775,0.00246180692702
+Prevalence,Canada,Male,25 to 29,Chronic obstructive pulmonary disease,Number,2017,5273.70412886,6824.23502912,3919.97439282
+Prevalence,Canada,Female,25 to 29,Chronic obstructive pulmonary disease,Number,2017,4759.70781151,6202.06720387,3538.23779361
+Prevalence,Canada,Both,25 to 29,Chronic obstructive pulmonary disease,Number,2017,10033.4119404,12808.153513,7562.84161147
+Prevalence,Canada,Male,25 to 29,Chronic obstructive pulmonary disease,Percent,2017,0.00478367906001,0.00616873836754,0.00357720148822
+Prevalence,Canada,Female,25 to 29,Chronic obstructive pulmonary disease,Percent,2017,0.00412797614224,0.00539596968196,0.00306580032141
+Prevalence,Canada,Both,25 to 29,Chronic obstructive pulmonary disease,Percent,2017,0.00444842795405,0.00570877961363,0.00336813455518
+Prevalence,Canada,Male,30 to 34,Chronic obstructive pulmonary disease,Number,2017,7410.93943822,9642.49211718,5509.63439435
+Prevalence,Canada,Female,30 to 34,Chronic obstructive pulmonary disease,Number,2017,7381.7944292,9822.67810287,5587.15010154
+Prevalence,Canada,Both,30 to 34,Chronic obstructive pulmonary disease,Number,2017,14792.7338674,19504.0229667,11082.178726
+Prevalence,Canada,Male,30 to 34,Chronic obstructive pulmonary disease,Percent,2017,0.00664353717568,0.00868120974166,0.0049503687833
+Prevalence,Canada,Female,30 to 34,Chronic obstructive pulmonary disease,Percent,2017,0.00621165330038,0.00824498806656,0.00470570711159
+Prevalence,Canada,Both,30 to 34,Chronic obstructive pulmonary disease,Percent,2017,0.00642071938248,0.00849705469666,0.0048193764119
+Prevalence,Canada,Male,35 to 39,Chronic obstructive pulmonary disease,Number,2017,11476.6026654,14503.8377777,8983.54840266
+Prevalence,Canada,Female,35 to 39,Chronic obstructive pulmonary disease,Number,2017,12686.5935741,16071.7237594,9909.11634071
+Prevalence,Canada,Both,35 to 39,Chronic obstructive pulmonary disease,Number,2017,24163.1962394,30347.7642772,18962.8833032
+Prevalence,Canada,Male,35 to 39,Chronic obstructive pulmonary disease,Percent,2017,0.0103576371607,0.0131142766418,0.00809205725387
+Prevalence,Canada,Female,35 to 39,Chronic obstructive pulmonary disease,Percent,2017,0.01063031419,0.0134655113039,0.00829630020418
+Prevalence,Canada,Both,35 to 39,Chronic obstructive pulmonary disease,Percent,2017,0.0104989481606,0.0131661760784,0.008257526539
+Prevalence,Canada,Male,40 to 44,Chronic obstructive pulmonary disease,Number,2017,19209.7414034,25134.8269378,14812.8139003
+Prevalence,Canada,Female,40 to 44,Chronic obstructive pulmonary disease,Number,2017,22274.2339393,28854.5375395,17258.2793156
+Prevalence,Canada,Both,40 to 44,Chronic obstructive pulmonary disease,Number,2017,41483.9753426,53810.2447397,32332.6292059
+Prevalence,Canada,Male,40 to 44,Chronic obstructive pulmonary disease,Percent,2017,0.0176786995214,0.0231931283987,0.0135847344281
+Prevalence,Canada,Female,40 to 44,Chronic obstructive pulmonary disease,Percent,2017,0.019132594638,0.0247907685777,0.0148134307125
+Prevalence,Canada,Both,40 to 44,Chronic obstructive pulmonary disease,Percent,2017,0.0184305769796,0.0238355544493,0.0144096152844
+Prevalence,Canada,Male,45 to 49,Chronic obstructive pulmonary disease,Number,2017,33775.7483896,42684.4938625,26810.5460972
+Prevalence,Canada,Female,45 to 49,Chronic obstructive pulmonary disease,Number,2017,38015.4648796,48844.3190552,30159.3079167
+Prevalence,Canada,Both,45 to 49,Chronic obstructive pulmonary disease,Number,2017,71791.2132692,90318.4879018,57296.5410654
+Prevalence,Canada,Male,45 to 49,Chronic obstructive pulmonary disease,Percent,2017,0.0297575032942,0.0375262957816,0.023668343037
+Prevalence,Canada,Female,45 to 49,Chronic obstructive pulmonary disease,Percent,2017,0.0316129818469,0.0405963006152,0.0250581467663
+Prevalence,Canada,Both,45 to 49,Chronic obstructive pulmonary disease,Percent,2017,0.0307119407501,0.0387090877594,0.0245255943896
+Prevalence,Canada,Male,50 to 54,Chronic obstructive pulmonary disease,Number,2017,59512.2295838,74676.9475714,47001.8841637
+Prevalence,Canada,Female,50 to 54,Chronic obstructive pulmonary disease,Number,2017,60762.3349382,76578.8609356,49095.4410882
+Prevalence,Canada,Both,50 to 54,Chronic obstructive pulmonary disease,Number,2017,120274.564522,148840.336116,97629.1147937
+Prevalence,Canada,Male,50 to 54,Chronic obstructive pulmonary disease,Percent,2017,0.0467280193395,0.0584517027222,0.0370104705765
+Prevalence,Canada,Female,50 to 54,Chronic obstructive pulmonary disease,Percent,2017,0.0457374925337,0.0576517848551,0.0369930265128
+Prevalence,Canada,Both,50 to 54,Chronic obstructive pulmonary disease,Percent,2017,0.0462222789955,0.0572807767934,0.0375058783791
+Prevalence,Canada,Male,55 to 59,Chronic obstructive pulmonary disease,Number,2017,89480.4632277,108661.908629,70435.301003
+Prevalence,Canada,Female,55 to 59,Chronic obstructive pulmonary disease,Number,2017,82499.4937846,102767.594441,66320.9700277
+Prevalence,Canada,Both,55 to 59,Chronic obstructive pulmonary disease,Number,2017,171979.957012,210483.97098,138617.678682
+Prevalence,Canada,Male,55 to 59,Chronic obstructive pulmonary disease,Percent,2017,0.0694084727832,0.0842720166123,0.054575992456
+Prevalence,Canada,Female,55 to 59,Chronic obstructive pulmonary disease,Percent,2017,0.0613058741944,0.0763260239711,0.0492581785301
+Prevalence,Canada,Both,55 to 59,Chronic obstructive pulmonary disease,Percent,2017,0.0652703818302,0.0796754564338,0.0525545313218
+Prevalence,Canada,Male,60 to 64,Chronic obstructive pulmonary disease,Number,2017,115524.658223,143377.226984,92312.6955663
+Prevalence,Canada,Female,60 to 64,Chronic obstructive pulmonary disease,Number,2017,102173.230693,129343.168006,81597.3130412
+Prevalence,Canada,Both,60 to 64,Chronic obstructive pulmonary disease,Number,2017,217697.888916,269224.087531,174921.601563
+Prevalence,Canada,Male,60 to 64,Chronic obstructive pulmonary disease,Percent,2017,0.100873165901,0.12529754557,0.0806029435114
+Prevalence,Canada,Female,60 to 64,Chronic obstructive pulmonary disease,Percent,2017,0.0844849749921,0.106938232946,0.0674673705242
+Prevalence,Canada,Both,60 to 64,Chronic obstructive pulmonary disease,Percent,2017,0.0924559224142,0.114299885778,0.0742811312054
+Prevalence,Canada,Male,65 to 69,Chronic obstructive pulmonary disease,Number,2017,141206.358315,173116.915117,113951.237987
+Prevalence,Canada,Female,65 to 69,Chronic obstructive pulmonary disease,Number,2017,125539.387726,155195.399238,100669.9603
+Prevalence,Canada,Both,65 to 69,Chronic obstructive pulmonary disease,Number,2017,266745.74604,326769.24326,215218.370446
+Prevalence,Canada,Male,65 to 69,Chronic obstructive pulmonary disease,Percent,2017,0.146625042119,0.179688501703,0.11829273865
+Prevalence,Canada,Female,65 to 69,Chronic obstructive pulmonary disease,Percent,2017,0.12192353764,0.150715550023,0.0978594763835
+Prevalence,Canada,Both,65 to 69,Chronic obstructive pulmonary disease,Percent,2017,0.133861447948,0.164019564714,0.107942231519
+Prevalence,Canada,Male,70 to 74,Chronic obstructive pulmonary disease,Number,2017,148935.082718,181933.617535,123854.408682
+Prevalence,Canada,Female,70 to 74,Chronic obstructive pulmonary disease,Number,2017,130251.539447,160071.875792,106084.059216
+Prevalence,Canada,Both,70 to 74,Chronic obstructive pulmonary disease,Number,2017,279186.622164,331927.828972,233848.929448
+Prevalence,Canada,Male,70 to 74,Chronic obstructive pulmonary disease,Percent,2017,0.202938837253,0.247812153327,0.168739929318
+Prevalence,Canada,Female,70 to 74,Chronic obstructive pulmonary disease,Percent,2017,0.162432542431,0.199689050363,0.132261635653
+Prevalence,Canada,Both,70 to 74,Chronic obstructive pulmonary disease,Percent,2017,0.181789095088,0.216209497034,0.152312723857
+Prevalence,Canada,Male,75 to 79,Chronic obstructive pulmonary disease,Number,2017,124104.79473,150298.525941,104815.591061
+Prevalence,Canada,Female,75 to 79,Chronic obstructive pulmonary disease,Number,2017,109814.45644,134945.020579,88362.500435
+Prevalence,Canada,Both,75 to 79,Chronic obstructive pulmonary disease,Number,2017,233919.25117,278999.50741,197284.053133
+Prevalence,Canada,Male,75 to 79,Chronic obstructive pulmonary disease,Percent,2017,0.252750068182,0.30610784106,0.213482594825
+Prevalence,Canada,Female,75 to 79,Chronic obstructive pulmonary disease,Percent,2017,0.191749343177,0.235650279775,0.154323309523
+Prevalence,Canada,Both,75 to 79,Chronic obstructive pulmonary disease,Percent,2017,0.219907822075,0.262332112926,0.185498533969
+Prevalence,Canada,Male,80 plus,Chronic obstructive pulmonary disease,Number,2017,168096.675436,201504.68417,142933.539042
+Prevalence,Canada,Female,80 plus,Chronic obstructive pulmonary disease,Number,2017,186990.66162,232067.342991,149446.674195
+Prevalence,Canada,Both,80 plus,Chronic obstructive pulmonary disease,Number,2017,355087.337056,428624.135727,298304.057723
+Prevalence,Canada,Male,80 plus,Chronic obstructive pulmonary disease,Percent,2017,0.274188054114,0.328731291896,0.233130749066
+Prevalence,Canada,Female,80 plus,Chronic obstructive pulmonary disease,Percent,2017,0.199568994196,0.247740858523,0.159512120525
+Prevalence,Canada,Both,80 plus,Chronic obstructive pulmonary disease,Percent,2017,0.229082272767,0.27654717442,0.192446881786
+YLDs (Years Lived with Disability),Canada,Male,1 to 4,Ischemic heart disease,Number,2017,0.0,0.0,0.0
+YLDs (Years Lived with Disability),Canada,Female,1 to 4,Ischemic heart disease,Number,2017,0.0,0.0,0.0
+YLDs (Years Lived with Disability),Canada,Both,1 to 4,Ischemic heart disease,Number,2017,0.0,0.0,0.0
+YLDs (Years Lived with Disability),Canada,Male,1 to 4,Ischemic heart disease,Percent,2017,0.0,0.0,0.0
+YLDs (Years Lived with Disability),Canada,Female,1 to 4,Ischemic heart disease,Percent,2017,0.0,0.0,0.0
+YLDs (Years Lived with Disability),Canada,Both,1 to 4,Ischemic heart disease,Percent,2017,0.0,0.0,0.0
+YLDs (Years Lived with Disability),Canada,Male,5 to 9,Ischemic heart disease,Number,2017,0.0,0.0,0.0
+YLDs (Years Lived with Disability),Canada,Female,5 to 9,Ischemic heart disease,Number,2017,0.0,0.0,0.0
+YLDs (Years Lived with Disability),Canada,Both,5 to 9,Ischemic heart disease,Number,2017,0.0,0.0,0.0
+YLDs (Years Lived with Disability),Canada,Male,5 to 9,Ischemic heart disease,Percent,2017,0.0,0.0,0.0
+YLDs (Years Lived with Disability),Canada,Female,5 to 9,Ischemic heart disease,Percent,2017,0.0,0.0,0.0
+YLDs (Years Lived with Disability),Canada,Both,5 to 9,Ischemic heart disease,Percent,2017,0.0,0.0,0.0
+YLDs (Years Lived with Disability),Canada,Male,10 to 14,Ischemic heart disease,Number,2017,0.0,0.0,0.0
+YLDs (Years Lived with Disability),Canada,Female,10 to 14,Ischemic heart disease,Number,2017,0.0,0.0,0.0
+YLDs (Years Lived with Disability),Canada,Both,10 to 14,Ischemic heart disease,Number,2017,0.0,0.0,0.0
+YLDs (Years Lived with Disability),Canada,Male,10 to 14,Ischemic heart disease,Percent,2017,0.0,0.0,0.0
+YLDs (Years Lived with Disability),Canada,Female,10 to 14,Ischemic heart disease,Percent,2017,0.0,0.0,0.0
+YLDs (Years Lived with Disability),Canada,Both,10 to 14,Ischemic heart disease,Percent,2017,0.0,0.0,0.0
+YLDs (Years Lived with Disability),Canada,Male,15 to 19,Ischemic heart disease,Number,2017,4.55766060631,7.05343205744,2.80419695631
+YLDs (Years Lived with Disability),Canada,Female,15 to 19,Ischemic heart disease,Number,2017,3.23064819894,4.92837896359,2.02265117777
+YLDs (Years Lived with Disability),Canada,Both,15 to 19,Ischemic heart disease,Number,2017,7.78830880525,11.9127564201,4.82364554593
+YLDs (Years Lived with Disability),Canada,Male,15 to 19,Ischemic heart disease,Percent,2017,5.71471735774e-05,7.65884182401e-05,4.13601565736e-05
+YLDs (Years Lived with Disability),Canada,Female,15 to 19,Ischemic heart disease,Percent,2017,3.26833903534e-05,4.32197836333e-05,2.33832338186e-05
+YLDs (Years Lived with Disability),Canada,Both,15 to 19,Ischemic heart disease,Percent,2017,4.35925683497e-05,5.80922526544e-05,3.14413213035e-05
+YLDs (Years Lived with Disability),Canada,Male,20 to 24,Ischemic heart disease,Number,2017,17.5147760836,26.2691721744,11.020763641
+YLDs (Years Lived with Disability),Canada,Female,20 to 24,Ischemic heart disease,Number,2017,13.1277738894,19.2902443059,8.29916700511
+YLDs (Years Lived with Disability),Canada,Both,20 to 24,Ischemic heart disease,Number,2017,30.642549973,45.8999459426,19.1885544213
+YLDs (Years Lived with Disability),Canada,Male,20 to 24,Ischemic heart disease,Percent,2017,0.000175953256254,0.000227722526341,0.000132716672096
+YLDs (Years Lived with Disability),Canada,Female,20 to 24,Ischemic heart disease,Percent,2017,0.000103948473903,0.000133370128622,7.80704772814e-05
+YLDs (Years Lived with Disability),Canada,Both,20 to 24,Ischemic heart disease,Percent,2017,0.00013564936154,0.000172978771602,0.000102662206781
+YLDs (Years Lived with Disability),Canada,Male,25 to 29,Ischemic heart disease,Number,2017,32.633983912,67.5430554987,10.3845506371
+YLDs (Years Lived with Disability),Canada,Female,25 to 29,Ischemic heart disease,Number,2017,24.3763863601,35.3990769302,15.9114040999
+YLDs (Years Lived with Disability),Canada,Both,25 to 29,Ischemic heart disease,Number,2017,57.010370272,95.3911053357,30.4609280592
+YLDs (Years Lived with Disability),Canada,Male,25 to 29,Ischemic heart disease,Percent,2017,0.000304310692331,0.000584872121695,0.000102921889285
+YLDs (Years Lived with Disability),Canada,Female,25 to 29,Ischemic heart disease,Percent,2017,0.000171578194858,0.00021150394896,0.000138570998084
+YLDs (Years Lived with Disability),Canada,Both,25 to 29,Ischemic heart disease,Percent,2017,0.000228844095517,0.000356229305557,0.000137056399778
+YLDs (Years Lived with Disability),Canada,Male,30 to 34,Ischemic heart disease,Number,2017,59.6476622692,109.738143091,27.2081864521
+YLDs (Years Lived with Disability),Canada,Female,30 to 34,Ischemic heart disease,Number,2017,41.8610143565,81.3111502188,15.2144436638
+YLDs (Years Lived with Disability),Canada,Both,30 to 34,Ischemic heart disease,Number,2017,101.508676626,168.710210205,52.8079047836
+YLDs (Years Lived with Disability),Canada,Male,30 to 34,Ischemic heart disease,Percent,2017,0.000512843915542,0.000855983256264,0.000257267957155
+YLDs (Years Lived with Disability),Canada,Female,30 to 34,Ischemic heart disease,Percent,2017,0.000269840037711,0.000491970890978,0.000105504292254
+YLDs (Years Lived with Disability),Canada,Both,30 to 34,Ischemic heart disease,Percent,2017,0.000373696533884,0.000561145406373,0.000208894365812
+YLDs (Years Lived with Disability),Canada,Male,35 to 39,Ischemic heart disease,Number,2017,111.290356948,186.875133996,56.5667915328
+YLDs (Years Lived with Disability),Canada,Female,35 to 39,Ischemic heart disease,Number,2017,73.6852860223,128.18854765,33.9928397366
+YLDs (Years Lived with Disability),Canada,Both,35 to 39,Ischemic heart disease,Number,2017,184.975642971,288.464577044,107.790155135
+YLDs (Years Lived with Disability),Canada,Male,35 to 39,Ischemic heart disease,Percent,2017,0.000896268990059,0.001398417236,0.000515653402499
+YLDs (Years Lived with Disability),Canada,Female,35 to 39,Ischemic heart disease,Percent,2017,0.000442108325624,0.00072574408382,0.000222962778062
+YLDs (Years Lived with Disability),Canada,Both,35 to 39,Ischemic heart disease,Percent,2017,0.000635765612887,0.000903192990061,0.00042217536966
+YLDs (Years Lived with Disability),Canada,Male,40 to 44,Ischemic heart disease,Number,2017,215.8069774,332.27816262,118.169427568
+YLDs (Years Lived with Disability),Canada,Female,40 to 44,Ischemic heart disease,Number,2017,134.426736873,226.060877126,73.6156793456
+YLDs (Years Lived with Disability),Canada,Both,40 to 44,Ischemic heart disease,Number,2017,350.233714272,526.998286905,204.784148821
+YLDs (Years Lived with Disability),Canada,Male,40 to 44,Ischemic heart disease,Percent,2017,0.00166323759135,0.00237566553913,0.00101847393516
+YLDs (Years Lived with Disability),Canada,Female,40 to 44,Ischemic heart disease,Percent,2017,0.000767017025134,0.00115655570309,0.00046128738234
+YLDs (Years Lived with Disability),Canada,Both,40 to 44,Ischemic heart disease,Percent,2017,0.00114789032182,0.00155609227284,0.00080377578362
+YLDs (Years Lived with Disability),Canada,Male,45 to 49,Ischemic heart disease,Number,2017,464.194348551,690.680393439,283.964737952
+YLDs (Years Lived with Disability),Canada,Female,45 to 49,Ischemic heart disease,Number,2017,254.39431281,401.326989089,146.159084726
+YLDs (Years Lived with Disability),Canada,Both,45 to 49,Ischemic heart disease,Number,2017,718.588661361,1043.60527468,458.571721993
+YLDs (Years Lived with Disability),Canada,Male,45 to 49,Ischemic heart disease,Percent,2017,0.00321099916985,0.00422550836387,0.00223144705077
+YLDs (Years Lived with Disability),Canada,Female,45 to 49,Ischemic heart disease,Percent,2017,0.00134118243527,0.00189464463481,0.000869583120387
+YLDs (Years Lived with Disability),Canada,Both,45 to 49,Ischemic heart disease,Percent,2017,0.00214894199053,0.00271136565887,0.0016072336984
+YLDs (Years Lived with Disability),Canada,Male,50 to 54,Ischemic heart disease,Number,2017,895.872834486,1285.06147724,578.255385073
+YLDs (Years Lived with Disability),Canada,Female,50 to 54,Ischemic heart disease,Number,2017,466.106064196,714.792407725,282.079507527
+YLDs (Years Lived with Disability),Canada,Both,50 to 54,Ischemic heart disease,Number,2017,1361.97889868,1953.13888371,884.824702088
+YLDs (Years Lived with Disability),Canada,Male,50 to 54,Ischemic heart disease,Percent,2017,0.0050711200568,0.00640313070682,0.00385885264959
+YLDs (Years Lived with Disability),Canada,Female,50 to 54,Ischemic heart disease,Percent,2017,0.00217814742446,0.00297474942192,0.00151481227104
+YLDs (Years Lived with Disability),Canada,Both,50 to 54,Ischemic heart disease,Percent,2017,0.00348616288248,0.00431400074075,0.00273405557259
+YLDs (Years Lived with Disability),Canada,Male,55 to 59,Ischemic heart disease,Number,2017,1411.60053578,2111.23958191,921.692845943
+YLDs (Years Lived with Disability),Canada,Female,55 to 59,Ischemic heart disease,Number,2017,723.186637482,1104.59940361,435.298705595
+YLDs (Years Lived with Disability),Canada,Both,55 to 59,Ischemic heart disease,Number,2017,2134.78717326,3147.44462341,1419.25062674
+YLDs (Years Lived with Disability),Canada,Male,55 to 59,Ischemic heart disease,Percent,2017,0.00712988213447,0.00915151641581,0.005542371197
+YLDs (Years Lived with Disability),Canada,Female,55 to 59,Ischemic heart disease,Percent,2017,0.00316297998075,0.00414862159727,0.00223395806278
+YLDs (Years Lived with Disability),Canada,Both,55 to 59,Ischemic heart disease,Percent,2017,0.00500411418456,0.0062349063818,0.00394358068464
+YLDs (Years Lived with Disability),Canada,Male,60 to 64,Ischemic heart disease,Number,2017,1938.40869363,2838.39504301,1295.74285487
+YLDs (Years Lived with Disability),Canada,Female,60 to 64,Ischemic heart disease,Number,2017,1025.04316679,1499.86953941,674.609634579
+YLDs (Years Lived with Disability),Canada,Both,60 to 64,Ischemic heart disease,Number,2017,2963.45186042,4276.38943172,1983.58826415
+YLDs (Years Lived with Disability),Canada,Male,60 to 64,Ischemic heart disease,Percent,2017,0.00978601369409,0.0122521503965,0.00778932958997
+YLDs (Years Lived with Disability),Canada,Female,60 to 64,Ischemic heart disease,Percent,2017,0.00463527622055,0.00591359358082,0.00354989278929
+YLDs (Years Lived with Disability),Canada,Both,60 to 64,Ischemic heart disease,Percent,2017,0.00706746748472,0.00867864867913,0.00575301390418
+YLDs (Years Lived with Disability),Canada,Male,65 to 69,Ischemic heart disease,Number,2017,2544.59892311,3680.9101409,1716.79942499
+YLDs (Years Lived with Disability),Canada,Female,65 to 69,Ischemic heart disease,Number,2017,1491.7261799,2181.84116689,981.780329195
+YLDs (Years Lived with Disability),Canada,Both,65 to 69,Ischemic heart disease,Number,2017,4036.32510301,5775.04479343,2721.77736896
+YLDs (Years Lived with Disability),Canada,Male,65 to 69,Ischemic heart disease,Percent,2017,0.0134626612909,0.01644904015,0.0108652934916
+YLDs (Years Lived with Disability),Canada,Female,65 to 69,Ischemic heart disease,Percent,2017,0.00713635949025,0.00921507445885,0.00556635165864
+YLDs (Years Lived with Disability),Canada,Both,65 to 69,Ischemic heart disease,Percent,2017,0.0101393024867,0.0123496834557,0.00829346666164
+YLDs (Years Lived with Disability),Canada,Male,70 to 74,Ischemic heart disease,Number,2017,2738.66552793,3921.94689845,1809.57612557
+YLDs (Years Lived with Disability),Canada,Female,70 to 74,Ischemic heart disease,Number,2017,1808.04217052,2626.05084948,1206.62157632
+YLDs (Years Lived with Disability),Canada,Both,70 to 74,Ischemic heart disease,Number,2017,4546.70769845,6504.93640402,3080.71316678
+YLDs (Years Lived with Disability),Canada,Male,70 to 74,Ischemic heart disease,Percent,2017,0.0167162036405,0.0209045245076,0.0135077418823
+YLDs (Years Lived with Disability),Canada,Female,70 to 74,Ischemic heart disease,Percent,2017,0.0100642245797,0.0126755633514,0.00786206681451
+YLDs (Years Lived with Disability),Canada,Both,70 to 74,Ischemic heart disease,Percent,2017,0.0132371128154,0.0165438135714,0.0108014574454
+YLDs (Years Lived with Disability),Canada,Male,75 to 79,Ischemic heart disease,Number,2017,2372.26626158,3437.85593029,1583.27626673
+YLDs (Years Lived with Disability),Canada,Female,75 to 79,Ischemic heart disease,Number,2017,1863.64841384,2657.11944281,1212.68546561
+YLDs (Years Lived with Disability),Canada,Both,75 to 79,Ischemic heart disease,Number,2017,4235.91467542,6118.99272102,2878.13556241
+YLDs (Years Lived with Disability),Canada,Male,75 to 79,Ischemic heart disease,Percent,2017,0.0191814447062,0.0241640576242,0.0151305866019
+YLDs (Years Lived with Disability),Canada,Female,75 to 79,Ischemic heart disease,Percent,2017,0.0131241251689,0.0166700845279,0.0101386122847
+YLDs (Years Lived with Disability),Canada,Both,75 to 79,Ischemic heart disease,Percent,2017,0.0159436875606,0.0199771801913,0.0127822191437
+YLDs (Years Lived with Disability),Canada,Male,80 plus,Ischemic heart disease,Number,2017,4374.39574887,6125.75317357,2918.25776959
+YLDs (Years Lived with Disability),Canada,Female,80 plus,Ischemic heart disease,Number,2017,5789.90487029,8051.16852208,3853.89514392
+YLDs (Years Lived with Disability),Canada,Both,80 plus,Ischemic heart disease,Number,2017,10164.3006192,14065.1761236,6776.1766691
+YLDs (Years Lived with Disability),Canada,Male,80 plus,Ischemic heart disease,Percent,2017,0.0234868036479,0.0286731883779,0.0190016053945
+YLDs (Years Lived with Disability),Canada,Female,80 plus,Ischemic heart disease,Percent,2017,0.0202561523061,0.0248017418136,0.0160445364848
+YLDs (Years Lived with Disability),Canada,Both,80 plus,Ischemic heart disease,Percent,2017,0.0215298926472,0.0260994957888,0.0175685069631
+YLDs (Years Lived with Disability),Canada,Male,1 to 4,Stroke,Number,2017,98.4568202622,165.482664319,57.4331929678
+YLDs (Years Lived with Disability),Canada,Female,1 to 4,Stroke,Number,2017,129.682349336,206.899453211,76.9440979273
+YLDs (Years Lived with Disability),Canada,Both,1 to 4,Stroke,Number,2017,228.139169598,344.596587796,145.497675779
+YLDs (Years Lived with Disability),Canada,Male,1 to 4,Stroke,Percent,2017,0.00381681981055,0.00609605924862,0.00221118976567
+YLDs (Years Lived with Disability),Canada,Female,1 to 4,Stroke,Percent,2017,0.00590754853628,0.00936614421527,0.00334737534336
+YLDs (Years Lived with Disability),Canada,Both,1 to 4,Stroke,Percent,2017,0.00477598776832,0.00695182205609,0.00296584177307
+YLDs (Years Lived with Disability),Canada,Male,5 to 9,Stroke,Number,2017,232.084498549,357.907630326,142.150086344
+YLDs (Years Lived with Disability),Canada,Female,5 to 9,Stroke,Number,2017,292.593143372,478.589792444,147.208150533
+YLDs (Years Lived with Disability),Canada,Both,5 to 9,Stroke,Number,2017,524.677641921,793.675671138,319.408867833
+YLDs (Years Lived with Disability),Canada,Male,5 to 9,Stroke,Percent,2017,0.00614278945665,0.00899252353355,0.00388093495097
+YLDs (Years Lived with Disability),Canada,Female,5 to 9,Stroke,Percent,2017,0.0087322454284,0.0146042335777,0.00444638625322
+YLDs (Years Lived with Disability),Canada,Both,5 to 9,Stroke,Percent,2017,0.0073533149426,0.0107512886077,0.00461713511978
+YLDs (Years Lived with Disability),Canada,Male,10 to 14,Stroke,Number,2017,274.419381824,453.368179252,135.981817804
+YLDs (Years Lived with Disability),Canada,Female,10 to 14,Stroke,Number,2017,347.127540369,559.882120731,191.303068409
+YLDs (Years Lived with Disability),Canada,Both,10 to 14,Stroke,Number,2017,621.546922194,941.09605344,365.354824308
+YLDs (Years Lived with Disability),Canada,Male,10 to 14,Stroke,Percent,2017,0.00574051943114,0.00904336006729,0.00301140116492
+YLDs (Years Lived with Disability),Canada,Female,10 to 14,Stroke,Percent,2017,0.00652925561073,0.0100307236778,0.00377313669307
+YLDs (Years Lived with Disability),Canada,Both,10 to 14,Stroke,Percent,2017,0.00615503813021,0.00882228986481,0.0038163311628
+YLDs (Years Lived with Disability),Canada,Male,15 to 19,Stroke,Number,2017,326.814297673,540.142763477,172.105305108
+YLDs (Years Lived with Disability),Canada,Female,15 to 19,Stroke,Number,2017,406.169650162,636.98397248,231.489871186
+YLDs (Years Lived with Disability),Canada,Both,15 to 19,Stroke,Number,2017,732.983947835,1098.95264563,453.323275593
+YLDs (Years Lived with Disability),Canada,Male,15 to 19,Stroke,Percent,2017,0.00412155942756,0.00642535720894,0.0023046778345
+YLDs (Years Lived with Disability),Canada,Female,15 to 19,Stroke,Percent,2017,0.00413795535409,0.00614073631032,0.00260024255634
+YLDs (Years Lived with Disability),Canada,Both,15 to 19,Stroke,Percent,2017,0.00412989874866,0.00576057111933,0.00279752411414
+YLDs (Years Lived with Disability),Canada,Male,20 to 24,Stroke,Number,2017,412.801751325,652.295448815,231.925928259
+YLDs (Years Lived with Disability),Canada,Female,20 to 24,Stroke,Number,2017,521.149702543,764.258304671,307.728993056
+YLDs (Years Lived with Disability),Canada,Both,20 to 24,Stroke,Number,2017,933.951453868,1347.07005448,580.577064346
+YLDs (Years Lived with Disability),Canada,Male,20 to 24,Stroke,Percent,2017,0.00417070344997,0.00623966183608,0.00253557357933
+YLDs (Years Lived with Disability),Canada,Female,20 to 24,Stroke,Percent,2017,0.00415035848257,0.0057793648104,0.00275841018353
+YLDs (Years Lived with Disability),Canada,Both,20 to 24,Stroke,Percent,2017,0.00415854321211,0.00553582791574,0.00293409073016
+YLDs (Years Lived with Disability),Canada,Male,25 to 29,Stroke,Number,2017,498.264436183,774.552324631,300.237767934
+YLDs (Years Lived with Disability),Canada,Female,25 to 29,Stroke,Number,2017,657.815794757,1004.15446487,400.914454907
+YLDs (Years Lived with Disability),Canada,Both,25 to 29,Stroke,Number,2017,1156.08023094,1681.23014621,753.589105597
+YLDs (Years Lived with Disability),Canada,Male,25 to 29,Stroke,Percent,2017,0.00464659782447,0.00668415444708,0.00296306644251
+YLDs (Years Lived with Disability),Canada,Female,25 to 29,Stroke,Percent,2017,0.00465332423266,0.00652457403197,0.0031549332305
+YLDs (Years Lived with Disability),Canada,Both,25 to 29,Stroke,Percent,2017,0.00464972515553,0.00617965182538,0.00332872208008
+YLDs (Years Lived with Disability),Canada,Male,30 to 34,Stroke,Number,2017,596.669860928,908.691458014,369.389054132
+YLDs (Years Lived with Disability),Canada,Female,30 to 34,Stroke,Number,2017,802.389898345,1144.66186735,503.58620256
+YLDs (Years Lived with Disability),Canada,Both,30 to 34,Stroke,Number,2017,1399.05975927,1940.19906425,951.202754799
+YLDs (Years Lived with Disability),Canada,Male,30 to 34,Stroke,Percent,2017,0.00516674420693,0.0073150394116,0.00338800525911
+YLDs (Years Lived with Disability),Canada,Female,30 to 34,Stroke,Percent,2017,0.00520042697937,0.00717971832297,0.00362255788304
+YLDs (Years Lived with Disability),Canada,Both,30 to 34,Stroke,Percent,2017,0.00518553663709,0.00670958473366,0.0038542479082
+YLDs (Years Lived with Disability),Canada,Male,35 to 39,Stroke,Number,2017,764.478873829,1129.37737159,469.22505876
+YLDs (Years Lived with Disability),Canada,Female,35 to 39,Stroke,Number,2017,1077.0948663,1524.10603968,710.856009429
+YLDs (Years Lived with Disability),Canada,Both,35 to 39,Stroke,Number,2017,1841.57374013,2525.94202971,1246.30857712
+YLDs (Years Lived with Disability),Canada,Male,35 to 39,Stroke,Percent,2017,0.00619449026058,0.00865463546165,0.00432666534996
+YLDs (Years Lived with Disability),Canada,Female,35 to 39,Stroke,Percent,2017,0.00649889171385,0.00855564527082,0.00474733094909
+YLDs (Years Lived with Disability),Canada,Both,35 to 39,Stroke,Percent,2017,0.00636857734401,0.00813996927714,0.0049529154801
+YLDs (Years Lived with Disability),Canada,Male,40 to 44,Stroke,Number,2017,1040.36018066,1491.68915608,676.36469679
+YLDs (Years Lived with Disability),Canada,Female,40 to 44,Stroke,Number,2017,1440.25243196,2008.50265446,911.851136968
+YLDs (Years Lived with Disability),Canada,Both,40 to 44,Stroke,Number,2017,2480.61261262,3393.26005538,1684.22887816
+YLDs (Years Lived with Disability),Canada,Male,40 to 44,Stroke,Percent,2017,0.00806403882755,0.0107411133452,0.00570777725767
+YLDs (Years Lived with Disability),Canada,Female,40 to 44,Stroke,Percent,2017,0.00825000694806,0.0108744009651,0.00600956027029
+YLDs (Years Lived with Disability),Canada,Both,40 to 44,Stroke,Percent,2017,0.00816973615873,0.0103442831523,0.00625961759536
+YLDs (Years Lived with Disability),Canada,Male,45 to 49,Stroke,Number,2017,1584.34506533,2197.04810671,1003.81919751
+YLDs (Years Lived with Disability),Canada,Female,45 to 49,Stroke,Number,2017,2130.53978611,2923.46186535,1407.57468638
+YLDs (Years Lived with Disability),Canada,Both,45 to 49,Stroke,Number,2017,3714.88485144,4978.71559615,2519.25001874
+YLDs (Years Lived with Disability),Canada,Male,45 to 49,Stroke,Percent,2017,0.0110354270242,0.0145716057953,0.00791737142292
+YLDs (Years Lived with Disability),Canada,Female,45 to 49,Stroke,Percent,2017,0.0112828242804,0.0145813660029,0.00840149626988
+YLDs (Years Lived with Disability),Canada,Both,45 to 49,Stroke,Percent,2017,0.0111741715598,0.013904592442,0.00876282956469
+YLDs (Years Lived with Disability),Canada,Male,50 to 54,Stroke,Number,2017,2616.74895597,3595.99384205,1753.97359943
+YLDs (Years Lived with Disability),Canada,Female,50 to 54,Stroke,Number,2017,3461.94017931,4661.54254345,2360.50938856
+YLDs (Years Lived with Disability),Canada,Both,50 to 54,Stroke,Number,2017,6078.68913528,8049.17745363,4213.0227138
+YLDs (Years Lived with Disability),Canada,Male,50 to 54,Stroke,Percent,2017,0.0149061362411,0.0192586103544,0.0108862930186
+YLDs (Years Lived with Disability),Canada,Female,50 to 54,Stroke,Percent,2017,0.0162879126246,0.0204614959444,0.0123339606201
+YLDs (Years Lived with Disability),Canada,Both,50 to 54,Stroke,Percent,2017,0.0156621701454,0.0192717965909,0.0121082511444
+YLDs (Years Lived with Disability),Canada,Male,55 to 59,Stroke,Number,2017,3979.54270177,5372.73972117,2710.67993124
+YLDs (Years Lived with Disability),Canada,Female,55 to 59,Stroke,Number,2017,5085.22208576,6760.49125902,3525.00303745
+YLDs (Years Lived with Disability),Canada,Both,55 to 59,Stroke,Number,2017,9064.76478753,11831.969147,6305.85165266
+YLDs (Years Lived with Disability),Canada,Male,55 to 59,Stroke,Percent,2017,0.0202395945013,0.0254224783184,0.0152339466883
+YLDs (Years Lived with Disability),Canada,Female,55 to 59,Stroke,Percent,2017,0.0223944871848,0.0275499410641,0.0175438502356
+YLDs (Years Lived with Disability),Canada,Both,55 to 59,Stroke,Percent,2017,0.0213930201552,0.0259483597831,0.0170423738544
+YLDs (Years Lived with Disability),Canada,Male,60 to 64,Stroke,Number,2017,5058.19635342,6825.57795604,3524.59118463
+YLDs (Years Lived with Disability),Canada,Female,60 to 64,Stroke,Number,2017,6310.24285821,8427.25848457,4442.83900848
+YLDs (Years Lived with Disability),Canada,Both,60 to 64,Stroke,Number,2017,11368.4392116,14844.8800442,8130.42403676
+YLDs (Years Lived with Disability),Canada,Male,60 to 64,Stroke,Percent,2017,0.0257134969721,0.0327739869269,0.0191746779694
+YLDs (Years Lived with Disability),Canada,Female,60 to 64,Stroke,Percent,2017,0.0286984293221,0.0358855893434,0.0222727456892
+YLDs (Years Lived with Disability),Canada,Both,60 to 64,Stroke,Percent,2017,0.0272871147752,0.033633919536,0.021301041997
+YLDs (Years Lived with Disability),Canada,Male,65 to 69,Stroke,Number,2017,5834.06505851,7777.8246583,4087.61549099
+YLDs (Years Lived with Disability),Canada,Female,65 to 69,Stroke,Number,2017,7154.74594504,9472.31818323,4981.85799952
+YLDs (Years Lived with Disability),Canada,Both,65 to 69,Stroke,Number,2017,12988.8110036,16909.7668072,9213.34363286
+YLDs (Years Lived with Disability),Canada,Male,65 to 69,Stroke,Percent,2017,0.0310582370119,0.0389448112888,0.0241229406624
+YLDs (Years Lived with Disability),Canada,Female,65 to 69,Stroke,Percent,2017,0.0344386733027,0.0427439273566,0.0267523745273
+YLDs (Years Lived with Disability),Canada,Both,65 to 69,Stroke,Percent,2017,0.0328319898797,0.0403478133483,0.0258717697078
+YLDs (Years Lived with Disability),Canada,Male,70 to 74,Stroke,Number,2017,6394.43622866,8451.47283731,4486.54145455
+YLDs (Years Lived with Disability),Canada,Female,70 to 74,Stroke,Number,2017,7463.04381108,9899.84128283,5254.57645015
+YLDs (Years Lived with Disability),Canada,Both,70 to 74,Stroke,Number,2017,13857.4800397,18083.3718039,9909.32726409
+YLDs (Years Lived with Disability),Canada,Male,70 to 74,Stroke,Percent,2017,0.0392970314737,0.0494968387612,0.029961677969
+YLDs (Years Lived with Disability),Canada,Female,70 to 74,Stroke,Percent,2017,0.0418408538205,0.0517414150184,0.0320848213282
+YLDs (Years Lived with Disability),Canada,Both,70 to 74,Stroke,Percent,2017,0.0406249648927,0.0499087136059,0.0316736712518
+YLDs (Years Lived with Disability),Canada,Male,75 to 79,Stroke,Number,2017,6222.92584012,8232.951291,4341.4138209
+YLDs (Years Lived with Disability),Canada,Female,75 to 79,Stroke,Number,2017,7127.05149402,9392.65127347,5018.5907143
+YLDs (Years Lived with Disability),Canada,Both,75 to 79,Stroke,Number,2017,13349.9773341,17457.7196199,9348.85232573
+YLDs (Years Lived with Disability),Canada,Male,75 to 79,Stroke,Percent,2017,0.0506635262431,0.0628222416879,0.0389283774118
+YLDs (Years Lived with Disability),Canada,Female,75 to 79,Stroke,Percent,2017,0.0505601000955,0.0619913145696,0.0382835605579
+YLDs (Years Lived with Disability),Canada,Both,75 to 79,Stroke,Percent,2017,0.0506053431331,0.0615935976511,0.0389083792047
+YLDs (Years Lived with Disability),Canada,Male,80 plus,Stroke,Number,2017,13345.4906283,17062.1390226,9504.70435281
+YLDs (Years Lived with Disability),Canada,Female,80 plus,Stroke,Number,2017,21164.5264604,27211.6662073,15110.4950727
+YLDs (Years Lived with Disability),Canada,Both,80 plus,Stroke,Number,2017,34510.0170887,44171.6514129,25002.2585114
+YLDs (Years Lived with Disability),Canada,Male,80 plus,Stroke,Percent,2017,0.0721438856928,0.0874657813257,0.0566034490612
+YLDs (Years Lived with Disability),Canada,Female,80 plus,Stroke,Percent,2017,0.0745194478631,0.0905843660028,0.0589829350966
+YLDs (Years Lived with Disability),Canada,Both,80 plus,Stroke,Percent,2017,0.0735824840881,0.0887523006127,0.0583330111047
+YLDs (Years Lived with Disability),Canada,Male,1 to 4,Chronic obstructive pulmonary disease,Number,2017,24.5221525335,33.6737454739,15.4429952816
+YLDs (Years Lived with Disability),Canada,Female,1 to 4,Chronic obstructive pulmonary disease,Number,2017,26.5686442662,35.1179224978,16.8373990719
+YLDs (Years Lived with Disability),Canada,Both,1 to 4,Chronic obstructive pulmonary disease,Number,2017,51.0907967996,67.4523139244,32.9550060513
+YLDs (Years Lived with Disability),Canada,Male,1 to 4,Chronic obstructive pulmonary disease,Percent,2017,0.00095565150237,0.00137652295167,0.000572376757563
+YLDs (Years Lived with Disability),Canada,Female,1 to 4,Chronic obstructive pulmonary disease,Percent,2017,0.00122314821271,0.00182180187162,0.000734357420024
+YLDs (Years Lived with Disability),Canada,Both,1 to 4,Chronic obstructive pulmonary disease,Percent,2017,0.00107815831385,0.00154552116316,0.000666247108458
+YLDs (Years Lived with Disability),Canada,Male,5 to 9,Chronic obstructive pulmonary disease,Number,2017,77.1001341789,128.509753331,39.207226268
+YLDs (Years Lived with Disability),Canada,Female,5 to 9,Chronic obstructive pulmonary disease,Number,2017,81.1439041593,168.04163684,15.337880647
+YLDs (Years Lived with Disability),Canada,Both,5 to 9,Chronic obstructive pulmonary disease,Number,2017,158.244038338,257.640676264,76.5444945198
+YLDs (Years Lived with Disability),Canada,Male,5 to 9,Chronic obstructive pulmonary disease,Percent,2017,0.00205182628456,0.00339641152363,0.000975641124372
+YLDs (Years Lived with Disability),Canada,Female,5 to 9,Chronic obstructive pulmonary disease,Percent,2017,0.00244989321835,0.00528918776353,0.000398842053046
+YLDs (Years Lived with Disability),Canada,Both,5 to 9,Chronic obstructive pulmonary disease,Percent,2017,0.002236645428,0.00380208693843,0.000972198682861
+YLDs (Years Lived with Disability),Canada,Male,10 to 14,Chronic obstructive pulmonary disease,Number,2017,116.215829407,226.062112488,39.0066879342
+YLDs (Years Lived with Disability),Canada,Female,10 to 14,Chronic obstructive pulmonary disease,Number,2017,120.327843072,223.63639926,38.3723947878
+YLDs (Years Lived with Disability),Canada,Both,10 to 14,Chronic obstructive pulmonary disease,Number,2017,236.543672479,393.727176042,111.072855823
+YLDs (Years Lived with Disability),Canada,Male,10 to 14,Chronic obstructive pulmonary disease,Percent,2017,0.0024487640018,0.00461393575839,0.000784274857791
+YLDs (Years Lived with Disability),Canada,Female,10 to 14,Chronic obstructive pulmonary disease,Percent,2017,0.00228637572639,0.00436486954202,0.000712568111423
+YLDs (Years Lived with Disability),Canada,Both,10 to 14,Chronic obstructive pulmonary disease,Percent,2017,0.00236324518912,0.00396664892194,0.0010621703133
+YLDs (Years Lived with Disability),Canada,Male,15 to 19,Chronic obstructive pulmonary disease,Number,2017,164.513899824,289.652575374,69.6970570139
+YLDs (Years Lived with Disability),Canada,Female,15 to 19,Chronic obstructive pulmonary disease,Number,2017,157.981903559,273.793126243,60.3992510296
+YLDs (Years Lived with Disability),Canada,Both,15 to 19,Chronic obstructive pulmonary disease,Number,2017,322.495803383,510.027925084,168.710290216
+YLDs (Years Lived with Disability),Canada,Male,15 to 19,Chronic obstructive pulmonary disease,Percent,2017,0.00208728072486,0.00360989195738,0.000919133774409
+YLDs (Years Lived with Disability),Canada,Female,15 to 19,Chronic obstructive pulmonary disease,Percent,2017,0.00162522958011,0.00285085632208,0.00063846701155
+YLDs (Years Lived with Disability),Canada,Both,15 to 19,Chronic obstructive pulmonary disease,Percent,2017,0.00183109119402,0.00286452425211,0.000974086487686
+YLDs (Years Lived with Disability),Canada,Male,20 to 24,Chronic obstructive pulmonary disease,Number,2017,230.678598467,371.394322069,111.88854138
+YLDs (Years Lived with Disability),Canada,Female,20 to 24,Chronic obstructive pulmonary disease,Number,2017,218.905469548,378.543301782,81.0373114049
+YLDs (Years Lived with Disability),Canada,Both,20 to 24,Chronic obstructive pulmonary disease,Number,2017,449.584068015,674.730751412,249.045748677
+YLDs (Years Lived with Disability),Canada,Male,20 to 24,Chronic obstructive pulmonary disease,Percent,2017,0.00235111691584,0.00381938033095,0.00116003320325
+YLDs (Years Lived with Disability),Canada,Female,20 to 24,Chronic obstructive pulmonary disease,Percent,2017,0.0017661965408,0.00305183313293,0.000633851517961
+YLDs (Years Lived with Disability),Canada,Both,20 to 24,Chronic obstructive pulmonary disease,Percent,2017,0.0020236183702,0.00309678164144,0.00108729557511
+YLDs (Years Lived with Disability),Canada,Male,25 to 29,Chronic obstructive pulmonary disease,Number,2017,313.10965086,520.357439494,163.904886647
+YLDs (Years Lived with Disability),Canada,Female,25 to 29,Chronic obstructive pulmonary disease,Number,2017,323.657057295,533.179949104,149.499627048
+YLDs (Years Lived with Disability),Canada,Both,25 to 29,Chronic obstructive pulmonary disease,Number,2017,636.766708155,947.335590087,370.412030311
+YLDs (Years Lived with Disability),Canada,Male,25 to 29,Chronic obstructive pulmonary disease,Percent,2017,0.00294464180446,0.00488064927029,0.00144729605082
+YLDs (Years Lived with Disability),Canada,Female,25 to 29,Chronic obstructive pulmonary disease,Percent,2017,0.00232107905222,0.00389499598814,0.00106686928561
+YLDs (Years Lived with Disability),Canada,Both,25 to 29,Chronic obstructive pulmonary disease,Percent,2017,0.00258994346814,0.00405387651784,0.00152135570337
+YLDs (Years Lived with Disability),Canada,Male,30 to 34,Chronic obstructive pulmonary disease,Number,2017,440.000871734,685.817433784,244.015912591
+YLDs (Years Lived with Disability),Canada,Female,30 to 34,Chronic obstructive pulmonary disease,Number,2017,498.690323952,776.552887718,267.317123452
+YLDs (Years Lived with Disability),Canada,Both,30 to 34,Chronic obstructive pulmonary disease,Number,2017,938.691195685,1358.97563296,576.842287447
+YLDs (Years Lived with Disability),Canada,Male,30 to 34,Chronic obstructive pulmonary disease,Percent,2017,0.00383474463057,0.00596222274301,0.00221927103221
+YLDs (Years Lived with Disability),Canada,Female,30 to 34,Chronic obstructive pulmonary disease,Percent,2017,0.00327250777855,0.00538771618573,0.00167955977401
+YLDs (Years Lived with Disability),Canada,Both,30 to 34,Chronic obstructive pulmonary disease,Percent,2017,0.00351289935015,0.00525625742026,0.00219193255786
+YLDs (Years Lived with Disability),Canada,Male,35 to 39,Chronic obstructive pulmonary disease,Number,2017,675.715703255,998.626409014,422.597461025
+YLDs (Years Lived with Disability),Canada,Female,35 to 39,Chronic obstructive pulmonary disease,Number,2017,845.119790882,1239.74846988,512.586078687
+YLDs (Years Lived with Disability),Canada,Both,35 to 39,Chronic obstructive pulmonary disease,Number,2017,1520.83549414,2122.29139608,1032.59575014
+YLDs (Years Lived with Disability),Canada,Male,35 to 39,Chronic obstructive pulmonary disease,Percent,2017,0.00552295637034,0.00812808743695,0.00351072967958
+YLDs (Years Lived with Disability),Canada,Female,35 to 39,Chronic obstructive pulmonary disease,Percent,2017,0.0051650497756,0.0078022428435,0.00294097090759
+YLDs (Years Lived with Disability),Canada,Both,35 to 39,Chronic obstructive pulmonary disease,Percent,2017,0.00531756176625,0.007671156996,0.00357441576156
+YLDs (Years Lived with Disability),Canada,Male,40 to 44,Chronic obstructive pulmonary disease,Number,2017,1125.27344823,1611.79661191,733.718879394
+YLDs (Years Lived with Disability),Canada,Female,40 to 44,Chronic obstructive pulmonary disease,Number,2017,1455.4757305,2033.44365107,932.791921917
+YLDs (Years Lived with Disability),Canada,Both,40 to 44,Chronic obstructive pulmonary disease,Number,2017,2580.74917873,3576.81258826,1766.21056656
+YLDs (Years Lived with Disability),Canada,Male,40 to 44,Chronic obstructive pulmonary disease,Percent,2017,0.00878786732284,0.0125571779113,0.00577495873425
+YLDs (Years Lived with Disability),Canada,Female,40 to 44,Chronic obstructive pulmonary disease,Percent,2017,0.00845069050366,0.0123764094398,0.005056509281
+YLDs (Years Lived with Disability),Canada,Both,40 to 44,Chronic obstructive pulmonary disease,Percent,2017,0.00859263190328,0.0120300074461,0.00567983454359
+YLDs (Years Lived with Disability),Canada,Male,45 to 49,Chronic obstructive pulmonary disease,Number,2017,1980.73711095,2745.23142464,1348.73125305
+YLDs (Years Lived with Disability),Canada,Female,45 to 49,Chronic obstructive pulmonary disease,Number,2017,2488.79398532,3484.32260978,1677.71473271
+YLDs (Years Lived with Disability),Canada,Both,45 to 49,Chronic obstructive pulmonary disease,Number,2017,4469.53109627,6008.89620876,3231.34336149
+YLDs (Years Lived with Disability),Canada,Male,45 to 49,Chronic obstructive pulmonary disease,Percent,2017,0.0138991480667,0.0194846998638,0.00947170728035
+YLDs (Years Lived with Disability),Canada,Female,45 to 49,Chronic obstructive pulmonary disease,Percent,2017,0.0133739989252,0.0196181863933,0.00854879021271
+YLDs (Years Lived with Disability),Canada,Both,45 to 49,Chronic obstructive pulmonary disease,Percent,2017,0.0135999362303,0.0190824419051,0.00924978058171
+YLDs (Years Lived with Disability),Canada,Male,50 to 54,Chronic obstructive pulmonary disease,Number,2017,3498.60886013,4819.67488769,2474.71522455
+YLDs (Years Lived with Disability),Canada,Female,50 to 54,Chronic obstructive pulmonary disease,Number,2017,3958.06510781,5413.83145294,2805.59646629
+YLDs (Years Lived with Disability),Canada,Both,50 to 54,Chronic obstructive pulmonary disease,Number,2017,7456.67396794,9885.76506175,5521.3259277
+YLDs (Years Lived with Disability),Canada,Male,50 to 54,Chronic obstructive pulmonary disease,Percent,2017,0.0200813698342,0.0280450601186,0.0139591903249
+YLDs (Years Lived with Disability),Canada,Female,50 to 54,Chronic obstructive pulmonary disease,Percent,2017,0.0188926525605,0.0277142327427,0.0122351208502
+YLDs (Years Lived with Disability),Canada,Both,50 to 54,Chronic obstructive pulmonary disease,Percent,2017,0.0194312690406,0.026865413781,0.0135595290762
+YLDs (Years Lived with Disability),Canada,Male,55 to 59,Chronic obstructive pulmonary disease,Number,2017,5258.70836395,7072.52183668,3775.17661515
+YLDs (Years Lived with Disability),Canada,Female,55 to 59,Chronic obstructive pulmonary disease,Number,2017,5354.67764126,7240.96237955,3836.40298833
+YLDs (Years Lived with Disability),Canada,Both,55 to 59,Chronic obstructive pulmonary disease,Number,2017,10613.3860052,13748.3082985,8032.92747851
+YLDs (Years Lived with Disability),Canada,Male,55 to 59,Chronic obstructive pulmonary disease,Percent,2017,0.0269394665412,0.0361771743624,0.0187145309304
+YLDs (Years Lived with Disability),Canada,Female,55 to 59,Chronic obstructive pulmonary disease,Percent,2017,0.0239503128998,0.0348657212012,0.0155718425567
+YLDs (Years Lived with Disability),Canada,Both,55 to 59,Chronic obstructive pulmonary disease,Percent,2017,0.0253386527156,0.0346155959948,0.0180126816922
+YLDs (Years Lived with Disability),Canada,Male,60 to 64,Chronic obstructive pulmonary disease,Number,2017,6763.23615925,9003.22186279,5017.15176883
+YLDs (Years Lived with Disability),Canada,Female,60 to 64,Chronic obstructive pulmonary disease,Number,2017,6717.40077249,8924.07229396,4938.37813859
+YLDs (Years Lived with Disability),Canada,Both,60 to 64,Chronic obstructive pulmonary disease,Number,2017,13480.6369317,17226.8076708,10374.793045
+YLDs (Years Lived with Disability),Canada,Male,60 to 64,Chronic obstructive pulmonary disease,Percent,2017,0.0346410309492,0.0466052832642,0.0246414044431
+YLDs (Years Lived with Disability),Canada,Female,60 to 64,Chronic obstructive pulmonary disease,Percent,2017,0.0310311050472,0.0442369384639,0.0198484122786
+YLDs (Years Lived with Disability),Canada,Both,60 to 64,Chronic obstructive pulmonary disease,Percent,2017,0.0327361731525,0.044284823105,0.0229326352805
+YLDs (Years Lived with Disability),Canada,Male,65 to 69,Chronic obstructive pulmonary disease,Number,2017,8288.02915371,10905.4695778,6192.49253239
+YLDs (Years Lived with Disability),Canada,Female,65 to 69,Chronic obstructive pulmonary disease,Number,2017,8405.21932556,10818.3763662,6348.82762269
+YLDs (Years Lived with Disability),Canada,Both,65 to 69,Chronic obstructive pulmonary disease,Number,2017,16693.2484793,20794.8966989,12884.2461151
+YLDs (Years Lived with Disability),Canada,Male,65 to 69,Chronic obstructive pulmonary disease,Percent,2017,0.0444872134127,0.0597853428027,0.0314669585317
+YLDs (Years Lived with Disability),Canada,Female,65 to 69,Chronic obstructive pulmonary disease,Percent,2017,0.0411483132901,0.0585924731468,0.0270018306496
+YLDs (Years Lived with Disability),Canada,Both,65 to 69,Chronic obstructive pulmonary disease,Percent,2017,0.0427351310186,0.0577456230944,0.0302839412917
+YLDs (Years Lived with Disability),Canada,Male,70 to 74,Chronic obstructive pulmonary disease,Number,2017,8741.71836143,11231.2261332,6715.81532863
+YLDs (Years Lived with Disability),Canada,Female,70 to 74,Chronic obstructive pulmonary disease,Number,2017,8781.84998409,10966.2182889,6820.99645488
+YLDs (Years Lived with Disability),Canada,Both,70 to 74,Chronic obstructive pulmonary disease,Number,2017,17523.5683455,21280.088977,14202.9978494
+YLDs (Years Lived with Disability),Canada,Male,70 to 74,Chronic obstructive pulmonary disease,Percent,2017,0.0541065263345,0.0704903006337,0.0397088943053
+YLDs (Years Lived with Disability),Canada,Female,70 to 74,Chronic obstructive pulmonary disease,Percent,2017,0.0500139301639,0.0707903702472,0.0329710894208
+YLDs (Years Lived with Disability),Canada,Both,70 to 74,Chronic obstructive pulmonary disease,Percent,2017,0.0519723912931,0.069139853637,0.0383322977003
+YLDs (Years Lived with Disability),Canada,Male,75 to 79,Chronic obstructive pulmonary disease,Number,2017,7224.78045929,9268.14239861,5564.8531784
+YLDs (Years Lived with Disability),Canada,Female,75 to 79,Chronic obstructive pulmonary disease,Number,2017,7439.36631308,9316.54833996,5804.23238731
+YLDs (Years Lived with Disability),Canada,Both,75 to 79,Chronic obstructive pulmonary disease,Number,2017,14664.1467724,17854.7956567,11915.1630937
+YLDs (Years Lived with Disability),Canada,Male,75 to 79,Chronic obstructive pulmonary disease,Percent,2017,0.0592554154822,0.0783926294739,0.0435300663958
+YLDs (Years Lived with Disability),Canada,Female,75 to 79,Chronic obstructive pulmonary disease,Percent,2017,0.0536162911236,0.0750342594227,0.0350145379402
+YLDs (Years Lived with Disability),Canada,Both,75 to 79,Chronic obstructive pulmonary disease,Percent,2017,0.0562503967246,0.0745004632794,0.0408708133692
+YLDs (Years Lived with Disability),Canada,Male,80 plus,Chronic obstructive pulmonary disease,Number,2017,9534.04836361,11999.1009074,7389.9674116
+YLDs (Years Lived with Disability),Canada,Female,80 plus,Chronic obstructive pulmonary disease,Number,2017,12634.6550177,15797.025335,9692.80420422
+YLDs (Years Lived with Disability),Canada,Both,80 plus,Chronic obstructive pulmonary disease,Number,2017,22168.7033813,26814.0038372,18162.9929285
+YLDs (Years Lived with Disability),Canada,Male,80 plus,Chronic obstructive pulmonary disease,Percent,2017,0.051951942538,0.0678583148846,0.0384248285156
+YLDs (Years Lived with Disability),Canada,Female,80 plus,Chronic obstructive pulmonary disease,Percent,2017,0.0452332858298,0.0638396492933,0.029242284849
+YLDs (Years Lived with Disability),Canada,Both,80 plus,Chronic obstructive pulmonary disease,Percent,2017,0.0478892773248,0.0644206805678,0.0339581822415
+YLDs (Years Lived with Disability),Canada,Male,1 to 4,Asthma,Number,2017,3754.62657079,5982.66157253,2076.72106355
+YLDs (Years Lived with Disability),Canada,Female,1 to 4,Asthma,Number,2017,1823.13135652,3036.90962427,946.11030254
+YLDs (Years Lived with Disability),Canada,Both,1 to 4,Asthma,Number,2017,5577.75792731,8897.96292417,3119.56097678
+YLDs (Years Lived with Disability),Canada,Male,1 to 4,Asthma,Percent,2017,0.143321903336,0.208201472291,0.0945956327989
+YLDs (Years Lived with Disability),Canada,Female,1 to 4,Asthma,Percent,2017,0.0818882571378,0.124759261305,0.0487020444239
+YLDs (Years Lived with Disability),Canada,Both,1 to 4,Asthma,Percent,2017,0.115087978379,0.166540733397,0.0743109302281
+YLDs (Years Lived with Disability),Canada,Male,5 to 9,Asthma,Number,2017,5106.43375844,8222.58497197,2930.71015948
+YLDs (Years Lived with Disability),Canada,Female,5 to 9,Asthma,Number,2017,2739.36266363,4495.7268934,1502.99417903
+YLDs (Years Lived with Disability),Canada,Both,5 to 9,Asthma,Number,2017,7845.79642207,12705.9397343,4396.70901046
+YLDs (Years Lived with Disability),Canada,Male,5 to 9,Asthma,Percent,2017,0.133314264047,0.193019758596,0.086629860697
+YLDs (Years Lived with Disability),Canada,Female,5 to 9,Asthma,Percent,2017,0.0807028568943,0.120691944002,0.0491848626864
+YLDs (Years Lived with Disability),Canada,Both,5 to 9,Asthma,Percent,2017,0.108474169007,0.159808122563,0.0704289434771
+YLDs (Years Lived with Disability),Canada,Male,10 to 14,Asthma,Number,2017,3018.43144926,4721.38585951,1747.25325827
+YLDs (Years Lived with Disability),Canada,Female,10 to 14,Asthma,Number,2017,1978.85648618,3122.64567137,1102.65625943
+YLDs (Years Lived with Disability),Canada,Both,10 to 14,Asthma,Number,2017,4997.28793544,7770.48414242,2831.16049238
+YLDs (Years Lived with Disability),Canada,Male,10 to 14,Asthma,Percent,2017,0.0626639467331,0.0874964531449,0.0415742193204
+YLDs (Years Lived with Disability),Canada,Female,10 to 14,Asthma,Percent,2017,0.0369849758925,0.0524149085288,0.0240031348549
+YLDs (Years Lived with Disability),Canada,Both,10 to 14,Asthma,Percent,2017,0.04913786837,0.0691544873275,0.0326177514365
+YLDs (Years Lived with Disability),Canada,Male,15 to 19,Asthma,Number,2017,1696.80109963,2724.52989377,978.11319394
+YLDs (Years Lived with Disability),Canada,Female,15 to 19,Asthma,Number,2017,1817.82742176,2853.68513486,1044.56307448
+YLDs (Years Lived with Disability),Canada,Both,15 to 19,Asthma,Number,2017,3514.62852139,5464.55478698,1983.17472466
+YLDs (Years Lived with Disability),Canada,Male,15 to 19,Asthma,Percent,2017,0.0213185184962,0.0314941070455,0.0136818165937
+YLDs (Years Lived with Disability),Canada,Female,15 to 19,Asthma,Percent,2017,0.0184130370384,0.0264373472859,0.0119247293645
+YLDs (Years Lived with Disability),Canada,Both,15 to 19,Asthma,Percent,2017,0.0197036307847,0.0282922540409,0.0128819899426
+YLDs (Years Lived with Disability),Canada,Male,20 to 24,Asthma,Number,2017,1284.42215982,2026.34954704,735.926866606
+YLDs (Years Lived with Disability),Canada,Female,20 to 24,Asthma,Number,2017,1866.27257331,2901.54025918,1106.94189539
+YLDs (Years Lived with Disability),Canada,Both,20 to 24,Asthma,Number,2017,3150.69473313,4895.75966904,1893.4315599
+YLDs (Years Lived with Disability),Canada,Male,20 to 24,Asthma,Percent,2017,0.012933326927,0.0191160267884,0.00810507699983
+YLDs (Years Lived with Disability),Canada,Female,20 to 24,Asthma,Percent,2017,0.0148081842458,0.02142910147,0.00958178388598
+YLDs (Years Lived with Disability),Canada,Both,20 to 24,Asthma,Percent,2017,0.0139790439156,0.0202495939633,0.00929429766718
+YLDs (Years Lived with Disability),Canada,Male,25 to 29,Asthma,Number,2017,1239.44241878,1941.70606521,707.960375264
+YLDs (Years Lived with Disability),Canada,Female,25 to 29,Asthma,Number,2017,2030.82337318,3201.89596478,1191.77552742
+YLDs (Years Lived with Disability),Canada,Both,25 to 29,Asthma,Number,2017,3270.26579196,5039.70809968,1928.22179817
+YLDs (Years Lived with Disability),Canada,Male,25 to 29,Asthma,Percent,2017,0.0115203215485,0.0165458568752,0.00758854211035
+YLDs (Years Lived with Disability),Canada,Female,25 to 29,Asthma,Percent,2017,0.0143257866247,0.0203335425814,0.00960037464104
+YLDs (Years Lived with Disability),Canada,Both,25 to 29,Asthma,Percent,2017,0.0131129578454,0.0184522297433,0.0085859514278
+YLDs (Years Lived with Disability),Canada,Male,30 to 34,Asthma,Number,2017,1348.37087056,2086.30144202,824.349741304
+YLDs (Years Lived with Disability),Canada,Female,30 to 34,Asthma,Number,2017,2249.70563943,3589.11653893,1392.60655869
+YLDs (Years Lived with Disability),Canada,Both,30 to 34,Asthma,Number,2017,3598.07650999,5658.5593918,2250.81523361
+YLDs (Years Lived with Disability),Canada,Male,30 to 34,Asthma,Percent,2017,0.0116245257961,0.0163361368268,0.00777692223044
+YLDs (Years Lived with Disability),Canada,Female,30 to 34,Asthma,Percent,2017,0.0145043946824,0.0203781937617,0.00985757049732
+YLDs (Years Lived with Disability),Canada,Both,30 to 34,Asthma,Percent,2017,0.013270482074,0.0185574819788,0.00908808584397
+YLDs (Years Lived with Disability),Canada,Male,35 to 39,Asthma,Number,2017,1371.6626227,2161.19578033,835.246849738
+YLDs (Years Lived with Disability),Canada,Female,35 to 39,Asthma,Number,2017,2336.73195437,3620.72100815,1440.40137168
+YLDs (Years Lived with Disability),Canada,Both,35 to 39,Asthma,Number,2017,3708.39457707,5786.2499543,2318.44477877
+YLDs (Years Lived with Disability),Canada,Male,35 to 39,Asthma,Percent,2017,0.0110720613755,0.0155930361789,0.00732933315465
+YLDs (Years Lived with Disability),Canada,Female,35 to 39,Asthma,Percent,2017,0.0140293906435,0.0196309445122,0.0095482162115
+YLDs (Years Lived with Disability),Canada,Both,35 to 39,Asthma,Percent,2017,0.0127658915244,0.0175947505598,0.0088500496413
+YLDs (Years Lived with Disability),Canada,Male,40 to 44,Asthma,Number,2017,1317.03221833,2083.37791412,806.456533528
+YLDs (Years Lived with Disability),Canada,Female,40 to 44,Asthma,Number,2017,2300.57368429,3566.62520115,1436.11475486
+YLDs (Years Lived with Disability),Canada,Both,40 to 44,Asthma,Number,2017,3617.60590262,5534.58582574,2247.28214045
+YLDs (Years Lived with Disability),Canada,Male,40 to 44,Asthma,Percent,2017,0.0101475028157,0.0146687717838,0.00687915578909
+YLDs (Years Lived with Disability),Canada,Female,40 to 44,Asthma,Percent,2017,0.0131235012703,0.0181774077741,0.00915106414237
+YLDs (Years Lived with Disability),Canada,Both,40 to 44,Asthma,Percent,2017,0.0118560928116,0.0165289023778,0.00839467762384
+YLDs (Years Lived with Disability),Canada,Male,45 to 49,Asthma,Number,2017,1384.59630193,2119.90133194,862.742045538
+YLDs (Years Lived with Disability),Canada,Female,45 to 49,Asthma,Number,2017,2472.47686893,3686.5257094,1564.38966232
+YLDs (Years Lived with Disability),Canada,Both,45 to 49,Asthma,Number,2017,3857.07317086,5796.49398159,2454.29884708
+YLDs (Years Lived with Disability),Canada,Male,45 to 49,Asthma,Percent,2017,0.00959122220225,0.0131557141969,0.00665109094068
+YLDs (Years Lived with Disability),Canada,Female,45 to 49,Asthma,Percent,2017,0.0130411127303,0.01790488853,0.00927528560247
+YLDs (Years Lived with Disability),Canada,Both,45 to 49,Asthma,Percent,2017,0.0115481698698,0.0156272066259,0.00821949789396
+YLDs (Years Lived with Disability),Canada,Male,50 to 54,Asthma,Number,2017,1627.30828197,2446.0029133,1006.12605858
+YLDs (Years Lived with Disability),Canada,Female,50 to 54,Asthma,Number,2017,2934.11355629,4304.92883039,1860.70717677
+YLDs (Years Lived with Disability),Canada,Both,50 to 54,Asthma,Number,2017,4561.42183826,6721.19598363,2897.55177998
+YLDs (Years Lived with Disability),Canada,Male,50 to 54,Asthma,Percent,2017,0.0092252263049,0.0125927374537,0.00639106290491
+YLDs (Years Lived with Disability),Canada,Female,50 to 54,Asthma,Percent,2017,0.0137393845776,0.018537439317,0.00972912567011
+YLDs (Years Lived with Disability),Canada,Both,50 to 54,Asthma,Percent,2017,0.0116957471695,0.0157144697112,0.00835501350048
+YLDs (Years Lived with Disability),Canada,Male,55 to 59,Asthma,Number,2017,1785.16487656,2653.99840637,1115.05493833
+YLDs (Years Lived with Disability),Canada,Female,55 to 59,Asthma,Number,2017,3192.65449527,4713.02900537,2037.01665819
+YLDs (Years Lived with Disability),Canada,Both,55 to 59,Asthma,Number,2017,4977.81937183,7244.22805289,3170.21983919
+YLDs (Years Lived with Disability),Canada,Male,55 to 59,Asthma,Percent,2017,0.00903298961428,0.0122104305768,0.00644050620363
+YLDs (Years Lived with Disability),Canada,Female,55 to 59,Asthma,Percent,2017,0.0139966991088,0.0187077385748,0.00998916578171
+YLDs (Years Lived with Disability),Canada,Both,55 to 59,Asthma,Percent,2017,0.0116904230357,0.0156305225383,0.00842702759847
+YLDs (Years Lived with Disability),Canada,Male,60 to 64,Asthma,Number,2017,1757.91818817,2694.15406597,1088.43157757
+YLDs (Years Lived with Disability),Canada,Female,60 to 64,Asthma,Number,2017,3061.74291599,4619.07206413,1926.33283184
+YLDs (Years Lived with Disability),Canada,Both,60 to 64,Asthma,Number,2017,4819.66110416,7282.53205201,3096.48200498
+YLDs (Years Lived with Disability),Canada,Male,60 to 64,Asthma,Percent,2017,0.00888770658016,0.0122635462438,0.00612775155123
+YLDs (Years Lived with Disability),Canada,Female,60 to 64,Asthma,Percent,2017,0.013857107255,0.0189946921173,0.0095547354027
+YLDs (Years Lived with Disability),Canada,Both,60 to 64,Asthma,Percent,2017,0.0115081867619,0.0156790611046,0.00821130095767
+YLDs (Years Lived with Disability),Canada,Male,65 to 69,Asthma,Number,2017,1653.66074185,2560.11112348,1047.12761622
+YLDs (Years Lived with Disability),Canada,Female,65 to 69,Asthma,Number,2017,2775.73414546,4128.1976754,1796.2980066
+YLDs (Years Lived with Disability),Canada,Both,65 to 69,Asthma,Number,2017,4429.39488731,6620.05740549,2864.92856548
+YLDs (Years Lived with Disability),Canada,Male,65 to 69,Asthma,Percent,2017,0.00875737046616,0.0119562318963,0.00616106322774
+YLDs (Years Lived with Disability),Canada,Female,65 to 69,Asthma,Percent,2017,0.0132921566132,0.0179765824878,0.00971066551864
+YLDs (Years Lived with Disability),Canada,Both,65 to 69,Asthma,Percent,2017,0.0111379121107,0.0150910207872,0.00809367673586
+YLDs (Years Lived with Disability),Canada,Male,70 to 74,Asthma,Number,2017,1383.21288488,2106.96821213,856.511703046
+YLDs (Years Lived with Disability),Canada,Female,70 to 74,Asthma,Number,2017,2238.06869178,3380.37128921,1425.31803378
+YLDs (Years Lived with Disability),Canada,Both,70 to 74,Asthma,Number,2017,3621.28157667,5440.65532661,2302.80378535
+YLDs (Years Lived with Disability),Canada,Male,70 to 74,Asthma,Percent,2017,0.00844433942334,0.0116411494709,0.00586553185487
+YLDs (Years Lived with Disability),Canada,Female,70 to 74,Asthma,Percent,2017,0.0124701173899,0.0172088900112,0.00885861779313
+YLDs (Years Lived with Disability),Canada,Both,70 to 74,Asthma,Percent,2017,0.0105483819392,0.0143283860144,0.00745659416114
+YLDs (Years Lived with Disability),Canada,Male,75 to 79,Asthma,Number,2017,931.948132062,1405.40789618,585.442921516
+YLDs (Years Lived with Disability),Canada,Female,75 to 79,Asthma,Number,2017,1501.77442366,2290.93374564,947.980046769
+YLDs (Years Lived with Disability),Canada,Both,75 to 79,Asthma,Number,2017,2433.72255572,3642.85208794,1546.70742586
+YLDs (Years Lived with Disability),Canada,Male,75 to 79,Asthma,Percent,2017,0.00753951034804,0.0106610707327,0.00529687153919
+YLDs (Years Lived with Disability),Canada,Female,75 to 79,Asthma,Percent,2017,0.0105830861074,0.0145819675688,0.00758750124941
+YLDs (Years Lived with Disability),Canada,Both,75 to 79,Asthma,Percent,2017,0.00916522572261,0.0126128372772,0.00670828389567
+YLDs (Years Lived with Disability),Canada,Male,80 plus,Asthma,Number,2017,1047.99008204,1541.96040781,685.227248153
+YLDs (Years Lived with Disability),Canada,Female,80 plus,Asthma,Number,2017,1933.29715811,2862.55962128,1250.28412469
+YLDs (Years Lived with Disability),Canada,Both,80 plus,Asthma,Number,2017,2981.28724015,4401.7453647,1944.29937089
+YLDs (Years Lived with Disability),Canada,Male,80 plus,Asthma,Percent,2017,0.00563207213006,0.00750983095392,0.00413865653491
+YLDs (Years Lived with Disability),Canada,Female,80 plus,Asthma,Percent,2017,0.00676523479226,0.00906706436422,0.00501820670145
+YLDs (Years Lived with Disability),Canada,Both,80 plus,Asthma,Percent,2017,0.0063179778679,0.00833694135746,0.00469125764541
+YLDs (Years Lived with Disability),Canada,Male,1 to 4,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,0.0804648721834,0.137954931383,0.0407227668516
+YLDs (Years Lived with Disability),Canada,Female,1 to 4,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,0.0916477521398,0.15606199506,0.046365556797
+YLDs (Years Lived with Disability),Canada,Both,1 to 4,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,0.172112624323,0.29295864595,0.0866336739042
+YLDs (Years Lived with Disability),Canada,Male,1 to 4,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,3.11511035147e-06,5.07530196575e-06,1.57708170668e-06
+YLDs (Years Lived with Disability),Canada,Female,1 to 4,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,4.17407821761e-06,7.1567617228e-06,2.02568727253e-06
+YLDs (Years Lived with Disability),Canada,Both,1 to 4,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,3.60000445397e-06,6.02150405302e-06,1.7961118673e-06
+YLDs (Years Lived with Disability),Canada,Male,5 to 9,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,0.17209316931,0.32180187882,0.0788167480993
+YLDs (Years Lived with Disability),Canada,Female,5 to 9,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,0.211873314866,0.392393250885,0.0986597229815
+YLDs (Years Lived with Disability),Canada,Both,5 to 9,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,0.383966484176,0.706600538935,0.177491045401
+YLDs (Years Lived with Disability),Canada,Male,5 to 9,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,4.55085415003e-06,8.69539609814e-06,2.09037739105e-06
+YLDs (Years Lived with Disability),Canada,Female,5 to 9,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,6.31316965034e-06,1.16110026512e-05,2.97841769726e-06
+YLDs (Years Lived with Disability),Canada,Both,5 to 9,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,5.37253241942e-06,9.928273071e-06,2.48878148319e-06
+YLDs (Years Lived with Disability),Canada,Male,10 to 14,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,0.573392710331,1.02734426965,0.25348728215
+YLDs (Years Lived with Disability),Canada,Female,10 to 14,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,0.750955122173,1.34206078921,0.352024100978
+YLDs (Years Lived with Disability),Canada,Both,10 to 14,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,1.3243478325,2.3485336453,0.602104031999
+YLDs (Years Lived with Disability),Canada,Male,10 to 14,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,1.19314719557e-05,2.10947986458e-05,5.90027712137e-06
+YLDs (Years Lived with Disability),Canada,Female,10 to 14,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,1.40433497486e-05,2.41385854129e-05,7.17018006457e-06
+YLDs (Years Lived with Disability),Canada,Both,10 to 14,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,1.30378719264e-05,2.24116456872e-05,6.59544774264e-06
+YLDs (Years Lived with Disability),Canada,Male,15 to 19,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,2.99715365506,5.16013987119,1.63645405354
+YLDs (Years Lived with Disability),Canada,Female,15 to 19,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,3.81568786363,6.52965790578,2.11208423689
+YLDs (Years Lived with Disability),Canada,Both,15 to 19,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,6.81284151869,11.5420981808,3.81652655173
+YLDs (Years Lived with Disability),Canada,Male,15 to 19,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,3.76419360404e-05,5.82826276195e-05,2.29194187584e-05
+YLDs (Years Lived with Disability),Canada,Female,15 to 19,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,3.86381565502e-05,5.93213168277e-05,2.37777855036e-05
+YLDs (Years Lived with Disability),Canada,Both,15 to 19,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,3.81808819894e-05,5.91600746525e-05,2.3261370018e-05
+YLDs (Years Lived with Disability),Canada,Male,20 to 24,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,12.1574422107,19.9354076641,7.2165734374
+YLDs (Years Lived with Disability),Canada,Female,20 to 24,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,14.2836820471,23.1110908642,8.51931963413
+YLDs (Years Lived with Disability),Canada,Both,20 to 24,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,26.4411242578,43.2139044522,15.7437815077
+YLDs (Years Lived with Disability),Canada,Male,20 to 24,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.000122422756058,0.000182677652617,8.10671660782e-05
+YLDs (Years Lived with Disability),Canada,Female,20 to 24,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.00011332070878,0.000168046451048,7.49206606886e-05
+YLDs (Years Lived with Disability),Canada,Both,20 to 24,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.000117301136146,0.000174475422895,7.78202163101e-05
+YLDs (Years Lived with Disability),Canada,Male,25 to 29,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,29.3137531969,44.3917880173,17.919744609
+YLDs (Years Lived with Disability),Canada,Female,25 to 29,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,32.7478868521,50.4267697244,19.9295337707
+YLDs (Years Lived with Disability),Canada,Both,25 to 29,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,62.061640049,94.7634974117,38.0709933012
+YLDs (Years Lived with Disability),Canada,Male,25 to 29,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.000272440841945,0.000380650858626,0.000192298796699
+YLDs (Years Lived with Disability),Canada,Female,25 to 29,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.00023096876217,0.000318213548788,0.000163760645561
+YLDs (Years Lived with Disability),Canada,Both,25 to 29,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.000248815653142,0.000336799412417,0.000176220908692
+YLDs (Years Lived with Disability),Canada,Male,30 to 34,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,55.5581642691,82.6282439388,34.0335012484
+YLDs (Years Lived with Disability),Canada,Female,30 to 34,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,60.0101741916,90.7370176297,36.8539723456
+YLDs (Years Lived with Disability),Canada,Both,30 to 34,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,115.568338461,172.546388609,70.6515194978
+YLDs (Years Lived with Disability),Canada,Male,30 to 34,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.000479278112949,0.000667872170976,0.00033312450465
+YLDs (Years Lived with Disability),Canada,Female,30 to 34,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.00038692369862,0.000531641735264,0.00027190208938
+YLDs (Years Lived with Disability),Canada,Both,30 to 34,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.000426356269317,0.000582251885251,0.000301217233866
+YLDs (Years Lived with Disability),Canada,Male,35 to 39,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,82.0910669725,187.020656611,20.5805771448
+YLDs (Years Lived with Disability),Canada,Female,35 to 39,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,94.5154524952,163.92129312,48.0829644772
+YLDs (Years Lived with Disability),Canada,Both,35 to 39,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,176.606519468,317.154718707,85.3134883767
+YLDs (Years Lived with Disability),Canada,Male,35 to 39,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.000662874733663,0.00140430214322,0.000171411327043
+YLDs (Years Lived with Disability),Canada,Female,35 to 39,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.000567553817883,0.000910995404206,0.000313188344346
+YLDs (Years Lived with Disability),Canada,Both,35 to 39,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.000608074301918,0.00100415286548,0.000316563508252
+YLDs (Years Lived with Disability),Canada,Male,40 to 44,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,112.621476306,213.613870017,40.5639377987
+YLDs (Years Lived with Disability),Canada,Female,40 to 44,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,133.810858577,257.626966979,53.8179567247
+YLDs (Years Lived with Disability),Canada,Both,40 to 44,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,246.432334882,434.165333445,119.909762637
+YLDs (Years Lived with Disability),Canada,Male,40 to 44,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.000867788190458,0.00157785635359,0.000317055099028
+YLDs (Years Lived with Disability),Canada,Female,40 to 44,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.000764527838827,0.00137413597413,0.000314846713019
+YLDs (Years Lived with Disability),Canada,Both,40 to 44,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.000808315511681,0.00126674259813,0.000421839719513
+YLDs (Years Lived with Disability),Canada,Male,45 to 49,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,153.967199802,288.568303065,52.1727930506
+YLDs (Years Lived with Disability),Canada,Female,45 to 49,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,196.386307948,343.408424088,88.8119543094
+YLDs (Years Lived with Disability),Canada,Both,45 to 49,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,350.35350775,587.728745664,182.946879121
+YLDs (Years Lived with Disability),Canada,Male,45 to 49,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.00106680259174,0.001884155177,0.000418022559408
+YLDs (Years Lived with Disability),Canada,Female,45 to 49,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.00103675093507,0.00169650327272,0.000512172407943
+YLDs (Years Lived with Disability),Canada,Both,45 to 49,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.00104954174444,0.00166387368898,0.000596275505563
+YLDs (Years Lived with Disability),Canada,Male,50 to 54,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,221.234467787,391.726180285,107.336810699
+YLDs (Years Lived with Disability),Canada,Female,50 to 54,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,284.665007949,475.978551435,147.391041208
+YLDs (Years Lived with Disability),Canada,Both,50 to 54,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,505.899475736,818.49308272,287.746070809
+YLDs (Years Lived with Disability),Canada,Male,50 to 54,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.00125629840427,0.00213616003335,0.000648519807119
+YLDs (Years Lived with Disability),Canada,Female,50 to 54,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.00133618672931,0.00210196268194,0.000748478508012
+YLDs (Years Lived with Disability),Canada,Both,50 to 54,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.00129981805337,0.00197341199548,0.000823728876029
+YLDs (Years Lived with Disability),Canada,Male,55 to 59,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,292.224342864,460.45945372,163.813295282
+YLDs (Years Lived with Disability),Canada,Female,55 to 59,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,374.304076841,624.064732778,202.47410506
+YLDs (Years Lived with Disability),Canada,Both,55 to 59,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,666.528419705,1050.65100651,398.659952448
+YLDs (Years Lived with Disability),Canada,Male,55 to 59,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.00148216247719,0.00219308576135,0.000901447477799
+YLDs (Years Lived with Disability),Canada,Female,55 to 59,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.00164109395363,0.00246984734441,0.000995776605373
+YLDs (Years Lived with Disability),Canada,Both,55 to 59,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.00156705906699,0.00221516668671,0.00103649236645
+YLDs (Years Lived with Disability),Canada,Male,60 to 64,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,341.086026712,563.834080558,180.895740656
+YLDs (Years Lived with Disability),Canada,Female,60 to 64,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,412.494033104,686.928153968,217.531535277
+YLDs (Years Lived with Disability),Canada,Both,60 to 64,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,753.580059816,1158.95987112,444.984288205
+YLDs (Years Lived with Disability),Canada,Male,60 to 64,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.00172911137769,0.00273754960305,0.000999647817135
+YLDs (Years Lived with Disability),Canada,Female,60 to 64,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.0018675517753,0.00281846301159,0.00107132014527
+YLDs (Years Lived with Disability),Canada,Both,60 to 64,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.00180195428023,0.00259195723109,0.00117356857247
+YLDs (Years Lived with Disability),Canada,Male,65 to 69,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,402.176493662,665.807032659,220.762629173
+YLDs (Years Lived with Disability),Canada,Female,65 to 69,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,456.316610823,742.056679275,256.059464502
+YLDs (Years Lived with Disability),Canada,Both,65 to 69,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,858.493104485,1375.99608306,503.222990607
+YLDs (Years Lived with Disability),Canada,Male,65 to 69,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.0021379292145,0.00334340526355,0.00124396395562
+YLDs (Years Lived with Disability),Canada,Female,65 to 69,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.00219238993421,0.00328227101637,0.00128159816206
+YLDs (Years Lived with Disability),Canada,Both,65 to 69,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.00216629436512,0.00319078550404,0.00133132563883
+YLDs (Years Lived with Disability),Canada,Male,70 to 74,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,433.553336732,691.180901929,242.048706275
+YLDs (Years Lived with Disability),Canada,Female,70 to 74,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,451.420914684,723.416428354,255.218517007
+YLDs (Years Lived with Disability),Canada,Both,70 to 74,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,884.974251416,1358.50638184,535.385544603
+YLDs (Years Lived with Disability),Canada,Male,70 to 74,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.00265876705805,0.00399755320551,0.00159222655745
+YLDs (Years Lived with Disability),Canada,Female,70 to 74,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.00252598227374,0.00384428154227,0.00150118565083
+YLDs (Years Lived with Disability),Canada,Both,70 to 74,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.00258912217427,0.00363255649908,0.00172459864504
+YLDs (Years Lived with Disability),Canada,Male,75 to 79,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,403.030491691,624.440529708,232.023838461
+YLDs (Years Lived with Disability),Canada,Female,75 to 79,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,394.472983737,609.037734121,221.591923616
+YLDs (Years Lived with Disability),Canada,Both,75 to 79,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,797.503475428,1200.25406075,495.973683549
+YLDs (Years Lived with Disability),Canada,Male,75 to 79,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.00327628675175,0.00484117671656,0.00207905441582
+YLDs (Years Lived with Disability),Canada,Female,75 to 79,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.00279459889576,0.0042800312938,0.00171408183818
+YLDs (Years Lived with Disability),Canada,Both,75 to 79,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.00301857320351,0.00438223736909,0.00200373585899
+YLDs (Years Lived with Disability),Canada,Male,80 plus,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,619.239685539,918.87569268,402.552860275
+YLDs (Years Lived with Disability),Canada,Female,80 plus,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,711.859034259,1046.20535233,463.013621822
+YLDs (Years Lived with Disability),Canada,Both,80 plus,Interstitial lung disease and pulmonary sarcoidosis,Number,2017,1331.0987198,1897.16002093,881.10420307
+YLDs (Years Lived with Disability),Canada,Male,80 plus,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.00334169655162,0.00465999560631,0.00231648315738
+YLDs (Years Lived with Disability),Canada,Female,80 plus,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.00250183637255,0.00348214171947,0.00178128506251
+YLDs (Years Lived with Disability),Canada,Both,80 plus,Interstitial lung disease and pulmonary sarcoidosis,Percent,2017,0.00283297745217,0.003853468564,0.00204353861435
+YLDs (Years Lived with Disability),Canada,Male,1 to 4,"Endocrine, metabolic, blood, and immune disorders",Number,2017,124.736038945,219.773292031,63.7217349921
+YLDs (Years Lived with Disability),Canada,Female,1 to 4,"Endocrine, metabolic, blood, and immune disorders",Number,2017,94.1215182271,157.09986694,47.1165642142
+YLDs (Years Lived with Disability),Canada,Both,1 to 4,"Endocrine, metabolic, blood, and immune disorders",Number,2017,218.857557172,353.987026386,125.055326959
+YLDs (Years Lived with Disability),Canada,Male,1 to 4,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00477222545081,0.00742290272938,0.00266734501048
+YLDs (Years Lived with Disability),Canada,Female,1 to 4,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00423427760573,0.00658788714357,0.00225753450747
+YLDs (Years Lived with Disability),Canada,Both,1 to 4,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00452544153641,0.00663122761472,0.00292922825842
+YLDs (Years Lived with Disability),Canada,Male,5 to 9,"Endocrine, metabolic, blood, and immune disorders",Number,2017,113.731762524,307.504984053,36.9664590492
+YLDs (Years Lived with Disability),Canada,Female,5 to 9,"Endocrine, metabolic, blood, and immune disorders",Number,2017,97.0860334658,247.08194547,29.4776397322
+YLDs (Years Lived with Disability),Canada,Both,5 to 9,"Endocrine, metabolic, blood, and immune disorders",Number,2017,210.81779599,505.487311643,83.2944938172
+YLDs (Years Lived with Disability),Canada,Male,5 to 9,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00289162825889,0.00672218590911,0.00114844911531
+YLDs (Years Lived with Disability),Canada,Female,5 to 9,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00278862051831,0.00603694206783,0.00103781733803
+YLDs (Years Lived with Disability),Canada,Both,5 to 9,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00286782224073,0.00589520757413,0.0013298383573
+YLDs (Years Lived with Disability),Canada,Male,10 to 14,"Endocrine, metabolic, blood, and immune disorders",Number,2017,62.7586180774,161.128565466,22.2603370565
+YLDs (Years Lived with Disability),Canada,Female,10 to 14,"Endocrine, metabolic, blood, and immune disorders",Number,2017,83.2779198053,185.793673495,32.4605909714
+YLDs (Years Lived with Disability),Canada,Both,10 to 14,"Endocrine, metabolic, blood, and immune disorders",Number,2017,146.036537883,285.049603099,67.4686913723
+YLDs (Years Lived with Disability),Canada,Male,10 to 14,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00129243877036,0.00309471606761,0.000502347591824
+YLDs (Years Lived with Disability),Canada,Female,10 to 14,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.001549704495,0.00337817603009,0.00063133437015
+YLDs (Years Lived with Disability),Canada,Both,10 to 14,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00143182839972,0.00260458538089,0.000736180756625
+YLDs (Years Lived with Disability),Canada,Male,15 to 19,"Endocrine, metabolic, blood, and immune disorders",Number,2017,54.1576983783,102.976738856,20.7879616222
+YLDs (Years Lived with Disability),Canada,Female,15 to 19,"Endocrine, metabolic, blood, and immune disorders",Number,2017,246.56632874,645.168496624,70.764803261
+YLDs (Years Lived with Disability),Canada,Both,15 to 19,"Endocrine, metabolic, blood, and immune disorders",Number,2017,300.724027118,711.452095731,112.130974708
+YLDs (Years Lived with Disability),Canada,Male,15 to 19,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.000679954631687,0.00125868480333,0.000294559630997
+YLDs (Years Lived with Disability),Canada,Female,15 to 19,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00248971435399,0.00620740142919,0.000783960553353
+YLDs (Years Lived with Disability),Canada,Both,15 to 19,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00168675261258,0.00383284318334,0.000681384466726
+YLDs (Years Lived with Disability),Canada,Male,20 to 24,"Endocrine, metabolic, blood, and immune disorders",Number,2017,70.0110844349,129.419202318,28.9074888017
+YLDs (Years Lived with Disability),Canada,Female,20 to 24,"Endocrine, metabolic, blood, and immune disorders",Number,2017,204.199139091,375.837798284,98.6719290211
+YLDs (Years Lived with Disability),Canada,Both,20 to 24,"Endocrine, metabolic, blood, and immune disorders",Number,2017,274.210223526,469.635064675,147.216810676
+YLDs (Years Lived with Disability),Canada,Male,20 to 24,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.000703651947186,0.00127614647276,0.000315803710289
+YLDs (Years Lived with Disability),Canada,Female,20 to 24,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00162334891995,0.00276952601329,0.000843306729249
+YLDs (Years Lived with Disability),Canada,Both,20 to 24,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00121837837359,0.00196590272983,0.000708693845643
+YLDs (Years Lived with Disability),Canada,Male,25 to 29,"Endocrine, metabolic, blood, and immune disorders",Number,2017,70.9115213158,128.527748041,30.5642352953
+YLDs (Years Lived with Disability),Canada,Female,25 to 29,"Endocrine, metabolic, blood, and immune disorders",Number,2017,391.377554554,673.821487765,204.464994114
+YLDs (Years Lived with Disability),Canada,Both,25 to 29,"Endocrine, metabolic, blood, and immune disorders",Number,2017,462.28907587,757.092732377,248.842194615
+YLDs (Years Lived with Disability),Canada,Male,25 to 29,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.000657164212846,0.00111009757577,0.000315954185523
+YLDs (Years Lived with Disability),Canada,Female,25 to 29,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00276126568819,0.00439214750895,0.00159211850048
+YLDs (Years Lived with Disability),Canada,Both,25 to 29,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00185334877822,0.00284792390377,0.00113730042728
+YLDs (Years Lived with Disability),Canada,Male,30 to 34,"Endocrine, metabolic, blood, and immune disorders",Number,2017,76.6758429189,144.458629433,29.0004753615
+YLDs (Years Lived with Disability),Canada,Female,30 to 34,"Endocrine, metabolic, blood, and immune disorders",Number,2017,443.258627271,732.848093753,244.048025446
+YLDs (Years Lived with Disability),Canada,Both,30 to 34,"Endocrine, metabolic, blood, and immune disorders",Number,2017,519.93447019,845.496296288,290.912733434
+YLDs (Years Lived with Disability),Canada,Male,30 to 34,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.000660457570219,0.00116706201513,0.000277270210391
+YLDs (Years Lived with Disability),Canada,Female,30 to 34,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00285465613171,0.00441639180608,0.00174744406305
+YLDs (Years Lived with Disability),Canada,Both,30 to 34,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00191607571341,0.00287778643003,0.00118772642769
+YLDs (Years Lived with Disability),Canada,Male,35 to 39,"Endocrine, metabolic, blood, and immune disorders",Number,2017,97.7574724915,176.466393185,39.8422615996
+YLDs (Years Lived with Disability),Canada,Female,35 to 39,"Endocrine, metabolic, blood, and immune disorders",Number,2017,432.405711565,751.688042999,226.551154627
+YLDs (Years Lived with Disability),Canada,Both,35 to 39,"Endocrine, metabolic, blood, and immune disorders",Number,2017,530.163184056,889.710237772,281.861341836
+YLDs (Years Lived with Disability),Canada,Male,35 to 39,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00078765136783,0.00133077961922,0.000358704952483
+YLDs (Years Lived with Disability),Canada,Female,35 to 39,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00259575879498,0.00413812155411,0.00156390427058
+YLDs (Years Lived with Disability),Canada,Both,35 to 39,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00182482820162,0.00278414164732,0.00115419853932
+YLDs (Years Lived with Disability),Canada,Male,40 to 44,"Endocrine, metabolic, blood, and immune disorders",Number,2017,125.87162294,220.362636699,59.5350763187
+YLDs (Years Lived with Disability),Canada,Female,40 to 44,"Endocrine, metabolic, blood, and immune disorders",Number,2017,428.66564582,818.32290645,209.240677056
+YLDs (Years Lived with Disability),Canada,Both,40 to 44,"Endocrine, metabolic, blood, and immune disorders",Number,2017,554.53726876,974.805932007,293.564359412
+YLDs (Years Lived with Disability),Canada,Male,40 to 44,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.000970263465815,0.0015769635196,0.000485418065366
+YLDs (Years Lived with Disability),Canada,Female,40 to 44,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00243685147136,0.00435053739656,0.00132730457677
+YLDs (Years Lived with Disability),Canada,Both,40 to 44,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00181420498629,0.00301191965814,0.00106490424132
+YLDs (Years Lived with Disability),Canada,Male,45 to 49,"Endocrine, metabolic, blood, and immune disorders",Number,2017,199.705603547,521.077117649,91.1552141518
+YLDs (Years Lived with Disability),Canada,Female,45 to 49,"Endocrine, metabolic, blood, and immune disorders",Number,2017,519.862369872,1086.23377374,242.680848918
+YLDs (Years Lived with Disability),Canada,Both,45 to 49,"Endocrine, metabolic, blood, and immune disorders",Number,2017,719.567973419,1430.03025015,353.851431591
+YLDs (Years Lived with Disability),Canada,Male,45 to 49,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00139562900585,0.00373272915574,0.000684866460647
+YLDs (Years Lived with Disability),Canada,Female,45 to 49,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.0027260882322,0.00512057981148,0.00143752687097
+YLDs (Years Lived with Disability),Canada,Both,45 to 49,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.0021538961566,0.00402962655467,0.00123739477142
+YLDs (Years Lived with Disability),Canada,Male,50 to 54,"Endocrine, metabolic, blood, and immune disorders",Number,2017,266.726804907,434.373886261,144.846487701
+YLDs (Years Lived with Disability),Canada,Female,50 to 54,"Endocrine, metabolic, blood, and immune disorders",Number,2017,498.971564637,826.652816747,278.118191589
+YLDs (Years Lived with Disability),Canada,Both,50 to 54,"Endocrine, metabolic, blood, and immune disorders",Number,2017,765.698369544,1216.80458209,460.872422795
+YLDs (Years Lived with Disability),Canada,Male,50 to 54,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00151194923868,0.00225929674971,0.000906999416588
+YLDs (Years Lived with Disability),Canada,Female,50 to 54,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00233418825226,0.00353586273772,0.00143629214754
+YLDs (Years Lived with Disability),Canada,Both,50 to 54,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.0019624003088,0.00275199202711,0.00131919814453
+YLDs (Years Lived with Disability),Canada,Male,55 to 59,"Endocrine, metabolic, blood, and immune disorders",Number,2017,403.549481154,704.272116622,217.103502477
+YLDs (Years Lived with Disability),Canada,Female,55 to 59,"Endocrine, metabolic, blood, and immune disorders",Number,2017,637.146534078,1032.74236455,361.238065067
+YLDs (Years Lived with Disability),Canada,Both,55 to 59,"Endocrine, metabolic, blood, and immune disorders",Number,2017,1040.69601523,1613.14368345,626.285472047
+YLDs (Years Lived with Disability),Canada,Male,55 to 59,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00203753983935,0.00321369374498,0.00124377864192
+YLDs (Years Lived with Disability),Canada,Female,55 to 59,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00279299532095,0.0042324861351,0.00175677140976
+YLDs (Years Lived with Disability),Canada,Both,55 to 59,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00244307989792,0.00344716875102,0.00163462303448
+YLDs (Years Lived with Disability),Canada,Male,60 to 64,"Endocrine, metabolic, blood, and immune disorders",Number,2017,458.245378037,701.658548843,272.086697759
+YLDs (Years Lived with Disability),Canada,Female,60 to 64,"Endocrine, metabolic, blood, and immune disorders",Number,2017,643.066374901,983.652131272,391.582650832
+YLDs (Years Lived with Disability),Canada,Both,60 to 64,"Endocrine, metabolic, blood, and immune disorders",Number,2017,1101.31175294,1617.15658083,697.191413992
+YLDs (Years Lived with Disability),Canada,Male,60 to 64,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00231371060057,0.00322458532631,0.00151885570036
+YLDs (Years Lived with Disability),Canada,Female,60 to 64,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00290430155669,0.00406321694362,0.00199103297649
+YLDs (Years Lived with Disability),Canada,Both,60 to 64,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00262532299627,0.00357292811833,0.00187081120464
+YLDs (Years Lived with Disability),Canada,Male,65 to 69,"Endocrine, metabolic, blood, and immune disorders",Number,2017,630.089902416,1225.67405226,347.155807226
+YLDs (Years Lived with Disability),Canada,Female,65 to 69,"Endocrine, metabolic, blood, and immune disorders",Number,2017,752.585993861,1148.66249759,464.632123828
+YLDs (Years Lived with Disability),Canada,Both,65 to 69,"Endocrine, metabolic, blood, and immune disorders",Number,2017,1382.67589628,2187.31068107,853.85915473
+YLDs (Years Lived with Disability),Canada,Male,65 to 69,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00333577751388,0.00609905463583,0.0020844895987
+YLDs (Years Lived with Disability),Canada,Female,65 to 69,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00360102978536,0.00491524947903,0.00247590996576
+YLDs (Years Lived with Disability),Canada,Both,65 to 69,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00347613611931,0.00506520101027,0.00242140297463
+YLDs (Years Lived with Disability),Canada,Male,70 to 74,"Endocrine, metabolic, blood, and immune disorders",Number,2017,564.12687195,906.043361799,334.473854757
+YLDs (Years Lived with Disability),Canada,Female,70 to 74,"Endocrine, metabolic, blood, and immune disorders",Number,2017,793.30349385,1194.0630503,496.753844366
+YLDs (Years Lived with Disability),Canada,Both,70 to 74,"Endocrine, metabolic, blood, and immune disorders",Number,2017,1357.4303658,2044.6082162,855.959191936
+YLDs (Years Lived with Disability),Canada,Male,70 to 74,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00343889076882,0.00508282779496,0.00236933808026
+YLDs (Years Lived with Disability),Canada,Female,70 to 74,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00441654362518,0.0059981522616,0.00313751407601
+YLDs (Years Lived with Disability),Canada,Both,70 to 74,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00395051773802,0.00537356091083,0.00295384976609
+YLDs (Years Lived with Disability),Canada,Male,75 to 79,"Endocrine, metabolic, blood, and immune disorders",Number,2017,497.136925718,768.75901206,303.225991527
+YLDs (Years Lived with Disability),Canada,Female,75 to 79,"Endocrine, metabolic, blood, and immune disorders",Number,2017,697.844108906,1039.57648699,447.707372833
+YLDs (Years Lived with Disability),Canada,Both,75 to 79,"Endocrine, metabolic, blood, and immune disorders",Number,2017,1194.98103462,1765.89910505,771.388813702
+YLDs (Years Lived with Disability),Canada,Male,75 to 79,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.004016382639,0.00565800375408,0.00285594599975
+YLDs (Years Lived with Disability),Canada,Female,75 to 79,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00491888347478,0.00650374576075,0.00357613332519
+YLDs (Years Lived with Disability),Canada,Both,75 to 79,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00449873749504,0.00595893269247,0.00332962430593
+YLDs (Years Lived with Disability),Canada,Male,80 plus,"Endocrine, metabolic, blood, and immune disorders",Number,2017,875.415685306,1271.48353951,576.328088874
+YLDs (Years Lived with Disability),Canada,Female,80 plus,"Endocrine, metabolic, blood, and immune disorders",Number,2017,1692.20167614,2382.03236055,1119.26707525
+YLDs (Years Lived with Disability),Canada,Both,80 plus,"Endocrine, metabolic, blood, and immune disorders",Number,2017,2567.61736144,3591.76197215,1704.61282374
+YLDs (Years Lived with Disability),Canada,Male,80 plus,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00470527777145,0.00620316194394,0.00358522902014
+YLDs (Years Lived with Disability),Canada,Female,80 plus,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.0059220666067,0.00739229109244,0.00458172635979
+YLDs (Years Lived with Disability),Canada,Both,80 plus,"Endocrine, metabolic, blood, and immune disorders",Percent,2017,0.00544215982579,0.00672755418378,0.00429368134193
+YLDs (Years Lived with Disability),Canada,Male,1 to 4,Diabetes mellitus,Number,2017,9.08405764333,21.8570678065,0.00226521710645
+YLDs (Years Lived with Disability),Canada,Female,1 to 4,Diabetes mellitus,Number,2017,7.36772741014,18.5973115244,0.00146163281648
+YLDs (Years Lived with Disability),Canada,Both,1 to 4,Diabetes mellitus,Number,2017,16.4517850535,36.5409420607,4.64114930095
+YLDs (Years Lived with Disability),Canada,Male,1 to 4,Diabetes mellitus,Percent,2017,0.000347407144657,0.000797104034939,8.68725891134e-08
+YLDs (Years Lived with Disability),Canada,Female,1 to 4,Diabetes mellitus,Percent,2017,0.0003287165136,0.000776875587986,6.18810295855e-08
+YLDs (Years Lived with Disability),Canada,Both,1 to 4,Diabetes mellitus,Percent,2017,0.000338740906782,0.000688816386232,9.7725931203e-05
+YLDs (Years Lived with Disability),Canada,Male,5 to 9,Diabetes mellitus,Number,2017,87.1598416335,153.416324583,40.5654958795
+YLDs (Years Lived with Disability),Canada,Female,5 to 9,Diabetes mellitus,Number,2017,72.6820047296,128.491446133,36.3539349566
+YLDs (Years Lived with Disability),Canada,Both,5 to 9,Diabetes mellitus,Number,2017,159.841846363,277.174709237,82.8983323515
+YLDs (Years Lived with Disability),Canada,Male,5 to 9,Diabetes mellitus,Percent,2017,0.00228000022944,0.00371374142784,0.00116211924348
+YLDs (Years Lived with Disability),Canada,Female,5 to 9,Diabetes mellitus,Percent,2017,0.00214188422737,0.00353295236038,0.0011927972619
+YLDs (Years Lived with Disability),Canada,Both,5 to 9,Diabetes mellitus,Percent,2017,0.00221185516774,0.00343795462803,0.00126613323666
+YLDs (Years Lived with Disability),Canada,Male,10 to 14,Diabetes mellitus,Number,2017,222.546641694,357.409125,124.752816333
+YLDs (Years Lived with Disability),Canada,Female,10 to 14,Diabetes mellitus,Number,2017,191.290610722,311.75532062,104.420017445
+YLDs (Years Lived with Disability),Canada,Both,10 to 14,Diabetes mellitus,Number,2017,413.837252416,648.426770453,244.296152309
+YLDs (Years Lived with Disability),Canada,Male,10 to 14,Diabetes mellitus,Percent,2017,0.00461963354276,0.00668296911257,0.00293548960983
+YLDs (Years Lived with Disability),Canada,Female,10 to 14,Diabetes mellitus,Percent,2017,0.00357636095614,0.00528040724024,0.00221822390747
+YLDs (Years Lived with Disability),Canada,Both,10 to 14,Diabetes mellitus,Percent,2017,0.0040689469099,0.00575132937339,0.00265328393044
+YLDs (Years Lived with Disability),Canada,Male,15 to 19,Diabetes mellitus,Number,2017,391.770382169,602.489376422,225.599974482
+YLDs (Years Lived with Disability),Canada,Female,15 to 19,Diabetes mellitus,Number,2017,339.478579548,525.280441685,199.295758736
+YLDs (Years Lived with Disability),Canada,Both,15 to 19,Diabetes mellitus,Number,2017,731.248961717,1124.25047446,431.56554054
+YLDs (Years Lived with Disability),Canada,Male,15 to 19,Diabetes mellitus,Percent,2017,0.00492493974173,0.00705099748409,0.0031612944503
+YLDs (Years Lived with Disability),Canada,Female,15 to 19,Diabetes mellitus,Percent,2017,0.00344404727204,0.00497088094673,0.00218623384361
+YLDs (Years Lived with Disability),Canada,Both,15 to 19,Diabetes mellitus,Percent,2017,0.00410406854724,0.00570327573153,0.00271347775071
+YLDs (Years Lived with Disability),Canada,Male,20 to 24,Diabetes mellitus,Number,2017,655.649573501,986.496436299,378.845943945
+YLDs (Years Lived with Disability),Canada,Female,20 to 24,Diabetes mellitus,Number,2017,578.942129902,901.151171851,341.054831357
+YLDs (Years Lived with Disability),Canada,Both,20 to 24,Diabetes mellitus,Number,2017,1234.5917034,1843.43218032,738.612318711
+YLDs (Years Lived with Disability),Canada,Male,20 to 24,Diabetes mellitus,Percent,2017,0.00660116127576,0.00891227806254,0.00436818128988
+YLDs (Years Lived with Disability),Canada,Female,20 to 24,Diabetes mellitus,Percent,2017,0.00459346000859,0.00641456624328,0.00304413962826
+YLDs (Years Lived with Disability),Canada,Both,20 to 24,Diabetes mellitus,Percent,2017,0.0054768686064,0.00733812338764,0.00369591697867
+YLDs (Years Lived with Disability),Canada,Male,25 to 29,Diabetes mellitus,Number,2017,1093.68736739,1655.75815105,661.042274938
+YLDs (Years Lived with Disability),Canada,Female,25 to 29,Diabetes mellitus,Number,2017,1008.18008791,1511.92900976,599.866764379
+YLDs (Years Lived with Disability),Canada,Both,25 to 29,Diabetes mellitus,Number,2017,2101.8674553,3146.3307123,1292.52732821
+YLDs (Years Lived with Disability),Canada,Male,25 to 29,Diabetes mellitus,Percent,2017,0.0101485143287,0.0133743894089,0.00720125832168
+YLDs (Years Lived with Disability),Canada,Female,25 to 29,Diabetes mellitus,Percent,2017,0.00710904682178,0.00949599361641,0.0050810012563
+YLDs (Years Lived with Disability),Canada,Both,25 to 29,Diabetes mellitus,Percent,2017,0.00841941606328,0.0109889657153,0.00610758754564
+YLDs (Years Lived with Disability),Canada,Male,30 to 34,Diabetes mellitus,Number,2017,1886.11068809,2798.24266991,1176.79674422
+YLDs (Years Lived with Disability),Canada,Female,30 to 34,Diabetes mellitus,Number,2017,1704.33174147,2540.67173421,1075.99766941
+YLDs (Years Lived with Disability),Canada,Both,30 to 34,Diabetes mellitus,Number,2017,3590.44242955,5292.82120223,2249.96750045
+YLDs (Years Lived with Disability),Canada,Male,30 to 34,Diabetes mellitus,Percent,2017,0.0162410871103,0.0215005619351,0.0120306566189
+YLDs (Years Lived with Disability),Canada,Female,30 to 34,Diabetes mellitus,Percent,2017,0.0109778038041,0.01436283831,0.00812501767044
+YLDs (Years Lived with Disability),Canada,Both,30 to 34,Diabetes mellitus,Percent,2017,0.0132277475625,0.0172082902697,0.00990730252357
+YLDs (Years Lived with Disability),Canada,Male,35 to 39,Diabetes mellitus,Number,2017,3192.6912747,4720.29415285,1995.01326169
+YLDs (Years Lived with Disability),Canada,Female,35 to 39,Diabetes mellitus,Number,2017,2650.35139104,3858.4409214,1727.45739093
+YLDs (Years Lived with Disability),Canada,Both,35 to 39,Diabetes mellitus,Number,2017,5843.04266574,8395.8461609,3792.94989536
+YLDs (Years Lived with Disability),Canada,Male,35 to 39,Diabetes mellitus,Percent,2017,0.025757775122,0.0326422455259,0.0195497448297
+YLDs (Years Lived with Disability),Canada,Female,35 to 39,Diabetes mellitus,Percent,2017,0.0159248545422,0.0200799544673,0.0121352146859
+YLDs (Years Lived with Disability),Canada,Both,35 to 39,Diabetes mellitus,Percent,2017,0.0201171856548,0.0252622385483,0.0156070614588
+YLDs (Years Lived with Disability),Canada,Male,40 to 44,Diabetes mellitus,Number,2017,5005.63124333,7395.81566207,3241.60742943
+YLDs (Years Lived with Disability),Canada,Female,40 to 44,Diabetes mellitus,Number,2017,3819.13109108,5550.9342784,2431.3248243
+YLDs (Years Lived with Disability),Canada,Both,40 to 44,Diabetes mellitus,Number,2017,8824.76233442,12824.8504808,5771.91772466
+YLDs (Years Lived with Disability),Canada,Male,40 to 44,Diabetes mellitus,Percent,2017,0.0385648013244,0.0493979341868,0.0296046907348
+YLDs (Years Lived with Disability),Canada,Female,40 to 44,Diabetes mellitus,Percent,2017,0.021782106489,0.0276000513398,0.0163908061158
+YLDs (Years Lived with Disability),Canada,Both,40 to 44,Diabetes mellitus,Percent,2017,0.02891708947,0.0363174277041,0.0222954391526
+YLDs (Years Lived with Disability),Canada,Male,45 to 49,Diabetes mellitus,Number,2017,7979.1768588,11784.2214541,5072.36222208
+YLDs (Years Lived with Disability),Canada,Female,45 to 49,Diabetes mellitus,Number,2017,5710.05308317,8346.37318061,3632.4537834
+YLDs (Years Lived with Disability),Canada,Both,45 to 49,Diabetes mellitus,Number,2017,13689.229942,19824.4786527,8798.60057392
+YLDs (Years Lived with Disability),Canada,Male,45 to 49,Diabetes mellitus,Percent,2017,0.0551931384064,0.0709827317676,0.0416799561154
+YLDs (Years Lived with Disability),Canada,Female,45 to 49,Diabetes mellitus,Percent,2017,0.0300894342192,0.0387141831208,0.0229721335573
+YLDs (Years Lived with Disability),Canada,Both,45 to 49,Diabetes mellitus,Percent,2017,0.0409359207077,0.0517663055202,0.0315377118465
+YLDs (Years Lived with Disability),Canada,Male,50 to 54,Diabetes mellitus,Number,2017,12691.949534,18267.3705639,8019.94071065
+YLDs (Years Lived with Disability),Canada,Female,50 to 54,Diabetes mellitus,Number,2017,8760.94051264,13025.9294893,5639.06270015
+YLDs (Years Lived with Disability),Canada,Both,50 to 54,Diabetes mellitus,Number,2017,21452.8900466,31398.9798761,13850.702726
+YLDs (Years Lived with Disability),Canada,Male,50 to 54,Diabetes mellitus,Percent,2017,0.0717541656595,0.0911049457087,0.0555511210055
+YLDs (Years Lived with Disability),Canada,Female,50 to 54,Diabetes mellitus,Percent,2017,0.040962400938,0.0529842160264,0.0312217625485
+YLDs (Years Lived with Disability),Canada,Both,50 to 54,Diabetes mellitus,Percent,2017,0.0548922584264,0.0701674206788,0.0425262265201
+YLDs (Years Lived with Disability),Canada,Male,55 to 59,Diabetes mellitus,Number,2017,17579.9739226,25050.3009762,11758.3025668
+YLDs (Years Lived with Disability),Canada,Female,55 to 59,Diabetes mellitus,Number,2017,12004.0028211,17294.6617266,7795.94112071
+YLDs (Years Lived with Disability),Canada,Both,55 to 59,Diabetes mellitus,Number,2017,29583.9767437,41905.9804534,19579.0571243
+YLDs (Years Lived with Disability),Canada,Male,55 to 59,Diabetes mellitus,Percent,2017,0.088688475133,0.107451660045,0.0711500511099
+YLDs (Years Lived with Disability),Canada,Female,55 to 59,Diabetes mellitus,Percent,2017,0.0525377230827,0.0653274194784,0.0414752533166
+YLDs (Years Lived with Disability),Canada,Both,55 to 59,Diabetes mellitus,Percent,2017,0.0693201266438,0.0835286766346,0.0562417280847
+YLDs (Years Lived with Disability),Canada,Male,60 to 64,Diabetes mellitus,Number,2017,20215.4976215,29051.8379089,13389.517065
+YLDs (Years Lived with Disability),Canada,Female,60 to 64,Diabetes mellitus,Number,2017,14012.347443,20193.1910189,9243.34692684
+YLDs (Years Lived with Disability),Canada,Both,60 to 64,Diabetes mellitus,Number,2017,34227.8450645,49133.8359761,23371.3405627
+YLDs (Years Lived with Disability),Canada,Male,60 to 64,Diabetes mellitus,Percent,2017,0.101877390359,0.122737012105,0.0821015245472
+YLDs (Years Lived with Disability),Canada,Female,60 to 64,Diabetes mellitus,Percent,2017,0.0632860504193,0.0773347063043,0.0505377605636
+YLDs (Years Lived with Disability),Canada,Both,60 to 64,Diabetes mellitus,Percent,2017,0.0815147893259,0.0980186180003,0.0658815038112
+YLDs (Years Lived with Disability),Canada,Male,65 to 69,Diabetes mellitus,Number,2017,19731.4420986,28734.5977433,13119.4098627
+YLDs (Years Lived with Disability),Canada,Female,65 to 69,Diabetes mellitus,Number,2017,13967.5421353,19956.9791179,9278.2620252
+YLDs (Years Lived with Disability),Canada,Both,65 to 69,Diabetes mellitus,Number,2017,33698.9842339,48609.2066116,22572.0371861
+YLDs (Years Lived with Disability),Canada,Male,65 to 69,Diabetes mellitus,Percent,2017,0.104190604931,0.127026278457,0.084114975202
+YLDs (Years Lived with Disability),Canada,Female,65 to 69,Diabetes mellitus,Percent,2017,0.0667645270991,0.0826233806455,0.052695749265
+YLDs (Years Lived with Disability),Canada,Both,65 to 69,Diabetes mellitus,Percent,2017,0.0845377164137,0.103618539694,0.0684781741765
+YLDs (Years Lived with Disability),Canada,Male,70 to 74,Diabetes mellitus,Number,2017,16489.6246848,23603.9540352,10949.0521553
+YLDs (Years Lived with Disability),Canada,Female,70 to 74,Diabetes mellitus,Number,2017,12095.7655151,17261.179837,8044.83839866
+YLDs (Years Lived with Disability),Canada,Both,70 to 74,Diabetes mellitus,Number,2017,28585.3901999,41110.0492752,19317.4690271
+YLDs (Years Lived with Disability),Canada,Male,70 to 74,Diabetes mellitus,Percent,2017,0.100500660219,0.121548850294,0.0817361243182
+YLDs (Years Lived with Disability),Canada,Female,70 to 74,Diabetes mellitus,Percent,2017,0.067290651756,0.0830507824178,0.0538403236354
+YLDs (Years Lived with Disability),Canada,Both,70 to 74,Diabetes mellitus,Percent,2017,0.0831357406308,0.10103100113,0.067890635945
+YLDs (Years Lived with Disability),Canada,Male,75 to 79,Diabetes mellitus,Number,2017,11609.2838378,16270.6471624,7775.12639255
+YLDs (Years Lived with Disability),Canada,Female,75 to 79,Diabetes mellitus,Number,2017,9130.11680424,13022.4634737,6236.79300722
+YLDs (Years Lived with Disability),Canada,Both,75 to 79,Diabetes mellitus,Number,2017,20739.400642,29439.9723703,14176.7789761
+YLDs (Years Lived with Disability),Canada,Male,75 to 79,Diabetes mellitus,Percent,2017,0.0938218587066,0.112280909864,0.0769238070312
+YLDs (Years Lived with Disability),Canada,Female,75 to 79,Diabetes mellitus,Percent,2017,0.0643113781396,0.077858188755,0.0523531472652
+YLDs (Years Lived with Disability),Canada,Both,75 to 79,Diabetes mellitus,Percent,2017,0.0780495504125,0.0930462071786,0.0643597737502
+YLDs (Years Lived with Disability),Canada,Male,80 plus,Diabetes mellitus,Number,2017,14097.6303817,19646.6935007,9372.04323166
+YLDs (Years Lived with Disability),Canada,Female,80 plus,Diabetes mellitus,Number,2017,14227.1736545,19949.1822403,9807.32266823
+YLDs (Years Lived with Disability),Canada,Both,80 plus,Diabetes mellitus,Number,2017,28324.8040361,39685.5052281,19335.6145274
+YLDs (Years Lived with Disability),Canada,Male,80 plus,Diabetes mellitus,Percent,2017,0.0756781576888,0.0903634419923,0.0622381718709
+YLDs (Years Lived with Disability),Canada,Female,80 plus,Diabetes mellitus,Percent,2017,0.0497617311946,0.0603228208322,0.0409827500688
+YLDs (Years Lived with Disability),Canada,Both,80 plus,Diabetes mellitus,Percent,2017,0.0599852325487,0.0712936100584,0.0496383328553

@@ -1,0 +1,62 @@
+﻿"Life expectancy at various ages, by population group and sex, Canada" 1
+"Occasional"
+"Table: 13-10-0134-01 (formerly CANSIM 109-5401)"
+"Geography: Canada"
+
+"",,"Entire cohort",,
+"",,"Canada",,
+"","","1991 to 2006",,
+"Age","Sex","Life expectancy","Low 95% confidence interval, life expectancy","High 95% confidence interval, life expectancy"
+"",,"Years",,
+"At 25 years","Both sexes","55.2","55.2","55.3"
+,"Males","52.6","52.5","52.6"
+,"Females","57.9","57.9","57.9"
+"At 30 years","Both sexes","50.4","50.4","50.4"
+,"Males","47.8","47.8","47.8"
+,"Females","53.0","53.0","53.0"
+"At 35 years","Both sexes","45.6","45.6","45.6"
+,"Males","43.1","43.0","43.1"
+,"Females","48.1","48.1","48.2"
+"At 40 years","Both sexes","40.8","40.8","40.8"
+,"Males","38.3","38.3","38.4"
+,"Females","43.3","43.3","43.3"
+"At 45 years","Both sexes","36.1","36.1","36.1"
+,"Males","33.7","33.6","33.7"
+,"Females","38.5","38.5","38.6"
+"At 50 years","Both sexes","31.5","31.5","31.5"
+,"Males","29.1","29.0","29.1"
+,"Females","33.9","33.8","33.9"
+"At 55 years","Both sexes","27.0","27.0","27.0"
+,"Males","24.7","24.6","24.7"
+,"Females","29.3","29.3","29.4"
+"At 60 years","Both sexes","22.8","22.8","22.8"
+,"Males","20.5","20.5","20.5"
+,"Females","24.9","24.9","25.0"
+"At 65 years","Both sexes","18.8","18.8","18.8"
+,"Males","16.7","16.6","16.7"
+,"Females","20.8","20.7","20.8"
+"At 70 years","Both sexes","15.2","15.1","15.2"
+,"Males","13.2","13.2","13.3"
+,"Females","16.9","16.8","16.9"
+"At 75 years","Both sexes","11.9","11.9","11.9"
+,"Males","10.2","10.2","10.3"
+,"Females","13.2","13.2","13.3"
+"At 80 years","Both sexes","9.1","9.0","9.1"
+,"Males","7.7","7.7","7.7"
+,"Females","10.1","10.0","10.1"
+"At 85 years","Both sexes","6.8","6.7","6.8"
+,"Males","5.7","5.6","5.7"
+,"Females","7.4","7.4","7.4"
+"At 90 years","Both sexes","5.1","5.1","5.1"
+,"Males","4.3","4.2","4.3"
+,"Females","5.5","5.4","5.5"
+
+Symbol legend:
+
+Footnotes:
+1,"Sources: 1991 to 2006 Canadian census mortality and cancer follow-up study. Tjepkema M, Wilkins R. Remaining life expectancy at age 25 and probability of survival to age 75, by socioeconomic status and Aboriginal ancestry. Health Reports 2011; 22(4). Peters PA, Tjepkema M. The 1991-2011 Canadian census mortality and cancer follow-up study. Proceedings of the 2010 International Methodology Symposium, October 26-29, 2011. Ottawa: Statistics Canada, 2011. Wilkins R, Tjepkema M, Mustard C, Choinière R. The Canadian census mortality follow-up study, 1991 through 2001. Health Reports 2008; 19(3): 25-43."
+2,"At baseline (1991), cohort membership excluded residents of institutions."
+
+"How to cite: Statistics Canada. Table 13-10-0134-01 Life expectancy at various ages, by population group and sex, Canada"
+https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1310013401
+DOI:  https://doi.org/10.25318/1310013401-eng
