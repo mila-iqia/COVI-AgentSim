@@ -384,7 +384,7 @@ def total_dalys_sex_age(daly_data):
 def dalys_per_thousand_sex(daly_data):
     
     per_sex =  dalys_per_thousand_sex_age(daly_data) ### terrible implementation, just use dalys_per_thousand
-    return per_sex.mean()
+    return per_sex.sum(axis=0)
 
 def dalys_per_thousand_age(daly_data):
     
@@ -519,7 +519,7 @@ def multiple_seeds_metric(metric, data_dict):
     return {'mean': mean, 
             'std':  std,
             'std_err': std_err
-           }
+           }    
 
 def run(data, path, compare="app_adoption"):
     label2pkls = list()
