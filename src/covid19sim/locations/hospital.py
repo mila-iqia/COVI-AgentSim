@@ -72,7 +72,6 @@ class Hospital(Location):
     def n_covid_patients(self):
         count = 0
         for patient, until in self.patients.items():
-            print(patient.state[1] or patient.state[2])
             if self.env.timestamp < until and (patient.state[1] or patient.state[2]) and not patient.is_dead:
                 count += 1
         return count
