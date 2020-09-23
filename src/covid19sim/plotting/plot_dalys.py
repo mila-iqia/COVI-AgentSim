@@ -376,7 +376,7 @@ def total_metrics_sex(daly_data):
     dalys_sex.columns = columns
     
     return dalys_sex
-    
+
 def total_dalys_sex_age(daly_data):
     
     # sexes = ['male','female','other']
@@ -505,7 +505,7 @@ def multiple_seeds_get_data(intervention,l_e_path):
     human_monitor_dict = {}
     daly_data_dict = {}
     
-    for root, subdir, filenames in os.walk(os.path.join('output/results',intervention)):
+    for root, subdir, filenames in os.walk(os.path.join('../output/results',intervention)):
         for filename in [f for f in filenames if '.pkl' in f]:
             
             tracker_dict[filename] = load_tracker(os.path.join(root,filename))
@@ -572,6 +572,7 @@ def multiple_seeds_metric(metric, data_dict):
             'std_err': std_err
            }    
 
+# TODO: add plots and tables to run function
 def run(data, path, compare="app_adoption"):
     label2pkls = list()
     for method in data:
