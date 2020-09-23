@@ -98,13 +98,15 @@ def get_daly_data(demographics, human_monitor_data, life_expectancies):
                   days_in_ICU,
                   has_died,
                   days_with_symptoms,
-                  days_as_outpatient]).transpose()
+                  days_as_outpatient,
+                  was_infected]).transpose()
 
     daly_df.columns = ["days_in_hospital",
                       "days_in_ICU",
                       "has_died",
                       "days_symptoms_and_infection",
-                      "days_sick_not_in_hospital"
+                      "days_sick_not_in_hospital",
+                      "was_infected"
                       ]
     
     daly_df = pd.merge(pd.DataFrame(demographics).set_index('name'), daly_df, 
