@@ -332,7 +332,9 @@ def total_metrics_sex(daly_data):
         daly_data.loc[human, 'yld'] = yld('hospitalization', human, daly_data)
         daly_data.loc[human, 'DALYS'] = daly_data['yll'][human] + daly_data['yld'][human]
 
-    iterables = [['male', 'female', 'other'],
+    # iterables = [['male', 'female', 'other'],
+    #              ['total YLL','total YLD','total DALYS']]
+    iterables = [['male', 'female'],
                  ['total YLL','total YLD','total DALYS']]
     
     daly_dfs = {i:{} for i in iterables[0]}
@@ -377,7 +379,8 @@ def total_metrics_sex(daly_data):
 
 def dalys_per_thousand_sex_age(daly_data):
     
-    sexes = ['male','female','other']
+    # sexes = ['male','female','other']
+    sexes = ['male','female']
     daly_1000 = {}
     
     for sex in sexes:
@@ -392,14 +395,18 @@ def dalys_per_thousand_sex_age(daly_data):
     daly_1000_df.index = [str(i) + ' - ' + str(i+9) for i in range(0,111,10)]
     daly_1000_df.index.name = 'Age'
     daly_1000_df.rename(index={'110 - 119': '110+'})
+    # daly_1000_df.columns = pd.MultiIndex.from_product([['DALYs per thousand'],
+    #                                                    ['male','female','other']])
     daly_1000_df.columns = pd.MultiIndex.from_product([['DALYs per thousand'],
-                                                       ['male','female','other']])
+                                                       ['male','female']])
     
     return daly_1000_df
 
 def total_dalys_sex_age(daly_data):
     
-    sexes = ['male','female','other']
+    # sexes = ['male','female','other']
+    sexes = ['male','female']
+
     total_dalys_sex_age = {}
     
     for sex in sexes:
@@ -416,8 +423,10 @@ def total_dalys_sex_age(daly_data):
     total_daly_df.index = [str(i) + ' - ' + str(i+9) for i in range(0,111,10)]
     total_daly_df.index.name = 'Age'
     total_daly_df.rename(index={'110 - 119': '110+'})
+    # total_daly_df.columns = pd.MultiIndex.from_product([['Total DALYs'],
+    #                                                    ['male','female','other']])
     total_daly_df.columns = pd.MultiIndex.from_product([['Total DALYs'],
-                                                       ['male','female','other']])
+                                                       ['male','female']])
     
     return total_daly_df
 
