@@ -269,7 +269,7 @@ def plot_heatmap_of_advantages(data, labelmap):
                 annotation[row, col] = f"{advs[row, col]: 0.3f} $\pm$ {1.96 * stds[row, col]: 0.3f} {significance_95_str}"
 
     # plot
-    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(15, 10), dpi=100)
+    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(N*4, N*4), dpi=100)
     im = ax.imshow(advs, cmap='summer_r', norm=TwoSlopeNorm(advs[advs > 0].mean(), vmin=0, vmax=None), interpolation='none', alpha=0.5)
 
     # set positioning

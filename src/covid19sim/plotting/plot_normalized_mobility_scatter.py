@@ -392,36 +392,32 @@ def _extract_data(simulation_runs, method):
     columns = ['method', 'dir', 'mobility_factor', 'intervention_conf_name','app_based'] + METRICS
     return pd.DataFrame(all_data, columns=columns)
 
-def save_relevant_csv_files(results, uptake_rate, path):
+def save_relevant_csv_files(results, uptake_rate, extract_path, good_factors_path):
     """
     Saves csv files for the entire result to be viewed later.
 
     Args:
         results (pd.DataFrame): Dataframe with rows as methods and corresponding simulation metrics.
         uptake_rate (str): APP_UPTAKE for all the methods. Assumed to be same for all app-based methods.
-        path (str): path of the folder where results will be saved
+        extract_path (pathlib.Path): path of the file where extracted data will be saved
+        good_factors_path (pathlib.Path): path of the file where good mobility factors (as per R) will be saved
     """
     R_LOWER = 0.5
     R_UPPER = 1.5
 
-    folder_name = Path(path).resolve() / "normalized_mobility"
-    os.makedirs(str(folder_name), exist_ok=True)
-    adoption_rate = get_adoption_rate_label_from_app_uptake(uptake_rate)
-
     # full data
-    filename = str(folder_name / f"full_extracted_data_AR_{adoption_rate}.csv")
+    filename = str(extract_path)
     results.to_csv(filename )
     print(f"All extracted metrics for adoption rate: {adoption_rate}% saved at {filename}")
 
     # relevant mobility factors
     methods = results['method'].unique()
-    filename = str(folder_name / f"mobility_factor_vs_R_AR_{adoption_rate}.txt")
+    filename = str(good_factors_path)
     with open(filename, "w") as f:
         for method in methods:
             f.write(method)
             x = _get_mobility_factor_counts_for_reasonable_r(results, method, lower_R=R_LOWER, upper_R=R_UPPER)
             f.write(str(x))
-
     print(f"All relevant mobility factors for {R_LOWER} <= R <= {R_UPPER} at adoption rate: {adoption_rate}% saved at {filename}")
 
 def run(data, plot_path, compare=None, **kwargs):
@@ -438,23 +434,30 @@ def run(data, plot_path, compare=None, **kwargs):
         plot_path (str): path where to save plots
     """
     app_based_methods, other_methods, uptake_keys = split_methods_and_check_validity(data)
+    use_extracted_data = kwargs.get('use_extracted_data', False)
+
+
+    folder_name = Path(plot_path).resolve() / "normalized_mobility"
+    os.makedirs(str(folder_name), exist_ok=True)
 
     ## data preparation
-    no_app_df = pd.DataFrame([])
-    for method in other_methods:
-        key = list(data[method].keys())[0]
-        no_app_df = pd.concat([no_app_df, _extract_data(data[method][key], method)], axis='index', ignore_index=True)
-
     for uptake in uptake_keys:
-        extracted_data = {}
-        all_data = deepcopy(no_app_df)
-        for method in app_based_methods:
-            all_data = pd.concat([all_data, _extract_data(data[method][uptake], method)], axis='index', ignore_index=True)
-            pass
+        adoption_rate = get_adoption_rate_label_from_app_uptake(uptake)
+        extracted_data_filepath = folder_name / f"full_extracted_data_AR_{adoption_rate}.csv"
+        good_mobility_factor_filepath = folder_name / f"mobility_factor_vs_R_AR_{adoption_rate}.txt"
+        if use_extracted_data:
+            no_app_df = pd.DataFrame([])
+            for method in other_methods:
+                key = list(data[method].keys())[0]
+                no_app_df = pd.concat([no_app_df, _extract_data(data[method][key], method)], axis='index', ignore_index=True)
 
-        # all_data = pd.read_csv("/Users/mac/Desktop/Workspace/covid/simulator/src/covid19sim/evaluations_3000_init_0.002/normalized_mobility/plots/normalized_mobility/full_extracted_data_AR_60.csv")
-        save_relevant_csv_files(all_data, uptake, path=plot_path)
-        # 'false_quarantine', 'percentage_infected', 'fraction_quarantine', 'false_sr'
+            all_data = deepcopy(no_app_df)
+            for method in app_based_methods:
+                all_data = pd.concat([all_data, _extract_data(data[method][uptake], method)], axis='index', ignore_index=True)
+            save_relevant_csv_files(all_data, uptake, extract_path=extracted_data_filepath, good_factors_path=good_mobility_factor_filepath)
+        else:
+            all_data = pd.read_csv(str(extracted_data_filepath))
+
         for ymetric in ['r']:
             for xmetric in ['effective_contacts', 'healthy_contacts']:
                 for annotate_advantages in [False, True]:
