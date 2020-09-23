@@ -7,20 +7,20 @@ import math
 import colorsys
 import matplotlib
 import numpy as np
+import matplotlib.pyplot as plt
 from pathlib import Path
 from scipy.interpolate import interp1d
-
-import matplotlib.pyplot as plt
+from matplotlib.colors import TwoSlopeNorm
 
 # base colors for each method
 COLOR_MAP = {
     "bdt1": "mediumvioletred",
-    "post-lockdown-no-tracing": "#34495e",
+    "post-lockdown-no-tracing": "red",
     "bdt2": "darkorange",
     "heuristicv1": "royalblue",
-    "transformer": "orangered",
+    "transformer": "green",
     "oracle": "green",
-    "heuristicv4": "red"
+    "heuristicv4": "pink"
 }
 COLORS = ["#34495e",  "mediumvioletred", "orangered", "royalblue", "darkorange", "green", "red"]
 
@@ -233,6 +233,70 @@ def add_bells_and_whistles(ax, y_title=None, x_title=None, **kwargs):
         ax.legend(prop={"size":LEGENDSIZE}, loc=legend_loc)
 
     return ax
+
+def plot_heatmap_of_advantages(data, labelmap):
+    """
+    Plots heatmap of values in matrix with a diverging color scheme i.e. only positive values are colored.
+
+    Args:
+        data (pd.DataFrame): A dataframe with following columns - 'method1', 'method2', 'advantage', 'stddev', 'P(advantage > 0)'
+        labelmap (dict): a label (value) for each folder_name (key)
+
+    Returns:
+        (matplotlib.figure.Figure): a canvas with heatmap on it
+    """
+    ordered_ref_methods = data['method1'].value_counts().index.tolist()
+    ordered_comp_methods = data['method2'].value_counts().index.tolist()
+
+    assert len(ordered_ref_methods) == len(ordered_comp_methods), "# ref methods:{len(ordered_ref_methods)}, and #comp methods:{len(ordered_comp_methods)}. Expected same!"
+    N = len(ordered_comp_methods)
+
+    advs = -np.ones((N, N))
+    stds = -np.ones((N, N))
+    pvs = -np.ones((N, N))
+    annotation = np.ndarray((N, N), dtype="object")
+
+    # each column is a reference method i.e. we find the value of comparator at x for which reference R = 1
+    for col, method1 in enumerate(ordered_ref_methods):
+        for row, method2 in enumerate(ordered_comp_methods):
+            selector = data['method1'] == method1
+            selector &= data['method2'] == method2
+            if data[selector].shape[0] > 0:
+                advs[row, col] = data[selector]['advantage'].tolist()[0]
+                stds[row, col] = data[selector]['stddev'].tolist()[0]
+                pvs[row, col] = data[selector]['P(advantage > 0)'].tolist()[0]
+                significance_95_str = "$^*$" if pvs[row, col] > 0.95 else ""
+                annotation[row, col] = f"{advs[row, col]: 0.3f} $\pm$ {1.96 * stds[row, col]: 0.3f} {significance_95_str}"
+
+    # plot
+    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(15, 10), dpi=100)
+    im = ax.imshow(advs, cmap='summer_r', norm=TwoSlopeNorm(advs[advs > 0].mean(), vmin=0, vmax=None), interpolation='none', alpha=0.5)
+
+    # set positioning
+    ax.set(adjustable='box', aspect=1)
+
+    # xticks and labels
+    ax.set_yticks(np.arange(N))
+    ax.set_xticks(np.arange(N))
+    ax.set_yticklabels([labelmap[x] for x in ordered_comp_methods])
+    ax.set_xticklabels([labelmap[x] for x in ordered_ref_methods], rotation=45)
+
+    # tick size
+    for tick in ax.xaxis.get_major_ticks():
+        tick.label.set_fontsize(20)
+
+    for tick in ax.yaxis.get_major_ticks():
+        tick.label.set_fontsize(20)
+
+    cbar = fig.colorbar(im, ax=ax)
+
+    # annotation
+    for col in range(N):
+        for row in range(N):
+            text = ax.text(col, row, annotation[row, col], ha="center", va="center", color="black", size=15, fontweight="bold")
+
+    ax.set_title("Advantages of Tracing Methods", fontsize=25, y=1.01)
+    return fig
 
 def save_figure(figure, basedir, folder, filename, bbox_extra_artists=None):
     """
