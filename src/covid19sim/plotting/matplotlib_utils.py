@@ -245,6 +245,8 @@ def plot_heatmap_of_advantages(data, labelmap):
     Returns:
         (matplotlib.figure.Figure): a canvas with heatmap on it
     """
+    XY_TITLESIZE = 20
+
     ordered_ref_methods = data['method1'].value_counts().index.tolist()
     ordered_comp_methods = data['method2'].value_counts().index.tolist()
 
@@ -281,6 +283,10 @@ def plot_heatmap_of_advantages(data, labelmap):
     ax.set_yticklabels([labelmap[x] for x in ordered_comp_methods])
     ax.set_xticklabels([labelmap[x] for x in ordered_ref_methods], rotation=45)
 
+    # labels
+    ax.set_xlabel("Reference Method", fontsize=XY_TITLESIZE)
+    ax.set_ylabel("Comparator Method", fontsize=XY_TITLESIZE)
+
     # tick size
     for tick in ax.xaxis.get_major_ticks():
         tick.label.set_fontsize(20)
@@ -295,7 +301,7 @@ def plot_heatmap_of_advantages(data, labelmap):
         for row in range(N):
             text = ax.text(col, row, annotation[row, col], ha="center", va="center", color="black", size=15, fontweight="bold")
 
-    ax.set_title("Advantages of Tracing Methods", fontsize=25, y=1.01)
+    ax.set_title("Advantages ($\pm$ 2$\sigma$) of Tracing Methods (* 95% Significance level)", fontsize=25, y=1.01)
     return fig
 
 def save_figure(figure, basedir, folder, filename, bbox_extra_artists=None):

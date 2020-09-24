@@ -18,7 +18,7 @@ from covid19sim.plotting.extract_tracker_metrics import _daily_false_quarantine,
 from covid19sim.plotting.extract_tracker_metrics import _mean_effective_contacts, _mean_healthy_effective_contacts, _percentage_total_infected, _positivity_rate
 from covid19sim.plotting.matplotlib_utils import add_bells_and_whistles, save_figure, get_color, get_adoption_rate_label_from_app_uptake, get_intervention_label, \
                                 plot_mean_and_stderr_bands, get_base_intervention, get_labelmap, get_colormap, plot_heatmap_of_advantages
-# from covid19sim.plotting.curve_fitting import LinearFit, GPRFit
+from covid19sim.plotting.curve_fitting import LinearFit, GPRFit
 
 TITLESIZE = 25
 LABELPAD = 0.50
@@ -467,10 +467,11 @@ def run(data, plot_path, compare=None, **kwargs):
             assert extracted_data_filepath.exists(), f"{extracted_data_filepath} do not exist"
             all_data = pd.read_csv(str(extracted_data_filepath))
 
-        for ymetric in ['r']:
-            for xmetric in ['effective_contacts', 'healthy_contacts']:
-                for annotate_advantages in [False, True]:
-                    for plot_scatter in [False, True]:
-                        plot_and_save_mobility_scatter(all_data, uptake, xmetric=xmetric, path=plot_path, \
-                            ymetric=ymetric, plot_residuals=False, display_r_squared=False, \
-                            annotate_advantages=annotate_advantages, plot_scatter=plot_scatter, USE_GP=True)
+        for USE_GP in [False, True]:
+            for ymetric in ['r']:
+                for xmetric in ['effective_contacts', 'healthy_contacts']:
+                    for annotate_advantages in [False, True]:
+                        for plot_scatter in [False, True]:
+                            plot_and_save_mobility_scatter(all_data, uptake, xmetric=xmetric, path=plot_path, \
+                                ymetric=ymetric, plot_residuals=False, display_r_squared=False, \
+                                annotate_advantages=annotate_advantages, plot_scatter=plot_scatter, USE_GP=USE_GP)
