@@ -1,7 +1,6 @@
 import os
 import pickle
 import yaml
-import shutil
 import glob
 import tqdm
 import numpy as np
@@ -11,9 +10,9 @@ from matplotlib import pyplot as plt
 
 # Constants
 quebec_population = 8485000
-csv_path = "COVID19Tracker.ca Data - QC.csv"
-sim_dir_path = "/Users/akpateln/Desktop/Personal/covi-simulator/output/sim_v2_people-5000_days-30_init-0.002_uptake--1.0_seed-0_20200901-115548_654000" #sim_v2_people-10000_days-30_init-0.002_uptake--1.0_seed-5000_20200716-181334_330660//" 
-use_cache = True
+csv_path = "qc.csv"
+sim_dir_path = "output/" #sim_v2_people-10000_days-30_init-0.002_uptake--1.0_seed-5000_20200716-181334_330660//"
+use_cache = False
 
 # Utility Functions
 
@@ -59,7 +58,7 @@ if not use_cache:
         name = f"mob_{mob}_sick_{sick}_pop_{pop}_days_{days}"
 
         sim_priors_path = os.path.join(source_path, "train_priors.pkl")
-        sim_tracker_path = glob.glob(os.path.join(source_path, "*_.pkl"))[0]
+        sim_tracker_path = glob.glob(os.path.join(source_path, "*.pkl"))[0]
 
         sim_tracker_data = pickle.load(open(sim_tracker_path, "rb"))
         sim_prior_data = pickle.load(open(sim_priors_path, "rb"))
@@ -67,8 +66,10 @@ if not use_cache:
         sim_hospitalizations = [float(x)*100/sim_tracker_data['n_humans'] for x in sim_prior_data['hospitalization_per_day']]
         results[name].append({"sim_dates": sim_dates, "sim_deaths": sim_deaths, "sim_tests": sim_tests, "sim_cases": sim_cases, "sim_hospitalizations": sim_hospitalizations})
     pickle.dump(results, open("cache_sim.pkl", "wb"))
+    data = results
 else:
     data = pickle.load(open("cache_sim.pkl", "rb"))
+import pdb; pdb.set_trace()
 
 for k, v in data.items():
     print(k)
