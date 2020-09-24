@@ -43,7 +43,7 @@ from covid19sim.utils.utils import dump_tracker_data, extract_tracker_data
 #             conf["outdir"] = outfile
 #             hdf5_path = os.path.join(outfile, "human_backups.hdf5")
 #
-#             city, monitors, tracker = simulate(
+#             city, tracker = simulate(
 #                 n_people=n_people,
 #                 start_time=start_time,
 #                 simulation_days=n_days,

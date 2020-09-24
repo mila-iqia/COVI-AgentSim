@@ -155,7 +155,7 @@ class ModelsTest(unittest.TestCase):
             )
             collection_server.start()
 
-            city, monitors, tracker = simulate(
+            city, tracker = simulate(
                 n_people=n_people,
                 start_time=start_time,
                 simulation_days=n_days,
