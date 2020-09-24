@@ -623,7 +623,7 @@ def per_person_metrics_sex_age(daly_data):
                         for i in range(0,11)]
                         
                 args.append(daly_data[(daly_data.age > 99) 
-                                  & (daly_data.sex == sex))
+                                  & (daly_data.sex == sex)])
                 
                 n_agents = [len(arg.index) for arg in args]
 
