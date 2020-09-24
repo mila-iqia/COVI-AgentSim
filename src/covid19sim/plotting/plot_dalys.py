@@ -605,22 +605,25 @@ def per_person_metrics_sex_age(daly_data):
     # iterables = [['male', 'female', 'other'],
     #              ['total YLL','total YLD','total DALYS']]
     iterables = [['male', 'female'],
-                 ['total YLL','total YLD','total DALYS']]
+                 ['YLL per person','YLD per person','DALYs per person']]
     
     daly_dfs = {i:{} for i in iterables[0]}
     
-    iterables_to_functions = {'total YLL':total_yll,
-                              'total YLD':total_yld,
-                              'total DALYS':total_dalys}
+    iterables_to_functions = {'YLL per person':total_yll,
+                              'YLD per person':total_yld,
+                              'DALYs per person':total_dalys}
     
     for sex in iterables[0]:
         for metric in iterables[1]:
-            if metric == 'total YLL':
+            if metric == 'YLL per person':
                 
                 args = [daly_data[(daly_data.age.isin(range(i * 10,(i + 1) * 10))) 
                                   & (daly_data.sex == sex)
                                  ] 
-                        for i in range(0,12)]
+                        for i in range(0,11)]
+                        
+                args.append(daly_data[(daly_data.age > 99) 
+                                  & (daly_data.sex == sex))
                 
                 n_agents = [len(arg.index) for arg in args]
 
@@ -638,7 +641,16 @@ def per_person_metrics_sex_age(daly_data):
                                    & (daly_data.sex == sex)
                                   ].index)
                         )
-                        for i in range(0,12)]
+                        for i in range(0,11)]
+                
+                args.append((daly_data[(daly_data.age >99) 
+                                   & (daly_data.sex == sex)
+                                  ], 
+                            'hospitalization',
+                            len(daly_data[(daly_data.age >99) 
+                                   & (daly_data.sex == sex)
+                                  ].index)
+                            ))
                 
                 daly_dfs[sex][metric] = [iterables_to_functions[metric](*arg[0:2])/arg[2] if arg[2]>0 else 0 for arg in args]
 
@@ -646,9 +658,9 @@ def per_person_metrics_sex_age(daly_data):
                               for metric in iterables[1]]
                             ).transpose()
     
-    dalys_sex.index = [str(i) + ' - ' + str(i+9) for i in range(0,111,10)]
+    dalys_sex.index = [str(i) + ' - ' + str(i+9) for i in range(0,101,10)]
     dalys_sex.index.name = 'Age'
-    dalys_sex.rename(index={'110 - 119': '110+'})
+    dalys_sex.rename(index={'100 - 109': '100+'})
     columns = pd.MultiIndex.from_product(iterables, names = ['sex','metric'])
     dalys_sex.columns = columns
     
