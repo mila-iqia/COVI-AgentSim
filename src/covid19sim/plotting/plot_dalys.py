@@ -620,7 +620,7 @@ def per_person_metrics_sex_age(daly_data):
                 args = [daly_data[(daly_data.age.isin(range(i * 10,(i + 1) * 10))) 
                                   & (daly_data.sex == sex)
                                  ] 
-                        for i in range(0,11)]
+                        for i in range(0,10)]
                         
                 args.append(daly_data[(daly_data.age > 99) 
                                   & (daly_data.sex == sex)])
@@ -641,7 +641,7 @@ def per_person_metrics_sex_age(daly_data):
                                    & (daly_data.sex == sex)
                                   ].index)
                         )
-                        for i in range(0,11)]
+                        for i in range(0,10)]
                 
                 args.append((daly_data[(daly_data.age >99) 
                                    & (daly_data.sex == sex)
