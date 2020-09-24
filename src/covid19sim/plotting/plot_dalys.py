@@ -630,18 +630,17 @@ def per_person_metrics_sex_age(daly_data):
 
             else:
                 
-                args = ((daly_data[(daly_data.age.isin(range(i * 10,(i + 1) * 10))) 
+                args = [(daly_data[(daly_data.age.isin(range(i * 10,(i + 1) * 10))) 
                                    & (daly_data.sex == sex)
                                   ], 
-                         'hospitalization'
+                         'hospitalization',
+                        len(daly_data[(daly_data.age.isin(range(i * 10,(i + 1) * 10))) 
+                                   & (daly_data.sex == sex)
+                                  ].index)
                         )
-                        for i in range(0,12))
-
-                n_agents = [len(arg[0].index) for arg in args]
-
-                args_with_n_agents = zip(args, n_agents)
+                        for i in range(0,12)]
                 
-                daly_dfs[sex][metric] = [iterables_to_functions[metric](*arg[0])/arg[1] for arg in args_with_n_agents]
+                daly_dfs[sex][metric] = [iterables_to_functions[metric](*arg[0:2])/arg[2] for arg in args]
 
     dalys_sex = pd.DataFrame([daly_dfs[sex][metric] for sex in iterables[0] \
                               for metric in iterables[1]]
