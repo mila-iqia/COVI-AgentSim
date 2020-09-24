@@ -215,6 +215,7 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
     assert xmetric in METRICS and ymetric in METRICS, f"Unknown metrics: {xmetric} or {ymetric}. Expected one of {METRICS}."
     TICKGAP=2
     ANNOTATION_FONTSIZE=10
+    USE_GP_STR = "GP_" if USE_GP else ""
     adoption_rate = get_adoption_rate_label_from_app_uptake(uptake_rate)
     methods = results['method'].unique()
     methods_and_base_confs = results.groupby(['method', 'intervention_conf_name']).size().index
@@ -255,11 +256,11 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
 
         # function fitting
         selector = results['method'] == method
-        x = results[selector][xmetric]
-        y = results[selector][ymetric]
-        size = results[selector]['mobility_factor']
+        x = results[selector][xmetric].to_numpy()
+        y = results[selector][ymetric].to_numpy()
         fitted_fns[method] = INTERPOLATION_FN().fit(x, y)
 
+        size = results[selector]['mobility_factor'].to_numpy()
         method_label = labelmap[method]
         if display_r_squared:
             method_label = f"{method_label} ($r^2 = {fitted_fns[method].r_squared: 0.3f}$)"
@@ -274,6 +275,7 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
             plot_residuals
             and plot_scatter
         ):
+            res = fitted_fns[method].res
             res_ax.scatter(x, res, s=size*75, color=color)
             for _x, _res in zip(x, res):
                 res_ax.plot([_x, _x], [0, _res], color=color, linestyle=":")
@@ -306,11 +308,11 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
 
         # save the table
         table_to_save = pd.DataFrame(table_to_save, columns=['method1', 'method2', 'label1', 'label2', 'advantage', 'stddev', 'P(advantage > 0)', 'rnd_advantage', 'rnd_stderr', 'P(rnd_advantage > 0)'])
-        table_to_save.to_csv(str(Path(path).resolve() / f"normalized_mobility/R_all_advantages_{xmetric}.csv"))
+        table_to_save.to_csv(str(Path(path).resolve() / f"normalized_mobility/{USE_GP_STR}R_all_advantages_{xmetric}{USE_GP_STR}.csv"))
 
         # make a heatmap
         heatmap = plot_heatmap_of_advantages(table_to_save, labelmap)
-        filepath = save_figure(heatmap, basedir=path, folder="normalized_mobility", filename=f'Heatmap_{xmetric}_advantages_AR_{adoption_rate}')
+        filepath = save_figure(heatmap, basedir=path, folder="normalized_mobility", filename=f'{USE_GP_STR}Heatmap_{xmetric}_advantages_AR_{adoption_rate}')
         print(f"Heatmap of advantages @ {adoption_rate}% Adoption saved at {filepath}")
 
         # reference lines
@@ -340,7 +342,7 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
 
     # save
     fig.tight_layout()
-    filename = f"{ymetric}_{xmetric}_mobility_scatter"
+    filename = f"{USE_GP_STR}{ymetric}_{xmetric}_mobility_scatter"
     filename += "_w_r_squared" if display_r_squared else ""
     filename += "_w_residuals" if plot_residuals else ""
     filename += "_w_annotations" if annotate_advantages else ""
@@ -434,19 +436,24 @@ def run(data, plot_path, compare=None, **kwargs):
         data (dict): intervention_name --> APP_UPTAKE --> folder_name --> {'conf': yaml file, 'pkl': tracker file}
         plot_path (str): path where to save plots
     """
-    app_based_methods, other_methods, uptake_keys = split_methods_and_check_validity(data)
     use_extracted_data = kwargs.get('use_extracted_data', False)
-
 
     folder_name = Path(plot_path).resolve() / "normalized_mobility"
     os.makedirs(str(folder_name), exist_ok=True)
+
+    uptake_key_filepath = folder_name / "uptake_keys.csv"
+    if use_extracted_data:
+        uptake_keys = pd.read_csv(str(uptake_key_filepath))['uptake'].tolist()
+    else:
+        app_based_methods, other_methods, uptake_keys = split_methods_and_check_validity(data)
+        pd.DataFrame(uptake_keys, columns=['uptake']).to_csv(str(uptake_key_filepath))
 
     ## data preparation
     for uptake in uptake_keys:
         adoption_rate = get_adoption_rate_label_from_app_uptake(uptake)
         extracted_data_filepath = folder_name / f"full_extracted_data_AR_{adoption_rate}.csv"
         good_mobility_factor_filepath = folder_name / f"mobility_factor_vs_R_AR_{adoption_rate}.txt"
-        if use_extracted_data:
+        if not use_extracted_data:
             no_app_df = pd.DataFrame([])
             for method in other_methods:
                 key = list(data[method].keys())[0]
@@ -457,6 +464,7 @@ def run(data, plot_path, compare=None, **kwargs):
                 all_data = pd.concat([all_data, _extract_data(data[method][uptake], method)], axis='index', ignore_index=True)
             save_relevant_csv_files(all_data, uptake, extract_path=extracted_data_filepath, good_factors_path=good_mobility_factor_filepath)
         else:
+            assert extracted_data_filepath.exists(), f"{extracted_data_filepath} do not exist"
             all_data = pd.read_csv(str(extracted_data_filepath))
 
         for ymetric in ['r']:
@@ -465,4 +473,4 @@ def run(data, plot_path, compare=None, **kwargs):
                     for plot_scatter in [False, True]:
                         plot_and_save_mobility_scatter(all_data, uptake, xmetric=xmetric, path=plot_path, \
                             ymetric=ymetric, plot_residuals=False, display_r_squared=False, \
-                            annotate_advantages=annotate_advantages, plot_scatter=plot_scatter)
+                            annotate_advantages=annotate_advantages, plot_scatter=plot_scatter, USE_GP=True)

@@ -270,34 +270,37 @@ def main(conf):
     # ------------------------------------
     cache = None
     use_cache = cache_path.exists() and conf.get("use_cache", True)
+    load_cache = cache_path.exists() and conf.get("load_cache", True)
     if use_cache:
-        try:
-            print(
-                "Using cached data ({}): {}...".format(
-                    sizeof(cache_path), str(cache_path)
-                )
-            )
-            with cache_path.open("rb") as f:
-                cache = dill.load(f)
-
-            # check that the loaded data contains what is required by current `plots`
-            if "plots" not in cache or not all(p in cache["plots"] for p in plots):
+        data = {}
+        if load_cache:
+            try:
                 print(
-                    "Missing some data for plots {} in cache.pkl".format(
-                        ", ".join([p for p in plots if p not in cache["plots"]])
+                    "Using cached data ({}): {}...".format(
+                        sizeof(cache_path), str(cache_path)
                     )
                 )
-                use_cache = False
-            else:
-                data = cache["data"]
-                check_data(data)
+                with cache_path.open("rb") as f:
+                    cache = dill.load(f)
 
-        except Exception:
-            print(
-                "{}\n{}\n{}\n\nCould not load {}. Recomputing data.".format(
-                    "*" * 30, traceback.format_exc(), "*" * 30, str(cache_path),
+                # check that the loaded data contains what is required by current `plots`
+                if "plots" not in cache or not all(p in cache["plots"] for p in plots):
+                    print(
+                        "Missing some data for plots {} in cache.pkl".format(
+                            ", ".join([p for p in plots if p not in cache["plots"]])
+                        )
+                    )
+                    use_cache = False
+                else:
+                    data = cache["data"]
+                    check_data(data)
+
+            except Exception:
+                print(
+                    "{}\n{}\n{}\n\nCould not load {}. Recomputing data.".format(
+                        "*" * 30, traceback.format_exc(), "*" * 30, str(cache_path),
+                    )
                 )
-            )
     else:
         # --------------------------
         # -----  Compute Data  -----

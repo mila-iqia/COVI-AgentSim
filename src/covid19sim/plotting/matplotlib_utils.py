@@ -341,8 +341,8 @@ def get_adoption_rate_label_from_app_uptake(uptake):
     Returns:
         (str): A string of rounded integer representing adoption rate for the population
     """
-    assert type(uptake) in [str, int], f"{uptake} is of type {type(uptake)} not str or int"
-    uptake = eval(uptake)
+    assert type(uptake) in [str, float, int], f"{uptake} is of type {type(uptake)} not str or int"
+    uptake = eval(uptake) if type(uptake) == str else uptake
     if uptake == -1:
      return ""
     if uptake == 0.9831:
