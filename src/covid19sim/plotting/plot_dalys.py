@@ -321,7 +321,7 @@ def dalys_per_thousand(daly_data, method = 'hospitalization'):
     n_humans = len(daly_data.index)
     return total_dalys(daly_data, method)/(population_size/1000)
 
-def total_metrics_sex(daly_data):
+def total_metrics_sex_age(daly_data):
     
     daly_data['yll'] = ""
     daly_data['yld'] = ""
@@ -480,7 +480,7 @@ def lost_work_hours_age_bins(tracker_data):
     
     return dict(zip(age_bins,lost_work_hours.sum(axis=1)))
 
-def lost_work_hours_per_thousand(tracker_data):
+def lost_work_hours_total(tracker_data):
     """
         Adds up lost work hours from all sources (kid, ill, quarantine).
         Sums across age bins.
@@ -492,7 +492,7 @@ def lost_work_hours_per_thousand(tracker_data):
                         tracker_data['work_hours']['WORK-CANCEL--QUARANTINE']
                        )
     
-    return lost_work_hours.sum()/population_size*1000
+    return lost_work_hours.sum()
     
 
 def multiple_seeds_get_data(intervention,l_e_path):
@@ -571,6 +571,89 @@ def multiple_seeds_metric(metric, data_dict):
             'std':  std,
             'std_err': std_err
            }    
+
+def total_dalys_sex(daly_data):
+    
+    per_sex_age =  total_dalys_sex_age(daly_data) ### terrible implementation, just use total_dalys
+    return per_sex_age.sum(axis=0)
+
+def total_dalys_age(daly_data):
+    
+    per_sex_age =  total_dalys_sex_age(daly_data) ### terrible implementation, just use total_dalys
+    return per_sex_age.sum(axis=1)
+
+def add_metrics_per_person(daly_data):
+
+    for human in daly_data.index:
+        daly_data.loc[human, 'yll']= yll(human, daly_data)
+        daly_data.loc[human, 'yld'] = yld('hospitalization', human, daly_data)
+        daly_data.loc[human, 'DALYS'] = daly_data['yll'][human] + daly_data['yld'][human]
+    
+    return daly_data
+
+def per_person_metrics_sex_age(daly_data):
+    
+    daly_data['yll'] = ""
+    daly_data['yld'] = ""
+    daly_data['DALYS'] = ""
+    
+    for human in daly_data.index:
+        daly_data.loc[human, 'yll']= yll(human, daly_data)
+        daly_data.loc[human, 'yld'] = yld('hospitalization', human, daly_data)
+        daly_data.loc[human, 'DALYS'] = daly_data['yll'][human] + daly_data['yld'][human]
+
+    # iterables = [['male', 'female', 'other'],
+    #              ['total YLL','total YLD','total DALYS']]
+    iterables = [['male', 'female'],
+                 ['total YLL','total YLD','total DALYS']]
+    
+    daly_dfs = {i:{} for i in iterables[0]}
+    
+    iterables_to_functions = {'total YLL':total_yll,
+                              'total YLD':total_yld,
+                              'total DALYS':total_dalys}
+    
+    for sex in iterables[0]:
+        for metric in iterables[1]:
+            if metric == 'total YLL':
+                
+                args = [daly_data[(daly_data.age.isin(range(i * 10,(i + 1) * 10))) 
+                                  & (daly_data.sex == sex)
+                                 ] 
+                        for i in range(0,12)]
+                
+                n_agents = [len(arg.index) for arg in args]
+
+                args_with_n_agents = zip(args, n_agents)
+                
+                daly_dfs[sex][metric] = [iterables_to_functions[metric](arg[0])/arg[1] for arg in args]
+
+            else:
+                
+                args = ((daly_data[(daly_data.age.isin(range(i * 10,(i + 1) * 10))) 
+                                   & (daly_data.sex == sex)
+                                  ], 
+                         'hospitalization'
+                        )
+                        for i in range(0,12))
+
+                n_agents = [len(arg[0].index) for arg in args]
+
+                args_with_n_agents = zip(args, n_agents)
+                
+                daly_dfs[sex][metric] = [iterables_to_functions[metric](*arg[0])/arg[1] for arg in args]
+
+    dalys_sex = pd.DataFrame([daly_dfs[sex][metric] for sex in iterables[0] \
+                              for metric in iterables[1]]
+                            ).transpose()
+    
+    dalys_sex.index = [str(i) + ' - ' + str(i+9) for i in range(0,111,10)]
+    dalys_sex.index.name = 'Age'
+    dalys_sex.rename(index={'110 - 119': '110+'})
+    columns = pd.MultiIndex.from_product(iterables, names = ['sex','metric'])
+    dalys_sex.columns = columns
+    
+    return dalys_sex
 
 # TODO: add plots and tables to run function
 def run(data, path, compare="app_adoption"):
