@@ -584,6 +584,7 @@ MANUAL_TRACING_DELAY_STD: 0.5 # days
 
 COVID_START_DAY: 0 # COVID infection is seeded in the population on these many days after the simulation starts
 INTERVENTION_DAY: -1 # intervention starts on these many days after COVID_START_DAY. It never starts if its negative.
+DIRECT_INTERVENTION: 30
 
 # Console logging (Condition with COLLECT_LOGS)
 LOGGING_LEVEL: "WARNING"

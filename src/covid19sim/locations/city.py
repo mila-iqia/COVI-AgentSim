@@ -542,8 +542,8 @@ class City:
             if current_day != last_day_idx:
                 alive_humans = [human for human in self.humans if not human.is_dead]
                 last_day_idx = current_day
-                if current_day >= self.conf.get("direct_intervention", -1):
-                    self.conf['GLOBAL_MOBILITY_SCALING_FACTOR'] = 0.05
+                if self.conf.get("DIRECT_INTERVENTION", -1) == current_day:
+                    self.conf['GLOBAL_MOBILITY_SCALING_FACTOR'] = self.conf['GLOBAL_MOBILITY_SCALING_FACTOR']  / 2
                 self.do_daily_activies(current_day, alive_humans)
 
     def do_daily_activies(
