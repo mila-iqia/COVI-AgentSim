@@ -625,8 +625,9 @@ def per_person_metrics_sex_age(daly_data):
                 n_agents = [len(arg.index) for arg in args]
 
                 args_with_n_agents = zip(args, n_agents)
-                
-                daly_dfs[sex][metric] = [iterables_to_functions[metric](arg[0])/arg[1] for arg in args_with_n_agents]
+
+                daly_dfs[sex][metric] =                 
+                daly_dfs[sex][metric] = [iterables_to_functions[metric](arg[0])/arg[1] if arg[1]>0 else 0 for arg in args_with_n_agents]
 
             else:
                 
@@ -640,7 +641,7 @@ def per_person_metrics_sex_age(daly_data):
                         )
                         for i in range(0,12)]
                 
-                daly_dfs[sex][metric] = [iterables_to_functions[metric](*arg[0:2])/arg[2] for arg in args]
+                daly_dfs[sex][metric] = [iterables_to_functions[metric](*arg[0:2])/arg[2] if arg[2]>0 else 0 for arg in args]
 
     dalys_sex = pd.DataFrame([daly_dfs[sex][metric] for sex in iterables[0] \
                               for metric in iterables[1]]
