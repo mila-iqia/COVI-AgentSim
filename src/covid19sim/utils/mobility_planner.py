@@ -14,7 +14,6 @@ from collections import defaultdict, deque
 
 from covid19sim.utils.utils import _random_choice, filter_queue_max, filter_open, compute_distance, _normalize_scores, _get_seconds_since_midnight, log
 from covid19sim.utils.constants import SECONDS_PER_DAY, SECONDS_PER_HOUR, SECONDS_PER_MINUTE
-from covid19sim.log.track import get_estimated_covid_prevalence
 ACTIVITIES = ["work", "socialize", "exercise", "grocery"]
 
 class Activity(object):
