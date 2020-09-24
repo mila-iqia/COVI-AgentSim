@@ -18,7 +18,7 @@ from covid19sim.plotting.extract_tracker_metrics import _daily_false_quarantine,
 from covid19sim.plotting.extract_tracker_metrics import _mean_effective_contacts, _mean_healthy_effective_contacts, _percentage_total_infected, _positivity_rate
 from covid19sim.plotting.matplotlib_utils import add_bells_and_whistles, save_figure, get_color, get_adoption_rate_label_from_app_uptake, get_intervention_label, \
                                 plot_mean_and_stderr_bands, get_base_intervention, get_labelmap, get_colormap, plot_heatmap_of_advantages
-from covid19sim.plotting.curve_fitting import LinearFit, GPRFit
+# from covid19sim.plotting.curve_fitting import LinearFit, GPRFit
 
 TITLESIZE = 25
 LABELPAD = 0.50
@@ -395,13 +395,13 @@ def _extract_data(simulation_runs, method):
     columns = ['method', 'dir', 'mobility_factor', 'intervention_conf_name','app_based'] + METRICS
     return pd.DataFrame(all_data, columns=columns)
 
-def save_relevant_csv_files(results, uptake_rate, extract_path, good_factors_path):
+def save_relevant_csv_files(results, adoption_rate, extract_path, good_factors_path):
     """
     Saves csv files for the entire result to be viewed later.
 
     Args:
         results (pd.DataFrame): Dataframe with rows as methods and corresponding simulation metrics.
-        uptake_rate (str): APP_UPTAKE for all the methods. Assumed to be same for all app-based methods.
+        adoption_rate (str): Adoption rate. Assumed to be same for all app-based methods.
         extract_path (pathlib.Path): path of the file where extracted data will be saved
         good_factors_path (pathlib.Path): path of the file where good mobility factors (as per R) will be saved
     """
@@ -462,7 +462,7 @@ def run(data, plot_path, compare=None, **kwargs):
             all_data = deepcopy(no_app_df)
             for method in app_based_methods:
                 all_data = pd.concat([all_data, _extract_data(data[method][uptake], method)], axis='index', ignore_index=True)
-            save_relevant_csv_files(all_data, uptake, extract_path=extracted_data_filepath, good_factors_path=good_mobility_factor_filepath)
+            save_relevant_csv_files(all_data, adoption_rate, extract_path=extracted_data_filepath, good_factors_path=good_mobility_factor_filepath)
         else:
             assert extracted_data_filepath.exists(), f"{extracted_data_filepath} do not exist"
             all_data = pd.read_csv(str(extracted_data_filepath))
