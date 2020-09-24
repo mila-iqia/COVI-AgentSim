@@ -32,11 +32,11 @@ class ReproducibilityTests(unittest.TestCase):
         events_logs = []
 
         for seed in (self.test_seed, self.test_seed, self.test_seed+1):
-            md5 = hashlib.md5()
             with self.subTest(seed=seed):
                 with TemporaryDirectory() as d:
+                    md5 = hashlib.md5()
                     outfile = os.path.join(d, "data")
-                    city, monitors, tracker = simulate(
+                    city, tracker = simulate(
                         n_people=self.n_people,
                         start_time=self.location_start_time,
                         simulation_days=self.simulation_days,
@@ -46,9 +46,8 @@ class ReproducibilityTests(unittest.TestCase):
                         seed=seed,
                         conf=self.config
                     )
-                    monitors[0].dump()
-                    monitors[0].join_iothread()
-
+                    import time
+                    time.sleep(10)
                     with zipfile.ZipFile(f"{outfile}.zip", 'r') as zf:
                         for pkl in zf.namelist():
                             pkl_bytes = zf.read(pkl)

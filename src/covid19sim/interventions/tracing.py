@@ -7,6 +7,7 @@ import typing
 from itertools import islice
 from covid19sim.epidemiology.symptoms import MODERATE, SEVERE, EXTREMELY_SEVERE
 from covid19sim.inference.heavy_jobs import DummyMemManager
+from covid19sim.epidemiology.symptoms import STR_TO_SYMPTOMS
 
 if typing.TYPE_CHECKING:
     from covid19sim.human import Human
@@ -145,6 +146,14 @@ class Heuristic(BaseMethod):
             self.severe_symptoms_risk_level, self.severe_symptoms_rec_level = 13, 3
             self.moderate_symptoms_risk_level, self.moderate_symptoms_rec_level = 10, 2
             self.mild_symptoms_risk_level, self.mild_symptoms_rec_level = 5, 1
+        elif self.version == 4:
+            self.high_risk_threshold, self.high_risk_rec_level = 15, 3
+            self.moderate_risk_threshold, self.moderate_risk_rec_level = 13, 2
+            self.mild_risk_threshold, self.mild_risk_rec_level = 10, 1
+
+            self.severe_symptoms_risk_level, self.severe_symptoms_rec_level = 13, 3
+            self.moderate_symptoms_risk_level, self.moderate_symptoms_rec_level = 10, 2
+            self.mild_symptoms_risk_level, self.mild_symptoms_rec_level = 5, 1
 
         else:
             raise NotImplementedError()
@@ -204,6 +213,7 @@ class Heuristic(BaseMethod):
          heuristic doesn't have a concept of risk_level to rec_level mapping. The function `self.get_recommendations_level`
          will overwrite rec_level attribute of human via `update_recommendations_level`.
         """
+        human.heuristic_reasons = set()
         cur_risk_history = list(human.risk_history_map.values())
         test_protection_window = 8
         # if you have a positive test result, it over-rides everything else (we ignore symptoms and risk messages)
@@ -211,17 +221,30 @@ class Heuristic(BaseMethod):
         if test_rec_level == 3:
             _heuristic_rec_level = test_rec_level
             setattr(human, '_heuristic_rec_level', _heuristic_rec_level)
+            human.heuristic_reasons.add("positive test")
             return test_risk_history
 
         message_risk_history, message_rec_level, risk_override = self.handle_risk_messages(human, clusters)
 
-        symptoms_risk_history, symptoms_rec_level = self.handle_symptoms(human)
+        if self.version == 4:
+            symptoms_risk_history, symptoms_rec_level = self.handle_symptoms_v4(human)
+        else:
+            symptoms_risk_history, symptoms_rec_level = self.handle_symptoms(human)
+
+        if message_rec_level > symptoms_rec_level:
+            human.heuristic_reasons.add("risk message")
+        if symptoms_rec_level > message_rec_level:
+            human.heuristic_reasons.add("symptoms")
+        if symptoms_rec_level == message_rec_level and message_rec_level != 0:
+            human.heuristic_reasons.add("risk message")
+            human.heuristic_reasons.add("symptoms")
 
         recovery_risk_history, recovery_rec_level = self.handle_recovery(human, clusters)
 
         # if we recovered, ignore the other signals
         if len(recovery_risk_history) == 7:
             setattr(human, '_heuristic_rec_level', recovery_rec_level)
+            human.heuristic_reasons.add("recovered")
             return recovery_risk_history
 
         # compute max risk history and rec level
@@ -230,19 +253,16 @@ class Heuristic(BaseMethod):
 
         # if you have a negative test result, we want to overwrite the above
         if len(test_risk_history) > 0 and not risk_override:
+            human.heuristic_reasons.add("negative test")
             rec_level, risk_history = self.apply_negative_test(rec_level, risk_history, test_risk_history, test_protection_window)
         setattr(human, '_heuristic_rec_level', rec_level)
 
-        # self.debug_heuristic_plot(message_rec_level, symptoms_rec_level, human.rec_level, rec_level)
         # Sometimes handle_recovery misses because there is a risk message that is >3 (like 5) within the last 7 days,
         # but this is not enough to trigger handle_risk_messages. As a result, we end up with a rec level of 3 and a
         # rec level of 0, so we send messages saying we are OK (risk level 0) while maintaining rec level 3.
         if rec_level != 0 and 0.01 == risk_history[0]:
             setattr(human, '_heuristic_rec_level', 0)
         return risk_history
-
-    def debug_heuristic_plot(self, message_rec_level, symptoms_rec_level, human_rec_level, negative_test_rec_level):
-        print("A")
 
     def apply_negative_test(self, rec_level, risk_history, test_risk_history, test_protection_window):
         offset = max(len(test_risk_history) - test_protection_window, 0)
@@ -372,6 +392,29 @@ class Heuristic(BaseMethod):
         risk_history = [self.risk_level_to_risk(new_risk_level)] * (human.conf.get("TRACING_N_DAYS_HISTORY") // 2)
         return risk_history, new_rec_level
 
+    def handle_symptoms_v4(self, human):
+        if not any(human.all_reported_symptoms):
+            return [], 0
+
+        low_risk_symptoms = {"mild", "moderate", "fever", "gastro", "sneezing", "runny_nose", "aches", "fatigue"}
+        med_risk_symptoms = {"diarrhea", "nausea_vomiting", "cough", "hard_time_waking_up"}
+        high_risk_symptoms = {"severe", "extremely-severe", "chills", "unusual", "headache", "confused", "lost_consciousness", "trouble_breathing", "sore_throat", "severe_chest_pain", "loss_of_taste", "light_trouble_breathing", "moderate_trouble_breathing", "heavy_trouble_breathing"}
+        reported_symptoms = set([x.name for x in human.all_reported_symptoms])
+
+        # for some symptoms set R for now and all past 7 days
+        if reported_symptoms.intersection(high_risk_symptoms):
+            new_risk_level = self.severe_symptoms_risk_level
+            new_rec_level = self.severe_symptoms_rec_level
+        elif MODERATE in reported_symptoms.intersection(med_risk_symptoms):
+            new_risk_level = self.moderate_symptoms_risk_level
+            new_rec_level = self.moderate_symptoms_rec_level
+        else:
+            new_risk_level = self.mild_symptoms_risk_level
+            new_rec_level = self.mild_symptoms_rec_level
+
+        risk_history = [self.risk_level_to_risk(new_risk_level)] * (human.conf.get("TRACING_N_DAYS_HISTORY") // 2)
+        return risk_history, new_rec_level
+
     def handle_recovery(self, human, mailbox):
         # No symptoms in last 7 days
         no_symptoms_past_7_days = \
@@ -393,6 +436,18 @@ class Heuristic(BaseMethod):
             for rel_encounter_day, risk_level, num_encounters in mailbox:
                 if (rel_encounter_day < 7) and (risk_level >= 10):
                     no_high_risk_message = False
+
+        elif self.version == 4:
+            # No large risk message
+            no_high_risk_message = False
+            high_risks = sum([encs for day, level, encs in mailbox if level >= self.high_risk_threshold and day < 7])
+            med_risks = sum([encs for day, level, encs in mailbox if
+                             level >= self.moderate_risk_threshold and level < self.high_risk_threshold and day < 4])
+            low_risks = sum([encs for day, level, encs in mailbox if
+                             level >= self.mild_risk_threshold and level < self.moderate_risk_threshold and day < 2])
+            if not (high_risks or med_risks or low_risks):
+                no_high_risk_message = True
+
 
         risk_history = []
         # set to low risk

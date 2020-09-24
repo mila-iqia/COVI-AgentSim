@@ -19,7 +19,7 @@ from omegaconf import DictConfig
 from covid19sim.locations.city import City
 from covid19sim.utils.env import Env
 from covid19sim.utils.constants import SECONDS_PER_DAY, SECONDS_PER_HOUR
-from covid19sim.log.monitors import EventMonitor, SimulationMonitor
+from covid19sim.log.console_logger import ConsoleLogger
 from covid19sim.inference.server_utils import DataCollectionServer
 from covid19sim.utils.utils import dump_conf, dump_tracker_data, extract_tracker_data, parse_configuration, log
 
@@ -68,7 +68,7 @@ def _get_intervention_string(conf):
         type_of_run += f"\n RISK_MAPPING: {conf['RISK_MAPPING']}"
         return type_of_run
 
-    if risk_model in ['heuristicv1', 'heuristicv2', 'heuristicv3']:
+    if risk_model in ['heuristicv1', 'heuristicv2', 'heuristicv3', 'heuristicv4']:
         type_of_run += f" N_LEVELS_USED: {n_behavior_levels} |"
         type_of_run += f" INTERPOLATE_USING_LOCKDOWN_CONTACTS:{conf['INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS']} |"
         type_of_run += f" MAX_RISK_LEVEL: {conf['MAX_RISK_LEVEL']} |"
@@ -146,9 +146,9 @@ def main(conf: DictConfig):
     conf['INTERVENTION'] = type_of_run
     log(f"Type of run: {type_of_run}", logfile)
     if conf['COLLECT_TRAINING_DATA']:
-        hdf5_path = os.path.join(conf["outdir"], "train.hdf5")
+        data_output_path = os.path.join(conf["outdir"], "train.zarr")
         collection_server = DataCollectionServer(
-            data_output_path=hdf5_path,
+            data_output_path=data_output_path,
             config_backup=conf,
             human_count=conf['n_people'],
             simulation_days=conf['simulation_days'],
@@ -158,7 +158,7 @@ def main(conf: DictConfig):
         collection_server = None
 
     conf["outfile"] = outfile
-    city, monitors, tracker = simulate(
+    city, tracker = simulate(
         n_people=conf["n_people"],
         init_fraction_sick=conf["init_fraction_sick"],
         start_time=conf["start_time"],
@@ -175,10 +175,6 @@ def main(conf: DictConfig):
 
     # log the simulation statistics
     tracker.write_metrics()
-
-    # if COLLECT_LOGS is True
-    monitors[0].dump()
-    monitors[0].join_iothread()
 
     # (baseball-cards) write full simulation data
     if hasattr(city, "tracker") and \
@@ -237,7 +233,6 @@ def simulate(
     outfile: typing.Optional[typing.AnyStr] = None,
     out_chunk_size: typing.Optional[int] = None,
     seed: int = 0,
-    other_monitors: typing.Optional[typing.List] = None,
     conf: typing.Optional[typing.Dict] = None,
     logfile: str = None,
 ):
@@ -252,18 +247,13 @@ def simulate(
         outfile (str, optional): [description]. Defaults to None.
         out_chunk_size ([type], optional): [description]. Defaults to None.
         seed (int, optional): [description]. Defaults to 0.
-        other_monitors (list, optional): [description]. Defaults to [].
         conf (dict): yaml configuration of the experiment
         logfile (str): filepath where the console output and final tracked metrics will be logged. Prints to the console only if None.
 
     Returns:
         city (covid19sim.locations.city.City): [description]
-        monitors (list):
         tracker (covid19sim.log.track.Tracker):
     """
-
-    if other_monitors is None:
-        other_monitors = []
 
     if conf is None:
         conf = {}
@@ -275,7 +265,6 @@ def simulate(
     conf["outfile"] = outfile
     conf["out_chunk_size"] = out_chunk_size
     conf["seed"] = seed
-    conf["other_monitors"] = other_monitors
     conf['logfile'] = logfile
 
     # set days and mixing constants
@@ -301,6 +290,7 @@ def simulate(
     conf['simulation_days'] += conf['COVID_START_DAY']
     simulation_days = conf['simulation_days']
 
+    console_logger = ConsoleLogger(frequency=SECONDS_PER_DAY, logfile=logfile, conf=conf)
     logging.root.setLevel(getattr(logging, conf["LOGGING_LEVEL"].upper()))
 
     rng = np.random.RandomState(seed)
@@ -310,19 +300,6 @@ def simulate(
     city = City(
         env, n_people, init_fraction_sick, rng, city_x_range, city_y_range, conf, logfile
     )
-
-    # Add monitors
-    monitors = [
-        EventMonitor(f=SECONDS_PER_HOUR * 30, dest=outfile, chunk_size=out_chunk_size),
-        SimulationMonitor(frequency=SECONDS_PER_DAY, logfile=logfile, conf=conf),
-    ]
-
-    if other_monitors:
-        monitors += other_monitors
-
-    # Kickstart EventMonitor
-    monitors[0].dump()
-    monitors[0].join_iothread()
 
     # we might need to reset the state of the clusters held in shared memory (server or not)
     if conf.get("RESET_INFERENCE_SERVER", False):
@@ -347,14 +324,12 @@ def simulate(
     for human in city.humans:
         env.process(human.run())
 
-    # Initiate monitor processes
-    for m in monitors:
-        env.process(m.run(env, city=city))
+    env.process(console_logger.run(env, city=city))
 
     # Run simulation until termination
     env.run(until=env.ts_initial + simulation_days * SECONDS_PER_DAY)
 
-    return city, monitors, city.tracker
+    return city, city.tracker
 
 
 if __name__ == "__main__":

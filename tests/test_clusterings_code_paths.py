@@ -9,7 +9,6 @@ from tempfile import TemporaryDirectory
 from tests.utils import get_test_conf
 
 from covid19sim.inference.server_utils import DataCollectionServer
-from covid19sim.locations.city import Event
 from covid19sim.run import simulate
 
 TEST_CONF_NAME = "test_models.yaml"
@@ -50,7 +49,7 @@ class ClusteringCodePaths(unittest.TestCase):
                         simulation_days=self.simulation_days,
                     )
                     collection_server.start()
-                    _, monitors, _ = simulate(
+                    _, _ = simulate(
                         n_people=self.n_people,
                         start_time=self.location_start_time,
                         simulation_days=self.simulation_days,
@@ -60,8 +59,6 @@ class ClusteringCodePaths(unittest.TestCase):
                         seed=self.test_seed,
                         conf=self.config
                     )
-                    monitors[0].dump()
-                    monitors[0].join_iothread()
                     collection_server.stop_gracefully()
                     collection_server.join()
                     assert os.path.exists(hdf5file)
@@ -72,9 +69,6 @@ class ClusteringCodePaths(unittest.TestCase):
                             data.extend(pickle.loads(pkl_bytes))
 
                 self.assertGreater(len(data), 0)
-
-                self.assertIn(Event.encounter, {d['event_type'] for d in data})
-                self.assertIn(Event.test, {d['event_type'] for d in data})
 
                 self.assertGreaterEqual(len({d['human_id'] for d in data}), self.n_people)
 

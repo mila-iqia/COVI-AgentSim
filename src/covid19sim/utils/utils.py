@@ -22,6 +22,8 @@ import dill
 import numpy as np
 import requests
 import yaml
+import json
+
 from omegaconf import DictConfig, OmegaConf
 from scipy.stats import norm
 from covid19sim.utils.constants import SECONDS_PER_HOUR, SECONDS_PER_MINUTE, AGE_BIN_WIDTH_5, AGE_BIN_WIDTH_10
@@ -872,9 +874,26 @@ def is_app_based_tracing_intervention(intervention):
     Returns:
         (bool): True if an app is required.
     """
+    if isinstance(intervention, dict):
+        # This can happen if intervention is transformer (with weights and rec levels specified)
+        intervention = next(iter(intervention.keys()))
     intervention_yaml_file = Path(__file__).resolve().parent.parent / "configs/simulation/intervention" / f"{intervention}.yaml"
+    if "transformer" in intervention_yaml_file.name:
+        intervention_yaml_file = Path(__file__).resolve().parent.parent / "configs/simulation/intervention" / f"transformer.yaml"
     with open(intervention_yaml_file, "r") as f:
         conf = yaml.safe_load(f)
         app_required = conf['RISK_MODEL'] != ""
 
     return app_required
+
+
+class NpEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        else:
+            return super(NpEncoder, self).default(obj)

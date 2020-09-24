@@ -23,19 +23,29 @@ def parse_args():
         default=False,
         help="Whether to just print stuff.",
     )
+    parsey.add_argument(
+        "-s",
+        "--no-space",
+        action="store_true",
+        default=False,
+        help="Whether to get rid of spaces."
+    )
     # parsey.add_argument("-r", "--run", type=str, required=True, help="Run file.")
     return parsey.parse_args()
 
 
-def validate_components(components):
+def validate_components(components, no_space=False):
     components[-1] = components[-1].replace(";", "")
     for idx, component in enumerate(components):
         if " " in component:
-            # hydra doesn't like spaces without quotes, but shlex likes to get rid
-            # of the quotes. :|
-            assert "=" in component, "Can't parse hydra command with a space."
-            key, value = component.split("=")
-            components[idx] = f'{key}=\\"{value}\\"'
+            if no_space:
+                components[idx] = component.replace(" ", "")
+            else:
+                # hydra doesn't like spaces without quotes, but shlex likes to get rid
+                # of the quotes. :|
+                assert "=" in component, "Can't parse hydra command with a space."
+                key, value = component.split("=")
+                components[idx] = f'{key}=\\"{value}\\"'
     return components
 
 
@@ -51,7 +61,7 @@ def main(args=None):
             break
         components = shlex.split(line)[2:]
         components[-1] = components[-1].replace(";", "")
-        components = validate_components(components)
+        components = validate_components(components, no_space=args.no_space)
         raven_job = RavenJob().set_script_path("run.py").set_script_args(components)
         if args.disarm:
             print(raven_job.build_submission(write=False))

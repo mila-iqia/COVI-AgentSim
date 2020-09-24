@@ -8,7 +8,6 @@ import warnings
 from covid19sim.utils.utils import _sample_positive_normal
 from covid19sim.epidemiology.p_infection import get_environment_human_p_transmission
 from covid19sim.epidemiology.viral_load import compute_covid_properties
-from covid19sim.log.event import Event
 
 from covid19sim.interventions.tracing_utils import get_household_quarantine_duration
 from covid19sim.utils.constants import SECONDS_PER_MINUTE, SECONDS_PER_HOUR, AGE_BIN_WIDTH_5, ALL_LOCATIONS, WEEKDAYS, ALL_DAYS, SECONDS_PER_DAY

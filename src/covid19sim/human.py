@@ -16,7 +16,6 @@ from covid19sim.utils.mobility_planner import MobilityPlanner
 from covid19sim.utils.utils import compute_distance, proba_to_risk_fn
 from covid19sim.locations.city import PersonalMailboxType
 from covid19sim.locations.hospital import Hospital, ICU
-from covid19sim.log.event import Event
 from collections import deque
 
 from covid19sim.utils.utils import _normalize_scores, draw_random_discrete_gaussian, filter_open, filter_queue_max, calculate_average_infectiousness
@@ -191,6 +190,7 @@ class Human(BaseHuman):
         self.healthy_days = 0
         self.num_contacts = 0  # unscaled number of high-risk contacts
         self.intervened_behavior = IntervenedBehavior(self, self.env, self.conf) # keeps track of behavior level of human
+        self.heuristic_reasons = set() # Defined here so that we remember it's an attribute of human (gets re-initialized daily)
 
         """Risk prediction"""
         self.contact_book = ContactBook(tracing_n_days_history=self.conf.get("TRACING_N_DAYS_HISTORY"))  # Used for tracking high-risk contacts (for app-based contact tracing methods)
@@ -523,7 +523,6 @@ class Human(BaseHuman):
 
         # log
         self.city.tracker.track_tested_results(self)
-        Event.log_test(self.conf.get('COLLECT_LOGS'), self, self.test_time)
 
     def check_if_needs_covid_test(self, at_hospital=False):
         """
@@ -628,7 +627,6 @@ class Human(BaseHuman):
                     self.never_recovers = self.rng.random() < self.conf.get("P_NEVER_RECOVERS")[
                         min(math.floor(self.age / 10), 8)]
 
-                Event.log_recovery(self.conf.get('COLLECT_LOGS'), self, self.env.timestamp, death=False)
 
     def check_cold_and_flu_contagion(self, other_human):
         """
@@ -719,9 +717,6 @@ class Human(BaseHuman):
             infectee._get_infected(initial_viral_load=infector.rng.random())
             if infectee_msg is not None:  # could be None if we are not currently tracing
                 infectee_msg._exposition_event = True
-
-            # log
-            Event.log_exposed(self.conf.get('COLLECT_LOGS'), infectee, infector, p_infection, self.env.timestamp)
         else:
             infector, infectee = None, None
 
@@ -901,7 +896,6 @@ class Human(BaseHuman):
         self.allergy_timestamp = None
         self.recovered_timestamp = datetime.datetime.max
         self.all_symptoms, self.covid_symptoms = [], []
-        Event.log_recovery(self.conf.get('COLLECT_LOGS'), self, self.env.timestamp, death=True)
         # important to remove this human from the location or else there will be sampled interactions
         if self in self.location.humans:
             self.location.remove_human(self)
@@ -1107,19 +1101,6 @@ class Human(BaseHuman):
                 # determine if cold and flu contagion occured
                 self.check_cold_and_flu_contagion(other_human)
 
-                # logging
-                Event.log_encounter(
-                    self.conf['COLLECT_LOGS'],
-                    self,
-                    other_human,
-                    location=self.location,
-                    duration=t_near,
-                    distance=distance_profile.distance,
-                    infectee=None if not infectee else infectee.name,
-                    p_infection=p_infection,
-                    time=self.env.timestamp
-                )
-
     def _increment_effective_contacts(self, other_human):
         """
         Increments attributs related to count effective contacts of `self`.
@@ -1264,16 +1245,6 @@ class Human(BaseHuman):
 
             if exchanged:
                 self.city.tracker.track_bluetooth_communications(human1=self, human2=other_human, location=self.location, timestamp=self.env.timestamp)
-
-            Event.log_encounter_messages(
-                self.conf['COLLECT_LOGS'],
-                self,
-                other_human,
-                location=self.location,
-                duration=duration,
-                distance=distance,
-                time=self.env.timestamp
-            )
 
         return h1_msg, h2_msg
 

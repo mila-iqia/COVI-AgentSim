@@ -1,56 +1,59 @@
 # ----------------------------
 # -----  Infrastructure  -----
 # ----------------------------
-cpus: 4
+cpus: 6
 env_name: covid
 infra: beluga
-mem: 20
+mem: 30
 n_search: -1 # -1 figures out the size of cartesian product for you
 time: "'5:00:00'"
 
 # -------------------------
 # -----  Directories  -----
 # -------------------------
-base_dir: $HOME/simulator/results/pareto_front # if outdir is not provided, runs will be stored in base_dir/${intervention}
+base_dir: /home/nrahaman/python/covi-simulator/exp/streaming # if outdir is not provided, runs will be stored in base_dir/${intervention}
 code_loc: $HOME/simulator/src/covid19sim/
 use_tmpdir: false
-weights_dir: $SCRATCH/weights
+weights_dir: /lustre/work/nrahaman/ctt/exp/SHIPMENTS
 
 # -------------------------------------
 # -----  Simulation Fixed Params  -----
 # -------------------------------------
-init_fraction_sick: 0.005
+track: light
 INTERVENTION_DAY: 0
-n_people: 2000
+n_people: 1500
+init_fraction_sick: 0.004
 simulation_days: 50
 tune: true
+APP_UPTAKE: 0.8415
 
 # --------------------------------------
 # -----  Sampling Parametrization  -----
 # --------------------------------------
-intervention:
-  sample: cartesian
-  from:
-          #- no_intervention
-      # - heuristicv1
-      #- heuristicv3
-    - bdt1
-
-APP_UPTAKE: 0.8415 # 60%
-
+# NOTE: for mobility restriction in specific range use mobility_restriction=x, where x=high, medium, low. Checkout mobility_restriction/x.yaml
 GLOBAL_MOBILITY_SCALING_FACTOR:
   sample: cartesian
   from:
+    - 0.2
+    - 0.3
+    - 0.4
     - 0.5
     - 0.6
     - 0.7
     - 0.8
     - 0.9
     - 1.0
-
+    
 seed:
   sample: cartesian
   from:
-    - 5000
+    - 7001
+    - 3003
+    - 1300
+    - 3100
+    - 1900
+    - 4001
     - 5001
-    - 5002
+    - 6001
+    - 3001
+    - 3

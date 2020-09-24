@@ -49,9 +49,14 @@ def parse_tracker(sim_tracker_data):
 
     return dates, daily_deaths_prop, tests, cases
 
-all_sim_cases = []
-all_sim_hospitalizations = []
-all_sim_deaths = []
+def smooth(x, window_len=3):
+    s=np.r_[x[window_len-1:0:-1],x,x[-2:-window_len-1:-1]]
+    #moving average
+    w=np.ones(window_len,'d')
+    y=np.convolve(w/w.sum(),s,mode='valid')
+    return y[window_len//2:-(window_len//2)]
+
+all_sim_cases, all_sim_hospitalizations, all_sim_deaths = [], [], []
 
 for sim in os.listdir(sims_dir_path):
     # Get the paths
@@ -71,45 +76,50 @@ for sim in os.listdir(sims_dir_path):
     all_sim_hospitalizations.append(sim_hospitalizations)
     all_sim_deaths.append(sim_deaths)
 
-avg_sim_cases = np.array([sum(elem)/len(elem) for elem in zip(*all_sim_cases)])
-avg_sim_hospitalizations = np.array([sum(elem)/len(elem) for elem in zip(*all_sim_hospitalizations)])
-avg_sim_deaths = np.array([sum(elem)/len(elem) for elem in zip(*all_sim_deaths)])
+# avg_sim_cases = np.array([sum(elem)/len(elem) for elem in zip(*all_sim_cases)])
+avg_sim_hospitalizations = smooth(np.array([sum(elem)/len(elem) for elem in zip(*all_sim_hospitalizations)]))
+avg_sim_deaths = smooth(np.array([sum(elem)/len(elem) for elem in zip(*all_sim_deaths)]))
 
 # Plot Quebec Data
 last_index = 63 # index of last day of Quebec data, use 63 for 30 days
-fig, ax = plt.subplots(figsize=(7.5, 7.5))
 real_dates = qc_data.loc[34:last_index, 'dates'].to_numpy()
 real_cases = [100 * float(x if str(x) != "nan" else 0) / quebec_population for x in qc_data.loc[34:last_index, 'change_cases']]
 # change key to 'total_hospitalizations' if needed
 real_hospitalizations = [100 * float(x if str(x) != "nan" else 0) / quebec_population for x in qc_data.loc[34:last_index, 'total_hospitalizations']]
 real_deaths = [100 * float(x if str(x) != "nan" else 0) / quebec_population for x in qc_data.loc[34:last_index,'change_fatalities']]
 
-ax.plot(real_dates, real_cases, label="Diagnoses per day")
-ax.plot(real_dates, real_hospitalizations, label="Hospital utilization per day")
-ax.plot(real_dates, real_deaths, label="Mortalities per day")
+plt.plot(real_dates, real_hospitalizations, label="Quebec hospital utilization per day", color='b')
+plt.plot(real_dates, real_deaths, label="Quebec mortalities per day", color='g')
 
+'''
 ax.legend()
 plt.ylabel("Percentage of Population")
 plt.xlabel("Date")
 plt.yticks(plt.yticks()[0], [str(round(x, 3)) + "%" for x in plt.yticks()[0]])
 plt.xticks([x for i, x in enumerate(real_dates) if i % 10 == 0], rotation=45)
-plt.title("Real Quebec COVID Statistics")
-plt.savefig("qc_stats.png")
+plt.title("Quebec & Simulation COVID Statistics")
+# plt.savefig("qc_stats.png")
+'''
 
-# Plot average across simulations
-fig, ax = plt.subplots(figsize=(7.5, 7.5))
-# ax.set_ylim([0.,0.03])
-avg_sim_cases = np.array(sim_cases[1:])*.1 # adjust for unknown cases
+# Goodness of Fit
+eps = np.finfo(float).eps
+deaths_fit = stats.chisquare(avg_sim_deaths+eps, real_deaths[1:]+eps)
+hospitalizations_fit = stats.chisquare(avg_sim_hospitalizations+eps, real_hospitalizations+eps)
+fit_caption = "Chi-Square Goodness of Fit Test Results\nMortalities: {}\nHospitalizations: {}\n".format(deaths_fit, hospitalizations_fit)
 
-ax.errorbar(sim_dates, avg_sim_cases, yerr=avg_sim_cases.std(axis=0), label="Diagnoses per day")
 # change caption below if using 'total_hospitalizations'
-ax.errorbar(sim_dates, avg_sim_hospitalizations[1:], yerr=avg_sim_hospitalizations.std(axis=0), label="Hospital utilization per day")
-ax.errorbar(sim_dates, avg_sim_deaths, yerr=avg_sim_deaths.std(axis=0), label="Mortalities per day")
+plt.plot(sim_dates, avg_sim_hospitalizations[1:], label="Simulation hospital utilization per day", color='c', linestyle='dashed')
+plt.plot(sim_dates, avg_sim_deaths, label="Simulation mortalities per day", color='r', linestyle='dashed')
+yerr_hospitalizations = avg_sim_hospitalizations.std(axis=0)
+yerr_deaths = avg_sim_deaths.std(axis=0)
+plt.fill_between(sim_dates, avg_sim_hospitalizations[1:]-yerr_hospitalizations, avg_sim_hospitalizations[1:]+yerr_hospitalizations, alpha=0.2, color='c')
+plt.fill_between(sim_dates, avg_sim_deaths-yerr_deaths, avg_sim_deaths+yerr_deaths, alpha=0.2, color='r')
 
-ax.legend()
+plt.legend()
 plt.ylabel("Percentage of Population")
 plt.xlabel("Date")
 plt.yticks(plt.yticks()[0], [str(round(x, 3)) + "%" for x in plt.yticks()[0]])
 plt.xticks([x for i, x in enumerate(real_dates) if i % 10 == 0], rotation=45)
-plt.title("Simulated Quebec COVID Statistics")
-plt.savefig("sim_stats.png")
+plt.title("Quebec & Simulation COVID Statistics")
+print(fit_caption)
+plt.savefig("quebec_and_sim_stats.png")
