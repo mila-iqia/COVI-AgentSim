@@ -269,8 +269,10 @@ def main(conf):
     # -----  Load pre-computed data  -----
     # ------------------------------------
     cache = None
-    use_cache = cache_path.exists() and conf.get("use_cache", True)
-    load_cache = cache_path.exists() and conf.get("load_cache", True)
+    use_cache = conf.get("use_cache", True)
+    load_cache = conf.get("load_cache", use_cache)
+    if load_cache:
+        assert cache_path.exists(), f"Cache {str(cache_path)} doesn't exist."
     if use_cache:
         data = {}
         if load_cache:

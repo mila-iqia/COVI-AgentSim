@@ -10,7 +10,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
 from scipy.interpolate import interp1d
-from matplotlib.colors import TwoSlopeNorm
+from matplotlib.colors import TwoSlopeNorm, is_color_like
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 # base colors for each method
 COLOR_MAP = {
@@ -85,7 +86,10 @@ def get_colormap(methods_and_base_confs, path):
     colormap = {}
     for method, base_conf in methods_and_base_confs:
         color = explicit_colormap.get(method, "")
-        if method not in explicit_colormap:
+        if (
+            method not in explicit_colormap
+            or not is_color_like(color)
+        ):
             color = next(colors[base_conf])
 
         colormap[method] = color
@@ -167,7 +171,8 @@ def plot_mean_and_stderr_bands(ax, index, mean, stderr, label, color, **kwargs):
     """
     # params
     linestyle = kwargs.get("linestyle", "-")
-    alpha = kwargs.get("alpha", 0.8)
+    mean_alpha = kwargs.get("alpha", 1.0)
+    stderr_alpha = kwargs.get("alpha", 0.3)
     marker = kwargs.get("marker", None)
     markersize = kwargs.get("markersize", 1)
     linewidth = kwargs.get("linewidth", 1)
@@ -178,9 +183,9 @@ def plot_mean_and_stderr_bands(ax, index, mean, stderr, label, color, **kwargs):
     lowfn = interp1d(index, lows, bounds_error=False, fill_value='extrapolate')
     highfn = interp1d(index, highs, bounds_error=False, fill_value='extrapolate')
     #
-    ax.plot(index, mean, color=color, alpha=alpha, linestyle=linestyle,
+    ax.plot(index, mean, color=color, alpha=mean_alpha, linestyle=linestyle,
                 linewidth=linewidth, label=label, marker=marker, ms=markersize)
-    ax.fill_between(index, lowfn(index), highfn(index), color=color, alpha=.3, lw=0, zorder=3)
+    ax.fill_between(index, lowfn(index), highfn(index), color=color, alpha=stderr_alpha, lw=0, zorder=3)
 
     return ax
 
@@ -245,7 +250,10 @@ def plot_heatmap_of_advantages(data, labelmap):
     Returns:
         (matplotlib.figure.Figure): a canvas with heatmap on it
     """
-    XY_TITLESIZE = 20
+    XY_TITLESIZE = 40
+    XY_LABELSIZE = 30
+    ANNOTATION_SIZE=28
+    TICKSIZE = 20
 
     ordered_ref_methods = data['method1'].value_counts().index.tolist()
     ordered_comp_methods = data['method2'].value_counts().index.tolist()
@@ -268,10 +276,10 @@ def plot_heatmap_of_advantages(data, labelmap):
                 stds[row, col] = data[selector]['stddev'].tolist()[0]
                 pvs[row, col] = data[selector]['P(advantage > 0)'].tolist()[0]
                 significance_95_str = "$^*$" if pvs[row, col] > 0.95 else ""
-                annotation[row, col] = f"{advs[row, col]: 0.3f} $\pm$ {1.96 * stds[row, col]: 0.3f} {significance_95_str}"
+                annotation[row, col] = f"{advs[row, col]: 0.3f}\n($\pm${1.96 * stds[row, col]: 0.3f}){significance_95_str}"
 
     # plot
-    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(N*4, N*4), dpi=100)
+    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(N*4, N*4), dpi=200)
     im = ax.imshow(advs, cmap='summer_r', norm=TwoSlopeNorm(advs[advs > 0].mean(), vmin=0, vmax=None), interpolation='none', alpha=0.5)
 
     # set positioning
@@ -280,28 +288,25 @@ def plot_heatmap_of_advantages(data, labelmap):
     # xticks and labels
     ax.set_yticks(np.arange(N))
     ax.set_xticks(np.arange(N))
-    ax.set_yticklabels([labelmap[x] for x in ordered_comp_methods])
-    ax.set_xticklabels([labelmap[x] for x in ordered_ref_methods], rotation=45)
+    ax.set_yticklabels([labelmap[x] for x in ordered_comp_methods], fontdict=dict(fontsize=XY_LABELSIZE))
+    ax.set_xticklabels([labelmap[x] for x in ordered_ref_methods], rotation=45, fontdict=dict(fontsize=XY_LABELSIZE))
 
     # labels
     ax.set_xlabel("Reference Method", fontsize=XY_TITLESIZE)
-    ax.set_ylabel("Comparator Method", fontsize=XY_TITLESIZE)
+    ax.set_ylabel("Comparator Method", fontsize=XY_TITLESIZE, labelpad=0.5)
 
-    # tick size
-    for tick in ax.xaxis.get_major_ticks():
-        tick.label.set_fontsize(20)
-
-    for tick in ax.yaxis.get_major_ticks():
-        tick.label.set_fontsize(20)
-
-    cbar = fig.colorbar(im, ax=ax)
+   # colorbar for each row
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("right", size="10%", pad=0.50)
+    cbar = fig.colorbar(im, ax=ax, cax=cax)
+    cbar.ax.tick_params(labelsize=ANNOTATION_SIZE)
 
     # annotation
     for col in range(N):
         for row in range(N):
-            text = ax.text(col, row, annotation[row, col], ha="center", va="center", color="black", size=15, fontweight="bold")
+            text = ax.text(col, row, annotation[row, col], ha="center", va="center", color="black", size=ANNOTATION_SIZE, fontweight="bold")
 
-    ax.set_title("Advantages ($\pm$ 2$\sigma$) of Tracing Methods (* 95% Significance level)", fontsize=25, y=1.01)
+    ax.set_title("Advantages ($\pm$ 2$\sigma$) of Tracing Methods (* 95% Significance level)", fontsize=XY_TITLESIZE, y=1.03)
     return fig
 
 def save_figure(figure, basedir, folder, filename, bbox_extra_artists=None):

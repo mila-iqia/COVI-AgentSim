@@ -214,7 +214,7 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
     """
     assert xmetric in METRICS and ymetric in METRICS, f"Unknown metrics: {xmetric} or {ymetric}. Expected one of {METRICS}."
     TICKGAP=2
-    ANNOTATION_FONTSIZE=10
+    ANNOTATION_FONTSIZE=13
     USE_GP_STR = "GP_" if USE_GP else ""
     adoption_rate = get_adoption_rate_label_from_app_uptake(uptake_rate)
     methods = results['method'].unique()
@@ -232,7 +232,7 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
         plot_these_methods = set([x for x, plot in plot_these_methods.items() if plot])
 
     # set up subplot grid
-    fig = plt.figure(num=1, figsize=(15,10), dpi=100)
+    fig = plt.figure(num=1, figsize=(15,10), dpi=200)
     gridspec.GridSpec(3,1)
     if plot_residuals:
         ax = plt.subplot2grid(shape=(3,1), loc=(0,0), rowspan=2, colspan=1, fig=fig)
@@ -286,13 +286,14 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
         y = fn.evaluate_y_for_x(x)
         label = labelmap[method] if not plot_scatter else None
         stderr = fn.stderr_for_x(x, analytical=True)
-        ax = plot_mean_and_stderr_bands(ax, x, y, stderr, label=label, color=colormap[method], confidence_level=1.96)
+        ax = plot_mean_and_stderr_bands(ax, x, y, stderr, label=label, color=colormap[method], confidence_level=1.96, stderr_alpha=0.1)
 
     # compute and plot offset and its confidence bounds
     if ymetric == "r":
         points = find_all_pairs_offsets_and_stddev(fitted_fns)
         table_to_save = []
-        for p1, p2, res1, m1, m2, res2, plot in points:
+        x_offset = 0.0
+        for p1, p2, res1, m1, m2, res2, plot in points[::-1]:
             table_to_save.append([m1, m2, labelmap[m1], labelmap[m2], *res1, *res2])
             if (
                 not annotate_advantages
@@ -300,11 +301,14 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
             ):
                 continue
 
-            p3 = [p1[0] + 0.1, (p1[1] + p2[1])/2.0]
+            p3 = [p1[0] + 0.01, (p1[1] + p2[1])/2.0]
             # arrow
             ax.annotate(s='', xy=p1, xytext=p2, arrowprops=dict(arrowstyle='<|-|>', linestyle=":", linewidth=1, zorder=1000, mutation_scale=20))
-            text=f"{res1[0]:0.2f} $\pm$ {res1[1]: 0.2f}, \n{res1[2]:0.2f}"
-            ax.annotate(s=text, xy=p3, fontsize=ANNOTATION_FONTSIZE, fontweight='black', bbox=dict(facecolor='none', edgecolor='black'), zorder=1000, verticalalignment="center")
+            text=f"{res1[0]:0.2f} $\pm$ {res1[1]: 0.2f}\n{1-res1[2]:0.1e}"
+            ax.annotate(s=text, xy=p3, xytext=(p3[0] + x_offset, p3[1]-0.2), fontsize=ANNOTATION_FONTSIZE, \
+                        fontweight='black', bbox=dict(facecolor='none', edgecolor='black'), zorder=1000, verticalalignment="center", \
+                        arrowprops=dict(arrowstyle="->"))
+            x_offset += 1.0
 
         # save the table
         table_to_save = pd.DataFrame(table_to_save, columns=['method1', 'method2', 'label1', 'label2', 'advantage', 'stddev', 'P(advantage > 0)', 'rnd_advantage', 'rnd_stderr', 'P(rnd_advantage > 0)'])
@@ -318,9 +322,10 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
         # reference lines
         ax.plot(ax.get_xlim(), [1.0, 1.0], '-.', c="gray", alpha=0.5)
         ax.set_ylim(0, 2)
+        ax.set_xlim(left=results[xmetric].min(), right=results[xmetric].max())
 
         # add legend for the text box
-        text = "offset $\pm$ stderr\nP(offset > 0)"
+        text = "advantage $\pm$ stderr\np-value"
         ax.annotate(s=text, xy=(ax.get_xlim()[1]-2, 0.5), fontsize=ANNOTATION_FONTSIZE, fontweight='black', bbox=dict(facecolor='none', edgecolor='black'), zorder=10)
 
     xlabel = get_metric_label(xmetric)
@@ -467,7 +472,7 @@ def run(data, plot_path, compare=None, **kwargs):
             assert extracted_data_filepath.exists(), f"{extracted_data_filepath} do not exist"
             all_data = pd.read_csv(str(extracted_data_filepath))
 
-        for USE_GP in [False, True]:
+        for USE_GP in [True]:
             for ymetric in ['r']:
                 for xmetric in ['effective_contacts', 'healthy_contacts']:
                     for annotate_advantages in [False, True]:
