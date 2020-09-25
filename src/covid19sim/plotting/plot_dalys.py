@@ -582,15 +582,6 @@ def total_dalys_age(daly_data):
     per_sex_age =  total_dalys_sex_age(daly_data) ### terrible implementation, just use total_dalys
     return per_sex_age.sum(axis=1)
 
-def add_metrics_per_person(daly_data):
-
-    for human in daly_data.index:
-        daly_data.loc[human, 'yll']= yll(human, daly_data)
-        daly_data.loc[human, 'yld'] = yld('hospitalization', human, daly_data)
-        daly_data.loc[human, 'DALYS'] = daly_data['yll'][human] + daly_data['yld'][human]
-    
-    return daly_data
-
 def per_person_metrics_sex_age(daly_data):
     
     daly_data['yll'] = ""
@@ -660,7 +651,7 @@ def per_person_metrics_sex_age(daly_data):
     
     dalys_sex.index = [str(i) + ' - ' + str(i+9) for i in range(0,101,10)]
     dalys_sex.index.name = 'Age'
-    dalys_sex.rename(index={'100 - 109': '100+'})
+    dalys_sex = dalys_sex.rename(index={'100 - 109': '100+'})
     columns = pd.MultiIndex.from_product(iterables, names = ['sex','metric'])
     dalys_sex.columns = columns
     
