@@ -101,7 +101,7 @@ class FittedFn(object):
         """
         pass
 
-    def find_offset_and_stderr_at_y(self, x, other_fn, analytical=True):
+    def find_offset_and_stderr_at_x(self, x, other_fn, analytical=True, check_y=None):
         """
         Finds the difference in y coordinate of `self.fn` and `other_fn` at x where `self.fn = y`.
 
@@ -109,6 +109,7 @@ class FittedFn(object):
             x (float): x co-ordinate at which this offset (advantage) wrt other_fn is to be computed
             other_fn (FittedFn): other function which is being compared to
             analytical (bool): If variance to be computed is analytical. Default is True.
+            check_y (float): If not None, assertion is used to check correctness of the point lying on FittedFn.
 
         Returns:
             advantage (float): mean difference in predictions of `other_fn` and `self` at x for which `self` is `y`
@@ -177,10 +178,14 @@ class LinearFit(FittedFn):
             std = np.std(ys, axis=0)
             return std ** 2 if return_var else std
 
-    def find_offset_and_stderr_at_y(self, x, other_fn, analytical=True):
+    def find_offset_and_stderr_at_x(self, x, other_fn, analytical=True, check_y=None):
         assert self._fit, "Function has not been fitted yet"
-        
+
         x = np.array([x])
+        y = self.evaluate_y_for_x(x)
+        if check_y is not None:
+            assert abs(y - check_y) < 1e-4, f"Evaluated y are not equal. Evaluated: {y}. Expected: {check_y}"
+
         if analytical:
             var_y1 = self.stderr_for_x(x, return_var=True, analytical=True)
             y2 = other_fn.evaluate_y_for_x(x)
@@ -246,7 +251,7 @@ class GPRFit(FittedFn):
     def find_x_for_y(self, y):
         assert self._fit, "Function has not been fitted yet"
         y = self.reformat_input(y)
-        xx = np.linspace(0, 20, 200).reshape(-1, 1)
+        xx = np.linspace(2, 10, 100000).reshape(-1, 1)
         yy = self.evaluate_y_for_x(xx)
         x1 = xx[np.argmin(np.abs(yy - y))]
         return x1
@@ -290,10 +295,14 @@ class GPRFit(FittedFn):
             std = np.std(ys, axis=0)
             return std ** 2 if return_var else std
 
-    def find_offset_and_stderr_at_y(self, x, other_fn, analytical=False):
+    def find_offset_and_stderr_at_x(self, x, other_fn, analytical=False, check_y=None):
         assert self._fit, "Function has not been fitted yet"
 
         x = self.reformat_input(x)
+        y = self.evaluate_y_for_x(x)
+        if check_y is not None:
+            assert abs(y - check_y) < 1e-4, f"Evaluated y are not equal. Evaluated: {y}. Expected: {check_y}"
+
         if analytical:
             var_y1 = self.stderr_for_x(x, return_var=True, analytical=True)
             y2 = other_fn.evaluate_y_for_x(x)
