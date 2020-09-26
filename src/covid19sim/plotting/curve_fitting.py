@@ -101,14 +101,14 @@ class FittedFn(object):
         """
         pass
 
-    def find_offset_and_stderr_at_y(self, y, other_fn, analytical=True):
+    def find_offset_and_stderr_at_y(self, x, other_fn, analytical=True):
         """
         Finds the difference in y coordinate of `self.fn` and `other_fn` at x where `self.fn = y`.
 
         Args:
-            y (float):
-            other_fn (FittedFn):
-            analytical (bool): Default is True.
+            x (float): x co-ordinate at which this offset (advantage) wrt other_fn is to be computed
+            other_fn (FittedFn): other function which is being compared to
+            analytical (bool): If variance to be computed is analytical. Default is True.
 
         Returns:
             advantage (float): mean difference in predictions of `other_fn` and `self` at x for which `self` is `y`
@@ -177,16 +177,12 @@ class LinearFit(FittedFn):
             std = np.std(ys, axis=0)
             return std ** 2 if return_var else std
 
-    def find_offset_and_stderr_at_y(self, y, other_fn, analytical=True):
+    def find_offset_and_stderr_at_y(self, x, other_fn, analytical=True):
         assert self._fit, "Function has not been fitted yet"
-        # assert type(y) == float, f"expected float got {type(y)}"
-
-        y = np.array([y])
-        x = self.find_x_for_y(y) # find x such that mean self.fn is y
-        assert abs(self.evaluate_y_for_x(x) - y) < 1e-4, f"Expected evaluation to be {y} but output is {self(x)}"
+        
+        x = np.array([x])
         if analytical:
             var_y1 = self.stderr_for_x(x, return_var=True, analytical=True)
-
             y2 = other_fn.evaluate_y_for_x(x)
             var_y2 = other_fn.stderr_for_x(x, return_var=True, analytical=True)
 
@@ -199,8 +195,7 @@ class LinearFit(FittedFn):
             ys = other_fn.predict_y_using_sampled_fns(x, n_samples=1000)
             var_y2 = np.std(ys) ** 2
 
-            offsets = ys - y
-            offset = np.mean(offsets)
+            offset = np.mean(ys) - y
             stderr = np.sqrt(var_y2 + var_y1)
             cdf = 1 - stats.norm.cdf(0.0, loc=offset, scale=stderr)
 
@@ -295,16 +290,12 @@ class GPRFit(FittedFn):
             std = np.std(ys, axis=0)
             return std ** 2 if return_var else std
 
-    def find_offset_and_stderr_at_y(self, y, other_fn, analytical=False):
+    def find_offset_and_stderr_at_y(self, x, other_fn, analytical=False):
         assert self._fit, "Function has not been fitted yet"
 
-        y = self.reformat_input(y)
-        x = self.find_x_for_y(y) # find x such that mean self.fn is y
-        assert abs(self.evaluate_y_for_x(x) - y) < 1e-4, f"Expected evaluation to be {y} but output is {self(x)}"
-
+        x = self.reformat_input(x)
         if analytical:
             var_y1 = self.stderr_for_x(x, return_var=True, analytical=True)
-
             y2 = other_fn.evaluate_y_for_x(x)
             var_y2 = other_fn.stderr_for_x(x, return_var=True, analytical=True)
 
@@ -314,15 +305,6 @@ class GPRFit(FittedFn):
         else:
             warnings.warn("Empirical stderr for GP Regression is expensive! Returning Nones")
             return None, None, None
-            var_y1 = self.stderr_for_x(x, return_var=True, analytical=False)
-
-            ys = other_fn.predict_y_using_sampled_fns(x, n_samples=self.num_samples)
-            var_y2 = np.std(ys) ** 2
-
-            offsets = ys - y
-            offset = np.mean(offsets)
-            stderr = np.sqrt(var_y2 + var_y1)
-            cdf = 1 - stats.norm.cdf(0.0, loc=offset, scale=stderr)
 
         return offset.item(), stderr.item(), cdf.item()
 

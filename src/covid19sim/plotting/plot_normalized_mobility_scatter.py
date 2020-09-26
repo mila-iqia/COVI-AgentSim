@@ -182,13 +182,11 @@ def find_all_pairs_offsets_and_stddev(fitted_fns):
         plot = True
         reference_fn = fitted_fns[method1]
         y1 = reference_fn.evaluate_y_for_x(x1)
+        assert abs(y1 - 1.0) < 1e-4, f"encountered incorrect y cordinate. Expected 1.0. Got {y1}"
         for x2, method2 in method_x[idx+1:]:
             comparator_fn = fitted_fns[method2]
-
-            y2 = comparator_fn.evaluate_y_for_x(x1)
-
-            offset_rnd, stddev_rnd, cdf_rnd = reference_fn.find_offset_and_stderr_at_y(y1, other_fn=comparator_fn, analytical=False)
-            offset, stddev, cdf = reference_fn.find_offset_and_stderr_at_y(y1, other_fn=comparator_fn, analytical=True)
+            offset_rnd, stddev_rnd, cdf_rnd = reference_fn.find_offset_and_stderr_at_y(x1, other_fn=comparator_fn, analytical=False)
+            offset, stddev, cdf = reference_fn.find_offset_and_stderr_at_y(x1, other_fn=comparator_fn, analytical=True)
 
             #
             all_pairs.append([(x1, y1), (x1, y2), (offset, stddev, cdf), method1, method2, (offset_rnd, stddev_rnd, cdf_rnd), plot])
@@ -472,7 +470,7 @@ def run(data, plot_path, compare=None, **kwargs):
             assert extracted_data_filepath.exists(), f"{extracted_data_filepath} do not exist"
             all_data = pd.read_csv(str(extracted_data_filepath))
 
-        for USE_GP in [True]:
+        for USE_GP in [False, True]:
             for ymetric in ['r']:
                 for xmetric in ['effective_contacts', 'healthy_contacts']:
                     for annotate_advantages in [False, True]:
