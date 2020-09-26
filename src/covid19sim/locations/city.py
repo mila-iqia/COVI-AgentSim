@@ -469,6 +469,7 @@ class City:
         humans_notified, infections_seeded = False, False
         last_day_idx = 0
         while True:
+            start = time.time()
             current_day = (self.env.timestamp - self.start_time).days
 
             # seed infections and change mixing constants (end of burn-in period)
@@ -521,6 +522,7 @@ class City:
             self.covid_testing_facility.clear_test_queue()
 
             alive_humans = []
+
             # run non-app-related-stuff for all humans here (test seeking, infectiousness updates)
             for human in self.humans:
                 if not human.is_dead:
@@ -547,7 +549,6 @@ class City:
             # self.tracker.track_locations() # TODO
 
             yield self.env.timeout(int(duration))
-
             # finally, run end-of-day activities (if possible); these include mailbox cleanups, symptom updates, ...
             if current_day != last_day_idx:
                 alive_humans = [human for human in self.humans if not human.is_dead]
@@ -715,7 +716,7 @@ class EmptyCity(City):
 
         self.test_type_preference = list(zip(*sorted(conf.get("TEST_TYPES").items(), key=lambda x:x[1]['preference'])))[0]
         self.max_capacity_per_test_type = {
-            test_type: max([int(conf['TEST_TYPES'][test_type]['capacity'] * self.n_people), 1])
+            test_type: max(int(self.conf['PROPORTION_LAB_TEST_PER_DAY'] * self.n_people), 1)
             for test_type in self.test_type_preference
         }
 

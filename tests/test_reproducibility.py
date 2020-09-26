@@ -10,10 +10,10 @@ from tests.utils import get_test_conf
 
 from covid19sim.run import simulate
 
-TEST_CONF_NAME = "naive_local.yaml"
+TEST_CONF_NAME = "base.yaml"
 
 
-class ReproducibilityTest(unittest.TestCase):
+class ReproducibilityTests(unittest.TestCase):
     config = None
 
     def setUp(self):
@@ -24,23 +24,19 @@ class ReproducibilityTest(unittest.TestCase):
         self.location_start_time = datetime.datetime(2020, 2, 28, 0, 0)
         self.simulation_days = 20
 
-    @pytest.mark.skip(reason="prateek's changes... needs to fix")
     def test_reproducibility(self):
         """
-        Run three simulations to have a pair of same seed simulation and different
-        seeds simulation and ensure we get the same output and different output
-        respectively
+        Run three simulations to have a pair of same seed simulation and ensure we get the same output.
         """
 
         events_logs = []
 
         for seed in (self.test_seed, self.test_seed, self.test_seed+1):
-            md5 = hashlib.md5()
-
             with self.subTest(seed=seed):
                 with TemporaryDirectory() as d:
+                    md5 = hashlib.md5()
                     outfile = os.path.join(d, "data")
-                    monitors, _ = simulate(
+                    city, monitors, tracker = simulate(
                         n_people=self.n_people,
                         start_time=self.location_start_time,
                         simulation_days=self.simulation_days,
@@ -52,7 +48,8 @@ class ReproducibilityTest(unittest.TestCase):
                     )
                     monitors[0].dump()
                     monitors[0].join_iothread()
-
+                    import time
+                    time.sleep(10)
                     with zipfile.ZipFile(f"{outfile}.zip", 'r') as zf:
                         for pkl in zf.namelist():
                             pkl_bytes = zf.read(pkl)

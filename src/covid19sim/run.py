@@ -68,7 +68,7 @@ def _get_intervention_string(conf):
         type_of_run += f"\n RISK_MAPPING: {conf['RISK_MAPPING']}"
         return type_of_run
 
-    if risk_model in ['heuristicv1', 'heuristicv2', 'heuristicv3']:
+    if risk_model in ['heuristicv1', 'heuristicv2', 'heuristicv3', 'heuristicv4']:
         type_of_run += f" N_LEVELS_USED: {n_behavior_levels} |"
         type_of_run += f" INTERPOLATE_USING_LOCKDOWN_CONTACTS:{conf['INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS']} |"
         type_of_run += f" MAX_RISK_LEVEL: {conf['MAX_RISK_LEVEL']} |"
@@ -146,9 +146,9 @@ def main(conf: DictConfig):
     conf['INTERVENTION'] = type_of_run
     log(f"Type of run: {type_of_run}", logfile)
     if conf['COLLECT_TRAINING_DATA']:
-        hdf5_path = os.path.join(conf["outdir"], "train.hdf5")
+        data_output_path = os.path.join(conf["outdir"], "train.zarr")
         collection_server = DataCollectionServer(
-            data_output_path=hdf5_path,
+            data_output_path=data_output_path,
             config_backup=conf,
             human_count=conf['n_people'],
             simulation_days=conf['simulation_days'],

@@ -24,6 +24,7 @@ from covid19sim.inference.server_utils import DataCollectionServer, DataCollecti
     default_datacollect_frontend_address
 from covid19sim.utils.utils import log, copy_obj_array_except_env
 from covid19sim.utils.constants import SECONDS_PER_DAY, SECONDS_PER_MINUTE
+from covid19sim.interventions.tracing import Heuristic
 if typing.TYPE_CHECKING:
     from covid19sim.human import Human
 from covid19sim.locations.hospital import Hospital, ICU
@@ -382,7 +383,6 @@ class Tracker(object):
                 human_count=city.conf["n_people"],
                 simulation_days=city.conf["simulation_days"],
                 config_backup=city.conf,
-                encode_deltas=True,
             )
             self.collection_server.start()
             self.collection_client = DataCollectionClient(
@@ -885,14 +885,18 @@ class Tracker(object):
 
         for name, h in hd.items():
             order_1_contacts = h.contact_book.get_contacts(hd)
+
             self.risk_attributes.append({
                 "has_app": h.has_app,
                 "risk": h.risk,
                 "risk_level": h.risk_level,
+                "reason": h.heuristic_reasons,
                 "rec_level": h.rec_level,
                 "exposed": h.is_exposed,
                 "infectious": h.is_infectious,
                 "symptoms": len(h.symptoms),
+                "symptom_names": h.reported_symptoms,
+                "clusters": h.intervention.extract_clusters(h) if type(h.intervention) == Heuristic else [],
                 "test": h.test_result,
                 "recovered": h.is_removed,
                 "timestamp": self.env.timestamp,
@@ -906,6 +910,7 @@ class Tracker(object):
                                                len(c.symptoms) > 0 for c in order_1_contacts]),
                 "order_1_is_tested": any([c.test_result == "positive" for c in order_1_contacts]),
             })
+
         if self.keep_full_human_copies:
             assert self.collection_client is not None
             human_backups = copy_obj_array_except_env(hd)
@@ -913,8 +918,9 @@ class Tracker(object):
                 human_id = int(name.split(":")[-1]) - 1
                 current_day = (current_timestamp - self.city.start_time).days
                 self.collection_client.write(current_day, current_timestamp.hour, human_id, human)
-            # @@@@@ TODO: do something with location backups
-            # location_backups = copy_obj_array_except_env(self.city.get_all_locations())
+
+        # @@@@@ TODO: do something with location backups
+        # location_backups = copy_obj_array_except_env(self.city.get_all_locations())
 
     def track_app_adoption(self):
         """
@@ -1902,7 +1908,7 @@ class Tracker(object):
         data['tested_per_day'] = self.tested_per_day
         data['i_per_day'] = self.i_per_day
         data['adoption_rate'] = self.adoption_rate
-        data['lab_test_capacity'] = conf['TEST_TYPES']['lab']['capacity']
+        data['lab_test_capacity'] = conf['PROPORTION_LAB_TEST_PER_DAY']
         data['n_people'] = conf['n_people']
 
         data['humans'] = {}

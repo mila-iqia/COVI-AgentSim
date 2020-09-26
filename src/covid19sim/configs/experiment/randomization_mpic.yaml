@@ -15,23 +15,20 @@ intervention: oracle
 run_type: collect-training-data
 track: none
 
-n_people: 1000
-simulation_days: 30
+# Candidate for OOD testing
+n_people: 3000
+simulation_days: 50
 
 INTERVENTION_DAY: 0
 PROPORTION_LAB_TEST_PER_DAY: 0.001
-GLOBAL_MOBILITY_SCALING_FACTOR: 1
 MAKE_HOUSEHOLD_BEHAVE_SAME_AS_MAX_RISK_RESIDENT: True
 
-ORACLE_MUL_NOISE: 0.05
-ORACLE_ADD_NOISE: 0.0
-
-outdir: /home/nrahaman/python/covi-simulator/exp/neodr0
+outdir: /home/nrahaman/python/covi-simulator/exp/neodr2
 weights_dir: /home/nrahaman/python/ctt/exp/SHIPMENTS
 zip_outdir: true
 delete_outdir: true
 use_tmpdir: false
-n_search: 120
+n_search: 240
 n_runs_per_search: 1
 USE_INFERENCE_SERVER: false
 env_name: covid38
@@ -39,6 +36,22 @@ infra: beluga
 time: '"02:50:00"'
 cpus: 4
 mem: 8
+
+# Oracle business
+risk_mappings: uniform
+
+ORACLE_MUL_NOISE:
+  sample: uniform
+  from: [0.2, 0.8]
+
+ORACLE_ADD_NOISE:
+  sample: uniform
+  from: [0.05, 0.15]
+
+# Other rando params
+GLOBAL_MOBILITY_SCALING_FACTOR:
+  sample: uniform
+  from: [0.3, 0.9]
 
 APP_UPTAKE:
   sample: uniform # uniform in range:
@@ -48,14 +61,29 @@ P_CAREFUL_PERSON:
   sample: uniform # uniform in range:
   from: [0.5, 0.8]
 
-
-# DROPOUT_RATE:
-#   sample: uniform # uniform in range:
-#   from: [0.0, 0.04]
-
 init_fraction_sick:
   sample: uniform
-  from: [0.0015, 0.011]
+  from: [0.002, 0.006]
+
+P_DROPOUT_SYMPTOM:
+  sample: uniform
+  from: [0.1, 0.6]
+
+P_DROPIN_SYMPTOM:
+  sample: uniform
+  from: [0.0001, 0.001]
+
+QUARANTINE_DROPOUT_TEST:
+  sample: uniform
+  from: [0.01, 0.03]
+
+QUARANTINE_DROPOUT_HOUSEHOLD:
+  sample: uniform
+  from: [0.02, 0.05]
+
+ALL_LEVELS_DROPOUT:
+  sample: uniform
+  from: [0.01, 0.05]
 
 seed: # for sole reproducibility purposes
   sample: range # uniform int choice
