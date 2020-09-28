@@ -141,7 +141,7 @@ def main(conf):
     all_plots = {
         "pareto_adoption": pareto_adoption,
         "jellybeans": jellybeans,
-        "reasons": reasons,
+        # "reasons": reasons,
         "presymptomatic": presymptomatic,
         "efficiency": efficiency,
         "generation_time": generation_time,
