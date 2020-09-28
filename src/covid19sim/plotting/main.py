@@ -146,7 +146,7 @@ def main(conf):
         "efficiency": efficiency,
         "generation_time": generation_time,
         "epi_table": epi_table,
-        "qalys": qalys,
+        "dalys": dalys,
         "episim_series": episim_series,
         "normalized_mobility": normalized_mobility
     }
@@ -211,7 +211,7 @@ def main(conf):
                 "humans_quarantined_state"
             ]
         )
-    if "qalys" in plots:
+    if "dalys" in plots:
         # Same as pareto
         keep_pkl_keys.update(
             [
