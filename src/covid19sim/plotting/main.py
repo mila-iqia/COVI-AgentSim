@@ -23,7 +23,7 @@ import covid19sim.plotting.plot_epi_table as epi_table
 import covid19sim.plotting.plot_episim_series as episim_series
 import covid19sim.plotting.plot_normalized_mobility_scatter as normalized_mobility
 from covid19sim.plotting.utils import get_all_data
-from covid19sim.plotting import plot_qalys as qalys
+from covid19sim.plotting import plot_dalys as dalys
 
 
 print("Ok.")
