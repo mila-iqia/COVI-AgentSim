@@ -149,7 +149,6 @@ def main(conf):
         "qalys": qalys,
         "episim_series": episim_series,
         "normalized_mobility": normalized_mobility
->>>>>>> develop
     }
 
     conf = OmegaConf.to_container(conf)
