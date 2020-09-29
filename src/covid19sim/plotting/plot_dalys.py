@@ -663,7 +663,7 @@ def run(data, path, compare="app_adoption"):
     agg_dalys = {label:{} for label, _ in label2pkls}
 
     #get life expectancy data
-    le_data_path = os.path.join(pathlib.Path(__file__).resolve().parent.parent, 'qaly_data/life_expectancies/1310011401-eng.csv'
+    le_data_path = os.path.join(pathlib.Path(__file__).resolve().parent.parent, 'qaly_data/life_expectancies/1310011401-eng.csv')
     le_data = load_life_expectancies(le_data_path)
 
     for label, pkls in label2pkls:
