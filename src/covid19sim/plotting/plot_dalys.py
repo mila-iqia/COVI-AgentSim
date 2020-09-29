@@ -663,7 +663,7 @@ def run(data, path, compare="app_adoption"):
     agg_dalys = {label:{} for label, _ in label2pkls}
 
     #get life expectancy data
-    le_data_path = find_life_expectancies(os.getcwd())
+    le_data_path = os.path.join(pathlib.Path(__file__).resolve().parent.parent, 'qaly_data/life_expectancies/1310011401-eng.csv'
     le_data = load_life_expectancies(le_data_path)
 
     for label, pkls in label2pkls:
@@ -691,7 +691,7 @@ def run(data, path, compare="app_adoption"):
                 daly_df_seed['days_in_hospital']/365 * disability_weights['hospitalized'] + \
                 daly_df_seed['days_in_ICU']/365 * disability_weights['critical']
             daly_df_seed['DALYs'] = daly_df_seed['YLL'] + daly_df_seed['YLD']
-            
+
             assert daly_df_seed[daly_df_seed.was_infected == False].DALYs.sum() == 0, 'uninfected should not contribute DALYs'
 
             # put into the same QALY unit
