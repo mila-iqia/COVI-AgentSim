@@ -33,17 +33,11 @@ def load_life_expectancies(path):
         })
     life_expectancies = life_expectancies.dropna(subset = ['female'])
     life_expectancies.loc[2, 'Age group'] = '1 years'
-#     life_expectancies.iloc[-1, 'Age group'] = '110 years'
+    # life_expectancies.iloc[-1, 'Age group'] = '110 years'
     life_expectancies.loc[life_expectancies.index[-1], 'Age group'] = '110 years'
     life_expectancies = life_expectancies.set_index('Age group')
 
     return life_expectancies
-
-def load_life_expectancies_preexisting(path):
-    ### data does not exist yet
-    ### takes as input a path pointing to life expectancies with preexisting conditions
-    life_expectancies_preexisting = pd.read_csv(path)    
-
 
 def get_daly_data(demographics, human_monitor_data, life_expectancies):
     
@@ -118,10 +112,6 @@ def get_daly_data(demographics, human_monitor_data, life_expectancies):
         daly_df.loc[human,'life_expectancy'] = float(life_expectancies[daly_df['sex'][human]][str(daly_df['age'][human])+" years"])
     
     return daly_df
-
-def set_life_expectancies_preexisting(daly_data, life_expectancies_preexisting):
-    pass
-    
     
 def yll(human_name,
         daly_data,
@@ -263,8 +253,6 @@ def yld(method,
     elif method == 'symptoms': #### TODO maybe, disability weight by symptom
         
         raise NotImplementedError
-    
-    
 
 def yld_formula(social_discount, 
                 age_weighting_constant, 
@@ -430,8 +418,6 @@ def dalys_per_thousand_sex_age(daly_data):
     
     return daly_1000_df
 
-
-
 def dalys_per_thousand_sex(daly_data):
     
     per_sex =  dalys_per_thousand_sex_age(daly_data) ### terrible implementation, just use dalys_per_thousand
@@ -493,7 +479,6 @@ def lost_work_hours_total(tracker_data):
                        )
     
     return lost_work_hours.sum()
-    
 
 def multiple_seeds_get_data(intervention,l_e_path):
     """
@@ -657,6 +642,14 @@ def per_person_metrics_sex_age(daly_data):
     
     return dalys_sex
 
+def find_life_expectancies(directory):
+    to_return = []
+    for dirpath, _, filenames in os.walk(directory):
+        for f in filenames:
+            if "1310011401" in f: #string unique to life expectancy file
+                return os.path.abspath(os.path.join(dirpath, f))
+    raise ValueError("Can't find life expectancies csv")
+    
 # TODO: add plots and tables to run function
 def run(data, path, compare="app_adoption"):
     label2pkls = list()
@@ -667,26 +660,45 @@ def run(data, path, compare="app_adoption"):
             label2pkls.append((label, pkls))
 
     # Define aggregate output variables
-    agg_qaly = []
+    agg_dalys = {label:{} for label, _ in label2pkls}
+
+    #get life expectancy data
+    le_data_path = find_life_expectancies(os.getcwd())
+    le_data = load_life_expectancies(le_data_path)
 
     for label, pkls in label2pkls:
-        for pkl in pkls:
+        for idx, pkl in enumerate(pkls):
 
-            # find the people who were afflicted (infection_monitor)
+            # get human_monitor data
+            monitor_data = pkl['human_monitor']
 
             # get their demographic information (pre-existing conditions, age)
-            demos = pkl['humans_demographics']
+            demog_data = pkl['humans_demographics']
 
-            # get the symptoms they experienced and their hospitalization (or ICU) (also human_monitor)
-            for date, humans in pkl['human_monitor']:
-                for human in humans:
-                    pass
+            # get data necessary to compute DALYs
+            daly_df_seed = get_daly_data(demog_data, monitor_data, le_data)
 
-                    # determine if they died (it's in the human_monitor)
+            # compute YLLs, YLDs and DALYs
+            disability_weights = {
+                                'no_hospitalization':0.051, # moderate lower respiratory infection
+                                'hospitalized':0.133, # severe respiratory infection
+                                'critical':0.408 #severe COPD without heart failure
+                                }
+
+            daly_df_seed['YLL'] = daly_df_seed['has_died'] * daly_df_seed['life_expectancy']
+            daly_df_seed['YLD'] = \
+                daly_df_seed['days_sick_not_in_hospital']/365 * disability_weights['no_hospitalization'] + \
+                daly_df_seed['days_in_hospital']/365 * disability_weights['hospitalized'] + \
+                daly_df_seed['days_in_ICU']/365 * disability_weights['critical']
+            daly_df_seed['DALYs'] = daly_df_seed['YLL'] + daly_df_seed['YLD']
 
             # put into the same QALY unit
+            agg_dalys[label][idx] = daly_df_seed['DALYS'].sum()
 
-            # add to aggregate output variables
+        # add to aggregate output variables
+    agg_daly_df = pd.DataFrame(agg_dalys).transpose()
+    agg_daly_df['mean'] = agg_daly_df.mean(axis = 1)
+    agg_daly_df['stderr'] = agg_daly_df.sem(axis = 1)
 
     # print a table with mean / std
-    print(agg_qaly)
+    print(agg_daly_df)
