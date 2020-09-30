@@ -84,11 +84,11 @@ def _get_location_type_to_track_mixing(human, location):
     Returns
         (str): a corresponding label for POLYMOD study.
     """
-    if location == human.household:
+    if (
+        location == human.household
+        and location.location_type != "SENIOR_RESIDENCY"
+    ):
         return "house"
-
-    # if location.location_type == "WORKPLACE":
-        # return "work"
 
     # doing this first matters because kids are assigned their workplace as schools
     if location.location_type == "SCHOOL":
@@ -96,7 +96,6 @@ def _get_location_type_to_track_mixing(human, location):
 
     if location == human.workplace:
         return "work"
-
 
     return "other"
 

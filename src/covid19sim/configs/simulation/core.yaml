@@ -108,12 +108,6 @@ MAX_TIME_SHORT_ACTVITIES: 4
 MIN_DIST_KNOWN_CONTACT: 0
 MAX_DIST_KNOWN_CONTACT: 200 # cms
 
-# Pre confinement contacts statistics (Montreal)
-WORKPLACE_MEAN_DAILY_INTERACTIONS: 10
-OTHER_MEAN_DAILY_INTERACTIONS: 3.1
-HOUSEHOLD_MEAN_DAILY_INTERACTIONS: 2.7
-SCHOOL_MEAN_DAILY_INTERACTIONS: 6
-
 # unknown (all the numbers below are assumed because no data is available about them)
 # A distance greater than INFECTION_RADIUS is useless to model, however, in the context of tracing apps
 # distance between two bluetooth devices can be underesimated depending on the noise in the signals.

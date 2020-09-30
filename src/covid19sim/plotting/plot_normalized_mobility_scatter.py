@@ -27,6 +27,7 @@ TICKSIZE = 15
 LEGENDSIZE = 20
 METRICS = ['r', 'false_quarantine', 'false_sr', 'effective_contacts', 'healthy_contacts', 'percentage_infected', \
             'fraction_false_non_risky', 'fraction_false_risky', 'positivity_rate', 'fraction_quarantine']
+USE_MATH_NOTATION=True
 
 # fix the seed
 np.random.seed(123)
@@ -45,6 +46,8 @@ def get_metric_label(label):
     assert label in METRICS, f"unknown label: {label}"
 
     if label == "r":
+        if USE_MATH_NOTATION:
+            return "$\hat{R}$"
         return "R"
 
     if label == "effective_contacts":
@@ -195,7 +198,7 @@ def find_all_pairs_offsets_and_stddev(fitted_fns):
 
     return all_pairs
 
-def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path, USE_GP=False, plot_residuals=False, display_r_squared=False, annotate_advantages=True, plot_scatter=True):
+def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path, USE_GP=False, plot_residuals=False, display_r_squared=False, annotate_advantages=True, plot_scatter=True, plot_heatmap=True):
     """
     Plots and saves scatter plot for data obtained from `configs/experiment/normalized_mobility.yaml` showing a trade off between health and mobility.
 
@@ -210,6 +213,7 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
         display_r_squared (bool): If True, show R-squared value in the legend.
         annotate_advantages (bool): if True, annotates the plot with advantages
         plot_scatter (bool): if True, plots scatter points corresponding to each experiment.
+        plot_heatmap (bool): if True, plots heatmap of pairwise advantages.
     """
     assert xmetric in METRICS and ymetric in METRICS, f"Unknown metrics: {xmetric} or {ymetric}. Expected one of {METRICS}."
     TICKGAP=2
@@ -314,9 +318,10 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
         table_to_save.to_csv(str(Path(path).resolve() / f"normalized_mobility/{USE_GP_STR}R_all_advantages_{xmetric}{USE_GP_STR}.csv"))
 
         # make a heatmap
-        heatmap = plot_heatmap_of_advantages(table_to_save, labelmap)
-        filepath = save_figure(heatmap, basedir=path, folder="normalized_mobility", filename=f'{USE_GP_STR}Heatmap_{xmetric}_advantages_AR_{adoption_rate}')
-        print(f"Heatmap of advantages @ {adoption_rate}% Adoption saved at {filepath}")
+        if plot_heatmap:
+            heatmap = plot_heatmap_of_advantages(table_to_save, labelmap, USE_MATH_NOTATION)
+            filepath = save_figure(heatmap, basedir=path, folder="normalized_mobility", filename=f'{USE_GP_STR}Heatmap_{xmetric}_advantages_AR_{adoption_rate}')
+            print(f"Heatmap of advantages @ {adoption_rate}% Adoption saved at {filepath}")
 
         # reference lines
         ax.plot(ax.get_xlim(), [1.0, 1.0], '-.', c="gray", alpha=0.5)
@@ -324,8 +329,11 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
         ax.set_xlim(left=results[xmetric].min(), right=results[xmetric].max())
 
         # add legend for the text box
-        text = "advantage $\pm$ stderr\np-value"
-        ax.annotate(s=text, xy=(ax.get_xlim()[1]-2, 0.5), fontsize=ANNOTATION_FONTSIZE, fontweight='black', bbox=dict(facecolor='none', edgecolor='black'), zorder=10)
+        if USE_MATH_NOTATION:
+            text = "$\Delta \hat{R} \pm \sigma$\np-value"
+        else:
+            text = "advantage $\pm$ stderr\np-value"
+        ax.annotate(s=text, xy=(ax.get_xlim()[1]-2, 0.5), fontsize=ANNOTATION_FONTSIZE, fontweight='normal', bbox=dict(facecolor='none', edgecolor='black'), zorder=10)
 
     xlabel = get_metric_label(xmetric)
     ylabel = get_metric_label(ymetric)
@@ -474,8 +482,10 @@ def run(data, plot_path, compare=None, **kwargs):
         for USE_GP in [True]:
             for ymetric in ['r']:
                 for xmetric in ['effective_contacts', 'healthy_contacts']:
+                    plot_heatmap = True
                     for annotate_advantages in [False, True]:
                         for plot_scatter in [False, True]:
                             plot_and_save_mobility_scatter(all_data, uptake, xmetric=xmetric, path=plot_path, \
                                 ymetric=ymetric, plot_residuals=False, display_r_squared=False, \
-                                annotate_advantages=annotate_advantages, plot_scatter=plot_scatter, USE_GP=USE_GP)
+                                annotate_advantages=annotate_advantages, plot_scatter=plot_scatter, USE_GP=USE_GP, plot_heatmap=plot_heatmap)
+                            plot_heatmap = False # dont' plotheatmap again
