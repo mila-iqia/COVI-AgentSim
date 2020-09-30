@@ -172,8 +172,8 @@ def plot_mean_and_stderr_bands(ax, index, mean, stderr, label, color, fill=True,
     """
     # params
     linestyle = kwargs.get("linestyle", "-")
-    mean_alpha = kwargs.get("alpha", 1.0)
-    stderr_alpha = kwargs.get("alpha", 0.3)
+    mean_alpha = kwargs.get("mean_alpha", 1.0)
+    stderr_alpha = kwargs.get("stderr_alpha", 0.3)
     marker = kwargs.get("marker", None)
     markersize = kwargs.get("markersize", 1)
     linewidth = kwargs.get("linewidth", 1)
