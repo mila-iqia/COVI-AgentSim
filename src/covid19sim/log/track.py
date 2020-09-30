@@ -1349,7 +1349,7 @@ class Tracker(object):
         self.activity_attributes["duration"][just_finished_activity.name].push(just_finished_activity.duration)
 
     @check_if_tracking
-    def track_mixing(self, human1, human2, duration, distance_profile, timestamp, location, interaction_type, contact_condition, global_mbility_factor):
+    def track_mixing(self, human1, human2, duration, distance_profile, timestamp, location, interaction_type, contact_condition, global_mobility_factor):
         """
         Stores counts and statistics to generate various aspects of contacts and social mixing.
         Following are being tracked -
@@ -1499,8 +1499,8 @@ class Tracker(object):
                 C = self.contact_matrices[interaction_type][location_type]
                 D = self.contact_duration_matrices[interaction_type][location_type]
 
-                C['total'][i, j] += 1
-                C['total'][j, i] += 1
+                C['total'][i, j] += global_mobility_factor 
+                C['total'][j, i] += global_mobility_factor
                 # in surveys, ij ==> j is the participant and i is the reported contact
                 C['n_people'][(j,i)].add(human1.name) # i reports about j; len of this set is number of unique people in i that met j
                 C['n_people'][(i,j)].add(human2.name) # j reports about i
