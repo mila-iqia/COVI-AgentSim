@@ -153,9 +153,9 @@ def _plot_mean_with_stderr_bands_of_series(ax, series, label, color, **kwargs):
     ax = plot_mean_and_stderr_bands(ax, index, mean, stderr, label, color, **kwargs)
     return ax
 
-def plot_mean_and_stderr_bands(ax, index, mean, stderr, label, color, **kwargs):
+def plot_mean_and_stderr_bands(ax, index, mean, stderr, label, color, fill=True, **kwargs):
     """
-    Plots a filled polygon using `mean` and `stderr` bounds on `ax`
+    Plots `mean` and `stderr` bounds on `ax`
 
     Args:
         ax (matplotlib.axes.Axes): Axes on which to plot the series
@@ -164,6 +164,7 @@ def plot_mean_and_stderr_bands(ax, index, mean, stderr, label, color, **kwargs):
         stderr (pd.Series): error bounds around mean. Pass `confidence_level` to decide the bounds.
         label (str): label for the series to appear in legend
         color (str): color of line and the filling of polygon
+        fill (bool): If True, fills the polygon between std error bands.
         **kwargs (key=value): see below for keyword arguments used
 
     Returns:
@@ -177,15 +178,19 @@ def plot_mean_and_stderr_bands(ax, index, mean, stderr, label, color, **kwargs):
     markersize = kwargs.get("markersize", 1)
     linewidth = kwargs.get("linewidth", 1)
     confidence_level = kwargs.get('confidence_level', 1.0) # z-value corresponding to a significance level
+    capsize = kwargs.get('capsize', 5.0)
 
-    lows = mean - confidence_level * stderr
-    highs = mean + confidence_level * stderr
-    lowfn = interp1d(index, lows, bounds_error=False, fill_value='extrapolate')
-    highfn = interp1d(index, highs, bounds_error=False, fill_value='extrapolate')
     #
     ax.plot(index, mean, color=color, alpha=mean_alpha, linestyle=linestyle,
                 linewidth=linewidth, label=label, marker=marker, ms=markersize)
-    ax.fill_between(index, lowfn(index), highfn(index), color=color, alpha=stderr_alpha, lw=0, zorder=3)
+    if fill:
+        lows = mean - confidence_level * stderr
+        highs = mean + confidence_level * stderr
+        lowfn = interp1d(index, lows, bounds_error=False, fill_value='extrapolate')
+        highfn = interp1d(index, highs, bounds_error=False, fill_value='extrapolate')
+        ax.fill_between(index, lowfn(index), highfn(index), color=color, alpha=stderr_alpha, lw=0, zorder=3)
+    else:
+        ax.errorbar(index, mean, yerr=confidence_level * stderr, color=color, alpha=stderr_alpha, capsize=capsize)
 
     return ax
 
@@ -312,7 +317,7 @@ def plot_heatmap_of_advantages(data, labelmap, USE_MATH_NOTATION=False):
         ax.set_title("$\Delta \hat{R}$ ($\pm$ 2$\sigma$)", fontsize=XY_TITLESIZE, y=1.03)
     else:
         ax.set_title("Advantages ($\pm$ 2$\sigma$) of Tracing Methods (* 95% Significance level)", fontsize=XY_TITLESIZE, y=1.03)
-        
+
     return fig
 
 def save_figure(figure, basedir, folder, filename, bbox_extra_artists=None):
