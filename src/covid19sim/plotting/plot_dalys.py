@@ -469,13 +469,13 @@ def lost_work_hours_age_bins(tracker_data):
 def lost_work_hours_total(tracker_data, wfh_prod=0.3):
     """
         Adds up lost work hours from all sources (kid, ill, quarantine).
-        Sums across age bins 25 to 60.
+        Sums across age bins 25 to 64.
         Returns a scalar value.
     """
     
-    lost_work_hours = ( tracker_data['work_hours']['WORK-CANCEL--KID'][5:12] + \
-                        tracker_data['work_hours']['WORK-CANCEL--ILL'][5:12] + \
-                        tracker_data['work_hours']['WORK-CANCEL--QUARANTINE'][5:12]*wfh_prod
+    lost_work_hours = ( tracker_data['work_hours']['WORK-CANCEL--KID'][5:13] + \
+                        tracker_data['work_hours']['WORK-CANCEL--ILL'][5:13] + \
+                        tracker_data['work_hours']['WORK-CANCEL--QUARANTINE'][5:13]*wfh_prod
                        )
     
     return lost_work_hours.sum()
