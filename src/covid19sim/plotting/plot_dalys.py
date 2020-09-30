@@ -473,9 +473,9 @@ def lost_work_hours_total(tracker_data):
         Returns a scalar value.
     """
     
-    lost_work_hours = ( tracker_data['work_hours']['WORK-CANCEL--KID'] + \
-                        tracker_data['work_hours']['WORK-CANCEL--ILL'] + \
-                        tracker_data['work_hours']['WORK-CANCEL--QUARANTINE']
+    lost_work_hours = ( tracker_data['work_hours']['WORK-CANCEL--KID'][5:12] + \
+                        tracker_data['work_hours']['WORK-CANCEL--ILL'][5:12] + \
+                        tracker_data['work_hours']['WORK-CANCEL--QUARANTINE'][5:12]
                        )
     
     return lost_work_hours.sum()
