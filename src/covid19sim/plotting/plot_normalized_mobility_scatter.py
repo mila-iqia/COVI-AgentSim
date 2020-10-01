@@ -2,6 +2,7 @@
 Plots a scatter plot showing trade-off between metrics of different simulations across varying mobility.
 """
 import os
+import yaml
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -15,8 +16,9 @@ from covid19sim.plotting.utils import get_proxy_r, split_methods_and_check_valid
 from covid19sim.plotting.extract_tracker_metrics import _daily_false_quarantine, _daily_false_susceptible_recovered, _daily_fraction_risky_classified_as_non_risky, \
                                 _daily_fraction_non_risky_classified_as_risky, _daily_fraction_quarantine
 from covid19sim.plotting.extract_tracker_metrics import _mean_effective_contacts, _mean_healthy_effective_contacts, _percentage_total_infected, _positivity_rate
-from covid19sim.plotting.matplotlib_utils import add_bells_and_whistles, save_figure, get_color, get_adoption_rate_label_from_app_uptake, get_intervention_label, plot_mean_and_stderr_bands
-from covid19sim.plotting.curve_fitting import _linear, get_fitted_fn, get_offset_and_stddev_from_random_draws, get_offset_and_stddev_analytical, get_stderr_of_fitted_fn_analytical
+from covid19sim.plotting.matplotlib_utils import add_bells_and_whistles, save_figure, get_color, get_adoption_rate_label_from_app_uptake, get_intervention_label, \
+                                plot_mean_and_stderr_bands, get_base_intervention, get_labelmap, get_colormap, plot_heatmap_of_advantages
+from covid19sim.plotting.curve_fitting import LinearFit, GPRFit
 
 TITLESIZE = 25
 LABELPAD = 0.50
@@ -25,6 +27,11 @@ TICKSIZE = 15
 LEGENDSIZE = 20
 METRICS = ['r', 'false_quarantine', 'false_sr', 'effective_contacts', 'healthy_contacts', 'percentage_infected', \
             'fraction_false_non_risky', 'fraction_false_risky', 'positivity_rate', 'fraction_quarantine']
+USE_MATH_NOTATION=True
+
+# fix the seed
+np.random.seed(123)
+
 
 def get_metric_label(label):
     """
@@ -39,6 +46,8 @@ def get_metric_label(label):
     assert label in METRICS, f"unknown label: {label}"
 
     if label == "r":
+        if USE_MATH_NOTATION:
+            return "$\hat{R}$"
         return "R"
 
     if label == "effective_contacts":
@@ -89,13 +98,14 @@ def _get_mobility_factor_counts_for_reasonable_r(results, method, lower_R=0.5, u
     correct_R = (lower_R <= results[selector]['r']) & (results[selector]['r'] <= upper_R)
     return results[selector][correct_R][['mobility_factor']].value_counts()
 
-def _get_interpolation_kind(xmetric, ymetric):
+def _get_interpolation_kind(xmetric, ymetric, use_gp=False):
     """
     Returns a valid interpolation function between xmetric and ymetric.
 
     Args:
         xmetric (str): one of `METRICS`
         ymetric (str): one of `METRICS`
+        use_gp (str): return GP regression fit if True.
 
     Returns:
         (function): a function that accepts an np.array. Examples - `_linear`
@@ -103,12 +113,15 @@ def _get_interpolation_kind(xmetric, ymetric):
     assert xmetric != ymetric, "x and y can't be same"
     assert xmetric in METRICS and ymetric in METRICS, f"unknown metrics - xmetric: {xmetric} or ymetric:{ymetric}. Expected one of {METRICS}"
 
+    if use_gp:
+        return GPRFit
+
     metrics = [xmetric, ymetric]
     if sum(metric in ["effective_contacts", "r"] for metric in metrics) == 2:
-        return _linear
-    return _linear
+        return LinearFit
+    return LinearFit
 
-def _filter_out_irrelevant_method(xmetric, ymetric, method):
+def _filter_out_irrelevant_method(xmetric, ymetric, method, results):
     """
     Checks whether `xmetric` and `ymetric` are suitable to be plotted for `method`.
     if any metric is specific to app-based methods, filter out non-app based method
@@ -117,6 +130,7 @@ def _filter_out_irrelevant_method(xmetric, ymetric, method):
         xmetric (str): one of `METRICS`
         ymetric (str): one of `METRICS`
         method (str): method for which validity is to be checked
+        results (pd.DataFrame): Dataframe with rows as methods and corresponding simulation metrics. Only `app_based` column is used.
 
     Returns:
         (bool): True if `method` is not suitable to be plotted for `xmetric` and `ymetric` comparison
@@ -124,25 +138,27 @@ def _filter_out_irrelevant_method(xmetric, ymetric, method):
     assert xmetric != ymetric, "x and y can't be same"
     assert xmetric in METRICS and ymetric in METRICS, f"unknown metrics - xmetric: {xmetric} or ymetric:{ymetric}. Expected one of {METRICS}"
 
+    is_app_based = results[results['method'] == method]['app_based'].unique()
+    assert len(is_app_based) == 1, "Same method is expected to be app based and non app based. This can't happen!"
+    is_app_based = is_app_based.item()
+
     metrics = [xmetric, ymetric]
     # if any metric is specific to app-based methods, filter out non-app based method
     if (
         sum(metric in ["false_quarantine", "false_sr", "fraction_false_non_risky","fraction_false_risky" ] for metric in metrics) > 0
-        and not is_app_based_tracing_intervention(method)
+        and not is_app_based
     ):
         return True
 
     return False
 
-def find_all_pairs_offsets_and_stddev(fitted_fns, inverse_fitted_fns, fitting_stats):
+def find_all_pairs_offsets_and_stddev(fitted_fns):
     """
     Computes offset estimates and their stddev for all pairs of methods.
     NOTE: Only applicable when ymetric is "r".
 
     Args:
-        fitted_fns (dict): method --> fn fit using get_fitted_fn
-        inverse_fitted_fns (dict): method --> corresponding inverse function
-        fitting_stats (dict): method --> {'res': residuals obtained from fitting, 'parameters': corresponding parameters, 'parameters_stddev': stddev of parameters, 'covariance': covariance matrix of parameters}
+        fitted_fns (dict): method --> FittedFn
 
     Returns:
         (list): list of lists where each list corresponds to pairwise comparison of methods has following elements -
@@ -158,31 +174,31 @@ def find_all_pairs_offsets_and_stddev(fitted_fns, inverse_fitted_fns, fitting_st
 
     # for R = 1, find the value on x-axis.
     method_x = []
-    for method, method_stats in fitting_stats.items():
-        x = inverse_fitted_fns[method](1.0, *fitting_stats[method]['parameters'])
+    for method, fn in fitted_fns.items():
+        x = fn.find_x_for_y(1.0)
         method_x.append((x, method))
 
     # for the x of reference method, how much is the offset from other methods.
     all_pairs = []
     method_x = sorted(method_x, key=lambda x:-x[0]) # larger x is the reference
-    for idx in range(len(method_x)):
+    for idx, (x1, method1) in enumerate(method_x):
         plot = True
-        x1, method1 = method_x[idx]
-        y1 = fitted_fns[method1](x1, *fitting_stats[method1]['parameters'])
-        for x2, method2 in method_x[idx+1:]:
-            y2 = fitted_fns[method2](x1, *fitting_stats[method2]['parameters'])
-            offset_rnd, stddev_rnd, cdf_rnd = get_offset_and_stddev_from_random_draws(reference_fn=fitted_fns[method1], reference_inv_fn=inverse_fitted_fns[method1], reference_stats=fitting_stats[method1], \
-                                other_method_fn=fitted_fns[method2], other_method_inv_fn=inverse_fitted_fns[method2], other_method_stats=fitting_stats[method2])
+        reference_fn = fitted_fns[method1]
+        y1 = reference_fn.evaluate_y_for_x(x1)
+        assert abs(y1 - 1.0) < 1e-4, f"encountered incorrect y cordinate. Expected 1.0. Got {y1}"
+        for _, method2 in method_x[idx+1:]:
+            comparator_fn = fitted_fns[method2]
+            y2 = comparator_fn.evaluate_y_for_x(x1)
+            offset_rnd, stddev_rnd, cdf_rnd = reference_fn.find_offset_and_stderr_at_x(x1, other_fn=comparator_fn, analytical=False)
+            offset, stddev, cdf = reference_fn.find_offset_and_stderr_at_x(x1, other_fn=comparator_fn, analytical=True)
 
-            offset, stddev, cdf = get_offset_and_stddev_analytical(reference_fn=fitted_fns[method1], reference_inv_fn=inverse_fitted_fns[method1], reference_stats=fitting_stats[method1], \
-                                other_method_fn=fitted_fns[method2], other_method_inv_fn=inverse_fitted_fns[method2], other_method_stats=fitting_stats[method2])
             #
             all_pairs.append([(x1, y1), (x1, y2), (offset, stddev, cdf), method1, method2, (offset_rnd, stddev_rnd, cdf_rnd), plot])
             plot = False
 
     return all_pairs
 
-def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path, plot_residuals=False, display_r_squared=False):
+def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path, USE_GP=False, plot_residuals=False, display_r_squared=False, annotate_advantages=True, plot_scatter=True, plot_heatmap=True):
     """
     Plots and saves scatter plot for data obtained from `configs/experiment/normalized_mobility.yaml` showing a trade off between health and mobility.
 
@@ -192,17 +208,34 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
         xmetric (str): metric on the x-axis
         ymetric (str): metrix on the y-axis
         path (str): path of the folder where results will be saved
+        USE_GP (bool): if True, uses GP regression to fit x and y.
         plot_residuals (bool): If True, plot a scatter plot of residuals at the bottom.
         display_r_squared (bool): If True, show R-squared value in the legend.
+        annotate_advantages (bool): if True, annotates the plot with advantages
+        plot_scatter (bool): if True, plots scatter points corresponding to each experiment.
+        plot_heatmap (bool): if True, plots heatmap of pairwise advantages.
     """
     assert xmetric in METRICS and ymetric in METRICS, f"Unknown metrics: {xmetric} or {ymetric}. Expected one of {METRICS}."
     TICKGAP=2
-    ANNOTATION_FONTSIZE=10
+    ANNOTATION_FONTSIZE=13
+    USE_GP_STR = "GP_" if USE_GP else ""
+    adoption_rate = get_adoption_rate_label_from_app_uptake(uptake_rate)
     methods = results['method'].unique()
-    INTERPOLATION_KIND = _get_interpolation_kind(xmetric, ymetric)
+    methods_and_base_confs = results.groupby(['method', 'intervention_conf_name']).size().index
+    labelmap = get_labelmap(methods_and_base_confs, path)
+    colormap = get_colormap(methods_and_base_confs, path)
+    INTERPOLATION_FN = _get_interpolation_kind(xmetric, ymetric, use_gp=USE_GP)
+
+    # find if only specific folders (methods) need to be plotted
+    plot_these_methods = {}
+    include_methods = Path(path).resolve() / "PLOT_THESE_METHODS.yaml"
+    if include_methods.exists():
+        with open(str(include_methods), "rb") as f:
+            plot_these_methods = yaml.safe_load(f)
+        plot_these_methods = set([x for x, plot in plot_these_methods.items() if plot])
 
     # set up subplot grid
-    fig = plt.figure(num=1, figsize=(15,10), dpi=100)
+    fig = plt.figure(num=1, figsize=(15,10), dpi=200)
     gridspec.GridSpec(3,1)
     if plot_residuals:
         ax = plt.subplot2grid(shape=(3,1), loc=(0,0), rowspan=2, colspan=1, fig=fig)
@@ -210,33 +243,42 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
     else:
         ax = plt.subplot2grid(shape=(3,1), loc=(0,0), rowspan=3, colspan=1, fig=fig)
 
-    fitted_fns, inverse_fitted_fns, fitting_stats = {}, {}, {}
-    color_maps = {}
+    fitted_fns = {}
     for i, method in enumerate(methods):
-        if _filter_out_irrelevant_method(xmetric, ymetric, method):
+        # to include only certain methods to avoid busy plots
+        # but still involve pairwise comparison of individual methods
+        if (
+            len(plot_these_methods) > 0
+            and method not in plot_these_methods
+        ):
+            continue
+
+        #
+        if _filter_out_irrelevant_method(xmetric, ymetric, method, results):
             continue
 
         # function fitting
         selector = results['method'] == method
-        x = results[selector][xmetric]
-        y = results[selector][ymetric]
-        size = results[selector]['mobility_factor']
-        fn_handle, res, r_squared, parameters, fn_handle_inverse = get_fitted_fn(x, y, fn=INTERPOLATION_KIND)
-        fitted_fns[method] = fn_handle
-        inverse_fitted_fns[method] = fn_handle_inverse
-        fitting_stats[method] = {'res': res, 'parameters': parameters[0], 'stddev_parameters': parameters[1], 'covariance': parameters[2]}
+        x = results[selector][xmetric].to_numpy()
+        y = results[selector][ymetric].to_numpy()
+        fitted_fns[method] = INTERPOLATION_FN().fit(x, y)
 
-        method_label = get_intervention_label(method)
+        size = results[selector]['mobility_factor'].to_numpy()
+        method_label = labelmap[method]
         if display_r_squared:
-            method_label = f"{method_label} ($r^2 = {r_squared: 0.3f}$)"
-        color = get_color(method=method)
-        color_maps[method] = color
+            method_label = f"{method_label} ($r^2 = {fitted_fns[method].r_squared: 0.3f}$)"
+        color = colormap[method]
 
         #
-        ax.scatter(x, y, s=size*75, color=color, label=method_label, alpha=0.5)
+        if plot_scatter:
+            ax.scatter(x, y, s=size*75, color=color, label=method_label, alpha=0.5)
 
         # residuals
-        if plot_residuals:
+        if (
+            plot_residuals
+            and plot_scatter
+        ):
+            res = fitted_fns[method].res
             res_ax.scatter(x, res, s=size*75, color=color)
             for _x, _res in zip(x, res):
                 res_ax.plot([_x, _x], [0, _res], color=color, linestyle=":")
@@ -244,35 +286,54 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
     # plot fitted fns
     x = np.arange(results[xmetric].min(), results[xmetric].max(), 0.05)
     for method, fn in fitted_fns.items():
-        y = fn(x, *fitting_stats[method]['parameters'])
-        stderr = get_stderr_of_fitted_fn_analytical(fn, x, fitting_stats[method]['parameters'], fitting_stats[method]['covariance'])
-        ax = plot_mean_and_stderr_bands(ax, x, y, stderr, label=None, color=color_maps[method], confidence_level=1.96)
+        y = fn.evaluate_y_for_x(x)
+        label = labelmap[method] if not plot_scatter else None
+        stderr = fn.stderr_for_x(x, analytical=True)
+        ax = plot_mean_and_stderr_bands(ax, x, y, stderr, label=label, color=colormap[method], confidence_level=1.96, stderr_alpha=0.1)
 
     # compute and plot offset and its confidence bounds
     if ymetric == "r":
-        points = find_all_pairs_offsets_and_stddev(fitted_fns, inverse_fitted_fns, fitting_stats)
+        points = find_all_pairs_offsets_and_stddev(fitted_fns)
         table_to_save = []
-        for p1, p2, res1, m1, m2, res2, plot in points:
-            table_to_save.append([m1, m2, *res1, *res2])
-            if not plot:
+        x_offset = 0.0
+        for p1, p2, res1, m1, m2, res2, plot in points[::-1]:
+            table_to_save.append([m1, m2, labelmap[m1], labelmap[m2], *res1, *res2])
+            if (
+                not annotate_advantages
+                or not plot
+            ):
                 continue
-            p3 = [p1[0] + 0.1, (p1[1] + p2[1])/2.0]
+
+            p3 = [p1[0] + 0.01, (p1[1] + p2[1])/2.0]
             # arrow
             ax.annotate(s='', xy=p1, xytext=p2, arrowprops=dict(arrowstyle='<|-|>', linestyle=":", linewidth=1, zorder=1000, mutation_scale=20))
-            text=f"{res1[0]:0.2f} $\pm$ {res1[1]: 0.2f}, \n{res1[2]:0.2f}"
-            ax.annotate(s=text, xy=p3, fontsize=ANNOTATION_FONTSIZE, fontweight='black', bbox=dict(facecolor='none', edgecolor='black'), zorder=1000, verticalalignment="center")
+            text=f"{res1[0]:0.2f} $\pm$ {res1[1]: 0.2f}\n{1-res1[2]:0.1e}"
+            ax.annotate(s=text, xy=p3, xytext=(p3[0] + x_offset, p3[1]-0.2), fontsize=ANNOTATION_FONTSIZE, \
+                        fontweight='black', bbox=dict(facecolor='none', edgecolor='black'), zorder=1000, verticalalignment="center", \
+                        arrowprops=dict(arrowstyle="->"))
+            x_offset += 1.0
 
         # save the table
-        table_to_save = pd.DataFrame(table_to_save, columns=['method1', 'method2', 'advantage', 'stddev', 'P(advantage > 0)', 'rnd_advantage', 'rnd_stderr', 'P(rnd_advantage > 0)'])
-        table_to_save.to_csv(str(Path(path).resolve() / f"normalized_mobility/R_all_advantages_{xmetric}.csv"))
+        table_to_save = pd.DataFrame(table_to_save, columns=['method1', 'method2', 'label1', 'label2', 'advantage', 'stddev', 'P(advantage > 0)', 'rnd_advantage', 'rnd_stderr', 'P(rnd_advantage > 0)'])
+        table_to_save.to_csv(str(Path(path).resolve() / f"normalized_mobility/{USE_GP_STR}R_all_advantages_{xmetric}{USE_GP_STR}.csv"))
+
+        # make a heatmap
+        if plot_heatmap:
+            heatmap = plot_heatmap_of_advantages(table_to_save, labelmap, USE_MATH_NOTATION)
+            filepath = save_figure(heatmap, basedir=path, folder="normalized_mobility", filename=f'{USE_GP_STR}Heatmap_{xmetric}_advantages_AR_{adoption_rate}')
+            print(f"Heatmap of advantages @ {adoption_rate}% Adoption saved at {filepath}")
 
         # reference lines
         ax.plot(ax.get_xlim(), [1.0, 1.0], '-.', c="gray", alpha=0.5)
         ax.set_ylim(0, 2)
+        ax.set_xlim(left=results[xmetric].min(), right=results[xmetric].max())
 
         # add legend for the text box
-        text = "offset $\pm$ stderr\nP(offset > 0)"
-        ax.annotate(s=text, xy=(ax.get_xlim()[1]-2, 0.5), fontsize=ANNOTATION_FONTSIZE, fontweight='black', bbox=dict(facecolor='none', edgecolor='black'), zorder=10)
+        if USE_MATH_NOTATION:
+            text = "$\Delta \hat{R} \pm \sigma$\np-value"
+        else:
+            text = "advantage $\pm$ stderr\np-value"
+        ax.annotate(s=text, xy=(ax.get_xlim()[1]-2, 0.5), fontsize=ANNOTATION_FONTSIZE, fontweight='normal', bbox=dict(facecolor='none', edgecolor='black'), zorder=10)
 
     xlabel = get_metric_label(xmetric)
     ylabel = get_metric_label(ymetric)
@@ -280,21 +341,25 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
                     XY_TITLESIZE=LABELSIZE, TICKSIZE=TICKSIZE, legend_loc='upper left', \
                     LEGENDSIZE=LEGENDSIZE, x_tick_gap=TICKGAP)
 
-    if plot_residuals:
+    if (
+        plot_residuals
+        and plot_scatter
+    ):
         res_ax.plot(res_ax.get_xlim(), [0.0, 0.0], '-.', c="gray", alpha=0.5)
         res_ax = add_bells_and_whistles(res_ax, y_title="Residuals", x_title=xlabel, XY_TITLEPAD=LABELPAD, \
                         XY_TITLESIZE=LABELSIZE, TICKSIZE=TICKSIZE, x_tick_gap=TICKGAP)
 
     # figure title
-    adoption_rate = get_adoption_rate_label_from_app_uptake(uptake_rate)
     fig.suptitle(f"Tracing Operating Characteristics @ {adoption_rate}% Adoption Rate", fontsize=TITLESIZE, y=1.05)
 
     # save
     fig.tight_layout()
-    filename = f"{ymetric}_{xmetric}_mobility_scatter"
+    filename = f"{USE_GP_STR}{ymetric}_{xmetric}_mobility_scatter"
     filename += "_w_r_squared" if display_r_squared else ""
     filename += "_w_residuals" if plot_residuals else ""
-    filepath = save_figure(fig, basedir=path, folder='normalized_mobility', filename=f'{filename}_AR_{adoption_rate}')
+    filename += "_w_annotations" if annotate_advantages else ""
+    filename += "_w_scatter" if plot_scatter else ""
+    filepath = save_figure(fig, basedir=path, folder="normalized_mobility", filename=f'{filename}_AR_{adoption_rate}')
     print(f"Scatter plot of mobility and R @ {adoption_rate}% Adoption saved at {filepath}")
 
 def _extract_metrics(data):
@@ -334,43 +399,40 @@ def _extract_data(simulation_runs, method):
     all_data = []
     for simname, sim in simulation_runs.items():
         data = sim['pkl']
+        intervention_name = get_base_intervention(sim['conf'])
         mobility_factor = sim['conf']['GLOBAL_MOBILITY_SCALING_FACTOR']
-        row =  [method, simname, mobility_factor] + _extract_metrics(data)
+        row =  [method, simname, mobility_factor, intervention_name, is_app_based_tracing_intervention(intervention_conf=sim['conf'])] + _extract_metrics(data)
         all_data.append(row)
 
-    columns = ['method', 'dir', 'mobility_factor'] + METRICS
+    columns = ['method', 'dir', 'mobility_factor', 'intervention_conf_name','app_based'] + METRICS
     return pd.DataFrame(all_data, columns=columns)
 
-def save_relevant_csv_files(results, uptake_rate, path):
+def save_relevant_csv_files(results, adoption_rate, extract_path, good_factors_path):
     """
     Saves csv files for the entire result to be viewed later.
 
     Args:
         results (pd.DataFrame): Dataframe with rows as methods and corresponding simulation metrics.
-        uptake_rate (str): APP_UPTAKE for all the methods. Assumed to be same for all app-based methods.
-        path (str): path of the folder where results will be saved
+        adoption_rate (str): Adoption rate. Assumed to be same for all app-based methods.
+        extract_path (pathlib.Path): path of the file where extracted data will be saved
+        good_factors_path (pathlib.Path): path of the file where good mobility factors (as per R) will be saved
     """
     R_LOWER = 0.5
     R_UPPER = 1.5
 
-    folder_name = Path(path).resolve() / "normalized_mobility"
-    os.makedirs(str(folder_name), exist_ok=True)
-    adoption_rate = get_adoption_rate_label_from_app_uptake(uptake_rate)
-
     # full data
-    filename = str(folder_name / f"full_extracted_data_AR_{adoption_rate}.csv")
+    filename = str(extract_path)
     results.to_csv(filename )
     print(f"All extracted metrics for adoption rate: {adoption_rate}% saved at {filename}")
 
     # relevant mobility factors
     methods = results['method'].unique()
-    filename = str(folder_name / f"mobility_factor_vs_R_AR_{adoption_rate}.txt")
+    filename = str(good_factors_path)
     with open(filename, "w") as f:
         for method in methods:
             f.write(method)
             x = _get_mobility_factor_counts_for_reasonable_r(results, method, lower_R=R_LOWER, upper_R=R_UPPER)
             f.write(str(x))
-
     print(f"All relevant mobility factors for {R_LOWER} <= R <= {R_UPPER} at adoption rate: {adoption_rate}% saved at {filename}")
 
 def run(data, plot_path, compare=None, **kwargs):
@@ -386,24 +448,44 @@ def run(data, plot_path, compare=None, **kwargs):
         data (dict): intervention_name --> APP_UPTAKE --> folder_name --> {'conf': yaml file, 'pkl': tracker file}
         plot_path (str): path where to save plots
     """
-    app_based_methods, other_methods, uptake_keys = split_methods_and_check_validity(data)
+    use_extracted_data = kwargs.get('use_extracted_data', False)
+
+    folder_name = Path(plot_path).resolve() / "normalized_mobility"
+    os.makedirs(str(folder_name), exist_ok=True)
+
+    uptake_key_filepath = folder_name / "uptake_keys.csv"
+    if use_extracted_data:
+        uptake_keys = pd.read_csv(str(uptake_key_filepath))['uptake'].tolist()
+    else:
+        app_based_methods, other_methods, uptake_keys = split_methods_and_check_validity(data)
+        pd.DataFrame(uptake_keys, columns=['uptake']).to_csv(str(uptake_key_filepath))
 
     ## data preparation
-    no_app_df = pd.DataFrame([])
-    for method in other_methods:
-        key = list(data[method].keys())[0]
-        no_app_df = pd.concat([no_app_df, _extract_data(data[method][key], method)], axis='index')
-
     for uptake in uptake_keys:
-        extracted_data = {}
-        all_data = deepcopy(no_app_df)
-        for method in app_based_methods:
-            all_data = pd.concat([all_data, _extract_data(data[method][uptake], method)], axis='index')
+        adoption_rate = get_adoption_rate_label_from_app_uptake(uptake)
+        extracted_data_filepath = folder_name / f"full_extracted_data_AR_{adoption_rate}.csv"
+        good_mobility_factor_filepath = folder_name / f"mobility_factor_vs_R_AR_{adoption_rate}.txt"
+        if not use_extracted_data:
+            no_app_df = pd.DataFrame([])
+            for method in other_methods:
+                key = list(data[method].keys())[0]
+                no_app_df = pd.concat([no_app_df, _extract_data(data[method][key], method)], axis='index', ignore_index=True)
 
-        save_relevant_csv_files(all_data, uptake, path=plot_path)
-        for ymetric in ['r', 'false_quarantine', 'percentage_infected', 'fraction_quarantine', 'false_sr']:
-            for xmetric in ['effective_contacts', 'healthy_contacts']:
-                for plot_residuals in [False, True]:
-                    for display_r_squared in [False, True]:
-                        plot_and_save_mobility_scatter(all_data, uptake, xmetric=xmetric, path=plot_path, \
-                                ymetric=ymetric, plot_residuals=plot_residuals, display_r_squared=display_r_squared)
+            all_data = deepcopy(no_app_df)
+            for method in app_based_methods:
+                all_data = pd.concat([all_data, _extract_data(data[method][uptake], method)], axis='index', ignore_index=True)
+            save_relevant_csv_files(all_data, adoption_rate, extract_path=extracted_data_filepath, good_factors_path=good_mobility_factor_filepath)
+        else:
+            assert extracted_data_filepath.exists(), f"{extracted_data_filepath} do not exist"
+            all_data = pd.read_csv(str(extracted_data_filepath))
+
+        for USE_GP in [True]:
+            for ymetric in ['r']:
+                for xmetric in ['effective_contacts', 'healthy_contacts']:
+                    plot_heatmap = True
+                    for annotate_advantages in [False, True]:
+                        for plot_scatter in [False, True]:
+                            plot_and_save_mobility_scatter(all_data, uptake, xmetric=xmetric, path=plot_path, \
+                                ymetric=ymetric, plot_residuals=False, display_r_squared=False, \
+                                annotate_advantages=annotate_advantages, plot_scatter=plot_scatter, USE_GP=USE_GP, plot_heatmap=plot_heatmap)
+                            plot_heatmap = False # dont' plotheatmap again

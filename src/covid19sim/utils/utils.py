@@ -23,7 +23,6 @@ import numpy as np
 import requests
 import yaml
 import json
-
 from omegaconf import DictConfig, OmegaConf
 from scipy.stats import norm
 from covid19sim.utils.constants import SECONDS_PER_HOUR, SECONDS_PER_MINUTE, AGE_BIN_WIDTH_5, AGE_BIN_WIDTH_10
@@ -843,7 +842,6 @@ def _convert_bin_5s_to_bin_10s(histogram_bin_5s):
 
     return histogram_bin_10s
 
-
 def _sample_positive_normal(mean, sigma, rng, upper_limit=None):
     """
     Samples a positive number from gaussian distributed as (mean, sigma) by throwing away negative samples.
@@ -863,31 +861,32 @@ def _sample_positive_normal(mean, sigma, rng, upper_limit=None):
     x = rng.normal(mean, sigma)
     return x if _filter(x) else _sample_positive_normal(mean, sigma, rng, upper_limit)
 
-
-def is_app_based_tracing_intervention(intervention):
+def is_app_based_tracing_intervention(intervention=None, intervention_conf=None):
     """
     Determines if the intervention requires an app.
 
     Args:
-        intervention (str): name of the intervention that matches a configuration file in `configs/simulation/intervention`
+        intervention (str): name of the intervention that matches a configuration file in `configs/simulation/intervention`. Default is None.
+        intervention_conf (dict): an experimental configuration. Default is None.
 
     Returns:
         (bool): True if an app is required.
     """
-    if isinstance(intervention, dict):
-        # This can happen if intervention is transformer (with weights and rec levels specified)
-        intervention = next(iter(intervention.keys()))
+    assert intervention is not None or intervention_conf is not None, "Expects non-None intervention_conf when internvention is None. "
+    if intervention_conf is not None:
+        return intervention_conf['RISK_MODEL'] != ""
+
     intervention_yaml_file = Path(__file__).resolve().parent.parent / "configs/simulation/intervention" / f"{intervention}.yaml"
-    if "transformer" in intervention_yaml_file.name:
-        intervention_yaml_file = Path(__file__).resolve().parent.parent / "configs/simulation/intervention" / f"transformer.yaml"
     with open(intervention_yaml_file, "r") as f:
         conf = yaml.safe_load(f)
         app_required = conf['RISK_MODEL'] != ""
 
     return app_required
 
-
 class NpEncoder(json.JSONEncoder):
+    """
+    Class to convert `obj` into json encodable objects.
+    """
     def default(self, obj):
         if isinstance(obj, np.integer):
             return int(obj)

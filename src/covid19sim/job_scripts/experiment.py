@@ -837,8 +837,8 @@ def main(conf: DictConfig) -> None:
             if not is_app_based_tracing_intervention(opts['intervention']):
                 opts['APP_UPTAKE'] = -1
 
-            opts_str = json.dumps(opts, sort_keys=True, cls=NpEncoder)
             # set of dictionaries is not possible, so use frozenset instead
+            opts_str = json.dumps(opts, sort_keys=True, cls=NpEncoder)
             if opts_str in old_opts:
                 print("\n Ran this job already ... skipping!")
                 skipped = True

@@ -19,5 +19,3 @@ RISK_MAPPING:
     0.26276696,
     1.0,
   ]
-# (behavior modification)
-REC_LEVEL_THRESHOLDS: [1, 3, 5]

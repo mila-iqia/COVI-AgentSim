@@ -468,7 +468,6 @@ class City:
         humans_notified, infections_seeded = False, False
         last_day_idx = 0
         while True:
-            start = time.time()
             current_day = (self.env.timestamp - self.start_time).days
 
             # seed infections and change mixing constants (end of burn-in period)
