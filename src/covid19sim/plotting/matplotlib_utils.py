@@ -153,9 +153,9 @@ def _plot_mean_with_stderr_bands_of_series(ax, series, label, color, **kwargs):
     ax = plot_mean_and_stderr_bands(ax, index, mean, stderr, label, color, **kwargs)
     return ax
 
-def plot_mean_and_stderr_bands(ax, index, mean, stderr, label, color, **kwargs):
+def plot_mean_and_stderr_bands(ax, index, mean, stderr, label, color, fill=True, **kwargs):
     """
-    Plots a filled polygon using `mean` and `stderr` bounds on `ax`
+    Plots `mean` and `stderr` bounds on `ax`
 
     Args:
         ax (matplotlib.axes.Axes): Axes on which to plot the series
@@ -164,6 +164,7 @@ def plot_mean_and_stderr_bands(ax, index, mean, stderr, label, color, **kwargs):
         stderr (pd.Series): error bounds around mean. Pass `confidence_level` to decide the bounds.
         label (str): label for the series to appear in legend
         color (str): color of line and the filling of polygon
+        fill (bool): If True, fills the polygon between std error bands.
         **kwargs (key=value): see below for keyword arguments used
 
     Returns:
@@ -171,21 +172,25 @@ def plot_mean_and_stderr_bands(ax, index, mean, stderr, label, color, **kwargs):
     """
     # params
     linestyle = kwargs.get("linestyle", "-")
-    mean_alpha = kwargs.get("alpha", 1.0)
-    stderr_alpha = kwargs.get("alpha", 0.3)
+    mean_alpha = kwargs.get("mean_alpha", 1.0)
+    stderr_alpha = kwargs.get("stderr_alpha", 0.3)
     marker = kwargs.get("marker", None)
     markersize = kwargs.get("markersize", 1)
     linewidth = kwargs.get("linewidth", 1)
     confidence_level = kwargs.get('confidence_level', 1.0) # z-value corresponding to a significance level
+    capsize = kwargs.get('capsize', 5.0)
 
-    lows = mean - confidence_level * stderr
-    highs = mean + confidence_level * stderr
-    lowfn = interp1d(index, lows, bounds_error=False, fill_value='extrapolate')
-    highfn = interp1d(index, highs, bounds_error=False, fill_value='extrapolate')
     #
     ax.plot(index, mean, color=color, alpha=mean_alpha, linestyle=linestyle,
                 linewidth=linewidth, label=label, marker=marker, ms=markersize)
-    ax.fill_between(index, lowfn(index), highfn(index), color=color, alpha=stderr_alpha, lw=0, zorder=3)
+    if fill:
+        lows = mean - confidence_level * stderr
+        highs = mean + confidence_level * stderr
+        lowfn = interp1d(index, lows, bounds_error=False, fill_value='extrapolate')
+        highfn = interp1d(index, highs, bounds_error=False, fill_value='extrapolate')
+        ax.fill_between(index, lowfn(index), highfn(index), color=color, alpha=stderr_alpha, lw=0, zorder=3)
+    else:
+        ax.errorbar(index, mean, yerr=confidence_level * stderr, color=color, alpha=stderr_alpha, capsize=capsize)
 
     return ax
 
@@ -239,13 +244,14 @@ def add_bells_and_whistles(ax, y_title=None, x_title=None, **kwargs):
 
     return ax
 
-def plot_heatmap_of_advantages(data, labelmap):
+def plot_heatmap_of_advantages(data, labelmap, USE_MATH_NOTATION=False):
     """
     Plots heatmap of values in matrix with a diverging color scheme i.e. only positive values are colored.
 
     Args:
         data (pd.DataFrame): A dataframe with following columns - 'method1', 'method2', 'advantage', 'stddev', 'P(advantage > 0)'
         labelmap (dict): a label (value) for each folder_name (key)
+        USE_MATH_NOTATION (bool): if True, uses math notations for labels
 
     Returns:
         (matplotlib.figure.Figure): a canvas with heatmap on it
@@ -260,6 +266,7 @@ def plot_heatmap_of_advantages(data, labelmap):
 
     assert len(ordered_ref_methods) == len(ordered_comp_methods), "# ref methods:{len(ordered_ref_methods)}, and #comp methods:{len(ordered_comp_methods)}. Expected same!"
     N = len(ordered_comp_methods)
+    CELL_MULTIPLIER = 4 if N > 3 else 8
 
     advs = -np.ones((N, N))
     stds = -np.ones((N, N))
@@ -279,7 +286,7 @@ def plot_heatmap_of_advantages(data, labelmap):
                 annotation[row, col] = f"{advs[row, col]: 0.3f}\n($\pm${1.96 * stds[row, col]: 0.3f}){significance_95_str}"
 
     # plot
-    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(N*4, N*4), dpi=200)
+    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(N*CELL_MULTIPLIER, N*CELL_MULTIPLIER), dpi=200)
     im = ax.imshow(advs, cmap='summer_r', norm=TwoSlopeNorm(advs[advs > 0].mean(), vmin=0, vmax=None), interpolation='none', alpha=0.5)
 
     # set positioning
@@ -306,7 +313,11 @@ def plot_heatmap_of_advantages(data, labelmap):
         for row in range(N):
             text = ax.text(col, row, annotation[row, col], ha="center", va="center", color="black", size=ANNOTATION_SIZE, fontweight="bold")
 
-    ax.set_title("Advantages ($\pm$ 2$\sigma$) of Tracing Methods (* 95% Significance level)", fontsize=XY_TITLESIZE, y=1.03)
+    if USE_MATH_NOTATION:
+        ax.set_title("$\Delta \hat{R}$ ($\pm$ 2$\sigma$)", fontsize=XY_TITLESIZE, y=1.03)
+    else:
+        ax.set_title("Advantages ($\pm$ 2$\sigma$) of Tracing Methods (* 95% Significance level)", fontsize=XY_TITLESIZE, y=1.03)
+
     return fig
 
 def save_figure(figure, basedir, folder, filename, bbox_extra_artists=None):

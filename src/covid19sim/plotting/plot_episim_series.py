@@ -6,7 +6,8 @@ import matplotlib.pyplot as plt
 from copy import deepcopy
 
 from covid19sim.plotting.utils import split_methods_and_check_validity
-from covid19sim.plotting.matplotlib_utils import _plot_mean_with_stderr_bands_of_series, add_bells_and_whistles, save_figure, get_color, get_adoption_rate_label_from_app_uptake, get_intervention_label
+from covid19sim.plotting.matplotlib_utils import _plot_mean_with_stderr_bands_of_series, add_bells_and_whistles, save_figure, \
+            get_color, get_adoption_rate_label_from_app_uptake, get_intervention_label, get_base_intervention
 from covid19sim.plotting.extract_tracker_metrics import _daily_fraction_cumulative_cases, _daily_incidence, _daily_prevalence, _daily_false_quarantine
 from covid19sim.plotting.extract_tracker_metrics import _cumulative_infected_by_recovered_people, _proxy_R_estimated_by_recovered_people
 
