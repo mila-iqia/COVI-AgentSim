@@ -750,7 +750,7 @@ class MobilityPlanner(object):
             new_activity = Activity(activity.end_time, remaining_time, "stay-home-prevalence", self.human.household, self.human, None, prepend_name="", append_name="-cancel-prevalence")
                                     #  start_time    , duration      , name                  , location            , owner     , tentative_date=None)
 
-            self.current_schedule = [new_activity] + current_schedule
+            self.current_schedule = current_schedule.appendleft(new_activity)
 
             return activity, True
 
