@@ -726,8 +726,6 @@ class MobilityPlanner(object):
             activity.cancel_and_go_to_location(reason=f"quarantine-{reason}", location=self.human.household)
             return activity, True
 
-        return activity, False
-
         # econ
         # if activity is work
         if (self.human.conf['ECON_RUN'] == True) and (activity.name == 'work'):
@@ -736,7 +734,7 @@ class MobilityPlanner(object):
             estimated_prevalence_dict = self.human.city.tracker.get_estimated_covid_prevalence()
 
             # use estimation by number of positive tests in the last 14 days
-            estimated_prevalence = estimated_prevalence_dict["estimation_by_test"]
+            estimated_prevalence = estimated_prevalence_dict["cases"]
 
             # compute the reduced number of hours worked by the human
             x = reduced_workload(self.human, activity.duration, estimated_prevalence) # change x
@@ -753,6 +751,8 @@ class MobilityPlanner(object):
                                     #  start_time    , duration      , name                  , location            , owner     , tentative_date=None)
 
             self.current_schedule = [new_activity] + current_schedule
+
+            return activity, True
 
         return activity, False
 
