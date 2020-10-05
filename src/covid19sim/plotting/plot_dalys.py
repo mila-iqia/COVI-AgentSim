@@ -707,7 +707,7 @@ def run(data, path, compare="app_adoption"):
             assert daly_df_seed[daly_df_seed.was_infected == False].DALYs.sum() == 0, 'uninfected should not contribute DALYs'
 
             # put into the same QALY unit
-            agg_dalys[label][idx] = daly_df_seed['DALYS'].sum()
+            agg_dalys[label][idx] = daly_df_seed['DALYs'].sum()
 
     # add to aggregate output variables
     agg_daly_df = pd.DataFrame(agg_dalys).transpose()
