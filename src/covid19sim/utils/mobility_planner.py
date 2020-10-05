@@ -730,7 +730,7 @@ class MobilityPlanner(object):
 
         # econ
         # if activity is work
-        if (self.human.conf['ECON_RUN'] == False) and (activity.name == 'work'):
+        if (self.human.conf['ECON_RUN'] == True) and (activity.name == 'work'):
 
             ## determine new work hour (say x in seconds)
             estimated_prevalence_dict = self.human.city.tracker.get_estimated_covid_prevalence()
@@ -1620,5 +1620,6 @@ def reduced_workload(human, old_work_duration, estimated_prevalence):
 
         new_work_duration = old_work_duration * (1/(1+(estimated_prevalence*5))
         return new_work_duration
+
     else:
         raise NotImplementedError
