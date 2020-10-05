@@ -734,7 +734,7 @@ class MobilityPlanner(object):
             estimated_prevalence_dict = self.human.city.tracker.get_estimated_covid_prevalence()
 
             # use estimation by number of positive tests in the last 14 days
-            estimated_prevalence = estimated_prevalence_dict["cases"]
+            estimated_prevalence = estimated_prevalence_dict["estimation_by_test"] # change to hospitalizations
 
             # compute the reduced number of hours worked by the human
             x = reduced_workload(self.human, activity.duration, estimated_prevalence) # change x

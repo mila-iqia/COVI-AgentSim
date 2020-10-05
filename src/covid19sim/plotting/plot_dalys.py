@@ -10,6 +10,13 @@ age_weighting_constant = 0.04
 modulation_constant = 1 
 adjustment_constant = 0.1658
 population_size = 3000 #hotfix
+retirement_age = 65
+
+disability_weights = {
+    'no_hospitalization':0.051, # moderate lower respiratory infection
+    'hospitalized':0.133, # severe respiratory infection
+    'critical':0.408 #severe COPD without heart failure
+    }
 
 def load_tracker(path):
     with open(path, 'rb') as f:
@@ -39,7 +46,10 @@ def load_life_expectancies(path):
 
     return life_expectancies
 
-def get_daly_data(demographics, human_monitor_data, life_expectancies):
+def get_daly_data(demographics, 
+                  human_monitor_data, 
+                  life_expectancies,
+                  ):
     
     human_names = [human_monitor_data[datetime.date(2020,2,28)][i]['name'] 
                    for i in range(population_size)]
@@ -110,6 +120,21 @@ def get_daly_data(demographics, human_monitor_data, life_expectancies):
     daly_df['life_expectancy'] = ""
     for human in human_names:
         daly_df.loc[human,'life_expectancy'] = float(life_expectancies[daly_df['sex'][human]][str(daly_df['age'][human])+" years"])
+    
+    # add YLL column
+    daly_df['YLL'] = daly_df['has_died'] * daly_df['life_expectancy']
+
+    # add YLD column
+    daly_df['YLD'] = \
+                    daly_df['days_sick_not_in_hospital']/365 * disability_weights['no_hospitalization'] + \
+                    daly_df['days_in_hospital']/365 * disability_weights['hospitalized'] + \
+                    daly_df['days_in_ICU']/365 * disability_weights['critical']
+
+    # add DALY column
+    daly_df['DALYs'] = daly_df['YLL'] + daly_df['YLD']
+
+    # add PPL column
+    daly_df['PPL'] = (daly_df['age'] < retirement_age)*(retirement_age - daly_df['age'])
     
     return daly_df
     
@@ -678,26 +703,12 @@ def run(data, path, compare="app_adoption"):
             # get data necessary to compute DALYs
             daly_df_seed = get_daly_data(demog_data, monitor_data, le_data)
 
-            # compute YLLs, YLDs and DALYs
-            disability_weights = {
-                                'no_hospitalization':0.051, # moderate lower respiratory infection
-                                'hospitalized':0.133, # severe respiratory infection
-                                'critical':0.408 #severe COPD without heart failure
-                                }
-
-            daly_df_seed['YLL'] = daly_df_seed['has_died'] * daly_df_seed['life_expectancy']
-            daly_df_seed['YLD'] = \
-                daly_df_seed['days_sick_not_in_hospital']/365 * disability_weights['no_hospitalization'] + \
-                daly_df_seed['days_in_hospital']/365 * disability_weights['hospitalized'] + \
-                daly_df_seed['days_in_ICU']/365 * disability_weights['critical']
-            daly_df_seed['DALYs'] = daly_df_seed['YLL'] + daly_df_seed['YLD']
-
             assert daly_df_seed[daly_df_seed.was_infected == False].DALYs.sum() == 0, 'uninfected should not contribute DALYs'
 
             # put into the same QALY unit
             agg_dalys[label][idx] = daly_df_seed['DALYS'].sum()
 
-        # add to aggregate output variables
+    # add to aggregate output variables
     agg_daly_df = pd.DataFrame(agg_dalys).transpose()
     agg_daly_df['mean'] = agg_daly_df.mean(axis = 1)
     agg_daly_df['stderr'] = agg_daly_df.sem(axis = 1)
