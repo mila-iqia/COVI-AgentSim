@@ -243,7 +243,7 @@ class Human(BaseHuman):
         self.working_days = self.rng.choice(workplace.open_days, size=N_WORKING_DAYS, replace=False)
         self.workplace = workplace
 
-        self.work_covid_sensitivity = np.random.choice(['sensitive','neutral'], 1, [0.44,0.56]) # not yet assigned
+        self.work_covid_sensitivity = np.random.choice(['sensitive','neutral'], 1, [0.44,0.56]).item() # not yet assigned
 
     ########### MEMORY OPTIMIZATION ###########
     @property
