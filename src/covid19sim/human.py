@@ -94,7 +94,7 @@ class Human(BaseHuman):
         self.workplace = None  # we sometimes modify human's workplace to WFH if in quarantine, then go back to work when released
         self.household = None  # assigned later
         self.location = None  # assigned later
-        self.work_covid_sensitivity = None # assigned later
+        self.work_covid_sensitivity = self.rng.choice(['sensitive','neutral'], 1, [0.44,0.56]).item()
 
         # Logging data
         self._events = []
@@ -243,7 +243,7 @@ class Human(BaseHuman):
         self.working_days = self.rng.choice(workplace.open_days, size=N_WORKING_DAYS, replace=False)
         self.workplace = workplace
 
-        self.work_covid_sensitivity = np.random.choice(['sensitive','neutral'], 1, [0.44,0.56]).item()
+        # self.work_covid_sensitivity = np.random.choice(['sensitive','neutral'], 1, [0.44,0.56]).item()
 
     ########### MEMORY OPTIMIZATION ###########
     @property
