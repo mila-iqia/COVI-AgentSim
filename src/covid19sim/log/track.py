@@ -34,6 +34,7 @@ from covid19sim.locations.hospital import Hospital, ICU
 SNAPSHOT_PERCENT_INFECTED_THRESHOLD = 2 # take a snapshot every time percent infected of population increases by this amount
 LOCATION_TYPES_TO_TRACK_MIXING = ["house", "work", "school", "other", "all"]
 WORK_ACTIVITY_STATUS = ["WORK", "WORK-CANCEL--KID", "WORK-CANCEL--ILL", "WORK-CANCEL--QUARANTINE"]
+MEAN_HOURLY_WAGE = 27.67
 
 def check_if_tracking(f):
     def wrapper(*args, **kwargs):
@@ -292,6 +293,7 @@ class Tracker(object):
         }
 
         self.daily_work_hours_by_age_group = {status: np.zeros((len(AGE_BIN_WIDTH_5),3, self.conf['simulation_days'])) for status in WORK_ACTIVITY_STATUS}
+        self.gdp = np.zeros((len(AGE_BIN_WIDTH_5),3, self.conf['simulation_days']))
         self.all_activity_names = set()
 
         # infection stats
@@ -1222,7 +1224,7 @@ class Tracker(object):
             "estimation_by_hospitalization": past_14_days_hospital_cases / self.n_people,
             "estimation_by_test": past_14_days_positive_test_results / self.n_people,
         }
-
+        
     def track_tested_results(self, human):
         """
         Keeps count of tests on a particular day. It is called every time someone is tested.
@@ -1345,6 +1347,8 @@ class Tracker(object):
             self.all_activity_names.add(category)
             n_sim_day = (just_finished_activity.start_time - self.conf['COVID_SPREAD_START_TIME']).days # tracking is on only since COVID_SPREAD_START_TIME
             self.daily_work_hours_by_age_group[category][human.age_bin_width_5.index,sex_to_idx[human.sex], n_sim_day] += just_finished_activity.duration / SECONDS_PER_HOUR
+            if category == 'WORK':
+                self.gdp[human.age_bin_width_5.index,sex_to_idx[human.sex], n_sim_day] +=just_finished_activity.duration / SECONDS_PER_HOUR * MEAN_HOURLY_WAGE
 
         # forms a transition probability on weekdays and weekends
         type_of_day = ['weekday', 'weekend'][self.env.is_weekend]
