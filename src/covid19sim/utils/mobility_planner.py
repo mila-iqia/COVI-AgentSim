@@ -737,7 +737,7 @@ class MobilityPlanner(object):
             estimated_prevalence = estimated_prevalence_dict["cases"]
 
             # compute the reduced number of hours worked by the human
-            x = reduced_workload(self.human, activity.duration, estimated_prevalence) # change x
+            x = reduced_workload(self.human.work_covid_sensitivity, activity.duration, estimated_prevalence) # change x
 
             activity.duration = x 
 
@@ -1607,16 +1607,16 @@ def _reallocate_residence(human, households, rng, conf):
 
     return None
 
-def reduced_workload(human, old_work_duration, estimated_prevalence):
+def reduced_workload(sensitivity, old_work_duration, estimated_prevalence):
     # modify work duration as a function of prevalence, covid sensitivity
     # returns a new work duration modified based on prevalence
 
-    if human.work_covid_sensitivity == 'sensitive':
+    if sensitivity == 'sensitive':
 
         new_work_duration = old_work_duration * (1/(1+(estimated_prevalence*25)))
         return new_work_duration
 
-    elif human.work_covid_sensitivity == 'neutral':
+    elif sensitivity == 'neutral':
 
         new_work_duration = old_work_duration * (1/(1+(estimated_prevalence*5)))
         return new_work_duration
