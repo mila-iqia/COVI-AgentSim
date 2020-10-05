@@ -1612,17 +1612,12 @@ def reduced_workload(human, old_work_duration, estimated_prevalence):
     # returns a new work duration modified based on prevalence
 
     if human.work_covid_sensitivity == 'sensitive':
-        print(human.work_covid_sensitivity)
         new_work_duration = old_work_duration * (1/(1+(estimated_prevalence*25)))
         return new_work_duration
 
     elif human.work_covid_sensitivity == 'neutral':
-        print(human.work_covid_sensitivity)
         new_work_duration = old_work_duration * (1/(1+(estimated_prevalence*5)))
         return new_work_duration
 
     else:
-        print(human.work_covid_sensitivity)
-        return old_work_duration
-        # print(human.workplace)
-        # raise NotImplementedError('Agent is neither covid sensitive nor neutral. Needs to be one or the other')
+        raise ValueError('Agent is neither covid sensitive nor neutral. Needs to be one or the other')
