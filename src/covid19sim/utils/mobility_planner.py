@@ -1616,10 +1616,10 @@ def reduced_workload(human, old_work_duration, estimated_prevalence):
         new_work_duration = old_work_duration * (1/(1+(estimated_prevalence*25)))
         return new_work_duration
 
-    # elif human.work_covid_sensitivity == 'neutral':
+    elif human.work_covid_sensitivity == 'neutral':
 
-    #     new_work_duration = old_work_duration * (1/(1+(estimated_prevalence*5))
-    #     return new_work_duration
+        new_work_duration = old_work_duration * (1/(1+(estimated_prevalence*5)))
+        return new_work_duration
 
     else:
         raise NotImplementedError
