@@ -730,7 +730,7 @@ class MobilityPlanner(object):
 
         # econ
         # if activity is work
-        if activity.name == 'work'
+        if (self.human.conf['ECON_RUN'] == False) and (activity.name == 'work'):
 
             ## determine new work hour (say x in seconds)
             estimated_prevalence_dict = self.human.city.tracker.get_estimated_covid_prevalence()
@@ -1607,8 +1607,9 @@ def _reallocate_residence(human, households, rng, conf):
 
     return None
 
-def reduce_workload(human, old_work_duration, estimated_prevalence):
+def reduced_workload(human, old_work_duration, estimated_prevalence):
     # modify work duration as a function of prevalence, covid sensitivity
+    # returns a new work duration modified based on prevalence
 
     if human.work_covid_sensitivity == 'sensitive':
 
