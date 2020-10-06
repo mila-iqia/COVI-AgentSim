@@ -12,7 +12,7 @@ from copy import deepcopy
 from pathlib import Path
 
 from covid19sim.utils.utils import is_app_based_tracing_intervention
-from covid19sim.plotting.utils import get_proxy_r, split_methods_and_check_validity
+from covid19sim.plotting.utils import get_proxy_r, split_methods_and_check_validity, load_plot_these_methods_config
 from covid19sim.plotting.extract_tracker_metrics import _daily_false_quarantine, _daily_false_susceptible_recovered, _daily_fraction_risky_classified_as_non_risky, \
                                 _daily_fraction_non_risky_classified_as_risky, _daily_fraction_quarantine
 from covid19sim.plotting.extract_tracker_metrics import _mean_effective_contacts, _mean_healthy_effective_contacts, _percentage_total_infected, _positivity_rate
@@ -20,14 +20,17 @@ from covid19sim.plotting.matplotlib_utils import add_bells_and_whistles, save_fi
                                 plot_mean_and_stderr_bands, get_base_intervention, get_labelmap, get_colormap, plot_heatmap_of_advantages
 from covid19sim.plotting.curve_fitting import LinearFit, GPRFit
 
+DPI=300
 TITLESIZE = 25
 LABELPAD = 0.50
-LABELSIZE = 20
-TICKSIZE = 15
-LEGENDSIZE = 20
+LABELSIZE = 25
+TICKSIZE = 20
+LEGENDSIZE = 25
+ANNOTATION_FONTSIZE=15
+
 METRICS = ['r', 'false_quarantine', 'false_sr', 'effective_contacts', 'healthy_contacts', 'percentage_infected', \
             'fraction_false_non_risky', 'fraction_false_risky', 'positivity_rate', 'fraction_quarantine']
-USE_MATH_NOTATION=True
+USE_MATH_NOTATION=False
 
 # fix the seed
 np.random.seed(123)
@@ -51,7 +54,7 @@ def get_metric_label(label):
         return "R"
 
     if label == "effective_contacts":
-        return "# Contacts per day per human"
+        return "# Contacts per day per human ($C$)"
 
     if label == "false_quarantine":
         return "False Quarantine"
@@ -196,7 +199,7 @@ def find_all_pairs_offsets_and_stddev(fitted_fns):
             all_pairs.append([(x1, y1), (x1, y2), (offset, stddev, cdf), method1, method2, (offset_rnd, stddev_rnd, cdf_rnd), plot])
             plot = False
 
-    return all_pairs
+    return sorted(all_pairs, key=lambda x: (x[0][0], x[2][0]))
 
 def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path, USE_GP=False, plot_residuals=False, display_r_squared=False, annotate_advantages=True, plot_scatter=True, plot_heatmap=True):
     """
@@ -217,8 +220,9 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
     """
     assert xmetric in METRICS and ymetric in METRICS, f"Unknown metrics: {xmetric} or {ymetric}. Expected one of {METRICS}."
     TICKGAP=2
-    ANNOTATION_FONTSIZE=13
+    ANNOTATION_FONTSIZE=15
     USE_GP_STR = "GP_" if USE_GP else ""
+
     adoption_rate = get_adoption_rate_label_from_app_uptake(uptake_rate)
     methods = results['method'].unique()
     methods_and_base_confs = results.groupby(['method', 'intervention_conf_name']).size().index
@@ -227,15 +231,10 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
     INTERPOLATION_FN = _get_interpolation_kind(xmetric, ymetric, use_gp=USE_GP)
 
     # find if only specific folders (methods) need to be plotted
-    plot_these_methods = {}
-    include_methods = Path(path).resolve() / "PLOT_THESE_METHODS.yaml"
-    if include_methods.exists():
-        with open(str(include_methods), "rb") as f:
-            plot_these_methods = yaml.safe_load(f)
-        plot_these_methods = set([x for x, plot in plot_these_methods.items() if plot])
+    plot_these_methods = load_plot_these_methods_config(path)
 
     # set up subplot grid
-    fig = plt.figure(num=1, figsize=(15,10), dpi=200)
+    fig = plt.figure(num=1, figsize=(15,10), dpi=DPI)
     gridspec.GridSpec(3,1)
     if plot_residuals:
         ax = plt.subplot2grid(shape=(3,1), loc=(0,0), rowspan=2, colspan=1, fig=fig)
@@ -289,26 +288,28 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
         y = fn.evaluate_y_for_x(x)
         label = labelmap[method] if not plot_scatter else None
         stderr = fn.stderr_for_x(x, analytical=True)
-        ax = plot_mean_and_stderr_bands(ax, x, y, stderr, label=label, color=colormap[method], confidence_level=1.96, stderr_alpha=0.1)
+        ax = plot_mean_and_stderr_bands(ax, x, y, stderr, label=label, color=colormap[method], confidence_level=1.96, stderr_alpha=0.3)
 
     # compute and plot offset and its confidence bounds
     if ymetric == "r":
         points = find_all_pairs_offsets_and_stddev(fitted_fns)
         table_to_save = []
         x_offset = 0.0
-        for p1, p2, res1, m1, m2, res2, plot in points[::-1]:
+        for p1, p2, res1, m1, m2, res2, plot in points:
             table_to_save.append([m1, m2, labelmap[m1], labelmap[m2], *res1, *res2])
             if (
                 not annotate_advantages
-                or not plot
+                # or not plot
             ):
                 continue
 
-            p3 = [p1[0] + 0.01, (p1[1] + p2[1])/2.0]
+            x_noise = np.random.normal(0.01, 0.01)
+            y_noise = 0.2#abs(np.random.normal(0.2, 0.05))
+            p3 = [p1[0] + x_noise + 0.01, (p1[1] + p2[1])/2.0]
             # arrow
-            ax.annotate(s='', xy=p1, xytext=p2, arrowprops=dict(arrowstyle='<|-|>', linestyle=":", linewidth=1, zorder=1000, mutation_scale=20))
+            ax.annotate(s='', xy=(p1[0] + x_noise, p1[1]), xytext=(p2[0] + x_noise, p2[1]), arrowprops=dict(arrowstyle='<->', linestyle="-", linewidth=1, zorder=1000, mutation_scale=20))
             text=f"{res1[0]:0.2f} $\pm$ {res1[1]: 0.2f}\n{1-res1[2]:0.1e}"
-            ax.annotate(s=text, xy=p3, xytext=(p3[0] + x_offset, p3[1]-0.2), fontsize=ANNOTATION_FONTSIZE, \
+            ax.annotate(s=text, xy=p3, xytext=(p3[0] + x_offset, p3[1]-y_noise), fontsize=ANNOTATION_FONTSIZE, \
                         fontweight='black', bbox=dict(facecolor='none', edgecolor='black'), zorder=1000, verticalalignment="center", \
                         arrowprops=dict(arrowstyle="->"))
             x_offset += 1.0
@@ -333,13 +334,13 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
             text = "$\Delta \hat{R} \pm \sigma$\np-value"
         else:
             text = "advantage $\pm$ stderr\np-value"
-        ax.annotate(s=text, xy=(ax.get_xlim()[1]-2, 0.5), fontsize=ANNOTATION_FONTSIZE, fontweight='normal', bbox=dict(facecolor='none', edgecolor='black'), zorder=10)
+        # ax.annotate(s=text, xy=(ax.get_xlim()[1]-2, 0.5), fontsize=ANNOTATION_FONTSIZE, fontweight='normal', bbox=dict(facecolor='none', edgecolor='black'), zorder=10)
 
     xlabel = get_metric_label(xmetric)
     ylabel = get_metric_label(ymetric)
     ax = add_bells_and_whistles(ax, y_title=ylabel, x_title=None if plot_residuals else xlabel, XY_TITLEPAD=LABELPAD, \
                     XY_TITLESIZE=LABELSIZE, TICKSIZE=TICKSIZE, legend_loc='upper left', \
-                    LEGENDSIZE=LEGENDSIZE, x_tick_gap=TICKGAP)
+                    LEGENDSIZE=LEGENDSIZE, x_tick_gap=TICKGAP, x_lower_lim=2, x_upper_lim=10.5, y_lower_lim=0.25)
 
     if (
         plot_residuals
@@ -350,7 +351,7 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
                         XY_TITLESIZE=LABELSIZE, TICKSIZE=TICKSIZE, x_tick_gap=TICKGAP)
 
     # figure title
-    fig.suptitle(f"Tracing Operating Characteristics @ {adoption_rate}% Adoption Rate", fontsize=TITLESIZE, y=1.05)
+    # fig.suptitle(f"Tracing Operating Characteristics @ {adoption_rate}% Adoption Rate", fontsize=TITLESIZE, y=1.05)
 
     # save
     fig.tight_layout()
@@ -483,7 +484,7 @@ def run(data, plot_path, compare=None, **kwargs):
             for ymetric in ['r']:
                 for xmetric in ['effective_contacts', 'healthy_contacts']:
                     plot_heatmap = True
-                    for annotate_advantages in [False, True]:
+                    for annotate_advantages in [True]:
                         for plot_scatter in [False, True]:
                             plot_and_save_mobility_scatter(all_data, uptake, xmetric=xmetric, path=plot_path, \
                                 ymetric=ymetric, plot_residuals=False, display_r_squared=False, \
