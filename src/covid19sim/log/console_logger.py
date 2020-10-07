@@ -1,24 +1,17 @@
 """
 Contains classes for regular saving relevant logs to the disk or printing output to the console at regular intervals.
 """
-import json
-import pickle
-import threading
 import time
-import zipfile
 import numpy as np
-from datetime import datetime, timedelta
 
 from covid19sim.locations.city import City
-from covid19sim.utils.utils import _json_serialize
 from covid19sim.utils.constants import SECONDS_PER_HOUR, SECONDS_PER_DAY
 from covid19sim.utils.utils import log
 
-class SimulationMonitor(object):
+class ConsoleLogger(object):
     """
     Logs information at regular intervals to the console as well as to the disk.
     Saves intermediate state of tracker at regular intervals.
-
     Args:
         frequency (float): regular simulation-intervals at which the information needs to be printed. Defaults to 1 simulation day.
         logfile (str): filepath where the console output and final tracked metrics will be logged. Prints to the console only if None.
@@ -37,7 +30,7 @@ Legend -
 * [ TestQueue ]: Total number of people present in the test queue at the time of this print out.
 * [ H/C/D ]: Total number of people in hospital (H)/ ICU (C) at this point in simulation-time. Total died upto this day (D).
 * [ MC ]: Mean number of known connections of a person in the population (average degree of the social network). The attributes for known connections are drawn from surveyed data on mean contacts.
-* [ Q ]: Number of people quarantined as of midnight on that day.
+* [ Q ]: Number of people (alive) quarantined as of midnight on that day.
 * [ 2x ]: Number of days to double the initial infections to the current level.
         """
         if self.conf['INTERVENTION_DAY'] >= 0 and self.conf['RISK_MODEL'] is not None:
@@ -51,11 +44,9 @@ Legend -
     def run(self, env, city: City):
         """
         Infinite loop yields events at regular intervals. It logs and saves information to `self.logfile`.
-
         Args:
             env (): [description]
             city (City): [description]
-
         Yields:
             simpy.Environment.Timeout: Event that resumes after some specified duration.
         """
@@ -107,16 +98,17 @@ Legend -
             # other diseases
             cold = sum(h.has_cold for h in city.humans)
             allergies = sum(h.has_allergy_symptoms for h in city.humans)
+            flu = sum(h.has_flu for h in city.humans)
 
             # intervention related
-            n_quarantine = sum(h.intervened_behavior.quarantine_timestamp is not None for h in city.humans)
+            n_quarantine = sum(h.intervened_behavior.is_under_quarantine for h in city.humans if not h.is_dead)
 
             # prepare string
             nd = str(len(str(city.n_people)))
             SEIR = f"| S:{S:<{nd}} E:{E:<{nd}} I:{I:<{nd}} E+I+R:{T:<{nd}} +Test:{t_P}/{t_T} TestQueue:{test_queue_length}"
             stats = f"| P3:{Projected3:5.2f}"
             stats += f" 2x:{doubling_rate_days: 2.2f}" if doubling_rate_days > 0 else ""
-            other_diseases = f"| cold:{cold} allergies:{allergies}"
+            other_diseases = f"| cold:{cold} allergies:{allergies} flu:{flu}"
             hospitalizations = f"| H:{H} C:{C} D:{D}"
             quarantines = f"| Q: {n_quarantine}"
 
@@ -139,77 +131,3 @@ Legend -
             log(str_to_print, self.logfile)
             yield env.timeout(self.frequency)
             n_days += 1
-
-class EventMonitor(object):
-    """
-    [summary]
-    """
-
-    def __init__(self, f=None, dest: str = None, chunk_size: int = None):
-        """
-        [summary]
-
-        Args:
-            f ([type], optional): [description]. Defaults to None.
-            dest (str, optional): [description]. Defaults to None.
-            chunk_size (int, optional): [description]. Defaults to None.
-        """
-        self.data = []
-        self.f = f or SECONDS_PER_HOUR
-        self.dest = dest
-        self.chunk_size = chunk_size if self.dest and chunk_size else 0
-        self._iothread = threading.Thread()
-        self._iothread.start()
-
-    def run(self, env, city: City):
-        """
-        [summary]
-
-        Args:
-            env ([type]): [description]
-            city (City): [description]
-
-        Yields:
-            [type]: [description]
-        """
-        while True:
-            # Keep the last 2 days to make sure all events are sent to the
-            # inference server before getting dumped
-            self.data = city.events
-            if self.chunk_size and len(city.events_slice(datetime.min,
-                                                         env.timestamp - timedelta(days=2))) > self.chunk_size:
-                self.data = city.pull_events_slice(env.timestamp - timedelta(days=2))
-                self.dump()
-
-            yield env.timeout(self.f)
-
-    def dump(self):
-        """
-        [summary]
-        """
-        if self.dest is None:
-            print(json.dumps(self.data, indent=1, default=_json_serialize))
-            return
-
-        self._iothread.join()
-        self._iothread = threading.Thread(target=EventMonitor.dump_chunk, args=(self.data, self.dest))
-        self._iothread.start()
-
-    def join_iothread(self):
-        """
-        [summary]
-        """
-        self._iothread.join()
-
-    @staticmethod
-    def dump_chunk(data, dest):
-        """
-        [summary]
-
-        Args:
-            data ([type]): [description]
-            dest ([type]): [description]
-        """
-        timestamp = datetime.utcnow().timestamp()
-        with zipfile.ZipFile(f"{dest}.zip", mode='a', compression=zipfile.ZIP_STORED) as zf:
-            zf.writestr(f"{timestamp}.pkl", pickle.dumps(data))

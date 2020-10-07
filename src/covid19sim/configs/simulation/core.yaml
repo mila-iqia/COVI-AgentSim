@@ -148,7 +148,7 @@ BEGIN_PREFERENTIAL_ATTACHMENT_FACTOR: 0.5 # probability to interact with only th
 END_PREFERENTIAL_ATTACHMENT_FACTOR: 0.5 # probability to interact with only the known connections at the start of seeding COVID infections
 
 # Infection knobs ()
-CONTAGION_KNOB: 30
+CONTAGION_KNOB: 25
 ENVIRONMENTAL_INFECTION_KNOB: 0.0017
 
 # Time scheduling knobs.
@@ -180,7 +180,7 @@ MODERATE_SYMPTOMS: ["moderate", "fever"]
 P_MOBILE_GIVEN_MODERATE_SYMPTOMS: 0.3
 
 MILD_SYMPTOMS: ["cough", "fatigue", "gastro", "aches", "mild"]
-P_MOBILE_GIVEN_MILD_SYMPTOMS: 0.5
+P_MOBILE_GIVEN_MILD_SYMPTOMS: 0.80
 
 
 #############################################################
@@ -213,7 +213,6 @@ P_CRITICAL_GIVEN_HOSPITALIZED: [
   [70, 79, 0.432],
   [80, 110, 0.709]
 ]
-
 
 P_FATALITY_GIVEN_CRITICAL: [
   [0, 9, 0.33],
@@ -353,26 +352,18 @@ INFECTIOUSNESS_NORMALIZATION_CONST: 1.45
 IMMUNOCOMPROMISED_SEVERITY_MULTIPLIER_ADDITION: 0.2
 COUGH_SEVERITY_MULTIPLIER_ADDITION: 0.25
 
-# /!\ (update-numbers)
-# https://www.nature.com/articles/s41591-020-0962-9/figures/8
-# children are 50% less susceptible as compared to adults
-
-# normalized susceptibility to infection broken down age group
-# Bin boundaries are inclusive
-# refer Oxford COVID-19 model
-# They normalise the fitted attack rate across age groups so that average age has a susceptiblity of 1.0
-
-# UK's average age = 40; Canada's average age = 42. We use the same normalized susceptiblity from Table 5.
+# normalized susceptibility to infection broken down by age group
+# relative_susceptibility_x_y from https://github.com/BDI-pathogens/OpenABM-Covid19/blob/d14351e99a4c4ab4c64faa75e90cc60ea53c097a/documentation/parameters/parameter_dictionary.md
 NORMALIZED_SUSCEPTIBILITY_BY_AGE: [
-  [0, 9, 0.71],
-  [10, 19, 0.74],
-  [20, 29, 0.79],
-  [30, 39, 0.87],
-  [40, 49, 0.98],
-  [50, 59, 1.11],
-  [60, 69, 1.26],
-  [70, 79, 1.45],
-  [80, 110, 1.66]
+  [0, 9, 0.35],
+  [10, 19, 0.69],
+  [20, 29, 1.03],
+  [30, 39, 1.03],
+  [40, 49, 1.03],
+  [50, 59, 1.03],
+  [60, 69, 1.27],
+  [70, 79, 1.52],
+  [80, 110, 1.52]
 ]
 
 # these numbers are taken for daily_mean_work_interactions from Oxford study (Table 3)
@@ -397,33 +388,42 @@ MEAN_DAILY_INTERACTION_FOR_AGE_GROUP: [
 
 # TESTING
 # capacity is proportion of population tested per day
-PROPORTION_LAB_TEST_PER_DAY: 0.01
+PROPORTION_LAB_TEST_PER_DAY: 0.001
 DAYS_TO_LAB_TEST_RESULT_IN_PATIENT: 0.33
 DAYS_TO_LAB_TEST_RESULT_OUT_PATIENT: 2.0 # verbal communication with H&A (find-source)
 
-TEST_TYPES: { "lab": {
-        "capacity": 0.001,  # ! /!\ (not-used) This is now a proportion of population, not an absolute (int) value
-        "time_to_result": {
-          "in-patient": 0.33, # days (not-used)
-          "out-patient": 2.0, # verbal communication with H&A (find-source) (not-used)
-          },
+TEST_TYPES: {
+    "lab":{
         "P_FALSE_NEGATIVE": {
             "days_since_exposure": [1, 4, 5, 8, 9, 21],
             "rate": [1, 0.67, 0.38, 0.2, 0.21, 0.66],
             }, # https://www.acc.org/latest-in-cardiology/journal-scans/2020/05/18/13/42/variation-in-false-negative-rate-of-reverse?utm_source=journalscan&utm_medium=email_newsletter&utm_campaign=journalscan&utm_content=20200521
         "P_FALSE_POSITIVE": 0.00, # verbal communication with H&A (find-source)
         "preference": 1, # TODO: preference might depend on symptoms
-      } }
+      }
+    }
 
-# /!\ (no-source)
-P_TEST_MODERATE: 0.4
-P_TEST_MILD: 0.1
-P_TEST_SEVERE: 1.0
+# /!\ (verbal-communication) Epidemiologists suggested these probabilities from their experience
+# A success on below is also used as a positive self-diagnosis
+P_TEST_SEVERE_OR_SUSPICIOUS: 0.75
+P_TEST_OTHER_REASON: 0.05
+
+# /!\ (no-source) for scoring to triage who gets a test
+P_TEST_SEVERE: 0.80
+P_TEST_MODERATE: 0.0
+P_TEST_MILD: 0.0
+P_TEST_RECOMMENDED: 0.3
 
 GET_TESTED_SYMPTOMS_CHECKED_IN_HOSPITAL: ["mild", "moderate", "severe", "fever", "chills", "gastro", "diarrhea", "cough", "fatigue", "trouble_breathing", "loss_of_taste", "light_trouble_breathing", "moderate_trouble_breathing", "heavy_trouble_breathing" ]
-GET_TESTED_SYMPTOMS_CHECKED_BY_SELF: ["cough", "fever", "trouble_breathing", "chills", "loss_of_taste", ""]
+GET_TESTED_SYMPTOMS_CHECKED_BY_SELF: ["cough", "fever", "trouble_breathing", "chills", "loss_of_taste"]
 SELF_TEST: True # If true, people take themselves to get tested based on their symptoms. If False, tests only happen to hospicalized people or from app recommendations
 TEST_REPORT_PROB: 0.8  # the probability that a user with the app will report their test result
+
+# after these many days, one can go again for a test
+RESET_DAYS_NEGATIVE_TEST_RESULT: 2 # days after getting the test result
+
+# after these many days one will not have to quarantine again, ever
+RESET_DAYS_POSITIVE_TEST_RESULT: 15 # days after getting the test result
 
 
 #########################################################
@@ -431,15 +431,13 @@ TEST_REPORT_PROB: 0.8  # the probability that a user with the app will report th
 #########################################################
 
 # SEASONAL ALLERGIES
-# P_HAS_ALLERGIES_TODAY: 0.005 # likelihood to start allergy any day (2-3 times per year) # produces too many allergies (experimental)
+# P_HAS_ALLERGIES_TODAY: 0.005 # likelihood to start allergy any day (2-3 times per year)
 P_HAS_ALLERGIES_TODAY: 0.005
 
 # OTHER TRANSMISSIBLE DISEASES
-# P_FLU_TODAY: 0.003 # # likelihood to start flu any day (1 per year)
 
-# https://www.webmd.com/cold-and-flu/flu-statistics
-# Flu season is December to February. Assuming simulation runs form March, we are switching off Flu
-P_FLU_TODAY: 0.000
+# https://www.webmd.com/cold-and-flu/flu-statistics (2-3 times per year)
+P_FLU_TODAY: 0.003
 FLU_CONTAGIOUSNESS: 0.000
 AVG_FLU_DURATION: 5
 
@@ -455,6 +453,13 @@ COLD_CONTAGIOUSNESS: 0.000 # likelihood of transmitting at an encounter (no-sour
 
 # INDIVIDUAL DIFFERENCES PARAMETERS
 P_CAREFUL_PERSON: 0.3 # &carefulness
+AGE_AFFECTS_CAREFULNESS: false
+
+# These values were pulled out of the posterior, but they do what you think they do
+P_DROPOUT_SYMPTOM: 0.2 # specifies proba of dropping out a symptom
+P_DROPIN_SYMPTOM: 0.0005 # specifies proba of dropping in a group of symptoms (group = symptoms that occur together)
+P_NUM_DROPIN_GROUPS: [0.2, 0.1, 0.1, 0.2, 0.3, 0.4] # specifies a distry (unnormed) over the number of symptom groups to drop in at a time
+P_REPORT_AGE_AND_SEX_TO_APP: 0.7 # specifies proba that the human reports age and sex to the app
 
 # Biological sex
 P_FEMALE: 0.45
@@ -476,7 +481,8 @@ ASSUME_NO_UNKNOWN_INTERACTIONS_AFTER_INTERVENTION_START: False
 # NOTE: [IMPORTANT] even though only 2 levels are used, the baseline behavior is based on N_BEHAVIOR_LEVELS
 # While comparing binary vs non-binary tracing, use same N_BEHAVIOR_LEVELS. It's upto the method to use levels.
 N_BEHAVIOR_LEVELS: 2
-INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS: False
+FRACTION_LOCKDOWN_INTERPOLATION: 0.9
+INTERPOLATE_CONTACTS_USING_LOCKDOWN_CONTACTS: True
 
 # (WIP) /!\ tracing of symptoms is not working now
 TRACE_SELF_REPORTED_INDIVIDUAL: False
@@ -499,6 +505,8 @@ ASSUME_SAFE_HOSPITAL_DAILY_INTERACTIONS_AFTER_INTERVENTION_START: True
 
 ### FLAGS
 # (non-tracing)
+# Quarantine household members of an individual who took a test until the test results come out?
+QUARANTINE_HOUSEHOLD_UPON_INDIVIDUAL_TEST_TAKEN: True
 # Quarantine household members of an individual who got a positive test?
 QUARANTINE_HOUSEHOLD_UPON_INDIVIDUAL_POSITIVE_TEST: True
 
@@ -506,31 +514,36 @@ QUARANTINE_HOUSEHOLD_UPON_INDIVIDUAL_POSITIVE_TEST: True
 QUARANTINE_SELF_REPORTED_INDIVIDUALS: False
 QUARANTINE_HOUSEHOLD_UPON_SELF_REPORTED_INDIVIDUAL: False
 
-# (tracing)
-QUARANTINE_HOUSEHOLD_UPON_TRACED_POSITIVE_TEST: True
-QUARANTINE_HOUSEHOLD_UPON_TRACED_SELF_REPORTED_INDIVIDUAL: False
+# (WIP) (binary tracing)
+# QUARANTINE_HOUSEHOLD_UPON_TRACED_POSITIVE_TEST: True
+# QUARANTINE_HOUSEHOLD_UPON_TRACED_SELF_REPORTED_INDIVIDUAL: False
+
+# (WIP) (non-binary tracing)
+# QUARANTINE_HOUSEHOLD_UPON_INDIVIDUAL_MAX_RISK_LEVEL_TRACED: False
+
+# (all types of tracing methods)
+MAKE_HOUSEHOLD_BEHAVE_SAME_AS_MAX_RISK_RESIDENT: True
 
 ### DURATION
 # (non-tracing) quarantine duration
 QUARANTINE_DAYS_ON_POSITIVE_TEST: 14
-QUARANTINE_DAYS_ON_SELF_REPORTED_SYMPTOMS: 14
+QUARANTINE_DAYS_ON_SELF_REPORTED_SYMPTOMS: 7
 QUARANTINE_DAYS_HOUSEHOLD_ON_INDIVIDUAL_POSITIVE_TEST: 14
-QUARANTINE_DAYS_HOUSEHOLD_ON_INDIVIDUAL_CONTACT_WITH_POSITIVE_TEST: 14
+QUARANTINE_DAYS_HOUSEHOLD_ON_INDIVIDUAL_SELF_REPORTED_SYMPTOMS: 7
 
-# (tracing) quarantine duration when traced
-QUARANTINE_DAYS_ON_TRACED_POSITIVE: 14
-QUARANTINE_DAYS_ON_TRACED_SELF_REPORTED_SYMPTOMS: 14
-QUARANTINE_DAYS_HOUSEHOLD_ON_TRACED_POSITIVE: 14
-QUARANTINE_DAYS_HOUSEHOLD_ON_TRACED_SELF_REPORTED_SYMPTOMS: 14
+# (WIP) (tracing) quarantine duration when traced
+# QUARANTINE_DAYS_ON_TRACED_POSITIVE_TEST: 14
+# QUARANTINE_DAYS_ON_TRACED_SELF_REPORTED_SYMPTOMS: 14
+# QUARANTINE_DAYS_HOUSEHOLD_ON_TRACED_POSITIVE_TEST: 14
+# QUARANTINE_DAYS_HOUSEHOLD_ON_TRACED_SELF_REPORTED_SYMPTOMS: 14
 
-### DROPOUT
-# (non-tracing) dropout (adherence)
-QUARANTINE_DROPOUT_POSITIVE: 0.01
+### DROPOUT(adherence)
+# (non-tracing)
+QUARANTINE_DROPOUT_TEST: 0.01
 QUARANTINE_DROPOUT_SELF_REPORTED_SYMPTOMS: 0.02
+QUARANTINE_DROPOUT_HOUSEHOLD: 0.03
 
 # (tracing)
-QUARANTINE_DROPOUT_TRACED_POSITIVE: 0.03
-QUARANTINE_DROPOUT_TRACED_SELF_REPORTED_SYMPTOMS: 0.04
 ALL_LEVELS_DROPOUT: 0.02 # daily adherence to recommendations. Failing to adhere, human returns to level 0 (unmitigated case).
 
 # OTHERS

@@ -1,0 +1,7 @@
+track_all: False
+
+# all tracking functions
+track_mixing: False
+track_mobility: False
+track_bluetooth_communications: False
+track_humans: False

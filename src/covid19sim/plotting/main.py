@@ -15,15 +15,17 @@ import random
 import covid19sim.plotting.plot_jellybeans as jellybeans
 import covid19sim.plotting.plot_pareto_adoption as pareto_adoption
 import covid19sim.plotting.plot_presymptomatic as presymptomatic
-import covid19sim.plotting.plot_infection_chains as infection_chains
+import covid19sim.plotting.plot_reasons as reasons
 import covid19sim.plotting.make_efficiency_table as efficiency
 import covid19sim.plotting.plot_generation_time as generation_time
 import covid19sim.plotting.plot_epi_table as epi_table
+import covid19sim.plotting.plot_episim_series as episim_series
+import covid19sim.plotting.plot_normalized_mobility_scatter as normalized_mobility
 from covid19sim.plotting.utils import get_all_data
 
 
 print("Ok.")
-HYDRA_CONF_PATH = Path(__file__).parent.parent / "configs" / "plot"
+HYDRA_CONF_PATH = Path(__file__).resolve().parent.parent / "configs" / "plot"
 
 
 def sizeof(path, suffix="B"):
@@ -137,10 +139,13 @@ def main(conf):
     all_plots = {
         "pareto_adoption": pareto_adoption,
         "jellybeans": jellybeans,
+        "reasons": reasons,
         "presymptomatic": presymptomatic,
         "efficiency": efficiency,
         "generation_time": generation_time,
         "epi_table": epi_table,
+        "episim_series": episim_series,
+        "normalized_mobility": normalized_mobility
     }
 
     conf = OmegaConf.to_container(conf)
@@ -161,7 +166,7 @@ def main(conf):
     # -------------------
     # -----  Help?  -----
     # -------------------
-    if "help" in conf:
+    if conf.get("help", False):
         help(all_plots)
         return
 
@@ -200,6 +205,7 @@ def main(conf):
                 "humans_rec_level",
                 "GLOBAL_MOBILITY_SCALING_FACTOR",
                 "infection_monitor",
+                "humans_quarantined_state"
             ]
         )
     if "efficiency" in plots:
@@ -224,11 +230,41 @@ def main(conf):
         )
     if "presymptomatic" in plots:
         keep_pkl_keys.update(["human_monitor"])
+    if "reasons" in plots:
+        keep_pkl_keys.update(["risk_attributes"])
     if "generation_time" in plots:
         keep_pkl_keys.update(["infection_monitor"])
     if "epi_table" in plots:
         keep_pkl_keys.update(["covid_properties", "generation_times", "daily_age_group_encounters", "age_histogram",
                               "r_0", "contacts"])
+
+    if "episim_series" in plots:
+        keep_pkl_keys.update([
+            "recovered_stats",
+            "cases_per_day",
+            "ei_per_day",
+            "s",
+            "n_humans",
+            "infectious_contact_patterns",
+            "human_has_app",
+            "intervention_day",
+            "humans_state",
+            "humans_quarantined_state"
+        ])
+
+    if "normalized_mobility" in plots:
+        keep_pkl_keys.update([
+            "infection_monitor",
+            "humans_state",
+            "intervention_day",
+            "n_humans",
+            "humans_quarantined_state",
+            "effective_contacts_since_intervention",
+            "healthy_effective_contacts_since_intervention",
+            "cases_per_day",
+            "test_monitor"
+        ])
+
     # ------------------------------------
     # -----  Load pre-computed data  -----
     # ------------------------------------
@@ -262,7 +298,7 @@ def main(conf):
                     "*" * 30, traceback.format_exc(), "*" * 30, str(cache_path),
                 )
             )
-    if not use_cache:
+    else:
         # --------------------------
         # -----  Compute Data  -----
         # --------------------------

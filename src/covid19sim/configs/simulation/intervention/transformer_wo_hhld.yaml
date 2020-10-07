@@ -1,0 +1,32 @@
+# risk model
+RISK_MODEL : "transformer"
+USE_ORACLE: False
+
+# behavior level specifications
+N_BEHAVIOR_LEVELS: 4
+SHOULD_MODIFY_BEHAVIOR : True
+
+# tracing parameters (not used in transformer)
+TRACING_ORDER : 1
+
+# household members
+MAKE_HOUSEHOLD_BEHAVE_SAME_AS_MAX_RISK_RESIDENT: False
+
+# behavior modification
+risk_mappings: calibrated
+MAX_RISK_LEVEL: 15 # maximum allowed risk_level => assert risk_level in range(0, MAX_RISK_LEVEL + 1)
+# (experimental) Uncomment one of these and perform some experiments @nasim @victor
+#REC_LEVEL_THRESHOLDS: [0, 1, 2] # More conservative
+#REC_LEVEL_THRESHOLDS: [0, 0, 1] # Binary
+
+# when to start (overwrite it if needs to be run from other day)
+INTERVENTION_DAY: 0
+
+# EXPERIMENTAL PARAMETERS
+COLLECT_LOGS: False
+COLLECT_TRAINING_DATA: False
+USE_INFERENCE_SERVER: False
+
+# TWILIGHT-RAIN-696
+TRANSFORMER_EXP_PATH: "https://drive.google.com/file/d/1kXA-0juviQOL0R08YlQpaS5gKumQ8zrT"
+CLUSTER_PATH: "output/clusters"

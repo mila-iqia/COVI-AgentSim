@@ -16,7 +16,6 @@ from covid19sim.utils.mobility_planner import MobilityPlanner
 from covid19sim.utils.utils import compute_distance, proba_to_risk_fn
 from covid19sim.locations.city import PersonalMailboxType
 from covid19sim.locations.hospital import Hospital, ICU
-from covid19sim.log.event import Event
 from collections import deque
 
 from covid19sim.utils.utils import _normalize_scores, draw_random_discrete_gaussian, filter_open, filter_queue_max, calculate_average_infectiousness
@@ -24,15 +23,19 @@ from covid19sim.epidemiology.human_properties import may_develop_severe_illness,
     _get_preexisting_conditions, _get_random_sex, get_carefulness, get_age_bin
 from covid19sim.epidemiology.viral_load import compute_covid_properties, viral_load_for_day
 from covid19sim.epidemiology.symptoms import _get_cold_progression, _get_flu_progression, \
-    _get_allergy_progression, \
+    _get_allergy_progression, SymptomGroups, \
     MILD, MODERATE, SEVERE, EXTREMELY_SEVERE, \
     ACHES, COUGH, FATIGUE, FEVER, GASTRO, TROUBLE_BREATHING
 from covid19sim.epidemiology.p_infection import get_human_human_p_transmission, infectiousness_delta
-from covid19sim.utils.constants import SECONDS_PER_MINUTE, SECONDS_PER_HOUR, SECONDS_PER_DAY
 from covid19sim.inference.message_utils import ContactBook, exchange_encounter_messages, RealUserIDType
 from covid19sim.utils.visits import Visits
 from covid19sim.native._native import BaseHuman
 from covid19sim.interventions.intervened_behavior import IntervenedBehavior
+
+from covid19sim.utils.constants import SECONDS_PER_MINUTE, SECONDS_PER_HOUR, SECONDS_PER_DAY
+from covid19sim.utils.constants import NEGATIVE_TEST_RESULT, POSITIVE_TEST_RESULT
+from covid19sim.utils.constants import TEST_TAKEN, RISK_LEVEL_UPDATE, SELF_DIAGNOSIS
+from covid19sim.utils.constants import TAKE_TEST_DUE_TO_SELF_DIAGNOSIS, TAKE_TEST_DUE_TO_RANDOM_REASON, TAKE_TEST_DUE_TO_RECOMMENDATION
 
 if typing.TYPE_CHECKING:
     from covid19sim.utils.env import Env
@@ -80,6 +83,7 @@ class Human(BaseHuman):
             assert isinstance(rng, int)
             self.init_seed = rng
         self.rng = np.random.RandomState(self.init_seed)  # RNG for this particular human
+        self.oracle_noise_random_seed = None
 
         # Human-related properties
         self.name: RealUserIDType = f"human:{name}"  # Name of this human
@@ -104,6 +108,9 @@ class Human(BaseHuman):
         self.preexisting_conditions = _get_preexisting_conditions(self.age, self.sex, self.rng)  # Which pre-existing conditions does this person have? E.g. COPD, asthma
         self.inflammatory_disease_level = _get_inflammatory_disease_level(self.rng, self.preexisting_conditions, self.conf.get("INFLAMMATORY_CONDITIONS"))  # how many pre-existing conditions are inflammatory (e.g. smoker)
         self.carefulness = get_carefulness(self.age, self.rng, self.conf)  # How careful is this person? Determines their liklihood of contracting Covid / getting really sick, etc
+        self.proba_dropout_symptoms = self.conf["P_DROPOUT_SYMPTOM"]
+        self.proba_dropin_symptoms = self.conf["P_DROPIN_SYMPTOM"]
+        self.proba_report_age_and_sex = self.conf["P_REPORT_AGE_AND_SEX_TO_APP"]
 
         # Illness Properties
         self.is_asymptomatic = self.rng.rand() < self.conf.get("BASELINE_P_ASYMPTOMATIC") - (self.age - 50) * 0.5 / 100  # e.g. 70: baseline-0.1, 20: baseline+0.15
@@ -131,14 +138,13 @@ class Human(BaseHuman):
         # Covid-19 testing
         self.test_type = None  # E.g. PCR, Antibody, Physician
         self.test_time = None  # Time when this person was tested
-        self.self_test = self.conf.get('SELF_TEST')  # Whether or not this person will use their symptoms to choose to get a test
         self.hidden_test_result = None  # Test results (that will be reported to this person but have not yet been)
         self._will_report_test_result = None  # Determines whether this individual will report their test (given that they received a test result)
         self.time_to_test_result = None  # How long does it take for this person to receive their test after it has been administered
-        self.test_result_validated = None  # Represents whether a test result is validated by some public health agency (True for PCR Tests, some antiody tests)
         self._test_results = deque()  # History of test results (e.g. if you get a negative PCR test, you can still get more tests)
         self.denied_icu = None  # Used because some older people have been denied use of ICU for younger / better candidates
         self.denied_icu_days = None  # number of days the person would be denied ICU access (Note: denied ICU logic could probably be improved)
+        self.has_had_positive_test = False # is set to True after `human` gets a positive test to prevent any further testing
 
         # Symptoms
         self.covid_symptom_start_time = None  # The time when this persons covid symptoms start (requires that they are in infectious state)
@@ -184,6 +190,7 @@ class Human(BaseHuman):
         self.healthy_days = 0
         self.num_contacts = 0  # unscaled number of high-risk contacts
         self.intervened_behavior = IntervenedBehavior(self, self.env, self.conf) # keeps track of behavior level of human
+        self.heuristic_reasons = set() # Defined here so that we remember it's an attribute of human (gets re-initialized daily)
 
         """Risk prediction"""
         self.contact_book = ContactBook(tracing_n_days_history=self.conf.get("TRACING_N_DAYS_HISTORY"))  # Used for tracking high-risk contacts (for app-based contact tracing methods)
@@ -334,7 +341,7 @@ class Human(BaseHuman):
 
     @property
     def reported_symptoms(self):
-        self.update_symptoms()
+        self.update_reported_symptoms()
         return self.rolling_all_reported_symptoms[0]
 
     @property
@@ -405,7 +412,11 @@ class Human(BaseHuman):
 
         self.last_date['reported_symptoms'] = current_date
 
-        reported_symptoms = [s for s in self.rolling_all_symptoms[0] if self.rng.random() < self.carefulness]
+        reported_symptoms = set([s for s in self.rolling_all_symptoms[0] if self.rng.random() > self.proba_dropout_symptoms])
+        if self.rng.random() < self.proba_dropin_symptoms:
+            # Drop some bad boys in
+            dropped_in_symptoms = SymptomGroups.sample(self.rng, self.conf["P_NUM_DROPIN_GROUPS"])
+            reported_symptoms = reported_symptoms.union(set([s for s in dropped_in_symptoms for s in s]))
         self.rolling_all_reported_symptoms.appendleft(reported_symptoms)
         self.city.tracker.track_symptoms(self)
 
@@ -438,7 +449,28 @@ class Human(BaseHuman):
         self.hidden_test_result = None
         self._will_report_test_result = None
         self.time_to_test_result = None
-        self.test_result_validated = None
+
+    def check_if_test_results_should_be_reset(self):
+        """
+        Resets the test result if its time.
+        """
+        if self.test_result is None:
+            return
+
+        days_since_test_result = (self.env.timestamp - self.test_time -
+                                  datetime.timedelta(days=self.time_to_test_result)).days
+        if (
+            self.test_result == NEGATIVE_TEST_RESULT
+            and days_since_test_result >= self.conf["RESET_DAYS_NEGATIVE_TEST_RESULT"]
+        ):
+            self.reset_test_result()
+        elif (
+            self.test_result == POSITIVE_TEST_RESULT
+            and days_since_test_result >= self.conf["RESET_DAYS_POSITIVE_TEST_RESULT"]
+        ):
+            self.reset_test_result()
+            if not self.has_had_positive_test:
+                self.has_had_positive_test = True
 
     @property
     def will_report_test_result(self):
@@ -464,7 +496,6 @@ class Human(BaseHuman):
             test_time (str): time of testing
             time_to_test_result (str): delay in getting results back
             hidden_test_result (str): test results are not immediately available
-            test_result_validated (str): whether these results will be validated by an agency
             reported_test_result (str): test result reported by self
             reported_test_type (str): test type reported by self
 
@@ -478,7 +509,6 @@ class Human(BaseHuman):
             self.time_to_test_result = self.conf['DAYS_TO_LAB_TEST_RESULT_IN_PATIENT']
         else:
             self.time_to_test_result = self.conf['DAYS_TO_LAB_TEST_RESULT_OUT_PATIENT']
-        self.test_result_validated = self.test_type == "lab"
 
         self._test_results.appendleft((
             self.hidden_test_result,
@@ -487,11 +517,12 @@ class Human(BaseHuman):
             self.time_to_test_result,  # in days
         ))
 
-        self.intervened_behavior.trigger_intervention(reason="test-taken", human=self)
+        # (debug)
+        # print("Test Taken", self, "* symptom start", self.covid_symptom_start_time, " * Cold/Flu", f"{self.has_cold}/{self.has_allergy_symptoms}" )
+        self.intervened_behavior.trigger_intervention(reason=TEST_TAKEN)
 
         # log
         self.city.tracker.track_tested_results(self)
-        Event.log_test(self.conf.get('COLLECT_LOGS'), self, self.test_time)
 
     def check_if_needs_covid_test(self, at_hospital=False):
         """
@@ -502,53 +533,59 @@ class Human(BaseHuman):
             1. if `Human` is at a hospital, TEST_SYMPTOMS_FOR_HOSPITAL are checked for
             2. elsewhere there is a proability related to whether symptoms are "severe", "moderate", or "mild"
             3. if _test_recommended is true (set by app recommendations)
-            4. if the `Human` is careful enough to check symptoms itself, if this is enabled in the config 
+            4. if the `Human` is careful enough to check symptoms itself, if this is enabled in the config
 
         Args:
             at_hospital (bool, optional): follows the check for testing needs at a hospital.
         """
-        # has been tested positive already
-        if self.test_result == "positive":
+        # if there was a positive test in the past, no need to take any other test
+        if (
+            self.test_result == POSITIVE_TEST_RESULT
+            or self.has_had_positive_test
+        ):
             return
 
         # waiting for the results. no need to test again.
         if self.test_time is not None and self.test_result is None:
             return
 
+        # if currently holding a negative test result, do not take another test
+        # `check_if_test_results_should_be_reset` resets the test result after some time
+        if self.test_result == NEGATIVE_TEST_RESULT:
+            return
+
         # already in test queue, bail out
         if self in self.city.covid_testing_facility.test_queue:
             return
 
-        should_get_test = False
-        if at_hospital:
-            assert isinstance(self.location, (Hospital, ICU)), "Not at hospital; wrong argument"
-            # Is in a hospital and has symptoms that hospitals check for
-            TEST_SYMPTOMS_FOR_HOSPITAL = set(self.conf['GET_TESTED_SYMPTOMS_CHECKED_IN_HOSPITAL'])
-            should_get_test = any(TEST_SYMPTOMS_FOR_HOSPITAL & set(self.symptoms))
-        elif self.self_test:
-            if SEVERE in self.symptoms or EXTREMELY_SEVERE in self.symptoms:
-                should_get_test = self.rng.rand() < self.conf['P_TEST_SEVERE']
+        should_get_test, reasons = False, []
+        if self.conf['SELF_TEST']:
+            # (assumption) those who self-diagnose gets a test
+            self_diagnosis_and_should_get_tested = False
+            SUSPICIOUS_SYMPTOMS = set(self.conf['GET_TESTED_SYMPTOMS_CHECKED_BY_SELF'])
+            if (
+                SEVERE in self.symptoms
+                or EXTREMELY_SEVERE in self.symptoms
+                or set(self.symptoms) & SUSPICIOUS_SYMPTOMS
+            ):
+                self_diagnosis_and_should_get_tested = self.rng.rand() < self.conf['P_TEST_SEVERE_OR_SUSPICIOUS']
+            else:
+                self_diagnosis_and_should_get_tested = self.rng.rand() < self.conf['P_TEST_OTHER_REASON']
 
-            elif MODERATE in self.symptoms:
-                should_get_test = self.rng.rand() < self.conf['P_TEST_MODERATE']
-
-            elif MILD in self.symptoms:
-                should_get_test = self.rng.rand() < self.conf['P_TEST_MILD']
-
-            # has been recommended the test by an intervention
-            if not should_get_test and self._test_recommended:
-                should_get_test = self.intervened_behavior.follow_recommendation_today
-
-            if not should_get_test:
-                # Has symptoms that a careful person would fear to be covid
-                SUSPICIOUS_SYMPTOMS = set(self.conf['GET_TESTED_SYMPTOMS_CHECKED_BY_SELF'])
-                if set(self.symptoms) & SUSPICIOUS_SYMPTOMS:
-                    should_get_test = self.rng.rand() < self.carefulness
-                    if should_get_test:
-                        # self.intervened_behavior.trigger_intervention("self-diagnosed-symptoms", human=self)
-                        pass
+            if self_diagnosis_and_should_get_tested:
+                should_get_test = True
+                if self.conf['QUARANTINE_SELF_REPORTED_INDIVIDUALS']:
+                    self.intervened_behavior.trigger_intervention(reason=SELF_DIAGNOSIS)
         else:
             pass
+
+        # has been recommended a test by an intervention
+        if (
+            self._test_recommended
+            and self.intervened_behavior.follow_recommendation_today
+        ):
+            should_get_test = True
+
         if should_get_test:
             self.city.add_to_test_queue(self)
 
@@ -590,7 +627,6 @@ class Human(BaseHuman):
                     self.never_recovers = self.rng.random() < self.conf.get("P_NEVER_RECOVERS")[
                         min(math.floor(self.age / 10), 8)]
 
-                Event.log_recovery(self.conf.get('COLLECT_LOGS'), self, self.env.timestamp, death=False)
 
     def check_cold_and_flu_contagion(self, other_human):
         """
@@ -681,9 +717,6 @@ class Human(BaseHuman):
             infectee._get_infected(initial_viral_load=infector.rng.random())
             if infectee_msg is not None:  # could be None if we are not currently tracing
                 infectee_msg._exposition_event = True
-
-            # log
-            Event.log_exposed(self.conf.get('COLLECT_LOGS'), infectee, infector, p_infection, self.env.timestamp)
         else:
             infector, infectee = None, None
 
@@ -705,17 +738,6 @@ class Human(BaseHuman):
 
         Will also drop old unnecessary entries in the current & previous risk history maps.
         """
-        if self.test_result:
-            days_since_test_result = (self.env.timestamp - self.test_time -
-                                      datetime.timedelta(days=self.time_to_test_result)).days
-            if self.test_result == "negative" and \
-                    days_since_test_result >= self.conf.get("RESET_NEGATIVE_TEST_RESULT_DELAY", 2):
-                self.reset_test_result()
-            elif self.test_result == "positive" and \
-                    days_since_test_result >= self.conf.get("RESET_POSITIVE_TEST_RESULT_DELAY",
-                                                            self.conf.get("TRACING_N_DAYS_HISTORY") + 1):
-                self.reset_test_result()
-
         if not self.risk_history_map:  # if we're on day zero, add a baseline risk value in
             self.risk_history_map[current_day_idx] = self.baseline_risk
         elif current_day_idx not in self.risk_history_map:
@@ -866,16 +888,20 @@ class Human(BaseHuman):
         for the remainder of the simulation.
 
         Yields:
-            generator
+            simpy.events.Timeout
         """
         self.infection_timestamp = None
+        self.cold_timestamp = None
+        self.flu_timestamp = None
+        self.allergy_timestamp = None
         self.recovered_timestamp = datetime.datetime.max
         self.all_symptoms, self.covid_symptoms = [], []
-        Event.log_recovery(self.conf.get('COLLECT_LOGS'), self, self.env.timestamp, death=True)
         # important to remove this human from the location or else there will be sampled interactions
         if self in self.location.humans:
             self.location.remove_human(self)
-        self.household.residents.remove(self) # remove from the house
+        if self in self.city.covid_testing_facility.test_queue:
+            self.city.covid_testing_facility.test_queue.remove(self)
+        self.household.remove_resident(self)
         self.mobility_planner.cancel_all_events()
         self.city.tracker.track_deaths() # track
         yield self.env.timeout(np.inf)
@@ -908,7 +934,7 @@ class Human(BaseHuman):
             if next_activity.location is not None:
 
                 # (debug) to print the schedule for someone
-                # if self.name == "human:7":
+                # if self.name == "human:77":
                 #       print("A\t", self.env.timestamp, self, next_activity)
 
                 # /!\ TODO - P - check for the capacity at a location; it requires adjustment of timestamps
@@ -999,8 +1025,8 @@ class Human(BaseHuman):
         self.location_start_time = self.env.now
         self.location_leaving_time = self.location_start_time + duration
 
-        # check if human needs a test if it's a hospital
-        self.check_if_needs_covid_test(at_hospital=isinstance(location, (Hospital, ICU)))
+        # (WIP) check if human needs a test if it's a hospital
+        # self.check_if_needs_covid_test(at_hospital=isinstance(location, (Hospital, ICU)))
 
         yield self.env.timeout(duration)
         # print("after", self.env.timestamp, self, location, duration)
@@ -1074,19 +1100,6 @@ class Human(BaseHuman):
 
                 # determine if cold and flu contagion occured
                 self.check_cold_and_flu_contagion(other_human)
-
-                # logging
-                Event.log_encounter(
-                    self.conf['COLLECT_LOGS'],
-                    self,
-                    other_human,
-                    location=self.location,
-                    duration=t_near,
-                    distance=distance_profile.distance,
-                    infectee=None if not infectee else infectee.name,
-                    p_infection=p_infection,
-                    time=self.env.timestamp
-                )
 
     def _increment_effective_contacts(self, other_human):
         """
@@ -1233,25 +1246,15 @@ class Human(BaseHuman):
             if exchanged:
                 self.city.tracker.track_bluetooth_communications(human1=self, human2=other_human, location=self.location, timestamp=self.env.timestamp)
 
-            Event.log_encounter_messages(
-                self.conf['COLLECT_LOGS'],
-                self,
-                other_human,
-                location=self.location,
-                duration=duration,
-                distance=distance,
-                time=self.env.timestamp
-            )
-
         return h1_msg, h2_msg
 
     @property
     def baseline_risk(self):
         if self.is_removed:
             return 0.0
-        elif self.reported_test_result == "positive":
+        elif self.reported_test_result == POSITIVE_TEST_RESULT:
             return 1.0
-        elif self.reported_test_result == "negative":
+        elif self.reported_test_result == NEGATIVE_TEST_RESULT:
             return 0.2
         else:
             return self.conf.get("BASELINE_RISK_VALUE")
@@ -1287,7 +1290,7 @@ class Human(BaseHuman):
         if self.conf.get("RISK_MODEL") == "digital":
             assert self._rec_level == 0 or self._rec_level == 3
 
-        self.intervened_behavior.trigger_intervention(reason="risk-level-update", human=self)
+        self.intervened_behavior.trigger_intervention(reason=RISK_LEVEL_UPDATE)
 
     @property
     def rec_level(self):

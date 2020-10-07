@@ -20,7 +20,6 @@ from covid19sim.interventions.tracing import BaseMethod
 from covid19sim.inference.message_utils import UIDType, UpdateMessage, RealUserIDType
 from covid19sim.distribution_normalization.dist_utils import get_rec_level_transition_matrix
 from covid19sim.interventions.tracing_utils import get_tracing_method
-from covid19sim.log.event import Event
 from covid19sim.locations.test_facility import TestFacility
 
 
@@ -98,8 +97,6 @@ class City:
 
         log("Initializing humans ...", self.logfile)
         self.initialize_humans_and_locations()
-
-        self.log_static_info()
 
         log("Computing their preferences", self.logfile)
         self._compute_preferences()
@@ -333,7 +330,7 @@ class City:
             ):
                 human.obs_is_healthcare_worker = True
 
-            human.has_logged_info = human.rng.rand() < human.carefulness
+            human.has_logged_info = human.rng.rand() < human.proba_report_age_and_sex
             human.obs_age = human.age if human.has_logged_info else None
             human.obs_sex = human.sex if human.has_logged_info else None
             human.obs_preexisting_conditions = human.preexisting_conditions if human.has_logged_info else []
@@ -366,13 +363,6 @@ class City:
 
     def add_to_test_queue(self, human):
         self.covid_testing_facility.add_to_test_queue(human)
-
-    def log_static_info(self):
-        """
-        Logs events for all humans in the city
-        """
-        for h in self.humans:
-            Event.log_static_info(self.conf['COLLECT_LOGS'], self, h, self.env.timestamp)
 
     @property
     def events(self):
@@ -468,6 +458,7 @@ class City:
         humans_notified, infections_seeded = False, False
         last_day_idx = 0
         while True:
+            start = time.time()
             current_day = (self.env.timestamp - self.start_time).days
 
             # seed infections and change mixing constants (end of burn-in period)
@@ -493,8 +484,9 @@ class City:
 
                 # initialize everyone from the baseline behavior
                 for human in self.humans:
-                    human.set_tracing_method(self.tracing_method)
                     human.intervened_behavior.initialize()
+                    if self.tracing_method is not None:
+                        human.set_tracing_method(self.tracing_method)
 
                 # log reduction levels
                 log("\nCONTACT REDUCTION LEVELS (first one is not used) -", self.logfile)
@@ -519,6 +511,7 @@ class City:
             self.covid_testing_facility.clear_test_queue()
 
             alive_humans = []
+
             # run non-app-related-stuff for all humans here (test seeking, infectiousness updates)
             for human in self.humans:
                 if not human.is_dead:
@@ -545,7 +538,6 @@ class City:
             # self.tracker.track_locations() # TODO
 
             yield self.env.timeout(int(duration))
-
             # finally, run end-of-day activities (if possible); these include mailbox cleanups, symptom updates, ...
             if current_day != last_day_idx:
                 alive_humans = [human for human in self.humans if not human.is_dead]
@@ -569,8 +561,8 @@ class City:
             human.catch_other_disease_at_random() # catch cold/flu/allergies at random
             human.update_symptoms()
             human.increment_healthy_day()
+            human.check_if_test_results_should_be_reset() # reset test results if its time
             human.mobility_planner.send_social_invites()
-            Event.log_daily(self.conf.get('COLLECT_LOGS'), human, human.env.timestamp)
         self.tracker.increment_day()
         if self.conf.get("USE_GAEN"):
             print(
@@ -666,17 +658,6 @@ class City:
                 intervention=human.intervention,
             ))
 
-            # if we are collecting logs for debugging/drawing baseball plots, log risk here
-            Event.log_risk_update(
-                self.conf['COLLECT_LOGS'],
-                human=human,
-                tracing_description=str(human.intervention),
-                prev_risk_history_map=human.prev_risk_history_map,
-                risk_history_map=human.risk_history_map,
-                current_day_idx=current_day,
-                time=self.env.timestamp,
-            )
-
             # finally, override the 'previous' risk history map with the updated values of the current
             # map so that the next call can look at the proper difference between the two
             for day_idx, risk_val in human.risk_history_map.items():
@@ -712,7 +693,7 @@ class EmptyCity(City):
 
         self.test_type_preference = list(zip(*sorted(conf.get("TEST_TYPES").items(), key=lambda x:x[1]['preference'])))[0]
         self.max_capacity_per_test_type = {
-            test_type: max([int(conf['TEST_TYPES'][test_type]['capacity'] * self.n_people), 1])
+            test_type: max(int(self.conf['PROPORTION_LAB_TEST_PER_DAY'] * self.n_people), 1)
             for test_type in self.test_type_preference
         }
 
@@ -754,7 +735,6 @@ class EmptyCity(City):
         After adding humans and locations to the city, execute this function to finalize the City
         object in preparation for simulation.
         """
-        self.log_static_info()
         self.n_people = len(self.humans)
         self.n_init_infected = sum(1 for h in self.humans if h.infection_timestamp is not None)
         self.init_fraction_sick = self.n_init_infected /  self.n_people

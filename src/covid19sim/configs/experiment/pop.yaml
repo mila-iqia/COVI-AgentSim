@@ -12,7 +12,7 @@ USE_INFERENCE_SERVER: False
 # -------------------------
 # -----  Directories  -----
 # -------------------------
-base_dir: $HOME/simulator/results/pop_sick # if outdir is not provided, runs will be stored in base_dir/${tracing_method}
+base_dir: $HOME/simulator/results/pop_sick # if outdir is not provided, runs will be stored in base_dir/${intervention}
 code_loc: $HOME/simulator/src/covid19sim/
 use_tmpdir: false
 weights_dir: /home/mweiss10/scratch/weights
@@ -22,17 +22,17 @@ weights_dir: /home/mweiss10/scratch/weights
 # -------------------------------------
 COLD_CONTAGIOUSNESS: 0
 DROPOUT_RATE: 0.02
-init_percent_sick: 0.00
+init_fraction_sick: 0.00
 INTERVENTION_DAY: -1
 P_CAREFUL_PERSON: 0.6
 simulation_days: 30
-test_capacity: 0.005
+PROPORTION_LAB_TEST_PER_DAY: 0.005
 tune: true
 
 # --------------------------------------
 # -----  Sampling Parametrization  -----
 # --------------------------------------
-tracing_method:
+intervention:
   sample: cartesian
   from:
     - no_intervention
@@ -47,7 +47,7 @@ n_people:
     - 7500
     - 10000
 
-init_percent_sick:
+init_fraction_sick:
   sample: cartesian
   from:
     - 0.001
@@ -55,7 +55,7 @@ init_percent_sick:
     - 0.005
     - 0.0075
     - 0.01
-  
+
 seed:
   sample: cartesian
   from:

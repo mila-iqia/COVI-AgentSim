@@ -4,6 +4,7 @@ from orderedset import OrderedSet
 from covid19sim.epidemiology.symptoms import MILD, MODERATE, SEVERE, EXTREMELY_SEVERE
 from covid19sim.utils.utils import get_test_false_negative_rate
 from covid19sim.locations.hospital import Hospital, ICU
+from covid19sim.utils.constants import POSITIVE_TEST_RESULT, NEGATIVE_TEST_RESULT
 
 class TestFacility(object):
     """
@@ -81,14 +82,14 @@ class TestFacility(object):
             if test_type:
                 if human.infection_timestamp is not None:
                     if human.rng.rand() < get_test_false_negative_rate(test_type, human.days_since_covid, human.conf):
-                        unobserved_result = 'negative'
+                        unobserved_result = NEGATIVE_TEST_RESULT
                     else:
-                        unobserved_result = 'positive'
+                        unobserved_result = POSITIVE_TEST_RESULT
                 else:
                     if human.rng.rand() < self.conf['TEST_TYPES'][test_type]["P_FALSE_POSITIVE"]:
-                        unobserved_result = "positive"
+                        unobserved_result = POSITIVE_TEST_RESULT
                     else:
-                        unobserved_result = "negative"
+                        unobserved_result = NEGATIVE_TEST_RESULT
 
                 human.set_test_info(test_type, unobserved_result)  # /!\ sets other attributes related to tests
                 self.test_queue.remove(human)
@@ -110,7 +111,7 @@ class TestFacility(object):
             human (Human): `Human` object.
 
         Returns:
-            float: score value indicating chances of `Human` getting a test.
+            (float): score value indicating chances of `Human` getting a test.
         """
         score = 0
 
@@ -121,11 +122,7 @@ class TestFacility(object):
         elif MILD in human.symptoms:
             score += self.conf['P_TEST_MILD']
 
-        if isinstance(human.location, (Hospital, ICU)):
-            score += 1
-
         if human._test_recommended:
-            score += 0.3  # @@@@@@ FIXME THIS IS ARBITRARY
+            score += self.conf['P_TEST_RECOMMENDED']
 
         return score
-
