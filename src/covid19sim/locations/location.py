@@ -426,7 +426,6 @@ class Location(simpy.Resource):
         #
         if x_environment:
             human._get_infected(initial_viral_load=self.rng.random())
-            Event.log_exposed(self.conf.get('COLLECT_LOGS'), human, self, p_transmission, self.env.timestamp)
 
         return
 

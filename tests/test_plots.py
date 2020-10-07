@@ -1,15 +1,15 @@
-import datetime
-import os
-import time
-import unittest
-from tempfile import TemporaryDirectory
-
-from tests.utils import get_test_conf
-
-from covid19sim.inference.server_utils import DataCollectionServer
-from covid19sim.plotting import debug
-from covid19sim.run import simulate
-from covid19sim.utils.utils import dump_tracker_data, extract_tracker_data
+# import datetime
+# import os
+# import time
+# import unittest
+# from tempfile import TemporaryDirectory
+#
+# from tests.utils import get_test_conf
+#
+# from covid19sim.inference.server_utils import DataCollectionServer
+# from covid19sim.plotting import debug
+# from covid19sim.run import simulate
+# from covid19sim.utils.utils import dump_tracker_data, extract_tracker_data
 
 # TODO : re-add this test. There was a slowdown / conflict with zarr
 # introduced in this PR: https://github.com/mila-iqia/covi-simulator/pull/70/files
