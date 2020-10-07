@@ -299,12 +299,13 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
             table_to_save.append([m1, m2, labelmap[m1], labelmap[m2], *res1, *res2])
             if (
                 not annotate_advantages
-                # or not plot
+                or not plot
+                or len(methods) == 3 # if there are 3 methods, annotation will not be cluttered
             ):
                 continue
 
             x_noise = np.random.normal(0.01, 0.01)
-            y_noise = 0.2#abs(np.random.normal(0.2, 0.05))
+            y_noise = 0.2
             p3 = [p1[0] + x_noise + 0.01, (p1[1] + p2[1])/2.0]
             # arrow
             ax.annotate(s='', xy=(p1[0] + x_noise, p1[1]), xytext=(p2[0] + x_noise, p2[1]), arrowprops=dict(arrowstyle='<->', linestyle="-", linewidth=1, zorder=1000, mutation_scale=20))
@@ -334,7 +335,7 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
             text = "$\Delta \hat{R} \pm \sigma$\np-value"
         else:
             text = "advantage $\pm$ stderr\np-value"
-        # ax.annotate(s=text, xy=(ax.get_xlim()[1]-2, 0.5), fontsize=ANNOTATION_FONTSIZE, fontweight='normal', bbox=dict(facecolor='none', edgecolor='black'), zorder=10)
+        ax.annotate(s=text, xy=(ax.get_xlim()[1]-2, 0.5), fontsize=ANNOTATION_FONTSIZE, fontweight='normal', bbox=dict(facecolor='none', edgecolor='black'), zorder=10)
 
     xlabel = get_metric_label(xmetric)
     ylabel = get_metric_label(ymetric)
@@ -351,7 +352,7 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
                         XY_TITLESIZE=LABELSIZE, TICKSIZE=TICKSIZE, x_tick_gap=TICKGAP)
 
     # figure title
-    # fig.suptitle(f"Tracing Operating Characteristics @ {adoption_rate}% Adoption Rate", fontsize=TITLESIZE, y=1.05)
+    fig.suptitle(f"Tracing Operating Characteristics @ {adoption_rate}% Adoption Rate", fontsize=TITLESIZE, y=1.05)
 
     # save
     fig.tight_layout()
