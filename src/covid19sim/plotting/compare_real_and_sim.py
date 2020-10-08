@@ -8,8 +8,8 @@ import scipy.stats as stats
 
 # Constants
 quebec_population = 8485000
-csv_path = "path/to/csv"
-sims_dir_path = "path/to/simulations/"
+csv_path = "qc.csv"
+sims_dir_path = "results/qc_validation/no_intervention"
 if len(sys.argv) > 1:
     sims_dir_path = sys.argv[1]
 
@@ -28,7 +28,6 @@ def parse_tracker(sim_tracker_data):
         dates.append(str(k))
         death = sum([x['dead'] for x in v])
         cumulative_deaths.append(death)
-
     daily_deaths_prop = []
     last_deaths = 0
     for idx, deaths in enumerate(cumulative_deaths):
@@ -62,6 +61,7 @@ for sim in os.listdir(sims_dir_path):
     # Get the paths
     sim_path = os.path.join(sims_dir_path, sim)
     sim_priors_path = os.path.join(sim_path, "train_priors.pkl")
+    import pdb; pdb.set_trace()
     sim_tracker_name = [str(f_name) for f_name in os.listdir(sim_path) if f_name.startswith("tracker_data")][0]
     sim_tracker_path = os.path.join(sim_path, sim_tracker_name)
     # Load the data
