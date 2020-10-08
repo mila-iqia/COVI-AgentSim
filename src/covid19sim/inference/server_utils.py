@@ -28,7 +28,6 @@ import covid19sim.inference.helper
 import covid19sim.inference.oracle
 import covid19sim.utils.utils
 
-
 expected_raw_packet_param_names = [
     "start", "current_day", "human", "time_slot", "conf"
 ]
@@ -458,7 +457,7 @@ class DataCollectionWorker(BaseWorker):
         self.human_count = human_count
         self.simulation_days = simulation_days
         self.config_backup = config_backup
-        self.chunk_size = 20
+        self.chunk_size = 1
         # These are not used anymore!
         # It's because zarr uses a meta-compressor (Blosc) to figure out which
         # compressor to use, and it appears to work well.
@@ -494,7 +493,7 @@ class DataCollectionWorker(BaseWorker):
         dataset = fd.create_dataset(
             "dataset",
             shape=(self.simulation_days, 24, self.human_count,),
-            chunks=(None, None, self.chunk_size),
+            chunks=(1, None, None),  # 1 x 6 x human_count
             dtype=object,
             object_codec=numcodecs.Pickle(),
         )
@@ -506,6 +505,12 @@ class DataCollectionWorker(BaseWorker):
         )
         total_dataset_bytes = 0
         sample_idx = 0
+        current_day = 0
+        dataset_cache_factory = lambda: np.zeros(shape=(24, self.human_count),
+                                                 dtype=object)
+        is_filled_cache_factory = lambda: np.zeros(shape=(24, self.human_count), dtype=bool)
+        dataset_cache = dataset_cache_factory()
+        is_filled_cache = is_filled_cache_factory()
         while not self.stop_flag.is_set():
             if self.reset_flag.is_set():
                 self.time_counter.value = 0.0
@@ -519,9 +524,28 @@ class DataCollectionWorker(BaseWorker):
             proc_start_time = time.time()
             day_idx, hour_idx, human_idx, buffer = pickle.loads(buffer)
             total_dataset_bytes += len(buffer)
-            # We'll let zarr do the pickling, so we load buffer
-            dataset[day_idx, hour_idx, human_idx] = pickle.loads(buffer)
-            is_filled[day_idx, hour_idx, human_idx] = True
+            if day_idx == (current_day + 1):
+                # It's a new day
+                # Dump the cache
+                dataset[current_day, :, :] = dataset_cache
+                is_filled[current_day, :, :] = is_filled_cache
+                # Make a new cache
+                dataset_cache = dataset_cache_factory()
+                is_filled_cache = is_filled_cache_factory()
+                # Update the current_day counter
+                current_day += 1
+            elif day_idx == current_day:
+                pass
+            else:
+                raise RuntimeError(f"The worker was at day {current_day}, but got a "
+                                   f"message from day {day_idx}. Bonk!")
+
+            # Write the pickle and is_filled to cache
+            dataset_cache[hour_idx, human_idx] = pickle.loads(buffer)
+            is_filled_cache[hour_idx, human_idx] = True
+            # Note to future self: this is what it used to be:
+            #    dataset[day_idx, hour_idx, human_idx] = pickle.loads(buffer)
+            #    is_filled[day_idx, hour_idx, human_idx] = True
             socket.send(str(sample_idx).encode())
             sample_idx += 1
             with self.time_counter.get_lock():
@@ -695,6 +719,7 @@ class DataCollectionClient:
 
 class DataCollectionServer(DataCollectionBroker, multiprocessing.Process):
     """Wrapper object used to initialize a broker inside a separate process."""
+
     def __init__(self, **kwargs):
         multiprocessing.Process.__init__(self)
         DataCollectionBroker.__init__(self, **kwargs)
@@ -767,7 +792,7 @@ def proc_human_batch(
 def _proc_human(params, inference_engine):
     """Internal implementation of the `proc_human_batch` function."""
     assert isinstance(params, dict) and \
-        all([p in params for p in expected_raw_packet_param_names]), \
+           all([p in params for p in expected_raw_packet_param_names]), \
         "unexpected/broken _proc_human input format between simulator and inference service"
     conf = params["conf"]
     todays_date = params["start"] + datetime.timedelta(days=params["current_day"], hours=params["time_slot"])
@@ -780,7 +805,8 @@ def _proc_human(params, inference_engine):
 
     # Format for supervised learning / transformer inference
     is_exposed, exposure_day = covid19sim.inference.helper.exposure_array(human.infection_timestamp, todays_date, conf)
-    is_recovered, recovery_day = covid19sim.inference.helper.recovered_array(human.recovered_timestamp, todays_date, conf)
+    is_recovered, recovery_day = covid19sim.inference.helper.recovered_array(human.recovered_timestamp, todays_date,
+                                                                             conf)
     candidate_encounters, exposure_encounter = covid19sim.inference.helper.candidate_exposures(cluster_mgr)
     reported_symptoms = human.rolling_all_reported_symptoms
     true_symptoms = human.rolling_all_symptoms
