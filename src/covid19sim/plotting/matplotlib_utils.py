@@ -272,7 +272,7 @@ def add_bells_and_whistles(ax, y_title=None, x_title=None, **kwargs):
     for tick in ax.yaxis.get_major_ticks():
         tick.label.set_fontsize(TICKSIZE)
         tick.set_pad(8.)
-        
+
     # legend
     if legend_loc is not None:
         ax.legend(prop={"size":LEGENDSIZE}, loc=legend_loc)
@@ -425,7 +425,7 @@ def get_intervention_label(method_name, base_intervention_name):
     Returns:
         (str): a readable name for the intervention
     """
-    assert type(method_name) == str, f"improper intervention type: {type(intervention)}"
+    assert type(method_name) == str, f"improper intervention type: {type(method_name)}"
 
     # when experimental runs are named something else other than the intervention config filename
     if base_intervention_name != method_name:
