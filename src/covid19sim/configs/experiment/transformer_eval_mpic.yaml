@@ -15,24 +15,27 @@ tune: true
 track: light
 n_search: -1
 
-n_people: 1000
-simulation_days: 30
+n_people: 1500
+simulation_days: 50
 INTERVENTION_DAY: 0
-APP_UPTAKE: 0.8415
-init_fraction_sick: 0.01
+
+APP_UPTAKE: 0.5618
+init_fraction_sick: 0.0065
 P_CAREFUL_PERSON: 0.7
 PROPORTION_LAB_TEST_PER_DAY: 0.001
 MAKE_HOUSEHOLD_BEHAVE_SAME_AS_MAX_RISK_RESIDENT: True
 
 USE_INFERENCE_SERVER: False
-base_dir: /home/nrahaman/python/covi-simulator/exp/benchmark0
+base_dir: /home/nrahaman/python/covi-simulator/exp/streaming
 weights_dir: /lustre/work/nrahaman/ctt/exp/SHIPMENTS
 use_tmpdir: false
 
 intervention:
   sample: cartesian
   from:
-    - transformer
+    - transformer:
+        weights: MISTY-WOOD-727
+        REC_LEVEL_THRESHOLDS: "[0,1,2]"
     - bdt1
     - heuristicv1
     - post-lockdown-no-tracing
@@ -40,6 +43,7 @@ intervention:
 GLOBAL_MOBILITY_SCALING_FACTOR:
   sample: cartesian
   from:
+    - 0.6
     - 0.7
     - 0.8
     - 0.9
