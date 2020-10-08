@@ -452,7 +452,7 @@ def get_intervention_label(method_name, base_intervention_name):
     if "transformer" in base_method:
         return "Transformer" + without_hhld_string
 
-    raise ValueError(f"Unknown raw intervention name: {intervention}")
+    raise ValueError(f"Unknown raw intervention name: {method_name}")
 
 def get_base_intervention(intervention_conf):
     """
