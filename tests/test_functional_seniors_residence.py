@@ -9,7 +9,6 @@ from tests.utils import get_test_conf
 from covid19sim.locations.city import City, EmptyCity
 from covid19sim.locations.location import Household
 from covid19sim.utils.env import Env
-from covid19sim.log.monitors import EventMonitor
 from covid19sim.human import Human
 from covid19sim.utils.constants import SECONDS_PER_DAY, SECONDS_PER_HOUR
 
@@ -92,20 +91,10 @@ def test_functional_seniors_residence():
 
         outfile = os.path.join(output_dir, "test1")
 
-        monitors = [
-            EventMonitor(f=SECONDS_PER_HOUR*30, dest=outfile, chunk_size=None),
-        ]
-
-        monitors[0].dump()
-        monitors[0].join_iothread()
-
         env.process(city.run(SECONDS_PER_HOUR, outfile))
 
         for human in city.humans:
             env.process(human.run())
-
-        for m in monitors:
-            env.process(m.run(env, city=city))
 
         with unittest.mock.patch.object(
                 City, "run_app",

@@ -13,6 +13,8 @@ from scipy.interpolate import interp1d
 from matplotlib.colors import TwoSlopeNorm, is_color_like
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
+from covid19sim.plotting.curve_fitting import bootstrap_series, ewma
+
 # base colors for each method
 COLOR_MAP = {
     "bdt1": "mediumvioletred",
@@ -125,7 +127,7 @@ def get_labelmap(methods_and_base_confs, path):
 
     return labelmap
 
-def _plot_mean_with_stderr_bands_of_series(ax, series, label, color, **kwargs):
+def _plot_mean_with_stderr_bands_of_series(ax, series, label, color, bootstrap=False, plot_quantiles=False, window=None, **kwargs):
     """
     Plots mean of `series` and a band of standard error around the mean.
 
@@ -134,6 +136,9 @@ def _plot_mean_with_stderr_bands_of_series(ax, series, label, color, **kwargs):
         series (list): each element is an np.array series
         label (str): label for the series to appear in legend
         color (str): color to plot this series with
+        bootstrap (bool): If True, uses bootstrapped sampled to estimate stderrors and mean.
+        plot_quantiles (bool): If True, plot quantiles. quantiles can be provided in the keyword arg - `quantiles`
+        window (int): If not None, it takes `window` step moving average of the series.
         **kwargs (key=value): see `_plot_mean_and_stderr_bands` for keyword arguments used
 
     Returns:
@@ -142,13 +147,35 @@ def _plot_mean_with_stderr_bands_of_series(ax, series, label, color, **kwargs):
     # plot only up until minimum length
     min_len = min(len(x) for x in series)
     out = [x[:min_len] for x in series]
-    df = np.array(out)
 
+    # moving window
+    if window is not None:
+        out = [ewma(cc, window) for cc in out]
+
+    df = np.array(out)
     index = np.array(list(range(df.shape[1])))
+    if bootstrap:
+        num_bootstrap_samples = kwargs.get('num_bootstrap_samples', 1000)
+        mode = kwargs.get('mode', 'mean')
+        df =  bootstrap_series(df, num_bootstrap_samples=num_bootstrap_samples, mode=mode)
+
+    if plot_quantiles:
+        QS = kwargs.get("quantiles", [5, 50, 95])
+        quantiles = np.array([np.percentile(df, q, axis=0) for q in QS])
+        half = len(quantiles) // 2
+        ax.plot(index, quantiles[half][:], color=color, label=label)
+        for i in range(half):
+            ax.fill_between(index, quantiles[i, :], quantiles[-(i + 1), :], color=color, alpha=(0.35 * (i+1)/half))
+
+        return ax
+
     #
     mean = df.mean(axis=0)
     #
-    stderr = df.std(axis=0)/np.sqrt(df.shape[0])
+    if bootstrap:
+        stderr = df.std(axis=0)
+    else:
+        stderr = df.std(axis=0)/np.sqrt(df.shape[0])
 
     ax = plot_mean_and_stderr_bands(ax, index, mean, stderr, label, color, **kwargs)
     return ax
@@ -219,6 +246,13 @@ def add_bells_and_whistles(ax, y_title=None, x_title=None, **kwargs):
     upper_lim = kwargs.get("x_upper_lim", math.ceil(ax.get_xlim()[1] / 2.) * 2.0)
     n_ticks = np.arange(lower_lim, upper_lim, x_tick_gap)
     ax.set_xticks(n_ticks)
+    ax.set_xlim(lower_lim, upper_lim)
+
+    # yticks
+    lower_lim = kwargs.get("y_lower_lim", None)
+    upper_lim = kwargs.get("y_upper_lim", None)
+    ax.set_ylim(lower_lim, upper_lim)
+
 
     if x_title is not None:
         ax.set_xlabel(x_title, fontsize=XY_TITLESIZE)
@@ -230,13 +264,14 @@ def add_bells_and_whistles(ax, y_title=None, x_title=None, **kwargs):
     ax.grid(True, axis='x', alpha=0.3)
     ax.grid(True, axis='y', alpha=0.3)
 
-
     # tick size
     for tick in ax.xaxis.get_major_ticks():
         tick.label.set_fontsize(TICKSIZE)
+        tick.set_pad(8.)
 
     for tick in ax.yaxis.get_major_ticks():
         tick.label.set_fontsize(TICKSIZE)
+        tick.set_pad(8.)
 
     # legend
     if legend_loc is not None:
@@ -320,7 +355,7 @@ def plot_heatmap_of_advantages(data, labelmap, USE_MATH_NOTATION=False):
 
     return fig
 
-def save_figure(figure, basedir, folder, filename, bbox_extra_artists=None):
+def save_figure(figure, basedir, folder, filename, bbox_extra_artists=None, bbox_inches='tight'):
     """
     Saves figure at `basedir/folder/filename`. Creates `folder` if it doesn't exist.
 
@@ -338,7 +373,6 @@ def save_figure(figure, basedir, folder, filename, bbox_extra_artists=None):
     basedir = Path(basedir)
     assert basedir.resolve().is_dir, f"{basedir} is not a directory"
 
-    figure.tight_layout()
     #
     if folder is None:
         filepath = str(basedir / filename)
@@ -350,7 +384,7 @@ def save_figure(figure, basedir, folder, filename, bbox_extra_artists=None):
     #
     filepath = str(folder / filename)
 
-    figure.savefig(filepath, bbox_inches='tight', bbox_extra_artists=bbox_extra_artists)
+    figure.savefig(filepath, bbox_inches=bbox_inches, bbox_extra_artists=bbox_extra_artists)
     return filepath
 
 def get_adoption_rate_label_from_app_uptake(uptake):
@@ -366,15 +400,19 @@ def get_adoption_rate_label_from_app_uptake(uptake):
     assert type(uptake) in [str, float, int], f"{uptake} is of type {type(uptake)} not str or int"
     uptake = eval(uptake) if type(uptake) == str else uptake
     if uptake == -1:
-     return ""
+        return ""
     if uptake == 0.9831:
-     return "70"
+        return "70"
     if uptake == 0.8415:
-     return "60"
+        return "60"
     if uptake == 0.5618:
-     return "40"
+        return "40"
     if uptake == 0.4215:
-     return "30"
+        return "30"
+    if uptake == 0.6425:
+        return "45"
+
+    return uptake
 
 def get_intervention_label(method_name, base_intervention_name):
     """
@@ -387,7 +425,7 @@ def get_intervention_label(method_name, base_intervention_name):
     Returns:
         (str): a readable name for the intervention
     """
-    assert type(method_name) == str, f"improper intervention type: {type(intervention)}"
+    assert type(method_name) == str, f"improper intervention type: {type(method_name)}"
 
     # when experimental runs are named something else other than the intervention config filename
     if base_intervention_name != method_name:
@@ -414,7 +452,7 @@ def get_intervention_label(method_name, base_intervention_name):
     if "transformer" in base_method:
         return "Transformer" + without_hhld_string
 
-    raise ValueError(f"Unknown raw intervention name: {intervention}")
+    raise ValueError(f"Unknown raw intervention name: {method_name}")
 
 def get_base_intervention(intervention_conf):
     """

@@ -939,7 +939,7 @@ def _patch_kid_schedule(human, adult_schedule, work_activity, current_activity, 
         human (covid19sim.human.Human): human for which `activities`  needs to be scheduled
         adult_schedule (list): list of `Activity`s which have been presampled for adult for the next day
         current_activity (Activity): activity that `human` is currently doing (expects "sleep")
-        work_activity (float): duration of work that needs to be scheduled before anything
+        work_activity (Activity): Activity of type school for kid if that kid goes to school. None otherwise.
         conf (dict): yaml configuration of the experiment
 
     Returns:

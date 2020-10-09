@@ -369,3 +369,56 @@ class GPRFit(FittedFn):
             )
 
         self.samples, traces = run_chain_fn()
+
+
+def bootstrap_series(series, num_bootstrap_samples=100, seed=0, mode="mean"):
+    """
+    Implements bootstrapping to sample underlying population of means.
+
+    Args:
+        series (np.array):  of size (M, T) where M is the number of series in to sample from
+        num_bootstrap_samples (int): number of samples to return
+        seed (int): seed for random number generator
+
+    Returns:
+        (np.array): of size  (num_bootstrap_samples, T)
+    """
+    # series.shape = (N, T)
+    rng = np.random.default_rng(seed)
+    subset_size = series.shape[0]
+
+    means = []
+    for k in range(num_bootstrap_samples):
+        if mode == "mean":
+            ufunc = np.mean
+        elif mode == "median":
+            ufunc = np.median
+
+        means.append(ufunc(rng.choice(series, subset_size, replace=True, axis=0), axis=0))
+    return np.array(means)
+
+def ewma(data, window):
+    """
+    Implements moving average for `window` size.
+
+    Args:
+        data (np.array):
+        window (int):
+
+    Returns:
+        ()
+    """
+    alpha = 2 /(window + 1.0)
+    alpha_rev = 1-alpha
+    n = data.shape[0]
+
+    pows = alpha_rev**(np.arange(n+1))
+
+    scale_arr = 1/pows[:-1]
+    offset = data[0]*pows[1:]
+    pw0 = alpha*alpha_rev**(n-1)
+
+    mult = data*pw0*scale_arr
+    cumsums = mult.cumsum()
+    out = offset + cumsums*scale_arr[::-1]
+    return out
