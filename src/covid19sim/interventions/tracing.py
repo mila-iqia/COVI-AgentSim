@@ -130,7 +130,7 @@ class Heuristic(BaseMethod):
             Default Behaviors: can be set in the config as a list of strings corresponding to keys in `create_behavior`
 
     Args:
-        version (Int): which version of the heuristic to use
+        version (int): which version of the heuristic to use
         conf (dictionary): rendered configuration dictionary (from YAML) determining behavior of simulation
 
     """
@@ -186,7 +186,10 @@ class Heuristic(BaseMethod):
         the intervention start date.
 
         Args:
-            risk_level (Int): integer representation of a 4-bit risk level (1 is lowest risk, 16 is highest)
+            human (Human): Human object who has an application running the heuristic algorithm
+            thresholds (list): mapping between integer risk level and continuous risk
+            intervention_start (bool): Indicates whether the heuristic intervention has begun
+            risk_level (int): integer representation of a 4-bit risk level (1 is lowest risk, 16 is highest)
         Returns:
             risk (float): a continuously valued representation of the 4-bit risk level.
         """
@@ -202,7 +205,7 @@ class Heuristic(BaseMethod):
         """ This is a mapping from an integer represention of a 4-bit risk level to a continuously valued risk.
 
         Args:
-            risk_level (Int): integer representation of a 4-bit risk level (1 is lowest risk, 16 is highest)
+            risk_level (int): integer representation of a 4-bit risk level (1 is lowest risk, 16 is highest)
         Returns:
             risk (float): a continuously valued representation of the 4-bit risk level.
         """
@@ -216,7 +219,7 @@ class Heuristic(BaseMethod):
         Args:
             human (Human): Human object who has an application running the heuristic algorithm
         Returns:
-            processed (array): a processed version of the clusters object
+            processed (array): processed clusters. lists of tuples of ints (encounter_day, risk_level, num_encounters)
         """
         try:
             cluster_mgr_map = DummyMemManager.get_cluster_mgr_map()
@@ -228,6 +231,7 @@ class Heuristic(BaseMethod):
                 processed.append((encounter_day, c.risk_level, len(c._real_encounter_times)))
         except (IndexError, KeyError):
             return []
+
         return processed
 
     def compute_risk(self, human, clusters, humans_map: typing.Dict[str, "Human"]):
@@ -243,7 +247,7 @@ class Heuristic(BaseMethod):
 
         Args:
             human (Human): Human object who has an application running the heuristic algorithm
-            clusters (array): An object containing the clustered messages received by this agent
+            clusters (list): clustered messages received by this agent. [(encounter_day, risk_level, num_encounters)]
             humans_map (dict): A dictionary mapping string ids to humans (not used in this function)
         Returns:
             risk history (array): an array of length d_max containing predicted risk on those days (in float form)
@@ -386,10 +390,10 @@ class Heuristic(BaseMethod):
 
         Args:
             human (Human): the agent using the heuristic app
-            clusters (array): Clustered messages received by the agent
+            clusters (list): clustered messages received by this agent. [(encounter_day, risk_level, num_encounters)]
         Returns:
-            risk_history (array): updated risk history after application of negative test rule
-            rec_level (array): updated recommendation level after application of negative test rule
+            risk_history (list): updated risk history after application of negative test rule
+            rec_level (list): updated recommendation level after application of negative test rule
 """
 
         # variables to record key statistics from the clustered risk messages
@@ -457,8 +461,8 @@ class Heuristic(BaseMethod):
         Args:
             human (Human): the agent using the heuristic app
         Returns:
-            no_positive_test_result_past_14_days (Boolean): True if recent positive test result
-            latest_negative_test_result_num_days (Int): relative date of negative test result (or None)
+            no_positive_test_result_past_14_days (bool): True if recent positive test result
+            latest_negative_test_result_num_days (int): relative date of negative test result (or None)
         """
         latest_negative_test_result_num_days = None
         no_positive_test_result_past_14_days = True
@@ -548,10 +552,10 @@ class Heuristic(BaseMethod):
 
         Args:
             human (Human): the agent using the heuristic app
-            clusters (array): Clustered messages received by the agent
+            clusters (list): clustered messages received by this agent. [(encounter_day, risk_level, num_encounters)]
         Returns:
-            risk_history (array): updated risk history after application of handle_symptoms_v4 rule
-            rec_level (array): updated recommendation level after application of handle_symptoms_v4 rule
+            risk_history (list): updated risk history after application of handle_symptoms_v4 rule
+            rec_level (list): updated recommendation level after application of handle_symptoms_v4 rule
         """
         risk_history = []
 
