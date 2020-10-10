@@ -667,6 +667,7 @@ class MobilityPlanner(object):
         if quarantined:
             return activity
 
+
         # 6. health / intervention related checks; set the location to household
         # rest_at_home needs to be checked everytime. It is different from hospitalization which is for prespecified period of time
         rest_at_home = self._update_rest_at_home()
@@ -725,8 +726,34 @@ class MobilityPlanner(object):
             activity.cancel_and_go_to_location(reason=f"quarantine-{reason}", location=self.human.household)
             return activity, True
 
-        return activity, False
+        # econ
+        if (self.human.conf['ECON_RUN'] == True) and (activity.name == 'work'):
 
+            ## determine new work hour (say x in seconds)
+            estimated_prevalence_dict = self.human.city.tracker.get_estimated_covid_prevalence()
+
+            # use estimation by number of positive tests in the last 14 days
+            estimated_prevalence = estimated_prevalence_dict["estimation_by_test"] # change to hospitalizations
+
+            # compute the reduced number of hours worked by the human
+            x = reduced_workload(self.human, activity.duration, estimated_prevalence) # change x
+
+            activity.duration = x 
+
+            current_schedule = self.get_schedule()
+
+            next_scheduled_activity = current_schedule.popleft()
+
+            remaining_time = (next_scheduled_activity.start_time - activity.end_time).total_seconds()
+
+            new_activity = Activity(activity.end_time, remaining_time, "stay-home-prevalence", self.human.household, self.human, None, prepend_name="", append_name="-cancel-prevalence")
+                                    #  start_time    , duration      , name                  , location            , owner     , tentative_date=None)
+
+            self.current_schedule = current_schedule.appendleft(new_activity)
+
+            return activity, True
+
+        return activity, False
     def cancel_all_events(self):
         """
         Empties the remaining schedule and removes human from the residence.
@@ -1577,3 +1604,18 @@ def _reallocate_residence(human, households, rng, conf):
             return household
 
     return None
+
+def reduced_workload(human, old_work_duration, estimated_prevalence):
+    # modify work duration as a function of prevalence, covid sensitivity
+    # returns a new work duration modified based on prevalence
+
+    if human.work_covid_sensitivity == 'sensitive':
+        new_work_duration = old_work_duration * (1/(1+(estimated_prevalence*25)))
+        return new_work_duration
+
+    elif human.work_covid_sensitivity == 'neutral':
+        new_work_duration = old_work_duration * (1/(1+(estimated_prevalence*5)))
+        return new_work_duration
+
+    else:
+        raise ValueError('Agent is neither covid sensitive nor neutral. Needs to be one or the other') 
