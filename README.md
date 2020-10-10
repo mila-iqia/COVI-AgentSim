@@ -2,15 +2,17 @@
 
 This simulator is built using [`simpy`](!https://simpy.readthedocs.io/en/latest/simpy_intro/index.html).
 It simulates the spread of Covid-19 in a city block while taking human mobility into account. The "city"
-contains houses, grocery stores, parks, workplaces, senior residences, and other non-essential
-establishments for humans to visit. The current framework can handle simulations with 1k-10k humans
-fairly well, and it is expected to scale to the size of real cities with future updates.
+contains houses, workplaces, senior residences, and other non-essential establishments for humans to visit.
+The current framework can handle simulations with 1k-10k humans
+fairly well, and work is under progress to scale it to the size of real cities.
 
+The simulation is based on age-stratified contact patterns, which are calibrated to yield surveyed data.
+More information on agent behavior, interactions, and the transmission model can be found [here](!https://openreview.net/pdf?id=07iDTU-KFK).
 The human mobility simulation is based on a Spatial-EPR model. More details on this model are
 [here](https://www.nature.com/articles/ncomms9166) and [here](https://www.nature.com/articles/nphys1760).
 The infection spread is modeled based on what is currently known about Covid-19. Our understanding is
 based on published research as well as working closely with epidemiologists and other experts. We plan
-to update and tune the simulator as more information about COVID-19 becomes available.
+to update and calibrate the simulator as more information about COVID-19 becomes available.
 
 
 ## Installation
@@ -41,7 +43,7 @@ install the package for those as well:
 To run an "unmitigated" 1k-human simulation for 30 days while logging Covid-19 progression and various
 statistics, use:
 ```
-python -m covid19sim.run tune=True 
+python -m covid19sim.run tune=True intervention=no_intervention n_people=1000 simulation_days=30
 ```
 
 Note that depending on the size of the simulation and the initial number of infected people, you might see
@@ -49,7 +51,7 @@ an explosion in the number of cases, or nothing at all. The latter is possible i
 human does not go out much, or lives alone in their house. You can try to run the experiment again with
 a different seed (it is 0 by default):
 ```
-python -m covid19sim.run tune=True seed=13 
+python -m covid19sim.run tune=True intervention=no_intervention n_people=1000 simulation_days=30 seed=13
 ```
 
 In any case, the simulator will output some data to the `output` directory in your current folder. In
@@ -62,22 +64,12 @@ the default settings (1000 people, 30 days), it should take 3-4 minutes on a mod
 a maximum of 3GB of RAM (with tracking enabled).
 
 To run a simulation with a risk predictor in the loop, you will have to set the type of intervention
-(`binary_digital_tracing_order_1`, `binary_digital_tracing_order_2`, `transformer`, `oracle`,
+(`bdt1`, `bdt2`, `transformer`, `oracle`,
 `heuristicv1`, `heuristicv2`) and the day that intervention should start. For example, to run with the
 first version of the heuristic risk prediction, use:
 ```
-python -m covid19sim.run tracing_method=heuristicv1 INTERVENTION_DAY=5
+python -m covid19sim.run intervention=heuristicv1 INTERVENTION_DAY=5  n_people=1000 simulation_days=30
 ```
-
-Note that for risk prediction via MLP or linear regression, the tracing method should be set to
-`transformer`; transformer, MLP, and linear regression use the same inference codepath but the models
-and weights used are different. In order to change between these you need to modify the following
-properties (sorry about the naming) in `train_config.yaml`: 
-
-| Property                    | Transformer | MLP         | Linear Regression |
-| :--                         | :--         | :--         | :--               |
-| `model.name =`              | `MixSetNet` | `MomentNet` | `MomentNet`       |
-| `model.kwargs.block_type =` | `sssss`     | `nrrrn`     | `l`               |
 
 The above commands only run one simulation each. This is useful for debugging, but in order to run
 multiple simulations with domain randomization (e.g. to create a training dataset), we make use of
