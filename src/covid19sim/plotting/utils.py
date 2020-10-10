@@ -1,6 +1,7 @@
 import numpy as np
 import os
 import math
+import warnings
 import multiprocessing as mp
 import pickle
 from covid19sim.plotting.plot_rt import PlotRt
@@ -727,8 +728,13 @@ def split_methods_and_check_validity(data):
         other_methods (list): each element is a name of intervention that doesn't require an app
         uptake_keys (list): each element is a value of APP_UPTAKE. Applicable only for app_based_methods
     """
+    def _get_any_conf_in_method(method_dict):
+        uptake = next(iter(method_dict.keys()))
+        sim = next(iter(method_dict[uptake].keys()))
+        return method_dict[uptake][sim]['conf']
+
     methods = list(data.keys())
-    app_based_methods = [x for x in methods if is_app_based_tracing_intervention(x)]
+    app_based_methods = [x for x in methods if is_app_based_tracing_intervention(x, _get_any_conf_in_method(data[x]))]
     other_methods = list(set(methods) - set(app_based_methods))
 
     uptake_keys = [list(data[x].keys()) for x in app_based_methods]
@@ -737,6 +743,25 @@ def split_methods_and_check_validity(data):
     assert len(set(frozenset(x) for x in uptake_keys)) == 1, "found different adoption rates across tracing based methods"
     uptake_keys = list(list(set([frozenset(x) for x in uptake_keys]))[0])
     for uptake_rate in uptake_keys:
-        assert len(set([len(data[method][uptake_rate]) for method in app_based_methods])) == 1, f"Found different number of seeds across {uptake_rate}. Methods: {methods}"
+        if not len(set([len(data[method][uptake_rate]) for method in app_based_methods])) == 1:
+            warnings.warn(f"Found different number of seeds across {uptake_rate}. Methods: {methods}")
 
     return app_based_methods, other_methods, uptake_keys
+
+def load_plot_these_methods_config(path):
+    """
+    Loads PLOT_THESE_METHODS.yaml present at `path`.
+
+    Args:
+        path (str): path where config files can be found.
+
+    Returns:
+        (set): a set of method that needs to be plotted. an empty set if the file is not found. 
+    """
+    include_methods = Path(path).resolve() / "PLOT_THESE_METHODS.yaml"
+    if include_methods.exists():
+        with open(str(include_methods), "rb") as f:
+            plot_these_methods = yaml.safe_load(f)
+        return set([x for x, plot in plot_these_methods.items() if plot])
+
+    return {}

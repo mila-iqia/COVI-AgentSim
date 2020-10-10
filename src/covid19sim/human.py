@@ -16,7 +16,6 @@ from covid19sim.utils.mobility_planner import MobilityPlanner
 from covid19sim.utils.utils import compute_distance, proba_to_risk_fn
 from covid19sim.locations.city import PersonalMailboxType
 from covid19sim.locations.hospital import Hospital, ICU
-from covid19sim.log.event import Event
 from collections import deque
 
 from covid19sim.utils.utils import _normalize_scores, draw_random_discrete_gaussian, filter_open, filter_queue_max, calculate_average_infectiousness
@@ -526,7 +525,6 @@ class Human(BaseHuman):
 
         # log
         self.city.tracker.track_tested_results(self)
-        Event.log_test(self.conf.get('COLLECT_LOGS'), self, self.test_time)
 
     def check_if_needs_covid_test(self, at_hospital=False):
         """
@@ -570,7 +568,7 @@ class Human(BaseHuman):
             if (
                 SEVERE in self.symptoms
                 or EXTREMELY_SEVERE in self.symptoms
-                or set(self.symptoms) & SUSPICIOUS_SYMPTOMS
+                or (set(self.symptoms) & SUSPICIOUS_SYMPTOMS)
             ):
                 self_diagnosis_and_should_get_tested = self.rng.rand() < self.conf['P_TEST_SEVERE_OR_SUSPICIOUS']
             else:
@@ -631,7 +629,6 @@ class Human(BaseHuman):
                     self.never_recovers = self.rng.random() < self.conf.get("P_NEVER_RECOVERS")[
                         min(math.floor(self.age / 10), 8)]
 
-                Event.log_recovery(self.conf.get('COLLECT_LOGS'), self, self.env.timestamp, death=False)
 
     def check_cold_and_flu_contagion(self, other_human):
         """
@@ -722,9 +719,6 @@ class Human(BaseHuman):
             infectee._get_infected(initial_viral_load=infector.rng.random())
             if infectee_msg is not None:  # could be None if we are not currently tracing
                 infectee_msg._exposition_event = True
-
-            # log
-            Event.log_exposed(self.conf.get('COLLECT_LOGS'), infectee, infector, p_infection, self.env.timestamp)
         else:
             infector, infectee = None, None
 
@@ -904,7 +898,6 @@ class Human(BaseHuman):
         self.allergy_timestamp = None
         self.recovered_timestamp = datetime.datetime.max
         self.all_symptoms, self.covid_symptoms = [], []
-        Event.log_recovery(self.conf.get('COLLECT_LOGS'), self, self.env.timestamp, death=True)
         # important to remove this human from the location or else there will be sampled interactions
         if self in self.location.humans:
             self.location.remove_human(self)
@@ -1086,7 +1079,7 @@ class Human(BaseHuman):
 
             self.city.tracker.track_mixing(human1=self, human2=other_human, duration=t_near,
                             distance_profile=distance_profile, timestamp=self.env.timestamp, location=self.location,
-                            interaction_type=type, contact_condition=contact_condition, global_mbility_factor=scale_factor_passed)
+                            interaction_type=type, contact_condition=contact_condition, global_mobility_factor=scale_factor_passed)
 
             # Conditions met for possible infection (https://www.cdc.gov/coronavirus/2019-ncov/hcp/guidance-risk-assesment-hcp.html)
             if contact_condition:
@@ -1109,19 +1102,6 @@ class Human(BaseHuman):
 
                 # determine if cold and flu contagion occured
                 self.check_cold_and_flu_contagion(other_human)
-
-                # logging
-                Event.log_encounter(
-                    self.conf['COLLECT_LOGS'],
-                    self,
-                    other_human,
-                    location=self.location,
-                    duration=t_near,
-                    distance=distance_profile.distance,
-                    infectee=None if not infectee else infectee.name,
-                    p_infection=p_infection,
-                    time=self.env.timestamp
-                )
 
     def _increment_effective_contacts(self, other_human):
         """
@@ -1267,16 +1247,6 @@ class Human(BaseHuman):
 
             if exchanged:
                 self.city.tracker.track_bluetooth_communications(human1=self, human2=other_human, location=self.location, timestamp=self.env.timestamp)
-
-            Event.log_encounter_messages(
-                self.conf['COLLECT_LOGS'],
-                self,
-                other_human,
-                location=self.location,
-                duration=duration,
-                distance=distance,
-                time=self.env.timestamp
-            )
 
         return h1_msg, h2_msg
 

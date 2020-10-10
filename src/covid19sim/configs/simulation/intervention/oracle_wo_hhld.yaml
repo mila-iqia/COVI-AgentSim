@@ -1,3 +1,6 @@
+# name of this configuration file
+INTERVENTION_NAME: "oracle_wo_hhld"
+
 # risk model
 RISK_MODEL : "transformer"
 USE_ORACLE: True

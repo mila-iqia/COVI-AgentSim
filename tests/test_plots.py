@@ -1,15 +1,15 @@
-import datetime
-import os
-import time
-import unittest
-from tempfile import TemporaryDirectory
-
-from tests.utils import get_test_conf
-
-from covid19sim.inference.server_utils import DataCollectionServer
-from covid19sim.plotting import debug
-from covid19sim.run import simulate
-from covid19sim.utils.utils import dump_tracker_data, extract_tracker_data
+# import datetime
+# import os
+# import time
+# import unittest
+# from tempfile import TemporaryDirectory
+#
+# from tests.utils import get_test_conf
+#
+# from covid19sim.inference.server_utils import DataCollectionServer
+# from covid19sim.plotting import debug
+# from covid19sim.run import simulate
+# from covid19sim.utils.utils import dump_tracker_data, extract_tracker_data
 
 # TODO : re-add this test. There was a slowdown / conflict with zarr
 # introduced in this PR: https://github.com/mila-iqia/covi-simulator/pull/70/files
@@ -43,7 +43,7 @@ from covid19sim.utils.utils import dump_tracker_data, extract_tracker_data
 #             conf["outdir"] = outfile
 #             hdf5_path = os.path.join(outfile, "human_backups.hdf5")
 #
-#             city, monitors, tracker = simulate(
+#             city, tracker = simulate(
 #                 n_people=n_people,
 #                 start_time=start_time,
 #                 simulation_days=n_days,
