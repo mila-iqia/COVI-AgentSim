@@ -19,6 +19,7 @@ disability_weights = {
     'critical':0.408 #severe COPD without heart failure
     }
 
+
 def load_tracker(path):
     with open(path, 'rb') as f:
         tracker_data = pickle.load(f)
@@ -686,6 +687,22 @@ def run(data, path, compare="app_adoption"):
             label2pkls.append((label, pkls))
             # label2pkls has method and seed in the label
 
+    method_to_labels = {}
+    method_to_colors = {}
+
+    for label, pkls in label2pkls:
+        if 'post-lockdown-no-tracing' in label:
+            method_to_labels[label] = "No Tracing"
+            method_to_colors[label] = "#34495E"
+        elif 'bdt1' in label:
+            method_to_labels[label] = "Test-based BCT1"
+            method_to_colors[label] = "mediumvioletred"
+        elif 'heuristic' in label:
+            method_to_labels[label] = "Heuristic-FCT"
+            method_to_colors[label] = "darkorange"
+        else:
+            raise ValueError('Method not recognized for daly plotting')
+
     # Define aggregate output variables
     agg_dalys = {label:{} for label, _ in label2pkls}
     agg_work_hours = {label:{} for label, _ in label2pkls}
@@ -717,18 +734,45 @@ def run(data, path, compare="app_adoption"):
             agg_work_hours[label][idx] = lost_work_hours_total(pkl)
 
     # add to aggregate output variables
-    agg_daly_df = pd.DataFrame(agg_dalys).transpose()
-    agg_daly_df['mean'] = agg_daly_df.mean(axis = 1)
-    agg_daly_df['stderr'] = agg_daly_df.sem(axis = 1)
+    agg_daly_df = pd.DataFrame(agg_dalys, keys = agg_dalys.keys())
+    agg_daly_mean = agg_daly_df.mean(axis = 0)
+    agg_daly_stderr = agg_daly_df.sem(axis = 0)
 
-    work_hours_df = pd.DataFrame(agg_work_hours).transpose()
-    work_hours_df['mean'] = work_hours_df.mean(axis = 1)
-    work_hours_df['stderr'] = work_hours_df.sem(axis = 1)
+    work_hours_df = pd.DataFrame(agg_work_hours)
+    work_hours_mean = work_hours_df.mean(axis = 0)
+    work_hours_stderr = work_hours_df.sem(axis = 0)
 
     # print a table with mean / std
     print(agg_daly_df)
 
     # generate figure 9 (work hours and total DALYs)
+    fig = plt.figure(figsize=(15,10))
+
+    for method in agg_daly_mean.keys():
+
+        plt.scatter(work_hours_mean[method], 
+                    agg_daly_mean[method],
+                    label = method_to_labels[method],
+                    color = method_to_colors[method],
+                    s=100)
+        plt.errorbar(work_hours_mean[method],
+                     agg_daly_mean[method],
+                     xerr = std_work,
+                     yerr = std_dalys,
+                     color = method_to_colors[method])
+
+    plt.xticks(fontsize = 16)
+    plt.yticks(fontsize = 16)
+    # grids
+    plt.grid(True, axis='x', alpha=0.3)
+    plt.grid(True, axis='y', alpha=0.3)
+    plt.xlabel('Total Work Hours Foregone', fontsize = 20)
+    plt.ylabel('Total DALYs', fontsize = 20)
+    # plt.xticks(plt.xticks()[0],[""]+[str(i*10) + 'K' for i in range(5,12)]+[""])
+    plt.legend(prop={'size': 30})
+    plt.title('Health-Economic costs of CT methods @ 60% Adoption Rate', fontsize=24)
+    plt.tight_layout()
+    plt.savefig('../qaly_data/output/graphs/pareto_comparison_with_replacement.png')
 
     # generate figure 10
 
