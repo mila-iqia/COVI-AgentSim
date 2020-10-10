@@ -684,9 +684,11 @@ def run(data, path, compare="app_adoption"):
             label = f"{method}_{key}"
             pkls = [r["pkl"] for r in data[method][key].values()]
             label2pkls.append((label, pkls))
+            # label2pkls has method and seed in the label
 
     # Define aggregate output variables
     agg_dalys = {label:{} for label, _ in label2pkls}
+    agg_work_hours = {label:{} for label, _ in label2pkls}
 
     #get life expectancy data
     le_data_path = os.path.join(pathlib.Path(__file__).resolve().parent.parent.parent.parent, 'daly_data/life_expectancies/1310011401-eng.csv')
@@ -706,13 +708,32 @@ def run(data, path, compare="app_adoption"):
 
             assert daly_df_seed[daly_df_seed.was_infected == False].DALYs.sum() == 0, 'uninfected should not contribute DALYs'
 
-            # put into the same QALY unit
+
+
+            # calculate total DALYs for this pickle file
             agg_dalys[label][idx] = daly_df_seed['DALYs'].sum()
+
+            # calculate total foregone work hours for this pickle file
+            agg_work_hours[label][idx] = lost_work_hours_total(pkl)
 
     # add to aggregate output variables
     agg_daly_df = pd.DataFrame(agg_dalys).transpose()
     agg_daly_df['mean'] = agg_daly_df.mean(axis = 1)
     agg_daly_df['stderr'] = agg_daly_df.sem(axis = 1)
 
+    work_hours_df = pd.DataFrame(agg_work_hours).transpose()
+    work_hours_df['mean'] = work_hours_df.mean(axis = 1)
+    work_hours_df['stderr'] = work_hours_df.sem(axis = 1)
+
     # print a table with mean / std
     print(agg_daly_df)
+
+    # generate figure 9 (work hours and total DALYs)
+
+    # generate figure 10
+
+    # generate table 2
+    
+    # generate table L4 (work hours, TPL)
+
+    # generate table L5 (metrics for age, sex breakdown)
