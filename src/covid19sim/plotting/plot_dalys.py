@@ -772,7 +772,11 @@ def run(data, path, compare="app_adoption"):
     plt.legend(prop={'size': 30})
     plt.title('Health-Economic costs of CT methods @ 60% Adoption Rate', fontsize=24)
     plt.tight_layout()
-    plt.savefig('../qaly_data/output/graphs/pareto_comparison_with_replacement.png')
+    
+    # save in daly_data folder
+    parent_path = Path(__file__).resolve().parent.parent
+    save_path = 'daly_data/output/graphs/pareto_comparison_with_replacement.png'
+    plt.savefig(os.path.join(parent_path,save_path))
 
     # generate figure 10
 
