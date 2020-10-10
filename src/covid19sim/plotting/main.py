@@ -15,13 +15,15 @@ import random
 import covid19sim.plotting.plot_jellybeans as jellybeans
 import covid19sim.plotting.plot_pareto_adoption as pareto_adoption
 import covid19sim.plotting.plot_presymptomatic as presymptomatic
-import covid19sim.plotting.plot_reasons as reasons
+import covid19sim.plotting.plot_infection_chains as infection_chains
+import covid19sim.plotting.plot_reasons as reason
 import covid19sim.plotting.make_efficiency_table as efficiency
 import covid19sim.plotting.plot_generation_time as generation_time
 import covid19sim.plotting.plot_epi_table as epi_table
 import covid19sim.plotting.plot_episim_series as episim_series
 import covid19sim.plotting.plot_normalized_mobility_scatter as normalized_mobility
 from covid19sim.plotting.utils import get_all_data
+from covid19sim.plotting import plot_dalys as dalys
 
 
 print("Ok.")
@@ -139,11 +141,12 @@ def main(conf):
     all_plots = {
         "pareto_adoption": pareto_adoption,
         "jellybeans": jellybeans,
-        "reasons": reasons,
+        # "reasons": reasons,
         "presymptomatic": presymptomatic,
         "efficiency": efficiency,
         "generation_time": generation_time,
         "epi_table": epi_table,
+        "dalys": dalys,
         "episim_series": episim_series,
         "normalized_mobility": normalized_mobility
     }
@@ -208,6 +211,23 @@ def main(conf):
                 "humans_quarantined_state"
             ]
         )
+    if "dalys" in plots:
+        # Same as pareto
+        keep_pkl_keys.update(
+            [
+                "intervention_day",
+                "human_has_app",
+                "age_histogram",
+                "n_humans",
+                "intervention_day",
+                "intervention",
+                "human_monitor",
+                "quarantine_monitor",
+                "humans_rec_level",
+                "humans_intervention_level",
+                "humans_demographics",
+            ]
+        )   
     if "efficiency" in plots:
         # Same as pareto
         keep_pkl_keys.update(
