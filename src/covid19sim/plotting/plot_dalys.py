@@ -701,6 +701,7 @@ def run(data, path, compare="app_adoption"):
             method_to_labels[label] = "Heuristic-FCT"
             method_to_colors[label] = "darkorange"
         else:
+            print(label)
             raise ValueError('Method not recognized for daly plotting')
 
     # Define aggregate output variables
