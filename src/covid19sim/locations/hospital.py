@@ -1,5 +1,5 @@
 """
-Hospitalization model is stil a WIP.
+Very sick and extremely sick people go to the hospital. So do doctors and nurses..
 """
 import math
 from covid19sim.locations.location import Location

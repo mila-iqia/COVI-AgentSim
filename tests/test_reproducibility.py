@@ -36,7 +36,7 @@ TEST_CONF_NAME = "base.yaml"
 #                 with TemporaryDirectory() as d:
 #                     md5 = hashlib.md5()
 #                     outfile = os.path.join(d, "data")
-#                     city, tracker = simulate(
+#                     city = simulate(
 #                         n_people=self.n_people,
 #                         start_time=self.location_start_time,
 #                         simulation_days=self.simulation_days,

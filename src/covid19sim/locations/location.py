@@ -1,3 +1,8 @@
+"""
+This module contains several classes of location which are used in the simulator. These locations can contain people, have a spatial position, area,
+and many other attributes.
+"""
+
 import simpy
 import datetime
 from orderedset import OrderedSet

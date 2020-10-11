@@ -158,7 +158,7 @@ def main(conf: DictConfig):
         collection_server = None
 
     conf["outfile"] = outfile
-    city, tracker = simulate(
+    city = simulate(
         n_people=conf["n_people"],
         init_fraction_sick=conf["init_fraction_sick"],
         start_time=conf["start_time"],
@@ -174,7 +174,7 @@ def main(conf: DictConfig):
     dump_conf(city.conf, "{}/full_configuration.yaml".format(city.conf["outdir"]))
 
     # log the simulation statistics
-    tracker.write_metrics()
+    city.tracker.write_metrics()
 
     # (baseball-cards) write full simulation data
     if hasattr(city, "tracker") and \
@@ -233,19 +233,18 @@ def simulate(
     Runs a simulation.
 
     Args:
-        n_people ([type], optional): [description]. Defaults to None.
-        init_fraction_sick (float, optional): fraction of population initialized as sick. Defaults to 0.01.
-        start_time ([type], optional): [description]. Defaults to datetime.datetime(2020, 2, 28, 0, 0).
-        simulation_days (int, optional): [description]. Defaults to 10.
-        outfile (str, optional): [description]. Defaults to None.
-        out_chunk_size ([type], optional): [description]. Defaults to None.
+        n_people (int, optional): population size in simulation. Defaults to 1000.
+        init_fraction_sick (float, optional): population fraction initialized with Covid-19. Defaults to 0.01.
+        start_time (datetime, optional):  Initial calendar date. Defaults to February 28, 2020.
+        simulation_days (int, optional): Number of days to run the simulation. Defaults to 10.
+        outfile (str, optional): Location to write logs. Defaults to None.
+        out_chunk_size (int, optional): size of chunks to write in logs. Defaults to None.
         seed (int, optional): [description]. Defaults to 0.
-        conf (dict): yaml configuration of the experiment
+        conf (dict): yaml configuration of the experiment.
         logfile (str): filepath where the console output and final tracked metrics will be logged. Prints to the console only if None.
 
     Returns:
-        city (covid19sim.locations.city.City): [description]
-        tracker (covid19sim.log.track.Tracker):
+        city (covid19sim.locations.city.City): The city object referencing people, locations, and the tracker post-simulation.
     """
 
     if conf is None:
@@ -322,7 +321,7 @@ def simulate(
     # Run simulation until termination
     env.run(until=env.ts_initial + simulation_days * SECONDS_PER_DAY)
 
-    return city, city.tracker
+    return city
 
 
 if __name__ == "__main__":

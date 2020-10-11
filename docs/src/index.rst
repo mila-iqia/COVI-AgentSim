@@ -27,16 +27,20 @@ We plan to update the simulator as more and more about COVID-19 will be known.
 
 .. toctree::
    :maxdepth: 1
-   :caption: Python API
 
-   base
-   constants
-   datastructures
-   interventions
-   monitors
-   simulator
-   track
+.. toctree::
+   :caption: Python API
+   :maxdepth: 1
+
+   run
+   human
    utils
+   locations
+   interventions
+   inference
+   epidemiology
+
+
 
 Indices and tables
 ==================
