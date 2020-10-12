@@ -735,7 +735,8 @@ def run(data, path, compare="app_adoption"):
             agg_work_hours[label][idx] = lost_work_hours_total(pkl)
 
     # add to aggregate output variables
-    agg_daly_df = pd.DataFrame(agg_dalys, keys = agg_dalys.keys())
+    # agg_daly_df = pd.DataFrame(agg_dalys, keys = agg_dalys.keys())
+    agg_daly_df = pd.DataFrame(agg_dalys)
     agg_daly_mean = agg_daly_df.mean(axis = 0)
     agg_daly_stderr = agg_daly_df.sem(axis = 0)
 
