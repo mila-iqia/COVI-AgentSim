@@ -191,7 +191,7 @@ def main(conf: DictConfig):
         # ----------------------------------------------
         # write values to train with
         train_priors = os.path.join(f"{conf['outdir']}/train_priors.pkl")
-        tracker.write_for_training(city.humans, train_priors, conf)
+        city.tracker.write_for_training(city.humans, train_priors, conf)
 
     else:
         # ------------------------------------------------------
