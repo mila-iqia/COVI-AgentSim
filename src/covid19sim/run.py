@@ -202,7 +202,7 @@ def main(conf: DictConfig):
 
         Path(conf["outdir"]).mkdir(parents=True, exist_ok=True)
         filename = f"tracker_data_n_{conf['n_people']}_seed_{conf['seed']}_{timenow}.pkl"
-        data = extract_tracker_data(tracker, conf)
+        data = extract_tracker_data(city.tracker, conf)
         dump_tracker_data(data, conf["outdir"], filename)
     # Shutdown the data collection server if one's running
     if collection_server is not None:
