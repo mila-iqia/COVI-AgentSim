@@ -34,7 +34,6 @@ from covid19sim.locations.hospital import Hospital, ICU
 SNAPSHOT_PERCENT_INFECTED_THRESHOLD = 2 # take a snapshot every time percent infected of population increases by this amount
 LOCATION_TYPES_TO_TRACK_MIXING = ["house", "work", "school", "other", "all"]
 WORK_ACTIVITY_STATUS = ["WORK", "WORK-CANCEL--KID", "WORK-CANCEL--ILL", "WORK-CANCEL--QUARANTINE"]
-MEAN_HOURLY_WAGE = 27.67
 
 def check_if_tracking(f):
     def wrapper(*args, **kwargs):
@@ -293,7 +292,6 @@ class Tracker(object):
 
 
         self.daily_work_hours_by_age_group = {status: np.zeros((len(AGE_BIN_WIDTH_5),3, self.conf['simulation_days'])) for status in WORK_ACTIVITY_STATUS}
-        self.gdp = np.zeros((len(AGE_BIN_WIDTH_5),3, self.conf['simulation_days']))
         self.all_activty_names = set()
 
         # infection stats
@@ -1896,7 +1894,6 @@ class Tracker(object):
         plotrt = PlotRt(R_T_MAX=4, sigma=0.25, GAMMA=1.0 / serial_interval)
         most_likely, _ = plotrt.compute(cases_per_day, r0_estimate=2.5)
         log(f"Rt: {most_likely[:20]}", self.logfile)
-
 
     def write_for_training(self, humans, outfile, conf):
         """ Writes some data out for the ML predictor """
