@@ -1344,7 +1344,7 @@ class Tracker(object):
             and just_finished_activity.prepend_name == ""
         ):
             category = _get_work_status_category(human, just_finished_activity)
-            self.all_activity_names.add(category)
+            # self.all_activity_names.add(category)
             n_sim_day = (just_finished_activity.start_time - self.conf['COVID_SPREAD_START_TIME']).days # tracking is on only since COVID_SPREAD_START_TIME
             self.daily_work_hours_by_age_group[category][human.age_bin_width_5.index,sex_to_idx[human.sex], n_sim_day] += just_finished_activity.duration / SECONDS_PER_HOUR
 
