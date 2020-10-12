@@ -21,8 +21,8 @@ weights_dir: /lustre/work/nrahaman/ctt/exp/SHIPMENTS
 # -------------------------------------
 track: light
 INTERVENTION_DAY: 0
-n_people: 1500
-init_fraction_sick: 0.004
+n_people: 3000
+init_fraction_sick: 0.002
 simulation_days: 50
 tune: true
 APP_UPTAKE: 0.8415
