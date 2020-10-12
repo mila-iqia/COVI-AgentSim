@@ -19,7 +19,7 @@ n_people: 1500
 simulation_days: 50
 INTERVENTION_DAY: 0
 
-APP_UPTAKE: 0.5618
+APP_UPTAKE: 0.8415
 init_fraction_sick: 0.0065
 P_CAREFUL_PERSON: 0.7
 PROPORTION_LAB_TEST_PER_DAY: 0.001
@@ -38,6 +38,8 @@ intervention:
         REC_LEVEL_THRESHOLDS: "[0,1,2]"
     - bdt1
     - heuristicv1
+    - heuristicv3
+    - heuristicv4
     - post-lockdown-no-tracing
 
 GLOBAL_MOBILITY_SCALING_FACTOR:
@@ -57,3 +59,20 @@ seed: # for sole reproducibility purposes
     - 2002
     - 2003
     - 2004
+    - 2005
+    - 2006
+    - 2007
+    - 2008
+    - 2009
+    - 2010
+    - 2011
+    - 2012
+    - 2013
+    - 2014
+    - 2015
+    - 2016
+    - 2017
+    - 2018
+    - 2019
+    - 2020
+
