@@ -28,9 +28,6 @@ UPDATES_PER_DAY: 4
 DUMP_CLUSTERS: False
 CLUSTER_ALGO_TYPE: "blind" # should be in ["old", "blind", "naive", "perfect", "simple"]
 
-# econ related parameters
-ECON_RUN: False
-
 # all intervention parameters (to be overwritten by specific config files)
 # listed here for the sake of completeness
 # Note: these are used only in their respective configurations
