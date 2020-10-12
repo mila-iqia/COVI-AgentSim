@@ -712,9 +712,11 @@ def run(data, path, compare="app_adoption"):
     le_data_path = os.path.join(pathlib.Path(__file__).resolve().parent.parent.parent.parent, 'daly_data/life_expectancies/1310011401-eng.csv')
     le_data = load_life_expectancies(le_data_path)
 
+    # debugging
+    print(data.keys())
+
     for label, pkls in label2pkls:
         for idx, pkl in enumerate(pkls):
-
             # get human_monitor data
             monitor_data = pkl['human_monitor']
 
@@ -745,12 +747,13 @@ def run(data, path, compare="app_adoption"):
     work_hours_stderr = work_hours_df.sem(axis = 0)
 
     # print a table with mean / std
-    print(agg_daly_df)
+    # print(agg_dalys)
 
     # generate figure 9 (work hours and total DALYs)
     fig = plt.figure(figsize=(15,10))
 
     for method in agg_daly_mean.keys():
+        print('debugging: agg_daly_keys : ' + str(method))
 
         plt.scatter(work_hours_mean[method], 
                     agg_daly_mean[method],
@@ -776,7 +779,7 @@ def run(data, path, compare="app_adoption"):
     plt.tight_layout()
     
     # save in daly_data folder
-    parent_path = Path(__file__).resolve().parent.parent
+    parent_path = pathlib.Path(__file__).resolve().parent.parent.parent.parent
     save_path = 'daly_data/output/graphs/pareto_comparison_with_replacement.png'
     plt.savefig(os.path.join(parent_path,save_path))
 
