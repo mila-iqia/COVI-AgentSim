@@ -1882,7 +1882,6 @@ class Tracker(object):
         data = dict()
         data['hospitalization_per_day'] = self.hospitalization_per_day # how many new people get admitted to the hospital
         data['hospital_usage_per_day'] = self.hospital_usage_per_day # how many people are in the hospital for covid
-        # TODO: write total number of _currently hospitalized people_, not how many people _go into the hospital_.
 
         # parse test results
         data['positive_test_results_per_day'] = []
