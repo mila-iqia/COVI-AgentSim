@@ -61,7 +61,6 @@ for sim in os.listdir(sims_dir_path):
     # Get the paths
     sim_path = os.path.join(sims_dir_path, sim)
     sim_priors_path = os.path.join(sim_path, "train_priors.pkl")
-    import pdb; pdb.set_trace()
     sim_tracker_name = [str(f_name) for f_name in os.listdir(sim_path) if f_name.startswith("tracker_data")][0]
     sim_tracker_path = os.path.join(sim_path, sim_tracker_name)
     # Load the data
