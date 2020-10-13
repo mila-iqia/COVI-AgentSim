@@ -762,8 +762,8 @@ def run(data, path, compare="app_adoption"):
                     s=100)
         plt.errorbar(work_hours_mean[method],
                      agg_daly_mean[method],
-                     xerr = std_work,
-                     yerr = std_dalys,
+                     xerr = work_hours_stderr[method],
+                     yerr = agg_daly_stderr[method],
                      color = method_to_colors[method])
 
     plt.xticks(fontsize = 16)
