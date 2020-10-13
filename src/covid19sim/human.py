@@ -93,7 +93,7 @@ class Human(BaseHuman):
         self.workplace = None  # we sometimes modify human's workplace to WFH if in quarantine, then go back to work when released
         self.household = None  # assigned later
         self.location = None  # assigned later
-
+        
         # Logging data
         self._events = []
 
