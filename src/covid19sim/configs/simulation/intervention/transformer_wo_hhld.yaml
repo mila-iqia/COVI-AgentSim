@@ -1,3 +1,6 @@
+# name of this configuration file
+INTERVENTION_NAME: "transformer_wo_hhld"
+
 # risk model
 RISK_MODEL : "transformer"
 USE_ORACLE: False
@@ -16,7 +19,7 @@ MAKE_HOUSEHOLD_BEHAVE_SAME_AS_MAX_RISK_RESIDENT: False
 risk_mappings: calibrated
 MAX_RISK_LEVEL: 15 # maximum allowed risk_level => assert risk_level in range(0, MAX_RISK_LEVEL + 1)
 # (experimental) Uncomment one of these and perform some experiments @nasim @victor
-#REC_LEVEL_THRESHOLDS: [0, 1, 2] # More conservative
+REC_LEVEL_THRESHOLDS: [0, 1, 2] # More conservative
 #REC_LEVEL_THRESHOLDS: [0, 0, 1] # Binary
 
 # when to start (overwrite it if needs to be run from other day)

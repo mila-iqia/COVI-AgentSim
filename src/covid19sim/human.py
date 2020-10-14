@@ -566,7 +566,7 @@ class Human(BaseHuman):
             if (
                 SEVERE in self.symptoms
                 or EXTREMELY_SEVERE in self.symptoms
-                or set(self.symptoms) & SUSPICIOUS_SYMPTOMS
+                or (set(self.symptoms) & SUSPICIOUS_SYMPTOMS)
             ):
                 self_diagnosis_and_should_get_tested = self.rng.rand() < self.conf['P_TEST_SEVERE_OR_SUSPICIOUS']
             else:
@@ -1077,7 +1077,7 @@ class Human(BaseHuman):
 
             self.city.tracker.track_mixing(human1=self, human2=other_human, duration=t_near,
                             distance_profile=distance_profile, timestamp=self.env.timestamp, location=self.location,
-                            interaction_type=type, contact_condition=contact_condition, global_mbility_factor=scale_factor_passed)
+                            interaction_type=type, contact_condition=contact_condition, global_mobility_factor=scale_factor_passed)
 
             # Conditions met for possible infection (https://www.cdc.gov/coronavirus/2019-ncov/hcp/guidance-risk-assesment-hcp.html)
             if contact_condition:

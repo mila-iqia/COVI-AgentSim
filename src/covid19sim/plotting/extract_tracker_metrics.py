@@ -82,6 +82,21 @@ def get_SEIR_quarantined_states(data):
 ##############               DAILY SERIES           ##############
 ##################################################################
 
+def _daily_fraction_of_population_infected(data):
+    """
+    Returns a time series of number of daily infections as a fraction of population
+
+    Args:
+        (dict): tracker data loaded from pkl file.
+
+    Returns:
+        (np.array): 1D array where each element is fraction representing the proportion of population infected on that simulation day
+    """
+    n_people = data['n_humans']
+    cases_per_day = data['cases_per_day']
+    cases_per_day[0] = 0 # on day 0 there are no infections but this array contains initially infected people
+    return np.array(cases_per_day) / n_people
+
 def _daily_fraction_quarantine(data):
     """
     Returns a time series of total number of people that quarantined on a simulation day
@@ -297,7 +312,7 @@ def _daily_fraction_cumulative_cases(data):
 
 def _daily_incidence(data):
     """
-    Returns a series where each value is disease incidence i.e. infected / susceptible
+    Returns a series where each value is disease incidence i.e. infected / susceptible per 1000 people
 
     Args:
         (dict): tracker data loaded from pkl file.
@@ -311,7 +326,7 @@ def _daily_incidence(data):
     for s, n in zip(daily_n_susceptible, daily_cases[1:]):
         incidence.append(n / s)
 
-    return np.array(incidence)
+    return np.array(incidence) * 1000
 
 def _daily_prevalence(data):
     """

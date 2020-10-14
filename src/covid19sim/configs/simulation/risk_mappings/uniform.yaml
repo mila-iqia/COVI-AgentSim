@@ -22,5 +22,4 @@ RISK_MAPPING:
   ]
 
 # (behavior modification)
-REC_LEVEL_THRESHOLDS: [0, 3, 5]
 BASELINE_RISK_VALUE: 0.0
