@@ -10,7 +10,7 @@ social_discount = 0.03
 age_weighting_constant = 0.04
 modulation_constant = 1 
 adjustment_constant = 0.1658
-population_size = 3000 #hotfix
+# population_size = 3000 #hotfix
 retirement_age = 65
 
 disability_weights = {
@@ -52,9 +52,9 @@ def get_daly_data(demographics,
                   human_monitor_data, 
                   life_expectancies,
                   ):
-    
+
     human_names = [human_monitor_data[datetime.date(2020,2,28)][i]['name'] 
-                   for i in range(population_size)]
+                   for i in range(len(human_monitor_data[datetime.date(2020,2,28)]))]
     
     symptom_status = {i:{} for i in human_names}
     hospitalization_status = {i:{} for i in human_names}
@@ -693,6 +693,9 @@ def run(data, path, compare="app_adoption"):
         if 'post-lockdown-no-tracing' in label:
             method_to_labels[label] = "No Tracing"
             method_to_colors[label] = "#34495E"
+        elif 'no_intervention' in label:
+            method_to_labels[label] = "No Tracing"
+            method_to_colors[label] = "#34495E"
         elif 'bdt1' in label:
             method_to_labels[label] = "Test-based BCT1"
             method_to_colors[label] = "mediumvioletred"
@@ -744,14 +747,13 @@ def run(data, path, compare="app_adoption"):
     work_hours_stderr = work_hours_df.sem(axis = 0)
 
     # print a table with mean & std
-    # print(agg_dalys)
+    print(agg_daly_df)
 
     # generate figure 9 (work hours and total DALYs)
     fig = plt.figure(figsize=(15,10))
 
     for method in agg_daly_mean.keys():
-        print('debugging: agg_daly_keys : ' + str(method))
-
+        
         plt.scatter(work_hours_mean[method], 
                     agg_daly_mean[method],
                     label = method_to_labels[method],
@@ -777,7 +779,7 @@ def run(data, path, compare="app_adoption"):
     
     # save in daly_data folder
     parent_path = pathlib.Path(__file__).resolve().parent.parent.parent.parent
-    save_path = 'daly_data/output/graphs/pareto_comparison_with_replacement.png'
+    save_path = 'daly_data/output/graphs/plotting_pareto_comparison_with_replacement.png'
     plt.savefig(os.path.join(parent_path,save_path))
 
     # generate figure 10
