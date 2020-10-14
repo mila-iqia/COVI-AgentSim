@@ -22,7 +22,7 @@ n_people: 30000
 simulation_days: 100
 INTERVENTION_DAY: -1
 init_fraction_sick: 0.0006
-tune: true
+tune: false
 track: light
 intervention: no_intervention
 GLOBAL_MOBILITY_SCALING_FACTOR: 0.07

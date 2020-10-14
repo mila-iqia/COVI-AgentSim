@@ -8,8 +8,8 @@ import scipy.stats as stats
 import datetime
 # Constants
 quebec_population = 8485000
-csv_path = "qc2.csv" #"path/to/csv"
-sims_dir_path = "results/qc_validation/no_intervention" #"path/to/simulations/"
+csv_path = "data/qc.csv"
+sims_dir_path = "results/qc_validation/no_intervention"
 if len(sys.argv) > 1:
     sims_dir_path = sys.argv[1]
 
@@ -28,7 +28,6 @@ def parse_tracker(sim_tracker_data):
         dates.append(str(k + datetime.timedelta(days=35)))
         death = sum([x['dead'] for x in v])
         cumulative_deaths.append(death)
-
     daily_deaths_prop = []
     last_deaths = 0
     for idx, deaths in enumerate(cumulative_deaths):
@@ -70,14 +69,14 @@ for sim in os.listdir(sims_dir_path):
     sim_prior_data = pickle.load(open(sim_priors_path, "rb"))
     # Parse data
     sim_dates, sim_deaths, sim_tests, sim_cases = parse_tracker(sim_tracker_data)
+
+    # can change key to in sim_prior_data['hospital_usage_per_day'] depending on real data
     sim_hospitalizations = [float(x)*100/sim_tracker_data['n_humans'] for x in sim_prior_data['hospitalization_per_day']]
-    # change key above in sim_prior_data['hospital_usage_per_day']
 
     all_sim_cases.append(sim_cases)
     all_sim_hospitalizations.append(sim_hospitalizations)
     all_sim_deaths.append(sim_deaths)
 
-# avg_sim_cases = np.array([sum(elem)/len(elem) for elem in zip(*all_sim_cases)])
 avg_sim_hospitalizations = smooth(np.array([sum(elem)/len(elem) for elem in zip(*all_sim_hospitalizations)]))
 avg_sim_deaths = smooth(np.array([sum(elem)/len(elem) for elem in zip(*all_sim_deaths)]))
 
@@ -92,16 +91,6 @@ real_deaths = [100 * float(x if str(x) != "nan" else 0) / quebec_population for 
 plt.figure(figsize=(12,7))
 plt.plot(real_dates, real_hospitalizations, label="Quebec hospital utilization per day", color='b')
 plt.plot(real_dates, real_deaths, label="Quebec mortalities per day", color='g')
-
-'''
-ax.legend()
-plt.ylabel("Percentage of Population")
-plt.xlabel("Date")
-plt.yticks(plt.yticks()[0], [str(round(x, 3)) + "%" for x in plt.yticks()[0]])
-plt.xticks([x for i, x in enumerate(real_dates) if i % 10 == 0], rotation=45)
-plt.title("Quebec & Simulation COVID Statistics")
-# plt.savefig("qc_stats.png")
-'''
 
 # Goodness of Fit
 # eps = np.finfo(float).eps

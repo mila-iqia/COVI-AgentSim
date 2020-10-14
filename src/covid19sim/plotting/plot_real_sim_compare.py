@@ -10,8 +10,8 @@ from matplotlib import pyplot as plt
 
 # Constants
 quebec_population = 8485000
-csv_path = "qc.csv"
-sim_dir_path = "output/" #sim_v2_people-10000_days-30_init-0.002_uptake--1.0_seed-5000_20200716-181334_330660//"
+csv_path = "data/qc.csv"
+sim_dir_path = "output/"
 use_cache = False
 
 # Utility Functions
@@ -69,7 +69,6 @@ if not use_cache:
     data = results
 else:
     data = pickle.load(open("cache_sim.pkl", "rb"))
-import pdb; pdb.set_trace()
 
 for k, v in data.items():
     print(k)
