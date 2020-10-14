@@ -225,6 +225,7 @@ def main(conf):
                 "humans_rec_level",
                 "humans_intervention_level",
                 "humans_demographics",
+                "work_hours"
             ]
         )   
     if "efficiency" in plots:
