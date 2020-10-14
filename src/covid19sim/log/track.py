@@ -325,6 +325,7 @@ class Tracker(object):
 
         # testing & hospitalization
         self.hospitalization_per_day = [0]
+        self.hospital_usage_per_day = [0]
         self.critical_per_day = [0]
         self.deaths_per_day = [0]
         self.test_results_per_day = defaultdict(lambda :{'positive':0, 'negative':0})
@@ -703,15 +704,17 @@ class Tracker(object):
                 state = 'R'
             else:
                 raise ValueError(f"{human} is not in any of SEIR states")
-
             self.humans_quarantined_state[human.name].append(human.intervened_behavior.is_under_quarantine)
             self.humans_state[human.name].append(state)
             self.humans_rec_level[human.name].append(human.rec_level)
             self.humans_intervention_level[human.name].append(human._intervention_level)
 
+        num_humans_in_hospital = sum([hospital.n_covid_patients for hospital in self.city.hospitals])
+
         # test_per_day
         self.tested_per_day.append(0)
         self.hospitalization_per_day.append(0)
+        self.hospital_usage_per_day.append(num_humans_in_hospital)
         self.critical_per_day.append(0)
         self.deaths_per_day.append(0)
 
@@ -1876,7 +1879,8 @@ class Tracker(object):
     def write_for_training(self, humans, outfile, conf):
         """ Writes some data out for the ML predictor """
         data = dict()
-        data['hospitalization_per_day'] = self.hospitalization_per_day
+        data['hospitalization_per_day'] = self.hospitalization_per_day # how many new people get admitted to the hospital
+        data['hospital_usage_per_day'] = self.hospital_usage_per_day # how many people are in the hospital for covid
 
         # parse test results
         data['positive_test_results_per_day'] = []

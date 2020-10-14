@@ -423,7 +423,6 @@ class Location(simpy.Resource):
                                     p_infection=p_transmission,
                                     success=x_environment
                                 )
-        #
         if x_environment:
             human._get_infected(initial_viral_load=self.rng.random())
 

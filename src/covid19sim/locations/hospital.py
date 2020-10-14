@@ -69,6 +69,14 @@ class Hospital(Location):
         self.n_nurses += 1
 
     @property
+    def n_covid_patients(self):
+        count = 0
+        for patient, until in self.patients.items():
+            if self.env.timestamp < until and (patient.state[1] or patient.state[2]) and not patient.is_dead:
+                count += 1
+        return count
+
+    @property
     def n_patients(self):
         count = 0
         for patient, until in self.patients.items():
