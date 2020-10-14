@@ -685,7 +685,6 @@ def run(data, path, compare="app_adoption"):
             label = f"{method}_{key}"
             pkls = [r["pkl"] for r in data[method][key].values()]
             label2pkls.append((label, pkls))
-            # label2pkls has method and seed in the label
 
     method_to_labels = {}
     method_to_colors = {}
@@ -712,9 +711,7 @@ def run(data, path, compare="app_adoption"):
     le_data_path = os.path.join(pathlib.Path(__file__).resolve().parent.parent.parent.parent, 'daly_data/life_expectancies/1310011401-eng.csv')
     le_data = load_life_expectancies(le_data_path)
 
-    # debugging
-    print(data.keys())
-
+    # daly calculations
     for label, pkls in label2pkls:
         for idx, pkl in enumerate(pkls):
             # get human_monitor data
@@ -723,7 +720,7 @@ def run(data, path, compare="app_adoption"):
             # get their demographic information (pre-existing conditions, age)
             demog_data = pkl['humans_demographics']
 
-            # get data necessary to compute DALYs
+            # get calculate YLL, YLD and DALYs for each individual
             daly_df_seed = get_daly_data(demog_data, monitor_data, le_data)
 
             assert daly_df_seed[daly_df_seed.was_infected == False].DALYs.sum() == 0, 'uninfected should not contribute DALYs'
@@ -746,7 +743,7 @@ def run(data, path, compare="app_adoption"):
     work_hours_mean = work_hours_df.mean(axis = 0)
     work_hours_stderr = work_hours_df.sem(axis = 0)
 
-    # print a table with mean / std
+    # print a table with mean & std
     # print(agg_dalys)
 
     # generate figure 9 (work hours and total DALYs)
