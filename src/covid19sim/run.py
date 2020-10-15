@@ -1,9 +1,8 @@
 """
 Main entrypoint for the execution of simulations.
-
 The experimental settings of the simulations are managed via [Hydra](https://github.com/facebookresearch/hydra).
-The root configuration file is located at `src/covid19sim/configs/simulation/config.yaml`. All settings
-provided via commandline will override the ones loaded through the configuration files.
+The root configuration file is located at `src/covid19sim/configs/simulation/config.yaml`.
+All settings provided via commandline will override the ones loaded through the configuration files.
 """
 import datetime
 import logging
