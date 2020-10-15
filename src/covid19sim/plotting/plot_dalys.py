@@ -250,8 +250,6 @@ def yld(method,
         Legacy function. Not currently used in implementation. 
         Computes Years of Life Disabled (YLD)
 
-        Without discounting: 
-
 
     """
     age = daly_data['age'][human_name]
