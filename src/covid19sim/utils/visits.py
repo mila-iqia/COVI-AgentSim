@@ -2,7 +2,7 @@ from collections import defaultdict
 
 class Visits(object):
     """
-    [summary]
+    Records the number of times a human has visited different places; used for mobility planning.
     """
 
     def __init__(self):

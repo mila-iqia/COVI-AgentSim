@@ -1,40 +1,42 @@
-import os
+import os, sys
 import pickle
 import numpy as np
 import pandas as pd
 from collections import Counter
 from matplotlib import pyplot as plt
-
+import scipy.stats as stats
+import datetime
 # Constants
 quebec_population = 8485000
-csv_path = "COVID19Tracker.ca Data - QC.csv"
-sim_dir_path = "results/mob_pop_sick/10k_005/sim_v2_people-10000_days-30_init-0.005_uptake--1.0_seed-5002_20200716-181338_103092/"
-#sim_dir_path = "output/sim_v2_people-1000_days-150_init-0.004_uptake--1.0_seed-0_20200716-101640_592894/"
-sim_priors_path = os.path.join(sim_dir_path, "train_priors.pkl")
-# sim_tracker_path = os.path.join(sim_dir_path, "tracker_data_n_100_seed_0_20200716-101538_.pkl")
-sim_tracker_path = os.path.join(sim_dir_path, "tracker_data_n_10000_seed_5002_20200716-185829_.pkl")
-
-
+csv_path = "data/qc.csv"
+sims_dir_path = "results/qc_validation/no_intervention"
+if len(sys.argv) > 1:
+    sims_dir_path = sys.argv[1]
 
 # Load data
 qc_data = pd.read_csv(csv_path)
-sim_tracker_data = pickle.load(open(sim_tracker_path, "rb"))
-sim_prior_data = pickle.load(open(sim_priors_path, "rb"))
 
 # Utility Functions
-
 def parse_tracker(sim_tracker_data):
     sim_pop = sim_tracker_data['n_humans']
     dates = []
-    deaths = []
+    cumulative_deaths = []
     tests = Counter()
 
     # Get dates and deaths
     for k, v in sim_tracker_data['human_monitor'].items():
-        dates.append(str(k))
+        dates.append(str(k + datetime.timedelta(days=35)))
         death = sum([x['dead'] for x in v])
-        deaths.append(float(death) * 100 / sim_pop)
-        # TODO: Add hospitalizations and case counts/positive tests
+        cumulative_deaths.append(death)
+    daily_deaths_prop = []
+    last_deaths = 0
+    for idx, deaths in enumerate(cumulative_deaths):
+        if idx == 0:
+            daily_deaths_prop.append(0)
+        else:
+            deaths = (float(deaths) * 100 / sim_pop)
+            daily_deaths_prop.append(deaths - last_deaths)
+            last_deaths = deaths
 
     # Get tests
     for test in sim_tracker_data['test_monitor']:
@@ -44,49 +46,71 @@ def parse_tracker(sim_tracker_data):
     # Get cases
     cases = [float(x) * 100 / sim_pop for x in sim_tracker_data['cases_per_day']]
 
-    return dates, deaths, tests, cases
+    return dates, daily_deaths_prop, tests, cases
 
-# Parse data
-sim_dates, sim_deaths, sim_tests, sim_cases = parse_tracker(sim_tracker_data)
-sim_hospitalizations = [float(x)*100/sim_tracker_data['n_humans'] for x in sim_prior_data['hospitalization_per_day']]
+def smooth(x, window_len=3):
+    s=np.r_[x[window_len-1:0:-1],x,x[-2:-window_len-1:-1]]
+    #moving average
+    w=np.ones(window_len,'d')
+    y=np.convolve(w/w.sum(),s,mode='valid')
+    return y[window_len//2:-(window_len//2)]
 
-# Plot cases
-fig, ax = plt.subplots(figsize=(7.5, 7.5))
-real_dates = qc_data.loc[34:, "dates"].to_numpy()
-real_cases = [100 * float(x if str(x) != "nan" else 0) / quebec_population for x in qc_data.loc[34:, "change_cases"]]
-real_hospitalizations = [100 * float(x if str(x) != "nan" else 0) / quebec_population for x in qc_data.loc[34:, "total_hospitalizations"]]
-real_deaths = [100 * float(x if str(x) != "nan" else 0) / quebec_population for x in qc_data.loc[34:,"change_fatalities"]]
-real_tests = [100 * float(x if str(x) != "nan" else 0) / quebec_population for x in qc_data.loc[34:, "change_tests"]]
+all_sim_cases, all_sim_hospitalizations, all_sim_deaths = [], [], []
 
-ax.plot(real_dates, real_cases, label="QC Cases (per Day)")
-ax.plot(real_dates, real_hospitalizations, label="QC Hospital Utilization (by Day)")
-ax.plot(real_dates, real_deaths, label="QC Mortalities (per Day)")
-ax.plot(real_dates, real_tests, label="QC Tests (per Day)")
+for sim in os.listdir(sims_dir_path):
+    # Get the paths
+    sim_path = os.path.join(sims_dir_path, sim)
+    print(sim_path)
+    sim_priors_path = os.path.join(sim_path, "train_priors.pkl")
+    sim_tracker_name = [str(f_name) for f_name in os.listdir(sim_path) if f_name.startswith("tracker_data")][0]
+    sim_tracker_path = os.path.join(sim_path, sim_tracker_name)
+    # Load the data
+    sim_tracker_data = pickle.load(open(sim_tracker_path, "rb"))
+    sim_prior_data = pickle.load(open(sim_priors_path, "rb"))
+    # Parse data
+    sim_dates, sim_deaths, sim_tests, sim_cases = parse_tracker(sim_tracker_data)
 
-ax.legend()
+    # can change key to in sim_prior_data['hospital_usage_per_day'] depending on real data
+    sim_hospitalizations = [float(x)*100/sim_tracker_data['n_humans'] for x in sim_prior_data['hospitalization_per_day']]
+
+    all_sim_cases.append(sim_cases)
+    all_sim_hospitalizations.append(sim_hospitalizations)
+    all_sim_deaths.append(sim_deaths)
+
+avg_sim_hospitalizations = smooth(np.array([sum(elem)/len(elem) for elem in zip(*all_sim_hospitalizations)]))
+avg_sim_deaths = smooth(np.array([sum(elem)/len(elem) for elem in zip(*all_sim_deaths)]))
+
+# Plot Quebec Data
+last_index = 167 #63 # index of last day of Quebec data, use 63 for 30 days
+real_dates = qc_data.loc[69:last_index, 'dates'].to_numpy()
+real_cases = [100 * float(x if str(x) != "nan" else 0) / quebec_population for x in qc_data.loc[69:last_index, 'change_cases']]
+# change key to 'total_hospitalizations' if needed
+real_hospitalizations = [100 * float(x if str(x) != "nan" else 0) / quebec_population for x in qc_data.loc[69:last_index, 'total_hospitalizations']]
+real_deaths = [100 * float(x if str(x) != "nan" else 0) / quebec_population for x in qc_data.loc[69:last_index,'change_fatalities']]
+
+plt.figure(figsize=(12,7))
+plt.plot(real_dates, real_hospitalizations, label="Quebec hospital utilization per day", color='b')
+plt.plot(real_dates, real_deaths, label="Quebec mortalities per day", color='g')
+
+# Goodness of Fit
+# eps = np.finfo(float).eps
+# deaths_fit = stats.chisquare(avg_sim_deaths+eps, real_deaths[1:]+eps)
+# hospitalizations_fit = stats.chisquare(avg_sim_hospitalizations+eps, real_hospitalizations+eps)
+# fit_caption = "Chi-Square Goodness of Fit Test Results\nMortalities: {}\nHospitalizations: {}\n".format(deaths_fit, hospitalizations_fit)
+
+# change caption below if using 'total_hospitalizations'
+plt.plot(sim_dates, avg_sim_hospitalizations[1:], label="Simulation hospital utilization per day", color='c', linestyle='dashed')
+plt.plot(sim_dates, avg_sim_deaths, label="Simulation mortalities per day", color='r', linestyle='dashed')
+yerr_hospitalizations = avg_sim_hospitalizations.std(axis=0)
+yerr_deaths = avg_sim_deaths.std(axis=0)
+plt.fill_between(sim_dates, avg_sim_hospitalizations[1:]-yerr_hospitalizations, avg_sim_hospitalizations[1:]+yerr_hospitalizations, alpha=0.2, color='c')
+plt.fill_between(sim_dates, avg_sim_deaths-yerr_deaths, avg_sim_deaths+yerr_deaths, alpha=0.2, color='r')
+
+plt.legend()
 plt.ylabel("Percentage of Population")
 plt.xlabel("Date")
-plt.yticks(plt.yticks()[0], [str(round(x, 2)) + "%" for x in plt.yticks()[0]])
+plt.yticks(plt.yticks()[0], [str(round(x, 3)) + "%" for x in plt.yticks()[0]])
 plt.xticks([x for i, x in enumerate(real_dates) if i % 10 == 0], rotation=45)
-plt.title("Quebec COVID Statistics")
-plt.savefig("qc_stats.png")
-
-
-
-
-# Plot deaths and hospitalizations
-fig, ax = plt.subplots(figsize=(7.5, 7.5))
-
-ax.plot(sim_dates, sim_deaths, label="Simulated Mortalities (per Day)")
-ax.plot(sim_dates, sim_hospitalizations[1:], label="Simulated Hospital Utilization (per Day)")
-ax.plot(sim_dates, sim_cases[1:], label="Simulated Cases (per Day)")
-ax.plot(list(sim_tests.keys()), list(sim_tests.values()), label="Simulated Tests (per Day)")
-
-ax.legend()
-plt.ylabel("Percentage of Population")
-plt.xlabel("Date")
-plt.yticks(plt.yticks()[0], [str(round(x, 2)) + "%" for x in plt.yticks()[0]])
-plt.xticks([x for i, x in enumerate(real_dates) if i % 10 == 0], rotation=45)
-plt.title("Quebec COVID Statistics")
-plt.savefig("sim_stats.png")
-
+plt.title("Quebec & Simulation COVID Statistics")
+# print(fit_caption)
+plt.savefig("quebec_and_sim_stats.png")

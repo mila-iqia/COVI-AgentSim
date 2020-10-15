@@ -1,31 +1,28 @@
 """
-This module implements the `Human` class which is the focal point of the agent-based simulation.
+This module contains the logic and attributes of the `Human` agent in our simulator.
 """
 
 import math
 import datetime
 import logging
 import numpy as np
-import scipy
 import typing
 import warnings
 from collections import defaultdict
 from orderedset import OrderedSet
 
 from covid19sim.utils.mobility_planner import MobilityPlanner
-from covid19sim.utils.utils import compute_distance, proba_to_risk_fn
+from covid19sim.utils.utils import proba_to_risk_fn
 from covid19sim.locations.city import PersonalMailboxType
 from covid19sim.locations.hospital import Hospital, ICU
 from collections import deque
 
-from covid19sim.utils.utils import _normalize_scores, draw_random_discrete_gaussian, filter_open, filter_queue_max, calculate_average_infectiousness
+from covid19sim.utils.utils import calculate_average_infectiousness
 from covid19sim.epidemiology.human_properties import may_develop_severe_illness, _get_inflammatory_disease_level,\
     _get_preexisting_conditions, _get_random_sex, get_carefulness, get_age_bin
 from covid19sim.epidemiology.viral_load import compute_covid_properties, viral_load_for_day
 from covid19sim.epidemiology.symptoms import _get_cold_progression, _get_flu_progression, \
-    _get_allergy_progression, SymptomGroups, \
-    MILD, MODERATE, SEVERE, EXTREMELY_SEVERE, \
-    ACHES, COUGH, FATIGUE, FEVER, GASTRO, TROUBLE_BREATHING
+    _get_allergy_progression, SymptomGroups, SEVERE, EXTREMELY_SEVERE, COUGH
 from covid19sim.epidemiology.p_infection import get_human_human_p_transmission, infectiousness_delta
 from covid19sim.inference.message_utils import ContactBook, exchange_encounter_messages, RealUserIDType
 from covid19sim.utils.visits import Visits
@@ -35,7 +32,6 @@ from covid19sim.interventions.intervened_behavior import IntervenedBehavior
 from covid19sim.utils.constants import SECONDS_PER_MINUTE, SECONDS_PER_HOUR, SECONDS_PER_DAY
 from covid19sim.utils.constants import NEGATIVE_TEST_RESULT, POSITIVE_TEST_RESULT
 from covid19sim.utils.constants import TEST_TAKEN, RISK_LEVEL_UPDATE, SELF_DIAGNOSIS
-from covid19sim.utils.constants import TAKE_TEST_DUE_TO_SELF_DIAGNOSIS, TAKE_TEST_DUE_TO_RANDOM_REASON, TAKE_TEST_DUE_TO_RECOMMENDATION
 
 if typing.TYPE_CHECKING:
     from covid19sim.utils.env import Env
@@ -97,7 +93,7 @@ class Human(BaseHuman):
         # Logging data
         self._events = []
 
-        """ Biological Properties """
+        ### Biological Properties ###
         # Individual Characteristics
         self.sex = _get_random_sex(self.rng, self.conf)  # The sex of this person conforming with Canadian statistics
         self.age = age  # The age of this person, conforming with Canadian statistics
@@ -124,7 +120,7 @@ class Human(BaseHuman):
         self.len_allergies = 7 if len_allergies > 7 else math.ceil(len_allergies)
         self.allergy_progression = _get_allergy_progression(self.rng)  # if this human starts having allergy symptoms, then there is a progression of symptoms over one or multiple days
 
-        """ Covid-19 """
+        ### Covid-19 ###
         # Covid-19 properties
         self.viral_load_plateau_height, self.viral_load_plateau_start, self.viral_load_plateau_end, self.viral_load_peak_start, self.viral_load_peak_height = None, None, None, None, None  # Determines aspects of the piece-wise linear viral load curve for this human
         self.incubation_days = 0  # number of days the virus takes to incubate before the person becomes infectious
@@ -163,7 +159,7 @@ class Human(BaseHuman):
             maxlen=self.conf.get('TRACING_N_DAYS_HISTORY')
         )  # stores the Covid-19 symptoms this person had reported in the app until the current simulation day (empty if they do not have the app)
 
-        """App-related"""
+        ### App-related ###
         self.has_app = False  # Does this prson have the app
         time_slot = self.rng.randint(0, 24)  # Assign this person to some timeslot
         self.time_slots = [
@@ -179,7 +175,7 @@ class Human(BaseHuman):
         self.obs_sex = None  # The sex of this human reported to the app
         self.obs_preexisting_conditions = []  # the preexisting conditions of this human reported to the app
 
-        """ Interventions """
+        ### Interventions ###
         self.intervention = None  # Type of contact tracing to do, e.g. Transformer or binary contact tracing or heuristic
         self._rec_level = -1  # Recommendation level used for Heuristic / ML methods
         self._intervention_level = -1  # Intervention level (level of behaviour modification to apply), for logging purposes
@@ -192,7 +188,7 @@ class Human(BaseHuman):
         self.intervened_behavior = IntervenedBehavior(self, self.env, self.conf) # keeps track of behavior level of human
         self.heuristic_reasons = set() # Defined here so that we remember it's an attribute of human (gets re-initialized daily)
 
-        """Risk prediction"""
+        ### Risk prediction ###
         self.contact_book = ContactBook(tracing_n_days_history=self.conf.get("TRACING_N_DAYS_HISTORY"))  # Used for tracking high-risk contacts (for app-based contact tracing methods)
         self.infectiousness_history_map = dict()  # Stores the (predicted) 14-day history of Covid-19 infectiousness (based on viral load and symptoms)
         self.risk_history_map = dict()  # 14-day risk history (estimated infectiousness) updated inside the human's (current) timeslot
@@ -202,7 +198,7 @@ class Human(BaseHuman):
         assert len(risk_mapping_array) > 0, "risk mapping must always be defined!"
         self.proba_to_risk_level_map = proba_to_risk_fn(risk_mapping_array)
 
-        """Mobility"""
+        ###Mobility###
         self.rho = conf['RHO']  # controls mobility (how often this person goes out and visits new places)
         self.gamma = conf['GAMMA']  # controls mobility (how often this person goes out and visits new places)
 
@@ -281,10 +277,23 @@ class Human(BaseHuman):
 
     @property
     def is_really_sick(self):
+        """
+        The severity of sickness (i.e, whether they need to go to the hospital)
+
+        Returns:
+            bool: True if the human is very sick, false otherwise
+        """
         return self.can_get_really_sick and SEVERE in self.symptoms
 
     @property
     def is_extremely_sick(self):
+        """
+        The severity of sickness (i.e, whether they require critical care)
+
+        Returns:
+            bool: True if the human is extremely sick, false otherwise
+        """
+
         return self.can_get_extremely_sick and (SEVERE in self.symptoms or
                                                 EXTREMELY_SEVERE in self.symptoms)
 
@@ -294,7 +303,7 @@ class Human(BaseHuman):
         Calculates the elapsed time since infection, returning this person's current viral load
 
         Returns:
-            Float: Returns a real valued number between 0. and 1. indicating amount of viral load (proportional to infectiousness)
+            Float: Amount of viral load this human has today.
         """
         return viral_load_for_day(self, self.env.now)
 
@@ -303,7 +312,7 @@ class Human(BaseHuman):
         Scales the infectiousness value using pre-existing conditions
 
         Returns:
-            [type]: [description]
+            Float: a real-valued infectiousness value for this human on the day this was called.
         """
         infectiousness = 0.
         if is_infectious:
@@ -330,10 +339,12 @@ class Human(BaseHuman):
 
     @property
     def infectiousness(self):
+        """ infectiousness accessor"""
         return self.get_infectiousness_for_day(self.env.now, self.is_infectious)
 
     @property
     def symptoms(self):
+        """ Symptoms accessor"""
         # TODO: symptoms should not be updated here.
         #  Explicit call to Human.update_symptoms() should be required
         self.update_symptoms()
@@ -341,6 +352,7 @@ class Human(BaseHuman):
 
     @property
     def reported_symptoms(self):
+        """ Reported symptoms accessor"""
         self.update_reported_symptoms()
         return self.rolling_all_reported_symptoms[0]
 
@@ -350,7 +362,7 @@ class Human(BaseHuman):
         returns all symptoms reported in the past TRACING_N_DAYS_HISTORY days
 
         Returns:
-            list: list of symptoms
+            list: all reported symptoms over past d_max days
         """
         if not self.has_app:
             return []
@@ -362,7 +374,7 @@ class Human(BaseHuman):
 
     def update_symptoms(self):
         """
-        [summary]
+            Called daily to set the symptoms being experienced by the human.
         """
         current_date = self.env.timestamp.date()
         if self.last_date['symptoms'] == current_date:
@@ -403,7 +415,7 @@ class Human(BaseHuman):
 
     def update_reported_symptoms(self):
         """
-        [summary]
+        Called daily to determine which symptoms are reported (applying dropout and dropin)
         """
         self.update_symptoms()
         current_date = self.env.timestamp.date()
@@ -566,7 +578,7 @@ class Human(BaseHuman):
             if (
                 SEVERE in self.symptoms
                 or EXTREMELY_SEVERE in self.symptoms
-                or set(self.symptoms) & SUSPICIOUS_SYMPTOMS
+                or (set(self.symptoms) & SUSPICIOUS_SYMPTOMS)
             ):
                 self_diagnosis_and_should_get_tested = self.rng.rand() < self.conf['P_TEST_SEVERE_OR_SUSPICIOUS']
             else:
@@ -1077,7 +1089,7 @@ class Human(BaseHuman):
 
             self.city.tracker.track_mixing(human1=self, human2=other_human, duration=t_near,
                             distance_profile=distance_profile, timestamp=self.env.timestamp, location=self.location,
-                            interaction_type=type, contact_condition=contact_condition, global_mbility_factor=scale_factor_passed)
+                            interaction_type=type, contact_condition=contact_condition, global_mobility_factor=scale_factor_passed)
 
             # Conditions met for possible infection (https://www.cdc.gov/coronavirus/2019-ncov/hcp/guidance-risk-assesment-hcp.html)
             if contact_condition:
@@ -1116,13 +1128,15 @@ class Human(BaseHuman):
 
     def exposure_array(self, date):
         """
-        [summary]
+        Humans may be first infected with Covid-19 precisely one time by one person. We describe the relative time
+        and encounter with the exposure array.
 
         Args:
-            date ([type]): [description]
+            date (datetime): current date
 
         Returns:
-            [type]: [description]
+            bool: True if the person was exposed within the last 14 days.
+            exposure_day: relative day of the exposure event.
         """
         warnings.warn("Deprecated in favor of inference.helper.exposure_array()", DeprecationWarning)
         # dont change the logic in here, it needs to remain FROZEN
@@ -1138,13 +1152,15 @@ class Human(BaseHuman):
 
     def recovered_array(self, date):
         """
-        [summary]
+        Humans may first recover from Covid-19 precisely one time. We describe the relative time of this event by
+        the recovered array.
 
         Args:
-            date ([type]): [description]
+            date (datetime): current date
 
         Returns:
-            [type]: [description]
+            bool: True if the person has recovered within the last 14 days.
+            recovery_day: relative day of the recovery event.
         """
         warnings.warn("Deprecated in favor of inference.helper.recovered_array()", DeprecationWarning)
         is_recovered = False
@@ -1273,6 +1289,12 @@ class Human(BaseHuman):
 
     @property
     def risk_level(self):
+        """
+        Maps a continuous valued risk estimate to a 4-bit quantized version.
+
+        Returns:
+            (int): quantized 4-bit risk level
+        """
         return min(self.proba_to_risk_level_map(self.risk), 15)
 
     def update_recommendations_level(self, intervention_start=False):
@@ -1294,6 +1316,11 @@ class Human(BaseHuman):
 
     @property
     def rec_level(self):
+        """
+        The current behavioural recommendation for this human
+        Returns:
+            (int): a value between -1 and 4
+        """
         return self._rec_level
 
     def __repr__(self):

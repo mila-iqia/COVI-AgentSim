@@ -84,11 +84,11 @@ def _get_location_type_to_track_mixing(human, location):
     Returns
         (str): a corresponding label for POLYMOD study.
     """
-    if location == human.household:
+    if (
+        location == human.household
+        and location.location_type != "SENIOR_RESIDENCY"
+    ):
         return "house"
-
-    # if location.location_type == "WORKPLACE":
-        # return "work"
 
     # doing this first matters because kids are assigned their workplace as schools
     if location.location_type == "SCHOOL":
@@ -96,7 +96,6 @@ def _get_location_type_to_track_mixing(human, location):
 
     if location == human.workplace:
         return "work"
-
 
     return "other"
 
@@ -326,6 +325,7 @@ class Tracker(object):
 
         # testing & hospitalization
         self.hospitalization_per_day = [0]
+        self.hospital_usage_per_day = [0]
         self.critical_per_day = [0]
         self.deaths_per_day = [0]
         self.test_results_per_day = defaultdict(lambda :{'positive':0, 'negative':0})
@@ -704,15 +704,17 @@ class Tracker(object):
                 state = 'R'
             else:
                 raise ValueError(f"{human} is not in any of SEIR states")
-
             self.humans_quarantined_state[human.name].append(human.intervened_behavior.is_under_quarantine)
             self.humans_state[human.name].append(state)
             self.humans_rec_level[human.name].append(human.rec_level)
             self.humans_intervention_level[human.name].append(human._intervention_level)
 
+        num_humans_in_hospital = sum([hospital.n_covid_patients for hospital in self.city.hospitals])
+
         # test_per_day
         self.tested_per_day.append(0)
         self.hospitalization_per_day.append(0)
+        self.hospital_usage_per_day.append(num_humans_in_hospital)
         self.critical_per_day.append(0)
         self.deaths_per_day.append(0)
 
@@ -1350,7 +1352,7 @@ class Tracker(object):
         self.activity_attributes["duration"][just_finished_activity.name].push(just_finished_activity.duration)
 
     @check_if_tracking
-    def track_mixing(self, human1, human2, duration, distance_profile, timestamp, location, interaction_type, contact_condition, global_mbility_factor):
+    def track_mixing(self, human1, human2, duration, distance_profile, timestamp, location, interaction_type, contact_condition, global_mobility_factor):
         """
         Stores counts and statistics to generate various aspects of contacts and social mixing.
         Following are being tracked -
@@ -1500,8 +1502,8 @@ class Tracker(object):
                 C = self.contact_matrices[interaction_type][location_type]
                 D = self.contact_duration_matrices[interaction_type][location_type]
 
-                C['total'][i, j] += 1
-                C['total'][j, i] += 1
+                C['total'][i, j] += global_mobility_factor 
+                C['total'][j, i] += global_mobility_factor
                 # in surveys, ij ==> j is the participant and i is the reported contact
                 C['n_people'][(j,i)].add(human1.name) # i reports about j; len of this set is number of unique people in i that met j
                 C['n_people'][(i,j)].add(human2.name) # j reports about i
@@ -1877,7 +1879,8 @@ class Tracker(object):
     def write_for_training(self, humans, outfile, conf):
         """ Writes some data out for the ML predictor """
         data = dict()
-        data['hospitalization_per_day'] = self.hospitalization_per_day
+        data['hospitalization_per_day'] = self.hospitalization_per_day # how many new people get admitted to the hospital
+        data['hospital_usage_per_day'] = self.hospital_usage_per_day # how many people are in the hospital for covid
 
         # parse test results
         data['positive_test_results_per_day'] = []

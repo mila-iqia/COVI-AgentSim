@@ -62,7 +62,7 @@ if __name__ == "__main__":
     simulation_days = 20
     init_fraction_sick = 0.01
     start_time = datetime.datetime(2020, 2, 28, 0, 0)
-    city, tracker = simulate(
+    city = simulate(
         n_people=n_people,
         start_time=start_time,
         simulation_days=simulation_days,
@@ -75,7 +75,7 @@ if __name__ == "__main__":
     # ---------------------------
     # -----  Retreive Data  -----
     # ---------------------------
-    data = extract_tracker_data(tracker, conf)
+    data = extract_tracker_data(city.tracker, conf)
     tm = data["test_monitor"]
     days = [
         date_str(start_time + datetime.timedelta(days=i))

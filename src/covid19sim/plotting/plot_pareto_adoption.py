@@ -142,7 +142,7 @@ def plot_and_save_ymetric(data, ymetric, xmetrics, base_methods, labels, labels_
             if idx == 0:
                 compare_legend.append(
                     get_line2D(
-                        lab.split("_")[-1],
+                        str(100*float(lab.split("_")[-1])) + "%", #lab.split("_")[-1],
                         current_color,
                         current_marker,
                         False,
@@ -180,7 +180,7 @@ def plot_and_save_ymetric(data, ymetric, xmetrics, base_methods, labels, labels_
         ax.grid(True, axis="x", alpha=0.3)
         ax.grid(True, axis="y", alpha=0.3)
 
-        ax.set_xlabel(metric_name_map[xmetrics[axis_id]], size=40)
+        ax.set_xlabel(metric_name_map[xmetrics[axis_id]], size=30)
         for tick in ax.xaxis.get_major_ticks():
             tick.label.set_fontsize(30)
 
@@ -196,15 +196,16 @@ def plot_and_save_ymetric(data, ymetric, xmetrics, base_methods, labels, labels_
         ylabel = "$R_t$"
     elif ymetric == "f0":
         ylabel = "False Susceptible or Recoverd"
-    ylab = fig.text(-0.05, 0.5, ylabel, va="center", rotation="vertical", size=50)
+    ylab = fig.text(-0.05, 0.5, ylabel, va="center", rotation="vertical", size=30)
 
     if ymetric in ["proxy_r", "r"]:
         for ax in axs:
             ax.plot([0, ax.get_xlim()[1]], [1.0, 1.0], "-.", c="gray", alpha=0.3, label="Rt = 1.0")
 
     spttl = fig.suptitle(
-        "Comparison of tracing methods across different adoption rates",
-        fontsize=50,
+                "Sensitivity to initially Exposed population" ,
+                # "Comparison of tracing methods across different adoption rates",
+        fontsize=30,
         y=1.15,
     )
     if len(method_legend) % 2 != 0:
@@ -231,7 +232,7 @@ def plot_and_save_ymetric(data, ymetric, xmetrics, base_methods, labels, labels_
         loc="upper center",
         ncol= 3,# idx, # + 1,
         fontsize=25,
-        bbox_to_anchor=(0.5, 1.1),
+        bbox_to_anchor=(0.5, 1.3),
     )
     plt.tight_layout()
     save_path = Path(path) / f"pareto_adoption/pareto_adoption_all_metrics_vs_{ymetric}.png"
@@ -311,7 +312,7 @@ def run(data, path, comparison_key):
         break
     assert n_seeds is not None, "Could not find the number of seeds"
     df = pd.DataFrame(rows, columns=["type", "metric"] + list(np.arange(n_seeds) + 1))
-    df["mean"] = df[list(np.arange(n_seeds) + 1)].mean(axis=1)
+    df["mean"] = df[list(np.arange(n_seeds) + 1)].mean(axis=1) 
     df["stderr"] = df[list(np.arange(n_seeds) + 1)].sem(axis=1)
 
     ############
@@ -365,17 +366,17 @@ def run(data, path, comparison_key):
         bbox_to_anchor=(0.5, 1.1),
     )
     spttl = plt.title(
-        "Comparison of tracing methods across different GLOBAL_EFFECTIVE_MOBILITY_SCALES",
-        fontsize=50,
+        "Sensitivity to proportion of population initially exposed GLOBAL_EFFECTIVE_MOBILITY_SCALES",
+        fontsize=30,
         y=1.15,
     )
-    axs.set_xlabel("Healthy Effective Contacts", size=40)
-    axs.set_ylabel("R_t (infectees / recovered infectors)", size=40)
+    axs.set_xlabel("Healthy Effective Contacts", size=30)
+    axs.set_ylabel("R_t (infectees / recovered infectors)", size=30)
     for tick in axs.xaxis.get_major_ticks():
-        tick.label.set_fontsize(30)
+        tick.label.set_fontsize(25)
 
     for tick in axs.yaxis.get_major_ticks():
-        tick.label.set_fontsize(30)
+        tick.label.set_fontsize(25)
 
     plt.savefig(str(save_path))
 
