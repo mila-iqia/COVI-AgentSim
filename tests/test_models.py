@@ -155,7 +155,7 @@ class ModelsTest(unittest.TestCase):
             )
             collection_server.start()
 
-            city, tracker = simulate(
+            city = simulate(
                 n_people=n_people,
                 start_time=start_time,
                 simulation_days=n_days,
@@ -165,7 +165,7 @@ class ModelsTest(unittest.TestCase):
                 seed=0,
                 conf=conf,
             )
-            sim_humans = tracker.city.humans
+            sim_humans = city.humans
 
             collection_server.stop_gracefully()
             collection_server.join()
