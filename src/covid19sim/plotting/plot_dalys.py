@@ -32,6 +32,12 @@ def load_human_monitor(tracker_data):
     return tracker_data['human_monitor']
 
 def load_life_expectancies(path):
+    """
+    Loads life expectancy values from a csv into a DataFrame.
+    Attr: path to life expectancy csv
+    Returns: DataFrame of life expectancies by age and sex
+    """
+
     # specific to STATS CAN CSV file
     # https://www150.statcan.gc.ca/t1/tbl1/en/cv.action?pid=1310011401
     life_expectancies = pd.read_csv(path, header=[7])
@@ -52,6 +58,27 @@ def get_daly_data(demographics,
                   human_monitor_data, 
                   life_expectancies,
                   ):
+    """
+    Gathers all data required for DALY calculations into one dataFrame.
+    Attrs: 
+        - demographics data from tracker file
+        - human monitor data from tracker file
+        - life expectancies from output of load_life_expectancies()
+    Returns:
+        - Dataframe where rows are individuals, columns are attributes of individuals
+        - columns:
+                "days_in_hospital",
+                "days_in_ICU",
+                "has_died",
+                "days_symptoms_and_infection",
+                "days_sick_not_in_hospital",
+                "was_infected",
+                "life_expectancy",
+                -------- These columns are calculated from the previous ones --------
+                "YLL",
+                "YLD",
+                "DALYs
+    """
 
     human_names = [human_monitor_data[datetime.date(2020,2,28)][i]['name'] 
                    for i in range(len(human_monitor_data[datetime.date(2020,2,28)]))]
@@ -134,9 +161,6 @@ def get_daly_data(demographics,
 
     # add DALY column
     daly_df['DALYs'] = daly_df['YLL'] + daly_df['YLD']
-
-    # add PPL column
-    daly_df['PPL'] = (daly_df['age'] < retirement_age)*(retirement_age - daly_df['age'])
     
     return daly_df
     
@@ -149,14 +173,25 @@ def yll(human_name,
         discounting = False
         ):
     '''
+        Legacy function. Not currently used in implementation. 
         Computes Years of Life Lost (YLL)
-        Without discounting: sum up years of life lost per human
 
+        Without discounting: sum up years of life lost per human
         With discounting: 
         YLL and YLD formulas
         https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7345321/#B10-ijerph-17-04233 
         HRQL scores
         https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3320437/
+        Attrs: 
+            - human_name: name of human to calculate YLL for
+            - daly_data: DataFrame of individuals and their attributes.
+            - social_discount, age_weighting_constant, modulation_constant, adjustment_constant: 
+              parameters for calculating disounted YLL according to WHO GBD 2002.
+            - discounting: Boolean indicating whether discounting and age adjustments are applied.
+        The function uses `human_name` to select a row from daly_data 
+        which corresponds to one agent.
+        Returns: 
+            - a float value for YLL
     '''
     age = daly_data['age'][human_name]
     life_expectancy = daly_data['life_expectancy'][human_name]
@@ -211,7 +246,14 @@ def yld(method,
         adjustment_constant = adjustment_constant,
         discounting = False
         ):
-    
+    """
+        Legacy function. Not currently used in implementation. 
+        Computes Years of Life Disabled (YLD)
+
+        Without discounting: 
+
+
+    """
     age = daly_data['age'][human_name]
     life_expectancy = daly_data['life_expectancy'][human_name]
     human_data = daly_data.loc[human_name]
