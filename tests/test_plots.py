@@ -43,7 +43,7 @@
 #             conf["outdir"] = outfile
 #             hdf5_path = os.path.join(outfile, "human_backups.hdf5")
 #
-#             city, tracker = simulate(
+#             city = simulate(
 #                 n_people=n_people,
 #                 start_time=start_time,
 #                 simulation_days=n_days,

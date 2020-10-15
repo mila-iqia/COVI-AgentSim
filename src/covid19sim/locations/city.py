@@ -2,6 +2,7 @@
 This module implements the `City` class which is responsible for running the environment in which all
 humans will interact. Its `run` loop also contains the tracing application logic that runs every hour.
 """
+
 import numpy as np
 import copy
 import datetime
