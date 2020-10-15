@@ -38,9 +38,9 @@ def env_to_path(path):
 
 def get_title(method):
     method_title = {
-        "bdt1": "1st Order Binary Tracing",
-        "bdt2": "2nd Order Binary Tracing",
-        "heuristicv1": "Heuristic (v1)",
+            "bdt1": "Test-based BCT1",
+        "bdt2": "Test-based BCT2",
+        "heuristicv1": "Heuristic-FCT",
         "heuristicv2": "Heuristic (v2)",
         "transformer": "Transformer",
         "transformer-[1, 3, 5]": "Transformer-[1, 3, 5]",
@@ -50,6 +50,7 @@ def get_title(method):
         "mlp": "MLP",
         "unmitigated": "Unmitigated",
         "oracle": "Oracle",
+        "post-lockdown-no-tracing": "No Tracing"
     }
     if "_norm" in method:
         if method.replace("_norm", "") in method_title:
