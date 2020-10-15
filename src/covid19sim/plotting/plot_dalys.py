@@ -142,7 +142,7 @@ def get_daly_data(demographics,
     daly_df['life_expectancy'] = ""
     # set life expectancy as a function of age and sex
     for human in human_names:
-        
+
         daly_df.loc[human,'life_expectancy'] = float(
             life_expectancies[daly_df['sex'][human]][str(daly_df['age'][human])+" years"]
             )
@@ -228,7 +228,7 @@ def find_life_expectancies(directory):
     raise ValueError("Can't find life expectancies csv")
     
 # TODO: add plots and tables to run function
-def run(data, path, compare="app_adoption"):\
+def run(data, path, compare="app_adoption"):
     """
     Under construction.
     Outputs the necessary plots and tables for the ArXiv version of the paper. 
