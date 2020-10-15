@@ -2,20 +2,20 @@ import pickle
 import os
 import datetime
 import pandas as pd
-import numpy as np
+# import numpy as np
 import matplotlib.pyplot as plt
 import pathlib
 
 social_discount = 0.03
 age_weighting_constant = 0.04
-modulation_constant = 1 
+modulation_constant = 1
 adjustment_constant = 0.1658
 retirement_age = 65
 
 disability_weights = {
-    'no_hospitalization':0.051, # moderate lower respiratory infection
-    'hospitalized':0.133, # severe respiratory infection
-    'critical':0.408 #severe COPD without heart failure
+    'no_hospitalization': 0.051,  # moderate lower respiratory infection
+    'hospitalized': 0.133,  # severe respiratory infection
+    'critical': 0.408  # severe COPD without heart failure
     }
 
 
@@ -23,6 +23,7 @@ def load_tracker(path):
     with open(path, 'rb') as f:
         tracker_data = pickle.load(f)
     return tracker_data
+
 
 def load_life_expectancies(path):
     """
@@ -34,21 +35,23 @@ def load_life_expectancies(path):
     # specific to STATS CAN CSV file
     # https://www150.statcan.gc.ca/t1/tbl1/en/cv.action?pid=1310011401
     life_expectancies = pd.read_csv(path, header=[7])
-    life_expectancies = life_expectancies.rename(columns = {
-        '2016 to 2018':'other', # other -> both sexes
-        '2016 to 2018.1':'male',
-        '2016 to 2018.2':'female',
+    life_expectancies = life_expectancies.rename(columns={
+        '2016 to 2018': 'other',  # other -> both sexes
+        '2016 to 2018.1': 'male',
+        '2016 to 2018.2': 'female',
         })
-    life_expectancies = life_expectancies.dropna(subset = ['female'])
+    life_expectancies = life_expectancies.dropna(subset=['female'])
     life_expectancies.loc[2, 'Age group'] = '1 years'
     # life_expectancies.iloc[-1, 'Age group'] = '110 years'
-    life_expectancies.loc[life_expectancies.index[-1], 'Age group'] = '110 years'
+    life_expectancies.loc[life_expectancies.index[-1],
+                          'Age group'] = '110 years'
     life_expectancies = life_expectancies.set_index('Age group')
 
     return life_expectancies
 
-def get_daly_data(demographics, 
-                  human_monitor_data, 
+
+def get_daly_data(demographics,
+                  human_monitor_data,
                   life_expectancies,
                   ):
     """
@@ -58,7 +61,8 @@ def get_daly_data(demographics,
         - human monitor data from tracker file
         - life expectancies from output of load_life_expectancies()
     Returns:
-        - Dataframe where rows are individuals, columns are attributes of individuals
+        - Dataframe where rows are individuals,
+          columns are attributes of individuals
         - columns:
                 "days_in_hospital",
                 "days_in_ICU",
@@ -67,14 +71,19 @@ def get_daly_data(demographics,
                 "days_sick_not_in_hospital",
                 "was_infected",
                 "life_expectancy",
-                -------- The following columns are calculated from the previous ones --------
+                -------- following columns are 
+                         calculated from the previous ones --------
                 "YLL",
                 "YLD",
                 "DALYs
     """
 
-    human_names = [human_monitor_data[datetime.date(2020,2,28)][i]['name'] 
-                   for i in range(len(human_monitor_data[datetime.date(2020,2,28)]))]
+    human_names = [human_monitor_data[datetime.date(2020, 2, 28)][i]['name']
+                   for i in range(len(
+                       human_monitor_data[datetime.date(2020, 2, 28)]
+                           )
+                       )
+                    ]
     
     symptom_status = {i:{} for i in human_names}
     hospitalization_status = {i:{} for i in human_names}
@@ -161,6 +170,7 @@ def get_daly_data(demographics,
     
     return daly_df
 
+
 def lost_work_hours_total(tracker_data, wfh_prod=0.51):
     """
         Adds up lost work hours from all sources (kid, ill, quarantine).
@@ -180,6 +190,7 @@ def lost_work_hours_total(tracker_data, wfh_prod=0.51):
                        )
     
     return lost_work_hours.sum()
+
 
 def multiple_seeds_get_data(intervention,l_e_path):
     """
@@ -213,6 +224,7 @@ def multiple_seeds_get_data(intervention,l_e_path):
             'demographics_dict' : demographics_dict, 
             'human_monitor_dict' : human_monitor_dict, 
             'daly_data_dict' : daly_data_dict}
+
 
 def find_life_expectancies(directory):
     """
