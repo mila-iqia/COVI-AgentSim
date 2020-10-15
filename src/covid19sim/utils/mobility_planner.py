@@ -1,9 +1,8 @@
 """
 Class and functions to plan human's schedule.
-There are three types of functions -
-1. _patch_schedule - Takes in tentative activities to schedule and make a continuous schedule out of them
-2. _patch_kid_schedule - takes a current_activity and future schedule to follow  and makes a continuous schedule out of them
-3. _modify_schedule - takes a current a schedule and a new activity that needs to be added and makes adjustment to it accordingly
+There are three key functions. First,_patch_schedule, which takes in tentative activities to schedule and make a continuous schedule out of them.
+Second, _patch_kid_schedule, which takes a current_activity and future schedule to follow  and makes a continuous schedule out of them.
+Third, _modify_schedule, which takes a current a schedule and a new activity that needs to be added and makes adjustment to it accordingly.
 """
 import datetime
 import math

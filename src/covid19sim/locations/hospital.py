@@ -1,5 +1,5 @@
 """
-Hospitalization model is stil a WIP.
+Very sick and extremely sick people go to the hospital. So do doctors and nurses..
 """
 import math
 from covid19sim.locations.location import Location
@@ -67,6 +67,14 @@ class Hospital(Location):
 
         self.nurses.add(human)
         self.n_nurses += 1
+
+    @property
+    def n_covid_patients(self):
+        count = 0
+        for patient, until in self.patients.items():
+            if self.env.timestamp < until and (patient.state[1] or patient.state[2]) and not patient.is_dead:
+                count += 1
+        return count
 
     @property
     def n_patients(self):
