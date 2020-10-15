@@ -193,6 +193,13 @@ def main(conf: DictConfig):
         train_priors = os.path.join(f"{conf['outdir']}/train_priors.pkl")
         city.tracker.write_for_training(city.humans, train_priors, conf)
 
+        timenow = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+        log("Dumping Tracker Data in {}".format(conf["outdir"]), logfile)
+
+        Path(conf["outdir"]).mkdir(parents=True, exist_ok=True)
+        filename = f"tracker_data_n_{conf['n_people']}_seed_{conf['seed']}_{timenow}.pkl"
+        data = extract_tracker_data(tracker, conf)
+        dump_tracker_data(data, conf["outdir"], filename)
     else:
         # ------------------------------------------------------
         # -----     Tune: Write logs And Tacker Data       -----
