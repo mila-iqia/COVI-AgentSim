@@ -14,6 +14,8 @@ age_range_dict = {str(np.min(i)) + '-' + str(np.max(i)): {}
                   for i in age_ranges}
 sexes = ['male', 'female']
 
+pd.set_option('display.float_format', '{:.6f}'.format)
+
 disability_weights = {
     'no_hospitalization': 0.051,  # moderate lower respiratory infection
     'hospitalized': 0.133,  # severe respiratory infection
@@ -165,19 +167,21 @@ def get_daly_data(demographics,
             )
 
     # add YLL
-    daly_df['YLL'] = daly_df['has_died'] * daly_df['life_expectancy']
+    daly_df['YLL'] = daly_df['was_infected'] * (
+        daly_df['has_died'] * daly_df['life_expectancy']
+                                                )
 
     # add YLD
-    daly_df['YLD'] = \
-        daly_df['days_sick_not_in_hospital']/365 * \
-        disability_weights['no_hospitalization'] + \
-        \
-        daly_df['days_in_hospital']/365 * \
-        disability_weights['hospitalized'] + \
-        \
-        daly_df['days_in_ICU']/365 * \
-        disability_weights['critical']
+    daly_df['YLD'] = daly_df['was_infected'] * (
+        daly_df['days_sick_not_in_hospital']/365 *
+        disability_weights['no_hospitalization'] +
 
+        daly_df['days_in_hospital']/365 *
+        disability_weights['hospitalized'] +
+
+        daly_df['days_in_ICU']/365 *
+        disability_weights['critical']
+                                                )
     # add DALYs
     daly_df['DALYs'] = daly_df['YLL'] + daly_df['YLD']
 
@@ -336,15 +340,8 @@ def run(data, path, compare="app_adoption"):
             # get calculate YLL, YLD and DALYs for each individual
             daly_df_seed = get_daly_data(demog_data, monitor_data, le_data)
 
-            # reduce non-infected DALYs to zero
-            daly_df_seed.loc[daly_df_seed.was_infected == False, 'YLL'] = 0
-            daly_df_seed.loc[daly_df_seed.was_infected == False, 'YLD'] = 0
-            daly_df_seed.loc[daly_df_seed.was_infected == False, 'DALYs'] = 0
-
-            assert daly_df_seed[
-                daly_df_seed.was_infected == False
-                                ].DALYs.sum()\
-                == 0,\
+            assert daly_df_seed[daly_df_seed.was_infected == False
+                                ].DALYs.sum() == 0,\
                 'uninfected should not contribute DALYs'
 
             # calculate total DALYs for this pickle file
@@ -356,8 +353,7 @@ def run(data, path, compare="app_adoption"):
             # calculate dalys per person by age
             by_age = {}
             for age_range, age_key in zip(age_ranges, age_range_dict.keys()):
-                by_age[age_key] = daly_df_seed[
-                    daly_df_seed.age.isin(age_range)
+                by_age[age_key] = daly_df_seed[daly_df_seed.age.isin(age_range)
                                                ]['DALYs'].mean(axis=0)
             dalys_pp_age[label][idx] = by_age  # [method][run][age group]
 
@@ -417,10 +413,8 @@ def run(data, path, compare="app_adoption"):
     plt.tight_layout()
 
     # save in daly_data folder
-    parent_path = pathlib.Path(__file__).resolve().parent.parent.parent.parent
-    save_path = ('daly_data/output/graphs/'
-                 'plotting_pareto_comparison_with_replacement.png')
-    fig.savefig(os.path.join(parent_path, save_path))
+    save_path = ('plotting_pareto_comparison_with_replacement.png')
+    fig.savefig(os.path.join(path, save_path))
     print('Figure 9 saved to plotting_pareto_comparison_with_replacement.png')
 
     # generate figure 10
@@ -473,10 +467,8 @@ def run(data, path, compare="app_adoption"):
     plt.tight_layout()
 
     # save in daly_data folder
-    parent_path = pathlib.Path(__file__).resolve().parent.parent.parent.parent
-    save_path = ('daly_data/output/graphs/'
-                 'dalys_per_person_age_stratified.png')
-    fig.savefig(os.path.join(parent_path, save_path))
+    save_path = 'dalys_per_person_age_stratified.png'
+    fig.savefig(os.path.join(path, save_path))
     print('Figure 10 saved to dalys_per_person_age_stratified.png')
 
     # generate table 2
@@ -539,6 +531,8 @@ def run(data, path, compare="app_adoption"):
     # delta TPL
     work_hours_mean = work_hours_df.mean(axis=0)
     work_hours_stderr = work_hours_df.sem(axis=0)
+    tpl_mean = (work_hours_df*MEAN_HOURLY_WAGE).mean(axis=0)
+    tpl_stderr = (work_hours_df*MEAN_HOURLY_WAGE).sem(axis=0)
 
     work_hours_mean['delta_bct'] = work_hours_mean[bct_key] - \
         work_hours_mean[no_tracing_key]
@@ -582,31 +576,28 @@ def run(data, path, compare="app_adoption"):
     agg_daly_diff['ICER'] = ICER_df.stack()
     agg_daly_diff = agg_daly_diff.transpose()
     print(agg_daly_diff)
-    parent_path = pathlib.Path(__file__).resolve().parent.parent.parent.parent
-    save_path_icer = ('daly_data/output/tables/'
-                      'ICER_table.csv')
-    agg_daly_diff.to_csv(save_path_icer)
+    save_path_icer = ('ICER_table.csv')
+    agg_daly_diff.to_csv(os.path.join(path, save_path_icer))
 
     # generate table L4 (work hours, TPL)
     tpl_df = pd.DataFrame([work_hours_mean[method_keys],
                            work_hours_stderr[method_keys],
-                           work_hours_mean[method_keys]*MEAN_HOURLY_WAGE,
-                           work_hours_stderr[method_keys]*MEAN_HOURLY_WAGE
+                           tpl_mean[method_keys],
+                           tpl_stderr[method_keys]
                            ],
                           index=pd.MultiIndex.from_product(
                             [['Foregone Work', 'TPL'],
                              ['mean', 'stderr']])
                           )
-    pd.set_option('display.float_format', '{:.6f}'.format)
+
     print('############################################################')
     print('Table L4: Foregone work hours and TPL for different CT methods')
     print('Saved to tpl_table.csv')
-
     print(tpl_df)
-    parent_path = pathlib.Path(__file__).resolve().parent.parent.parent.parent
-    save_path_tpl = ('daly_data/output/tables/'
-                     'tpl_table.csv')
-    tpl_df.to_csv(save_path_tpl)
+    # parent_path = pathlib.Path(
+    # __file__).resolve().parent.parent.parent.parent
+    save_path_tpl = ('tpl_table.csv')
+    tpl_df.to_csv(os.path.join(path, save_path_tpl))
 
     # generate table L5 (metrics for age, sex breakdown)
     metrics_table = {}
@@ -627,7 +618,5 @@ def run(data, path, compare="app_adoption"):
           'for different CT methods')
     print('Saved to health_metrics_stratified_table.csv')
     print(metrics_df)
-    parent_path = pathlib.Path(__file__).resolve().parent.parent.parent.parent
-    save_path_metrics = ('daly_data/output/tables/'
-                         'health_metrics_stratified_table.csv')
-    metrics_df.to_csv(save_path_metrics)
+    save_path_metrics = ('health_metrics_stratified_table.csv')
+    metrics_df.to_csv(os.path.join(path, save_path_metrics))
