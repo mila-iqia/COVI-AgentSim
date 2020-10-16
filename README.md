@@ -1,6 +1,6 @@
 # COVI-sim: A testbed for comparing digital contact tracing apps 
 
-This simulator is an agent-based model (ABM) built in python using [`simpy`](!https://simpy.readthedocs.io/en/latest/simpy_intro/index.html).
+This simulator is an agent-based model (ABM) built in python using [`simpy`](https://simpy.readthedocs.io/en/latest/simpy_intro/index.html).
 It simulates the spread of Covid-19 in a population of agents, taking human mobility and indiviual characteristics (e.g. symptoms and pre-existing medical conditions) into account. Agents in the simulation can be assigned one of several types of digital contact tracing (DCT) app, and the ability of each DCT method to control the spread of disease can be compared via cost-benefit analysis.  The level of individual-level detail in our simulator allows for testing a novel type of contact tracing we call Feature-based Contact Tracing (FCT). We provide a simple heuristic baseline FCT method. 
 
 Details of agent behavior, interactions, the transmission model, baselines (including for FCT) and experimental results can be found [here](!https://openreview.net/pdf?id=07iDTU-KFK).
@@ -8,8 +8,8 @@ Details of agent behavior, interactions, the transmission model, baselines (incl
 The simulator is modular; you can design, simulate, and benchmark your own DCT method against the baselines provided!
 This is the primary intended use of COVI-sim, and the most well-documented. However the simulator can also be used to examine the effects of other types of intervention (e.g. schedules of school or work closure). If you have questions about doing this don't hesitate to contact the developers.
 
-Comparsion of methods at 60% adoption:
-[!https://github.com/mila-iqia/covi-simulator/blob/sim-only-for-release/notebooks/GP_r_effective_contacts_mobility_scatter_w_annotations_w_scatter_AR_60.png]
+Comparsion of methods at 60% adoption: 
+![Comparison of digital contact tracing methods at 60% adoption](https://github.com/mila-iqia/covi-simulator/blob/sim-only-for-release/notebooks/GP_r_effective_contacts_mobility_scatter_w_annotations_w_scatter_AR_60.png)
 
 
 ## Installation
@@ -67,7 +67,7 @@ Percentage of population with app | Uptake required to get that percentage
 70 | 98.31 
 
 Comparison of methods for different levels of app adoption:
-[!https://github.com/mila-iqia/covi-simulator/blob/sim-only-for-release/notebooks/epi-adoption.png]
+![Comparison of digital contact tracing methods for different levels of app adoption](https://github.com/mila-iqia/covi-simulator/blob/sim-only-for-release/notebooks/epi-adoption.png)
 
 ## Replicating experiments in the paper 
 The above commands only run one simulation each. This is useful for debugging, but in order to run
