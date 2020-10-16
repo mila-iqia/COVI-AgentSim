@@ -19,7 +19,6 @@ from covid19sim.inference.server_utils import DataCollectionServer
 from covid19sim.run import simulate
 from covid19sim.native import Environment
 
-
 class MakeHumanAsMessageProxy:
     def __init__(self, test_case: unittest.TestCase):
         self.humans_logs = {}
@@ -114,6 +113,12 @@ def validate_human_message(test_case, message, human):
     # TODO: add a serious way to test whether the correct update messages were added from the mailbox?
 
 
+try:
+    from covid19sim.inference.inference_engine import InferenceEngineWrapper
+    should_skip = False
+except ImportError:
+    should_skip = True
+
 class ModelsTest(unittest.TestCase):
     from covid19sim.inference.heavy_jobs import make_human_as_message
     make_human_as_message_proxy = None
@@ -130,6 +135,7 @@ class ModelsTest(unittest.TestCase):
 
         heavy_jobs.make_human_as_message = ModelsTest.make_human_as_message
 
+    @unittest.skipIf(should_skip, "need to install ctt")
     def test_run(self):
         """
             run one simulation and ensure json files are correctly populated and most of the users have activity
