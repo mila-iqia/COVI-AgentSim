@@ -9,7 +9,7 @@ The simulator is modular; you can design, simulate, and benchmark your own DCT m
 This is the primary intended use of COVI-sim, and the most well-documented. However the simulator can also be used to examine the effects of other types of intervention (e.g. schedules of school or work closure). If you have questions about doing this don't hesitate to contact the developers.
 
 Comparsion of methods at 60% adoption:
-https://github.com/mila-iqia/covi-simulator/blob/sim-only-for-release/notebooks/GP_r_effective_contacts_mobility_scatter_w_annotations_w_scatter_AR_60.png
+[!https://github.com/mila-iqia/covi-simulator/blob/sim-only-for-release/notebooks/GP_r_effective_contacts_mobility_scatter_w_annotations_w_scatter_AR_60.png]
 
 
 ## Installation
@@ -58,16 +58,16 @@ python -m covid19sim.run intervention=heuristicv1 INTERVENTION_DAY=5  n_people=1
 Note on app adoption:
 
 We model app adoption according to statistics of smartphone usage. The left column is the % of total population with the app, and right column is the uptake by smartphone users.
-|% of population with app | Uptake required to get that %  |
---
-~1 & ~1.50 
-30 & 42.15 
-40 & 56.18 
-60 & 84.15 
-70 & 98.31 
+Percentage of population with app | Uptake required to get that percentage
+--- | ---
+~1 | ~1.50 
+30 | 42.15 
+40 | 56.18 
+60 | 84.15 
+70 | 98.31 
 
 Comparison of methods for different levels of app adoption:
-https://github.com/mila-iqia/covi-simulator/blob/sim-only-for-release/notebooks/epi-adoption.png
+[!https://github.com/mila-iqia/covi-simulator/blob/sim-only-for-release/notebooks/epi-adoption.png]
 
 ## Replicating experiments in the paper 
 The above commands only run one simulation each. This is useful for debugging, but in order to run
