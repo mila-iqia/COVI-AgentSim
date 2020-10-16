@@ -1,18 +1,13 @@
-# Covid-19 Spread Simulator for Risk Tracing App
+# COVI-sim: A testbed for comparing digital contact tracing apps 
 
-This simulator is built using [`simpy`](!https://simpy.readthedocs.io/en/latest/simpy_intro/index.html).
-It simulates the spread of Covid-19 in a city block while taking human mobility into account. The "city"
-contains houses, workplaces, senior residences, and other non-essential establishments for humans to visit.
-The current framework can handle simulations with 1k-10k humans
-fairly well, and work is under progress to scale it to the size of real cities.
+This simulator is an agent-based model (ABM) built in python using [`simpy`](!https://simpy.readthedocs.io/en/latest/simpy_intro/index.html).
+It simulates the spread of Covid-19 in a population of agents, taking human mobility and indiviual characteristics (e.g. symptoms and pre-existing medical conditions) into account. Agents in the simulation can be assigned one of several types of digital contact tracing (DCT) app, and the ability of each DCT method to control the spread of disease can be compared via cost-benefit analysis.  The level of individual-level detail in our simulator allows for testing a novel type of contact tracing we call Feature-based Contact Tracing (FCT). We provide a simple heuristic baseline FCT method. 
 
-The simulation is based on age-stratified contact patterns, which are calibrated to yield surveyed data.
-More information on agent behavior, interactions, and the transmission model can be found [here](!https://openreview.net/pdf?id=07iDTU-KFK).
-The human mobility simulation is based on a Spatial-EPR model. More details on this model are
-[here](https://www.nature.com/articles/ncomms9166) and [here](https://www.nature.com/articles/nphys1760).
-The infection spread is modeled based on what is currently known about Covid-19. Our understanding is
-based on published research as well as working closely with epidemiologists and other experts. We plan
-to update and calibrate the simulator as more information about COVID-19 becomes available.
+Details of agent behavior, interactions, the transmission model, and baselines (including for FCT) can be found [here](!https://openreview.net/pdf?id=07iDTU-KFK).
+
+The simulator is modular; you can design, simulate, and benchmark your own DCT method against the baselines provided!
+This is the primary intended use of COVI-sim, and the most well-documented. However the simulator can also be used to examine the effects of other types of intervention (e.g. schedules of school or work closure). If you have questions about doing this don't hesitate to contact the developers.
+
 
 
 ## Installation
@@ -23,19 +18,6 @@ in order to properly be able to adjust it to their experimental needs. To do so:
   - Activate your conda/virtualenv environment where the package will be installed
     - Note: the minimal Python verion is 3.7.4!
   - Install the `covid19sim` package (`pip install -e <root_to_covi_simulator>`)
-    - Note: this should install all dependencies required for basic (non-ML-enabled) simulations
-
-If you wish to run simulations with the
-[ML models for risk inference](https://github.com/mila-iqia/covi-machine-learning), you will have to
-install the package for those as well:
-  - Clone the repository to your computer (`git clone https://github.com/mila-iqia/covi-machine-learning`)
-    - Note: clone it OUTSIDE the `<root_to_covi_simulator>` where the simulator is!
-  - Activate the conda/virtualenv environment where the simulator is already installed
-  - Install the `ctt` dependencies (`pip install -r <root_to_covi_machine_learning>/requirements-minimal.txt`)
-    - The 'minimal' dependencies might not be sufficient to train and export a model, but they should
-      be sufficient to use a model for inference in the simulator
-  - Install the `ctt` package (`pip install -e <root_to_covi_simulator>`)
-    - Note: this should install all dependencies required for basic (non-ML-enabled) simulations
 
 
 ## Running a simulation
@@ -63,26 +45,44 @@ A simulation in an unmitigated scenario will be CPU-bound (and run on a single c
 the default settings (1000 people, 30 days), it should take 3-4 minutes on a modern desktop PC, and require
 a maximum of 3GB of RAM (with tracking enabled).
 
-To run a simulation with a risk predictor in the loop, you will have to set the type of intervention
+To run a simulation with some agents assigned digital contact tracing apps, set the type of intervention to one of the baseline DCT methods we provide: 
 (`bdt1`, `bdt2`, `transformer`, `oracle`,
-`heuristicv1`, `heuristicv2`) and the day that intervention should start. For example, to run with the
-first version of the heuristic risk prediction, use:
+`heuristicv1`, `heuristicv2`) (see [here](!https://openreview.net/pdf?id=07iDTU-KFK) for details on these methods), set the day that intervention should start, and optionally set the app uptake (proportion of smartphone users with the app). For example, to run with the
+first version of the heuristic risk prediction, with 40% of the population having the app, use:
 ```
-python -m covid19sim.run intervention=heuristicv1 INTERVENTION_DAY=5  n_people=1000 simulation_days=30
+python -m covid19sim.run intervention=heuristicv1 INTERVENTION_DAY=5  n_people=1000 simulation_days=30 APP_UPTAKE=.5618
 ```
 
+Note on app adoption:
+
+We model app adoption according to statistics of smartphone usage. The left column is the % of total population with the app, and right column is the uptake by smartphone users.
+|% of population with app | Uptake required to get that %  |
+--
+~1 & ~1.50 
+30 & 42.15 
+40 & 56.18 
+60 & 84.15 
+70 & 98.31 
+
+## Replicating experiments in the paper 
 The above commands only run one simulation each. This is useful for debugging, but in order to run
-multiple simulations with domain randomization (e.g. to create a training dataset), we make use of
+multiple simulations at once (e.g. to average over multiple random seeds),  we make use of
 a special config files in (`src/covid19sim/configs/experiment/`, e.g. `app_adoption.yaml`) with a special module
 (`covid19sim.job_scripts.experiment.py`) to run over 100 simulations. Note that this takes several
 hours on a CPU cluster.
 
-For more information on settings and outputs, we suggest to dig into the code and look at the docstrings.
-If you feel lost or are looking into undocumented areas of the code, feel free to contact one of the
-developers.
+For example, to run the app adoption experiment, use:
 
+```
+python experiment.py exp_file=app_adoption base_dir=/your/folder/path/followed_by/output_folder_name track=light env_name=your_env
 
-## How to run tests?
+```
+
+For more examples and details, see (job scripts readme)[https://github.com/mila-iqia/covi-simulator/tree/master/src/covid19sim/job_scripts]
+
+To plot the resulting data, use the appropriate notebook, located in `/notebooks`.
+
+## Running tests
 
 From the root of the repository, run:
 ```
@@ -96,11 +96,9 @@ This project is currently distributed under the [Affero GPL (AGPL) license](LICE
 
 ## Contributing
 
-If you have an idea to contribute, we suggest that you first sync up with one of the developers working
-on the project to minimize potential issues. Then, we will be happy to work on a PR with you.
+If you have an idea to contribute, please open a github issue or contact the developers; we are happy to collaborate and extend this project!
 
 
 ## About
 
-This simulator is part of an academic research project at Mila. The other useful component of this
-project is the machine learning code, located [here](https://github.com/mila-iqia/covi-machine-learning).
+This simulator has been developed as part of a multi-disciplinary project called COVI, aiming to improve and augment existing contact tracing approaches through evidence-based study. This project headed by Dr. Yoshua Bengio at Mila.
