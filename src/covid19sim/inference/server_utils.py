@@ -19,14 +19,13 @@ import time
 import typing
 import zmq
 from pathlib import Path
-try:
-    from ctt.inference.infer import InferenceEngine
-except Exception:
-    pass
+from unittest.mock import MagicMock
 try:
     from covid19sim.inference.inference_engine import InferenceEngineWrapper
-except Exception:
-    pass
+    inference_engine_available = True
+except ImportError:
+    inference_engine_available = False
+    InferenceEngineWrapper = MagicMock
 
 
 import covid19sim.inference.clustering.base
@@ -719,7 +718,7 @@ class DataCollectionServer(DataCollectionBroker, multiprocessing.Process):
 def proc_human_batch(
         sample,
         cluster_mgr_map,
-        engine = None,
+        engine,
         clusters_dump_path: typing.Optional[typing.AnyStr] = None,
 ):
     """
@@ -852,6 +851,9 @@ def _proc_human(params, inference_engine=None):
     if conf.get("USE_ORACLE"):
         risk_history = covid19sim.inference.oracle.oracle(human, conf)
     elif conf.get("RISK_MODEL") == "transformer":
+        assert inference_engine_available, "Please install ctt to make this work."
+        assert not isinstance(inference_engine, MagicMock), "If you've installed ctt and you get this error, " \
+                                                            "may lord help you."
         inference_result = inference_engine.infer(daily_output)
         if inference_result is not None:
             risk_history = inference_result['infectiousness']

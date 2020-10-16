@@ -2,6 +2,7 @@ import os
 from covid19sim.utils.utils import download_exp_data_if_not_exist
 from ctt.inference.infer import InferenceEngine
 
+
 class InferenceEngineWrapper(InferenceEngine):
     """Inference engine wrapper used to download & extract experiment data, if necessary."""
 
