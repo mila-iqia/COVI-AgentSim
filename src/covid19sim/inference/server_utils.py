@@ -17,10 +17,17 @@ import subprocess
 import sys
 import time
 import typing
-import xdelta3
 import zmq
 from pathlib import Path
-from ctt.inference.infer import InferenceEngine
+try:
+    from ctt.inference.infer import InferenceEngine
+except Exception:
+    pass
+try:
+    from covid19sim.inference.inference_engine import InferenceEngineWrapper
+except Exception:
+    pass
+
 
 import covid19sim.inference.clustering.base
 import covid19sim.inference.message_utils
@@ -411,22 +418,6 @@ class InferenceServer(InferenceBroker, multiprocessing.Process):
         InferenceBroker.__init__(self, **kwargs)
 
 
-class InferenceEngineWrapper(InferenceEngine):
-    """Inference engine wrapper used to download & extract experiment data, if necessary."""
-
-    def __init__(self, experiment_directory, *args, **kwargs):
-        if experiment_directory.startswith("http"):
-            assert os.path.isdir("/tmp"), "don't know where to download data to..."
-            experiment_root_directory = \
-                covid19sim.utils.utils.download_exp_data_if_not_exist(experiment_directory, "/tmp")
-            experiment_subdirectories = \
-                [os.path.join(experiment_root_directory, p) for p in os.listdir(experiment_root_directory)
-                 if os.path.isdir(os.path.join(experiment_root_directory, p))]
-            assert len(experiment_subdirectories) == 1, "should only have one dir per experiment zip"
-            experiment_directory = experiment_subdirectories[0]
-        super().__init__(experiment_directory, *args, **kwargs)
-
-
 class DataCollectionWorker(BaseWorker):
     """
     Spawns a data collection worker instance.
@@ -727,8 +718,8 @@ class DataCollectionServer(DataCollectionBroker, multiprocessing.Process):
 
 def proc_human_batch(
         sample,
-        engine,
         cluster_mgr_map,
+        engine = None,
         clusters_dump_path: typing.Optional[typing.AnyStr] = None,
 ):
     """
@@ -789,7 +780,7 @@ def proc_human_batch(
     return results
 
 
-def _proc_human(params, inference_engine):
+def _proc_human(params, inference_engine=None):
     """Internal implementation of the `proc_human_batch` function."""
     assert isinstance(params, dict) and \
            all([p in params for p in expected_raw_packet_param_names]), \
@@ -861,7 +852,6 @@ def _proc_human(params, inference_engine):
     if conf.get("USE_ORACLE"):
         risk_history = covid19sim.inference.oracle.oracle(human, conf)
     elif conf.get("RISK_MODEL") == "transformer":
-        # no need to do actual inference if the cluster count is zero
         inference_result = inference_engine.infer(daily_output)
         if inference_result is not None:
             risk_history = inference_result['infectiousness']

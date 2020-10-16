@@ -8,26 +8,26 @@ import functools
 import typing
 from joblib import Parallel, delayed
 
-from covid19sim.inference.server_utils import InferenceClient, InferenceEngineWrapper, proc_human_batch
+from covid19sim.inference.server_utils import proc_human_batch
+from covid19sim.inference.inference_engine import InferenceClient, InferenceEngineWrapper
 from covid19sim.inference.clustering.base import ClusterManagerBase
 from covid19sim.inference.human_as_message import make_human_as_message
 if typing.TYPE_CHECKING:
     from covid19sim.human import Human
     from covid19sim.locations.city import SimulatorMailboxType
 
-
 class DummyMemManager:
     """Dummy memory manager used when running in a single process."""
 
     global_cluster_map: typing.Dict[str, ClusterManagerBase] = {}
-    global_inference_engine: InferenceEngineWrapper = None
+    global_inference_engine = None
 
     @classmethod
     def get_cluster_mgr_map(cls) -> typing.Dict[str, ClusterManagerBase]:
         return cls.global_cluster_map
 
     @classmethod
-    def get_engine(cls, conf) -> InferenceEngineWrapper:
+    def get_engine(cls, conf):
         if (
             cls.global_inference_engine is None
             and not conf.get('USE_ORACLE', False)
@@ -119,8 +119,12 @@ def batch_run_timeslot_heavy_jobs(
             results.extend(b)
     else:
         cluster_mgr_map = DummyMemManager.get_cluster_mgr_map()
-        engine = DummyMemManager.get_engine(conf)
-        results = proc_human_batch(all_params, engine, cluster_mgr_map)
+        try:
+            import speedrun
+            engine = DummyMemManager.get_engine(conf)
+        except Exception:
+            engine = None
+        results = proc_human_batch(all_params, cluster_mgr_map, engine)
 
     for name, risk_history in results:
         human = hd[name]
