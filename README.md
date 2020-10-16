@@ -8,7 +8,6 @@ Details of agent behavior, interactions, the transmission model, baselines (incl
 The simulator is modular; you can design, simulate, and benchmark your own DCT method against the baselines provided!
 This is the primary intended use of COVI-sim, and the most well-documented. However the simulator can also be used to examine the effects of other types of intervention (e.g. schedules of school or work closure). If you have questions about doing this don't hesitate to contact the developers.
 
-Comparsion of methods at 60% adoption: 
 ![Comparison of digital contact tracing methods at 60% adoption](https://github.com/mila-iqia/covi-simulator/blob/sim-only-for-release/notebooks/GP_r_effective_contacts_mobility_scatter_w_annotations_w_scatter_AR_60.png)
 
 
@@ -66,7 +65,6 @@ Percentage of population with app | Uptake required to get that percentage
 60 | 84.15 
 70 | 98.31 
 
-Comparison of methods for different levels of app adoption:
 ![Comparison of digital contact tracing methods for different levels of app adoption](https://github.com/mila-iqia/covi-simulator/blob/sim-only-for-release/notebooks/epi-adoption.png)
 
 ## Replicating experiments in the paper 
@@ -80,10 +78,9 @@ For example, to run the app adoption experiment, use:
 
 ```
 python experiment.py exp_file=app_adoption base_dir=/your/folder/path/followed_by/output_folder_name track=light env_name=your_env
-
 ```
 
-For more examples and details, see (job scripts readme)[https://github.com/mila-iqia/covi-simulator/tree/master/src/covid19sim/job_scripts]
+For more examples and details, see [job scripts readme](https://github.com/mila-iqia/covi-simulator/tree/master/src/covid19sim/job_scripts).
 
 To plot the resulting data, use the appropriate notebook, located in `/notebooks`.
 
