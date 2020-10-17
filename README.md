@@ -1,7 +1,7 @@
 # COVI-sim: A testbed for comparing contact tracing apps 
 
 This simulator is an agent-based model (ABM) built in python using [`simpy`](https://simpy.readthedocs.io/en/latest/simpy_intro/index.html).
-It simulates the spread of Covid-19 in a population of agents, taking human mobility and indiviual characteristics (e.g. symptoms and pre-existing medical conditions) into account. Agents in the simulation can be assigned one of several types of digital contact tracing (DCT) app, and the ability of each DCT method to control the spread of disease can be compared via cost-benefit analysis.  The level of individual-level detail in our simulator allows for testing a novel type of contact tracing we call Feature-based Contact Tracing (FCT). We provide a simple heuristic baseline FCT method. 
+It simulates the spread of COVID-19 in a population of agents, taking human mobility and indiviual characteristics (e.g. symptoms and pre-existing medical conditions) into account. Agents in the simulation can be assigned one of several types of digital contact tracing (DCT) app, and the ability of each DCT method to control the spread of disease can be compared via cost-benefit analysis.  The level of individual-level detail in our simulator allows for testing a novel type of contact tracing we call Feature-based Contact Tracing (FCT). We provide a simple heuristic baseline FCT method. 
 
 Details of agent behavior, interactions, the transmission model, baselines (including for FCT) and experimental results can be found [here](!https://openreview.net/pdf?id=07iDTU-KFK).
 
@@ -17,13 +17,13 @@ For now, we recommend that all users install the simulator's source code as an e
 in order to properly be able to adjust it to their experimental needs. To do so:
   - Clone the repository to your computer (`git clone https://github.com/mila-iqia/covi-simulator`)
   - Activate your conda/virtualenv environment where the package will be installed
-    - Note: the minimal Python verion is 3.7.4!
+    - Note: the minimal Python version is 3.7.4!
   - Install the `covid19sim` package (`pip install -e <root_to_covi_simulator>`)
 
 
 ## Running a simulation
 
-To run an "unmitigated" 1k-human simulation for 30 days while logging Covid-19 progression and various
+To run an "unmitigated" 1k-human simulation for 30 days while logging COVID-19 progression and various
 statistics, use:
 ```
 python -m covid19sim.run tune=True intervention=no_intervention n_people=1000 simulation_days=30
