@@ -82,7 +82,9 @@ python experiment.py exp_file=app_adoption base_dir=/your/folder/path/followed_b
 
 For more examples and details, see [job scripts readme](https://github.com/mila-iqia/covi-simulator/tree/master/src/covid19sim/job_scripts).
 
-To plot the resulting data, use the appropriate notebook, located in `/notebooks`.
+To plot the resulting data, use the appropriate notebook, located in `/notebooks`, or use plotting/main.py --help to see the list of available options.
+
+
 
 ## Running tests
 
@@ -103,4 +105,4 @@ If you have an idea to contribute, please open a github issue or contact the dev
 
 ## About
 
-This simulator has been developed as part of a multi-disciplinary project called COVI, aiming to improve and augment existing contact tracing approaches through evidence-based study. This project headed by Dr. Yoshua Bengio at Mila.
+This simulator has been developed as part of a multi-disciplinary project called COVI, aiming to improve and augment existing contact tracing approaches through evidence-based study. This project is headed by Dr. Yoshua Bengio at Mila.
