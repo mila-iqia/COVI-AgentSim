@@ -1,7 +1,7 @@
-# Covid-19 Spread Simulator for Risk Tracing App
+# COVID-19 Spread Simulator for Risk Tracing App
 
 This simulator is built using [`simpy`](!https://simpy.readthedocs.io/en/latest/simpy_intro/index.html).
-It simulates the spread of Covid-19 in a city block while taking human mobility into account. The "city"
+It simulates the spread of COVID-19 in a city block while considering human mobility. The "city"
 contains houses, workplaces, senior residences, and other non-essential establishments for humans to visit.
 The current framework can handle simulations with 1k-10k humans
 fairly well, and work is under progress to scale it to the size of real cities.
@@ -10,7 +10,7 @@ The simulation is based on age-stratified contact patterns, which are calibrated
 More information on agent behavior, interactions, and the transmission model can be found [here](!https://openreview.net/pdf?id=07iDTU-KFK).
 The human mobility simulation is based on a Spatial-EPR model. More details on this model are
 [here](https://www.nature.com/articles/ncomms9166) and [here](https://www.nature.com/articles/nphys1760).
-The infection spread is modeled based on what is currently known about Covid-19. Our understanding is
+The infection spread is modeled based on what is currently known about COVID-19. Our understanding is
 based on published research as well as working closely with epidemiologists and other experts. We plan
 to update and calibrate the simulator as more information about COVID-19 becomes available.
 
@@ -21,7 +21,7 @@ For now, we recommend that all users install the simulator's source code as an e
 in order to properly be able to adjust it to their experimental needs. To do so:
   - Clone the repository to your computer (`git clone https://github.com/mila-iqia/covi-simulator`)
   - Activate your conda/virtualenv environment where the package will be installed
-    - Note: the minimal Python verion is 3.7.4!
+    - Note: the minimal Python version is 3.7.4!
   - Install the `covid19sim` package (`pip install -e <root_to_covi_simulator>`)
     - Note: this should install all dependencies required for basic (non-ML-enabled) simulations
 
@@ -40,7 +40,7 @@ install the package for those as well:
 
 ## Running a simulation
 
-To run an "unmitigated" 1k-human simulation for 30 days while logging Covid-19 progression and various
+To run an "unmitigated" 1k-human simulation for 30 days while logging COVID-19 progression and various
 statistics, use:
 ```
 python -m covid19sim.run tune=True intervention=no_intervention n_people=1000 simulation_days=30
