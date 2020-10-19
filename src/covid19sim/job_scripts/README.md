@@ -42,3 +42,7 @@ Plot the frontier using the following command  -
 ```bash
 python plotting/main.py plot=normalized_mobility path=/your/folder/path/followed_by/folder_name
 ```
+
+
+## Generating domain randomized datasets to train machine learning algorithms
+In order to generate domain randomized datasets, we must define the parameters we wish to vary. We provide an example in `configs/experiment/randomization.yaml` which may be used to generate a suite of datasets. In particular, running `experiment.py` with `exp_file=randomization` will generate 120 datasets with different random seeds, dropout rates, app adoption rates, etc, and write data to the location specified by the `outdir` parameter. This data is in the form of `zarr` arrays containing dictionaries. Each dictionary contains observable data from an individual in that simulation's cellphone, as well as their unobserved state (e.g. infectiousness). 
