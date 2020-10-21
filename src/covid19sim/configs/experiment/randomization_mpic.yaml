@@ -23,7 +23,7 @@ INTERVENTION_DAY: 0
 PROPORTION_LAB_TEST_PER_DAY: 0.001
 MAKE_HOUSEHOLD_BEHAVE_SAME_AS_MAX_RISK_RESIDENT: True
 
-outdir: /home/nrahaman/python/covi-simulator/exp/neodr2
+outdir: /home/nrahaman/python/COVI-AgentSim/exp/neodr2
 weights_dir: /home/nrahaman/python/ctt/exp/SHIPMENTS
 zip_outdir: true
 delete_outdir: true

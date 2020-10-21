@@ -12,7 +12,7 @@
 # from covid19sim.utils.utils import dump_tracker_data, extract_tracker_data
 
 # TODO : re-add this test. There was a slowdown / conflict with zarr
-# introduced in this PR: https://github.com/mila-iqia/covi-simulator/pull/70/files
+# introduced in this PR: https://github.com/mila-iqia/COVI-AgentSim/pull/70/files
 #
 # class PlotTest(unittest.TestCase):
 #
