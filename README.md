@@ -8,7 +8,7 @@ Details of agent behavior, interactions, the transmission model, baselines (incl
 The simulator is modular; you can design, simulate, and benchmark your own DCT method against the baselines provided!
 This is the primary intended use of COVI-AgentSim, and the most well-documented. However the simulator can also be used to examine the effects of other types of intervention (e.g. schedules of school or work closure). If you have questions about doing this don't hesitate to contact the developers.
 
-<img src="https://gcovi-simulatorithub.com/mila-iqia/COVI-AgentSim/blob/master/notebooks/GP_r_effective_contacts_mobility_scatter_w_annotations_w_scatter_AR_60.jpg" width="80%">
+<img src="https://github.com/mila-iqia/COVI-AgentSim/blob/master/notebooks/GP_r_effective_contacts_mobility_scatter_w_annotations_w_scatter_AR_60.jpg" width="80%">
 
 
 ## Installation
