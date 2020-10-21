@@ -26,7 +26,7 @@ PROPORTION_LAB_TEST_PER_DAY: 0.001
 MAKE_HOUSEHOLD_BEHAVE_SAME_AS_MAX_RISK_RESIDENT: True
 
 USE_INFERENCE_SERVER: False
-base_dir: /home/nrahaman/python/covi-simulator/exp/streaming
+base_dir: /home/nrahaman/python/COVI-AgentSim/exp/streaming
 weights_dir: /lustre/work/nrahaman/ctt/exp/SHIPMENTS
 use_tmpdir: false
 

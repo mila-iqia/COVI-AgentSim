@@ -11,7 +11,7 @@ time: "'5:00:00'"
 # -------------------------
 # -----  Directories  -----
 # -------------------------
-base_dir: /home/nrahaman/python/covi-simulator/exp/streaming # if outdir is not provided, runs will be stored in base_dir/${intervention}
+base_dir: /home/nrahaman/python/COVI-AgentSim/exp/streaming # if outdir is not provided, runs will be stored in base_dir/${intervention}
 code_loc: $HOME/simulator/src/covid19sim/
 use_tmpdir: false
 weights_dir: /lustre/work/nrahaman/ctt/exp/SHIPMENTS
