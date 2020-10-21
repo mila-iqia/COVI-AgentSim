@@ -31,15 +31,15 @@ jobs:
     - name: Machine learning source code checkout
       uses: actions/checkout@v2
       with:
-        repository: mila-iqia/covi-machine-learning
+        repository: mila-iqia/COVI-ML
         ref: littlecrunch  # TODO: auto-select the name of the current simulator branch?
         token: ${{ secrets.ORG_REPOS_AUTH_TOKEN }}  # TODO: ONCE PUBLIC, REMOVE + DELETE TOKEN @@@
-        path: downloads/covi-machine-learning
+        path: downloads/COVI-ML
     - name: Machine learning package installation
       run: |
         # TODO: ctt should self-install its own requirements.txt...
-        pip install -r downloads/covi-machine-learning/requirements-minimal.txt
-        pip install -e downloads/covi-machine-learning
+        pip install -r downloads/COVI-ML/requirements-minimal.txt
+        pip install -e downloads/COVI-ML
     - name: Simulator package installation
       run: |
         pip install -e .
