@@ -4,7 +4,7 @@ To install the simulator without `ctt`
 pip install .
 ```
 
-To install the simulator with [`ctt`](https://github.com/mila-iqia/covi-machine-learning)
+To install the simulator with [`ctt`](https://github.com/mila-iqia/COVI-ML)
 ```
 pip install '.[ctt]'
 ```
