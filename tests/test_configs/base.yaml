@@ -24,11 +24,6 @@ APP_UPTAKE: -1.0
 TRACING_N_DAYS_HISTORY: 14
 UPDATES_PER_DAY: 4
 
-# MULTIPROCESSING
-NUM_DISTRICTS: 4
-SYNC_ALLOWED_DRIFT_SEC: 2
-SYNC_SLEEP_INTERVAL_SEC: 0.01
-
 # clustering related parameters
 DUMP_CLUSTERS: False
 CLUSTER_ALGO_TYPE: "blind" # should be in ["old", "blind", "naive", "perfect", "simple"]
