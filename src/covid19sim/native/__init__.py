@@ -1,6 +1,7 @@
 import simpy
 import datetime
 from ._native import BaseEnvironment
+from covid19sim.utils.lmdb import LMDBSortedMap
 
 
 class Environment(BaseEnvironment, simpy.Environment):
@@ -24,7 +25,26 @@ class Environment(BaseEnvironment, simpy.Environment):
             BaseEnvironment  .__init__(self, initial_time.timestamp())
             simpy.Environment.__init__(self, self.now)
             self.initial_timestamp = initial_time
+
+        self.sorted_map = LMDBSortedMap()
     
+    def init_timed_barrier(self, pid, allowed_drift, sleep_interval):
+        self.pid = pid
+        self.allowed_drift = allowed_drift
+        self.sleep_interval = sleep_interval
+
+    def step(self) -> None:
+        """
+        Take environment step while waiting for the slowest district to catch up
+        """
+        last_timestamp = self._now
+        super(simpy.Environment, self).step()
+        if last_timestamp < self._now:
+            self.sorted_map.replace(last_timestamp, self._now, self.pid)
+            # if the slowest district's drift is large, sleep
+            while (self._now - self.sorted_map.first()) >= self.allowed_drift:
+                sleep(self.sleep_interval)
+
     @property
     def timestamp(self):
         """
