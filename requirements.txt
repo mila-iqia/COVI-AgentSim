@@ -32,3 +32,4 @@ weasyprint
 xdelta3
 runstats
 zarr
+lmdb

@@ -9,7 +9,6 @@ from covid19sim.inference.helper import conditions_to_np, encode_age, encode_sex
 from covid19sim.inference.message_utils import UpdateMessage
 if typing.TYPE_CHECKING:
     from covid19sim.human import Human
-    from covid19sim.locations.city import PersonalMailboxType
 
 
 def get_test_results_array(human, current_timestamp):
@@ -31,7 +30,7 @@ def get_test_results_array(human, current_timestamp):
 
 def make_human_as_message(
         human: "Human",
-        personal_mailbox: "PersonalMailboxType",
+        update_messages: typing.List[UpdateMessage],
         conf: typing.Dict,
 ):
     """
@@ -43,7 +42,7 @@ def make_human_as_message(
 
     Args:
         human: the human object to convert.
-        personal_mailbox: the personal mailbox dictionary to fetch update messages from.
+        update_messages: the update messages sent to human.
         conf: YAML configuration dictionary with all relevant settings for the simulation.
     Returns:
         The nice-and-slim human dataclass object.
@@ -54,12 +53,8 @@ def make_human_as_message(
     rolling_all_reported_symptoms = symptoms_to_np(human.rolling_all_reported_symptoms, conf)
 
     # TODO: we could index the global mailbox by day, it might be faster that way
-    update_messages = []
-    for key in target_mailbox_keys:
-        if key in personal_mailbox:
-            assert isinstance(personal_mailbox[key], list)
-            update_messages.extend(personal_mailbox.pop(key))
     contacted_uids = [key for keys in human.contact_book.uids_by_day.values() for key in keys]
+    update_messages = [m for m in update_messages if m.uid in contacted_uids]
 
     return HumanAsMessage(
         name=human.name,

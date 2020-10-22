@@ -15,7 +15,6 @@ if typing.TYPE_CHECKING:
     from covid19sim.human import Human
     from covid19sim.locations.city import SimulatorMailboxType
 
-
 class DummyMemManager:
     """Dummy memory manager used when running in a single process."""
 
@@ -85,7 +84,7 @@ def batch_run_timeslot_heavy_jobs(
             "current_day": current_day_idx,
             "human": make_human_as_message(
                 human=human,
-                personal_mailbox=global_mailbox[human.name],
+                personal_mailbox=global_mailbox.get(human.name,[]),
                 conf=conf
             ),
             "time_slot": time_slot,
@@ -130,4 +129,70 @@ def batch_run_timeslot_heavy_jobs(
                     current_day_idx=current_day_idx,
                     risk_history=risk_history,
                 )
+    return humans
+
+def batch_district_run_timeslot_heavy_jobs(
+        engine: "TransformerInferenceEngine",
+        humans: typing.Iterable["Human"],
+        init_timestamp: datetime.datetime,
+        current_timestamp: datetime.datetime,
+        global_mailbox: "SimulatorMailboxType",
+        time_slot: int,
+        conf: typing.Dict,
+        city_hash: int = 0,
+) -> typing.Iterable["Human"]:
+    """
+    Runs the 'heavy' processes that must occur for all users in parallel.
+
+    The heavy stuff here is the clustering and risk level inference using a 3rd party model.
+    These steps can be delegated to a remote server if the simulator is configured that way.
+
+    Args:
+        humans: the list of all humans in the zone.
+        init_timestamp: initialization timestamp of the simulation.
+        current_timestamp: the current timestamp of the simulation.
+        global_mailbox: the global mailbox dictionary used to fetch already-existing updates from.
+            Note that messages can be removed from this mailbox in this function, but not added, as
+            that is delegated to the caller (see the return values).
+        time_slot: the current timeslot of the day (i.e. an integer that corresponds to the hour).
+        conf: YAML configuration dictionary with all relevant settings for the simulation.
+        city_hash: a hash used to tag this city's humans on an inference server that may be used by
+            multiple cities in parallel. Bad mojo will happen if two cities have the same hash...
+    Returns:
+        A tuple consisting of the updated humans & of the newly generated update messages to register.
+    """
+    current_day_idx = (current_timestamp - init_timestamp).days
+    assert current_day_idx >= 0
+
+    for human in humans:
+        if (
+            not human.has_app
+            or time_slot not in human.time_slots
+            or human.is_dead
+        ):
+            continue
+
+        assert not human.cluster_mgr._is_being_used, "two processes should never try to access the same human"
+        human.cluster_mgr._is_being_used = True
+
+        params = {
+            "start": init_timestamp,
+            "current_day": current_day_idx,
+            "human": make_human_as_message(
+                human=human,
+                update_messages=global_mailbox.pop(human.name),
+                conf=conf
+            ),
+            "time_slot": time_slot,
+            "cluster_mgr": human.cluster_mgr,
+            "conf": conf,
+            "city_hash": city_hash,
+        }
+        _, risk_history = _proc_human(params, engine)
+        human.cluster_mgr._is_being_used = False
+        if risk_history is not None:
+            human.apply_transformer_risk_updates(
+                current_day_idx=current_day_idx,
+                risk_history=risk_history,
+            )
     return humans

@@ -12,8 +12,13 @@ from collections import defaultdict
 from orderedset import OrderedSet
 
 from covid19sim.utils.mobility_planner import MobilityPlanner
+<<<<<<< Updated upstream
 from covid19sim.utils.utils import proba_to_risk_fn
 from covid19sim.locations.city import PersonalMailboxType
+=======
+from covid19sim.utils.utils import compute_distance, proba_to_risk_fn
+# from covid19sim.locations.city import PersonalMailboxType
+>>>>>>> Stashed changes
 from covid19sim.locations.hospital import Hospital, ICU
 from collections import deque
 
@@ -31,11 +36,16 @@ from covid19sim.interventions.intervened_behavior import IntervenedBehavior
 from covid19sim.utils.constants import SECONDS_PER_MINUTE, SECONDS_PER_HOUR, SECONDS_PER_DAY
 from covid19sim.utils.constants import NEGATIVE_TEST_RESULT, POSITIVE_TEST_RESULT
 from covid19sim.utils.constants import TEST_TAKEN, RISK_LEVEL_UPDATE, SELF_DIAGNOSIS
+<<<<<<< Updated upstream
+=======
+from covid19sim.utils.constants import TAKE_TEST_DUE_TO_SELF_DIAGNOSIS, TAKE_TEST_DUE_TO_RANDOM_REASON, TAKE_TEST_DUE_TO_RECOMMENDATION
+from covid19sim.inference.clustering.base import get_cluster_manager_type
+>>>>>>> Stashed changes
 
-if typing.TYPE_CHECKING:
-    from covid19sim.utils.env import Env
-    from covid19sim.locations.city import City
-    from covid19sim.locations.location import Location
+# if typing.TYPE_CHECKING:
+from covid19sim.utils.env import Env
+from covid19sim.locations.city import City
+from covid19sim.locations.location import Location
 
 
 class Human(BaseHuman):
@@ -52,12 +62,24 @@ class Human(BaseHuman):
         rng (np.random.RandomState): Random number generator
         conf (dict): yaml configuration of the experiment
     """
+    id_counter = 0
 
     def __init__(
         self, env: Env, city: City, name: str, age: int,
         rng: np.random.RandomState, conf: typing.Dict
         ):
         super().__init__(env)
+        # cluster manager
+        cluster_algo_type = get_cluster_manager_type(
+                conf.get("CLUSTER_ALGO_TYPE", "blind")
+            )
+        tracing_history = conf.get("TRACING_N_DAYS_HISTORY")
+        self.cluster_mgr = cluster_algo_type(
+                max_history_offset=datetime.timedelta(days=tracing_history),
+                add_orphan_updates_as_clusters=True,
+                generate_embeddings_by_timestamp=True,
+                generate_backw_compat_embeddings=True,
+            )
 
         # Utility References
         self.conf = conf  # Simulation-level Configurations
@@ -84,7 +106,9 @@ class Human(BaseHuman):
         self.oracle_noise_random_seed = None
 
         # Human-related properties
-        self.name: RealUserIDType = f"human:{name}"  # Name of this human
+        # self.name: RealUserIDType = f"human:{name}"  # Name of this human
+        self.name: RealUserIDType = Human.id_counter
+        Human.id_counter += 1
         self.known_connections = set() # keeps track of all other humans that this human knows of
         self.does_not_work = False # to identify those who weren't assigned any workplace from the beginning
         self.work_start_time, self.work_end_time, self.working_days = None, None, []
@@ -789,7 +813,7 @@ class Human(BaseHuman):
             self,
             init_timestamp: datetime.datetime,
             current_timestamp: datetime.datetime,
-            personal_mailbox: PersonalMailboxType,
+            # personal_mailbox: PersonalMailboxType,
     ):
         """Runs the first half of processes that should happen when the app is woken up at the
         human's timeslot. These include symptom updates, initial risk updates & contact tracing,
@@ -822,13 +846,13 @@ class Human(BaseHuman):
             return
 
         # All tracing methods that are _not ML_ (heuristic, bdt1, bdt2, etc) will compute new risks here
-        from covid19sim.interventions.tracing import Heuristic
+        # from covid19sim.interventions.tracing import Heuristic
 
-        if isinstance(self.intervention, Heuristic):
-            # then we use clusters as the mailbox
-            personal_mailbox = self.intervention.extract_clusters(self)
+        # if isinstance(self.intervention, Heuristic):
+        #     # then we use clusters as the mailbox
+        #     personal_mailbox = self.intervention.extract_clusters(self)
 
-        risks = self.intervention.compute_risk(self, personal_mailbox, self.city.hd)
+        risks = self.intervention.compute_risk(self, None, self.city.hd)
         for day_offset, risk in enumerate(risks):
             if current_day_idx - day_offset in self.risk_history_map:
                 self.risk_history_map[current_day_idx - day_offset] = risk
@@ -928,7 +952,7 @@ class Human(BaseHuman):
         # (delete) remove intervention_start
         self.update_recommendations_level(intervention_start=True)
 
-    def run(self):
+    def run(self, next_activity=None):
         """
         Transitions `self` from one `Activity` to other
         Note: use -O command line option to avoid checking for assertions
@@ -936,8 +960,8 @@ class Human(BaseHuman):
         Yields:
             simpy.events.Event:
         """
-
-        previous_activity, next_activity = None, self.mobility_planner.get_next_activity()
+        if next_activity==None:
+            next_activity = self.mobility_planner.get_next_activity()
         while True:
 
             #
@@ -945,8 +969,10 @@ class Human(BaseHuman):
                 yield self.env.process(self.expire())
 
             #
-            if next_activity.location is not None:
-
+            next_location = next_activity.location
+            if next_location not in self.district:
+                return next_location
+            elif next_location is not None:
                 # (debug) to print the schedule for someone
                 # if self.name == "human:77":
                 #       print("A\t", self.env.timestamp, self, next_activity)
@@ -954,13 +980,16 @@ class Human(BaseHuman):
                 # /!\ TODO - P - check for the capacity at a location; it requires adjustment of timestamps
                 # with next_activity.location.request() as request:
                 #     yield request
-                #     yield self.env.process(self.transition_to(next_activity, previous_activity))
+                #     yield self.env.process(self.transition_to(next_activity))
 
                 assert abs(self.env.timestamp - next_activity.start_time).seconds == 0, f"start times do not align...\n{self}\n{self.intervened_behavior.quarantine_timestamp}\n{self.intervened_behavior.quarantine_reason}\ncurrent timestamp:{self.env.timestamp}\nnext_activity:{next_activity}"
-                yield self.env.process(self.transition_to(next_activity, previous_activity))
+                yield self.env.process(self.transition_to(next_activity))
                 assert abs(self.env.timestamp - next_activity.end_time).seconds == 0, f"end times do not align...\n{self}\n{self.intervened_behavior.quarantine_timestamp}\n{self.intervened_behavior.quarantine_reason}\ncurrent timestamp:{self.env.timestamp}\nnext_activity:{next_activity}"
 
                 previous_activity, next_activity = next_activity, self.mobility_planner.get_next_activity()
+                
+                # track transitions & locations visited
+                self.city.tracker.track_mobility(previous_activity, self)
 
             else:
                 # supervised or invitation type of activities (prepend_name) will require to refresh their location
@@ -1009,7 +1038,7 @@ class Human(BaseHuman):
         else:
             return round(self.lon + self.rng.normal(0, 10))
 
-    def transition_to(self, next_activity, previous_activity):
+    def transition_to(self, next_activity):
         """
         Enter/Exit human to/from a `location` for some `duration`.
         Once human is at a location, encounters are sampled.
@@ -1028,9 +1057,6 @@ class Human(BaseHuman):
         location = next_activity.location
         duration = next_activity.duration
         type_of_activity = next_activity.name
-
-        # track transitions & locations visited
-        self.city.tracker.track_mobility(previous_activity, next_activity, self)
 
         # add human to the location
         self.location = location
