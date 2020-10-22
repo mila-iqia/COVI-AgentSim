@@ -12,13 +12,7 @@ from collections import defaultdict
 from orderedset import OrderedSet
 
 from covid19sim.utils.mobility_planner import MobilityPlanner
-<<<<<<< Updated upstream
 from covid19sim.utils.utils import proba_to_risk_fn
-from covid19sim.locations.city import PersonalMailboxType
-=======
-from covid19sim.utils.utils import compute_distance, proba_to_risk_fn
-# from covid19sim.locations.city import PersonalMailboxType
->>>>>>> Stashed changes
 from covid19sim.locations.hospital import Hospital, ICU
 from collections import deque
 
@@ -36,11 +30,8 @@ from covid19sim.interventions.intervened_behavior import IntervenedBehavior
 from covid19sim.utils.constants import SECONDS_PER_MINUTE, SECONDS_PER_HOUR, SECONDS_PER_DAY
 from covid19sim.utils.constants import NEGATIVE_TEST_RESULT, POSITIVE_TEST_RESULT
 from covid19sim.utils.constants import TEST_TAKEN, RISK_LEVEL_UPDATE, SELF_DIAGNOSIS
-<<<<<<< Updated upstream
-=======
 from covid19sim.utils.constants import TAKE_TEST_DUE_TO_SELF_DIAGNOSIS, TAKE_TEST_DUE_TO_RANDOM_REASON, TAKE_TEST_DUE_TO_RECOMMENDATION
 from covid19sim.inference.clustering.base import get_cluster_manager_type
->>>>>>> Stashed changes
 
 # if typing.TYPE_CHECKING:
 from covid19sim.utils.env import Env
