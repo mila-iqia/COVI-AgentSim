@@ -2,6 +2,7 @@
 This module implements the `City` class which is responsible for running the environment in which all
 humans will interact. Its `run` loop also contains the tracing application logic that runs every hour.
 """
+
 import numpy as np
 import copy
 import datetime
@@ -97,6 +98,10 @@ class City:
 
         log("Initializing humans ...", self.logfile)
         self.initialize_humans_and_locations()
+
+        # self.log_static_info()
+        self.tracker.track_static_info()
+
 
         log("Computing their preferences", self.logfile)
         self._compute_preferences()
@@ -541,6 +546,8 @@ class City:
             if current_day != last_day_idx:
                 alive_humans = [human for human in self.humans if not human.is_dead]
                 last_day_idx = current_day
+                if self.conf.get("DIRECT_INTERVENTION", -1) == current_day:
+                    self.conf['GLOBAL_MOBILITY_SCALING_FACTOR'] = self.conf['GLOBAL_MOBILITY_SCALING_FACTOR']  / 2
                 self.do_daily_activies(current_day, alive_humans)
 
     def do_daily_activies(

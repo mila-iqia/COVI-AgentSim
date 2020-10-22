@@ -27,6 +27,8 @@ from covid19sim.utils.constants import SECONDS_PER_DAY, SECONDS_PER_MINUTE
 from covid19sim.interventions.tracing import Heuristic
 if typing.TYPE_CHECKING:
     from covid19sim.human import Human
+from covid19sim.locations.hospital import Hospital, ICU
+
 
 # used by - next_generation_matrix,
 SNAPSHOT_PERCENT_INFECTED_THRESHOLD = 2 # take a snapshot every time percent infected of population increases by this amount
@@ -288,8 +290,9 @@ class Tracker(object):
             "start_time": Statistics()
         }
 
-        self.daily_work_hours_by_age_group = {status: np.zeros((len(AGE_BIN_WIDTH_5), self.conf['simulation_days'])) for status in WORK_ACTIVITY_STATUS}
-        self.all_acitivty_names = set()
+
+        self.daily_work_hours_by_age_group = {status: np.zeros((len(AGE_BIN_WIDTH_5),3, self.conf['simulation_days'])) for status in WORK_ACTIVITY_STATUS}
+        self.all_activity_names = set()
 
         # infection stats
         self.n_infected_init = 0 # to be initialized in `initialize`
@@ -308,6 +311,9 @@ class Tracker(object):
         self.humans_rec_level = defaultdict(list)
         self.humans_intervention_level = defaultdict(list)
 
+        #demographics
+        self.humans_demographics = []
+
         # epi related
         self.serial_intervals = []
         self.serial_interval_book_to = defaultdict(dict)
@@ -325,6 +331,7 @@ class Tracker(object):
 
         # testing & hospitalization
         self.hospitalization_per_day = [0]
+        self.hospital_usage_per_day = [0]
         self.critical_per_day = [0]
         self.deaths_per_day = [0]
         self.test_results_per_day = defaultdict(lambda :{'positive':0, 'negative':0})
@@ -620,6 +627,13 @@ class Tracker(object):
 
         return np.mean(times).item()
 
+    def track_static_info(self):
+            for human in self.city.humans:
+                self.humans_demographics.append({"name": human.name,
+                                                "preexisting_conditions": human.preexisting_conditions,
+                                                "age": human.age,
+                                                "sex": human.sex})
+
     def compute_serial_interval(self):
         """
         Computes mean of all serial intervals.
@@ -703,15 +717,17 @@ class Tracker(object):
                 state = 'R'
             else:
                 raise ValueError(f"{human} is not in any of SEIR states")
-
             self.humans_quarantined_state[human.name].append(human.intervened_behavior.is_under_quarantine)
             self.humans_state[human.name].append(state)
             self.humans_rec_level[human.name].append(human.rec_level)
             self.humans_intervention_level[human.name].append(human._intervention_level)
 
+        num_humans_in_hospital = sum([hospital.n_covid_patients for hospital in self.city.hospitals])
+
         # test_per_day
         self.tested_per_day.append(0)
         self.hospitalization_per_day.append(0)
+        self.hospital_usage_per_day.append(num_humans_in_hospital)
         self.critical_per_day.append(0)
         self.deaths_per_day.append(0)
 
@@ -739,6 +755,9 @@ class Tracker(object):
                 "dead": h.is_dead,
                 "reported_test_result": h.reported_test_result,
                 "n_reported_symptoms": len(h.reported_symptoms),
+                "age": human.age,
+                "is_in_hospital": isinstance(h.location, Hospital),
+                "is_in_ICU": isinstance(h.location, ICU)
             })
 
         self.human_monitor[self.env.timestamp.date()-datetime.timedelta(days=1)] = row
@@ -1314,6 +1333,9 @@ class Tracker(object):
             next_activity (covid19sim.utils.mobility_planner.Activity): next activity that will be pursued
             human (covid19sim.human.Human): human for which sleep schedule needs to be added.
         """
+        sex_to_idx = {'male':0,
+                      'female':1,
+                      'other':2}
         if not (self.conf['track_all'] or self.conf['track_mobility']) or just_finished_activity is None:
             return
 
@@ -1323,9 +1345,9 @@ class Tracker(object):
             and just_finished_activity.prepend_name == ""
         ):
             category = _get_work_status_category(human, just_finished_activity)
-            self.all_acitivty_names.add(category)
+            self.all_activity_names.add(category)
             n_sim_day = (just_finished_activity.start_time - self.conf['COVID_SPREAD_START_TIME']).days # tracking is on only since COVID_SPREAD_START_TIME
-            self.daily_work_hours_by_age_group[category][human.age_bin_width_5.index, n_sim_day] += just_finished_activity.duration / SECONDS_PER_HOUR
+            self.daily_work_hours_by_age_group[category][human.age_bin_width_5.index,sex_to_idx[human.sex], n_sim_day] += just_finished_activity.duration / SECONDS_PER_HOUR
 
         # forms a transition probability on weekdays and weekends
         type_of_day = ['weekday', 'weekend'][self.env.is_weekend]
@@ -1876,7 +1898,8 @@ class Tracker(object):
     def write_for_training(self, humans, outfile, conf):
         """ Writes some data out for the ML predictor """
         data = dict()
-        data['hospitalization_per_day'] = self.hospitalization_per_day
+        data['hospitalization_per_day'] = self.hospitalization_per_day # how many new people get admitted to the hospital
+        data['hospital_usage_per_day'] = self.hospital_usage_per_day # how many people are in the hospital for covid
 
         # parse test results
         data['positive_test_results_per_day'] = []

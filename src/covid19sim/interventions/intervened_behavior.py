@@ -4,13 +4,10 @@ Implements modification of human attributes at different levels.
 ###################### Quarantining / Behavior change logic ########################
 
 Following orders takes care of the person faced with multiple quarantining triggers (each trigger has a suggested duration for quarantine) -
-    (i)   (non-app based) QUARANTINE_DUE_TO_POSITIVE_TEST_RESULT, QUARANTINE_UNTIL_TEST_RESULT
-        +ve result: person is quarantined for 14 days from the day that test was taken.
-        -ve result: person is quarantined until the test results come out
-
+    (i)   (not app-based) QUARANTINE_DUE_TO_POSITIVE_TEST_RESULT, QUARANTINE_UNTIL_TEST_RESULT. In event of positive result, person is quarantined for 14 days from the day that test was taken. If negative result, person is quarantined until the test results come out
     (ii)  (non-app based) SELF_DIAGNOSIS
     (iii) (app based) RISK_LEVEL_UPDATE: x->MAX LEVEL
-Dropout enables non-adherence to quarantine at any time.
+        Dropout enables non-adherence to quarantine at any time.
 
 To consider household quarantine, residents are divided into two groups:
     (i) index cases - they have a quarantine trigger i.e. a reason to believe that they should quarantine

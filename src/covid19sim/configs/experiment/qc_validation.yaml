@@ -1,0 +1,42 @@
+# ----------------------------
+# -----  Infrastructure  -----
+# ----------------------------
+cpus: 4
+env_name: covid
+infra: beluga
+mem: 32
+n_search: -1 # -1 figures out the size of cartesian product for you
+time: "'10:50:00'"
+USE_INFERENCE_SERVER: False
+
+# -------------------------
+# -----  Directories  -----
+# -------------------------
+base_dir: $HOME/simulator/results/qc_validation # if outdir is not provided, runs will be stored in base_dir/${intervention}
+code_loc: $HOME/simulator/src/covid19sim/
+use_tmpdir: false
+weights_dir: /home/mweiss10/scratch/weights
+
+
+n_people: 30000
+simulation_days: 100
+INTERVENTION_DAY: -1
+init_fraction_sick: 0.0006
+tune: false
+track: light
+intervention: no_intervention
+GLOBAL_MOBILITY_SCALING_FACTOR: 0.07
+DIRECT_INTERVENTION: 20
+seed:
+  sample: cartesian
+  from:
+  - 3000
+  - 3001
+  - 3002
+  - 3003
+  - 3004
+  - 3005
+  - 3006
+  - 3007
+  - 3008
+  - 3009
