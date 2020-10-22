@@ -9,6 +9,7 @@ import datetime
 import itertools
 import math
 import time
+import os
 import typing
 from collections import defaultdict, Counter
 from orderedset import OrderedSet
@@ -24,6 +25,7 @@ from covid19sim.locations.test_facility import TestFacility
 from covid19sim.inference.server_utils import TransformerInferenceEngine
 from covid19sim.utils.lmdb import LMDBSortedMap
 from covid19sim.utils.mmap import MMAPArray
+from covid19sim.locations.district import District
 
 
 if typing.TYPE_CHECKING:
