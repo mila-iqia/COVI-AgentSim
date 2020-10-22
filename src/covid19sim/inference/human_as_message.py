@@ -54,12 +54,12 @@ def make_human_as_message(
     rolling_all_reported_symptoms = symptoms_to_np(human.rolling_all_reported_symptoms, conf)
 
     # TODO: we could index the global mailbox by day, it might be faster that way
-    target_mailbox_keys = [key for keys in human.contact_book.mailbox_keys_by_day.values() for key in keys]
     update_messages = []
     for key in target_mailbox_keys:
         if key in personal_mailbox:
             assert isinstance(personal_mailbox[key], list)
             update_messages.extend(personal_mailbox.pop(key))
+    contacted_uids = [key for keys in human.contact_book.uids_by_day.values() for key in keys]
 
     return HumanAsMessage(
         name=human.name,
