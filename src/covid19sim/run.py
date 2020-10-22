@@ -300,20 +300,20 @@ def simulate(
     )
 
     # we might need to reset the state of the clusters held in shared memory (server or not)
-    if conf.get("RESET_INFERENCE_SERVER", False):
-        if conf.get("USE_INFERENCE_SERVER"):
-            inference_frontend_address = conf.get("INFERENCE_SERVER_ADDRESS", None)
-            print("requesting cluster reset from inference server...")
-            from covid19sim.inference.server_utils import InferenceClient
+    # if conf.get("RESET_INFERENCE_SERVER", False):
+    #     if conf.get("USE_INFERENCE_SERVER"):
+    #         inference_frontend_address = conf.get("INFERENCE_SERVER_ADDRESS", None)
+    #         print("requesting cluster reset from inference server...")
+    #         from covid19sim.inference.server_utils import InferenceClient
 
-            temporary_client = InferenceClient(
-                server_address=inference_frontend_address
-            )
-            temporary_client.request_reset()
-        else:
-            from covid19sim.inference.heavy_jobs import DummyMemManager
+    #         temporary_client = InferenceClient(
+    #             server_address=inference_frontend_address
+    #         )
+    #         temporary_client.request_reset()
+    #     else:
+    #         from covid19sim.inference.heavy_jobs import DummyMemManager
 
-            DummyMemManager.global_cluster_map = {}
+    #         DummyMemManager.global_cluster_map = {}
 
     # Initiate city process, which runs every hour
     env.process(city.run(SECONDS_PER_HOUR, outfile))
