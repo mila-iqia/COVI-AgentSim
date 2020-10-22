@@ -121,7 +121,7 @@ class City:
         self.tracker.initialize()
 
         # create a global inference engine
-        self.inference_engine = TransformerInferenceEngine(conf)
+        self.inference_engine = None # TransformerInferenceEngine(conf)
 
         # split the location objects such as households between district objects
         self.split_locations_into_districts(self.conf['NUM_DISTRICTS'])
