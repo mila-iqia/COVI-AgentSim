@@ -13,7 +13,7 @@ if typing.TYPE_CHECKING:
 TimestampType = datetime.datetime
 TimeOffsetType = datetime.timedelta
 TimestampDefault = datetime.datetime.utcfromtimestamp(0)
-RealUserIDType = typing.Union[int, str]
+RealUserIDType = int # typing.Union[int, str]
 
 UIDType = int  # should be at least 16 bytes for truly unique keys?
 message_uid_bit_count = 128  # to be adjusted with the actual real bit count of the mailbox keys
