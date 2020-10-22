@@ -20,7 +20,6 @@ from covid19sim.interventions.tracing import BaseMethod
 from covid19sim.inference.message_utils import UIDType, UpdateMessage, RealUserIDType
 from covid19sim.distribution_normalization.dist_utils import get_rec_level_transition_matrix
 from covid19sim.interventions.tracing_utils import get_tracing_method
-from covid19sim.log.event import Event
 from covid19sim.locations.test_facility import TestFacility
 
 
@@ -113,7 +112,8 @@ class District:
         log("Initializing humans ...", self.logfile)
         self.initialize_humans_and_locations()
 
-        self.log_static_info()
+        # self.log_static_info()
+        self.tracker.track_static_info()
 
         log("Computing their preferences", self.logfile)
         self._compute_preferences()
@@ -302,13 +302,6 @@ class District:
 
     def add_to_test_queue(self, human):
         self.covid_testing_facility.add_to_test_queue(human)
-
-    def log_static_info(self):
-        """
-        Logs events for all humans in the city
-        """
-        for h in self.humans:
-            Event.log_static_info(self.conf['COLLECT_LOGS'], self, h, self.env.timestamp)
 
     @property
     def events(self):
@@ -532,6 +525,8 @@ class District:
             alive_humans = []
             if current_day != last_day_idx:
                 last_day_idx = current_day
+                if self.conf.get("DIRECT_INTERVENTION", -1) == current_day:
+                    self.conf['GLOBAL_MOBILITY_SCALING_FACTOR'] = self.conf['GLOBAL_MOBILITY_SCALING_FACTOR']  / 2
             # run non-app-related-stuff for all humans here (test seeking, infectiousness updates)
             for human in self.humans:
                 if not human.is_dead:
@@ -559,7 +554,6 @@ class District:
             human.increment_healthy_day()
             human.check_if_test_results_should_be_reset() # reset test results if its time
             human.mobility_planner.send_social_invites()
-            Event.log_daily(self.conf.get('COLLECT_LOGS'), human, human.env.timestamp)
         self.tracker.increment_day()
         if self.conf.get("USE_GAEN"):
             print(
@@ -654,17 +648,6 @@ class District:
                 update_reason="unknown",
                 intervention=human.intervention,
             ))
-
-            # if we are collecting logs for debugging/drawing baseball plots, log risk here
-            Event.log_risk_update(
-                self.conf['COLLECT_LOGS'],
-                human=human,
-                tracing_description=str(human.intervention),
-                prev_risk_history_map=human.prev_risk_history_map,
-                risk_history_map=human.risk_history_map,
-                current_day_idx=current_day,
-                time=self.env.timestamp,
-            )
 
             # finally, override the 'previous' risk history map with the updated values of the current
             # map so that the next call can look at the proper difference between the two
