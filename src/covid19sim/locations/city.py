@@ -26,6 +26,7 @@ from covid19sim.inference.server_utils import TransformerInferenceEngine
 from covid19sim.utils.lmdb import LMDBSortedMap
 from covid19sim.utils.mmap import MMAPArray
 from covid19sim.locations.district import District
+from covid19sim.locations.location import Location
 
 
 if typing.TYPE_CHECKING:
