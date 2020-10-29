@@ -486,9 +486,12 @@ class District:
 
             alive_humans = []
 
-            # fetch new_humans
-            for human_id in self.city.district_queues[self.env.pid].pop_all():
-                self.env.process(self.new_human(human_id))
+            try:
+                # fetch new_humans
+                for human_id in self.city.district_queues[self.env.district_id].pop_all():
+                    self.env.process(self.new_human(human_id))
+            except KeyError:
+                pass
 
             # run non-app-related-stuff for all humans here (test seeking, infectiousness updates)
             for human in self.humans:

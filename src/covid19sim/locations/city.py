@@ -95,6 +95,7 @@ class City:
         self.covid_testing_facility = TestFacility(self.test_type_preference, self.max_capacity_per_test_type, env, conf)
 
         self.humans = MMAPArray(num_items=n_people, item_size=100)
+        self.district_queues = LMDBSortedMap()
         self.hd = {}
         self.households = OrderedSet()
         self.age_histogram = None
