@@ -412,8 +412,8 @@ class District:
         Yields:
             simpy.Timeout
         """
-        def change_allowed_drift(env, start_timestamp, new_drift):
-            yield env.timeout(start_timestamp)
+        def change_allowed_drift(env, start_time, new_drift):
+            yield env.timeout(self.env.now - self.start_time.timestamp())
             env.allowed_drift=new_drift
 
         # loosen up the allowed drift after the greater of intervention time and covid spread time
