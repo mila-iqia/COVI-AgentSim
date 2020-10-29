@@ -37,7 +37,7 @@ class District:
 
     def __init__(
             self,
-            pid: int,
+            district_id: int,
             humans,
             households,
             stores,
@@ -66,8 +66,7 @@ class District:
             conf (dict): yaml configuration of the experiment
             logfile (str): filepath where the console output and final tracked metrics will be logged. Prints to the console only if None.
         """
-        self.pid = pid
-        self.humans = []
+        self.district_id = district_id
         self.households = households
         # self.humans = LMDBArray()
         self.humans = humans
@@ -95,7 +94,7 @@ class District:
 
         # update env's multiprocessing configs
         self.env.init_timed_barrier(
-            pid=pid,
+            district_id=district_id,
             allowed_drift=0,
             sleep_interval=conf['SYNC_SLEEP_INTERVAL_SEC']
         )
@@ -385,7 +384,7 @@ class District:
             # materialize human from mmap and store to self.humans
             human, next_activity = self.city.humans[human_id] 
         else: # isinstance(human, Human):
-            human_id, next_activity = human.name, None
+            human_id, next_activity = human.human_id, None
         self.humans.append(human)
         try:
             # Initiate human processes

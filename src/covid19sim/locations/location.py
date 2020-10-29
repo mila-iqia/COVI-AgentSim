@@ -53,6 +53,7 @@ class Location(simpy.Resource):
     """
     Class representing generic locations used in the simulator
     """
+    id_counter = 0
 
     def __init__(self, env, rng, conf, area, name, location_type, lat, lon, capacity):
         """
@@ -85,6 +86,8 @@ class Location(simpy.Resource):
         self.humans = OrderedSet()  # OrderedSet instead of set for determinism when iterating
         self.conf = conf
         self.name = name
+        self.id: int = Location.id_counter
+        Location.id_counter += 1
         self.rng = np.random.RandomState(rng.randint(2 ** 16))
         self.lat = lat
         self.lon = lon

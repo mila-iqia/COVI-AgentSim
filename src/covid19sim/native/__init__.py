@@ -28,8 +28,8 @@ class Environment(BaseEnvironment, simpy.Environment):
 
         self.sorted_map = LMDBSortedMap()
     
-    def init_timed_barrier(self, pid, allowed_drift, sleep_interval):
-        self.pid = pid
+    def init_timed_barrier(self, district_id, allowed_drift, sleep_interval):
+        self.district_id = district_id
         self.allowed_drift = allowed_drift
         self.sleep_interval = sleep_interval
 
