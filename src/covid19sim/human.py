@@ -980,7 +980,7 @@ class Human(BaseHuman):
                 previous_activity, next_activity = next_activity, self.mobility_planner.get_next_activity()
                 
                 # track transitions & locations visited
-                self.city.tracker.track_mobility(previous_activity, self)
+                self.city.district.tracker.track_mobility(previous_activity, next_activity, self)
 
             else:
                 # supervised or invitation type of activities (prepend_name) will require to refresh their location
