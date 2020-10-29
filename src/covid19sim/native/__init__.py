@@ -1,5 +1,6 @@
 import simpy
 import datetime
+from time import sleep
 from ._native import BaseEnvironment
 from covid19sim.utils.lmdb import LMDBSortedMap
 
