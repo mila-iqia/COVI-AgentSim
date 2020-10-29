@@ -97,8 +97,8 @@ class Human(BaseHuman):
         self.oracle_noise_random_seed = None
 
         # Human-related properties
-        # self.name: RealUserIDType = f"human:{name}"  # Name of this human
-        self.name: RealUserIDType = Human.id_counter
+        self.name: RealUserIDType = f"human:{name}"  # Name of this human
+        self.human_id: RealUserIDType = Human.id_counter
         Human.id_counter += 1
         self.known_connections = set() # keeps track of all other humans that this human knows of
         self.does_not_work = False # to identify those who weren't assigned any workplace from the beginning
