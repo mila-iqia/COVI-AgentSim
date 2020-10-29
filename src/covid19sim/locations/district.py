@@ -388,7 +388,7 @@ class District:
         self.humans.append(human)
         try:
             # Initiate human processes
-            yield from human.run(district=self, next_activity=next_activity)
+            yield from human.run(next_activity=next_activity)
         except StopIteration as ret:
             next_activity = ret.value
             # remove human from human
