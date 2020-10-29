@@ -81,7 +81,7 @@ def compute_p_covid_given_symptoms(human, conf, correction_factor=2):
     p_symptoms_given_not_covid = max(0, p_symptoms - p_symptoms_given_covid)
 
     # probability of having covid
-    covid_prevalence = human.city.tracker.get_estimated_covid_prevalence()
+    covid_prevalence = human.city.district.tracker.get_estimated_covid_prevalence()
     p_covid = correction_factor * max(covid_prevalence['estimation_by_test'], covid_prevalence['estimation_by_hospitalization'])
 
     # probability of covid given symptoms

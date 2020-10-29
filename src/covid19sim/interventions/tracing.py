@@ -11,7 +11,6 @@ from covid19sim.epidemiology.symptoms import STR_TO_SYMPTOMS
 
 if typing.TYPE_CHECKING:
     from covid19sim.human import Human
-    from covid19sim.locations.city import PersonalMailboxType
 
 
 class BaseMethod(object):
@@ -65,7 +64,6 @@ class BaseMethod(object):
     def compute_risk(
             self,
             human: "Human",
-            mailbox: "PersonalMailboxType",
             humans_map: typing.Dict[str, "Human"],
     ):
         """
@@ -95,7 +93,6 @@ class BinaryDigitalTracing(BaseMethod):
     def compute_risk(
             self,
             human: "Human",
-            mailbox: "PersonalMailboxType",
             humans_map: typing.Dict[str, "Human"],
     ):
         t = 0

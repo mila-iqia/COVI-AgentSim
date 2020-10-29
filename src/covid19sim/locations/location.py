@@ -53,6 +53,7 @@ class Location(simpy.Resource):
     """
     Class representing generic locations used in the simulator
     """
+    id_counter = 0
 
     def __init__(self, env, rng, conf, area, name, location_type, lat, lon, capacity):
         """
@@ -85,6 +86,8 @@ class Location(simpy.Resource):
         self.humans = OrderedSet()  # OrderedSet instead of set for determinism when iterating
         self.conf = conf
         self.name = name
+        self.id: int = Location.id_counter
+        Location.id_counter += 1
         self.rng = np.random.RandomState(rng.randint(2 ** 16))
         self.lat = lat
         self.lon = lon
@@ -420,7 +423,7 @@ class Location(simpy.Resource):
         x_environment =  self.rng.random() < p_transmission
 
         # track infection related stats
-        human.city.tracker.track_infection(source="environment",
+        human.city.district.tracker.track_infection(source="environment",
                                     from_human=None,
                                     to_human=human,
                                     location=self,
@@ -477,6 +480,27 @@ class Location(simpy.Resource):
             del s['humans']
         return s
 
+    def __reduce__(self):
+        """
+        Helper function for pickling
+        """
+        args = (self.name, self.location_type)
+        return (self._reconstruct, args)
+
+    @classmethod
+    def _reconstruct(
+        cls,
+        location_name: str,
+        location_type: str
+        ):
+        """
+        Find and return location object from city by name
+        """
+        return next(
+            loc for loc in getattr(cls.city.district, f"{location_type.lower()}s") \
+            if loc.name == location_name
+            )
+ 
 
 class Household(Location):
     """

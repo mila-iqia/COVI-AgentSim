@@ -53,58 +53,58 @@ Legend -
         process_start = time.time()
         n_days = 0
         while True:
-            assert city.tracker.fully_initialized
+            assert city.district.tracker.fully_initialized
 
             if self.print_legend:
                 log(self.legend, self.logfile)
                 self.print_legend = False
 
             # social network & mobility
-            average_degree = np.mean([len(h.known_connections) for h in city.humans])
+            average_degree = np.mean([len(h.known_connections) for h in city.district.humans])
             mobility = f"| MC: {average_degree: 3.3f}"
 
             # simulation time related
             env_time = str(env.timestamp).split()[0]
-            day = "Day {:2}:".format((city.env.timestamp - city.start_time).days)
+            day = "Day {:2}:".format((city.district.env.timestamp - city.district.start_time).days)
             proc_time = "{:8}".format("({}s)".format(int(time.time() - process_start)))
 
-            if not city.tracker.start_tracking:
+            if not city.district.tracker.start_tracking:
                 str_to_print = f"{proc_time} {day} {env_time} {mobility}"
                 log(str_to_print, self.logfile)
                 yield env.timeout(self.frequency)
                 continue
 
             # test stats
-            t_P = city.tracker.test_results_per_day[env.timestamp.date()]['positive']
-            t_T = 0 if len(city.tracker.tested_per_day) < 2 else city.tracker.tested_per_day[-2]
-            test_queue_length = len(city.covid_testing_facility.test_queue)
+            t_P = city.district.tracker.test_results_per_day[env.timestamp.date()]['positive']
+            t_T = 0 if len(city.district.tracker.tested_per_day) < 2 else city.district.tracker.tested_per_day[-2]
+            test_queue_length = len(city.district.covid_testing_facility.test_queue)
 
             # hospitalization stats
-            H = sum(len(hospital.humans) for hospital in city.hospitals)
-            C = sum(len(hospital.icu.humans) for hospital in city.hospitals)
-            D = sum(city.tracker.deaths_per_day)
+            H = sum(len(hospital.humans) for hospital in city.district.hospitals)
+            C = sum(len(hospital.icu.humans) for hospital in city.district.hospitals)
+            D = sum(city.district.tracker.deaths_per_day)
 
             # SEIR stats
-            S = city.tracker.s_per_day[-1]
-            E = city.tracker.e_per_day[-1]
-            I = city.tracker.i_per_day[-1]
-            R = city.tracker.r_per_day[-1]
+            S = city.district.tracker.s_per_day[-1]
+            E = city.district.tracker.e_per_day[-1]
+            I = city.district.tracker.i_per_day[-1]
+            R = city.district.tracker.r_per_day[-1]
             T = E + I + R
 
             # projections
-            Projected3 = min(1.0*city.tracker.n_infected_init * 2 ** (n_days/3), len(city.humans))
-            doubling_rate_days =  n_days / np.log2(1.0 * T / (city.tracker.n_infected_init + 1e-6))
+            Projected3 = min(1.0*city.district.tracker.n_infected_init * 2 ** (n_days/3), len(city.district.humans))
+            doubling_rate_days =  n_days / np.log2(1.0 * T / (city.district.tracker.n_infected_init + 1e-6))
 
             # other diseases
-            cold = sum(h.has_cold for h in city.humans)
-            allergies = sum(h.has_allergy_symptoms for h in city.humans)
-            flu = sum(h.has_flu for h in city.humans)
+            cold = sum(h.has_cold for h in city.district.humans)
+            allergies = sum(h.has_allergy_symptoms for h in city.district.humans)
+            flu = sum(h.has_flu for h in city.district.humans)
 
             # intervention related
-            n_quarantine = sum(h.intervened_behavior.is_under_quarantine for h in city.humans if not h.is_dead)
+            n_quarantine = sum(h.intervened_behavior.is_under_quarantine for h in city.district.humans if not h.is_dead)
 
             # prepare string
-            nd = str(len(str(city.n_people)))
+            nd = str(len(str(city.district.n_people)))
             SEIR = f"| S:{S:<{nd}} E:{E:<{nd}} I:{I:<{nd}} E+I+R:{T:<{nd}} +Test:{t_P}/{t_T} TestQueue:{test_queue_length}"
             stats = f"| P3:{Projected3:5.2f}"
             stats += f" 2x:{doubling_rate_days: 2.2f}" if doubling_rate_days > 0 else ""
@@ -119,11 +119,11 @@ Legend -
                 # on day 1, if tracker is not informed about tracing, recommended levels daily are not appended.
                 # this will throw an error about list out of index.
                 green, blue, orange, red = 0, 0, 0, 0
-                if len(city.tracker.recommended_levels_daily) > 0:
-                    green, blue, orange, red = city.tracker.recommended_levels_daily[-1]
+                if len(city.district.tracker.recommended_levels_daily) > 0:
+                    green, blue, orange, red = city.district.tracker.recommended_levels_daily[-1]
                 colors = f"| G:{green} B:{blue} O:{orange} R:{red}"
 
-                prec, _, _ = city.tracker.risk_precision_daily[-1]
+                prec, _, _ = city.district.tracker.risk_precision_daily[-1]
                 risk = f"| RiskP:{prec[1][0]:3.2f}"
 
                 str_to_print = f"{str_to_print} {colors} {risk}"

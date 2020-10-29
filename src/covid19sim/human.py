@@ -13,7 +13,6 @@ from orderedset import OrderedSet
 
 from covid19sim.utils.mobility_planner import MobilityPlanner
 from covid19sim.utils.utils import proba_to_risk_fn
-from covid19sim.locations.city import PersonalMailboxType
 from covid19sim.locations.hospital import Hospital, ICU
 from collections import deque
 
@@ -28,15 +27,16 @@ from covid19sim.inference.message_utils import ContactBook, exchange_encounter_m
 from covid19sim.utils.visits import Visits
 from covid19sim.native._native import BaseHuman
 from covid19sim.interventions.intervened_behavior import IntervenedBehavior
-
 from covid19sim.utils.constants import SECONDS_PER_MINUTE, SECONDS_PER_HOUR, SECONDS_PER_DAY
 from covid19sim.utils.constants import NEGATIVE_TEST_RESULT, POSITIVE_TEST_RESULT
 from covid19sim.utils.constants import TEST_TAKEN, RISK_LEVEL_UPDATE, SELF_DIAGNOSIS
+from covid19sim.utils.constants import TAKE_TEST_DUE_TO_SELF_DIAGNOSIS, TAKE_TEST_DUE_TO_RANDOM_REASON, TAKE_TEST_DUE_TO_RECOMMENDATION
+from covid19sim.inference.clustering.base import get_cluster_manager_type
 
-if typing.TYPE_CHECKING:
-    from covid19sim.utils.env import Env
-    from covid19sim.locations.city import City
-    from covid19sim.locations.location import Location
+# if typing.TYPE_CHECKING:
+from covid19sim.utils.env import Env
+from covid19sim.locations.city import City
+from covid19sim.locations.location import Location
 
 
 class Human(BaseHuman):
@@ -53,9 +53,24 @@ class Human(BaseHuman):
         rng (np.random.RandomState): Random number generator
         conf (dict): yaml configuration of the experiment
     """
+    id_counter = 0
 
-    def __init__(self, env, city, name, age, rng, conf):
+    def __init__(
+        self, env: Env, city: City, name: str, age: int,
+        rng: np.random.RandomState, conf: typing.Dict
+        ):
         super().__init__(env)
+        # cluster manager
+        cluster_algo_type = get_cluster_manager_type(
+                conf.get("CLUSTER_ALGO_TYPE", "blind")
+            )
+        tracing_history = conf.get("TRACING_N_DAYS_HISTORY")
+        self.cluster_mgr = cluster_algo_type(
+                max_history_offset=datetime.timedelta(days=tracing_history),
+                add_orphan_updates_as_clusters=True,
+                generate_embeddings_by_timestamp=True,
+                generate_backw_compat_embeddings=True,
+            )
 
         # Utility References
         self.conf = conf  # Simulation-level Configurations
@@ -83,6 +98,8 @@ class Human(BaseHuman):
 
         # Human-related properties
         self.name: RealUserIDType = f"human:{name}"  # Name of this human
+        self.human_id: RealUserIDType = Human.id_counter
+        Human.id_counter += 1
         self.known_connections = set() # keeps track of all other humans that this human knows of
         self.does_not_work = False # to identify those who weren't assigned any workplace from the beginning
         self.work_start_time, self.work_end_time, self.working_days = None, None, []
@@ -411,7 +428,7 @@ class Human(BaseHuman):
         # TODO: remove self.all_symptoms in favor of self.rolling_all_symptoms[0]
         self.all_symptoms = OrderedSet(all_symptoms)
         self.rolling_all_symptoms.appendleft(self.all_symptoms)
-        self.city.tracker.track_symptoms(self)
+        self.city.district.tracker.track_symptoms(self)
 
     def update_reported_symptoms(self):
         """
@@ -430,7 +447,7 @@ class Human(BaseHuman):
             dropped_in_symptoms = SymptomGroups.sample(self.rng, self.conf["P_NUM_DROPIN_GROUPS"])
             reported_symptoms = reported_symptoms.union(set([s for s in dropped_in_symptoms for s in s]))
         self.rolling_all_reported_symptoms.appendleft(reported_symptoms)
-        self.city.tracker.track_symptoms(self)
+        self.city.district.tracker.track_symptoms(self)
 
     @property
     def test_result(self):
@@ -534,7 +551,7 @@ class Human(BaseHuman):
         self.intervened_behavior.trigger_intervention(reason=TEST_TAKEN)
 
         # log
-        self.city.tracker.track_tested_results(self)
+        self.city.district.tracker.track_tested_results(self)
 
     def check_if_needs_covid_test(self, at_hospital=False):
         """
@@ -610,17 +627,17 @@ class Human(BaseHuman):
         # is_incubated checks for asymptomaticity and whether the days since exposure is
         # greater than incubation_days.
         # Note: it doesn't count symptom start time from environmental infection or asymptomatic/presymptomatic infections
-        # reference is in city.tracker.track_serial_interval.__doc__
+        # reference is in city.district.tracker.track_serial_interval.__doc__
         if self.is_incubated and self.covid_symptom_start_time is None and any(self.symptoms):
             self.covid_symptom_start_time = self.env.timestamp
-            self.city.tracker.track_serial_interval(self.name)
+            self.city.district.tracker.track_serial_interval(self.name)
 
     def check_covid_recovery(self):
         """
         If `self` has covid, this function will check when can `self` recover and set necessary variables accordingly.
         """
         if self.is_infectious and (self.env.timestamp - self.infection_timestamp).total_seconds() >= self.recovery_days * SECONDS_PER_DAY:
-            self.city.tracker.track_recovery(self)
+            self.city.district.tracker.track_recovery(self)
 
             # TO DISCUSS: Should the test result be reset here? We don't know in reality
             # when the person has recovered; currently not reset
@@ -714,7 +731,7 @@ class Human(BaseHuman):
         x_human = infector.rng.random() < p_infection
 
         # track infection related parameters
-        self.city.tracker.track_infection(source="human",
+        self.city.district.tracker.track_infection(source="human",
                                     from_human=infector,
                                     to_human=infectee,
                                     location=self.location,
@@ -787,7 +804,7 @@ class Human(BaseHuman):
             self,
             init_timestamp: datetime.datetime,
             current_timestamp: datetime.datetime,
-            personal_mailbox: PersonalMailboxType,
+            # personal_mailbox: PersonalMailboxType,
     ):
         """Runs the first half of processes that should happen when the app is woken up at the
         human's timeslot. These include symptom updates, initial risk updates & contact tracing,
@@ -820,13 +837,13 @@ class Human(BaseHuman):
             return
 
         # All tracing methods that are _not ML_ (heuristic, bdt1, bdt2, etc) will compute new risks here
-        from covid19sim.interventions.tracing import Heuristic
+        # from covid19sim.interventions.tracing import Heuristic
 
-        if isinstance(self.intervention, Heuristic):
-            # then we use clusters as the mailbox
-            personal_mailbox = self.intervention.extract_clusters(self)
+        # if isinstance(self.intervention, Heuristic):
+        #     # then we use clusters as the mailbox
+        #     personal_mailbox = self.intervention.extract_clusters(self)
 
-        risks = self.intervention.compute_risk(self, personal_mailbox, self.city.hd)
+        risks = self.intervention.compute_risk(self, None, self.city.hd)
         for day_offset, risk in enumerate(risks):
             if current_day_idx - day_offset in self.risk_history_map:
                 self.risk_history_map[current_day_idx - day_offset] = risk
@@ -915,7 +932,7 @@ class Human(BaseHuman):
             self.city.covid_testing_facility.test_queue.remove(self)
         self.household.remove_resident(self)
         self.mobility_planner.cancel_all_events()
-        self.city.tracker.track_deaths() # track
+        self.city.district.tracker.track_deaths() # track
         yield self.env.timeout(np.inf)
 
     def set_tracing_method(self, tracing_method):
@@ -926,7 +943,7 @@ class Human(BaseHuman):
         # (delete) remove intervention_start
         self.update_recommendations_level(intervention_start=True)
 
-    def run(self):
+    def run(self, next_activity=None):
         """
         Transitions `self` from one `Activity` to other
         Note: use -O command line option to avoid checking for assertions
@@ -934,8 +951,8 @@ class Human(BaseHuman):
         Yields:
             simpy.events.Event:
         """
-
-        previous_activity, next_activity = None, self.mobility_planner.get_next_activity()
+        if next_activity==None:
+            next_activity = self.mobility_planner.get_next_activity()
         while True:
 
             #
@@ -943,8 +960,10 @@ class Human(BaseHuman):
                 yield self.env.process(self.expire())
 
             #
-            if next_activity.location is not None:
-
+            next_location = next_activity.location
+            if self.city.location_district_id(next_location) != self.city.district.district_id:
+                return next_location
+            elif next_location is not None:
                 # (debug) to print the schedule for someone
                 # if self.name == "human:77":
                 #       print("A\t", self.env.timestamp, self, next_activity)
@@ -952,13 +971,16 @@ class Human(BaseHuman):
                 # /!\ TODO - P - check for the capacity at a location; it requires adjustment of timestamps
                 # with next_activity.location.request() as request:
                 #     yield request
-                #     yield self.env.process(self.transition_to(next_activity, previous_activity))
+                #     yield self.env.process(self.transition_to(next_activity))
 
                 assert abs(self.env.timestamp - next_activity.start_time).seconds == 0, f"start times do not align...\n{self}\n{self.intervened_behavior.quarantine_timestamp}\n{self.intervened_behavior.quarantine_reason}\ncurrent timestamp:{self.env.timestamp}\nnext_activity:{next_activity}"
-                yield self.env.process(self.transition_to(next_activity, previous_activity))
+                yield self.env.process(self.transition_to(next_activity))
                 assert abs(self.env.timestamp - next_activity.end_time).seconds == 0, f"end times do not align...\n{self}\n{self.intervened_behavior.quarantine_timestamp}\n{self.intervened_behavior.quarantine_reason}\ncurrent timestamp:{self.env.timestamp}\nnext_activity:{next_activity}"
 
                 previous_activity, next_activity = next_activity, self.mobility_planner.get_next_activity()
+                
+                # track transitions & locations visited
+                self.city.district.tracker.track_mobility(previous_activity, next_activity, self)
 
             else:
                 # supervised or invitation type of activities (prepend_name) will require to refresh their location
@@ -1007,7 +1029,7 @@ class Human(BaseHuman):
         else:
             return round(self.lon + self.rng.normal(0, 10))
 
-    def transition_to(self, next_activity, previous_activity):
+    def transition_to(self, next_activity):
         """
         Enter/Exit human to/from a `location` for some `duration`.
         Once human is at a location, encounters are sampled.
@@ -1026,9 +1048,6 @@ class Human(BaseHuman):
         location = next_activity.location
         duration = next_activity.duration
         type_of_activity = next_activity.name
-
-        # track transitions & locations visited
-        self.city.tracker.track_mobility(previous_activity, next_activity, self)
 
         # add human to the location
         self.location = location
@@ -1087,7 +1106,7 @@ class Human(BaseHuman):
             # used for matching "mobility" between methods
             scale_factor_passed = contact_condition and self.rng.random() < self.conf.get("GLOBAL_MOBILITY_SCALING_FACTOR")
 
-            self.city.tracker.track_mixing(human1=self, human2=other_human, duration=t_near,
+            self.city.district.tracker.track_mixing(human1=self, human2=other_human, duration=t_near,
                             distance_profile=distance_profile, timestamp=self.env.timestamp, location=self.location,
                             interaction_type=type, contact_condition=contact_condition, global_mobility_factor=scale_factor_passed)
 
@@ -1260,7 +1279,7 @@ class Human(BaseHuman):
                 remaining_time_in_contact -= encounter_time_granularity
 
             if exchanged:
-                self.city.tracker.track_bluetooth_communications(human1=self, human2=other_human, location=self.location, timestamp=self.env.timestamp)
+                self.city.district.tracker.track_bluetooth_communications(human1=self, human2=other_human, location=self.location, timestamp=self.env.timestamp)
 
         return h1_msg, h2_msg
 
@@ -1325,3 +1344,23 @@ class Human(BaseHuman):
 
     def __repr__(self):
         return f"H:{self.name} age:{self.age}, SEIR:{int(self.is_susceptible)}{int(self.is_exposed)}{int(self.is_infectious)}{int(self.is_removed)}"
+
+    def __reduce__(self):
+        """
+        Helper function for pickling
+        """
+        state: typing.Dict = self.__dict__.copy()
+        del state['last_date'], state['city']
+        name_id: int = int(self.name.split(":",1)[1])
+        args = (name_id, self.age, self.rng, self.conf)
+        return (Human._reconstruct, args, state)
+
+    @classmethod
+    def _reconstruct(cls, name_id, age, rng, conf):
+        """
+        Reconstruct human and its attributes
+        """
+        city: City = Location.city
+        env: Env = city.env
+        
+        return cls(env, city, name_id, age, rng, conf)

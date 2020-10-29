@@ -1,6 +1,8 @@
 import simpy
 import datetime
+from time import sleep
 from ._native import BaseEnvironment
+from covid19sim.utils.lmdb import LMDBSortedMap
 
 
 class Environment(BaseEnvironment, simpy.Environment):
@@ -24,7 +26,26 @@ class Environment(BaseEnvironment, simpy.Environment):
             BaseEnvironment  .__init__(self, initial_time.timestamp())
             simpy.Environment.__init__(self, self.now)
             self.initial_timestamp = initial_time
+
+        self.sorted_map = LMDBSortedMap()
     
+    def init_timed_barrier(self, district_id, allowed_drift, sleep_interval):
+        self.district_id = district_id
+        self.allowed_drift = allowed_drift
+        self.sleep_interval = sleep_interval
+
+    def step(self) -> None:
+        """
+        Take environment step while waiting for the slowest district to catch up
+        """
+        last_timestamp = self._now
+        simpy.Environment.step(self)
+        if last_timestamp < self._now:
+            self.sorted_map.replace(int(last_timestamp), int(self._now), self.district_id)
+            # if the slowest district's drift is large, sleep
+            while (self._now - self.sorted_map.first()) >= self.allowed_drift:
+                sleep(self.sleep_interval)
+
     @property
     def timestamp(self):
         """
@@ -48,3 +69,10 @@ class Environment(BaseEnvironment, simpy.Environment):
         """
         return self.timestamp.isoformat()
 
+    def __reduce__(self):
+        """
+        Helper function for pickling
+        """
+        args = (self.initial_timestamp, )
+        state = {'_now': self._now}
+        return (self.__class__, args, state)

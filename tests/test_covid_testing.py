@@ -75,7 +75,7 @@ if __name__ == "__main__":
     # ---------------------------
     # -----  Retreive Data  -----
     # ---------------------------
-    data = extract_tracker_data(city.tracker, conf)
+    data = extract_tracker_data(city.district.tracker, conf)
     tm = data["test_monitor"]
     days = [
         date_str(start_time + datetime.timedelta(days=i))

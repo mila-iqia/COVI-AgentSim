@@ -276,7 +276,7 @@ def compute_covid_properties(human):
         human.infection_ratio = human.conf['MILD_INFECTION_RATIO']
 
     if hasattr(human.city, "tracker"):  # some tests are running with dummy cities that don't track anything
-        human.city.tracker.track_covid_properties(human)
+        human.city.district.tracker.track_covid_properties(human)
 
 
 def viral_load_for_day(human, timestamp):
