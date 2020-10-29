@@ -38,7 +38,7 @@ class Environment(BaseEnvironment, simpy.Environment):
         Take environment step while waiting for the slowest district to catch up
         """
         last_timestamp = self._now
-        super(simpy.Environment, self).step()
+        simpy.Environment.step(self)
         if last_timestamp < self._now:
             self.sorted_map.replace(last_timestamp, self._now, self.pid)
             # if the slowest district's drift is large, sleep
