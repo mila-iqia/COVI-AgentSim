@@ -1,6 +1,7 @@
 import os
 import sys
 import lmdb
+import shutil
 import struct
 import typing
 import tempfile
@@ -21,6 +22,8 @@ class LMDBBaseClass():
     into account when planning
     """
     index_format_string: str='>I' # corresponding to unsigned int in big endian
+    parent_temp_dir = os.path.join( tempfile.gettempdir(), 'covi-simulation-lmdb' )
+    os.makedirs(parent_temp_dir, exist_ok=True)
 
     def __init__(self, memory_size: int = int(1.5*1024*1024)):
         """
@@ -28,17 +31,15 @@ class LMDBBaseClass():
         for items to be stored in the database
         :param memory_size: the allocated size of the shared memory file
         """
-        tempdir = os.path.join( tempfile.gettempdir(), 'covi-simulation-lmdb' )
-        os.makedirs(tempdir, exist_ok=True)
-        self.fp = tempfile.TemporaryDirectory(dir=tempdir)
-        self.env, self.db = self._init_db(path=self.fp.name, memory_size=memory_size)
+        self.path = tempfile.mkdtemp(dir=LMDBBaseClass.parent_temp_dir)
+        self.env, self.db = self._init_db(path=self.path, memory_size=memory_size)
 
     def _init_db(self, path: str, memory_size: int):
         """
         opens a db in the env and returns env, the db
         """
         USE_SPARSE_FILES = sys.platform != 'darwin'
-        env = lmdb.Environment(path=self.fp.name, map_size=memory_size, writemap=USE_SPARSE_FILES)
+        env = lmdb.Environment(path=self.path, map_size=memory_size, writemap=USE_SPARSE_FILES)
         return env, env.open_db()
 
     def reset(self):
@@ -54,7 +55,7 @@ class LMDBBaseClass():
         Removes the temporary directory holding the repository (at destruction)
         """
         try:
-            self.fp.cleanup()
+            shutil.rmtree(self.path)
         except FileNotFoundError:
             pass
 
@@ -191,7 +192,7 @@ class LMDBSortedMap(LMDBBaseClass):
         opens a db in the env and returns env, the db
         """
         USE_SPARSE_FILES = sys.platform != 'darwin'
-        env = lmdb.Environment(path=self.fp.name, map_size=memory_size, writemap=USE_SPARSE_FILES, max_dbs=1)
+        env = lmdb.Environment(path=self.path, map_size=memory_size, writemap=USE_SPARSE_FILES, max_dbs=1)
         return env, env.open_db(b"covi-simulation-lmdb-subdb", dupsort=True)
 
     def __getitem__(self, index: int) -> typing.Tuple[int]:
