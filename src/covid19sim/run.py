@@ -173,15 +173,15 @@ def main(conf: DictConfig):
     dump_conf(city.conf, "{}/full_configuration.yaml".format(city.conf["outdir"]))
 
     # log the simulation statistics
-    city.tracker.write_metrics()
+    city.district.tracker.write_metrics()
 
     # (baseball-cards) write full simulation data
     # if hasattr(city, "tracker") and \
-    #         hasattr(city.tracker, "collection_server") and \
-    #         isinstance(city.tracker.collection_server, DataCollectionServer) and \
-    #         city.tracker.collection_server is not None:
-    #     city.tracker.collection_server.stop_gracefully()
-    #     city.tracker.collection_server.join()
+    #         hasattr(city.district.tracker, "collection_server") and \
+    #         isinstance(city.district.tracker.collection_server, DataCollectionServer) and \
+    #         city.district.tracker.collection_server is not None:
+    #     city.district.tracker.collection_server.stop_gracefully()
+    #     city.district.tracker.collection_server.join()
 
     # if COLLECT_TRAINING_DATA is true
     if not conf["tune"]:
@@ -190,14 +190,14 @@ def main(conf: DictConfig):
         # ----------------------------------------------
         # write values to train with
         train_priors = os.path.join(f"{conf['outdir']}/train_priors.pkl")
-        city.tracker.write_for_training(city.humans, train_priors, conf)
+        city.district.tracker.write_for_training(city.humans, train_priors, conf)
 
         timenow = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
         log("Dumping Tracker Data in {}".format(conf["outdir"]), logfile)
 
         Path(conf["outdir"]).mkdir(parents=True, exist_ok=True)
         filename = f"tracker_data_n_{conf['n_people']}_seed_{conf['seed']}_{timenow}.pkl"
-        data = extract_tracker_data(city.tracker, conf)
+        data = extract_tracker_data(city.district.tracker, conf)
         dump_tracker_data(data, conf["outdir"], filename)
     else:
         # ------------------------------------------------------
@@ -208,7 +208,7 @@ def main(conf: DictConfig):
 
         Path(conf["outdir"]).mkdir(parents=True, exist_ok=True)
         filename = f"tracker_data_n_{conf['n_people']}_seed_{conf['seed']}_{timenow}.pkl"
-        data = extract_tracker_data(city.tracker, conf)
+        data = extract_tracker_data(city.district.tracker, conf)
         dump_tracker_data(data, conf["outdir"], filename)
     # Shutdown the data collection server if one's running
     # if collection_server is not None:
@@ -316,11 +316,11 @@ def simulate(
     #         DummyMemManager.global_cluster_map = {}
 
     # Initiate city process, which runs every hour
-    env.process(city.run(SECONDS_PER_HOUR, outfile))
+    env.process(city.district.run(SECONDS_PER_HOUR, outfile))
 
     # initiate humans
-    for human in city.humans:
-        env.process(human.run())
+    # for human in city.humans:
+    #     env.process(human.run())
 
     env.process(console_logger.run(env, city=city))
 

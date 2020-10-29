@@ -457,7 +457,7 @@ class MobilityPlanner(object):
             adults = _can_supervise_kid(self.adults_in_house)
             # when all adults in the house are dead --
             if len(adults) == 0:
-                household = _reallocate_residence(self.human, self.human.city.households, self.rng, self.conf)
+                household = _reallocate_residence(self.human, self.human.district.households, self.rng, self.conf)
                 if household is None:
                     raise NotImplementedError(f"There is no house available to supervise {self.human}")
                 #
@@ -578,7 +578,7 @@ class MobilityPlanner(object):
             and self.hospitalization_timestamp is None
             and (self.env.timestamp - self.human.covid_symptom_start_time).total_seconds() >= AVERAGE_TIME_TO_HOSPITAL_GIVEN_SYMPTOMS * SECONDS_PER_DAY
         ):
-            self.human.city.tracker.track_hospitalization(self.human) # track
+            self.human.city.district.tracker.track_hospitalization(self.human) # track
             self.hospitalization_timestamp = self.env.timestamp
             hospital = _select_location(self.human, "hospital", self.human.city, self.rng, self.conf)
             if hospital is None:
@@ -599,7 +599,7 @@ class MobilityPlanner(object):
             and self.critical_condition_timestamp is None
             and (self.env.timestamp - self.hospitalization_timestamp).total_seconds() >= AVERAGE_TIME_TO_CRITICAL_IF_HOSPITALIZED * SECONDS_PER_DAY
         ):
-            self.human.city.tracker.track_hospitalization(self.human, "icu") # track
+            self.human.city.district.tracker.track_hospitalization(self.human, "icu") # track
             self.critical_condition_timestamp = self.env.timestamp
             ICU = _select_location(self.human, "hospital-icu", self.human.city, self.rng, self.conf)
             if ICU is None:
@@ -1368,24 +1368,24 @@ def _select_location(human, activity, city, rng, conf):
     if activity == "exercise":
         S = human.visits.n_parks
         pool_pref = human.parks_preferences
-        locs = filter_open(city.parks)
+        locs = filter_open(city.district.parks)
         visited_locs = human.visits.parks
 
     elif activity == "grocery":
         S = human.visits.n_stores
         pool_pref = human.stores_preferences
         # Only consider locations open for business and not too long queues
-        locs = filter_queue_max(filter_open(city.stores), conf.get("MAX_STORE_QUEUE_LENGTH"))
+        locs = filter_queue_max(filter_open(city.district.stores), conf.get("MAX_STORE_QUEUE_LENGTH"))
         visited_locs = human.visits.stores
 
     elif activity == "hospital":
-        for hospital in sorted(filter_open(city.hospitals), key=lambda x:compute_distance(human.location, x)):
+        for hospital in sorted(filter_open(city.district.hospitals), key=lambda x:compute_distance(human.location, x)):
             if hospital.n_patients < hospital.capacity:
                 return hospital
         return None
 
     elif activity == "hospital-icu":
-        for hospital in sorted(filter_open(city.hospitals), key=lambda x:compute_distance(human.location, x)):
+        for hospital in sorted(filter_open(city.district.hospitals), key=lambda x:compute_distance(human.location, x)):
             if hospital.icu.n_patients < hospital.icu.capacity:
                 return hospital.icu
         return None
@@ -1398,7 +1398,7 @@ def _select_location(human, activity, city, rng, conf):
             return human.household
 
         S = human.visits.n_miscs
-        candidate_locs = city.miscs
+        candidate_locs = city.district.miscs
         pool_pref = [(compute_distance(human.location, m) + 1e-1) ** -1 for m in candidate_locs]
 
         # Only consider locations open for business and not too long queues

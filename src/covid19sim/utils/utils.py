@@ -355,11 +355,11 @@ def extract_tracker_data(tracker, conf):
     data['p_transmission'] = tracker.compute_probability_of_transmission()
 
     # demographics
-    data['age_histogram'] = tracker.city.age_histogram
+    data['age_histogram'] = tracker.district.age_histogram
     data['human_has_app'] = tracker.human_has_app
     data['known_connections'] = {
         human.name: set(h.name for h in human.known_connections)
-        for human in tracker.city.humans
+        for human in tracker.district.humans
     } # 3MB
     data['humans_demographics'] = tracker.humans_demographics
     

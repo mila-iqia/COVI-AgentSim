@@ -56,11 +56,11 @@
 #
 #             # with the 'KEEP_FULL_OBJ_COPIES' set, the tracker should spawn its own collection server
 #             assert hasattr(city, "tracker") and \
-#                 hasattr(city.tracker, "collection_server") and \
-#                 isinstance(city.tracker.collection_server, DataCollectionServer) and \
-#                 city.tracker.collection_server is not None
-#             city.tracker.collection_server.stop_gracefully()
-#             city.tracker.collection_server.join()
+#                 hasattr(city.district.tracker, "collection_server") and \
+#                 isinstance(city.district.tracker.collection_server, DataCollectionServer) and \
+#                 city.district.tracker.collection_server is not None
+#             city.district.tracker.collection_server.stop_gracefully()
+#             city.district.tracker.collection_server.join()
 #             assert os.path.exists(hdf5_path)
 #             import pdb; pdb.set_trace()
 #             filename = f"tracker_data.pkl"
