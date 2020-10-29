@@ -420,7 +420,7 @@ class Location(simpy.Resource):
         x_environment =  self.rng.random() < p_transmission
 
         # track infection related stats
-        human.city.tracker.track_infection(source="environment",
+        human.city.district.tracker.track_infection(source="environment",
                                     from_human=None,
                                     to_human=human,
                                     location=self,
@@ -494,7 +494,7 @@ class Location(simpy.Resource):
         Find and return location object from city by name
         """
         return next(
-            loc for loc in getattr(cls.city, f"{location_type.lower()}s") \
+            loc for loc in getattr(cls.city.district, f"{location_type.lower()}s") \
             if loc.name == location_name
             )
  

@@ -76,7 +76,6 @@ class City:
         self.n_people = n_people
         self.init_fraction_sick = init_fraction_sick
         self.hash = int(time.time_ns())  # real-life time used as hash for inference server data hashing
-        self.tracker = Tracker(env, self, conf, logfile)
 
         self.test_type_preference = list(zip(*sorted(conf.get("TEST_TYPES").items(), key=lambda x:x[1]['preference'])))[0]
         assert len(self.test_type_preference) == 1, "WARNING: Do not know how to handle multiple test types"
@@ -102,10 +101,6 @@ class City:
         log("Initializing humans ...", self.logfile)
         self.initialize_humans_and_locations()
 
-        # self.log_static_info()
-        self.tracker.track_static_info()
-
-
         log("Computing their preferences", self.logfile)
         self._compute_preferences()
         self.tracing_method = None
@@ -120,13 +115,13 @@ class City:
         # will give them the global mailbox object (a dictionary) and have them 'pop' all
         # messages they consume from their own (simulation-only!) personal mailbox
         self.global_mailbox: SimulatorMailboxType = LMDBSortedMap()
-        self.tracker.initialize()
 
         # create a global inference engine
         self.inference_engine = None # TransformerInferenceEngine(conf)
 
         # split the location objects such as households between district objects
-        self.split_locations_into_districts(self.conf['NUM_DISTRICTS'])
+        self.num_districts = self.conf['NUM_DISTRICTS']
+        self.split_locations_into_districts()
 
     @property
     def start_time(self):

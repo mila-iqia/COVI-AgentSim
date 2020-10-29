@@ -428,7 +428,7 @@ class Human(BaseHuman):
         # TODO: remove self.all_symptoms in favor of self.rolling_all_symptoms[0]
         self.all_symptoms = OrderedSet(all_symptoms)
         self.rolling_all_symptoms.appendleft(self.all_symptoms)
-        self.city.tracker.track_symptoms(self)
+        self.city.district.tracker.track_symptoms(self)
 
     def update_reported_symptoms(self):
         """
@@ -447,7 +447,7 @@ class Human(BaseHuman):
             dropped_in_symptoms = SymptomGroups.sample(self.rng, self.conf["P_NUM_DROPIN_GROUPS"])
             reported_symptoms = reported_symptoms.union(set([s for s in dropped_in_symptoms for s in s]))
         self.rolling_all_reported_symptoms.appendleft(reported_symptoms)
-        self.city.tracker.track_symptoms(self)
+        self.city.district.tracker.track_symptoms(self)
 
     @property
     def test_result(self):
@@ -551,7 +551,7 @@ class Human(BaseHuman):
         self.intervened_behavior.trigger_intervention(reason=TEST_TAKEN)
 
         # log
-        self.city.tracker.track_tested_results(self)
+        self.city.district.tracker.track_tested_results(self)
 
     def check_if_needs_covid_test(self, at_hospital=False):
         """
@@ -627,17 +627,17 @@ class Human(BaseHuman):
         # is_incubated checks for asymptomaticity and whether the days since exposure is
         # greater than incubation_days.
         # Note: it doesn't count symptom start time from environmental infection or asymptomatic/presymptomatic infections
-        # reference is in city.tracker.track_serial_interval.__doc__
+        # reference is in city.district.tracker.track_serial_interval.__doc__
         if self.is_incubated and self.covid_symptom_start_time is None and any(self.symptoms):
             self.covid_symptom_start_time = self.env.timestamp
-            self.city.tracker.track_serial_interval(self.name)
+            self.city.district.tracker.track_serial_interval(self.name)
 
     def check_covid_recovery(self):
         """
         If `self` has covid, this function will check when can `self` recover and set necessary variables accordingly.
         """
         if self.is_infectious and (self.env.timestamp - self.infection_timestamp).total_seconds() >= self.recovery_days * SECONDS_PER_DAY:
-            self.city.tracker.track_recovery(self)
+            self.city.district.tracker.track_recovery(self)
 
             # TO DISCUSS: Should the test result be reset here? We don't know in reality
             # when the person has recovered; currently not reset
@@ -731,7 +731,7 @@ class Human(BaseHuman):
         x_human = infector.rng.random() < p_infection
 
         # track infection related parameters
-        self.city.tracker.track_infection(source="human",
+        self.city.district.tracker.track_infection(source="human",
                                     from_human=infector,
                                     to_human=infectee,
                                     location=self.location,
@@ -932,7 +932,7 @@ class Human(BaseHuman):
             self.city.covid_testing_facility.test_queue.remove(self)
         self.household.remove_resident(self)
         self.mobility_planner.cancel_all_events()
-        self.city.tracker.track_deaths() # track
+        self.city.district.tracker.track_deaths() # track
         yield self.env.timeout(np.inf)
 
     def set_tracing_method(self, tracing_method):
@@ -1106,7 +1106,7 @@ class Human(BaseHuman):
             # used for matching "mobility" between methods
             scale_factor_passed = contact_condition and self.rng.random() < self.conf.get("GLOBAL_MOBILITY_SCALING_FACTOR")
 
-            self.city.tracker.track_mixing(human1=self, human2=other_human, duration=t_near,
+            self.city.district.tracker.track_mixing(human1=self, human2=other_human, duration=t_near,
                             distance_profile=distance_profile, timestamp=self.env.timestamp, location=self.location,
                             interaction_type=type, contact_condition=contact_condition, global_mobility_factor=scale_factor_passed)
 
@@ -1279,7 +1279,7 @@ class Human(BaseHuman):
                 remaining_time_in_contact -= encounter_time_granularity
 
             if exchanged:
-                self.city.tracker.track_bluetooth_communications(human1=self, human2=other_human, location=self.location, timestamp=self.env.timestamp)
+                self.city.district.tracker.track_bluetooth_communications(human1=self, human2=other_human, location=self.location, timestamp=self.env.timestamp)
 
         return h1_msg, h2_msg
 

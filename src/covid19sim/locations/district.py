@@ -69,6 +69,8 @@ class District:
         self.pid = pid
         self.humans = []
         self.households = households
+        # self.humans = LMDBArray()
+        self.humans = humans
         self.stores = stores
         self.senior_residences = senior_residences
         self.hospitals = hospitals
@@ -79,24 +81,17 @@ class District:
         self.conf = conf
         self.logfile = logfile
         self.env = env
-        # self.humans = LMDBArray()
-        for household in self.households:
-            for human in household.residents:
-                self.humans.append(human.name)
+        self.city = city
+        self.n_people = len(self.humans)
 
-        self.rng = np.random.RandomState(rng.randint(2 ** 16))
-        self.x_range = x_range
-        self.y_range = y_range
-        self.total_area = (x_range[1] - x_range[0]) * (y_range[1] - y_range[0])
-        self.n_people = n_people
-        self.init_fraction_sick = init_fraction_sick
-        self.hash = int(time.time_ns())  # real-life time used as hash for inference server data hashing
-        self.tracker = city.tracker
+        self.init_fraction_sick = city.init_fraction_sick
+        self.rng = city.rng # np.random.RandomState(rng.randint(2 ** 16))
+        self.hash = city.hash  # real-life time used as hash for inference server data hashing
+        self.tracker = Tracker(env, self, conf, logfile)
 
         self.daily_target_rec_level_dists = city.daily_target_rec_level_dists
         self.daily_rec_level_mapping = None
         self.covid_testing_facility = city.covid_testing_facility
-
 
         # update env's multiprocessing configs
         self.env.init_timed_barrier(
@@ -110,21 +105,16 @@ class District:
         self.age_histogram = None
 
         log("Initializing humans ...", self.logfile)
-        self.initialize_humans_and_locations()
 
         # self.log_static_info()
         self.tracker.track_static_info()
-
-        log("Computing their preferences", self.logfile)
-        self._compute_preferences()
+        self.tracker.initialize()
         self.tracing_method = None
 
         # GAEN summary statistics that enable the individual to determine whether they should send their info
         self.risk_change_histogram = Counter()
         self.risk_change_histogram_sum = 0
         self.sent_messages_by_day: typing.Dict[int, int] = {}
-
-        self.tracker.initialize()
 
     def register_new_messages(
             self,
@@ -253,6 +243,21 @@ class District:
     def start_time(self):
         return datetime.datetime.fromtimestamp(self.env.ts_initial)
 
+    def _initiate_infection_spread_and_modify_mixing_if_needed(self):
+        """
+        Seeds infection in the population and sets other attributes corresponding to social mixing dynamics.
+        """
+        # seed infection
+        self.n_init_infected = math.ceil(self.init_fraction_sick * self.n_people)
+        chosen_infected = self.rng.choice(self.humans, size=self.n_init_infected, replace=False)
+        for human in chosen_infected:
+            human._get_infected(initial_viral_load=human.rng.random())
+
+        # modify likelihood of meeting new people
+        self.conf['_CURRENT_PREFERENTIAL_ATTACHMENT_FACTOR'] = self.conf['END_PREFERENTIAL_ATTACHMENT_FACTOR']
+
+        self.tracker.log_seed_infections()
+
     def have_some_humans_download_the_app(self):
         """
         Simulates the process of downloading the app on for smartphone users according to `APP_UPTAKE` and `SMARTPHONE_OWNER_FRACTION_BY_AGE`.
@@ -370,15 +375,6 @@ class District:
             list: All the events which occured before `end`
         """
         return list(itertools.chain(*[h.pull_events_slice(end) for h in self.humans]))
-
-    def _compute_preferences(self):
-        """
-        Compute preferred distribution of each human for park, stores, etc.
-        /!\ Modifies each human's stores_preferences and parks_preferences
-        """
-        for h in self.humans:
-            h.stores_preferences = [(compute_distance(h.household, s) + 1e-1) ** -1 for s in self.stores]
-            h.parks_preferences = [(compute_distance(h.household, s) + 1e-1) ** -1 for s in self.parks]
 
     def new_human(self, human: typing.Union[int,"Human"]):
         """
