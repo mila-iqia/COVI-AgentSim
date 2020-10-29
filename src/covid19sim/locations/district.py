@@ -420,7 +420,15 @@ class District:
         self.env.process(
             change_allowed_drift(
                 self.env,
-                max(self.conf['COVID_SPREAD_START_TIME'], self.conf['INTERVENTION_START_TIME']),
+                max(
+                    filter(
+                        None,
+                        [
+                            self.conf['COVID_SPREAD_START_TIME'],
+                            self.conf['INTERVENTION_START_TIME']
+                        ]
+                    )
+                ),
                 self.conf['SYNC_ALLOWED_DRIFT_SEC']
                 )
             )
