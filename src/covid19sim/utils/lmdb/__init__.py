@@ -281,10 +281,10 @@ class LMDBSortedMap(LMDBBaseClass):
         """
         Removes given key, value pair
         """
+        values_bytes = self.vdumps(value)
         with self.env.begin(db=self.db, write=True) as txn:
-            cur = txn.cursor(self.db)
-            cur.delete(old_index, value, db=self.db)
-            return cur.put(key=self.idumps(new_index), value=self.vdumps(value), overwrite=True, dupdata=True)
+            txn.delete(self.idumps(old_index), values_bytes, db=self.db)
+            return txn.put(db=self.db, key=self.idumps(new_index), value=values_bytes, overwrite=True, dupdata=True)
 
     def first(self, return_values: bool=False) -> typing.Tuple[int, typing.List]:
         """
