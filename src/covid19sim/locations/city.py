@@ -179,29 +179,62 @@ class City:
             h.stores_preferences = [(compute_distance(h.household, s) + 1e-1) ** -1 for s in self.stores]
             h.parks_preferences = [(compute_distance(h.household, s) + 1e-1) ** -1 for s in self.parks]
 
-    def split_locations_into_districts(self, n_districts: int):
+    def location_district_id(self, location: Location) -> int:
+        """
+        maps location id to the district id containing the location
+        """
+        return location.id % self.num_districts
+
+    def split_locations_into_districts(self):
         """
         splits the location objects between district processes
         """
-        self.districts: List[District] = [None] * n_districts
+        self.districts: typing.List[District] = [None] * self.num_districts
         ind: int = 0
-        parent_pid = os.getpid()
+        # parent_pid = os.getpid()
         self.district = None
-        while (os.getpid() == parent_pid) and (ind < n_districts):
+
+        def split_locs(locs: typing.List[Location]):
+            district_locs = [[]] * self.num_districts
+            for loc in locs:
+                district_locs[self.location_district_id(loc)].append(loc)
+            return district_locs
+
+        district_households = split_locs(self.households)
+        district_humans = [household.residents for households in district_households for household in households]
+        district_stores = split_locs(self.stores)
+        district_senior_residences = split_locs(self.senior_residences)
+        district_hospitals = split_locs(self.hospitals)
+        district_miscs = split_locs(self.miscs)
+        district_parks = split_locs(self.parks)
+        district_schools = split_locs(self.schools)
+        district_workplaces = split_locs(self.workplaces)
+        for ind in range(self.num_districts):
             if os.fork() == 0: # in the child process
-                s = slice(ind, None, n_districts)
                 self.district = District(
-                        os.getpid() - parent_pid,
-                        self.humans,
-                        self.households[s],
-                        self.stores[s],
-                        self.senior_residences[s],
-                        self.hospitals[s],
-                        self.miscs[s],
-                        self.parks[s],
-                        self.schools[s],
-                        self.workplaces[s]
+                        ind,
+                        district_humans[ind],
+                        district_households[ind],
+                        district_stores[ind],
+                        district_senior_residences[ind],
+                        district_hospitals[ind],
+                        district_miscs[ind],
+                        district_parks[ind],
+                        district_schools[ind],
+                        district_workplaces[ind],
+                        env=self.env,
+                        conf=self.conf,
+                        city=self
                     )
+                break
+        else:
+            class Monitor():
+                def __init__(self):
+                    pass
+                def run(self, *args, **kwargs):
+                    yield from ()
+            self.district = Monitor()
+
         del self.households, self.stores, self.senior_residences, self.hospitals, \
             self.miscs, self.parks, self.schools, self.workplaces
         # self.humans
