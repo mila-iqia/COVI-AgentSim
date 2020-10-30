@@ -325,7 +325,7 @@ def run(data, path, compare="app_adoption"):
     # get life expectancy data
     le_data_path = os.path.join(
         pathlib.Path(__file__).resolve().parent.parent.parent.parent,
-        'daly_data/life_expectancies/1310011401-eng.csv')
+        'frozen_data/life_expectancies/1310011401-eng.csv')
     le_data = load_life_expectancies(le_data_path)
 
     # daly calculations
