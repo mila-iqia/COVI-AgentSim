@@ -377,6 +377,8 @@ def run(data, path, compare="app_adoption"):
             # get calculate YLL, YLD and DALYs for each individual
             daly_df_seed = get_daly_data(demog_data, monitor_data, le_data)
 
+            print(daly_df_seed[daly_df_seed.was_infected == False
+                               ].DALYs.sum())
             assert daly_df_seed[daly_df_seed.was_infected == False
                                 ].DALYs.sum() == 0,\
                 'uninfected should not contribute DALYs'
