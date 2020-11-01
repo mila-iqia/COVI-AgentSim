@@ -662,8 +662,8 @@ def run(data, path, compare="app_adoption"):
     print('high')
     print(agg_daly_mean_high[method_keys])
     print('df')
-    print(
-          pd.concat([agg_daly_mean[method_keys],
+    stress_test_df = pd.concat(
+                    [agg_daly_mean[method_keys],
                      agg_daly_mean_low[method_keys],
                      agg_daly_mean_high[method_keys],
                      agg_daly_stderr[method_keys],
@@ -675,4 +675,7 @@ def run(data, path, compare="app_adoption"):
                           'mean_high',
                           'stderr',
                           'stderr_low',
-                          'stderr_high']))
+                          'stderr_high'])
+
+    save_path_stress_test = ('dw_stress_test.csv')
+    stress_test_df.to_csv(os.path.join(path, save_path_stress_test))
