@@ -22,6 +22,25 @@ disability_weights = {
     'critical': 0.408  # severe COPD without heart failure
     }
 
+# 95% Uncertainty Level, lower bound
+dw_low = {
+    'no_hospitalization': 0.032,  # moderate lower respiratory infection
+    'hospitalized': 0.088,  # severe respiratory infection
+    'critical': 0.273  # severe COPD without heart failure
+    }
+
+# 95% Uncertainty Level, upper bound
+dw_high = {
+    'no_hospitalization': 0.074,  # moderate lower respiratory infection
+    'hospitalized': 0.190,  # severe respiratory infection
+    'critical': 0.556  # severe COPD without heart failure
+    }
+
+dw_dicts = {"": disability_weights,
+            "_low": dw_low,
+            "_high": dw_high
+            }
+
 
 def load_tracker(path):
     with open(path, 'rb') as f:
@@ -171,19 +190,34 @@ def get_daly_data(demographics,
         daly_df['has_died'] * daly_df['life_expectancy']
                                                 )
 
-    # add YLD
-    daly_df['YLD'] = daly_df['was_infected'] * (
-        daly_df['days_sick_not_in_hospital']/365 *
-        disability_weights['no_hospitalization'] +
+    # # add YLD
+    # daly_df['YLD'] = daly_df['was_infected'] * (
+    #     daly_df['days_sick_not_in_hospital']/365 *
+    #     disability_weights['no_hospitalization'] +
 
-        daly_df['days_in_hospital']/365 *
-        disability_weights['hospitalized'] +
+    #     daly_df['days_in_hospital']/365 *
+    #     disability_weights['hospitalized'] +
 
-        daly_df['days_in_ICU']/365 *
-        disability_weights['critical']
-                                                )
-    # add DALYs
-    daly_df['DALYs'] = daly_df['YLL'] + daly_df['YLD']
+    #     daly_df['days_in_ICU']/365 *
+    #     disability_weights['critical']
+    #                                             )
+    # # add DALYs
+    # daly_df['DALYs'] = daly_df['YLL'] + daly_df['YLD']
+
+    # calculate dalys for each set of disability weights
+    for dw_dict in dw_dicts:
+        daly_df['YLD'+dw_dict] = daly_df['was_infected'] * (
+            daly_df['days_sick_not_in_hospital']/365 *
+            dw_dicts[dw_dict]['no_hospitalization'] +
+
+            daly_df['days_in_hospital']/365 *
+            dw_dicts[dw_dict]['hospitalized'] +
+
+            daly_df['days_in_ICU']/365 *
+            dw_dicts[dw_dict]['critical']
+                                                    )
+
+        daly_df['DALYs' + dw_dict] = daly_df['YLL'] + daly_df['YLD'+dw_dict]
 
     return daly_df
 
@@ -316,9 +350,12 @@ def run(data, path, compare="app_adoption"):
 
     # Define aggregate output variables
     agg_dalys = {label: {} for label, _ in label2pkls}
+    agg_dalys_low = {label: {} for label, _ in label2pkls}
+    agg_dalys_high = {label: {} for label, _ in label2pkls}
+
     agg_work_hours = {label: {} for label, _ in label2pkls}
 
-    # [method][run][age group]
+    # [method][run][age group] per person
     dalys_pp_age = {label: {} for label, _ in label2pkls}
     dalys_pp_age_sex_metrics = {label: {} for label, _ in label2pkls}
 
@@ -346,6 +383,8 @@ def run(data, path, compare="app_adoption"):
 
             # calculate total DALYs for this pickle file
             agg_dalys[label][idx] = daly_df_seed['DALYs'].sum()
+            agg_dalys_low[label][idx] = daly_df_seed['DALYs_low'].sum()
+            agg_dalys_high[label][idx] = daly_df_seed['DALYs_high'].sum()
 
             # calculate total foregone work hours for this pickle file
             agg_work_hours[label][idx] = lost_work_hours_total(pkl)
@@ -376,13 +415,17 @@ def run(data, path, compare="app_adoption"):
     agg_daly_mean = agg_daly_df.mean(axis=0)
     agg_daly_stderr = agg_daly_df.sem(axis=0)
 
+    agg_daly_df_low = pd.DataFrame(agg_dalys_low)
+    agg_daly_mean_low = agg_daly_df_low.mean(axis=0)
+    agg_daly_stderr_low = agg_daly_df_low.sem(axis=0)
+
+    agg_daly_df_high = pd.DataFrame(agg_dalys_high)
+    agg_daly_mean_high = agg_daly_df_high.mean(axis=0)
+    agg_daly_stderr_high = agg_daly_df_high.sem(axis=0)
+
     work_hours_df = pd.DataFrame(agg_work_hours)
     work_hours_mean = work_hours_df.mean(axis=0)
     work_hours_stderr = work_hours_df.sem(axis=0)
-
-    # # print a table with mean & std
-    # print(agg_daly_df)
-    # print(agg_daly_df.mean(axis=0))
 
     # generate figure 9 (work hours and total DALYs)
     fig = plt.figure(figsize=(15, 10))
@@ -473,7 +516,7 @@ def run(data, path, compare="app_adoption"):
 
     # generate table 2
     print('############################################################')
-    print('Table 2: difference in DALYs and TPL,'
+    print('Table 2: difference in DALYs and TPL, '
           'as well as ICER for different CT methods')
     print('saved to ICER_table.csv')
     # get full DataFrame keys according to CT method used
@@ -496,8 +539,8 @@ def run(data, path, compare="app_adoption"):
                    bct_key,
                    heuristic_key]
 
-    agg_daly_mean = agg_daly_df.mean(axis=0)
-    agg_daly_stderr = agg_daly_df.sem(axis=0)
+    # agg_daly_mean = agg_daly_df.mean(axis=0)
+    # agg_daly_stderr = agg_daly_df.sem(axis=0)
 
     # Delta DALYs
     agg_daly_mean['delta_bct'] = agg_daly_mean[no_tracing_key] - \
@@ -620,3 +663,8 @@ def run(data, path, compare="app_adoption"):
     print(metrics_df)
     save_path_metrics = ('health_metrics_stratified_table.csv')
     metrics_df.to_csv(os.path.join(path, save_path_metrics))
+
+    # generate table for stress testing DALYs
+    print('############################################################')
+    print('DALYs with low, medium and high estimates for disability weights')
+    print('Saved to dw_stress_test.csv')
