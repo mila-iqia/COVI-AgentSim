@@ -380,7 +380,7 @@ def run(data, path, compare="app_adoption"):
             print(daly_df_seed[daly_df_seed.was_infected == False
                                ].DALYs.sum())
             assert daly_df_seed[daly_df_seed.was_infected == False
-                                ].DALYs.sum() == 0,\
+                                ].DALYs_.sum() == 0,\
                 'uninfected should not contribute DALYs'
 
             # calculate total DALYs for this pickle file
