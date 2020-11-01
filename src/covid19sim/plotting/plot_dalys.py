@@ -189,21 +189,6 @@ def get_daly_data(demographics,
     daly_df['YLL'] = daly_df['was_infected'] * (
         daly_df['has_died'] * daly_df['life_expectancy']
                                                 )
-
-    # # add YLD
-    # daly_df['YLD'] = daly_df['was_infected'] * (
-    #     daly_df['days_sick_not_in_hospital']/365 *
-    #     disability_weights['no_hospitalization'] +
-
-    #     daly_df['days_in_hospital']/365 *
-    #     disability_weights['hospitalized'] +
-
-    #     daly_df['days_in_ICU']/365 *
-    #     disability_weights['critical']
-    #                                             )
-    # # add DALYs
-    # daly_df['DALYs'] = daly_df['YLL'] + daly_df['YLD']
-
     # calculate dalys for each set of disability weights
     for dw_dict in dw_dicts:
         daly_df['YLD'+dw_dict] = daly_df['was_infected'] * (
@@ -215,7 +200,7 @@ def get_daly_data(demographics,
 
             daly_df['days_in_ICU']/365 *
             dw_dicts[dw_dict]['critical']
-                                                    )
+                                                            )
 
         daly_df['DALYs' + dw_dict] = daly_df['YLL'] + daly_df['YLD'+dw_dict]
 
@@ -380,7 +365,7 @@ def run(data, path, compare="app_adoption"):
             print(daly_df_seed[daly_df_seed.was_infected == False
                                ].DALYs.sum())
             assert daly_df_seed[daly_df_seed.was_infected == False
-                                ].DALYs_.sum() == 0,\
+                                ].DALYs.sum() == 0,\
                 'uninfected should not contribute DALYs'
 
             # calculate total DALYs for this pickle file
@@ -670,3 +655,24 @@ def run(data, path, compare="app_adoption"):
     print('############################################################')
     print('DALYs with low, medium and high estimates for disability weights')
     print('Saved to dw_stress_test.csv')
+    print('mean')
+    print(agg_daly_mean[method_keys])
+    print('low')
+    print(agg_daly_mean_low[method_keys])
+    print('high')
+    print(agg_daly_mean_high[method_keys])
+    print('df')
+    print(
+          pd.concat([agg_daly_mean[method_keys],
+                     agg_daly_mean_low[method_keys],
+                     agg_daly_mean_high[method_keys],
+                     agg_daly_stderr[method_keys],
+                     agg_daly_stderr_low[method_keys],
+                     agg_daly_stderr_high[method_keys]],
+                    axis=1,
+                    keys=['mean',
+                          'mean_low',
+                          'mean_high',
+                          'stderr',
+                          'stderr_low',
+                          'stderr_high']))
