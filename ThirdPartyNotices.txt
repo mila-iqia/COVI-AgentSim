@@ -3,7 +3,7 @@ MILA-IQIA - COVI-AgentSim
 THIRD-PARTY SOFTWARE NOTICES AND INFORMATION
 Do Not Translate or Localize
 
-This software includes third party open source software components: lmdb. The associated license is brought as follows:
+This software includes third party open source software components: jnwatson/py-lmdb. The associated license is brought as follows:
 
 The OpenLDAP Public License
   Version 2.8, 17 August 2003
