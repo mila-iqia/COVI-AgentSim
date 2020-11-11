@@ -30,6 +30,7 @@ if typing.TYPE_CHECKING:
 from covid19sim.locations.hospital import Hospital, ICU
 
 
+
 # used by - next_generation_matrix,
 SNAPSHOT_PERCENT_INFECTED_THRESHOLD = 2 # take a snapshot every time percent infected of population increases by this amount
 LOCATION_TYPES_TO_TRACK_MIXING = ["house", "work", "school", "other", "all"]
@@ -628,11 +629,11 @@ class Tracker(object):
         return np.mean(times).item()
 
     def track_static_info(self):
-            for human in self.district.humans:
-                self.humans_demographics.append({"name": human.name,
-                                                "preexisting_conditions": human.preexisting_conditions,
-                                                "age": human.age,
-                                                "sex": human.sex})
+        for human in self.district.humans:
+            self.humans_demographics.append({"name": human.name,
+                                            "preexisting_conditions": human.preexisting_conditions,
+                                            "age": human.age,
+                                            "sex": human.sex})
 
     def compute_serial_interval(self):
         """

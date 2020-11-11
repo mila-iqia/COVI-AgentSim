@@ -100,12 +100,11 @@ class City:
         self.households = OrderedSet()
         self.age_histogram = None
 
+        # self.log_static_info()
+        # self.tracker.track_static_info()
+
         log("Initializing humans ...", self.logfile)
         self.initialize_humans_and_locations()
-
-        # self.log_static_info()
-        self.tracker.track_static_info()
-
 
         log("Computing their preferences", self.logfile)
         self._compute_preferences()
@@ -208,6 +207,9 @@ class City:
 
         district_households = split_locs(self.households)
         district_humans = [household.residents for households in district_households for household in households]
+        print(len(self.households))
+        print(len(district_humans))
+        # TODO: @Rez fix the above :)
         district_stores = split_locs(self.stores)
         district_senior_residences = split_locs(self.senior_residences)
         district_hospitals = split_locs(self.hospitals)

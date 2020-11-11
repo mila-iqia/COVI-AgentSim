@@ -196,7 +196,7 @@ def main(conf: DictConfig):
         log("Dumping Tracker Data in {}".format(conf["outdir"]), logfile)
 
         Path(conf["outdir"]).mkdir(parents=True, exist_ok=True)
-        filename = f"tracker_data_n_{conf['n_people']}_seed_{conf['seed']}_{timenow}.pkl"
+        filename = f"tracker_data_n_{conf['n_people']}_seed_{conf['seed']}_{timenow}_{city.district.district_id}.pkl"
         data = extract_tracker_data(city.district.tracker, conf)
         dump_tracker_data(data, conf["outdir"], filename)
     else:
@@ -207,7 +207,7 @@ def main(conf: DictConfig):
         log("Dumping Tracker Data in {}".format(conf["outdir"]), logfile)
 
         Path(conf["outdir"]).mkdir(parents=True, exist_ok=True)
-        filename = f"tracker_data_n_{conf['n_people']}_seed_{conf['seed']}_{timenow}.pkl"
+        filename = f"tracker_data_n_{conf['n_people']}_seed_{conf['seed']}_{timenow}_{city.district.district_id}.pkl"
         data = extract_tracker_data(city.district.tracker, conf)
         dump_tracker_data(data, conf["outdir"], filename)
     # Shutdown the data collection server if one's running
