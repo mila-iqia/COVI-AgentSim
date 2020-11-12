@@ -241,8 +241,7 @@ class City:
             self.district = Monitor()
 
         del self.households, self.stores, self.senior_residences, self.hospitals, \
-            self.miscs, self.parks, self.schools, self.workplaces
-        # self.humans
+            self.miscs, self.parks, self.schools, self.workplaces, self.humans
         
 
 class EmptyCity(City):
