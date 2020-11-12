@@ -254,7 +254,7 @@ if __name__ == "__main__":
 
     Data:
         This script expects pickled data that was output by ~ `python run.py ... tune=True`,
-        meaning the city.tracker's data parsed by covid19sim.utils.extract_tracker_data
+        meaning the city.district.tracker's data parsed by covid19sim.utils.extract_tracker_data
 
     Usage:
 

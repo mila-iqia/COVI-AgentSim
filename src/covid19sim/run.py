@@ -144,17 +144,17 @@ def main(conf: DictConfig):
     type_of_run = _get_intervention_string(conf)
     conf['INTERVENTION'] = type_of_run
     log(f"Type of run: {type_of_run}", logfile)
-    if conf['COLLECT_TRAINING_DATA']:
-        data_output_path = os.path.join(conf["outdir"], "train.zarr")
-        collection_server = DataCollectionServer(
-            data_output_path=data_output_path,
-            config_backup=conf,
-            human_count=conf['n_people'],
-            simulation_days=conf['simulation_days'],
-        )
-        collection_server.start()
-    else:
-        collection_server = None
+    # if conf['COLLECT_TRAINING_DATA']:
+    #     data_output_path = os.path.join(conf["outdir"], "train.zarr")
+    #     collection_server = DataCollectionServer(
+    #         data_output_path=data_output_path,
+    #         config_backup=conf,
+    #         human_count=conf['n_people'],
+    #         simulation_days=conf['simulation_days'],
+    #     )
+    #     collection_server.start()
+    # else:
+    #     collection_server = None
 
     conf["outfile"] = outfile
     city = simulate(
@@ -173,15 +173,15 @@ def main(conf: DictConfig):
     dump_conf(city.conf, "{}/full_configuration.yaml".format(city.conf["outdir"]))
 
     # log the simulation statistics
-    city.tracker.write_metrics()
+    city.district.tracker.write_metrics()
 
     # (baseball-cards) write full simulation data
-    if hasattr(city, "tracker") and \
-            hasattr(city.tracker, "collection_server") and \
-            isinstance(city.tracker.collection_server, DataCollectionServer) and \
-            city.tracker.collection_server is not None:
-        city.tracker.collection_server.stop_gracefully()
-        city.tracker.collection_server.join()
+    # if hasattr(city, "tracker") and \
+    #         hasattr(city.district.tracker, "collection_server") and \
+    #         isinstance(city.district.tracker.collection_server, DataCollectionServer) and \
+    #         city.district.tracker.collection_server is not None:
+    #     city.district.tracker.collection_server.stop_gracefully()
+    #     city.district.tracker.collection_server.join()
 
     # if COLLECT_TRAINING_DATA is true
     if not conf["tune"]:
@@ -190,14 +190,14 @@ def main(conf: DictConfig):
         # ----------------------------------------------
         # write values to train with
         train_priors = os.path.join(f"{conf['outdir']}/train_priors.pkl")
-        city.tracker.write_for_training(city.humans, train_priors, conf)
+        city.district.tracker.write_for_training(city.humans, train_priors, conf)
 
         timenow = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
         log("Dumping Tracker Data in {}".format(conf["outdir"]), logfile)
 
         Path(conf["outdir"]).mkdir(parents=True, exist_ok=True)
-        filename = f"tracker_data_n_{conf['n_people']}_seed_{conf['seed']}_{timenow}.pkl"
-        data = extract_tracker_data(city.tracker, conf)
+        filename = f"tracker_data_n_{conf['n_people']}_seed_{conf['seed']}_{timenow}_{city.district.district_id}.pkl"
+        data = extract_tracker_data(city.district.tracker, conf)
         dump_tracker_data(data, conf["outdir"], filename)
     else:
         # ------------------------------------------------------
@@ -207,20 +207,20 @@ def main(conf: DictConfig):
         log("Dumping Tracker Data in {}".format(conf["outdir"]), logfile)
 
         Path(conf["outdir"]).mkdir(parents=True, exist_ok=True)
-        filename = f"tracker_data_n_{conf['n_people']}_seed_{conf['seed']}_{timenow}.pkl"
-        data = extract_tracker_data(city.tracker, conf)
+        filename = f"tracker_data_n_{conf['n_people']}_seed_{conf['seed']}_{timenow}_{city.district.district_id}.pkl"
+        data = extract_tracker_data(city.district.tracker, conf)
         dump_tracker_data(data, conf["outdir"], filename)
     # Shutdown the data collection server if one's running
-    if collection_server is not None:
-        collection_server.stop_gracefully()
-        collection_server.join()
-        # Remove the IPCs if they were stored somewhere custom
-        if os.environ.get("COVID19SIM_IPC_PATH", None) is not None:
-            print("<<<<<<<< Cleaning Up >>>>>>>>")
-            for file in Path(os.environ.get("COVID19SIM_IPC_PATH")).iterdir():
-                if file.name.endswith(".ipc"):
-                    print(f"Removing {str(file)}...")
-                    os.remove(str(file))
+    # if collection_server is not None:
+    #     collection_server.stop_gracefully()
+    #     collection_server.join()
+    #     # Remove the IPCs if they were stored somewhere custom
+    #     if os.environ.get("COVID19SIM_IPC_PATH", None) is not None:
+    #         print("<<<<<<<< Cleaning Up >>>>>>>>")
+    #         for file in Path(os.environ.get("COVID19SIM_IPC_PATH")).iterdir():
+    #             if file.name.endswith(".ipc"):
+    #                 print(f"Removing {str(file)}...")
+    #                 os.remove(str(file))
     return conf
 
 
@@ -300,27 +300,27 @@ def simulate(
     )
 
     # we might need to reset the state of the clusters held in shared memory (server or not)
-    if conf.get("RESET_INFERENCE_SERVER", False):
-        if conf.get("USE_INFERENCE_SERVER"):
-            inference_frontend_address = conf.get("INFERENCE_SERVER_ADDRESS", None)
-            print("requesting cluster reset from inference server...")
-            from covid19sim.inference.server_utils import InferenceClient
+    # if conf.get("RESET_INFERENCE_SERVER", False):
+    #     if conf.get("USE_INFERENCE_SERVER"):
+    #         inference_frontend_address = conf.get("INFERENCE_SERVER_ADDRESS", None)
+    #         print("requesting cluster reset from inference server...")
+    #         from covid19sim.inference.server_utils import InferenceClient
 
-            temporary_client = InferenceClient(
-                server_address=inference_frontend_address
-            )
-            temporary_client.request_reset()
-        else:
-            from covid19sim.inference.heavy_jobs import DummyMemManager
+    #         temporary_client = InferenceClient(
+    #             server_address=inference_frontend_address
+    #         )
+    #         temporary_client.request_reset()
+    #     else:
+    #         from covid19sim.inference.heavy_jobs import DummyMemManager
 
-            DummyMemManager.global_cluster_map = {}
+    #         DummyMemManager.global_cluster_map = {}
 
     # Initiate city process, which runs every hour
-    env.process(city.run(SECONDS_PER_HOUR, outfile))
+    env.process(city.district.run(SECONDS_PER_HOUR, outfile))
 
     # initiate humans
-    for human in city.humans:
-        env.process(human.run())
+    # for human in city.humans:
+    #     env.process(human.run())
 
     env.process(console_logger.run(env, city=city))
 

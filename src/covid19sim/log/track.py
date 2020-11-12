@@ -1,6 +1,6 @@
 """
 Contains a class to track several simulation metrics.
-It is initialized as an attribute of the city and called at several places in `Human`.
+It is initialized as an attribute of the district and called at several places in `Human`.
 """
 import os
 import datetime
@@ -28,6 +28,7 @@ from covid19sim.interventions.tracing import Heuristic
 if typing.TYPE_CHECKING:
     from covid19sim.human import Human
 from covid19sim.locations.hospital import Hospital, ICU
+
 
 
 # used by - next_generation_matrix,
@@ -142,17 +143,17 @@ class Tracker(object):
     Keeps track of several aspects of the simulation. It is called from various locations in the entire codebase
     to keep track of relevant metrics.
     """
-    def __init__(self, env, city, conf, logfile):
+    def __init__(self, env, district, conf, logfile):
         """
         Args:
             env (simpy.Environment): Keeps track of events and their schedule
-            city ([type]): [description]
+            district ([type]): [description]
             conf (dict): yaml configuration of the experiment
             logfile (str): filepath where the console output and final tracked metrics will be logged.
         """
         self.fully_initialized = False
         self.env = env
-        self.city = city
+        self.district = district
         self.conf = conf
         self.logfile = logfile
         today = self.env.timestamp.date()
@@ -339,7 +340,7 @@ class Tracker(object):
 
         # demographics
         self.age_bins = [(x[0], x[1]) for x in sorted(self.conf.get("P_AGE_REGION"), key = lambda x:x[0])]
-        self.n_people = self.n_humans = self.city.n_people
+        self.n_people = self.n_humans = self.district.n_people
         self.adoption_rate = 0.0
         self.human_has_app = set()
 
@@ -373,21 +374,21 @@ class Tracker(object):
         self.infection_graph = set()
 
         # (debug) track all humans all the time
-        self.keep_full_human_copies = city.conf.get("KEEP_FULL_OBJ_COPIES", False)
+        self.keep_full_human_copies = district.conf.get("KEEP_FULL_OBJ_COPIES", False)
         self.collection_server, self.collection_client = None, None
         if self.keep_full_human_copies:
-            assert not city.conf.get("COLLECT_TRAINING_DATA", False), \
+            assert not district.conf.get("COLLECT_TRAINING_DATA", False), \
                 "cannot collect human object copies & training data simultanously, both use same server"
-            assert os.path.isdir(city.conf["outdir"])
+            assert os.path.isdir(district.conf["outdir"])
             self.collection_server = DataCollectionServer(
-                data_output_path=os.path.join(city.conf["outdir"], "human_backups.hdf5"),
-                human_count=city.conf["n_people"],
-                simulation_days=city.conf["simulation_days"],
-                config_backup=city.conf,
+                data_output_path=os.path.join(district.conf["outdir"], "human_backups.hdf5"),
+                human_count=district.conf["n_people"],
+                simulation_days=district.conf["simulation_days"],
+                config_backup=district.conf,
             )
             self.collection_server.start()
             self.collection_client = DataCollectionClient(
-                server_address=city.conf.get("data_collection_server_address", default_datacollect_frontend_address),
+                server_address=district.conf.get("data_collection_server_address", default_datacollect_frontend_address),
             )
 
     def initialize(self):
@@ -419,14 +420,14 @@ class Tracker(object):
         log("\n######## DEMOGRAPHICS / SYNTHETIC POPULATION #########", self.logfile)
         log(f"NB: (i) census numbers are in brackets. (ii) {WARN_SIGNAL} marks a {WARN_RELATIVE_PERCENTAGE_THRESHOLD} % realtive deviation from census\n", self.logfile)
         # age distribution
-        x = np.array([h.age for h in self.city.humans])
+        x = np.array([h.age for h in self.district.humans])
         cns_avg = self.conf['AVERAGE_AGE_REGION']
         cns_median = self.conf['MEDIAN_AGE_REGION']
         log(f"Age (census) - mean: {x.mean():3.3f} ({cns_avg}), median: {np.median(x):3.0f} ({cns_median}), std: {x.std():3.3f}", self.logfile)
 
         # gender distribution
         str_to_print = "Gender: "
-        x = np.array([h.sex for h in self.city.humans])
+        x = np.array([h.sex for h in self.district.humans])
         for z in np.unique(x):
             p = 100 * x[x==z].shape[0]/self.n_people
             str_to_print += f"{z}: {p:2.3f} % | "
@@ -435,18 +436,18 @@ class Tracker(object):
         ###### house initialization
         log("\n*** House allocation *** ", self.logfile)
         # senior residencies
-        self.n_senior_residency_residents = sum(len(sr.residents) for sr in self.city.senior_residences)
+        self.n_senior_residency_residents = sum(len(sr.residents) for sr in self.district.senior_residences)
         p = 100*self.n_senior_residency_residents / self.n_people
         cns = 100*self.conf['P_COLLECTIVE']
         warn = WARN_SIGNAL if 100*abs(p-cns)/cns > WARN_RELATIVE_PERCENTAGE_THRESHOLD else ""
         log(f"{warn}Total ( %) number of residents in senior residencies (census): {self.n_senior_residency_residents} ({p:2.2f} %) ({cns:2.2f})", self.logfile)
 
         # house allocation
-        n_houses = len(self.city.households)
+        n_houses = len(self.district.households)
         sizes = np.zeros(n_houses)
         multigenerationals, only_adults = np.zeros(n_houses), np.zeros(n_houses)
         solo_ages = []
-        for i, house in enumerate(self.city.households):
+        for i, house in enumerate(self.district.households):
             sizes[i] = len(house.residents)
             multigenerationals[i] = house.allocation_type.multigenerational
             only_adults[i] = min(h.age for h in house.residents) > self.conf['MAX_AGE_CHILDREN']
@@ -496,7 +497,7 @@ class Tracker(object):
         log(str_to_print, self.logfile)
 
         # allocation types
-        allocation_types = [res.allocation_type for res in self.city.households]
+        allocation_types = [res.allocation_type for res in self.district.households]
         living_arrangements = [res.basestr for res in allocation_types]
         census = np.array([x.probability for x in allocation_types])
         allocation_types = np.array(living_arrangements)
@@ -514,7 +515,7 @@ class Tracker(object):
         # counts
         str_to_print = "Counts: "
         for location_type in ALL_LOCATIONS:
-            n_locations = len(getattr(self.city, f"{location_type.lower()}s"))
+            n_locations = len(getattr(self.district, f"{location_type.lower()}s"))
             str_to_print += f"{location_type}: {n_locations} | "
         log(str_to_print, self.logfile)
 
@@ -522,7 +523,7 @@ class Tracker(object):
         log("\n *** Workforce *** ", self.logfile)
 
         # workplaces, stores, miscs
-        all_workplaces = [self.city.workplaces, self.city.stores, self.city.miscs]
+        all_workplaces = [self.district.workplaces, self.district.stores, self.district.miscs]
         for workplaces in all_workplaces:
             subnames = defaultdict(lambda : {'count': 0, 'n_workers':0})
             n_workers = np.zeros_like(workplaces)
@@ -541,14 +542,14 @@ class Tracker(object):
                     log(f"\tNumber of {workplace_type} - {val['count']}. Total number of workers - {val['n_workers']}", self.logfile)
 
         # hospitals
-        n_nurses = np.zeros_like(self.city.hospitals)
-        n_doctors = np.zeros_like(self.city.hospitals)
-        for i,hospital in enumerate(self.city.hospitals):
+        n_nurses = np.zeros_like(self.district.hospitals)
+        n_doctors = np.zeros_like(self.district.hospitals)
+        for i,hospital in enumerate(self.district.hospitals):
             n_nurses[i] = hospital.n_nurses
             n_doctors[i] = hospital.n_doctors
 
-        n_nurses_senior_residences = np.zeros_like(self.city.senior_residences)
-        for i,senior_residence in enumerate(self.city.senior_residences):
+        n_nurses_senior_residences = np.zeros_like(self.district.senior_residences)
+        for i,senior_residence in enumerate(self.district.senior_residences):
             n_nurses_senior_residences[i] = senior_residence.n_nurses
 
         total_workforce = n_nurses.sum() + n_doctors.sum() + n_nurses_senior_residences.sum()
@@ -559,10 +560,10 @@ class Tracker(object):
         log(str_to_print, self.logfile)
 
         # schools
-        n_teachers = np.zeros_like(self.city.schools)
-        n_students = np.zeros_like(self.city.schools)
+        n_teachers = np.zeros_like(self.district.schools)
+        n_students = np.zeros_like(self.district.schools)
         subnames = defaultdict(lambda : {'count':0, 'n_teachers':0, 'n_students':0})
-        for i, school in enumerate(self.city.schools):
+        for i, school in enumerate(self.district.schools):
             n_teachers[i] = school.n_teachers
             n_students[i] = school.n_students
             subname = school.name.split(":")[0]
@@ -581,7 +582,7 @@ class Tracker(object):
 
         log("\n *** Disease related initialization stats *** ", self.logfile)
         # disease related
-        self.frac_asymptomatic = sum(h.is_asymptomatic for h in self.city.humans)/self.n_people
+        self.frac_asymptomatic = sum(h.is_asymptomatic for h in self.district.humans)/self.n_people
         log(f"Percentage of population that is asymptomatic {100*self.frac_asymptomatic: 2.3f}", self.logfile)
 
     def log_seed_infections(self):
@@ -590,9 +591,9 @@ class Tracker(object):
         """
         log("\n *** ****** *** ****** *** COVID infection seeded *** *** ****** *** ******\n", self.logfile)
 
-        self.n_infected_init = self.city.n_init_infected
+        self.n_infected_init = self.district.n_init_infected
         log(f"Total number of infected humans {self.n_infected_init}", self.logfile)
-        for human in self.city.humans:
+        for human in self.district.humans:
             if human.is_exposed:
                 self.init_infected.append(human)
                 log(f"\t{human} @ {human.household} living with {len(human.household.residents) - 1} other residents", self.logfile)
@@ -628,11 +629,11 @@ class Tracker(object):
         return np.mean(times).item()
 
     def track_static_info(self):
-            for human in self.city.humans:
-                self.humans_demographics.append({"name": human.name,
-                                                "preexisting_conditions": human.preexisting_conditions,
-                                                "age": human.age,
-                                                "sex": human.sex})
+        for human in self.district.humans:
+            self.humans_demographics.append({"name": human.name,
+                                            "preexisting_conditions": human.preexisting_conditions,
+                                            "age": human.age,
+                                            "sex": human.sex})
 
     def compute_serial_interval(self):
         """
@@ -700,13 +701,13 @@ class Tracker(object):
 
         self.cases_per_day.append(0)
 
-        self.s_per_day.append(sum(h.is_susceptible for h in self.city.humans))
-        self.e_per_day.append(sum(h.is_exposed for h in self.city.humans))
-        self.i_per_day.append(sum(h.is_infectious for h in self.city.humans))
-        self.r_per_day.append(sum(h.is_removed for h in self.city.humans))
+        self.s_per_day.append(sum(h.is_susceptible for h in self.district.humans))
+        self.e_per_day.append(sum(h.is_exposed for h in self.district.humans))
+        self.i_per_day.append(sum(h.is_infectious for h in self.district.humans))
+        self.r_per_day.append(sum(h.is_removed for h in self.district.humans))
         self.ei_per_day.append(self.e_per_day[-1] + self.i_per_day[-1])
 
-        for human in self.city.humans:
+        for human in self.district.humans:
             if human.is_susceptible:
                 state = 'S'
             elif human.is_exposed:
@@ -722,7 +723,7 @@ class Tracker(object):
             self.humans_rec_level[human.name].append(human.rec_level)
             self.humans_intervention_level[human.name].append(human._intervention_level)
 
-        num_humans_in_hospital = sum([hospital.n_covid_patients for hospital in self.city.hospitals])
+        num_humans_in_hospital = sum([hospital.n_covid_patients for hospital in self.district.hospitals])
 
         # test_per_day
         self.tested_per_day.append(0)
@@ -737,9 +738,9 @@ class Tracker(object):
         # risk model
         prec, lift, recall = self.compute_risk_precision(daily=True)
         self.risk_precision_daily.append((prec, lift, recall))
-        self.risk_values.append([(h.risk, h.is_exposed or h.is_infectious, h.test_result, len(h.symptoms) == 0) for h in self.city.humans])
+        self.risk_values.append([(h.risk, h.is_exposed or h.is_infectious, h.test_result, len(h.symptoms) == 0) for h in self.district.humans])
         row = []
-        for h in self.city.humans:
+        for h in self.district.humans:
             row.append({
                 "infection_timestamp": h.infection_timestamp,
                 "n_infectious_contacts": h.n_infectious_contacts,
@@ -763,11 +764,11 @@ class Tracker(object):
         self.human_monitor[self.env.timestamp.date()-datetime.timedelta(days=1)] = row
 
         # epi
-        self.avg_infectiousness_per_day.append(np.mean([h.infectiousness for h in self.city.humans]))
+        self.avg_infectiousness_per_day.append(np.mean([h.infectiousness for h in self.district.humans]))
 
         # behavior
         # /!\ `intervened_behavior.is_quarantined()` has dropout
-        x = np.array([(human.has_app, human.intervened_behavior.is_under_quarantine, human.is_susceptible or human.is_removed) for human in self.city.humans])
+        x = np.array([(human.has_app, human.intervened_behavior.is_under_quarantine, human.is_susceptible or human.is_removed) for human in self.district.humans])
         n_quarantined_app_users = (x[:, 0] * x[:, 1]).sum()
         n_quarantined = x[:, 1].sum()
         n_false_quarantined = (x[:, 1] * x[:, 2]).sum()
@@ -793,14 +794,14 @@ class Tracker(object):
     @check_if_tracking
     def track_daily_recommendation_levels(self, set_tracing_started_true=False):
         """
-        Tracks aggregate recommendation levels of humans in the city.
+        Tracks aggregate recommendation levels of humans in the district.
         """
         if set_tracing_started_true:
             self.tracing_started = True
 
         G, B, O, R, M, EM = 0,0,0,0,0,0
         if self.tracing_started:
-            rec_levels = np.array([h.rec_level for h in self.city.humans if not h.is_dead])
+            rec_levels = np.array([h.rec_level for h in self.district.humans if not h.is_dead])
             G = sum(rec_levels == 0)
             B = sum(rec_levels == 1)
             O = sum(rec_levels == 2)
@@ -808,7 +809,7 @@ class Tracker(object):
             no_app = sum(rec_levels == -1)
 
             M = 1.0 * G + 0.8 * B + 0.20 * O + 0.05 * R + 1 * no_app
-            EM = np.mean([1-h.risk for h in self.city.humans if not h.is_dead])
+            EM = np.mean([1-h.risk for h in self.district.humans if not h.is_dead])
 
         #
         self.recommended_levels_daily.append([G, B, O, R])
@@ -828,9 +829,9 @@ class Tracker(object):
             [type]: [description]
         """
         if daily:
-            all = [(h.risk, h.is_exposed or h.is_infectious) for h in self.city.humans]
-            no_test = [(h.risk, h.is_exposed or h.is_infectious) for h in self.city.humans if h.test_result != "positive"]
-            no_test_symptoms = [(h.risk, h.is_exposed or h.is_infectious) for h in self.city.humans if h.test_result != "positive" and len(h.symptoms) == 0]
+            all = [(h.risk, h.is_exposed or h.is_infectious) for h in self.district.humans]
+            no_test = [(h.risk, h.is_exposed or h.is_infectious) for h in self.district.humans if h.test_result != "positive"]
+            no_test_symptoms = [(h.risk, h.is_exposed or h.is_infectious) for h in self.district.humans if h.test_result != "positive" and len(h.symptoms) == 0]
         else:
             all = [(x[0],x[1]) for daily_risk_values in self.risk_values[:until_days] for x in daily_risk_values]
             no_test = [(x[0], x[1]) for daily_risk_values in self.risk_values[:until_days] for x in daily_risk_values if not x[2]]
@@ -874,7 +875,7 @@ class Tracker(object):
     @check_if_tracking
     def track_humans(self, hd: typing.Dict, current_timestamp: datetime.datetime):
         """
-        Keeps record of humans and their attributes at each hour (called hourly from city)
+        Keeps record of humans and their attributes at each hour (called hourly from district)
 
         Args:
             hd (dict):
@@ -919,19 +920,19 @@ class Tracker(object):
             human_backups = copy_obj_array_except_env(hd)
             for name, human in human_backups.items():
                 human_id = int(name.split(":")[-1]) - 1
-                current_day = (current_timestamp - self.city.start_time).days
+                current_day = (current_timestamp - self.district.start_time).days
                 self.collection_client.write(current_day, current_timestamp.hour, human_id, human)
 
         # @@@@@ TODO: do something with location backups
-        # location_backups = copy_obj_array_except_env(self.city.get_all_locations())
+        # location_backups = copy_obj_array_except_env(self.district.get_all_locations())
 
     def track_app_adoption(self):
         """
         Stores app adoption rate and humans who have the app.
         """
-        self.adoption_rate = sum(h.has_app for h in self.city.humans) / self.n_people
+        self.adoption_rate = sum(h.has_app for h in self.district.humans) / self.n_people
         log(f"adoption rate: {100*self.adoption_rate:3.2f} %\n", self.logfile)
-        self.human_has_app = set([h.name for h in self.city.humans if h.has_app])
+        self.human_has_app = set([h.name for h in self.district.humans if h.has_app])
 
     @check_if_tracking
     def track_covid_properties(self, human):
@@ -1122,7 +1123,7 @@ class Tracker(object):
         if (from_human.name, to_human.name) in self.infection_graph:
             reason = payload['reason']
             assert reason in ['unknown', 'contact'], "improper reason for sending a message"
-            model = self.city.conf.get("RISK_MODEL")
+            model = self.district.conf.get("RISK_MODEL")
             count = self.infector_infectee_update_messages[from_human.name][to_human.name][self.env.timestamp][reason].get('count', 0)
             x = {'method':model, 'new_risk_level':payload['new_risk_level'], 'count':count+1}
             self.infector_infectee_update_messages[from_human.name][to_human.name][self.env.timestamp][reason] = x
@@ -1218,7 +1219,7 @@ class Tracker(object):
         past_14_days_hospital_cases = sum(self.hospitalization_per_day[:-14])
         past_14_days_tests = sum(self.tested_per_day[:-14])
         past_14_days_positive_test_results = sum(result['positive'] for date, result in self.test_results_per_day.items() if date <= self.env.timestamp.date())
-        actual_cases = sum(h.is_exposed or h.is_infectious for h in self.city.humans)
+        actual_cases = sum(h.is_exposed or h.is_infectious for h in self.district.humans)
 
         return {
             "cases": actual_cases / self.n_people,
@@ -1267,7 +1268,7 @@ class Tracker(object):
 
         # percent of population tested
         n_tests = len(self.test_monitor)
-        n_people = len(self.city.humans)
+        n_people = len(self.district.humans)
         percent_tested = 1.0 * n_tests/n_people
         daily_percent_test_results = [sum(x.values())/n_people for x in self.test_results_per_day.values()]
 
@@ -1489,7 +1490,7 @@ class Tracker(object):
                     C['n_people'] = defaultdict(lambda : set())
                     D['total'] = np.zeros((len(AGE_BIN_WIDTH_5), len(AGE_BIN_WIDTH_5)))
 
-            self.outside_daily_contacts.append(1.0 * self.n_outside_daily_contacts/len(self.city.humans))
+            self.outside_daily_contacts.append(1.0 * self.n_outside_daily_contacts/len(self.district.humans))
             self.n_outside_daily_contacts = 0
             self.last_day['social_mixing'] = day
 
@@ -1704,7 +1705,7 @@ class Tracker(object):
         all_healthy_effective_contacts = 0
         all_healthy_days = 0
         all_contacts = 0
-        for human in self.city.humans:
+        for human in self.district.humans:
             all_effective_contacts += human.effective_contacts
             all_healthy_effective_contacts += human.healthy_effective_contacts
             all_healthy_days += human.healthy_days
@@ -1846,7 +1847,7 @@ class Tracker(object):
         log(str_to_print, self.logfile)
 
         str_to_print = "Social network properties (degree statistics) - "
-        degrees = np.array([len(h.known_connections) for h in self.city.humans])
+        degrees = np.array([len(h.known_connections) for h in self.district.humans])
         str_to_print += f"mean {np.mean(degrees): 2.2f} | "
         str_to_print += f"std. {np.std(degrees): 2.2f} | "
         str_to_print += f"min {min(degrees): 2.2f} | "
@@ -1874,7 +1875,7 @@ class Tracker(object):
         self.compute_test_statistics(self.logfile)
 
         log("\n######## Effective Contacts & % infected #########", self.logfile)
-        p_infected = 100 * sum(self.cases_per_day) / len(self.city.humans)
+        p_infected = 100 * sum(self.cases_per_day) / len(self.district.humans)
         effective_contacts, healthy_effective_contacts, scale_factor = self.compute_effective_contacts()
         p_transmission = self.compute_probability_of_transmission()
         log(f"Eff. contacts: {effective_contacts:5.3f} \t Healthy Eff. Contacts {healthy_effective_contacts:5.3f} \th % infected: {p_infected: 2.3f}%", self.logfile)

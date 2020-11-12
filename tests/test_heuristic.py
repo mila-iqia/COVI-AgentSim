@@ -32,10 +32,10 @@ class HeuristicTest(unittest.TestCase):
         self.env = Env(self.start_time)
         self.city = EmptyCity(self.env, self.rng, self.city_x_range, self.city_y_range, self.conf)
         try:
-            if self.city.tracker is None:
-                self.city.tracker = TrackerMock()
+            if self.city.district.tracker is None:
+                self.city.district.tracker = TrackerMock()
         except AttributeError:
-            self.city.tracker = TrackerMock()
+            self.city.district.tracker = TrackerMock()
 
         self.sr = _create_senior_residences(2, self.city, self.city.rng, self.conf)
 

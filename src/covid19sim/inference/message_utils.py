@@ -13,7 +13,7 @@ if typing.TYPE_CHECKING:
 TimestampType = datetime.datetime
 TimeOffsetType = datetime.timedelta
 TimestampDefault = datetime.datetime.utcfromtimestamp(0)
-RealUserIDType = typing.Union[int, str]
+RealUserIDType = int # typing.Union[int, str]
 
 UIDType = int  # should be at least 16 bytes for truly unique keys?
 message_uid_bit_count = 128  # to be adjusted with the actual real bit count of the mailbox keys
@@ -167,17 +167,17 @@ def exchange_encounter_messages(
     curr_day_idx = (env_timestamp - initial_timestamp).days
     assert 0 <= curr_day_idx
     if curr_day_idx not in h1.contact_book.encounters_by_day:
-        assert curr_day_idx not in h1.contact_book.mailbox_keys_by_day
+        assert curr_day_idx not in h1.contact_book.uids_by_day
         h1.contact_book.encounters_by_day[curr_day_idx] = []
-        h1.contact_book.mailbox_keys_by_day[curr_day_idx] = []
+        h1.contact_book.uids_by_day[curr_day_idx] = []
     h1.contact_book.encounters_by_day[curr_day_idx].append(h1_msg)
-    h1.contact_book.mailbox_keys_by_day[curr_day_idx].append(h2_msg.uid)  # message uid == mailbox key
+    h1.contact_book.uids_by_day[curr_day_idx].append(h2_msg.uid)  # message uid == mailbox key
     if curr_day_idx not in h2.contact_book.encounters_by_day:
-        assert curr_day_idx not in h2.contact_book.mailbox_keys_by_day
+        assert curr_day_idx not in h2.contact_book.uids_by_day
         h2.contact_book.encounters_by_day[curr_day_idx] = []
-        h2.contact_book.mailbox_keys_by_day[curr_day_idx] = []
+        h2.contact_book.uids_by_day[curr_day_idx] = []
     h2.contact_book.encounters_by_day[curr_day_idx].append(h2_msg)
-    h2.contact_book.mailbox_keys_by_day[curr_day_idx].append(h1_msg.uid)  # message uid == mailbox key
+    h2.contact_book.uids_by_day[curr_day_idx].append(h1_msg.uid)  # message uid == mailbox key
     return h1_msg, h2_msg
 
 
@@ -346,7 +346,7 @@ class ContactBook:
         # the encounters we keep here are the messages we sent, not the ones we received
         self.encounters_by_day: typing.Dict[int, typing.List[EncounterMessage]] = {}
         # the mailbox keys are used to fetch update messages and provide them to the clustering algo
-        self.mailbox_keys_by_day: typing.Dict[int, typing.List[UIDType]] = {}
+        self.uids_by_day: typing.Dict[int, typing.List[UIDType]] = {}
         self.latest_update_time = datetime.datetime.min
         self._is_being_traced = False  # used for internal tracing only
 
@@ -457,8 +457,8 @@ class ContactBook:
             day: msgs for day, msgs in self.encounters_by_day.items()
             if day >= current_day_idx - self.tracing_n_days_history
         }
-        self.mailbox_keys_by_day = {
-            day: keys for day, keys in self.mailbox_keys_by_day.items()
+        self.uids_by_day = {
+            day: keys for day, keys in self.uids_by_day.items()
             if day >= current_day_idx - self.tracing_n_days_history
         }
 
