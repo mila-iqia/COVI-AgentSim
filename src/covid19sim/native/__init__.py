@@ -43,7 +43,7 @@ class Environment(BaseEnvironment, simpy.Environment):
         if last_timestamp < self._now:
             self.sorted_map.replace(int(last_timestamp), int(self._now), self.district_id)
             # if the slowest district's drift is large, sleep
-            while (self._now - self.sorted_map.first()) >= self.allowed_drift:
+            while (self._now - self.sorted_map.first()) > self.allowed_drift:
                 sleep(self.sleep_interval)
 
     @property
