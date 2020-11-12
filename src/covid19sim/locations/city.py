@@ -186,7 +186,7 @@ class City:
 
     def location_district_id(self, location: Location) -> int:
         """
-        maps location id to the district id containing the location
+        maps location to the district id containing the location
         """
         return location.id % self.num_districts if location else None
 
