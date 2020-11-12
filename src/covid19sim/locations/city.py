@@ -200,7 +200,7 @@ class City:
         self.district = None
 
         def split_locs(locs: typing.List[Location]):
-            district_locs = [[]] * self.num_districts
+            district_locs = [[] for i in range(self.num_districts)]
             for loc in locs:
                 district_locs[self.location_district_id(loc)].append(loc)
             return district_locs
