@@ -498,12 +498,6 @@ def run(data, path, compare="app_adoption"):
     agg_daly_df, agg_daly_mean, agg_daly_stderr = agg_daly_summary(
         agg_dalys=agg_dalys)
 
-    print('################################################################')
-    print('################################################################')
-    print('################################################################')
-    print('################################################################')
-    print('################################################################')
-    print(agg_daly_df)
     # repeat for low and high disability weights
     agg_daly_df_low, agg_daly_mean_low, agg_daly_stderr_low = agg_daly_summary(
         agg_dalys=agg_dalys_low)
@@ -527,12 +521,6 @@ def run(data, path, compare="app_adoption"):
     # aggregate work hours across seeds, get mean and stderr
     work_hours_df, work_hours_mean, work_hours_stderr = work_hours_summary(
         agg_work_hours=agg_work_hours)
-    print('################################################################')
-    print('################################################################')
-    print('################################################################')
-    print('################################################################')
-    print('################################################################')
-    print(work_hours_df)
 
     # convert work hours to TPL by multiplying by mean hourly wage
     tpl_mean, tpl_stderr = tpl_summary(
