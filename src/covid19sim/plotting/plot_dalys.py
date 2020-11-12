@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import pathlib
+import copy
 
 retirement_age = 65
 MEAN_HOURLY_WAGE = 27.67
@@ -231,7 +232,7 @@ def compute_yld(daly_df,
 
 
 def compute_dalys(daly_df,
-                  dis_weights=disability_weights,
+                  dis_weights,
                   discounting=False,
                   discount_rate=None):
     """
@@ -244,7 +245,7 @@ def compute_dalys(daly_df,
                       discount_rate=discount_rate)
 
     yld = compute_yld(daly_df,
-                      dis_weights=disability_weights,
+                      dis_weights,
                       discounting=discounting,
                       discount_rate=discount_rate)
 
@@ -415,19 +416,20 @@ def run(data, path, compare="app_adoption"):
 
             # get daly_data for each individual
             daly_df_seed = get_daly_data(demog_data, monitor_data, le_data)
-            daly_df_seed_low = daly_df_seed
-            daly_df_seed_high = daly_df_seed
+            daly_df_seed_low = copy.deepcopy(daly_df_seed)
+            daly_df_seed_high = copy.deepcopy(daly_df_seed)
 
             yll, yld, dalys = compute_dalys(daly_df_seed,
                                             dis_weights=disability_weights,
                                             discounting=False,
                                             discount_rate=None)
+
             yll_low, yld_low, dalys_low = compute_dalys(daly_df_seed,
-                                                        disability_weights,
+                                                        dw_low,
                                                         False,
                                                         None)
             yll_high, yld_high, dalys_high = compute_dalys(daly_df_seed,
-                                                           disability_weights,
+                                                           dw_high,
                                                            False,
                                                            None)
 
@@ -496,13 +498,19 @@ def run(data, path, compare="app_adoption"):
     agg_daly_df, agg_daly_mean, agg_daly_stderr = agg_daly_summary(
         agg_dalys=agg_dalys)
 
+    print('################################################################')
+    print('################################################################')
+    print('################################################################')
+    print('################################################################')
+    print('################################################################')
+    print(agg_daly_df)
     # repeat for low and high disability weights
     agg_daly_df_low, agg_daly_mean_low, agg_daly_stderr_low = agg_daly_summary(
         agg_dalys=agg_dalys_low)
 
     agg_daly_df_high, \
         agg_daly_mean_high, agg_daly_stderr_high = agg_daly_summary(
-            agg_dalys=agg_dalys)
+            agg_dalys=agg_dalys_high)
 
     # add low and high DW dalys to dict
     daly_sensitivity = {
@@ -519,6 +527,12 @@ def run(data, path, compare="app_adoption"):
     # aggregate work hours across seeds, get mean and stderr
     work_hours_df, work_hours_mean, work_hours_stderr = work_hours_summary(
         agg_work_hours=agg_work_hours)
+    print('################################################################')
+    print('################################################################')
+    print('################################################################')
+    print('################################################################')
+    print('################################################################')
+    print(work_hours_df)
 
     # convert work hours to TPL by multiplying by mean hourly wage
     tpl_mean, tpl_stderr = tpl_summary(
@@ -579,7 +593,14 @@ def run(data, path, compare="app_adoption"):
                        method_keys,
                        dalys_pp_age_sex_metrics,
                        MEAN_HOURLY_WAGE=MEAN_HOURLY_WAGE,
-                       path=None)
+                       path=path)
+
+    # plot scatter ICER
+    scatter_ICER(agg_daly_df,
+                 work_hours_df,
+                 method_to_labels,
+                 method_to_colors,
+                 path=path)
 
 
 def plot_dalys_tpl(agg_daly_mean,
@@ -977,6 +998,45 @@ def sensitivity_tables(daly_sensitivity,
         dalys_age_sex_breakdown(dalys_pp_age_sex_metrics,
                                 method_keys,
                                 path=path,
-                                save_path=('stratified_metrics' +
+                                save_path=('stratified_metrics_' +
                                            bound + '.csv')
                                 )
+
+
+def scatter_ICER(agg_daly_df,
+                 work_hours_df,
+                 method_to_labels,
+                 method_to_colors,
+                 path):
+    fig = plt.figure(figsize=(15, 10))
+
+    for method in agg_daly_df.keys():
+        dalys = agg_daly_df[method]
+        hours = work_hours_df[method]
+        plt.scatter(hours,
+                    dalys,
+                    label=method_to_labels[method],
+                    color=method_to_colors[method])
+    # xticks
+    plt.xticks(fontsize=16)
+    plt.yticks(fontsize=16)
+
+    # grid
+    plt.grid(True, axis='x', alpha=0.3)
+    plt.grid(True, axis='y', alpha=0.3)
+
+    # legend
+    plt.legend(prop={'size': 30})
+
+    # xlabels
+    plt.xlabel('Total Work Hours Foregone', fontsize=20)
+    plt.ylabel('Total DALYs', fontsize=20)
+
+    # title
+    plt.title('Health-Economic costs of CT methods @ 60% Adoption Rate',
+              fontsize=24)
+
+    # save figure
+    save_path = 'scatter_icer.png'
+    fig.savefig(os.path.join(path, save_path))
+    print('Scatter ICER saved to scatter_icer.png')
