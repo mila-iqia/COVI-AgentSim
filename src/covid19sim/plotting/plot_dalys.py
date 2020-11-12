@@ -8,9 +8,6 @@ import pathlib
 
 retirement_age = 65
 MEAN_HOURLY_WAGE = 27.67
-age_ranges = [range(i, i+10) for i in range(0, 100, 10)] + [range(100, 120)]
-age_range_dict = {str(np.min(i)) + '-' + str(np.max(i)): {}
-                  for i in age_ranges}
 sexes = ['male', 'female']
 
 pd.set_option('display.float_format', '{:.6f}'.format)
@@ -382,6 +379,8 @@ def run(data, path, compare="app_adoption"):
 
     # Define aggregate output variables
     agg_dalys = {label: {} for label, _ in label2pkls}
+    agg_dalys_low = {label: {} for label, _ in label2pkls}
+    agg_dalys_high = {label: {} for label, _ in label2pkls}
     agg_work_hours = {label: {} for label, _ in label2pkls}
 
     s = {label: {} for label, _ in label2pkls}
@@ -392,6 +391,12 @@ def run(data, path, compare="app_adoption"):
     # [method][run][age group] per person
     dalys_pp_age = {label: {} for label, _ in label2pkls}
     dalys_pp_age_sex_metrics = {label: {} for label, _ in label2pkls}
+
+    dalys_pp_age_low = {label: {} for label, _ in label2pkls}
+    dalys_pp_age_sex_metrics_low = {label: {} for label, _ in label2pkls}
+
+    dalys_pp_age_high = {label: {} for label, _ in label2pkls}
+    dalys_pp_age_sex_metrics_high = {label: {} for label, _ in label2pkls}
 
     # get life expectancy data
     le_data_path = os.path.join(
@@ -410,84 +415,119 @@ def run(data, path, compare="app_adoption"):
 
             # get daly_data for each individual
             daly_df_seed = get_daly_data(demog_data, monitor_data, le_data)
+            daly_df_seed_low = daly_df_seed
+            daly_df_seed_high = daly_df_seed
 
             yll, yld, dalys = compute_dalys(daly_df_seed,
                                             dis_weights=disability_weights,
                                             discounting=False,
                                             discount_rate=None)
+            yll_low, yld_low, dalys_low = compute_dalys(daly_df_seed,
+                                                        disability_weights,
+                                                        False,
+                                                        None)
+            yll_high, yld_high, dalys_high = compute_dalys(daly_df_seed,
+                                                           disability_weights,
+                                                           False,
+                                                           None)
 
+            # calculate metrics for this pickle file
             daly_df_seed['YLL'] = yll
             daly_df_seed['YLD'] = yld
             daly_df_seed['DALYs'] = dalys
+
+            # repeat for low and high values
+            daly_df_seed_low['YLL'] = yll_low
+            daly_df_seed_low['YLD'] = yld_low
+            daly_df_seed_low['DALYs'] = dalys_low
+
+            daly_df_seed_high['YLL'] = yll_high
+            daly_df_seed_high['YLD'] = yld_high
+            daly_df_seed_high['DALYs'] = dalys_high
+
+            # store metrics for this pickle file
+            agg_dalys[label][idx] = daly_df_seed['DALYs'].sum()
+            agg_dalys_low[label][idx] = daly_df_seed_low['DALYs'].sum()
+            agg_dalys_high[label][idx] = daly_df_seed_high['DALYs'].sum()
 
             assert daly_df_seed[daly_df_seed.was_infected == False
                                 ].DALYs.sum() == 0,\
                 'uninfected should not contribute DALYs'
 
-            # calculate total DALYs for this pickle file
-            agg_dalys[label][idx] = daly_df_seed['DALYs'].sum()
-
             # calculate total foregone work hours for this pickle file
             agg_work_hours[label][idx] = lost_work_hours_total(pkl)
 
             # calculate dalys per person by age
-            by_age = {}
-            for age_range, age_key in zip(age_ranges, age_range_dict.keys()):
-                by_age[age_key] = daly_df_seed[daly_df_seed.age.isin(age_range)
-                                               ]['DALYs'].mean(axis=0)
-            dalys_pp_age[label][idx] = by_age  # [method][run][age group]
+            dalys_pp_age, dalys_pp_age_sex_metrics = metrics_sex_age(
+                daly_df_seed=daly_df_seed,
+                dalys_pp_age=dalys_pp_age,
+                dalys_pp_age_sex_metrics=dalys_pp_age_sex_metrics,
+                label=label,
+                idx=idx,
+                )
 
-            by_age = {}
-            for age_range, age_key in zip(age_ranges, age_range_dict.keys()):
-                by_age[age_key] = daly_df_seed[
-                    daly_df_seed.age.isin(age_range)
-                                               ][
-                    ['DALYs', 'YLL', 'YLD']].sum(axis=0)
-            dalys_pp_age_sex_metrics[label][idx] = by_age
+            # calculate dalys per person by age for low and high DW
+            dalys_pp_age_low, dalys_pp_age_sex_metrics_low = metrics_sex_age(
+                daly_df_seed=daly_df_seed_low,
+                dalys_pp_age=dalys_pp_age_low,
+                dalys_pp_age_sex_metrics=dalys_pp_age_sex_metrics_low,
+                label=label,
+                idx=idx,
+                )
 
-            for sex in sexes:
-                dalys_pp_age_sex_metrics[label][idx][sex] = daly_df_seed[
-                    daly_df_seed.sex.eq(sex)][
-                        ['DALYs', 'YLL', 'YLD']].sum(axis=0)
+            dalys_pp_age_high, dalys_pp_age_sex_metrics_high = metrics_sex_age(
+                daly_df_seed=daly_df_seed_high,
+                dalys_pp_age=dalys_pp_age_high,
+                dalys_pp_age_sex_metrics=dalys_pp_age_sex_metrics_high,
+                label=label,
+                idx=idx,
+                )
 
-            # grab SEIR data
+            # grab SEIR data for each method and seed
             s[label][idx] = pkl['s']
             e[label][idx] = pkl['e']
             i[label][idx] = pkl['i']
             r[label][idx] = pkl['r']
 
-    seir = {'s': s,
-            'e': e,
-            'i': i,
-            'r': r
+    # seir[metric][method][seed]
+    seir = {'s': s, 'e': e, 'i': i, 'r': r}
+
+    # aggregate dalys across seeds, get mean and stderr
+    agg_daly_df, agg_daly_mean, agg_daly_stderr = agg_daly_summary(
+        agg_dalys=agg_dalys)
+
+    # repeat for low and high disability weights
+    agg_daly_df_low, agg_daly_mean_low, agg_daly_stderr_low = agg_daly_summary(
+        agg_dalys=agg_dalys_low)
+
+    agg_daly_df_high, \
+        agg_daly_mean_high, agg_daly_stderr_high = agg_daly_summary(
+            agg_dalys=agg_dalys)
+
+    # add low and high DW dalys to dict
+    daly_sensitivity = {
+        'low': {
+            'mean': agg_daly_mean_low,
+            'stderr': agg_daly_stderr_low
+            },
+        'high': {
+            'mean': agg_daly_mean_high,
+            'stderr': agg_daly_stderr_high
             }
+        }
 
-    agg_daly_df = pd.DataFrame(agg_dalys)
-    agg_daly_mean = agg_daly_df.mean(axis=0)
-    agg_daly_stderr = agg_daly_df.sem(axis=0)
+    # aggregate work hours across seeds, get mean and stderr
+    work_hours_df, work_hours_mean, work_hours_stderr = work_hours_summary(
+        agg_work_hours=agg_work_hours)
 
-    work_hours_df = pd.DataFrame(agg_work_hours)
-    work_hours_mean = work_hours_df.mean(axis=0)
-    work_hours_stderr = work_hours_df.sem(axis=0)
+    # convert work hours to TPL by multiplying by mean hourly wage
+    tpl_mean, tpl_stderr = tpl_summary(
+        work_hours_df=work_hours_df,
+        MEAN_HOURLY_WAGE=MEAN_HOURLY_WAGE)
 
-    tpl_mean = (work_hours_df*MEAN_HOURLY_WAGE).mean(axis=0)
-    tpl_stderr = (work_hours_df*MEAN_HOURLY_WAGE).sem(axis=0)
-
-    for key in agg_daly_df.keys():
-        # for methods...
-        if 'no-tracing' in key:
-            no_tracing_key = key
-        elif 'bdt1' in key:
-            bct_key = key
-        elif 'heuristic' in key:
-            heuristic_key = key
-        else:
-            raise ValueError('unknown key')
-
-    method_keys = {'no-tracing': no_tracing_key,
-                   'bdt1': bct_key,
-                   'heuristic': heuristic_key
-                   }
+    # link full keys (that specify params like APP_UPTAKE)
+    # to shorthand (e.g. "bdt1")
+    method_keys = get_daly_df_keys(agg_daly_df=agg_daly_df)
 
     # generate figure 9
     plot_dalys_tpl(agg_daly_mean=agg_daly_mean,
@@ -520,6 +560,7 @@ def run(data, path, compare="app_adoption"):
                      tpl_stderr,
                      method_keys,
                      path=path)
+
     # generate table L5
     dalys_age_sex_breakdown(dalys_pp_age_sex_metrics,
                             method_keys,
@@ -530,6 +571,15 @@ def run(data, path, compare="app_adoption"):
                 method_to_labels=method_to_labels,
                 method_to_colors=method_to_colors,
                 path=path)
+
+    # make sensitivity tables
+    sensitivity_tables(daly_sensitivity,
+                       work_hours_mean,
+                       work_hours_stderr,
+                       method_keys,
+                       dalys_pp_age_sex_metrics,
+                       MEAN_HOURLY_WAGE=MEAN_HOURLY_WAGE,
+                       path=None)
 
 
 def plot_dalys_tpl(agg_daly_mean,
@@ -572,9 +622,9 @@ def plot_dalys_tpl(agg_daly_mean,
     plt.tight_layout()
 
     # save in daly_data folder
-    save_path = ('plotting_pareto_comparison_with_replacement.png')
+    save_path = ('DALYs_vs_TPL.png')
     fig.savefig(os.path.join(path, save_path))
-    print('Figure 9 saved to plotting_pareto_comparison_with_replacement.png')
+    print('Figure 9 saved to DALYs_vs_TPL.png')
 
 
 def dalys_by_age_bin(dalys_pp_age,
@@ -643,7 +693,9 @@ def ICER_table(agg_daly_mean,
                work_hours_stderr,
                method_keys,
                MEAN_HOURLY_WAGE=MEAN_HOURLY_WAGE,
-               path=None):
+               path=None,
+               save_path=('ICER_table.csv')
+               ):
     print('############################################################')
     print('Table 2: difference in DALYs and TPL, '
           'as well as ICER for different CT methods')
@@ -725,7 +777,7 @@ def ICER_table(agg_daly_mean,
     agg_daly_diff['ICER'] = ICER_df.stack()
     agg_daly_diff = agg_daly_diff.transpose()
     print(agg_daly_diff)
-    save_path_icer = ('ICER_table.csv')
+    save_path_icer = save_path
     agg_daly_diff.to_csv(os.path.join(path, save_path_icer))
 
 
@@ -758,7 +810,9 @@ def work_hours_table(work_hours_mean,
 
 def dalys_age_sex_breakdown(dalys_pp_age_sex_metrics,
                             method_keys,
-                            path=None):
+                            path=None,
+                            save_path=('stratified_metrics.csv')
+                            ):
     metrics_table = {}
     for method in method_keys.values():
         method_df_concat = pd.concat([
@@ -777,7 +831,7 @@ def dalys_age_sex_breakdown(dalys_pp_age_sex_metrics,
           'for different CT methods')
     print('Saved to health_metrics_stratified_table.csv')
     print(metrics_df)
-    save_path_metrics = ('health_metrics_stratified_table.csv')
+    save_path_metrics = save_path
     metrics_df.to_csv(os.path.join(path, save_path_metrics))
 
 
@@ -820,3 +874,109 @@ def seir_curves(seir,
     save_path = 'seir.png'
     fig.savefig(os.path.join(path, save_path))
     print('Figure 10 saved to seir.png')
+
+
+def metrics_sex_age(daly_df_seed,
+                    dalys_pp_age,
+                    dalys_pp_age_sex_metrics,
+                    label,
+                    idx):
+
+    age_ranges = [range(i, i+10) for i in
+                  range(0, 100, 10)] + [range(100, 120)]
+
+    age_range_dict = {str(np.min(i)) + '-' + str(np.max(i)): {}
+                      for i in age_ranges}
+    by_age = {}
+
+    for age_range, age_key in zip(age_ranges, age_range_dict.keys()):
+        by_age[age_key] = daly_df_seed[daly_df_seed.age.isin(age_range)
+                                       ]['DALYs'].mean(axis=0)
+        dalys_pp_age[label][idx] = by_age
+
+    by_sex = {}
+    for age_range, age_key in zip(age_ranges, age_range_dict.keys()):
+        by_sex[age_key] = daly_df_seed[
+            daly_df_seed.age.isin(age_range)
+                                        ][
+            ['DALYs', 'YLL', 'YLD']].sum(axis=0)
+        dalys_pp_age_sex_metrics[label][idx] = by_sex
+
+    for sex in sexes:
+        dalys_pp_age_sex_metrics[label][idx][sex] = daly_df_seed[
+            daly_df_seed.sex.eq(sex)][
+                ['DALYs', 'YLL', 'YLD']].sum(axis=0)
+
+    return dalys_pp_age, dalys_pp_age_sex_metrics
+
+
+def get_daly_df_keys(agg_daly_df):
+    for key in agg_daly_df.keys():
+        # for methods...
+        if 'no-tracing' in key:
+            no_tracing_key = key
+        elif 'bdt1' in key:
+            bct_key = key
+        elif 'heuristic' in key:
+            heuristic_key = key
+        else:
+            raise ValueError('unknown key')
+
+    method_keys = {'no-tracing': no_tracing_key,
+                   'bdt1': bct_key,
+                   'heuristic': heuristic_key
+                   }
+    return method_keys
+
+
+def agg_daly_summary(agg_dalys):
+    agg_daly_df = pd.DataFrame(agg_dalys)
+    agg_daly_mean = agg_daly_df.mean(axis=0)
+    agg_daly_stderr = agg_daly_df.sem(axis=0)
+
+    return agg_daly_df, agg_daly_mean, agg_daly_stderr
+
+
+def work_hours_summary(agg_work_hours):
+    work_hours_df = pd.DataFrame(agg_work_hours)
+    work_hours_mean = work_hours_df.mean(axis=0)
+    work_hours_stderr = work_hours_df.sem(axis=0)
+
+    return work_hours_df, work_hours_mean, work_hours_stderr
+
+
+def tpl_summary(work_hours_df,
+                MEAN_HOURLY_WAGE):
+    tpl_mean = (work_hours_df*MEAN_HOURLY_WAGE).mean(axis=0)
+    tpl_stderr = (work_hours_df*MEAN_HOURLY_WAGE).sem(axis=0)
+
+    return tpl_mean, tpl_stderr
+
+
+def sensitivity_tables(daly_sensitivity,
+                       work_hours_mean,
+                       work_hours_stderr,
+                       method_keys,
+                       dalys_pp_age_sex_metrics,
+                       MEAN_HOURLY_WAGE=MEAN_HOURLY_WAGE,
+                       path=None):
+    for bound in daly_sensitivity:
+        mean = daly_sensitivity[bound]['mean']
+        stderr = daly_sensitivity[bound]['stderr']
+
+        ICER_table(mean,
+                   stderr,
+                   work_hours_mean,
+                   work_hours_stderr,
+                   method_keys,
+                   MEAN_HOURLY_WAGE,
+                   path=path,
+                   save_path=('ICER_table_' + bound + '.csv')
+                   )
+
+        dalys_age_sex_breakdown(dalys_pp_age_sex_metrics,
+                                method_keys,
+                                path=path,
+                                save_path=('stratified_metrics' +
+                                           bound + '.csv')
+                                )
