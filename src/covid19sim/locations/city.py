@@ -188,7 +188,7 @@ class City:
         """
         maps location id to the district id containing the location
         """
-        return location.id % self.num_districts
+        return location.id % self.num_districts if location else None
 
     def split_locations_into_districts(self):
         """
