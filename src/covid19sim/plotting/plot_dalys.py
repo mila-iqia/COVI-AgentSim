@@ -518,6 +518,11 @@ def run(data, path, compare="app_adoption"):
             }
         }
 
+    age_sex_sensitivity = {
+        'low': dalys_pp_age_sex_metrics_low,
+        'high': dalys_pp_age_sex_metrics_high
+        }
+
     # aggregate work hours across seeds, get mean and stderr
     work_hours_df, work_hours_mean, work_hours_stderr = work_hours_summary(
         agg_work_hours=agg_work_hours)
@@ -579,7 +584,7 @@ def run(data, path, compare="app_adoption"):
                        work_hours_mean,
                        work_hours_stderr,
                        method_keys,
-                       dalys_pp_age_sex_metrics,
+                       age_sex_sensitivity,
                        MEAN_HOURLY_WAGE=MEAN_HOURLY_WAGE,
                        path=path)
 
@@ -966,7 +971,7 @@ def sensitivity_tables(daly_sensitivity,
                        work_hours_mean,
                        work_hours_stderr,
                        method_keys,
-                       dalys_pp_age_sex_metrics,
+                       age_sex_sensitivity,
                        MEAN_HOURLY_WAGE=MEAN_HOURLY_WAGE,
                        path=None):
     for bound in daly_sensitivity:
@@ -983,7 +988,7 @@ def sensitivity_tables(daly_sensitivity,
                    save_path=('ICER_table_' + bound + '.csv')
                    )
 
-        dalys_age_sex_breakdown(dalys_pp_age_sex_metrics,
+        dalys_age_sex_breakdown(age_sex_sensitivity[bound],
                                 method_keys,
                                 path=path,
                                 save_path=('stratified_metrics_' +
