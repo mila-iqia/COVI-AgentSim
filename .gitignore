@@ -172,3 +172,4 @@ cython_debug/
 
 
 covid_p2p_risk_prediction/
+src/covid19sim/results/test/bdt1_60/sim_v2_people-3000_days-90_init-0.05_uptake-0.8415_seed-1300_20200924-160138_510251/tracker_data_n_3000_seed_1300_20200924-165010.pkl
