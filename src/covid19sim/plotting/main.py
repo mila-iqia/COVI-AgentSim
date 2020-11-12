@@ -225,9 +225,13 @@ def main(conf):
                 "humans_rec_level",
                 "humans_intervention_level",
                 "humans_demographics",
-                "work_hours"
+                "work_hours",
+                "s",
+                "e",
+                "i",
+                "r"
             ]
-        )   
+        )
     if "efficiency" in plots:
         # Same as pareto
         keep_pkl_keys.update(

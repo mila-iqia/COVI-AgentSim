@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import pathlib
+import copy
 
 retirement_age = 65
 n_bootstraps = 100
@@ -12,6 +13,12 @@ MEAN_HOURLY_WAGE = 27.67
 age_ranges = [range(i, i+10) for i in range(0, 100, 10)] + [range(100, 120)]
 age_range_dict = {str(np.min(i)) + '-' + str(np.max(i)): {}
                   for i in age_ranges}
+=======
+import copy
+
+retirement_age = 65
+MEAN_HOURLY_WAGE = 27.67
+>>>>>>> dalys
 sexes = ['male', 'female']
 
 pd.set_option('display.float_format', '{:.6f}'.format)
@@ -21,6 +28,25 @@ disability_weights = {
     'hospitalized': 0.133,  # severe respiratory infection
     'critical': 0.408  # severe COPD without heart failure
     }
+
+# 95% Uncertainty Level, lower bound
+dw_low = {
+    'no_hospitalization': 0.032,  # moderate lower respiratory infection
+    'hospitalized': 0.088,  # severe respiratory infection
+    'critical': 0.273  # severe COPD without heart failure
+    }
+
+# 95% Uncertainty Level, upper bound
+dw_high = {
+    'no_hospitalization': 0.074,  # moderate lower respiratory infection
+    'hospitalized': 0.190,  # severe respiratory infection
+    'critical': 0.556  # severe COPD without heart failure
+    }
+
+dw_dicts = {"": disability_weights,
+            "_low": dw_low,
+            "_high": dw_high
+            }
 
 
 def load_tracker(path):
@@ -65,8 +91,8 @@ def get_daly_data(demographics,
         - human monitor data from tracker file
         - life expectancies from output of load_life_expectancies()
     Returns:
-        - Dataframe where rows are individuals,
-          columns are attributes of individuals
+        - Dataframe where rows are individuals and
+            columns are attributes of individuals
         - columns:
                 "days_in_hospital",
                 "days_in_ICU",
@@ -75,11 +101,6 @@ def get_daly_data(demographics,
                 "days_sick_not_in_hospital",
                 "was_infected",
                 "life_expectancy",
-                -------- following columns are
-                         calculated from the previous ones --------
-                "YLL",
-                "YLD",
-                "DALYs
     """
 
     human_names = [human_monitor_data[datetime.date(2020, 2, 28)][i]['name']
@@ -166,26 +187,91 @@ def get_daly_data(demographics,
                 daly_df['sex'][human]][str(daly_df['age'][human])+" years"]
             )
 
-    # add YLL
-    daly_df['YLL'] = daly_df['was_infected'] * (
-        daly_df['has_died'] * daly_df['life_expectancy']
-                                                )
+    return daly_df
 
     # add YLD
     daly_df['YLD'] = daly_df['was_infected'] * (
         daly_df['days_sick_not_in_hospital']/365 *
         disability_weights['no_hospitalization'] +
 
-        daly_df['days_in_hospital']/365 *
-        disability_weights['hospitalized'] +
+def compute_yll(daly_df,
+                discounting=False,
+                discount_rate=None):
+    """
+    Computes Years of Life Lost (YLL)
+    If `discounting` is set to True, then discounting will be applied
+        according to `discount_rate`.
+    """
 
-        daly_df['days_in_ICU']/365 *
-        disability_weights['critical']
-                                                )
-    # add DALYs
-    daly_df['DALYs'] = daly_df['YLL'] + daly_df['YLD']
+    # if no discounting, simply take initial life expectancy of those that died
+    if discounting is False:
+        yll = daly_df['was_infected'] * (
+            daly_df['has_died'] * daly_df['life_expectancy']
+                                     )
 
-    return daly_df
+    # if no discounting, simply take initial life expectancy of those that died
+    if discounting is False:
+        yll = daly_df['was_infected'] * (
+            daly_df['has_died'] * daly_df['life_expectancy']
+                                     )
+
+    # if discounting, apply according to discount rate
+    if discounting is True:
+        raise NotImplementedError('Coming Soon')
+
+    return yll
+
+
+def compute_yld(daly_df,
+                dis_weights=disability_weights,
+                discounting=False,
+                discount_rate=None):
+    """
+    Computes Years of Life Disabled (YLD)
+    If `discounting` is set to True, then discounting will be applied
+        according to `discount_rate`.
+    """
+
+    # if no discounting, simply multiply time in state i by disability i
+    if discounting is False:
+        yld = daly_df['was_infected'] * (
+                daly_df['days_sick_not_in_hospital']/365 *
+                dis_weights['no_hospitalization'] +
+
+                daly_df['days_in_hospital']/365 *
+                dis_weights['hospitalized'] +
+
+                daly_df['days_in_ICU']/365 *
+                dis_weights['critical'])
+
+    # if discounting, apply according to discount rate
+    if discounting is True:
+        raise NotImplementedError("Coming soon")
+
+    return yld
+
+
+def compute_dalys(daly_df,
+                  dis_weights,
+                  discounting=False,
+                  discount_rate=None):
+    """
+        Adds YLL and YLD to obtain DALYs.
+        Returns yll, yld and DALYs.
+    """
+
+    yll = compute_yll(daly_df,
+                      discounting=discounting,
+                      discount_rate=discount_rate)
+
+    yld = compute_yld(daly_df,
+                      dis_weights,
+                      discounting=discounting,
+                      discount_rate=discount_rate)
+
+    dalys = yll + yld
+
+    return yll, yld, dalys
 
 
 def lost_work_hours_total(tracker_data, wfh_prod=0.51):
@@ -266,7 +352,6 @@ def find_life_expectancies(directory):
     raise ValueError("Can't find life expectancies csv")
 
 
-# TODO: add plots and tables to run function
 def run(data, path, compare="app_adoption"):
     """
     Under construction.
@@ -296,7 +381,6 @@ def run(data, path, compare="app_adoption"):
 
     method_to_labels = {}
     method_to_colors = {}
-
     for label, pkls in label2pkls:
         if 'post-lockdown-no-tracing' in label:
             method_to_labels[label] = "No Tracing"
@@ -316,16 +400,23 @@ def run(data, path, compare="app_adoption"):
 
     # Define aggregate output variables
     agg_dalys = {label: {} for label, _ in label2pkls}
+    agg_dalys_low = {label: {} for label, _ in label2pkls}
+    agg_dalys_high = {label: {} for label, _ in label2pkls}
     agg_work_hours = {label: {} for label, _ in label2pkls}
 
-    # [method][run][age group]
+    s = {label: {} for label, _ in label2pkls}
+    e = {label: {} for label, _ in label2pkls}
+    i = {label: {} for label, _ in label2pkls}
+    r = {label: {} for label, _ in label2pkls}
+
+    # [method][run][age group] per person
     dalys_pp_age = {label: {} for label, _ in label2pkls}
     dalys_pp_age_sex_metrics = {label: {} for label, _ in label2pkls}
 
     # get life expectancy data
     le_data_path = os.path.join(
         pathlib.Path(__file__).resolve().parent.parent.parent.parent,
-        'frozen_data/life_expectancies/1310011401-eng.csv')
+        'daly_data/life_expectancies/1310011401-eng.csv')
     le_data = load_life_expectancies(le_data_path)
 
     # daly calculations
@@ -337,54 +428,341 @@ def run(data, path, compare="app_adoption"):
             # get their demographic information (pre-existing conditions, age)
             demog_data = pkl['humans_demographics']
 
-            # get calculate YLL, YLD and DALYs for each individual
+            # get daly_data for each individual
             daly_df_seed = get_daly_data(demog_data, monitor_data, le_data)
+            daly_df_seed_low = copy.deepcopy(daly_df_seed)
+            daly_df_seed_high = copy.deepcopy(daly_df_seed)
+
+            yll, yld, dalys = compute_dalys(daly_df_seed,
+                                            dis_weights=disability_weights,
+                                            discounting=False,
+                                            discount_rate=None)
+
+            yll_low, yld_low, dalys_low = compute_dalys(daly_df_seed,
+                                                        dw_low,
+                                                        False,
+                                                        None)
+            yll_high, yld_high, dalys_high = compute_dalys(daly_df_seed,
+                                                           dw_high,
+                                                           False,
+                                                           None)
+
+            # calculate metrics for this pickle file
+            daly_df_seed['YLL'] = yll
+            daly_df_seed['YLD'] = yld
+            daly_df_seed['DALYs'] = dalys
+
+            # repeat for low and high values
+            daly_df_seed_low['YLL'] = yll_low
+            daly_df_seed_low['YLD'] = yld_low
+            daly_df_seed_low['DALYs'] = dalys_low
+
+            daly_df_seed_high['YLL'] = yll_high
+            daly_df_seed_high['YLD'] = yld_high
+            daly_df_seed_high['DALYs'] = dalys_high
+
+            # store metrics for this pickle file
+            agg_dalys[label][idx] = daly_df_seed['DALYs'].sum()
+            agg_dalys_low[label][idx] = daly_df_seed_low['DALYs'].sum()
+            agg_dalys_high[label][idx] = daly_df_seed_high['DALYs'].sum()
 
             assert daly_df_seed[daly_df_seed.was_infected == False
                                 ].DALYs.sum() == 0,\
                 'uninfected should not contribute DALYs'
 
-            # calculate total DALYs for this pickle file
-            agg_dalys[label][idx] = daly_df_seed['DALYs'].sum()
-
             # calculate total foregone work hours for this pickle file
             agg_work_hours[label][idx] = lost_work_hours_total(pkl)
 
             # calculate dalys per person by age
-            by_age = {}
-            for age_range, age_key in zip(age_ranges, age_range_dict.keys()):
-                by_age[age_key] = daly_df_seed[daly_df_seed.age.isin(age_range)
-                                               ]['DALYs'].mean(axis=0)
-            dalys_pp_age[label][idx] = by_age  # [method][run][age group]
+            dalys_pp_age, dalys_pp_age_sex_metrics = metrics_sex_age(
+                daly_df_seed=daly_df_seed,
+                dalys_pp_age=dalys_pp_age,
+                dalys_pp_age_sex_metrics=dalys_pp_age_sex_metrics,
+                label=label,
+                idx=idx,
+                )
 
-            by_age = {}
-            for age_range, age_key in zip(age_ranges, age_range_dict.keys()):
-                by_age[age_key] = daly_df_seed[
-                    daly_df_seed.age.isin(age_range)
-                                               ][
-                    ['DALYs', 'YLL', 'YLD']].sum(axis=0)
-            dalys_pp_age_sex_metrics[label][idx] = by_age
+            # calculate dalys per person by age for low and high DW
+            dalys_pp_age_low, dalys_pp_age_sex_metrics_low = metrics_sex_age(
+                daly_df_seed=daly_df_seed_low,
+                dalys_pp_age=dalys_pp_age_low,
+                dalys_pp_age_sex_metrics=dalys_pp_age_sex_metrics_low,
+                label=label,
+                idx=idx,
+                )
 
-            for sex in sexes:
-                dalys_pp_age_sex_metrics[label][idx][sex] = daly_df_seed[
-                    daly_df_seed.sex.eq(sex)][
-                        ['DALYs', 'YLL', 'YLD']].sum(axis=0)
+            dalys_pp_age_high, dalys_pp_age_sex_metrics_high = metrics_sex_age(
+                daly_df_seed=daly_df_seed_high,
+                dalys_pp_age=dalys_pp_age_high,
+                dalys_pp_age_sex_metrics=dalys_pp_age_sex_metrics_high,
+                label=label,
+                idx=idx,
+                )
 
-    # add to aggregate output variables
-    # agg_daly_df = pd.DataFrame(agg_dalys, keys = agg_dalys.keys())
-    agg_daly_df = pd.DataFrame(agg_dalys)
-    agg_daly_mean = agg_daly_df.mean(axis=0)
-    agg_daly_stderr = agg_daly_df.sem(axis=0)
+            # grab SEIR data for each method and seed
+            s[label][idx] = pkl['s']
+            e[label][idx] = pkl['e']
+            i[label][idx] = pkl['i']
+            r[label][idx] = pkl['r']
 
-    work_hours_df = pd.DataFrame(agg_work_hours)
-    work_hours_mean = work_hours_df.mean(axis=0)
-    work_hours_stderr = work_hours_df.sem(axis=0)
+    # seir[metric][method][seed]
+    seir = {'s': s, 'e': e, 'i': i, 'r': r}
 
-    # # print a table with mean & std
-    # print(agg_daly_df)
-    # print(agg_daly_df.mean(axis=0))
+    # aggregate dalys across seeds, get mean and stderr
+    agg_daly_df, agg_daly_mean, agg_daly_stderr = agg_daly_summary(
+        agg_dalys=agg_dalys)
+
+    # repeat for low and high disability weights
+    agg_daly_df_low, agg_daly_mean_low, agg_daly_stderr_low = agg_daly_summary(
+        agg_dalys=agg_dalys_low)
+
+    agg_daly_df_high, \
+        agg_daly_mean_high, agg_daly_stderr_high = agg_daly_summary(
+            agg_dalys=agg_dalys_high)
+
+    # add low and high DW dalys to dict
+    daly_sensitivity = {
+        'low': {
+            'mean': agg_daly_mean_low,
+            'stderr': agg_daly_stderr_low
+            },
+        'high': {
+            'mean': agg_daly_mean_high,
+            'stderr': agg_daly_stderr_high
+            }
+        }
+
+    # aggregate work hours across seeds, get mean and stderr
+    work_hours_df, work_hours_mean, work_hours_stderr = work_hours_summary(
+        agg_work_hours=agg_work_hours)
+
+    # convert work hours to TPL by multiplying by mean hourly wage
+    tpl_mean, tpl_stderr = tpl_summary(
+        work_hours_df=work_hours_df,
+        MEAN_HOURLY_WAGE=MEAN_HOURLY_WAGE)
+
+    # link full keys (that specify params like APP_UPTAKE)
+    # to shorthand (e.g. "bdt1")
+    method_keys = get_daly_df_keys(agg_daly_df=agg_daly_df)
+
+    # generate figure 9
+    plot_dalys_tpl(agg_daly_mean=agg_daly_mean,
+                   agg_daly_stderr=agg_daly_stderr,
+                   work_hours_mean=work_hours_mean,
+                   work_hours_stderr=work_hours_stderr,
+                   method_to_labels=method_to_labels,
+                   method_to_colors=method_to_colors,
+                   path=path)
+
+    # generate figure 10
+    dalys_by_age_bin(dalys_pp_age=dalys_pp_age,
+                     method_to_labels=method_to_labels,
+                     method_to_colors=method_to_colors,
+                     path=path)
+
+    # generate table 2
+    ICER_table(agg_daly_mean=agg_daly_mean,
+               agg_daly_stderr=agg_daly_stderr,
+               work_hours_mean=work_hours_mean,
+               work_hours_stderr=work_hours_stderr,
+               method_keys=method_keys,
+               MEAN_HOURLY_WAGE=MEAN_HOURLY_WAGE,
+               path=path)
+
+    # generate table L4
+    work_hours_table(work_hours_mean,
+                     work_hours_stderr,
+                     tpl_mean,
+                     tpl_stderr,
+                     method_keys,
+                     path=path)
+
+    # generate table L5
+    dalys_age_sex_breakdown(dalys_pp_age_sex_metrics,
+                            method_keys,
+                            path=path)
+
+    # plot SEIR curves
+    seir_curves(seir=seir,
+                method_to_labels=method_to_labels,
+                method_to_colors=method_to_colors,
+                path=path)
+
+    # make sensitivity tables
+    sensitivity_tables(daly_sensitivity,
+                       work_hours_mean,
+                       work_hours_stderr,
+                       method_keys,
+                       dalys_pp_age_sex_metrics,
+                       MEAN_HOURLY_WAGE=MEAN_HOURLY_WAGE,
+                       path=path)
+
+    # plot scatter ICER
+    scatter_ICER(agg_daly_df,
+                 work_hours_df,
+                 method_to_labels,
+                 method_to_colors,
+                 path=path)
+
+
+def plot_dalys_tpl(agg_daly_mean,
+                   agg_daly_stderr,
+                   work_hours_mean,
+                   work_hours_stderr,
+                   method_to_labels,
+                   method_to_colors,
+                   path=None):
+    """generate figure 9 (work hours and total DALYs)"""
+
+    if path is None:
+        raise ValueError('Must provide path to save fig')
 
     # generate figure 9 (work hours and total DALYs)
+=======
+            dalys_pp_age, dalys_pp_age_sex_metrics = metrics_sex_age(
+                daly_df_seed=daly_df_seed,
+                dalys_pp_age=dalys_pp_age,
+                dalys_pp_age_sex_metrics=dalys_pp_age_sex_metrics,
+                label=label,
+                idx=idx,
+                )
+
+            # calculate dalys per person by age for low and high DW
+            dalys_pp_age_low, dalys_pp_age_sex_metrics_low = metrics_sex_age(
+                daly_df_seed=daly_df_seed_low,
+                dalys_pp_age=dalys_pp_age_low,
+                dalys_pp_age_sex_metrics=dalys_pp_age_sex_metrics_low,
+                label=label,
+                idx=idx,
+                )
+
+            dalys_pp_age_high, dalys_pp_age_sex_metrics_high = metrics_sex_age(
+                daly_df_seed=daly_df_seed_high,
+                dalys_pp_age=dalys_pp_age_high,
+                dalys_pp_age_sex_metrics=dalys_pp_age_sex_metrics_high,
+                label=label,
+                idx=idx,
+                )
+
+            # grab SEIR data for each method and seed
+            s[label][idx] = pkl['s']
+            e[label][idx] = pkl['e']
+            i[label][idx] = pkl['i']
+            r[label][idx] = pkl['r']
+
+    # seir[metric][method][seed]
+    seir = {'s': s, 'e': e, 'i': i, 'r': r}
+
+    # aggregate dalys across seeds, get mean and stderr
+    agg_daly_df, agg_daly_mean, agg_daly_stderr = agg_daly_summary(
+        agg_dalys=agg_dalys)
+
+    # repeat for low and high disability weights
+    agg_daly_df_low, agg_daly_mean_low, agg_daly_stderr_low = agg_daly_summary(
+        agg_dalys=agg_dalys_low)
+
+    agg_daly_df_high, \
+        agg_daly_mean_high, agg_daly_stderr_high = agg_daly_summary(
+            agg_dalys=agg_dalys_high)
+
+    # add low and high DW dalys to dict
+    daly_sensitivity = {
+        'low': {
+            'mean': agg_daly_mean_low,
+            'stderr': agg_daly_stderr_low
+            },
+        'high': {
+            'mean': agg_daly_mean_high,
+            'stderr': agg_daly_stderr_high
+            }
+        }
+
+    # aggregate work hours across seeds, get mean and stderr
+    work_hours_df, work_hours_mean, work_hours_stderr = work_hours_summary(
+        agg_work_hours=agg_work_hours)
+
+    # convert work hours to TPL by multiplying by mean hourly wage
+    tpl_mean, tpl_stderr = tpl_summary(
+        work_hours_df=work_hours_df,
+        MEAN_HOURLY_WAGE=MEAN_HOURLY_WAGE)
+
+    # link full keys (that specify params like APP_UPTAKE)
+    # to shorthand (e.g. "bdt1")
+    method_keys = get_daly_df_keys(agg_daly_df=agg_daly_df)
+
+    # generate figure 9
+    plot_dalys_tpl(agg_daly_mean=agg_daly_mean,
+                   agg_daly_stderr=agg_daly_stderr,
+                   work_hours_mean=work_hours_mean,
+                   work_hours_stderr=work_hours_stderr,
+                   method_to_labels=method_to_labels,
+                   method_to_colors=method_to_colors,
+                   path=path)
+
+    # generate figure 10
+    dalys_by_age_bin(dalys_pp_age=dalys_pp_age,
+                     method_to_labels=method_to_labels,
+                     method_to_colors=method_to_colors,
+                     path=path)
+
+    # generate table 2
+    ICER_table(agg_daly_mean=agg_daly_mean,
+               agg_daly_stderr=agg_daly_stderr,
+               work_hours_mean=work_hours_mean,
+               work_hours_stderr=work_hours_stderr,
+               method_keys=method_keys,
+               MEAN_HOURLY_WAGE=MEAN_HOURLY_WAGE,
+               path=path)
+
+    # generate table L4
+    work_hours_table(work_hours_mean,
+                     work_hours_stderr,
+                     tpl_mean,
+                     tpl_stderr,
+                     method_keys,
+                     path=path)
+
+    # generate table L5
+    dalys_age_sex_breakdown(dalys_pp_age_sex_metrics,
+                            method_keys,
+                            path=path)
+
+    # plot SEIR curves
+    seir_curves(seir=seir,
+                method_to_labels=method_to_labels,
+                method_to_colors=method_to_colors,
+                path=path)
+
+    # make sensitivity tables
+    sensitivity_tables(daly_sensitivity,
+                       work_hours_mean,
+                       work_hours_stderr,
+                       method_keys,
+                       dalys_pp_age_sex_metrics,
+                       MEAN_HOURLY_WAGE=MEAN_HOURLY_WAGE,
+                       path=path)
+
+    # plot scatter ICER
+    scatter_ICER(agg_daly_df,
+                 work_hours_df,
+                 method_to_labels,
+                 method_to_colors,
+                 path=path)
+
+
+def plot_dalys_tpl(agg_daly_mean,
+                   agg_daly_stderr,
+                   work_hours_mean,
+                   work_hours_stderr,
+                   method_to_labels,
+                   method_to_colors,
+                   path=None):
+    """generate figure 9 (work hours and total DALYs)"""
+
+    if path is None:
+        raise ValueError('Must provide path to save fig')
+
+>>>>>>> dalys
     fig = plt.figure(figsize=(15, 10))
 
     for method in agg_daly_mean.keys():
@@ -413,11 +791,31 @@ def run(data, path, compare="app_adoption"):
     plt.tight_layout()
 
     # save in daly_data folder
-    save_path = ('plotting_pareto_comparison_with_replacement.png')
+    save_path = ('DALYs_vs_TPL.png')
     fig.savefig(os.path.join(path, save_path))
-    print('Figure 9 saved to plotting_pareto_comparison_with_replacement.png')
+    print('Figure 9 saved to DALYs_vs_TPL.png')
+
+
+def dalys_by_age_bin(dalys_pp_age,
+                     method_to_labels,
+                     method_to_colors,
+                     path=None):
+    """Plot dalys per person stratified by age groups of size 10."""
 
     # generate figure 10
+=======
+    save_path = ('DALYs_vs_TPL.png')
+    fig.savefig(os.path.join(path, save_path))
+    print('Figure 9 saved to DALYs_vs_TPL.png')
+
+
+def dalys_by_age_bin(dalys_pp_age,
+                     method_to_labels,
+                     method_to_colors,
+                     path=None):
+    """Plot dalys per person stratified by age groups of size 10."""
+
+>>>>>>> dalys
     fig = plt.figure(figsize=(15, 10))
 
     for method in dalys_pp_age.keys():
@@ -471,56 +869,75 @@ def run(data, path, compare="app_adoption"):
     fig.savefig(os.path.join(path, save_path))
     print('Figure 10 saved to dalys_per_person_age_stratified.png')
 
-    # generate table 2
+
+def ICER_table(agg_daly_mean,
+               agg_daly_stderr,
+               work_hours_mean,
+               work_hours_stderr,
+               method_keys,
+               MEAN_HOURLY_WAGE=MEAN_HOURLY_WAGE,
+               path=None,
+               save_path=('ICER_table.csv')
+               ):
     print('############################################################')
     print('Table 2: difference in DALYs and TPL,'
+=======
+
+def ICER_table(agg_daly_mean,
+               agg_daly_stderr,
+               work_hours_mean,
+               work_hours_stderr,
+               method_keys,
+               MEAN_HOURLY_WAGE=MEAN_HOURLY_WAGE,
+               path=None,
+               save_path=('ICER_table.csv')
+               ):
+    print('############################################################')
+    print('Table 2: difference in DALYs and TPL, '
+>>>>>>> dalys
           'as well as ICER for different CT methods')
     print('saved to ICER_table.csv')
     # get full DataFrame keys according to CT method used
     methods = ['no-tracing', 'bdt1', 'heuristic']
-    no_tracing_key = None
-    bct_key = None
-    heuristic_key = None
-    for key in agg_daly_df.keys():
-        # for methods...
-        if 'no-tracing' in key:
-            no_tracing_key = key
-        elif 'bdt1' in key:
-            bct_key = key
-        elif 'heuristic' in key:
-            heuristic_key = key
-        else:
-            raise ValueError('unknown key')
+    no_tracing_key = method_keys['no-tracing']
+    bct_key = method_keys['bdt1']
+    heuristic_key = method_keys['heuristic']
 
-    method_keys = [no_tracing_key,
-                   bct_key,
-                   heuristic_key]
-
-    agg_daly_mean = agg_daly_df.mean(axis=0)
-    agg_daly_stderr = agg_daly_df.sem(axis=0)
-
-    # Delta DALYs
-    agg_daly_mean['delta_bct'] = agg_daly_mean[no_tracing_key] - \
+    # Difference in DALYs compared to No Tracing
+    agg_daly_mean['diff_bct'] = agg_daly_mean[no_tracing_key] - \
         agg_daly_mean[bct_key]
-    agg_daly_mean['delta_heuristic'] = agg_daly_mean[no_tracing_key] - \
+    agg_daly_mean['diff_heuristic'] = agg_daly_mean[no_tracing_key] - \
         agg_daly_mean[heuristic_key]
 
     agg_daly_stderr['delta_bct'] = np.sqrt(
+=======
+    no_tracing_key = method_keys['no-tracing']
+    bct_key = method_keys['bdt1']
+    heuristic_key = method_keys['heuristic']
+
+    # Difference in DALYs compared to No Tracing
+    agg_daly_mean['diff_bct'] = agg_daly_mean[no_tracing_key] - \
+        agg_daly_mean[bct_key]
+    agg_daly_mean['diff_heuristic'] = agg_daly_mean[no_tracing_key] - \
+        agg_daly_mean[heuristic_key]
+
+    agg_daly_stderr['diff_bct'] = np.sqrt(
+>>>>>>> dalys
         agg_daly_stderr[no_tracing_key]**2
         + agg_daly_stderr[bct_key]**2
                                            )
 
-    agg_daly_stderr['delta_heuristic'] = np.sqrt(
+    agg_daly_stderr['diff_heuristic'] = np.sqrt(
         agg_daly_stderr[no_tracing_key]**2
         + agg_daly_stderr[heuristic_key]**2
                                                  )
 
-    agg_daly_diff = pd.DataFrame([agg_daly_mean['delta_bct'],
-                                  agg_daly_stderr['delta_bct'],
-                                  agg_daly_mean['delta_heuristic'],
-                                  agg_daly_stderr['delta_heuristic']
+    agg_daly_diff = pd.DataFrame([agg_daly_mean['diff_bct'],
+                                  agg_daly_stderr['diff_bct'],
+                                  agg_daly_mean['diff_heuristic'],
+                                  agg_daly_stderr['diff_heuristic']
                                   ],
-                                 columns=['delta DALYs'],
+                                 columns=['diff_dalys'],
                                  index=pd.MultiIndex.from_product(
                                      [methods[1:],
                                       ['mean', 'stderr']
@@ -528,32 +945,26 @@ def run(data, path, compare="app_adoption"):
                                                                   )
                                  )
 
-    # delta TPL
-    work_hours_mean = work_hours_df.mean(axis=0)
-    work_hours_stderr = work_hours_df.sem(axis=0)
-    tpl_mean = (work_hours_df*MEAN_HOURLY_WAGE).mean(axis=0)
-    tpl_stderr = (work_hours_df*MEAN_HOURLY_WAGE).sem(axis=0)
-
-    work_hours_mean['delta_bct'] = work_hours_mean[bct_key] - \
+    work_hours_mean['diff_bct'] = work_hours_mean[bct_key] - \
         work_hours_mean[no_tracing_key]
-    work_hours_mean['delta_heuristic'] = work_hours_mean[heuristic_key] - \
+    work_hours_mean['diff_heuristic'] = work_hours_mean[heuristic_key] - \
         work_hours_mean[no_tracing_key]
 
-    work_hours_stderr['delta_bct'] = np.sqrt(
+    work_hours_stderr['diff_bct'] = np.sqrt(
         work_hours_stderr[no_tracing_key]**2
         + work_hours_stderr[bct_key]**2
                                            )
 
-    work_hours_stderr['delta_heuristic'] = np.sqrt(
+    work_hours_stderr['diff_heuristic'] = np.sqrt(
         work_hours_stderr[no_tracing_key]**2
         + work_hours_stderr[heuristic_key]**2
                                                  )
 
-    agg_daly_diff['delta TPL'] = [work_hours_mean['delta_bct'],
-                                  work_hours_stderr['delta_bct'],
-                                  work_hours_mean['delta_heuristic'],
-                                  work_hours_stderr['delta_heuristic']
-                                  ]
+    agg_daly_diff['diff_hours'] = [work_hours_mean['diff_bct'],
+                                   work_hours_stderr['diff_bct'],
+                                   work_hours_mean['diff_heuristic'],
+                                   work_hours_stderr['diff_heuristic']
+                                   ]
 
     # ICER over no-tracing
     agg_daly_diff['ICER'] = (agg_daly_diff['delta TPL']
@@ -561,14 +972,14 @@ def run(data, path, compare="app_adoption"):
                              * MEAN_HOURLY_WAGE
                              )
 
-    delta_DALYs_df = agg_daly_diff['delta DALYs'].unstack()
-    delta_TPL_df = agg_daly_diff['delta TPL'].unstack()
+    diff_DALYs_df = agg_daly_diff['diff_dalys'].unstack()
+    diff_TPL_df = agg_daly_diff['diff_hours'].unstack()
     ICER_df = agg_daly_diff['ICER'].unstack()
     ICER_df['stderr'] = (np.abs(ICER_df['mean']) *
                          np.sqrt(
-        (delta_DALYs_df['stderr']/delta_DALYs_df['mean'])**2
+        (diff_DALYs_df['stderr']/diff_DALYs_df['mean'])**2
         +
-        (delta_TPL_df['stderr']/delta_TPL_df['mean'])**2
+        (diff_TPL_df['stderr']/diff_TPL_df['mean'])**2
 
                                  )
                          )
@@ -576,7 +987,7 @@ def run(data, path, compare="app_adoption"):
     agg_daly_diff['ICER'] = ICER_df.stack()
     agg_daly_diff = agg_daly_diff.transpose()
     print(agg_daly_diff)
-    save_path_icer = ('ICER_table.csv')
+    save_path_icer = save_path
     agg_daly_diff.to_csv(os.path.join(path, save_path_icer))
 
     # generate table L4 (work hours, TPL)
@@ -584,6 +995,23 @@ def run(data, path, compare="app_adoption"):
                            work_hours_stderr[method_keys],
                            tpl_mean[method_keys],
                            tpl_stderr[method_keys]
+=======
+    save_path_icer = save_path
+    agg_daly_diff.to_csv(os.path.join(path, save_path_icer))
+
+
+def work_hours_table(work_hours_mean,
+                     work_hours_stderr,
+                     tpl_mean,
+                     tpl_stderr,
+                     method_keys,
+                     path=None):
+    # generate table L4 (work hours, TPL)
+    tpl_df = pd.DataFrame([work_hours_mean[method_keys.values()],
+                           work_hours_stderr[method_keys.values()],
+                           tpl_mean[method_keys.values()],
+                           tpl_stderr[method_keys.values()]
+>>>>>>> dalys
                            ],
                           index=pd.MultiIndex.from_product(
                             [['Foregone Work', 'TPL'],
@@ -599,9 +1027,14 @@ def run(data, path, compare="app_adoption"):
     save_path_tpl = ('tpl_table.csv')
     tpl_df.to_csv(os.path.join(path, save_path_tpl))
 
-    # generate table L5 (metrics for age, sex breakdown)
+
+def dalys_age_sex_breakdown(dalys_pp_age_sex_metrics,
+                            method_keys,
+                            path=None,
+                            save_path=('stratified_metrics.csv')
+                            ):
     metrics_table = {}
-    for method in method_keys:
+    for method in method_keys.values():
         method_df_concat = pd.concat([
             pd.DataFrame(dalys_pp_age_sex_metrics[method][run])
             for run in dalys_pp_age_sex_metrics[method].keys()
@@ -618,5 +1051,191 @@ def run(data, path, compare="app_adoption"):
           'for different CT methods')
     print('Saved to health_metrics_stratified_table.csv')
     print(metrics_df)
-    save_path_metrics = ('health_metrics_stratified_table.csv')
+    save_path_metrics = save_path
     metrics_df.to_csv(os.path.join(path, save_path_metrics))
+
+
+def seir_curves(seir,
+                method_to_labels,
+                method_to_colors,
+                path=None):
+
+    fig, axes = plt.subplots(2, 2)
+    subpl = axes.ravel()
+
+    for idx, curve in enumerate(seir):  # find better name than curve
+        current_plot = idx  # one plot each of s, e, i, r
+        for method in seir[curve]:
+            # get data for one method, one curve, 10 seeds
+            curve_df = pd.DataFrame(seir[curve][method])
+            curve_mean = curve_df.mean(axis=1)
+            curve_stderr = curve_df.sem(axis=1)
+
+            # flatten indexing of subplots
+            subpl[current_plot].plot(curve_mean.index,
+                                     curve_mean,
+                                     label=method_to_labels[method],
+                                     color=method_to_colors[method])
+            subpl[current_plot].fill_between(curve_mean.index,
+                                             y1=curve_mean - curve_stderr,
+                                             y2=curve_mean + curve_stderr,
+                                             color=method_to_colors[method],
+                                             alpha=0.2)
+        subpl[current_plot].set_title(str(curve))
+
+    # grid
+    plt.grid(True, axis='x', alpha=0.3)
+    plt.grid(True, axis='y', alpha=0.3)
+
+    # legend
+    plt.legend()
+
+    # save figure
+    save_path = 'seir.png'
+    fig.savefig(os.path.join(path, save_path))
+    print('Figure 10 saved to seir.png')
+
+
+def metrics_sex_age(daly_df_seed,
+                    dalys_pp_age,
+                    dalys_pp_age_sex_metrics,
+                    label,
+                    idx):
+
+    age_ranges = [range(i, i+10) for i in
+                  range(0, 100, 10)] + [range(100, 120)]
+
+    age_range_dict = {str(np.min(i)) + '-' + str(np.max(i)): {}
+                      for i in age_ranges}
+    by_age = {}
+
+    for age_range, age_key in zip(age_ranges, age_range_dict.keys()):
+        by_age[age_key] = daly_df_seed[daly_df_seed.age.isin(age_range)
+                                       ]['DALYs'].mean(axis=0)
+        dalys_pp_age[label][idx] = by_age
+
+    by_sex = {}
+    for age_range, age_key in zip(age_ranges, age_range_dict.keys()):
+        by_sex[age_key] = daly_df_seed[
+            daly_df_seed.age.isin(age_range)
+                                        ][
+            ['DALYs', 'YLL', 'YLD']].sum(axis=0)
+        dalys_pp_age_sex_metrics[label][idx] = by_sex
+
+    for sex in sexes:
+        dalys_pp_age_sex_metrics[label][idx][sex] = daly_df_seed[
+            daly_df_seed.sex.eq(sex)][
+                ['DALYs', 'YLL', 'YLD']].sum(axis=0)
+
+    return dalys_pp_age, dalys_pp_age_sex_metrics
+
+
+def get_daly_df_keys(agg_daly_df):
+    for key in agg_daly_df.keys():
+        # for methods...
+        if 'no-tracing' in key:
+            no_tracing_key = key
+        elif 'bdt1' in key:
+            bct_key = key
+        elif 'heuristic' in key:
+            heuristic_key = key
+        else:
+            raise ValueError('unknown key')
+
+    method_keys = {'no-tracing': no_tracing_key,
+                   'bdt1': bct_key,
+                   'heuristic': heuristic_key
+                   }
+    return method_keys
+
+
+def agg_daly_summary(agg_dalys):
+    agg_daly_df = pd.DataFrame(agg_dalys)
+    agg_daly_mean = agg_daly_df.mean(axis=0)
+    agg_daly_stderr = agg_daly_df.sem(axis=0)
+
+    return agg_daly_df, agg_daly_mean, agg_daly_stderr
+
+
+def work_hours_summary(agg_work_hours):
+    work_hours_df = pd.DataFrame(agg_work_hours)
+    work_hours_mean = work_hours_df.mean(axis=0)
+    work_hours_stderr = work_hours_df.sem(axis=0)
+
+    return work_hours_df, work_hours_mean, work_hours_stderr
+
+
+def tpl_summary(work_hours_df,
+                MEAN_HOURLY_WAGE):
+    tpl_mean = (work_hours_df*MEAN_HOURLY_WAGE).mean(axis=0)
+    tpl_stderr = (work_hours_df*MEAN_HOURLY_WAGE).sem(axis=0)
+
+    return tpl_mean, tpl_stderr
+
+
+def sensitivity_tables(daly_sensitivity,
+                       work_hours_mean,
+                       work_hours_stderr,
+                       method_keys,
+                       dalys_pp_age_sex_metrics,
+                       MEAN_HOURLY_WAGE=MEAN_HOURLY_WAGE,
+                       path=None):
+    for bound in daly_sensitivity:
+        mean = daly_sensitivity[bound]['mean']
+        stderr = daly_sensitivity[bound]['stderr']
+
+        ICER_table(mean,
+                   stderr,
+                   work_hours_mean,
+                   work_hours_stderr,
+                   method_keys,
+                   MEAN_HOURLY_WAGE,
+                   path=path,
+                   save_path=('ICER_table_' + bound + '.csv')
+                   )
+
+        dalys_age_sex_breakdown(dalys_pp_age_sex_metrics,
+                                method_keys,
+                                path=path,
+                                save_path=('stratified_metrics_' +
+                                           bound + '.csv')
+                                )
+
+
+def scatter_ICER(agg_daly_df,
+                 work_hours_df,
+                 method_to_labels,
+                 method_to_colors,
+                 path):
+    fig = plt.figure(figsize=(15, 10))
+
+    for method in agg_daly_df.keys():
+        dalys = agg_daly_df[method]
+        hours = work_hours_df[method]
+        plt.scatter(hours,
+                    dalys,
+                    label=method_to_labels[method],
+                    color=method_to_colors[method])
+    # xticks
+    plt.xticks(fontsize=16)
+    plt.yticks(fontsize=16)
+
+    # grid
+    plt.grid(True, axis='x', alpha=0.3)
+    plt.grid(True, axis='y', alpha=0.3)
+
+    # legend
+    plt.legend(prop={'size': 30})
+
+    # xlabels
+    plt.xlabel('Total Work Hours Foregone', fontsize=20)
+    plt.ylabel('Total DALYs', fontsize=20)
+
+    # title
+    plt.title('Health-Economic costs of CT methods @ 60% Adoption Rate',
+              fontsize=24)
+
+    # save figure
+    save_path = 'scatter_icer.png'
+    fig.savefig(os.path.join(path, save_path))
+    print('Scatter ICER saved to scatter_icer.png')
