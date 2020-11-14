@@ -8,7 +8,7 @@ import functools
 import typing
 from joblib import Parallel, delayed
 
-from covid19sim.inference.server_utils import InferenceClient, InferenceEngineWrapper, proc_human_batch
+from covid19sim.inference.server_utils import InferenceClient, InferenceEngineWrapper, proc_human_batch, _proc_human
 from covid19sim.inference.clustering.base import ClusterManagerBase
 from covid19sim.inference.human_as_message import make_human_as_message
 if typing.TYPE_CHECKING:
