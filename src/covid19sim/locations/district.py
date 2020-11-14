@@ -185,7 +185,7 @@ class District:
             self.sent_messages_by_day[current_day_idx] += 1
             source_human.contact_book.latest_update_time = \
                 max(source_human.contact_book.latest_update_time, current_timestamp)
-            self.city.global_mailbox.append(destination_human.name, update_message)
+            self.city.global_mailbox.append(destination_human.human_id, update_message)
 
     def _check_should_send_message_gaen(
             self,
