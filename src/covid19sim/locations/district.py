@@ -543,7 +543,7 @@ class District:
                     alive_humans.append(human)
                 else:
                     # Removes messages registered/mailed to dead human as they can't update
-                    del self.city.global_mailbox[human.name]
+                    del self.city.global_mailbox[human.human_id]
             self.do_daily_activies(current_day, alive_humans)
 
     def do_daily_activies(
