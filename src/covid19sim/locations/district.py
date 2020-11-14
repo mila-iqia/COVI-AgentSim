@@ -101,7 +101,11 @@ class District:
 
         self.hd = {}
         self.households = OrderedSet()
-        self.age_histogram = None
+        self.age_histogram = relativefreq2absolutefreq(
+            bins_fractions={(x[0], x[1]): x[2] for x in self.conf.get('P_AGE_REGION')},
+            n_elements=self.n_people,
+            rng=self.rng,
+        )
 
         log("Initializing humans ...", self.logfile)
 
