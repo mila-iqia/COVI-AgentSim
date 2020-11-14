@@ -233,12 +233,13 @@ class City:
                     )
                 break
         else:
-            class Monitor():
-                def __init__(self):
-                    pass
-                def run(self, *args, **kwargs):
-                    yield from ()
-            self.district = Monitor()
+            # class Monitor():
+            #     def __init__(self):
+            #         pass
+            #     def run(self, *args, **kwargs):
+            #         yield from ()
+            # self.district = Monitor()
+            exit()
 
         del self.households, self.stores, self.senior_residences, self.hospitals, \
             self.miscs, self.parks, self.schools, self.workplaces, self.humans
