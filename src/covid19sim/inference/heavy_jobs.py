@@ -84,7 +84,7 @@ def batch_run_timeslot_heavy_jobs(
             "current_day": current_day_idx,
             "human": make_human_as_message(
                 human=human,
-                personal_mailbox=global_mailbox.get(human.name,[]),
+                personal_mailbox=global_mailbox.get(human.human_id,[]),
                 conf=conf
             ),
             "time_slot": time_slot,
@@ -180,7 +180,7 @@ def batch_district_run_timeslot_heavy_jobs(
             "current_day": current_day_idx,
             "human": make_human_as_message(
                 human=human,
-                update_messages=global_mailbox.pop(human.name),
+                update_messages=global_mailbox.pop(human.human_id),
                 conf=conf
             ),
             "time_slot": time_slot,
