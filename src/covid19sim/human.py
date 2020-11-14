@@ -843,7 +843,7 @@ class Human(BaseHuman):
         #     # then we use clusters as the mailbox
         #     personal_mailbox = self.intervention.extract_clusters(self)
 
-        risks = self.intervention.compute_risk(self, None, self.city.hd)
+        risks = self.intervention.compute_risk(self, self.city.hd)
         for day_offset, risk in enumerate(risks):
             if current_day_idx - day_offset in self.risk_history_map:
                 self.risk_history_map[current_day_idx - day_offset] = risk
