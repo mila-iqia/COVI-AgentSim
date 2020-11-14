@@ -29,19 +29,37 @@ APP_UPTAKE: 0.8415
 # --------------------------------------
 # -----  Sampling Parametrization  -----
 # --------------------------------------
-# NOTE: for mobility restriction in specific range use global_mobility_scaling_factor_range=x, where x=high, medium, low. Checkout global_mobility_scaling_factor_range/x.yaml
+
+# memory for cartesian sampling
+SAMPLE_WITH_MEMORY: True
+SAMPLE_WITH_MEMORY_SEED: 1
+SAMPLE_WITH_MEMORY_ITERATIONS: 41
+
+BASELINE_P_ASYMPTOMATIC:
+  sample: uniform
+  from: [0.09, 0.36]
+
+PROPORTION_LAB_TEST_PER_DAY:
+  sample: uniform
+  from: [0.0015, 0.005]
+
+P_DROPOUT_SYMPTOM:
+  sample: uniform
+  from: [0.20, 0.65]
+
+ALL_LEVELS_DROPOUT:
+  sample: uniform
+  from: [0.05, 0.50]
+
 GLOBAL_MOBILITY_SCALING_FACTOR:
   sample: cartesian
   from:
-    - 0.2
-    - 0.3
-    - 0.4
-    - 0.5
-    - 0.6
-    - 0.7
-    - 0.8
-    - 0.9
-    - 1.0
+    - 0.425
+    - 0.450
+    - 0.475
+    - 0.500
+    - 0.525
+    - 0.550
 
 seed:
   sample: cartesian
@@ -50,9 +68,3 @@ seed:
     - 3003
     - 1300
     - 3100
-    - 1900
-    - 4001
-    - 5001
-    - 6001
-    - 3001
-    - 3
