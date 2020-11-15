@@ -227,7 +227,7 @@ def main(conf):
                 "humans_demographics",
                 "work_hours"
             ]
-        )   
+        )
     if "efficiency" in plots:
         # Same as pareto
         keep_pkl_keys.update(
@@ -272,7 +272,10 @@ def main(conf):
             "humans_quarantined_state"
         ])
 
-    if "normalized_mobility" in plots:
+    if (
+        "normalized_mobility" in plots
+        or "sensitivity" in plots
+    ):
         keep_pkl_keys.update([
             "infection_monitor",
             "humans_state",
