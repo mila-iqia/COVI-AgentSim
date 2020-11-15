@@ -74,6 +74,11 @@ class SampleWithMemory(object):
         conf = deepcopy(self.current_conf)
         conf.update(sample_cartesians(self.cartesians, exp, self._idx))
         self._idx += 1
+        keys_to_remove = []
+        for key in conf.keys():
+            if "SAMPLE_WITH_MEMORY" in key:
+                keys_to_remove.append(key)
+        _ = [conf.pop(k, None) for k in keys_to_remove]
         return conf
 
 
