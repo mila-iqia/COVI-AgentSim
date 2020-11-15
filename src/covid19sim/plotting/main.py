@@ -22,6 +22,7 @@ import covid19sim.plotting.plot_epi_table as epi_table
 import covid19sim.plotting.plot_episim_series as episim_series
 import covid19sim.plotting.plot_normalized_mobility_scatter as normalized_mobility
 import covid19sim.plotting.plot_dalys as dalys
+import covid19sim.plotting.plot_sensitivity as sensitivity
 from covid19sim.plotting.utils import get_all_data
 
 
@@ -147,7 +148,8 @@ def main(conf):
         "epi_table": epi_table,
         "dalys": dalys,
         "episim_series": episim_series,
-        "normalized_mobility": normalized_mobility
+        "normalized_mobility": normalized_mobility,
+        "sensitivity": sensitivity
     }
 
     conf = OmegaConf.to_container(conf)

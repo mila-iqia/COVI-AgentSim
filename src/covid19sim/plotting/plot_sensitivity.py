@@ -31,6 +31,11 @@ ANNOTATION_FONTSIZE=15
 
 METRICS = ['r', 'effective_contacts', 'healthy_contacts']
 SENSITIVITY_PARAMETERS = ['ALL_LEVELS_DROPOUT', 'PROPORTION_LAB_TEST_PER_DAY', 'P_DROPOUT_SYMPTOM', 'BASELINE_P_ASYMPTOMATIC']
+SCENARIOS = [
+    [0.10, 0.004, 0.20, 0.15], # optimistic scenario
+    [0.30, 0.025, 0.40, 0.30], # intermediate scenaraio
+    [0.50, 0.001, 0.60, 0.50], # worse scenario
+]
 USE_MATH_NOTATION=False
 
 # fix the seed
