@@ -6,7 +6,7 @@ env_name: covid
 infra: beluga
 mem: 30
 n_search: -1 # -1 figures out the size of cartesian product for you
-time: "'5:00:00'"
+time: "'10:00:00'"
 
 # -------------------------
 # -----  Directories  -----
@@ -33,7 +33,7 @@ APP_UPTAKE: 0.8415
 # memory for cartesian sampling
 SAMPLE_WITH_MEMORY: True
 SAMPLE_WITH_MEMORY_SEED: 1
-SAMPLE_WITH_MEMORY_ITERATIONS: 41
+SAMPLE_WITH_MEMORY_ITERATIONS: 12
 
 BASELINE_P_ASYMPTOMATIC:
   sample: uniform
