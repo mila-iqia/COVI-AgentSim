@@ -632,7 +632,8 @@ class Tracker(object):
                 self.humans_demographics.append({"name": human.name,
                                                 "preexisting_conditions": human.preexisting_conditions,
                                                 "age": human.age,
-                                                "sex": human.sex})
+                                                "sex": human.sex,
+                                                "asymptomatic": human.is_asymptomatic})
 
     def compute_serial_interval(self):
         """
@@ -1521,7 +1522,7 @@ class Tracker(object):
                 C = self.contact_matrices[interaction_type][location_type]
                 D = self.contact_duration_matrices[interaction_type][location_type]
 
-                C['total'][i, j] += global_mobility_factor 
+                C['total'][i, j] += global_mobility_factor
                 C['total'][j, i] += global_mobility_factor
                 # in surveys, ij ==> j is the participant and i is the reported contact
                 C['n_people'][(j,i)].add(human1.name) # i reports about j; len of this set is number of unique people in i that met j
