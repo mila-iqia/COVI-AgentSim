@@ -206,9 +206,18 @@ class City:
             return district_locs
 
         district_households = split_locs(self.households)
-        district_humans = [[residents for household in households for residents in household.residents] for households in district_households]
-        district_stores = split_locs(self.stores)
         district_senior_residences = split_locs(self.senior_residences)
+
+        district_humans: typing.List[typing.List["Human"]] = []
+        # corral all humans housed in a district as the starting location for each human in the simulation
+        for ind in range(self.num_districts):
+            district_humans_ind = []
+            for housed_location in district_households[ind] + district_senior_residences[ind]:
+                district_humans_ind.extend(housed_location.residents)
+            district_humans.append(district_humans_ind)
+
+        print(district_humans)
+        district_stores = split_locs(self.stores)
         district_hospitals = split_locs(self.hospitals)
         district_miscs = split_locs(self.miscs)
         district_parks = split_locs(self.parks)
