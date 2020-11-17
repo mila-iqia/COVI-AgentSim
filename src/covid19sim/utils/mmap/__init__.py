@@ -29,9 +29,18 @@ class MMAPArray():
         throws an error in case of invalid index
         :param index: the line number of the value to be read from
         """
-        pos: int = index * self.item_size
-        self._mm.seek(pos)
-        return pickle.load(self._mm)
+        if index >= self.num_items or index < 0:
+            raise IndexError(f"Index {index} is out of range")
+        else:
+            try:
+                pos: int = index * self.item_size
+                self._mm.seek(pos)
+                return pickle.load(self._mm)
+            except pickle.UnpicklingError as e:
+                if str(e) == "invalid load key, '\\x00'.":
+                    return self.default_item
+                else:
+                    raise
 
     def __setitem__(self, index: int, value: typing.Any):
         """
@@ -39,17 +48,29 @@ class MMAPArray():
         :param index: line number in the mmap to store the object
         :param value: object to be pickled and stored in shared memory
         """
-        pos: int = index * self.item_size
-        self._mm.seek(pos)
-        pickle.dump(value, self._mm)
-        self._mm.write_byte(10) # b"\n"
-        obj_size: int = self._mm.tell() - pos + 1
-        assert self.item_size >= obj_size, \
-            "The length of object ({} bytes) exceeds " \
-            "the provisioned max bytes per item ({})".format(
-                obj_size,
-                self.item_size
-                )
+        if index >= self.num_items or index < 0:
+            raise IndexError(f"Index {index} is out of range")
+        else:
+            pos: int = index * self.item_size
+            self._mm.seek(pos)
+            pickle.dump(value, self._mm)
+            obj_size: int = self._mm.tell() - pos + 1
+            if self.item_size > obj_size:
+                self._mm.write_byte(10) # b"\n"
+            elif self.item_size == obj_size:
+                raise ValueError(
+                        "The final length of object needs to leave one byte "
+                        "for \\n (new line) character for separating objects"
+                    )
+            else:
+                raise ValueError(
+                        "The length of object ({} bytes) exceeds " \
+                        "the provisioned max bytes per item ({})".format(
+                        obj_size,
+                        self.item_size
+                        )
+                    )
+                
 
     def __delitem__(self, index: int):
         """
@@ -57,9 +78,12 @@ class MMAPArray():
         :param index: line number in the mmap to store the object
         :param value: object to be pickled and stored in shared memory
         """
-        pos: int = index * self.item_size
-        self._mm.seek(pos)
-        self._mm.write(b'\x00' * self.item_size)
+        if index >= self.num_items or index < 0:
+            raise IndexError(f"Index {index} is out of range")
+        else:
+            pos: int = index * self.item_size
+            self._mm.seek(pos)
+            self._mm.write(b'\x00' * self.item_size)
 
     def __iter__(self) -> typing.Any:
         """
