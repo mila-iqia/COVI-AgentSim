@@ -382,7 +382,7 @@ class Tracker(object):
             assert os.path.isdir(district.conf["outdir"])
             self.collection_server = DataCollectionServer(
                 data_output_path=os.path.join(district.conf["outdir"], "human_backups.hdf5"),
-                human_count=district.conf["n_people"],
+                human_count=district.n_people,
                 simulation_days=district.conf["simulation_days"],
                 config_backup=district.conf,
             )
