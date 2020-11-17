@@ -216,7 +216,6 @@ class City:
                 district_humans_ind.extend(housed_location.residents)
             district_humans.append(district_humans_ind)
 
-        print(district_humans)
         district_stores = split_locs(self.stores)
         district_hospitals = split_locs(self.hospitals)
         district_miscs = split_locs(self.miscs)
