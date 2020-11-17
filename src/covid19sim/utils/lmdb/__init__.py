@@ -144,13 +144,13 @@ class LMDBArray(LMDBBaseClass):
         Modifies the item located at given index. This method overwrites the item
         located at the given index
         :param index: the index whose item we want to set
-        :param value: the item to be overwriten at index, can be either int or a tuple
+        :param values: the item to be overwriten at index, can be either int or a tuple
         :returns (if not suppressed): True if the transaction was successful, False otherwise
         """
         if index >= self.env.stat()['entries']:
             raise IndexError(f"Index {index} is out of range")
         with self.env.begin(db=self.db, write=True) as txn:
-            return txn.put(db=self.db, key=self.idumps(index), value=self.vdumps(value), overwrite=True)
+            return txn.put(db=self.db, key=self.idumps(index), value=self.vdumps(values), overwrite=True)
 
     def __iter__(self) -> typing.Any:
         """
