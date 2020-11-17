@@ -310,8 +310,8 @@ class MobilityPlanner(object):
         Moves the schedule pointer to the schedule for the current simulation day.
 
         Args:
-            force_range (start_time, end_time): returns schedule that spans over all the acitivities across start_time and end_time
-            force_end_time (datetime.datetime): return all the activities until first "sleep" which have end_time greater than force_end_time
+            for_kids (bool): If True, returns the next schedule without moving the pointer to it.
+
         Returns:
             schedule (deque): a deque of `Activity`s where the activities are arranged in increasing order of their starting time.
         """
