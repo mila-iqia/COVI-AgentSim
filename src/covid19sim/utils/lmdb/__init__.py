@@ -25,7 +25,7 @@ class LMDBBaseClass():
     parent_temp_dir = os.path.join( tempfile.gettempdir(), 'covi-simulation-lmdb' )
     os.makedirs(parent_temp_dir, exist_ok=True)
 
-    def __init__(self, memory_size: int = int(1.5*1024*1024)):
+    def __init__(self, memory_size: int = 20*1024*1024):
         """
         Initializes a lmdb database of given memory size and string format
         for items to be stored in the database
