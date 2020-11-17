@@ -10,16 +10,18 @@ class MMAPArray():
     multiple processes writing to the same index.
     """
 
-    def __init__(self, num_items: int, item_size: int):
+    def __init__(self, num_items: int, item_size: int, default_item: typing.Any=None):
         """
         Opens an anonymous shared memory file with given capacity at
         construction
         :param num_items: number of items to be stored in the mmap
         :param item_size: maximum bytes of each item in the mmap
+        :param default_item: default item to return when the item is empty
         """
         self._mm: mmap.mmap = mmap.mmap(-1, num_items * item_size)
         self.num_items = num_items
         self.item_size = item_size
+        self.default_item = default_item
 
     def __getitem__(self, index: int) -> typing.Any:
         """
@@ -72,7 +74,7 @@ class MMAPArray():
                 self._mm.seek(-1, os.SEEK_CUR)
                 yield pickle.load(self._mm)
             else:
-                yield None
+                yield self.default_item
 
     def __len__(self) -> int:
         """
