@@ -264,6 +264,8 @@ class District:
     def have_some_humans_download_the_app(self):
         """
         Simulates the process of downloading the app on for smartphone users according to `APP_UPTAKE` and `SMARTPHONE_OWNER_FRACTION_BY_AGE`.
+        There's a correlation between the number of people who use the app and number of users the app has. They are respectively referred to
+        as Adoption Rate and Uptake Rate in the Predicting Infectiousness For Proactive Contact Tracing paper (2020).
         """
         def _log_app_info(human):
             if not human.has_app:
