@@ -30,8 +30,8 @@ LEGENDSIZE = 25
 ANNOTATION_FONTSIZE=15
 
 METRICS = ['r', 'effective_contacts', 'healthy_contacts']
-XMETRICS = ['effective_contacts', 'ALL_LEVELS_DROPOUT', 'PROPORTION_LAB_TEST_PER_DAY', 'P_DROPOUT_SYMPTOM', 'BASELINE_P_ASYMPTOMATIC']
 SENSITIVITY_PARAMETERS = ['ALL_LEVELS_DROPOUT', 'PROPORTION_LAB_TEST_PER_DAY', 'P_DROPOUT_SYMPTOM', 'BASELINE_P_ASYMPTOMATIC']
+XMETRICS = ['effective_contacts'] + SENSITIVITY_PARAMETERS
 SCENARIOS = [
     [0.10, 0.004, 0.20, 0.15], # optimistic scenario
     [0.30, 0.025, 0.40, 0.30], # intermediate scenaraio
@@ -43,10 +43,30 @@ SENSITIVITY_PARAMETER_RANGE = [
     [0.20, 0.65],
     [0.09, 0.36]
 ]
+REFERENCE_R=1.2
 USE_MATH_NOTATION=False
 
 # fix the seed
 np.random.seed(123)
+
+def find_c(fitted_fn, partial_x, target_r=1.2):
+    """
+    Finds `effective_contacts` for which fitted_fn gives R=1.2 at other values of input given by `partial_x`.
+
+    Args:
+        fitted_fn (curve_fitting.GPRFit): GP function
+        partial_x (np.array): all values of input to `fitted_fn` except the first index  (check `XMETRICS`)
+        target_r (float): desired value of `fitted_fn`
+
+    Returns:
+        (float): value of `effective_contacts` at which `fitted_fn` is `target_r`
+    """
+    N = 10000
+    cs = np.linspace(2, 14, N)
+    xs = np.array([[c] + partial_x for c in cs])
+    ys = fitted_fn.evaluate_y_for_x(xs)
+    best_y_idx = np.argmin(np.abs(ys-target_r))
+    return cs[best_y_idx], ys[best_y_idx]
 
 def plot_and_save_sensitivity_analysis(results, uptake_rate, path):
     """
@@ -57,7 +77,6 @@ def plot_and_save_sensitivity_analysis(results, uptake_rate, path):
         uptake_rate (str): APP_UPTAKE for all the methods. Assumed to be same for all app-based methods.
         path (str): path of the folder where results will be saved
     """
-    assert xmetric in METRICS and ymetric in METRICS, f"Unknown metrics: {xmetric} or {ymetric}. Expected one of {METRICS}."
     TICKGAP=2
     ANNOTATION_FONTSIZE=15
 
@@ -66,7 +85,7 @@ def plot_and_save_sensitivity_analysis(results, uptake_rate, path):
     methods_and_base_confs = results.groupby(['method', 'intervention_conf_name']).size().index
     labelmap = get_labelmap(methods_and_base_confs, path)
     colormap = get_colormap(methods_and_base_confs, path)
-    INTERPOLATION_FN = _get_interpolation_kind(xmetric, ymetric, use_gp=USE_GP)
+    INTERPOLATION_FN = GPRFit
 
     # find if only specific folders (methods) need to be plotted
     plot_these_methods = load_plot_these_methods_config(path)
@@ -87,10 +106,12 @@ def plot_and_save_sensitivity_analysis(results, uptake_rate, path):
         x = results[selector][XMETRICS].to_numpy()
         y = results[selector]['r'].to_numpy()
         fitted_fns[method] = INTERPOLATION_FN().fit(x, y)
+        print(f"R-squared for {method}: {fitted_fns[method].r_squared:3.3f}")
 
     # set up subplot grid
     fig = plt.figure(num=1, figsize=(15,10), dpi=DPI)
-    gridspec.GridSpec(len(SCENARIOS), len(SENSITIVITY_PARAMETERS))
+    gridsize = (len(SCENARIOS), len(SENSITIVITY_PARAMETERS))
+    # gridspec.GridSpec(*gridsize)
 
     for k, scenario in enumerate(SCENARIOS):
         for i, parameter in enumerate(SENSITIVITY_PARAMETERS):
@@ -98,37 +119,35 @@ def plot_and_save_sensitivity_analysis(results, uptake_rate, path):
             y, y_std = [], []
             for value in x:
                 # find c0 such that R_nt = 1.2 under this scenario
-                c0 = fitted_fns['post-lockdown-no-tracing']
+                partial_x = deepcopy(scenario)
+                partial_x[i] = value
+                c0, R = find_c(fitted_fns['post-lockdown-no-tracing'], partial_x, target_r=REFERENCE_R)
+                assert np.abs(R - REFERENCE_R) < 1e-3, f"R: {R:2.4f} and REFERENCE_R:{REFERENCE_R:3.3f}"
+
                 # find delta r
-                delta_r, delta_r_std = fitted_fns['bdt1'].find_y_for_x(c0) - fitted_fns['heuristic'].find_y_for_x(c0)
+                x_input = np.array([[c0] + partial_x])
+                delta_r = fitted_fns['bdt1'].evaluate_y_for_x(x_input) - fitted_fns['heuristicv4'].evaluate_y_for_x(x_input)
+                stderr_delta_r = np.sqrt(fitted_fns['bdt1'].stderr_for_x(x_input, return_var=True) + fitted_fns['heuristicv4'].stderr_for_x(x_input, return_var=True))
                 y.append(delta_r)
-                y_std.append(delta_r_std)
+                y_std.append(stderr_delta_r)
 
             method_label = labelmap[method]
             color = colormap[method]
-            ax = plt.subplot2grid(shape=(1,1), loc=(k,i), rowspan=1, colspan=1, fig=fig)
-            ax = plot_mean_and_stderr_bands(ax, x, y, y_std, label=label, color=colormap[method], confidence_level=1.96, stderr_alpha=0.3)
+            ax = plt.subplot2grid(shape=gridsize, loc=(k,i), rowspan=1, colspan=1, fig=fig)
+            ax = plot_mean_and_stderr_bands(ax, x, np.array(y).reshape(-1), np.array(y_std).reshape(-1), label=method_label, color=colormap[method], confidence_level=1.96, stderr_alpha=0.3)
 
-    # plot fitted fns
-    x = np.arange(results[xmetric].min(), results[xmetric].max(), 0.05)
-    for method, fn in fitted_fns.items():
-        y = fn.evaluate_y_for_x(x)
-        label = labelmap[method] if not plot_scatter else None
-        stderr = fn.stderr_for_x(x, analytical=True)
-        ax = plot_mean_and_stderr_bands(ax, x, y, stderr, label=label, color=colormap[method], confidence_level=1.96, stderr_alpha=0.3)
-
-    xlabel = get_metric_label(xmetric)
-    ylabel = get_metric_label(ymetric)
-    ax = add_bells_and_whistles(ax, y_title=ylabel, x_title=None if plot_residuals else xlabel, XY_TITLEPAD=LABELPAD, \
-                    XY_TITLESIZE=LABELSIZE, TICKSIZE=TICKSIZE, legend_loc='upper left', \
-                    LEGENDSIZE=LEGENDSIZE, x_tick_gap=TICKGAP, x_lower_lim=2, x_upper_lim=10.5, y_lower_lim=0.25)
+    # xlabel = get_metric_label(xmetric)
+    # ylabel = get_metric_label(ymetric)
+    # ax = add_bells_and_whistles(ax, y_title=ylabel, x_title=None if plot_residuals else xlabel, XY_TITLEPAD=LABELPAD, \
+    #                 XY_TITLESIZE=LABELSIZE, TICKSIZE=TICKSIZE, legend_loc='upper left', \
+    #                 LEGENDSIZE=LEGENDSIZE, x_tick_gap=TICKGAP, x_lower_lim=2, x_upper_lim=10.5, y_lower_lim=0.25)
 
     # figure title
     fig.suptitle(f"Sensitivity Analysis", fontsize=TITLESIZE, y=1.05)
 
     # save
     fig.tight_layout()
-    filename = f"{USE_GP_STR}{ymetric}_{xmetric}_mobility_scatter"
+    filename = f"sensitivity"
     filepath = save_figure(fig, basedir=path, folder="sensitivity", filename=f'{filename}_AR_{adoption_rate}')
     print(f"Sensitivity analysis saved at {filepath}")
 
@@ -165,6 +184,7 @@ def _extract_data(simulation_runs, method):
         intervention_name = get_base_intervention(sim['conf'])
         mobility_factor = sim['conf']['GLOBAL_MOBILITY_SCALING_FACTOR']
         row =  [method, simname, mobility_factor, intervention_name, is_app_based_tracing_intervention(intervention_conf=sim['conf'])] + _extract_metrics(data)
+        breakpoint()
         row += [sim['conf'][key] for key in SENSITIVITY_PARAMETERS]
         all_data.append(row)
 
