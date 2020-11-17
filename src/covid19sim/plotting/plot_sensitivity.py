@@ -30,6 +30,7 @@ LEGENDSIZE = 25
 ANNOTATION_FONTSIZE=15
 
 METRICS = ['r', 'effective_contacts', 'healthy_contacts']
+XMETRICS = ['effective_contacts', 'ALL_LEVELS_DROPOUT', 'PROPORTION_LAB_TEST_PER_DAY', 'P_DROPOUT_SYMPTOM', 'BASELINE_P_ASYMPTOMATIC']
 SENSITIVITY_PARAMETERS = ['ALL_LEVELS_DROPOUT', 'PROPORTION_LAB_TEST_PER_DAY', 'P_DROPOUT_SYMPTOM', 'BASELINE_P_ASYMPTOMATIC']
 SCENARIOS = [
     [0.10, 0.004, 0.20, 0.15], # optimistic scenario
@@ -83,14 +84,13 @@ def plot_and_save_sensitivity_analysis(results, uptake_rate, path):
 
         # function fitting
         selector = results['method'] == method
-        x = results[selector][xmetric].to_numpy()
-        y = results[selector][ymetric].to_numpy()
+        x = results[selector][XMETRICS].to_numpy()
+        y = results[selector]['r'].to_numpy()
         fitted_fns[method] = INTERPOLATION_FN().fit(x, y)
 
     # set up subplot grid
     fig = plt.figure(num=1, figsize=(15,10), dpi=DPI)
     gridspec.GridSpec(len(SCENARIOS), len(SENSITIVITY_PARAMETERS))
-
 
     for k, scenario in enumerate(SCENARIOS):
         for i, parameter in enumerate(SENSITIVITY_PARAMETERS):
