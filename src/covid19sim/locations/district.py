@@ -81,7 +81,6 @@ class District:
         self.logfile = logfile
         self.env = env
         self.city = city
-        self.n_people = len(self.humans)
 
         self.init_fraction_sick = city.init_fraction_sick
         self.rng = city.rng # np.random.RandomState(rng.randint(2 ** 16))
@@ -118,6 +117,13 @@ class District:
         self.risk_change_histogram = Counter()
         self.risk_change_histogram_sum = 0
         self.sent_messages_by_day: typing.Dict[int, int] = {}
+
+    @property
+    def n_people(self) -> int:
+        """
+        Number of people inside district at this moment
+        """
+        return len(self.humans)
 
     def register_new_messages(
             self,
@@ -205,7 +211,7 @@ class District:
             return False
         # don't exceed the message budget
         already_sent_messages = self.sent_messages_by_day.get(current_day_idx, 0)
-        if already_sent_messages >= message_budget * self.conf.get("n_people"):
+        if already_sent_messages >= message_budget * self.n_people:
             return False
 
         # if people uniformly send messages in the population, then 1 / days_between_messages people
@@ -572,7 +578,7 @@ class District:
                 "cur_day: {}, budget spent: {} / {} ".format(
                     current_day,
                     self.sent_messages_by_day.get(current_day, 0),
-                    int(self.conf["n_people"] * self.conf["MESSAGE_BUDGET_GAEN"])
+                    int(self.n_people * self.conf["MESSAGE_BUDGET_GAEN"])
                 ),
             )
 
