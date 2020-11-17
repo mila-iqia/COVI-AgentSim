@@ -29,7 +29,7 @@ class LMDBBaseClass():
         """
         Initializes a lmdb database of given memory size and string format
         for items to be stored in the database
-        :param memory_size: the allocated size of the shared memory file
+        :param memory_size: the allocated size of the shared memory file in bytes
         """
         self.path = tempfile.mkdtemp(dir=LMDBBaseClass.parent_temp_dir)
         self.env, self.db = self._init_db(path=self.path, memory_size=memory_size)
@@ -323,8 +323,8 @@ class LMDBSortedMap(LMDBBaseClass):
 
     def pop_all(self) -> typing.List[typing.Tuple]:
         """
-        Pops all pairs of key-values from the sorted map and drops the main db
-        :returns: all key-values stored in the sorted map and empties the sorted map
+        Pops all pairs of key-values from the sorted map and empties the main db
+        :returns: all key-values stored in the sorted map
         """
         items: typing.List[typing.Tuple] = []
         with self.env.begin(db=self.db, write=True) as txn:
@@ -340,7 +340,7 @@ class LMDBSortedMap(LMDBBaseClass):
         Modifies the item located at given index. This method overwrites the item
         located at the given index
         :param index: the index whose item we want to set
-        :param value: the item to be overwriten at index, can be either int or a tuple
+        :param value: the item to be appended at index, can be either int or a tuple
         :returns (if not suppressed): True if the transaction was successful, False otherwise
         """
         with self.env.begin(db=self.db, write=True) as txn:
