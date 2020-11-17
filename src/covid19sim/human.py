@@ -961,8 +961,9 @@ class Human(BaseHuman):
 
             #
             next_location = next_activity.location
-            if self.city.location_district_id(next_location) != self.city.district.district_id:
-                return next_location
+            next_district = self.city.location_district_id(next_location)
+            if next_district != self.city.district.district_id:
+                return next_activity, next_district
             elif next_location is not None:
                 # (debug) to print the schedule for someone
                 # if self.name == "human:77":

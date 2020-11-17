@@ -394,21 +394,31 @@ class District:
         if isinstance(human, int):
             human_id = human
             # materialize human from mmap and store to self.humans
-            human, next_activity = self.city.humans[human_id] 
+            human = self.city.humans[human_id]
+            next_activity = self.city.human_next_activities[human_id]
         else: # isinstance(human, Human):
             human_id, next_activity = human.human_id, None
         self.humans.append(human)
+        human_run_iterator = human.run(next_activity=next_activity)
         try:
             # Initiate human processes
-            yield from human.run(next_activity=next_activity)
+            while True:
+                yield next(human_run_iterator)
         except StopIteration as ret:
-            next_activity = ret.value
-            # remove human from human
-            self.humans.remove(human)
-            # store the final state of the human in the shared map
-            self.city.humans[human_id] = (human, next_activity)
-            # append human to the next district queue
-            self.city.district_queues[ human.next_district ].append(human_id)
+            next_activity_district = ret.value
+            # human will continue its run in another district
+            if next_activity_district is not None:
+                next_activity, next_district = next_activity_district
+                # remove human from human
+                self.humans.remove(human)
+                # store the final state of the human in the shared map
+                self.city.humans[human_id] = human
+                self.city.human_next_activities[human_id] = next_activity
+                # append human to the next district queue
+                self.city.district_queues.append(next_district, human_id)
+            # human has successfully exhasted all of its run yields
+            else:
+                pass
 
     def run(self, duration, outfile):
         """
@@ -506,12 +516,9 @@ class District:
 
             alive_humans = []
 
-            try:
-                # fetch new_humans
-                for human_id in self.city.district_queues[self.env.district_id].pop_all():
-                    self.env.process(self.new_human(human_id))
-            except KeyError:
-                pass
+            # fetch new_humans
+            for human_id in self.city.district_queues.pop(self.env.district_id):
+                self.env.process(self.new_human(human_id))
 
             # run non-app-related-stuff for all humans here (test seeking, infectiousness updates)
             for human in self.humans:

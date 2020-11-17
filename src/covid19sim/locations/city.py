@@ -94,7 +94,8 @@ class City:
         self.daily_rec_level_mapping = None
         self.covid_testing_facility = TestFacility(self.test_type_preference, self.max_capacity_per_test_type, env, conf)
 
-        self.humans = MMAPArray(num_items=n_people, item_size=100)
+        self.humans = MMAPArray(num_items=n_people, item_size=1024*1024)
+        self.human_next_activities = MMAPArray(num_items=n_people, item_size=128*1024)
         self.district_queues = LMDBSortedMap()
         self.hd = {}
         self.households = OrderedSet()
@@ -250,7 +251,7 @@ class City:
             exit()
 
         del self.households, self.stores, self.senior_residences, self.hospitals, \
-            self.miscs, self.parks, self.schools, self.workplaces, self.humans
+            self.miscs, self.parks, self.schools, self.workplaces
         
 
 class EmptyCity(City):
