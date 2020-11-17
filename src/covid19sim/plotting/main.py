@@ -288,7 +288,7 @@ def main(conf):
             "healthy_effective_contacts_since_intervention",
             "cases_per_day",
             "test_monitor",
-            "human_demographics"
+            "humans_demographics"
         ])
 
     # ------------------------------------
