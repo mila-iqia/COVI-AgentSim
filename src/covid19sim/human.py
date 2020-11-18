@@ -1352,16 +1352,16 @@ class Human(BaseHuman):
         """
         state: typing.Dict = self.__dict__.copy()
         del state['last_date'], state['city']
-        name_id: int = int(self.name.split(":",1)[1])
-        args = (name_id, self.age, self.rng, self.conf)
+        human_id: int = self.human_id
+        args = (human_id, self.age, self.rng, self.conf)
         return (Human._reconstruct, args, state)
 
     @classmethod
-    def _reconstruct(cls, name_id, age, rng, conf):
+    def _reconstruct(cls, human_id, age, rng, conf):
         """
         Reconstruct human and its attributes
         """
         city: City = Location.city
         env: Env = city.env
         
-        return cls(env, city, name_id, age, rng, conf)
+        return cls(env, city, human_id, age, rng, conf)

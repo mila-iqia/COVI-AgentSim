@@ -484,22 +484,28 @@ class Location(simpy.Resource):
         """
         Helper function for pickling
         """
-        args = (self.name, self.location_type)
+        args = (self.location_type, self.id)
         return (self._reconstruct, args)
 
     @classmethod
     def _reconstruct(
         cls,
-        location_name: str,
-        location_type: str
+        location_type: str,
+        location_id: str
         ):
         """
         Find and return location object from city by name
         """
-        return next(
-            loc for loc in getattr(cls.city.district, f"{location_type.lower()}s") \
-            if loc.name == location_name
-            )
+        try:
+            return next(
+                loc for loc in getattr(cls.city.district, f"{location_type.lower()}s") \
+                if loc.id == location_id
+                )
+        except StopIteration:
+            loc_instance = cls.__new__(cls)
+            loc_instance.location_type = location_type
+            loc_instance.id = location_id
+            return loc_instance
  
 
 class Household(Location):
