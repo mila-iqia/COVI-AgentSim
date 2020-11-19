@@ -30,18 +30,18 @@ LEGENDSIZE = 25
 ANNOTATION_FONTSIZE=15
 
 METRICS = ['r', 'effective_contacts', 'healthy_contacts']
-SENSITIVITY_PARAMETERS = ['ALL_LEVELS_DROPOUT', 'PROPORTION_LAB_TEST_PER_DAY', 'P_DROPOUT_SYMPTOM', 'BASELINE_P_ASYMPTOMATIC']
+SENSITIVITY_PARAMETERS = ['ALL_LEVELS_DROPOUT', 'PROPORTION_LAB_TEST_PER_DAY', 'P_DROPOUT_SYMPTOM', 'ASYMPTOMATIC_RATIO']
 XMETRICS = ['effective_contacts'] + SENSITIVITY_PARAMETERS
 SCENARIOS = [
-    [0.10, 0.004, 0.20, 0.15], # optimistic scenario
-    [0.30, 0.025, 0.40, 0.30], # intermediate scenaraio
-    [0.50, 0.001, 0.60, 0.50], # worse scenario
+    [0.02, 0.004, 0.20, 0.15], # optimistic scenario (** 5% or 95% of the bounds in log domain)
+    [0.06, 0.0025, 0.40, 0.25], # intermediate scenaraio (arithmetic average in log domain)
+    [0.18, 0.0015, 0.60, 0.40], # worse scenario
 ]
 SENSITIVITY_PARAMETER_RANGE = [
-    [0.05, 0.50],
+    [0.02, 0.18], # oxford values
     [0.0015, 0.005],
     [0.20, 0.65],
-    [0.09, 0.36]
+    [0.15, 0.40]
 ]
 REFERENCE_R=1.2
 USE_MATH_NOTATION=False
@@ -151,12 +151,13 @@ def plot_and_save_sensitivity_analysis(results, uptake_rate, path):
     filepath = save_figure(fig, basedir=path, folder="sensitivity", filename=f'{filename}_AR_{adoption_rate}')
     print(f"Sensitivity analysis saved at {filepath}")
 
-def _extract_metrics(data):
+def _extract_metrics(data, conf):
     """
     Extracts `METRICS` from data corresponding to a single simulation run.
 
     Args:
         data (dict): tracker files for the simulation
+        conf (dict): an experimental configuration.
 
     Returns:
         (list): a list of scalars representing metrics in `METRICS` for the simulations
@@ -165,6 +166,12 @@ def _extract_metrics(data):
     out.append(get_proxy_r(data, verbose=False))
     out.append(_mean_effective_contacts(data))
     out.append(_mean_healthy_effective_contacts(data))
+
+    out.append(conf['ALL_LEVELS_DROPOUT'])
+    out.append(conf['PROPORTION_LAB_TEST_PER_DAY'])
+    out.append(conf['P_DROPOUT_SYMPTOM'])
+    out.append(1.0 * sum(h['asymptomatic'] for h in data['humans_demographics']) / len(data['humans_demographics']))
+
     return out
 
 def _extract_data(simulation_runs, method):
@@ -183,9 +190,7 @@ def _extract_data(simulation_runs, method):
         data = sim['pkl']
         intervention_name = get_base_intervention(sim['conf'])
         mobility_factor = sim['conf']['GLOBAL_MOBILITY_SCALING_FACTOR']
-        row =  [method, simname, mobility_factor, intervention_name, is_app_based_tracing_intervention(intervention_conf=sim['conf'])] + _extract_metrics(data)
-        breakpoint()
-        row += [sim['conf'][key] for key in SENSITIVITY_PARAMETERS]
+        row =  [method, simname, mobility_factor, intervention_name, is_app_based_tracing_intervention(intervention_conf=sim['conf'])] + _extract_metrics(data, sim['conf'])
         all_data.append(row)
 
     columns = ['method', 'dir', 'mobility_factor', 'intervention_conf_name','app_based'] + METRICS + SENSITIVITY_PARAMETERS
