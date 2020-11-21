@@ -866,7 +866,7 @@ def main(conf: DictConfig) -> None:
         shutil.copy(exp_file_path, Path(copy_dest) / exp_file_path.name)
 
     # run n_search jobs
-    if conf['SAMPLE_WITH_MEMORY']:
+    if conf.get('SAMPLE_WITH_MEMORY', False):
         sample_search_conf = SampleWithMemory(conf)
 
     printlines()
