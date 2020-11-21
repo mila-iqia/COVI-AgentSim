@@ -735,7 +735,6 @@ def printlines():
 HYDRA_CONF_PATH = "../configs/experiment/config.yaml"
 @hydra.main(config_path=HYDRA_CONF_PATH, strict=False)
 def main(conf: DictConfig) -> None:
-
     """
                 HOW TO USE
 
@@ -866,8 +865,9 @@ def main(conf: DictConfig) -> None:
         shutil.copy(exp_file_path, Path(copy_dest) / exp_file_path.name)
 
     # run n_search jobs
+    sample_conf = sample_search_conf
     if conf.get('SAMPLE_WITH_MEMORY', False):
-        sample_search_conf = SampleWithMemory(conf)
+        sample_conf = SampleWithMemory(conf)
 
     printlines()
     old_opts = set()
@@ -889,7 +889,7 @@ def main(conf: DictConfig) -> None:
         # do n_runs_per_search simulations per job submission
         for k in range(conf.get("n_runs_per_search", 1)):
             skipped = False
-            opts = sample_search_conf(conf, run_idx)
+            opts = sample_conf(conf, run_idx)
             opts = normalize(opts)
             run_idx += 1
 
