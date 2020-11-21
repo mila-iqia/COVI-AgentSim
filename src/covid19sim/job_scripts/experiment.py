@@ -6,6 +6,7 @@ import subprocess
 import tempfile
 from collections import defaultdict
 from pathlib import Path
+from copy import deepcopy
 import ast
 import json
 
@@ -23,6 +24,62 @@ np.random.seed(seed=0)
 
 class RandomSearchError(Exception):
     pass
+
+
+class SampleWithMemory(object):
+    """
+    Samples parameters such that non-cartesian parameters are kept in memory until all cartesian samples are used.
+
+    Args:
+        conf (dict): yaml configuration of the experiment
+    """
+    def __init__(self, conf):
+        self.rng = np.random.RandomState(seed=conf['SAMPLE_WITH_MEMORY_SEED'])
+        self.max_idx = 1
+        for key, value in conf.items():
+            if (
+                isinstance(value, dict)
+                and "sample" in value
+            ):
+                if value['sample'] in ["range", "list", "uniform"]:
+                    continue # these samples will be retained in memory
+                assert value['sample'] not in ['sequential', 'chain'], "Sequential and Chain sampling with memory not implemented"
+                assert value['sample'] == "cartesian", "expected sampling type: cartesian"
+                self.max_idx *= len(value['from'])
+        self._idx = self.max_idx
+
+    def get_new_partial_sample(self, exp):
+        conf = {}
+        cartesians = []
+        sequentials = []
+        chains = []
+        for k, v in exp.items():
+            candidate = sample_param(v, self.rng)
+            if candidate == "__cartesian__":
+                cartesians.append(k)
+            elif candidate == "__sequential__":
+                sequentials.append(k)
+            elif candidate == "__chain__":
+                chains.append(k)
+            else:
+                conf[k] = candidate
+        return conf, cartesians, sequentials, chains
+
+    def __call__(self, exp, run_idx):
+        if self._idx == self.max_idx:
+            self.current_conf, self.cartesians, sequentials, chains = self.get_new_partial_sample(exp)
+            assert len(sequentials) == 0 and len(chains) == 0, "sampling of sequentials and chains is not implemented yet"
+            self._idx = 0
+
+        conf = deepcopy(self.current_conf)
+        conf.update(sample_cartesians(self.cartesians, exp, self._idx))
+        self._idx += 1
+        keys_to_remove = []
+        for key in conf.keys():
+            if "SAMPLE_WITH_MEMORY" in key:
+                keys_to_remove.append(key)
+        _ = [conf.pop(k, None) for k in keys_to_remove]
+        return conf
 
 
 def first_key(d):
@@ -234,7 +291,7 @@ def now_str():
     return now
 
 
-def sample_param(sample_dict):
+def sample_param(sample_dict, rng=np.random):
     """sample a value (hyperparameter) from the instruction in the
     sample dict:
     {
@@ -278,13 +335,13 @@ def sample_param(sample_dict):
         return "__chain__"
 
     if sample_dict["sample"] == "range":
-        return np.random.choice(np.arange(*sample_dict["from"]))
+        return rng.choice(np.arange(*sample_dict["from"]))
 
     if sample_dict["sample"] == "list":
-        return np.random.choice(sample_dict["from"])
+        return rng.choice(sample_dict["from"])
 
     if sample_dict["sample"] == "uniform":
-        return np.random.uniform(*sample_dict["from"])
+        return rng.uniform(*sample_dict["from"])
 
     raise ValueError("Unknown sample type in dict " + str(sample_dict))
 
@@ -762,7 +819,7 @@ def main(conf: DictConfig) -> None:
     conf["n_runs_per_search"] = conf.get("n_runs_per_search", 1)
 
     if conf.get("n_search") == -1:
-        total_runs = compute_n_search(conf)
+        total_runs = compute_n_search(conf) * conf.get('SAMPLE_WITH_MEMORY_ITERATIONS', 1)
         conf["n_search"] = total_runs // conf["n_runs_per_search"]
     else:
         total_runs = conf["n_runs_per_search"] * conf["n_search"]
@@ -809,6 +866,9 @@ def main(conf: DictConfig) -> None:
         shutil.copy(exp_file_path, Path(copy_dest) / exp_file_path.name)
 
     # run n_search jobs
+    if conf['SAMPLE_WITH_MEMORY']:
+        sample_search_conf = SampleWithMemory(conf)
+
     printlines()
     old_opts = set()
     run_idx = start_index
@@ -826,7 +886,7 @@ def main(conf: DictConfig) -> None:
         else:
             raise ValueError("Unknown infra " + str(infra))
 
-        # do n_runs_per_search simulations per job
+        # do n_runs_per_search simulations per job submission
         for k in range(conf.get("n_runs_per_search", 1)):
             skipped = False
             opts = sample_search_conf(conf, run_idx)

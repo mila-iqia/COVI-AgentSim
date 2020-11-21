@@ -22,6 +22,7 @@ import covid19sim.plotting.plot_epi_table as epi_table
 import covid19sim.plotting.plot_episim_series as episim_series
 import covid19sim.plotting.plot_normalized_mobility_scatter as normalized_mobility
 import covid19sim.plotting.plot_dalys as dalys
+import covid19sim.plotting.plot_sensitivity as sensitivity
 from covid19sim.plotting.utils import get_all_data
 
 
@@ -147,7 +148,8 @@ def main(conf):
         "epi_table": epi_table,
         "dalys": dalys,
         "episim_series": episim_series,
-        "normalized_mobility": normalized_mobility
+        "normalized_mobility": normalized_mobility,
+        "sensitivity": sensitivity
     }
 
     conf = OmegaConf.to_container(conf)
@@ -227,7 +229,7 @@ def main(conf):
                 "humans_demographics",
                 "work_hours"
             ]
-        )   
+        )
     if "efficiency" in plots:
         # Same as pareto
         keep_pkl_keys.update(
@@ -272,7 +274,10 @@ def main(conf):
             "humans_quarantined_state"
         ])
 
-    if "normalized_mobility" in plots:
+    if (
+        "normalized_mobility" in plots
+        or "sensitivity" in plots
+    ):
         keep_pkl_keys.update([
             "infection_monitor",
             "humans_state",
@@ -282,7 +287,8 @@ def main(conf):
             "effective_contacts_since_intervention",
             "healthy_effective_contacts_since_intervention",
             "cases_per_day",
-            "test_monitor"
+            "test_monitor",
+            "humans_demographics"
         ])
 
     # ------------------------------------
