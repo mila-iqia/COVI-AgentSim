@@ -3,6 +3,7 @@ Plots a scatter plot showing trade-off between metrics of different simulations 
 """
 import os
 import yaml
+import operator
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -28,6 +29,9 @@ LABELSIZE = 25
 TICKSIZE = 20
 LEGENDSIZE = 25
 ANNOTATION_FONTSIZE=15
+TITLEPAD = 25
+YLABELSIZE = 20
+YLABELPAD = 100
 
 METRICS = ['r', 'effective_contacts', 'healthy_contacts']
 SENSITIVITY_PARAMETERS = ['ALL_LEVELS_DROPOUT', 'PROPORTION_LAB_TEST_PER_DAY', 'P_DROPOUT_SYMPTOM', 'ASYMPTOMATIC_RATIO']
@@ -37,14 +41,50 @@ SCENARIOS = [
     [0.06, 0.0025, 0.40, 0.25], # intermediate scenaraio (arithmetic average in log domain)
     [0.18, 0.0015, 0.60, 0.40], # worse scenario
 ]
+
+# (optimistic, pessimistic)
 SENSITIVITY_PARAMETER_RANGE = [
-    [0.02, 0.18], # oxford values
-    [0.0015, 0.005],
-    [0.20, 0.65],
-    [0.15, 0.40]
+    [0.018, 0.150],
+    [0.004, 0.001],
+    [0.194, 0.500],
+    [0.194, 0.500]
 ]
+
+# our scenario - 0.02, 0.001, 0.20, 0.23
+
+def get_scenarios(parameter_ranges):
+    """
+    Constructs scenarios by selecting parameter values from parameter ranges
+
+    Args:
+        parameter_ranges (list): each element is a 2-tuple with corresponding pessimistic and optimistic (in terms of disease control) values of the parameter
+
+    Returns:
+        (list): each element is a n-tuple with values for parameters as per the parameter range
+    """
+    n_parameters = len(parameter_ranges)
+    scenarios = [[None]*n_parameters for i in range(3)]
+    scenarios_name = ["OPTIMISTIC", "PESSIMISTIC", "INTERMEDIATE"]
+    idx = 0
+    for o,p in parameter_ranges:
+        D = np.abs(np.log(p) - np.log(o))
+        optim_op = operator.add if o < p else operator.sub
+        scenarios[0][idx] = np.exp(optim_op(np.log(o), D * 0.05)) # optimistic
+        scenarios[2][idx] = np.exp(optim_op(np.log(o), D * 0.95)) # pessimistic
+        scenarios[1][idx] = np.exp(optim_op(np.log(o), D * 0.50)) # intermediate
+        idx += 1
+
+    return scenarios, scenarios_name
+
+SCENARIOS, SCENARIOS_NAME = get_scenarios(SENSITIVITY_PARAMETER_RANGE)
+str_to_print = " "*10 + " ".join(SENSITIVITY_PARAMETERS) + "\n"
+str_to_print += "Pessimistic: " + " ".join(map(lambda x: f"{x:0.3f}",SCENARIOS[2])) + "\n"
+str_to_print += "Intermediate: " + " ".join(map(lambda x: f"{x:0.3f}",SCENARIOS[1])) + "\n"
+str_to_print += "Optimistic: " + " ".join(map(lambda x: f"{x:0.3f}",SCENARIOS[0])) + "\n"
+print(str_to_print)
 REFERENCE_R=1.2
 USE_MATH_NOTATION=False
+
 
 # fix the seed
 np.random.seed(123)
@@ -108,10 +148,14 @@ def plot_and_save_sensitivity_analysis(results, uptake_rate, path):
         fitted_fns[method] = INTERPOLATION_FN().fit(x, y)
         print(f"R-squared for {method}: {fitted_fns[method].r_squared:3.3f}")
 
-    # set up subplot grid
-    fig = plt.figure(num=1, figsize=(15,10), dpi=DPI)
-    gridsize = (len(SCENARIOS), len(SENSITIVITY_PARAMETERS))
-    # gridspec.GridSpec(*gridsize)
+    fig, axs = plt.subplots(nrows=len(SCENARIOS), ncols=len(SENSITIVITY_PARAMETERS), figsize=(15, 10), sharex=True, sharey=True, dpi=DPI)
+
+    # set row and column headers
+    for col, name in enumerate(SENSITIVITY_PARAMETERS):
+        axs[-1, col].set_xlabel(name, labelpad=YLABELPAD, fontsize=LABELSIZE)
+
+    for row, name in enumerate(SCENARIOS_NAME):
+        axs[row, 0].set_ylabel(name, rotation=0, labelpad=YLABELPAD, fontsize=LABELSIZE)
 
     for k, scenario in enumerate(SCENARIOS):
         for i, parameter in enumerate(SENSITIVITY_PARAMETERS):
@@ -133,8 +177,10 @@ def plot_and_save_sensitivity_analysis(results, uptake_rate, path):
 
             method_label = labelmap[method]
             color = colormap[method]
-            ax = plt.subplot2grid(shape=gridsize, loc=(k,i), rowspan=1, colspan=1, fig=fig)
+            ax = axs[k,i]
             ax = plot_mean_and_stderr_bands(ax, x, np.array(y).reshape(-1), np.array(y_std).reshape(-1), label=method_label, color=colormap[method], confidence_level=1.96, stderr_alpha=0.3)
+
+
 
     # xlabel = get_metric_label(xmetric)
     # ylabel = get_metric_label(ymetric)
