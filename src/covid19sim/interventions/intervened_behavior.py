@@ -380,12 +380,14 @@ class IntervenedBehavior(object):
         ):
             return 1.0
 
+        location_type = _get_location_type(self.human, location)
+        level = self.behavior_level
+
         # if `human` is not following any recommendations today, then set the number of interactions to level 0
         if not self.follow_recommendation_today:
-            return 0.0
+            level = 0 # dropping to the level 0 / 1
 
-        location_type = _get_location_type(self.human, location)
-        return self.reduction_levels[location_type][self.behavior_level]
+        return self.reduction_levels[location_type][level]
 
     def set_behavior(self, level, reasons):
         """
