@@ -61,11 +61,11 @@ class Hospital(Location):
             doctor (bool): add `human` to doctor's list if True, nurse's list otherwise
         """
         if doctor:
-            self.doctors.add(human)
+            self.doctors.add(human.human_id)
             self.n_doctors += 1
             return
 
-        self.nurses.add(human)
+        self.nurses.add(human.human_id)
         self.n_nurses += 1
 
     @property
@@ -106,10 +106,10 @@ class Hospital(Location):
             human (covid19sim.human.Human): human to add
         """
 
-        if human in self.doctors:
+        if human.human_id in self.doctors:
             self.doctors_on_duty.add(human)
 
-        if human in self.nurses:
+        if human.human_id in self.nurses:
             self.nurses_on_duty.add(human)
 
         # also add to self.humans for interaction sampling
