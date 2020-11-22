@@ -415,7 +415,7 @@ class District:
                 self.city.humans[human_id] = human
                 self.city.human_next_activities[human_id] = next_activity
                 # append human to the next district queue
-                self.city.district_queues.append(next_district, human_id)
+                self.city.district_queues.append(human_id, next_district)
             # human has successfully exhasted all of its run yields
             else:
                 pass
