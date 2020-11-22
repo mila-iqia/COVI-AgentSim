@@ -456,8 +456,8 @@ class District:
             )
 
         # initialize human processes along at the start of the district process
-        for human_id in self.humans:
-            self.env.process(self.new_human(human_id))
+        for human in self.humans:
+            self.env.process(self.new_human(human))
 
         humans_notified, infections_seeded = False, False
         last_day_idx = 0
