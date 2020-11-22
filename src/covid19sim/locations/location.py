@@ -497,11 +497,13 @@ class Location(simpy.Resource):
         Find and return location object from city by name
         """
         try:
+            # locations present in current district
             return next(
                 loc for loc in getattr(cls.city.district, f"{location_type.lower()}s") \
                 if loc.id == location_id
                 )
         except StopIteration:
+            # initialize an unintialized location
             loc_instance = cls.__new__(cls)
             loc_instance.location_type = location_type
             loc_instance.id = location_id
@@ -569,7 +571,7 @@ class Household(Location):
             human (covid19sim.human.Human): `human` who needs to be added to this house
             index_case_history (dict): current index case value for `human` in the previous house. Defaults to None.
         """
-        self.residents.append(human)
+        self.residents.append(human.human_id)
         if index_case_history:
             self.index_cases[human] = index_case_history
 
@@ -687,7 +689,7 @@ class WorkplaceA(Location):
         Args:
             human (covi19sim.human.Human): `human` to add to the set of workers
         """
-        self.workers.add(human)
+        self.workers.add(human.human_id)
         self.n_workers += 1
 
     def __repr__(self):
@@ -714,7 +716,7 @@ class WorkplaceB(Location):
         Args:
             human (covi19sim.human.Human): `human` to add to the set of workers
         """
-        self.workers.add(human)
+        self.workers.add(human.human_id)
         self.n_workers += 1
 
     def __repr__(self):

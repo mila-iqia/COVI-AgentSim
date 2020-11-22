@@ -530,7 +530,7 @@ class Tracker(object):
             avg_workers_age = np.zeros_like(workplaces)
             for i, workplace in enumerate(workplaces):
                 n_workers[i] = workplace.n_workers
-                avg_workers_age[i] = np.mean([worker.age for worker in workplace.workers])
+                avg_workers_age[i] = np.mean([self.district.city.humans[worker_human_id].age for worker_human_id in workplace.workers])
                 if workplace.location_type == "WORKPLACE":
                     subnames[workplace.name.split(":")[0]]['count'] += 1
                     subnames[workplace.name.split(":")[0]]['n_workers'] += workplace.n_workers
