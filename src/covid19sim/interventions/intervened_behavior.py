@@ -385,7 +385,7 @@ class IntervenedBehavior(object):
 
         # if `human` is not following any recommendations today, then set the number of interactions to level 0
         if not self.follow_recommendation_today:
-            level = 0 # dropping to the level 0 / 1
+            level = 1 # dropping to the level 0 / 1
 
         return self.reduction_levels[location_type][level]
 
