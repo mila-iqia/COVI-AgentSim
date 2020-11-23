@@ -221,7 +221,7 @@ def plot_and_save_sensitivity_analysis(results, uptake_rates, path, plot_advanta
             x = results[selector][XMETRICS].to_numpy()
             y = results[selector]['r'].to_numpy()
             fitted_fns[uptake_rate][method] = INTERPOLATION_FN().fit(x, y)
-            print(f"R-squared for {method}: {fitted_fns[method].r_squared:3.3f}")
+            print(f"R-squared for {method} @ {uptake_rate}: {fitted_fns[uptake_rate][method].r_squared:3.3f}")
 
     fig, axs = plt.subplots(nrows=len(SCENARIOS), ncols=len(SENSITIVITY_PARAMETERS), figsize=(27, 18), sharex='col', sharey=True, dpi=DPI)
 
@@ -258,7 +258,7 @@ def plot_and_save_sensitivity_analysis(results, uptake_rates, path, plot_advanta
                         partial_x = deepcopy(scenario)
                         partial_x[i] = value
                         c0, error = find_c(fitted_fns[uptake_rate][NO_TRACING_METHOD], partial_x, target_r=REFERENCE_R)
-                        assert error < 1e-4, f"Error in minimization: {error}"
+                        assert error < 1e-3, f"Error in minimization: {error}"
 
                         # find delta r
                         x_input = np.array([[c0] + partial_x])
@@ -284,7 +284,7 @@ def plot_and_save_sensitivity_analysis(results, uptake_rates, path, plot_advanta
 
     adoption_rates = [get_adoption_rate_label_from_app_uptake(uptake_rate) for uptake_rate in uptake_rates]
     if len(uptake_rates) > 1:
-        for uptake_rate in uptake_rates:
+        for k in range(len(adoption_rates)):
             legends.append(Line2D([0, 1], [0, 0], color="black", linestyle=LINESTYLES[k], label=adoption_rates[k]))
 
     lgd = fig.legend(handles=legends, ncol=len(legends), fontsize=30, loc="lower center", fancybox=True, bbox_to_anchor=(0.5, -0.03, 0, 0.5))
