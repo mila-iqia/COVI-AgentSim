@@ -269,7 +269,7 @@ def plot_and_save_sensitivity_analysis(results, uptake_rates, path, plot_advanta
                     method_label = labelmap[method]
                     color = colormap[method]
                     ax = plot_mean_and_stderr_bands(ax, xs, np.array(y).reshape(-1), np.array(y_std).reshape(-1), \
-                                        label=method_label, color=color, confidence_level=1, stderr_alpha=0.2. \
+                                        label=method_label, color=color, confidence_level=1, stderr_alpha=0.2, \
                                         linestyle=LINESTYLES[k])
 
     # spacing between plots
