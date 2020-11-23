@@ -560,7 +560,7 @@ class Household(Location):
         index_case_history = None
         if human in self.index_cases:
             index_case_history = self.index_cases.pop(human)
-        self.residents.remove(human) # remove from the house
+        self.residents.remove(human.human_id) # remove from the house
         return index_case_history
 
     def add_resident(self, human, index_case_history=None):
@@ -651,6 +651,37 @@ class Household(Location):
         self.quarantine_end_timestamp = quarantine_end_timestamp
         for other_human in secondary_cases:
             other_human.intervened_behavior.quarantine.update(QUARANTINE_HOUSEHOLD)
+
+    def __reduce__(self):
+        """
+        Helper function for pickling households
+        """
+        args = (self.location_type, self.id, self.residents)
+        return (self._reconstruct, args)
+
+    @classmethod
+    def _reconstruct(
+        cls,
+        location_type: str,
+        location_id: str,
+        household_residents: List[int]
+        ):
+        """
+        Find and return household object from city by name
+        """
+        try:
+            # look through households present in current district
+            return next(
+                loc for loc in getattr(cls.city.district, f"{location_type.lower()}s") \
+                if loc.id == location_id
+                )
+        except StopIteration:
+            # initialize an unintialized household
+            household_instance = cls.__new__(cls)
+            household_instance.location_type = location_type
+            household_instance.id = location_id
+            household_instance.residents = household_residents
+            return household_instance
 
 class School(Location):
     """
