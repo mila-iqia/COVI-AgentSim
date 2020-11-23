@@ -8,6 +8,7 @@ import colorsys
 import matplotlib
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.ticker as mtick
 from pathlib import Path
 from scipy.interpolate import interp1d
 from matplotlib.colors import TwoSlopeNorm, is_color_like
@@ -239,6 +240,7 @@ def add_bells_and_whistles(ax, y_title=None, x_title=None, **kwargs):
     XY_TITLESIZE = kwargs.get("XY_TITLESIZE", 25)
     LEGENDSIZE = kwargs.get("LEGENDSIZE", 20)
     legend_loc = kwargs.get('legend_loc', None)
+    percent_fmt_on_x = kwargs.get('percent_fmt_on_x', None)
 
     # xticks
     x_tick_gap = kwargs.get("x_tick_gap", 5)
@@ -248,10 +250,15 @@ def add_bells_and_whistles(ax, y_title=None, x_title=None, **kwargs):
     ax.set_xticks(n_ticks)
     ax.set_xlim(lower_lim, upper_lim)
 
+    if percent_fmt_on_x is not None:
+        xticks = mtick.StrMethodFormatter(percent_fmt_on_x)
+        ax.xaxis.set_major_formatter(xticks)
+
     # yticks
     lower_lim = kwargs.get("y_lower_lim", None)
     upper_lim = kwargs.get("y_upper_lim", None)
-    ax.set_ylim(lower_lim, upper_lim)
+    if lower_lim or upper_lim:
+        ax.set_ylim(lower_lim, upper_lim)
 
 
     if x_title is not None:
@@ -355,7 +362,7 @@ def plot_heatmap_of_advantages(data, labelmap, USE_MATH_NOTATION=False):
 
     return fig
 
-def save_figure(figure, basedir, folder, filename, bbox_extra_artists=None, bbox_inches='tight'):
+def save_figure(figure, basedir, folder, filename, bbox_extra_artists=None, bbox_inches='tight', pad_inches=None):
     """
     Saves figure at `basedir/folder/filename`. Creates `folder` if it doesn't exist.
 
@@ -384,7 +391,7 @@ def save_figure(figure, basedir, folder, filename, bbox_extra_artists=None, bbox
     #
     filepath = str(folder / filename)
 
-    figure.savefig(filepath, bbox_inches=bbox_inches, bbox_extra_artists=bbox_extra_artists)
+    figure.savefig(filepath, bbox_inches=bbox_inches, bbox_extra_artists=bbox_extra_artists, pad_inches=pad_inches)
     return filepath
 
 def get_adoption_rate_label_from_app_uptake(uptake):

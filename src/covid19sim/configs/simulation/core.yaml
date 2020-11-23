@@ -540,6 +540,9 @@ QUARANTINE_DROPOUT_HOUSEHOLD: 0.03
 # (tracing)
 ALL_LEVELS_DROPOUT: 0.02 # daily adherence to recommendations. Failing to adhere, human returns to level 0 (unmitigated case).
 
+# which level to dropout; 0: pre-pandemic, 1: baseline behavior during pandemic
+DROPOUT_LEVEL: 1
+
 # OTHERS
 # (WIP) compliance to quarantine
 QUARANTINE_COMPLIANCE_TRACED_POSITIVE: 0.9

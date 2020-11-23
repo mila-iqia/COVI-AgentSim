@@ -35,44 +35,56 @@ class SampleWithMemory(object):
     """
     def __init__(self, conf):
         self.rng = np.random.RandomState(seed=conf['SAMPLE_WITH_MEMORY_SEED'])
+        self.memory_parameters = {}
+        self.other_parameters = []
         self.max_idx = 1
         for key, value in conf.items():
             if (
                 isinstance(value, dict)
                 and "sample" in value
             ):
-                if value['sample'] in ["range", "list", "uniform"]:
-                    continue # these samples will be retained in memory
-                assert value['sample'] not in ['sequential', 'chain'], "Sequential and Chain sampling with memory not implemented"
-                assert value['sample'] == "cartesian", "expected sampling type: cartesian"
-                self.max_idx *= len(value['from'])
+
+                assert value['sample'] not in ['range', 'list'], "Sampling from range and list hasn't been fully considered. It might be wrong."
+                if value.get('memory', False):
+                    self.memory_parameters[key] = value
+                else:
+                    if value['sample'] == "uniform":
+                        n = value['n']
+                    else:
+                        assert value['sample'] not in ['sequential', 'chain'], "Sequential and Chain sampling with memory not implemented"
+                        assert value['sample'] == "cartesian", "expected sampling type: cartesian"
+                        n = len(value['from'])
+                    self.max_idx *= n
+                    self.other_parameters.append((key, value)) # all combinations will be taken
+
         self._idx = self.max_idx
 
-    def get_new_partial_sample(self, exp):
-        conf = {}
-        cartesians = []
-        sequentials = []
-        chains = []
-        for k, v in exp.items():
-            candidate = sample_param(v, self.rng)
-            if candidate == "__cartesian__":
-                cartesians.append(k)
-            elif candidate == "__sequential__":
-                sequentials.append(k)
-            elif candidate == "__chain__":
-                chains.append(k)
-            else:
-                conf[k] = candidate
-        return conf, cartesians, sequentials, chains
+    def get_new_combinations(self):
+        """
+        """
+        sampled_values = []
+        for key, value in self.other_parameters:
+            if value['sample'] == "uniform":
+                xs  = self.rng.uniform(*value["from"], size=value['n'])
+                sampled_values.append([(key, x) for x in xs])
+            elif value['sample'] == "cartesian":
+                sampled_values.append([(key, v) for v in value['from']])
 
-    def __call__(self, exp, run_idx):
+        combinations = list(itertools.product(*sampled_values))
+        return combinations
+
+
+    def __call__(self, exp, run_idx=None):
         if self._idx == self.max_idx:
-            self.current_conf, self.cartesians, sequentials, chains = self.get_new_partial_sample(exp)
-            assert len(sequentials) == 0 and len(chains) == 0, "sampling of sequentials and chains is not implemented yet"
+            self.current_conf = deepcopy(exp)
+            self.current_conf.update(sample_search_conf(self.memory_parameters))
+            self.current_combinations = self.get_new_combinations()
             self._idx = 0
 
         conf = deepcopy(self.current_conf)
-        conf.update(sample_cartesians(self.cartesians, exp, self._idx))
+        for k,v in self.current_combinations[self._idx]:
+            conf[k] = v
+        # conf.update(sample_cartesians(self.cartesians, exp, self._idx))
         self._idx += 1
         keys_to_remove = []
         for key in conf.keys():
@@ -735,7 +747,6 @@ def printlines():
 HYDRA_CONF_PATH = "../configs/experiment/config.yaml"
 @hydra.main(config_path=HYDRA_CONF_PATH, strict=False)
 def main(conf: DictConfig) -> None:
-
     """
                 HOW TO USE
 
@@ -866,8 +877,9 @@ def main(conf: DictConfig) -> None:
         shutil.copy(exp_file_path, Path(copy_dest) / exp_file_path.name)
 
     # run n_search jobs
-    if conf['SAMPLE_WITH_MEMORY']:
-        sample_search_conf = SampleWithMemory(conf)
+    sample_conf = sample_search_conf
+    if conf.get('SAMPLE_WITH_MEMORY', False):
+        sample_conf = SampleWithMemory(conf)
 
     printlines()
     old_opts = set()
@@ -889,7 +901,7 @@ def main(conf: DictConfig) -> None:
         # do n_runs_per_search simulations per job submission
         for k in range(conf.get("n_runs_per_search", 1)):
             skipped = False
-            opts = sample_search_conf(conf, run_idx)
+            opts = sample_conf(conf, run_idx)
             opts = normalize(opts)
             run_idx += 1
 
