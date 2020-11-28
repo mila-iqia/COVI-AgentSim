@@ -6,7 +6,7 @@ env_name: covid
 infra: beluga
 mem: 30
 n_search: -1 # -1 figures out the size of cartesian product for you
-time: "'10:00:00'"
+time: "'2:50:00'"
 
 # -------------------------
 # -----  Directories  -----
