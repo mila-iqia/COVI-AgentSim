@@ -300,7 +300,7 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
             if (
                 not annotate_advantages
                 or not plot
-                or len(methods) == 3 # if there are 3 methods, annotation will not be cluttered
+                or len(methods) > 3 # if there are 3 methods, annotation will not be cluttered
             ):
                 continue
 
