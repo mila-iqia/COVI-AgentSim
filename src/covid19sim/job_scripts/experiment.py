@@ -277,14 +277,21 @@ def compute_n_search(conf):
             continue
         samples[v["sample"]].append(v)
 
+    total = 1
+    if "uniform" in samples:
+        for s in samples['uniform']:
+            if "n" in s:
+                total *= s['n']
+
     if "cartesian" in samples:
-        total = 1
         for s in samples["cartesian"]:
             total *= len(s["from"])
         return total
+
     if "sequential" in samples:
         total = max(map(len, [s["from"] for s in samples["sequential"]]))
         return total
+
     if "chain" in samples:
         total = sum(map(len, [s["from"] for s in samples["chain"]]))
         return total
