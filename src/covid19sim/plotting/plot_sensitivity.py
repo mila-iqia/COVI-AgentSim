@@ -238,7 +238,7 @@ def plot_and_save_sensitivity_analysis(results, uptake_rates, path, plot_advanta
         o, p = SENSITIVITY_PARAMETER_RANGE[parameter]['range']
         str_formatter = SENSITIVITY_PARAMETER_RANGE[parameter].get("str_formatter", lambda x: f"{100 * x: 2.0f}")
         (l, u) = (o, p) if o < p else (p, o)
-        xs = np.linspace(l, u, 5)
+        xs = np.linspace(l, u, 100)
 
         for j, scenario in enumerate(SCENARIOS):
             ax = axs[j, i]
