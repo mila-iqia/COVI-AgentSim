@@ -26,7 +26,7 @@ cd /home/nrahaman/python/covi-simulator/src/covid19sim
 # normalized mobility
 if [ "$INTERVENTION" == "post-lockdown-no-tracing" ]; then
   # # no-tracing
-  python job_scripts/experiment.py exp_file=normalized_mobility \
+  python job_scripts/experiment.py exp_file=normalized_mobility_mpic \
     track=light \
     base_dir=/home/nrahaman/python/covi-simulator/exp/sensitivity/$dirname/normalized_mobility \
     intervention=post-lockdown-no-tracing  global_mobility_scaling_factor_range=cartesian_low \
@@ -36,7 +36,7 @@ if [ "$INTERVENTION" == "post-lockdown-no-tracing" ]; then
 fi
 if [ "$INTERVENTION" == "bdt1" ]; then
   # # bdt
-  python job_scripts/experiment.py exp_file=normalized_mobility \
+  python job_scripts/experiment.py exp_file=normalized_mobility_mpic \
      track=light \
      base_dir=/home/nrahaman/python/covi-simulator/exp/sensitivity/$dirname/normalized_mobility \
      intervention=bdt1  global_mobility_scaling_factor_range=cartesian_medium \
@@ -45,7 +45,7 @@ if [ "$INTERVENTION" == "bdt1" ]; then
      P_DROPOUT_SYMPTOM=$P_DROPOUT_SYMPTOM ALL_LEVELS_DROPOUT=$ALL_LEVELS_DROPOUT dev=True
 fi
 if [ "$INTERVENTION" == "heuristicv4" ]; then
-   python job_scripts/experiment.py exp_file=normalized_mobility \
+   python job_scripts/experiment.py exp_file=normalized_mobility_mpic \
     base_dir=/home/nrahaman/python/covi-simulator/exp/sensitivity/$dirname/normalized_mobility \
     track=light \
     intervention=heuristicv4  global_mobility_scaling_factor_range=cartesian_medium \

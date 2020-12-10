@@ -94,7 +94,7 @@ def GET_ARGS(scenario):
 # args = GET_ARGS()
 
 job_list = [
-    run_sensitivity(*all_args, scenario=scenario)
+    run_sensitivity(**all_args, scenario=scenario)
     for scenario in SCENARIO_PARAMETERS_IDX.keys()
     for all_args in GET_ARGS(scenario)
 ]
