@@ -55,7 +55,7 @@ def run_sensitivity(
         f"running sensitivity for {INTERVENTION} with A:{BASELINE_P_ASYMPTOMATIC} B:{P_DROPOUT_SYMPTOM} C:{ALL_LEVELS_DROPOUT} D:{PROPORTION_LAB_TEST_PER_DAY}",
         logfile,
     )
-    command = f"/lustre/home/nrahaman/python/covi-simulator/src/covid19sim/job_scripts/sensitivity_launch_mpic.py {scenario} {APP_UPTAKE} {BASELINE_P_ASYMPTOMATIC} {ALL_LEVELS_DROPOUT} {P_DROPOUT_SYMPTOM} {PROPORTION_LAB_TEST_PER_DAY} {INTERVENTION}"
+    command = f"bash /lustre/home/nrahaman/python/covi-simulator/src/covid19sim/job_scripts/run_exps_sensitivity_mpic.sh {scenario} {APP_UPTAKE} {BASELINE_P_ASYMPTOMATIC} {ALL_LEVELS_DROPOUT} {P_DROPOUT_SYMPTOM} {PROPORTION_LAB_TEST_PER_DAY} {INTERVENTION}"
     print("Running: ", command)
     stream = os.popen(command)
     output = stream.read()
