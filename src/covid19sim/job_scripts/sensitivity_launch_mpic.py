@@ -49,13 +49,13 @@ def run_sensitivity(
     PROPORTION_LAB_TEST_PER_DAY,
     n_jobs=None,
     *,
-    scenario
+    scenario,
 ):
     log(
         f"running sensitivity for {INTERVENTION} with A:{BASELINE_P_ASYMPTOMATIC} B:{P_DROPOUT_SYMPTOM} C:{ALL_LEVELS_DROPOUT} D:{PROPORTION_LAB_TEST_PER_DAY}",
         logfile,
     )
-    command = f"./run_exps_sensitivity.sh {scenario} {APP_UPTAKE} {BASELINE_P_ASYMPTOMATIC} {ALL_LEVELS_DROPOUT} {P_DROPOUT_SYMPTOM} {PROPORTION_LAB_TEST_PER_DAY} {INTERVENTION}"
+    command = f"/lustre/home/nrahaman/python/covi-simulator/src/covid19sim/job_scripts/sensitivity_launch_mpic.py {scenario} {APP_UPTAKE} {BASELINE_P_ASYMPTOMATIC} {ALL_LEVELS_DROPOUT} {P_DROPOUT_SYMPTOM} {PROPORTION_LAB_TEST_PER_DAY} {INTERVENTION}"
     print("Running: ", command)
     stream = os.popen(command)
     output = stream.read()
@@ -93,13 +93,15 @@ def GET_ARGS(scenario):
 # ), f"{SCENARIO} not found in {SCENARIO_PARAMETERS_IDX.keys()}"
 # args = GET_ARGS()
 
-final_output_string = "\n".join(
-    [
-        run_sensitivity(*all_args, scenario=scenario)
-        for scenario in SCENARIO_PARAMETERS_IDX.keys()
-        for all_args in GET_ARGS(scenario)
-    ]
-)
+job_list = [
+    run_sensitivity(*all_args, scenario=scenario)
+    for scenario in SCENARIO_PARAMETERS_IDX.keys()
+    for all_args in GET_ARGS(scenario)
+]
+
+final_output_string = "\n".join(job_list)
+
+print(f"Dumping {len(final_output_string)} jobs:")
 
 print(final_output_string)
 
