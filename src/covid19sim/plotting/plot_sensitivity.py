@@ -37,11 +37,6 @@ LINESTYLES = ["-", "--"]
 METRICS = ['r', 'effective_contacts', 'healthy_contacts']
 SENSITIVITY_PARAMETERS = ['ASYMPTOMATIC_RATIO', 'ALL_LEVELS_DROPOUT', 'P_DROPOUT_SYMPTOM',  'PROPORTION_LAB_TEST_PER_DAY']
 XMETRICS = ['effective_contacts'] + SENSITIVITY_PARAMETERS
-SCENARIOS = [
-    [0.02, 0.004, 0.20, 0.15], # optimistic scenario (** 5% or 95% of the bounds in log domain)
-    [0.06, 0.0025, 0.40, 0.25], # intermediate scenaraio (arithmetic average in log domain)
-    [0.18, 0.0015, 0.60, 0.40], # worse scenario
-]
 
 # (optimistic, pessimistic)
 # default str_formatter = lambda x: f"{100 * x: 2.0f}"
@@ -59,7 +54,7 @@ SENSITIVITY_PARAMETER_RANGE = {
         "x_tick_gap": 0.10
     },
     "PROPORTION_LAB_TEST_PER_DAY": {
-        "range": [0.0005, 0.005],
+        "range": [0.005, 0.0005],
         "x_tick_gap": 0.001,
         "str_formatter" : lambda x: f"{100 * x: 0.2f}"
     }
@@ -114,9 +109,9 @@ def get_scenarios(parameter_ranges):
         o, p = parameter_ranges[parameter]['range']
         D = np.abs(np.log(p) - np.log(o))
         optim_op = operator.add if o < p else operator.sub
-        scenarios[0][idx] = np.exp(optim_op(np.log(o), D * 0.05)) # optimistic
-        scenarios[2][idx] = np.exp(optim_op(np.log(o), D * 0.95)) # pessimistic
-        scenarios[1][idx] = np.exp(optim_op(np.log(o), D * 0.50)) # intermediate
+        scenarios[0][idx] = np.exp(optim_op(np.log(o), D * 0.15)) # optimistic
+        scenarios[1][idx] = np.exp(optim_op(np.log(o), D * 0.50)) # moderate
+        scenarios[2][idx] = np.exp(optim_op(np.log(o), D * 0.85)) # pessimistic
         idx += 1
 
     return scenarios, scenarios_name
@@ -243,7 +238,7 @@ def plot_and_save_sensitivity_analysis(results, uptake_rates, path, plot_advanta
         o, p = SENSITIVITY_PARAMETER_RANGE[parameter]['range']
         str_formatter = SENSITIVITY_PARAMETER_RANGE[parameter].get("str_formatter", lambda x: f"{100 * x: 2.0f}")
         (l, u) = (o, p) if o < p else (p, o)
-        xs = np.linspace(l, u, 5)
+        xs = np.linspace(l, u, 100)
 
         for j, scenario in enumerate(SCENARIOS):
             ax = axs[j, i]
@@ -403,5 +398,6 @@ def run(data, plot_path, compare=None, **kwargs):
         plot_and_save_sensitivity_analysis(all_data, [uptake], path=plot_path, plot_advantage=False)
 
     # plot all
-    plot_and_save_sensitivity_analysis(all_uptake_data, uptake_keys, path=plot_path, plot_advantage=True)
-    plot_and_save_sensitivity_analysis(all_uptake_data, uptake_keys, path=plot_path, plot_advantage=False)
+    if len(uptake_keys) > 1:
+        plot_and_save_sensitivity_analysis(all_uptake_data, uptake_keys, path=plot_path, plot_advantage=True)
+        plot_and_save_sensitivity_analysis(all_uptake_data, uptake_keys, path=plot_path, plot_advantage=False)
