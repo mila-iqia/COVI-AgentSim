@@ -18,6 +18,7 @@ TEST=$6
 dirname=sensitivity_S_${SCENARIO}_${n_people}_init_${init}_UPTAKE_${UPTAKE}/scatter_Ax_${ASYMP}_Lx_${ALL_LEVELS_DROPOUT}_Sx_${P_DROPOUT_SYMPTOM}_test_${TEST}
 INTERVENTION=$7
 
+source ~/.bashrc
 conda activate cov19
 source ~/prepenv.sh
 cd /home/nrahaman/python/covi-simulator/src/covid19sim
