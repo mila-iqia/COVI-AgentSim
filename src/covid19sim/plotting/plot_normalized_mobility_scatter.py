@@ -30,6 +30,11 @@ ANNOTATION_FONTSIZE=15
 
 METRICS = ['r', 'false_quarantine', 'false_sr', 'effective_contacts', 'healthy_contacts', 'percentage_infected', \
             'fraction_false_non_risky', 'fraction_false_risky', 'positivity_rate', 'fraction_quarantine']
+
+SENSITIVITY_PARAMETERS = ['ASYMPTOMATIC_RATIO', 'ALL_LEVELS_DROPOUT', 'P_DROPOUT_SYMPTOM',  'PROPORTION_LAB_TEST_PER_DAY'] # used for sensitivity plots
+TARGET_R_FOR_NO_TRACING = 1.2
+MARGIN = 0.5
+
 USE_MATH_NOTATION=False
 
 # fix the seed
@@ -337,6 +342,12 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
             text = "advantage $\pm$ stderr\np-value"
         ax.annotate(s=text, xy=(ax.get_xlim()[1]-2, 0.5), fontsize=ANNOTATION_FONTSIZE, fontweight='normal', bbox=dict(facecolor='none', edgecolor='black'), zorder=10)
 
+        # filter simulations where no tracing R = target_r of 1.2
+        stable_frames_filename = path / "normalized_mobility" / "stable_frames.csv"
+        stable_point = fitted_fns['post-lockdown-no-tracing'].find_x_for_y(TARGET_R_FOR_NO_TRACING)
+        stable_frames = results[results["effective_contacts"].between(stable_point - MARGIN, stable_point + MARGIN)]
+        stable_frames.to_csv(str(stable_frames_filename))
+
     xlabel = get_metric_label(xmetric)
     ylabel = get_metric_label(ymetric)
     ax = add_bells_and_whistles(ax, y_title=ylabel, x_title=None if plot_residuals else xlabel, XY_TITLEPAD=LABELPAD, \
@@ -364,12 +375,13 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
     filepath = save_figure(fig, basedir=path, folder="normalized_mobility", filename=f'{filename}_AR_{adoption_rate}')
     print(f"Scatter plot of mobility and R @ {adoption_rate}% Adoption saved at {filepath}")
 
-def _extract_metrics(data):
+def _extract_metrics(data, conf):
     """
-    Extracts `METRICS` from data corresponding to a single simulation run.
+    Extracts `METRICS` and `SENSITIVITY_PARAMETERS` from data corresponding to a single simulation run.
 
     Args:
         data (dict): tracker files for the simulation
+        conf (dict): an experimental configuration.
 
     Returns:
         (list): a list of scalars representing metrics in `METRICS` for the simulations
@@ -385,6 +397,12 @@ def _extract_metrics(data):
     out.append(_daily_fraction_non_risky_classified_as_risky(data).mean())
     out.append(_positivity_rate(data))
     out.append(_daily_fraction_quarantine(data).mean())
+
+    out.append(conf['ALL_LEVELS_DROPOUT'])
+    out.append(conf['PROPORTION_LAB_TEST_PER_DAY'])
+    out.append(conf['P_DROPOUT_SYMPTOM'])
+    out.append(1.0 * sum(h['asymptomatic'] for h in data['humans_demographics']) / len(data['humans_demographics']))
+
     return out
 
 def _extract_data(simulation_runs, method):
@@ -406,7 +424,7 @@ def _extract_data(simulation_runs, method):
         row =  [method, simname, mobility_factor, intervention_name, is_app_based_tracing_intervention(intervention_conf=sim['conf'])] + _extract_metrics(data)
         all_data.append(row)
 
-    columns = ['method', 'dir', 'mobility_factor', 'intervention_conf_name','app_based'] + METRICS
+    columns = ['method', 'dir', 'mobility_factor', 'intervention_conf_name','app_based'] + METRICS + SENSITIVITY_PARAMETERS
     return pd.DataFrame(all_data, columns=columns)
 
 def save_relevant_csv_files(results, adoption_rate, extract_path, good_factors_path):

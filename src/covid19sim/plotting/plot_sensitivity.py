@@ -302,7 +302,7 @@ def plot_and_save_sensitivity_analysis(results, uptake_rates, path, plot_advanta
 
 def _extract_metrics(data, conf):
     """
-    Extracts `METRICS` from data corresponding to a single simulation run.
+    Extracts `METRICS` and `SENSITIVITY_PARAMETERS` from data corresponding to a single simulation run.
 
     Args:
         data (dict): tracker files for the simulation
