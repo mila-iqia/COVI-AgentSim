@@ -344,7 +344,7 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
 
         # filter simulations where no tracing R = target_r of 1.2
         stable_frames_filename = path / "normalized_mobility" / "stable_frames.csv"
-        stable_point = fitted_fns['post-lockdown-no-tracing'].find_x_for_y(TARGET_R_FOR_NO_TRACING)
+        stable_point = fitted_fns['post-lockdown-no-tracing'].find_x_for_y(TARGET_R_FOR_NO_TRACING).item()
         stable_frames = results[results["effective_contacts"].between(stable_point - MARGIN, stable_point + MARGIN)]
         stable_frames.to_csv(str(stable_frames_filename))
 
