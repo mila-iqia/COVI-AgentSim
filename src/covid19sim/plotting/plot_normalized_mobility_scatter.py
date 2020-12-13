@@ -32,8 +32,6 @@ METRICS = ['r', 'false_quarantine', 'false_sr', 'effective_contacts', 'healthy_c
             'fraction_false_non_risky', 'fraction_false_risky', 'positivity_rate', 'fraction_quarantine']
 
 SENSITIVITY_PARAMETERS = ['ASYMPTOMATIC_RATIO', 'ALL_LEVELS_DROPOUT', 'P_DROPOUT_SYMPTOM',  'PROPORTION_LAB_TEST_PER_DAY'] # used for sensitivity plots
-TARGET_R_FOR_NO_TRACING = 1.2
-MARGIN = 0.5
 
 USE_MATH_NOTATION=False
 
@@ -342,12 +340,6 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
             text = "advantage $\pm$ stderr\np-value"
         ax.annotate(s=text, xy=(ax.get_xlim()[1]-2, 0.5), fontsize=ANNOTATION_FONTSIZE, fontweight='normal', bbox=dict(facecolor='none', edgecolor='black'), zorder=10)
 
-        # filter simulations where no tracing R = target_r of 1.2
-        stable_frames_filename = path / "normalized_mobility" / "stable_frames.csv"
-        stable_point = fitted_fns['post-lockdown-no-tracing'].find_x_for_y(TARGET_R_FOR_NO_TRACING).item()
-        stable_frames = results[results["effective_contacts"].between(stable_point - MARGIN, stable_point + MARGIN)]
-        stable_frames.to_csv(str(stable_frames_filename))
-
     xlabel = get_metric_label(xmetric)
     ylabel = get_metric_label(ymetric)
     ax = add_bells_and_whistles(ax, y_title=ylabel, x_title=None if plot_residuals else xlabel, XY_TITLEPAD=LABELPAD, \
@@ -398,10 +390,11 @@ def _extract_metrics(data, conf):
     out.append(_positivity_rate(data))
     out.append(_daily_fraction_quarantine(data).mean())
 
+    # WARNING: Do this in the order of SENSITIVITY_PARAMETERS
+    out.append(1.0 * sum(h['asymptomatic'] for h in data['humans_demographics']) / len(data['humans_demographics']))
     out.append(conf['ALL_LEVELS_DROPOUT'])
     out.append(conf['PROPORTION_LAB_TEST_PER_DAY'])
     out.append(conf['P_DROPOUT_SYMPTOM'])
-    out.append(1.0 * sum(h['asymptomatic'] for h in data['humans_demographics']) / len(data['humans_demographics']))
 
     return out
 
