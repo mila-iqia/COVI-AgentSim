@@ -31,7 +31,7 @@ ANNOTATION_FONTSIZE=15
 METRICS = ['r', 'false_quarantine', 'false_sr', 'effective_contacts', 'healthy_contacts', 'percentage_infected', \
             'fraction_false_non_risky', 'fraction_false_risky', 'positivity_rate', 'fraction_quarantine']
 
-SENSITIVITY_PARAMETERS = ['ASYMPTOMATIC_RATIO', 'ALL_LEVELS_DROPOUT', 'P_DROPOUT_SYMPTOM',  'PROPORTION_LAB_TEST_PER_DAY'] # used for sensitivity plots
+SENSITIVITY_PARAMETERS = ['ASYMPTOMATIC_RATIO', 'ALL_LEVELS_DROPOUT', 'P_DROPOUT_SYMPTOM',  'PROPORTION_LAB_TEST_PER_DAY', 'BASELINE_P_ASYMPTOMATIC']# used for sensitivity plots
 
 USE_MATH_NOTATION=False
 
@@ -395,6 +395,7 @@ def _extract_metrics(data, conf):
     out.append(conf['ALL_LEVELS_DROPOUT'])
     out.append(conf['PROPORTION_LAB_TEST_PER_DAY'])
     out.append(conf['P_DROPOUT_SYMPTOM'])
+    out.append(conf['BASELINE_P_ASYMPTOMATIC'])
 
     return out
 
