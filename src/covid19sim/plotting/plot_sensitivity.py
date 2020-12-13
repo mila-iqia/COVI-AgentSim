@@ -347,13 +347,8 @@ def _extract_data(simulation_runs, method):
 
 def run(data, plot_path, compare=None, **kwargs):
     """
-    Plots and saves mobility scatter with various configurations across different methods.
-    Outputs are -
-        1. CSV files of extracted metrics
-        2. A txt file for each adoption rate showing mobility factors for reasonable R
-        3. several plots for mobility and other metrics. Check the code down below.
-        4. all_advantages.csv containing pairwise advantages of methods derived from curve fit.
-
+    Plots and saves sensitivity plots with various `SCENARIOS` across different methods.
+    
     Args:
         data (dict): intervention_name --> APP_UPTAKE --> folder_name --> {'conf': yaml file, 'pkl': tracker file}
         plot_path (str): path where to save plots
