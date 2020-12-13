@@ -20,7 +20,7 @@ from covid19sim.plotting.utils import load_plot_these_methods_config
 # from covid19sim.plotting.extract_tracker_metrics import _mean_effective_contacts, _mean_healthy_effective_contacts, _percentage_total_infected, _positivity_rate
 from covid19sim.plotting.matplotlib_utils import add_bells_and_whistles, save_figure, get_color, get_adoption_rate_label_from_app_uptake, get_intervention_label, \
                                 plot_mean_and_stderr_bands, get_base_intervention, get_labelmap, get_colormap, plot_heatmap_of_advantages
-# from covid19sim.plotting.curve_fitting import LinearFit, GPRFit
+from covid19sim.plotting.curve_fitting import GPRFit
 from covid19sim.plotting.plot_normalized_mobility_scatter import get_metric_label
 
 DPI=300
@@ -34,16 +34,24 @@ SCENARIO_LABELPAD=85
 LABELPAD = 30
 LINESTYLES = ["-", "--"]
 
+INTERPOLATION_FN = GPRFit
+TARGET_R_FOR_NO_TRACING = 1.2 # find the performance of simulations around (defined by MARGIN) the number of contacts where NO_TRACING has R of 1.2
+MARGIN = 0.5
+
 METRICS = ['r', 'effective_contacts', 'healthy_contacts']
 SENSITIVITY_PARAMETERS = ['ASYMPTOMATIC_RATIO', 'ALL_LEVELS_DROPOUT', 'P_DROPOUT_SYMPTOM',  'PROPORTION_LAB_TEST_PER_DAY']
 XMETRICS = ['effective_contacts'] + SENSITIVITY_PARAMETERS
-SCENARIOS = ["Optimistic", "Moderate", "Pessimistic"]
 
 # (optimistic, mdoerate, pessimistic)
 # default str_formatter = lambda x: f"{100 * x: 2.0f}"
+# NOTE: Following is taken from job_scripts/sensitivity_launch_mpic.py
 SENSITIVITY_PARAMETER_RANGE ={
-    "BASELINE_P_ASYMPTOMATIC": {
+    "ASYMPTOMATIC_RATIO": {
         "values": [0.20, 0.30, 0.40], # 0.20 0.30 0.40
+        "no-effect":[]
+    },
+    "BASELINE_P_ASYMPTOMATIC": {
+        "values": [0.1475, 0.2525, 0.3575], # asymptomatic-ratio =  0.20 0.30 0.40
         "no-effect":[]
     },
     "ALL_LEVELS_DROPOUT": {
@@ -60,6 +68,7 @@ SENSITIVITY_PARAMETER_RANGE ={
     }
 }
 
+SCENARIOS_NAME = ["Optimistic", "Moderate", "Pessimistic"]
 SCENARIO_PARAMETERS_IDX={
     "Optimistic" : 0,
     "Moderate": 1,
@@ -97,37 +106,6 @@ def get_sensitivity_label(name):
     raise ValueError(f"Invalid name: {name}")
 
 
-# def get_scenarios(parameter_ranges):
-    # """
-    # Constructs scenarios by selecting parameter values from parameter ranges
-    #
-    # Args:
-    #     parameter_ranges (list): each element is a 2-tuple with corresponding pessimistic and optimistic (in terms of disease control) values of the parameter
-    #
-    # Returns:
-    #     (list): each element is a n-tuple with values for parameters as per the parameter range
-    # """
-    # n_parameters = len(parameter_ranges)
-    # scenarios = [[None]*n_parameters for i in range(3)]
-    # scenarios_name = ["Optimistic", "Moderate", "Pessimistic"]
-    # idx = 0
-    # for parameter in SENSITIVITY_PARAMETERS:
-    #     o, p = parameter_ranges[parameter]['range']
-    #     D = np.abs(np.log(p) - np.log(o))
-    #     optim_op = operator.add if o < p else operator.sub
-    #     scenarios[0][idx] = np.exp(optim_op(np.log(o), D * 0.15)) # optimistic
-    #     scenarios[1][idx] = np.exp(optim_op(np.log(o), D * 0.50)) # moderate
-    #     scenarios[2][idx] = np.exp(optim_op(np.log(o), D * 0.85)) # pessimistic
-    #     idx += 1
-    #
-    # return scenarios, scenarios_name
-
-# SCENARIOS, SCENARIOS_NAME = get_scenarios(SENSITIVITY_PARAMETER_RANGE)
-# str_to_print = " "*10 + " ".join(SENSITIVITY_PARAMETERS) + "\n"
-# str_to_print += "Pessimistic: " + " ".join(map(lambda x: f"{x:0.3f}",SCENARIOS[2])) + "\n"
-# str_to_print += "Intermediate: " + " ".join(map(lambda x: f"{x:0.3f}",SCENARIOS[1])) + "\n"
-# str_to_print += "Optimistic: " + " ".join(map(lambda x: f"{x:0.3f}",SCENARIOS[0])) + "\n"
-# print(str_to_print)
 REFERENCE_R=1.2
 USE_MATH_NOTATION=False
 
@@ -140,49 +118,6 @@ class StringFormatter(object):
 
     def format(self, x, pos):
         return self.fn(x)
-
-# def estimate_y_and_std(x_input, fitted_fns, method, plot_advantage):
-    # """
-    # Estimates y-value and corresponding stderr to be plotted at x_input.
-    #
-    # Args:
-    #     x_input (np.array):
-    #     fitted_fns (dict): method --> GPRfit
-    #     method (str): method for which it needs to be calculated
-    #     plot_advantage (bool): True if the difference in R needs to be estimated. False if R is to be returned
-    #
-    # Returns:
-    #     y (float): y-value
-    #     y_std (float): std error of estimation
-    # """
-    # if plot_advantage:
-    #     delta_r = fitted_fns[REFERENCE_METHOD].evaluate_y_for_x(x_input) - fitted_fns[method].evaluate_y_for_x(x_input)
-    #     stderr_delta_r = np.sqrt(fitted_fns[REFERENCE_METHOD].stderr_for_x(x_input, return_var=True) + fitted_fns[method].stderr_for_x(x_input, return_var=True))
-    #     return delta_r, stderr_delta_r
-    #
-    # r = fitted_fns[method].evaluate_y_for_x(x_input)
-    # r_std = fitted_fns[method].stderr_for_x(x_input, return_var=False)
-    # return r, r_std
-    #
-
-# def find_c(fitted_fn, partial_x, target_r=1.2):
-    # """
-    # Finds `effective_contacts` for which fitted_fn gives R=1.2 at other values of input given by `partial_x`.
-    #
-    # Args:
-    #     fitted_fn (curve_fitting.GPRFit): GP function
-    #     partial_x (np.array): all values of input to `fitted_fn` except the first index  (check `XMETRICS`)
-    #     target_r (float): desired value of `fitted_fn`
-    #
-    # Returns:
-    #     (float): value of `effective_contacts` at which `fitted_fn` is `target_r`
-    # """
-    # def func(x, partial_x):
-    #     x = np.array([[x] + partial_x])
-    #     return np.abs(fitted_fn.evaluate_y_for_x(x) - target_r).item()
-    #
-    # res = optimize.minimize_scalar(fun=func, args=(partial_x), bounds=(2,10), tol=1e-4)
-    # return res.x, res.fun
 
 def plot_stable_frames(ax, df, sensitivity_parameter):
     """
@@ -205,7 +140,30 @@ def plot_stable_frames(ax, df, sensitivity_parameter):
     # plot
 
 
-def plot_and_save_sensitivity_analysis(results, path, plot_advantage=False):
+def find_stable_frames(df):
+    """
+    Finds `effective_contacts` where `r` for `NO_TRACING_METHOD` is `TARGET_R_FOR_NO_TRACING`
+
+    Args:
+        df (pd.DataFrame):
+
+    Returns:
+        stable_frames (pd.DataFrame): filtered rows from df that have `effective_contacts` in the range of `stable_point` +- `MARGIN`
+        stable_point (float): number of `effective_contacts` where `NO_TRACING_METHOD` has `r` of 1.2
+    """
+    assert NO_TRACING_METHOD in df['method'].unique(), f"{NO_TRACING_METHOD} not found in methods "
+    assert len(df[SENSITIVITY_PARAMETERS].unique()) == 1, "same sensitivity parameters expected"
+
+    selector = df['method'] == NO_TRACING_METHOD
+    x = df[selector]['effective_contacts'].to_numpy()
+    y = df[selector]['r'].to_numpy()
+    fitted_fn = INTERPOLATION_FN().fit(x, y)
+    stable_point = fitted_fn.find_x_for_y(TARGET_R_FOR_NO_TRACING).item()
+    stable_frames = df[df["effective_contacts"].between(stable_point - MARGIN, stable_point + MARGIN)]
+    return stable_frames, stable_point
+
+
+def plot_and_save_grid_sensitivity_analysis(results, path, plot_advantage=False):
     """
     Plots and saves grid sensitivity for various SCENARIOS.
 
@@ -226,24 +184,7 @@ def plot_and_save_sensitivity_analysis(results, path, plot_advantage=False):
 
     # find if only specific folders (methods) need to be plotted
     plot_these_methods = load_plot_these_methods_config(path)
-
-    # fitted_fns = {uptake_rate: {} for uptake_rate in uptake_rates}
-    # for i, method in enumerate(methods):
-        if (
-            len(plot_these_methods) > 0
-            and method not in plot_these_methods
-        ):
-            continue
-
-        for uptake_rate in uptake_rates:
-            # function fitting
-            selector = (results['method'] == method) * (results['uptake_rate'] == uptake_rate)
-            x = results[selector][XMETRICS].to_numpy()
-            y = results[selector]['r'].to_numpy()
-            fitted_fns[uptake_rate][method] = INTERPOLATION_FN().fit(x, y)
-            print(f"R-squared for {method} @ {uptake_rate}: {fitted_fns[uptake_rate][method].r_squared:3.3f}")
-    SENSITIVITY_PARAMETERS = SENSITIVITY_PARAMETER_RANGE.keys()
-    fig, axs = plt.subplots(nrows=len(SCENARIOS), ncols=len(SENSITIVITY_PARAMETERS), figsize=(27, 18), sharex='col', sharey=True, dpi=DPI)
+    fig, axs = plt.subplots(nrows=len(SCENARIOS_NAME), ncols=len(SENSITIVITY_PARAMETERS), figsize=(27, 18), sharex='col', sharey=True, dpi=DPI)
 
     # set row and column headers
     for col, name in enumerate(SENSITIVITY_PARAMETERS):
@@ -259,13 +200,17 @@ def plot_and_save_sensitivity_analysis(results, path, plot_advantage=False):
         tmp_ax.set_yticks([])
 
     # plot all
-    for j, scenario in enumerate(SCENARIOS):
+    for j, scenario in enumerate(SCENARIOS_NAME):
         # scenario specific results
         idx = SCENARIO_PARAMETERS_IDX[scenario]
-        SCENARIO_PARAMETERS = [SCENARIO_PARAMETERS_RANGE[param]['values'][idx] for param in SENSITIVITY_PARAMETERS]
+        SCENARIO_PARAMETERS = [SENSITIVITY_PARAMETER_RANGE[param]['values'][idx] for param in SENSITIVITY_PARAMETERS]
         scenario_df = results[results[SENSITIVITY_PARAMETERS] == SCENARIO_PARAMETERS]
+
+        breakpoint()
+        stable_frames_scenario_df, stable_point_scenario = find_stable_frames(scenario_df)
+
         for ax in axs[j, :]:
-            plot_stable_frames(ax, scenario_df, index=j)
+            plot_stable_frames(ax, stable_frames_scenario_df, index=j)
 
         for i, parameter in enumerate(SENSITIVITY_PARAMETERS):
             values = SENSITIVITY_PARAMETER_RANGE[parameter]['values']
@@ -277,10 +222,19 @@ def plot_and_save_sensitivity_analysis(results, path, plot_advantage=False):
                 tmp_params = copy.deepcopy(SCENARIO_PARAMETERS)
                 tmp_params[i] = value
                 df = results[results[SENSITIVITY_PARAMETERS] == tmp_params]
-                plot_stable_frames(ax, df, index=param_index)
+
+                cell_methods = df['method'].unique()
                 for method in no_effect_on_methods:
-                    tmp_df = scenario_df[scenario_df['method'] == method]
-                    plot_stable_frames(ax, tmp_df, index=param_index)
+                    if method not in cell_methods:
+                        tmp_df = stable_frames_scenario_df[stable_frames_scenario_df['method'] == method]
+                        df = pd.concat([df, tmp_df], axis=0)
+
+                if NO_TRACING_METHOD not in cell_methods:
+                    stable_frames_df = df[df["effective_contacts"].between(stable_point_scenario - MARGIN, stable_point_scenario + MARGIN)]
+                else:
+                    stable_frames_df, stable_point = find_stable_frames(df)
+
+                plot_stable_frames(ax, stable_frames_df, index=param_index)
 
     # spacing between plots
     plt.subplots_adjust(left=0.125, wspace=0.2, hspace=0.2, bottom=0.15)
@@ -360,7 +314,7 @@ def plot_and_save_sensitivity_analysis(results, path, plot_advantage=False):
     # columns = ['method', 'dir', 'mobility_factor', 'intervention_conf_name','app_based'] + METRICS + SENSITIVITY_PARAMETERS
     # return pd.DataFrame(all_data, columns=columns)
 
-def run(data={}, plot_path, compare=None, **kwargs):
+def run(data, plot_path, compare=None, **kwargs):
     """
     Plots and saves grid form of sensitivity various configurations across different methods.
 
@@ -370,22 +324,26 @@ def run(data={}, plot_path, compare=None, **kwargs):
         data (NoneType):
         plot_path (str): path where to save plots
     """
-    # use_extracted_data = kwargs.get('use_extracted_data', False)
+    use_extracted_data = kwargs.get('use_extracted_data', False)
 
     folder_name = Path(plot_path).resolve() / "grid_sensitivity"
     os.makedirs(str(folder_name), exist_ok=True)
 
     # merge all csvs
-    results = pd.DataFrame()
-    for subfolder in plot_path.parent.iterdir():
-        if "scatter" not in subfolder.name:
-            continue
+    filename = folder_name / "all_extracted_data.csv"
+    if use_extracted_data:
+        results = pd.read_csv(str(filename))
+    else:
+        results = pd.DataFrame()
+        for subfolder in plot_path.parent.iterdir():
+            if "scatter" not in subfolder.name:
+                continue
 
-        stable_frame = subfolder / "normalized_mobility/plots/normalized_mobility/stable_frames.csv"
-        results = pd.concat(results, pd.read_csv(str(stable_frame)))
+            stable_frame = subfolder / "normalized_mobility/plots/normalized_mobility/stable_frames.csv"
+            results = pd.concat([results, pd.read_csv(str(stable_frame))], axis=0, ignore_index=True)
+        results.to_csv(str(filename))
 
-    results.to_csv(str(folder_name / "all_stable_frames.csv"))
-    plot_and_save_grid_sensitivity(results, path=plot_path, plot_advantage=False)
+    plot_and_save_grid_sensitivity_analysis(results, path=plot_path, plot_advantage=False)
     # plot_and_save_grid_sensitivity(results, path=plot_path, plot_advantage=True)
 
 
