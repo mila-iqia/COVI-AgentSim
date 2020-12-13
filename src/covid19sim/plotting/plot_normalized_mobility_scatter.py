@@ -391,7 +391,7 @@ def _extract_metrics(data, conf):
     out.append(_daily_fraction_quarantine(data).mean())
 
     for x in SENSITIVITY_PARAMETERS:
-        out.append(get_simulation_parameter(x))
+        out.append(get_simulation_parameter(x, data, conf))
 
     return out
 

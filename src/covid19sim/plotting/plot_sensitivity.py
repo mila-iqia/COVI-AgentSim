@@ -318,7 +318,7 @@ def _extract_metrics(data, conf):
     out.append(_mean_healthy_effective_contacts(data))
 
     for x in SENSITIVITY_PARAMETERS:
-        out.append(get_simulation_parameter(x))
+        out.append(get_simulation_parameter(x, data, conf))
 
     return out
 
