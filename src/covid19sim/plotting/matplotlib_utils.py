@@ -502,20 +502,3 @@ def get_base_intervention(intervention_conf):
     if hhld_behavior:
         return f"{x}"
     return f"{x}_wo_hhld"
-
-
-def get_simulation_parameter(name, data, conf):
-    """
-    Returns the parameter from `conf` or compute it using `data`.
-
-    Args:
-        name (str): name of the parameter
-        data (dict): tracker files for the simulation
-        conf (dict): an experimental configuration.
-
-    Returns:
-        (float): value of the paramter
-    """
-    if name == "ASYMPTOMATIC_RATIO":
-        return 1.0 * sum(h['asymptomatic'] for h in data['humans_demographics']) / len(data['humans_demographics'])
-    return conf[name]
