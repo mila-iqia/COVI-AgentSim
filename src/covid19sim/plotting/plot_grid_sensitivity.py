@@ -39,7 +39,8 @@ TARGET_R_FOR_NO_TRACING = 1.2 # find the performance of simulations around (defi
 MARGIN = 0.5
 
 METRICS = ['r', 'effective_contacts', 'healthy_contacts']
-SENSITIVITY_PARAMETERS = ['ASYMPTOMATIC_RATIO', 'ALL_LEVELS_DROPOUT', 'P_DROPOUT_SYMPTOM',  'PROPORTION_LAB_TEST_PER_DAY']
+# SENSITIVITY_PARAMETERS = ['ASYMPTOMATIC_RATIO', 'ALL_LEVELS_DROPOUT', 'P_DROPOUT_SYMPTOM',  'PROPORTION_LAB_TEST_PER_DAY'] #????
+SENSITIVITY_PARAMETERS = ['BASELINE_P_ASYMPTOMATIC', 'ALL_LEVELS_DROPOUT', 'P_DROPOUT_SYMPTOM',  'PROPORTION_LAB_TEST_PER_DAY']
 XMETRICS = ['effective_contacts'] + SENSITIVITY_PARAMETERS
 
 # (optimistic, mdoerate, pessimistic)
@@ -100,7 +101,7 @@ def get_sensitivity_label(name):
     if name == "P_DROPOUT_SYMPTOM":
         return "Quality of Self-diagnosis\n(% of daily symptoms)"
 
-    if name == "ASYMPTOMATIC_RATIO":
+    if name == "BASELINE_P_ASYMPTOMATIC": #????
         return "Asymptomaticity\n(% of population)"
 
     raise ValueError(f"Invalid name: {name}")
@@ -269,51 +270,6 @@ def plot_and_save_grid_sensitivity_analysis(results, path, plot_advantage=False)
     filepath = save_figure(fig, basedir=path, folder="sensitivity", filename=f'{filename}_AR_{AR_str}', bbox_extra_artists=(lgd,), bbox_inches=None)
     print(f"Sensitivity analysis saved at {filepath}")
 
-# def _extract_metrics(data, conf):
-    # """
-    # Extracts `METRICS` and `SENSITIVITY_PARAMETERS` from data corresponding to a single simulation run.
-    #
-    # Args:
-    #     data (dict): tracker files for the simulation
-    #     conf (dict): an experimental configuration.
-    #
-    # Returns:
-    #     (list): a list of scalars representing metrics in `METRICS` for the simulations
-    # """
-    # out = []
-    # out.append(get_proxy_r(data, verbose=False))
-    # out.append(_mean_effective_contacts(data))
-    # out.append(_mean_healthy_effective_contacts(data))
-    #
-    # out.append(conf['ALL_LEVELS_DROPOUT'])
-    # out.append(conf['PROPORTION_LAB_TEST_PER_DAY'])
-    # out.append(conf['P_DROPOUT_SYMPTOM'])
-    # out.append(1.0 * sum(h['asymptomatic'] for h in data['humans_demographics']) / len(data['humans_demographics']))
-    #
-    # return out
-
-# def _extract_data(simulation_runs, method):
-    # """
-    # Extracts all metrics from simulation runs.
-    #
-    # Args:
-    #     simulation_runs (dict): folder_name --> {'conf': yaml file, 'pkl': tracker file}
-    #     method (str): name of the method for which this extraction is being done.
-    #
-    # Returns:
-    #     (pd.DataFrame): Each row is method specific information and extracted scalar metrics.
-    # """
-    # all_data = []
-    # for simname, sim in simulation_runs.items():
-    #     data = sim['pkl']
-    #     intervention_name = get_base_intervention(sim['conf'])
-    #     mobility_factor = sim['conf']['GLOBAL_MOBILITY_SCALING_FACTOR']
-    #     row =  [method, simname, mobility_factor, intervention_name, is_app_based_tracing_intervention(intervention_conf=sim['conf'])] + _extract_metrics(data, sim['conf'])
-    #     all_data.append(row)
-    #
-    # columns = ['method', 'dir', 'mobility_factor', 'intervention_conf_name','app_based'] + METRICS + SENSITIVITY_PARAMETERS
-    # return pd.DataFrame(all_data, columns=columns)
-
 def run(data, plot_path, compare=None, **kwargs):
     """
     Plots and saves grid form of sensitivity various configurations across different methods.
@@ -339,7 +295,7 @@ def run(data, plot_path, compare=None, **kwargs):
             if "scatter" not in subfolder.name:
                 continue
 
-            stable_frame = subfolder / "normalized_mobility/plots/normalized_mobility/stable_frames.csv"
+            stable_frame = subfolder / "normalized_mobility/plots/normalized_mobility/full_extracted_data_AR_60.csv"
             results = pd.concat([results, pd.read_csv(str(stable_frame))], axis=0, ignore_index=True)
         results.to_csv(str(filename))
 
