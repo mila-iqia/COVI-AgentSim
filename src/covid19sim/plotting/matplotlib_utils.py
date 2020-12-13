@@ -415,14 +415,22 @@ def get_adoption_rate_label_from_app_uptake(uptake):
         return "70"
     if uptake == 0.8415:
         return "60"
-    if uptake == 0.5618:
-        return "40"
+    if uptake == 0.7170:
+        return "50"
     if uptake == 0.6415:
         return "45"
     if uptake == 0.6425:
         return "45"
+    if uptake == 0.5618:
+        return "40"
     if uptake == 0.4215:
         return "30"
+    if uptake == 0.3580:
+        return "25"
+    if uptake == 0.2850:
+        return "20"
+    if uptake == 0.2140:
+        return "15"
     return uptake
 
 def get_intervention_label(method_name, base_intervention_name):
