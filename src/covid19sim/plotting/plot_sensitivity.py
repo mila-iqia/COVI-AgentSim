@@ -13,7 +13,7 @@ from scipy import stats, optimize
 from copy import deepcopy
 from pathlib import Path
 
-from covid19sim.utils.utils import is_app_based_tracing_intervention
+from covid19sim.utils.utils import is_app_based_tracing_intervention, get_simulation_parameter
 from covid19sim.plotting.utils import get_proxy_r, split_methods_and_check_validity, load_plot_these_methods_config
 from covid19sim.plotting.extract_tracker_metrics import _daily_false_quarantine, _daily_false_susceptible_recovered, _daily_fraction_risky_classified_as_non_risky, \
                                 _daily_fraction_non_risky_classified_as_risky, _daily_fraction_quarantine
@@ -316,10 +316,8 @@ def _extract_metrics(data, conf):
     out.append(_mean_effective_contacts(data))
     out.append(_mean_healthy_effective_contacts(data))
 
-    out.append(conf['ALL_LEVELS_DROPOUT'])
-    out.append(conf['PROPORTION_LAB_TEST_PER_DAY'])
-    out.append(conf['P_DROPOUT_SYMPTOM'])
-    out.append(1.0 * sum(h['asymptomatic'] for h in data['humans_demographics']) / len(data['humans_demographics']))
+    for x in SENSITIVITY_PARAMETERS:
+        out.append(get_simulation_parameter(x))
 
     return out
 
@@ -348,7 +346,7 @@ def _extract_data(simulation_runs, method):
 def run(data, plot_path, compare=None, **kwargs):
     """
     Plots and saves sensitivity plots with various `SCENARIOS` across different methods.
-    
+
     Args:
         data (dict): intervention_name --> APP_UPTAKE --> folder_name --> {'conf': yaml file, 'pkl': tracker file}
         plot_path (str): path where to save plots

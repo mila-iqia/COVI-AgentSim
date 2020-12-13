@@ -308,6 +308,9 @@ def plot_heatmap_of_advantages(data, labelmap, USE_MATH_NOTATION=False):
 
     assert len(ordered_ref_methods) == len(ordered_comp_methods), "# ref methods:{len(ordered_ref_methods)}, and #comp methods:{len(ordered_comp_methods)}. Expected same!"
     N = len(ordered_comp_methods)
+    if N == 0:
+        return plt.subplots(nrows=1, ncols=1, figsize=(10,10), dpi=200)[0] # empty figure
+
     CELL_MULTIPLIER = 4 if N > 3 else 8
 
     advs = -np.ones((N, N))
@@ -499,3 +502,20 @@ def get_base_intervention(intervention_conf):
     if hhld_behavior:
         return f"{x}"
     return f"{x}_wo_hhld"
+
+
+def get_simulation_parameter(name, data, conf):
+    """
+    Returns the parameter from `conf` or compute it using `data`.
+
+    Args:
+        name (str): name of the parameter
+        data (dict): tracker files for the simulation
+        conf (dict): an experimental configuration.
+
+    Returns:
+        (float): value of the paramter
+    """
+    if name == "ASYMPTOMATIC_RATIO":
+        return 1.0 * sum(h['asymptomatic'] for h in data['humans_demographics']) / len(data['humans_demographics'])
+    return conf[name]
