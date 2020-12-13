@@ -23,6 +23,7 @@ import covid19sim.plotting.plot_episim_series as episim_series
 import covid19sim.plotting.plot_normalized_mobility_scatter as normalized_mobility
 import covid19sim.plotting.plot_dalys as dalys
 import covid19sim.plotting.plot_sensitivity as sensitivity
+import covid19sim.plotting.plot_grid_sensitivity as grid_sensitivity
 from covid19sim.plotting.utils import get_all_data
 
 
@@ -149,7 +150,8 @@ def main(conf):
         "dalys": dalys,
         "episim_series": episim_series,
         "normalized_mobility": normalized_mobility,
-        "sensitivity": sensitivity
+        "sensitivity": sensitivity,
+        "grid_sensitivity": grid_sensitivity
     }
 
     conf = OmegaConf.to_container(conf)
@@ -299,6 +301,15 @@ def main(conf):
     load_cache = conf.get("load_cache", use_cache)
     if load_cache:
         assert cache_path.exists(), f"Cache {str(cache_path)} doesn't exist."
+
+    if (
+        len(plots) == 1
+        and "grid_sensitvity" in plots
+    ):
+        use_cache = True
+        load_cache = False
+        data = {}
+
     if use_cache:
         data = {}
         if load_cache:
