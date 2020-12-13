@@ -390,10 +390,11 @@ def _extract_metrics(data, conf):
     out.append(_positivity_rate(data))
     out.append(_daily_fraction_quarantine(data).mean())
 
+    # WARNING: Do this in the order of SENSITIVITY_PARAMETERS
+    out.append(1.0 * sum(h['asymptomatic'] for h in data['humans_demographics']) / len(data['humans_demographics']))
     out.append(conf['ALL_LEVELS_DROPOUT'])
     out.append(conf['PROPORTION_LAB_TEST_PER_DAY'])
     out.append(conf['P_DROPOUT_SYMPTOM'])
-    out.append(1.0 * sum(h['asymptomatic'] for h in data['humans_demographics']) / len(data['humans_demographics']))
 
     return out
 
