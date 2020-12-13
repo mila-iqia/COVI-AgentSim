@@ -266,6 +266,7 @@ def plot_and_save_sensitivity_analysis(results, uptake_rates, path, plot_advanta
                     ax = plot_mean_and_stderr_bands(ax, xs, np.array(y).reshape(-1), np.array(y_std).reshape(-1), \
                                         label=method_label, color=color, confidence_level=1, stderr_alpha=0.2, \
                                         linestyle=LINESTYLES[k])
+            print(f"Scenario: {scenario} Parameter: {parameter} plotted ... ")
 
     # spacing between plots
     plt.subplots_adjust(left=0.125, wspace=0.2, hspace=0.2, bottom=0.15)
