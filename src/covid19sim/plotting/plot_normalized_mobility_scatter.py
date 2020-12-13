@@ -11,7 +11,7 @@ from scipy import stats
 from copy import deepcopy
 from pathlib import Path
 
-from covid19sim.utils.utils import is_app_based_tracing_intervention
+from covid19sim.utils.utils import is_app_based_tracing_intervention, get_simulation_parameter
 from covid19sim.plotting.utils import get_proxy_r, split_methods_and_check_validity, load_plot_these_methods_config
 from covid19sim.plotting.extract_tracker_metrics import _daily_false_quarantine, _daily_false_susceptible_recovered, _daily_fraction_risky_classified_as_non_risky, \
                                 _daily_fraction_non_risky_classified_as_risky, _daily_fraction_quarantine
@@ -390,12 +390,8 @@ def _extract_metrics(data, conf):
     out.append(_positivity_rate(data))
     out.append(_daily_fraction_quarantine(data).mean())
 
-    # WARNING: Do this in the order of SENSITIVITY_PARAMETERS
-    out.append(1.0 * sum(h['asymptomatic'] for h in data['humans_demographics']) / len(data['humans_demographics']))
-    out.append(conf['ALL_LEVELS_DROPOUT'])
-    out.append(conf['PROPORTION_LAB_TEST_PER_DAY'])
-    out.append(conf['P_DROPOUT_SYMPTOM'])
-    out.append(conf['BASELINE_P_ASYMPTOMATIC'])
+    for x in SENSITIVITY_PARAMETERS:
+        out.append(get_simulation_parameter(x))
 
     return out
 
