@@ -243,12 +243,16 @@ def add_bells_and_whistles(ax, y_title=None, x_title=None, **kwargs):
     percent_fmt_on_x = kwargs.get('percent_fmt_on_x', None)
 
     # xticks
-    x_tick_gap = kwargs.get("x_tick_gap", 5)
-    lower_lim = kwargs.get("x_lower_lim", math.floor(ax.get_xlim()[0] / 2.) * 2.0)
-    upper_lim = kwargs.get("x_upper_lim", math.ceil(ax.get_xlim()[1] / 2.) * 2.0)
-    n_ticks = np.arange(lower_lim, upper_lim, x_tick_gap)
-    ax.set_xticks(n_ticks)
-    ax.set_xlim(lower_lim, upper_lim)
+    x_ticks = kwargs.get('x_ticks', None)
+    if x_ticks is not None:
+        ax.set_xticks(np.array(x_ticks))
+    else:
+        lower_lim = kwargs.get("x_lower_lim", math.floor(ax.get_xlim()[0] / 2.) * 2.0)
+        upper_lim = kwargs.get("x_upper_lim", math.ceil(ax.get_xlim()[1] / 2.) * 2.0)
+        x_tick_gap = kwargs.get("x_tick_gap", (upper_lim - lower_lim)/5.0)
+        n_ticks = np.arange(lower_lim, upper_lim, x_tick_gap)
+        ax.set_xlim(lower_lim, upper_lim)
+        ax.set_xticks(n_ticks)
 
     if percent_fmt_on_x is not None:
         xticks = mtick.StrMethodFormatter(percent_fmt_on_x)
@@ -259,7 +263,6 @@ def add_bells_and_whistles(ax, y_title=None, x_title=None, **kwargs):
     upper_lim = kwargs.get("y_upper_lim", None)
     if lower_lim or upper_lim:
         ax.set_ylim(lower_lim, upper_lim)
-
 
     if x_title is not None:
         ax.set_xlabel(x_title, fontsize=XY_TITLESIZE)
