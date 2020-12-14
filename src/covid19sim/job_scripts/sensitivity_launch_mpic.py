@@ -13,7 +13,7 @@ INTERVENTIONS = ["post-lockdown-no-tracing", "bdt1", "heuristicv4"]
 # NOTE: values are arranged from optimistic to pessimistic
 PARAMETERS = {
     "BASELINE_P_ASYMPTOMATIC": {
-        "values": 0.1475, 0.2525, 0.3575], # asymptomatic-ratio =  0.20 0.30 0.40
+        "values": [0.1475, 0.2525, 0.3575], # asymptomatic-ratio =  0.20 0.30 0.40
         "no-effect": [],
     },
     "ALL_LEVELS_DROPOUT": {
