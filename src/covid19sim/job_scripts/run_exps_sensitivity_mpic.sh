@@ -15,7 +15,7 @@ ASYMP=$3
 ALL_LEVELS_DROPOUT=$4
 P_DROPOUT_SYMPTOM=$5
 TEST=$6
-dirname=sensitivity_S_${SCENARIO}_${n_people}_init_${init}_UPTAKE_${UPTAKE}/scatter_Ax_${ASYMP}_Lx_${ALL_LEVELS_DROPOUT}_Sx_${P_DROPOUT_SYMPTOM}_test_${TEST}
+dirname=sensitivity_v2/sensitivity_S_${SCENARIO}_${n_people}_init_${init}_UPTAKE_${UPTAKE}/scatter_Ax_${ASYMP}_Lx_${ALL_LEVELS_DROPOUT}_Sx_${P_DROPOUT_SYMPTOM}_test_${TEST}
 INTERVENTION=$7
 
 source ~/.bashrc
@@ -28,7 +28,7 @@ if [ "$INTERVENTION" == "post-lockdown-no-tracing" ]; then
   # # no-tracing
   python job_scripts/experiment.py exp_file=normalized_mobility_mpic \
     track=light \
-    base_dir=/home/nrahaman/python/covi-simulator/exp/sensitivity/$dirname/normalized_mobility \
+    base_dir=/home/nrahaman/python/covi-simulator/exp/$dirname/normalized_mobility \
     intervention=post-lockdown-no-tracing  global_mobility_scaling_factor_range=cartesian_low \
     n_people=$n_people init_fraction_sick=$init APP_UPTAKE=$UPTAKE \
     BASELINE_P_ASYMPTOMATIC=$ASYMP PROPORTION_LAB_TEST_PER_DAY=$TEST \
@@ -38,7 +38,7 @@ if [ "$INTERVENTION" == "bdt1" ]; then
   # # bdt
   python job_scripts/experiment.py exp_file=normalized_mobility_mpic \
      track=light \
-     base_dir=/home/nrahaman/python/covi-simulator/exp/sensitivity/$dirname/normalized_mobility \
+     base_dir=/home/nrahaman/python/covi-simulator/exp/$dirname/normalized_mobility \
      intervention=bdt1  global_mobility_scaling_factor_range=cartesian_medium \
      n_people=$n_people init_fraction_sick=$init APP_UPTAKE=$UPTAKE \
      BASELINE_P_ASYMPTOMATIC=$ASYMP PROPORTION_LAB_TEST_PER_DAY=$TEST \
@@ -46,7 +46,7 @@ if [ "$INTERVENTION" == "bdt1" ]; then
 fi
 if [ "$INTERVENTION" == "heuristicv4" ]; then
    python job_scripts/experiment.py exp_file=normalized_mobility_mpic \
-    base_dir=/home/nrahaman/python/covi-simulator/exp/sensitivity/$dirname/normalized_mobility \
+    base_dir=/home/nrahaman/python/covi-simulator/exp/$dirname/normalized_mobility \
     track=light \
     intervention=heuristicv4  global_mobility_scaling_factor_range=cartesian_medium \
     n_people=$n_people init_fraction_sick=$init APP_UPTAKE=$UPTAKE \
@@ -54,6 +54,10 @@ if [ "$INTERVENTION" == "heuristicv4" ]; then
     P_DROPOUT_SYMPTOM=$P_DROPOUT_SYMPTOM ALL_LEVELS_DROPOUT=$ALL_LEVELS_DROPOUT dev=True
 fi
 
+#if [ "$INTERVENTION" == "plot" ]; then
+#  python $HOME/simulator/src/covid19sim/plotting/main.py plot=normalized_mobility \
+#  path=/scratch/pratgupt/$dirname/normalized_mobility/ load_cache=False use_cache=False normalized_mobility_use_extracted_data=False
+#fi
 #python job_scripts/experiment.py exp_file=normalized_mobility \
 #    track=light \
 #    base_dir=/home/nrahaman/python/covi-simulator/exp/sensitivity/$dirname/normalized_mobility \
