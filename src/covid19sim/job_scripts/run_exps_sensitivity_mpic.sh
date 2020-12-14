@@ -19,7 +19,7 @@ dirname=sensitivity_v2/sensitivity_S_${SCENARIO}_${n_people}_init_${init}_UPTAKE
 INTERVENTION=$7
 
 source ~/.bashrc
-conda activate cov19
+/home/nrahaman/miniconda3/bin/activate cov19
 source ~/prepenv.sh
 cd /home/nrahaman/python/covi-simulator/src/covid19sim
 
