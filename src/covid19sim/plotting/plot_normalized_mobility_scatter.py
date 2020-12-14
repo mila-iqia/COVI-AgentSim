@@ -12,7 +12,7 @@ from copy import deepcopy
 from pathlib import Path
 
 from covid19sim.utils.utils import is_app_based_tracing_intervention
-from covid19sim.plotting.utils import get_proxy_r, split_methods_and_check_validity, load_plot_these_methods_config
+from covid19sim.plotting.utils import get_proxy_r, split_methods_and_check_validity, load_plot_these_methods_config, get_simulation_parameter
 from covid19sim.plotting.extract_tracker_metrics import _daily_false_quarantine, _daily_false_susceptible_recovered, _daily_fraction_risky_classified_as_non_risky, \
                                 _daily_fraction_non_risky_classified_as_risky, _daily_fraction_quarantine
 from covid19sim.plotting.extract_tracker_metrics import _mean_effective_contacts, _mean_healthy_effective_contacts, _percentage_total_infected, _positivity_rate
@@ -30,6 +30,9 @@ ANNOTATION_FONTSIZE=15
 
 METRICS = ['r', 'false_quarantine', 'false_sr', 'effective_contacts', 'healthy_contacts', 'percentage_infected', \
             'fraction_false_non_risky', 'fraction_false_risky', 'positivity_rate', 'fraction_quarantine']
+
+SENSITIVITY_PARAMETERS = ['ASYMPTOMATIC_RATIO', 'ALL_LEVELS_DROPOUT', 'P_DROPOUT_SYMPTOM',  'PROPORTION_LAB_TEST_PER_DAY', 'BASELINE_P_ASYMPTOMATIC']# used for sensitivity plots
+
 USE_MATH_NOTATION=False
 
 # fix the seed
@@ -364,12 +367,13 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
     filepath = save_figure(fig, basedir=path, folder="normalized_mobility", filename=f'{filename}_AR_{adoption_rate}')
     print(f"Scatter plot of mobility and R @ {adoption_rate}% Adoption saved at {filepath}")
 
-def _extract_metrics(data):
+def _extract_metrics(data, conf):
     """
-    Extracts `METRICS` from data corresponding to a single simulation run.
+    Extracts `METRICS` and `SENSITIVITY_PARAMETERS` from data corresponding to a single simulation run.
 
     Args:
         data (dict): tracker files for the simulation
+        conf (dict): an experimental configuration.
 
     Returns:
         (list): a list of scalars representing metrics in `METRICS` for the simulations
@@ -385,6 +389,10 @@ def _extract_metrics(data):
     out.append(_daily_fraction_non_risky_classified_as_risky(data).mean())
     out.append(_positivity_rate(data))
     out.append(_daily_fraction_quarantine(data).mean())
+
+    for x in SENSITIVITY_PARAMETERS:
+        out.append(get_simulation_parameter(x, data, conf))
+
     return out
 
 def _extract_data(simulation_runs, method):
@@ -401,12 +409,13 @@ def _extract_data(simulation_runs, method):
     all_data = []
     for simname, sim in simulation_runs.items():
         data = sim['pkl']
+        conf = sim['conf']
         intervention_name = get_base_intervention(sim['conf'])
         mobility_factor = sim['conf']['GLOBAL_MOBILITY_SCALING_FACTOR']
-        row =  [method, simname, mobility_factor, intervention_name, is_app_based_tracing_intervention(intervention_conf=sim['conf'])] + _extract_metrics(data)
+        row =  [method, simname, mobility_factor, intervention_name, is_app_based_tracing_intervention(intervention_conf=sim['conf'])] + _extract_metrics(data, conf)
         all_data.append(row)
 
-    columns = ['method', 'dir', 'mobility_factor', 'intervention_conf_name','app_based'] + METRICS
+    columns = ['method', 'dir', 'mobility_factor', 'intervention_conf_name','app_based'] + METRICS + SENSITIVITY_PARAMETERS
     return pd.DataFrame(all_data, columns=columns)
 
 def save_relevant_csv_files(results, adoption_rate, extract_path, good_factors_path):

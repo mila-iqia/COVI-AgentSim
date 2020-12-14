@@ -757,7 +757,7 @@ def load_plot_these_methods_config(path):
         path (str): path where config files can be found.
 
     Returns:
-        (set): a set of method that needs to be plotted. an empty set if the file is not found. 
+        (set): a set of method that needs to be plotted. an empty set if the file is not found.
     """
     include_methods = Path(path).resolve() / "PLOT_THESE_METHODS.yaml"
     if include_methods.exists():
@@ -766,3 +766,19 @@ def load_plot_these_methods_config(path):
         return set([x for x, plot in plot_these_methods.items() if plot])
 
     return {}
+
+def get_simulation_parameter(name, data, conf):
+    """
+    Returns the parameter from `conf` or compute it using `data`.
+
+    Args:
+        name (str): name of the parameter
+        data (dict): tracker files for the simulation
+        conf (dict): an experimental configuration.
+
+    Returns:
+        (float): value of the paramter
+    """
+    if name == "ASYMPTOMATIC_RATIO":
+        return 1.0 * sum(h['asymptomatic'] for h in data['humans_demographics']) / len(data['humans_demographics'])
+    return conf[name]

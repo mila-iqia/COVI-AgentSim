@@ -14,7 +14,7 @@ from copy import deepcopy
 from pathlib import Path
 
 from covid19sim.utils.utils import is_app_based_tracing_intervention
-from covid19sim.plotting.utils import get_proxy_r, split_methods_and_check_validity, load_plot_these_methods_config
+from covid19sim.plotting.utils import get_proxy_r, split_methods_and_check_validity, load_plot_these_methods_config, get_simulation_parameter
 from covid19sim.plotting.extract_tracker_metrics import _daily_false_quarantine, _daily_false_susceptible_recovered, _daily_fraction_risky_classified_as_non_risky, \
                                 _daily_fraction_non_risky_classified_as_risky, _daily_fraction_quarantine
 from covid19sim.plotting.extract_tracker_metrics import _mean_effective_contacts, _mean_healthy_effective_contacts, _percentage_total_infected, _positivity_rate
@@ -238,7 +238,7 @@ def plot_and_save_sensitivity_analysis(results, uptake_rates, path, plot_advanta
         o, p = SENSITIVITY_PARAMETER_RANGE[parameter]['range']
         str_formatter = SENSITIVITY_PARAMETER_RANGE[parameter].get("str_formatter", lambda x: f"{100 * x: 2.0f}")
         (l, u) = (o, p) if o < p else (p, o)
-        xs = np.linspace(l, u, 100)
+        xs = np.linspace(l, u, 20)
 
         for j, scenario in enumerate(SCENARIOS):
             ax = axs[j, i]
@@ -253,7 +253,7 @@ def plot_and_save_sensitivity_analysis(results, uptake_rates, path, plot_advanta
                         partial_x = deepcopy(scenario)
                         partial_x[i] = value
                         c0, error = find_c(fitted_fns[uptake_rate][NO_TRACING_METHOD], partial_x, target_r=REFERENCE_R)
-                        assert error < 1e-3, f"Error in minimization: {error}"
+                        assert error < 1e-2, f"Error in minimization: {error}"
 
                         # find delta r
                         x_input = np.array([[c0] + partial_x])
@@ -266,6 +266,7 @@ def plot_and_save_sensitivity_analysis(results, uptake_rates, path, plot_advanta
                     ax = plot_mean_and_stderr_bands(ax, xs, np.array(y).reshape(-1), np.array(y_std).reshape(-1), \
                                         label=method_label, color=color, confidence_level=1, stderr_alpha=0.2, \
                                         linestyle=LINESTYLES[k])
+            print(f"Scenario: {scenario} Parameter: {parameter} plotted ... ")
 
     # spacing between plots
     plt.subplots_adjust(left=0.125, wspace=0.2, hspace=0.2, bottom=0.15)
@@ -302,7 +303,7 @@ def plot_and_save_sensitivity_analysis(results, uptake_rates, path, plot_advanta
 
 def _extract_metrics(data, conf):
     """
-    Extracts `METRICS` from data corresponding to a single simulation run.
+    Extracts `METRICS` and `SENSITIVITY_PARAMETERS` from data corresponding to a single simulation run.
 
     Args:
         data (dict): tracker files for the simulation
@@ -316,10 +317,8 @@ def _extract_metrics(data, conf):
     out.append(_mean_effective_contacts(data))
     out.append(_mean_healthy_effective_contacts(data))
 
-    out.append(conf['ALL_LEVELS_DROPOUT'])
-    out.append(conf['PROPORTION_LAB_TEST_PER_DAY'])
-    out.append(conf['P_DROPOUT_SYMPTOM'])
-    out.append(1.0 * sum(h['asymptomatic'] for h in data['humans_demographics']) / len(data['humans_demographics']))
+    for x in SENSITIVITY_PARAMETERS:
+        out.append(get_simulation_parameter(x, data, conf))
 
     return out
 
@@ -347,12 +346,7 @@ def _extract_data(simulation_runs, method):
 
 def run(data, plot_path, compare=None, **kwargs):
     """
-    Plots and saves mobility scatter with various configurations across different methods.
-    Outputs are -
-        1. CSV files of extracted metrics
-        2. A txt file for each adoption rate showing mobility factors for reasonable R
-        3. several plots for mobility and other metrics. Check the code down below.
-        4. all_advantages.csv containing pairwise advantages of methods derived from curve fit.
+    Plots and saves sensitivity plots with various `SCENARIOS` across different methods.
 
     Args:
         data (dict): intervention_name --> APP_UPTAKE --> folder_name --> {'conf': yaml file, 'pkl': tracker file}
