@@ -4,6 +4,7 @@ Plots a scatter plot showing trade-off between metrics of different simulations 
 import os
 import yaml
 import operator
+import copy
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -23,7 +24,7 @@ from covid19sim.plotting.matplotlib_utils import add_bells_and_whistles, save_fi
 from covid19sim.plotting.curve_fitting import GPRFit
 from covid19sim.plotting.plot_normalized_mobility_scatter import get_metric_label
 
-DPI=300
+DPI=100
 TITLESIZE = 35
 TICKSIZE = 22
 LEGENDSIZE = 25
@@ -37,6 +38,8 @@ LINESTYLES = ["-", "--"]
 INTERPOLATION_FN = GPRFit
 TARGET_R_FOR_NO_TRACING = 1.2 # find the performance of simulations around (defined by MARGIN) the number of contacts where NO_TRACING has R of 1.2
 MARGIN = 0.5
+NUM_BOOTSTRAP_SAMPLES=1000
+SUBSET_SIZE=100
 
 METRICS = ['r', 'effective_contacts', 'healthy_contacts']
 # SENSITIVITY_PARAMETERS = ['ASYMPTOMATIC_RATIO', 'ALL_LEVELS_DROPOUT', 'P_DROPOUT_SYMPTOM',  'PROPORTION_LAB_TEST_PER_DAY'] #????
@@ -52,7 +55,8 @@ SENSITIVITY_PARAMETER_RANGE ={
         "no-effect":[]
     },
     "BASELINE_P_ASYMPTOMATIC": {
-        "values": [0.1475, 0.2525, 0.3575], # asymptomatic-ratio =  0.20 0.30 0.40
+        "values": [0.20, 0.30, 0.40], # 0.20 0.30 0.40
+        # "values": [0.1475, 0.2525, 0.3575], # asymptomatic-ratio =  0.20 0.30 0.40
         "no-effect":[]
     },
     "ALL_LEVELS_DROPOUT": {
@@ -120,25 +124,42 @@ class StringFormatter(object):
     def format(self, x, pos):
         return self.fn(x)
 
-def plot_stable_frames(ax, df, sensitivity_parameter):
+def plot_stable_frames(ax, df, sensitivity_parameter, colormap, mode='mean'):
     """
     """
-    # bootstrap for each method
-    bootstrapped_df = []
-    for bootstrap_sample in range(num_bootstrap_samples):
-        estimand = df.sample(subset_size, replace=True, random_state=rng)[y].to_numpy()
-        if mode == "median":
-            estimate = np.median(estimand)
-        elif mode == "mean":
-            estimate = np.mean(estimand)
-        else:
-            raise NotImplementedError
-        bootstrapped_df[x].append(x_val)
-        bootstrapped_df[h].append(h_val)
-        bootstrapped_df[y].append(estimate)
+    x_val = df[sensitivity_parameter].unique().item()
 
+    # bootstrap
+    rng = np.random.RandomState(1)
+    bootstrapped_df = {
+        'method': [],
+        'r': []
+    }
 
-    # plot
+    for method in df['method'].unique():
+        r = []
+        tmp_df = df[df['method'] == method]
+        for bootstrap_sample in range(NUM_BOOTSTRAP_SAMPLES):
+            estimand = tmp_df.sample(SUBSET_SIZE, replace=True, random_state=rng)['r'].to_numpy()
+            if mode == "median":
+                estimate = np.median(estimand)
+            elif mode == "mean":
+                estimate = np.mean(estimand)
+            else:
+                raise NotImplementedError
+            bootstrapped_df['method'].append(method)
+            bootstrapped_df['r'].append(estimate)
+            r.append(estimate)
+
+        # ax.errorbar(x=x_val, y=np.mean(r), yerr=np.std(r), color=colormap[method], fmt='-o')
+        scale = int(f"{x_val:.2E}".split("E")[-1][1:])
+        parts = ax.violinplot(r, positions=[x_val], showmeans=False, widths=0.5 * (10 ** -scale))
+        for pc in parts['bodies']:
+            pc.set_facecolor(colormap[method])
+            pc.set_edgecolor('black')
+            pc.set_alpha(0.5)
+        # ax.boxplot(x=r, positions=[x_val], showfliers=False, widths=0.1)
+    return ax
 
 
 def find_stable_frames(df):
@@ -153,7 +174,7 @@ def find_stable_frames(df):
         stable_point (float): number of `effective_contacts` where `NO_TRACING_METHOD` has `r` of 1.2
     """
     assert NO_TRACING_METHOD in df['method'].unique(), f"{NO_TRACING_METHOD} not found in methods "
-    assert len(df[SENSITIVITY_PARAMETERS].unique()) == 1, "same sensitivity parameters expected"
+    assert df.groupby(SENSITIVITY_PARAMETERS).size().reset_index().shape[0] == 1, "same sensitivity parameters expected"
 
     selector = df['method'] == NO_TRACING_METHOD
     x = df[selector]['effective_contacts'].to_numpy()
@@ -179,13 +200,12 @@ def plot_and_save_grid_sensitivity_analysis(results, path, plot_advantage=False)
     methods_and_base_confs = results.groupby(['method', 'intervention_conf_name']).size().index
     labelmap = get_labelmap(methods_and_base_confs, path)
     colormap = get_colormap(methods_and_base_confs, path)
-    # INTERPOLATION_FN = GPRFit
     ALL_METHODS = OTHER_METHODS
     ALL_METHODS += [] if plot_advantage else [REFERENCE_METHOD, NO_TRACING_METHOD]
 
     # find if only specific folders (methods) need to be plotted
     plot_these_methods = load_plot_these_methods_config(path)
-    fig, axs = plt.subplots(nrows=len(SCENARIOS_NAME), ncols=len(SENSITIVITY_PARAMETERS), figsize=(27, 18), sharex='col', sharey=True, dpi=DPI)
+    fig, axs = plt.subplots(nrows=len(SCENARIOS_NAME), ncols=len(SENSITIVITY_PARAMETERS), figsize=(27, 18), sharex='col', sharey=True, dpi=DPI, constrained_layout=True)
 
     # set row and column headers
     for col, name in enumerate(SENSITIVITY_PARAMETERS):
@@ -201,17 +221,16 @@ def plot_and_save_grid_sensitivity_analysis(results, path, plot_advantage=False)
         tmp_ax.set_yticks([])
 
     # plot all
-    for j, scenario in enumerate(SCENARIOS_NAME):
+    for j, scenario in enumerate(SCENARIOS_NAME[:1]):
         # scenario specific results
         idx = SCENARIO_PARAMETERS_IDX[scenario]
         SCENARIO_PARAMETERS = [SENSITIVITY_PARAMETER_RANGE[param]['values'][idx] for param in SENSITIVITY_PARAMETERS]
-        scenario_df = results[results[SENSITIVITY_PARAMETERS] == SCENARIO_PARAMETERS]
+        scenario_df = results[(results[SENSITIVITY_PARAMETERS] == SCENARIO_PARAMETERS).all(1)]
 
-        breakpoint()
         stable_frames_scenario_df, stable_point_scenario = find_stable_frames(scenario_df)
 
-        for ax in axs[j, :]:
-            plot_stable_frames(ax, stable_frames_scenario_df, index=j)
+        for i, ax in enumerate(axs[j, :]):
+            plot_stable_frames(ax, stable_frames_scenario_df, SENSITIVITY_PARAMETERS[i], colormap)
 
         for i, parameter in enumerate(SENSITIVITY_PARAMETERS):
             values = SENSITIVITY_PARAMETER_RANGE[parameter]['values']
@@ -222,12 +241,13 @@ def plot_and_save_grid_sensitivity_analysis(results, path, plot_advantage=False)
             for param_index, value in enumerate(values):
                 tmp_params = copy.deepcopy(SCENARIO_PARAMETERS)
                 tmp_params[i] = value
-                df = results[results[SENSITIVITY_PARAMETERS] == tmp_params]
+                df = results[(results[SENSITIVITY_PARAMETERS] == tmp_params).all(1)]
 
                 cell_methods = df['method'].unique()
                 for method in no_effect_on_methods:
                     if method not in cell_methods:
                         tmp_df = stable_frames_scenario_df[stable_frames_scenario_df['method'] == method]
+                        tmp_df[parameter] = value
                         df = pd.concat([df, tmp_df], axis=0)
 
                 if NO_TRACING_METHOD not in cell_methods:
@@ -235,39 +255,33 @@ def plot_and_save_grid_sensitivity_analysis(results, path, plot_advantage=False)
                 else:
                     stable_frames_df, stable_point = find_stable_frames(df)
 
-                plot_stable_frames(ax, stable_frames_df, index=param_index)
-
-    # spacing between plots
-    plt.subplots_adjust(left=0.125, wspace=0.2, hspace=0.2, bottom=0.15)
+                plot_stable_frames(ax, stable_frames_df, parameter, colormap)
 
     # legends
     legends = []
     for method in ALL_METHODS:
         method_label = labelmap[method]
         color = colormap[method]
-        legends.append(Line2D([0, 1], [0, 0], color=color, linestyle="-", label=method_label))
+        legends.append(Line2D([0, 1], [0, 0], color=color, linestyle="-", label=method_label, linewidth=3))
 
-    # adoption_rates = [get_adoption_rate_label_from_app_uptake(uptake_rate) for uptake_rate in uptake_rates]
-    # if len(uptake_rates) > 1:
-    #     for k in range(len(adoption_rates)):
-    #         legends.append(Line2D([0, 1], [0, 0], color="black", linestyle=LINESTYLES[k], label=adoption_rates[k]))
-
-    lgd = fig.legend(handles=legends, ncol=len(legends), fontsize=30, loc="lower center", fancybox=True, bbox_to_anchor=(0.5, -0.03, 0, 0.5))
+    lgd = fig.legend(handles=legends, ncol=len(legends), fontsize=30, loc="lower center", fancybox=True, bbox_to_anchor=(0.5, 0), bbox_transform=fig.transFigure)
 
     # ylim
-    # y_min = np.min([np.min(ax.get_ylim()) for ax in axs.flatten()])
-    # y_max = np.max([np.max(ax.get_ylim()) for ax in axs.flatten()])
-    # _ = [ax.set_ylim(y_min, y_max) for ax in axs.flatten()]
+    y_min = np.min([np.min(ax.get_ylim()) for ax in axs.flatten()])
+    y_max = np.max([np.max(ax.get_ylim()) for ax in axs.flatten()])
+    _ = [ax.set_ylim(y_min, y_max) for ax in axs.flatten()]
 
     ref = 0.0 if plot_advantage else 1.0
-    for ax in axs.flatten():
-        ax.plot(ax.get_xlim(),  [ref, ref],  linestyle=":", color="gray", linewidth=2)
+    for j in range(len(SCENARIOS_NAME)):
+        for i, parameter in enumerate(SENSITIVITY_PARAMETERS):
+            ax = axs[j, i]
+            ax = add_bells_and_whistles(ax, x_ticks=SENSITIVITY_PARAMETER_RANGE[parameter]['values'])
+            ax.plot(ax.get_xlim(),  [ref, ref],  linestyle=":", color="gray", linewidth=2)
 
     # save
-    fig.tight_layout()
+    fig.tight_layout(rect=[0, 0.08, 1, 1])
     filename = f"grid_sensitivity_deltaR" if plot_advantage else "grid_sensitivity_R"
-    # AR_str = "all" if len(adoption_rates) > 1 else adoption_rates[0]
-    filepath = save_figure(fig, basedir=path, folder="sensitivity", filename=f'{filename}_AR_{AR_str}', bbox_extra_artists=(lgd,), bbox_inches=None)
+    filepath = save_figure(fig, basedir=path, folder="grid_sensitivity", filename=f'{filename}', bbox_extra_artists=(lgd,), bbox_inches='tight')
     print(f"Sensitivity analysis saved at {filepath}")
 
 def run(data, plot_path, compare=None, **kwargs):
@@ -300,44 +314,3 @@ def run(data, plot_path, compare=None, **kwargs):
         results.to_csv(str(filename))
 
     plot_and_save_grid_sensitivity_analysis(results, path=plot_path, plot_advantage=False)
-    # plot_and_save_grid_sensitivity(results, path=plot_path, plot_advantage=True)
-
-
-    # uptake_key_filepath = folder_name / "uptake_keys.csv"
-    # if use_extracted_data:
-        # uptake_keys = pd.read_csv(str(uptake_key_filepath))['uptake'].tolist()
-    # else:
-        # app_based_methods, other_methods, uptake_keys = split_methods_and_check_validity(data)
-        # pd.DataFrame(uptake_keys, columns=['uptake']).to_csv(str(uptake_key_filepath))
-
-    # all_uptake_data = pd.DataFrame()
-    # ## data preparation
-    # for uptake in uptake_keys:
-    #     adoption_rate = get_adoption_rate_label_from_app_uptake(uptake)
-    #     extracted_data_filepath = folder_name / f"full_extracted_data_AR_{adoption_rate}.csv"
-    #     if not use_extracted_data:
-    #         no_app_df = pd.DataFrame([])
-    #         for method in other_methods:
-    #             key = list(data[method].keys())[0]
-    #             no_app_df = pd.concat([no_app_df, _extract_data(data[method][key], method)], axis='index', ignore_index=True)
-    #
-    #         all_data = deepcopy(no_app_df)
-    #         for method in app_based_methods:
-    #             all_data = pd.concat([all_data, _extract_data(data[method][uptake], method)], axis='index', ignore_index=True)
-    #
-    #         all_data['uptake_rate'] = uptake
-    #         all_uptake_data = pd.concat([all_uptake_data, all_data], axis=0)
-    #         all_data.to_csv(str(extracted_data_filepath))
-    #     else:
-    #         assert extracted_data_filepath.exists(), f"{extracted_data_filepath} do not exist"
-    #         all_data = pd.read_csv(str(extracted_data_filepath))
-    #         all_uptake_data = pd.concat([all_uptake_data, all_data], axis=0)
-    #
-    #     # plot
-    #     plot_and_save_sensitivity_analysis(all_data, [uptake], path=plot_path, plot_advantage=True)
-    #     plot_and_save_sensitivity_analysis(all_data, [uptake], path=plot_path, plot_advantage=False)
-
-    # plot all
-    # if len(uptake_keys) > 1:
-    #     plot_and_save_sensitivity_analysis(all_uptake_data, uptake_keys, path=plot_path, plot_advantage=True)
-    #     plot_and_save_sensitivity_analysis(all_uptake_data, uptake_keys, path=plot_path, plot_advantage=False)
