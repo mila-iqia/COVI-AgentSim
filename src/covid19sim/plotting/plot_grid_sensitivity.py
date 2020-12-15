@@ -308,7 +308,7 @@ def run(data, plot_path, compare=None, **kwargs):
                     continue
                 print(f"Currently at: {str(subfolder)}.")
                 all_runs = subfolder / "normalized_mobility/plots/normalized_mobility/full_extracted_data_AR_60.csv"
-                assert all_runs.exist(), f"{subfolder.name} hasn't been plotted yet"
+                assert all_runs.exists(), f"{subfolder.name} hasn't been plotted yet"
                 results = pd.concat([results, pd.read_csv(str(all_runs))], axis=0, ignore_index=True)
         results.to_csv(str(filename))
 
