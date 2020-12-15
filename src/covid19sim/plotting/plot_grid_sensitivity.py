@@ -302,7 +302,7 @@ def run(data, plot_path, compare=None, **kwargs):
     else:
         print(f"Plot path: {str(plot_path)}")
         results = pd.DataFrame()
-        for scenario_folder in plot_path.iterdir():
+        for scenario_folder in plot_path.parent.iterdir():
             for subfolder in scenario_folder.iterdir():
                 if "scatter" not in subfolder.name:
                     continue
