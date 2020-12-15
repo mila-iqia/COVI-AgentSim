@@ -14,11 +14,7 @@ from scipy import stats, optimize
 from copy import deepcopy
 from pathlib import Path
 
-# from covid19sim.utils.utils import is_app_based_tracing_intervention
 from covid19sim.plotting.utils import load_plot_these_methods_config
-# from covid19sim.plotting.extract_tracker_metrics import _daily_false_quarantine, _daily_false_susceptible_recovered, _daily_fraction_risky_classified_as_non_risky, \
-#                                 _daily_fraction_non_risky_classified_as_risky, _daily_fraction_quarantine
-# from covid19sim.plotting.extract_tracker_metrics import _mean_effective_contacts, _mean_healthy_effective_contacts, _percentage_total_infected, _positivity_rate
 from covid19sim.plotting.matplotlib_utils import add_bells_and_whistles, save_figure, get_color, get_adoption_rate_label_from_app_uptake, get_intervention_label, \
                                 plot_mean_and_stderr_bands, get_base_intervention, get_labelmap, get_colormap, plot_heatmap_of_advantages
 from covid19sim.plotting.curve_fitting import GPRFit
@@ -185,7 +181,7 @@ def find_stable_frames(df):
     return stable_frames, stable_point
 
 
-def plot_and_save_grid_sensitivity_analysis(results, path, plot_advantage=False):
+def plot_and_save_grid_sensitivity_analysis(results, path):
     """
     Plots and saves grid sensitivity for various SCENARIOS.
 
@@ -201,7 +197,7 @@ def plot_and_save_grid_sensitivity_analysis(results, path, plot_advantage=False)
     labelmap = get_labelmap(methods_and_base_confs, path)
     colormap = get_colormap(methods_and_base_confs, path)
     ALL_METHODS = OTHER_METHODS
-    ALL_METHODS += [] if plot_advantage else [REFERENCE_METHOD, NO_TRACING_METHOD]
+    ALL_METHODS += [REFERENCE_METHOD, NO_TRACING_METHOD]
 
     # find if only specific folders (methods) need to be plotted
     plot_these_methods = load_plot_these_methods_config(path)
@@ -213,7 +209,7 @@ def plot_and_save_grid_sensitivity_analysis(results, path, plot_advantage=False)
         tmp_ax.set_xticks([])
         tmp_ax.set_xlabel(get_sensitivity_label(name), labelpad=LABELPAD, fontsize=LABELSIZE)
 
-    y_label = "$\Delta R$" if plot_advantage else "$R$"
+    y_label = "$R$"
     for row, name in enumerate(SCENARIOS_NAME):
         axs[row, 0].set_ylabel(y_label, labelpad=LABELPAD, fontsize=LABELSIZE, rotation=0)
         tmp_ax = axs[row, -1].twinx()
@@ -271,7 +267,7 @@ def plot_and_save_grid_sensitivity_analysis(results, path, plot_advantage=False)
     y_max = np.max([np.max(ax.get_ylim()) for ax in axs.flatten()])
     _ = [ax.set_ylim(y_min, y_max) for ax in axs.flatten()]
 
-    ref = 0.0 if plot_advantage else 1.0
+    ref = 1.0
     for j in range(len(SCENARIOS_NAME)):
         for i, parameter in enumerate(SENSITIVITY_PARAMETERS):
             ax = axs[j, i]
@@ -280,7 +276,7 @@ def plot_and_save_grid_sensitivity_analysis(results, path, plot_advantage=False)
 
     # save
     fig.tight_layout(rect=[0, 0.08, 1, 1])
-    filename = f"grid_sensitivity_deltaR" if plot_advantage else "grid_sensitivity_R"
+    filename = "grid_sensitivity_R"
     filepath = save_figure(fig, basedir=path, folder="grid_sensitivity", filename=f'{filename}', bbox_extra_artists=(lgd,), bbox_inches='tight')
     print(f"Sensitivity analysis saved at {filepath}")
 
@@ -305,12 +301,14 @@ def run(data, plot_path, compare=None, **kwargs):
         results = pd.read_csv(str(filename))
     else:
         results = pd.DataFrame()
-        for subfolder in plot_path.parent.iterdir():
-            if "scatter" not in subfolder.name:
-                continue
+        for scenario_folder in plot_path.iterdir():
+            for subfolder in scenario_folder.iterdir():
+                if "scatter" not in subfolder.name:
+                    continue
 
-            stable_frame = subfolder / "normalized_mobility/plots/normalized_mobility/full_extracted_data_AR_60.csv"
-            results = pd.concat([results, pd.read_csv(str(stable_frame))], axis=0, ignore_index=True)
+                all_runs = subfolder / "normalized_mobility/plots/normalized_mobility/full_extracted_data_AR_60.csv"
+                assert all_runs.exist(), f"{subfolder.name} hasn't been plotted yet"
+                results = pd.concat([results, pd.read_csv(str(all_runs))], axis=0, ignore_index=True)
         results.to_csv(str(filename))
 
-    plot_and_save_grid_sensitivity_analysis(results, path=plot_path, plot_advantage=False)
+    plot_and_save_grid_sensitivity_analysis(results, path=plot_path)
