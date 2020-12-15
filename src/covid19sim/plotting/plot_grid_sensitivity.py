@@ -135,8 +135,9 @@ def plot_stable_frames(ax, df, sensitivity_parameter, colormap, mode='mean'):
     for method in df['method'].unique():
         r = []
         tmp_df = df[df['method'] == method]
+        subset_size = tmp_df.shape[0]
         for bootstrap_sample in range(NUM_BOOTSTRAP_SAMPLES):
-            estimand = tmp_df.sample(SUBSET_SIZE, replace=True, random_state=rng)['r'].to_numpy()
+            estimand = tmp_df.sample(subset_size, replace=True, random_state=rng)['r'].to_numpy()
             if mode == "median":
                 estimate = np.median(estimand)
             elif mode == "mean":
