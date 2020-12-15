@@ -300,12 +300,13 @@ def run(data, plot_path, compare=None, **kwargs):
     if use_extracted_data:
         results = pd.read_csv(str(filename))
     else:
+        print(f"Plot path: {str(plot_path)}")
         results = pd.DataFrame()
         for scenario_folder in plot_path.iterdir():
             for subfolder in scenario_folder.iterdir():
                 if "scatter" not in subfolder.name:
                     continue
-
+                print(f"Currently at: {str(subfolder)}.")
                 all_runs = subfolder / "normalized_mobility/plots/normalized_mobility/full_extracted_data_AR_60.csv"
                 assert all_runs.exist(), f"{subfolder.name} hasn't been plotted yet"
                 results = pd.concat([results, pd.read_csv(str(all_runs))], axis=0, ignore_index=True)
