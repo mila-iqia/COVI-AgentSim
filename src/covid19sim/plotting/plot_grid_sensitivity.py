@@ -217,7 +217,7 @@ def plot_and_save_grid_sensitivity_analysis(results, path):
         tmp_ax.set_yticks([])
 
     # plot all
-    for j, scenario in enumerate(SCENARIOS_NAME[:1]):
+    for j, scenario in enumerate(SCENARIOS_NAME):
         # scenario specific results
         idx = SCENARIO_PARAMETERS_IDX[scenario]
         SCENARIO_PARAMETERS = [SENSITIVITY_PARAMETER_RANGE[param]['values'][idx] for param in SENSITIVITY_PARAMETERS]
