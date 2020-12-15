@@ -51,8 +51,8 @@ SENSITIVITY_PARAMETER_RANGE ={
         "no-effect":[]
     },
     "BASELINE_P_ASYMPTOMATIC": {
-        "values": [0.20, 0.30, 0.40], # 0.20 0.30 0.40
-        # "values": [0.1475, 0.2525, 0.3575], # asymptomatic-ratio =  0.20 0.30 0.40
+        # "values": [0.20, 0.30, 0.40], # 0.20 0.30 0.40
+        "values": [0.1475, 0.2525, 0.3575], # asymptomatic-ratio =  0.20 0.30 0.40
         "no-effect":[]
     },
     "ALL_LEVELS_DROPOUT": {
