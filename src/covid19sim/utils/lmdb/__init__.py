@@ -8,39 +8,40 @@ import tempfile
 import dill as pickle
 from itertools import islice
 
-class LMDBBaseClass():
+class LMDBBase():
     """
-    Base class that lmdb arrays and sorted maps inherit from
-    :def: type code describes array values' type
+    Base class that lmdb data structure inherit from
+    LMDB is not as performant as MMAP, but it is the appropriate data structure when
+    multiple processes write to the same index as the data is protected against corrupted
+    read/write using its locking mechanism in place.
+    :def: type code describes list values' data type
     :def: byte order describes if string format should be big/little endian
     :def: the format string is the format by which indices in lmdb are serialized to bytes
     please refer to https://docs.python.org/3.8/library/struct.html#format-characters
     for integerkey db of LMDB, one is required to use either 'I' or 'N', equivalent to
     unsigned int and size_t. Also, since we use big endian in order to preserve order
     when using append, we can't rely on native size_t's 'N' to preserve the order for us
-    If we are interested in other types of arrays, the considerations above need to be taken
-    into account when planning
+    If we are interested in other types of data types, the considerations above need to be
+    taken into account when planning
     """
     index_format_string: str='>I' # corresponding to unsigned int in big endian
     parent_temp_dir = os.path.join( tempfile.gettempdir(), 'covi-simulation-lmdb' )
     os.makedirs(parent_temp_dir, exist_ok=True)
 
-    def __init__(self, memory_size: int = 20*1024*1024):
+    def __init__(self, memory_size: int = 20*1024*1024, **kwargs):
         """
         Initializes a lmdb database of given memory size and string format
         for items to be stored in the database
         :param memory_size: the allocated size of the shared memory file in bytes
         """
-        self.path = tempfile.mkdtemp(dir=LMDBBaseClass.parent_temp_dir)
-        self.env, self.db = self._init_db(path=self.path, memory_size=memory_size)
+        self.path = tempfile.mkdtemp(dir=LMDBBase.parent_temp_dir)
+        self._init_db(path=self.path, memory_size=memory_size, **kwargs)
 
-    def _init_db(self, path: str, memory_size: int):
+    def _init_db(self, **kwargs):
         """
-        opens a db in the env and returns env, the db
+        initialize db based on data structure
         """
-        USE_SPARSE_FILES = sys.platform != 'darwin'
-        env = lmdb.Environment(path=self.path, map_size=memory_size, writemap=USE_SPARSE_FILES)
-        return env, env.open_db()
+        raise NotImplemented
 
     def reset(self):
         """
@@ -61,7 +62,7 @@ class LMDBBaseClass():
 
     def __len__(self) -> int:
         """
-        Returns the length of array
+        Returns the length of list
         :returns: the number of items stored in the lmdb database
         """
         with self.env.begin(db=self.db, buffers=True) as txn:
@@ -78,7 +79,7 @@ class LMDBBaseClass():
 
     def iloads(self, index: bytes) -> int:
         """
-        Unpacks index from the bytes object into int
+        Unpacks integer index from the bytes object into int
         :param index: the bytes format of index
         :returns: the int index
         """
@@ -108,16 +109,20 @@ class LMDBBaseClass():
         """
         return pickle.dumps(value)
 
-class LMDBArray(LMDBBaseClass):
+class LMDBList(LMDBBase):
     """
-    Representing an LMDB database holding nested integer valued arrays. Each
-    array is associated with an index (in fact, the index could easily be
-    promoted to any other key type other than int).
-    The arrays are purposed to hold integer values.
-    This type of array is not as performant as MMAP, but it is the appropriate
-    array for multiple processes writing to the same index as only one process
-    can write at a time due to locking mechanism in place.
+    Representing an LMDB database holding a pythonic list interface. Each LMDBList
+    is associated with an integer index. Practically speaking, the index could easily be
+    promoted to any other key type other than int by overriding idumps and iloads.
     """
+
+    def _init_db(self, path: str, memory_size: int):
+        """
+        opens a db in the env and returns env, the db
+        """
+        USE_SPARSE_FILES = sys.platform != 'darwin'
+        self.env = lmdb.Environment(path=self.path, map_size=memory_size, writemap=USE_SPARSE_FILES)
+        self.db = env.open_db()
 
     def __getitem__(self, index: int) -> typing.Tuple[int]:
         """
@@ -163,7 +168,7 @@ class LMDBArray(LMDBBaseClass):
 
     def __contains__(self, value: typing.Any):
         """
-        checks if array contains value
+        checks if list contains value
         :returns: True is value is contained and False otherwise
         """
         for values_tuple in self:
@@ -182,18 +187,25 @@ class LMDBArray(LMDBBaseClass):
             index = txn.stat(db=self.db)['entries']
             return txn.put(db=self.db, key=self.idumps(index), value=self.vdumps(value), append=True, overwrite=True)
 
+class LMDBSortedDict(LMDBBase):
+    """
+    Representing an LMDB database holding a pythonic dictionary interface
+    it allows both multiple index values if duplicate_key_allowed=True is
+    passed, i.e., each index can have multiple values (in such case dusport=True)
+    """
 
-class LMDBSortedMap(LMDBBaseClass):
-    """
-    Similar to LMDBArray, but allowing multiple index values as well as non-consecutive indices
-    """
-    def _init_db(self, path: str, memory_size: int):
+    def _init_db(self, path: str, memory_size: int, duplicate_key_allowed=True):
         """
-        opens a db in the env and returns env, the db
+        opens a db in the env and returns env, the db 
         """
         USE_SPARSE_FILES = sys.platform != 'darwin'
-        env = lmdb.Environment(path=self.path, map_size=memory_size, writemap=USE_SPARSE_FILES, max_dbs=1)
-        return env, env.open_db(b"covi-simulation-lmdb-subdb", dupsort=True)
+        self.dupsort = duplicate_key_allowed
+        if duplicate_key_allowed:
+            self.env = lmdb.Environment(path=self.path, map_size=memory_size, writemap=USE_SPARSE_FILES, max_dbs=1)
+            self.db = self.env.open_db(b"covi-simulation-lmdb-subdb", dupsort=True)
+        else:
+            self.env = lmdb.Environment(path=self.path, map_size=memory_size, writemap=USE_SPARSE_FILES)
+            self.db = self.env.open_db()
 
     def __getitem__(self, index: int) -> typing.Tuple[int]:
         """
@@ -272,14 +284,20 @@ class LMDBSortedMap(LMDBBaseClass):
                 yield self.vloads(value)
 
     def _get_values(self, cur) -> typing.List:
-        values: List[typing.Any] = []
-        for value_buf in cur.iternext_dup(keys=False, values=True):
-            values.append(self.vloads(value_buf))
-        return values
+        """
+        Get values at certain cursor
+        """
+        if self.dupsort:
+            values: List[typing.Any] = []
+            for value in cur.iternext_dup(keys=False, values=True):
+                values.append(self.vloads(value))
+            return values
+        else:
+            return self.vloads(cur.value())
 
     def replace(self, old_index: int, new_index: int, value: typing.Any):
         """
-        Removes given key, value pair
+        Removes given key, value pair and inserts it as a new index, value
         """
         values_bytes = self.vdumps(value)
         with self.env.begin(db=self.db, write=True) as txn:
@@ -288,9 +306,9 @@ class LMDBSortedMap(LMDBBaseClass):
 
     def first(self, return_values: bool=False) -> typing.Tuple[int, typing.List]:
         """
-        Gets the first/smallest key in the sorted map
+        Gets the first/smallest key in the sorted dictionary
         :param return_values: toggles if the returning tuple should include the values as well
-        :returns: smallest key (and its corresponding values) or raises a KeyError if sorted map is empty
+        :returns: smallest key (and its corresponding values) or raises a KeyError if sorted dictionary is empty
         """
         # read transaction
         with self.env.begin(db=self.db) as txn:
@@ -307,7 +325,7 @@ class LMDBSortedMap(LMDBBaseClass):
 
     def pop(self, index: int) -> typing.Tuple[int, typing.List]:
         """
-        Pops the values of an index from the sorted map
+        Pops the values of an index from the sorted dictionary
         :returns: list of all the values if any exists else returns empty list
         """
         # read and write transaction
@@ -323,13 +341,13 @@ class LMDBSortedMap(LMDBBaseClass):
 
     def pop_all(self) -> typing.List[typing.Tuple]:
         """
-        Pops all pairs of key-values from the sorted map and empties the main db
-        :returns: all key-values stored in the sorted map
+        Pops all pairs of key-values from the sorted dictionary and empties the main db
+        :returns: all key-values stored in the sorted dictionary
         """
         items: typing.List[typing.Tuple] = []
         with self.env.begin(db=self.db, write=True) as txn:
             cur = txn.cursor(self.db)
-            while cur.next_nodup(): # or next()
+            while cur.next(): # or next_nodup()
                 index: int = self.iloads(cur.key())
                 items.append((index, self._get_values(cur)))
             txn.drop(db=self.db, delete=False)
@@ -337,14 +355,16 @@ class LMDBSortedMap(LMDBBaseClass):
 
     def append(self, index: int, value: typing.Any):
         """
-        Modifies the item located at given index. This method overwrites the item
-        located at the given index
-        :param index: the index whose item we want to set
+        Appends a value to the index. In case that db is opened without duplicate key raises AttributeError
+        :param index: the index whose item we want to append
         :param value: the item to be appended at index, can be either int or a tuple
         :returns (if not suppressed): True if the transaction was successful, False otherwise
         """
-        with self.env.begin(db=self.db, write=True) as txn:
-            return txn.put(db=self.db, key=self.idumps(index), value=self.vdumps(value), overwrite=True, dupdata=True)
+        if self.dupsort:
+            with self.env.begin(db=self.db, write=True) as txn:
+                return txn.put(db=self.db, key=self.idumps(index), value=self.vdumps(value), overwrite=True, dupdata=True)
+        else:
+            raise AttributeError("Append for duplicate key is prohibited")
 
     def get(self, index: int, default: typing.Any=None):
         """

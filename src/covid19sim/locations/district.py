@@ -68,7 +68,6 @@ class District:
         """
         self.district_id = district_id
         self.households = households
-        # self.humans = LMDBArray()
         self.humans = humans
         self.stores = stores
         self.senior_residences = senior_residences

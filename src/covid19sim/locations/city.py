@@ -23,7 +23,7 @@ from covid19sim.distribution_normalization.dist_utils import get_rec_level_trans
 from covid19sim.interventions.tracing_utils import get_tracing_method
 from covid19sim.locations.test_facility import TestFacility
 from covid19sim.inference.server_utils import TransformerInferenceEngine
-from covid19sim.utils.lmdb import LMDBSortedMap
+from covid19sim.utils.lmdb import LMDBSortedDict
 from covid19sim.utils.mmap import MMAPArray
 from covid19sim.locations.district import District
 from covid19sim.locations.location import Location
@@ -96,7 +96,8 @@ class City:
 
         self.humans = MMAPArray(num_items=n_people, item_size=1024*1024)
         self.human_next_activities = MMAPArray(num_items=n_people, item_size=2*1024*1024)
-        self.district_queues = LMDBSortedMap()
+        self.human_behaviour_levels = LMDBSortedDict(duplicate_key_allowed=False)
+        self.district_queues = LMDBSortedDict()
         self.hd = {}
         self.households = OrderedSet()
         self.age_histogram = None
@@ -120,7 +121,7 @@ class City:
         # database diffs between their last timeslot and their current timeslot; instead, we
         # will give them the global mailbox object (a dictionary) and have them 'pop' all
         # messages they consume from their own (simulation-only!) personal mailbox
-        self.global_mailbox: SimulatorMailboxType = LMDBSortedMap()
+        self.global_mailbox: SimulatorMailboxType = LMDBSortedDict()
 
         # create a global inference engine
         self.inference_engine = None # TransformerInferenceEngine(conf)

@@ -2,7 +2,7 @@ import simpy
 import datetime
 from time import sleep
 from ._native import BaseEnvironment
-from covid19sim.utils.lmdb import LMDBSortedMap
+from covid19sim.utils.lmdb import LMDBSortedDict
 
 
 class Environment(BaseEnvironment, simpy.Environment):
@@ -27,7 +27,7 @@ class Environment(BaseEnvironment, simpy.Environment):
             simpy.Environment.__init__(self, self.now)
             self.initial_timestamp = initial_time
 
-        self.sorted_map = LMDBSortedMap()
+        self.sorted_map = LMDBSortedDict()
     
     def init_timed_barrier(self, district_id, allowed_drift, sleep_interval):
         self.district_id = district_id
