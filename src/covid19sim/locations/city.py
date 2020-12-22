@@ -106,10 +106,10 @@ class City:
         # self.tracker.track_static_info()
 
         log("Initializing humans ...", self.logfile)
-        self.initialize_humans_and_locations()
+        humans = self.initialize_humans_and_locations()
 
         log("Computing their preferences", self.logfile)
-        self._compute_preferences()
+        self._compute_preferences(humans)
         self.tracing_method = None
 
         # GAEN summary statistics that enable the individual to determine whether they should send their info
@@ -125,6 +125,10 @@ class City:
 
         # create a global inference engine
         self.inference_engine = None # TransformerInferenceEngine(conf)
+
+        # put humans in shared memory
+        for human in humans:
+            self.humans[human.human_id] = human
 
         # split the location objects such as households between district objects
         self.num_districts = self.conf['NUM_DISTRICTS']
@@ -145,27 +149,28 @@ class City:
         )
 
         # initalize human objects
-        self.humans = get_humans_with_age(self, self.age_histogram, self.conf, self.rng)
+        humans = get_humans_with_age(self, self.age_histogram, self.conf, self.rng)
 
         # find best grouping to put humans together in a house
         # /!\ households are created at the time of allocation.
         # self.households is initialized within this function through calls to `self.create_location`
-        self.humans = assign_households_to_humans(self.humans, self, self.conf, self.logfile)
+        humans = assign_households_to_humans(humans, self, self.conf, self.logfile)
 
         # assign workplace to humans
         # self.`location_type`s are created in this function
-        self.humans, self = create_locations_and_assign_workplace_to_humans(self.humans, self, self.conf, self.logfile)
+        humans, self = create_locations_and_assign_workplace_to_humans(humans, self, self.conf, self.logfile)
 
         # prepare schedule
         log("Preparing schedule ... ")
         start_time = datetime.datetime.now()
         # TODO - parallelize this for speedup in initialization
-        for human in self.humans:
+        for human in humans:
             human.mobility_planner.initialize()
 
         timedelta = (datetime.datetime.now() - start_time).total_seconds()
         log(f"Schedule prepared (Took {timedelta:2.3f}s)", self.logfile)
-        self.hd = {human.name: human for human in self.humans}
+        self.hd = {human.name: human for human in humans}
+        return humans
 
     def add_to_test_queue(self, human):
         self.covid_testing_facility.add_to_test_queue(human)
@@ -177,12 +182,12 @@ class City:
         for h in self.humans:
             Event.log_static_info(self.conf['COLLECT_LOGS'], self, h, self.env.timestamp)
 
-    def _compute_preferences(self):
+    def _compute_preferences(self, humans):
         """
         Compute preferred distribution of each human for park, stores, etc.
         /!\ Modifies each human's stores_preferences and parks_preferences
         """
-        for h in self.humans:
+        for h in humans:
             h.stores_preferences = [(compute_distance(h.household, s) + 1e-1) ** -1 for s in self.stores]
             h.parks_preferences = [(compute_distance(h.household, s) + 1e-1) ** -1 for s in self.parks]
 
