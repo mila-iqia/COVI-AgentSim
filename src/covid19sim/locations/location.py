@@ -4,6 +4,7 @@ and many other attributes.
 """
 
 import simpy
+import typing
 import datetime
 from orderedset import OrderedSet
 from collections import namedtuple
@@ -665,7 +666,7 @@ class Household(Location):
         cls,
         location_type: str,
         location_id: str,
-        household_residents: List[int]
+        household_residents: typing.List[int]
         ):
         """
         Find and return household object from city by name
