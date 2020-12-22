@@ -98,7 +98,6 @@ class District:
         )
 
         self.hd = {}
-        self.households = OrderedSet()
         self.age_histogram = relativefreq2absolutefreq(
             bins_fractions={(x[0], x[1]): x[2] for x in self.conf.get('P_AGE_REGION')},
             n_elements=self.n_people,
@@ -526,6 +525,7 @@ class District:
                     human.check_covid_symptom_start()
                     human.check_covid_recovery()
                     human.fill_infectiousness_history_map(current_day)
+                    self.city.human_behaviour_levels[human.human_id] = human.intervened_behavior.update_and_get_true_behavior_level()
                     alive_humans.append(human)
 
             # now, run app-related stuff (risk assessment, message preparation, ...)

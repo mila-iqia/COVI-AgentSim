@@ -321,7 +321,7 @@ class IntervenedBehavior(object):
             and self.conf['MAKE_HOUSEHOLD_BEHAVE_SAME_AS_MAX_RISK_RESIDENT']
         ):
             # Note: some `human`s in recovery phase who haven't reset their test_results yet will also come here
-            return max(resident.intervened_behavior.update_and_get_true_behavior_level() for resident in self.human.household.residents)
+            return max(self.human.city.human_behaviour_levels[resident_human_id] for resident_human_id in self.human.household.residents)
 
         return self.update_and_get_true_behavior_level()
 

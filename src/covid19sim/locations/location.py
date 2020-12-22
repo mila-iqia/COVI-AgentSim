@@ -423,7 +423,7 @@ class Location(simpy.Resource):
         x_environment =  self.rng.random() < p_transmission
 
         # track infection related stats
-        human.city.district.tracker.track_infection(source="environment",
+        self.district.tracker.track_infection(source="environment",
                                     from_human=None,
                                     to_human=human,
                                     location=self,
@@ -599,7 +599,7 @@ class Household(Location):
             human (covid19sim.human.Human): `human` who needs to be added to the index cases of the household
             trigger (str): reason for adding to the index case.
         """
-        assert human in self.residents, f"{human} does not reside at {self}. Trigger: {trigger}, residents: {self.residents}"
+        assert human.human_id in self.residents, f"{human} does not reside at {self}. Trigger: {trigger}, residents: {self.residents}"
 
         # (happens only once at the firs trigger of `human`)
         if human not in self.index_cases:

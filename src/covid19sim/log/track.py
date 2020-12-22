@@ -450,10 +450,10 @@ class Tracker(object):
         for i, house in enumerate(self.district.households):
             sizes[i] = len(house.residents)
             multigenerationals[i] = house.allocation_type.multigenerational
-            only_adults[i] = min(h.age for h in house.residents) > self.conf['MAX_AGE_CHILDREN']
+            only_adults[i] = min(self.district.city.humans[h_id].age for h_id in house.residents) > self.conf['MAX_AGE_CHILDREN']
             # solo dwellers
             if len(house.residents) == 1:
-                solo_ages.append(house.residents[0].age)
+                solo_ages.append(self.district.city.humans[house.residents[0]].age)
 
         ## counts
         log(f"Total houses: {n_houses}", self.logfile)

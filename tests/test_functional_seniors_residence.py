@@ -76,7 +76,7 @@ def test_functional_seniors_residence():
 
         for human in humans:
             human.assign_household(sr)
-            sr.residents.append(human)
+            sr.residents.append(human.human_id)
             human.mobility_planner.initialize()
 
         # pick some humans and make sure they cannot recover (for later checks)

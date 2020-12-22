@@ -72,7 +72,7 @@ class HeuristicTest(unittest.TestCase):
 
     def test_handle_tests_positive(self):
         house = Household(env=self.env, rng=self.rng, conf=self.conf, area=10, name="household:1", location_type="HOUSEHOLD", lat=0, lon=0, capacity=5)
-        house.residents = [self.human1]
+        house.residents = [self.human1.human_id]
         self.human1.household = house
         self.human1.set_test_info("lab", "positive")
         self.env = Env(self.start_time + datetime.timedelta(days=3))
@@ -84,7 +84,7 @@ class HeuristicTest(unittest.TestCase):
 
     def test_handle_tests_positive_lt_2_days(self):
         house = Household(env=self.env, rng=self.rng, conf=self.conf, area=10, name="household:1", location_type="HOUSEHOLD", lat=0, lon=0, capacity=5)
-        house.residents = [self.human1]
+        house.residents = [self.human1.human_id]
         self.human1.household = house
         self.human1.set_test_info("lab", "positive")
         self.env = Env(self.start_time + datetime.timedelta(days=1))
@@ -96,7 +96,7 @@ class HeuristicTest(unittest.TestCase):
 
     def test_handle_tests_negative_3_days(self):
         house = Household(env=self.env, rng=self.rng, conf=self.conf, area=10, name="household:1", location_type="HOUSEHOLD", lat=0, lon=0, capacity=5)
-        house.residents = [self.human1]
+        house.residents = [self.human1.human_id]
         self.human1.household = house
         self.human1.set_test_info("lab", "negative")
 
@@ -224,7 +224,7 @@ class HeuristicTest(unittest.TestCase):
     def test_negative_test_and_symptoms(self):
         # Should hit "recovered" and just default to lab results
         house = Household(env=self.env, rng=self.rng, conf=self.conf, area=10, name="household:1", location_type="HOUSEHOLD", lat=0, lon=0, capacity=5)
-        house.residents = [self.human1]
+        house.residents = [self.human1.human_id]
         self.human1.household = house
         self.human1.set_test_info("lab", "negative")
 
@@ -321,7 +321,7 @@ class HeuristicTest(unittest.TestCase):
     def test_handle_tests_negative_8_days(self):
         # The scenario is you get a negative lab test 8 days ago, but you got a moderate risk message two days ago.
         house = Household(env=self.env, rng=self.rng, conf=self.conf, area=10, name="household:1", location_type="HOUSEHOLD", lat=0, lon=0, capacity=5)
-        house.residents = [self.human1]
+        house.residents = [self.human1.human_id]
         self.human1.household = house
         self.human1.set_test_info("lab", "negative")
 
@@ -346,7 +346,7 @@ class HeuristicTest(unittest.TestCase):
         # [0.9, 0.9, 0.9, 0.9, 0.20009698, 0.20009698, 0.20009698, 0.20009698, 0.9]
         self.env = Env(self.start_time + datetime.timedelta(days=8))
         house = Household(env=self.env, rng=self.rng, conf=self.conf, area=10, name="household:1", location_type="HOUSEHOLD", lat=0, lon=0, capacity=5)
-        house.residents = [self.human1]
+        house.residents = [self.human1.human_id]
         self.human1.household = house
         self.human1.env = self.env
         self.human1.risk_history_map = {1: 0.9, 2: 0.9, 3: 0.9, 4: 0.9, 5: 0.9, 6: 0.9, 7: 0.9, 8: 0.9, 9: 0.9}

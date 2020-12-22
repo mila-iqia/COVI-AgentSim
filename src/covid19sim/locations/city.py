@@ -215,7 +215,7 @@ class City:
         for ind in range(self.num_districts):
             district_humans_ind = []
             for housed_location in district_households[ind] + district_senior_residences[ind]:
-                district_humans_ind.extend(housed_location.residents)
+                district_humans_ind.extend(housed_location.humans)
             district_humans.append(district_humans_ind)
 
         district_stores = split_locs(self.stores)

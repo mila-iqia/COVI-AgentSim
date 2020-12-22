@@ -64,7 +64,7 @@ def test_track_serial_interval():
 
         for human in humans:
             human.assign_household(sr)
-            sr.residents.append(human)
+            sr.residents.append(human.human_id)
 
         city.humans = humans
         city.initWorld()

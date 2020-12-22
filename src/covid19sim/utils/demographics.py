@@ -815,7 +815,7 @@ def assign_households_to_humans(humans, city, conf, logfile=None):
         assert len(allocated_humans) == city.n_people, "assigned humans and total population do not add up"
         assert sum(len(val) for x,val in unassigned_humans.items()) == 0, "there are unassigned humans in the list"
         assert len(city.households) > 0, "no house generated"
-        assert all(not all(human.age < MAX_AGE_CHILDREN for human in house.residents) for house in city.households), "house with only children allocated"
+        assert all(not all(human.age < MAX_AGE_CHILDREN for human in house.humans) for house in city.households), "house with only children allocated"
 
     # assign area to houses
     HOUSEHOLD_PROPORTION_AREA = conf['HOUSEHOLD_PROPORTION_AREA']
@@ -1263,7 +1263,7 @@ def _assign_household(human, res, allocated_humans):
     """
     assert human not in allocated_humans, f"reassigning household to human:{human}"
     human.assign_household(res)
-    res.residents.append(human)
+    res.residents.append(human.human_id)
     allocated_humans.append(human)
     return allocated_humans
 

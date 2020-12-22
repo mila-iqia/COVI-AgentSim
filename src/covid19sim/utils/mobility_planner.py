@@ -246,7 +246,7 @@ class MobilityPlanner(object):
         MAX_AGE_CHILDREN_WITHOUT_SUPERVISION = self.conf['MAX_AGE_CHILDREN_WITHOUT_PARENT_SUPERVISION']
         if self.human.age <= MAX_AGE_CHILDREN_WITHOUT_SUPERVISION:
             self.follows_adult_schedule = True
-            self.adults_in_house = [h for h in self.human.household.residents if h.age > MAX_AGE_CHILDREN_WITHOUT_SUPERVISION]
+            self.adults_in_house = [h for h in self.human.household.humans if h.age > MAX_AGE_CHILDREN_WITHOUT_SUPERVISION]
             if len(self.adults_in_house) > 0:
                 self.adult_to_follow_today = self.rng.choice(self.adults_in_house, size=1).item()
                 self.adult_to_follow_today.mobility_planner.inverted_supervision.add(self.human)
@@ -467,7 +467,7 @@ class MobilityPlanner(object):
                 household.add_resident(self.human, index_case_history)
                 #
                 MAX_AGE_CHILDREN_WITHOUT_SUPERVISION = self.conf['MAX_AGE_CHILDREN_WITHOUT_PARENT_SUPERVISION']
-                self.adults_in_house = [h for h in self.human.household.residents if h.age > MAX_AGE_CHILDREN_WITHOUT_SUPERVISION]
+                self.adults_in_house = [h for h in self.human.household.humans if h.age > MAX_AGE_CHILDREN_WITHOUT_SUPERVISION]
                 adults = _can_supervise_kid(self.adults_in_house)
 
 
