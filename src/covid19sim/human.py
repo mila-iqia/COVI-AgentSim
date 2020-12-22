@@ -1365,7 +1365,7 @@ class Human(BaseHuman):
         """
         Reconstruct human and its attributes
         """
-        city: City = Location.city
+        city: City = Location.district.city
         env: Env = city.env
         
         return cls(env, city, human_id, age, rng, conf)

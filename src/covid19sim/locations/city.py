@@ -26,12 +26,12 @@ from covid19sim.inference.server_utils import TransformerInferenceEngine
 from covid19sim.utils.lmdb import LMDBSortedDict
 from covid19sim.utils.mmap import MMAPArray
 from covid19sim.locations.district import District
-from covid19sim.locations.location import Location
 
 
 if typing.TYPE_CHECKING:
     from covid19sim.human import Human
     from covid19sim.utils.env import Env
+    from covid19sim.locations.location import Location
 
 SimulatorMailboxType = typing.Dict[RealUserIDType, typing.List[UpdateMessage]]
 
@@ -186,7 +186,7 @@ class City:
             h.stores_preferences = [(compute_distance(h.household, s) + 1e-1) ** -1 for s in self.stores]
             h.parks_preferences = [(compute_distance(h.household, s) + 1e-1) ** -1 for s in self.parks]
 
-    def location_district_id(self, location: Location) -> int:
+    def location_district_id(self, location: "Location") -> int:
         """
         maps location to the district id containing the location
         """
@@ -201,7 +201,7 @@ class City:
         # parent_pid = os.getpid()
         self.district = None
 
-        def split_locs(locs: typing.List[Location]):
+        def split_locs(locs: typing.List["Location"]):
             district_locs = [[] for i in range(self.num_districts)]
             for loc in locs:
                 district_locs[self.location_district_id(loc)].append(loc)

@@ -21,6 +21,7 @@ from covid19sim.inference.message_utils import UIDType, UpdateMessage, RealUserI
 from covid19sim.distribution_normalization.dist_utils import get_rec_level_transition_matrix
 from covid19sim.interventions.tracing_utils import get_tracing_method
 from covid19sim.locations.test_facility import TestFacility
+from covid19sim.locations.location import Location
 
 
 if typing.TYPE_CHECKING:
@@ -66,6 +67,7 @@ class District:
             conf (dict): yaml configuration of the experiment
             logfile (str): filepath where the console output and final tracked metrics will be logged. Prints to the console only if None.
         """
+        Location.district = self
         self.district_id = district_id
         self.households = households
         self.humans = humans

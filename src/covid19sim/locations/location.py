@@ -54,6 +54,7 @@ class Location(simpy.Resource):
     Class representing generic locations used in the simulator
     """
     id_counter = 0
+    district = None
 
     def __init__(self, env, rng, conf, area, name, location_type, lat, lon, capacity):
         """
@@ -499,7 +500,7 @@ class Location(simpy.Resource):
         try:
             # locations present in current district
             return next(
-                loc for loc in getattr(cls.city.district, f"{location_type.lower()}s") \
+                loc for loc in getattr(cls.district, f"{location_type.lower()}s") \
                 if loc.id == location_id
                 )
         except StopIteration:
@@ -672,7 +673,7 @@ class Household(Location):
         try:
             # look through households present in current district
             return next(
-                loc for loc in getattr(cls.city.district, f"{location_type.lower()}s") \
+                loc for loc in getattr(cls.district, f"{location_type.lower()}s") \
                 if loc.id == location_id
                 )
         except StopIteration:

@@ -114,7 +114,6 @@ def create_locations_and_assign_workplace_to_humans(humans, city, conf, logfile=
         humans (list): a list of `human`s with assigned workplaces
         city (covid19sim.locations.city.City): city object containing the locations and humans in it.
     """
-    Location.city = city
     MIN_WORKING_AGE = conf['MIN_WORKING_AGE']
     # P_EMPLOYED_BY_AGEGROUP = conf['P_EMPLOYED_BY_AGE']
 
