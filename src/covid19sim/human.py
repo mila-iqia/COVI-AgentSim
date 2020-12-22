@@ -978,9 +978,9 @@ class Human(BaseHuman):
                 #     yield request
                 #     yield self.env.process(self.transition_to(next_activity))
 
-                assert abs(self.env.timestamp - next_activity.start_time).seconds == 0, f"start times do not align...\n{self}\n{self.intervened_behavior.quarantine_timestamp}\n{self.intervened_behavior.quarantine_reason}\ncurrent timestamp:{self.env.timestamp}\nnext_activity:{next_activity}"
+                assert abs(self.env.timestamp - next_activity.start_time).seconds == 0, f"start times do not align...\n{self}\ncurrent timestamp:{self.env.timestamp}\nnext_activity:{next_activity}" #\n{self.intervened_behavior.quarantine_timestamp}\n{self.intervened_behavior.quarantine_reason}"
                 yield self.env.process(self.transition_to(next_activity))
-                assert abs(self.env.timestamp - next_activity.end_time).seconds == 0, f"end times do not align...\n{self}\n{self.intervened_behavior.quarantine_timestamp}\n{self.intervened_behavior.quarantine_reason}\ncurrent timestamp:{self.env.timestamp}\nnext_activity:{next_activity}"
+                assert abs(self.env.timestamp - next_activity.end_time).seconds == 0, f"end times do not align...\n{self}\ncurrent timestamp:{self.env.timestamp}\nnext_activity:{next_activity}" #\n{self.intervened_behavior.quarantine_timestamp}\n{self.intervened_behavior.quarantine_reason}"
 
                 previous_activity, next_activity = next_activity, self.mobility_planner.get_next_activity()
                 
