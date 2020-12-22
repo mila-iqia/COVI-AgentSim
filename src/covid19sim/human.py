@@ -955,9 +955,13 @@ class Human(BaseHuman):
             next_activity = self.mobility_planner.get_next_activity()
         while True:
 
-            #
+            # have human die in its household's district to be removed from household residents there
             if next_activity.human_dies:
-                yield self.env.process(self.expire())
+                household_district_id = self.city.location_district_id(human.household)
+                if self.city.district.district_id == household_district_id:
+                    yield self.env.process(self.expire())
+                else:
+                    return next_activity, household_district_id
 
             #
             next_location = next_activity.location
@@ -1010,11 +1014,11 @@ class Human(BaseHuman):
     ############################## MOBILITY ##################################
     @property
     def lat(self):
-        return self.location.lat if self.location else self.household.lat
+        return self.location.lat #if self.location else self.household.lat
 
     @property
     def lon(self):
-        return self.location.lon if self.location else self.household.lon
+        return self.location.lon #if self.location else self.household.lon
 
     @property
     def obs_lat(self):
