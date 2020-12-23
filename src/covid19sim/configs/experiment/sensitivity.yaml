@@ -42,7 +42,7 @@ BASELINE_P_ASYMPTOMATIC:
 
 PROPORTION_LAB_TEST_PER_DAY:
   sample: uniform
-  from: [0.0015, 0.005]
+  from: [0.0005, 0.005]
   memory: True
 
 P_DROPOUT_SYMPTOM:
