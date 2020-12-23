@@ -238,7 +238,7 @@ def plot_and_save_sensitivity_analysis(results, uptake_rates, path, plot_advanta
         o, p = SENSITIVITY_PARAMETER_RANGE[parameter]['range']
         str_formatter = SENSITIVITY_PARAMETER_RANGE[parameter].get("str_formatter", lambda x: f"{100 * x: 2.0f}")
         (l, u) = (o, p) if o < p else (p, o)
-        xs = np.linspace(l, u, 100)
+        xs = np.linspace(l, u, 20)
 
         for j, scenario in enumerate(SCENARIOS):
             ax = axs[j, i]
@@ -253,7 +253,7 @@ def plot_and_save_sensitivity_analysis(results, uptake_rates, path, plot_advanta
                         partial_x = deepcopy(scenario)
                         partial_x[i] = value
                         c0, error = find_c(fitted_fns[uptake_rate][NO_TRACING_METHOD], partial_x, target_r=REFERENCE_R)
-                        assert error < 1e-3, f"Error in minimization: {error}"
+                        assert error < 1e-2, f"Error in minimization: {error}"
 
                         # find delta r
                         x_input = np.array([[c0] + partial_x])
