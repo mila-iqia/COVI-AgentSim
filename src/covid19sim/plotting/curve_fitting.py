@@ -373,7 +373,7 @@ class GPRFit(FittedFn):
 
 def bootstrap_series(series, num_bootstrap_samples=100, seed=0, mode="mean"):
     """
-    Implements bootstrapping to sample underlying population of means.
+    Implements bootstrapping of a time series to sample underlying population of means.
 
     Args:
         series (np.array):  of size (M, T) where M is the number of series in to sample from
@@ -421,4 +421,23 @@ def ewma(data, window):
     mult = data*pw0*scale_arr
     cumsums = mult.cumsum()
     out = offset + cumsums*scale_arr[::-1]
+    return out
+
+def bootstrap(pd_series, num_bootstrap_samples=100):
+    """
+    Bootstraps from the given data to estimate distribution
+
+    Args:
+        pd_series (pd.Series):
+
+    Returns:
+        (list)
+    """
+    rng = np.random.RandomState(1)
+
+    out = []
+    for _ in range(num_bootstrap_samples):
+        estimand = pd_series.sample(len(pd_series), replace=True, random_state=rng).to_numpy()
+        estimate = np.mean(estimand)
+        out.append(estimate)
     return out

@@ -513,3 +513,27 @@ def get_base_intervention(intervention_conf):
     if hhld_behavior:
         return f"{x}"
     return f"{x}_wo_hhld"
+
+def get_sensitivity_label(name):
+    """
+    Return the label for sensitivty parameter for the plot
+
+    Args:
+        name (str): name of config parameter
+
+    Returns:
+        (str): name of the x-label
+    """
+    if name == "ALL_LEVELS_DROPOUT":
+        return "Daily Behavior Adherence\n(% of app users)"
+
+    if name == "PROPORTION_LAB_TEST_PER_DAY":
+        return "Daily Testing Capacity\n(% of population)"
+
+    if name == "P_DROPOUT_SYMPTOM":
+        return "Quality of Self-diagnosis\n(% of daily symptoms)"
+
+    if name == "BASELINE_P_ASYMPTOMATIC": #????
+        return "Asymptomaticity\n(% of population)"
+
+    raise ValueError(f"Invalid name: {name}")

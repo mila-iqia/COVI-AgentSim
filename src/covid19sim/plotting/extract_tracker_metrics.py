@@ -382,7 +382,7 @@ def _percentage_total_infected(data):
     Returns:
         (float): Fraction of population infected by the end of the simulation
     """
-    return sum(data['cases_per_day'])/data['n_humans']
+    return 100 * sum(data['cases_per_day'])/data['n_humans']
 
 def _positivity_rate(data):
     """

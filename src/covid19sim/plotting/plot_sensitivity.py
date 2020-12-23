@@ -19,7 +19,7 @@ from covid19sim.plotting.extract_tracker_metrics import _daily_false_quarantine,
                                 _daily_fraction_non_risky_classified_as_risky, _daily_fraction_quarantine
 from covid19sim.plotting.extract_tracker_metrics import _mean_effective_contacts, _mean_healthy_effective_contacts, _percentage_total_infected, _positivity_rate
 from covid19sim.plotting.matplotlib_utils import add_bells_and_whistles, save_figure, get_color, get_adoption_rate_label_from_app_uptake, get_intervention_label, \
-                                plot_mean_and_stderr_bands, get_base_intervention, get_labelmap, get_colormap, plot_heatmap_of_advantages
+                                plot_mean_and_stderr_bands, get_base_intervention, get_labelmap, get_colormap, plot_heatmap_of_advantages, get_sensitivity_label
 from covid19sim.plotting.curve_fitting import LinearFit, GPRFit
 from covid19sim.plotting.plot_normalized_mobility_scatter import get_metric_label
 
@@ -65,31 +65,6 @@ REFERENCE_METHOD = "bdt1"
 OTHER_METHODS = ["heuristicv4"]
 
 # our scenario - 0.02, 0.001, 0.20, 0.23
-
-def get_sensitivity_label(name):
-    """
-    Return the label for sensitivty parameter for the plot
-
-    Args:
-        name (str): name of config parameter
-
-    Returns:
-        (str): name of the x-label
-    """
-    if name == "ALL_LEVELS_DROPOUT":
-        return "Daily Behavior Adherence\n(% of app users)"
-
-    if name == "PROPORTION_LAB_TEST_PER_DAY":
-        return "Daily Testing Capacity\n(% of population)"
-
-    if name == "P_DROPOUT_SYMPTOM":
-        return "Quality of Self-diagnosis\n(% of daily symptoms)"
-
-    if name == "ASYMPTOMATIC_RATIO":
-        return "Asymptomaticity\n(% of population)"
-
-    raise ValueError(f"Invalid name: {name}")
-
 
 def get_scenarios(parameter_ranges):
     """

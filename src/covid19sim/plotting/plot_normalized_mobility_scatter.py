@@ -54,7 +54,7 @@ def get_metric_label(label):
     if label == "r":
         if USE_MATH_NOTATION:
             return "$\hat{R}$"
-        return "R"
+        return "$R$"
 
     if label == "effective_contacts":
         return "# Contacts per day per human ($C$)"
