@@ -20,7 +20,6 @@ n_people: 3000
 simulation_days: 50
 
 INTERVENTION_DAY: 0
-PROPORTION_LAB_TEST_PER_DAY: 0.001
 MAKE_HOUSEHOLD_BEHAVE_SAME_AS_MAX_RISK_RESIDENT: True
 
 outdir: /home/nrahaman/python/covi-simulator/exp/neodr2
@@ -28,7 +27,7 @@ weights_dir: /home/nrahaman/python/ctt/exp/SHIPMENTS
 zip_outdir: true
 delete_outdir: true
 use_tmpdir: false
-n_search: 240
+n_search: 1100
 n_runs_per_search: 1
 USE_INFERENCE_SERVER: false
 env_name: covid38
@@ -55,7 +54,7 @@ GLOBAL_MOBILITY_SCALING_FACTOR:
 
 APP_UPTAKE:
   sample: uniform # uniform in range:
-  from: [0.4215, 0.8415]
+  from: [0.25, 0.85]
 
 P_CAREFUL_PERSON:
   sample: uniform # uniform in range:
@@ -64,10 +63,6 @@ P_CAREFUL_PERSON:
 init_fraction_sick:
   sample: uniform
   from: [0.002, 0.006]
-
-P_DROPOUT_SYMPTOM:
-  sample: uniform
-  from: [0.1, 0.6]
 
 P_DROPIN_SYMPTOM:
   sample: uniform
@@ -81,9 +76,21 @@ QUARANTINE_DROPOUT_HOUSEHOLD:
   sample: uniform
   from: [0.02, 0.05]
 
+BASELINE_P_ASYMPTOMATIC:
+  sample: uniform
+  from: [0.09, 0.4]
+
+PROPORTION_LAB_TEST_PER_DAY:
+  sample: uniform
+  from: [0.0005, 0.005]
+
+P_DROPOUT_SYMPTOM:
+  sample: uniform
+  from: [0.1, 0.6]
+
 ALL_LEVELS_DROPOUT:
   sample: uniform
-  from: [0.01, 0.05]
+  from: [0.01, 0.2]
 
 seed: # for sole reproducibility purposes
   sample: range # uniform int choice

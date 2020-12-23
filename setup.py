@@ -12,7 +12,7 @@ with open('requirements.txt', 'r') as f:
 setup(
     name                 = "covid19sim",
     version              = "0.0.0.dev0",
-    url                  = "https://github.com/mila-iqia/covi-simulator",
+    url                  = "https://github.com/mila-iqia/COVI-AgentSim",
     description          = "Simulation of COVID-19 spread.",
     long_description     = "Simulation of COVID-19 spread.",
     classifiers          = [
@@ -36,10 +36,10 @@ setup(
     install_requires     = requirements,
     extras_require       = {
         "ctt": [
-            "ctt @ git+https://github.com/mila-iqia/covi-machine-learning@bunchacrunch#egg=ctt",
+            "ctt @ git+https://github.com/mila-iqia/COVI-ML@bunchacrunch#egg=ctt",
         ],
         "ctt-tf": [
-            "ctt[tensorflow] @ git+https://github.com/mila-iqia/covi-machine-learning@master#egg=ctt"
+            "ctt[tensorflow] @ git+https://github.com/mila-iqia/COVI-ML@master#egg=ctt"
         ],
     },
     packages             = find_packages("src"),

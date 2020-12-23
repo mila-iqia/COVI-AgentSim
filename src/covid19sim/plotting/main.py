@@ -299,16 +299,17 @@ def main(conf):
     cache = None
     use_cache = conf.get("use_cache", True)
     load_cache = conf.get("load_cache", use_cache)
-    if load_cache:
-        assert cache_path.exists(), f"Cache {str(cache_path)} doesn't exist."
 
     if (
         len(plots) == 1
-        and "grid_sensitvity" in plots
+        and "grid_sensitivity" in plots
     ):
         use_cache = True
         load_cache = False
         data = {}
+
+    if load_cache:
+        assert cache_path.exists(), f"Cache {str(cache_path)} doesn't exist."
 
     if use_cache:
         data = {}
