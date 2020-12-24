@@ -37,8 +37,8 @@ INTERPOLATION_FN = GPRFit
 NUM_BOOTSTRAP_SAMPLES=1000
 SUBSET_SIZE=100
 
-CONTACT_RANGE = [6 - 0.5, 6 + 0.5]
-# CONTACT_RANGE=None # [x1, x2] if provided GPRFit is not used i.e `TARGET_R_FOR_NO_TRACING` and `MARGIN` are not used
+# CONTACT_RANGE = [6 - 0.5, 6 + 0.5]
+CONTACT_RANGE=None # [x1, x2] if provided GPRFit is not used i.e `TARGET_R_FOR_NO_TRACING` and `MARGIN` are not used
 TARGET_R_FOR_NO_TRACING = 1.2 # find the performance of simulations around (defined by MARGIN) the number of contacts where NO_TRACING has R of 1.2
 MARGIN = 0.5
 
@@ -205,6 +205,9 @@ def plot_and_save_grid_sensitivity_analysis(results, path, y_metric):
         SCENARIO_PARAMETERS = [SENSITIVITY_PARAMETER_RANGE[param]['values'][idx] for param in SENSITIVITY_PARAMETERS]
         scenario_df = results[(results[SENSITIVITY_PARAMETERS] == SCENARIO_PARAMETERS).all(1)]
 
+        if scenario_df.shape[0] == 0:
+            continue
+
         stable_frames_scenario_df, stable_point_scenario = find_stable_frames(scenario_df, contact_range=CONTACT_RANGE)
 
         for i, parameter in enumerate(SENSITIVITY_PARAMETERS):
@@ -219,6 +222,9 @@ def plot_and_save_grid_sensitivity_analysis(results, path, y_metric):
                 tmp_params = copy.deepcopy(SCENARIO_PARAMETERS)
                 tmp_params[i] = value
                 df = results[(results[SENSITIVITY_PARAMETERS] == tmp_params).all(1)]
+
+                if df.shape[0] == 0:
+                    continue
 
                 cell_methods = df['method'].unique()
                 for method in no_effect_on_methods:
@@ -257,7 +263,7 @@ def plot_and_save_grid_sensitivity_analysis(results, path, y_metric):
 
     # legends
     legends = []
-    for method in [NO_TRACING_METHOD, REFERENCE_METHOD] + OTHER_METHODS:
+    for method in results['method'].unique():
         method_label = labelmap[method]
         color = colormap[method]
         legends.append(Line2D([0, 1], [0, 0], color=color, linestyle="-", label=method_label, linewidth=3))
@@ -323,8 +329,9 @@ def run(data, plot_path, compare=None, **kwargs):
                     continue
                 print(f"Currently at: {str(subfolder)}.")
                 all_runs = subfolder / "normalized_mobility/plots/normalized_mobility/full_extracted_data_AR_60.csv"
-                assert all_runs.exists(), f"{subfolder.name} hasn't been plotted yet"
-                results = pd.concat([results, pd.read_csv(str(all_runs))], axis=0, ignore_index=True)
+                # assert all_runs.exists(), f"{subfolder.name} hasn't been plotted yet"
+                if all_runs.exists():
+                    results = pd.concat([results, pd.read_csv(str(all_runs))], axis=0, ignore_index=True)
         results.to_csv(str(filename))
 
     plot_and_save_grid_sensitivity_analysis(results, path=plot_path, y_metric='r')
