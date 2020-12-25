@@ -420,22 +420,13 @@ class District:
             else:
                 pass
 
-    def run(self, duration, outfile):
+    def run_humans_and_clock(self):
         """
-        Run the City.
-        Several daily tasks take place here.
-        Examples include - (1) modifying behavior of humans based on an intervention
-        (2) gathering daily statistics on humans
-
-        Args:
-            duration (int): duration of a step, in seconds.
-            outfile (str): may be None, the run's output file to write to
-
-        Yields:
-            simpy.Timeout
+        running human processes, and clock synchronization process
         """
+
         def change_allowed_drift(env, start_time, new_drift):
-            yield env.timeout(self.env.now - self.start_time.timestamp())
+            yield env.timeout(env.now - start_time.timestamp())
             env.allowed_drift=new_drift
 
         # loosen up the allowed drift after the greater of intervention time and covid spread time
@@ -455,9 +446,26 @@ class District:
                 )
             )
 
-        # initialize human processes along at the start of the district process
-        for human in self.humans:
-            self.env.process(self.new_human(human))
+        while True:
+            # fetch new_humans
+            for human_id in self.city.district_queues.pop(self.env.district_id):
+                self.env.process(self.new_human(human_id))
+            yield self.env.timeout(max(self.env.allowed_drift,1))
+
+    def run(self, duration, outfile):
+        """
+        Run the City.
+        Several daily tasks take place here.
+        Examples include - (1) modifying behavior of humans based on an intervention
+        (2) gathering daily statistics on humans
+
+        Args:
+            duration (int): duration of a step, in seconds.
+            outfile (str): may be None, the run's output file to write to
+
+        Yields:
+            simpy.Timeout
+        """
 
         humans_notified, infections_seeded = False, False
         last_day_idx = 0
@@ -515,10 +523,6 @@ class District:
             self.covid_testing_facility.clear_test_queue()
 
             alive_humans = []
-
-            # fetch new_humans
-            for human_id in self.city.district_queues.pop(self.env.district_id):
-                self.env.process(self.new_human(human_id))
 
             # run non-app-related-stuff for all humans here (test seeking, infectiousness updates)
             for human in self.humans:

@@ -318,6 +318,8 @@ def simulate(
     # Initiate city process, which runs every hour
     env.process(city.district.run(SECONDS_PER_HOUR, outfile))
 
+    env.process(city.district.run_humans_and_clock())
+
     # initiate humans
     # for human in city.humans:
     #     env.process(human.run())
