@@ -584,7 +584,7 @@ class Household(Location):
         Args:
             human (covid19sim.human.Human): `human` who needs to be added to the index cases of the household
         """
-        assert human in self.residents, "non-resident being added to index_cases"
+        assert human.human_id in self.residents, "non-resident being added to index_cases"
         self.index_cases[human] = {
             "reasons": [],
             "suggested_quarantine_end_timestamp": None
