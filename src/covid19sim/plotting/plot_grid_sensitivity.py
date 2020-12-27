@@ -44,7 +44,8 @@ MARGIN = 0.5
 
 METRICS = ['r', 'effective_contacts', 'healthy_contacts']
 # SENSITIVITY_PARAMETERS = ['ASYMPTOMATIC_RATIO', 'ALL_LEVELS_DROPOUT', 'P_DROPOUT_SYMPTOM',  'PROPORTION_LAB_TEST_PER_DAY'] #????
-SENSITIVITY_PARAMETERS = ['BASELINE_P_ASYMPTOMATIC', 'ALL_LEVELS_DROPOUT', 'P_DROPOUT_SYMPTOM',  'PROPORTION_LAB_TEST_PER_DAY']
+# SENSITIVITY_PARAMETERS = ['BASELINE_P_ASYMPTOMATIC', 'ALL_LEVELS_DROPOUT', 'P_DROPOUT_SYMPTOM',  'PROPORTION_LAB_TEST_PER_DAY']
+SENSITIVITY_PARAMETERS = ['ALL_LEVELS_DROPOUT', 'P_DROPOUT_SYMPTOM',  'PROPORTION_LAB_TEST_PER_DAY']
 XMETRICS = ['effective_contacts'] + SENSITIVITY_PARAMETERS
 
 # (optimistic, mdoerate, pessimistic)
@@ -61,7 +62,8 @@ SENSITIVITY_PARAMETER_RANGE ={
         "no-effect":[]
     },
     "ALL_LEVELS_DROPOUT": {
-        "values": [0.02, 0.08, 0.16], # 0.02 0.08 0.16
+        # "values": [0.02, 0.08, 0.16], # 0.02 0.08 0.16
+        "values": [0.10, 0.30, 0.50],
         "no-effect":["post-lockdown-no-tracing"]
     },
     "P_DROPOUT_SYMPTOM": {
@@ -138,9 +140,10 @@ def plot_stable_frames(ax, df, y_metric, sensitivity_parameter, colormap):
             # pc.set_edgecolor('black')
             # pc.set_alpha(0.5)
         # ax.boxplot(x=r, positions=[x_val], showfliers=False, widths=0.1)
+    hue_order = [x for x in HUE_ORDER if x in bootstrapped_df['method'].unique()]
     ax = sns.violinplot(x=sensitivity_parameter, y=y_metric, hue='method', palette=colormap,
                     data=bootstrapped_df, inner="quartiles", cut=2, ax=ax, width=0.8,
-                    hue_order=HUE_ORDER, order=sorted(df[sensitivity_parameter].unique()))
+                    hue_order=hue_order, order=sorted(df[sensitivity_parameter].unique()))
     ax.legend().remove()
     ax.set(xlabel=None)
     # ax.set(xticklabels=[])
