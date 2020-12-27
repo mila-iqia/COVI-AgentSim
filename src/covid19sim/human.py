@@ -89,7 +89,7 @@ class Human(BaseHuman):
         self.workplace = None  # we sometimes modify human's workplace to WFH if in quarantine, then go back to work when released
         self.household = None  # assigned later
         self.location = None  # assigned later
-        
+
         # Logging data
         self._events = []
 
@@ -109,7 +109,7 @@ class Human(BaseHuman):
         self.proba_report_age_and_sex = self.conf["P_REPORT_AGE_AND_SEX_TO_APP"]
 
         # Illness Properties
-        self.is_asymptomatic = self.rng.rand() < self.conf.get("BASELINE_P_ASYMPTOMATIC") - (self.age - 50) * 0.5 / 100  # e.g. 70: baseline-0.1, 20: baseline+0.15
+        self.is_asymptomatic = self.rng.rand() < self.conf['P_ASYMPTOMATIC_BY_AGE'][self.age_bin_width_10.index][2] * self.conf['BASELINE_P_ASYMPTOMATIC']
         self.infection_ratio = None  # Ratio that helps make asymptomatic people less infectious than symptomatic. see `ASYMPTOMATIC_INFECTION_RATIO` in core.yaml
         self.cold_timestamp = None  # time when this person was infected with cold
         self.flu_timestamp = None  # time when this person was infected with flu

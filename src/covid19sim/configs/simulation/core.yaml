@@ -337,9 +337,24 @@ INFECTION_RADIUS: 200 # cms
 INFECTION_DURATION: 900 # seconds
 
 # ASYMPTOMATIC
-BASELINE_P_ASYMPTOMATIC: 0.18 # p-asymptomatic [Mizumoto 2020 https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7078829/] probability of never showing symptoms yet testing positive
 MILD_INFECTION_RATIO: 0.48 # &prob_infectious_mild [Luo 2020 https://www.medrxiv.org/content/10.1101/2020.03.24.20042606v1]
 ASYMPTOMATIC_INFECTION_RATIO: 0.29 # &prob_infectious_asymp [Luo 2020 https://www.medrxiv.org/content/10.1101/2020.03.24.20042606v1]
+
+# proportion of asymptomatic population in each age group
+# Ref: https://www.nature.com/articles/s41591-020-0962-9/figures/8
+P_ASYMPTOMATIC_BY_AGE: [
+  [0, 9, 0.29],
+  [10, 19, 0.21],
+  [20, 29, 0.27],
+  [30, 39, 0.33],
+  [40, 49, 0.40],
+  [50, 59, 0.49],
+  [60, 69, 0.63],
+  [70, 79, 0.69],
+  [80, 110, 0.69]
+]
+
+BASELINE_P_ASYMPTOMATIC: 0.50 # to scale the above means and vary asymptomatic population
 
 # /!\ (no-source) Infectiousness multipliers
 INFECTIOUSNESS_NORMALIZATION_CONST: 1.45
