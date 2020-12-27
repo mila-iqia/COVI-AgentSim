@@ -8,7 +8,7 @@ APP_UPTAKE = 0.8415
 MAX_JOBS = 1000
 BATCHSIZE = 210
 SLEEP_SECONDS = 1800
-logfile = "sensitivity_runs_log.txt"
+logfile = None
 INTERVENTIONS = ["post-lockdown-no-tracing", "bdt1"]
 # INTERVENTIONS = ["plot"]
 
@@ -37,15 +37,6 @@ SCENARIO_PARAMETERS_IDX={
     "Moderate": 1,
     "Pessimistic": 2
 }
-
-def total_jobs():
-    command = "squeue -u pratgupt | wc -l"
-    stream = os.popen(command)
-    output = stream.read()
-    n_jobs = eval(output.strip()) - 1
-    log(f"jobs running currently - {n_jobs}", logfile)
-    return n_jobs
-
 
 def run_sensitivity(INTERVENTION, BASELINE_P_ASYMPTOMATIC, P_DROPOUT_SYMPTOM, ALL_LEVELS_DROPOUT, PROPORTION_LAB_TEST_PER_DAY, n_jobs=None):
     if INTERVENTION == "plot":
