@@ -123,6 +123,7 @@ class TestFacility(object):
             score += self.conf['P_TEST_MILD']
 
         if human._test_recommended:
-            score += self.conf['P_TEST_RECOMMENDED']
+            score += self.conf['P_TEST_RECOMMENDED'] * human.intervened_behavior.follow_recommendation_today
+            # print(f"{human} - follows today: { human.intervened_behavior.follow_recommendation_today} score:{score}")
 
         return score
