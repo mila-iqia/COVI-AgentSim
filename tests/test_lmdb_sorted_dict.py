@@ -20,6 +20,11 @@ class TestLMDBSortedDict(unittest.TestCase):
         self.map[5]= 888
         self.map[4]= (777, 999)
         self.map[3]= (777, 888, 999)
+        self.map[2]= None
+        self.assertEqual(len(self.map), 4)
+        self.map.append(2, 1234)
+        self.assertEqual(len(self.map), 5)
+        self.assertEqual(self.map.pop(2), [1234, None])
         self.assertEqual(len(self.map), 3)
         del self.map[3]
         self.assertEqual(len(self.map), 2)
@@ -98,6 +103,9 @@ class TestLMDBSortedDictNoDup(unittest.TestCase):
         self.map[5]= 888
         self.map[4]= (777, 999)
         self.map[3]= (777, 888, 999)
+        self.map[2]= None
+        self.assertEqual(len(self.map), 4)
+        self.assertEqual(self.map.pop(2), [None])
         self.assertEqual(len(self.map), 3)
         del self.map[3]
         self.assertEqual(len(self.map), 2)

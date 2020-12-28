@@ -323,21 +323,23 @@ class LMDBSortedDict(LMDBBase):
                 else:
                     return index
 
-    def pop(self, index: int) -> typing.Tuple[int, typing.List]:
+    def pop(self, index: int) -> typing.List[typing.Any]:
         """
         Pops the values of an index from the sorted dictionary
         :returns: list of all the values if any exists else returns empty list
         """
         # read and write transaction
+        key = self.idumps(index)
+        values: List[typing.Any] = []
         with self.env.begin(db=self.db, write=True) as txn:
             cur = txn.cursor(self.db)
-            if not cur.set_key(self.idumps(index)):
-                return [] # raise KeyError(index)
-            else:
-                values = self._get_values(cur)
-                cur.prev()
-                cur.delete(dupdata=True)
-                return values
+            while True:
+                value = cur.pop(key)
+                if value is not None:
+                    values.append(self.vloads(value))
+                else:
+                    break
+        return values
 
     def pop_all(self) -> typing.List[typing.Tuple]:
         """
