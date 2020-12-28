@@ -486,14 +486,16 @@ class Location(simpy.Resource):
         """
         Helper function for pickling
         """
-        args = (self.location_type, self.id)
+        args = (self.location_type, self.id, self.opening_time, self.closing_time)
         return (self._reconstruct, args)
 
     @classmethod
     def _reconstruct(
         cls,
         location_type: str,
-        location_id: str
+        location_id: str,
+        opening_time: int,
+        closing_time: int
         ):
         """
         Find and return location object from city by name
@@ -509,6 +511,8 @@ class Location(simpy.Resource):
             loc_instance = cls.__new__(cls)
             loc_instance.location_type = location_type
             loc_instance.id = location_id
+            loc_instance.opening_time = opening_time
+            loc_instance.closing_time = closing_time
             return loc_instance
  
 
