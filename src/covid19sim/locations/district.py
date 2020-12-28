@@ -446,9 +446,15 @@ class District:
                 )
             )
 
+        # empty humans as it is going to be overriden from the self district queue
+        for human in self.humans:
+            self.city.district_queues.append(human.human_id, self.district_id)
+            self.city.human_next_activities[human.human_id] = None
+        self.humans = []
+
         while True:
             # fetch new_humans
-            for human_id in self.city.district_queues.pop(self.env.district_id):
+            for human_id in self.city.district_queues.pop(self.district_id):
                 self.env.process(self.new_human(human_id))
             yield self.env.timeout(max(self.env.allowed_drift,1))
 
