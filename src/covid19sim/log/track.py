@@ -768,15 +768,16 @@ class Tracker(object):
 
         # behavior
         # /!\ `intervened_behavior.is_quarantined()` has dropout
-        x = np.array([(human.has_app, human.intervened_behavior.is_under_quarantine, human.is_susceptible or human.is_removed) for human in self.district.humans])
-        n_quarantined_app_users = (x[:, 0] * x[:, 1]).sum()
-        n_quarantined = x[:, 1].sum()
-        n_false_quarantined = (x[:, 1] * x[:, 2]).sum()
-        n_false_quarantined_app_users = (x[:, 0] * x[:, 1] * x[:, 2]).sum()
-        self.daily_quarantine['app_users'].append(n_quarantined_app_users)
-        self.daily_quarantine['all'].append(n_quarantined)
-        self.daily_quarantine['false_app_users'].append(n_false_quarantined_app_users)
-        self.daily_quarantine['false_all'].append(n_false_quarantined)
+        if len(self.district.humans):
+            x = np.array([(human.has_app, human.intervened_behavior.is_under_quarantine, human.is_susceptible or human.is_removed) for human in self.district.humans])
+            n_quarantined_app_users = (x[:, 0] * x[:, 1]).sum()
+            n_quarantined = x[:, 1].sum()
+            n_false_quarantined = (x[:, 1] * x[:, 2]).sum()
+            n_false_quarantined_app_users = (x[:, 0] * x[:, 1] * x[:, 2]).sum()
+            self.daily_quarantine['app_users'].append(n_quarantined_app_users)
+            self.daily_quarantine['all'].append(n_quarantined)
+            self.daily_quarantine['false_app_users'].append(n_false_quarantined_app_users)
+            self.daily_quarantine['false_all'].append(n_false_quarantined)
 
     def compute_severity(self, symptoms):
         severity = 0
@@ -1269,8 +1270,8 @@ class Tracker(object):
         # percent of population tested
         n_tests = len(self.test_monitor)
         n_people = len(self.district.humans)
-        percent_tested = 1.0 * n_tests/n_people
-        daily_percent_test_results = [sum(x.values())/n_people for x in self.test_results_per_day.values()]
+        percent_tested = 1.0 * n_tests/(n_people + 1e-6)
+        daily_percent_test_results = [sum(x.values())/(n_people + 1e-6) for x in self.test_results_per_day.values()]
 
         # positivity rate
         n_positives = sum(x["positive"] for x in self.test_results_per_day.values())
@@ -1718,7 +1719,7 @@ class Tracker(object):
         # recover GLOBAL_MOBILITY_SCALING_FACTOR
         scale_factor = 0 if all_contacts == 0 else all_effective_contacts / all_contacts
 
-        return all_effective_contacts / (days * self.n_people), all_healthy_effective_contacts / all_healthy_days, scale_factor
+        return all_effective_contacts / (days * self.n_people + 1e-6), all_healthy_effective_contacts / (all_healthy_days + 1e-6), scale_factor
 
     def write_metrics(self):
         """
@@ -1847,12 +1848,13 @@ class Tracker(object):
         log(str_to_print, self.logfile)
 
         str_to_print = "Social network properties (degree statistics) - "
-        degrees = np.array([len(h.known_connections) for h in self.district.humans])
-        str_to_print += f"mean {np.mean(degrees): 2.2f} | "
-        str_to_print += f"std. {np.std(degrees): 2.2f} | "
-        str_to_print += f"min {min(degrees): 2.2f} | "
-        str_to_print += f"max {max(degrees): 2.2f} | "
-        str_to_print += f"median {np.median(degrees): 2.2f}"
+        if len(self.district.humans):
+            degrees = np.array([len(h.known_connections) for h in self.district.humans])
+            str_to_print += f"mean {np.mean(degrees): 2.2f} | "
+            str_to_print += f"std. {np.std(degrees): 2.2f} | "
+            str_to_print += f"min {min(degrees): 2.2f} | "
+            str_to_print += f"max {max(degrees): 2.2f} | "
+            str_to_print += f"median {np.median(degrees): 2.2f}"
         log(str_to_print, self.logfile)
 
         # start time of activities
@@ -1875,7 +1877,7 @@ class Tracker(object):
         self.compute_test_statistics(self.logfile)
 
         log("\n######## Effective Contacts & % infected #########", self.logfile)
-        p_infected = 100 * sum(self.cases_per_day) / len(self.district.humans)
+        p_infected = 100 * sum(self.cases_per_day) / (len(self.district.humans) + 1e-6)
         effective_contacts, healthy_effective_contacts, scale_factor = self.compute_effective_contacts()
         p_transmission = self.compute_probability_of_transmission()
         log(f"Eff. contacts: {effective_contacts:5.3f} \t Healthy Eff. Contacts {healthy_effective_contacts:5.3f} \th % infected: {p_infected: 2.3f}%", self.logfile)
