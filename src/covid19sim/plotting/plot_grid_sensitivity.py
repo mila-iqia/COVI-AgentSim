@@ -132,21 +132,12 @@ def plot_stable_frames(ax, df, y_metric, sensitivity_parameter, colormap):
 
             bootstrapped_df = pd.concat([bootstrapped_df, tmp_df], axis=0, ignore_index=True)
 
-        # ax.errorbar(x=x_val, y=np.mean(r), yerr=np.std(r), color=colormap[method], fmt='-o')
-        # scale = int(f"{x_val:.2E}".split("E")[-1][1:])
-        # parts = ax.violinplot(y_means, positions=[x_val], showmeans=False, widths=0.5 * (10 ** -scale))
-        # for pc in parts['bodies']:
-            # pc.set_facecolor(colormap[method])
-            # pc.set_edgecolor('black')
-            # pc.set_alpha(0.5)
-        # ax.boxplot(x=r, positions=[x_val], showfliers=False, widths=0.1)
     hue_order = [x for x in HUE_ORDER if x in bootstrapped_df['method'].unique()]
     ax = sns.violinplot(x=sensitivity_parameter, y=y_metric, hue='method', palette=colormap,
                     data=bootstrapped_df, inner="quartiles", cut=2, ax=ax, width=0.8,
                     hue_order=hue_order, order=sorted(df[sensitivity_parameter].unique()))
     ax.legend().remove()
     ax.set(xlabel=None)
-    # ax.set(xticklabels=[])
     ax.grid(True, which="minor", axis='x')
     ax.set(ylabel=None)
     return ax
@@ -219,7 +210,6 @@ def plot_and_save_grid_sensitivity_analysis(results, path, y_metric):
             str_formatter = SENSITIVITY_PARAMETER_RANGE[parameter].get("str_formatter", lambda x: f"{100 * x: 2.0f}")
 
             ax_df = pd.DataFrame()
-            ax_df = pd.concat([ax_df, stable_frames_scenario_df], ignore_index=True, axis=0)
             ax = axs[j, i]
             for param_index, value in enumerate(values):
                 tmp_params = copy.deepcopy(SCENARIO_PARAMETERS)
