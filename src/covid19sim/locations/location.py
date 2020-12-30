@@ -558,7 +558,7 @@ class Household(Location):
 
     def add_to_index_case(self, human, trigger):
         """
-        Index cases for household are defined as those residents wwho have reason to quarantine.
+        Index cases for household are defined as those residents who have reason to quarantine.
         All others are secondary cases who needs to quarantine because of index cases.
 
         Adds `human` to index cases.
