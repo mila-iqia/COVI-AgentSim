@@ -64,7 +64,7 @@ SENSITIVITY_PARAMETER_RANGE ={
     "ALL_LEVELS_DROPOUT": {
         # "values": [0.02, 0.08, 0.16], # 0.02 0.08 0.16
         # "values": [0.10, 0.30, 0.50],
-        "values": [0.02, 0.12, 0.22].
+        "values": [0.02, 0.12, 0.22],
         "no-effect":["post-lockdown-no-tracing"]
     },
     "P_DROPOUT_SYMPTOM": {
