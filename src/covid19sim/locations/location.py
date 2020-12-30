@@ -515,6 +515,13 @@ class Location(simpy.Resource):
             loc_instance.closing_time = closing_time
             return loc_instance
  
+    def __eq__(self, other: typing.Any):
+        """
+        Overrides the default implementation to only return True on equality of location_ids
+        """
+        if isinstance(other, Location):
+            return self.id == other.id
+        return False
 
 class Household(Location):
     """

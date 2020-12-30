@@ -1369,3 +1369,11 @@ class Human(BaseHuman):
         env: Env = city.env
         
         return cls(env, city, human_id, age, rng, conf)
+
+    def __eq__(self, other: typing.Any):
+        """
+        Overrides the default implementation to only return True on equality of human_ids
+        """
+        if isinstance(other, Human):
+            return self.human_id == other.human_id
+        return False
