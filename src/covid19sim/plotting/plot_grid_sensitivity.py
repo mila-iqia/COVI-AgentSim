@@ -40,7 +40,7 @@ SUBSET_SIZE=100
 # CONTACT_RANGE = [6 - 0.5, 6 + 0.5]
 CONTACT_RANGE=None # [x1, x2] if provided GPRFit is not used i.e `TARGET_R_FOR_NO_TRACING` and `MARGIN` are not used
 TARGET_R_FOR_NO_TRACING = 1.2 # find the performance of simulations around (defined by MARGIN) the number of contacts where NO_TRACING has R of 1.2
-MARGIN = 0.5
+MARGIN = 0.75
 
 METRICS = ['r', 'effective_contacts', 'healthy_contacts']
 # SENSITIVITY_PARAMETERS = ['ASYMPTOMATIC_RATIO', 'ALL_LEVELS_DROPOUT', 'P_DROPOUT_SYMPTOM',  'PROPORTION_LAB_TEST_PER_DAY'] #????
@@ -63,7 +63,8 @@ SENSITIVITY_PARAMETER_RANGE ={
     },
     "ALL_LEVELS_DROPOUT": {
         # "values": [0.02, 0.08, 0.16], # 0.02 0.08 0.16
-        "values": [0.10, 0.30, 0.50],
+        # "values": [0.10, 0.30, 0.50],
+        "values": [0.02, 0.12, 0.22]
         "no-effect":["post-lockdown-no-tracing"]
     },
     "P_DROPOUT_SYMPTOM": {
