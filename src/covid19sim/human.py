@@ -1377,3 +1377,9 @@ class Human(BaseHuman):
         if isinstance(other, Human):
             return self.human_id == other.human_id
         return False
+
+    def __hash__(self):
+        """
+        Implements hash function based on human_ids
+        """
+        return hash(self.human_id)

@@ -523,6 +523,12 @@ class Location(simpy.Resource):
             return self.id == other.id
         return False
 
+    def __hash__(self):
+        """
+        Implements hash function based on location_ids
+        """
+        return hash(self.id)
+
 class Household(Location):
     """
     Household location class, inheriting from covid19sim.base.Location
