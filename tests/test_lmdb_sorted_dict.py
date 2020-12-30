@@ -24,7 +24,9 @@ class TestLMDBSortedDict(unittest.TestCase):
         self.assertEqual(len(self.map), 4)
         self.map.append(2, 1234)
         self.assertEqual(len(self.map), 5)
-        self.assertEqual(self.map.pop(2), [1234, None])
+        self.map.append(2, 12345)
+        self.assertEqual(len(self.map), 6)
+        self.assertEqual(set(self.map.pop(2)), set([1234, 12345, None]))
         self.assertEqual(len(self.map), 3)
         del self.map[3]
         self.assertEqual(len(self.map), 2)
