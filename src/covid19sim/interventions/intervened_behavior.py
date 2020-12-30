@@ -343,6 +343,10 @@ class IntervenedBehavior(object):
             dropout = _get_dropout_rate(self.current_behavior_reason, self.conf)
             self.last_date_to_decide_dropout = current_date
             self._follow_recommendation_today = self.rng.rand() < (1 - dropout)
+            # (debug)
+            # maxB = max(resident.intervened_behavior._behavior_level for resident in self.human.household.residents)
+            # if maxB > 1:
+            #     print(f"{self.human}. B:{self._behavior_level}. MaxB:{maxB}. Diff:{maxB > self._behavior_level}. Dropout:{dropout} App:{self.human.has_app}. R:{self.current_behavior_reason}")
         return self._follow_recommendation_today
 
     @property
@@ -382,7 +386,7 @@ class IntervenedBehavior(object):
 
         location_type = _get_location_type(self.human, location)
 
-        # if `human` is not following any recommendations today, then set the number of interactions to level 0
+        # if `human` is not following any recommendations today, then set the number of interactions to level `DROPOUT_LEVEL`
         if not self.follow_recommendation_today:
             level = self.conf['DROPOUT_LEVEL']
         else:
@@ -415,7 +419,7 @@ class IntervenedBehavior(object):
             level (int): behvaior level to put `human` on
         """
         if level == self.quarantine_idx:
-            self.human._test_recommended = True # TODO - P - how should this affect score at the test facility
+            self.human._test_recommended = True
 
         elif (
             level != self.quarantine_idx
@@ -553,7 +557,7 @@ def _get_dropout_rate(reasons, conf):
     _reason = RISK_LEVEL_UPDATE if RISK_LEVEL_UPDATE in _reason else _reason
 
     if _reason in [INITIALIZED_BEHAVIOR, INTERVENTION_START_BEHAVIOR, UNSET_QUARANTINE, IS_IMMUNE_BEHAVIOR]:
-        return 0.0
+        return conf['ALL_LEVELS_DROPOUT']
 
     if _reason in [QUARANTINE_UNTIL_TEST_RESULT, QUARANTINE_DUE_TO_POSITIVE_TEST_RESULT]:
         return conf['QUARANTINE_DROPOUT_TEST']
