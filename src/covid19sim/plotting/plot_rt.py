@@ -107,7 +107,8 @@ class PlotRt:
         return smoothed
 
     def compute(self, data, r0_estimate=None, bounds=False):
-        data = self._smooth_cases(data)
+        if len(data)>1:
+            data = self._smooth_cases(data)
         data = pd.Series(data, index=list(range(len(data))))
         posteriors, log_likelihood = self._get_posteriors(data, r0_estimate)
         # Note that this takes a while to execute - it's not the most efficient algorithm

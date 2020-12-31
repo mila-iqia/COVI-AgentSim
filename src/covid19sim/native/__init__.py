@@ -48,3 +48,12 @@ class Environment(BaseEnvironment, simpy.Environment):
         """
         return self.timestamp.isoformat()
 
+    def __getstate__(self):
+        # Copy the object's state from self.__dict__ which contains
+        # all our instance attributes. Always use the dict.copy()
+        # method to avoid modifying the original state.
+        state = self.__dict__.copy()
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)

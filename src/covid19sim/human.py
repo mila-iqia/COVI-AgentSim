@@ -9,6 +9,7 @@ import numpy as np
 import scipy
 import typing
 import warnings
+import inspect
 from collections import defaultdict
 from orderedset import OrderedSet
 
@@ -1634,3 +1635,34 @@ class Human(BaseHuman):
 
     def __repr__(self):
         return f"H:{self.name} age:{self.age}, SEIR:{int(self.is_susceptible)}{int(self.is_exposed)}{int(self.is_infectious)}{int(self.is_removed)}"
+
+    # def __reduce__(self):
+    #     constructor_signature = ( self.env, self.city, self.name, self.age,
+    #         self.rng, self.has_app, self.infection_timestamp, self.household,
+    #         self.workplace, self.profession, self.rho, self.gamma, self.conf )
+    #     # constructor_signature = (inspect.signature(self.__init__), )
+    #     state = self.__dict__.copy()
+    #     return (self.__class__, constructor_signature, state)
+
+    def __getstate__(self):
+        # Copy the object's state from self.__dict__ which contains
+        # all our instance attributes. Always use the dict.copy()
+        # method to avoid modifying the original state.
+        state = self.__dict__.copy()
+        # Remove the unpicklable entries.
+        # del  state['env'], state['city'], state['name'], state['age'], \
+        #     state['rng'], state['has_app'], state['infection_timestamp'], \
+        #     state['household'], state['workplace'], state['profession'], \
+        #     state['rho'], state['gamma'], state['conf']
+        return state
+
+    def __setstate__(self, state):
+        # Restore instance attributes (i.e., filename and lineno).
+        self.__dict__.update(state)
+        # Restore the previously opened file's state. To do so, we need to
+        # reopen it and read from it until the line count is restored.
+        # file = open(self.filename)
+        # for _ in range(self.lineno):
+        #     file.readline()
+        # Finally, save the file.
+        # self.file = file

@@ -733,7 +733,7 @@ class Tracker(object):
 
         """
         tests_per_human = Counter([m["name"] for m in self.test_monitor])
-        max_tests_per_human = max(tests_per_human.values())
+        max_tests_per_human = max(tests_per_human.values(), default=0)
 
         # percent of population tested
         n_tests = len(self.test_monitor)
@@ -745,7 +745,11 @@ class Tracker(object):
         # positivity rate
         n_positives = sum(x["positive"] for x in self.test_results_per_day.values())
         n_negatives = sum(x["negative"] for x in self.test_results_per_day.values())
-        positivity_rate = n_positives/(n_positives + n_negatives)
+        n_test_results_per_day = n_positives + n_negatives
+        if n_test_results_per_day:
+            positivity_rate = 100 * n_positives/(n_positives + n_negatives)
+        else:
+            positivity_rate = None
 
         # symptoms | tests
         # count of humans who has symptom x given a test was administered
@@ -758,7 +762,10 @@ class Tracker(object):
 
         log("######## COVID Testing Statistics #########", logfile)
         log(f"Proportion infected : {100*proportion_infected: 2.3f}%", logfile)
-        log(f"Positivity rate: {100*positivity_rate: 2.3f}%", logfile)
+        if positivity_rate is not None:
+            log(f"Positivity rate: {positivity_rate: 2.3f}%", logfile)
+        else:
+            log(f"Positivity rate: None", logfile)
         log(f"Total Tests: {n_positives + n_negatives} Total positive tests: {n_positives} Total negative tests: {n_negatives}", logfile)
         log(f"Maximum tests given to an individual: {max_tests_per_human}", logfile)
         log(f"Proportion of population tested until end: {100 * percent_tested: 4.3f}%", logfile)
@@ -985,7 +992,7 @@ class Tracker(object):
         """
         total_infections = sum(x[0] for x in self.p_infection)
         total_contacts = len(self.p_infection)
-        return total_infections / total_contacts
+        return total_infections / total_contacts if total_contacts else None
 
     def compute_effective_contacts(self, since_intervention=True):
         """
@@ -1060,14 +1067,19 @@ class Tracker(object):
         total = sum(self.r_0[x]['infection_count'] for x in ['symptomatic','presymptomatic', 'asymptomatic'])
         total += self.n_env_infection
 
-        x = self.r_0['asymptomatic']['infection_count']
-        log(f"% asymptomatic transmission {100*x/total :5.2f}%", logfile)
+        if total:
+            x = self.r_0['asymptomatic']['infection_count']
+            log(f"% asymptomatic transmission {100*x/total :5.2f}%", logfile)
 
-        x = self.r_0['presymptomatic']['infection_count']
-        log(f"% presymptomatic transmission {100*x/total :5.2f}%", logfile)
+            x = self.r_0['presymptomatic']['infection_count']
+            log(f"% presymptomatic transmission {100*x/total :5.2f}%", logfile)
 
-        x = self.r_0['symptomatic']['infection_count']
-        log(f"% symptomatic transmission {100*x/total :5.2f}%", logfile)
+            x = self.r_0['symptomatic']['infection_count']
+            log(f"% symptomatic transmission {100*x/total :5.2f}%", logfile)
+        else:
+            log(f"% asymptomatic transmission None", logfile)
+            log(f"% presymptomatic transmission None", logfile)
+            log(f"% symptomatic transmission None", logfile)
 
         log("******** R0 LOCATIONS *********", logfile)
         for loc_type, v in self.r_0.items():
@@ -1102,7 +1114,10 @@ class Tracker(object):
         x = ['Mon', "Tue", "Wed", "Thurs", "Fri", "Sat", "Sun"]
         for c,day in enumerate(x):
             v = self.day_encounters[c]
-            log(f"{day} #avg: {v[1]/self.n_people} %:{100*v[1]/total:5.2f} ", logfile)
+            if total:
+                log(f"{day} #avg: {v[1]/self.n_people} %:{100*v[1]/total:5.2f} ", logfile)
+            else:
+                log(f"{day} #avg: {v[1]/self.n_people}:None ", logfile)
         #
         # log("Hour - ", logfile)
         # total = sum(v[1] for v in self.hour_encounters.values())
@@ -1128,7 +1143,10 @@ class Tracker(object):
         for bin in self.age_bins:
             x = self.city.age_histogram[bin]
             v = self.daily_age_group_encounters[bin][1]
-            log(f"{bin} #avg: {v/x} %:{100*v/total:5.2f} ", logfile)
+            if total:
+                log(f"{bin} #avg: {v/x} %:{100*v/total:5.2f} ", logfile)
+            else:
+                log(f"{bin} #avg: {v/x}:None ", logfile)
         #
         # for until_days in [30, None]:
         #     log("******** Risk Precision/Recall *********", logfile)
@@ -1190,7 +1208,7 @@ class Tracker(object):
         # R0 = Susceptible population x Duration of infectiousness x p_transmission
         # https://www.youtube.com/watch?v=wZabMDS0CeA
         # valid only when small portion of population is infected
-        r0 = p_transmission * effective_contacts * infectiousness_duration
+        r0 = p_transmission * effective_contacts * infectiousness_duration if p_transmission else None
 
         log(f"Eff. contacts: {effective_contacts:5.3f} \t % infected: {p_infected: 2.3f}%", logfile)
         # log(f"Probability of transmission: {p_transmission:2.3f}", logfile)

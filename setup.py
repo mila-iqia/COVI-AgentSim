@@ -1,10 +1,33 @@
 import glob
 import os
 from setuptools import setup, find_packages, Extension
+from Cython.Build import cythonize
 
+CYTHON = True #False
 
 cloneroot = os.path.dirname(__file__)
 
+ext_modules = [
+        Extension("covid19sim.native._native",
+                  glob.glob(os.path.join(cloneroot, "src", "covid19sim", "native", "**", "*.c"),
+                            recursive=True),
+                  include_dirs=[os.path.join(cloneroot, "src", "covid19sim", "native")],
+                  define_macros=[("PY_SSIZE_T_CLEAN", None),]
+        )
+    ]
+
+if CYTHON:
+    ext_modules.extend(
+        cythonize(
+                Extension(
+                    name="covid19sim.human",
+                    sources=["src/covid19sim/human.py"],
+                    language="c",
+                ),
+                compiler_directives={"language_level":3, "embedsignature":True},
+                force=True
+        ),
+    )
 
 with open('requirements.txt', 'r') as f:
     requirements = [line.strip() for line in f.readlines() if not line.startswith("#")]
@@ -44,12 +67,10 @@ setup(
     },
     packages             = find_packages("src"),
     package_dir          = {'': 'src'},
-    ext_modules          = [
-        Extension("covid19sim.native._native",
-                  glob.glob(os.path.join(cloneroot, "src", "covid19sim", "native", "**", "*.c"),
-                            recursive=True),
-                  include_dirs=[os.path.join(cloneroot, "src", "covid19sim", "native")],
-                  define_macros=[("PY_SSIZE_T_CLEAN", None),],
-        ),
-    ],
+    ext_modules          = ext_modules,
+    include_dirs=["src/covid19sim/"],
+    # cmdclass = {'build_ext': build_ext},
+    # script_args = ['build_ext'],
+    # options = {'build_ext':{'inplace':True, 'force':True}}
 )
+
