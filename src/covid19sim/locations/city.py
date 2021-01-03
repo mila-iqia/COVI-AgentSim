@@ -310,7 +310,7 @@ class City:
         """
         # seed infection
         self.n_init_infected = math.ceil(self.init_fraction_sick * self.n_people)
-        chosen_infected = self.rng.choice(self.humans, size=self.n_init_infected, replace=False)
+        chosen_infected = self.rng.choice([x for x in self.humans if x.age >= 20], size=self.n_init_infected, replace=False)
         for human in chosen_infected:
             human._get_infected(initial_viral_load=human.rng.random())
 
