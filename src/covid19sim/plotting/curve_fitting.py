@@ -423,7 +423,7 @@ def ewma(data, window):
     out = offset + cumsums*scale_arr[::-1]
     return out
 
-def bootstrap(pd_series, num_bootstrap_samples=100):
+def bootstrap(pd_series, num_bootstrap_samples=1000):
     """
     Bootstraps from the given data to estimate distribution
 
