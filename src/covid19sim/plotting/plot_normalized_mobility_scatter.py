@@ -469,6 +469,8 @@ def run(data, plot_path, compare=None, **kwargs):
         uptake_keys = pd.read_csv(str(uptake_key_filepath))['uptake'].tolist()
     else:
         app_based_methods, other_methods, uptake_keys = split_methods_and_check_validity(data)
+        if len(uptake_keys) == 0:
+            uptake_keys = [-1] # when only no-app interventions are present
         pd.DataFrame(uptake_keys, columns=['uptake']).to_csv(str(uptake_key_filepath))
 
     ## data preparation
