@@ -823,6 +823,9 @@ def assign_households_to_humans(humans, city, conf, logfile=None):
         house.area = area[i]
         house.initialize_index_cases()
 
+    for senior_residency in city.senior_residences:
+        senior_residency.initialize_index_cases()
+
     # shuffle the list of humans so that the simulation is not dependent on the order of house allocation
     city.rng.shuffle(allocated_humans)
     log(f"Housing allocated with failed attempts: {n_failed_attempts} ", logfile)
