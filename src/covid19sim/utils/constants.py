@@ -35,6 +35,7 @@ QUARANTINE_DUE_TO_SELF_DIAGNOSIS = "quarantine-self-diagnosis"
 
 QUARANTINE_HOUSEHOLD = "quarantine-household"
 UNSET_QUARANTINE = "unset-quarantine"
+HOUSEHOLD_MAX_RISK_BEHAVIOR = "follow-risk-of-max-risk-resident"
 
 # other behaviors
 INITIALIZED_BEHAVIOR = "initialization"

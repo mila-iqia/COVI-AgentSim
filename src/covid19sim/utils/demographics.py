@@ -821,6 +821,7 @@ def assign_households_to_humans(humans, city, conf, logfile=None):
     area = _get_random_area(len(city.households), HOUSEHOLD_PROPORTION_AREA * city.total_area, city.rng)
     for i,house in enumerate(city.households):
         house.area = area[i]
+        house.initialize_index_cases()
 
     # shuffle the list of humans so that the simulation is not dependent on the order of house allocation
     city.rng.shuffle(allocated_humans)
