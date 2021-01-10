@@ -543,6 +543,16 @@ class Household(Location):
         if index_case_history:
             self.index_cases[human] = index_case_history
 
+    def initialize_index_cases(self):
+        """
+        Initializes the residents in index cases.
+        """
+        for human in self.residents:
+            self.index_cases[human] = {
+                "reasons": [],
+                "suggested_quarantine_end_timestamp": None
+            }
+
     def reset_index_case(self, human):
         """
         Resets the keys for `index_cases` corresponding to `human`.
@@ -568,13 +578,6 @@ class Household(Location):
             trigger (str): reason for adding to the index case.
         """
         assert human in self.residents, f"{human} does not reside at {self}. Trigger: {trigger}, residents: {self.residents}"
-
-        # (happens only once at the firs trigger of `human`)
-        if human not in self.index_cases:
-            self.index_cases[human] = {
-                "reasons": [],
-                "suggested_quarantine_end_timestamp": None
-            }
 
         # test results are conclusive, so we don't add any other triggers
         # Note 1: QUARANTINE_X_TEST_RESULT will always be the last element in the list if it existis

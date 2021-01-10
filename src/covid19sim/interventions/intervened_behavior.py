@@ -37,7 +37,7 @@ from covid19sim.utils.constants import SECONDS_PER_DAY
 from covid19sim.utils.constants import TEST_TAKEN, SELF_DIAGNOSIS, RISK_LEVEL_UPDATE
 from covid19sim.utils.constants import NEGATIVE_TEST_RESULT, POSITIVE_TEST_RESULT
 from covid19sim.utils.constants import QUARANTINE_UNTIL_TEST_RESULT, QUARANTINE_DUE_TO_POSITIVE_TEST_RESULT, QUARANTINE_DUE_TO_SELF_DIAGNOSIS
-from covid19sim.utils.constants import UNSET_QUARANTINE, QUARANTINE_HOUSEHOLD
+from covid19sim.utils.constants import UNSET_QUARANTINE, QUARANTINE_HOUSEHOLD, HOUSEHOLD_MAX_RISK_BEHAVIOR
 from covid19sim.utils.constants import INITIALIZED_BEHAVIOR, INTERVENTION_START_BEHAVIOR, IS_IMMUNE_BEHAVIOR
 
 def convert_intervention_to_behavior_level(intervention_level):
@@ -319,9 +319,17 @@ class IntervenedBehavior(object):
             self.quarantine.start_timestamp is None # currently no non-app quarantining
             and not self.pay_no_attention_to_triggers # hasn't had a positive test in the past
             and self.conf['MAKE_HOUSEHOLD_BEHAVE_SAME_AS_MAX_RISK_RESIDENT']
+            and any(human.has_app for human in self.human.household.residents)
         ):
             # Note: some `human`s in recovery phase who haven't reset their test_results yet will also come here
-            return max(resident.intervened_behavior.update_and_get_true_behavior_level() for resident in self.human.household.residents)
+            current_level = self.update_and_get_true_behavior_level()
+            new_level = max(resident.intervened_behavior.update_and_get_true_behavior_level() for resident in self.human.household.residents)
+            if (
+                new_level > current_level
+                and HOUSEHOLD_MAX_RISK_BEHAVIOR not in self.current_behavior_reason
+            ):
+                self.current_behavior_reason = [HOUSEHOLD_MAX_RISK_BEHAVIOR] + self.current_behavior_reason
+            return new_level
 
         return self.update_and_get_true_behavior_level()
 
@@ -555,9 +563,10 @@ def _get_dropout_rate(reasons, conf):
     _reason = reasons[-1]
     _reason = UNSET_QUARANTINE if UNSET_QUARANTINE in _reason else _reason
     _reason = RISK_LEVEL_UPDATE if RISK_LEVEL_UPDATE in _reason else _reason
+    _reason = HOUSEHOLD_MAX_RISK_BEHAVIOR if HOUSEHOLD_MAX_RISK_BEHAVIOR in reasons else _reason # overwrite other reasons
 
     if _reason in [INITIALIZED_BEHAVIOR, INTERVENTION_START_BEHAVIOR, UNSET_QUARANTINE, IS_IMMUNE_BEHAVIOR]:
-        return conf['ALL_LEVELS_DROPOUT']
+        return 0
 
     if _reason in [QUARANTINE_UNTIL_TEST_RESULT, QUARANTINE_DUE_TO_POSITIVE_TEST_RESULT]:
         return conf['QUARANTINE_DROPOUT_TEST']
@@ -568,7 +577,10 @@ def _get_dropout_rate(reasons, conf):
     elif _reason == QUARANTINE_HOUSEHOLD:
         return conf['QUARANTINE_DROPOUT_HOUSEHOLD']
 
-    elif _reason == RISK_LEVEL_UPDATE:
+    elif (
+        _reason == RISK_LEVEL_UPDATE
+        or _reason == HOUSEHOLD_MAX_RISK_BEHAVIOR
+    ):
         return conf['ALL_LEVELS_DROPOUT']
 
     else:
