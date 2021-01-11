@@ -742,7 +742,8 @@ def split_methods_and_check_validity(data):
 
     ## experiment correctness checks
     assert len(set(frozenset(x) for x in uptake_keys)) <= 1, "found different adoption rates across tracing based methods"
-    uptake_keys = list(list(set([frozenset(x) for x in uptake_keys]))[0])
+    if len(uptake_keys) > 0:
+        uptake_keys = list(list(set([frozenset(x) for x in uptake_keys]))[0])
     for uptake_rate in uptake_keys:
         if not len(set([len(data[method][uptake_rate]) for method in app_based_methods])) == 1:
             warnings.warn(f"Found different number of seeds across {uptake_rate}. Methods: {methods}")
