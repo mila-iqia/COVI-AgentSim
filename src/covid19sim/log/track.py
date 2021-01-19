@@ -238,7 +238,8 @@ class Tracker(object):
                 "infectiousness": 0,
                 "infection": 0,
                 "total": 0
-            }
+            },
+            "dropout_contacts":{ 0:0, 1:0, 2:0 }
         }
         self.outside_daily_contacts = []
         self.n_outside_daily_contacts = 0
@@ -1041,7 +1042,7 @@ class Tracker(object):
                 "to_is_asymptomatic": to_human.is_asymptomatic,
                 "to_has_app": to_human.has_app,
                 "to_follows_recommendation": to_human.intervened_behavior._follow_recommendation_today,
-                "to_behaivor_reason": to_human.intervened_behavior.current_behavior_reason,
+                "to_behavior_reason": to_human.intervened_behavior.current_behavior_reason,
                 "location_type": location.location_type,
                 "location": location.name,
                 "p_infection": p_infection,
@@ -1519,6 +1520,14 @@ class Tracker(object):
             # outside daily contacts
             self.n_outside_daily_contacts += 0.5 if human1_type_of_place != "HOUSEHOLD" else 0
             self.n_outside_daily_contacts += 0.5 if human2_type_of_place != "HOUSEHOLD" else 0
+
+            if global_mobility_factor:
+                human1_follows_recommendation = human1.intervened_behavior._follow_recommendation_today
+                human1_follows_recommendation = True if human1_follows_recommendation is None else human1_follows_recommendation #
+                human2_follows_recommendation = human2.intervened_behavior._follow_recommendation_today
+                human2_follows_recommendation = True if human2_follows_recommendation is None else human2_follows_recommendation #
+                follows_recommendation = human2_follows_recommendation + human1_follows_recommendation
+                self.contact_attributes['dropout_contacts'][follows_recommendation] += 1
 
 
         for interaction_type in interaction_types:
