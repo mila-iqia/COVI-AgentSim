@@ -329,7 +329,8 @@ class IntervenedBehavior(object):
                 and HOUSEHOLD_MAX_RISK_BEHAVIOR not in self.current_behavior_reason
             ):
                 self.current_behavior_reason = [HOUSEHOLD_MAX_RISK_BEHAVIOR] + self.current_behavior_reason
-            return new_level
+                return new_level
+            return current_level
 
         return self.update_and_get_true_behavior_level()
 
