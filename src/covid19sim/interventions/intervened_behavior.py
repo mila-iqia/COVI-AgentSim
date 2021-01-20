@@ -314,6 +314,9 @@ class IntervenedBehavior(object):
         if self.human.is_dead:
             return -1
 
+        if HOUSEHOLD_MAX_RISK_BEHAVIOR in self.current_behavior_reason:
+            self.current_behavior_reason.remove(HOUSEHOLD_MAX_RISK_BEHAVIOR)
+
         # if currently someone in the house is following app Rx (someone in the house has to have an app)
         if (
             self.quarantine.start_timestamp is None # currently no non-app quarantining
@@ -324,12 +327,11 @@ class IntervenedBehavior(object):
             # Note: some `human`s in recovery phase who haven't reset their test_results yet will also come here
             current_level = self.update_and_get_true_behavior_level()
             new_level = max(resident.intervened_behavior.update_and_get_true_behavior_level() for resident in self.human.household.residents)
-            if (
-                new_level > current_level
-                and HOUSEHOLD_MAX_RISK_BEHAVIOR not in self.current_behavior_reason
-            ):
+
+            if new_level > current_level:
                 self.current_behavior_reason = [HOUSEHOLD_MAX_RISK_BEHAVIOR] + self.current_behavior_reason
                 return new_level
+
             return current_level
 
         return self.update_and_get_true_behavior_level()
