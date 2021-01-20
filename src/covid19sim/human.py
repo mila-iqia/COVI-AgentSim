@@ -950,8 +950,8 @@ class Human(BaseHuman):
             if next_activity.location is not None:
 
                 # (debug) to print the schedule for someone
-                # if self.name == "human:77":
-                #       print("A\t", self.env.timestamp, self, next_activity)
+                # if self.name == "human:64":
+                #     print("A\t", self.env.timestamp, self, next_activity, self.intervened_behavior._follow_recommendation_today)
 
                 # /!\ TODO - P - check for the capacity at a location; it requires adjustment of timestamps
                 # with next_activity.location.request() as request:
@@ -1328,4 +1328,4 @@ class Human(BaseHuman):
         return self._rec_level
 
     def __repr__(self):
-        return f"H:{self.name} age:{self.age}, SEIR:{int(self.is_susceptible)}{int(self.is_exposed)}{int(self.is_infectious)}{int(self.is_removed)}"
+        return f"<{self.name} Age:{self.age}, SEIR:{int(self.is_susceptible)}{int(self.is_exposed)}{int(self.is_infectious)}{int(self.is_removed)} App:{self.has_app} Ax:{self.is_asymptomatic}>"

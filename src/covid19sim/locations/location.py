@@ -540,7 +540,11 @@ class Household(Location):
             index_case_history (dict): current index case value for `human` in the previous house. Defaults to None.
         """
         self.residents.append(human)
-        if index_case_history:
+        self.index_cases[human] = {
+            "reasons": [],
+            "suggested_quarantine_end_timestamp": None
+        }
+        if index_case_history is not None:
             self.index_cases[human] = index_case_history
 
     def initialize_index_cases(self):
