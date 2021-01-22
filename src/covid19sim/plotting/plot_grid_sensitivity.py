@@ -37,16 +37,15 @@ INTERPOLATION_FN = GPRFit
 NUM_BOOTSTRAP_SAMPLES=1000
 SUBSET_SIZE=100
 
-# CONTACT_RANGE = [6 - 0.5, 6 + 0.5]
-CONTACT_RANGE=None # [x1, x2] if provided GPRFit is not used i.e `TARGET_R_FOR_NO_TRACING` and `MARGIN` are not used
+CONTACT_RANGE =[4, 6]
+# CONTACT_RANGE=None # [x1, x2] if provided GPRFit is not used i.e `TARGET_R_FOR_NO_TRACING` and `MARGIN` are not used
 TARGET_R_FOR_NO_TRACING = 1.2 # find the performance of simulations around (defined by MARGIN) the number of contacts where NO_TRACING has R of 1.2
 MARGIN = 0.75
 
 METRICS = ['r', 'effective_contacts', 'healthy_contacts']
-# SENSITIVITY_PARAMETERS = ['ASYMPTOMATIC_RATIO', 'ALL_LEVELS_DROPOUT', 'P_DROPOUT_SYMPTOM',  'PROPORTION_LAB_TEST_PER_DAY'] #????
-# SENSITIVITY_PARAMETERS = ['BASELINE_P_ASYMPTOMATIC', 'ALL_LEVELS_DROPOUT', 'P_DROPOUT_SYMPTOM',  'PROPORTION_LAB_TEST_PER_DAY']
-SENSITIVITY_PARAMETERS = ['ALL_LEVELS_DROPOUT', 'P_DROPOUT_SYMPTOM',  'PROPORTION_LAB_TEST_PER_DAY']
-XMETRICS = ['effective_contacts'] + SENSITIVITY_PARAMETERS
+SENSITIVITY_PARAMETERS = ['ALL_LEVELS_DROPOUT', 'P_DROPOUT_SYMPTOM']
+# SENSITIVITY_PARAMETERS = ['PROPORTION_LAB_TEST_PER_DAY']
+XMETRICS = ['effective_contacts', 'healthy_effective_contacts'] + SENSITIVITY_PARAMETERS
 
 # (optimistic, mdoerate, pessimistic)
 # default str_formatter = lambda x: f"{100 * x: 2.0f}"
@@ -58,13 +57,13 @@ SENSITIVITY_PARAMETER_RANGE ={
     },
     "BASELINE_P_ASYMPTOMATIC": {
         # "values": [0.20, 0.30, 0.40], # 0.20 0.30 0.40
-        "values": [0.1475, 0.2525, 0.3575], # asymptomatic-ratio =  0.20 0.30 0.40
+        "values": [0.5, 0.75, 1.0], # asymptomatic-ratio =  0.20 0.30 0.40
         "no-effect":[]
     },
     "ALL_LEVELS_DROPOUT": {
-        # "values": [0.02, 0.08, 0.16], # 0.02 0.08 0.16
-        # "values": [0.10, 0.30, 0.50],
-        "values": [0.02, 0.12, 0.22],
+        "values": [0.02, 0.16, 0.32], # 0.02 0.08 0.16
+        # "values": [0.02, 0.30, 0.50],
+        # "values": [0.02, 0.05, 0.10],
         "no-effect":["post-lockdown-no-tracing"]
     },
     "P_DROPOUT_SYMPTOM": {
@@ -72,12 +71,13 @@ SENSITIVITY_PARAMETER_RANGE ={
         "no-effect":["post-lockdown-no-tracing", "bdt1"]
     },
     "PROPORTION_LAB_TEST_PER_DAY": {
-        "values": [0.004, 0.002, 0.001], # 0.004 0.002 0.001
+        # "values": [0.004, 0.002, 0.001], # 0.004 0.002 0.001
+        "values": [0.004, 0.0025, 0.001],
         "no-effect":[]
     }
 }
 
-SCENARIOS_NAME = ["Optimistic", "Moderate", "Pessimistic"]
+_SCENARIOS_NAME = ["Optimistic", "Moderate", "Pessimistic"]
 SCENARIO_PARAMETERS_IDX={
     "Optimistic" : 0,
     "Moderate": 1,
@@ -127,11 +127,13 @@ def plot_stable_frames(ax, df, y_metric, sensitivity_parameter, colormap):
     for method in df['method'].unique():
         for x_val in df[sensitivity_parameter].unique():
             tmp_df = pd.DataFrame()
-            tmp_df[y_metric] = bootstrap(df[(df[['method', sensitivity_parameter]] == [method, x_val]).all(1)][y_metric])
+            selector = (df[['method', sensitivity_parameter]] == [method, x_val]).all(1)
+            tmp_df[y_metric] = bootstrap(df[selector][y_metric], num_bootstrap_samples=NUM_BOOTSTRAP_SAMPLES)
             tmp_df['method'] = method
             tmp_df[sensitivity_parameter] = x_val
-
             bootstrapped_df = pd.concat([bootstrapped_df, tmp_df], axis=0, ignore_index=True)
+
+            print(f"{method} {sensitivity_parameter} = {x_val} has {sum(selector)} samples {selector.shape[0]}")
 
     hue_order = [x for x in HUE_ORDER if x in bootstrapped_df['method'].unique()]
     ax = sns.violinplot(x=sensitivity_parameter, y=y_metric, hue='method', palette=colormap,
@@ -191,7 +193,10 @@ def plot_and_save_grid_sensitivity_analysis(results, path, y_metric):
 
     # find if only specific folders (methods) need to be plotted
     plot_these_methods = load_plot_these_methods_config(path)
-    fig, axs = plt.subplots(nrows=len(SCENARIOS_NAME), ncols=len(SENSITIVITY_PARAMETERS), figsize=(27, 18), sharex='col', sharey=True, dpi=DPI, constrained_layout=True)
+    SCENARIOS_NAME = _SCENARIOS_NAME if len(SENSITIVITY_PARAMETERS) > 1 else ['Moderate']
+    nrows = len(SCENARIOS_NAME)
+    ncols = len(SENSITIVITY_PARAMETERS)
+    fig, axs = plt.subplots(nrows=nrows, ncols=ncols, figsize=(27, 18), sharex='col', sharey=True, dpi=DPI, constrained_layout=True, squeeze=False)
 
     # plot all
     for j, scenario in enumerate(SCENARIOS_NAME):
@@ -248,6 +253,8 @@ def plot_and_save_grid_sensitivity_analysis(results, path, y_metric):
         y_label = "$R$"
     elif y_metric == "percentage_infected":
         y_label = "% infected"
+    else:
+        y_label = y_metric
 
     for row, name in enumerate(SCENARIOS_NAME):
         axs[row, 0].set_ylabel(y_label, labelpad=LABELPAD, fontsize=LABELSIZE, rotation=90)
@@ -322,8 +329,8 @@ def run(data, plot_path, compare=None, **kwargs):
                 if "scatter" not in subfolder.name:
                     continue
                 print(f"Currently at: {str(subfolder)}.")
-                all_runs = subfolder / "normalized_mobility/plots/normalized_mobility/full_extracted_data_AR_60.csv"
-                # assert all_runs.exists(), f"{subfolder.name} hasn't been plotted yet"
+                all_runs = subfolder / "normalized_mobility/plots/normalized_mobility/"
+                all_runs = list(all_runs.glob("full_extracted_data_AR_*.csv"))[0]
                 if all_runs.exists():
                     results = pd.concat([results, pd.read_csv(str(all_runs))], axis=0, ignore_index=True)
         results.to_csv(str(filename))
