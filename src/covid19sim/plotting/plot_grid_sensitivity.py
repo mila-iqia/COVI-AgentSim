@@ -10,6 +10,7 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
+import matplotlib.ticker as ticker
 import matplotlib.gridspec as gridspec
 from scipy import stats, optimize
 from copy import deepcopy
@@ -37,7 +38,7 @@ INTERPOLATION_FN = GPRFit
 NUM_BOOTSTRAP_SAMPLES=1000
 SUBSET_SIZE=100
 
-CONTACT_RANGE =[4, 6]
+CONTACT_RANGE =[4, 7]
 # CONTACT_RANGE=None # [x1, x2] if provided GPRFit is not used i.e `TARGET_R_FOR_NO_TRACING` and `MARGIN` are not used
 TARGET_R_FOR_NO_TRACING = 1.2 # find the performance of simulations around (defined by MARGIN) the number of contacts where NO_TRACING has R of 1.2
 MARGIN = 0.75
@@ -56,7 +57,7 @@ SENSITIVITY_PARAMETER_RANGE ={
         "no-effect":[]
     },
     "ALL_LEVELS_DROPOUT": {
-        "values": [0.02, 0.16, 0.32], # 0.02 0.08 0.16
+        "values": [0.02, 0.08, 0.16, 0.32], # 0.02 0.08 0.16
         # "values": [0.02, 0.05, 0.10],
         "no-effect":["post-lockdown-no-tracing"]
     },
@@ -77,6 +78,12 @@ SCENARIO_PARAMETERS_IDX={
     "Pessimistic": 2
 }
 
+DEFAULT_PARAMETER_VALUES = {
+    "PROPORTION_LAB_TEST_PER_DAY": 0.001,
+    "ALL_LEVELS_DROPOUT": 0.02,
+    "P_DROPOUT_SYMPTOM": 0.20,
+}
+
 NO_TRACING_METHOD = "post-lockdown-no-tracing"
 REFERENCE_METHOD = "bdt1"
 OTHER_METHODS = ["heuristicv4"]
@@ -94,6 +101,52 @@ class StringFormatter(object):
 
     def format(self, x, pos):
         return self.fn(x)
+
+def plot_stable_frames_line(ax, df, y_metric, sensitivity_parameter, colormap):
+    """
+    Plots means (and error bars) of `y_metric` obtained from boostrapping
+
+    Args:
+        ax (matploltib.ax.Axes): axes on which distribution will be plotted
+        df (pd.DataFrame): dataframe which has `y_metric` as its column
+        y_metric (str): metric for which distribution of means need to be computed
+        sensitivity_parameter (str): parameter to decide the position on x_axis
+        colormap (dict): mapping from method to color
+
+    Returns:
+        ax (matploltib.ax.Axes): axes with distribution plotted on it
+
+    """
+    np.random.seed(1234)
+    rng = np.random.RandomState(1)
+
+    no_tracing_plotted=False
+    for i, adoption_rate in enumerate(sorted(df['adoption_rate'].unique(), key=lambda x:-x)):
+        for method in df['method'].unique():
+            # plot No Tracing only once
+            if method == NO_TRACING_METHOD and no_tracing_plotted:
+                continue
+            no_tracing_plotted |= method == NO_TRACING_METHOD
+
+            xs = sorted(df[sensitivity_parameter].unique())
+            ys, yerrs = [], []
+            for x_val in xs:
+                # tmp_df = pd.DataFrame()
+                selector = (df[['method', 'adoption_rate', sensitivity_parameter]] == [method, adoption_rate,  x_val]).all(1)
+                y_vals = bootstrap(df[selector][y_metric], num_bootstrap_samples=NUM_BOOTSTRAP_SAMPLES)
+                ys.append(np.mean(y_vals))
+                yerrs.append(np.std(y_vals))
+                print(f"{method} @ {adoption_rate} {sensitivity_parameter} = {x_val} has {sum(selector)} samples")
+
+            ax.errorbar(x=xs, y=ys, yerr=yerrs, color=colormap[method], fmt='-o', linestyle=LINESTYLES[i])
+
+    ax.legend().remove()
+    ax.set(xlabel=None)
+    ax.grid(True, which="minor", axis='x')
+    ax.set(ylabel=None)
+    ax.xaxis.set_major_locator(ticker.FixedLocator(xs))
+    return ax
+
 
 def plot_stable_frames(ax, df, y_metric, sensitivity_parameter, colormap):
     """
@@ -176,7 +229,7 @@ def find_stable_frames(df, contact_range=None):
     return stable_frames, stable_point
 
 
-def plot_and_save_grid_sensitivity_analysis(results, path, y_metric, SENSITIVITY_PARAMETERS):
+def plot_and_save_grid_sensitivity_analysis(results, path, y_metric, SENSITIVITY_PARAMETERS, violin_plot=True):
     """
     Plots and saves grid sensitivity for various SCENARIOS.
 
@@ -185,11 +238,14 @@ def plot_and_save_grid_sensitivity_analysis(results, path, y_metric, SENSITIVITY
         path (str): path of the folder where results will be saved
         y_metric (str): metric that needs to be plotted on y-axis
         SENSITIVITY_PARAMETERS (list): list of parameters
+        violin_plot (bool): True if violin plots need to be plotted.
     """
     TICKGAP=2
     ANNOTATION_FONTSIZE=15
 
     assert y_metric in results.columns, f"{y_metric} not found in columns :{results.columns}"
+
+    plot_fn = plot_stable_frames if violin_plot else plot_stable_frames_line
 
     methods = results['method'].unique()
     methods_and_base_confs = results.groupby(['method', 'intervention_conf_name']).size().index
@@ -204,8 +260,9 @@ def plot_and_save_grid_sensitivity_analysis(results, path, y_metric, SENSITIVITY
 
     # plot all
     # scenario specific results
-    idx = SCENARIO_PARAMETERS_IDX['Moderate']
-    SCENARIO_PARAMETERS = [SENSITIVITY_PARAMETER_RANGE[param]['values'][idx] for param in SENSITIVITY_PARAMETERS]
+    # idx = SCENARIO_PARAMETERS_IDX['Moderate']
+    # SCENARIO_PARAMETERS = [SENSITIVITY_PARAMETER_RANGE[param]['values'][idx] for param in SENSITIVITY_PARAMETERS]
+    SCENARIO_PARAMETERS = [DEFAULT_PARAMETER_VALUES[param] for param in  SENSITIVITY_PARAMETERS]
     scenario_df = results[(results[SENSITIVITY_PARAMETERS] == SCENARIO_PARAMETERS).all(1)]
 
     stable_frames_scenario_df, stable_point_scenario = find_stable_frames(scenario_df, contact_range=CONTACT_RANGE)
@@ -241,7 +298,7 @@ def plot_and_save_grid_sensitivity_analysis(results, path, y_metric, SENSITIVITY
                 stable_frames_df, stable_point = find_stable_frames(df, contact_range=CONTACT_RANGE)
 
             ax_df = pd.concat([ax_df, stable_frames_df], ignore_index=True, axis=0)
-        plot_stable_frames(ax, ax_df, y_metric, parameter, colormap)
+        plot_fn(ax, ax_df, y_metric, parameter, colormap)
 
     # set row and column headers
     for col, name in enumerate(SENSITIVITY_PARAMETERS):
@@ -296,7 +353,8 @@ def plot_and_save_grid_sensitivity_analysis(results, path, y_metric, SENSITIVITY
 
     # save
     fig.tight_layout(rect=[0, 0.08, 1, 1])
-    filename = f"grid_sensitivity_{y_metric}"
+    filename = f"{y_metric}"
+    filename += "_violin" if violin_plot else "_line"
     filename += f"_C_{CONTACT_RANGE[0]}-{CONTACT_RANGE[1]}" if CONTACT_RANGE is not None else ""
     filename = filename.replace(".", "_") # to allow decimals in contact range string
     filepath = save_figure(fig, basedir=path, folder="grid_sensitivity", filename=f'{filename}', bbox_extra_artists=(lgd,), bbox_inches='tight')
@@ -355,5 +413,7 @@ def run(data, plot_path, compare=None, **kwargs):
         results.to_csv(str(filename))
 
     print("Unique adoption rates: ", results['adoption_rate'].unique())
-    plot_and_save_grid_sensitivity_analysis(results, path=plot_path, y_metric='r', SENSITIVITY_PARAMETERS=SENSITIVITY_PARAMETERS)
-    plot_and_save_grid_sensitivity_analysis(results, path=plot_path, y_metric='percentage_infected', SENSITIVITY_PARAMETERS=SENSITIVITY_PARAMETERS)
+    plot_and_save_grid_sensitivity_analysis(results, path=plot_path, y_metric='r', SENSITIVITY_PARAMETERS=SENSITIVITY_PARAMETERS, violin_plot=True)
+    plot_and_save_grid_sensitivity_analysis(results, path=plot_path, y_metric='percentage_infected', SENSITIVITY_PARAMETERS=SENSITIVITY_PARAMETERS, violin_plot=True)
+    plot_and_save_grid_sensitivity_analysis(results, path=plot_path, y_metric='r', SENSITIVITY_PARAMETERS=SENSITIVITY_PARAMETERS, violin_plot=False)
+    plot_and_save_grid_sensitivity_analysis(results, path=plot_path, y_metric='percentage_infected', SENSITIVITY_PARAMETERS=SENSITIVITY_PARAMETERS, violin_plot=False)
