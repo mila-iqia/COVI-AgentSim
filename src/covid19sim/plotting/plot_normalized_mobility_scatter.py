@@ -29,7 +29,7 @@ LEGENDSIZE = 25
 ANNOTATION_FONTSIZE=15
 
 METRICS = ['r', 'false_quarantine', 'false_sr', 'effective_contacts', 'healthy_contacts', 'percentage_infected', \
-            'fraction_false_non_risky', 'fraction_false_risky', 'positivity_rate', 'fraction_quarantine']
+            'fraction_false_non_risky', 'fraction_false_risky', 'positivity_rate', 'fraction_quarantine', 'mobility_factor']
 
 SENSITIVITY_PARAMETERS = ['ASYMPTOMATIC_RATIO', 'ALL_LEVELS_DROPOUT', 'P_DROPOUT_SYMPTOM',  'PROPORTION_LAB_TEST_PER_DAY', 'BASELINE_P_ASYMPTOMATIC']# used for sensitivity plots
 
@@ -84,6 +84,9 @@ def get_metric_label(label):
 
     if label == "fraction_quarantine":
         return "Fraction Quarantine"
+
+    if label == "mobility_factor":
+        return "Global Mobility Factor"
 
     raise ValueError(f"Unknown label:{label}")
 
@@ -191,7 +194,7 @@ def find_all_pairs_offsets_and_stddev(fitted_fns):
         plot = True
         reference_fn = fitted_fns[method1]
         y1 = reference_fn.evaluate_y_for_x(x1)
-        assert abs(y1 - 1.0) < 1e-4, f"encountered incorrect y cordinate. Expected 1.0. Got {y1}"
+        assert abs(y1 - 1.0) < 1e-2, f"encountered incorrect y cordinate. Expected 1.0. Got {y1}"
         for _, method2 in method_x[idx+1:]:
             comparator_fn = fitted_fns[method2]
             y2 = comparator_fn.evaluate_y_for_x(x1)
@@ -299,7 +302,7 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
         table_to_save = []
         x_offset = 0.0
         for p1, p2, res1, m1, m2, res2, plot in points:
-            table_to_save.append([m1, m2, labelmap[m1], labelmap[m2], *res1, *res2])
+            table_to_save.append([m1, m2, p1[0], p1[1], p2[1], labelmap[m1], labelmap[m2], *res1, *res2])
             if (
                 not annotate_advantages
                 or not plot
@@ -319,7 +322,7 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
             x_offset += 1.0
 
         # save the table
-        table_to_save = pd.DataFrame(table_to_save, columns=['method1', 'method2', 'label1', 'label2', 'advantage', 'stddev', 'P(advantage > 0)', 'rnd_advantage', 'rnd_stderr', 'P(rnd_advantage > 0)'])
+        table_to_save = pd.DataFrame(table_to_save, columns=['method1', 'method2', 'contacts', 'm1_R', 'm2_R', 'label1', 'label2', 'advantage', 'stddev', 'P(advantage > 0)', 'rnd_advantage', 'rnd_stderr', 'P(rnd_advantage > 0)'])
         table_to_save.to_csv(str(Path(path).resolve() / f"normalized_mobility/{USE_GP_STR}R_all_advantages_{xmetric}{USE_GP_STR}.csv"))
 
         # make a heatmap
@@ -487,6 +490,7 @@ def run(data, plot_path, compare=None, **kwargs):
             all_data = deepcopy(no_app_df)
             for method in app_based_methods:
                 all_data = pd.concat([all_data, _extract_data(data[method][uptake], method)], axis='index', ignore_index=True)
+            all_data['adoption_rate'] = adoption_rate
             save_relevant_csv_files(all_data, adoption_rate, extract_path=extracted_data_filepath, good_factors_path=good_mobility_factor_filepath)
         else:
             assert extracted_data_filepath.exists(), f"{extracted_data_filepath} do not exist"
