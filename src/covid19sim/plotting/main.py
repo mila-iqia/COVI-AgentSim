@@ -353,7 +353,7 @@ def main(conf):
         print("Reading configs from {}:".format(str(root_path)))
         rtime = time()
         all_data = get_all_data(
-            root_path, keep_pkl_keys, conf.get("multithreading", False), limit=5000
+            root_path, keep_pkl_keys, conf.get("multithreading", False), limit=5000, extras=conf.get("extras", [])
         )
         print("\nDone in {:.2f}s.\n".format(time() - rtime))
         summarize_configs(all_data)

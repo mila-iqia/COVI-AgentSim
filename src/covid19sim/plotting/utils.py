@@ -268,7 +268,7 @@ def absolute_file_paths(directory):
     return to_return
 
 
-def get_all_data(base_path, keep_pkl_keys, multi_thread=False, limit=100000):
+def get_all_data(base_path, keep_pkl_keys, multi_thread=False, limit=100000, extras=[]):
     base_path = Path(base_path).resolve()
     assert base_path.exists()
     methods = [
@@ -277,7 +277,7 @@ def get_all_data(base_path, keep_pkl_keys, multi_thread=False, limit=100000):
         if m.is_dir()
         and not m.name.startswith(".")
         and len(list(m.glob("**/tracker*.pkl"))) > 0
-    ]
+    ] + [Path(x) for x in extras]
     assert methods, (
         "Could not find any methods. Make sure the folder structure is correct"
         + " (expecting <base_path_you_provided>/<method>/<run>/tracker*.pkl)"
