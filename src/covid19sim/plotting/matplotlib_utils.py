@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
 from pathlib import Path
 from scipy.interpolate import interp1d
-from matplotlib.colors import TwoSlopeNorm, is_color_like
+from matplotlib.colors import TwoSlopeNorm, is_color_like, colorConverter, to_rgba
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 from covid19sim.plotting.curve_fitting import bootstrap_series, ewma
@@ -37,6 +37,14 @@ def scale_lightness(rgb, scale_l):
     h, l, s = colorsys.rgb_to_hls(*rgb)
     # manipulate h, l, s values and return as rgb
     return colorsys.hls_to_rgb(h, min(1, l * scale_l), s = s)
+
+def make_color_transparent(color, bg_rgb=[1,1,1], alpha=0.5):
+    """
+    https://stackoverflow.com/a/33375738/3413239
+    """
+    rgb = colorConverter.to_rgb(color)
+    return to_rgba([alpha * c1 + (1 - alpha) * c2
+            for (c1, c2) in zip(rgb, bg_rgb)])
 
 def get_color(idx=None, method=None):
     """
