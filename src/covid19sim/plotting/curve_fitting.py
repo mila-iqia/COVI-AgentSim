@@ -6,6 +6,7 @@ import warnings
 import tensorflow as tf
 import tensorflow_probability as tfp
 import numpy as np
+from pathlib import Path
 from scipy import stats
 from scipy.optimize import curve_fit
 from gpflow.ci_utils import ci_niter
@@ -118,6 +119,24 @@ class FittedFn(object):
         """
         pass
 
+    def save(self, path):
+        """
+        Saves the necessary function to `path`
+
+        Args:
+            path (str): path where the model needs to be saved
+        """
+        pass
+
+    def load(self, path):
+        """
+        Loads the saved model from `path`
+
+        Args:
+            path (str): path where model is saved
+        """
+        pass
+
 
 class LinearFit(FittedFn):
     """
@@ -221,9 +240,10 @@ class GPRFit(FittedFn):
 
         # number of samples of E(y|x) model to sample from the final posterior in `self.fit`
         self.num_samples = 1000
+        self.using_saved_model = False
 
     def fit(self, X, Y):
-
+        assert not self.using_saved_model, "Saved model's predict_f has been overwritten. Don't know the consequences of fitting to new data, so this function is not allowed at the moment."
         if len(X.shape) == 1:
             X = X.reshape(-1, 1)
 
@@ -249,7 +269,7 @@ class GPRFit(FittedFn):
         return self
 
     def find_x_for_y(self, y):
-        assert self._fit, "Function has not been fitted yet"
+        assert self._fit or self.using_saved_model, "Function has not been fitted yet"
         y = self.reformat_input(y)
         xx = np.linspace(2, 10, 100000).reshape(-1, 1)
         yy = self.evaluate_y_for_x(xx)
@@ -257,14 +277,13 @@ class GPRFit(FittedFn):
         return x1
 
     def evaluate_y_for_x(self, x):
-        assert self._fit, "Function has not been fitted yet"
-        assert type(x) == np.ndarray, f"expected a numpy array. Got {type(x)}"
+        assert self._fit or self.using_saved_model, "Function has not been fitted yet"
 
         x = self.reformat_input(x)
         return self.model.predict_f(x)[0].numpy().reshape(-1)
 
     def predict_y_using_sampled_fns(self, x, n_samples=1):
-        assert self._fit, "Function has not been fitted yet"
+        assert self._fit or self.using_saved_model, "Function has not been fitted yet"
         assert self.samples is not None, "No posterior samples found. "
 
         x = self.reformat_input(x)
@@ -283,7 +302,7 @@ class GPRFit(FittedFn):
         return ys
 
     def stderr_for_x(self, x, analytical=True, return_var=False, n_samples=1000):
-        assert self._fit, "Function has not been fitted yet"
+        assert self._fit or self.using_saved_model, "Function has not been fitted yet"
         x = self.reformat_input(x)
         if analytical:
             mean, var = self.model.predict_f(x)
@@ -296,7 +315,7 @@ class GPRFit(FittedFn):
             return std ** 2 if return_var else std
 
     def find_offset_and_stderr_at_x(self, x, other_fn, analytical=False, check_y=None):
-        assert self._fit, "Function has not been fitted yet"
+        assert self._fit or self.using_saved_model, "Function has not been fitted yet"
 
         x = self.reformat_input(x)
         y = self.evaluate_y_for_x(x)
@@ -369,6 +388,20 @@ class GPRFit(FittedFn):
             )
 
         self.samples, traces = run_chain_fn()
+
+
+    def save(self, path):
+        assert Path(path).parent.exists(), f"{path} doesn't exist"
+        self.model.predict_f_compiled = tf.function(
+                self.model.predict_f, input_signature=[tf.TensorSpec(shape=[None, 1], dtype=tf.float64)]
+            )
+
+        tf.saved_model.save(self.model, path)
+
+    def load(self, path):
+        self.using_saved_model = True
+        self.model = tf.saved_model.load(str(Path(path).resolve()))
+        self.model.predict_f = self.model.predict_f_compiled
 
 
 def bootstrap_series(series, num_bootstrap_samples=100, seed=0, mode="mean"):
