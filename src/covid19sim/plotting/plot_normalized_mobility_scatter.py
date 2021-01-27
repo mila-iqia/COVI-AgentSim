@@ -207,7 +207,7 @@ def find_all_pairs_offsets_and_stddev(fitted_fns):
 
     return sorted(all_pairs, key=lambda x: (x[0][0], x[2][0]))
 
-def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path, USE_GP=False, plot_residuals=False, display_r_squared=False, annotate_advantages=True, plot_scatter=True, plot_heatmap=True, assume_linear_mean=False):
+def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path, USE_GP=False, plot_residuals=False, display_r_squared=False, annotate_advantages=True, plot_scatter=True, plot_heatmap=True, trend_fit=""):
     """
     Plots and saves scatter plot for data obtained from `configs/experiment/normalized_mobility.yaml` showing a trade off between health and mobility.
 
@@ -223,12 +223,18 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
         annotate_advantages (bool): if True, annotates the plot with advantages
         plot_scatter (bool): if True, plots scatter points corresponding to each experiment.
         plot_heatmap (bool): if True, plots heatmap of pairwise advantages.
+        trend_fit (str): Type of trend to fit. 
     """
     assert xmetric in METRICS and ymetric in METRICS, f"Unknown metrics: {xmetric} or {ymetric}. Expected one of {METRICS}."
     TICKGAP=2
     ANNOTATION_FONTSIZE=15
     USE_GP_STR = "GP_" if USE_GP else ""
-    LINEAR_STR = "_linear" if assume_linear_mean else ""
+    if trend_fit == "polynomial":
+        POLYFIT_STR = "_PolyFit_"
+    elif trend_fit == "linear":
+        POLYFIT_STR = "_Linear_"
+    else:
+        POLYFIT_STR = ""
 
     # save models
     model_dir = Path(path).resolve() / "normalized_mobility/models"
@@ -271,10 +277,10 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
         selector = results['method'] == method
         x = results[selector][xmetric].to_numpy()
         y = results[selector][ymetric].to_numpy()
-        fitted_fns[method] = INTERPOLATION_FN(assume_linear_mean=assume_linear_mean).fit(x, y)
+        fitted_fns[method] = INTERPOLATION_FN(fit=trend_fit).fit(x, y)
 
         # save for sensitivity analysis (if not already saved)
-        model_path = model_dir / f"GP{LINEAR_STR}_model_{method}"
+        model_path = model_dir / f"GP{POLYFIT_STR}_model_{method}"
         if not model_path.exists():
             fitted_fns[method].save(path=str(model_path))
 
@@ -333,12 +339,12 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
 
         # save the table
         table_to_save = pd.DataFrame(table_to_save, columns=['method1', 'method2', 'contacts', 'm1_R', 'm2_R', 'label1', 'label2', 'advantage', 'stddev', 'P(advantage > 0)', 'rnd_advantage', 'rnd_stderr', 'P(rnd_advantage > 0)'])
-        table_to_save.to_csv(str(Path(path).resolve() / f"normalized_mobility/{USE_GP_STR}{LINEAR_STR}R_all_advantages_{xmetric}{USE_GP_STR}.csv"))
+        table_to_save.to_csv(str(Path(path).resolve() / f"normalized_mobility/{USE_GP_STR}{POLYFIT_STR}R_all_advantages_{xmetric}{USE_GP_STR}.csv"))
 
         # make a heatmap
         if plot_heatmap:
             heatmap = plot_heatmap_of_advantages(table_to_save, labelmap, USE_MATH_NOTATION)
-            filepath = save_figure(heatmap, basedir=path, folder="normalized_mobility", filename=f'{USE_GP_STR}{LINEAR_STR}Heatmap_{xmetric}_advantages_AR_{adoption_rate}')
+            filepath = save_figure(heatmap, basedir=path, folder="normalized_mobility", filename=f'{USE_GP_STR}{POLYFIT_STR}Heatmap_{xmetric}_advantages_AR_{adoption_rate}')
             print(f"Heatmap of advantages @ {adoption_rate}% Adoption saved at {filepath}")
 
         # reference lines
@@ -372,7 +378,7 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
 
     # save
     fig.tight_layout()
-    filename = f"{USE_GP_STR}{LINEAR_STR}{ymetric}_{xmetric}_mobility_scatter"
+    filename = f"{USE_GP_STR}{POLYFIT_STR}{ymetric}_{xmetric}_mobility_scatter"
     filename += "_w_r_squared" if display_r_squared else ""
     filename += "_w_residuals" if plot_residuals else ""
     filename += "_w_annotations" if annotate_advantages else ""
@@ -512,14 +518,19 @@ def run(data, plot_path, compare=None, **kwargs):
                     plot_heatmap = True
                     for annotate_advantages in [True]:
                         for plot_scatter in [False, True]:
-                            # with non linear mean
+                            # with non linear fit
                             plot_and_save_mobility_scatter(all_data, uptake, xmetric=xmetric, path=plot_path, \
                                 ymetric=ymetric, plot_residuals=False, display_r_squared=False, \
                                 annotate_advantages=annotate_advantages, plot_scatter=plot_scatter, USE_GP=USE_GP, plot_heatmap=plot_heatmap)
 
-                            # with linear mean
+                            # with plynomial fit
                             plot_and_save_mobility_scatter(all_data, uptake, xmetric=xmetric, path=plot_path, \
                                 ymetric=ymetric, plot_residuals=False, display_r_squared=False, \
-                                annotate_advantages=annotate_advantages, plot_scatter=plot_scatter, USE_GP=USE_GP, plot_heatmap=plot_heatmap, assume_linear_mean=True)
+                                annotate_advantages=annotate_advantages, plot_scatter=plot_scatter, USE_GP=USE_GP, plot_heatmap=plot_heatmap, trend_fit="polynomial")
+
+                            # with plynomial fit
+                            plot_and_save_mobility_scatter(all_data, uptake, xmetric=xmetric, path=plot_path, \
+                                ymetric=ymetric, plot_residuals=False, display_r_squared=False, \
+                                annotate_advantages=annotate_advantages, plot_scatter=plot_scatter, USE_GP=USE_GP, plot_heatmap=plot_heatmap, trend_fit="linear")
 
                             plot_heatmap = False # dont' plotheatmap again

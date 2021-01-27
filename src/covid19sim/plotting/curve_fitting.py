@@ -231,12 +231,14 @@ class GPRFit(FittedFn):
     Implements FittedFn using GP regression.
     Used from the tutorial here - https://gpflow.readthedocs.io/en/develop/notebooks/advanced/mcmc.html
     """
-    def __init__(self, assume_linear_mean=False):
+    def __init__(self, fit=""):
         super().__init__()
         self.kernel = gpflow.kernels.Matern32(variance=1, lengthscales=1)
         self.mean_function = None
-        if assume_linear_mean:
-            self.mean_function = gpflow.mean_functions.Linear()
+        if fit == "polynomial":
+            self.kernel = gpflow.kernels.Polynomial()
+        elif fit == "linear":
+            self.kernel = gpflow.kernels.Linear()
 
         # number of samples of E(y|x) model to sample from the final posterior in `self.fit`
         self.num_samples = 1000
