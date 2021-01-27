@@ -20,6 +20,7 @@ f64 = gpflow.utilities.to_default_float # convert to float64 for tfp to play nic
 tf.random.set_seed(123)
 np.random.seed(0)
 warnings.filterwarnings("ignore")
+tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 class FittedFn(object):
     """
@@ -404,6 +405,7 @@ class GPRFit(FittedFn):
         self.using_saved_model = True
         self.model = tf.saved_model.load(str(Path(path).resolve()))
         self.model.predict_f = self.model.predict_f_compiled
+        return self
 
 
 def bootstrap_series(series, num_bootstrap_samples=100, seed=0, mode="mean"):

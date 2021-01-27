@@ -25,7 +25,7 @@ import covid19sim.plotting.plot_dalys as dalys
 import covid19sim.plotting.plot_sensitivity as sensitivity
 import covid19sim.plotting.plot_grid_sensitivity as grid_sensitivity
 from covid19sim.plotting.utils import get_all_data
-import covid19sim.plotting.plot_grid_sensitivity_absolute as grid_sensitivity_absolute
+import covid19sim.plotting.plot_grid_sensitivity_pareto as grid_sensitivity_pareto
 
 
 print("Ok.")
@@ -153,7 +153,7 @@ def main(conf):
         "normalized_mobility": normalized_mobility,
         "sensitivity": sensitivity,
         "grid_sensitivity": grid_sensitivity,
-        "grid_sensitivity_absolute": grid_sensitivity_absolute
+        "grid_sensitivity_pareto": grid_sensitivity_pareto
     }
 
     conf = OmegaConf.to_container(conf)
@@ -305,7 +305,7 @@ def main(conf):
     if (
         len(plots) == 1
         and (
-            "grid_sensitivity_absolute" in plots
+            "grid_sensitivity_pareto" in plots
             or "grid_sensitivity" in plots
         )
     ):

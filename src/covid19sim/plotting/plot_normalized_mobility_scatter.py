@@ -90,6 +90,20 @@ def get_metric_label(label):
 
     raise ValueError(f"Unknown label:{label}")
 
+def get_polyfit_str(trend_fit):
+    """
+    Returns a string to add to saved files to distnguish between kernels used for underlying models
+
+    Args:
+        trend_fit (str): Type of fit.
+    """
+    if trend_fit == "polynomial":
+        return "_PolyFit_"
+    elif trend_fit == "linear":
+        return "_Linear_"
+    else:
+        return ""
+
 def _get_mobility_factor_counts_for_reasonable_r(results, method, lower_R=0.5, upper_R=1.5):
     """
     Returns the count of mobility factors for which method resulted in an R value between `lower_R` and `upper_R`.
@@ -223,21 +237,16 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
         annotate_advantages (bool): if True, annotates the plot with advantages
         plot_scatter (bool): if True, plots scatter points corresponding to each experiment.
         plot_heatmap (bool): if True, plots heatmap of pairwise advantages.
-        trend_fit (str): Type of trend to fit. 
+        trend_fit (str): Type of trend to fit.
     """
     assert xmetric in METRICS and ymetric in METRICS, f"Unknown metrics: {xmetric} or {ymetric}. Expected one of {METRICS}."
     TICKGAP=2
     ANNOTATION_FONTSIZE=15
     USE_GP_STR = "GP_" if USE_GP else ""
-    if trend_fit == "polynomial":
-        POLYFIT_STR = "_PolyFit_"
-    elif trend_fit == "linear":
-        POLYFIT_STR = "_Linear_"
-    else:
-        POLYFIT_STR = ""
+    POLYFIT_STR = get_polyfit_str(trend_fit)
 
     # save models
-    model_dir = Path(path).resolve() / "normalized_mobility/models"
+    model_dir = Path(path).resolve() / f"normalized_mobility/models_{ymetric}_vs_{xmetric}"
     os.makedirs(str(model_dir), exist_ok=True)
 
     adoption_rate = get_adoption_rate_label_from_app_uptake(uptake_rate)
@@ -281,8 +290,7 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
 
         # save for sensitivity analysis (if not already saved)
         model_path = model_dir / f"GP{POLYFIT_STR}_model_{method}"
-        if not model_path.exists():
-            fitted_fns[method].save(path=str(model_path))
+        fitted_fns[method].save(path=str(model_path))
 
         size = results[selector]['mobility_factor'].to_numpy()
         method_label = labelmap[method]
