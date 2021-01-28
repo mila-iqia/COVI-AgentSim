@@ -391,7 +391,7 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
     filename += "_w_residuals" if plot_residuals else ""
     filename += "_w_annotations" if annotate_advantages else ""
     filename += "_w_scatter" if plot_scatter else ""
-    filepath = save_figure(fig, basedir=path, folder="normalized_mobility", filename=f'{filename}_AR_{adoption_rate}')
+    filepath = save_figure(fig, basedir=path, folder=f"normalized_mobility/{ymetric}_vs_{xmetric}{POLYFIT_STR}", filename=f'{filename}_AR_{adoption_rate}')
     print(f"Scatter plot of mobility and R @ {adoption_rate}% Adoption saved at {filepath}")
 
 def _extract_metrics(data, conf):
@@ -520,25 +520,29 @@ def run(data, plot_path, compare=None, **kwargs):
             assert extracted_data_filepath.exists(), f"{extracted_data_filepath} do not exist"
             all_data = pd.read_csv(str(extracted_data_filepath))
 
-        for USE_GP in [True]:
+        # filter those simulations that had full outbreak (>=50% infected)
+        all_data_truncated = all_data[all_data['percentage_infected'] < 30]
+        plot_path_truncated = str(Path(plot_path).resolve() / "normalized_mobility_truncated")
+
+        for results, path in [(all_data, plot_path), (all_data_truncated, plot_path_truncated)]:
             for ymetric in ['r', 'percentage_infected']:
-                for xmetric in ['effective_contacts', 'healthy_contacts']:
+                for xmetric in ['effective_contacts', 'healthy_contacts', 'GLOBAL_MOBILITY_SCALING_FACTOR']:
                     plot_heatmap = True
                     for annotate_advantages in [True]:
                         for plot_scatter in [False, True]:
                             # with non linear fit
-                            plot_and_save_mobility_scatter(all_data, uptake, xmetric=xmetric, path=plot_path, \
+                            plot_and_save_mobility_scatter(all_data, uptake, xmetric=xmetric, path=path, \
                                 ymetric=ymetric, plot_residuals=False, display_r_squared=False, \
                                 annotate_advantages=annotate_advantages, plot_scatter=plot_scatter, USE_GP=USE_GP, plot_heatmap=plot_heatmap)
 
                             # with plynomial fit
-                            plot_and_save_mobility_scatter(all_data, uptake, xmetric=xmetric, path=plot_path, \
+                            plot_and_save_mobility_scatter(all_data, uptake, xmetric=xmetric, path=path, \
                                 ymetric=ymetric, plot_residuals=False, display_r_squared=False, \
                                 annotate_advantages=annotate_advantages, plot_scatter=plot_scatter, USE_GP=USE_GP, plot_heatmap=plot_heatmap, trend_fit="polynomial")
 
-                            # with plynomial fit
-                            plot_and_save_mobility_scatter(all_data, uptake, xmetric=xmetric, path=plot_path, \
+                            # with linear fit
+                            plot_and_save_mobility_scatter(all_data, uptake, xmetric=xmetric, path=path, \
                                 ymetric=ymetric, plot_residuals=False, display_r_squared=False, \
                                 annotate_advantages=annotate_advantages, plot_scatter=plot_scatter, USE_GP=USE_GP, plot_heatmap=plot_heatmap, trend_fit="linear")
 
-                            plot_heatmap = False # dont' plotheatmap again
+                            plot_heatmap = False # dont' plot heatmap again
