@@ -239,7 +239,7 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
         plot_heatmap (bool): if True, plots heatmap of pairwise advantages.
         trend_fit (str): Type of trend to fit.
     """
-    assert xmetric in METRICS and ymetric in METRICS, f"Unknown metrics: {xmetric} or {ymetric}. Expected one of {METRICS}."
+    assert xmetric in METRICS + SENSITIVITY_PARAMETERS and ymetric in METRICS + SENSITIVITY_PARAMETERS, f"Unknown metrics: {xmetric} or {ymetric}. Expected one of {METRICS}."
     TICKGAP=2
     ANNOTATION_FONTSIZE=15
     USE_GP_STR = "GP_" if USE_GP else ""
