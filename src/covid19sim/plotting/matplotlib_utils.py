@@ -43,7 +43,7 @@ def make_color_transparent(color, bg_rgb=[1,1,1], alpha=0.5):
     https://stackoverflow.com/a/33375738/3413239
     """
     rgb = colorConverter.to_rgb(color)
-    return to_rgba([alpha * c1 + (1 - alpha) * c2
+    return colorConverter.to_rgba([alpha * c1 + (1 - alpha) * c2
             for (c1, c2) in zip(rgb, bg_rgb)])
 
 def get_color(idx=None, method=None):
@@ -543,5 +543,8 @@ def get_sensitivity_label(name):
 
     if name == "BASELINE_P_ASYMPTOMATIC": #????
         return "Asymptomaticity\n(% of population)"
+
+    if name == "adoption_rate":
+        return "Adoption Rate"
 
     raise ValueError(f"Invalid name: {name}")
