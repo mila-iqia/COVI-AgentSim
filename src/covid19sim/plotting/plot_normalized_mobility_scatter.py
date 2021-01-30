@@ -520,7 +520,7 @@ def run(data, plot_path, compare=None, **kwargs):
             assert extracted_data_filepath.exists(), f"{extracted_data_filepath} do not exist"
             all_data = pd.read_csv(str(extracted_data_filepath))
 
-        # filter those simulations that had full outbreak (>=50% infected)
+        # filter those simulations that had unrealistic outbreak (>=30% infected)
         all_data_truncated = all_data[all_data['percentage_infected'] < 30]
         plot_path_truncated = str(Path(plot_path).resolve() / "normalized_mobility_truncated")
 
@@ -533,16 +533,16 @@ def run(data, plot_path, compare=None, **kwargs):
                             # with non linear fit
                             plot_and_save_mobility_scatter(all_data, uptake, xmetric=xmetric, path=path, \
                                 ymetric=ymetric, plot_residuals=False, display_r_squared=False, \
-                                annotate_advantages=annotate_advantages, plot_scatter=plot_scatter, USE_GP=USE_GP, plot_heatmap=plot_heatmap)
+                                annotate_advantages=annotate_advantages, plot_scatter=plot_scatter, USE_GP=True, plot_heatmap=plot_heatmap)
 
                             # with plynomial fit
                             plot_and_save_mobility_scatter(all_data, uptake, xmetric=xmetric, path=path, \
                                 ymetric=ymetric, plot_residuals=False, display_r_squared=False, \
-                                annotate_advantages=annotate_advantages, plot_scatter=plot_scatter, USE_GP=USE_GP, plot_heatmap=plot_heatmap, trend_fit="polynomial")
+                                annotate_advantages=annotate_advantages, plot_scatter=plot_scatter, USE_GP=True, plot_heatmap=plot_heatmap, trend_fit="polynomial")
 
                             # with linear fit
                             plot_and_save_mobility_scatter(all_data, uptake, xmetric=xmetric, path=path, \
                                 ymetric=ymetric, plot_residuals=False, display_r_squared=False, \
-                                annotate_advantages=annotate_advantages, plot_scatter=plot_scatter, USE_GP=USE_GP, plot_heatmap=plot_heatmap, trend_fit="linear")
+                                annotate_advantages=annotate_advantages, plot_scatter=plot_scatter, USE_GP=True, plot_heatmap=plot_heatmap, trend_fit="linear")
 
                             plot_heatmap = False # dont' plot heatmap again
