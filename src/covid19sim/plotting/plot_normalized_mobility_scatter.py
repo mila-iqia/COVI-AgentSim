@@ -121,29 +121,6 @@ def _get_mobility_factor_counts_for_reasonable_r(results, method, lower_R=0.5, u
     correct_R = (lower_R <= results[selector]['r']) & (results[selector]['r'] <= upper_R)
     return results[selector][correct_R][['mobility_factor']].value_counts()
 
-def _get_interpolation_kind(xmetric, ymetric, use_gp=False):
-    """
-    Returns a valid interpolation function between xmetric and ymetric.
-
-    Args:
-        xmetric (str): one of `METRICS`
-        ymetric (str): one of `METRICS`
-        use_gp (str): return GP regression fit if True.
-
-    Returns:
-        (function): a function that accepts an np.array. Examples - `_linear`
-    """
-    assert xmetric != ymetric, "x and y can't be same"
-    assert xmetric in METRICS and ymetric in METRICS, f"unknown metrics - xmetric: {xmetric} or ymetric:{ymetric}. Expected one of {METRICS}"
-
-    if use_gp:
-        return GPRFit
-
-    metrics = [xmetric, ymetric]
-    if sum(metric in ["effective_contacts", "r"] for metric in metrics) == 2:
-        return LinearFit
-    return LinearFit
-
 def _filter_out_irrelevant_method(xmetric, ymetric, method, results):
     """
     Checks whether `xmetric` and `ymetric` are suitable to be plotted for `method`.
@@ -254,7 +231,7 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
     methods_and_base_confs = results.groupby(['method', 'intervention_conf_name']).size().index
     labelmap = get_labelmap(methods_and_base_confs, path)
     colormap = get_colormap(methods_and_base_confs, path)
-    INTERPOLATION_FN = _get_interpolation_kind(xmetric, ymetric, use_gp=USE_GP)
+    INTERPOLATION_FN = GPRFit
 
     # find if only specific folders (methods) need to be plotted
     plot_these_methods = load_plot_these_methods_config(path)
