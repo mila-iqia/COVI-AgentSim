@@ -136,7 +136,7 @@ def _filter_out_irrelevant_method(xmetric, ymetric, method, results):
         (bool): True if `method` is not suitable to be plotted for `xmetric` and `ymetric` comparison
     """
     assert xmetric != ymetric, "x and y can't be same"
-    assert xmetric in METRICS and ymetric in METRICS, f"unknown metrics - xmetric: {xmetric} or ymetric:{ymetric}. Expected one of {METRICS}"
+    assert xmetric in METRICS + SENSITIVITY_PARAMETERS and ymetric in METRICS + SENSITIVITY_PARAMETERS, f"Unknown metrics: {xmetric} or {ymetric}. Expected one of {METRICS}."
 
     is_app_based = results[results['method'] == method]['app_based'].unique()
     assert len(is_app_based) == 1, "Same method is expected to be app based and non app based. This can't happen!"
