@@ -873,13 +873,6 @@ class Human(BaseHuman):
             self.allergy_symptoms = []
 
     def catch_other_disease_at_random(self):
-        # BUG: Is it intentional that if a random cold is caught, then one
-        #      cannot also catch a random flu, due to early return?
-        #
-        # # assumption: no other infection if already infected with covid
-        # if self.infection_timestamp is not None:
-        #     return
-
         # Catch a random cold
         if not self.has_cold and self.rng.random() < self.conf["P_COLD_TODAY"]:
             self.ts_cold_symptomatic = self.env.now
@@ -1055,6 +1048,10 @@ class Human(BaseHuman):
             known_interactions, unknown_interactions = location.sample_interactions(self, unknown_only = type_of_activity == "sleep")
             self.interact_with(known_interactions, type="known")
             self.interact_with(unknown_interactions, type="unknown")
+
+        # (debug)
+        # if (self.intervened_behavior.is_under_quarantine and not self.intervened_behavior._follow_recommendation_today and location.location_type != "HOUSEHOLD"):
+            # print(f"{self}, {self.intervened_behavior.current_behavior_reason} Kn: {len(known_interactions)} UKn:{len(unknown_interactions)}")
 
         # environmental transmission
         location.check_environmental_infection(self)
