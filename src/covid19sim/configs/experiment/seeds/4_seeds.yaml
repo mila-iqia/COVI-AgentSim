@@ -1,0 +1,7 @@
+seed:
+  sample: cartesian
+  from:
+    - 7001
+    - 3003
+    - 1300
+    - 3100
