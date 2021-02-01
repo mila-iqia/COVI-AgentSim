@@ -116,14 +116,14 @@ class TestFacility(object):
         score = 0
 
         if SEVERE in human.symptoms or EXTREMELY_SEVERE in human.symptoms:
-            score += self.conf['P_TEST_SEVERE']
+            score += self.conf['SCORE_TEST_SEVERE']
         elif MODERATE in human.symptoms:
-            score += self.conf['P_TEST_MODERATE']
+            score += self.conf['SCORE_TEST_MODERATE']
         elif MILD in human.symptoms:
-            score += self.conf['P_TEST_MILD']
+            score += self.conf['SCORE_TEST_MILD']
 
         if human._test_recommended:
-            score += self.conf['P_TEST_RECOMMENDED'] * human.intervened_behavior.follow_recommendation_today
+            score += self.conf['SCORE_TEST_RECOMMENDED'] * human.intervened_behavior.follow_recommendation_today
             # print(f"{human} - follows today: { human.intervened_behavior.follow_recommendation_today} score:{score}")
 
         return score

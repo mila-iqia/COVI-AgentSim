@@ -418,10 +418,10 @@ P_TEST_SEVERE_OR_SUSPICIOUS: 0.75
 P_TEST_OTHER_REASON: 0.0005
 
 # /!\ (no-source) for scoring to triage who gets a test
-P_TEST_SEVERE: 0.80
-P_TEST_MODERATE: 0.0
-P_TEST_MILD: 0.0
-P_TEST_RECOMMENDED: 0.3
+SCORE_TEST_SEVERE: 0.80
+SCORE_TEST_MODERATE: 0.0
+SCORE_TEST_MILD: 0.0
+SCORE_TEST_RECOMMENDED: 0.3
 
 GET_TESTED_SYMPTOMS_CHECKED_IN_HOSPITAL: ["mild", "moderate", "severe", "fever", "chills", "gastro", "diarrhea", "cough", "fatigue", "trouble_breathing", "loss_of_taste", "light_trouble_breathing", "moderate_trouble_breathing", "heavy_trouble_breathing" ]
 GET_TESTED_SYMPTOMS_CHECKED_BY_SELF: ["cough", "fever", "trouble_breathing", "chills", "loss_of_taste"]
