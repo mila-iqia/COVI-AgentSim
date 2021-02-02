@@ -271,10 +271,10 @@ class GPRFit(FittedFn):
 
         return self
 
-    def find_x_for_y(self, y):
+    def find_x_for_y(self, y, x_range=[2,10]):
         assert self._fit or self.using_saved_model, "Function has not been fitted yet"
         y = self.reformat_input(y)
-        xx = np.linspace(2, 10, 100000).reshape(-1, 1)
+        xx = np.linspace(x_range[0], x_range[1], 100000).reshape(-1, 1)
         yy = self.evaluate_y_for_x(xx)
         x1 = xx[np.argmin(np.abs(yy - y))]
         return x1
