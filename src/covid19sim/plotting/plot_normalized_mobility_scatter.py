@@ -3,6 +3,7 @@ Plots a scatter plot showing trade-off between metrics of different simulations 
 """
 import os
 import yaml
+import math
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -29,9 +30,10 @@ LEGENDSIZE = 25
 ANNOTATION_FONTSIZE=15
 
 METRICS = ['r', 'false_quarantine', 'false_sr', 'effective_contacts', 'healthy_contacts', 'percentage_infected', \
-            'fraction_false_non_risky', 'fraction_false_risky', 'positivity_rate', 'fraction_quarantine']
+            'fraction_false_non_risky', 'fraction_false_risky', 'positivity_rate', 'fraction_quarantine', "mobility_factor"]
 
-SENSITIVITY_PARAMETERS = ['ASYMPTOMATIC_RATIO', 'ALL_LEVELS_DROPOUT', 'P_DROPOUT_SYMPTOM',  'PROPORTION_LAB_TEST_PER_DAY', 'BASELINE_P_ASYMPTOMATIC', 'GLOBAL_MOBILITY_SCALING_FACTOR']# used for sensitivity plots
+# used for sensitivity plots
+SENSITIVITY_PARAMETERS = ['ASYMPTOMATIC_RATIO', 'ALL_LEVELS_DROPOUT', 'P_DROPOUT_SYMPTOM',  'PROPORTION_LAB_TEST_PER_DAY', 'BASELINE_P_ASYMPTOMATIC', 'GLOBAL_MOBILITY_SCALING_FACTOR']
 
 USE_MATH_NOTATION=False
 
@@ -49,8 +51,6 @@ def get_metric_label(label):
     Returns:
         (str): a readable title for label
     """
-    assert label in METRICS, f"unknown label: {label}"
-
     if label == "r":
         if USE_MATH_NOTATION:
             return "$\hat{R}$"
@@ -152,13 +152,14 @@ def _filter_out_irrelevant_method(xmetric, ymetric, method, results):
 
     return False
 
-def find_all_pairs_offsets_and_stddev(fitted_fns):
+def find_all_pairs_offsets_and_stddev(fitted_fns, x_range=[2,10]):
     """
     Computes offset estimates and their stddev for all pairs of methods.
     NOTE: Only applicable when ymetric is "r".
 
     Args:
         fitted_fns (dict): method --> FittedFn
+        x_range (list): 2-element list defining lower and upper bound for search for x-coordinate
 
     Returns:
         (list): list of lists where each list corresponds to pairwise comparison of methods has following elements -
@@ -175,7 +176,7 @@ def find_all_pairs_offsets_and_stddev(fitted_fns):
     # for R = 1, find the value on x-axis.
     method_x = []
     for method, fn in fitted_fns.items():
-        x = fn.find_x_for_y(1.0)
+        x = fn.find_x_for_y(1.0, x_range)
         method_x.append((x, method))
 
     # for the x of reference method, how much is the offset from other methods.
@@ -185,7 +186,7 @@ def find_all_pairs_offsets_and_stddev(fitted_fns):
         plot = True
         reference_fn = fitted_fns[method1]
         y1 = reference_fn.evaluate_y_for_x(x1)
-        assert abs(y1 - 1.0) < 1e-2, f"encountered incorrect y cordinate. Expected 1.0. Got {y1}"
+        assert abs(y1 - 1.0) < 1e-2, f"encountered incorrect y coordinate. Expected 1.0. Got {y1}"
         for _, method2 in method_x[idx+1:]:
             comparator_fn = fitted_fns[method2]
             y2 = comparator_fn.evaluate_y_for_x(x1)
@@ -299,7 +300,8 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
 
     # compute and plot offset and its confidence bounds
     if ymetric == "r":
-        points = find_all_pairs_offsets_and_stddev(fitted_fns)
+        x_range = [math.floor(results[ymetric].min()), math.ceil(results[ymetric].max())]
+        points = find_all_pairs_offsets_and_stddev(fitted_fns, x_range=x_range)
         table_to_save = []
         x_offset = 0.0
         for p1, p2, res1, m1, m2, res2, plot in points:
@@ -346,9 +348,12 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
 
     xlabel = get_metric_label(xmetric)
     ylabel = get_metric_label(ymetric)
+    x_tick_gap = 2 if xmetric != "mobility_factor" else 0.1
+    x_lower_lim = 1.5 if xmetric != "mobility_factor" else 0
+    x_upper_lim = 10.5 if xmetric != "mobility_factor" else 1.05
     ax = add_bells_and_whistles(ax, y_title=ylabel, x_title=None if plot_residuals else xlabel, XY_TITLEPAD=LABELPAD, \
                     XY_TITLESIZE=LABELSIZE, TICKSIZE=TICKSIZE, legend_loc='upper left', \
-                    LEGENDSIZE=LEGENDSIZE, x_tick_gap=TICKGAP, x_lower_lim=2, x_upper_lim=10.5, y_lower_lim=0.25)
+                    LEGENDSIZE=LEGENDSIZE, x_tick_gap=x_tick_gap, x_lower_lim=x_lower_lim, x_upper_lim=x_upper_lim, y_lower_lim=0.25)
 
     if (
         plot_residuals
@@ -356,7 +361,7 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
     ):
         res_ax.plot(res_ax.get_xlim(), [0.0, 0.0], '-.', c="gray", alpha=0.5)
         res_ax = add_bells_and_whistles(res_ax, y_title="Residuals", x_title=xlabel, XY_TITLEPAD=LABELPAD, \
-                        XY_TITLESIZE=LABELSIZE, TICKSIZE=TICKSIZE, x_tick_gap=TICKGAP)
+                        XY_TITLESIZE=LABELSIZE, TICKSIZE=TICKSIZE, x_tick_gap=x_tick_gap)
 
     # figure title
     fig.suptitle(f"Tracing Operating Characteristics @ {adoption_rate}% Adoption Rate", fontsize=TITLESIZE, y=1.05)
@@ -487,11 +492,12 @@ def run(data, plot_path, compare=None, **kwargs):
             for method in other_methods:
                 key = list(data[method].keys())[0]
                 no_app_df = pd.concat([no_app_df, _extract_data(data[method][key], method)], axis='index', ignore_index=True)
+                no_app_df['adoption_rate'] = -1
 
             all_data = deepcopy(no_app_df)
             for method in app_based_methods:
                 all_data = pd.concat([all_data, _extract_data(data[method][uptake], method)], axis='index', ignore_index=True)
-            all_data['adoption_rate'] = adoption_rate
+                all_data['adoption_rate'] = adoption_rate
             save_relevant_csv_files(all_data, adoption_rate, extract_path=extracted_data_filepath, good_factors_path=good_mobility_factor_filepath)
         else:
             assert extracted_data_filepath.exists(), f"{extracted_data_filepath} do not exist"
@@ -523,3 +529,8 @@ def run(data, plot_path, compare=None, **kwargs):
                                 annotate_advantages=annotate_advantages, plot_scatter=plot_scatter, USE_GP=True, plot_heatmap=plot_heatmap, trend_fit="linear")
 
                             plot_heatmap = False # dont' plot heatmap again
+
+        # mobiliy_factor and contacts with non linear fit
+        plot_and_save_mobility_scatter(all_data, uptake, xmetric='mobility_factor', path=plot_path, \
+            ymetric='effective_contacts', plot_residuals=False, display_r_squared=False, \
+            annotate_advantages=False, plot_scatter=True, USE_GP=True, plot_heatmap=False, trend_fit="polynomial")

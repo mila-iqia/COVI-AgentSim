@@ -31,7 +31,7 @@ LABELSIZE = 24
 SCENARIO_LABELSIZE=25
 SCENARIO_LABELPAD=85
 LABELPAD = 30
-LINESTYLES = ["-", "--"]
+LINESTYLES = ["-", "--", ":"]
 
 INTERPOLATION_FN = GPRFit
 
@@ -74,6 +74,8 @@ SENSITIVITY_PARAMETER_RANGE ={
         "no-effect": ['post-lockdown-no-tracing']
     }
 }
+
+MAIN_SENSITIVITY_PARAMETERS = ["ALL_LEVELS_DROPOUT", "P_DROPOUT_SYMPTOM", "PROPORTION_LAB_TEST_PER_DAY"]
 
 _SCENARIOS_NAME = ["Optimistic", "Moderate", "Pessimistic"]
 SCENARIO_PARAMETERS_IDX={
@@ -176,7 +178,7 @@ def plot_stable_frames_line(ax, df, y_metric, sensitivity_parameter, colormap, y
             # plot No Tracing only once
             if method == NO_TRACING_METHOD and no_tracing_plotted:
                 continue
-            no_tracing_plotted |= method == NO_TRACING_METHOD
+            no_tracing_plotted |= (method == NO_TRACING_METHOD) and (adoption_rate == -1)
 
             xs = sorted(df[sensitivity_parameter].unique())
             ys, yerrs = [], []
@@ -232,7 +234,7 @@ def plot_stable_frames(ax, df, y_metric, sensitivity_parameter, colormap, y_metr
             # plot No Tracing only once
             if method == NO_TRACING_METHOD and no_tracing_plotted:
                 continue
-            no_tracing_plotted |= method == NO_TRACING_METHOD
+            no_tracing_plotted |= (method == NO_TRACING_METHOD) and (adoption_rate == -1)
 
             for x_val in df[sensitivity_parameter].unique():
                 tmp_df = pd.DataFrame()
@@ -316,11 +318,11 @@ def plot_and_save_grid_sensitivity_analysis(results, path, y_metric, SENSITIVITY
     ncols = len(SENSITIVITY_PARAMETERS)
     fig, axs = plt.subplots(nrows=nrows, ncols=ncols, figsize=(27, 18), sharex='col', sharey=True, dpi=DPI, constrained_layout=True, squeeze=False)
 
-    # plot all
+    #
     SCENARIO_PARAMETERS = [DEFAULT_PARAMETER_VALUES[param] for param in  SENSITIVITY_PARAMETERS]
-    scenario_df = results[(results[SENSITIVITY_PARAMETERS] == SCENARIO_PARAMETERS).all(1)]
+    default_scenario_df = results[(results[SENSITIVITY_PARAMETERS] == SCENARIO_PARAMETERS).all(1)]
 
-    stable_frames_scenario_df, stable_point_scenario = find_stable_frames(scenario_df, contact_range=contact_range)
+    stable_frames_scenario_df, stable_point_scenario = find_stable_frames(default_scenario_df, contact_range=contact_range)
 
     for i, parameter in enumerate(SENSITIVITY_PARAMETERS):
         values = SENSITIVITY_PARAMETER_RANGE[parameter]['values']
@@ -424,6 +426,16 @@ def run(data, plot_path, compare=None, **kwargs):
     ):
         SENSITIVITY_PARAMETERS = ['ALL_LEVELS_DROPOUT', 'P_DROPOUT_SYMPTOM']
     elif (
+        sensitivity_parameter == "user-behavior-Lx"
+        or "sensitivity_Lx" in MAIN_FOLDER
+    ):
+        SENSITIVITY_PARAMETERS = ['ALL_LEVELS_DROPOUT']
+    elif (
+        sensitivity_parameter == "user-behavior-Sx"
+        or "sensitivity_Sx" in MAIN_FOLDER
+    ):
+        SENSITIVITY_PARAMETERS = ['P_DROPOUT_SYMPTOM']
+    elif (
         sensitivity_parameter == "test-quantity"
         or "sensitivity_Tx" in MAIN_FOLDER
     ):
@@ -447,22 +459,30 @@ def run(data, plot_path, compare=None, **kwargs):
         results = pd.read_csv(str(filename))
     else:
         print(f"Plot path: {str(plot_path)}")
+        remaining_sensitivity_parameters = [x for x in MAIN_SENSITIVITY_PARAMETERS if x not in SENSITIVITY_PARAMETERS]
+        default_parameter_values = [DEFAULT_PARAMETER_VALUES[x] for x in remaining_sensitivity_parameters]
         results = pd.DataFrame()
-        for scenario_folder in plot_path.parent.iterdir():
-            if not scenario_folder.is_dir():
-                continue
-
-            for subfolder in scenario_folder.iterdir():
-                if "scatter" not in subfolder.name:
+        for sensitivity_dir in plot_path.parent.parent.iterdir():
+            if sensitivity_dir.name == "main_scenario":
+                continue # uses different mobility factors for methods
+            print(sensitivity_dir.name)
+            for scenario_folder in sensitivity_dir.iterdir():
+                if not scenario_folder.is_dir():
                     continue
-                print(f"Currently at: {str(subfolder)}.")
-                all_runs = subfolder / "normalized_mobility/plots/normalized_mobility/"
-                all_runs = list(all_runs.glob("full_extracted_data_AR_*.csv"))
-                for _run in all_runs:
-                    ar = str(_run).split(".csv")[0].split("_")[-1]
-                    y = pd.read_csv(str(_run))
-                    y['adoption_rate'] = float(ar) if ar else 100
-                    results = pd.concat([results, y], axis=0, ignore_index=True)
+
+                for subfolder in scenario_folder.iterdir():
+                    if "scatter" not in subfolder.name:
+                        continue
+                    print(f"Currently at: {str(subfolder)}.")
+                    all_runs = subfolder / "normalized_mobility/plots/normalized_mobility/"
+                    all_runs = list(all_runs.glob("full_extracted_data_AR_*.csv"))
+                    for _run in all_runs:
+                        df = pd.read_csv(str(_run))
+                        selector = (df[remaining_sensitivity_parameters] == default_parameter_values).all(1)
+                        if selector.shape[0] > 0:
+                            results = pd.concat([results, df[selector]], axis=0, ignore_index=True)
+
+        results.loc[results['app_based'] == False, 'adoption_rate'] = -1
         results.to_csv(str(filename))
 
     print("Unique adoption rates: ", results['adoption_rate'].unique())
