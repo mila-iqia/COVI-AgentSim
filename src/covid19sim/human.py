@@ -535,10 +535,12 @@ class Human(BaseHuman):
 
         # (debug)
         # print("Test Taken", self, "* symptom start", self.covid_symptom_start_time, " * Cold/Flu", f"{self.has_cold}/{self.has_allergy_symptoms}" )
-        self.intervened_behavior.trigger_intervention(reason=TEST_TAKEN)
 
-        # log
+        # log (should come before change in behavior attributes of human)
         self.city.tracker.track_tested_results(self)
+
+        #
+        self.intervened_behavior.trigger_intervention(reason=TEST_TAKEN)
 
     def check_if_needs_covid_test(self, at_hospital=False):
         """

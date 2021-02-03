@@ -1263,7 +1263,7 @@ class Tracker(object):
             "flu_timestamp": human.flu_timestamp,
             "allergy_symptom_onset": human.allergy_timestamp,
             "test_recommended": human._test_recommended,
-            "recommendation_follow": human.intervened_behavior.follow_recommendation_today
+            "recommendation_follow": human.intervened_behavior._follow_recommendation_today
         })
 
     def compute_test_statistics(self, logfile=False):
