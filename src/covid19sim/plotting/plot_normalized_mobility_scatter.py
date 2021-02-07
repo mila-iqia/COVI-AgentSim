@@ -30,7 +30,7 @@ LEGENDSIZE = 25
 ANNOTATION_FONTSIZE=15
 
 METRICS = ['r', 'false_quarantine', 'false_sr', 'effective_contacts', 'healthy_contacts', 'percentage_infected', \
-            'fraction_false_non_risky', 'fraction_false_risky', 'positivity_rate', 'fraction_quarantine', "mobility_factor"]
+            'fraction_false_non_risky', 'fraction_false_risky', 'positivity_rate', 'fraction_quarantine']
 
 # used for sensitivity plots
 SENSITIVITY_PARAMETERS = ['ASYMPTOMATIC_RATIO', 'ALL_LEVELS_DROPOUT', 'P_DROPOUT_SYMPTOM',  'PROPORTION_LAB_TEST_PER_DAY', 'BASELINE_P_ASYMPTOMATIC', 'GLOBAL_MOBILITY_SCALING_FACTOR']
@@ -509,7 +509,7 @@ def run(data, plot_path, compare=None, **kwargs):
 
         for results, path in [(all_data, plot_path), (all_data_truncated, plot_path_truncated)]:
             for ymetric in ['r', 'percentage_infected']:
-                for xmetric in ['effective_contacts', 'healthy_contacts', 'GLOBAL_MOBILITY_SCALING_FACTOR']:
+                for xmetric in ['effective_contacts', 'healthy_contacts', 'mobility_factor']:
                     plot_heatmap = True
                     for annotate_advantages in [True]:
                         for plot_scatter in [False, True]:
