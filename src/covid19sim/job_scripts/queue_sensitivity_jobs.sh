@@ -10,13 +10,13 @@ INIT=0.004
 # values
 ALL_LEVELS_DROPOUT=(0.02 0.08 0.16 0.32)
 P_DROPOUT_SYMPTOM=(0.20 0.40 0.60)
-PROPORTION_LAB_TEST_PER_DAY=(0.005 0.003 0.001)
+PROPORTION_LAB_TEST_PER_DAY=(0.005 0.003 0.0015 0.001 0.0005)
 BASELINE_P_ASYMPTOMATIC=(0.50 0.75 1.0)
 APP_UPTAKE=(0.8415 0.7170 0.5618 0.4215 0.2850)
 
 if [ "$TYPE" == "main-scenario" ]; then
   Ax=${BASELINE_P_ASYMPTOMATIC[1]}
-  Tx=${PROPORTION_LAB_TEST_PER_DAY[2]}
+  Tx=${PROPORTION_LAB_TEST_PER_DAY[3]}
   Lx=${ALL_LEVELS_DROPOUT[0]}
   Sx=${P_DROPOUT_SYMPTOM[0]}
   ARx=${APP_UPTAKE[0]}
@@ -199,14 +199,13 @@ if [ "$TYPE" == "test-quantity" ]; then
 
   if [ "$ACTION" == "launch-jobs" ]; then
 
-    START=0
     if [ "$DEFAULTS" -eq "1" ]; then
-      END=$((${#PROPORTION_LAB_TEST_PER_DAY[@]}-1))
+      ARRAY=(0 1 2 3 4)
     else
-      END=$((${#PROPORTION_LAB_TEST_PER_DAY[@]}-2))
+      ARRAY=(0 1 2 4)
     fi
 
-    for x in $(seq $START $END);
+    for x in "${ARRAY[@]}"
     do
       ./launch_mobility_experiment.sh Main -1 $Ax $Lx $Sx ${PROPORTION_LAB_TEST_PER_DAY[$x]} \
                 post-lockdown-no-tracing $FOLDER_NAME $TYPE $N_PEOPLE $INIT
@@ -215,20 +214,20 @@ if [ "$TYPE" == "test-quantity" ]; then
     # 30% AR
     for intervention in bdt1 heuristicv4
     do
-      for x in $(seq $START $END);
+      for x in "${ARRAY[@]}"
       do
         ./launch_mobility_experiment.sh Main ${APP_UPTAKE[3]} $Ax $Lx $Sx ${PROPORTION_LAB_TEST_PER_DAY[$x]} \
-                  post-lockdown-no-tracing $FOLDER_NAME $TYPE $N_PEOPLE $INIT
+                  $intervention $FOLDER_NAME $TYPE $N_PEOPLE $INIT
       done
     done
 
     # 60% AR
     for intervention in bdt1 heuristicv4
     do
-      for x in $(seq $START $END);
+      for x in "${ARRAY[@]}"
       do
         ./launch_mobility_experiment.sh Main ${APP_UPTAKE[0]} $Ax $Lx $Sx ${PROPORTION_LAB_TEST_PER_DAY[$x]} \
-                  post-lockdown-no-tracing $FOLDER_NAME $TYPE $N_PEOPLE $INIT
+                  $intervention $FOLDER_NAME $TYPE $N_PEOPLE $INIT
       done
     done
 
