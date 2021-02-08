@@ -300,7 +300,7 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
 
     # compute and plot offset and its confidence bounds
     if ymetric == "r":
-        x_range = [math.floor(results[ymetric].min()), math.ceil(results[ymetric].max())]
+        x_range = [math.floor(results[xmetric].min()), math.ceil(results[xmetric].max())]
         points = find_all_pairs_offsets_and_stddev(fitted_fns, x_range=x_range)
         table_to_save = []
         x_offset = 0.0
