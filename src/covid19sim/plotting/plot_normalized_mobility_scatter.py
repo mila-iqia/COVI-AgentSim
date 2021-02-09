@@ -509,7 +509,7 @@ def run(data, plot_path, compare=None, **kwargs):
 
         for results, path in [(all_data, plot_path), (all_data_truncated, plot_path_truncated)]:
             for ymetric in ['r', 'percentage_infected']:
-                for xmetric in ['effective_contacts', 'healthy_contacts', 'mobility_factor']:
+                for xmetric in ['effective_contacts', 'healthy_contacts', 'GLOBAL_MOBILITY_SCALING_FACTOR']:
                     plot_heatmap = True
                     for annotate_advantages in [True]:
                         for plot_scatter in [False, True]:
