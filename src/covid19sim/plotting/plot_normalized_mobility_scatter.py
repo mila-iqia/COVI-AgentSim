@@ -85,7 +85,7 @@ def get_metric_label(label):
     if label == "fraction_quarantine":
         return "Fraction Quarantine"
 
-    if label == "mobility_factor":
+    if label in ["mobility_factor", "GLOBAL_MOBILITY_SCALING_FACTOR"]:
         return "Global Mobility Factor"
 
     raise ValueError(f"Unknown label:{label}")
