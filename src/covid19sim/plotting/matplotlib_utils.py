@@ -533,18 +533,21 @@ def get_sensitivity_label(name):
         (str): name of the x-label
     """
     if name == "ALL_LEVELS_DROPOUT":
-        return "Daily Behavior Adherence\n(% of app users)"
+        return "Daily Behavior Non-adherence\n(% of app users)"
 
     if name == "PROPORTION_LAB_TEST_PER_DAY":
         return "Daily Testing Capacity\n(% of population)"
 
     if name == "P_DROPOUT_SYMPTOM":
-        return "Quality of Self-diagnosis\n(% of daily symptoms)"
+        return "Probability of not reporting symptoms\n(% of daily symptoms)"
 
-    if name == "BASELINE_P_ASYMPTOMATIC": #????
+    if name == "BASELINE_P_ASYMPTOMATIC":
         return "Asymptomaticity\n(% of population)"
 
     if name == "adoption_rate":
         return "Adoption Rate"
+
+    if name == "ASYMPTOMATIC_INFECTION_RATIO":
+        return "Asymptomatic infection ratio"
 
     raise ValueError(f"Invalid name: {name}")
