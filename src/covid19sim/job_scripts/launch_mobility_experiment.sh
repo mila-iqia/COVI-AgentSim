@@ -1,3 +1,4 @@
+
 #!/bin/bash
 
 # args
@@ -14,6 +15,12 @@ n_people=${10}
 init=${11}
 dirname=$8/sensitivity_S_${SCENARIO}_${n_people}_init_${init}_UPTAKE_${UPTAKE}/scatter_Ax_${ASYMP}_Lx_${ALL_LEVELS_DROPOUT}_Sx_${P_DROPOUT_SYMPTOM}_test_${TEST}
 
+ASYMP_INFECTION_RATIO=0.29
+if [[ ! -z "${12}" ]]; then
+  ASYMP_INFECTION_RATIO=${12}
+  dirname=${dirname}_AIR_${ASYMP_INFECTION_RATIO}
+fi
+
 # simulation days
 SIM_DAYS=60
 
@@ -22,11 +29,12 @@ ENV_RELATIVE_PATH=covid19
 COVISIM_REPO=/home/$USER/simulator
 SLURM_LOG_DIR=$SCRATCH/job_logs
 SIM_OUTPUT_BASEDIR=$SCRATCH/
+# SIM_OUTPUT_BASEDIR=/home/nrahaman/python/covi-simulator/exp/sensitivity_v3 ## NASIM
 EMAIL=pg2455@columbia.edu # to be notified of every run
 
 source ~/${ENV_RELATIVE_PATH}/bin/activate
 
-cd /home/pratgupt/simulator/src/covid19sim/job_scripts
+cd ${COVISIM_REPO}/src/covid19sim/job_scripts
 # normalized mobility
 
 TIME="'2:50:00'"
@@ -38,7 +46,7 @@ if [ "${n_people}" -ge "5000" ] ; then
 fi
 
 glomo_range=uniform_for_sensitivity
-n_search=225
+n_search=250
 
 if [ "$TYPE" != "main-scenario" ] ; then
   # no need to have a GP if filter is the number of contacts
@@ -67,8 +75,9 @@ if [ "$INTERVENTION" == "post-lockdown-no-tracing" ] || [ "$INTERVENTION" == "bd
     base_dir=${SIM_OUTPUT_BASEDIR}/$dirname/normalized_mobility simulation_days=${SIM_DAYS}\
     intervention=$INTERVENTION  global_mobility_scaling_factor_range=${glomo_range} \
     n_people=${n_people} init_fraction_sick=$init time=$TIME APP_UPTAKE=$UPTAKE \
-    BASELINE_P_ASYMPTOMATIC=$ASYMP PROPORTION_LAB_TEST_PER_DAY=$TEST \
-    P_DROPOUT_SYMPTOM=${P_DROPOUT_SYMPTOM} ALL_LEVELS_DROPOUT=${ALL_LEVELS_DROPOUT}  seeds=9_seeds n_search=${n_search} CONTAGION_KNOB=27.5 dev=True
+    BASELINE_P_ASYMPTOMATIC=$ASYMP PROPORTION_LAB_TEST_PER_DAY=$TEST ASYMPTOMATIC_INFECTION_RATIO=${ASYMP_INFECTION_RATIO} \
+    P_DROPOUT_SYMPTOM=${P_DROPOUT_SYMPTOM} ALL_LEVELS_DROPOUT=${ALL_LEVELS_DROPOUT}  seeds=9_seeds n_search=${n_search} CONTAGION_KNOB=27.5
+    # dev=True pure_command_output_file=${TYPE}_${n_people}_${init}.txt ## NASIM
 fi
 
 if [ "$INTERVENTION" == "transformer" ]; then

@@ -804,6 +804,7 @@ def main(conf: DictConfig) -> None:
         "normalization_folder",  # if this is a normalization run
         "exp_name",  # folder name in base_dir => base_dir/exp_name/method/...
         "email_id", # email id where you can receive notifications regarding jobs (began, completed, failed)
+        "pure_command_output_file",  # writes the python commands to this file
     }
 
     # move back to original directory because hydra moved
@@ -1030,6 +1031,12 @@ def main(conf: DictConfig) -> None:
             # append run command
             job_str += "\n{}{}".format("python run.py" + hydra_args, command_suffix)
             # sample next params
+
+            # store only the commands if needed
+            if conf.get('pure_command_output_file', False):
+                filepath = conf['pure_command_output_file']
+                with open(filepath, "a") as f:
+                    f.write("\n{}{}".format("python run.py" + hydra_args, command_suffix))
 
         if skipped:
             continue
