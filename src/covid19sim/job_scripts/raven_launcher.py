@@ -68,11 +68,11 @@ def parse_job_type(line):
 def get_script_path(job_type):
     if job_type == "run":
         path = (Path(__file__) / ".." / "run.py").resolve()
-        assert path.exists()
+        assert path.exists(), f"{path} does not exist."
         return str(path)
     elif job_type == "plot":
         path = (Path(__file__) / ".." / "plotting" / "main.py").resolve()
-        assert path.exists()
+        assert path.exists(), f"{path} does not exist."
         return str(path)
     else:
         raise ValueError(f"Unknown job_type: {job_type}")
