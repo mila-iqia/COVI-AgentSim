@@ -495,6 +495,7 @@ def run(data, plot_path, compare=None, **kwargs):
                     all_runs = list(all_runs.glob("full_extracted_data_AR_*.csv"))
                     for _run in all_runs:
                         df = pd.read_csv(str(_run))
+
                         if "ASYMPTOMATIC_INFECTION_RATIO" not in df:
                             df['ASYMPTOMATIC_INFECTION_RATIO'] = DEFAULT_PARAMETER_VALUES["ASYMPTOMATIC_INFECTION_RATIO"]
                         selector = (df[remaining_sensitivity_parameters] == default_parameter_values).all(1)
@@ -504,6 +505,8 @@ def run(data, plot_path, compare=None, **kwargs):
         results.loc[results['app_based'] == False, 'adoption_rate'] = -1
         results.to_csv(str(filename))
 
+    if "adoption_rate" not in SENSITIVITY_PARAMETERS:
+        results = results[results['adoption_rate'].isin([60, 30, -1])]
     print("Unique adoption rates: ", results['adoption_rate'].unique())
     # plot_and_save_grid_sensitivity_analysis(results, path=plot_path, y_metric='r', SENSITIVITY_PARAMETERS=SENSITIVITY_PARAMETERS, violin_plot=True, contact_range=CONTACT_RANGE)
     # plot_and_save_grid_sensitivity_analysis(results, path=plot_path, y_metric='percentage_infected', SENSITIVITY_PARAMETERS=SENSITIVITY_PARAMETERS, violin_plot=True, contact_range=CONTACT_RANGE)
