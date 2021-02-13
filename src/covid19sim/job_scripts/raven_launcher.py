@@ -1,5 +1,6 @@
 import time
 import argparse
+from pathlib import Path
 
 try:
     from raven.core import RavenJob
@@ -28,9 +29,15 @@ def parse_args():
         "--no-space",
         action="store_true",
         default=False,
-        help="Whether to get rid of spaces."
+        help="Whether to get rid of spaces.",
     )
-    # parsey.add_argument("-r", "--run", type=str, required=True, help="Run file.")
+    parsey.add_argument(
+        "-p",
+        "--plot",
+        action="store_true",
+        default=False,
+        help="Whether to run the plotting scripts.",
+    )
     return parsey.parse_args()
 
 
@@ -49,20 +56,50 @@ def validate_components(components, no_space=False):
     return components
 
 
+def parse_job_type(line):
+    if line.startswith("python run.py"):
+        return "run"
+    elif line.startswith("python main.py"):
+        return "plot"
+    else:
+        return None
+
+
+def get_script_path(job_type):
+    if job_type == "run":
+        path = (Path(__file__) / ".." / "run.py").resolve()
+        assert path.exists()
+        return str(path)
+    elif job_type == "plot":
+        path = (Path(__file__) / ".." / "plotting" / "main.py").resolve()
+        assert path.exists()
+        return str(path)
+    else:
+        raise ValueError(f"Unknown job_type: {job_type}")
+
+
 def main(args=None):
     args = args or parse_args()
     with open(args.file, "r") as f:
         lines = f.readlines()
     num_jobs_ran = 0
     for line in lines:
-        if not line.startswith("python run.py"):
+        job_type = parse_job_type(line)
+        if job_type is None:
             continue
         if num_jobs_ran >= args.num_jobs:
             break
+        if args.plot:
+            assert job_type == "plot", (
+                "To launch plotting jobs, append a -p to " "the command line argument"
+            )
+        # Get script path and components
+        script_path = get_script_path(job_type)
         components = shlex.split(line)[2:]
         components[-1] = components[-1].replace(";", "")
         components = validate_components(components, no_space=args.no_space)
-        raven_job = RavenJob().set_script_path("run.py").set_script_args(components)
+        # Launch the job
+        raven_job = RavenJob().set_script_path(script_path).set_script_args(components)
         if args.disarm:
             print(raven_job.build_submission(write=False))
             print("-------------------------------------")
