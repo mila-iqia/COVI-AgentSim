@@ -18,13 +18,13 @@ from covid19sim.plotting.curve_fitting import bootstrap_series, ewma
 
 # base colors for each method
 COLOR_MAP = {
-    "bdt1": "mediumvioletred",
+    "bdt1": "green",
     "post-lockdown-no-tracing": "red",
     "bdt2": "darkorange",
-    "heuristicv1": "royalblue",
-    "transformer": "green",
+    "heuristicv1": "pink",
+    "transformer": "mediumvioletred",
     "oracle": "green",
-    "heuristicv4": "pink"
+    "heuristicv4": "royalblue"
 }
 COLORS = ["#34495e",  "mediumvioletred", "orangered", "royalblue", "darkorange", "green", "red"]
 
@@ -533,21 +533,21 @@ def get_sensitivity_label(name):
         (str): name of the x-label
     """
     if name == "ALL_LEVELS_DROPOUT":
-        return "Daily Behavior Non-adherence\n(% of app users)"
+        return "% app users adhering to recommendations"
 
     if name == "PROPORTION_LAB_TEST_PER_DAY":
-        return "Daily Testing Capacity\n(% of population)"
+        return "RT-PCR test capacity as % of population per day"
 
     if name == "P_DROPOUT_SYMPTOM":
-        return "Probability of not reporting symptoms\n(% of daily symptoms)"
+        return "Probability of reporting symptoms"
 
     if name == "BASELINE_P_ASYMPTOMATIC":
         return "Asymptomaticity\n(% of population)"
 
     if name == "adoption_rate":
-        return "Adoption Rate"
+        return "Adoption Rate \n (% of population)"
 
     if name == "ASYMPTOMATIC_INFECTION_RATIO":
-        return "Asymptomatic infection ratio"
+        return "Infectiousness of asymptomatic / symptomatic "
 
     raise ValueError(f"Invalid name: {name}")

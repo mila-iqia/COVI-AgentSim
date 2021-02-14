@@ -311,13 +311,13 @@ def main(conf):
     ):
         use_cache = True
         load_cache = False
-        data = {}
 
     if load_cache:
         assert cache_path.exists(), f"Cache {str(cache_path)} doesn't exist."
 
+    data = {"shared": True} if conf.get("shared") else {"shared": False}
+
     if use_cache:
-        data = {}
         if load_cache:
             try:
                 print(
