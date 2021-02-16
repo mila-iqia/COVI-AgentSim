@@ -1,5 +1,7 @@
+import os
 import time
 import argparse
+from copy import deepcopy
 from pathlib import Path
 
 try:
@@ -80,6 +82,18 @@ def get_script_path(job_type):
 
 def main(args=None):
     args = args or parse_args()
+    # If file is a directory, run recursively
+    if os.path.isdir(args.file):
+        for path in os.listdir(args.file):
+            if path.endswith(".txt"):
+                recurse_args = deepcopy(args)
+                recurse_args.file = path
+                main(args=recurse_args)
+            else:
+                continue
+    else:
+        assert args.file.endswith(".txt")
+    # Read up and launch the jobs
     with open(args.file, "r") as f:
         lines = f.readlines()
     num_jobs_ran = 0
