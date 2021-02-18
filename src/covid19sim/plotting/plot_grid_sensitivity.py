@@ -53,8 +53,9 @@ SENSITIVITY_PARAMETER_RANGE ={
     },
     "BASELINE_P_ASYMPTOMATIC": {
         # "values": [0.20, 0.30, 0.40], # 0.20 0.30 0.40
-        "values": [0.5, 0.75, 1.0], # asymptomatic-ratio =  0.20 0.30 0.40
-        "no-effect":[]
+        "values": [0.5, 0.625, 0.75, 0.875, 1.0], # asymptomatic-ratio =  0.20 0.30 0.40
+        "no-effect":[],
+        "translate_values": {0.5:20, 0.625:25, 0.75:30, 0.875:35, 1.0:40}
     },
     "ALL_LEVELS_DROPOUT": {
         "values": [0.02, 0.08, 0.16, 0.32, 0.64], # 0.02 0.08 0.16
@@ -87,7 +88,8 @@ DEFAULT_PARAMETER_VALUES = {
     "ALL_LEVELS_DROPOUT": 0.02,
     "P_DROPOUT_SYMPTOM": 0.20,
     "adoption_rate": 60,
-    "ASYMPTOMATIC_INFECTION_RATIO": 0.29
+    "ASYMPTOMATIC_INFECTION_RATIO": 0.29,
+    "BASELINE_P_ASYMPTOMATIC": 0.75,
 }
 
 NO_TRACING_METHOD = "post-lockdown-no-tracing"
@@ -123,6 +125,8 @@ def get_y_label(y_metric, y_metric_denom):
         y_label = "$R$"
     elif y_metric == "percentage_infected":
         y_label = "% infected"
+    elif y_metric == "positivity_rate":
+        y_label = "Test positivity rate"
     else:
         y_label = y_metric
 
@@ -190,6 +194,9 @@ def plot_stable_frames_line(ax, df, y_metric, sensitivity_parameter, colormap, y
                 ys.append(np.mean(y_vals))
                 yerrs.append(np.std(y_vals))
                 print(f"{method} @ {adoption_rate} {sensitivity_parameter} = {x_val} has {sum(selector)} samples")
+
+            if SENSITIVITY_PARAMETER_RANGE[sensitivity_parameter].get('translate_values', None) is not None:
+                xs = [SENSITIVITY_PARAMETER_RANGE[sensitivity_parameter]['translate_values'][x_val] for x_val in xs]
 
             ax.errorbar(x=xs, y=ys, yerr=yerrs, color=colormap[method], fmt='-o', linestyle=LINESTYLES[i], linewidth=3)
 
@@ -459,6 +466,11 @@ def run(data, plot_path, compare=None, **kwargs):
         or "sensitivity_AIRx" in MAIN_FOLDER
     ):
         SENSITIVITY_PARAMETERS = ['ASYMPTOMATIC_INFECTION_RATIO']
+    elif (
+        sensitivity_parameter == "BASELINE_P_ASYMPTOMATIC"
+        or "sensitivity_Ax" in MAIN_FOLDER
+    ):
+        SENSITIVITY_PARAMETERS = ['BASELINE_P_ASYMPTOMATIC']
     else:
         raise ValueError("Sensitivity parameter not specified..")
 
@@ -507,14 +519,17 @@ def run(data, plot_path, compare=None, **kwargs):
 
     if "adoption_rate" not in SENSITIVITY_PARAMETERS:
         results = results[results['adoption_rate'].isin([60, 30, -1])]
+
     print("Unique adoption rates: ", results['adoption_rate'].unique())
     # plot_and_save_grid_sensitivity_analysis(results, path=plot_path, y_metric='r', SENSITIVITY_PARAMETERS=SENSITIVITY_PARAMETERS, violin_plot=True, contact_range=CONTACT_RANGE)
     # plot_and_save_grid_sensitivity_analysis(results, path=plot_path, y_metric='percentage_infected', SENSITIVITY_PARAMETERS=SENSITIVITY_PARAMETERS, violin_plot=True, contact_range=CONTACT_RANGE)
-    plot_and_save_grid_sensitivity_analysis(results, path=plot_path, y_metric='r', SENSITIVITY_PARAMETERS=SENSITIVITY_PARAMETERS, violin_plot=False, contact_range=CONTACT_RANGE)
-    plot_and_save_grid_sensitivity_analysis(results, path=plot_path, y_metric='percentage_infected', SENSITIVITY_PARAMETERS=SENSITIVITY_PARAMETERS, violin_plot=False, contact_range=CONTACT_RANGE)
+    # plot_and_save_grid_sensitivity_analysis(results, path=plot_path, y_metric='r', SENSITIVITY_PARAMETERS=SENSITIVITY_PARAMETERS, violin_plot=False, contact_range=CONTACT_RANGE)
+    # plot_and_save_grid_sensitivity_analysis(results, path=plot_path, y_metric='percentage_infected', SENSITIVITY_PARAMETERS=SENSITIVITY_PARAMETERS, violin_plot=False, contact_range=CONTACT_RANGE)
+    plot_and_save_grid_sensitivity_analysis(results, path=plot_path, y_metric='positivity_rate', SENSITIVITY_PARAMETERS=SENSITIVITY_PARAMETERS, violin_plot=False, contact_range=CONTACT_RANGE)
 
     # ratios
     # plot_and_save_grid_sensitivity_analysis(results, path=plot_path, y_metric='r', SENSITIVITY_PARAMETERS=SENSITIVITY_PARAMETERS, violin_plot=True, contact_range=[0, 10], y_metric_denom="effective_contacts")
     # plot_and_save_grid_sensitivity_analysis(results, path=plot_path, y_metric='percentage_infected', SENSITIVITY_PARAMETERS=SENSITIVITY_PARAMETERS, violin_plot=True, contact_range=[0, 10], y_metric_denom="effective_contacts")
-    plot_and_save_grid_sensitivity_analysis(results, path=plot_path, y_metric='r', SENSITIVITY_PARAMETERS=SENSITIVITY_PARAMETERS, violin_plot=False, contact_range=[0, 10], y_metric_denom="effective_contacts")
-    plot_and_save_grid_sensitivity_analysis(results, path=plot_path, y_metric='percentage_infected', SENSITIVITY_PARAMETERS=SENSITIVITY_PARAMETERS, violin_plot=False, contact_range=[0, 10], y_metric_denom="effective_contacts")
+    # plot_and_save_grid_sensitivity_analysis(results, path=plot_path, y_metric='r', SENSITIVITY_PARAMETERS=SENSITIVITY_PARAMETERS, violin_plot=False, contact_range=[0, 10], y_metric_denom="effective_contacts")
+    # plot_and_save_grid_sensitivity_analysis(results, path=plot_path, y_metric='percentage_infected', SENSITIVITY_PARAMETERS=SENSITIVITY_PARAMETERS, violin_plot=False, contact_range=[0, 10], y_metric_denom="effective_contacts")
+    # plot_and_save_grid_sensitivity_analysis(results, path=plot_path, y_metric='positivity_rate', SENSITIVITY_PARAMETERS=SENSITIVITY_PARAMETERS, violin_plot=False, contact_range=[0, 10], y_metric_denom="effective_contacts")
