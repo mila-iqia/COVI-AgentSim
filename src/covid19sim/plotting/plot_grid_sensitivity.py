@@ -32,7 +32,7 @@ LABELSIZE = 30
 SCENARIO_LABELSIZE=25
 SCENARIO_LABELPAD=85
 LABELPAD = 30
-LINESTYLES = ["-", "--", ":"]
+LINESTYLES = ["-", "--", ":", "-.", (0, (1, 10)), (0, (3, 1, 1, 1))]
 
 INTERPOLATION_FN = GPRFit
 
@@ -189,10 +189,20 @@ def plot_stable_frames_line(ax, df, y_metric, sensitivity_parameter, colormap, y
                     selector = (df[['method', 'adoption_rate', sensitivity_parameter]] == [method, adoption_rate,  x_val]).all(1)
                 y_vals = get_bootstrapped_values(df[selector], y_metric, y_metric_denom)
                 ys.append(np.mean(y_vals))
-                yerrs.append(np.std(y_vals))
-                print(f"{method} @ {adoption_rate} {sensitivity_parameter} = {x_val} has {sum(selector)} samples")
+                try:
+                    yerrs.append(np.std(y_vals))
+                except Exception:
+                    import pdb;
+                    pdb.set_trace()
 
-            ax.errorbar(x=xs, y=ys, yerr=yerrs, color=colormap[method], fmt='-o', linestyle=LINESTYLES[i], linewidth=3)
+                print(f"{method} @ {adoption_rate} {sensitivity_parameter} = {x_val} has {sum(selector)} samples")
+            try:
+
+                ax.errorbar(x=xs, y=ys, yerr=yerrs, color=colormap[method], fmt='-o', linestyle=LINESTYLES[i],
+                            linewidth=3)
+            except Exception:
+                import pdb;
+                pdb.set_trace()
 
     ax.legend().remove()
     ax.set(xlabel=None)
@@ -461,6 +471,7 @@ def plot_and_save_grid_sensitivity_analysis_shared(all_results, plot_path, y_met
         plot_fn = plot_stable_frames if violin_plot else plot_stable_frames_line
 
         methods_and_base_confs = results.groupby(['method', 'intervention_conf_name']).size().index
+        path = Path(path).parent.resolve() / "plots"
         labelmap = get_labelmap(methods_and_base_confs, path)
         colormap = get_colormap(methods_and_base_confs, path)
 
@@ -543,15 +554,15 @@ def plot_and_save_grid_sensitivity_analysis_shared(all_results, plot_path, y_met
     lgd = fig.legend(handles=legends, ncol=len(legends), fontsize=LABELSIZE, loc="center", fancybox=True, bbox_to_anchor=(0.5, 0), bbox_transform=fig.transFigure)
 
 
-    if sensitivity_param != "adoption_rate":
-        adoption_rates = sorted(results['adoption_rate'].unique(), key=lambda x: -x)
-        ar_legend.append(
-            Line2D([0, 1], [0, 0], color="black", linestyle=LINESTYLES[0], label=f"{adoption_rates[0]} %", linewidth=5))
-        ar_legend.append(
-            Line2D([0, 1], [0, 0], color="black", linestyle=LINESTYLES[1], label=f"{adoption_rates[1]} %", linewidth=5))
-        ar_legend.append(Line2D([0, 1], [0, 0], color="black", linestyle=LINESTYLES[2], label=f"N/A", linewidth=5))
-        ar_lgd = fig.legend(handles=ar_legend, loc="center", fontsize=LABELSIZE, fancybox=True, bbox_to_anchor=(1, 0.5), title="Adoption Rate")
-        ar_lgd.get_title().set_fontsize(LABELSIZE)
+    adoption_rates = sorted(results['adoption_rate'].unique(), key=lambda x: -x)
+    ar_legend.append(Line2D([0, 1], [0, 0], color="black", linestyle=LINESTYLES[0], label=f"{adoption_rates[0]} %", linewidth=5))
+    ar_legend.append(Line2D([0, 1], [0, 0], color="black", linestyle=LINESTYLES[1], label=f"{adoption_rates[1]} %", linewidth=5))
+    ar_legend.append(Line2D([0, 1], [0, 0], color="black", linestyle=LINESTYLES[2], label=f"{adoption_rates[2]} %", linewidth=5))
+    ar_legend.append(Line2D([0, 1], [0, 0], color="black", linestyle=LINESTYLES[3], label=f"{adoption_rates[3]} %", linewidth=5))
+    ar_legend.append(Line2D([0, 1], [0, 0], color="black", linestyle=LINESTYLES[4], label=f"{adoption_rates[4]} %", linewidth=5))
+    ar_legend.append(Line2D([0, 1], [0, 0], color="black", linestyle=LINESTYLES[5], label=f"N/A", linewidth=5))
+    ar_lgd = fig.legend(handles=ar_legend, loc="center", fontsize=LABELSIZE, fancybox=True, bbox_to_anchor=(1, 0.5), title="Adoption Rate")
+    ar_lgd.get_title().set_fontsize(LABELSIZE)
 
     # set ylim
     mins = []
