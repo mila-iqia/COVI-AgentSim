@@ -50,7 +50,27 @@ ORACLE_ADD_NOISE:
 # Other rando params
 GLOBAL_MOBILITY_SCALING_FACTOR:
   sample: uniform
-  from: [0.3, 0.9]
+  from: [0.2, 0.75] # experiments are run for 0.25-0.70
+
+BASELINE_P_ASYMPTOMATIC:
+  sample: uniform
+  from: [0.50, 1.0] # range for sensitivity
+
+P_DROPOUT_SYMPTOM:
+  sample: uniform
+  from: [0.2, 0.8] # (range for sensitivity) to discuss
+
+ALL_LEVELS_DROPOUT:
+  sample: uniform
+  from: [0.01, 0.32] # range for sensitivity is 0.02 to 0.64, but 0.64 seems too much ; to discuss
+
+PROPORTION_LAB_TEST_PER_DAY:
+  sample: uniform
+  from: [0.0005, 0.005]
+
+ASYMPTOMATIC_INFECTION_RATIO:
+  sample: uniform
+  from: [0.27, 0.47] # range for sensitivity is 0.29-0.45
 
 APP_UPTAKE:
   sample: uniform # uniform in range:
@@ -75,22 +95,6 @@ QUARANTINE_DROPOUT_TEST:
 QUARANTINE_DROPOUT_HOUSEHOLD:
   sample: uniform
   from: [0.02, 0.05]
-
-BASELINE_P_ASYMPTOMATIC:
-  sample: uniform
-  from: [0.09, 0.4]
-
-PROPORTION_LAB_TEST_PER_DAY:
-  sample: uniform
-  from: [0.0005, 0.005]
-
-P_DROPOUT_SYMPTOM:
-  sample: uniform
-  from: [0.1, 0.6]
-
-ALL_LEVELS_DROPOUT:
-  sample: uniform
-  from: [0.01, 0.2]
 
 seed: # for sole reproducibility purposes
   sample: range # uniform int choice
