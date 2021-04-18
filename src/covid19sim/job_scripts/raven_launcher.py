@@ -40,6 +40,20 @@ def parse_args():
         default=False,
         help="Whether to run the plotting scripts.",
     )
+    parsey.add_argument(
+        "-t",
+        "--transformer-exp-path",
+        type=str,
+        default=None,
+        help="Path to transformer exp, to be filled in the template if required.",
+    )
+    parsey.add_argument(
+        "-rlt",
+        "--rec-level-threshold",
+        type=str,
+        default=None,
+        help="Path to transformer exp, to be filled in the template if required.",
+    )
     return parsey.parse_args()
 
 
@@ -56,6 +70,34 @@ def validate_components(components, no_space=False):
                 key, value = component.split("=")
                 components[idx] = f'{key}=\\"{value}\\"'
     return components
+
+
+def fill_transformer_spec(components, args):
+    new_components = components[:]
+    if args.transformer_exp_path is not None:
+        for idx, component in enumerate(components):
+            key, value = component.split("=")
+            if key == "TRANSFORMER_EXP_PATH":
+                # Sub in the exp path
+                new_component = f"{key}={args.transformer_exp_path}"
+                new_components[idx] = new_component
+            elif key == "outdir":
+                transformer_folder_name = os.path.basename(args.transformer_exp_path)
+                value = value.replace(
+                    "TRANSFORMER_FOLDER_NAME", transformer_folder_name
+                )
+                new_component = f"{key}={value}"
+                new_components[idx] = new_component
+    if args.rec_level_threshold is not None:
+        for idx, component in enumerate(components):
+            key, value = component.split("=")
+            if key == "REC_LEVEL_THRESHOLDS":
+                # Expecting something like 012 or 234 passed as a string
+                assert len(args.rec_level_threshold) == 3
+                value = "[" + ",".join(list(args.rec_level_threshold)) + "]"
+                new_component = f"{key}={value}"
+                new_components[idx] = new_component
+    return new_components
 
 
 def parse_job_type(line):
@@ -111,13 +153,16 @@ def main(args=None):
         script_path = get_script_path(job_type)
         components = shlex.split(line)[2:]
         components[-1] = components[-1].replace(";", "")
+        components = fill_transformer_spec(components, args)
         components = validate_components(components, no_space=args.no_space)
         # Launch the job
-        raven_job = RavenJob().set_script_path(script_path).set_script_args(components)
         if args.disarm:
-            print(raven_job.build_submission(write=False))
+            print(f"python {script_path} " + " ".join(components))
             print("-------------------------------------")
         else:
+            raven_job = (
+                RavenJob().set_script_path(script_path).set_script_args(components)
+            )
             raven_job.launch(verbose=True)
             time.sleep(1)
         num_jobs_ran += 1
