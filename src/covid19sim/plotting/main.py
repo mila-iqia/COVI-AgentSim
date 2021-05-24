@@ -313,12 +313,10 @@ def main(conf):
         load_cache = False
         data = {}
 
-    if load_cache:
-        assert cache_path.exists(), f"Cache {str(cache_path)} doesn't exist."
-
     if use_cache:
         data = {}
         if load_cache:
+            assert cache_path.exists(), f"Cache {str(cache_path)} doesn't exist."
             try:
                 print(
                     "Using cached data ({}): {}...".format(
