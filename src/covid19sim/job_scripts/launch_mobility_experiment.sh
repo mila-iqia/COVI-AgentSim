@@ -32,10 +32,18 @@ SIM_OUTPUT_BASEDIR=$SCRATCH/
 EMAIL=pg2455@columbia.edu # to be notified of every run
 
 # transformer related
-TRANSFORMER_FOLDER_NAME=(WHOLE-MICROWAVE-800 WORLDLY-GALAXY-801)
+# CAUTION - when specifying transformer name in 13th index, you must specify ASYMP_INFECTION_RATIO because its been checked above for the 12th index
+if [[ ! -z "${13}" ]]; then
+  TRANSFORMER_FOLDER_NAME=( "${13}" )
+else
+  TRANSFORMER_FOLDER_NAME=(WORLDLY-GALAXY-801) #(WHOLE-MICROWAVE-800 WORLDLY-GALAXY-801)
+fi
+
 TRANSFORMER_EXP_BASEPATH=/home/pratgupt/scratch/pra_models
 REC_LEVEL_THRESHOLDS="[0,1,2]"
-
+NAME_SUFFIX=
+# REC_LEVEL_THRESHOLDS="[0,0,0]"
+# NAME_SUFFIX=_000
 
 source ~/${ENV_RELATIVE_PATH}/bin/activate
 
@@ -43,6 +51,10 @@ cd ${COVISIM_REPO}/src/covid19sim/job_scripts
 # normalized mobility
 
 TIME="'2:50:00'"
+
+if [ "$INTERVENTION" == "transformer" ]; then
+  TIME="'10:00:00'"
+fi
 
 if [ "${n_people}" -ge "5000" ] ; then
   if [ "$INTERVENTION" == "heuristicv4" ] || [ "$INTERVENTION" == "transformer" ] || [ "$INTERVENTION" == "bdt1" ] ; then
@@ -57,19 +69,14 @@ if [ "$TYPE" != "main-scenario" ] ; then
   # no need to have a GP if filter is the number of contacts
   n_search=60
   glomo_range=uniform_for_sensitivity_narrow
-  # if [ "$INTERVENTION" == "bdt1" ] ; then
-  #   glomo_range=uniform_for_sensitivity_medium
-  # elif [ "$INTERVENTION" == "heuristicv4" ] ; then
-  #   glomo_range=uniform_for_sensitivity_medium_low
-  # elif [ "$INTERVENTION" == "transformer" ] ; then
-  #   glomo_range=uniform_for_sensitivity_low
-  # else
-  #   glomo_range=uniform_for_sensitivity_high
-  # fi
 fi
 
 if [ -x "$(command -v queue_monitor)" ]; then
-  queue_monitor $(echo $((995 - $n_search))) && notify "launching $n_search jobs now" # will not run this script until there are are 225 jobs can be queued
+  len=1
+  if [ "$INTERVENTION" == "transformer" ]; then
+    len=${#TRANSFORMER_FOLDER_NAME[@]}
+  fi
+  queue_monitor $(echo $((995 - len * $n_search))) && notify "launching $n_search jobs now" # will not run this script until there are are 225 jobs can be queued
 fi
 
 if [ "$INTERVENTION" == "post-lockdown-no-tracing" ] || [ "$INTERVENTION" == "bdt1" ] || [ "$INTERVENTION" == "heuristicv4" ] ; then
@@ -81,7 +88,7 @@ if [ "$INTERVENTION" == "post-lockdown-no-tracing" ] || [ "$INTERVENTION" == "bd
     intervention=$INTERVENTION  global_mobility_scaling_factor_range=${glomo_range} \
     n_people=${n_people} init_fraction_sick=$init time=$TIME APP_UPTAKE=$UPTAKE \
     BASELINE_P_ASYMPTOMATIC=$ASYMP PROPORTION_LAB_TEST_PER_DAY=$TEST ASYMPTOMATIC_INFECTION_RATIO=${ASYMP_INFECTION_RATIO} \
-    P_DROPOUT_SYMPTOM=${P_DROPOUT_SYMPTOM} ALL_LEVELS_DROPOUT=${ALL_LEVELS_DROPOUT}  seeds=9_seeds n_search=${n_search} CONTAGION_KNOB=27.5 #\
+    P_DROPOUT_SYMPTOM=${P_DROPOUT_SYMPTOM} ALL_LEVELS_DROPOUT=${ALL_LEVELS_DROPOUT}  seeds=9_seeds n_search=${n_search} CONTAGION_KNOB=27.5 cpus=10 #\
     # dev=True pure_command_output_file=${TYPE}_${n_people}_${init}.txt ## NASIM
 fi
 
@@ -90,12 +97,28 @@ if [ "$INTERVENTION" == "transformer" ]; then
     do
       python experiment.py exp_file=normalized_mobility env_name=${ENV_RELATIVE_PATH} \
       email_id=$EMAIL slurm_log=${SLURM_LOG_DIR} track=light code_loc=${COVISIM_REPO}/src/covid19sim \
-      outdir=${SIM_OUTPUT_BASEDIR}/$dirname/normalized_mobility/${TRANSFORMER_NAME} simulation_days=${SIM_DAYS} \
+      outdir=${SIM_OUTPUT_BASEDIR}/$dirname/normalized_mobility/${TRANSFORMER_NAME}${NAME_SUFFIX} simulation_days=${SIM_DAYS} \
       intervention=$INTERVENTION global_mobility_scaling_factor_range=${glomo_range}  \
       n_people=$n_people init_fraction_sick=$init time=$TIME APP_UPTAKE=$UPTAKE \
       BASELINE_P_ASYMPTOMATIC=${ASYMP} PROPORTION_LAB_TEST_PER_DAY=${TEST} ASYMPTOMATIC_INFECTION_RATIO=${ASYMP_INFECTION_RATIO} \
       P_DROPOUT_SYMPTOM=${P_DROPOUT_SYMPTOM} ALL_LEVELS_DROPOUT=${ALL_LEVELS_DROPOUT}  seeds=9_seeds n_search=${n_search} CONTAGION_KNOB=27.5 \
-      REC_LEVEL_THRESHOLDS=${REC_LEVEL_THRESHOLDS} TRANSFORMER_EXP_PATH=${TRANSFORMER_EXP_BASEPATH}/${TRANSFORMER_NAME} # \
+      REC_LEVEL_THRESHOLDS=${REC_LEVEL_THRESHOLDS} TRANSFORMER_EXP_PATH=${TRANSFORMER_EXP_BASEPATH}/${TRANSFORMER_NAME} cpus=10 # \
       # dev=True pure_command_output_file=${TYPE}_${n_people}_${init}.txt ## NASIM
     done
+fi
+
+if [ "$INTERVENTION" == "oracle" ]; then
+    ORACLE_MUL_NOISE=1.0
+    ORACLE_ADD_NOISE=3.0
+
+    python experiment.py exp_file=normalized_mobility env_name=${ENV_RELATIVE_PATH} \
+    email_id=$EMAIL slurm_log=${SLURM_LOG_DIR} track=light code_loc=${COVISIM_REPO}/src/covid19sim \
+    outdir=${SIM_OUTPUT_BASEDIR}/$dirname/normalized_mobility/ORACLE_MUL_${ORACLE_MUL_NOISE}_ADD_${ORACLE_ADD_NOISE} simulation_days=${SIM_DAYS} \
+    intervention=$INTERVENTION global_mobility_scaling_factor_range=${glomo_range}  \
+    n_people=$n_people init_fraction_sick=$init time=$TIME APP_UPTAKE=$UPTAKE \
+    BASELINE_P_ASYMPTOMATIC=${ASYMP} PROPORTION_LAB_TEST_PER_DAY=${TEST} ASYMPTOMATIC_INFECTION_RATIO=${ASYMP_INFECTION_RATIO} \
+    P_DROPOUT_SYMPTOM=${P_DROPOUT_SYMPTOM} ALL_LEVELS_DROPOUT=${ALL_LEVELS_DROPOUT}  seeds=9_seeds n_search=${n_search} CONTAGION_KNOB=27.5 \
+    REC_LEVEL_THRESHOLDS=${REC_LEVEL_THRESHOLDS} cpus=6 \
+    ORACLE_MUL_NOISE=${ORACLE_MUL_NOISE} ORACLE_ADD_NOISE=${ORACLE_ADD_NOISE} # \
+    # dev=True pure_command_output_file=${TYPE}_${n_people}_${init}.txt ## NASIM
 fi
