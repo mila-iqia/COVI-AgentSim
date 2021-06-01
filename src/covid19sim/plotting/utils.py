@@ -338,9 +338,13 @@ def get_all_data(base_path, keep_pkl_keys, multi_thread=False, limit=100000, ext
     return all_data
 
 
-def default_to_regular_dict(d):
+def default_to_regular_dict(key, d):
     if isinstance(d, defaultdict):
-        d = {k: default_to_regular_dict(v) for k, v in d.items()}
+        d = {k: default_to_regular_dict(k, v) for k, v in d.items()}
+
+    if key == 'human_monitor':
+        return aggregate_human_monitor(d)
+
     return d
 
 
@@ -349,9 +353,13 @@ def thread_read_run(args):
     with (r / "full_configuration.yaml").open("r") as f:
         conf = yaml.safe_load(f)
     with open(str(list(r.glob("tracker*.pkl"))[0]), "rb") as f:
-        pkl_data = pickle.load(f)
+        try:
+            pkl_data = pickle.load(f)
+        except:
+            print(f)
+            exit 
         pkl = {
-            k: default_to_regular_dict(v)
+            k: default_to_regular_dict(k, v)
             for k, v in pkl_data.items()
             if k in keep_pkl_keys
         }
@@ -512,16 +520,27 @@ def get_all_false(filename=None, data=None, normalized=False):
     )
 
 
-def get_proxy_r(data, verbose=True):
+def get_proxy_r(data, verbose=True, days=50):
+    
+    # this function should still work for runs shorter than 50 days
+    end_date = data['COVID_SPREAD_START_TIME'].date() + \
+               datetime.timedelta(days=days)
     infection_chain = data["infection_monitor"]
+    
+    valid_days = [infection for infection in infection_chain \
+                  if infection['infection_date'] < end_date]\
+    
     init_infected = {k for k, v in data["humans_state"].items() if v[0] == "E"}
     all_recovered = set()
+    
+    # for each human
     for k in data["humans_state"].keys():
-        recovered = any(z == "R" for z in data["humans_state"][k][5:])
+        # if any of their states is 'R' (recovered), they are considered recovered
+        recovered = any(z == "R" for z in data["humans_state"][k][5:days])
         if recovered:
             all_recovered.add(k)
 
-    dfs_tree, paths = construct_infection_tree(infection_chain, init_infected=init_infected, draw_fig=False)
+    dfs_tree, paths = construct_infection_tree(valid_days, init_infected=init_infected, draw_fig=False)
 
     infectees = 0
     recovered_infectors = all_recovered
@@ -783,3 +802,74 @@ def get_simulation_parameter(name, data, conf):
     if name == "ASYMPTOMATIC_RATIO":
         return 1.0 * sum(h['asymptomatic'] for h in data['humans_demographics']) / len(data['humans_demographics'])
     return conf[name]
+
+def aggregate_human_monitor(human_monitor_data):
+    """
+        Function to compress human monitor data into dalys data.
+        Necessary when running long (>100 days) simulations
+    """
+    human_names = [human_monitor_data[datetime.date(2020, 2, 28)][i]['name']
+                   for i in range(len(
+                       human_monitor_data[datetime.date(2020, 2, 28)]
+                                      )
+                                  )
+                   ]
+
+    symptom_status = {i: {} for i in human_names}
+    hospitalization_status = {i: {} for i in human_names}
+    ICU_status = {i: {} for i in human_names}
+    death_status = {i: {} for i in human_names}
+    outpatient_status = {i: {} for i in human_names}
+    has_had_infection = {i: {} for i in human_names}
+
+    days_in_hospital = {}
+    days_in_ICU = {}
+    has_died = {}
+    days_with_symptoms = {}
+    days_as_outpatient = {}
+    was_infected = {}
+
+    for day in human_monitor_data.keys():
+        for human in range(len(
+            human_monitor_data[datetime.date(2020, 2, 28)]
+                               )
+                           ):
+
+            human_name = human_monitor_data[day][human]['name']
+            is_in_hospital = human_monitor_data[day][human]['is_in_hospital']
+            is_in_ICU = human_monitor_data[day][human]['is_in_ICU']
+            is_dead = human_monitor_data[day][human]['dead']
+            is_symptomatic = human_monitor_data[day][human]['n_symptoms'] > 0
+            is_infected = human_monitor_data[
+                day][human]['infection_timestamp'] is not None
+            # positive_test = human_monitor_data[day][human]['test_result']
+
+            hospitalization_status[human_name][day] = is_in_hospital
+            ICU_status[human_name][day] = is_in_ICU
+            death_status[human_name][day] = is_dead
+            symptom_status[human_name][day] = is_symptomatic and is_infected
+            outpatient_status[human_name][day] = is_symptomatic \
+                and is_infected \
+                and not is_in_hospital \
+                and not is_in_ICU
+            has_had_infection[human_name][day] = is_infected
+
+    for human in human_names:
+
+        days_in_hospital[human] = sum(hospitalization_status[human].values())
+        days_in_ICU[human] = sum(ICU_status[human].values())
+        has_died[human] = sum(death_status[human].values()) > 0
+        days_with_symptoms[human] = sum(symptom_status[human].values())
+        days_as_outpatient[human] = sum(outpatient_status[human].values())
+        was_infected[human] = sum(has_had_infection[human].values()) > 0
+
+    human_monitor_aggregate = {
+        "days_in_hospital": days_in_hospital,
+        "days_in_ICU": days_in_ICU,
+        "has_died": has_died,
+        "days_with_symptoms": days_with_symptoms,
+        "days_as_outpatient": days_as_outpatient,
+        "was_infected": was_infected
+    }
+
+    return human_monitor_aggregate

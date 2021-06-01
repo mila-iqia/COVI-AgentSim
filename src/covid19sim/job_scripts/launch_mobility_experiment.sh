@@ -12,7 +12,7 @@ TYPE=$9
 
 n_people=${10}
 init=${11}
-dirname=$8/sensitivity_S_${SCENARIO}_${n_people}_init_${init}_UPTAKE_${UPTAKE}/scatter_Ax_${ASYMP}_Lx_${ALL_LEVELS_DROPOUT}_Sx_${P_DROPOUT_SYMPTOM}_test_${TEST}
+dirname=$8/dalys_S_${SCENARIO}_${n_people}_init_${init}_UPTAKE_${UPTAKE}/scatter_Ax_${ASYMP}_Lx_${ALL_LEVELS_DROPOUT}_Sx_${P_DROPOUT_SYMPTOM}_test_${TEST}
 
 ASYMP_INFECTION_RATIO=0.29
 if [[ ! -z "${12}" ]]; then
@@ -24,42 +24,42 @@ fi
 SIM_DAYS=60
 
 # essentials
-ENV_RELATIVE_PATH=covid19
-COVISIM_REPO=/home/$USER/simulator
+ENV_RELATIVE_PATH=py37
+COVISIM_REPO=/home/$USER/COVI-AgentSim
 SLURM_LOG_DIR=$SCRATCH/job_logs
 SIM_OUTPUT_BASEDIR=$SCRATCH/
 # SIM_OUTPUT_BASEDIR=/home/nrahaman/python/covi-simulator/exp/sensitivity_v3 ## NASIM
-EMAIL=pg2455@columbia.edu # to be notified of every run
+EMAIL=andrew.williams@mila.quebec # to be notified of every run
 
 # transformer related
-# CAUTION - when specifying transformer name in 13th index, you must specify ASYMP_INFECTION_RATIO because its been checked above for the 12th index
-if [[ ! -z "${13}" ]]; then
-  TRANSFORMER_FOLDER_NAME=( "${13}" )
-else
-  TRANSFORMER_FOLDER_NAME=(WORLDLY-GALAXY-801) #(WHOLE-MICROWAVE-800 WORLDLY-GALAXY-801)
-fi
+TRANSFORMER_FOLDER_NAME=(WORLDLY-GALAXY-801)
+TRANSFORMER_EXP_BASEPATH=$SCRATCH/pra
+REC_LEVEL_THRESHOLDS="[0,0,1]"
+NAME_SUFFIX=_001_60
 
-TRANSFORMER_EXP_BASEPATH=/home/pratgupt/scratch/pra_models
-REC_LEVEL_THRESHOLDS="[0,1,2]"
-NAME_SUFFIX=
-# REC_LEVEL_THRESHOLDS="[0,0,0]"
-# NAME_SUFFIX=_000
 
 source ~/${ENV_RELATIVE_PATH}/bin/activate
 
 cd ${COVISIM_REPO}/src/covid19sim/job_scripts
 # normalized mobility
 
-TIME="'2:50:00'"
+TIME="'5:00:00'"
 
 if [ "$INTERVENTION" == "transformer" ]; then
   TIME="'10:00:00'"
 fi
 
 if [ "${n_people}" -ge "5000" ] ; then
-  if [ "$INTERVENTION" == "heuristicv4" ] || [ "$INTERVENTION" == "transformer" ] || [ "$INTERVENTION" == "bdt1" ] ; then
-    TIME="'30:00:00'"
-  fi
+  TIME="'15:00:00'"
+
+  # if [ "${UPTAKE}" == "0.5618" ] ; then
+  #   TIME="'36:00:00'"
+  # fi
+
+  # if [ "${UPTAKE}" == "0.8415" ] ; then
+  #   TIME="'48:00:00'"
+  # fi
+
 fi
 
 glomo_range=uniform_for_sensitivity

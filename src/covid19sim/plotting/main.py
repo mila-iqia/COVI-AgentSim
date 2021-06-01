@@ -231,7 +231,8 @@ def main(conf):
                 "humans_rec_level",
                 "humans_intervention_level",
                 "humans_demographics",
-                "work_hours"
+                "work_hours",
+                "adoption_rate"
             ]
         )
     if "efficiency" in plots:
@@ -292,7 +293,8 @@ def main(conf):
             "healthy_effective_contacts_since_intervention",
             "cases_per_day",
             "test_monitor",
-            "humans_demographics"
+            "humans_demographics",
+            "COVID_SPREAD_START_TIME"
         ])
 
     # ------------------------------------

@@ -1,26 +1,12 @@
 import pickle
 import os
-import datetime
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import pathlib
+# pd.set_option('display.float_format', '{:.6f}'.format)
 
-retirement_age = 65
-n_bootstraps = 100
 MEAN_HOURLY_WAGE = 27.67
-age_ranges = [range(i, i+10) for i in range(0, 100, 10)] + [range(100, 120)]
-age_range_dict = {str(np.min(i)) + '-' + str(np.max(i)): {}
-                  for i in age_ranges}
-sexes = ['male', 'female']
-
-pd.set_option('display.float_format', '{:.6f}'.format)
-
-disability_weights = {
-    'no_hospitalization': 0.051,  # moderate lower respiratory infection
-    'hospitalized': 0.133,  # severe respiratory infection
-    'critical': 0.408  # severe COPD without heart failure
-    }
 
 
 def load_tracker(path):
@@ -57,6 +43,11 @@ def load_life_expectancies(path):
 def get_daly_data(demographics,
                   human_monitor_data,
                   life_expectancies,
+                  disability_weights={
+                    'no_hospitalization': 0.051,  # moderate resp infection
+                    'hospitalized': 0.133,  # severe respiratory infection
+                    'critical': 0.408  # severe COPD without heart failure
+                    }
                   ):
     """
     Gathers all data required for DALY calculations into one dataFrame.
@@ -82,67 +73,9 @@ def get_daly_data(demographics,
                 "DALYs
     """
 
-    human_names = [human_monitor_data[datetime.date(2020, 2, 28)][i]['name']
-                   for i in range(len(
-                       human_monitor_data[datetime.date(2020, 2, 28)]
-                                      )
-                                  )
-                   ]
+    human_names = human_monitor_data['days_in_hospital'].keys()
 
-    symptom_status = {i: {} for i in human_names}
-    hospitalization_status = {i: {} for i in human_names}
-    ICU_status = {i: {} for i in human_names}
-    death_status = {i: {} for i in human_names}
-    outpatient_status = {i: {} for i in human_names}
-    has_had_infection = {i: {} for i in human_names}
-
-    days_in_hospital = {}
-    days_in_ICU = {}
-    has_died = {}
-    days_with_symptoms = {}
-    days_as_outpatient = {}
-    was_infected = {}
-
-    for day in human_monitor_data.keys():
-        for human in range(len(
-            human_monitor_data[datetime.date(2020, 2, 28)]
-                               )
-                           ):
-
-            human_name = human_monitor_data[day][human]['name']
-            is_in_hospital = human_monitor_data[day][human]['is_in_hospital']
-            is_in_ICU = human_monitor_data[day][human]['is_in_ICU']
-            is_dead = human_monitor_data[day][human]['dead']
-            is_symptomatic = human_monitor_data[day][human]['n_symptoms'] > 0
-            is_infected = human_monitor_data[
-                day][human]['infection_timestamp'] is not None
-            # positive_test = human_monitor_data[day][human]['test_result']
-
-            hospitalization_status[human_name][day] = is_in_hospital
-            ICU_status[human_name][day] = is_in_ICU
-            death_status[human_name][day] = is_dead
-            symptom_status[human_name][day] = is_symptomatic and is_infected
-            outpatient_status[human_name][day] = is_symptomatic \
-                and is_infected \
-                and not is_in_hospital \
-                and not is_in_ICU
-            has_had_infection[human_name][day] = is_infected
-
-    for human in human_names:
-
-        days_in_hospital[human] = sum(hospitalization_status[human].values())
-        days_in_ICU[human] = sum(ICU_status[human].values())
-        has_died[human] = sum(death_status[human].values()) > 0
-        days_with_symptoms[human] = sum(symptom_status[human].values())
-        days_as_outpatient[human] = sum(outpatient_status[human].values())
-        was_infected[human] = sum(has_had_infection[human].values()) > 0
-
-    daly_df = pd.DataFrame([days_in_hospital,
-                            days_in_ICU,
-                            has_died,
-                            days_with_symptoms,
-                            days_as_outpatient,
-                            was_infected]).transpose()
+    daly_df = pd.DataFrame(list(human_monitor_data.values())).transpose()
 
     daly_df.columns = ["days_in_hospital",
                        "days_in_ICU",
@@ -163,27 +96,30 @@ def get_daly_data(demographics,
 
         daly_df.loc[human, 'life_expectancy'] = float(
             life_expectancies[
-                daly_df['sex'][human]][str(daly_df['age'][human])+" years"]
+                daly_df['sex'][human]][str(daly_df['age'][human]) + " years"]
             )
 
     # add YLL
     daly_df['YLL'] = daly_df['was_infected'] * (
-        daly_df['has_died'] * daly_df['life_expectancy']
-                                                )
+        daly_df['has_died'] * daly_df['life_expectancy'])
 
     # add YLD
     daly_df['YLD'] = daly_df['was_infected'] * (
-        daly_df['days_sick_not_in_hospital']/365 *
+        daly_df['days_sick_not_in_hospital'] / 365 *
         disability_weights['no_hospitalization'] +
 
-        daly_df['days_in_hospital']/365 *
+        daly_df['days_in_hospital'] / 365 *
         disability_weights['hospitalized'] +
 
-        daly_df['days_in_ICU']/365 *
+        daly_df['days_in_ICU'] / 365 *
         disability_weights['critical']
                                                 )
     # add DALYs
     daly_df['DALYs'] = daly_df['YLL'] + daly_df['YLD']
+
+    assert daly_df[daly_df.was_infected == False
+                   ].DALYs.sum() == 0,\
+        'uninfected should not contribute DALYs'
 
     return daly_df
 
@@ -200,7 +136,7 @@ def lost_work_hours_total(tracker_data, wfh_prod=0.51):
         Returns:
             - float for total lost work hours across all agents aged 25 to 64
     """
-
+    # bins are 5-year age bins: 5 is 25-29, 13 is 65-69
     lost_work_hours = (tracker_data['work_hours']['WORK-CANCEL--KID'][5:13] +
                        tracker_data['work_hours']['WORK-CANCEL--ILL'][5:13] +
                        tracker_data['work_hours'][
@@ -266,14 +202,39 @@ def find_life_expectancies(directory):
     raise ValueError("Can't find life expectancies csv")
 
 
-# TODO: add plots and tables to run function
+def get_normalized_runs(path,
+                        desired_r=1.2):
+
+    # OBSOLETE. Keeping for return to previous mobility normalization method.
+
+    norm_mob_path = os.path.join(path, 'normalized_mobility')
+    norm_csvs = [csv for csv in os.listdir(norm_mob_path)
+                 if 'full_extracted_data_AR' in csv]
+    # hotfix: make a dict of pct to uptake keys in future
+    # there SHOULD only be one element in the list
+    norm_csv = os.path.join(norm_mob_path, norm_csvs[0])
+    norm_mob_csv = pd.read_csv(norm_csv)
+    plnt = norm_mob_csv.loc[(norm_mob_csv['method'] ==
+                             'post-lockdown-no-tracing')]
+
+    desired_r_idx = np.argmin(np.abs(plnt['r'] - desired_r))
+    mob_factor_lower = norm_mob_csv.iloc[desired_r_idx]['mobility_factor'] - 0.25
+    mob_factor_upper = norm_mob_csv.iloc[desired_r_idx]['mobility_factor'] + 0.25
+
+    desired_runs = norm_mob_csv.loc[(norm_mob_csv['mobility_factor'] >
+                                     mob_factor_lower) &
+                                    (norm_mob_csv['mobility_factor'] <
+                                     mob_factor_upper)]
+
+    return desired_runs['dir']
+
+
 def run(data, path, compare="app_adoption"):
     """
-    Under construction.
     Outputs the necessary plots and tables for the ArXiv version of the paper.
     attrs:
         - data: data from plotting/main.py
-        - path: currently unused
+        - path: provides output path for plots
         - compare: currently unused
     Returns
         - Figure 9: work hours vs total DALYs
@@ -287,32 +248,20 @@ def run(data, path, compare="app_adoption"):
         - table L5: YLL, YLD and DALYs stratified by age or sex
             for different CT methods
     """
+
+    # Extract data from pickle files
+    adoption_rate = None
     label2pkls = list()
     for method in data:
-        for key in data[method]:
-            label = f"{method}_{key}"
-            pkls = [r["pkl"] for r in data[method][key].values()]
+        for uptake in data[method]:
+            pkls = []
+            for filepath in data[method][uptake].keys():
+                pkls.append(data[method][uptake][filepath]['pkl'])
+            label = f"{method}_{uptake}"
             label2pkls.append((label, pkls))
 
-    method_to_labels = {}
-    method_to_colors = {}
-
-    for label, pkls in label2pkls:
-        if 'post-lockdown-no-tracing' in label:
-            method_to_labels[label] = "No Tracing"
-            method_to_colors[label] = "#34495E"
-        elif 'no_intervention' in label:
-            method_to_labels[label] = "No Tracing"
-            method_to_colors[label] = "#34495E"
-        elif 'bdt1' in label:
-            method_to_labels[label] = "Test-based BCT1"
-            method_to_colors[label] = "mediumvioletred"
-        elif 'heuristic' in label:
-            method_to_labels[label] = "Heuristic-FCT"
-            method_to_colors[label] = "darkorange"
-        else:
-            print(label)
-            raise ValueError('Method not recognized for daly plotting')
+    # Set colors and labels based on intervention
+    label, method_to_labels, method_to_colors = labels_and_colors(label2pkls)
 
     # Define aggregate output variables
     agg_dalys = {label: {} for label, _ in label2pkls}
@@ -331,18 +280,14 @@ def run(data, path, compare="app_adoption"):
     # daly calculations
     for label, pkls in label2pkls:
         for idx, pkl in enumerate(pkls):
-            # get human_monitor data
-            monitor_data = pkl['human_monitor']
 
-            # get their demographic information (pre-existing conditions, age)
+            adoption_rate = pkl['adoption_rate']
+            monitor_data = pkl['human_monitor']
             demog_data = pkl['humans_demographics']
 
-            # get calculate YLL, YLD and DALYs for each individual
+            # calculate YLL, YLD and DALYs for each individual in one pkl file
             daly_df_seed = get_daly_data(demog_data, monitor_data, le_data)
-
-            assert daly_df_seed[daly_df_seed.was_infected == False
-                                ].DALYs.sum() == 0,\
-                'uninfected should not contribute DALYs'
+            pop_size = len(daly_df_seed.index)
 
             # calculate total DALYs for this pickle file
             agg_dalys[label][idx] = daly_df_seed['DALYs'].sum()
@@ -350,28 +295,12 @@ def run(data, path, compare="app_adoption"):
             # calculate total foregone work hours for this pickle file
             agg_work_hours[label][idx] = lost_work_hours_total(pkl)
 
-            # calculate dalys per person by age
-            by_age = {}
-            for age_range, age_key in zip(age_ranges, age_range_dict.keys()):
-                by_age[age_key] = daly_df_seed[daly_df_seed.age.isin(age_range)
-                                               ]['DALYs'].mean(axis=0)
-            dalys_pp_age[label][idx] = by_age  # [method][run][age group]
-
-            by_age = {}
-            for age_range, age_key in zip(age_ranges, age_range_dict.keys()):
-                by_age[age_key] = daly_df_seed[
-                    daly_df_seed.age.isin(age_range)
-                                               ][
-                    ['DALYs', 'YLL', 'YLD']].sum(axis=0)
-            dalys_pp_age_sex_metrics[label][idx] = by_age
-
-            for sex in sexes:
-                dalys_pp_age_sex_metrics[label][idx][sex] = daly_df_seed[
-                    daly_df_seed.sex.eq(sex)][
-                        ['DALYs', 'YLL', 'YLD']].sum(axis=0)
+            # calculate dalys per person by age for this pickle file
+            dalys_age(daly_df_seed, dalys_pp_age, label, idx)
+            health_age_sex_sum(daly_df_seed, dalys_pp_age_sex_metrics, label,
+                               idx)
 
     # add to aggregate output variables
-    # agg_daly_df = pd.DataFrame(agg_dalys, keys = agg_dalys.keys())
     agg_daly_df = pd.DataFrame(agg_dalys)
     agg_daly_mean = agg_daly_df.mean(axis=0)
     agg_daly_stderr = agg_daly_df.sem(axis=0)
@@ -380,44 +309,367 @@ def run(data, path, compare="app_adoption"):
     work_hours_mean = work_hours_df.mean(axis=0)
     work_hours_stderr = work_hours_df.sem(axis=0)
 
-    # # print a table with mean & std
-    # print(agg_daly_df)
-    # print(agg_daly_df.mean(axis=0))
-
     # generate figure 9 (work hours and total DALYs)
-    fig = plt.figure(figsize=(15, 10))
-
-    for method in agg_daly_mean.keys():
-
-        plt.scatter(work_hours_mean[method],
-                    agg_daly_mean[method],
-                    label=method_to_labels[method],
-                    color=method_to_colors[method],
-                    s=100)
-        plt.errorbar(work_hours_mean[method],
-                     agg_daly_mean[method],
-                     xerr=work_hours_stderr[method],
-                     yerr=agg_daly_stderr[method],
-                     color=method_to_colors[method])
-
-    plt.xticks(fontsize=16)
-    plt.yticks(fontsize=16)
-    # grids
-    plt.grid(True, axis='x', alpha=0.3)
-    plt.grid(True, axis='y', alpha=0.3)
-    plt.xlabel('Total Work Hours Foregone', fontsize=20)
-    plt.ylabel('Total DALYs', fontsize=20)
-    plt.legend(prop={'size': 30})
-    plt.title('Health-Economic costs of CT methods @ 60% Adoption Rate',
-              fontsize=24)
-    plt.tight_layout()
-
-    # save in daly_data folder
-    save_path = ('plotting_pareto_comparison_with_replacement.png')
-    fig.savefig(os.path.join(path, save_path))
-    print('Figure 9 saved to plotting_pareto_comparison_with_replacement.png')
+    plot_figure_nine(agg_daly_mean, work_hours_mean, pop_size,
+                     method_to_labels, method_to_colors, work_hours_stderr,
+                     agg_daly_stderr, adoption_rate, path)
 
     # generate figure 10
+    plot_figure_ten(dalys_pp_age, method_to_labels, method_to_colors,
+                    adoption_rate, path)
+
+    # get full DataFrame keys according to CT method used
+    method_keys = get_keys(agg_daly_df)
+
+    # Delta DALYs means and stderrs
+    for key in method_keys:
+        if key != 'no-tracing':
+            agg_daly_mean['delta_' + str(key)] = \
+                agg_daly_mean[method_keys['no-tracing']] - \
+                agg_daly_mean[method_keys[key]]
+
+            agg_daly_stderr['delta_' + str(key)] = np.sqrt(
+                agg_daly_stderr[method_keys['no-tracing']]**2 +
+                agg_daly_stderr[method_keys[key]]**2
+                )
+
+    # agg_daly_mean['delta_bct'] = agg_daly_mean[no_tracing_key] - \
+    #     agg_daly_mean[bct_key]
+    # agg_daly_mean['delta_heuristic'] = agg_daly_mean[no_tracing_key] - \
+    #     agg_daly_mean[heuristic_key]
+    # agg_daly_mean['delta_microwave'] = agg_daly_mean[no_tracing_key] - \
+    #     agg_daly_mean[microwave_key]
+    # agg_daly_mean['delta_galaxy'] = agg_daly_mean[no_tracing_key] - \
+    #     agg_daly_mean[galaxy_key]
+    # agg_daly_mean['delta_galaxy_000'] = agg_daly_mean[no_tracing_key] - \
+    #     agg_daly_mean[galaxy_000_key]
+    # agg_daly_mean['delta_galaxy_001'] = agg_daly_mean[no_tracing_key] - \
+    #     agg_daly_mean[galaxy_001_key]
+
+    # agg_daly_stderr['delta_bct'] = np.sqrt(
+    #     agg_daly_stderr[no_tracing_key]**2
+    #     + agg_daly_stderr[bct_key]**2
+    #                                        )
+    # agg_daly_stderr['delta_heuristic'] = np.sqrt(
+    #     agg_daly_stderr[no_tracing_key]**2
+    #     + agg_daly_stderr[heuristic_key]**2
+    #                                              )
+    # agg_daly_stderr['delta_microwave'] = np.sqrt(
+    #     agg_daly_stderr[no_tracing_key]**2
+    #     + agg_daly_stderr[microwave_key]**2
+    #                                              )
+    # agg_daly_stderr['delta_galaxy'] = np.sqrt(
+    #     agg_daly_stderr[no_tracing_key]**2
+    #     + agg_daly_stderr[galaxy_key]**2
+    #                                              )
+    # agg_daly_stderr['delta_galaxy_000'] = np.sqrt(
+    #     agg_daly_stderr[no_tracing_key]**2
+    #     + agg_daly_stderr[galaxy_000_key]**2
+    #                                              )
+    # agg_daly_stderr['delta_galaxy_001'] = np.sqrt(
+    #     agg_daly_stderr[no_tracing_key]**2
+    #     + agg_daly_stderr[galaxy_001_key]**2
+    #                                              )
+
+    # list of alternating mean and stderr
+    methods = method_keys.values()
+
+    print("###################################################################")
+    print("###################################################################")
+    print('agg_daly_mean keys: ')
+    print(agg_daly_mean.keys())
+
+    agg_daly_cols = [(agg_daly_mean[method], agg_daly_stderr[method]) for
+                     method in methods]
+    agg_daly_cols = [col for tup in agg_daly_cols for col in tup]
+    agg_daly_diff = pd.DataFrame(
+        agg_daly_cols,
+        columns=['delta DALYs'],
+        index=pd.MultiIndex.from_product(
+            [[val for val in methods if "delta" in val],
+             ['mean', 'stderr']]
+                                         )
+                                 )
+    print("###################################################################")
+    print("###################################################################")
+    print('agg_daly_diff keys: ')
+    print(agg_daly_diff.keys())
+
+    # agg_daly_diff = pd.DataFrame([agg_daly_mean['delta_bct'],
+    #                               agg_daly_stderr['delta_bct'],
+    #                               agg_daly_mean['delta_heuristic'],
+    #                               agg_daly_stderr['delta_heuristic'],
+    #                               agg_daly_mean['delta_microwave'],
+    #                               agg_daly_stderr['delta_microwave'],
+    #                               agg_daly_mean['delta_galaxy'],
+    #                               agg_daly_stderr['delta_galaxy'],
+    #                               agg_daly_mean['delta_galaxy_000'],
+    #                               agg_daly_stderr['delta_galaxy_000'],
+    #                               agg_daly_mean['delta_galaxy_001'],
+    #                               agg_daly_stderr['delta_galaxy_001']
+    #                               ],
+    #                              columns=['delta DALYs'],
+    #                              index=pd.MultiIndex.from_product(
+    #                                  [methods[1:],
+    #                                   ['mean', 'stderr']
+    #                                   ]
+    #                                                               )
+    #                              )
+
+    # delta TPL
+    work_hours_mean = work_hours_df.mean(axis=0)
+    work_hours_stderr = work_hours_df.sem(axis=0)
+    tpl_mean = (work_hours_df*MEAN_HOURLY_WAGE).mean(axis=0)
+    tpl_stderr = (work_hours_df*MEAN_HOURLY_WAGE).sem(axis=0)
+
+    for key in method_keys:
+        if key != 'no-tracing':
+            work_hours_mean['delta_' + str(key)] = \
+                work_hours_mean[method_keys['no-tracing']] - \
+                work_hours_mean[method_keys[key]]
+
+            work_hours_stderr['delta_' + str(key)] = np.sqrt(
+                work_hours_stderr[method_keys['no-tracing']]**2 +
+                work_hours_stderr[method_keys[key]]**2
+                )
+
+    # work_hours_mean['delta_bct'] = work_hours_mean[bct_key] - \
+    #     work_hours_mean[no_tracing_key]
+    # work_hours_mean['delta_heuristic'] = work_hours_mean[heuristic_key] - \
+    #     work_hours_mean[no_tracing_key]
+    # work_hours_mean['delta_microwave'] = work_hours_mean[microwave_key] - \
+    #     work_hours_mean[no_tracing_key]
+    # work_hours_mean['delta_galaxy'] = work_hours_mean[galaxy_key] - \
+    #     work_hours_mean[no_tracing_key]
+    # work_hours_mean['delta_galaxy_000'] = work_hours_mean[galaxy_000_key] - \
+    #     work_hours_mean[no_tracing_key]
+    # work_hours_mean['delta_galaxy_001'] = work_hours_mean[galaxy_001_key] - \
+    #     work_hours_mean[no_tracing_key]
+
+    # work_hours_stderr['delta_bct'] = np.sqrt(
+    #     work_hours_stderr[no_tracing_key]**2
+    #     + work_hours_stderr[bct_key]**2
+    #                                        )
+    # work_hours_stderr['delta_heuristic'] = np.sqrt(
+    #     work_hours_stderr[no_tracing_key]**2
+    #     + work_hours_stderr[heuristic_key]**2
+    #                                              )
+    # work_hours_stderr['delta_microwave'] = np.sqrt(
+    #     work_hours_stderr[no_tracing_key]**2
+    #     + work_hours_stderr[microwave_key]**2
+    #                                              )
+    # work_hours_stderr['delta_galaxy'] = np.sqrt(
+    #     work_hours_stderr[no_tracing_key]**2
+    #     + work_hours_stderr[galaxy_key]**2
+    #                                              )
+    # work_hours_stderr['delta_galaxy_000'] = np.sqrt(
+    #     work_hours_stderr[no_tracing_key]**2
+    #     + work_hours_stderr[galaxy_000_key]**2
+    #                                              )
+    # work_hours_stderr['delta_galaxy_001'] = np.sqrt(
+    #     work_hours_stderr[no_tracing_key]**2
+    #     + work_hours_stderr[galaxy_001_key]**2
+    #
+    #                                               )
+
+    # list of columns alternating between mean and stderr
+    work_hours_cols = [(work_hours_mean[method], work_hours_mean[method]) for
+                       method in methods]
+    work_hours_cols = [col for tup in work_hours_cols for col in tup]
+    agg_daly_diff['delta TPL'] = work_hours_cols
+
+    # agg_daly_diff['delta TPL'] = [work_hours_mean['delta_bct'],
+    #                               work_hours_stderr['delta_bct'],
+    #                               work_hours_mean['delta_heuristic'],
+    #                               work_hours_stderr['delta_heuristic'],
+    #                               work_hours_mean['delta_microwave'],
+    #                               work_hours_stderr['delta_microwave'],
+    #                               work_hours_mean['delta_galaxy'],
+    #                               work_hours_stderr['delta_galaxy'],
+    #                               work_hours_mean['delta_galaxy_000'],
+    #                               work_hours_stderr['delta_galaxy_000'],
+    #                               work_hours_mean['delta_galaxy_001'],
+    #                               work_hours_stderr['delta_galaxy_001']
+    #                               ]
+
+    # generate table 2
+    table_icer(agg_daly_diff, path)
+
+    # generate table L4 (work hours, TPL)
+    table_tpl(work_hours_mean, method_keys, work_hours_stderr, tpl_mean,
+              tpl_stderr, path)
+
+    # generate table L5 (metrics for age, sex breakdown)
+    table_age_sex_breakdown(method_keys, dalys_pp_age_sex_metrics, path)
+
+
+def table_age_sex_breakdown(method_keys, dalys_pp_age_sex_metrics, path):
+    metrics_table = {}
+    for method in method_keys:
+        method_df_concat = pd.concat([
+            pd.DataFrame(dalys_pp_age_sex_metrics[method][run])
+            for run in dalys_pp_age_sex_metrics[method].keys()
+                               ]
+                              )
+        method_df = method_df_concat.groupby(method_df_concat.index).mean()
+        metrics_table[method] = pd.DataFrame.from_dict(method_df)
+
+    metrics_df = pd.concat(metrics_table.values(), keys=metrics_table.keys()
+                           ).transpose()
+    metrics_df.rename(index={'100-119': '100+'})
+    print('############################################################')
+    print('Table L5: health metrics stratified by age and sex '
+          'for different CT methods')
+    print('Saved to health_metrics_stratified_table.csv')
+    print(metrics_df)
+    save_path_metrics = ('health_metrics_stratified_table.csv')
+    metrics_df.to_csv(os.path.join(path, save_path_metrics))
+
+
+def table_tpl(work_hours_mean, method_keys, work_hours_stderr, tpl_mean,
+              tpl_stderr, path):
+    tpl_df = pd.DataFrame([work_hours_mean[method_keys],
+                           work_hours_stderr[method_keys],
+                           tpl_mean[method_keys],
+                           tpl_stderr[method_keys]
+                           ],
+                          index=pd.MultiIndex.from_product(
+                            [['Foregone Work', 'TPL'],
+                             ['mean', 'stderr']])
+                          )
+
+    print('############################################################')
+    print('Table L4: Foregone work hours and TPL for different CT methods')
+    print('Saved to tpl_table.csv')
+    print(tpl_df)
+    # parent_path = pathlib.Path(
+    # __file__).resolve().parent.parent.parent.parent
+    save_path_tpl = ('tpl_table.csv')
+    tpl_df.to_csv(os.path.join(path, save_path_tpl))
+
+
+def table_icer(agg_daly_diff, path):
+    # generate table 2
+    print('############################################################')
+    print('Table 2: difference in DALYs and TPL,'
+          'as well as ICER for different CT methods')
+    print('saved to ICER_table.csv')
+    agg_daly_diff['ICER'] = (agg_daly_diff['delta TPL']
+                             / agg_daly_diff['delta DALYs']
+                             * MEAN_HOURLY_WAGE
+                             )
+
+    delta_DALYs_df = agg_daly_diff['delta DALYs'].unstack()
+    delta_TPL_df = agg_daly_diff['delta TPL'].unstack()
+    ICER_df = agg_daly_diff['ICER'].unstack()
+    ICER_df['stderr'] = (np.abs(ICER_df['mean']) *
+                         np.sqrt(
+        (delta_DALYs_df['stderr']/delta_DALYs_df['mean'])**2
+        +
+        (delta_TPL_df['stderr']/delta_TPL_df['mean'])**2
+
+                                 )
+                         )
+
+    agg_daly_diff['ICER'] = ICER_df.stack()
+    agg_daly_diff = agg_daly_diff.transpose()
+    print(agg_daly_diff)
+    save_path_icer = ('ICER_table.csv')
+    agg_daly_diff.to_csv(os.path.join(path, save_path_icer))
+
+
+def get_keys(agg_daly_df):
+    method_keys = {}
+    for key in agg_daly_df.keys():
+        # for methods...
+        if 'no-tracing' in key:
+            method_keys['no-tracing'] = key
+        elif 'bdt1' in key:
+            method_keys['bdt1'] = key
+        elif 'heuristic' in key:
+            method_keys['heuristic'] = key
+        elif 'MICROWAVE' in key:
+            method_keys['whole-microwave'] = key
+        elif 'GALAXY' in key:
+            if '000' in key:
+                method_keys['wordly-galaxy_000'] = key
+            elif '001' in key:
+                method_keys['wordly-galaxy_001'] = key
+            else:
+                method_keys['wordly-galaxy'] = key
+        else:
+            raise ValueError('unknown key')
+    return method_keys
+
+
+def labels_and_colors(label2pkls):
+    # Set colors and labels based on intervention
+    method_to_labels = {}
+    method_to_colors = {}
+    for label, pkls in label2pkls:
+        if 'post-lockdown-no-tracing' in label:
+            method_to_labels[label] = "No Tracing"
+            method_to_colors[label] = "#34495E"
+        elif 'no_intervention' in label:
+            method_to_labels[label] = "No Tracing"
+            method_to_colors[label] = "#34495E"
+        elif 'bdt1' in label:
+            method_to_labels[label] = "Test-based BCT1"
+            method_to_colors[label] = "mediumvioletred"
+        elif 'heuristic' in label:
+            method_to_labels[label] = "Heuristic-FCT"
+            method_to_colors[label] = "darkorange"
+        elif 'MICROWAVE' in label:
+            method_to_labels[label] = "WHOLE-MICROWAVE"
+            method_to_colors[label] = "royalblue"
+        elif 'GALAXY' in label:
+            if '801_000_60' in label:
+                method_to_labels[label] = "WORDLY-GALAXY_000"
+                method_to_colors[label] = "#A4C61A"
+            elif '801_001_60' in label:
+                method_to_labels[label] = "WORDLY-GALAXY_001"
+                method_to_colors[label] = "#00FF1E"
+            else:
+                method_to_labels[label] = "WORDLY-GALAXY"
+                method_to_colors[label] = "#A4C61A"
+        else:
+            print(label)
+            raise ValueError('Method not recognized for daly plotting')
+    return label, method_to_labels, method_to_colors
+
+
+def health_age_sex_sum(daly_df_seed, dalys_pp_age_sex_metrics, label, idx):
+    age_ranges = [range(i, i+10) for i in range(0, 100, 10)] + [range(100, 120)]
+    age_range_dict = {str(np.min(i)) + '-' + str(np.max(i)): {}
+                      for i in age_ranges}
+    sexes = ['male', 'female']
+    by_age = {}
+    for age_range, age_key in zip(age_ranges, age_range_dict.keys()):
+        by_age[age_key] = daly_df_seed[daly_df_seed.age.isin(age_range)
+                                       ][
+            ['DALYs', 'YLL', 'YLD']].sum(axis=0)
+    dalys_pp_age_sex_metrics[label][idx] = by_age
+
+    for sex in sexes:
+        dalys_pp_age_sex_metrics[label][idx][sex] = daly_df_seed[
+            daly_df_seed.sex.eq(sex)][
+                ['DALYs', 'YLL', 'YLD']].sum(axis=0)
+
+
+def dalys_age(daly_df_seed, dalys_pp_age, label, idx):
+    age_ranges = [range(i, i+10) for i in range(0, 100, 10)] + [range(100, 120)]
+    age_range_dict = {str(np.min(i)) + '-' + str(np.max(i)): {}
+                      for i in age_ranges}
+    by_age = {}
+    for age_range, age_key in zip(age_ranges, age_range_dict.keys()):
+        by_age[age_key] = daly_df_seed[daly_df_seed.age.isin(age_range)
+                                       ]['DALYs'].mean(axis=0)
+    dalys_pp_age[label][idx] = by_age  # [method][run][age group]
+
+
+def plot_figure_ten(dalys_pp_age, method_to_labels, method_to_colors,
+                    adoption_rate, path):
+
     fig = plt.figure(figsize=(15, 10))
 
     for method in dalys_pp_age.keys():
@@ -434,6 +686,7 @@ def run(data, path, compare="app_adoption"):
         plt.plot(daly_age_df.index, daly_age_df['mean'],
                  label=method_to_labels[method],
                  color=method_to_colors[method])
+
         # standard error across runs
         plt.fill_between(daly_age_df.index,
                          daly_age_df['mean'] - daly_age_df['stderr'],
@@ -463,7 +716,8 @@ def run(data, path, compare="app_adoption"):
     # legend and title
     plt.legend(prop={'size': 30})
     plt.title(('Age-stratified DALYs per person '
-              'for CT methods @ 60% Adoption rate'), fontsize=24)
+              'for CT methods @ ' + str(adoption_rate) + '% Adoption Rate'),
+              fontsize=24)
     plt.tight_layout()
 
     # save in daly_data folder
@@ -471,152 +725,65 @@ def run(data, path, compare="app_adoption"):
     fig.savefig(os.path.join(path, save_path))
     print('Figure 10 saved to dalys_per_person_age_stratified.png')
 
-    # generate table 2
-    print('############################################################')
-    print('Table 2: difference in DALYs and TPL,'
-          'as well as ICER for different CT methods')
-    print('saved to ICER_table.csv')
-    # get full DataFrame keys according to CT method used
-    methods = ['no-tracing', 'bdt1', 'heuristic']
-    no_tracing_key = None
-    bct_key = None
-    heuristic_key = None
-    for key in agg_daly_df.keys():
-        # for methods...
-        if 'no-tracing' in key:
-            no_tracing_key = key
-        elif 'bdt1' in key:
-            bct_key = key
-        elif 'heuristic' in key:
-            heuristic_key = key
+    save_path_csv_age = 'age_stratification_' + str(adoption_rate)
+
+    with open(os.path.join(path, save_path_csv_age) + '.pkl', 'wb') as f:
+        pickle.dump(dalys_pp_age, f)
+
+
+def plot_figure_nine(agg_daly_mean, work_hours_mean, pop_size,
+                     method_to_labels, method_to_colors, work_hours_stderr,
+                     agg_daly_stderr, adoption_rate, path):
+    # generate figure 9 (work hours and total DALYs)
+    csv_df = None
+    fig = plt.figure(figsize=(15, 10))
+
+    for method in agg_daly_mean.keys():
+
+        plt.scatter(work_hours_mean[method]/pop_size,
+                    agg_daly_mean[method]/pop_size,
+                    label=method_to_labels[method],
+                    color=method_to_colors[method],
+                    s=100)
+        plt.errorbar(work_hours_mean[method]/pop_size,
+                     agg_daly_mean[method]/pop_size,
+                     xerr=work_hours_stderr[method]/pop_size,
+                     yerr=agg_daly_stderr[method]/pop_size,
+                     color=method_to_colors[method])
+
+        data = {
+            'method': method,
+            'adoption rate': adoption_rate,
+            'mean work hours': work_hours_mean[method]/pop_size,
+            'stderr work hours': work_hours_stderr[method]/pop_size,
+            'mean dalys': agg_daly_mean[method]/pop_size,
+            'stderr dalys': agg_daly_stderr[method]/pop_size,
+            'label': method_to_labels[method],
+            'color': method_to_colors[method]
+        }
+
+        if csv_df is None:
+            csv_df = pd.DataFrame(data, index=[0])
         else:
-            raise ValueError('unknown key')
+            csv_df = csv_df.append(data, ignore_index=True)
 
-    method_keys = [no_tracing_key,
-                   bct_key,
-                   heuristic_key]
+    plt.xticks(fontsize=16)
+    plt.yticks(fontsize=16)
+    # grids
+    plt.grid(True, axis='x', alpha=0.3)
+    plt.grid(True, axis='y', alpha=0.3)
+    plt.xlabel('Work Hours Foregone Per Person', fontsize=20)
+    plt.ylabel('DALYs Foregone Per Person', fontsize=20)
+    plt.legend(prop={'size': 30})
+    plt.title('Health-Economic costs of CT methods @ ' + str(adoption_rate) +
+              '% Adoption Rate',
+              fontsize=24)
+    plt.tight_layout()
 
-    agg_daly_mean = agg_daly_df.mean(axis=0)
-    agg_daly_stderr = agg_daly_df.sem(axis=0)
+    # save in daly_data folder
+    save_path = ('plotting_pareto_comparison_with_replacement.png')
+    fig.savefig(os.path.join(path, save_path))
+    print('Figure 9 saved to plotting_pareto_comparison_with_replacement.png')
 
-    # Delta DALYs
-    agg_daly_mean['delta_bct'] = agg_daly_mean[no_tracing_key] - \
-        agg_daly_mean[bct_key]
-    agg_daly_mean['delta_heuristic'] = agg_daly_mean[no_tracing_key] - \
-        agg_daly_mean[heuristic_key]
-
-    agg_daly_stderr['delta_bct'] = np.sqrt(
-        agg_daly_stderr[no_tracing_key]**2
-        + agg_daly_stderr[bct_key]**2
-                                           )
-
-    agg_daly_stderr['delta_heuristic'] = np.sqrt(
-        agg_daly_stderr[no_tracing_key]**2
-        + agg_daly_stderr[heuristic_key]**2
-                                                 )
-
-    agg_daly_diff = pd.DataFrame([agg_daly_mean['delta_bct'],
-                                  agg_daly_stderr['delta_bct'],
-                                  agg_daly_mean['delta_heuristic'],
-                                  agg_daly_stderr['delta_heuristic']
-                                  ],
-                                 columns=['delta DALYs'],
-                                 index=pd.MultiIndex.from_product(
-                                     [methods[1:],
-                                      ['mean', 'stderr']
-                                      ]
-                                                                  )
-                                 )
-
-    # delta TPL
-    work_hours_mean = work_hours_df.mean(axis=0)
-    work_hours_stderr = work_hours_df.sem(axis=0)
-    tpl_mean = (work_hours_df*MEAN_HOURLY_WAGE).mean(axis=0)
-    tpl_stderr = (work_hours_df*MEAN_HOURLY_WAGE).sem(axis=0)
-
-    work_hours_mean['delta_bct'] = work_hours_mean[bct_key] - \
-        work_hours_mean[no_tracing_key]
-    work_hours_mean['delta_heuristic'] = work_hours_mean[heuristic_key] - \
-        work_hours_mean[no_tracing_key]
-
-    work_hours_stderr['delta_bct'] = np.sqrt(
-        work_hours_stderr[no_tracing_key]**2
-        + work_hours_stderr[bct_key]**2
-                                           )
-
-    work_hours_stderr['delta_heuristic'] = np.sqrt(
-        work_hours_stderr[no_tracing_key]**2
-        + work_hours_stderr[heuristic_key]**2
-                                                 )
-
-    agg_daly_diff['delta TPL'] = [work_hours_mean['delta_bct'],
-                                  work_hours_stderr['delta_bct'],
-                                  work_hours_mean['delta_heuristic'],
-                                  work_hours_stderr['delta_heuristic']
-                                  ]
-
-    # ICER over no-tracing
-    agg_daly_diff['ICER'] = (agg_daly_diff['delta TPL']
-                             / agg_daly_diff['delta DALYs']
-                             * MEAN_HOURLY_WAGE
-                             )
-
-    delta_DALYs_df = agg_daly_diff['delta DALYs'].unstack()
-    delta_TPL_df = agg_daly_diff['delta TPL'].unstack()
-    ICER_df = agg_daly_diff['ICER'].unstack()
-    ICER_df['stderr'] = (np.abs(ICER_df['mean']) *
-                         np.sqrt(
-        (delta_DALYs_df['stderr']/delta_DALYs_df['mean'])**2
-        +
-        (delta_TPL_df['stderr']/delta_TPL_df['mean'])**2
-
-                                 )
-                         )
-
-    agg_daly_diff['ICER'] = ICER_df.stack()
-    agg_daly_diff = agg_daly_diff.transpose()
-    print(agg_daly_diff)
-    save_path_icer = ('ICER_table.csv')
-    agg_daly_diff.to_csv(os.path.join(path, save_path_icer))
-
-    # generate table L4 (work hours, TPL)
-    tpl_df = pd.DataFrame([work_hours_mean[method_keys],
-                           work_hours_stderr[method_keys],
-                           tpl_mean[method_keys],
-                           tpl_stderr[method_keys]
-                           ],
-                          index=pd.MultiIndex.from_product(
-                            [['Foregone Work', 'TPL'],
-                             ['mean', 'stderr']])
-                          )
-
-    print('############################################################')
-    print('Table L4: Foregone work hours and TPL for different CT methods')
-    print('Saved to tpl_table.csv')
-    print(tpl_df)
-    # parent_path = pathlib.Path(
-    # __file__).resolve().parent.parent.parent.parent
-    save_path_tpl = ('tpl_table.csv')
-    tpl_df.to_csv(os.path.join(path, save_path_tpl))
-
-    # generate table L5 (metrics for age, sex breakdown)
-    metrics_table = {}
-    for method in method_keys:
-        method_df_concat = pd.concat([
-            pd.DataFrame(dalys_pp_age_sex_metrics[method][run])
-            for run in dalys_pp_age_sex_metrics[method].keys()
-                               ]
-                              )
-        method_df = method_df_concat.groupby(method_df_concat.index).mean()
-        metrics_table[method] = pd.DataFrame.from_dict(method_df)
-
-    metrics_df = pd.concat(metrics_table.values(), keys=metrics_table.keys()
-                           ).transpose()
-    metrics_df.rename(index={'100-119': '100+'})
-    print('############################################################')
-    print('Table L5: health metrics stratified by age and sex '
-          'for different CT methods')
-    print('Saved to health_metrics_stratified_table.csv')
-    print(metrics_df)
-    save_path_metrics = ('health_metrics_stratified_table.csv')
-    metrics_df.to_csv(os.path.join(path, save_path_metrics))
+    save_path_csv = ('pareto_comparison_' + str(adoption_rate))
+    csv_df.to_csv(os.path.join(path, save_path_csv))
